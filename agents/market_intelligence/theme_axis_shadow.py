@@ -66,6 +66,12 @@ _KEYWORD_RE = re.compile(r"\b\w{4,}\b")
 # "Global", "Solutions"). Ambiguous/too-short remainders are EXCLUDED from matching entirely
 # — deliberately conservative (under-count over false-match), mirroring the STEP-0 ticker
 # signal's own subject-exclusion asymmetry.
+# NB (d2-review G2, resolved as CROSS-REFERENCE not shared-base): collector.py's
+# _GENERIC_NAME_TOKENS covers the same corporate-token CONCEPT but serves a
+# DIFFERENT rule (generic-word filtering in is_primary_subject_news — a LIVE
+# protective-path filter) with deliberately different membership; unioning them
+# would silently change that filter's behavior. If you add a corporate token
+# HERE, check whether collector.py:596 needs it too — and vice versa.
 _CORPORATE_SUFFIX_TOKENS: frozenset[str] = frozenset({
     "inc", "incorporated", "corp", "corporation", "co", "company",
     "ltd", "limited", "llc", "plc", "holdings", "holding", "group",
@@ -269,6 +275,30 @@ async def _ensure_company_names(conn: Any, tickers: list[str]) -> dict[str, str]
     return {**cached, **fetched}
 
 
+async def compute_step1_signals(conn, ticker: str, alert_date, grounded_text,
+                                cohort_tickers: "list[str]") -> dict:
+    """The ONE #367 STEP-1 pipeline (d2-review G1): name-attribution (a) +
+    co-movement (b) for a subject vs its theme cohort. Shared by the live
+    shadow writer AND the backfill script so a normalization/floor tweak can
+    never diverge them (that divergence would corrupt the health-read
+    comparison the signals exist for)."""
+    names_by_ticker = await _ensure_company_names(conn, cohort_tickers)
+    name_score, name_attributable, matched_names = compute_name_attribution(
+        grounded_text, subject_ticker=ticker,
+        cohort_tickers=cohort_tickers, names_by_ticker=names_by_ticker,
+    )
+    peers = [t for t in cohort_tickers if (t or "").upper() != ticker.upper()]
+    moves = await get_daily_moves(conn, alert_date, [ticker] + peers)
+    ticker_move = moves.get(ticker.upper())
+    cohort_moves = [moves[t.upper()] for t in peers if t.upper() in moves]
+    cohort_move, co_moving = compute_co_movement(ticker_move, cohort_moves)
+    return {
+        "name_score": name_score, "name_attributable": name_attributable,
+        "matched_names": matched_names, "ticker_move": ticker_move,
+        "cohort_move": cohort_move, "co_moving": co_moving,
+    }
+
+
 async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
     """SHADOW writer (#329 STEP-0 + #367 STEP-1). For one scored EP candidate, log the as-of
     theme heat + BOTH relevance signals to mi_theme_axis_shadow:
@@ -308,23 +338,13 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
                 theme_description=heat["description"],
             )
 
-            # ── STEP-1 (a): company-name attribution ────────────────────────────────
-            names_by_ticker = await _ensure_company_names(conn, heat["tickers"])
-            name_score, name_attributable, matched_names = compute_name_attribution(
-                grounded_text,
-                subject_ticker=ticker,
-                cohort_tickers=heat["tickers"],
-                names_by_ticker=names_by_ticker,
-            )
-
-            # ── STEP-1 (b): co-movement ──────────────────────────────────────────────
-            cohort_tickers = [
-                t for t in heat["tickers"] if (t or "").upper() != ticker.upper()
-            ]
-            moves = await get_daily_moves(conn, alert_date, [ticker] + cohort_tickers)
-            ticker_move = moves.get(ticker.upper())
-            cohort_moves = [moves[t.upper()] for t in cohort_tickers if t.upper() in moves]
-            cohort_move, co_moving = compute_co_movement(ticker_move, cohort_moves)
+            # ── STEP-1 (a)+(b) via the ONE shared pipeline (G1) ─────────────────────
+            _s1 = await compute_step1_signals(conn, ticker, alert_date,
+                                              grounded_text, heat["tickers"])
+            name_score, name_attributable, matched_names = (
+                _s1["name_score"], _s1["name_attributable"], _s1["matched_names"])
+            ticker_move, cohort_move, co_moving = (
+                _s1["ticker_move"], _s1["cohort_move"], _s1["co_moving"])
 
         await conn.execute("""
             INSERT INTO mi_theme_axis_shadow (

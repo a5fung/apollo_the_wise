@@ -606,7 +606,8 @@ reviews:
     added_on: 2026-06-14
     closed_on: 2026-06-20
     resolution_2026_07_04: |
-      OPERATOR-LABELED (the 7/4 Tier-2 sitting, Set A — hard-gate rules honored, agent never classified):
+      OPERATOR-LABELED (the 7/4 Tier-2 sitting, Set A — hard-gate rules honored, agent never
+      classified; full labels doc: docs/analysis/operator_labels_sitting_2026-07-04.md):
       SUNE 6/8 = TP (correctly suppressed; the +216% was an M&A-target run). FRMI 6/17 = FP.
       ONDS 5/28 (repeat-firing) = FP. MMED 6/3 (keyword_in_text_1) = FP. 3/4 top movers = FP ->
       amendment case established. CLOSED -> the one gated successor = PLAN #416 (headline pull +

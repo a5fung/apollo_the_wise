@@ -35,6 +35,7 @@ from agents.market_intelligence.theme_axis_shadow import (
     _ensure_company_names,
     compute_co_movement,
     compute_name_attribution,
+    compute_step1_signals,
 )
 
 
@@ -45,17 +46,13 @@ async def _compute_refined_signals(conn, ticker: str, alert_date, grounded_text:
     if heat is None:
         return None
 
-    names_by_ticker = await _ensure_company_names(conn, heat["tickers"])
-    name_score, name_attributable, matched_names = compute_name_attribution(
-        grounded_text, subject_ticker=ticker,
-        cohort_tickers=heat["tickers"], names_by_ticker=names_by_ticker,
-    )
-
-    cohort_tickers = [t for t in heat["tickers"] if (t or "").upper() != ticker.upper()]
-    moves = await get_daily_moves(conn, alert_date, [ticker] + cohort_tickers)
-    ticker_move = moves.get(ticker.upper())
-    cohort_moves = [moves[t.upper()] for t in cohort_tickers if t.upper() in moves]
-    cohort_move, co_moving = compute_co_movement(ticker_move, cohort_moves)
+    # ONE shared pipeline with the live writer (d2-review G1) — divergence here
+    # would corrupt the health-read comparison.
+    _s1 = await compute_step1_signals(conn, ticker, alert_date, grounded_text, heat["tickers"])
+    name_score, name_attributable, matched_names = (
+        _s1["name_score"], _s1["name_attributable"], _s1["matched_names"])
+    ticker_move, cohort_move, co_moving = (
+        _s1["ticker_move"], _s1["cohort_move"], _s1["co_moving"])
 
     return {
         "name_attribution_score": name_score,

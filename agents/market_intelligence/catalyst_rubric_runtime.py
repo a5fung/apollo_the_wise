@@ -497,12 +497,19 @@ composition checkpoint alongside the near-miss band."""
 #   | 'standalone' | 'blind_spot' | 'none'
 
 
+def _sorted_bands() -> "list[tuple[float, str]]":
+    """LABEL_BANDS sorted ascending by boundary — the ONE sort both helpers
+    share (d2-review G4: _boundary_above used to re-sort after _tier_order
+    already had)."""
+    from agents.market_intelligence.catalyst_rubric import LABEL_BANDS
+    return sorted(LABEL_BANDS, key=lambda b: b[0])
+
+
 def _tier_order() -> list[str]:
     """Ascending rubric label order, DERIVED from catalyst_rubric.LABEL_BANDS
     (not hardcoded) so a future rubric rebalance can't silently desync this
     module. Currently ['weak', 'routine', 'strong', 'game_changer']."""
-    from agents.market_intelligence.catalyst_rubric import LABEL_BANDS
-    return [lbl for _, lbl in sorted(LABEL_BANDS, key=lambda b: b[0])]
+    return [lbl for _, lbl in _sorted_bands()]
 
 
 def _boundary_above(label: str | None) -> float | None:
@@ -510,14 +517,13 @@ def _boundary_above(label: str | None) -> float | None:
     `label`, per catalyst_rubric.LABEL_BANDS (e.g. 'routine' → 22.0, the
     routine→strong boundary). None if `label` is unrecognized or already the
     top tier (no step available)."""
-    from agents.market_intelligence.catalyst_rubric import LABEL_BANDS
-    order = _tier_order()
+    bands_asc = _sorted_bands()
+    order = [lbl for _, lbl in bands_asc]
     if label not in order:
         return None
     idx = order.index(label)
     if idx + 1 >= len(order):
         return None
-    bands_asc = sorted(LABEL_BANDS, key=lambda b: b[0])
     return float(bands_asc[idx + 1][0])
 
 

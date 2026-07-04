@@ -24,7 +24,9 @@ ALLOWED to import agents.market_intelligence.broker.*:
     graduates to shared/.
 
 INLINE ESCAPE (the `# tz-ok:` pattern): an import line ending in
-`# exec-boundary-ok: <reason>` is exempt. Sanctioned reason today:
+`# exec-boundary-ok: <reason>` is exempt — the marker + a stated reason IS the
+contract (the gate checks the marker; the reason is for reviewers). In use today:
+`moves-with-job (W2)` and `pure exit-ladder math (#396)`. Historic note:
 `moves-with-job (W2)` — the import lives inside a scheduler job / boot block
 that transfers WHOLESALE into the execution service at W2, where a direct
 broker import is correct; facading it now would be throwaway. W2's job

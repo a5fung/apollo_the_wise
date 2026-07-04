@@ -1962,6 +1962,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # is premarket, so the late-source class is still covered.
             _st = _repoll_shadow_state.get(ticker)
             _in_window = _is_premarket(now_et)
+            # NB: ENRICH_SHADOW_ENABLED is the MASTER enrichment switch — despite the
+            # "shadow" name it now also gates this LIVE-acting re-poll (#347). A rename
+            # is a deploy-coordination change (env lives in prod .env) — deferred.
             if (_st and not _st["logged"] and _in_window and _st["quality"] == "routine"
                     and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
                 try:
@@ -1996,12 +1999,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         # shadow-only telemetry.
                         _repoll_live = await get_runtime_toggle(
                             "live_enriched_corpus", "LIVE_ENRICHED_CORPUS")
-                        _valid_upgrade = (
+                        _valid_change = (
                             _rq != catalyst_quality
                             and _CLASSIFY_FAIL_SENTINEL not in (_ran or "")
                         )
-                        if _repoll_live and _valid_upgrade:
-                            # CACHE-ONLY apply (7/4 review fix): the upgrade takes
+                        if _repoll_live and _valid_change:
+                            # CACHE-ONLY apply (7/4 review fix): the CHANGE takes
                             # effect on the NEXT tick (<=5 min), where the
                             # filters_cleared=False path re-runs _post_grade_filters
                             # against the NEW quality before anything can alert or
@@ -2017,15 +2020,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 filters_cleared=False,
                             )
                         await log_audit_event(
-                            "catalyst_repoll_regraded_live" if (_repoll_live and _valid_upgrade)
+                            "catalyst_repoll_regraded_live" if (_repoll_live and _valid_change)
                             else "ep_repoll_shadow",
                             f"{ticker} re-poll routine → {_rq} (+{_cur - _st['count']} src)"
-                            + (" [LIVE cache updated]" if (_repoll_live and _valid_upgrade) else ""),
+                            + (" [LIVE cache updated]" if (_repoll_live and _valid_change) else ""),
                             json.dumps({
                                 "ticker": ticker, "alert_date": today.isoformat(),
                                 "cached_quality": _st["quality"], "repoll_quality": _rq,
                                 "would_change": _rq != _st["quality"],
-                                "applied_live": bool(_repoll_live and _valid_upgrade),
+                                "applied_live": bool(_repoll_live and _valid_change),
                                 "grade_src_count": _st["count"], "current_src_count": _cur,
                                 "has_prior_agreement": _prior_agr is not None,
                                 "has_dilution": _dilution is not None,
@@ -2086,10 +2089,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # wins). Grading stays capped at ONE full evaluation per ticker per day.
             pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
-            # ── #347 LIVE ENRICHED CORPUS (operator-approved flip 2026-07-04; CHANGE_PROCESS
-            # entry in docs/setups/magna53_ep.md, same commit). 10-day shadow verified
-            # net-correctness (183 grades; the 5 distinct change-events all correct-direction
-            # in the 7/4 walkthrough; dilution suppression 10/10; re-poll once, clean).
+            # ── #347 LIVE ENRICHED CORPUS (operator-approved flip 2026-07-04; evidence +
+            # CHANGE_PROCESS entry: docs/setups/magna53_ep.md).
             # VALIDATED SHAPE ONLY: premarket grades use the enriched pipeline (the shadow
             # never graded in-window); a 9:30+ first-seen name keeps the legacy corpus.
             # Instant revert: runtime toggle 'live_enriched_corpus' (#400 pattern — a

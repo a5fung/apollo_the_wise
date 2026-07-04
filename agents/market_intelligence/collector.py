@@ -593,6 +593,10 @@ _ROUNDUP_RE = re.compile(
 # Generic/legal name tokens skipped when matching a company's lead token, so we
 # don't match on "Inc"/"Group"/"Holdings". Module-scope (mirrors _ROUNDUP_RE) —
 # is_primary_subject_news runs per-item per-ticker across the whole EP scan.
+# NB: theme_axis_shadow._CORPORATE_SUFFIX_TOKENS/_AMBIGUOUS_SINGLE_TOKENS cover
+# the same corporate-token concept for a DIFFERENT rule (name normalization) —
+# kept separate deliberately (this set feeds the LIVE is_primary_subject_news
+# filter). Adding a token either place → check the sibling (d2-review G2).
 _GENERIC_NAME_TOKENS = frozenset({
     "THE", "INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY",
     "GROUP", "HOLDINGS", "HOLDING", "LTD", "LIMITED", "PLC", "SA", "NV",
