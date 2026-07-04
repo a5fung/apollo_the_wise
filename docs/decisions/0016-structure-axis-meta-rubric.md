@@ -1,6 +1,6 @@
 # ADR 0016 — Technical Structure as a Scored Meta-Rubric Axis (#330) — DRAFT for operator sign-off
 
-Status: **DRAFT** (designed 2026-07-03 eve, on the ADR-0015 pattern). #329 child axis 2 of 3
+Status: **ACCEPTED** (operator-signed 2026-07-04 AM, as proposed) (designed 2026-07-03 eve, on the ADR-0015 pattern). #329 child axis 2 of 3
 (#328 theme · **#330 structure** · #331 gap-alignment). Read 0015 first — the form, guardrails,
 and rollout discipline are inherited; this ADR specifies only what differs.
 

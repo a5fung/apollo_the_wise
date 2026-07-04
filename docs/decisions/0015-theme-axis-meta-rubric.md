@@ -1,6 +1,6 @@
 # ADR 0015 — Theme as a Scored Meta-Rubric Axis (#328) — DRAFT for operator sign-off
 
-Status: **DRAFT** (designed 2026-07-03 eve; the stage→credit table is the operator's
+Status: **ACCEPTED** (operator-signed 2026-07-04 AM, as proposed — Mainstream stays tie-break v1, upgradeable at the #329 checkpoint) (designed 2026-07-03 eve; the stage→credit table is the operator's
 sign-off surface — Saturday). Author frame: #329 meta-rubric composition, child axis 1 of 3
 (#328 theme · #330 structure · #331 gap-alignment).
 
