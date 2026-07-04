@@ -605,7 +605,13 @@ reviews:
     status: done
     added_on: 2026-06-14
     closed_on: 2026-06-20
-
+    resolution_2026_07_04: |
+      OPERATOR-LABELED (the 7/4 Tier-2 sitting, Set A — hard-gate rules honored, agent never classified):
+      SUNE 6/8 = TP (correctly suppressed; the +216% was an M&A-target run). FRMI 6/17 = FP.
+      ONDS 5/28 (repeat-firing) = FP. MMED 6/3 (keyword_in_text_1) = FP. 3/4 top movers = FP ->
+      amendment case established. CLOSED -> the one gated successor = PLAN #416 (headline pull +
+      mechanism analysis + CHANGE_PROCESS amendment proposal). Composes with #410 (pin-guard,
+      shipped 7/3) + mna_filter_direction_blindness (the 78%-unknown-path finding).
   - review_id: gap_atr_3_5x_band_negative_ev
     title: "gap/ATR 3-5x band — negative avg 5d return despite normal WR"
     question: |
