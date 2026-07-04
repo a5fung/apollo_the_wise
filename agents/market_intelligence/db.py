@@ -4702,7 +4702,12 @@ async def remove_parabolic_exclusion(ticker: str, source: str | None = None) -> 
             )
         try:
             return int(res.split()[-1])
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                f"remove_parabolic_exclusion({ticker!r}, source={source!r}): "
+                f"could not parse row count from '{res}': {e} — returning 0 "
+                f"(delete itself may have succeeded)"
+            )
             return 0
 
 
