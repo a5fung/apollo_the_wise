@@ -109,7 +109,11 @@ def _get_holiday_name(cal, d: date) -> str | None:
             if d_ts in regular:
                 return str(regular[d_ts]) if hasattr(regular, '__getitem__') else None
         return None
-    except Exception:
+    except Exception as e:
+        # Cosmetic-only (the caller falls back to a generic "NYSE closed" reason
+        # string) — but still log so a real exchange_calendars integration break
+        # leaves a trace instead of just silently losing the holiday name.
+        logger.debug(f"[trading_calendar] _get_holiday_name failed for {d}: {e}")
         return None
 
 
@@ -138,7 +142,10 @@ def is_market_hours_now_et(end_buffer_minutes: int = 0) -> bool:
         end_mins = 16 * 60 + end_buffer_minutes
         cur_mins = now_et.hour * 60 + now_et.minute
         return (9 * 60 + 30) <= cur_mins <= end_mins
-    except Exception:
+    except Exception as e:
+        logger.warning(f"[trading_calendar] is_market_hours_now_et failed: {e}. "
+                       f"Fail-closed — treating as market-closed (caller may skip "
+                       f"a time-gated action).")
         return False
 
 
@@ -151,5 +158,8 @@ def _check_early_close(cal, d_str: str) -> str | None:
             close_time = early.loc[d_str]
             return f"early close at {close_time}"
         return None
-    except Exception:
+    except Exception as e:
+        # Cosmetic-only (the caller just omits the early-close note) — logged so
+        # an exchange_calendars integration break isn't invisible.
+        logger.debug(f"[trading_calendar] _check_early_close failed for {d_str}: {e}")
         return None
