@@ -124,6 +124,29 @@ buttons are structurally broken, not just unused) + THE DEPLOY BATCH (one pass, 
 correct). Genuinely NOT-started-yet under an in_progress label: **#211** (the scheduler job doesn't exist yet) and
 **#261's remainder** — demote or do at kickoff. #320/#321 look verify-done → close-candidates.
 
+## EXPANSION (operator 7/3 eve — "be aggressive, plenty more to do"; Day 1 finished ahead)
+
+**Track 7 — #381 swallow-baseline burndown (P1, operator-emphatic 6/25).** The ratchet gate froze
+174 baseline silent-swallow sites across 45 files; the DOWN-trend is #381's DoD. Chunked Sonnet
+cards (~20-25 sites / 1-3 files each, per the §Pacing policy): classify A/B/C per the 6/25 operator
+rules (PING for terminal/money/grade · LOG-only for self-healing transients · `# loud-ok` for
+genuine control-flow), remediate via the #259 failure_policy decorators where they fit. EXCLUDED
+from agent cards: broker/* + the 14 money/trade A's (= #382, separate verified pass) · theme_engine
+(its 11 wait on the live-verify) · grade-path files (Fable-reviewed separately). Target: baseline
+174 → ~100 by Sunday, ratchet-verified per card.
+
+**Track 8 — v1.1 kickoff (the original Track 5, unstarted).** Sunday Fable block: read
+apollo-v1.1-v2.0.md PART I, cut it into #-tasks with ETAs (the program's PLAN.md skeleton), pick
+the W1 slice. Scoping only — builds start post-sprint.
+
+**Pull-ins from the 7/6-7/12 week (Day-1 velocity made room):** #367 STEP-1 gate check (1 query;
+run the health read if N≥25) · #211 news-gap discovery job (Fable design → Sonnet build) · #176
+(mechanical task-project-filing backstop — process tooling, Sonnet) · #385 (dispatched 7/3 eve).
+
+**Track-6 acceleration:** the 23 reviews' evidence queries PRE-RUN 7/3 eve (read-only) →
+`docs/analysis/datareview_evidence_pack_2026-07-04.md` — the Saturday operator-together block
+becomes decide-only (target: all 23 dispositioned in one sitting).
+
 ## Sequencing
 - **7/3 (Fri, market closed):** batch ALL deploys on the one safe window — #405 + #406 + #342 + #279 +
   the monthly-sweep 08:00→18:00 ET cron move (committed 7/1) + any launch-project close needing a deploy.
