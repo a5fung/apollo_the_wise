@@ -753,45 +753,73 @@ async def _build_enriched_corpus(
 
     Returns (quality, analysis, ext_filings, dilution, prior_agreement_8k,
     recent_earnings_8k).
-    """
-    if ext_filings is None:
-        ext_filings = await get_sec_recent_filings(
+
+    The 4 SEC/Benzinga/Perplexity fetches below are mutually independent (none
+    consumes another's output) and premarket-only, so they run concurrently via
+    asyncio.gather (simplify GROUP 5, 2026-07-03 — was 4 sequential awaits, a
+    latency add on the premarket path). Each is a small wrapper coro so the
+    reuse-or-fetch kwargs semantics and the `state_sink` incremental-write
+    (written the moment ITS OWN fetch completes, not at the end) are unchanged;
+    an already-provided piece resolves immediately with no I/O and no
+    state_sink write, matching the pre-gather short-circuit. On any fetch's
+    exception, gather propagates it (same as a sequential await raising) and
+    any SIBLING fetch that already completed has already written its
+    state_sink entry — partial-progress semantics unchanged, just concurrent."""
+
+    async def _fetch_ext_filings():
+        if ext_filings is not None:
+            return ext_filings
+        v = await get_sec_recent_filings(
             ticker, forms=("8-K", "6-K"), lookback_days=400,
             max_filings=8, want_text=True)
         if state_sink is not None:
-            state_sink["ext_filings"] = ext_filings  # reuse on re-poll
-    today_sec = nearest_today_filing(ext_filings, today) or sec_filing_fallback
-    prior_agr = recent_filing_by_item(
-        ext_filings, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
-    recent_earn = recent_filing_by_item(ext_filings, "2.02", today)
+            state_sink["ext_filings"] = v  # reuse on re-poll
+        return v
 
-    # #238 dilution overhang — separate tight-window fetch (424B5 priced takedown +
-    # recent 8-Ks for item 3.02); kept off the 400d agreement fetch so a recent
-    # prospectus can't crowd the 7-month-old 1.01 out of max_filings. Point-in-time
-    # (filed <= today).
-    if not dilution_computed:
+    async def _fetch_dilution():
+        # #238 dilution overhang — separate tight-window fetch (424B5 priced takedown +
+        # recent 8-Ks for item 3.02); kept off the 400d agreement fetch so a recent
+        # prospectus can't crowd the 7-month-old 1.01 out of max_filings. Point-in-time
+        # (filed <= today).
+        if dilution_computed:
+            return dilution
         dil_ext = await get_sec_recent_filings(
             ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
             max_filings=8, want_text=True)
-        dilution = recent_dilution_filing(dil_ext, today)
+        v = recent_dilution_filing(dil_ext, today)
         if state_sink is not None:
-            state_sink["dilution"] = dilution  # reuse on re-poll
+            state_sink["dilution"] = v  # reuse on re-poll
+        return v
 
-    # F5 (2026-07-03): content-bearing Benzinga fetch — only paid here, once/ticker/day
-    # (the enrichment shadow's first tick, or the re-poll shadow's one trigger); the
-    # re-poll precheck that runs every tick uses a light include_content=False list to
-    # count, never this.
-    if benzinga_items is None:
+    async def _fetch_benzinga_items():
+        # F5 (2026-07-03): content-bearing Benzinga fetch — only paid here, once/ticker/day
+        # (the enrichment shadow's first tick, or the re-poll shadow's one trigger); the
+        # re-poll precheck that runs every tick uses a light include_content=False list to
+        # count, never this.
+        if benzinga_items is not None:
+            return benzinga_items
         benz_full = await get_alpaca_news(ticker, include_content=True)
-        benzinga_items = [
+        return [
             n for n in (benz_full or [])
             if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
         ][:3]
 
-    if perplexity_answer is None:
-        perplexity_answer = await search_news_perplexity(
+    async def _fetch_perplexity_answer():
+        if perplexity_answer is not None:
+            return perplexity_answer
+        return await search_news_perplexity(
             f"What caused {ticker} stock to gap up? Latest catalyst and news.",
             recency="week")
+
+    ext_filings, dilution, benzinga_items, perplexity_answer = await asyncio.gather(
+        _fetch_ext_filings(), _fetch_dilution(),
+        _fetch_benzinga_items(), _fetch_perplexity_answer(),
+    )
+
+    today_sec = nearest_today_filing(ext_filings, today) or sec_filing_fallback
+    prior_agr = recent_filing_by_item(
+        ext_filings, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
+    recent_earn = recent_filing_by_item(ext_filings, "2.02", today)
 
     corpus = assemble_grade_corpus(
         today, today_sec, benzinga_items, prior_agr, recent_earn,
