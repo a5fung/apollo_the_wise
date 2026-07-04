@@ -1726,10 +1726,12 @@ async def execute_partial_exit(
                 f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
                 f"_Confirms with real P&L on fill._"
             )
-        _abort_reprotect_out = abort_reprotect
-        _abort_ctx_out = abort_ctx
-        _ticker_out, _account_mode_out, _signal_type_out = ticker, account_mode, signal_type
-        _stop_price_out = stop_price
+        # F14 (7/2 review): the former _*_out relay copies were a pure renaming
+        # layer — Python `with` blocks don't create a scope, so the originals
+        # (ticker/account_mode/signal_type/stop_price/abort_*) remain bound on
+        # every path past the lock. The relays invited an in-lock edit that
+        # forgets the relay line (a real post-lock/in-lock mismatch); post-lock
+        # code now uses the original names directly.
 
     # ── Advisory lock RELEASED here (the `async with _trade_advisory_lock` CM
     # exits as control leaves the wrapped body above). Now — and ONLY now — is it
@@ -1738,7 +1740,7 @@ async def execute_partial_exit(
     # position under-covered. The brief release→re-protect gap is benign:
     # _ensure_stop_coverage is idempotent, so if the sync cron also fires in that
     # window, whichever runs second sees coverage already == target and no-ops.
-    if _abort_reprotect_out:
+    if abort_reprotect:
         # IMMEDIATE re-protect to BROKER TRUTH (kills the latency gap vs the next
         # sync cron). Fetch the live total position qty — NOT DB full_remaining
         # (stale-DB → wrong-size order, the 109-vs-28 class) and NOT qty_available
@@ -1747,31 +1749,31 @@ async def execute_partial_exit(
         # resolves to the full position.
         coverage_msg = None
         try:
-            _pos = await alpaca.get_position(_ticker_out, account_mode=_account_mode_out)
+            _pos = await alpaca.get_position(ticker, account_mode=account_mode)
             _broker_qty = float(_pos.get("qty")) if _pos and _pos.get("qty") is not None else None
             if _broker_qty and _broker_qty > 0:
                 coverage_msg = await _ensure_stop_coverage(
-                    trade_id, _ticker_out, _broker_qty,
-                    float(_stop_price_out) if _stop_price_out else None,
-                    _signal_type_out or "unknown",
-                    _account_mode_out,
+                    trade_id, ticker, _broker_qty,
+                    float(stop_price) if stop_price else None,
+                    signal_type or "unknown",
+                    account_mode,
                 )
             else:
                 logger.warning(
                     f"execute_partial_exit: abort re-protect — no live broker position "
-                    f"for {_ticker_out} (qty={_broker_qty}); nothing to re-protect"
+                    f"for {ticker} (qty={_broker_qty}); nothing to re-protect"
                 )
         except Exception as _re:
             logger.error(
                 f"execute_partial_exit: abort re-protect via _ensure_stop_coverage "
-                f"raised for {_ticker_out}: {_re}"
+                f"raised for {ticker}: {_re}"
             )
             await log_audit_event(
                 "partial_exit_reprotect_failed",
-                f"{_ticker_out}: in-process re-protect after sell-failure raised "
+                f"{ticker}: in-process re-protect after sell-failure raised "
                 f"({type(_re).__name__}) — next sync cron will remediate",
                 json.dumps({
-                    "trade_id": trade_id, "ticker": _ticker_out,
+                    "trade_id": trade_id, "ticker": ticker,
                     "error": str(_re)[:500],
                 }),
             )
@@ -1793,10 +1795,10 @@ async def execute_partial_exit(
         # Path-specific cause line. The sell-failure path sets only `error` (no sell
         # ran on the two stop-failure paths, so "sell failed" would lie there); those
         # set a `reason`. Prefer `reason`, else fall back to "sell failed (<error>)".
-        _abort_reason = _abort_ctx_out.get("reason")
-        _cause_line = _abort_reason or f"sell failed ({_abort_ctx_out.get('error', 'unknown')})"
+        _abort_reason = abort_ctx.get("reason")
+        _cause_line = _abort_reason or f"sell failed ({abort_ctx.get('error', 'unknown')})"
         await send_telegram_message(
-            f"{mode_prefix(_account_mode_out)}⚠️ Partial exit ABORTED for {_ticker_out}: "
+            f"{mode_prefix(account_mode)}⚠️ Partial exit ABORTED for {ticker}: "
             f"{_cause_line}.\n"
             f"No shares sold.\n{_cov_line}"
         )
