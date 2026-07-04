@@ -25,6 +25,7 @@ work — fixtures may need re-validation post-ship.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date
 from typing import Any
@@ -461,6 +462,349 @@ def format_theme_for_telegram(theme: dict[str, Any] | None) -> str:
     score = theme.get("score")
     score_txt = f", score {score:.0f}" if score is not None else ""
     return f"Theme: {emoji} {name} ({stage}{score_txt})"
+
+
+# ── ADR 0015 (#328) — theme axis credit, SHADOW ONLY ─────────────────────────
+#
+# Pure, boost-only stage→credit function per docs/decisions/0015-theme-axis-
+# meta-rubric.md (ACCEPTED, operator-signed 2026-07-04 — the stage→credit
+# table there is the sign-off surface; this module implements it verbatim).
+# This function computes ONLY the credit decision — it never touches the live
+# grade/label/tier. The caller (log_theme_axis_adjusted_shadow below, wired
+# into ep_detector's judge-shadow block) applies the credit to a SHADOW-ONLY
+# adjusted_label and logs it; the live label is never mutated. Flip to
+# load-bearing is a separate CHANGE_PROCESS gate (ADR §6 Flip gate) — never on
+# agent authority (THE LINE).
+
+NEAR_MISS_BAND_PCT = 0.10
+"""Nascent — ADR: '+1 step ONLY within the near-miss band (composite within
+~10% of the boundary)'. Early = real but unproven; this is the operator-
+signed number from the ADR's stage→credit table."""
+
+TIE_BREAK_BAND_PCT = 0.02
+"""Mainstream — ADR: 'boundary tie-break upward only' ('sustain, don't
+chase'). The ADR names the DIRECTION + rationale but not an exact tolerance;
+this is the mechanical implementation of "tie" as a much TIGHTER proximity
+band than Nascent's near-miss (a genuine tie, not a meaningful gap) — a
+boundary-PROXIMITY check, not a new scored input (v1 stays stage-only per the
+ADR's anti-overfit note: 'deliberately NO score/rs_avg scaler yet').
+Provisional/tunable like NEAR_MISS_BAND_PCT — re-evaluate at the #329
+composition checkpoint alongside the near-miss band."""
+
+# Allowed marker values (pinned by tests/test_theme_axis_credit.py) — one of
+# these EXACTLY, never a bespoke string, so callers/digests can pattern-match:
+#   'accelerating' | 'nascent_near_miss' | 'mainstream_tiebreak' | 'fading'
+#   | 'standalone' | 'blind_spot' | 'none'
+
+
+def _tier_order() -> list[str]:
+    """Ascending rubric label order, DERIVED from catalyst_rubric.LABEL_BANDS
+    (not hardcoded) so a future rubric rebalance can't silently desync this
+    module. Currently ['weak', 'routine', 'strong', 'game_changer']."""
+    from agents.market_intelligence.catalyst_rubric import LABEL_BANDS
+    return [lbl for _, lbl in sorted(LABEL_BANDS, key=lambda b: b[0])]
+
+
+def _boundary_above(label: str | None) -> float | None:
+    """composite_scaled value needed to reach the tier immediately above
+    `label`, per catalyst_rubric.LABEL_BANDS (e.g. 'routine' → 22.0, the
+    routine→strong boundary). None if `label` is unrecognized or already the
+    top tier (no step available)."""
+    from agents.market_intelligence.catalyst_rubric import LABEL_BANDS
+    order = _tier_order()
+    if label not in order:
+        return None
+    idx = order.index(label)
+    if idx + 1 >= len(order):
+        return None
+    bands_asc = sorted(LABEL_BANDS, key=lambda b: b[0])
+    return float(bands_asc[idx + 1][0])
+
+
+def _within_band_below(composite_scaled: float, boundary: float, pct: float) -> bool:
+    """True if composite_scaled is BELOW `boundary` (hasn't crossed it — if it
+    had, the live label would already be the higher tier and there'd be
+    nothing to credit) but within `pct` of reaching it:
+    boundary*(1-pct) <= composite_scaled < boundary."""
+    if boundary is None or boundary <= 0:
+        return False
+    return boundary * (1 - pct) <= composite_scaled < boundary
+
+
+def theme_axis_credit(
+    membership: dict[str, Any] | None,
+    coverage_state: str | None = None,
+    *,
+    label: str | None = None,
+    composite_scaled: float | None = None,
+) -> dict[str, Any]:
+    """ADR 0015 (#328) stage→credit table — PURE, BOOST-ONLY, SHADOW ONLY.
+
+    Returns {credit_steps: 0|1, marker: <one of the 7 values above>, reason: str}.
+    NEVER returns credit_steps < 0 — boost-only is a hard guardrail from the
+    6/5 evidence that the naive theme-GATE was refuted (themeless names were
+    88% of HIGHs, avg +5.73%, held the +137% winner). Absence of a theme, or
+    an unfavorable/unknown stage, can only ever settle at 0 — never a penalty.
+
+    Args:
+      membership: get_theme_membership()'s shape — {name, stage, score,
+        theme_date} — or None if the ticker is in no tracked engine cohort.
+      coverage_state: for a THEMELESS ticker (membership is None) ONLY — the
+        #319/#325 distinction between a coverage BLIND SPOT ('blind_spot',
+        judge lit theme/narrative but engine tracks no cohort) and a genuine
+        STANDS-ALONE move ('standalone', judge lit no theme/narrative). Get
+        this from derive_theme_coverage_state() (reuses briefing.py's exact
+        source signal — see that function's docstring) rather than
+        re-deriving it. Ignored when membership is present.
+      label / composite_scaled: the CALLER's rubric context — the SAME
+        `score_ep_with_rubric()` output already computed for this alert
+        (result['label'], result['composite_scaled']). Needed ONLY for the
+        Nascent near-miss-band and Mainstream tie-break boundary checks — the
+        boundary values themselves come from catalyst_rubric.LABEL_BANDS via
+        _boundary_above(), never duplicated here. Missing either means those
+        two stages can't be evaluated and safely fall back to 0 credit
+        (never guesses a boost without the numbers).
+    """
+    if membership:
+        stage = membership.get("stage")
+        if stage == "Accelerating":
+            # Pradeep #1 catalyst driver — unconditional +1 tier-step,
+            # independent of composite/label context (the NBIS case).
+            return {
+                "credit_steps": 1,
+                "marker": "accelerating",
+                "reason": (
+                    "Accelerating theme membership — unconditional +1 "
+                    "tier-step (Pradeep #1 catalyst driver)"
+                ),
+            }
+        if stage == "Nascent":
+            boundary = _boundary_above(label)
+            if (boundary is not None and composite_scaled is not None
+                    and _within_band_below(composite_scaled, boundary, NEAR_MISS_BAND_PCT)):
+                return {
+                    "credit_steps": 1,
+                    "marker": "nascent_near_miss",
+                    "reason": (
+                        f"Nascent theme + composite {composite_scaled:.1f} within "
+                        f"{NEAR_MISS_BAND_PCT:.0%} of the next boundary "
+                        f"({boundary:.0f}) — near-miss band credit"
+                    ),
+                }
+            return {
+                "credit_steps": 0,
+                "marker": "none",
+                "reason": (
+                    "Nascent theme but composite is outside the ~10% "
+                    "near-miss band (or no composite/label context supplied) "
+                    "— no credit"
+                ),
+            }
+        if stage == "Mainstream":
+            boundary = _boundary_above(label)
+            if (boundary is not None and composite_scaled is not None
+                    and _within_band_below(composite_scaled, boundary, TIE_BREAK_BAND_PCT)):
+                return {
+                    "credit_steps": 1,
+                    "marker": "mainstream_tiebreak",
+                    "reason": (
+                        f"Mainstream theme + composite {composite_scaled:.1f} sits "
+                        f"on the boundary tie ({boundary:.0f}) — tie-break credit, "
+                        f"sustain not chase"
+                    ),
+                }
+            return {
+                "credit_steps": 0,
+                "marker": "none",
+                "reason": (
+                    "Mainstream theme but composite is not a boundary tie "
+                    "(or no composite/label context supplied) — no credit"
+                ),
+            }
+        if stage in ("Fading", "Retired"):
+            # Collapsed row per the ADR table — Retired shouldn't reach here
+            # in practice (get_theme_membership filters stage != 'Retired'),
+            # but treated identically as a defensive default: never negative.
+            return {
+                "credit_steps": 0,
+                "marker": "fading",
+                "reason": (
+                    f"{stage} theme membership — zero credit by design "
+                    f"(never negative, not special — Fading is not poison, "
+                    f"merely not boosted)"
+                ),
+            }
+        # Unrecognized stage string (schema drift / new stage added
+        # upstream) — safe default, never guesses a boost.
+        return {
+            "credit_steps": 0,
+            "marker": "none",
+            "reason": f"Unrecognized theme stage {stage!r} — zero credit (safe default)",
+        }
+
+    # No tracked membership — disambiguate via coverage_state (#319/#325
+    # source signal; see derive_theme_coverage_state() — reused, not
+    # re-derived).
+    if coverage_state == "blind_spot":
+        return {
+            "credit_steps": 0,
+            "marker": "blind_spot",
+            "reason": (
+                "No tracked theme cohort but the judge lit a theme/narrative "
+                "axis — coverage blind spot (#325); unknown != absent, no "
+                "credit/no penalty"
+            ),
+        }
+    if coverage_state == "standalone":
+        return {
+            "credit_steps": 0,
+            "marker": "standalone",
+            "reason": (
+                "No tracked theme cohort and the judge lit no theme/"
+                "narrative axis — genuine single-name move (#319), no credit"
+            ),
+        }
+    return {
+        "credit_steps": 0,
+        "marker": "none",
+        "reason": "No theme membership and no coverage signal — zero credit",
+    }
+
+
+def apply_theme_axis_step(label: str | None, credit_steps: int) -> str | None:
+    """Move `label` UP `credit_steps` positions in the rubric tier order
+    (capped at the top tier). Pure + total: an unrecognized label or
+    credit_steps <= 0 returns `label` unchanged. NEVER moves a label DOWN —
+    boost-only is a hard guardrail (ADR 0015); there is no negative path."""
+    if not label or credit_steps <= 0:
+        return label
+    order = _tier_order()
+    if label not in order:
+        return label
+    idx = order.index(label)
+    new_idx = min(idx + credit_steps, len(order) - 1)
+    return order[new_idx]
+
+
+def derive_theme_coverage_state(
+    membership: dict[str, Any] | None,
+    fire_axes: list[str] | None,
+) -> str | None:
+    """Classify the #319 blind-spot vs stands-alone coverage signal for a
+    THEMELESS ticker. REUSES the exact source signal briefing.py's EP-alert
+    block already branches on — membership presence + the judge's fire_axes
+    (see briefing.py, the `_axes = ep.get("fire_axes")` block and its
+    blind-spot/stands-alone/judge-silent cases) — rather than re-deriving a
+    new classification scheme, per the #328 build instructions.
+
+    Returns None when membership is present (coverage_state is only
+    meaningful for themeless names — theme_axis_credit() ignores it then
+    anyway). Otherwise:
+      'blind_spot'  - the judge lit the theme/narrative axis but the engine
+                      tracks no cohort for this ticker (#325 — unknown, not
+                      absent).
+      'standalone'  - the judge rendered a verdict (fire_axes is a list,
+                      possibly empty) and did NOT light theme/narrative — a
+                      genuine single-name move (#319).
+      'unknown'     - the judge rendered NO verdict at all (fire_axes is
+                      None) — judge-silent, mirroring briefing.py's own
+                      "JUDGE-SILENT case" branch. theme_axis_credit() treats
+                      this the same as any other non-blind-spot/non-
+                      standalone coverage_state (0 credit, marker 'none');
+                      kept as its own distinct return value here only for
+                      the honest label / future analysis, exactly as
+                      briefing.py distinguishes it from a true standalone.
+    """
+    if membership:
+        return None
+    if fire_axes and any(a in ("theme", "narrative") for a in fire_axes):
+        return "blind_spot"
+    if fire_axes is not None:
+        return "standalone"
+    return "unknown"
+
+
+async def log_theme_axis_adjusted_shadow(r: dict[str, Any]) -> None:
+    """ADR 0015 (#328) SHADOW writer. For one scored EP HIGH, compute the
+    theme-axis credit against the CACHED rubric result (same
+    score_ep_with_rubric() output the live path already produced this scan —
+    re-read via lookup_cached_metrics, not re-extracted) and log a
+    'theme_axis_shadow_adjusted' audit event when it's informative (adjusted
+    label differs from the live label, OR the marker itself is informative —
+    i.e. not the bare 'none').
+
+    SHADOW ONLY: read-only on `r`, writes ONLY mi_audit_log (via
+    log_audit_event — never mi_ep_alerts / mi_live_trades / any grade
+    column), NEVER mutates `r`, and NEVER raises into the caller — every
+    error is swallowed to its own 'theme_axis_credit_shadow_failed' audit
+    event. Mirrors theme_axis_shadow.py's STEP-0 writer discipline exactly.
+
+    Placement: call this from the SAME gate as the STEP-0 theme-axis shadow
+    (`r.get("score_tier") == "HIGH"`, in ep_detector's `_judge_shadow`,
+    AFTER the judge override settles) — this shadow needs the same settled,
+    final-tier row and rides the same low blast radius / cadence.
+    """
+    ticker = r.get("ticker")
+    alert_date = r.get("alert_date")
+    try:
+        if not ticker or not alert_date:
+            return
+        from agents.market_intelligence.catalyst_metrics_extractor import (
+            lookup_cached_metrics,
+        )
+        from agents.market_intelligence.db import log_audit_event
+
+        extracted = await lookup_cached_metrics(ticker, alert_date)
+        if not extracted:
+            return  # no cached extraction -> rubric can't score -> nothing to shadow
+        rubric_result = score_ep_with_rubric(ticker, extracted, alert_date)
+        if not rubric_result:
+            return
+        live_label = rubric_result.get("label")
+        composite_scaled = rubric_result.get("composite_scaled")
+
+        membership = await get_theme_membership(ticker)
+        coverage_state = derive_theme_coverage_state(membership, r.get("fire_axes"))
+        credit = theme_axis_credit(
+            membership, coverage_state,
+            label=live_label, composite_scaled=composite_scaled,
+        )
+        adjusted_label = apply_theme_axis_step(live_label, credit["credit_steps"])
+
+        if adjusted_label != live_label or credit["marker"] != "none":
+            _alert_date_str = (
+                alert_date.isoformat() if hasattr(alert_date, "isoformat")
+                else str(alert_date)
+            )
+            await log_audit_event(
+                "theme_axis_shadow_adjusted",
+                f"{ticker} {_alert_date_str}: {live_label} -> {adjusted_label} "
+                f"({credit['marker']}, +{credit['credit_steps']} step)",
+                json.dumps({
+                    "ticker": ticker,
+                    "alert_date": _alert_date_str,
+                    "live_label": live_label,
+                    "adjusted_label": adjusted_label,
+                    "marker": credit["marker"],
+                    "credit_steps": credit["credit_steps"],
+                    "reason": credit["reason"],
+                    "composite_scaled": composite_scaled,
+                    "theme_stage": (membership or {}).get("stage"),
+                    "coverage_state": coverage_state,
+                }),
+            )
+    except Exception as _e:  # SHADOW: never disturb the grade path
+        logger.warning(f"theme-axis credit shadow failed for {ticker}: {_e}")
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "theme_axis_credit_shadow_failed",
+                f"{ticker} {alert_date}: {type(_e).__name__}: {_e}",
+            )
+        except Exception:  # loud-ok: fallback-of-the-fallback — the audit call
+            pass            # itself may share the same DB outage; already
+                             # logger.warning'd above; nothing more can be
+                             # done and the scan must still proceed (SHADOW).
 
 
 # ── Operator surfaces (human-readable formatting) ────────────────────────────
