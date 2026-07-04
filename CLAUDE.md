@@ -399,13 +399,11 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-07-03 — sprint day 1: 12 Sonnet cards + careful-path trio · 2 deploys · /simplify
+### 2026-07-04 — day 2: #347 FLIPPED LIVE · axes built
 
-- 17 executor cards + careful-path **F22/F16/F18+sibling/F14** + **#364 removed**. 2 deploys verified; 2 /simplify cycles. **113→101; #381 baseline 174→125.** ADRs **0015/0016** (theme+structure axes, 0015 calibrated on N=452). Allocator study: undecidable (telemetry gap named). Operator: #305→#413 · pacing policy (§Pacing).
+- **#347 flip live** + same-day hardening · ADRs 0015/0016 signed, #328 shadow deployed · 8 reviews closed · labels banked · #381→95.
 
-### Older entries graduated to CHANGELOG.md
-
-- 2026-07-03 graduated 7/02 (review + 5 ships) — older in `CHANGELOG.md`; search any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
+Older entries → `CHANGELOG.md` (search any concept).
 
 ---
 
