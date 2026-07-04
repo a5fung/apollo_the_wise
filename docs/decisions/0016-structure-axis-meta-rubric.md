@@ -18,7 +18,7 @@ real filter):
 |---|---|---|
 | **Stage-2 long-term trend** | above 200MA AND within ~25% of 52w high | mi_daily_closes MAs; the #356 HTF Stage-2 gate logic (reuse its exact predicate) |
 | **Base quality going in** | prior consolidation tightness before the gap | **RMV** (`flag_detector._compute_rmv` — the SSoT tightness primitive, `reference_rmv_tightness_metric`) over the pre-gap window |
-| **Extension state** | how stretched vs SMA-10/20 at the PRIOR close | the MAGNA53 extension check's inputs (prev_close vs SMA-10) — already computed at detection |
+| **Extension state** | how stretched vs SMA-10/20 at the PRIOR close | the 9M detector's extension gate (prev_close ≤ 1.20×SMA-10) — citation corrected 7/4 post-signing (STEP-0 flag: MAGNA53's gate is a 5-day-min-close form; the SPECIFIED metric is unchanged) |
 
 v1 mapping: **boost-only, mirroring 0015** — Stage-2 + tight base = +1 tier-step eligibility;
 partial (Stage-2 only) = near-miss band; absent/unknown = 0, never negative. Rationale for
