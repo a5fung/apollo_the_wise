@@ -13,6 +13,18 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _stub_auth(monkeypatch):
+    """CI has no INTERNAL_API_SECRET (the 7/3 red runs): _post_market_task now
+    routes through core.router.call_agent, whose auth_headers() reads the real
+    secret BEFORE the (mocked) httpx client is touched. Local runs passed on
+    ambient env; CI failed. Stub the auth boundary so these tests are
+    environment-independent — and delete the env var so a locally-present
+    secret can't mask a regression (the honest-CI condition)."""
+    monkeypatch.delenv("INTERNAL_API_SECRET", raising=False)
+    monkeypatch.setattr("core.router.auth_headers", lambda: {"X-Apollo-Secret": "test"})
 from telegram.constants import ParseMode
 
 from channels.telegram import TelegramChannel
