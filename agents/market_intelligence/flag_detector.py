@@ -167,6 +167,121 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
     }
     return spec, would_reject
 
+
+# ── #396 HTF Phase 4 — EMA-trail MANAGEMENT shadow (sourced docs/setups/htf.md "Management,
+# Phase 4, shadow"): scale 33-50% into strength day 3-5 -> breakeven -> trail the runner on the
+# 10/20 EMA (exit only on a daily CLOSE below) -> hard max-loss 5-8% (already the Phase 3
+# stop_loss_price, computed via _HTF_MAX_LOSS_PCT above — reused as-is, no new stop constant).
+# This REPLACES Phase 3's fixed-3R capture/stop bet (_htf_settle_from_bars) with the ACTUAL
+# sourced management lifecycle for a SEPARATE, richer readout — Phase 3's simple bet keeps
+# settling unchanged (a different question: "would a fixed-target bet have paid off" vs this
+# Phase 4 question: "what would the sourced scale-out+trail protocol actually have done").
+_HTF_MGMT_TRAIL_MODE = "ema_10_20"      # sourced: "trail the runner on the 10/20-day EMA"
+_HTF_MGMT_SCALE_FRACTION = 0.40         # sourced range 33-50%; STARTING mid-range value (mirrors
+                                        # _HTF_MIN_ADR_PCT's sourced-range convention above) — a
+                                        # point WITHIN the cited range, not an invented number.
+                                        # Tunable within [0.33, 0.50] via this named constant.
+
+
+def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares,
+                           scale_fraction=_HTF_MGMT_SCALE_FRACTION,
+                           trail_mode=_HTF_MGMT_TRAIL_MODE):
+    """#396 HTF Phase 4 — replay the SOURCED management lifecycle (scale-out day 3-5 ->
+    breakeven -> 10/20 EMA trail-exit) forward from `entry_idx` over `bars` (db_rows_to_bars
+    shape: date/o/h/l/c/v, ascending). Pure, idempotent, FULL RECOMPUTE from the raw bars each
+    call — no incremental state is trusted across runs (restart-safe by construction: the only
+    ground truth is price history + the immutable entry spec).
+
+    Drives broker.exit_logic.apply_daily_exit_step ONE FORWARD DAY AT A TIME (mirrors exactly
+    how the live tracker calls it, just batched into one replay instead of one DB round-trip per
+    day) with trail_mode/scale_fraction opted in; the entry day itself (`bars[entry_idx]`) is
+    EXCLUDED from the trail window by that function's own alert_date semantics (today<=alert_date
+    skips) — consistent with the live SMA-trail path.
+
+    Returns None if risk_per_share <= 0 or shares <= 0 (bad/degenerate spec — abstain, matches
+    _htf_settle_from_bars' contract). Otherwise, even with ZERO forward bars available yet
+    (entry_idx is the last bar in `bars`) returns status='open' with just the synthetic 'entry'
+    event — the caller re-calls next run once more bars land:
+      {status, remaining_shares, partial_taken, breakeven_active, events, realized_r,
+       last_bar_date}
+    status ∈ 'open' (still running — recompute next call) / 'closed_trail_exit' /
+      'closed_hard_stop'. events is an ordered list of {date, type, ...} dicts, type ∈
+      'entry' / 'scale_out' / 'breakeven' / 'trail_exit' / 'hard_stop_exit' — the literal
+      entry->scale->BE->trail-exit lifecycle. realized_r is total realized PnL (across the
+      scale-out + any close) / (risk_per_share * initial shares); None while nothing has
+      realized yet (still fully open, no exits booked)."""
+    from datetime import date as _date
+    from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+
+    entry_price = float(entry_price)
+    initial_stop = float(initial_stop)
+    shares = float(shares)
+    risk_per_share = entry_price - initial_stop
+    if risk_per_share <= 0 or shares <= 0:
+        return None
+
+    entry_date = _date.fromisoformat(bars[entry_idx]["date"])
+    state = {
+        "alert_date": entry_date, "remaining_shares": shares, "entry_price": entry_price,
+        "hard_stop": initial_stop, "partial_taken": False, "breakeven_active": False,
+        "exits": [], "running_closes": [],
+    }
+    events = [{"date": entry_date.isoformat(), "type": "entry",
+               "price": round(entry_price, 4), "shares": shares}]
+    status = "open"
+    last_bar_date = entry_date
+    last_step = None
+
+    for i in range(entry_idx + 1, len(bars)):
+        b = bars[i]
+        today = _date.fromisoformat(b["date"])
+        was_breakeven = state["breakeven_active"]
+        step = apply_daily_exit_step(state, b, today, integer_partial_shares=True,
+                                     trail_mode=trail_mode, scale_fraction=scale_fraction)
+        last_step = step
+        last_bar_date = today
+
+        if step.partial_fired:
+            events.append({"date": today.isoformat(), "type": "scale_out",
+                           "price": step.partial_price, "shares": step.partial_shares,
+                           "pnl": step.partial_pnl})
+            if step.new_breakeven_active and not was_breakeven:
+                # breakeven activates ATOMICALLY with the scale-out in this model (same
+                # apply_daily_exit_step step) — a distinct dated event per the spec's
+                # entry->scale->BE->trail-exit vocabulary, not a separate trigger day.
+                events.append({"date": today.isoformat(), "type": "breakeven",
+                               "stop": entry_price})
+
+        if step.closed:
+            status = "closed_hard_stop" if step.close_reason == "stop_hit" else "closed_trail_exit"
+            events.append({"date": today.isoformat(),
+                           "type": "hard_stop_exit" if status == "closed_hard_stop" else "trail_exit",
+                           "price": step.close_price, "shares": step.close_shares,
+                           "pnl": step.close_pnl})
+
+        state = {
+            "alert_date": entry_date, "remaining_shares": step.new_remaining,
+            "entry_price": entry_price, "hard_stop": initial_stop,
+            "partial_taken": step.new_partial_taken, "breakeven_active": step.new_breakeven_active,
+            "exits": step.new_exits, "running_closes": step.new_running_closes,
+        }
+        if step.closed:
+            break
+
+    total_pnl = last_step.new_total_pnl if last_step is not None else 0.0
+    risk_dollars_basis = risk_per_share * shares
+    realized_r = round(total_pnl / risk_dollars_basis, 4) if risk_dollars_basis > 0 else None
+    return {
+        "status": status,
+        "remaining_shares": state["remaining_shares"],
+        "partial_taken": state["partial_taken"],
+        "breakeven_active": state["breakeven_active"],
+        "events": events,
+        "realized_r": realized_r,
+        "last_bar_date": last_bar_date,
+    }
+
+
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
 # deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real
 # VCPs run 1.5-3% even when tight, so a strict 0.5% threshold has
