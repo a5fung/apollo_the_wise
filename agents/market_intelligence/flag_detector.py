@@ -211,7 +211,7 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
       scale-out + any close) / (risk_per_share * initial shares); None while nothing has
       realized yet (still fully open, no exits booked)."""
     from datetime import date as _date
-    from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+    from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #396 management SHADOW reuses the tested ladder rather than re-implementing it (F11 discipline)
 
     entry_price = float(entry_price)
     initial_stop = float(initial_stop)
