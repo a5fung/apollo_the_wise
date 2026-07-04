@@ -53,7 +53,11 @@ from agents.market_intelligence.constants import (
     MIN_SNAPSHOT_HISTORY_DAYS,
     current_account_mode,
 )
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import (
+    claim_safeguard_state_transition,
+    get_pool,
+    log_audit_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -339,39 +343,41 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
     #   Release-side: step up one tier per evaluation, gated on per-tier
     #                 release threshold (asymmetric hysteresis at each boundary)
     new_state = _next_state(prev_state, state_obj.drawdown_pct)
-
-    transitioned = new_state != prev_state
     now = datetime.now(timezone.utc)
 
-    # `now` for last_transition_at is fine on both INSERT (first observation
-    # = new "transition" into starting state) and UPDATE (preserved by SQL
-    # CASE when state didn't change).
+    # Atomic single-winner transition claim (simplify GROUP 4, 2026-07-03) — `prev_state`
+    # above is an UNLOCKED read, so two concurrent evaluations (a scheduled EOD run + an
+    # on-demand /audit, say) can both compute the SAME new_state from the SAME stale
+    # prev_state and both believe they "transitioned" — the SAME TOCTOU the S12 kill/
+    # scale-band fix (F21) addressed, duplicate tier Telegrams/audit rows. Route the
+    # transition itself through the shared claim primitive and gate the alert on ITS
+    # result, not the local comparison; a losing concurrent caller sees
+    # transitioned=False and skips the audit/Telegram below.
+    transitioned = await claim_safeguard_state_transition(_SAFEGUARD_NAME, mode, new_state)
+    if existing is None and new_state == _STATE_OK:
+        # The claim primitive's INSERT branch always returns a row (nothing to compare
+        # against yet), so it reports True even when the very first-ever observation for
+        # this mode lands at the OK baseline — not a real "transition" (mirrors the
+        # kill_scale_bands ∅→HOLD baseline carve-out: prime silently, don't alert).
+        transitioned = False
+
+    # Telemetry fields refresh on EVERY evaluation regardless of the transition-claim
+    # outcome — a plain UPDATE (the claim call above already guarantees the row exists,
+    # via its own INSERT branch on a brand-new (safeguard, account_mode) pair).
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO mi_safeguard_state
-                (safeguard, account_mode, state, last_transition_at,
-                 last_evaluation_at, last_drawdown_pct, last_peak, last_peak_date,
-                 updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (safeguard, account_mode) DO UPDATE SET
-                state              = EXCLUDED.state,
-                last_transition_at = CASE
-                    WHEN mi_safeguard_state.state IS DISTINCT FROM EXCLUDED.state
-                        THEN EXCLUDED.last_transition_at
-                    ELSE mi_safeguard_state.last_transition_at
-                END,
-                last_evaluation_at = EXCLUDED.last_evaluation_at,
-                last_drawdown_pct  = EXCLUDED.last_drawdown_pct,
-                last_peak          = EXCLUDED.last_peak,
-                last_peak_date     = EXCLUDED.last_peak_date,
-                updated_at         = EXCLUDED.updated_at
+            UPDATE mi_safeguard_state
+            SET last_evaluation_at = $3,
+                last_drawdown_pct  = $4,
+                last_peak          = $5,
+                last_peak_date     = $6,
+                updated_at         = $7
+            WHERE safeguard = $1 AND account_mode = $2
             """,
             _SAFEGUARD_NAME,
             mode,
-            new_state,
-            now,  # last_transition_at — preserved by SQL CASE if no transition
             now,  # last_evaluation_at
             state_obj.drawdown_pct,
             state_obj.peak,

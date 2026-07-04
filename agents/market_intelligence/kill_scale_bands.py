@@ -258,29 +258,14 @@ async def set_last_band(account_mode: str, band: str) -> bool:
     """Atomically CLAIM the band transition, returning True only if THIS call's write actually
     changed the persisted state (F21 — the old read-then-write was a TOCTOU: `get_last_band()`
     then `set_last_band()` unlocked let a concurrent scheduled + on-demand evaluation both
-    observe `transitioned=True` and both alert). The `WHERE state IS DISTINCT FROM` clause on
-    the `DO UPDATE` makes this a single-winner claim under Postgres's normal row-lock semantics:
-    a second concurrent caller blocks on the row lock, and once unblocked re-evaluates the WHERE
-    clause against the just-committed row — which by then already matches — so its UPDATE
-    touches nothing and RETURNING yields no row. Only the winner should audit/alert; the loser
-    sees `False` and skips (see `run_band_evaluation`). No-op (no write at all) when the state
-    is unchanged, so `last_transition_at`/`updated_at` only move on a genuine transition."""
-    from agents.market_intelligence.db import get_pool
-    pool = await get_pool()
-    async with pool.acquire() as c:
-        row = await c.fetchrow(
-            """
-            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
-                                            last_transition_at, updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE
-              SET state = EXCLUDED.state,
-                  last_transition_at = NOW(),
-                  updated_at = NOW()
-              WHERE mi_safeguard_state.state IS DISTINCT FROM EXCLUDED.state
-            RETURNING state
-            """, _LAST_BAND_SAFEGUARD, account_mode, band)
-    return row is not None
+    observe `transitioned=True` and both alert). Only the winner should audit/alert; the loser
+    sees `False` and skips (see `run_band_evaluation`).
+
+    Delegates to `db.claim_safeguard_state_transition` (simplify GROUP 4, 2026-07-03) — the
+    single-winner UPSERT primitive this function originally introduced is now shared with
+    `broker/drawdown_breaker.py`'s `recompute_drawdown_state`, which had the same TOCTOU."""
+    from agents.market_intelligence.db import claim_safeguard_state_transition
+    return await claim_safeguard_state_transition(_LAST_BAND_SAFEGUARD, account_mode, band)
 
 
 async def record_override(direction: str, reason: str) -> None:

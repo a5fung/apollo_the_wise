@@ -149,3 +149,123 @@ def test_todays_minus_6pct_lands_in_watch():
     # Wait, that's incorrect: -6.06% from TRIPPED legacy → REDUCE (treated
     # as REDUCE start; -6.06% is in REDUCE hysteresis band so stays REDUCE)
     assert _next_state("TRIPPED", -0.0606) == _STATE_REDUCE
+
+
+# ── F21-class TOCTOU fix (simplify GROUP 4, 2026-07-03) ────────────────────
+# recompute_drawdown_state's transition detection now routes through
+# db.claim_safeguard_state_transition — the SAME atomic single-winner UPSERT
+# primitive kill_scale_bands.set_last_band uses — instead of an unlocked local
+# `new_state != prev_state` comparison. Mirrors the concurrency-test shape in
+# tests/test_kill_scale_bands.py::test_concurrent_transitions_dedup_to_one_alert.
+
+import asyncio  # noqa: E402
+from datetime import date as _date  # noqa: E402
+from unittest.mock import AsyncMock, patch  # noqa: E402
+
+from agents.market_intelligence.broker import drawdown_breaker as dd  # noqa: E402
+from tests.conftest import make_mock_pool  # noqa: E402
+
+
+def _dd_state(drawdown_pct):
+    return dd.DrawdownState(
+        current=90_000.0, peak=100_000.0, peak_date=_date(2026, 7, 1),
+        drawdown_pct=drawdown_pct, snapshots_count=30,
+        most_recent_snapshot_date=_date(2026, 7, 3), sufficient_history=True,
+    )
+
+
+def test_drawdown_concurrent_transitions_dedup_to_one_alert(monkeypatch):
+    """Two concurrent evaluate calls (e.g. the 16:10 EOD cron + an on-demand /audit) that
+    would BOTH observe OK→WATCH under the old unlocked read-then-write must still produce
+    exactly ONE Telegram + ONE audit row. `store` + `claim_lock` fake mi_safeguard_state's
+    real single-winner UPSERT (`db.claim_safeguard_state_transition`) — the mechanism
+    actually under test, not the (still-unlocked, display-only) `prev_state` read."""
+    sent, audited = [], []
+    store: dict[str, str] = {}          # fake mi_safeguard_state row: {account_mode: state}
+    claim_lock = asyncio.Lock()
+
+    async def fake_compute(mode):
+        return _dd_state(-0.06)   # lands in WATCH per test_todays_minus_6pct_lands_in_watch
+
+    pool, conn = make_mock_pool()
+
+    async def fake_fetchrow(*a, **k):
+        # The initial "existing state" read — captured BEFORE yielding so both callers
+        # see the SAME stale prior state (the TOCTOU half of the bug), then yields so
+        # the two coroutines interleave.
+        state = store.get("live")
+        await asyncio.sleep(0)
+        return {"state": state} if state else None
+
+    conn.fetchrow = AsyncMock(side_effect=fake_fetchrow)
+    conn.execute = AsyncMock(return_value=None)   # the telemetry-only UPDATE
+
+    async def fake_claim(safeguard, account_mode, new_state):
+        # The atomic claim under test: single-winner check-and-set on the shared row.
+        async with claim_lock:
+            if store.get(account_mode) == new_state:
+                return False
+            store[account_mode] = new_state
+            return True
+
+    async def fake_audit(evt, summary, detail):
+        audited.append(evt)
+
+    async def fake_send(msg, **kwargs):
+        await asyncio.sleep(0)
+        sent.append(msg)
+        return True
+
+    with patch.object(dd, "compute_drawdown_state", fake_compute), \
+         patch.object(dd, "get_pool", AsyncMock(return_value=pool)), \
+         patch.object(dd, "claim_safeguard_state_transition", fake_claim), \
+         patch.object(dd, "log_audit_event", fake_audit), \
+         patch("agents.market_intelligence.briefing.send_telegram_message", fake_send):
+
+        async def _run_both():
+            return await asyncio.gather(
+                dd.recompute_drawdown_state("live"),
+                dd.recompute_drawdown_state("live"),
+            )
+
+        results = asyncio.run(_run_both())
+
+    # Both calls computed the SAME new state (WATCH); exactly one claimed the transition.
+    assert [new for (_prev, new, _details) in results] == ["WATCH", "WATCH"]
+    assert len(sent) == 1 and "WATCH" in sent[0]
+    assert audited.count("drawdown_watch_entered") == 1
+    assert store["live"] == "WATCH"
+
+
+def test_drawdown_first_ever_ok_baseline_does_not_alert(monkeypatch):
+    """First-ever observation for a (safeguard, account_mode) pair landing at the OK
+    baseline must NOT alert — the claim primitive's INSERT branch always returns a row
+    (nothing to compare against yet), so without the explicit carve-out this would
+    misread as a "transition" on every brand-new account_mode's first evaluation."""
+    sent, audited = [], []
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value=None)   # no existing row — brand new mode
+    conn.execute = AsyncMock(return_value=None)
+
+    async def fake_compute(mode):
+        return _dd_state(-0.01)   # well inside OK — no tier breached
+
+    async def fake_claim(safeguard, account_mode, new_state):
+        return True   # INSERT branch — always "succeeds" on a brand-new row
+
+    async def fake_audit(evt, summary, detail):
+        audited.append(evt)
+
+    async def fake_send(msg, **kwargs):
+        sent.append(msg)
+        return True
+
+    with patch.object(dd, "compute_drawdown_state", fake_compute), \
+         patch.object(dd, "get_pool", AsyncMock(return_value=pool)), \
+         patch.object(dd, "claim_safeguard_state_transition", fake_claim), \
+         patch.object(dd, "log_audit_event", fake_audit), \
+         patch("agents.market_intelligence.briefing.send_telegram_message", fake_send):
+        prev, new, _details = asyncio.run(dd.recompute_drawdown_state("paper"))
+
+    assert (prev, new) == (_STATE_OK, _STATE_OK)
+    assert sent == [] and audited == []

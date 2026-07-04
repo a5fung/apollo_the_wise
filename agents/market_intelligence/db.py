@@ -2530,6 +2530,47 @@ async def set_trading_halted(halted: bool) -> None:
         """, *_MANUAL_HALT, "on" if halted else "off")
 
 
+async def claim_safeguard_state_transition(
+    safeguard: str, account_mode: str, new_state: str
+) -> bool:
+    """Atomically CLAIM a `mi_safeguard_state` transition, returning True only if THIS
+    call's write actually changed the persisted state. Hoisted (simplify GROUP 4,
+    2026-07-03) from `kill_scale_bands.set_last_band` (F21) so every safeguard-state
+    writer that needs single-winner transition semantics under concurrency shares ONE
+    primitive instead of re-implementing the UPSERT — `broker/drawdown_breaker.py`'s
+    `recompute_drawdown_state` had the SAME unlocked read-then-write TOCTOU (duplicate
+    tier Telegrams possible) and now routes its transition-detection through this too.
+
+    The `WHERE state IS DISTINCT FROM EXCLUDED.state` clause on the `DO UPDATE` makes
+    this a single-winner claim under Postgres's normal row-lock semantics: a second
+    concurrent caller blocks on the row lock, and once unblocked re-evaluates the WHERE
+    clause against the just-committed row — which by then already matches — so its
+    UPDATE touches nothing and RETURNING yields no row. Only the winner should
+    audit/alert; a loser sees False and skips. No-op (no write at all) when the state is
+    unchanged, so `last_transition_at`/`updated_at` only move on a genuine transition.
+
+    Only writes `safeguard`/`account_mode`/`state`/`last_transition_at`/`updated_at` —
+    callers with additional per-row telemetry columns (e.g. drawdown_breaker's
+    last_evaluation_at/last_drawdown_pct/last_peak/last_peak_date) persist those via
+    their own separate, unconditional UPDATE so telemetry keeps refreshing every
+    evaluation regardless of the transition-claim outcome."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state,
+                  last_transition_at = NOW(),
+                  updated_at = NOW()
+              WHERE mi_safeguard_state.state IS DISTINCT FROM EXCLUDED.state
+            RETURNING state
+            """, safeguard, account_mode, new_state)
+    return row is not None
+
+
 _RUNTIME_TOGGLE_TTL_S = 60.0
 _runtime_toggle_cache: dict = {}
 
