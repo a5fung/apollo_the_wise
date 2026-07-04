@@ -67,8 +67,28 @@ Evidence both ways, and the design must honor BOTH:
   axis ships with blind-spot=0 regardless, so a coverage regression degrades to no-op, never
   to wrong credit.
 
+## STEP-0 calibration — RUN 7/3 eve (read-only, mi_theme_axis_shadow ⋈ mi_ep_scan_outcomes)
+
+| Stage | n | settled 5d | avg 5d | med 5d | win ≥+5% |
+|---|---|---|---|---|---|
+| Accelerating | 16 | 13 | **+18.0%** | +13.0% | **10/13 (77%)** |
+| Mainstream | 15 | 12 | +14.0% | +11.4% | 8/12 (67%) |
+| Fading | 11 | 9 | +11.1% | +8.8% | 6/9 (67%) |
+| Nascent | 8 | 4 | +5.4% | +7.2% | 2/4 |
+| (none) | 406 | 236 | +9.6% | +6.0% | 131/236 (56%) |
+
+**Reading:** the table's DIRECTION holds. Accelerating full credit is strongly supported
+(+18.0 vs +9.6 themeless; 77% vs 56% win). Fading-at-zero is validated as conservative —
+Fading is not poison (+11.1%), merely not special, and boost-only means we never penalize it.
+Nascent: no signal at N=4 → the near-miss-band-only caution stands. **Operator question:
+Mainstream (+14.0%, 67%) outperforms more than tie-break credit implies — upgrade it to a
+near-miss band like Nascent, or hold v1 conservative?** Caveats: N per themed cell is 9-13
+(direction-check, NOT the N≥30 ship bar); the cohort is ALL HIGH-grade rows (the backfill's
+scope), so tier-STEP effects (routine→strong) are unmeasurable until the shadow accrues
+sub-HIGH rows — another reason the flip stays gated on shadow accrual.
+
 ## Rollout
-1. Operator signs the table (or amends) — Saturday.
-2. STEP-0 calibration vs the 452-row cohort (same day, read-only).
-3. Shadow build + wire (Sonnet card; ~1 session) → accrue.
+1. Operator signs the table (or amends — the Mainstream question above) — Saturday.
+2. ~~STEP-0 calibration~~ ✅ done 7/3 eve (above).
+3. Shadow build + wire (Sonnet card; ~1 session) → accrue incl. sub-HIGH tiers.
 4. Flip decision at the #329 composition checkpoint (CHANGE_PROCESS).
