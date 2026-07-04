@@ -3187,7 +3187,7 @@ async def reconcile_flag_state_post_eod(scan_date):
                 "flag_low_vol_rests_reconciled",
                 f"{rests_count} intraday low-vol-rests marked parent_invalidated_eod=TRUE for {scan_date}",
             )
-        except Exception:
+        except Exception:  # loud-ok: best-effort audit write; logger.info above already surfaced the reconcile count
             pass
     if breaks_count:
         logger.info(f"reconcile_flag_state_post_eod: invalidated {breaks_count} break rows")
@@ -3196,7 +3196,7 @@ async def reconcile_flag_state_post_eod(scan_date):
                 "flag_breaks_reconciled",
                 f"{breaks_count} intraday breaks marked parent_invalidated_eod=TRUE for {scan_date}",
             )
-        except Exception:
+        except Exception:  # loud-ok: best-effort audit write; logger.info above already surfaced the reconcile count
             pass
     if tests_count:
         logger.info(f"reconcile_flag_state_post_eod: invalidated {tests_count} support-test rows")
@@ -3205,7 +3205,7 @@ async def reconcile_flag_state_post_eod(scan_date):
                 "flag_support_tests_reconciled",
                 f"{tests_count} intraday support-tests marked parent_invalidated_eod=TRUE for {scan_date}",
             )
-        except Exception:
+        except Exception:  # loud-ok: best-effort audit write; logger.info above already surfaced the reconcile count
             pass
     if pullbacks_count:
         logger.info(f"reconcile_flag_state_post_eod: invalidated {pullbacks_count} ma-pullback rows")
@@ -3214,7 +3214,7 @@ async def reconcile_flag_state_post_eod(scan_date):
                 "flag_ma_pullbacks_reconciled",
                 f"{pullbacks_count} intraday ma-pullbacks marked parent_invalidated_eod=TRUE for {scan_date}",
             )
-        except Exception:
+        except Exception:  # loud-ok: best-effort audit write; logger.info above already surfaced the reconcile count
             pass
     if urs_count:
         logger.info(f"reconcile_flag_state_post_eod: invalidated {urs_count} undercut-rally rows")
@@ -3223,6 +3223,6 @@ async def reconcile_flag_state_post_eod(scan_date):
                 "flag_undercut_rally_reconciled",
                 f"{urs_count} intraday U&Rs marked parent_invalidated_eod=TRUE for {scan_date}",
             )
-        except Exception:
+        except Exception:  # loud-ok: best-effort audit write; logger.info above already surfaced the reconcile count
             pass
     return (breaks_count, tests_count, pullbacks_count, urs_count, rests_count)
