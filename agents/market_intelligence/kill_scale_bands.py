@@ -231,7 +231,9 @@ async def get_active_override() -> dict | None:
         return None
     try:
         d = json.loads(row["detail"])
-    except Exception:
+    except Exception as e:
+        logger.warning("get_active_override: malformed detail JSON on %s row "
+                        "(direction/reason lost): %s", row["created_at"], e)
         d = {}
     return {"direction": d.get("direction"), "reason": d.get("reason"),
             "since": row["created_at"].date().isoformat()}
@@ -347,7 +349,10 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
                 "kill_scale_band_eval_error",
                 f"band eval failed ({account_mode}): {e}",
                 json.dumps({"account_mode": account_mode, "error": str(e)}))
-        except Exception:
+        except Exception:  # loud-ok: fallback-of-the-fallback — the log.warning two
+            # lines above already captured the real failure (comment at the top of
+            # this except block); this inner guard only protects the *_error audit
+            # write itself, and there's nothing left above it to escalate to.
             pass
         return {"error": str(e)}
 
@@ -359,6 +364,7 @@ async def band_digest_section(account_mode: str = "live") -> list[str]:
         _, verdict, override = await assess_bands(account_mode)
         return ["", "*🎚️ Kill/scale bands* (live-money, #268b):", format_band_line(verdict, override)]
     except Exception as e:  # noqa: BLE001
+        logger.warning("band_digest_section(%s) failed: %s", account_mode, e)
         return ["", f"_kill/scale band eval unavailable: {e}_"]
 
 
