@@ -88,3 +88,91 @@ async def test_noop_when_guard_skips_live_theme(monkeypatch):
 
     res = await te.promote_candidate_by_name("already live", _TODAY)
     assert res["status"] == "noop"
+
+
+# ─── F7 (2026-07-02 review) — shared write path ────────────────────────────
+# `promote_candidate_by_name` (operator /promotetheme) and `promote_shadow_themes` (nightly
+# auto-promote) used to hand-copy the SAME guarded INSERT...ON CONFLICT — a future change to
+# one copy could silently diverge the operator path from the nightly job. Both now delegate to
+# `theme_engine._upsert_promoted_theme`. These pin (1) the helper's own SQL/merge semantics and
+# (2) that BOTH public entry points actually call it with equivalent params for an equivalent
+# candidate, so a re-introduced hand-copy would show up as a routing/param mismatch here.
+
+@pytest.mark.asyncio
+async def test_upsert_promoted_theme_merge_and_sql():
+    """Direct pin on the shared helper: desc fallback, days_active roll-forward, score from
+    rs_avg, and the guarded UPSERT SQL text (the load-bearing 'source = shadow_promoted' clause)."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+
+    wrote = await te._upsert_promoted_theme(
+        conn, "Rare & Orphan Biotech Re-Rating", ["RARE", "MIRM"], None,
+        "fallback desc", _TODAY, rs_avg=42.5, prior_days_active=3)
+
+    assert wrote is True
+    args = conn.execute.call_args[0]
+    sql = args[0]
+    assert "INSERT INTO mi_themes" in sql
+    assert "ON CONFLICT (theme_date, name) DO UPDATE SET" in sql
+    assert "WHERE mi_themes.source = 'shadow_promoted'" in sql
+    # positional params: today, name, score, desc, tickers, days_active
+    assert args[1:] == (_TODAY, "Rare & Orphan Biotech Re-Rating", 42.5, "fallback desc",
+                         ["RARE", "MIRM"], 4)   # days_active = prior(3) + 1
+
+
+@pytest.mark.asyncio
+async def test_upsert_promoted_theme_no_prior_and_thesis_used():
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+
+    await te._upsert_promoted_theme(
+        conn, "New Theme", ["A"], "operator thesis", "fallback", _TODAY,
+        rs_avg=None, prior_days_active=None)
+
+    args = conn.execute.call_args[0]
+    assert args[1:] == (_TODAY, "New Theme", None, "operator thesis", ["A"], 1)
+
+
+@pytest.mark.asyncio
+async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeypatch):
+    """Same candidate through both public entry points → both must call the SAME shared helper
+    with the SAME resolved (rs_avg, prior_days_active) — i.e. no re-diverged hand-copy."""
+    from tests.conftest import make_mock_pool
+    calls = []
+
+    async def _spy(conn, name, tickers, thesis, desc_fallback, today, *, rs_avg, prior_days_active):
+        calls.append((name, tuple(tickers), rs_avg, prior_days_active))
+        return True
+
+    monkeypatch.setattr(te, "_upsert_promoted_theme", _spy)
+    monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))
+    monkeypatch.setattr(te, "log_audit_event", AsyncMock())
+
+    cand = _cand("Rare & Orphan Biotech Re-Rating", ["RARE", "MIRM", "RGNX", "AGIO"])
+
+    # Operator path (/promotetheme)
+    pool1, conn1 = make_mock_pool()
+    conn1.fetch = AsyncMock(return_value=[
+        {"ticker": "RARE", "rs_composite": 80.0}, {"ticker": "MIRM", "rs_composite": 60.0}])
+    conn1.fetchrow = AsyncMock(return_value={"days_active": 2})
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool1))
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[cand]))
+    await te.promote_candidate_by_name("rare orphan", _TODAY)
+
+    # Nightly path (promote_shadow_themes) — same candidate, same RS rows, same prior days_active
+    pool2, conn2 = make_mock_pool()
+    conn2.fetch = AsyncMock(side_effect=[
+        [{"name": "Rare & Orphan Biotech Re-Rating", "days_active": 2}],   # prior_rows batched query
+        [{"ticker": "RARE", "rs_composite": 80.0}, {"ticker": "MIRM", "rs_composite": 60.0}],  # RS batched
+    ])
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool2))
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[cand]))
+    await te.promote_shadow_themes(_TODAY)
+
+    assert len(calls) == 2
+    op_call, nightly_call = calls
+    assert op_call[0] == nightly_call[0] == "Rare & Orphan Biotech Re-Rating"
+    assert op_call[2] == nightly_call[2] == 70.0   # rs_avg over RARE(80)+MIRM(60)
+    assert op_call[3] == nightly_call[3] == 2      # prior_days_active

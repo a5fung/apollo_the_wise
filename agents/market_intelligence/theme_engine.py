@@ -1379,6 +1379,51 @@ _PROMOTE_WINDOW_DAYS = 3
 _PROMOTE_MIN_MEMBERS = 3
 
 
+async def _upsert_promoted_theme(
+    conn,
+    name: str,
+    tickers: list[str],
+    thesis: str | None,
+    desc_fallback: str,
+    today,
+    *,
+    rs_avg: float | None,
+    prior_days_active: int | None,
+) -> bool:
+    """F7 (2026-07-02 review) — the ONE shared write path for graduating a shadow cohort into
+    live `mi_themes`, used by BOTH `promote_shadow_themes` (nightly auto-promote, batched lookup
+    across all qualifying cohorts) and `promote_candidate_by_name` (operator `/promotetheme`,
+    single-candidate lookup). Previously this guarded INSERT...ON CONFLICT was hand-copied in both
+    places — a future column/guard/stage-default change to one copy would silently diverge the
+    operator path from the nightly job.
+
+    Each caller does its OWN lookup (batched vs single — that shape legitimately differs, and the
+    nightly path's batched RS query is a deliberate N+1 avoidance) and passes the resolved
+    `rs_avg` / `prior_days_active` in; this helper only merges them into the row and executes the
+    upsert. `source='shadow_promoted'` is the ON CONFLICT guard — it makes the update fire ONLY
+    when the existing row is itself a prior shadow-promotion, never a native `source='live'` theme
+    that happens to share a canonicalized name. Byte-identical SQL/semantics to the pre-extraction
+    copies; no behavior change.
+
+    Returns `wrote`: True on "INSERT 0 1" (row written), False on "INSERT 0 0" (guard skipped an
+    existing native live theme — the caller's `noop` case)."""
+    desc = thesis or desc_fallback
+    days_active = (prior_days_active or 0) + 1
+    score = float(rs_avg) if rs_avg is not None else None
+    res = await conn.execute("""
+        INSERT INTO mi_themes
+            (theme_date, name, stage, score, rs_avg, description, tickers,
+             days_active, consecutive_accelerating, source)
+        VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
+        ON CONFLICT (theme_date, name) DO UPDATE SET
+            score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
+            description = EXCLUDED.description, tickers = EXCLUDED.tickers,
+            days_active = EXCLUDED.days_active
+        WHERE mi_themes.source = 'shadow_promoted'
+    """, today, name, score, desc, tickers, days_active)
+    return str(res).endswith(" 1")   # "INSERT 0 1" on write; "INSERT 0 0" when the guard skipped a live theme
+
+
 async def promote_shadow_themes(today) -> int:
     """#226 — graduate shadow theme cohorts into the LIVE `mi_themes` table (operator 2026-06-28:
     "we need to graduate this ASAP" — the missing promo path was the gap that let cohorts sit idle).
@@ -1422,21 +1467,12 @@ async def promote_shadow_themes(today) -> int:
             _vals = [_rs_by_tk[tk] for tk in members if tk in _rs_by_tk]
             rs_avg = sum(_vals) / len(_vals) if _vals else None
             prior = prior_map.get(t["name"])
-            days_active = (prior.get("days_active") or 0) + 1 if prior else 1
-            desc = t.get("thesis") or f"Graduated from the shadow lane ({len(members)} members)."
-            score = float(rs_avg) if rs_avg is not None else None
-            res = await conn.execute("""
-                INSERT INTO mi_themes
-                    (theme_date, name, stage, score, rs_avg, description, tickers,
-                     days_active, consecutive_accelerating, source)
-                VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
-                ON CONFLICT (theme_date, name) DO UPDATE SET
-                    score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
-                    description = EXCLUDED.description, tickers = EXCLUDED.tickers,
-                    days_active = EXCLUDED.days_active
-                WHERE mi_themes.source = 'shadow_promoted'
-            """, today, t["name"], score, desc, members, days_active)
-            if str(res).endswith(" 1"):   # "INSERT 0 1" on write; "INSERT 0 0" when the guard skipped a live theme
+            prior_days_active = prior.get("days_active") if prior else None
+            wrote = await _upsert_promoted_theme(
+                conn, t["name"], members, t.get("thesis"),
+                f"Graduated from the shadow lane ({len(members)} members).", today,
+                rs_avg=rs_avg, prior_days_active=prior_days_active)
+            if wrote:
                 n += 1
         await log_audit_event(
             "shadow_themes_promoted",
@@ -1513,21 +1549,11 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
             SELECT days_active FROM mi_themes WHERE name = $1 AND theme_date < $2
             ORDER BY theme_date DESC LIMIT 1
         """, t["name"], today)
-        days_active = (prior["days_active"] or 0) + 1 if prior else 1
-        desc = t.get("thesis") or f"Operator-promoted ({len(t['tickers'])} members)."
-        score = float(rs_avg) if rs_avg is not None else None
-        res = await conn.execute("""
-            INSERT INTO mi_themes
-                (theme_date, name, stage, score, rs_avg, description, tickers,
-                 days_active, consecutive_accelerating, source)
-            VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
-            ON CONFLICT (theme_date, name) DO UPDATE SET
-                score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
-                description = EXCLUDED.description, tickers = EXCLUDED.tickers,
-                days_active = EXCLUDED.days_active
-            WHERE mi_themes.source = 'shadow_promoted'
-        """, today, t["name"], score, desc, t["tickers"], days_active)
-        wrote = str(res).endswith(" 1")   # "INSERT 0 1" on write; "0 0" when the guard skipped a live theme
+        prior_days_active = prior["days_active"] if prior else None
+        wrote = await _upsert_promoted_theme(
+            conn, t["name"], t["tickers"], t.get("thesis"),
+            f"Operator-promoted ({len(t['tickers'])} members).", today,
+            rs_avg=rs_avg, prior_days_active=prior_days_active)
         await log_audit_event(
             "theme_operator_promoted",
             summary=(f"Operator promoted '{t['name']}' ({len(t['tickers'])} members)"
