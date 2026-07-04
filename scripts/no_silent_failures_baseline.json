@@ -1,6 +1,6 @@
 {
   "per_file": {
-    "agents/market_intelligence/agent.py": 22,
+    "agents/market_intelligence/agent.py": 3,
     "agents/market_intelligence/audit_invariants.py": 1,
     "agents/market_intelligence/broker/bar_stream.py": 2,
     "agents/market_intelligence/broker/entry_pipeline.py": 7,
@@ -9,11 +9,9 @@
     "agents/market_intelligence/broker/trade_stream.py": 2,
     "agents/market_intelligence/catalyst_materiality.py": 1,
     "agents/market_intelligence/catalyst_rubric_runtime.py": 1,
-    "agents/market_intelligence/db.py": 1,
     "agents/market_intelligence/earnings_calendar.py": 2,
     "agents/market_intelligence/ep_detector.py": 10,
     "agents/market_intelligence/failure_policy.py": 3,
-    "agents/market_intelligence/flag_detector.py": 5,
     "agents/market_intelligence/fundamentals.py": 9,
     "agents/market_intelligence/health_checks.py": 1,
     "agents/market_intelligence/judge_transport.py": 1,
@@ -25,7 +23,7 @@
     "agents/market_intelligence/parabolic_detector.py": 1,
     "agents/market_intelligence/quarterly_review.py": 1,
     "agents/market_intelligence/replay_regression.py": 1,
-    "agents/market_intelligence/scheduler.py": 9,
+    "agents/market_intelligence/scheduler.py": 4,
     "agents/market_intelligence/theme_axis_shadow.py": 1,
     "agents/market_intelligence/theme_engine.py": 5,
     "channels/telegram.py": 20,
@@ -35,5 +33,5 @@
     "core/router.py": 2,
     "core/spend.py": 1
   },
-  "total": 125
+  "total": 95
 }
