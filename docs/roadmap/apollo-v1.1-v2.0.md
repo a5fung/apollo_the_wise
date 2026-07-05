@@ -134,8 +134,8 @@ fold in: W3 exit-tuning → P3, W4 chart-vision → P2, W5 experience-seed → P
 | **M1 — Judge-axes checkpoint** | **7/18** | The ONE batched event: theme+structure axis shadows read → batched regrade eval → #335 flip decision + #299 subset + #329 composition | dated sitting (already standing) |
 | **M2 — First setup graduations** | **7/14–7/25** | #395 coil GO/NO-GO (7/14) · #397 HTF GO/NO-GO (7/18) · S-E deprecations verified in the digest | evidence gates in the tasks |
 | **M3 — Quarterly reviews cluster** | **8/1** | #207 model review (Sonnet-5 evidence banked 7/5) · this doc's first monthly ride-along · crypto SMA90 history completes → readiness verdict flips (E1) | dated tasks + registry |
-| **M4 — Management program start** | **8/15** | #306 STEP-3 exit-tune decision executed → P3 management-judge design kickoff (the money pillar) | gated on STEP-2 sweep + operator decision |
-| **M5 — H2 gate** | **10/1** | P3/P5 H2 items activate; #381 swallow-baseline ZERO (the D-8 dated milestone) | horizon boundary |
+| **M4 — Management program start** | **7/25** (pulled from 8/15, operator 7/5) | #306 STEP-3 exit-tune decision executed → P3 management-judge BUILD starts (design pre-done in D-1) | gated on STEP-2 sweep + operator decision |
+| **M5 — H2 gate** | **9/1** (pulled from 10/1, operator 7/5) | P3 shadow live · P5 activation criteria armed · #381 swallow-baseline ZERO | capacity-derived, not calendar-quarter |
 
 What "tier-one" means, measurably: (1) selection a strong discretionary trader
 would respect (judge precision on labeled cohorts), (2) sizing that scales with
@@ -317,6 +317,29 @@ their standing trigger (Apollo-Trades tab at ≥10 closed live trades).
 5. *Not adopted / already done:* the proposed mi_ep_alerts schema additions already
    exist (shipped via `_ensure_ep_alert_columns`, #247) except
    `structural_chart_verdict`, which lands with #267 (point 2).
+
+## Design status + the D-series (Fable design blocks — operator directive 7/5: ALL design to execution depth BEFORE build, then pure execution)
+
+**Design-complete today** (pointer = the executable spec): theme axis (ADR 0015) · structure
+axis (ADR 0016) · coil model (locked 6/27 + live shadow) · HTF criteria/phases (the #356 plan) ·
+exit-tune axes (#306 STEP-0 doc §tune) · the whole v1.0 blocking set (#418 §4a DoDs).
+
+**Design DEBT → the D-series.** One Fable design block per day, running BESIDE the v1.0 blocking
+burn (Fable designs, Sonnet executes — the operator's split). Each block's deliverable is an
+ADR/spec written to pure-execution depth: schemas, prompts/contracts, job wiring, shadow tables,
+promotion gates, test plan, DoDs — zero design judgment left for the builder.
+
+| Block | Date | Designs (deliverable doc) |
+|---|---|---|
+| **D-1** | **Mon 7/6** | **P3 Management Judge** — decision points/triggers, bounded-enum contract, payload (chart/thesis/theme/character), pivot+character model integration, shadow schema, fail-open + promotion gates (`docs/decisions/00XX-management-judge.md`) |
+| **D-2** | **Tue 7/7** | **P1 Experience stack** — precedent case store schema + embedding/retrieval spec (temporal-diversity constraint), self-review→rubric-distillation loop, ensemble/uncertainty judging (`00XX-experience-stack.md`) |
+| **D-3** | **Wed 7/8** | **#210/#211 Direct-sourcing backbone** — SEC/wire/feed pipeline, storage+dedup, judge integration, unknown-catalyst KPI loop (`00XX-catalyst-sourcing-backbone.md`) |
+| **D-4** | **Thu 7/9** | **P4 book architecture** — per-setup judges w/ shared components, 9M-condition→setup feed, parabolic-short entry/management/borrow mechanics (`00XX-multi-setup-book.md`) |
+| **D-5** | **Fri 7/10** | **P2 sight completion** — intraday narrative radar (streaming cohort detection), negative-catalyst downgrade axis (`00XX-full-sight.md`) |
+| **D-6** | **Sat 7/11** | **P5 autonomy ladder criteria + allocator-live spec · P6 replay-everything CI** (`00XX-autonomy-and-replay-ci.md`) |
+
+Rule: no Phase-2 build task starts before its D-block spec is signed; every D-doc ends with an
+operator sign-off line (design forks surfaced there, never in build).
 
 ## Exploration lanes (E-series — parked ideas with explicit activation triggers, never silent)
 
