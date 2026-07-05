@@ -262,7 +262,7 @@ class MarketIntelligenceAgent(BaseAgent):
             """
             import os
             from agents.market_intelligence.constants import (
-                ENABLE_LIVE_MODE, resolve_account_mode_for_strategy,
+                ENABLE_LIVE_MODE, active_account_modes, resolve_account_mode_for_strategy,
             )
             from agents.market_intelligence.strategies.registry import load_strategies
             from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
@@ -275,7 +275,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     "modes": [],
                 }
 
-            modes_to_show = ["paper"] + (["live"] if ENABLE_LIVE_MODE else [])
+            modes_to_show = active_account_modes()
 
             strat_by_mode: dict[str, list[str]] = {"paper": [], "live": []}
             try:

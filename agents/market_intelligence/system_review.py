@@ -519,6 +519,7 @@ async def _aggregate_anomalies(days: int) -> dict:
     }
 
 
+@advisory_fail_open(default=dict, label="mfe_capture aggregator")
 async def _aggregate_mfe_capture(window_start: date) -> dict:
     """W3 management KPI (#306 STEP-0 → weekly KPI, 2026-07-05; read-only).
 
@@ -536,27 +537,23 @@ async def _aggregate_mfe_capture(window_start: date) -> dict:
     """
     from agents.market_intelligence.db import get_pool
 
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT ticker, account_mode, total_pnl,
-                       (highest_price_seen - entry_price) * entry_shares AS mfe_dollars,
-                       (closed_at AT TIME ZONE 'America/New_York')::date AS closed_et
-                FROM mi_live_trades
-                WHERE status = 'closed'
-                  AND partial_taken = TRUE
-                  AND pnl_attribution IS NULL
-                  AND total_pnl IS NOT NULL
-                  AND highest_price_seen IS NOT NULL
-                  AND entry_price IS NOT NULL
-                  AND entry_shares IS NOT NULL
-                  AND (highest_price_seen - entry_price) * entry_shares > 0
-                ORDER BY closed_at DESC
-            """)
-    except Exception:
-        logger.exception("mfe_capture aggregator failed")
-        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, account_mode, total_pnl,
+                   (highest_price_seen - entry_price) * entry_shares AS mfe_dollars,
+                   (closed_at AT TIME ZONE 'America/New_York')::date AS closed_et
+            FROM mi_live_trades
+            WHERE status = 'closed'
+              AND partial_taken = TRUE
+              AND pnl_attribution IS NULL
+              AND total_pnl IS NOT NULL
+              AND highest_price_seen IS NOT NULL
+              AND entry_price IS NOT NULL
+              AND entry_shares IS NOT NULL
+              AND (highest_price_seen - entry_price) * entry_shares > 0
+            ORDER BY closed_at DESC
+        """)
 
     if not rows:
         return {"n": 0}

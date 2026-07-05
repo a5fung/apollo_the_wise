@@ -358,6 +358,7 @@ if ! python3 scripts/preflight_no_silent_failures.py; then
   exit 15
 fi
 
+echo ""
 echo "=== [5l/7] Preflight ADR-0008 demotion fence (#225 — trade-state demotion class) ==="
 # Run on host (stdlib ast, no container). Blocks any except-enclosed trade-state
 # DEMOTION (stop_order_id->NULL / status->'closed' / set_stop_order_id(None))

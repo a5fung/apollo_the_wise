@@ -51,8 +51,8 @@ def _resolve_modes() -> list[str]:
     ENABLE_LIVE_MODE=true → ['paper', 'live'] (production default).
     ENABLE_LIVE_MODE=false → ['paper'] (dev / single-account).
     """
-    from agents.market_intelligence.constants import ENABLE_LIVE_MODE
-    return ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    from agents.market_intelligence.constants import active_account_modes
+    return active_account_modes()
 
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────

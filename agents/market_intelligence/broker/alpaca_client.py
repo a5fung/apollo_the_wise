@@ -216,9 +216,9 @@ async def verify_dual_account_clients() -> dict:
     on success or dual_account_boot_failed with details on partial/failed init.
     Idempotent; safe to call repeatedly.
     """
-    from agents.market_intelligence.constants import ENABLE_LIVE_MODE
+    from agents.market_intelligence.constants import active_account_modes
     result: dict = {}
-    modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    modes = active_account_modes()
     for mode in modes:
         try:
             client = get_trading_client(mode)

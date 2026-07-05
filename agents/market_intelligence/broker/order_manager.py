@@ -30,7 +30,7 @@ from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import (
     current_account_mode,
     mode_prefix,
-    ENABLE_LIVE_MODE,
+    active_account_modes,
 )
 from agents.market_intelligence.db import get_pool, log_audit_event, get_manual_halt_state
 
@@ -2521,7 +2521,7 @@ async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> 
 async def reconcile_all_modes(lookback_days: int = 90) -> dict:
     """Run reconcile_order_states for paper + live (or paper only if
     ENABLE_LIVE_MODE=false). Aggregate counts across modes."""
-    modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    modes = active_account_modes()
     totals = {"examined": 0, "updated": 0, "errors": 0}
     for mode in modes:
         try:
@@ -2913,7 +2913,7 @@ async def sync_positions() -> list[str]:
     AND account_mode=$1 filter, and each Alpaca call routes to its mode's
     TradingClient via the per-mode singleton.
     """
-    modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    modes = active_account_modes()
     all_discrepancies: list[str] = []
     for mode in modes:
         try:

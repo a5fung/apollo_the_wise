@@ -44,7 +44,7 @@ from agents.market_intelligence.briefing import (
     send_ep_alert,
     send_telegram_message,
 )
-from agents.market_intelligence.constants import mode_prefix, ENABLE_LIVE_MODE
+from agents.market_intelligence.constants import mode_prefix, active_account_modes
 from agents.market_intelligence.backtester.tracker import (
     run_paper_trade_tracker,
     format_tracker_telegram,
@@ -1332,14 +1332,10 @@ async def _account_equity_snapshot_job():
         from agents.market_intelligence.broker.drawdown_breaker import (  # exec-boundary-ok: moves-with-job (W2)
             snapshot_account_equity, recompute_drawdown_state,
         )
-        # ENABLE_LIVE_MODE comes from the module-level import (line ~47) — a
-        # function-local re-import here shadows it for the whole function
-        # scope (the 2026-05-20 UnboundLocalError class; deploy gate [5d]).
         # Dual-account #66: snapshot + recompute per mode. Each mode has its
         # own equity, peak, drawdown state — paper drift doesn't trip the
         # live breaker and vice versa.
-        modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
-        for mode in modes:
+        for mode in active_account_modes():
             try:
                 snap = await snapshot_account_equity(account_mode=mode)
                 if snap:
@@ -2472,8 +2468,7 @@ async def _order_status_reconcile_job(lookback_days: int = 90, run_coverage_drif
 
         if run_coverage_drift:
             from agents.market_intelligence.broker.coverage_drift import detect_coverage_drift  # exec-boundary-ok: moves-with-job (W2)
-            modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
-            for mode in modes:
+            for mode in active_account_modes():
                 try:
                     await detect_coverage_drift(mode)
                 except Exception as e:

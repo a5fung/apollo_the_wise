@@ -52,6 +52,14 @@ LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() =
 # set — keeps git-revert rollback clean for ONE deploy cycle.
 ENABLE_LIVE_MODE = os.environ.get("ENABLE_LIVE_MODE", "true").lower() == "true"
 
+
+def active_account_modes() -> list[str]:
+    """The account modes this deployment actually operates — the SSoT for
+    every "for mode in ..." iteration (sync, reconcile, equity snapshot,
+    coverage drift, stream lifecycle). Was 6 hand-copied literals that
+    drifted within a single file before this helper (2026-07-05 /simplify)."""
+    return ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+
 # ── Service-split roles (#256 W2, 2026-06-13) ────────────────────────────────
 # Apollo is splitting into apollo-execution (broker / streams / safeguards /
 # Alpaca creds) and apollo-intelligence (detection / themes / judge / briefings)
