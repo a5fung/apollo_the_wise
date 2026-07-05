@@ -252,3 +252,36 @@ async def test_degraded_db_read_no_drift_reported():
     tg.assert_not_called()
     audit.assert_called_once()
     assert audit.call_args.args[0] == COVERAGE_DRIFT_CHECK_DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_telegram_cap_rolls_overflow_into_one_summary():
+    """d3 review: a mass-drift event (e.g. 6 untracked positions after an
+    outage) sends only _TELEGRAM_CAP_PER_CYCLE individual alerts + ONE rollup
+    line — never one message per ticker. Every detection still writes its own
+    audit row, and rolled-up items still get their 24h dedup marker (the
+    rollup IS their alert)."""
+    from agents.market_intelligence.broker.coverage_drift import _TELEGRAM_CAP_PER_CYCLE
+
+    positions = [
+        {"symbol": f"TK{i}", "qty": 10.0, "avg_entry_price": 5.0} for i in range(6)
+    ]
+    pool, conn = _setup(db_rows=[], positions=positions, open_orders=[])
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions", new=AsyncMock(return_value=positions)), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("paper")
+
+    assert result["d1_count"] == 6
+    assert result["alerted"] == _TELEGRAM_CAP_PER_CYCLE
+    assert result["overflowed"] == 6 - _TELEGRAM_CAP_PER_CYCLE
+    # cap individual sends + exactly one rollup
+    assert tg.call_count == _TELEGRAM_CAP_PER_CYCLE + 1
+    rollup = tg.call_args_list[-1].args[0]
+    assert "3 more" in rollup and "capped" in rollup
+
+    event_types = [c.args[0] for c in audit.call_args_list]
+    assert event_types.count(COVERAGE_DRIFT_DETECTED) == 6
+    assert event_types.count(COVERAGE_DRIFT_ALERTED) == 6  # markers for ALL, incl. rolled-up

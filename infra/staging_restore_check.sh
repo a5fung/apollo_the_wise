@@ -36,34 +36,16 @@ if [ -f "$ENV_FILE" ]; then
     set +a
 fi
 
-log() { echo "$(date -u +%FT%TZ) $*" >> "$LOG_FILE"; }
-
-telegram_alert() {
-    # $1 = message text; uses first user from TELEGRAM_ALLOWED_USER_IDS (backup.sh idiom)
-    local msg="$1"
-    local chat_id
-    chat_id=$(printf '%s' "${TELEGRAM_ALLOWED_USER_IDS:-}" | cut -d, -f1)
-    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "$chat_id" ]; then
-        return 0  # no creds, skip silently — file log already captured detail
-    fi
-    curl -fsS -m 15 \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        --data-urlencode "chat_id=$chat_id" \
-        --data-urlencode "text=$msg" \
-        --data-urlencode "parse_mode=Markdown" >/dev/null 2>&1 \
-        || log "telegram_alert send FAILED (curl/API) — alert text was: $msg"
-}
-
-audit_event() {
-    # $1 = event_type; $2 = summary. Telemetry-only INSERT (backup.sh idiom).
-    local event="$1"
-    local summary="${2:0:500}"
-    docker exec -i apollo-postgres psql -U apollo -d apollo -v ON_ERROR_STOP=1 \
-        -c "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ('$event', \$\$${summary}\$\$, '');" \
-        >/dev/null 2>&1 || true
-}
+# Shared telemetry helpers (log / telegram_alert / audit_event) — one canonical
+# copy in ops_lib.sh; the per-script copies drifted within a day (d3 /simplify).
+# shellcheck disable=SC1091
+. /home/apollo/apollo_the_wise/infra/ops_lib.sh || {
+    echo "$(date -u +%FT%TZ) FATAL: ops_lib.sh missing" >> "$LOG_FILE"; exit 1; }
 
 cleanup() { docker rm -f "$CONTAINER" >/dev/null 2>&1 || true; rm -f "$ERR_TMP"; }
+# EXIT trap (d3 review): an external kill (cron timeout wrapper, SIGTERM)
+# mid-run must not leak the restore container + tmp file until tomorrow.
+trap cleanup EXIT
 
 fail() {
     local reason="$1"
@@ -74,7 +56,6 @@ fail() {
     # the first-ever failure alert silently 400'd (2026-07-05). Fence = no
     # entity parsing inside; real newlines so --data-urlencode wires them.
     telegram_alert "🚨 *Backup restore-check FAILED* — the nightly dump may NOT be restorable."$'\n```\n'"$reason"$'\n```\n'"See $LOG_FILE"
-    cleanup
     exit 1
 }
 
@@ -147,5 +128,4 @@ DURATION=$(( $(date +%s) - START_TS ))
 SUMMARY="restored $(basename "$LATEST") in ${DURATION}s: trades=$n_trades audit=$n_audit ep_alerts=$n_alerts themes=$n_themes strategies=$n_strats tables=$n_tables"
 log "OK: $SUMMARY"
 audit_event "backup_restore_check_ok" "$SUMMARY"
-cleanup
 exit 0

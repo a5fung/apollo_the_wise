@@ -23,34 +23,17 @@ if [ -r "$ENV_FILE" ]; then
     set +a
 fi
 
-telegram_alert() {
-    # $1 = message text; uses first user from TELEGRAM_ALLOWED_USER_IDS
-    local msg="$1"
-    local chat_id
-    chat_id=$(printf '%s' "${TELEGRAM_ALLOWED_USER_IDS:-}" | cut -d, -f1)
-    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "$chat_id" ]; then
-        return 0  # no creds, skip silently — file log already captured detail
-    fi
-    curl -fsS -m 15 \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        --data-urlencode "chat_id=$chat_id" \
-        --data-urlencode "text=$msg" \
-        --data-urlencode "parse_mode=Markdown" >/dev/null 2>&1 || true
-}
-
-audit_event() {
-    # $1 = event_type; $2 = summary (will be truncated by call site to 500)
-    local event="$1"
-    local summary="${2:0:500}"
-    docker exec -i apollo-postgres psql -U apollo -d apollo -v ON_ERROR_STOP=1 \
-        -c "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ('$event', \$\$${summary}\$\$, '');" \
-        >/dev/null 2>&1 || true
-}
+# Shared telemetry helpers (log / telegram_alert / audit_event) — one canonical
+# copy in the repo; the per-script copies drifted within a day (d3 /simplify
+# 2026-07-05). telegram_alert now LOGS send failures instead of eating them.
+# shellcheck disable=SC1091
+. /home/apollo/apollo_the_wise/infra/ops_lib.sh || {
+    echo "$(date -u +%FT%TZ) FATAL: ops_lib.sh missing — run git pull in the app dir" >> "$LOG_FILE"; exit 1; }
 
 # Step 1 — pg_dump
 if ! docker exec apollo-postgres pg_dump -U apollo apollo 2>>"$LOG_FILE" | gzip > "$BACKUP_FILE"; then
     err_tail=$(tail -10 "$LOG_FILE" 2>/dev/null | tr '\n' ' ' | cut -c1-300)
-    telegram_alert "🚨 *Apollo backup FAILED* (pg_dump)%0A\`\`\`%0A${err_tail}%0A\`\`\`"
+    telegram_alert "🚨 *Apollo backup FAILED* (pg_dump)"$'\n```\n'"${err_tail}"$'\n```'
     audit_event "backup_failed" "pg_dump failed: ${err_tail}"
     exit 1
 fi
@@ -97,6 +80,15 @@ run_secrets_backup() {
         # bundle, not beside the plaintext dump.
         docker exec apollo-postgres pg_dumpall -U apollo --roles-only \
             > "$bundle_dir/roles.sql" 2>>"$LOG_FILE" || true
+        if [ ! -s "$bundle_dir/roles.sql" ]; then
+            # d3 review: the redirect creates a 0-byte file even when pg_dumpall
+            # fails; bundling it would false-positive Phase 8's "Applied
+            # roles.sql" during a REAL DR. Alert + drop the empty file so
+            # restore.sh takes its explicit missing-roles.sql warning path.
+            rm -f "$bundle_dir/roles.sql"
+            telegram_alert "⚠️ *Apollo backup: roles.sql dump came back EMPTY* — bundle ships without it; DR falls back to EXPECTED_ROLES pre-create (role passwords need manual reset). Check pg_dumpall errors in the backup log."
+            audit_event "backup_roles_dump_empty" "pg_dumpall --roles-only produced no output; roles.sql omitted from tonight's bundle"
+        fi
         {
             printf 'apollo-secrets bundle %s\n' "$(date -Iseconds)"
             printf 'staged in: %s\n' "$stage_root"
@@ -105,15 +97,17 @@ run_secrets_backup() {
         } > "$bundle_dir/MANIFEST.txt"
     } 2>>"$LOG_FILE"
 
+    local bundle_files=(.env gdrive-token.json apollo.conf crontab.txt MANIFEST.txt)
+    [ -s "$bundle_dir/roles.sql" ] && bundle_files+=(roles.sql)
     if ! tar -czf "$bundle_dir/bundle.tar.gz" -C "$bundle_dir" \
-            .env gdrive-token.json apollo.conf crontab.txt roles.sql MANIFEST.txt 2>>"$LOG_FILE" || \
+            "${bundle_files[@]}" 2>>"$LOG_FILE" || \
        ! gpg --batch --yes \
            --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
            --symmetric --cipher-algo AES256 \
            -o "$SECRETS_BLOB" "$bundle_dir/bundle.tar.gz" 2>>"$LOG_FILE"; then
         local bundle_err
         bundle_err=$(tail -10 "$LOG_FILE" | tr '\n' ' ' | cut -c1-300)
-        telegram_alert "🚨 *Apollo secrets backup FAILED (encrypt step)*%0A\`\`\`%0A${bundle_err}%0A\`\`\`"
+        telegram_alert "🚨 *Apollo secrets backup FAILED (encrypt step)*"$'\n```\n'"${bundle_err}"$'\n```'
         audit_event "gdrive_secrets_failed" "Encryption failed: ${bundle_err}"
         return 1
     fi
@@ -136,7 +130,7 @@ run_secrets_backup() {
     secrets_err=$(tail -10 "$secrets_log_tmp" | tr '\n' ' ' | cut -c1-300)
     cat "$secrets_log_tmp" >> "$LOG_FILE"
     rm -f "$secrets_log_tmp"
-    telegram_alert "🚨 *Apollo secrets backup FAILED (upload step)*%0A\`\`\`%0A${secrets_err}%0A\`\`\`%0A%0Apg_dump succeeded; encrypted blob exists locally at ${SECRETS_BLOB}."
+    telegram_alert "🚨 *Apollo secrets backup FAILED (upload step)*"$'\n```\n'"${secrets_err}"$'\n```\n'"pg_dump succeeded; encrypted blob exists locally at ${SECRETS_BLOB}."
     audit_event "gdrive_secrets_failed" "Upload failed: ${secrets_err}"
     return 1
 }
@@ -163,9 +157,9 @@ else
     rm -f "$upload_log_tmp"
     # Distinguish OAuth refresh failure from generic — operator knows to re-auth
     if echo "$err_tail" | grep -q "invalid_grant\|RefreshError"; then
-        telegram_alert "🚨 *Apollo gdrive backup FAILED — OAuth token expired*%0AReauthorize: \`python3 scripts/gdrive_backup.py --setup credentials.json\` locally, then scp the new \`gdrive-token.json\` to prod.%0A%0ALocal pg_dump succeeded (${dump_mb}MB). Off-site backup unavailable until re-auth."
+        telegram_alert "🚨 *Apollo gdrive backup FAILED — OAuth token expired*"$'\n'"Reauthorize: \`python3 scripts/gdrive_backup.py --setup credentials.json\` locally, then scp the new \`gdrive-token.json\` to prod."$'\n'"Local pg_dump succeeded (${dump_mb}MB). Off-site backup unavailable until re-auth."
     else
-        telegram_alert "🚨 *Apollo gdrive backup FAILED*%0A\`\`\`%0A${err_tail}%0A\`\`\`%0A%0ALocal pg_dump succeeded (${dump_mb}MB)."
+        telegram_alert "🚨 *Apollo gdrive backup FAILED*"$'\n```\n'"${err_tail}"$'\n```\n'"Local pg_dump succeeded (${dump_mb}MB)."
     fi
     audit_event "gdrive_backup_failed" "Upload failed: ${err_tail}"
     # Don't exit non-zero — local dump succeeded, retention still runs

@@ -263,10 +263,15 @@ phase_decrypt_secrets() {
         warn "crontab.txt missing — nightly backup not scheduled"
     fi
 
-    if [ -r "$decrypt_dir/roles.sql" ]; then
+    if [ -s "$decrypt_dir/roles.sql" ]; then
         install -o root -g root -m 0600 \
             "$decrypt_dir/roles.sql" /root/restore-roles.sql
         ok "Staged /root/restore-roles.sql (cluster roles + password hashes, applied in Phase 8)"
+    elif [ -r "$decrypt_dir/roles.sql" ]; then
+        # d3 review: a 0-byte roles.sql (swallowed pg_dumpall at backup time)
+        # must NOT be staged — Phase 8 would print "Applied roles.sql" having
+        # applied nothing, and nobody would reset dashboard_ro's password.
+        warn "roles.sql present but EMPTY (pg_dumpall failed at backup time) — falling back to EXPECTED_ROLES pre-create; role passwords need manual reset"
     else
         warn "roles.sql missing from bundle (pre-2026-07-05 backup) — Phase 8 falls back to EXPECTED_ROLES pre-create (roles exist but their passwords need manual reset)"
     fi

@@ -67,6 +67,14 @@ D3_DB_OPEN_NO_BROKER = "D3_db_open_no_broker"
 
 _HIGH_CLASSES = frozenset({D1_UNTRACKED_POSITION, D2_UNTRACKED_ORDER_HIGH})
 
+# Per-cycle Telegram cap (d3 review): a systemic mirror-gap event (many
+# untracked positions after an outage) is exactly when this detector matters
+# most — and exactly when one-message-per-ticker would hit Telegram's per-chat
+# rate limit and start dropping alerts. First N fire individually; the rest
+# roll into one summary line (grouped-digest house pattern). Every detection
+# still writes its own audit row regardless.
+_TELEGRAM_CAP_PER_CYCLE = 3
+
 
 async def _fetch_open_db_trades(conn, account_mode: str) -> list:
     """Open (per _OPEN_TRADE_STATUSES) mi_live_trades rows for this mode."""
@@ -103,14 +111,8 @@ async def _already_alerted(conn, signature: str) -> bool:
     return bool(existing)
 
 
-async def _maybe_telegram(conn, signature: str, message: str) -> bool:
-    """Send + write the dedup marker unless a marker with this signature was
-    already written in the last 24h. Returns True if sent, False if deduped."""
-    if await _already_alerted(conn, signature):
-        return False
-    await send_telegram_message(message)
-    await log_audit_event(COVERAGE_DRIFT_ALERTED, signature, "")
-    return True
+# (per-signature send helper folded into detect_coverage_drift's _alert
+#  closure when the per-cycle cap landed — d3 review, 2026-07-05)
 
 
 def _format_d1_message(account_mode: str, position: dict) -> str:
@@ -193,6 +195,22 @@ async def detect_coverage_drift(account_mode: str) -> dict:
             result["degraded"] = True
             return result
 
+        overflow: list[str] = []  # capped alerts, rolled into one summary send
+
+        async def _alert(signature: str, message: str, label: str) -> None:
+            """Send (or roll up past the cap) + write the 24h dedup marker.
+            The marker is written for rolled-up items too — the rollup IS
+            their alert; they shouldn't individually re-fire next cycle."""
+            if await _already_alerted(conn, signature):
+                result["deduped"] += 1
+                return
+            if result["alerted"] < _TELEGRAM_CAP_PER_CYCLE:
+                await send_telegram_message(message)
+                result["alerted"] += 1
+            else:
+                overflow.append(label)
+            await log_audit_event(COVERAGE_DRIFT_ALERTED, signature, "")
+
         db_open_tickers = {r["ticker"] for r in db_rows}
         known_order_ids = set()
         for r in db_rows:
@@ -220,10 +238,7 @@ async def detect_coverage_drift(account_mode: str) -> dict:
                 }),
             )
             signature = _signature(account_mode, D1_UNTRACKED_POSITION, ticker, None)
-            if await _maybe_telegram(conn, signature, _format_d1_message(account_mode, p)):
-                result["alerted"] += 1
-            else:
-                result["deduped"] += 1
+            await _alert(signature, _format_d1_message(account_mode, p), ticker)
 
         # ── D2 — open order not referenced by any open DB row ───────────────
         for o in open_orders:
@@ -251,10 +266,8 @@ async def detect_coverage_drift(account_mode: str) -> dict:
             )
             if is_ours:
                 signature = _signature(account_mode, D2_UNTRACKED_ORDER_HIGH, ticker, order_id)
-                if await _maybe_telegram(conn, signature, _format_d2_message(account_mode, o)):
-                    result["alerted"] += 1
-                else:
-                    result["deduped"] += 1
+                await _alert(signature, _format_d2_message(account_mode, o),
+                             f"{ticker} order {order_id[:8]}")
             # D2 INFO (foreign/manual order): audit-only, no Telegram — the
             # operator may be trading manually in the same Alpaca account.
 
@@ -279,5 +292,15 @@ async def detect_coverage_drift(account_mode: str) -> dict:
             )
             # INFO-only — sync_positions / order_status_reconcile own closing
             # this direction; no Telegram, per spec (mirror-completeness only).
+
+        if overflow:
+            result["overflowed"] = len(overflow)
+            shown = ", ".join(overflow[:10]) + ("…" if len(overflow) > 10 else "")
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}🔴 *Coverage drift: {len(overflow)} more "
+                f"untracked item(s)* — {shown}\n"
+                f"_Individual alerts capped at {_TELEGRAM_CAP_PER_CYCLE}/cycle; "
+                f"full detail via /audit (coverage_drift_detected rows)._"
+            )
 
     return result

@@ -30,6 +30,11 @@ SERVICES=${WATCHDOG_SERVICES_OVERRIDE:-"apollo-orchestrator apollo-market apollo
 
 mkdir -p "$STATE_DIR"
 
+# Run-lock (d3 review): without it, a hung run + the next */5 tick both see the
+# missing state file and double-fire the DOWN alert. Overlap = silent no-op.
+exec 9>"$STATE_DIR/.lock"
+flock -n 9 || exit 0
+
 if [ -f "$ENV_FILE" ]; then
     set -a
     # shellcheck disable=SC1090
@@ -37,42 +42,33 @@ if [ -f "$ENV_FILE" ]; then
     set +a
 fi
 
-log() { echo "$(date -u +%FT%TZ) $*" >> "$LOG_FILE"; }
-
-telegram_alert() {
-    local msg="$1"
-    local chat_id
-    chat_id=$(printf '%s' "${TELEGRAM_ALLOWED_USER_IDS:-}" | cut -d, -f1)
-    if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "$chat_id" ]; then
-        return 0
-    fi
-    curl -fsS -m 15 \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        --data-urlencode "chat_id=$chat_id" \
-        --data-urlencode "text=$msg" \
-        --data-urlencode "parse_mode=Markdown" >/dev/null 2>&1 \
-        || log "telegram_alert send FAILED (curl/API) — alert text was: $msg"
-}
-
-audit_event() {
-    # Best-effort by design — postgres may BE the down service.
-    local event="$1"
-    local summary="${2:0:500}"
-    docker exec -i apollo-postgres psql -U apollo -d apollo -v ON_ERROR_STOP=1 \
-        -c "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ('$event', \$\$${summary}\$\$, '');" \
-        >/dev/null 2>&1 || true
-}
+# Shared telemetry helpers (log / telegram_alert / audit_event) — one canonical
+# copy; the per-script copies drifted within a day (d3 /simplify).
+# shellcheck disable=SC1091
+. /home/apollo/apollo_the_wise/infra/ops_lib.sh || {
+    echo "$(date -u +%FT%TZ) FATAL: ops_lib.sh missing" >> "$LOG_FILE"; exit 1; }
 
 check_service() {
     # Echoes a failure reason, or nothing when healthy.
     local svc="$1"
-    local state health
-    state=$(docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null) || { echo "container not found"; return; }
+    local state health rc
+    # timeout (d3 review): a hung docker daemon — exactly the class a liveness
+    # watchdog must catch — would otherwise block this call forever and the
+    # watchdog would hang silently instead of alerting.
+    state=$(timeout 8 docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null)
+    rc=$?
+    if [ "$rc" = 124 ]; then
+        echo "docker inspect timed out — daemon unresponsive?"
+        return
+    elif [ "$rc" != 0 ]; then
+        echo "container not found"
+        return
+    fi
     if [ "$state" != "running" ]; then
         echo "container state: $state"
         return
     fi
-    health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$svc" 2>/dev/null)
+    health=$(timeout 8 docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$svc" 2>/dev/null)
     if [ -n "$health" ] && [ "$health" != "healthy" ]; then
         echo "docker healthcheck: $health"
         return
