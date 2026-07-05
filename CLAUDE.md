@@ -11,7 +11,7 @@
 
 ## Session Protocol (open + close — the anti-drift ritual)
 
-**SoT for ALL planned work = `PLAN.md`** (consolidated 2026-06-16 — `feedback-runway-not-in-open-ritual`: the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× because nothing reconciled them reliably). `PLAN.md` is the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed. (Mechanical because every prose-discipline reconcile here has failed — only gates hold.)
+**SoT for ALL planned work = `PLAN.md`** — the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed — mechanical because every prose-discipline reconcile here has failed, only gates hold. (Consolidated 2026-06-16 after the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× — `feedback-runway-not-in-open-ritual`.)
 
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
@@ -23,15 +23,15 @@
 2. **`python scripts/check_plan.py`** must pass — it FAILS on any missing project/ETA/status, any past ETA, or any open task not filed. Green = no gaps. Then **`check_plan.py --audit-new`** flags thin PLAN lines (short + no pointer/DoD) — it git-diffs PLAN.md vs `origin/main`, so an ADDED line is a *new OR re-titled* task (git sees both as additions); **enrich each before committing** (detail isn't hard-gateable — semantic; this scoped new-task CLOSE review is the backstop, operator 6/20).
 3. If code changed: `git add <files>` → commit → `git push origin main` (pre-commit Gate 2 re-runs the check).
 
-**"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when its effect is confirmed in production (shadow writes rows · alert fires · backup uploads · cron run checked). "Shipped/deployed" → keep `in_progress` + a verify step until confirmed. Silent-failure class this catches: gdrive backup (5/24–31), #173 theme-shadow 0-rows, FLNC-invisible — all looked done, none were.
+**"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when its effect is confirmed in production (shadow writes rows · alert fires · backup uploads · cron run checked). "Shipped/deployed" → keep `in_progress` + a verify step until confirmed. (Catches: gdrive backup 5/24–31, #173 theme-shadow 0-rows, FLNC-invisible — all looked done, none were.)
 
-**BURNDOWN — the open-task count must trend DOWN (operator directive 2026-06-20).** The list kept roping UP (close some, open more). Reverse it: (1) **single SoT stays — everything is a task, by design; over-counting a bit is fine; NEVER reduce the number by reclassifying/splitting/hiding** (roadmap, v1.x/v2.0 all stay as tasks — we lost things before when they lived outside the list). (2) Reduce ONLY by **real completion** (ship code + verify-live) or **legit dedup** (a true duplicate / already-done, pointed at where the work lives). (3) **Bias to COMPLETE the doable in-session over deferring** — every session aims NET-NEGATIVE (close ≥ open); defer only with a named reason from the closed list below. (4) Goal: active backlog → ~0. A scope-unrecoverable ghost task gets flagged `⚠ SCOPE UNRECOVERABLE` for operator recall/close, not silently deleted.
+**BURNDOWN — the open-task count must trend DOWN** (operator directive 2026-06-20, reversing a close-some/open-more drift): (1) single SoT stays — over-counting a bit is fine; NEVER reduce the count by reclassifying/splitting/hiding (roadmap, v1.x/v2.0 stay as tasks — we lost things before when they lived outside the list). (2) Reduce ONLY by real completion (ship + verify-live) or legit dedup (true duplicate/already-done, pointed at where the work lives). (3) Bias to COMPLETE the doable in-session over deferring — every session aims NET-NEGATIVE (close ≥ open); defer only with a named reason (see closed list below). (4) Goal: active backlog → ~0. A scope-unrecoverable ghost task gets flagged `⚠ SCOPE UNRECOVERABLE` for operator recall/close, not silently deleted.
 
-**On-demand reconcile (operator trigger):** "**where do we stand**" (or similar) = run `python scripts/check_plan.py --today` + read `next-session-pickup` for in-flight context, then report true state (done / in-flight / slipped). One file, one command. (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
+**On-demand reconcile:** "**where do we stand**" (or similar) = run `python scripts/check_plan.py --today` + read `next-session-pickup` for in-flight context, then report true state (done / in-flight / slipped). One file, one command. (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
 
-**Capture (operator trigger):** "**track it**" / "**track this**" = add it as a `PLAN.md` line immediately — under a project, with an `ETA` + `status` (**Miscellaneous** if no home; **propose a NEW project** if a genuine big-rock). Also route to `data_gated_reviews.yaml` if evidence-gated, or a memory if it's a fact/feedback — confirm back WHERE + the #. Default to over-capturing.
+**Capture:** "**track it**" / "**track this**" = add it as a `PLAN.md` line immediately — under a project, with an `ETA` + `status` (**Miscellaneous** if no home; **propose a NEW project** if a genuine big-rock). Also route to `data_gated_reviews.yaml` if evidence-gated, or a memory if it's a fact/feedback — confirm back WHERE + the #. Default to over-capturing.
 
-**EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION** (never a bare bucket label). `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, any open snapshot task not filed, or any **placeholder title** — the create→file-with-substance rule is a gate, not memory (operator 2026-06-20).
+**EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION** (never a bare bucket label) — `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, any open snapshot task not filed, or any **placeholder title** — the create→file-with-substance rule is a gate, not memory (operator 2026-06-20).
 
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
@@ -47,19 +47,7 @@ NOT reasons (these mean *just do it*): "it's late / after-hours," "it's minor/qu
 
 ## 📋 Backlog / TODO / Task / "what's next" questions → `PLAN.md`
 
-When the user asks about backlog, todo, tasks, what's ready/open, "what should
-I work on next", or where we stand — `PLAN.md` at repo root is the SINGLE source
-(projects → tasks → ETA + status; the long-horizon launch lives there as dated
-tasks). Run `python scripts/check_plan.py --today` for the day's plan. Only
-`data_gated_reviews.yaml` retains separate runtime behavior (YAML predicates,
-weekly auto-surface) and it references #IDs back into PLAN.md.
-
-At the end (if code changed):
-```bash
-git add CLAUDE.md <changed files>
-git commit -m "Brief description"
-git push origin main
-```
+Same SoT as Session Protocol above: `PLAN.md` at repo root (projects → tasks → ETA + status; the long-horizon launch lives there as dated tasks). Run `python scripts/check_plan.py --today` for the day's plan. Only `data_gated_reviews.yaml` retains separate runtime behavior (YAML predicates, weekly auto-surface) and it references #IDs back into PLAN.md.
 
 ## 🛑 Trading Setup Changes — Read SSoT First (NON-NEGOTIABLE)
 
@@ -71,9 +59,7 @@ git push origin main
 4. **HARD gates require user sign-off on the filter list.** Agent must NOT classify a filter list as "correct" / "false positive" without user judgment (see parabolic_short.md 2026-05-08 ship→revert→restore cycle — that flip-flop is exactly what this rule prevents).
 5. **Backtest before deploy** for any threshold change. N≥10 historical samples evaluated. Single-case fixes ("fixed because of TICKER 5/07") flagged as such in the change log.
 
-**Update the SSoT in the same commit as the code change.** Stale SSoT is worse than no SSoT — it'll be cited authoritatively but contradict the code.
-
-This rule exists because we accumulated overfitting + oscillation across multiple setups before the discipline was written down (parabolic days_up_streak ship→revert→restore on 2026-05-08, theme ticker bans 2026-04-29, etc.).
+**Update the SSoT in the same commit as the code change** — stale SSoT is worse than no SSoT (gets cited authoritatively, contradicts the code). Rule exists after repeated overfitting/oscillation before this discipline existed (parabolic days_up_streak ship→revert→restore 2026-05-08, theme ticker bans 2026-04-29).
 
 ## What This Is
 Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology). Routes to specialized sub-agents.
@@ -108,8 +94,6 @@ This bug class has recurred many times.
 - ❌ `date.today()` — returns container's UTC date; after 8 PM ET it's already tomorrow. Use `et_today()`.
 - ❌ Mixing tz-aware and tz-naive datetimes in the same comparison — Python raises, but only at runtime.
 - ❌ Hardcoding UTC offsets — DST breaks them twice a year.
-
-**Cautionary tale (compressed):** 2026-04-29 — naive `datetime.now()` in `system_audit.py` false-flagged `nightly_data_pull` 2h before its real ET deadline; the defensive `or datetime.now(_ET)` didn't fire because a naive dt is not None.
 
 ## Running Locally
 ```bash
@@ -196,10 +180,10 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
 - **Engine-drop themes skip Fading**: Pass1 cap_drop / Pass1.5 absorption removals get a synthetic Retired row (`theme_auto_retired` audit; `parent_theme=successor` recovered from the pass audit events) — the 5-day Fading→Retired path can't complete under the 7d recency cap. Stub until canonicalization (R3).
 - **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429.
-- **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — bad descriptions caused TSEM to be permanently banned from semiconductor theme).
+- **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — a bad-description removal once permanently banned TSEM from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
-- **Birth validation (#266, 2026-06-17, operator-signed)**: newly DISCOVERED themes run the SAME `_validate_theme_membership` on their founding members before `_save_themes` — discovery previously skipped it, so bad members sat ~6d until the next Mon/Wed/Fri (evidence: `docs/analysis/theme_birth_validation_evidence_2026-06-17.md`). Changes WHEN, not WHAT; the min-survivor guard keeps small/born-bad themes intact; emits `theme_birth_validated`.
+- **Birth validation (#266, 2026-06-17, operator-signed)**: newly DISCOVERED themes run the SAME `_validate_theme_membership` on their founding members before `_save_themes` — discovery previously skipped it, so bad members sat ~6d until the next Mon/Wed/Fri (evidence: `docs/analysis/theme_birth_validation_evidence_2026-06-17.md`). Changes WHEN, not WHAT; min-survivor guard keeps small/born-bad themes intact; emits `theme_birth_validated`.
 - **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
 - **Unknown sector fallback**: when sector is "Unknown", checks description keyword overlap (4+ letter words) before allowing assignment.
 - **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
@@ -210,22 +194,14 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
 - **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
 - HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
-- **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`.
+- **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`. (Also documented in `docs/setups/magna53_ep.md`.)
 - **Fade guard** (`entry_pipeline.py::check_fade_guard`): tiered — MAGNA53 HIGH passes `None` (skipped), 9M Day 2 passes `0.25` (skip if last < lower 25% of ORB). Stop-buy mechanics + 10:00 ET unfilled-cancel are the real backstop.
 
 ### 9M EP Detection (Parallel Track)
-- **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde)
-- **Quality gates** (target 2–5 alerts/day):
-  - Price ≥ $5, dollar volume ≥ $50M (actual) / ≥ $30M already traded (anticipation)
-  - Directional: gap ≥ 3% OR intraday gain ≥ 4%
-  - Anomaly: effective_vol ≥ 3× ADV (unknown ADV passes; ratio — NOT a flat ADV ceiling)
-  - Anticipation: ≥ 30 min elapsed, ≥ 3M shares already traded, projects to ≥ 12M
-  - Range ≥ 2% intraday; prev_close ≤ 1.20× SMA-10 extension gate
-- **Intraday and EOD use identical filters** — both apply 3× ADV ratio, $50M turnover, $5 price, directional conviction. Any divergence creates phantom sugar babies.
-- **Sugar Baby** = 9M day + net up ≥ 3% vs prev_close + close > open + close in top 25% of range → Day 2 ORB candidate. "Green" means net up on the day (matches intraday `_MIN_GAP_PCT` floor), NOT just close > open — the latter alone admits gap-down wick-fills (e.g. WU 2026-04-24: gap −10%, recovered to net −4.6%, close > open ✓ but categorically not a breakout).
-- **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based
-- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD confirmed; carries 6 going-in shape columns + `_shape_tag()` bucket; renamed from `mi_9m_sugar_babies` 2026-05-23 #82 — the persistent Pradeep cohort is in `mi_sugar_babies_cohort` separately)
-- **`mi_daily_closes`** has `open_price`, `high_price`, `low_price` — required for sugar baby filter
+- **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde). Quick reference: price ≥ $5, dollar volume ≥ $50M actual (≥ $30M already-traded for anticipation), directional gap ≥ 3% OR intraday gain ≥ 4%, anomaly effective_vol ≥ 3× ADV (ratio, NOT a flat ceiling; unknown ADV passes). **Full gate list + Sugar Baby definition + stop placement are the SSoT in `docs/setups/ninem.md` (FULL parity verified 2026-07-05) — read it before touching any threshold.**
+- **Intraday and EOD use identical filters** — any divergence creates phantom sugar babies.
+- **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based.
+- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD confirmed; renamed from `mi_9m_sugar_babies` 2026-05-23 #82 — the persistent Pradeep cohort is in `mi_sugar_babies_cohort` separately)
 - **Anticipation cadence carve-out**: silent anticipations hit DB/audit only; Telegram only when gap ≥ 10% OR proj_vol ≥ 25M.
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 
@@ -264,10 +240,7 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline AFTER spec_builder so it covers both `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly. Multiplies shares; recomputes position_size + risk_dollars.
 - `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`. Use case: 9M Day 2 starts at multiplier=0.5 + cap=2 when promoting to live.
 
-**Critical correctness invariants:**
-- Mode-bound `client_order_id`: every submit uses `make_client_order_id()`. Prevents cross-account COID collisions on concurrent same-setup submits.
-- Cross-account event validation: WebSocket dispatcher refuses events whose order_id resolves to a different account_mode than the stream.
-- `AND account_mode = $X` filter on every `mi_live_trades` query in trade lifecycle code.
+*(The 3 correctness invariants — mode-bound COID, cross-account event rejection, `account_mode` filter on every trade query — are the facts already stated in Key components above; this is the safety backbone, don't relax any of the three.)*
 
 ### Stop-Leg ID Capture
 - `alpaca_client.extract_stop_leg_id(order)` is the canonical helper — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Robust against Python 3.11+ Enum stringification (`str(OrderType.STOP)` → `"OrderType.STOP"`).
@@ -293,8 +266,8 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
 - `mi_live_trades` = actual Alpaca order table
 - ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
-- Safeguards (SSoT `docs/setups/safeguards.md`): max 5 positions (`MAX_CONCURRENT_LIVE_POSITIONS`), 2% daily loss limit, tiered drawdown breaker (active 2026-06-03), `/pause` runtime halt (#345). The count-based circuit breaker is 10 losses but DEPRECATED — superseded by the drawdown breaker.
-- Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime, #345)
+- Safeguards (SSoT `docs/setups/safeguards.md`): max 5 positions (`MAX_CONCURRENT_LIVE_POSITIONS`), 2% daily loss limit, tiered drawdown breaker (active 2026-06-03). Count-based circuit breaker (10 losses) is DEPRECATED — superseded by the drawdown breaker.
+- Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime halt, #345)
 
 ### Telegram Formatting
 - NEVER use pipe tables — Telegram can't render them. Use monospace code blocks.
@@ -311,17 +284,17 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 | 9:31 AM | ORB monitor — bracket orders |
 | 9:35 AM | Stop refresh Day 2+ |
 | 10:00 AM | EP scan stops + ORB unfilled-entry cleanup |
+| 3:45 PM (mon-fri) | **Partial-exit scan** (`partial_exit_scan` — Day 3-5 partial-profit; runs intraday so the stop-replace settles same day instead of parking in `pending_replace` after the close, #361 split from the 4:45 job) |
 | 4:05 PM | EOD cleanup |
 | 4:10 PM | EOD EP recap (HIGH outcomes + feed telemetry) |
 | 4:15 PM | **Post-EOD audit** (L1 invariants + trade-side L2/L3) |
-| 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
-| 3:45 PM (mon-fri) | **Partial-exit scan** (`partial_exit_scan` — Day 3-5 partial-profit, runs DURING market hours so the stop-replace settles intraday instead of parking in `pending_replace` after the close; SPLIT from the 4:45 job, #361) |
-| 4:45 PM | Position update (SMA trail + stop updates + daily summary — partials moved to the 3:45 scan, #361) |
-| 9:35 AM–3:55 PM (every 5 min, mon-fri) | **Intraday flag-break scan** (shadow — catches moment TIGHTENING/COILED/TRIGGERED ticker breaks above base_high with volume confirmation; `/flagbreaks`, #94) |
-| 9:00 AM–4:45 PM (every 15 min, mon-fri) + boot | **Order-status reconcile** (DB↔Alpaca silent-stop catcher; `order_status_reconciled` audit row on divergence, audit-only #123) |
-| 4:00 PM (mon-fri) | **9M EP Pace EOD digest** (whole-day rollup of pace/anticipation, dedup vs same-day actuals, cap 20; #133, hourly→EOD 2026-06-07. Actual 9M still rides the prompt per-5-min digest) + **Entry-technique EOD digest** (`run_intraday_signals_eod_digest` — one roll-up of the 5 intraday shadow detectors; #168, replaced ~23/day per-tick pings now default-off) |
 | 4:25 PM (mon-fri) | **EP Judge delta digest** (`_judge_delta_digest_job` — PUSH of the holistic judge's promote/demote deltas vs the floor; subtitle reflects shadow-vs-load-bearing toggle; empty day → no Telegram; #240/W3) |
+| 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
+| 4:45 PM | Position update (SMA trail + stop updates + daily summary — partials moved to the 3:45 scan, #361) |
 | 4:55 PM (mon-fri) | **Time-stop scan** (9M Day 2 meanderers ≥5 trading days + peak excursion <+3%; operator-confirm via `/timestop TICKER`, #91) |
+| 9:35 AM–3:55 PM (every 5 min, mon-fri) | **Intraday flag-break scan** (shadow — catches the moment a TIGHTENING/COILED/TRIGGERED ticker breaks above base_high with volume confirmation; `/flagbreaks`, #94) |
+| 9:00 AM–4:45 PM (every 15 min, mon-fri) + boot | **Order-status reconcile** (DB↔Alpaca silent-stop catcher; `order_status_reconciled` audit row on divergence, audit-only #123) |
+| 4:00 PM (mon-fri) | **9M EP Pace EOD digest** (whole-day pace/anticipation rollup, dedup vs same-day actuals, cap 20; #133, hourly→EOD 2026-06-07 — actual 9M still rides the per-5-min digest) + **Entry-technique EOD digest** (`run_intraday_signals_eod_digest` — roll-up of the 5 intraday shadow detectors, replacing ~23/day per-tick pings now default-off; #168) |
 | 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
 | 5:22 PM (mon-fri) | **Sugar Babies cohort refresh** (Pradeep persistent watchlist — observational, `/sugarbabies`) |
 | 5:25 PM | **Continuation flag scan** (shadow — VCP/Qullamaggie tightening) |
@@ -349,24 +322,17 @@ Pre-commit gates are vanilla shell + fast (<1s); the pre-push test gate is ~30s 
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 - **Disaster recovery**: if the host dies, follow `docs/ops/disaster_recovery.md` (operator runbook + `infra/restore.sh` driver). RTO ~95 min. Nightly cron writes pg_dump + GPG-encrypted secrets bundle to gdrive; `_backup_health_check_job` (04:33 ET) Telegrams if either blob is stale >36h. OAuth recovery (gdrive upload failing): `docs/ops/gdrive_backup_recovery.md`.
 
-**Canonical deploy command** — preflight is chained inside the script so the deploy fails loudly if entry-pipeline safeguards can't authenticate. **Use the script, not raw `docker compose` commands.** The 2026-05-13 outage was caused by deploying without the verification step.
+**Canonical deploy command — use the script, not raw `docker compose` commands.** It chains git pull → build → up → wait-for-boot → preflight (`set -euo pipefail`; any step failing exits non-zero with a specific code per failure mode). Scope is REQUIRED (no default, #154 tier-1) — deploy.sh also aborts (exit 11, #154 tier-2) if the pull brought changes to files owned by a service outside your chosen scope.
 ```bash
-# Scope is REQUIRED (no default) — #154 tier-1, so you never silently leave a
-# service on stale code. deploy.sh also aborts (exit 11) if the pull brought
-# changes to files owned by a service outside your chosen scope (#154 tier-2).
 bash scripts/deploy.sh market-agent    # market agent only
 bash scripts/deploy.sh orchestrator    # orchestrator only
 bash scripts/deploy.sh both            # both services
 ```
-Ownership map for the scope-drift guard: `channels/ core/ main.py` → orchestrator;
-`agents/market_intelligence/ scripts/` → market-agent; anything else (`shared/`,
-`docker/`, `requirements/`) → both. New Telegram slash commands change
-`channels/telegram.py` (orchestrator-owned) → need `orchestrator` or `both`, not
-the market-agent default that silently dropped `/partialnow` on 2026-05-28.
+Ownership map for the scope-drift guard: `channels/ core/ main.py` → orchestrator; `agents/market_intelligence/ scripts/` → market-agent; anything else (`shared/`, `docker/`, `requirements/`) → both. (New Telegram slash commands touch `channels/telegram.py`, orchestrator-owned — need `orchestrator`/`both`, not the market-agent default that silently dropped `/partialnow` on 2026-05-28.)
 
-The script runs git pull → build → up → wait-for-boot → preflight in one chain with `set -euo pipefail`. Any step that fails exits non-zero (with a specific code per failure mode). The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Treats `setup:*` / `infra:*` as failures; only `block:*` reasons count as pass-through. Failure here = deploy is not green.
+The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Treats `setup:*` / `infra:*` as failures; only `block:*` reasons count as pass-through. Failure here = deploy is not green.
 
-**2026-05-13 outage would have been caught here**: magna53 + 9m_day2 at `phase='live'` under `ENABLE_LIVE_MODE=false` raised `KeyError: 'ALPACA_LIVE_API_KEY'` on `get_account('live')`. The legacy boot smoke (`verify_dual_account_clients`) didn't catch it because it only checks clients whose credentials happen to be present. The preflight exercises the strategy-driven path, which is what actually fires.
+**Why this matters**: a raw `docker compose` deploy (skipping preflight) caused the 2026-05-13 outage — `phase='live'` strategy under `ENABLE_LIVE_MODE=false` raised `KeyError: 'ALPACA_LIVE_API_KEY'`, uncaught by the old boot smoke (`verify_dual_account_clients` only checks clients whose credentials happen to be present). This preflight exercises the strategy-driven path instead — the one that actually fires on a real ORB entry. Full incident detail: `CHANGELOG.md` 2026-05-13 entry.
 
 ## Required Env Vars
 ```
@@ -386,13 +352,13 @@ ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 
 # Methodology calibration overrides
-REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR PIN.
-                             # Code default is $5M (conservative-block). This env
-                             # override loosens to admit pre-revenue names pending
-                             # backward-check evidence. 2026-05-20/21 N=2 ratchet
-                             # was rolled back; N=7 clean cohort is still below
-                             # ship threshold. Re-evaluate at #55 on 2026-06-20.
-                             # Quarterly sweep auto-runs Feb/May/Aug/Nov 1st.
+REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR PIN
+                             # (code default $5M, conservative-block). Loosens to
+                             # admit pre-revenue names pending backward-check
+                             # evidence: 2026-05-20/21 N=2 ratchet rolled back;
+                             # N=7 clean cohort still below ship threshold.
+                             # Re-eval at #55 on 2026-06-20; quarterly sweep
+                             # auto-runs Feb/May/Aug/Nov 1st.
 ```
 
 ---

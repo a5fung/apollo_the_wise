@@ -156,6 +156,16 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 - **session 2 — Friday Curated Watchlist + entry-tag consistency**: New `friday_watchlist.py` Fri 18:00 ET cron. 6 per-source curators (EP, 9M sugar, themes, wick, parabolic, RS) cross-source dedup with priority hierarchy. Top-25 cap. TradingView two-depth integration: text import block (EXCHANGE:TICKER comma-separated) + per-ticker chart-link inline keyboard top-8. `_send_with_keyboard` posts directly to Bot API. `mi_weekly_watchlists` schema. Lesson: TV's no-write-API ceiling → text-import + chart-link buttons is highest depth; cross-source priority hierarchy prevents one ticker dominating multiple sections while preserving every source tag.
 - **session 1 — EP scan dead-zone telemetry beef-up**: `mi_ep_scan_log` UNIQUE collapsed temporal trajectories. Dropped UNIQUE name-agnostically. Added `scan_time_et`, `rank_by_gap`, `projected_vol_multiple`, `pm_rvol`, `adv`, `adv_source`, `minutes_since_open` cols. Reader uses DISTINCT ON. New `mi_ep_scan_outcomes` caches fwd 5d/10d max-high. ADV probe bumped [:20]→[:50] with `ep_adv_probe_synthesized` audit. Two data-gated reviews filed. Lesson: UNIQUE on (scan_date, ticker) erased exactly the data needed for dead-zone reconstruction — append-only + DISTINCT ON for "current state" is the right shape.
 
+### 2026-04-29 — naive `datetime.now()` false-flag (nightly_data_pull)
+
+- A naive `datetime.now()` call in `system_audit.py` false-flagged `nightly_data_pull` as
+  overdue ~2h before its real ET deadline. The defensive `or datetime.now(_ET)` fallback
+  didn't fire because a naive datetime is not `None` — the bug silently produced a wrong
+  wall-clock comparison instead of an obvious crash. Root cause folded into the broader
+  pytz/ZoneInfo permanent fix (2026-06-05); see memory `timezone_lmt_pytz_permanent_fix`
+  and CLAUDE.md's Time Handling section for the mechanical fix (deploy-gate ban on
+  naive `datetime.now()`/`pytz`).
+
 ### 2026-04-28
 - **session 4 — P22 Wick-Fill shadow tracker**: First strategy shipped through Strategy Maturity Framework. Negated shooting-star setup (`close_in_range_pct ∈ [0.50, 0.75)`) → Day 2+ break of `prior_high` is the short-trap fill. New `mi_wick_candidates` mirrors sugar-baby shape + adds `filled_wick BOOL` + dual fwd-return anchors (from-high conditional on fill, from-close unconditional baseline — gap = strategy edge). Reuses `_NINEM_CONTEXT_CTE` + `is_9m_directional` so WU 2026-04-24 fix stays enforced. Promotion model `telemetry_review` (n≥30, fill_rate≥0.50). Lesson: framework worked as designed — strategy #5 = config row + adapter + sweep call site.
 - **session 3 — Strategy Maturity Framework (Option A)**: `agents/market_intelligence/strategies/` package (registry / adapters / promotion / telegram). `mi_strategies` table + `mi_live_trades.signal_type` column (backfilled). Phase gate at 3 entry points (entry_pipeline, shadow_orb_tracker, parabolic_detector). Three promotion evaluators (unpaired_r / paired_r / telemetry_review). Manual promotion. Lesson: thin overlay over per-strategy outcome tables is right when each has materially different telemetry semantics; schema unification first would block on backfill that doesn't pay off until ≥6 strategies.
