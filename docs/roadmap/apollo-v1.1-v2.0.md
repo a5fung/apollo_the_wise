@@ -119,7 +119,23 @@ de-bias (post-#214 cohort) · dashboards db-flip (7/15 gate) · hygiene queue
 
 ---
 
-# PART II — Apollo v2.0 (step change → the tier-one trader)
+# PART II — THE PHASE-2 PROGRAM (revised in place 2026-07-05, #419 — Fable planning block 2)
+
+**Phase 2 begins at the v1.0 declaration** (#418 / #425 walk, window ~7/20–7/31; the finish line
+is `v1-closeout-productization.md` §2). Its intake is exact: the **79 open tasks dispositioned
+PHASE-2** at the #418 walk, absorbed pillar-by-pillar below (every task ID appears exactly once;
+re-dated in PLAN.md per the milestone map — no more July date-parking). The v1.1 waves (PART I)
+fold in: W3 exit-tuning → P3, W4 chart-vision → P2, W5 experience-seed → P1; W1/W2 closed.
+
+**Program milestones (dated, trigger-armed — same discipline as the v1.0 glide path):**
+
+| Milestone | Date | What lands / decides | Trigger |
+|---|---|---|---|
+| **M1 — Judge-axes checkpoint** | **7/18** | The ONE batched event: theme+structure axis shadows read → batched regrade eval → #335 flip decision + #299 subset + #329 composition | dated sitting (already standing) |
+| **M2 — First setup graduations** | **7/14–7/25** | #395 coil GO/NO-GO (7/14) · #397 HTF GO/NO-GO (7/18) · S-E deprecations verified in the digest | evidence gates in the tasks |
+| **M3 — Quarterly reviews cluster** | **8/1** | #207 model review (Sonnet-5 evidence banked 7/5) · this doc's first monthly ride-along · crypto SMA90 history completes → readiness verdict flips (E1) | dated tasks + registry |
+| **M4 — Management program start** | **8/15** | #306 STEP-3 exit-tune decision executed → P3 management-judge design kickoff (the money pillar) | gated on STEP-2 sweep + operator decision |
+| **M5 — H2 gate** | **10/1** | P3/P5 H2 items activate; #381 swallow-baseline ZERO (the D-8 dated milestone) | horizon boundary |
 
 What "tier-one" means, measurably: (1) selection a strong discretionary trader
 would respect (judge precision on labeled cohorts), (2) sizing that scales with
@@ -130,6 +146,10 @@ those five. Horizons: **H1 = Q3 2026, H2 = Q4 2026 (aligns with the existing
 theme-gating Track-B endpoint), H3 = 2027 / aspirational.**
 
 ## P1 — The Experienced Judge (axis 3 at scale) · H1→H2
+
+**Absorbed (12):** #255 #299 #301 #307 #337 #212 #230 #233 #269 #215 #207 #308. First gate: M1
+(the eval/labeling spine); #307's weekly labeling ritual is the corpus engine and starts
+immediately post-declaration.
 
 The step change: from "smart at each decision" to "experienced at this craft."
 
@@ -154,6 +174,10 @@ The step change: from "smart at each decision" to "experienced at this craft."
 
 ## P2 — Full Sight (axis 2 complete) · H1→H2
 
+**Absorbed (17):** #367 #368 #322 #328 #329 #330 #331 #332 #333 #335 #343 #309 #167 #210 #211
+#235 #416. First gate: M1 (7/18) — the axis flip decision; the #210/#211 sourcing backbone is
+this pillar's data spine (LLM = judge, never discoverer).
+
 - **Multimodal decision context**: daily chart (v1.1-W4) → intraday chart at
   entry decision → sector/peer chart + SPY/QQQ context panel. The judge sees what
   the human sees at the moment the human would look.
@@ -170,6 +194,9 @@ The step change: from "smart at each decision" to "experienced at this craft."
   at minutes cadence — real engineering, H2. The rest is incremental.*
 
 ## P3 — The Manager (the second judge) · H2
+
+**Absorbed (3):** #306 #310 #414. First gate: M4 (8/15) — the #306 STEP-3 decision seeds the
+management program; the 18%-MFE-capture STEP-0 number is the pillar's baseline KPI (bar >50%).
 
 The money in this methodology is in the management. Today management is mechanical
 (bracket, partial rule, MA trail, time-stop). The step change is a **management
@@ -200,6 +227,11 @@ promotion gates.
 
 ## P4 — The Multi-Setup Book · H1→H2
 
+**Absorbed (23):** Family-A program #402 #327 #353 #354 #356 #396 #397 #357 #297 #283 #385 #386
+#394 #395 #358 + #311 #314 #146 #168 #170 #178 #359 #316. First gates: M2 (the 7/14 + 7/18
+GO/NO-GOs). Per #418 D-2/D-4: 9M = a stock CONDITION feeding these setups (never a tradeable
+setup); flag_continuation deprecated in favor of HTF + Anticipation; wick_fill = backlog idea.
+
 Diversify the edge across setups and regimes — one gap-long strategy is one
 regime's book.
 
@@ -219,6 +251,9 @@ regime's book.
 
 ## P5 — Capital & Autonomy Ladder · H2→H3
 
+**Absorbed (3):** #312 #415 #197. First gate: M5 (H2) — nothing here activates before the
+allocator shadow accrues contested days (#415 registry re-review 8/4).
+
 - **Unified allocator live**: `unified_allocator_shadow` (already running) becomes
   the capital brain — per-strategy risk budgets from accrued expectancy +
   correlation, Kelly-fraction-capped.
@@ -233,6 +268,11 @@ regime's book.
   Apollo runs the book inside hard guardrails.*
 
 ## P6 — Institution-grade operations (the rail under everything) · H1→H2
+
+**Absorbed (21):** #313 #379 #381 #340 #348 #363 #407 #258 #265 #216 #176 #281 #338 #239 #274
+#384 #121 #334 + operator surfaces #194 #185 #315. Dated: #381 swallow-baseline ZERO = M5
+(10/1); #121 HTML migration early (kills the Telegram fence-bug class); the dashboards carry
+their standing trigger (Apollo-Trades tab at ≥10 closed live trades).
 
 - #256 completed: execution/intelligence split + staging pipeline (no commit
   reaches prod execution unbooted); per-service deploys; DR matured.
@@ -278,6 +318,20 @@ regime's book.
    exist (shipped via `_ensure_ep_alert_columns`, #247) except
    `structural_chart_verdict`, which lands with #267 (point 2).
 
+## Exploration lanes (E-series — parked ideas with explicit activation triggers, never silent)
+
+- **E1 — Crypto RS as an INFORMATION surface**: the shadow module's designed endpoint — RS/regime
+  briefing sections go live when the SMA90 trigger data completes (**~8/1**, M3) and the readiness
+  verdict flips. Crypto TRADING stays excluded (below); this is eyes only, operator decision at M3.
+- **E2 — Cross-ticker narrative synthesis maturation**: the known capability gap (dev-session
+  reasoning ≠ deployed tooling) — Lane-2 narrative (#167) + the questioner/investigator loop
+  (#212) converge into a top-down emerging-theme pass. Rides P1/P2 absorbed tasks; called out so
+  the gap's closure is explicit, not incidental.
+- **E3 — Day-trade capacity unlock**: #316 (Alpaca Rule-4210 rollout) — when confirmed, the PDT
+  lockout relaxes via CHANGE_PROCESS and intraday re-entry capacity expands (P4 sizing input).
+- **E-intake rule**: new ideas enter HERE with a trigger + evidence gate, not as floating tasks —
+  the monthly ride-along (M3 cadence) is the review point.
+
 ## What is explicitly NOT in this program
 
 - Tick-level / millisecond tape reaction (boundary holds: judgment at decision
@@ -291,8 +345,9 @@ regime's book.
 
 ## Review cadence & governance
 
-- This doc: monthly review (first ride-along: 8/1). Items promote to #-tasks at
-  execution start; BACKLOG roster carries one row per active pillar.
+- This doc: monthly review (first ride-along: 8/1 = M3). All 79 absorbed items are ALREADY
+  #-tasks (PLAN.md, re-dated to their milestone map 7/5) — the board and this program are the
+  same list viewed two ways; on any conflict, PLAN.md wins.
 - Every grade-path/filter/management change: CHANGE_PROCESS + evidence + operator
   sign-off — unchanged. The autonomy ladder never bypasses the safety line.
 - Success metrics reviewed with each phase: replayed expectancy (W1 baseline),
