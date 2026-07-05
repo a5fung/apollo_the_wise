@@ -164,18 +164,33 @@ no design judgment left).
 - **D-9 (#370)**: build completeness-registry increment 5 or accept 4/5 as done? *Rec: don't
   build — partly redundant with `_backup_health_check_job` + the new restore-check/watchdog.*
 
-## 5. Glide path (dated, capacity-honest)
+## 5. Glide path — DAY-BY-DAY, trigger-armed (tightened 7/5 evening, operator directive: no idle plan)
 
-Cadence assumption: ~5-7 card-executable items/week + 2 careful-path sessions/week (proven
-this sprint). Soak/streak clocks run concurrently — they are observational, not work.
+All build work compresses into ONE week. Every item's PLAN.md ETA = its calendar day below, so
+`check_plan` (pre-commit Gate 2 + the OPEN ritual) FAILS on any slip — the dates ARE the triggers.
 
-| Window | Work | FL clocks |
+| Day | Work (ETAs enforced by check_plan) | FL clocks |
 |---|---|---|
-| **Mon 7/6** | Verify-class sweep: #347 #256 #405(Tue) #317 · #367 read (Phase-2 but scheduled) · digest card queue (4 ready reviews) | FL-1 day 4 · FL-3 night 2 · FL-8 needs 7/12 |
-| **Week 7/6–7/12** | Small-build burn: S-A S-B #378+S-C S-D #404 #412 #290 #195 #280 #420 (cards) · careful: #287, #261+F4 | FL-3 streak completes 7/12 · FL-8 4th Sunday 7/12 |
-| **Week 7/13–7/19** | Careful: #184(b) ingest (+5 quiet days = FL-4) · #417 backfill+retrim · event-driven #150/#413 as they occur · **7/18: #335 checkpoint = Phase-2 Milestone 1 (its own sitting)** | FL-1 10th clean day ≈ 7/14 (if no resets) |
-| **Week 7/20–7/26** | Buffer + FL-4 quiet-day tail + any reset re-runs · walk §8 with the operator | **Declaration window opens ~7/20** |
-| **Hard outer bound** | If not declared by **7/31**, the plan itself is re-reviewed (something structural was mispriced) | |
+| **Mon 7/6** | Verify sweep: #347 · #256→close · #412 (metrics encode + ADV truncation) · careful: #261+F4 · build #426 (FL countdown → evening briefing) | FL-1 d4 · FL-3 n2 |
+| **Tue 7/7** | Verify: #405 #317 · cards: #421 (log caps) #422 (disk check) #424 (deprecations) · careful: #287 | countdown line LIVE tonight |
+| **Wed 7/8** | Cards: #378+S-C (cost board) #195 (rotate) #280 (staging account) · careful: #417 (backfill+retrim) | |
+| **Thu 7/9** | Cards: #290 #420 (pinger) #423 (rotation runbook) · careful: #183 (enum boundary) · #303 mini-walk | |
+| **Fri 7/10** | Careful: **#184(b) broker-order ingest** (the week's big rock) + slip absorber | FL-4 quiet-clock starts |
+| **7/11–7/19** | NO planned build — clocks only: FL-3 completes 7/12 · FL-8 7/12 · FL-1 ≈7/14 · FL-4 ≈7/16 · event-driven #150/#413 as they fire · **7/18 = #335 checkpoint (Phase-2 M1, separate sitting)** | |
+| **#425 walk** | **ETA 7/21 (HARD, check_plan-gated) — pull EARLIER the moment #426 shows all-green (earliest ~7/17)** | declaration |
+
+### 5b. The anti-idle triggers (mechanical, not memory)
+
+1. **Per-day ETAs + Gate 2**: any blocking item past its date fails every commit and tops
+   `check_plan --today` at every session OPEN. Max-1-rebump caps silent slippage.
+2. **#426 daily countdown** (built Mon): one line in the EVENING BRIEFING —
+   `v1.0: FL-1 5/10 · FL-3 3/7 · blocking 12 open · decl ~7/18` — RED with the reason on any
+   clock reset. The operator sees drift the same day it happens, not at the walk.
+3. **#425 the walk is itself a dated task**: 7/21 hard; passing it un-walked breaks the gate.
+4. **Event-driven items alert, not wait**: #150/#413 close off their audit-row events;
+   coverage-drift (FL-4) Telegrams on any D1/D2-HIGH.
+5. **Hard outer bound stands**: not declared by **7/31** → the plan itself is re-reviewed
+   (something structural was mispriced).
 
 ## 6. Productization sweep (off-board gaps)
 
