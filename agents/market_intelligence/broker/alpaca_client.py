@@ -569,19 +569,33 @@ async def get_position(ticker: str, account_mode: str | None = None) -> dict | N
         return None
 
 
-async def get_all_positions(account_mode: str | None = None) -> list[dict]:
-    """Get all open positions."""
+async def get_all_positions(
+    account_mode: str | None = None,
+    raise_on_error: bool = False,
+) -> list[dict]:
+    """Get all open positions.
+
+    raise_on_error (#184 increment 2, 2026-07-05): mirrors get_open_orders'
+    F16 pattern — callers whose NEXT ACTION depends on distinguishing "flat"
+    from "couldn't read the broker" MUST pass True. With the default []
+    fallback, a transient API failure is indistinguishable from a genuinely
+    empty book (the #137 mass-close class: an empty/degraded read must never
+    be interpreted as "everything's gone"). The alert still fires before the
+    re-raise.
+    """
     try:
         client = get_trading_client(account_mode)
         positions = client.get_all_positions()
         return [_position_to_dict(p) for p in positions]
-    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then the [] fallback
+    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then [] or re-raise
         logger.error(f"Failed to get all positions: {e}")
         # #370 input-side: a positions-read failure that SILENTLY returns [] looks like "no positions"
         # to sync_positions (the exact silent-failure class — a transient API error → false "gone from
-        # Alpaca"). Fire the deduped alpaca alert, then keep the [] fallback (behavior unchanged).
+        # Alpaca"). Fire the deduped alpaca alert, then [] fallback or re-raise (raise_on_error).
         from agents.market_intelligence.llm_health import maybe_alert_api_failure
         await maybe_alert_api_failure("alpaca", e, context="get_all_positions")
+        if raise_on_error:
+            raise
         return []
 
 

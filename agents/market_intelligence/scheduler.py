@@ -44,7 +44,7 @@ from agents.market_intelligence.briefing import (
     send_ep_alert,
     send_telegram_message,
 )
-from agents.market_intelligence.constants import mode_prefix
+from agents.market_intelligence.constants import mode_prefix, ENABLE_LIVE_MODE
 from agents.market_intelligence.backtester.tracker import (
     run_paper_trade_tracker,
     format_tracker_telegram,
@@ -2436,7 +2436,7 @@ async def _judge_delta_digest_job():
     return len(rows)
 
 
-async def _order_status_reconcile_job(lookback_days: int = 90):
+async def _order_status_reconcile_job(lookback_days: int = 90, run_coverage_drift: bool = True):
     """Periodic DB↔Alpaca order-status reconciliation (#123, 2026-05-26).
 
     Catches silent stops (Apollo never sees the trade_update stream event)
@@ -2447,6 +2447,17 @@ async def _order_status_reconcile_job(lookback_days: int = 90):
     Audit-only — no Telegram (advisor 2026-05-26: retroactive 'stop fired
     hours ago' alerts are operationally confusing; operator drills via
     `/audit order_status_reconciled`).
+
+    #184 ADR 0008 increment 2 (2026-07-05): right after the order-status
+    reconcile, runs the READ-ONLY DB↔broker coverage-drift detector
+    (positions + open orders vs mi_live_trades) for each active account
+    mode — same 15-min cadence, consolidated onto this existing job rather
+    than a new one (per the consolidate-surfaces rule). Coverage-drift is
+    strictly observe-only (audit rows + Telegram; no mutation) but still
+    runs under its own per-mode try/except — an exception there must never
+    break this reconcile job (loud: logged + audited, never silently
+    swallowed). `run_coverage_drift=False` on the #150 1-minute open-window
+    variant below.
     """
     try:
         from agents.market_intelligence.broker.order_manager import reconcile_all_modes  # exec-boundary-ok: moves-with-job (W2)
@@ -2456,6 +2467,22 @@ async def _order_status_reconcile_job(lookback_days: int = 90):
                 f"order_status_reconcile: examined={result['examined']} "
                 f"updated={result['updated']} errors={result['errors']}"
             )
+
+        if run_coverage_drift:
+            from agents.market_intelligence.broker.coverage_drift import detect_coverage_drift  # exec-boundary-ok: moves-with-job (W2)
+            modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+            for mode in modes:
+                try:
+                    await detect_coverage_drift(mode)
+                except Exception as e:
+                    from agents.market_intelligence.audit_events import COVERAGE_DRIFT_CHECK_FAILED
+                    logger.exception(f"coverage_drift_check[{mode}] failed: {e}")
+                    await log_audit_event(
+                        COVERAGE_DRIFT_CHECK_FAILED,
+                        f"coverage-drift check crashed for {mode}: {e}",
+                        f"account_mode={mode}",
+                    )
+
         return result.get("updated", 0)
     except Exception as e:
         logger.error(f"order_status_reconcile_job failed: {e}", exc_info=True)
@@ -2467,8 +2494,13 @@ async def _order_status_reconcile_job_open():
     """#150 open-window variant — 1-day lookback only. The 9:31-9:40 every-minute
     cadence exists to time TODAY's pending_new->new transition; a 90-day sweep would
     re-poll every stale non-terminal order ~10x/morning for nothing (/simplify
-    efficiency finding 2026-06-02)."""
-    return await _order_status_reconcile_job(lookback_days=1)
+    efficiency finding 2026-06-02).
+
+    run_coverage_drift=False (#184): the 15-min job above already runs the
+    coverage-drift check on its own cadence — running it 10x every morning on
+    this tight timing-only cadence would be redundant noise on top of that.
+    """
+    return await _order_status_reconcile_job(lookback_days=1, run_coverage_drift=False)
 
 
 async def _backup_health_check_job():

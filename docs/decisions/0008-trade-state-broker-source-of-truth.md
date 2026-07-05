@@ -50,9 +50,15 @@ reconcile-side must **never act on a non-confirmed/empty/partial/stale broker re
 3. **Guarded auto-correction** — only after (1)+(2) bake: bring the DB to match the broker,
    gated by the generalized degraded-read guard. Never the first increment.
 
-Plus: **ingest untracked broker orders** (the `a41e7c6a` gap) so the mirror is complete, and
-**fix `/syncnow`** — the on-demand reconcile trigger, currently broken ("Unknown command"
-despite full wiring; likely input-artifact / runtime cmd mismatch).
+Plus: **ingest untracked broker orders** (the `a41e7c6a` gap) so the mirror is complete
+(increment 2(b), not yet built), and **`/syncnow`** — the on-demand reconcile trigger.
+~~currently broken ("Unknown command" despite full wiring; likely input-artifact / runtime
+cmd mismatch)~~ **STALE — fixed 2026-06-04.** The "Unknown command" was a zero-width-char
+input artifact (`_normalize_slash_cmd`, commit `6fe4114`), not a wiring gap; `/syncnow`
+wiring was already complete on main. Confirmed RESOLVED 2026-06-24 (`#184` PLAN note,
+"PART (c)"): routing-test coverage added (`test_operator_commands_partialnow_syncnow.py`
++ frozen in `test_execute_task_routing.py`). This paragraph was left stale in the ADR text
+itself until this update (2026-07-05) — don't cite the struck-through line as current.
 
 ## Scope boundary — #151 is NOT part of this
 
@@ -83,8 +89,31 @@ untracked-order + false-naked, or the bug isn't understood). Both are cutover pr
     integration-gated; do NOT refactor live error paths offline).
   - **Blocking deploy-wire deferred** until #225 clears the 3 residuals (wiring a
     failing gate would block all deploys). Until then the gate runs informationally.
-- **Increment 2 (read-only coverage-drift detector)** and **Increment 3 (guarded
-  auto-correction + runtime demote-helper)** — not started; next-week / paper.
+- **Increment 2(a) — read-only coverage-drift detector: BUILT 2026-07-05.**
+  `agents/market_intelligence/broker/coverage_drift.py::detect_coverage_drift(account_mode)`.
+  Three drift classes, observe-only (audit rows + Telegram; zero mutation):
+    - **D1 untracked broker position** (no open DB row for that ticker+mode) — HIGH,
+      Telegram. This is the `a41e7c6a` mirror-gap class.
+    - **D2 untracked open order** (order id not referenced by any open DB row's
+      entry/stop) — HIGH + Telegram when `client_order_id` carries our
+      `apollo_{mode}_` prefix (system-created, lost track of); INFO/audit-only
+      otherwise (may be the operator trading manually in the same account).
+    - **D3 DB-open-without-broker-presence** (open DB row with no broker position
+      and no live entry order) — INFO/audit-only; `sync_positions` /
+      `order_status_reconcile` already own closing this direction.
+  Wired into the existing 15-min `_order_status_reconcile_job` (scheduler.py) right
+  after `reconcile_all_modes` — consolidated onto that cadence rather than a new job,
+  guarded per-mode so a coverage-drift exception can never break the order-status
+  reconcile. Telegram dedup is DB-sourced (`mi_audit_log` `coverage_drift_alerted`
+  rows, 24h window) — never module-level state. Degraded-broker-read guard (#137
+  class): `alpaca_client.get_all_positions` / `get_open_orders` called with
+  `raise_on_error=True` so a genuine read failure raises (logged +
+  `coverage_drift_check_degraded`) instead of silently degrading to `[]` and being
+  misread as "everything's untracked". Tests: `tests/test_coverage_drift.py`.
+  **Increment 2(b) (ingest untracked broker orders into the mirror) and Increment 3
+  (guarded auto-correction + runtime demote-helper)** — not started; increment 2(b)
+  is the natural next PLAN item (#184 sibling), increment 3 stays gated on 2(a)/2(b)
+  baking per the build-order above.
 
 ## Consequences
 

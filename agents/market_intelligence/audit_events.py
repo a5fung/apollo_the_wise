@@ -75,6 +75,20 @@ ORDER_STATUS_RECONCILE_FAILED = "order_status_reconcile_failed"
 STUCK_PENDING_NEW_DETECTED = "stuck_pending_new_detected"  # #142/2026-05-28
 DRAWDOWN_CHECK_UNAVAILABLE = "drawdown_check_unavailable"
 
+# ── Coverage-drift detector (#184 ADR 0008 increment 2, 2026-07-05) ─────────
+# Read-only DB↔broker mirror-completeness check. Written per detection
+# regardless of severity (telemetry contract); *_ALERTED is the dedup marker
+# written only when a HIGH-severity drift actually Telegrams (D1 / D2-HIGH);
+# *_CHECK_DEGRADED fires when the broker read itself can't be trusted (#137
+# class — never report drift off a failed/empty read).
+COVERAGE_DRIFT_DETECTED = "coverage_drift_detected"
+COVERAGE_DRIFT_ALERTED = "coverage_drift_alerted"
+COVERAGE_DRIFT_CHECK_DEGRADED = "coverage_drift_check_degraded"
+# Job-wrapper guard (scheduler._order_status_reconcile_job): the coverage-drift
+# call itself blew up (distinct from CHECK_DEGRADED, which is the module's own
+# "broker/DB read failed" handling) — the outer per-mode try/except in the job.
+COVERAGE_DRIFT_CHECK_FAILED = "coverage_drift_check_failed"
+
 # ── Operator-confirm commands (#138/2026-05-28) ─────────────────────────────
 PARTIAL_NOW_OPERATOR_CONFIRMED = "partial_now_operator_confirmed"
 SYNC_NOW_OPERATOR_CONFIRMED = "sync_now_operator_confirmed"
