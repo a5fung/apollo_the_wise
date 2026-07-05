@@ -76,7 +76,7 @@ rest moves to Phase 2 (split noted inline, same task ID kept on the bigger half)
 
 Source: `_418_board_extract.md` (104/104 verified). Every task appears exactly once below.
 
-### 4a. BLOCKING — 21 existing + 3 new = the v1.0 burn-down set
+### 4a. BLOCKING — 22 existing + 4 new = the v1.0 burn-down set (post-decisions)
 
 Grouped by execution shape. Each line = task → the v1.0 increment + its DoD (execution depth;
 no design judgment left).
@@ -100,6 +100,7 @@ no design judgment left).
 | **S-B** (new) | watchdog disk stanza: alert when `/` ≥85% (df probe, same transition/dedup mechanics); selftest with a fake threshold |
 | #378 (+S-C) | /cost board (LLM + subs total) + budget/anomaly Telegram alarm + a monthly spend line in the weekly review; thresholds operator-set at the walk |
 | **S-D** (new) | `docs/ops/secrets_rotation.md` — per-credential rotation steps + boot requirements + verification; docs-only |
+| **S-E** (new, from D-4) | Execute the standing deprecations in the strategy registry: `9m_day2` + `flag_continuation` → deprecated (no new paper entries, out of the promotion checker); `wick_fill` → hold (shadow stays, digest stops proposing). Strategy-lifecycle change under operator authority recorded 7/5; documented entry ships with the change |
 | #404 | Delete dead `confirm_signal_at` code + 4 tests + `ENTRY_CONFIRM_VOL_MIN`; suite green |
 | #412 | Residuals: fix `mi_system_reviews.metrics` double-encoding (write-path json.dumps → jsonb object; read-path stays compatible) + the reviews-ready "ADV" truncation; suite green |
 | #290 | Run `analyze_late_detection_v3.py`; confirm <20% ORB-extension precision → close the data-gated review either way |
@@ -114,6 +115,7 @@ no design judgment left).
 | #287 | Trade-state data cleanup (FPS stuck flag + 8 double-encoded exits): committed backfill script (never docker-exec ad-hoc), operator-gated, verified row-by-row |
 | #261 | Finish scripts/ reorg (94 tools split, 45 scratch resolved) **with F4 landed in the same change** (scheduler imports `scripts/_judge_replay_common` — reorg without F4 silently kills the #343 shadow) |
 | #417 | Doc backfill for the 6 sections (targets in 7/5 trim_accounting) → re-trim CLAUDE.md <36k; recent-changes test green |
+| #183 (from D-7) | Wire-boundary enum normalization in `_order_to_dict` (status/side/type → plain lowercase values) + audit EVERY downstream comparison against both forms + tests pinning the contract. Known live casualty: the polling Day-1 re-entry fallback (`status != "filled"` never matches). Careful-path: money-adjacent, per-site verification |
 
 **Planning spine:** #418 (this doc — closes at §8 sign-off) · #419 (Phase-2 roadmap — next block, absorbs §4b).
 
@@ -139,7 +141,7 @@ no design judgment left).
 - **External-gate (1)**: #316 (PDT relax — activates when Alpaca's Rule-4210 rollout confirms;
   CHANGE_PROCESS).
 
-*(Arithmetic: 21 BLOCKING + 78 PHASE-2 + 2 CLOSE + 3 DECISION = 104 ✓)*
+*(Arithmetic post-decisions: 22 BLOCKING + 79 PHASE-2 (incl. #381) + 3 CLOSE = 104 ✓; +4 new BLOCKING items S-A/S-B/S-D/S-E filed, S-C folded into #378)*
 
 ### 4c. CLOSE — 2 (real dedup, operator can veto at the walk)
 
@@ -148,8 +150,10 @@ no design judgment left).
 - **#192** — deferred-findings discipline: satisfied by the standing rule
   (`feedback_defer_findings_to_task_tracker`) + the `check_plan` gates that now enforce it
   mechanically. Close pointing at the memory + Gate 2.
+- **#370** — completeness-registry increment 5: D-9 decided don't-build; 4/5 layers live and
+  accepted as covering the known surface. Close; revisit trigger = a new silent-failure class.
 
-### 4d. DECISION — 3 board items added to §7
+### 4d. DECISION — all resolved 7/5 (answers recorded in §7): #183 → BLOCKING (§4a) · #381 → PHASE-2 (zero-baseline = dated Phase-2 milestone) · #370 → CLOSE (§4c)
 
 - **D-7 (#183)**: scope-unrecoverable ("ORB classifier IEX/window mislabel", no elaboration
   exists). Recall what it meant, or close as ghost. *Rec: close unless you recall it.*
@@ -215,8 +219,7 @@ this sprint). Soak/streak clocks run concurrently — they are observational, no
 
 ## 7. Operator Decision Sheet
 
-Every fork this plan surfaces instead of pre-deciding. Answer these during the §8 walk;
-each carries a one-line recommendation (first option = rec).
+**ALL DECIDED 2026-07-05 (operator: 'recs accepted for all', with D-2/D-4 clarifications below).**
 
 | # | Decision | Options | Rec + why |
 |---|---|---|---|
@@ -226,6 +229,16 @@ each carries a one-line recommendation (first option = rec).
 | D-4 | wick_fill + flag_continuation shadow→paper (checker says ✓ ready) | **Phase 2** (briefs prepared this week, decision at Phase-2 kickoff) / promote now inside v1.0 | Promotions grow capability — the definition of Phase 2; nothing about v1.0 safety depends on them |
 | D-5 | kuma container disposition (with #420 external pinger) | **Decommission** (never configured, 3mo idle, watchdog replaced it) / keep for future dashboards | Dead services are surface area; dashboards are a Phase-2 want |
 | D-6 | Declaration window | **Soak-bound (~7/20–7/31)** / hard date | Soak-bound keeps FL-1 honest; a hard date invites clock-fudging |
+
+**Answers (operator, 7/5):** D-1 ten days · D-2 yes — and sharper: **9M Day 2 is DEPRECATED as a
+tradeable setup** (9M = a stock CONDITION feeding other setups, per the Pradeep universe doctrine)
+· D-3 accept paper evidence · D-4 wick_fill = backlog idea, NO promo; **flag_continuation DEPRECATED**
+(replaced by HTF + Anticipation) — both deprecations to be EXECUTED in the strategy registry (S-E;
+they had been decided but never applied, which is why the weekly promotion checker kept proposing
+them) · D-5 decommission kuma · D-6 soak-bound · D-7 #183 recovered → re-dispositioned BLOCKING
+(see §4a; prod probe confirmed str(OrderStatus.NEW)=='OrderStatus.NEW' on Python 3.12 — the polling
+Day-1 re-entry fallback is silently dead) · D-8 money-clean + ratchet is the v1.0 bar; baseline-zero
+(#381) = a dated Phase-2 milestone · D-9 don't build increment 5 → #370 CLOSES (4/5 layers accepted).
 
 ## 8. Sign-off
 
