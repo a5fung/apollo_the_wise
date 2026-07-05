@@ -365,6 +365,10 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
+### 2026-07-05 — day 3: hardening lane CLEARED (sprint CLOSE)
+
+- #225 ([5l/7] demotion-fence gate) · #382 (money-path swallows resolved, baseline 95→81, zero control-flow) · #184a coverage-drift detector · F10 shared client · #256 restore-check + watchdog crons (**run-1 caught the dashboard_ro DR roles gap** → roles.sql now rides the encrypted bundle) · #417 pass-1 (→37.8k). Lessons: fence dynamic text in Telegram legacy-Markdown (an unpaired `_` silently 400s the alert); 3 shell-helper copies drifted same-day → `infra/ops_lib.sh`.
+
 ### 2026-07-04 — day 2: #347 FLIPPED LIVE · axes built
 
 - **#347 flip live** + same-day hardening · ADRs 0015/0016 signed, #328 shadow deployed · 8 reviews closed · labels banked · #381→95.
