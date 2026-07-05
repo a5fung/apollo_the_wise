@@ -1332,7 +1332,9 @@ async def _account_equity_snapshot_job():
         from agents.market_intelligence.broker.drawdown_breaker import (  # exec-boundary-ok: moves-with-job (W2)
             snapshot_account_equity, recompute_drawdown_state,
         )
-        from agents.market_intelligence.constants import ENABLE_LIVE_MODE
+        # ENABLE_LIVE_MODE comes from the module-level import (line ~47) — a
+        # function-local re-import here shadows it for the whole function
+        # scope (the 2026-05-20 UnboundLocalError class; deploy gate [5d]).
         # Dual-account #66: snapshot + recompute per mode. Each mode has its
         # own equity, peak, drawdown state — paper drift doesn't trip the
         # live breaker and vice versa.
