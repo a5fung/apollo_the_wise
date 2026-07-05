@@ -294,7 +294,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts: {[a['ticker'] for a in alerts]}")
     try:
         await log_audit_event("orb_triggered", f"[{trigger}] {len(alerts)} alerts: {[a['ticker'] for a in alerts]}")
-    except Exception:
+    except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.info already fired immediately above
         pass
 
     async with pool.acquire() as conn:
@@ -331,7 +331,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 logger.info(f"ORB filter [{trigger}]: {ticker} skipped — {skip_reason}")
                 try:
                     await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
-                except Exception:
+                except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.info already fired above, and the skip itself is already durable via _insert_skipped_trade() (uncaught) a few lines earlier
                     pass
                 # Per-ticker Telegram suppressed — grouped digest fires post-gather.
                 return {"ticker": ticker, "action": "filtered", "reason": skip_reason}

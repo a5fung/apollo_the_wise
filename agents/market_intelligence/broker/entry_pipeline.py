@@ -85,7 +85,7 @@ async def fetch_orb_bar_with_retry(
                     f"{strategy_label} {ticker} attempt {attempt}/{BAR_RETRY_MAX} — "
                     f"bar not available, retry {BAR_RETRY_DELAY_SEC}s",
                 )
-            except Exception:
+            except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.info already fired immediately above
                 pass
             await asyncio.sleep(BAR_RETRY_DELAY_SEC)
     return None
@@ -216,7 +216,7 @@ async def submit_trade_entry(
             logger.error(f"{strategy_label} {ticker}: _insert_skipped_trade raised — {e}")
         try:
             await log_audit_event(audit_event, f"{strategy_label} {ticker} — {reason}")
-        except Exception:
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); a Telegram skip/block alert always follows below (its own try/except is loud)
             pass
         # aggregate_skips=True: caller emits one grouped digest after gather().
         # infra:* always pings immediately (no-silent-failures rule); filter /
@@ -264,7 +264,7 @@ async def submit_trade_entry(
             await log_audit_event(
                 "orb_duplicate", f"{strategy_label} {ticker} — {WINDOW_DUPLICATE}"
             )
-        except Exception:
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.debug already fired above, and the underlying trade row already exists from a prior telemetered pass
             pass
         # Not a failure — silent is correct here. It's already been handled once.
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
@@ -345,7 +345,7 @@ async def submit_trade_entry(
             f"H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} "
             f"range={orb_bar['high']-orb_bar['low']:.2f}",
         )
-    except Exception:
+    except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); pipeline proceeds identically regardless (audit-only OHLC record for /why)
         pass
 
     # 4. Fade guard.
@@ -394,7 +394,7 @@ async def submit_trade_entry(
                 f"(strategy {strategy_multiplier:.2f}x × drawdown {drawdown_multiplier:.2f}x) → "
                 f"shares={new_shares} risk=${order_spec['risk_dollars']:.0f}",
             )
-        except Exception:
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); sizing math (order_spec) already mutated above this block, unaffected by the audit write
             pass
 
     # 6. Insert trade row. account_mode already resolved at safeguard step.
@@ -454,7 +454,7 @@ async def submit_trade_entry(
                     f"{strategy_label} {ticker} — submit_entry returned None "
                     f"(trade_id={trade_id})",
                 )
-            except Exception:
+            except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.error already fired above, and the failure Telegram below is unconditional (not gated on this try)
                 pass
             await send_telegram_message(
                 f"{mode_prefix(account_mode)}⚠️ *{ticker}* {strategy_label} auto-enter failed — "
@@ -470,7 +470,7 @@ async def submit_trade_entry(
                 f"shares={order_spec['shares']} "
                 f"risk=${order_spec['risk_dollars']:.0f} trade_id={trade_id}",
             )
-        except Exception:
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); trade already durable in mi_live_trades + submitted to Alpaca before this line, and the success Telegram below is unconditional
             pass
         # Theme membership (C8, 2026-05-19) — append to entry alerts.
         # Works for BOTH MAGNA53 EP and 9M Day 2 since both go through this

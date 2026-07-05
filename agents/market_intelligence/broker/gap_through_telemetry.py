@@ -267,7 +267,8 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
                       AND details::jsonb->>'trade_id' = $1
                     ORDER BY created_at DESC LIMIT 1
                 """, str(r["id"]))
-        except Exception:
+        except Exception as e:
+            logger.debug(f"prior-classification lookup failed for trade_id={r['id']}: {e}")
             prior = None
         flipped = prior == "clean_miss" and cls in ("would_have_filled", "gap_through")
         if flipped:

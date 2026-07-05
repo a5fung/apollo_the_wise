@@ -117,7 +117,7 @@ async def _run_stream() -> None:
                     "bar_stream_disconnect",
                     f"retry {retries}/{MAX_RETRIES} — {e} | subscribed={sorted(_subscribed)}",
                 )
-            except Exception:
+            except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.error already fired unconditionally above for this retry
                 pass
             if retries < MAX_RETRIES:
                 await asyncio.sleep(min(5 * retries, 30))
@@ -174,7 +174,7 @@ async def _record_subscribe_failure(ticker: str, reason: str) -> None:
     try:
         from agents.market_intelligence.db import log_audit_event
         await log_audit_event("orb_subscribe_failed", f"{ticker} — {reason}")
-    except Exception:
+    except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); caller already logger.error'd before invoking this helper, and a Telegram alert follows below
         pass
     try:
         from agents.market_intelligence.briefing import send_telegram_message

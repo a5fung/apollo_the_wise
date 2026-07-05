@@ -168,8 +168,8 @@ async def stop_trade_stream() -> None:
     for mode, stream in list(_trading_streams.items()):
         try:
             await stream.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"trade stream close failed for mode={mode} during shutdown: {e}")
 
     _stream_healthy.clear()
     logger.info("All trade streams stopped")
@@ -288,7 +288,7 @@ async def _verify_event_account_mode(order_id: str, stream_account_mode: str) ->
                     "trade_account_mode": row_mode,
                 }),
             )
-        except Exception:
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py). This only wraps the cross_account_event_rejected audit write: logger.error(CROSS_ACCOUNT_EVENT_REJECTED...) fires unconditionally one line above, and the caller's return False (event dropped) does not depend on this write succeeding — the cross-account guard is enforced regardless.
             pass
         return False
 

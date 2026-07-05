@@ -2,11 +2,6 @@
   "per_file": {
     "agents/market_intelligence/agent.py": 3,
     "agents/market_intelligence/audit_invariants.py": 1,
-    "agents/market_intelligence/broker/bar_stream.py": 2,
-    "agents/market_intelligence/broker/entry_pipeline.py": 7,
-    "agents/market_intelligence/broker/gap_through_telemetry.py": 1,
-    "agents/market_intelligence/broker/live_tracker.py": 2,
-    "agents/market_intelligence/broker/trade_stream.py": 2,
     "agents/market_intelligence/catalyst_materiality.py": 1,
     "agents/market_intelligence/catalyst_rubric_runtime.py": 1,
     "agents/market_intelligence/earnings_calendar.py": 2,
@@ -33,5 +28,5 @@
     "core/router.py": 2,
     "core/spend.py": 1
   },
-  "total": 95
+  "total": 81
 }
