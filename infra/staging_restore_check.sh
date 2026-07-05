@@ -50,7 +50,8 @@ telegram_alert() {
         "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
         --data-urlencode "chat_id=$chat_id" \
         --data-urlencode "text=$msg" \
-        --data-urlencode "parse_mode=Markdown" >/dev/null 2>&1 || true
+        --data-urlencode "parse_mode=Markdown" >/dev/null 2>&1 \
+        || log "telegram_alert send FAILED (curl/API) — alert text was: $msg"
 }
 
 audit_event() {
@@ -68,7 +69,11 @@ fail() {
     local reason="$1"
     log "FAIL: $reason"
     audit_event "backup_restore_check_failed" "$reason"
-    telegram_alert "🚨 *Backup restore-check FAILED* — $reason — the nightly dump may NOT be restorable. See $LOG_FILE"
+    # Dynamic text goes INSIDE a code fence — raw psql errors carry underscores
+    # (dashboard_ro) that break Telegram legacy-Markdown entity parsing and got
+    # the first-ever failure alert silently 400'd (2026-07-05). Fence = no
+    # entity parsing inside; real newlines so --data-urlencode wires them.
+    telegram_alert "🚨 *Backup restore-check FAILED* — the nightly dump may NOT be restorable."$'\n```\n'"$reason"$'\n```\n'"See $LOG_FILE"
     cleanup
     exit 1
 }
