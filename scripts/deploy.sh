@@ -358,6 +358,21 @@ if ! python3 scripts/preflight_no_silent_failures.py; then
   exit 15
 fi
 
+echo "=== [5l/7] Preflight ADR-0008 demotion fence (#225 — trade-state demotion class) ==="
+# Run on host (stdlib ast, no container). Blocks any except-enclosed trade-state
+# DEMOTION (stop_order_id->NULL / status->'closed' / set_stop_order_id(None))
+# that lacks a reviewed '# broker-confirmed: <reason>' tag in its except block —
+# ADR 0008: only a confirmed broker read/event (or the documented fail-safe
+# direction) may demote trade state; a demotion inferred from a caught exception
+# is the a41e7c6a phantom-close class. Residuals reviewed + tagged 2026-07-05.
+if ! python3 scripts/audit_trade_state_demotions.py check; then
+  echo ""
+  echo "DEPLOY FAILED — an except-enclosed trade-state demotion lacks a '# broker-confirmed:' tag."
+  echo "Either confirm the demoted state with a real broker read/event and tag the block,"
+  echo "or remove the demotion. Do NOT tag without actually verifying (ADR 0008)."
+  exit 16
+fi
+
 echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
 # #324: re-surface the execution-runtime drift as the LAST line — the DEPLOY OK above is

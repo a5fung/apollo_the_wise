@@ -600,6 +600,13 @@ async def attempt_day1_reentry(
             order_type = "stop_limit"
     except Exception as e:
         logger.error(f"Re-entry order failed for {ticker}: {e}")
+        # broker-confirmed: the closed/NULL demotion records the Day-1 stop FILL the
+        # CALLER already confirmed at the broker (_check_day1_reentry only proceeds on
+        # get_order status=='filled'; the WS path IS the fill event) — position flat,
+        # stop leg consumed. This except only aborts the re-entry attempt; it demotes
+        # nothing inferred from the failure itself. Residual: an ambiguous-accept
+        # re-entry order (raised after broker acceptance) is untracked → #184(b)
+        # broker-order ingest / 15-min reconcile is the catcher.
         total_pnl = sum(ex.get("pnl", 0) for ex in exits)
         async with pool.acquire() as conn:
             await conn.execute("""
@@ -924,6 +931,12 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             # Null stop_order_id so sync_positions Path C (4:05 PM + 9:00 PM)
             # can detect the orphan and remediate. Leaving the stale ID in place
             # silently masks the naked state and blocks Path C's orphan check.
+            # broker-confirmed: the old-stop cancel was a real broker call (cancel_ok
+            # recorded in the audit payload) and BOTH placements raised — no live stop
+            # we can point at. When cancel_ok=False the old stop's state is ambiguous;
+            # NULL is the DELIBERATE FAIL-SAFE direction (assume naked → Path C
+            # remediates to broker truth) per ADR 0008's escape clause — the stale
+            # pointer alternative masks possible nakedness.
             await set_stop_order_id(
                 trade_id, None,
                 reason="stop_update_failed",
@@ -1427,11 +1440,11 @@ async def execute_partial_exit(
                         f"Cron will retry next window._"
                     )
                     return False
-                # Old stop NOT confirmed live → genuine naked risk. broker-confirmed:
-                # reached only after the alpaca.get_order(old_stop_id) read above set
-                # old_stop_live=False — i.e. the broker itself confirmed the old stop is
-                # not in a live status. This is the #151 verify-stop-live fix; the null
-                # is broker-evidenced, not inferred.
+                # Old stop NOT confirmed live → genuine naked risk.
+                # broker-confirmed: reached only after the alpaca.get_order(old_stop_id)
+                # read above set old_stop_live=False — i.e. the broker itself confirmed
+                # the old stop is not in a live status. This is the #151 verify-stop-live
+                # fix; the null is broker-evidenced, not inferred.
                 #
                 # #151 (2026-06-23) IMMEDIATE in-process re-protect (mirrors the
                 # sell-failure path below): no sell has happened, but the position is
