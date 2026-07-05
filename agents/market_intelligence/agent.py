@@ -7277,4 +7277,6 @@ async def shutdown():
         from agents.market_intelligence.broker.bar_stream import stop_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
         await stop_trade_stream()
         await stop_bar_stream()
+    from agents.market_intelligence.execution_client import aclose_execution_client  # F10: shared HTTP client cleanup
+    await aclose_execution_client()
     stop_scheduler()

@@ -7,6 +7,7 @@ ground_truth_verification). These pin: dispatch routing, the fail-loud contract,
 the local-only classification (advisor #2), the boot coherence check (advisor #4),
 and route↔client parity.
 """
+import asyncio
 from datetime import date
 from unittest.mock import AsyncMock
 
@@ -91,6 +92,11 @@ async def test_http_timeout_is_split_by_call_weight(monkeypatch, name, expect_re
     # work on execution; a flat 15s read would false-raise ExecutionUnreachable on the
     # order path. They get the long read budget; fast reads keep the tight one. Connect
     # stays short either way so "execution down" fails fast.
+    #
+    # F10 (2026-07-05): the shared client is built WITHOUT a timeout — the
+    # per-call value now travels on `.post(..., timeout=...)` instead, so this
+    # captures the timeout the REQUEST received, not the one the client was
+    # constructed with (client construction happens once and is reused).
     import httpx
 
     import shared.secrets as secrets
@@ -100,20 +106,18 @@ async def test_http_timeout_is_split_by_call_weight(monkeypatch, name, expect_re
     monkeypatch.setattr(
         secrets, "get_secrets",
         lambda: type("S", (), {"internal_api_secret": "x"})())
+    monkeypatch.setattr(ec, "_client", None)
+    monkeypatch.setattr(ec, "_client_loop", None)
 
     captured = {}
 
     class _Client:
-        def __init__(self, *a, timeout=None, **k):
+        def __init__(self, *a, **k):
+            pass
+
+        async def post(self, *a, timeout=None, **k):
             captured["timeout"] = timeout
 
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *a):
-            return False
-
-        async def post(self, *a, **k):
             class _R:
                 status_code = 200
                 def raise_for_status(self_):
@@ -296,3 +300,113 @@ async def test_f18_bare_500_still_unreachable(monkeypatch):
 
     with pytest.raises(ec.ExecutionUnreachable):
         await ec._http_call("get_account", (), {})
+
+
+# ── F10: shared HTTP client lifecycle ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_shared_client_reused_across_calls(monkeypatch):
+    """Two sequential _http_call invocations must reuse the SAME client
+    object — the whole point of F10 (no fresh pool + TLS handshake per call,
+    including trigger_orb_entry on the 9:31 ET ORB hot path)."""
+    import httpx
+
+    from tests.conftest import fake_httpx_client
+
+    monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
+    monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
+    monkeypatch.setattr(
+        "shared.secrets.get_secrets",
+        lambda: type("S", (), {"internal_api_secret": "x"})(),
+    )
+    monkeypatch.setattr(ec, "_client", None)
+    monkeypatch.setattr(ec, "_client_loop", None)
+    monkeypatch.setattr(httpx, "AsyncClient", fake_httpx_client(
+        status_code=200, json_body={"result": None}))
+
+    await ec._http_call("get_account", (), {})
+    client_after_first = ec._client
+    await ec._http_call("get_account", (), {})
+    client_after_second = ec._client
+
+    assert client_after_first is not None
+    assert client_after_first is client_after_second
+
+
+@pytest.mark.asyncio
+async def test_closed_client_is_transparently_recreated(monkeypatch):
+    """If the cached client got closed (externally, or via
+    aclose_execution_client()), the next _http_call must build a fresh one
+    instead of trying to reuse a dead client."""
+    import httpx
+
+    from tests.conftest import fake_httpx_client
+
+    monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
+    monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
+    monkeypatch.setattr(
+        "shared.secrets.get_secrets",
+        lambda: type("S", (), {"internal_api_secret": "x"})(),
+    )
+    monkeypatch.setattr(ec, "_client", None)
+    monkeypatch.setattr(ec, "_client_loop", None)
+    monkeypatch.setattr(httpx, "AsyncClient", fake_httpx_client(
+        status_code=200, json_body={"result": None}))
+
+    await ec._http_call("get_account", (), {})
+    stale = ec._client
+    stale.is_closed = True  # simulate an externally-closed client
+
+    await ec._http_call("get_account", (), {})
+    fresh = ec._client
+
+    assert fresh is not None
+    assert fresh is not stale
+
+
+@pytest.mark.asyncio
+async def test_get_client_rebuilds_on_loop_mismatch(monkeypatch):
+    """A cached client bound to a DIFFERENT loop object must be rebuilt even
+    when it isn't marked closed — this is the pytest-asyncio-gives-each-test-
+    its-own-loop scenario the module docstring calls out; identity comparison
+    (not just is_closed) is what catches it."""
+    sentinel_client = object()
+    monkeypatch.setattr(ec, "_client", sentinel_client)
+    monkeypatch.setattr(ec, "_client_loop", object())  # not the running loop
+
+    fresh = ec._get_client()
+
+    assert fresh is not sentinel_client
+    assert ec._client_loop is asyncio.get_running_loop()
+
+
+@pytest.mark.asyncio
+async def test_aclose_execution_client_is_idempotent_and_resets_cache(monkeypatch):
+    """aclose_execution_client() must be a no-op when no client was ever
+    created, must actually close a live one, and must clear the cache so the
+    next _get_client() call rebuilds rather than reusing a closed client."""
+    monkeypatch.setattr(ec, "_client", None)
+    monkeypatch.setattr(ec, "_client_loop", None)
+
+    await ec.aclose_execution_client()  # no client yet — must not raise
+    assert ec._client is None
+
+    class _FakeClosable:
+        def __init__(self):
+            self.is_closed = False
+            self.closed_called = False
+
+        async def aclose(self):
+            self.closed_called = True
+            self.is_closed = True
+
+    fake = _FakeClosable()
+    monkeypatch.setattr(ec, "_client", fake)
+    monkeypatch.setattr(ec, "_client_loop", asyncio.get_running_loop())
+
+    await ec.aclose_execution_client()
+
+    assert fake.closed_called is True
+    assert ec._client is None
+    assert ec._client_loop is None

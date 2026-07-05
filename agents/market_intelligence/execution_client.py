@@ -27,6 +27,7 @@ broker empty/None default. "Couldn't reach execution" must stay distinct from
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -105,8 +106,63 @@ def _wire_default(o):
         f"wire: {o!r}")
 
 
+# F10 (2026-07-05): a fresh httpx.AsyncClient — new connection pool + TLS
+# handshake — was built on EVERY facade call, including `trigger_orb_entry` on
+# the 9:31 ET ORB hot path. One shared, lazily-created client amortizes that
+# handshake across the process's lifetime. Client-LIFECYCLE change only: the
+# per-call timeout (read budget varies by _SLOW_COMMAND_FNS) still travels
+# per-request (httpx supports overriding a client's default timeout on a single
+# `.post(..., timeout=...)` call) — it is never baked into the shared client,
+# so existing per-call timeout values behave identically. Retry semantics,
+# error mapping (F18 typed-500 contract), and response handling are untouched.
+_HTTP_POOL_LIMITS_KWARGS = dict(max_keepalive_connections=10, max_connections=20)
+
+_client = None          # shared httpx.AsyncClient, created on first use
+_client_loop = None     # the asyncio event loop `_client` was built on
+
+
+def _get_client():
+    """Return the shared execution-transport client, creating it lazily and
+    transparently recreating it if it's closed or bound to a different (or
+    closed) event loop.
+
+    Loop-safety matters because httpx.AsyncClient's connection pool is bound
+    to the loop running when it was constructed; pytest-asyncio hands each
+    test its own fresh loop, and a stale cross-loop client would misbehave
+    rather than raise something obvious. Comparing loop identity (not just
+    `is_closed`, which fake test doubles don't always implement) catches that
+    case explicitly instead of relying on it to surface downstream."""
+    global _client, _client_loop
+    import httpx
+
+    loop = asyncio.get_running_loop()
+    if (_client is not None
+            and not getattr(_client, "is_closed", False)
+            and _client_loop is loop):
+        return _client
+
+    _client = httpx.AsyncClient(limits=httpx.Limits(**_HTTP_POOL_LIMITS_KWARGS))
+    _client_loop = loop
+    return _client
+
+
+async def aclose_execution_client():
+    """Close the shared execution-transport client (clean-shutdown hook).
+    Safe to call even if no client was ever created, or if it's already
+    closed — idempotent by design so it can sit unconditionally in a shutdown
+    handler regardless of whether this process ever dispatched over HTTP."""
+    global _client, _client_loop
+    if _client is not None and not getattr(_client, "is_closed", False):
+        aclose = getattr(_client, "aclose", None)
+        if aclose is not None:
+            await aclose()
+    _client = None
+    _client_loop = None
+
+
 async def _http_call(name: str, args, kwargs):
-    """POST a facade call to apollo-execution. Fail LOUD on any transport error."""
+    """POST a facade call to apollo-execution over the shared client. Fail
+    LOUD on any transport error."""
     import httpx
 
     from agents.market_intelligence.constants import EXECUTION_SERVICE_URL
@@ -120,30 +176,31 @@ async def _http_call(name: str, args, kwargs):
         connect=_HTTP_CONNECT_TIMEOUT_SECONDS, read=read_timeout,
         write=_HTTP_CONNECT_TIMEOUT_SECONDS, pool=_HTTP_CONNECT_TIMEOUT_SECONDS)
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                url,
-                content=body,
-                headers={
-                    "X-Apollo-Secret": get_secrets().internal_api_secret,
-                    "Content-Type": "application/json",
-                },
-            )
-            # F18: a typed 500 (execution_error marker) = the handler RAN and
-            # raised — re-raise the ORIGINAL type+message as ExecutionCallFailed,
-            # never collapse it into "unreachable".
-            if resp.status_code == 500:
-                try:
-                    _detail = (resp.json() or {}).get("detail") or {}
-                except Exception:  # loud-ok: non-JSON 500 falls through to Unreachable below
-                    _detail = {}
-                if isinstance(_detail, dict) and _detail.get("execution_error"):
-                    raise ExecutionCallFailed(
-                        f"execution call {name!r} failed IN the execution service: "
-                        f"{_detail.get('error_type')}: {_detail.get('error_message')}"
-                    )
-            resp.raise_for_status()
-            return resp.json()["result"]
+        client = _get_client()
+        resp = await client.post(
+            url,
+            content=body,
+            headers={
+                "X-Apollo-Secret": get_secrets().internal_api_secret,
+                "Content-Type": "application/json",
+            },
+            timeout=timeout,
+        )
+        # F18: a typed 500 (execution_error marker) = the handler RAN and
+        # raised — re-raise the ORIGINAL type+message as ExecutionCallFailed,
+        # never collapse it into "unreachable".
+        if resp.status_code == 500:
+            try:
+                _detail = (resp.json() or {}).get("detail") or {}
+            except Exception:  # loud-ok: non-JSON 500 falls through to Unreachable below
+                _detail = {}
+            if isinstance(_detail, dict) and _detail.get("execution_error"):
+                raise ExecutionCallFailed(
+                    f"execution call {name!r} failed IN the execution service: "
+                    f"{_detail.get('error_type')}: {_detail.get('error_message')}"
+                )
+        resp.raise_for_status()
+        return resp.json()["result"]
     except ExecutionCallFailed:
         raise
     except Exception as e:
