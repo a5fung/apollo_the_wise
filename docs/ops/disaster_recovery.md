@@ -106,6 +106,12 @@ The script runs `phase_validate` automatically. Cross-check these manually too:
 
 ### Automated (already done by restore.sh)
 
+- [x] Cluster roles applied (Phase 8): bundled `roles.sql` (backups ≥ 2026-07-05, restores role
+  passwords too) or the `EXPECTED_ROLES` pre-create fallback (older backups — role passwords
+  then need a manual reset, e.g. `dashboard_ro` for the RS dashboard). The nightly
+  `infra/staging_restore_check.sh` (03:30 UTC cron) proves the dump+roles recipe restores
+  end-to-end and fences `EXPECTED_ROLES` drift — a `backup_restore_check_failed` audit row /
+  Telegram means the CURRENT backup may not restore; fix before you need it.
 - [x] `readiness_check.py --verbose` exits 0 — no naked positions, no missing reasons, no stale orders
 - [x] `preflight_check.py` exits 0 — Alpaca creds valid for both paper and live
 - [x] `docker compose ps` — postgres, redis, market-agent, orchestrator, nginx all healthy

@@ -99,6 +99,21 @@ for _ in $(seq 1 30); do
 done
 [ "$ready" = 1 ] || fail "restore container postgres never became ready (60s)"
 
+# 3b. Pre-create the roles the dump GRANTs to — the SAME recipe restore.sh
+# Phase 8 falls back on, parsed from its EXPECTED_ROLES line so there is ONE
+# list. This makes the nightly check the DRIFT FENCE for that hand-maintained
+# list: a role added in prod without updating restore.sh fails HERE within 24h
+# ("role X does not exist"), instead of surfacing during a real DR. (First
+# run 2026-07-05 failed on exactly this — dashboard_ro — proving the fence.)
+ROLES_LINE=$(grep -E '^EXPECTED_ROLES=\(' "$APP_DIR/infra/restore.sh" || true)
+[ -n "$ROLES_LINE" ] || fail "could not parse EXPECTED_ROLES from infra/restore.sh"
+ROLES=$(echo "$ROLES_LINE" | sed -E 's/^EXPECTED_ROLES=\(([^)]*)\).*/\1/')
+for role in $ROLES; do
+    docker exec "$CONTAINER" psql -U apollo -d postgres -v ON_ERROR_STOP=1 \
+        -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='$role') THEN CREATE ROLE $role; END IF; END \$\$;" \
+        >/dev/null 2>"$ERR_TMP" || fail "pre-create role '$role' failed: $(tail -c 200 "$ERR_TMP")"
+done
+
 # 4. Restore — the same psql ON_ERROR_STOP=1 path infra/restore.sh uses for real DR.
 if ! gunzip -c "$LATEST" | docker exec -i "$CONTAINER" psql -q -U apollo -d apollo \
         -v ON_ERROR_STOP=1 >/dev/null 2>"$ERR_TMP"; then

@@ -263,6 +263,14 @@ phase_decrypt_secrets() {
         warn "crontab.txt missing — nightly backup not scheduled"
     fi
 
+    if [ -r "$decrypt_dir/roles.sql" ]; then
+        install -o root -g root -m 0600 \
+            "$decrypt_dir/roles.sql" /root/restore-roles.sql
+        ok "Staged /root/restore-roles.sql (cluster roles + password hashes, applied in Phase 8)"
+    else
+        warn "roles.sql missing from bundle (pre-2026-07-05 backup) — Phase 8 falls back to EXPECTED_ROLES pre-create (roles exist but their passwords need manual reset)"
+    fi
+
     # Show manifest for operator verification
     if [ -r "$decrypt_dir/MANIFEST.txt" ]; then
         echo -e "${CYAN}Bundle manifest:${NC}"
@@ -322,8 +330,12 @@ phase_db_up() {
 # Roles that pg_dump references via GRANT/OWNER but does NOT recreate.
 # Pre-creating them prevents ON_ERROR_STOP=1 halting the restore. Caught
 # 2026-05-25 DR drill (role "dashboard_ro" does not exist on fresh DB).
-# Long-term: backup.sh could bundle `pg_dumpall --roles-only` so this list
-# stays in sync automatically; for now we maintain it explicitly.
+# 2026-07-05 (#256 W4): backup.sh now bundles `pg_dumpall --roles-only`
+# (roles.sql in the encrypted secrets blob — restores role PASSWORDS too);
+# Phase 8 applies it when present. This list stays as the FALLBACK for
+# pre-roles.sql backups, and infra/staging_restore_check.sh parses it
+# nightly as the drift fence — a new prod role missing here fails the
+# 03:30 UTC restore-check within a day instead of at DR time.
 # NOTE: scripts/staging_seed.sh FORKS this restore recipe — keep its EXPECTED_ROLES
 # in sync until #281 extracts a shared restore_db() both call.
 EXPECTED_ROLES=(dashboard_ro)
@@ -331,6 +343,21 @@ EXPECTED_ROLES=(dashboard_ro)
 phase_restore_sql() {
     banner "Phase 8: restore SQL dump from $SQL_DUMP_PATH"
     if ! should_run; then return 0; fi
+
+    # Bundled roles dump (backup.sh >= 2026-07-05): restores role passwords,
+    # which the EXPECTED_ROLES pre-create can't. Bootstrap roles (apollo /
+    # postgres) are filtered — they already exist on a fresh initdb and their
+    # CREATE ROLE would abort the apply. 'already exists' is tolerated so
+    # --force re-runs stay idempotent; any OTHER error is fatal.
+    if [ -r /root/restore-roles.sql ]; then
+        grep -vE '\bROLE (apollo|postgres)\b' /root/restore-roles.sql | \
+            docker exec -i apollo-postgres psql -U apollo -d postgres \
+            > /tmp/restore-roles.log 2>&1 || true
+        if grep -E 'ERROR' /tmp/restore-roles.log | grep -qv 'already exists'; then
+            err "roles.sql apply had non-idempotency errors; see /tmp/restore-roles.log"
+        fi
+        ok "Applied bundled roles.sql (bootstrap roles filtered)"
+    fi
 
     # Pre-create roles referenced by the dump (idempotent).
     for role in "${EXPECTED_ROLES[@]}"; do

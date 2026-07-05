@@ -90,6 +90,13 @@ run_secrets_backup() {
         cp /home/apollo/gdrive-token.json "$bundle_dir/gdrive-token.json" 2>/dev/null || true
         cp /etc/nginx/sites-available/apollo.conf "$bundle_dir/apollo.conf" 2>/dev/null || true
         crontab -u apollo -l > "$bundle_dir/crontab.txt" 2>/dev/null || true
+        # Cluster roles incl. password hashes (#256 W4, 2026-07-05) — pg_dump
+        # never recreates roles; restore.sh pre-creates EXPECTED_ROLES but that
+        # can't restore role PASSWORDS (dashboard_ro login died after a real DR
+        # until reset). Hashes are secrets -> this belongs in the ENCRYPTED
+        # bundle, not beside the plaintext dump.
+        docker exec apollo-postgres pg_dumpall -U apollo --roles-only \
+            > "$bundle_dir/roles.sql" 2>>"$LOG_FILE" || true
         {
             printf 'apollo-secrets bundle %s\n' "$(date -Iseconds)"
             printf 'staged in: %s\n' "$stage_root"
@@ -99,7 +106,7 @@ run_secrets_backup() {
     } 2>>"$LOG_FILE"
 
     if ! tar -czf "$bundle_dir/bundle.tar.gz" -C "$bundle_dir" \
-            .env gdrive-token.json apollo.conf crontab.txt MANIFEST.txt 2>>"$LOG_FILE" || \
+            .env gdrive-token.json apollo.conf crontab.txt roles.sql MANIFEST.txt 2>>"$LOG_FILE" || \
        ! gpg --batch --yes \
            --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
            --symmetric --cipher-algo AES256 \
