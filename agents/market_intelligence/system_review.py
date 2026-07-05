@@ -105,6 +105,7 @@ Rules:
 - When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. If a transition has `recent_change_hint`, append `— ⚠ may be intentional (improvement landed {hint})` to that line so the operator interprets the drift as deliberate-improvement-settle rather than regression. Do not invent transitions if the count is 0; omit the line entirely.
 - `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Anomalies to verify* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
 - The `crypto` field in the metrics is surfaced separately as a deterministic appendix below your output. Do NOT mention crypto in the four sections above — that surface is handled.
+- The `mfe_capture` field (W3 winner-harvest KPI) is likewise surfaced as a deterministic appendix. Do NOT restate it in the four sections above, and do NOT propose management/exit changes from it — it is an operator-gated tuning input.
 - When `strategy_promotions.checks` is non-empty AND any entry has `next_phase` != null, append a "📈 *Strategy promotion check:*" line after 🔁 listing each non-top-of-ladder strategy on its own indented bullet: `<strategy_id>: <eligible '✓ ready' OR top blocking_reason>` (e.g. `shadow_orb_5m: need 30 paired closed (have 12)`). Skip strategies already at the top of the ladder. Omit the section entirely if every strategy is at top-of-ladder.
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
@@ -148,6 +149,16 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     loser_section = _format_loser_section(metrics.get("loser_breakdown") or {})
     if loser_section:
         message = f"{message}\n\n{loser_section}"
+
+    # W3 winner-harvest KPI (#306, 2026-07-05) — deterministic appendix right
+    # after the losers post-mortem: the two sides of the expectancy leak
+    # (entry-mechanics losses · management giveback) land adjacent.
+    try:
+        mfe_section = _format_mfe_capture_section(metrics.get("mfe_capture") or {})
+        if mfe_section:
+            message = f"{message}\n\n{mfe_section}"
+    except Exception:
+        logger.exception("mfe capture section render failed")
 
     # Holistic judge weekly roll-up (#240/#249) — replaced the retired #200
     # theme-gated + #201 fire-panel advisory sections (judge load-bearing 6/10).
@@ -234,6 +245,7 @@ async def _gather_and_aggregate(
     missed_opps = await _aggregate_missed_opportunities(window_days)
     news_quality = await _aggregate_news_source_quality(window_days)
     judge_weekly = await _aggregate_judge_decisions(window_days)
+    mfe_capture = await _aggregate_mfe_capture(window_start)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -258,6 +270,7 @@ async def _gather_and_aggregate(
         "missed_opportunities": missed_opps,
         "news_source_quality": news_quality,
         "judge_weekly": judge_weekly,
+        "mfe_capture": mfe_capture,
     }
 
 
@@ -503,6 +516,71 @@ async def _aggregate_anomalies(days: int) -> dict:
             "count": len(l3_drifts),
             "transitions": l3_drifts[:10],
         },
+    }
+
+
+async def _aggregate_mfe_capture(window_start: date) -> dict:
+    """W3 management KPI (#306 STEP-0 → weekly KPI, 2026-07-05; read-only).
+
+    Aggregate MFE capture on closed partial-taken trades: total_pnl kept vs
+    the peak excursion (highest_price_seen − entry_price) × entry_shares.
+    Cohort is CUMULATIVE (not window-sliced) so the number stays directly
+    comparable to the STEP-0 baseline — 18% on N=10, 2026-07-04
+    (docs/analysis/w3_winner_harvest_step0_2026-07-04.md); the v2.0 tier-one
+    bar is >50%. Trades that CLOSED inside the window are listed as the
+    week's new datapoints. pnl_attribution IS NULL excludes bug-attributable
+    rows (methodology KPI, not account accounting). highest_price_seen is a
+    post-fill high-water mark — it can UNDERSTATE MFE, so true capture is if
+    anything worse than shown. SURFACES only; any tune is trade-state
+    (CHANGE_PROCESS + operator sign-off).
+    """
+    from agents.market_intelligence.db import get_pool
+
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT ticker, account_mode, total_pnl,
+                       (highest_price_seen - entry_price) * entry_shares AS mfe_dollars,
+                       (closed_at AT TIME ZONE 'America/New_York')::date AS closed_et
+                FROM mi_live_trades
+                WHERE status = 'closed'
+                  AND partial_taken = TRUE
+                  AND pnl_attribution IS NULL
+                  AND total_pnl IS NOT NULL
+                  AND highest_price_seen IS NOT NULL
+                  AND entry_price IS NOT NULL
+                  AND entry_shares IS NOT NULL
+                  AND (highest_price_seen - entry_price) * entry_shares > 0
+                ORDER BY closed_at DESC
+            """)
+    except Exception:
+        logger.exception("mfe_capture aggregator failed")
+        return {}
+
+    if not rows:
+        return {"n": 0}
+
+    mfe_total = sum(float(r["mfe_dollars"]) for r in rows)
+    kept_total = sum(float(r["total_pnl"]) for r in rows)
+    window_closes = [
+        {
+            "ticker": r["ticker"],
+            "account_mode": r["account_mode"],
+            "capture_pct": round(float(r["total_pnl"]) / float(r["mfe_dollars"]) * 100),
+            "kept": round(float(r["total_pnl"])),
+            "mfe": round(float(r["mfe_dollars"])),
+        }
+        for r in rows
+        if r["closed_et"] and r["closed_et"] >= window_start
+    ]
+    return {
+        "n": len(rows),
+        "mfe_dollars": round(mfe_total),
+        "kept_dollars": round(kept_total),
+        "capture_pct": round(kept_total / mfe_total * 100),
+        "bar_pct": 50,  # v2.0 tier-one bar (roadmap PART II)
+        "window_closes": window_closes[:5],
     }
 
 
@@ -1495,6 +1573,29 @@ def _format_loser_section(loser_breakdown: dict) -> str:
         f"🪜=5m ORB stop wider · ⏱=stopped <10m post-fill · 🔁=att2 loss within 15% "
         f"of att1 · ⚡=fill past stop · 📅=earnings backstop fired_"
     )
+    return "\n".join(lines)
+
+
+def _format_mfe_capture_section(data: dict) -> str:
+    """W3 winner-harvest KPI (#306) — deterministic; SURFACES the cumulative
+    MFE-capture number against the v2.0 tier-one bar, never prescribes.
+    Omitted entirely until the cohort exists (no misleading 0-line)."""
+    if not data or not data.get("n"):
+        return ""
+    pct = data.get("capture_pct")
+    if pct is None:
+        return ""
+    lines = [
+        f"🎯 *MFE capture (W3 KPI):* {pct}% cumulative — "
+        f"${data.get('kept_dollars', 0):+,.0f} kept of "
+        f"${data.get('mfe_dollars', 0):,.0f} peak "
+        f"(n={data['n']} partial-taken closed · bar >{data.get('bar_pct', 50)}%)",
+    ]
+    for w in data.get("window_closes") or []:
+        lines.append(
+            f"• `{w['ticker']}` closed this week: {w['capture_pct']}% "
+            f"(${w['kept']:+,} of ${w['mfe']:,})"
+        )
     return "\n".join(lines)
 
 

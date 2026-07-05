@@ -52,3 +52,28 @@ GOOGL 47% — still below the bar.
    (peak-lock: the SMCI −27% case is the motivating pattern).
 3. Any live change = trade-state → CHANGE_PROCESS + #151 integration discipline + operator
    sign-off. THE LINE: this doc changes nothing; it measures.
+
+## The tune — SCOPED (2026-07-05, #306 STEP-2/3)
+
+**STEP-1 (done 7/5): `capture_pct` is live as a weekly-review KPI** — deterministic appendix in the
+Sunday digest (`system_review._aggregate_mfe_capture` / `_format_mfe_capture_section`), cumulative
+cohort identical to this doc's query (verified against prod: 10 / $5,942 / $32,775 / 18%). Read-only;
+the LLM synthesizer is explicitly barred from restating or prescribing off it.
+
+**STEP-2 — the axis-sweep backtest (evidence, no trade-state; target ~7/8):** replay the closed
+winner cohort bar-by-bar (daily bars suffice — the exits under test are daily-close mechanics)
+sweeping the three axes against realized capture:
+
+| Axis | Sweep | Test cases |
+|---|---|---|
+| A. Giveback guard (peak-lock) | arm at ≥ +2R / +10%; floor at 40–70% of peak gain | SMCI (+11.7% peak → closed a LOSS), PURR (round-trip to $3) |
+| B. Trail by character | 10MA vs 20MA vs 10→20 handoff | CRSR (gave back 85% of +52.5% peak on the current trail) |
+| C. Partial size | 30% (current-ish) vs 33–50% (spec range) | IBM (8-of-26 class) |
+
+Output per axis: cohort capture_pct delta + per-trade table + the interaction (A×B) grid. N=10 is
+direction-setting — the sweep RANKS parameterizations; it does not fine-tune. Guard against
+overfitting per the eval discipline (docs/analysis/eval_alpaca_skills.md checklist).
+
+**STEP-3 — the operator decision (gated on STEP-2):** exit-discipline change = trade-state + THE LINE.
+Operator picks the parameterization (or none) → CHANGE_PROCESS entry in docs/setups/ + #151
+integration harness + paper-exercise before any live flip. Nothing in STEP-1/2 changes behavior.
