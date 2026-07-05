@@ -329,14 +329,18 @@ burn (Fable designs, Sonnet executes — the operator's split). Each block's del
 ADR/spec written to pure-execution depth: schemas, prompts/contracts, job wiring, shadow tables,
 promotion gates, test plan, DoDs — zero design judgment left for the builder.
 
-| Block | Date | Designs (deliverable doc) |
+**STATUS 7/5 EVE: ALL SIX BLOCKS WRITTEN SAME-DAY** (operator pulled the series forward) —
+ADRs 0017–0022, each ending in an operator sign-off fork list (27 forks total, all with recs).
+The build rule stands: no Phase-2 build starts before its ADR is signed.
+
+| Block | ADR (written 7/5) | Designs (deliverable doc) |
 |---|---|---|
-| **D-1** | **Mon 7/6** | **P3 Management Judge** — decision points/triggers, bounded-enum contract, payload (chart/thesis/theme/character), pivot+character model integration, shadow schema, fail-open + promotion gates (`docs/decisions/00XX-management-judge.md`) |
-| **D-2** | **Tue 7/7** | **P1 Experience stack** — precedent case store schema + embedding/retrieval spec (temporal-diversity constraint), self-review→rubric-distillation loop, ensemble/uncertainty judging (`00XX-experience-stack.md`) |
-| **D-3** | **Wed 7/8** | **#210/#211 Direct-sourcing backbone** — SEC/wire/feed pipeline, storage+dedup, judge integration, unknown-catalyst KPI loop (`00XX-catalyst-sourcing-backbone.md`) |
-| **D-4** | **Thu 7/9** | **P4 book architecture** — per-setup judges w/ shared components, 9M-condition→setup feed, parabolic-short entry/management/borrow mechanics (`00XX-multi-setup-book.md`) |
-| **D-5** | **Fri 7/10** | **P2 sight completion** — intraday narrative radar (streaming cohort detection), negative-catalyst downgrade axis (`00XX-full-sight.md`) |
-| **D-6** | **Sat 7/11** | **P5 autonomy ladder criteria + allocator-live spec · P6 replay-everything CI** (`00XX-autonomy-and-replay-ci.md`) |
+| **D-1** | **0017 ✅** | **P3 Management Judge** — decision points/triggers, bounded-enum contract, payload (chart/thesis/theme/character), pivot+character model integration, shadow schema, fail-open + promotion gates (`docs/decisions/00XX-management-judge.md`) |
+| **D-2** | **0018 ✅** | **P1 Experience stack** — precedent case store schema + embedding/retrieval spec (temporal-diversity constraint), self-review→rubric-distillation loop, ensemble/uncertainty judging (`00XX-experience-stack.md`) |
+| **D-3** | **0019 ✅** | **#210/#211 Direct-sourcing backbone** — SEC/wire/feed pipeline, storage+dedup, judge integration, unknown-catalyst KPI loop (`00XX-catalyst-sourcing-backbone.md`) |
+| **D-4** | **0020 ✅** | **P4 book architecture** — per-setup judges w/ shared components, 9M-condition→setup feed, parabolic-short entry/management/borrow mechanics (`00XX-multi-setup-book.md`) |
+| **D-5** | **0021 ✅** | **P2 sight completion** — intraday narrative radar (streaming cohort detection), negative-catalyst downgrade axis (`00XX-full-sight.md`) |
+| **D-6** | **0022 ✅** | **P5 autonomy ladder criteria + allocator-live spec · P6 replay-everything CI** (`00XX-autonomy-and-replay-ci.md`) |
 
 Rule: no Phase-2 build task starts before its D-block spec is signed; every D-doc ends with an
 operator sign-off line (design forks surfaced there, never in build).
