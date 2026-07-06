@@ -1372,9 +1372,8 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     # ground truth. Guarded: a failure here must NEVER break the briefing.
     v1_closeout_line: str | None = None
     try:
-        from agents.market_intelligence.db import get_pool as _get_pool
         from scripts.v1_closeout_status import compute_and_render
-        _pool = await _get_pool()
+        _pool = await get_pool()
         async with _pool.acquire() as _conn:
             v1_closeout_line = await compute_and_render(_conn, today=today)
     except Exception as e:

@@ -15,12 +15,10 @@ existing `log_audit_event` (self-acquiring, never raises) — restart-safe/DB-
 sourced per `feedback_scheduler_aggregators_db_sourced` (no module-level state).
 
 ASSUMPTIONS (stated per the build card's conservative-if-unclear instruction):
-  - Trading-day calendar = weekdays only (no market-holiday calendar in this
-    codebase — same approximation `shared.dates.last_trading_day` already makes;
-    a weekday market holiday, e.g. 2026-07-03 (Jul-4th observed), is miscounted
-    as a trading day. Harmless for streak purposes: a holiday has no L1/repair
-    activity, so it just reads as another clean day, only the "N/10" denominator
-    is a hair generous. Not fixed here — pre-existing, documented limitation.
+  - Trading-day calendar = holiday-aware via `trading_calendar.get_market_status`
+    (2026-07-06 /simplify: was weekday-only, which miscounted observed holidays
+    like 2026-07-03; now uses the NYSE-calendar helper, with a weekday fallback
+    if that module is unavailable).
   - FL-1 "manual trade-state repair" has NO single mechanical audit event type —
     every past incident's one-off remediation script invented its own event_type
     (see MANUAL_REPAIR_EVENT_TYPES below). The allowlist covers every such event
@@ -111,15 +109,26 @@ _PLAN_TASK_RE = re.compile(r"^- #(\d+)\s*\|")
 
 # ── Calendar helpers ─────────────────────────────────────────────────────────
 
+def _is_trading_day(d: date) -> bool:
+    """Holiday-aware (2026-07-06 /simplify reuse). The weekday check is the outer
+    gate — reliable and dependency-free — because `get_market_status` FAILS OPEN
+    to is_trading_day=True when `exchange_calendars` isn't installed (which would
+    otherwise count weekends). On a weekday, consult the NYSE-calendar helper to
+    exclude observed holidays (e.g. 2026-07-03 Jul-4-observed); if that module is
+    unavailable, a weekday is assumed trading (same as the old weekday-only
+    approximation, so no regression where the calendar is absent)."""
+    if d.weekday() >= 5:
+        return False
+    try:
+        from agents.market_intelligence.trading_calendar import get_market_status
+        return get_market_status(d).is_trading_day
+    except Exception:
+        return True
+
+
 def _trading_days(start: date, end: date) -> list[date]:
-    """Weekdays in [start, end] inclusive. See module docstring re: holidays."""
-    days = []
-    d = start
-    while d <= end:
-        if d.weekday() < 5:
-            days.append(d)
-        d += timedelta(days=1)
-    return days
+    """Trading days (holiday-aware) in [start, end] inclusive."""
+    return [d for d in _calendar_days(start, end) if _is_trading_day(d)]
 
 
 def _calendar_days(start: date, end: date) -> list[date]:
@@ -146,7 +155,7 @@ def _add_trading_days(start: date, n: int) -> date:
     remaining = n
     while remaining > 0:
         d += timedelta(days=1)
-        if d.weekday() < 5:
+        if _is_trading_day(d):
             remaining -= 1
     return d
 
@@ -408,9 +417,10 @@ async def _fetch_prior_snapshot(conn) -> dict | None:
         return None
 
 
-async def _persist_snapshot(status: dict) -> None:
-    from agents.market_intelligence.db import log_audit_event
-
+async def _persist_snapshot(conn, status: dict) -> None:
+    # Reuse the caller's open conn (2026-07-06 /simplify efficiency) rather than
+    # log_audit_event's own get_pool()+acquire() — the caller already holds one,
+    # so this avoided a second concurrent pool checkout + round trip.
     detail = json.dumps({
         "fl1": {"n": status["fl1"]["n"]},
         "fl3": {"n": status["fl3"]["n"]},
@@ -419,7 +429,10 @@ async def _persist_snapshot(status: dict) -> None:
         "blocking_open": status["blocking_open"],
         "as_of": status["today"],
     }, default=str)
-    await log_audit_event(SNAPSHOT_EVENT, f"v1.0 closeout snapshot {status['today']}", detail)
+    await conn.execute(
+        "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
+        SNAPSHOT_EVENT, f"v1.0 closeout snapshot {status['today']}", detail,
+    )
 
 
 async def check_and_snapshot_resets(conn, status: dict) -> list[dict]:
@@ -427,7 +440,7 @@ async def check_and_snapshot_resets(conn, status: dict) -> list[dict]:
     fresh snapshot for next time. Returns the reset list (possibly empty)."""
     prior = await _fetch_prior_snapshot(conn)
     resets = detect_resets(prior, status)
-    await _persist_snapshot(status)
+    await _persist_snapshot(conn, status)
     return resets
 
 
@@ -442,36 +455,7 @@ async def compute_and_render(conn, today: date | None = None) -> str:
     return render_line(status)
 
 
-# ── CLI (no-DB demo + smoke) ─────────────────────────────────────────────────
-
-def _demo_status(today: date) -> dict:
-    """Synthetic fixture — no DB touched. Mirrors the roadmap doc's own
-    worked example (§2 State 7/5: FL-1 3/10, FL-8 3/4)."""
-    l1_dates: set[date] = set()
-    repair_dates: set[date] = set()
-    fl1 = compute_fl1(l1_dates, repair_dates, FL1_SOAK_START, date(2026, 7, 2))
-
-    ops_rows = [
-        {"event_type": "backup_restore_check_ok", "d": date(2026, 7, 5)},
-        {"event_type": "watchdog_heartbeat", "d": date(2026, 7, 5)},
-    ]
-    fl3 = compute_fl3(ops_rows, FL3_START, date(2026, 7, 5))
-
-    fl4 = compute_fl4(set(), FL4_START, date(2026, 7, 3))  # no trading days yet -> 0/5
-
-    review_sundays = {date(2026, 6, 21), date(2026, 6, 28), date(2026, 7, 5)}
-    fl8 = compute_fl8(review_sundays, today)
-
-    blocking_open = len(BLOCKING_TASK_IDS)  # demo: nothing closed yet
-    decl = compute_declaration_estimate(today, fl1["n"], fl3["n"], fl4["n"], fl8["n"])
-    return {
-        "today": today.isoformat(),
-        "fl1": fl1, "fl3": fl3, "fl4": fl4, "fl8": fl8,
-        "blocking_open": blocking_open,
-        "decl_estimate": _fmt_date(decl),
-        "resets": [],
-    }
-
+# ── CLI (live smoke) ─────────────────────────────────────────────────────────
 
 async def _run_live(today: date | None) -> str:
     from agents.market_intelligence.db import get_pool
@@ -485,17 +469,10 @@ def main(argv: list[str]) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--demo", action="store_true", help="Render from a synthetic fixture (no DB).")
     ap.add_argument("--today", type=str, default=None, help="Override today's date (YYYY-MM-DD).")
     args = ap.parse_args(argv)
 
     today = date.fromisoformat(args.today) if args.today else None
-
-    if args.demo:
-        status = _demo_status(today or date(2026, 7, 6))
-        print(render_line(status))
-        return 0
-
     print(asyncio.run(_run_live(today)))
     return 0
 

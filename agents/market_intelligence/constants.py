@@ -60,6 +60,18 @@ def active_account_modes() -> list[str]:
     drifted within a single file before this helper (2026-07-05 /simplify)."""
     return ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
 
+
+# ── Strategy phase vocabulary (SSoT — 2026-07-06 /simplify altitude) ──────────
+# The #424 'deprecated' rollout hardcoded these literals in 5+ places (entry
+# gate, preflight, promotion, the DB CHECK twice, telegram display) and MISSED
+# two — the CHECK constraint (boot-crash) and the preflight (deploy-gate crash).
+# One source of truth so a new phase is a single edit, not a grep-every-`==`-site:
+#   VALID_STRATEGY_PHASES — the full allowed set (the DB CHECK derives from this).
+#   NO_SUBMIT_PHASES      — phases that NEVER fire a real order (gate + preflight
+#                           consult this; a strategy in one of these never submits).
+VALID_STRATEGY_PHASES = frozenset({"shadow", "paper", "live", "deprecated"})
+NO_SUBMIT_PHASES = frozenset({"shadow", "deprecated"})
+
 # ── Service-split roles (#256 W2, 2026-06-13) ────────────────────────────────
 # Apollo is splitting into apollo-execution (broker / streams / safeguards /
 # Alpaca creds) and apollo-intelligence (detection / themes / judge / briefings)

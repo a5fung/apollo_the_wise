@@ -294,14 +294,7 @@ async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
 async def test_check_and_snapshot_resets_persists_and_detects(monkeypatch):
     pool, conn = make_mock_pool()
     conn.fetchrow = AsyncMock(return_value={"detail": '{"fl1": {"n": 5}}'})
-    audit_calls = []
-
-    async def _fake_log_audit_event(event_type, summary, detail=""):
-        audit_calls.append((event_type, summary, detail))
-
-    monkeypatch.setattr(
-        "agents.market_intelligence.db.log_audit_event", _fake_log_audit_event
-    )
+    conn.execute = AsyncMock()  # _persist_snapshot now writes via the open conn
 
     status = {
         "today": "2026-07-08", "fl1": {"n": 0, "reset_reason": "manual repair 7/8"},
@@ -310,8 +303,9 @@ async def test_check_and_snapshot_resets_persists_and_detects(monkeypatch):
     }
     resets = await check_and_snapshot_resets(conn, status)
     assert resets == [{"clock": "FL-1", "reason": "manual repair 7/8"}]
-    assert len(audit_calls) == 1
-    assert audit_calls[0][0] == "v1_closeout_snapshot"
+    # the fresh snapshot is persisted via conn.execute (INSERT ..., event_type, ...)
+    assert conn.execute.await_count == 1
+    assert conn.execute.await_args.args[1] == "v1_closeout_snapshot"
 
 
 @pytest.mark.asyncio
@@ -321,13 +315,7 @@ async def test_compute_and_render_end_to_end(monkeypatch):
         [], [], [], [], [],
     ])
     conn.fetchrow = AsyncMock(return_value=None)  # no prior snapshot
-
-    async def _fake_log_audit_event(event_type, summary, detail=""):
-        pass
-
-    monkeypatch.setattr(
-        "agents.market_intelligence.db.log_audit_event", _fake_log_audit_event
-    )
+    conn.execute = AsyncMock()  # _persist_snapshot writes via the open conn
     monkeypatch.setattr(f"{MOD}.PLAN_MD", __import__("pathlib").Path(__file__))  # any readable file, 0 task lines
 
     line = await compute_and_render(conn, today=date(2026, 7, 6))

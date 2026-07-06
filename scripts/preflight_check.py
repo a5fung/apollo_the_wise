@@ -30,7 +30,9 @@ import sys
 
 from agents.market_intelligence.agent import _bootstrap_alpaca_credentials
 from agents.market_intelligence.broker.live_tracker import _check_safeguards
-from agents.market_intelligence.constants import resolve_account_mode_for_strategy
+from agents.market_intelligence.constants import (
+    NO_SUBMIT_PHASES, resolve_account_mode_for_strategy,
+)
 from agents.market_intelligence.strategies.registry import load_strategies
 
 # Skip-reason prefixes that count as PASS even when (ok=False) — these are
@@ -69,14 +71,12 @@ async def main() -> int:
         if not s.enabled:
             skipped.append(f"  {sid:20s}  disabled")
             continue
-        if s.phase in ("shadow", "deprecated"):
-            # deprecated (#424, 2026-07-06): terminal — never submits (the entry
-            # gate blocks it before resolve_account_mode is ever called; resolve
-            # itself raises for 'deprecated' as defense-in-depth). Skip it here
-            # exactly like shadow, else the preflight crashes walking a strategy
-            # that can never fire a real entry (market-agent boot 7/6 sibling of
-            # the CHECK-constraint miss — a new phase value must be handled on
-            # EVERY path that switches on phase).
+        if s.phase in NO_SUBMIT_PHASES:
+            # NO_SUBMIT_PHASES (constants SSoT): a strategy in one of these never
+            # fires a real entry, so don't walk it through the safeguard/resolve
+            # path (resolve_account_mode raises for 'deprecated'). Consulting the
+            # shared set means a new no-submit phase is handled here automatically
+            # — the fix that would have prevented the 7/6 preflight boot-gate miss.
             _label = "deprecated (retired, no submit)" if s.phase == "deprecated" else "shadow phase (no live submit)"
             skipped.append(f"  {sid:20s}  {_label}")
             continue

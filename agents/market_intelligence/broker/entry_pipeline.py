@@ -176,12 +176,14 @@ def _phase_gate_skip_reason(strategy) -> str | None:
     which raises ValueError for any phase other than 'paper'/'live' — a crash
     instead of a clean skip.
     """
+    from agents.market_intelligence.constants import NO_SUBMIT_PHASES
     if not strategy.enabled:
         return BLOCK_STRATEGY_DISABLED
-    if strategy.phase == "deprecated":
-        return BLOCK_STRATEGY_DEPRECATED
-    if strategy.phase == "shadow":
-        return BLOCK_STRATEGY_IN_SHADOW
+    # NO_SUBMIT_PHASES (constants) is the SSoT for "never fires an order"; the
+    # per-phase skip reason below is display only. A new no-submit phase added to
+    # the set is blocked here automatically (2026-07-06 /simplify altitude).
+    if strategy.phase in NO_SUBMIT_PHASES:
+        return BLOCK_STRATEGY_DEPRECATED if strategy.phase == "deprecated" else BLOCK_STRATEGY_IN_SHADOW
     return None
 
 

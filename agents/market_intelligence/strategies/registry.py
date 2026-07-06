@@ -33,7 +33,7 @@ class Strategy:
     strategy_id: str
     name: str
     family: str
-    phase: str               # 'shadow' | 'paper' | 'live'
+    phase: str               # constants.VALID_STRATEGY_PHASES: shadow|paper|live|deprecated
     enabled: bool
     signal_type: str
     outcomes_table: str
