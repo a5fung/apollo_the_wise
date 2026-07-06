@@ -17,14 +17,20 @@ direct primary sources over LLM discovery; **LLM = judge of grounded text, never
 
 ## 2. The completion delta (what D-3 actually adds)
 
-### 2.1 FMP press-release onboarding (T1-adjacent; the key already exists)
-FMP's press-release endpoints (`/press-releases/{ticker}`, stable IR-wire text) are unused
-despite a paid key in prod. Wire them as a corpus source: fetch at enrichment time alongside
-SEC/benzinga (same async gather, same timeout discipline), normalize to the corpus block
-format, register the feed alias in `news_source_quality.INGESTED_FEED_ALIASES` (that module
-OWNS "what do we ingest" — the gap-finder then stops flagging PR-wire misses as gaps).
-Acceptance: a name whose catalyst exists only as an IR press release (the gap-finder's most
-common finding class) grades with a grounded corpus instead of `unknown_catalyst`.
+### 2.1 Press-release onboarding — 8-K EXHIBIT EXTRACTION (premise corrected 7/5 eve)
+**REVIEW 7/5 (verified EMPIRICALLY): FMP press-releases return 402 Payment Required on our
+plan** (probed live: `/stable/news/press-releases*` → 402; legacy v3 → 403; the repo's
+`get_fmp_*` functions are already yfinance shims per collector.py's own comments). The
+"paid key, zero new vendors" premise was FALSE. The corrected — and better — design:
+**extract press-release text from 8-K exhibits (EX-99.x)**: companies file material PRs as
+8-K attachments; we ALREADY fetch 8-Ks + resolve filing documents (`collector.py` doc-URL
+resolution). S1 becomes: for each corpus 8-K, pull the EX-99 exhibit text (same fetch
+machinery, SEC = true T1, zero vendors), strip boilerplate, append as a corpus block, and
+register the alias. Coverage = PRs attached to material events — exactly the catalyst class
+that matters. FMP plan upgrade demoted to a fallback (H1) if the unknownrate KPI stays >10%
+after this ships.
+Acceptance: a name whose catalyst exists only in its 8-K press-release exhibit grades with
+a grounded corpus instead of `unknown_catalyst`.
 
 ### 2.2 Perplexity demotion — the end-state, stated once
 Target: Perplexity appears in exactly TWO places — (a) the gap-finder's bounded
@@ -49,7 +55,8 @@ IF matcher-bug: fix the matcher (#367's own lane); this section stays dormant.
 No new normalized source store (rejected: a `mi_catalyst_sources` table would duplicate
 retained raw JSON + corpus logs for modest gain). Instead: the corpus assembler writes a
 **source manifest** — `mi_ep_alerts.corpus_manifest JSONB`:
-`[{"src":"sec_8k","ref":"<acc_no>","chars":1840},{"src":"fmp_pr","ref":"<url>","chars":2210},...]`
+`[{"src":"sec_8k","ref":"<url>","chars":1840},{"src":"8k_ex99","ref":"<url>","chars":2210},...]`
+(refs are the filing-doc URLs our fetchers actually return — review 7/5; the URL embeds the acc_no)
 — one additive column; the judge rationale's citations become checkable ("grade cited an
 8-K we can open"), and #367-class diagnostics stop needing corpus re-fetches.
 
@@ -82,8 +89,9 @@ replayed corpus. S3: labeled-block guard — the judge prompt renders THEME CONT
 a subject-news-only regression pin proves no leakage into is_primary_subject_news.
 
 ## 7. Operator sign-off forks (recs first)
-- **H1** FMP PR onboarding now (rec — key exists, zero new vendors) vs direct wire vendors
-  (BusinessWire et al: real money, revisit only if FMP coverage proves thin via the KPI).
+- **H1** (re-cut 7/5 eve after the 402 probe) 8-K exhibit extraction as the PR source (rec —
+  zero vendors, T1-primary) vs paying: FMP plan upgrade or wire vendors — money decisions,
+  revisit ONLY if unknownrate stays >10% after the exhibit path ships.
 - **H2** The <10% unknownrate done-ness bar (rec) — or tighter.
 - **H3** §2.3 conditional pre-approved to execute on the #367 verdict (rec — the read itself
   is the gate) vs a separate sitting after the read.

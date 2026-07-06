@@ -14,7 +14,9 @@ move is live. **Deterministic detection, LLM only for naming** (cost-bounded):
 - **Detection** (pure functions over data already flowing): candidates = names with intraday
   gain ≥3% AND rvol ≥2 (from the snapshot machinery the EP scan already uses). Cluster by
   (a) shared headline tokens over today's ingested news (Polygon/Benzinga raw JSON retained —
-  token-overlap Jaccard on cleaned title keywords, the Lane-2 tokenizer REUSED **plus a
+  token-overlap Jaccard on cleaned title keywords — **REVIEW 7/5: a NEW headline tokenizer;
+  Lane-2 is 100% LLM (one Sonnet call over catalyst summaries), there is NO Lane-2 tokenizer
+  to reuse — borrow the regex+Jaccard PATTERN from `_themes_are_related`/`_KEYWORD_RE`** **plus a
   finance-stopword list — Gemini am. 7/5: strip ubiquitous terms (revenue/quarter/guidance/
   announces/results/conference/Fed/shares/...) so clusters form only on SPECIFIC nouns
   (drones, H5N1, Blackwell, NAND); macro-news and ETF-rebalance blasts must not cluster**) and (b)
@@ -40,14 +42,22 @@ first-class axis with the same shadow→checkpoint discipline as theme/structure
 
 - **Deterministic flag extraction** (from data already fetched — submissions API form types +
   the #238 filing text): `neg_flags JSONB` per candidate:
-  `s3_shelf_lt_30d · atm_program_active · priced_takedown_lt_10d (424B5) · equity_sale_8k_lt_10d ·
-  going_concern_language (10-K/Q text grep) · lockup_expiry_lt_15d (S-1 names, computable when
-  IPO date known)`. Each flag: {present, filing ref, days_ago} — provenance via the 0019
-  manifest.
+  `s3_shelf_lt_30d (REVIEW 7/5: needs a NEW forms=('S-3',) fetch call — the parameter is
+  generic but no call site passes S-3 today; trivial addition) · atm_agreement_seen_lt_90d
+  (REVIEW 7/5: renamed from atm_program_active, which was an OVERPROMISE — true active-status
+  needs 10-Q MD&A capacity/usage text we do NOT fetch; the presence-proxy from 8-K item-1.01
+  agreements we already see is the honest v1; full ATM-status = a fork, K5) ·
+  priced_takedown_lt_10d (424B5) · equity_sale_8k_lt_10d · going_concern_language
+  (REVIEW 7/5: requires 10-K/Q fetch that does NOT exist today — rides fork K3 with that cost
+  stated) · lockup_expiry_lt_15d (S-1 names, computable when IPO date known)`. Each flag:
+  {present, filing ref (url), days_ago} — provenance via the 0019 manifest.
 - **Axis score**: `negative_severity ∈ {none, overhang, active_dilution}` — mapped
   deterministically from flags (active = priced takedown/8-K sale <10d; overhang = shelf/ATM
-  only). The JUDGE sees flags + severity and reasons (ADR 0011 clause 4); the axis column
-  `neg_axis` persists beside theme/structure axes.
+  only). The JUDGE sees flags + severity and reasons (ADR 0011 clause 4).
+  **Persistence (REVIEW 7/5 — the original claim was wrong):** the theme axis is NOT an
+  mi_ep_alerts column (it lives in its own `mi_theme_axis_shadow` table) and the structure
+  axis isn't built yet — so the neg axis follows the ACTUAL house pattern: its own
+  **`mi_neg_axis_shadow`** table (#328's shape), never touching the live alert row pre-flip.
 - **Shadow accrual** → joins the axis checkpoint cadence (M1-style batched eval): does
   active_dilution correlate with worse forward outcomes on HIGH grades? Boost-only-DOWN
   candidate (an axis that can only demote) — flip decision at a checkpoint with
@@ -65,7 +75,9 @@ first-class axis with the same shadow→checkpoint discipline as theme/structure
 
 ## 4. Cost & bounds
 Radar: zero LLM in detection; ≤3 Haiku namings/day. V3: zero LLM (deterministic flags). The
-15-min job reuses cached snapshots + already-ingested news — no new vendor calls.
+15-min job issues its own `get_snapshot_all()` per tick (REVIEW 7/5: NO snapshot cache exists
+anywhere — every caller fetches fresh; cheap because Polygon Starter is unlimited-call, not
+because of caching) + already-ingested news — no new vendor calls.
 
 ## 5. Interactions
 0019 §2.3 (theme-narrative corpus block) consumes radar cohorts if the #367 fork opens it ·
@@ -79,3 +91,5 @@ answered by radar cohorts becoming Lane-2 seeds · #309 (P2 umbrella) burns down
 - **K3** going-concern grep in v1 (rec: yes, it's a string match on filings we already pull)
   vs defer.
 - **K4** Radar cadence 15-min (rec) vs 5-min (3× the compute for marginal earliness).
+- **K5** (added 7/5 eve) Full ATM-active status via new 10-Q/10-K fetching (real build) vs
+  the presence-proxy only (rec: proxy v1; revisit with the axis checkpoint evidence).
