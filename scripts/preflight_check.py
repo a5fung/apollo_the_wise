@@ -69,8 +69,16 @@ async def main() -> int:
         if not s.enabled:
             skipped.append(f"  {sid:20s}  disabled")
             continue
-        if s.phase == "shadow":
-            skipped.append(f"  {sid:20s}  shadow phase (no live submit)")
+        if s.phase in ("shadow", "deprecated"):
+            # deprecated (#424, 2026-07-06): terminal — never submits (the entry
+            # gate blocks it before resolve_account_mode is ever called; resolve
+            # itself raises for 'deprecated' as defense-in-depth). Skip it here
+            # exactly like shadow, else the preflight crashes walking a strategy
+            # that can never fire a real entry (market-agent boot 7/6 sibling of
+            # the CHECK-constraint miss — a new phase value must be handled on
+            # EVERY path that switches on phase).
+            _label = "deprecated (retired, no submit)" if s.phase == "deprecated" else "shadow phase (no live submit)"
+            skipped.append(f"  {sid:20s}  {_label}")
             continue
 
         try:
