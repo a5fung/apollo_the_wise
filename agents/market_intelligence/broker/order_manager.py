@@ -902,12 +902,15 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
                 "error": str(e)[:500],
             }),
         )
-        # Urgent: stop not in place!
-        await send_telegram_message(
-            f"{mode_prefix(account_mode)}🚨 *STOP ORDER FAILED* for {ticker}!\n"
-            f"Attempted stop @${new_stop_price:.2f}\n"
-            f"Error: {e}\n"
-            f"Position has NO stop protection!"
+        # #433 (2026-07-06, WULF): do NOT cry "NO stop protection" on the FIRST
+        # attempt — a retry fires in 3s and usually succeeds (the OTO-leg-vs-
+        # refresh conflict class: the old stop often still holds the shares this
+        # instant, so attempt-1 gets insufficient-qty then attempt-2 wins). A
+        # loud naked alarm here is a FALSE positive the operator cannot tell
+        # apart from a real one. The loud alarm now fires ONLY if the retry ALSO
+        # fails (the genuinely-naked case below). Attempt-1 failure = log + audit.
+        logger.warning(
+            f"{ticker}: first stop-place attempt failed ({type(e).__name__}) — retrying in 3s"
         )
         # Try once more
         await asyncio.sleep(3)
@@ -925,6 +928,13 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
                     "new_stop_price": new_stop_price,
                     "new_stop_id": new_order.get("id"),
                 }),
+            )
+            # #433: CONFIRM to the operator — the position IS protected. Without
+            # this, a prior transient concern (or the WS stop-cancel alert) is
+            # never retracted and the operator believes the position is naked.
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}✅ *Stop confirmed:* {ticker} @ ${new_stop_price:.2f}\n"
+                f"_Placed on retry after a transient conflict — position protected._"
             )
         except Exception as e2:
             logger.error(f"Stop re-placement also failed for {ticker}: {e2}")
@@ -963,6 +973,14 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
                     "remaining_shares": float(trade["remaining_shares"]),
                     "source": "update_stop",
                 }),
+            )
+            # #433: THIS is the genuinely-naked case (BOTH attempts failed) — it
+            # was audit-only before, so the real emergency was quieter than the
+            # false attempt-1 alarm. Alarm LOUD here: this is the one that means it.
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}🚨 *STOP FAILED — position NAKED:* {ticker}\n"
+                f"Both attempts to place @ ${new_stop_price:.2f} failed ({type(e2).__name__}).\n"
+                f"{float(trade['remaining_shares']):.0f} sh unprotected — remediation runs at 4:05 PM ET."
             )
             return False
 

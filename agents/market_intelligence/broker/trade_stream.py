@@ -295,6 +295,24 @@ async def _verify_event_account_mode(order_id: str, stream_account_mode: str) ->
     return True
 
 
+def _find_replacement_stop(open_orders, symbol: str, canceled_order_id: str):
+    """#433 (2026-07-06): given the broker's open orders, return a live stop for
+    `symbol` that is NOT the just-canceled order — i.e. proof the position is
+    still protected (a stop REPLACEMENT, not a naked position). Returns the
+    order dict or None. Mirrors #128's `_covered_by_broker` broker-authoritative
+    pattern. INVARIANT: this only ever DOWNGRADES an alarm when it returns a
+    positive match; callers must treat None (and any broker-read failure) as
+    "alarm" — never suppress a genuinely-naked alert on a soft signal."""
+    return next(
+        (o for o in (open_orders or [])
+         if o.get("symbol") == symbol
+         and o.get("id") != canceled_order_id
+         and ("stop" in str(o.get("type", "")).lower()
+              or o.get("stop_price") is not None)),
+        None,
+    )
+
+
 # ── Event Router ────────────────────────────────────────────────────────────
 
 
@@ -971,15 +989,44 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 f"trade_id={stop_trade['id']}"
             )
         else:
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
-                f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
-                f"Remediation runs at 4:05 PM ET — monitor."
-            )
-            logger.warning(
-                f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
-                f"trade_id={stop_trade['id']}"
-            )
+            # #433 (2026-07-06, WULF): a stop-leg cancel is NOT proof of a naked
+            # position — a stop REPLACEMENT (old leg canceled, new stop placed)
+            # produces this exact event. Before crying "unprotected", ask the
+            # broker whether a DIFFERENT live stop for this symbol exists.
+            # INVARIANT: only downgrade the alarm when the broker POSITIVELY
+            # confirms a live stop; a read failure or no-stop-found still alarms
+            # (fail-safe — never suppress a genuinely-naked alert).
+            from agents.market_intelligence.broker import alpaca_client as _alp
+            replacement = None
+            try:
+                open_orders = await _alp.get_open_orders(account_mode=account_mode)
+                replacement = _find_replacement_stop(open_orders, symbol, order_id)
+            except Exception as _e:
+                logger.warning(
+                    f"WS [{account_mode}]: broker-confirm on stop-cancel failed for "
+                    f"{symbol} ({_e}) — alarming fail-safe"
+                )
+                replacement = None
+            if replacement:
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}ℹ️ *Stop replaced:* {symbol}\n"
+                    f"_Prior leg {event_norm}; live stop `{str(replacement['id'])[:8]}` "
+                    f"in place at the broker — position protected._"
+                )
+                logger.info(
+                    f"WS [{account_mode}]: stop-leg {event_norm} but replacement live "
+                    f"({replacement['id']}): {symbol} trade_id={stop_trade['id']}"
+                )
+            else:
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
+                    f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
+                    f"Remediation runs at 4:05 PM ET — monitor."
+                )
+                logger.warning(
+                    f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
+                    f"trade_id={stop_trade['id']}"
+                )
         return
 
     # 3. Pending managed exit (partial/full) cancelled or rejected before fill.
