@@ -38,7 +38,10 @@ genuinely NEW pieces are demotion + history. Columns (additive):
 The shadow allocator matures into the capital brain in two steps:
 - **A1 (post-8/4 registry read)**: `allocation_proposals` — monthly (1st trading day) the
   allocator emits a per-strategy risk-budget proposal: inputs = accrued per-strategy
-  expectancy (min N=30 else prior 0.5× default), pairwise strategy correlation on daily P&L,
+  expectancy (min N=30 else prior 0.5× default), pairwise strategy correlation on daily P&L
+  — **review 7/5: BOTH inputs are GREENFIELD computations (cross_strategy_allocator is a
+  same-day ORB-slot-contest ranker, unrelated; no per-strategy expectancy query or P&L
+  correlation exists anywhere) — L3 builds them, it does not extend the shadow allocator**,
   **Kelly-fraction capped at 0.25 per strategy AND a GLOBAL portfolio Kelly ceiling of 0.40
   (Gemini am. 7/5, M2f modification): if the sum of per-strategy proposals exceeds it, ALL
   budgets scale down pro-rata** — four strategies at 0.25 each would otherwise stack to 1.0
@@ -60,8 +63,13 @@ Three scheduled regression jobs, one gating mechanism:
 |---|---|---|---|
 | Selection replay (#268b/#302 exists) | weekly (exists) | Phase-B calibration n=399 | replayed expectancy drop >0.3R vs baseline at N≥50 |
 | Judge frozen-cohort eval (X6 harness, 0018) | on grade-path changes + monthly | the labeled cohort's grade-correctness | correctness drop >5pts |
-| Entry-mechanics sim (the W2 rails) | monthly | current entry ruleset expectancy on the trailing 90d cohort | drop >0.3R |
-- **Mechanism**: each job writes `/home/apollo/backups/ci_status/<job>.json` (REVIEW 7/5: the earlier `scripts/ci_status/` path was WRONG — scripts/ is inside the repo; the backups dir is the established host-state home, like the watchdog state) `{status:green|red, asof,
+| Entry-mechanics sim — **review 7/5: does NOT exist as a recurring job yet** (the W2 study was one-off analysis; this row is a build, honestly flagged like X6) | monthly | current entry ruleset expectancy on the trailing 90d cohort | drop >0.3R |
+- **Mechanism**: each job writes `ci_status/<job>.json` — **REVIEW 7/5 eve (second correction;
+  the first fix traded one error for another): the regression jobs run IN-CONTAINER and
+  `/home/apollo/backups` is NOT mounted into market-agent/execution (compose mounts only
+  `logs`). L4's explicit prerequisite: add a `/home/apollo/backups/ci_status:/app/ci_status`
+  bind mount to the market-agent service (one compose line, lands with the L4 deploy) so
+  in-container writers and the on-host deploy.sh gate see the same files** `{status:green|red, asof,
   detail}` (repo-external path on the host, like the watchdog state). New deploy gate
   **[5m/7]**: red status + age <7d ⇒ deploy BLOCKED (exit 17) unless
   `CI_OVERRIDE="<reason>"` env is set (logged + audit row — the escape is loud, for

@@ -42,8 +42,10 @@ weights catalyst/theme — same components, different profile weights.
 A thin admission table replacing implicit universe plumbing:
 `ticker · admitted_date · condition TEXT CHECK IN ('9m_day','ep_alert','rs_leader',
 'sugar_cohort') · expires_date (condition-specific TTL: 9M ~20 trading days) · detail JSONB`.
-Producers: the 9M EOD sweep, EP alerts, RS top-N, the sugar cohort job (all exist — they gain
-one INSERT). Consumers: Family-A detectors (flag/coil/HTF) scan `universe ∪ admissions`
+Producers: the 9M EOD sweep (`run_9m_eod_sweep`), EP alerts, the sugar cohort job (verified
+by name — they gain one INSERT) and RS top-N (**review 7/5: no overall top-N producer exists
+today — rs_engine has full-universe scoring + a per-sector top-5 helper only; B1 writes the
+ranked-selection query first, then the INSERT**). Consumers: Family-A detectors (flag/coil/HTF) scan `universe ∪ admissions`
 instead of ad-hoc lists; every downstream candidate carries its origin condition (telemetry:
 "do 9M-origin coils outperform RS-origin coils" becomes ONE GROUP BY — the Bonde
 model finally measurable). Card-sized; no behavior change to detection thresholds.
@@ -74,6 +76,16 @@ alerts accrued). This ADR specs entry/management/borrow — the missing mechanic
   N≥30 triggered-shadow cohort + positive expectancy → PAPER (real short mechanics surface
   borrow realities) → live-reduced. Each rung CHANGE_PROCESS + sign-off. Shorts stay
   **excluded from L2 mgmt-judge authority** (0017) until their own review.
+- **⚠ PAPER promotion is BLOCKED on B6 (REVIEW 7/5 eve — the deepest finding): the ENTIRE
+  trade lifecycle is long-only at the code level.** Verified: `place_bracket_order` hardcodes
+  `side=OrderSide.BUY` (no side param exists); PnL is `(exit − entry) × shares` at 5+ sites
+  (exit_logic ×3, trade_stream, order_manager, backtester ×5); the stop trigger is
+  `bar_low <= hard_stop` (a short's fires on bar_high ≥); the sell helpers hardcode SELL
+  (covering needs BUY); no direction column exists on mi_live_trades or in entry_pipeline.
+  SHADOW (B3) is safe — it touches none of this. B6 = the direction-aware lifecycle pass:
+  side-parameterized submission, sign-aware PnL/stop-trigger, buy-to-cover exits, and the
+  schema decision (direction column vs parallel short table) — its own careful-path card,
+  never hidden inside B3.
 
 ## 5. Regime-adaptive book selection (v1 = a signed static matrix)
 
@@ -89,10 +101,11 @@ existing regime-halving safeguard stays as the outer floor. Data-driven matrix t
 | Card | Scope | Class |
 |---|---|---|
 | B1 | `mi_setup_universe` + producer INSERTs + Family-A consumer switch + origin-cohort telemetry query | Sonnet card |
-| B2 | SetupJudgeProfile plumbing (profile table/dataclass + runtime parameterization; magna53 profile = current behavior byte-identical — regression-pinned) | Sonnet card, Fable review |
-| B3 | Parabolic-short shadow: arm/trigger state machine + borrow check + shadow table + digest line | Sonnet card |
+| B2 | SetupJudgeProfile — **honestly a REFACTOR, not plumbing (review 7/5): ep_grade_judge has zero parameterization today (one hardcoded module-level rubric prompt + an EP-specific tool schema); B2 extracts that monolith into templated profiles** under a byte-identical magna53 regression pin | Sonnet card, Fable review |
+| B3 | Parabolic-short shadow: arm/trigger state machine + borrow check + shadow table + digest line. **Data prep (review 7/5): derive prior_day_low/climax_high via mi_daily_closes join + compute-and-persist atr_14 (mi_parabolic_candidates has NONE of the three; no universe ATR store exists — the detector's own 120d pull computes it)** | Sonnet card |
 | B4 | regime_matrix column + sizing-step application (NULL=1.0 default) + tests | Sonnet card, Fable review (sizing-adjacent, ships dark until J3 signs the matrix) |
 | B5 | Anticipation/HTF judge profiles (the #332 rubric writing) — post-M2 graduations | Fable block |
+| B6 | **Direction-aware trade lifecycle (the short-book enabler; PAPER-rung prerequisite)** — side param through submission/PnL/stop-trigger/cover paths + the schema decision; touches money-path code at ~10 sites | **careful path — Fable-led, NOT a card** |
 Sequencing: B1 → B3 accrues while B2 lands → M2 graduations (#395/#397) slot their setups
 into profiles (B5) → B4 last, dark until signed.
 
