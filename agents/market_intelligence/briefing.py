@@ -1043,6 +1043,7 @@ def _format_evening_briefing(
     fishhook_hit_rate_60d: float | None = None,
     cohort_babies: list[dict] | None = None,
     undercut_rallies: list[dict] | None = None,
+    v1_closeout_line: str | None = None,
 ) -> str:
     next_num = 4
 
@@ -1071,6 +1072,13 @@ def _format_evening_briefing(
         f"*Apollo Evening Briefing — {briefing_date}*",
         "",
     ]
+
+    # v1.0 close-out countdown (#426, #418 §5) — the anti-idle driving surface.
+    # Placed first (before quality warnings/regime) so drift/reset is seen every
+    # night, not buried at the bottom of a long message.
+    if v1_closeout_line:
+        sections.append(v1_closeout_line)
+        sections.append("")
 
     # Data quality warnings (prepended before section 1 if any)
     if quality_warnings:
@@ -1360,6 +1368,18 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"Fishhook outcomes fetch failed: {e}")
 
+    # v1.0 close-out countdown (#426, #418 §5) — one line, computed from DB
+    # ground truth. Guarded: a failure here must NEVER break the briefing.
+    v1_closeout_line: str | None = None
+    try:
+        from agents.market_intelligence.db import get_pool as _get_pool
+        from scripts.v1_closeout_status import compute_and_render
+        _pool = await _get_pool()
+        async with _pool.acquire() as _conn:
+            v1_closeout_line = await compute_and_render(_conn, today=today)
+    except Exception as e:
+        logger.warning(f"v1.0 closeout status failed: {e}")
+
     text = _format_evening_briefing(
         regime=regime,
         rs_leaders=rs_leaders,
@@ -1388,6 +1408,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         fishhook_hit_rate_60d=fishhook_hit_rate_60d,
         cohort_babies=cohort_babies,
         undercut_rallies=undercut_rallies,
+        v1_closeout_line=v1_closeout_line,
     )
 
     success = await send_telegram_message(text, chat_id)
