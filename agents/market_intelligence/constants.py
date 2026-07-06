@@ -148,12 +148,18 @@ def resolve_account_mode_for_strategy(strategy) -> str:
 
     Mapping:
       phase='shadow'                          → no submit (caller short-circuits)
+      phase='deprecated'                      → no submit (caller short-circuits,
+                                                 same as shadow — #424, terminal)
       phase='paper'                           → 'paper' (Alpaca paper account)
       phase='live' + live_real_enabled=True   → 'live'  (Alpaca live account)
       phase='live' + live_real_enabled=False  → 'live'  (staged-paper Telegram only)
 
     Note: 'live' return covers both real-$ submit AND staged-paper Telegram
     proposals — the live_real_enabled gate happens downstream of mode resolution.
+    Raises for 'shadow'/'deprecated'/anything else — callers MUST short-circuit
+    on the phase gate (see broker/entry_pipeline.py::_phase_gate_skip_reason)
+    before reaching this resolver. Fail-closed by design: an unhandled phase
+    should crash loudly here, never silently default to a submit-capable mode.
     """
     phase = getattr(strategy, "phase", None) or (strategy.get("phase") if isinstance(strategy, dict) else None)
     if phase == "paper":

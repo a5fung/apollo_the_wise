@@ -35,6 +35,7 @@ BLOCK_CIRCUIT_BREAKER            = "block:circuit_breaker"
 BLOCK_DRAWDOWN_BREAKER           = "block:drawdown_breaker"
 BLOCK_STRATEGY_DISABLED          = "block:strategy_disabled"
 BLOCK_STRATEGY_IN_SHADOW         = "block:strategy_in_shadow"
+BLOCK_STRATEGY_DEPRECATED        = "block:strategy_deprecated"  # #424: terminal phase, never enters
 BLOCK_PAPER_STRATEGY_ON_LIVE     = "block:paper_strategy_on_live"
 BLOCK_TICKER_OPEN_POSITION       = "block:ticker_open_position"
 # PDT lockout guards RETIRED 2026-06-04 (#181) — FINRA Rule 4210 eliminated the
@@ -82,6 +83,7 @@ _HUMAN_LABELS: dict[str, str] = {
     BLOCK_CIRCUIT_BREAKER:         "5-loss circuit breaker tripped",
     BLOCK_STRATEGY_DISABLED:       "Strategy disabled in registry",
     BLOCK_STRATEGY_IN_SHADOW:      "Strategy in shadow phase (no live entries)",
+    BLOCK_STRATEGY_DEPRECATED:     "Strategy deprecated — retired, no new entries",
     BLOCK_PAPER_STRATEGY_ON_LIVE:  "Paper-phase strategy can't run on live account",
     BLOCK_TICKER_OPEN_POSITION:    "Already have open position in ticker",
     BLOCK_PDT_LOCKOUT_IMMINENT:    "PDT lockout imminent (3 day-trades used)",

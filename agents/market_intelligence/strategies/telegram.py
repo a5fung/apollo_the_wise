@@ -58,6 +58,8 @@ def _fmt_kpi(verdict) -> str:
 
 
 def _fmt_eligible(verdict) -> str:
+    if verdict.current_phase == "deprecated":
+        return "deprecated"
     if verdict.next_phase is None:
         return "top"
     if verdict.eligible:
@@ -111,7 +113,9 @@ async def render_strategy_detail(strategy_id: str) -> str:
     lines.append("")
 
     if v is not None:
-        if v.next_phase is None:
+        if s.phase == "deprecated":
+            lines.append("*Promotion:* deprecated — excluded from ladder")
+        elif v.next_phase is None:
             lines.append("*Promotion:* already at top of ladder")
         else:
             lines.append(f"*Promotion to `{v.next_phase}`* — eligible: {'✓' if v.eligible else '✗'}")

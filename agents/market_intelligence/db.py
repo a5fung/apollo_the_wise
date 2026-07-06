@@ -169,8 +169,16 @@ async def _seed_strategies_registry(conn) -> None:
             "strategy_id": "9m_day2",
             "name": "9M Day 2 ORB",
             "family": "orb_long",
-            # Seed at 'paper' per 2026-05-13 incident — see magna53 comment above.
-            "phase": "paper",
+            # DEPRECATED (#424, ADR 0022 §1, operator-signed 2026-07-05/06):
+            # 9M is a stock CONDITION (universe-to-watch), not a tradeable
+            # setup in its own right — no new paper/live entries. Detection
+            # (9m_detector.py) keeps running as telemetry/watchlist input;
+            # only the Day-2 ORB entry via this registry row is retired.
+            # Terminal phase — excluded from the promotion checker (see
+            # strategies/promotion.py) and blocked at the entry gate
+            # (broker/entry_pipeline.py). See _seed_strategies_registry's
+            # migration UPDATE below for the existing-prod-row convergence.
+            "phase": "deprecated",
             "signal_type": "9m_day2",
             "outcomes_table": "mi_live_trades",
             "promotion_model": "unpaired_r",
@@ -233,6 +241,13 @@ async def _seed_strategies_registry(conn) -> None:
             "strategy_id": "wick_fill",
             "name": "Wick-Fill (Negated Shooting Star)",
             "family": "orb_long",
+            # Backlog "hold" (#424, operator-signed 2026-07-05/06): stays
+            # shadow telemetry, NOT promotion-track. review_required=True
+            # (vs. the False used elsewhere) means _eval_telemetry_review
+            # ALWAYS appends a blocking reason regardless of metrics clearing
+            # — the weekly checker can never flag this "✓ ready". Same
+            # mechanism as parabolic_short's implicit default (no explicit
+            # review_required key there = True).
             "phase": "shadow",
             "signal_type": "wick_fill",
             "outcomes_table": "mi_wick_candidates",
@@ -242,7 +257,7 @@ async def _seed_strategies_registry(conn) -> None:
                     "metric_key": "n_candidates",
                     "min_count": 30,
                     "min_fill_rate": 0.50,
-                    "review_required": False,
+                    "review_required": True,
                 },
             },
         },
@@ -250,7 +265,14 @@ async def _seed_strategies_registry(conn) -> None:
             "strategy_id": "flag_continuation",
             "name": "Continuation Flag (post-runup tightening)",
             "family": "long_setup",
-            "phase": "shadow",
+            # DEPRECATED (#424, ADR 0022 §1, operator-signed 2026-07-05/06):
+            # replaced by HTF + Anticipation (Family A). Detection/telemetry
+            # (flag_detector.py) is a separate lever gated by `enabled`
+            # (should_run) — untouched here; only this registry row's
+            # promotion path + entry-gate eligibility are retired. Not
+            # currently wired to submit_trade_entry (telemetry-only today),
+            # so this is defense-in-depth for the entry gate.
+            "phase": "deprecated",
             "signal_type": "flag_continuation",
             "outcomes_table": "mi_flag_candidates",
             "promotion_model": "telemetry_review",
@@ -296,6 +318,29 @@ async def _seed_strategies_registry(conn) -> None:
              _json.dumps(s["promotion_thresholds"]))
             for s in seeds
         ],
+    )
+
+    # Deprecation migration (#424, ADR 0022 §1, operator-signed 2026-07-05/06):
+    # 9m_day2 (9M = a condition, not a tradeable setup) and flag_continuation
+    # (replaced by HTF + Anticipation) are retired strategies. The INSERT
+    # above is `ON CONFLICT DO NOTHING` — it only sets phase on first seed,
+    # so an EXISTING prod row (9m_day2 was seeded 'paper', flag_continuation
+    # 'shadow') would keep its stale phase forever without this. Runs every
+    # boot; the `AND phase != 'deprecated'` guard makes it a no-op once
+    # converged (no spurious updated_at churn). Idempotent, terminal —
+    # 'deprecated' is not in `update_strategy`'s phase whitelist, so this is
+    # the only path that sets it; a future manual `/strategy <id> ...` phase
+    # change on these two ids would be silently re-stomped back to
+    # 'deprecated' on the next boot (by design — deprecation is meant to be
+    # terminal; reviving one of these needs its own operator-signed change,
+    # not a registry edit).
+    await conn.execute(
+        """
+        UPDATE mi_strategies
+        SET phase = 'deprecated', updated_at = NOW()
+        WHERE strategy_id IN ('9m_day2', 'flag_continuation')
+          AND phase != 'deprecated'
+        """
     )
 
 

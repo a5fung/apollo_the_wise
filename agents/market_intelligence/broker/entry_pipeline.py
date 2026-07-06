@@ -23,6 +23,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_PAPER_STRATEGY_ON_LIVE,
     BLOCK_STRATEGY_DISABLED,
     BLOCK_STRATEGY_IN_SHADOW,
+    BLOCK_STRATEGY_DEPRECATED,
     BLOCK_MAX_POSITIONS,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
@@ -157,6 +158,31 @@ def _should_auto_enter(account_mode: str, live_real_enabled: bool) -> bool:
     safeguards.md HARD-gates it on /pause being verified-live.
     """
     return account_mode == "paper" or (account_mode == "live" and bool(live_real_enabled))
+
+
+def _phase_gate_skip_reason(strategy) -> str | None:
+    """Field-only strategy-registry gate: disabled / shadow / deprecated.
+
+    Returns the skip_reasons constant to block on, or None to proceed.
+    Deliberately excludes the "paper phase on a live account" check (needs
+    `current_account_mode()` at call time) so this stays a pure, easily
+    testable predicate over the strategy row alone.
+
+    'deprecated' (#424, ADR 0022 §1 — terminal, operator-signed 2026-07-05/06:
+    9m_day2 retired as "9M is a condition not a setup"; flag_continuation
+    retired as "replaced by HTF + Anticipation") is treated exactly like
+    'shadow' here: no new paper/live entries, ever. Without this, a
+    deprecated strategy would fall through to `resolve_account_mode_for_strategy`,
+    which raises ValueError for any phase other than 'paper'/'live' — a crash
+    instead of a clean skip.
+    """
+    if not strategy.enabled:
+        return BLOCK_STRATEGY_DISABLED
+    if strategy.phase == "deprecated":
+        return BLOCK_STRATEGY_DEPRECATED
+    if strategy.phase == "shadow":
+        return BLOCK_STRATEGY_IN_SHADOW
+    return None
 
 
 async def submit_trade_entry(
@@ -301,14 +327,10 @@ async def submit_trade_entry(
     from agents.market_intelligence.strategies.registry import get_strategy
     strategy = await get_strategy(signal_type)
     if strategy is not None:
-        if not strategy.enabled:
+        _phase_block = _phase_gate_skip_reason(strategy)
+        if _phase_block is not None:
             return await _skip(
-                BLOCK_STRATEGY_DISABLED, icon="🚫",
-                audit_event="orb_blocked", action=ACTION_BLOCKED,
-            )
-        if strategy.phase == "shadow":
-            return await _skip(
-                BLOCK_STRATEGY_IN_SHADOW, icon="🚫",
+                _phase_block, icon="🚫",
                 audit_event="orb_blocked", action=ACTION_BLOCKED,
             )
         if strategy.phase == "paper" and current_account_mode() == "live":

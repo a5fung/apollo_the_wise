@@ -268,6 +268,19 @@ async def check_promotion_eligibility(
     strategy = await get_strategy(strategy_id)
     if strategy is None:
         return None
+    if strategy.phase == "deprecated":
+        # #424 / ADR 0022 §1: 'deprecated' is terminal — excluded from the
+        # ladder entirely (not just "at the top"). Short-circuits before any
+        # outcome-row fetch so deprecated strategies don't burn DB queries
+        # in the weekly checker sweep.
+        return PromotionVerdict(
+            strategy_id=strategy_id,
+            current_phase=strategy.phase,
+            next_phase=None,
+            model=strategy.promotion_model,
+            eligible=False,
+            blocking_reasons=["deprecated — excluded from promotion ladder"],
+        )
     next_p = _next_phase(strategy.phase)
     gate = _gate_key(strategy.phase)
     if next_p is None or gate is None:
