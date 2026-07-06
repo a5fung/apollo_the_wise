@@ -63,7 +63,9 @@ alerts accrued). This ADR specs entry/management/borrow — the missing mechanic
   daily · hard time-stop 5 trading days (backside either works fast or doesn't) · NO adds,
   ever · no overnight holds through earnings dates.
 - **Borrow mechanics v1**: Alpaca `asset.shortable AND asset.easy_to_borrow` checked at arm
-  time and again at trigger; **ETB-only** (HTB names skipped + telemetry row — locate costs
+  time and again at trigger. **REVIEW 7/5: our alpaca_client has NO asset accessor today —
+  B3 adds a thin read-only `get_asset(symbol, account_mode)` wrapper** (the fields exist in
+  alpaca-py's Asset model; this is a wrapper gap, not an API gap); **ETB-only** (HTB names skipped + telemetry row — locate costs
   not modeled v1). Reg-SHO locate rides Alpaca on ETB.
 - **Ladder**: SHADOW (arm/trigger/outcome rows to `mi_parabolic_short_shadow`, no orders) →
   N≥30 triggered-shadow cohort + positive expectancy → PAPER (real short mechanics surface

@@ -9,8 +9,12 @@ the registry, adds the demotion direction, and specs allocator-live + replay-CI.
 
 ## 1. The autonomy ladder — gates become registry DATA, not code constants
 
-New `mi_strategies` columns (additive):
-`promotion_gates JSONB` — per-strategy, per-rung criteria, e.g.
+**REVIEW 7/5 — premise correction: promotion thresholds are ALREADY per-strategy data**
+(`promotion_thresholds` dicts in the strategies seed, db.py — e.g. parabolic_short carries
+min_climax_alerts:20). L1 therefore SHRINKS to: verify the thresholds live ON the DB row
+(updatable at runtime, not just the code-side seed) + the checker reads the row; the
+genuinely NEW pieces are demotion + history. Columns (additive):
+`promotion_gates JSONB` — (largely exists as promotion_thresholds) per-rung criteria, e.g.
 `{"paper":{"min_shadow_n":30,"min_median_r":0.0},"live_proposed":{"min_paper_n":30,
 "min_expectancy_r":0.2,"max_dd_r":-8,"min_weeks":4},"live_reduced":{"min_label_precision":0.8,
 "min_labels":20},"live_full":{"min_live_reduced_weeks":4,"min_capture_pct":null}}`
@@ -54,7 +58,7 @@ Three scheduled regression jobs, one gating mechanism:
 | Selection replay (#268b/#302 exists) | weekly (exists) | Phase-B calibration n=399 | replayed expectancy drop >0.3R vs baseline at N≥50 |
 | Judge frozen-cohort eval (X6 harness, 0018) | on grade-path changes + monthly | the labeled cohort's grade-correctness | correctness drop >5pts |
 | Entry-mechanics sim (the W2 rails) | monthly | current entry ruleset expectancy on the trailing 90d cohort | drop >0.3R |
-- **Mechanism**: each job writes `scripts/ci_status/<job>.json` `{status:green|red, asof,
+- **Mechanism**: each job writes `/home/apollo/backups/ci_status/<job>.json` (REVIEW 7/5: the earlier `scripts/ci_status/` path was WRONG — scripts/ is inside the repo; the backups dir is the established host-state home, like the watchdog state) `{status:green|red, asof,
   detail}` (repo-external path on the host, like the watchdog state). New deploy gate
   **[5m/7]**: red status + age <7d ⇒ deploy BLOCKED (exit 17) unless
   `CI_OVERRIDE="<reason>"` env is set (logged + audit row — the escape is loud, for

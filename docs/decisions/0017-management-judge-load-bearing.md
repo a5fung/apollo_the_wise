@@ -10,6 +10,9 @@ enum→mechanical execution mapping. Requirements source for pivots/character:
 
 Contract: pure-execution depth. A builder executing §10's cards needs zero design judgment;
 every open fork is in §11 for the operator, nothing buried.
+**Adversarial review 7/5 (Sonnet, claims-verified vs source): 3 HIGH + 3 MED/LOW findings —
+ALL corrected below** (§3.1 T2 mechanism, §3.3 breaking-not-additive migration, §4 halt
+coverage, §5 PARTIAL_TAKE signature + FORCE_EXIT respec, §2.2 schedule referent).
 
 ---
 
@@ -46,7 +49,7 @@ subsequent close reclaimed the 5-day high. Undercut = low beyond the resolving M
 says "insufficient character history" rather than a fake profile).
 
 ### 2.2 Jobs
-- **Weekly recompute** (Sun 18:30 ET, after the weekly review): all tickers with an open
+- **Weekly recompute** (Sun 18:30 ET — an idle evening slot between the 18:00 crypto ingest and 19:00 category refresh; NB the weekly review itself runs Sun 08:00 ET): all tickers with an open
   position, any alert in 30d, or on the flag/coil boards (~bounded set, not the 9,700 universe).
 - **On-demand**: entry pipeline requests a profile at fill time (cache-read; compute if absent);
   freshness rule — recompute if `computed_at` > 7d old OR a >50%-in-5d move occurred since
@@ -67,7 +70,7 @@ tolerance; MNTS-class: gap-day-low + 21EMA).
 |---|---|---|---|
 | T0 | Daily pass | 16:00 ET job (EXISTS, 0014) | 1/day/position |
 | T1 | Gap-against | 9:25 ET pre-open check: snapshot price < entry AND < nearest ranked pivot | 1/day/position |
-| T2 | +2R excursion | piggybacks `sync_positions` / stream high-water updates: `highest_price_seen` crosses entry + 2×(entry − orb_low) first time | once/position lifetime |
+| T2 | +2R excursion | piggybacks **`track_open_position_extremes`** (the existing 5-min `track_position_extremes` job, 9:00–15:55 ET — the code that actually updates `highest_price_seen`; NOT sync_positions/trade_stream): fires when high-water crosses entry + 2×(entry − orb_low) first time | once/position lifetime |
 | T3 | Theme-state change | theme of position transitions to Fading/Retired in the nightly run → next-morning 9:25 batch | per transition |
 No new polling loops — T1/T3 ride scheduled points, T2 rides existing position-sync events
 (§11-F3 confirms). Per-position daily LLM budget: max 3 judge calls/day (T0 + 2 triggered).
@@ -88,6 +91,12 @@ violating proposals are logged + treated as HOLD (fail-safe, counted in the eval
 `+ character_snapshot JSONB NULL · + chart_verdict TEXT NULL · + executed BOOLEAN DEFAULT FALSE ·
 + execution_ref TEXT NULL` (order id when L2+ acts). The 4-verdict enum is UNCHANGED
 (HOLD/PARTIAL_TAKE/TRAIL_TIGHTEN/FORCE_EXIT — bounded-enum contract reaffirmed, Gemini am.4).
+**⚠ BREAKING, not additive (review 7/5):** the table today has `UNIQUE (position_id,
+decision_date)` and the writer upserts on that key (day-grain by 0014 design) — a second
+same-day trigger would silently OVERWRITE the first. The migration must: drop that constraint
+→ `UNIQUE (position_id, decision_date, trigger_type)` → backfill existing rows
+`trigger_type='daily'` → update `insert_position_mgmt_decision`'s ON CONFLICT target. Ships
+in C3 with both-direction tests (same-day T0+T2 coexist; duplicate T0 still idempotent).
 
 ## 4. Component C — the authority ladder
 
@@ -95,8 +104,15 @@ violating proposals are logged + treated as HOLD (fail-safe, counted in the eval
 |---|---|---|
 | **L0 SHADOW** (now) | none — telemetry | live since 6/18 |
 | **L1 ADVISORY** | disagreements surface: a 16:10 digest line + the position board flags "judge proposes PARTIAL (cites 20MA pivot)"; operator acts manually | ≥30 operator-labeled rows AND ≥80% label-agreement on the ACT verdicts (PARTIAL/TIGHTEN/EXIT — precision on labels, attribution-correctness not outcome) + sign-off |
-| **L2 RISK-REDUCING AUTO** | judge AUTO-EXECUTES exposure-REDUCING actions only: PARTIAL_TAKE (≤0.5) and TRAIL_TIGHTEN (≥ current stop). NEVER auto-FORCE_EXIT, never anything risk-increasing. Real-time Telegram per action; `/pause` halts the lane | L1 ≥3 weeks + ≥50 labels + counterfactual ledger shows 0 harmful would-have-executions + CHANGE_PROCESS + sign-off |
+| **L2 RISK-REDUCING AUTO** | judge AUTO-EXECUTES exposure-REDUCING actions only: PARTIAL_TAKE (≤0.5) and TRAIL_TIGHTEN (≥ current stop). NEVER auto-FORCE_EXIT, never anything risk-increasing. Real-time Telegram per action; halt coverage per the correction below | L1 ≥3 weeks + ≥50 labels + counterfactual ledger shows 0 harmful would-have-executions + CHANGE_PROCESS + sign-off |
 | **L3 FULL BOUNDED** | + auto FORCE_EXIT | L2 ≥4 weeks clean + capture_pct trending toward the bar + its own sign-off (H2/M5 horizon) |
+
+**Halt coverage (review 7/5 — the original claim was FALSE):** today's `/pause` halts NEW
+ENTRIES ONLY (`agent.py::_handle_pause_command` — "open positions are untouched"); nothing in
+the exit path reads it. C6 therefore MUST ship an exit-lane halt: the L2 executor checks the
+same `mi_safeguard_state` halt row AND the `MGMT_JUDGE_AUTHORITY` toggle before EVERY action,
+and `/pause`'s reply text is extended to state it also freezes judge auto-actions (operator
+surface change, documented in the C6 CHANGE_PROCESS entry). Until C6, no lane exists to halt.
 
 **Invariants at every rung:** the mechanical layer is a FLOOR the judge cannot lower (no stop
 widening, no partial cancellation, no breaker override — safeguards precede judge actions in
@@ -116,9 +132,9 @@ to P5. (§11-F4 sets timing.)
 | Verdict | Executes via | Guards (in order) |
 |---|---|---|
 | HOLD | no-op | — |
-| PARTIAL_TAKE | `execute_partial_exit(trade, fraction)` — the #151-hardened path | market hours · fraction ∈ {0.33,0.5} · not already partial_taken that day · never-naked coverage rules inside the function |
+| PARTIAL_TAKE | `execute_partial_exit(trade_id, shares, force=False)` — the #151-hardened path; **shares = round(remaining_shares × fraction)** computed by the executor (the function takes an absolute count, not a fraction — review 7/5). Note: it carries its own `_PARTIAL_EXIT_PAUSED` module kill-switch, an independent inherited gate | market hours · fraction ∈ {0.33,0.5} · not already partial_taken that day · never-naked coverage rules inside the function |
 | TRAIL_TIGHTEN | the stop-replace path (`replace_order` w/ verify-stop-live, ADR 0009 coverage invariant) | proposed ≥ current stop · ≥1 tick below last price · market hours · replace (not cancel+place) |
-| FORCE_EXIT (L3 only) | the `/timestop` confirm machinery generalized: market sell + stop cancel in the guarded order that path already implements | L3 only · operator real-time notify · daily budget |
+| FORCE_EXIT (L3 only) | **a new `execute_full_exit(trade_id)` built as the fraction=1.0 generalization of `execute_partial_exit`'s guarded stop-replace/sell interlock** (which already solves stop-holds-shares + never-naked sequencing). The `/timestop` path is NOT reusable (review 7/5: it places a next-open OPG sell, cancels NO stop, and its query is hardcoded `signal_type='9m_day2'` — 'exit now' would become 'exit tomorrow' beside a live stale stop) | L3 only · operator real-time notify · daily budget |
 
 ## 6. Outcome metrics (the eval spine)
 1. **capture_pct** (the #306 weekly KPI) — THE north metric; 18% baseline → >50% bar.

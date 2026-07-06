@@ -35,8 +35,11 @@ tables. Materializing copies would drift; a view can't:
 ```sql
 CREATE VIEW v_judge_cases AS SELECT a.ticker, a.alert_date, a.ep_score, a.catalyst,
 a.catalyst_quality, a.judge_tier, a.judge_rationale, a.gap_pct, a.pm_rvol, a.theme_name,
-a.structural_chart_verdict, o.fwd_5d_pct, o.fwd_close_pct, l.label, l.note
+cx.structural_verdict AS structural_chart_verdict, o.fwd_5d_pct, o.fwd_close_pct, l.label, l.note
 FROM mi_ep_alerts a LEFT JOIN <outcome source> o USING (ticker, alert_date)
+LEFT JOIN <chart-axis shadow table> cx USING (ticker, alert_date)  -- REVIEW 7/5: the chart
+-- verdict is NOT an mi_ep_alerts column (it lives in the #343 chart_axis shadow table);
+-- the build card binds cx to that table's real name/columns, NULL until #267 matures
 LEFT JOIN mi_operator_labels l ON l.subject_kind='ep_grade' AND
 l.subject_ref->>'ticker'=a.ticker AND (l.subject_ref->>'alert_date')::date=a.alert_date
 WHERE a.judge_tier IS NOT NULL;
@@ -77,7 +80,7 @@ rule-match. Embeddings are the **H2 upgrade behind the same interface** (§9-G1)
 
 ## 5. Self-review → rubric distillation (the journaling loop)
 
-- **Weekly job** (Sun 18:45 ET, after the review): the judge re-reads its month's graded
+- **Weekly job** (Sun 18:45 ET — idle evening slot; NB the weekly review runs Sun 08:00 ET, review 7/5): the judge re-reads its month's graded
   cohort JOINED with outcomes + labels and drafts **bounded amendment proposals**:
   `mi_rubric_amendments (id, axis TEXT, target_ref TEXT [rubric section anchor], current_text
   TEXT, proposed_text TEXT, evidence JSONB [alert refs], rationale TEXT, status CHECK IN
