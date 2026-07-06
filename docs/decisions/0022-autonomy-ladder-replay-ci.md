@@ -39,7 +39,10 @@ The shadow allocator matures into the capital brain in two steps:
 - **A1 (post-8/4 registry read)**: `allocation_proposals` — monthly (1st trading day) the
   allocator emits a per-strategy risk-budget proposal: inputs = accrued per-strategy
   expectancy (min N=30 else prior 0.5× default), pairwise strategy correlation on daily P&L,
-  **Kelly-fraction capped at 0.25**, floor 0.25× / ceiling 2.0× of current budget per step,
+  **Kelly-fraction capped at 0.25 per strategy AND a GLOBAL portfolio Kelly ceiling of 0.40
+  (Gemini am. 7/5, M2f modification): if the sum of per-strategy proposals exceeds it, ALL
+  budgets scale down pro-rata** — four strategies at 0.25 each would otherwise stack to 1.0
+  Kelly, ruin-grade under correlation-1 stress; floor 0.25× / ceiling 2.0× per step,
   regime_matrix (0020 §5) as an overlay not an input. Rendered as a digest section with the
   full math trace. **Operator signs → budgets bind** (they become the per-strategy
   `position_size_multiplier` + cap set — the existing plumbing, #65).
@@ -91,6 +94,7 @@ override logs.
 ## 7. Operator sign-off forks (recs first)
 - **M1f** Demotion triggers defaults: `{6 consec losses, trailing20 exp < −0.3R, DD −10R,
   1 harmful auto-action}` (rec) — or your numbers.
-- **M2f** Kelly cap 0.25 + step bands 0.25×/2.0× (rec).
+- **M2f** Kelly cap 0.25/strategy + **global 0.40 portfolio ceiling, pro-rata scale-down**
+  (Gemini-modified 7/5, adopted) + step bands 0.25×/2.0×.
 - **M3f** CI red thresholds (0.3R / 5pts, rec) + the 7d-stale WARN rule.
 - **M4f** Gate [5m/7] scope: block `market-agent`+`execution` deploys only (rec) vs all.

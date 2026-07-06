@@ -69,7 +69,7 @@ text. D-2's precedent store joins on alerts — manifests make precedent corpora
 ## 5. Build cards
 | Card | Scope | Class |
 |---|---|---|
-| S1 | FMP PR fetch + corpus block + feed-alias registration + tests (mock FMP) | Sonnet card |
+| S1 | FMP PR fetch + corpus block + feed-alias registration + **deterministic safe-harbor/boilerplate strip BEFORE corpus append** (Gemini am. 7/5: PR wires carry ~2k-word forward-looking-statements legalese that would dilute the catalyst signal; regex on the standard section headers + a length-capped tail) + tests (mock FMP incl. a boilerplate fixture) | Sonnet card |
 | S2 | `corpus_manifest` column + assembler writes it + `/why` renders it | Sonnet card |
 | S3 | (CONDITIONAL, opens only on the #367 self-referential verdict) theme-narrative corpus block + label guard + tests | Sonnet card, Fable review |
 | S4 | unknownrate trend line in the weekly quality section | rides an existing card |

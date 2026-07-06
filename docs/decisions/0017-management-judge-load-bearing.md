@@ -70,7 +70,7 @@ tolerance; MNTS-class: gap-day-low + 21EMA).
 |---|---|---|---|
 | T0 | Daily pass | 16:00 ET job (EXISTS, 0014) | 1/day/position |
 | T1 | Gap-against | 9:25 ET pre-open check: snapshot price < entry AND < nearest ranked pivot | 1/day/position |
-| T2 | +2R excursion | piggybacks **`track_open_position_extremes`** (the existing 5-min `track_position_extremes` job, 9:00–15:55 ET — the code that actually updates `highest_price_seen`; NOT sync_positions/trade_stream): fires when high-water crosses entry + 2×(entry − orb_low) first time | once/position lifetime |
+| T2 | +2R excursion | piggybacks **`track_open_position_extremes`** (the existing 5-min `track_position_extremes` job — which IS the dedicated 5-min poll Gemini's F3 modification asked for; NOT a tick stream): fires when high-water crosses entry + 2R, **AND the sustain check passes at dispatch: the CURRENT 5-min observation must still be ≥ entry + 1.8R** (Gemini am. 7/5 — a single 5-min wick re-arms instead of firing; kills the spike-then-collapse slippage case) | once/position lifetime |
 | T3 | Theme-state change | theme of position transitions to Fading/Retired in the nightly run → next-morning 9:25 batch | per transition |
 No new polling loops — T1/T3 ride scheduled points, T2 rides existing position-sync events
 (§11-F3 confirms). Per-position daily LLM budget: max 3 judge calls/day (T0 + 2 triggered).
@@ -180,8 +180,9 @@ C4 → L1 runs ≥3wks → C6 built-dark → L2 sign-off flips the toggle.
 ## 11. Operator sign-off forks (decide at D-review; recs first)
 - **F1** L1 gate numbers: **≥30 labels / ≥80% act-verdict agreement** (rec) — or stricter.
 - **F2** L2 action set: **PARTIAL_TAKE + TRAIL_TIGHTEN only** (rec); FORCE_EXIT waits for L3.
-- **F3** T2 detection: **ride sync/stream high-water updates** (rec — no new polling) vs a
-  dedicated intraday poll.
+- **F3** T2 detection: **ANSWERED (Gemini 7/5 + code reality)** — the mechanism is already a
+  dedicated 5-min poll (`track_open_position_extremes`); the sustain-at-dispatch dampener
+  (≥1.8R on the current observation) is adopted.
 - **F4** Conviction-sizing shadow start: **with L1** (rec) vs after L2.
 - **F5** Character reset threshold: **>50% move in 5d** (rec, from the SSoT example) — or tune.
 - **F6** Sign-off on the ladder itself (the CHANGE_PROCESS anchor for every rung promotion).

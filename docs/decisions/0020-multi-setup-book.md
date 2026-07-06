@@ -59,6 +59,9 @@ alerts accrued). This ADR specs entry/management/borrow — the missing mechanic
   stop-limit SHORT at prior-day low, limit offset per the existing stop_limit convention.
 - **Stop**: above the climax high (cap-tier-aware buffer: min(3%, 0.5×ATR14)); **max-loss cap
   1R where R sizes at HALF the long book's per-trade risk** (squeeze asymmetry).
+- **Market-cap floor (Gemini am. 7/5, J4 modification): HARD REJECT any short entry below
+  $250M market cap** — microcap squeezes defy backside triggers and gap-up risk bypasses all
+  stops; the floor is a filter:* skip reason, telemetried like every gate.
 - **Management**: cover 1/3 on the first −1R-equivalent flush · stop trails to prior-day-high
   daily · hard time-stop 5 trading days (backside either works fast or doesn't) · NO adds,
   ever · no overnight holds through earnings dates.
@@ -104,5 +107,6 @@ condition layer. #146/#168/#170/#178/#359: detector-side tasks unchanged, now wi
 - **J2** ETB-only v1 (rec) vs HTB-with-locate-modeling (real borrow-cost engineering, later).
 - **J3** The regime_matrix contents — pure methodology, yours to set at sign-off (a proposed
   starting matrix ships in the B4 card for you to edit/sign; nothing activates before).
-- **J4** Short-book risk basis: **half the long book's per-trade R** (rec) — or a fixed $ cap.
+- **J4** Short-book risk basis: **half the long book's per-trade R + the $250M mcap floor**
+  (Gemini-modified 7/5, adopted) — or a fixed $ cap.
 - **J5** `mi_setup_universe` TTLs (9M ~20 trading days rec; others per condition).

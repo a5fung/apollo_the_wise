@@ -65,6 +65,10 @@ rule-match. Embeddings are the **H2 upgrade behind the same interface** (§9-G1)
 3. **Temporal diversity (Gemini am.3, enforced in the query layer from v1)**: greedy-select
    K from the ranked list requiring pairwise `alert_date` separation **≥ 14 days** — three
    cases from one hot sector-week is recency bias, the opposite of experience.
+   **Active-theme exception (Gemini am. 7/5)**: when the candidate belongs to an ACTIVE
+   (non-Fading) theme, up to ONE of the K slots may violate the 14d rule IF it is a
+   same-theme case — a 3-month regime theme makes recent intra-theme precedents genuinely
+   relevant; the other K−1 stay diverse (the anti-recency spine holds).
 4. Fail-open: any error → empty list → the payload simply omits the block.
 
 ## 4. Grade-time integration

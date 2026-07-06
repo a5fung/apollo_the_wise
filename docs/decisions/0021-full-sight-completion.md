@@ -14,7 +14,10 @@ move is live. **Deterministic detection, LLM only for naming** (cost-bounded):
 - **Detection** (pure functions over data already flowing): candidates = names with intraday
   gain ≥3% AND rvol ≥2 (from the snapshot machinery the EP scan already uses). Cluster by
   (a) shared headline tokens over today's ingested news (Polygon/Benzinga raw JSON retained —
-  token-overlap Jaccard on cleaned title keywords, the Lane-2 tokenizer REUSED) and (b)
+  token-overlap Jaccard on cleaned title keywords, the Lane-2 tokenizer REUSED **plus a
+  finance-stopword list — Gemini am. 7/5: strip ubiquitous terms (revenue/quarter/guidance/
+  announces/results/conference/Fed/shares/...) so clusters form only on SPECIFIC nouns
+  (drones, H5N1, Blackwell, NAND); macro-news and ETF-rebalance blasts must not cluster**) and (b)
   pairwise co-movement of 5-min return paths (corr ≥0.6 over the session so far). Cohort =
   ≥3 names satisfying both.
 - **Emission**: `mi_narrative_intraday` shadow rows `(cohort_key, detected_at, tickers[],
