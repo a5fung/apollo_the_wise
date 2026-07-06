@@ -110,7 +110,7 @@ Rules:
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
 - When `fishhook.n_settled >= 10`, append a "🪝 *Fishhook:*" line after 🔁 summarizing gap-up undercut & reclaim telemetry. Cite `n_total` anchors, `n_settled`, `median_r`, `hit_rate`, and the shallow-vs-deep slice when both have data: `45 anchors, 12 settled; R 1.18, hit 17%; shallow R 1.31 (n=8) vs deep R 0.61 (n=4)`. The shallow-vs-deep gap matters — Stage-0 evidence said deeper drift inverts the edge; if deep starts winning, threshold revisit. If `n_settled < 10`, omit the line entirely.
-- When `pending_reviews.ready` is non-empty, append a "📅 *Reviews ready:*" section after 🔁 listing each ready entry on its own line: `<title> — <action_when_ready first sentence>`. These are data-gated reviews from `data_gated_reviews.yaml` whose threshold flipped this week — the user needs to act. If `pending_reviews.ready` is empty, omit the section entirely.
+- The `pending_reviews` field (data-gated "Reviews ready") is surfaced separately as a deterministic appendix below your output (#412 — the titles are actionable and must not be truncated). Do NOT render a Reviews-ready section yourself.
 - When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count> (last seen <last_seen>, <days_ago>d ago)`. **Use `days_ago` to judge live-vs-resolved: if a type's `days_ago` is STALE relative to the 7-day window (it stopped firing days back), label it LIKELY-RESOLVED and do NOT treat it as a live concern — a mid-week hotfix shows up exactly as a count that went silent (e.g. ep_scan_failed last 5/26). Only call a type live-concerning when `days_ago` is small (fired in the last day or two).** These are non-fatal errors caught by try/except in jobs that didn't crash hard. If `audit_errors.total == 0`, omit the section entirely.
 - When `strategy_promotions.checks` includes a strategy with `eligible=false` AND its top blocking_reason references a 0-count metric (e.g. "have 0"), the line MUST include the diagnostic context from `metrics.cohort_breakdown` if present (e.g. `shadow_orb_5m: have 0 paired closed (1 shadow vs 3 live, zero overlap)`). The 0-count number alone forces a follow-up question; the breakdown answers it inline.
 """
@@ -159,6 +159,15 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
             message = f"{message}\n\n{mfe_section}"
     except Exception:
         logger.exception("mfe capture section render failed")
+
+    # Data-gated Reviews-ready (#412, 2026-07-06) — deterministic so actionable
+    # review titles can't be LLM-truncated (the "ADV" nit); was an LLM-prompt section.
+    try:
+        pr_section = _format_pending_reviews_section(metrics.get("pending_reviews") or {})
+        if pr_section:
+            message = f"{message}\n\n{pr_section}"
+    except Exception:
+        logger.exception("pending-reviews section render failed")
 
     # Holistic judge weekly roll-up (#240/#249) — replaced the retired #200
     # theme-gated + #201 fire-panel advisory sections (judge load-bearing 6/10).
@@ -1570,6 +1579,23 @@ def _format_loser_section(loser_breakdown: dict) -> str:
         f"🪜=5m ORB stop wider · ⏱=stopped <10m post-fill · 🔁=att2 loss within 15% "
         f"of att1 · ⚡=fill past stop · 📅=earnings backstop fired_"
     )
+    return "\n".join(lines)
+
+
+def _format_pending_reviews_section(pending: dict) -> str:
+    """Deterministic Reviews-ready appendix (#412) — data-gated reviews whose
+    threshold flipped this week. Rendered in code (not the LLM) so an actionable
+    title can't be truncated (the 'ADV top-50 probe…' → 'ADV' nit). Omitted
+    entirely when nothing is ready."""
+    ready = (pending or {}).get("ready") or []
+    if not ready:
+        return ""
+    lines = ["📅 *Reviews ready* — data-gated thresholds flipped; action needed:"]
+    for r in ready:
+        title = (r.get("title") or r.get("review_id") or "?").strip()
+        action = (r.get("action_when_ready") or "").strip()
+        first = action.split(". ")[0].rstrip(".") if action else ""
+        lines.append(f"• *{title}*" + (f" — {first}." if first else ""))
     return "\n".join(lines)
 
 

@@ -8986,13 +8986,20 @@ async def insert_system_review(review: dict) -> bool:
     date is not JSON serializable".
     """
     pool = await get_pool()
-    metrics_json = json.dumps(review.get("metrics") or {}, default=str)
-    suggestions_json = json.dumps(review.get("suggestions") or [], default=str)
+    # #412 (2026-07-06): pass a plain dict/list — the registered jsonb codec
+    # (_json_encoder) json.dumps()es it EXACTLY ONCE. Pre-json.dumps()ing here
+    # (the old `metrics_json` string) made the codec dump the STRING again ->
+    # jsonb_typeof='string' "{\"...\"}" (the #177/#179 double-encode), which read
+    # back as a str instead of a dict and broke the weekly "last week" compare.
+    # _jsonb_param round-trips dates->str for the dict; suggestions is a LIST so
+    # it can't use _jsonb_param's `or {}` default (would coerce [] -> {}).
+    metrics_param = _jsonb_param(review.get("metrics"))
+    suggestions_param = json.loads(json.dumps(review.get("suggestions") or [], default=str))
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_system_reviews
                 (review_date, window_days, regime, summary, metrics, suggestions)
-            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (review_date, window_days) DO UPDATE SET
                 regime      = EXCLUDED.regime,
                 summary     = EXCLUDED.summary,
@@ -9004,8 +9011,8 @@ async def insert_system_review(review: dict) -> bool:
             int(review.get("window_days", 7)),
             review.get("regime"),
             review["summary"],
-            metrics_json,
-            suggestions_json,
+            metrics_param,
+            suggestions_param,
         )
     return True
 

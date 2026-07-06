@@ -55,3 +55,29 @@ def test_renders_window_closes_as_bullets():
     assert "`CRSR` closed this week: 15% ($+1,391 of $9,545)" in lines[1]
     # A partial-taken trade that round-trips to a LOSS renders negative capture.
     assert "`SMCI` closed this week: -27% ($-639 of $2,327)" in lines[2]
+
+
+# ── #412: deterministic Reviews-ready section (title can't be LLM-truncated) ──
+from agents.market_intelligence.system_review import _format_pending_reviews_section
+
+
+def test_pending_reviews_empty_omits_section():
+    assert _format_pending_reviews_section({}) == ""
+    assert _format_pending_reviews_section({"ready": []}) == ""
+
+
+def test_pending_reviews_renders_full_title_not_truncated():
+    # The 7/5 "ADV" nit: the LLM truncated "ADV top-50 probe — retire or promote".
+    pending = {"ready": [
+        {"review_id": "adv_top50", "title": "ADV top-50 probe — retire or promote (Option 2)",
+         "action_when_ready": "Pull the rank-21-50 cohort. Compare fill rates."},
+    ]}
+    out = _format_pending_reviews_section(pending)
+    assert "ADV top-50 probe — retire or promote (Option 2)" in out  # FULL title
+    assert "Pull the rank-21-50 cohort" in out  # first action sentence
+    assert out.startswith("📅 *Reviews ready*")
+
+
+def test_pending_reviews_falls_back_to_review_id_when_no_title():
+    out = _format_pending_reviews_section({"ready": [{"review_id": "x", "action_when_ready": ""}]})
+    assert "`x`" in out or "x" in out
