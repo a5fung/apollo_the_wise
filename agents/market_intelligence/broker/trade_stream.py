@@ -295,20 +295,37 @@ async def _verify_event_account_mode(order_id: str, stream_account_mode: str) ->
     return True
 
 
-def _find_replacement_stop(open_orders, symbol: str, canceled_order_id: str):
-    """#433 (2026-07-06): given the broker's open orders, return a live stop for
-    `symbol` that is NOT the just-canceled order — i.e. proof the position is
-    still protected (a stop REPLACEMENT, not a naked position). Returns the
-    order dict or None. Mirrors #128's `_covered_by_broker` broker-authoritative
-    pattern. INVARIANT: this only ever DOWNGRADES an alarm when it returns a
-    positive match; callers must treat None (and any broker-read failure) as
-    "alarm" — never suppress a genuinely-naked alert on a soft signal."""
+def _find_replacement_stop(open_orders, symbol: str, canceled_order_id: str, remaining_shares):
+    """#433 (2026-07-06): given the broker's open orders, return a live SELL stop
+    for `symbol` (not the just-canceled order) that COVERS the position — i.e.
+    proof it is still protected (a stop REPLACEMENT, not a naked position).
+    Returns the stop order dict or None.
+
+    Mirrors #128's `_covered_by_broker` exactly: filter to SELL orders first,
+    require sell-side coverage ≥ remaining_shares, THEN find the stop among them.
+    The sell-side filter is LOAD-BEARING (advisor/review 7/6): a stop-limit BUY
+    (the entry order, or a Day-1 re-entry in flight) also carries a `stop_price`,
+    so matching any-side "stop" would let a BUY stop falsely read as protection
+    for a LONG and suppress a real naked alarm. A long is protected only by a
+    SELL stop. INVARIANT: positive match only; None on any doubt (partial
+    coverage, wrong side, unknown qty) → the caller alarms."""
+    sell_orders = [
+        o for o in (open_orders or [])
+        if o.get("symbol") == symbol
+        and o.get("id") != canceled_order_id
+        and str(o.get("side", "")).lower().endswith("sell")
+    ]
+    if remaining_shares is None:
+        return None
+    covered = sum(
+        max(float(o.get("qty") or 0) - float(o.get("filled_qty") or 0), 0.0)
+        for o in sell_orders
+    )
+    if covered < float(remaining_shares):
+        return None
     return next(
-        (o for o in (open_orders or [])
-         if o.get("symbol") == symbol
-         and o.get("id") != canceled_order_id
-         and ("stop" in str(o.get("type", "")).lower()
-              or o.get("stop_price") is not None)),
+        (o for o in sell_orders
+         if "stop" in str(o.get("type", "")).lower() or o.get("stop_price") is not None),
         None,
     )
 
@@ -999,8 +1016,19 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             from agents.market_intelligence.broker import alpaca_client as _alp
             replacement = None
             try:
-                open_orders = await _alp.get_open_orders(account_mode=account_mode)
-                replacement = _find_replacement_stop(open_orders, symbol, order_id)
+                # raise_on_error=True + wait_for (review 7/6): get_open_orders is a
+                # SYNC alpaca-py REST call under an async def — it blocks the WS
+                # event loop for the round-trip. Bound it (8s) so a slow/hung broker
+                # can't wedge the trade stream at exactly the moment stop-cancels
+                # cluster; a timeout OR a read error RAISES → caught below → alarm
+                # (fail-safe: never suppress a naked alert on an unknown broker state).
+                open_orders = await asyncio.wait_for(
+                    _alp.get_open_orders(account_mode=account_mode, raise_on_error=True),
+                    timeout=8,
+                )
+                replacement = _find_replacement_stop(
+                    open_orders, symbol, order_id, stop_trade["remaining_shares"]
+                )
             except Exception as _e:
                 logger.warning(
                     f"WS [{account_mode}]: broker-confirm on stop-cancel failed for "
