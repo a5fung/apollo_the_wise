@@ -61,8 +61,12 @@ def test_fl1_manual_repair_resets_to_zero():
     assert fl1["reset_reason"] == "manual repair 7/2"
 
 
-def test_fl1_weekend_days_excluded():
-    # 7/3 Fri, 7/4 Sat, 7/5 Sun, 7/6 Mon -> only 7/3 and 7/6 are trading days
+def test_fl1_weekend_days_excluded(monkeypatch):
+    # Pin a deterministic weekday-only calendar so this tests the FL logic, not
+    # the real NYSE holiday set (7/3/2026 is Jul-4-observed — a HOLIDAY — so with
+    # the real calendar the count differs; that env-dependence red-CI'd 7/6).
+    monkeypatch.setattr(f"{MOD}._is_trading_day", lambda d: d.weekday() < 5)
+    # 7/3 Fri, 7/4 Sat, 7/5 Sun, 7/6 Mon -> only 7/3 and 7/6 are weekday trading days
     fl1 = compute_fl1(set(), set(), date(2026, 7, 3), date(2026, 7, 6))
     assert fl1["n"] == 2
 
@@ -264,6 +268,9 @@ def test_detect_resets_multiple_clocks():
 
 @pytest.mark.asyncio
 async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
+    # Deterministic weekday-only calendar (see test_fl1_weekend_days_excluded) so
+    # the trading-day counts are env-independent (real 7/3 is a holiday in CI).
+    monkeypatch.setattr(f"{MOD}._is_trading_day", lambda d: d.weekday() < 5)
     pool, conn = make_mock_pool()
     # Each conn.fetch call in gather_status order: l1, repair, ops, drift, review
     conn.fetch = AsyncMock(side_effect=[
