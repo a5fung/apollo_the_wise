@@ -2108,7 +2108,7 @@ async def initialize_schema() -> None:
                 notes                    TEXT,
                 created_at               TIMESTAMPTZ DEFAULT NOW(),
                 updated_at               TIMESTAMPTZ DEFAULT NOW(),
-                CHECK (phase IN ('shadow','paper','live')),
+                CHECK (phase IN ('shadow','paper','live','deprecated')),
                 CHECK (promotion_model IN ('paired_r','unpaired_r','telemetry_review'))
             );
 
@@ -2200,6 +2200,18 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS position_size_multiplier NUMERIC NOT NULL DEFAULT 1.0;
             ALTER TABLE mi_strategies
                 ADD COLUMN IF NOT EXISTS max_concurrent_positions INT;
+            -- #424 (2026-07-06): 'deprecated' phase. The existing prod table's
+            -- inline CHECK (phase IN 'shadow','paper','live') is auto-named
+            -- mi_strategies_phase_check and does NOT include 'deprecated' —
+            -- CREATE TABLE IF NOT EXISTS never re-applies it, so this ALTER is
+            -- REQUIRED before the seed's deprecated UPDATE below (else boot
+            -- crashes with CheckViolationError, market-agent 2026-07-06). Drop +
+            -- re-add so it's idempotent across boots.
+            ALTER TABLE mi_strategies
+                DROP CONSTRAINT IF EXISTS mi_strategies_phase_check;
+            ALTER TABLE mi_strategies
+                ADD CONSTRAINT mi_strategies_phase_check
+                CHECK (phase IN ('shadow','paper','live','deprecated'));
             -- Worst-price-vs-you / best-price-in-your-favor tracking
             -- (2026-05-10). Captures the lowest and highest market prices
             -- observed during a trade's open life. Populated at fill time

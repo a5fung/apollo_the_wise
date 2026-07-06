@@ -20,6 +20,7 @@ COPY core/notifications.py core/notifications.py
 COPY core/job_audit.py core/job_audit.py
 COPY integrations.yaml integrations.yaml
 COPY data_gated_reviews.yaml data_gated_reviews.yaml
+COPY PLAN.md PLAN.md
 COPY scripts/ scripts/
 
 RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app

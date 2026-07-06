@@ -83,7 +83,11 @@ SNAPSHOT_EVENT = "v1_closeout_snapshot"
 # Hand-curated allowlist of one-off manual trade-state repair scripts' audit
 # event types (see module docstring — no single mechanical signal exists).
 MANUAL_REPAIR_EVENT_TYPES = [
-    "phantom_pending_confirmation_reaped",   # scripts/reap_stale_pending_confirmation.py (#287)
+    # NOT phantom_pending_confirmation_reaped (#287): operator-signed 2026-07-06 —
+    # reaping rows that NEVER became positions (no fill, no order) is DB hygiene,
+    # not a repair of a live-loop position. FL-1 measures the loop running clean;
+    # one-off phantom cleanup does not reset the soak. (The reap already can't
+    # touch a real position — it broker-confirms absence first.)
     "naked_position_reconciled",             # scripts/reconcile_orphan_stop.py
     "manual_reconcile_9m_day2_stop_clobber", # scripts/_reconcile_9m_day2_stop_clobber.py
     "manual_reconcile_bw_pre_fill",          # scripts/probes/_reconcile_2026_05_14_bugs.py
@@ -289,11 +293,17 @@ def detect_resets(prior: dict | None, current: dict) -> list[dict]:
 def render_line(status: dict) -> str:
     """Pure formatting: one compact line for the evening briefing."""
     fl1, fl3, fl4, fl8 = status["fl1"], status["fl3"], status["fl4"], status["fl8"]
+
+    def _c(clock: dict) -> str:
+        # Cap the displayed numerator at the target so a clock past its bar reads
+        # e.g. "4/4 ✓" not "11/4" (a long-running streak overshoots the target).
+        n, t = clock["n"], clock["target"]
+        return f"{t}/{t} ✓" if n >= t else f"{n}/{t}"
+
     blocking = status.get("blocking_open")
     blocking_s = str(blocking) if blocking is not None else "?"
     base = (
-        f"FL-1 {fl1['n']}/{fl1['target']} · FL-3 {fl3['n']}/{fl3['target']} · "
-        f"FL-4 {fl4['n']}/{fl4['target']} · FL-8 {fl8['n']}/{fl8['target']} · "
+        f"FL-1 {_c(fl1)} · FL-3 {_c(fl3)} · FL-4 {_c(fl4)} · FL-8 {_c(fl8)} · "
         f"blocking {blocking_s} open · decl ~{status['decl_estimate']}"
     )
     resets = status.get("resets") or []
