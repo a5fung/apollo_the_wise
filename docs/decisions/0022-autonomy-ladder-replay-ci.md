@@ -1,6 +1,6 @@
 # ADR 0022 — P5 Autonomy Ladder + Allocator-Live · P6 Replay-Everything CI (D-6, #432)
 
-**Status:** PROPOSED (2026-07-05, Fable design block D-6) — awaiting operator sign-off (§7).
+**Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
 Exists and stays: `mi_strategies.phase` ladder semantics (#66) · the weekly promotion checker
 (eligibility + blocking_reasons in the Sunday review) · `cross_strategy_allocator.py` (shadow,
 #415 telemetry accruing to the 8/4 registry read) · `replay_regression.py` (weekly surface,

@@ -1,6 +1,6 @@
 # ADR 0019 — Catalyst Direct-Sourcing Backbone: completion spec (D-3, #429 · closes #210's design)
 
-**Status:** PROPOSED (2026-07-05, Fable design block D-3) — awaiting operator sign-off (§7).
+**Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
 **Honest framing: this backbone is ~70% BUILT.** D-3's job is the completion delta, not a
 greenfield design. Doctrine (operator 6/05, unchanged): catalyst sourcing is a DATA problem —
 direct primary sources over LLM discovery; **LLM = judge of grounded text, never discoverer.**

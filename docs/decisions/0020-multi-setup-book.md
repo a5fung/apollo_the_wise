@@ -1,6 +1,6 @@
 # ADR 0020 — P4 Multi-Setup Book architecture (D-4, #430)
 
-**Status:** PROPOSED (2026-07-05, Fable design block D-4) — awaiting operator sign-off (§8).
+**Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
 The pillar: diversify the edge across setups and regimes — one gap-long strategy is one
 regime's book. Anchors already decided: Family taxonomy (A = consolidation [HTF +
 Anticipation]; B = EP/gap-ups) · **9M = a stock CONDITION, never a tradeable setup** (#418

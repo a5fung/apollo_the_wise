@@ -1,6 +1,6 @@
 # ADR 0021 — P2 Full Sight completion: intraday narrative radar + negative axis (D-5, #431)
 
-**Status:** PROPOSED (2026-07-05, Fable design block D-5) — awaiting operator sign-off (§6).
+**Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
 Existing sight (stays): chart vision axis shadow (#343, gate 7/31) · theme/structure axes
 (0015/0016, M1 checkpoint) · #238 dilution corpus feed (424B5/8-K equity-sale, point-in-time)
 · Lane-2 narrative discovery (`discover_narrative_themes`) — **nightly**. The two deltas:

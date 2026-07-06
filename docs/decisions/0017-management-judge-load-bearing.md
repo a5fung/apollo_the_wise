@@ -1,6 +1,6 @@
 # ADR 0017 — P3 Management Judge: the load-bearing design (D-1, #427)
 
-**Status:** PROPOSED (2026-07-05, Fable design block D-1) — awaiting operator sign-off (§11).
+**Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
 **Extends** ADR 0014 (the shadow seed — LIVE since 6/18, 15 decision rows through 7/1). 0014 stays
 the record of the shadow; THIS doc is the executable spec for everything 0014 deferred: the
 character/pivot engine, intraday triggers, the authority ladder to load-bearing, and the

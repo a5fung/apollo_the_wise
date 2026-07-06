@@ -1,6 +1,6 @@
 # ADR 0018 — P1 Experience Stack: precedents, self-review, ensemble (D-2, #428)
 
-**Status:** PROPOSED (2026-07-05, Fable design block D-2) — awaiting operator sign-off (§9).
+**Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
 The P1 step change: "smart at each decision" → "experienced at this craft." Three subsystems,
 one dependency spine: **labels → cases → retrieval → (self-review, ensemble)**. Baseline facts:
 the judge is load-bearing (ADR 0011, `JUDGE_MODEL = OPUS`); operator labels exist only as
