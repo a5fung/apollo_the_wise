@@ -15,7 +15,7 @@
 
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
-2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`).
+2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`). **On a fresh machine where the local `memory/` (pickup) is absent — e.g. a laptop — read `docs/HANDOFF.md` instead** (git-synced; the memory dir is machine-local).
 3. STATE that day's plan before reacting to the first message.
 
 **CLOSE** (when the operator wraps, or before ending):
