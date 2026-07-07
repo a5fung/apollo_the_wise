@@ -176,3 +176,49 @@ async def test_operator_and_nightly_paths_both_delegate_to_shared_helper(monkeyp
     assert op_call[0] == nightly_call[0] == "Rare & Orphan Biotech Re-Rating"
     assert op_call[2] == nightly_call[2] == 70.0   # rs_avg over RARE(80)+MIRM(60)
     assert op_call[3] == nightly_call[3] == 2      # prior_days_active
+
+
+# ─── Option A (operator 2026-07-07) — graduation ping only on a genuine NEW crossing ───
+# The nightly promote re-upserts every still-qualifying cohort, so the 🎓 confirm fired every
+# run (the SAME theme re-"graduating" nightly — audit showed Autoimmune... on 6/30, 7/1, 7/2).
+# These pin: a NEW crossing (no prior row) pings + NAMES the theme; a re-promotion (prior row
+# exists) stays silent (the write still happens + is in the shadow_themes_promoted audit).
+
+def _nightly_setup(monkeypatch, cand, prior_rows):
+    """Wire promote_shadow_themes with a mock pool. conn.fetch is consumed in order:
+    [1] the prior-days_active batched query, [2] the RS batched query (empty here)."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[prior_rows, []])   # prior rows, then RS rows (empty → rs_avg None)
+    conn.execute = AsyncMock(return_value="INSERT 0 1")    # _upsert_promoted_theme → wrote=True
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))
+    monkeypatch.setattr(te, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[cand]))
+    from agents.market_intelligence import briefing as _brief
+    tg = AsyncMock()
+    monkeypatch.setattr(_brief, "send_telegram_message", tg)   # fn imports it at call-time
+    return tg
+
+
+@pytest.mark.asyncio
+async def test_new_graduation_pings_and_names(monkeypatch):
+    cand = _cand("Coal Mining & Exploration", ["A", "B", "C", "D"])
+    tg = _nightly_setup(monkeypatch, cand, prior_rows=[])        # no prior row → genuine NEW crossing
+    n = await te.promote_shadow_themes(_TODAY)
+    assert n == 1
+    tg.assert_awaited_once()
+    msg = tg.await_args[0][0]
+    assert "NEWLY graduated" in msg
+    assert "Coal Mining & Exploration" in msg                    # NAMED, not a bare count
+
+
+@pytest.mark.asyncio
+async def test_repromotion_stays_silent(monkeypatch):
+    cand = _cand("Coal Mining & Exploration", ["A", "B", "C", "D"])
+    # prior row exists → re-promotion of an already-live cohort (the nightly-noise case)
+    tg = _nightly_setup(monkeypatch, cand,
+                        prior_rows=[{"name": "Coal Mining & Exploration", "days_active": 5}])
+    n = await te.promote_shadow_themes(_TODAY)
+    assert n == 1                     # the write STILL happens (theme stays live)
+    tg.assert_not_awaited()           # …but NO Telegram — steady-state, audit-only

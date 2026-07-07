@@ -1462,6 +1462,7 @@ async def promote_shadow_themes(today) -> int:
         """, _all_members)
         _rs_by_tk = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
         n = 0
+        new_grads = []  # genuinely-NEW shadow→live crossings (no prior live row); re-promotions stay silent
         for t in themes:
             members = t["tickers"]
             _vals = [_rs_by_tk[tk] for tk in members if tk in _rs_by_tk]
@@ -1474,10 +1475,12 @@ async def promote_shadow_themes(today) -> int:
                 rs_avg=rs_avg, prior_days_active=prior_days_active)
             if wrote:
                 n += 1
+                if prior is None:          # first crossing into live under this name
+                    new_grads.append(t["name"])
         await log_audit_event(
             "shadow_themes_promoted",
-            summary=f"Graduated {n} shadow cohort(s) into live mi_themes",
-            detail=f"promoted={[t['name'] for t in themes]}")
+            summary=f"Graduated {n} shadow cohort(s) into live mi_themes ({len(new_grads)} new)",
+            detail=f"promoted={[t['name'] for t in themes]} new={new_grads}")
     logger.info("[promote] graduated %d shadow cohort(s) into mi_themes", n)
     # Self-verify (#370 systematic-failure-guard) — the nightly run confirms ITSELF, no human in the
     # loop. SILENT-FAILURE (cohorts qualified but 0 written) -> alert, never a silent degrade.
@@ -1491,9 +1494,14 @@ async def promote_shadow_themes(today) -> int:
         await send_telegram_message(
             f"⚠️ Theme graduation RAN but wrote 0 rows despite {len(cohorts)} qualifying "
             f"cohort(s) — check the shadow_promotion_silent_failure audit.")
-    elif n > 0:
+    elif new_grads:
+        # Noise fix (operator 7/7): ping ONLY on a genuine NEW shadow→live crossing, and NAME it.
+        # Re-promotions of already-live cohorts are steady-state maintenance (still logged in the
+        # shadow_themes_promoted audit above) — not actionable, so no Telegram. (Was: fired every
+        # nightly run because established cohorts keep re-qualifying → "1 theme graduated" nightly.)
+        _named = ", ".join(new_grads[:6]) + (f" +{len(new_grads) - 6} more" if len(new_grads) > 6 else "")
         await send_telegram_message(
-            f"🎓 {n} theme(s) graduated shadow→live this run. `/themes` for the list.")
+            f"🎓 {len(new_grads)} theme(s) NEWLY graduated shadow→live: {_named}. `/themes`.")
     return n
 
 
