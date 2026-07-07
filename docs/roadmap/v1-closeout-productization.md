@@ -257,6 +257,10 @@ Day-1 re-entry fallback is silently dead) · D-8 money-clean + ratchet is the v1
 
 ## 8. Sign-off
 
-- [ ] Finish line (§2) — definitions accepted (or edited) and signed: ____________
-- [ ] Dispositions (§4) walked; DECISION items answered: ____________
-- [ ] v1.0 DECLARED (all FL green): ____________  date: ________
+- [x] Finish line (§2) — definitions accepted (or edited) and signed: **operator, 2026-07-07 — accepted as-is, no edits**
+- [x] Dispositions (§4) walked; DECISION items answered: **operator, 2026-07-07 — all 9 decisions confirmed, none revised**
+- [ ] v1.0 DECLARED (all FL green): ____________  date: ________  ← carried by **#425** (declaration walk, ~7/14–7/21, soak-bound)
+
+**Walk record (2026-07-07):** operator signed the finish line + dispositions. Live clocks at sign-off:
+FL-1 5/10 · FL-3 0/7 (⚠ streak not advancing — under investigation) · FL-4 1/5 · FL-8 4/4 ✓ · 24 blocking
+open · projected declaration ~7/14. #418 closes here; #425 carries the all-green declaration.
