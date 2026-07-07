@@ -480,7 +480,7 @@ async def attempt_day1_reentry(
                     stop_order_id = NULL, closed_at = NOW(),
                     skip_reason = 'block:r3_reentry_disabled'
                 WHERE id = $1
-            """, trade["id"], json.dumps(exits), total_pnl_so_far)
+            """, trade["id"], exits, total_pnl_so_far)
         await log_audit_event(
             "r3_day1_reentry_blocked",
             f"{ticker}: Day-1 re-entry disabled by R3 ship",
@@ -513,7 +513,7 @@ async def attempt_day1_reentry(
                     remaining_shares = 0, total_pnl = $3,
                     stop_order_id = NULL, closed_at = NOW()
                 WHERE id = $1
-            """, trade["id"], json.dumps(exits), total_pnl_so_far)
+            """, trade["id"], exits, total_pnl_so_far)
         await send_telegram_message(
             f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | No re-entry after 11 AM"
@@ -539,7 +539,7 @@ async def attempt_day1_reentry(
                     stop_order_id = NULL, closed_at = NOW(),
                     skip_reason = $4
                 WHERE id = $1
-            """, trade["id"], json.dumps(exits), total_pnl_so_far,
+            """, trade["id"], exits, total_pnl_so_far,
                 BLOCK_REENTRY_GAP_THROUGH)
         await log_audit_event(
             "reentry_blocked_gap_through",
@@ -616,7 +616,7 @@ async def attempt_day1_reentry(
                     stop_order_id = NULL, closed_at = NOW(),
                     entry_attempt = $4
                 WHERE id = $1
-            """, trade["id"], json.dumps(exits), total_pnl, attempt)
+            """, trade["id"], exits, total_pnl, attempt)
         await send_telegram_message(
             f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | Re-entry failed: {e}"
@@ -650,7 +650,7 @@ async def attempt_day1_reentry(
                 filled_at = NULL
             WHERE id = $1
         """, trade["id"], new_entry_order_id, new_stop_order_id,
-            attempt, json.dumps(exits), total_pnl_after_stop)
+            attempt, exits, total_pnl_after_stop)
 
         await conn.execute("""
             INSERT INTO mi_live_orders
@@ -1890,7 +1890,7 @@ async def finalize_partial_exit(
                 partial_taken = TRUE,
                 breakeven_active = TRUE
             WHERE id = $1
-        """, trade_id, json.dumps(exits), new_remaining, total_pnl)
+        """, trade_id, exits, new_remaining, total_pnl)
 
     await log_audit_event(
         "partial_exit_committed",
@@ -2030,7 +2030,7 @@ async def finalize_full_exit(
                 stop_order_id = NULL,
                 closed_at = NOW()
             WHERE id = $1
-        """, trade_id, json.dumps(exits), total_pnl)
+        """, trade_id, exits, total_pnl)
 
     await log_audit_event(
         "full_exit_committed",
@@ -2107,7 +2107,7 @@ async def finalize_stop_fill(
                 stop_order_id = NULL,
                 closed_at = NOW()
             WHERE id = $1
-        """, trade_id, json.dumps(exits), total_pnl)
+        """, trade_id, exits, total_pnl)
 
     await log_audit_event(
         "stop_exit_committed",

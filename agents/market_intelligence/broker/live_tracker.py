@@ -540,7 +540,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                             running_closes = $3::jsonb
                         WHERE id = $1
                     """, trade["id"], step.hold_days,
-                        json.dumps(step.new_running_closes))
+                        step.new_running_closes)
                 # finalize_stop_fill already sends the close Telegram +
                 # logs stop_exit_committed audit event. No duplicate ping.
                 results.append({"ticker": ticker, "action": "stopped_out", "pnl": step.new_total_pnl})
@@ -567,7 +567,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                         hold_days = $2, running_closes = $3::jsonb
                     WHERE id = $1
                 """, trade["id"], step.hold_days,
-                    json.dumps(step.new_running_closes))
+                    step.new_running_closes)
             results.append({"ticker": ticker, "action": "sma_stopped", "hold_days": step.hold_days})
             continue
 
@@ -620,7 +620,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                 WHERE id = $1
             """, trade["id"], step.hold_days,
                 step.new_breakeven_active,
-                json.dumps(step.new_running_closes))
+                step.new_running_closes)
 
         logger.info(
             f"{ticker}: effective_stop=${step.effective_stop:.2f} "

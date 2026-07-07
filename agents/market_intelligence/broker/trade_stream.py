@@ -918,7 +918,7 @@ async def _process_stop_fill(
                     remaining_shares = 0, total_pnl = $3,
                     stop_order_id = NULL, closed_at = NOW()
                 WHERE id = $1
-            """, trade["id"], json.dumps(exits), total_pnl)
+            """, trade["id"], exits, total_pnl)
 
         reason = "max attempts" if is_day1 else f"stop hit ({trade.get('hold_days', 0)}d)"
         msg = (
