@@ -7,7 +7,7 @@ NOT break the briefing).
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -29,6 +29,7 @@ from scripts.v1_closeout_status import (
     compute_fl3,
     compute_fl4,
     compute_fl8,
+    real_service_down_dates,
     detect_resets,
     gather_status,
     parse_plan_open_ids,
@@ -110,6 +111,59 @@ def test_fl3_end_before_start_yields_zero_no_crash():
     fl3 = compute_fl3([], date(2026, 7, 5), date(2026, 7, 4))
     assert fl3["n"] == 0
     assert fl3["reset_reason"] is None
+
+
+# ── FL-3 refinement: real_service_down_dates (operator-signed 2026-07-07) ──────
+# Only REAL sustained outages reset the ops-autonomy streak. Modeled on the exact
+# 7/5-7/6 prod events that had FL-3 falsely stuck at 0.
+
+def _dn(summary, ts, d):
+    return {"event_type": "service_down", "summary": summary, "ts": ts, "d": d}
+
+
+def _rc(summary, ts):
+    return {"event_type": "service_recovered", "summary": summary, "ts": ts, "d": ts.date()}
+
+
+def test_real_down_excludes_watchdog_selftest():
+    # The 7/5 12:07 event — the watchdog testing its OWN detector, not a real service.
+    rows = [_dn("watchdog: apollo-watchdog-selftest DOWN — container not found",
+                datetime(2026, 7, 5, 12, 7), date(2026, 7, 5))]
+    assert real_service_down_dates(rows) == set()
+
+
+def test_real_down_excludes_transient_deploy_blip():
+    # The 7/6 11:15 event — apollo-market 'restarting', recovered 5 min later.
+    ts = datetime(2026, 7, 6, 11, 15)
+    rows = [
+        _dn("watchdog: apollo-market DOWN — container state: restarting", ts, date(2026, 7, 6)),
+        _rc("watchdog: apollo-market recovered", ts + timedelta(minutes=5)),
+    ]
+    assert real_service_down_dates(rows) == set()
+
+
+def test_real_down_counts_sustained_outage():
+    ts = datetime(2026, 7, 6, 11, 15)
+    rows = [_dn("watchdog: apollo-market DOWN — container state: exited", ts, date(2026, 7, 6))]
+    assert real_service_down_dates(rows) == {date(2026, 7, 6)}
+
+
+def test_real_down_counts_when_recovery_beyond_window():
+    ts = datetime(2026, 7, 6, 11, 15)
+    rows = [
+        _dn("watchdog: apollo-market DOWN — ...", ts, date(2026, 7, 6)),
+        _rc("watchdog: apollo-market recovered", ts + timedelta(minutes=25)),  # >10 min = real
+    ]
+    assert real_service_down_dates(rows) == {date(2026, 7, 6)}
+
+
+def test_real_down_recovery_of_different_container_does_not_clear():
+    ts = datetime(2026, 7, 6, 11, 15)
+    rows = [
+        _dn("watchdog: apollo-market DOWN — ...", ts, date(2026, 7, 6)),
+        _rc("watchdog: apollo-orchestrator recovered", ts + timedelta(minutes=2)),
+    ]
+    assert real_service_down_dates(rows) == {date(2026, 7, 6)}
 
 
 # ── FL-4 mirror quiet days ───────────────────────────────────────────────────

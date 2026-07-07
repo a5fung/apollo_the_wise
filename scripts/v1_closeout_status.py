@@ -206,10 +206,56 @@ def compute_fl1(l1_dates: set[date], repair_dates: set[date], start: date, end: 
     return {"n": n, "target": FL1_TARGET, "reset_reason": _fmt_reason(reason, last_date)}
 
 
+_WATCHDOG_TARGET_RE = re.compile(r"watchdog:\s*(\S+)\s+(?:DOWN|recovered)", re.IGNORECASE)
+_SELFTEST_CONTAINER = "apollo-watchdog-selftest"
+_TRANSIENT_RECOVERY_MIN = 10
+
+
+def _watchdog_target(summary) -> str | None:
+    """The container a watchdog service_down/service_recovered event is about
+    (parsed from the summary, e.g. 'watchdog: apollo-market DOWN — ...')."""
+    m = _WATCHDOG_TARGET_RE.search(summary or "")
+    return m.group(1) if m else None
+
+
+def real_service_down_dates(rows: list[dict], transient_min: int = _TRANSIENT_RECOVERY_MIN) -> set:
+    """From service_down / service_recovered rows (each {event_type, ts, summary, d}),
+    return the ET dates that had a REAL sustained outage — the only ones that should
+    reset FL-3's ops-autonomy streak.
+
+    Refinement (operator-signed 2026-07-07): FL-3 measures UNATTENDED-ops failures, so
+    two service_down classes are NOT real outages and are excluded:
+      1. the watchdog's own synthetic self-test container (`apollo-watchdog-selftest`) —
+         it is intentionally 'down', a test of the detector, not a service; and
+      2. a down that `service_recovered` for the SAME container within `transient_min`
+         minutes — a planned deploy/restart blip, not an autonomy failure.
+    Anything else (no recovery, or recovery beyond the window) counts as a real reset."""
+    downs = [r for r in rows if r.get("event_type") == "service_down"]
+    recovers = [r for r in rows if r.get("event_type") == "service_recovered"]
+    real: set = set()
+    for d in downs:
+        target = _watchdog_target(d.get("summary"))
+        if target == _SELFTEST_CONTAINER:
+            continue
+        t = d.get("ts")
+        transient = t is not None and any(
+            _watchdog_target(r.get("summary")) == target
+            and r.get("ts") is not None
+            and r["ts"] >= t
+            and (r["ts"] - t).total_seconds() <= transient_min * 60
+            for r in recovers
+        )
+        if not transient and d.get("d") is not None:
+            real.add(d["d"])
+    return real
+
+
 def compute_fl3(rows: list[dict], start: date, end: date) -> dict:
     """FL-3 ops autonomy: consecutive nights with backup_restore_check_ok AND
-    watchdog_heartbeat AND no service_down. `rows` = [{event_type, d}, ...]
-    already ET-date-bucketed (see gather_status's SQL)."""
+    watchdog_heartbeat AND no REAL service_down. `rows` = [{event_type, d}, ...]
+    already ET-date-bucketed (see gather_status's SQL) — the service_down rows here
+    are only the REAL sustained outages (gather_status pre-filters selftest/transient
+    downs via `real_service_down_dates`, the 2026-07-07 operator-signed refinement)."""
     by_date: dict[date, set[str]] = {}
     for r in rows:
         by_date.setdefault(r["d"], set()).add(r["event_type"])
@@ -358,14 +404,23 @@ async def gather_status(conn, today: date | None = None) -> dict:
 
     ops_rows = await conn.fetch(
         """
-        SELECT event_type, (created_at AT TIME ZONE 'America/New_York')::date AS d
+        SELECT event_type, summary, created_at AS ts,
+               (created_at AT TIME ZONE 'America/New_York')::date AS d
         FROM mi_audit_log
         WHERE event_type = ANY($1::text[])
           AND created_at >= $2
         """,
-        ["backup_restore_check_ok", "watchdog_heartbeat", "service_down"], FL3_START,
+        ["backup_restore_check_ok", "watchdog_heartbeat", "service_down", "service_recovered"],
+        FL3_START,
     )
-    fl3 = compute_fl3([dict(r) for r in ops_rows], FL3_START, today - timedelta(days=1))
+    ops_rows = [dict(r) for r in ops_rows]
+    # FL-3 refinement (operator 2026-07-07): only REAL sustained outages reset the streak —
+    # selftest/transient-deploy-blip downs are filtered out (see real_service_down_dates).
+    real_down = real_service_down_dates(ops_rows)
+    fl3_rows = [{"event_type": r["event_type"], "d": r["d"]} for r in ops_rows
+                if r["event_type"] in ("backup_restore_check_ok", "watchdog_heartbeat")]
+    fl3_rows += [{"event_type": "service_down", "d": d} for d in real_down]
+    fl3 = compute_fl3(fl3_rows, FL3_START, today - timedelta(days=1))
 
     drift_rows = await conn.fetch(
         """
