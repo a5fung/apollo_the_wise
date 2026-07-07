@@ -1,6 +1,6 @@
 # ADR 0023 — Exit & stop mechanics: winner-harvest sweep, single stop authority, gap classes
 
-**2026-07-07 · #438 (Fable design block) · Status: PROPOSED — awaiting operator signature (§6)**
+**2026-07-07 · #438 (Fable design block) · Status: ACTIVE — operator-signed 2026-07-07 (§7)**
 Covers #306 STEP-2 (the sweep design) and #414 (stop authority + gap/no-trigger). **THE LINE:
 this ADR measures and designs; NOTHING here changes live behavior. Every live change routes
 through its named fork in §6 → CHANGE_PROCESS + #151 exercise + operator sign-off.**
@@ -54,6 +54,17 @@ fingerprint + committed CSV so the run reproduces. Deliverable:
 `docs/analysis/306_step2_sweep_2026-07-08.md` + decision sheet.
 
 **STEP-3 (fork F1)**: operator picks a parameterization (or none). Exit discipline = THE LINE.
+
+### A5. Standing effectiveness review (operator requirement at signature, 7/7)
+The harvest rule is re-checked REGULARLY for as long as it is live — never set-and-forget:
+- The flip (STEP-3 execution) MUST emit a `harvest_rule_flipped` audit event — the review
+  predicate keys off it.
+- `data_gated_reviews.yaml :: harvest_rule_effectiveness` (added 7/7) surfaces in the Sunday
+  digest at ≥10 post-flip partial-taken closes (or quarterly, whichever first): post-flip
+  capture_pct vs the 18% baseline vs the sweep's predicted cell, plus the clipped-runner cost
+  check. Keep / retune / revert is an operator decision via CHANGE_PROCESS. The entry RE-ARMS
+  after every review (recurring, per the quarterly rule-review discipline).
+- Ambient monitor between reviews: the weekly-review MFE-capture KPI (STEP-1, live since 7/5).
 
 ## PART B — #414(i): single stop authority (the WULF class)
 
@@ -117,4 +128,6 @@ Thu/Fri → Card 6 Fri 7/10. Nothing deploys to live trade-state without its for
   costs more than N=2/−$1.9k. *Rec: park.*
 
 ## §7. Sign-off
-- [ ] ADR accepted (design + fork list): ____________  date: ________
+- [x] ADR accepted (design + fork list): **operator, 2026-07-07** — with the standing
+  requirement that the harvest rule be reviewed regularly for continued effectiveness (§A5:
+  the recurring `harvest_rule_effectiveness` data-gated review + the weekly capture_pct KPI).

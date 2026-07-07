@@ -6860,3 +6860,30 @@ reviews:
       SEPARATE review (the ADR-floor tune) — this one is the paper-graduation gate.
     status: pending
     added_on: 2026-06-29
+
+  - review_id: harvest_rule_effectiveness
+    title: "Harvest rule (ADR 0023) — post-flip effectiveness check vs the 18% baseline"
+    question: >-
+      Once the STEP-3/F1 harvest parameterization is live: is realized capture_pct on
+      NEW post-flip partial-taken closed trades (a) above the 18% pre-rule baseline,
+      (b) in line with the sweep's predicted value for the chosen cell, and (c) not
+      clipping runners (GOOGL-class cost check)? Regression on any of the three ->
+      revisit the parameterization (or revert) via CHANGE_PROCESS. RECURS: re-arm this
+      entry (+10 trades / +1 quarter, whichever first) after every review — the
+      operator-standing requirement (7/7, ADR 0023 signature) is that the harvest rule
+      is re-checked REGULARLY for as long as it is live, per the quarterly
+      rule-review discipline (batch evidence, not single-case reactions).
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_live_trades WHERE status='closed' AND partial_taken
+      AND closed_at > (SELECT COALESCE(MAX(created_at), NOW()) FROM mi_audit_log
+      WHERE event_type='harvest_rule_flipped')
+    threshold: 10
+    earliest_review_date: 2026-08-01
+    action_when_ready: >-
+      Run the weekly-review MFE section's cohort query split pre/post-flip; compare
+      post-flip capture_pct vs the 18% baseline vs the sweep's prediction; check the
+      per-trade table for clipped runners. Present the three-way comparison for
+      operator decision (keep / retune via a fresh sweep / revert). Then RE-ARM this
+      entry (status=pending, +10-trade or +90-day gate) — it recurs while the rule lives.
+    status: pending
+    added_on: 2026-07-07
