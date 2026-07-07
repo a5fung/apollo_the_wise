@@ -113,7 +113,7 @@ async def classify_naked_positions(body: dict) -> dict:
             # extract_stop_leg_id here would always return None because it
             # walks .legs which standalone stops don't have.
             has_stop = any(
-                (o.get("side") or "").lower() == "sell"
+                (o.get("side") or "").lower().endswith("sell")
                 and (
                     bool(o.get("stop_price"))
                     or "stop" in str(o.get("type") or "").lower()

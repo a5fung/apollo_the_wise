@@ -393,7 +393,7 @@ async def check_fills() -> list[dict]:
             logger.info(f"Fill: {ticker} @${filled_price:.2f} x{filled_qty:.0f}")
             results.append({"ticker": ticker, "action": "filled", "price": filled_price})
 
-        elif status in ("cancelled", "expired", "rejected"):
+        elif status in _CANCEL_LIKE_ORDER_STATUSES:
             await _update_trade_status(trade["id"], "cancelled", skip_reason=status)
             logger.info(f"Order {status}: {ticker}")
             results.append({"ticker": ticker, "action": status})

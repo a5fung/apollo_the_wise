@@ -807,20 +807,30 @@ async def place_limit_buy_with_stop(
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
+def _enum_value(x) -> str | None:
+    """'OrderStatus.NEW' -> 'new', 'OrderSide.BUY' -> 'buy', 'new' -> 'new'.
+    The wire contract for _order_to_dict dicts: status/side/type are ALWAYS
+    plain lowercase values (#183; same rule as order_manager._canonical_order_status,
+    defined here because order_manager imports alpaca_client, not vice versa)."""
+    if x is None:
+        return None
+    return str(x).split(".")[-1].lower()
+
+
 def _order_to_dict(order) -> dict:
     """Convert Alpaca Order object to a plain dict."""
     return {
         "id": str(order.id),
         "client_order_id": order.client_order_id,
         "symbol": order.symbol,
-        "side": str(order.side),
-        "type": str(order.type),
+        "side": _enum_value(order.side),
+        "type": _enum_value(order.type),
         "qty": float(order.qty) if order.qty else None,
         "filled_qty": float(order.filled_qty) if order.filled_qty else 0,
         "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else None,
         "stop_price": float(order.stop_price) if order.stop_price else None,
         "limit_price": float(order.limit_price) if order.limit_price else None,
-        "status": str(order.status),
+        "status": _enum_value(order.status),
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "filled_at": order.filled_at.isoformat() if order.filled_at else None,
         "legs": [_order_to_dict(leg) for leg in order.legs] if order.legs else [],
@@ -838,7 +848,7 @@ def _position_to_dict(pos) -> dict:
         "unrealized_pl": float(pos.unrealized_pl),
         "unrealized_plpc": float(pos.unrealized_plpc),
         "current_price": float(pos.current_price),
-        "side": str(pos.side),
+        "side": _enum_value(pos.side),
         # #151: shares FREE to sell right now. Differs from qty when an order
         # is reserving shares — e.g. an old stop stuck in pending_replace after
         # a partial-exit stop replace (the FPS 2026-06-04/05 failure surface).
