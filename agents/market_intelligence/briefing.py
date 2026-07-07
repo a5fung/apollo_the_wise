@@ -2430,6 +2430,20 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     # is empty (never leave the alert with zero catalyst).
     _judge_grounded = bool(ep.get("has_direct_source")) and bool((ep.get("claude_analysis") or "").strip())
     catalyst_block = "" if _judge_grounded else f"Catalyst: {catalyst_text}\n\n"
+    if _judge_grounded:
+        # #405 fold / #317-verify (2026-07-07): the suppression is DISPLAY-only and has_direct_source
+        # is never persisted, so it was un-verifiable post-hoc. Emit an audit row → the next
+        # direct-source HIGH verifies the suppress from the log (closes #317's verifiability gap).
+        # Observability only — a DB failure here MUST NEVER break the alert (mirror the convergence guard).
+        try:
+            await log_audit_event(
+                "ep_catalyst_suppressed",
+                summary=f"{ep.get('ticker')} catalyst discovery line suppressed (grounded direct-source grade)",
+                detail=(f"ticker={ep.get('ticker')} tier={ep.get('score_tier')} "
+                        f"cat_len={len(ep.get('catalyst') or '')} "
+                        f"analysis_len={len((ep.get('claude_analysis') or '').strip())}"))
+        except Exception as _se:
+            logger.warning("ep_catalyst_suppressed audit emit failed (non-fatal): %s", _se)
 
     # Sugar Baby Convergence tag — operator escalation cue. Pure telemetry:
     # DB failure here MUST NEVER break the underlying EP alert (the trading

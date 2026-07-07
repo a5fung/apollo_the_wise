@@ -63,3 +63,63 @@ def test_ep_alert_premarket_shows_pm_rvol_not_raw_rel_volume():
 
     assert "pm RVOL: *12.1x*" in captured["text"]    # the pre-market figure, labeled
     assert "| RVOL: *0.01x*" not in captured["text"]  # NOT the raw rel_volume that reads ~0
+
+
+# ── #405 fold / #317-verify: the catalyst-suppression is now OBSERVABLE ──────────
+# The suppress (has_direct_source + grounded claude_analysis → drop the redundant discovery
+# "Catalyst:" line) was DISPLAY-only and has_direct_source is never persisted → un-verifiable
+# post-hoc. send_ep_alert now emits an `ep_catalyst_suppressed` audit on the suppress branch so
+# the next direct-source HIGH verifies from the log. These pin BOTH sides of the branch.
+
+def test_ep_alert_emits_suppressed_audit_when_grounded_direct_source():
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence import briefing
+
+    ep = {"ticker": "WULF", "score_tier": "HIGH", "gap_pct": 8.0, "ep_score": 82,
+          "catalyst_quality": "game_changer", "rel_volume": 2.0,
+          "has_direct_source": True,
+          "claude_analysis": "8-K: transformative HPC/AI hosting deal; theme hot.",
+          "catalyst": "A Perplexity discovery narrative that would otherwise print."}
+    audits, captured = [], {}
+
+    async def _aud(event_type, *a, **k):
+        audits.append(event_type)
+
+    async def _cap(text, *a, **k):
+        captured["text"] = text
+        return True
+
+    with patch.object(briefing, "send_telegram_message", new=AsyncMock(side_effect=_cap)), \
+         patch.object(briefing, "log_audit_event", new=AsyncMock(side_effect=_aud)):
+        asyncio.run(briefing.send_ep_alert(ep))
+
+    assert "ep_catalyst_suppressed" in audits          # the observability hook fired
+    assert "Catalyst:" not in captured["text"]         # …and the line WAS actually suppressed
+
+
+def test_ep_alert_no_suppressed_audit_when_catalyst_shown():
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence import briefing
+
+    ep = {"ticker": "ABCD", "score_tier": "HIGH", "gap_pct": 8.0, "ep_score": 80,
+          "catalyst_quality": "strong", "rel_volume": 2.0,
+          "has_direct_source": False,                  # no direct source → keep the line (safe default)
+          "claude_analysis": "some analysis",
+          "catalyst": "the discovery narrative shown"}
+    audits, captured = [], {}
+
+    async def _aud(event_type, *a, **k):
+        audits.append(event_type)
+
+    async def _cap(text, *a, **k):
+        captured["text"] = text
+        return True
+
+    with patch.object(briefing, "send_telegram_message", new=AsyncMock(side_effect=_cap)), \
+         patch.object(briefing, "log_audit_event", new=AsyncMock(side_effect=_aud)):
+        asyncio.run(briefing.send_ep_alert(ep))
+
+    assert "ep_catalyst_suppressed" not in audits      # no suppression → no emit
+    assert "Catalyst:" in captured["text"]             # the line is kept
