@@ -1499,9 +1499,10 @@ async def promote_shadow_themes(today) -> int:
         # Re-promotions of already-live cohorts are steady-state maintenance (still logged in the
         # shadow_themes_promoted audit above) — not actionable, so no Telegram. (Was: fired every
         # nightly run because established cohorts keep re-qualifying → "1 theme graduated" nightly.)
-        _named = ", ".join(new_grads[:6]) + (f" +{len(new_grads) - 6} more" if len(new_grads) > 6 else "")
+        n_new = len(new_grads)
+        _named = ", ".join(new_grads[:6]) + (f" +{n_new - 6} more" if n_new > 6 else "")
         await send_telegram_message(
-            f"🎓 {len(new_grads)} theme(s) NEWLY graduated shadow→live: {_named}. `/themes`.")
+            f"🎓 {n_new} theme(s) NEWLY graduated shadow→live: {_named}. `/themes`.")
     return n
 
 

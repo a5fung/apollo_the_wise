@@ -416,10 +416,14 @@ async def gather_status(conn, today: date | None = None) -> dict:
     ops_rows = [dict(r) for r in ops_rows]
     # FL-3 refinement (operator 2026-07-07): only REAL sustained outages reset the streak —
     # selftest/transient-deploy-blip downs are filtered out (see real_service_down_dates).
+    # compute_fl3 reads only event_type + d, so one filter over the original rows suffices:
+    # keep the two heartbeat types, plus service_down ONLY on a real-outage date.
     real_down = real_service_down_dates(ops_rows)
-    fl3_rows = [{"event_type": r["event_type"], "d": r["d"]} for r in ops_rows
-                if r["event_type"] in ("backup_restore_check_ok", "watchdog_heartbeat")]
-    fl3_rows += [{"event_type": "service_down", "d": d} for d in real_down]
+    fl3_rows = [
+        r for r in ops_rows
+        if r["event_type"] in ("backup_restore_check_ok", "watchdog_heartbeat")
+        or (r["event_type"] == "service_down" and r["d"] in real_down)
+    ]
     fl3 = compute_fl3(fl3_rows, FL3_START, today - timedelta(days=1))
 
     drift_rows = await conn.fetch(

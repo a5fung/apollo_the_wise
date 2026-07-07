@@ -2428,7 +2428,8 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     # flow move, no clean catalyst" while the judge graded HIGH on the 8-K). Suppress it then.
     # Keep it when there is NO direct source (it's the only catalyst info) or when claude_analysis
     # is empty (never leave the alert with zero catalyst).
-    _judge_grounded = bool(ep.get("has_direct_source")) and bool((ep.get("claude_analysis") or "").strip())
+    _analysis_stripped = (ep.get("claude_analysis") or "").strip()
+    _judge_grounded = bool(ep.get("has_direct_source")) and bool(_analysis_stripped)
     catalyst_block = "" if _judge_grounded else f"Catalyst: {catalyst_text}\n\n"
     if _judge_grounded:
         # #405 fold / #317-verify (2026-07-07): the suppression is DISPLAY-only and has_direct_source
@@ -2441,7 +2442,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
                 summary=f"{ep.get('ticker')} catalyst discovery line suppressed (grounded direct-source grade)",
                 detail=(f"ticker={ep.get('ticker')} tier={ep.get('score_tier')} "
                         f"cat_len={len(ep.get('catalyst') or '')} "
-                        f"analysis_len={len((ep.get('claude_analysis') or '').strip())}"))
+                        f"analysis_len={len(_analysis_stripped)}"))
         except Exception as _se:
             logger.warning("ep_catalyst_suppressed audit emit failed (non-fatal): %s", _se)
 
