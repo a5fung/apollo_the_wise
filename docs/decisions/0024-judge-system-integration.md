@@ -1,6 +1,6 @@
 # ADR 0024 — Judge-system integration: one brain from five parts (Fable block A, #419/P1-P3)
 
-**2026-07-07 · Status: PROPOSED — awaiting operator signature (§8)**
+**2026-07-07 · Status: ACTIVE — operator-signed 2026-07-07 (§9; all 6 forks resolved per the recommendations)**
 The five judge-adjacent systems were each designed to execution depth in their own ADRs —
 grade judge (0011, LIVE load-bearing) · theme/structure axes (0015/0016, shadow) · management
 judge (0017, L0 shadow) · experience stack (0018) · full sight (0021) — but the 7/5 D-series
@@ -186,4 +186,4 @@ build embeddings (0018 G1's H2 call stands) · add commands (sections only).
   blocks from day one (shared renderers). *Rec: yes — free coherence, no schedule change.*
 
 ## 9. Sign-off
-- [ ] ADR accepted (integration architecture + fork list): ____________  date: ________
+- [x] ADR accepted (integration architecture + fork list): **operator, 2026-07-07 — all 6 forks per the recs (F1 composition split · F2 net ±1 cap · F3 M1 theme-only · F4 registry+section · F5 ensemble→sizing · F6 C2 adopts DecisionContext)**
