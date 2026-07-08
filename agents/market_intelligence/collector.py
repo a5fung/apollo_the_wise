@@ -894,6 +894,39 @@ async def get_premarket_snapshot() -> dict[str, float]:
         return {}
 
 
+async def get_premarket_prices(tickers: list[str]) -> dict[str, float]:
+    """Latest available PRE-MARKET price per ticker via Polygon /v2/snapshot.
+
+    Reads `min.c` (latest minute-bar close — updates in pre-market) → `lastTrade.p`
+    → `day.o`, same precedence as `get_premarket_snapshot` (yfinance/Alpaca are
+    unreliable pre-market). For the 9:00 ET gap-risk scan (ADR 0023 Card 5). Fails
+    graceful — returns a partial/empty dict, never raises."""
+    tickers = [t for t in (tickers or []) if t]
+    if not tickers:
+        return {}
+    try:
+        data = await _polygon_get(
+            "/v2/snapshot/locale/us/markets/stocks/tickers",
+            {"tickers": ",".join(sorted(set(tickers)))},
+        )
+        out: dict[str, float] = {}
+        for snap in data.get("tickers", []):
+            t = snap.get("ticker")
+            if not t:
+                continue
+            px = (
+                snap.get("min", {}).get("c")
+                or snap.get("lastTrade", {}).get("p")
+                or snap.get("day", {}).get("o")
+            )
+            if px:
+                out[t] = float(px)
+        return out
+    except Exception as e:
+        logger.warning(f"Premarket prices fetch failed ({len(tickers)} tickers): {e}")
+        return {}
+
+
 async def get_overnight_snapshot(watchlist: list[dict]) -> list[dict]:
     """
     Fetch overnight price changes for all watchlist instruments via yfinance.

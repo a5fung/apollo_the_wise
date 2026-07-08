@@ -140,6 +140,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # judge / digests / briefings
     "judge_delta_digest", "catalyst_downgrade_digest", "9m_pace_digest",
     "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
+    "premarket_gap_risk",  # ADR 0023 Card 5 — read-only 9:00 ET gap-through heads-up, no broker calls
     "evening_briefing", "friday_watchlist", "hud_refresh",
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
     "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
@@ -1113,6 +1114,20 @@ async def _morning_stop_refresh_job():
     except Exception as e:
         logger.error(f"Morning stop refresh failed: {e}")
         await notify_job_failure("morning_stop_refresh", str(e))
+
+
+async def _premarket_gap_risk_job():
+    """Run at 9:00 AM ET (pre-market). Heads-up if an open position is trading BELOW its
+    stop pre-market (may gap THROUGH at the open). Read-only telemetry, no order action —
+    ADR 0023 Card 5. NOT gated on LIVE_TRADING_ENABLED (the heads-up is useful even when
+    submits are paused; it reads positions, never trades)."""
+    try:
+        from agents.market_intelligence.briefing import premarket_gap_risk_scan
+        n = await premarket_gap_risk_scan()
+        logger.info(f"Premarket gap-risk scan: {n} at-risk position(s) alerted")
+    except Exception as e:
+        logger.error(f"Premarket gap-risk scan failed: {e}")
+        await notify_job_failure("premarket_gap_risk", str(e))
 
 
 async def _time_stop_scan_job():
@@ -4630,6 +4645,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_stream_health_watchdog, "stream_health_watchdog"),
         CronTrigger(hour="9-15", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
         id="stream_health_watchdog",
+        replace_existing=True,
+    )
+
+    # Pre-market gap-risk heads-up: 9:00 AM ET — warn if an open position is trading below
+    # its stop pre-market (may gap through at the open). Read-only telemetry (ADR 0023 Card 5).
+    _scheduler.add_job(
+        audit_wrap(_premarket_gap_risk_job, "premarket_gap_risk"),
+        CronTrigger(hour=9, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="premarket_gap_risk",
         replace_existing=True,
     )
 

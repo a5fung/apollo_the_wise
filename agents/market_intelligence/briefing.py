@@ -2622,3 +2622,54 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         await post_ep_tweet(ep)
     except Exception as e:
         logger.warning(f"EP tweet failed (non-critical): {e}")
+
+
+async def premarket_gap_risk_scan() -> int:
+    """ADR 0023 Card 5 — 9:00 ET pre-market gap-risk heads-up (telemetry, READ-ONLY).
+
+    For each OPEN position, if the pre-market price is already BELOW its live stop, the
+    stop will likely fill WORSE than intended at the open (an overnight gap-THROUGH, the
+    SYRE −4.57R / DELL −1.43R class — the stop fires, it's just a market gap). This
+    Telegrams a heads-up BEFORE the open so the operator can decide. It changes NOTHING —
+    no order action, the stop stands (exit discipline = THE LINE). Per-account (dual-account
+    #66): iterates active modes, labels each alert with the owning account. Returns the count
+    of at-risk positions alerted."""
+    from agents.market_intelligence.constants import active_account_modes, mode_prefix
+    from agents.market_intelligence.collector import get_premarket_prices
+    pool = await get_pool()
+    alerted = 0
+    for mode in active_account_modes():
+        async with pool.acquire() as conn:
+            opens = await conn.fetch("""
+                SELECT ticker, entry_price, stop_price, remaining_shares, hold_days
+                FROM mi_live_trades
+                WHERE status = 'filled' AND remaining_shares > 0
+                  AND account_mode = $1 AND stop_price IS NOT NULL
+            """, mode)
+        if not opens:
+            continue
+        prices = await get_premarket_prices([o["ticker"] for o in opens])
+        for o in opens:
+            px, stop = prices.get(o["ticker"]), o["stop_price"]
+            if px is None or stop is None or px >= stop:
+                continue  # no quote, or holding above the stop → no gap-through risk
+            under = (stop - px) / stop * 100
+            entry = o["entry_price"]
+            from_entry = f", {((px - entry) / entry * 100):+.1f}% vs entry" if entry else ""
+            await send_telegram_message(
+                f"{mode_prefix(mode)}⚠️ *Gap-risk:* `{o['ticker']}` pre-market "
+                f"${px:.2f} is BELOW stop ${stop:.2f} ({under:.1f}% under{from_entry}) — "
+                f"may gap THROUGH the stop at the open ({o['hold_days']}d hold). "
+                f"Heads-up only; the stop stands."
+            )
+            try:
+                await log_audit_event(
+                    "premarket_gap_risk",
+                    summary=f"{o['ticker']} pre-market ${px:.2f} < stop ${stop:.2f} ({mode})",
+                    detail=f"ticker={o['ticker']} mode={mode} premarket={px:.4f} "
+                           f"stop={stop:.4f} under_pct={under:.2f} hold_days={o['hold_days']}",
+                )
+            except Exception as _e:  # loud-ok: audit is telemetry-of-telemetry; the Telegram above already fired
+                logger.warning("premarket_gap_risk audit emit failed (non-fatal): %s", _e)
+            alerted += 1
+    return alerted
