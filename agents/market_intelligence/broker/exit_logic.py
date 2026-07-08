@@ -75,6 +75,65 @@ def ema(closes: list[float], window: int) -> float | None:
     return value
 
 
+def giveback_floor(
+    running_closes: list[float],
+    entry_price: float | None,
+    *,
+    arm_gain: float | None = None,
+    arm_r: float | None = None,
+    floor_frac: float | None = None,
+    risk_per_share: float | None = None,
+) -> float | None:
+    """Peak-lock giveback floor price, or None when disarmed / not configured.
+
+    ADR 0023 Card 1 (A3) — the ONE new exit hook, pure + opt-in + DEFAULT-OFF. When a
+    trade has run up past an ARM threshold, lock in a FLOOR at a fraction of the peak
+    gain so a round-tripper (SMCI +11.7%→−$639, PURR +13.4%→$3) can't give the whole
+    move back. Returns a price to feed the EXISTING `effective_stop = max(...)`
+    composition — it is one more max() input, so it can only RAISE the stop, never lower it.
+
+    Contract:
+      - `floor_frac is None` → hook OFF: return None immediately (the default; keeps every
+        existing caller byte-identical, nothing computed).
+      - Exactly one of `arm_gain` (peak_gain fraction, e.g. 0.08 = +8%) / `arm_r` (peak gain
+        in R-multiples, e.g. 2.0 = +2R — REQUIRES `risk_per_share`) sets WHEN the lock arms.
+      - Armed when `peak_close >= arm_price` (>=, inclusive boundary). peak_close =
+        max(running_closes) — derivable from state, no schema change; live wiring later would
+        use `mi_live_trades.highest_price_seen`.
+      - Floor = `entry + floor_frac × (peak_close − entry)`. Since arming needs peak > entry
+        (arm_gain/arm_r > 0), the floor is always above entry when armed.
+      - `entry_price` falsy or `running_closes` empty → None (data gap, graceful — not a
+        config error). Inconsistent CONFIG (both/neither arm, non-positive arm, arm_r without
+        a positive risk_per_share, floor_frac outside (0, 1]) → ValueError (fail loud, mirrors
+        the `trail_mode` guard in apply_daily_exit_step).
+    """
+    if floor_frac is None:
+        return None
+    # --- config validation (fail loud, only reachable once the hook is opted-in) ---
+    if not (0.0 < floor_frac <= 1.0):
+        raise ValueError(f"giveback_floor: floor_frac must be in (0, 1], got {floor_frac!r}")
+    if (arm_gain is None) == (arm_r is None):
+        raise ValueError("giveback_floor: pass EXACTLY one of arm_gain / arm_r")
+    if arm_gain is not None and arm_gain <= 0:
+        raise ValueError(f"giveback_floor: arm_gain must be > 0, got {arm_gain!r}")
+    if arm_r is not None:
+        if arm_r <= 0:
+            raise ValueError(f"giveback_floor: arm_r must be > 0, got {arm_r!r}")
+        if risk_per_share is None or risk_per_share <= 0:
+            raise ValueError("giveback_floor: arm_r requires a positive risk_per_share")
+    # --- data guards (graceful None, not a config error) ---
+    if not entry_price or not running_closes:
+        return None
+    peak_close = max(running_closes)
+    if arm_gain is not None:
+        arm_price = entry_price * (1.0 + arm_gain)
+    else:
+        arm_price = entry_price + arm_r * risk_per_share
+    if peak_close < arm_price:
+        return None
+    return entry_price + floor_frac * (peak_close - entry_price)
+
+
 def apply_daily_exit_step(
     state: dict[str, Any],
     daily_bar: dict[str, Any] | None,
@@ -85,6 +144,10 @@ def apply_daily_exit_step(
     skip_hard_stop_close: bool = False,
     trail_mode: str = "sma",
     scale_fraction: float | None = None,
+    giveback_arm_gain: float | None = None,
+    giveback_arm_r: float | None = None,
+    giveback_floor_frac: float | None = None,
+    giveback_risk_per_share: float | None = None,
 ) -> ExitStep:
     """Compute one daily exit step.
 
@@ -103,16 +166,29 @@ def apply_daily_exit_step(
       max(SMA10, SMA20) trail. 'ema_10_20' (#396 HTF Phase 4 management SHADOW,
       OPT-IN — no existing caller passes this) uses the max(EMA10, EMA20) trail
       instead via the `ema()` helper above — same downstream branch (close below
-      the trail -> close), just a different indicator source. Any other value
-      raises ValueError (fail loud, not a silent no-op).
+      the trail -> close), just a different indicator source. 'sma_10_20_handoff'
+      (ADR 0023 Card 2 sweep, OPT-IN — evidence-only, no live caller) trails a
+      SINGLE SMA10 until a partial is taken, then hands off to SMA20 (tighter early,
+      looser once de-risked). Any other value raises ValueError (fail loud).
 
     scale_fraction: None (DEFAULT) preserves the EXACT original partial-sizing
       arithmetic (`remaining // 3` / `remaining / 3` — the untouched behavior
       every existing caller depends on). A float (e.g. 0.40, within the sourced
       0.33-0.50 HTF range — docs/setups/htf.md) OPTS IN to a variable scale-out
       fraction instead of the hardcoded 1/3 (#396 HTF Phase 4).
+
+    giveback_arm_gain / giveback_arm_r / giveback_floor_frac / giveback_risk_per_share:
+      ADR 0023 Card 1 (A3) peak-lock, DEFAULT-OFF. `giveback_floor_frac is None`
+      (default) → NO effect, byte-identical to every existing caller. When set (with
+      exactly one of giveback_arm_gain / giveback_arm_r, the latter needing
+      giveback_risk_per_share), computes the `giveback_floor()` price and feeds it as one
+      more max() input into the step-4 effective_stop composition — it can only RAISE the
+      stop. The close-below-effective-stop branch (step 5) is UNCHANGED (the giveback lock
+      surfaces as an `sma_trail_stop` close; the ExitStep.effective_stop value reveals which
+      input bound). See `giveback_floor` above for arm/floor semantics + fail-loud config
+      validation. Opt-in for the #306 harvest sweep harness (Card 2); no live caller passes it.
     """
-    if trail_mode not in ("sma", "ema_10_20"):
+    if trail_mode not in ("sma", "ema_10_20", "sma_10_20_handoff"):
         raise ValueError(f"apply_daily_exit_step: unknown trail_mode {trail_mode!r}")
     remaining = float(state.get("remaining_shares") or 0)
     alert_date = state["alert_date"]
@@ -166,7 +242,8 @@ def apply_daily_exit_step(
             new_total_pnl=total_pnl,
         )
 
-    # 2. Trail indicator — SMA10/20 (default, UNCHANGED) or the 10/20 EMA (opt-in, #396).
+    # 2. Trail indicator — SMA10/20 (default, UNCHANGED), the 10/20 EMA (opt-in, #396),
+    # or the SMA10→SMA20 handoff (opt-in, ADR 0023 Card 2 sweep — Axis B).
     active_sma = None
     if trail_mode == "ema_10_20":
         ema_10 = ema(running_closes, 10)
@@ -176,13 +253,23 @@ def apply_daily_exit_step(
         elif ema_10 is not None:
             active_sma = ema_10
     else:
-        # SMA10/20 — same logic both call sites (byte-identical to pre-#396)
-        if len(running_closes) >= 20:
-            sma_10 = sum(running_closes[-10:]) / 10
-            sma_20 = sum(running_closes[-20:]) / 20
-            active_sma = sma_10 if sma_10 > sma_20 else sma_20
-        elif len(running_closes) >= 10:
-            active_sma = sum(running_closes[-10:]) / 10
+        sma_10 = sum(running_closes[-10:]) / 10 if len(running_closes) >= 10 else None
+        sma_20 = sum(running_closes[-20:]) / 20 if len(running_closes) >= 20 else None
+        if trail_mode == "sma_10_20_handoff":
+            # SMA10 until a partial is taken, then SMA20 (a SINGLE sma, not the max()).
+            # partial_taken here is the PRIOR-day state (step 3 flips it AFTER this), so the
+            # switch to SMA20 takes effect the day AFTER the partial. Post-partial but <20
+            # closes → fall back to SMA10 so a trail stays live (never drops protection).
+            if partial_taken:
+                active_sma = sma_20 if sma_20 is not None else sma_10
+            else:
+                active_sma = sma_10
+        else:
+            # "sma" — max(SMA10, SMA20), byte-identical to pre-#396 (both call sites).
+            if sma_20 is not None:
+                active_sma = sma_10 if sma_10 > sma_20 else sma_20
+            elif sma_10 is not None:
+                active_sma = sma_10
 
     # 3. Partial profit Day 3-5
     partial_fired = False
@@ -228,6 +315,16 @@ def apply_daily_exit_step(
         effective_stop = active_sma
     if breakeven_active and entry_price and entry_price > effective_stop:
         effective_stop = float(entry_price)
+    # 4b. Peak-lock giveback floor (ADR 0023 Card 1, A3) — DEFAULT-OFF. One more max()
+    # input: raises effective_stop to lock in a fraction of the peak gain once armed,
+    # never lowers it. running_closes already includes today's close (line above).
+    gb_floor = giveback_floor(
+        running_closes, entry_price,
+        arm_gain=giveback_arm_gain, arm_r=giveback_arm_r,
+        floor_frac=giveback_floor_frac, risk_per_share=giveback_risk_per_share,
+    )
+    if gb_floor is not None and gb_floor > effective_stop:
+        effective_stop = gb_floor
 
     # 5. SMA trail close
     if bar_close < effective_stop and remaining > 0:

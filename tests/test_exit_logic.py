@@ -12,7 +12,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step, ema
+from agents.market_intelligence.broker.exit_logic import (
+    apply_daily_exit_step,
+    ema,
+    giveback_floor,
+)
 
 
 def base_state(**overrides):
@@ -302,3 +306,176 @@ def test_scale_fraction_opt_in_variable_scale():
                                  integer_partial_shares=True, scale_fraction=0.40)
     assert step.partial_shares == 40
     assert step.new_remaining == 60
+
+
+# ── ADR 0023 Card 1 — peak-lock giveback floor (A3), DEFAULT-OFF ─────────────
+# giveback_floor() helper: arm-boundary, floor math, guards, fail-loud config.
+
+
+def test_giveback_off_when_floor_frac_none():
+    # The default — no floor_frac → None, nothing computed (byte-identical guarantee).
+    assert giveback_floor([120.0], 100.0) is None
+    assert giveback_floor([120.0], 100.0, arm_gain=0.08) is None  # arm alone still off
+
+
+def test_giveback_floor_math_gain_arm():
+    # entry=100, peak=120, arm_gain=0.08 (arm_price=108, armed), floor_frac=0.50
+    # → floor = 100 + 0.50*(120-100) = 110.0
+    assert giveback_floor([110.0, 120.0, 118.0], 100.0,
+                          arm_gain=0.08, floor_frac=0.50) == 110.0
+
+
+def test_giveback_arm_boundary_is_inclusive():
+    # Arming is >= (inclusive). Use exactly-representable arm prices so the boundary isn't
+    # float noise: arm_r=2.0×risk 5 → 100+10 = 110.0 exact; arm_gain=0.25 → 125.0 exact.
+    # (With real market prices peak==threshold never lands on a float edge; >= is right.)
+    assert giveback_floor([110.0], 100.0, arm_r=2.0, risk_per_share=5.0,
+                          floor_frac=0.50) == 105.0                      # peak == arm → armed
+    assert giveback_floor([109.99], 100.0, arm_r=2.0, risk_per_share=5.0,
+                          floor_frac=0.50) is None                        # just below → not
+    assert giveback_floor([125.0], 100.0, arm_gain=0.25, floor_frac=0.50) == 112.5
+    assert giveback_floor([124.99], 100.0, arm_gain=0.25, floor_frac=0.50) is None
+
+
+def test_giveback_arm_r_uses_risk_per_share():
+    # arm_r=2.0, risk/share=5 → arm_price = 100 + 2*5 = 110. peak=115 arms;
+    # floor_frac=0.40 → floor = 100 + 0.40*(115-100) = 106.0. peak=109 stays disarmed.
+    assert giveback_floor([115.0], 100.0, arm_r=2.0, risk_per_share=5.0,
+                          floor_frac=0.40) == 106.0
+    assert giveback_floor([109.0], 100.0, arm_r=2.0, risk_per_share=5.0,
+                          floor_frac=0.40) is None
+
+
+def test_giveback_floor_always_above_entry_when_armed():
+    # By construction (arm needs peak>entry): the locked floor sits above entry.
+    floor = giveback_floor([130.0], 100.0, arm_gain=0.06, floor_frac=0.40)
+    assert floor is not None and floor > 100.0
+
+
+def test_giveback_data_guards_return_none_not_raise():
+    # Missing entry / empty closes = data gap, graceful None (NOT a config error).
+    assert giveback_floor([120.0], None, arm_gain=0.08, floor_frac=0.5) is None
+    assert giveback_floor([], 100.0, arm_gain=0.08, floor_frac=0.5) is None
+
+
+def test_giveback_config_errors_fail_loud():
+    # Inconsistent CONFIG raises (mirrors the trail_mode fail-loud guard).
+    with pytest.raises(ValueError):  # neither arm
+        giveback_floor([120.0], 100.0, floor_frac=0.5)
+    with pytest.raises(ValueError):  # both arms
+        giveback_floor([120.0], 100.0, arm_gain=0.08, arm_r=2.0,
+                       risk_per_share=5.0, floor_frac=0.5)
+    with pytest.raises(ValueError):  # arm_r without risk_per_share
+        giveback_floor([120.0], 100.0, arm_r=2.0, floor_frac=0.5)
+    with pytest.raises(ValueError):  # floor_frac out of (0, 1]
+        giveback_floor([120.0], 100.0, arm_gain=0.08, floor_frac=0.0)
+    with pytest.raises(ValueError):  # floor_frac > 1
+        giveback_floor([120.0], 100.0, arm_gain=0.08, floor_frac=1.5)
+    with pytest.raises(ValueError):  # non-positive arm_gain
+        giveback_floor([120.0], 100.0, arm_gain=0.0, floor_frac=0.5)
+
+
+# ── ADR 0023 Card 1 — giveback wired into apply_daily_exit_step (step 4b) ─────
+
+
+def test_giveback_default_off_byte_identical():
+    # Passing all giveback params as None must reproduce the baseline (no-giveback) call
+    # EXACTLY — the default-off proof at the integration layer.
+    st1 = base_state(running_closes=[100.0] * 10)
+    st2 = base_state(running_closes=[100.0] * 10)
+    baseline = apply_daily_exit_step(st1, bar(101.0, 102.0), date(2026, 4, 3))
+    withnone = apply_daily_exit_step(
+        st2, bar(101.0, 102.0), date(2026, 4, 3),
+        giveback_arm_gain=None, giveback_arm_r=None,
+        giveback_floor_frac=None, giveback_risk_per_share=None,
+    )
+    assert withnone.effective_stop == baseline.effective_stop
+    assert withnone.action == baseline.action
+    assert withnone.new_remaining == baseline.new_remaining
+
+
+def test_giveback_raises_effective_stop_and_locks_the_round_tripper():
+    # Prior peak 120 (running_closes carries it), today gives back to 108. Armed at +8%,
+    # floor_frac=0.50 → floor = 110. effective_stop=max(hard_stop 95, 110)=110 > close 108
+    # → the lock FIRES (the SMCI/PURR round-trip class), closing at the bar_close.
+    state = base_state(running_closes=[120.0])  # <10 closes → active_sma None
+    step = apply_daily_exit_step(
+        state, bar(107.0, 108.0), date(2026, 4, 3),  # hold_days=2 → no partial branch
+        giveback_arm_gain=0.08, giveback_floor_frac=0.50,
+    )
+    assert step.closed is True
+    assert step.effective_stop == 110.0
+    assert step.close_price == 108.0
+
+
+def test_giveback_stays_open_when_close_above_floor():
+    # Same peak/arm but today's close (118) is still above the 109 floor → position holds.
+    state = base_state(running_closes=[110.0])
+    step = apply_daily_exit_step(
+        state, bar(116.0, 118.0), date(2026, 4, 3),  # hold_days=2 → no partial branch
+        giveback_arm_gain=0.08, giveback_floor_frac=0.50,
+    )
+    assert step.closed is False
+    assert step.effective_stop == 109.0  # 100 + 0.50*(118-100)
+
+
+def test_giveback_never_lowers_effective_stop():
+    # hard_stop (106) already sits ABOVE the giveback floor (104) → effective_stop stays 106.
+    # The floor is a max() input; it can only raise. Compare with/without giveback.
+    st_with = base_state(hard_stop=106.0, running_closes=[110.0])
+    st_without = base_state(hard_stop=106.0, running_closes=[110.0])
+    with_gb = apply_daily_exit_step(
+        st_with, bar(107.0, 108.0), date(2026, 4, 3),  # hold_days=2 → no partial branch
+        giveback_arm_gain=0.05, giveback_floor_frac=0.40,  # floor = 104
+    )
+    without_gb = apply_daily_exit_step(st_without, bar(107.0, 108.0), date(2026, 4, 3))
+    assert with_gb.effective_stop == 106.0
+    assert with_gb.effective_stop == without_gb.effective_stop
+
+
+# ── ADR 0023 Card 2 — sma_10_20_handoff trail mode (Axis B), OPT-IN ──────────
+# SMA10 until partial_taken, then SMA20. (running_closes length is a synthetic
+# trail input, independent of hold_days here — we isolate the indicator branch.)
+
+
+def test_handoff_post_partial_uses_sma20_not_max():
+    # 20 closes: last-10 mean = 120 (sma10), full-20 mean = 110 (sma20). partial already
+    # taken → handoff trails SMA20 (110), NOT the max(sma10,sma20)=120 that 'sma' would use.
+    state = base_state(partial_taken=True, breakeven_active=False,
+                       running_closes=[100.0] * 10 + [120.0] * 9)
+    step = apply_daily_exit_step(state, bar(119.0, 120.0), date(2026, 5, 1),
+                                 trail_mode="sma_10_20_handoff")
+    assert step.active_sma == 110.0            # SMA20
+    # 'sma' mode on the same state would pick max = 120.0 → different indicator.
+    sma_step = apply_daily_exit_step(
+        base_state(partial_taken=True, running_closes=[100.0] * 10 + [120.0] * 9),
+        bar(119.0, 120.0), date(2026, 5, 1), trail_mode="sma")
+    assert sma_step.active_sma == 120.0
+
+
+def test_handoff_pre_partial_uses_sma10_not_max():
+    # Downtrend: last-10 mean = 100 (sma10), full-20 mean = 110 (sma20). NOT yet partialed →
+    # handoff trails SMA10 (100); 'sma' would trail max = SMA20 (110) and close the bar.
+    state = base_state(partial_taken=False, running_closes=[120.0] * 10 + [100.0] * 9)
+    step = apply_daily_exit_step(state, bar(100.0, 100.0), date(2026, 4, 3),  # hold_days=2
+                                 trail_mode="sma_10_20_handoff")
+    assert step.active_sma == 100.0            # SMA10
+    assert step.closed is False               # 100 is not < effective_stop 100
+
+
+def test_handoff_post_partial_falls_back_to_sma10_before_20_closes():
+    # Post-partial but only 10 closes → SMA20 undefined; handoff keeps a trail via SMA10
+    # (never drops protection) rather than going None.
+    state = base_state(partial_taken=True, breakeven_active=False,
+                       running_closes=[100.0] * 9)
+    step = apply_daily_exit_step(state, bar(99.0, 100.0), date(2026, 5, 1),
+                                 trail_mode="sma_10_20_handoff")
+    assert step.active_sma == 100.0           # SMA10 fallback, not None
+
+
+def test_handoff_is_a_valid_trail_mode():
+    # Sanity: the new mode is accepted (doesn't hit the fail-loud ValueError guard).
+    step = apply_daily_exit_step(base_state(running_closes=[100.0] * 5),
+                                 bar(99.0, 101.0), date(2026, 4, 3),
+                                 trail_mode="sma_10_20_handoff")
+    assert step.action in ("updated", "partial_only")
