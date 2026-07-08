@@ -882,11 +882,25 @@ async def _ep_scan_job():
                     from agents.market_intelligence.execution_client import record_skipped_trade
                     from agents.market_intelligence.broker.skip_reasons import WINDOW_OUT_OF_ORB
                     from agents.market_intelligence.collector import et_today
+                    # Attribute this skip + its alerts to the OWNING strategy's Alpaca
+                    # account (magna53 = the EP strategy). Was defaulting to the legacy
+                    # paper mode, so a live-money EP HIGH read as PAPER + its skip row
+                    # landed under paper in the EOD summary (operator 7/8).
+                    from agents.market_intelligence.strategies.registry import get_strategy
+                    from agents.market_intelligence.constants import (
+                        resolve_account_mode_for_strategy, current_account_mode,
+                    )
+                    _mag = await get_strategy("magna53")
+                    # phase-guard the resolve (it raises only for shadow/deprecated) so we
+                    # never need a silent except — fall back to the global mode for the label.
+                    ep_mode = (resolve_account_mode_for_strategy(_mag)
+                               if _mag and getattr(_mag, "phase", None) in ("paper", "live")
+                               else current_account_mode())
                     skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"
                     try:
                         await record_skipped_trade(
                             ep["ticker"], et_today(), ep, None, skip_msg,
-                            signal_type="magna53",
+                            signal_type="magna53", account_mode=ep_mode,
                         )
                     except Exception as ins_e:
                         # NON-NEGOTIABLE (feedback_no_silent_trading_failures): a
@@ -907,7 +921,7 @@ async def _ep_scan_job():
                         except Exception:
                             pass
                         await send_telegram_message(
-                            f"{mode_prefix()}🚨 *{ep['ticker']}* skip-row write FAILED "
+                            f"{mode_prefix(ep_mode)}🚨 *{ep['ticker']}* skip-row write FAILED "
                             f"({type(ins_e).__name__}) — HIGH alert has no terminal "
                             f"state; check execution service"
                         )
@@ -920,7 +934,7 @@ async def _ep_scan_job():
                     except Exception:
                         pass
                     await send_telegram_message(
-                        f"{mode_prefix()}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "
+                        f"{mode_prefix(ep_mode)}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "
                         f"ORB window closed, no order"
                     )
                     logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")

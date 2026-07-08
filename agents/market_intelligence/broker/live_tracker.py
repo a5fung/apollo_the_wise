@@ -816,116 +816,153 @@ async def morning_stop_refresh() -> int:
 # ── Daily Summary ────────────────────────────────────────────────────────────
 
 
+async def _gather_mode_summary(conn, mode: str, today) -> dict:
+    """Per-account-mode slice of the daily book. Every query is filtered by
+    account_mode so paper and live never bleed together (the pre-dual-account
+    version queried the whole table and mislabeled everything paper — operator 7/8)."""
+    stats = await conn.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE status NOT IN ('skipped','cancelled','order_failed')) as total,
+            COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) as winners,
+            COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+            COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl
+        FROM mi_live_trades WHERE account_mode = $1
+    """, mode)
+    open_trades = await conn.fetch("""
+        SELECT ticker, entry_price, remaining_shares, stop_price, hold_days,
+               partial_taken, total_pnl
+        FROM mi_live_trades
+        WHERE status = 'filled' AND remaining_shares > 0 AND account_mode = $1
+        ORDER BY alert_date ASC
+    """, mode)
+    todays_closes = await conn.fetch("""
+        SELECT ticker, total_pnl, hold_days FROM mi_live_trades
+        WHERE status = 'closed' AND account_mode = $2
+          AND (closed_at AT TIME ZONE 'America/New_York')::date = $1
+    """, today, mode)
+    todays_entries = await conn.fetch("""
+        SELECT ticker, entry_price, entry_shares FROM mi_live_trades
+        WHERE alert_date = $1 AND account_mode = $2 AND status IN ('filled', 'order_placed')
+    """, today, mode)
+    todays_skipped = await conn.fetch("""
+        SELECT ticker, skip_reason FROM mi_live_trades
+        WHERE alert_date = $1 AND account_mode = $2
+          AND status IN ('skipped', 'cancelled', 'order_failed')
+    """, today, mode)
+    return {"stats": stats, "open": open_trades, "closes": todays_closes,
+            "entries": todays_entries, "skipped": todays_skipped}
+
+
+def _mode_has_activity(d: dict) -> bool:
+    return bool(d["entries"] or d["closes"] or d["skipped"] or d["open"]
+                or (d["stats"]["total"] and d["stats"]["total"] > 0))
+
+
 async def send_live_trade_summary() -> None:
-    """Send a daily Telegram summary of live trading activity. Called after position update."""
+    """Daily Telegram summary of trading activity, PER ACCOUNT (dual-account #66).
+
+    Live-money account is the PRIMARY block (full detail); paper is FOLDED into a
+    compact secondary line (operator 7/8: only the paper book was reported, so the
+    real-money EOD state was invisible). Paper-only deployments (ENABLE_LIVE_MODE
+    off) render exactly as before. Called after the position update."""
+    from agents.market_intelligence.constants import active_account_modes
     pool = await get_pool()
     today = et_today()
+    modes = active_account_modes()
     async with pool.acquire() as conn:
-        stats = await conn.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE status NOT IN ('skipped','cancelled','order_failed')) as total,
-                COUNT(*) FILTER (WHERE status = 'filled' AND remaining_shares > 0) as open_count,
-                COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) as winners,
-                COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
-                COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl
-            FROM mi_live_trades
-        """)
-        open_trades = await conn.fetch("""
-            SELECT ticker, entry_price, remaining_shares, stop_price, hold_days,
-                   partial_taken, total_pnl
-            FROM mi_live_trades
-            WHERE status = 'filled' AND remaining_shares > 0
-            ORDER BY alert_date ASC
-        """)
-        todays_closes = await conn.fetch("""
-            SELECT ticker, total_pnl, hold_days
-            FROM mi_live_trades
-            WHERE status = 'closed'
-              AND (closed_at AT TIME ZONE 'America/New_York')::date = $1
-        """, today)
-        todays_entries = await conn.fetch("""
-            SELECT ticker, entry_price, entry_shares
-            FROM mi_live_trades
-            WHERE alert_date = $1 AND status IN ('filled', 'order_placed')
-        """, today)
-        todays_skipped = await conn.fetch("""
-            SELECT ticker, skip_reason
-            FROM mi_live_trades
-            WHERE alert_date = $1 AND status IN ('skipped', 'cancelled', 'order_failed')
-        """, today)
+        data = {m: await _gather_mode_summary(conn, m, today) for m in modes}
 
-    # Build message — header reflects current account mode (paper/live)
-    mode_label = "Live" if current_account_mode() == "live" else "Paper"
-    lines = [f"{mode_prefix()}📊 *Live Trade Update (Alpaca — {mode_label})*\n"]
+    primary = "live" if "live" in modes else "paper"
+    prim = data[primary]
+    prim_label = "Live" if primary == "live" else "Paper"
+    lines = [f"{mode_prefix(primary)}📊 *Live Trade Update (Alpaca — {prim_label})*\n"]
 
-    # Today's activity
-    if todays_entries:
+    # ── PRIMARY block (full detail) ──
+    if prim["entries"]:
         lines.append("*Entered today:*")
-        for t in todays_entries:
+        for t in prim["entries"]:
             lines.append(f"  ▶ {t['ticker']} @${t['entry_price']:.2f} × {t['entry_shares']:.0f}")
         lines.append("")
-
-    if todays_skipped:
+    if prim["skipped"]:
         lines.append("*Filtered today:*")
-        for t in todays_skipped:
+        for t in prim["skipped"]:
             lines.append(f"  ⊘ {t['ticker']}: {humanize(t['skip_reason'])}")
         lines.append("")
-
-    if todays_closes:
+    if prim["closes"]:
         lines.append("*Closed today:*")
-        for t in todays_closes:
+        for t in prim["closes"]:
             emoji = "✅" if t["total_pnl"] > 0 else "❌"
             lines.append(f"  {emoji} {t['ticker']} ${t['total_pnl']:+,.2f} ({t['hold_days']}d)")
         lines.append("")
-
-    # Open positions
-    if open_trades:
-        # Fetch current prices from Alpaca
-        lines.append(f"*Open positions ({len(open_trades)}):*")
-        for t in open_trades:
+    if prim["open"]:
+        lines.append(f"*Open positions ({len(prim['open'])}):*")
+        for t in prim["open"]:
             ticker = t["ticker"]
             try:
-                pos = await alpaca.get_position(ticker)
+                pos = await alpaca.get_position(ticker, primary)
                 current = pos["current_price"] if pos else None
                 unrealized = pos["unrealized_pl"] if pos else 0
             except Exception as e:
-                logger.warning(f"Could not get position for {ticker} in summary: {e}")
+                logger.warning(f"Could not get position for {ticker} ({primary}) in summary: {e}")
                 current = None
                 unrealized = 0
-
             entry_str = f"${t['entry_price']:.2f}" if t["entry_price"] else "?"
             current_str = f"${current:.2f}" if current else "?"
             pnl_emoji = "🟢" if unrealized > 0 else "🔴" if unrealized < 0 else "⚪"
             partial = " ½" if t["partial_taken"] else ""
-
             lines.append(
                 f"  {pnl_emoji} {ticker} {entry_str}→{current_str} "
                 f"${unrealized:+,.0f} · {t['hold_days']}d{partial}"
             )
         lines.append("")
 
-    # Running totals
-    closed_count = (stats["winners"] or 0) + (stats["losers"] or 0)
-    win_rate = (stats["winners"] / closed_count * 100) if closed_count > 0 else 0
-
+    ps = prim["stats"]
+    prim_closed = (ps["winners"] or 0) + (ps["losers"] or 0)
     try:
-        account = await alpaca.get_account()
-        equity = account["equity"]
-        lines.append(f"*Account:* ${equity:,.0f}")
+        account = await alpaca.get_account(primary)
+        lines.append(f"*Account:* ${account['equity']:,.0f}")
     except Exception as e:
-        logger.warning(f"Could not get account equity for summary: {e}")
+        logger.warning(f"Could not get {primary} account equity for summary: {e}")
+    if prim_closed > 0:
+        wr = ps["winners"] / prim_closed * 100
+        lines.append(f"*Record:* {ps['winners']}W/{ps['losers']}L ({wr:.0f}%) · "
+                     f"${float(ps['realized_pnl']):+,.2f}")
+    elif ps["total"]:
+        lines.append(f"*Trades:* {ps['total']} (no closes yet)")
 
-    if closed_count > 0:
-        lines.append(
-            f"*Record:* {stats['winners']}W/{stats['losers']}L "
-            f"({win_rate:.0f}%) · ${float(stats['realized_pnl']):+,.2f}"
-        )
-    elif stats["total"]:
-        lines.append(f"*Trades:* {stats['total']} (no closes yet)")
+    # ── FOLDED paper block (compact secondary) ──
+    # Only when paper is ACTIVELY trading that day (today-activity or open positions) —
+    # NOT for the dormant historical cumulative. Nothing is phase='paper' today, so this
+    # stays silent until a setup is promoted to paper (operator 7/8); it then auto-reappears.
+    pap = data.get("paper")
+    _paper_active = pap and (pap["entries"] or pap["closes"] or pap["skipped"] or pap["open"])
+    if primary == "live" and _paper_active:
+        pst = pap["stats"]
+        pap_closed = (pst["winners"] or 0) + (pst["losers"] or 0)
+        seg = []
+        try:
+            pa = await alpaca.get_account("paper")
+            seg.append(f"${pa['equity']:,.0f}")
+        except Exception as e:
+            logger.warning(f"Could not get paper account equity for summary: {e}")
+        if pap_closed > 0:
+            wr = pst["winners"] / pap_closed * 100
+            seg.append(f"{pst['winners']}W/{pst['losers']}L ({wr:.0f}%) · "
+                       f"${float(pst['realized_pnl']):+,.2f}")
+        act = []
+        if pap["entries"]:
+            act.append(f"{len(pap['entries'])} entered")
+        if pap["skipped"]:
+            act.append(f"{len(pap['skipped'])} filtered")
+        if pap["closes"]:
+            act.append(f"{len(pap['closes'])} closed")
+        if pap["open"]:
+            act.append(f"{len(pap['open'])} open")
+        lines.append("\n— 📄 *Paper (shadow book):* " + (" · ".join(seg) or "—")
+                     + (f"  ·  today: {', '.join(act)}" if act else ""))
 
-    # Send if there's any activity today or open positions
-    has_activity = todays_entries or todays_closes or todays_skipped or open_trades
-    if has_activity or (stats["total"] and stats["total"] > 0):
+    # Send if any account had activity today or holds open positions
+    if any(_mode_has_activity(data[m]) for m in modes):
         await send_telegram_message("\n".join(lines))
 
 
@@ -939,6 +976,7 @@ async def _insert_skipped_trade(
     regime_record: dict | None,
     skip_reason: str,
     signal_type: str | None = None,
+    account_mode: str | None = None,
 ) -> None:
     """Insert a skipped live trade record.
 
@@ -946,6 +984,11 @@ async def _insert_skipped_trade(
     hydrate them without a DB join during a stuck lock. The invariant is that
     (ticker, alert_date, status='skipped', skip_reason) lands in mi_live_trades;
     score/catalyst/gap/regime can be LEFT-JOINed from mi_ep_alerts by /why.
+
+    account_mode: the Alpaca account the skipped signal belongs to. Pass it for
+    strategy-bound skips (a live-strategy signal → 'live') so the EOD summary
+    attributes the filtered trade to the right account. Defaults to
+    current_account_mode() for legacy callers (pre-dual-account behavior).
     """
     pool = await get_pool()
     # `today` (the alert_date) arrives as an ISO STRING when this is dispatched
@@ -959,7 +1002,7 @@ async def _insert_skipped_trade(
     gap_pct = alert.get("gap_pct") if alert else None
     regime = regime_record.get("regime") if regime_record else None
     from agents.market_intelligence.constants import current_account_mode
-    account_mode = current_account_mode()
+    account_mode = account_mode or current_account_mode()
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_live_trades

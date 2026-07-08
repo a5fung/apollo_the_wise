@@ -236,9 +236,16 @@ async def submit_trade_entry(
             except Exception as e:
                 logger.warning(f"{strategy_label} {ticker}: on_skip hook raised — {e}")
         try:
+            # Attribute the filtered trade to the OWNING strategy's account so the
+            # EOD summary shows a live-strategy skip under LIVE, not paper (operator
+            # 7/8). Resolved here (skip path only) to avoid touching the main flow;
+            # phase-guarded (resolve raises only for shadow/deprecated) so no silent except.
+            _skip_mode = (resolve_account_mode_for_strategy(strategy)
+                          if getattr(strategy, "phase", None) in ("paper", "live")
+                          else current_account_mode())
             await _insert_skipped_trade(
                 ticker, today, alert_context, regime_record, reason,
-                signal_type=signal_type,
+                signal_type=signal_type, account_mode=_skip_mode,
             )
         except Exception as e:
             logger.error(f"{strategy_label} {ticker}: _insert_skipped_trade raised — {e}")
