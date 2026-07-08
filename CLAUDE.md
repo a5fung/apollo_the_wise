@@ -49,6 +49,8 @@ NOT reasons (these mean *just do it*): "it's late / after-hours," "it's minor/qu
 
 Same SoT as Session Protocol above: `PLAN.md` at repo root (projects → tasks → ETA + status; the long-horizon launch lives there as dated tasks). Run `python scripts/check_plan.py --today` for the day's plan. Only `data_gated_reviews.yaml` retains separate runtime behavior (YAML predicates, weekly auto-surface) and it references #IDs back into PLAN.md.
 
+**"run fable weekend block N"** (operator trigger, inline-Fable design sessions) → open `docs/roadmap/fable-weekend-blocks.md` §Block N and execute it to pure-execution depth. Fable DESIGNS only — SSoT + CHANGE_PROCESS + sign-off + backtest before any live flip (THE LINE).
+
 ## 🛑 Trading Setup Changes — Read SSoT First (NON-NEGOTIABLE)
 
 **Before changing ANY detection criterion** (parabolic, EP, 9M, flag, wick, convergence, future setups) **OR portfolio safeguard** (max_positions, daily_loss_limit, circuit_breaker, drawdown_breaker, PDT — see `docs/setups/safeguards.md`):

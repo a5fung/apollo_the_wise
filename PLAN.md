@@ -105,7 +105,7 @@ _Last CLOSE: 2026-06-16._
 - #265 | 2026-08-12 | pending | judge-flip-day review residuals (SQL-text SSoT, shared feeds list, WATCH cancel window) [b2] [ok:date-roll-0701] [ok:#419 Phase-2 milestone re-date, operator-signed 7/5]
 - #207 | 2026-08-01 | pending | model-eval governance quarterly review (data-gated)
 - #197 | 2026-07-20 | in_progress | cap+1 game_changer slot SHADOW — promotion-gated N≥30 [b1] [ok:date-roll-0701]
-- #274 | 2026-08-01 | pending | 2-member theme immortality fix (dissolve-on-flagged-pair, CHANGE_PROCESS) [b1] [ok:#419 Phase-2 milestone re-date, operator-signed 7/5]
+- #274 | 2026-08-01 | pending | 2-member theme immortality fix (dissolve-on-flagged-pair, CHANGE_PROCESS) [b1] [ok:#419 Phase-2 milestone re-date, operator-signed 7/5] >> DATA-BACKED 7/8 (L2 anomaly: theme_count_active 78 vs 40 median + cooldowns 7× + 54 Nascent). ROOT CAUSE (investigated 7/8, NO regression): the shipped fragmentation guards are ALL intact + running — MIN_SHARED_FOR_MERGE=3 (Pass1 merge, theme_engine.py:252) · Pass1.5 near-dup absorption · #125 description-quality cap (:2167) — but by design they DON'T delete coherent thin/overlapping DISTINCT themes (merge needs ≥3 SHARED tickers; the 4 near-dup insurance + 3 REIT themes have distinct names). The flood = raised discovery sensitivity (ADR 0007, deliberate — fixed the nascent-MISS) meeting UN-shipped precision: this #274 dissolve-fix never built + #126 coherence guard filed data-gated + the deliberate "description-guard-NOT-2-member-cap" call (theme_engine.py:1879, from a 26-theme/27%-noise corpus — the tradeoff shifted at 54 Nascent). NO money risk (themes feed only the SHADOW judge theme-axis #328). SCOPED LEVERS for the weekend Fable design: (1) ship #274 dissolve-on-flagged-pair; (2) SECTOR/NARRATIVE-overlap merge arm (merge on sector+thesis even <3 shared tickers → collapses the insurance/REIT dups — highest leverage); (3) re-open the description-guard-not-cap decision incl. a possible BIRTH min-member floor, with the ADR 0007 §3 anti-noise caveat (don't reintroduce the nascent-miss). Detection-criterion → SSoT + CHANGE_PROCESS + N≥10 legit-kill backtest. Opus preps a read-only evidence pack (which themes each lever merges/dissolves + legit-kill check) to feed the design. → **FABLE WEEKEND DESIGN BLOCK** (operator 7/8).
 - #276 | 2026-07-21 | in_progress | W2 entry-mechanics program. ✅ STUDY #2 (stop geometry) DONE 6/18 (doc docs/analysis/w2_entry_study2_2026-06-18.md): added an offline stop_model knob (orb_low/atr_floor/atr_cap/day_low, threaded into sizing AND exit so R is comparable; 9 tests; harness c6b0029, deployed). RESULT on the retained judge-HIGH cohort (n=44; mi_ep_alerts pruned to 2026-03-16+ #341): WIDENING the stop monotonically HURTS in the trustworthy direction — baseline orb_low +1.40R/+$20.9k → atr_floor 0.5/1.0/1.5 +0.66/+0.48/+0.27R → day_low +0.14R/+$4.4k (stopout 59%→7% but R-multiples+$ collapse with the wider denominator). atr_cap +0.04R is noise (9% coverage, SUSPECT tighter direction, top-5-carried). VERDICT = **no live stop change; ORB-low optimal**; kill/scale bands need no re-derivation (winner IS orb_low). Both W2 levers now tested (study #1 OR-window+skip-wide-open dead/not-shippable; study #2 stop no-change) → RECOMMEND PAUSE the "tune the bracket" thread (regime-conditioned, NOT "edge proven absent": evidence is n=44 over ONE recent ~7-week window overlapping the tape the live stop already trades — regime-locality + near-circularity; re-open on a regime shift / kill-scale band review). Operator ack at launch checkpoint. Exit/management tune is the separate #306 (v1.1-W3, 7/01). [b1] [ok:#418 - operator ACK folds into the #425 declaration walk]
 
 ## Operational safety / hardening
@@ -158,6 +158,25 @@ _Directive: reserve remaining Fable capacity for these two planning deliverables
 heavy execution goes to Sonnet cards or waits for Opus. Plans must be written to PURE-EXECUTION depth:
 explicit specs, DoDs, acceptance criteria, sequencing — zero open design forks except explicitly
 operator-gated ones._
+
+**WEEKEND FABLE BLOCK — assembled + operator-confirmed 7/8 (design to pure-execution depth; the meta-rubric
+cluster #328/#330/#331/#335/#368 is EXCLUDED — already ADR-signed → Opus/Sonnet execution, not Fable).**
+TRIGGER: `docs/roadmap/fable-weekend-blocks.md` — operator says **"run fable weekend block 1"** (inline Fable) → it executes this set. The full self-contained brief lives there; the per-task detail lives on each #-task below.
+Each is design-only: SSoT/ADR amendment + CHANGE_PROCESS + operator sign-off + N≥10 backtest before ANY live
+flip. THE LINE holds — Fable designs, it does not change live behavior.
+_PRIMARY (Tier 1 — the core block):_
+- **#274** — theme-fragmentation controls (data-backed by the 7/8 L2 anomaly): the 3 scoped levers
+  (dissolve-on-flagged-pair · sector/narrative-overlap merge arm · re-open description-guard-vs-birth-min-member,
+  ADR 0007 §3 anti-noise caveat). Opus preps a read-only evidence pack (which themes each lever merges/dissolves
+  + legit-kill check) to feed the design.
+- **#332** — setup-class / conviction rubrics (Pradeep small-cap-explosive vs Qullamaggie mature-leader vs
+  episodic mid-cap): the per-class composition — meta-rubric long-pole, NOT yet designed.
+- **#354** — merge flag_continuation → consolidation (ADR 0013 Phases 2–4): undercut→U&R re-gating, params to the signed model.
+- **#170** — EP cooldown re-setup admission: shorten/override the ~60d cooldown; detection-criterion + backtest methodology.
+- **#146** — flag direct TIGHTENING→TRIGGERED (drop the COILED prereq): detection-criterion change + N≥10 backtest design.
+- **#297** — Family B EP rework (gap-anchored replay + mi_anticipation_lifecycle inherit): new detection-class design.
+- **#357** — persistent Sugar Babies role decision (setup vs condition vs confluence): framing — needs operator direction in the design.
+_STRETCH (Tier 2 — if time):_ **#394** coil-finder threshold-tuning methodology (design now; tune when #327 forward-shadow N is sufficient — thin this week) · **#333** catalyst-durability forward axis (design sketch; build gated on #210/#211 sourcing) · **#299/#301** tape-features / ensemble-divergence grade-path (gated on funding + the #335 batched eval).
 
 
 ## Apollo v1.1 — fast-follow program (spec: docs/roadmap/apollo-v1.1-v2.0.md PART I)
