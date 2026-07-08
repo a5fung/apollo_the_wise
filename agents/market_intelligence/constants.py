@@ -72,6 +72,12 @@ def active_account_modes() -> list[str]:
 VALID_STRATEGY_PHASES = frozenset({"shadow", "paper", "live", "deprecated"})
 NO_SUBMIT_PHASES = frozenset({"shadow", "deprecated"})
 
+# ── Grade tier lattice (SSoT — ADR 0024 §3) ──────────────────────────────────
+# The ordinal EP/judge tier ladder: none < MODERATE < HIGH. Credits move a base
+# tier along it (meta_rubric_compose.compose_final_tier); briefing reuses the rank.
+TIER_LATTICE = ("none", "MODERATE", "HIGH")
+TIER_RANK = {t: i for i, t in enumerate(TIER_LATTICE)}
+
 # ── Service-split roles (#256 W2, 2026-06-13) ────────────────────────────────
 # Apollo is splitting into apollo-execution (broker / streams / safeguards /
 # Alpaca creds) and apollo-intelligence (detection / themes / judge / briefings)

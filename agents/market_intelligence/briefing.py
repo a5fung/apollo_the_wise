@@ -43,7 +43,7 @@ from agents.market_intelligence.db import (
     log_audit_event,
 )
 from agents.market_intelligence.data_quality import get_quality_warnings
-from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI
+from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI, TIER_RANK
 from agents.market_intelligence.theme_engine import get_today_themes
 
 logger = logging.getLogger(__name__)
@@ -2336,7 +2336,7 @@ async def edit_telegram_message(
         return False
 
 
-_TIER_RANK = {"none": 0, "MODERATE": 1, "HIGH": 2}
+_TIER_RANK = TIER_RANK  # SSoT: constants.TIER_RANK (ADR 0024 §3 lattice)
 
 
 def _judge_direction(score_tier, floor_tier) -> "str | None":
