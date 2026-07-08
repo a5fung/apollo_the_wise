@@ -35,6 +35,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import (
     current_account_mode,
+    get_strategy_account_mode,
     mode_prefix,
     resolve_account_mode_for_strategy,
 )
@@ -236,13 +237,11 @@ async def submit_trade_entry(
             except Exception as e:
                 logger.warning(f"{strategy_label} {ticker}: on_skip hook raised — {e}")
         try:
-            # Attribute the filtered trade to the OWNING strategy's account so the
-            # EOD summary shows a live-strategy skip under LIVE, not paper (operator
-            # 7/8). Resolved here (skip path only) to avoid touching the main flow;
-            # phase-guarded (resolve raises only for shadow/deprecated) so no silent except.
-            _skip_mode = (resolve_account_mode_for_strategy(strategy)
-                          if getattr(strategy, "phase", None) in ("paper", "live")
-                          else current_account_mode())
+            # Attribute the filtered trade to the OWNING strategy's account so the EOD summary
+            # shows a live-strategy skip under LIVE, not paper (operator 7/8). Resolved here
+            # (skip path only) to avoid touching the main flow; the helper phase-guards + falls
+            # back to the global mode, so no silent except.
+            _skip_mode = get_strategy_account_mode(strategy)
             await _insert_skipped_trade(
                 ticker, today, alert_context, regime_record, reason,
                 signal_type=signal_type, account_mode=_skip_mode,

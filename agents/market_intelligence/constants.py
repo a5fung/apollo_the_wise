@@ -193,6 +193,19 @@ def current_account_mode() -> str:
     return "paper" if os.environ.get("ALPACA_PAPER", "true").lower() == "true" else "live"
 
 
+def get_strategy_account_mode(strategy) -> str:
+    """Resolve a strategy's Alpaca account_mode for a SIGNAL-bound surface (alert/skip label).
+
+    Phase-guarded so it never raises: a paper/live strategy resolves via
+    `resolve_account_mode_for_strategy`; anything else (None, shadow, deprecated) falls back
+    to the global `current_account_mode()` for a sensible display label. Single source of truth
+    for the "attribute this signal to its owning account" pattern threaded through the EP-scan
+    skip + entry-pipeline skip (7/8); the broader #444 mode-label sweep reuses this."""
+    if strategy and getattr(strategy, "phase", None) in ("paper", "live"):
+        return resolve_account_mode_for_strategy(strategy)
+    return current_account_mode()
+
+
 def mode_prefix(account_mode: str | None = None) -> str:
     """Account-mode prefix for Telegram message headers (trailing space).
 

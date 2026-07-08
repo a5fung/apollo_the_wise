@@ -888,15 +888,11 @@ async def _ep_scan_job():
                     # paper mode, so a live-money EP HIGH read as PAPER + its skip row
                     # landed under paper in the EOD summary (operator 7/8).
                     from agents.market_intelligence.strategies.registry import get_strategy
-                    from agents.market_intelligence.constants import (
-                        resolve_account_mode_for_strategy, current_account_mode,
-                    )
+                    from agents.market_intelligence.constants import get_strategy_account_mode
                     _mag = await get_strategy("magna53")
-                    # phase-guard the resolve (it raises only for shadow/deprecated) so we
-                    # never need a silent except — fall back to the global mode for the label.
-                    ep_mode = (resolve_account_mode_for_strategy(_mag)
-                               if _mag and getattr(_mag, "phase", None) in ("paper", "live")
-                               else current_account_mode())
+                    # attribute this skip + its alerts to magna53's account; the helper
+                    # phase-guards + falls back to the global mode (no silent except).
+                    ep_mode = get_strategy_account_mode(_mag)
                     skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"
                     try:
                         await record_skipped_trade(

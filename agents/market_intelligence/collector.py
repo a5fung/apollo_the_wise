@@ -858,6 +858,16 @@ async def get_sec_recent_filings(
         return []
 
 
+def _extract_snapshot_price(snap: dict) -> float | None:
+    """Latest price from a Polygon /v2/snapshot ticker entry, pre-market-aware fallback:
+    `min.c` (latest minute-bar close — updates pre-market) → `lastTrade.p` → `day.o`."""
+    return (
+        snap.get("min", {}).get("c")
+        or snap.get("lastTrade", {}).get("p")
+        or snap.get("day", {}).get("o")
+    )
+
+
 async def get_premarket_snapshot() -> dict[str, float]:
     """
     Pre-market price snapshot for SPY and QQQ via Polygon.
@@ -879,11 +889,7 @@ async def get_premarket_snapshot() -> dict[str, float]:
         for ticker, key in (("SPY", "spy_pct"), ("QQQ", "qqq_pct")):
             snap = snaps.get(ticker, {})
             prev = snap.get("prevDay", {}).get("c")
-            current = (
-                snap.get("min", {}).get("c")
-                or snap.get("lastTrade", {}).get("p")
-                or snap.get("day", {}).get("o")
-            )
+            current = _extract_snapshot_price(snap)
             if prev and current and prev != 0:
                 pct = (current - prev) / prev * 100
                 result[key] = pct
@@ -914,11 +920,7 @@ async def get_premarket_prices(tickers: list[str]) -> dict[str, float]:
             t = snap.get("ticker")
             if not t:
                 continue
-            px = (
-                snap.get("min", {}).get("c")
-                or snap.get("lastTrade", {}).get("p")
-                or snap.get("day", {}).get("o")
-            )
+            px = _extract_snapshot_price(snap)
             if px:
                 out[t] = float(px)
         return out

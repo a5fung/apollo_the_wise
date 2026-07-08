@@ -267,6 +267,11 @@ def _clbl(c):
     return "⅓" if c is None else f"{c:g}"
 
 
+def _arm_label(kind: str, val: float) -> str:
+    """Axis-A arm label: gain arms as '+8%', R arms as '+2R'."""
+    return f"+{int(val*100)}%" if kind == "gain" else f"+{val:g}R"
+
+
 def build_grid() -> list[dict]:
     # Anchor baseline FIRST (off·sma·⅓ = today's live rules), then the no-lock B×C cells so
     # Axis B/C standalone effects are visible (with a loose-floor lock on, the lock's stop
@@ -281,7 +286,7 @@ def build_grid() -> list[dict]:
         for floor in A_FLOORS:
             for b in B_TRAILS:
                 for c in C_SCALES:
-                    arm_lbl = f"+{int(val*100)}%" if kind == "gain" else f"+{val:g}R"
+                    arm_lbl = _arm_label(kind, val)
                     cells.append({
                         "a": {"kind": kind, "val": val, "floor": floor},
                         "b": b, "c": c,
@@ -458,7 +463,7 @@ def write_doc(sw: dict, fp: str) -> None:
     L.append("|---|--:|--:|--:|")
     iso = {r["cell"]["label"]: r for r in sw["results"]}
     for kind, val in A_ARMS:
-        arm_lbl = f"+{int(val*100)}%" if kind == "gain" else f"+{val:g}R"
+        arm_lbl = _arm_label(kind, val)
         cells_row = []
         for floor in A_FLOORS:
             lbl = f"lock {arm_lbl}/{int(floor*100)}%·sma·⅓"
@@ -493,7 +498,7 @@ def write_doc(sw: dict, fp: str) -> None:
     L.append("| arm | floor | marginal $ | |")
     L.append("|---|--:|--:|:--:|")
     for n in plateau_neighbors(sw, best):
-        arm = f"+{int(n['arm']*100)}%" if best["cell"]["a"]["kind"] == "gain" else f"+{n['arm']:g}R"
+        arm = _arm_label(best["cell"]["a"]["kind"], n["arm"])
         L.append(f"| {arm} | {int(n['floor']*100)}% | {_fmt(n['marginal'])} | "
                  f"{'◄ best' if n['is_best'] else ''} |")
 
@@ -502,7 +507,7 @@ def write_doc(sw: dict, fp: str) -> None:
              "below the actual exit). NB: a clip on a Guardrail-0-flagged name (⚠) is "
              "backtest-pure-vs-live reconstruction divergence, NOT the lock — check the exit "
              "date matches the baseline's:\n")
-    fid_early = {f["ticker"] for f in baseline_fidelity(sw) if f["early"]}
+    fid_early = {f["ticker"] for f in diverged}  # reuse the divergent set computed above
     L.append("| ticker | actual $ | best-cell $ | clip $ | best exit | note |")
     L.append("|---|--:|--:|--:|---|---|")
     for c in clipped_runners(sw, best):

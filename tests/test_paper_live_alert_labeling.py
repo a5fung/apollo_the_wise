@@ -26,6 +26,22 @@ def _stats(total, winners, losers, pnl):
     return {"total": total, "winners": winners, "losers": losers, "realized_pnl": pnl}
 
 
+class _Strat:
+    def __init__(self, phase):
+        self.phase = phase
+
+
+def test_get_strategy_account_mode_phase_guard(monkeypatch):
+    # The shared resolver the EP-scan + entry-pipeline skip sites delegate to (reuse dedup).
+    # paper/live resolve directly; shadow/deprecated/None fall back to the global mode (no raise).
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")
+    assert constants.get_strategy_account_mode(_Strat("live")) == "live"
+    assert constants.get_strategy_account_mode(_Strat("paper")) == "paper"
+    assert constants.get_strategy_account_mode(_Strat("shadow")) == "paper"      # fallback, no raise
+    assert constants.get_strategy_account_mode(_Strat("deprecated")) == "paper"  # fallback, no raise
+    assert constants.get_strategy_account_mode(None) == "paper"                  # None → fallback
+
+
 @pytest.mark.asyncio
 async def test_insert_skipped_trade_uses_passed_account_mode(monkeypatch):
     pool, conn = make_mock_pool()
