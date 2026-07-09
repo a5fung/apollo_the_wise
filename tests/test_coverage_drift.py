@@ -132,6 +132,28 @@ async def test_d2_info_on_foreign_coid_no_telegram():
 
 
 @pytest.mark.asyncio
+async def test_d2_harness_coid_is_info_not_high_no_telegram():
+    """#439: an integration-test harness order (apollo_paper_integration_test_*) starts with the
+    apollo_paper_ prefix but is KNOWN test cruft — classify INFO, never a D2-HIGH Telegram."""
+    order = {
+        "id": "order-harness-1", "symbol": "F", "side": "buy", "type": "stop_limit",
+        "client_order_id": "apollo_paper_integration_test_1715450123456",
+    }
+    pool, conn = _setup(db_rows=[], positions=[], open_orders=[order])
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions", new=AsyncMock(return_value=[])), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[order])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("paper")
+
+    assert result["d2_info_count"] == 1 and result["d2_high_count"] == 0
+    assert result["alerted"] == 0
+    tg.assert_not_called()  # no D2-HIGH noise for known test cruft
+    assert D2_UNTRACKED_ORDER_INFO in audit.call_args.args[2]
+
+
+@pytest.mark.asyncio
 async def test_d3_stays_info_no_telegram():
     """Open DB row (GHI) with no broker position and no live entry order ->
     D3 INFO, audit only, no Telegram (sync_positions/reconcile own this)."""

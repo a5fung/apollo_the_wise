@@ -51,6 +51,7 @@ from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.integration.paper_alpaca import _HARNESS_COID_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +248,11 @@ async def detect_coverage_drift(account_mode: str) -> dict:
                 continue
             ticker = o["symbol"]
             coid = o.get("client_order_id") or ""
-            is_ours = coid.startswith(f"apollo_{account_mode}_")
+            # #439: an integration-test harness order (`apollo_paper_integration_test_*`) starts
+            # with the `apollo_paper_` prefix but is KNOWN test cruft (the paper-exercise scripts),
+            # never a real mirror gap → classify INFO (audit-only), never a D2-HIGH Telegram.
+            is_ours = (coid.startswith(f"apollo_{account_mode}_")
+                       and not coid.startswith(_HARNESS_COID_PREFIX))
             drift_class = D2_UNTRACKED_ORDER_HIGH if is_ours else D2_UNTRACKED_ORDER_INFO
             severity = "HIGH" if is_ours else "INFO"
             if is_ours:
