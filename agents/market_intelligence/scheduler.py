@@ -135,6 +135,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
+    "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -3349,6 +3350,20 @@ async def _htf_management_shadow_job():
     return updated
 
 
+async def _giveback_shadow_job():
+    """Run at 17:38 ET (EOD, after positions close). Log the peak-lock (giveback) SHADOW for
+    live MAGNA53 trades that closed today — ADR 0023 F1 forward measurement (operator 7/9).
+    Pure compute + DB/audit, NO broker calls, NO live-exit change (THE LINE)."""
+    try:
+        from agents.market_intelligence.giveback_shadow import run_giveback_shadow
+        from agents.market_intelligence.collector import et_today
+        n = await run_giveback_shadow(et_today())
+        logger.info(f"giveback-shadow: logged {n} live giveback-shadow row(s)")
+    except Exception as e:
+        logger.error(f"giveback-shadow job failed: {e}", exc_info=True)
+        await notify_job_failure("giveback_shadow", str(e))
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -4446,6 +4461,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_htf_management_shadow_job, "htf_management_shadow"),
         CronTrigger(hour=17, minute=36, day_of_week="mon-fri", timezone="America/New_York"),
         id="htf_management_shadow",
+        replace_existing=True,
+    )
+
+    # Peak-lock (giveback) SHADOW — 17:38 ET mon-fri, EOD after positions close. Logs what the
+    # ADR 0023 peak-lock (arm +6% / floor 60%) WOULD have done on today's closed live MAGNA53
+    # trades vs actual (F1 forward measurement, operator 7/9). Pure compute + DB, no broker calls.
+    _scheduler.add_job(
+        audit_wrap(_giveback_shadow_job, "giveback_shadow"),
+        CronTrigger(hour=17, minute=38, day_of_week="mon-fri", timezone="America/New_York"),
+        id="giveback_shadow",
         replace_existing=True,
     )
 
