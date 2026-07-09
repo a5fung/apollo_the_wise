@@ -87,26 +87,44 @@ medians:          mostly -1.00R (most trades stop out; positive means carried by
 ```
 
 ### Read
-1. **The widest window (11:00, N≈196 — the one that WON on precision at 23.8%) is R-NEGATIVE across
-   EVERY stop (−0.16 to −0.35R).** Precision parity did **not** translate to realized-R.
-2. Best cell = `atr_1.0` near-window ~**+0.31R** — still far below the ENTERED cohort's benchmarks
-   (orb_low **+1.40R**, atr_1.0 **+0.48R**). Late entries under-earn entered trades on R even at best.
-3. The tight structure stop (`low_so_far`, the orb_low analog) collapses to **+0.02–0.13R** — a late
-   entry's structure low is already far below the run-up price → wide risk → low R (exactly #276's
-   "wide stop collapses R", by construction of a late entry).
-4. Medians mostly **−1.00R** (most trades stop out); positive means are fat-tail-carried; win 24–50%.
-   A lottery distribution, not a robust harvestable edge.
-5. This is an **UPPER BOUND** (optimistic fill). The real late-entry mechanic (a stop-buy at *what*
-   level? there's no ORB) would be worse, not better.
+1. **HEADLINE (well-powered, stands on its OWN harness — no cross-comparison needed): extend to
+   11:00 — N≈196, the window that WON on precision at 23.8% — is R-NEGATIVE across EVERY stop
+   (−0.16 to −0.35R).** Precision parity did NOT translate to realized-R.
+2. The near-window best cell (`atr_1.0`, 10:00–10:30) is **+0.31R mean / 42% win** — marginally
+   POSITIVE (on trades we take at zero today), **NOT** "loses money." But with a −1R median,
+   fat-tail-carried, at N=38, the CI almost certainly straddles zero: **no ROBUST edge**, not a
+   demonstrated win. Don't overstate this either direction.
+3. The tight structure stop (`low_so_far`) is +0.02–0.13R near-window — a late entry's structure low
+   is already far below the run-up price → wide risk → low R (the "wide stop hurts R" mechanism, by
+   construction of a late entry).
+4. Medians mostly **−1.00R** (most trades stop out); the positive means are fat-tail-carried; win
+   24–50%. Many attempts, few pay — a lottery-shaped distribution, not a smooth edge.
+5. **UPPER BOUND** (optimistic next-bar-open fill). The real late-entry mechanic (a stop-buy at
+   *what* level? there's no ORB) would be worse, not better.
 
-### Conclusion → recommend CLOSE the entry-path question (don't extend the ORB window)
-Late entries are precision-comparable but realized-R **negative-to-marginal**, decisively below
-entered trades — **because a late entry is forced onto a wide stop (no fresh ORB)**. Extending the
-ORB window does not pay on R; the ~1 missed winner/quarter is a fat-tail lottery, not an edge. This
-resolves the reopen: the deeper look (R, not precision) says no. *Operator decision (THE LINE); any
-live entry-window change stays CHANGE_PROCESS + sign-off.*
+### #276 is DIRECTIONAL CONTEXT, not a pass/fail benchmark
+The +1.40R orb_low / +0.48R atr numbers are a DIFFERENT cohort (44 entered vs 278 missed), a
+DIFFERENT harness (selection_replay engine vs this fresh forward-replay), a different entry mechanic
+— absolute-R across two harnesses is not apples-to-apples. Use it only for direction ("wide stops
+hurt R"; "fresh-ORB entries earn more"), never as the bar this cohort must clear.
 
-**Caveats:** near-window cells are smallish (N 26–38; the decisive 11:00 cell is robust at N≈196);
-the entered-HIGH control is a DIFFERENT population (selection bias — benchmark vs #276's R, not a
-matched control); upper-bound fill assumption. A polished CHANGE_PROCESS-grade version would model
-the actual stop-buy fill mechanic, but the upper-bound already answers go/no-go: **no**.
+### Conclusion → recommend DON'T extend the ORB window — on the right grounds
+The decisive, well-powered fact is internal: **the 11:00 window (N≈196) that beat on precision is
+R-negative.** The near-window cells are marginally positive (+0.15 to +0.31R) but noisy (−1R
+medians, small N, CI straddles zero) — no ROBUST edge. So extending is not a demonstrated win.
+
+**The real decision variable is SLOT CONTENTION — the operator's call.** A +0.31R late entry is
+only DILUTIVE if it displaces a fresher, higher-R ORB entry from one of the 5 concurrent slots over
+its multi-day hold. Slots usually free → marginal +R is additive (mildly worth it). Slots bind →
+it's a bad trade (gave up a better one). That — not "R is negative" — is why "below fresh-ORB
+earnings" matters.
+
+**Volume (correcting the 4/30 framing):** this is NOT "~1 winner/quarter." 290 late-detections over
+~110 days at 24–50% win = DOZENS of missed winners — but at −1R medians / no robust R edge they're a
+fat-tail lottery (many attempts, few pay), not a clean harvest.
+
+**Caveats:** near-window N is small (26–38; the decisive 11:00 cell is robust at ≈196); the entered
+control is a DIFFERENT population (selection bias); upper-bound fill. If the operator wants to chase
+the marginal near-window +R, the next step is a slot-contention model + the real stop-buy fill
+mechanic (a CHANGE_PROCESS-grade study), not this first-cut. THE LINE: any live entry-window change
+= CHANGE_PROCESS + sign-off. *Read-only; no trade change made.*
