@@ -90,36 +90,66 @@ def _make_test_coid(suffix: str = "") -> str:
     return f"{base}_{suffix}" if suffix else base
 
 
-async def _sweep_orphaned_test_orders() -> int:
-    """Cancel any open orders whose client_order_id starts with the
-    sentinel prefix. Idempotent: returns the count cancelled (0 if none).
-
-    Called at the start of every harness use to clean up after any
-    prior test run that crashed without reaching its cleanup phase.
-    """
+async def _open_test_orders() -> list:
+    """Open paper orders carrying the harness sentinel COID prefix (the placed test order plus
+    any replace-spawned child, which inherits the same COID but a new id). [] on fetch failure."""
     from agents.market_intelligence.broker import alpaca_client
 
     try:
         all_orders = await alpaca_client.get_open_orders(account_mode="paper")
     except Exception as e:
         logger.warning(f"harness sweep: get_open_orders failed: {e}")
-        return 0
+        return []
+    return [o for o in all_orders
+            if (o.get("client_order_id") or "").startswith(_HARNESS_COID_PREFIX) and o.get("id")]
+
+
+async def _sweep_orphaned_test_orders() -> int:
+    """Cancel any open orders whose client_order_id starts with the sentinel prefix.
+    Idempotent: returns the count cancelled (0 if none). Called at the start of every harness
+    use to clean up after any prior run that crashed before reaching its cleanup phase.
+    """
+    from agents.market_intelligence.broker import alpaca_client
 
     cancelled = 0
-    for order in all_orders:
-        coid = order.get("client_order_id") or ""
-        if not coid.startswith(_HARNESS_COID_PREFIX):
-            continue
-        order_id = order.get("id")
-        if not order_id:
-            continue
+    for order in await _open_test_orders():
+        order_id = order["id"]
         try:
             await alpaca_client.cancel_order(order_id, account_mode="paper")
             cancelled += 1
-            logger.info(f"harness sweep: cancelled orphan {order_id} (coid={coid})")
+            logger.info(f"harness sweep: cancelled orphan {order_id} (coid={order.get('client_order_id')})")
         except Exception as e:
             logger.warning(f"harness sweep: cancel {order_id} failed: {e}")
     return cancelled
+
+
+async def _sweep_test_orders_until_clear(*, timeout_s: float = 4.0, poll_s: float = 0.3) -> None:
+    """Cancel every open harness-COID order and CONFIRM none remain, retrying through Alpaca's
+    replace-pending window (a cancel there is rejected 42210000). Guarantees a harness run leaves
+    ZERO resting test orders IN-RUN: the replace-spawned child carries the same test COID but a
+    new id the finally-block's single cancel can't target, and deferring cleanup to the next run's
+    pre-sweep is exactly what left orders resting for coverage-drift to flag (#439 part-b).
+    """
+    from agents.market_intelligence.broker import alpaca_client
+
+    deadline = time.monotonic() + timeout_s
+    while True:
+        remaining = await _open_test_orders()
+        if not remaining:
+            return
+        for order in remaining:
+            try:
+                await alpaca_client.cancel_order(order["id"], account_mode="paper")
+                logger.info(f"harness post-sweep: cancelled {order['id']} (coid={order.get('client_order_id')})")
+            except Exception as e:  # transient replace-pending → retried next poll; terminal → gone next fetch
+                logger.info(f"harness post-sweep: cancel {order['id']} pending/non-fatal: {e}")
+        if time.monotonic() >= deadline:
+            still = await _open_test_orders()
+            if still:
+                logger.warning(f"harness post-sweep: {len(still)} test order(s) still open after "
+                               f"{timeout_s}s — next-run pre-sweep will backstop")
+            return
+        await asyncio.sleep(poll_s)
 
 
 async def _wait_until_replaceable(
@@ -229,12 +259,16 @@ async def paper_test_stop(
         logger.info(f"harness: test order {order_id} replaceable (status={settled})")
         yield order_id
     finally:
-        # 3. Cleanup — best-effort cancel. Sweep handles failures.
+        # 3. Cleanup — cancel the yielded order, then a RETRYING post-test sweep so the run
+        # leaves ZERO resting test orders IN-RUN. A replace spawns a new order (same test COID,
+        # new id this single cancel can't target), and a cancel during Alpaca's replace-pending
+        # window is rejected (42210000); the sweep-until-clear waits that window out instead of
+        # deferring to the next run's pre-sweep — which is what coverage-drift flagged (#439).
         try:
             await alpaca_client.cancel_order(order_id, account_mode="paper")
             logger.info(f"harness: cleanup cancelled {order_id}")
         except Exception as e:
-            # The most common reason cancel fails is the order was already
-            # cancelled (e.g., by replace_order returning a new id and
-            # implicitly cancelling the old). That's expected — don't raise.
+            # Most often the order was already cancelled (e.g. replace_order returned a new id
+            # and implicitly retired the old). Expected — don't raise; the sweep below confirms.
             logger.info(f"harness: cleanup cancel {order_id} non-fatal: {e}")
+        await _sweep_test_orders_until_clear()
