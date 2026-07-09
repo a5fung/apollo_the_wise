@@ -279,34 +279,19 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - Reserve Telegram for terminal/actionable events. Self-healing/transient → `mi_audit_log` only.
 
 ## Daily Schedule (ET)
+Full job registrations + rationale live in `scheduler.py` (CronTrigger). The spine:
 | Time | Job |
 |---|---|
-| 7:00 AM | EP scan starts (every 5 min) |
+| 7:00 AM | EP scan starts (every 5 min → stops 10:00 AM + ORB unfilled-entry cleanup) |
 | 9:00 AM | Morning briefing |
 | 9:31 AM | ORB monitor — bracket orders |
 | 9:35 AM | Stop refresh Day 2+ |
-| 10:00 AM | EP scan stops + ORB unfilled-entry cleanup |
-| 3:45 PM (mon-fri) | **Partial-exit scan** (`partial_exit_scan` — Day 3-5 partial-profit; runs intraday so the stop-replace settles same day instead of parking in `pending_replace` after the close, #361 split from the 4:45 job) |
-| 4:05 PM | EOD cleanup |
-| 4:10 PM | EOD EP recap (HIGH outcomes + feed telemetry) |
-| 4:15 PM | **Post-EOD audit** (L1 invariants + trade-side L2/L3) |
-| 4:25 PM (mon-fri) | **EP Judge delta digest** (`_judge_delta_digest_job` — PUSH of the holistic judge's promote/demote deltas vs the floor; subtitle reflects shadow-vs-load-bearing toggle; empty day → no Telegram; #240/W3) |
-| 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
-| 4:45 PM | Position update (SMA trail + stop updates + daily summary — partials moved to the 3:45 scan, #361) |
-| 4:55 PM (mon-fri) | **Time-stop scan** (9M Day 2 meanderers ≥5 trading days + peak excursion <+3%; operator-confirm via `/timestop TICKER`, #91) |
-| 9:35 AM–3:55 PM (every 5 min, mon-fri) | **Intraday flag-break scan** (shadow — catches the moment a TIGHTENING/COILED/TRIGGERED ticker breaks above base_high with volume confirmation; `/flagbreaks`, #94) |
-| 9:00 AM–4:45 PM (every 15 min, mon-fri) + boot | **Order-status reconcile** (DB↔Alpaca silent-stop catcher; `order_status_reconciled` audit row on divergence, audit-only #123) |
-| 4:00 PM (mon-fri) | **9M EP Pace EOD digest** (whole-day pace/anticipation rollup, dedup vs same-day actuals, cap 20; #133, hourly→EOD 2026-06-07 — actual 9M still rides the per-5-min digest) + **Entry-technique EOD digest** (`run_intraday_signals_eod_digest` — roll-up of the 5 intraday shadow detectors, replacing ~23/day per-tick pings now default-off; #168) |
-| 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
-| 5:22 PM (mon-fri) | **Sugar Babies cohort refresh** (Pradeep persistent watchlist — observational, `/sugarbabies`) |
-| 5:25 PM | **Continuation flag scan** (shadow — VCP/Qullamaggie tightening) |
-| 5:30 PM | **Post-nightly audit** (theme/cooldown/regime L2/L3) |
-| 6:00 PM (Fri) | **Friday watchlist** (curated chart-review aggregator + TV import block) |
-| 8:00 PM | Evening briefing |
-| 9:00 PM | **Evening position backstop** (2nd `sync_positions` — catches late EXPIRED events) |
-| 2:00 AM | **Baseline refresh** (rebuild `mi_metric_baselines` 30d trailing) |
-| Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up + news-source-quality section → Telegram digest) |
-| Monthly 1st 6:00 PM | **Monthly backward-check sweep** (regime-shift monitor — re-runs #50/#53/#54/#77 + news quality 90d view) |
+| 3:45 PM | Partial-exit scan (Day 3-5, intraday so the stop-replace settles same-day; #361) |
+| 4:00–4:55 PM (EOD chain) | 9M-pace + entry-technique digests · EP recap · post-EOD L1/L2/L3 audit · judge-delta digest · news-quality drift · position update (SMA trail + stops) · time-stop scan |
+| 5:00–5:30 PM (nightly) | Data pull (RS/regime/themes/missed-EP/errors) · Sugar-Babies refresh · continuation-flag scan · post-nightly audit |
+| 8:00 / 9:00 PM | Evening briefing · evening position backstop (2nd `sync_positions`) |
+| intraday | flag-break scan (5-min, shadow #94) · order-status reconcile (DB↔Alpaca silent-stop catcher, 15-min + boot, #123) |
+| 2 AM · Fri 6 PM · Sun 8 AM · Monthly 1st | baseline refresh (30d) · Friday watchlist · weekly self-audit · monthly backward-check sweep |
 
 ## Pre-commit hooks (one-time setup per clone)
 After fresh clone, activate the local pre-commit gates:
@@ -369,7 +354,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ### 2026-07-08 — ADR 0023 exit-cards · ADR 0024 M1-a/c · paper/live alert fix (laptop day)
 
-- All dark/evidence, THE LINE held: ADR 0023 Cards 1/2/3 (`giveback_floor` hook + harvest sweep → **+$8,075 lock-attributable**, F1-gated) + Card 5 (9:00 gap alert); ADR 0024 **M1-a** (`compose_final_tier` DARK, ±1 cap) + **M1-c** (amendment draft); M1-b/sittings gated. **#443** paper/live alert mislabel FIXED (EP alerts + EOD digest → owning strategy's account via `get_strategy_account_mode`, not the paper default). **#274** fragmentation root-caused (no regression) → evidence pack + triggerable weekend Fable block (`docs/roadmap/fable-weekend-blocks.md`). #440/#441 verified-live. Advisor + /simplify clean.
+- Dark/evidence (THE LINE held): ADR 0023 Cards 1/2/3 (`giveback_floor` + harvest sweep → **+$8,075** F1-evidence) + Card 5 (gap alert); ADR 0024 M1-a (`compose_final_tier` dark) + M1-c (draft). **#443** paper/live alert mislabel fixed (`get_strategy_account_mode`). **#274** fragmentation root-caused → weekend Fable block (`docs/roadmap/fable-weekend-blocks.md`). Lesson: `asyncpg` single-conn can't multiplex a query-gather.
 
 ### 2026-07-05 — day 3: hardening lane CLEARED (sprint CLOSE)
 
