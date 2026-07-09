@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date, timedelta
-from typing import Any
 
 from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the ADR 0023 F1 giveback SHADOW reuses the tested ladder for the counterfactual rather than re-implementing it (same F11 pattern as flag_detector's #396 mgmt shadow); pure compute, no live execution
 from agents.market_intelligence.db import get_pool, log_audit_event
@@ -49,16 +48,17 @@ def compute_giveback_shadow(
         state = {"alert_date": alert_date, "remaining_shares": shares, "entry_price": entry,
                  "hard_stop": hard_stop, "partial_taken": False, "breakeven_active": False,
                  "exits": [], "running_closes": []}
-        gb = (dict(giveback_arm_gain=arm, giveback_floor_frac=floor_frac)
-              if with_giveback else {})
         for i, c in enumerate(closes):
             day = alert_date + timedelta(days=i + 1)  # l=c and reconstructed dates cancel in the marginal
-            step = apply_daily_exit_step(state, {"l": c, "c": c}, day,
-                                         integer_partial_shares=True, **gb)
-            state = {"alert_date": alert_date, "entry_price": entry, "hard_stop": hard_stop,
-                     "remaining_shares": step.new_remaining, "partial_taken": step.new_partial_taken,
-                     "breakeven_active": step.new_breakeven_active,
-                     "exits": step.new_exits, "running_closes": step.new_running_closes}
+            step = apply_daily_exit_step(
+                state, {"l": c, "c": c}, day, integer_partial_shares=True,
+                giveback_arm_gain=arm if with_giveback else None,
+                giveback_floor_frac=floor_frac if with_giveback else None)
+            # apply_daily_exit_step never mutates `state` and returns fresh lists, so carry
+            # only the fields that move forward (alert_date/entry/hard_stop are constant).
+            state.update(remaining_shares=step.new_remaining, partial_taken=step.new_partial_taken,
+                         breakeven_active=step.new_breakeven_active,
+                         exits=step.new_exits, running_closes=step.new_running_closes)
             if step.closed:
                 return step.new_total_pnl, i, step.close_reason
         remaining = state["remaining_shares"]
@@ -78,34 +78,14 @@ def compute_giveback_shadow(
     }
 
 
-async def _ensure_table(conn) -> None:
-    await conn.execute("""
-        CREATE TABLE IF NOT EXISTS mi_giveback_shadow (
-            trade_id     INT PRIMARY KEY,
-            ticker       TEXT NOT NULL,
-            alert_date   DATE,
-            account_mode TEXT,
-            actual_pnl   DOUBLE PRECISION,
-            baseline_pnl DOUBLE PRECISION,
-            giveback_pnl DOUBLE PRECISION,
-            marginal     DOUBLE PRECISION,
-            giveback_early BOOLEAN,
-            gb_exit_reason TEXT,
-            arm          DOUBLE PRECISION,
-            floor_frac   DOUBLE PRECISION,
-            computed_at  TIMESTAMPTZ DEFAULT NOW()
-        )
-    """)
-
-
 async def run_giveback_shadow(today: date, *, signal_type: str = "magna53",
                               account_mode: str = "live") -> int:
     """Log the giveback shadow for LIVE trades that closed `today` and aren't shadowed yet.
-    Pure compute + DB/audit — no broker calls, no live-exit change. Returns the count logged."""
+    Pure compute + DB/audit — no broker calls, no live-exit change. Returns the count logged.
+    The mi_giveback_shadow table is seeded by db.initialize_schema at boot (schema SSoT)."""
     pool = await get_pool()
     logged = 0
     async with pool.acquire() as conn:
-        await _ensure_table(conn)
         rows = await conn.fetch("""
             SELECT t.id, t.ticker, t.alert_date, t.account_mode, t.entry_price, t.entry_shares,
                    t.hard_stop, t.total_pnl, t.running_closes

@@ -1868,6 +1868,27 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_htf_management_shadow_open
                 ON mi_htf_management_shadow(break_date) WHERE status = 'open';
 
+            -- Peak-lock (giveback) SHADOW on the LIVE book — ADR 0023 F1 forward measurement
+            -- (giveback_shadow.py). One row per newly-closed live MAGNA53 trade: the marginal
+            -- (giveback_pnl - baseline_pnl) of the +6%/60% peak-lock vs the actual exit. Pure
+            -- log-only telemetry, no live-exit change (THE LINE). Seeded here (not lazily) so a
+            -- fresh init / #437 restore-check sees it like every other mi_*_shadow table.
+            CREATE TABLE IF NOT EXISTS mi_giveback_shadow (
+                trade_id       INT PRIMARY KEY,
+                ticker         TEXT NOT NULL,
+                alert_date     DATE,
+                account_mode   TEXT,
+                actual_pnl     DOUBLE PRECISION,
+                baseline_pnl   DOUBLE PRECISION,
+                giveback_pnl   DOUBLE PRECISION,
+                marginal       DOUBLE PRECISION,
+                giveback_early BOOLEAN,
+                gb_exit_reason TEXT,
+                arm            DOUBLE PRECISION,
+                floor_frac     DOUBLE PRECISION,
+                computed_at    TIMESTAMPTZ DEFAULT NOW()
+            );
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales

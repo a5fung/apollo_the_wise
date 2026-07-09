@@ -71,7 +71,7 @@ def _insert_call(conn):
 async def test_run_giveback_shadow_writes_row_and_audits(monkeypatch):
     from tests.conftest import make_mock_pool
     pool, conn = make_mock_pool()
-    conn.execute = AsyncMock(return_value="INSERT 0 1")   # covers _ensure_table CREATE + the INSERT
+    conn.execute = AsyncMock(return_value="INSERT 0 1")   # the INSERT (table seeded at boot, not here)
     conn.fetch = AsyncMock(return_value=[_live_row([110, 120, 118, 108, 100, 98])])
     monkeypatch.setattr(gs, "get_pool", AsyncMock(return_value=pool))
     audit = AsyncMock()
