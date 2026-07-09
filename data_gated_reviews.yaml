@@ -6887,3 +6887,30 @@ reviews:
       entry (status=pending, +10-trade or +90-day gate) — it recurs while the rule lives.
     status: pending
     added_on: 2026-07-07
+
+  - review_id: giveback_shadow_review
+    title: "Peak-lock (giveback) SHADOW — review the live-book counterfactual BEFORE any live flip (#306 ADR 0023 F1)"
+    question: >-
+      Does the +6%/60% peak-lock's SHADOW marginal on the LIVE MAGNA53 book confirm the offline
+      sweep's +$8k lock-attributable finding going forward? Look at mi_giveback_shadow: (a) aggregate
+      marginal (sum + mean) across all logged live closes, (b) the round-tripper subset
+      (giveback_early=true) — the only informative rows — is the lock netting POSITIVE there without
+      clipping clean runners, (c) does the forward sign/magnitude agree with 306_step2_sweep? YES +
+      deep-enough cohort -> this is the forward evidence for the #306 STEP-3 LIVE flip (CHANGE_PROCESS
+      + #151 harness + sign-off). Mostly losers / marginal ~0 / too few round-trippers -> DEFER +
+      re-arm (the shadow accrues only on live round-trip winners — slow by design).
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_giveback_shadow') IS NULL THEN 0
+                  ELSE (SELECT COUNT(*) FROM mi_giveback_shadow) END
+    threshold: 10
+    earliest_review_date: 2026-08-06
+    action_when_ready: >-
+      Query mi_giveback_shadow: sum(marginal), avg(marginal), and the giveback_early=true subset
+      (count + sum(marginal) + per-trade ticker/marginal). Compare forward sign+magnitude to the
+      offline sweep (docs/analysis/306_step2_sweep_2026-07-08.md, +$8k lock-attributable). Present to
+      the operator for the #306 STEP-3 decision: adopt the +6%/60% lock live (CHANGE_PROCESS + #151
+      harness + harvest_rule_flipped audit + ARM harvest_rule_effectiveness), retune, or none. If
+      <4 round-trippers (giveback_early=true) logged, DEFER (status=deferred, +30 days) — need more
+      live winners before the forward signal is trustworthy.
+    status: pending
+    added_on: 2026-07-09
