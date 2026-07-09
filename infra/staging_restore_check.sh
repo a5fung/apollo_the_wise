@@ -106,6 +106,30 @@ if ! gunzip -c "$LATEST" | docker exec -i "$CONTAINER" psql -q -U apollo -d apol
     fail "psql restore errored for $(basename "$LATEST"): $(tail -c 400 "$ERR_TMP")"
 fi
 
+# 4b. Boot schema-init on the RESTORED schema (#437) — replay the EXACT agent-boot path
+# (`initialize_schema`: CREATE TABLE IF NOT EXISTS → migrations → strategy seed, the same call
+# agent.py makes at startup) against the restored dump. A CHECK-constraint / seed crash — the
+# 7/6 #424 boot-crash class, which surfaced ONLY at prod boot because card tests mock the pool —
+# fails HERE within 24h, mechanically, against the REAL restored schema. Runs in a throwaway
+# app-image container sharing the restore container's netns (localhost:5432 = the restored DB);
+# the 'restorecheck' password can only reach the ephemeral DB, so prod is NEVER touched.
+# (Mechanism verified 2026-07-09 against an empty DB: 77 tables + 7 strategies, exit 0.)
+APP_IMAGE=$(docker inspect apollo-market --format '{{.Config.Image}}' 2>/dev/null || echo "docker-market-agent")
+if ! docker run --rm --network "container:$CONTAINER" \
+        -e POSTGRES_HOST=localhost -e POSTGRES_PORT=5432 -e POSTGRES_USER=apollo \
+        -e POSTGRES_PASSWORD=restorecheck -e POSTGRES_DB=apollo \
+        "$APP_IMAGE" python -c \
+        "import asyncio; from agents.market_intelligence.db import initialize_schema; asyncio.run(initialize_schema())" \
+        >/dev/null 2>"$ERR_TMP"; then
+    # DISTINCT from a restore failure — the dump restored fine; the CODE's boot schema-init
+    # crashes on the restored schema (a deploy would boot-crash). Don't cry "dump unrestorable".
+    reason="schema-init/strategy-seed CRASHES on the restored schema (boot-crash class, e.g. a CHECK constraint the code's seed violates): $(tail -c 400 "$ERR_TMP")"
+    log "FAIL (schema-init): $reason"
+    audit_event "restore_check_schema_init_failed" "$reason"
+    telegram_alert "🚨 *Schema-init CRASHES on the restored schema* — a deploy would boot-crash (the #424 CHECK-constraint class). The dump restored fine; this is a CODE-vs-schema incompatibility."$'\n```\n'"$reason"$'\n```\n'"See $LOG_FILE"
+    exit 1
+fi
+
 # 5. Coherence probes — key tables non-empty + plausible table count.
 COUNTS=$(docker exec "$CONTAINER" psql -U apollo -d apollo -tA -c \
     "SELECT (SELECT count(*) FROM mi_live_trades) || '|' ||
