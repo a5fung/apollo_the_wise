@@ -57,3 +57,56 @@ Separately: **cancelled_unfilled = 36.7% pos (n=30, 11 winners)** was expected s
 is not — a distinct thread worth filing if wanted (why 30 HIGHs go cancelled-before-fill).
 
 *Analysis is read-only; no trade change made.*
+
+---
+
+# PART 2 — Late-entry realized-R backtest (2026-07-09, operator reopened the entry-path question)
+
+Precision was never the R question. A late entry has **no fresh ORB**, so it is forced onto a
+stale-ORB stop (structure-low / ATR) — exactly the models #276 W2 study-2 showed collapse realized-R.
+Measured realized-R for the late cohort. Script: `scripts/_290_late_entry_backtest.py` (prod run).
+
+**Method (explicit UPPER BOUND — advisor 7/9):** cohort = 290 late-detection HIGH_missed (deduped,
+9:45+, post-3/20; 278 had bars + a forward path). Entry fill = the **next minute-bar OPEN after the
+detection minute + 10bps slippage** (immediate, no missed-breakout penalty — the most favorable
+honest fill). Day-0 same-day stop vs the **post-entry** intraday low (no pre-entry lookahead).
+Survivors replay forward daily bars (`mi_daily_closes` real lows/closes) through the SAME MAGNA53
+exit ladder (`apply_daily_exit_step`). shares=100 (realized-R is size-independent). Stops honestly
+available at a late entry (no lookahead): `low_so_far` = intraday range low UP TO entry (the tight
+structure stop, the late analog of orb_low); `atr_1.0`, `atr_1.5`. **`day_low` (full-day low) was
+dropped — it is LOOKAHEAD at a mid-morning entry.**
+
+### Result — realized-R by stop × ORB-extension cutoff (upper bound; mean-R / win% ; N)
+```
+stop \ extend-to     9:55         10:00        10:30        11:00        [#276 entered bench]
+low_so_far        +0.13R/38%   +0.02R/34%   +0.02R/34%   -0.35R/24%    (orb_low analog: +1.40R)
+atr_1.0           +0.25R/46%   +0.31R/42%   +0.31R/42%   -0.21R/26%    (atr_1.0: +0.48R)
+atr_1.5           +0.15R/50%   +0.15R/45%   +0.15R/45%   -0.16R/32%    (atr_1.5: +0.27R)
+N per cutoff:        26           38           38          ~195
+medians:          mostly -1.00R (most trades stop out; positive means carried by fat-tail winners)
+```
+
+### Read
+1. **The widest window (11:00, N≈196 — the one that WON on precision at 23.8%) is R-NEGATIVE across
+   EVERY stop (−0.16 to −0.35R).** Precision parity did **not** translate to realized-R.
+2. Best cell = `atr_1.0` near-window ~**+0.31R** — still far below the ENTERED cohort's benchmarks
+   (orb_low **+1.40R**, atr_1.0 **+0.48R**). Late entries under-earn entered trades on R even at best.
+3. The tight structure stop (`low_so_far`, the orb_low analog) collapses to **+0.02–0.13R** — a late
+   entry's structure low is already far below the run-up price → wide risk → low R (exactly #276's
+   "wide stop collapses R", by construction of a late entry).
+4. Medians mostly **−1.00R** (most trades stop out); positive means are fat-tail-carried; win 24–50%.
+   A lottery distribution, not a robust harvestable edge.
+5. This is an **UPPER BOUND** (optimistic fill). The real late-entry mechanic (a stop-buy at *what*
+   level? there's no ORB) would be worse, not better.
+
+### Conclusion → recommend CLOSE the entry-path question (don't extend the ORB window)
+Late entries are precision-comparable but realized-R **negative-to-marginal**, decisively below
+entered trades — **because a late entry is forced onto a wide stop (no fresh ORB)**. Extending the
+ORB window does not pay on R; the ~1 missed winner/quarter is a fat-tail lottery, not an edge. This
+resolves the reopen: the deeper look (R, not precision) says no. *Operator decision (THE LINE); any
+live entry-window change stays CHANGE_PROCESS + sign-off.*
+
+**Caveats:** near-window cells are smallish (N 26–38; the decisive 11:00 cell is robust at N≈196);
+the entered-HIGH control is a DIFFERENT population (selection bias — benchmark vs #276's R, not a
+matched control); upper-bound fill assumption. A polished CHANGE_PROCESS-grade version would model
+the actual stop-buy fill mechanic, but the upper-bound already answers go/no-go: **no**.
