@@ -113,6 +113,11 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # the live apollo-execution stays stale — the LZB silent-dark class.
       agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
+      # data_gated_reviews.yaml is market-agent RUNTIME config — read only by the weekly
+      # system-review's gated-surfacing (a market-agent job); it touches neither orchestrator
+      # nor the execution broker. Without this it fell to the catch-all below and dragged the
+      # whole 3-service scope in (the 2026-07-09 giveback-shadow deploy hit exactly this).
+      data_gated_reviews.yaml)                NEED_MARKET=1 ;;
       tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy
       *)                                      NEED_ORCH=1; NEED_MARKET=1; NEED_EXEC=1 ;;  # shared/, docker/, requirements/, … → all incl execution runtime
     esac
