@@ -718,7 +718,12 @@ reviews:
       this review and accept the residual ~1 winner / quarter as catchable-only-
       with-policy-change.
       Origin: 2026-04-30 dead-zone investigation, advisor priority A.
-    status: pending
+    # RESOLVED 2026-07-09 (docs/analysis/dead_zone_reeval_2026-07-09.md): re-ran on the fatter
+    # cohort. Near-window extension ~19% ≈ entered-trade control ~20% (5/25); the 11:00 window
+    # (23.8% / 69% recall) crossed the trigger. Operator chose REOPEN the entry-path question →
+    # now tracked as PLAN #290 (scope a late-entry backtest: precision × realized-R × ORB-timing
+    # cost). The review itself is acted-on → done.
+    status: done
     added_on: 2026-04-30
 
   - review_id: adv_probe_retirement
