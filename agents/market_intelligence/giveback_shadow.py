@@ -19,7 +19,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the ADR 0023 F1 giveback SHADOW reuses the tested ladder for the counterfactual rather than re-implementing it (same F11 pattern as flag_detector's #396 mgmt shadow); pure compute, no live execution
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
