@@ -252,3 +252,24 @@ async def test_hard_gate_c_survivor_path_unchanged():
     assert r1 == "ENTER"
     assert r2 == "ENTER"
     assert grade_calls == ["SURV1"], f"expected exactly 1 grade call, got {grade_calls}"
+
+
+# ── #405 Part-1 — has_direct_source rides the cache (display-flag coherence) ──
+
+def test_405_part1_cached_regrade_preserves_has_direct_source():
+    # The flag is set at grade time; a later-tick quality re-grade (same corpus, e.g.
+    # MODERATE→HIGH) via _replace must PRESERVE it so the cached-path alert stays coherent
+    # (#317/#405-P2: suppress the discovery line only when a direct source backs the grade).
+    g = ep_detector.CachedGrade(
+        "moderate", 1.0, "news", "analysis", None, True, has_direct_source=True,
+    )
+    assert g.has_direct_source is True
+    g2 = g._replace(catalyst_quality="strong", confidence_multiplier=1.5)
+    assert g2.catalyst_quality == "strong" and g2.has_direct_source is True  # preserved
+
+
+def test_405_part1_default_flag_absent_keeps_positional_construction_valid():
+    # Backward-compat: the pre-Part-1 positional 6-tuple still constructs (flag defaults None,
+    # = "no direct source established" → the discovery line is kept, the safe default).
+    g = ep_detector.CachedGrade("routine", 1.0, "n", "a", None, True)
+    assert g.has_direct_source is None and g.grounded_text is None

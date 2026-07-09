@@ -157,6 +157,12 @@ class CachedGrade(NamedTuple):
     # #367 attribution read was contaminated). Default None keeps every
     # existing positional construction/_replace valid.
     grounded_text: "str | None" = None
+    # #405 Part-1 (7/9): has_direct_source rides the cache so a cached-path re-grade PRESERVES
+    # the display flag. Was dropped (the cached path left `_has_direct_source=None` → the
+    # catalyst discovery line was kept as the safe default even when the grade rested on a
+    # direct source; #317/#405-P2 suppress-on-direct-source). Same corpus across a quality
+    # re-grade, so `_replace` on other fields preserves it. Default None = flag absent (safe).
+    has_direct_source: "bool | None" = None
 
 
 _catalyst_cache: dict[str, CachedGrade] = {}
@@ -1926,6 +1932,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             pplx_quality = cached.pplx_quality
             filters_cleared = cached.filters_cleared
             grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
+            _has_direct_source = cached.has_direct_source  # #405 Part-1: preserve the display flag on the cached path
             upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
 
             if not filters_cleared:
@@ -2286,6 +2293,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
                 pplx_quality, skip_reason is None,
                 grounded_text=grounded_text,
+                has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
             )
 
             if skip_reason:
