@@ -32,37 +32,39 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of 2026-07-07 Tue eve)
+## 3. WHERE WE ARE (in-flight, as of 2026-07-09 Wed eve)
 
-**Apollo trades REAL money (MAGNA53 live since 6/30). The system runs autonomously — a machine
-switch changes nothing on the Hetzner prod box.** Prod verified healthy 7/7 eve (all containers up,
-0 job failures/24h).
+**Apollo trades REAL money (MAGNA53 live since 6/30). A machine switch changes nothing on the
+Hetzner prod box.** Prod healthy 7/9 (both money containers + orchestrator up post-deploy;
+`dual_account_boot_verified`).
 
-**Design debt is ZERO** — ADRs 0011–0024 all operator-signed. Everything from here is pure execution
-(Fable designed, Opus/Sonnet execute). Fable is exhausted for the week.
+**Design debt is ZERO** — ADRs 0011–0024 all operator-signed. Pure execution from here (Fable
+designs, Opus/Sonnet execute).
 
-**v1.0 glide path**: FL-1 5/10 · FL-3 1/7 · FL-8 4/4✓ · blocking 17 · **declaration projected ~7/14,
-HARD walk 7/21 (#425)**. The M1 judge-composition sitting is **7/18 (#335)** — an operator gate.
+**v1.0 glide path**: declaration projected ~7/14, HARD walk 7/21 (#425). M1 judge-composition
+sitting **7/18 (#335)** — an operator gate.
 
-**The execution queue (from the signed ADRs + PLAN.md):**
-- **Wed 7/8**: the tomorrow-AM verify-lives of Tue's deploy (all fire on their own — confirm at OPEN):
-  #183 check_fills clean/no false-naked · #287 `jsonb_typeof='array'` on the next new exit (→ then #287
-  closes) · #440 theme ping only-on-new · #405-P2 suppress-audit on next direct-source HIGH · #441 FL-3
-  counts 7/7 as clean (deploy blip excluded). THEN: **ADR 0023 cards** C1 peak-lock hook (dark) / C2
-  harvest-sweep harness+run / C5 9:00 gap alert → sweep doc; **ADR 0024 M1 prep** M1-a compose_final_tier
-  (dark) / M1-b the ONE batched regrade / M1-c rubric-amendment draft.
-- **Fri 7/10**: 0023 card 6 (entry no-trigger backtest) + #184b broker-order ingest build.
-- **Sun 7/12**: FL-3/FL-8 clocks complete · #412 write-path verify · weekly review.
-- **7/18**: the M1 sitting (operator). **~7/14–7/21**: the #425 v1.0 declaration walk (operator).
+**Shipped 7/8–7/9 (laptop days):**
+- 7/8: ADR 0023 Cards 1/2/3 (`giveback_floor` + harvest sweep, **+$8,075** F1-evidence, dark) + Card 5
+  gap alert; ADR 0024 M1-a `compose_final_tier` (dark) + M1-c draft; #443 alert fix committed.
+- 7/9: **ADR 0023 F1 giveback SHADOW DEPLOYED** to both money containers + mechanism-verified (log-only,
+  THE LINE held); **#443 alert fix LIVE** on the entry path; **#439 part-b** (paper harness leaves zero
+  resting test orders); advisor + /simplify; **#290 CLOSED** (late-entry backtest: don't extend the ORB
+  window — the wide window is R-NEGATIVE, no robust edge). Deploy-tooling: a `deploy.sh` drift-guard
+  classification fix (`data_gated_reviews.yaml` is market-agent-only, not full 3-svc scope).
 
-**Carry items**: #405 Part-1 (has_direct_source cache-tuple) · #436 (phantom-creation prevention) ·
-#261 ops/evals reorg (7/13) · #442 (FL-3 watchdog-regex hardening, 7/31) · the recurring
-harvest_rule_effectiveness review (post-0023-flip, in data_gated_reviews.yaml).
+**Open verify-lives (fire on their own — CONFIRM AT OPEN):**
+- **#306** giveback shadow: first `mi_giveback_shadow` row on the next LIVE round-tripper close (17:38 job).
+- **#437** restore-check schema-init: tonight's 03:30 UTC cron writes `backup_restore_check_ok` with the step.
+- **#443**: next EP HIGH labels LIVE + the 16:45 digest shows live-primary (market-gated).
+- **#439**: next deploy's G6 leaves zero `apollo_paper_integration_test_*` orders + a test-COID reads INFO.
+- **#287**: `jsonb_typeof='array'` on the next real exit (market-gated; no exit since 7/7).
 
-**Tuesday 7/7 shipped**: 2 money-path fixes deployed+verified (#183 enum boundary, #287 jsonb
-double-encode incl. a 40-row data cleanup) · #405 verified-live + #317 closed · #440/#441 deployed
-(FL-3 1/7 live) · advisor + /simplify clean · #418 v1.0 finish line SIGNED · #303 closed · ADRs 0023 +
-0024 written + signed.
+**Next up (PLAN.md is SoT — run `check_plan.py --today`)**: #435 /simplify infra follow-ups (7/10) ·
+#436 phantom prevention · #433 naked-stop messaging-verify · #425 v1.0 declaration walk (~7/14–7/21) ·
+M1 sitting 7/18. **Operator-gated**: #420 (uptime pinger — create the account) · #423 (secrets runbook —
+read it) · #353 (consolidation→paper, #327-edge-gated) · #434 (MEMORY.md compact — desktop-only) ·
+#446 (cancelled_unfilled 36.7% — low-pri, drop if not worth it).
 
 ## 4. Critical operating rules the laptop won't have in memory (backstop — most are also in CLAUDE.md)
 

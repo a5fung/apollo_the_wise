@@ -352,6 +352,10 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
+### 2026-07-09 — F1 giveback shadow deployed+verified · #439 part-b · #290 closed (laptop day)
+
+- **ADR 0023 F1**: operator picked the peak-lock direction (+6%/60%) but chose to VALIDATE in SHADOW — `giveback_shadow.py` on the LIVE book (log-only, THE LINE), DEPLOYED both money containers + mechanism-verified on WULF, first-row verify-live pending a live round-tripper; `giveback_shadow_review` gate wired so it can't silently 0-row. **#443** alert fix rode the same deploy (live entry-path). Deploy lessons: a root-file (`data_gated_reviews.yaml`) dragged the drift-guard to full 3-svc scope → classification fix; the shadow's pure-ladder `exit_logic` import needs `# exec-boundary-ok` (flag_detector #396 pattern). **#439 part-b**: the G6 paper harness left resting test orders (replace-pending race) → harness-level `_sweep_test_orders_until_clear`. **#290 CLOSED**: late-entry backtest (realized-R, not precision) — the wide window that won on precision is R-NEGATIVE (N=196); late entries forced onto a wide stop (no fresh ORB) → no robust edge; don't extend. Advisor caught me pre-loading "close" twice (asserted-baseline; +0.31R-is-marginal-not-negative) — verify the control, lead with the internal well-powered result.
+
 ### 2026-07-08 — ADR 0023 exit-cards · ADR 0024 M1-a/c · paper/live alert fix (laptop day)
 
 - Dark/evidence (THE LINE held): ADR 0023 Cards 1/2/3 (`giveback_floor` + harvest sweep → **+$8,075** F1-evidence) + Card 5 (gap alert); ADR 0024 M1-a (`compose_final_tier` dark) + M1-c (draft). **#443** paper/live alert mislabel fixed (`get_strategy_account_mode`). **#274** fragmentation root-caused → weekend Fable block (`docs/roadmap/fable-weekend-blocks.md`). Lesson: `asyncpg` single-conn can't multiplex a query-gather.
