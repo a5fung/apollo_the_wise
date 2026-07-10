@@ -4160,6 +4160,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # mi_live_trades: "open" = filled + remaining_shares > 0
             table = "mi_live_trades"
             entry_col = "entry_price"
+            where_clauses.append("account_mode = 'live'")   # #447: real-money book only (paper is dormant/legacy)
             if ticker:
                 where_clauses.append(f"ticker = ${len(params)+1}")
                 params.append(ticker.upper())
@@ -4171,7 +4172,7 @@ class MarketIntelligenceAgent(BaseAgent):
             elif "skipped" in task or "filtered" in task:
                 where_clauses.append("status IN ('skipped', 'cancelled', 'order_failed')")
             open_statuses = ("filled", "order_placed", "pending_confirmation", "confirmed")
-            label = "Paper Trade History (Alpaca)"
+            label = "Live Trade History (Alpaca · real money)"
         else:
             table = "mi_paper_trades"
             entry_col = "last_entry_price"
@@ -4223,6 +4224,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
                         COUNT(*) FILTER (WHERE status IN ('skipped','cancelled','order_failed')) as filtered_count
                     FROM mi_live_trades
+                    WHERE account_mode = 'live'
                 """)
             else:
                 totals = await conn.fetchrow("""
@@ -6608,6 +6610,10 @@ class MarketIntelligenceAgent(BaseAgent):
             from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
 
             async with pool.acquire() as conn:
+                # #447: the MAIN /trades summary is the REAL-MONEY (live) book — every block
+                # filters account_mode='live'. Without it these mixed the dormant historical PAPER
+                # book in and the realized total read paper-dominated (operator 7/10). Paper stays
+                # reachable behind the separate 'Paper (legacy)' button.
                 open_rows = await conn.fetch("""
                     SELECT ticker, alert_date, entry_price, remaining_shares,
                            stop_price, hard_stop, total_pnl, hold_days,
@@ -6615,6 +6621,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            catalyst_quality, exits, stop_order_id
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
+                      AND account_mode = 'live'
                     ORDER BY alert_date ASC
                 """)
                 pending_rows = await conn.fetch("""
@@ -6622,6 +6629,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            orb_low, stop_price, ep_score, catalyst_quality
                     FROM mi_live_trades
                     WHERE status IN ('order_placed', 'pending_confirmation')
+                      AND account_mode = 'live'
                     ORDER BY alert_date ASC, ticker
                 """)
                 closed_rows = await conn.fetch("""
@@ -6629,6 +6637,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            exits, ep_score, closed_at
                     FROM mi_live_trades
                     WHERE status = 'closed'
+                      AND account_mode = 'live'
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 5
                 """)
@@ -6638,6 +6647,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) AS losers,
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized
                     FROM mi_live_trades
+                    WHERE account_mode = 'live'
                 """)
                 # Per-ticker closed-attempt history — feeds open-row "prior
                 # P&L" and closed-row "N attempts" suffixes. Bounded query
@@ -6652,6 +6662,7 @@ class MarketIntelligenceAgent(BaseAgent):
                                COALESCE(SUM(total_pnl), 0) AS realized
                         FROM mi_live_trades
                         WHERE status = 'closed' AND ticker = ANY($1)
+                          AND account_mode = 'live'
                         GROUP BY ticker
                     """, relevant_tickers)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
@@ -6662,7 +6673,7 @@ class MarketIntelligenceAgent(BaseAgent):
             for r in open_rows:
                 d = dict(r)
                 try:
-                    pos = await alpaca.get_position(d["ticker"])
+                    pos = await alpaca.get_position(d["ticker"], account_mode="live")
                 except Exception as e:
                     logger.debug(f"/trades: live-price fetch failed for {d['ticker']}: {e}")
                     pos = None
@@ -6678,7 +6689,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 enriched.append(d)
 
             lines: list[str] = []
-            lines.append(f"📊 *Positions — {date_str}*")
+            lines.append(f"📊 *Positions — {date_str}* · 🔴 LIVE (real money)")
 
             if enriched:
                 lines.append("")
@@ -6829,6 +6840,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            status, skip_reason, orb_high, orb_low, atr_14
                     FROM mi_live_trades
                     WHERE status IN ('skipped', 'cancelled', 'order_failed')
+                      AND account_mode = 'live'   -- #447: live book (consistent w/ the main summary)
                     ORDER BY alert_date DESC, ticker
                     LIMIT 15
                 """)
@@ -6857,6 +6869,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            exits, ep_score, closed_at
                     FROM mi_live_trades
                     WHERE status = 'closed'
+                      AND account_mode = 'live'   -- #447: live book (consistent w/ the main summary)
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 20
                 """)
