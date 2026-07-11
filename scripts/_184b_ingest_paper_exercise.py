@@ -90,10 +90,15 @@ async def main() -> int:
                 print(f"cleanup: order cancel non-fatal: {e}")
         if trade_id:
             async with pool.acquire() as conn:
-                await conn.execute(
-                    "DELETE FROM mi_live_trades WHERE id = $1 AND signal_type = $2 AND account_mode = 'paper'",
-                    trade_id, STRATEGY)
-            print(f"cleanup: deleted test row {trade_id}")
+                async with conn.transaction():
+                    # both mi_live_orders + mi_live_trades DELETEs are guarded (trade-state safety) —
+                    # opt in; drop the R1-upserted order row FIRST (FK child), then the trade row.
+                    await conn.execute("SET LOCAL mi.allow_trade_delete = 'yes'")
+                    await conn.execute("DELETE FROM mi_live_orders WHERE trade_id = $1", trade_id)
+                    await conn.execute(
+                        "DELETE FROM mi_live_trades WHERE id = $1 AND signal_type = $2 "
+                        "AND account_mode = 'paper'", trade_id, STRATEGY)
+            print(f"cleanup: deleted test row {trade_id} (+ its ingest-upserted order row)")
     return 0 if ok else 1
 
 
