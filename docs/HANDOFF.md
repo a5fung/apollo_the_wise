@@ -81,7 +81,8 @@ HIGH · #287 next real exit · #183 first live fill.
 - **Concise** — no essays; a decision = the fork + a 1-line rec. Never mention session length / ending.
 - **`advisor` is Opus-only** — works on Opus 4.8 (the default), fails on Fable-5 as main model.
 - **Model split** (operator): Fable = design/review to execution depth · Sonnet = card execution · Opus =
-  main-loop verify/deploy/review. Fable is spent for this week.
+  main-loop verify/deploy/review. Fable window = this weekend only (Block 3 Sun 7/13 + the Lane-1
+  sitting); after that Fable is unavailable for a while — everything else runs Opus/Sonnet.
 - **jsonb double-encode class**: the pool codec auto-`json.dumps` every jsonb param — NEVER pre-`json.dumps`
   a jsonb value (double-encodes to a string). Pass the plain object; keep the `::jsonb` cast. (#177/#287/#412.)
 
