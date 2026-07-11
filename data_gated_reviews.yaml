@@ -6926,3 +6926,30 @@ reviews:
       live winners before the forward signal is trustworthy.
     status: pending
     added_on: 2026-07-09
+
+  - review_id: broker_order_ingest_promotion
+    title: "Broker-order ingest (#184b) — ADVANCE the dark→live phase (don't let it sit dark)"
+    question: |
+      R1 stop-pointer repair (#184b, ADR 0008 inc-2b — the a41e7c6a false-naked closer) ships DARK
+      behind a fail-closed toggle (off → dry_run → live_r1 → r2 → r3). The operator's STANDING rule:
+      going dark ALWAYS needs a built-in trigger to go live (7/11). This is that trigger — where is
+      the toggle, and should it advance a phase?
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-07-25
+    action_when_ready: |
+      Date-only (fires regardless so the dark state can't stall silently). Check the current toggle
+      state — SELECT state FROM mi_safeguard_state WHERE safeguard='broker_order_ingest' — and the
+      ingest_proposed / ingest_reconstructed audit rows, then advance:
+        - state 'off' (or no row): the dark deploy + the #151 paper exercise are DONE (7/11) → flip
+          to 'dry_run' to start collecting REAL R1 proposals:
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+            VALUES ('broker_order_ingest','global','dry_run',NOW(),NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE SET state=EXCLUDED.state, updated_at=NOW();
+        - state 'dry_run' with >=3 CLEAN R1 proposals (each a broker-confirmed correct stop repair):
+          enable 'live_r1' (CHANGE_PROCESS entry + update ADR 0008 build-status). This is the closer
+          going live + FL-4's 5-quiet-days. Any WRONG proposal → do NOT enable; investigate.
+        - <3 clean proposals: re-arm this review (+2 weeks). R2/R3i stay dry-run (a separate later gate).
+      Ref: PLAN #184, docs/analysis/184b_broker_order_ingest_spec_2026-07-06.md §7.
+    status: pending
+    added_on: 2026-07-11
