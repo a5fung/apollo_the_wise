@@ -57,5 +57,26 @@ _Assembled + operator-confirmed 2026-07-08. Tier 1 = primary; Tier 2 = stretch i
 
 ---
 
-## Block 2 — (reserved; assemble as needed)
-_Empty. Add the next curated design set here when Block 1's design lands and new design-lane work accrues._
+## Block 2 — Pre-mortem · Edge dossier · Decision marathon
+_Assembled + operator-confirmed 2026-07-11 (eve). Sequencing: **Lane 2 → then 1 or 3 by operator
+availability** (Lane 1 requires the operator present; slots tonight/tomorrow at their call)._
+
+### Lane 2 — ADVERSARIAL PRE-MORTEM (Fable-solo; runs first) → #450
+"How does Apollo lose 20% in a month?" — a red-team of correlated failure modes across system +
+strategy (NOT code review): correlated-slot risk (5 positions = 1 theme in 5 costumes?), regime
+dependence of every calibration (~4mo of one tape), judge/grounding fragility, broker/feed
+single-points, safeguard-stack interactions never fired together. Output: a RANKED risk register
+where every entry = failure scenario + anchored current exposure + designed mitigation with a
+gate (ADR-amendment or filed task) — no prose-only worry allowed.
+
+### Lane 3 — EDGE DOSSIER (Fable-solo) → #451
+Synthesize 4 months of analysis docs (w2 studies · 306 sweep · 268 selection replay · 327/326 ·
+dead-zone · capture_pct · b6-when-run) into ONE strategy-level readout: where realized R actually
+comes from, the single highest-EV open lever, v1.1 re-ranked by EV. Feeds the #425 declaration
+walk (7/14-21) as its evidence spine.
+
+### Lane 1 — DECISION MARATHON (operator-present; tonight/tomorrow)
+Build + run the pending read-only probes → sitting doc per decision → operator rules on tables.
+The queue (existing #s, no new tasks): **#395 GO/NO-GO (due Mon 7/14)** · #416 M&A amendment
+(7/16) · #335/M1 + theme_axis_gating (7/18) · #448 b6 · block-1 sign-off forks (ADRs 0025-0029 +
+#170/#357/#394 docs). Probes buildable Fable-solo in advance; the RULINGS need the operator.
