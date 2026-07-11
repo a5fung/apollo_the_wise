@@ -53,8 +53,11 @@ propose (A,B) as a merge-candidate pair iff ALL of:
    `get_sectors_batch` enrichment) matches, OR name/description share a domain keyword-stem
    (insurance/REIT/quantum/…, a small curated stem list — Stage A only *proposes*; precision
    lives in Stage B).
-2. At least one of the pair has **<4 members** (the fragmentation core; two established ≥4-member
-   themes are never auto-paired — protects real parallel sub-industries at scale).
+2. At least one of the pair has **<4 members**, OR the pair's family cluster holds ≥3 active
+   themes (the evidence shows the operator-visible dup families — 8 insurance, 8 REIT, 7
+   quantum — include 4-8-member themes a bare <4 cap would never pair; a ≥3-theme family is
+   itself the fragmentation signal). Two established ≥4-member themes in a 2-theme family are
+   still never auto-paired (that's a legitimate parallel pair, not a flood).
 3. Neither theme is a sub-theme of the other (existing parent/sub coexistence stays, `:3700`),
    and the pair has no live `merge_distinct` cooldown (below).
 Cap: ≤8 pairs adjudicated per night (cost + blast-radius bound).

@@ -124,9 +124,11 @@ Two defects block the merge from being a rename:
 
 ## 5. Operator forks
 
-- **F1 (D2 bar):** rec = ship if direct-trigger cohort ≥ 0R mean at N≥10 (the incumbent COILED
-  gate is *negative* — demanding the challenger beat a negative incumbent AND zero is the honest
-  bar). Alternative: require strictly > incumbent only (weaker).
+- **F1 (D2 bar):** rec = ship if, at N≥10: direct-trigger cohort **median ≥ −0.25R AND win-rate
+  ≥ 25% AND mean ≥ 0R** — the mean alone is fat-tail-carriable (the #290 lesson: −1R medians
+  under a positive mean = a lottery, not an edge); the median+WR floor makes the bar
+  distribution-honest. The incumbent COILED gate is *negative* at N=5, so this still demands the
+  challenger beat both the incumbent and zero. Alternative: mean-only (weaker — rejected).
 - **F2 (D3 scope):** rec = WATCH_UR keeps ALL other invalidation gates live (undercut-only
   carve-out). Alternative (defer any invalidation while WATCH_UR) — NOT recommended (turns a
   20MA-loss zombie into a watched name).

@@ -42,6 +42,12 @@ never three parallel rubrics. Grounds:
 Class tag rides the alert row + judge DecisionContext from day one (visibility before authority —
 every downstream readout becomes class-splittable immediately, including the axes' own STEP-0s).
 
+**Field provenance (lookahead honesty):** the tag is computed AT DETECTION from point-in-time
+fields and **persisted on the alert row** — the P1 calibration replay classifies historical rows
+from their *stored* fields, never re-fetched current values (FMP mcap/profile today ≠ mcap at
+alert — the #268 replay-caveat class). Historical rows missing stored fields classify
+`unclassified` in P1 rather than being backfilled from current data; the N-gates absorb the loss.
+
 ## 3. P1 — calibration replay (weights are OUTPUTS, not opinions)
 
 `scripts/probes/_332_class_calibration.py` (read-only): classify the historical graded corpus

@@ -64,9 +64,12 @@ with each other. NO live/paper path — shadow only; any promotion is a separate
 Parameter honesty: the WATCHED seed quality gates (≥40%-of-range close on ≥3× ADV20) were tuned
 for Family-A anticipation seeds. Family-B seeds arrive pre-qualified (a 9M print / an EP HIGH IS
 the qualification) → the seed gate is **bypassed for Family-B** (they enter WATCHED
-unconditionally); the undercut/reclaim mechanics apply unchanged. This is the one deliberate
-divergence, recorded here so the shadow readout can falsify it (if Family-B triggered-rows
-underperform, the first suspect is seed quality).
+unconditionally), **except a hard liquidity floor stays**: dollar-volume ≥ $20M on the gap day
+(the family universe floor) — an EP HIGH can be cancelled *because* it was thin, and a thin
+name's undercut/reclaim prints are exactly where the l=c-class replay math misreads. The
+undercut/reclaim mechanics apply unchanged. This is the one deliberate divergence, recorded here
+so the shadow readout can falsify it (if Family-B triggered-rows underperform, the first suspect
+is seed quality).
 
 ## 3. Rollout + built-in triggers
 

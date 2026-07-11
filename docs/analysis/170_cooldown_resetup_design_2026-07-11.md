@@ -47,9 +47,10 @@ N≈55+ ticker-days, ≥22 at gap≥15) → classify each with the admission pre
 returns (`mi_daily_closes`: fwd-max-close-5d, fwd-5d) → print:
 1. Admitted-cohort vs suppressed-cohort forward distributions (median/mean/hit-rate ≥+15%).
 2. The would-be-admitted name list, dated (the CHANGE_PROCESS hard-gate list for sign-off).
-3. Sensitivity rows: days floor ∈ {7, 10, 14} × gap ∈ {12%, 15%, 20%} (confirm 10/15 is a
-   plateau, not a knife-edge — the anti-overfit check; if the plateau moves, the RULE moves to
-   the plateau, per the thresholds-are-outputs discipline).
+3. Sensitivity: the FULL {7,10,14} × {12%,15%,20%} joint grid (all 9 cells, not two marginal
+   sweeps — days and gap plausibly interact: a 20% gap at day 8 may be a re-setup while a 15%
+   gap at day 8 is continuation). Confirm 10/15 sits on a plateau of the joint surface; if the
+   plateau moves, the RULE moves to the plateau (thresholds-are-outputs).
 **Ship rule:** admitted-cohort median fwd-max ≥ 1.5× the suppressed baseline at N≥10 (the 6/01
 readout was ~2×) AND no admitted-cohort left-tail worse than baseline. Below bar → stay shadow,
 re-arm the review +30d.
