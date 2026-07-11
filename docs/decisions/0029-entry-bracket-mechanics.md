@@ -46,9 +46,15 @@ The ownership is currently implicit and its seam is the bug. Make it explicit, t
    never "discovers" stops; it only replaces known-expired ones.
 3. **Day 2+ = refresh/`update_stop` owns the stop** (unchanged): 9:35 replaces the expired DAY
    stop with GTC; all later trail/partial updates go through `update_stop`.
+**Day-1 re-entry carve-in (advisor 7/11):** `attempt_day1_reentry` places a FRESH OTO bracket on
+the same `alert_date` after a stop-out — the same-day exclusion covers it by the same logic (its
+protection is its own OTO child, placed atomically), but the rationale must be stated on the
+re-entry case explicitly and C2's tests pin it: a re-entered same-day trade is (i) skipped by
+the 9:35 refresh, (ii) still healed by sync_positions/R1-ingest if its pointer capture missed.
 Risk framing: D1 *narrows* a live job (it does strictly less, on a cohort whose protection
-already exists). Tests pin: same-day skip · day-2 refresh unchanged · a genuinely-naked same-day
-trade still caught by sync_positions (NOT silently skipped forever).
+already exists). Tests pin: same-day skip (fresh entry AND day-1 re-entry) · day-2 refresh
+unchanged · a genuinely-naked same-day trade still caught by sync_positions (NOT silently
+skipped forever).
 
 ### D2 — the gap-through entry fork: measured first, decided by R (not fill-rate)
 
@@ -87,6 +93,12 @@ labels; 90d+ history — the join is already specced in the #414 brief). Then:
 2. For each gap_through: simulate (a) at 1.0%/1.5% limits — filled iff a SIP bar's low ≤ the
    wider limit after trigger, entry = that limit; (b) stop-market — entry = first print after
    trigger, capped at each chase value (cap-exceeded = no entry); (c) = 0R (missed).
+   **Fidelity label (load-bearing):** minute-bar "first print after trigger" UNDERSTATES market
+   slippage in exactly the fast tape gap-throughs select for (intra-bar the true fill can be
+   several prints worse) — mechanic (b)'s results are an **optimistic bound** (the #290
+   upper-bound honesty rule); a (b) verdict that only marginally clears the bar does NOT ship.
+   For cohort inputs, read the submitted limit from `mi_live_orders.limit_price` (the wire
+   truth) — `mi_live_trades.entry_price` on a cancelled row is the *planned* value, not a fill.
 3. **Settle every simulated fill through the real exit ladder** — stop at orb_low, forward
    daily bars via `apply_daily_exit_step` (the giveback-shadow replay shape) → realized R at
    the degraded entry, per mechanic per parameter.
