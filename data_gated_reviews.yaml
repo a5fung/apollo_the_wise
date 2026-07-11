@@ -4809,7 +4809,7 @@ reviews:
       WHERE alert_date >= '2026-05-19'
         AND score_tier = 'HIGH';
     threshold: 30
-    earliest_review_date: 2026-06-19
+    earliest_review_date: 2026-07-18
     action_when_ready: |
       ≥30 HIGH alerts post-ship. Pull theme info at alert time, JOIN to
       fwd returns. Crosstab theme_stage × ret_5d. Look for monotonic
@@ -4835,7 +4835,10 @@ reviews:
           policy = Pradeep #2) but the system did not verify that — it
           floored it. Cross-ref phase5_meta_rubric_calibration + memory
           project_ep_conviction_floor_overrides_theme.
-    status: pending
+    status: deferred
+    deferred_reason: "Theme-stage→rubric-gate = a grading-methodology decision = operator's call (THE LINE), NOT an independent agent run. Folds into the M1 judge-composition sitting 7/18 (#335) + the #368 theme-boost weighting decision (same theme-axis-as-load-bearing question). Deferred there rather than run standalone (operator 7/11)."
+    deferred_on: 2026-07-11
+    deferred_until: 2026-07-18
     added_on: 2026-05-19
 
   - review_id: ep_cooldown_resetup_admission
@@ -4944,6 +4947,10 @@ reviews:
           rubric sound, keep threshold=22.
         - DOWNGRADE precision <60%: dropping winners → lower threshold.
         - PASS-edge ≤ DOWNGRADE-edge: too lenient → raise threshold 25-28.
+    # SCOPING (7/11): the 6-axis scores are NOT cached in raw_json (verified: 0/102 rows carry
+    # axes/a1/raw_axis_scores keys) — re-scoring means re-deriving the axes from the stored
+    # fundamentals via the current rubric OR re-extracting from the raw corpus (LLM cost). So this
+    # is a DEDICATED backtest session (like #290), not a quick run → tracked as PLAN #448. Still READY.
     status: pending
     added_on: 2026-05-19
 
