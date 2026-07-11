@@ -25,7 +25,10 @@ from agents.market_intelligence.broker.order_ingest import run_ingest
 from agents.market_intelligence.db import get_pool
 
 TICKER = "F"
-STRATEGY = "magna53"   # a real registry strategy (validate_coid checks EXISTENCE, not phase)
+STRATEGY = "magna53"   # a real registry strategy for the COID only (validate_coid checks EXISTENCE)
+SENTINEL_SIGNAL_TYPE = "integration_test"  # the test DB row's signal_type — a DEDICATED sentinel so
+                                           # setup/teardown can NEVER clobber/delete a real magna53
+                                           # trade (R1 keys on ticker, never the row's signal_type)
 MODE = "paper"
 
 
@@ -55,7 +58,7 @@ async def main() -> int:
                    ON CONFLICT (ticker, alert_date)
                    DO UPDATE SET stop_order_id = NULL, status = 'filled', account_mode = $2,
                                  signal_type = $3
-                   RETURNING id""", TICKER, MODE, STRATEGY)
+                   RETURNING id""", TICKER, MODE, SENTINEL_SIGNAL_TYPE)
         print(f"2. test DB row id={trade_id} (stop_order_id=NULL)")
 
         # 3. R1 live repair over the REAL broker book
@@ -97,7 +100,7 @@ async def main() -> int:
                     await conn.execute("DELETE FROM mi_live_orders WHERE trade_id = $1", trade_id)
                     await conn.execute(
                         "DELETE FROM mi_live_trades WHERE id = $1 AND signal_type = $2 "
-                        "AND account_mode = 'paper'", trade_id, STRATEGY)
+                        "AND account_mode = 'paper'", trade_id, SENTINEL_SIGNAL_TYPE)
             print(f"cleanup: deleted test row {trade_id} (+ its ingest-upserted order row)")
     return 0 if ok else 1
 

@@ -78,16 +78,11 @@ def _dbrow(ticker, stop_order_id, trade_id=1):
     return {"id": trade_id, "ticker": ticker, "stop_order_id": stop_order_id}
 
 
-def _wire_conn(conn, update_returns=42):
-    """Route conn.fetchval by SQL: strategy exists / not-already-proposed / UPDATE succeeds."""
+def _wire_conn(conn):
+    """Route conn.fetchval by SQL: strategy exists (mi_strategies) / not-already-seen (mi_audit_log).
+    R1's live write goes through the mocked order_manager.set_stop_order_id, not conn."""
     async def _fv(sql, *a):
-        if "mi_strategies" in sql:
-            return True
-        if "mi_audit_log" in sql:
-            return None                      # not already proposed
-        if "UPDATE mi_live_trades" in sql:
-            return update_returns            # RETURNING id → repair applied
-        return None
+        return True if "mi_strategies" in sql else None
     conn.fetchval = AsyncMock(side_effect=_fv)
     conn.execute = AsyncMock(return_value="OK")
 

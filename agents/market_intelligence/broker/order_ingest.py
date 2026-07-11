@@ -68,14 +68,13 @@ async def get_ingest_mode() -> str:
         return "off"
 
 
+_LIVE_TIER = {"live_r1": 1, "live_r2": 2, "live_r3": 3}  # off/dry_run absent → tier 0 (never mutate)
+
+
 def _class_enabled(mode: str, drift_class: str) -> bool:
-    """Is `drift_class` (r1/r2/r3) enabled to MUTATE at the current toggle mode? 'dry_run' and
-    'off' never mutate; live_rN enables r1..rN cumulatively (live_r2 ⇒ r1+r2)."""
-    if mode not in ("live_r1", "live_r2", "live_r3"):
-        return False
-    tier = {"live_r1": 1, "live_r2": 2, "live_r3": 3}[mode]
-    want = {"r1": 1, "r2": 2, "r3": 3}[drift_class]
-    return want <= tier
+    """Is `drift_class` (r1/r2/r3) enabled to MUTATE at the current toggle mode? 'off'/'dry_run'
+    never mutate; live_rN enables r1..rN cumulatively (live_r2 ⇒ r1+r2)."""
+    return _LIVE_TIER.get(mode, 0) >= _LIVE_TIER["live_" + drift_class]
 
 
 # ─────────────────────────────── COID parse + validate ───────────────────────────────
@@ -85,8 +84,8 @@ def parse_coid(coid: str) -> dict | None:
     epoch → the ET alert_date (never naive — the recurring tz-bug class)."""
     if not coid or not coid.startswith("apollo_"):
         return None
-    parts = coid.split("_")
-    if len(parts) < 5 or parts[0] != "apollo":
+    parts = coid.split("_")            # ["apollo", mode, strategy…, ticker, ms] — ≥5 parts
+    if len(parts) < 5:
         return None
     mode, ms, ticker = parts[1], parts[-1], parts[-2]
     strategy = "_".join(parts[2:-2])
@@ -115,13 +114,14 @@ def _signature(account_mode: str, drift_class: str, ticker: str, order_id: str |
     return f"ingest|{account_mode}|{drift_class}|{ticker}|{order_id or ''}"
 
 
-async def _already_proposed(conn, signature: str) -> bool:
-    """Dedup — one proposal per signature per 24h (mirrors coverage_drift._already_alerted so we
-    don't Telegram-spam the same gap every 15-min cycle)."""
+async def _already_seen(conn, signature: str) -> bool:
+    """Dedup — one emit per signature per 24h (mirrors coverage_drift._already_alerted so we don't
+    Telegram-spam the same gap every 15-min cycle). Includes REJECTED: a persistently-invalid COID
+    sits in the broker book indefinitely, so without it a reject re-Telegrams ~96×/day."""
     return bool(await conn.fetchval(
         """SELECT 1 FROM mi_audit_log
-           WHERE event_type IN ($1, $2) AND summary = $3 AND created_at > NOW() - INTERVAL '24 hours'
-           LIMIT 1""", INGEST_PROPOSED, INGEST_RECONSTRUCTED, signature))
+           WHERE event_type IN ($1, $2, $3) AND summary = $4 AND created_at > NOW() - INTERVAL '24 hours'
+           LIMIT 1""", INGEST_PROPOSED, INGEST_RECONSTRUCTED, INGEST_REJECTED, signature))
 
 
 async def _emit(event_type: str, signature: str, detail: dict, telegram: str | None) -> None:
@@ -162,13 +162,13 @@ async def _handle_r1(conn, account_mode: str, mode: str, db_rows: list, open_ord
         ok, reason = await validate_coid(parsed, account_mode=account_mode, symbol=ticker)
         sig = _signature(account_mode, "r1", ticker, broker_stop["id"])
         if not ok:
-            if not await _already_proposed(conn, sig):
+            if not await _already_seen(conn, sig):
                 await _emit(INGEST_REJECTED, sig,
                             {"class": "r1", "ticker": ticker, "reason": reason,
                              "client_order_id": broker_stop.get("client_order_id")},
                             f"{mode_prefix(account_mode)}⚠️ *Ingest R1 rejected* — {ticker}: {reason}")
             continue
-        if await _already_proposed(conn, sig):
+        if await _already_seen(conn, sig):
             continue
 
         detail = {"class": "r1", "ticker": ticker, "trade_id": r["id"], "prior_stop_order_id": cur,
@@ -239,7 +239,7 @@ async def _handle_r2_r3i(conn, account_mode: str, mode: str, open_orders: list, 
             continue
         ok, reason = await validate_coid(parsed, account_mode=account_mode, symbol=ticker)
         sig = _signature(account_mode, "r2", ticker, o["id"])
-        if await _already_proposed(conn, sig):
+        if await _already_seen(conn, sig):
             continue
         if not ok:
             await _emit(INGEST_REJECTED, sig, {"class": "r2", "ticker": ticker, "reason": reason},
@@ -263,7 +263,7 @@ async def _handle_r2_r3i(conn, account_mode: str, mode: str, open_orders: list, 
         if not ticker or ticker in tracked_tickers:
             continue
         sig = _signature(account_mode, "r3", ticker, None)
-        if await _already_proposed(conn, sig):
+        if await _already_seen(conn, sig):
             continue
         recon = {"ticker": ticker, "account_mode": account_mode, "status": "filled",
                  "entry_price": p.get("avg_entry_price"), "entry_shares": p.get("qty"),
@@ -284,7 +284,9 @@ async def run_ingest(account_mode: str, positions: list, open_orders: list, db_r
     """Reconcile the broker→DB mirror direction. Called by detect_coverage_drift AFTER detection
     completes, in its OWN guard (a throw here must never abort detection). Reuses the cycle's
     already-fetched broker/DB reads. Returns the total count acted (proposed or mutated); 0 when
-    the toggle is 'off'. Per-cycle cap bounds the total across R1+R2/R3i."""
+    the toggle is 'off'. LIVE mutations are R1-only today and capped at PER_CYCLE_CAP; R2/R3i add
+    dry-run PROPOSALS only, each capped independently (so the dry-run total can reach ~1.5× the cap —
+    cosmetic while R2/R3 have no live write; thread a shared budget here when they gain one)."""
     if mode is None:
         mode = await get_ingest_mode()
     if mode == "off":
@@ -294,6 +296,8 @@ async def run_ingest(account_mode: str, positions: list, open_orders: list, db_r
     async with pool.acquire() as conn:
         total += await _handle_r1(conn, account_mode, mode, db_rows, open_orders)
         if total < PER_CYCLE_CAP:
+            # NB (when R2/R3 go live): pass budget=PER_CYCLE_CAP-total so the cross-class TOTAL is
+            # capped. Safe to leave today — R2/R3i only propose, live mutation stays R1-only ≤ cap.
             total += await _handle_r2_r3i(conn, account_mode, mode, open_orders, positions, db_rows)
     if total:
         logger.info(f"order_ingest[{account_mode}] mode={mode}: acted on {total} mirror gap(s)")
