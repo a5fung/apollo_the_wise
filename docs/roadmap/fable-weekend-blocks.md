@@ -16,6 +16,13 @@ trade-state stops and asks. Full task detail lives on each PLAN.md `#`-task — 
 ## Block 1 — Theme quality + detection/setup-class methodology
 _Assembled + operator-confirmed 2026-07-08. Tier 1 = primary; Tier 2 = stretch if time._
 
+> **✅ EXECUTED 2026-07-11 (full block, Tier 1 + Tier 2).** Outputs: ADR 0025 (#274) · ADR 0026
+> (#354+#146+Phase-4 undercut) · ADR 0027 (#297) · ADR 0028 (#332) · `170_cooldown_resetup_design`
+> · `357_sugar_babies_role_memo` · `394_coil_tuning_methodology` · `block1_tier2_sketches`
+> (#333/#301/#299). All designs advisor-passed; flips await operator sign-off per artifact.
+> Card sequences live in each artifact + the PLAN task lines. Do NOT re-run this block — assemble
+> Block 2 when new design-lane work accrues.
+
 ### PRIMARY (Tier 1)
 - **#274 — theme-fragmentation controls.** ✅ EVIDENCE READY:
   `docs/analysis/theme_fragmentation_evidence_274_2026-07-08.md` (63-theme cohort, 3 levers quantified).
