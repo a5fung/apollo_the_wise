@@ -308,4 +308,16 @@ async def detect_coverage_drift(account_mode: str) -> dict:
                 f"full detail via /audit (coverage_drift_detected rows)._"
             )
 
+    # ── Broker→DB mirror REPAIR (#184b, ADR 0008 inc-2b) — runs AFTER detection completes, in its
+    # OWN guard: a throw in ingest must NEVER abort the FL-4-load-bearing detection above. Reuses
+    # this cycle's already-fetched broker/DB reads. Dark by default (fail-CLOSED toggle → 'off').
+    try:
+        from agents.market_intelligence.broker.order_ingest import run_ingest
+        await run_ingest(account_mode, positions, open_orders, db_rows)  # logs+audits its own actions
+    except Exception as e:  # loud-ok (#381): surface + continue; detection result already stands
+        logger.error(f"coverage_drift[{account_mode}]: ingest step failed (detection unaffected): {e}",
+                     exc_info=True)
+        await log_audit_event("ingest_error", f"ingest step raised ({account_mode})",
+                              json.dumps({"account_mode": account_mode, "error": repr(e)}))
+
     return result
