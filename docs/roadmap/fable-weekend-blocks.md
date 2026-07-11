@@ -75,8 +75,64 @@ dead-zone · capture_pct · b6-when-run) into ONE strategy-level readout: where 
 comes from, the single highest-EV open lever, v1.1 re-ranked by EV. Feeds the #425 declaration
 walk (7/14-21) as its evidence spine.
 
-### Lane 1 — DECISION MARATHON (operator-present; tonight/tomorrow)
+### Lane 1 — DECISION MARATHON (operator-present; trigger = "run block lane 1")
 Build + run the pending read-only probes → sitting doc per decision → operator rules on tables.
 The queue (existing #s, no new tasks): **#395 GO/NO-GO (due Mon 7/14)** · #416 M&A amendment
 (7/16) · #335/M1 + theme_axis_gating (7/18) · #448 b6 · block-1 sign-off forks (ADRs 0025-0029 +
-#170/#357/#394 docs). Probes buildable Fable-solo in advance; the RULINGS need the operator.
+#170/#357/#394 docs) · the #450 pre-mortem decision surface. Probes pre-build on OPUS (operator
+7/11); the RULINGS need the operator, sitting runs on Fable.
+
+---
+
+## Block 3 — Judge Robustness Day + the last-Fable maximal stack (SUNDAY 7/13)
+_Assembled + operator-confirmed 2026-07-11 eve: **deliberately over-committed** ("expand and
+over-commit; adjust later"). Tiers are strictly ordered by (time-criticality × Fable-uniqueness);
+execute in order, cut from the bottom; every uncut tier still yields an Opus-executable spec.
+Task anchor: **#457** (T1/T2 core); T3 rides #310; T5 rides #335/Lane-1._
+
+### T1 — JUDGE ROBUSTNESS (the core; serves the 7/18 M1 authority flip)
+The judge gains authority 7/18; nothing adversarially tests it. (a) **Failure-mode taxonomy** —
+the misdirection classes a grader must not fall for (M&A-as-partnership · dilutive-offering-as-
+growth · stale-news-repackaged · promotional-microcap PR · sympathy-move-no-own-catalyst ·
+guidance-cut-inside-a-beat · thin "strategic reviews" · …). (b) **Golden + adversarial corpus**
+(~50-100 cases: half synthetic-crafted, half mined from history — #416 FP labels + judge-delta
+digests seed it). (c) **Live-path eval, read-only** (grounding→rubric→judge; ~$10-30 LLM) →
+failure rate per class. (d) **Gated amendments** where failures cluster (CHANGE_PROCESS,
+re-evaled against the same corpus). (e) **THE durable artifact: a grade-quality regression gate**
+— the corpus as a standing eval any prompt change / model swap / silent update must pass
+(pre-deploy or CI-adjacent), + golden cases handed to #301.
+
+### T2 — FULL LLM-SURFACE HARDENING (the judge is one of several)
+(a) **Thin-payload degradation tests**: feed the judge/grader deliberately starved payloads
+(no narrative · empty corpus · stale grounding) — does it fail conservative or hallucinate?
+Measured, per surface. (b) **Theme-engine prompt corpus**: golden cases for validation +
+discovery + birth-validation + the ADR 0025 merge adjudicator (its negative exemplars get
+WRITTEN here — de-risks 0025-C3 before build). (c) **The runtime complement**: spec the R5
+HIGH-rate/distribution drift band (L2-style) to execution depth — the regression gate catches
+changes at deploy; this catches silent drift in production.
+
+### T3 — #310 PIVOTS STRUCTURE-STOPS: the DESIGN (pulled forward; flip stays sequenced)
+The last undesigned management rock. Design pivot detection + stop-placement semantics + its own
+shadow measurement — with an EXPLICIT sequencing gate: shadow may coexist with the giveback
+shadow (counterfactuals don't interact); any LIVE flip queues strictly BEHIND the giveback F1
+resolution (never two concurrent live stop changes). Output: ADR to execution depth.
+
+### T4 — CROSS-ADR COMPOSITION PASS (protects the entire build phase)
+0025-0029 were designed independently in one weekend; sweep them against each other + 0011-0024:
+the WATCH_UR (0026) × Family-B reclaim (0027) machinery overlap · the 0025 family notion reused
+by #452's cap · the #332 classifier feeding #357's credit · exit-machinery coherence
+(0023/0026/0027 + the #445 replay-driver debt). Output: a conflict/compose register; each
+conflict gets a resolution line BEFORE any card builds it in.
+
+### T5 — SITTING PACKS (multiplies the operator's decision time)
+(a) **M1 sitting pack (7/18)**: fold the T1 robustness map + the m1_rubric_amendment_draft (7/8)
++ theme_axis_gating + the R5 preconditions into ONE turnkey sitting doc. (b) **Lane-1 pre-argued
+pack**: steelman + counter for EVERY queued fork (block-1 F's + pre-mortem surface) so the
+marathon is ruling-speed, not reading-speed.
+
+### T6 — STRETCH (exploratory; only if the day allows)
+(a) v1.1-v2.0 roadmap deep read → design the biggest undesigned v2.0 rock (gap-hunt; may output
+"none — it's all execution", which is itself the finding). (b) Operator-methodology extraction:
+mine operator_shared_notes + the Pradeep/Qullamaggie corpus for un-encoded rules (the dossier's
+tail-dependence principle came from exactly this kind of synthesis) → candidate detectors/axes
+with evidence gates.
