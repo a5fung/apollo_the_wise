@@ -174,13 +174,14 @@ async def _handle_r1(conn, account_mode: str, mode: str, db_rows: list, open_ord
         detail = {"class": "r1", "ticker": ticker, "trade_id": r["id"], "prior_stop_order_id": cur,
                   "broker_stop_order_id": broker_stop["id"], "stop_price": broker_stop.get("stop_price")}
         if _class_enabled(mode, "r1"):
-            # LIVE repair — no-overwrite: re-assert the exact prior pointer in the WHERE.
-            updated = await conn.fetchval(
-                """UPDATE mi_live_trades SET stop_order_id = $1
-                   WHERE id = $2 AND stop_order_id IS NOT DISTINCT FROM $3
-                   RETURNING id""",
-                broker_stop["id"], r["id"], cur)
-            if updated is None:
+            # LIVE repair — route the write through the authorized T1.5a owner (order_manager owns
+            # ALL solo stop_order_id mutations) with a no-overwrite guard (expected_prior=cur) so a
+            # concurrently-moved pointer is never clobbered.
+            from agents.market_intelligence.broker import order_manager
+            applied = await order_manager.set_stop_order_id(
+                r["id"], broker_stop["id"], reason="ingest_r1_repair",
+                account_mode=account_mode, expected_prior=cur)
+            if not applied:
                 continue  # a concurrent write moved the pointer — abort, don't clobber
             await _upsert_stop_order(conn, r["id"], broker_stop)
             await _emit(INGEST_RECONSTRUCTED, sig, {**detail, "action": "stop_pointer_repaired"},

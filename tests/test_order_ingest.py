@@ -92,15 +92,18 @@ def _wire_conn(conn, update_returns=42):
     conn.execute = AsyncMock(return_value="OK")
 
 
-async def _run(conn, mode, db_rows, open_orders, positions=None, monkeypatch=None):
+async def _run(conn, mode, db_rows, open_orders, positions=None, ssid_applied=True):
     from tests.conftest import make_mock_pool
+    from agents.market_intelligence.broker import order_manager
     pool, _ = make_mock_pool()
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
     with patch.object(oi, "get_pool", AsyncMock(return_value=pool)), \
          patch.object(oi, "log_audit_event", AsyncMock()) as audit, \
-         patch.object(oi, "send_telegram_message", AsyncMock()) as tg:
+         patch.object(oi, "send_telegram_message", AsyncMock()) as tg, \
+         patch.object(order_manager, "set_stop_order_id",
+                      AsyncMock(return_value=ssid_applied)) as ssid:
         n = await oi.run_ingest("live", positions or [], open_orders, db_rows, mode=mode)
-    return n, conn.fetchval, audit, tg
+    return n, conn.fetchval, audit, tg, ssid
 
 
 @pytest.mark.asyncio
@@ -109,10 +112,12 @@ async def test_r1_repairs_null_pointer_when_live():
     _, conn = make_mock_pool()
     _wire_conn(conn)
     orders = [_stop("STOP123", "AAPL", "apollo_live_magna53_AAPL_1715450123456")]
-    n, fv, audit, tg = await _run(conn, "live_r1", [_dbrow("AAPL", None)], orders)
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [_dbrow("AAPL", None)], orders)
     assert n == 1
-    sqls = [c.args[0] for c in fv.await_args_list]
-    assert any("UPDATE mi_live_trades" in s for s in sqls)   # the live repair ran
+    # the repair routed through the AUTHORIZED writer with the no-overwrite guard (expected_prior)
+    ssid.assert_awaited_once()
+    assert ssid.await_args.kwargs["expected_prior"] is None       # the prior NULL pointer
+    assert ssid.await_args.kwargs["reason"] == "ingest_r1_repair"
     # a RECONSTRUCTED audit was emitted (live mutation), not just a proposal
     assert any(c.args[0] == oi.INGEST_RECONSTRUCTED for c in audit.await_args_list)
 
@@ -123,10 +128,9 @@ async def test_r1_dry_run_proposes_but_never_mutates():
     _, conn = make_mock_pool()
     _wire_conn(conn)
     orders = [_stop("STOP123", "AAPL", "apollo_live_magna53_AAPL_1715450123456")]
-    n, fv, audit, tg = await _run(conn, "dry_run", [_dbrow("AAPL", None)], orders)
+    n, fv, audit, tg, ssid = await _run(conn, "dry_run", [_dbrow("AAPL", None)], orders)
     assert n == 1
-    sqls = [c.args[0] for c in fv.await_args_list]
-    assert not any("UPDATE mi_live_trades" in s for s in sqls)   # ZERO mutation in dry-run
+    ssid.assert_not_awaited()   # ZERO mutation in dry-run — the authorized writer is never called
     assert any(c.args[0] == oi.INGEST_PROPOSED for c in audit.await_args_list)
 
 
@@ -137,9 +141,9 @@ async def test_r1_never_overwrites_a_live_pointer():
     _wire_conn(conn)
     # DB pointer is STOP123, which IS in the live book → not a candidate, no touch.
     orders = [_stop("STOP123", "AAPL", "apollo_live_magna53_AAPL_1715450123456")]
-    n, fv, audit, tg = await _run(conn, "live_r1", [_dbrow("AAPL", "STOP123")], orders)
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [_dbrow("AAPL", "STOP123")], orders)
     assert n == 0
-    assert not any("UPDATE mi_live_trades" in c.args[0] for c in fv.await_args_list)
+    ssid.assert_not_awaited()   # live pointer → not a candidate → authorized writer never called
 
 
 @pytest.mark.asyncio
@@ -149,8 +153,9 @@ async def test_foreign_coid_never_ingested():
     _wire_conn(conn)
     # a manual/foreign SELL stop (no apollo_live_ prefix) — must never be proposed or repaired.
     orders = [_stop("MANUAL1", "AAPL", "someone_elses_order")]
-    n, fv, audit, tg = await _run(conn, "live_r1", [_dbrow("AAPL", None)], orders)
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [_dbrow("AAPL", None)], orders)
     assert n == 0
+    ssid.assert_not_awaited()
     assert not any(c.args[0] in (oi.INGEST_PROPOSED, oi.INGEST_RECONSTRUCTED)
                    for c in audit.await_args_list)
 
@@ -162,5 +167,5 @@ async def test_per_cycle_cap_bounds_r1():
     _wire_conn(conn)
     orders = [_stop(f"S{i}", f"T{i}", f"apollo_live_magna53_T{i}_171545012345{i}") for i in range(3)]
     rows = [_dbrow(f"T{i}", None, trade_id=i) for i in range(3)]
-    n, fv, audit, tg = await _run(conn, "live_r1", rows, orders)
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", rows, orders)
     assert n == oi.PER_CYCLE_CAP   # 3 candidates, capped at 2

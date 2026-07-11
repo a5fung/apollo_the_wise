@@ -741,13 +741,17 @@ async def get_pending_exit_qty(trade_id: int) -> int:
     return int(held or 0)
 
 
+_STOP_ID_UNSET = object()  # sentinel: expected_prior not supplied (distinct from a real None prior)
+
+
 async def set_stop_order_id(
     trade_id: int,
     new_id: str | None,
     *,
     reason: str,
     account_mode: str,
-) -> None:
+    expected_prior=_STOP_ID_UNSET,
+) -> bool:
     """Single authorized writer for mi_live_trades.stop_order_id (T1.5a).
 
     Used for SOLO stop_order_id mutations: cycling stop orders
@@ -771,25 +775,37 @@ async def set_stop_order_id(
       - 'cancel_or_reject_null'    trade_stream cleared on cancel/reject
       - 'cancel_or_reject_restored' trade_stream restored stop after cancel
       - 'stop_ack_timeout'         scheduler watchdog fallback
+      - 'ingest_r1_repair'         #184b broker-order ingest repaired a NULL/dead stop pointer
 
-    Emits `stop_order_id_changed` audit event with full context.
+    `expected_prior` (optional): a NO-OVERWRITE compare-and-set. When supplied, the update applies
+    ONLY if the current stop_order_id IS NOT DISTINCT FROM it — race-safe, never clobber a pointer a
+    concurrent write just moved (the #184b ingest R1 guard). Returns True if the row was updated,
+    False if the guard blocked it. Without it: unconditional set, always returns True (existing
+    callers ignore the return). Emits `stop_order_id_changed` only when it actually wrote.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE mi_live_trades SET stop_order_id = $1 WHERE id = $2",
-            new_id, trade_id,
+        if expected_prior is _STOP_ID_UNSET:
+            await conn.execute(
+                "UPDATE mi_live_trades SET stop_order_id = $1 WHERE id = $2", new_id, trade_id)
+            applied = True
+        else:
+            applied = await conn.fetchval(
+                "UPDATE mi_live_trades SET stop_order_id = $1 "
+                "WHERE id = $2 AND stop_order_id IS NOT DISTINCT FROM $3 RETURNING id",
+                new_id, trade_id, expected_prior) is not None
+    if applied:
+        await log_audit_event(
+            "stop_order_id_changed",
+            f"trade #{trade_id} [{account_mode}]: stop_order_id={new_id or 'NULL'} (reason={reason})",
+            json.dumps({
+                "trade_id": trade_id,
+                "account_mode": account_mode,
+                "new_id": new_id,
+                "reason": reason,
+            }),
         )
-    await log_audit_event(
-        "stop_order_id_changed",
-        f"trade #{trade_id} [{account_mode}]: stop_order_id={new_id or 'NULL'} (reason={reason})",
-        json.dumps({
-            "trade_id": trade_id,
-            "account_mode": account_mode,
-            "new_id": new_id,
-            "reason": reason,
-        }),
-    )
+    return applied
 
 
 async def update_stop(trade_id: int, new_stop_price: float) -> bool:
