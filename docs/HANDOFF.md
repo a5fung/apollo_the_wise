@@ -32,39 +32,35 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of 2026-07-09 Wed eve)
+## 3. WHERE WE ARE (in-flight, as of 2026-07-11 Sat eve — THE FABLE WEEKEND)
 
-**Apollo trades REAL money (MAGNA53 live since 6/30). A machine switch changes nothing on the
-Hetzner prod box.** Prod healthy 7/9 (both money containers + orchestrator up post-deploy;
-`dual_account_boot_verified`).
+**Apollo trades REAL money (MAGNA53 live since 6/30; equity ~$4.9k; live record N=3 / −$71 —
+below noise, the drift line #454 will make the next 15 trades diagnostic).** Prod healthy.
 
-**Design debt is ZERO** — ADRs 0011–0024 all operator-signed. Pure execution from here (Fable
-designs, Opus/Sonnet execute).
+**The weekend produced (all committed, check_plan green):**
+- **Block 1 (Fable designs):** ADRs **0025** (theme fragmentation) · **0026** (consolidation
+  unification: flag→Confirm entry + COILED-prereq drop + WATCH_UR) · **0027** (Family-B gap
+  lifecycle — the #326 9/15 evidence source) · **0028** (setup-class salience profiles) ·
+  **0029** (entry-bracket: stop-ownership + gap-through fork) + design docs #170/#357/#394 +
+  Tier-2 sketches (#333/#301). ALL flips await operator forks — nothing behavioral shipped.
+- **Block 2:** **#450 pre-mortem** (top risk = the correlated book, R1 → #452 family-slot cap;
+  also #454 calibration-honesty, #455 intraday drawdown alert, #456 residuals; the draft PDT
+  risk was WITHDRAWN on verification — FINRA retired the rule itself) + **#451 edge dossier**
+  (selection creates the R, entry is done, management leaks — peak-lock +$8k/11-winners is the
+  top lever and its shadow is LIVE; "the edge IS the tail"; honesty ledger for the #425 walk).
 
-**v1.0 glide path**: declaration projected ~7/14, HARD walk 7/21 (#425). M1 judge-composition
-sitting **7/18 (#335)** — an operator gate.
+**THE THREE TRIGGERS (operator-owned):** "pre-build the Lane-1 probes" = OPUS, task #458 ·
+"run block lane 1" = the decision sitting (Fable + operator), task #459, docket on the line ·
+"run fable weekend block 3" = Sun 7/13 tiered maximal day, task #457 (judge robustness →
+regression gate is T1; roadmap §Block 3; cut from the bottom).
 
-**Shipped 7/8–7/9 (laptop days):**
-- 7/8: ADR 0023 Cards 1/2/3 (`giveback_floor` + harvest sweep, **+$8,075** F1-evidence, dark) + Card 5
-  gap alert; ADR 0024 M1-a `compose_final_tier` (dark) + M1-c draft; #443 alert fix committed.
-- 7/9: **ADR 0023 F1 giveback SHADOW DEPLOYED** to both money containers + mechanism-verified (log-only,
-  THE LINE held); **#443 alert fix LIVE** on the entry path; **#439 part-b** (paper harness leaves zero
-  resting test orders); advisor + /simplify; **#290 CLOSED** (late-entry backtest: don't extend the ORB
-  window — the wide window is R-NEGATIVE, no robust edge). Deploy-tooling: a `deploy.sh` drift-guard
-  classification fix (`data_gated_reviews.yaml` is market-agent-only, not full 3-svc scope).
+**Dated spine:** #395 GO/NO-GO due Mon 7/14 (ruled at the sitting) · #460 flip /model default
+back to Opus · 7/18 M1 sitting (#335; T1's robustness map + R5 preconditions feed it) ·
+7/14-21 the #425 declaration walk (dossier = evidence spine) · 7/25 ingest dry_run · 8/06
+giveback review.
 
-**Open verify-lives (fire on their own — CONFIRM AT OPEN):**
-- **#306** giveback shadow: first `mi_giveback_shadow` row on the next LIVE round-tripper close (17:38 job).
-- **#437** restore-check schema-init: tonight's 03:30 UTC cron writes `backup_restore_check_ok` with the step.
-- **#443**: next EP HIGH labels LIVE + the 16:45 digest shows live-primary (market-gated).
-- **#439**: next deploy's G6 leaves zero `apollo_paper_integration_test_*` orders + a test-COID reads INFO.
-- **#287**: `jsonb_typeof='array'` on the next real exit (market-gated; no exit since 7/7).
-
-**Next up (PLAN.md is SoT — run `check_plan.py --today`)**: #435 /simplify infra follow-ups (7/10) ·
-#436 phantom prevention · #433 naked-stop messaging-verify · #425 v1.0 declaration walk (~7/14–7/21) ·
-M1 sitting 7/18. **Operator-gated**: #420 (uptime pinger — create the account) · #423 (secrets runbook —
-read it) · #353 (consolidation→paper, #327-edge-gated) · #434 (MEMORY.md compact — desktop-only) ·
-#446 (cancelled_unfilled 36.7% — low-pri, drop if not worth it).
+**Verify-lives pending (fire on their own):** #306 first giveback-shadow row · #443 next EP
+HIGH · #287 next real exit · #183 first live fill.
 
 ## 4. Critical operating rules the laptop won't have in memory (backstop — most are also in CLAUDE.md)
 
