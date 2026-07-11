@@ -169,3 +169,44 @@ async def test_per_cycle_cap_bounds_r1():
     rows = [_dbrow(f"T{i}", None, trade_id=i) for i in range(3)]
     n, fv, audit, tg, ssid = await _run(conn, "live_r1", rows, orders)
     assert n == oi.PER_CYCLE_CAP   # 3 candidates, capped at 2
+
+
+# ─────────────────────────── R2 / R3i — dry-run proposals only ───────────────────────────
+@pytest.mark.asyncio
+async def test_r2_proposes_untracked_buy_without_mutation():
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    # a broker apollo BUY order for a ticker with NO db row → R2 dry-run proposal (never a live write)
+    buy = {"id": "BUY9", "symbol": "MSFT", "side": "buy", "type": "stop_limit",
+           "client_order_id": "apollo_live_magna53_MSFT_1715450123456", "stop_price": 200.0, "qty": 50}
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [], [buy])  # R1 nothing → R2 proposes
+    assert n == 1
+    ssid.assert_not_awaited()   # R2 has NO live write path — proposal only
+    props = [c for c in audit.await_args_list if c.args[0] == oi.INGEST_PROPOSED]
+    assert props and '"class": "r2"' in props[0].args[2]
+
+
+@pytest.mark.asyncio
+async def test_r3i_proposes_untracked_position_dry_run():
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    pos = {"symbol": "NVDA", "qty": 10, "avg_entry_price": 500.0}
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [], [], positions=[pos])
+    assert n == 1
+    ssid.assert_not_awaited()   # R3i has NO live write path (zero-observation case) — proposal only
+    assert any(c.args[0] == oi.INGEST_PROPOSED and '"class": "r3i"' in c.args[2]
+               for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_r2_foreign_coid_never_proposed():
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    buy = {"id": "BUYX", "symbol": "MSFT", "side": "buy", "type": "stop_limit",
+           "client_order_id": "someone_elses_buy", "stop_price": 200.0, "qty": 50}
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [], [buy])
+    assert n == 0
+    assert not any(c.args[0] == oi.INGEST_PROPOSED for c in audit.await_args_list)

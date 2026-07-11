@@ -6950,6 +6950,9 @@ reviews:
           enable 'live_r1' (CHANGE_PROCESS entry + update ADR 0008 build-status). This is the closer
           going live + FL-4's 5-quiet-days. Any WRONG proposal → do NOT enable; investigate.
         - <3 clean proposals: re-arm this review (+2 weeks). R2/R3i stay dry-run (a separate later gate).
+      BEFORE flipping dry_run: confirm the apollo-execution container is running the latest
+      coverage_drift wiring (order_status_reconcile is EXECUTION_OWNED — a stale execution image =
+      zero proposals). `docker inspect apollo-execution` age vs the last #184b commit.
       Ref: PLAN #184, docs/analysis/184b_broker_order_ingest_spec_2026-07-06.md §7.
     status: pending
     added_on: 2026-07-11
