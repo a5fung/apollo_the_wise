@@ -211,6 +211,36 @@ def _parse_spotted_args(text: str) -> "dict | None":
             "narrative": narrative, "source": source}
 
 
+async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
+    """One Bot API POST with an inline keyboard, PLAIN text (no parse_mode). Dynamic content
+    (skip-reasons, catalyst prose, prev_5d) routinely unbalances Telegram Markdown and 400s;
+    plain text + emoji/indent carries the structure. Shared by /setup and /why — deduped from
+    a byte-identical per-handler closure (#178, the observability-command merge)."""
+    import os as _os, httpx as _httpx
+    bot_token = _os.environ.get("TELEGRAM_BOT_TOKEN")
+    allowed = _os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
+    ids = [x.strip() for x in allowed.split(",") if x.strip()]
+    if not bot_token or not ids:
+        return False
+    payload = {
+        "chat_id": int(ids[0]),
+        "text": text,
+        "disable_web_page_preview": True,
+        "reply_markup": {"inline_keyboard": keyboard},
+    }
+    try:
+        async with _httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                json=payload,
+            )
+            r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.warning(f"plain send-with-keyboard failed: {e}")
+        return False
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -3194,37 +3224,13 @@ class MarketIntelligenceAgent(BaseAgent):
             _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
         )
         from agents.market_intelligence.briefing import send_telegram_message
-        import os as _os, httpx as _httpx
-
-        # Plain-text variant of friday_watchlist._send_with_keyboard. Skipping
-        # parse_mode entirely sidesteps the failure mode where dynamic content
-        # (prev_5d, 9M_SUGAR, etc.) contains unbalanced underscores/asterisks
-        # and Telegram returns 400, falling back to ugly raw rendering.
-        async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
-            bot_token = _os.environ.get("TELEGRAM_BOT_TOKEN")
-            allowed = _os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
-            ids = [x.strip() for x in allowed.split(",") if x.strip()]
-            if not bot_token or not ids:
-                return False
-            payload = {
-                "chat_id": int(ids[0]),
-                "text": text,
-                "disable_web_page_preview": True,
-                "reply_markup": {"inline_keyboard": keyboard},
-            }
-            try:
-                async with _httpx.AsyncClient(timeout=15) as client:
-                    r = await client.post(
-                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                        json=payload,
-                    )
-                    r.raise_for_status()
-                return True
-            except Exception as e:
-                logger.warning(f"setup plain send failed: {e}")
-                return False
+        # _send_plain_with_keyboard: shared module-level helper (deduped, #178).
 
         raw = request.task.strip()
+        # /setup TICKER DATE → the deep single-day lifecycle (the /why view). One observability
+        # command: bare/day-count → detector timeline; a date → the per-day entry diagnosis (#178).
+        if any(_re.match(r"^\d{4}-\d{2}-\d{2}$", t) for t in raw.split()):
+            return await self._handle_why_query(request)
         # Strip leading slash command if present.
         if raw.lower().startswith("/setup"):
             raw_args = raw[len("/setup"):].strip()
@@ -5511,37 +5517,14 @@ class MarketIntelligenceAgent(BaseAgent):
             _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
         )
         from agents.market_intelligence.briefing import send_telegram_message
-        import os as _os, httpx as _httpx
-
-        async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
-            bot_token = _os.environ.get("TELEGRAM_BOT_TOKEN")
-            allowed = _os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
-            ids = [x.strip() for x in allowed.split(",") if x.strip()]
-            if not bot_token or not ids:
-                return False
-            payload = {
-                "chat_id": int(ids[0]),
-                "text": text,
-                "disable_web_page_preview": True,
-                "reply_markup": {"inline_keyboard": keyboard},
-            }
-            try:
-                async with _httpx.AsyncClient(timeout=15) as client:
-                    r = await client.post(
-                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                        json=payload,
-                    )
-                    r.raise_for_status()
-                return True
-            except Exception as e:
-                logger.warning(f"why plain send failed: {e}")
-                return False
+        # _send_plain_with_keyboard: shared module-level helper (deduped, #178).
 
         raw = request.task.strip()
         tokens = raw.split()
         cands = _re.findall(r'\b([A-Z]{2,5})\b', raw.upper())
         skip = _PREPOSITION_SKIP | {"WHY", "TRACE", "THE", "FOR", "AND", "WHAT",
-                                     "ENTRY", "EXIT", "TRADE", "EP", "ORB", "WE", "DID"}
+                                     "ENTRY", "EXIT", "TRADE", "EP", "ORB", "WE", "DID",
+                                     "SETUP"}  # /setup TICKER DATE delegates here (#178)
         ticker = next((t for t in cands if t not in skip), None)
         if not ticker:
             return self._ok(request, result="Usage: /why TICKER [YYYY-MM-DD]")
