@@ -47,7 +47,7 @@ prose-judgment.
 | FL-3 | **Ops autonomy, 7-night streak** | Backup (with roles.sql) + 03:30 restore-check + watchdog heartbeat + gdrive health: 7 consecutive green nights, zero manual nudges. | starts 7/5 night |
 | FL-4 | **Mirror completeness** | DB↔broker coverage-drift detector live (done 7/5) + **broker-order ingest (#184b)** closed → a41e7c6a-class gaps structurally impossible; 5 consecutive quiet days (no D1/D2-HIGH). | detector live; ingest open |
 | FL-5 | **Docs-only recovery** | DR runbook current (incl. roles fix — done 7/5) + the 6 CLAUDE.md sections get full-parity SSoT docs (#417 backfill) + every setup doc reconciled with code at close date. | partial |
-| FL-6 | **Cost envelope** | Monthly LLM+infra spend visible in one surface + a ceiling alert (threshold operator-set). | sweep item S-3 |
+| FL-6 | **Cost envelope** | Monthly LLM+infra spend visible in one surface + a ceiling alert (threshold operator-set). | **S-C BUILT 7/12** — weekly-review MTD-spend appendix (rides next deploy → verify-live 7/19); /status board + budget alert already armed. FL-6 build-complete pending verify |
 | FL-7 | **Board zero (v1.0 scope)** | Every BLOCKING task closed; every PHASE-2 task re-homed under the #419 program with honest dates; zero overdue. | this plan |
 | FL-8 | **Learning loop 4-Sunday streak** | Weekly review + data-gated registry surfacing + label capture ran 4 consecutive Sundays without repair. | 3/4 (6/21, 6/28, 7/5 ran clean — verified in mi_system_reviews; 7/12 completes) |
 
@@ -205,7 +205,7 @@ All build work compresses into ONE week. Every item's PLAN.md ETA = its calendar
 | DR / backups / restore-proof / watchdog | built + fenced this sprint | ✅ (FL-3 streak pending) |
 | **Docker log caps** | **NO `log-opts` anywhere — container json logs grow unbounded** (disk 25% now; slow death over months) | 🔴 **S-A** |
 | **Disk-space monitoring** | watchdog checks services, NOT disk — disk-full kills everything silently | 🔴 **S-B** |
-| **Spend visibility** | budget ALERT exists but no routine surface (weekly review has no spend line) | 🟠 **S-C** |
+| **Spend visibility** | weekly-review MTD-spend appendix BUILT 7/12 (system_review._spend_envelope_section, 5 tests) — the last FL-6 surface | ✅ **S-C built** |
 | **Secrets rotation** | no runbook for rotating Alpaca/Telegram/Anthropic keys under the dual-account boot requirements | 🟠 **S-D** |
 
 **New v1.0 items from the sweep** (to file as #-tasks at plan sign-off):
@@ -214,7 +214,9 @@ All build work compresses into ONE week. Every item's PLAN.md ETA = its calendar
 - **S-B** — watchdog disk check: alert when `/` ≥ 85% (one stanza in `service_watchdog.sh`,
   same DOWN/dedup mechanics). BLOCKING, tiny.
 - **S-C** — weekly-review spend line: month-to-date Anthropic spend vs budget + fixed-subs
-  note (deterministic appendix). BLOCKING-lite (completes FL-6).
+  note (deterministic appendix). BLOCKING-lite (completes FL-6). ✅ **BUILT 7/12**
+  (`system_review._spend_envelope_section`; wired into the deterministic appendix chain; 5 tests).
+  FINDING at build: MTD $11.75 vs the placeholder $10 budget = 118% — the walk sets the real ceiling.
 - **S-D** — `docs/ops/secrets_rotation.md`: per-credential rotation steps (which env vars,
   boot requirements, verification), docs-only. BLOCKING-lite (FL-5).
 

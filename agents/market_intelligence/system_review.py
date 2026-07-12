@@ -209,6 +209,15 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     except Exception:
         logger.exception("kill/scale band section render failed")
 
+    # Cost envelope (FL-6 / #378 S-C, 2026-07-12) — the deterministic MTD-spend line: the
+    # ONE routine surface that completes FL-6 (the /status board + budget alert already exist).
+    try:
+        spend_section = await _spend_envelope_section()
+        if spend_section:
+            message = f"{message}\n\n{spend_section}"
+    except Exception:
+        logger.exception("spend-envelope section render failed")
+
     # Replay-regression (#302) — the live R-dist beside the #268b calibration card; the P6
     # "weekly report" input (b) to the quarterly band review. SURFACES + persists a snapshot;
     # never verdicts (the divergence statistic isn't valid at low N). persist=True so the
@@ -1596,6 +1605,42 @@ def _format_pending_reviews_section(pending: dict) -> str:
         action = (r.get("action_when_ready") or "").strip()
         first = action.split(". ")[0].rstrip(".") if action else ""
         lines.append(f"• *{title}*" + (f" — {first}." if first else ""))
+    return "\n".join(lines)
+
+
+async def _spend_envelope_section() -> str:
+    """FL-6 / #378 S-C — the cost-envelope appendix: month-to-date Anthropic LLM spend
+    (from the #377 `api_usage` meter) vs `ANTHROPIC_MONTHLY_BUDGET`, top callers, a ceiling
+    flag, and the fixed-subs reminder. Deterministic (no LLM); the ONE routine surface that
+    completes FL-6 (the /status board + the budget alert already exist). Fails to '' so a
+    meter/DB hiccup never breaks the digest."""
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        total = await conn.fetchrow(
+            "SELECT COUNT(*) AS calls, COALESCE(SUM(cost_usd), 0) AS cost "
+            "FROM api_usage WHERE created_at >= date_trunc('month', now())"
+        )
+        callers = await conn.fetch(
+            "SELECT caller, COALESCE(SUM(cost_usd), 0) AS cost FROM api_usage "
+            "WHERE created_at >= date_trunc('month', now()) "
+            "GROUP BY caller ORDER BY cost DESC LIMIT 3"
+        )
+    cost = float(total["cost"] or 0) if total else 0.0
+    calls = int(total["calls"] or 0) if total else 0
+    budget = float(os.environ.get("ANTHROPIC_MONTHLY_BUDGET", "0") or 0)
+
+    lines = ["💵 *Cost envelope (MTD)*"]
+    if budget > 0:
+        pct = (cost / budget) * 100
+        flag = " 🔴 OVER" if cost > budget else (" 🟠" if pct >= 80 else " ✓")
+        lines.append(f"LLM: ${cost:.2f} / ${budget:.0f} ({pct:.0f}%){flag} · {calls} calls")
+    else:
+        lines.append(f"LLM: ${cost:.2f} · {calls} calls (no budget set — set ANTHROPIC_MONTHLY_BUDGET)")
+    for r in callers:
+        lines.append(f"  {r['caller'].replace('_', ' ')}: ${float(r['cost'] or 0):.2f}")
+    # fixed-subs note (not in the LLM meter — keeps the envelope honest, #378 S-C)
+    lines.append("_+ fixed infra/data subs (server · Polygon · FMP) not metered here — see the cost-envelope doc._")
     return "\n".join(lines)
 
 
