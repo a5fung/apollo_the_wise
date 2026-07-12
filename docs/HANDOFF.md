@@ -32,35 +32,46 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of 2026-07-11 Sat eve — THE FABLE WEEKEND)
+## 3. WHERE WE ARE (in-flight, as of 2026-07-11 ~midnight PDT — end of the Fable weekend build)
 
 **Apollo trades REAL money (MAGNA53 live since 6/30; equity ~$4.9k; live record N=3 / −$71 —
-below noise, the drift line #454 will make the next 15 trades diagnostic).** Prod healthy.
+below noise; #454 will make the next 15 trades diagnostic).** Prod healthy.
 
-**The weekend produced (all committed, check_plan green):**
-- **Block 1 (Fable designs):** ADRs **0025** (theme fragmentation) · **0026** (consolidation
-  unification: flag→Confirm entry + COILED-prereq drop + WATCH_UR) · **0027** (Family-B gap
-  lifecycle — the #326 9/15 evidence source) · **0028** (setup-class salience profiles) ·
-  **0029** (entry-bracket: stop-ownership + gap-through fork) + design docs #170/#357/#394 +
-  Tier-2 sketches (#333/#301). ALL flips await operator forks — nothing behavioral shipped.
-- **Block 2:** **#450 pre-mortem** (top risk = the correlated book, R1 → #452 family-slot cap;
-  also #454 calibration-honesty, #455 intraday drawdown alert, #456 residuals; the draft PDT
-  risk was WITHDRAWN on verification — FINRA retired the rule itself) + **#451 edge dossier**
-  (selection creates the R, entry is done, management leaks — peak-lock +$8k/11-winners is the
-  top lever and its shadow is LIVE; "the edge IS the tail"; honesty ledger for the #425 walk).
+**Sat 7/11 shipped (all committed + pushed, check_plan green):**
+- **Lane-1 pre-build (#458) DONE** — 6 read-only probe tables under `docs/analysis/*_2026-07-11.md`,
+  all advisor-checked. The sitting rulings: **#395 NO-GO** (coil-finder shadow −1.23R, Monday-crit)
+  · **#170 NO-GO** (re-setup dilutes the EP book) · **#357** direction-confirmed/N-gated · **#146
+  HOLD** (incumbent gate is tail-positive +0.78R; drop-COILED replay only 4/21-faithful) · **#274
+  ✓ PASS** (sign 0025 F1-F3) · **#448 b6** scoped (deterministic no-LLM path).
+- **#436 fork B SHIPPED + VERIFIED-LIVE** (real-money safeguard): inert `pending_confirmation`
+  proposals no longer count toward the position cap — shared `db.OPEN_POSITION_STATUSES` across
+  3 cap sites + coverage-drift, DEPLOYED both money containers, constant confirmed live. Root
+  cause = pre-ramp staged-paper proposals, NOT an active bug. Follow-ups filed: **#461** (cap
+  check→insert TOCTOU race) · **#436(b)** self-heal (cosmetic hygiene, 7/25, + 2 /simplify
+  ride-along cleanups). Advisor-reviewed + /simplify'd; the `_check_safeguards` enforcement test added.
+- **Block 3 (Fable) FULLY EXECUTED T1-T6 in one evening:** **ADR 0030** (judge-robustness taxonomy
+  + 36-case adversarial corpus `scripts/evals/judge_robustness_corpus_v1.json` + the [5m/7]
+  regression gate) · **ADR 0031** (pivot structure-stops, two-arm shadow) · **theme-merge golden
+  corpus** (gates 0025-C3) · **R5 drift band** specced · **cross-ADR register** (caught 0026-D2
+  evidence-contradicted by #146) · **both sitting packs** (`lane1_sitting_pack_2026-07-13.md` +
+  `m1_sitting_pack_2026-07-18.md`) · gap-hunt (program is execution-shaped; Pradeep 39%-bar
+  extraction → rides #448).
+- **Block 4 filed (#462) — THE IMPLEMENTATION GAUNTLET** (operator: Block 3 too tame): 7 tiers of
+  build/audit/eval-run, each ending in running code or a verdict.
 
-**THE THREE TRIGGERS (operator-owned):** "pre-build the Lane-1 probes" = OPUS, task #458 ·
-"run block lane 1" = the decision sitting (Fable + operator), task #459, docket on the line ·
-"run fable weekend block 3" = Sun 7/13 tiered maximal day, task #457 (judge robustness →
-regression gate is T1; roadmap §Block 3; cut from the bottom).
+**SUNDAY 7/13 — TWO TRIGGERS (operator-owned):**
+1. **"run block lane 1"** → task **#459** — the decision sitting; runs off `lane1_sitting_pack`
+   (Bundle B = the only 3 real deliberations: #395 kill · 0026-D2 park · #452 scope).
+2. **"run fable block 4 tier N"** (or "continue block 4") → task **#462** — T1 (build+run the 0030
+   robustness eval) is the 7/18-critical one; roadmap §Block 4.
 
-**Dated spine:** #395 GO/NO-GO due Mon 7/14 (ruled at the sitting) · #460 flip /model default
-back to Opus · 7/18 M1 sitting (#335; T1's robustness map + R5 preconditions feed it) ·
-7/14-21 the #425 declaration walk (dossier = evidence spine) · 7/25 ingest dry_run · 8/06
-giveback review.
+**Dated spine:** #395 ruled at the sitting (Mon 7/14 target) · **7/18 M1** authority-flip sitting
+(#335; pack ready; needs the 0030-C3 map + T2c drift band built this week) · 7/14-21 #425
+declaration walk (dossier = spine) · 7/25 ingest dry_run flip + #436(b) · 8/06 giveback F1.
 
-**Verify-lives pending (fire on their own):** #306 first giveback-shadow row · #443 next EP
-HIGH · #287 next real exit · #183 first live fill.
+**Verify-lives pending (fire on their own):** fork B's behavioral effect = next live-staged ramp
+(no-op for magna53 auto-enter) · #306 first giveback-shadow row · #443 next EP HIGH · #287/#183
+next real exit / first live fill (market-gated, resume Mon).
 
 ## 4. Critical operating rules the laptop won't have in memory (backstop — most are also in CLAUDE.md)
 
@@ -81,8 +92,9 @@ HIGH · #287 next real exit · #183 first live fill.
 - **Concise** — no essays; a decision = the fork + a 1-line rec. Never mention session length / ending.
 - **`advisor` is Opus-only** — works on Opus 4.8 (the default), fails on Fable-5 as main model.
 - **Model split** (operator): Fable = design/review to execution depth · Sonnet = card execution · Opus =
-  main-loop verify/deploy/review. Fable window = this weekend only (Block 3 Sun 7/13 + the Lane-1
-  sitting); after that Fable is unavailable for a while — everything else runs Opus/Sonnet.
+  main-loop verify/deploy/review. Fable window = this weekend (Block 3 DONE Sat; Sun 7/13 = the
+  Lane-1 sitting #459 + Block 4 #462); after Sunday Fable is unavailable for a while — the Block-4
+  card builds + everything else run Opus/Sonnet.
 - **jsonb double-encode class**: the pool codec auto-`json.dumps` every jsonb param — NEVER pre-`json.dumps`
   a jsonb value (double-encodes to a string). Pass the plain object; keep the `::jsonb` cast. (#177/#287/#412.)
 
