@@ -1421,7 +1421,7 @@ async def _stuck_fill_watchdog_job():
             already = await conn.fetchval(
                 "SELECT 1 FROM mi_audit_log WHERE event_type='stuck_fill_detected' "
                 "AND summary LIKE $1 AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
-                f"{row['ticker']} #{row['id']}%",
+                f"{row['ticker']} #{row['id']} %",
             )
             if already:
                 continue
@@ -1451,21 +1451,28 @@ async def _stuck_fill_watchdog_job():
                 "SELECT created_at FROM mi_audit_log "
                 "WHERE event_type='stop_processing_seen' AND summary LIKE $1 "
                 "ORDER BY created_at DESC LIMIT 1",
-                f"{row['ticker']} #{row['id']}%",
+                f"{row['ticker']} #{row['id']} %",
             )
-            if marker is None:
+            age = None if marker is None else await conn.fetchval(
+                "SELECT NOW() - $1::timestamptz", marker
+            )
+            # A marker >10 min old belongs to a PREVIOUS stop_processing episode
+            # (a Day-1 re-entry trade can enter this state twice in one day:
+            # stop → re-entry → second stop). Treat it as absent — else episode
+            # 2's FIRST sighting would false-alert instantly off episode 1's
+            # marker. Genuine stuck-ness re-alerts within 2-10 min regardless.
+            if marker is None or (age is not None and age.total_seconds() > 600):
                 await log_audit_event(
                     "stop_processing_seen",
                     f"{row['ticker']} #{row['id']} ({row['account_mode']}): first sighting",
                 )
                 continue
-            age = await conn.fetchval("SELECT NOW() - $1::timestamptz", marker)
             if age is None or age.total_seconds() < 120:
                 continue
             already = await conn.fetchval(
                 "SELECT 1 FROM mi_audit_log WHERE event_type='stuck_stop_processing_detected' "
                 "AND summary LIKE $1 AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
-                f"{row['ticker']} #{row['id']}%",
+                f"{row['ticker']} #{row['id']} %",
             )
             if already:
                 continue

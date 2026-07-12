@@ -914,7 +914,9 @@ async def _process_stop_fill(
                     "SELECT remaining_shares, exits, status FROM mi_live_trades WHERE id = $1",
                     trade["id"],
                 )
-            shares = (fresh["remaining_shares"] if fresh else None) or trade["remaining_shares"]
+            # explicit None-check (NOT `or`): a fresh remaining_shares of 0 is a real
+            # value and must not fall back to the stale claim-time snapshot.
+            shares = fresh["remaining_shares"] if fresh is not None else trade["remaining_shares"]
             pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
 
             _raw_exits = fresh["exits"] if fresh else trade["exits"]
