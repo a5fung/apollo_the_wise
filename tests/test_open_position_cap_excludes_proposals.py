@@ -57,3 +57,33 @@ async def test_coverage_drift_open_query_excludes_proposals():
     query = conn.fetch.call_args.args[0]
     assert "pending_confirmation" not in query
     assert "'filled'" in query and "'order_placed'" in query and "'confirmed'" in query
+
+
+@pytest.mark.asyncio
+async def test_check_safeguards_cap_queries_exclude_proposals(monkeypatch):
+    """The ACTUAL real-money enforcement point (advisor 2026-07-11): both
+    live_tracker._check_safeguards cap queries — per-mode AND per-strategy —
+    must bind the shared 3-status open set, so a regression that hardcodes the
+    old 4-tuple back into either query is caught here (the shared-constant import
+    alone would not trip the other pins). account_mode='paper' skips the /pause
+    halt branch; blocking on the per-strategy cap returns before the drawdown
+    machinery, so both cap fetchvals fire with no further mocking.
+    """
+    from agents.market_intelligence.broker import live_tracker
+    pool, conn = make_mock_pool()
+    # fetchval order: open_count (per-mode, passes 0<5), strat_cap (=1), strat_open (=1 → blocks)
+    conn.fetchval = AsyncMock(side_effect=[0, 1, 1])
+    monkeypatch.setattr(live_tracker, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(live_tracker, "LIVE_TRADING_ENABLED", True)
+
+    ok, reason, _mult = await live_tracker._check_safeguards(
+        account_mode="paper", signal_type="magna53"
+    )
+
+    assert ok is False  # per-strategy cap blocked → both cap queries ran
+    calls = conn.fetchval.call_args_list
+    per_mode_status = calls[0].args[2]       # fetchval(query, account_mode, status_list)
+    per_strategy_status = calls[2].args[3]   # fetchval(query, account_mode, signal_type, status_list)
+    for status in (per_mode_status, per_strategy_status):
+        assert "pending_confirmation" not in status
+        assert set(status) == {"filled", "order_placed", "confirmed"}
