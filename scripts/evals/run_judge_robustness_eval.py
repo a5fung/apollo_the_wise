@@ -138,6 +138,7 @@ async def run_eval(cases: list[dict], grade_fn, client, concurrency: int = 3,
 
 async def main() -> int:
     corpus_path = sys.argv[1] if len(sys.argv) > 1 else "scripts/evals/judge_robustness_corpus_v1.json"
+    model_override = sys.argv[2] if len(sys.argv) > 2 else None  # T7 ensemble arm (e.g. claude-sonnet-5)
     corpus = json.load(open(corpus_path))
     cases = corpus["cases"]
 
@@ -153,7 +154,13 @@ async def main() -> int:
     print(f"Eval: {len(cases)} cases | model={JUDGE_MODEL} | rubric={RUBRIC_VERSION} ({RUBRIC_HASH}) "
           f"| corpus={corpus['_meta']['corpus_version']}", flush=True)
 
-    results = await run_eval(cases, grade_holistic, client)
+    if model_override:
+        import functools
+        grade_fn = functools.partial(grade_holistic, model=model_override)
+        print(f"MODEL OVERRIDE: {model_override} (T7 ensemble arm)", flush=True)
+    else:
+        grade_fn = grade_holistic
+    results = await run_eval(cases, grade_fn, client)
     summary = summarize(results)
 
     print("\n=== ROBUSTNESS MAP (per class) ===")
