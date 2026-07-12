@@ -1,5 +1,11 @@
 # #146 C1 — drop the COILED prerequisite for TRIGGERED: backtest (Lane-1 pre-build, 2026-07-11)
 
+> **⚠ ERA CORRECTION (2026-07-12, Block 4 T3):** the "incumbent +0.78R / N=19" below describes the
+> **RETIRED pre-6/27 detector** — 20/21 of those events fail TODAY'S HTF gates. The honest
+> current-classifier table (replay-vs-replay) is in `146_faithful_harness_verdict_2026-07-12.md`:
+> replay-incumbent +0.60R/N=4 · D2-addressable −0.04R/N=11 · **F1 NO-GO** · the D2 cohort's real
+> problem is stop geometry (tails to +44.7R fwd-max, stopped at −1R) → routed to ADR 0031.
+
 **Change under test (ADR 0026 D2):** allow `TIGHTENING → TRIGGERED` directly —
 `TRIGGERED = close > base_high_close AND vol ≥ 1.5×`, dropping the `coiled_today or
 was_coiled_recent` conjunct (COILED stays a *quality* stage). Probe:
