@@ -6851,7 +6851,7 @@ reviews:
       real edge holds -> CHANGE_PROCESS + operator sign-off -> flip shadow->PAPER = #353 (register + wire
       entry -> phase=paper, in PARALLEL with live magna53). IF thin/negative -> iterate the coil gates or
       extend the shadow. NEVER auto-flip — paper is a real-money-path decision (THE LINE).
-    status: pending
+    status: resolved  # 2026-07-12 SITTING (B1): NO-GO — anticipate settled N=34 at -1.23R mean / -1.00R median / 18% win (docs/analysis/395_go_nogo_evidence_2026-07-11.md); real entries KILLED, #353 stays gated. Operator chose KEEP OBSERVING -> successor trigger: consolidation_anticipate_signflip_watch.
     added_on: 2026-06-29
 
   - review_id: htf_breakout_paper_graduation
@@ -6899,6 +6899,29 @@ reviews:
       entry (status=pending, +10-trade or +90-day gate) — it recurs while the rule lives.
     status: pending
     added_on: 2026-07-07
+
+  - review_id: consolidation_anticipate_signflip_watch
+    title: "Anticipate shadow OBSERVE arm — sign-flip check (the B1 7/12 'keep observing' ruling needs a mechanized re-surface)"
+    question: >-
+      The operator kept the coil-finder anticipate shadow OBSERVING after the 7/12 NO-GO
+      (settled N=34, -1.23R mean). This is the mechanized re-look so 'observing' cannot drift
+      into forever: at ~+16 more settles (or the date), has the cohort's SIGN flipped
+      (median/mean toward >=0 on the NEW settles since 7/12)? If still negative -> the fork is
+      STOP THE SHADOW (free the attention — sunk-cost guard) vs another observation window;
+      surface it as the operator's call. A sign-flip -> re-open the #395 question with the
+      fresh cohort (CHANGE_PROCESS as ever).
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_consolidation_entry_shadow
+      WHERE entry_mode = 'anticipate' AND outcome IS NOT NULL
+    threshold: 50
+    earliest_review_date: 2026-08-15
+    action_when_ready: >-
+      Split the settled cohort at 2026-07-12: report old (N=34, -1.23R) vs NEW settles
+      separately. Sign-flip on the new cohort -> operator re-look at #395. Still negative ->
+      surface the stop-the-shadow fork explicitly. Rulings land on #353's line.
+    status: pending
+    added_on: 2026-07-12
+    cross_refs: ["task #353", "task #394", consolidation_anticipate_paper_graduation]
 
   - review_id: pivot_stop_shadow_review
     title: "Pivot-stop SHADOW (ADR 0031) — first per-arm readout: does character-conditioned placement beat the global trail WITHOUT clipping the tail?"
