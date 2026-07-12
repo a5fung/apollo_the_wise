@@ -146,6 +146,16 @@ resolution (never two concurrent live stop changes). Output: ADR to execution de
 > **Sunday starts at T4.**
 
 ### T4 — CROSS-ADR COMPOSITION PASS (protects the entire build phase)
+> **◐ T4 EXECUTED 2026-07-11 eve (same Fable portion):**
+> `docs/analysis/block3_t4_cross_adr_register_2026-07-11.md` — 11-line conflict/compose register
+> over 0025-0031 + tonight's probe evidence. **2 RED:** R1 = 0026-D2 (drop COILED) is
+> EVIDENCE-CONTRADICTED by the #146 probe (incumbent tail-positive +0.78R) → D2 card PARKED,
+> F1(D2) goes to the sitting with the table; R2 = #395 NO-GO reshapes 0026 to
+> machinery-consolidation (each entry mode earns its own N≥10). **Build-order extracted:**
+> #445 settlement-driver consolidation lands BEFORE 0026-C3/0027-C3/0031-C3; ONE generalized
+> `detect_gdl_reclaim` serves both 0026-D3 + 0027-D3; #452 uses `exposure_family` naming +
+> `db.OPEN_POSITION_STATUSES`; the 0030 gate tuple extends when 0028 ships; 0025 merges
+> pre-declare their L2/axis level shifts. **Sunday starts at T5.**
 0025-0029 were designed independently in one weekend; sweep them against each other + 0011-0024:
 the WATCH_UR (0026) × Family-B reclaim (0027) machinery overlap · the 0025 family notion reused
 by #452's cap · the #332 classifier feeding #357's credit · exit-machinery coherence
