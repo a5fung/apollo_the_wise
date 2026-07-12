@@ -45,6 +45,13 @@ async def test_finalize_full_exit_exits_param_is_list(monkeypatch):
     conn.execute = AsyncMock()
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(om, "log_audit_event", AsyncMock())
+    # R1 (2026-07-12): the public finalizer now wraps the body in the per-trade
+    # advisory lock; stub it (the real impl needs a raw awaitable pool.acquire).
+    from contextlib import asynccontextmanager
+    @asynccontextmanager
+    async def _noop_lock(_tid):
+        yield
+    monkeypatch.setattr(om, "_trade_advisory_lock", _noop_lock)
 
     await om.finalize_full_exit(
         trade_id=1, filled_qty=100, filled_price=110.0,

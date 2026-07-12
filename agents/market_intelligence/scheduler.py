@@ -1437,6 +1437,50 @@ async def _stuck_fill_watchdog_job():
                 f"WS handler likely threw — check broker for naked position and Apollo logs."
             )
 
+        # ── stop_processing sibling (money-path audit 2026-07-12 R5) ─────────
+        # 'filling' had this watchdog; 'stop_processing' (the stop-fill claim in
+        # trade_stream) had NONE — a crash inside _process_stop_fill strands the
+        # row invisibly. No claim-timestamp column exists, so two sightings:
+        # first sighting writes a marker audit row; still stuck on a sighting
+        # >2 min after the marker → alert (legitimate processing lasts seconds).
+        stuck_sp = await conn.fetch(
+            "SELECT id, ticker, account_mode FROM mi_live_trades WHERE status = 'stop_processing'"
+        )
+        for row in stuck_sp:
+            marker = await conn.fetchval(
+                "SELECT created_at FROM mi_audit_log "
+                "WHERE event_type='stop_processing_seen' AND summary LIKE $1 "
+                "ORDER BY created_at DESC LIMIT 1",
+                f"{row['ticker']} #{row['id']}%",
+            )
+            if marker is None:
+                await log_audit_event(
+                    "stop_processing_seen",
+                    f"{row['ticker']} #{row['id']} ({row['account_mode']}): first sighting",
+                )
+                continue
+            age = await conn.fetchval("SELECT NOW() - $1::timestamptz", marker)
+            if age is None or age.total_seconds() < 120:
+                continue
+            already = await conn.fetchval(
+                "SELECT 1 FROM mi_audit_log WHERE event_type='stuck_stop_processing_detected' "
+                "AND summary LIKE $1 AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
+                f"{row['ticker']} #{row['id']}%",
+            )
+            if already:
+                continue
+            await log_audit_event(
+                "stuck_stop_processing_detected",
+                f"{row['ticker']} #{row['id']} ({row['account_mode']}): "
+                f"status='stop_processing' across two watchdog sightings >2 min apart — "
+                f"stop-fill handler likely threw",
+            )
+            await send_telegram_message(
+                f"{mode_prefix(row['account_mode'])}🚨 *STUCK STOP-PROCESSING:* {row['ticker']}\n"
+                f"Trade #{row['id']} stuck in status='stop_processing' >2 min.\n"
+                f"Stop-fill handler likely threw — verify the position/stop state on Alpaca."
+            )
+
 
 async def _stop_ack_timeout_watchdog_job():
     """Stop-ACK timeout gate (2026-05-17, MRAM-class). Sibling of Gate 5 D

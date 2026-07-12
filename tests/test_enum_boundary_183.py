@@ -204,7 +204,10 @@ async def test_check_fills_fires_on_plain_filled_and_ws_processed_trade_not_repr
     # (b) the exclusion is actually EXERCISED: the WS-processed trade (eo-9)
     # was never even queried — get_order was called exactly once, and only
     # for the still-order_placed trade.
-    get_order_mock.assert_called_once_with("eo-1", account_mode="paper")
+    # R6 (2026-07-12): a legless poll payload triggers ONE refetch of the same
+    # order — both calls are for eo-1 only; the WS-processed trade is never queried.
+    assert all(c.args[0] == "eo-1" for c in get_order_mock.await_args_list)
+    assert get_order_mock.await_count <= 2
 
     # (c) the previously-dead 'filled' comparison now fires correctly for the
     # one trade the filtered SELECT actually returned, and only once

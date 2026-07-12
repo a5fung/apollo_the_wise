@@ -31,6 +31,7 @@ from agents.market_intelligence.constants import (
     current_account_mode,
     mode_prefix,
     active_account_modes,
+    LIVE_TRADING_ENABLED,
 )
 from agents.market_intelligence.db import get_pool, log_audit_event, get_manual_halt_state
 
@@ -350,8 +351,16 @@ async def check_fills() -> list[dict]:
                 results.append({"ticker": ticker, "action": "partial_cancelled"})
                 continue
 
-            # Find the stop-loss order leg
+            # Find the stop-loss order leg. REST-refetch fallback (money-path audit
+            # 2026-07-12 R6): the polling payload can omit legs exactly like the
+            # submit response — submit_entry and _process_entry_fill both refetch on
+            # a miss; this path previously wrote COALESCE(NULL, …) = a no-op and
+            # left the pointer NULL until the reconcile repaired it.
             stop_order_id = alpaca.extract_stop_leg_id(order)
+            if not stop_order_id:
+                _refetched = await alpaca.get_order(trade["entry_order_id"], account_mode=account_mode)
+                if _refetched:
+                    stop_order_id = alpaca.extract_stop_leg_id(_refetched)
 
             async with pool.acquire() as conn:
                 # Gate 3 initial-stop modeling (2026-05-18): hard_stop is the
@@ -363,7 +372,11 @@ async def check_fills() -> list[dict]:
                 # risk basis if it runs after a same-tick trail update.
                 # stop_price (current/trailed) is still written here for
                 # consistency with INSERT value at the time of fill.
-                await conn.execute("""
+                # AND status='order_placed' + rowcount check (audit R1 sibling):
+                # if the WS handler already claimed/processed this fill, the
+                # polling backup must NOT re-write the row (was: unconditional
+                # overwrite + a DUPLICATE fill Telegram).
+                _res = await conn.execute("""
                     UPDATE mi_live_trades SET
                         status = 'filled',
                         entry_price = $2,
@@ -372,8 +385,11 @@ async def check_fills() -> list[dict]:
                         stop_price = $4,
                         filled_at = NOW(),
                         stop_order_id = COALESCE($5, stop_order_id)
-                    WHERE id = $1
+                    WHERE id = $1 AND status = 'order_placed'
                 """, trade["id"], filled_price, filled_qty, float(trade["stop_price"]), stop_order_id)
+                if _res == "UPDATE 0":
+                    logger.info(f"check_fills: {ticker} already processed (WS won) — skipping")
+                    continue
 
                 # Update order audit trail
                 await conn.execute("""
@@ -439,6 +455,32 @@ async def attempt_day1_reentry(
     ticker = trade["ticker"]
     account_mode = trade.get("account_mode") or current_account_mode()
     signal_type = trade.get("signal_type") or "unknown"
+
+    # Kill-switch + manual-halt gates (money-path audit 2026-07-12, R2). Re-entry
+    # SUBMITS a real order and previously bypassed BOTH switches (submit_entry has
+    # them; this path did not). Latent while R3_DAY1_REENTRY_ENABLED stays false —
+    # these gates are the precondition for ever enabling it. Same pattern as
+    # submit_entry: LIVE_TRADING_ENABLED kills all submits; /pause halts live only
+    # ('unreadable' fails SAFE — capital protection, distinct reason in the audit).
+    if not LIVE_TRADING_ENABLED:
+        logger.warning(f"attempt_day1_reentry {trade_id}: blocked — LIVE_TRADING_ENABLED=false")
+        await log_audit_event(
+            "reentry_blocked_by_kill_switch",
+            f"{ticker} trade {trade_id}: day-1 re-entry blocked — LIVE_TRADING_ENABLED=false",
+            json.dumps({"trade_id": trade_id, "account_mode": account_mode}),
+        )
+        return {"ticker": ticker, "action": "reentry_blocked_kill_switch"}
+    if account_mode == "live":
+        _halt = await get_manual_halt_state()
+        if _halt in ("on", "unreadable"):
+            logger.warning(f"attempt_day1_reentry {trade_id}: blocked by manual trading halt ({_halt})")
+            await log_audit_event(
+                "reentry_blocked_by_halt",
+                f"{ticker} trade {trade_id}: day-1 re-entry blocked — manual trading halt ({_halt})",
+                json.dumps({"trade_id": trade_id, "halt_state": _halt}),
+            )
+            return {"ticker": ticker, "action": "reentry_blocked_halt"}
+
     entry_price = trade["entry_price"]
     shares = trade["remaining_shares"]
     orb_high = trade["orb_high"]
@@ -1860,6 +1902,19 @@ async def finalize_partial_exit(
     filled_price: float,
     order_id: str,
 ) -> None:
+    """Public entry — serializes the whole read-modify-write under the per-trade
+    #151 advisory lock (money-path audit 2026-07-12 R1: finalizers were the only
+    trade-state writers OUTSIDE the lock; job-side writers already hold it)."""
+    async with _trade_advisory_lock(trade_id):
+        return await _finalize_partial_exit_locked(trade_id, filled_qty, filled_price, order_id)
+
+
+async def _finalize_partial_exit_locked(
+    trade_id: int,
+    filled_qty: int,
+    filled_price: float,
+    order_id: str,
+) -> None:
     """Commit a partial exit on actual fill (called from WS fill handler).
 
     Splits the original execute_partial_exit "Step 3" out so commit happens
@@ -2002,6 +2057,20 @@ async def finalize_full_exit(
     order_id: str,
     reason: str,
 ) -> None:
+    """Public entry — serializes the whole read-modify-write under the per-trade
+    #151 advisory lock (money-path audit 2026-07-12 R1: finalizers were the only
+    trade-state writers OUTSIDE the lock; job-side writers already hold it)."""
+    async with _trade_advisory_lock(trade_id):
+        return await _finalize_full_exit_locked(trade_id, filled_qty, filled_price, order_id, reason)
+
+
+async def _finalize_full_exit_locked(
+    trade_id: int,
+    filled_qty: int,
+    filled_price: float,
+    order_id: str,
+    reason: str,
+) -> None:
     """Commit a full exit on actual fill (called from WS fill handler).
 
     Splits the post-submit DB commit out of execute_full_exit so it runs
@@ -2069,6 +2138,19 @@ async def finalize_full_exit(
 
 
 async def finalize_stop_fill(
+    trade_id: int,
+    filled_qty: int,
+    filled_price: float,
+    order_id: str,
+) -> None:
+    """Public entry — serializes the whole read-modify-write under the per-trade
+    #151 advisory lock (money-path audit 2026-07-12 R1: finalizers were the only
+    trade-state writers OUTSIDE the lock; job-side writers already hold it)."""
+    async with _trade_advisory_lock(trade_id):
+        return await _finalize_stop_fill_locked(trade_id, filled_qty, filled_price, order_id)
+
+
+async def _finalize_stop_fill_locked(
     trade_id: int,
     filled_qty: int,
     filled_price: float,

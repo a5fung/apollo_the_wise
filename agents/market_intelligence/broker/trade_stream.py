@@ -769,6 +769,10 @@ async def _process_entry_fill(
             # produces AmbiguousParameter (CRMD class). $4 carries
             # filled_price typed for the numeric columns; $2 carries it
             # typed for entry_price.
+            # AND status='filling': never resurrect a row something else terminalized
+            # between our atomic claim and this write (money-path audit 2026-07-12 R1
+            # sibling of SM6). A no-op here strands 'filling' LOUDLY — the stuck-fill
+            # watchdog alerts on it — which beats silently overwriting a terminal state.
             await conn.execute("""
                 UPDATE mi_live_trades SET
                     status = 'filled',
@@ -777,7 +781,7 @@ async def _process_entry_fill(
                     stop_order_id = COALESCE($4, stop_order_id),
                     lowest_price_seen = COALESCE(lowest_price_seen, $5),
                     highest_price_seen = COALESCE(highest_price_seen, $5)
-                WHERE id = $1
+                WHERE id = $1 AND status = 'filling'
             """, trade["id"], filled_price, filled_qty,
                  stop_order_id, filled_price)
     except Exception as db_err:
@@ -894,31 +898,46 @@ async def _process_stop_fill(
         result = await attempt_day1_reentry(trade["id"], stop_fill_price, source="websocket")
         logger.info(f"WS re-entry result [{account_mode}] for {ticker}: {result}")
     else:
-        # Close trade — Day 2+ or max attempts reached
+        # Close trade — Day 2+ or max attempts reached.
+        # Money-path audit 2026-07-12 R1: the whole read-modify-write runs under the
+        # per-trade #151 advisory lock with a FRESH row read (the claim-time snapshot
+        # could be stale vs a concurrent job-side writer holding the same lock), and
+        # the close is guarded on the claim status so it can never clobber a state
+        # some other path terminalized — a no-op strands 'stop_processing' LOUDLY
+        # (the transitional-state watchdog alerts) instead of corrupting silently.
+        from agents.market_intelligence.broker.order_manager import _trade_advisory_lock
+
         entry_price = trade["entry_price"]
-        shares = trade["remaining_shares"]
-        pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
+        async with _trade_advisory_lock(trade["id"]):
+            async with pool.acquire() as conn:
+                fresh = await conn.fetchrow(
+                    "SELECT remaining_shares, exits, status FROM mi_live_trades WHERE id = $1",
+                    trade["id"],
+                )
+            shares = (fresh["remaining_shares"] if fresh else None) or trade["remaining_shares"]
+            pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
 
-        exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
-        exits.append({
-            "time": datetime.now(timezone.utc).isoformat(),
-            "price": stop_fill_price,
-            "reason": "stop_hit",
-            "shares": shares,
-            "pnl": pnl,
-            "attempt": attempt,
-            "source": "websocket",
-        })
-        total_pnl = sum(e.get("pnl", 0) for e in exits)
+            _raw_exits = fresh["exits"] if fresh else trade["exits"]
+            exits = _raw_exits if isinstance(_raw_exits, list) else json.loads(_raw_exits or "[]")
+            exits.append({
+                "time": datetime.now(timezone.utc).isoformat(),
+                "price": stop_fill_price,
+                "reason": "stop_hit",
+                "shares": shares,
+                "pnl": pnl,
+                "attempt": attempt,
+                "source": "websocket",
+            })
+            total_pnl = sum(e.get("pnl", 0) for e in exits)
 
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                UPDATE mi_live_trades SET
-                    status = 'closed', exits = $2::jsonb,
-                    remaining_shares = 0, total_pnl = $3,
-                    stop_order_id = NULL, closed_at = NOW()
-                WHERE id = $1
-            """, trade["id"], exits, total_pnl)
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        status = 'closed', exits = $2::jsonb,
+                        remaining_shares = 0, total_pnl = $3,
+                        stop_order_id = NULL, closed_at = NOW()
+                    WHERE id = $1 AND status = 'stop_processing'
+                """, trade["id"], exits, total_pnl)
 
         reason = "max attempts" if is_day1 else f"stop hit ({trade.get('hold_days', 0)}d)"
         msg = (
