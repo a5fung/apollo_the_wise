@@ -103,7 +103,7 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "order_manager.set_stop_order_id",  # T1.5a helper — SOLO mutations
         "order_manager.submit_entry", "order_manager.check_fills",
         "order_manager.update_stop", "order_manager.attempt_day1_reentry",
-        "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
+        "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
         "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
     },
@@ -113,24 +113,24 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # from exits / remaining_shares / total_pnl / closed_at — close-path
     # delegated to finalize_stop_fill which is the canonical writer.
     "exits":              {
-        "order_manager.attempt_day1_reentry", "order_manager.finalize_partial_exit",
-        "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
+        "order_manager.attempt_day1_reentry", "order_manager._finalize_partial_exit_locked",
+        "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
         "trade_stream._process_stop_fill",
     },
     "remaining_shares":   {
         "order_manager.check_fills", "order_manager.attempt_day1_reentry",
-        "order_manager.finalize_partial_exit", "order_manager.finalize_full_exit",
-        "order_manager.finalize_stop_fill", "order_manager._sync_positions_for_mode",
+        "order_manager._finalize_partial_exit_locked", "order_manager._finalize_full_exit_locked",
+        "order_manager._finalize_stop_fill_locked", "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
     },
     "total_pnl":          {
-        "order_manager.attempt_day1_reentry", "order_manager.finalize_partial_exit",
-        "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
+        "order_manager.attempt_day1_reentry", "order_manager._finalize_partial_exit_locked",
+        "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
         "order_manager.cancel_unfilled_entries", "trade_stream._process_stop_fill",
     },
     "closed_at":          {
-        "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
-        "order_manager.finalize_stop_fill", "order_manager.cancel_unfilled_entries",
+        "order_manager.attempt_day1_reentry", "order_manager._finalize_full_exit_locked",
+        "order_manager._finalize_stop_fill_locked", "order_manager.cancel_unfilled_entries",
         "order_manager._sync_positions_for_mode", "trade_stream._process_stop_fill",
     },
 
@@ -138,8 +138,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # 2026-05-14 BW incident: wrapping UPDATE in live_tracker wrote
     # partial_taken=TRUE optimistically. c0fa67f fix moved write to
     # finalize_partial_exit. Strict-single-owner enforcement now.
-    "partial_taken":      {"order_manager.finalize_partial_exit"},
-    "breakeven_active":   {"order_manager.finalize_partial_exit", "live_tracker.update_open_positions_live"},
+    "partial_taken":      {"order_manager._finalize_partial_exit_locked"},
+    "breakeven_active":   {"order_manager._finalize_partial_exit_locked", "live_tracker.update_open_positions_live"},
 
     # ── live_tracker-domain columns (computed by state machine) ────────
     "hold_days":          {"live_tracker.update_open_positions_live"},
@@ -157,8 +157,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         # T1.3 (2026-05-18) removed live_tracker.update_open_positions_live —
         # close-path status='closed' write now delegated to finalize_stop_fill.
         "order_manager.submit_entry", "order_manager.check_fills",
-        "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
-        "order_manager.finalize_stop_fill", "order_manager.cancel_unfilled_entries",
+        "order_manager.attempt_day1_reentry", "order_manager._finalize_full_exit_locked",
+        "order_manager._finalize_stop_fill_locked", "order_manager.cancel_unfilled_entries",
         "order_manager._sync_positions_for_mode", "order_manager._update_trade_status",
         "telegram_confirm.handle_callback",
         "trade_stream._handle_fill", "trade_stream._process_entry_fill",
