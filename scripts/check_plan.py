@@ -43,6 +43,54 @@ _STATUSES = {"pending", "in_progress", "blocked"}
 # `- #298 | 2026-06-17 | in_progress | title...`
 _TASK = re.compile(r"^- #(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\w+)\s*\|\s*(.+?)\s*$")
 _PROJECT = re.compile(r"^##\s+(.+?)\s*$")
+
+# --- SESSION GROWTH GATE (operator 2026-07-12, HARD) ------------------------------------------
+# A session may NOT end with more open tasks than the PT-day began with. The open count is
+# monotonic NON-INCREASING per day unless the operator signs a carryover. This is the mechanical
+# backing for "no fake burndown": prose reconciles here failed for a month (99->116 across four
+# burndown 'exercises') — only a gate holds. `--today` (the OPEN ritual, run every session) pins
+# the day's starting count; the plain gate (pre-commit + CLOSE) then hard-fails any commit that
+# would end the day above that line. Machine-local (gitignored) — re-armed at each machine's OPEN.
+BASELINE = REPO / ".apollo_session_baseline.json"
+
+
+def _load_baseline() -> dict | None:
+    try:
+        return json.loads(BASELINE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _pin_daily_baseline(count: int, today: date) -> dict:
+    """First OPEN of the PT day pins the starting count; later same-day calls leave it (else a
+    mid-session `--today` after opening tasks would silently re-baseline upward and game the gate)."""
+    cur = _load_baseline()
+    if cur and cur.get("pt_date") == today.isoformat():
+        return cur
+    data = {"pt_date": today.isoformat(), "baseline_count": count,
+            "carryover_allowance": 0, "carryover_reason": None}
+    try:
+        BASELINE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+    return data
+
+
+def _growth_gate_error(cur_count: int, base: dict | None, today: date) -> str | None:
+    """The session-growth check as a PURE function (testable). Returns the error string when the
+    PT-day's open count exceeds the pinned ceiling, else None. No baseline or a stale-date baseline
+    (a prior day) → None (skip — the day hasn't been armed; `--today` arms it at OPEN)."""
+    if not base or base.get("pt_date") != today.isoformat():
+        return None
+    ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
+    if cur_count <= ceiling:
+        return None
+    co = (f" (+{base['carryover_allowance']} carryover: {base['carryover_reason']})"
+          if base.get("carryover_allowance") else "")
+    return (f"SESSION GROWTH GATE: {cur_count} open tasks now; the PT-day started at "
+            f"{base['baseline_count']}{co} (ceiling {ceiling}). A session may NOT end above where "
+            f"it began (operator 2026-07-12, HARD — no fake burndown). CLOSE a real task to reach "
+            f'<= {ceiling}, or record NECESSARY growth: check_plan.py --carryover <N> "<reason>".')
 # Buried-work tripwire (operator 2026-06-17): high-signal phrases that mean a task description is
 # DESCRIBING undone critical work inline instead of TRACKING it as its own dated task. Rare +
 # high-signal (only #326 tripped it at authoring) so this can be a hard gate, not just a warning.
@@ -233,6 +281,35 @@ def main(argv: list[str]) -> int:
             print(f"  #{t['id']:<4} [{t['status']:<11}] {t['project']} — {t['title']}")
         if not due:
             print("  (none)")
+        base = _pin_daily_baseline(len(tasks), today)
+        ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
+        print(f"\n-- GROWTH GATE — day started at {base['baseline_count']} open tasks. This session must "
+              f"END <= {ceiling} (HARD, operator 2026-07-12: no session ends bigger than it began).")
+        print("   Take a HARD LOOK for real closes; open a new task only if you close a real one first.")
+        return 0
+
+    if "--carryover" in argv:
+        # OPERATOR-SIGNED escape for NECESSARY growth: raise TODAY's ceiling by N with a reason.
+        # Deliberate + visible (not a silent default) — mirrors the [ok:]/[blocked:] rebump escape.
+        idx = argv.index("--carryover")
+        try:
+            n = int(argv[idx + 1])
+        except (IndexError, ValueError):
+            print('usage: check_plan.py --carryover <N> "<reason>"')
+            return 2
+        reason = argv[idx + 2].strip() if idx + 2 < len(argv) else ""
+        if not reason:
+            print("[carryover] a reason is REQUIRED (this is an operator sign-off).")
+            return 2
+        base = _pin_daily_baseline(len(tasks), today)
+        base["carryover_allowance"] = base.get("carryover_allowance", 0) + n
+        base["carryover_reason"] = reason
+        try:
+            BASELINE.write_text(json.dumps(base, indent=2), encoding="utf-8")
+        except OSError:
+            pass
+        print(f"[carryover] today's growth ceiling raised by {n} -> "
+              f"{base['baseline_count'] + base['carryover_allowance']} (reason: {reason}).")
         return 0
 
     if "--audit-new" in argv:
@@ -312,6 +389,15 @@ def main(argv: list[str]) -> int:
         if stale:
             print(f"[plan] WARN — PLAN.md lists ids not in the open snapshot (likely closed; "
                   f"remove or reconcile): {', '.join('#'+str(t) for t in stale)}")
+    # SESSION GROWTH GATE (operator 2026-07-12, HARD): the day's open count may not END above where
+    # it began. Hard-fails the commit when over ceiling; an operator carryover is the only escape.
+    base = _load_baseline()
+    gate_err = _growth_gate_error(len(tasks), base, today)
+    if gate_err:
+        errors.append(gate_err)
+    elif not base:
+        print("[plan] NOTE: no session baseline today — run `check_plan.py --today` at OPEN to arm the growth gate.")
+
     if errors:
         print(f"[plan] FAIL — {len(errors)} issue(s) in PLAN.md:")
         for e in errors:

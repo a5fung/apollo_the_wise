@@ -64,3 +64,6 @@ scripts/*.err
 /replay268_*.csv
 scripts/_catalyst_type_cohort.json
 _chart_eval_267/
+
+# session growth-gate baseline (machine-local; re-armed at OPEN)
+.apollo_session_baseline.json
