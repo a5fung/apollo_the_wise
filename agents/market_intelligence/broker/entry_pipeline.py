@@ -361,6 +361,17 @@ async def submit_trade_entry(
     if not ok:
         return await _skip(sg_reason, icon="🚫", audit_event="orb_blocked", action=ACTION_BLOCKED)
 
+    # 2b. #452 exposure-family SHADOW (premortem R1, sitting-ruled 7/12 B3): observe-only —
+    # emits audit + Telegram when this entry would lift same-family (active-theme) exposure
+    # above the threshold. NEVER blocks; error-wrapped so it can never affect the entry
+    # (the #94-hook pattern). Blocking = the operator fork after ~2 clean weeks
+    # (exposure_family_cap_promotion review).
+    try:
+        from agents.market_intelligence.exposure_family import shadow_check_and_emit
+        await shadow_check_and_emit(ticker, _safeguard_mode, strategy_label)
+    except Exception as _fe:
+        logger.warning(f"exposure_family shadow check failed for {ticker} (non-fatal): {_fe}")
+
     # 3. Bar fetch with retry.
     orb_bar = await fetch_orb_bar_with_retry(ticker, today, strategy_label)
     if not orb_bar:

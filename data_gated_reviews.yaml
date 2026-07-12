@@ -6911,6 +6911,29 @@ reviews:
     status: pending
     added_on: 2026-07-07
 
+  - review_id: exposure_family_cap_promotion
+    title: "#452 exposure-family SHADOW -> BLOCKING promotion (premortem R1 — the correlated book)"
+    question: >-
+      The shadow counter (entry_pipeline 2b hook) has observed since 7/12: does the count prove
+      CLEAN (~2 weeks: no false-family breaches — names flagged same-family that are NOT actually
+      the same trade; theme-membership key quality post-0025-merge), and did any REAL correlated
+      stack occur (breach events = the R1 exposure actually happening)? CLEAN + operator sign-off
+      -> promote to BLOCKING inside _check_safeguards (a real safeguard change: CHANGE_PROCESS +
+      safeguards.md SSoT + sign-off — THE LINE). Noisy key -> fix the family definition first
+      (wait for the 0025 merge arm if fragmentation is the noise source).
+    predicate_sql: >-
+      SELECT CASE WHEN CURRENT_DATE >= DATE '2026-07-27' THEN 1 ELSE 0 END
+    threshold: 1
+    earliest_review_date: 2026-07-27
+    action_when_ready: >-
+      Pull exposure_family_breach audit rows (count, tickers, themes) + eyeball the flagged
+      families for false-positives. Clean -> the BLOCKING card (CHANGE_PROCESS, safeguards.md
+      #3 amendment, operator sign-off). Date-fires REGARDLESS of breach count — zero breaches in
+      a quiet fortnight is itself reportable (the shadow ran; the book stayed uncorrelated).
+    status: pending
+    added_on: 2026-07-12
+    cross_refs: ["task #452", "premortem R1 (docs/analysis/premortem_450_2026-07-11.md)", "register R5"]
+
   - review_id: consolidation_anticipate_signflip_watch
     title: "Anticipate shadow OBSERVE arm — sign-flip check (the B1 7/12 'keep observing' ruling needs a mechanized re-surface)"
     question: >-
