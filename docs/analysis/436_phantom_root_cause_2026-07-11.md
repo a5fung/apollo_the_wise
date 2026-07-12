@@ -70,8 +70,48 @@ position with no DB tracking — exactly the trade-state corruption THE LINE gua
   stale proposals don't accumulate. Both change safeguard/discipline semantics → **operator sign-off
   required**; neither implemented here.
 
+## Side-effect sweep — the full blast radius of an un-confirmed proposal (operator chose fork B)
+
+`pending_confirmation` is consumed in ~10 sites. Fork B ("a proposal isn't a position") is NOT a
+one-liner — here is every consumer, classified:
+
+**MUST change WITH fork B (behavioral):**
+1. **The position cap lives in THREE sites, not one:** `db.get_open_position_count`,
+   `live_tracker.py:115` (per-mode `MAX_CONCURRENT_LIVE_POSITIONS`), and `live_tracker.py:140`
+   (per-strategy `max_concurrent_positions`). All three count `pending_confirmation`. B must exclude
+   un-confirmed proposals at all three.
+2. **`coverage_drift._OPEN_TRADE_STATUSES` must move in lockstep** — its own comment says it's
+   reused *verbatim* from the cap vocabulary so "open" can never drift between the safeguard and the
+   detector. A null-`entry_order_id` proposal falls through both D3 skips (`coverage_drift.py:283-286`)
+   → logs `D3_DB_OPEN_NO_BROKER` every reconcile cycle. **CONFIRMED empirically: the 4 phantoms
+   generated 32 `coverage_drift_detected` events on 7/6** (INFO, no Telegram — audit noise, not an
+   alert storm, but real). If B changes the cap but not this, proposals keep polluting the drift stream.
+
+**The altitude-right implementation:** the "is this row an open position?" definition is *shared*
+across those sites. Change it ONCE — exclude `status='pending_confirmation' AND confirmed_at IS NULL`
+(a proposal that was never confirmed) — and let every site that reuses the vocabulary inherit it.
+Four independent edits would re-introduce exactly the drift the coverage-drift comment warns against.
+
+**SAFE — no change needed (a proposal has no fill and no order):**
+- **Daily-loss limit + drawdown breaker** — key off broker equity / filled-trade realized P&L; a
+  0-share never-filled proposal contributes nothing.
+- **`trade_stream` fill-matching** (`:960`) — matches on `entry_order_id = $1`, which is NULL for a
+  proposal, so a real fill event can never bind to a phantom.
+
+**COSMETIC — optional hygiene, not behavioral (a phantom shows as an open/entered trade):**
+- `/trades` history + `/setup` outcome + the pending-entries list (`agent.py:4174/4253/5705/6631`)
+  render a phantom as 🟡 open.
+- Briefing / scheduler `entered_states` (`briefing.py:948`, `scheduler.py:1813`) bucket it as entered.
+- These clear naturally once B + the self-heal land; worth a cleanup pass but nothing breaks.
+
+**Existing-data cleanup: NONE required.** The 4 phantoms are already reaped to `status='cancelled'`,
+which is in no open-status set anywhere — so they no longer pollute the cap, coverage-drift, P&L, or
+displays. The historical mess is fully cleared; the fix is purely to stop the *next* ramp reproducing it.
+
 ## Deliverable
 
-Diagnosis + design above. Next step is the operator's: pick the prevention fork (A/B/both), then a
-committed dry-run-reviewed script wires the self-heal into the reconcile (with the broker-absent
-guard) — the #151 discipline, not an inline change. Nothing to deploy tonight; the class is dormant.
+Diagnosis + design + side-effect sweep above. Next step is the operator's: fork B is chosen — wire
+it at the shared "open position" predicate (the 3 cap sites + coverage-drift vocabulary, in lockstep),
+plus the self-heal into the 15-min reconcile (with the 3-state broker-absent guard, composing with
+#184 ingest) — via a committed dry-run-reviewed script (the #151 discipline), not an inline change.
+Nothing to deploy tonight; the class is dormant (0 current strands).
