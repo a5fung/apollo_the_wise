@@ -211,7 +211,7 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
       scale-out + any close) / (risk_per_share * initial shares); None while nothing has
       realized yet (still fully open, no exits booked)."""
     from datetime import date as _date
-    from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #396 management SHADOW reuses the tested ladder rather than re-implementing it (F11 discipline)
+    from agents.market_intelligence.broker.exit_logic import iter_exit_ladder, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #396 management SHADOW reuses the tested ladder rather than re-implementing it (F11 discipline)
 
     entry_price = float(entry_price)
     initial_stop = float(initial_stop)
@@ -221,23 +221,20 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
         return None
 
     entry_date = _date.fromisoformat(bars[entry_idx]["date"])
-    state = {
-        "alert_date": entry_date, "remaining_shares": shares, "entry_price": entry_price,
-        "hard_stop": initial_stop, "partial_taken": False, "breakeven_active": False,
-        "exits": [], "running_closes": [],
-    }
+    # #445: seed + carry live in the ONE driver; this consumer keeps only its
+    # events fold (entry->scale->BE->trail-exit vocabulary).
+    state = seed_exit_state(alert_date=entry_date, entry_price=entry_price,
+                            hard_stop=initial_stop, remaining_shares=shares)
     events = [{"date": entry_date.isoformat(), "type": "entry",
                "price": round(entry_price, 4), "shares": shares}]
     status = "open"
     last_bar_date = entry_date
     last_step = None
+    was_breakeven = False  # pre-step snapshot, carried by the fold (seed = False)
 
-    for i in range(entry_idx + 1, len(bars)):
-        b = bars[i]
-        today = _date.fromisoformat(b["date"])
-        was_breakeven = state["breakeven_active"]
-        step = apply_daily_exit_step(state, b, today, integer_partial_shares=True,
-                                     trail_mode=trail_mode, scale_fraction=scale_fraction)
+    fwd = ((_date.fromisoformat(b["date"]), b) for b in bars[entry_idx + 1:])
+    for i, today, step in iter_exit_ladder(state, fwd, trail_mode=trail_mode,
+                                           scale_fraction=scale_fraction):
         last_step = step
         last_bar_date = today
 
@@ -251,6 +248,7 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
                 # entry->scale->BE->trail-exit vocabulary, not a separate trigger day.
                 events.append({"date": today.isoformat(), "type": "breakeven",
                                "stop": entry_price})
+        was_breakeven = step.new_breakeven_active
 
         if step.closed:
             status = "closed_hard_stop" if step.close_reason == "stop_hit" else "closed_trail_exit"
@@ -258,15 +256,6 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
                            "type": "hard_stop_exit" if status == "closed_hard_stop" else "trail_exit",
                            "price": step.close_price, "shares": step.close_shares,
                            "pnl": step.close_pnl})
-
-        state = {
-            "alert_date": entry_date, "remaining_shares": step.new_remaining,
-            "entry_price": entry_price, "hard_stop": initial_stop,
-            "partial_taken": step.new_partial_taken, "breakeven_active": step.new_breakeven_active,
-            "exits": step.new_exits, "running_closes": step.new_running_closes,
-        }
-        if step.closed:
-            break
 
     total_pnl = last_step.new_total_pnl if last_step is not None else 0.0
     risk_dollars_basis = risk_per_share * shares

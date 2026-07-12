@@ -24,7 +24,7 @@ import logging
 from datetime import date as _date, datetime as _dt, timedelta as _td
 from zoneinfo import ZoneInfo
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+from agents.market_intelligence.broker.exit_logic import iter_exit_ladder
 from agents.market_intelligence.broker.order_manager import stop_limit_buy_price
 from agents.market_intelligence.collector import (
     et_today, get_index_history, get_minute_bars,
@@ -316,21 +316,14 @@ async def settle_open_shadows(today: _date | None = None) -> dict:
             closed_status = None
             closed_date = None
             last_eval = r["last_evaluated_date"] or r["alert_date"]
-            for bar in bars:
-                d = bar["date"]
-                if d <= last_eval:
-                    continue
-                step = apply_daily_exit_step(state, bar, d, integer_partial_shares=True)
-                state["remaining_shares"] = step.new_remaining
-                state["partial_taken"] = step.new_partial_taken
-                state["breakeven_active"] = step.new_breakeven_active
-                state["running_closes"] = step.new_running_closes
-                state["exits"] = step.new_exits
+            # #445: seed + carry live in the ONE driver (in-place carry = the
+            # persisted-state contract; `state` writes straight back below).
+            fwd = ((b["date"], b) for b in bars if b["date"] > last_eval)
+            for _i, d, step in iter_exit_ladder(state, fwd):
                 last_eval = d
                 if step.closed:
                     closed_status = step.close_reason
                     closed_date = d
-                    break
 
             realised = sum(e.get("pnl", 0) for e in state["exits"])
             if closed_status:

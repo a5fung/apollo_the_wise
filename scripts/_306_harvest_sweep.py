@@ -43,7 +43,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 sys.path.insert(0, str(REPO))
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step  # noqa: E402
+from agents.market_intelligence.broker.exit_logic import iter_exit_ladder, seed_exit_state  # noqa: E402
 
 EVAL_DIR = REPO / "scripts" / "eval_data"
 COHORT_CSV = EVAL_DIR / "306_cohort_2026-07-08.csv"
@@ -227,23 +227,18 @@ def replay(trade: dict, bars_by: dict[str, list[dict]], cell: dict) -> dict:
                 "replayed": False, "peak_close": None, "n_bars": 0}
 
     gb = _giveback_kwargs(cell, entry, orig_stop)
-    state = {"alert_date": fill_o, "remaining_shares": shares, "entry_price": entry,
-             "hard_stop": orig_stop, "partial_taken": False, "breakeven_active": False,
-             "exits": [], "running_closes": []}
+    # #445: seed + carry live in the ONE driver; this consumer keeps only its
+    # marginal-effect fold (early-exit vs rode-to-actual anchoring).
+    state = seed_exit_state(alert_date=fill_o, entry_price=entry,
+                            hard_stop=orig_stop, remaining_shares=shares)
     peak_close = max((b["c"] for b in hold_bars), default=entry)
-    for i, b in enumerate(hold_bars):
-        step = apply_daily_exit_step(
-            state, {"l": b["l"], "c": b["c"]}, b["date_obj"],
-            integer_partial_shares=True, trail_mode=cell["b"], scale_fraction=cell["c"], **gb)
-        state = {
-            "alert_date": fill_o, "entry_price": entry, "hard_stop": orig_stop,
-            "remaining_shares": step.new_remaining, "partial_taken": step.new_partial_taken,
-            "breakeven_active": step.new_breakeven_active,
-            "exits": step.new_exits, "running_closes": step.new_running_closes,
-        }
-        if step.closed and b["date_obj"] < close_o:
+    bars = ((b["date_obj"], {"l": b["l"], "c": b["c"]}) for b in hold_bars)
+    for i, day, step in iter_exit_ladder(
+            state, bars, trail_mode=cell["b"], scale_fraction=cell["c"], **gb):
+        if step.closed and day < close_o:
             return {"alt_pnl": step.new_total_pnl, "marginal": step.new_total_pnl - actual,
-                    "early": True, "exit_reason": step.close_reason, "exit_date": b["date"],
+                    "early": True, "exit_reason": step.close_reason,
+                    "exit_date": hold_bars[i]["date"],
                     "exit_price": step.close_price, "replayed": True,
                     "peak_close": peak_close, "n_bars": i + 1}
         if step.closed:  # closed on/after the real exit day → it rode to the actual exit

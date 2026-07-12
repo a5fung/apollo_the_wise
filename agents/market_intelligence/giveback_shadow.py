@@ -18,7 +18,7 @@ import json
 import logging
 from datetime import date, timedelta
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the ADR 0023 F1 giveback SHADOW reuses the tested ladder for the counterfactual rather than re-implementing it (same F11 pattern as flag_detector's #396 mgmt shadow); pure compute, no live execution
+from agents.market_intelligence.broker.exit_logic import iter_exit_ladder, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the ADR 0023 F1 giveback SHADOW reuses the tested ladder for the counterfactual rather than re-implementing it (same F11 pattern as flag_detector's #396 mgmt shadow); pure compute, no live execution
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
@@ -45,20 +45,16 @@ def compute_giveback_shadow(
         return None
 
     def _replay(with_giveback: bool):
-        state = {"alert_date": alert_date, "remaining_shares": shares, "entry_price": entry,
-                 "hard_stop": hard_stop, "partial_taken": False, "breakeven_active": False,
-                 "exits": [], "running_closes": []}
-        for i, c in enumerate(closes):
-            day = alert_date + timedelta(days=i + 1)  # l=c and reconstructed dates cancel in the marginal
-            step = apply_daily_exit_step(
-                state, {"l": c, "c": c}, day, integer_partial_shares=True,
+        # #445: seed + carry live in the ONE driver (exit_logic.iter_exit_ladder);
+        # this consumer keeps only its fold (l=c bars, marginal-cancel dates).
+        state = seed_exit_state(alert_date=alert_date, entry_price=entry,
+                                hard_stop=hard_stop, remaining_shares=shares)
+        bars = ((alert_date + timedelta(days=i + 1), {"l": c, "c": c})
+                for i, c in enumerate(closes))  # l=c and reconstructed dates cancel in the marginal
+        for i, day, step in iter_exit_ladder(
+                state, bars,
                 giveback_arm_gain=arm if with_giveback else None,
-                giveback_floor_frac=floor_frac if with_giveback else None)
-            # apply_daily_exit_step never mutates `state` and returns fresh lists, so carry
-            # only the fields that move forward (alert_date/entry/hard_stop are constant).
-            state.update(remaining_shares=step.new_remaining, partial_taken=step.new_partial_taken,
-                         breakeven_active=step.new_breakeven_active,
-                         exits=step.new_exits, running_closes=step.new_running_closes)
+                giveback_floor_frac=floor_frac if with_giveback else None):
             if step.closed:
                 return step.new_total_pnl, i, step.close_reason
         remaining = state["remaining_shares"]

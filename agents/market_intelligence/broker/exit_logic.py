@@ -384,3 +384,60 @@ def _skip(remaining, partial_taken, breakeven_active,
         new_running_closes=running_closes, new_exits=exits,
         new_total_pnl=total_pnl,
     )
+
+
+# ── #445: THE canonical replay driver (one copy of the seed→step→carry loop) ─
+# The "seed 8-field state → loop apply_daily_exit_step → carry state forward →
+# detect .closed" pattern was copy-pasted 4× (giveback_shadow._replay ·
+# _306_harvest_sweep.replay · flag_detector._htf_management_replay ·
+# orb_extension_shadow settle) and register R4 (moneypath audit 7/12) requires
+# every NEW shadow (0026-C3 / 0027-C3 / 0031-C3) to ride ONE driver instead of
+# a fifth copy. The driver owns ONLY the fragile duplicated part (seed shape +
+# carry-forward); fold/termination semantics stay with each consumer.
+
+def seed_exit_state(*, alert_date, entry_price, hard_stop, remaining_shares,
+                    partial_taken=False, breakeven_active=False,
+                    exits=None, running_closes=None) -> dict:
+    """The canonical 8-field exit-ladder state. Persisted-state consumers
+    (orb_extension resume) may pass their stored values for the mutable five."""
+    return {
+        "alert_date": alert_date,
+        "entry_price": entry_price,
+        "hard_stop": hard_stop,
+        "remaining_shares": remaining_shares,
+        "partial_taken": partial_taken,
+        "breakeven_active": breakeven_active,
+        "exits": list(exits) if exits else [],
+        "running_closes": list(running_closes) if running_closes else [],
+    }
+
+
+def iter_exit_ladder(state: dict, bars, *, integer_partial_shares: bool = True,
+                     **step_kwargs):
+    """Drive `apply_daily_exit_step` over `bars`, carrying state forward IN PLACE.
+
+    `bars`: iterable of `(day, bar_dict)` — bar_dict needs at least {"l","c"}
+    (extra keys pass through untouched). `step_kwargs` are forwarded verbatim to
+    every step (trail_mode / scale_fraction / giveback_* — constant per replay,
+    matching all four migrated call sites).
+
+    Yields `(i, day, step)` AFTER the carry, so `state` already reflects the
+    step when the consumer sees it (the caller's dict is updated in place — the
+    persisted-state consumers write `state` straight back to their tables).
+    Stops after yielding a closed step; a caller that needs pre-step values
+    (e.g. HTF's was_breakeven) snapshots them before consuming the next item.
+    """
+    for i, (day, bar) in enumerate(bars):
+        step = apply_daily_exit_step(
+            state, bar, day, integer_partial_shares=integer_partial_shares,
+            **step_kwargs)
+        state.update(
+            remaining_shares=step.new_remaining,
+            partial_taken=step.new_partial_taken,
+            breakeven_active=step.new_breakeven_active,
+            exits=step.new_exits,
+            running_closes=step.new_running_closes,
+        )
+        yield i, day, step
+        if step.closed:
+            return
