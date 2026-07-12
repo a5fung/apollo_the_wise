@@ -6765,6 +6765,17 @@ reviews:
       with-chart change right/wrong. Precision holds -> CHANGE_PROCESS to promote
       the chart axis into live _build_judge_prompt (load-bearing, operator sign-off).
       Else hold + re-snapshot docs/analysis/chart_vision_eval_267_2026-06-18.md.
+      ZERO-DELTA BRANCH (interim read 2026-07-12, Block 4 T6 — docs/analysis/
+      chart_axis_verdict_2026-07-12.md): 23 graded, 21/23 modal-stable B==C
+      IDENTICAL, 0 deltas — the chart changed NO verdict on the live cohort; the
+      2 divergences were instability, not signal. If still ~0 at fire: rec = HOLD
+      (the axis isn't pulling verdict-level weight on easy cohorts) + run the
+      SPECCED follow-up before any kill: the FALSE_BOOST +/-chart probe (the 9
+      real false-boost names from block3_t1_mined_corpus — extended/parabolic
+      charts are exactly where a chart SHOULD demote; payloads from the cached
+      mi_ep_catalyst_metrics raws, 2 arms x3 stability, ~$8) — chart saves
+      false-boosts -> the axis earns a narrow role; doesn't -> hold/kill with
+      evidence on BOTH easy and hard cohorts.
       Promotion is NEVER agent-self-certified (ADR 0011).
     status: pending
     added_on: 2026-06-18
