@@ -379,6 +379,25 @@ if ! python3 scripts/audit_trade_state_demotions.py check; then
   exit 16
 fi
 
+if [[ "$SERVICES" == *market-agent* ]]; then
+  echo "=== [5m/7] Preflight judge-eval regression gate (ADR 0030 — grade-surface drift class) ==="
+  # Run on host (stdlib ast, no container — the [5l/7] pattern). FAILS the deploy iff the
+  # grade surface (judge rubric text/version, catalyst-grader prompt version, JUDGE_MODEL,
+  # or the eval corpus content) changed since the last PASSING robustness-eval record —
+  # so no prompt edit / model swap / corpus change ever ships ungraded. The rubric hash is
+  # recomputed from _RUBRIC's text: accidental edits trip it too. Operator-signed `waiver`
+  # in the record is the emergency valve (printed loudly). Market-agent scopes only (the
+  # judge runs there); orchestrator-only deploys don't re-gate. Hard-FAIL from day one
+  # (operator F3, sitting 2026-07-12).
+  if ! python3 scripts/preflight_judge_eval_gate.py; then
+    echo ""
+    echo "DEPLOY FAILED — the grade surface changed since the last passing judge-robustness eval."
+    echo "Re-run scripts/evals/run_judge_robustness_eval.py (on prod) to green, regenerate the"
+    echo "pass record from its RESULTS_JSON, and re-deploy. Do NOT hand-edit the record (ADR 0030)."
+    exit 17
+  fi
+fi
+
 echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
 # #324: re-surface the execution-runtime drift as the LAST line — the DEPLOY OK above is
