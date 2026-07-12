@@ -180,6 +180,73 @@ marathon is ruling-speed, not reading-speed.
 > sized for is now free for the Lane-1 SITTING).** Do not re-run; the tier markers above + below
 > carry every deliverable; cards are queued on the source tasks (#457/#310/#274/#448/#335).
 
+---
+
+## Block 4 — THE IMPLEMENTATION GAUNTLET (Sunday 7/13, after/around the sitting)
+_Assembled 2026-07-11 late eve (operator: "Block 3 was too tame — expansive, not just design;
+complex high-leverage implementation, aggressive, multi-tier, pick up as we go"). Anchor task
+**#462**; trigger **"run fable block 4 tier N"** (or "continue block 4"). **Every tier ends in
+COMMITTED RUNNING CODE or a VERDICT — no tier's deliverable is a doc.** Tiers are independent
+unless noted; strictly ordered by (leverage × Fable-uniqueness); over-committed by design.
+THE LINE: everything builds dark/shadow/read-only; NO deploy without explicit operator
+authorization per deploy; fixes found by audits are carded, not hot-patched._
+
+### T1 — BUILD + RUN the judge-robustness eval end-to-end (0030 C1→C3 + amendment drafts)
+Build `scripts/evals/run_judge_robustness_eval.py` (predicate scorer, semaphore(3), results +
+pass-record writer, fake-client tests) → **RUN it live** over the 36-case corpus (+ mined
+payload-bearing cases) → **the robustness map** (per-class failure rates, the 7/18 M1 input) →
+per-failure-cluster ANALYSIS → **draft the rubric amendments** (CHANGE_PROCESS-ready, unsigned,
+one per failing class) → projected re-run. Then C2 (preflight [5m/7]) so the gate arms on the
+first record. DoD: map committed + gate code ready + amendments drafted. ~$5–15 LLM.
+
+### T2 — MONEY-PATH ADVERSARIAL AUDIT (max depth, read-only — protect the real $)
+Fable-depth adversarial sweep of the ENTIRE real-money spine: entry_pipeline → bracket submit →
+trade_stream fills → stop refresh/replace → partial/exit chain → reconcile/ingest →
+dual-account isolation. Hunt the next #183-class latent break (enum drift, race, partial-fill
+edge, replace-atomicity, mode-bleed, silent-swallow on the money path). Every finding VERIFIED
+against code + prod state (read-only), ranked, filed as cards — **fixes are operator-gated, the
+audit is not.** DoD: verified-findings register; zero-finding is a valid (and reportable) result.
+
+### T3 — #146 FAITHFUL direct-trigger harness → the REAL drop-COILED verdict
+Tonight's replay reproduced only 4/21 live triggers — not rule-grade. Reverse-engineer the live
+trigger computation (vol-ratio window · base_high_close semantics · hysteresis/recent-stages)
+until the harness re-flags **≥19/21** known TRIGGERED events (instrument, diff, fix the REPLAY —
+never the detector). Then re-run the drop-COILED cohort with rule-grade evidence → the parked
+0026-D2 fork gets a real table either way. DoD: faithfulness ≥19/21 proven + the cohort verdict
+committed. Read-only.
+
+### T4 — #445: ONE settlement driver + migrate the 4 copy-paste sites (the R4 enabler)
+The seed→`apply_daily_exit_step`-loop→carry-state→`.closed` replay loop is copy-pasted 4×
+(`giveback_shadow._replay` · `_306_harvest_sweep.replay` · `flag_detector._htf_management_replay`
+· `orb_extension_shadow.settle_open_sha…`). Extract the canonical driver (incl. the fill-nuance
++ the #290 gap-through rule as parameters), migrate ALL FOUR consumers, **byte-identical output
+pins** on each migration (golden-file tests from current behavior). Unblocks 0026-C3/0027-C3/
+0031-C3 per register R4. DoD: one driver, four consumers migrated, pins green, suite green.
+
+### T5 — BUILD the 0031 pivot-stop machinery on the T4 driver (C1+C2+C3)
+The character profiler (episode detection → home_MA/undercut_p80; synthetic-fixture tests:
+respecter/undercutter/abstainer/re-rating-reset) + pivot detectors (confirmed fractal lows,
+no-lookahead pins) + the `mi_pivot_stop_shadow` nightly job + gated review — dark, deploy-ready.
+Depends on T4 (its settlement rides the driver). DoD: full shadow stack committed + tests green;
+deploy awaits operator go.
+
+### T6 — CHART-VISION ±chart judge eval (#267 W4 — the plumbing already exists)
+`chart_render.py` + `scripts/eval_chart_judge.py` + `grade_holistic(image_png=…)` are all built.
+Audit what exists → extend to a paired with/without-chart eval over a LABELED cohort (mined
+Class-D + FALSE_BOOST cases + point-in-time charts, no lookahead) → draft the chart_note
+instruction (the real design judgment) → RUN → delta analysis: does the chart change verdicts,
+and in the right direction? Feeds P2/M1. DoD: the ±chart delta table committed. ~$10–30 LLM.
+
+### T7 — STRETCH: ensemble-divergence prototype (0018 slice)
+Second-model regrade over the same graded cohort → divergence-vs-outcome analysis: is
+two-model disagreement an uncertainty signal worth abstain/size-down? Offline, read-only.
+DoD: the divergence table + a wire-or-drop rec.
+
+### FLEX LANE — post-sitting unblocked builds (pick up as rulings land)
+0025 C1–C3 merge arm build (behind `THEME_MERGE_ARM`, T2b corpus gate) · #452 family-slot
+shadow-count + alert (`exposure_family`, `OPEN_POSITION_STATUSES`) · T2c drift MetricSpecs ·
+0027 C1–C2. Each is sitting-gated; build the moment its ruling exists.
+
 ### T6 — STRETCH (exploratory; only if the day allows)
 (a) v1.1-v2.0 roadmap deep read → design the biggest undesigned v2.0 rock (gap-hunt; may output
 "none — it's all execution", which is itself the finding). (b) Operator-methodology extraction:
