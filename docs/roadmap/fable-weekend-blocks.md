@@ -134,6 +134,16 @@ The last undesigned management rock. Design pivot detection + stop-placement sem
 shadow measurement — with an EXPLICIT sequencing gate: shadow may coexist with the giveback
 shadow (counterfactuals don't interact); any LIVE flip queues strictly BEHIND the giveback F1
 resolution (never two concurrent live stop changes). Output: ADR to execution depth.
+> **◐ T3 EXECUTED 2026-07-11 eve (same Fable portion): ADR 0031**
+> (`docs/decisions/0031-pivot-structure-stops.md`) — deterministic per-stock CHARACTER PROFILE
+> (pullback-episode detector → home-MA + undercut_p80; ABSTAIN is first-class; +50% re-rating
+> re-anchors) · TWO candidate arms measured, not pre-decided (P1 confirmed-swing-pivot trail ·
+> P2 character-MA trail) vs the live baseline · shadow `mi_pivot_stop_shadow` on the
+> giveback_shadow template (closed trades, per-arm columns never blended, gated review wired
+> same commit) · §5 tail-clip test = the dossier's poison test · the SEQUENCING GATE encoded
+> hard (live fork not even sitting-eligible until giveback F1 resolves; composes
+> max(arm, giveback_floor); lands behind 0029-D1). Cards C1-C4 queued on #310.
+> **Sunday starts at T4.**
 
 ### T4 — CROSS-ADR COMPOSITION PASS (protects the entire build phase)
 0025-0029 were designed independently in one weekend; sweep them against each other + 0011-0024:
