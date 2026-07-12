@@ -91,6 +91,13 @@ execute in order, cut from the bottom; every uncut tier still yields an Opus-exe
 Task anchor: **#457** (T1/T2 core); T3 rides #310; T5 rides #335/Lane-1._
 
 ### T1 — JUDGE ROBUSTNESS (the core; serves the 7/18 M1 authority flip)
+> **◐ T1 DESIGN EXECUTED EARLY 2026-07-11 eve (Fable portion, operator-triggered):** ADR 0030
+> (`docs/decisions/0030-judge-robustness-eval-gate.md`) = the (a) 12-class taxonomy · (b) synthetic
+> half CRAFTED (`scripts/evals/judge_robustness_corpus_v1.json`, 28 cases; mined half was Opus
+> pre-built same day) · (c) eval-harness spec (two arms) · (e) hash-keyed pass-record regression
+> gate [5m/7] · (d) amendment loop. Cards C1-C4 queued on #457. **Sunday's T1 remainder = NONE
+> (design complete)** — Sunday starts at T2; C1/C3 build is Opus work and C3's robustness map
+> should land before the 7/18 M1 sitting.
 The judge gains authority 7/18; nothing adversarially tests it. (a) **Failure-mode taxonomy** —
 the misdirection classes a grader must not fall for (M&A-as-partnership · dilutive-offering-as-
 growth · stale-news-repackaged · promotional-microcap PR · sympathy-move-no-own-catalyst ·
