@@ -1,5 +1,16 @@
 # Lane-1 sitting pack — every fork pre-argued (Fable, built 2026-07-11 eve for the Sun 7/13 sitting)
 
+> **✅ SITTING HELD 2026-07-12 (ran a day early) — FULL DOCKET RULED; this doc is now the MINUTES.**
+> **Bundle A: SIGNED wholesale (all 7).** **B1 #395: NO-GO on real entries + the shadow KEEPS
+> OBSERVING** (operator chose observe over the kill rec — re-surface only on a sign-flip or
+> operator call). **B2 0026-D2: PARKED** (behind the Block-4 T3 faithful harness; D1+D3 signed).
+> **B3 #452: SHADOW-COUNT NOW** (build this week; theme-membership family key; promote-to-blocking
+> after ~2 clean weeks = operator fork). **Bundle C: RATIFIED all** (incl. #416 proceed; #394
+> auto-resolved = methodology signed, tuning waits on shadow-N). Rulings recorded on every source
+> task line (commit of 2026-07-12); #170 + #395 + #459 CLOSED as completed decisions; the
+> `ep_cooldown_resetup_admission` gated review resolved. Unblocked build queue: see the CLOSE
+> commit + HANDOFF §3.
+
 **Pre-read (10 min):** `edge_dossier_451` → `premortem_450` §decision-surface → this pack.
 **Format:** every queued fork = the call · the strongest case AGAINST the rec · why the rec
 survives · evidence pointer. Grouped for ruling speed: **Bundle A** = sign-wholesale (each rec

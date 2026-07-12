@@ -4919,7 +4919,7 @@ reviews:
       classifier (confirm pullback vs still-extended); THEN CHANGE_PROCESS ship
       decision on cooldown length / override.
     cross_refs: [theme_axis_gating_logic, "task #170", "task #171 (/setup+/why observability)"]
-    status: pending
+    status: resolved  # 2026-07-12 SITTING: NO-GO ratified — the 7/11 full-history backtest (docs/analysis/170_resetup_backtest_table_2026-07-11.md, N=89) answered the owed realized-R + like-for-like baseline: the admitted cohort runs BELOW the live EP book (+5.6% vs +7.4% median) and the gap filter is anti-selective; the 6/01 N=22 edge did not replicate. Cooldown stays as-is; task #170 closed.
     added_on: 2026-06-01
 
   - review_id: b6_forward_backtest_first_eval
