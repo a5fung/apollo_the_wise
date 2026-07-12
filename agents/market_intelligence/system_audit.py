@@ -68,6 +68,10 @@ _COLD_START_CEILINGS: dict[str, tuple[float, str]] = {
     "cooldowns_per_day":              (20,   "high"),
     "9m_alerts_per_day":              (30,   "high"),
     "audit_errors_per_day":           (5,    "high"),
+    # T2c judge drift metrics (2026-07-12): generous by design — the band takes
+    # over at n>=14 days; these only catch egregious day-one drift.
+    "judge_high_rate_daily":          (0.85, "high"),
+    "judge_demote_share_daily":       (0.90, "high"),
     "skip_count_infra":               (5,    "high"),
     "skip_count_filter":              (30,   "high"),
     "skip_count_setup":               (20,   "high"),
@@ -321,6 +325,53 @@ async def _today_market_hours_boots(conn) -> float:
     return float(row["n"] or 0)
 
 
+async def _judge_decision_rows_today(conn) -> list[dict]:
+    """Today's ep_grade_decision payloads, parsed PYTHON-SIDE (mi_audit_log.detail
+    is TEXT and can hold malformed rows — the ->>-in-SQL approach failed once,
+    7/11 corpus mine). Malformed rows are SKIPPED, never crash the metric."""
+    rows = await conn.fetch(
+        """
+        SELECT detail FROM mi_audit_log
+        WHERE event_type = 'ep_grade_decision'
+          AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE
+        """
+    )
+    out = []
+    for r in rows:
+        try:
+            d = json.loads(r["detail"]) if isinstance(r["detail"], str) else r["detail"]
+            if isinstance(d, dict):
+                out.append(d)
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+async def _today_judge_high_rate(conn) -> float:
+    """T2c / premortem R5 (2026-07-11): the runtime drift tripwire for the judge —
+    fraction of today's judge verdicts with tier=HIGH. The [5m/7] gate catches
+    grade-surface changes at DEPLOY; this catches silent drift in PRODUCTION
+    (model snapshot updates, corpus-mix shifts). 0 decisions → 0.0 (the trimmed
+    band absorbs; deliberately NO bespoke N-floor — keep the metric shaped like
+    every other L2 metric). NOT regime-conditional initially (establish the
+    unconditional baseline first; promote only on evidenced false breaches)."""
+    rows = await _judge_decision_rows_today(conn)
+    if not rows:
+        return 0.0
+    high = sum(1 for d in rows if d.get("judge_tier") == "HIGH")
+    return high / len(rows)
+
+
+async def _today_judge_demote_share(conn) -> float:
+    """T2c sibling: share of today's judge verdicts with direction=demote — the
+    OVER-SKEPTICISM drift direction (the D08/positive-control failure mode, live)."""
+    rows = await _judge_decision_rows_today(conn)
+    if not rows:
+        return 0.0
+    demote = sum(1 for d in rows if d.get("judge_direction") == "demote")
+    return demote / len(rows)
+
+
 # Tagged by which scan owns them — post_eod (trade-side) vs post_nightly
 # (theme/cooldown/regime). Topic command maps onto the same tags.
 _TRADE_METRICS: list[MetricSpec] = [
@@ -414,6 +465,24 @@ _TRADE_METRICS: list[MetricSpec] = [
         "  AND (created_at AT TIME ZONE 'America/New_York')::time BETWEEN '09:30' AND '16:00' "
         "ORDER BY created_at;",
         ["docker-compose / host healthcheck / OOM kills"],
+    ),
+    MetricSpec(
+        "judge_high_rate_daily", _today_judge_high_rate,
+        "SELECT created_at, detail FROM mi_audit_log "
+        "WHERE event_type='ep_grade_decision' "
+        "  AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE "
+        "ORDER BY created_at DESC;",
+        ["agents/market_intelligence/ep_grade_judge.py",
+         "agents/market_intelligence/ep_detector.py::_emit_grade_decision"],
+    ),
+    MetricSpec(
+        "judge_demote_share_daily", _today_judge_demote_share,
+        "SELECT created_at, detail FROM mi_audit_log "
+        "WHERE event_type='ep_grade_decision' "
+        "  AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE "
+        "ORDER BY created_at DESC;",
+        ["agents/market_intelligence/ep_grade_judge.py",
+         "agents/market_intelligence/ep_detector.py::_emit_grade_decision"],
     ),
 ]
 
