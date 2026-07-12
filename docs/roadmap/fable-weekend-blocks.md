@@ -163,6 +163,14 @@ by #452's cap · the #332 classifier feeding #357's credit · exit-machinery coh
 conflict gets a resolution line BEFORE any card builds it in.
 
 ### T5 — SITTING PACKS (multiplies the operator's decision time)
+> **◐ T5 EXECUTED 2026-07-11 eve (same Fable portion):** (b) **Lane-1 pre-argued pack**
+> `docs/analysis/lane1_sitting_pack_2026-07-13.md` — EVERY queued fork with steelman + counter +
+> rec, grouped Bundle A (sign-wholesale ×7) / Bundle B (the 3 real deliberations: #395 kill ·
+> 0026-D2 park · #452 scope) / Bundle C (ratify ×5), plus the "if you rule only five" list.
+> (a) **M1 pack** `docs/analysis/m1_sitting_pack_2026-07-18.md` — preconditions checklist (2
+> slots land this week: the 0030-C3 robustness map + theme_axis_gating), the pre-agreed
+> interpretation contract, flip mechanics ending in an action, rollback, parked non-decisions.
+> **Sunday starts at T6 (stretch) — or the sitting itself.**
 (a) **M1 sitting pack (7/18)**: fold the T1 robustness map + the m1_rubric_amendment_draft (7/8)
 + theme_axis_gating + the R5 preconditions into ONE turnkey sitting doc. (b) **Lane-1 pre-argued
 pack**: steelman + counter for EVERY queued fork (block-1 F's + pre-mortem surface) so the
