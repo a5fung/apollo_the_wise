@@ -241,6 +241,46 @@ async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bo
         return False
 
 
+def _cap_summary(s, n: int = 110) -> str:
+    """Word-boundary cap so a long catalyst never truncates mid-word in the /setup timeline."""
+    s = (s or "").strip()
+    return s if len(s) <= n else s[:n].rsplit(" ", 1)[0].rstrip() + "…"
+
+
+def _collapse_flag_runs(events: list[dict]) -> list[dict]:
+    """The continuation-flag detector logs a state most days a base persists — a run of them is
+    ONE base evolving, not N events, and it otherwise drowns the /setup timeline (WULF: 10 near-
+    identical rows). Collapse each maximal run of consecutive FLAG events (events are date-DESC)
+    into a single dated line: span + count + the distinct states seen. Non-FLAG events pass through."""
+    out: list[dict] = []
+    i = 0
+    while i < len(events):
+        if events[i].get("source") != "FLAG":
+            out.append(events[i])
+            i += 1
+            continue
+        j = i
+        while j < len(events) and events[j].get("source") == "FLAG":
+            j += 1
+        run = events[i:j]
+        if len(run) == 1:
+            out.append(run[0])
+        else:
+            latest, earliest = run[0], run[-1]   # date-DESC: [0] newest, [-1] oldest
+            seen: list[str] = []
+            for e in run:
+                w = (e.get("summary") or "").split(" ")[0]
+                if w and w not in seen:
+                    seen.append(w)
+            out.append({
+                "date": latest["date"], "source": "FLAG",
+                "summary": (f"base watched {earliest['date']}→{latest['date']} "
+                            f"({len(run)} states: {'/'.join(seen)})"),
+            })
+        i = j
+    return out
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -3253,10 +3293,10 @@ class MarketIntelligenceAgent(BaseAgent):
                 if ticker is None:
                     ticker = up
         if not ticker:
-            return self._ok(request, result="Usage: `/setup TICKER [days]`")
+            return self._ok(request, result="Usage: `/setup TICKER [days | YYYY-MM-DD]` — a date shows that day's entry diagnosis")
 
         result = await get_ticker_setup_timeline(ticker, days=days)
-        events = result["events"]
+        events = _collapse_flag_runs(result["events"])
         rs_ctx = result["rs_context"]
         raw_count = result["raw_count"]
         cap = result["cap"]
@@ -3328,7 +3368,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"📅 {ds}")
                 current_date = ds
             tag = SRC_TAG.get(ev["source"], ev["source"])
-            lines.append(f"  {tag} · {ev['summary']}")
+            lines.append(f"  {tag} · {_cap_summary(ev['summary'])}")
 
         if raw_count > cap:
             lines.append("")

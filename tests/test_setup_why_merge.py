@@ -54,6 +54,42 @@ def test_setup_without_date_does_not_delegate(agent, monkeypatch):
     assert called["why"] is False
 
 
+def test_cap_summary_word_boundary():
+    from agents.market_intelligence.agent import _cap_summary
+    s = "TeraWulf announced two transformative transactions today reshaping its balance sheet"
+    out = _cap_summary(s, n=40)
+    assert out.endswith("…")
+    assert not out[:-1].endswith(" ")          # cut on a word boundary, no dangling space
+    assert _cap_summary("short one", 40) == "short one"   # under the cap → untouched
+
+
+def test_collapse_flag_runs():
+    from datetime import date
+    from agents.market_intelligence.agent import _collapse_flag_runs
+    evs = [
+        {"date": date(2026, 7, 10), "source": "EP-MAGNA", "summary": "HIGH score 96"},
+        {"date": date(2026, 6, 15), "source": "FLAG", "summary": "WATCH — base 8d"},
+        {"date": date(2026, 6, 12), "source": "FLAG", "summary": "WATCH — base 7d"},
+        {"date": date(2026, 6, 10), "source": "FLAG", "summary": "INVALIDATED — base 5d"},
+        {"date": date(2026, 5, 22), "source": "FLAG", "summary": "WATCH — base 11d"},
+        {"date": date(2026, 5, 20), "source": "THEME", "summary": "Crypto (Nascent)"},
+    ]
+    out = _collapse_flag_runs(evs)
+    assert len(out) == 3                        # 4 FLAG rows → 1; EP + THEME untouched
+    assert out[0]["source"] == "EP-MAGNA" and out[2]["source"] == "THEME"
+    flag = out[1]
+    assert flag["source"] == "FLAG" and flag["date"] == date(2026, 6, 15)
+    assert "2026-05-22→2026-06-15" in flag["summary"]
+    assert "4 states: WATCH/INVALIDATED" in flag["summary"]
+
+
+def test_collapse_single_flag_untouched():
+    from datetime import date
+    from agents.market_intelligence.agent import _collapse_flag_runs
+    evs = [{"date": date(2026, 6, 15), "source": "FLAG", "summary": "WATCH — base 8d"}]
+    assert _collapse_flag_runs(evs) == evs
+
+
 def test_why_skip_set_picks_ticker_not_setup_keyword():
     # the delegation passes the raw "/setup TICKER DATE" text to /why, so /why must skip
     # the SETUP keyword and resolve the real ticker (regression guard on the skip-set).
