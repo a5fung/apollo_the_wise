@@ -1889,6 +1889,31 @@ async def initialize_schema() -> None:
                 computed_at    TIMESTAMPTZ DEFAULT NOW()
             );
 
+            -- ADR 0031 pivot-stop SHADOW (2026-07-12): per-arm counterfactual exits on
+            -- closed live trades (baseline SMA trail vs P1 confirmed-swing-pivot vs
+            -- P2 character-MA). Per-arm columns, NEVER blended (ADR 0013). The
+            -- character profile snapshots INTO the row (no standalone table until a
+            -- 2nd consumer). Gated review: pivot_stop_shadow_review.
+            CREATE TABLE IF NOT EXISTS mi_pivot_stop_shadow (
+                trade_id             INT PRIMARY KEY,
+                ticker               TEXT NOT NULL,
+                alert_date           DATE,
+                account_mode         TEXT,
+                baseline_exit_r      DOUBLE PRECISION,
+                p1_exit_r            DOUBLE PRECISION,
+                p1_exit_date         DATE,
+                p2_exit_r            DOUBLE PRECISION,
+                p2_exit_date         DATE,
+                mfe_r                DOUBLE PRECISION,
+                baseline_capture_pct DOUBLE PRECISION,
+                p1_capture_pct       DOUBLE PRECISION,
+                p2_capture_pct       DOUBLE PRECISION,
+                profile              JSONB,
+                abstained            BOOLEAN DEFAULT FALSE,
+                abstain_reason       TEXT,
+                computed_at          TIMESTAMPTZ DEFAULT NOW()
+            );
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales

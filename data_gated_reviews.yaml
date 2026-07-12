@@ -6900,6 +6900,32 @@ reviews:
     status: pending
     added_on: 2026-07-07
 
+  - review_id: pivot_stop_shadow_review
+    title: "Pivot-stop SHADOW (ADR 0031) — first per-arm readout: does character-conditioned placement beat the global trail WITHOUT clipping the tail?"
+    question: >-
+      mi_pivot_stop_shadow accrues per-arm counterfactual exits on closed live MAGNA53 trades
+      (baseline SMA trail vs P1 confirmed-swing-pivot vs P2 character-MA). At >=10 settled
+      NON-ABSTAINED rows: (a) per-arm mean/median exit R + MFE capture%% vs baseline, (b) THE
+      TAIL-CLIP TEST (the dossier poison test): count trades where an arm exited EARLIER than
+      baseline on a run that kept going — any arm that clips the +5R tail LOSES regardless of
+      its mean, (c) the abstention rate (how often no profile exists — itself a GO/NO-GO input),
+      (d) the #146 stop-geometry question: do the direct-trigger-class whipsaw names hold under
+      P1/P2? GREEN -> the ADR 0031 live fork becomes sitting-eligible ONLY IF giveback F1 is
+      already resolved (the §0 sequencing gate — never two concurrent live stop changes).
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_pivot_stop_shadow') IS NULL THEN 0
+                  ELSE (SELECT COUNT(*) FROM mi_pivot_stop_shadow WHERE NOT abstained) END
+    threshold: 10
+    earliest_review_date: 2026-08-09
+    action_when_ready: >-
+      Per-arm table (baseline/p1/p2: mean, median, capture_pct) + the tail-clip count + the
+      abstention rate. Rec-or-defer per ADR 0031 §5/§6; any flip = giveback-F1-resolved +
+      CHANGE_PROCESS + operator sign-off. Cross-check the #146 whipsaw cohort
+      (146_faithful_harness_verdict) against P1/P2 behavior.
+    status: pending
+    added_on: 2026-07-12
+    cross_refs: [giveback_shadow_review, "task #310", "ADR 0031", "task #146 (stop-geometry insight)"]
+
   - review_id: giveback_shadow_review
     title: "Peak-lock (giveback) SHADOW — review the live-book counterfactual BEFORE any live flip (#306 ADR 0023 F1)"
     question: >-

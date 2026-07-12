@@ -136,6 +136,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
     "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
+    "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -3415,6 +3416,21 @@ async def _giveback_shadow_job():
         await notify_job_failure("giveback_shadow", str(e))
 
 
+async def _pivot_stop_shadow_job():
+    """Run at 17:42 ET (EOD, after the giveback shadow). Log the ADR 0031 pivot-stop SHADOW
+    (baseline vs P1 swing-pivot vs P2 character-MA counterfactuals) for live MAGNA53 trades
+    that closed today. Pure compute + DB/audit, NO broker calls, NO live-exit change (THE LINE;
+    live flip queues strictly behind giveback F1 — ADR 0031 §0)."""
+    try:
+        from agents.market_intelligence.pivot_stop_shadow import run_pivot_stop_shadow
+        from agents.market_intelligence.collector import et_today
+        n = await run_pivot_stop_shadow(et_today())
+        logger.info(f"pivot-stop-shadow: logged {n} row(s)")
+    except Exception as e:
+        logger.error(f"pivot-stop-shadow job failed: {e}", exc_info=True)
+        await notify_job_failure("pivot_stop_shadow", str(e))
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -4522,6 +4538,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_giveback_shadow_job, "giveback_shadow"),
         CronTrigger(hour=17, minute=38, day_of_week="mon-fri", timezone="America/New_York"),
         id="giveback_shadow",
+        replace_existing=True,
+    )
+
+    # ADR 0031 pivot-stop SHADOW — 17:42 ET mon-fri (after the giveback shadow's 17:38; both are
+    # read-only counterfactuals on closed trades, disjoint tables — they coexist by design §0).
+    _scheduler.add_job(
+        audit_wrap(_pivot_stop_shadow_job, "pivot_stop_shadow"),
+        CronTrigger(hour=17, minute=42, day_of_week="mon-fri", timezone="America/New_York"),
+        id="pivot_stop_shadow",
         replace_existing=True,
     )
 

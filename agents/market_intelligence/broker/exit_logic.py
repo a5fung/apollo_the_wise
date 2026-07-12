@@ -148,6 +148,9 @@ def apply_daily_exit_step(
     giveback_arm_r: float | None = None,
     giveback_floor_frac: float | None = None,
     giveback_risk_per_share: float | None = None,
+    character_ma_window: int = 20,
+    character_ma_kind: str = "sma",
+    character_undercut: float = 0.0,
 ) -> ExitStep:
     """Compute one daily exit step.
 
@@ -188,7 +191,7 @@ def apply_daily_exit_step(
       input bound). See `giveback_floor` above for arm/floor semantics + fail-loud config
       validation. Opt-in for the #306 harvest sweep harness (Card 2); no live caller passes it.
     """
-    if trail_mode not in ("sma", "ema_10_20", "sma_10_20_handoff"):
+    if trail_mode not in ("sma", "ema_10_20", "sma_10_20_handoff", "pivot_swing", "character_ma"):
         raise ValueError(f"apply_daily_exit_step: unknown trail_mode {trail_mode!r}")
     remaining = float(state.get("remaining_shares") or 0)
     alert_date = state["alert_date"]
@@ -252,6 +255,24 @@ def apply_daily_exit_step(
             active_sma = ema_10 if (ema_10 is not None and ema_10 > ema_20) else ema_20
         elif ema_10 is not None:
             active_sma = ema_10
+    elif trail_mode == "pivot_swing":
+        # ADR 0031 P1 (SHADOW-ONLY, 2026-07-12): the trail line is the caller-annotated
+        # ratcheting CONFIRMED swing low, carried on the bar itself (extra bar keys pass
+        # through the #445 driver untouched). Recorded deviation: exits fire on the ladder's
+        # uniform CLOSE-below semantics, not intraday touch — conservative for the arm.
+        _ps = daily_bar.get("pivot_stop")
+        active_sma = float(_ps) if _ps is not None else None
+    elif trail_mode == "character_ma":
+        # ADR 0031 P2 (SHADOW-ONLY): the stock's own respected MA with ITS OWN habitual
+        # undercut tolerance — home_MA × (1 − undercut_p80), both from the per-ticker
+        # character profile (pivot_analysis.character_profile). <window closes → no line
+        # yet (no exit — mirrors the existing None-guard behavior).
+        if character_ma_kind == "ema":
+            _line = ema(running_closes, character_ma_window)
+        else:
+            _line = (sum(running_closes[-character_ma_window:]) / character_ma_window
+                     if len(running_closes) >= character_ma_window else None)
+        active_sma = _line * (1.0 - character_undercut) if _line is not None else None
     else:
         sma_10 = sum(running_closes[-10:]) / 10 if len(running_closes) >= 10 else None
         sma_20 = sum(running_closes[-20:]) / 20 if len(running_closes) >= 20 else None
