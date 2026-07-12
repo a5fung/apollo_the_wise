@@ -96,8 +96,19 @@ Task anchor: **#457** (T1/T2 core); T3 rides #310; T5 rides #335/Lane-1._
 > half CRAFTED (`scripts/evals/judge_robustness_corpus_v1.json`, 28 cases; mined half was Opus
 > pre-built same day) · (c) eval-harness spec (two arms) · (e) hash-keyed pass-record regression
 > gate [5m/7] · (d) amendment loop. Cards C1-C4 queued on #457. **Sunday's T1 remainder = NONE
-> (design complete)** — Sunday starts at T2; C1/C3 build is Opus work and C3's robustness map
-> should land before the 7/18 M1 sitting.
+> (design complete)** — C1/C3 build is Opus work and C3's robustness map should land before the
+> 7/18 M1 sitting.
+>
+> **◐ T2 ALSO EXECUTED 2026-07-11 eve (same Fable portion):**
+> `docs/analysis/block3_t2_llm_surface_hardening_2026-07-11.md` — (a) 8 degradation cases
+> D01-D08 appended to the T1 corpus (starved/contradictory/truncated payloads; golden =
+> fail-conservative; D08 = the anti-overcorrection control) — same eval, same gate, no new
+> harness; (b) theme merge-adjudicator golden corpus (`scripts/evals/theme_merge_corpus_v1.json`,
+> 14 pairs: 8 real replay verdicts + 6 adversarial synthetics incl. the keyword trap, the
+> opposite-exposure trap, the membership-overlap trap) — **GATES 0025-C3**; (c) R5 runtime drift
+> band specced to execution depth (2 MetricSpec entries in `_TRADE_METRICS`:
+> `judge_high_rate_daily` + `judge_demote_share_daily`, Python-side detail parse, cold-start
+> ceilings) — the R5 precondition for the 7/18 authority flip. **Sunday starts at T3.**
 The judge gains authority 7/18; nothing adversarially tests it. (a) **Failure-mode taxonomy** —
 the misdirection classes a grader must not fall for (M&A-as-partnership · dilutive-offering-as-
 growth · stale-news-repackaged · promotional-microcap PR · sympathy-move-no-own-catalyst ·
