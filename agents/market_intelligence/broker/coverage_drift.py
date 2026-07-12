@@ -50,16 +50,19 @@ from agents.market_intelligence.audit_events import (
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.constants import mode_prefix
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import get_pool, log_audit_event, OPEN_POSITION_STATUSES
 from agents.market_intelligence.integration.paper_alpaca import _HARNESS_COID_PREFIX
 
 logger = logging.getLogger(__name__)
 
-# mi_live_trades statuses that mean "this trade is currently open" — the SAME
-# vocabulary order_manager._check_safeguards / db.get_open_position_count use
-# for MAX_CONCURRENT_LIVE_POSITIONS, reused verbatim here so "open" can never
-# drift between the live safeguard's definition and this detector's.
-_OPEN_TRADE_STATUSES = ("filled", "order_placed", "pending_confirmation", "confirmed")
+# mi_live_trades statuses that mean "this trade is currently open" — imported from
+# db.OPEN_POSITION_STATUSES (the SINGLE source of truth also used by
+# db.get_open_position_count + live_tracker._check_safeguards for
+# MAX_CONCURRENT_LIVE_POSITIONS) so "open" can NEVER drift between the live cap
+# safeguard and this detector. Inert `pending_confirmation` proposals are excluded
+# there (#436 fork B) — so a stale staged-paper proposal no longer falsely trips
+# D3_DB_OPEN_NO_BROKER every reconcile cycle (the 32-event/day noise on 2026-07-06).
+_OPEN_TRADE_STATUSES = OPEN_POSITION_STATUSES
 
 D1_UNTRACKED_POSITION = "D1_untracked_position"
 D2_UNTRACKED_ORDER_HIGH = "D2_untracked_order_high"

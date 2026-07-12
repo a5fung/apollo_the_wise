@@ -46,7 +46,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.db import get_pool, get_manual_halt_state, _coerce_date
+from agents.market_intelligence.db import get_pool, get_manual_halt_state, _coerce_date, OPEN_POSITION_STATUSES
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
     MAX_CONCURRENT_LIVE_POSITIONS,
@@ -119,9 +119,8 @@ async def _check_safeguards(
         # constrain live; live noise doesn't constrain paper).
         open_count = await conn.fetchval("""
             SELECT COUNT(*) FROM mi_live_trades
-            WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
-              AND account_mode = $1
-        """, account_mode)
+            WHERE status = ANY($2) AND account_mode = $1
+        """, account_mode, list(OPEN_POSITION_STATUSES))
         if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
             logger.info(
                 f"Safeguard [{account_mode}] blocked: max positions "
@@ -143,10 +142,8 @@ async def _check_safeguards(
             if strat_cap is not None:
                 strat_open = await conn.fetchval("""
                     SELECT COUNT(*) FROM mi_live_trades
-                    WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
-                      AND account_mode = $1
-                      AND signal_type = $2
-                """, account_mode, signal_type)
+                    WHERE status = ANY($3) AND account_mode = $1 AND signal_type = $2
+                """, account_mode, signal_type, list(OPEN_POSITION_STATUSES))
                 if strat_open >= int(strat_cap):
                     logger.info(
                         f"Safeguard [{account_mode}/{signal_type}] blocked: "

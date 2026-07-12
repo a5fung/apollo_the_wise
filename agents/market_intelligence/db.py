@@ -4310,17 +4310,32 @@ async def mark_pending_allocations_evaluated(
                 """, row_id, rank, row_id in selected_ids)
 
 
+# The mi_live_trades statuses that mean "this trade occupies a live position slot" —
+# the SINGLE source of truth shared by get_open_position_count (below),
+# live_tracker._check_safeguards (per-mode + per-strategy caps), and coverage_drift's
+# _fetch_open_db_trades, so "open" can NEVER drift between the cap safeguard and the
+# drift detector (the invariant coverage_drift's comment demands).
+# `pending_confirmation` is DELIBERATELY EXCLUDED (#436 fork B, operator-signed 2026-07-11):
+# a staged-paper proposal is inert — it holds no broker order and nothing can submit it
+# (#364 removed the in-chat confirm path), so it must never consume a cap slot (the ABSI/
+# FCEL/SNX/ACAD phantom-starvation class). A real auto-entry transitions
+# pending_confirmation → confirmed in-process (microseconds), so it is counted the instant
+# it becomes real. SSoT: docs/setups/safeguards.md.
+OPEN_POSITION_STATUSES = ("filled", "order_placed", "confirmed")
+
+
 async def get_open_position_count() -> int:
     """Count of currently-open live positions (filled or in-flight orders).
     Mirrors the count `_check_safeguards` uses for MAX_CONCURRENT_LIVE_POSITIONS,
     so the cross-strategy allocator's slot math matches the live safeguard.
+    Uses OPEN_POSITION_STATUSES (excludes inert pending_confirmation proposals, #436).
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT COUNT(*) AS n FROM mi_live_trades
-            WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
-        """)
+            WHERE status = ANY($1)
+        """, list(OPEN_POSITION_STATUSES))
     return int(row["n"] or 0) if row else 0
 
 
