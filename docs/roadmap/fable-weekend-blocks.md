@@ -176,9 +176,20 @@ conflict gets a resolution line BEFORE any card builds it in.
 pack**: steelman + counter for EVERY queued fork (block-1 F's + pre-mortem surface) so the
 marathon is ruling-speed, not reading-speed.
 
+> **✅ BLOCK 3 FULLY EXECUTED 2026-07-11 eve (T1–T6, one Fable evening — the "day" the block was
+> sized for is now free for the Lane-1 SITTING).** Do not re-run; the tier markers above + below
+> carry every deliverable; cards are queued on the source tasks (#457/#310/#274/#448/#335).
+
 ### T6 — STRETCH (exploratory; only if the day allows)
 (a) v1.1-v2.0 roadmap deep read → design the biggest undesigned v2.0 rock (gap-hunt; may output
 "none — it's all execution", which is itself the finding). (b) Operator-methodology extraction:
 mine operator_shared_notes + the Pradeep/Qullamaggie corpus for un-encoded rules (the dossier's
 tail-dependence principle came from exactly this kind of synthesis) → candidate detectors/axes
 with evidence gates.
+> **◐ T6 EXECUTED 2026-07-11 eve:** `docs/analysis/block3_t6_gaphunt_extraction_2026-07-11.md` —
+> (a) verdict = **no undesigned rock, the program is execution-shaped** (0017-0022 + 0023-0031
+> cover every named P-rock incl. regime_matrix); 3 second-order seams named with dispositions
+> (sizing-stack composition → 0022 sign-off · six-metrics table → M3 agenda · E2 rides its lane).
+> (b) ONE un-encoded rule extracted: **Pradeep's 39%/39%/39% explosive-growth bar** → free
+> boolean+crosstab on the #448 7/16 session; separates → 0028 `pradeep_explosive` feature;
+> doesn't → checked-and-refuted. SiP-conflation grep rides the next SiP card.
