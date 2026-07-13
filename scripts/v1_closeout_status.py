@@ -38,6 +38,13 @@ ASSUMPTIONS (stated per the build card's conservative-if-unclear instruction):
     (ends 16:45 ET) has already run, so TODAY can be included once it's a
     trading day. Anchored at 2026-07-06 (detector built 7/5, but 7/5 was a
     Saturday — first live cycles Monday 7/6 per the roadmap doc).
+    YELLOW-3 (2026-07-12): the quiet-day clock is additionally GATED on the
+    #184b broker-order ingest (the repair half FL-4's DoD rides on) being
+    PROMOTED to live (live_r1+). Pre-fix the meter counted drift-quiet days
+    regardless of promotion state, so the briefing could read "5/5 ✓" while
+    the ingest was still dark/dry_run — the meter measured a different thing
+    than the F2 gate. This is a METER change only; the ingest toggle itself
+    is read (never written) here.
   - BLOCKING open count: per the build card's fallback clause, this hardcodes
     the §4a BLOCKING task-ID list (see BLOCKING_TASK_IDS below) rather than
     parsing the markdown table live — the DoD prose in each §4a row cross-
@@ -57,6 +64,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import re
 import sys
 from datetime import date, timedelta
@@ -76,6 +84,17 @@ FL3_TARGET = 7
 
 FL4_START = date(2026, 7, 6)  # first live coverage-drift reconcile cycle (Monday)
 FL4_TARGET = 5
+
+# FL-4 promotion gate (YELLOW-3 meter honesty, 2026-07-12): quiet days are only
+# credited while the #184b broker-order ingest is PROMOTED (live_r1+). These
+# mirror broker/order_ingest.py's INGEST_TOGGLE / INGEST_MODES / _LIVE_TIER —
+# NOT imported, because order_ingest imports briefing at module top and
+# briefing imports this module inside send_evening_briefing (a top-level import
+# here would create an order-sensitive cycle). Drift is pinned by
+# test_fl4_ingest_constants_match_order_ingest.
+INGEST_SAFEGUARD = "broker_order_ingest"
+INGEST_MODES = ("off", "dry_run", "live_r1", "live_r2", "live_r3")
+INGEST_LIVE_MODES = frozenset({"live_r1", "live_r2", "live_r3"})
 
 FL8_TARGET = 4
 
@@ -325,13 +344,40 @@ def compute_fl3(rows: list[dict], start: date, end: date) -> dict:
     return {"n": n, "target": FL3_TARGET, "reset_reason": _fmt_reason(reason, last_date)}
 
 
-def compute_fl4(drift_dates: set[date], start: date, end: date) -> dict:
+def compute_fl4(
+    drift_dates: set[date],
+    start: date,
+    end: date,
+    ingest_mode: str = "off",
+    ingest_promoted_on: date | None = None,
+) -> dict:
     """FL-4 mirror completeness: consecutive trading days with zero
-    coverage_drift_alerted (D1/D2-HIGH) rows."""
-    days = _trading_days(start, end)
+    coverage_drift_alerted (D1/D2-HIGH) rows, credited ONLY while the #184b
+    broker-order ingest is PROMOTED to live (`ingest_mode` in
+    INGEST_LIVE_MODES). YELLOW-3 meter honesty (2026-07-12):
+      - mode off/dry_run (or unrecognized) → n=0; `gate` names the mode so the
+        rendered line can't read green while the ingest is dark;
+      - promoted but flip date unknown → n=0, loud (fix the toggle row) —
+        never guess a start date, that re-opens the over-credit bug;
+      - promoted → quiet days count from the first trading day STRICTLY AFTER
+        `ingest_promoted_on` (the flip day itself is a mixed-mode day: cycles
+        before the flip ran unpromoted).
+    Defaults are FAIL-CLOSED (off/None) — a call site that forgets the wiring
+    under-reads, never over-reads. Extra keys vs the other clocks: `ingest_mode`
+    (telemetry) + `gate` (compact render suffix; None when counting normally)."""
+    base = {"target": FL4_TARGET, "ingest_mode": ingest_mode, "gate": None}
+    if ingest_mode not in INGEST_LIVE_MODES:
+        return {**base, "n": 0, "gate": f"ingest {ingest_mode}",
+                "reset_reason": (f"ingest {ingest_mode} — quiet days count only "
+                                 f"after live_r1 promotion")}
+    if ingest_promoted_on is None:
+        return {**base, "n": 0, "gate": "promo date unknown",
+                "reset_reason": ("ingest live but promotion date unknown — set "
+                                 "mi_safeguard_state.last_transition_at")}
+    days = _trading_days(max(start, ingest_promoted_on + timedelta(days=1)), end)
     reset_dates = {d: "coverage-drift D1/D2-HIGH" for d in days if d in drift_dates}
     n, reason, last_date = _streak_with_last_reset(days, reset_dates)
-    return {"n": n, "target": FL4_TARGET, "reset_reason": _fmt_reason(reason, last_date)}
+    return {**base, "n": n, "reset_reason": _fmt_reason(reason, last_date)}
 
 
 def compute_fl8(review_sundays: set[date], today: date) -> dict:
@@ -405,8 +451,12 @@ def render_line(status: dict) -> str:
 
     blocking = status.get("blocking_open")
     blocking_s = str(blocking) if blocking is not None else "?"
+    # FL-4 carries a promotion-gate suffix (YELLOW-3): while the #184b ingest is
+    # dark/dry_run the count is pinned at 0 and the line SAYS WHY — "FL-4 0/5
+    # (ingest dry_run)" — instead of silently reading like a running clock.
+    fl4_gate = f" ({fl4['gate']})" if fl4.get("gate") else ""
     base = (
-        f"FL-1 {_c(fl1)} · FL-3 {_c(fl3)} · FL-4 {_c(fl4)} · FL-8 {_c(fl8)} · "
+        f"FL-1 {_c(fl1)} · FL-3 {_c(fl3)} · FL-4 {_c(fl4)}{fl4_gate} · FL-8 {_c(fl8)} · "
         f"blocking {blocking_s} open · decl ~{status['decl_estimate']}"
     )
     resets = status.get("resets") or []
@@ -505,7 +555,35 @@ async def gather_status(conn, today: date | None = None) -> dict:
         FL4_START,
     )
     drift_dates = {r["d"] for r in drift_rows}
-    fl4 = compute_fl4(drift_dates, FL4_START, end_trading)
+
+    # FL-4 promotion gate (YELLOW-3): READ the same toggle row order_ingest.
+    # get_ingest_mode() resolves (its precedence: DB state → env → off, fail-
+    # closed). promoted_on = the row's LAST flip timestamp as an ET date —
+    # GREATEST(last_transition_at, updated_at) because the review's documented
+    # dry_run→live_r1 UPDATE recipe bumps only updated_at; taking the latest of
+    # the two can only UNDER-credit (restart the clock on a later flip), never
+    # over-credit pre-promotion days. Postgres GREATEST ignores NULLs (NULL only
+    # when both are — the loud "promo date unknown" path in compute_fl4).
+    ingest_row = await conn.fetchrow(
+        """
+        SELECT state,
+               (GREATEST(last_transition_at, updated_at)
+                  AT TIME ZONE 'America/New_York')::date AS promoted_on
+        FROM mi_safeguard_state
+        WHERE safeguard = $1 AND account_mode = 'global'
+        """,
+        INGEST_SAFEGUARD,
+    )
+    if ingest_row is not None:
+        raw_mode = ingest_row["state"]
+        ingest_promoted_on = ingest_row["promoted_on"]
+    else:
+        raw_mode = os.environ.get("BROKER_ORDER_INGEST_MODE", "off").lower()
+        ingest_promoted_on = None  # env-only promotion has no flip timestamp → loud-unknown path
+    ingest_mode = raw_mode if raw_mode in INGEST_MODES else "off"  # unrecognized → off (fail closed)
+
+    fl4 = compute_fl4(drift_dates, FL4_START, end_trading,
+                      ingest_mode=ingest_mode, ingest_promoted_on=ingest_promoted_on)
 
     review_rows = await conn.fetch(
         "SELECT DISTINCT review_date FROM mi_system_reviews WHERE window_days = 7"

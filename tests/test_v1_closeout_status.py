@@ -16,6 +16,9 @@ from tests.conftest import make_mock_pool
 
 from scripts.v1_closeout_status import (
     BLOCKING_TASK_IDS,
+    INGEST_LIVE_MODES,
+    INGEST_MODES,
+    INGEST_SAFEGUARD,
     MANUAL_REPAIR_EVENT_TYPES,
     SOAK_FAILURE_EVENT_TYPES,
     FL1_TARGET,
@@ -238,17 +241,89 @@ def test_real_down_recovery_of_different_container_does_not_clear():
 
 
 # ── FL-4 mirror quiet days ───────────────────────────────────────────────────
+# YELLOW-3 (2026-07-12): the quiet-day clock is gated on the #184b broker-order
+# ingest being PROMOTED (live_r1+) — promotion state + flip date are now inputs.
 
-def test_fl4_quiet_days_counts_up():
-    fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 8))  # Mon-Wed, 3 trading days
-    assert fl4["n"] == 3
-    assert fl4["target"] == FL4_TARGET
+def test_fl4_quiet_days_counts_up_when_promoted():
+    # promoted Sunday 7/5 → credit starts Monday 7/6; Mon-Wed = 3 trading days.
+    # Every live tier (r1/r2/r3) counts — cumulative enables.
+    for mode in sorted(INGEST_LIVE_MODES):
+        fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 8),
+                          ingest_mode=mode, ingest_promoted_on=date(2026, 7, 5))
+        assert fl4["n"] == 3
+        assert fl4["target"] == FL4_TARGET
+        assert fl4["gate"] is None
 
 
 def test_fl4_drift_alert_resets():
-    fl4 = compute_fl4({date(2026, 7, 7)}, date(2026, 7, 6), date(2026, 7, 8))
+    fl4 = compute_fl4({date(2026, 7, 7)}, date(2026, 7, 6), date(2026, 7, 8),
+                      ingest_mode="live_r1", ingest_promoted_on=date(2026, 7, 5))
     assert fl4["n"] == 1  # only 7/8 clean after the 7/7 reset
     assert fl4["reset_reason"] == "coverage-drift D1/D2-HIGH 7/7"
+
+
+def test_fl4_not_promoted_never_reads_green():
+    # THE YELLOW-3 bug: a full quiet week while the ingest is dark/dry_run must
+    # NOT read green (pre-fix this returned n=5 → "FL-4 5/5 ✓" in the briefing
+    # while the repair half of FL-4's DoD wasn't even live).
+    for mode in ("off", "dry_run"):
+        fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 10), ingest_mode=mode)
+        assert fl4["n"] == 0
+        assert fl4["n"] < FL4_TARGET  # can never satisfy the target while gated
+        assert fl4["gate"] == f"ingest {mode}"
+        assert "live_r1 promotion" in fl4["reset_reason"]
+
+
+def test_fl4_default_args_fail_closed():
+    # A call site that forgets the promotion wiring must under-read (0), never
+    # silently count — the fail-open shape was the bug.
+    fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 10))
+    assert fl4["n"] == 0
+    assert fl4["gate"] == "ingest off"
+
+
+def test_fl4_unrecognized_mode_fails_closed():
+    fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 10), ingest_mode="banana")
+    assert fl4["n"] == 0
+    assert fl4["gate"] == "ingest banana"
+
+
+def test_fl4_counts_only_post_promotion_quiet_days():
+    # promoted Tue 7/7 → credit starts Wed 7/8. Pre-promotion drift (7/6) is
+    # invisible to the post-promotion streak — only 7/8-7/10 count.
+    fl4 = compute_fl4({date(2026, 7, 6)}, date(2026, 7, 6), date(2026, 7, 10),
+                      ingest_mode="live_r1", ingest_promoted_on=date(2026, 7, 7))
+    assert fl4["n"] == 3  # 7/8, 7/9, 7/10
+    assert fl4["reset_reason"] is None
+    assert fl4["gate"] is None
+
+
+def test_fl4_promotion_day_itself_not_credited():
+    # The flip day is a mixed-mode day (cycles before the flip ran unpromoted).
+    fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 8),
+                      ingest_mode="live_r1", ingest_promoted_on=date(2026, 7, 8))
+    assert fl4["n"] == 0
+    assert fl4["gate"] is None  # promoted — just no credited days yet
+
+
+def test_fl4_promoted_but_unknown_flip_date_reads_zero_loud():
+    # Never guess a start date (that re-opens the over-credit bug) — read 0 and
+    # say what to fix.
+    fl4 = compute_fl4(set(), date(2026, 7, 6), date(2026, 7, 10), ingest_mode="live_r1")
+    assert fl4["n"] == 0
+    assert fl4["gate"] == "promo date unknown"
+    assert "last_transition_at" in fl4["reset_reason"]
+
+
+def test_fl4_ingest_constants_match_order_ingest():
+    # The toggle constants are mirrored (not imported — order_ingest imports
+    # briefing at module top; briefing imports this module inside
+    # send_evening_briefing). This pin is the drift gate for the mirror.
+    from agents.market_intelligence.broker import order_ingest
+
+    assert INGEST_SAFEGUARD == order_ingest.INGEST_TOGGLE
+    assert INGEST_MODES == order_ingest.INGEST_MODES
+    assert INGEST_LIVE_MODES == frozenset(order_ingest._LIVE_TIER)
 
 
 # ── FL-8 Sunday streak ───────────────────────────────────────────────────────
@@ -357,6 +432,23 @@ def test_render_line_handles_unknown_blocking_count():
     assert "blocking ? open" in line
 
 
+def test_render_line_fl4_gate_suffix_while_dark():
+    # While the ingest is not promoted, FL-4 must SAY it's gated — "0/5 (ingest
+    # dry_run)" — not read like a clock that merely hasn't started (YELLOW-3).
+    status = _status(fl4=0)
+    status["fl4"]["gate"] = "ingest dry_run"
+    line = render_line(status)
+    assert "FL-4 0/5 (ingest dry_run)" in line
+
+
+def test_render_line_fl4_no_suffix_when_counting_normally():
+    status = _status(fl4=2)
+    status["fl4"]["gate"] = None
+    line = render_line(status)
+    assert "FL-4 2/5 ·" in line
+    assert "(ingest" not in line
+
+
 # ── detect_resets (snapshot diff) ───────────────────────────────────────────
 
 def test_detect_resets_no_prior_snapshot_is_silent():
@@ -409,6 +501,11 @@ async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
         [{"review_date": date(2026, 7, 5)}],  # weekly reviews
     ])
 
+    # ingest toggle row (fetchrow): promoted live_r1 on Sunday 7/5 → FL-4
+    # credits from Monday 7/6 (the YELLOW-3 gate wiring).
+    conn.fetchrow = AsyncMock(
+        return_value={"state": "live_r1", "promoted_on": date(2026, 7, 5)})
+
     fake_plan = tmp_path / "PLAN.md"
     fake_plan.write_text("## P\n- #347 | 2026-08-01 | pending | t\n", encoding="utf-8")
     monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
@@ -418,6 +515,7 @@ async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
     assert status["fl1"]["n"] == 5
     assert status["fl3"]["n"] == 1  # only 7/5 in the fixture (end = today-1 = 7/5)
     assert status["fl4"]["n"] == 1  # only 7/6 is a trading day in [FL4_START, last_trading_day]
+    assert status["fl4"]["ingest_mode"] == "live_r1"
     assert status["fl8"]["n"] == 1
     assert status["blocking_open"] == 1  # #347 is filed + a BLOCKING id
 
@@ -436,6 +534,8 @@ async def test_gather_status_money_path_failure_resets_fl1(tmp_path, monkeypatch
         [],  # coverage drift
         [],  # weekly reviews
     ])
+    conn.fetchrow = AsyncMock(return_value=None)  # no ingest toggle row
+    monkeypatch.delenv("BROKER_ORDER_INGEST_MODE", raising=False)
     fake_plan = tmp_path / "PLAN.md"
     fake_plan.write_text("## P\n", encoding="utf-8")
     monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
@@ -446,6 +546,48 @@ async def test_gather_status_money_path_failure_resets_fl1(tmp_path, monkeypatch
     assert status["fl1"]["reset_reason"] == (
         "money-path failure: stop_ack_remediation_failed 7/2"
     )
+
+
+@pytest.mark.asyncio
+async def test_gather_status_fl4_gated_while_dry_run_despite_quiet_days(tmp_path, monkeypatch):
+    # YELLOW-3 end-to-end: ZERO drift rows across a full quiet week, but the
+    # toggle row says dry_run → FL-4 reads 0 (gated), and the rendered line
+    # says why — the briefing can no longer show "5/5 ✓" while the ingest is
+    # dark/dry_run.
+    monkeypatch.setattr(f"{MOD}._is_trading_day", lambda d: d.weekday() < 5)
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[], [], [], [], [], []])
+    conn.fetchrow = AsyncMock(
+        return_value={"state": "dry_run", "promoted_on": date(2026, 7, 8)})
+    fake_plan = tmp_path / "PLAN.md"
+    fake_plan.write_text("## P\n", encoding="utf-8")
+    monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
+
+    status = await gather_status(conn, today=date(2026, 7, 10))
+    assert status["fl4"]["n"] == 0
+    assert status["fl4"]["gate"] == "ingest dry_run"
+    assert "FL-4 0/5 (ingest dry_run)" in render_line(status)
+
+
+@pytest.mark.asyncio
+async def test_gather_status_fl4_env_only_promotion_is_loud_unknown(tmp_path, monkeypatch):
+    # No toggle row + BROKER_ORDER_INGEST_MODE=live_r1 (env-only promotion):
+    # there is no flip timestamp to count from → 0/5 with the loud
+    # "promo date unknown" gate (insert the mi_safeguard_state row), never a
+    # guessed start date.
+    monkeypatch.setattr(f"{MOD}._is_trading_day", lambda d: d.weekday() < 5)
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[], [], [], [], [], []])
+    conn.fetchrow = AsyncMock(return_value=None)
+    monkeypatch.setenv("BROKER_ORDER_INGEST_MODE", "live_r1")
+    fake_plan = tmp_path / "PLAN.md"
+    fake_plan.write_text("## P\n", encoding="utf-8")
+    monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
+
+    status = await gather_status(conn, today=date(2026, 7, 10))
+    assert status["fl4"]["n"] == 0
+    assert status["fl4"]["ingest_mode"] == "live_r1"
+    assert status["fl4"]["gate"] == "promo date unknown"
 
 
 # ── check_and_snapshot_resets + compute_and_render (DB-mocked) ──────────────
@@ -474,13 +616,15 @@ async def test_compute_and_render_end_to_end(monkeypatch):
     conn.fetch = AsyncMock(side_effect=[
         [], [], [], [], [], [],
     ])
-    conn.fetchrow = AsyncMock(return_value=None)  # no prior snapshot
+    conn.fetchrow = AsyncMock(return_value=None)  # no ingest toggle row, no prior snapshot
     conn.execute = AsyncMock()  # _persist_snapshot writes via the open conn
+    monkeypatch.delenv("BROKER_ORDER_INGEST_MODE", raising=False)  # deterministic env fallback → off
     monkeypatch.setattr(f"{MOD}.PLAN_MD", __import__("pathlib").Path(__file__))  # any readable file, 0 task lines
 
     line = await compute_and_render(conn, today=date(2026, 7, 6))
     assert line.startswith("\U0001F3C1 v1.0:")
     assert "blocking 0 open" in line
+    assert "FL-4 0/5 (ingest off)" in line  # gated, and the line says why
 
 
 # ── Guarded evening-briefing wire ───────────────────────────────────────────
