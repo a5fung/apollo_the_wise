@@ -1,97 +1,39 @@
 """#274 C4 — theme-merge arm offline replay (ADR 0025 §3). Read-only.
 
-Stage A (deterministic): assign each active theme (recency ≤7d, has members) to a narrative FAMILY
-via a curated stem list; within each family with ≥2 members, pair every theme against the family
-ANCHOR (largest by member count) — the "should this small theme merge into the big one?" question.
-This bounds pairs to ~(n−1)/family (vs C(n,2)) and always includes the legit-kill anchor pairs.
+Stage A (deterministic): family assignment + anchor pairing — IMPORTED from
+`agents.market_intelligence.theme_merge_arm` (the C1-C3 build extracted the pure logic
+this probe validated on 7/11 into the engine; the probe is now a thin driver over the
+REAL production path, so future replays rehearse exactly what the nightly arm runs).
+Uncapped here (max_pairs=None) so the full fragmentation map prints; the nightly arm
+caps at 8 pairs.
 
-Stage B (LLM adjudicator, Haiku — the same rigor as validation): MERGE / DISTINCT / PARENT_CHILD
-per pair. The prompt carries the ADR's LOAD-BEARING negative exemplars (P&C vs specialty-cat =
-DISTINCT; office vs multifamily REIT = DISTINCT) and the instruction: merge on shared
-DRIVER/catalyst, NEVER on sector label.
+Stage B (LLM adjudicator): `theme_merge_arm.adjudicate_merge_pair` — Haiku, temp=0,
+forced tool_choice, scratchpad-first schema, the ADR's LOAD-BEARING negative exemplars
+(P&C vs specialty-cat = DISTINCT; office vs multifamily REIT = DISTINCT), merge on
+shared DRIVER/catalyst, NEVER on sector label.
 
-Success criteria (ADR §3): ZERO merges across the legit-kill anchors. Prints the action list +
-the legit-kill verdicts. Read-only — proposes; no theme is mutated.
+Success criteria (ADR §3): ZERO merges across the legit-kill anchors. Prints the action
+list + the legit-kill verdicts. Read-only — proposes; no theme is mutated.
 
 Run: docker cp then docker exec -w /app apollo-market python /tmp/_274_merge_replay.py
 """
 import asyncio
-import json
 import os
-import re
 import sys
 
 sys.path.insert(0, "/app")
 
 from agents.market_intelligence.db import get_pool
-from shared.llm_models import HAIKU
+from agents.market_intelligence.theme_merge_arm import (
+    adjudicate_merge_pair, group_families, propose_merge_pairs,
+)
 import anthropic
 
-# curated narrative stems (Stage A only PROPOSES; precision lives in Stage B)
-FAMILIES = [
-    ("insurance", r"insurance|underwrit|mortgage insurance"),
-    ("reit", r"\bREIT\b|apartment|self-storage|residential rental"),
-    ("quantum", r"quantum"),
-    ("bank", r"\bbank\b|commercial banks"),
-    ("semiconductor", r"semiconductor|silicon|wafer|chip|foundry"),
-    ("payments_fintech", r"fintech|payment|digital financial|digital credit|digital banking|expense management|wealth management|brokerage platforms"),
-    ("oncology", r"oncology|cancer|tumor"),
-    ("autoimmune", r"autoimmune|inflammatory|immunolog"),
-    ("gene_cell_therapy", r"gene therapy|cell therapy|genome editing|synthetic dna|genomic"),
-    ("diagnostics", r"diagnostic|biopsy|molecular|early detection"),
-    ("defense_aero", r"defense|aerospace|drone|unmanned|satellite"),
-    ("freight", r"freight|truckload|logistics|carriers"),
-    ("energy_downstream", r"refining|petroleum|midstream|pipeline|pressure pumping|oilfield"),
-]
-
-# legit-kill anchors (ADR §3 success criterion — these MUST come back DISTINCT)
+# legit-kill anchors (ADR §3 success criterion — these MUST come back non-MERGE)
 LEGIT_KILL = [
     ("Property & Casualty Insurance Underwriters", "Specialty Catastrophe Property Insurance Underwriters"),
     ("Office REIT Recovery & Re-Rating", "Multifamily Apartment REITs"),
 ]
-
-PROMPT = """You adjudicate whether two stock-market THEMES should MERGE. The bar is a shared
-DRIVER / catalyst — NOT a shared sector label. Two themes in the same sector with DIFFERENT
-demand drivers stay DISTINCT.
-
-NEGATIVE EXEMPLARS (these are DISTINCT, never merge):
-- "P&C insurance underwriters" vs "specialty-catastrophe property underwriters" = DISTINCT
-  (broad multi-line pricing cycle vs a cat-exposed reinsurance-linked driver).
-- "Office REITs" vs "multifamily/apartment REITs" = DISTINCT (return-to-office recovery vs
-  housing-shortage rental demand — opposite drivers).
-
-Verdicts:
-- MERGE: one thesis, one driver — the two are the same trade in two names.
-- DISTINCT: genuine sub-industries with different drivers.
-- PARENT_CHILD: one is strictly a sub-theme of the other (narrower slice of the same driver).
-
-THEME A: {a_name}
-  {a_desc}
-THEME B: {b_name}
-  {b_desc}
-
-Return ONLY a JSON object: {{"verdict":"MERGE|DISTINCT|PARENT_CHILD","driver_a":"<≤6 words>","driver_b":"<≤6 words>","reason":"<≤25 words>"}}"""
-
-
-def family_of(name):
-    for fam, pat in FAMILIES:
-        if re.search(pat, name, re.I):
-            return fam
-    return None
-
-
-async def adjudicate(client, a, b):
-    try:
-        msg = await client.messages.create(
-            model=HAIKU, max_tokens=250,
-            messages=[{"role": "user", "content": PROMPT.format(
-                a_name=a["name"], a_desc=(a["description"] or "")[:280],
-                b_name=b["name"], b_desc=(b["description"] or "")[:280])}])
-        txt = msg.content[0].text
-        m = re.search(r"\{.*\}", txt, re.S)
-        return json.loads(m.group(0)) if m else {"verdict": "PARSE_ERR", "reason": txt[:60]}
-    except Exception as e:
-        return {"verdict": "ERR", "reason": str(e)[:80]}
 
 
 async def main() -> int:
@@ -106,35 +48,31 @@ async def main() -> int:
             ORDER BY name, theme_date DESC
         """)
     themes = [dict(r) for r in rows]
-    for t in themes:
-        t["family"] = family_of(t["name"])
 
-    # Stage A: anchor pairing per family (≥2 members)
-    fams = {}
-    for t in themes:
-        if t["family"]:
-            fams.setdefault(t["family"], []).append(t)
-    pairs = []
-    print("=== Stage A — families & anchor pairs (deterministic) ===")
+    # Stage A: the ENGINE's pairing (uncapped, no cooldowns — full replay map)
+    fams = group_families(themes)
+    pairs = propose_merge_pairs(themes, cooldown_pairs=frozenset(), max_pairs=None)
+    print("=== Stage A — families & anchor pairs (deterministic, engine logic) ===")
+    pairs_by_anchor: dict[str, int] = {}
+    for a, _o in pairs:
+        pairs_by_anchor[a["name"]] = pairs_by_anchor.get(a["name"], 0) + 1
     for fam, members in sorted(fams.items()):
         if len(members) < 2:
             continue
-        anchor = max(members, key=lambda x: x["n"])
-        others = [m for m in members if m["name"] != anchor["name"]]
-        # ADR gate: pair when one side <4 members OR the family holds ≥3 themes
-        gated = [o for o in others if o["n"] < 4 or len(members) >= 3]
+        anchor = sorted(members, key=lambda x: (-len(x.get("tickers") or []), x.get("name") or ""))[0]
         print(f"  {fam:<18} n_themes={len(members):>2}  anchor='{anchor['name']}' ({anchor['n']})  "
-              f"→ {len(gated)} candidate pairs")
-        for o in gated:
-            pairs.append((anchor, o))
+              f"→ {pairs_by_anchor.get(anchor['name'], 0)} candidate pairs")
     print(f"\nTotal candidate pairs: {len(pairs)}\n")
 
     client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-    verdicts = await asyncio.gather(*[adjudicate(client, a, b) for a, b in pairs])
+    sem = asyncio.Semaphore(2)
+    verdicts = await asyncio.gather(*[
+        adjudicate_merge_pair(a, b, client=client, semaphore=sem) for a, b in pairs
+    ])
 
     merges, distincts, pcs, errs = [], [], [], []
     for (a, b), v in zip(pairs, verdicts):
-        vd = v.get("verdict", "ERR")
+        vd = v.get("verdict", "ERROR")
         line = (a["name"], b["name"], v.get("driver_a", ""), v.get("driver_b", ""), v.get("reason", ""))
         (merges if vd == "MERGE" else distincts if vd == "DISTINCT"
          else pcs if vd == "PARENT_CHILD" else errs).append(line)

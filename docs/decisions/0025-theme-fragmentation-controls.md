@@ -1,11 +1,11 @@
 # ADR 0025 — Theme fragmentation controls (#274: dissolve-on-flagged-pair + thesis-coherence merge)
 
 **Date**: 2026-07-11
-**Status**: **DESIGN — awaiting operator sign-off** (Fable weekend block 1). Build is pure-execution
-once signed: every arm validates via an **offline replay over the cached 7/8 cohort** before its live
-flip (the N≥10 evidence), per CHANGE_PROCESS. No money touches this — themes feed only the shadow
-judge theme-axis (#328) and the briefs — so per the operator's no-conservatism rule the arms ship
-FULL once replay-validated + signed (no multi-week shadow period).
+**Status**: **BUILT DARK (C1–C3, 2026-07-12) — awaiting the corpus-gated go-live flip.** F1–F3
+operator-SIGNED 7/12; the §3 replay (C4) PASSED 7/11. Cards C1–C3 are in the code behind
+`THEME_MERGE_ARM` (**default OFF** — the flip is a separate operator decision AFTER the T2b golden
+corpus passes on prod; see the change log). No money touches this — themes feed only the shadow
+judge theme-axis (#328) and the briefs.
 **Authors**: Fable (operator-triggered weekend block, 2026-07-11)
 **Relates**: ADR 0007 (discovery sensitivity — the flood's *deliberate* upstream cause; its §3
 anti-noise metric governs this ADR), #125 description guard, #126 coherence guard (data-gated),
@@ -132,7 +132,50 @@ Operator reviews the printed action list = the sign-off artifact (this is the fl
 **Sequencing:** C4-replay (with C2/C3 logic imported pure) → operator sign-off → C1-C3 live in one
 deploy → the gated review measures. Estimated: C1 small, C2 small, C3 medium, C4 small.
 
-## 6. Operator forks (the only open decisions)
+## 6. Change log
+
+### 2026-07-12 — C1–C3 BUILT, DARK, behind `THEME_MERGE_ARM` (default OFF)
+
+Built by Fable post-F1–F3 sign-off (7/12 sitting). **Toggle-OFF = byte-identical current
+behavior** (every arm entry point checks `merge_arm_enabled()` first; all pre-existing theme
+tests pass unchanged; new toggle-off pins in the three test files below). **The flip is the
+operator's, gated on the corpus (below) — never flip in code.**
+
+- **Where the code lives:** `agents/market_intelligence/theme_merge_arm.py` (toggle + Stage-A
+  pure pairing + Stage-B adjudicator — the replay's pure logic EXTRACTED, not re-implemented;
+  the C4 probe now imports from it, one copy) · `theme_engine.py` (Arm A in-run dissolve in
+  `_validate_theme_membership`/`_rescore_existing_theme`, `_retro_sweep_flagged_pairs`,
+  `_run_thesis_merge_pass`) · `db.py` (`mi_theme_merge_cooldowns` + helpers) · `briefing.py`
+  (morning-brief merge banner, the §2 rail).
+- **Go-live gate wired:** `scripts/evals/run_theme_merge_corpus_eval.py` runs the REAL
+  adjudicator over `theme_merge_corpus_v1.json`; bars = hard pairs 100%, others ≥85%. A green
+  run regenerates `scripts/evals/theme_merge_eval_pass_record.json` (pins corpus_sha1 +
+  prompt/tool-schema sha1 + model); `tests/test_theme_merge_corpus_gate.py` REDs CI on a
+  failing/stale record and skips-loudly while none exists. **Flip forbidden without a passing
+  record.** (Candidate for a [5m/7]-style deploy preflight later; the CI pin is the gate now.)
+- **§4 deviation (operator-directed at build):** ships **default OFF** (not "on at merge") —
+  the flip is a separate operator decision after the corpus passes on prod.
+- **Deliberate build choices vs the design text:** (1) Stage-A gate-1's majority-sector
+  OR-branch is a FALLBACK for stem-less themes only, and stem families consume the ≤8 pair
+  budget first — protects the replay-validated surface from broad FMP sector families;
+  (2) Stage-B input carries names/descriptions/member-lists-with-sectors but NO RS-context
+  line (the signed replay ran without it; the corpus is the arbiter); (3) Stage-B upgraded
+  from the replay's JSON-prompt to the house tool-schema (scratchpad-first, temp=0,
+  parse-retry — the C4 determinize caveat), with F1 `merged_name` (+ name-collision guard)
+  and a PARENT_CHILD `child` field; (4) a merge gutted by post-merge validation counts
+  against the ≤3/night cap (it consumed the night's action).
+- **Audits added:** `theme_dissolved_flagged_pair` · `theme_merge_pairs_proposed` ·
+  `theme_merge_distinct` · `theme_merge_parent_child` · `theme_thesis_merged` ·
+  `theme_merge_cap_deferred` · `theme_merge_dissolved_post_validation` ·
+  `theme_merge_adjudication_error` · `theme_merge_arm_error`.
+- **Tests:** `tests/test_theme_dissolve_arm.py` (C1) · `tests/test_theme_merge_arm.py` (C2 +
+  adjudicator pins) · `tests/test_theme_thesis_merge_pass.py` (C3 executor) ·
+  `tests/test_theme_merge_corpus_gate.py` (gate). Full suite green at build.
+- **Still owed at the FLIP commit (not before):** the `theme_fragmentation_resolution` gated
+  review in `data_gated_reviews.yaml` (§4.2 — its 14d clock starts at flip), the CLAUDE.md
+  2-line theme-engine pointer (§4.3), and the CHANGE_PROCESS entry.
+
+## 7. Operator forks — ALL SIGNED as recommended (7/12 sitting; kept for the record)
 
 - **F1 — merged-theme naming:** adjudicator proposes the merged name (rec: keep the
   higher-scoring theme's name unless the adjudicator flags both as sub-optimal and offers a

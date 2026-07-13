@@ -1752,6 +1752,7 @@ def _format_morning_briefing(
     overnight_errors: list[dict] | None = None,
     wick_pending: list[dict] | None = None,
     tinycap_observed: list[dict] | None = None,
+    theme_merges: list[dict] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -1816,6 +1817,16 @@ def _format_morning_briefing(
     # Data quality warnings
     if quality_warnings:
         sections.append(_format_quality_warnings(quality_warnings))
+
+    # ADR 0025 Arm B rail (#274): every overnight thesis merge surfaces here.
+    # Empty (and absent) unless THEME_MERGE_ARM executed merges overnight.
+    if theme_merges:
+        merge_lines = [f"🔀 *{len(theme_merges)} theme merge(s) overnight* — thesis-coherence arm"]
+        for r in theme_merges[:3]:
+            merge_lines.append(f"  • {r.get('summary', '')}")
+        if len(theme_merges) > 3:
+            merge_lines.append(f"  … and {len(theme_merges) - 3} more")
+        sections.append("\n".join(merge_lines))
 
     sections.append(regime_line)
 
@@ -1911,7 +1922,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     cache = _perplexity_cache.get(today_str, {})
 
     from agents.market_intelligence.db import get_audit_log as _get_audit_log
-    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log, overnight_err_rows, overnight_api_rows, overnight_rate_rows = await asyncio.gather(
+    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log, overnight_err_rows, overnight_api_rows, overnight_rate_rows, theme_merge_rows = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_snapshot(),
@@ -1923,6 +1934,9 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         _get_audit_log(limit=10, event_type_like="%error%", since_hours=18),
         _get_audit_log(limit=10, event_type_like="%api_failure%", since_hours=18),
         _get_audit_log(limit=10, event_type_like="%rate_limited%", since_hours=18),
+        # ADR 0025 Arm B rail: overnight thesis merges → info banner. Rows only
+        # exist when THEME_MERGE_ARM is on and merges executed; empty otherwise.
+        _get_audit_log(limit=6, event_type="theme_thesis_merged", since_hours=18),
     )
     # Merge + dedup by id — pattern overlap (e.g. validation_error matches both
     # %error%) won't double-count.
@@ -2035,6 +2049,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         overnight_errors=overnight_errors,
         wick_pending=wick_pending,
         tinycap_observed=tinycap_observed,
+        theme_merges=theme_merge_rows,
     )
 
     success = await send_telegram_message(text, chat_id)

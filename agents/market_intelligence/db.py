@@ -1192,6 +1192,26 @@ async def initialize_schema() -> None:
                 WHERE NOT bypassed;
         """)
 
+        # ── Theme-pair merge cooldowns (ADR 0025 Arm B, #274) ─────────────
+        # A DISTINCT verdict from the Stage-B thesis adjudicator writes a 30d
+        # (theme_a, theme_b) cooldown so the pair isn't re-adjudicated nightly
+        # (idempotence + cost). Pair identity is NORMALIZED: theme_a < theme_b
+        # lexicographically (theme_merge_arm.pair_key mirrors this).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_merge_cooldowns (
+                id SERIAL PRIMARY KEY,
+                theme_a TEXT NOT NULL,
+                theme_b TEXT NOT NULL,
+                verdict TEXT NOT NULL DEFAULT 'DISTINCT',
+                reason TEXT,
+                adjudicated_at TIMESTAMPTZ DEFAULT NOW(),
+                cooldown_until TIMESTAMPTZ NOT NULL,
+                UNIQUE (theme_a, theme_b)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_merge_cooldowns_active
+                ON mi_theme_merge_cooldowns(cooldown_until);
+        """)
+
         # ── HUD state — pinned message IDs for auto-refresh ──────────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_hud_state (
@@ -8651,6 +8671,38 @@ async def get_operator_protected_set() -> set[tuple[str, str]]:
     operator's protection does not expire when the original 14d cooldown would.
     """
     return await _get_validation_pair_set(bypassed=True)
+
+
+async def add_merge_distinct_cooldown(
+    theme_a: str, theme_b: str, reason: str = "", days: int = 30, verdict: str = "DISTINCT"
+) -> None:
+    """ADR 0025 Arm B: upsert a pair-level merge cooldown (DISTINCT verdict → the
+    pair isn't re-adjudicated for `days`). Pair identity normalized a < b —
+    must stay in lockstep with theme_merge_arm.pair_key."""
+    a, b = sorted((theme_a, theme_b))
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_theme_merge_cooldowns (theme_a, theme_b, verdict, reason, cooldown_until)
+            VALUES ($1, $2, $3, $4, NOW() + ($5 || ' days')::INTERVAL)
+            ON CONFLICT (theme_a, theme_b) DO UPDATE SET
+                verdict = $3,
+                reason = $4,
+                adjudicated_at = NOW(),
+                cooldown_until = NOW() + ($5 || ' days')::INTERVAL
+        """, a, b, verdict, reason[:500], str(days))
+
+
+async def get_merge_distinct_pairs() -> set[tuple[str, str]]:
+    """ADR 0025 Arm B: live (unexpired) merge-cooldown pairs, normalized a < b —
+    Stage-A pairing filters these out (theme_merge_arm.propose_merge_pairs)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT theme_a, theme_b FROM mi_theme_merge_cooldowns
+            WHERE cooldown_until > NOW()
+        """)
+    return {(r["theme_a"], r["theme_b"]) for r in rows}
 
 
 async def get_globally_banned_tickers(

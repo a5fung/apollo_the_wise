@@ -65,6 +65,15 @@ from agents.market_intelligence.db import (
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
     add_validation_cooldown, get_cooldown_set, get_globally_banned_tickers,
     get_operator_protected_set, get_ticker_breadth_above_sma20,
+    add_merge_distinct_cooldown, get_merge_distinct_pairs,
+)
+# ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
+# Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
+# merge_arm_enabled() at run time; with the toggle off every pass below is
+# byte-identical to pre-ADR behavior.
+from agents.market_intelligence.theme_merge_arm import (
+    merge_arm_enabled, propose_merge_pairs, adjudicate_merge_pair,
+    MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
 
 # Global ticker ban — fires when a ticker has been validation-removed from
@@ -1614,11 +1623,19 @@ async def _validate_theme_membership(
     tickers: list[str],
     changelog: list[dict],
     protected: set[tuple[str, str]] | None = None,
+    dissolve_flagged_pair: bool = False,
 ) -> list[str]:
     """
     Ask Claude (THEME_MODEL = Sonnet) whether each stock's description is consistent
     with the theme. Removes stocks that clearly don't belong. Runs Mon/Wed/Fri during
     re-scoring.
+
+    dissolve_flagged_pair (ADR 0025 Arm A, #274 — callers pass merge_arm_enabled()):
+    when True and the theme has exactly 2 members, a flagged removal PROCEEDS past the
+    min-survivor guard (returning <PRUNE_MIN_TICKERS survivors) so the caller can
+    dissolve the theme — the 2-member-immortality fix. The flagged member gets the
+    normal 14d cooldown + audit rows below; the survivor gets none. Default False =
+    byte-identical legacy behavior (guard skips the removals).
 
     Model = Sonnet, not Haiku (#213, 2026-06-06): Haiku misread narrowing
     momentum/driver qualifiers in theme names (the "AI" in "AI Memory & Storage")
@@ -1763,13 +1780,21 @@ async def _validate_theme_membership(
             except Exception as e:
                 logger.warning(f"Operator-protection shield lookup failed for '{theme_name}': {e}")
 
-        # Never remove so many that the theme drops below minimum
+        # Never remove so many that the theme drops below minimum — EXCEPT the
+        # ADR 0025 Arm A flagged-pair case (dissolve_flagged_pair=True + exactly
+        # 2 members): the removal proceeds so the CALLER can dissolve the theme
+        # on validation evidence instead of the pair living forever behind this
+        # guard. A ≥3-member theme is never dissolved here (narrow by design).
         survivable = [t for t in tickers if t not in to_remove]
         if len(survivable) < PRUNE_MIN_TICKERS:
-            logger.warning(
-                f"Theme '{theme_name}': re-validation would drop below {PRUNE_MIN_TICKERS} tickers — skipping removals"
+            if not (dissolve_flagged_pair and len(tickers) == 2 and to_remove):
+                logger.warning(
+                    f"Theme '{theme_name}': re-validation would drop below {PRUNE_MIN_TICKERS} tickers — skipping removals"
+                )
+                return tickers
+            logger.info(
+                f"Theme '{theme_name}': flagged pair — removal proceeds for Arm A dissolve (ADR 0025)"
             )
-            return tickers
 
         if to_remove:
             for tk in to_remove:
@@ -2024,7 +2049,37 @@ async def _rescore_existing_theme(
     # (get_ticker_overrides now filters NULL rows), Haiku works from accurate data.
     today_weekday_val = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
     if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
-        tickers = await _validate_theme_membership(name, tickers, changelog, protected=protected)
+        _dissolve_arm = merge_arm_enabled()  # ADR 0025 Arm A (#274); False = legacy path
+        _pre_validation = list(tickers)
+        tickers = await _validate_theme_membership(
+            name, tickers, changelog, protected=protected,
+            dissolve_flagged_pair=_dissolve_arm)
+        if _dissolve_arm and len(_pre_validation) == 2 and len(tickers) < PRUNE_MIN_TICKERS:
+            # ADR 0025 Arm A: validation flagged a member of a 2-member theme →
+            # the theme DISSOLVES (evidence-triggered, never a bare count). The
+            # flagged member already got its 14d cooldown + ticker_revalidated_out
+            # rows inside the validator; the survivor gets NO cooldown and is
+            # released to the discovery pools. Returning None drops the theme
+            # from emission → the engine-drop path synthesizes its Retired row
+            # (theme_auto_retired, parent_theme=NULL).
+            flagged = sorted(set(_pre_validation) - set(tickers))
+            survivors = list(tickers)
+            changelog.append({
+                "type": "theme_dissolved_flagged_pair",
+                "theme": name,
+                "flagged": flagged,
+                "survivors": survivors,
+                "via": "validation",
+            })
+            await log_audit_event(
+                "theme_dissolved_flagged_pair",
+                summary=(f"Arm A dissolve: '{name}' — validation flagged "
+                         f"{', '.join(flagged)} at 2 members"),
+                detail=(f"via=validation flagged={flagged} survivors={survivors} "
+                        f"(survivor released, no cooldown — ADR 0025 Arm A)"),
+            )
+            logger.info(f"Theme '{name}': dissolved on flagged pair (ADR 0025 Arm A)")
+            return None, changelog
 
     # Check how many constituent stocks still show strong RS today
     strong_stocks = [t for t in tickers if t in stocks_by_ticker
@@ -3970,6 +4025,286 @@ async def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
     return result
 
 
+async def _retro_sweep_flagged_pairs(
+    updated_themes: list[dict],
+    changelog: list[dict],
+) -> list[dict]:
+    """ADR 0025 Arm A retro-sweep (#274) — behind THEME_MERGE_ARM, nightly.
+
+    Dissolve any active 2-member theme where a member carries a LIVE validation
+    cooldown FROM THAT SAME THEME: validation already adjudicated the member OUT
+    of this exact theme (the evidence), but the min-survivor guard kept the pair
+    alive — the 2-member-immortality loop the evidence pack found (7 themes).
+    Fires only on validation evidence, never a bare member count.
+
+    Mechanics: the flagged member's 14d (ticker, theme) cooldown is refreshed so
+    the pair can't instantly re-form; the SURVIVOR gets no cooldown (it did
+    nothing wrong — released to the discovery pools next run). Dissolved themes
+    drop from emission → the engine-drop path synthesizes their Retired rows
+    (theme_auto_retired, parent_theme=NULL). Fail-open: any error leaves the
+    themes untouched.
+    """
+    if not merge_arm_enabled():
+        return updated_themes
+    try:
+        cooldown_pairs = await get_cooldown_set()
+    except Exception as e:
+        logger.warning(f"[Arm A sweep] cooldown fetch failed — sweep skipped: {e}")
+        return updated_themes
+    dissolved: set[str] = set()
+    for t in updated_themes:
+        tks = list(t.get("tickers") or [])
+        if len(tks) != 2:
+            continue
+        flagged = [tk for tk in tks if (tk, t["name"]) in cooldown_pairs]
+        if not flagged:
+            continue
+        survivors = [tk for tk in tks if tk not in flagged]
+        try:
+            for tk in flagged:
+                await add_validation_cooldown(
+                    tk, t["name"],
+                    reason="ADR 0025 Arm A retro-sweep — flagged-pair theme dissolved",
+                )
+            await log_audit_event(
+                "theme_dissolved_flagged_pair",
+                summary=(f"Arm A retro-sweep dissolve: '{t['name']}' — member(s) "
+                         f"{', '.join(flagged)} carry a live validation cooldown from this theme"),
+                detail=(f"via=retro_sweep flagged={flagged} survivors={survivors} "
+                        f"(survivor released, no cooldown — ADR 0025 Arm A)"),
+            )
+        except Exception as e:
+            logger.warning(f"[Arm A sweep] dissolve bookkeeping failed for '{t['name']}' — kept: {e}")
+            continue
+        changelog.append({
+            "type": "theme_dissolved_flagged_pair",
+            "theme": t["name"],
+            "flagged": flagged,
+            "survivors": survivors,
+            "via": "retro_sweep",
+        })
+        dissolved.add(t["name"])
+    if dissolved:
+        logger.info(f"[Arm A sweep] dissolved {len(dissolved)} flagged-pair theme(s): {sorted(dissolved)}")
+        updated_themes = [t for t in updated_themes if t["name"] not in dissolved]
+    return updated_themes
+
+
+def _synthetic_retired_row(name: str, today: date, successor: str | None, note: str) -> dict:
+    """Retired-row shape for themes removed outside the lifecycle (mirrors the
+    engine-drop retire_rows in run_theme_engine — keep the two in lockstep)."""
+    return {
+        "theme_date": today,
+        "name": name,
+        "stage": "Retired",
+        "score": 0.0,
+        "rs_avg": None,
+        "description": note,
+        "tickers": [],
+        "parent_theme": successor,
+        "pct_above_20sma": None,
+    }
+
+
+async def _run_thesis_merge_pass(
+    all_themes: list[dict],
+    persisted_names: set[str],
+    changelog: list[dict],
+    protected: set[tuple[str, str]] | None,
+    today: date,
+    stocks_by_ticker: dict[str, dict] | None = None,
+) -> list[dict]:
+    """ADR 0025 Arm B (#274) — nightly thesis-coherence merge pass. Behind
+    THEME_MERGE_ARM (default OFF → returns the list untouched).
+
+    Runs AFTER the final Pass1/1.5/cap sequence, BEFORE the engine-drop Retired-row
+    synthesis. Stage A: deterministic pairing (theme_merge_arm.propose_merge_pairs —
+    the pure logic the 7/11 replay validated; ≤8 pairs/night). Stage B: Haiku
+    adjudicator (temp=0, scratchpad-first tool schema, negative exemplars). Mechanics:
+      MERGE        → union members into the higher-scoring theme (winner); the
+                     absorbed theme gets a synthetic Retired row with
+                     parent_theme=successor; the merged theme immediately
+                     re-validates (#266 birth-style) so a bad union self-corrects
+                     tonight; a gutted union (<2 survivors) dissolves instead of
+                     merging (Arm A composition). Name = adjudicator-proposed (F1,
+                     operator-signed) with a collision guard. ≤3 executed/night.
+      DISTINCT     → 30d (A,B) merge_distinct cooldown + theme_merge_distinct audit.
+      PARENT_CHILD → existing sub-theme machinery (child.parent_theme = parent),
+                     no dissolution.
+    Fail-open per pair AND for the whole pass — the arm must never break the run.
+    """
+    if not merge_arm_enabled():
+        return all_themes
+    removed: set[str] = set()
+    retired_rows: list[dict] = []
+    try:
+        candidates = [t for t in all_themes if t.get("stage") != "Retired" and t.get("tickers")]
+        try:
+            cooldown_pairs = await get_merge_distinct_pairs()
+        except Exception as e:
+            logger.warning(f"[merge arm] distinct-cooldown fetch failed — pass skipped: {e}")
+            return all_themes
+        sectors_by_ticker = {
+            tk: s.get("sector") for tk, s in (stocks_by_ticker or {}).items()
+            if s.get("sector") and s.get("sector") != "Unknown"
+        }
+        pairs = propose_merge_pairs(
+            candidates, cooldown_pairs=cooldown_pairs, sectors_by_ticker=sectors_by_ticker,
+        )
+        if not pairs:
+            return all_themes
+        await log_audit_event(
+            "theme_merge_pairs_proposed",
+            summary=f"Arm B Stage A: {len(pairs)} candidate pair(s) for adjudication",
+            detail="\n".join(f"'{o['name']}' × '{a['name']}'" for a, o in pairs),
+        )
+        client = _get_anthropic_client()
+        merges_executed = 0
+        for anchor, other in pairs:
+            if anchor["name"] in removed or other["name"] in removed:
+                continue
+            try:
+                verdict = await adjudicate_merge_pair(
+                    anchor, other, client=client, semaphore=_VALIDATION_SEMAPHORE,
+                    sectors_by_ticker=sectors_by_ticker, log_spend=True,
+                )
+            except Exception as e:  # adjudicate returns ERROR dicts; belt-and-braces
+                logger.warning(
+                    f"[merge arm] adjudication raised for '{other['name']}' × '{anchor['name']}': {e}"
+                )
+                verdict = {"verdict": "ERROR", "reason": f"{type(e).__name__}: {e}"}
+            v = verdict.get("verdict")
+
+            if v == "DISTINCT":
+                try:
+                    await add_merge_distinct_cooldown(
+                        anchor["name"], other["name"],
+                        reason=(verdict.get("reason") or "")[:200],
+                        days=MERGE_DISTINCT_COOLDOWN_DAYS,
+                    )
+                except Exception as e:
+                    logger.warning(f"[merge arm] distinct-cooldown write failed: {e}")
+                await log_audit_event(
+                    "theme_merge_distinct",
+                    summary=f"Arm B: '{other['name']}' vs '{anchor['name']}' DISTINCT — 30d pair cooldown",
+                    detail=(f"driver_a={verdict.get('driver_a', '')!r} driver_b={verdict.get('driver_b', '')!r} "
+                            f"reason={verdict.get('reason', '')!r}"),
+                )
+
+            elif v == "PARENT_CHILD":
+                child, parent = (other, anchor) if verdict.get("child", "B") != "A" else (anchor, other)
+                if child.get("parent_theme"):
+                    continue  # already a sub-theme — leave the existing relationship alone
+                child["parent_theme"] = parent["name"]
+                changelog.append({
+                    "type": "theme_merge_parent_child",
+                    "theme": child["name"],
+                    "parent": parent["name"],
+                })
+                await log_audit_event(
+                    "theme_merge_parent_child",
+                    summary=f"Arm B: '{child['name']}' → sub-theme of '{parent['name']}'",
+                    detail=f"reason={verdict.get('reason', '')!r}",
+                )
+
+            elif v == "MERGE":
+                if merges_executed >= MAX_MERGES_PER_NIGHT:
+                    await log_audit_event(
+                        "theme_merge_cap_deferred",
+                        summary=(f"Arm B: nightly merge cap ({MAX_MERGES_PER_NIGHT}) reached — "
+                                 f"deferred '{other['name']}' × '{anchor['name']}'"),
+                        detail=f"reason={verdict.get('reason', '')!r}",
+                    )
+                    continue
+                winner, absorbed = (
+                    (anchor, other)
+                    if float(anchor.get("score") or 0) >= float(other.get("score") or 0)
+                    else (other, anchor)
+                )
+                winner_tickers = list(winner.get("tickers") or [])
+                union = winner_tickers + [
+                    tk for tk in (absorbed.get("tickers") or []) if tk not in winner_tickers
+                ]
+                # Post-merge validation (#266 birth-style): a bad union self-corrects
+                # tonight; dissolve_flagged_pair composes Arm A for a 2-member union.
+                validated = await _validate_theme_membership(
+                    winner["name"], union, changelog, protected=protected,
+                    dissolve_flagged_pair=True,
+                )
+                merges_executed += 1  # a gutted merge still consumed the night's action
+                if len(validated) < PRUNE_MIN_TICKERS:
+                    # Arm A composition: validation gutted the union → dissolve, don't merge.
+                    for nm in (winner["name"], absorbed["name"]):
+                        removed.add(nm)
+                        if nm in persisted_names:
+                            retired_rows.append(_synthetic_retired_row(
+                                nm, today, successor=None,
+                                note=(f"Auto-retired {today}: Arm B merge of '{absorbed['name']}' into "
+                                      f"'{winner['name']}' gutted by post-merge validation — dissolved "
+                                      f"(ADR 0025)."),
+                            ))
+                    await log_audit_event(
+                        "theme_merge_dissolved_post_validation",
+                        summary=(f"Arm B: merge '{absorbed['name']}' → '{winner['name']}' gutted by "
+                                 f"post-merge validation — both dissolved (Arm A composition)"),
+                        detail=f"union={union} validated={validated}",
+                    )
+                    continue
+                old_winner_name = winner["name"]
+                merged_name = (verdict.get("merged_name") or "").strip()
+                taken = ({t["name"] for t in all_themes} | persisted_names) - {old_winner_name}
+                if merged_name and merged_name != old_winner_name and merged_name not in taken:
+                    winner["name"] = merged_name  # F1 (operator-signed): adjudicator-proposed name
+                    if old_winner_name in persisted_names:
+                        retired_rows.append(_synthetic_retired_row(
+                            old_winner_name, today, successor=winner["name"],
+                            note=(f"Auto-retired {today}: renamed to '{winner['name']}' by Arm B "
+                                  f"thesis merge (ADR 0025)."),
+                        ))
+                winner["tickers"] = validated
+                removed.add(absorbed["name"])
+                if absorbed["name"] in persisted_names:
+                    retired_rows.append(_synthetic_retired_row(
+                        absorbed["name"], today, successor=winner["name"],
+                        note=(f"Auto-retired {today}: thesis-merged into '{winner['name']}' "
+                              f"(ADR 0025 Arm B)."),
+                    ))
+                changelog.append({
+                    "type": "theme_thesis_merged",
+                    "theme": absorbed["name"],
+                    "into": winner["name"],
+                    "tickers": validated,
+                })
+                await log_audit_event(
+                    "theme_thesis_merged",
+                    summary=f"Arm B: '{absorbed['name']}' merged into '{winner['name']}' ({len(validated)} members)",
+                    detail=(f"driver_a={verdict.get('driver_a', '')!r} driver_b={verdict.get('driver_b', '')!r} "
+                            f"reason={verdict.get('reason', '')!r} merged_name={merged_name!r} "
+                            f"scratchpad={(verdict.get('analysis_scratchpad') or '')[:400]!r}"),
+                )
+                logger.info(f"[merge arm] '{absorbed['name']}' merged into '{winner['name']}'")
+
+            else:  # ERROR / unknown — fail-open per pair, next night retries
+                await log_audit_event(
+                    "theme_merge_adjudication_error",
+                    summary=f"Arm B: adjudication failed for '{other['name']}' × '{anchor['name']}'",
+                    detail=str(verdict)[:500],
+                )
+    except Exception as e:
+        logger.error(f"[merge arm] thesis-merge pass failed — completed actions kept, rest skipped: {e}")
+        try:
+            await log_audit_event(
+                "theme_merge_arm_error",
+                summary="Arm B pass failed mid-run — completed actions kept, rest skipped",
+                detail=f"{type(e).__name__}: {e}",
+            )
+        except Exception:  # loud-ok: audit-of-audit fallback — the pass failure is already logger.error'd above
+            pass
+    if removed:
+        all_themes = [t for t in all_themes if t["name"] not in removed]
+    return all_themes + retired_rows
+
+
 async def run_theme_engine(
     trade_date: date | None = None,
     clusters: list[dict] | None = None,
@@ -4135,6 +4470,13 @@ async def run_theme_engine(
                 "theme": name,
                 "tickers": list(orig.get("tickers") or []),
             })
+
+    # --- Step 1.5 (ADR 0025 Arm A, #274): retro-sweep flagged 2-member pairs ---
+    # Behind THEME_MERGE_ARM (no-op when off). Dissolved themes drop from
+    # emission here and get their synthetic Retired row in the engine-drop pass
+    # below. Their tickers stay in covered_tickers this run, so the survivor is
+    # released to the discovery pools NEXT run (per the ADR).
+    updated_themes = await _retro_sweep_flagged_pairs(updated_themes, changelog)
 
     # --- Step 2: Find uncovered RS leaders + elite covered for sub-theme splits ---
 
@@ -4463,6 +4805,16 @@ async def run_theme_engine(
         all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
         all_themes = await _enforce_max_themes_per_stock(all_themes)
         await _emit_pipeline_diagnostic(all_themes, "after_cap_2", sub_theme_parents=combined_sub_parents)
+
+    # --- Step 4c (ADR 0025 Arm B, #274): thesis-coherence merge pass ---
+    # Behind THEME_MERGE_ARM (no-op when off). Runs after the final Pass1/1.5/cap
+    # sequence and BEFORE the engine-drop Retired-row synthesis: absorbed themes
+    # carry their own Retired rows (parent_theme=successor), so they are in
+    # final_names below and never double-retire.
+    all_themes = await _run_thesis_merge_pass(
+        all_themes, {t["name"] for t in existing}, changelog, protected_set, today,
+        stocks_by_ticker=stocks_by_ticker,
+    )
 
     # Synthesize Retired rows for previously-active themes that were dropped
     # during merge passes (Pass1 protect_strip → cap_drop, or Pass1.5
