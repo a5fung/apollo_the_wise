@@ -91,32 +91,53 @@ check_service() {
 }
 
 now=$(date +%s)
+
+# ── Shared alert state-machine (#435): the create-file / dedup-6h-realert / recover-on-clear
+# file mechanic was typed 3× (service loop + disk-warn + disk-critical; the header's own
+# drift-irony note is why this gets extracted). ONE helper owns the file bookkeeping; each
+# caller keeps its OWN tier-specific alert actions (the messages differ). Manages `$state_file`
+# and echoes the transition, using globals $now + $REALERT_SECS:
+#   fire    — fresh ok->active crossing (first alert)
+#   refire  — still active AND the re-alert window elapsed (re-alert due)
+#   hold    — active but inside the dedup window (say nothing)
+#   recover — was active, now clear (announce recovery + remove state)
+#   clear   — still clear (nothing to do)
+alert_state() {
+    local state_file="$1" active="$2" last
+    if [ "$active" = 1 ]; then
+        if [ ! -f "$state_file" ]; then
+            echo "$now" > "$state_file"; echo fire
+        else
+            last=$(cat "$state_file" 2>/dev/null || echo 0)
+            if [ $((now - last)) -ge "$REALERT_SECS" ]; then
+                echo "$now" > "$state_file"; echo refire
+            else
+                echo hold
+            fi
+        fi
+    elif [ -f "$state_file" ]; then
+        rm -f "$state_file"; echo recover
+    else
+        echo clear
+    fi
+}
+
 for svc in $SERVICES; do
     reason=$(check_service "$svc")
     state_file="$STATE_DIR/$svc.down"
-    if [ -n "$reason" ]; then
-        if [ ! -f "$state_file" ]; then
-            # up -> down transition
-            echo "$now" > "$state_file"
+    case "$(alert_state "$state_file" "$([ -n "$reason" ] && echo 1 || echo 0)")" in
+        fire)
             log "DOWN: $svc — $reason"
             audit_event "service_down" "watchdog: $svc DOWN — $reason"
-            telegram_alert "🔴 *Service DOWN: ${svc}*"$'\n```\n'"$reason"$'\n```\n'"Watchdog re-alerts every 6h while down; recovery is announced."
-        else
-            last_alert=$(cat "$state_file" 2>/dev/null || echo 0)
-            if [ $((now - last_alert)) -ge $REALERT_SECS ]; then
-                echo "$now" > "$state_file"
-                log "STILL DOWN: $svc — $reason"
-                telegram_alert "🔴 *Service STILL DOWN: ${svc}*"$'\n```\n'"$reason"$'\n```'
-            fi
-        fi
-    else
-        if [ -f "$state_file" ]; then
-            rm -f "$state_file"
+            telegram_alert "🔴 *Service DOWN: ${svc}*"$'\n```\n'"$reason"$'\n```\n'"Watchdog re-alerts every 6h while down; recovery is announced." ;;
+        refire)
+            log "STILL DOWN: $svc — $reason"
+            telegram_alert "🔴 *Service STILL DOWN: ${svc}*"$'\n```\n'"$reason"$'\n```' ;;
+        recover)
             log "RECOVERED: $svc"
             audit_event "service_recovered" "watchdog: $svc recovered"
-            telegram_alert "🟢 *Service recovered: ${svc}*"
-        fi
-    fi
+            telegram_alert "🟢 *Service recovered: ${svc}*" ;;
+    esac
 done
 
 # ── Disk-space check (#422, 2026-07-06) ──────────────────────────────────────
@@ -142,30 +163,22 @@ disk_pct=$(df -P / 2>/dev/null | awk 'NR==2 {gsub("%","",$5); print $5}')
 # not blow up the `-ge` integer comparisons below under set -u.
 case "$disk_pct" in ''|*[!0-9]*) disk_pct="" ;; esac
 
-# Warn tier (>=85%): plain DOWN/dedup/recover, mirrors check_service() above.
-if [ -n "$disk_pct" ] && [ "$disk_pct" -ge "$DISK_WARN_PCT" ]; then
-    if [ ! -f "$disk_state_file" ]; then
-        # ok -> high transition
-        echo "$now" > "$disk_state_file"
+# Warn tier (>=85%): plain fire/dedup/recover via alert_state (#435). The [ -n ] guard
+# short-circuits the -ge test when disk_pct is empty (set -u safe), same as the original.
+disk_warn_active=$([ -n "$disk_pct" ] && [ "$disk_pct" -ge "$DISK_WARN_PCT" ] && echo 1 || echo 0)
+case "$(alert_state "$disk_state_file" "$disk_warn_active")" in
+    fire)
         log "DISK HIGH: / at ${disk_pct}%"
         audit_event "disk_space_high" "watchdog: / usage at ${disk_pct}% (warn threshold ${DISK_WARN_PCT}%)"
-        telegram_alert "🟠 *Disk space HIGH*"$'\n```\n'"/ usage: ${disk_pct}% (warn >= ${DISK_WARN_PCT}%)"$'\n```\n'"Watchdog re-alerts every 6h while high; recovery is announced."
-    else
-        last_alert=$(cat "$disk_state_file" 2>/dev/null || echo 0)
-        if [ $((now - last_alert)) -ge $REALERT_SECS ]; then
-            echo "$now" > "$disk_state_file"
-            log "DISK STILL HIGH: / at ${disk_pct}%"
-            telegram_alert "🟠 *Disk space STILL HIGH*"$'\n```\n'"/ usage: ${disk_pct}%"$'\n```'
-        fi
-    fi
-else
-    if [ -f "$disk_state_file" ]; then
-        rm -f "$disk_state_file"
+        telegram_alert "🟠 *Disk space HIGH*"$'\n```\n'"/ usage: ${disk_pct}% (warn >= ${DISK_WARN_PCT}%)"$'\n```\n'"Watchdog re-alerts every 6h while high; recovery is announced." ;;
+    refire)
+        log "DISK STILL HIGH: / at ${disk_pct}%"
+        telegram_alert "🟠 *Disk space STILL HIGH*"$'\n```\n'"/ usage: ${disk_pct}%"$'\n```' ;;
+    recover)
         log "DISK RECOVERED: / usage back below ${DISK_WARN_PCT}%"
         audit_event "disk_space_recovered" "watchdog: / usage back below ${DISK_WARN_PCT}%"
-        telegram_alert "🟢 *Disk space recovered* — / usage back below ${DISK_WARN_PCT}%"
-    fi
-fi
+        telegram_alert "🟢 *Disk space recovered* — / usage back below ${DISK_WARN_PCT}%" ;;
+esac
 
 # Critical tier (>=90%): SEPARATE state file, same dedup/recover shape, so it
 # arms/disarms on its own 90% line rather than piggybacking on disk.high.
@@ -175,31 +188,19 @@ fi
 # `docker system prune -af --volumes` is REJECTED: if postgres (or any
 # service) is down at prune time, its volume reads as "unused" and that
 # command would DESTROY THE DATABASE. NEVER auto-prune volumes.
-if [ -n "$disk_pct" ] && [ "$disk_pct" -ge "$DISK_PRUNE_PCT" ]; then
-    run_prune=0
-    if [ ! -f "$disk_critical_file" ]; then
-        echo "$now" > "$disk_critical_file"
-        run_prune=1
-    else
-        last_alert=$(cat "$disk_critical_file" 2>/dev/null || echo 0)
-        if [ $((now - last_alert)) -ge $REALERT_SECS ]; then
-            echo "$now" > "$disk_critical_file"
-            run_prune=1
-        fi
-    fi
-    if [ "$run_prune" = 1 ]; then
+# Critical tier (>=90%) via alert_state (#435): fire AND refire both run the safe prune
+# (matches the original run_prune=1 on both transition + re-alert); recover is log-only.
+disk_crit_active=$([ -n "$disk_pct" ] && [ "$disk_pct" -ge "$DISK_PRUNE_PCT" ] && echo 1 || echo 0)
+case "$(alert_state "$disk_critical_file" "$disk_crit_active")" in
+    fire|refire)
         log "DISK CRITICAL: / at ${disk_pct}% — running safe prune (builder cache + dangling images only, no volumes)"
         prune_out=$( { timeout 60 docker builder prune -f; timeout 60 docker image prune -f; } 2>&1 )
         log "prune output: $prune_out"
         audit_event "disk_space_prune_run" "watchdog: / at ${disk_pct}% >= ${DISK_PRUNE_PCT}% — ran docker builder prune -f + docker image prune -f (dangling only; volumes never touched)"
-        telegram_alert "🔴 *Disk space CRITICAL (${disk_pct}%)* — ran safe prune (builder cache + dangling images only; volumes NEVER touched)"$'\n```\n'"$prune_out"$'\n```'
-    fi
-else
-    if [ -f "$disk_critical_file" ]; then
-        rm -f "$disk_critical_file"
-        log "DISK CRITICAL cleared: / usage back below ${DISK_PRUNE_PCT}%"
-    fi
-fi
+        telegram_alert "🔴 *Disk space CRITICAL (${disk_pct}%)* — ran safe prune (builder cache + dangling images only; volumes NEVER touched)"$'\n```\n'"$prune_out"$'\n```' ;;
+    recover)
+        log "DISK CRITICAL cleared: / usage back below ${DISK_PRUNE_PCT}%" ;;
+esac
 
 # Daily heartbeat (~12:00–12:04 UTC slot of the */5 cron): proves the watchdog
 # itself is alive — a dead cron is otherwise indistinguishable from all-green.
