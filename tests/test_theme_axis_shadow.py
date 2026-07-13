@@ -438,6 +438,49 @@ def test_name_attribution_wired_into_writer(monkeypatch):
     assert "TICK" in captured_tickers["names_call"]  # cohort passed through incl. subject
 
 
+# ─── S1 (coverage loop 2026-07-13): MODERATE flows through the shadow, zero grade mutation ──
+
+def test_s1_theme_shadow_gate_covers_moderate():
+    """PIN (S1): ep_detector's theme-shadow gate is HIGH+MODERATE — completes ADR 0015's
+    signed 'accrue incl. sub-HIGH' intent (coverage-loop design C3). Source-level pin so a
+    narrowing back to HIGH-only fails loudly here, not silently in the telemetry."""
+    import inspect
+    from agents.market_intelligence import ep_detector
+    src = inspect.getsource(ep_detector)
+    assert 'if r.get("score_tier") in ("HIGH", "MODERATE"):' in src, (
+        "S1 theme-shadow gate must cover HIGH+MODERATE (ADR 0015 sub-HIGH accrual)")
+    assert 'if r.get("score_tier") == "HIGH":' not in src, (
+        "the old HIGH-only theme-shadow gate is back — S1 regressed")
+
+
+def test_moderate_row_writes_shadow_and_never_mutates_grade(monkeypatch):
+    """S1: a MODERATE row through the STEP-0 writer → row written with grade='MODERATE',
+    ONLY mi_theme_axis_shadow touched (never mi_ep_alerts / any grade column), and `r`
+    byte-identical after — zero grade mutation (THE LINE)."""
+    import copy
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock()
+    _patch_step1_deps(monkeypatch)
+
+    async def _fake_heat(_conn, t, d):
+        return {"name": "Robotics", "stage": "Accelerating", "score": 88.0,
+                "tickers": [t, "FRND"], "description": "automation"}
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _fake_heat)
+
+    r = {"ticker": "TICK", "alert_date": "2026-07-13", "score_tier": "MODERATE",
+         "grounded_text": "TICK partnered with FRND on a new automation line."}
+    r_before = copy.deepcopy(r)
+    _run(log_theme_axis_shadow(conn, r))
+
+    assert r == r_before                      # read-only on r — the grade is untouched
+    assert conn.execute.await_count == 1
+    args = conn.execute.await_args.args
+    assert "INSERT INTO mi_theme_axis_shadow" in args[0]
+    assert "mi_ep_alerts" not in args[0]      # never the grade table
+    assert args[3] == "MODERATE"              # tier-agnostic writer logs MODERATE verbatim
+
+
 def test_co_movement_wired_into_writer(monkeypatch):
     """log_theme_axis_shadow queries same-day moves for ticker + cohort (excluding the subject
     from the cohort side) and persists cohort_move/ticker_move/co_moving."""

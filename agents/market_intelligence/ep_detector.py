@@ -3305,15 +3305,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 await _emit_grade_decision(r, floor_tier, verdict)
                 # ── Theme-axis SHADOW (#329 STEP-0) ───────────────────────────────────
                 # Log the as-of theme heat + deterministic structural attribution for each
-                # scored EP HIGH — telemetry the live judge is blind to (theme stage/score),
-                # so DATA can size the theme weighting before the #335 load-bearing flip.
-                # Placed AFTER the override settles (2901-2903) + _emit_grade_decision so we
-                # read the FINAL authoritative score_tier, not the pre-override value.
-                # SHADOW: own conn, read-only on r, writes only mi_theme_axis_shadow, never
-                # raises (the writer swallows to an audit event). Gate = final tier == HIGH
-                # (face-value "scored EP HIGH"; _judge_shadow also runs on MODERATEs it could
-                # promote, so the gate is explicit — not floor-HIGH-inclusive).
-                if r.get("score_tier") == "HIGH":
+                # scored EP HIGH+MODERATE — telemetry the live judge is blind to (theme
+                # stage/score), so DATA can size the theme weighting before the #335
+                # load-bearing flip. Placed AFTER the override settles (2901-2903) +
+                # _emit_grade_decision so we read the FINAL authoritative score_tier, not
+                # the pre-override value. SHADOW: own conn, read-only on r, writes only
+                # mi_theme_axis_shadow, never raises (the writer swallows to an audit event).
+                # Gate = final settled tier in (HIGH, MODERATE) — S1 of the coverage loop
+                # (docs/analysis/ep_theme_coverage_loop_design_2026-07-13.md §6). Widened
+                # from HIGH-only 2026-07-13: this COMPLETES ADR 0015's signed "accrue incl.
+                # sub-HIGH tiers" rollout intent (design C3 — the deployed gate had never
+                # matched the ADR), and starts accruing the exact MODERATE population the
+                # DARK M1-d credit acts on. Both shadow writers below are tier-agnostic
+                # (they log whatever grade they're handed) and NEVER mutate r/score_tier —
+                # they write only mi_theme_axis_shadow + mi_audit_log (THE LINE holds; the
+                # once/ticker/day dedupe guards still apply: STEP-0 via its
+                # (ticker, alert_date) upsert, the credit shadow via _audit_dedupe_check).
+                if r.get("score_tier") in ("HIGH", "MODERATE"):
                     from agents.market_intelligence.theme_axis_shadow import (
                         log_theme_axis_shadow,
                     )

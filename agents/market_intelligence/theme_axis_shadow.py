@@ -1,7 +1,9 @@
 """Theme-axis SHADOW measurement scaffold — meta-rubric STEP-0 (#329) + STEP-1 (#367).
 
-PURPOSE (SHADOW ONLY — drives NOTHING). For each scored EP HIGH, record alongside the
-live judge grade the signals the live judge is structurally blind to today:
+PURPOSE (SHADOW ONLY — drives NOTHING). For each scored EP HIGH or MODERATE (S1
+coverage-loop widen 2026-07-13, completing ADR 0015's signed sub-HIGH accrual intent;
+HIGH-only before), record alongside the live judge grade the signals the live judge is
+structurally blind to today:
 
   1. AS-OF theme heat — the stage/score of the hottest active theme containing the ticker
      as of the alert date (NO lookahead). NULL when the name is themeless.
@@ -308,8 +310,9 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
     Upserts latest-scan-wins (the EP scan re-runs every 5 min). NEVER raises — every error is
     swallowed to an audit event so a telemetry failure can't disturb the grade path.
 
-    Caller gates on "scored EP HIGH" (final, post-override score_tier == 'HIGH'); this function
-    logs whatever grade it is handed.
+    Caller gates on the final, post-override score_tier in ('HIGH', 'MODERATE') — S1
+    coverage-loop widen 2026-07-13 (HIGH-only before); this function is tier-agnostic and
+    logs whatever grade it is handed. It never mutates `r` or any grade column.
     """
     try:
         ticker = r.get("ticker")

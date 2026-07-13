@@ -1447,6 +1447,14 @@ async def promote_shadow_themes(today) -> int:
     never overwrites a native live theme that happens to share a canonicalized name. Returns # promoted."""
     from agents.market_intelligence.db import get_shadow_theme_candidates
     cands = await get_shadow_theme_candidates(days=_PROMOTE_WINDOW_DAYS)
+    # ⚠️ COVERAGE-PROBE CARVE-OUT, wall 2 of 2 (S3 coverage loop 2026-07-13, fork F-C =
+    # surface-only): the reader above already EXCLUDES source='coverage_probe' by default
+    # (its include_probe flag is the operator-surface opt-in); this filter is deliberate
+    # defense in depth so that even a future reader-default flip can never auto-promote an
+    # un-vetted probe cohort into live mi_themes (→ live judge context/R4 → THE LINE).
+    # Probe cohorts graduate ONLY via the operator's /promotetheme (promote_candidate_by_name).
+    # Pinned by tests/test_coverage_probe.py::test_promote_shadow_themes_never_promotes_coverage_probe.
+    cands = [c for c in cands if c.get("source") != "coverage_probe"]
     cohorts = [c for c in cands if len(c.get("tickers") or []) >= _PROMOTE_MIN_MEMBERS]
     if not cohorts:
         logger.info("[promote] no shadow cohort met the >=%d-member bar", _PROMOTE_MIN_MEMBERS)
@@ -1533,7 +1541,10 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
     q = (name_query or "").strip().strip('"').strip()
     if not q:
         return {"status": "not_found", "available": []}
-    cands = await get_shadow_theme_candidates(days=7)
+    # include_probe=True: the operator one-tap IS the sanctioned graduation path for
+    # source='coverage_probe' cohorts (S3 carve-out, fork F-C surface-only) — the nightly
+    # auto-promote above never sees them; this deliberate human tap may.
+    cands = await get_shadow_theme_candidates(days=7, include_probe=True)
     # Word-based match: every query word must appear in the candidate name (case-insensitive). More
     # forgiving than a literal substring — "rare orphan biotech" matches "Rare & Orphan Biotech ..."
     # (the literal "& " between the words would defeat a raw substring search).

@@ -4990,7 +4990,10 @@ class MarketIntelligenceAgent(BaseAgent):
         today_str = et_today().strftime("%Y-%m-%d")
         live = await get_today_themes(today_str) or []
         try:
-            shadow_raw = await get_shadow_theme_candidates(days=7) or []
+            # include_probe=True (S3 coverage loop): coverage_probe cohorts are carved out of
+            # the nightly auto-promote but MUST stay operator-visible here — /themes + the
+            # /promotetheme one-tap are their only surfaces (fork F-C surface-only).
+            shadow_raw = await get_shadow_theme_candidates(days=7, include_probe=True) or []
         except Exception as _e:
             logger.warning(f"theme-lookup shadow fetch failed (degrading to live-only): {_e}")
             shadow_raw = []

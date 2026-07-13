@@ -139,6 +139,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
+    "coverage_probe",  # S2 coverage loop — zero-LLM EOD blind-spot probe; shadow tables + audit only, no broker calls
     # judge / digests / briefings
     "judge_delta_digest", "catalyst_downgrade_digest", "9m_pace_digest",
     "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
@@ -3597,6 +3598,20 @@ async def _run_chart_axis_shadow(today):
                 pass
 
 
+async def _coverage_probe_job():
+    """S2 coverage probe (EP↔theme coverage loop, design 2026-07-13 §3) — EOD, zero-LLM.
+    Probes TODAY's themeless EP HIGH+MODERATE alerts for blind-spot theme cohorts via
+    deterministic evidence (peer-name match in the catalyst corpus + same-day co-gap +
+    market-adjusted co-movement) and logs every row to mi_coverage_probe; §3.3-confirmed
+    cohorts feed mi_theme_candidates_shadow (source='coverage_probe', SURFACE-ONLY — the
+    nightly auto-promote carve-out in get_shadow_theme_candidates keeps them off the
+    promote lane; /promotetheme is the only graduation path). run_coverage_probe is
+    fully defensively wrapped — a probe failure can never break the EOD chain."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.coverage_probe import run_coverage_probe
+    await run_coverage_probe(et_today())
+
+
 async def _chart_axis_shadow_weekly_digest_job():
     """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. RE-RENDERS
     each delta's chart from the audit row's ticker+alert_date (render is deterministic — no saved-PNG
@@ -4600,6 +4615,20 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(day_of_week="sun", hour=19, minute=30, timezone="America/New_York"),
         id="chart_axis_shadow_weekly_digest",
         replace_existing=True,
+    )
+
+    # S2 coverage probe: 5:55 PM ET mon-fri — after the 17:00 nightly pull has refreshed
+    # today's mi_daily_closes (P3 co-movement) + mi_themes (the 7d-bounded themeless test)
+    # and AFTER the pull's own promote pass (5d), so a probe cohort written tonight cannot
+    # ride tonight's auto-promote even in ordering terms (the source carve-out is the real
+    # wall). Zero-LLM, shadow tables + audit only; slots between chart_axis_shadow (17:50)
+    # and the 18:00 evening briefing.
+    _scheduler.add_job(
+        audit_wrap(_coverage_probe_job, "coverage_probe"),
+        CronTrigger(hour=17, minute=55, day_of_week="mon-fri", timezone="America/New_York"),
+        id="coverage_probe",
+        replace_existing=True,
+        misfire_grace_time=900,
     )
 
     # Telegram polling-bot health watchdog: every 2 min, 24/7 (#153). Raw (not

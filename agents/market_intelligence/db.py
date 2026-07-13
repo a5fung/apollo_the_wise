@@ -1155,6 +1155,46 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS co_moving BOOLEAN;
         """)
 
+        # ── Coverage probe (S2, EP↔theme coverage loop 2026-07-13) ────────────────────
+        # SHADOW/TELEMETRY ONLY — one row per (subject, alert_date) themeless EP alert
+        # (HIGH+MODERATE), recording the DETERMINISTIC, zero-LLM blind-spot evidence:
+        #   P1 named-entity (peer company names in grounded_text — inverts
+        #      compute_name_attribution), P2 same-day co-gap, P3 market-adjusted
+        #      co-movement (fork F-D: SPY same-day open→close subtracted).
+        # `confirmed` = the §3.3 bar (>=2 signal families + persistence + not excluded).
+        # `judge_fire_axes` is a READ-ONLY CALIBRATION column (judge-vs-independent
+        # agreement health gauge) — NEVER an input to detect/confirm (anti-circularity
+        # wall 1). Drives NOTHING in the grade path; confirmed cohorts feed
+        # mi_theme_candidates_shadow (source='coverage_probe', surface-only — see the
+        # auto-promote carve-out in get_shadow_theme_candidates).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_coverage_probe (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                tier TEXT,
+                candidate_tickers TEXT[] NOT NULL DEFAULT '{}',
+                cohort_tickers TEXT[] NOT NULL DEFAULT '{}',
+                p1_name_score INT NOT NULL DEFAULT 0,
+                p1_matched_names TEXT[] NOT NULL DEFAULT '{}',
+                p2_cogap_tickers TEXT[] NOT NULL DEFAULT '{}',
+                p2_same_sector_count INT NOT NULL DEFAULT 0,
+                p3_ticker_move FLOAT,
+                p3_cohort_move FLOAT,
+                p3_spy_move FLOAT,
+                p3_co_moving BOOLEAN,
+                families_agree BOOLEAN NOT NULL DEFAULT FALSE,
+                persistence_met BOOLEAN NOT NULL DEFAULT FALSE,
+                confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+                excluded_tickers TEXT[] NOT NULL DEFAULT '{}',
+                judge_fire_axes TEXT[],
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_coverage_probe_date
+                ON mi_coverage_probe(alert_date DESC);
+        """)
+
         # ── Correlation clusters — statistical pre-pass for theme discovery ──────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_correlation_clusters (
@@ -5434,19 +5474,31 @@ async def get_recent_rs_batch(
         return result
 
 
-async def get_shadow_theme_candidates(days: int = 7) -> list[dict]:
+async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False) -> list[dict]:
     """ALL shadow theme candidates — the FULL shadow lane: ADR-0007 correlation ('shadow_v2'),
     #167 narrative co-gap ('narrative_cogap'), and #240 synthesis ('rs_slope_synthesis'),
     latest run per name within the window. Unlike get_narrative_theme_candidates (scoped to the
     narrative lanes — it silently drops 'shadow_v2', which is where most cohorts live), this
     surfaces EVERY shadow cohort, so the /themes two-way lookup and the dashboard snapshot export
-    read ONE consistent source. Returns [{name, tickers, source, run_date}]."""
+    read ONE consistent source. Returns [{name, tickers, source, run_date}].
+
+    ⚠️ COVERAGE-PROBE CARVE-OUT (S3, coverage-loop 2026-07-13 — THE safety boundary, fork F-C
+    = surface-only): source='coverage_probe' cohorts are EXCLUDED BY DEFAULT so the nightly
+    auto-promote (theme_engine.promote_shadow_themes, which calls this with defaults) can NEVER
+    graduate an un-vetted probe cohort into live mi_themes → live judge context/R4/grade path.
+    Only the OPERATOR surfaces opt in with include_probe=True (/themes lookup + the
+    /promotetheme one-tap in promote_candidate_by_name) — probe cohorts stay visible and
+    operator-promotable, never auto-promoted. Default-exclude is deliberate fail-safe: a future
+    caller that forgets the flag gets the SAFE behavior. Pinned by
+    tests/test_coverage_probe.py::test_auto_promote_reader_excludes_coverage_probe_by_default."""
+    src_clause = "" if include_probe else "AND source != 'coverage_probe'"
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(f"""
             SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
             FROM mi_theme_candidates_shadow
             WHERE run_date >= CURRENT_DATE - $1::int
+              {src_clause}
             ORDER BY name, run_date DESC
         """, days)
     return [dict(r) for r in rows]
@@ -5558,7 +5610,9 @@ async def get_theme_history(
     } for r in rows]
 
 
-async def get_theme_heat_asof(conn: Any, ticker: str, alert_date: Any) -> "dict | None":
+async def get_theme_heat_asof(
+    conn: Any, ticker: str, alert_date: Any, recency_days: "int | None" = None,
+) -> "dict | None":
     """The hottest active theme containing `ticker` AS OF `alert_date` (theme_date <= alert_date)
     — NO lookahead (get_theme_membership would return TODAY's membership). Returns the theme's
     name/stage/score/tickers/description, or None if `ticker` is uncovered as of that date.
@@ -5569,16 +5623,35 @@ async def get_theme_heat_asof(conn: Any, ticker: str, alert_date: Any) -> "dict 
     accessors are unified here. Semantics are byte-identical to the eval copy — theme_date <=
     alert_date, stage != 'Retired', ORDER BY theme_date DESC, score DESC NULLS LAST — the only
     failure mode that matters is reintroducing lookahead. Takes a live conn (callers already hold
-    one in a hot loop)."""
-    row = await conn.fetchrow("""
-        SELECT name, stage, score, tickers, description
-        FROM mi_themes
-        WHERE $1 = ANY(tickers)
-          AND stage != 'Retired'
-          AND theme_date <= $2
-        ORDER BY theme_date DESC, score DESC NULLS LAST
-        LIMIT 1
-    """, ticker, alert_date)
+    one in a hot loop).
+
+    `recency_days` (coverage-loop design C2, 2026-07-13): the default (None) has NO recency
+    floor — a stale non-Retired theme row still counts, which can disagree with the live credit
+    path's 7d-bounded get_theme_membership. Passing e.g. 7 adds the recency floor
+    (theme_date >= alert_date - 7d) — the "7d-bounded variant" the S2 coverage probe uses for
+    its themeless test, so the probe's blind-spot population matches the live membership read
+    rather than the looser shadow read. Existing callers are unchanged (None)."""
+    if recency_days is None:
+        row = await conn.fetchrow("""
+            SELECT name, stage, score, tickers, description
+            FROM mi_themes
+            WHERE $1 = ANY(tickers)
+              AND stage != 'Retired'
+              AND theme_date <= $2
+            ORDER BY theme_date DESC, score DESC NULLS LAST
+            LIMIT 1
+        """, ticker, alert_date)
+    else:
+        row = await conn.fetchrow("""
+            SELECT name, stage, score, tickers, description
+            FROM mi_themes
+            WHERE $1 = ANY(tickers)
+              AND stage != 'Retired'
+              AND theme_date <= $2
+              AND theme_date >= ($2::date - $3::int)
+            ORDER BY theme_date DESC, score DESC NULLS LAST
+            LIMIT 1
+        """, ticker, alert_date, recency_days)
     if not row:
         return None
     return {
@@ -7894,6 +7967,176 @@ async def get_daily_moves(conn: Any, trade_date: Any, tickers: "list[str]") -> d
             continue
         moves[r["ticker"]] = (cl - op) / op * 100.0
     return moves
+
+
+# ── Coverage probe (S2/S3, coverage-loop 2026-07-13) — SHADOW-only accessors ─────────────
+# All readers here are read-only; the two writers touch ONLY mi_coverage_probe (telemetry)
+# and mi_theme_candidates_shadow (source='coverage_probe', carved out of auto-promote in
+# get_shadow_theme_candidates above). Nothing here can reach mi_themes / mi_ep_alerts /
+# any grade or trade table.
+
+
+async def get_coverage_probe_peer_universe(
+    conn: Any, alert_date: Any, start_date: Any,
+) -> list[str]:
+    """P1 peer universe v1 (design §3.2): every ticker that EP-alerted (any tier) OR appeared
+    in mi_ep_scan_log within the trailing window [start_date, alert_date]. The caller derives
+    start_date from prev_trading_days(10, ...) — ~10 sessions. Deterministic, bounded."""
+    rows = await conn.fetch("""
+        SELECT DISTINCT ticker FROM (
+            SELECT ticker FROM mi_ep_alerts
+            WHERE alert_date BETWEEN $1 AND $2
+              AND COALESCE(source, 'live') = 'live'
+            UNION
+            SELECT ticker FROM mi_ep_scan_log
+            WHERE scan_date BETWEEN $1 AND $2
+        ) u
+    """, start_date, alert_date)
+    return [r["ticker"] for r in rows]
+
+
+async def get_industry_peers(conn: Any, ticker: str, limit: int = 40) -> list[str]:
+    """The subject's industry peers from the mi_ticker_overrides cache (design §3.2 P1
+    universe, third leg). Only name-resolvable peers (company_name cached) — the universe is
+    consumed exclusively by the name-match signal, so unresolvable rows are dead weight.
+    Bounded by `limit` (most recently refreshed first). Empty when the subject has no cached
+    industry — the EP/scan-log universe still applies."""
+    row = await conn.fetchrow(
+        "SELECT industry FROM mi_ticker_overrides WHERE ticker = $1", ticker.upper())
+    if not row or not row["industry"]:
+        return []
+    rows = await conn.fetch("""
+        SELECT ticker FROM mi_ticker_overrides
+        WHERE industry = $1 AND ticker != $2 AND company_name IS NOT NULL
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT $3
+    """, row["industry"], ticker.upper(), limit)
+    return [r["ticker"] for r in rows]
+
+
+async def get_sectors_for_tickers(conn: Any, tickers: "list[str]") -> dict[str, str]:
+    """Cached sectors (mi_ticker_overrides) for a ticker set — the P2 same-sector tag.
+    Read-only; missing/NULL sectors simply absent."""
+    if not tickers:
+        return {}
+    rows = await conn.fetch(
+        "SELECT ticker, sector FROM mi_ticker_overrides "
+        "WHERE ticker = ANY($1) AND sector IS NOT NULL AND sector != ''",
+        [t.upper() for t in tickers])
+    return {r["ticker"]: r["sector"] for r in rows}
+
+
+async def get_industries_for_tickers(conn: Any, tickers: "list[str]") -> dict[str, str]:
+    """Cached industries (mi_ticker_overrides) for a ticker set — the probe's deterministic
+    stub-name label (dominant industry). Read-only; missing/NULL industries simply absent."""
+    if not tickers:
+        return {}
+    rows = await conn.fetch(
+        "SELECT ticker, industry FROM mi_ticker_overrides "
+        "WHERE ticker = ANY($1) AND industry IS NOT NULL AND industry != ''",
+        [t.upper() for t in tickers])
+    return {r["ticker"]: r["industry"] for r in rows}
+
+
+async def get_active_cooldown_tickers(conn: Any) -> set:
+    """Tickers under an ACTIVE validation cooldown (any theme, not bypassed) — the §3.3
+    'not excluded' leg. The probe drops these from its evidence cohort the same way the
+    assignment pass would refuse them."""
+    rows = await conn.fetch(
+        "SELECT DISTINCT ticker FROM mi_validation_cooldowns "
+        "WHERE cooldown_until > NOW() AND NOT bypassed")
+    return {r["ticker"] for r in rows}
+
+
+async def get_theme_excluded_tickers(conn: Any, theme_name: str, tickers: "list[str]") -> set:
+    """mi_theme_exclusions hits for (candidate ticker, theme_name) — operator-directed
+    permanent bans, honored at the S3 candidate write exactly as the assignment pass does."""
+    if not tickers:
+        return set()
+    rows = await conn.fetch(
+        "SELECT ticker FROM mi_theme_exclusions WHERE theme_name = $1 AND ticker = ANY($2)",
+        theme_name, tickers)
+    return {r["ticker"] for r in rows}
+
+
+async def get_recent_probe_cohorts(conn: Any, alert_date: Any, start_date: Any) -> list[dict]:
+    """PRIOR families-agree probe rows in [start_date, alert_date) — the §3.3 persistence
+    window (same cohort re-confirms on >=2 distinct days within 5 sessions). Strictly before
+    alert_date so today's row can never self-confirm."""
+    rows = await conn.fetch("""
+        SELECT ticker, alert_date, cohort_tickers
+        FROM mi_coverage_probe
+        WHERE alert_date >= $1 AND alert_date < $2 AND families_agree
+    """, start_date, alert_date)
+    return [dict(r) for r in rows]
+
+
+async def upsert_coverage_probe_row(conn: Any, row: dict) -> None:
+    """One probe row per (subject, alert_date), latest-run-wins (the EOD job may re-run
+    same-day). Writes ONLY mi_coverage_probe — pure telemetry."""
+    await conn.execute("""
+        INSERT INTO mi_coverage_probe (
+            ticker, alert_date, tier, candidate_tickers, cohort_tickers,
+            p1_name_score, p1_matched_names, p2_cogap_tickers, p2_same_sector_count,
+            p3_ticker_move, p3_cohort_move, p3_spy_move, p3_co_moving,
+            families_agree, persistence_met, confirmed, excluded_tickers, judge_fire_axes
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        ON CONFLICT (ticker, alert_date) DO UPDATE SET
+            tier = EXCLUDED.tier,
+            candidate_tickers = EXCLUDED.candidate_tickers,
+            cohort_tickers = EXCLUDED.cohort_tickers,
+            p1_name_score = EXCLUDED.p1_name_score,
+            p1_matched_names = EXCLUDED.p1_matched_names,
+            p2_cogap_tickers = EXCLUDED.p2_cogap_tickers,
+            p2_same_sector_count = EXCLUDED.p2_same_sector_count,
+            p3_ticker_move = EXCLUDED.p3_ticker_move,
+            p3_cohort_move = EXCLUDED.p3_cohort_move,
+            p3_spy_move = EXCLUDED.p3_spy_move,
+            p3_co_moving = EXCLUDED.p3_co_moving,
+            families_agree = EXCLUDED.families_agree,
+            persistence_met = EXCLUDED.persistence_met,
+            confirmed = EXCLUDED.confirmed,
+            excluded_tickers = EXCLUDED.excluded_tickers,
+            judge_fire_axes = EXCLUDED.judge_fire_axes,
+            created_at = NOW()
+    """,
+        row["ticker"], row["alert_date"], row.get("tier"),
+        row.get("candidate_tickers") or [], row.get("cohort_tickers") or [],
+        row.get("p1_name_score", 0), row.get("p1_matched_names") or [],
+        row.get("p2_cogap_tickers") or [], row.get("p2_same_sector_count", 0),
+        row.get("p3_ticker_move"), row.get("p3_cohort_move"),
+        row.get("p3_spy_move"), row.get("p3_co_moving"),
+        row.get("families_agree", False), row.get("persistence_met", False),
+        row.get("confirmed", False), row.get("excluded_tickers") or [],
+        row.get("judge_fire_axes"),
+    )
+
+
+async def upsert_coverage_probe_candidate(
+    conn: Any, run_date: Any, name: str, tickers: "list[str]", thesis: "str | None",
+) -> None:
+    """S3 feed: upsert ONE confirmed probe cohort into mi_theme_candidates_shadow under
+    source='coverage_probe'. Tickers MERGE (set-union) on conflict — two same-day subjects in
+    the same blind-spot theme deterministically build one cohort instead of clobbering each
+    other. The ON CONFLICT ... WHERE source='coverage_probe' guard mirrors the sibling lane
+    writers: a same-named cohort from another lane is never hijacked. These rows are
+    surface-only (see the get_shadow_theme_candidates carve-out) — visible in /themes,
+    promotable ONLY via the operator's /promotetheme."""
+    await conn.execute("""
+        INSERT INTO mi_theme_candidates_shadow
+            (run_date, name, thesis, tickers, source, would_revive)
+        VALUES ($1, $2, $3, $4, 'coverage_probe', FALSE)
+        ON CONFLICT (run_date, name) DO UPDATE SET
+            thesis = EXCLUDED.thesis,
+            tickers = (
+                SELECT ARRAY(
+                    SELECT DISTINCT t
+                    FROM unnest(mi_theme_candidates_shadow.tickers || EXCLUDED.tickers) AS t
+                    ORDER BY t
+                )
+            )
+        WHERE mi_theme_candidates_shadow.source = 'coverage_probe'
+    """, run_date, name, thesis, list(tickers))
 
 
 async def get_sector_rs_rank(

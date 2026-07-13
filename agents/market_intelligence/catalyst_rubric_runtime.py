@@ -731,7 +731,9 @@ def derive_theme_coverage_state(
 
 
 async def log_theme_axis_adjusted_shadow(r: dict[str, Any]) -> None:
-    """ADR 0015 (#328) SHADOW writer. For one scored EP HIGH, compute the
+    """ADR 0015 (#328) SHADOW writer. For one scored EP HIGH or MODERATE (S1
+    coverage-loop widen 2026-07-13 — completes the ADR's signed "accrue incl.
+    sub-HIGH" intent; HIGH-only before), compute the
     theme-axis credit against the CACHED rubric result (same
     score_ep_with_rubric() output the live path already produced this scan —
     re-read via lookup_cached_metrics, not re-extracted) and log a
@@ -746,9 +748,9 @@ async def log_theme_axis_adjusted_shadow(r: dict[str, Any]) -> None:
     event. Mirrors theme_axis_shadow.py's STEP-0 writer discipline exactly.
 
     Placement: call this from the SAME gate as the STEP-0 theme-axis shadow
-    (`r.get("score_tier") == "HIGH"`, in ep_detector's `_judge_shadow`,
-    AFTER the judge override settles) — this shadow needs the same settled,
-    final-tier row and rides the same low blast radius / cadence.
+    (`r.get("score_tier") in ("HIGH", "MODERATE")`, in ep_detector's
+    `_judge_shadow`, AFTER the judge override settles) — this shadow needs the
+    same settled, final-tier row and rides the same low blast radius / cadence.
     """
     ticker = r.get("ticker")
     alert_date = r.get("alert_date")
