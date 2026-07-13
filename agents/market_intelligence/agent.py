@@ -1736,6 +1736,14 @@ class MarketIntelligenceAgent(BaseAgent):
         # they're visible in the morning-briefing 4-bucket banner instead.
 
         rows = await get_audit_log(limit=25, event_type=event_type, event_type_like=event_type_like, since_hours=since_hours)
+        if event_type_like == "%error%":
+            # RED-3b follow-up (2026-07-13): `drawdown_check_unavailable` carries no "error"
+            # substring, so the fail-open drawdown-breaker marker was invisible to `show errors`
+            # (the nightly alert path fetches it exact-type; this mirrors that here). Merge + resort.
+            dd_rows = await get_audit_log(
+                limit=25, event_type="drawdown_check_unavailable", since_hours=since_hours)
+            if dd_rows:
+                rows = sorted(rows + dd_rows, key=lambda r: r["created_at"], reverse=True)[:25]
 
         if not rows:
             filter_label = event_type or event_type_like or ""

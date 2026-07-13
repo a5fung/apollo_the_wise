@@ -32,46 +32,32 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of 2026-07-11 ~midnight PDT — end of the Fable weekend build)
+## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-13 ~00:30 PDT — the rulings-pack night)
 
-**Apollo trades REAL money (MAGNA53 live since 6/30; equity ~$4.9k; live record N=3 / −$71 —
-below noise; #454 will make the next 15 trades diagnostic).** Prod healthy.
+**The 7/12→13 marathon:** growth gate shipped (check_plan hard-caps session task growth) · #178/#412/#385
+closed verified (board 118→**113**, all real) · TWO Fable red-teams (composition + v1-readiness; every
+finding code-verified; 1 of 6 REDs was over-rated — verify premium-model output) · readiness fixes
+DEPLOYED (soak fail-opens closed · drawdown fail-open now alerts · FL-4 meter gated on promotion) ·
+0025 C1-C3 built DARK · **the 6-fork rulings pack approved wholesale + EXECUTED**
+(`docs/analysis/monday_rulings_pack_2026-07-13.md` — the what-and-why of every ruling).
 
-**Sat 7/11 shipped (all committed + pushed, check_plan green):**
-- **Lane-1 pre-build (#458) DONE** — 6 read-only probe tables under `docs/analysis/*_2026-07-11.md`,
-  all advisor-checked. The sitting rulings: **#395 NO-GO** (coil-finder shadow −1.23R, Monday-crit)
-  · **#170 NO-GO** (re-setup dilutes the EP book) · **#357** direction-confirmed/N-gated · **#146
-  HOLD** (incumbent gate is tail-positive +0.78R; drop-COILED replay only 4/21-faithful) · **#274
-  ✓ PASS** (sign 0025 F1-F3) · **#448 b6** scoped (deterministic no-LLM path).
-- **#436 fork B SHIPPED + VERIFIED-LIVE** (real-money safeguard): inert `pending_confirmation`
-  proposals no longer count toward the position cap — shared `db.OPEN_POSITION_STATUSES` across
-  3 cap sites + coverage-drift, DEPLOYED both money containers, constant confirmed live. Root
-  cause = pre-ramp staged-paper proposals, NOT an active bug. Follow-ups filed: **#461** (cap
-  check→insert TOCTOU race) · **#436(b)** self-heal (cosmetic hygiene, 7/25, + 2 /simplify
-  ride-along cleanups). Advisor-reviewed + /simplify'd; the `_check_safeguards` enforcement test added.
-- **Block 3 (Fable) FULLY EXECUTED T1-T6 in one evening:** **ADR 0030** (judge-robustness taxonomy
-  + 36-case adversarial corpus `scripts/evals/judge_robustness_corpus_v1.json` + the [5m/7]
-  regression gate) · **ADR 0031** (pivot structure-stops, two-arm shadow) · **theme-merge golden
-  corpus** (gates 0025-C3) · **R5 drift band** specced · **cross-ADR register** (caught 0026-D2
-  evidence-contradicted by #146) · **both sitting packs** (`lane1_sitting_pack_2026-07-13.md` +
-  `m1_sitting_pack_2026-07-18.md`) · gap-hunt (program is execution-shaped; Pradeep 39%-bar
-  extraction → rides #448).
-- **Block 4 filed (#462) — THE IMPLEMENTATION GAUNTLET** (operator: Block 3 too tame): 7 tiers of
-  build/audit/eval-run, each ending in running code or a verdict.
+**Live state (Monday verifies):**
+- Soak FL-1 = STRICT clock, start **7/8** (the constant IS the ruling); reads 4/10; completes EOD 7/21.
+- Ingest = **dry_run since 7/13 00:00 PT** (LEG-B day 1 = Mon); live_r1 sign ~7/17 → FL-4 green ≈ 7/24 → declare.
+- RED-3 sizing clamp deployed BOTH money containers (multiplier up-never-past-baseline; ≤1.0 identical).
+- 0025 merge arm DARK + **corpus-cleared 14/14** (prompt v2 slice→MERGE) — THEME_MERGE_ARM flip = operator's call.
+- Giveback 8/06 flip ruled: **close-below DECISION-LINE** (SMA-trail surface, NOT a resting stop); build at flip.
+- Monday market-gated verify-lives: pivot 17:42 job · exposure hook · T2c samples · #445 shadows ·
+  #443/#463/#405/#183 event-gated · RED-3 watchdog (16:12 no-show) first exercise.
 
-**SUNDAY 7/13 — TWO TRIGGERS (operator-owned):**
-1. **"run block lane 1"** → task **#459** — the decision sitting; runs off `lane1_sitting_pack`
-   (Bundle B = the only 3 real deliberations: #395 kill · 0026-D2 park · #452 scope).
-2. **"run fable block 4 tier N"** (or "continue block 4") → task **#462** — T1 (build+run the 0030
-   robustness eval) is the 7/18-critical one; roadmap §Block 4.
-
-**Dated spine:** #395 ruled at the sitting (Mon 7/14 target) · **7/18 M1** authority-flip sitting
-(#335; pack ready; needs the 0030-C3 map + T2c drift band built this week) · 7/14-21 #425
-declaration walk (dossier = spine) · 7/25 ingest dry_run flip + #436(b) · 8/06 giveback F1.
-
-**Verify-lives pending (fire on their own):** fork B's behavioral effect = next live-staged ramp
-(no-op for magna53 auto-enter) · #306 first giveback-shadow row · #443 next EP HIGH · #287/#183
-next real exit / first live fill (market-gated, resume Mon).
+**Open threads (all in PLAN.md):**
+1. **#416 guards build (due 7/16, in_progress)** — ⚠ FIRST prove guard-B on FRMI's reconstructed inputs
+   (its audit row is truncated-at-write; live guards run PRE-write so unaffected, but don't ship unproven).
+   Eyeball the 2 new sim finds (WEN 5/12 · IMVT 5/20).
+2. **#460 (operator): /model default is currently FABLE** (saved 7/12 eve) — flip back to Opus.
+3. **Possible UNPUSHED commits** — a local network outage (SSH+GitHub DNS) hit ~00:10 PT during CLOSE;
+   at OPEN run `git log origin/main..HEAD` and push. All prod deploys completed + verified BEFORE the outage.
+4. Sitting docket: CLEAR (the pack ruled everything). Next: M1 authority flip 7/18 (pack ready) · #448 7/16.
 
 ## 4. Critical operating rules the laptop won't have in memory (backstop — most are also in CLAUDE.md)
 

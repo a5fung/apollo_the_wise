@@ -8,6 +8,15 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-07-08 — ADR 0023 exit-cards · ADR 0024 M1-a/c · alert fix
+- Dark/evidence: ADR 0023 Cards 1/2/3 (giveback_floor + harvest sweep → +$8,075 F1-evidence) + Card 5; ADR 0024 M1-a dark + M1-c draft. #443 paper/live alert mislabel fixed. #274 fragmentation root-caused → weekend Fable block. Lesson: asyncpg single-conn can't multiplex a query-gather.
+
+### 2026-07-05 — day 3: hardening lane CLEARED
+- #225 [5l/7] demotion fence · #382 money-path swallows 95→81 · #184a coverage-drift · F10 shared client · #256 restore-check crons (run-1 caught the dashboard_ro DR roles gap → roles.sql rides the bundle) · #417 pass-1. Lessons: fence dynamic text in Telegram legacy-Markdown; shell-helper drift → infra/ops_lib.sh.
+
+### 2026-07-04 — day 2: #347 FLIPPED LIVE · axes built
+- #347 flip live + same-day hardening · ADRs 0015/0016 signed · #328 shadow deployed · 8 reviews closed · #381→95.
+
 ### 2026-06-27 — anticipation rebuild · #381 gate · HTF detection · PDT/ET fix
 - 3 builds verified-live: anticipation #327 coil-finder · #381 swallow-a-failure ratchet gate · HTF #356 detection (90/40 + Stage-2 NCI-catch + flag→HTF rename). Recurring PDT/ET confusion fixed MECHANICALLY: `check_plan`→PT · `scripts/operator_now.py` clock · the ⏰ two-frames rule.
 

@@ -356,17 +356,9 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 - **ADR 0023 F1**: operator picked the peak-lock direction (+6%/60%) but chose to VALIDATE in SHADOW — `giveback_shadow.py` on the LIVE book (log-only, THE LINE), DEPLOYED both money containers + mechanism-verified on WULF, first-row verify-live pending a live round-tripper; `giveback_shadow_review` gate wired so it can't silently 0-row. **#443** alert fix rode the same deploy (live entry-path). Deploy lessons: a root-file (`data_gated_reviews.yaml`) dragged the drift-guard to full 3-svc scope → classification fix; the shadow's pure-ladder `exit_logic` import needs `# exec-boundary-ok` (flag_detector #396 pattern). **#439 part-b**: the G6 paper harness left resting test orders (replace-pending race) → harness-level `_sweep_test_orders_until_clear`. **#290 CLOSED**: late-entry backtest (realized-R, not precision) — the wide window that won on precision is R-NEGATIVE (N=196); late entries forced onto a wide stop (no fresh ORB) → no robust edge; don't extend. Advisor caught me pre-loading "close" twice (asserted-baseline; +0.31R-is-marginal-not-negative) — verify the control, lead with the internal well-powered result.
 
-### 2026-07-08 — ADR 0023 exit-cards · ADR 0024 M1-a/c · paper/live alert fix (laptop day)
+### 2026-07-12/13 — growth gate · 2 red-teams · rulings pack EXECUTED (Fable window)
 
-- Dark/evidence (THE LINE held): ADR 0023 Cards 1/2/3 (`giveback_floor` + harvest sweep → **+$8,075** F1-evidence) + Card 5 (gap alert); ADR 0024 M1-a (`compose_final_tier` dark) + M1-c (draft). **#443** paper/live alert mislabel fixed (`get_strategy_account_mode`). **#274** fragmentation root-caused → weekend Fable block (`docs/roadmap/fable-weekend-blocks.md`). Lesson: `asyncpg` single-conn can't multiplex a query-gather.
-
-### 2026-07-05 — day 3: hardening lane CLEARED (sprint CLOSE)
-
-- #225 ([5l/7] demotion-fence gate) · #382 (money-path swallows resolved, baseline 95→81, zero control-flow) · #184a coverage-drift detector · F10 shared client · #256 restore-check + watchdog crons (**run-1 caught the dashboard_ro DR roles gap** → roles.sql now rides the encrypted bundle) · #417 pass-1 (→37.8k). Lessons: fence dynamic text in Telegram legacy-Markdown (an unpaired `_` silently 400s the alert); 3 shell-helper copies drifted same-day → `infra/ops_lib.sh`.
-
-### 2026-07-04 — day 2: #347 FLIPPED LIVE · axes built
-
-- **#347 flip live** + same-day hardening · ADRs 0015/0016 signed, #328 shadow deployed · 8 reviews closed · labels banked · #381→95.
+- **Session growth gate** (`check_plan` HARD): a session may not END with more open tasks than the PT-day began — `--today` pins the baseline, the plain gate fails commits over it; operator `--carryover` = the only escape. After a month of fake burndown (99→116). **Fable via Agent-model-override** (no /model switch) ran 2 red-teams — composition (giveback l=c evidence ≠ resting-stop rule · allocator multiplier bypassed caps · update_stop lock) + v1-readiness (two soak clocks · fail-open clean-day · unmonitored drawdown staleness) — all code-verified, 3 fixes deployed same-night (soak failure-events + sync-orphan emitters · 16:12 job watched + drawdown fail-open alerts · FL-4 meter gated on promotion). **6-fork rulings pack approved wholesale**: soak STRICT (start 7/8) · FL-4 synthetic criterion + dry_run flipped · 0025 slice→MERGE prompt v2 (corpus 14/14, flip corpus-cleared) · giveback = close-below DECISION-LINE (not resting stop) · RED-3 sizing clamp shipped both money containers · #416 signed (N-gate sim: 7 flips; FRMI row unparseable — prove guard-B pre-ship). Lesson: verify premium-model output vs code — 1 of 6 REDs was over-rated (the NULL was a deliberate fail-safe).
 
 Older entries → `CHANGELOG.md` (search any concept).
 
