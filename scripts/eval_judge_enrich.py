@@ -60,6 +60,28 @@ WHERE alert_date >= (CURRENT_DATE - ($1::int))
 ORDER BY alert_date, ticker
 """
 
+# Cohort for the --regrade pass — a SUPERSET of _SIZE_SQL: the sizing columns PLUS the 9 extra
+# columns build_judge_payload() subscripts (catalyst/claude_analysis/catalyst_quality + the
+# theme/structure signals). The size pass never calls build_judge_payload, so _SIZE_SQL omitted
+# them; --regrade does, and reusing _SIZE_SQL crashed with KeyError:'catalyst' (the path was
+# always deferred/batched, so this never surfaced until the M1-b run 2026-07-13). All 19 columns
+# are verified present on mi_ep_alerts. Kept as its own constant (not extending _SIZE_SQL) so the
+# size pass doesn't fetch payload columns it never reads; test_eval_judge_enrich_regrade pins the
+# projection ⊇ build_judge_payload's read set so this can't silently drift again.
+_REGRADE_SQL = """
+SELECT ticker, alert_date, detected_at, score_tier,
+       COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
+       judge_tier, judge_direction, judge_materiality_tier,
+       grade_engine_authority, grounded_text,
+       catalyst, claude_analysis, catalyst_quality,
+       in_active_theme, in_narrative_cohort,
+       gap_pct, pm_rvol, vol_percentile, ep_score
+FROM mi_ep_alerts
+WHERE alert_date >= (CURRENT_DATE - ($1::int))
+  AND grade_engine_authority IS NOT NULL        -- judge actually rendered a verdict
+ORDER BY alert_date, ticker
+"""
+
 # Materiality tiers that mean "the judge leaned on materiality" (the highest-risk pattern when
 # has_direct_source was falsely "no" — ADR 0011 rubric clause 1/2).
 _MATERIAL_LEAN = {"transformative", "material"}
@@ -131,7 +153,7 @@ async def run_size_only(days: int) -> None:
 async def run_regrade(days: int, limit: int, replicates: int) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(_SIZE_SQL, days)
+        rows = await conn.fetch(_REGRADE_SQL, days)  # payload-complete projection (not _SIZE_SQL)
     # Re-grade only the assessable rows with a direct source the judge was blind to (the at-risk
     # signal) — that's where enrich can move the verdict. Cap by --limit for cost control.
     # Cohort = assessable rows that DO have a direct source (has_direct is True by the filter,
