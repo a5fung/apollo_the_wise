@@ -161,6 +161,24 @@ def _should_auto_enter(account_mode: str, live_real_enabled: bool) -> bool:
     return account_mode == "paper" or (account_mode == "live" and bool(live_real_enabled))
 
 
+def _apply_composite_multiplier(baseline_shares: int, composite_multiplier: float) -> tuple[int, bool]:
+    """Step-5b sizing arithmetic, pure → (shares, clamped).
+
+    RED-3 safeguard clamp (operator-ruled 2026-07-12, rulings-pack R5): a multiplier sizes
+    DOWN freely but may NEVER push size past the builder's baseline — the spec's shares are
+    by construction cap-MAXIMAL under the 20%-capital + VIX-scaled-risk safeguards (both
+    builders size AT risk_pct, clamped to 20% equity), so clamping to baseline re-imposes
+    both caps with zero duplicated cap math. Raising the caps is a CHANGE_PROCESS on
+    RISK_PCT / the 20% cap — never a multiplier backdoor. Pre-clamp, a >1.0 allocator step
+    (ADR 0022) would have sized straight through the safeguards
+    (composition_redteam_2026-07-12.md RED-3).
+    """
+    new_shares = math.floor(baseline_shares * composite_multiplier)
+    if new_shares > baseline_shares:
+        return baseline_shares, True
+    return new_shares, False
+
+
 def _phase_gate_skip_reason(strategy) -> str | None:
     """Field-only strategy-registry gate: disabled / shadow / deprecated.
 
@@ -415,7 +433,18 @@ async def submit_trade_entry(
         strategy_multiplier = float(getattr(strategy, "position_size_multiplier", None) or 1.0)
     composite_multiplier = strategy_multiplier * drawdown_multiplier
     if composite_multiplier != 1.0 and order_spec.get("shares"):
-        new_shares = math.floor(int(order_spec["shares"]) * composite_multiplier)
+        baseline_shares = int(order_spec["shares"])
+        new_shares, clamped = _apply_composite_multiplier(baseline_shares, composite_multiplier)
+        if clamped:
+            try:
+                await log_audit_event(
+                    "sizing_multiplier_clamped",
+                    f"{strategy_label} {ticker}: composite {composite_multiplier:.2f}x would size "
+                    f"past builder baseline {baseline_shares} — clamped to baseline "
+                    f"(20%/risk caps re-imposed)",
+                )
+            except Exception:  # loud-ok: log_audit_event() self-catches; the clamp already applied above
+                pass
         if new_shares < 1:
             return await _skip(
                 f"setup:size_too_small: post-multiplier ({composite_multiplier:.2f}x "
