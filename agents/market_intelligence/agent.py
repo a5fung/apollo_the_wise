@@ -252,32 +252,24 @@ def _collapse_flag_runs(events: list[dict]) -> list[dict]:
     ONE base evolving, not N events, and it otherwise drowns the /setup timeline (WULF: 10 near-
     identical rows). Collapse each maximal run of consecutive FLAG events (events are date-DESC)
     into a single dated line: span + count + the distinct states seen. Non-FLAG events pass through."""
+    from itertools import groupby
     out: list[dict] = []
-    i = 0
-    while i < len(events):
-        if events[i].get("source") != "FLAG":
-            out.append(events[i])
-            i += 1
+    for is_flag, grp in groupby(events, key=lambda e: e.get("source") == "FLAG"):
+        run = list(grp)
+        if not is_flag or len(run) == 1:   # non-FLAG runs + lone flags pass through unchanged
+            out.extend(run)
             continue
-        j = i
-        while j < len(events) and events[j].get("source") == "FLAG":
-            j += 1
-        run = events[i:j]
-        if len(run) == 1:
-            out.append(run[0])
-        else:
-            latest, earliest = run[0], run[-1]   # date-DESC: [0] newest, [-1] oldest
-            seen: list[str] = []
-            for e in run:
-                w = (e.get("summary") or "").split(" ")[0]
-                if w and w not in seen:
-                    seen.append(w)
-            out.append({
-                "date": latest["date"], "source": "FLAG",
-                "summary": (f"base watched {earliest['date']}→{latest['date']} "
-                            f"({len(run)} states: {'/'.join(seen)})"),
-            })
-        i = j
+        latest, earliest = run[0], run[-1]   # date-DESC: [0] newest, [-1] oldest
+        seen: list[str] = []
+        for e in run:
+            w = (e.get("summary") or "").split(" ")[0]
+            if w and w not in seen:
+                seen.append(w)
+        out.append({
+            "date": latest["date"], "source": "FLAG",
+            "summary": (f"base watched {earliest['date']}→{latest['date']} "
+                        f"({len(run)} states: {'/'.join(seen)})"),
+        })
     return out
 
 
@@ -3287,7 +3279,7 @@ class MarketIntelligenceAgent(BaseAgent):
         raw = request.task.strip()
         # /setup TICKER DATE → the deep single-day lifecycle (the /why view). One observability
         # command: bare/day-count → detector timeline; a date → the per-day entry diagnosis (#178).
-        if any(_re.match(r"^\d{4}-\d{2}-\d{2}$", t) for t in raw.split()):
+        if any(_re.fullmatch(r"\d{4}-\d{2}-\d{2}", t) for t in raw.split()):
             return await self._handle_why_query(request)
         # Strip leading slash command if present.
         if raw.lower().startswith("/setup"):
