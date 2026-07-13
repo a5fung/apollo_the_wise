@@ -470,21 +470,36 @@ async def check_high_no_terminal(conn) -> tuple[bool, dict]:
 # run weekend market jobs. nightly_data_pull starts at 17:00 ET; sector/desc
 # enrichment + Claude calls can stretch the run past 17:30, so the deadline
 # sits at 18:30 to avoid flagging mid-flight runs as missing.
+# account_equity_snapshot (RED-3a, 2026-07-12): the 16:12 ET job that feeds the
+# drawdown breaker + kill-scale bands. If it silently stops, the breaker runs
+# fail-open on stale data with no alert — so it is watched here (deadline 16:45,
+# generous for a 2-API-call job).
 _EXPECTED_JOBS: dict[str, time] = {
     "morning_briefing": time(9, 30),
     "nightly_data_pull": time(18, 30),
     "evening_briefing": time(20, 30),
+    "account_equity_snapshot": time(16, 45),
 }
+
+# Jobs whose completion evidence lives in `mi_job_runs` (status='success' via
+# core.job_audit.audit_wrap) instead of `mi_job_log` (log_job_run — which only
+# the three legacy jobs call). Success-only mirrors mi_job_log's semantics:
+# a run that crashed still flags as missing here (belt-and-suspenders with
+# notify_job_failure), exactly like a legacy job that died before log_job_run.
+_MI_JOB_RUNS_SUCCESS_JOBS = frozenset({"account_equity_snapshot"})
 
 
 async def check_job_no_show(conn, *, now_et: datetime | None = None) -> tuple[bool, dict]:
-    """Jobs that should have run by `now_et` today have no `mi_job_log` row.
+    """Jobs that should have run by `now_et` today show no completion evidence.
 
-    Only checks the three durably-logged daily jobs. Weekends are exempt
-    (US equity market closed → jobs intentionally skip). A job with an
-    in-progress `mi_job_runs` row (status='running') today is treated as
-    "running" rather than missing — `mi_job_log` is only written at job
-    end, so a slow run would otherwise look identical to a no-show.
+    Completion evidence is a `mi_job_log` row (the three legacy jobs, written
+    via log_job_run) or — for `_MI_JOB_RUNS_SUCCESS_JOBS` — a status='success'
+    `mi_job_runs` row today (audit_wrap telemetry; those jobs never write
+    mi_job_log). Weekends are exempt (US equity market closed → jobs
+    intentionally skip). A job with an in-progress `mi_job_runs` row
+    (status='running') today is treated as "running" rather than missing —
+    completion rows are only written at job end, so a slow run would
+    otherwise look identical to a no-show.
     """
     now_et = now_et or datetime.now(_ET)
     if now_et.weekday() >= 5:  # Sat/Sun
@@ -517,6 +532,20 @@ async def check_job_no_show(conn, *, now_et: datetime | None = None) -> tuple[bo
         today, expected_now,
     )
     ran = {r["job_name"] for r in rows}
+    # RED-3a: jobs tracked via audit_wrap complete into mi_job_runs, not
+    # mi_job_log — accept a clean (status='success') run today as evidence.
+    runs_tracked_now = [n for n in expected_now if n in _MI_JOB_RUNS_SUCCESS_JOBS]
+    if runs_tracked_now:
+        success_rows = await conn.fetch(
+            """
+            SELECT DISTINCT job_id FROM mi_job_runs
+            WHERE started_at >= $1::date AT TIME ZONE 'America/New_York'
+              AND status = 'success'
+              AND job_id = ANY($2::text[])
+            """,
+            today, runs_tracked_now,
+        )
+        ran |= {r["job_id"] for r in success_rows}
     # Also count jobs currently running per `mi_job_runs` — slow runs that
     # haven't yet logged completion shouldn't fire a "missing" alert.
     running_rows = await conn.fetch(

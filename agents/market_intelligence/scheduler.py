@@ -718,57 +718,11 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"ORB-extension shadow settlement failed: {e}", exc_info=True)
 
-    # Check for silent engine errors (parse failures, API errors that didn't hard-fail).
-    # Bucket by category so a flood of one type (e.g. Anthropic 5xx burst) collapses
-    # to a single line and doesn't drown out genuinely novel errors.
+    # Check for silent engine errors (parse failures, API errors that didn't
+    # hard-fail). Body lives in _check_nightly_silent_errors (extracted
+    # 2026-07-12 RED-3b so the alert wiring is unit-testable — same behavior).
     try:
-        error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=2)
-        rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=2)
-        api_rows = await get_audit_log(limit=40, event_type_like="%api_failure%", since_hours=2)
-        rate_limited_types = {"validation_rate_limited", "anthropic_rate_limited",
-                              "assignment_rate_limited", "discovery_rate_limited"}
-        api_failure_types  = {"validation_api_failure", "assignment_api_failure",
-                              "discovery_api_failure"}
-        parse_error_types  = {"validation_error"}
-        buckets: dict[str, list] = {"rate_limited": [], "api_failure": [],
-                                     "validation_error": [], "other": []}
-        seen_ids: set = set()
-        for r in (error_rows + rate_rows + api_rows):
-            row_id = r.get("id") or id(r)
-            if row_id in seen_ids:
-                continue
-            seen_ids.add(row_id)
-            evt = r.get("event_type") or ""
-            if evt in rate_limited_types:
-                buckets["rate_limited"].append(r)
-            elif evt in api_failure_types:
-                buckets["api_failure"].append(r)
-            elif evt in parse_error_types:
-                buckets["validation_error"].append(r)
-            elif "error" in evt:
-                buckets["other"].append(r)
-        total = sum(len(v) for v in buckets.values())
-        if total:
-            lines = [f"⚠️ *{total} engine event(s) during nightly run:*"]
-            if buckets["rate_limited"]:
-                lines.append(
-                    f"  🟠 {len(buckets['rate_limited'])} Anthropic rate-limited call(s) — tickers unchanged"
-                )
-            if buckets["api_failure"]:
-                lines.append(
-                    f"  🔵 {len(buckets['api_failure'])} transient Anthropic API failure(s) — will retry next run"
-                )
-            if buckets["validation_error"]:
-                lines.append(
-                    f"  🟡 {len(buckets['validation_error'])} theme validation parse error(s) — tickers unchanged"
-                )
-            for r in buckets["other"][:5]:
-                lines.append(f"  🔴 {r['summary']}")
-            if len(buckets["other"]) > 5:
-                lines.append(f"  …{len(buckets['other']) - 5} more")
-            lines.append("Type 'show errors' for details.")
-            await send_telegram_message("\n".join(lines))
-            logger.warning(f"Nightly run had {total} silent events — alerted via Telegram")
+        await _check_nightly_silent_errors()
     except Exception as e:
         logger.error(f"Error check after nightly run failed: {e}")
 
@@ -780,6 +734,86 @@ async def _nightly_data_pull():
 
     logger.info("Nightly data pull complete")
     return int(scored or 0)
+
+
+async def _check_nightly_silent_errors() -> None:
+    """Post-nightly silent-failure surfacer (called at the end of
+    _nightly_data_pull; extracted 2026-07-12 RED-3b for testability).
+
+    Buckets by category so a flood of one type (e.g. Anthropic 5xx burst)
+    collapses to a single line and doesn't drown out genuinely novel errors.
+
+    RED-3b: `drawdown_check_unavailable` matches NONE of the LIKE patterns
+    below (no "error"/"rate_limited"/"api_failure" in the name), so a
+    FAIL-OPEN drawdown-breaker check was invisible here. It is now fetched
+    explicitly — with a 6h window, not 2h, because the event fires at the
+    16:12 ET equity-snapshot job while this check runs at the END of the
+    nightly pull (17:30–18:30+); a 2h window can straddle past it.
+    """
+    from agents.market_intelligence.audit_events import DRAWDOWN_CHECK_UNAVAILABLE
+
+    error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=2)
+    rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=2)
+    api_rows = await get_audit_log(limit=40, event_type_like="%api_failure%", since_hours=2)
+    safeguard_rows = await get_audit_log(
+        limit=40, event_type=DRAWDOWN_CHECK_UNAVAILABLE, since_hours=6,
+    )
+    rate_limited_types = {"validation_rate_limited", "anthropic_rate_limited",
+                          "assignment_rate_limited", "discovery_rate_limited"}
+    api_failure_types  = {"validation_api_failure", "assignment_api_failure",
+                          "discovery_api_failure"}
+    parse_error_types  = {"validation_error"}
+    buckets: dict[str, list] = {"rate_limited": [], "api_failure": [],
+                                 "validation_error": [], "safeguard_unavailable": [],
+                                 "other": []}
+    seen_ids: set = set()
+    for r in (error_rows + rate_rows + api_rows + safeguard_rows):
+        row_id = r.get("id") or id(r)
+        if row_id in seen_ids:
+            continue
+        seen_ids.add(row_id)
+        evt = r.get("event_type") or ""
+        if evt in rate_limited_types:
+            buckets["rate_limited"].append(r)
+        elif evt in api_failure_types:
+            buckets["api_failure"].append(r)
+        elif evt in parse_error_types:
+            buckets["validation_error"].append(r)
+        elif evt == DRAWDOWN_CHECK_UNAVAILABLE:
+            buckets["safeguard_unavailable"].append(r)
+        elif "error" in evt:
+            buckets["other"].append(r)
+    total = sum(len(v) for v in buckets.values())
+    if total:
+        lines = [f"⚠️ *{total} engine event(s) during nightly run:*"]
+        if buckets["safeguard_unavailable"]:
+            # Static text only (no dynamic summary echo — an unpaired `_` in
+            # legacy-Markdown 400s the send, 2026-07-05 lesson); the event
+            # name is backtick-fenced for the same reason.
+            lines.append(
+                f"  🔴 {len(buckets['safeguard_unavailable'])} "
+                f"`drawdown_check_unavailable` event(s) — drawdown breaker "
+                f"FAIL-OPEN; verify 16:12 equity snapshot / Alpaca API"
+            )
+        if buckets["rate_limited"]:
+            lines.append(
+                f"  🟠 {len(buckets['rate_limited'])} Anthropic rate-limited call(s) — tickers unchanged"
+            )
+        if buckets["api_failure"]:
+            lines.append(
+                f"  🔵 {len(buckets['api_failure'])} transient Anthropic API failure(s) — will retry next run"
+            )
+        if buckets["validation_error"]:
+            lines.append(
+                f"  🟡 {len(buckets['validation_error'])} theme validation parse error(s) — tickers unchanged"
+            )
+        for r in buckets["other"][:5]:
+            lines.append(f"  🔴 {r['summary']}")
+        if len(buckets["other"]) > 5:
+            lines.append(f"  …{len(buckets['other']) - 5} more")
+        lines.append("Type 'show errors' for details.")
+        await send_telegram_message("\n".join(lines))
+        logger.warning(f"Nightly run had {total} silent events — alerted via Telegram")
 
 
 async def _evening_briefing_job():

@@ -26,6 +26,9 @@ ASSUMPTIONS (stated per the build card's conservative-if-unclear instruction):
     novel event-type name would be silently missed until this list is extended.
     L1-invariant-breach detection (mi_audit_log 'anomaly_detected', level=1) IS
     mechanical/reliable via `system_audit._emit_l1` and is the primary signal.
+    RED-2 (2026-07-12): terminal money-path failures (automated remediation
+    FAILED, position left naked — see SOAK_FAILURE_EVENT_TYPES) ALSO reset the
+    soak; previously such a CRITICAL day counted as clean (fail-open).
   - FL-3 "night" is bucketed by ET calendar date. Because `backup_restore_check`
     cron fires ~23:30 ET (03:30 UTC, the NEXT UTC day) and the evening briefing
     fires at 20:00 ET, TODAY's own backup-check has not run yet when the
@@ -91,6 +94,40 @@ MANUAL_REPAIR_EVENT_TYPES = [
     "manual_reconcile_bw_pre_fill",          # scripts/probes/_reconcile_2026_05_14_bugs.py
     "manual_reconcile_phantom_splits",       # scripts/probes/_reconcile_2026_05_14_bugs.py
 ]
+
+# TERMINAL money-path failure events (RED-2 fix, 2026-07-12). The soak was
+# fail-open: it reset only on L1 breaches + the manual-repair scripts above, so
+# a day where an AUTOMATED remediation FAILED and left a position naked —
+# a CRITICAL "MANUAL INTERVENTION REQUIRED" day — counted as CLEAN. These
+# event types are emitted ONLY on terminal outcomes (the loop could not
+# self-heal; hands were required), never on self-healed transients:
+SOAK_FAILURE_EVENT_TYPES = [
+    # scheduler.py::_stop_ack_timeout_watchdog — filled position with NULL
+    # stop_order_id >30s, and EITHER remediation was impossible (qty/orb_low
+    # missing) OR the fallback stop submit itself raised. Both paths Telegram
+    # "CRITICAL ... MANUAL INTERVENTION REQUIRED"; the position stays naked.
+    "stop_ack_remediation_failed",
+    # trade_stream.py::_process_entry_fill — entry-fill DB UPDATE raised AND
+    # the immediate fallback stop failed (or no orb_low anchor existed):
+    # "POSITION NAKED AND UNRECOVERABLE ... MANUAL INTERVENTION REQUIRED NOW".
+    "naked_position_remediation_failed",
+]
+# Deliberately EXCLUDED (transient / self-healing / ambiguous event types —
+# adding them would reset the soak on days the loop actually ran clean):
+#   stop_update_failed            attempt-1 rows self-heal via the 3s retry
+#                                 (stop_update_retry_succeeded); the attempt-2
+#                                 terminal shape nulls the pointer for sync
+#                                 remediation and, if it PERSISTS, is caught by
+#                                 the L1 naked-position invariant (already resets).
+#   naked_position_detected       detection marker with an automated remediation
+#                                 path attached (sync_positions Path C / adopt);
+#                                 persistence again lands as an L1 breach.
+#   partial_exit_aborted          shared type spanning benign aborts (dedup,
+#                                 trade-not-found, replace rejected with old stop
+#                                 confirmed LIVE) and re-protected under-coverage.
+#   order_status_reconcile_failed per-order fetch error, retried next 15-min cycle.
+#   stuck_pending_new_detected    entry order stalled pre-fill — no position/money
+#                                 at risk yet; operator-decision alert, not a failure.
 
 # BLOCKING task IDs extracted from v1-closeout-productization.md §4a (as of
 # 2026-07-05); see module docstring for why this is hardcoded rather than
@@ -192,16 +229,27 @@ def _streak_with_last_reset(
 
 # ── Pure per-clock computations ─────────────────────────────────────────────
 
-def compute_fl1(l1_dates: set[date], repair_dates: set[date], start: date, end: date) -> dict:
+def compute_fl1(
+    l1_dates: set[date],
+    repair_dates: set[date],
+    start: date,
+    end: date,
+    failure_dates: dict[date, str] | None = None,
+) -> dict:
     """FL-1 live-loop soak: consecutive trading days since `start` with zero
-    L1 invariant breaches AND zero manual trade-state repairs."""
+    L1 invariant breaches, zero manual trade-state repairs, AND zero terminal
+    money-path failures (RED-2: `failure_dates` maps ET date → the
+    SOAK_FAILURE_EVENT_TYPES event(s) that fired that day)."""
     days = _trading_days(start, end)
+    failure_dates = failure_dates or {}
     reset_dates: dict[date, str] = {}
     for d in days:
         if d in l1_dates:
             reset_dates[d] = "L1 invariant breach"
         elif d in repair_dates:
             reset_dates[d] = "manual repair"
+        elif d in failure_dates:
+            reset_dates[d] = f"money-path failure: {failure_dates[d]}"
     n, reason, last_date = _streak_with_last_reset(days, reset_dates)
     return {"n": n, "target": FL1_TARGET, "reset_reason": _fmt_reason(reason, last_date)}
 
@@ -400,7 +448,28 @@ async def gather_status(conn, today: date | None = None) -> dict:
         MANUAL_REPAIR_EVENT_TYPES, FL1_SOAK_START,
     )
     repair_dates = {r["d"] for r in repair_rows}
-    fl1 = compute_fl1(l1_dates, repair_dates, FL1_SOAK_START, end_trading)
+
+    # RED-2 (2026-07-12): terminal money-path failure days also reset the soak.
+    # Keep event_type per date so the reset reason names WHAT failed.
+    failure_rows = await conn.fetch(
+        """
+        SELECT DISTINCT (created_at AT TIME ZONE 'America/New_York')::date AS d,
+               event_type
+        FROM mi_audit_log
+        WHERE event_type = ANY($1::text[])
+          AND created_at >= $2
+        """,
+        SOAK_FAILURE_EVENT_TYPES, FL1_SOAK_START,
+    )
+    _failures_by_day: dict[date, set[str]] = {}
+    for r in failure_rows:
+        _failures_by_day.setdefault(r["d"], set()).add(r["event_type"])
+    failure_dates = {d: ", ".join(sorted(evts)) for d, evts in _failures_by_day.items()}
+
+    fl1 = compute_fl1(
+        l1_dates, repair_dates, FL1_SOAK_START, end_trading,
+        failure_dates=failure_dates,
+    )
 
     ops_rows = await conn.fetch(
         """

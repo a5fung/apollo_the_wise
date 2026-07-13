@@ -16,6 +16,8 @@ from tests.conftest import make_mock_pool
 
 from scripts.v1_closeout_status import (
     BLOCKING_TASK_IDS,
+    MANUAL_REPAIR_EVENT_TYPES,
+    SOAK_FAILURE_EVENT_TYPES,
     FL1_TARGET,
     FL3_TARGET,
     FL4_TARGET,
@@ -60,6 +62,75 @@ def test_fl1_manual_repair_resets_to_zero():
     fl1 = compute_fl1(set(), {date(2026, 7, 2)}, date(2026, 6, 30), date(2026, 7, 2))
     assert fl1["n"] == 0
     assert fl1["reset_reason"] == "manual repair 7/2"
+
+
+def test_fl1_terminal_money_path_failure_resets(monkeypatch):
+    # RED-2: a day where an automated remediation FAILED (position left naked)
+    # must reset the soak — previously it counted as a clean day (fail-open).
+    fl1 = compute_fl1(
+        set(), set(), date(2026, 6, 30), date(2026, 7, 2),
+        failure_dates={date(2026, 7, 1): "stop_ack_remediation_failed"},
+    )
+    assert fl1["n"] == 1  # 6/30 clean, 7/1 reset, 7/2 clean
+    assert fl1["reset_reason"] == (
+        "money-path failure: stop_ack_remediation_failed 7/1"
+    )
+
+
+def test_fl1_self_healed_transient_does_not_reset():
+    # A stop_update_failed attempt-1 that the 3s retry healed
+    # (stop_update_retry_succeeded) is NOT a soak failure. Mirror
+    # gather_status's fetch semantics — `event_type = ANY(SOAK_FAILURE_
+    # EVENT_TYPES)` — over a day that had ONLY transient events: the filter
+    # returns nothing, so failure_dates stays empty and the streak holds.
+    transient_day_events = [
+        ("stop_update_failed", date(2026, 7, 1)),          # attempt-1
+        ("stop_update_retry_succeeded", date(2026, 7, 1)), # self-healed
+        ("naked_position_detected", date(2026, 7, 1)),     # auto-remediation path
+        ("partial_exit_aborted", date(2026, 7, 1)),        # benign abort shape
+    ]
+    failure_dates = {
+        d: evt for evt, d in transient_day_events
+        if evt in SOAK_FAILURE_EVENT_TYPES
+    }
+    assert failure_dates == {}  # none of these are terminal
+    fl1 = compute_fl1(
+        set(), set(), date(2026, 6, 30), date(2026, 7, 2),
+        failure_dates=failure_dates,
+    )
+    assert fl1["n"] == 3
+    assert fl1["reset_reason"] is None
+
+
+def test_soak_failure_event_list_is_terminal_only():
+    # Membership pin: the curated list carries exactly the terminal
+    # remediation-failed events, never self-healing/ambiguous types, and is
+    # disjoint from the manual-repair allowlist (no double classification).
+    assert "stop_ack_remediation_failed" in SOAK_FAILURE_EVENT_TYPES
+    assert "naked_position_remediation_failed" in SOAK_FAILURE_EVENT_TYPES
+    for transient in (
+        "stop_update_failed",
+        "stop_update_retry_succeeded",
+        "stop_update_aborted",
+        "naked_position_detected",
+        "partial_exit_aborted",
+        "order_status_reconcile_failed",
+        "stuck_pending_new_detected",
+    ):
+        assert transient not in SOAK_FAILURE_EVENT_TYPES
+    assert not set(SOAK_FAILURE_EVENT_TYPES) & set(MANUAL_REPAIR_EVENT_TYPES)
+
+
+def test_fl1_l1_breach_takes_precedence_over_failure_reason():
+    # Same-day L1 breach + money-path failure: one reset, L1 reason wins
+    # (reset either way; label priority only).
+    d = date(2026, 7, 1)
+    fl1 = compute_fl1(
+        {d}, set(), date(2026, 6, 30), date(2026, 7, 2),
+        failure_dates={d: "naked_position_remediation_failed"},
+    )
+    assert fl1["n"] == 1
+    assert fl1["reset_reason"] == "L1 invariant breach 7/1"
 
 
 def test_fl1_weekend_days_excluded(monkeypatch):
@@ -326,10 +397,12 @@ async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
     # the trading-day counts are env-independent (real 7/3 is a holiday in CI).
     monkeypatch.setattr(f"{MOD}._is_trading_day", lambda d: d.weekday() < 5)
     pool, conn = make_mock_pool()
-    # Each conn.fetch call in gather_status order: l1, repair, ops, drift, review
+    # Each conn.fetch call in gather_status order:
+    # l1, repair, money-path failures, ops, drift, review
     conn.fetch = AsyncMock(side_effect=[
         [],  # l1 breaches
         [],  # manual repairs
+        [],  # terminal money-path failures (RED-2)
         [{"event_type": "backup_restore_check_ok", "d": date(2026, 7, 5)},
          {"event_type": "watchdog_heartbeat", "d": date(2026, 7, 5)}],  # ops rows
         [],  # coverage drift
@@ -347,6 +420,32 @@ async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
     assert status["fl4"]["n"] == 1  # only 7/6 is a trading day in [FL4_START, last_trading_day]
     assert status["fl8"]["n"] == 1
     assert status["blocking_open"] == 1  # #347 is filed + a BLOCKING id
+
+
+@pytest.mark.asyncio
+async def test_gather_status_money_path_failure_resets_fl1(tmp_path, monkeypatch):
+    # RED-2 end-to-end (DB-mocked): a stop_ack_remediation_failed row on 7/2
+    # resets FL-1 through gather_status's new failure fetch.
+    monkeypatch.setattr(f"{MOD}._is_trading_day", lambda d: d.weekday() < 5)
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[
+        [],  # l1 breaches
+        [],  # manual repairs
+        [{"d": date(2026, 7, 2), "event_type": "stop_ack_remediation_failed"}],
+        [],  # ops rows
+        [],  # coverage drift
+        [],  # weekly reviews
+    ])
+    fake_plan = tmp_path / "PLAN.md"
+    fake_plan.write_text("## P\n", encoding="utf-8")
+    monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
+
+    status = await gather_status(conn, today=date(2026, 7, 6))
+    # weekday trading days 6/30..7/6 = 6/30,7/1,7/2,7/3,7/6; reset at 7/2 -> 2
+    assert status["fl1"]["n"] == 2
+    assert status["fl1"]["reset_reason"] == (
+        "money-path failure: stop_ack_remediation_failed 7/2"
+    )
 
 
 # ── check_and_snapshot_resets + compute_and_render (DB-mocked) ──────────────
@@ -373,7 +472,7 @@ async def test_check_and_snapshot_resets_persists_and_detects(monkeypatch):
 async def test_compute_and_render_end_to_end(monkeypatch):
     pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(side_effect=[
-        [], [], [], [], [],
+        [], [], [], [], [], [],
     ])
     conn.fetchrow = AsyncMock(return_value=None)  # no prior snapshot
     conn.execute = AsyncMock()  # _persist_snapshot writes via the open conn
