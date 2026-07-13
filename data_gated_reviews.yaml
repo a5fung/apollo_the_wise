@@ -221,7 +221,11 @@ reviews:
         AND created_at > NOW() - INTERVAL '90 days'
         AND created_at < NOW() - INTERVAL '10 days'
     threshold: 15
-    earliest_review_date: 2026-06-28
+    earliest_review_date: 2026-09-15
+    # >> RAN 2026-07-13 (Opus): fishhook --moderate-band-eval 90d → positive-label rate 16/99 =
+    #    16% vs the 35% promotion bar. gap[10,15)+strong does NOT carry the edge to lift
+    #    MODERATE→HIGH. NO extension (keep status quo — no THE-LINE change needed to not-act).
+    #    Re-check ~9/15 ONLY if the band composition shifts; else operator closes.
     action_when_ready: |
       docker exec apollo-market python -m scripts.fishhook_explorer
         --moderate-band-eval --days 90 --label-threshold 0.10
@@ -2039,7 +2043,14 @@ reviews:
         AND alert_date <= CURRENT_DATE - INTERVAL '25 days';
         -- 25-day lag = 20d forward outcome settled + buffer
     threshold: 10
-    earliest_review_date: 2026-06-13
+    earliest_review_date: 2026-08-08
+    # >> RAN 2026-07-13 (Opus): CANONICAL table mi_ep_missed_outcomes (matches this review's own
+    #    recorded STRL +17.0%/+22.2% exactly — fractions). Settled N=5 (EVER/STRL/AIP/GO/PONY):
+    #    ret_5d avg +1.8%, ret_20d avg +1.2% — MIXED (STRL +17% win, GO -12% loss, rest ~flat),
+    #    NOT a clear winner-shedder → early lean = KEEP AS-IS. N=5 < N>=10-settled bar; the 7
+    #    rejections from 5/19+ are NOT yet populated in mi_ep_missed_outcomes (population lag/gap
+    #    — verify the missed-outcomes refresh). Defer ~8/8 for N>=10; decide on realized-R (not
+    #    forward return — the filter is an R:R gate), operator's call (THE LINE).
     action_when_ready: |
       1. Pull the cohort with forward outcomes via mi_ep_missed_outcomes
          (which joins mi_live_trades rejections to mi_daily_closes):
@@ -4206,7 +4217,11 @@ reviews:
       WHERE a.catalyst_type IS NOT NULL AND o.fwd_5d_pct IS NOT NULL
         AND a.alert_date >= '2026-06-02';
     threshold: 30
-    earliest_review_date: 2026-06-22
+    earliest_review_date: 2026-08-15
+    # >> GATE MET 2026-07-13 (Opus): 53>=30 settled C1 data + past the 6/22 cutover → the
+    #    SEQUENCING gate is CLEAR to build. But the action is a BIG-ROCK (a new C2/C3 multi-turn
+    #    investigator+advisor LLM subsystem per ADR 0006 §7) → needs its own scoping/build session,
+    #    not a review-run. This entry is now "gate-clear, awaiting a build session." Re-date 8/15.
     action_when_ready: |
       Build per ADR 0006 §7 smallest-viable sequence: (1) cohort accessor + RS-slope filter
       (reuse correlation_engine + mi_stock_scores rs_1m/rs_6m), (2) rung-1 investigator on a
@@ -4773,7 +4788,11 @@ reviews:
       AND (detail::jsonb ->> 'reason' = 'q_rev_yoy_missing_no_prior_year_comparable'
            OR event_type = 'catalyst_downgrade_carveout_applied');
     threshold: 5
-    earliest_review_date: 2026-06-28
+    earliest_review_date: 2026-07-27
+    # >> IN PROGRESS 2026-07-13 (Opus): 149 catalyst_earnings_revenue_weak_downgrade + 13
+    #    carve-outs in 90d. Per-case root-cause classification (fetcher-fallback-gap / fiscal
+    #    mismatch / stale cache / genuinely-unknown) underway to quantify the RECOVERABLE class
+    #    and fill the plumbing upstream (not layer carve-outs). Re-date 7/27 for the read + fix.
     action_when_ready: |
       For ≥5 representative cases: manually trace through
       `fetch_ep_fundamentals.py` execution path. Check:
