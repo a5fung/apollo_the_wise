@@ -6873,14 +6873,19 @@ reviews:
       Reminder for the #397 shadow->paper money gate. First HTF break was 2026-06-29; each capture
       settles ~12 trading days later; HTF breaks are rare so N accrues slowly.
     predicate_sql: |
-      SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL;
-    threshold: 10
-    earliest_review_date: 2026-07-20
+      -- N>=5 TAKEABLE settlements (operator 7/13: HTF are rare → 5 not 10; count only rows we could
+      -- actually enter — 5/6 current rows are stop_distance_gt_8pct rejects the raw count would
+      -- over-count, the 7/18-readiness-redteam finding). Gate arms on 5 real signals, not 5 rejects.
+      SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL AND would_reject_reason IS NULL;
+    threshold: 5
+    earliest_review_date: 2026-08-07
     action_when_ready: |
-      Review the HTF cohort's settled R / win% / expectancy (capture% noted slightly high from
-      same-bar-tie). IF a real edge -> CHANGE_PROCESS + operator sign-off -> flip shadow->PAPER = #397
-      (money gate). IF thin -> iterate or extend. NEVER auto-flip. NB htf_adr_threshold_tune is a
-      SEPARATE review (the ADR-floor tune) — this one is the paper-graduation gate.
+      Review the TAKEABLE HTF cohort's settled R / win% / expectancy (capture% noted slightly high from
+      same-bar-tie). The GO bar is on the TAKEABLE settlements (would_reject_reason IS NULL) — do NOT
+      let stop_distance_gt_8pct rejects inflate the read (operator-ruled N>=5-takeable 7/13). IF a real
+      edge -> CHANGE_PROCESS + operator sign-off -> flip shadow->PAPER = #397 (money gate). IF thin ->
+      iterate or extend. NEVER auto-flip. NB htf_adr_threshold_tune is a SEPARATE review (the ADR-floor
+      tune) — this one is the paper-graduation gate.
     status: pending
     added_on: 2026-06-29
 
