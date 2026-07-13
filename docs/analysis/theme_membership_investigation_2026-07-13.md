@@ -56,27 +56,34 @@ Clean-period HIGH alerts, engine membership × whether the judge independently l
 | judge silent | – | 81 |
 | yes | no | 4 |
 
-Of 40 alerts the judge flagged thematic, the engine tracked a cohort for only **18 — it missed 22
-(55%)**. The blind-spot set is *larger* than the engine-agreed set. The code already names this
-(`coverage_state='blind_spot'`, #319/#325). **This is the bigger theme-axis lever than M1-d**:
-M1-d boosts the ~4.5% already-tracked-Accelerating; the blind-spot is ~8% of ALL alerts (and
-~55% of judge-thematic ones) where the engine has no cohort at all.
+Of 40 alerts the judge flagged thematic, the engine tracked a cohort for only 18 — the other **22
+carry a judge-lit theme with no engine cohort** (`coverage_state='blind_spot'`, #319/#325).
 
-## Synthesis — the theme-axis priority is the MEMBERSHIP layer, not the credit table
+**Two honest caveats that stop this from being a "bigger lever than M1-d" claim:**
+- **These 22 are all HIGH** (`mi_theme_axis_shadow` is HIGH-gated). Correctly assigning them to
+  themes tomorrow changes NO grade — `compose_final_tier(HIGH, +1)` clamps at HIGH. So the blind-spot
+  is a **coverage-QUALITY** gap (better judge narrative axis / `/why` / future gating), **not** a
+  grade lever that beats M1-d. It does not rescue M1-d — the MODERATE blind-spot, where a boost
+  WOULD fire, is exactly the data we don't have.
+- **"Missed 22" is JUDGE-asserted, not confirmed.** The metric uses the judge as the arbiter of
+  "should be thematic" — the same circular signal the synthesis says not to trust. It's an UPPER
+  BOUND; each of the 22 needs INDEPENDENT confirmation (structural / co-movement) before it counts
+  as a real missed member.
 
-1. **M1-d (credit table) is a small lever** and can't be cleanly evidenced — keep the wire-in dark.
-2. **The membership/coverage layer is the real gap:** the engine tracks only ~12% of EP alerts as
-   themed and misses the majority of judge-thematic names. Fixing that would give the theme axis
-   far more signal than tuning the credit on the few it already tracks.
-3. **The hard part is doing it SAFELY (THE LINE):** closing the blind-spot by asking the JUDGE
-   "is this thematic?" → assign → boost is the **circular discovery-feeder** carved out of v1
-   (judge→discovery→engine→boost→"validated"; #167). The operator's 6/24 direction stands: theme
-   RELEVANCE must be attributed by an INDEPENDENT mechanism (structural: catalyst named-entities ∩
-   cohort tickers/keywords, or co-movement), never the judge's own theme read. `mi_theme_axis_shadow`
-   already logs candidate independent signals (`matched_terms`, `co_moving`, `structural_attributable`)
-   — the raw material for a safe blind-spot detector, but that detector is undesigned.
+## Synthesis — membership-coverage is a real upstream gap, but its size/impact are unproven
 
-**Bottom line for the operator:** M1-d stays dark (small + un-evidenceable). The theme-axis
-investment that would actually move the needle is a SAFE blind-spot detector (independent
-attribution, not judge-circular) — a design question, not a credit-table tune. That is a keep/
-shelve-and-redirect call (THE LINE).
+1. **M1-d (credit table) is a small lever** and can't be cleanly evidenced — keep the wire-in dark
+   regardless of anything below.
+2. **Membership-coverage quality is a genuine upstream gap worth attention:** the engine tracks
+   only ~12% of EP alerts as themed, and there is a real judge-vs-engine divergence (the blind-spot).
+   But its *magnitude* and *grade-impact* are NOT established — the number is HIGH-only + judge-defined.
+3. **Any probe must clear the independent-attribution bar (THE LINE):** the judge→assign→boost loop
+   is the circular discovery-feeder carved out of v1 (#167). A blind-spot probe must confirm
+   membership by an INDEPENDENT mechanism (structural named-entity overlap / co-movement — signals
+   `mi_theme_axis_shadow` already logs: `matched_terms`, `co_moving`, `structural_attributable`),
+   never the judge's own theme read.
+
+**Bottom line for the operator:** M1-d stays dark (small + un-evidenceable). The judge-vs-engine
+theme divergence is a real signal worth an *independent-attribution probe* to see if coverage is
+genuinely leaking members — but the size and grade-impact are unproven, so this is a "worth a
+scoped look," not a proven redirect. Both are keep/shelve calls (THE LINE), not agent decisions.
