@@ -170,7 +170,10 @@ MERGE_VERDICTS = frozenset({"MERGE", "DISTINCT", "PARENT_CHILD"})
 # Prompt anchors are LOAD-BEARING (ADR 0025 §2): the negative exemplars + the
 # merge-on-shared-DRIVER instruction are verbatim from the signed 7/11 replay.
 # Any edit here invalidates the corpus pass — re-run the corpus eval.
-ADJUDICATION_PROMPT_VERSION = "v1-2026-07-12-tool-schema"
+ADJUDICATION_PROMPT_VERSION = "v2-2026-07-12-slice-merge"  # v2 (operator-ruled 7/12, rulings-pack R3):
+# identical-driver slice → MERGE; PARENT_CHILD requires a DISTINCT sub-driver. v1 answered
+# PARENT_CHILD to pure slices (corpus M03/04/05), which keeps both themes and leaves the
+# fragmentation (#274's whole purpose) unfixed.
 ADJUDICATION_PROMPT = """You adjudicate whether two stock-market THEMES should MERGE. The bar is a shared
 DRIVER / catalyst — NOT a shared sector label. Two themes in the same sector with DIFFERENT
 demand drivers stay DISTINCT.
@@ -187,9 +190,16 @@ a long-beneficiary theme and its collateral-damage complement are DISTINCT even 
 headline narrative is shared.
 
 Verdicts:
-- MERGE: one thesis, one driver — the two are the same trade in two names.
+- MERGE: one thesis, one driver — the two are the same trade in two names. This INCLUDES the
+  slice case: when the drivers are IDENTICAL and the narrower theme adds only a slice
+  qualifier — geography, purity/pure-play, modality, cap-size — with NO distinct catalyst of
+  its own, the verdict is MERGE. A slice of the same trade is the same trade; keeping it
+  separate is fragmentation, the exact failure this adjudication exists to fix.
 - DISTINCT: genuine sub-industries with different drivers.
-- PARENT_CHILD: one is strictly a sub-theme of the other (narrower slice of the same driver).
+- PARENT_CHILD: the narrower theme has a genuinely DISTINCT sub-driver — a catalyst of its
+  own that can move independently of the parent's (e.g. zero-trust/SASE architecture adoption
+  inside the broader security-spend cycle). TEST: name the child's sub-driver; if it is just
+  the parent's driver restated on a subset, the verdict is MERGE, not PARENT_CHILD.
 
 THEME A: {a_name}
 {a_members}  {a_desc}

@@ -511,8 +511,9 @@ async def test_gather_status_runs_against_mocked_db(tmp_path, monkeypatch):
     monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
 
     status = await gather_status(conn, today=date(2026, 7, 6))
-    # trading days FL1_SOAK_START(6/30)..last_trading_day(7/6) = 6/30,7/1,7/2,7/3,7/6 = 5
-    assert status["fl1"]["n"] == 5
+    # F1 ruling 7/12: FL1_SOAK_START=7/8 (strict). With today=7/6 the window
+    # (7/8..7/6) is empty → n=0. (Pre-ruling this fixture read 5 from a 6/30 start.)
+    assert status["fl1"]["n"] == 0
     assert status["fl3"]["n"] == 1  # only 7/5 in the fixture (end = today-1 = 7/5)
     assert status["fl4"]["n"] == 1  # only 7/6 is a trading day in [FL4_START, last_trading_day]
     assert status["fl4"]["ingest_mode"] == "live_r1"
@@ -529,7 +530,7 @@ async def test_gather_status_money_path_failure_resets_fl1(tmp_path, monkeypatch
     conn.fetch = AsyncMock(side_effect=[
         [],  # l1 breaches
         [],  # manual repairs
-        [{"d": date(2026, 7, 2), "event_type": "stop_ack_remediation_failed"}],
+        [{"d": date(2026, 7, 10), "event_type": "stop_ack_remediation_failed"}],
         [],  # ops rows
         [],  # coverage drift
         [],  # weekly reviews
@@ -540,11 +541,12 @@ async def test_gather_status_money_path_failure_resets_fl1(tmp_path, monkeypatch
     fake_plan.write_text("## P\n", encoding="utf-8")
     monkeypatch.setattr(f"{MOD}.PLAN_MD", fake_plan)
 
-    status = await gather_status(conn, today=date(2026, 7, 6))
-    # weekday trading days 6/30..7/6 = 6/30,7/1,7/2,7/3,7/6; reset at 7/2 -> 2
-    assert status["fl1"]["n"] == 2
+    status = await gather_status(conn, today=date(2026, 7, 15))
+    # F1-ruling window (start 7/8): weekday trading days 7/8..7/15 =
+    # 7/8,9,10,13,14,15; reset at 7/10 -> streak 7/13,14,15 = 3
+    assert status["fl1"]["n"] == 3
     assert status["fl1"]["reset_reason"] == (
-        "money-path failure: stop_ack_remediation_failed 7/2"
+        "money-path failure: stop_ack_remediation_failed 7/10"
     )
 
 

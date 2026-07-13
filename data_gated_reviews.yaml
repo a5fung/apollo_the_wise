@@ -7013,12 +7013,15 @@ reviews:
       harness + harvest_rule_flipped audit + ARM harvest_rule_effectiveness), retune, or none. If
       <4 round-trippers (giveback_early=true) logged, DEFER (status=deferred, +30 days) — need more
       live winners before the forward signal is trustworthy.
-      ⚠ RED-TEAM PRE-FLIP GATE (docs/analysis/composition_redteam_2026-07-12.md RED-1, code-verified):
-      the shadow validates on l=c bars (touch ≡ close-below), so it CANNOT validate the LIVE resting
-      Alpaca stop's INTRADAY-TOUCH behavior — a real midday wick fires the stop the l=c evidence never
-      sees (tail-clip direction; the +$8k is likely OVERSTATED for the resting-stop version). Before
-      flipping, RULE the enforcement surface: close-below decision-line (matches the evidence) vs
-      resting-stop with re-derived intraday-aware evidence. Do NOT sign the flip on the l=c evidence alone.
+      ⚠ RED-TEAM PRE-FLIP GATE (composition_redteam_2026-07-12.md RED-1) → **RULED 7/12 eve**
+      (rulings-pack R4): the flip enforces as a **CLOSE-BELOW DECISION-LINE on the SMA-trail surface**
+      (16:45 ET decision → execute_full_exit, next-open fill — the delta the trail already carries),
+      NOT a resting broker stop; the floor becomes a decision branch beside `sma_stopped`, NOT a
+      max() input to the resting-stop push (restates T4-R8: the floor is an exit TRIGGER, not a stop
+      level). This matches the l=c evidence's RULE exactly. Near-close ~15:50 check (the #361 surface)
+      = the approved follow-on refinement if next-open gap deltas annoy. Resting-stop enforcement
+      stays FORBIDDEN without re-derived intraday-aware evidence. Build lands at flip time (8/06,
+      CHANGE_PROCESS + sign-off); design detail in monday_rulings_pack_2026-07-13.md R4.
     status: pending
     added_on: 2026-07-09
 
@@ -7031,20 +7034,26 @@ reviews:
       the toggle, and should it advance a phase?
     predicate_sql: null
     threshold: 0
-    earliest_review_date: 2026-07-25
+    earliest_review_date: 2026-07-17
     action_when_ready: |
-      Date-only (fires regardless so the dark state can't stall silently). Check the current toggle
-      state — SELECT state FROM mi_safeguard_state WHERE safeguard='broker_order_ingest' — and the
-      ingest_proposed / ingest_reconstructed audit rows, then advance:
-        - state 'off' (or no row): the dark deploy + the #151 paper exercise are DONE (7/11) → flip
-          to 'dry_run' to start collecting REAL R1 proposals:
+      Date-only (fires regardless so the dark state can't stall silently). CRITERION AMENDED by the
+      operator 7/12 eve (rulings-pack R1 — docs/analysis/fl4_ingest_promotion_criterion_2026-07-12.md;
+      review date pulled 7/25→7/17): the old ">=3 clean LIVE R1 proposals" bar is UNSATISFIABLE on a
+      healthy book (R1 proposals fire on exactly the drift the hardening prevents; zero proposals is
+      the SUCCESS state). New two-leg criterion:
+        LEG A (repair-path proof): >=3 clean SYNTHETIC R1 repairs via
+          scripts/_184b_ingest_paper_exercise.py (real paper-Alpaca orders through the production
+          run_ingest path; at least one run must include the dead-pointer variant). PASS 7/11 counts.
+        LEG B (healthy-book specificity): >=5 consecutive trading days at 'dry_run' in prod with zero
+          WRONG proposals — zero-proposal days count CLEAN. Any WRONG proposal → do NOT enable; investigate.
+      Check the toggle — SELECT state FROM mi_safeguard_state WHERE safeguard='broker_order_ingest' — then:
+        - state 'off' (or no row): flip to 'dry_run' (operator-ruled 7/12; target flip 7/13):
             INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
             VALUES ('broker_order_ingest','global','dry_run',NOW(),NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE SET state=EXCLUDED.state, updated_at=NOW();
-        - state 'dry_run' with >=3 CLEAN R1 proposals (each a broker-confirmed correct stop repair):
-          enable 'live_r1' (CHANGE_PROCESS entry + update ADR 0008 build-status). This is the closer
-          going live + FL-4's 5-quiet-days. Any WRONG proposal → do NOT enable; investigate.
-        - <3 clean proposals: re-arm this review (+2 weeks). R2/R3i stay dry-run (a separate later gate).
+            ON CONFLICT (safeguard, account_mode) DO UPDATE SET state=EXCLUDED.state, last_transition_at=NOW(), updated_at=NOW();
+        - state 'dry_run' + LEG A done + LEG B done: enable 'live_r1' (CHANGE_PROCESS entry + update
+          ADR 0008 build-status). This is the closer going live + FL-4's 5-quiet-days (~7/17 → green ~7/24).
+        - legs incomplete: re-arm (+1 week). R2/R3i stay dry-run (a separate later gate).
       BEFORE flipping dry_run: confirm the apollo-execution container is running the latest
       coverage_drift wiring (order_status_reconcile is EXECUTION_OWNED — a stale execution image =
       zero proposals). `docker inspect apollo-execution` age vs the last #184b commit.

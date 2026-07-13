@@ -76,7 +76,12 @@ REPO = Path(__file__).resolve().parent.parent
 PLAN_MD = REPO / "PLAN.md"
 
 # ── FL clock constants ──────────────────────────────────────────────────────
-FL1_SOAK_START = date(2026, 6, 30)
+# F1 SOAK RULING (operator, 2026-07-12 — the readiness-redteam RED-1 reconcile):
+# STRICT — the 7/6 phantom-reap + 7/7 jsonb-cleanup repairs reset the clock; the
+# clean streak starts 7/8. This constant IS the ruling; do not move it without a
+# new operator ruling (the meter and the walk pack must never disagree again).
+# 10 trading days from 7/8 → completes EOD 7/21, green 7/22.
+FL1_SOAK_START = date(2026, 7, 8)
 FL1_TARGET = 10
 
 FL3_START = date(2026, 7, 5)
