@@ -255,7 +255,7 @@ Each guard is a per-path veto that falls through to the other independent paths.
 condition in the accuracy direction #410 intended). Guards A + C are NEW paths. Revert by removing the
 3 guard predicates + their call sites in `ma_filter.py` (all tagged `#416 R6`).
 
-**Status**: built + tested (15 guard tests + 29 ma_filter regression + suite 3089 green). PRE-DEPLOY
+**Status**: built + tested (15 guard tests + 29 ma_filter regression + suite 3089 green). **PRE-DEPLOY GATE PASSED 7/13** (shipped-code replay over 896: same 5-ticker flip set as the signed sim, SUNE preserved, the 2 extras are speculation not binding → no FN). PRE-DEPLOY
 = the shipped-code corpus replay above (evidence must match code). NO same-day urgency — today's EP
 scan window (7–10 ET) already ran, so this affects the NEXT day's scans; verify-live per path is
 next-day regardless. Deploy market-agent on operator go after the replay confirms.

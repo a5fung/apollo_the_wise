@@ -176,7 +176,8 @@ VERIFICATION: **FRMI did not flip** — expected via guard-B; likely among the 3
 (truncated-at-write JSON kills `json.loads`). VERIFY at build: if FRMI's row is write-truncated,
 the *live* guard sees the full text (it runs pre-write) so the guard still works — but the sim
 must re-run FRMI's inputs manually to prove guard-B's word-list catches it BEFORE shipping.
-Blast radius confirmed surgical: ~0.8% of fires. Build steps (this week, due 7/16):
+Blast radius confirmed surgical: ~0.8% of fires (a FLOOR — truncation under-counts).
+**PRE-DEPLOY GATE — SHIPPED-CODE REPLAY (advisor 7/13): PASS.** Ran the VERBATIM shipped guard block (`ma_filter.py`) over all 896 rows: 9 flips / **5 distinct tickers (IMAX, IMVT, MMED, WEN, ONDS) — the SAME set the sim's inline regexes found**, so bare `could` did NOT broaden the flip set. All 3 sitting-ratified FPs flip (MMED guard-A · ONDS guard-C · IMAX guard-A); FRMI is truncated-at-write so the corpus can't parse it (proven separately on full text). **SUNE (the TP) did NOT flip.** The 2 non-ratified extras classified (to the available text depth; both were in the signed sim evidence): WEN = Trian 'eyeing a take-private' (speculation, not signed) · IMVT = 'clinical/pipeline catalysts plus rising speculation' (incidental keyword) — NEITHER a binding price-pin → no false-negative injection. Evidence matches the shipped code. Build steps (this week, due 7/16):
 1. **Precise offline corpus simulation (the real N-gate, pre-deploy).** A throwaway read-only
    script queries the **full** `detail` (not truncated) for every `mna_filter_fired`, runs the
    *ratified* guard predicate (not the ILIKE proxy), and reports the exact flip list + a
