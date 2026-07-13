@@ -3259,6 +3259,28 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             msg = f"⚠️ Orphaned position {ticker}: filled with no stop & no stop_price in DB — manual intervention needed"
             discrepancies.append(msg)
             logger.error(f"sync_positions: orphaned {ticker} trade_id={trade['id']} — no stop_price to remediate")
+            # RED-2 observability (2026-07-12): durable terminal-naked marker.
+            # This shape was digest/log only — the FL-1 soak (and any monitor)
+            # could not see a hands-fixed orphan. TERMINAL: adopt found no
+            # broker stop and there is NO stop anchor in DB, so no automated
+            # pass (this sync, evening backstop, next-day watchdog) can ever
+            # protect it. Additive audit row only — no control-flow change.
+            # NOTE: summary must NOT start with "{ticker} #{trade_id}" — the
+            # stop-ack watchdog dedups its remediation on that prefix and must
+            # still run its own attempt next market-hours window.
+            await log_audit_event(
+                "stop_ack_remediation_failed",
+                f"{ticker}: sync orphan unremediable — no live/adoptable stop "
+                f"and no stop_price/orb_low anchor in DB (trade {trade['id']})",
+                json.dumps({
+                    "trade_id": trade["id"],
+                    "ticker": ticker,
+                    "account_mode": account_mode,
+                    "remaining_shares": float(trade["remaining_shares"] or 0),
+                    "reason": "no_stop_anchor",
+                    "site": "order_manager.py::sync_positions_orphan_no_anchor",
+                }),
+            )
             continue
         # Subtract pending-exit qty so a partial-exit pending at sync time
         # doesn't cause Alpaca to reject the remediation stop on insufficient
@@ -3311,6 +3333,31 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             msg = f"⚠️ Failed to remediate orphaned stop for {ticker} after 3 attempts: {last_err}"
             discrepancies.append(msg)
             logger.error(f"sync_positions: stop remediation failed for {ticker}: {last_err}")
+            # RED-2 observability (2026-07-12): durable terminal-naked marker
+            # (digest/log only before). TERMINAL for this remediation layer:
+            # 3 backoff attempts exhausted, loop gives up, position stays
+            # naked until hands or a much-later pass. Additive audit row only.
+            # Summary deliberately avoids the watchdog's "{ticker} #{id}%"
+            # dedup prefix (see no-anchor site above).
+            await log_audit_event(
+                "stop_ack_remediation_failed",
+                f"{ticker}: sync orphan stop remediation failed after 3 attempts "
+                f"— {type(last_err).__name__ if last_err else 'unknown'} "
+                f"(trade {trade['id']})",
+                json.dumps({
+                    "trade_id": trade["id"],
+                    "ticker": ticker,
+                    "account_mode": account_mode,
+                    "qty": qty,
+                    "stop_price": float(stop),
+                    "reason": "place_stop_failed_3_attempts",
+                    "error": (
+                        f"{type(last_err).__name__}: {str(last_err)[:200]}"
+                        if last_err else None
+                    ),
+                    "site": "order_manager.py::sync_positions_orphan_remediation_failed",
+                }),
+            )
 
     # #151 NEVER-NAKED COVERAGE INVARIANT — runs AFTER the orphan/adopt loop.
     # The orphan loop only acts on a NULL/just-cleared or DEAD stop; a LIVE-but-
