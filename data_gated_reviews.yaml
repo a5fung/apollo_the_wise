@@ -6979,6 +6979,12 @@ reviews:
       abstention rate. Rec-or-defer per ADR 0031 §5/§6; any flip = giveback-F1-resolved +
       CHANGE_PROCESS + operator sign-off. Cross-check the #146 whipsaw cohort
       (146_faithful_harness_verdict) against P1/P2 behavior.
+      ⚠ RED-TEAM PRE-FLIP GATE (docs/analysis/composition_redteam_2026-07-12.md RED-2, code-verified):
+      before pivot becomes a 2nd live stop authority, harden broker.order_manager.update_stop — add an
+      advisory lock + an IN-FUNCTION never-lower guard (today the guard lives only at the caller site,
+      live_tracker.py:573). The §0 "never two concurrent live stop changes" invariant is enforced today
+      only by cron spacing, NOT mechanically — a 2nd authority raises the concurrent cancel/replace-race
+      risk (the stop_update_failed collision). This is the concrete content of ADR 0029-D1 — land it before the flip.
     status: pending
     added_on: 2026-07-12
     cross_refs: [giveback_shadow_review, "task #310", "ADR 0031", "task #146 (stop-geometry insight)"]
@@ -7007,6 +7013,12 @@ reviews:
       harness + harvest_rule_flipped audit + ARM harvest_rule_effectiveness), retune, or none. If
       <4 round-trippers (giveback_early=true) logged, DEFER (status=deferred, +30 days) — need more
       live winners before the forward signal is trustworthy.
+      ⚠ RED-TEAM PRE-FLIP GATE (docs/analysis/composition_redteam_2026-07-12.md RED-1, code-verified):
+      the shadow validates on l=c bars (touch ≡ close-below), so it CANNOT validate the LIVE resting
+      Alpaca stop's INTRADAY-TOUCH behavior — a real midday wick fires the stop the l=c evidence never
+      sees (tail-clip direction; the +$8k is likely OVERSTATED for the resting-stop version). Before
+      flipping, RULE the enforcement surface: close-below decision-line (matches the evidence) vs
+      resting-stop with re-derived intraday-aware evidence. Do NOT sign the flip on the l=c evidence alone.
     status: pending
     added_on: 2026-07-09
 
