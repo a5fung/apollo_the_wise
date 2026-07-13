@@ -2694,6 +2694,42 @@ async def set_holistic_judge_enabled(enabled: bool) -> None:
         """, *_JUDGE_TOGGLE, "on" if enabled else "off")
 
 
+_COMPOSITE_TOGGLE = ("composite_authority_enabled", "paper")  # (safeguard, account_mode) PK
+
+
+async def get_composite_authority_enabled() -> bool:
+    """M1-d (ADR 0024 §6): DB-backed toggle for the meta-rubric COMPOSITE tier authority —
+    when ON, the theme-axis credit composes onto the authoritative grade tier. Durable across
+    restarts (mi_safeguard_state), instant revert with NO redeploy.
+    FAIL-CLOSED: any error or missing row → False (the base grade drives the tier — DARK by
+    default). A toggle-read exception must NEVER default to composite — that is the
+    load-bearing safety."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = $2", *_COMPOSITE_TOGGLE)
+        return bool(row) and row["state"] == "on"
+    except Exception as e:  # noqa: BLE001 — fail-closed to the base grade is the contract
+        logger.warning(f"composite_authority_enabled read failed → base grade (fail-closed): {e}")
+        return False
+
+
+async def set_composite_authority_enabled(enabled: bool) -> None:
+    """Flip the M1-d composite-authority toggle (OPERATOR-gated — the M1-d go-live gate).
+    Upserts the mi_safeguard_state row. Paper-only (the composed tier never touches real money)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
+        """, *_COMPOSITE_TOGGLE, "on" if enabled else "off")
+
+
 _MANUAL_HALT = ("manual_trading_halt", "live")  # (safeguard, account_mode) PK
 
 

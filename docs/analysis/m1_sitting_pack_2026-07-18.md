@@ -3,14 +3,30 @@
 *Assembled by Fable 2026-07-11 (Block 3 T5a) so the 7/18 sitting is turnkey. Two inputs land
 during the week and slot in below (marked ⬜); everything else is ready now.*
 
-## The decision
+> **⚠️ CORRECTED 2026-07-13 (Opus, verified vs prod+code — see `m1_htf_readiness_2026-07-18.md`
+> §Decision 1, F1/F2/F3/F4).** The "The decision" section below as originally drafted is FALSE on
+> prod: the holistic judge has been **LOAD-BEARING since 2026-06-10** (`holistic_judge_enabled`
+> toggle `on`; 41/42 alerts since 6/10 carry `grade_engine_authority='judge'`). The real M1 flip
+> is **`composite_authority`** (the theme-axis composition ON TOP of the judge's verdict), NOT
+> `get_holistic_judge_enabled` (already flipped). The decision paragraph + verify-live step are
+> corrected in place below; the readiness doc is authoritative on any conflict. **7/18 is
+> GO-CONDITIONAL**: signable only if the composite wire-in is deployed dark (built this week,
+> M1-d) + M1-b's regrade delta table is at the sitting; else sign the package and defer only the
+> flip.
 
-Flip `get_holistic_judge_enabled()` → the judge's verdict becomes LOAD-BEARING on the paper
-grade path (`_resolve_grade_authority` stops treating it as advisory). Today the judge writes
-advisory columns only; the conviction floor decides. **Money exposure: the flip governs the
-PAPER path decision quality; MAGNA53 live entries remain floor+filters as wired — this is an
-authority change on the grade, not a new order path.** Rollback = the same runtime toggle, off
-(no deploy).
+## The decision (CORRECTED)
+
+Flip **`composite_authority`** (a new DB-backed `mi_safeguard_state` toggle, default OFF/dark) →
+the operator-signed theme-axis credit table (`theme_axis_credit`) becomes LOAD-BEARING: the
+grade path composes the credit onto the authoritative tier via `compose_final_tier`
+(±1 net cap), and the COMPOSED tier drives the paper grade. Today that composition is computed
+only in SHADOW (`theme_axis_shadow_adjusted` audit rows) — nothing consumes it live. **NOTE: the
+holistic judge itself is ALREADY authoritative (since 6/10) — this flip is one layer up: theme
+context composing onto the judge's verdict, not the judge flip.** **Money exposure: governs the
+PAPER path decision quality; MAGNA53 live entries remain floor+filters as wired — an authority
+change on the grade, not a new order path.** Rollback = the `composite_authority` DB toggle OFF
+(instant, no deploy — mirrors `holistic_judge_enabled`; the env-var read in `meta_rubric_compose.py`
+is superseded by the DB toggle at M1-d so revert is genuinely deploy-free).
 
 ## Preconditions checklist (rule each ✔/✖ at the sitting)
 
@@ -46,14 +62,27 @@ authority change on the grade, not a new order path.** Rollback = the same runti
 - **Pre-declared baseline shifts (register R7 idiom):** the T2c metrics will level-shift at the
   flip — pre-declare in the flip's audit note so the first L2 read isn't a false alarm.
 
-## The flip mechanics (so the sitting ends in an action, not a plan)
+## The flip mechanics (CORRECTED — so the sitting ends in an action, not a plan)
 
-1. Sign the package (flip + amendment draft ruling + wire-ins).
-2. If the amendment is signed: bump RUBRIC_VERSION → run the 0030 eval → green pass-record.
-3. Toggle `get_holistic_judge_enabled` on (runtime; no deploy) during off-hours.
-4. Verify-live: next scan day, `ep_grade_decision` rows show `authority='judge'` with
-   `judge_outcome='verdict'` driving the tier + the T2c metrics ticking.
-5. The drift band + judge-delta digest are the standing watch; rollback = toggle off.
+*Pre-7/18 (this week, DARK): the `composite_authority` wire-in + DB toggle are built
+default-OFF (M1-d, byte-identical until flipped — code-only, no `_RUBRIC` change so [5m/7]
+passes and it deploys without a $5 eval re-run); M1-b's ONE paid regrade is run → the
+verdict-delta table lands on this table for the sitting.*
+
+1. Sign the package (composite table §3 credit values + ±1 cap + the rubric amendment wording
+   + Mainstream open question). Walk the M1-b deltas + operator labels first.
+2. **If the amendment is signed:** it edits `_RUBRIC` → bump RUBRIC_VERSION → run the 0030 eval
+   on the amended rubric on prod → green → regenerate `judge_eval_pass_record.json` → `deploy.sh
+   market-agent` ([5m/7] passes on the new record; the composite toggle still OFF ⇒ byte-identical).
+3. Operator flips the **`composite_authority`** DB toggle on
+   (`set_composite_authority.py on`; runtime, no deploy) during off-hours.
+4. **Verify-live (composition evidence, NOT `authority='judge'` — that would pass TODAY with no
+   action):** next scan day, a composed tier visibly **≠** the judge tier on an
+   Accelerating-theme alert — i.e. a `theme_axis_composed` audit row (`base_tier -> composed`,
+   `authority=composite`) + the `/why` render showing the contribution + T2c samples ticking.
+5. The drift band + judge-delta digest are the standing watch; **rollback = `composite_authority`
+   DB toggle OFF** (instant; composition stops, the judge-authority behavior of the last month
+   resumes).
 
 ## Open items the sitting does NOT decide (parked deliberately)
 

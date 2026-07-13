@@ -98,3 +98,22 @@ def compose_final_tier(base_tier: str, credits) -> tuple[str, Composition]:
         base_tier=base_tier, final_tier=final_tier,
         net_raw=net_raw, net_capped=net_capped, contributions=contributions,
     )
+
+
+def resolve_composite_tier(
+    base_tier: str, base_authority: str, base_override: bool, credits,
+) -> tuple[str, str, bool, "Composition | None"]:
+    """M1-d (ADR 0024 §6) — the PURE composition decision for the ep_detector wire-in.
+
+    Compose `base_tier` with the per-axis `credits` via compose_final_tier. If the
+    composed tier DIFFERS from base_tier, return (composed_tier, 'composite', True,
+    composition) — the composed tier takes authority and must be written. Otherwise
+    PASSTHROUGH (base_tier, base_authority, base_override, composition) — the base
+    decision (floor/judge/fallback + its override flag) stands exactly as
+    _resolve_grade_authority set it. Always returns the Composition trace (telemetry),
+    but authority flips to 'composite' ONLY when the tier actually moves. Pure — no
+    I/O; extracted so the load-bearing wire-in glue is unit-testable."""
+    final_tier, composition = compose_final_tier(base_tier, credits)
+    if final_tier != base_tier:
+        return final_tier, "composite", True, composition
+    return base_tier, base_authority, base_override, composition
