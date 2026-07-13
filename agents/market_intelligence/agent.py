@@ -281,6 +281,24 @@ def _collapse_flag_runs(events: list[dict]) -> list[dict]:
     return out
 
 
+def _strip_lifecycle_summary(summary: str, ticker: str) -> str:
+    """Strip the redundant ticker + internal scaffolding (order ids / UUIDs / live tags /
+    share-qty / trade_id) from a /why LIFECYCLE event summary, keeping the signal
+    (gap / score / entry / stop / price). The lifecycle is a milestone trail, not an audit dump —
+    /trade TICKER is the forensic view. #178 polish."""
+    import re as _r
+    s = summary or ""
+    s = _r.sub(r"^\[[^\]]+\]\s*", "", s)                       # [bar_stream] tracer prefix
+    s = _r.sub(rf"\b{_r.escape(ticker)}\b:?", "", s)           # the redundant ticker (view is scoped)
+    s = _r.sub(r"\b(trade_id|range|risk|shares|order|attempt)=\S+", "", s)
+    s = _r.sub(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", "", s)  # UUIDs
+    s = _r.sub(r"\((?:live|paper)\)", "", s)                   # account-mode tag
+    s = _r.sub(r"\bfor \d+ sh\b|\bx\d+\b|\(\d+ of \d+ after \d+ held\)", "", s)  # share-qty noise
+    s = _r.sub(r"^ORB\s+", "", s)                              # leading "ORB " once the ticker's gone
+    s = _r.sub(r"\s+", " ", s)
+    return s.strip(" -—:·()")
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -5842,40 +5860,39 @@ class MarketIntelligenceAgent(BaseAgent):
                 "orb_unfilled_cancelled":  "ORB unfilled (10:00 cleanup)",
                 "eod_unfilled_cancelled":  "EOD cleanup",
                 "stop_updated":     "Stop updated",
-                "stop_update_started":     "Stop update started",
                 "partial_exit_committed":  "Partial exit",
                 "trade_closed":     "Trade closed",
+                "9m_ep_detected":   "9M detected",
+                "r3_day1_reentry_blocked": "Re-entry blocked",
             }
 
-            # Per-fill broker notifications — useful for execution forensics,
-            # but /why is the detection-and-outcome view. Use /trade TICKER
-            # for partial-fill breakdown.
+            # Internal breadcrumbs the LIFECYCLE should NOT show — the grade decision lives in the
+            # JUDGE section above; the DB<->Alpaca reconcile sync, the stop-refresh cancel/replace
+            # transient (start/fail/retry — the terminal `stop_updated` is what matters), the
+            # per-bar fetch, and the system-wide allocation are execution forensics → /trade TICKER.
             _EXEC_NOISE_TYPES = {
-                "entry_partial_fill",
-                "partial_exit_sell_placed",
-                "partial_exit_stop_replaced",
+                "entry_partial_fill", "partial_exit_sell_placed", "partial_exit_stop_replaced",
+                "ep_catalyst_provenance", "earnings_override_no_match", "ep_grade_decision",
+                "ep_catalyst_suppressed", "orb_bar_miss", "orb_bar_fetched",
+                "trade_lifecycle_telegram_attempted", "order_status_reconciled",
+                "stop_update_started", "stop_update_failed", "stop_update_retry_succeeded",
+                "unified_allocation_decided",
             }
 
             def _clean(ev) -> str | None:
-                """Return one-line human label, or None to drop the event."""
+                """Return one clean milestone line, or None to drop the event."""
                 summary = (ev["summary"] or "").strip()
                 etype = ev["event_type"]
                 if etype in _EXEC_NOISE_TYPES:
                     return None
-                # Drop batch-summary events that just happen to mention this
-                # ticker in a list ("[bar_stream] 2 alerts: [TEAM, TWLO]").
+                # Drop batch-summary events that just mention this ticker in a list
+                # ("[bar_stream] 2 alerts: [TEAM, TWLO]").
                 if summary.startswith("[") and "alerts:" in summary:
                     return None
-                # Strip noisy bracketed source tags like "[bar_stream]" /
-                # "[cron_9_31]" — they're tracer info, not user-facing signal.
-                import re as _re_local
-                summary = _re_local.sub(r"^\[[^\]]+\]\s*", "", summary)
-                # Drop trade_id, range tags, internal ID-style key=value.
-                summary = _re_local.sub(r"\b(trade_id|range|risk|shares)=\S+", "", summary)
-                summary = _re_local.sub(r"\s+", " ", summary).strip(" -—")
+                summary = _strip_lifecycle_summary(summary, ticker)
                 label = _EV_LABEL.get(etype, etype.replace("_", " "))
                 if summary:
-                    return f"{label} — {summary[:80]}"
+                    return f"{label} — {_cap_summary(summary, 90)}"
                 return label
 
             # Collapse consecutive-duplicate events (the same step logged twice ~1s apart) into

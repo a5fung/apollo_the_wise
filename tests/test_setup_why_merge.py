@@ -90,6 +90,18 @@ def test_collapse_single_flag_untouched():
     assert _collapse_flag_runs(evs) == evs
 
 
+def test_strip_lifecycle_summary():
+    from agents.market_intelligence.agent import _strip_lifecycle_summary as s
+    # order-placed line: ticker + ORB prefix + trade_id/shares/risk scaffolding stripped, signal kept
+    assert s("ORB CRCL entry=$70.66 stop=$69.29 shares=14 risk=$24 trade_id=250", "CRCL") == \
+        "entry=$70.66 stop=$69.29"
+    # stop line: ticker, UUID, "for N sh" gone; the stop price stays
+    assert s("CRCL: stop now $69.29 (e37ec14a-be2c-4311-b711-d03436385907) for 14 sh", "CRCL") == \
+        "stop now $69.29"
+    # detection line: gap/score are signal, not scaffolding — must survive
+    assert s("HIGH EP: CRCL gap=10.8% score=60", "CRCL") == "HIGH EP: gap=10.8% score=60"
+
+
 def test_why_skip_set_picks_ticker_not_setup_keyword():
     # the delegation passes the raw "/setup TICKER DATE" text to /why, so /why must skip
     # the SETUP keyword and resolve the real ticker (regression guard on the skip-set).
