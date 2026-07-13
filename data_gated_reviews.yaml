@@ -4789,10 +4789,22 @@ reviews:
            OR event_type = 'catalyst_downgrade_carveout_applied');
     threshold: 5
     earliest_review_date: 2026-07-27
-    # >> IN PROGRESS 2026-07-13 (Opus): 149 catalyst_earnings_revenue_weak_downgrade + 13
-    #    carve-outs in 90d. Per-case root-cause classification (fetcher-fallback-gap / fiscal
-    #    mismatch / stale cache / genuinely-unknown) underway to quantify the RECOVERABLE class
-    #    and fill the plumbing upstream (not layer carve-outs). Re-date 7/27 for the read + fix.
+    # >> PROGRESS 2026-07-13 (Opus) — SEGMENTED + recoverability proven; fix + per-case count next:
+    #  * The 149 "weak_downgrade" events are a MIX; segment by reason code: 51 are LEGIT low-
+    #    composite (rubric_composite<22 — YoY present, correctly downgraded, NOT a data gap) →
+    #    EXCLUDE. The real missing-YoY cohort = 94: 61 q_rev_yoy_missing_no_prior_year + 33
+    #    news_corpus_sparse_no_q_rev (+4 other). So the review's "149" premise was inflated ~1.6x.
+    #  * RECOVERABILITY PROVEN: yfinance HAS CHTR quarterly revenue + prior year (13.6B back thru
+    #    2025); FMP /stable/income-statement works for NVDA/AAPL. CHTR (a mega-cap) landing in the
+    #    "no_prior_year_comparable" bucket = a fetch/join gap, NOT genuinely-missing → a big chunk
+    #    of the 94 is class-A/B recoverable.
+    #  * NO single root cause (ruled out: FMP legacy /v3 [already migrated #380]; FMP plan-gate
+    #    [NVDA/AAPL fetch fine, only CHTR 402'd — ticker-specific/transient, not plan-wide]). The
+    #    gap = the extractor leans on the LLM+news-corpus for q_rev and inconsistently gets FMP;
+    #    it lacks a robust fundamentals fallback the free yfinance quarterly_financials would fill.
+    #  NEXT (7/27): per-case recoverable count over the 94; then BUILD+TEST a yfinance q-rev+prior-
+    #  year fallback in the extractor — a GRADE-INPUT change (money-path-adjacent) → operator-aware
+    #  + backtest the grade delta before ship (fill the data, don't carve-out; but test the input).
     action_when_ready: |
       For ≥5 representative cases: manually trace through
       `fetch_ep_fundamentals.py` execution path. Check:
