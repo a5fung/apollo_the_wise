@@ -166,7 +166,17 @@ in negated/exploration/acquirer-side contexts. No change to fires carrying genui
 condition in the accuracy direction #410 intended). Guard A and Guard C are NEW (no prior
 negation-guard on the keyword path; no prior acquirer-guard on the classifier path).
 
-**Status:** proposed, awaiting operator sign-off. On sign-off, in order:
+**Status: SIGNED 7/12 eve** (rulings-pack R6, all three §6 forks: IMAX confirmed FP · Guard-C =
+the surgical port · FN tail accepted as priced). **N-gate sim RUN 7/12 eve** (full-text, real
+guard predicates, prod): 896 rows → 862 parsed (34 unparseable; 9 truncated-at-write) →
+**7 flips / 5 distinct**: MMED (guard-A negated ✓ ratified), ONDS ×2 (guard-C acquirer/completed
+✓ ratified), IMAX ×2 (guard-A speculation ✓ operator-confirmed), **+2 NEW the ILIKE proxy missed:
+WEN 5/12 + IMVT 5/20** (both guard-A speculation-window — eyeball at build time). ⚠ OPEN
+VERIFICATION: **FRMI did not flip** — expected via guard-B; likely among the 34 unparseable
+(truncated-at-write JSON kills `json.loads`). VERIFY at build: if FRMI's row is write-truncated,
+the *live* guard sees the full text (it runs pre-write) so the guard still works — but the sim
+must re-run FRMI's inputs manually to prove guard-B's word-list catches it BEFORE shipping.
+Blast radius confirmed surgical: ~0.8% of fires. Build steps (this week, due 7/16):
 1. **Precise offline corpus simulation (the real N-gate, pre-deploy).** A throwaway read-only
    script queries the **full** `detail` (not truncated) for every `mna_filter_fired`, runs the
    *ratified* guard predicate (not the ILIKE proxy), and reports the exact flip list + a
