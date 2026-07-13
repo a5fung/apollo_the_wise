@@ -221,7 +221,7 @@ def _patch_probe_deps(monkeypatch, *, heat=None, industry_peers=None, names=None
                         AsyncMock(return_value=dict(names or {})))
     monkeypatch.setattr(cp, "_ensure_company_names",
                         AsyncMock(return_value=dict(warm_names or {})))
-    monkeypatch.setattr(cp, "get_sectors_for_tickers",
+    monkeypatch.setattr(cp, "get_sectors_batch",
                         AsyncMock(return_value=dict(sectors or {})))
     monkeypatch.setattr(cp, "get_daily_moves", AsyncMock(return_value=dict(moves or {})))
     writer = AsyncMock()
@@ -385,8 +385,9 @@ async def test_feed_respects_theme_exclusions(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_run_coverage_probe_never_raises_into_eod_chain(monkeypatch):
-    """SHADOW contract: any failure is swallowed to the coverage_probe_failed audit event
-    and a summary dict — the EOD chain never sees an exception."""
+    """SHADOW contract: any failure is swallowed to the coverage_probe_error audit event
+    (ends in _error → caught by the nightly %error% sweep, not silent) and a summary dict
+    — the EOD chain never sees an exception."""
     monkeypatch.setattr(cp, "get_today_ep_alerts",
                         AsyncMock(side_effect=RuntimeError("db down")))
     audit = AsyncMock()
@@ -395,4 +396,4 @@ async def test_run_coverage_probe_never_raises_into_eod_chain(monkeypatch):
     out = await cp.run_coverage_probe(_TODAY)   # must not raise
 
     assert out["error"] is not None
-    assert any(c.args[0] == "coverage_probe_failed" for c in audit.await_args_list)
+    assert any(c.args[0] == "coverage_probe_error" for c in audit.await_args_list)

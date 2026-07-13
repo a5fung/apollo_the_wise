@@ -221,7 +221,9 @@ def test_asof_query_uses_no_lookahead():
     _run(get_theme_heat_asof(conn, "TICK", "2026-06-20"))
     assert "theme_date <= $2" in captured["sql"]
     assert "stage != 'Retired'" in captured["sql"]
-    assert captured["params"] == ("TICK", "2026-06-20")
+    # recency_days defaults None → passed as $3 with a `$3::int IS NULL` guard = no floor
+    # (single-query form; behaviour identical to the old None branch).
+    assert captured["params"] == ("TICK", "2026-06-20", None)
 
 
 def test_upsert_is_idempotent_on_ticker_date(monkeypatch):

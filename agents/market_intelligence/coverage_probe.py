@@ -61,7 +61,7 @@ from agents.market_intelligence.db import (
     get_industry_peers,
     get_pool,
     get_recent_probe_cohorts,
-    get_sectors_for_tickers,
+    get_sectors_batch,
     get_theme_excluded_tickers,
     get_theme_heat_asof,
     get_today_ep_alerts,
@@ -177,7 +177,8 @@ async def _probe_one_alert(
     p1_tickers = matched_name_tickers(p1_matched)
 
     # ── P2 — co-gap (tape) ──────────────────────────────────────────────────────────
-    sectors = await get_sectors_for_tickers(conn, [subject] + sorted(cogap))
+    sectors = await get_sectors_batch(
+        [t.upper() for t in [subject] + sorted(cogap)], conn=conn)
     subject_sector = sectors.get(subject)
     same_sector = {
         t for t in cogap
@@ -244,6 +245,9 @@ async def _probe_one_alert(
         "judge_fire_axes": alert.get("fire_axes"),
         "anchor_date": anchor_date,  # not persisted; used for the S3 stub name
     }
+    # anchor_date is an internal field (the caller uses it for the S3 stub name) — strip it so it
+    # never reaches the writer, a guarded contract (test_probe_unconfirmed_row_still_logged) that
+    # defends against a future writer doing **row / adding an anchor_date column.
     persisted = {k: v for k, v in row.items() if k != "anchor_date"}
     await upsert_coverage_probe_row(conn, persisted)
     return row
@@ -260,7 +264,8 @@ async def _feed_confirmed_cohort(conn: Any, row: dict) -> "str | None":
     if industries:
         dominant = Counter(industries.values()).most_common(1)[0][0]
     else:
-        sectors = await get_sectors_for_tickers(conn, sorted(cohort))
+        sectors = await get_sectors_batch(
+            [t.upper() for t in sorted(cohort)], conn=conn)
         if sectors:
             dominant = Counter(sectors.values()).most_common(1)[0][0]
     name = build_stub_name(dominant, row["anchor_date"])
@@ -289,8 +294,10 @@ async def _feed_confirmed_cohort(conn: Any, row: dict) -> "str | None":
 async def run_coverage_probe(today: Any) -> dict:
     """Run the coverage probe for `today`'s EP alerts. DEFENSIVELY WRAPPED — never raises
     (a probe failure must never break the EOD chain): job-level errors → the
-    'coverage_probe_failed' audit event; per-alert errors → 'coverage_probe_alert_failed'
-    and the loop continues. Returns a summary dict for logs/verify-live."""
+    'coverage_probe_error' audit event; per-alert errors → 'coverage_probe_alert_error'
+    (both END in _error so the nightly %error% Telegram sweep + the %_error weekly
+    surfacer catch a silent detection-path failure — #173/#381 class) and the loop
+    continues. Returns a summary dict for logs/verify-live."""
     out = {
         "date": str(today), "alerts": 0, "themeless": 0, "families_agree": 0,
         "confirmed": 0, "candidates_written": 0, "error": None,
@@ -336,7 +343,7 @@ async def run_coverage_probe(today: Any) -> dict:
                     logger.warning(
                         f"coverage probe: alert {alert.get('ticker')} failed: {_ae}")
                     await log_audit_event(
-                        "coverage_probe_alert_failed",
+                        "coverage_probe_alert_error",
                         f"{alert.get('ticker')} {today}: {type(_ae).__name__}: {_ae}",
                     )
 
@@ -354,7 +361,7 @@ async def run_coverage_probe(today: Any) -> dict:
         out["error"] = str(_e)[:200]
         try:
             await log_audit_event(
-                "coverage_probe_failed", f"{today}: {type(_e).__name__}: {_e}")
+                "coverage_probe_error", f"{today}: {type(_e).__name__}: {_e}")
         except Exception:  # loud-ok: audit-of-audit best-effort; logger.error above already surfaced it
             pass
         return out

@@ -5631,27 +5631,20 @@ async def get_theme_heat_asof(
     (theme_date >= alert_date - 7d) — the "7d-bounded variant" the S2 coverage probe uses for
     its themeless test, so the probe's blind-spot population matches the live membership read
     rather than the looser shadow read. Existing callers are unchanged (None)."""
-    if recency_days is None:
-        row = await conn.fetchrow("""
-            SELECT name, stage, score, tickers, description
-            FROM mi_themes
-            WHERE $1 = ANY(tickers)
-              AND stage != 'Retired'
-              AND theme_date <= $2
-            ORDER BY theme_date DESC, score DESC NULLS LAST
-            LIMIT 1
-        """, ticker, alert_date)
-    else:
-        row = await conn.fetchrow("""
-            SELECT name, stage, score, tickers, description
-            FROM mi_themes
-            WHERE $1 = ANY(tickers)
-              AND stage != 'Retired'
-              AND theme_date <= $2
-              AND theme_date >= ($2::date - $3::int)
-            ORDER BY theme_date DESC, score DESC NULLS LAST
-            LIMIT 1
-        """, ticker, alert_date, recency_days)
+    # One query, NULL-guarded recency floor (was two byte-identical branches — the drift hazard
+    # this docstring frets about): $3 NULL → the disjunct is TRUE → no floor (the default/existing
+    # -caller path, byte-identical to the old None branch, and $2::date is never evaluated); $3 set
+    # → the 7d recency floor applies (the S2 probe path).
+    row = await conn.fetchrow("""
+        SELECT name, stage, score, tickers, description
+        FROM mi_themes
+        WHERE $1 = ANY(tickers)
+          AND stage != 'Retired'
+          AND theme_date <= $2
+          AND ($3::int IS NULL OR theme_date >= ($2::date - $3::int))
+        ORDER BY theme_date DESC, score DESC NULLS LAST
+        LIMIT 1
+    """, ticker, alert_date, recency_days)
     if not row:
         return None
     return {
@@ -7892,16 +7885,20 @@ async def get_ticker_sector(ticker: str) -> dict:
     return {"sector": row["sector"] or "", "industry": row["industry"] or ""}
 
 
-async def get_sectors_batch(tickers: list[str]) -> dict[str, str]:
-    """Bulk lookup of cached sectors from mi_ticker_overrides. Returns {ticker: sector}."""
+async def get_sectors_batch(tickers: list[str], conn: Any = None) -> dict[str, str]:
+    """Bulk lookup of cached sectors from mi_ticker_overrides. Returns {ticker: sector}.
+    Optional `conn` (coverage-loop reuse 2026-07-13): pass a held connection (the S2 probe holds
+    one per run) to skip a pool-acquire; default None → pool-acquire (existing callers unchanged)."""
     if not tickers:
         return {}
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT ticker, sector FROM mi_ticker_overrides WHERE ticker = ANY($1) AND sector IS NOT NULL AND sector != ''",
-            tickers,
-        )
+    _sql = ("SELECT ticker, sector FROM mi_ticker_overrides "
+            "WHERE ticker = ANY($1) AND sector IS NOT NULL AND sector != ''")
+    if conn is not None:
+        rows = await conn.fetch(_sql, tickers)
+    else:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(_sql, tickers)
     return {r["ticker"]: r["sector"] for r in rows}
 
 
@@ -8012,18 +8009,6 @@ async def get_industry_peers(conn: Any, ticker: str, limit: int = 40) -> list[st
         LIMIT $3
     """, row["industry"], ticker.upper(), limit)
     return [r["ticker"] for r in rows]
-
-
-async def get_sectors_for_tickers(conn: Any, tickers: "list[str]") -> dict[str, str]:
-    """Cached sectors (mi_ticker_overrides) for a ticker set — the P2 same-sector tag.
-    Read-only; missing/NULL sectors simply absent."""
-    if not tickers:
-        return {}
-    rows = await conn.fetch(
-        "SELECT ticker, sector FROM mi_ticker_overrides "
-        "WHERE ticker = ANY($1) AND sector IS NOT NULL AND sector != ''",
-        [t.upper() for t in tickers])
-    return {r["ticker"]: r["sector"] for r in rows}
 
 
 async def get_industries_for_tickers(conn: Any, tickers: "list[str]") -> dict[str, str]:
