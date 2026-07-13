@@ -71,6 +71,72 @@ def matches_mna_keywords(text: Optional[str]) -> Optional[str]:
     return None
 
 
+# ── #416 binding-context guards (operator-signed 7/12, rulings-pack R6) ────────────────────────
+# The filter SUPPRESSES a candidate only when an M&A signal is a BINDING deal that pins THIS ticker
+# as the TARGET. The three ratified false-positives were three ways that failed, one per fire-path:
+#   Guard A (keyword_in_text): a NEGATED/SPECULATIVE keyword ("not a takeover", "takeout speculation")
+#   Guard B (polygon Path B): EXPLORATION/agitation ("proxy campaign seeking strategic alternatives")
+#   Guard C (claude_classifier): ACQUIRER-side / completed-deal ("Mistral acquisition closing")
+# Each is a per-path veto that falls through to the other independent paths — a real deal still fires.
+# The shared escape is a BINDING-deal marker (SUNE's "definitive reverse merger" keeps firing).
+# Full evidence + N-gate sim: docs/analysis/416_mna_fp_amendment_2026-07-12.md.
+_MNA_NEGATOR = re.compile(
+    r"\b(not|no|never|without|rather than|unlike|denies|denied|isn't|wasn't|aren't|weren't)\b", re.I)
+_MNA_SPECULATION = re.compile(
+    r"\b(speculation|speculative|rumou?r|reportedly|potential(?:ly)?|exploring|explore|"
+    r"talks|considering|could|takeout)\b", re.I)
+_MNA_EXPLORATION = re.compile(
+    r"\b(strategic alternatives?|proxy campaign|activist|exploring options|seeking strategic|"
+    r"strategic review)\b", re.I)
+_MNA_BINDING = re.compile(
+    r"\b(definitive|agreed to|agreement to acquire|to be acquired|tender offer|going private|"
+    r"completed (?:the )?acquisition|merger agreement|will acquire|has acquired|acquired by)\b", re.I)
+_MNA_ACQUIRER_SIDE = re.compile(
+    r"\b(acquisition clos\w*|completed (?:the |its )?acquisition|acquired \w+ for|prime.contract)\b", re.I)
+_MNA_TARGET_SIDE = re.compile(
+    r"\b(to be acquired|acquired by|takeover target|being acquired|going private)\b", re.I)
+
+
+def mna_context_is_binding(text: Optional[str]) -> bool:
+    """The shared escape: a binding-deal marker present → a real price-pin, not exploration/speculation.
+    (SUNE's 'definitive reverse merger' → True → keeps firing; FRMI's 'strategic alternatives' → False.)"""
+    return bool(text and _MNA_BINDING.search(text))
+
+
+def keyword_context_is_nonbinding(text: Optional[str], kw: Optional[str]) -> bool:
+    """Guard A: the matched keyword sits in a NEGATED (within ~25 chars before) or SPECULATIVE
+    (±60-char window) context, with NO binding-deal escape anywhere in the text. MMED: 'not a single
+    dramatic takeover' → True (veto). IMAX/WEN/IMVT: 'takeout speculation' → True (veto)."""
+    if not text or not kw:
+        return False
+    if mna_context_is_binding(text):
+        return False
+    low = text.lower()
+    i = low.find(kw.lower())
+    if i < 0:
+        return False
+    pre = low[max(0, i - 25):i]
+    win = low[max(0, i - 60):i + 60]
+    return bool(_MNA_NEGATOR.search(pre) or _MNA_SPECULATION.search(win))
+
+
+def reasoning_is_exploration_only(reasoning: Optional[str]) -> bool:
+    """Guard B: polygon Path B reasoning is exploration/agitation with no binding-deal escape.
+    FRMI: 'proxy campaign seeking strategic alternatives' → True (veto)."""
+    return bool(reasoning and _MNA_EXPLORATION.search(reasoning)
+                and not mna_context_is_binding(reasoning))
+
+
+def text_implies_acquirer_or_completed(texts: Iterable[Optional[str]]) -> bool:
+    """Guard C: the classifier's catalyst text frames THIS ticker as the ACQUIRER or a COMPLETED deal
+    (ONDS: 'Mistral acquisition closing' — bullish growth, not a target price-pin). Suppressed when
+    the text also reads target-side ('to be acquired', 'acquired by') — then it IS a pinned target."""
+    blob = " ".join(t for t in texts if t) if texts else ""
+    if not blob or not _MNA_ACQUIRER_SIDE.search(blob):
+        return False
+    return not _MNA_TARGET_SIDE.search(blob)
+
+
 def is_shareholder_litigation_notice(title: Optional[str]) -> bool:
     """Title starts with a known shareholder-litigation firm name → True.
 
@@ -586,6 +652,12 @@ async def polygon_news_has_mna_headline(
         if _ticker_is_acquirer(item, ticker, reasoning=reasoning):
             continue
 
+        # Guard B (#416 R6): exploration/agitation reasoning ("proxy campaign seeking strategic
+        # alternatives" — FRMI) is a pre-deal bullish catalyst, not a binding price-pin. Veto unless
+        # a binding-deal marker escapes it. Next article still gets a chance (loop continues).
+        if reasoning_is_exploration_only(reasoning):
+            continue
+
         return {
             "ticker": ticker,
             "matched_keyword": desc_kw,
@@ -620,21 +692,29 @@ async def is_likely_ma(
     "we caught it via Polygon despite Perplexity hedging".
     """
     if catalyst_quality == "mna":
-        return True, {
-            "source": "claude_classifier",
-            "ticker": ticker,
-            "catalyst_quality": catalyst_quality,
-        }
+        # Guard C (#416 R6): the classifier called it M&A, but if the catalyst text frames THIS
+        # ticker as the acquirer / a completed deal (ONDS 'Mistral acquisition closing'), that's a
+        # bullish growth catalyst, not a target price-pin — veto this path, fall through to the
+        # independent keyword/polygon paths (a real target-side deal still fires there).
+        if not text_implies_acquirer_or_completed(catalyst_texts or []):
+            return True, {
+                "source": "claude_classifier",
+                "ticker": ticker,
+                "catalyst_quality": catalyst_quality,
+            }
 
     if catalyst_texts:
         hit = matches_mna_in_any(catalyst_texts)
         if hit:
             kw, idx = hit
-            return True, {
-                "source": f"keyword_in_text_{idx}",
-                "ticker": ticker,
-                "matched_keyword": kw,
-            }
+            # Guard A (#416 R6): a negated/speculative keyword with no binding escape is not a real
+            # deal (MMED 'not a takeover'; IMAX 'takeout speculation') — veto, fall through to polygon.
+            if not keyword_context_is_nonbinding(catalyst_texts[idx], kw):
+                return True, {
+                    "source": f"keyword_in_text_{idx}",
+                    "ticker": ticker,
+                    "matched_keyword": kw,
+                }
 
     if check_polygon:
         polygon_hit = await polygon_news_has_mna_headline(

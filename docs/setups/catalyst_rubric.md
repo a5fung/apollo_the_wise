@@ -225,6 +225,41 @@ trade reactions.
 
 ## Change log (newest first)
 
+### 2026-07-13 — #416: M&A-filter binding-context guards A/B/C (operator-signed 7/12, rulings-pack R6)
+
+**Trigger**: 7/4 Tier-2 sitting ratified 3 M&A-filter false-positives that suppressed real momentum
+runners — FRMI +25%, ONDS +23%, MMED +23% (SUNE +216% correctly suppressed as the TP). #416 chartered
+the amendment; signed 7/12 (all 3 §6 forks: IMAX confirmed FP · Guard-C = surgical port · priced FN tail).
+
+**Evidence**: 896 historical `mna_filter_fired` rows. The 3 FPs root-caused to 3 DISTINCT fire-paths
+(one guard each). Mechanism chosen by data — a "require-definitive" whitelist would flip ~890/896
+(guts the filter; most real M&A suppress via buyout/tender-offer/going-private, binding but not
+"definitive") → BLACKLIST of 3 narrow reject-guards instead. Full-text N-gate sim (prod): **7 flips /
+5 distinct** — all 3 ratified FPs (MMED guard-A · ONDS guard-C · IMAX guard-A) + 2 proxy-missed finds
+(WEN, IMVT) + FRMI (guard-B, proven separately — its audit row is truncated-at-write so the sim
+couldn't parse it; guard-B REJECTS its reasoning, and the live guard runs pre-write). Blast radius
+**≥~0.8% (a FLOOR** — the corpus replay under-counts on the 500-char-truncated rows; the live guard
+runs pre-write on full text). ⚠ **PRE-DEPLOY GATE (advisor 7/13):** the N-gate sim used its OWN inline
+regexes — before deploy, re-run the replay importing the SHIPPED `ma_filter` guard functions over the
+896 rows, confirm the flip set still contains all 5 ratified FPs, and hand-classify every EXTRA flip:
+if bare `could` / `talks` / `potential` drags in a REAL binding deal, that's a new false-negative
+(entering a deal-pinned stock) → tighten `_MNA_SPECULATION` before shipping. Detail + tables:
+`docs/analysis/416_mna_fp_amendment_2026-07-12.md`.
+
+**Anticipated effect**: suppression rate falls ≤~1% of historical fires — negated/speculative
+(guard A), exploration/agitation (guard B), acquirer-side/completed-deal (guard C) contexts stop
+suppressing. Genuine binding target-side deals unchanged (SUNE + a plain "acquired by X" still fire).
+Each guard is a per-path veto that falls through to the other independent paths.
+
+**Reversion-flag**: REFINEMENT of the #410 pin-guard / polygon Path-B logic (tightening the fire
+condition in the accuracy direction #410 intended). Guards A + C are NEW paths. Revert by removing the
+3 guard predicates + their call sites in `ma_filter.py` (all tagged `#416 R6`).
+
+**Status**: built + tested (15 guard tests + 29 ma_filter regression + suite 3089 green). PRE-DEPLOY
+= the shipped-code corpus replay above (evidence must match code). NO same-day urgency — today's EP
+scan window (7–10 ET) already ran, so this affects the NEXT day's scans; verify-live per path is
+next-day regardless. Deploy market-agent on operator go after the replay confirms.
+
 ### 2026-06-28 — #321 + #320 LIVE: recovered YoY DRIVES the gate + stale-boost reset (operator: these are BUGS)
 
 **The flip shipped (operator 6/28, `64e8ed4`).** The #149 shadow (below) accrued the cohort; the operator reframed both as BUGS, not strategy tuning: (a) #321 — the gate fired "no prior-year comparable" when the comparable IS available, just not in the news corpus; (b) #320 — the `confidence_multiplier` agreement-boost wasn't reset on the revenue-weak / prose-mismatch downgrades (only the pplx-hedge site reset it), so a routine name kept a 1.2× boost and phantom-alerted past the `score<50` skip.
