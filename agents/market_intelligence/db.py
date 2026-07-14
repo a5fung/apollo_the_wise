@@ -1829,6 +1829,46 @@ async def initialize_schema() -> None:
                 ON mi_consolidation_entry_shadow(ticker, anchor_date, entry_mode) WHERE outcome IS NULL;
             CREATE INDEX IF NOT EXISTS idx_cons_entry_shadow_unsettled
                 ON mi_consolidation_entry_shadow(entry_date) WHERE outcome IS NULL;
+            -- ── #327 shadow-fix pack (operator-signed 2026-07-14 —
+            -- docs/analysis/327_shadow_fix_proposal_2026-07-14.md). ALL additive, NULL default:
+            -- pre-fix rows keep NULL = "not measured" (backfill-safe; the settled June cohort's
+            -- readings live in the diagnostic, re-derivable offline from the recorded columns). ──
+            -- §1 quality gate — RECORDED per fire, never filters the write (A/B: both cohorts
+            -- accrue; the diagnostic's ETF magnitude was UNVERIFIED, hence flag-don't-gate).
+            -- Components recorded raw so the RS floor (~60–70 band, flag uses 65) can be re-cut:
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS would_pass_quality BOOLEAN;
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS is_common_stock BOOLEAN;   -- CS/ADRC or unknown-type = TRUE
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS above_50sma BOOLEAN;
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS rs_at_entry FLOAT;         -- mi_stock_scores.rs_composite
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS adv20_dollar FLOAT;        -- 20-bar mean close×volume
+            -- §2 stop geometry — structural_low is now the HEADLINE stop on anticipate fires
+            -- (stop_kind='structural_low'); the validated fire-bar low keeps accruing here so the
+            -- legacy bet stays re-derivable; sub1pct_reject flags sub-1% coiled_low fires
+            -- (min observed 0.06% — noise stops; 64% of the diagnostic loss was gap slippage):
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS coiled_low FLOAT;
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS stop_pct FLOAT;            -- headline stop, % of entry
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS sub1pct_reject BOOLEAN;
+            -- §4 regime label as-of the fire (mi_market_regime.regime) — the regime-gate question
+            -- stays unanswerable until a trending leg accrues; record it so the split is free:
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS regime_at_entry TEXT;
+            -- §5 measurement bounds — outcome now settles under the PESS intrabar bound (aligned
+            -- with realized_r; a bar spanning target+stop reads 'stop', not 'capture');
+            -- bound_conflict marks rows where the legacy OPT bound disagreed (NULL = settled
+            -- pre-fix under opt); realized_r_h12 = the same +1R/+3R ladder time-stopped at the
+            -- bet's 12-bar horizon ("report both horizons"):
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS bound_conflict BOOLEAN;
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS realized_r_h12 FLOAT;
 
             -- HTF (High Tight Flag) breakout-entry SHADOW (#356 Phase 3). Records the would-be
             -- breakout-entry ORDER SHAPE + settled outcome for every #94 flag-high break — NO order
@@ -7125,7 +7165,10 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
 async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
         entry_price, stop_kind, stop_price, structural_low, signal_n, rmv_5d, rmv_15d=None,
         range_pct, vol_ratio, target_r, origin, entry_mode='anticipate',
-        vol_sma_3=None, vol_sma_15=None, vol_dryup_ratio=None) -> bool:
+        vol_sma_3=None, vol_sma_15=None, vol_dryup_ratio=None,
+        coiled_low=None, stop_pct=None, sub1pct_reject=None, would_pass_quality=None,
+        is_common_stock=None, above_50sma=None, rs_at_entry=None, adv20_dollar=None,
+        regime_at_entry=None) -> bool:
     """Record one Family-A forward-shadow entry (SHADOW — no execution). IDEMPOTENT: the partial
     unique index (ticker, anchor_date, entry_mode) WHERE outcome IS NULL makes a re-fire on an
     already-OPEN coil+mode a no-op (entry stays pinned to the FIRST fire day) WHILE letting an
@@ -7133,20 +7176,31 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
     written (the job's 'fired' signal).
 
     vol_sma_3/vol_sma_15/vol_dryup_ratio (#385, default None): the volume dry-up TELEMETRY axis
-    (anticipation.volume_dryup) alongside rmv_5d/rmv_15d's range axis — TELEMETRY ONLY, not a gate."""
+    (anticipation.volume_dryup) alongside rmv_5d/rmv_15d's range axis — TELEMETRY ONLY, not a gate.
+
+    #327 shadow-fix pack columns (operator-signed 2026-07-14; all default None = not measured):
+    §1 quality flag + raw components (would_pass_quality, is_common_stock, above_50sma,
+    rs_at_entry, adv20_dollar — RECORDED, never filters the write); §2 stop geometry (coiled_low
+    keeps the fire-bar low now that structural_low is the headline stop; stop_pct; sub1pct_reject);
+    §4 regime_at_entry."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             INSERT INTO mi_consolidation_entry_shadow
                 (ticker, anchor_date, entry_date, entry_price, stop_kind, stop_price,
                  structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio,
-                 vol_sma_3, vol_sma_15, vol_dryup_ratio, target_r, origin, entry_mode)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+                 vol_sma_3, vol_sma_15, vol_dryup_ratio, target_r, origin, entry_mode,
+                 coiled_low, stop_pct, sub1pct_reject, would_pass_quality, is_common_stock,
+                 above_50sma, rs_at_entry, adv20_dollar, regime_at_entry)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+                    $19,$20,$21,$22,$23,$24,$25,$26,$27)
             ON CONFLICT (ticker, anchor_date, entry_mode) WHERE outcome IS NULL DO NOTHING
             RETURNING id
         """, ticker, _coerce_date(anchor_date), _coerce_date(entry_date), entry_price, stop_kind, stop_price,
              structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio,
-             vol_sma_3, vol_sma_15, vol_dryup_ratio, target_r, origin, entry_mode)
+             vol_sma_3, vol_sma_15, vol_dryup_ratio, target_r, origin, entry_mode,
+             coiled_low, stop_pct, sub1pct_reject, would_pass_quality, is_common_stock,
+             above_50sma, rs_at_entry, adv20_dollar, regime_at_entry)
     return row is not None
 
 
@@ -7165,17 +7219,23 @@ async def get_settleable_consolidation_entry_shadows(entry_on_or_before: date) -
     return [dict(r) for r in rows]
 
 
-async def settle_consolidation_entry_shadow(row_id: int, *, outcome, realized_r, fwd_mfe_r) -> bool:
+async def settle_consolidation_entry_shadow(row_id: int, *, outcome, realized_r, fwd_mfe_r,
+                                            bound_conflict=None, realized_r_h12=None) -> bool:
     """Write back one settled #327 entry-shadow row (SHADOW — telemetry). Flips outcome non-NULL
     (which also FREES the open-dedup partial index for a genuinely new coil leg on the same key).
-    Guarded on outcome IS NULL so a double-settle is a no-op. Returns True iff a row was settled."""
+    Guarded on outcome IS NULL so a double-settle is a no-op. Returns True iff a row was settled.
+
+    bound_conflict / realized_r_h12 (#327 shadow-fix §5, 2026-07-14): outcome now arrives settled
+    under the pess intrabar bound; bound_conflict marks rows where the legacy opt bound disagreed;
+    realized_r_h12 is the ladder at the bet's 12-bar horizon. Default None keeps old callers valid."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         res = await conn.execute("""
             UPDATE mi_consolidation_entry_shadow
-            SET outcome=$2, realized_r=$3, fwd_mfe_r=$4, settled_at=NOW()
+            SET outcome=$2, realized_r=$3, fwd_mfe_r=$4, bound_conflict=$5, realized_r_h12=$6,
+                settled_at=NOW()
             WHERE id=$1 AND outcome IS NULL
-        """, row_id, outcome, realized_r, fwd_mfe_r)
+        """, row_id, outcome, realized_r, fwd_mfe_r, bound_conflict, realized_r_h12)
     return res.endswith(" 1")
 
 
@@ -8214,6 +8274,21 @@ async def get_common_stock_tickers() -> set[str]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT ticker FROM mi_security_types WHERE security_type = ANY($1)",
+            list(COMMON_STOCK_TYPES),
+        )
+        return {r["ticker"] for r in rows}
+
+
+async def get_non_common_stock_tickers() -> set[str]:
+    """Tickers classified NON-common-stock (ETF/ETP/ETN/warrant/unit/SPAC/...) in
+    mi_security_types — the complement of get_common_stock_tickers. A ticker ABSENT from the
+    table is NOT in this set (unknown = pass-through, matching the SQL convention
+    `st.security_type IN ('CS','ADRC') OR st.ticker IS NULL` used across the detectors).
+    #327 shadow-fix §1: the quality flag's stocks-only component (record-only, never a filter)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker FROM mi_security_types WHERE NOT (security_type = ANY($1))",
             list(COMMON_STOCK_TYPES),
         )
         return {r["ticker"] for r in rows}

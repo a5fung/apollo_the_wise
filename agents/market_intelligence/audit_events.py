@@ -52,6 +52,9 @@ MNA_ACQUIRER_TITLE_SKIPPED = "mna_acquirer_title_skipped"  # #284 acquirer-side 
 # ── Anticipation coil-finder M&A / buyout-pin guards (#387/#410, 2026-06-30 NUVL FP) ────────
 ANTICIPATION_MNA_EXCLUDED = "anticipation_mna_excluded"  # #387 — ma_filter.is_likely_ma hit
 ANTICIPATION_COIL_BUYOUT_PIN_REJECTED = "anticipation_coil_buyout_pin_rejected"  # #410 — shape guard
+# ── #327 readiness-job robustness (blocker fix, operator-signed 2026-07-14 — 7/13 >2h hang) ──
+CONSOLIDATION_READINESS_SCAN_TIMEOUT = "consolidation_readiness_scan_timeout"  # scan budget hit; failed open, settlement still ran
+ANTICIPATION_MNA_CHECK_CAPPED = "anticipation_mna_check_capped"  # per-run M&A-check cap hit; remaining candidates passed UNchecked (fail-open)
 
 # ── Sugar Baby / convergence ────────────────────────────────────────────────
 SUGAR_BABY_CONVERGENCE_ALERT = "sugar_baby_convergence_alert"

@@ -3084,165 +3084,72 @@ async def _anticipation_3b_job():
         logger.error(f"anticipation 3b job failed: {e}", exc_info=True)
 
 
+# ── #327 readiness-scan robustness bounds (blocker fix, operator-signed 2026-07-14) ──────────
+# The 7/13 Monday run HUNG >2h inside the SCAN section and was watchdog-killed, so the INLINE
+# settlement (DB-fast) never ran → 170 rows stuck past-ripe. Suspect: the #387 M&A guard's Polygon
+# calls under sustained rate-limiting — _polygon_get is firm PER CALL (30s httpx timeout, ≤3
+# attempts, 429 backoff 15/30/45s → worst ~3 min/call) but UNBOUNDED cumulatively across coil
+# candidates. Two bounds, both fail-OPEN (SHADOW-only — a partial scan is safe: the open-dedup pins
+# re-fires, upserted rows stand, tomorrow's run re-scans the full universe):
+_CONS_SCAN_BUDGET_S = 900        # per-run time budget for the SCAN section ONLY (15 min);
+                                 # the settlement runs AFTER, unconditionally
+_CONS_MNA_CHECKS_CAP = 40        # max Polygon-backed M&A checks per run (defense in depth under
+                                 # the budget; overflow candidates pass UNchecked + one audit row)
+
+
 async def _consolidation_readiness_job():
-    """FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER.
-    Replaces the +40% phantom universe with the signed runup→coil universe. 17:35 ET, after the
-    17:00 nightly_data_pull refreshes mi_daily_closes. SHADOW: records the shortlist + tightness
-    telemetry, never submits.
+    """FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER +
+    the #327 forward-shadow settlement, ONE job → ONE daily digest (operator 6/18). 17:35 ET
+    mon-fri, after the 17:00 nightly_data_pull refreshes mi_daily_closes. SHADOW: records +
+    settles telemetry, never submits.
 
-    DB-sourced ground truth only (no module state — containers restart): the universe PROPOSER
-    (get_anticipation_universe) pre-filters to the signed §2 set; select_consolidation_keys UNIONS
-    it with the existing non-aged rows (CARRY-FORWARD — keeps a base's ORIGINAL key when its
-    rolling-window anchor would otherwise drift to a lesser peak); the pure
-    anticipation.evaluate_coil_consolidation re-confirms the runup per key (the authoritative gate — the
-    COO canary) + records the coil/tightness telemetry; UPSERT keyed on (ticker, anchor_date);
-    Telegram the newly-COILED transitions (deduped via the prior-state map).
-
-    UN-PAUSED 2026-06-17 (carry-forward verified by tests/test_anticipation_consolidation.py — the
-    7 real 6/15→6/16 drift names carry their original anchor). Registered at 17:35 ET mon-fri.
-
-    #327 FORWARD SHADOW (operator "wire it", 6/18): per key, after the consolidation upsert, fire
-    the validated entry signal (anticipation.entry_signal_at — N≥ENTRY_TIGHT_N tight days at the
-    coil apex) AS OF the latest bar and record one shadow row per OPEN coil
-    (insert_consolidation_entry_shadow; open-dedup pins the first fire). SHADOW — no execution.
-
-    #387/#410 buyout/M&A GUARDS (operator-filed 2026-06-30, NUVL FP — gapped ~37% to the deal
-    price and flatlined; the coil-finder read the post-deal PIN as a tight coil, buy 123.50/stop
-    123.43 = 0.06% the giveaway): #410 is a pure price-SHAPE check baked into
-    anticipation.evaluate_coil_consolidation (coil_pin_reject_reason — reuses flag_detector's
-    proven deal-pin primitive); a reject is re-derived + audited here
-    (anticipation_coil_buyout_pin_rejected) since the pure function can't do I/O. #387 re-applies
-    the SAME news-backed single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use,
-    on the surviving coil candidates only (cost control) — a hit excludes + audits
-    (anticipation_mna_excluded). Neither guard touches the #327 gates themselves (runup / hold /
-    tightness) — additive exclusions only, per THE LINE (SHADOW-only, zero execution authority).
-    """
-    from datetime import date, timedelta
+    STRUCTURE (#327 blocker fix, operator-signed 2026-07-14): the SCAN section
+    (_consolidation_readiness_scan — universe → coil-finder → M&A guard → entry-watch → upsert)
+    runs under asyncio.wait_for(_CONS_SCAN_BUDGET_S) and FAILS OPEN on timeout (log + a
+    consolidation_readiness_scan_timeout audit event, partial results kept); the SETTLEMENT
+    (_run_entry_shadow_settlement) then runs UNCONDITIONALLY — on 7/13 a >2h scan hang starved it
+    and 170 ripe rows sat unsettled until the watchdog kill. The settlement is idempotent
+    (abstains on short bars, retries next run), so settling after a partial scan is safe."""
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.briefing import send_telegram_message
-    from agents.market_intelligence.ma_filter import is_likely_ma
-    from agents.market_intelligence.audit_events import (
-        ANTICIPATION_MNA_EXCLUDED, ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
-    )
-    from agents.market_intelligence.db import (
-        get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
-        upsert_consolidation, insert_consolidation_entry_shadow, get_recent_9m_tickers,
-        get_open_shadow_tickers,
-    )
+    from agents.market_intelligence.audit_events import CONSOLIDATION_READINESS_SCAN_TIMEOUT
+    from agents.market_intelligence.db import get_open_shadow_tickers
     try:
         today = et_today()
-        universe = await get_anticipation_universe(today)
-        state_map = await get_consolidation_state_map()
-        nine_m = await get_recent_9m_tickers(today - timedelta(days=90))  # #327 origin tag
-
-        # CARRY-FORWARD: union the fresh §2 proposer with existing non-aged rows so a base whose
-        # rolling-window anchor drifts (peak aging out) keeps its ORIGINAL key (no duplicate rows).
-        existing = {}
-        for (tk, anc), v in state_map.items():
-            if v["state"] != "aged":
-                existing.setdefault(tk, []).append(
-                    {"anchor_date": anc, "runup_high": v["runup_high"], "dvol_med": v["dvol_med"]})
-        keys = de.select_consolidation_keys(universe, existing)
-
-        written, transitions, entries_fired = 0, [], []
-        for k in keys:
-            ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
+        # Accumulators are passed INTO the scan so a budget timeout keeps the PARTIAL results —
+        # rows already upserted / entry-shadows already fired before the cancel still reach the
+        # digest instead of vanishing with the cancelled coroutine.
+        stats = {"universe": 0, "written": 0}
+        transitions, entries_fired = [], []
+        scan_timed_out = False
+        try:
+            await asyncio.wait_for(
+                _consolidation_readiness_scan(today, stats, transitions, entries_fired),
+                timeout=_CONS_SCAN_BUDGET_S)
+        except asyncio.TimeoutError:
+            # FAIL-OPEN (#327 blocker fix): a hung/slow scan must never take the settlement down
+            # with it. SHADOW-only, so a partial scan loses nothing durable — the open-dedup pins
+            # re-fires and tomorrow's run re-scans the full universe.
+            scan_timed_out = True
+            logger.error(
+                f"consolidation readiness SCAN timed out after {_CONS_SCAN_BUDGET_S}s — fail-open: "
+                f"partial scan kept ({stats['written']} rows written, {len(entries_fired)} entry "
+                f"fires, {len(transitions)} transitions); settlement proceeds")
             try:
-                bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
-                if len(bars) < 60:
-                    continue
-                # #327 LIVE base detection: the COIL-FINDER (runup leg → hold-≤50% → tight) REPLACES
-                # the old peak-anchored evaluate_consolidation (which swallowed the post-runup
-                # pullback — CRWD read a 24% "base"). It finds the TRUE coil + its peak; the
-                # carry-forward key's anchor_date is just the candidate SEED now. A name with no held
-                # coil (runup gate / hold-≤50% gate) is simply not a candidate — skip, same as today.
-                cons, pin_reason = de.evaluate_coil_consolidation(bars)
-                if cons is None:
-                    # #410 buyout/deal-pin shape guard (NUVL 6/30 FP): evaluate_coil_consolidation
-                    # now RETURNS the reject reason directly (simplify GROUP 2, 2026-07-03) instead
-                    # of bare None — no re-derivation (no second find_coil_setup / hold-check /
-                    # coil_pin_reject_reason call). pin_reason is only set for the #410 pin guard
-                    # ('stop_floor' | 'gap_to_flat'); a plain non-candidate (no runup→coil, or hold
-                    # exceeded) leaves it None and is silently skipped, same as before.
-                    if pin_reason:
-                        await log_audit_event(
-                            ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
-                            f"{ticker} coil rejected — {pin_reason}",
-                            detail=str({"ticker": ticker, "reason": pin_reason})[:500],
-                        )
-                    continue
-
-                # #387 M&A exclusion (operator-filed 6/30 post-NUVL FP): a coil-shaped candidate whose
-                # "tight days at the apex" turn out to be the post-acquisition PIN. Re-applies the SAME
-                # single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use, gated on the
-                # coil candidate subset only (cost control — mirrors flag_detector's actionable-only
-                # gating, avoiding a Polygon lookup per scanned ticker). A confirmed M&A target is
-                # excluded from coil candidacy — audited, not silently dropped, rather than surfacing on
-                # the board as a false coil.
-                is_mna, mna_meta = await is_likely_ma(
-                    ticker, check_polygon=True, on_or_before=today, polygon_lookback_days=21,
+                await log_audit_event(
+                    CONSOLIDATION_READINESS_SCAN_TIMEOUT,
+                    f"scan exceeded its {_CONS_SCAN_BUDGET_S}s budget — kept partial results "
+                    f"({stats['written']} rows, {len(entries_fired)} fires); settlement still ran",
+                    detail=str({"budget_s": _CONS_SCAN_BUDGET_S, **stats})[:500],
                 )
-                if is_mna:
-                    await log_audit_event(
-                        ANTICIPATION_MNA_EXCLUDED,
-                        f"{ticker} excluded from coil candidacy via "
-                        f"{(mna_meta or {}).get('source', 'unknown')} (anchor {cons['anchor_date']})",
-                        detail=str({"ticker": ticker, "anchor_date": cons["anchor_date"],
-                                    **(mna_meta or {})})[:500],
-                    )
-                    continue
+            except Exception as _ae:   # the audit write must not block the settlement either
+                logger.error(f"scan-timeout audit write failed: {_ae}")
 
-                anchor_date = date.fromisoformat(cons["anchor_date"])   # the coil peak = the anchor now
-
-                # #327 FORWARD SHADOW: fire the validated entry signal AS OF the latest bar (the coil
-                # apex — N consecutive tight days post-runup). SHADOW recorder; the open-dedup pins
-                # one row to the first fire day. anchor_idx from the coil peak (guaranteed in-bars).
-                anchor_idx = next((j for j, b in enumerate(bars)
-                                   if b["date"] == cons["anchor_date"]), None)
-                if anchor_idx is not None:
-                    origin = "9m" if ticker in nine_m else "family_a"
-                    # Family-A entry modes recorded into the ONE shadow lifecycle, tagged by mode
-                    # (#354 ADR 0013 §1): Anticipate = the validated in-coil signal; Confirm = the
-                    # base-high breakout, detected on the SAME §2 universe (NOT the live #94 path).
-                    # ANTICIPATE ONLY (operator 6/29): the in-coil signal. A 2nd entry mode MUDDIES
-                    # the shadow's edge measurement — Confirm (base-high breakout) UN-WIRED here (was
-                    # the #354 dual-mode; the operator's 6/22 "strictly anticipate, NO Confirm" split,
-                    # now actually implemented). confirm_signal_at left in place but unused — removal #404.
-                    sig = de.entry_signal_at(bars, len(bars) - 1, anchor_idx)
-                    if sig and await insert_consolidation_entry_shadow(
-                            ticker, anchor_date, entry_date=sig["entry_date"],
-                            entry_price=sig["entry_price"], stop_kind=sig["stop_kind"],
-                            stop_price=sig["stop_price"], structural_low=sig["structural_low"],
-                            signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"], rmv_15d=sig.get("rmv_15d"),
-                            range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
-                            vol_sma_3=sig.get("vol_sma_3"), vol_sma_15=sig.get("vol_sma_15"),
-                            vol_dryup_ratio=sig.get("vol_dryup_ratio"),
-                            target_r=sig["target_r"], origin=origin, entry_mode="anticipate"):
-                        entries_fired.append((ticker, origin, "anticipate", sig))
-
-                await upsert_consolidation(
-                    ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
-                    runup_high=cons["runup_high"], coil_days=cons["coil_days"],
-                    last_close=cons["last_close"], today_pct=cons["today_pct"],
-                    rmv_5d=cons["rmv_5d"], rmv_15d=cons["rmv_15d"],
-                    pullback_shape=cons["pullback_shape"], pullback_shapes=cons["pullback_shapes"],
-                    fresh_tightening=cons["fresh_tightening"],
-                    fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
-                    tight_close_streak=cons["tight_close_streak"], dvol_med=dvol_med,
-                    last_eval=today)
-                written += 1
-                prior = state_map.get((ticker, anchor_date))
-                prior_state = prior["state"] if prior else None
-                if prior_state in (None, "post_runup") and cons["state"] == "coiled":
-                    transitions.append((ticker, anchor_date, cons))
-            except Exception as e:
-                logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
-
-        # ── #327 forward-shadow SETTLEMENT folded in so the WHOLE Family-A lifecycle is ONE job →
-        #    ONE daily digest (operator 6/18 — consolidate, don't add surfaces; no cross-job
-        #    ordering). Settle ripe OPEN rows, then push a SINGLE digest of everything that changed
-        #    today — only the non-empty sections (settled · entries fired · newly coiled). ──
+        # ── #327 forward-shadow SETTLEMENT — ALWAYS runs, scan outcome irrespective (the 7/13
+        #    lesson: 170 rows stuck past-ripe because the scan hung first). Folded in so the WHOLE
+        #    Family-A lifecycle is ONE job → ONE daily digest (operator 6/18 — consolidate, don't
+        #    add surfaces; no cross-job ordering). ──
         just_settled = await _run_entry_shadow_settlement(today)
         # #356 Phase 3 — HTF breakout-shadow settlement folded into the SAME daily Family-A job (NOT a
         # new surface). Never submits; the settled count is surfaced in the digest below so the operator
@@ -3253,11 +3160,16 @@ async def _consolidation_readiness_job():
             logger.warning(f"htf_breakout_settle folded-call failed (non-critical): {_he}")
             htf_settled = []
 
-        logger.info(f"consolidation readiness: {len(universe)} universe, {written} rows, "
+        logger.info(f"consolidation readiness: {stats['universe']} universe, {stats['written']} rows, "
                     f"{len(transitions)} newly coiled, {len(entries_fired)} entries fired, "
-                    f"{len(just_settled)} settled")
+                    f"{len(just_settled)} settled"
+                    + (" [SCAN TIMED OUT — partial]" if scan_timed_out else ""))
 
         digest = []
+        if scan_timed_out:
+            digest.append(f"⚠️ Readiness SCAN hit its {_CONS_SCAN_BUDGET_S // 60}-min budget — "
+                          f"partial board today ({stats['written']} evaluated); settlement ran in full.")
+            digest.append("")
         if just_settled:
             cap = sum(1 for _, s in just_settled if s["outcome"] == "capture")
             digest.append(f"📐 *Settled today* ({len(just_settled)} · {cap} capture)")
@@ -3268,10 +3180,18 @@ async def _consolidation_readiness_job():
             hcap = sum(1 for _, s in htf_settled if s["outcome"] == "capture")
             digest.append(f"🚩 *HTF breakouts settled* ({len(htf_settled)} · {hcap} capture) — SHADOW (#356)")
             digest.append("")
-        if entries_fired:
-            # ANTICIPATE ONLY (operator 6/29: Confirm un-wired — a 2nd entry mode muddies the shadow).
-            digest.append(f"🎯 *Anticipate entry fired today* ({len(entries_fired)}) — in-coil (N≥{de.ENTRY_TIGHT_N} tight days at apex)")
-            for ticker, origin, _m, sig in entries_fired[:12]:
+        # Both Family-A entry modes surface, SEPARATELY tagged (#327 shadow-fix §3 — never blended):
+        ant_fired = [x for x in entries_fired if x[2] == "anticipate"]
+        conf_fired = [x for x in entries_fired if x[2] == "confirm"]
+        if ant_fired:
+            digest.append(f"🎯 *Anticipate entry fired today* ({len(ant_fired)}) — in-coil (N≥{de.ENTRY_TIGHT_N} tight days at apex)")
+            for ticker, origin, _m, sig in ant_fired[:12]:
+                digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
+                                                        sig["stop_price"], origin))
+            digest.append("")
+        if conf_fired:
+            digest.append(f"✅ *Confirm entry fired today* ({len(conf_fired)}) — base-high breakout + volume (control arm, SHADOW)")
+            for ticker, origin, _m, sig in conf_fired[:12]:
                 digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
                                                         sig["stop_price"], origin))
             digest.append("")
@@ -3295,6 +3215,244 @@ async def _consolidation_readiness_job():
         logger.error(f"consolidation readiness job failed: {e}", exc_info=True)
 
 
+async def _entry_shadow_fire_kwargs(ticker, sig, bars, *, mode, non_stock, regime_label, today):
+    """Build insert_consolidation_entry_shadow kwargs for ONE #327 entry-shadow fire (anticipate
+    OR confirm), applying the operator-signed 2026-07-14 shadow-fix pack. RECORDS readings + flags
+    only — NEVER filters the write (A/B doctrine: both would-pass and would-fail cohorts accrue).
+
+      §1 quality flag: stocks-only (mi_security_types complement; unknown type = pass, the
+         codebase convention) + above-50SMA + RS≥65 + dollar-ADV≥$5M, via the pure
+         anticipation.quality_readings / would_pass_quality_flag; raw components recorded so any
+         floor can be re-cut offline (the diagnostic's ETF magnitude was unverified — flag only).
+      §2 stop geometry (anticipate): structural_low becomes the HEADLINE stop
+         (stop_kind/stop_price — what settlement settles); the validated fire-bar low keeps
+         accruing in coiled_low so the legacy bet stays re-derivable. sub1pct_reject flags a
+         sub-1% coiled_low risk (min observed 0.06% — noise stops that poison R math). Confirm
+         fires keep base_low (its structural stop already) and flag on that same geometry.
+      §4 regime_at_entry: the mi_market_regime label as-of the run (fetched once by the scan).
+
+    The single RS lookup is this helper's only I/O; everything else is pure reads on `bars`."""
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.db import get_rs_for_tickers
+    q = de.quality_readings(bars, len(bars) - 1)
+    rs_row = (await get_rs_for_tickers(today, [ticker])).get(ticker) or {}
+    rs = rs_row.get("rs_composite")
+    is_cs = ticker not in non_stock
+    entry = sig["entry_price"]
+    if mode == "anticipate":
+        stop_kind, stop_price = "structural_low", sig["structural_low"]
+        coiled_low = sig["stop_price"]           # the fire-bar low — recorded for continuity
+    else:                                        # confirm: stop = base_low (already structural)
+        stop_kind, stop_price = sig["stop_kind"], sig["stop_price"]
+        coiled_low = None
+    tightest_pct = de.stop_pct_of_entry(entry, coiled_low if coiled_low is not None else stop_price)
+    return dict(
+        entry_date=sig["entry_date"], entry_price=entry,
+        stop_kind=stop_kind, stop_price=stop_price, structural_low=sig["structural_low"],
+        signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"], rmv_15d=sig.get("rmv_15d"),
+        range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
+        vol_sma_3=sig.get("vol_sma_3"), vol_sma_15=sig.get("vol_sma_15"),
+        vol_dryup_ratio=sig.get("vol_dryup_ratio"), target_r=sig["target_r"], entry_mode=mode,
+        coiled_low=coiled_low,
+        stop_pct=de.stop_pct_of_entry(entry, stop_price),
+        sub1pct_reject=(tightest_pct is not None and tightest_pct < de.STOP_FLOOR_MIN_PCT),
+        would_pass_quality=de.would_pass_quality_flag(
+            is_common_stock=is_cs, above_50sma=q["above_50sma"],
+            rs_composite=rs, adv20_dollar=q["adv20_dollar"]),
+        is_common_stock=is_cs, above_50sma=q["above_50sma"],
+        rs_at_entry=rs, adv20_dollar=q["adv20_dollar"], regime_at_entry=regime_label,
+    )
+
+
+async def _consolidation_readiness_scan(today, stats, transitions, entries_fired):
+    """The SCAN section of _consolidation_readiness_job, split out so the caller can bound it with
+    asyncio.wait_for(_CONS_SCAN_BUDGET_S) — a hung/slow scan (the 7/13 >2h M&A-guard hang) fails
+    open instead of starving the inline settlement. MUTATES the caller's accumulators
+    (stats / transitions / entries_fired) so a mid-scan cancel keeps the partial results.
+    SHADOW: records the shortlist + tightness telemetry + entry-shadow fires, never submits.
+
+    DB-sourced ground truth only (no module state — containers restart): the universe PROPOSER
+    (get_anticipation_universe) pre-filters to the signed §2 set; select_consolidation_keys UNIONS
+    it with the existing non-aged rows (CARRY-FORWARD — keeps a base's ORIGINAL key when its
+    rolling-window anchor would otherwise drift to a lesser peak); the pure
+    anticipation.evaluate_coil_consolidation re-confirms the runup per key (the authoritative gate — the
+    COO canary) + records the coil/tightness telemetry; UPSERT keyed on (ticker, anchor_date);
+    Telegram (via the caller's digest) the newly-COILED transitions (deduped via the prior-state map).
+
+    UN-PAUSED 2026-06-17 (carry-forward verified by tests/test_anticipation_consolidation.py — the
+    7 real 6/15→6/16 drift names carry their original anchor). Registered at 17:35 ET mon-fri.
+
+    #327 FORWARD SHADOW (operator "wire it", 6/18): per key, after the coil evaluation, fire the
+    validated entry signal (anticipation.entry_signal_at — N≥ENTRY_TIGHT_N tight days at the
+    coil apex) AS OF the latest bar and record one shadow row per OPEN coil
+    (insert_consolidation_entry_shadow; open-dedup pins the first fire). SHADOW — no execution.
+
+    #327 shadow-fix pack (operator-signed 2026-07-14 —
+    docs/analysis/327_shadow_fix_proposal_2026-07-14.md): every fire is enriched via
+    _entry_shadow_fire_kwargs (§1 quality flag RECORDED never gated · §2 structural_low headline
+    stop + sub-1% flag · §4 regime_at_entry), and the CONFIRM control arm is RE-WIRED (§3 —
+    REVERSES the operator's 6/29 anticipate-only un-wire, per the signed proposal; obsoletes the
+    #404 removal task): confirm_signal_at (enter ON the confirmed base_high breakout + volume,
+    stop = base_low) records a SEPARATELY-TAGGED entry_mode='confirm' row on the same coil — the
+    3-col open-dedup lets both modes coexist; both settle through the same settlement step. The
+    diagnostic's key head-to-head: 85% of anticipated coils never broke out; Confirm is
+    structurally shielded from paying for false coils — measured forward as the control.
+
+    #387/#410 buyout/M&A GUARDS (operator-filed 2026-06-30, NUVL FP — gapped ~37% to the deal
+    price and flatlined; the coil-finder read the post-deal PIN as a tight coil, buy 123.50/stop
+    123.43 = 0.06% the giveaway): #410 is a pure price-SHAPE check baked into
+    anticipation.evaluate_coil_consolidation (coil_pin_reject_reason — reuses flag_detector's
+    proven deal-pin primitive); a reject is re-derived + audited here
+    (anticipation_coil_buyout_pin_rejected) since the pure function can't do I/O. #387 re-applies
+    the SAME news-backed single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use,
+    on the surviving coil candidates only (cost control) — a hit excludes + audits
+    (anticipation_mna_excluded), now CAPPED at _CONS_MNA_CHECKS_CAP Polygon-backed checks per run
+    (#327 blocker fix — the unbounded cumulative Polygon time was the prime hang suspect; overflow
+    candidates pass UNchecked, fail-open + anticipation_mna_check_capped audit). Neither guard
+    touches the #327 gates themselves (runup / hold / tightness) — additive exclusions only, per
+    THE LINE (SHADOW-only, zero execution authority)."""
+    from datetime import date, timedelta
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.ma_filter import is_likely_ma
+    from agents.market_intelligence.audit_events import (
+        ANTICIPATION_MNA_EXCLUDED, ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
+        ANTICIPATION_MNA_CHECK_CAPPED,
+    )
+    from agents.market_intelligence.db import (
+        get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
+        upsert_consolidation, insert_consolidation_entry_shadow, get_recent_9m_tickers,
+        get_non_common_stock_tickers, get_latest_regime,
+    )
+    universe = await get_anticipation_universe(today)
+    stats["universe"] = len(universe)
+    state_map = await get_consolidation_state_map()
+    nine_m = await get_recent_9m_tickers(today - timedelta(days=90))  # #327 origin tag
+    # #327 shadow-fix per-run context (fetched ONCE): the regime label stamped on every fire (§4)
+    # + the non-CS/ADRC set for the quality flag's stocks-only component (§1; a ticker absent
+    # from mi_security_types passes — the codebase's unknown-type convention).
+    regime_row = await get_latest_regime()
+    regime_label = (regime_row or {}).get("regime")
+    non_stock = await get_non_common_stock_tickers()
+
+    # CARRY-FORWARD: union the fresh §2 proposer with existing non-aged rows so a base whose
+    # rolling-window anchor drifts (peak aging out) keeps its ORIGINAL key (no duplicate rows).
+    existing = {}
+    for (tk, anc), v in state_map.items():
+        if v["state"] != "aged":
+            existing.setdefault(tk, []).append(
+                {"anchor_date": anc, "runup_high": v["runup_high"], "dvol_med": v["dvol_med"]})
+    keys = de.select_consolidation_keys(universe, existing)
+
+    mna_checks, mna_cap_logged = 0, False
+    for k in keys:
+        ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
+        try:
+            bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
+            if len(bars) < 60:
+                continue
+            # #327 LIVE base detection: the COIL-FINDER (runup leg → hold-≤50% → tight) REPLACES
+            # the old peak-anchored evaluate_consolidation (which swallowed the post-runup
+            # pullback — CRWD read a 24% "base"). It finds the TRUE coil + its peak; the
+            # carry-forward key's anchor_date is just the candidate SEED now. A name with no held
+            # coil (runup gate / hold-≤50% gate) is simply not a candidate — skip, same as today.
+            cons, pin_reason = de.evaluate_coil_consolidation(bars)
+            if cons is None:
+                # #410 buyout/deal-pin shape guard (NUVL 6/30 FP): evaluate_coil_consolidation
+                # now RETURNS the reject reason directly (simplify GROUP 2, 2026-07-03) instead
+                # of bare None — no re-derivation (no second find_coil_setup / hold-check /
+                # coil_pin_reject_reason call). pin_reason is only set for the #410 pin guard
+                # ('stop_floor' | 'gap_to_flat'); a plain non-candidate (no runup→coil, or hold
+                # exceeded) leaves it None and is silently skipped, same as before.
+                if pin_reason:
+                    await log_audit_event(
+                        ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
+                        f"{ticker} coil rejected — {pin_reason}",
+                        detail=str({"ticker": ticker, "reason": pin_reason})[:500],
+                    )
+                continue
+
+            # #387 M&A exclusion (operator-filed 6/30 post-NUVL FP): a coil-shaped candidate whose
+            # "tight days at the apex" turn out to be the post-acquisition PIN. Re-applies the SAME
+            # single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use, gated on the
+            # coil candidate subset only (cost control). CAPPED per run (#327 blocker fix): past
+            # _CONS_MNA_CHECKS_CAP the remaining candidates pass UNCHECKED (fail-open — dropping
+            # real candidates to an infra cap would bias the shadow; a rare deal-pin fire is
+            # shadow-only noise and the #410 shape guard above still runs). One audit row marks
+            # the capped run so a systematic cap-hit is visible, not silent.
+            if mna_checks < _CONS_MNA_CHECKS_CAP:
+                mna_checks += 1
+                is_mna, mna_meta = await is_likely_ma(
+                    ticker, check_polygon=True, on_or_before=today, polygon_lookback_days=21,
+                )
+            else:
+                is_mna, mna_meta = False, None
+                if not mna_cap_logged:                       # log the cap ONCE per run
+                    mna_cap_logged = True
+                    await log_audit_event(
+                        ANTICIPATION_MNA_CHECK_CAPPED,
+                        f"M&A checks capped at {_CONS_MNA_CHECKS_CAP} this run — remaining coil "
+                        f"candidates pass unchecked (fail-open, shadow-only)",
+                    )
+            if is_mna:
+                await log_audit_event(
+                    ANTICIPATION_MNA_EXCLUDED,
+                    f"{ticker} excluded from coil candidacy via "
+                    f"{(mna_meta or {}).get('source', 'unknown')} (anchor {cons['anchor_date']})",
+                    detail=str({"ticker": ticker, "anchor_date": cons["anchor_date"],
+                                **(mna_meta or {})})[:500],
+                )
+                continue
+
+            anchor_date = date.fromisoformat(cons["anchor_date"])   # the coil peak = the anchor now
+
+            # #327 FORWARD SHADOW: fire the entry signals AS OF the latest bar. SHADOW recorder;
+            # the open-dedup pins one row per mode to the first fire day. anchor_idx from the coil
+            # peak (guaranteed in-bars). Both modes are recorded into the ONE shadow lifecycle,
+            # tagged by entry_mode (#354 ADR 0013 §1 · re-wired dual-mode per the signed 7/14
+            # proposal §3): Anticipate = the validated in-coil signal; Confirm = the base-high
+            # breakout on the SAME §2 universe (NOT the live #94 path).
+            anchor_idx = next((j for j, b in enumerate(bars)
+                               if b["date"] == cons["anchor_date"]), None)
+            if anchor_idx is not None:
+                origin = "9m" if ticker in nine_m else "family_a"
+                sig = de.entry_signal_at(bars, len(bars) - 1, anchor_idx)
+                if sig:
+                    kw = await _entry_shadow_fire_kwargs(
+                        ticker, sig, bars, mode="anticipate", non_stock=non_stock,
+                        regime_label=regime_label, today=today)
+                    if await insert_consolidation_entry_shadow(ticker, anchor_date,
+                                                               origin=origin, **kw):
+                        # overlay the HEADLINE stop so the digest shows what settlement settles
+                        entries_fired.append((ticker, origin, "anticipate",
+                                              {**sig, "stop_price": kw["stop_price"]}))
+                csig = de.confirm_signal_at(bars, len(bars) - 1, anchor_idx)
+                if csig:
+                    kw = await _entry_shadow_fire_kwargs(
+                        ticker, csig, bars, mode="confirm", non_stock=non_stock,
+                        regime_label=regime_label, today=today)
+                    if await insert_consolidation_entry_shadow(ticker, anchor_date,
+                                                               origin=origin, **kw):
+                        entries_fired.append((ticker, origin, "confirm", csig))
+
+            await upsert_consolidation(
+                ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
+                runup_high=cons["runup_high"], coil_days=cons["coil_days"],
+                last_close=cons["last_close"], today_pct=cons["today_pct"],
+                rmv_5d=cons["rmv_5d"], rmv_15d=cons["rmv_15d"],
+                pullback_shape=cons["pullback_shape"], pullback_shapes=cons["pullback_shapes"],
+                fresh_tightening=cons["fresh_tightening"],
+                fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
+                tight_close_streak=cons["tight_close_streak"], dvol_med=dvol_med,
+                last_eval=today)
+            stats["written"] += 1
+            prior = state_map.get((ticker, anchor_date))
+            prior_state = prior["state"] if prior else None
+            if prior_state in (None, "post_runup") and cons["state"] == "coiled":
+                transitions.append((ticker, anchor_date, cons))
+        except Exception as e:
+            logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
+
+
 async def _run_entry_shadow_settlement(today):
     """FAMILY A — #327 forward-shadow SETTLEMENT step. Called INLINE by _consolidation_readiness_job
     (so the lifecycle is one job → one digest; operator 6/18 — not a separate scheduled job). For
@@ -3306,7 +3464,12 @@ async def _run_entry_shadow_settlement(today):
     DB-sourced ground truth (no module state): a coarse entry_date pre-filter bounds the bars-fetch;
     the pure de.settle_entry_shadow re-checks the EXACT forward-bar count and ABSTAINS if short
     (re-tried next run). Logs ripe-considered vs settled so a silent-0 is distinguishable from
-    'nothing ripe yet'."""
+    'nothing ripe yet'.
+
+    MODE-AGNOSTIC: anticipate AND confirm rows settle identically off the row's own recorded
+    stop_price (headline stop) + target_r — both are close-of-bar entries (#327 shadow-fix §3;
+    the re-wired Confirm control arm needs no settle branch). §5 write-back: bound_conflict +
+    realized_r_h12 thread through from settle_entry_shadow (NULL-safe for pre-fix rows)."""
     from datetime import timedelta
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.db import (
@@ -3330,7 +3493,8 @@ async def _run_entry_shadow_settlement(today):
                 continue  # not enough forward bars yet — abstain, retry next run
             if await settle_consolidation_entry_shadow(
                     r["id"], outcome=res["outcome"], realized_r=res["realized_r"],
-                    fwd_mfe_r=res["fwd_mfe_r"]):
+                    fwd_mfe_r=res["fwd_mfe_r"], bound_conflict=res.get("bound_conflict"),
+                    realized_r_h12=res.get("realized_r_h12")):
                 settled.append((r["ticker"], res))
         except Exception as e:
             logger.error(f"entry-shadow settle {r['ticker']}/{r['id']}: {e}", exc_info=True)

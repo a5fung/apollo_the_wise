@@ -12,6 +12,8 @@ Pins the settlement core the live _run_entry_shadow_settlement step calls:
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 import agents.market_intelligence.anticipation as de
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -102,6 +104,81 @@ def test_settle_open_still_abstains_when_window_incomplete():
     # only the residual halt-while-open, surfaced via the readout's open_overdue, is left open.
     bars, e = _series(fwd=[(102, 98)] * 6)
     assert de.settle_entry_shadow(bars, e, 95.0) is None
+
+
+# ── 2b. #327 shadow-fix §5 (operator-signed 2026-07-14) — measurement-bound alignment ─────────
+# The legacy bet credited the target FIRST on a bar spanning BOTH target and stop ('opt'), while
+# realized_r settles stop-first ('pess') — the same row read outcome='capture' AND realized_r<0
+# (diagnostic §4c). The headline outcome now settles 'pess' (aligned); bound_conflict marks the
+# rows where the legacy opt bound disagreed; realized_r_h12 reports the ladder at the bet's own
+# 12-bar horizon. entry_bet_outcome's DEFAULT stays 'opt' (the validated 6/18 metric, pinned by
+# the tests above + the offline-sweep delegation below).
+def test_bet_pess_bound_reads_spanning_bar_as_stop():
+    # ONE bar spans both: high 116 ≥ 115 target AND low 94 ≤ 95 stop.
+    bars, e = _series(fwd=[(116, 94)])
+    out_opt, mfe_opt = de.entry_bet_outcome(bars, e, 95.0)                  # default = legacy opt
+    out_pess, mfe_pess = de.entry_bet_outcome(bars, e, 95.0, bound="pess")
+    assert out_opt == "capture" and out_pess == "stop"
+    # fwd_mfe_r is bound-INVARIANT (same resolving bar, high accrued before the break):
+    assert abs(mfe_opt - mfe_pess) < 1e-12
+
+
+def test_bet_pess_bound_agrees_on_clean_bars():
+    for fwd, expected in ([[(116, 99)], "capture"], [[(101, 94)], "stop"],
+                          [[(102, 98)] * 12, "open"]):
+        bars, e = _series(fwd=fwd)
+        assert de.entry_bet_outcome(bars, e, 95.0, bound="pess")[0] == expected
+
+
+def test_settle_aligns_bound_and_flags_conflict():
+    # Spanning bar (116, 94) → legacy opt said 'capture'; the harvest (pess) stops out at 95 →
+    # realized_r = −1.0. The ALIGNED headline outcome must be 'stop' (no more capture-with-
+    # negative-realized on the same row), with bound_conflict marking the legacy disagreement.
+    bars, e = _series(fwd=[(116, 94)] + [(100, 99)] * 12)
+    res = de.settle_entry_shadow(bars, e, 95.0)
+    assert res is not None
+    assert res["outcome"] == "stop"
+    assert res["bound_conflict"] is True
+    assert res["realized_r"] == pytest.approx(-1.0)
+    assert res["realized_r_h12"] == pytest.approx(-1.0)
+    # the §5 contract itself:
+    assert not (res["outcome"] == "capture" and res["realized_r"] is not None
+                and res["realized_r"] < 0)
+
+
+def test_settle_clean_capture_has_no_conflict():
+    bars, e = _series(fwd=[(116, 99)] + [(102, 98)] * 13)
+    res = de.settle_entry_shadow(bars, e, 95.0)
+    assert res is not None and res["outcome"] == "capture"
+    assert res["bound_conflict"] is False
+    # bar 1 fills the +1R partial (h=116 ≥ 105, one partial per bar); +3R never re-touched;
+    # time-stop close = 100 (flat) → realized = 0.5×1 + 0.5×0 = +0.5 at BOTH horizons.
+    assert res["realized_r"] == pytest.approx(0.5)
+    assert res["realized_r_h12"] == pytest.approx(0.5)
+
+
+def test_settle_reports_both_horizons_on_late_capture():
+    # Capture on forward bar 8 — INSIDE the bet's 12-bar window but BEYOND the legacy 5-day
+    # harvest: realized_r (day-5 time-stop, flat closes) books 0.0 while realized_r_h12 (the same
+    # ladder at the bet's horizon) banks the +1R partial → the §4c horizon divergence is now
+    # RECORDED per row instead of silently conflated.
+    bars, e = _series(fwd=[(102, 98)] * 7 + [(116, 99)] + [(102, 98)] * 5)
+    res = de.settle_entry_shadow(bars, e, 95.0)
+    assert res is not None and res["outcome"] == "capture"
+    assert res["bound_conflict"] is False
+    assert res["realized_r"] == pytest.approx(0.0)       # 5-day harvest never saw the move
+    assert res["realized_r_h12"] == pytest.approx(0.5)   # 12-bar ladder banked the +1R partial
+
+
+def test_settle_early_stop_short_window_abstains_h12_but_settles():
+    # Early-definitive stop with <12 fwd bars: outcome settles (survivorship fix), realized_r_h12
+    # ABSTAINS (None — its 12-bar harvest window isn't present), mirroring realized_r's own
+    # abstain semantics on <5 bars.
+    bars, e = _series(fwd=[(101, 96), (101, 94), (100, 99), (100, 99)])
+    res = de.settle_entry_shadow(bars, e, 95.0)
+    assert res is not None and res["outcome"] == "stop"
+    assert res["bound_conflict"] is False
+    assert res["realized_r_h12"] is None
 
 
 # ── 3. the offline sweep DELEGATES to the single source (anti-re-inline pin) ───

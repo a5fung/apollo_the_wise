@@ -3032,13 +3032,20 @@ class MarketIntelligenceAgent(BaseAgent):
         out.append("")
 
         if fired:
-            # ANTICIPATE ONLY (operator 6/29: Confirm un-wired). Filter to anticipate so prior tagged
-            # Confirm rows (from before the un-wire) don't surface — the shadow is one clean entry now.
+            # BOTH modes surface, SEPARATELY tagged (#327 shadow-fix §3, operator-signed 7/14:
+            # the Confirm control arm is RE-WIRED — reverses the 6/29 anticipate-only un-wire;
+            # ADR 0013 §1 "modes never blended" still holds: two sections, never one pool).
             antic = [r for r in fired if r.get("entry_mode") == "anticipate"]
+            confs = [r for r in fired if r.get("entry_mode") == "confirm"]
             if antic:
                 out.append(f"🎯 *Entry fired* ({len(antic)}) — Anticipate, in-coil")
                 out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
                                                r.get("origin")) for r in antic]
+                out.append("")
+            if confs:
+                out.append(f"✅ *Entry fired* ({len(confs)}) — Confirm, base-high breakout (control arm)")
+                out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
+                                               r.get("origin")) for r in confs]
                 out.append("")
 
         # a name with an open entry-shadow has GRADUATED past the watch lists — show it once, in its

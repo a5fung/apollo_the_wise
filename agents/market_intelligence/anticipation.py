@@ -998,6 +998,63 @@ def confirm_signal_at(bars, idx, anchor_idx, *, vol_min=ENTRY_CONFIRM_VOL_MIN):
     }
 
 
+# ── #327 shadow-fix §1/§2 — QUALITY-GATE + STOP-GEOMETRY telemetry (operator-signed 2026-07-14,
+#    docs/analysis/327_shadow_fix_proposal_2026-07-14.md) ─────────────────────────────────────
+# The diagnostic (327_anticipate_diagnostic_2026-07-14.md §2/§5): the mechanization mechanized the
+# coil's TIMING but not the trader's SELECTION STACK (ETFs, sub-50SMA bear-bounces, RS 1–7 names)
+# or RISK GEOMETRY (no-floor bar-low stops, min 0.06% — gap slippage in tiny-R units was 64% of the
+# loss). These helpers COMPUTE the would-pass readings; the recorder FLAGS every fire and keeps
+# writing BOTH cohorts (A/B forward — never filters the shadow write). The ETF magnitude in the
+# diagnostic was UNVERIFIED (its SQQQ example was wrong) — hence record-don't-gate. RS floor 65 =
+# the middle of the signed ~60–70 band ("calibrate on the labeling pass"); rs_at_entry is recorded
+# raw so any floor can be re-cut offline. All floors are FLAG parameters, not detection criteria —
+# the #327 entry gates (is_entry_tight / entry_signal_at / confirm_signal_at) are UNCHANGED.
+QUALITY_RS_FLOOR = 65.0            # rs_composite ≥ this (winners' median 72 vs losers' 53)
+QUALITY_ADV_DOLLAR_MIN = 5_000_000.0   # 20-bar mean dollar volume ≥ $5M (untradeable-print floor)
+STOP_FLOOR_MIN_PCT = 1.0           # coiled_low risk < this % of entry → sub1pct_reject flag
+                                   # (min observed 0.06% — noise stops that poison R math)
+
+
+def stop_pct_of_entry(entry, stop):
+    """Stop distance as a PERCENT of entry (e.g. 1.95 = 1.95%), or None when not computable.
+    The single shared %-geometry read for stop_pct + the sub-1% floor flag."""
+    if not entry or stop is None:
+        return None
+    return round((entry - stop) / entry * 100.0, 4)
+
+
+def quality_readings(bars, idx, *, sma_n=50, adv_n=20):
+    """Point-in-time quality-gate readings at bar `idx` (reads bars[:idx+1] only — same
+    backward-only discipline as is_entry_tight): {'above_50sma', 'adv20_dollar', 'sma_50'}.
+    above_50sma = close > plain SMA(close, 50) (sub-50SMA "coils" read as bear-bounces —
+    diagnostic §2a: −1.70 R/row below vs −0.42 above). adv20_dollar = mean(close×volume) over the
+    trailing 20 bars (the diagnostic's ADV20 dollar liquidity read). Insufficient history → None
+    for that reading (recorded as unknown, never guessed)."""
+    above = sma50 = None
+    if idx + 1 >= sma_n:
+        closes = [b["c"] for b in bars[idx - sma_n + 1: idx + 1]]
+        sma50 = sum(closes) / sma_n
+        above = bool(bars[idx]["c"] > sma50)
+    advd = None
+    if idx + 1 >= adv_n:
+        advd = sum(b["c"] * b["v"] for b in bars[idx - adv_n + 1: idx + 1]) / adv_n
+        advd = round(advd, 2)
+    return {"above_50sma": above, "adv20_dollar": advd,
+            "sma_50": round(sma50, 4) if sma50 is not None else None}
+
+
+def would_pass_quality_flag(*, is_common_stock, above_50sma, rs_composite, adv20_dollar,
+                            rs_floor=QUALITY_RS_FLOOR, adv_min=QUALITY_ADV_DOLLAR_MIN) -> bool:
+    """The §1 composite: stocks-only AND above the 50-SMA AND RS ≥ floor AND dollar-ADV ≥ min.
+    A MISSING reading (None) fails the flag — the flag asserts "this fire would have passed the
+    discretionary selection stack", which an unknown cannot demonstrate (components are recorded
+    alongside, so unknowns are distinguishable from true fails offline). FLAG ONLY — the recorder
+    writes pass and fail rows alike (A/B)."""
+    return bool(is_common_stock and above_50sma
+                and rs_composite is not None and rs_composite >= rs_floor
+                and adv20_dollar is not None and adv20_dollar >= adv_min)
+
+
 # ── #327 forward-shadow SETTLEMENT (operator "build the machinery now", 6/18) ──
 # The validation's PRIMARY metric was the asymmetric bet (capture% + UNCAPPED MFE/risk under a
 # FIXED stop) — the clean entry-quality signal (the harvest buries good entries, #270-Step-0). The
@@ -1008,13 +1065,22 @@ ENTRY_SETTLE_WINDOW = 12   # forward trading bars to observe the asymmetric bet 
 
 
 def entry_bet_outcome(bars, entry_idx, stop, *, target_r=ENTRY_TARGET_R, window=ENTRY_SETTLE_WINDOW,
-                      entry_price=None, include_entry_bar=False):
+                      entry_price=None, include_entry_bar=False, bound="opt"):
     """The validated asymmetric bet from a close-of-coil entry under a FIXED `stop`, over `window`
     forward bars: returns (outcome, fwd_mfe_r) where outcome ∈ capture (MFE hits +target_r×risk
     first) / stop (stop hit first) / open (neither by window end); fwd_mfe_r = UNCAPPED favorable
     excursion / risk (the entry-quality measure). None if risk ≤ 0. The SINGLE source — the offline
-    sweep (scripts/_327_entry_signal.bet_outcome) delegates here, pinned by the settle test. A
-    same-bar target is credited capture (the rare h≥tgt & l≤stop tie is second-order for this read).
+    sweep (scripts/_327_entry_signal.bet_outcome) delegates here, pinned by the settle test.
+
+    `bound` (#327 shadow-fix §5, operator-signed 2026-07-14): the intrabar ORDER assumed when ONE
+    bar spans BOTH the target and the stop (with +3R targets ≈ +3–6% and ~1–2% stops one ordinary
+    daily bar often spans both — the diagnostic's capture-vs-realized conflict, §4c):
+      'opt'  (default — EXACT legacy behavior, the validated 6/18 metric): target credited FIRST →
+             the spanning bar reads 'capture'.
+      'pess' stop checked FIRST → the spanning bar reads 'stop' — the SAME intrabar bound
+             simulate()/settle_row use for realized_r, so the two metrics agree on ambiguous bars.
+    The resolving BAR is identical under both bounds (the first bar touching either level), so
+    fwd_mfe_r — which accrues the resolving bar's high before the break — is bound-invariant.
 
     `entry_price` / `include_entry_bar` (F11, #356 dedup — flag_detector._htf_settle_from_bars'
     two named deltas) generalize the close-of-coil default to an intraday-fill entry: `entry_price`
@@ -1022,8 +1088,8 @@ def entry_bet_outcome(bars, entry_idx, stop, *, target_r=ENTRY_TARGET_R, window=
     than the bar's close (e.g. a stop-limit-buy fill at base_high); `include_entry_bar` starts the
     forward scan AT entry_idx instead of entry_idx+1 — for a fill that happens intraday, where the
     entry bar's own remaining range is still live (vs. the default close-of-bar entry, where the
-    entry bar is already fully priced in and the scan starts the NEXT bar). Both default to the
-    ORIGINAL close-entry / next-bar-only semantics — EXACT prior behavior when omitted."""
+    entry bar is already fully priced in and the scan starts the NEXT bar). All extras default to
+    the ORIGINAL close-entry / next-bar-only / opt-bound semantics — EXACT prior behavior."""
     entry = float(entry_price) if entry_price is not None else bars[entry_idx]["c"]
     if stop is None or stop >= entry:
         return None
@@ -1034,42 +1100,80 @@ def entry_bet_outcome(bars, entry_idx, stop, *, target_r=ENTRY_TARGET_R, window=
     for i in range(start, min(entry_idx + 1 + window, len(bars))):
         b = bars[i]
         mfe = max(mfe, b["h"])
-        if b["h"] >= tgt:
-            out = "capture"
-            break
-        if b["l"] <= stop:
+        hit_tgt = b["h"] >= tgt
+        hit_stop = b["l"] <= stop
+        if hit_stop and (bound == "pess" or not hit_tgt):
             out = "stop"
             break
+        if hit_tgt:
+            out = "capture"
+            break
     return out, (mfe - entry) / risk
+
+
+# #327 shadow-fix §5 (operator-signed 2026-07-14): the SAME +1R/+3R ladder, time-stopped at the
+# BET's 12-bar horizon instead of day 5 — so each settled row also carries a bankable R measured
+# over the SAME window the capture/stop outcome was observed on ("report both horizons",
+# diagnostic §4c: the 12-bar bet window vs the 5-day harvest silently diverged).
+SETTLE_RULE_H12 = dict(partials=[(1.0, 0.5), (3.0, 0.5)], time_stop_days=ENTRY_SETTLE_WINDOW)
 
 
 def settle_entry_shadow(bars, entry_idx, stop_price, *, target_r=ENTRY_TARGET_R,
                         window=ENTRY_SETTLE_WINDOW, rule=None):
     """Settle one #327 entry-shadow row from its daily bars, or None to ABSTAIN (still provisional).
-    Returns {outcome, fwd_mfe_r, realized_r}:
-      outcome / fwd_mfe_r ← entry_bet_outcome (the validated bet under coiled_low, the 12-bar horizon)
+    Returns {outcome, fwd_mfe_r, realized_r, bound_conflict, realized_r_h12}:
+      outcome / fwd_mfe_r ← entry_bet_outcome (the bet under the row's headline stop, 12-bar horizon)
       realized_r          ← settle_row's anticipation harvest under SETTLE_RULE (the bankable R; a
                             close entry → settled faithfully on the daily path). REUSES the tested
                             settlement core, not a 2nd copy.
+
+    MEASUREMENT-BOUND ALIGNMENT (#327 shadow-fix §5, operator-signed 2026-07-14 — the exact fix):
+    the legacy bet credited the target FIRST on a bar spanning both target and stop ('opt'), while
+    realized_r settles stop-first ('pess') — so the same row read outcome='capture' AND a negative
+    realized_r (diagnostic §4c: 14 captures, mean +6.4R MFE, mean −0.76R realized). The headline
+    `outcome` now settles under the SAME 'pess' intrabar bound as realized_r (a spanning bar reads
+    'stop'), so a 'capture' can no longer be minted on a bar the harvest treats as a stop-out.
+      • bound_conflict = the two bounds DISAGREED on this row (opt said capture, pess says stop —
+        the only possible disagreement, so the legacy-opt reading stays fully reconstructable:
+        legacy outcome == 'capture' iff outcome=='capture' or bound_conflict). Pre-fix settled rows
+        (bound_conflict NULL) keep their opt-bound outcome — compare cohorts via this marker.
+      • fwd_mfe_r is bound-invariant (same resolving bar; see entry_bet_outcome) — the validated
+        entry-quality metric is UNCHANGED.
+      • realized_r_h12 = the same +1R/+3R ladder time-stopped at the bet's 12-bar horizon
+        (SETTLE_RULE_H12) so capture and bankable-R also compare at ONE horizon ("report both
+        horizons"); the legacy 5-day realized_r keeps accruing unchanged for continuity.
 
     Settles as soon as the outcome is DEFINITIVE — a capture or stop is FINAL regardless of the
     remaining window; only 'open' stays provisional until the full `window` elapses. This rescues a
     name that stops/captures then HALTS/gets acquired (the bare 12-bar gate would orphan it →
     outcome NULL forever → a survivorship hole in capture%; the residual halt-while-GENUINELY-open
     is surfaced via the readout's open_overdue count, never silently dropped — advisor 6/18).
-    realized_r ABSTAINS (None) when the harvest's own min bars aren't present yet (a halt within <5
-    bars); the outcome still settles — closing the survivorship hole is what matters."""
-    bet = entry_bet_outcome(bars, entry_idx, stop_price, target_r=target_r, window=window)
-    if bet is None:
+    realized_r / realized_r_h12 ABSTAIN (None) when the harvest's own min bars aren't present yet
+    (a halt within <5 / <12 bars); the outcome still settles — closing the survivorship hole is
+    what matters."""
+    bet_pess = entry_bet_outcome(bars, entry_idx, stop_price, target_r=target_r, window=window,
+                                 bound="pess")
+    if bet_pess is None:
         return None
-    outcome, fwd_mfe_r = bet
+    outcome, fwd_mfe_r = bet_pess
+    # Both bounds resolve on the SAME bar, so 'open'/abstain parity holds; only capture-vs-stop on
+    # a spanning bar can differ — recompute under the legacy opt bound purely to flag the conflict.
+    opt_outcome, _ = entry_bet_outcome(bars, entry_idx, stop_price, target_r=target_r,
+                                       window=window, bound="opt")
+    bound_conflict = opt_outcome != outcome
     if outcome == "open" and (len(bars) - 1 - entry_idx) < window:
         return None   # neither target nor stop yet + window incomplete → provisional, abstain
     st = settle_row(entry_tactic="anticipation", entry_price=bars[entry_idx]["c"],
                     stop_price=stop_price, bars=bars, entry_idx=entry_idx, rule=rule or SETTLE_RULE)
     realized_r = st["realized_r"] if st else None
+    st12 = settle_row(entry_tactic="anticipation", entry_price=bars[entry_idx]["c"],
+                      stop_price=stop_price, bars=bars, entry_idx=entry_idx,
+                      rule=SETTLE_RULE_H12, min_forward_bars=ENTRY_SETTLE_WINDOW)
+    realized_r_h12 = st12["realized_r"] if st12 else None
     return {"outcome": outcome, "fwd_mfe_r": round(fwd_mfe_r, 4),
-            "realized_r": round(realized_r, 4) if realized_r is not None else None}
+            "realized_r": round(realized_r, 4) if realized_r is not None else None,
+            "bound_conflict": bound_conflict,
+            "realized_r_h12": round(realized_r_h12, 4) if realized_r_h12 is not None else None}
 
 
 # ── Plain-words Family-A row formatters (operator 6/18 — glanceable, no acronym soup). The SINGLE
