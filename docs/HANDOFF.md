@@ -32,32 +32,40 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-13 ~00:30 PDT — the rulings-pack night)
+## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-13 evening PDT — the M1-d reframe + coverage-loop day)
 
-**The 7/12→13 marathon:** growth gate shipped (check_plan hard-caps session task growth) · #178/#412/#385
-closed verified (board 118→**113**, all real) · TWO Fable red-teams (composition + v1-readiness; every
-finding code-verified; 1 of 6 REDs was over-rated — verify premium-model output) · readiness fixes
-DEPLOYED (soak fail-opens closed · drawdown fail-open now alerts · FL-4 meter gated on promotion) ·
-0025 C1-C3 built DARK · **the 6-fork rulings pack approved wholesale + EXECUTED**
-(`docs/analysis/monday_rulings_pack_2026-07-13.md` — the what-and-why of every ruling).
+**Today (a marathon, 25 commits, all pushed):** M1-d composite-authority wire-in built DARK + Opus-verified
+vs the diff + deployed (T2c drift-band now ACCRUING — first samples 16:15 ET 7/13) · M1-b regrade ran ($5) ·
+the EP↔theme coverage-loop investigation → **S1-S3 shadow instrumentation built + deployed DARK (#467)** ·
+/simplify pass on it (silent-failure `_error` rename + SQL dedup + reuse; 1 false-positive reverted) · all
+4 overdue data-gated reviews ran + dispositioned + deployed · 2 API-failure alerts triaged (both non-issues —
+Perplexity self-recovered, FMP 402 was my own probe). Board **112** (≤113 baseline, 0 overdue).
 
-**Live state (Monday verifies):**
-- Soak FL-1 = STRICT clock, start **7/8** (the constant IS the ruling); reads 4/10; completes EOD 7/21.
-- Ingest = **dry_run since 7/13 00:00 PT** (LEG-B day 1 = Mon); live_r1 sign ~7/17 → FL-4 green ≈ 7/24 → declare.
-- RED-3 sizing clamp deployed BOTH money containers (multiplier up-never-past-baseline; ≤1.0 identical).
-- 0025 merge arm DARK + **corpus-cleared 14/14** (prompt v2 slice→MERGE) — THEME_MERGE_ARM flip = operator's call.
-- Giveback 8/06 flip ruled: **close-below DECISION-LINE** (SMA-trail surface, NOT a resting stop); build at flip.
-- Monday market-gated verify-lives: pivot 17:42 job · exposure hook · T2c samples · #445 shadows ·
-  #443/#463/#405/#183 event-gated · RED-3 watchdog (16:12 no-show) first exercise.
+**⚠ THE M1-d REFRAME (most important for the 7/18 sitting):** the theme boost is RARE on MODERATE
+(~few/quarter), UN-EVIDENCEABLE from history (MODERATE was never instrumented until S1 today), and largely
+REDUNDANT (hot-theme EP names already grade HIGH, ~16:1). So **7/18 M1-d = a KEEP/SHELVE call, NOT a
+mechanical flip** — wire-in stays dark; the coverage-loop (#467) is the bigger theme-axis lever. Evidence:
+docs/analysis/{m1b_regrade,m1_htf_readiness,ep_theme_coverage_loop_design,theme_membership_investigation}_2026-07-13.md.
+
+**Coverage-loop verify-lives (#1 forward item, #467 in_progress):** deployed DARK; coverage_probe job
+registered + ran clean 17:55 ET (0 rows — today was a 0-alert market). On the NEXT ACTIVE MARKET DAY verify
+(a) coverage_probe writes mi_coverage_probe rows, (b) S1 writes MODERATE rows to mi_theme_axis_shadow → then
+#467 completes. Safety: source='coverage_probe' is carved OUT of auto-promote (2 walls, pinned).
+
+**Review dispositions (data_gated_reviews.yaml, deployed):**
+- #1 conviction_floor: NO-GO (16% label < 35% bar) → operator confirm close.
+- #2 stop_too_wide: CORRECTED read via canonical mi_ep_missed_outcomes → ~break-even, N=5<10, leans keep-as-is;
+  7 rejections unpopulated (missed-outcomes lag — WATCH). Re-date 8/8; realized-R decision = operator's.
+- #3 yoy-missing (7/27): 149→94 real cohort; recoverability PROVEN (yfinance has it). NEXT = build+test a
+  yfinance q-rev+prior-year fallback in the catalyst extractor — a GRADE-INPUT change → operator-aware + backtest.
+- #4 catalyst_discovery: gate MET → big-rock C2/C3 build (ADR 0006), own session, 8/15.
 
 **Open threads (all in PLAN.md):**
-1. **#416 guards build (due 7/16, in_progress)** — ⚠ FIRST prove guard-B on FRMI's reconstructed inputs
-   (its audit row is truncated-at-write; live guards run PRE-write so unaffected, but don't ship unproven).
-   Eyeball the 2 new sim finds (WEN 5/12 · IMVT 5/20).
-2. **#460 (operator): /model default is currently FABLE** (saved 7/12 eve) — flip back to Opus.
-3. **Possible UNPUSHED commits** — a local network outage (SSH+GitHub DNS) hit ~00:10 PT during CLOSE;
-   at OPEN run `git log origin/main..HEAD` and push. All prod deploys completed + verified BEFORE the outage.
-4. Sitting docket: CLEAR (the pack ruled everything). Next: M1 authority flip 7/18 (pack ready) · #448 7/16.
+1. Coverage-loop verify-lives — next active market day (#467).
+2. M1-d keep/shelve at the 7/18 sitting (reframed above); #335 note updated.
+3. #3 yfinance fallback (7/27, grade-input → operator-aware + backtest).
+4. WATCH: mi_ep_missed_outcomes population lag (#2); FMP per-symbol 402 (CHTR/SMPL — minor, feeds #3).
+   NOTE: probing prod API helpers (`_fmp_get`) fires operator alerts — use raw calls or flag first.
 
 ## 4. Critical operating rules the laptop won't have in memory (backstop — most are also in CLAUDE.md)
 
