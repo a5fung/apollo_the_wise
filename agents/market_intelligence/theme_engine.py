@@ -4908,6 +4908,18 @@ async def run_theme_engine(
     if all_themes:
         await _save_themes(all_themes)
 
+        # ADR 0032 Phase 1 — theme→ecosystem mapping (read-model only; no
+        # lifecycle effect). Assign any theme in today's snapshot that has no
+        # mi_theme_ecosystems row yet: new births get mapped at birth, renamed
+        # themes self-heal next run, and a partial backfill converges. Wrapped:
+        # an assignment failure must never break the engine run (loud, not silent).
+        try:
+            from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
+            await ensure_theme_ecosystems(
+                [t for t in all_themes if t.get("stage") != "Retired"])
+        except Exception as e:
+            logger.warning(f"[theme ecosystems] assignment pass failed (non-fatal): {e}")
+
     # Post-save: detect constituent churn (P13). Flag (theme, ticker) pairs
     # that have re-entered the theme 2+ times in the last 10 days — symptom
     # of validation-induced flip-flop or assignment indecision.

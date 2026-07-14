@@ -56,6 +56,9 @@ ANTICIPATION_COIL_BUYOUT_PIN_REJECTED = "anticipation_coil_buyout_pin_rejected" 
 CONSOLIDATION_READINESS_SCAN_TIMEOUT = "consolidation_readiness_scan_timeout"  # scan budget hit; failed open, settlement still ran
 ANTICIPATION_MNA_CHECK_CAPPED = "anticipation_mna_check_capped"  # per-run M&A-check cap hit; remaining candidates passed UNchecked (fail-open)
 
+# ── Theme ecosystems (ADR 0032 Phase 1) ─────────────────────────────────────
+THEME_ECOSYSTEM_ASSIGNED = "theme_ecosystem_assigned"  # method=haiku|keyword|unassigned in summary
+
 # ── Sugar Baby / convergence ────────────────────────────────────────────────
 SUGAR_BABY_CONVERGENCE_ALERT = "sugar_baby_convergence_alert"
 SUGAR_BABY_CONVERGENCE_CHECK_FAILED = "sugar_baby_convergence_check_failed"

@@ -49,6 +49,12 @@ THEME_MODEL = SONNET
 THEME_ADVISOR_MODEL = OPUS
 # Ticker-description generation (theme engine chunked + nightly backfill)
 DESCRIPTION_MODEL = HAIKU
+# Theme → ecosystem bucket pick (ADR 0032 Phase 1, theme_ecosystems.py).
+# Cheap structured single-code classification against a FIXED 20-bucket
+# taxonomy with a scratchpad-first forced tool — Haiku tier; a deterministic
+# keyword/exemplar fallback backstops abstains/errors, so a misfire degrades
+# to E-UNASSIGNED (read-model only, no money path).
+ECOSYSTEM_ASSIGN_MODEL = HAIKU
 # Cross-ticker emerging-theme synthesis (theme_synthesis.py — #240 advisory
 # feed; Sonnet: the same cross-sector narrative reasoning tier as THEME_MODEL)
 SYNTHESIS_MODEL = SONNET

@@ -1252,6 +1252,20 @@ async def initialize_schema() -> None:
                 ON mi_theme_merge_cooldowns(cooldown_until);
         """)
 
+        # ── Theme → ecosystem mapping (ADR 0032 Phase 1, read-model only) ─
+        # One row per theme NAME (themes are keyed by name across snapshots).
+        # e_code references the curated taxonomy in theme_ecosystems.yaml
+        # (repo-root SSoT — deliberately NOT a DB table, so operator edits
+        # need no migration). method: 'haiku' | 'keyword' | 'unassigned'.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_ecosystems (
+                theme_name  TEXT PRIMARY KEY,
+                e_code      TEXT NOT NULL,
+                method      TEXT,
+                assigned_at TIMESTAMPTZ DEFAULT now()
+            );
+        """)
+
         # ── HUD state — pinned message IDs for auto-refresh ──────────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_hud_state (
@@ -9042,6 +9056,43 @@ async def get_merge_distinct_pairs() -> set[tuple[str, str]]:
             WHERE cooldown_until > NOW()
         """)
     return {(r["theme_a"], r["theme_b"]) for r in rows}
+
+
+# ── Theme → ecosystem mapping (ADR 0032 Phase 1) ─────────────────────────────
+
+async def get_theme_ecosystem(theme_name: str) -> str | None:
+    """The e_code a theme is mapped to, or None if unmapped."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT e_code FROM mi_theme_ecosystems WHERE theme_name = $1",
+            theme_name,
+        )
+
+
+async def get_all_theme_ecosystems() -> dict[str, str]:
+    """Full theme_name → e_code mapping (the /themes v2 render input)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT theme_name, e_code FROM mi_theme_ecosystems")
+    return {r["theme_name"]: r["e_code"] for r in rows}
+
+
+async def upsert_theme_ecosystem(
+    theme_name: str, e_code: str, method: str | None = None
+) -> None:
+    """Insert/update one theme's ecosystem mapping (assignment + backfill path)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_theme_ecosystems (theme_name, e_code, method, assigned_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (theme_name) DO UPDATE SET
+                e_code = EXCLUDED.e_code,
+                method = EXCLUDED.method,
+                assigned_at = NOW()
+        """, theme_name, e_code, method)
 
 
 async def get_globally_banned_tickers(

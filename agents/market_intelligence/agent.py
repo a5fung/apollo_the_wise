@@ -4384,7 +4384,10 @@ class MarketIntelligenceAgent(BaseAgent):
         through the normal orchestrator→Telegram channel. Orchestrator timeout is 360s.
         Returns a stage-grouped scorecard in the same format as the evening brief.
         """
-        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI, _conviction_suffix
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        from agents.market_intelligence.theme_ecosystems import (
+            format_ecosystem_board, load_ecosystem_assignments,
+        )
 
         task_lower = request.task.lower()
         wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
@@ -4407,12 +4410,6 @@ class MarketIntelligenceAgent(BaseAgent):
 
             scored_themes, fading = _compute_scored_themes(themes, theme_rs_data, prior_scores or {})
 
-            # Group by stage
-            stage_order = ["Accelerating", "Nascent", "Mainstream"]
-            stage_groups: dict[str, list] = {s: [] for s in stage_order}
-            for st in scored_themes:
-                stage_groups.setdefault(st.get("stage", "Nascent"), []).append(st)
-
             lines = [f"*THEME ENGINE — {len(scored_themes)} active*"]
 
             # Changelog notes (removals/pruning)
@@ -4424,34 +4421,11 @@ class MarketIntelligenceAgent(BaseAgent):
             if pruned:
                 lines.append(f"_Pruned {len(pruned)} weak stock(s)_")
 
-            for stage in stage_order:
-                group = stage_groups.get(stage, [])
-                if not group:
-                    continue
-                emoji = STAGE_EMOJI.get(stage, "")
-                lines.append(f"\n{emoji} *{stage.upper()}* ({len(group)})")
-                for st in group:
-                    theme_emoji = STAGE_EMOJI.get(st["stage"], " ")
-                    delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
-                    conviction = _conviction_suffix(st)
-                    lines.append(f"\n{theme_emoji}*{st['name']}*{conviction}")
-                    lines.append(
-                        f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}"
-                    )
-                    ticker_rs = [
-                        (tk, theme_rs_data[tk]["rs_composite"])
-                        for tk in st["tickers"]
-                        if theme_rs_data.get(tk, {}).get("rs_composite") is not None
-                        and theme_rs_data[tk]["rs_composite"] >= 50
-                    ]
-                    ticker_rs.sort(key=lambda x: -x[1])
-                    top = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs[:5])
-                    if top:
-                        lines.append(f"  {top}")
-
-            if fading:
-                fading_names = " · ".join(t.get("name", "?") for t in fading[:5])
-                lines.append(f"\n🔻 _Fading: {fading_names}_")
+            # ADR 0032 Phase 1 — same hierarchical board as /themes (one shared
+            # renderer; the two surfaces disagreeing on ordering was itself a
+            # litmus finding). Flat comp-ranked fallback when no mapping exists.
+            eco_map = await load_ecosystem_assignments()
+            lines += format_ecosystem_board(scored_themes, fading, theme_rs_data, eco_map)
 
             if wants_brief:
                 asyncio.create_task(send_evening_briefing())
@@ -4850,7 +4824,10 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="Briefing sent.")
 
     async def _handle_theme_query(self, request: AgentRequest) -> AgentResponse:
-        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI, _conviction_suffix
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        from agents.market_intelligence.theme_ecosystems import (
+            format_ecosystem_board, load_ecosystem_assignments,
+        )
 
         today_str = et_today().strftime("%Y-%m-%d")
         themes = await get_today_themes(today_str)
@@ -4880,41 +4857,16 @@ class MarketIntelligenceAgent(BaseAgent):
         if regime:
             regime_str = f" — Regime: {regime.get('regime', '?')} | VIX {regime.get('vix', '?')}"
 
-        stage_order = ["Accelerating", "Nascent", "Mainstream"]
-        stage_groups: dict[str, list] = {s: [] for s in stage_order}
-        for st in scored_themes:
-            stage_groups.setdefault(st.get("stage", "Nascent"), []).append(st)
-
+        # ADR 0032 Phase 1 — hierarchical ecosystem board: ecosystems ranked
+        # by boosted D3 score, sub-themes nested with global rank, Fading
+        # struck-through inside its ecosystem, stage as a per-line tag. This
+        # replaces the stage-grouped render whose ["Accelerating","Nascent",
+        # "Mainstream"] order buried the strongest MATURE themes below the
+        # Nascent 2-member noise (verified litmus FAIL, ADR 0032 §Context).
+        # Empty mapping (pre-backfill / DB hiccup) → flat comp-ranked list.
+        eco_map = await load_ecosystem_assignments()
         lines = [f"*{len(scored_themes)} Active Themes — {data_date}{regime_str}*"]
-
-        for stage in stage_order:
-            group = stage_groups.get(stage, [])
-            if not group:
-                continue
-            emoji = STAGE_EMOJI.get(stage, "")
-            lines.append(f"\n{emoji} *{stage.upper()}* ({len(group)})")
-            for st in group:
-                theme_emoji = STAGE_EMOJI.get(st["stage"], " ")
-                delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
-                conviction = _conviction_suffix(st)
-                lines.append(f"\n{theme_emoji}*{st['name']}*{conviction}")
-                lines.append(
-                    f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}"
-                )
-                ticker_rs = [
-                    (tk, theme_rs_data[tk]["rs_composite"])
-                    for tk in st["tickers"]
-                    if theme_rs_data.get(tk, {}).get("rs_composite") is not None
-                    and theme_rs_data[tk]["rs_composite"] >= 50
-                ]
-                ticker_rs.sort(key=lambda x: -x[1])
-                top = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs[:5])
-                if top:
-                    lines.append(f"  {top}")
-
-        if fading:
-            fading_names = " · ".join(t.get("name", "?") for t in fading[:5])
-            lines.append(f"\n🔻 _Fading: {fading_names}_")
+        lines += format_ecosystem_board(scored_themes, fading, theme_rs_data, eco_map)
 
         # #167 nascent narrative themes (shadow/advisory) — cross-sector / govt-policy
         # themes the RS+correlation engine structurally misses, grouped from
