@@ -16,8 +16,11 @@ import logging
 import re
 import os
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
+
+_ET = ZoneInfo("America/New_York")
 
 import httpx
 
@@ -1593,14 +1596,97 @@ async def _get_economic_calendar() -> str | None:
         return None
 
 
-async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
+# ── Fix-2b (2026-07-14) — already-printed scheduled-release signal ────────────
+# 2026-07 miss: CPI printed 8:30 AM ET and moved the market, but a Perplexity
+# timeout blanked the overnight summary → the brief said "no clear catalyst"
+# WHILE its own CALENDAR section showed "8:30 AM ET — CPI". The calendar is
+# already-fetched data; this derives a deterministic "this release ALREADY
+# printed today" driver signal from it, independent of Perplexity health. It is
+# (a) threaded into the overnight-news prompt as context and (b) appended to
+# the OVERNIGHT section as a determined-from-data line even when Perplexity
+# fully degrades. Happy path with no printed high-impact release: no-op.
+
+# "8:30 AM ET" — the exact shape _get_economic_calendar prompts Perplexity for.
+_CAL_TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})\s*(AM|PM)\s*ET\b", re.IGNORECASE)
+
+# High-impact scheduled US releases/events that plausibly move the whole tape.
+# Deliberately curated — a minor weekly print shouldn't add a driver line.
+_HIGH_IMPACT_RELEASE_RE = re.compile(
+    r"\b(cpi|ppi|pce|fomc|gdp|nonfarm|non-farm|payrolls?|jobs report"
+    r"|unemployment rate|jobless claims|retail sales|ism|jolts"
+    r"|consumer (?:price|confidence|sentiment)|producer price|michigan"
+    r"|rate decision|fed (?:funds|chair|minutes|rate)|powell)\b",
+    re.IGNORECASE,
+)
+
+
+def _already_printed_releases(
+    econ_calendar: str | None, now_et: datetime | None = None,
+) -> list[str]:
+    """From the brief's economic-calendar text, return the HIGH-IMPACT lines
+    whose ET release time is already in the past (i.e. the data has PRINTED
+    before the brief went out). Lines without a parseable '<H>:<MM> AM/PM ET'
+    time or without a high-impact keyword are skipped (conservative). Capped
+    at 3 lines to keep the brief tight."""
+    if not econ_calendar:
+        return []
+    now_et = now_et or datetime.now(_ET)
+    printed: list[str] = []
+    for raw in econ_calendar.split("\n"):
+        line = raw.lstrip("•").strip()
+        if not line:
+            continue
+        m = _CAL_TIME_RE.search(line)
+        if not m or not _HIGH_IMPACT_RELEASE_RE.search(line):
+            continue
+        hour, minute, ampm = int(m.group(1)), int(m.group(2)), m.group(3).upper()
+        if not (1 <= hour <= 12 and 0 <= minute <= 59):
+            continue
+        hour24 = (hour % 12) + (12 if ampm == "PM" else 0)
+        release_dt = now_et.replace(hour=hour24, minute=minute, second=0, microsecond=0)
+        if release_dt <= now_et:
+            printed.append(line)
+        if len(printed) >= 3:
+            break
+    return printed
+
+
+def _append_printed_release_line(
+    overnight_section: str | None, printed_releases: list[str],
+) -> str | None:
+    """Append the determined-from-data 'already printed' driver line to the
+    OVERNIGHT section — creating the section when Perplexity degradation left
+    it empty. No printed releases → section returned unchanged (happy path)."""
+    if not printed_releases:
+        return overnight_section
+    release_line = ("  📊 _Data printed: " + "; ".join(printed_releases)
+                    + " — likely market driver._")
+    if overnight_section:
+        return overnight_section + "\n" + release_line
+    return "*OVERNIGHT*\n" + release_line
+
+
+async def _get_overnight_news(
+    snapshot: list[dict] | None = None,
+    printed_releases: list[str] | None = None,
+) -> str | None:
     """
     Query Perplexity for overnight market news.
     If snapshot has triggered movers, asks about specific moves.
     Otherwise asks for general pre-market headlines.
+    printed_releases (Fix-2b): scheduled releases that already printed today —
+    threaded into the query so the LLM weighs them as candidate drivers.
     Returns concise news string or None.
     """
     triggered = [i for i in (snapshot or []) if i.get("triggered")]
+
+    release_note = ""
+    if printed_releases:
+        release_note = (
+            " Note: the following scheduled US economic releases have ALREADY "
+            "printed today, before this brief: " + "; ".join(printed_releases)
+            + ". Weigh them as candidate drivers of the market move."
+        )
 
     if triggered:
         # Build a contextual query based on what moved
@@ -1615,6 +1701,7 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
             f"state whether it looks like a technical bounce / reversion from the prior "
             f"session, plus the single most relevant macro or geopolitical headline if one "
             f"exists. Be concise — do not list everything that did not happen."
+            f"{release_note}"
         )
     else:
         today = _et_today()
@@ -1623,6 +1710,7 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
             f"What are the top US stock market headlines for {day_str}? "
             f"Focus on overnight developments, earnings, macro events, geopolitical news "
             f"that will affect today's trading session. Be specific and direct."
+            f"{release_note}"
         )
 
     _OVERNIGHT_SYSTEM = (
@@ -1788,11 +1876,25 @@ def _format_morning_briefing(
         api_failure_types   = {"validation_api_failure", "assignment_api_failure",
                                 "discovery_api_failure"}
         parse_error_types   = {"validation_error"}
+        # Fix-1 (2026-07-14): data/broker-API failure rows (api_failure_<provider>)
+        # whose class is TRANSIENT/self-healing (timeout / connect / transport /
+        # per-symbol 402) no longer Telegram at failure time — here in the brief
+        # they collapse to ONE quiet 🔵 line instead of per-row 🔴 entries.
+        # ACTIONABLE api_failure rows (auth 401/403, 5xx, sustained escalations)
+        # keep the loud 🔴 treatment via other_errs below.
+        from agents.market_intelligence.llm_health import is_transient_api_failure_row
+
+        def _is_quiet_api_row(r: dict) -> bool:
+            return (str(r.get("event_type") or "").startswith("api_failure_")
+                    and is_transient_api_failure_row(r))
+
         rate_limited = [r for r in overnight_errors if r.get("event_type") in rate_limited_types]
         api_failures = [r for r in overnight_errors if r.get("event_type") in api_failure_types]
         validation_errs = [r for r in overnight_errors if r.get("event_type") in parse_error_types]
+        transient_api_rows = [r for r in overnight_errors if _is_quiet_api_row(r)]
         other_errs = [r for r in overnight_errors if r.get("event_type") not in
-                      (rate_limited_types | api_failure_types | parse_error_types)]
+                      (rate_limited_types | api_failure_types | parse_error_types)
+                      and not _is_quiet_api_row(r)]
         err_lines = [f"⚠️ *{len(overnight_errors)} engine event(s) overnight* — type 'show errors' for detail"]
         if rate_limited:
             err_lines.append(
@@ -1807,6 +1909,11 @@ def _format_morning_briefing(
             err_lines.append(
                 f"  🟡 {len(validation_errs)} theme validation parse error(s) "
                 f"— tickers unchanged"
+            )
+        if transient_api_rows:
+            err_lines.append(
+                f"  🔵 {len(transient_api_rows)} transient data-API blip(s) "
+                f"(timeout/connect/per-symbol 4xx) — self-healing, audit-only"
             )
         for r in other_errs[:3]:
             err_lines.append(f"  🔴 {r['summary']}")
@@ -1967,6 +2074,10 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         econ_calendar = await _get_economic_calendar()
         cache["econ_calendar"] = econ_calendar
 
+    # Fix-2b: deterministic already-printed-release driver signal, derived from
+    # the calendar we ALREADY have — independent of Perplexity health.
+    printed_releases = _already_printed_releases(econ_calendar)
+
     # Fetch overnight snapshot + news (news always fetched, even without watchlist)
     overnight_section = None
     snapshot = []
@@ -1985,7 +2096,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         news = cache["overnight_news"]
         logger.info("Morning briefing: overnight news from cache")
     else:
-        news = await _get_overnight_news(snapshot or None)
+        news = await _get_overnight_news(snapshot or None, printed_releases=printed_releases)
         cache["overnight_news"] = news
         logger.info(f"Morning briefing: overnight news={'yes' if news else 'none'} ({len(news) if news else 0} chars)")
 
@@ -2001,6 +2112,10 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         for s in sentences[:2]:
             lines.append(f"  • _{s}_")
         overnight_section = "\n".join(lines)
+
+    # Fix-2b: determined-from-data driver line — survives Perplexity degrading
+    # (creates the OVERNIGHT section if the news/snapshot paths produced none).
+    overnight_section = _append_printed_release_line(overnight_section, printed_releases)
 
     # Store cache for this day
     _perplexity_cache.clear()

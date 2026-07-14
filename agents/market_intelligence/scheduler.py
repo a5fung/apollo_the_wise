@@ -4058,6 +4058,28 @@ async def _9m_day2_orb_job() -> None:
     today = et_today()
     if not get_market_status(today).is_trading_day:
         return
+
+    # Deprecation gate (2026-07-14): 9M Day 2 is operator-DEPRECATED (#424,
+    # ADR 0022 §1 — terminal). The entry pipeline already blocks each candidate
+    # (block:strategy_deprecated), but this job kept scanning, skipping every
+    # candidate, and Telegramming a daily "⏭️ 9M Day2 skips" digest for a
+    # retired strategy — pure operator noise. Short-circuit the WHOLE Day-2
+    # entry loop (allocator shadow enqueue, HIGH-EP reserve math, submits,
+    # skip digest) when the strategy registry says the phase is terminal.
+    # Fail-OPEN: if the registry lookup errors, run the job as before — the
+    # pipeline's deprecated block stays the (noisy but safe) backstop. Scope:
+    # ONLY this job — the intraday 9M scan, the sugar-babies cohort refresh,
+    # and every MAGNA53 path are untouched.
+    try:
+        from agents.market_intelligence.strategies.registry import get_strategy
+        _9m_strategy = await get_strategy("9m_day2")
+        if _9m_strategy is not None and _9m_strategy.phase == "deprecated":
+            logger.info("9M Day 2 ORB job: strategy '9m_day2' is deprecated — "
+                        "skipping candidate scan + skip-digest")
+            return
+    except Exception as e:
+        logger.warning(f"9M Day 2 deprecation pre-check failed (job runs as before): {e}")
+
     try:
         from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade  # exec-boundary-ok: moves-with-job (W2)
         from agents.market_intelligence.db import get_pending_9m_sugar_babies

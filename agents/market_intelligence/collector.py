@@ -1075,58 +1075,77 @@ async def search_news_perplexity(
 
     recency: "day" | "week" | "month" | "year" — use "week" for EP catalysts.
     system_prompt: override the default system prompt for specialized callers.
+
+    Fix-2a (2026-07-14): ONE bounded retry on TIMEOUT only. A single transient
+    timeout here used to blank the morning-brief overnight summary (2026-07 CPI
+    miss) and every catalyst cross-check for the run — fail-open "" with no
+    second attempt. A fresh attempt is cheap insurance. Non-timeout failures
+    keep the exact prior single-attempt path; if the retry also times out we
+    fail open exactly as before (alert + return "").
     """
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
         return ""
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": "sonar-pro",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": system_prompt or _PERPLEXITY_SYSTEM_DEFAULT,
-                        },
-                        {"role": "user", "content": query},
-                    ],
-                    "search_recency_filter": recency,
-                    "return_citations": False,
-                },
-            )
-            r.raise_for_status()
-            _data = r.json()
-            try:  # #377 cost meter — additive, never alters the search result.
-                # Covers #186A + the ~11 indirect callers of this choke point.
-                from agents.market_intelligence.spend_tracker import log_perplexity_call
-                await log_perplexity_call(
-                    caller="perplexity_news_search", model="sonar-pro",
-                    usage=_data.get("usage"),
+    last_exc: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.post(
+                    "https://api.perplexity.ai/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json={
+                        "model": "sonar-pro",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": system_prompt or _PERPLEXITY_SYSTEM_DEFAULT,
+                            },
+                            {"role": "user", "content": query},
+                        ],
+                        "search_recency_filter": recency,
+                        "return_citations": False,
+                    },
                 )
-            except Exception as e:
-                logger.debug(f"Perplexity news search cost-meter log failed: {e}")
-            return _data["choices"][0]["message"]["content"]
-    except Exception as e:
-        # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
-        # catalyst cross-check (and every other Perplexity use) silently returns
-        # "" and degrades. Alert it (terminal + actionable) before failing open.
-        from agents.market_intelligence.llm_health import (
-            is_credit_error, maybe_alert_api_failure, maybe_alert_credit_exhausted,
-        )
-        await maybe_alert_credit_exhausted("Perplexity news search", e, provider="perplexity")
-        # #380/#370: a NON-credit failure here (5xx, timeout, connect, a non-
-        # 401/402 4xx) is the silent-degradation class too. Alert it via the
-        # data-API guard — but ONLY when it's not already a credit error, so a
-        # 401/402 doesn't double-fire (credit + api_failure). Dedup is keyed by
-        # (provider, error-class) so this never collides with the credit alarm.
-        # Contract is UNCHANGED: this only alerts, then we still return "".
-        if not is_credit_error(e):
-            await maybe_alert_api_failure("perplexity", e, context="news search")
-        logger.warning(f"Perplexity search failed: {e}")
+                r.raise_for_status()
+                _data = r.json()
+                try:  # #377 cost meter — additive, never alters the search result.
+                    # Covers #186A + the ~11 indirect callers of this choke point.
+                    from agents.market_intelligence.spend_tracker import log_perplexity_call
+                    await log_perplexity_call(
+                        caller="perplexity_news_search", model="sonar-pro",
+                        usage=_data.get("usage"),
+                    )
+                except Exception as e:
+                    logger.debug(f"Perplexity news search cost-meter log failed: {e}")
+                return _data["choices"][0]["message"]["content"]
+        except Exception as e:
+            # Duck-typed timeout check (matches classify_api_failure): every
+            # httpx timeout type ends in "Timeout"/"TimeoutException".
+            if attempt == 1 and "Timeout" in type(e).__name__:
+                logger.warning(f"Perplexity search timeout (attempt 1/2) — retrying once: {e}")
+                continue
+            last_exc = e
+            break
+    e = last_exc
+    if e is None:  # defensive — loop always returns or sets last_exc
         return ""
+    # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
+    # catalyst cross-check (and every other Perplexity use) silently returns
+    # "" and degrades. Alert it (terminal + actionable) before failing open.
+    from agents.market_intelligence.llm_health import (
+        is_credit_error, maybe_alert_api_failure, maybe_alert_credit_exhausted,
+    )
+    await maybe_alert_credit_exhausted("Perplexity news search", e, provider="perplexity")
+    # #380/#370: a NON-credit failure here (5xx, timeout, connect, a non-
+    # 401/402 4xx) is the silent-degradation class too. Alert it via the
+    # data-API guard — but ONLY when it's not already a credit error, so a
+    # 401/402 doesn't double-fire (credit + api_failure). Dedup is keyed by
+    # (provider, error-class) so this never collides with the credit alarm.
+    # Contract is UNCHANGED: this only alerts, then we still return "".
+    if not is_credit_error(e):
+        await maybe_alert_api_failure("perplexity", e, context="news search")
+    logger.warning(f"Perplexity search failed: {e}")
+    return ""
 
 
 async def search_news_tavily(query: str) -> list[dict]:

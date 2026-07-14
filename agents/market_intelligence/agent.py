@@ -1731,9 +1731,10 @@ class MarketIntelligenceAgent(BaseAgent):
         event_type_like = None
         if "error" in task or "fail" in task:
             event_type_like = "%error%"  # matches validation_error, assignment_error, discovery_error
-        # Transient API failures (validation_api_failure / assignment_api_failure /
+        # Transient LLM API failures (validation_api_failure / assignment_api_failure /
         # discovery_api_failure) don't end in `_error` so they don't match above —
-        # they're visible in the morning-briefing 4-bucket banner instead.
+        # they're visible in the morning-briefing banner instead. Data/broker-API
+        # failure rows (api_failure_<provider>) are merged in below (Fix-1).
 
         rows = await get_audit_log(limit=25, event_type=event_type, event_type_like=event_type_like, since_hours=since_hours)
         if event_type_like == "%error%":
@@ -1742,8 +1743,15 @@ class MarketIntelligenceAgent(BaseAgent):
             # (the nightly alert path fetches it exact-type; this mirrors that here). Merge + resort.
             dd_rows = await get_audit_log(
                 limit=25, event_type="drawdown_check_unavailable", since_hours=since_hours)
-            if dd_rows:
-                rows = sorted(rows + dd_rows, key=lambda r: r["created_at"], reverse=True)[:25]
+            # Fix-1 (2026-07-14): data/broker-API failure rows (api_failure_<provider>,
+            # #380) carry no "error" substring either. Now that TRANSIENT ones are
+            # audit-only (no Telegram), `show errors` is the on-demand pull surface
+            # for them — merge them in so the downgrade never hides a failure.
+            api_rows = await get_audit_log(
+                limit=25, event_type_like="api_failure_%", since_hours=since_hours)
+            if dd_rows or api_rows:
+                merged = {r["id"]: r for r in rows + dd_rows + api_rows}
+                rows = sorted(merged.values(), key=lambda r: r["created_at"], reverse=True)[:25]
 
         if not rows:
             filter_label = event_type or event_type_like or ""

@@ -165,6 +165,10 @@ async def test_no_alert_on_non_network_exception(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dedup_suppresses_same_provider_and_class(monkeypatch):
+    # Fix-1 (2026-07-14) update: the TELEGRAM is still deduped by the DB
+    # lookback (same provider+class already alerted this window — the legacy
+    # row has no tg= marker, which counts as alert-carrying), but the AUDIT ROW
+    # is now written for EVERY failure (tg=0 = no Telegram accompanied it).
     db = _DBStub(existing=[
         {"event_type": "api_failure_fmp", "summary": "FMP API FAILURE class=http_4xx HTTP 403"},
     ])
@@ -172,8 +176,9 @@ async def test_dedup_suppresses_same_provider_and_class(monkeypatch):
 
     await llm_health.alert_api_failure("fmp", _http_status_error(403))
 
-    assert db.written == []      # suppressed by the DB lookback (same provider+class)
-    assert sent == []
+    assert sent == []                       # Telegram suppressed (same provider+class)
+    assert len(db.written) == 1             # ... but the audit row ALWAYS lands
+    assert "tg=0" in db.written[0][1]
 
 
 @pytest.mark.asyncio
@@ -208,6 +213,9 @@ async def test_dedup_is_per_provider(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_inproc_pregate_collapses_same_class_burst(monkeypatch):
+    # Fix-1 (2026-07-14) update: the pre-gate collapses the TELEGRAM burst
+    # (still exactly one send), but every failure now writes its audit row —
+    # the second row carries tg=0 (no Telegram accompanied it).
     db = _DBStub(existing=[])
     sent = _patch_db_and_telegram(monkeypatch, db)
 
@@ -215,7 +223,9 @@ async def test_inproc_pregate_collapses_same_class_burst(monkeypatch):
     await llm_health.alert_api_failure("polygon", _http_status_error(503))
 
     assert len(sent) == 1
-    assert len(db.written) == 1
+    assert len(db.written) == 2
+    assert "tg=1" in db.written[0][1]
+    assert "tg=0" in db.written[1][1]
 
 
 @pytest.mark.asyncio
@@ -534,3 +544,193 @@ async def test_data_provider_alert_keeps_data_domain_consequence(monkeypatch):
     assert "DATA-API" in msg
     assert "catalyst grade" in msg.lower() and "news corpus" in msg.lower()
     assert "position sync" not in msg.lower() and "trade state" not in msg.lower()
+
+
+# ── (7) Fix-1 (2026-07-14) — TRANSIENT vs ACTIONABLE Telegram triage ──────────
+#
+# The alert-vs-audit rule: self-healing/transient failures (Perplexity timeout,
+# FMP per-symbol 402) → mi_audit_log ONLY; Telegram is reserved for actionable
+# (auth/credit) or SUSTAINED (real-outage) failures. The audit row is ALWAYS
+# written either way — visibility never drops, only the push-noise does.
+
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+
+def _utc_ago(minutes: float) -> "_dt":
+    return _dt.now(_tz.utc) - _td(minutes=minutes)
+
+
+@pytest.mark.asyncio
+async def test_transient_timeout_writes_audit_but_no_telegram(monkeypatch):
+    # THE reported noise: a single Perplexity timeout (fail-open, self-recovers)
+    # must not page the operator — audit row only.
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("perplexity", httpx.ReadTimeout("slow"),
+                                       context="news search")
+
+    assert sent == []                        # NO Telegram for a single blip
+    assert len(db.written) == 1              # audit row ALWAYS written
+    et, summary, _ = db.written[0]
+    assert et == "api_failure_perplexity"
+    assert "class=timeout" in summary
+    assert "tg=0" in summary
+
+
+@pytest.mark.asyncio
+async def test_fmp_per_symbol_402_is_audit_only(monkeypatch):
+    # The other reported noise: FMP per-symbol HTTP 402 (plan-tier gate on SOME
+    # symbols, fail-open, most symbols work) — audit row only, no Telegram.
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("fmp", _http_status_error(402),
+                                       context="GET /profile")
+
+    assert sent == []
+    assert len(db.written) == 1
+    assert "class=http_4xx" in db.written[0][1]
+    assert "tg=0" in db.written[0][1]
+
+
+@pytest.mark.asyncio
+async def test_auth_401_still_alerts_immediately(monkeypatch):
+    # ACTIONABLE stays immediate: a 401 (revoked/invalid key) is terminal and
+    # operator-actionable — the triage must NOT demote it.
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("fmp", _http_status_error(401))
+
+    assert len(sent) == 1
+    assert "tg=1" in db.written[0][1]
+
+
+@pytest.mark.asyncio
+async def test_sustained_timeout_escalates_to_telegram(monkeypatch):
+    # A timeout persisting across scan cycles IS a real outage: ≥3 same-class
+    # failures in the window spanning ≥30 min → Telegram (labeled SUSTAINED).
+    db = _DBStub(existing=[
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0 — news search",
+         "created_at": _utc_ago(45)},
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0 — news search",
+         "created_at": _utc_ago(20)},
+    ])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("perplexity", httpx.ReadTimeout("slow"),
+                                       context="news search")
+
+    assert len(sent) == 1                    # sustained outage DOES page
+    assert "SUSTAINED" in sent[0]
+    assert len(db.written) == 1
+    assert "tg=1" in db.written[0][1]
+
+
+@pytest.mark.asyncio
+async def test_tight_burst_without_time_spread_stays_quiet(monkeypatch):
+    # ≥3 failures inside ONE fetch loop (a few minutes) is one blip, not an
+    # outage — the ≥30-min spread requirement keeps it audit-only. (This is
+    # what keeps a per-symbol FMP 402 burst from re-creating the daily noise.)
+    db = _DBStub(existing=[
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0",
+         "created_at": _utc_ago(3)},
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0",
+         "created_at": _utc_ago(1)},
+    ])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("perplexity", httpx.ReadTimeout("slow"))
+
+    assert sent == []
+    assert len(db.written) == 1
+    assert "tg=0" in db.written[0][1]
+
+
+@pytest.mark.asyncio
+async def test_sustained_alert_deduped_within_window(monkeypatch):
+    # Once the sustained escalation HAS paged (a tg=1 row in the window), the
+    # next transient failure writes its row but does not re-page.
+    db = _DBStub(existing=[
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=0",
+         "created_at": _utc_ago(90)},
+        {"event_type": "api_failure_perplexity",
+         "summary": "PERPLEXITY API FAILURE class=timeout tg=1",
+         "created_at": _utc_ago(40)},
+    ])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("perplexity", httpx.ReadTimeout("slow"))
+
+    assert sent == []
+    assert len(db.written) == 1
+    assert "tg=0" in db.written[0][1]
+
+
+@pytest.mark.asyncio
+async def test_alpaca_broker_timeout_stays_immediate(monkeypatch):
+    # BROKER CARVE-OUT: alpaca is real-money-critical — a timeout on a broker
+    # read is NEVER demoted to audit-only; it pages immediately as before.
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("alpaca", httpx.ReadTimeout("slow"),
+                                       context="get_account")
+
+    assert len(sent) == 1
+    assert "BROKER-API" in sent[0]
+    assert "tg=1" in db.written[0][1]
+
+
+def test_is_transient_api_failure_row_parses_summary_markers():
+    # The morning-brief banner classifies rows from their summary markers.
+    assert llm_health.is_transient_api_failure_row({
+        "event_type": "api_failure_perplexity",
+        "summary": "PERPLEXITY API FAILURE class=timeout tg=0 — news search",
+    }) is True
+    assert llm_health.is_transient_api_failure_row({
+        "event_type": "api_failure_fmp",
+        "summary": "FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /profile",
+    }) is True
+    # 403 = auth/plan revocation → actionable, stays loud
+    assert llm_health.is_transient_api_failure_row({
+        "event_type": "api_failure_fmp",
+        "summary": "FMP API FAILURE class=http_4xx HTTP 403 tg=1",
+    }) is False
+    # broker rows are never quiet
+    assert llm_health.is_transient_api_failure_row({
+        "event_type": "api_failure_alpaca",
+        "summary": "ALPACA API FAILURE class=timeout tg=1 — get_account",
+    }) is False
+    # non-api_failure rows and unparseable summaries stay loud
+    assert llm_health.is_transient_api_failure_row({
+        "event_type": "validation_error", "summary": "class=timeout"}) is False
+    assert llm_health.is_transient_api_failure_row({
+        "event_type": "api_failure_fmp", "summary": "garbled"}) is False
+
+
+def test_briefing_banner_downgrades_transient_api_rows():
+    # The 🔴 other-errs bucket must NOT contain transient api_failure rows —
+    # they collapse to the single quiet 🔵 line. Actionable ones stay 🔴.
+    from agents.market_intelligence.briefing import _format_morning_briefing
+
+    text = _format_morning_briefing(
+        regime={"regime": "Bull", "ep_threshold": 70},
+        ep_alerts=[],
+        briefing_date="2026-07-14",
+        overnight_errors=[
+            {"event_type": "api_failure_perplexity",
+             "summary": "PERPLEXITY API FAILURE class=timeout tg=0 — news search"},
+            {"event_type": "api_failure_fmp",
+             "summary": "FMP API FAILURE class=http_4xx HTTP 403 tg=1"},
+        ],
+    )
+    assert "1 transient data-API blip(s)" in text          # quiet 🔵 line
+    assert "PERPLEXITY API FAILURE" not in text            # not echoed as 🔴
+    assert "FMP API FAILURE class=http_4xx HTTP 403" in text  # actionable stays loud

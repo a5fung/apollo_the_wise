@@ -27,7 +27,9 @@ REACTIVE exhaustion alert.
 from __future__ import annotations
 
 import logging
+import re
 import time
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -357,21 +359,97 @@ def classify_api_failure(exc: BaseException) -> str | None:
         return None
 
 
+# ── Fix-1 (2026-07-14) — TRANSIENT vs ACTIONABLE triage for the Telegram send ──
+#
+# The #380 guard Telegrammed EVERY classified data-API failure (deduped 6h).
+# In practice two failure shapes are TRANSIENT / self-healing and were paging
+# the operator daily against the alert-vs-audit rule ("Reserve Telegram for
+# terminal/actionable events. Self-healing/transient → mi_audit_log only"):
+#   - Perplexity `timeout` — the caller fails open and the next scan recovers;
+#   - FMP per-symbol HTTP 402 — a plan-tier gate on SOME symbols (most work),
+#     fail-open per symbol; NOT account-wide payment exhaustion.
+# New contract:
+#   AUDIT ROW: written for EVERY classified failure (visibility to the morning
+#     banner / `show errors` / sweeps is unconditional — this is the durable
+#     record). Rows carry ` tg=<0|1>` marking whether a Telegram accompanied
+#     them; only tg=1 rows count as the alert-dedup token.
+#   TELEGRAM:
+#     ACTIONABLE (auth 401/403, 5xx, 429-after-retries, other 4xx, transport
+#       classes on the BROKER) → immediate, deduped per (provider,class) per 6h
+#       — unchanged from #380.
+#     TRANSIENT (timeout / connect / transport on DATA providers; per-symbol
+#       402) → NO immediate Telegram. Escalates to a Telegram ONLY when
+#       SUSTAINED: ≥ _SUSTAINED_COUNT same-(provider,class) failures within the
+#       6h window AND spanning ≥ _SUSTAINED_MIN_SPREAD_S (a tight burst inside
+#       one fetch loop is one blip; failures persisting across scan cycles are
+#       a real outage and MUST still page — that's the whole point).
+#   BROKER CARVE-OUT: provider "alpaca" is real-money-critical — NOTHING is
+#     demoted; every classified alpaca failure keeps the immediate Telegram.
+_TRANSIENT_CLASSES = frozenset({"timeout", "connect", "transport"})
+_TRANSIENT_HTTP_STATUS = frozenset({402})  # per-symbol plan-gate (FMP), fail-open
+_SUSTAINED_COUNT = 3            # current failure + ≥2 prior rows in the window
+_SUSTAINED_MIN_SPREAD_S = 30 * 60  # failures must SPAN ≥30 min (≈6+ scan cycles)
+_SUSTAINED_LOOKBACK_LIMIT = 50  # rows fetched for the sustained/dedup lookback
+
+_SUMMARY_CLASS_RE = re.compile(r"class=([a-z0-9_]+)")
+_SUMMARY_CODE_RE = re.compile(r"HTTP (\d{3})")
+
+
+def is_transient_api_failure(provider: str, cls: str | None, code: int | None) -> bool:
+    """True when a classified data-API failure is TRANSIENT/self-healing (audit
+    row only, no immediate Telegram). Broker (alpaca) failures are NEVER
+    transient — real-money domain, everything stays immediately loud."""
+    try:
+        if provider == "alpaca":
+            return False
+        if cls in _TRANSIENT_CLASSES:
+            return True
+        if cls == "http_4xx" and code in _TRANSIENT_HTTP_STATUS:
+            return True
+        return False
+    except Exception:  # loud-ok: pure classifier; "not transient" (= alert) is the safe default
+        return False
+
+
+def is_transient_api_failure_row(row: dict) -> bool:
+    """Classify an `api_failure_<provider>` mi_audit_log row as transient from
+    its summary markers (`class=<cls>`, optional `HTTP <code>`). Used by the
+    morning-brief banner to render self-healing blips as one quiet line instead
+    of per-row 🔴 entries. Unparseable rows → False (stay loud)."""
+    try:
+        event_type = str(row.get("event_type") or "")
+        if not event_type.startswith("api_failure_"):
+            return False
+        provider = event_type[len("api_failure_"):]
+        summary = str(row.get("summary") or "")
+        m = _SUMMARY_CLASS_RE.search(summary)
+        cls = m.group(1) if m else None
+        mc = _SUMMARY_CODE_RE.search(summary)
+        code = int(mc.group(1)) if mc else None
+        return is_transient_api_failure(provider, cls, code)
+    except Exception:  # loud-ok: parser over an arbitrary row; loud is the safe default
+        return False
+
+
 async def alert_api_failure(provider: str, exc: BaseException,
                             context: str = "") -> None:
-    """One deduped operator alert that a DATA API (Polygon/FMP/Perplexity) is
-    failing. ALWAYS safe to call from a fail-open/except block — never raises.
+    """Audit-always + triaged operator alert that a DATA API (Polygon/FMP/
+    Perplexity) or the broker (Alpaca) is failing. ALWAYS safe to call from a
+    fail-open/except block — never raises.
 
     Caller contract: call this at the wrapper's catch point, THEN let the
     wrapper propagate as it already does (re-raise or return its fallback). This
     function only ALERTS — it never re-raises, never swallows the caller's flow.
 
-    Dedup (per (provider, error-class) per ~6h): mirrors alert_credit_exhausted.
-    The audit row `api_failure_<provider>` is the durable dedup token; we look
-    back `_ALERT_WINDOW_HOURS` for a row of the SAME provider AND error-class
-    (the class is recorded in the row summary as `class=<cls>` and matched on
-    read) and suppress a repeat. A non-authoritative in-process pre-gate keyed
-    by (provider, class) collapses a same-process stampede before the row lands.
+    Behavior (Fix-1, 2026-07-14 — see the triage block above):
+      1. The `api_failure_<provider>` AUDIT ROW is written for EVERY classified
+         failure (summary carries `class=<cls>` + ` tg=<0|1>`).
+      2. The TELEGRAM is gated: actionable classes fire immediately (deduped
+         per (provider,class) per ~6h via tg=1 rows — legacy rows without a
+         tg marker predate the split and were alert-carrying, so they count);
+         transient classes fire only when SUSTAINED (count + time-spread).
+      3. The in-process pre-gate collapses a same-process stampede of TELEGRAM
+         decisions only — it never suppresses the audit row.
     """
     try:
         cls = classify_api_failure(exc)
@@ -382,45 +460,83 @@ async def alert_api_failure(provider: str, exc: BaseException,
         event_type = f"api_failure_{provider}"
         key = (provider, cls)
         now = time.monotonic()
-
-        # In-process pre-gate (accelerator only — NOT the source of truth).
-        last = _last_api_alert_ts.get(key)
-        if last is not None and (now - last) < _ALERT_WINDOW_S:
-            return
-
-        # Authoritative dedup: a SAME-(provider,class) row within the window?
-        try:
-            from agents.market_intelligence.db import get_audit_log
-            recent = await get_audit_log(
-                event_type=event_type, since_hours=_ALERT_WINDOW_HOURS, limit=20,
-            )
-            for row in (recent or []):
-                if f"class={cls}" in (row.get("summary") or ""):
-                    _last_api_alert_ts[key] = now  # keep the pre-gate honest
-                    return
-        except Exception as e:
-            # DB unavailable — fall through and alert (better a possible dup than
-            # a silently-swallowed API outage, the whole bug class #380/#370).
-            logger.warning("alert_api_failure dedup lookback failed for %s/%s "
-                            "(falling through to alert): %s", provider, cls, e)
-
-        # Claim the window in-process before any await that could interleave.
-        _last_api_alert_ts[key] = now
-
         code = _status_code(exc)
+        transient = is_transient_api_failure(provider, cls, code)
+
+        # ── Telegram decision (the audit row below is written EITHER WAY) ──
+        send_telegram = False
+        last = _last_api_alert_ts.get(key)
+        pregate_open = last is None or (now - last) >= _ALERT_WINDOW_S
+        if pregate_open:
+            already_alerted = False
+            lookback_ok = False
+            same_cls_rows: list[dict] = []
+            try:
+                from agents.market_intelligence.db import get_audit_log
+                recent = await get_audit_log(
+                    event_type=event_type, since_hours=_ALERT_WINDOW_HOURS,
+                    limit=_SUSTAINED_LOOKBACK_LIMIT,
+                )
+                lookback_ok = True
+                for row in (recent or []):
+                    summary = row.get("summary") or ""
+                    if f"class={cls}" not in summary:
+                        continue
+                    same_cls_rows.append(row)
+                    # tg=1 = row that carried a Telegram; legacy rows (no tg=
+                    # marker, pre-split format) were only written when a
+                    # Telegram fired → also count as alerted.
+                    if "tg=1" in summary or "tg=" not in summary:
+                        already_alerted = True
+            except Exception as e:
+                # DB unavailable — for ACTIONABLE classes fall through and alert
+                # (better a possible dup than a silently-swallowed API outage,
+                # the whole bug class #380/#370). TRANSIENT classes stay quiet:
+                # sustained-detection needs the DB, and a self-healing blip must
+                # not page just because the lookback flaked.
+                logger.warning("alert_api_failure dedup lookback failed for %s/%s "
+                                "(actionable falls through to alert): %s",
+                                provider, cls, e)
+
+            if not transient:
+                send_telegram = not already_alerted
+            else:
+                sustained = False
+                if lookback_ok and len(same_cls_rows) + 1 >= _SUSTAINED_COUNT:
+                    times = []
+                    for row in same_cls_rows:
+                        ts = row.get("created_at")
+                        if isinstance(ts, datetime):
+                            if ts.tzinfo is None:
+                                ts = ts.replace(tzinfo=timezone.utc)
+                            times.append(ts)
+                    if times:
+                        spread_s = (datetime.now(timezone.utc) - min(times)).total_seconds()
+                        sustained = spread_s >= _SUSTAINED_MIN_SPREAD_S
+                send_telegram = sustained and not already_alerted
+
+            if already_alerted:
+                _last_api_alert_ts[key] = now  # keep the pre-gate honest
+
+        if send_telegram:
+            # Claim the window in-process before any await that could interleave.
+            _last_api_alert_ts[key] = now
+
         code_str = f" HTTP {code}" if code is not None else ""
         label = provider.upper()
         copy = _ALARM_COPY_BY_CLASS[_PROVIDER_CLASS.get(provider, "data")]
         kind = copy["kind"]
         consequence = copy["consequence"]
 
-        # Audit row FIRST (durable dedup token + queryable record). The
-        # `class=<cls>` marker is load-bearing — the lookback matches on it.
+        # Audit row FIRST, ALWAYS (durable record + queryable; visible to the
+        # morning banner / `show errors` / sweeps even when no Telegram fires).
+        # `class=<cls>` + ` tg=<0|1>` markers are load-bearing — the lookback
+        # above matches on them.
         try:
             from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
                 event_type,
-                f"{label} API FAILURE class={cls}{code_str}"
+                f"{label} API FAILURE class={cls}{code_str} tg={1 if send_telegram else 0}"
                 + (f" — {context}" if context else ""),
                 str(exc)[:400],
             )
@@ -428,16 +544,22 @@ async def alert_api_failure(provider: str, exc: BaseException,
             logger.warning("alert_api_failure audit-row write failed for %s/%s: %s",
                             provider, cls, e)
 
+        if not send_telegram:
+            return  # transient blip / already-alerted window — audit-only
+
         # Then the operator Telegram — a source going dark IS actionable.
         # Consequence copy is provider-CLASS-specific (#406): a data source
         # going dark degrades the grade/universe/news corpus; the broker
         # (alpaca) going dark degrades position sync / trade state instead —
-        # a different domain, so the alert must say so.
+        # a different domain, so the alert must say so. A transient class that
+        # escalated is labeled SUSTAINED so the operator knows this is not a
+        # single blip but a failure persisting across scan cycles.
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             from shared.telegram_format import b, esc
+            sustained_tag = "SUSTAINED " if transient else ""
             await send_telegram_message(
-                f"⚠️ {b(f'{label} {kind} FAILURE')} ({esc(cls)}{esc(code_str)})"
+                f"⚠️ {b(f'{label} {kind} FAILURE')} ({sustained_tag}{esc(cls)}{esc(code_str)})"
                 + (f" in {esc(context)}" if context else "")
                 + ".\n"
                 + f"The {esc(label)} fetch is failing — {consequence} is "
