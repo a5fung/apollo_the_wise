@@ -7,12 +7,19 @@ Pins:
   - D1 untracked broker position -> HIGH, audit + Telegram
   - D2 apollo-prefixed orphan order -> HIGH, audit + Telegram
   - D2 foreign/manual client_order_id -> INFO, audit only, no Telegram
+  - D2 order referenced by a TERMINAL (e.g. cancelled) row -> NOT drift
+    (CLSK 2026-07-07 cancel-window false positive: broker order still open,
+    DB row already `cancelled` by the 10:00 ET ORB-unfilled cleanup) — while
+    a genuine orphan (NO row in ANY status references it) still fires HIGH,
+    and D1 stays keyed on OPEN rows only (a cancelled row has no live
+    position, so an untracked position for that ticker must still fire)
   - D3 DB-open-without-broker-presence -> INFO, audit only, no Telegram
   - clean state (broker and DB agree) -> zero audit writes, zero Telegram
   - dedup: an existing coverage_drift_alerted row within 24h suppresses the
     Telegram but the coverage_drift_detected row is still written
   - degraded broker read (raise_on_error path raises) -> coverage_drift_check_degraded
-    audit row only, no drift reported, no Telegram
+    audit row only, no drift reported, no Telegram (same for either DB read,
+    including the all-status known-order-ids fetch)
 """
 from unittest.mock import AsyncMock, patch
 
@@ -36,14 +43,24 @@ from agents.market_intelligence.audit_events import (
 MOD = "agents.market_intelligence.broker.coverage_drift"
 
 
-def _setup(db_rows=None, positions=None, open_orders=None, dedup_hit=None):
+def _setup(db_rows=None, positions=None, open_orders=None, dedup_hit=None,
+           all_db_rows=None):
     """Build a mocked pool/conn + patch targets for one detect_coverage_drift call.
 
     dedup_hit: return value for conn.fetchval (the _already_alerted SELECT) —
     None (default) = no prior alert; 1 = an alert marker already exists (dedup).
+
+    all_db_rows: rows for the SECOND conn.fetch (_fetch_all_known_order_ids —
+    ANY-status rows, only entry_order_id/stop_order_id read). Default None =
+    same as db_rows (every open row also appears in the all-status fetch).
+    detect_coverage_drift issues the two fetches in a fixed order (open rows,
+    then all-status known ids), so a side_effect list is deterministic.
     """
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(return_value=db_rows or [])
+    if all_db_rows is None:
+        conn.fetch = AsyncMock(return_value=db_rows or [])
+    else:
+        conn.fetch = AsyncMock(side_effect=[db_rows or [], all_db_rows])
     conn.fetchval = AsyncMock(return_value=dedup_hit)
     return pool, conn
 
@@ -151,6 +168,127 @@ async def test_d2_harness_coid_is_info_not_high_no_telegram():
     assert result["alerted"] == 0
     tg.assert_not_called()  # no D2-HIGH noise for known test cruft
     assert D2_UNTRACKED_ORDER_INFO in audit.call_args.args[2]
+
+
+@pytest.mark.asyncio
+async def test_d2_not_flagged_when_terminal_row_references_order():
+    """The CLSK 2026-07-07 cancel-window false positive: the broker order is
+    still open (cancel in flight) but a CANCELLED mi_live_trades row already
+    references it as entry_order_id (row 257, `ORB window unfilled` cleanup).
+    That order IS tracked -> no D2, no Telegram, no detection audit row."""
+    cancelled_row = {
+        "id": 257, "ticker": "CLSK",
+        "entry_order_id": "96c48f58-aaaa-bbbb-cccc-1234567890ab",
+        "stop_order_id": None, "status": "cancelled",
+    }
+    order = {
+        "id": "96c48f58-aaaa-bbbb-cccc-1234567890ab", "symbol": "CLSK",
+        "side": "buy", "type": "stop_limit",
+        "client_order_id": "apollo_live_magna53_CLSK_1751896800000",
+    }
+    # Open-rows fetch: empty (the row is terminal). All-status fetch: has it.
+    pool, conn = _setup(db_rows=[], positions=[], open_orders=[order],
+                        all_db_rows=[cancelled_row])
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions", new=AsyncMock(return_value=[])), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[order])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("live")
+
+    assert result["d2_high_count"] == 0
+    assert result["d2_info_count"] == 0
+    assert result["d1_count"] == 0 and result["d3_count"] == 0
+    assert result["alerted"] == 0
+    tg.assert_not_called()
+    audit.assert_not_called()  # tracked order = not drift = zero writes
+
+
+@pytest.mark.asyncio
+async def test_d2_genuine_orphan_still_fires_despite_terminal_rows():
+    """SAFEGUARD PIN (THE LINE): the ANY-status tracking set must ONLY absorb
+    orders a row actually references. An apollo-prefixed order that NO row
+    (any status) references is a genuine mirror gap -> D2 HIGH still fires,
+    even with terminal rows present for OTHER orders of the same ticker."""
+    terminal_row_other_order = {
+        "id": 300, "ticker": "ABC",
+        "entry_order_id": "old-entry-1111", "stop_order_id": "old-stop-2222",
+        "status": "closed",
+    }
+    orphan = {
+        "id": "orphan-order-9999", "symbol": "ABC", "side": "buy",
+        "type": "stop_limit",
+        "client_order_id": "apollo_paper_magna53_ABC_1751896800000",
+    }
+    pool, conn = _setup(db_rows=[], positions=[], open_orders=[orphan],
+                        all_db_rows=[terminal_row_other_order])
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions", new=AsyncMock(return_value=[])), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[orphan])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("paper")
+
+    assert result["d2_high_count"] == 1
+    assert result["alerted"] == 1
+    tg.assert_called_once()
+    assert "ABC" in tg.call_args[0][0]
+    detected_call = next(c for c in audit.call_args_list if c.args[0] == COVERAGE_DRIFT_DETECTED)
+    assert D2_UNTRACKED_ORDER_HIGH in detected_call.args[2]
+
+
+@pytest.mark.asyncio
+async def test_d1_still_fires_when_only_a_terminal_row_exists_for_ticker():
+    """SAFEGUARD PIN (THE LINE): D1 stays keyed on OPEN rows only. A cancelled
+    row has no live position, so a broker position for that ticker is still
+    genuinely untracked — the ANY-status set (D2-only) must NOT leak into
+    D1's ticker matching and mute the untracked-position alarm."""
+    cancelled_row = {
+        "id": 257, "ticker": "CLSK",
+        "entry_order_id": "96c48f58-aaaa-bbbb-cccc-1234567890ab",
+        "stop_order_id": None, "status": "cancelled",
+    }
+    position = {"symbol": "CLSK", "qty": 80.0, "avg_entry_price": 12.5}
+    pool, conn = _setup(db_rows=[], positions=[position], open_orders=[],
+                        all_db_rows=[cancelled_row])
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions", new=AsyncMock(return_value=[position])), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("live")
+
+    assert result["d1_count"] == 1
+    assert result["alerted"] == 1
+    tg.assert_called_once()
+    assert "CLSK" in tg.call_args[0][0]
+    detected_call = next(c for c in audit.call_args_list if c.args[0] == COVERAGE_DRIFT_DETECTED)
+    assert D1_UNTRACKED_POSITION in detected_call.args[2]
+
+
+@pytest.mark.asyncio
+async def test_degraded_known_ids_read_no_drift_reported():
+    """The SECOND DB read (_fetch_all_known_order_ids) raises -> degraded
+    audit row only, no drift reported — a failed tracking-set read must never
+    be interpreted as 'nothing tracked' (mass D2 false-HIGH, #137 class)."""
+    order = {
+        "id": "order-abc-123", "symbol": "ABC", "side": "buy", "type": "stop_limit",
+        "client_order_id": "apollo_paper_magna53_ABC_1715450123456",
+    }
+    pool, conn = _setup()
+    conn.fetch = AsyncMock(side_effect=[[], RuntimeError("db down mid-cycle")])
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions", new=AsyncMock(return_value=[])), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[order])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("paper")
+
+    assert result["degraded"] is True
+    assert result["d2_high_count"] == 0
+    tg.assert_not_called()
+    audit.assert_called_once()
+    assert audit.call_args.args[0] == COVERAGE_DRIFT_CHECK_DEGRADED
 
 
 @pytest.mark.asyncio

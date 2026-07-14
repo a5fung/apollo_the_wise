@@ -15,7 +15,13 @@ Three drift classes:
        class from the 2026-06-04 FPS false-naked incident (a stop that was
        live at the broker but had never been written to the DB at all).
   D2 — UNTRACKED OPEN ORDER: an open broker order whose id is neither the
-       entry_order_id nor stop_order_id of any open DB row.
+       entry_order_id nor stop_order_id of ANY mi_live_trades row for this
+       mode — ANY status, not just open. Order ids are unique broker UUIDs,
+       so a terminal (cancelled/closed) row referencing an order_id
+       definitively means that order is tracked; matching only OPEN rows
+       falsely flagged the cancel window (CLSK 2026-07-07: broker order still
+       open while the DB row was already `cancelled` by the 10:00 ET
+       ORB-unfilled cleanup → false 🔴 "untracked open order").
          client_order_id matches our `apollo_{mode}_` prefix → HIGH
            (system-created, then lost track of).
          anything else → INFO (the operator may trade manually in the same
@@ -94,6 +100,44 @@ async def _fetch_open_db_trades(conn, account_mode: str) -> list:
     )
 
 
+async def _fetch_all_known_order_ids(conn, account_mode: str) -> set[str]:
+    """Every order_id referenced by ANY mi_live_trades row for this mode —
+    entry_order_id ∪ stop_order_id, ANY status (open AND terminal).
+
+    This is D2's tracking set ONLY. Order ids are unique broker UUIDs, so a
+    terminal (cancelled/closed) row referencing an order_id definitively means
+    that order is tracked — a broker order in its cancel window (still open at
+    the broker, DB row already `cancelled` by the 10:00 ET ORB-unfilled
+    cleanup) is NOT drift (the CLSK 2026-07-07 false positive). A genuine
+    orphan — an apollo-prefixed order NO row references in any status — is
+    unaffected and still fires D2 HIGH.
+
+    D1/D3 deliberately do NOT use this: they key on OPEN rows/tickers
+    (`_fetch_open_db_trades`) — a cancelled row has no live position, so a
+    broker position for that ticker IS still untracked (D1 must fire).
+
+    Read-only; unbounded on purpose (no time window) — a recency cut would
+    reintroduce the false positive for orders referenced by older rows. Cheap:
+    two columns off one mode's rows (idx_live_trades_account_mode), and the
+    table is a personal trade log, not market data."""
+    rows = await conn.fetch(
+        """
+        SELECT entry_order_id, stop_order_id
+        FROM mi_live_trades
+        WHERE account_mode = $1
+          AND (entry_order_id IS NOT NULL OR stop_order_id IS NOT NULL)
+        """,
+        account_mode,
+    )
+    known: set[str] = set()
+    for r in rows:
+        if r["entry_order_id"]:
+            known.add(r["entry_order_id"])
+        if r["stop_order_id"]:
+            known.add(r["stop_order_id"])
+    return known
+
+
 def _signature(account_mode: str, drift_class: str, ticker: str, order_id: str | None) -> str:
     """Drift-instance identity used for both the SELECT dedup check and the
     marker row written on send — mode+class+ticker+order_id, per spec."""
@@ -143,7 +187,7 @@ def _format_d2_message(account_mode: str, order: dict) -> str:
         f"{mode_prefix(account_mode)}🔴 *Untracked open order — {ticker}*\n"
         f"Alpaca {account_mode} has an open order Apollo appears to have placed "
         f"(client_order_id carries our `apollo_{account_mode}_` prefix) but no "
-        f"open DB row references it as an entry or stop.\n\n"
+        f"DB trade row — any status — references it as an entry or stop.\n\n"
         f"Order: `{side} {otype}`  ID: `{order_id[:12]}…`\n"
         f"Client order ID: `{coid}`\n\n"
         f"_Observe-only (ADR 0008 increment 2) — no auto-cancel. "
@@ -189,6 +233,10 @@ async def detect_coverage_drift(account_mode: str) -> dict:
     async with pool.acquire() as conn:
         try:
             db_rows = await _fetch_open_db_trades(conn, account_mode)
+            # D2 tracking set — ANY-status rows, same degraded guard: a failed
+            # read here must never be interpreted as "nothing tracked" (that
+            # would mass-false-fire D2 HIGH — the #137 class).
+            known_order_ids = await _fetch_all_known_order_ids(conn, account_mode)
         except Exception as e:
             logger.error(f"coverage_drift[{account_mode}]: DB read failed, skipping this cycle: {e}")
             await log_audit_event(
@@ -215,13 +263,10 @@ async def detect_coverage_drift(account_mode: str) -> dict:
                 overflow.append(label)
             await log_audit_event(COVERAGE_DRIFT_ALERTED, signature, "")
 
+        # D1/D3 stay keyed on OPEN rows only — a cancelled row has no live
+        # position, so D1 must still fire on a broker position for its ticker.
+        # known_order_ids (D2 only) was fetched above from ALL-status rows.
         db_open_tickers = {r["ticker"] for r in db_rows}
-        known_order_ids = set()
-        for r in db_rows:
-            if r["entry_order_id"]:
-                known_order_ids.add(r["entry_order_id"])
-            if r["stop_order_id"]:
-                known_order_ids.add(r["stop_order_id"])
 
         position_tickers = {p["symbol"] for p in positions}
         open_order_ids = {o["id"] for o in open_orders}
@@ -244,7 +289,7 @@ async def detect_coverage_drift(account_mode: str) -> dict:
             signature = _signature(account_mode, D1_UNTRACKED_POSITION, ticker, None)
             await _alert(signature, _format_d1_message(account_mode, p), ticker)
 
-        # ── D2 — open order not referenced by any open DB row ───────────────
+        # ── D2 — open order not referenced by ANY DB row (any status) ───────
         for o in open_orders:
             order_id = o["id"]
             if order_id in known_order_ids:
