@@ -7096,3 +7096,39 @@ reviews:
       Ref: PLAN #184, docs/analysis/184b_broker_order_ingest_spec_2026-07-06.md §7.
     status: pending
     added_on: 2026-07-11
+
+  - review_id: entry_order_rejections_systematic
+    title: "Entry-order rejections (#475) — is the AEHR-class LULD reject systematic?"
+    question: |
+      AEHR 2026-07-15 (live): exchange-level LULD rejection of the ORB stop-limit
+      BUY on a +29.5% gapper — order was correct, buying power fine, MANE-identical
+      shape filled the same morning. Operator ruling: OBSERVE before fixing. The
+      `entry_order_rejected` telemetry (trade_stream.py cancel/reject WS handler,
+      #475) now accumulates every broker-side entry death with context
+      (ticker, account_mode, event_norm, gap_pct, ep_score, entry_price,
+      stop_price, regime, signal_type in detail JSON). Is the rejection pattern
+      systematic — e.g. concentrated in large-gap (LULD-band) names — and does it
+      cost enough missed entries to justify designing a retry / re-price
+      mechanism? Any retry mechanism = entry-discipline change → CHANGE_PROCESS +
+      operator sign-off (THE LINE); this review only decides whether to open that
+      design.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'entry_order_rejected'
+        AND created_at > NOW() - INTERVAL '30 days'
+    threshold: 3
+    earliest_review_date: 2026-07-29
+    action_when_ready: |
+      Pull the rows:
+        SELECT created_at, summary, detail FROM mi_audit_log
+        WHERE event_type = 'entry_order_rejected'
+          AND created_at > NOW() - INTERVAL '30 days'
+        ORDER BY created_at;
+      Classify each by event_norm (rejected vs unexpected cancelled) and by
+      gap_pct band (LULD exposure grows with gap size). If ≥ half are
+      AEHR-class LULD rejects on large gaps, scope a retry/re-price design as a
+      CHANGE_PROCESS item for operator sign-off (do NOT build it from this
+      review). If they're heterogeneous one-offs, extend the window (defer +30d)
+      or close as non-systematic. Ref: PLAN #475.
+    status: pending
+    added_on: 2026-07-15

@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 
 from alpaca.trading.stream import TradingStream
 
+from agents.market_intelligence.audit_events import ENTRY_ORDER_REJECTED
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import mode_prefix
@@ -328,6 +329,43 @@ def _find_replacement_stop(open_orders, symbol: str, canceled_order_id: str, rem
          if "stop" in str(o.get("type", "")).lower() or o.get("stop_price") is not None),
         None,
     )
+
+
+# #475: settle window before the ONE bounded re-check on a stop-cancel with no
+# replacement found — long enough for an in-flight stop RE-PLACE to land at the
+# broker (observed ~seconds on MANE 2026-07-15), short enough that a genuinely
+# naked position still alarms promptly.
+_STOP_CANCEL_RECHECK_DELAY_S = 3
+
+
+async def _broker_confirm_replacement_stop(
+    symbol: str, canceled_order_id: str, remaining_shares, account_mode: str,
+):
+    """One bounded, fail-safe broker read: does a DIFFERENT live SELL stop cover
+    `symbol`? Returns the replacement order dict, or None.
+
+    FAIL-SAFE CONTRACT (#433 — do not weaken): only a POSITIVE broker
+    confirmation returns an order. A read error, a timeout, or genuinely-no-stop
+    all return None → the caller ALARMS. The 8s `asyncio.wait_for` bound exists
+    because `get_open_orders` is a SYNC alpaca-py REST call under an async def —
+    it blocks the WS event loop for the round-trip; a slow/hung broker must not
+    wedge the trade stream at exactly the moment stop-cancels cluster.
+    """
+    from agents.market_intelligence.broker import alpaca_client as _alp
+    try:
+        open_orders = await asyncio.wait_for(
+            _alp.get_open_orders(account_mode=account_mode, raise_on_error=True),
+            timeout=8,
+        )
+        return _find_replacement_stop(
+            open_orders, symbol, canceled_order_id, remaining_shares
+        )
+    except Exception as _e:
+        logger.warning(
+            f"WS [{account_mode}]: broker-confirm on stop-cancel failed for "
+            f"{symbol} ({_e}) — treating as no replacement (fail-safe: caller alarms)"
+        )
+        return None
 
 
 # ── Event Router ────────────────────────────────────────────────────────────
@@ -857,10 +895,17 @@ async def _process_entry_fill(
         """, str(order.id), filled_qty, filled_price)
 
     attempt = trade.get("entry_attempt", 1)
+    # #475: this FILLED alert is now the SOLE per-trade Telegram (the placement
+    # message was dropped), so it must be self-contained: entry, shares, stop.
+    # Show the ACTUAL stop (mi_live_trades.stop_price = the spec's stop) — for
+    # 9M Day 2 the stop is the PRIOR day's low, not orb_low; the two only
+    # coincide for MAGNA53. orb_low kept as fallback for legacy NULL rows.
+    _stop_val = trade.get("stop_price") or trade.get("orb_low")
+    _stop_line = f"\nStop: ${float(_stop_val):.2f}" if _stop_val else ""
     msg = (
         f"{mode_prefix(account_mode)}✅ *FILLED:* {ticker} (attempt {attempt})\n"
-        f"Entry: ${filled_price:.2f} x {filled_qty:.0f} shares\n"
-        f"Stop: ${trade['orb_low']:.2f}"
+        f"Entry: ${filled_price:.2f} x {filled_qty:.0f} shares"
+        f"{_stop_line}"
     )
     try:
         await log_audit_event(
@@ -981,10 +1026,13 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
 
     pool = await get_pool()
 
-    # 1. Entry order? (mode-scoped)
+    # 1. Entry order? (mode-scoped). Context columns ride along for the #475
+    # entry_order_rejected telemetry below.
     async with pool.acquire() as conn:
         entry_trade = await conn.fetchrow("""
-            SELECT id, ticker FROM mi_live_trades
+            SELECT id, ticker, gap_pct, ep_score, entry_price, stop_price,
+                   regime, signal_type
+            FROM mi_live_trades
             WHERE entry_order_id = $1 AND account_mode = $2
               AND status IN ('order_placed', 'submitting', 'pending_confirmation', 'confirmed')
         """, order_id, account_mode)
@@ -994,6 +1042,39 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             await conn.execute(
                 "UPDATE mi_live_trades SET status = 'cancelled', skip_reason = $2 WHERE id = $1",
                 entry_trade["id"], event_norm,
+            )
+        # #475 telemetry (observability only — the status update above is
+        # unchanged): entry orders dying at the BROKER. e.g. AEHR 2026-07-15,
+        # an exchange-level LULD rejection on a +29.5% gapper. Routine 10:00 ET
+        # cleanup cancels mark their rows 'cancelled' BEFORE the WS event lands,
+        # so they don't reach this branch — what arrives here is the unexpected
+        # class. Rows accumulate in mi_audit_log and feed the
+        # `entry_order_rejections_systematic` data-gated review: observe whether
+        # the pattern is systematic before designing any retry mechanism.
+        try:
+            await log_audit_event(
+                ENTRY_ORDER_REJECTED,
+                f"{event_norm}: {entry_trade['ticker']} [{account_mode}] "
+                f"order {order_id[:8]}",
+                json.dumps({
+                    "trade_id": entry_trade["id"],
+                    "ticker": entry_trade["ticker"],
+                    "account_mode": account_mode,
+                    "event_norm": event_norm,
+                    "order_id": order_id,
+                    "gap_pct": float(entry_trade["gap_pct"]) if entry_trade["gap_pct"] is not None else None,
+                    "ep_score": float(entry_trade["ep_score"]) if entry_trade["ep_score"] is not None else None,
+                    "entry_price": float(entry_trade["entry_price"]) if entry_trade["entry_price"] is not None else None,
+                    "stop_price": float(entry_trade["stop_price"]) if entry_trade["stop_price"] is not None else None,
+                    "regime": entry_trade["regime"],
+                    "signal_type": entry_trade["signal_type"],
+                }),
+            )
+        except Exception as _e:
+            # log_audit_event never raises; this guards the json.dumps/context
+            # assembly so a telemetry bug can't block the REJECTED Telegram below.
+            logger.warning(
+                f"entry_order_rejected telemetry emit failed for {symbol}: {_e}"
             )
         icon = "🚫" if event_norm == "rejected" else "🗑"
         await send_telegram_message(
@@ -1034,37 +1115,34 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # INVARIANT: only downgrade the alarm when the broker POSITIVELY
             # confirms a live stop; a read failure or no-stop-found still alarms
             # (fail-safe — never suppress a genuinely-naked alert).
-            from agents.market_intelligence.broker import alpaca_client as _alp
-            replacement = None
-            try:
-                # raise_on_error=True + wait_for (review 7/6): get_open_orders is a
-                # SYNC alpaca-py REST call under an async def — it blocks the WS
-                # event loop for the round-trip. Bound it (8s) so a slow/hung broker
-                # can't wedge the trade stream at exactly the moment stop-cancels
-                # cluster; a timeout OR a read error RAISES → caught below → alarm
-                # (fail-safe: never suppress a naked alert on an unknown broker state).
-                open_orders = await asyncio.wait_for(
-                    _alp.get_open_orders(account_mode=account_mode, raise_on_error=True),
-                    timeout=8,
+            replacement = await _broker_confirm_replacement_stop(
+                symbol, order_id, stop_trade["remaining_shares"], account_mode
+            )
+            rechecked = False
+            if not replacement:
+                # #475 (2026-07-15, MANE): a stop RE-PLACE can still be IN FLIGHT
+                # when the cancel WS event arrives — the first broker look finds
+                # nothing yet, the new stop lands seconds later, and the premature
+                # "unprotected" alarm was FALSE. Do ONE bounded re-check after a
+                # short settle window. The #433 fail-safe is UNCHANGED: if the
+                # re-check also errors / times out / finds no stop, we still
+                # alarm — a real naked stop is never suppressed.
+                rechecked = True
+                await asyncio.sleep(_STOP_CANCEL_RECHECK_DELAY_S)
+                replacement = await _broker_confirm_replacement_stop(
+                    symbol, order_id, stop_trade["remaining_shares"], account_mode
                 )
-                replacement = _find_replacement_stop(
-                    open_orders, symbol, order_id, stop_trade["remaining_shares"]
-                )
-            except Exception as _e:
-                logger.warning(
-                    f"WS [{account_mode}]: broker-confirm on stop-cancel failed for "
-                    f"{symbol} ({_e}) — alarming fail-safe"
-                )
-                replacement = None
             if replacement:
+                _settle_note = " (settled on re-check)" if rechecked else ""
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}ℹ️ *Stop replaced:* {symbol}\n"
                     f"_Prior leg {event_norm}; live stop `{str(replacement['id'])[:8]}` "
                     f"in place at the broker — position protected._"
                 )
                 logger.info(
-                    f"WS [{account_mode}]: stop-leg {event_norm} but replacement live "
-                    f"({replacement['id']}): {symbol} trade_id={stop_trade['id']}"
+                    f"WS [{account_mode}]: stop-leg {event_norm} but replacement live"
+                    f"{_settle_note} ({replacement['id']}): {symbol} "
+                    f"trade_id={stop_trade['id']}"
                 )
             else:
                 await send_telegram_message(

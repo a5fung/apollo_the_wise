@@ -41,6 +41,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_TRADING_PAUSED,
     INFRA_HALT_STATE_UNREADABLE,
     SETUP_ACCOUNT_FETCH_FAILED,
+    WINDOW_DUPLICATE,
     humanize,
 )
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
@@ -251,6 +252,15 @@ async def _check_safeguards(
 # ── New Alerts (Day 1) ───────────────────────────────────────────────────────
 
 
+def _is_window_duplicate_reason(reason) -> bool:
+    """True when a skip reason is the WINDOW_DUPLICATE constant (bare, or with
+    the vocabulary's optional ':detail' suffix). Matches on the constant from
+    skip_reasons.py, never on the humanized display string (#475)."""
+    if not isinstance(reason, str):
+        return False
+    return reason == WINDOW_DUPLICATE or reason.startswith(WINDOW_DUPLICATE + ":")
+
+
 async def process_new_alerts_live(today: date | None = None, trigger: str = "cron") -> list[dict]:
     """
     For each HIGH EP alert today, run the unified entry pipeline.
@@ -403,14 +413,24 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     logger.info(f"ORB monitor: {entered} entered, {len(skipped_results)} skipped out of {len(alerts)} alerts")
 
     # Grouped skip digest — one Telegram per cron-run instead of per-ticker.
-    if skipped_results:
+    # #475 (2026-07-15): WINDOW_DUPLICATE skips are excluded from the digest —
+    # they are dedup noise from the dual bar_stream/cron ORB trigger (the same
+    # alert legitimately arrives twice; one path wins, the other reports
+    # "duplicate"). All GENUINE skips (filter:/setup:/block:/infra:/other
+    # window:) still surface; if only duplicates remain, no Telegram is sent.
+    # Duplicates stay observable: results list, log line above, orb_duplicate audit.
+    digest_results = [
+        r for r in skipped_results
+        if not _is_window_duplicate_reason(r.get("reason"))
+    ]
+    if digest_results:
         bullets = "\n".join(
             f"• `{r['ticker']}` — {humanize(r.get('reason'))}"
-            for r in skipped_results
+            for r in digest_results
         )
         try:
             await send_telegram_message(
-                f"{mode_prefix()}⏭️ *ORB skips ({today}, {len(skipped_results)})*\n{bullets}"
+                f"{mode_prefix()}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
             )
         except Exception as e:
             logger.error(f"ORB grouped-skip Telegram failed — {e}")
@@ -804,8 +824,11 @@ async def morning_stop_refresh() -> int:
             logger.info(f"Morning stop refreshed: {ticker} @${stop_price:.2f}")
 
     if refreshed:
-        await send_telegram_message(
-            f"{mode_prefix()}🔄 Morning: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
+        # #475 (2026-07-15): routine housekeeping — expected every morning for
+        # every Day 2+ position (DAY stops expire overnight). Log only; failures
+        # in update_stop() keep their own loud paths.
+        logger.info(
+            f"Morning: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
         )
     return refreshed
 
@@ -1070,7 +1093,6 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
         signal_type="9m_day2",
         today=today,
         atr_14=None,
-        success_icon="🍬",
         success_title="9M Day2 order placed",
         stop_label="Stop (prev day low)",
         on_skip=_on_skip,

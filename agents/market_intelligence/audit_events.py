@@ -69,6 +69,10 @@ STRATEGY_DISABLED_SKIP = "strategy_disabled_skip"
 
 # ── ORB / entry flow ────────────────────────────────────────────────────────
 ORB_CANCELLATION_CLASSIFICATION = "orb_cancellation_classification"
+# #475 (2026-07-15, AEHR LULD): broker-side entry-order death (exchange reject,
+# unexpected cancel) reaching the WS handler. Feeds the
+# entry_order_rejections_systematic data-gated review — observe before fixing.
+ENTRY_ORDER_REJECTED = "entry_order_rejected"
 
 # ── Trade-state / broker hygiene ────────────────────────────────────────────
 NAKED_POSITION_DETECTED = "naked_position_detected"

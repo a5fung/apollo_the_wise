@@ -215,7 +215,6 @@ async def submit_trade_entry(
     signal_type: str,
     today: date,
     atr_14: float | None = None,
-    success_icon: str = "📊",
     success_title: str = "Order placed",
     stop_label: str = "Stop",
     on_skip: SkipHook | None = None,
@@ -231,7 +230,8 @@ async def submit_trade_entry(
     entry_price, stop_loss_price, shares, position_size, risk_dollars.
 
     Every terminal skip/block/failure state calls `send_telegram_message`.
-    No silent drops.
+    No silent drops. The auto-enter SUCCESS path is log+audit only (#475,
+    2026-07-15) — the WS FILLED alert is the single per-trade Telegram.
     """
     from agents.market_intelligence.broker.live_tracker import (
         _check_safeguards,
@@ -542,27 +542,19 @@ async def submit_trade_entry(
             )
         except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); trade already durable in mi_live_trades + submitted to Alpaca before this line, and the success Telegram below is unconditional
             pass
-        # Theme membership (C8, 2026-05-19) — append to entry alerts.
-        # Works for BOTH MAGNA53 EP and 9M Day 2 since both go through this
-        # single funnel. 9M doesn't get the catalyst rubric (quant-only) but
-        # DOES benefit from the theme axis surface (Pradeep #1 catalyst type).
-        theme_line = ""
-        try:
-            from agents.market_intelligence.catalyst_rubric_runtime import (
-                get_theme_membership, format_theme_for_telegram,
-            )
-            _theme = await get_theme_membership(ticker)
-            theme_line = "\n" + format_theme_for_telegram(_theme)
-        except Exception as _te:
-            logger.debug(f"entry alert theme lookup failed for {ticker}: {_te}")
-        await send_telegram_message(
-            f"{mode_prefix(account_mode)}{success_icon} *{success_title}:* {ticker}\n"
-            f"Stop-limit BUY @ ${order_spec['entry_price']:.2f} (pending trigger) | "
-            f"{stop_label}: ${order_spec['stop_loss_price']:.2f}\n"
-            f"Shares: {order_spec['shares']} | "
-            f"Risk: ${order_spec['risk_dollars']:.0f}\n"
-            f"_Fills if price ≥ ${order_spec['entry_price']:.2f}; cancels 10:00 ET if unfilled._"
-            f"{theme_line}"
+        # #475 (2026-07-15, noise reduction): the "order placed (pending trigger)"
+        # Telegram is DROPPED — a pending stop-limit is not yet a trade. The WS
+        # FILLED alert (trade_stream._process_entry_fill: entry price, shares,
+        # stop) is the sole per-trade Telegram. Placement stays observable via
+        # this log line + the orb_order_placed audit row above. The former
+        # theme-membership Telegram append (C8) went with the message; theme
+        # context lives in the EP alert/briefing surfaces.
+        logger.info(
+            f"{strategy_label} {success_title} [{account_mode}]: {ticker} "
+            f"stop-limit BUY @${order_spec['entry_price']:.2f} (pending trigger) | "
+            f"{stop_label}: ${order_spec['stop_loss_price']:.2f} | "
+            f"shares={order_spec['shares']} risk=${order_spec['risk_dollars']:.0f} | "
+            f"cancels 10:00 ET if unfilled (trade_id={trade_id})"
         )
         return {"ticker": ticker, "action": ACTION_AUTO_ENTERED, "trade_id": trade_id}
 
