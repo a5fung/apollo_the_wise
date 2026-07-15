@@ -143,3 +143,28 @@ async def test_post_market_task_returns_result_text(monkeypatch):
     result = await channel._post_market_task("/themes_detail SUMMARY", user_id=42)
     assert result == "Chip_Stocks members: NVDA, AMD_Corp, INTC"
     assert fake_client.last_post["kwargs"]["json"]["user_id"] == 42
+
+
+@pytest.mark.asyncio
+async def test_bare_themes_shows_ecosystem_board_no_buttons(monkeypatch):
+    """ADR 0032 (operator 2026-07-14): bare /themes forwards the "/themes" task
+    (the market agent's ecosystem board via _handle_theme_query) and sends it
+    through _reply (which splits the long hierarchical board across messages),
+    with NO stage drill-down buttons — replacing the old "/themes_detail SUMMARY"
+    compact-summary + [Accelerating|Nascent|All Active] keyboard."""
+    channel = _make_channel()
+    update, context, message = _make_update([])  # bare /themes (no args)
+    channel._reply = AsyncMock()
+
+    monkeypatch.setattr("shared.registry.get_agent_url", lambda name: "http://market-agent:9000")
+    monkeypatch.setattr("core.router.get_agent_url", lambda name: "http://market-agent:9000")
+    fake_client = _fake_market_agent_client()
+    monkeypatch.setattr(httpx, "AsyncClient", fake_client)
+
+    await channel._handle_themes_command(update, context)
+
+    # Forwards the ecosystem-board task, not the old compact summary.
+    assert fake_client.last_post["kwargs"]["json"]["task"] == "/themes"
+    # Sent via the splitting _reply, and NOT via a keyboard-bearing reply.
+    channel._reply.assert_awaited_once()
+    assert message.reply_text.call_count == 0

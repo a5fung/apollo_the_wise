@@ -968,20 +968,17 @@ class TelegramChannel:
             await self._reply_with_fallback(update, lookup_text)
             return
 
-        summary_text = await self._post_market_task_or_reply(
-            update, "/themes_detail SUMMARY", update.effective_user.id, "No theme data."
+        # ADR 0032 (operator 2026-07-14): bare /themes shows the full ecosystem
+        # board directly — no stage drill-down buttons. Forwards "/themes" -> the
+        # market agent's _handle_theme_query (format_ecosystem_board: ecosystems
+        # ranked by boosted D3 score, sub-themes nested). _reply splits across
+        # messages since the hierarchical board exceeds Telegram's 4096-char limit.
+        board_text = await self._post_market_task_or_reply(
+            update, "/themes", update.effective_user.id, "No theme data."
         )
-        if summary_text is None:
+        if board_text is None:
             return
-
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("Accelerating", callback_data="themes:Accelerating"),
-                InlineKeyboardButton("Nascent", callback_data="themes:Nascent"),
-                InlineKeyboardButton("All Active", callback_data="themes:All"),
-            ]
-        ])
-        await self._reply_with_fallback(update, summary_text, reply_markup=keyboard)
+        await self._reply(update, board_text)
 
     async def _handle_trades_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
