@@ -20,6 +20,7 @@ COPY core/notifications.py core/notifications.py
 COPY core/job_audit.py core/job_audit.py
 COPY integrations.yaml integrations.yaml
 COPY data_gated_reviews.yaml data_gated_reviews.yaml
+COPY theme_ecosystems.yaml theme_ecosystems.yaml
 # PLAN.md is NOT copied (#435): it's a read-only bind-mount in docker-compose.prod.yml
 # so the #426 blocking-count reflects the LIVE file (a COPY snapshot went stale on
 # PLAN-only sessions that didn't rebuild the image).
