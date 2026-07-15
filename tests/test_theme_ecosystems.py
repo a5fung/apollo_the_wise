@@ -499,13 +499,16 @@ class TestFormatEcosystemBoard:
         scored, fading, rs, eco_map = _board_fixture()
         text = "\n".join(format_ecosystem_board(scored, fading, rs, eco_map))
 
-        i_cybr = text.index("*E-CYBR Cybersecurity*")
-        i_reit = text.index("*E-REIT Real estate / REITs*")
+        # Ecosystem headers carry a rank prefix (1., 2., …); E-UNASSIGNED unnumbered.
+        assert "*1. E-CYBR Cybersecurity*" in text
+        assert "*2. E-REIT Real estate / REITs*" in text
+        i_cybr = text.index("E-CYBR Cybersecurity")
+        i_reit = text.index("E-REIT Real estate / REITs")
         i_un = text.index("*E-UNASSIGNED")
         assert i_cybr < i_reit < i_un        # boosted rank; unmapped pinned last
 
         # Header carries the raw → boosted (Δ) · names · RS80+ readout
-        header = [l for l in text.splitlines() if l.startswith("*E-CYBR")][0]
+        header = [l for l in text.splitlines() if "E-CYBR Cybersecurity" in l][0]
         assert "raw" in header and "→ boosted" in header
         assert "9 names" in header and "9 RS80+" in header
 
@@ -528,7 +531,7 @@ class TestFormatEcosystemBoard:
         struck = te._strike("Endpoint Security")
         assert struck in text
         # INSIDE the E-CYBR block (between the CYBR and REIT headers)…
-        assert text.index("*E-CYBR") < text.index(struck) < text.index("*E-REIT")
+        assert text.index("E-CYBR") < text.index(struck) < text.index("E-REIT")
         # …NOT in a global footnote
         assert "_Fading:" not in text
 
@@ -636,8 +639,8 @@ class TestHandleThemeQueryV2:
 
         assert resp.success, resp.error
         assert "2 Active Themes" in resp.result
-        assert "*E-CYBR Cybersecurity*" in resp.result
-        assert "*E-REIT" in resp.result
+        assert "*1. E-CYBR Cybersecurity*" in resp.result
+        assert "*2. E-REIT" in resp.result
         assert resp.result.index("E-CYBR") < resp.result.index("E-REIT")
         # The Mainstream theme is NOT buried under a stage group anymore
         assert "*MAINSTREAM*" not in resp.result

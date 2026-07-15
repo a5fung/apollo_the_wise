@@ -631,26 +631,30 @@ def format_ecosystem_board(
         s = scores.get(code) or {}
         return (0, -s.get("boosted", 0.0), tax_order.get(code, 999), code)
 
+    rank = 0  # ecosystem rank prefix (1., 2., …) — E-UNASSIGNED stays unnumbered
     for code in sorted(eco_to_all, key=_sort_key):
         s = scores.get(code) or {}
         disp = (tax.get(code) or {}).get("name") or ""
-        title = f"*{code}{' ' + disp if disp else ''}*"
         group_active = active_by_eco.get(code, [])
         group_fading = fading_by_eco.get(code, [])
 
         if code == E_UNASSIGNED:
+            title = f"*{code}{' ' + disp if disp else ''}*"
             n = len(group_active) + len(group_fading)
             lines.append(f"\n❔ {title} — {n} theme(s) awaiting mapping")
-        elif not s.get("member_union"):
-            lines.append(f"\n{title} — all sub-themes Fading")
         else:
-            raw_i = round(s["raw"])
-            boosted_i = round(s["boosted"])
-            stat = (f"raw {raw_i} → boosted {boosted_i} (Δ+{boosted_i - raw_i})"
-                    if s.get("boost", 0) > 0 else f"raw {raw_i}")
-            lines.append(
-                f"\n{title} — {stat} · {len(s['member_union'])} names "
-                f"· {s['strong']} RS80+")
+            rank += 1
+            title = f"*{rank}. {code}{' ' + disp if disp else ''}*"
+            if not s.get("member_union"):
+                lines.append(f"\n{title} — all sub-themes Fading")
+            else:
+                raw_i = round(s["raw"])
+                boosted_i = round(s["boosted"])
+                stat = (f"raw {raw_i} → boosted {boosted_i} (Δ+{boosted_i - raw_i})"
+                        if s.get("boost", 0) > 0 else f"raw {raw_i}")
+                lines.append(
+                    f"\n{title} — {stat} · {len(s['member_union'])} names "
+                    f"· {s['strong']} RS80+")
 
         for st in group_active:   # already comp-desc within the group
             lines.extend(_theme_line(st, global_rank.get(st["name"]), theme_rs_data))
