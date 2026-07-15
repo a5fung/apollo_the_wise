@@ -8,6 +8,9 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-07-09 — F1 giveback shadow deployed · #290 closed · #439 part-b
+- ADR 0023 F1: `giveback_shadow.py` (+6%/60% peak-lock) deployed both money containers as log-only SHADOW on the live book (THE LINE) + `giveback_shadow_review` gate; #443 alert-label fix rode it. #290 CLOSED — late-entry backtest R-NEGATIVE (N=196; wide stop, no fresh ORB), don't extend. #439 part-b: G6 resting-test-order sweep (`_sweep_test_orders_until_clear`). Deploy lessons: root-file drift-guard classification + `# exec-boundary-ok` import tag. Advisor: verify the control, lead with the internal well-powered result.
+
 ### 2026-07-08 — ADR 0023 exit-cards · ADR 0024 M1-a/c · alert fix
 - Dark/evidence: ADR 0023 Cards 1/2/3 (giveback_floor + harvest sweep → +$8,075 F1-evidence) + Card 5; ADR 0024 M1-a dark + M1-c draft. #443 paper/live alert mislabel fixed. #274 fragmentation root-caused → weekend Fable block. Lesson: asyncpg single-conn can't multiplex a query-gather.
 
