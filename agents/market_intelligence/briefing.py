@@ -696,17 +696,38 @@ def _format_theme_scorecard(
     theme_rs_data: dict[str, dict],
     prior_scores: dict[str, float],
     section_num: int = 3,
+    eco_map: dict[str, str] | None = None,
 ) -> str:
     """
-    Theme RS Scorecard — all active themes with RS composite (1M|3M|6M),
-    delta, and top constituents. Fading collapsed.
+    Theme RS Scorecard. With a theme→ecosystem mapping (#473, ADR 0032):
+    compact ECOSYSTEM-grouped view — the same grouping/scoring seam as
+    /themes (format_ecosystem_board), sized for the brief. Fail-safe: empty
+    mapping / render error → the legacy stage-grouped scorecard below (the
+    brief must never break on the ecosystem layer).
     """
     if not themes:
         return f"*{section_num}. THEME SCORECARD* — No data yet"
 
     scored_themes, fading = _compute_scored_themes(themes, theme_rs_data, prior_scores)
 
-    # Group by stage
+    if eco_map:
+        try:
+            # Function-level import — briefing must NOT import theme_ecosystems
+            # at module scope (theme_ecosystems imports STAGE_EMOJI from here).
+            from agents.market_intelligence.theme_ecosystems import (
+                format_ecosystem_scorecard_compact,
+            )
+            body = format_ecosystem_scorecard_compact(
+                scored_themes, fading, theme_rs_data, eco_map)
+            if body:   # [] = nothing renderable (e.g. all unmapped) → legacy view
+                header = (f"*{section_num}. THEME SCORECARD* — "
+                          f"{len(scored_themes)} active · by ecosystem")
+                return "\n".join([header] + body)
+        except Exception as e:
+            logger.warning(
+                f"Ecosystem scorecard render failed — legacy stage view: {e}")
+
+    # Legacy view — group by stage
     stage_order = ["Accelerating", "Mainstream", "Nascent"]
     stage_groups: dict[str, list] = {s: [] for s in stage_order}
     for st in scored_themes:
@@ -1047,6 +1068,7 @@ def _format_evening_briefing(
     cohort_babies: list[dict] | None = None,
     undercut_rallies: list[dict] | None = None,
     v1_closeout_line: str | None = None,
+    eco_map: dict[str, str] | None = None,
 ) -> str:
     next_num = 4
 
@@ -1054,6 +1076,7 @@ def _format_evening_briefing(
     if theme_rs_data:
         theme_section = _format_theme_scorecard(
             themes, theme_rs_data, prior_theme_scores or {}, section_num=3,
+            eco_map=eco_map,
         )
     else:
         theme_section = _format_theme_section(themes, section_num=3)
@@ -1279,6 +1302,14 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     all_theme_tickers = list(set(all_theme_tickers))
     theme_rs_data = await get_rs_for_tickers(today_str, all_theme_tickers) if all_theme_tickers else {}
 
+    # ADR 0032 (#473): theme → ecosystem mapping for the compact ecosystem
+    # scorecard. Tonight's mappings are written by run_theme_engine (nightly
+    # pull, 5 PM ET) before this job (8 PM ET); unmapped names degrade to the
+    # ❔ footnote. load_ecosystem_assignments itself degrades to {} on any DB
+    # failure → _format_theme_scorecard falls back to the legacy stage view.
+    from agents.market_intelligence.theme_ecosystems import load_ecosystem_assignments
+    eco_map = await load_ecosystem_assignments()
+
     # Weekly signal quality section (Fridays only: weekday 4)
     signal_quality_summary = None
     if today.weekday() == 4:
@@ -1411,6 +1442,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         cohort_babies=cohort_babies,
         undercut_rallies=undercut_rallies,
         v1_closeout_line=v1_closeout_line,
+        eco_map=eco_map,
     )
 
     success = await send_telegram_message(text, chat_id)

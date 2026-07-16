@@ -19,7 +19,9 @@ discovery/validation/lifecycle; this module is an AGGREGATE on top:
      boosted score, sub-themes nested with global theme rank, Fading shown
      struck-through INSIDE its ecosystem, stage as a per-line tag. Falls back
      to a flat comp-ranked list when the mapping table is empty (pre-backfill)
-     so /themes never breaks.
+     so /themes never breaks. `format_ecosystem_scorecard_compact` (#473) is
+     the brief-sized sibling (same grouping/scoring via
+     _group_and_rank_ecosystems) used by the evening-briefing scorecard.
 
 NO MONEY PATH: themes feed briefs + the shadow-judge theme-axis only. This
 module never touches trade state, discovery/validation/lifecycle logic, or
@@ -35,6 +37,12 @@ import yaml
 
 from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.audit_events import THEME_ECOSYSTEM_ASSIGNED
+# Safe at module scope: briefing's own theme_ecosystems imports stay
+# FUNCTION-level (briefing → theme_engine resolves before this line runs when
+# briefing is imported first; the reverse order completes briefing fully).
+# Do NOT add a module-level `import theme_ecosystems` to briefing.py — that
+# would close the cycle. (#473 hoisted this out of _theme_line's per-call body.)
+from agents.market_intelligence.briefing import STAGE_EMOJI, _conviction_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -553,7 +561,6 @@ def _theme_line(st: dict, rank: int | None, theme_rs_data: dict[str, dict],
                 indent: str = "  ") -> list[str]:
     """One rendered sub-theme (or flat-list) entry: rank + name + stage tag +
     RS + delta, then a member preview line."""
-    from agents.market_intelligence.briefing import STAGE_EMOJI, _conviction_suffix
     stage = st.get("stage", "?")
     emoji = STAGE_EMOJI.get(stage, "")
     delta_str = f"  Δ{st['delta']:+.1f}" if st.get("delta") is not None else ""
@@ -566,6 +573,49 @@ def _theme_line(st: dict, rank: int | None, theme_rs_data: dict[str, dict],
     if preview:
         lines.append(f"{indent}    {preview}")
     return lines
+
+
+def _group_and_rank_ecosystems(
+    scored_themes: list[dict],
+    fading: list[dict],
+    theme_rs_data: dict[str, dict],
+    eco_map: dict[str, str],
+) -> tuple[list[str], dict[str, list[dict]], dict[str, list[dict]], dict[str, dict]]:
+    """Shared grouping + D3 scoring + display order for every ecosystem render
+    (full /themes board AND the compact brief scorecard — ONE scoring path,
+    #473; the surfaces must never disagree on grouping or rank).
+
+    Returns (ordered_codes, active_by_eco, fading_by_eco, scores). Codes are
+    sorted boosted-desc with taxonomy-order tiebreak, E-UNASSIGNED pinned last.
+    """
+    active_by_eco: dict[str, list[dict]] = {}
+    for st in scored_themes:
+        active_by_eco.setdefault(eco_map.get(st["name"], E_UNASSIGNED), []).append(st)
+    fading_by_eco: dict[str, list[dict]] = {}
+    for t in fading:
+        fading_by_eco.setdefault(eco_map.get(t.get("name"), E_UNASSIGNED), []).append(t)
+
+    # Score input: every theme (compute filters Fading itself).
+    eco_to_all: dict[str, list[dict]] = {}
+    for code in set(active_by_eco) | set(fading_by_eco):
+        eco_to_all[code] = (
+            [{"name": st["name"], "tickers": st.get("tickers") or [],
+              "stage": st.get("stage", "")} for st in active_by_eco.get(code, [])]
+            + [{"name": t.get("name"), "tickers": t.get("tickers") or [],
+                "stage": "Fading"} for t in fading_by_eco.get(code, [])]
+        )
+    scores = compute_ecosystem_scores(eco_to_all, theme_rs_data)
+
+    tax_order = {code: i for i, code in enumerate(get_ecosystem_codes())}
+
+    def _sort_key(code: str):
+        # E-UNASSIGNED pinned last; else boosted desc, taxonomy order tiebreak.
+        if code == E_UNASSIGNED:
+            return (1, 0.0, 0, code)
+        s = scores.get(code) or {}
+        return (0, -s.get("boosted", 0.0), tax_order.get(code, 999), code)
+
+    return sorted(eco_to_all, key=_sort_key), active_by_eco, fading_by_eco, scores
 
 
 def format_ecosystem_board(
@@ -602,37 +652,12 @@ def format_ecosystem_board(
     # ── Ecosystem view ────────────────────────────────────────────────────
     global_rank = {st["name"]: i for i, st in enumerate(scored_themes, 1)}
 
-    # Group active + fading per ecosystem (unmapped -> E-UNASSIGNED).
-    active_by_eco: dict[str, list[dict]] = {}
-    for st in scored_themes:
-        active_by_eco.setdefault(eco_map.get(st["name"], E_UNASSIGNED), []).append(st)
-    fading_by_eco: dict[str, list[dict]] = {}
-    for t in fading:
-        fading_by_eco.setdefault(eco_map.get(t.get("name"), E_UNASSIGNED), []).append(t)
-
-    # Score input: every theme (compute filters Fading itself).
-    eco_to_all: dict[str, list[dict]] = {}
-    for code in set(active_by_eco) | set(fading_by_eco):
-        eco_to_all[code] = (
-            [{"name": st["name"], "tickers": st.get("tickers") or [],
-              "stage": st.get("stage", "")} for st in active_by_eco.get(code, [])]
-            + [{"name": t.get("name"), "tickers": t.get("tickers") or [],
-                "stage": "Fading"} for t in fading_by_eco.get(code, [])]
-        )
-    scores = compute_ecosystem_scores(eco_to_all, theme_rs_data)
-
+    ordered, active_by_eco, fading_by_eco, scores = _group_and_rank_ecosystems(
+        scored_themes, fading, theme_rs_data, eco_map)
     tax = get_ecosystem_map()
-    tax_order = {code: i for i, code in enumerate(get_ecosystem_codes())}
-
-    def _sort_key(code: str):
-        # E-UNASSIGNED pinned last; else boosted desc, taxonomy order tiebreak.
-        if code == E_UNASSIGNED:
-            return (1, 0.0, 0, code)
-        s = scores.get(code) or {}
-        return (0, -s.get("boosted", 0.0), tax_order.get(code, 999), code)
 
     rank = 0  # ecosystem rank prefix (1., 2., …) — E-UNASSIGNED stays unnumbered
-    for code in sorted(eco_to_all, key=_sort_key):
+    for code in ordered:
         s = scores.get(code) or {}
         disp = (tax.get(code) or {}).get("name") or ""
         group_active = active_by_eco.get(code, [])
@@ -661,4 +686,82 @@ def format_ecosystem_board(
         for t in group_fading:    # struck-through INSIDE the ecosystem
             lines.append(f"  🔻 {_strike(t.get('name') or '?')} _(Fading)_")
 
+    return lines
+
+
+def format_ecosystem_scorecard_compact(
+    scored_themes: list[dict],
+    fading: list[dict],
+    theme_rs_data: dict[str, dict],
+    eco_map: dict[str, str],
+    max_ecosystems: int = 7,
+    max_subthemes: int = 2,
+) -> list[str]:
+    """Brief-sized ecosystem view for the evening scorecard (#473, ADR 0032
+    render-seam completion): top `max_ecosystems` ecosystems ranked by boosted
+    D3 score — the SAME grouping/scoring as format_ecosystem_board via
+    _group_and_rank_ecosystems, sized for a multi-section Telegram brief
+    instead of the full ~19-ecosystem board. Each ecosystem: one header line
+    (boosted score · names · RS80+) + its top `max_subthemes` sub-themes with
+    a short member preview. Overflow ecosystems, unmapped themes and Fading
+    collapse into a one-line footnote.
+
+    Returns [] when the mapping is empty OR nothing renders (e.g. every theme
+    unmapped) — the briefing then falls back to its legacy stage-grouped
+    scorecard, so the brief never breaks on the ecosystem layer.
+    """
+    if not eco_map or not (scored_themes or fading):
+        return []
+
+    ordered, active_by_eco, fading_by_eco, scores = _group_and_rank_ecosystems(
+        scored_themes, fading, theme_rs_data, eco_map)
+    tax = get_ecosystem_map()
+
+    lines: list[str] = []
+    shown = 0
+    hidden = 0
+    for code in ordered:
+        if code == E_UNASSIGNED:
+            continue   # collapsed footnote below
+        group_active = active_by_eco.get(code, [])
+        if not group_active:
+            continue   # all-Fading ecosystems don't earn brief space
+        if shown >= max_ecosystems:
+            hidden += 1
+            continue
+        shown += 1
+        s = scores.get(code) or {}
+        disp = (tax.get(code) or {}).get("name") or ""
+        title = f"*{shown}. {code}{' ' + disp if disp else ''}*"
+        lines.append("")
+        lines.append(f"{title} — {round(s.get('boosted', 0.0))} "
+                     f"· {len(s.get('member_union') or [])} names "
+                     f"· {s.get('strong', 0)} RS80+")
+        for st in group_active[:max_subthemes]:   # already comp-desc in group
+            emoji = STAGE_EMOJI.get(st.get("stage", ""), "")
+            delta_str = f" Δ{st['delta']:+.1f}" if st.get("delta") is not None else ""
+            preview = _member_preview(st.get("tickers") or [], theme_rs_data, top_n=3)
+            preview_str = f" — {preview}" if preview else ""
+            lines.append(f"  {emoji}*{st['name']}* RS {int(st['comp'])}"
+                         f"{delta_str}{preview_str}")
+        extra = len(group_active) - max_subthemes
+        if extra > 0:
+            lines.append(f"  _+{extra} more sub-theme(s)_")
+
+    if shown == 0:   # mapping exists but matched nothing renderable → fallback
+        return []
+
+    n_unassigned = (len(active_by_eco.get(E_UNASSIGNED, []))
+                    + len(fading_by_eco.get(E_UNASSIGNED, [])))
+    footnotes = []
+    if hidden:
+        footnotes.append(f"+{hidden} more ecosystem(s)")
+    if n_unassigned:
+        footnotes.append(f"❔ {n_unassigned} unmapped")
+    if fading:
+        footnotes.append("🔻 Fading: "
+                         + " · ".join(t.get("name", "?") for t in fading[:5]))
+    footnotes.append("/themes = full board")
+    lines.append("")
+    lines.append("_" + "  ·  ".join(footnotes) + "_")
     return lines

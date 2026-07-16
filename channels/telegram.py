@@ -947,7 +947,8 @@ class TelegramChannel:
     async def _handle_themes_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """/themes — compact summary with stage drill-down buttons."""
+        """/themes — full ecosystem board (ADR 0032); with an arg, two-way
+        ticker/theme lookup via /themes_lookup."""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
@@ -1369,7 +1370,10 @@ class TelegramChannel:
         # DIRECTLY into this orchestrator process (execution-seam violation) and
         # wedged trades at 'confirmed' on the creds-less container. A stale
         # button press on an old message now just gets the answer() ack above.
-        if callback_data.startswith(("eps:", "themes:", "trades:")):
+        # themes:* branch REMOVED 2026-07-16 (#473): its only producer (the
+        # /themes stage drill-down buttons) died in 393b980; a stale button
+        # press on an old message falls through to the `else: pass` below.
+        if callback_data.startswith(("eps:", "trades:")):
             await self._handle_drill_down_callback(query, callback_data)
 
         elif callback_data.startswith("hud:"):
@@ -1384,7 +1388,7 @@ class TelegramChannel:
     # ── Inline keyboard drill-down callbacks ──────────────────────────────────
 
     async def _handle_drill_down_callback(self, query, callback_data: str) -> None:
-        """Handle eps:/themes:/trades: drill-down button presses."""
+        """Handle eps:/trades: drill-down button presses."""
         import httpx
         from shared.models import AgentRequest
         from shared.registry import get_agent_url
@@ -1395,16 +1399,13 @@ class TelegramChannel:
             return
 
         parts = callback_data.split(":", 2)
-        prefix = parts[0]  # eps, themes, trades
+        prefix = parts[0]  # eps, trades
 
         # Determine the sub-command task to send to the market agent
         if prefix == "eps":
             tier = parts[1] if len(parts) > 1 else "HIGH"
             date_str = parts[2] if len(parts) > 2 else ""
             task = f"/eps_detail {tier} {date_str}".strip()
-        elif prefix == "themes":
-            stage = parts[1] if len(parts) > 1 else "All"
-            task = f"/themes_detail {stage}"
         else:  # trades
             view = parts[1] if len(parts) > 1 else "summary"
             date_str = parts[2] if len(parts) > 2 else ""
@@ -1443,8 +1444,6 @@ class TelegramChannel:
             date_str = parts[2] if len(parts) > 2 else ""
             back_data = f"eps:SUMMARY:{date_str}"
             markup = InlineKeyboardMarkup([[InlineKeyboardButton("← Summary", callback_data=back_data)]])
-        elif prefix == "themes" and parts[1] != "All":
-            markup = InlineKeyboardMarkup([[InlineKeyboardButton("← All Themes", callback_data="themes:All")]])
         else:
             markup = None
 
@@ -1499,11 +1498,14 @@ class TelegramChannel:
             logger.error(f"HUD drill-down ({section}) failed: {e}")
             result = f"Error: {e}"
 
-        try:
-            await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
-        except Exception as markdown_err:
-            logger.warning(f"HUD drill-down markdown send failed, retrying plain: {markdown_err}")
-            await query.message.reply_text(result)
+        # Split long sections (the Themes ecosystem board exceeds Telegram's
+        # 4096-char limit, #473) — short results stay a single message.
+        for chunk in self._split_message(result):
+            try:
+                await query.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
+            except Exception as markdown_err:
+                logger.warning(f"HUD drill-down markdown send failed, retrying plain: {markdown_err}")
+                await query.message.reply_text(chunk)
 
     async def _handle_ideas_drill_down(self, query, callback_data: str) -> None:
         """ideas: drill-down — edit the SAME message in place into a strategy's board

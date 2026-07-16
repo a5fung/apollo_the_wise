@@ -675,3 +675,221 @@ class TestHandleThemeQueryV2:
         assert resp.success, resp.error
         assert "Solo Theme" in resp.result
         assert "E-CYBR" not in resp.result
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 6. #473 render-seam completion — compact brief scorecard + HUD board
+# ═════════════════════════════════════════════════════════════════════════
+
+class TestCompactScorecard:
+    def test_ecosystem_grouped_and_ranked(self):
+        scored, fading, rs, eco_map = _board_fixture()
+        lines = te.format_ecosystem_scorecard_compact(scored, fading, rs, eco_map)
+        text = "\n".join(lines)
+
+        # Same ordering as the full board: CYBR (boosted ~97+) above REIT (60).
+        assert "*1. E-CYBR Cybersecurity*" in text
+        assert "*2. E-REIT Real estate / REITs*" in text
+        assert text.index("E-CYBR") < text.index("E-REIT")
+        # Header carries score · names · RS80+ (same numbers as the board).
+        header = [l for l in text.splitlines() if "E-CYBR Cybersecurity" in l][0]
+        assert "9 names" in header and "9 RS80+" in header
+        # Sub-themes nested with RS + member preview.
+        assert "*Cyber Vulnerability & Exposure Mgmt* RS 99" in text
+        assert "TENB 99" in text
+        # Unmapped + Fading collapse to the footnote — not full sections.
+        assert "1 unmapped" in text
+        assert "Fading: Endpoint Security" in text
+        assert "/themes = full board" in text
+        # Compact: no old stage-group headers, no struck-through blocks.
+        assert "*MAINSTREAM*" not in text and "*NASCENT*" not in text
+
+    def test_subtheme_and_ecosystem_caps(self):
+        """65-sub-theme boards must NOT dump into the brief: >max_ecosystems
+        collapse to '+N more', >max_subthemes per eco collapse to a suffix."""
+        rs = {f"T{i}": {"rs_composite": 90.0 - i} for i in range(30)}
+        scored = [_scored(f"Theme {i}", 90.0 - i, "Nascent", [f"T{i}"])
+                  for i in range(10)]
+        # 10 themes across 10 distinct (fake) ecosystems
+        eco_map = {f"Theme {i}": f"E-{i:02d}" for i in range(10)}
+        lines = te.format_ecosystem_scorecard_compact(
+            scored, [], rs, eco_map, max_ecosystems=4, max_subthemes=2)
+        text = "\n".join(lines)
+        assert "*4. " in text and "*5. " not in text
+        assert "+6 more ecosystem(s)" in text
+
+        # Per-eco sub-theme cap
+        eco_map_one = {f"Theme {i}": "E-CYBR" for i in range(10)}
+        text_one = "\n".join(te.format_ecosystem_scorecard_compact(
+            scored, [], rs, eco_map_one, max_subthemes=2))
+        assert "_+8 more sub-theme(s)_" in text_one
+
+    def test_empty_mapping_returns_empty(self):
+        scored, fading, rs, _ = _board_fixture()
+        assert te.format_ecosystem_scorecard_compact(scored, fading, rs, {}) == []
+
+    def test_all_unmapped_returns_empty_for_fallback(self):
+        """Mapping exists but matches nothing → [] so the briefing falls back
+        to the legacy scorecard instead of an empty section."""
+        scored, fading, rs, _ = _board_fixture()
+        assert te.format_ecosystem_scorecard_compact(
+            scored, fading, rs, {"Some Other Theme": "E-CYBR"}) == []
+
+    def test_empty_board_is_safe(self):
+        assert te.format_ecosystem_scorecard_compact([], [], {}, {"X": "E-CYBR"}) == []
+
+
+def _briefing_fixture():
+    """Raw theme dicts (the _format_theme_scorecard input shape) mirroring
+    _board_fixture's cohorts."""
+    themes = [
+        {"name": "Cyber Vulnerability & Exposure Mgmt", "stage": "Nascent",
+         "tickers": ["TENB", "QLYS", "RPD"]},
+        {"name": "Network Security & Zero-Trust Edge", "stage": "Mainstream",
+         "tickers": ["CRWD", "PANW", "FTNT", "OKTA", "VRNS", "RBRK"]},
+        {"name": "Data Center REITs", "stage": "Accelerating",
+         "tickers": ["PLD", "DHI", "LEN", "AMT"]},
+    ]
+    rs = {}
+    rs.update({tk: {"rs_composite": 99.0, "rs_1m": 99.0, "rs_3m": 99.0, "rs_6m": 99.0}
+               for tk in ["TENB", "QLYS", "RPD"]})
+    rs.update({tk: {"rs_composite": 96.0, "rs_1m": 96.0, "rs_3m": 96.0, "rs_6m": 96.0}
+               for tk in ["CRWD", "PANW", "FTNT", "OKTA", "VRNS", "RBRK"]})
+    rs.update({tk: {"rs_composite": 60.0, "rs_1m": 60.0, "rs_3m": 60.0, "rs_6m": 60.0}
+               for tk in ["PLD", "DHI", "LEN", "AMT"]})
+    eco_map = {
+        "Cyber Vulnerability & Exposure Mgmt": "E-CYBR",
+        "Network Security & Zero-Trust Edge": "E-CYBR",
+        "Data Center REITs": "E-REIT",
+    }
+    return themes, rs, eco_map
+
+
+class TestBriefingScorecardEcosystemMode:
+    """#473 — the evening-brief theme section groups by ECOSYSTEM like /themes,
+    and degrades to the legacy stage-grouped scorecard on empty mapping or a
+    render error (the brief must never break)."""
+
+    def test_scorecard_ecosystem_grouped_with_mapping(self):
+        from agents.market_intelligence.briefing import _format_theme_scorecard
+        themes, rs, eco_map = _briefing_fixture()
+        text = _format_theme_scorecard(themes, rs, {}, section_num=3, eco_map=eco_map)
+        assert text.startswith("*3. THEME SCORECARD*")
+        assert "by ecosystem" in text
+        assert "*1. E-CYBR Cybersecurity*" in text
+        assert "*2. E-REIT" in text
+        assert text.index("E-CYBR") < text.index("E-REIT")
+        # Old stage-group headers gone in ecosystem mode
+        assert "*MAINSTREAM*" not in text and "*ACCELERATING*" not in text
+
+    def test_scorecard_falls_back_on_empty_mapping(self):
+        from agents.market_intelligence.briefing import _format_theme_scorecard
+        themes, rs, _ = _briefing_fixture()
+        for empty in ({}, None):
+            text = _format_theme_scorecard(themes, rs, {}, eco_map=empty)
+            assert "E-CYBR" not in text
+            assert "*MAINSTREAM*" in text and "*ACCELERATING*" in text  # legacy view
+
+    def test_scorecard_falls_back_on_render_error(self, monkeypatch):
+        from agents.market_intelligence.briefing import _format_theme_scorecard
+        themes, rs, eco_map = _briefing_fixture()
+
+        def _boom(*a, **kw):
+            raise RuntimeError("render exploded")
+
+        monkeypatch.setattr(te, "format_ecosystem_scorecard_compact", _boom)
+        text = _format_theme_scorecard(themes, rs, {}, eco_map=eco_map)
+        assert "*MAINSTREAM*" in text          # legacy view, not an exception
+        assert "E-CYBR" not in text
+
+    def test_evening_briefing_passes_eco_map_through(self):
+        """_format_evening_briefing threads eco_map → theme section renders
+        ecosystem-grouped inside the full brief."""
+        from agents.market_intelligence.briefing import _format_evening_briefing
+        themes, rs, eco_map = _briefing_fixture()
+        text = _format_evening_briefing(
+            regime={"regime": "Bull", "ep_threshold": 70},
+            rs_leaders=[], themes=themes, velocity=[], pullbacks=[],
+            briefing_date="2026-07-16", theme_rs_data=rs, eco_map=eco_map,
+        )
+        assert "*1. E-CYBR Cybersecurity*" in text
+
+
+class TestHandleThemesDetailHudBoard:
+    """#473 — the HUD "Themes" button (fixed task `/themes_detail All`) renders
+    the full shared ecosystem board; the SUMMARY/stage variants are gone."""
+
+    def _make_agent(self):
+        from unittest.mock import patch
+        from agents.market_intelligence.agent import MarketIntelligenceAgent
+        from shared.models import AgentName
+        with patch("agents.base.get_secrets"), patch("shared.audit.log_action"):
+            agent = MarketIntelligenceAgent.__new__(MarketIntelligenceAgent)
+            agent.agent_name = AgentName.MARKET_INTELLIGENCE
+        return agent
+
+    def _patches(self, themes, rs, eco_map):
+        from unittest.mock import patch
+        return [
+            patch("agents.market_intelligence.agent.get_today_themes",
+                  new=AsyncMock(return_value=themes)),
+            patch("agents.market_intelligence.agent.get_rs_for_tickers",
+                  new=AsyncMock(return_value=rs)),
+            patch("agents.market_intelligence.agent.get_prior_theme_scores",
+                  new=AsyncMock(return_value={})),
+            patch("agents.market_intelligence.theme_ecosystems."
+                  "load_ecosystem_assignments",
+                  new=AsyncMock(return_value=eco_map)),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_hud_all_renders_ecosystem_board(self):
+        from contextlib import ExitStack
+        from shared.models import AgentRequest
+        themes, rs, eco_map = _briefing_fixture()
+        agent = self._make_agent()
+        with ExitStack() as stack:
+            for p in self._patches(themes, rs, eco_map):
+                stack.enter_context(p)
+            resp = await agent._handle_themes_detail(
+                AgentRequest(task="/themes_detail All", user_id=1,
+                             conversation_id="t"))
+        assert resp.success, resp.error
+        assert "*1. E-CYBR Cybersecurity*" in resp.result
+        assert "*2. E-REIT" in resp.result
+        # Full-board shape: global theme ranks + per-line stage tags.
+        assert "#1 " in resp.result and "_[Mainstream]_" in resp.result
+        assert "*MAINSTREAM*" not in resp.result
+
+    @pytest.mark.asyncio
+    async def test_stale_summary_arg_gets_the_board_too(self):
+        """The SUMMARY branch is dead — any argument now yields the board."""
+        from contextlib import ExitStack
+        from shared.models import AgentRequest
+        themes, rs, eco_map = _briefing_fixture()
+        agent = self._make_agent()
+        with ExitStack() as stack:
+            for p in self._patches(themes, rs, eco_map):
+                stack.enter_context(p)
+            resp = await agent._handle_themes_detail(
+                AgentRequest(task="/themes_detail SUMMARY", user_id=1,
+                             conversation_id="t"))
+        assert resp.success, resp.error
+        assert "🗂" not in resp.result            # old summary card gone
+        assert "*1. E-CYBR Cybersecurity*" in resp.result
+
+    @pytest.mark.asyncio
+    async def test_hud_survives_mapping_outage_flat(self):
+        from contextlib import ExitStack
+        from shared.models import AgentRequest
+        themes, rs, _ = _briefing_fixture()
+        agent = self._make_agent()
+        with ExitStack() as stack:
+            for p in self._patches(themes, rs, {}):
+                stack.enter_context(p)
+            resp = await agent._handle_themes_detail(
+                AgentRequest(task="/themes_detail All", user_id=1,
+                             conversation_id="t"))
+        assert resp.success, resp.error
+        assert "E-CYBR" not in resp.result       # flat fallback
+        assert "#1 " in resp.result              # still comp-ranked

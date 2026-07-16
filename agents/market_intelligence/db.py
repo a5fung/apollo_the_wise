@@ -9060,16 +9060,6 @@ async def get_merge_distinct_pairs() -> set[tuple[str, str]]:
 
 # ── Theme → ecosystem mapping (ADR 0032 Phase 1) ─────────────────────────────
 
-async def get_theme_ecosystem(theme_name: str) -> str | None:
-    """The e_code a theme is mapped to, or None if unmapped."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        return await conn.fetchval(
-            "SELECT e_code FROM mi_theme_ecosystems WHERE theme_name = $1",
-            theme_name,
-        )
-
-
 async def get_all_theme_ecosystems() -> dict[str, str]:
     """Full theme_name → e_code mapping (the /themes v2 render input)."""
     pool = await get_pool()

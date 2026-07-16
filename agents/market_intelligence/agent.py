@@ -4382,7 +4382,8 @@ class MarketIntelligenceAgent(BaseAgent):
 
         Awaits the full theme engine run (no background task) so the result flows back
         through the normal orchestrator→Telegram channel. Orchestrator timeout is 360s.
-        Returns a stage-grouped scorecard in the same format as the evening brief.
+        Returns the hierarchical ecosystem board — same shared renderer as /themes
+        (ADR 0032; flat comp-ranked fallback when no mapping exists).
         """
         from agents.market_intelligence.briefing import _compute_scored_themes
         from agents.market_intelligence.theme_ecosystems import (
@@ -4843,10 +4844,13 @@ class MarketIntelligenceAgent(BaseAgent):
             data_date = data_date.isoformat()
 
         all_tickers = list({tk for t in themes for tk in (t.get("tickers") or [])})
-        theme_rs_data, prior_scores, regime = await asyncio.gather(
+        # load_ecosystem_assignments rides the gather (#473) — independent of
+        # the RS/regime fetches, and fail-safe ({} on any DB error).
+        theme_rs_data, prior_scores, regime, eco_map = await asyncio.gather(
             get_rs_for_tickers(data_date, all_tickers) if all_tickers else asyncio.sleep(0),
             get_prior_theme_scores(today_str),
             get_current_regime(),
+            load_ecosystem_assignments(),
         )
         if theme_rs_data is None:
             theme_rs_data = {}
@@ -4864,7 +4868,6 @@ class MarketIntelligenceAgent(BaseAgent):
         # "Mainstream"] order buried the strongest MATURE themes below the
         # Nascent 2-member noise (verified litmus FAIL, ADR 0032 §Context).
         # Empty mapping (pre-backfill / DB hiccup) → flat comp-ranked list.
-        eco_map = await load_ecosystem_assignments()
         lines = [f"*{len(scored_themes)} Active Themes — {data_date}{regime_str}*"]
         lines += format_ecosystem_board(scored_themes, fading, theme_rs_data, eco_map)
 
@@ -6521,11 +6524,14 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=format_ep_message(header, filtered))
 
     async def _handle_themes_detail(self, request: AgentRequest) -> AgentResponse:
-        """Inline keyboard detail: /themes_detail {stage|SUMMARY}"""
-        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI, _conviction_suffix
-
-        parts = request.task.strip().split()
-        stage_filter = parts[1] if len(parts) > 1 else "All"
+        """HUD "Themes" drill-down (hud:themes → fixed task `/themes_detail All`):
+        the full hierarchical ecosystem board — same shared renderer as /themes
+        (#473, ADR 0032). Any argument is ignored — the SUMMARY/stage-filter
+        variants died with the `themes:*` callback pathway (393b980 + #473)."""
+        from agents.market_intelligence.briefing import _compute_scored_themes
+        from agents.market_intelligence.theme_ecosystems import (
+            format_ecosystem_board, load_ecosystem_assignments,
+        )
 
         today_str = et_today().isoformat()
         themes = await get_today_themes(today_str)
@@ -6533,41 +6539,21 @@ class MarketIntelligenceAgent(BaseAgent):
         if not themes:
             return self._ok(request, result="No theme data yet.")
 
-        if stage_filter == "SUMMARY":
-            accel = sum(1 for t in themes if t.get("stage") == "Accelerating")
-            nascent = sum(1 for t in themes if t.get("stage") == "Nascent")
-            fading = sum(1 for t in themes if t.get("stage") == "Fading")
-            return self._ok(
-                request,
-                result=(
-                    f"🗂 *Themes — {today_str}*\n"
-                    f"{len(themes)} active · {accel} accelerating · {nascent} nascent · {fading} fading"
-                ),
-            )
-
         all_tickers = list({tk for t in themes for tk in (t.get("tickers") or [])})
-        theme_rs_data, prior_scores = await asyncio.gather(
+        theme_rs_data, prior_scores, eco_map = await asyncio.gather(
             get_rs_for_tickers(today_str, all_tickers) if all_tickers else asyncio.sleep(0),
             get_prior_theme_scores(today_str),
+            load_ecosystem_assignments(),   # fail-safe: {} → flat board
         )
         if theme_rs_data is None:
             theme_rs_data = {}
 
-        scored_themes, _ = _compute_scored_themes(themes, theme_rs_data, prior_scores or {})
+        scored_themes, fading = _compute_scored_themes(themes, theme_rs_data, prior_scores or {})
+        if not (scored_themes or fading):
+            return self._ok(request, result="No scored themes yet.")
 
-        if stage_filter != "All":
-            scored_themes = [t for t in scored_themes if t.get("stage") == stage_filter]
-
-        if not scored_themes:
-            return self._ok(request, result=f"No {stage_filter} themes.")
-
-        lines = [f"*{stage_filter} Themes* ({len(scored_themes)})"]
-        for st in scored_themes[:15]:
-            emoji = STAGE_EMOJI.get(st["stage"], "")
-            conviction = _conviction_suffix(st)
-            lines.append(f"\n{emoji}*{st['name']}*{conviction}")
-            tickers = " · ".join((st.get("tickers") or [])[:4])
-            lines.append(f"  RS {int(st['comp'])}  {tickers}")
+        lines = [f"*{len(scored_themes)} Active Themes — {today_str}*"]
+        lines += format_ecosystem_board(scored_themes, fading, theme_rs_data, eco_map)
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:

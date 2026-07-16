@@ -128,7 +128,7 @@ async def test_post_market_task_returns_none_when_agent_unregistered(monkeypatch
     channel = _make_channel()
     monkeypatch.setattr("shared.registry.get_agent_url", lambda name: None)
 
-    result = await channel._post_market_task("/themes_detail SUMMARY", user_id=42)
+    result = await channel._post_market_task("/themes_detail All", user_id=42)
     assert result is None
 
 
@@ -140,7 +140,7 @@ async def test_post_market_task_returns_result_text(monkeypatch):
     fake_client = _fake_market_agent_client()
     monkeypatch.setattr(httpx, "AsyncClient", fake_client)
 
-    result = await channel._post_market_task("/themes_detail SUMMARY", user_id=42)
+    result = await channel._post_market_task("/themes_detail All", user_id=42)
     assert result == "Chip_Stocks members: NVDA, AMD_Corp, INTC"
     assert fake_client.last_post["kwargs"]["json"]["user_id"] == 42
 
@@ -150,7 +150,7 @@ async def test_bare_themes_shows_ecosystem_board_no_buttons(monkeypatch):
     """ADR 0032 (operator 2026-07-14): bare /themes forwards the "/themes" task
     (the market agent's ecosystem board via _handle_theme_query) and sends it
     through _reply (which splits the long hierarchical board across messages),
-    with NO stage drill-down buttons — replacing the old "/themes_detail SUMMARY"
+    with NO stage drill-down buttons — replacing the old "/themes_detail All"
     compact-summary + [Accelerating|Nascent|All Active] keyboard."""
     channel = _make_channel()
     update, context, message = _make_update([])  # bare /themes (no args)
@@ -168,3 +168,27 @@ async def test_bare_themes_shows_ecosystem_board_no_buttons(monkeypatch):
     # Sent via the splitting _reply, and NOT via a keyboard-bearing reply.
     channel._reply.assert_awaited_once()
     assert message.reply_text.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_themes_callback_pathway_removed():
+    """#473: the themes:* drill-down producer died in 393b980 (the /themes
+    stage buttons); the dispatcher no longer routes themes:* — a stale button
+    press on an old message just gets the answer() ack. eps:* still routes."""
+    channel = _make_channel()
+    channel._handle_drill_down_callback = AsyncMock()
+    channel._handle_hud_drill_down = AsyncMock()
+    channel._handle_ideas_drill_down = AsyncMock()
+
+    def _cb_update(data):
+        query = SimpleNamespace(
+            data=data, from_user=SimpleNamespace(id=42), answer=AsyncMock())
+        return SimpleNamespace(callback_query=query)
+
+    stale = _cb_update("themes:All")
+    await channel._handle_callback_query(stale, None)
+    channel._handle_drill_down_callback.assert_not_awaited()
+    stale.callback_query.answer.assert_awaited_once()   # still acked, no spinner
+
+    await channel._handle_callback_query(_cb_update("eps:HIGH:2026-07-15"), None)
+    channel._handle_drill_down_callback.assert_awaited_once()
