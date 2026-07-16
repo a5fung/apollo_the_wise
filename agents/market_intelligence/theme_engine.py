@@ -66,6 +66,7 @@ from agents.market_intelligence.db import (
     add_validation_cooldown, get_cooldown_set, get_globally_banned_tickers,
     get_operator_protected_set, get_ticker_breadth_above_sma20,
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
+    get_theme_subtheme_arm_enabled,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
 # Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
@@ -260,6 +261,20 @@ PRUNE_MIN_TICKERS = 2    # Never prune a theme below this many stocks
 MAX_THEMES_PER_STOCK = 2 # A stock can belong to at most 2 themes (primary + sub-theme)
 MIN_SHARED_FOR_MERGE = 3 # Min |intersection| before two themes can be merged on overlap.
                          # Same gate as rs-theme-dash dedup — kills tiny-alias false positives.
+
+# ── ADR 0032 Phase 2 — theme re-granularization, behind THEME_SUBTHEME_ARM ──
+# (DB toggle `get_theme_subtheme_arm_enabled`, default OFF/fail-closed). ALL of
+# these pins are ILLUSTRATIVE (design doc §1.4): the arm is OFF so they gate
+# nothing today; the N≥10 backtest + operator sign-off set the real values
+# before any flip. Spec: docs/analysis/theme_ecosystem_phase23_design_2026-07-14.md
+SUBTHEME_C_MIN = 0.8       # T4: containment |newborn ∩ parent| / |newborn| (NOT Jaccard —
+                           #     both vuln-mgmt fixtures are containment 1.0, Jaccard 0.25/0.33)
+SUBTHEME_C_MULTI = 0.34    # T5: max containment vs any OTHER protected incumbent (sole-parent)
+SUBTHEME_MIN_MEMBERS = 3   # T6: newborn member floor (matches _SPLIT_MIN_STOCKS)
+SUBTHEME_ROUTE_CAP = 2     # T7: routed adjudications per run (every routed call consumes it)
+SPLIT_DOM_MIN_MEMBERS = 10 # Route B: min members for ecosystem-dominant split eligibility
+SPLIT_DOM_MIN_STRONG = 8   # Route B: min RS-80+ members
+DOM_SPLITS_PER_NIGHT = 2   # Route B: global nightly cap on dominant-split nominations
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -2888,10 +2903,16 @@ async def _split_fat_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
     advisor_calls_used: int,
+    reason_line: str | None = None,
 ) -> tuple[dict | None, int]:
     """
     Ask Sonnet (with optional Opus escalation) whether a fat theme (>MAX_THEME_STOCKS)
     has a coherent sub-group worth splitting off.
+
+    reason_line (ADR 0032 Phase 2 Route B): optional replacement for the default
+    "has grown too broad (N stocks)" opening phrase — a template arg, not a
+    second prompt. None (all pre-Phase-2 callers) ⇒ the prompt is byte-identical
+    to today's.
 
     Returns (sub_theme_dict_or_None, total_advisor_calls_used).
     The sub_theme dict has keys: name, tickers, thesis, parent_theme.
@@ -2909,7 +2930,8 @@ async def _split_fat_theme(
         rs_str = f" RS {int(rs_val)}" if rs_val is not None else ""
         stock_lines.append(f"  {tk}{rs_str}: {desc[:100]}")
 
-    prompt = f"""You are analyzing a theme that has grown too broad ({len(tickers)} stocks).
+    reason = reason_line or f"has grown too broad ({len(tickers)} stocks)"
+    prompt = f"""You are analyzing a theme that {reason}.
 Your job: identify ONE coherent sub-group to split off as a more specific sub-theme.
 
 Parent theme: {name}
@@ -3026,6 +3048,80 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
         logger.warning(f"[fat-theme split] '{name}': failed ({e}) — skipping split")
 
     return None, advisor_calls
+
+
+async def _nominate_dominant_split_themes(
+    all_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+    *,
+    arm_enabled: bool,
+) -> list[dict]:
+    """ADR 0032 Phase 2 Route B — bounded deliberate split nomination for a
+    sole-sub-theme ecosystem-dominant theme (design doc §1.2). Behind
+    THEME_SUBTHEME_ARM: arm OFF → [] with NO DB access (byte-identical engine).
+
+    Eligibility (all illustrative pins — the §1.4 Part-2 grid sets them):
+      stage not Fading/Retired AND no parent_theme (existing conditions)
+      AND mapped to a real ecosystem (not None / E-UNASSIGNED)
+      AND the ONLY active theme mapped to that ecosystem tonight  ← self-disarms:
+          after a successful split the eco has 2 themes next night
+      AND ≥ SPLIT_DOM_MIN_MEMBERS members AND ≥ SPLIT_DOM_MIN_STRONG RS-80+ members
+      AND not already over MAX_THEME_STOCKS (that is the existing fat trigger's job)
+
+    Returns ≤ DOM_SPLITS_PER_NIGHT themes (≤1 split/theme is structural — one
+    `_split_fat_theme` call per theme in the caller's loop). Emits
+    `theme_dominant_split_eligible` per nominee BEFORE the LLM runs — the
+    trigger telemetry fires even when Sonnet declines the split. Never raises."""
+    if not arm_enabled:
+        return []
+    try:
+        from agents.market_intelligence.db import get_all_theme_ecosystems
+        eco_map = await get_all_theme_ecosystems()
+    except Exception as e:
+        logger.warning(f"[dominant split] eco mapping fetch failed — Route B skipped: {e}")
+        return []
+    try:
+        active = [t for t in all_themes if t.get("stage") not in ("Fading", "Retired")]
+        from collections import Counter
+        eco_counts = Counter(
+            eco_map[t["name"]] for t in active if eco_map.get(t["name"])
+        )
+        nominees: list[dict] = []
+        for t in active:
+            if len(nominees) >= DOM_SPLITS_PER_NIGHT:
+                break
+            if t.get("parent_theme"):
+                continue  # never split a sub-theme further
+            eco = eco_map.get(t["name"])
+            if not eco or eco == "E-UNASSIGNED":
+                continue
+            if eco_counts.get(eco, 0) != 1:
+                continue  # sole-sub-theme only — the self-disarm predicate
+            tickers = t.get("tickers") or []
+            if len(tickers) < SPLIT_DOM_MIN_MEMBERS:
+                continue
+            if len(tickers) > MAX_THEME_STOCKS:
+                continue  # already fat — the existing >20 trigger owns it
+            strong = sum(
+                1 for tk in tickers
+                if ((stocks_by_ticker.get(tk) or {}).get("rs_composite") or 0) >= 80
+            )
+            if strong < SPLIT_DOM_MIN_STRONG:
+                continue  # missing RS = not strong
+            nominees.append(t)
+            await log_audit_event(
+                "theme_dominant_split_eligible",
+                summary=f"Route B: '{t['name']}' is ecosystem-dominant ({eco}) — split nominee",
+                detail=(
+                    f"eco={eco} members={len(tickers)} rs80_plus={strong} "
+                    f"pins: members>={SPLIT_DOM_MIN_MEMBERS} strong>={SPLIT_DOM_MIN_STRONG} "
+                    f"cap={DOM_SPLITS_PER_NIGHT}/night"
+                ),
+            )
+        return nominees
+    except Exception as e:
+        logger.warning(f"[dominant split] Route B nomination failed — skipped: {e}")
+        return []
 
 
 async def _apply_carryforward_deterministic_filter(
@@ -3683,11 +3779,302 @@ def _strip_commodity_contradictions(themes: list[dict]) -> list[dict]:
     return themes
 
 
+# ═══ ADR 0032 Phase 2 Route A — protect-strip → PARENT_CHILD adjudication ═══
+# Behind THEME_SUBTHEME_ARM (default OFF). With the arm off (ctx None or
+# disabled) every branch below is skipped and the merge passes are
+# byte-identical to pre-Phase-2 behavior — pinned by
+# tests/test_theme_subtheme_routing.py. Fail-closed everywhere: any
+# non-PARENT_CHILD verdict, adjudicator error, or exception falls through to
+# today's strip (never a silent coexist).
+# Spec: docs/analysis/theme_ecosystem_phase23_design_2026-07-14.md §1.1.
+
+
+def make_subtheme_route_ctx(
+    enabled: bool,
+    *,
+    sectors_by_ticker: dict[str, str] | None = None,
+    adjudicate=None,
+    client=None,
+    route_cap: int = SUBTHEME_ROUTE_CAP,
+) -> dict:
+    """Per-RUN Route-A context, shared across both `_merge_overlapping_themes`
+    calls so the nightly adjudication budget (T7) is a single counter.
+    `adjudicate`/`client` are test seams — production leaves them None and the
+    router resolves the real corpus-cleared Arm-B adjudicator lazily."""
+    return {
+        "enabled": bool(enabled),
+        "route_cap": route_cap,
+        "routed": 0,               # adjudications consumed this run (any verdict)
+        "sectors_by_ticker": sectors_by_ticker or {},
+        "adjudicate": adjudicate,  # None → theme_merge_arm.adjudicate_merge_pair
+        "client": client,          # None → _get_anthropic_client() on first route
+        "routed_children": {},     # child name → parent name (this run) — merge_2 protection
+    }
+
+
+def _subtheme_set_match(a: set, b: set) -> bool:
+    """Ticker-set identity for child canonicalization (fork F-2): the same
+    sub-theme is re-discovered under a DAILY-CHURNING LLM name, so the child's
+    identity is its TICKER SET, not its name. Match = containment of the
+    SMALLER set in the larger ≥ SUBTHEME_C_MIN with ≥ MIN_SHARED_FOR_MERGE
+    shared members (7/13 fixture: {TENB,RPD,QLYS} vs {TENB,RPD,QLYS,VRNS} →
+    3/3 = 1.0 → same child)."""
+    if not a or not b:
+        return False
+    inter = len(a & b)
+    if inter < MIN_SHARED_FOR_MERGE:
+        return False
+    return inter / min(len(a), len(b)) >= SUBTHEME_C_MIN
+
+
+async def _canonicalize_newborn_into_child(
+    i: int, k: int, themes: list[dict], merged_into: dict[int, int],
+) -> None:
+    """Fold a re-discovered newborn (i) into the EXISTING canonical child (k):
+    UPDATE the existing child (ticker union — the child keeps its name and its
+    `parent_theme` link) and retire the newborn via the normal merged_into
+    mechanism. Never creates a 2nd child for the same ticker set; no LLM call —
+    the parent/child relationship was already adjudicated when the child was
+    born."""
+    newborn_tickers = set(themes[i].get("tickers") or [])
+    pre = set(themes[k].get("tickers") or [])
+    union = pre | newborn_tickers
+    themes[k]["tickers"] = list(union)
+    merged_into[i] = k
+    logger.info(
+        f"[subtheme route] canonicalized re-discovered child: '{themes[i]['name']}' "
+        f"folded into existing child '{themes[k]['name']}' ({len(pre)}->{len(union)})"
+    )
+    await log_audit_event(
+        "theme_subtheme_canonicalized",
+        summary=(
+            f"Route A: re-discovery '{themes[i]['name']}' folded into existing "
+            f"child '{themes[k]['name']}' (ticker-set canonicalization)"
+        ),
+        detail=(
+            f"newborn='{themes[i]['name']}' newborn_tickers={sorted(newborn_tickers)} "
+            f"child='{themes[k]['name']}' parent='{themes[k].get('parent_theme')}' "
+            f"child_size {len(pre)}->{len(union)}"
+        ),
+    )
+
+
+def _sole_parent_of(
+    i: int,
+    themes: list[dict],
+    merged_into: dict[int, int],
+    protected_names: set[str],
+    sub_theme_parents: dict[str, str],
+) -> str | None:
+    """T5 — the newborn's argmax-containment protected incumbent P: returns P's
+    name iff containment(P) ≥ SUBTHEME_C_MIN AND every OTHER protected incumbent
+    sits at containment ≤ SUBTHEME_C_MULTI or shares < MIN_SHARED_FOR_MERGE
+    members (members spread across two parents ≠ a coherent subset of ONE).
+    Existing CHILDREN are excluded from the disqualifier scan: a Route-A child's
+    members coexist inside its parent, so counting the child as a competing
+    parent would double-count the same overlap and block its own parent (the
+    canonicalization path handles re-discoveries of the child itself)."""
+    tickers_i = set(themes[i].get("tickers") or [])
+    if not tickers_i:
+        return None
+    candidates: list[tuple[str, float, int]] = []  # (name, containment, |∩|)
+    for m in range(len(themes)):
+        if m == i or m in merged_into:
+            continue
+        name_m = themes[m]["name"]
+        if name_m not in protected_names:
+            continue
+        if name_m in sub_theme_parents or themes[m].get("parent_theme"):
+            continue  # children are never competing parents
+        inter = len(tickers_i & set(themes[m].get("tickers") or []))
+        candidates.append((name_m, inter / len(tickers_i), inter))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: (-c[1], c[0]))
+    best_name, best_c, _ = candidates[0]
+    if best_c < SUBTHEME_C_MIN:
+        return None
+    for name_m, c, inter in candidates[1:]:
+        if inter >= MIN_SHARED_FOR_MERGE and c > SUBTHEME_C_MULTI:
+            return None  # multi-parent — not a coherent subset of ONE
+    return best_name
+
+
+async def _route_a_subtheme(
+    i: int,
+    j: int,
+    themes: list[dict],
+    merged_into: dict[int, int],
+    protected_names: set[str],
+    sub_theme_parents: dict[str, str],
+    ctx: dict,
+) -> str | None:
+    """Route A trigger + verdict handling, called at the Pass1 protect-strip
+    site with a THIS-RUN pair (i, j) where j is protected and the overlap gates
+    already fired. Returns:
+
+      "coexist"       — PARENT_CHILD accepted: themes[i] persisted as a child of
+                        themes[j] (parent_theme set + sub_theme_parents mutated —
+                        the live dict → coexistence + Pass1.5 exemption for the
+                        rest of this run). Caller skips the strip for this pair.
+      "canonicalized" — themes[i] is a ticker-set re-discovery of an EXISTING
+                        child (F-2): folded into it; caller breaks i's pair loop.
+      None            — fall through to TODAY'S STRIP (the fail-closed default:
+                        trigger not met, cap exhausted, MERGE/DISTINCT/inverted/
+                        ERROR verdict, or any exception).
+
+    NEVER raises — an exception audits theme_subtheme_route_error and returns
+    None (today's strip)."""
+    try:
+        name_i = themes[i]["name"]
+        name_j = themes[j]["name"]
+        tickers_i = set(themes[i].get("tickers") or [])
+        tickers_j = set(themes[j].get("tickers") or [])
+
+        # T2 — i must be a THIS-RUN newborn, not an incumbent: leaves all 153
+        # historical BOTH_PROTECTED established-pair strips untouched (G2).
+        if protected_names and name_i in protected_names:
+            return None
+        # T3 — no chains: a child is never re-routed (mirrors "never split a
+        # sub-theme further").
+        if name_i in sub_theme_parents or themes[i].get("parent_theme"):
+            return None
+        # T6 — newborn member floor.
+        if len(tickers_i) < SUBTHEME_MIN_MEMBERS:
+            return None
+
+        # ── F-2 ticker-set canonicalization (deterministic, no LLM, no cap) ──
+        # Case 1: the protected theme j IS an existing child and the newborn is
+        # a set-match → fold i into j.
+        if name_j in sub_theme_parents:
+            if _subtheme_set_match(tickers_i, tickers_j):
+                await _canonicalize_newborn_into_child(i, j, themes, merged_into)
+                return "canonicalized"
+            return None  # j is a child but not a set-match — today's strip
+        # Case 2: j is a potential parent — if an existing child OF j elsewhere
+        # in the list is a set-match, fold i into it (handles the pair-order
+        # case where (newborn, parent) is processed before (newborn, child)).
+        for k in range(len(themes)):
+            if k in (i, j) or k in merged_into:
+                continue
+            if sub_theme_parents.get(themes[k]["name"]) != name_j:
+                continue
+            if _subtheme_set_match(tickers_i, set(themes[k].get("tickers") or [])):
+                await _canonicalize_newborn_into_child(i, k, themes, merged_into)
+                return "canonicalized"
+
+        # T4 — containment of the newborn in THIS protected incumbent.
+        containment = len(tickers_i & tickers_j) / len(tickers_i)
+        if containment < SUBTHEME_C_MIN:
+            return None
+        # T5 — sole parent, and the pair being processed must BE that parent
+        # (a newborn overlapping a second incumbent first falls through to the
+        # normal strip for THAT pair).
+        sole = _sole_parent_of(i, themes, merged_into, protected_names, sub_theme_parents)
+        if sole is None or sole != name_j:
+            return None
+        # T7 — nightly adjudication budget (shared across both merge calls).
+        if ctx.get("routed", 0) >= ctx.get("route_cap", SUBTHEME_ROUTE_CAP):
+            return None
+
+        ctx["routed"] = ctx.get("routed", 0) + 1  # every routed call consumes cap
+        adjudicate = ctx.get("adjudicate")
+        if adjudicate is None:
+            adjudicate = adjudicate_merge_pair  # the REAL corpus-cleared Arm-B adjudicator
+            if ctx.get("client") is None:
+                ctx["client"] = _get_anthropic_client()
+        try:
+            verdict = await adjudicate(
+                themes[j], themes[i],  # parent = theme A, newborn = theme B
+                client=ctx.get("client"),
+                semaphore=_VALIDATION_SEMAPHORE,
+                sectors_by_ticker=ctx.get("sectors_by_ticker") or {},
+                log_spend=True,
+            )
+        except Exception as e:  # adjudicate returns ERROR dicts; belt-and-braces
+            logger.warning(
+                f"[subtheme route] adjudication raised for '{name_j}' × '{name_i}': {e}"
+            )
+            verdict = {"verdict": "ERROR", "reason": f"{type(e).__name__}: {e}"[:300]}
+
+        v = verdict.get("verdict")
+        scratch = str(verdict.get("analysis_scratchpad") or "")[:400]
+        pair_detail = (
+            f"parent='{name_j}' newborn='{name_i}' containment={containment:.2f} "
+            f"newborn_tickers={sorted(tickers_i)} verdict={v!r} "
+            f"reason={str(verdict.get('reason') or '')[:200]!r} scratchpad={scratch!r}"
+        )
+
+        if v == "PARENT_CHILD" and verdict.get("child", "B") != "A":
+            # The D2 mechanism: members coexist in parent + child (the
+            # MAX_THEMES_PER_STOCK=2 "primary + sub-theme" seat).
+            themes[i]["parent_theme"] = name_j
+            sub_theme_parents[name_i] = name_j
+            ctx.setdefault("routed_children", {})[name_i] = name_j
+            logger.info(
+                f"[subtheme route] PARENT_CHILD: '{name_i}' persisted as child of "
+                f"'{name_j}' (containment {containment:.2f}) — strip averted"
+            )
+            await log_audit_event(
+                "theme_subtheme_routed",
+                summary=f"Route A: '{name_i}' → child of '{name_j}' (PARENT_CHILD, strip averted)",
+                detail=pair_detail,
+            )
+            return "coexist"
+        if v == "PARENT_CHILD":
+            # Inverted child claim (incumbent-as-child on a high-containment
+            # pair) is a prompt failure — fail-closed, weekly review.
+            await log_audit_event(
+                "theme_subtheme_route_inverted",
+                summary=f"Route A: inverted PARENT_CHILD (child='A') for '{name_i}' — strip as today",
+                detail=pair_detail,
+            )
+            return None
+        if v == "MERGE":
+            # v2 slice-rule: the newborn is a redundant slice; the strip IS the
+            # merge (its members are already inside the parent).
+            await log_audit_event(
+                "theme_subtheme_route_merge",
+                summary=f"Route A: MERGE verdict for '{name_i}' — strip as today",
+                detail=pair_detail,
+            )
+            return None
+        if v == "DISTINCT":
+            # Fail-closed (fork F-3): high-containment + different-drivers is a
+            # contradiction for human eyes, not an auto-coexist.
+            await log_audit_event(
+                "theme_subtheme_route_distinct",
+                summary=f"Route A: DISTINCT verdict for '{name_i}' — strip as today (weekly review)",
+                detail=pair_detail,
+            )
+            return None
+        await log_audit_event(
+            "theme_subtheme_route_error",
+            summary=f"Route A: adjudication error for '{name_i}' — strip as today",
+            detail=pair_detail,
+        )
+        return None
+    except Exception as e:
+        # The arm must never break the merge pass (0025 pattern) — audit loud,
+        # then fall through to today's strip.
+        logger.warning(f"[subtheme route] Route A failed — fail-closed to strip: {e}")
+        try:
+            await log_audit_event(
+                "theme_subtheme_route_error",
+                summary="Route A: internal error — strip as today",
+                detail=f"{type(e).__name__}: {e}"[:500],
+            )
+        except Exception as audit_err:  # loud-ok: audit-of-the-audit; nothing above can handle it
+            logger.warning(f"[subtheme route] error-audit write failed: {audit_err}")
+        return None
+
+
 async def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
     protected_names: set[str] | None = None,
     sub_theme_parents: dict[str, str] | None = None,
+    subtheme_ctx: dict | None = None,
 ) -> list[dict]:
     """
     Two-pass theme consolidation:
@@ -3700,6 +4087,11 @@ async def _merge_overlapping_themes(
 
     sub_theme_parents: mapping of sub-theme name → parent theme name. A sub-theme is
     allowed to overlap with its parent — never merged back in.
+
+    subtheme_ctx: ADR 0032 Phase 2 Route A context (make_subtheme_route_ctx).
+    None or disabled (THEME_SUBTHEME_ARM off — the default) ⇒ every Route-A
+    branch is skipped and this function is byte-identical to pre-Phase-2
+    behavior.
     """
     if len(themes) <= 1:
         return themes
@@ -3762,11 +4154,40 @@ async def _merge_overlapping_themes(
                     sub_theme_parents
                     and sub_theme_parents.get(themes[j]["name"]) == themes[i]["name"]
                 )
-                if j_is_subtopic_of_i:
+                # §1.1-D symmetric fix (ADR 0032 Phase 2, fork F-4 — ALWAYS ON,
+                # not toggle-gated): when the child out-scores its parent it
+                # sorts as i and the parent lands as j; without the reverse
+                # check the carve-out never fires and the BOTH_PROTECTED
+                # tiebreaker guts the child the night after it is created (G4).
+                # Inert until a parent_theme link exists; also protects the
+                # ADR-0025 Arm-B PARENT_CHILD children once THEME_MERGE_ARM flips.
+                i_is_subtopic_of_j = (
+                    sub_theme_parents
+                    and sub_theme_parents.get(themes[i]["name"]) == themes[j]["name"]
+                )
+                if j_is_subtopic_of_i or i_is_subtopic_of_j:
                     continue  # coexistence — never re-absorb a sub-theme into its parent
 
                 j_protected = protected_names and themes[j]["name"] in protected_names
                 if j_protected:
+                    # ── ADR 0032 Phase 2 Route A hook (behind THEME_SUBTHEME_ARM).
+                    # ctx None/disabled ⇒ skipped ⇒ the strip below runs
+                    # byte-identically to pre-Phase-2. Fail-closed: any outcome
+                    # other than an accepted PARENT_CHILD / canonicalization
+                    # returns None and falls through to today's strip.
+                    if (
+                        subtheme_ctx
+                        and subtheme_ctx.get("enabled")
+                        and sub_theme_parents is not None
+                    ):
+                        routed = await _route_a_subtheme(
+                            i, j, themes, merged_into, protected_names or set(),
+                            sub_theme_parents, subtheme_ctx,
+                        )
+                        if routed == "coexist":
+                            continue  # child persisted alongside its parent — no strip
+                        if routed == "canonicalized":
+                            break  # newborn folded into the existing child — i is retired
                     # Protected existing theme (j) would be absorbed by new cluster (i).
                     # Default: strip the overlap from i to preserve j's identity.
                     #
@@ -4746,11 +5167,28 @@ async def run_theme_engine(
         if pt:
             prior_sub_parents[t["name"]] = pt
 
+    # ── ADR 0032 Phase 2: resolve THEME_SUBTHEME_ARM once per run (DB toggle,
+    # fail-closed). OFF (default / any read error) ⇒ the ctx is disabled ⇒
+    # every Route-A/B branch is skipped and the passes below are byte-identical
+    # to pre-Phase-2 behavior.
+    subtheme_arm_on = await get_theme_subtheme_arm_enabled()
+    subtheme_ctx = make_subtheme_route_ctx(
+        subtheme_arm_on,
+        sectors_by_ticker=(
+            {
+                tk: s.get("sector") for tk, s in stocks_by_ticker.items()
+                if s.get("sector") and s.get("sector") != "Unknown"
+            }
+            if subtheme_arm_on else None
+        ),
+    )
+
     all_themes = await _merge_overlapping_themes(
         updated_themes + new_themes,
         stocks_by_ticker,
         protected_names=existing_names,
         sub_theme_parents=prior_sub_parents,
+        subtheme_ctx=subtheme_ctx,
     )
     await _emit_pipeline_diagnostic(all_themes, "after_merge_1", sub_theme_parents=prior_sub_parents)
     all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
@@ -4766,6 +5204,19 @@ async def run_theme_engine(
         and t.get("stage") not in ("Fading",)
         and not t.get("parent_theme")  # never split a sub-theme further
     ]
+    # ── ADR 0032 Phase 2 Route B (behind THEME_SUBTHEME_ARM; arm OFF ⇒ []
+    # with no DB access): a sole-sub-theme ecosystem-dominant theme qualifies
+    # for ONE deliberate split even below the >20 fat trigger. Same mechanics
+    # (`_split_fat_theme`, removal semantics per fork F-5) — only the
+    # eligibility gate widens.
+    dominant_names: set[str] = set()
+    for t in await _nominate_dominant_split_themes(
+        all_themes, stocks_by_ticker, arm_enabled=subtheme_arm_on,
+    ):
+        if t["name"] not in {f["name"] for f in fat_themes}:
+            fat_themes.append(t)
+            dominant_names.add(t["name"])
+
     if fat_themes:
         logger.info(f"[fat-theme split] {len(fat_themes)} fat theme(s) eligible for splitting")
 
@@ -4774,7 +5225,12 @@ async def run_theme_engine(
 
     for fat in fat_themes:
         sub_raw, advisor_calls_used = await _split_fat_theme(
-            fat, stocks_by_ticker, advisor_calls_used
+            fat, stocks_by_ticker, advisor_calls_used,
+            reason_line=(
+                f"is ecosystem-dominant with no sub-theme structure "
+                f"({len(fat.get('tickers') or [])} stocks)"
+                if fat["name"] in dominant_names else None
+            ),
         )
         if sub_raw is None:
             continue
@@ -4805,12 +5261,20 @@ async def run_theme_engine(
         await _emit_pipeline_diagnostic(
             all_themes + new_sub_themes, "after_split", sub_theme_parents=combined_sub_parents
         )
-        # Merge sub-themes into all_themes, protecting them from re-absorption
+        # Merge sub-themes into all_themes, protecting them from re-absorption.
+        # Route-A children born in merge_1 join the protected set here (they are
+        # incumbents-of-this-run, like split children); with the arm off
+        # routed_children is empty and the set is byte-identical to pre-Phase-2.
         all_themes = await _merge_overlapping_themes(
             all_themes + new_sub_themes,
             stocks_by_ticker,
-            protected_names=existing_names | set(this_run_sub_parents.keys()),
+            protected_names=(
+                existing_names
+                | set(this_run_sub_parents.keys())
+                | set(subtheme_ctx.get("routed_children") or {})
+            ),
             sub_theme_parents=combined_sub_parents,
+            subtheme_ctx=subtheme_ctx,
         )
         await _emit_pipeline_diagnostic(all_themes, "after_merge_2", sub_theme_parents=combined_sub_parents)
         all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))

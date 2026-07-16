@@ -2824,6 +2824,44 @@ async def set_composite_authority_enabled(enabled: bool) -> None:
         """, *_COMPOSITE_TOGGLE, "on" if enabled else "off")
 
 
+_SUBTHEME_ARM_TOGGLE = ("theme_subtheme_arm", "paper")  # (safeguard, account_mode) PK
+
+
+async def get_theme_subtheme_arm_enabled() -> bool:
+    """ADR 0032 Phase 2 — DB-backed toggle for the theme re-granularization arm
+    (Route A protect-strip→PARENT_CHILD routing + Route B dominant-theme split).
+    Durable across restarts (mi_safeguard_state), instant flip with NO redeploy —
+    the get_holistic_judge_enabled idiom.
+    FAIL-CLOSED: any error or missing row → False. OFF ⇒ the theme engine is
+    byte-identical to pre-Phase-2 behavior (the ADR-0025 build-dark discipline);
+    the flip is OPERATOR-gated behind the §1.4 backtest sign-off."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = $2", *_SUBTHEME_ARM_TOGGLE)
+        return bool(row) and row["state"] == "on"
+    except Exception as e:  # noqa: BLE001 — fail-closed to today's engine is the contract
+        logger.warning(f"theme_subtheme_arm read failed → arm OFF (fail-closed): {e}")
+        return False
+
+
+async def set_theme_subtheme_arm_enabled(enabled: bool) -> None:
+    """Flip the ADR 0032 Phase 2 re-granularization arm (OPERATOR-gated — never
+    self-authorize; the flip gate is the §1.4 backtest + operator sign-off).
+    Upserts the mi_safeguard_state row. No-money surface (themes are detection)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
+        """, *_SUBTHEME_ARM_TOGGLE, "on" if enabled else "off")
+
+
 _MANUAL_HALT = ("manual_trading_halt", "live")  # (safeguard, account_mode) PK
 
 
