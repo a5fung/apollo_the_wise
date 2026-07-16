@@ -2402,22 +2402,36 @@ async def send_telegram_message(
                     # Likely malformed markup — retry as plain text so the alert
                     # still lands. Parse failures otherwise vanish silently.
                     body = r.text[:500]
+                    # Telegram names the UTF-8 byte offset of the entity opener it
+                    # couldn't close — log the surrounding text so the offending
+                    # section/char is identifiable from the audit row (2026-07-16:
+                    # an evening-brief break at byte 4205 was undiagnosable from
+                    # chunk[:300] alone).
+                    snippet = ""
+                    import re as _re
+                    _m = _re.search(r"byte offset (\d+)", body)
+                    if _m:
+                        _raw = chunk.encode("utf-8")
+                        _off = int(_m.group(1))
+                        snippet = _raw[max(0, _off - 120):_off + 80].decode(
+                            "utf-8", errors="replace")
                     logger.warning(
-                        f"Telegram 400 with {parse_mode} — retrying plain text. body={body}"
+                        f"Telegram 400 with {parse_mode} — retrying plain text. "
+                        f"body={body} offset_snippet={snippet!r}"
                     )
                     r2 = await _post(client, chunk, formatted=False)
                     if r2.status_code >= 400:
                         await log_audit_event(
                             "telegram_send_failed",
                             "Telegram send failed after plain-text retry",
-                            f"md_body={body} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | chunk={chunk[:300]}",
+                            f"md_body={body} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
                         )
                         r2.raise_for_status()
                     else:
                         await log_audit_event(
                             "telegram_markdown_fallback",
                             "Markdown parse failed — delivered as plain text",
-                            f"md_body={body} | chunk={chunk[:300]}",
+                            f"md_body={body} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
                         )
                 else:
                     r.raise_for_status()
