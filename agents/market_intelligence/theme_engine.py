@@ -1535,6 +1535,16 @@ async def promote_shadow_themes(today) -> int:
         _named = ", ".join(new_grads[:6]) + (f" +{n_new - 6} more" if n_new > 6 else "")
         await send_telegram_message(
             f"🎓 {n_new} theme(s) NEWLY graduated shadow→live: {_named}. `/themes`.")
+    # ADR 0032: map promoted themes to ecosystems AT promotion. This job runs
+    # AFTER run_theme_engine's ensure hook (17:05 vs 17:03), so without this
+    # every new promote sat E-UNASSIGNED on the board until the next nightly
+    # self-heal (4 themes, 2026-07-16). Wrapped: never breaks the promotion.
+    if n:
+        try:
+            from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
+            await ensure_theme_ecosystems(themes)
+        except Exception as e:
+            logger.warning(f"[promote] ecosystem mapping pass failed (non-fatal): {e}")
     return n
 
 
@@ -1604,6 +1614,15 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
                      + ("" if wrote else " — already a live theme, left intact")),
             detail=f"query='{q}' candidate='{cand['name']}' final='{t['name']}' "
                    f"tickers={t['tickers']} cand_source={cand.get('source')}")
+    # ADR 0032: same at-promotion ecosystem mapping as the nightly auto-promote
+    # (see promote_shadow_themes) — the operator path writes mi_themes outside
+    # the engine's ensure hook too. Wrapped: never breaks the promotion.
+    if wrote:
+        try:
+            from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
+            await ensure_theme_ecosystems([t])
+        except Exception as e:
+            logger.warning(f"[promote] ecosystem mapping pass failed (non-fatal): {e}")
     return {"status": "promoted" if wrote else "noop", "name": t["name"],
             "tickers": t["tickers"], "n_members": len(t["tickers"]),
             "canonicalized": t["name"] != cand["name"], "orig_name": cand["name"]}
