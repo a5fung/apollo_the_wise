@@ -7132,3 +7132,35 @@ reviews:
       or close as non-systematic. Ref: PLAN #475.
     status: pending
     added_on: 2026-07-15
+
+  - review_id: b6_gate_inversion_recheck
+    title: "B6 re-look (#448) — does the rubric-gate inversion hold at bigger N?"
+    question: |
+      7/16 B6 forward backtest (docs/analysis/448_b6_forward_backtest_2026-07-16.md,
+      operator ruled A=observe): on the 5/19-7/16 cohort the composite_min=22 gate
+      was INVERTED — live PASS n=7 ret_5d med -5.1%/win 29% vs live DOWNGRADE n=40
+      med 0.0%/win 50%; market-adjusted made it WORSE (PASS excess -7.2% in rising
+      tapes); every threshold cut 16-28 inverted. n=7 live-PASS was too thin to
+      change a live gate on. Re-run scripts/_b6_forward_backtest.py on the grown
+      cohort: does the inversion hold at ~15+ live-PASS names? If CONFIRMED ->
+      operator fork B (neutralize the composite's tier-downgrade authority via
+      CHANGE_PROCESS); if reversed/flat -> keep 22, close #448.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_ep_catalyst_metrics m
+      WHERE m.alert_date > '2026-07-16'
+        AND m.q_revenue_yoy_pct IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM mi_audit_log a
+          WHERE a.event_type = 'catalyst_earnings_revenue_weak_downgrade'
+            AND a.detail LIKE '%rubric_composite_%'
+            AND a.detail LIKE '%"ticker": "' || m.ticker || '"%'
+            AND a.detail LIKE '%"alert_date": "' || m.alert_date || '"%'
+        )
+    threshold: 8
+    earliest_review_date: 2026-09-15
+    action_when_ready: |
+      Re-run the B6 backtest (scripts/_b6_forward_backtest.py; re-pull the three
+      jsonl inputs per its docstring) on the full cohort. Bring the operator the
+      same live-verdict crosstab + the keep-22 / neutralize-gate fork (#448).
+    status: pending
+    added_on: 2026-07-16
