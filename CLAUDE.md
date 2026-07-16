@@ -178,18 +178,9 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - Sector enrichment: only top 300 by rank get sector in `mi_stock_scores`. For theme tickers outside top 60, fetch sector from `mi_ticker_overrides` (persistent cache) via `get_sectors_batch()`.
 
 ### Theme Engine
-- Bottom-up from price action — themes emerge from RS, not hypotheses
-- Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
-- **Engine-drop themes skip Fading**: Pass1 cap_drop / Pass1.5 absorption removals get a synthetic Retired row (`theme_auto_retired` audit; `parent_theme=successor` recovered from the pass audit events) — the 5-day Fading→Retired path can't complete under the 7d recency cap. Stub until canonicalization (R3).
-- **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429.
-- **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — a bad-description removal once permanently banned TSEM from semiconductor theme).
-- **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
-- **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
-- **Birth validation (#266, 2026-06-17, operator-signed)**: newly DISCOVERED themes run the SAME `_validate_theme_membership` on their founding members before `_save_themes` — discovery previously skipped it, so bad members sat ~6d until the next Mon/Wed/Fri (evidence: `docs/analysis/theme_birth_validation_evidence_2026-06-17.md`). Changes WHEN, not WHAT; min-survivor guard keeps small/born-bad themes intact; emits `theme_birth_validated`.
-- **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
-- **Unknown sector fallback**: when sector is "Unknown", checks description keyword overlap (4+ letter words) before allowing assignment.
-- **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
-- **`get_active_themes(stale_after_days=7)`**: recency cap is the de-facto retirement mechanism — themes that stop appearing in daily snapshots age out after a week.
+Bottom-up from price action (themes emerge from RS, not hypotheses); lifecycle Nascent → Accelerating → Mainstream → Fading → Retired. **FULL SSoT: `docs/architecture/theme_engine.md`** (validation cadence, birth validation #266, engine-drop retirement, tool schemas, Phase-2 re-granularization arms) — read it before touching theme behavior; update it in the same commit. Two rules that bite most often, kept inline:
+- **`mi_theme_exclusions`** = user-directed permanent bans ONLY — NEVER auto-populate from validation removals (a bad-description removal once permanently banned TSEM from semiconductor theme).
+- **`get_active_themes(stale_after_days=7)`**: the recency cap is the de-facto retirement mechanism — themes absent from daily snapshots age out after a week.
 
 ### EP Detection (MAGNA53)
 - Alpaca bars use feed selected by `ALPACA_DATA_FEED` env var (`iex` default; `sip` requires Algo Trader Plus subscription) — resolved by `alpaca_client.get_data_feed()`.
@@ -208,46 +199,15 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 
 ### Entry Pipeline
-- **`broker/entry_pipeline.py::submit_trade_entry`** — single funnel for both MAGNA53 EP and 9M Day 2 entries. Strategy differences (stop source, sizing) inject via `spec_builder` callback. Pipeline owns: dedup → safeguards → bar-fetch retry → fade guard → spec build → per-strategy sizing multiplier → DB insert → Alpaca submit → audit log → Telegram. **Contract: every terminal failure Telegrams via `humanize()`.**
-- `account_mode` resolved at safeguard step from `strategy.phase` via `resolve_account_mode_for_strategy()` and threaded through spec_builder, alpaca client calls, DB inserts, and Telegram surfaces. SpecBuilder type alias takes account_mode as 4th positional arg.
-- Bounded action vocabulary: `ACTION_AUTO_ENTERED / PROPOSED / AUTO_ENTER_FAILED / PROPOSAL_SEND_FAILED / SKIPPED / BLOCKED`.
-- Bounded skip-reason vocabulary in `broker/skip_reasons.py` — 19 constants across `filter:* / setup:* / block:* / infra:* / window:*`. Aggregate via `split_part(skip_reason, ':', 1)`. New: `block:strategy_position_cap` for per-strategy slot limit (#65).
+**`broker/entry_pipeline.py::submit_trade_entry`** — the single funnel for both MAGNA53 EP and 9M Day 2 entries (strategy differences inject via `spec_builder`). **FULL SSoT: `docs/architecture/entry_pipeline.md`** (pipeline stages, action/skip-reason vocabularies, account_mode threading) — update it in the same commit as any pipeline change. **Contract kept inline: every terminal failure Telegrams via `humanize()`.**
 
 ### Dual-Account Architecture (#66, 2026-05-10)
-**One Apollo container, two Alpaca accounts** (paper + live), routed per-strategy via `mi_strategies.phase`:
+One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_strategies.phase` → `resolve_account_mode_for_strategy()`. **FULL SSoT: `docs/architecture/dual_account.md`** (phase→destination table, per-mode clients/streams/safeguards/sync, boot bootstrap, #65 per-strategy sizing/cap) — read it before touching any account-mode code; update it in the same commit.
 
-| phase | live_real_enabled | account_mode | Submit destination |
-|---|---|---|---|
-| shadow | – | (n/a) | No submit; audit telemetry only |
-| paper | – | paper | Alpaca paper account (real fills, fake $) |
-| live | False | live | 🟡 STAGED-PAPER Telegram proposal; no auto-submit |
-| live | True | live | Alpaca live account (real fills, real $) |
-
-**Key components:**
-- `constants.resolve_account_mode_for_strategy(strategy)` — SSoT mode resolver. Pre-dual-account global `current_account_mode()` kept for non-trade contexts (`/status`, boot audit).
-- `alpaca_client.get_trading_client(account_mode)` — per-mode TradingClient singletons, independent HTTP sessions (no shared pool). Every wrapper accepts optional `account_mode`.
-- `alpaca_client.make_client_order_id(account_mode, strategy_id, ticker)` — strict mode-bound `apollo_{mode}_{strategy}_{ticker}_{ms_epoch}` format. **Required at every order submission site** to prevent cross-account COID collisions.
-- `trade_stream.py` — two TradingStream instances (one per mode), each handler closure-bound to its account_mode. `_dispatch_trade_event` runs `_verify_event_account_mode` before any DB mutation; mismatches drop the event + emit `cross_account_event_rejected` audit (defense in depth even with mode-bound COIDs).
-- `_check_safeguards(account_mode, signal_type)` — per-mode isolated (paper at-cap doesn't constrain live). Per-strategy `max_concurrent_positions` enforced WITHIN per-mode envelope. NULL = share global cap.
-- `sync_positions()` iterates `['paper','live']` (or `['paper']` if `ENABLE_LIVE_MODE=false`) — runs `_sync_positions_for_mode(account_mode)` per mode. Each mode's mi_live_trades query carries `AND account_mode = $1`.
-- `account_equity_snapshot_job` (16:12 ET) iterates both modes; drawdown breaker state per mode (`mi_safeguard_state` PK = `(safeguard, account_mode)`).
-
-**Boot bootstrap** (`agent.py::_bootstrap_alpaca_credentials`):
-- `ENABLE_LIVE_MODE=true` (default): hard-requires `ALPACA_PAPER_API_KEY/SECRET` AND `ALPACA_LIVE_API_KEY/SECRET`. Boot-blocks if either pair missing.
-- `ENABLE_LIVE_MODE=false`: only `ALPACA_PAPER_*` required. Strategies at `phase='live'` blocked. Dev / single-account opt-out.
-- Legacy `ALPACA_API_KEY`→paper remap still in code (`legacy_alpaca_creds_fallback` audit; was "one cycle only" from 5/10 — removable).
-- Post-init `verify_dual_account_clients()` smoke-tests both accounts, emits `dual_account_boot_verified` (success) or `dual_account_boot_failed` (per-mode error detail).
-
-**Per-strategy sizing/cap** (#65, two new mi_strategies columns):
-- `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline AFTER spec_builder so it covers both `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly. Multiplies shares; recomputes position_size + risk_dollars.
-- `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`. Use case: 9M Day 2 starts at multiplier=0.5 + cap=2 when promoting to live.
-
-*(The 3 correctness invariants — mode-bound COID, cross-account event rejection, `account_mode` filter on every trade query — are the facts already stated in Key components above; this is the safety backbone, don't relax any of the three.)*
+**The 3 correctness invariants (safety backbone — never relax):** (1) mode-bound client order IDs (`make_client_order_id`) at EVERY submission site; (2) cross-account event rejection before any DB mutation (`_verify_event_account_mode`); (3) `account_mode` filter on every trade query.
 
 ### Stop-Leg ID Capture
-- `alpaca_client.extract_stop_leg_id(order)` is the canonical helper — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Robust against Python 3.11+ Enum stringification (`str(OrderType.STOP)` → `"OrderType.STOP"`).
-- Used in: `place_bracket_order` (naked-order guard), `submit_entry`, `check_fills`, `attempt_day1_reentry`, `_process_entry_fill`. Never re-implement the loop.
-- `_process_entry_fill` checks 3 sources before remediation: WS event legs, DB `stop_order_id`, REST refetch.
+`alpaca_client.extract_stop_leg_id(order)` is the canonical helper — **never re-implement the loop** (5 call sites; details in `docs/architecture/entry_pipeline.md`).
 
 ### Self-Audit System (L1/L2/L3)
 - **L1** invariant breach (hard SQL guard fails) → immediate Telegram + audit row.
