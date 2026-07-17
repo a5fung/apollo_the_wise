@@ -125,9 +125,10 @@ async def test_markdown_400_without_offset_degrades_gracefully(monkeypatch):
 def test_quality_warnings_banner_neutralizes_snake_case():
     """#477 class, 2nd instance: data_quality.py's {step}/{metric} fallback puts
     snake_case into the DATA QUALITY banner — one bare underscore breaks the
-    whole chunk's entity parity. The banner must neutralize dynamic tokens."""
+    whole chunk's entity parity. The banner escapes dynamic tokens via the
+    canonical _md_escape (#148): every `_`/`*` must be backslash-escaped."""
+    import re as _re
     out = briefing._format_quality_warnings(
         ["rs_engine/scored_count: 12 (expected 9000)", "Sector coverage: 41% (threshold 80%)"])
     body = out.split("\n", 1)[1]        # skip the deliberate *DATA QUALITY* header markup
-    for ch in ("_", "*", "`"):
-        assert ch not in body, f"banner leaked {ch!r}: {body}"
+    assert not _re.search(r"(?<!\\)[_*]", body), f"banner leaked a bare entity char: {body}"

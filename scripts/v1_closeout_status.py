@@ -452,7 +452,9 @@ def _md_safe(text: str) -> str:
     offset thousands of bytes away — the brief then falls back to plain text.
     Hyphens read identically to the operator and can't open an entity. All
     INGEST_MODES (dry_run, live_r1/r2/r3) carry `_`, so this bites on every
-    future mode flip too, not just dry_run."""
+    future mode flip too, not just dry_run. (Not briefing._md_escape: briefing
+    imports THIS module — circular — and 'dry-run' reads cleaner than
+    'dry\\_run' in the one-line HUD context.)"""
     return str(text).replace("_", "-").replace("*", "·").replace("`", "'")
 
 

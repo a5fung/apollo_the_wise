@@ -138,6 +138,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
+    "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     "coverage_probe",  # S2 coverage loop — zero-LLM EOD blind-spot probe; shadow tables + audit only, no broker calls
@@ -3602,6 +3603,21 @@ async def _htf_management_shadow_job():
     return updated
 
 
+async def _spend_alarm_job():
+    """Run at 17:52 ET (after the EOD LLM-heavy chain). #378 Phase 2 — Telegram
+    WARN only when MTD variable spend breaches ANTHROPIC_MONTHLY_BUDGET or
+    today's spend is a >2× trailing-30d-median anomaly; silent otherwise
+    (/cost is the on-demand board). Read-only on api_usage."""
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.cost_board import run_daily_spend_alarm
+        fired = await run_daily_spend_alarm(et_today())
+        logger.info(f"spend-alarm: {'FIRED' if fired else 'quiet'}")
+    except Exception as e:
+        logger.error(f"spend-alarm job failed: {e}", exc_info=True)
+        await notify_job_failure("spend_alarm", str(e))
+
+
 async def _book_concentration_job():
     """Run at 16:18 ET (after the close, after the 16:12 equity snapshot so the
     %-of-equity line is same-day). #452 R1 Stage 1 — correlated-book telemetry:
@@ -4783,6 +4799,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_htf_management_shadow_job, "htf_management_shadow"),
         CronTrigger(hour=17, minute=36, day_of_week="mon-fri", timezone="America/New_York"),
         id="htf_management_shadow",
+        replace_existing=True,
+    )
+
+    # #378 Phase 2 — daily spend alarm, 17:52 ET mon-fri (after the EOD LLM
+    # chain). Telegram only on budget breach / 2×-median anomaly; /cost is the
+    # on-demand board. Read-only on api_usage.
+    _scheduler.add_job(
+        audit_wrap(_spend_alarm_job, "spend_alarm"),
+        CronTrigger(hour=17, minute=52, day_of_week="mon-fri", timezone="America/New_York"),
+        id="spend_alarm",
         replace_existing=True,
     )
 

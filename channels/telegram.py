@@ -1726,6 +1726,8 @@ class TelegramChannel:
                      "review", "reviews", "spotted",
                      # 2026-06-16 #54 Prong B data-gated-review board
                      "datareviews",
+                     # 2026-07-16 #378 cost board (variable LLM + flat subs vs budget)
+                     "cost",
                      # 2026-06-16 #270 anticipation play board (SHADOW, Pradeep)
                      "anticipation",
                      # 2026-06-29 operator one-tap theme promotion (decision-alerts carry the action)
@@ -1785,6 +1787,7 @@ class TelegramChannel:
             BotCommand("review",       "/review TICKER <agree|toohigh|toolow|notep> — label a grade (bare /review lists corpus)"),
             BotCommand("spotted",      "/spotted TICKER <grade> <narrative> — inject a real EP you spotted (e.g. a tweet)"),
             BotCommand("datareviews",  "📅 Data-gated reviews — ready / overdue / broken-query"),
+            BotCommand("cost",         "💰 Full operating cost — variable LLM + flat subs vs budget"),
             BotCommand("missed",       "Missed EPs — top winners we didn't enter (opportunity cost)"),
             BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("pause",        "⏸️ HALT all new real-money entries (instant kill switch)"),

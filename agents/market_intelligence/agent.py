@@ -2938,6 +2938,21 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append(f"_{len(rows)} row(s). Capture-only corpus (#254) — no judge effect yet._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_cost_query(self, request: AgentRequest) -> AgentResponse:
+        """`/cost` — the FULL operating total (#378 Phase 2): metered variable
+        LLM spend (api_usage, #377) + the flat subscriptions, MTD + projection
+        vs ANTHROPIC_MONTHLY_BUDGET. Read-only; the daily 17:52 ET alarm is the
+        push half (fires only on budget breach / 2× daily anomaly)."""
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.cost_board import (
+            compute_cost_board, render_cost_board,
+        )
+        d = await compute_cost_board(et_today())
+        return AgentResponse(
+            request_id=request.request_id, agent=self.name, success=True,
+            result=render_cost_board(d),
+        )
+
     async def _handle_data_reviews_query(self, request: AgentRequest) -> AgentResponse:
         """`/datareviews` — the DATA-GATED review board (data_gated_reviews.yaml): which evidence-
         gated reviews are READY (date + threshold met), ERRORING (predicate broken — the #54 class),
@@ -5520,6 +5535,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/spotted":        self._handle_spotted_command,
             "/reviews":        self._handle_reviews_query,
             "/datareviews":    self._handle_data_reviews_query,
+            "/cost":           self._handle_cost_query,
             "/anticipation":   self._handle_anticipation_query,
             "/ideas":          self._handle_ideas_query,
         }
