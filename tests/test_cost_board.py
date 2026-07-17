@@ -57,9 +57,9 @@ def test_render_is_markdown_parity_safe():
         if not in_code:
             outside.append(line)
     body = "\n".join(outside)
-    # the footer is _..._ (paired); strip paired italics then check for strays
-    stripped = re.sub(r"_[^_]*_", "", body)
-    assert "_" not in stripped, f"bare underscore outside code block: {body!r}"
+    # 7/17: the footer is PLAIN (V1 fails italics after a ``` fence) — nothing
+    # outside the code block may carry any underscore at all.
+    assert "_" not in body, f"bare underscore outside code block: {body!r}"
 
 
 def _mock_dedupe_pool(monkeypatch, already_fired=0):

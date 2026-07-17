@@ -13,9 +13,9 @@ module adds the two missing operator surfaces:
   is a >2× trailing-30d-median daily anomaly. Silent otherwise (the series
   already lives in api_usage); an audit row records every fired alarm.
 
-Flat numbers are the operator's 6/25 figures. OPEN QUESTION carried on the
-board verbatim (operator 6/25): does Massive include/replace Polygon+FMP, or
-are those separate lines? The board says what it knows and names the gap.
+Flat numbers are the operator's 6/25 figures, completed 7/17: Massive is
+Polygon's rebranded product (one market-data line) and there is no FMP
+subscription — the $148 stack is the full fixed cost.
 """
 from __future__ import annotations
 
@@ -29,9 +29,12 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 logger = logging.getLogger(__name__)
 
 # Operator-stated flat subscriptions (2026-06-25), USD/month.
+# Operator-confirmed 7/17: Massive IS Polygon (product rebrand) — one market-
+# data subscription covers the Polygon feed; there is NO FMP subscription
+# (free tier). The 6/25 open question is settled; the stack is complete.
 FLAT_SUBS_MONTHLY: dict[str, float] = {
     "Hetzner": 15.0,
-    "Massive (market data)": 33.0,
+    "Massive (Polygon)": 33.0,
     "Alpaca Algo Trader Plus": 100.0,
 }
 FLAT_TOTAL = sum(FLAT_SUBS_MONTHLY.values())
@@ -148,7 +151,10 @@ def render_cost_board(d: dict) -> str:
         for c, amt in d["top_callers"]:
             lines.append(f"  {c:<28} ${amt:.2f}")
     lines.append("```")
-    lines.append(f"_{headroom} · flat assumes Massive covers Polygon+FMP — confirm? (your 6/25 open Q)_")
+    # Plain text, no italics: Telegram V1 fails to parse `_…_` on the line
+    # after a ``` fence (operator screenshot 7/17 — the bold header parsed,
+    # the italic footer showed literal underscores). Don't fight V1 quirks.
+    lines.append(headroom)
     return "\n".join(lines)
 
 
