@@ -17,7 +17,8 @@ COPY core/ core/
 COPY channels/ channels/
 COPY shared/ shared/
 COPY agents/base.py agents/base.py
-COPY integrations.yaml integrations.yaml
+# root yaml configs via glob (#474 — same class-kill as Dockerfile.market)
+COPY *.yaml ./
 COPY main.py main.py
 
 # Create audit log file

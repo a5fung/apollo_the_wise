@@ -50,13 +50,21 @@ async def test_auto_promote_reader_excludes_coverage_probe_by_default(monkeypatc
 
     await dbmod.get_shadow_theme_candidates(days=7)
     default_sql = conn.fetch.await_args.args[0]
-    assert "source != 'coverage_probe'" in default_sql, (
-        "the auto-promote reader no longer carves out coverage_probe — an un-vetted "
-        "probe cohort could auto-promote into live mi_themes (THE LINE)")
+    default_args = conn.fetch.await_args.args[1:]
+    # #469 allowlist inversion: the default filter is source = ANY(<allowlist>) —
+    # coverage_probe (and ANY unknown future source) is out because it is not IN,
+    # not because someone remembered to name it (THE LINE).
+    assert "source = ANY" in default_sql, (
+        "the auto-promote reader lost its source allowlist — an un-vetted "
+        "cohort could auto-promote into live mi_themes (THE LINE)")
+    allow = [a for a in default_args if isinstance(a, list)][0]
+    assert "coverage_probe" not in allow
+    assert set(allow) == dbmod.AUTO_PROMOTE_THEME_SOURCES
 
     await dbmod.get_shadow_theme_candidates(days=7, include_probe=True)
     operator_sql = conn.fetch.await_args.args[0]
-    assert "coverage_probe" not in operator_sql  # operator surfaces see everything
+    assert "source" not in operator_sql.lower().split("where")[1].split("order")[0], (
+        "operator surfaces must see EVERY source")  # no source filter at all
 
 
 @pytest.mark.asyncio
@@ -397,3 +405,35 @@ async def test_run_coverage_probe_never_raises_into_eod_chain(monkeypatch):
 
     assert out["error"] is not None
     assert any(c.args[0] == "coverage_probe_error" for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_promote_wall_excludes_UNKNOWN_sources_by_default(monkeypatch):
+    """#469 allowlist inversion — THE class-kill pin: a source that did not exist
+    when the wall was written (the next coverage_probe) must be dropped by the
+    promote path's re-filter without anyone remembering to denylist it."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[], []])
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))
+    monkeypatch.setattr(te, "log_audit_event", AsyncMock())
+    from agents.market_intelligence import briefing as _brief
+    monkeypatch.setattr(_brief, "send_telegram_message", AsyncMock())
+    # Simulate a reader leak of a BRAND-NEW experimental source.
+    monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[
+        {"name": "Experimental: axis-shadow X", "tickers": ["A", "B", "C", "D"],
+         "thesis": "t", "source": "axis_shadow_x_2027"},
+    ]))
+
+    n = await te.promote_shadow_themes(_TODAY)
+
+    assert n == 0
+    conn.execute.assert_not_called()   # zero mi_themes writes
+
+
+def test_allowlist_is_exactly_the_three_vetted_lanes():
+    """Additions to the auto-promote allowlist are DELIBERATE (operator-signed) —
+    this pin forces the diff to show up here, not just in db.py."""
+    assert dbmod.AUTO_PROMOTE_THEME_SOURCES == {
+        "shadow_v2", "narrative_cogap", "rs_slope_synthesis"}

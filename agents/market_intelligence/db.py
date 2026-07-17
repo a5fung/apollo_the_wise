@@ -5566,6 +5566,21 @@ async def get_recent_rs_batch(
         return result
 
 
+# #469 (2026-07-16, /simplify Altitude-1): the auto-promote wall is an ALLOWLIST.
+# Only these VETTED shadow lanes may graduate into live mi_themes via the nightly
+# promote_shadow_themes. A NEW experimental source (the next coverage_probe) is
+# excluded BY DEFAULT until deliberately added here — under the old denylist
+# (`source != 'coverage_probe'`) it would have auto-promoted silently. Operator
+# surfaces (include_probe=True) still see EVERYTHING. Shared by BOTH walls
+# (this reader + promote_shadow_themes' defense-in-depth re-filter) — one list,
+# no drift.
+AUTO_PROMOTE_THEME_SOURCES = frozenset({
+    "shadow_v2",           # ADR-0007 correlation lane
+    "narrative_cogap",     # #167 narrative co-gap lane
+    "rs_slope_synthesis",  # #240 cross-ticker synthesis lane
+})
+
+
 async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False) -> list[dict]:
     """ALL shadow theme candidates — the FULL shadow lane: ADR-0007 correlation ('shadow_v2'),
     #167 narrative co-gap ('narrative_cogap'), and #240 synthesis ('rs_slope_synthesis'),
@@ -5574,25 +5589,34 @@ async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False
     surfaces EVERY shadow cohort, so the /themes two-way lookup and the dashboard snapshot export
     read ONE consistent source. Returns [{name, tickers, source, run_date}].
 
-    ⚠️ COVERAGE-PROBE CARVE-OUT (S3, coverage-loop 2026-07-13 — THE safety boundary, fork F-C
-    = surface-only): source='coverage_probe' cohorts are EXCLUDED BY DEFAULT so the nightly
-    auto-promote (theme_engine.promote_shadow_themes, which calls this with defaults) can NEVER
-    graduate an un-vetted probe cohort into live mi_themes → live judge context/R4/grade path.
+    ⚠️ AUTO-PROMOTE WALL (S3 coverage-loop 2026-07-13, INVERTED to an allowlist #469
+    2026-07-16 — THE safety boundary, fork F-C = surface-only): by default only
+    AUTO_PROMOTE_THEME_SOURCES lanes are returned, so the nightly auto-promote
+    (theme_engine.promote_shadow_themes, which calls this with defaults) can NEVER
+    graduate an un-vetted source into live mi_themes → live judge context/R4/grade
+    path — including sources that DON'T EXIST YET (the denylist only stopped
+    'coverage_probe' by name; the next experimental lane would have walked through).
     Only the OPERATOR surfaces opt in with include_probe=True (/themes lookup + the
-    /promotetheme one-tap in promote_candidate_by_name) — probe cohorts stay visible and
-    operator-promotable, never auto-promoted. Default-exclude is deliberate fail-safe: a future
-    caller that forgets the flag gets the SAFE behavior. Pinned by
-    tests/test_coverage_probe.py::test_auto_promote_reader_excludes_coverage_probe_by_default."""
-    src_clause = "" if include_probe else "AND source != 'coverage_probe'"
+    /promotetheme one-tap in promote_candidate_by_name) — non-allowlisted cohorts stay
+    visible and operator-promotable, never auto-promoted. Pinned by
+    tests/test_coverage_probe.py (default-exclude + unknown-source pins)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(f"""
-            SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
-            FROM mi_theme_candidates_shadow
-            WHERE run_date >= CURRENT_DATE - $1::int
-              {src_clause}
-            ORDER BY name, run_date DESC
-        """, days)
+        if include_probe:
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
+                FROM mi_theme_candidates_shadow
+                WHERE run_date >= CURRENT_DATE - $1::int
+                ORDER BY name, run_date DESC
+            """, days)
+        else:
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
+                FROM mi_theme_candidates_shadow
+                WHERE run_date >= CURRENT_DATE - $1::int
+                  AND source = ANY($2::text[])
+                ORDER BY name, run_date DESC
+            """, days, list(AUTO_PROMOTE_THEME_SOURCES))
     return [dict(r) for r in rows]
 
 

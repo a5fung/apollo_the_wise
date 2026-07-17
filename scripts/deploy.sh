@@ -113,16 +113,14 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # the live apollo-execution stays stale — the LZB silent-dark class.
       agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
-      # data_gated_reviews.yaml is market-agent RUNTIME config — read only by the weekly
-      # system-review's gated-surfacing (a market-agent job); it touches neither orchestrator
-      # nor the execution broker. Without this it fell to the catch-all below and dragged the
-      # whole 3-service scope in (the 2026-07-09 giveback-shadow deploy hit exactly this).
-      data_gated_reviews.yaml)                NEED_MARKET=1 ;;
-      # theme_ecosystems.yaml (ADR 0032) is market-agent RUNTIME config — read only by
-      # the theme engine (a market-agent module); NOT imported by orchestrator or the
-      # broker. Same class as data_gated_reviews.yaml above; without it the catch-all
-      # dragged the full 3-service scope incl. the real-money execution container.
-      theme_ecosystems.yaml)                  NEED_MARKET=1 ;;
+      # #474 class-kill (2026-07-16): ANY root-level yaml is runtime config carried by
+      # BOTH images via the Dockerfiles' `COPY *.yaml ./` glob — new yamls need no
+      # hand-added COPY or case arm anymore. Scope = orchestrator + market (integrations.yaml
+      # is read by core/router + shared/registry; the theme/review yamls by market jobs).
+      # Deliberately NOT NEED_EXEC: no broker-read root yaml exists today — if one appears,
+      # add its explicit arm with NEED_EXEC (the catch-all below dragging the real-money
+      # container into every yaml tweak was the original problem).
+      *.yaml)                                 NEED_ORCH=1; NEED_MARKET=1 ;;
       tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy
       *)                                      NEED_ORCH=1; NEED_MARKET=1; NEED_EXEC=1 ;;  # shared/, docker/, requirements/, … → all incl execution runtime
     esac

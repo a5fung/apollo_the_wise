@@ -18,9 +18,11 @@ COPY agents/market_intelligence/ agents/market_intelligence/
 COPY shared/ shared/
 COPY core/notifications.py core/notifications.py
 COPY core/job_audit.py core/job_audit.py
-COPY integrations.yaml integrations.yaml
-COPY data_gated_reviews.yaml data_gated_reviews.yaml
-COPY theme_ecosystems.yaml theme_ecosystems.yaml
+# ALL root-level yaml runtime configs in one glob (#474, 2026-07-16): every new
+# root yaml used to need a hand-added COPY here + a deploy.sh case arm; a miss =
+# a stale image (theme_ecosystems.yaml cost a deploy cycle on 7/14 — 3rd
+# occurrence of the class). The glob + deploy.sh's generic *.yaml arm kill it.
+COPY *.yaml ./
 # PLAN.md is NOT copied (#435): it's a read-only bind-mount in docker-compose.prod.yml
 # so the #426 blocking-count reflects the LIVE file (a COPY snapshot went stale on
 # PLAN-only sessions that didn't rebuild the image).

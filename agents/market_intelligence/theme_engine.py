@@ -1475,16 +1475,18 @@ async def promote_shadow_themes(today) -> int:
     Runs AFTER `_save_themes` in the nightly pull; the live DELETE is source='live'-scoped so it can't
     clobber promoted rows, and the ON CONFLICT update is guarded (WHERE source='shadow_promoted') so it
     never overwrites a native live theme that happens to share a canonicalized name. Returns # promoted."""
-    from agents.market_intelligence.db import get_shadow_theme_candidates
+    from agents.market_intelligence.db import (
+        AUTO_PROMOTE_THEME_SOURCES, get_shadow_theme_candidates,
+    )
     cands = await get_shadow_theme_candidates(days=_PROMOTE_WINDOW_DAYS)
-    # ⚠️ COVERAGE-PROBE CARVE-OUT, wall 2 of 2 (S3 coverage loop 2026-07-13, fork F-C =
-    # surface-only): the reader above already EXCLUDES source='coverage_probe' by default
-    # (its include_probe flag is the operator-surface opt-in); this filter is deliberate
-    # defense in depth so that even a future reader-default flip can never auto-promote an
-    # un-vetted probe cohort into live mi_themes (→ live judge context/R4 → THE LINE).
-    # Probe cohorts graduate ONLY via the operator's /promotetheme (promote_candidate_by_name).
-    # Pinned by tests/test_coverage_probe.py::test_promote_shadow_themes_never_promotes_coverage_probe.
-    cands = [c for c in cands if c.get("source") != "coverage_probe"]
+    # ⚠️ AUTO-PROMOTE WALL 2 of 2 (S3 2026-07-13; ALLOWLIST-inverted #469 2026-07-16,
+    # fork F-C = surface-only): the reader above already returns only the vetted
+    # AUTO_PROMOTE_THEME_SOURCES by default; this re-filter is deliberate defense in
+    # depth so that even a future reader-default flip can never auto-promote an
+    # un-vetted source into live mi_themes (→ live judge context/R4 → THE LINE).
+    # Non-allowlisted cohorts graduate ONLY via the operator's /promotetheme.
+    # Pinned by tests/test_coverage_probe.py (never-promotes-probe + unknown-source pins).
+    cands = [c for c in cands if c.get("source") in AUTO_PROMOTE_THEME_SOURCES]
     cohorts = [c for c in cands if len(c.get("tickers") or []) >= _PROMOTE_MIN_MEMBERS]
     if not cohorts:
         logger.info("[promote] no shadow cohort met the >=%d-member bar", _PROMOTE_MIN_MEMBERS)
