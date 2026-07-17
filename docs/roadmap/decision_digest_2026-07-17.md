@@ -50,8 +50,14 @@ The push plan's single batched operator sitting. Each item = one line to rule;
     cohorts crystallize into E-BIO; weak rec — the RS-side biotech filter was
     already walked back, the theme-side wasn't = internal inconsistency) vs
     **(B)** suppress biotech at discovery (orphans become working-as-designed).
-    Backtest is $0 read-only replay either way, runs before any flip.
-    Full doc: docs/analysis/476_biotech_crystallization_diagnosis_2026-07-17.md
+    → RULED A 7/16 night + BACKTEST ALREADY RUN. One amendment to sign:
+    the replay shows the stream holds 5-6 family lineages, so the cap must be
+    **1-per-family (≤6), not a global 2** (a global 2 leaves 37/48 cuts dying).
+    Mush guard passed all 24 grid cells; 5/12 elite home via the replay, the
+    rest via the assignment pass post-ship (forward criterion ≥10/12 in 5 runs).
+    → "ok per-family cap" and the build starts.
+    Docs: 476_biotech_crystallization_diagnosis_2026-07-17.md ·
+    476_optionA_backtest_2026-07-16.md
 
 ## Operator-minutes actions (~5-10 min each, each unblocks a close)
 
