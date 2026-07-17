@@ -113,15 +113,24 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # the live apollo-execution stays stale — the LZB silent-dark class.
       agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
-      # #474 class-kill (2026-07-16): ANY root-level yaml is runtime config carried by
-      # BOTH images via the Dockerfiles' `COPY *.yaml ./` glob — new yamls need no
-      # hand-added COPY or case arm anymore. Scope = orchestrator + market (integrations.yaml
-      # is read by core/router + shared/registry; the theme/review yamls by market jobs).
-      # Deliberately NOT NEED_EXEC: no broker-read root yaml exists today — if one appears,
-      # add its explicit arm with NEED_EXEC (the catch-all below dragging the real-money
-      # container into every yaml tweak was the original problem).
+      tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
+      # The two KNOWN market-agent-only runtime yamls keep their narrow scope (the
+      # 2026-07-09 incident: the catch-all dragged all 3 services into review-yaml-only
+      # deploys; review 7/17 caught the generic arm below re-introducing that via
+      # NEED_ORCH — data_gated_reviews.yaml changes near-every session, so the deploy
+      # friction is real, not theoretical).
+      data_gated_reviews.yaml|theme_ecosystems.yaml) NEED_MARKET=1 ;;
+      # NESTED yamls (any subdir): keep the catch-all's FULL-scope guarantee incl.
+      # NEED_EXEC — shell case `*` matches `/`, so without this arm a future shared/
+      # or docker/ yaml would silently skip the execution container (the LZB
+      # silent-dark class; review 7/17).
+      */*.yaml)                               NEED_ORCH=1; NEED_MARKET=1; NEED_EXEC=1 ;;
+      # #474 class-kill (2026-07-16): any OTHER root-level yaml (integrations.yaml +
+      # future ones) is runtime config carried by BOTH images via the Dockerfiles'
+      # `COPY *.yaml ./` glob — new root yamls need no hand-added COPY or case arm.
+      # Deliberately NOT NEED_EXEC: no broker-read ROOT yaml exists today — if one
+      # appears, add its explicit arm with NEED_EXEC.
       *.yaml)                                 NEED_ORCH=1; NEED_MARKET=1 ;;
-      tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy
       *)                                      NEED_ORCH=1; NEED_MARKET=1; NEED_EXEC=1 ;;  # shared/, docker/, requirements/, … → all incl execution runtime
     esac
   done <<< "$CHANGED"

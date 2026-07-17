@@ -902,20 +902,13 @@ async def _ep_scan_job():
         async def _magna53_account_mode() -> str | None:
             nonlocal _ep_mode_fetched, _ep_account_mode
             if not _ep_mode_fetched:
-                # Fail-open: this label lookup must NEVER abort the pre-market
-                # subscribe path (or the out-of-ORB skip path below it) — a
-                # strategy-registry hiccup here is a label miss, not a reason
-                # to drop a live ORB subscription. mode_prefix(None) falls
-                # back to the legacy global default on any resolve failure.
-                try:
-                    from agents.market_intelligence.strategies.registry import get_strategy
-                    from agents.market_intelligence.constants import get_strategy_account_mode
-                    _mag = await get_strategy("magna53")
-                    # phase-guards + falls back to the global mode (no silent except).
-                    _ep_account_mode = get_strategy_account_mode(_mag)
-                except Exception as _mode_e:
-                    logger.warning(f"ep_scan: magna53 account_mode resolve failed: {_mode_e}")
-                    _ep_account_mode = None
+                # Shared fail-open resolver (review 7/17 dedup): never aborts
+                # the subscribe/skip paths; a failure emits
+                # strategy_mode_resolve_error (morning error banner) instead of
+                # a silent container-log line — mode_prefix(None) then falls
+                # back to the legacy global default.
+                from agents.market_intelligence.constants import resolve_strategy_mode_nonfatal
+                _ep_account_mode = await resolve_strategy_mode_nonfatal("magna53")
                 _ep_mode_fetched = True
             return _ep_account_mode
 
@@ -4844,7 +4837,10 @@ def start_scheduler() -> AsyncIOScheduler:
     # on-demand board. Read-only on api_usage.
     _scheduler.add_job(
         audit_wrap(_spend_alarm_job, "spend_alarm"),
-        CronTrigger(hour=17, minute=52, day_of_week="mon-fri", timezone="America/New_York"),
+        # DAILY incl. weekends (review 7/17): mon-fri left Sat/Sun spend
+        # permanently outside the day-scoped 2×-median trigger — a weekend
+        # runaway loop (Sun 8AM self-audit, Fable blocks) would never fire it.
+        CronTrigger(hour=17, minute=52, timezone="America/New_York"),
         id="spend_alarm",
         replace_existing=True,
     )

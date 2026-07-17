@@ -2241,32 +2241,40 @@ async def expire_stale_proposals() -> int:
     same-day proposals stay confirmable through the session. No broker calls
     (these rows have no orders); status → 'expired' + one audit row each.
     Called from both cleanup jobs (10:00 ET ORB-window + 4:05 PM EOD).
-    Returns the count expired. Never raises."""
-    try:
-        pool = await get_pool()
+
+    Per-mode (review 7/17): iterates only the modes THIS container is
+    authoritative for (the sync_positions idiom) — the dual-account backbone
+    requires an account_mode filter on every trade query, and a paper-only dev
+    container (ENABLE_LIVE_MODE=false) must never expire live-account rows.
+    RAISES on failure — both callers wrap with notify_job_failure (an internal
+    swallow made reaper breakage permanently invisible, the exact #436 class)."""
+    from agents.market_intelligence.constants import ENABLE_LIVE_MODE
+    modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    pool = await get_pool()
+    total = 0
+    for mode in modes:
         async with pool.acquire() as conn:
             rows = await conn.fetch("""
                 UPDATE mi_live_trades
                    SET status = 'expired',
                        skip_reason = COALESCE(skip_reason, 'window:proposal_expired')  -- WINDOW_PROPOSAL_EXPIRED
-                 WHERE status = 'pending_confirmation'
+                 WHERE account_mode = $1
+                   AND status = 'pending_confirmation'
                    AND entry_order_id IS NULL
                    AND (proposed_at AT TIME ZONE 'America/New_York')::date
                        < (NOW() AT TIME ZONE 'America/New_York')::date
                 RETURNING id, ticker, account_mode, proposed_at
-            """)
+            """, mode)
         for r in rows:
             await log_audit_event(
                 "stale_proposal_expired",
                 f"{r['ticker']} (id={r['id']}, {r['account_mode']}) — unconfirmed "
                 f"staged proposal from {r['proposed_at']:%Y-%m-%d} expired (#436)",
             )
-        if rows:
-            logger.info(f"expired {len(rows)} stale trade proposal(s)")
-        return len(rows)
-    except Exception as e:
-        logger.error(f"expire_stale_proposals failed (non-fatal): {e}", exc_info=True)
-        return 0
+        total += len(rows)
+    if total:
+        logger.info(f"expired {total} stale trade proposal(s)")
+    return total
 
 
 async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None) -> int:

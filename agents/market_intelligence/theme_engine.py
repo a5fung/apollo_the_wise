@@ -4426,15 +4426,13 @@ async def _merge_overlapping_themes(
                 # (the shadow-promote resurrects the cohort nightly, this kills
                 # it again — source alternates shadow_promoted↔live). Pure
                 # observability: the drop still happens; it is now visible.
-                try:
-                    await log_audit_event(
-                        "theme_sector_cap_dropped",
-                        summary=(f"'{t['name']}' dropped by sector cap "
-                                 f"(group '{group}', cap {max_for_group})"),
-                        detail=f"tickers={','.join(t.get('tickers') or [])}",
-                    )
-                except Exception as e:  # loud-ok: observability must never break the merge
-                    logger.warning(f"sector-cap drop audit failed (non-fatal): {e}")
+                # log_audit_event never raises (its own contract) — no wrapper.
+                await log_audit_event(
+                    "theme_sector_cap_dropped",
+                    summary=(f"'{t['name']}' dropped by sector cap "
+                             f"(group '{group}', cap {max_for_group})"),
+                    detail=f"tickers={','.join(t.get('tickers') or [])}",
+                )
 
     return final
 

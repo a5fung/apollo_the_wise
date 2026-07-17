@@ -19,9 +19,10 @@ are those separate lines? The board says what it knows and names the gap.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
-from datetime import date
+from datetime import date, timedelta
 
 from agents.market_intelligence.db import get_pool, log_audit_event
 
@@ -51,11 +52,17 @@ async def compute_cost_board(today: date) -> dict:
     operator's billing mental model), via AT TIME ZONE on the TIMESTAMPTZ."""
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Raw-timestamp prefilter (review 7/17): the ET-date conversion inside
+        # WHERE defeats idx_api_usage_created and scanned the WHOLE unboundedly-
+        # growing table on every /cost + daily alarm. 46 days generously covers
+        # month-start AND the 31-day daily window under any ET/UTC skew; the
+        # exact ET-date logic applies AFTER the indexed cut.
         row = await conn.fetchrow("""
             WITH et AS (
                 SELECT cost_usd, model, caller,
                        (created_at AT TIME ZONE 'America/New_York')::date AS d
                 FROM api_usage
+                WHERE created_at >= $1::date - INTERVAL '46 days'
             )
             SELECT
               COALESCE(SUM(cost_usd) FILTER (WHERE d >= date_trunc('month', $1::date)), 0) AS mtd,
@@ -69,20 +76,27 @@ async def compute_cost_board(today: date) -> dict:
             SELECT (created_at AT TIME ZONE 'America/New_York')::date AS d,
                    SUM(cost_usd) AS spend
             FROM api_usage
-            WHERE (created_at AT TIME ZONE 'America/New_York')::date
+            WHERE created_at >= $1::date - INTERVAL '32 days'
+              AND (created_at AT TIME ZONE 'America/New_York')::date
                   BETWEEN $1::date - 30 AND $1::date - 1
             GROUP BY 1 ORDER BY 1
         """, today)
         callers = await conn.fetch("""
             SELECT caller, SUM(cost_usd) AS spend
             FROM api_usage
-            WHERE (created_at AT TIME ZONE 'America/New_York')::date
+            WHERE created_at >= $1::date - INTERVAL '46 days'
+              AND (created_at AT TIME ZONE 'America/New_York')::date
                   >= date_trunc('month', $1::date)
             GROUP BY caller ORDER BY spend DESC LIMIT 3
         """, today)
 
-    series = sorted(float(r["spend"]) for r in daily)
-    median30 = series[len(series) // 2] if series else 0.0
+    # True median over ALL 30 trailing days — quiet days count as $0 (review
+    # 7/17: active-days-only + upper-middle-element inflated the baseline and
+    # desensitized the 2× anomaly trigger).
+    import statistics
+    spend_by_day = {r["d"]: float(r["spend"]) for r in daily}
+    series = [spend_by_day.get(today - timedelta(days=k), 0.0) for k in range(1, 31)]
+    median30 = statistics.median(series) if series else 0.0
     mtd = float(row["mtd"])
     day_of_month = today.day
     days_in_month = (date(today.year + (today.month == 12), (today.month % 12) + 1, 1)
@@ -142,7 +156,23 @@ async def run_daily_spend_alarm(today: date) -> dict | None:
     d = await compute_cost_board(today)
     reasons = []
     if d["budget"] and d["mtd_variable"] > d["budget"]:
-        reasons.append(f"MTD variable ${d['mtd_variable']:.2f} > budget ${d['budget']:.0f}")
+        # Once-per-month (review 7/17): without state this re-fired every
+        # weekday for the rest of the month after the first breach — repeated
+        # non-actionable Telegram. The audit log IS the state. (The 2×-median
+        # anomaly below is naturally day-scoped and needs no dedupe. NB: the
+        # orchestrator-side core/spend.py has its own 50/80/100%-crossing
+        # alerts on the same table — this alarm is the market-agent EOD net.)
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            already = await conn.fetchval("""
+                SELECT COUNT(*) FROM mi_audit_log
+                WHERE event_type = 'spend_alarm_fired'
+                  AND summary LIKE '%budget%'
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      >= date_trunc('month', $1::date)
+            """, today)
+        if not already:
+            reasons.append(f"MTD variable ${d['mtd_variable']:.2f} > budget ${d['budget']:.0f}")
     if (d["today_spend"] > ANOMALY_MIN_USD
             and d["median30_daily"] > 0
             and d["today_spend"] > 2 * d["median30_daily"]):
@@ -153,7 +183,7 @@ async def run_daily_spend_alarm(today: date) -> dict | None:
     await log_audit_event(
         "spend_alarm_fired",
         summary=f"LLM spend alarm: {'; '.join(reasons)}",
-        detail=str(d),
+        detail=json.dumps(d),
     )
     from agents.market_intelligence.briefing import send_telegram_message
     await send_telegram_message(

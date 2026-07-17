@@ -212,6 +212,35 @@ def get_strategy_account_mode(strategy) -> str:
     return current_account_mode()
 
 
+async def resolve_strategy_mode_nonfatal(strategy_id: str) -> "str | None":
+    """Fail-open label-mode resolve for alert surfaces (#444; deduped from two
+    hand-rolled copies, review 7/17). NEVER raises — a registry hiccup is a
+    label miss, not a reason to abort a live path (the ORB-subscribe contract).
+    LOUD without aborting: failure emits `strategy_mode_resolve_error` (the
+    `_error` suffix lands it in the morning-brief error banner), replacing the
+    silent container-log-only downgrade the review flagged — a live-money alert
+    mislabeled as paper should not fail invisibly. Callers memoize per tick."""
+    import logging
+    try:
+        from agents.market_intelligence.strategies.registry import get_strategy
+        strategy = await get_strategy(strategy_id)
+        return get_strategy_account_mode(strategy)
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"{strategy_id}: label-mode resolve failed (fail-open to legacy prefix): {e}")
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "strategy_mode_resolve_error",
+                summary=(f"{strategy_id}: account-mode label resolve failed — "
+                         f"alerts fall back to the legacy global prefix"),
+                detail=str(e)[:400],
+            )
+        except Exception:  # loud-ok: the audit write itself must not break the alert path
+            pass
+        return None
+
+
 def mode_prefix(account_mode: str | None = None) -> str:
     """Account-mode prefix for Telegram message headers (trailing space).
 

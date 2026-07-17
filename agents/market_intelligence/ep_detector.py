@@ -2772,14 +2772,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     from agents.market_intelligence.briefing import send_telegram_message
                     from agents.market_intelligence.constants import mode_prefix
                     if not _magna53_mode_fetched:
-                        try:
-                            from agents.market_intelligence.strategies.registry import get_strategy
-                            from agents.market_intelligence.constants import get_strategy_account_mode
-                            _magna53_strategy = await get_strategy("magna53")
-                            _magna53_account_mode = get_strategy_account_mode(_magna53_strategy)
-                        except Exception as _mode_e:
-                            logger.warning(f"catalyst_downgrade: magna53 account_mode resolve failed: {_mode_e}")
-                            _magna53_account_mode = None  # mode_prefix() falls back to legacy global default
+                        # Shared fail-open resolver (review 7/17 dedup): loud
+                        # via strategy_mode_resolve_error on failure, never
+                        # raises; mode_prefix(None) falls back to the legacy
+                        # global default.
+                        from agents.market_intelligence.constants import (
+                            resolve_strategy_mode_nonfatal,
+                        )
+                        _magna53_account_mode = await resolve_strategy_mode_nonfatal("magna53")
                         _magna53_mode_fetched = True
                     await send_telegram_message(
                         f"{mode_prefix(_magna53_account_mode)}📰 *Catalyst downgrade:* `{ticker}` "

@@ -19,6 +19,11 @@ COPY shared/ shared/
 COPY agents/base.py agents/base.py
 # root yaml configs via glob (#474 — same class-kill as Dockerfile.market)
 COPY *.yaml ./
+# Existence check for the KNOWN runtime yamls (review 7/17): the glob
+# alone would build green if one were renamed/moved — restoring the
+# per-file build-time failure the glob removed. ADDING a yaml still
+# needs no edit here; only renames/moves of these three do.
+RUN test -f integrations.yaml
 COPY main.py main.py
 
 # Create audit log file

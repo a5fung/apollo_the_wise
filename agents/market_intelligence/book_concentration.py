@@ -83,8 +83,11 @@ def compute_concentration(
 
 def format_concentration_line(res: dict) -> str:
     """One operator-facing line — only rendered when something is flagged.
-    Telegram-safe: no pipe tables, no unescaped markdown in dynamic parts
-    (family stems + tickers are [a-z_]/[A-Z] by construction)."""
+    Telegram-safe (review 7/17): 4 of the 13 Stage-A family stems carry
+    underscores (payments_fintech, gene_cell_therapy, defense_aero,
+    energy_downstream) — a bare `_` in Markdown V1 flips the whole chunk's
+    entity parity (the #477 class), so the dynamic family+tickers segment
+    lives inside a CODE SPAN, which neutralizes every entity char."""
     worst_fam, worst_tks = res["flagged"][0]
     pct = (f" · overnight {res['pct_equity']:.0f}% of equity"
            if res["pct_equity"] is not None else
@@ -92,15 +95,17 @@ def format_concentration_line(res: dict) -> str:
     more = (f" (+{len(res['flagged']) - 1} more family)"
             if len(res["flagged"]) > 1 else "")
     return (f"⚠️ Book concentration: {len(worst_tks)}/{res['n_open']} open "
-            f"positions share family '{worst_fam}' "
-            f"({' '.join(worst_tks)}){more}{pct} — no gate exists (#452 Stage 2)")
+            f"positions share family `{worst_fam} — {' '.join(worst_tks)}`"
+            f"{more}{pct} — no gate exists (#452 Stage 2)")
 
 
 async def run_book_concentration_snapshot(account_mode: str = "live") -> dict | None:
     """16:18 ET job body. Reads the open book + active themes + latest equity,
     writes ONE `book_concentration_snapshot` audit row (always, so the series
     is graphable), Telegrams ONLY when flagged (actionable-only, house rule).
-    Read-only on trade state; never raises to the scheduler wrapper."""
+    Read-only on trade state. RAISES on DB failure — callers must wrap (the
+    scheduler job does, via notify_job_failure; review 7/17 fixed a docstring
+    that promised never-raises the body didn't implement)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         positions = [dict(r) for r in await conn.fetch("""
@@ -132,5 +137,9 @@ async def run_book_concentration_snapshot(account_mode: str = "live") -> dict | 
     )
     if res["flagged"]:
         from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(format_concentration_line(res))
+        from agents.market_intelligence.constants import mode_prefix
+        # mode-labeled (review 7/17): the operator runs two books — a real-money
+        # concentration warning must not be dismissible as paper noise (#444 class).
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}{format_concentration_line(res)}")
     return res

@@ -62,9 +62,12 @@ async def test_auto_promote_reader_excludes_coverage_probe_by_default(monkeypatc
     assert set(allow) == dbmod.AUTO_PROMOTE_THEME_SOURCES
 
     await dbmod.get_shadow_theme_candidates(days=7, include_probe=True)
-    operator_sql = conn.fetch.await_args.args[0]
-    assert "source" not in operator_sql.lower().split("where")[1].split("order")[0], (
-        "operator surfaces must see EVERY source")  # no source filter at all
+    # Single parameterized query (review 7/17): include_probe=True is passed as
+    # the $2 boolean that short-circuits the allowlist filter — operator
+    # surfaces see EVERY source.
+    operator_args = conn.fetch.await_args.args
+    assert "($2::boolean OR source = ANY($3::text[]))" in operator_args[0]
+    assert operator_args[2] is True                 # the filter is bypassed
 
 
 @pytest.mark.asyncio

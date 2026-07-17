@@ -5579,6 +5579,12 @@ AUTO_PROMOTE_THEME_SOURCES = frozenset({
     "narrative_cogap",     # #167 narrative co-gap lane
     "rs_slope_synthesis",  # #240 cross-ticker synthesis lane
 })
+# Deliberately NOT listed: 'narrative_cogap_backfill' — a HINDSIGHT population
+# (the old denylist let it auto-promote; under the allowlist it is excluded).
+# Verified 7/17: newest backfill row is 45d old, far outside the 7d promote
+# window, so this is a no-op today; the exclusion is part of the #469 operator
+# sign-off (digest item 1). Backfill cohorts stay operator-promotable via
+# /promotetheme like any non-allowlisted source.
 
 
 async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False) -> list[dict]:
@@ -5602,21 +5608,16 @@ async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False
     tests/test_coverage_probe.py (default-exclude + unknown-source pins)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        if include_probe:
-            rows = await conn.fetch("""
-                SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
-                FROM mi_theme_candidates_shadow
-                WHERE run_date >= CURRENT_DATE - $1::int
-                ORDER BY name, run_date DESC
-            """, days)
-        else:
-            rows = await conn.fetch("""
-                SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
-                FROM mi_theme_candidates_shadow
-                WHERE run_date >= CURRENT_DATE - $1::int
-                  AND source = ANY($2::text[])
-                ORDER BY name, run_date DESC
-            """, days, list(AUTO_PROMOTE_THEME_SOURCES))
+        # ONE query, branch by parameter (review 7/17) — two near-identical
+        # branches would let the shared shape drift between the operator
+        # surface and the auto-promote wall.
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
+            FROM mi_theme_candidates_shadow
+            WHERE run_date >= CURRENT_DATE - $1::int
+              AND ($2::boolean OR source = ANY($3::text[]))
+            ORDER BY name, run_date DESC
+        """, days, include_probe, list(AUTO_PROMOTE_THEME_SOURCES))
     return [dict(r) for r in rows]
 
 

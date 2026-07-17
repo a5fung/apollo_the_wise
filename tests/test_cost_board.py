@@ -62,10 +62,19 @@ def test_render_is_markdown_parity_safe():
     assert "_" not in stripped, f"bare underscore outside code block: {body!r}"
 
 
+def _mock_dedupe_pool(monkeypatch, already_fired=0):
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=already_fired)
+    monkeypatch.setattr(cb, "get_pool", AsyncMock(return_value=pool))
+    return conn
+
+
 @pytest.mark.asyncio
 async def test_alarm_fires_on_budget_breach(monkeypatch):
     monkeypatch.setattr(cb, "compute_cost_board",
                         AsyncMock(return_value=_board(mtd=200.0, budget=150.0)))
+    _mock_dedupe_pool(monkeypatch, already_fired=0)
     audit = AsyncMock()
     monkeypatch.setattr(cb, "log_audit_event", audit)
     from agents.market_intelligence import briefing as _brief
@@ -79,6 +88,26 @@ async def test_alarm_fires_on_budget_breach(monkeypatch):
     assert audit.await_args.args[0] == "spend_alarm_fired"
     tg.assert_awaited_once()
     assert "SPEND ALARM" in tg.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_budget_breach_fires_once_per_month(monkeypatch):
+    """Review 7/17: after the first breach the alarm re-fired every weekday for
+    the rest of the month. The audit log is the state — an existing this-month
+    budget alarm suppresses the refire (the day-scoped anomaly is unaffected)."""
+    monkeypatch.setattr(cb, "compute_cost_board",
+                        AsyncMock(return_value=_board(mtd=200.0, budget=150.0)))
+    _mock_dedupe_pool(monkeypatch, already_fired=1)
+    audit = AsyncMock()
+    monkeypatch.setattr(cb, "log_audit_event", audit)
+    from agents.market_intelligence import briefing as _brief
+    tg = AsyncMock()
+    monkeypatch.setattr(_brief, "send_telegram_message", tg)
+
+    fired = await cb.run_daily_spend_alarm(date(2026, 7, 16))
+
+    assert fired is None
+    tg.assert_not_awaited()
 
 
 @pytest.mark.asyncio
