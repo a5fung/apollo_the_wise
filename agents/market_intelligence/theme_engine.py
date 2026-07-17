@@ -74,6 +74,7 @@ from agents.market_intelligence.db import (
 # byte-identical to pre-ADR behavior.
 from agents.market_intelligence.theme_merge_arm import (
     merge_arm_enabled, propose_merge_pairs, adjudicate_merge_pair,
+    family_of,
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
 
@@ -3748,6 +3749,11 @@ async def _score_new_theme(
     }
 
 
+# Sentinel cap: ONE theme per Stage-A stem family within the group (plus one
+# shared slot for unstemmed names), containment-canonicalized before the cap
+# (#476). Int caps behave exactly as before.
+PER_FAMILY_CAP = -1
+
 # Keyword groups for sector-level theme consolidation.
 # Themes whose names match the same group are capped at MAX_THEMES_PER_SECTOR.
 _SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str], int]] = [
@@ -3755,8 +3761,17 @@ _SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str], int]] = [
     ("oil_gas", ["oil", "gas", "lng", "e&p", "oilfield", "petroleum", "crude",
                  "permian", "drilling", "refin", "upstream", "downstream",
                  "midstream", "completion", "pumping"], 2),
+    # #476 (operator-signed 2026-07-17, replay-validated — docs/analysis/
+    # 476_optionA_backtest_2026-07-16.md): biotech was cap 0 ("exclude
+    # entirely", 2026-03-20) which SILENTLY killed every biotech-named theme
+    # nightly while the shadow-promote resurrected the cohort — the elite-
+    # orphan churn loop. Now PER_FAMILY_CAP: one keyword-theme per Stage-A
+    # stem family (oncology/autoimmune/gene_cell_therapy/diagnostics/...,
+    # ≤6 total incl. ONE shared unstemmed slot), with containment
+    # canonicalization BEFORE the cap so daily re-cuts converge instead of
+    # churning. Cross-family merges structurally refused (family-keyed).
     ("biotech", ["biotech", "clinical", "orphan drug", "gene edit", "crispr",
-                 "mrna", "therapeutics", "pharma", "drug"], 0),  # exclude entirely
+                 "mrna", "therapeutics", "pharma", "drug"], PER_FAMILY_CAP),
     ("satellite", ["satellite", "space", "earth observation"], 2),
     ("optical", ["optical", "photonic"], 2),
     ("agriculture", ["agri", "fertilizer", "crop", "nitrogen", "nutrient",
@@ -4399,6 +4414,34 @@ async def _merge_overlapping_themes(
             continue
 
         group, max_for_group = result
+
+        if max_for_group == PER_FAMILY_CAP:
+            # #476 per-family mode (biotech): ONE slot per Stage-A stem family
+            # (unstemmed names share one). Convergence needs no code here —
+            # Pass 1 merges at containment ≥0.6 with ≥3 shared, which SUBSUMES
+            # the replay's 0.8 canonicalization rule, so daily re-cuts have
+            # already converged upstream by the time they reach this cap; the
+            # historical bug was purely that cap-0 then KILLED the converged
+            # survivor. Family-keyed slots also mean this branch never runs the
+            # int-cap absorb-into-top below — a biotech theme can never be
+            # blind-absorbed across families (the mush guard).
+            fam = family_of(t["name"]) or "_unstemmed"
+            fam_key = f"{group}:{fam}"
+            if sector_counts.get(fam_key, 0) < 1:
+                final.append(t)
+                sector_counts[fam_key] = 1
+            else:
+                # slot taken + Pass 1 didn't converge it = a genuinely
+                # different cut of the same family — dropping matches the
+                # replay's validated semantics; the audit keeps it visible.
+                await log_audit_event(
+                    "theme_sector_cap_dropped",
+                    summary=(f"'{t['name']}' dropped by sector cap "
+                             f"(group '{group}', family '{fam}' slot taken)"),
+                    detail=f"tickers={','.join(t.get('tickers') or [])}",
+                )
+            continue
+
         count = sector_counts.get(group, 0)
         if count < max_for_group:
             final.append(t)

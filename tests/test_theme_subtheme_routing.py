@@ -606,10 +606,12 @@ async def test_split_prompt_dominant_reason_line(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sector_cap_zero_drop_emits_audit_event(monkeypatch):
-    """#476 — the cap-0 silent-drop branch (biotech since 2026-03-20) must emit
-    `theme_sector_cap_dropped`. For 4 months every biotech theme vanished here
-    with no trace while the shadow-promote resurrected the cohort nightly."""
+async def test_sector_cap_per_family_biotech(monkeypatch):
+    """#476 (operator-signed 7/17, replay-validated): biotech cap 0 → PER-FAMILY.
+    Pins the four signed behaviors: (1) same-family containment re-cuts
+    CONVERGE (canonicalized, not dropped); (2) each stem family gets ONE slot;
+    (3) same-family non-matching cut with the slot taken DROPS (audited);
+    (4) cross-family sets NEVER converge even at containment 1.0 (mush guard)."""
     from unittest.mock import AsyncMock
 
     from agents.market_intelligence import theme_engine as te
@@ -617,16 +619,59 @@ async def test_sector_cap_zero_drop_emits_audit_event(monkeypatch):
     audit = AsyncMock()
     monkeypatch.setattr(te, "log_audit_event", audit)
     themes = [
-        {"name": "Targeted Protein Degradation Oncology",  # matches 'biotech' group? uses keywords
-         "tickers": ["GLUE", "KYMR"], "score": 50, "stage": "Nascent"},
-        {"name": "Clinical-Stage Biotech Innovators",
-         "tickers": ["NRIX", "AGIO"], "score": 40, "stage": "Nascent"},
+        # oncology family: the first cut takes the slot...
+        {"name": "Clinical-Stage Oncology Therapeutics",
+         "tickers": ["NRIX", "AGIO", "KURA", "ELVN"], "score": 90, "stage": "Nascent"},
+        # ...the daily re-cut containment-matches (3/3 = 1.0) → CONVERGES
+        {"name": "Oncology Small-Molecule Therapeutics Re-rating",
+         "tickers": ["NRIX", "AGIO", "KURA"], "score": 80, "stage": "Nascent"},
+        # unstemmed: first takes the shared slot...
+        {"name": "Rare Disease Specialty Pharma",
+         "tickers": ["RARE", "XENE", "DNTH"], "score": 60, "stage": "Nascent"},
+        # ...second unstemmed, disjoint tickers, slot taken → DROPPED
+        {"name": "Specialty Pharma Platform Names",
+         "tickers": ["ZBIO", "ALMS", "ANNX"], "score": 50, "stage": "Nascent"},
     ]
-    # drive JUST Pass 2 via the public merge fn with no overlaps (disjoint tickers)
     out = await te._merge_overlapping_themes(themes, {}, protected_names=set())
-    dropped = [c.args[0] for c in audit.await_args_list
-               if c.args and c.args[0] == "theme_sector_cap_dropped"]
     surviving = {t["name"] for t in out}
-    # 'Clinical-Stage Biotech Innovators' matches the biotech cap-0 group -> dropped + audited
-    assert "Clinical-Stage Biotech Innovators" not in surviving
-    assert dropped, "cap-0 drop must emit theme_sector_cap_dropped"
+    dropped = [(c.args[0], c.kwargs.get("summary", ""))
+               for c in audit.await_args_list
+               if c.args and c.args[0] == "theme_sector_cap_dropped"]
+
+    # (1) the daily re-cut CONVERGED via Pass 1 (containment 1.0 ≥ 0.6) — it is
+    # gone as a theme but its tickers live in the kept survivor, and crucially
+    # the survivor is NOT killed (the old cap-0 killed the converged survivor)
+    assert "Clinical-Stage Oncology Therapeutics" in surviving
+    assert "Oncology Small-Molecule Therapeutics Re-rating" not in surviving
+    kept = next(t for t in out if t["name"] == "Clinical-Stage Oncology Therapeutics")
+    assert {"NRIX", "AGIO", "KURA"} <= set(kept["tickers"])
+    # (2) the unstemmed family slot holds its first cut
+    assert "Rare Disease Specialty Pharma" in surviving
+    # (3) second unstemmed cut, disjoint tickers, slot taken → dropped + audited
+    assert "Specialty Pharma Platform Names" not in surviving
+    assert any("slot taken" in d[1] for d in dropped)
+
+
+@pytest.mark.asyncio
+async def test_sector_cap_int_groups_unchanged(monkeypatch):
+    """The per-family mode is biotech-only — int-capped groups (oil_gas cap 2)
+    keep the pre-#476 keep/absorb behavior byte-identically."""
+    from unittest.mock import AsyncMock
+
+    from agents.market_intelligence import theme_engine as te
+
+    audit = AsyncMock()
+    monkeypatch.setattr(te, "log_audit_event", audit)
+    themes = [
+        {"name": "Permian Oil Producers", "tickers": ["A1", "A2", "A3"], "score": 90, "stage": "Nascent"},
+        {"name": "LNG Export Infrastructure", "tickers": ["B1", "B2", "B3"], "score": 80, "stage": "Nascent"},
+        {"name": "Oilfield Services Rebound", "tickers": ["C1", "C2", "C3"], "score": 70, "stage": "Nascent"},
+    ]
+    out = await te._merge_overlapping_themes(themes, {}, protected_names=set())
+    surviving = {t["name"] for t in out}
+    assert surviving == {"Permian Oil Producers", "LNG Export Infrastructure"}
+    # 3rd absorbed into the top oil_gas theme (existing behavior), not dropped
+    top = next(t for t in out if t["name"] == "Permian Oil Producers")
+    assert {"C1", "C2", "C3"} <= set(top["tickers"])
+    assert not [c for c in audit.await_args_list
+                if c.args and c.args[0] == "theme_sector_cap_dropped"]
