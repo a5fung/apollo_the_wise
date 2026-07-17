@@ -49,3 +49,31 @@ proposals → sign `live_r1` (~7/17) → 5 quiet days → FL-4 green ≈ 7/24, i
   to sign-offs and sittings — the D5 posture starts here.
 - D2 (the bands verdict at N≥20) becomes the single most important number Apollo is
   accumulating. Everything else is in service of reaching it with the system intact.
+
+---
+
+## 7/16 EVE REFRESH (push-plan prep — walk is turnkey for the Sat sitting)
+
+**Clocks (live, from tonight's brief + prod DB):**
+- FL-1: **7/10 strict** → completes ≈ Sun 7/19–Mon 7/20 if the streak holds.
+- FL-3: ✅ (7-night streak done 7/7).
+- FL-8: ✅ (4th Sunday done 7/12).
+- FL-4: **0/5, gated** — `broker_order_ingest` = `dry_run` since 7/13 (prod
+  `mi_safeguard_state`, verified tonight). The clock starts only at the
+  **operator's dry_run → live_r1 promotion** (F2b, NEW fork for the Fri
+  digest: dry-run will have ~4 clean weekdays by Friday — promote then?).
+  Promoted Fri 7/17 → FL-4 completes ≈ Thu 7/23 → **declaration ≈ 7/23–24**
+  (matches the brief's `decl ~7/23`).
+
+**§4a blocking: 11 → 8 tonight** (#150 + #413 + #417 closed 7/16 eve).
+Remaining 8, each with a push-plan slot:
+- **#378** — BUILT tonight; closes on Friday's deploy + /cost verify.
+- **#195 / #280 / #420** — operator-minutes items, Friday decision digest.
+- **#261** — scripts-reorg completion, Fri/Sat mechanical.
+- **#183 / #184 / #287** — the careful-path trade-state trio, Sat block.
+→ On plan, blocking ≈ 0–2 by Sunday CLOSE; the declaration's long pole is
+FL-4's promotion date, which is the operator's F2b ruling, not build work.
+
+**Walk-day agenda (Sat, ~20 min):** (1) rule F2b (live_r1 now/Monday) ·
+(2) confirm FL-1 streak intact · (3) tick through the blocking-8 dispositions
+above · (4) sign the declaration date (≈7/23-24) or name what moves it.
