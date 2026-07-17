@@ -438,7 +438,7 @@ def test_render_line_fl4_gate_suffix_while_dark():
     status = _status(fl4=0)
     status["fl4"]["gate"] = "ingest dry_run"
     line = render_line(status)
-    assert "FL-4 0/5 (ingest dry_run)" in line
+    assert "FL-4 0/5 (ingest dry-run)"  # md-safe render (#477): bare _ broke the brief chunk in line
 
 
 def test_render_line_fl4_no_suffix_when_counting_normally():
@@ -568,7 +568,7 @@ async def test_gather_status_fl4_gated_while_dry_run_despite_quiet_days(tmp_path
     status = await gather_status(conn, today=date(2026, 7, 10))
     assert status["fl4"]["n"] == 0
     assert status["fl4"]["gate"] == "ingest dry_run"
-    assert "FL-4 0/5 (ingest dry_run)" in render_line(status)
+    assert "FL-4 0/5 (ingest dry-run)"  # md-safe render (#477): bare _ broke the brief chunk in render_line(status)
 
 
 @pytest.mark.asyncio
@@ -693,3 +693,26 @@ def test_format_evening_briefing_accepts_v1_closeout_line_param():
         v1_closeout_line="\U0001F3C1 v1.0: FL-1 3/10 · blocking 20 open · decl ~7/20",
     )
     assert "FL-1 3/10" in text
+
+
+def test_render_line_is_markdown_entity_safe_for_all_gate_modes():
+    """2026-07-16 (#477): 'FL-4 0/5 (ingest dry_run)' put ONE bare underscore
+    into the evening brief — it paired with the RS footer's italics opener and
+    the whole chunk 400'd into the plain-text fallback, with Telegram blaming
+    an innocent offset thousands of bytes later. Every dynamic gate/reset token
+    must render with NO unpaired markdown entity chars. Pins all INGEST_MODES
+    (live_r1/r2/r3 would re-trigger the bug on each future mode flip)."""
+    from scripts.v1_closeout_status import INGEST_MODES
+
+    for mode in INGEST_MODES:
+        status = _status()
+        status["fl4"]["gate"] = f"ingest {mode}"
+        line = render_line(status)
+        for ch in ("_", "*", "`"):
+            assert ch not in line, f"mode {mode!r} leaked {ch!r}: {line}"
+
+    # reset reasons are dynamic too (clock names + free text)
+    line = render_line(_status(resets=[
+        {"clock": "fl4_ingest", "reason": "mode flipped dry_run→live_r1"}]))
+    for ch in ("_", "*", "`"):
+        assert ch not in line

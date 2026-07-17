@@ -880,13 +880,26 @@ def _format_turners_section(turners: list[dict], section_num: int = 5) -> str:
     return "\n".join(lines)
 
 
+def _md_safe_token(text: str) -> str:
+    """Neutralize legacy-Markdown entity chars in a DYNAMIC token bound for a
+    briefing. One bare `_` anywhere in a chunk flips the entity parity of the
+    WHOLE message (2026-07-16 #477: 'ingest dry_run' in the closeout line
+    paired with the RS footer's italics opener → Telegram 400 → plain-text
+    fallback, blaming an offset thousands of bytes away). Use on free-text /
+    identifier tokens (snake_case metrics, reasons); NOT on strings that
+    deliberately carry markup."""
+    return str(text).replace("_", "-").replace("*", "·").replace("`", "'")
+
+
 def _format_quality_warnings(warnings: list[str]) -> str:
     """Format data quality warnings for prepending to briefings."""
     if not warnings:
         return ""
     lines = ["⚠️ *DATA QUALITY*"]
     for w in warnings:
-        lines.append(f"  {w}")
+        # warnings are free text and can carry snake_case ({step}/{metric}
+        # fallbacks in data_quality.py) — same #477 parity class as dry_run.
+        lines.append(f"  {_md_safe_token(w)}")
     return "\n".join(lines)
 
 

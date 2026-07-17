@@ -444,6 +444,18 @@ def detect_resets(prior: dict | None, current: dict) -> list[dict]:
     return resets
 
 
+def _md_safe(text: str) -> str:
+    """Neutralize legacy-Markdown entity chars in DYNAMIC tokens bound for the
+    brief. A single bare `_` (e.g. the FL-4 gate 'ingest dry_run', 2026-07-16)
+    flips the entity parity of the WHOLE Telegram chunk: it pairs with the next
+    innocent `_` (the RS footer's italics opener) and the chunk 400s at an
+    offset thousands of bytes away — the brief then falls back to plain text.
+    Hyphens read identically to the operator and can't open an entity. All
+    INGEST_MODES (dry_run, live_r1/r2/r3) carry `_`, so this bites on every
+    future mode flip too, not just dry_run."""
+    return str(text).replace("_", "-").replace("*", "·").replace("`", "'")
+
+
 def render_line(status: dict) -> str:
     """Pure formatting: one compact line for the evening briefing."""
     fl1, fl3, fl4, fl8 = status["fl1"], status["fl3"], status["fl4"], status["fl8"]
@@ -457,16 +469,17 @@ def render_line(status: dict) -> str:
     blocking = status.get("blocking_open")
     blocking_s = str(blocking) if blocking is not None else "?"
     # FL-4 carries a promotion-gate suffix (YELLOW-3): while the #184b ingest is
-    # dark/dry_run the count is pinned at 0 and the line SAYS WHY — "FL-4 0/5
-    # (ingest dry_run)" — instead of silently reading like a running clock.
-    fl4_gate = f" ({fl4['gate']})" if fl4.get("gate") else ""
+    # dark/dry-run the count is pinned at 0 and the line SAYS WHY — "FL-4 0/5
+    # (ingest dry-run)" — instead of silently reading like a running clock.
+    fl4_gate = f" ({_md_safe(fl4['gate'])})" if fl4.get("gate") else ""
     base = (
         f"FL-1 {_c(fl1)} · FL-3 {_c(fl3)} · FL-4 {_c(fl4)}{fl4_gate} · FL-8 {_c(fl8)} · "
         f"blocking {blocking_s} open · decl ~{status['decl_estimate']}"
     )
     resets = status.get("resets") or []
     if resets:
-        reasons = "; ".join(f"{r['clock']} reset ({r['reason']})" for r in resets)
+        reasons = "; ".join(
+            f"{_md_safe(r['clock'])} reset ({_md_safe(r['reason'])})" for r in resets)
         return f"\U0001F534 v1.0: {base} — {reasons}"
     return f"\U0001F3C1 v1.0: {base}"
 

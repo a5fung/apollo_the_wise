@@ -120,3 +120,14 @@ async def test_markdown_400_without_offset_degrades_gracefully(monkeypatch):
     assert ok is True
     detail = audit.await_args.args[2]
     assert "offset_snippet=''" in detail              # no offset → empty snippet, no crash
+
+
+def test_quality_warnings_banner_neutralizes_snake_case():
+    """#477 class, 2nd instance: data_quality.py's {step}/{metric} fallback puts
+    snake_case into the DATA QUALITY banner — one bare underscore breaks the
+    whole chunk's entity parity. The banner must neutralize dynamic tokens."""
+    out = briefing._format_quality_warnings(
+        ["rs_engine/scored_count: 12 (expected 9000)", "Sector coverage: 41% (threshold 80%)"])
+    body = out.split("\n", 1)[1]        # skip the deliberate *DATA QUALITY* header markup
+    for ch in ("_", "*", "`"):
+        assert ch not in body, f"banner leaked {ch!r}: {body}"
