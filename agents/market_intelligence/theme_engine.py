@@ -1491,8 +1491,13 @@ async def promote_shadow_themes(today) -> int:
         return 0
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # "description" mirrors thesis for the ecosystem mapper —
+        # assign_theme_to_ecosystem reads description (never thesis); without
+        # it Haiku classifies on name-only and an abstain persists a STICKY
+        # E-UNASSIGNED row that the nightly self-heal never revisits.
         themes = [{"name": c["name"], "tickers": list(c.get("tickers") or []),
-                   "thesis": c.get("thesis")} for c in cohorts]
+                   "thesis": c.get("thesis"),
+                   "description": c.get("thesis")} for c in cohorts]
         await _canonicalize_theme_names(conn, themes, today)
         prior_rows = await conn.fetch("""
             SELECT DISTINCT ON (name) name, days_active
@@ -1510,6 +1515,7 @@ async def promote_shadow_themes(today) -> int:
         _rs_by_tk = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
         n = 0
         new_grads = []  # genuinely-NEW shadow→live crossings (no prior live row); re-promotions stay silent
+        written = []    # themes actually upserted — the ecosystem mapper's input
         for t in themes:
             members = t["tickers"]
             _vals = [_rs_by_tk[tk] for tk in members if tk in _rs_by_tk]
@@ -1522,6 +1528,7 @@ async def promote_shadow_themes(today) -> int:
                 rs_avg=rs_avg, prior_days_active=prior_days_active)
             if wrote:
                 n += 1
+                written.append(t)
                 if prior is None:          # first crossing into live under this name
                     new_grads.append(t["name"])
         await log_audit_event(
@@ -1554,8 +1561,8 @@ async def promote_shadow_themes(today) -> int:
     # AFTER run_theme_engine's ensure hook (17:05 vs 17:03), so without this
     # every new promote sat E-UNASSIGNED on the board until the next nightly
     # self-heal (4 themes, 2026-07-16).
-    if n:
-        await _map_ecosystems_nonfatal(themes, "promote")
+    if written:
+        await _map_ecosystems_nonfatal(written, "promote")
     return n
 
 
@@ -1600,7 +1607,10 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
         return {"status": "too_few", "name": cand["name"], "n_members": len(members)}
     pool = await get_pool()
     async with pool.acquire() as conn:
-        themes = [{"name": cand["name"], "tickers": members, "thesis": cand.get("thesis")}]
+        # description mirrors thesis for the ecosystem mapper (same reason as
+        # promote_shadow_themes — the mapper reads description, never thesis).
+        themes = [{"name": cand["name"], "tickers": members, "thesis": cand.get("thesis"),
+                   "description": cand.get("thesis")}]
         await _canonicalize_theme_names(conn, themes, today)   # converge to a live name if the set exists
         t = themes[0]
         _rs_rows = await conn.fetch("""

@@ -54,11 +54,11 @@ Q0_MAX_LAG_DAYS = 100   # date heuristic: newest col within this window pre-aler
 Q0_MIN_LAG_DAYS = 15    # cols ending closer to the alert than this can't be announced yet
 FIDELITY_TOL = 2.0      # |live - rederived| composite points
 
-# The live augment's revenue-line list — imported so the q0 value-match can
+# The live augment's revenue-row lookup — imported so the q0 value-match can
 # never drift from what live scoring reads (imported before the yfinance shim
-# is installed; the constant has no yfinance dependency).
+# is installed; the helper has no yfinance dependency).
 from agents.market_intelligence.catalyst_rubric_runtime import (  # noqa: E402
-    REV_LINE_NAMES as _REV_LINES,
+    find_revenue_row,
 )
 
 
@@ -85,13 +85,22 @@ def _install_shim():
 
 
 def _fetch_all_qf(tickers: list[str], cache_path: Path) -> dict:
-    """One real yfinance pull per ticker, cached (reruns are instant)."""
+    """One real yfinance pull per ticker, cached. The cache TOPS UP: tickers
+    already present are served from disk, missing ones (a grown cohort on a
+    re-run) are fetched and merged — a stale all-or-nothing cache would
+    silently score every new ticker q0-only (align=no_data). NB: cached
+    entries keep their pull-date's data; a re-run wanting fresh quarters for
+    OLD tickers should use a fresh data_dir (see the review's action_when_ready)."""
+    out: dict = {}
     if cache_path.exists():
         with open(cache_path, "rb") as f:
-            return pickle.load(f)
+            out = pickle.load(f)
+    missing = [t for t in tickers if t not in out]
+    if not missing:
+        return out
     import yfinance as yf  # the REAL module — before the shim is installed
-    out: dict = {}
-    for i, t in enumerate(tickers):
+    print(f"  cache has {len(out)}; fetching {len(missing)} missing ticker(s)")
+    for i, t in enumerate(missing):
         try:
             qf = yf.Ticker(t).quarterly_financials
             out[t] = qf if qf is not None and not qf.empty else None
@@ -99,7 +108,7 @@ def _fetch_all_qf(tickers: list[str], cache_path: Path) -> dict:
             print(f"  yf fetch failed {t}: {e}")
             out[t] = None
         if i % 10 == 9:
-            print(f"  fetched {i + 1}/{len(tickers)}")
+            print(f"  fetched {i + 1}/{len(missing)}")
         time.sleep(0.25)
     with open(cache_path, "wb") as f:
         pickle.dump(out, f)
@@ -109,20 +118,22 @@ def _fetch_all_qf(tickers: list[str], cache_path: Path) -> dict:
 def _slice_asof(qf, extracted: dict, alert: date):
     """Drop q0's column + anything newer so column 0 = q1-as-of-alert.
     Returns (sliced_qf, method) — method in {value_match, date_heuristic,
-    no_data}."""
+    no_data}. Known residual (flagged bucket): a late announcer (>100d lag)
+    with no value-match keeps q0 as 'q1' under the date heuristic — the
+    Q0_MAX_LAG window trades that tail against dropping a real q1 for very
+    recent alerts yfinance hasn't caught up on."""
     if qf is None or qf.empty:
         return None, "no_data"
     cols = list(qf.columns)
-    rev_row = None
-    for line in _REV_LINES:
-        if line in qf.index:
-            rev_row = qf.loc[line]
-            break
+    rev_row = find_revenue_row(qf)
 
     q0_val = ((extracted.get("q_revenue_usd") or {}).get("value")
               if isinstance(extracted.get("q_revenue_usd"), dict) else None)
     if rev_row is not None and isinstance(q0_val, (int, float)) and q0_val > 0:
         for i in range(min(4, len(cols))):  # q0 must be near the front
+            if cols[i].date() > alert:
+                continue   # ended AFTER the alert — cannot be q0 (a post-alert
+                           # quarter within ±3% of q0 must not steal the match)
             v = rev_row.iloc[i]
             try:
                 if v and abs(float(v) - q0_val) / q0_val < VALUE_MATCH_TOL:
@@ -401,7 +412,10 @@ def main() -> None:
     L.append("- PASS-edge ≤ DOWNGRADE-edge → too lenient, raise to 25-28")
 
     report = "\n".join(L)
-    out = args.out or (REPO / "docs" / "analysis" / "448_b6_forward_backtest_2026-07-16.md")
+    # Date-stamped default so a re-run (the Sept recheck) never overwrites the
+    # evidence doc a prior operator ruling cites.
+    out = args.out or (REPO / "docs" / "analysis"
+                       / f"448_b6_forward_backtest_{date.today().isoformat()}.md")
     out.write_text(report)
     print(report)
     print(f"\nreport → {out}")

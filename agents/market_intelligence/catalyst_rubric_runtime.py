@@ -40,6 +40,16 @@ REV_LINE_NAMES = ("Total Revenue", "Revenue", "Operating Revenue",
                   "TotalRevenue", "OperatingRevenue")
 
 
+def find_revenue_row(qf):
+    """First matching revenue row in a yfinance quarterly-financials frame, or
+    None. Shared with the offline B6 replay so the MATCHING logic (not just the
+    name list) can't drift from what live scoring reads."""
+    for line in REV_LINE_NAMES:
+        if line in qf.index:
+            return qf.loc[line]
+    return None
+
+
 def _extracted_to_q0_deltas(extracted: dict[str, Any]) -> dict[str, Any]:
     """Convert mi_ep_catalyst_metrics extraction to rubric's q0 deltas.
 
@@ -113,11 +123,7 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
         # yfinance line names use SPACES ("Total Revenue" not "TotalRevenue") —
         # debugged 2026-05-19 for AGYS. Both forms tried for cross-version
         # compatibility, but space-form is the modern shape.
-        rev_row = None
-        for line in REV_LINE_NAMES:
-            if line in qf.index:
-                rev_row = qf.loc[line]
-                break
+        rev_row = find_revenue_row(qf)
         if rev_row is None:
             return deltas
 

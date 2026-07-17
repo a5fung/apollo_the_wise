@@ -2403,20 +2403,25 @@ async def send_telegram_message(
                     # still lands. Parse failures otherwise vanish silently.
                     body = r.text[:500]
                     # Telegram's error names a "byte offset" for the entity opener
-                    # it couldn't close — empirically UTF-8 bytes, though its API
-                    # entity offsets are UTF-16 units (see scripts/probes/
-                    # _diag_brief_markdown.py); the ±120/80 window absorbs either
-                    # interpretation. Log the surrounding text so the offending
-                    # section/char is identifiable from the audit row (2026-07-16:
-                    # an evening-brief break at byte 4205 was undiagnosable from
-                    # chunk[:300] alone).
+                    # it couldn't close. Its API entity offsets are UTF-16 units
+                    # (see scripts/probes/_diag_brief_markdown.py) while the error
+                    # string reads as UTF-8 bytes — and the two diverge by 2-3
+                    # bytes per emoji, so on an emoji-heavy brief a single-
+                    # interpretation window can miss the culprit entirely. Log the
+                    # window under BOTH interpretations so the audit row always
+                    # pinpoints it (2026-07-16: an evening-brief break at byte
+                    # 4205 was undiagnosable from chunk[:300] alone).
                     snippet = ""
                     _m = re.search(r"byte offset (\d+)", body)
                     if _m:
-                        _raw = chunk.encode("utf-8")
                         _off = int(_m.group(1))
-                        snippet = _raw[max(0, _off - 120):_off + 80].decode(
+                        _u8 = chunk.encode("utf-8")[
+                            max(0, _off - 120):_off + 80].decode(
                             "utf-8", errors="replace")
+                        _u16 = chunk.encode("utf-16-le")[
+                            max(0, (_off - 120) * 2):(_off + 80) * 2].decode(
+                            "utf-16-le", errors="replace")
+                        snippet = f"u8⟨{_u8}⟩ u16⟨{_u16}⟩"
                     logger.warning(
                         f"Telegram 400 with {parse_mode} — retrying plain text. "
                         f"body={body} offset_snippet={snippet!r}"

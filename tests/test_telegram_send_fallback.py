@@ -81,6 +81,29 @@ async def test_markdown_400_logs_snippet_at_byte_offset(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_utf16_offset_interpretation_also_captured(monkeypatch):
+    """If Telegram's reported offset is UTF-16 code units (its documented
+    entity convention), the UTF-8-byte window lands deep in preceding emoji and
+    misses the culprit — the u16 window must still capture it."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "42")
+
+    prefix = "🔥" * 80                      # 160 UTF-16 units, 320 UTF-8 bytes
+    text = prefix + "CULPRIT16 stray * here"
+    utf16_offset = len(prefix.encode("utf-16-le")) // 2   # marker at unit 160
+
+    fake = _FakeClient([_Resp(400, _entity_error_body(utf16_offset)), _Resp(200, {"ok": True})])
+    audit = AsyncMock()
+    with patch.object(briefing.httpx, "AsyncClient", fake), \
+         patch.object(briefing, "log_audit_event", audit):
+        ok = await briefing.send_telegram_message(text)
+
+    assert ok is True
+    detail = audit.await_args.args[2]
+    assert "CULPRIT16" in detail            # the u16 window names the culprit
+
+
+@pytest.mark.asyncio
 async def test_markdown_400_without_offset_degrades_gracefully(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
     monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "42")

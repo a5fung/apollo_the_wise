@@ -7146,13 +7146,15 @@ reviews:
       operator fork B (neutralize the composite's tier-downgrade authority via
       CHANGE_PROCESS); if reversed/flat -> keep 22, close #448.
     predicate_sql: |
+      -- live-PASS proxy: scored row with NO downgrade event of ANY reason
+      -- (review 7/16: matching only rubric_composite_* reasons let safety-net
+      -- q_rev_yoy_* downgrades count as PASS and inflate the counter).
       SELECT COUNT(*) FROM mi_ep_catalyst_metrics m
       WHERE m.alert_date > '2026-07-16'
         AND m.q_revenue_yoy_pct IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM mi_audit_log a
           WHERE a.event_type = 'catalyst_earnings_revenue_weak_downgrade'
-            AND a.detail LIKE '%rubric_composite_%'
             AND a.detail LIKE '%"ticker": "' || m.ticker || '"%'
             AND a.detail LIKE '%"alert_date": "' || m.alert_date || '"%'
         )
@@ -7160,7 +7162,8 @@ reviews:
     earliest_review_date: 2026-09-15
     action_when_ready: |
       Re-run the B6 backtest (scripts/_b6_forward_backtest.py; re-pull the three
-      jsonl inputs per its docstring) on the full cohort. Bring the operator the
-      same live-verdict crosstab + the keep-22 / neutralize-gate fork (#448).
+      jsonl inputs per its docstring, into a FRESH data_dir) on the full cohort.
+      Bring the operator the same live-verdict crosstab + the keep-22 /
+      neutralize-gate fork (#448).
     status: pending
     added_on: 2026-07-16
