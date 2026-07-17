@@ -153,6 +153,10 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # advisor 2026-05-17: skip FSM-style enforcement. Document the set
     # but allow many writers per the state machine.
     "status":             {
+        # #436 (operator-signed 2026-07-17): the stale-proposal reaper — set-based
+        # UPDATE, bounded to pending_confirmation + NULL entry_order_id + prior-ET-day
+        # + per-account_mode; the ONLY writer of status='expired'.
+        "order_manager.expire_stale_proposals",
         "entry_pipeline._skip", "live_tracker._insert_skipped_trade",
         # T1.3 (2026-05-18) removed live_tracker.update_open_positions_live —
         # close-path status='closed' write now delegated to finalize_stop_fill.
@@ -165,6 +169,10 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "trade_stream._process_stop_fill", "trade_stream._handle_cancel_or_reject",
     },
     "skip_reason":        {
+        # #436 (operator-signed 2026-07-17): the stale-proposal reaper — set-based
+        # UPDATE, bounded to pending_confirmation + NULL entry_order_id + prior-ET-day
+        # + per-account_mode; the ONLY writer of status='expired'.
+        "order_manager.expire_stale_proposals",
         "live_tracker._insert_skipped_trade",
         "order_manager.attempt_day1_reentry", "order_manager.cancel_unfilled_entries",
         "order_manager._update_trade_status",
