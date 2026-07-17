@@ -54,8 +54,12 @@ Q0_MAX_LAG_DAYS = 100   # date heuristic: newest col within this window pre-aler
 Q0_MIN_LAG_DAYS = 15    # cols ending closer to the alert than this can't be announced yet
 FIDELITY_TOL = 2.0      # |live - rederived| composite points
 
-_REV_LINES = ("Total Revenue", "Revenue", "Operating Revenue",
-              "TotalRevenue", "OperatingRevenue")
+# The live augment's revenue-line list — imported so the q0 value-match can
+# never drift from what live scoring reads (imported before the yfinance shim
+# is installed; the constant has no yfinance dependency).
+from agents.market_intelligence.catalyst_rubric_runtime import (  # noqa: E402
+    REV_LINE_NAMES as _REV_LINES,
+)
 
 
 # ── yfinance shim ────────────────────────────────────────────────────────────

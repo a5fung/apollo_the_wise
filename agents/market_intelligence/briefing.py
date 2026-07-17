@@ -2402,14 +2402,16 @@ async def send_telegram_message(
                     # Likely malformed markup — retry as plain text so the alert
                     # still lands. Parse failures otherwise vanish silently.
                     body = r.text[:500]
-                    # Telegram names the UTF-8 byte offset of the entity opener it
-                    # couldn't close — log the surrounding text so the offending
+                    # Telegram's error names a "byte offset" for the entity opener
+                    # it couldn't close — empirically UTF-8 bytes, though its API
+                    # entity offsets are UTF-16 units (see scripts/probes/
+                    # _diag_brief_markdown.py); the ±120/80 window absorbs either
+                    # interpretation. Log the surrounding text so the offending
                     # section/char is identifiable from the audit row (2026-07-16:
                     # an evening-brief break at byte 4205 was undiagnosable from
                     # chunk[:300] alone).
                     snippet = ""
-                    import re as _re
-                    _m = _re.search(r"byte offset (\d+)", body)
+                    _m = re.search(r"byte offset (\d+)", body)
                     if _m:
                         _raw = chunk.encode("utf-8")
                         _off = int(_m.group(1))

@@ -1448,6 +1448,21 @@ async def _upsert_promoted_theme(
     return str(res).endswith(" 1")   # "INSERT 0 1" on write; "INSERT 0 0" when the guard skipped a live theme
 
 
+async def _map_ecosystems_nonfatal(themes: list[dict], ctx: str) -> None:
+    """ADR 0032 — assign ecosystem mappings to `themes`, never raising: every
+    path that WRITES mi_themes must run this hook or its themes debut
+    E-UNASSIGNED on the board (the 2026-07-16 promote-path gap). One helper so
+    the swallow policy (non-fatal, warning-level) can't drift across sites."""
+    try:
+        # Function-level import — theme_ecosystems imports from briefing,
+        # which imports back into the engine's orbit (same reason the
+        # original run_theme_engine hook imported locally).
+        from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
+        await ensure_theme_ecosystems(themes)
+    except Exception as e:
+        logger.warning(f"[{ctx}] ecosystem mapping pass failed (non-fatal): {e}")
+
+
 async def promote_shadow_themes(today) -> int:
     """#226 — graduate shadow theme cohorts into the LIVE `mi_themes` table (operator 2026-06-28:
     "we need to graduate this ASAP" — the missing promo path was the gap that let cohorts sit idle).
@@ -1538,13 +1553,9 @@ async def promote_shadow_themes(today) -> int:
     # ADR 0032: map promoted themes to ecosystems AT promotion. This job runs
     # AFTER run_theme_engine's ensure hook (17:05 vs 17:03), so without this
     # every new promote sat E-UNASSIGNED on the board until the next nightly
-    # self-heal (4 themes, 2026-07-16). Wrapped: never breaks the promotion.
+    # self-heal (4 themes, 2026-07-16).
     if n:
-        try:
-            from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
-            await ensure_theme_ecosystems(themes)
-        except Exception as e:
-            logger.warning(f"[promote] ecosystem mapping pass failed (non-fatal): {e}")
+        await _map_ecosystems_nonfatal(themes, "promote")
     return n
 
 
@@ -1616,13 +1627,9 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
                    f"tickers={t['tickers']} cand_source={cand.get('source')}")
     # ADR 0032: same at-promotion ecosystem mapping as the nightly auto-promote
     # (see promote_shadow_themes) — the operator path writes mi_themes outside
-    # the engine's ensure hook too. Wrapped: never breaks the promotion.
+    # the engine's ensure hook too.
     if wrote:
-        try:
-            from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
-            await ensure_theme_ecosystems([t])
-        except Exception as e:
-            logger.warning(f"[promote] ecosystem mapping pass failed (non-fatal): {e}")
+        await _map_ecosystems_nonfatal([t], "promote")
     return {"status": "promoted" if wrote else "noop", "name": t["name"],
             "tickers": t["tickers"], "n_members": len(t["tickers"]),
             "canonicalized": t["name"] != cand["name"], "orig_name": cand["name"]}
@@ -5394,14 +5401,10 @@ async def run_theme_engine(
         # ADR 0032 Phase 1 — theme→ecosystem mapping (read-model only; no
         # lifecycle effect). Assign any theme in today's snapshot that has no
         # mi_theme_ecosystems row yet: new births get mapped at birth, renamed
-        # themes self-heal next run, and a partial backfill converges. Wrapped:
-        # an assignment failure must never break the engine run (loud, not silent).
-        try:
-            from agents.market_intelligence.theme_ecosystems import ensure_theme_ecosystems
-            await ensure_theme_ecosystems(
-                [t for t in all_themes if t.get("stage") != "Retired"])
-        except Exception as e:
-            logger.warning(f"[theme ecosystems] assignment pass failed (non-fatal): {e}")
+        # themes self-heal next run, and a partial backfill converges.
+        await _map_ecosystems_nonfatal(
+            [t for t in all_themes if t.get("stage") != "Retired"],
+            "theme ecosystems")
 
     # Post-save: detect constituent churn (P13). Flag (theme, ticker) pairs
     # that have re-entered the theme 2+ times in the last 10 days — symptom

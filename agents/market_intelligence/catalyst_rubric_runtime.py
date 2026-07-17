@@ -32,6 +32,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# yfinance income-statement revenue line names, most-common first (spaces =
+# modern shape, concatenated = older versions). Shared with the offline B6
+# replay (scripts/_b6_forward_backtest.py) so its q0 value-match can never
+# drift from what the live augment reads.
+REV_LINE_NAMES = ("Total Revenue", "Revenue", "Operating Revenue",
+                  "TotalRevenue", "OperatingRevenue")
+
 
 def _extracted_to_q0_deltas(extracted: dict[str, Any]) -> dict[str, Any]:
     """Convert mi_ep_catalyst_metrics extraction to rubric's q0 deltas.
@@ -107,8 +114,7 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
         # debugged 2026-05-19 for AGYS. Both forms tried for cross-version
         # compatibility, but space-form is the modern shape.
         rev_row = None
-        for line in ("Total Revenue", "Revenue", "Operating Revenue",
-                     "TotalRevenue", "OperatingRevenue"):
+        for line in REV_LINE_NAMES:
             if line in qf.index:
                 rev_row = qf.loc[line]
                 break
