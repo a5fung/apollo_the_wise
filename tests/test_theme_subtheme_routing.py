@@ -603,3 +603,30 @@ async def test_split_prompt_dominant_reason_line(monkeypatch):
     prompt = client.captured[0]["messages"][0]["content"]
     assert "is ecosystem-dominant with no sub-theme structure (12 stocks)" in prompt
     assert "has grown too broad" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_sector_cap_zero_drop_emits_audit_event(monkeypatch):
+    """#476 — the cap-0 silent-drop branch (biotech since 2026-03-20) must emit
+    `theme_sector_cap_dropped`. For 4 months every biotech theme vanished here
+    with no trace while the shadow-promote resurrected the cohort nightly."""
+    from unittest.mock import AsyncMock
+
+    from agents.market_intelligence import theme_engine as te
+
+    audit = AsyncMock()
+    monkeypatch.setattr(te, "log_audit_event", audit)
+    themes = [
+        {"name": "Targeted Protein Degradation Oncology",  # matches 'biotech' group? uses keywords
+         "tickers": ["GLUE", "KYMR"], "score": 50, "stage": "Nascent"},
+        {"name": "Clinical-Stage Biotech Innovators",
+         "tickers": ["NRIX", "AGIO"], "score": 40, "stage": "Nascent"},
+    ]
+    # drive JUST Pass 2 via the public merge fn with no overlaps (disjoint tickers)
+    out = await te._merge_overlapping_themes(themes, {}, protected_names=set())
+    dropped = [c.args[0] for c in audit.await_args_list
+               if c.args and c.args[0] == "theme_sector_cap_dropped"]
+    surviving = {t["name"] for t in out}
+    # 'Clinical-Stage Biotech Innovators' matches the biotech cap-0 group -> dropped + audited
+    assert "Clinical-Stage Biotech Innovators" not in surviving
+    assert dropped, "cap-0 drop must emit theme_sector_cap_dropped"

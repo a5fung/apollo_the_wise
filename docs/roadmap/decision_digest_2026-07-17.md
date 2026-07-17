@@ -42,6 +42,16 @@ The push plan's single batched operator sitting. Each item = one line to rule;
 9. **#357 Persistent Sugar Babies role** — the 3rd stream's disposition
    (kept the original task detail; your call from its options).
 10. **#299 P2 tape-features funding** — yes/no on the data spend.
+10b. **#476 biotech fork (A/B)** — the overnight diagnosis found the REAL killer:
+    the March `biotech → max_themes=0` sector-cap silently drops every biotech
+    theme in Pass 2 while the shadow-promote resurrects the cohort nightly
+    (NOT the protect-strip; NOT fixed by Phase 2 being armed). Methodology
+    call: **(A)** re-include biotech (cap 0→2 + containment canonicalization →
+    cohorts crystallize into E-BIO; weak rec — the RS-side biotech filter was
+    already walked back, the theme-side wasn't = internal inconsistency) vs
+    **(B)** suppress biotech at discovery (orphans become working-as-designed).
+    Backtest is $0 read-only replay either way, runs before any flip.
+    Full doc: docs/analysis/476_biotech_crystallization_diagnosis_2026-07-17.md
 
 ## Operator-minutes actions (~5-10 min each, each unblocks a close)
 

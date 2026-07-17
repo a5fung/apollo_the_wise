@@ -4418,7 +4418,23 @@ async def _merge_overlapping_themes(
                     f"Theme merge (sector cap): '{t['name']}' → '{top_theme['name']}' "
                     f"(sector group '{group}', {len(extra)} tickers absorbed)"
                 )
-            # else: just drop it (shouldn't happen)
+            else:
+                # cap-0 groups (biotech since 2026-03-20) have NO survivor to
+                # absorb into — every group member lands HERE and vanishes.
+                # This was a bare silent drop for 4 months; #476 (2026-07-16)
+                # traced the elite-biotech orphan churn to exactly this branch
+                # (the shadow-promote resurrects the cohort nightly, this kills
+                # it again — source alternates shadow_promoted↔live). Pure
+                # observability: the drop still happens; it is now visible.
+                try:
+                    await log_audit_event(
+                        "theme_sector_cap_dropped",
+                        summary=(f"'{t['name']}' dropped by sector cap "
+                                 f"(group '{group}', cap {max_for_group})"),
+                        detail=f"tickers={','.join(t.get('tickers') or [])}",
+                    )
+                except Exception as e:  # loud-ok: observability must never break the merge
+                    logger.warning(f"sector-cap drop audit failed (non-fatal): {e}")
 
     return final
 
