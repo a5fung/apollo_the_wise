@@ -47,6 +47,9 @@ def _budget() -> float:
         return 0.0
 
 
+# Perplexity rows log under their MODEL names ('sonar'/'sonar-pro'), not
+# 'perplexity*' (7/17 prod: the split showed $0 while perplexity_news_search
+# sat in top callers) — match both shapes.
 async def compute_cost_board(today: date) -> dict:
     """One read of api_usage → the full picture. All date math in ET (the
     operator's billing mental model), via AT TIME ZONE on the TIMESTAMPTZ."""
@@ -67,7 +70,7 @@ async def compute_cost_board(today: date) -> dict:
             SELECT
               COALESCE(SUM(cost_usd) FILTER (WHERE d >= date_trunc('month', $1::date)), 0) AS mtd,
               COALESCE(SUM(cost_usd) FILTER (WHERE d >= date_trunc('month', $1::date)
-                                             AND model ILIKE 'perplexity%'), 0)            AS mtd_pplx,
+                                             AND (model ILIKE 'sonar%' OR model ILIKE 'perplexity%')), 0) AS mtd_pplx,
               COALESCE(SUM(cost_usd) FILTER (WHERE d = $1::date), 0)                       AS today,
               COUNT(*)  FILTER (WHERE d >= date_trunc('month', $1::date))                  AS mtd_calls
             FROM et
@@ -137,7 +140,7 @@ def render_cost_board(d: dict) -> str:
         f"FLAT (subscriptions) ${d['flat_total']:.0f}/mo",
     ]
     for name, amt in FLAT_SUBS_MONTHLY.items():
-        lines.append(f"  {name:<22} ${amt:.0f}")
+        lines.append(f"  {name:<24} ${amt:.0f}")
     lines.append(f"FULL MONTH ≈ ${d['projected_variable'] + d['flat_total']:.2f} "
                  f"(variable proj + flat)")
     if d["top_callers"]:
@@ -145,7 +148,7 @@ def render_cost_board(d: dict) -> str:
         for c, amt in d["top_callers"]:
             lines.append(f"  {c:<28} ${amt:.2f}")
     lines.append("```")
-    lines.append(f"_{headroom} · flat: Massive-vs-Polygon/FMP overlap = open Q (6/25)_")
+    lines.append(f"_{headroom} · flat assumes Massive covers Polygon+FMP — confirm? (your 6/25 open Q)_")
     return "\n".join(lines)
 
 
