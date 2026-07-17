@@ -7,6 +7,10 @@ Pins:
   2. `send_live_trade_summary` renders LIVE as the primary block (💰 LIVE-$ / "Alpaca — Live").
   3. The folded PAPER block only appears when paper is ACTIVE that day (not for the dormant
      historical cumulative) — nothing is phase='paper' today, so it stays silent.
+
+#479 (2026-07-17): the routine summary is routed to close_digest.contribute("BOOK", ...)
+instead of a direct Telegram — the render pins are unchanged, asserted on the
+contributed text; a direct send is now a regression.
 """
 import sys
 from datetime import date
@@ -19,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests.conftest import make_mock_pool
 import agents.market_intelligence.broker.live_tracker as lt
+import agents.market_intelligence.close_digest as close_digest
 import agents.market_intelligence.constants as constants
 
 
@@ -67,7 +72,9 @@ async def test_insert_skipped_trade_defaults_to_current_mode(monkeypatch):
 
 
 def _wire_summary(monkeypatch, *, paper, live):
-    """Wire get_pool/alpaca/telegram/et_today. `paper`/`live` are dicts of the 5 slices."""
+    """Wire get_pool/alpaca/telegram/et_today. `paper`/`live` are dicts of the 5 slices.
+    Returns (sent, contribs): direct Telegram sends (must stay empty since #479)
+    and close-digest contributions [(section, text), ...]."""
     pool, conn = make_mock_pool()
     # gather order: for m in ['paper','live'] → fetchrow(stats) then fetch(open,closes,entries,skipped)
     conn.fetchrow = AsyncMock(side_effect=[paper["stats"], live["stats"]])
@@ -82,7 +89,10 @@ def _wire_summary(monkeypatch, *, paper, live):
     monkeypatch.setattr(lt.alpaca, "get_position", AsyncMock(return_value=None))
     sent = []
     monkeypatch.setattr(lt, "send_telegram_message", AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))
-    return sent
+    contribs = []
+    monkeypatch.setattr(close_digest, "contribute",
+                        lambda section, text: contribs.append((section, text)))
+    return sent, contribs
 
 
 @pytest.mark.asyncio
@@ -92,11 +102,12 @@ async def test_summary_live_primary_paper_hidden_when_dormant(monkeypatch):
              "open": [], "closes": [], "entries": [], "skipped": []}
     live = {"stats": _stats(1, 0, 1, -32.80), "open": [], "closes": [], "entries": [],
             "skipped": [{"ticker": "PENG", "skip_reason": "window:out_of_orb: detected 09:55 ET"}]}
-    sent = _wire_summary(monkeypatch, paper=paper, live=live)
+    sent, contribs = _wire_summary(monkeypatch, paper=paper, live=live)
     await lt.send_live_trade_summary()
 
-    assert len(sent) == 1
-    msg = sent[0]
+    assert sent == []                                      # #479: no direct Telegram
+    assert len(contribs) == 1 and contribs[0][0] == "BOOK"
+    msg = contribs[0][1]
     assert "💰 LIVE-$" in msg and "Alpaca — Live" in msg   # live is the primary block
     assert "PENG" in msg and "Filtered today" in msg       # the live skip surfaces here
     assert "Paper (shadow book)" not in msg                # dormant paper stays hidden
@@ -111,11 +122,12 @@ async def test_summary_folds_paper_when_active(monkeypatch):
              "skipped": []}
     live = {"stats": _stats(1, 0, 1, -32.80),
             "open": [], "closes": [], "entries": [], "skipped": []}
-    sent = _wire_summary(monkeypatch, paper=paper, live=live)
+    sent, contribs = _wire_summary(monkeypatch, paper=paper, live=live)
     await lt.send_live_trade_summary()
 
-    assert len(sent) == 1
-    msg = sent[0]
+    assert sent == []                                      # #479: no direct Telegram
+    assert len(contribs) == 1 and contribs[0][0] == "BOOK"
+    msg = contribs[0][1]
     assert "Alpaca — Live" in msg                           # still live-primary
     assert "Paper (shadow book)" in msg                     # folded block now present
     assert "1 entered" in msg                               # paper's today activity, compact

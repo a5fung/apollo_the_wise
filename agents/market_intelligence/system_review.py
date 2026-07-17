@@ -209,6 +209,18 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     except Exception:
         logger.exception("kill/scale band section render failed")
 
+    # Early-window drift line (#454 R3 part 1, 2026-07-17) — the SIGNED #268b kill/scale
+    # bands above are SILENT below the 20-closed-trade sample floor. This prints the rolling
+    # live expectancy against the calibration envelope's stored trailing-20 reference points
+    # from closed-trade 5 onward, so an ugly early cohort isn't fully invisible pre-floor.
+    # Purely informational — changes nothing about the bands themselves.
+    try:
+        drift_section = await _early_window_drift_section()
+        if drift_section:
+            message = f"{message}\n\n{drift_section}"
+    except Exception:
+        logger.exception("early-window drift section render failed")
+
     # Cost envelope (FL-6 / #378 S-C, 2026-07-12) — the deterministic MTD-spend line: the
     # ONE routine surface that completes FL-6 (the /status board + budget alert already exist).
     try:
@@ -1642,6 +1654,57 @@ async def _spend_envelope_section() -> str:
     # fixed-subs note (not in the LLM meter — keeps the envelope honest, #378 S-C)
     lines.append("_+ fixed infra/data subs (server · Polygon · FMP) not metered here — see the cost-envelope doc._")
     return "\n".join(lines)
+
+
+async def _early_window_drift_section() -> str:
+    """#454 R3 part (1) — early-window drift line: the SIGNED #268b kill/scale bands
+    (`kill_scale_bands.py`) are silent below `_SAMPLE_FLOOR` (20 closed live trades, ~3
+    months at the live rate) — only the equity guards bind before then (premortem R3,
+    docs/analysis/premortem_450_2026-07-11.md). This prints the ROLLING live expectancy
+    (mean realized R = total_pnl/risk_dollars over closed `account_mode='live'` trades — the
+    SAME cohort definition the bands read, via `assemble_band_inputs`) against the #268b
+    calibration envelope from closed-trade 5 onward, so a bad early cohort isn't fully
+    invisible pre-floor.
+
+    INFORMATIONAL ONLY — mirrors replay_regression.py's no-verdict posture. Changes NOTHING
+    about the bands; the operator reads the number, the bands still gate at n=20.
+
+    The envelope (`kill_scale_bands.CALIBRATION_ENVELOPE`) does not store a full percentile
+    curve — only two trailing-20-window reference points computed over the #268b n=399
+    cohort (`trailing20_p5_r`, `trailing20_min_r`). No richer percentile series is
+    programmatically stored anywhere, so this compares the rolling CUMULATIVE mean against
+    those two stored thresholds and says so explicitly in the line — they are a reference
+    band from a full-year trailing-20 distribution, not a literal same-window statistic at
+    n<20.
+
+    Omitted entirely below n=5 (too thin to show anything meaningful — matches the
+    mfe_capture/crypto appendix convention of no misleading near-empty line)."""
+    from agents.market_intelligence.kill_scale_bands import (
+        assemble_band_inputs, CALIBRATION_ENVELOPE as env, _SAMPLE_FLOOR,
+    )
+    inputs = await assemble_band_inputs("live")
+    rs = inputs["realized_rs"]
+    n = len(rs)
+    if n < 5:
+        return ""
+    mean_r = sum(rs) / n
+    p5, floor_r = env["trailing20_p5_r"], env["trailing20_min_r"]
+    if mean_r <= floor_r:
+        pos = f"at/below calibration's worst trailing-20 window ({floor_r:+.2f}R)"
+    elif mean_r <= p5:
+        pos = f"below calibration's trailing-20 p5 ({p5:+.2f}R)"
+    else:
+        pos = f"within calibration's healthy trailing-20 range (p5 {p5:+.2f}R)"
+    if n < _SAMPLE_FLOOR:
+        caveat = (f"n={n} < {_SAMPLE_FLOOR} sample floor — kill/scale bands are SILENT here, "
+                  f"informational only")
+    else:
+        caveat = (f"n={n} ≥ {_SAMPLE_FLOOR} — see the kill/scale band section above "
+                  f"for the live verdict")
+    return (
+        f"\U0001F4C9 *Early-window drift* (live, #454 vs {env['source']}): "
+        f"rolling mean {mean_r:+.2f}R over {n} closed trades — {pos}. _{caveat}_"
+    )
 
 
 def _format_mfe_capture_section(data: dict) -> str:

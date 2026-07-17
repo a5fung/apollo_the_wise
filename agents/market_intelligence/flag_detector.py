@@ -1442,12 +1442,15 @@ def _build_intraday_signals_digest(scan_date, per_detector) -> Optional[str]:
 
 async def run_intraday_signals_eod_digest(scan_date) -> int:
     """One consolidated EOD digest of the day's intraday entry-technique signals
-    (#168). Reads each detector's table for `scan_date`, sends ONE message, and
-    suppresses entirely on zero-fire days. Error-isolated per table — a missing
-    table (e.g. a detector not yet shipped) skips that section, never the digest.
+    (#168). Reads each detector's table for `scan_date` and suppresses entirely
+    on zero-fire days. Error-isolated per table — a missing table (e.g. a
+    detector not yet shipped) skips that section, never the digest.
+    #479: no longer Telegrams directly — the render text goes to
+    close_digest.contribute("SIGNALS", ...) and lands in the 16:55 Market
+    Close Digest (this runner is job-exclusive to intraday_signals_eod_digest).
     """
     from agents.market_intelligence import db
-    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.close_digest import contribute
     pool = await db.get_pool()
     per_detector = []
     async with pool.acquire() as conn:
@@ -1467,7 +1470,7 @@ async def run_intraday_signals_eod_digest(scan_date) -> int:
     if msg is None:
         logger.info("intraday signals EOD digest: zero fires — suppressed")
         return 0
-    await send_telegram_message(msg)
+    contribute("SIGNALS", msg)
     return sum(len(rows) for _, _, rows in per_detector)
 
 

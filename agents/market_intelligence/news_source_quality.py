@@ -296,9 +296,12 @@ async def _drift_telegram_already_sent_recently() -> bool:
 
 
 async def run_quality_check() -> dict:
-    """Run on-demand or from scheduler — returns full report dict + sends
-    drift Telegram if events present. 24h dedup on Telegram (audit always
-    fires).
+    """Run from the 16:30 scheduler job — returns full report dict + surfaces
+    drift if events present. 24h dedup on the operator surface (audit always
+    fires). #479: the drift alert no longer Telegrams directly — the render
+    text goes to close_digest.contribute("NEWS", ...) and lands in the 16:55
+    Market Close Digest (this runner is job-exclusive to
+    news_quality_drift_check).
     """
     drift_report = await detect_drift()
     drift_alert = format_drift_alert(drift_report)
@@ -306,15 +309,15 @@ async def run_quality_check() -> dict:
     if drift_alert:
         try:
             from agents.market_intelligence.db import log_audit_event
-            # Always log audit (durable telemetry, even if Telegram dedup'd)
+            # Always log audit (durable telemetry, even if surface dedup'd)
             await log_audit_event(
                 "news_source_quality_drift",
                 f"{len(drift_report['drift_events'])} drift event(s) detected",
             )
-            # 24h dedup on Telegram only
+            # 24h dedup on the operator surface only
             if not await _drift_telegram_already_sent_recently():
-                from agents.market_intelligence.briefing import send_telegram_message
-                await send_telegram_message(drift_alert)
+                from agents.market_intelligence.close_digest import contribute
+                contribute("NEWS", drift_alert)
         except Exception as e:
             logger.warning(f"drift alert handling failed: {e}")
     elif low_n:

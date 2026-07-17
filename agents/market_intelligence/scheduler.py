@@ -44,6 +44,7 @@ from agents.market_intelligence.briefing import (
     send_ep_alert,
     send_telegram_message,
 )
+from agents.market_intelligence import close_digest
 from agents.market_intelligence.constants import mode_prefix, active_account_modes
 from agents.market_intelligence.backtester.tracker import (
     run_paper_trade_tracker,
@@ -145,6 +146,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # judge / digests / briefings
     "judge_delta_digest", "catalyst_downgrade_digest", "9m_pace_digest",
     "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
+    "close_digest",  # #479 — 16:55 ET consolidated Market Close Digest flush
     "premarket_gap_risk",  # ADR 0023 Card 5 — read-only 9:00 ET gap-through heads-up, no broker calls
     "evening_briefing", "friday_watchlist", "hud_refresh",
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
@@ -1858,7 +1860,10 @@ async def _orb_window_cleanup_job():
 
 
 async def _eod_ep_recap_job():
-    """Run at 4:10 PM ET. One-shot Telegram summary of today's HIGH EP outcomes.
+    """Run at 4:10 PM ET. One-shot summary of today's HIGH EP outcomes.
+    #479: no longer Telegrams directly — the render text goes to
+    close_digest.contribute("EP", ...) and lands in the 16:55 Market Close
+    Digest. Detection, DB reads, and logs unchanged.
 
     Fires after _eod_cleanup_job (4:05 PM) so trade rows reflect the settled state.
     On zero-HIGH days: still posts a short feed-telemetry recap when any
@@ -1913,7 +1918,9 @@ async def _eod_ep_recap_job():
             # Still report feed health — the silent-feed case is exactly why this exists.
             if feed_alert or feed_tel["bars_fetched"] > 0 or _demoted:
                 prefix = "⚠️ " if feed_alert else ""
-                await send_telegram_message(
+                # #479: folded into the 16:55 Market Close Digest (same render text).
+                close_digest.contribute(
+                    "EP",
                     f"{prefix}*EP EOD Recap — {today_str}*\n"
                     f"No HIGH EPs today.\n{judge_line}\n{feed_line}"
                 )
@@ -1944,8 +1951,9 @@ async def _eod_ep_recap_job():
         if feed_alert:
             lines.insert(0, "⚠️ *Feed health flagged — see 📡 line below*")
 
-        await send_telegram_message("\n".join(lines))
-        logger.info("EOD EP recap sent")
+        # #479: folded into the 16:55 Market Close Digest (same render text).
+        close_digest.contribute("EP", "\n".join(lines))
+        logger.info("EOD EP recap contributed to close digest")
     except Exception as e:
         logger.error(f"EOD EP recap failed: {e}")
         await notify_job_failure("eod_ep_recap", str(e))
@@ -2496,10 +2504,10 @@ async def _9m_pace_digest_job():
         )
     if len(ranked_all) > 20:
         parts.append(f"…+{len(ranked_all) - 20} more")
-    try:
-        await send_telegram_message("\n".join(parts))
-    except Exception as e:
-        logger.error(f"9m_pace_digest Telegram failed: {e}")
+    # #479: folded into the 16:55 Market Close Digest (same render text).
+    # Detection-layer pace only, non-empty days only (empty returns above) —
+    # the deprecated 9M Day 2 STRATEGY gets no line anywhere (operator 7/17).
+    close_digest.contribute("9M", "\n".join(parts))
     return len(ranked)
 
 
@@ -2563,11 +2571,23 @@ async def _judge_delta_digest_job():
         pass
 
     msg = _build_judge_delta_message(rows, authority_on, now_et.strftime("%b %d"))
-    try:
-        await send_telegram_message(msg)
-    except Exception as e:
-        logger.error(f"judge_delta_digest Telegram failed: {e}")
+    # #479: folded into the 16:55 Market Close Digest (same render text).
+    close_digest.contribute("JUDGE", msg)
     return len(rows)
+
+
+async def _close_digest_job():
+    """16:55 ET — flush the Market Close Digest (#479 half-1, operator-ruled).
+
+    Assembles the ONE post-close message from the contribution buffer the
+    16:00–16:45 folded jobs filled (intraday_signals 16:00 · eod_ep_recap
+    16:10 · 9m_pace 16:20 · judge_delta 16:25 · news_quality_drift 16:30 ·
+    live_position_update 16:45), sends it, clears the buffer, writes one
+    market_close_digest_sent audit row. Empty buffer (quiet day / holiday —
+    every contributor already gates on trading days) → nothing is sent.
+    Observability only; real-time alerts are untouched.
+    """
+    return await close_digest.flush_and_send()
 
 
 async def _order_status_reconcile_job(lookback_days: int = 90, run_coverage_drift: bool = True):
@@ -2615,6 +2635,20 @@ async def _order_status_reconcile_job(lookback_days: int = 90, run_coverage_drif
                         f"coverage-drift check crashed for {mode}: {e}",
                         f"account_mode={mode}",
                     )
+
+            # #455 R4 stage-1 (2026-07-16): ALERT-ONLY intraday drawdown-crossing
+            # check on the LIVE book — piggybacked on this 15-min cycle per the
+            # consolidate-surfaces rule (the 16:12 EOD breaker still owns ALL
+            # state/sizing; this only closes the intraday VISIBILITY gap). Gated
+            # on run_coverage_drift like coverage-drift so the #150 1-minute
+            # open-window variant doesn't add ~10 get_account calls each morning.
+            # run_intraday_drawdown_check never raises by contract; wrapped
+            # anyway — a failure here must never break the reconcile cycle.
+            try:
+                from agents.market_intelligence.broker.intraday_drawdown import run_intraday_drawdown_check  # exec-boundary-ok: moves-with-job (W2)
+                await run_intraday_drawdown_check()
+            except Exception as e:
+                logger.exception(f"intraday_drawdown_check failed: {e}")
 
         return result.get("updated", 0)
     except Exception as e:
@@ -5496,6 +5530,21 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_JUDGE_DELTA_DIGEST,
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # Market Close Digest flush: 16:55 ET (#479 half-1, operator-ruled fold).
+    # The single post-close message — assembles every contribution buffered by
+    # the folded 16:00–16:45 jobs (see _close_digest_job) and sends ONE
+    # monospace digest. Fires after the LAST contributor (16:45
+    # live_position_update); shares the 16:55 slot with time_stop_scan
+    # (independent async jobs). Empty buffer → no message.
+    _scheduler.add_job(
+        audit_wrap(_close_digest_job, "close_digest"),
+        CronTrigger(hour=16, minute=55, day_of_week="mon-fri",
+                    timezone="America/New_York"),
+        id="close_digest",
+        replace_existing=True,
+        misfire_grace_time=900,
     )
 
     # Catalyst-downgrade morning digest: 10:10 ET (#143, 2026-05-28).

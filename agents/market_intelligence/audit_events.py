@@ -85,6 +85,17 @@ ORDER_STATUS_RECONCILE_FAILED = "order_status_reconcile_failed"
 STUCK_PENDING_NEW_DETECTED = "stuck_pending_new_detected"  # #142/2026-05-28
 DRAWDOWN_CHECK_UNAVAILABLE = "drawdown_check_unavailable"
 
+# ── Intraday drawdown crossing (#455 R4 stage-1, 2026-07-16) ────────────────
+# ALERT-ONLY intraday check piggybacked on the 15-min order-status-reconcile
+# cycle: live-account drawdown vs the breaker's 30d snapshot peak crossed a
+# WATCH/REDUCE trip threshold DEEPER than the persisted breaker state. The
+# CROSSING row doubles as the per-(tier, ET-day) Telegram dedup state (the
+# cost_board.run_daily_spend_alarm audit-log-as-state pattern). *_CHECK_FAILED
+# fires once after repeated consecutive piggyback failures — the check itself
+# must never break the reconcile cycle.
+INTRADAY_DRAWDOWN_CROSSING = "intraday_drawdown_crossing"
+INTRADAY_DRAWDOWN_CHECK_FAILED = "intraday_drawdown_check_failed"
+
 # ── Coverage-drift detector (#184 ADR 0008 increment 2, 2026-07-05) ─────────
 # Read-only DB↔broker mirror-completeness check. Written per detection
 # regardless of severity (telemetry contract); *_ALERTED is the dedup marker

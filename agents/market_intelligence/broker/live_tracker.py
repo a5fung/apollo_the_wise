@@ -879,7 +879,9 @@ def _mode_has_activity(d: dict) -> bool:
 
 
 async def send_live_trade_summary() -> None:
-    """Daily Telegram summary of trading activity, PER ACCOUNT (dual-account #66).
+    """Daily summary of trading activity, PER ACCOUNT (dual-account #66).
+    #479: routed into the 16:55 Market Close Digest (BOOK section) instead of
+    a standalone Telegram — render text unchanged.
 
     Live-money account is the PRIMARY block (full detail); paper is FOLDED into a
     compact secondary line (operator 7/8: only the paper book was reported, so the
@@ -981,9 +983,14 @@ async def send_live_trade_summary() -> None:
         lines.append("\n— 📄 *Paper (shadow book):* " + (" · ".join(seg) or "—")
                      + (f"  ·  today: {', '.join(act)}" if act else ""))
 
-    # Send if any account had activity today or holds open positions
+    # Surface if any account had activity today or holds open positions.
+    # #479: the routine daily summary no longer Telegrams directly — the same
+    # render text goes to close_digest.contribute("BOOK", ...) and lands in
+    # the 16:55 Market Close Digest (this function is job-exclusive to the
+    # 16:45 live_position_update job).
     if any(_mode_has_activity(data[m]) for m in modes):
-        await send_telegram_message("\n".join(lines))
+        from agents.market_intelligence.close_digest import contribute
+        contribute("BOOK", "\n".join(lines))
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
