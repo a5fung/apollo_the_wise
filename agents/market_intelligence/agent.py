@@ -2954,10 +2954,7 @@ class MarketIntelligenceAgent(BaseAgent):
             compute_cost_board, render_cost_board,
         )
         d = await compute_cost_board(et_today())
-        return AgentResponse(
-            request_id=request.request_id, agent=self.name, success=True,
-            result=render_cost_board(d),
-        )
+        return self._ok(request, result=render_cost_board(d))
 
     async def _handle_data_reviews_query(self, request: AgentRequest) -> AgentResponse:
         """`/datareviews` — the DATA-GATED review board (data_gated_reviews.yaml): which evidence-

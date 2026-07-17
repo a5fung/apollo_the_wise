@@ -141,3 +141,26 @@ async def test_alarm_quiet_within_budget_and_below_noise_floor(monkeypatch):
     assert fired is None
     audit.assert_not_awaited()
     tg.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cost_handler_returns_via_base_ok(monkeypatch):
+    """7/17 prod bug: the handler hand-rolled AgentResponse(agent=self.name) —
+    the class has no .name (it's .agent_name via base._ok) → '/cost' 500'd on
+    its FIRST live use. Pin the handler end-to-end through a real agent
+    instance shape (the operator-facing command path, not just compute+render)."""
+    from unittest.mock import MagicMock
+
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+
+    agent = MarketIntelligenceAgent.__new__(MarketIntelligenceAgent)
+    agent.agent_name = "market_intelligence"
+    monkeypatch.setattr(cb, "compute_cost_board", AsyncMock(return_value=_board()))
+    req = MagicMock()
+    req.request_id = "t-1"
+
+    resp = await agent._handle_cost_query(req)
+
+    assert resp.success is True
+    assert "COST BOARD" in resp.result
+    assert resp.agent == "market_intelligence"
