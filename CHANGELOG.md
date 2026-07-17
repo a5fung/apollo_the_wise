@@ -8,6 +8,9 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-07-16 — FIRST REAL-MONEY FILL chain VERIFIED (#413 closed) · #150 reservation-race retry verified-live
+- MANE 7/15 (live, $119.34×8): ORB bracket → entry filled → stop-refresh hit the EXACT share-reservation race (`held_for_orders:8, available:0`, old stop leg named) → `_is_share_reservation_lag` bounded retry placed the stop 3s later (bc100ddb) → old leg canceled clean → held overnight protected → stop filled 7/16 open, −$2.40, exits row written. Zero naked-stop alarms, WS+reconcile agreed; TSEM 7/14 = 2nd clean instance. Closes #413 (first-fill chain watch) AND #150 (the FTRE-class retry, event-gated since 5/09 — observed clean on real money). Lesson: the two rarest-event gates both cleared on one trade — check event-gated tasks against EVERY live fill.
+
 ### 2026-07-09 — F1 giveback shadow deployed · #290 closed · #439 part-b
 - ADR 0023 F1: `giveback_shadow.py` (+6%/60% peak-lock) deployed both money containers as log-only SHADOW on the live book (THE LINE) + `giveback_shadow_review` gate; #443 alert-label fix rode it. #290 CLOSED — late-entry backtest R-NEGATIVE (N=196; wide stop, no fresh ORB), don't extend. #439 part-b: G6 resting-test-order sweep (`_sweep_test_orders_until_clear`). Deploy lessons: root-file drift-guard classification + `# exec-boundary-ok` import tag. Advisor: verify the control, lead with the internal well-powered result.
 
