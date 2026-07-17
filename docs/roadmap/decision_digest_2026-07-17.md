@@ -1,5 +1,10 @@
 # Decision Digest — Friday 2026-07-17 (one sitting, ~35-45 min)
 
+**Timing: MORNING if possible** — every ⚡ below unblocks same-day work, and
+the deploy wants items 1-2 signed before it goes out (reshaped plan 7/16
+night: Friday = ship + verify + the next premortem wave; the original Friday
+builds were consumed Thursday night).
+
 The push plan's single batched operator sitting. Each item = one line to rule;
 "ok" is a complete answer. Items marked ⚡ unblock a same-day close.
 
@@ -45,6 +50,9 @@ The push plan's single batched operator sitting. Each item = one line to rule;
 13. ⚡ **#420** create the UptimeRobot account (I wire the endpoint after).
 14. **#384** X account: check credits + rotate the leaked-to-local-transcript
     creds; then your `_X_POSTING_ENABLED` flip call.
+15. ⚡ **#194** provide the dashboard deploy key — unblocks the daily
+    trades+themes auto-export AND #472 (the ecosystem view on the dashboard),
+    both then land Sunday.
 
 ## FYI (no decision needed)
 
