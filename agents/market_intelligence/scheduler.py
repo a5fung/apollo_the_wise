@@ -137,6 +137,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
     "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
+    "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     "coverage_probe",  # S2 coverage loop — zero-LLM EOD blind-spot probe; shadow tables + audit only, no broker calls
@@ -3601,6 +3602,25 @@ async def _htf_management_shadow_job():
     return updated
 
 
+async def _book_concentration_job():
+    """Run at 16:18 ET (after the close, after the 16:12 equity snapshot so the
+    %-of-equity line is same-day). #452 R1 Stage 1 — correlated-book telemetry:
+    audit row every run, Telegram ONLY when ≥2 open live positions share an
+    ADR-0025 Stage-A family. READ-ONLY on trade state, no broker calls
+    (THE LINE; the Stage-2 entry gate is operator-gated CHANGE_PROCESS)."""
+    try:
+        from agents.market_intelligence.book_concentration import (
+            run_book_concentration_snapshot,
+        )
+        res = await run_book_concentration_snapshot("live")
+        logger.info(
+            f"book-concentration: {res['n_open']} open, "
+            f"{len(res['flagged'])} flagged famil(ies)")
+    except Exception as e:
+        logger.error(f"book-concentration job failed: {e}", exc_info=True)
+        await notify_job_failure("book_concentration", str(e))
+
+
 async def _giveback_shadow_job():
     """Run at 17:38 ET (EOD, after positions close). Log the peak-lock (giveback) SHADOW for
     live MAGNA53 trades that closed today — ADR 0023 F1 forward measurement (operator 7/9).
@@ -4763,6 +4783,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_htf_management_shadow_job, "htf_management_shadow"),
         CronTrigger(hour=17, minute=36, day_of_week="mon-fri", timezone="America/New_York"),
         id="htf_management_shadow",
+        replace_existing=True,
+    )
+
+    # #452 R1 Stage 1 — book-concentration telemetry, 16:18 ET mon-fri (after the
+    # close + the 16:12 equity snapshot). Audit row every run; Telegram only when
+    # ≥2 open live positions share a Stage-A family. Read-only, no broker calls.
+    _scheduler.add_job(
+        audit_wrap(_book_concentration_job, "book_concentration"),
+        CronTrigger(hour=16, minute=18, day_of_week="mon-fri", timezone="America/New_York"),
+        id="book_concentration",
         replace_existing=True,
     )
 
