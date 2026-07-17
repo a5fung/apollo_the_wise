@@ -1118,145 +1118,27 @@ def _format_evening_briefing(
     sections += [
         _format_regime_section(regime, section_num=1),
         "",
-        _format_rs_section(rs_leaders, section_num=2, fund_flags=fund_flags),
+        _format_rs_section(rs_leaders[:10], section_num=2, fund_flags=fund_flags),  # top-10 (#479); full list /watch
         "",
         theme_section,
         "",
     ]
-    if unanchored_section:
-        sections += [unanchored_section, ""]
-    if velocity_section:
-        sections += [velocity_section, ""]
-    if turners_section:
-        sections += [turners_section, ""]
-    sections += [
-        _format_pullbacks_section(pullbacks, section_num=next_num),
-        "",
-    ]
-
-    # EP Outcomes — today's HIGH EP terminal states
-    ep_outcomes_section = _format_ep_outcomes_section(ep_outcomes or [], section_num=next_num + 1)
-    if ep_outcomes_section:
-        next_num += 1
-        sections += [ep_outcomes_section, ""]
-
-    # Weekly signal quality section (Fridays only)
-    if signal_quality_summary:
-        next_num += 1
-        sections += [
-            _format_signal_quality_section(signal_quality_summary, section_num=next_num),
-            "",
-        ]
-
+    # ── #479 (operator-ruled R2, 2026-07-17): the brief is ONE Telegram message
+    # — "what changed + what's actionable tomorrow." The former sections below
+    # are DEMOTED to their on-demand commands, not deleted (their params stay
+    # so call sites are untouched; the render just no longer includes them):
+    # unanchored→/watch · velocity+turners→/watch all · pullbacks→/ideas ·
+    # EP-outcome stats→/eps · signal-quality→weekly review · sugar-babies→
+    # /sugarbabies · anticipations→/anticipation · wick/fishhook→/detectors,
+    # /fishhook · U&R→/undercutrally.
     cooldown_footer = _format_cooldown_footer(cooldowns or [])
     if cooldown_footer:
         sections.append(cooldown_footer)
         sections.append("")
-
-    if sugar_babies:
-        from agents.market_intelligence.ninem_detector import format_sugar_babies_section
-        sb_section = format_sugar_babies_section(sugar_babies)
-        if sb_section:
-            sections.append(sb_section)
-            sections.append("")
-
-    # Persistent Sugar Babies cohort (Pradeep-class watchlist — distinct from
-    # the single-day sugar_babies block above. Top 10 by count desc; full list
-    # via /sugarbabies. Header says "Persistent" so both surfaces can coexist
-    # The single-day mi_9m_day2_candidates table (renamed from
-    # mi_9m_sugar_babies via #82 on 2026-05-23) feeds the existing
-    # `sugar_babies` block above; this cohort_babies surface is the
-    # persistent Pradeep-class watchlist (mi_sugar_babies_cohort).
-    if cohort_babies:
-        try:
-            today_d = date.fromisoformat(briefing_date) if briefing_date else _et_today()
-        except (ValueError, TypeError):
-            today_d = _et_today()
-        # Stage emoji vocabulary matches /flags + /sugarbabies conventions
-        # (🎯 TRIGGERED / 🌀 COILED / 🔧 TIGHTENING). DB-side ripeness sort
-        # means ripe entries (TRIGGERED > COILED > TIGHTENING) already top
-        # the list; this just decorates them visually.
-        stage_emoji = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
-        ripe_count = sum(1 for r in cohort_babies if r.get("current_flag_stage"))
-        header = (
-            f"🍬 *Persistent Sugar Babies* "
-            f"({len(cohort_babies)} top, {ripe_count} ripe — full: `/sugarbabies`)"
-        )
-        lines = [header]
-        for r in cohort_babies:
-            last = r.get("last_9m_alert")
-            days_since = (today_d - last).days if last else None
-            ds_s = f"{days_since}d ago" if days_since is not None else "—"
-            stage = r.get("current_flag_stage")
-            emoji = stage_emoji.get(stage, " ")  # space-pad alignment
-            stage_s = f" · {stage}" if stage else ""
-            lines.append(f"  {emoji} `{r['ticker']:<6}` {r['n']}× · {ds_s}{stage_s}")
-        sections.append("\n".join(lines))
-        sections.append("")
-
-    if ninem_anticipations:
-        tks = ", ".join(f"`{a['ticker']}`" for a in ninem_anticipations[:20])
-        extra = "" if len(ninem_anticipations) <= 20 else f" (+{len(ninem_anticipations) - 20})"
-        sections.append(
-            f"🔍 *Anticipation-only today ({len(ninem_anticipations)})*: {tks}{extra}"
-        )
-        sections.append("")
-
-    # Wick Watch (P22, telemetry-only): one-line summary so the cohort is
-    # visible while the framework accumulates a promotion-eligible sample.
-    # Fill rate published only when ≥10 30d candidates have settled.
-    if wick_today_count or wick_settled_30d >= 10:
-        head = f"🔥 *Wick Watch:* {wick_today_count} today"
-        if wick_today_tickers:
-            tks = ", ".join(f"`{t}`" for t in wick_today_tickers[:10])
-            if len(wick_today_tickers) > 10:
-                tks += f" (+{len(wick_today_tickers) - 10})"
-            head += f": {tks}"
-        parts = [head]
-        if wick_settled_30d >= 10 and wick_fill_rate_30d is not None:
-            parts.append(f"30d fill {wick_fill_rate_30d:.0%} (n={wick_settled_30d})")
-        sections.append(" · ".join(parts))
-        sections.append("")
-
-    # Fishhook V3 (TI3, shadow telemetry): open anchors today + 60d roll-up.
-    # R + hit rate published only after ≥10 settled rows accumulate.
-    if fishhook_open_count or fishhook_settled_60d >= 10:
-        head = f"🪝 *Fishhook:* {fishhook_open_count} open"
-        if fishhook_open_tickers:
-            tks = ", ".join(f"`{t}`" for t in fishhook_open_tickers[:10])
-            if len(fishhook_open_tickers) > 10:
-                tks += f" (+{len(fishhook_open_tickers) - 10})"
-            head += f": {tks}"
-        parts = [head]
-        if fishhook_settled_60d >= 10 and fishhook_median_r_60d is not None:
-            tail = f"60d R {fishhook_median_r_60d:.2f} (n={fishhook_settled_60d})"
-            if fishhook_hit_rate_60d is not None:
-                tail += f", hit {fishhook_hit_rate_60d:.0%}"
-            parts.append(tail)
-        sections.append(" · ".join(parts))
-        sections.append("")
-
-    # U&R (Undercut & Rally, #98 shadow telemetry): today's structurally-surviving
-    # detections, quiet daily roundup (intraday FYI is off by default — see the
-    # flag_detector UNDERCUT_RALLY_INTRADAY_FYI gate).
-    if undercut_rallies:
-        ur_lines = [f"🪤 *U&R — Undercut & Rally ({len(undercut_rallies)} today)*"]
-        for u in undercut_rallies[:10]:
-            cohort = "🍬 " if u.get("in_sugar_baby_cohort") else ""
-            ur_lines.append(
-                f"  {cohort}`{u['ticker']:<6}` {u['parent_stage']} — "
-                f"undercut ${u['base_low']:.2f}→${u['undercut_low']:.2f} "
-                f"(-{u['undercut_pct']:.1f}%), reclaimed +{u['reclaim_pct_above_base']:.1f}% "
-                f"(stop ${u['undercut_low']:.2f})"
-            )
-        ur_lines.append(
-            f"  _+{len(undercut_rallies) - 10} more — `/undercutrally`_"
-            if len(undercut_rallies) > 10
-            else "  _shadow — `/undercutrally` for history_"
-        )
-        sections.append("\n".join(ur_lines))
-        sections.append("")
-
+    sections.append(
+        "detail on demand: /watch · /ideas · /eps · /sugarbabies · /detectors "
+        "· /fishhook · /undercutrally")
+    sections.append("")
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 

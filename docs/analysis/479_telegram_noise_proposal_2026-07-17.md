@@ -34,14 +34,15 @@ alerts unchanged. Self-healing/transient stays audit-log-only (house rule).
 BOOK  2 open (MANE-class): AAAA +1.2R stop@BE · BBBB −0.3R stop 118.02
       1 partial taken (CCCC 33% @ +2.1R) · 0 stops hit · 1 unfilled cancelled
 EP    2 HIGH (1 filled, 1 LULD-rejected) · 3 MODERATE → briefing
-9M    pace 3/20 · no Day-2 setups
+9M    pace 3/20 (detection only — Day-2 strategy deprecated, no line)
 JUDGE 2 promotes, 1 downgrade (detail: /judge)
 SIGNALS 5-detector day: 2 flags, 1 fishhook (detail: /detectors)
 ⚠ news-quality drift: none
 ```
 One message, monospace block, every line collapsible to its existing
 drill-down command. Sections with nothing to say are OMITTED (a quiet day
-is 4 lines).
+is 4 lines). Deprecated strategies get NO line (operator 7/17: 9M Day 2 is
+not an active setup — detection-layer pace only, and only when non-empty).
 
 ### Message 2 — 🌙 Evening Brief (18:00 ET, ≤4096 chars)
 KEEP: title+closeout line · regime (1 line) · ecosystem scorecard (top-5
