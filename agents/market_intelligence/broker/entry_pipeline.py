@@ -562,6 +562,7 @@ async def submit_trade_entry(
     sent = await send_trade_proposal(
         alert_context, order_spec, trade_id,
         live_real_enabled=live_real_enabled,
+        account_mode=account_mode,
     )
     if sent:
         logger.info(f"{strategy_label} trade proposal sent: {ticker} (id={trade_id})")

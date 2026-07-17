@@ -1718,6 +1718,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     for c in candidates[20:]:
         _log_filtered(c, f"outside top-20 gap cap (gap {c['gap_pct']:.1f}%)")
 
+    # #444 mode-label sweep: the catalyst-downgrade Telegram below (prose-mismatch
+    # branch) is MAGNA53-bound. Resolve the owning strategy's account_mode lazily
+    # (fetched at most once per scan tick, only if a downgrade actually fires) so
+    # the label reflects live vs paper instead of the legacy global default —
+    # without adding a DB round-trip to the common no-downgrade path.
+    _magna53_mode_fetched = False
+    _magna53_account_mode: str | None = None
+
     for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
         ticker = c["ticker"]
         rel_volume = c.get("rel_volume") or 0
@@ -2763,8 +2771,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 try:
                     from agents.market_intelligence.briefing import send_telegram_message
                     from agents.market_intelligence.constants import mode_prefix
+                    if not _magna53_mode_fetched:
+                        try:
+                            from agents.market_intelligence.strategies.registry import get_strategy
+                            from agents.market_intelligence.constants import get_strategy_account_mode
+                            _magna53_strategy = await get_strategy("magna53")
+                            _magna53_account_mode = get_strategy_account_mode(_magna53_strategy)
+                        except Exception as _mode_e:
+                            logger.warning(f"catalyst_downgrade: magna53 account_mode resolve failed: {_mode_e}")
+                            _magna53_account_mode = None  # mode_prefix() falls back to legacy global default
+                        _magna53_mode_fetched = True
                     await send_telegram_message(
-                        f"{mode_prefix()}📰 *Catalyst downgrade:* `{ticker}` "
+                        f"{mode_prefix(_magna53_account_mode)}📰 *Catalyst downgrade:* `{ticker}` "
                         f"gap +{c['gap_pct']:.1f}%\n"
                         f"Grade strong → routine — prose marker "
                         f"\"{matched_marker}\" in {matched_source}\n"

@@ -119,3 +119,71 @@ async def test_summary_folds_paper_when_active(monkeypatch):
     assert "Alpaca — Live" in msg                           # still live-primary
     assert "Paper (shadow book)" in msg                     # folded block now present
     assert "1 entered" in msg                               # paper's today activity, compact
+
+
+# ── #444 follow-up: broker/bar_stream.py subscribe-failure labeling ────────
+# The per-ticker ORB subscribe-failure alert (bar_stream._record_subscribe_failure)
+# now accepts the caller's resolved account_mode instead of always reading the
+# legacy paper-default global — mirrors the #443 pattern for a lower-traffic site.
+
+import agents.market_intelligence.broker.bar_stream as bar_stream
+import agents.market_intelligence.briefing as briefing_mod
+import agents.market_intelligence.db as db_mod
+from agents.market_intelligence.broker.skip_reasons import INFRA_SUBSCRIBE_FAILED
+
+
+@pytest.mark.asyncio
+async def test_record_subscribe_failure_labels_with_passed_account_mode(monkeypatch):
+    sent = []
+    monkeypatch.setattr(briefing_mod, "send_telegram_message",
+                        AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))
+    monkeypatch.setattr(db_mod, "log_audit_event", AsyncMock())
+
+    await bar_stream._record_subscribe_failure(
+        "ABCD", f"{INFRA_SUBSCRIBE_FAILED}: boom", account_mode="live",
+    )
+
+    assert len(sent) == 1
+    assert "💰 LIVE-$" in sent[0]
+    assert "📄 PAPER" not in sent[0]
+
+
+@pytest.mark.asyncio
+async def test_record_subscribe_failure_defaults_without_account_mode(monkeypatch):
+    sent = []
+    monkeypatch.setattr(briefing_mod, "send_telegram_message",
+                        AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))
+    monkeypatch.setattr(db_mod, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")
+
+    await bar_stream._record_subscribe_failure("ABCD", f"{INFRA_SUBSCRIBE_FAILED}: boom")
+
+    assert len(sent) == 1
+    assert "📄 PAPER" in sent[0]  # legacy fallback preserved for callers with no strategy context
+
+
+@pytest.mark.asyncio
+async def test_subscribe_ep_candidate_threads_account_mode_into_failure(monkeypatch):
+    """subscribe_ep_candidate (called from _ep_scan_job pre-market) must forward
+    the caller's account_mode into _record_subscribe_failure on a subscribe error —
+    the label should attribute to the owning strategy, not the legacy default."""
+    bar_stream.reset_daily_state()
+
+    class _FakeStream:
+        def subscribe_bars(self, *a, **k):
+            raise RuntimeError("SDK boom")
+
+    monkeypatch.setattr(bar_stream, "_data_stream", _FakeStream())
+    fail_calls = []
+
+    async def _fake_failure(ticker, reason, account_mode=None):
+        fail_calls.append((ticker, reason, account_mode))
+
+    monkeypatch.setattr(bar_stream, "_record_subscribe_failure", _fake_failure)
+
+    await bar_stream.subscribe_ep_candidate("ABCD", account_mode="live")
+
+    assert len(fail_calls) == 1
+    assert fail_calls[0][0] == "ABCD"
+    assert fail_calls[0][2] == "live"
+    bar_stream.reset_daily_state()

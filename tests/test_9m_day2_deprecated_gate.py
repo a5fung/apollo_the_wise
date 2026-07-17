@@ -117,3 +117,27 @@ async def test_missing_strategy_row_fails_open_to_running(wire, monkeypatch):
     await sched._9m_day2_orb_job()
 
     assert len(wire["scan"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_account_mode_reuses_single_strategy_fetch(wire, monkeypatch):
+    """#444 mode-label sweep: the job's Telegram surfaces (reserve/skip-digest
+    alerts) resolve their account_mode label from the SAME strategy row already
+    fetched for the deprecation gate above — get_strategy('9m_day2') must be
+    called exactly ONCE per job run, not a second time for the label."""
+    import agents.market_intelligence.scheduler as sched
+    import agents.market_intelligence.strategies.registry as registry
+
+    call_count = {"n": 0}
+
+    async def _get_strategy(strategy_id):
+        assert strategy_id == "9m_day2"
+        call_count["n"] += 1
+        return SimpleNamespace(phase="live")
+
+    monkeypatch.setattr(registry, "get_strategy", _get_strategy)
+
+    await sched._9m_day2_orb_job()
+
+    assert call_count["n"] == 1        # single fetch, reused for the label
+    assert len(wire["scan"]) == 1      # job still proceeded (non-deprecated phase)

@@ -891,6 +891,34 @@ async def _ep_scan_job():
         within_orb_window = market_open and now_et.hour == 9 and now_et.minute < 45
         new_highs_post_open = []
 
+        # #444 mode-label sweep: both the pre-market bar-stream subscribe path
+        # (below) and the out-of-ORB-window skip path (further down) attribute
+        # to magna53's account — resolved lazily (at most once per scan tick,
+        # only if a HIGH actually needs it) rather than unconditionally so a
+        # no-HIGH scan tick costs no extra strategy lookup.
+        _ep_mode_fetched = False
+        _ep_account_mode: str | None = None
+
+        async def _magna53_account_mode() -> str | None:
+            nonlocal _ep_mode_fetched, _ep_account_mode
+            if not _ep_mode_fetched:
+                # Fail-open: this label lookup must NEVER abort the pre-market
+                # subscribe path (or the out-of-ORB skip path below it) — a
+                # strategy-registry hiccup here is a label miss, not a reason
+                # to drop a live ORB subscription. mode_prefix(None) falls
+                # back to the legacy global default on any resolve failure.
+                try:
+                    from agents.market_intelligence.strategies.registry import get_strategy
+                    from agents.market_intelligence.constants import get_strategy_account_mode
+                    _mag = await get_strategy("magna53")
+                    # phase-guards + falls back to the global mode (no silent except).
+                    _ep_account_mode = get_strategy_account_mode(_mag)
+                except Exception as _mode_e:
+                    logger.warning(f"ep_scan: magna53 account_mode resolve failed: {_mode_e}")
+                    _ep_account_mode = None
+                _ep_mode_fetched = True
+            return _ep_account_mode
+
         for ep in eps:
             if ep.get("score_tier") == "HIGH" and ep["ticker"] not in already_alerted:
                 await send_ep_alert(ep)
@@ -913,8 +941,10 @@ async def _ep_scan_job():
                     # First bar already closed — trigger ORB inline, no bar stream needed
                     new_highs_post_open.append(ep["ticker"])
                 elif not market_open:
-                    # Pre-market — subscribe to bar stream; ORB fires when first bar closes
-                    await subscribe_orb_candidate(ep["ticker"])
+                    # Pre-market — subscribe to bar stream; ORB fires when first bar closes.
+                    # Threaded account_mode (#444): so a per-ticker subscribe-failure alert
+                    # (bar_stream._record_subscribe_failure) labels correctly for a live HIGH.
+                    await subscribe_orb_candidate(ep["ticker"], account_mode=await _magna53_account_mode())
                 else:
                     # HIGH arrived after ORB window closed — no order possible. Persist a
                     # skipped-trade row + audit event + Telegram so every HIGH alert has a
@@ -926,12 +956,7 @@ async def _ep_scan_job():
                     # account (magna53 = the EP strategy). Was defaulting to the legacy
                     # paper mode, so a live-money EP HIGH read as PAPER + its skip row
                     # landed under paper in the EOD summary (operator 7/8).
-                    from agents.market_intelligence.strategies.registry import get_strategy
-                    from agents.market_intelligence.constants import get_strategy_account_mode
-                    _mag = await get_strategy("magna53")
-                    # attribute this skip + its alerts to magna53's account; the helper
-                    # phase-guards + falls back to the global mode (no silent except).
-                    ep_mode = get_strategy_account_mode(_mag)
+                    ep_mode = await _magna53_account_mode()
                     skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"
                     try:
                         await record_skipped_trade(
@@ -1366,10 +1391,12 @@ async def _eod_cleanup_job():
         return
     logger.info("EOD cleanup starting...")
     try:
-        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, sync_positions  # exec-boundary-ok: moves-with-job (W2)
+        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, expire_stale_proposals, sync_positions  # exec-boundary-ok: moves-with-job (W2)
         cancelled = await cancel_unfilled_entries()
+        expired = await expire_stale_proposals()   # #436 — dead staged proposals, no broker calls
         discrepancies = await sync_positions()
-        logger.info(f"EOD cleanup: {cancelled} cancelled, {len(discrepancies)} discrepancies")
+        logger.info(f"EOD cleanup: {cancelled} cancelled, {expired} proposal(s) expired, "
+                    f"{len(discrepancies)} discrepancies")
     except Exception as e:
         logger.error(f"EOD cleanup failed: {e}")
         await notify_job_failure("eod_cleanup", str(e))
@@ -1828,9 +1855,10 @@ async def _orb_window_cleanup_job():
         return
     logger.info("ORB window cleanup starting (10:00 AM cancel)...")
     try:
-        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries  # exec-boundary-ok: moves-with-job (W2)
+        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, expire_stale_proposals  # exec-boundary-ok: moves-with-job (W2)
         cancelled = await cancel_unfilled_entries(reason="ORB window unfilled")
-        logger.info(f"ORB window cleanup: {cancelled} cancelled")
+        expired = await expire_stale_proposals()   # #436 — dead staged proposals, no broker calls
+        logger.info(f"ORB window cleanup: {cancelled} cancelled, {expired} proposal(s) expired")
     except Exception as e:
         logger.error(f"ORB window cleanup failed: {e}")
         await notify_job_failure("orb_window_cleanup", str(e))
@@ -4270,6 +4298,7 @@ async def _9m_day2_orb_job() -> None:
     # pipeline's deprecated block stays the (noisy but safe) backstop. Scope:
     # ONLY this job — the intraday 9M scan, the sugar-babies cohort refresh,
     # and every MAGNA53 path are untouched.
+    _9m_strategy = None
     try:
         from agents.market_intelligence.strategies.registry import get_strategy
         _9m_strategy = await get_strategy("9m_day2")
@@ -4279,6 +4308,14 @@ async def _9m_day2_orb_job() -> None:
             return
     except Exception as e:
         logger.warning(f"9M Day 2 deprecation pre-check failed (job runs as before): {e}")
+
+    # #444 mode-label sweep: reuse the strategy row fetched above (already
+    # in scope) to resolve the owning account_mode for this job's Telegram
+    # surfaces below. Phase-guarded + never raises — falls back to the
+    # legacy global default while the strategy is 'deprecated' (dormant
+    # today) and resolves correctly if 9m_day2 is ever re-promoted.
+    from agents.market_intelligence.constants import get_strategy_account_mode
+    _9m_account_mode = get_strategy_account_mode(_9m_strategy)
 
     try:
         from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade  # exec-boundary-ok: moves-with-job (W2)
@@ -4382,7 +4419,7 @@ async def _9m_day2_orb_job() -> None:
                 }),
             )
             await send_telegram_message(
-                f"{mode_prefix()}🎯 *9M Day 2 reserved-for-HIGH-EPs*\n"
+                f"{mode_prefix(_9m_account_mode)}🎯 *9M Day 2 reserved-for-HIGH-EPs*\n"
                 f"Slots: {active_count} active + {high_ep_pending} HIGH EPs pending = "
                 f"{active_count + high_ep_pending}/{MAX_CONCURRENT_LIVE_POSITIONS}.\n"
                 f"Skipped {len(candidates)} sugar baby candidate(s): {skipped_tickers}"
@@ -4420,7 +4457,7 @@ async def _9m_day2_orb_job() -> None:
                 }),
             )
             await send_telegram_message(
-                f"{mode_prefix()}🎯 *9M Day 2 partial reserve*\n"
+                f"{mode_prefix(_9m_account_mode)}🎯 *9M Day 2 partial reserve*\n"
                 f"Took top-{budget} (by close-in-range): "
                 f"{', '.join(c['ticker'] for c in to_process)}\n"
                 f"Skipped {len(to_skip)} for HIGH EP reserve: "
@@ -4449,7 +4486,7 @@ async def _9m_day2_orb_job() -> None:
                     except Exception:
                         logger.exception(f"9M Day2 {tkr}: audit_log write also failed")
                     await send_telegram_message(
-                        f"{mode_prefix()}🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
+                        f"{mode_prefix(_9m_account_mode)}🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
                     )
 
         results = await asyncio.gather(
@@ -4474,7 +4511,7 @@ async def _9m_day2_orb_job() -> None:
             )
             try:
                 await send_telegram_message(
-                    f"{mode_prefix()}⏭️ *9M Day2 skips ({today}, {len(skipped_results)})*\n{bullets}"
+                    f"{mode_prefix(_9m_account_mode)}⏭️ *9M Day2 skips ({today}, {len(skipped_results)})*\n{bullets}"
                 )
             except Exception as e:
                 logger.error(f"9M Day2 grouped-skip Telegram failed — {e}")

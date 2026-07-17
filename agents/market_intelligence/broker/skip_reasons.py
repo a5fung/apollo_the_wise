@@ -57,6 +57,7 @@ INFRA_HALT_STATE_UNREADABLE = "infra:halt_state_unreadable"  # #345 fail-SAFE bl
 # ── window: timing gates ─────────────────────────────────────────────────────
 WINDOW_OUT_OF_ORB   = "window:out_of_orb"
 WINDOW_DUPLICATE    = "window:duplicate"
+WINDOW_PROPOSAL_EXPIRED = "window:proposal_expired"  # #436 — unconfirmed staged proposal outlived its ORB day
 
 # Convenience: valid category prefixes (for sanity-check asserts)
 VALID_CATEGORIES = frozenset({"filter", "setup", "block", "infra", "window"})
@@ -98,6 +99,7 @@ _HUMAN_LABELS: dict[str, str] = {
     INFRA_HALT_STATE_UNREADABLE: "Halt-state unreadable — blocked (failing safe)",
     WINDOW_OUT_OF_ORB:          "Arrived after ORB window closed",
     WINDOW_DUPLICATE:           "Duplicate — trade already exists",
+    WINDOW_PROPOSAL_EXPIRED:    "Staged proposal expired — ORB day passed unconfirmed",
 }
 
 

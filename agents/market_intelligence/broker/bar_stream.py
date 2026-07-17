@@ -124,6 +124,11 @@ async def _run_stream() -> None:
 
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.constants import mode_prefix
+    # mode-ok: this is the STREAM-level failure (the shared WebSocket died after
+    # MAX_RETRIES) — it serves every subscribed ticker across every strategy, not
+    # one owning strategy's account. No single account_mode is correct here, so
+    # the legacy global default is the right label (#444 mode-label sweep judged
+    # this site, per-ticker subscribe failures below ARE strategy-attributed).
     await send_telegram_message(
         f"{mode_prefix()}⚠️ *Bar stream failed {MAX_RETRIES} times* — ORB entry falling back to 9:31 cron"
     )
@@ -132,7 +137,7 @@ async def _run_stream() -> None:
 # ── Subscription management ──────────────────────────────────────────────────
 
 
-async def subscribe_ep_candidate(ticker: str) -> None:
+async def subscribe_ep_candidate(ticker: str, account_mode: str | None = None) -> None:
     """Subscribe to minute bars for a pre-market HIGH EP candidate.
     Called from _ep_scan_job() when a new HIGH is detected pre-market.
 
@@ -140,6 +145,11 @@ async def subscribe_ep_candidate(ticker: str) -> None:
     websocket's internal lock when called from the same asyncio thread that
     is running the stream. On 2026-04-22 this deadlocked the event loop for
     ~3 hours. Offload to a worker thread with a hard timeout.
+
+    account_mode: the owning strategy's resolved account_mode (magna53 —
+    threaded from _ep_scan_job, #444 mode-label sweep) so a subscribe-failure
+    alert for a live-money candidate isn't mislabeled with the legacy paper
+    default. Optional — defaults through to mode_prefix()'s own fallback.
     """
     if not _data_stream or ticker in _subscribed or ticker in _processed_today:
         return
@@ -153,16 +163,16 @@ async def subscribe_ep_candidate(ticker: str) -> None:
     except asyncio.TimeoutError:
         logger.error(f"Bar stream: subscribe to {ticker} timed out after 5s — SDK lock stuck")
         await _record_subscribe_failure(
-            ticker, f"{INFRA_SUBSCRIBE_TIMEOUT}: 5s SDK lock stuck",
+            ticker, f"{INFRA_SUBSCRIBE_TIMEOUT}: 5s SDK lock stuck", account_mode=account_mode,
         )
     except Exception as e:
         logger.error(f"Bar stream: failed to subscribe to {ticker}: {e}")
         await _record_subscribe_failure(
-            ticker, f"{INFRA_SUBSCRIBE_FAILED}: {e}",
+            ticker, f"{INFRA_SUBSCRIBE_FAILED}: {e}", account_mode=account_mode,
         )
 
 
-async def _record_subscribe_failure(ticker: str, reason: str) -> None:
+async def _record_subscribe_failure(ticker: str, reason: str, account_mode: str | None = None) -> None:
     """Telegram + audit-log a subscribe failure. Do NOT write mi_live_trades here.
 
     The 9:31 cron fallback (process_new_alerts_live) is an independent REST-based
@@ -181,7 +191,7 @@ async def _record_subscribe_failure(ticker: str, reason: str) -> None:
         from agents.market_intelligence.broker.skip_reasons import humanize
         from agents.market_intelligence.constants import mode_prefix
         await send_telegram_message(
-            f"{mode_prefix()}⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
+            f"{mode_prefix(account_mode)}⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
         )
     except Exception:
         # Audit row above is already written; log the alert-channel failure

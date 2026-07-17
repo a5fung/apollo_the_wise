@@ -28,6 +28,7 @@ async def send_trade_proposal(
     trade_id: int,
     *,
     live_real_enabled: bool = False,
+    account_mode: str | None = None,
 ) -> bool:
     """
     Send a staged-trade FYI proposal to Telegram (no buttons — #364).
@@ -37,6 +38,15 @@ async def send_trade_proposal(
     STAGED-PAPER banner: the strategy hasn't been promoted to real-$, nothing
     auto-submits, and there is NO in-chat confirm — arming real money is the
     operator's SQL flip per the runbook (live_real_enabled=TRUE + restart).
+
+    account_mode: the OWNING strategy's resolved account_mode (threaded from
+    entry_pipeline — #444 mode-label sweep). Optional; falls back to the
+    legacy global current_account_mode() for backward compat. This is the
+    label that decides BOTH the STAGED-PAPER-vs-mode_prefix branch below AND
+    the mode_prefix() prefix itself — a live-not-armed proposal must render
+    "STAGED-PAPER", not whatever the legacy global happens to be (paper by
+    default), or an operator could misread a real-money-pending proposal as
+    routine paper noise.
     """
     ticker = order_spec["ticker"]
     entry = order_spec["entry_price"]
@@ -54,10 +64,11 @@ async def send_trade_proposal(
     risk_pct = (risk / equity * 100) if equity else 0
 
     from agents.market_intelligence.constants import current_account_mode, mode_prefix
-    if current_account_mode() == "live" and not live_real_enabled:
+    _resolved_mode = account_mode or current_account_mode()
+    if _resolved_mode == "live" and not live_real_enabled:
         header = f"🟡 *STAGED-PAPER (not armed — no auto-submit):* {ticker}"
     else:
-        header = f"{mode_prefix()}📊 *TRADE PROPOSAL (FYI): {ticker}*"
+        header = f"{mode_prefix(account_mode)}📊 *TRADE PROPOSAL (FYI): {ticker}*"
     # Theme membership (C8, 2026-05-19) — surface on the proposal FYI.
     # Pradeep #1 catalyst type; decision-support for the operator's read.
     theme_line = ""

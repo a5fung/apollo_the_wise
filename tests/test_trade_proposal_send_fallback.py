@@ -91,6 +91,57 @@ async def test_catalyst_underscore_sanitized(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_staged_paper_keys_off_threaded_account_mode_not_global(monkeypatch):
+    """#444 mode-label sweep: the STAGED-PAPER banner must key off the caller's
+    THREADED account_mode, not the legacy global current_account_mode(). Without
+    this fix a live-not-armed proposal (account_mode='live', live_real_enabled=
+    False) rendered "PAPER TRADE PROPOSAL" whenever the legacy global happened
+    to read 'paper' — silently dropping the "not armed" caveat for a live-money
+    candidate. Here the global is forced to 'paper' while the threaded mode is
+    'live' — the header must still show STAGED-PAPER."""
+    import agents.market_intelligence.constants as constants
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")
+
+    sent = {}
+
+    def _post(payload):
+        sent["text"] = payload["text"]
+        return _Resp(fail=False)
+
+    _install_mocks(monkeypatch, _post)
+    ok = await telegram_confirm.send_trade_proposal(
+        _ALERT, _SPEC, trade_id=234, live_real_enabled=False, account_mode="live",
+    )
+    assert ok is True
+    assert "STAGED-PAPER" in sent["text"]
+    assert "📄 PAPER" not in sent["text"]
+
+
+@pytest.mark.asyncio
+async def test_proposal_header_uses_threaded_paper_mode_prefix(monkeypatch):
+    """account_mode='paper' explicitly threaded → the else-branch header uses
+    mode_prefix('paper') ("📄 PAPER "), not a STAGED-PAPER banner (paper never
+    hits the live+not-armed condition) and not whatever the global default is."""
+    import agents.market_intelligence.constants as constants
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "live")  # global says live
+
+    sent = {}
+
+    def _post(payload):
+        sent["text"] = payload["text"]
+        return _Resp(fail=False)
+
+    _install_mocks(monkeypatch, _post)
+    ok = await telegram_confirm.send_trade_proposal(
+        _ALERT, _SPEC, trade_id=234, live_real_enabled=False, account_mode="paper",
+    )
+    assert ok is True
+    assert "📄 PAPER" in sent["text"]
+    assert "TRADE PROPOSAL" in sent["text"]
+    assert "STAGED-PAPER" not in sent["text"]
+
+
+@pytest.mark.asyncio
 async def test_proposal_is_fyi_only_no_keyboard(monkeypatch):
     # #364 invariant (operator-decided 7/3, F17): the proposal is a pure FYI — NO
     # inline keyboard on ANY attempt. A reintroduced reply_markup would resurrect

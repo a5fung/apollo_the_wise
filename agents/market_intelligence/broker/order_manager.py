@@ -2228,6 +2228,47 @@ async def _finalize_stop_fill_locked(
 # ── EOD Cleanup ──────────────────────────────────────────────────────────────
 
 
+async def expire_stale_proposals() -> int:
+    """#436 self-heal — expire staged-paper trade PROPOSALS that outlived their
+    ORB window. The staged path (phase=live + live_real_enabled=False) inserts a
+    `pending_confirmation` row with NO broker order and waits for the operator's
+    manual confirm; nothing ever expired the unconfirmed ones (the ABSI/FCEL/
+    SNX/ACAD class sat 10-12 days until a hand cleanup on 7/06 — no standing
+    reaper existed). A proposal for a PRIOR day's ORB is meaningless AND unsafe:
+    a late manual confirm would submit an entry priced off a dead window.
+
+    Expires pending_confirmation rows with proposed_at before TODAY (ET) —
+    same-day proposals stay confirmable through the session. No broker calls
+    (these rows have no orders); status → 'expired' + one audit row each.
+    Called from both cleanup jobs (10:00 ET ORB-window + 4:05 PM EOD).
+    Returns the count expired. Never raises."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                UPDATE mi_live_trades
+                   SET status = 'expired',
+                       skip_reason = COALESCE(skip_reason, 'window:proposal_expired')  -- WINDOW_PROPOSAL_EXPIRED
+                 WHERE status = 'pending_confirmation'
+                   AND entry_order_id IS NULL
+                   AND (proposed_at AT TIME ZONE 'America/New_York')::date
+                       < (NOW() AT TIME ZONE 'America/New_York')::date
+                RETURNING id, ticker, account_mode, proposed_at
+            """)
+        for r in rows:
+            await log_audit_event(
+                "stale_proposal_expired",
+                f"{r['ticker']} (id={r['id']}, {r['account_mode']}) — unconfirmed "
+                f"staged proposal from {r['proposed_at']:%Y-%m-%d} expired (#436)",
+            )
+        if rows:
+            logger.info(f"expired {len(rows)} stale trade proposal(s)")
+        return len(rows)
+    except Exception as e:
+        logger.error(f"expire_stale_proposals failed (non-fatal): {e}", exc_info=True)
+        return 0
+
+
 async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None) -> int:
     """Cancel all unfilled entry orders. Returns count cancelled.
 

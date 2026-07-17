@@ -1160,6 +1160,12 @@ class MarketIntelligenceAgent(BaseAgent):
             logger.warning(f"/dryrun: broker account fetch failed: {e}")
             broker_err = str(e)
 
+        # mode-ok (#444 mode-label sweep): this is a boot/status-style audit
+        # header spanning ALL strategies/rows for the day, not one owning
+        # strategy's signal — legitimately global, like /status. Each row
+        # below already renders its OWN stored account_mode (`row_mode`,
+        # see the `[{sig}/{row_mode}]` head a few lines down), so per-trade
+        # mode is never lost — only the header banner stays global.
         lines = [f"{mode_prefix()}*Pre-flight `/dryrun` — {today.isoformat()}*", ""]
         lines.append("*Account*")
         lines.append(f"  Mode:           `{mode}`")
