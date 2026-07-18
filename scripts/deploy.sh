@@ -113,7 +113,7 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # the live apollo-execution stays stale — the LZB silent-dark class.
       agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
-      tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
+      tests/*|docs/*|*.md|.apollo_open_tasks.json|.githooks/*) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
       # The two KNOWN market-agent-only runtime yamls keep their narrow scope (the
       # 2026-07-09 incident: the catch-all dragged all 3 services into review-yaml-only
       # deploys; review 7/17 caught the generic arm below re-introducing that via
