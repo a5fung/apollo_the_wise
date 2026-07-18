@@ -1379,15 +1379,13 @@ async def send_flag_digest(
         lines.append(f"🔧 *NEW TIGHTENING ({len(new_tightening)})*")
         lines.append(f"  {names}{more}")
 
+    # #479 (2026-07-17): the DROPPED-OUT roster (18 names on 7/17) was pure
+    # scan-churn noise — a ticker leaving the watchlist isn't actionable. Keep
+    # a one-line count so the churn is still visible; the roster is on `/htf`.
+    # (The whole message is already suppressed when nothing actionable fired —
+    # the early return at the top of this block.)
     if invalidated:
-        lines.append("")
-        lines.append(f"📉 *DROPPED OUT ({len(invalidated)})*")
-        for r in invalidated[:5]:
-            reason = (r.get("reason") or "").split("_")[0:3]
-            short = " ".join(reason) if reason else "invalidated"
-            lines.append(f"  • `{r['ticker']}` ({short})")
-        if len(invalidated) > 5:
-            lines.append(f"  …{len(invalidated) - 5} more")
+        lines.append(f"📉 {len(invalidated)} dropped out (`/htf`)")
 
     await send_telegram_message("\n".join(lines))
 

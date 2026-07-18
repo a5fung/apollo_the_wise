@@ -3257,17 +3257,26 @@ async def _consolidation_readiness_job():
         # (else the lifecycle runs backward in the feed; altitude review 6/18).
         graduated = await get_open_shadow_tickers()
         newly_coiled = [x for x in transitions if x[0] not in graduated]
-        if newly_coiled:
-            digest.append(f"🪙 *Newly coiled* ({len(newly_coiled)}) — tightest first")
-            for ticker, anchor_date, c in newly_coiled[:12]:
-                digest.append(de.format_consolidation_row(ticker, c["runup_ratio"],
-                              c["coil_days"], rmv_5d=c.get("rmv_5d"),
-                              fresh_tightening=c.get("fresh_tightening")))
-            digest.append("")
-        if digest:
+        # #479 (2026-07-17): the newly-coiled roster is a lifecycle telemetry
+        # tail (a name entering "coiling" isn't actionable) — record the count
+        # but keep the full roster on /anticipation, off the push.
+        coiled_count = len(newly_coiled)
+        # #479: push this SHADOW board only on a NOTABLE night — an entry fired
+        # (ant/conf), a shadow SETTLED (the graduation-relevant events the
+        # operator watches), or a scan-timeout WARNING (actionable — something
+        # went wrong). Coiling-only nights → /anticipation on demand, no push
+        # (a shadow board isn't a terminal/actionable event — house rule).
+        notable = bool(scan_timed_out or just_settled or htf_settled
+                       or ant_fired or conf_fired)
+        if notable:
+            if coiled_count:
+                digest.append(f"🪙 +{coiled_count} newly coiling (`/anticipation`)")
             head = ["🪙 *Anticipation plays* (Family A · SHADOW) — today", ""]
             digest.append("/anticipation for the full board.")
             await send_telegram_message("\n".join(head + digest))
+        elif coiled_count:
+            logger.info(f"anticipation: coiling-only night ({coiled_count} newly "
+                        f"coiled, no fires/settles) — Telegram suppressed (#479)")
     except Exception as e:
         logger.error(f"consolidation readiness job failed: {e}", exc_info=True)
 

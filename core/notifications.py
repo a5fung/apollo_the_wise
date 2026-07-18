@@ -85,6 +85,10 @@ async def notify_job_failure(job_name: str, error: str) -> None:
 
 
 async def notify_job_success(job_name: str, summary: str) -> None:
-    """Confirm nightly job completed (silent — just for peace of mind)."""
-    text = f"✓ `{job_name}` complete — {summary}"
-    await notify_owner(text)
+    """Job completed OK — LOG-ONLY (#479 2026-07-17). The docstring always said
+    'silent — just for peace of mind', but it actually Telegrammed every nightly
+    job's completion (the verbose 'nightly_data_pull complete — 2456 stocks
+    scored…' line the operator flagged as post-market noise). A successful
+    routine job is not actionable — house rule: reserve Telegram for
+    terminal/actionable events. Failures still Telegram via notify_job_failure."""
+    logger.info(f"✓ {job_name} complete — {summary}")

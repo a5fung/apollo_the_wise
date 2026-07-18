@@ -216,155 +216,47 @@ def _ep_threshold_context(thresh: int) -> str:
 # ── Section formatters ─────────────────────────────────────────────────────────
 
 def _format_regime_section(regime: dict, section_num: int = 1) -> str:
+    """Compact regime block (#479 2026-07-17: was ~20 lines with every metric
+    stated TWICE — the grouped 'why' description AND a full raw re-dump of the
+    same breadth numbers, all of which live on `/regime`). Now: verdict + net-
+    score summary + the cluster deterioration alert (only when it FIRES) + one
+    trading-actionable EP line. The full breadth matrix is `/regime`."""
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
-
-    spy_vs_50 = regime.get("spy_vs_50ma")
-    spy_vs_200 = regime.get("spy_vs_200ma")
-    qqq_vs_50 = regime.get("qqq_vs_50ma")
     vix = regime.get("vix")
-    breadth = regime.get("breadth_pct_above_40ma")
-    pct4_5d = regime.get("bo_bd_ratio_5d")
-    pct4_10d = regime.get("pct4_ratio_10d")
     ep_thresh = regime.get("ep_threshold", 70)
 
     lines = [f"*{section_num}. MARKET CONDITION* {emoji} *{label.upper()}*"]
 
-    # Surface the pre-computed grouped "why" (regime.py builds it — operator asked 6/24) so the
-    # net driver is obvious. The evening brief previously discarded this field entirely — leaving
-    # the operator unable to tell what made it correcting when the raw breadth counts read green.
+    # Net-score summary line only (the grouped 'why' header from regime.py,
+    # operator asked 6/24). The per-driver 🟢/🔴 enumeration + raw matrix → /regime.
     _desc = (regime.get("description") or "").strip()
-    if _desc:
-        # Drop the leading verdict line (already in the header) — keep net score + grouped signals.
-        for _dl in _desc.splitlines()[1:]:
-            lines.append(f"  {_dl}" if _dl.strip() else "")
+    _desc_lines = [dl.strip() for dl in _desc.splitlines()[1:] if dl.strip()]
+    if _desc_lines:
+        lines.append(f"  {_desc_lines[0]}")   # "Net score -1 (3 bullish · 4 bearish)"
 
-    ma_parts = []
-    if spy_vs_50 is not None:
-        ma_parts.append(f"SPY/50MA {_fmt_sign(spy_vs_50)}")
-    if qqq_vs_50 is not None:
-        ma_parts.append(f"QQQ/50MA {_fmt_sign(qqq_vs_50)}")
-    if spy_vs_200 is not None:
-        ma_parts.append(f"SPY/200MA {_fmt_sign(spy_vs_200)}")
-    if ma_parts:
-        lines.append("  " + "  |  ".join(ma_parts))
-
-    if vix is not None:
-        lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
-
-    # Stockbee Market Monitor — coerce via SSoT helper (handles asyncpg's
-    # JSONB-as-string quirk).
-    from agents.market_intelligence.breadth_color_rules import coerce_breadth_monitor
-    bm = coerce_breadth_monitor(regime.get("breadth_monitor"))
-
-    # Breadth — paired up/down counts grouped by time horizon.
-    # Color rules in `breadth_color_rules.py` (SSoT shared with /regime +
-    # cluster audit detector).
+    # Cluster deterioration — surfaced ONLY when it fires (the actionable signal);
+    # the no-fire status line is dropped (it was pure reassurance noise).
     from agents.market_intelligence.breadth_color_rules import (
-        paired_color, t2108_color, class_b_color, cluster_fires,
-        red_count_in_window, CLUSTER_WINDOW, CLUSTER_RED_THRESHOLD,
+        cluster_fires, red_count_in_window, CLUSTER_WINDOW,
     )
-
-    r5 = bm.get("ratio_5d") or pct4_5d
-    r10 = bm.get("ratio_10d") or pct4_10d
-    up4 = bm.get("today_up4", regime.get("full_up4_count"))
-    down4 = bm.get("today_down4", regime.get("full_down4_count"))
-
-    def _paired(up, down):
-        if up is None or down is None:
-            return ""
-        emoji = paired_color(up, down)
-        prefix = f"{emoji} " if emoji else ""
-        return f"{prefix}{up}↑/{down}↓"
-
-    # Line 1 — today (daily 4% moves + ratios)
-    today_bits = []
-    if up4 is not None and down4 is not None:
-        today_bits.append(_paired(up4, down4))
-    ratios = []
-    if r5 is not None:
-        ratios.append(f"5d {r5:.2f}x")
-    if r10 is not None:
-        ratios.append(f"10d {r10:.2f}x")
-    if ratios:
-        today_bits.append("ratio " + " · ".join(ratios))
-    if today_bits:
-        lines.append("  *Today (±4%)*  " + "   ".join(today_bits))
-
-    # Line 2 — 1-month momentum (±25% and ±50%)
-    up25m = bm.get("up_25_1m")
-    down25m = bm.get("down_25_1m")
-    up50 = bm.get("up_50_1m", regime.get("pradeep_1m_50"))
-    down50 = bm.get("down_50_1m")
-    month_bits = []
-    if up25m is not None and down25m is not None:
-        month_bits.append(f"±25% {_paired(up25m, down25m)}")
-    if up50 is not None and down50 is not None:
-        month_bits.append(f"±50% {_paired(up50, down50)}")
-    elif up50 is not None:
-        month_bits.append(f"±50% {up50}↑")
-    if month_bits:
-        lines.append("  *1M*  " + "   ".join(month_bits))
-
-    # Line 3 — 3-month momentum (±25%) + T2108
-    up25q = bm.get("up_25_3m", regime.get("pradeep_3m_25"))
-    down25q = bm.get("down_25_3m")
-    t2108 = bm.get("t2108") or regime.get("t2108")
-    consec_bd = bm.get("consec_breakdown_days") or regime.get("consec_breakdown_days") or 0
-
-    quarter_bits = []
-    if up25q is not None and down25q is not None:
-        quarter_bits.append(f"±25% {_paired(up25q, down25q)}")
-    elif up25q is not None:
-        quarter_bits.append(f"±25% {up25q}↑")
-    if t2108 is not None:
-        t_emoji = t2108_color(t2108)
-        t_prefix = f"{t_emoji} " if t_emoji else ""
-        quarter_bits.append(f"T2108 {t_prefix}{t2108:.0f}%")
-    if quarter_bits:
-        lines.append("  *3M*  " + "   ".join(quarter_bits))
-
-    # Class B (#271): ±20%/5d thrust — amber=exhaustion, green=washout (oversold setup).
-    up5p = bm.get("up_20_5d_pct")
-    dn5p = bm.get("down_20_5d_pct")
-    if up5p is not None or dn5p is not None:
-        b_emoji = class_b_color(up5p, dn5p)
-        b_prefix = f"{b_emoji} " if b_emoji else ""
-        up_n, dn_n = bm.get("up_20_5d"), bm.get("down_20_5d")
-        lines.append(
-            f"  *5d ±20%*  {b_prefix}up {up5p or 0:.1f}% ({up_n}) · down {dn5p or 0:.1f}% ({dn_n})"
-        )
-
-    if consec_bd > 0:
-        lines.append(f"  ⚠️ {consec_bd} consecutive breakdown days (700+ stocks down 4%+)")
-
-    # Cluster status — 1-line summary; /regime shows full 10-row matrix (merged from /breadth)
     history = regime.get("breadth_history_5d") or []
-    if len(history) >= CLUSTER_WINDOW:
+    if len(history) >= CLUSTER_WINDOW and cluster_fires(history):
         red_n = red_count_in_window(history)
-        if cluster_fires(history):
-            lines.append(
-                f"  ⚠️ Cluster: {red_n}/{CLUSTER_WINDOW} red — deterioration "
-                f"(≥{CLUSTER_RED_THRESHOLD}, recent). `/regime` for matrix"
-            )
-        else:
-            lines.append(
-                f"  Cluster: {red_n}/{CLUSTER_WINDOW} red days "
-                f"(no fire) — `/regime` for matrix"
-            )
+        lines.append(f"  ⚠️ Cluster {red_n}/{CLUSTER_WINDOW} red — deterioration")
 
-    lines.append(f"  EP filter: {_ep_threshold_context(ep_thresh)}")
-    # Size note (operator 6/26): the regime LABEL does NOT cut share count — only the threshold
-    # rises. Size is VIX-scaled (continuous) plus a QQQ-EMA-bearish halve, both orthogonal to the
-    # label — so a CORRECTING regime alone means "fewer trades, not smaller ones."
+    # One trading-actionable line: VIX + EP filter + EP size.
+    ep_bits = []
+    if vix is not None:
+        ep_bits.append(f"VIX {vix:.1f}")
+    ep_bits.append(f"filter {_ep_threshold_context(ep_thresh)}")
     if vix is not None:
         from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
         _mult = vix_scaled_risk_pct(vix) / RISK_PCT
-        _qqq_bear = regime.get("qqq_ema_bullish") is False
-        if _qqq_bear:
+        if regime.get("qqq_ema_bullish") is False:
             _mult *= 0.5
-        _why = "VIX-scaled" + (" · ×0.5 QQQ-EMA bearish" if _qqq_bear else "")
-        lines.append(f"  EP size: ≈{_mult:.2f}× ({_why}, not a regime cut)")
+        ep_bits.append(f"size ≈{_mult:.2f}×")
+    lines.append("  " + " · ".join(ep_bits) + "  ·  `/regime` full matrix")
     return "\n".join(lines)
 
 
@@ -1017,7 +909,7 @@ def _format_ep_outcomes_section(outcomes: list[dict], section_num: int = 6) -> s
 
 # ── Evening briefing ───────────────────────────────────────────────────────────
 
-_COOLDOWN_FOOTER_CAP = 8
+_COOLDOWN_FOOTER_CAP = 3  # #479: was 8 → a long run-on line; top-3 highest-signal, rest via `show cooldowns`
 
 
 def _format_cooldown_footer(cooldowns: list[dict]) -> str:
