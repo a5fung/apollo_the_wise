@@ -46,3 +46,28 @@
 - **Forward verify**: ≥10/12 of the elite cohort covered within 5 nightly runs
   (the assignment pass homes the rest once stable biotech themes exist);
   `theme_sector_cap_dropped` / the board's E-BIO section are the watch surfaces.
+
+### 2026-07-17 — assignment pool: fixed top-40 count → RS-level floor (#476)
+- **What**: the ASSIGNMENT candidate pool (`_build_theme_pools` → the wider
+  `assignment_pool`) now selects names with `RS ≥ ASSIGN_POOL_RS_FLOOR` (90)
+  among the top `ASSIGN_POOL_CEILING` (200) leaders, instead of a fixed
+  `leaders[:40]`. The `get_rs_leaders` fetch was raised 60→200. DISCOVERY keeps
+  `leaders[:40]` (assignment-only widen — discovery has velocity/turners/
+  clusters for emerging names and shouldn't force-cluster static singletons).
+- **Why the prior rule was wrong**: a fixed COUNT floats the effective quality
+  bar with how crowded the RS top is. On a bunched day (50 names ≥ RS 98) the
+  40th slot sits at RS 98.4, so genuinely-strong uncovered names (RS 82-96) get
+  shut out of assignment to the existing themes they clearly fit — the biotech
+  elite-orphan symptom (#476). A name isn't less theme-worthy because 40 others
+  spiked to 99 today; the floor gives a consistent bar (with a ceiling as a
+  euphoric-tape backstop).
+- **Evidence/design**: `docs/analysis/476_pool_threshold_design_2026-07-17.md`
+  (measurements: real RS≥90 pool = 83 via the liquidity-filtered fetch;
+  advisor-reviewed: floor+ceiling, assignment-only). Fed the theme axis →
+  HIGH-tier, so no-money but money-ADJACENT → verify-live discipline.
+- **Reversion flag**: revert the `_build_theme_pools` assignment branch to
+  `leaders[:40]` (or set `ASSIGN_POOL_RS_FLOOR` = 999) to restore exactly.
+- **Verify-live**: the next nightly run's assignments (`ticker_assigned`
+  changelog / the /themes board) — the wider pool should assign strong
+  sector-coherent names to existing themes (e.g. autoimmune ZBIO/DNTH → the
+  immunology theme) and NOT junk-assign marginal names. Revert if junk.

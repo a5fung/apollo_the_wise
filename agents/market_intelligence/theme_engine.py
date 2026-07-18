@@ -248,6 +248,18 @@ def _is_garbage(text: str) -> bool:
 
 # Min RS composite for a stock to "count" as strong within a theme
 THEME_RS_MIN = 50.0
+# #476 (2026-07-17): the ASSIGNMENT candidate pool uses an RS-LEVEL floor, not a
+# fixed top-N count. A fixed top-40 count floats the effective quality bar with
+# how crowded the RS top is — on a bunched day (50 names ≥ RS 98) the 40th slot
+# sits at RS 98.4 and genuinely-strong uncovered names (RS 82-96) are shut out
+# of being assigned to the existing themes they fit. Floor+ceiling: RS ≥
+# ASSIGN_POOL_RS_FLOOR among the top-ASSIGN_POOL_CEILING leaders (the ceiling
+# bounds the pool on a euphoric tape). ASSIGNMENT-ONLY — discovery keeps top-40
+# (it has velocity/turners/clusters for emerging names, and shouldn't
+# force-cluster static-strong singletons; advisor 7/17). No-money (themes);
+# reversible; verify the next nightly's assignments are sane.
+ASSIGN_POOL_RS_FLOOR = 90.0
+ASSIGN_POOL_CEILING = 200
 # A theme is "well-covered" if >= this many of its stocks still show strong RS
 THEME_COVERAGE_MIN = 3
 # Retire a theme after this many consecutive fading days
@@ -3783,6 +3795,41 @@ _SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str], int]] = [
 MAX_THEMES_PER_SECTOR_DEFAULT = 2
 
 
+def _build_theme_pools(
+    leaders: list[dict],
+    covered_tickers: set[str],
+    revalidated_out: set[str],
+) -> tuple[list[dict], list[dict]]:
+    """Split the two candidate pools (#476, 2026-07-17). Pure — no I/O.
+
+    - DISCOVERY pool (`uncovered`): the top-40 leaders (unchanged). New-theme
+      discovery stays narrow — it has velocity/turners/correlation-clusters for
+      genuinely-emerging names and shouldn't force-cluster static-strong
+      singletons from a wider pool (advisor 7/17).
+    - ASSIGNMENT pool: names with RS ≥ ASSIGN_POOL_RS_FLOOR among the top
+      ASSIGN_POOL_CEILING leaders — a CONSISTENT quality bar, not a fixed count
+      that floats with how crowded the RS top is (the top-40 bug: needed RS 98.4
+      on a bunched day). It is a SUPERSET of the discovery pool (the union tail
+      guards quiet days where a top-40 name sits below the floor).
+
+    Returns (uncovered_discovery, assignment_pool).
+    """
+    def _ok(s):
+        return s["ticker"] not in covered_tickers and s["ticker"] not in revalidated_out
+
+    uncovered = [
+        s for s in leaders[:40]
+        if _ok(s) and (s.get("rs_composite", 0) or 0) >= THEME_RS_MIN
+    ]
+    assignment_pool = [
+        s for s in leaders[:ASSIGN_POOL_CEILING]
+        if _ok(s) and (s.get("rs_composite", 0) or 0) >= ASSIGN_POOL_RS_FLOOR
+    ]
+    seen = {s["ticker"] for s in assignment_pool}
+    assignment_pool.extend(s for s in uncovered if s["ticker"] not in seen)
+    return uncovered, assignment_pool
+
+
 def _sector_group(theme_name: str) -> tuple[str, int] | None:
     """Return (group_key, max_themes) if the theme name matches any keyword group."""
     low = theme_name.lower()
@@ -4877,7 +4924,7 @@ async def run_theme_engine(
 
     logger.info("Theme engine: fetching top RS stocks + velocity + turners...")
     leaders, velocity_all, turners_all = await asyncio.gather(
-        get_rs_leaders(today_str, limit=60),
+        get_rs_leaders(today_str, limit=ASSIGN_POOL_CEILING),  # #476: 60→200 so the RS-floor assignment pool has candidates (discovery still uses [:40])
         get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30),
         get_rs_turners(today_str, max_rs_4w_ago=30.0, min_consecutive_weeks=3, limit=30),
     )
@@ -5020,13 +5067,10 @@ async def run_theme_engine(
     if revalidated_out:
         logger.info(f"Theme engine: excluding {revalidated_out} from uncovered pool (just revalidated out)")
 
-    uncovered = [
-        s for s in leaders[:40]
-        if s["ticker"] not in covered_tickers
-        and s["ticker"] not in revalidated_out
-        and s.get("rs_composite", 0) >= THEME_RS_MIN
-    ]
-    logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders for new theme discovery")
+    uncovered, assignment_pool = _build_theme_pools(
+        leaders, covered_tickers, revalidated_out)
+    logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders (discovery) · "
+                f"{len(assignment_pool)} assignment candidates (RS≥{ASSIGN_POOL_RS_FLOOR:.0f}, #476)")
 
     # Elite covered: RS 80+ stocks already in themes — sent to Claude for
     # sub-theme analysis. These are strong enough to warrant checking if
@@ -5107,16 +5151,27 @@ async def run_theme_engine(
     )
 
     # --- Step 2b: Assign uncovered stocks to existing themes ---
-    if uncovered and updated_themes:
-        uncovered, assign_log = await _assign_uncovered_to_themes(
-            uncovered, updated_themes, stocks_by_ticker,
+    # #476: assignment runs on the WIDER assignment_pool (RS-floor); discovery
+    # below keeps the narrow top-40 `uncovered` MINUS whatever got assigned
+    # (assignment-only widen — the wider pool never leaks into discovery).
+    # The wider pool reaches below the top-60 the enrich pass described, so
+    # ensure descriptions here (dedup + early-return makes it cheap) — the
+    # assignment fn SILENTLY DROPS undescribed names, so this is load-bearing.
+    if assignment_pool:
+        await _ensure_descriptions([s["ticker"] for s in assignment_pool])
+    if assignment_pool and updated_themes:
+        _remaining, assign_log = await _assign_uncovered_to_themes(
+            assignment_pool, updated_themes, stocks_by_ticker,
             theme_exclusions=theme_exclusions,
             globally_banned=globally_banned,
             cooldown_set=cooldown_set,
             protected=protected_set,
         )
         changelog.extend(assign_log)
-        logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes, {len(uncovered)} remaining uncovered")
+        _assigned = {c["ticker"] for c in assign_log if c.get("type") == "ticker_assigned"}
+        uncovered = [s for s in uncovered if s["ticker"] not in _assigned]
+        logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes "
+                    f"({len(_assigned)} distinct), {len(uncovered)} remaining uncovered (discovery)")
 
     # --- Step 3: Discover new themes ---
     new_raw: list[dict] = []
