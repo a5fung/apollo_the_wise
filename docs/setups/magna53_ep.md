@@ -16,7 +16,7 @@ This is the canonical Apollo entry strategy — the highest-volume, highest-conv
 - **Liquidity**: pre-market dollar volume sufficient (relative + absolute floor — see PM volume gate)
 - **Universe**: ~9,700 stocks via Polygon grouped daily
 - **Cooldown**: 60-day cooldown after any prior EP alert, with carve-out for fresh earnings (see below)
-- **Extension**: prev_close ≤ 1.50× SMA-10 (stocks already extended pre-gap don't qualify — chase risk)
+- **Extension**: skip if prev_close is ≥ 50% above the MIN(close) of the last ~5 trading days (already extended pre-gap → chase risk). `MAX_EXTENSION_PCT=50.0` (ep_detector.py:99); MIN, not a single 5-days-ago point. [Corrected 2026-07-18 — was mis-transcribed at doc creation as "≤ 1.50× SMA-10", a rule that has never existed in code (see #481 + change log); the live criterion is unchanged.]
 
 ## Detection criteria (current)
 
@@ -27,7 +27,7 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 1. **Pre-market volume**: relative gate — `pm_rvol ≥ MIN_PM_RVOL` (1.0× session-anchored RVOL@T)
 2. **Pre-market shares absolute floor** (with carve-out): `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` — relative anomaly trumps absolute count for low-float names
 3. **EP cooldown**: skip if alerted within last 60 days, UNLESS `gap_pct ≥ 15% AND is_earnings_day` (fresh earnings catalyst bypasses cooldown)
-4. **Extension cap**: prev_close > 1.50× SMA-10 → skip
+4. **Extension cap**: `(prev_close − min5) / min5 ≥ 50%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=50.0`, ep_detector.py:1858-1866). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
 5. **Already scored today**: dedup within scan day
 6. **M&A filter** (`ma_filter.is_likely_ma`): catalyst='mna' OR keyword scan OR Polygon news headlines — skip
 7. **Session RVOL@T** (post-9:30): same primitive as pre-market, but session-anchored. Threshold `MIN_SESSION_RVOL = 1.0`
@@ -50,7 +50,7 @@ LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or No
 
 ### Score computation (`_score_ep`)
 
-Multi-factor: gap_pct + pm_rvol + catalyst_quality multiplier + regime + RS + extension. Catalyst weights:
+Multi-factor: gap_pct + pm_rvol + catalyst_quality multiplier + regime + RS + prior_momentum (a 3-month extension PENALTY: −25 at ≥+50% / −15 at ≥+30%, Qullamaggie-sourced — not a positive factor; corrected 2026-07-18 from the imprecise "extension"). Catalyst weights:
 - `game_changer`: 1.0×
 - `strong`: 0.7×
 - `routine`: 0.3×
@@ -81,6 +81,21 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-07-18 — Extension-rule wording corrected (transcription fix, NOT a criterion change) [#481]
+
+The "Extension" rule (Universe eligibility line 19 + Filter 4 line 30 + score-factor list line 53)
+was mis-transcribed at this doc's birth (2026-05-07, `59e4601`) as `prev_close ≤ 1.50× SMA-10` — a
+rule that has **never existed in the code** (`git log --all -S "sma_10 * 1.5"` → no commit, ever).
+The LIVE guard, since inception, is `MAX_EXTENSION_PCT=50.0`: skip if `prev_close` is ≥ 50% above the
+MIN(close) of the last ~5 trading days (`ep_detector.py:99`, gate `:1858-1866`; MIN, not a single
+5-days-ago point). Operator ruled 2026-07-18 (#481) that the live 50%/5-day rule is the intended
+criterion → corrected the wording to match the code. **No detection behavior changed** — this is a
+documentation/provenance fix. Also corrected line 53's score-factor list to name `prior_momentum`
+(the 3-month extension PENALTY, −25/−15) rather than a non-existent "extension" component. The
+constant is now cited in `gate_provenance_registry.py` against this corrected SSoT.
+
+**Reversion-flag**: N/A (doc-only correction; the code has always been the 50%/5-day rule).
 
 ### 2026-07-04 — #347: LIVE enriched grade corpus + acting re-poll (operator-approved flip)
 

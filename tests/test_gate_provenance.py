@@ -54,23 +54,25 @@ def test_fails_on_uncited_value(repo):
     assert _kinds(violations) == {"UNCITED"}
 
 
-def test_real_registry_has_the_expected_uncited_findings():
-    """DoD proof against the ACTUAL registry (not just a synthetic fixture) — the 3 operator
-    findings from #358's first pass must still show up as UNCITED under --strict-equivalent
-    (no baseline exemption). Subset assertion (not equality) so adding a 4th finding later
-    doesn't break this test — only regressing (a finding disappearing without a real citation)
-    would."""
+def test_481_resolved_findings_stay_cited():
+    """#481 (2026-07-18): the 3 operator findings from #358's first pass are RESOLVED and must
+    stay CITED — ep_detector.MAX_EXTENSION_PCT (SSoT transcription-fix, operator-ruled 7/18),
+    dvol_min ($20M signed as-is), _HTF_MIN_ADR_PCT (operator_shared_notes citation). This guards
+    against a regression that silently drops any of their citations. Deliberately does NOT assert
+    the global uncited set is empty — a future NEW finding is allowed to appear; only one of these
+    three regressing to UNCITED would fail this test (the baseline ratchet is now 0)."""
     repo_root = Path(__file__).resolve().parent.parent
     uncited_ids = {
         e["id"] for e in GATE_REGISTRY
         if any(v["kind"] == "UNCITED" for v in evaluate_entry(e, repo_root))
     }
-    expected = {
+    resolved = {
         "db.get_anticipation_universe:dvol_min",
         "flag_detector._HTF_MIN_ADR_PCT",
         "ep_detector.MAX_EXTENSION_PCT",
     }
-    assert expected <= uncited_ids
+    regressed = resolved & uncited_ids
+    assert regressed == set(), f"#481-resolved finding(s) regressed to UNCITED: {regressed}"
 
 
 # ── a present, correct citation resolves clean ──────────────────────────────────────────────────

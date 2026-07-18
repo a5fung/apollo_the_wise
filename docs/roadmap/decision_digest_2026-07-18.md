@@ -42,6 +42,32 @@ below is applied — all await your ruling (money-adjacent / SSoT / safeguard).
   own shadow review (earliest ~8/06) + your signature. Targets the ~$10.5k mgmt leak.
 - **#461 design** (above) is itself the deliverable; the build is what needs your sign.
 
+## Newly landed (2nd Fable batch) — forks + as-built findings
+
+4. **#332 setup-class classifier — BLOCKED, needs your A/B pick.** ADR 0028 pins 10 of ~12 leaf
+   predicates but NOT two: the `mature_leader` "ADV-large" $ floor (no existing repo threshold is a
+   "large" classifier — all are min tradability floors) and `episodic_neglect`'s required
+   "low-coverage" signal (no analyst-coverage field on the candidate row; `upgrades_30d` is computed
+   then discarded). The card refused to invent them (THE LINE) — details in ADR 0028 §7 F4.
+   **Fork:** (A) pin the two gaps now → C1 ships in full next session; or (B) sign shipping the
+   fully-pinned slice (`pradeep_explosive` + mega-cap `mature_leader`), the rest explicitly
+   `unclassified` + tracked. **Rec: A** (cheap to pin, avoids a two-pass build + a contaminated
+   calibration corpus).
+
+5. **#471 ecosystem Phase 2-3 — mostly already LIVE; ratify + 1 timing call.** The card found Phase 2
+   was dark-built, probe-gated, flipped 7/16, **verified-live 7/17** — and falsified the merge premise
+   (vuln-mgmt is a *sibling*, not a child; **Route B deliberate-split** is the real rescue, landed run
+   1). Doc = honest as-built record. **Fork (O-1):** `THEME_MERGE_ARM` flip timing — **rec: flip on
+   day-2 green** (today's ~17:00 ET run is the open stability checkpoint). Also surfaced a real design
+   flag (F-5: Route-B children get containment 0 from birth → the divergence predicate would misfire →
+   scope it to Route-A children) + a gap list to file (may need a burndown carryover).
+
+6. **#354 flag_continuation merge — mostly already EXECUTED; ratify 1 divergence.** The 6/27 HTF
+   rebuild + the 7/14 signed shadow-fix already did the merge; flag_detector gets ZERO param edits.
+   ALL SHADOW (no live path) → ships full under no-money. **Fork:** ratify the one paper divergence —
+   ADR 0026 D1's "#94-event wiring" vs the 7/14 EOD-§2 wiring that actually runs (**rec: amend D1 to
+   match the implementation**); + file the C5 `consolidation_unification_review`.
+
 ## Carried over (from `decision_digest_2026-07-17.md`)
 F2b DONE. Still needs you: #197 (N-27), #416 (close), #306 (fold), #269 (scope), #299
 (funding), #357 (role) · account-minutes #195/#280/#420/#384/#194.

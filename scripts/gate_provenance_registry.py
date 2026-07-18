@@ -176,10 +176,14 @@ GATE_REGISTRY: list[dict] = [
         "kind": "default",
         "name": "get_anticipation_universe:dvol_min",
         "value": 20_000_000.0,
-        "citation": None,
-        "note": "OPERATOR FINDING (#358): ADR 0013 §2.3 itself says this is a probe value — "
-                "'sanity floor, not a selection edge — sign off the exact number.' Never signed. "
-                "Not fixed here (THE LINE) — tracked as ratchet debt.",
+        "citation": {
+            "file": "docs/decisions/0013-consolidation-plays-post-runup.md",
+            "text": "≥$20M/day dollar-volume (probe value)",
+        },
+        "note": "Operator-signed $20M as-is 2026-07-18 (#481): ADR 0013 §2.3 liquidity floor, an "
+                "EXPLICIT PROBE (the ADR's own text: 'sanity floor, not a selection edge — sign "
+                "off the exact number'). The 6/16 funnel (1478->751) ran on this value; revisit at "
+                "the next Family-A calibration.",
     },
     # ── Family A — flag_detector.py HTF (sourced O'Neil/Minervini/Qullamaggie spec, 2026-06-22) ─
     {
@@ -249,11 +253,14 @@ GATE_REGISTRY: list[dict] = [
         "kind": "const",
         "name": "_HTF_MIN_ADR_PCT",
         "value": 0.04,
-        "citation": None,
-        "note": "OPERATOR FINDING (#358): the code's OWN comment admits this — '4% is NOT canonical "
-                "(sources run 3-6%) ... STARTING value, data-gated tune.' No source citation exists "
-                "for 4% specifically. Not fixed here (THE LINE) — tracked as ratchet debt; "
-                "data_gated_reviews.yaml already carries the re-tune trigger.",
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "ADR > 4%",
+        },
+        "note": "HTF ADR floor — sourced verbatim from the 2026-06-22 operator-shared HTF blueprint "
+                "(same sentence as _HTF_MIN_ADV_SHARES's citation). The code comment's 'sources run "
+                "3-6%' is literature context; the data-gated tune (htf_adr_threshold_tune) remains "
+                "the calibration path. Cited 2026-07-18 (#481).",
     },
     # ── Family B / detection — ninem_detector.py (docs/setups/ninem.md SSoT) ────────────────────
     {
@@ -341,12 +348,13 @@ GATE_REGISTRY: list[dict] = [
         "kind": "const",
         "name": "MAX_EXTENSION_PCT",
         "value": 50.0,
-        "citation": None,
-        "note": "OPERATOR FINDING (#358): docs/setups/magna53_ep.md's SSoT documents a DIFFERENT "
-                "extension rule ('prev_close <= 1.50x SMA-10') than this constant's own comment "
-                "('Skip if already up 50%+ in last 5 trading days') — no source ties the 50%/5-day "
-                "form to a methodology thread or ADR, and it may have silently diverged from the "
-                "documented SSoT rule. Not fixed here (THE LINE) — tracked as ratchet debt; "
-                "worth an operator look at which rule is actually live.",
+        "citation": {
+            "file": "docs/setups/magna53_ep.md",
+            "text": "MAX_EXTENSION_PCT=50.0",
+        },
+        "note": "Operator-ruled 2026-07-18 (#481): the live 50%/5-day-MIN rule IS the intended "
+                "criterion (authoritative since 2026-05-07); the SSoT's prior 'prev_close <= 1.50x "
+                "SMA-10' was a birth transcription error (never in code), corrected same-day "
+                "(magna53_ep.md lines 19/30/53 + change log). Live criterion unchanged.",
     },
 ]
