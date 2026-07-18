@@ -44,6 +44,20 @@ pytestmark = pytest.mark.skipif(
 _LOCK_SQL = "SELECT pg_advisory_xact_lock($1, hashtext($2))"
 
 
+async def _clean_synthetic(conn):
+    """DELETE the synthetic-mode rows THROUGH the mi_live_trades delete-guard.
+    Prod blocks trade-row deletes unless `mi.allow_trade_delete` is set (a real
+    safety feature — a raw DELETE fails against prod); `SET LOCAL` scopes the
+    escape to this one txn. Sweeps ALL `account_mode=_MODE` rows, so a re-run
+    also clears any row a prior blocked-cleanup left behind. The synthetic mode
+    is exclusive to this test — no real 'live'/'paper' row is ever in scope."""
+    async with conn.transaction():
+        await conn.execute("SET LOCAL mi.allow_trade_delete = 'yes'")
+        await conn.execute(
+            "DELETE FROM mi_live_trades WHERE account_mode = $1", _MODE,
+        )
+
+
 @pytest.mark.asyncio
 async def test_cap_xact_lock_serializes_and_recount_sees_committed_row():
     """The exact STEP-6 contract: while A's transaction holds the mode key,
@@ -55,9 +69,7 @@ async def test_cap_xact_lock_serializes_and_recount_sees_committed_row():
     conn_b = await asyncpg.connect(_DSN)
     cleanup = await asyncpg.connect(_DSN)
     try:
-        await cleanup.execute(
-            "DELETE FROM mi_live_trades WHERE account_mode = $1", _MODE,
-        )
+        await _clean_synthetic(cleanup)
         baseline = await count_open_positions(conn_b, _MODE)
         assert baseline == 0
 
@@ -98,9 +110,7 @@ async def test_cap_xact_lock_serializes_and_recount_sees_committed_row():
         )
     finally:
         try:
-            await cleanup.execute(
-                "DELETE FROM mi_live_trades WHERE account_mode = $1", _MODE,
-            )
+            await _clean_synthetic(cleanup)
         finally:
             await conn_a.close()
             await conn_b.close()
