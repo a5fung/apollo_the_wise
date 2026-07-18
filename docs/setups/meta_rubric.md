@@ -17,7 +17,7 @@ never a per-axis spend, per the operator's 6/18 cost directive).
 |---|---|---|---|---|
 | #328 | Theme | `docs/decisions/0015-theme-axis-meta-rubric.md` | `mi_theme_axis_shadow` | shadow, accruing |
 | #330 | **Structure** | `docs/decisions/0016-structure-axis-meta-rubric.md` | `mi_structure_axis_shadow` | shadow, accruing (this doc) |
-| #331 | Gap-alignment | (undesigned) | — | blocked on #330 |
+| #331 | Gap-alignment | ADR 0033 (designed 2026-07-18) | — | STEP-0 backfill + operator sign of the table pending |
 
 All three share the same mechanics (ADR 0016 inherits ADR 0015's verbatim): a pure
 `<axis>_credit(features) -> {credit_steps, marker, reason}` function, **boost-only** (never
@@ -31,7 +31,7 @@ Stacking caps across axes are `#329`'s composition call (proposed default: max +
 ## Structure axis (#330, ADR 0016)
 
 **Scope boundary vs #331**: #330 grades the structure the stock brought INTO the catalyst day
-(long-term trend, base quality, extension state) — #331 (undesigned) will grade what the GAP
+(long-term trend, base quality, extension state) — #331 (ADR 0033) will grade what the GAP
 did to that structure (punched through resistance vs faded into congestion).
 
 **STEP-0 calibration**: `docs/analysis/structure_axis_step0_2026-07-04.md` — backfilled the 3
