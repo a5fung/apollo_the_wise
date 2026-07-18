@@ -43,10 +43,16 @@ Two defects block the merge from being a rename:
   `anticipation.py:606-611`), retiring the pivot-walk; tightness = volatility-relative RMV/ATR
   (the shared primitives `_compute_rmv`/`_compute_fresh_tightening` already imported by
   anticipation.py — no dup); 0.4% tight-close stays **ranking-only** (operator veto intact).
-- Wiring: `confirm_signal_at` fires on the EXISTING #94 intraday flag-break event (price >
-  base_high + ADV gate + the #145 idempotency guard) → writes an `entry_mode='confirm'` shadow
-  row via the same settlement machinery Anticipate uses. **Shadow-only at merge** — Confirm
-  entering the live entry pipeline is a separate, later promotion with its own gate (money).
+- Wiring: **[AMENDED 2026-07-18 (#354, operator-ratified) — the running impl differs from this
+  clause's original text; the impl is authoritative.]** `confirm_signal_at` fires on the
+  **7/14-signed EOD §2-universe pass** (`scheduler.py:3494-3501`, Confirm live-shadow dual-mode),
+  **NOT** the #94 intraday flag-break event originally specified here. Rationale for ratifying the
+  impl over the original clause: the #327 Phase-B replay showed intraday re-timing DE-RATES the
+  edge, and the flag cohort is now the narrower HTF 90/40 universe (#356) — both strengthen the
+  EOD-§2 (#270-phantom-avoiding) wiring. It writes an `entry_mode='confirm'` shadow row via the
+  same settlement machinery Anticipate uses. **Shadow-only** — Confirm entering the live entry
+  pipeline is a separate, later promotion with its own gate (money). Follow-up: file the C5
+  `consolidation_unification_review` in `data_gated_reviews.yaml` (verified absent).
 - What must NOT break (regression pins): the #94 scan keeps reading `mi_flag_candidates` stages;
   HTF detection (#356) keeps consuming the same state machine; `test_execute_task_routing`
   freezes `/flags` routing.
