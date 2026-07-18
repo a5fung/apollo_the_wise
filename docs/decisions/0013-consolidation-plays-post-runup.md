@@ -11,6 +11,20 @@ verified live (see §4 Phase 1). Phases 2–5 described, not committed. The imme
 Pradeep Bonde thread + the 6/16 verification probes). **Provenance rule (this ADR's core discipline):**
 every cohort-shaping criterion must cite a source in that file; a number with no source may record
 telemetry but may NOT gate or shape the cohort, shadow or not.
+**Enforcement (2026-07-17, #358):** this rule is now MECHANICAL, not prose — `scripts/
+gate_provenance_registry.py` (the enumerated, extensible Family-A/detection gate list) +
+`scripts/check_gate_provenance.py` (STALE/DRIFT always hard-fail; UNCITED is a ratchet — a NEW
+uncited gate fails the commit, legacy ones are tracked, named debt in `scripts/
+gate_provenance_baseline.json`), wired into `.githooks/pre-commit` (Gate 5) + `tests/
+test_gate_provenance.py`. First-pass enforcement found 3 currently-uncited cohort gates (operator
+findings, NOT fixed by this build — THE LINE): `db.get_anticipation_universe`'s `dvol_min=$20M`
+(this ADR's own §2.3 already flags it "sign off the exact number"), `flag_detector.
+_HTF_MIN_ADR_PCT=0.04` (code comment admits "NOT canonical"), and `ep_detector.MAX_EXTENSION_PCT
+=50.0` (no source ties the "50% in 5 days" form to a methodology thread — the SSoT documents a
+different extension rule entirely, `prev_close ≤ 1.50×SMA-10` — worth a look at which is live).
+Honest limit: this catches MISSING/broken/stale citations, not semantic drift (a citation can be
+present and resolve yet still describe the wrong conclusion) — it forces the human checkpoint, not
+a substitute for reading what the source actually says.
 **Tasks:** #12 (re-scoped to "Family A consolidation rebuild"); #15 folds into Phase 2; new FAMILY-B task.
 **Supersedes:** the #270 "anticipation" universe gate (`anticipation.GAP=0.40` /
 `db.get_anticipation_gap_seeds` `close ≥ 1.40·prev_close`) and the undercut-required ARMED gate.

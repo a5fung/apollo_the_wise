@@ -79,4 +79,24 @@ if git diff --cached --name-only | grep -qE '^(agents|core|channels|shared)/.*\.
     fi
 fi
 
+# ── Gate 5: gate-provenance ratchet (#358, ADR 0013 provenance rule) ──
+# Fires when the provenance registry/checker/baseline, or one of the registered detector
+# modules, is staged. Blocks any NEW cohort-shaping gate added without a source citation
+# (docs/methodology/operator_shared_notes.md / an ADR / a setup SSoT / a docs/analysis
+# writeup), plus STALE (renamed/removed constant) and DRIFT (live value silently no longer
+# matches what the registry recorded) — both always hard-fail, never baseline-exempt.
+# Known-uncited legacy gates are tracked debt (see scripts/gate_provenance_baseline.json);
+# never bury a NEW one via --update-baseline.
+if git diff --cached --name-only | grep -qE '^(scripts/gate_provenance_registry\.py|scripts/gate_provenance_baseline\.json|scripts/check_gate_provenance\.py|agents/market_intelligence/(anticipation|flag_detector|ninem_detector|ep_detector|db)\.py)$'; then
+    if ! python -m scripts.check_gate_provenance >/dev/null 2>&1; then
+        echo "✘ pre-commit: a cohort-shaping gate lacks a source citation, or drifted from the"
+        echo "  registry's recorded value (#358, ADR 0013 provenance rule)."
+        echo "  Run: python -m scripts.check_gate_provenance"
+        echo "  Add a real citation (never fabricate one), or update the registry's value in the"
+        echo "  SAME commit as a signed value change. Do NOT bury a new omission via --update-baseline."
+        echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
+        exit 1
+    fi
+fi
+
 exit 0
