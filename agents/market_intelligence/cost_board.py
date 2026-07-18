@@ -25,6 +25,12 @@ import os
 from datetime import date, timedelta
 
 from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.system_audit import (
+    _band_for as _sa_band_for,
+    _directional_ratio as _sa_directional_ratio,
+    _trimmed_median_mad as _sa_trimmed_median_mad,
+)
+from shared.llm_models import PRICING_PER_MTOK, SONNET
 
 logger = logging.getLogger(__name__)
 
@@ -198,3 +204,320 @@ async def run_daily_spend_alarm(today: date) -> dict | None:
     await send_telegram_message(
         "🔴 *SPEND ALARM* — " + "; ".join(reasons) + "\n/cost for the full board")
     return d
+
+
+# ── #379 Cost-observability Phase 3 — THE WATCHDOG ───────────────────────────
+#
+# Two surfaces on top of the #378 board/alarm above:
+#   (1) per-caller cost-anomaly detection — a caller's $/day spikes vs its OWN
+#       trailing median (the whole-board alarm above only looks at the TOTAL,
+#       so a caller doubling its own spend can hide inside a healthy total).
+#   (2) cost-reduction surfacing — heuristics flagging Opus-where-Sonnet-fits,
+#       oversized prompts, and a runaway-retry call-volume trend.
+#
+# Reuses system_audit's trimmed-median ± MAD band routing
+# (_trimmed_median_mad / _band_for / _directional_ratio) rather than
+# reinventing a second anomaly statistic. One deliberate divergence:
+# system_audit's MAD<1 z-fallback threshold is tuned for COUNT metrics
+# (theme_count_active, cooldowns_per_day) where MAD=1 is a real day-to-day
+# step; a caller's daily $ MAD is routinely <1 even when perfectly healthy,
+# so this module uses its own dollar-scale epsilon (_CALLER_MAD_EPS_USD)
+# instead of importing system_audit's constant. Advisory only — surfaces
+# opportunities, never auto-applies a model/prompt change (THE LINE).
+
+CALLER_MIN_SAMPLE_DAYS = 5          # cold-start floor: need >=5 active history days
+CALLER_ANOMALY_MIN_USD = 0.50       # per-caller noise floor (finer than the board's $1 floor)
+_CALLER_MAD_EPS_USD = 0.05          # below this, a $ MAD is noise -> ratio-only band routing
+_RETRY_CALLS_RATIO = 1.8            # recent-vs-baseline call-count ratio flagging a retry loop
+_OVERSIZED_PROMPT_TOKENS = 40_000   # avg input tokens/call above this = worth a prompt-size look
+_REDUCTION_MIN_SAVINGS_USD = 0.50   # noise floor for surfacing an Opus->Sonnet estimate
+
+
+async def _fetch_caller_window(today: date, lookback_days: int = 30):
+    """One read of api_usage grouped by (caller, model, ET day) over the
+    trailing window + today. Feeds both the per-caller anomaly detector and
+    the reduction-opportunity heuristics below. Mirrors compute_cost_board's
+    raw-timestamp prefilter (7/17 review) so idx_api_usage_created stays a
+    bounded scan rather than the whole table."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH et AS (
+                SELECT cost_usd, caller, model, input_tokens, output_tokens,
+                       (created_at AT TIME ZONE 'America/New_York')::date AS d
+                FROM api_usage
+                WHERE created_at >= $1::date - INTERVAL '32 days'
+            )
+            SELECT caller, model, d, SUM(cost_usd) AS spend, COUNT(*) AS calls,
+                   SUM(input_tokens) AS in_tok, SUM(output_tokens) AS out_tok
+            FROM et
+            WHERE d BETWEEN $1::date - $2::int AND $1::date
+            GROUP BY caller, model, d
+        """, today, lookback_days)
+    return rows
+
+
+def _daily_caller_series(rows) -> dict[str, dict[date, dict[str, float]]]:
+    """caller -> {day -> {"spend":, "calls":}}, summed across models."""
+    out: dict[str, dict[date, dict[str, float]]] = {}
+    for r in rows:
+        day_map = out.setdefault(r["caller"], {})
+        slot = day_map.setdefault(r["d"], {"spend": 0.0, "calls": 0})
+        slot["spend"] += float(r["spend"])
+        slot["calls"] += int(r["calls"])
+    return out
+
+
+def _caller_window_totals(rows, today: date, window_days: int = 7) -> dict[str, dict]:
+    """caller -> aggregate totals (+ per-model breakdown) over the trailing
+    `window_days` (incl. today) — the reduction heuristics' input. Shorter
+    than the 30d anomaly baseline: reduction opportunities are about the
+    CURRENT model/prompt mix, not a long trailing median."""
+    cutoff = today - timedelta(days=window_days - 1)
+    out: dict[str, dict] = {}
+    for r in rows:
+        if r["d"] < cutoff or r["d"] > today:
+            continue
+        c = out.setdefault(r["caller"], {
+            "calls": 0, "in_tok": 0, "out_tok": 0, "spend": 0.0, "by_model": {},
+        })
+        c["calls"] += int(r["calls"])
+        c["in_tok"] += int(r["in_tok"] or 0)
+        c["out_tok"] += int(r["out_tok"] or 0)
+        c["spend"] += float(r["spend"])
+        m = c["by_model"].setdefault(r["model"], {
+            "calls": 0, "in_tok": 0, "out_tok": 0, "spend": 0.0,
+        })
+        m["calls"] += int(r["calls"])
+        m["in_tok"] += int(r["in_tok"] or 0)
+        m["out_tok"] += int(r["out_tok"] or 0)
+        m["spend"] += float(r["spend"])
+    return out
+
+
+def _classify_caller_band(today_spend: float, history: list[float]) -> tuple[int, float, float, float]:
+    """Reuses system_audit's z/ratio/_band_for routing (band 3 = z>=3 or
+    ratio>=5x, the same threshold that gates its L2 Telegram tier). Returns
+    (band, p50, mad, ratio)."""
+    p50, _, mad, _ = _sa_trimmed_median_mad(history)
+    use_z = mad >= _CALLER_MAD_EPS_USD
+    z = ((today_spend - p50) / mad) if use_z else 0.0
+    ratio = _sa_directional_ratio(today_spend, p50, "high")
+    band = _sa_band_for(z, ratio)
+    return band, p50, mad, ratio
+
+
+def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30) -> list[dict]:
+    """Pure half of compute_caller_cost_anomalies — takes already-fetched
+    rows so compute_cost_watchdog can share ONE api_usage read across both
+    the anomaly detector and the reduction heuristics below, instead of
+    each hitting the table separately."""
+    daily = _daily_caller_series(rows)
+    out = []
+    for caller, series in daily.items():
+        today_slot = series.get(today, {"spend": 0.0, "calls": 0})
+        today_spend = today_slot["spend"]
+        today_calls = today_slot["calls"]
+        if today_spend < CALLER_ANOMALY_MIN_USD:
+            continue
+        hist_spend = [series.get(today - timedelta(days=k), {}).get("spend", 0.0)
+                      for k in range(1, lookback_days + 1)]
+        hist_calls = [series.get(today - timedelta(days=k), {}).get("calls", 0.0)
+                      for k in range(1, lookback_days + 1)]
+        active_spend = [v for v in hist_spend if v > 0]
+        active_calls = [v for v in hist_calls if v > 0]
+        if len(active_spend) < CALLER_MIN_SAMPLE_DAYS:
+            continue
+        band, p50, mad, ratio = _classify_caller_band(today_spend, active_spend)
+        if band < 3:
+            continue
+        calls_p50, _, _, _ = _sa_trimmed_median_mad(active_calls) if active_calls else (0.0, 0.0, 0.0, 0)
+        calls_ratio = (today_calls / calls_p50) if calls_p50 > 0 else 0.0
+        leak = ("call-volume (possible retry loop)" if calls_ratio >= _RETRY_CALLS_RATIO
+                else "per-call cost")
+        out.append({
+            "caller": caller, "today_spend": round(today_spend, 2),
+            "median30": round(p50, 2), "mad": round(mad, 4), "ratio": round(ratio, 2),
+            "today_calls": today_calls, "median_calls": round(calls_p50, 1),
+            "calls_ratio": round(calls_ratio, 2), "leak_class": leak,
+        })
+    out.sort(key=lambda r: r["ratio"], reverse=True)
+    return out
+
+
+async def compute_caller_cost_anomalies(today: date, lookback_days: int = 30) -> list[dict]:
+    """Per-caller $/day spike vs its OWN trailing median (#379). Flags a
+    caller whose TODAY spend sits in system_audit's band 3 against its own
+    30d history — the leak class a retry loop doubling calls, or a one-off
+    prompt blowing up token count, would produce. Cold-start gated (needs
+    >=CALLER_MIN_SAMPLE_DAYS active days) so a brand-new caller can't
+    false-positive on day 2.
+
+    Baseline = ACTIVE days only (spend/calls > 0), NOT zero-padded like
+    compute_cost_board's whole-board median. The board's total is active
+    essentially every day, so a quiet day there is real signal; many
+    individual callers legitimately run on a sparse cadence (weekly/monthly
+    jobs), and zero-padding those degenerates the trimmed median straight to
+    0 — which makes the ratio check permanently 0 and blind for exactly the
+    callers most likely to look anomalous on the one day they DO fire."""
+    rows = await _fetch_caller_window(today, lookback_days)
+    return _caller_cost_anomalies_from_rows(rows, today, lookback_days)
+
+
+def _reduction_opportunities_from_totals(totals: dict[str, dict]) -> list[dict]:
+    """Pure heuristic layer (unit-testable without a DB): Opus-where-Sonnet-
+    fits + oversized prompts. Advisory surfacing ONLY — never auto-applies
+    (THE LINE: no model/strategy change without operator sign-off); this
+    just names the opportunity and an estimated dollar delta."""
+    out = []
+    sonnet_price = PRICING_PER_MTOK.get(SONNET, {"input": 3.0, "output": 15.0})
+    for caller, agg in totals.items():
+        calls = agg["calls"] or 0
+        if calls == 0:
+            continue
+        # (a) Opus-where-Sonnet-fits: estimate the SAME token volume at
+        # Sonnet rates and surface the delta if it clears the noise floor.
+        for model, m in agg["by_model"].items():
+            if "opus" not in model.lower() or m["spend"] <= 0:
+                continue
+            sonnet_equiv = ((m["in_tok"] / 1_000_000) * sonnet_price["input"]
+                            + (m["out_tok"] / 1_000_000) * sonnet_price["output"])
+            savings = m["spend"] - sonnet_equiv
+            if savings >= _REDUCTION_MIN_SAVINGS_USD:
+                out.append({
+                    "type": "opus_where_sonnet_fits", "caller": caller, "model": model,
+                    "spend": round(m["spend"], 2), "sonnet_equiv": round(sonnet_equiv, 2),
+                    "est_savings": round(savings, 2),
+                    "note": f"{caller} spent ${m['spend']:.2f} on {model} this window; "
+                            f"same tokens at Sonnet rates ≈ ${sonnet_equiv:.2f} "
+                            f"(≈${savings:.2f} saved if Sonnet fits the task).",
+                })
+        # (b) Oversized prompts: high avg input tokens/call.
+        avg_in = agg["in_tok"] / calls
+        if avg_in >= _OVERSIZED_PROMPT_TOKENS:
+            out.append({
+                "type": "oversized_prompt", "caller": caller,
+                "avg_input_tokens": round(avg_in), "calls": calls,
+                "note": f"{caller} averages {avg_in:,.0f} input tokens/call over {calls} calls "
+                        f"— worth checking for prompt bloat / unneeded context.",
+            })
+    out.sort(key=lambda r: r.get("est_savings", 0), reverse=True)
+    return out
+
+
+def _retry_loop_opportunities(
+    daily: dict[str, dict[date, dict]], today: date,
+    recent_days: int = 3, lookback_days: int = 30,
+) -> list[dict]:
+    """Elevated call-VOLUME trend vs a non-overlapping baseline — catches a
+    cheap-per-call (e.g. Haiku) retry loop that the $ anomaly check above
+    could miss because the per-call cost never clears the $ noise floor.
+    Baseline uses active days only (same rationale as compute_caller_cost_
+    anomalies — a sparse-cadence caller would otherwise zero-pad its own
+    median to 0)."""
+    out = []
+    for caller, series in daily.items():
+        recent = [series.get(today - timedelta(days=k), {}).get("calls", 0.0)
+                 for k in range(0, recent_days)]
+        baseline_hist = [series.get(today - timedelta(days=k), {}).get("calls", 0.0)
+                         for k in range(recent_days, lookback_days + recent_days)]
+        active_baseline = [v for v in baseline_hist if v > 0]
+        if len(active_baseline) < CALLER_MIN_SAMPLE_DAYS:
+            continue
+        p50, _, _, _ = _sa_trimmed_median_mad(active_baseline)
+        recent_avg = sum(recent) / len(recent) if recent else 0.0
+        if p50 <= 0 or recent_avg < 1:
+            continue
+        ratio = recent_avg / p50
+        if ratio >= _RETRY_CALLS_RATIO:
+            out.append({
+                "type": "runaway_retries", "caller": caller,
+                "recent_avg_calls": round(recent_avg, 1), "baseline_calls": round(p50, 1),
+                "ratio": round(ratio, 2),
+                "note": f"{caller} call volume is {ratio:.1f}x baseline "
+                        f"({recent_avg:.1f}/day vs {p50:.1f}/day median) — check for a retry loop.",
+            })
+    out.sort(key=lambda r: r["ratio"], reverse=True)
+    return out
+
+
+def _reduction_opportunities_from_rows(
+    rows, today: date, lookback_days: int = 30, window_days: int = 7,
+) -> list[dict]:
+    """Pure half of detect_reduction_opportunities — shares one already-
+    fetched row set with the anomaly detector (see _caller_cost_anomalies_
+    from_rows) instead of re-reading api_usage."""
+    totals = _caller_window_totals(rows, today, window_days)
+    daily = _daily_caller_series(rows)
+    out = _reduction_opportunities_from_totals(totals)
+    out.extend(_retry_loop_opportunities(daily, today, lookback_days=lookback_days))
+    return out
+
+
+async def detect_reduction_opportunities(
+    today: date, lookback_days: int = 30, window_days: int = 7,
+) -> list[dict]:
+    """Cost-reduction surfacing (#379): Opus-where-Sonnet-fits, oversized
+    prompts, and a runaway-retry call-volume trend. Advisory only — no
+    auto-apply."""
+    rows = await _fetch_caller_window(today, lookback_days)
+    return _reduction_opportunities_from_rows(rows, today, lookback_days, window_days)
+
+
+async def compute_cost_watchdog(today: date, lookback_days: int = 30) -> dict:
+    """Combined read for the /cost board appendix + the daily job — ONE
+    api_usage fetch feeds both the anomaly detector and the reduction
+    heuristics (7/17 api_usage scan-cost discipline: don't read the same
+    indexed range twice per caller check)."""
+    rows = await _fetch_caller_window(today, lookback_days)
+    anomalies = _caller_cost_anomalies_from_rows(rows, today, lookback_days)
+    opportunities = _reduction_opportunities_from_rows(rows, today, lookback_days)
+    return {"anomalies": anomalies, "opportunities": opportunities}
+
+
+def render_cost_watchdog(w: dict) -> str:
+    """Board appendix for /cost. Empty string when nothing to report — keeps
+    the happy-path board tight (house style). Dynamic caller/model names
+    (snake_case) sit inside the code block, mirroring render_cost_board's
+    #477 parity discipline."""
+    anomalies = w.get("anomalies") or []
+    opportunities = w.get("opportunities") or []
+    if not anomalies and not opportunities:
+        return ""
+    lines = ["*🐕 WATCHDOG*", "```"]
+    for a in anomalies:
+        lines.append(f"! {a['caller']:<24} today ${a['today_spend']:.2f} vs "
+                     f"median ${a['median30']:.2f} ({a['ratio']:.1f}x) - {a['leak_class']}")
+    for o in opportunities[:5]:
+        lines.append(f"* {o['note']}")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+async def run_cost_watchdog(today: date) -> dict | None:
+    """Daily watchdog check, wired alongside the #378 spend alarm (17:52 ET).
+    Telegrams ONLY on a real per-caller $ anomaly (actionable-only, mirrors
+    run_daily_spend_alarm's philosophy); reduction opportunities are
+    advisory and surface via /cost + this audit row, not a daily push."""
+    w = await compute_cost_watchdog(today)
+    anomalies, opportunities = w["anomalies"], w["opportunities"]
+    if not anomalies and not opportunities:
+        return None
+    await log_audit_event(
+        "cost_watchdog_check",
+        summary=f"{len(anomalies)} caller anomaly(ies), {len(opportunities)} reduction opportunity(ies)",
+        detail=json.dumps(w),
+    )
+    if anomalies:
+        from agents.market_intelligence.briefing import send_telegram_message
+        # Caller names are snake_case — the #477 parity class means they MUST
+        # sit inside the code block, not the plain message body (bare
+        # underscores outside a fence break Telegram Markdown V1 italics).
+        lines = ["🔴 *COST WATCHDOG* — per-caller spend anomaly:", "```"]
+        for a in anomalies[:3]:
+            lines.append(f"{a['caller']:<24} ${a['today_spend']:.2f} vs ${a['median30']:.2f} "
+                        f"median ({a['ratio']:.1f}x) - {a['leak_class']}")
+        lines.append("```")
+        lines.append("/cost for the full board")
+        await send_telegram_message("\n".join(lines))
+    return w

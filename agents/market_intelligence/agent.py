@@ -2951,10 +2951,20 @@ class MarketIntelligenceAgent(BaseAgent):
         push half (fires only on budget breach / 2× daily anomaly)."""
         from agents.market_intelligence.collector import et_today
         from agents.market_intelligence.cost_board import (
-            compute_cost_board, render_cost_board,
+            compute_cost_board, compute_cost_watchdog, render_cost_board,
+            render_cost_watchdog,
         )
-        d = await compute_cost_board(et_today())
-        return self._ok(request, result=render_cost_board(d))
+        today = et_today()
+        d = await compute_cost_board(today)
+        out = render_cost_board(d)
+        # #379 Phase 3 watchdog appendix — per-caller anomaly + reduction
+        # opportunities. render_cost_watchdog returns "" when there's
+        # nothing to report, so the happy-path board stays unchanged.
+        w = await compute_cost_watchdog(today)
+        appendix = render_cost_watchdog(w)
+        if appendix:
+            out += "\n" + appendix
+        return self._ok(request, result=out)
 
     async def _handle_data_reviews_query(self, request: AgentRequest) -> AgentResponse:
         """`/datareviews` — the DATA-GATED review board (data_gated_reviews.yaml): which evidence-

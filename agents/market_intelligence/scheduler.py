@@ -3680,6 +3680,17 @@ async def _spend_alarm_job():
     except Exception as e:
         logger.error(f"spend-alarm job failed: {e}", exc_info=True)
         await notify_job_failure("spend_alarm", str(e))
+    # #379 Phase 3 — THE WATCHDOG. Own try/except so a watchdog failure never
+    # blots out the (already-vetted) #378 spend alarm above; named separately
+    # in notify_job_failure so an operator can tell which sub-check broke.
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.cost_board import run_cost_watchdog
+        watchdog = await run_cost_watchdog(et_today())
+        logger.info(f"cost-watchdog: {'FIRED' if watchdog else 'quiet'}")
+    except Exception as e:
+        logger.error(f"cost-watchdog job failed: {e}", exc_info=True)
+        await notify_job_failure("cost_watchdog", str(e))
 
 
 async def _book_concentration_job():
@@ -4877,7 +4888,8 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # #378 Phase 2 — daily spend alarm, 17:52 ET mon-fri (after the EOD LLM
     # chain). Telegram only on budget breach / 2×-median anomaly; /cost is the
-    # on-demand board. Read-only on api_usage.
+    # on-demand board. Read-only on api_usage. Same job also runs the #379
+    # Phase 3 watchdog (per-caller cost anomaly + reduction surfacing).
     _scheduler.add_job(
         audit_wrap(_spend_alarm_job, "spend_alarm"),
         # DAILY incl. weekends (review 7/17): mon-fri left Sat/Sun spend

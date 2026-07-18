@@ -156,6 +156,8 @@ async def test_cost_handler_returns_via_base_ok(monkeypatch):
     agent = MarketIntelligenceAgent.__new__(MarketIntelligenceAgent)
     agent.agent_name = "market_intelligence"
     monkeypatch.setattr(cb, "compute_cost_board", AsyncMock(return_value=_board()))
+    monkeypatch.setattr(cb, "compute_cost_watchdog",
+                        AsyncMock(return_value={"anomalies": [], "opportunities": []}))
     req = MagicMock()
     req.request_id = "t-1"
 
@@ -163,4 +165,34 @@ async def test_cost_handler_returns_via_base_ok(monkeypatch):
 
     assert resp.success is True
     assert "COST BOARD" in resp.result
+    assert "WATCHDOG" not in resp.result  # empty watchdog -> no appendix
     assert resp.agent == "market_intelligence"
+
+
+@pytest.mark.asyncio
+async def test_cost_handler_appends_watchdog_when_present(monkeypatch):
+    """When the watchdog has something to report, /cost appends it after the
+    board (still one message, appendix only when non-empty)."""
+    from unittest.mock import MagicMock
+
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+
+    agent = MarketIntelligenceAgent.__new__(MarketIntelligenceAgent)
+    agent.agent_name = "market_intelligence"
+    monkeypatch.setattr(cb, "compute_cost_board", AsyncMock(return_value=_board()))
+    monkeypatch.setattr(cb, "compute_cost_watchdog", AsyncMock(return_value={
+        "anomalies": [{"caller": "theme_validation", "today_spend": 12.0,
+                       "median30": 1.0, "mad": 0.1, "ratio": 12.0,
+                       "today_calls": 40, "median_calls": 4.0,
+                       "calls_ratio": 10.0, "leak_class": "call-volume (possible retry loop)"}],
+        "opportunities": [],
+    }))
+    req = MagicMock()
+    req.request_id = "t-2"
+
+    resp = await agent._handle_cost_query(req)
+
+    assert resp.success is True
+    assert "COST BOARD" in resp.result
+    assert "WATCHDOG" in resp.result
+    assert "theme_validation" in resp.result
