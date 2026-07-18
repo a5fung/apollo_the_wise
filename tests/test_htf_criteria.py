@@ -94,6 +94,24 @@ def test_low_adr_rejected():
     assert "adr_" in (out["reason"] or "") and "below" in (out["reason"] or "")
 
 
+def test_adv_floor_uses_median_not_mean_spike_robust():
+    # #402(2): the liquidity floor must use MEDIAN adv (spike-robust), not MEAN. A single
+    # 20M-share block-trade day among an otherwise-100k-volume ticker inflates the MEAN comfortably
+    # past the 500k floor (the old bug) but the MEDIAN correctly stays at 100k and rejects.
+    rows = []
+    d0 = date(2026, 1, 1)
+    for i in range(20):
+        vol = 20_000_000 if i == 5 else 100_000
+        rows.append(_row(d0 + timedelta(days=i), 10.0, 10.1, 9.9, 10.0, vol))
+    out = fd.compute_flag_metrics(rows, ticker="SPIKE")
+    assert out["stage"] == "unqualified"
+    assert "adv_" in (out["reason"] or "") and "below" in (out["reason"] or "")
+    # sanity: the MEAN of this same window clears the floor — proving the old (mean-based) bug
+    # would have wrongly admitted this ticker.
+    mean_adv = sum(r["volume"] for r in rows) / len(rows)
+    assert mean_adv > fd._HTF_MIN_ADV_SHARES
+
+
 def test_grinder_no_volume_spike_rejected():
     out = fd.compute_flag_metrics(_htf_rows(runup_ratio=2.0, vol_spike=False),
                                   ticker="GRIND", recent_stages=[])
@@ -123,3 +141,60 @@ def test_crash_recovery_rejected_stage2():
     out = fd.compute_flag_metrics(_crash_recovery_rows(), ticker="NCI", recent_stages=[])
     assert out["stage"] in ("unqualified", "INVALIDATED"), out["reason"]
     assert "52w_high" in (out["reason"] or "") or "stage2" in (out["reason"] or "")
+
+
+# ── 4. #402(7) handler-level PARSE freeze: bare `/htf` → the board, NOT a single-ticker lookup ──
+#
+# The #356 rename previously broke `/htf` by omitting "HTF" from _handle_flag_query's ticker-skip
+# set, so bare "/htf" was misparsed as ticker="HTF" and routed to the single-ticker 14-day-history
+# branch instead of the board (fixed 6/30, 949838b). The existing routing-cascade test
+# (test_execute_task_routing.py) only freezes WHICH handler answers "/htf" — not the WITHIN-handler
+# parse — so that exact regression could slip back in unnoticed. This pins the parse itself.
+
+def test_bare_htf_routes_to_board_not_single_ticker(monkeypatch):
+    import asyncio
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from agents.market_intelligence.collector import et_today
+    from shared.models import AgentRequest
+
+    called = {"ticker_history": False}
+
+    async def _fake_ticker_history(ticker, days=14):
+        called["ticker_history"] = True
+        return []
+
+    async def _fake_candidates_window(query_date, stages=None):
+        return []   # empty board — short-circuits before the shadow-summary footer
+
+    class _FakeConn:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def fetchval(self, *a, **kw):
+            return et_today()
+
+    class _FakePool:
+        def acquire(self):
+            return _FakeConn()
+
+    async def _fake_get_pool():
+        return _FakePool()
+
+    monkeypatch.setattr(
+        "agents.market_intelligence.db.get_ticker_flag_history", _fake_ticker_history
+    )
+    monkeypatch.setattr(
+        "agents.market_intelligence.db.get_flag_candidates_window", _fake_candidates_window
+    )
+    monkeypatch.setattr("agents.market_intelligence.db.get_pool", _fake_get_pool)
+
+    agent = MarketIntelligenceAgent()
+    req = AgentRequest(task="/htf", user_id=1, conversation_id="t")
+    res = asyncio.run(agent._handle_flag_query(req))
+
+    assert called["ticker_history"] is False        # single-ticker path never reached
+    assert "HTF History" not in (res.result or "")  # not the single-ticker header
+    assert "No flags in any stage" in (res.result or "")  # the board's empty-state message

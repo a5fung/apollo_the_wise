@@ -62,6 +62,22 @@ the 10/20-day **EMA** (exit only on a daily close below). Stop = the tightest-da
 max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height added to the breakout.
 
 ## Change log
+- **2026-07-18 — ADV liquidity floor: MEAN → MEDIAN (bugfix, #402(2)).**
+  **Trigger**: #402 /simplify code review found `compute_flag_metrics`'s liquidity gate computed ADV as
+  `sum(volume)/len` (mean) while every other ADV computation in this codebase — `db.get_adv_from_daily_closes`
+  (the cited SSoT, `PERCENTILE_CONT(0.5)`), `rs_engine`, `ep_detector`, and this SAME file's own #94
+  intraday-break-scan query (which already comments "matching db.get_adv_from_daily_closes SSoT — median
+  is spike-immune") — uses median. **Evidence**: internal consistency, not a new threshold — the
+  `_HTF_MIN_ADV_SHARES=500_000` floor value is unchanged; only the aggregation method computing the
+  statistic compared against it was wrong. **Anticipated effect**: stricter for spike-influenced tickers —
+  a ticker whose trailing-20d volume includes one large block-trade/climax day could previously clear the
+  floor on an inflated mean; the median now reflects steady-state liquidity, so those borderline names may
+  newly reject (`adv_Xk_below_500k_shares`). No effect on tickers without a volume spike in the window.
+  **Reversion-flag**: NEW (bugfix — first correction of this specific bug, not a reversal of a signed
+  threshold call). **Status**: shipped, awaiting field validation. No N≥10 P&L backtest — this detector is
+  shadow/telemetry-only (no money); see the 6/27 entry below for the same carve-out. Test:
+  `test_adv_floor_uses_median_not_mean_spike_robust` (`tests/test_htf_criteria.py`).
+
 - **2026-06-27 — Sourced HTF rebuild (replaces the n=1 50/60).** Flagpole 50%/60d → 90%/40d; flag depth
   off-pivot-close-20%-(scaled-to-35%) → absolute-low ≤25% flat; ADDED the 10/20/50 Stage-2 trend filter,
   the flagpole data-artifact guard + pole-volume confirmation. #80 runup-scaling removed (reason above).

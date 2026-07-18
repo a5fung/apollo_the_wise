@@ -77,13 +77,16 @@ _HTF_SETTLE_WINDOW = 12         # forward trading bars for the HTF breakout sett
 
 def _htf_settle_from_bars(bars, entry_idx, *, entry_price, stop, target_r=_HTF_BREAKOUT_TARGET_R,
                           window=_HTF_SETTLE_WINDOW):
-    """#356 Phase 3 — settle one HTF breakout-shadow row from daily bars. Thin wrapper over
-    anticipation.entry_bet_outcome's asymmetric-bet R-math (F11 dedup — the SINGLE source for the
-    capture/stop/mfe loop), but the HTF entry FILLS at base_high (a stop-limit-buy), NOT the bar close
-    (entry_bet_outcome's default) — so calls with entry_price=entry_price AND include_entry_bar=True
-    (the BREAK DAY itself is in the forward window; the fill is intraday). Returns
-    {outcome, fwd_mfe_r, realized_r} or None to ABSTAIN (window incomplete + undecided). Capture
-    credited on a same-bar high>=tgt tie. bars are db_rows_to_bars dicts with c/h/l."""
+    """#356 Phase 3 — settle one HTF breakout-shadow row from daily bars. Delegates the capture/stop/
+    open WALK + fwd_mfe_r to anticipation.entry_bet_outcome (F11 dedup — the single source for THAT
+    scan loop; entry_price=entry_price AND include_entry_bar=True because the HTF entry FILLS at
+    base_high — a stop-limit-buy — NOT the bar close, entry_bet_outcome's default, and the BREAK DAY
+    itself is in the forward window since the fill is intraday). #402(4) docstring fix: NOT a thin
+    wrapper — entry_bet_outcome returns only (outcome, fwd_mfe_r); realized_r (capture=+target_r /
+    stop=-1.0 / open=mark-to-window at the window end) is a SEPARATE branch computed HERE, not
+    delegated. Returns {outcome, fwd_mfe_r, realized_r} or None to ABSTAIN (window incomplete +
+    undecided). Capture credited on a same-bar high>=tgt tie. bars are db_rows_to_bars dicts with
+    c/h/l."""
     from agents.market_intelligence.anticipation import entry_bet_outcome
     entry = float(entry_price)
     bet = entry_bet_outcome(bars, entry_idx, stop, target_r=target_r, window=window,
@@ -130,10 +133,10 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
         would_reject = "no_valid_stop_below_entry"
     else:
         within = [(k, s) for k, s in cands if (entry - s) / entry <= _HTF_MAX_LOSS_PCT]
-        if within:
-            stop_kind, stop = max(within, key=lambda x: x[1])   # tightest within the cap
-        else:
-            stop_kind, stop = max(cands, key=lambda x: x[1])    # tightest available (still > cap)
+        # #402(4): within/cands collapse — max() over whichever list is non-empty; "tightest within
+        # the cap" if any qualify, else "tightest available (still > cap)" and flag the reject.
+        stop_kind, stop = max(within or cands, key=lambda x: x[1])
+        if not within:
             would_reject = "stop_distance_gt_8pct"
     risk_per_share = entry - stop
     min_risk = entry * 0.02
@@ -684,8 +687,13 @@ def compute_flag_metrics(
     #    ADV > 500k shares + ADR > 4% over the trailing _LIQ_WINDOW. Gated HERE (per-ticker), not in the
     #    universe SQL, so EVERY inclusion path is covered — not just the organic one. Early-reject before
     #    the pivot/runup work. (ADR threshold is data-gated for tune — see the constants above.)
+    # #402(2): MEDIAN, not mean — matches the canonical adv_20 convention used everywhere else in
+    # this codebase (db.get_adv_from_daily_closes' PERCENTILE_CONT(0.5), rs_engine, ep_detector, and
+    # this file's OWN #94 intraday-break-scan query below, L~1580) — spike-immune (a single block-
+    # trade day no longer inflates a thin ticker over the floor). _median_stat already imported above
+    # for the TR% calcs (search-before-build; no new primitive).
     _liq = rows[-_LIQ_WINDOW:] if len(rows) >= _LIQ_WINDOW else rows
-    _adv_shares = sum(float(r["volume"] or 0) for r in _liq) / max(1, len(_liq))
+    _adv_shares = _median_stat([float(r["volume"] or 0) for r in _liq]) if _liq else 0.0
     if _adv_shares < _HTF_MIN_ADV_SHARES:
         base["reason"] = f"adv_{_adv_shares/1000:.0f}k_below_{_HTF_MIN_ADV_SHARES // 1000}k_shares"
         return base
@@ -1544,7 +1552,7 @@ async def run_intraday_flag_break_scan(scan_time):
             )
             SELECT DISTINCT ON (c.ticker)
                    c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age,
-                   c.runup_pct, c.rmv_5d, c.rmv_15d, c.range_contraction_ratio,
+                   c.pivot_high_price, c.runup_pct, c.rmv_5d, c.rmv_15d, c.range_contraction_ratio,
                    c.vol_contraction_ratio, c.atr_14, c.sma_10, c.sma_20
             FROM mi_flag_candidates c
             LEFT JOIN mi_daily_closes dc
@@ -1654,6 +1662,7 @@ async def run_intraday_flag_break_scan(scan_time):
             "base_high": base_high,
             "base_low": float(cand["base_low"]) if cand["base_low"] else None,
             "base_age": cand["base_age"],
+            "pivot_high": float(cand["pivot_high_price"]) if cand.get("pivot_high_price") else None,
             "runup_pct": cand.get("runup_pct"),
             "rmv_5d": cand.get("rmv_5d"),
             "rmv_15d": cand.get("rmv_15d"),
@@ -1675,7 +1684,9 @@ async def run_intraday_flag_break_scan(scan_time):
     if not new_breaks:
         return 0
 
-    # 7. Persist + audit + Telegram (consolidated single message)
+    # 7. Persist + audit + HTF shadow (consolidated single message below). #402(5): the shadow
+    # insert used to acquire its OWN connection per break (N+1 acquires for N breaks) — folded into
+    # this same pool.acquire() so all N breaks share ONE connection.
     async with pool.acquire() as conn:
         for b in new_breaks:
             await conn.execute("""
@@ -1714,41 +1725,50 @@ async def run_intraday_flag_break_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_flag_break audit failed (non-critical): {e}")
 
-    # HTF breakout-entry SHADOW (#356 Phase 3) — record the would-be order SHAPE for each break. NO
-    # order is submitted; this is the edge dataset for the later paper gate. Records ALL stages (no
-    # pre-gate) + would-be REJECTS (would_reject_reason, not dropped). Wrapped PER BREAK so a shadow
-    # failure can NEVER break the live #94 detection above AND one bad break can't drop the shadow
-    # rows for the rest of the tick (the edge dataset would accrue silent holes — #370 class).
-    for b in new_breaks:
-        try:
-            _spec, _wreject = prepare_htf_breakout_order(
-                base_high=b["base_high"], base_low=b["base_low"],
-                sma_10=b.get("sma_10"), sma_20=b.get("sma_20"), regime_record=None)
-            await db.insert_htf_breakout_shadow(
-                b["ticker"], scan_time.date(), break_time=scan_time,
-                parent_scan_date=b["parent_scan_date"], parent_stage=b["parent_stage"],
-                base_high=b["base_high"], base_low=b["base_low"], base_age=b["base_age"],
-                runup_pct=b.get("runup_pct"),
-                # flagpole_ratio/flag_depth_pct are computed in compute_flag_metrics (Phase 1) but NOT
-                # persisted on mi_flag_candidates — being a candidate IS the HTF qualification (stage gates
-                # on them). Recorded NULL; #356 follow-up: persist them for value-level offline analysis.
-                flagpole_ratio=None, flag_depth_pct=None,
-                rmv_5d=b.get("rmv_5d"), rmv_15d=b.get("rmv_15d"),
-                range_contraction_ratio=b.get("range_contraction_ratio"),
-                vol_contraction_ratio=b.get("vol_contraction_ratio"),
-                atr_14=b.get("atr_14"),
-                entry_price=_spec["entry_price"], limit_price=_spec["limit_price"],
-                stop_loss_price=_spec["stop_loss_price"], stop_kind=_spec["stop_kind"],
-                max_loss_pct=_spec["max_loss_pct"], risk_per_share=_spec["risk_per_share"],
-                risk_dollars=_spec["risk_dollars"], shares=_spec["shares"],
-                position_size=_spec["position_size"], notional_basis=_spec["notional_basis"],
-                would_reject_reason=_wreject,
-                minutes_since_open=b["minutes_since_open"], today_volume=b["today_volume"],
-                adv_20=b["adv_20"], volume_pct_of_adv=b["volume_pct_of_adv"],
-                target_r=_HTF_BREAKOUT_TARGET_R)
-        except Exception as _e:   # loud-ok: shadow telemetry, must not break the live #94 scan
-            logger.warning(
-                f"htf_breakout_shadow record failed for {b.get('ticker')} (non-critical): {_e}")
+            # HTF breakout-entry SHADOW (#356 Phase 3) — record the would-be order SHAPE for this
+            # break. NO order is submitted; this is the edge dataset for the later paper gate.
+            # Records ALL stages (no pre-gate) + would-be REJECTS (would_reject_reason, not
+            # dropped). Wrapped PER BREAK so a shadow failure can NEVER break the live #94
+            # detection above AND one bad break can't drop the shadow rows for the rest of the
+            # tick (the edge dataset would accrue silent holes — #370 class).
+            try:
+                _spec, _wreject = prepare_htf_breakout_order(
+                    base_high=b["base_high"], base_low=b["base_low"],
+                    sma_10=b.get("sma_10"), sma_20=b.get("sma_20"), regime_record=None)
+                # #402(3): re-derived from the persisted pivot_high_price/base_low/runup_pct — the
+                # 2-line compute superseding the Phase-1-persist follow-up (both NULL before).
+                # flagpole_ratio = pivot_high/runup_low = 1 + runup_pct (runup_pct is already that
+                # ratio minus 1, compute_flag_metrics L744). flag_depth_pct = the pullback fraction
+                # off the pole top = 1 - base_low/pivot_high (the gate this detector qualifies on,
+                # compute_flag_metrics L842).
+                _pivot_high = b.get("pivot_high")
+                _flagpole_ratio = (1.0 + b["runup_pct"]) if b.get("runup_pct") is not None else None
+                _flag_depth_pct = (
+                    1.0 - (b["base_low"] / _pivot_high)
+                    if _pivot_high and b.get("base_low") is not None else None
+                )
+                await db.insert_htf_breakout_shadow(
+                    b["ticker"], scan_time.date(), break_time=scan_time,
+                    parent_scan_date=b["parent_scan_date"], parent_stage=b["parent_stage"],
+                    base_high=b["base_high"], base_low=b["base_low"], base_age=b["base_age"],
+                    runup_pct=b.get("runup_pct"),
+                    flagpole_ratio=_flagpole_ratio, flag_depth_pct=_flag_depth_pct,
+                    rmv_5d=b.get("rmv_5d"), rmv_15d=b.get("rmv_15d"),
+                    range_contraction_ratio=b.get("range_contraction_ratio"),
+                    vol_contraction_ratio=b.get("vol_contraction_ratio"),
+                    atr_14=b.get("atr_14"),
+                    entry_price=_spec["entry_price"], limit_price=_spec["limit_price"],
+                    stop_loss_price=_spec["stop_loss_price"], stop_kind=_spec["stop_kind"],
+                    max_loss_pct=_spec["max_loss_pct"], risk_per_share=_spec["risk_per_share"],
+                    risk_dollars=_spec["risk_dollars"], shares=_spec["shares"],
+                    position_size=_spec["position_size"], notional_basis=_spec["notional_basis"],
+                    would_reject_reason=_wreject,
+                    minutes_since_open=b["minutes_since_open"], today_volume=b["today_volume"],
+                    adv_20=b["adv_20"], volume_pct_of_adv=b["volume_pct_of_adv"],
+                    target_r=_HTF_BREAKOUT_TARGET_R, conn=conn)
+            except Exception as _e:   # loud-ok: shadow telemetry, must not break the live #94 scan
+                logger.warning(
+                    f"htf_breakout_shadow record failed for {b.get('ticker')} (non-critical): {_e}")
 
     # Per-tick Telegram OFF by default for this shadow detector (#168 noise fix,
     # 2026-06-07). DB writes + audit still fire; the day's breaks are surfaced in

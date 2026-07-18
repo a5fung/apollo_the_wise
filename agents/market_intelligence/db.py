@@ -7409,14 +7409,16 @@ async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, par
         rmv_5d, rmv_15d, range_contraction_ratio, vol_contraction_ratio, atr_14,
         entry_price, limit_price, stop_loss_price, stop_kind, max_loss_pct, risk_per_share,
         risk_dollars, shares, position_size, notional_basis, would_reject_reason,
-        minutes_since_open, today_volume, adv_20, volume_pct_of_adv, target_r) -> bool:
+        minutes_since_open, today_volume, adv_20, volume_pct_of_adv, target_r, conn=None) -> bool:
     """Record one HTF breakout-entry forward-shadow (#356 Phase 3 — SHADOW, no execution). IDEMPOTENT:
     the partial unique index (ticker, break_date) WHERE outcome IS NULL makes a re-fire on an already-OPEN
     break a no-op (entry pinned to the FIRST break). A would-be REJECT (would_reject_reason set) is STILL
-    recorded — the shadow wants the rejects. Returns True iff a NEW row was written."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
+    recorded — the shadow wants the rejects. Returns True iff a NEW row was written.
+
+    `conn` (#402(5)): pass an already-acquired connection to reuse it (e.g. the #94 per-break loop,
+    which holds one open across N breaks) instead of a fresh pool.acquire() per call. Default None
+    preserves the original behavior — acquire our own."""
+    sql = """
             INSERT INTO mi_htf_breakout_shadow
                 (ticker, break_date, break_time, parent_scan_date, parent_stage, base_high, base_low,
                  base_age, runup_pct, flagpole_ratio, flag_depth_pct, rmv_5d, rmv_15d,
@@ -7428,12 +7430,19 @@ async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, par
                     $24,$25,$26,$27,$28,$29,$30,$31,$32)
             ON CONFLICT (ticker, break_date) WHERE outcome IS NULL DO NOTHING
             RETURNING id
-        """, ticker, _coerce_date(break_date), break_time, _coerce_date(parent_scan_date) if parent_scan_date else None,
+        """
+    args = (ticker, _coerce_date(break_date), break_time, _coerce_date(parent_scan_date) if parent_scan_date else None,
              parent_stage, base_high, base_low, base_age, runup_pct, flagpole_ratio, flag_depth_pct,
              rmv_5d, rmv_15d, range_contraction_ratio, vol_contraction_ratio, atr_14, entry_price,
              limit_price, stop_loss_price, stop_kind, max_loss_pct, risk_per_share, risk_dollars, shares,
              position_size, notional_basis, would_reject_reason, minutes_since_open, today_volume,
              adv_20, volume_pct_of_adv, target_r)
+    if conn is not None:
+        row = await conn.fetchrow(sql, *args)
+    else:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(sql, *args)
     return row is not None
 
 
