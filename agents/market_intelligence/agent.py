@@ -4922,6 +4922,33 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as e:
             logger.warning(f"/themes: nascent narrative-themes section failed (non-fatal): {e}")
 
+        # #322 judge-inferred theme gaps (shadow/advisory) — a PROACTIVE surface,
+        # deliberately reading `get_shadow_theme_candidates` (NOT
+        # `get_narrative_theme_candidates`, which feeds the judge's OWN
+        # active_narratives input) so display stays fully separate from the
+        # anti-circularity wall (judge_theme_gap.py). These are single-name
+        # judge classifications neither theme lane tracked (the JBL AI-infra
+        # class) — below the 3-member /promotetheme bar until same-sector/day
+        # fires accrue a cohort; shown here so the gap is visible today instead
+        # of only via a reactive /themes <name> lookup (verify-operator-facing-
+        # surface: correct DB rows are not the same as an operator-visible
+        # surface). Error-wrapped: advisory only, must never break /themes.
+        try:
+            from agents.market_intelligence.db import get_shadow_theme_candidates
+            jtg_cands = [
+                c for c in await get_shadow_theme_candidates(days=7, include_probe=True)
+                if c.get("source") == "judge_inferred"
+            ]
+            if jtg_cands:
+                lines.append("\n🔎 *Judge-inferred theme gaps* _(shadow — neither lane tracked)_")
+                for c in jtg_cands[:6]:
+                    tks = " · ".join((c.get("tickers") or [])[:6])
+                    n_members = len(c.get("tickers") or [])
+                    bar = "" if n_members >= 3 else f" ({n_members}/3 toward /promotetheme)"
+                    lines.append(f"  • *{c['name']}*: {tks}{bar}")
+        except Exception as e:
+            logger.warning(f"/themes: judge-inferred theme-gap section failed (non-fatal): {e}")
+
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
 
     async def _handle_promotetheme(self, request: AgentRequest) -> AgentResponse:

@@ -20,7 +20,136 @@
 - **`get_active_themes(stale_after_days=7)`**: recency cap is the de-facto retirement mechanism — themes that stop appearing in daily snapshots age out after a week.
 - **Phase 2 re-granularization (ADR 0032, behind `THEME_SUBTHEME_ARM` DB toggle, fail-closed OFF)**: Route A protect-strip→PARENT_CHILD adjudication (inert on DISTINCT verdicts — fail-closed to today's strip) + Route B sole-sub-theme ecosystem-dominant split via `_split_fat_theme` (self-disarms: post-split the ecosystem has 2 themes). Split children persist via `parent_theme` (rebuilt into `sub_theme_parents` each run); covered-ticker exclusion keeps split-offs out of the discovery pool.
 
+## Two-lane detection architecture + the judge-inference feed (#322)
+
+Theme DETECTION runs on two structurally different lanes, both bottom-up (Pradeep:
+themes emerge from price action, never a hypothesis fed in):
+- **Lane 1 — price-action clustering** (this file's engine): RS/sector correlation
+  against EXISTING clusters (`_assign_uncovered_to_themes`) or new-cluster discovery.
+  Needs the ticker to CORRELATE with other names — a single name never clusters alone.
+- **Lane 2 — narrative tracking**, two sub-lanes, both feeding
+  `get_narrative_theme_candidates` → the judge's `active_narratives` context:
+  - `discover_narrative_themes` (#167, `theme_engine.py`, source='narrative_cogap')
+    — SAME-DAY co-gap: groups today's EP alerts by shared story via one Sonnet call.
+    Drops the whole pass below 2 qualifying alerts (`len(cand) < 2`) and requires
+    `len(tks) >= 2` to keep any proposed theme — **structurally needs 2+ co-occurring
+    names**, never a single ticker.
+  - `run_theme_synthesis` (#240, `theme_synthesis.py`, source='rs_slope_synthesis')
+    — cross-ticker RS-slope: proposes cohorts from coordinated accelerators/turners,
+    `_MIN_MEMBERS = 3` — **structurally needs 3+ coordinated movers**.
+- **S2/S3 coverage_probe** (2026-07-13, `coverage_probe.py`, source='coverage_probe')
+  — a THIRD, deterministic (zero-LLM) lane: for every themeless HIGH/MODERATE alert,
+  independently re-discovers a peer cohort via P1 named-entity match (a peer
+  company's name appearing in the alert's own `grounded_text`) + P3 market-adjusted
+  co-movement + cross-session persistence. By design it NEVER reads the judge's
+  `fire_axes` as an input (read-only calibration column only) — it must re-derive
+  the cohort from independent evidence. **Needs a P1 peer-name hit** — a judge
+  inference that names no peer at all (pure world-knowledge company classification)
+  scores P1=0 and never confirms.
+
+**#322 finding — why JBL's judge-inferred AI-infra theme was invisible to all three**:
+the Holistic Grade Judge (ADR 0011) reads the full grounded catalyst text with
+open-ended world knowledge and is explicitly instructed to weigh theme as the #1
+Pradeep catalyst axis — it can recognize "this ONE company belongs to a theme" from
+the catalyst text alone (e.g. Jabil's AI-datacenter-buildout exposure), with **no
+minimum cohort size and no peer name required**. Every detection lane above has a
+structural multi-member (Lane 1: correlate with a cluster; Lane 2 either sub-lane:
+2-3+ same-day/coordinated names) or peer-naming (coverage_probe P1) floor a single
+semantic classification never clears. The judge's `fire_axes` recorded only THAT a
+theme/narrative axis lit, never WHICH theme — the name lived only in free-text
+`judge_rationale`, parsed by nothing (ADR 0011 addendum 2026-06-17). Detection gap,
+not a labeling gap: the signal existed and was simply never captured anywhere durable.
+
+**The feed (shipped #322, `judge_theme_gap.py`)**: `ep_detector.py::_judge_shadow`,
+right after the judge's DB write succeeds, calls `feed_judge_theme_gap` — when
+`fire_axes` lights theme/narrative AND BOTH `in_active_theme` and
+`in_narrative_cohort` are False (the exact booleans the judge itself was fed), it
+writes a stub candidate (`db.upsert_judge_theme_gap_candidate`) into
+`mi_theme_candidates_shadow` under **`source='judge_inferred'`** — name built
+deterministically from sector+alert-date (never parsed from the judge's prose, so a
+malformed name can never reach the table), thesis = the judge's rationale verbatim
+(where "AI-infra" actually lives). Same-sector fires on the SAME calendar day merge
+via ticker-set union (`ON CONFLICT (run_date, name)`, and `name` embeds the alert
+date) — **no cross-day accrual**: unlike coverage_probe (whose stub name anchors on
+a STABLE persistence-window date, giving it cross-day continuity), a repeat fire on
+a LATER day writes a separate 1-member row under a different name, it never unions
+into an earlier one. A single fire is therefore a PERMANENT reviewable ONE-member
+row — below `theme_engine._PROMOTE_MIN_MEMBERS` (3), the same floor
+`promote_shadow_themes` and the operator's own `/promotetheme` enforce
+(`too_few` status) — promotable only if 3+ same-sector fires happen to land on the
+SAME day; otherwise it's the operator's judgment call (build/rename manually, or
+just watch it recur), never automatic.
+
+**Display, not just detection (verify-operator-facing-surface)**: correct rows in
+`mi_theme_candidates_shadow` are not the same as an operator-visible surface.
+`/themes <ticker-or-name>` (`_handle_theme_lookup`, reactive) already covers any
+source via `get_shadow_theme_candidates(include_probe=True)`. The bare `/themes`
+board (`_handle_theme_query`, proactive — what the operator actually watches) now
+ALSO renders a "🔎 Judge-inferred theme gaps" section reading the same
+`get_shadow_theme_candidates(include_probe=True)` call, filtered to
+`source == 'judge_inferred'`. This is a DISPLAY-only reader — deliberately NOT
+`get_narrative_theme_candidates` (which feeds the judge's own `active_narratives`
+input) — so proactive visibility today never touches the anti-circularity wall.
+
+**Anti-circularity (mirrors coverage_probe's walls — the judge must never
+corroborate itself)**: `source='judge_inferred'` is (a) NOT in
+`db.AUTO_PROMOTE_THEME_SOURCES` (the nightly auto-promote allowlist — pinned by
+`tests/test_judge_theme_gap.py`'s promote-wall tests) and (b) NOT matched by
+`get_narrative_theme_candidates`'s source filter, so a judge inference can never
+re-enter the judge's OWN `active_narratives` input on a later call. Graduation to
+a live theme is always the operator's call, gated the same way as every other
+non-allowlisted source.
+
+**Known coarse-proxy limitation**: `is_theme_gap` checks the two membership
+BOOLEANS (`in_active_theme`, `in_narrative_cohort`), not "does either lane track
+the STORY at all" — a judge NEW-JOINER fire (matching an already-active Lane-2
+narrative the ticker isn't yet a listed member of, the RCAT 5/28 class in
+`ep_grade_judge.assemble_judge_inputs`'s `active_narratives` docstring) also reads
+as a gap here even though Lane 2 already has the story. Accepted as an
+over-capture cost for a surface-only, never-auto-promoted shadow feed (worst case
+is a redundant reviewable row) — documented in `judge_theme_gap.py`, not fixed
+(would need re-fetching + fuzzy-matching `active_narratives`, out of this feed's
+scope).
+
+**Memory pointer**: `theme_detection_two_lane_architecture` (informal — no
+standalone memory file exists; this section + `judge_theme_gap.py`'s module
+docstring are the durable SSoT going forward).
+
 ## Change log
+
+### 2026-07-18 — judge → narrative-radar feed for judge-only theme inferences (#322)
+- **What**: new `agents/market_intelligence/judge_theme_gap.py` +
+  `db.upsert_judge_theme_gap_candidate` — when the judge's `fire_axes` lights
+  theme/narrative on a ticker neither Lane 1 nor Lane 2 tracks, write a
+  `source='judge_inferred'` candidate into `mi_theme_candidates_shadow`. Wired into
+  `ep_detector.py::_judge_shadow` right after the judge's DB-first write succeeds,
+  own try/except (SHADOW invariant — never disturbs the judge/alert path).
+- **Why**: the judge (JBL 6/17, AI-infra) can make a single-name semantic theme
+  classification no existing lane structurally can (see the section above) — that
+  signal was previously discarded to free-text `judge_rationale` and lost forever.
+- **Anti-circularity**: `judge_inferred` excluded from `AUTO_PROMOTE_THEME_SOURCES`
+  and from `get_narrative_theme_candidates`'s source filter (can't feed the judge's
+  own future `active_narratives` input) — surface-only, operator-promoted, same
+  discipline as coverage_probe's walls.
+- **Display**: `agent.py::_handle_theme_query` (the proactive `/themes` board, not
+  just the reactive lookup) now renders a "🔎 Judge-inferred theme gaps" section
+  from `get_shadow_theme_candidates(include_probe=True)` filtered to
+  `source == 'judge_inferred'` — a separate DISPLAY-only read, so today's
+  visibility doesn't touch the anti-circularity wall (verify-operator-facing-
+  surface: DB rows alone are not a surface).
+- **Honesty fix**: a single judge fire is below the 3-member `/promotetheme` floor
+  (`theme_engine._PROMOTE_MIN_MEMBERS`) — docs/audit text say so explicitly rather
+  than imply a lone row graduates on demand.
+- **Tests**: `tests/test_judge_theme_gap.py` (20 cases) — predicate/formatting
+  logic, feed wiring, and the two anti-circularity pins (auto-promote reader +
+  promote-path re-filter both drop `judge_inferred`; the active-narratives reader
+  never matches it).
+- **Reversion flag**: remove the `feed_judge_theme_gap` call site in
+  `ep_detector.py::_judge_shadow` to fully disable (SHADOW-only; no grade/tier
+  impact either way).
+- **Verify-live**: watch `mi_theme_candidates_shadow WHERE source='judge_inferred'`
+  for real rows after a judge run fires `fire_axes` on an untracked ticker; confirm
+  it never appears via `get_narrative_theme_candidates` or a promoted live theme.
 
 ### 2026-07-17 — biotech sector-cap 0 → PER-FAMILY (#476, operator-signed)
 - **What**: `_SECTOR_KEYWORD_GROUPS` biotech entry `max_themes 0 → PER_FAMILY_CAP`

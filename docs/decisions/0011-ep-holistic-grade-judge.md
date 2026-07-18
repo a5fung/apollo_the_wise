@@ -232,4 +232,9 @@ The alert now **resolves to the judge** and shows the provenance:
   provenance? Decide before promoting the multiplier-reset.
 - **Theme-detection gap** (`theme_detection_two_lane_architecture`): the judge inferred a theme
   (JBL AI-infra) that neither Lane-1 clustering nor Lane-2 narrative tracks — a real detection gap,
-  not just a label.
+  not just a label. **RESOLVED 2026-07-18 (#322):** root cause + fix in
+  `docs/architecture/theme_engine.md` §"Two-lane detection architecture + the judge-inference
+  feed" — every existing lane has a structural multi-member/peer-naming floor a single semantic
+  judge classification never clears; `judge_theme_gap.py` now feeds a `source='judge_inferred'`
+  candidate into the shared shadow-radar table (surface-only, same anti-circularity walls as
+  coverage_probe — never auto-promoted, never re-enters the judge's own `active_narratives`).

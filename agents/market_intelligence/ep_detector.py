@@ -3356,6 +3356,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # coherence gap as #319).
                             r["judge_rationale"] = v.get("rationale")
                             r["judge_materiality_tier"] = v.get("materiality_tier")
+                            # ── #322 judge → narrative-radar feed ──────────────────
+                            # The judge lit fire_axes theme/narrative on a ticker
+                            # NEITHER lane tracks (the JBL AI-infra class) — write a
+                            # surface-only mi_theme_candidates_shadow candidate
+                            # (source='judge_inferred') so the gap accrues into the
+                            # narrative radar instead of living only in prose the
+                            # alert discards (judge_theme_gap.py has the full
+                            # mechanism + the anti-circularity walls). OWN
+                            # try/except: a feed failure must never disturb the
+                            # judge write or the alert path (SHADOW invariant).
+                            try:
+                                from agents.market_intelligence.judge_theme_gap import (
+                                    feed_judge_theme_gap,
+                                )
+                                _jtg_pool = await get_pool()
+                                async with _jtg_pool.acquire() as _jtg_conn:
+                                    await feed_judge_theme_gap(
+                                        _jtg_conn, r["ticker"], r["alert_date"],
+                                        sector=r.get("sector"),
+                                        fire_axes=v.get("fire_axes"),
+                                        in_active_theme=bool(r.get("in_active_theme")),
+                                        in_narrative_cohort=bool(r.get("in_narrative_cohort")),
+                                        rationale=v.get("rationale"),
+                                    )
+                            except Exception as _jtge:
+                                logger.warning(
+                                    f"judge theme-gap feed failed for {r.get('ticker')}: {_jtge}")
                 if do_override:
                     r["score_tier"] = new_tier
                     r["grade_engine_authority"] = authority

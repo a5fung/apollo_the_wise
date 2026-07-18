@@ -5631,7 +5631,13 @@ async def get_narrative_theme_candidates(
     days only (`D - days <= run_date < D`; same-day rows are lookahead, the lane is
     EOD while alerts are premarket). None = the live view (window anchored on
     CURRENT_DATE, inclusive of today). One helper for both so live and replay can
-    never select cohorts differently."""
+    never select cohorts differently.
+
+    Deliberately EXCLUDES 'coverage_probe' and 'judge_inferred' (#322) — this is the
+    exact function that feeds the judge's own `active_narratives` context
+    (ep_grade_judge.assemble_judge_inputs), so a judge-sourced candidate must never
+    re-enter as a future call's corroborating evidence (the anti-circularity wall
+    judge_theme_gap.py documents in full)."""
     pool = await get_pool()
     src_clause = (
         "source IN ('narrative_cogap', 'rs_slope_synthesis', 'narrative_cogap_backfill')"
@@ -5710,6 +5716,13 @@ AUTO_PROMOTE_THEME_SOURCES = frozenset({
 # window, so this is a no-op today; the exclusion is part of the #469 operator
 # sign-off (digest item 1). Backfill cohorts stay operator-promotable via
 # /promotetheme like any non-allowlisted source.
+# Also deliberately NOT listed: 'coverage_probe' (S2/S3, 2026-07-13) and
+# 'judge_inferred' (#322, judge_theme_gap.py) — both are zero-vetting detection
+# feeds (a deterministic re-discovery probe and a judge free-text inference,
+# respectively) that must reach the operator's /themes + /promotetheme review
+# BEFORE they can ever touch live mi_themes / the judge's own active_narratives
+# input. They are exactly the case this allowlist model exists for: excluded by
+# construction, not because anyone remembered to name them.
 
 
 async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False) -> list[dict]:
@@ -8417,6 +8430,44 @@ async def upsert_coverage_probe_candidate(
                 )
             )
         WHERE mi_theme_candidates_shadow.source = 'coverage_probe'
+    """, run_date, name, thesis, list(tickers))
+
+
+async def upsert_judge_theme_gap_candidate(
+    conn: Any, run_date: Any, name: str, tickers: "list[str]", thesis: "str | None",
+) -> None:
+    """#322 feed: upsert ONE judge-inferred theme-gap candidate into
+    mi_theme_candidates_shadow under source='judge_inferred' — the judge lit
+    fire_axes theme/narrative for a ticker NEITHER lane tracks (full mechanism +
+    anti-circularity walls in judge_theme_gap.py). Tickers MERGE (set-union) on
+    conflict — same-sector/same-day judge fires collapse into one cohort, mirroring
+    upsert_coverage_probe_candidate's discipline exactly (including the source-
+    scoped ON CONFLICT guard so a same-named cohort from another lane is never
+    hijacked). Surface-only: NOT in AUTO_PROMOTE_THEME_SOURCES and NOT matched by
+    get_narrative_theme_candidates's source filter (a judge inference must never
+    re-enter the judge's own active_narratives input on a later call — THE
+    anti-circularity boundary). Visible in /themes immediately (both the reactive
+    two-way lookup AND the proactive 'Judge-inferred theme gaps' board section);
+    promotable via the operator's /promotetheme ONLY once 3+ fires merge on the
+    SAME calendar day (`name` embeds `run_date`, so the ON CONFLICT merge can
+    never span days — no cross-day accrual, unlike coverage_probe's stable-anchor
+    naming). A single fire, or fires on different days, stay separate reviewable
+    ONE-member rows — never auto-reaching theme_engine._PROMOTE_MIN_MEMBERS (3)
+    on their own."""
+    await conn.execute("""
+        INSERT INTO mi_theme_candidates_shadow
+            (run_date, name, thesis, tickers, source, would_revive)
+        VALUES ($1, $2, $3, $4, 'judge_inferred', FALSE)
+        ON CONFLICT (run_date, name) DO UPDATE SET
+            thesis = EXCLUDED.thesis,
+            tickers = (
+                SELECT ARRAY(
+                    SELECT DISTINCT t
+                    FROM unnest(mi_theme_candidates_shadow.tickers || EXCLUDED.tickers) AS t
+                    ORDER BY t
+                )
+            )
+        WHERE mi_theme_candidates_shadow.source = 'judge_inferred'
     """, run_date, name, thesis, list(tickers))
 
 
