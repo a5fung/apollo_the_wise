@@ -64,6 +64,29 @@ logger = logging.getLogger(__name__)
 # ── Safeguards ───────────────────────────────────────────────────────────────
 
 
+async def count_open_positions(
+    conn, account_mode: str, signal_type: str | None = None,
+) -> int:
+    """Open-position count for the cap gates — the single SQL source of truth.
+
+    Shared by `_check_safeguards` (the STEP-2 cheap early gate) AND
+    `entry_pipeline.submit_trade_entry` STEP 6 (the authoritative insert-time
+    recount under the per-mode advisory cap lock, #461) so the two reads can
+    never drift. Counting vocabulary = `db.OPEN_POSITION_STATUSES` (inert
+    `pending_confirmation` proposals excluded, #436 fork B). Per-mode isolated
+    (#66); pass `signal_type` for the per-strategy (#65) variant.
+    """
+    if signal_type is None:
+        return await conn.fetchval("""
+            SELECT COUNT(*) FROM mi_live_trades
+            WHERE status = ANY($2) AND account_mode = $1
+        """, account_mode, list(OPEN_POSITION_STATUSES))
+    return await conn.fetchval("""
+        SELECT COUNT(*) FROM mi_live_trades
+        WHERE status = ANY($3) AND account_mode = $1 AND signal_type = $2
+    """, account_mode, signal_type, list(OPEN_POSITION_STATUSES))
+
+
 async def _check_safeguards(
     account_mode: str | None = None,
     signal_type: str | None = None,
@@ -117,11 +140,11 @@ async def _check_safeguards(
     pool = await get_pool()
     async with pool.acquire() as conn:
         # Max concurrent positions — per mode (paper noise doesn't
-        # constrain live; live noise doesn't constrain paper).
-        open_count = await conn.fetchval("""
-            SELECT COUNT(*) FROM mi_live_trades
-            WHERE status = ANY($2) AND account_mode = $1
-        """, account_mode, list(OPEN_POSITION_STATUSES))
+        # constrain live; live noise doesn't constrain paper). This read is
+        # the CHEAP EARLY gate; the authoritative recount happens at insert
+        # time inside entry_pipeline's per-mode-locked transaction (#461),
+        # via the SAME count_open_positions helper.
+        open_count = await count_open_positions(conn, account_mode)
         if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
             logger.info(
                 f"Safeguard [{account_mode}] blocked: max positions "
@@ -141,10 +164,9 @@ async def _check_safeguards(
                 signal_type,
             )
             if strat_cap is not None:
-                strat_open = await conn.fetchval("""
-                    SELECT COUNT(*) FROM mi_live_trades
-                    WHERE status = ANY($3) AND account_mode = $1 AND signal_type = $2
-                """, account_mode, signal_type, list(OPEN_POSITION_STATUSES))
+                strat_open = await count_open_positions(
+                    conn, account_mode, signal_type,
+                )
                 if strat_open >= int(strat_cap):
                     logger.info(
                         f"Safeguard [{account_mode}/{signal_type}] blocked: "

@@ -25,6 +25,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_STRATEGY_IN_SHADOW,
     BLOCK_STRATEGY_DEPRECATED,
     BLOCK_MAX_POSITIONS,
+    BLOCK_STRATEGY_POSITION_CAP,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_FADED_FROM_ORB,
@@ -34,6 +35,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 )
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import (
+    MAX_CONCURRENT_LIVE_POSITIONS,
     current_account_mode,
     get_strategy_account_mode,
     mode_prefix,
@@ -47,6 +49,19 @@ logger = logging.getLogger(__name__)
 BAR_RETRY_MAX = 3
 BAR_RETRY_DELAY_SEC = 10
 FADE_MIDPOINT_RATIO = 0.5
+
+# ── #461 per-account_mode position-cap lock (advisory, xact-scoped, DB-global) ─
+# Namespace for the STEP-6 atomic cap recheck (design:
+# docs/decisions/461_toctou_cap_design_2026-07-18.md, operator-approved).
+# DISTINCT from order_manager._TRADE_LOCK_NAMESPACE = 0x504152 ("PAR" —
+# session-level, per-trade, guards the partial-vs-reconciler EXIT path); the
+# two locks live in different namespaces and are never held together, so no
+# collision and no deadlock ordering concern. Two-int form
+# pg_advisory_xact_lock(classid, objid): classid = this constant, objid =
+# hashtext(account_mode) → per-MODE serialization only — paper never
+# serializes against live (#66 isolation). Xact-scoped: auto-releases at
+# commit/rollback/error/connection-death — no unlock bookkeeping.
+_CAP_LOCK_NAMESPACE = 0x434150  # "CAP" — fits int4; arbitrary fixed namespace
 
 # Bounded action vocabulary for `submit_trade_entry` return dicts.
 # Callers pattern-match on these (see live_tracker.process_new_alerts_live
@@ -236,6 +251,7 @@ async def submit_trade_entry(
     from agents.market_intelligence.broker.live_tracker import (
         _check_safeguards,
         _insert_skipped_trade,
+        count_open_positions,
     )
     from agents.market_intelligence.broker.order_manager import submit_entry
     from agents.market_intelligence.broker.telegram_confirm import send_trade_proposal
@@ -467,51 +483,130 @@ async def submit_trade_entry(
         except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); sizing math (order_spec) already mutated above this block, unaffected by the audit write
             pass
 
-    # 6. Insert trade row. account_mode already resolved at safeguard step.
+    # 6. Insert trade row — ATOMIC recount + insert (+ auto-enter confirm flip)
+    # under the per-mode advisory cap lock (#461 TOCTOU fix, operator-approved
+    # design docs/decisions/461_toctou_cap_design_2026-07-18.md).
+    #
+    # STEP 2's _check_safeguards is the cheap EARLY gate; between it and here
+    # sit multiple awaits (exposure shadow, bar-fetch retry up to ~30s, fade
+    # guard, spec build), so its count can be stale by insert time — concurrent
+    # candidates (the ORB monitor's Semaphore(5)+gather) could all pass STEP 2
+    # on the same count and overshoot the cap. This ONE transaction is the
+    # AUTHORITATIVE check: pg_advisory_xact_lock serializes every entry funnel
+    # in the same account_mode (coroutines, overlapping ORB triggers, AND
+    # processes — EXECUTION_MODE=http; the lock lives in Postgres, the #151
+    # lesson), the recount reads committed state via the SAME
+    # count_open_positions SQL as STEP 2 (single SoT, zero drift), and the
+    # insert + confirm flip commit BEFORE the lock releases — the next
+    # waiter's recount necessarily sees this row. Paper never serializes
+    # against live: hashtext('paper') != hashtext('live') (#66). No external
+    # I/O inside the lock — the Alpaca submit stays post-commit (step 7); lock
+    # hold time = recount + insert + update = single-digit ms. An error inside
+    # the txn rolls back (lock auto-releases) and takes the existing
+    # orb_pipeline_crash path. Cap VALUE, counting vocabulary (#436), and
+    # skip-reason formats are UNCHANGED — only WHEN the count is read moved.
     account_mode = _safeguard_mode
+    is_paper = account_mode == "paper"
+    live_real_enabled = bool(strategy.live_real_enabled) if strategy else False
+    # Auto-enter vs. staged-paper proposal (see _should_auto_enter): paper
+    # auto-confirms; a phase=live strategy auto-enters REAL money only when
+    # live_real_enabled=True (operator-signed 2026-06-20). Computable pre-txn —
+    # both inputs already in scope.
+    auto_enter = _should_auto_enter(account_mode, live_real_enabled)
+
+    cap_reason: str | None = None
+    trade_id = None
     async with pool.acquire() as conn:
-        trade_id = await conn.fetchval(
-            """
-            INSERT INTO mi_live_trades
-                (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
-                 status, orb_high, orb_low, atr_14,
-                 entry_price, entry_shares, stop_price, hard_stop,
-                 position_size, risk_dollars, signal_type, account_mode, proposed_at)
-            VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
-                    $10,$11,$12,$12,$13,$14,$15,$16,NOW())
-            ON CONFLICT (ticker, alert_date) DO NOTHING
-            RETURNING id
-            """,
-            ticker, today,
-            alert_context.get("ep_score", 0),
-            alert_context.get("catalyst_quality"),
-            alert_context.get("gap_pct"),
-            regime_record.get("regime") if regime_record else None,
-            order_spec["orb_high"], order_spec["orb_low"], atr_14,
-            order_spec["entry_price"], float(order_spec["shares"]),
-            order_spec["stop_loss_price"],
-            order_spec["position_size"], order_spec["risk_dollars"],
-            signal_type, account_mode,
+        async with conn.transaction():
+            await conn.fetchval(
+                "SELECT pg_advisory_xact_lock($1, hashtext($2))",
+                _CAP_LOCK_NAMESPACE, account_mode,
+            )
+            open_count = await count_open_positions(conn, account_mode)
+            if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
+                # Byte-identical reason format to the STEP-2 gate — the
+                # ledger's 'cap_blocked' mapping + the #197 CAP+1 alert both
+                # match on it.
+                cap_reason = (
+                    f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS} "
+                    f"(mode={account_mode})"
+                )
+            else:
+                # Per-strategy cap (#65) — identical TOCTOU shape, covered by
+                # the same per-mode lock. NULL = share global cap, no gate.
+                strat_cap = await conn.fetchval(
+                    "SELECT max_concurrent_positions FROM mi_strategies WHERE strategy_id = $1",
+                    signal_type,
+                )
+                if strat_cap is not None:
+                    strat_open = await count_open_positions(
+                        conn, account_mode, signal_type,
+                    )
+                    if strat_open >= int(strat_cap):
+                        cap_reason = (
+                            f"{BLOCK_STRATEGY_POSITION_CAP}: {signal_type} "
+                            f"{strat_open}/{strat_cap} (mode={account_mode})"
+                        )
+            if cap_reason is None:
+                trade_id = await conn.fetchval(
+                    """
+                    INSERT INTO mi_live_trades
+                        (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
+                         status, orb_high, orb_low, atr_14,
+                         entry_price, entry_shares, stop_price, hard_stop,
+                         position_size, risk_dollars, signal_type, account_mode, proposed_at)
+                    VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
+                            $10,$11,$12,$12,$13,$14,$15,$16,NOW())
+                    ON CONFLICT (ticker, alert_date) DO NOTHING
+                    RETURNING id
+                    """,
+                    ticker, today,
+                    alert_context.get("ep_score", 0),
+                    alert_context.get("catalyst_quality"),
+                    alert_context.get("gap_pct"),
+                    regime_record.get("regime") if regime_record else None,
+                    order_spec["orb_high"], order_spec["orb_low"], atr_14,
+                    order_spec["entry_price"], float(order_spec["shares"]),
+                    order_spec["stop_loss_price"],
+                    order_spec["position_size"], order_spec["risk_dollars"],
+                    signal_type, account_mode,
+                )
+                if trade_id and auto_enter:
+                    # Auto-enter confirm flip INSIDE the same transaction: the
+                    # row becomes countable (OPEN_POSITION_STATUSES includes
+                    # 'confirmed', not 'pending_confirmation' — #436)
+                    # atomically with the recount, closing the former sub-ms
+                    # pending→confirmed gap as well.
+                    await conn.execute(
+                        "UPDATE mi_live_trades SET status='confirmed', confirmed_at=NOW() WHERE id=$1",
+                        trade_id,
+                    )
+        # Transaction committed here → advisory xact lock released.
+
+    if cap_reason is not None:
+        # The race actually fired: STEP 2 passed on a then-current count that
+        # went stale before insert. Observe-only telemetry — this event is the
+        # #461 verify-live signal (a fired event in prod = the fix working).
+        try:
+            await log_audit_event(
+                "cap_recheck_blocked",
+                f"{strategy_label} {ticker} — insert-time cap recheck blocked: {cap_reason}",
+            )
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); the _skip below Telegrams + ledgers the block itself
+            pass
+        return await _skip(
+            cap_reason, icon="🚫", audit_event="orb_blocked", action=ACTION_BLOCKED,
         )
+
     if not trade_id:
         logger.debug(f"{strategy_label} {ticker}: trade row insert hit unique conflict")
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
 
-    # 7. Submit bracket. Auto-enter vs. staged-paper proposal (see _should_auto_enter):
-    # paper auto-confirms; a phase=live strategy auto-enters REAL money only when
-    # live_real_enabled=True (operator-signed 2026-06-20). All _check_safeguards rules
-    # ran above; submit_entry re-checks the /pause halt (defense in depth).
-    is_paper = account_mode == "paper"
-    live_real_enabled = bool(strategy.live_real_enabled) if strategy else False
-
-    if _should_auto_enter(account_mode, live_real_enabled):
+    # 7. Submit bracket. All _check_safeguards rules ran at STEP 2 + the cap
+    # recheck above; submit_entry re-checks the /pause halt (defense in depth).
+    if auto_enter:
         _mode_label = "paper" if is_paper else "LIVE real-$"
         logger.info(f"{strategy_label} {_mode_label} auto-enter: {ticker} (trade_id={trade_id})")
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE mi_live_trades SET status='confirmed', confirmed_at=NOW() WHERE id=$1",
-                trade_id,
-            )
         order = await submit_entry(trade_id)
         if not order:
             logger.error(
