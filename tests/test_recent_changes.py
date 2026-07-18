@@ -366,12 +366,12 @@ class TestScoreEpVolConviction:
         from agents.market_intelligence.ep_detector import _score_ep
         score_high, bd_high = _score_ep(
             gap_pct=10, rel_volume=5, catalyst_quality="strong",
-            profile=self._base_profile(), analyst_upgrades=0,
+            profile=self._base_profile(),
             regime_multiplier=1.0, vol_percentile=92.0,
         )
         score_low, bd_low = _score_ep(
             gap_pct=10, rel_volume=5, catalyst_quality="strong",
-            profile=self._base_profile(), analyst_upgrades=0,
+            profile=self._base_profile(),
             regime_multiplier=1.0, vol_percentile=50.0,
         )
         assert bd_high["vol_conviction"] == 5
@@ -382,7 +382,7 @@ class TestScoreEpVolConviction:
         from agents.market_intelligence.ep_detector import _score_ep
         _, breakdown = _score_ep(
             gap_pct=10, rel_volume=5, catalyst_quality="strong",
-            profile=self._base_profile(), analyst_upgrades=0,
+            profile=self._base_profile(),
             regime_multiplier=1.0, vol_percentile=75.0,
         )
         assert breakdown["vol_conviction"] == 3
@@ -391,7 +391,7 @@ class TestScoreEpVolConviction:
         from agents.market_intelligence.ep_detector import _score_ep
         _, breakdown = _score_ep(
             gap_pct=10, rel_volume=5, catalyst_quality="strong",
-            profile=self._base_profile(), analyst_upgrades=0,
+            profile=self._base_profile(),
             regime_multiplier=1.0, vol_percentile=40.0,
         )
         assert breakdown["vol_conviction"] == 0
@@ -401,7 +401,7 @@ class TestScoreEpVolConviction:
         from agents.market_intelligence.ep_detector import _score_ep
         _, breakdown = _score_ep(
             gap_pct=10, rel_volume=5, catalyst_quality="strong",
-            profile=self._base_profile(), analyst_upgrades=0,
+            profile=self._base_profile(),
             regime_multiplier=1.0,
         )
         assert "short_interest" not in breakdown

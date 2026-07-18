@@ -46,7 +46,6 @@ from agents.market_intelligence.collector import (
     get_index_history,
     get_fmp_profile,
     get_fmp_earnings,
-    get_fmp_analyst_ratings,
     get_fmp_news,
     get_alpaca_news,
     is_primary_subject_news,
@@ -163,32 +162,10 @@ class CachedGrade(NamedTuple):
     # direct source; #317/#405-P2 suppress-on-direct-source). Same corpus across a quality
     # re-grade, so `_replace` on other fields preserves it. Default None = flag absent (safe).
     has_direct_source: "bool | None" = None
-    # #332 (C1 setup-class classifier): the REAL analyst-upgrades count captured at the
-    # original (uncached) grade tick. Default None = a pre-fix cache entry shape (never
-    # constructed with a real value) — `_resolve_cached_upgrades_30d` below treats that as
-    # "unknown", never as a lie. See that function's docstring for why this field exists
-    # separately from the cached-path's own hardcoded-0 shortcut for `_score_ep`'s bonus.
-    upgrades_30d: "int | None" = None
 
 
 _catalyst_cache: dict[str, CachedGrade] = {}
 _catalyst_cache_date: "date | None" = None
-
-
-def _resolve_cached_upgrades_30d(cached: "CachedGrade") -> int:
-    """#332: the cached-path comment ("ratings don't change scan-to-scan; skip re-fetch") used
-    to hardcode `upgrades_30d = 0` unconditionally on every cache hit. That was harmless for
-    `_score_ep`'s analyst bonus (needs `>= 3` to matter, so 0 was a conservative-safe
-    approximation), but it becomes a LIE for the setup-class classifier's stricter
-    `upgrades_30d == 0` check: a real name with 3+ upgrades, re-scored on a cached tick (a
-    ticker that didn't clear filters/threshold on its first uncached grade but does on a later
-    tick — e.g. pm-volume grew), would read `0` and wrongly classify `episodic_neglect`.
-
-    Fix: read the REAL value captured at the original grade tick (`cached.upgrades_30d`, now
-    threaded through `CachedGrade`) when present. `0` is used ONLY as the defensive fallback for
-    a pre-fix cache-entry shape (should not occur in practice — the cache resets daily and every
-    construction site now sets the real value) — never as a stand-in for "we don't know"."""
-    return cached.upgrades_30d if cached.upgrades_30d is not None else 0
 
 
 # Prose-mismatch downgrade markers (#72, 2026-05-11). When the catalyst
@@ -1083,7 +1060,6 @@ def _score_ep(
     rel_volume: float,
     catalyst_quality: str,
     profile: dict,
-    analyst_upgrades: int,
     regime_multiplier: float,
     vol_percentile: float = 50.0,
     prior_3m_change: float | None = None,
@@ -1157,8 +1133,17 @@ def _score_ep(
     else:
         breakdown["float"] = 0
 
-    # Analyst upgrades (max 5)
-    breakdown["analyst"] = min(analyst_upgrades * 2, 5) if analyst_upgrades >= 3 else 0
+    # Analyst upgrades bonus REMOVED (#332, 2026-07-18, operator-signed — CHANGE_PROCESS +
+    # docs/analysis/332_analyst_bonus_backtest_2026-07-18.md). The feed (get_fmp_analyst_ratings,
+    # yfinance Ticker.recommendations) has been structurally dead since 2026-03-14 — it returns
+    # the AGGREGATE grade-count table, and the string-matcher can never match an integer count.
+    # Verified against the real production function (NVDA/AAPL/PLTR + 20 sampled alerted
+    # tickers all returned 0). Realized impact of removal: 0 alerts, 0 tier flips across all
+    # 251 retained live alerts — behavior-identical BY CONSTRUCTION. A repaired feed would add
+    # no measured edge either (permutation p=0.29 overall / 0.18 within-HIGH on the
+    # reconstructed counterfactual) and would select analyst-coverage BREADTH (a mature-large-
+    # cap proxy — TXN/QCOM/ROKU class), the opposite of this rubric's neglect thesis
+    # (`breakdown["neglect"]` below already scores that axis directly).
 
     # Neglect period — approximate from 52-week range
     # If price < 70% of 52-week high before the gap, it was neglected
@@ -1969,10 +1954,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             filters_cleared = cached.filters_cleared
             grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
             _has_direct_source = cached.has_direct_source  # #405 Part-1: preserve the display flag on the cached path
-            # #332: real cached value when known (ratings don't change scan-to-scan, so the
-            # ORIGINAL grade tick's count is still accurate) — 0 only as a defensive fallback,
-            # never a guess. See _resolve_cached_upgrades_30d's docstring.
-            upgrades_30d = _resolve_cached_upgrades_30d(cached)
 
             if not filters_cleared:
                 skip_reason = await _post_grade_filters(
@@ -2087,10 +2068,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     logger.debug(f"{ticker}: repoll shadow skipped — {_e}")
         else:
             # Fetch all external data concurrently
-            profile, fmp_news, ratings, perplexity_answer, sec_filings, alpaca_news = await asyncio.gather(
+            # #332 (2026-07-18, operator-signed): get_fmp_analyst_ratings dropped from this
+            # gather — the analyst-upgrades bonus it fed was removed from _score_ep (dead
+            # feed since 2026-03-14; see docs/analysis/332_analyst_bonus_backtest_2026-07-18.md
+            # + docs/setups/magna53_ep.md's change log). No other consumer read `ratings`.
+            profile, fmp_news, perplexity_answer, sec_filings, alpaca_news = await asyncio.gather(
                 get_fmp_profile(ticker),
                 get_fmp_news(ticker),
-                get_fmp_analyst_ratings(ticker),
                 search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news.", recency="week"),
                 # 8-K (US) + 6-K (foreign issuers — SE/BABA earnings & deals, #208).
                 # 6-K text is pulled from the EX-99 exhibit, not the cover boilerplate.
@@ -2102,7 +2086,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 get_alpaca_news(ticker),
             )
             await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
-            upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
 
             # Combine news sources — Perplexity synthesized answer + yfinance headlines
             all_news = fmp_news + ([{"title": "Perplexity synthesis", "text": perplexity_answer}]
@@ -2333,7 +2316,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 pplx_quality, skip_reason is None,
                 grounded_text=grounded_text,
                 has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
-                upgrades_30d=upgrades_30d,  # #332: real count, so a later cached tick never lies
             )
 
             if skip_reason:
@@ -2838,7 +2820,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             rel_volume=rel_volume,
             catalyst_quality=catalyst_quality,
             profile=profile,
-            analyst_upgrades=upgrades_30d,
             regime_multiplier=regime_multiplier * confidence_multiplier,
             projected_vol_multiple=c.get("projected_vol_multiple"),
             vol_percentile=vol_pct,
@@ -2994,7 +2975,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     rel_volume=rel_volume,
                     catalyst_quality=catalyst_quality,
                     profile=profile,
-                    analyst_upgrades=upgrades_30d,
                     regime_multiplier=regime_multiplier,  # boost OFF (×1.0)
                     projected_vol_multiple=c.get("projected_vol_multiple"),
                     vol_percentile=vol_pct,
@@ -3046,12 +3026,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "sector": profile.get("sector"),
             # #332 (C1 setup-class classifier, ADR 0028 §2): the REAL 52-week high (distinct
             # from structure_axis_shadow's ~13-month mi_daily_closes trailing_high — don't
-            # conflate the two) + the analyst-upgrades count, both threaded at detection time
-            # so the classifier is point-in-time/lookahead-honest per the ADR's field-
-            # provenance paragraph. `current_price` (the Polygon gap-detection price) is
-            # already on `r` via `**c` above — no separate "price" field needed.
+            # conflate the two), threaded at detection time so the classifier is point-in-
+            # time/lookahead-honest per the ADR's field-provenance paragraph. `current_price`
+            # (the Polygon gap-detection price) is already on `r` via `**c` above — no
+            # separate "price" field needed. (upgrades_30d is NOT threaded here — #332
+            # 2026-07-18: the old get_fmp_analyst_ratings-based source was a dead feed;
+            # the classifier now sources its own recent-upgrade count directly via
+            # setup_class_classifier.compute_setup_class_fields, see that module.)
             "week52_high": profile.get("52WeekHigh"),
-            "upgrades_30d": upgrades_30d,
             "baseline_floor_tier": tier,
             # W2a (#243): floor drove this alert's tier (holistic_judge_enabled OFF —
             # W1/W2-dormant). The W2 flip overwrites this with 'judge'/'fallback'.

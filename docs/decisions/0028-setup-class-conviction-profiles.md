@@ -51,17 +51,43 @@ from the FMP profile, distinct from that module's own ~13-month `mi_daily_closes
 conflated). `ADV_20_dollar` is a new ticker-scoped, strictly-prior-to-`alert_date` median-volume
 query (`db.get_adv_20_dollar_asof`) — mirrors `get_adv_from_daily_closes`'s formula but scoped
 to one ticker (that function is a whole-market batch query; calling it once per EP candidate
-would re-scan `mi_daily_closes` for a single-ticker answer). `upgrades_30d` is threaded from the
-existing `ep_detector.py` computation (was computed, discarded pre-C1) — including a fix so the
-catalyst-cache's cached-grade path returns the REAL cached count instead of a hardcoded `0`
-(the hardcoded value was a safe approximation for `_score_ep`'s `>=3` bonus but would have lied
-for this classifier's strict `== 0` check). The tag persists on `mi_ep_alerts.setup_class`
-(P0 — visibility only) and rides `ep_grade_judge.assemble_judge_inputs`'s payload — but is
-**deliberately never rendered into the judge prompt** in P0, so the judge is structurally
-incapable of being influenced by it (stronger than the existing byte-identical-when-absent
-axis-plumbing pattern: byte-identical ALWAYS, present or not). 47 tests
-(`tests/test_setup_class_classifier.py`, `tests/test_setup_class_db_helpers.py`, plus additions
-to `tests/test_ep_grade_judge.py` and `tests/test_405_catalyst_cache_filters.py`).
+would re-scan `mi_daily_closes` for a single-ticker answer). The tag persists on
+`mi_ep_alerts.setup_class` (P0 — visibility only) and rides
+`ep_grade_judge.assemble_judge_inputs`'s payload — but is **deliberately never rendered into
+the judge prompt** in P0, so the judge is structurally incapable of being influenced by it
+(stronger than the existing byte-identical-when-absent axis-plumbing pattern: byte-identical
+ALWAYS, present or not).
+
+**`upgrades_30d` SOURCE REPAIR (same day, operator-signed).** The ORIGINAL C1 build (this
+paragraph, first version) threaded `upgrades_30d` from `ep_detector.py`'s
+`get_fmp_analyst_ratings`-based count (with a same-day fix so the catalyst-cache's cached-grade
+path returned the real cached value instead of a hardcoded `0`). Hours later,
+`docs/analysis/332_analyst_bonus_backtest_2026-07-18.md` found that ENTIRE feed structurally
+dead in production since 2026-03-14 (yfinance `Ticker.recommendations` returns an aggregate
+grade-count table; the string-matcher can never match an integer count) — under it, EVERY
+candidate read `upgrades_30d == 0`, so this class's 3rd AND-clause was VACUOUSLY satisfied by
+construction (the cache fix above was itself a no-op: threading a constant 0 changes nothing).
+**REPAIRED same day (operator-signed)**: `setup_class_classifier.py` now fetches
+`collector.get_recent_upgrade_events` (yfinance `Ticker.upgrades_downgrades` — dated events,
+the source the backtest reconstructed against and validated) directly, and counts
+POSITIVE-DIRECTION events (`action == "up"`, not the backtest's broader "faithful" grade-set
+semantic, which was shown to select analyst-coverage BREADTH rather than upgrade RECENCY) in
+the 30 calendar days ending `alert_date` (`count_recent_upgrades`, lookahead-honest). The
+catalyst-cache thread-through (`CachedGrade.upgrades_30d` / `_resolve_cached_upgrades_30d`) was
+REMOVED — `upgrades_30d` no longer rides `r`/the cache at all; it is fetched independently
+inside `compute_setup_class_fields`. Re-verified the repair actually discriminates: a
+coverage-heavy mid-cap with real recent upgrades no longer reads `upgrades_30d == 0` (correctly
+excluded from `episodic_neglect`); a genuinely-uncovered small/mid-cap still can (see
+`tests/test_setup_class_classifier.py`'s discrimination tests). **`_score_ep`'s OWN
+analyst-upgrades bonus was separately REMOVED** (not repaired) in the same backtest's wake —
+see `docs/setups/magna53_ep.md`'s 2026-07-18 change-log entry; that is an unrelated scoring
+change, tracked there, not here.
+
+52 tests total, post-repair (`tests/test_setup_class_classifier.py` 37,
+`tests/test_setup_class_db_helpers.py` 12, `tests/test_ep_grade_judge.py` +3). The 3 cached-tick
+`upgrades_30d` tests briefly added to `tests/test_405_catalyst_cache_filters.py` during the
+original build were removed same-day along with the cache thread-through they tested (that
+mechanism no longer exists post-repair).
 
 **Field provenance (lookahead honesty):** the tag is computed AT DETECTION from point-in-time
 fields and **persisted on the alert row** — the P1 calibration replay classifies historical rows
@@ -104,8 +130,9 @@ land on plateaus (the #170/#290 anti-knife-edge discipline).
 ## 6. Cards
 
 - **C1 — classifier + tag — SHIPPED 2026-07-18** (pure fn + alert-row/DecisionContext wiring;
-  47 tests incl. every boundary cut + unclassified-fail-to-baseline + missing-fields +
-  a lookahead-honesty pin).
+  `upgrades_30d` source repaired same-day after a backtest found the original feed dead;
+  52 tests incl. every boundary cut + unclassified-fail-to-baseline + missing-fields +
+  a lookahead-honesty pin + the discrimination re-verification).
 - **C2 — P1 calibration probe** (the correlation/weight-derivation replay; verdict table per
   class + N-gates + boundary sensitivity).
 - **C3 — P2 shadow profiles** (profile lookup in `composite_with_scaling(profile=...)` default
@@ -149,5 +176,5 @@ other program's readouts — #357 STEP-0, the axes' calibrations, the weekly rev
     window), NOT analyst-coverage breadth.
 
   Built same day per this ruling — see the "C1 SHIPPED 2026-07-18" note under §2 above for the
-  implementation (`setup_class_classifier.py`, 47 tests, ADR + `meta_rubric.md` updated in the
-  same commit per `CHANGE_PROCESS`).
+  implementation (`setup_class_classifier.py`, 52 tests post source-repair, ADR + `meta_rubric.md`
+  updated in the same commit per `CHANGE_PROCESS`).

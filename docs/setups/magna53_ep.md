@@ -55,6 +55,8 @@ Multi-factor: gap_pct + pm_rvol + catalyst_quality multiplier + regime + RS + pr
 - `strong`: 0.7×
 - `routine`: 0.3×
 
+`_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `rel_volume` (RVOL / projected open-intensity), `catalyst` (quality tier), `float` (low-float bonus), `neglect` (52w-high distance), `vol_conviction` (pre-market volume percentile), `prior_momentum` (the extension PENALTY above), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
+
 Score thresholds:
 - `< 50` → skip (below MODERATE)
 - `50 ≤ score < ep_threshold` → MODERATE (briefing only)
@@ -81,6 +83,61 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-07-18 — Analyst-upgrades bonus REMOVED — dead feed since 2026-03-14 (#332, operator-signed)
+
+**Trigger**: #332 C1 setup-class classifier build surfaced that `_score_ep`'s cached-grade tick
+hardcoded `upgrades_30d = 0` (a latent inconsistency vs the uncached path). Gated fix on a
+backtest before touching a live-scoring path per CHANGE_PROCESS.
+
+**Evidence**: `docs/analysis/332_analyst_bonus_backtest_2026-07-18.md` (probe:
+`scripts/probes/_332_analyst_bonus_backtest.py`, read-only, run over prod postgres + the REAL
+production `get_fmp_analyst_ratings` function per memory `rigor-before-paid-eval-spend`):
+1. The feed (`collector.get_fmp_analyst_ratings`, yfinance `Ticker.recommendations`) has been
+   structurally dead since 2026-03-14 — it returns the AGGREGATE grade-count table (columns
+   like `strongBuy`/`buy`/`hold`/`sell`), and the string-matcher compares grade NAMES against
+   INTEGER COUNTS, which can never match. Verified by running the real function in the live
+   `apollo-market` container for NVDA/AAPL/PLTR (the most analyst-covered names in the
+   market) — all returned `upgrades_30d = 0` — plus 20 sampled live-alerted tickers, also 0.
+2. **Realized impact of the cached-tick hardcode: 0 alerts, 0 tier flips** across all 251
+   retained live alerts (2026-04-13 → 2026-07-17) — the uncached path ALSO always computed 0,
+   so cached − uncached = 0 on every tick. The "fix" as originally scoped (thread the real
+   cached value) would have threaded a constant 0.
+3. Reconstructed counterfactual (a REPAIRED feed's value, had it worked): bonus-eligible
+   alerts do NOT outperform (N=203 with fwd-10d outcomes; permutation p=0.29 overall, p=0.18
+   within-HIGH; mean fwd-10d direction actually LOWER for eligible). What the live `>=3`
+   threshold's grade-set actually selects is analyst-coverage BREADTH (TXN/QCOM/ROKU/DDOG/
+   WDAY/ZM class) — a mature-large-cap proxy, the OPPOSITE of this rubric's own neglect thesis
+   (`breakdown["neglect"]` already scores 52w-high distance directly). The honest "true
+   upgrade" threshold (`>=3` distinct upgrade Actions) occurred once in 3 months of EP
+   candidates — nothing to calibrate a bonus on even if repaired.
+
+**Anticipated effect**: NONE on any historical or current alert/tier/score — removal is
+**behavior-identical by construction** (the term contributed exactly 0 on every tick, ever,
+since the feed always returned `analyst_upgrades=0` and `0 >= 3` is false). Forward-looking
+effect: removes the risk of a future yfinance schema change silently re-animating the bonus at
+an uncalibrated +5 raw points (worth 5.0–7.2 final points post-multiplier) with no edge behind
+it.
+
+**Reversion-flag**: REMOVAL (dead-feed retirement) — not a reversal of a specific prior dated
+change; the bonus predates this SSoT's change-log history. Not a REFINEMENT (no repair
+shipped) and not a REVERSAL of a deliberate calibration (the backtest's §4 shows no calibration
+would have justified keeping/repairing it).
+
+**Status**: shipped, behavior-identical by construction (evidenced against all 251 retained
+live alerts, not merely asserted) — no field-validation period needed for a change with a
+provably-zero realized delta.
+
+**Scope of removal**: `breakdown["analyst"]` term + the `analyst_upgrades` parameter deleted
+from `_score_ep` (`agents/market_intelligence/ep_detector.py`); the now-orphaned
+`get_fmp_analyst_ratings` fetch + `upgrades_30d = sum(...)` aggregation removed from the
+per-candidate scan loop and from `collector.py` (verified no other LIVE consumer via repo-wide
+grep — a pre-existing, already-broken standalone script `backtest_ep.py` also referenced it
+but was already non-functional before this change, unrelated missing symbol). The `#332`
+classifier's OWN `upgrades_30d` (the `episodic_neglect` low-coverage cut) is UNAFFECTED by this
+entry — it now sources independently from `collector.get_recent_upgrade_events` (yfinance
+`Ticker.upgrades_downgrades`, dated events), a repair tracked in
+`docs/decisions/0028-setup-class-conviction-profiles.md` §2, not this rubric.
 
 ### 2026-07-18 — Extension-rule wording corrected (transcription fix, NOT a criterion change) [#481]
 

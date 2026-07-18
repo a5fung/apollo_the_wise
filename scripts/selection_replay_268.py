@@ -38,9 +38,12 @@ Run on prod (DB + Polygon + Anthropic):
 LOOKAHEAD HYGIENE: detected_at on historical rows is the INSERT time (wrong) —
 this script pins the point-in-time bound to alert_date 09:35 ET for corpus +
 narrative reconstruction. Residual caveats (logged in the analysis doc): FMP
-profile/market-cap = current values; analyst_upgrades=0; pm_rvol/projection
-axes unavailable (floor approximated — Phase A calibrates vs 90d of REAL
-alerts); narratives dark before #167 (late May 2026).
+profile/market-cap = current values; pm_rvol/projection axes unavailable (floor
+approximated — Phase A calibrates vs 90d of REAL alerts); narratives dark
+before #167 (late May 2026). (#332, 2026-07-18: _score_ep's analyst-upgrades
+param was REMOVED — the caveat about analyst_upgrades=0 no longer applies,
+the feed it fed was dead in production too; see
+docs/analysis/332_analyst_bonus_backtest_2026-07-18.md.)
 """
 from __future__ import annotations
 
@@ -157,7 +160,6 @@ async def stage_grade(args) -> None:
                 rel_volume=float(r["rel_volume"] or 0),
                 catalyst_quality=quality,
                 profile=profile,
-                analyst_upgrades=0,
                 regime_multiplier=mult,
                 vol_percentile=50.0,
                 prior_3m_change=None,

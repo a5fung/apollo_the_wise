@@ -428,35 +428,49 @@ async def get_fmp_earnings(ticker: str) -> list[dict]:
         return []
 
 
-async def get_fmp_analyst_ratings(ticker: str) -> list[dict]:
-    """Analyst upgrades/recommendations via yfinance."""
+# get_fmp_analyst_ratings REMOVED (#332, 2026-07-18, operator-signed). It read yfinance
+# Ticker.recommendations, which returns the AGGREGATE grade-count table (columns like
+# period|strongBuy|buy|hold|sell|strongSell) — the string-matcher below was comparing grade
+# NAMES against INTEGER COUNTS, which can never match. Verified dead against the real
+# production function (NVDA/AAPL/PLTR + 20 sampled live-alerted tickers all returned 0);
+# the feed that fed _score_ep's analyst-upgrades bonus (also removed, same commit) had been
+# structurally dead since 2026-03-14. Full evidence:
+# docs/analysis/332_analyst_bonus_backtest_2026-07-18.md.
+# The classifier's low-coverage proxy (setup_class_classifier.py, ADR 0028 §2) now sources
+# from get_recent_upgrade_events below (yfinance Ticker.upgrades_downgrades — dated events,
+# the source the backtest VALIDATED) instead.
+
+
+async def get_recent_upgrade_events(ticker: str) -> "list[dict] | None":
+    """Dated analyst rating-CHANGE events via yfinance `Ticker.upgrades_downgrades` (#332,
+    2026-07-18) — the source that replaces the retired `get_fmp_analyst_ratings` (that read
+    `Ticker.recommendations`, an AGGREGATE count table with no dates; see the removal note
+    above). Each event: `{"date": date, "to_grade": str, "action": str}` — `action` is
+    yfinance's own direction tag ('up' / 'down' / 'init' / 'main' / 'reit', etc.).
+
+    Returns `[]` when the ticker genuinely has no events on file, `None` on a fetch failure —
+    the two are semantically DIFFERENT to the caller (a confirmed empty history vs "we don't
+    know"), mirroring the #332 backtest probe's own `fetch_upgrade_events` failure marker.
+    Pure I/O — the AS-OF window filtering + "positive-direction" counting is a separate,
+    pure, testable step (`setup_class_classifier.count_recent_upgrades`)."""
     try:
-        import pandas as pd
         import yfinance as yf
         loop = asyncio.get_event_loop()
         t = yf.Ticker(ticker)
-        recs = await loop.run_in_executor(None, lambda: t.recommendations)
-        if recs is None or (isinstance(recs, pd.DataFrame) and recs.empty):
+        ud = await loop.run_in_executor(None, lambda: t.upgrades_downgrades)
+        if ud is None or ud.empty:
             return []
-        if not isinstance(recs, pd.DataFrame):
-            return []  # yfinance API changed — bail gracefully
-        recent = recs.tail(10).copy()
-        # Find the grade column — yfinance has changed this across versions
-        grade_col = None
-        for col_name in ("To Grade", "toGrade", "strongBuy"):
-            if col_name in recent.columns:
-                grade_col = col_name
-                break
-        if grade_col:
-            recent["analystRatingsStrongBuy"] = recent[grade_col].apply(
-                lambda g: 1 if str(g).lower() in ("strong buy", "buy", "outperform", "overweight") else 0
-            )
-        else:
-            recent["analystRatingsStrongBuy"] = 0
-        return recent.to_dict("records")
+        return [
+            {
+                "date": idx.date() if hasattr(idx, "date") else idx,
+                "to_grade": str(row.get("ToGrade", "")),
+                "action": str(row.get("Action", "")),
+            }
+            for idx, row in ud.iterrows()
+        ]
     except Exception as e:
-        logger.warning(f"yfinance analyst ratings failed for {ticker}: {e}")
-        return []
+        logger.warning(f"yfinance upgrades_downgrades failed for {ticker}: {e}")
+        return None
 
 
 async def get_fmp_news(

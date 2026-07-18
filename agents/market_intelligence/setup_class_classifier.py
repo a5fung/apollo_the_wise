@@ -19,22 +19,42 @@ THE CLOSED SPEC (operator-signed 2026-07-18 — build EXACTLY this; ADR 0028 §2
 
 This module owns ONLY the pure classifier (`classify_setup_class`, zero I/O, testable in
 total isolation) + the async field-assembler (`compute_setup_class_fields`, the ONE place that
-gathers the extra as-of DB lookups the pure function needs). It reads `r`/`conn` READ-ONLY and
-returns plain values — it never writes anything itself (the caller in `ep_detector.py` persists
-the returned tag via `db.update_ep_alert_setup_class`), never mutates a grade/tier column, and
-never imports anything from the live judge-prompt-building path. Mirrors the axis-shadow
-modules' discipline (`structure_axis_shadow.py` / `theme_axis_shadow.py`) even though this is
-not a shadow table — same "pure compute, as-of, never guess" shape.
+gathers the extra as-of DB/API lookups the pure function needs). It reads `r`/`conn` READ-ONLY
+and returns plain values — it never writes anything itself (the caller in `ep_detector.py`
+persists the returned tag via `db.update_ep_alert_setup_class`), never mutates a grade/tier
+column, and never imports anything from the live judge-prompt-building path. Mirrors the
+axis-shadow modules' discipline (`structure_axis_shadow.py` / `theme_axis_shadow.py`) even
+though this is not a shadow table — same "pure compute, as-of, never guess" shape.
 
 Field provenance (lookahead honesty, ADR 0028 §2): every field this classifies on is either
 already threaded onto the candidate row `r` at DETECTION time (`market_cap`, `rel_volume`,
-`current_price`, `week52_high`, `upgrades_30d` — see `ep_detector.py`'s `result` dict) or
-computed AS-OF strictly prior to `alert_date` here (`stage2` via `get_daily_bars_asof` /
-`compute_structure_features`; `adv_20_dollar` via a ticker-scoped, strictly-prior median query).
-The caller persists ONLY the resulting class string onto `mi_ep_alerts.setup_class` — a future
-P1 calibration replay reads that stored string directly, never re-derives it from re-fetched
-current data. A historical row with `setup_class IS NULL` (pre-C1, or a classify failure) reads
-as `unclassified` by definition — never backfilled.
+`current_price`, `week52_high` — see `ep_detector.py`'s `result` dict) or computed AS-OF
+strictly prior to/at `alert_date` here (`stage2` via `get_daily_bars_asof` /
+`compute_structure_features`; `adv_20_dollar` via a ticker-scoped, strictly-prior median query;
+`upgrades_30d` via `collector.get_recent_upgrade_events` + `count_recent_upgrades`, see the
+"upgrades_30d SOURCE REPAIR" note below). The caller persists ONLY the resulting class string
+onto `mi_ep_alerts.setup_class` — a future P1 calibration replay reads that stored string
+directly, never re-derives it from re-fetched current data. A historical row with
+`setup_class IS NULL` (pre-C1, or a classify failure) reads as `unclassified` by definition —
+never backfilled.
+
+**upgrades_30d SOURCE REPAIR (#332, 2026-07-18, operator-signed).** The ORIGINAL C1 build read
+`upgrades_30d` from `ep_detector.py`'s `get_fmp_analyst_ratings`-based count, threaded onto `r`.
+`docs/analysis/332_analyst_bonus_backtest_2026-07-18.md` found that feed structurally dead
+since 2026-03-14 (yfinance `Ticker.recommendations` returns an aggregate grade-count table; the
+live code's own string-matcher can never match an integer count) — under it, EVERY candidate
+read `upgrades_30d == 0`, so this class's 3rd AND-clause was VACUOUSLY satisfied by construction
+(the class silently degenerated to mcap-band + price-vs-52w-high only). REPAIRED same day: this
+module now fetches `collector.get_recent_upgrade_events(ticker)` (yfinance
+`Ticker.upgrades_downgrades` — dated events, the source the backtest reconstructed against and
+validated as the correct instrument) directly inside `compute_setup_class_fields`, and counts
+POSITIVE-DIRECTION events (`action == "up"` — a genuine rating upgrade, not a reiteration/
+initiation/downgrade-into-buy, which the backtest showed selects analyst-coverage BREADTH
+instead of upgrade RECENCY) in the 30 calendar days ending `alert_date` (`count_recent_upgrades`,
+lookahead-honest: events strictly after `alert_date` are excluded). `upgrades_30d` is NO LONGER
+read from `r` — the field was removed from `ep_detector.py`'s candidate dict in the same commit
+(it fed nothing else; `_score_ep`'s own analyst bonus was independently removed, see
+`docs/setups/magna53_ep.md`'s change log — a SEPARATE, unrelated scoring change).
 
 Class-overlap tie-break (documented v1 implementation call, not silently invented — mirrors
 `structure_axis_shadow.py`'s own disclosure style for its near-miss band): `mature_leader`'s
@@ -53,8 +73,10 @@ exclusive on price, so those two never collide.
 from __future__ import annotations
 
 import logging
+from datetime import date as _date, timedelta
 from typing import Any
 
+from agents.market_intelligence.collector import get_recent_upgrade_events
 from agents.market_intelligence.db import (
     get_9m_alert_same_day,
     get_adv_20_dollar_asof,
@@ -73,6 +95,15 @@ MATURE_NEAR_HIGH_MIN = 0.75             # mature_leader path 2: price >= 75% of 
 MATURE_ADV_DOLLAR_MIN = 100_000_000     # ADV-large = ADV_20_dollar >= $100M/day
 NEGLECT_MAX_PCT_OF_HIGH = 0.70          # episodic_neglect: price < 70% of 52w high
 NEGLECT_MAX_UPGRADES = 0                # low-coverage = upgrades_30d == 0 (exact)
+
+# ── upgrades_30d source (repaired #332, 2026-07-18 — see the module docstring's SOURCE
+# REPAIR note) ────────────────────────────────────────────────────────────────────────────
+UPGRADE_WINDOW_DAYS = 30                # the "30d" in upgrades_30d
+UPGRADE_POSITIVE_ACTION = "up"          # yfinance's own direction tag for a genuine upgrade
+                                         # (excludes reiterations/initiations/downgrades-into-
+                                         # buy — the backtest's "faithful" semantic selected
+                                         # coverage BREADTH, not upgrade RECENCY; this is the
+                                         # validated "strict" semantic instead)
 
 CLASS_PRADEEP_EXPLOSIVE = "pradeep_explosive"
 CLASS_MATURE_LEADER = "mature_leader"
@@ -132,24 +163,54 @@ def classify_setup_class(candidate: dict[str, Any]) -> str:
     return CLASS_UNCLASSIFIED
 
 
+def count_recent_upgrades(
+    events: "list[dict] | None", as_of: _date, window_days: int = UPGRADE_WINDOW_DAYS,
+) -> "int | None":
+    """Pure, count POSITIVE-DIRECTION upgrade events (`action == "up"` — see
+    `UPGRADE_POSITIVE_ACTION`'s comment for why not the broader "faithful" grade-set semantic)
+    in the `window_days` calendar days ENDING `as_of` (inclusive) — events strictly AFTER
+    `as_of` are excluded, so this is lookahead-honest when called with the alert's own
+    `alert_date`. Mirrors the #332 backtest probe's validated `recon_upgrades_30d` "strict"
+    semantic exactly (`scripts/probes/_332_analyst_bonus_backtest.py`).
+
+    `events` is `collector.get_recent_upgrade_events`'s return shape:
+    `[{"date": date, "to_grade": str, "action": str}, ...]`. `events is None` (a fetch failure,
+    NOT "no events") propagates to `None` — "unknown," never a guessed 0 (the exact failure
+    mode a dead/misbehaving feed must not silently masquerade as "genuinely uncovered")."""
+    if events is None:
+        return None
+    lo = as_of - timedelta(days=window_days)
+    count = 0
+    for e in events:
+        d = e.get("date")
+        if d is None or not (lo < d <= as_of):
+            continue
+        if (e.get("action") or "").strip().lower() == UPGRADE_POSITIVE_ACTION:
+            count += 1
+    return count
+
+
 async def compute_setup_class_fields(conn: Any, r: dict[str, Any]) -> dict[str, Any]:
     """Assemble the field dict `classify_setup_class` needs, from `r` (already threaded at
-    detection: `market_cap`, `rel_volume`, `current_price`, `week52_high`, `upgrades_30d` — see
-    `ep_detector.py`'s `result` dict) plus 3 as-of DB lookups this module owns: Stage-2 (REUSED
+    detection: `market_cap`, `rel_volume`, `current_price`, `week52_high` — see
+    `ep_detector.py`'s `result` dict) plus 4 as-of lookups this module owns: Stage-2 (REUSED
     from `structure_axis_shadow.compute_structure_features` — never reimplemented), same-day 9M
-    print, and as-of sugar-baby cohort membership, plus the ticker-scoped ADV-dollar primitive.
+    print, as-of sugar-baby cohort membership, the ticker-scoped ADV-dollar primitive, and the
+    REPAIRED `upgrades_30d` count (`collector.get_recent_upgrade_events` +
+    `count_recent_upgrades` — see the module docstring's SOURCE REPAIR note; `upgrades_30d` is
+    NOT read from `r` anymore).
 
-    Each DB lookup is INDEPENDENTLY try/except-guarded: one lookup failing (e.g. a transient
-    sugar-baby query hiccup) must never blank the fields a DIFFERENT lookup — or a field
-    already resolved on `r` — already answered (e.g. mcap alone can decide `mature_leader`'s
-    `>= $10B` path regardless of whether the 9M/sugar-baby lookups succeeded). Read-only;
-    never mutates `r` or any grade column (THE LINE)."""
+    Each lookup is INDEPENDENTLY try/except-guarded: one lookup failing (e.g. a transient
+    sugar-baby query hiccup, or a yfinance upgrade-events fetch error) must never blank the
+    fields a DIFFERENT lookup — or a field already resolved on `r` — already answered (e.g.
+    mcap alone can decide `mature_leader`'s `>= $10B` path regardless of whether the other
+    lookups succeeded). Read-only; never mutates `r` or any grade column (THE LINE)."""
     fields: dict[str, Any] = {
         "market_cap": r.get("market_cap"),
         "rvol": r.get("rel_volume"),
         "price": r.get("current_price"),
         "week52_high": r.get("week52_high"),
-        "upgrades_30d": r.get("upgrades_30d"),
+        "upgrades_30d": None,
         "stage2": None,
         "is_9m_same_day": False,
         "is_sugar_baby_cohort": False,
@@ -176,6 +237,12 @@ async def compute_setup_class_fields(conn: Any, r: dict[str, Any]) -> dict[str, 
             conn, ticker, alert_date)
     except Exception as e:
         logger.debug(f"setup_class sugar-baby lookup failed for {ticker}: {e}")
+
+    try:
+        events = await get_recent_upgrade_events(ticker)
+        fields["upgrades_30d"] = count_recent_upgrades(events, alert_date)
+    except Exception as e:
+        logger.debug(f"setup_class upgrades_30d lookup failed for {ticker}: {e}")
 
     try:
         price = fields["price"]

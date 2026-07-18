@@ -65,7 +65,7 @@ or a reusable existing primitive; both are now pinned exactly as shown.
 |---|---|---|
 | `market_cap`, `rvol`, `price` | already on the candidate row `r` (`market_cap`, `rel_volume`, `current_price`) | threaded at detection, no new fetch |
 | `week52_high` | FMP profile (`profile.get("52WeekHigh")`), newly threaded onto `r` | a REAL 52-week high — **distinct from `structure_axis_shadow`'s `trailing_high`** (a ~13-month `mi_daily_closes`-retention-depth high). Never conflate the two. |
-| `upgrades_30d` | `ep_detector.py`'s existing analyst-ratings count (was computed, discarded pre-C1) | fixed alongside: the catalyst-cache's cached-grade path previously hardcoded `0` on every cache hit ("ratings don't change scan-to-scan") — harmless for `_score_ep`'s `>=3` bonus but a lie for this classifier's strict `==0` check; now threads the REAL cached value (`CachedGrade.upgrades_30d` + `_resolve_cached_upgrades_30d`) |
+| `upgrades_30d` | **REPAIRED same-day** — `collector.get_recent_upgrade_events(ticker)` (yfinance `Ticker.upgrades_downgrades`, dated events) + `count_recent_upgrades` (pure, counts `action=="up"` in the 30 calendar days ending `alert_date`) | The ORIGINAL build threaded this from `ep_detector.py`'s `get_fmp_analyst_ratings`-based count (with a cached-tick fix, `CachedGrade.upgrades_30d`/`_resolve_cached_upgrades_30d`). `docs/analysis/332_analyst_bonus_backtest_2026-07-18.md` found THAT feed structurally dead since 2026-03-14 (every candidate read `0`, so this predicate was vacuous) — REPAIRED to the source above; the cache thread-through was removed entirely (`upgrades_30d` no longer rides `r`/the catalyst cache). `_score_ep`'s own analyst bonus was separately REMOVED (not repaired) — see `docs/setups/magna53_ep.md`. |
 | `stage2` | **REUSED** — `structure_axis_shadow.compute_structure_features(bars, alert_date)["stage2"]`, over `db.get_daily_bars_asof` (strictly prior to `alert_date`, no lookahead) | never reimplemented |
 | `adv_20_dollar` | new `db.get_adv_20_dollar_asof(conn, ticker, alert_date, price)` | ticker-scoped, strictly-prior median-volume query; mirrors `get_adv_from_daily_closes`'s `PERCENTILE_CONT(0.5)` formula but scoped to ONE ticker (that function is a whole-market batch query — calling it per-candidate would re-scan `mi_daily_closes` for a single-ticker answer) |
 | `is_9m_same_day` | new `db.get_9m_alert_same_day` — exact `(ticker, alert_date)` match on `mi_9m_ep_alerts` | same-day, not a window |
@@ -98,13 +98,16 @@ wanted later (would need its own Gate 5 G registration).
 
 ### Tests
 
-`tests/test_setup_class_classifier.py` (29) — every class boundary incl. the two operator-
+`tests/test_setup_class_classifier.py` (37) — every class boundary incl. the two operator-
 pinned cuts, the pradeep-vs-mature_leader overlap tie-break, unclassified-fail-to-baseline,
-missing-fields, and a lookahead-honesty/purity pin. `tests/test_setup_class_db_helpers.py` (12)
-— the 3 new as-of DB primitives + the tag writer, SQL-shape asserted (no lookahead). Plus 3
-tests in `tests/test_ep_grade_judge.py` (payload passthrough + prompt byte-identical
-regardless-of-value) and 3 in `tests/test_405_catalyst_cache_filters.py` (the `upgrades_30d`
-cache-threading fix). 47 total.
+missing-fields, a lookahead-honesty/purity pin, the `count_recent_upgrades` pure-counting
+tests (window boundary, lookahead, None-vs-empty-list), and the discrimination re-verification
+(a coverage-heavy mid-cap must NOT read `upgrades_30d==0`; a genuinely-uncovered one still
+can). `tests/test_setup_class_db_helpers.py` (12) — the 3 as-of DB primitives + the tag
+writer, SQL-shape asserted (no lookahead). Plus 3 tests in `tests/test_ep_grade_judge.py`
+(payload passthrough + prompt byte-identical regardless-of-value). 52 total. (The 3
+cached-tick `upgrades_30d` tests that briefly lived in `tests/test_405_catalyst_cache_filters.py`
+were removed same-day along with the cache thread-through itself — see that file's `#332` note.)
 
 ---
 
