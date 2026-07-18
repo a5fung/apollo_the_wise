@@ -42,6 +42,13 @@ no live grade changes on any agent authority.
 
 ## Rollout
 1. Operator signs the component table (with/after the 0015 sitting — same Saturday block).
-2. STEP-0 structure backfill on the 452-row cohort + cross-tab (read-only).
-3. Shadow build (Sonnet card, the 0015 shadow's sibling — one session).
+2. ~~STEP-0 structure backfill on the 452-row cohort + cross-tab (read-only).~~ ✅ done 7/4
+   (`docs/analysis/structure_axis_step0_2026-07-04.md`) — boost direction not contradicted at
+   the only adequately-powered read (N=386 relaxed variant); proceeded to shadow build.
+3. ~~Shadow build (Sonnet card, the 0015 shadow's sibling — one session).~~ ✅ shipped:
+   `agents/market_intelligence/structure_axis_shadow.py` (+ `mi_structure_axis_shadow` table,
+   `db.get_daily_bars_asof` accessor, wired into `ep_detector.py`'s `_judge_shadow` beside the
+   #328 theme-axis shadow). Full write-up: `docs/setups/meta_rubric.md` §Structure axis.
+   `stage2_only_near_miss` ships at 0 credit in v1 (documented implementation call, not in the
+   ADR's literal text) — see the SSoT doc for the STEP-0 evidence behind that call.
 4. Composition + flip at the #329 checkpoint.

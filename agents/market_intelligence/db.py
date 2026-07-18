@@ -1155,6 +1155,45 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS co_moving BOOLEAN;
         """)
 
+        # ── Structure-axis shadow (#330, ADR 0016) — meta-rubric structure-axis measurement
+        # scaffold, the #329 child axis 2 of 3 (theme #328 · structure #330 · gap-alignment #331).
+        # SHADOW ONLY: logs, per scored EP HIGH/MODERATE, the 3 AS-OF (no-lookahead) structure
+        # components the live judge only reasons about qualitatively (rubric clause 4) —
+        #   (a) Stage-2 long-term trend: prior_close > 200d SMA AND prior_close >= 75% of the
+        #       trailing high (mirrors flag_detector.py's #356 HTF Stage-2 gate predicate exactly);
+        #   (b) base tightness: RMV-15 over the prior ~15 sessions (flag_detector._compute_rmv,
+        #       the SSoT tightness primitive) vs the #327-established "tight" cutline
+        #       (anticipation.ENTRY_RMV_MAX, same rmv_15d metric);
+        #   (c) extension state: prior_close / 10d SMA (telemetry only in v1 — not part of the
+        #       credit decision, per the ADR 0016 STEP-0 bucket spec).
+        # Drives NOTHING — the credit_steps/marker/reason columns are the boost-only decision
+        # (ADR 0016 v1 mapping), logged for traceability/future calibration, never applied to the
+        # live label. UNIQUE (ticker, alert_date): the EP scan re-runs every 5 min, so the writer
+        # upserts latest-scan-wins (mirrors mi_theme_axis_shadow exactly).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_structure_axis_shadow (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                grade TEXT,
+                prior_close FLOAT,
+                stage2 BOOLEAN,
+                sma_200 FLOAT,
+                trailing_high FLOAT,
+                rmv_15 FLOAT,
+                rmv_tight BOOLEAN,
+                extension_ratio FLOAT,
+                sma_10 FLOAT,
+                credit_steps INT NOT NULL DEFAULT 0,
+                marker TEXT NOT NULL DEFAULT 'unknown',
+                reason TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_structure_axis_shadow_date
+                ON mi_structure_axis_shadow(alert_date DESC);
+        """)
+
         # ── Coverage probe (S2, EP↔theme coverage loop 2026-07-13) ────────────────────
         # SHADOW/TELEMETRY ONLY — one row per (subject, alert_date) themeless EP alert
         # (HIGH+MODERATE), recording the DETERMINISTIC, zero-LLM blind-spot evidence:
@@ -8101,6 +8140,31 @@ async def get_daily_moves(conn: Any, trade_date: Any, tickers: "list[str]") -> d
             continue
         moves[r["ticker"]] = (cl - op) / op * 100.0
     return moves
+
+
+async def get_daily_bars_asof(
+    conn: Any, ticker: str, alert_date: Any, days: int = 380,
+) -> list[dict]:
+    """OHLCV bars for `ticker` STRICTLY PRIOR to alert_date (trade_date < alert_date — no
+    lookahead), oldest first, over a `days`-calendar-day trailing window. #330 structure-axis
+    shadow accessor (docs/decisions/0016-structure-axis-meta-rubric.md).
+
+    `days` defaults to 380 — mirrors flag_detector.py's own `_HISTORY_DAYS` budget (enough
+    calendar days for ~260 trading rows, comfortably covering the 200-session SMA + Stage-2
+    gate). `high_price`/`low_price` are required (flag_detector._compute_rmv's true-range calc
+    needs both) — mirrors scripts/probes/_330_structure_step0.py's `_BARS_SQL` filter exactly.
+    Takes a live conn (callers already hold one in a hot loop — mirrors get_theme_heat_asof /
+    get_daily_moves)."""
+    rows = await conn.fetch("""
+        SELECT trade_date, open_price, high_price, low_price, close, volume
+        FROM mi_daily_closes
+        WHERE ticker = $1
+          AND trade_date < $2
+          AND trade_date >= $2::date - $3::int
+          AND high_price IS NOT NULL AND low_price IS NOT NULL
+        ORDER BY trade_date ASC
+    """, ticker, alert_date, days)
+    return [dict(r) for r in rows]
 
 
 # ── Coverage probe (S2/S3, coverage-loop 2026-07-13) — SHADOW-only accessors ─────────────

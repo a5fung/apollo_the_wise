@@ -3364,6 +3364,22 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             log_theme_axis_adjusted_shadow,
                         )
                         await log_theme_axis_adjusted_shadow(r)
+                    # ── Structure-axis SHADOW (#330, ADR 0016) ─────────────────────────
+                    # Sibling of the #329 theme-axis shadow just above — same gate/placement
+                    # (final settled tier, low blast radius) and same wiring shape: there is
+                    # no separate scheduler.py job for this (mirrors theme_axis_shadow.py
+                    # exactly — neither rides a dedicated cron entry; both ride the existing
+                    # `ep_scan` job via this call site inside _judge_shadow). Own upsert-
+                    # guarded table (mi_structure_axis_shadow, UNIQUE (ticker, alert_date)) —
+                    # no additional dedupe guard needed, unlike the audit-log-only credit
+                    # shadow above. SHADOW ONLY: reads mi_daily_closes (read-only), writes
+                    # only mi_structure_axis_shadow + mi_audit_log, NEVER mutates
+                    # r/score_tier (THE LINE).
+                    from agents.market_intelligence.structure_axis_shadow import (
+                        log_structure_axis_shadow,
+                    )
+                    async with _pool.acquire() as _sas_conn:
+                        await log_structure_axis_shadow(_sas_conn, r)
             except Exception as _je:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 
