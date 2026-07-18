@@ -97,3 +97,50 @@ the shipped change).
 
 Operator fork: **B (build the bounded orphan-crystallization pass) or C
 (reframe + close the sub-goal, cap fix stands)?**
+
+
+## Advisor-refined design (2026-07-17) + validation path
+
+Consulted the advisor on threshold + design. Three refinements (shape, not
+direction):
+
+1. **Floor AND ceiling, not a pure level.** `leaders[:CEILING]` (≈200) then
+   filter `RS≥90`. RS≥90 binds on normal/crowded days; the ceiling is a tail
+   backstop so a euphoric tape can't balloon the pool (the failure the original
+   count-cap crudely prevented). RS composite is percentile-based (somewhat
+   self-normalizing) but the top-tail crowding is real — keep the ceiling.
+2. **Widen the ASSIGNMENT pool only, not discovery.** The assignment pass is
+   the diagnosed gap; discovery legitimately shouldn't force-cluster static
+   singletons and already has velocity/turners/correlation-clusters for
+   genuinely-emerging names. Global-swap risks marginal NEW themes from ~83
+   discovery candidates. Assignment-only is lower-risk and fixes what's broken;
+   a real new cluster still gets discovered via the correlation-cluster pool.
+3. **Validate before deploy; let the validation pick the threshold.** This is a
+   criterion change that feeds EP selection (theme axis → HIGH tier, ADR 0015)
+   and widens the correlated-book surface (R1). Don't argue 90/92/85 — observe
+   the actual theme output.
+
+**Facts confirmed:** raising the theme-engine `leaders` fetch 60→200 is safe
+(screener/rs_engine/sector-map already call limit=200); description cost ≈12
+Haiku calls worst-case (uncached only); the REAL RS≥90 uncovered pool via the
+liquidity-filtered fetch is **83** (not the raw 173) — smaller, better.
+
+**Validation attempt (inconclusive):** a standalone `_assign_uncovered_to_themes`
+dry-run on tonight's data returned 0/83 assigned with NO error logged — but the
+harness hit yfinance description failures, so it likely didn't feed the LLM
+descriptions faithfully (the live path pre-populates them). A hacked harness is
+the wrong tool for a criterion change anyway.
+
+**The disciplined validation = the codebase's proven build-dark-then-flip
+pattern** (THEME_SUBTHEME_ARM / THEME_MERGE_ARM idiom): build the
+assignment-pool widening (floor RS≥90 + 200-ceiling) behind a DB toggle,
+default OFF (byte-identical), deploy dark, log the assignment DIFF (top-40 vs
+RS≥90) on a live nightly run, and let the operator lock the threshold from that
+real diff before flipping. Settles 90/92/85 empirically on faithful output,
+validates it produces sane assignments not junk, and the flip is operator-gated
++ reversible — exactly the discipline a theme criterion feeding EP selection
+warrants.
+
+**NEXT (a real build, own session):** the toggle + `assignment_pool_arm` +
+the shadow-diff logging → deploy dark → one nightly → operator reads the diff →
+flip or tune. NOT tonight (methodology change, careful build).
