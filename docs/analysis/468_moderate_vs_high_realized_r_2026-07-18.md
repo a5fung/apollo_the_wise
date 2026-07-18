@@ -74,14 +74,38 @@ pipeline. All pass.
 
 ## 3. Results
 
-**UNRUN as of 2026-07-18** — see §4. This section is the template the probe prints; fill on run.
+**RUN 2026-07-18** (local, over the pulled TSVs — verbatim probe output):
 
 ```
-MODERATE as-if : funnel … · fill rate … · filled-only … · full-universe …
-HIGH as-if     : funnel … · fill rate … · filled-only … · full-universe …
-HEAD-TO-HEAD   : delta (MOD − HIGH) median … mean …
-HIGH actual    : closed n=… · … · calibration (actual − recon) median …
+MODERATE as-if : funnel alerts=84 filled=28 no_fill=10 not_settleable=1 stop_too_wide=4 window_out_of_orb=41
+                 fill rate 28/38 (74%)
+                 filled-only  n=28 median +0.00R mean +0.03R win 18% total +0.9R top3 650% ex-top3 -0.20R
+                 full universe n=38 mean +0.02R (no-fill = 0R)
+                 clean filled n=10 median -1.00R mean -0.60R win 0% · polluted n=18 mean +0.38R
+                 day-0 full exits 19/28 (8 negative) · stop distance median 3.6% · raw fwd_5d same names avg +8.3%
+HIGH as-if     : funnel alerts=161 filled=72 no_fill=27 not_settleable=4 stop_too_wide=6 window_out_of_orb=52
+                 fill rate 72/99 (73%)
+                 filled-only  n=72 median -1.00R mean +0.02R win 29% total +1.3R top3 449% ex-top3 -0.07R
+                 full universe n=99 mean +0.01R
+                 clean filled n=30 mean +0.11R · polluted n=42 mean -0.05R
+                 day-0 full exits 61/72 (35 negative) · stop distance median 3.0% · raw fwd_5d avg +8.5%
+HEAD-TO-HEAD   : delta (MOD − HIGH) filled-only median +1.00R mean +0.01R
+HIGH actual    : closed n=31 · median -0.79R mean -0.62R win 19% total -19.1R · rows cancelled=36 closed=31 skipped=95
+                 calibration n=28 paired: actual − recon median -0.08R mean -0.40R
 ```
+
+**Reading against the §3 pre-committed bars:** MODERATE holds within 0.25R of HIGH as-if on
+both filled-only (mean +0.03 vs +0.02; median +0.00 vs −1.00 — MODERATE ahead) and
+full-universe mean (+0.02 vs +0.01), with an equal fill rate (74% vs 73%) → mechanically
+"worth pursuing" — BUT the strata guard bites: the CLEAN MODERATE stratum is n=10, mean
+−0.60R, win 0% (all parity lives in the judge-authored polluted window), below the N-floor
+of 10 meaningful fills for the primary stratum. And the calibration haircut is −0.40R mean
+(live exits + fills cost that much vs SETTLE) — applied to either arm, both go negative.
+Net: **no promotion case at this N; the geometry+management diagnosis comes first** — see
+`docs/analysis/468b_high_realized_r_diagnosis_2026-07-18.md` (the −19.1R decomposition:
+management ≈ −9R gross = #306; geometry −6.3R; stop-execution −6.7R incl. SYRE −4.0).
+Operator fork per §6 route (b): the Q4 parity feeds score composition, not entry expansion,
+unless a clean-window extension changes the clean stratum.
 
 ### Pre-committed reading (signed BEFORE the numbers — the §5/F-E discipline)
 
