@@ -273,3 +273,33 @@ def test_405_part1_default_flag_absent_keeps_positional_construction_valid():
     # = "no direct source established" → the discovery line is kept, the safe default).
     g = ep_detector.CachedGrade("routine", 1.0, "n", "a", None, True)
     assert g.has_direct_source is None and g.grounded_text is None
+
+
+# ── #332 — upgrades_30d rides the cache (setup-class classifier correctness) ──
+
+def test_332_resolve_cached_upgrades_30d_returns_real_value():
+    # The cached-path shortcut ("ratings don't change scan-to-scan") must return the REAL
+    # count captured at the original grade tick, not a hardcoded 0 — a hardcoded 0 would make
+    # the setup-class classifier's `upgrades_30d == 0` check lie for a real 3-upgrade name
+    # re-scored on a cached tick (wrongly reading as episodic_neglect-eligible).
+    g = ep_detector.CachedGrade("strong", 1.0, "news", "analysis", None, True, upgrades_30d=3)
+    assert ep_detector._resolve_cached_upgrades_30d(g) == 3
+
+
+def test_332_resolve_cached_upgrades_30d_falls_back_to_zero_only_when_unknown():
+    # A pre-fix cache-entry shape (upgrades_30d never set, default None) falls back to 0 —
+    # the DEFENSIVE fallback for _score_ep's bonus math (needs an int), never presented as a
+    # confident "we know there were zero upgrades" claim.
+    g = ep_detector.CachedGrade("routine", 1.0, "n", "a", None, True)
+    assert g.upgrades_30d is None
+    assert ep_detector._resolve_cached_upgrades_30d(g) == 0
+
+
+def test_332_replace_preserves_upgrades_30d_across_later_tick_mutation():
+    # Mirrors the has_direct_source Part-1 pin above: a later-tick quality re-grade via
+    # _replace() must PRESERVE the real upgrades_30d count, not silently drop it.
+    g = ep_detector.CachedGrade(
+        "moderate", 1.0, "news", "analysis", None, True, upgrades_30d=5,
+    )
+    g2 = g._replace(catalyst_quality="strong", confidence_multiplier=1.5)
+    assert g2.upgrades_30d == 5

@@ -163,10 +163,33 @@ class CachedGrade(NamedTuple):
     # direct source; #317/#405-P2 suppress-on-direct-source). Same corpus across a quality
     # re-grade, so `_replace` on other fields preserves it. Default None = flag absent (safe).
     has_direct_source: "bool | None" = None
+    # #332 (C1 setup-class classifier): the REAL analyst-upgrades count captured at the
+    # original (uncached) grade tick. Default None = a pre-fix cache entry shape (never
+    # constructed with a real value) — `_resolve_cached_upgrades_30d` below treats that as
+    # "unknown", never as a lie. See that function's docstring for why this field exists
+    # separately from the cached-path's own hardcoded-0 shortcut for `_score_ep`'s bonus.
+    upgrades_30d: "int | None" = None
 
 
 _catalyst_cache: dict[str, CachedGrade] = {}
 _catalyst_cache_date: "date | None" = None
+
+
+def _resolve_cached_upgrades_30d(cached: "CachedGrade") -> int:
+    """#332: the cached-path comment ("ratings don't change scan-to-scan; skip re-fetch") used
+    to hardcode `upgrades_30d = 0` unconditionally on every cache hit. That was harmless for
+    `_score_ep`'s analyst bonus (needs `>= 3` to matter, so 0 was a conservative-safe
+    approximation), but it becomes a LIE for the setup-class classifier's stricter
+    `upgrades_30d == 0` check: a real name with 3+ upgrades, re-scored on a cached tick (a
+    ticker that didn't clear filters/threshold on its first uncached grade but does on a later
+    tick — e.g. pm-volume grew), would read `0` and wrongly classify `episodic_neglect`.
+
+    Fix: read the REAL value captured at the original grade tick (`cached.upgrades_30d`, now
+    threaded through `CachedGrade`) when present. `0` is used ONLY as the defensive fallback for
+    a pre-fix cache-entry shape (should not occur in practice — the cache resets daily and every
+    construction site now sets the real value) — never as a stand-in for "we don't know"."""
+    return cached.upgrades_30d if cached.upgrades_30d is not None else 0
+
 
 # Prose-mismatch downgrade markers (#72, 2026-05-11). When the catalyst
 # classifier returns "strong" but the prose explicitly says "no catalyst" or
@@ -406,6 +429,11 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
             # blindness this trace exposes). Available on r since #317; the judge doesn't yet
             # CONSUME it (that's the #335 flip) — logging it here makes the gap measurable.
             "has_direct_source": r.get("has_direct_source"),
+            # #332 (C1 setup-class classifier, ADR 0028) — P0 VISIBILITY: rides this trace so
+            # every decision row is class-splittable too. Set on `r` just above the judge
+            # payload assembly in _judge_shadow; None when the classifier failed or hasn't
+            # run yet (never gates/affects anything on this row).
+            "setup_class": r.get("setup_class"),
         }
         detail = (f"{r.get('ticker')} floor={floor_tier} judge={v.get('tier')} "
                   f"dir={direction} outcome={outcome}")
@@ -1941,7 +1969,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             filters_cleared = cached.filters_cleared
             grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
             _has_direct_source = cached.has_direct_source  # #405 Part-1: preserve the display flag on the cached path
-            upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
+            # #332: real cached value when known (ratings don't change scan-to-scan, so the
+            # ORIGINAL grade tick's count is still accurate) — 0 only as a defensive fallback,
+            # never a guess. See _resolve_cached_upgrades_30d's docstring.
+            upgrades_30d = _resolve_cached_upgrades_30d(cached)
 
             if not filters_cleared:
                 skip_reason = await _post_grade_filters(
@@ -2302,6 +2333,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 pplx_quality, skip_reason is None,
                 grounded_text=grounded_text,
                 has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
+                upgrades_30d=upgrades_30d,  # #332: real count, so a later cached tick never lies
             )
 
             if skip_reason:
@@ -3012,6 +3044,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "grounded_text": grounded_text,
             "market_cap": profile.get("marketCap"),
             "sector": profile.get("sector"),
+            # #332 (C1 setup-class classifier, ADR 0028 §2): the REAL 52-week high (distinct
+            # from structure_axis_shadow's ~13-month mi_daily_closes trailing_high — don't
+            # conflate the two) + the analyst-upgrades count, both threaded at detection time
+            # so the classifier is point-in-time/lookahead-honest per the ADR's field-
+            # provenance paragraph. `current_price` (the Polygon gap-detection price) is
+            # already on `r` via `**c` above — no separate "price" field needed.
+            "week52_high": profile.get("52WeekHigh"),
+            "upgrades_30d": upgrades_30d,
             "baseline_floor_tier": tier,
             # W2a (#243): floor drove this alert's tier (holistic_judge_enabled OFF —
             # W1/W2-dormant). The W2 flip overwrites this with 'judge'/'fallback'.
@@ -3135,6 +3175,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
         from agents.market_intelligence.db import (
             update_ep_alert_advisory, update_ep_alert_judge_result,
+            update_ep_alert_setup_class,
             get_holistic_judge_enabled, get_composite_authority_enabled,
         )
         from agents.market_intelligence.ep_grade_judge import (
@@ -3160,6 +3201,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # _JUDGE_SEMAPHORE — the larger 6000-char judge call stays concurrent with,
             # rather than starving, the catalyst grader/fire panel under the 9:45 cutoff.
             floor_tier = r.get("baseline_floor_tier")
+            # ── C1 setup-class classifier (#332, ADR 0028) — OWN try/except: P0 VISIBILITY
+            # ONLY (THE LINE: zero grade mutation, no salience weights, no composite/tier
+            # change — that's P1/P2/P3, each its own future operator-gated flip). Computed
+            # FIRST (before the judge payload is assembled below) so the tag rides the SAME
+            # grading pass's judge DecisionContext from day one (ADR 0028 §2). A classify
+            # failure must NEVER block judge grading or the axis shadows further down — hence
+            # its own isolated try/except rather than sharing the outer one.
+            _setup_class: "str | None" = None
+            try:
+                from agents.market_intelligence.setup_class_classifier import (
+                    classify_setup_class, compute_setup_class_fields,
+                )
+                _sc_pool = await get_pool()
+                async with _sc_pool.acquire() as _sc_conn:
+                    _sc_fields = await compute_setup_class_fields(_sc_conn, r)
+                _setup_class = classify_setup_class(_sc_fields)
+                r["setup_class"] = _setup_class  # display-only, mirrors catalyst_type/judge_rationale
+                await update_ep_alert_setup_class(r["ticker"], r["alert_date"], _setup_class)
+            except Exception as _sce:
+                logger.warning(f"setup-class classify failed for {r.get('ticker')}: {_sce}")
             try:
                 # W4 (#245): feed the judge the DETERMINISTIC deal-size÷market-cap
                 # materiality tier — the exact ratio an LLM can't compute reliably
@@ -3183,6 +3244,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     market_cap=_mc, sector=r.get("sector"),
                     materiality_tier=_rule_mat,
                     active_narratives=_narrative_cohorts,
+                    setup_class=_setup_class,
                 )
                 verdict = await grade_holistic(
                     _get_claude(), payload,

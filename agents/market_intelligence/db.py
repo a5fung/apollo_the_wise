@@ -2682,7 +2682,12 @@ async def _ensure_ep_alert_columns(conn) -> None:
     grounded_text/baseline_floor_tier/judge_*/grade_engine_authority
     (#240/#243 holistic judge: corpus, floor counterfactual, verdict columns,
     and which engine drove the tier). Materiality shadow columns (#189/ADR
-    0010) retired #249 — historical rows keep them, frozen."""
+    0010) retired #249 — historical rows keep them, frozen. `setup_class`
+    (#332/ADR 0028 C1): the deterministic setup-class tag — P0 VISIBILITY
+    ONLY, never read by any grading/sizing/safeguard path (THE LINE).
+    NULL = never classified (failure, or a pre-C1 historical row) — the P1
+    calibration replay reads this literally as 'unclassified', never
+    backfills from current data (ADR 0028 §2 field-provenance paragraph)."""
     global _EP_ALERT_COLUMNS_ENSURED
     if _EP_ALERT_COLUMNS_ENSURED:
         return
@@ -2704,8 +2709,89 @@ async def _ensure_ep_alert_columns(conn) -> None:
             "judge_materiality_tier TEXT",
             "grade_engine_authority TEXT",
             "rubric_version TEXT",
+            "setup_class TEXT",
         )))
     _EP_ALERT_COLUMNS_ENSURED = True
+
+
+async def update_ep_alert_setup_class(ticker: str, alert_date: "date", setup_class: str) -> None:
+    """Post-scan VISIBILITY patch (#332 / ADR 0028 C1): persist the deterministic setup-class
+    tag onto the alert row. Mirrors `update_ep_alert_advisory`'s shape exactly — one column,
+    one UPDATE, no ON CONFLICT needed (the row was already INSERTed earlier in the same scan
+    by `insert_ep_alert`; columns guaranteed by `_ensure_ep_alert_columns`).
+
+    P0 — TAG VISIBILITY ONLY. This function NEVER touches score_tier / grade_engine_authority
+    / any grading or sizing column (THE LINE) — a classifier bug here can only leave the tag
+    wrong or NULL, never move a grade or a trade. `setup_class` is a required, non-empty string
+    by construction (classify_setup_class always returns one of the 4 pinned values, including
+    'unclassified' as an explicit result — never a blank sentinel), so no COALESCE guard is
+    needed the way the advisory columns need one for a None classifier output."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE mi_ep_alerts SET setup_class = $3 WHERE ticker = $1 AND alert_date = $2",
+            ticker, alert_date, setup_class,
+        )
+
+
+async def get_9m_alert_same_day(conn: Any, ticker: str, alert_date: Any) -> bool:
+    """Did `ticker` ALSO print a 9M EP alert (`mi_9m_ep_alerts`, the INTRADAY table — distinct
+    from the EOD-confirmed `mi_9m_day2_candidates`) on this SAME alert_date? #332/ADR 0028 C1
+    `pradeep_explosive`'s "9M-print same-day" OR-condition. Same-day only, by design (a
+    same-day co-occurrence signal) — NOT an as-of window like the sugar-baby cohort check
+    below. Takes a live conn (caller already holds one in a hot loop — mirrors
+    `get_daily_bars_asof` / `get_theme_heat_asof`)."""
+    row = await conn.fetchrow(
+        "SELECT 1 FROM mi_9m_ep_alerts WHERE ticker = $1 AND alert_date = $2 LIMIT 1",
+        ticker, alert_date,
+    )
+    return row is not None
+
+
+async def get_sugar_baby_cohort_member_asof(conn: Any, ticker: str, alert_date: Any) -> bool:
+    """Is `ticker` in the persistent Sugar Babies cohort (`mi_sugar_babies_cohort`, ≥3 9M EOD
+    prints in trailing 180d, refreshed daily) AS OF `alert_date` — the latest `cohort_date <=
+    alert_date` snapshot, no lookahead (mirrors `get_theme_heat_asof`'s as-of pattern exactly).
+    #332/ADR 0028 C1 `pradeep_explosive`'s "sugar-baby cohort" OR-condition. Takes a live conn."""
+    row = await conn.fetchrow("""
+        SELECT 1 FROM mi_sugar_babies_cohort
+        WHERE ticker = $1
+          AND cohort_date = (
+              SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort WHERE cohort_date <= $2
+          )
+    """, ticker, alert_date)
+    return row is not None
+
+
+async def get_adv_20_dollar_asof(
+    conn: Any, ticker: str, alert_date: Any, price: "float | None", days: int = 20,
+) -> "float | None":
+    """20-day median-volume-based DOLLAR ADV for ONE ticker, STRICTLY PRIOR to alert_date (no
+    lookahead — mirrors `get_daily_bars_asof`'s `trade_date < alert_date` convention; the
+    intraday EP scan runs before today's own `mi_daily_closes` row exists anyway, so this and
+    the canonical `<=`-inclusive `get_adv_from_daily_closes` agree in practice for a live tick).
+
+    Mirrors `get_adv_from_daily_closes`'s median formula (PERCENTILE_CONT(0.5), the same 1.5x
+    calendar-lookback multiplier for weekend/holiday coverage over `days` trading sessions) but
+    TICKER-SCOPED: that function is a whole-market batch query (GROUP BY every ticker in
+    `mi_daily_closes`) — calling it once per EP candidate here would re-scan the entire table
+    for a single-ticker answer. #332/ADR 0028 C1 `mature_leader`'s ADV-large cut (operator-
+    signed 2026-07-18: `ADV_20_dollar >= $100M/day`). `price` multiplies the SHARE-volume
+    median into a DOLLAR figure — callers pass the same point-in-time price they're otherwise
+    using (`current_price`), never a separately re-fetched quote (lookahead honesty)."""
+    if not price or price <= 0:
+        return None
+    row = await conn.fetchrow("""
+        SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv
+        FROM mi_daily_closes
+        WHERE ticker = $1
+          AND trade_date < $2
+          AND trade_date >= $2::date - (($3 * 1.5)::int * INTERVAL '1 day')
+          AND volume > 0
+    """, ticker, alert_date, days)
+    if not row or row["adv"] is None:
+        return None
+    return float(row["adv"]) * price
 
 
 async def insert_ep_alert(record: dict[str, Any]) -> None:

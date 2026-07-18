@@ -28,6 +28,86 @@ Stacking caps across axes are `#329`'s composition call (proposed default: max +
 
 ---
 
+## Setup-class classifier (#332, ADR 0028 C1) — companion program, NOT a 4th boost-axis
+
+**Distinct from the 3 axes above**: the axes each contribute a *boost-only credit* to the SAME
+uniform rubric; the setup-class classifier instead TAGS each candidate with one of 4 mutually-
+exclusive classes so a FUTURE per-class salience profile (ADR 0028 P1/P2/P3 — not yet built)
+can eventually re-weight WHICH axes/evidence carry the composite for that class. **P0 (shipped
+2026-07-18) is TAG VISIBILITY ONLY — zero grade mutation, no salience weights, no composite/
+tier change** (THE LINE; P1 calibration + P2 shadow profiles + P3 authority are each their own
+future, operator-gated flip — see ADR 0028 §§3-4).
+
+| Status | ADR | Function | Column |
+|---|---|---|---|
+| **P0 shipped 2026-07-18** | `docs/decisions/0028-setup-class-conviction-profiles.md` | `agents/market_intelligence/setup_class_classifier.py::classify_setup_class` | `mi_ep_alerts.setup_class` |
+
+### The classifier (operator-signed 2026-07-18, ADR 0028 §2 + §7 F4)
+
+`classify_setup_class(candidate) -> 'pradeep_explosive' | 'mature_leader' | 'episodic_neglect'
+| 'unclassified'`, evaluated in this literal order (first-match-wins — the documented v1
+tie-break for the one possible overlap, see the module docstring):
+
+| class | rule |
+|---|---|
+| `pradeep_explosive` | `mcap < $2B AND (RVOL ≥ 3× OR 9M-print same-day OR sugar-baby cohort)` |
+| `mature_leader` | `mcap ≥ $10B OR (Stage-2 AND price ≥ 0.75×52w_high AND ADV_20_dollar ≥ $100M/day)` |
+| `episodic_neglect` | `$2B ≤ mcap < $10B AND price < 0.70×52w_high AND upgrades_30d == 0` |
+| `unclassified` | anything else / any missing field — uniform baseline, **never penalized** |
+
+`ADV_20_dollar ≥ $100M/day` and `upgrades_30d == 0` are the two predicates ADR 0028's §7 F4
+fork resolved (operator, 2026-07-18) — a prior build pass found neither had an exact threshold
+or a reusable existing primitive; both are now pinned exactly as shown.
+
+### Field provenance (reuse — search-before-build)
+
+| Field | Source | Notes |
+|---|---|---|
+| `market_cap`, `rvol`, `price` | already on the candidate row `r` (`market_cap`, `rel_volume`, `current_price`) | threaded at detection, no new fetch |
+| `week52_high` | FMP profile (`profile.get("52WeekHigh")`), newly threaded onto `r` | a REAL 52-week high — **distinct from `structure_axis_shadow`'s `trailing_high`** (a ~13-month `mi_daily_closes`-retention-depth high). Never conflate the two. |
+| `upgrades_30d` | `ep_detector.py`'s existing analyst-ratings count (was computed, discarded pre-C1) | fixed alongside: the catalyst-cache's cached-grade path previously hardcoded `0` on every cache hit ("ratings don't change scan-to-scan") — harmless for `_score_ep`'s `>=3` bonus but a lie for this classifier's strict `==0` check; now threads the REAL cached value (`CachedGrade.upgrades_30d` + `_resolve_cached_upgrades_30d`) |
+| `stage2` | **REUSED** — `structure_axis_shadow.compute_structure_features(bars, alert_date)["stage2"]`, over `db.get_daily_bars_asof` (strictly prior to `alert_date`, no lookahead) | never reimplemented |
+| `adv_20_dollar` | new `db.get_adv_20_dollar_asof(conn, ticker, alert_date, price)` | ticker-scoped, strictly-prior median-volume query; mirrors `get_adv_from_daily_closes`'s `PERCENTILE_CONT(0.5)` formula but scoped to ONE ticker (that function is a whole-market batch query — calling it per-candidate would re-scan `mi_daily_closes` for a single-ticker answer) |
+| `is_9m_same_day` | new `db.get_9m_alert_same_day` — exact `(ticker, alert_date)` match on `mi_9m_ep_alerts` | same-day, not a window |
+| `is_sugar_baby_cohort` | new `db.get_sugar_baby_cohort_member_asof` — AS-OF latest `cohort_date <= alert_date` on `mi_sugar_babies_cohort` | mirrors `get_theme_heat_asof`'s as-of pattern |
+
+### Field provenance (lookahead honesty) — ADR 0028 §2
+
+The tag is computed ONCE at detection from the fields above, then persisted on
+`mi_ep_alerts.setup_class` — never re-derived from re-fetched current data. A historical row
+with `setup_class IS NULL` (pre-C1, or a classify failure) reads as `unclassified` by
+definition; a future P1 calibration replay never backfills it.
+
+### Wiring — P0 visibility (THE LINE)
+
+Computed in `ep_detector.py`'s `_judge_shadow`, in its OWN try/except, BEFORE the judge payload
+is assembled (so the tag rides the SAME grading pass's `assemble_judge_inputs` payload +
+`_emit_grade_decision`'s `ep_grade_decision` audit trace). **Deliberately never rendered into
+`_build_judge_prompt`** — stronger than the existing axis-plumbing's "byte-identical when
+absent" pattern (`theme_stage`/`tape`): byte-identical to the pre-change prompt REGARDLESS of
+the tag's value, so the judge is structurally incapable of being influenced by it in P0.
+Persisted via `db.update_ep_alert_setup_class` (mirrors `update_ep_alert_advisory`'s shape). A
+classify failure never blocks judge grading or the axis shadows (own isolated try/except).
+
+**Column-writer gate**: `scripts/audit_column_writes.py`'s `ALLOWED_WRITERS` allow-list is
+scoped ONLY to `mi_live_trades` (Gate 5 G, the trade-state ownership gate) — `setup_class`
+lives on `mi_ep_alerts`, outside that gate's scope, so no registration applies. The tag was
+NOT threaded onto `mi_live_trades` in this P0 slice (ADR 0028 scopes it to "the alert row +
+judge DecisionContext" only) — flagged for the operator in case per-trade class visibility is
+wanted later (would need its own Gate 5 G registration).
+
+### Tests
+
+`tests/test_setup_class_classifier.py` (29) — every class boundary incl. the two operator-
+pinned cuts, the pradeep-vs-mature_leader overlap tie-break, unclassified-fail-to-baseline,
+missing-fields, and a lookahead-honesty/purity pin. `tests/test_setup_class_db_helpers.py` (12)
+— the 3 new as-of DB primitives + the tag writer, SQL-shape asserted (no lookahead). Plus 3
+tests in `tests/test_ep_grade_judge.py` (payload passthrough + prompt byte-identical
+regardless-of-value) and 3 in `tests/test_405_catalyst_cache_filters.py` (the `upgrades_30d`
+cache-threading fix). 47 total.
+
+---
+
 ## Structure axis (#330, ADR 0016)
 
 **Scope boundary vs #331**: #330 grades the structure the stock brought INTO the catalyst day

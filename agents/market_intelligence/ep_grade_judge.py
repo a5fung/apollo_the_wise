@@ -166,10 +166,20 @@ def assemble_judge_inputs(
     tape: dict | None = None,
     theme_stage: str | None = None,
     theme_score: float | None = None,
+    setup_class: str | None = None,
 ) -> dict:
     """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
     payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
     scan has in scope (grounded_text, materiality, profile).
+
+    `setup_class` (#332 / ADR 0028 C1) — the deterministic setup-class tag
+    (pradeep_explosive/mature_leader/episodic_neglect/unclassified). P0 is TAG VISIBILITY
+    ONLY (THE LINE: zero grade mutation, no salience weights, no composite/tier change — that
+    is a separate, future, operator-gated P1/P2/P3 flip). Unlike `theme_stage`/`tape`, this key
+    is included in the returned payload for eval/audit tooling but is DELIBERATELY NEVER wired
+    into `_build_judge_prompt` in P0 — not "None keeps the prompt byte-identical" (which would
+    still let a non-None value change what the judge sees), but "this value is never rendered
+    at all, regardless of its content," so the judge structurally cannot be influenced by it.
 
     `materiality_tier` (W4 #245) is the DETERMINISTIC deal-size÷market-cap rule tier ONLY
     (catalyst_materiality.rule_materiality) — the exact ratio the LLM can't compute. The
@@ -224,6 +234,10 @@ def assemble_judge_inputs(
         "sector": sector,
         "revenue_stage": revenue_stage,
         "tape": tape,
+        # #332 (ADR 0028 C1) — visibility only; NEVER read by _build_judge_prompt (see the
+        # docstring above). Present here so eval/audit tooling (DecisionContext consumers)
+        # can read it off the assembled payload without a second plumbing path.
+        "setup_class": setup_class,
     }
 
 

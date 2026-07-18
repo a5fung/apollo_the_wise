@@ -1,9 +1,10 @@
 # ADR 0028 — Setup-class conviction profiles (#332): one rubric, class-conditional salience
 
 **Date**: 2026-07-11
-**Status**: **DESIGN — awaiting operator sign-off** (Fable weekend block 1; the meta-rubric long
-pole, D7 of `meta_rubric_groundwork_2026-06-24.md:273-276`). Rolls out visibility→shadow→authority
-like every axis; the authority flip is an operator sitting per ADR 0024's milestone machinery.
+**Status**: **C1 SHIPPED 2026-07-18** (§2/§7 F4 pins operator-signed same day) — **P1-P3 still
+DESIGN, awaiting operator sign-off** (Fable weekend block 1; the meta-rubric long pole, D7 of
+`meta_rubric_groundwork_2026-06-24.md:273-276`). Rolls out visibility→shadow→authority like
+every axis; the authority flip is an operator sitting per ADR 0024's milestone machinery.
 **Authors**: Fable (operator-triggered weekend block, 2026-07-11)
 **Relates**: ADR 0024 (composition architecture — this composes INSIDE it), ADR 0015/0016 (the
 axis rollout discipline this copies), #357 memo (sugar-baby credit is class-relevant),
@@ -35,12 +36,32 @@ never three parallel rubrics. Grounds:
 | class | rule (testable defaults — boundaries re-derived in P1) | salience hypotheses (P1 tests these DIRECTIONS) |
 |---|---|---|
 | `pradeep_explosive` | mcap < $2B AND (RVOL ≥ 3× OR 9M-print same-day OR sugar-baby cohort) | a1 revenue ↑↑, theme axis ↑, float/neglect ↑ · a2 EPS ↓ · a5 guidance ↓ (small caps rarely guide) · **prior-runup penalty OFF** (recurring momentum = confirmation here — `_score_ep`'s −25/−15 momentum penalty is a mature-market prior misapplied to this class) |
-| `mature_leader` | mcap ≥ $10B OR (Stage-2 AND within 25% of 52w-high AND ADV-large) | structure context ↑↑ (the #330 axis carries) · a5 guidance ↑, a4 beat ↑ · gap-vs-structure (#331) salient · a6 milestone ↓ |
-| `episodic_neglect` | $2B ≤ mcap < $10B AND price < 70% of 52w-high AND low coverage (no recent upgrades) | a6 milestone ↑, a4 beat ↑ (the re-rating surprise) · neglect depth ↑ · momentum penalty STAYS (a neglected name already +50% is late, not early) |
+| `mature_leader` | mcap ≥ $10B OR (Stage-2 AND within 25% of 52w-high AND **ADV_20_dollar ≥ $100M/day, operator-signed 2026-07-18** — F4 resolved below) | structure context ↑↑ (the #330 axis carries) · a5 guidance ↑, a4 beat ↑ · gap-vs-structure (#331) salient · a6 milestone ↓ |
+| `episodic_neglect` | $2B ≤ mcap < $10B AND price < 70% of 52w-high AND **upgrades_30d == 0, operator-signed 2026-07-18** (upgrade RECENCY, not analyst-coverage breadth — F4 resolved below) | a6 milestone ↑, a4 beat ↑ (the re-rating surprise) · neglect depth ↑ · momentum penalty STAYS (a neglected name already +50% is late, not early) |
 | `unclassified` | anything else / missing fields | **uniform (current) rubric — fail-to-baseline, never penalized** |
 
 Class tag rides the alert row + judge DecisionContext from day one (visibility before authority —
 every downstream readout becomes class-splittable immediately, including the axes' own STEP-0s).
+
+**C1 SHIPPED 2026-07-18** (#332, `agents/market_intelligence/setup_class_classifier.py`):
+`classify_setup_class` built to this table verbatim, with the two operator-signed pins above.
+Reuses `structure_axis_shadow.compute_structure_features`'s `stage2` (a REAL `week52_high` —
+from the FMP profile, distinct from that module's own ~13-month `mi_daily_closes` trailing-high
+— is threaded separately for the `price ≥/< X% of 52w_high` cuts; the two "highs" are never
+conflated). `ADV_20_dollar` is a new ticker-scoped, strictly-prior-to-`alert_date` median-volume
+query (`db.get_adv_20_dollar_asof`) — mirrors `get_adv_from_daily_closes`'s formula but scoped
+to one ticker (that function is a whole-market batch query; calling it once per EP candidate
+would re-scan `mi_daily_closes` for a single-ticker answer). `upgrades_30d` is threaded from the
+existing `ep_detector.py` computation (was computed, discarded pre-C1) — including a fix so the
+catalyst-cache's cached-grade path returns the REAL cached count instead of a hardcoded `0`
+(the hardcoded value was a safe approximation for `_score_ep`'s `>=3` bonus but would have lied
+for this classifier's strict `== 0` check). The tag persists on `mi_ep_alerts.setup_class`
+(P0 — visibility only) and rides `ep_grade_judge.assemble_judge_inputs`'s payload — but is
+**deliberately never rendered into the judge prompt** in P0, so the judge is structurally
+incapable of being influenced by it (stronger than the existing byte-identical-when-absent
+axis-plumbing pattern: byte-identical ALWAYS, present or not). 47 tests
+(`tests/test_setup_class_classifier.py`, `tests/test_setup_class_db_helpers.py`, plus additions
+to `tests/test_ep_grade_judge.py` and `tests/test_405_catalyst_cache_filters.py`).
 
 **Field provenance (lookahead honesty):** the tag is computed AT DETECTION from point-in-time
 fields and **persisted on the alert row** — the P1 calibration replay classifies historical rows
@@ -82,8 +103,9 @@ land on plateaus (the #170/#290 anti-knife-edge discipline).
 
 ## 6. Cards
 
-- **C1 — classifier + tag** (pure fn + alert-row/DecisionContext wiring; 8 tests incl.
-  boundary cases + unclassified-fail-to-baseline + missing-fields).
+- **C1 — classifier + tag — SHIPPED 2026-07-18** (pure fn + alert-row/DecisionContext wiring;
+  47 tests incl. every boundary cut + unclassified-fail-to-baseline + missing-fields +
+  a lookahead-honesty pin).
 - **C2 — P1 calibration probe** (the correlation/weight-derivation replay; verdict table per
   class + N-gates + boundary sensitivity).
 - **C3 — P2 shadow profiles** (profile lookup in `composite_with_scaling(profile=...)` default
@@ -105,3 +127,27 @@ other program's readouts — #357 STEP-0, the axes' calibrations, the weekly rev
 - **F3 — the momentum-penalty switch for `pradeep_explosive`:** rec = test in P1, flip in P2
   shadow only if the replay shows the penalty costs winners (it's the single highest-conviction
   salience hypothesis — the class exists because repeat-momentum names behave differently).
+- **F4 — C1 build-time finding (2026-07-18), RESOLVED same day (operator, Option A):** a prior
+  #332 build pass found 2 of the ~12 leaf predicates in §2's table were NOT operationalized —
+  no exact threshold in the ADR, no reusable existing repo primitive — despite §2's premise
+  that the tag is "computed at detection from fields already on the candidate" (verified false
+  for exactly these two; neither was on the candidate row `r`):
+  - **`ADV-large`** (`mature_leader`'s 2nd path). Every "ADV" number elsewhere in the repo is a
+    MINIMUM tradability floor, not a "large" classification (EP's `MIN_ADV_DOLLAR_VOLUME`=$1M,
+    HTF's `_HTF_MIN_ADV_SHARES`=500k shares, 9M's $50M/$30M turnover gates) — reusing any of
+    these as "large" would be a category error (floor ≠ ceiling), not a search-before-build
+    reuse.
+  - **`low coverage (no recent upgrades)`** (`episodic_neglect`'s required 3rd clause — the
+    class was unreachable without it). The ADR's own parenthetical conflated two DIFFERENT
+    things: coverage BREADTH (analyst count — nothing in the repo measures this) vs upgrade
+    RECENCY (`upgrades_30d`, computed but discarded in `ep_detector.py` pre-C1). Which reading
+    was meant was part of the ask, not just the threshold.
+
+  **Operator ruling (2026-07-18): Option A** — pin both gaps, ship C1 whole:
+  - `ADV-large` = **`ADV_20_dollar ≥ $100M/day`** (20-day median dollar volume).
+  - "low coverage" = **upgrade RECENCY**: `upgrades_30d == 0` (no upgrade in the trailing
+    window), NOT analyst-coverage breadth.
+
+  Built same day per this ruling — see the "C1 SHIPPED 2026-07-18" note under §2 above for the
+  implementation (`setup_class_classifier.py`, 47 tests, ADR + `meta_rubric.md` updated in the
+  same commit per `CHANGE_PROCESS`).

@@ -309,3 +309,36 @@ def test_grade_holistic_preserves_axis_reads():
     client = _Client(inp=dict(_VALID, axis_reads=reads))
     v = _run(grade_holistic(client, {"ticker": "X"}, include_axis_reads=True))
     assert v["axis_reads"] == reads
+
+
+# ─── #332 (ADR 0028 C1) — setup_class rides the payload, NEVER the prompt (THE LINE) ───────
+
+def test_payload_carries_setup_class_passthrough():
+    p = assemble_judge_inputs(dict(_R_BASE), setup_class="pradeep_explosive")
+    assert p["setup_class"] == "pradeep_explosive"
+    assert assemble_judge_inputs(dict(_R_BASE))["setup_class"] is None
+
+
+def test_prompt_byte_identical_regardless_of_setup_class():
+    """P0 hard guarantee: unlike theme_stage/tape (byte-identical only when ABSENT), setup_class
+    must NEVER change the rendered prompt even when PRESENT — the classifier is visibility-only
+    and must be structurally incapable of moving the judge's verdict in P0."""
+    p_none = assemble_judge_inputs(dict(_R_BASE))
+    p_pradeep = assemble_judge_inputs(dict(_R_BASE), setup_class="pradeep_explosive")
+    p_mature = assemble_judge_inputs(dict(_R_BASE), setup_class="mature_leader")
+    p_unclassified = assemble_judge_inputs(dict(_R_BASE), setup_class="unclassified")
+    prompt_none = _build_judge_prompt(p_none)
+    assert _build_judge_prompt(p_pradeep) == prompt_none
+    assert _build_judge_prompt(p_mature) == prompt_none
+    assert _build_judge_prompt(p_unclassified) == prompt_none
+    legacy = dict(p_none)
+    legacy.pop("setup_class")
+    assert _build_judge_prompt(legacy) == prompt_none
+
+
+def test_build_judge_prompt_source_never_references_setup_class():
+    """Static pin, cheap and durable against refactors: the prompt builder must never even
+    reference the key, so a future edit can't accidentally start rendering it."""
+    import inspect
+    src = inspect.getsource(_build_judge_prompt)
+    assert "setup_class" not in src
