@@ -677,7 +677,7 @@ reviews:
       as a sister-finding while closing the 1.5-2x hypothesis. Sample
       already large enough; calendar gate is for session sequencing,
       not data accrual.
-    status: pending
+    status: closed  # 2026-07-19: window artifact — 3-5x now +0.59% (was -0.75%); gap/ATR is NOT a live EP criterion (entry gates on absolute gap%); operator OK to close, not adopting
     added_on: 2026-05-25
 
   - review_id: dead_zone_reevaluation
