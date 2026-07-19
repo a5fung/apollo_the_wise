@@ -1,4 +1,12 @@
-# #468b — WHY live MAGNA53 HIGH realized-R is −19.1R: the decomposition (2026-07-18)
+# #468b — WHY the MAGNA53 HIGH cohort realized-R is −19.1R: the decomposition (2026-07-18)
+
+**⚠ CORRECTION (operator-caught 2026-07-18): the "31 closed trades" = 26 PAPER + 5 LIVE.** The
+probe pulled `signal_type='magna53'` closed WITHOUT an `account_mode='live'` filter, so it swept in
+the paper book. Verified on prod: live=5, paper=26 closed. So −19.1R / −0.62R is the SETUP's
+realized-R (PAPER-DOMINANT) — **NOT the live book.** The actual live book is **5 closed trades,
+real-$ = −$96** (RED-3-clamped) — far too small to judge live performance. The MECHANISM
+attribution below (geometry / exit / stop) remains valid over the EP-cohort reconstruction; only the
+"live is losing money" FRAMING was wrong.
 
 **⛔ THE LINE — READ-ONLY DIAGNOSIS.** This document changes NO strategy, entry, exit, stop,
 sizing, or selection code. Every fix named in §7 is DESIGN-ONLY: operator sign-off +

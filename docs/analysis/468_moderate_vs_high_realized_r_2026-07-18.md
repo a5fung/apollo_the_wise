@@ -1,7 +1,9 @@
 # #468 — MODERATE-vs-HIGH EP realized-R study (2026-07-18)
 
-**Status: STUDY ONLY — probe delivered + machinery verified; prod numbers NOT YET RUN**
-(this session's permission layer denied the read-only prod DB path — see §4). Nothing here
+**Status: STUDY ONLY — probe delivered + numbers RUN 2026-07-18 (§3).** ⚠ CORRECTION
+(operator-caught): the HIGH-"actual" arm's "31 closed magna53" = **26 PAPER + 5 LIVE** (no
+`account_mode='live'` filter) — it is the SETUP's realized-R, not the live book (live = 5 closed,
+−$96 real-$). Nothing here
 changes entry/sizing/detection logic (THE LINE). Whether MODERATE→ORB-entry ships is the
 **operator's** call, and only after this study's numbers + a full backtest + CHANGE_PROCESS.
 
