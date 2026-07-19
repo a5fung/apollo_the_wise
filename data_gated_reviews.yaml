@@ -4449,6 +4449,123 @@ reviews:
     status: pending
     added_on: 2026-05-24
 
+  - review_id: large_cap_relvol_floor_shadow_evidence
+    title: "Large-cap rel_volume floor — FORWARD shadow confirmation (operator shadow-approved 2026-07-19)"
+    question: |
+      Forward-tracking successor to `rel_volume_large_cap_floor_evidence` (the
+      retrospective review above). That review's entry-aware mi_live_trades
+      analysis found large-cap (ADV$ >= $50M) HIGH EP alerts with
+      rel_volume < 0.5 at alert time went 3/20 closed trades (15% WR,
+      -$4,263 total) vs 25% WR for the >=0.5 control — directionally strong
+      but retrospective, and rel_volume (today's cumulative volume / ADV) is
+      TIME-SENSITIVE: a candidate open concern is whether <0.5 flags genuine
+      thin-participation vs. is just an artifact of alerting early in the
+      session (mechanically low rel_volume regardless of real participation).
+
+      Per THE LINE, no live gate ships on retrospective evidence alone — a
+      SHADOW observer was built (`_emit_large_cap_relvol_floor_shadow` in
+      ep_detector.py, gated `LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED`, default
+      ON, audit-only) that writes ONE `filter:large_cap_relvol_floor_shadow`
+      mi_audit_log row per qualifying HIGH alert (ADV$ >= $50M AND
+      rel_volume < 0.5), capturing rel_volume, adv_dollar, and the alert's
+      clock time (alert_timestamp_et/alert_time_et) — WITHOUT skipping the
+      alert or touching score_tier/grade/entry. This review triggers once
+      enough FRESH (post-shadow-ship) shadow-flagged entries have settled
+      forward outcomes to (a) confirm the cohort keeps underperforming and
+      (b) rule out the timing-artifact explanation via the captured
+      alert-time distribution.
+    predicate_sql: |
+      -- NEW events only (post-shadow-deploy, this card) with a settled
+      -- (closed) mi_live_trades outcome for the same ticker/alert_date.
+      SELECT COUNT(*) FROM mi_audit_log a
+      WHERE a.event_type = 'filter:large_cap_relvol_floor_shadow'
+        AND a.created_at > '2026-07-19'  -- post-shadow-deploy (this card)
+        AND EXISTS (
+          SELECT 1 FROM mi_live_trades lt
+          WHERE lt.ticker = (a.detail::jsonb ->> 'ticker')
+            AND lt.alert_date = (a.detail::jsonb ->> 'alert_date')::date
+            AND lt.status = 'closed'
+        );
+    threshold: 10
+    earliest_review_date: 2026-09-01
+    action_when_ready: |
+      1. Pull the N>=10 settled cohort:
+           SELECT a.created_at, a.detail::jsonb ->> 'ticker' AS ticker,
+                  (a.detail::jsonb ->> 'alert_date')::date AS alert_date,
+                  (a.detail::jsonb ->> 'rel_volume')::float AS rel_volume,
+                  (a.detail::jsonb ->> 'adv_dollar')::float AS adv_dollar,
+                  a.detail::jsonb ->> 'alert_time_et' AS alert_time_et,
+                  lt.status, lt.total_pnl, lt.closed_at
+           FROM mi_audit_log a
+           JOIN mi_live_trades lt
+             ON lt.ticker = (a.detail::jsonb ->> 'ticker')
+            AND lt.alert_date = (a.detail::jsonb ->> 'alert_date')::date
+           WHERE a.event_type = 'filter:large_cap_relvol_floor_shadow'
+             AND a.created_at > '2026-07-19'
+             AND lt.status = 'closed'
+           ORDER BY alert_date;
+
+      2. Compute win rate + avg P&L for this cohort; compare against the
+         SAME-PERIOD >=0.5 large-cap HIGH control (closed mi_live_trades,
+         ADV$ >= $50M, rel_volume >= 0.5) using the same entry-aware
+         methodology as the 2026-05-18 retrospective re-run (join to
+         mi_live_trades, not close-to-close fwd_5d_pct — that metric is a
+         drift signal, not an ORB-trade outcome; see the sibling review's
+         2026-05-18 notes for why the first pass there was wrong).
+
+      3. Timing-artifact check: bucket the cohort by alert_time_et (e.g.
+         9:30-9:35 / 9:35-9:45 / 9:45+). If the <0.5 flags are overwhelmingly
+         early-window (9:30-9:35) AND those early-window cases show MIXED
+         (not uniformly poor) outcomes, that's an artifact — rel_volume<0.5
+         is just "alerted early," not "genuinely thin" — do NOT ship, retire.
+         If poor outcomes persist across the time-of-day distribution
+         (including alerts well past 9:45 where rel_volume has had time to
+         normalize), that supports genuine thin-participation.
+
+      4. Decision:
+           WR < 30% AND worse than the >=0.5 control AND NOT a timing
+             artifact -> bring to the operator for the LIVE flip sign-off:
+             `LARGE_CAP_RELVOL_FLOOR_ENABLED=true` gate in ep_detector.py
+             (skip HIGH entries with ADV$ >= $50M AND rel_volume < 0.5),
+             per CHANGE_PROCESS.md (Trigger/Evidence/Anticipated
+             effect/Reversion-flag/Status fields) + a magna53_ep.md
+             change-log entry. NEVER auto-flip this — operator signs
+             THE LINE decision explicitly.
+           Otherwise (WR >= 30%, OR not worse than control, OR the poor
+             outcomes are a timing artifact) -> the retrospective finding
+             did not hold prospectively (or was a time-of-day artifact) ->
+             do NOT ship the live gate; retire this review with the finding
+             logged in the change-log for the record. Cross-check against
+             the sibling `rel_volume_small_cap_biotech_floor_evidence`
+             review's outcome too (if that one also shows the same
+             timing-artifact pattern, the whole rel_volume<0.5 hypothesis
+             family is suspect, not just the large-cap variant).
+    status: pending
+    added_on: 2026-07-19
+
+  - review_id: theme_axis_boost_reeval
+    title: "#335 theme-axis boost — DATA-gated re-eval (do NOT close on a HIGH-only sample)"
+    question: >-
+      #335's theme boost upgrades themed MODERATE EPs toward HIGH. A 2026-07-19 backtest found 0 would-be
+      upgrades in 466 shadow rows — but that was an ARTIFACT: 465 HIGH + 1 MODERATE (MODERATE was
+      HIGH-only-instrumented until the coverage-loop S1), plus hidden-theme coverage gaps (#467) and
+      theme-engine instability. The shadow is deterministic (0 LLM cost) so it keeps running free/dark.
+      DO NOT close #335 or flip it live off a HIGH-only sample. Full reasoning + reason-to-keep:
+      docs/analysis/335_theme_boost_keep_rationale_2026-07-19.md.
+    predicate_sql: >-
+      SELECT count(*) FROM mi_theme_axis_shadow
+      WHERE grade = 'MODERATE' AND themeless_flag = false;
+    threshold: 10
+    earliest_review_date: 2026-09-15
+    action_when_ready: >-
+      Enough MODERATE-with-a-theme data now exists to evaluate the boost. Replay the deterministic boost
+      (compute_theme_axis_credit -> compose_final_tier) on these rows -> the would-be MODERATE->HIGH upgrades
+      -> join to settled forward outcomes (fwd_5d / realized-R). If the upgrades beat their MODERATE grade AND
+      a stable theme-engine window + improved coverage hold -> flip composite_authority live (CHANGE_PROCESS +
+      operator sign-off). If the population is STILL ~0 even with good coverage -> then it is genuinely
+      redundant with the judge -> close #335. NEVER auto-flip (THE LINE).
+    status: pending
+    added_on: 2026-07-19
   - review_id: gate_5g_historical_coverage
     title: "Gate 5 G retroactive coverage — would the gate have caught CRMD/KLAR/ARM/BW/AIXI?"
     question: |
