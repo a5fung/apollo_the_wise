@@ -1,14 +1,32 @@
-# Continuation Flag — VCP / Qullamaggie Tightening
+# Continuation Flag — VCP / Qullamaggie Tightening — RETIRED as a standalone strategy
 
-> ⚠ **SUPERSEDED 2026-06-27 by `docs/setups/htf.md` (#356).** This detector was rebuilt into the sourced
-> HTF setup. The "Detection criteria" below (runup `50%/60d`, proximity `≤20%`) are the RETIRED **n=1**
-> values; the LIVE criteria are `90%/40d` + `≤25%` absolute-low depth + the `10/20/50` Stage-2 trend filter
-> + flagpole volume confirmation — see `htf.md` for the current spec + provenance. The universe/carryforward
-> and the 5-stage machine here are unchanged and still accurate.
+> ⚠ **SUPERSEDED 2026-06-27 by `docs/setups/htf.md` (#356)** for detection criteria — this detector's
+> *code* (`flag_detector.py`) was rebuilt into the sourced HTF setup. The "Detection criteria" below
+> (runup `50%/60d`, proximity `≤20%`) are the RETIRED **n=1** values; the LIVE `/flags`-board criteria are
+> HTF's `90%/40d` + `≤25%` absolute-low depth + the `10/20/50` Stage-2 trend filter + flagpole volume
+> confirmation — see `htf.md` for the current spec + provenance. The universe/carryforward and the
+> 5-stage machine here are unchanged and still accurate (they now serve the HTF board).
+>
+> ⚠ **RETIRED 2026-07-19 as a standalone *strategy*, per `docs/decisions/0026-consolidation-family-unification.md`
+> (ADR 0026) §D1 (card C4).** `flag_continuation` is no longer one of the three Family-A setups — it does
+> not exist as its own play. Its conceptual role (enter on a confirmed range breakout) is absorbed as the
+> **consolidation family's Confirm (b) entry mode** (`entry_mode='confirm'` shadow rows in
+> `mi_consolidation_entry_shadow`, SHADOW-only — see "Retirement + absorption" below). This is a
+> **documentation-only** change: the `mi_strategies` row was already flipped `phase='deprecated'` earlier
+> under ADR 0022 §1 / #424 (operator-signed 2026-07-05/06); ADR 0026 does not re-deprecate it, it reframes
+> the retirement inside the 3-setup family model and completes the param reconciliation. `flag_detector.py`
+> and the `/flags` board are **untouched** by this change — they remain the live HTF setup's code+telemetry.
 
-**Phase**: Shadow (telemetry-only). Promotion path: `telemetry_review` per `strategies/registry.py`.
+**Phase**: **Deprecated** (`mi_strategies.phase='deprecated'`, terminal — ADR 0022 §1 / #424, 2026-07-05/06;
+confirmed by ADR 0026 §D1, 2026-07-19). No promotion path; `entry_pipeline._phase_gate_skip_reason` treats
+`deprecated` like `shadow` (never fires an order) as defense-in-depth. The detector *code* underneath
+(`flag_detector.py`) is NOT deprecated — it is the live HTF setup's engine (see `htf.md`); only this
+*strategy identity* (registry row + promotion/entry-gate eligibility) is retired.
 **Origin**: Mark Minervini VCP (Volatility Contraction Pattern) + Qullamaggie tightening flag methodology.
-**Code**: `agents/market_intelligence/flag_detector.py`, scheduler 17:25 ET cron `flag_continuation_scan`.
+**Code**: `agents/market_intelligence/flag_detector.py` (now HTF's engine, see `htf.md`), scheduler 17:25 ET
+cron `flag_continuation_scan` (job name unchanged; historical). The retired Confirm(b) breakout *idea* now
+lives as a separate, independent pure function: `agents/market_intelligence/anticipation.py::confirm_signal_at`
+(see below) — it does **not** reuse `flag_detector.py`'s code or universe.
 
 ## Definition
 
@@ -73,7 +91,94 @@ Added 2026-05-04 to catch short-base tight setups that don't fit the early-vs-re
 
 2. **Trailing-10 burst path** (CLAUDE.md 2026-05-05): currently inert (`rs_1m ≥ 80` carries the burst path on most tickers). Documented in flag_detector docstring; non-action item.
 
+## Retirement + absorption into the consolidation family (ADR 0026 D1, card C4)
+
+**The 3-way split (ADR 0026 §1, confirming the 2026-06-22 operator split).** What was once one
+`flag_continuation` strategy is now three separate things, each with its own SSoT:
+
+1. **Anticipation** (`docs/setups` — see `anticipation.py` module docstring / ADR 0013 §2, signed) — the
+   coil-finder: enter **in** the tightening base, before the break. Family-A's `entry_mode='anticipate'`.
+2. **HTF (High Tight Flag)** — `docs/setups/htf.md` — the *setup*: `flag_detector.py`'s 5-stage state
+   machine, now running HTF's sourced `90%/40d` + `≤25%` depth + Stage-2 trend criteria. Drives the live
+   `/flags` board + the #94 intraday break scan. **Untouched by this retirement.**
+3. **Confirm (b)** — the *entry*, absorbed here — enter on the base's **confirmed breakout** (close above
+   the base high, on confirming volume). This is what `flag_continuation`'s breakout logic became.
+
+**Confirm is Family-A's breakout entry mode, not flag_detector's TRIGGERED stage.** Deliberately: gating
+Confirm by membership in the flag/HTF cohort would silently under-detect the very names the family
+universe is built to measure (the #270 phantom failure-mode in miniature) and would touch the load-bearing
+live `/flags` path. Instead, `anticipation.py::confirm_signal_at` (~965-998) is a **new, isolated pure
+function** mirroring `entry_signal_at`'s shape, detected on the **same §2 Family-A universe** the
+Anticipate entry uses (`db.get_anticipation_universe`), via the EOD daily-bar pass:
+
+- Wired at `scheduler.py:3494-3501` inside `_consolidation_readiness_job` — the **7/14-signed EOD
+  §2-universe pass**, dual-mode (fires both `entry_signal_at` "anticipate" and `confirm_signal_at`
+  "confirm" per ticker/anchor, same job, same digest). **[AMENDED 2026-07-18, operator-ratified]**: ADR
+  0026's original text specified wiring off the #94 *intraday* flag-break event; the running implementation
+  differs and is authoritative — the #327 Phase-B replay showed intraday re-timing de-rates the edge, and
+  the flag cohort narrowed to the HTF 90/40 universe (#356), both favoring the EOD-§2 (#270-phantom-avoiding)
+  wiring actually built.
+- Entry = the break-day close (`close > base_high` where `base_high` = max base **close** since the runup
+  peak, pre-break); confirming volume = `vol_min × ADV20` with `ENTRY_CONFIRM_VOL_MIN = 1.5` (`anticipation.py:962`).
+  Stop = the base low (`stop_kind='base_low'`).
+- Writes an `entry_mode='confirm'` row to `mi_consolidation_entry_shadow` via the same
+  `insert_consolidation_entry_shadow` / settlement machinery Anticipate uses (`db.py` ~7382-7420).
+  **SHADOW-only** — zero execution authority; Confirm entering the live entry pipeline is a separate, later
+  money-gated promotion (`#397`), untouched by this card.
+- Realized-R is **never blended across entry modes** (ADR 0013:91) — the `by_mode` settlement readout
+  (`db.py` ~7493-7498) groups by `entry_mode`, and `data_gated_reviews.yaml`'s
+  `consolidation_anticipate_paper_graduation` / `htf_breakout_paper_graduation` reviews already show this
+  pattern for the other two modes; `consolidation_unification_review` (filed below, C5) is Confirm's.
+
+**Param reconciliation — confirmed code-complete, no thresholds invented.** The retired `flag_continuation`
+params (runup `≥50%/60d`, pivot-walk anchor, ratio-based tightness gates) reconcile to the SIGNED family
+model that `confirm_signal_at` already inherits by running on the §2 universe:
+
+| Param | Retired (`flag_continuation`) | Now (Family-A §2, signed) | Code |
+|---|---|---|---|
+| Runup | `≥50%` over 60d | `≥15%` (`RUNUP_MIN=1.15`) over a rolling **10-session** window | `anticipation.py:618-619`; `db.get_anticipation_universe(runup_min=1.15)` (`db.py:7264-7266`) |
+| Anchor | Pivot-walk (`_find_pivot_high`, `_PIVOT_WALK_THRESHOLD`) | **Runup-peak-close** — the ANCHOR-STABILITY invariant (absolute peak-close date, not a scan-relative index, so the lifecycle key never drifts) | `anticipation.py:606-611` (invariant), `find_coil_setup` peak (`anticipation.py:687-742`) |
+| Tightness | Ratio-based range/volume contraction gates | **Volatility-relative RMV/ATR** — `compute_fresh_tightening` + `compute_rmv`, the shared primitives already imported by `anticipation.py` (no duplicate implementation) | `anticipation.py:222`, `:238`; gates the `coiled` lifecycle state at `anticipation.py:825-828` |
+| 0.4% tight-close | N/A (flag_continuation had no analog) | Stays **ranking-only** (Pradeep's "series of tight days" streak counter), NOT the universe admission gate — the LOCKED inclusion gate is `\|today %chg\| ≤ 1.0%` | `TIGHT_CLOSE_PCT=0.004` (`anticipation.py:57`); `tight_close_streak` (`anticipation.py:281`); `incl_max=0.010` (`db.py:7266`, `get_anticipation_universe` docstring `:7269`) |
+| Universe floor | Flag-specific (`$5M` ADV, RS-based) | `$20M/day` median dollar volume, price ≥ $5 | `db.get_anticipation_universe(dvol_min=20_000_000.0, price_min=5.0)` (`db.py:7264-7266`) |
+
+`entry_mode` currently accepts `'anticipate'` \| `'confirm'` only (`mi_cons_entry_shadow_mode_chk`,
+`db.py:1873`) — `'ur'` is **not yet added**; ADR 0026's D3 (undercut → `WATCH_UR`) is signed but its own
+card (C3) has not landed, so U&R has no wiring to reconcile yet. Not this card's scope.
+
+**Regression pins verified (not touched by this card):** the #94 intraday scan still reads
+`mi_flag_candidates` stages (HTF board, `flag_detector.py`) unchanged; HTF detection (#356) still consumes
+the same 5-stage state machine unchanged; `/flags` routing (`test_execute_task_routing.py`) is unaffected —
+none of these read the `mi_strategies` registry row or `anticipation.py`.
+
 ## Change log (newest first)
+
+### 2026-07-19 — Retired as a standalone strategy; absorbed as Family-A's Confirm (b) entry (ADR 0026 D1, card C4)
+
+**Trigger**: `#354` / ADR 0026 (Fable weekend block 1, signed 2026-07-11/12; D1+D3 SIGNED, D2 PARKED at the
+7/12 sitting). SSoT + review-filing card, executed 2026-07-19 — documentation only, no detection-criterion
+or money-path change.
+
+**Evidence**: code-verified against the running implementation, not re-derived: `mi_strategies.phase` already
+`'deprecated'` on prod (ADR 0022 §1 / #424, 2026-07-05/06 — pre-dates ADR 0026, which confirms rather than
+re-executes the retirement); `anticipation.py::confirm_signal_at` (shipped 2026-06-22, commit `befb41e`) and
+its dual-mode wiring at `scheduler.py:3494-3501` (re-wired to the EOD §2-universe pass per the operator-
+ratified 7/18 amendment) already write `entry_mode='confirm'` shadow rows on the signed §2 universe; param
+reconciliation (runup 15%/10d, runup-peak-close anchor, RMV/ATR tightness, 0.4% ranking-only) was already
+code-complete before this card — see the "Retirement + absorption" section above for the full mapping.
+
+**Anticipated effect**: none on any running system — `flag_detector.py`, the `/flags` board, the #94
+intraday scan, and HTF detection (#356) are byte-identical. The only new production artifact from this
+card is the `consolidation_unification_review` data-gated review (`data_gated_reviews.yaml`), which will
+surface once ≥10 `entry_mode IN ('confirm','ur')` shadow rows settle.
+
+**Reversion-flag**: NEW (a documentation/registry-framing change, not a reversal — the underlying
+`mi_strategies` deprecation and the Confirm shadow code both predate this entry and are unchanged by it).
+
+**Status**: shipped 2026-07-19 (docs + review-filing only; regression pins re-verified green, see test run
+below). Next: `consolidation_unification_review` fires the first settled-R readout per entry mode; drives
+the next promotion (paper) decision, which remains gated behind `#397` (money) and full CHANGE_PROCESS +
+operator sign-off (THE LINE — no code in this card touches a live-money path).
 
 ### 2026-05-28 — Intraday detector idempotency guard (#145, ADTN/IREN-class false-fire)
 

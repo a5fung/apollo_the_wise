@@ -6993,6 +6993,36 @@ reviews:
     added_on: 2026-07-12
     cross_refs: ["task #353", "task #394", consolidation_anticipate_paper_graduation]
 
+  - review_id: consolidation_unification_review
+    title: "#354 ADR 0026 C5 — Confirm(b) entry-shadow first settled-R readout (the go-live trigger)"
+    question: >-
+      ADR 0026 D1 retired flag_continuation as a standalone strategy and absorbed its breakout-entry idea
+      as the consolidation family's Confirm (b) entry mode — `anticipation.py::confirm_signal_at`, firing
+      dual-mode alongside Anticipate on the signed §2 universe (`scheduler.py:3494-3501`), writing
+      `entry_mode='confirm'` shadow rows to `mi_consolidation_entry_shadow`. Once enough settle: does
+      Confirm show a real forward edge (median/mean realized_r, win%, expectancy — outlier-robust, not
+      carried by 1 name, same bar as `consolidation_anticipate_paper_graduation`'s F1)? `entry_mode='ur'`
+      is included in the predicate for when ADR 0026 D3/C3 (undercut->WATCH_UR) lands and starts writing
+      U&R rows — it will currently always read 0 (the `mi_cons_entry_shadow_mode_chk` CHECK constraint
+      only allows 'anticipate'/'confirm' today; C3 has not landed). Realized-R is NEVER blended across
+      modes (ADR 0013:91) — review Confirm and U&R as separate cohorts, not combined with Anticipate's.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_consolidation_entry_shadow
+      WHERE entry_mode IN ('confirm', 'ur') AND outcome IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-08-02
+    action_when_ready: >-
+      Review the Confirm cohort (and U&R cohort separately, if any rows exist by then): median realized_r,
+      win%, expectancy, outlier-carry check. IF a real edge holds -> CHANGE_PROCESS + operator sign-off ->
+      the shadow->paper money gate is `#397` (in parallel with live magna53/HTF, same pattern as
+      `htf_breakout_paper_graduation`). IF thin/negative -> iterate the entry gates or extend the shadow
+      window, same disposition menu as `consolidation_anticipate_paper_graduation`'s NO-GO (2026-07-12).
+      NEVER auto-flip — paper/live is a real-money-path decision (THE LINE).
+    status: pending
+    added_on: 2026-07-19
+    cross_refs: ["task #354", "docs/decisions/0026-consolidation-family-unification.md", "task #397",
+                 consolidation_anticipate_paper_graduation, htf_breakout_paper_graduation]
+
   - review_id: pivot_stop_shadow_review
     title: "Pivot-stop SHADOW (ADR 0031) — first per-arm readout: does character-conditioned placement beat the global trail WITHOUT clipping the tail?"
     question: >-

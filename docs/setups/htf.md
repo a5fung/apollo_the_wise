@@ -62,6 +62,13 @@ the 10/20-day **EMA** (exit only on a daily close below). Stop = the tightest-da
 max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height added to the breakout.
 
 ## Change log
+- **2026-07-19 — Doc cross-ref only: ADR 0026 D1 / card C4 (flag_continuation retirement).**
+  **Trigger**: `#354`/ADR 0026 card C4 rewrote `flag_continuation.md` to document its retirement as a
+  standalone strategy and absorption as the Confirm(b) entry; added a pointer here for discoverability.
+  **Evidence**: N/A — no detection-criterion, gate, or code change in this file; pure cross-reference.
+  **Anticipated effect**: none in production. **Reversion-flag**: NEW (doc-only addition, nothing
+  reversed). **Status**: shipped 2026-07-19.
+
 - **2026-07-18 — ADV liquidity floor: MEAN → MEDIAN (bugfix, #402(2)).**
   **Trigger**: #402 /simplify code review found `compute_flag_metrics`'s liquidity gate computed ADV as
   `sum(volume)/len` (mean) while every other ADV computation in this codebase — `db.get_adv_from_daily_closes`
@@ -95,3 +102,7 @@ max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height ad
   0.81×) REJECTED. Test: `test_crash_recovery_rejected_stage2`.
 
 > Supersedes the criteria section of `docs/setups/flag_continuation.md` (the generic-flag definition).
+> See also `docs/decisions/0026-consolidation-family-unification.md` §D1 (card C4, 2026-07-19): the
+> Family-A 3-way split — **HTF is the *setup*** (this file, unchanged); **Confirm is the *entry*** (the
+> consolidation family's base-high breakout, `anticipation.py::confirm_signal_at`, SHADOW-only, documented
+> in `flag_continuation.md`); Anticipation is the third (in-coil) entry. No criteria here changed.
