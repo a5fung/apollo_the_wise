@@ -84,6 +84,19 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-07-19 — Large-cap rel_volume floor SHADOW observer added (audit-only, no criteria change)
+
+Telemetry only, no detection-criterion change (operator shadow-approved 2026-07-19).
+`_emit_large_cap_relvol_floor_shadow` (ep_detector.py) writes one
+`filter:large_cap_relvol_floor_shadow` mi_audit_log row per HIGH alert with ADV$
+(`adv_20 * prev_close` — the pre-gap price, matching `mi_stock_scores.close`, NOT
+today's gapped `current_price`) >= $50M and rel_volume < 0.5, gated `LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED`
+(default ON). Does NOT skip the alert or change any grade/gate/entry decision — pure
+observation of what a future LIVE floor would have done. See `data_gated_reviews.yaml` →
+`large_cap_relvol_floor_shadow_evidence` for the forward-tracking review (N>=10 settled
+shadow-flagged entries, ~2026-09-01) that gates any future LIVE flip
+(`LARGE_CAP_RELVOL_FLOOR_ENABLED`) — operator-signed only, never auto-flipped.
+
 ### 2026-07-18 — Analyst-upgrades bonus REMOVED — dead feed since 2026-03-14 (#332, operator-signed)
 
 **Trigger**: #332 C1 setup-class classifier build surfaced that `_score_ep`'s cached-grade tick

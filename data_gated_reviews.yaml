@@ -4474,6 +4474,32 @@ reviews:
       forward outcomes to (a) confirm the cohort keeps underperforming and
       (b) rule out the timing-artifact explanation via the captured
       alert-time distribution.
+
+      PRICE BASIS (note for the reviewer): ADV$ here = `adv_20 * prev_close`
+      (the PRE-GAP price, same basis as `mi_stock_scores.close` and this
+      review's own predicate/action-query joins) — NOT `current_price`
+      (today's already-gapped price). Using the gapped price would run every
+      ADV$ figure hot by the gap size and admit names the retrospective
+      cohort would have excluded. Both raw `adv_20` and `prev_close` are
+      captured in the payload alongside the derived `adv_dollar` so either
+      definition can be reconstructed if this needs reconciling.
+
+      SAMPLING/TIMING BASIS (note for the reviewer): a ticker is scored
+      (and its `mi_ep_alerts` row inserted) EXACTLY ONCE per day — the
+      first scan tick it clears every filter (`already_today` dedup,
+      ep_detector.py ~1963-1967, `continue`s any ticker already in
+      today's mi_ep_alerts; the INSERT has no ON CONFLICT). rel_volume is
+      therefore FROZEN at that single tick — there is no later/"settled"
+      reading to fall back to, and this is the SAME frozen value a live
+      gate would evaluate (it would reuse this same field, evaluated at
+      the same scoring tick — see action_when_ready's R6-carve-out-style
+      implementation note). Do NOT re-derive/re-sample; the timing-
+      artifact check is done by STRATIFYING on the captured
+      `alert_time_et`, not by re-sampling rel_volume at a different tick
+      (e.g. the ORB window) — that would silently exclude the pre-market
+      alert class this review's founding CSCO case belongs to (rel_volume
+      0.04, a pre-market-timed reading) and desync the shadow from what
+      a live gate would actually see.
     predicate_sql: |
       -- NEW events only (post-shadow-deploy, this card) with a settled
       -- (closed) mi_live_trades outcome for the same ticker/alert_date.

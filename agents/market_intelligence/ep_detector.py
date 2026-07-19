@@ -1365,6 +1365,104 @@ async def _post_grade_filters(
     return None
 
 
+# ── Large-cap rel_volume floor SHADOW (data_gated_reviews.yaml
+# `large_cap_relvol_floor_shadow_evidence`, forward-tracking successor to the
+# retrospective `rel_volume_large_cap_floor_evidence` review) ──────────────────
+#
+# AUDIT-ONLY OBSERVER. THE LINE: this function NEVER mutates `r`, never touches
+# score_tier/grade/entry, never skips the alert — it only WRITES ONE audit row
+# observing that a future LIVE floor (a separate, later, operator-signed step)
+# WOULD have skipped this entry. Call it AFTER score_tier is finally settled
+# (post-judge-override, if any) so the observation reflects the real graded
+# alert, not a pre-override intermediate value.
+#
+# Retrospective evidence (rel_volume_large_cap_floor_evidence, entry-aware
+# mi_live_trades join): large-cap (ADV$ >= $50M) HIGH EP alerts with
+# rel_volume < 0.5 at alert time underperformed sharply vs the >=0.5 control.
+# Before any live gate, we need FORWARD (post-shadow-ship) confirmation that
+# isn't just a timing artifact: rel_volume = today's cumulative volume / ADV
+# (ep_detector.py, computed earlier this scan tick) is mechanically low in the
+# first few minutes of the session regardless of real participation. This
+# shadow captures rel_volume, ADV$, and the alert's clock time (now_et, the
+# scan-tick timestamp) so the offline review can separate genuine
+# thin-participation from an early-alert artifact — see
+# `large_cap_relvol_floor_shadow_evidence` for the decision matrix.
+#
+# Gated on LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED (default ON — audit-only, so
+# safe to default-on; mirrors the ENRICH_SHADOW_ENABLED default-on shadow
+# pattern elsewhere in this file). Flag OFF -> zero extra writes, detection
+# output byte-identical. Reuses already-computed rel_volume/adv/prev_close
+# off `r` — no recompute, no extra DB/API round-trip. Dedup via
+# `_audit_dedupe_check` (same in-memory per-scan-day guard as the sibling
+# theme/structure axis shadows) since `_judge_shadow` re-runs per 5-min tick
+# for every still-open candidate.
+#
+# PRICE BASIS (advisor-flagged 2026-07-19, fixed before parent commit): both the
+# retrospective evidence AND this shadow's own predicate_sql define large-cap as
+# `mi_stock_scores.adv_20 * close` — the PRE-GAP price. Using `current_price`
+# (today's already-gapped price, ~current_price = prev_close * (1 + gap_pct/100))
+# would run every ADV$ figure hot by the gap size and silently admit names the
+# retrospective set would have excluded (methodology drift the sibling review's
+# 2026-05-18 close-to-close-vs-entry-aware correction already burned us on once).
+# `r["prev_close"]` (the same prior-close ep_detector.py used to compute gap_pct
+# at candidate-construction time) is the matching basis — use it, not
+# current_price. Both raw `adv` and `prev_close` are captured in the payload
+# (not just the derived adv_dollar) so the review can reconstruct either
+# definition and reconcile against the retrospective cohort exactly.
+async def _emit_large_cap_relvol_floor_shadow(r: dict, now_et: datetime) -> None:
+    """SHADOW ONLY — see docs/setups/magna53_ep.md change log. Writes ONE
+    `filter:large_cap_relvol_floor_shadow` mi_audit_log row when `r` is a HIGH
+    alert with ADV$ (adv_20 * prev_close) >= $50M and rel_volume < 0.5. Never
+    raises (log_audit_event swallows its own errors); wrapped defensively
+    anyway so a bug here can never affect the live alert/entry path."""
+    try:
+        if os.environ.get(
+            "LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED", "true"
+        ).lower() != "true":
+            return
+        if r.get("score_tier") != "HIGH":
+            return
+        adv = r.get("adv")
+        prev_close = r.get("prev_close")
+        rel_volume = r.get("rel_volume")
+        if adv is None or prev_close is None or rel_volume is None:
+            return
+        # Defensive float() cast: adv/prev_close/rel_volume are plain Python floats
+        # on every known path today (mi_stock_scores.adv_20 is FLOAT, not NUMERIC —
+        # so asyncpg never hands back a Decimal here), but a bare `adv * prev_close`
+        # would silently no-op (caught by the outer except, no shadow event) rather
+        # than compute correctly if a future source ever returned Decimal.
+        adv = float(adv)
+        prev_close = float(prev_close)
+        adv_dollar = adv * prev_close
+        rel_volume = float(rel_volume)
+        if adv_dollar < 50_000_000 or rel_volume >= 0.5:
+            return
+        ticker = r["ticker"]
+        alert_date = r["alert_date"]
+        if not _audit_dedupe_check(ticker, alert_date, "large_cap_relvol_floor_shadow"):
+            return
+        await log_audit_event(
+            "filter:large_cap_relvol_floor_shadow",
+            f"{ticker} HIGH rel_vol={rel_volume:.2f}x adv$={adv_dollar:,.0f} "
+            f"@ {now_et.strftime('%H:%M')} ET (SHADOW — alert NOT skipped)",
+            json.dumps({
+                "ticker": ticker,
+                "alert_date": alert_date.isoformat(),
+                "rel_volume": rel_volume,
+                "adv_dollar": round(adv_dollar, 0),
+                "adv_20": adv,
+                "prev_close": prev_close,
+                "alert_timestamp_et": now_et.isoformat(),
+                "alert_time_et": now_et.strftime("%H:%M"),
+                "score_tier": r["score_tier"],
+                "gap_pct": round(r.get("gap_pct") or 0.0, 2),
+            }),
+        )
+    except Exception as _e:
+        logger.warning(f"large_cap_relvol_floor_shadow failed for {r.get('ticker')}: {_e}")
+
+
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     """
     Run pre-market EP scan.
@@ -3392,6 +3490,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # makes the silent-degradation case ('null': timeout/malformed → fail-open
                 # to floor) explicit + COUNTED. authority='floor' while the toggle is OFF.
                 await _emit_grade_decision(r, floor_tier, verdict)
+                # ── Large-cap rel_volume floor SHADOW (data_gated_reviews.yaml
+                # `large_cap_relvol_floor_shadow_evidence`) ─────────────────────────────
+                # Placed HERE (right after the override settles + _emit_grade_decision, same
+                # "final settled tier" placement rule as the theme/structure axis shadows
+                # below) but BEFORE them and OUTSIDE their shared `if HIGH/MODERATE` block —
+                # deliberately decoupled so a failure in either sibling shadow can never
+                # suppress this one. Self-contained top-level function (defined above
+                # run_ep_scan, unit-testable in isolation); internally re-checks
+                # score_tier=='HIGH'/the env flag/ADV$/rel_volume, so it's safe to call
+                # unconditionally here. NEVER mutates r/score_tier (THE LINE) — writes ONE
+                # audit row, never raises (wrapped internally + never touches the alert path).
+                await _emit_large_cap_relvol_floor_shadow(r, now_et)
                 # ── Theme-axis SHADOW (#329 STEP-0) ───────────────────────────────────
                 # Log the as-of theme heat + deterministic structural attribution for each
                 # scored EP HIGH+MODERATE — telemetry the live judge is blind to (theme
