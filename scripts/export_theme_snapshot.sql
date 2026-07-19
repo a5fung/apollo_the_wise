@@ -17,10 +17,12 @@ SELECT json_build_object(
     'score_date', (SELECT max(score_date) FROM mi_stock_scores),
     'themes', (
         SELECT COALESCE(json_agg(t), '[]'::json) FROM (
-            SELECT theme_date, name, stage, rs_avg, pct_above_20sma,
-                   tickers, days_active, consecutive_accelerating, score, description
-            FROM mi_themes
-            WHERE theme_date >= current_date - interval '24 weeks'
+            SELECT m.theme_date, m.name, m.stage, m.rs_avg, m.pct_above_20sma,
+                   m.tickers, m.days_active, m.consecutive_accelerating, m.score, m.description,
+                   e.e_code   -- #194: theme→ecosystem mapping so the dash can group/rank by ecosystem (ADR 0032)
+            FROM mi_themes m
+            LEFT JOIN mi_theme_ecosystems e ON e.theme_name = m.name
+            WHERE m.theme_date >= current_date - interval '24 weeks'
         ) t
     ),
     'stock_scores', (
