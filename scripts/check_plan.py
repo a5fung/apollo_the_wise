@@ -263,6 +263,12 @@ def _rebump_gate(tasks, errors) -> None:
     for t in tasks:
         if str(t["status"]).lower() in ("completed", "done", "closed", "deleted"):
             continue
+        # A `deployed` task's ETA is a VERIFY-DATE, not a to-do date — setting or moving it (e.g. on
+        # the in_progress->deployed ship, or slipping the verify window) is NOT a rebump; the past-ETA
+        # gate already gives the verify-date its teeth (a passed verify-date hard-fails). So exempt
+        # `deployed` from the rebump forward-ETA check. (#deployed status, operator 2026-07-18.)
+        if t["status"] == "deployed":
+            continue
         tid, title = t["id"], t["title"]
         cur = _bump_count(title)
         pe, pb = prior_eta.get(tid), prior_bump.get(tid, 0)
