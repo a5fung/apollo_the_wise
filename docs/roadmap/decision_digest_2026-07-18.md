@@ -3,6 +3,12 @@
 Sign-ready items the push produced today. Each = the fork + a 1-line rec. Nothing
 below is applied — all await your ruling (money-adjacent / SSoT / safeguard).
 
+**✅ RESOLVED 7/18 evening (this digest predates these):** #481 (1+2 — SSoT corrected to
+code, $20M signed, closed) · #461 (3 — approved, built, deployed) · #332 (4 — you picked
+Option A, C1 classifier deployed) · **7 tasks closed on prod-verified evidence**
+(#328/#287/#379/#183/#469/#436/#478, board 102→95). Items 5 (#471 O-1) and the new #335
+item below are the still-open decisions; #331/#306/#354 remain at their own gates.
+
 ## Immediate rulings (quick)
 
 1. **#481 — MAX_EXTENSION SSoT-vs-code drift** (money-adjacent, detection criterion).
@@ -57,10 +63,24 @@ below is applied — all await your ruling (money-adjacent / SSoT / safeguard).
 5. **#471 ecosystem Phase 2-3 — mostly already LIVE; ratify + 1 timing call.** The card found Phase 2
    was dark-built, probe-gated, flipped 7/16, **verified-live 7/17** — and falsified the merge premise
    (vuln-mgmt is a *sibling*, not a child; **Route B deliberate-split** is the real rescue, landed run
-   1). Doc = honest as-built record. **Fork (O-1):** `THEME_MERGE_ARM` flip timing — **rec: flip on
-   day-2 green** (today's ~17:00 ET run is the open stability checkpoint). Also surfaced a real design
-   flag (F-5: Route-B children get containment 0 from birth → the divergence predicate would misfire →
-   scope it to Route-A children) + a gap list to file (may need a burndown carryover).
+   1). Doc = honest as-built record. **Fork (O-1):** `THEME_MERGE_ARM` flip timing — **rec: flip AFTER day-2 green.**
+   ⚠ CORRECTED 7/18: the day-2 checkpoint is **Monday 7/20's ~17:04 ET run**, NOT "today" — theme
+   jobs are `day_of_week=mon-fri`, so no Sat/Sun run fired (verified: zero theme events after Fri
+   7/17 22:06 UTC). The 7/17 first-armed run is already ✅ verify-live (Route-B split landed clean:
+   'Network Security & Zero-Trust Edge' 12→9, child 'Cyber Exposure Management & Vulnerability
+   Assessment' born). Confirm the split STICKS on Monday's run → THEN flip `THEME_MERGE_ARM`. Also
+   surfaced a real design flag (F-5: Route-B children get containment 0 from birth → the divergence
+   predicate would misfire → scope it to Route-A children) + a gap list to file.
+
+7. **#335 M1-d — the meta-rubric composite flip sitting (LOAD-BEARING; your call).** Pack is turnkey
+   + all preconditions green (robustness map 36/36 clean 7/12 · T2c drift band accruing · M1-a/b/c
+   done · M1-d wire-in built DARK 7/13, byte-identical toggle-off). **Rec: SHELVE the flip (keep the
+   wire-in dark), don't flip `composite_authority`** — the 7/13 reframe holds: the theme boost is
+   RARE on MODERATE (~few/quarter), un-evidenceable from history (MODERATE was never instrumented),
+   and largely REDUNDANT (hot-theme EP names already grade HIGH ~16:1). M1-b's paid regrade produced
+   0 theme-boost flips (88% themeless). The bigger theme-axis lever is the coverage-loop (#467), not
+   this flip. Evidence: `docs/analysis/m1_sitting_pack_2026-07-18.md` + `m1b_regrade_2026-07-13.md`.
+   A SHELVE closes #335 (wire-in stays dark, revert-ready).
 
 6. **#354 flag_continuation merge — mostly already EXECUTED; ratify 1 divergence.** The 6/27 HTF
    rebuild + the 7/14 signed shadow-fix already did the merge; flag_detector gets ZERO param edits.
