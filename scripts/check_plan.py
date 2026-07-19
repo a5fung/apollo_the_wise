@@ -7,14 +7,22 @@ the only kind of discipline that has ever held in this repo (the deploy bans, th
 
 WHAT this enforces on PLAN.md (every task line `- #<id> | <YYYY-MM-DD> | <status> | <title>`):
   - every task is under a `## <project>` header (filed under a project — no loose tasks);
-  - every task has a parseable ETA date and a known status (pending|in_progress|blocked);
+  - every task has a parseable ETA date and a known status (pending|in_progress|blocked|deployed);
   - NO open task has a PAST ETA (must be >= today in the operator's PT day) — the CLOSE ritual rebumps stale dates so the plan
     never silently rots; a past ETA FAILS the commit;
+  - `deployed` = built + shipped to prod, AWAITING verify-live (operator 2026-07-18): its ETA is the
+    VERIFY-DATE — the day its effect becomes checkable in prod. A past verify-date FAILS the commit via
+    the SAME past-ETA gate (verify-worded): VERIFY-LIVE in prod + close, or rebump the verify-date.
+    This makes "done = VERIFIED-LIVE, not deployed" a STATUS with teeth instead of forgettable prose —
+    built tasks stop sitting `in_progress` under a stale to-build headline and getting re-built;
   - task ids are unique.
 
 USAGE:
   python scripts/check_plan.py            # validate (pre-commit gate). exit 1 on any violation.
-  python scripts/check_plan.py --today    # OPEN helper: print OVERDUE + due-today open tasks = the day's plan.
+  python scripts/check_plan.py --today    # OPEN helper: OVERDUE + due-today + VERIFY-DUE (deployed
+                                          #   tasks whose verify window is here) + LIKELY-BUILT
+                                          #   (reads as built but still in_progress/pending —
+                                          #   reclassify to `deployed` or close) = the day's plan.
 
 ASCII-only output (Windows cp1252 console). Stdlib only. "today" = the operator's PT day (PLAN ETAs are
 the operator's PLANNING dates, NOT market/ET — the "ALWAYS ET" rule is for trading code only).
@@ -39,10 +47,20 @@ SNAPSHOT = REPO / ".apollo_open_tasks.json"  # harness open-task checksum (plumb
 # hasn't) — the recurring timezone friction. The codebase "ALWAYS ET" rule is for MARKET code (ORB
 # windows / market hours), NOT the operator's to-do dates. (Operator is PT; feedback_operator_timezone_pdt.)
 _OPERATOR_TZ = ZoneInfo("America/Los_Angeles")
-_STATUSES = {"pending", "in_progress", "blocked"}
+# `deployed` (operator 2026-07-18) = built + shipped, AWAITING verify-live; ETA = the VERIFY-DATE.
+_STATUSES = {"pending", "in_progress", "blocked", "deployed"}
 # `- #298 | 2026-06-17 | in_progress | title...`
 _TASK = re.compile(r"^- #(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\w+)\s*\|\s*(.+?)\s*$")
 _PROJECT = re.compile(r"^##\s+(.+?)\s*$")
+# Deploy-marker (operator 2026-07-18): a task LINE that reads as already-built — a `>> BUILT` /
+# `DEPLOYED` note, a verify-live mention, or a dated lowercase "deployed YYYY-…" — while its STATUS
+# still says in_progress/pending. These are exactly the tasks that get re-checked/re-built off a
+# stale to-build headline (the note is appended at the END of a long line; the status never flips).
+# Surfaced every OPEN by `--today` (LIKELY-BUILT) → reclassify to `deployed` (+ a verify-date) or
+# close. A SURFACE, not a hard gate (mirrors the looks_thin/--audit-new precedent): many hits are
+# legit partial deploys. Case-sensitive on purpose — lowercase "deploy(ed)" prose counts only when
+# date-stamped; a plain to-build title ("build X + deploy market-agent") must NOT trip it.
+_DEPLOY_MARKER = re.compile(r"DEPLOYED|>>\s*BUILT|verify-live|VERIFY-LIVE|deployed \d{4}-")
 
 # --- SESSION GROWTH GATE (operator 2026-07-12, HARD) ------------------------------------------
 # A session may NOT end with more open tasks than the PT-day began with. The open count is
@@ -268,8 +286,12 @@ def main(argv: list[str]) -> int:
     today = datetime.now(_OPERATOR_TZ).date()   # the operator's PT day, not ET (see _OPERATOR_TZ note)
 
     if "--today" in argv:
-        overdue = sorted([t for t in tasks if t["eta"] and t["eta"] < today], key=lambda t: t["eta"])
-        due = sorted([t for t in tasks if t["eta"] == today], key=lambda t: t["project"] or "")
+        # `deployed` tasks live in their OWN surface (VERIFY-DUE) — excluded from the generic
+        # OVERDUE/DUE lists so "verify + close" is never conflated with "rebump-overdue".
+        overdue = sorted([t for t in tasks if t["eta"] and t["eta"] < today
+                          and t["status"] != "deployed"], key=lambda t: t["eta"])
+        due = sorted([t for t in tasks if t["eta"] == today and t["status"] != "deployed"],
+                     key=lambda t: t["project"] or "")
         print(f"=== PLAN — {today} (PT, operator's day) ===  ({len(tasks)} open tasks total)")
         print(f"\n-- OVERDUE ({len(overdue)}) — rebump or close at CLOSE --")
         for t in overdue or []:
@@ -280,6 +302,27 @@ def main(argv: list[str]) -> int:
         for t in due or []:
             print(f"  #{t['id']:<4} [{t['status']:<11}] {t['project']} — {t['title']}")
         if not due:
+            print("  (none)")
+        # VERIFY-DUE (operator 2026-07-18): deployed tasks whose verify window has arrived. Seen
+        # every OPEN — the recurrence that replaces the forgotten "verify-live" prose step.
+        verify_due = sorted([t for t in tasks if t["status"] == "deployed"
+                             and t["eta"] and t["eta"] <= today], key=lambda t: t["eta"])
+        print(f"\n-- VERIFY-DUE ({len(verify_due)}) — SHIPPED; verify window here -> confirm in prod + close --")
+        for t in verify_due or []:
+            print(f"  #{t['id']:<4} verify {t['eta']}  {t['project']} — {t['title']}")
+        if not verify_due:
+            print("  (none)")
+        # LIKELY-BUILT (operator 2026-07-18): status says to-build, line says built. Reclassify.
+        likely_built = [t for t in tasks if t["status"] in ("in_progress", "pending")
+                        and _DEPLOY_MARKER.search(t["title"])]
+        print(f"\n-- LIKELY-BUILT ({len(likely_built)}) — line reads as built but status is still "
+              f"in_progress/pending: flip to `deployed` (+ a verify-date ETA) or close --")
+        if likely_built:
+            ids = [f"#{t['id']}" for t in likely_built]
+            for i in range(0, len(ids), 12):
+                print(f"  {' '.join(ids[i:i+12])}")
+            print("  (a SURFACE, not a gate — partial deploys legitimately linger; reclassify the truly built.)")
+        else:
             print("  (none)")
         base = _pin_daily_baseline(len(tasks), today)
         ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
@@ -346,11 +389,17 @@ def main(argv: list[str]) -> int:
             print("  (project+ETA+status are already gated; this checks DETAIL on new tasks.)")
         return 0
 
-    # validation gate
+    # validation gate — `deployed` is NOT exempt (a stale verify-date rots the same way a stale ETA
+    # does); it just gets the verify-worded instruction instead of the generic rebump wording.
     past = [t for t in tasks if t["eta"] and t["eta"] < today]
     for t in past:
-        errors.append(f"L{t['line']}: task #{t['id']} ETA {t['eta']} is PAST (today {today}) — "
-                      f"rebump to a future date at CLOSE, or close the task")
+        if t["status"] == "deployed":
+            errors.append(f"L{t['line']}: task #{t['id']} is `deployed` and its VERIFY-DATE {t['eta']} "
+                          f"is PAST (today {today}) — VERIFY-LIVE in prod + close the task (or rebump "
+                          f"the verify-date). Done = VERIFIED-LIVE, not deployed (operator 2026-07-18).")
+        else:
+            errors.append(f"L{t['line']}: task #{t['id']} ETA {t['eta']} is PAST (today {today}) — "
+                          f"rebump to a future date at CLOSE, or close the task")
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
 
