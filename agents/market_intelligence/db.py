@@ -8406,6 +8406,31 @@ async def upsert_coverage_probe_row(conn: Any, row: dict) -> None:
     )
 
 
+async def _upsert_theme_candidate_shadow(
+    conn: Any, run_date: Any, name: str, tickers: "list[str]", thesis: "str | None", source: str,
+) -> None:
+    """Shared source-scoped upsert into mi_theme_candidates_shadow. Tickers MERGE (set-union) on
+    conflict; the `ON CONFLICT ... WHERE source = $5` guard keeps a same-named cohort from another
+    lane from being hijacked. Callers (upsert_coverage_probe_candidate / upsert_judge_theme_gap_
+    candidate) pass their own source literal and carry the per-lane semantics in their docstrings —
+    keep the source scope on both the INSERT value AND the conflict guard in lockstep."""
+    await conn.execute("""
+        INSERT INTO mi_theme_candidates_shadow
+            (run_date, name, thesis, tickers, source, would_revive)
+        VALUES ($1, $2, $3, $4, $5, FALSE)
+        ON CONFLICT (run_date, name) DO UPDATE SET
+            thesis = EXCLUDED.thesis,
+            tickers = (
+                SELECT ARRAY(
+                    SELECT DISTINCT t
+                    FROM unnest(mi_theme_candidates_shadow.tickers || EXCLUDED.tickers) AS t
+                    ORDER BY t
+                )
+            )
+        WHERE mi_theme_candidates_shadow.source = $5
+    """, run_date, name, thesis, list(tickers), source)
+
+
 async def upsert_coverage_probe_candidate(
     conn: Any, run_date: Any, name: str, tickers: "list[str]", thesis: "str | None",
 ) -> None:
@@ -8416,21 +8441,7 @@ async def upsert_coverage_probe_candidate(
     writers: a same-named cohort from another lane is never hijacked. These rows are
     surface-only (see the get_shadow_theme_candidates carve-out) — visible in /themes,
     promotable ONLY via the operator's /promotetheme."""
-    await conn.execute("""
-        INSERT INTO mi_theme_candidates_shadow
-            (run_date, name, thesis, tickers, source, would_revive)
-        VALUES ($1, $2, $3, $4, 'coverage_probe', FALSE)
-        ON CONFLICT (run_date, name) DO UPDATE SET
-            thesis = EXCLUDED.thesis,
-            tickers = (
-                SELECT ARRAY(
-                    SELECT DISTINCT t
-                    FROM unnest(mi_theme_candidates_shadow.tickers || EXCLUDED.tickers) AS t
-                    ORDER BY t
-                )
-            )
-        WHERE mi_theme_candidates_shadow.source = 'coverage_probe'
-    """, run_date, name, thesis, list(tickers))
+    await _upsert_theme_candidate_shadow(conn, run_date, name, tickers, thesis, "coverage_probe")
 
 
 async def upsert_judge_theme_gap_candidate(
@@ -8454,21 +8465,7 @@ async def upsert_judge_theme_gap_candidate(
     naming). A single fire, or fires on different days, stay separate reviewable
     ONE-member rows — never auto-reaching theme_engine._PROMOTE_MIN_MEMBERS (3)
     on their own."""
-    await conn.execute("""
-        INSERT INTO mi_theme_candidates_shadow
-            (run_date, name, thesis, tickers, source, would_revive)
-        VALUES ($1, $2, $3, $4, 'judge_inferred', FALSE)
-        ON CONFLICT (run_date, name) DO UPDATE SET
-            thesis = EXCLUDED.thesis,
-            tickers = (
-                SELECT ARRAY(
-                    SELECT DISTINCT t
-                    FROM unnest(mi_theme_candidates_shadow.tickers || EXCLUDED.tickers) AS t
-                    ORDER BY t
-                )
-            )
-        WHERE mi_theme_candidates_shadow.source = 'judge_inferred'
-    """, run_date, name, thesis, list(tickers))
+    await _upsert_theme_candidate_shadow(conn, run_date, name, tickers, thesis, "judge_inferred")
 
 
 async def get_sector_rs_rank(

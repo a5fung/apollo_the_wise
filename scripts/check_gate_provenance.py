@@ -162,9 +162,11 @@ def main(argv: list[str] | None = None) -> int:
     for v in violations:
         by_kind.setdefault(v["kind"], []).append(v)
     uncited_ids = sorted(v["id"] for v in by_kind.get("UNCITED", []))
+    # STALE/DRIFT/BROKEN are hard failures (never ratchet-exempt) — computed once for both paths so a
+    # new hard-fail kind can't be added to one branch and silently missed in the other.
+    hard = by_kind.get("STALE", []) + by_kind.get("DRIFT", []) + by_kind.get("BROKEN", [])
 
     if "--update-baseline" in argv:
-        hard = by_kind.get("STALE", []) + by_kind.get("DRIFT", []) + by_kind.get("BROKEN", [])
         if hard:
             print("Refusing to write baseline — hard failures present (fix these first, they are "
                   "never ratchet-exempt):")
@@ -184,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         baseline_ids = set(json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
                             .get("uncited_ids", []))
 
-    hard_fail = by_kind.get("STALE", []) + by_kind.get("DRIFT", []) + by_kind.get("BROKEN", [])
+    hard_fail = hard
     new_uncited = [v for v in by_kind.get("UNCITED", []) if v["id"] not in baseline_ids]
     known_uncited = [v for v in by_kind.get("UNCITED", []) if v["id"] in baseline_ids]
 

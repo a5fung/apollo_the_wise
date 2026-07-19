@@ -162,9 +162,12 @@ async def test_probe_candidate_writer_is_source_scoped():
         conn, _TODAY, "Probe: Robotics 2026-07-10", ["A", "B"], "thesis")
 
     sql = conn.execute.await_args.args[0]
+    params = conn.execute.await_args.args[1:]
     assert "INSERT INTO mi_theme_candidates_shadow" in sql
-    assert "'coverage_probe'" in sql
-    assert "WHERE mi_theme_candidates_shadow.source = 'coverage_probe'" in sql
+    # source is parameterized ($5) via the shared _upsert_theme_candidate_shadow helper; the
+    # anti-hijack guard scopes ON CONFLICT to this lane's source, stamped as the last param.
+    assert "WHERE mi_theme_candidates_shadow.source = $5" in sql
+    assert params[-1] == "coverage_probe"
     assert "mi_themes" not in sql   # never the live table
 
 

@@ -307,12 +307,22 @@ def _classify_caller_band(today_spend: float, history: list[float]) -> tuple[int
     return band, p50, mad, ratio
 
 
-def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30) -> list[dict]:
+def _window_series(series: dict, today: date, key: str, start_k: int, end_k: int) -> list:
+    """Trailing per-day values of one metric key over day-offsets [start_k, end_k) back from today
+    (a missing day → 0.0). Single source for the anomaly/retry trailing windows so a change to how a
+    day-offset slice is built can't drift across the call sites that need it."""
+    return [series.get(today - timedelta(days=k), {}).get(key, 0.0)
+            for k in range(start_k, end_k)]
+
+
+def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30,
+                                     daily: "dict | None" = None) -> list[dict]:
     """Pure half of compute_caller_cost_anomalies — takes already-fetched
     rows so compute_cost_watchdog can share ONE api_usage read across both
     the anomaly detector and the reduction heuristics below, instead of
-    each hitting the table separately."""
-    daily = _daily_caller_series(rows)
+    each hitting the table separately. `daily` may be a pre-derived series (so
+    compute_cost_watchdog computes it once for both consumers)."""
+    daily = daily if daily is not None else _daily_caller_series(rows)
     out = []
     for caller, series in daily.items():
         today_slot = series.get(today, {"spend": 0.0, "calls": 0})
@@ -320,10 +330,8 @@ def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30)
         today_calls = today_slot["calls"]
         if today_spend < CALLER_ANOMALY_MIN_USD:
             continue
-        hist_spend = [series.get(today - timedelta(days=k), {}).get("spend", 0.0)
-                      for k in range(1, lookback_days + 1)]
-        hist_calls = [series.get(today - timedelta(days=k), {}).get("calls", 0.0)
-                      for k in range(1, lookback_days + 1)]
+        hist_spend = _window_series(series, today, "spend", 1, lookback_days + 1)
+        hist_calls = _window_series(series, today, "calls", 1, lookback_days + 1)
         active_spend = [v for v in hist_spend if v > 0]
         active_calls = [v for v in hist_calls if v > 0]
         if len(active_spend) < CALLER_MIN_SAMPLE_DAYS:
@@ -417,10 +425,9 @@ def _retry_loop_opportunities(
     median to 0)."""
     out = []
     for caller, series in daily.items():
-        recent = [series.get(today - timedelta(days=k), {}).get("calls", 0.0)
-                 for k in range(0, recent_days)]
-        baseline_hist = [series.get(today - timedelta(days=k), {}).get("calls", 0.0)
-                         for k in range(recent_days, lookback_days + recent_days)]
+        recent = _window_series(series, today, "calls", 0, recent_days)
+        baseline_hist = _window_series(series, today, "calls", recent_days,
+                                       lookback_days + recent_days)
         active_baseline = [v for v in baseline_hist if v > 0]
         if len(active_baseline) < CALLER_MIN_SAMPLE_DAYS:
             continue
@@ -443,12 +450,14 @@ def _retry_loop_opportunities(
 
 def _reduction_opportunities_from_rows(
     rows, today: date, lookback_days: int = 30, window_days: int = 7,
+    daily: "dict | None" = None,
 ) -> list[dict]:
     """Pure half of detect_reduction_opportunities — shares one already-
     fetched row set with the anomaly detector (see _caller_cost_anomalies_
-    from_rows) instead of re-reading api_usage."""
+    from_rows) instead of re-reading api_usage. `daily` may be pre-derived so
+    compute_cost_watchdog builds the per-caller series once for both consumers."""
     totals = _caller_window_totals(rows, today, window_days)
-    daily = _daily_caller_series(rows)
+    daily = daily if daily is not None else _daily_caller_series(rows)
     out = _reduction_opportunities_from_totals(totals)
     out.extend(_retry_loop_opportunities(daily, today, lookback_days=lookback_days))
     return out
@@ -470,8 +479,9 @@ async def compute_cost_watchdog(today: date, lookback_days: int = 30) -> dict:
     heuristics (7/17 api_usage scan-cost discipline: don't read the same
     indexed range twice per caller check)."""
     rows = await _fetch_caller_window(today, lookback_days)
-    anomalies = _caller_cost_anomalies_from_rows(rows, today, lookback_days)
-    opportunities = _reduction_opportunities_from_rows(rows, today, lookback_days)
+    daily = _daily_caller_series(rows)  # derived ONCE here, shared by both consumers below
+    anomalies = _caller_cost_anomalies_from_rows(rows, today, lookback_days, daily=daily)
+    opportunities = _reduction_opportunities_from_rows(rows, today, lookback_days, daily=daily)
     return {"anomalies": anomalies, "opportunities": opportunities}
 
 

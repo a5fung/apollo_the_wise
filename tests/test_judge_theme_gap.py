@@ -177,9 +177,11 @@ async def test_upsert_judge_theme_gap_candidate_writes_source_scoped_sql(monkeyp
     conn.execute.assert_awaited_once()
     sql = conn.execute.await_args.args[0]
     params = conn.execute.await_args.args[1:]
-    assert "'judge_inferred'" in sql
-    assert "WHERE mi_theme_candidates_shadow.source = 'judge_inferred'" in sql
-    assert params == (_ALERT_DATE, "Judge: Technology 2026-06-17", "thesis text", ["JBL"])
+    # source is parameterized ($5) via the shared _upsert_theme_candidate_shadow helper; the
+    # anti-hijack guard scopes ON CONFLICT to this lane's source, stamped as the last param.
+    assert "WHERE mi_theme_candidates_shadow.source = $5" in sql
+    assert params == (_ALERT_DATE, "Judge: Technology 2026-06-17", "thesis text", ["JBL"],
+                      "judge_inferred")
 
 
 # ════════════════════════════════════════════════════════════════════════════════════
