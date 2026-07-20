@@ -38,6 +38,7 @@ from agents.market_intelligence.db import (
     get_ma_pullbacks,
     get_rs_velocity,
     get_rs_turners,
+    get_rs_recovery,
     get_overnight_watchlist,
     get_fundamental_flags,
     get_rs_for_tickers,
@@ -700,6 +701,27 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
     return "\n".join(lines)
 
 
+def _format_recovery_section(recovery: list[dict], section_num: int = 5) -> str:
+    """Fast V-recovery — strong 1M RS still climbing out of a weak base (the crypto-
+    proxy case the RISING ≥40 floor deliberately hides). Empty -> omitted (#492)."""
+    if not recovery:
+        return ""
+    lines = [f"*{section_num}. RECOVERY* — Strong 1M RS off a weak base (V-turn)"]
+    for s in recovery[:10]:
+        ticker = s.get("ticker", "?")
+        r1 = s.get("rs_1m")
+        r3 = s.get("rs_3m")
+        rc = s.get("rs_composite")
+        sec = s.get("sector") or ""
+        r1s = int(r1) if r1 is not None else "?"
+        r3s = int(r3) if r3 is not None else "?"
+        rcs = int(rc) if rc is not None else "?"
+        tail = f" — {sec}" if sec else ""
+        lines.append(f"  `{ticker}` 1M {r1s} · 3M {r3s} · comp {rcs}{tail}")
+    lines.append("  _1M RS leading a still-low composite = turning up from the bottom_")
+    return "\n".join(lines)
+
+
 def _format_unanchored_section(
     rs_leaders: list[dict],
     themes: list[dict],
@@ -942,6 +964,7 @@ def _format_evening_briefing(
     velocity: list[dict],
     pullbacks: list[dict],
     turners: list[dict] | None = None,
+    recovery: list[dict] | None = None,
     briefing_date: str = "",
     fund_flags: dict[str, dict] | None = None,
     theme_rs_data: dict[str, dict] | None = None,
@@ -966,8 +989,6 @@ def _format_evening_briefing(
     v1_closeout_line: str | None = None,
     eco_map: dict[str, str] | None = None,
 ) -> str:
-    next_num = 4
-
     # Theme section: use scorecard if RS data available, else legacy format
     if theme_rs_data:
         theme_section = _format_theme_scorecard(
@@ -977,18 +998,16 @@ def _format_evening_briefing(
     else:
         theme_section = _format_theme_section(themes, section_num=3)
 
-    # Unanchored: RS 80+ stocks not in any theme
-    unanchored_section = _format_unanchored_section(rs_leaders, themes, section_num=next_num)
-    if unanchored_section:
-        next_num += 1
-
-    velocity_section = _format_velocity_section(velocity, section_num=next_num)
-    if velocity_section:
-        next_num += 1
-
-    turners_section = _format_turners_section(turners or [], section_num=next_num)
-    if turners_section:
-        next_num += 1
+    # #492 (operator 2026-07-20): RESTORE the RS-acceleration + rotation-recovery
+    # signals — #479 ORPHANED them (built but never appended; the /watch-all
+    # destination its comment named renders a different board). RISING (sustained
+    # accel) + RECOVERY (fast 1M V-turn off a weak base — the crypto-proxy case the
+    # velocity ≥40 floor deliberately hides) + ROTATION WATCH (sectors turning from
+    # weak). Unanchored/pullbacks stay off the brief; the on-demand footer is dropped
+    # (those commands were culled from the menu the same day).
+    velocity_section = _format_velocity_section(velocity, section_num=4)
+    recovery_section = _format_recovery_section(recovery or [], section_num=5)
+    turners_section = _format_turners_section(turners or [], section_num=6)
 
     sections = [
         f"*Apollo Evening Briefing — {briefing_date}*",
@@ -996,8 +1015,6 @@ def _format_evening_briefing(
     ]
 
     # v1.0 close-out countdown (#426, #418 §5) — the anti-idle driving surface.
-    # Placed first (before quality warnings/regime) so drift/reset is seen every
-    # night, not buried at the bottom of a long message.
     if v1_closeout_line:
         sections.append(v1_closeout_line)
         sections.append("")
@@ -1010,27 +1027,21 @@ def _format_evening_briefing(
     sections += [
         _format_regime_section(regime, section_num=1),
         "",
-        _format_rs_section(rs_leaders[:10], section_num=2, fund_flags=fund_flags),  # top-10 (#479); full list /watch
+        _format_rs_section(rs_leaders[:10], section_num=2, fund_flags=fund_flags),  # top-10 (#479)
         "",
         theme_section,
         "",
     ]
-    # ── #479 (operator-ruled R2, 2026-07-17): the brief is ONE Telegram message
-    # — "what changed + what's actionable tomorrow." The former sections below
-    # are DEMOTED to their on-demand commands, not deleted (their params stay
-    # so call sites are untouched; the render just no longer includes them):
-    # unanchored→/watch · velocity+turners→/watch all · pullbacks→/ideas ·
-    # EP-outcome stats→/eps · signal-quality→weekly review · sugar-babies→
-    # /sugarbabies · anticipations→/anticipation · wick/fishhook→/detectors,
-    # /fishhook · U&R→/undercutrally.
+    # RS acceleration / recovery / rotation — restored to the brief (#492).
+    for _sec in (velocity_section, recovery_section, turners_section):
+        if _sec:
+            sections.append(_sec)
+            sections.append("")
+
     cooldown_footer = _format_cooldown_footer(cooldowns or [])
     if cooldown_footer:
         sections.append(cooldown_footer)
         sections.append("")
-    sections.append(
-        "detail on demand: /watch · /ideas · /eps · /sugarbabies · /detectors "
-        "· /fishhook · /undercutrally")
-    sections.append("")
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
@@ -1045,7 +1056,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
 
     from agents.market_intelligence.db import get_active_cooldowns as _get_active_cooldowns
 
-    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores, warnings, cooldowns = (
+    regime, rs_leaders, themes, velocity, pullbacks, turners, recovery, fund_flags, prior_theme_scores, warnings, cooldowns = (
         await asyncio.gather(
             get_latest_regime(include_breadth_history=True),
             get_rs_leaders(today_str, limit=30),
@@ -1053,6 +1064,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
             get_rs_velocity(today_str, min_rs=40.0, limit=15),
             get_ma_pullbacks(today_str),
             get_rs_turners(today_str),
+            get_rs_recovery(today_str),
             get_fundamental_flags(today_str),
             get_prior_theme_scores(today_str),
             get_quality_warnings(today),
@@ -1198,6 +1210,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         velocity=velocity,
         pullbacks=pullbacks,
         turners=turners,
+        recovery=recovery,
         briefing_date=today_str,
         fund_flags=fund_flags,
         theme_rs_data=theme_rs_data,

@@ -1757,44 +1757,28 @@ class TelegramChannel:
     async def _register_commands(self) -> None:
         """Register bot commands with BotFather so they appear in the / menu."""
         from telegram import BotCommand
-        # Lean menu. Hidden but still-working commands (kept as handlers
-        # for back-compat / muscle memory): /eps, /9m, /themes, /clusters,
-        # /spend, /rules, /setup, /agents. (/regime promoted to the menu 2026-06-14;
-        # /breadth retired → merged into /regime.)
+        # AGGRESSIVE CULL 2026-07-20 (operator: "too confusing, remove as many as
+        # possible, add back later"). Menu trimmed 33 → 11: safety + core-trade +
+        # ONE front door (/hud). All the removed commands' HANDLERS still work if
+        # typed (this only hides them from the / menu) — re-adding any is a one-line
+        # BotCommand entry. Hidden-but-working: ideas, pregame, watch (/watch all =
+        # the mi_stocks_in_play board, operator ruled it garbage), watchlist, setup,
+        # themes, promotetheme, why(=setup dup), trade, htf, anticipation, detectors,
+        # unknownrate, regime, fishhook, sugarbabies, review, spotted, datareviews,
+        # cost, missed, start(=help dup). RS accel / rotation-recovery move back into
+        # the evening brief (#492), NOT a new command.
         commands = [
-            BotCommand("hud",          "Snapshot: regime, EPs, 9M, themes, clusters — drill-down buttons"),
-            BotCommand("ideas",        "💡 Trade-ideas front door — stocks-in-play + top ideas/strategy + drill-down"),
-            BotCommand("pregame",      "Daily trade shortlist"),
+            BotCommand("hud",          "Snapshot: regime, EPs, 9M, themes — the one front door, drill-down buttons"),
             BotCommand("ep",           "EP alerts (MAGNA53 + 9M) — tap to drill down"),
             BotCommand("trades",       "Positions + P&L — tap to drill down"),
-            BotCommand("watchlist",    "Friday curated chart-review list (cross-source aggregator)"),
-            BotCommand("setup",        "/setup TICKER [days|YYYY-MM-DD] — detector timeline; a date → that day's entry diagnosis"),
-            BotCommand("themes",       "/themes [TICKER|name] — themes; or two-way lookup (ticker↔theme, live+shadow)"),
-            BotCommand("promotetheme", "/promotetheme <name> — promote an emerging-theme candidate to a live theme"),
-            BotCommand("why",          "/why TICKER [date] — per-day entry diagnosis (= /setup TICKER date)"),
-            BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
-            BotCommand("htf",          "HTF (high tight flag) setups — TRIGGERED/COILED/TIGHTENING"),
-            BotCommand("anticipation", "⏱️ Anticipation play (SHADOW, Pradeep) — watched/armed/coiled/ready/triggered"),
-            BotCommand("detectors",    "🔭 Intraday entry-technique detectors (shadow) — today + 7d roll-up"),
-            BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
-            BotCommand("regime",       "📊 Market condition + Stockbee breadth matrix (MAs · VIX · T2108 · cluster)"),
-            BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),
-            BotCommand("sugarbabies",  "🍬 Persistent Sugar Baby cohort (Pradeep watchlist)"),
-            BotCommand("watch",        "Stocks to watch — /watch = actionable tight-range · /watch all = full universe"),
+            BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("timestop",     "/timestop TICKER — confirm time-stop exit of 9M Day 2 meanderer"),
             BotCommand("partialnow",   "/partialnow TICKER — operator-confirm immediate partial exit (1/3 sell)"),
             BotCommand("syncnow",      "/syncnow [paper|live] — operator-confirm DB↔broker sync_positions"),
-            BotCommand("review",       "/review TICKER <agree|toohigh|toolow|notep> — label a grade (bare /review lists corpus)"),
-            BotCommand("spotted",      "/spotted TICKER <grade> <narrative> — inject a real EP you spotted (e.g. a tweet)"),
-            BotCommand("datareviews",  "📅 Data-gated reviews — ready / overdue / broken-query"),
-            BotCommand("cost",         "💰 Full operating cost — variable LLM + flat subs vs budget"),
-            BotCommand("missed",       "Missed EPs — top winners we didn't enter (opportunity cost)"),
-            BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("pause",        "⏸️ HALT all new real-money entries (instant kill switch)"),
             BotCommand("resume",       "▶️ Resume real-money entries after /pause"),
             BotCommand("status",       "System health + API spend"),
             BotCommand("help",         "Capabilities, rules, command reference"),
-            BotCommand("start",        "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)
         logger.info("Bot commands registered with Telegram")

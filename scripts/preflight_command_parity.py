@@ -86,6 +86,21 @@ HIDDEN_OK = {
     "rules",    # /rules — strategy rules dump
     "spend",    # /spend — Anthropic spend tracker
     "themes",   # /themes — themes detail (longer than briefing summary)
+    # Aggressive menu cull 2026-07-20 (operator: "too confusing, remove as many as
+    # possible, add back later"). Menu trimmed 33 -> 11; these handlers stay callable
+    # but off the autocomplete menu. Re-add a BotCommand to restore any to the menu.
+    "ideas",
+    "detectors",
+    "htf",
+    "anticipation",
+    "sugarbabies",
+    "review",
+    "spotted",
+    "promotetheme",
+    "datareviews",
+    "cost",
+    "unknownrate",
+    "watch",
 }
 
 # Commands that ARE in the market-routed loop but are handled by the keyword-

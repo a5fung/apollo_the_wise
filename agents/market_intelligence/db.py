@@ -6123,6 +6123,38 @@ async def get_rs_velocity(
         return [dict(r) for r in rows]
 
 
+async def get_rs_recovery(
+    d: "str | date",
+    min_rs_1m: float = 70.0,
+    max_composite: float = 45.0,
+    limit: int = 12,
+) -> list[dict[str, Any]]:
+    """Fast V-recovery: a strong 1-month RS still climbing out of a weak composite base.
+
+    The RISING/velocity section floors at composite>=40 (its comment: "filters out
+    weak stocks recovering") and keys on the composite, so a violent bottom→top 1M
+    turn (e.g. the 2026-07 crypto-proxy move — MSTR/COIN/BMNR: rs_1m 75-98 but
+    composite 22-40) is invisible in every existing surface. This catches it directly:
+    rs_1m >= min_rs_1m AND rs_composite <= max_composite, ranked by the 1m-vs-composite
+    divergence (biggest turn first). Display-only — no entry impact (#492)."""
+    pool = await get_pool()
+    rd = date.fromisoformat(d) if isinstance(d, str) else d
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, sector, rs_1m, rs_3m, rs_6m, rs_composite
+            FROM mi_stock_scores
+            WHERE score_date = $1
+              AND rs_1m IS NOT NULL AND rs_composite IS NOT NULL
+              AND rs_1m >= $2 AND rs_composite <= $3
+            ORDER BY (rs_1m - rs_composite) DESC
+            LIMIT $4
+            """,
+            rd, min_rs_1m, max_composite, limit,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_rs_turners(
     d: "str | date",
     max_rs_4w_ago: float = 30.0,
