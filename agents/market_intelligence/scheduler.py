@@ -140,6 +140,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
+    "delayed_residual",  # #489 — EOD delayed-feed residual tracker; read-only (Polygon replay + DB/audit), no broker calls
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     "coverage_probe",  # S2 coverage loop — zero-LLM EOD blind-spot probe; shadow tables + audit only, no broker calls
