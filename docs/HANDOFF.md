@@ -32,7 +32,19 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-13 evening PDT — the M1-d reframe + coverage-loop day)
+## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-19 Sun evening PDT — weekend-push wrap)
+
+**Board 89** (PT-day started 95; net −6, all real closes/operator-ruled drops). Everything pushed to
+`main`. Authoritative in-flight state = **PLAN.md** (`check_plan.py --today`) + the desktop pickup memory.
+**Monday 7/20 verify-lives** (deployed, market-gated): #194 (dashboard auto-export — check
+`/home/apollo/auto_export.log` fired at 23:30 UTC + pushed), #480 (Trades dash now LIVE-only — glance it
+shows 5 rows not 39), #487 (rel_volume large-cap shadow — first row only if a HIGH large-cap low-relvol
+alert fires), #471 day-2 (theme re-granularization armed run ~17:04 ET), plus #402/#332/#461/#306/#475/
+#479/#330/#416/#322. **Dropped this weekend:** #384 (X posting — revoke the X dev app), #420 (uptime
+pinger), #280 (staging paper acct → precondition folded onto #281). **Next:** continue the D-CLOSE grind
+(#415/#442/#176/#265/#258/#485/#407). *(7/13 detail below is historical.)*
+
+### (historical) CLOSE 2026-07-13 evening PDT — the M1-d reframe + coverage-loop day
 
 **Today (a marathon, 25 commits, all pushed):** M1-d composite-authority wire-in built DARK + Opus-verified
 vs the diff + deployed (T2c drift-band now ACCRUING — first samples 16:15 ET 7/13) · M1-b regrade ran ($5) ·
