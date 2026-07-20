@@ -123,7 +123,6 @@ _Last CLOSE: 2026-06-16._
 ## Apollo Trades dashboard (portfolio-app2)
 
 - #194 | 2026-07-20 | deployed | daily auto-export of BOTH dashboard snapshots (themes + trades) → portfolio-app2. BUILT+LIVE 7/19: deploy key `apollo_export_deploy` added to portfolio-app2 GitHub (write access) → SSH alias `github-p2` + export clone `~/portfolio-app2-export` on prod → version-controlled `scripts/auto_export_snapshots.sh` (regen both from prod DB, start-from-remote so a manual push is never clobbered, abort-without-push on truncated snapshot) → host cron 23:30 UTC (post-nightly, EDT 19:30/EST 18:30). CHAIN PROVEN manually 7/19 (both snapshots regenerated + pushed via key; portfolio-app2 → c8e9c65). VERIFY 7/20: confirm the unattended 23:30 UTC cron fired + pushed — check `/home/apollo/auto_export.log`. Couples #480/#185.
-- #480 | 2026-07-20 | deployed | Trades dash → LIVE book only. SQL FIX DONE+PUBLISHED 7/19: `export_trades_snapshot.sql` now filters `account_mode='live'` (was leaking 34 of 39 rows — paper/staged — onto the operator-facing live dash); re-exported + pushed via #194 cron path (portfolio-app2 729c0d1), 5 live rows (CRCL/MANE/TSEM/WDFC/WULF). VERIFY 7/20: operator glance that the redeployed Streamlit Trades page shows ONLY the live book ([[verify-operator-facing-surface]]). REMAINING (cosmetic, NOT required for the live-only DoD): rename `apollo_trades_paper.json`→`apollo_trades.json` + portfolio-app2 loader/labels off the "paper" framing. Couples #194 (auto-export publishes this nightly now).
 
 ## Apollo Themes (portfolio-app2)
 
