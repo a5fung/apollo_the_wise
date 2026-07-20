@@ -22,37 +22,50 @@ def _decision(tier="HIGH", direction="demote"):
 
 @pytest.mark.asyncio
 async def test_high_rate_and_demote_share_computed():
+    # >= _MIN_DETECTED_FOR_GATE (5) decisions so the N-floor lets the rate compute.
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=_rows(
         _decision("HIGH", "demote"),
         _decision("HIGH", "hold"),
         _decision("MODERATE", "demote"),
         _decision("none", "demote"),
+        _decision("HIGH", "promote"),
     ))
-    assert await sa._today_judge_high_rate(conn) == 0.5      # 2/4 HIGH
-    assert await sa._today_judge_demote_share(conn) == 0.75  # 3/4 demote
+    assert await sa._today_judge_high_rate(conn) == 3 / 5      # 3/5 HIGH (rows 1,2,5)
+    assert await sa._today_judge_demote_share(conn) == 3 / 5   # 3/5 demote (rows 1,3,4)
 
 
 @pytest.mark.asyncio
-async def test_zero_decisions_returns_zero_not_crash():
-    conn = MagicMock()
-    conn.fetch = AsyncMock(return_value=[])
-    assert await sa._today_judge_high_rate(conn) == 0.0
-    assert await sa._today_judge_demote_share(conn) == 0.0
+async def test_below_floor_returns_none_not_zero():
+    # N-floor (2026-07-20, evidenced by the HUT false L2): < _MIN_DETECTED_FOR_GATE
+    # decisions -> None, so a tiny denominator can't fire L2 AND no structural zero
+    # pollutes the baseline. Covers 0, 1, and floor-1 decisions.
+    for rows in ([],
+                 _rows(_decision("HIGH", "promote")),
+                 _rows(*[_decision("HIGH", "promote")] * (sa._MIN_DETECTED_FOR_GATE - 1))):
+        conn = MagicMock()
+        conn.fetch = AsyncMock(return_value=rows)
+        assert await sa._today_judge_high_rate(conn) is None
+        assert await sa._today_judge_demote_share(conn) is None
 
 
 @pytest.mark.asyncio
 async def test_malformed_detail_rows_skipped_never_crash():
+    # 5 valid dicts (>= floor) + malformed rows that must be skipped, never crash.
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=_rows(
         "not json at all {",
         json.dumps(["a", "list", "not", "a", "dict"]),
         None,
         _decision("HIGH", "promote"),
+        _decision("HIGH", "promote"),
+        _decision("HIGH", "promote"),
+        _decision("MODERATE", "demote"),
+        _decision("MODERATE", "demote"),
     ))
-    # only the one valid dict counts: 1/1 HIGH, 0/1 demote
-    assert await sa._today_judge_high_rate(conn) == 1.0
-    assert await sa._today_judge_demote_share(conn) == 0.0
+    # only the 5 valid dicts count: 3/5 HIGH, 2/5 demote
+    assert await sa._today_judge_high_rate(conn) == 3 / 5
+    assert await sa._today_judge_demote_share(conn) == 2 / 5
 
 
 def test_registered_in_trade_metrics_with_cold_start_ceilings():

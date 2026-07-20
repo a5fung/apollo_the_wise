@@ -347,27 +347,36 @@ async def _judge_decision_rows_today(conn) -> list[dict]:
     return out
 
 
-async def _today_judge_high_rate(conn) -> float:
+async def _today_judge_high_rate(conn) -> float | None:
     """T2c / premortem R5 (2026-07-11): the runtime drift tripwire for the judge —
     fraction of today's judge verdicts with tier=HIGH. The [5m/7] gate catches
     grade-surface changes at DEPLOY; this catches silent drift in PRODUCTION
-    (model snapshot updates, corpus-mix shifts). 0 decisions → 0.0 (the trimmed
-    band absorbs; deliberately NO bespoke N-floor — keep the metric shaped like
-    every other L2 metric). NOT regime-conditional initially (establish the
-    unconditional baseline first; promote only on evidenced false breaches)."""
+    (model snapshot updates, corpus-mix shifts). NOT regime-conditional initially
+    (establish the unconditional baseline first).
+
+    N-floor (2026-07-20): None below _MIN_DETECTED_FOR_GATE decisions — a rate
+    over a tiny denominator can't tell drift from a single legit game_changer
+    (mirrors _today_high_entry_rate). The original 'no N-floor, 0→0.0' shape fired
+    a false L2 on 2026-07-20: 2 decisions, BOTH the same HIGH game_changer EP (HUT)
+    → rate 1.0 vs a median-0/MAD-0 baseline that was itself an artifact of the
+    structural-zero no-decision days. Returning None skips the meaningless-rate
+    alarm AND stops those structural zeros polluting the baseline — the 'promote
+    only on evidenced false breaches' escalation this docstring anticipated."""
     rows = await _judge_decision_rows_today(conn)
-    if not rows:
-        return 0.0
+    if len(rows) < _MIN_DETECTED_FOR_GATE:
+        return None
     high = sum(1 for d in rows if d.get("judge_tier") == "HIGH")
     return high / len(rows)
 
 
-async def _today_judge_demote_share(conn) -> float:
+async def _today_judge_demote_share(conn) -> float | None:
     """T2c sibling: share of today's judge verdicts with direction=demote — the
-    OVER-SKEPTICISM drift direction (the D08/positive-control failure mode, live)."""
+    OVER-SKEPTICISM drift direction (the D08/positive-control failure mode, live).
+    Same N-floor as _today_judge_high_rate (2026-07-20): None below
+    _MIN_DETECTED_FOR_GATE decisions — a share over a tiny denominator is noise."""
     rows = await _judge_decision_rows_today(conn)
-    if not rows:
-        return 0.0
+    if len(rows) < _MIN_DETECTED_FOR_GATE:
+        return None
     demote = sum(1 for d in rows if d.get("judge_direction") == "demote")
     return demote / len(rows)
 
