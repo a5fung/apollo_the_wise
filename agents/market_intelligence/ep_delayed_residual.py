@@ -135,6 +135,7 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
                     round(dl[tk], 2) if dl[tk] is not None else None,
                     round((max(c for _, c in series) / pc - 1) * 100, 2), hyb, pc, day_close))
 
+    rd = datetime.strptime(run_date, "%Y-%m-%d").date()   # DATE column wants a date, not a str
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         for r in out:
@@ -148,7 +149,7 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
                     delayed_gap=EXCLUDED.delayed_gap, day_high_gap=EXCLUDED.day_high_gap,
                     hybrid_caught=EXCLUDED.hybrid_caught, prev_close=EXCLUDED.prev_close,
                     baseline_close=EXCLUDED.baseline_close, computed_at=NOW()
-            """, run_date, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
+            """, rd, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
 
     n_missed = len(out)
     n_residual = sum(1 for r in out if not r[5])
