@@ -1021,6 +1021,33 @@ async def initialize_schema() -> None:
                 ON mi_ep_scan_outcomes(scan_date DESC);
         """)
 
+        # ── #489 delayed-feed residual tracker — the EP trades the ~15-min
+        # Polygon detection delay makes us miss. EOD job records every QUALITY
+        # (CS + liquid) in-window (9:31-9:44) 10%-crosser vs prev close, whether
+        # the 5% hybrid would have caught it (hybrid_caught), and the forward
+        # outcome. hybrid_caught=false = the structural residual (flat pre-market
+        # then explode) — the escalation dashboard for full-real-time (design §14).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_ep_delayed_residual (
+                id SERIAL PRIMARY KEY,
+                run_date DATE NOT NULL,
+                ticker TEXT NOT NULL,
+                cross_tick_et TEXT,
+                rt_gap FLOAT,
+                delayed_gap FLOAT,
+                day_high_gap FLOAT,
+                hybrid_caught BOOLEAN,
+                prev_close FLOAT,
+                baseline_close FLOAT,
+                fwd_1d_pct FLOAT,
+                fwd_5d_pct FLOAT,
+                computed_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (run_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_delayed_residual_date
+                ON mi_ep_delayed_residual(run_date DESC);
+        """)
+
         # ── Audit log — critical events queryable from Telegram ──────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_audit_log (

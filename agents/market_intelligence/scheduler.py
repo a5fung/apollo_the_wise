@@ -1074,6 +1074,17 @@ async def _ep_scan_job():
         # (3-message spam pattern observed during synthetic test 2026-05-20).
 
 
+async def _delayed_residual_job():
+    """#489 — EOD delayed-feed residual tracker. Records the QUALITY in-window (9:31-9:44) 10%-crossers
+    the ~16-min Polygon detection delay made us miss + whether the 5% hybrid would catch each. The
+    hybrid_caught=false rows (flat-premarket-then-explode) are the escalation dashboard for going
+    full-real-time (design realtime_detection_feed_design_2026-07-20.md §14)."""
+    from agents.market_intelligence.ep_delayed_residual import run_delayed_residual_scan
+    run_date = datetime.now(_ET).strftime("%Y-%m-%d")
+    missed, residual = await run_delayed_residual_scan(run_date)
+    logger.info(f"delayed_residual_job {run_date}: {missed} missed, {residual} residual beyond hybrid")
+
+
 async def _paper_trade_tracker_job():
     """Run at 4:45 PM ET. Simulate Day 1 for new EPs, update trailing stops on open positions.
     Skipped when LIVE_TRADING_ENABLED=true — the live Alpaca path is the single source of truth."""
@@ -5062,6 +5073,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_paper_trade_tracker_job, "paper_trade_tracker"),
         CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
         id="paper_trade_tracker",
+        replace_existing=True,
+    )
+
+    # #489 delayed-feed residual tracker: 4:35 PM ET — post-close; records the QUALITY in-window
+    # 10%-crossers the detection delay missed + whether the 5% hybrid would have caught them.
+    _scheduler.add_job(
+        audit_wrap(_delayed_residual_job, "delayed_residual"),
+        CronTrigger(hour=16, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        id="delayed_residual",
         replace_existing=True,
     )
 
