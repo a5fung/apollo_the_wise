@@ -46,7 +46,7 @@ TICKS = _scan_ticks()
 async def _cs_universe() -> set:
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT ticker FROM mi_security_types WHERE type IN ('CS','ADRC')")
+        rows = await conn.fetch("SELECT ticker FROM mi_security_types WHERE security_type IN ('CS','ADRC')")
     return {r["ticker"] for r in rows if r["ticker"]}
 
 
