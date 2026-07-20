@@ -26,3 +26,16 @@ def test_pass2_is_noop_when_disabled(monkeypatch):
     cands = [{"ticker": "AAA", "gap_pct": 12.0, "prev_close": 10.0, "gap_pct_delayed": 12.0}]
     out = asyncio.run(ep_detector._apply_realtime_pass2(cands, datetime(2026, 7, 20, 9, 35)))
     assert out is cands
+
+
+def test_watchdog_noop_when_disabled(monkeypatch):
+    # #489 miss watchdog OFF -> early return, no fetch/alert, no error.
+    monkeypatch.setattr(ep_detector, "EP_RT_MISS_WATCHDOG_ENABLED", False)
+    asyncio.run(ep_detector._rt_miss_watchdog([("AAA", 10.0)], [], datetime(2026, 7, 20, 9, 35)))
+
+
+def test_watchdog_noop_out_of_window(monkeypatch):
+    # Outside the 9:31-9:44 ORB window -> no fetch (a later cross can't be entered anyway).
+    monkeypatch.setattr(ep_detector, "EP_RT_MISS_WATCHDOG_ENABLED", True)
+    monkeypatch.setattr(ep_detector, "EP_RT_PASS2_ENABLED", True)
+    asyncio.run(ep_detector._rt_miss_watchdog([("AAA", 10.0)], [], datetime(2026, 7, 20, 11, 0)))

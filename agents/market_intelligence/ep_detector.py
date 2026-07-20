@@ -97,6 +97,11 @@ MIN_GAP_PCT = float(os.environ.get("EP_MIN_GAP_PCT", _MIN_GAP_PCT_DEFAULT))
 # rt logged alongside, delayed still decides). All OFF (default) = byte-identical to today.
 EP_RT_PASS2_ENABLED = os.environ.get("EP_RT_PASS2_ENABLED", "false").lower() == "true"
 EP_PASS1_SUPERSET_GAP_PCT = float(os.environ.get("EP_PASS1_SUPERSET_GAP_PCT", 5.0))
+# #489 real-time MISS watchdog (observability, ALERT-ONLY — never changes what we enter): each in-window
+# tick it checks the full RT universe live and LOUD-Telegrams any 10% crosser the ~15-min-delayed screen
+# missed. It is the #490 Pass-0 fetch in observe mode (doubles as the full-cutover shadow). Default on
+# when the RT infra (EP_RT_PASS2_ENABLED) is on; own kill switch.
+EP_RT_MISS_WATCHDOG_ENABLED = os.environ.get("EP_RT_MISS_WATCHDOG_ENABLED", "true").lower() == "true"
 
 
 def _pass1_gap_floor() -> float:
@@ -1544,11 +1549,19 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
                 c["gap_pct"] = round(rt_gap, 2)
                 c["price_source"] = "alpaca_sip"
             if rt_gap >= MIN_GAP_PCT > dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_up"):
-                await log_audit_event("ep_rt_floor_flip_up",
-                    f"{c['ticker']} rt {rt_gap:.1f}% >=10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
-                    + ("" if authoritative else " (SHADOW — would have caught)"),
+                _flip_msg = (f"{c['ticker']} rt {rt_gap:.1f}% ≥10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
+                             + ("" if authoritative else " (SHADOW — would have caught)"))
+                await log_audit_event("ep_rt_floor_flip_up", _flip_msg,
                     json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
                                 "tick_et": now_et.strftime("%H:%M"), "authoritative": authoritative}))
+                # #489: LOUD — this is the operator's live shadow-review sample (a real in-window EP the
+                # ~15-min delay would have missed). Rare + actionable, so it Telegrams, not audit-only.
+                try:
+                    from agents.market_intelligence.briefing import send_telegram_message
+                    await send_telegram_message(
+                        f"🔴 Delay-missed EP {'CAUGHT' if authoritative else 'would be caught'} (hybrid): {_flip_msg}")
+                except Exception:  # loud-ok: Telegram is best-effort; the audit row is the durable record
+                    pass
             elif rt_gap < MIN_GAP_PCT <= dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_down"):
                 await log_audit_event("ep_rt_floor_flip_down",
                     f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit cleaned)",
@@ -1557,6 +1570,50 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
     except Exception as e:
         logger.warning(f"Pass-2 failed, degrading to delayed 10% floor: {e}")
         return [c for c in candidates if c.get("gap_pct", 0) >= MIN_GAP_PCT]
+
+
+async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: datetime) -> None:
+    """#489 real-time MISS detector — ALERT-ONLY. The hybrid structurally can't catch the residual
+    (flat-premarket-then-explode) class in real time, but this CAN surface it: each in-window tick,
+    fetch REAL-TIME Alpaca SIP prices for the full RT universe (every ticker that cleared the non-gap
+    filters) and LOUD-Telegram any that has crossed the 10% floor real-time but is NOT in the scan's
+    candidates (i.e. the ~15-min-delayed screen missed it). This is #490's Pass-0 fetch in OBSERVE
+    mode — it never changes what we enter, so it's not THE LINE, and it doubles as the full-cutover
+    shadow. Deduped per ticker/day; never raises (degrades silently — it's pure observability)."""
+    if not (EP_RT_MISS_WATCHDOG_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
+        return
+    mod = now_et.hour * 60 + now_et.minute
+    if not (9 * 60 + 31 <= mod <= 9 * 60 + 44):   # only the ORB window — a later cross can't be entered anyway
+        return
+    try:
+        from agents.market_intelligence import collector
+        from agents.market_intelligence.briefing import send_telegram_message
+        caught = {c["ticker"] for c in candidates}
+        pc_map = {t: pc for t, pc in rt_universe}
+        snaps = await collector.get_alpaca_snapshots_batch(list(pc_map.keys()))
+        adate = now_et.date()
+        for tkr, sn in snaps.items():
+            if tkr in caught:
+                continue
+            price, pc = sn.get("price"), pc_map.get(tkr)
+            if not price or not pc:
+                continue
+            rt_gap = (price - pc) / pc * 100
+            if rt_gap < MIN_GAP_PCT or not _audit_dedupe_check(tkr, adate, "ep_rt_live_miss"):
+                continue
+            await log_audit_event(
+                "ep_rt_live_miss",
+                f"{tkr} rt {rt_gap:.1f}% ≥10 @ {now_et:%H:%M} ET but NOT a scan candidate (delay-missed EP)",
+                json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2), "tick_et": now_et.strftime("%H:%M")}))
+            try:
+                await send_telegram_message(
+                    f"🚨 REAL-TIME EP MISS: {tkr} is +{rt_gap:.1f}% real-time @ {now_et:%H:%M} ET — it crossed "
+                    f"the 10% EP floor but the ~15-min delayed scan can't see it, so it was NOT entered "
+                    f"(the #489 residual class). Observability alert; no entry.")
+            except Exception:  # loud-ok: Telegram best-effort; the ep_rt_live_miss audit row is durable
+                pass
+    except Exception as e:
+        logger.warning(f"rt_miss_watchdog failed (alert-only, non-fatal): {e}")
 
 
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
@@ -1680,6 +1737,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Find gap candidates
     candidates = []
     _unclassified_skipped = 0  # P2.0b counter
+    _rt_universe = []   # #489 miss watchdog: every ticker that clears all NON-gap filters
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
@@ -1706,6 +1764,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             prev_volume = snap.get("prevDay", {}).get("v", 0) or 0
             if prev_volume < MIN_PREV_DAY_VOLUME:
                 continue
+
+            _rt_universe.append((ticker, prev_close))   # #489 watchdog: this ticker cleared all non-gap filters
 
             # Current price: min.c (latest minute bar, includes pre/post-market)
             # → day.o (regular session open) → lastTrade.p (fallback)
@@ -1761,6 +1821,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the
     # authoritative gap. No-op (candidates unchanged, byte-identical) when EP_RT_PASS2_ENABLED is off.
     candidates = await _apply_realtime_pass2(candidates, now_et)
+    await _rt_miss_watchdog(_rt_universe, candidates, now_et)   # #489: alert-only real-time MISS detector
 
     # Sort by gap size descending — score the biggest movers first
     candidates.sort(key=lambda c: c["gap_pct"], reverse=True)

@@ -159,5 +159,15 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
         f"{n_residual} beyond the 5% hybrid (residual — flat-premkt-then-explode)",
         json.dumps({"run_date": run_date, "missed_total": n_missed, "residual_beyond_hybrid": n_residual}),
     )
+    # #489: LOUD nightly summary of the delay's cost (only on days with a miss — quiet days stay silent).
+    if n_missed > 0:
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(
+                f"🔴 Delayed-feed residual {run_date}: {n_missed} delay-missed EP crosser(s) today, "
+                f"{n_residual} BEYOND the 5% hybrid (the class the fix can't catch). Outcomes settle ~5d. "
+                f"(/audit ep_delayed_residual_scan)")
+        except Exception:  # loud-ok: Telegram is best-effort; the mi_ep_delayed_residual rows are durable
+            pass
     logger.info(f"delayed_residual {run_date}: {n_missed} missed, {n_residual} residual beyond hybrid")
     return (n_missed, n_residual)
