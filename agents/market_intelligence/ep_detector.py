@@ -1576,8 +1576,9 @@ async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: d
     """#489 real-time MISS detector — ALERT-ONLY. The hybrid structurally can't catch the residual
     (flat-premarket-then-explode) class in real time, but this CAN surface it: each in-window tick,
     fetch REAL-TIME Alpaca SIP prices for the full RT universe (every ticker that cleared the non-gap
-    filters) and LOUD-Telegram any that has crossed the 10% floor real-time but is NOT in the scan's
-    candidates (i.e. the ~15-min-delayed screen missed it). This is #490's Pass-0 fetch in OBSERVE
+    filters) and LOUD-Telegram any that has crossed the 10% floor real-time, PASSES the scan's
+    mechanical EP gates (extension / mcap / ADV$ / ATR), but is NOT in the scan's candidates (i.e.
+    a real EP-shaped name the ~15-min-delayed screen missed — not every 10% spike). This is #490's Pass-0 fetch in OBSERVE
     mode — it never changes what we enter, so it's not THE LINE, and it doubles as the full-cutover
     shadow. Deduped per ticker/day; never raises (degrades silently — it's pure observability)."""
     if not (EP_RT_MISS_WATCHDOG_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
@@ -1592,6 +1593,8 @@ async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: d
         pc_map = {t: pc for t, pc in rt_universe}
         snaps = await collector.get_alpaca_snapshots_batch(list(pc_map.keys()))
         adate = now_et.date()
+        # Missed crossers = real-time ≥10% but NOT a scan candidate (the delay couldn't see them).
+        missed = []
         for tkr, sn in snaps.items():
             if tkr in caught:
                 continue
@@ -1599,17 +1602,47 @@ async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: d
             if not price or not pc:
                 continue
             rt_gap = (price - pc) / pc * 100
-            if rt_gap < MIN_GAP_PCT or not _audit_dedupe_check(tkr, adate, "ep_rt_live_miss"):
+            if rt_gap >= MIN_GAP_PCT:
+                missed.append((tkr, pc, rt_gap))
+        if not missed:
+            return
+        # #489 (A): mechanical EP gates — alert only on a REAL EP-shaped miss, not every 10% spike.
+        # Apply the same NON-LLM gates the live scan uses: already-extended (≥50% up over ~5d), then
+        # check_filters (market-cap ≥$500M / ADV$ / ATR). Drops micro-cap pumps, illiquid, choppy, and
+        # extended names. The full catalyst + HIGH-grade confirmation is B (the #490 shadow scoring).
+        ext_low = {}
+        try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT ticker, MIN(close) AS low_close FROM mi_daily_closes
+                    WHERE ticker = ANY($1) AND trade_date >= $2 AND trade_date < $3 GROUP BY ticker
+                """, [m[0] for m in missed], adate - timedelta(days=10), adate)
+            ext_low = {r["ticker"]: float(r["low_close"]) for r in rows}
+        except Exception as e:  # loud-ok: extension lookup best-effort; a failure just skips this one gate
+            logger.warning(f"rt_miss_watchdog extension query failed (non-fatal): {e}")
+        for tkr, pc, rt_gap in missed:
+            low5 = ext_low.get(tkr)
+            if low5 and (pc - low5) / low5 * 100 >= MAX_EXTENSION_PCT:
+                continue   # already extended — the live scan would have skipped it too
+            try:
+                passed, _skip_reason = await check_filters(tkr, adate)
+            except Exception:  # loud-ok: a filter-lookup failure must not silently drop a real miss
+                passed = True
+            if not passed:
+                continue
+            if not _audit_dedupe_check(tkr, adate, "ep_rt_live_miss"):
                 continue
             await log_audit_event(
                 "ep_rt_live_miss",
-                f"{tkr} rt {rt_gap:.1f}% ≥10 @ {now_et:%H:%M} ET but NOT a scan candidate (delay-missed EP)",
+                f"{tkr} rt {rt_gap:.1f}% ≥10 @ {now_et:%H:%M} ET, passes mechanical EP gates but NOT a scan candidate (delay-missed EP)",
                 json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2), "tick_et": now_et.strftime("%H:%M")}))
             try:
                 await send_telegram_message(
-                    f"🚨 REAL-TIME EP MISS: {tkr} is +{rt_gap:.1f}% real-time @ {now_et:%H:%M} ET — it crossed "
-                    f"the 10% EP floor but the ~15-min delayed scan can't see it, so it was NOT entered "
-                    f"(the #489 residual class). Observability alert; no entry.")
+                    f"🚨 REAL-TIME EP MISS: {tkr} is +{rt_gap:.1f}% real-time @ {now_et:%H:%M} ET and passes the "
+                    f"EP gates (liquid, non-extended, mcap OK) — but the ~15-min delayed scan can't see it, so it "
+                    f"was NOT entered (the #489 residual class). Observability alert; no entry. Grade/catalyst "
+                    f"unconfirmed — that's the #490 shadow.")
             except Exception:  # loud-ok: Telegram best-effort; the ep_rt_live_miss audit row is durable
                 pass
     except Exception as e:
