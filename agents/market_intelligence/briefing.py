@@ -39,6 +39,7 @@ from agents.market_intelligence.db import (
     get_rs_velocity,
     get_rs_turners,
     get_rs_recovery,
+    get_crypto_vs_market_pulse,
     get_overnight_watchlist,
     get_fundamental_flags,
     get_rs_for_tickers,
@@ -722,6 +723,33 @@ def _format_recovery_section(recovery: list[dict], section_num: int = 5) -> str:
     return "\n".join(lines)
 
 
+def _format_crypto_pulse_section(pulse: dict) -> str:
+    """CRYPTO vs MARKET — cross-asset strength (#493, slice 1 of the Market Strength Map #494):
+    trailing 4wk/2wk return, crypto (BTC/ETH/SOL) vs the equity market (QQQ/SPY/IWM), with a
+    one-line verdict answering 'is crypto holding up while the market corrects?'. Empty -> omitted."""
+    if not pulse or not pulse.get("crypto"):
+        return ""
+
+    def _r(v):
+        return f"{v:+.1f}" if v is not None else "n/a"
+
+    verdict = pulse.get("verdict", "MIXED")
+    emoji = {"LEADING": "🟢", "LAGGING": "🔴", "IN LINE": "⚪", "MIXED": "⚪"}.get(verdict, "⚪")
+    eth = next((a for a in pulse["crypto"] if a["sym"] == "ETH"), None)
+    btc = next((a for a in pulse["crypto"] if a["sym"] == "BTC"), None)
+    qqq = next((m for m in pulse["market"] if m["sym"] == "QQQ"), None)
+    bits = [f"{a['sym']} {_r(a['r4'])}" for a in (eth, btc) if a and a.get("r4") is not None]
+    tail = f" vs QQQ {_r(qqq['r4'])}" if qqq and qqq.get("r4") is not None else ""
+    head = f"*CRYPTO vs MARKET* — {emoji} Crypto {verdict}"
+    if bits:
+        head += f" ({' / '.join(bits)}{tail}, 4wk)"
+    lines = [head,
+             "  crypto  " + "  ".join(f"`{a['sym']}` {_r(a['r4'])}/{_r(a['r2'])}" for a in pulse["crypto"]),
+             "  market  " + "  ".join(f"`{m['sym']}` {_r(m['r4'])}/{_r(m['r2'])}" for m in pulse["market"]),
+             "  _4wk/2wk trailing return_"]
+    return "\n".join(lines)
+
+
 def _format_unanchored_section(
     rs_leaders: list[dict],
     themes: list[dict],
@@ -965,6 +993,7 @@ def _format_evening_briefing(
     pullbacks: list[dict],
     turners: list[dict] | None = None,
     recovery: list[dict] | None = None,
+    crypto_pulse: dict | None = None,
     briefing_date: str = "",
     fund_flags: dict[str, dict] | None = None,
     theme_rs_data: dict[str, dict] | None = None,
@@ -1027,6 +1056,14 @@ def _format_evening_briefing(
     sections += [
         _format_regime_section(regime, section_num=1),
         "",
+    ]
+    # #493 slice-1 of the Market Strength Map: CRYPTO vs MARKET cross-asset pulse, placed
+    # right under regime (it's a macro "where's the money" read that pairs with the regime).
+    crypto_pulse_section = _format_crypto_pulse_section(crypto_pulse or {})
+    if crypto_pulse_section:
+        sections.append(crypto_pulse_section)
+        sections.append("")
+    sections += [
         _format_rs_section(rs_leaders[:10], section_num=2, fund_flags=fund_flags),  # top-10 (#479)
         "",
         theme_section,
@@ -1056,7 +1093,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
 
     from agents.market_intelligence.db import get_active_cooldowns as _get_active_cooldowns
 
-    regime, rs_leaders, themes, velocity, pullbacks, turners, recovery, fund_flags, prior_theme_scores, warnings, cooldowns = (
+    regime, rs_leaders, themes, velocity, pullbacks, turners, recovery, crypto_pulse, fund_flags, prior_theme_scores, warnings, cooldowns = (
         await asyncio.gather(
             get_latest_regime(include_breadth_history=True),
             get_rs_leaders(today_str, limit=30),
@@ -1065,6 +1102,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
             get_ma_pullbacks(today_str),
             get_rs_turners(today_str),
             get_rs_recovery(today_str),
+            get_crypto_vs_market_pulse(),
             get_fundamental_flags(today_str),
             get_prior_theme_scores(today_str),
             get_quality_warnings(today),
@@ -1211,6 +1249,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         pullbacks=pullbacks,
         turners=turners,
         recovery=recovery,
+        crypto_pulse=crypto_pulse,
         briefing_date=today_str,
         fund_flags=fund_flags,
         theme_rs_data=theme_rs_data,

@@ -6155,6 +6155,60 @@ async def get_rs_recovery(
     return [dict(r) for r in rows]
 
 
+# --- Market Strength Map, slice 1 (#493): cross-asset crypto-vs-market pulse ---
+_PULSE_CRYPTO = [("BTC", "bitcoin"), ("ETH", "ethereum"), ("SOL", "solana")]
+_PULSE_MARKET = ["QQQ", "SPY", "IWM"]
+
+
+async def _asset_returns(conn, table, idcol, idval, datecol, closecol) -> tuple:
+    """(2wk, 4wk) trailing % return for one asset, vs the nearest close <= today-N days.
+    Table/column names are hardcoded constants (not user input). None on missing data."""
+    latest = await conn.fetchrow(
+        f"SELECT {closecol} AS cl, {datecol} AS d FROM {table} "
+        f"WHERE {idcol}=$1 AND {closecol} IS NOT NULL ORDER BY {datecol} DESC LIMIT 1", idval)
+    if not latest:
+        return (None, None)
+    lc, ld = float(latest["cl"]), latest["d"]
+
+    async def _past(days):
+        row = await conn.fetchrow(
+            f"SELECT {closecol} AS cl FROM {table} WHERE {idcol}=$1 AND {closecol} IS NOT NULL "
+            f"AND {datecol} <= $2 ORDER BY {datecol} DESC LIMIT 1", idval, ld - timedelta(days=days))
+        if not row or not row["cl"]:
+            return None
+        return round((lc / float(row["cl"]) - 1) * 100, 1)
+
+    return (await _past(14), await _past(28))
+
+
+async def get_crypto_vs_market_pulse() -> dict:
+    """Cross-asset strength pulse (#493, slice 1 of the Market Strength Map #494): trailing
+    2wk/4wk return, crypto (BTC/ETH/SOL from crypto_daily_closes) vs the equity market
+    (QQQ/SPY/IWM from mi_daily_closes). Returns {crypto, market, verdict, lead_4w} or {} if
+    unavailable. Verdict = BTC/ETH avg-4wk vs QQQ-4wk. Display-only, no entry impact."""
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            crypto = []
+            for sym, cid in _PULSE_CRYPTO:
+                r2, r4 = await _asset_returns(conn, "crypto_daily_closes", "coin_id", cid, "date", "close_usd")
+                crypto.append({"sym": sym, "r2": r2, "r4": r4})
+            market = []
+            for tk in _PULSE_MARKET:
+                r2, r4 = await _asset_returns(conn, "mi_daily_closes", "ticker", tk, "trade_date", "close")
+                market.append({"sym": tk, "r2": r2, "r4": r4})
+    except Exception as e:  # loud-ok: pulse is display-only; a fetch failure just omits the section
+        logger.warning(f"get_crypto_vs_market_pulse failed (non-fatal): {e}")
+        return {}
+    ce = [a["r4"] for a in crypto if a["sym"] in ("BTC", "ETH") and a["r4"] is not None]
+    qqq4 = next((m["r4"] for m in market if m["sym"] == "QQQ"), None)
+    verdict, lead = "MIXED", None
+    if ce and qqq4 is not None:
+        lead = round(sum(ce) / len(ce) - qqq4, 1)
+        verdict = "LEADING" if lead >= 3 else ("LAGGING" if lead <= -3 else "IN LINE")
+    return {"crypto": crypto, "market": market, "verdict": verdict, "lead_4w": lead}
+
+
 async def get_rs_turners(
     d: "str | date",
     max_rs_4w_ago: float = 30.0,
