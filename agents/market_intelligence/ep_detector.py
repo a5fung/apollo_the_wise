@@ -89,6 +89,21 @@ CATALYST_GRADE_PROMPT_VERSION = "v3-2026-06-12-catalyst-freshness"
 # available via EP_MIN_GAP_PCT for fast rollback without redeploy.
 _MIN_GAP_PCT_DEFAULT = 10.0
 MIN_GAP_PCT = float(os.environ.get("EP_MIN_GAP_PCT", _MIN_GAP_PCT_DEFAULT))
+
+# #489 hybrid real-time detection (Alpaca SIP Pass-2). Master flag: when ON, Pass-1 admits at the
+# (lower) superset so fast movers whose ~15-min-DELAYED Polygon gap is still <10% survive to the
+# real-time Alpaca confirm, then the REAL 10% MIN_GAP_PCT floor is re-applied on the rt gap. The
+# gap_pct AUTHORITY is the separate `ep_rt_gap_authoritative` runtime toggle (default off = shadow:
+# rt logged alongside, delayed still decides). All OFF (default) = byte-identical to today.
+EP_RT_PASS2_ENABLED = os.environ.get("EP_RT_PASS2_ENABLED", "false").lower() == "true"
+EP_PASS1_SUPERSET_GAP_PCT = float(os.environ.get("EP_PASS1_SUPERSET_GAP_PCT", 5.0))
+
+
+def _pass1_gap_floor() -> float:
+    """The Pass-1 (delayed universe screen) gap floor: the lower superset when the hybrid is on,
+    else the real MIN_GAP_PCT. The superset only WIDENS Pass-1; the authoritative 10% floor is
+    always re-applied to the decided gap in Pass 2 (`_apply_realtime_pass2`), so it can never leak."""
+    return EP_PASS1_SUPERSET_GAP_PCT if EP_RT_PASS2_ENABLED else MIN_GAP_PCT
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
@@ -1463,6 +1478,87 @@ async def _emit_large_cap_relvol_floor_shadow(r: dict, now_et: datetime) -> None
         logger.warning(f"large_cap_relvol_floor_shadow failed for {r.get('ticker')}: {_e}")
 
 
+async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> list[dict]:
+    """#489 hybrid Pass 2 — real-time Alpaca SIP confirm on the superset candidates.
+
+    When EP_RT_PASS2_ENABLED: fetch rt prices, recompute the gap on the rt price (Polygon prev_close
+    stays the SOLE denominator), and under the `ep_rt_gap_authoritative` runtime toggle make the rt
+    gap the decided `gap_pct`. Then RE-APPLY the real MIN_GAP_PCT floor. In shadow (toggle off) the
+    decided gap stays delayed, so every superset-only admit is dropped here -> the live cohort is
+    byte-identical to today; the rt reading rides along for scan-log shadow columns + floor-flip
+    events. NEVER raises; every failure degrades to exactly the delayed 10%-floor path."""
+    if not EP_RT_PASS2_ENABLED or not candidates:
+        return candidates
+    try:
+        from agents.market_intelligence import collector
+        authoritative = await get_runtime_toggle(
+            "ep_rt_gap_authoritative", "EP_RT_GAP_AUTHORITATIVE", default=False)
+        snaps = await collector.get_alpaca_snapshots_batch([c["ticker"] for c in candidates])
+        adate = now_et.date()
+
+        def _floor(cs):
+            # Re-apply the REAL floor to the decided gap. A superset-only admit (delayed<10%) whose
+            # rt read is MISSING under authority is DROPPED — a fetch miss must never loosen detection.
+            out = []
+            for c in cs:
+                if authoritative and c.get("gap_pct_delayed", c["gap_pct"]) < MIN_GAP_PCT and "gap_pct_rt" not in c:
+                    continue
+                if c["gap_pct"] >= MIN_GAP_PCT:
+                    out.append(c)
+            return out
+
+        if not snaps:
+            await log_audit_event(
+                "ep_rt_pass2_degraded",
+                f"EP Pass-2 ran on DELAYED data — Alpaca batch empty ({len(candidates)} syms) @ {now_et:%H:%M} ET",
+                json.dumps({"tick_et": now_et.strftime("%H:%M"), "superset_count": len(candidates),
+                            "authoritative": authoritative}))
+            return _floor(candidates)
+
+        for c in candidates:
+            sn = snaps.get(c["ticker"])
+            rt_price = sn.get("price") if sn else None
+            if not rt_price:
+                continue   # no rt read → per-ticker fallback to the delayed gap
+            pc = c["prev_close"]
+            a_pc = sn.get("prev_close")
+            if a_pc and pc and abs(a_pc - pc) / pc * 100 > 0.5:
+                if _audit_dedupe_check(c["ticker"], adate, "ep_rt_prev_close_mismatch"):
+                    await log_audit_event("ep_rt_prev_close_mismatch",
+                        f"{c['ticker']} prev_close alpaca {a_pc} vs polygon {pc} — using delayed",
+                        json.dumps({"ticker": c["ticker"], "alpaca": a_pc, "polygon": pc}))
+                continue
+            dl = c.get("gap_pct_delayed", c["gap_pct"])
+            rt_gap = (rt_price - pc) / pc * 100
+            if abs(rt_gap - dl) > 30:   # bad print / odd-lot / symbology mismatch → keep delayed
+                continue
+            c["gap_pct_rt"] = round(rt_gap, 2)
+            c["prev_close_alpaca"] = a_pc
+            ts = sn.get("price_ts")
+            if ts is not None:
+                try:
+                    c["rt_price_age_s"] = round((now_et - ts).total_seconds(), 1)
+                except Exception:
+                    pass
+            if authoritative:
+                c["gap_pct"] = round(rt_gap, 2)
+                c["price_source"] = "alpaca_sip"
+            if rt_gap >= MIN_GAP_PCT > dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_up"):
+                await log_audit_event("ep_rt_floor_flip_up",
+                    f"{c['ticker']} rt {rt_gap:.1f}% >=10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
+                    + ("" if authoritative else " (SHADOW — would have caught)"),
+                    json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
+                                "tick_et": now_et.strftime("%H:%M"), "authoritative": authoritative}))
+            elif rt_gap < MIN_GAP_PCT <= dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_down"):
+                await log_audit_event("ep_rt_floor_flip_down",
+                    f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit cleaned)",
+                    json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2)}))
+        return _floor(candidates)
+    except Exception as e:
+        logger.warning(f"Pass-2 failed, degrading to delayed 10% floor: {e}")
+        return [c for c in candidates if c.get("gap_pct", 0) >= MIN_GAP_PCT]
+
+
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     """
     Run pre-market EP scan.
@@ -1623,7 +1719,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 continue
 
             gap_pct = (current_price - prev_close) / prev_close * 100
-            if gap_pct < MIN_GAP_PCT:
+            if gap_pct < _pass1_gap_floor():   # #489: superset floor when hybrid on; else MIN_GAP_PCT
                 continue
 
             # Volume: day.v for regular session, min.av for accumulated (includes pre-mkt)
@@ -1655,9 +1751,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 "adv_source": adv_source,
                 "rel_volume": raw_rvol,
                 "projected_vol_multiple": open_intensity,  # field name kept for DB compat
+                "gap_pct_delayed": round(gap_pct, 2),   # #489 Pass-1 delayed gap (both readings kept)
+                "price_source": "polygon_delayed",       # Pass-2 overwrites when it applies the rt gap
             })
         except Exception:
             continue
+
+    # #489 Pass 2 — real-time Alpaca SIP confirm on the (superset) candidates BEFORE ranking/scoring,
+    # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the
+    # authoritative gap. No-op (candidates unchanged, byte-identical) when EP_RT_PASS2_ENABLED is off.
+    candidates = await _apply_realtime_pass2(candidates, now_et)
 
     # Sort by gap size descending — score the biggest movers first
     candidates.sort(key=lambda c: c["gap_pct"], reverse=True)

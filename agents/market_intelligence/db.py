@@ -996,6 +996,13 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS adv FLOAT;
             ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS adv_source TEXT;
             ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS minutes_since_open INT;
+            -- #489 hybrid real-time detection (Alpaca SIP Pass-2): gap_pct is the AUTHORITATIVE
+            -- (decided) gap = delayed in shadow, rt after the flip; these carry both readings.
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS gap_pct_rt FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS gap_pct_delayed FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS price_source TEXT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS rt_price_age_s FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS prev_close_alpaca FLOAT;
             CREATE INDEX IF NOT EXISTS idx_ep_scan_log_scan_time
                 ON mi_ep_scan_log(scan_time_et DESC);
         """)

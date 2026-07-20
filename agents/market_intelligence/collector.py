@@ -226,6 +226,68 @@ async def get_snapshot_all() -> dict[str, dict]:
         return {}
 
 
+async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0) -> dict[str, dict]:
+    """#489 real-time SIP snapshots for a bounded EP Pass-2 symbol list (the delayed Polygon
+    detection feed's real-time confirm). Batches at <=100 symbols/call. Returns
+    {ticker: {price, price_ts, prev_close, minute_close, day_volume, minute_volume}} — missing
+    symbols omitted (Alpaca symbology gaps → caller falls back to delayed). NEVER raises; {} on
+    total failure. Mirrors get_alpaca_news idioms (paper creds, run_in_executor, fail-soft)."""
+    if not tickers:
+        return {}
+    try:
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockSnapshotRequest
+        from alpaca.data.enums import DataFeed
+    except ImportError as e:
+        logger.warning(f"alpaca-py snapshot import failed: {e}")
+        return {}
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret:
+        logger.warning("Alpaca credentials not set; skipping RT snapshots")
+        return {}
+    feed = DataFeed.SIP if os.environ.get("ALPACA_DATA_FEED", "iex").lower() == "sip" else DataFeed.IEX
+    client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
+    loop = asyncio.get_event_loop()
+    out: dict[str, dict] = {}
+    for i in range(0, len(tickers), 100):
+        chunk = tickers[i:i + 100]
+        req = StockSnapshotRequest(symbol_or_symbols=chunk, feed=feed)
+        snaps = None
+        for attempt in range(2):
+            try:
+                snaps = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda r=req: client.get_stock_snapshot(r)),
+                    timeout=timeout_s,
+                )
+                break
+            except Exception as e:
+                if attempt == 1:
+                    logger.warning(f"Alpaca snapshot batch failed ({len(chunk)} syms): {e}")
+        if not snaps:
+            continue
+        for sym, sn in snaps.items():
+            try:
+                lt = getattr(sn, "latest_trade", None)
+                mb = getattr(sn, "minute_bar", None)
+                db_ = getattr(sn, "daily_bar", None)
+                pdb = getattr(sn, "previous_daily_bar", None)
+                price = getattr(lt, "price", None) if lt else None
+                if price is None and mb:
+                    price = getattr(mb, "close", None)
+                out[sym] = {
+                    "price": price,
+                    "price_ts": getattr(lt, "timestamp", None) if lt else None,
+                    "prev_close": getattr(pdb, "close", None) if pdb else None,
+                    "minute_close": getattr(mb, "close", None) if mb else None,
+                    "day_volume": getattr(db_, "volume", None) if db_ else None,
+                    "minute_volume": getattr(mb, "volume", None) if mb else None,
+                }
+            except Exception:
+                continue
+    return out
+
+
 async def fetch_all_ticker_types() -> dict[str, dict]:
     """
     Fetch security type + exchange for all US stock tickers from Polygon Reference API.
