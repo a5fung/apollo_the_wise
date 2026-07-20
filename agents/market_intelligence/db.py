@@ -4591,6 +4591,21 @@ async def enqueue_pending_allocation(
         alert_date = date.fromisoformat(alert_date)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # #424/#415: a DEPRECATED strategy must never compete for live allocator
+        # slots. Deprecation means "no entries," and this queue ranks candidates
+        # for live-slot allocation — so a deprecated setup's candidates are noise
+        # that inflates the allocator-vs-FCFS contest counts. This is the enqueue
+        # path the 2026-07-05 9m_day2 deprecation missed (it still enqueued 7/9 +
+        # 7/14). Guarding centrally here excludes ANY deprecated signal_type, now
+        # and going forward; an unknown strategy (no mi_strategies row → NULL)
+        # enqueues as before. (9m_day2 is deprecated as a standalone ENTRY; the 9M
+        # stock CONDITION / sugar-baby cohort that feeds other setups is separate
+        # and stays live — see docs/analysis/357_sugar_babies_role_memo.)
+        if await conn.fetchval(
+            "SELECT phase = 'deprecated' FROM mi_strategies WHERE signal_type = $1",
+            strategy,
+        ):
+            return
         await conn.execute("""
             INSERT INTO mi_pending_allocations
                 (ticker, alert_date, strategy, composite_score, raw_dimensions)
@@ -4602,6 +4617,22 @@ async def enqueue_pending_allocation(
                 created_at      = NOW()
         """, ticker, alert_date, strategy, composite_score,
              json.dumps(raw_dimensions))
+
+
+async def get_deprecated_strategy_signal_types() -> set[str]:
+    """signal_types of strategies currently phase='deprecated'. The allocator
+    (#415) uses this to label their candidates legacy-ineligible — a deprecated
+    ENTRY setup can never be a real legacy auto-entry, so it must not count as a
+    real contest. DB-sourced (never a hardcoded list), so it tracks the registry
+    automatically as strategies are deprecated. Belt-and-suspenders with the
+    enqueue guard: the guard stops them reaching the queue; this correctly labels
+    any straggler that somehow does."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT signal_type FROM mi_strategies WHERE phase = 'deprecated'"
+        )
+    return {r["signal_type"] for r in rows if r["signal_type"]}
 
 
 async def get_pending_allocations_for_date(

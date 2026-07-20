@@ -47,9 +47,21 @@ def test_threshold_is_regime_relative():
     assert _legacy_eligibility(c, ep_threshold=75) == "ineligible"
 
 
-def test_9m_day2_is_unclassified_never_guessed():
-    c = score_9m_day2(
+def _sugar():
+    return score_9m_day2(
         ticker="SUGR", alert_date=date(2026, 7, 20), close_in_range_pct=0.9,
         gap_proxy_pct=8.0, vol_ratio_adv=6.0, regime_label="Bull",
     )
-    assert _legacy_eligibility(c, ep_threshold=70) == "unclassified"
+
+
+def test_deprecated_strategy_is_ineligible():
+    # 9m_day2 is deprecated as a standalone ENTRY (2026-07-05) — it can never be
+    # a real legacy auto-entry, so it must be 'ineligible', not counted as a
+    # contender. (The 9M stock CONDITION that feeds other setups is separate.)
+    assert _legacy_eligibility(_sugar(), 70, deprecated_strategies={"9m_day2"}) == "ineligible"
+
+
+def test_non_deprecated_non_magna_stays_unclassified():
+    # A non-deprecated, non-MAGNA53 strategy (e.g. a shadow strategy under
+    # evaluation) is genuinely unknown -> 'unclassified', never guessed.
+    assert _legacy_eligibility(_sugar(), 70, deprecated_strategies=frozenset()) == "unclassified"
