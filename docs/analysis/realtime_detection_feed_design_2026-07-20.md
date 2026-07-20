@@ -601,3 +601,58 @@ Verified against the actual code + a live API spot-check (design proceeds vetted
 - **O2 daily_bar volume**: intraday `daily_bar.v` read `None` → validates the §3 choice of Option B (multi-symbol minute-bar sum) over Option A (daily_bar). ✓
 
 Open questions **O1** (delayed `day.v` window severity), **O3** (fan-out on our universe), **O5** (9:41-44 tail fork) correctly deferred to the Phase-0 replay + Phase-1 shadow — they need historical/accrued data, not a live spot-check. No claim in this design was left unverified where verification was possible today.
+
+---
+
+## 14. Phase-0 replay results + operator decisions (2026-07-20)
+
+Replay `scripts/probes/_489_realtime_replay.py` — 25 trading days (2026-06-11 → 07-17), common-stock/ADR
+universe (mirrors the `mi_security_types` CS/ADRC gate) + $5M prior-day dollar-volume liquidity proxy
+(for the mcap≥$500M / ADV$≥$1M gates) + prev_close≥$5 + prev_vol≥50k, LAG=16min.
+
+- **156 QUALITY in-window crossers missed by the delay (~6.2/day)** — real liquid EP-class names
+  (CPNG, INTC, SMCI, WDC, JBLU, NTLA, ENVX, RGTI/QBTS/QUBT, AEHR, OUST…), NOT junk. The bug costs real
+  trades. (Raw unfiltered was 497/~20-per-day — inflated by warrants/ETFs the real scan excludes; the
+  CS+liquidity filter strips that.)
+- **Hybrid coverage by superset** (fraction of the 156 the delayed Pass-1 admits AND Pass-2 confirms at
+  an in-window tick — accounts for the delayed feed catching up by 9:40):
+
+  | superset | catches | fan-out/tick p50 / p95 |
+  |---|---|---|
+  | **5%** | 86/156 = **55%** | 11 / 47 |
+  | 6% | 68/156 = 44% | 9 / 36 |
+  | 7% | 41/156 = 26% | 8 / 22 |
+  | 8% | 19/156 = 12% | 6 / 19 |
+
+- **The structural residual (~45% at 5%)**: names near ~0% (often negative) on the delayed feed at the
+  moment they really cross 10% — flat pre-market, exploding after the open. The delayed Pass-1 screen is
+  blind to them at ANY superset. The hybrid catches the pre-market-gapper (IREN) class; it structurally
+  CANNOT catch the explode-from-flat class. This confirms the §2 "honest residual" and quantifies it.
+
+### Operator decisions (2026-07-20 — locked)
+1. **`EP_PASS1_SUPERSET_GAP_PCT = 5.0`** (was Fable's 6.0). Catches 55% of quality misses; p95 fan-out
+   47 = one Alpaca batch call.
+2. **Ship the hybrid** — cheap, catches the majority-catchable IREN class; accept the residual FOR NOW.
+3. **TRACK THE RESIDUAL (mandatory — a first-class deliverable, not optional).** The escalation to a full
+   real-time universe is a DATA-DRIVEN decision, so we must instrument the exact cost of the residual.
+
+### 14a. Residual tracker — new component (`mi_ep_delayed_residual`)
+An **EOD telemetry job** (post-close ~16:30 ET; reuses the `_489_realtime_replay` delayed-vs-rt logic on
+THAT day's minute bars, one day, cheap):
+- For every in-window (9:31-9:44) 10%-crosser that the 5% hybrid did NOT catch (delayed <5% at the
+  cross) → insert a `mi_ep_delayed_residual` row: `ticker, date, cross_tick_et, rt_gap, delayed_gap`.
+- **EP-quality flag**: was it a real EP that would have traded? Join `mi_ep_alerts`/catalyst/news +
+  the would-be `_score_ep` grade at the rt gap → `was_ep_quality` (had catalyst + would-grade-HIGH) vs
+  `momentum_spike` (no catalyst). Only `was_ep_quality=true` is a real missed TRADE.
+- **Forward outcome ("what happens after")**: fwd_1d / fwd_5d / max-favorable return via the existing
+  outcome-join (`mi_daily_closes`), populated a few days later — so we see whether the missed EPs were
+  winners (real cost) or would-be-losers (no loss).
+- **Weekly digest line**: "Delayed-feed residual: N in-window crossers beyond the hybrid this week; M
+  were quality EPs; median fwd-5d = X%." This is the escalation dashboard.
+- **Escalation trigger (operator-owned)**: a sustained material count of quality EPs missed WITH good
+  forward outcomes → move to a FULL real-time universe dataset (full-Alpaca-universe batched snapshots,
+  or Polygon real-time). Until then, cheap hybrid + honest instrumentation.
+
+This residual tracker is **independent of the gap/volume flip** — it runs EOD read-only, needs no live
+authority, and can (and should) ship EARLY, even during Phase-1 shadow, so we're measuring the residual
+from day one. It is the operator's "we absolutely must track it."
