@@ -1,4 +1,6 @@
--- Read-only export of the Apollo Trades dashboard snapshot (mi_live_trades).
+-- Read-only export of the Apollo Trades dashboard snapshot — the LIVE book only
+-- (mi_live_trades WHERE account_mode='live'; #480). Output file is still the legacy
+-- name apollo_trades_paper.json (rename to apollo_trades.json is the remaining #480 step).
 --
 -- Feeds portfolio-app2's "Apollo Trades" page (Streamlit Cloud — CANNOT reach
 -- the private Postgres; reads the committed apollo_trades_paper.json as SoT
@@ -39,5 +41,8 @@ SELECT COALESCE(json_agg(t), '[]'::json) FROM (
                  ELSE exits END -> -1 ->> 'price')::float8 AS exit_price
     FROM mi_live_trades
     WHERE status IN ('filled', 'closed', 'stopped')
+      AND account_mode = 'live'   -- #480: LIVE book only. Without this, dual-account
+                                  -- paper/staged rows leak onto the operator-facing live
+                                  -- Trades dash (flagged 7/17, now that real money is live).
     ORDER BY filled_at NULLS LAST, closed_at
 ) t;
