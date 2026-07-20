@@ -1538,7 +1538,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
             if ts is not None:
                 try:
                     c["rt_price_age_s"] = round((now_et - ts).total_seconds(), 1)
-                except Exception:
+                except Exception:  # loud-ok: rt_price_age_s is observability-only; a bad timestamp just omits it
                     pass
             if authoritative:
                 c["gap_pct"] = round(rt_gap, 2)

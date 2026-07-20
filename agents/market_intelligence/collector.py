@@ -283,7 +283,7 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0)
                     "day_volume": getattr(db_, "volume", None) if db_ else None,
                     "minute_volume": getattr(mb, "volume", None) if mb else None,
                 }
-            except Exception:
+            except Exception:  # loud-ok: one malformed symbol in the batch is skipped best-effort — caller degrades that ticker to the delayed gap
                 continue
     return out
 
