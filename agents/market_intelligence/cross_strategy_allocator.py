@@ -180,6 +180,30 @@ def select_top_n(
     return ranked[:n], ranked[n:]
 
 
+def _legacy_eligibility(c: RankableCandidate, ep_threshold: float) -> str:
+    """#415 real-contest filter — was this candidate ever LEGACY-auto-entry-
+    eligible, independent of the allocator's own rank?
+
+    Lets future allocator-vs-FCFS analysis count only GENUINE contests instead
+    of MODERATE-tier / excess-quality candidates that never had a chance under
+    either path (the "inflated contested-day count" caveat in
+    allocator_1b_comparison_2026-07-03.md §8).
+
+    - MAGNA53 legacy auto-entry = HIGH tier = ep_score >= the regime EP
+      threshold (the same threshold ep_detector grades HIGH against).
+    - 9m_day2 / flag_continuation: the legacy entry gate is NOT a simple field
+      on the candidate here, so we return 'unclassified' rather than GUESS a
+      rule — a wrong flag would poison the very real-contest filter this feeds
+      (audit-only telemetry, but it informs a real routing decision). Returns a
+      tri-state string, never a bare bool, so 'unknown' can never be silently
+      read as 'ineligible'.
+    """
+    if c.strategy == "magna53":
+        ep_score = c.raw_dimensions.get("ep_score", c.setup_quality) or 0.0
+        return "eligible" if ep_score >= ep_threshold else "ineligible"
+    return "unclassified"
+
+
 def candidates_from_pending_rows(
     rows: list[dict],
     regime_label: str = "Bull",
@@ -251,6 +275,7 @@ async def run_shadow_allocation(target_date: date) -> dict:
         return {"n_candidates": 0, "n_winners": 0, "top_picks": [], "lower_ranked": []}
 
     regime = await get_current_regime()
+    ep_threshold = regime.get("ep_threshold", 70)  # #415: MAGNA53 HIGH-tier cutoff for legacy_eligible
     candidates = candidates_from_pending_rows(rows, regime_label=regime.get("regime", "Bull"))
     ranked = rank_candidates(candidates)
 
@@ -276,14 +301,26 @@ async def run_shadow_allocation(target_date: date) -> dict:
         "n_winners": len(winners),
         "winners": [
             {"rank": i + 1, "ticker": c.ticker, "strategy": c.strategy,
-             "composite": round(c.composite, 2), "setup": round(c.setup_quality, 2)}
+             "composite": round(c.composite, 2), "setup": round(c.setup_quality, 2),
+             "legacy_eligible": _legacy_eligibility(c, ep_threshold)}
             for i, c in enumerate(winners)
         ],
         "lower_ranked": [
             {"rank": slots + i + 1, "ticker": c.ticker, "strategy": c.strategy,
-             "composite": round(c.composite, 2)}
+             "composite": round(c.composite, 2),
+             "legacy_eligible": _legacy_eligibility(c, ep_threshold)}
             for i, c in enumerate(losers[:10])  # cap detail size
         ],
+        # #415: the next-ranked candidate that would cascade into a slot if a
+        # winner is intercepted downstream (DATA only — logging who is next, NOT
+        # implementing cascade *behavior*, which is an open operator design fork).
+        "first_cascade_candidate": (
+            {"rank": slots + 1, "ticker": losers[0].ticker,
+             "strategy": losers[0].strategy,
+             "composite": round(losers[0].composite, 2),
+             "legacy_eligible": _legacy_eligibility(losers[0], ep_threshold)}
+            if losers else None
+        ),
     })[:4500]  # mi_audit_log.detail is TEXT but trim to keep events grep-friendly
 
     summary = (
