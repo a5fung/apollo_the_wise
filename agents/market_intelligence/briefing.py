@@ -1278,8 +1278,22 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     success = await send_telegram_message(text, chat_id)
     if success:
         logger.info(f"Evening briefing sent for {today_str}")
+        # #495: durable send-confirmation — so "did tonight's brief actually send?" is answerable
+        # from the DB after a restart (the 2026-07-20 false-alarm gap: send success/failure was
+        # log-only, so a same-day restart erased the only record).
+        await log_audit_event("evening_brief_sent", f"evening brief sent for {today_str} ({len(text)} chars)",
+                              f'{{"date": "{today_str}", "chars": {len(text)}}}')
     else:
         logger.error("Failed to send evening briefing")
+        # #495: a silent brief-miss must not be invisible — durable audit row + a best-effort alert
+        # (send_telegram_message already strips markup to plain on a 400, so a False return is a real
+        # send failure, not a formatting one — worth flagging).
+        await log_audit_event("evening_brief_send_failed", f"evening brief FAILED to send for {today_str}",
+                              f'{{"date": "{today_str}"}}')
+        try:
+            await send_telegram_message(f"⚠️ Evening brief FAILED to send for {today_str} — it did not reach you; check logs.")
+        except Exception:  # loud-ok: the alert is best-effort; the evening_brief_send_failed audit row is durable
+            pass
 
     # Compute scored themes for Twitter theme tweet
     scored_themes = []
