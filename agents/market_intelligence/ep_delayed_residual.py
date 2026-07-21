@@ -12,6 +12,7 @@ Read-only vs prod trade state (Polygon minute bars + grouped daily); writes mi_e
 """
 import json
 import logging
+import statistics
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -171,3 +172,69 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
             pass
     logger.info(f"delayed_residual {run_date}: {n_missed} missed, {n_residual} residual beyond hybrid")
     return (n_missed, n_residual)
+
+
+# ── G3 + O-9 escalation trigger (#490 §1.3; operator-pinned 2026-07-20: 5 misses / median fwd-5d ≥ +8%) ──
+O9_MIN_MISSES = 5             # ≥ this many settled residual misses over the window …
+O9_MEDIAN_FWD5D_MIN = 8.0     # … AND their median fwd_5d_pct ≥ this (real winners we're missing, not faders)
+O9_WINDOW_DAYS = 21          # ≈ 15 trading days
+
+
+async def backfill_residual_outcomes() -> int:
+    """G3 (#490 RT-1): stamp fwd_1d_pct + fwd_5d_pct on SETTLED residual rows so the O-9 trigger can
+    read forward outcomes. For each mi_ep_delayed_residual row with fwd_5d_pct NULL whose run_date
+    has ≥5 forward trading-day closes in mi_daily_closes, compute the return vs baseline_close.
+    Read-only vs trade state (only UPDATEs the residual dashboard). Returns rows stamped."""
+    pool = await db.get_pool()
+    updated = 0
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT run_date, ticker, baseline_close FROM mi_ep_delayed_residual
+            WHERE fwd_5d_pct IS NULL AND baseline_close IS NOT NULL
+              AND run_date <= (CURRENT_DATE - INTERVAL '8 days')
+        """)
+        for r in rows:
+            base = float(r["baseline_close"]) if r["baseline_close"] else None
+            if not base:
+                continue
+            fwd = await conn.fetch("""
+                SELECT close FROM mi_daily_closes
+                WHERE ticker=$1 AND trade_date > $2 AND close IS NOT NULL
+                ORDER BY trade_date ASC LIMIT 5
+            """, r["ticker"], r["run_date"])
+            closes = [float(x["close"]) for x in fwd if x["close"]]
+            if len(closes) < 5:
+                continue   # not enough forward data settled yet
+            await conn.execute("""
+                UPDATE mi_ep_delayed_residual SET fwd_1d_pct=$1, fwd_5d_pct=$2
+                WHERE run_date=$3 AND ticker=$4
+            """, round((closes[0] / base - 1) * 100, 2), round((closes[4] / base - 1) * 100, 2),
+               r["run_date"], r["ticker"])
+            updated += 1
+    if updated:
+        await db.log_audit_event(
+            "ep_residual_outcomes_backfilled",
+            f"G3: stamped fwd outcomes on {updated} settled residual row(s)",
+            json.dumps({"updated": updated}))
+    logger.info(f"backfill_residual_outcomes: {updated} rows stamped")
+    return updated
+
+
+async def evaluate_o9_escalation() -> dict:
+    """O-9 (#490 §1.3, operator-pinned 2026-07-20): should we trigger the full-real-time cutover?
+    Over the last ≈15 trading days, count residual (hybrid_caught=false) misses WITH settled
+    outcomes; TRIGGER when count ≥ O9_MIN_MISSES AND their median fwd_5d_pct ≥ O9_MEDIAN_FWD5D_MIN
+    (the delay is costing WINNING EPs, not faders). Read-only. Returns {count, median_fwd5d, triggered}."""
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT fwd_5d_pct FROM mi_ep_delayed_residual
+            WHERE hybrid_caught = false AND fwd_5d_pct IS NOT NULL
+              AND run_date >= (CURRENT_DATE - INTERVAL '{O9_WINDOW_DAYS} days')
+        """)
+    vals = [float(r["fwd_5d_pct"]) for r in rows]
+    median = statistics.median(vals) if vals else None
+    triggered = len(vals) >= O9_MIN_MISSES and median is not None and median >= O9_MEDIAN_FWD5D_MIN
+    return {"count": len(vals),
+            "median_fwd5d": round(median, 2) if median is not None else None,
+            "triggered": triggered}

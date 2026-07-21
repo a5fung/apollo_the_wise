@@ -1080,10 +1080,35 @@ async def _delayed_residual_job():
     the ~16-min Polygon detection delay made us miss + whether the 5% hybrid would catch each. The
     hybrid_caught=false rows (flat-premarket-then-explode) are the escalation dashboard for going
     full-real-time (design realtime_detection_feed_design_2026-07-20.md §14)."""
-    from agents.market_intelligence.ep_delayed_residual import run_delayed_residual_scan
+    from agents.market_intelligence.ep_delayed_residual import (
+        run_delayed_residual_scan, backfill_residual_outcomes, evaluate_o9_escalation)
+    from agents.market_intelligence.db import get_pool, log_audit_event
     run_date = datetime.now(_ET).strftime("%Y-%m-%d")
     missed, residual = await run_delayed_residual_scan(run_date)
     logger.info(f"delayed_residual_job {run_date}: {missed} missed, {residual} residual beyond hybrid")
+    # G3: stamp forward outcomes on settled misses so the O-9 escalation trigger can read them.
+    await backfill_residual_outcomes()
+    # O-9 (#490 §1.3, operator-pinned 7/20): auto-trigger the real-time cutover when the delay is
+    # now costing WINNING EPs at the bar (≥5 residual misses/15d, median fwd-5d ≥ +8%). Deduped 7d.
+    o9 = await evaluate_o9_escalation()
+    logger.info(f"O-9 check: count={o9['count']} median_fwd5d={o9['median_fwd5d']} triggered={o9['triggered']}")
+    if o9["triggered"]:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            recent = await conn.fetchval("""
+                SELECT count(*) FROM mi_audit_log WHERE event_type='o9_escalation_met'
+                  AND created_at > NOW() - INTERVAL '7 days'
+            """)
+        await log_audit_event("o9_escalation_met",
+            f"O-9 met: {o9['count']} residual misses, median fwd-5d {o9['median_fwd5d']}%",
+            json.dumps(o9))
+        if not recent:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(
+                f"🚨 O-9 ESCALATION MET — {o9['count']} delay-missed residual EPs (last 15d), median "
+                f"fwd-5d +{o9['median_fwd5d']}% (≥ +8% bar): the delayed feed is now costing WINNING EPs. "
+                f"→ Execute the #490 real-time cutover (runbook pre-built; ~2-4 day build/shadow, "
+                f"docs/analysis/realtime_full_cutover_design_2026-07-20.md).")
 
 
 async def _paper_trade_tracker_job():

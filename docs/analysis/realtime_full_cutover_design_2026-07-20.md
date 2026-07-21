@@ -54,6 +54,15 @@ threshold is the operator's call at review time; the preliminary "mostly faded" 
 no urgency today. This runbook is the pre-paid design so the decision→live latency is ~2-4 days of
 build/shadow, not weeks.
 
+**PINNED + WIRED 2026-07-20 (operator):** the bar is **≥5** `hybrid_caught=false` residual misses
+over the last ~15 trading days **AND** their **median `fwd_5d_pct` ≥ +8%** (real winners, not faders;
+5 not 10 — EPs are rare). No longer a review-time debate — it AUTO-EVALUATES daily:
+`ep_delayed_residual.evaluate_o9_escalation()` runs inside `_delayed_residual_job` (16:35 ET), fed by
+the new **G3** writer `backfill_residual_outcomes()` (stamps `fwd_1d/5d_pct` on settled misses), and
+🚨-Telegrams "O-9 MET → execute cutover" the day both cross (7-day deduped). **Validated 7/20:**
+count=15 but median fwd-5d **−11%** (faders) → **NOT triggered** — the outcome bar carries it; the delay
+is missing losers, not winners. O9_MIN_MISSES=5 / O9_MEDIAN_FWD5D_MIN=8.0 (`ep_delayed_residual.py`).
+
 ### 1.4 The structural blind spot being removed
 Phase-0 replay (#489 §14): the 5% hybrid catches ~55% (86/156) of delay-missed quality in-window
 crossers. The other ~45% show DELAYED gap ~0% (often negative) at the moment they truly cross 10% —
