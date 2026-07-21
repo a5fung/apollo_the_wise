@@ -14,9 +14,23 @@ import json
 import logging
 import statistics
 from datetime import datetime, timedelta
+from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence import collector, db
+
+
+class _ResidualRow(NamedTuple):
+    """One delay-missed in-window 10%-crosser (a mi_ep_delayed_residual row before insert).
+    Field order matches the INSERT column order — keep them in sync."""
+    ticker: str
+    cross_tick: str          # "HH:MM" of the first real-time 10% cross
+    rt_gap: float
+    delayed_gap: "float | None"
+    day_high_gap: float
+    hybrid_caught: bool
+    prev_close: float
+    day_close: float
 
 logger = logging.getLogger(__name__)
 _ET = ZoneInfo("America/New_York")
@@ -30,25 +44,8 @@ WIN_TICKS = [9 * 60 + 31, 9 * 60 + 35, 9 * 60 + 40]   # in-window scan ticks (9:
 WIN_LAST = 9 * 60 + 44
 
 
-def _scan_ticks():
-    out, h, m = [], 7, 0
-    while (h, m) <= (9, 55):
-        out.append(h * 60 + m)
-        m += 5
-        if m >= 60:
-            h += 1; m = 0
-    out.append(9 * 60 + 31)
-    return sorted(set(out))
-
-
-TICKS = _scan_ticks()
-
-
-async def _cs_universe() -> set:
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT ticker FROM mi_security_types WHERE security_type IN ('CS','ADRC')")
-    return {r["ticker"] for r in rows if r["ticker"]}
+# In-window scan ticks as minutes-of-day: 7:00-9:55 every 5 min, plus the 9:31 ORB tick.
+TICKS = sorted(set(range(7 * 60, 9 * 60 + 56, 5)) | {9 * 60 + 31})
 
 
 async def _prev_trading_grouped(run_date: str):
@@ -67,7 +64,7 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
     if not gd:
         logger.info(f"delayed_residual: {run_date} not a trading day")
         return (0, 0)
-    cs = await _cs_universe()
+    cs = await db.get_common_stock_tickers()
     gp = await _prev_trading_grouped(run_date)
     if not gp:
         logger.warning(f"delayed_residual: no prior trading day for {run_date}")
@@ -126,15 +123,15 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
             if dl[tk] is not None and dl[tk] >= MIN_GAP and first_dl is None:
                 first_dl = tk
         caught_by_scan = first_dl is not None and first_dl <= WIN_LAST
-        if not (first_rt is not None and first_rt <= WIN_LAST and not caught_by_scan):
+        if first_rt is None or first_rt > WIN_LAST or caught_by_scan:
             continue   # not a delay-missed in-window crosser
 
         hyb = any(dl.get(w) is not None and dl[w] >= SUPERSET
                   and rt.get(w) is not None and rt[w] >= MIN_GAP for w in WIN_TICKS)
         tk = first_rt
-        out.append((t, f"{tk // 60:02d}:{tk % 60:02d}", round(rt[tk], 2),
-                    round(dl[tk], 2) if dl[tk] is not None else None,
-                    round((max(c for _, c in series) / pc - 1) * 100, 2), hyb, pc, day_close))
+        out.append(_ResidualRow(t, f"{tk // 60:02d}:{tk % 60:02d}", round(rt[tk], 2),
+                                round(dl[tk], 2) if dl[tk] is not None else None,
+                                round((max(c for _, c in series) / pc - 1) * 100, 2), hyb, pc, day_close))
 
     rd = datetime.strptime(run_date, "%Y-%m-%d").date()   # DATE column wants a date, not a str
     pool = await db.get_pool()
@@ -150,10 +147,11 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
                     delayed_gap=EXCLUDED.delayed_gap, day_high_gap=EXCLUDED.day_high_gap,
                     hybrid_caught=EXCLUDED.hybrid_caught, prev_close=EXCLUDED.prev_close,
                     baseline_close=EXCLUDED.baseline_close, computed_at=NOW()
-            """, rd, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
+            """, rd, r.ticker, r.cross_tick, r.rt_gap, r.delayed_gap, r.day_high_gap,
+                 r.hybrid_caught, r.prev_close, r.day_close)
 
     n_missed = len(out)
-    n_residual = sum(1 for r in out if not r[5])
+    n_residual = sum(1 for r in out if not r.hybrid_caught)
     await db.log_audit_event(
         "ep_delayed_residual_scan",
         f"{run_date}: {n_missed} quality in-window crossers missed by the delay; "

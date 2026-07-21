@@ -734,7 +734,7 @@ def _format_crypto_pulse_section(pulse: dict) -> str:
         return f"{v:+.1f}" if v is not None else "n/a"
 
     verdict = pulse.get("verdict", "MIXED")
-    emoji = {"LEADING": "🟢", "LAGGING": "🔴", "IN LINE": "⚪", "MIXED": "⚪"}.get(verdict, "⚪")
+    emoji = {"LEADING": "🟢", "LAGGING": "🔴"}.get(verdict, "⚪")   # IN LINE / MIXED fall through to ⚪
     eth = next((a for a in pulse["crypto"] if a["sym"] == "ETH"), None)
     btc = next((a for a in pulse["crypto"] if a["sym"] == "BTC"), None)
     qqq = next((m for m in pulse["market"] if m["sym"] == "QQQ"), None)
