@@ -1572,6 +1572,11 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
         return [c for c in candidates if c.get("gap_pct", 0) >= MIN_GAP_PCT]
 
 
+# Strong refs for fire-and-forget watchdog tasks — asyncio only keeps a weak ref, so a task with
+# no live reference can be GC'd mid-run. add on launch, discard on done.
+_WATCHDOG_BG_TASKS: set = set()
+
+
 async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: datetime) -> None:
     """#489 real-time MISS detector — ALERT-ONLY. The hybrid structurally can't catch the residual
     (flat-premarket-then-explode) class in real time, but this CAN surface it: each in-window tick,
@@ -1854,7 +1859,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the
     # authoritative gap. No-op (candidates unchanged, byte-identical) when EP_RT_PASS2_ENABLED is off.
     candidates = await _apply_realtime_pass2(candidates, now_et)
-    await _rt_miss_watchdog(_rt_universe, candidates, now_et)   # #489: alert-only real-time MISS detector
+    # #489: launch the alert-only miss watchdog CONCURRENTLY, not inline — it fetches the full RT
+    # universe (~34 sequential Alpaca calls) and must NEVER sit on the ORB-window scoring/entry
+    # critical path (its result is never consumed here). list(candidates) snapshots its read so the
+    # in-place sort below can't race it; the task-set holds a strong ref (asyncio only keeps a weak one).
+    _wt = asyncio.create_task(_rt_miss_watchdog(_rt_universe, list(candidates), now_et))
+    _WATCHDOG_BG_TASKS.add(_wt)
+    _wt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
 
     # Sort by gap size descending — score the biggest movers first
     candidates.sort(key=lambda c: c["gap_pct"], reverse=True)
