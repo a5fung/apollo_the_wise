@@ -823,7 +823,10 @@ async def _check_nightly_silent_errors() -> None:
 
 
 async def _evening_briefing_job():
-    """Run at 8:00 PM ET (5:00 PM PT). Send evening briefing — full EOD review package."""
+    """Run at 6:00 PM ET (3:00 PM PT) — CronTrigger hour=18 below is authoritative. Send evening
+    briefing — full EOD review package. (Was mislabeled '8:00 PM' here for a while; the actual
+    fire time is 18:00 ET — #479 moved/confirmed it, and assuming 8PM caused a bad deploy-timing
+    call 2026-07-20. Update this string with the cron, never independently.)"""
     logger.info("Sending evening briefing...")
     try:
         await send_evening_briefing()
