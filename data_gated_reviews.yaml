@@ -7340,3 +7340,26 @@ reviews:
       neutralize-gate fork (#448).
     status: pending
     added_on: 2026-07-16
+
+  - review_id: gap_alignment_331_accrual
+    title: "#331 gap-alignment axis — re-run evidence at larger N (regime/timeframe underpowered)"
+    question: |
+      With more shadow accrual across regimes + timeframes, does gap-alignment show a shippable
+      signal, or stay a distribution-shape curiosity? STEP-0 (2026-07-21,
+      docs/analysis/331_gap_alignment_step0_2026-07-21.md): punch_through does NOT beat the
+      0-credit classes on average (fails the magnitude-independence gate); fades_into_congestion is
+      a high-variance barbell (biggest winners AND losers). Cohort was Bull-heavy (Choppy 23 /
+      Correcting 14 / Crisis ~38 — underpowered). Re-run to see if (a) any class separates within a
+      regime at N>=30, and (b) the fades tail is a real creditable edge or noise.
+    predicate_sql: "SELECT count(*) FROM mi_theme_axis_shadow"
+    threshold: 700
+    earliest_review_date: 2026-08-25
+    status: pending
+    action_when_ready: |
+      Re-run (both READ-ONLY, in apollo-market):
+        docker exec apollo-market python scripts/probes/_331_gap_alignment_evidence.py
+        docker exec apollo-market python scripts/probes/_331_gap_alignment_charts.py 3
+      Re-check the regime/timeframe cross-tabs + extremes at larger N. Decide: ship (with a credit
+      shape that FITS the distribution, not a flat +1), drop, or redesign. Any grade-affecting flip
+      = ADR 0033 CHANGE_PROCESS + operator sign-off (never on agent authority).
+    added_on: 2026-07-21
