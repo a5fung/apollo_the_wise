@@ -3300,7 +3300,7 @@ reviews:
       window — if it doesn't, the sanitizer isn't firing at all.
 
       Origin: advisor 2026-05-14 review of session 6 sanitizer ship.
-    status: pending
+    status: done  # 2026-07-21 VERIFIED: 0 disclaimer-pattern mna_filter_fired / 654 total since fix; perplexity_disclaimer_stripped=1 (non-vacuous — sanitizer fired). Working as intended; linked perplexity_hallucination_keyword_leak already done.
     added_on: 2026-05-14
 
   - review_id: pass1_protect_strip_equalsize_test
@@ -4820,7 +4820,7 @@ reviews:
          encoding fix validation).
       Pre-flight risk: 8 commits 2026-05-19 touched extraction pipeline;
       first live alert is the composition smoke test.
-    status: pending
+    status: done  # 2026-07-21 VERIFIED end-to-end: 104 rows since 5/20, raw_*_json JSONB correctly encoded (0 double-encoded in sample), 0 extraction_error events, theme line renders (IREN/HUT cohort lines + no-cohort fallbacks). Live 2mo.
     added_on: 2026-05-19
 
   - review_id: nbis_rubric_calibration_gap
