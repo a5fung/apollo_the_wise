@@ -7373,3 +7373,24 @@ reviews:
       shape that FITS the distribution, not a flat +1), drop, or redesign. Any grade-affecting flip
       = ADR 0033 CHANGE_PROCESS + operator sign-off (never on agent authority).
     added_on: 2026-07-21
+
+  - review_id: tqs_junk_accrual
+    title: "TQS Stage 3 — suppression backtest once >=30 settled tape_junk accrue"
+    question: |
+      Once TQS Stage 1 (shadow annotate, #498) has recorded tape quality on live
+      EP alerts and >=30 tape_junk rows have SETTLED (fwd_5d available), replay
+      which past HIGH alerts a tape_junk gate WOULD have suppressed + their
+      outcomes. This is the evidence Stage 4 (any hard-gate / demote of LIVE
+      entries) is gated on. Current cohort junk is underpowered (18 settled,
+      only 2 crash events).
+    predicate_sql: null  # wires up once #498 records TQS on the alert/shadow rows;
+                         # then: SELECT count(*) FROM <tqs shadow> WHERE tier='tape_junk' AND fwd_5d_pct IS NOT NULL
+    threshold: 30
+    earliest_review_date: 2026-08-31
+    action_when_ready: |
+      Run the suppression backtest (which HIGHs a tape_junk gate kills + their fwd
+      returns); pair with the Stage-2 operator labeling pass. Only then does the
+      Stage-4 hard-gate/demote decision open — operator sign-off + CHANGE_PROCESS
+      (docs/design/tape_quality_score.md §4, THE LINE). Never on agent authority.
+    status: pending
+    added_on: 2026-07-21
