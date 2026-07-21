@@ -1554,14 +1554,9 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
                 await log_audit_event("ep_rt_floor_flip_up", _flip_msg,
                     json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
                                 "tick_et": now_et.strftime("%H:%M"), "authoritative": authoritative}))
-                # #489: LOUD — this is the operator's live shadow-review sample (a real in-window EP the
-                # ~15-min delay would have missed). Rare + actionable, so it Telegrams, not audit-only.
-                try:
-                    from agents.market_intelligence.briefing import send_telegram_message
-                    await send_telegram_message(
-                        f"🔴 Delay-missed EP {'CAUGHT' if authoritative else 'would be caught'} (hybrid): {_flip_msg}")
-                except Exception:  # loud-ok: Telegram is best-effort; the audit row is the durable record
-                    pass
+                # #489: AUDIT-ONLY (operator 7/21 — was a per-ticker Telegram, too noisy: 10+/volatile open).
+                # The hybrid-catchable class is "the fix works" shadow proof, not an actionable miss; it stays
+                # in mi_audit_log for /audit + the residual dashboard. The residual class digests once/morning.
             elif rt_gap < MIN_GAP_PCT <= dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_down"):
                 await log_audit_event("ep_rt_floor_flip_down",
                     f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit cleaned)",
@@ -1577,15 +1572,16 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
 _WATCHDOG_BG_TASKS: set = set()
 
 
-async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: datetime) -> None:
-    """#489 real-time MISS detector — ALERT-ONLY. The hybrid structurally can't catch the residual
-    (flat-premarket-then-explode) class in real time, but this CAN surface it: each in-window tick,
-    fetch REAL-TIME Alpaca SIP prices for the full RT universe (every ticker that cleared the non-gap
-    filters) and LOUD-Telegram any that has crossed the 10% floor real-time, PASSES the scan's
-    mechanical EP gates (extension / mcap / ADV$ / ATR), but is NOT in the scan's candidates (i.e.
-    a real EP-shaped name the ~15-min-delayed screen missed — not every 10% spike). This is #490's Pass-0 fetch in OBSERVE
-    mode — it never changes what we enter, so it's not THE LINE, and it doubles as the full-cutover
-    shadow. Deduped per ticker/day; never raises (degrades silently — it's pure observability)."""
+async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime) -> None:
+    """#489 real-time MISS detector — ALERT-ONLY (records; a morning digest sends the summary). The
+    hybrid structurally can't catch the residual (flat-premarket-then-explode) class in real time, but
+    this CAN surface it: each in-window tick, fetch REAL-TIME Alpaca SIP prices for the full RT universe
+    (every ticker that cleared the non-gap filters) and record any that has crossed the 10% floor
+    real-time, PASSES the scan's mechanical EP gates (extension / mcap / ADV$ / ATR), but is NOT in
+    `caught` (the PRE-Pass-2 5% superset — so the hybrid-catchable class is excluded and only the TRUE
+    residual, delayed <5%, is flagged; no double-fire w/ the floor-flip). Audit-only (operator 7/21 —
+    `send_rt_miss_digest` sends ONE morning summary, not a per-tick blast). #490's Pass-0 fetch in
+    OBSERVE mode — never changes what we enter, not THE LINE. Deduped per ticker/day; never raises."""
     if not (EP_RT_MISS_WATCHDOG_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
         return
     mod = now_et.hour * 60 + now_et.minute
@@ -1593,8 +1589,6 @@ async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: d
         return
     try:
         from agents.market_intelligence import collector
-        from agents.market_intelligence.briefing import send_telegram_message
-        caught = {c["ticker"] for c in candidates}
         pc_map = {t: pc for t, pc in rt_universe}
         snaps = await collector.get_alpaca_snapshots_batch(list(pc_map.keys()))
         adate = now_et.date()
@@ -1642,16 +1636,46 @@ async def _rt_miss_watchdog(rt_universe: list, candidates: list[dict], now_et: d
                 "ep_rt_live_miss",
                 f"{tkr} rt {rt_gap:.1f}% ≥10 @ {now_et:%H:%M} ET, passes mechanical EP gates but NOT a scan candidate (delay-missed EP)",
                 json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2), "tick_et": now_et.strftime("%H:%M")}))
-            try:
-                await send_telegram_message(
-                    f"🚨 REAL-TIME EP MISS: {tkr} is +{rt_gap:.1f}% real-time @ {now_et:%H:%M} ET and passes the "
-                    f"EP gates (liquid, non-extended, mcap OK) — but the ~15-min delayed scan can't see it, so it "
-                    f"was NOT entered (the #489 residual class). Observability alert; no entry. Grade/catalyst "
-                    f"unconfirmed — that's the #490 shadow.")
-            except Exception:  # loud-ok: Telegram best-effort; the ep_rt_live_miss audit row is durable
-                pass
+            # #489 (operator 7/21): AUDIT-ONLY — no per-ticker Telegram (was too noisy). The residual
+            # misses digest ONCE per morning via send_rt_miss_digest (~10:00 ET), not a per-tick blast.
     except Exception as e:
         logger.warning(f"rt_miss_watchdog failed (alert-only, non-fatal): {e}")
+
+
+async def send_rt_miss_digest(run_date=None) -> int:
+    """#489 (operator 7/21): ONE morning digest of the residual real-time EP misses. The watchdog records
+    each `ep_rt_live_miss` audit-only per in-window tick; this sends a single summary after the ORB window
+    instead of a per-ticker blast. No-money observability; safe no-op if none. Returns the count."""
+    d = run_date or et_today()
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT detail FROM mi_audit_log WHERE event_type='ep_rt_live_miss'
+                  AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+                ORDER BY created_at
+            """, d)
+    except Exception as e:  # loud-ok: digest is best-effort observability; audit rows remain durable
+        logger.warning(f"send_rt_miss_digest query failed (non-fatal): {e}")
+        return 0
+    items = []
+    for r in rows:
+        try:
+            j = json.loads(r["detail"]) if isinstance(r["detail"], str) else (r["detail"] or {})
+            items.append(f"{j.get('ticker', '?')} +{j.get('rt_gap', '?')}% @{j.get('tick_et', '?')}")
+        except (ValueError, TypeError):
+            continue
+    if not items:
+        return 0
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(
+            f"🚨 Real-time EP misses today ({len(items)} residual — the delay-missed class the hybrid can't "
+            f"catch): " + " · ".join(items) + ". No entry (observability); grade/catalyst unconfirmed = "
+            f"Part B / #490 shadow.")
+    except Exception:  # loud-ok: Telegram best-effort; the ep_rt_live_miss audit rows are durable
+        pass
+    return len(items)
 
 
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
@@ -1858,12 +1882,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # #489 Pass 2 — real-time Alpaca SIP confirm on the (superset) candidates BEFORE ranking/scoring,
     # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the
     # authoritative gap. No-op (candidates unchanged, byte-identical) when EP_RT_PASS2_ENABLED is off.
+    # #489: capture the PRE-Pass-2 superset (the 5%-floor delayed candidates = the hybrid-catchable class)
+    # so the watchdog EXCLUDES them and flags only the TRUE residual (delayed <5%, never a candidate). Else a
+    # 5-10%-delayed ticker that Pass-2 shadow-drops double-fires floor-flip + watchdog (AEHR, 7/21).
+    _superset = {c["ticker"] for c in candidates}
     candidates = await _apply_realtime_pass2(candidates, now_et)
-    # #489: launch the alert-only miss watchdog CONCURRENTLY, not inline — it fetches the full RT
-    # universe (~34 sequential Alpaca calls) and must NEVER sit on the ORB-window scoring/entry
-    # critical path (its result is never consumed here). list(candidates) snapshots its read so the
-    # in-place sort below can't race it; the task-set holds a strong ref (asyncio only keeps a weak one).
-    _wt = asyncio.create_task(_rt_miss_watchdog(_rt_universe, list(candidates), now_et))
+    # #489: launch the alert-only miss watchdog CONCURRENTLY, not inline — it fetches the full RT universe
+    # (~34 sequential Alpaca calls) and must NEVER sit on the ORB-window scoring/entry critical path (its
+    # result is never consumed). Audit-only (send_rt_miss_digest sends the morning summary); the task-set
+    # holds a strong ref (asyncio only keeps a weak one).
+    _wt = asyncio.create_task(_rt_miss_watchdog(_rt_universe, _superset, now_et))
     _WATCHDOG_BG_TASKS.add(_wt)
     _wt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
 

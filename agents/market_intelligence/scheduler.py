@@ -141,6 +141,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
     "delayed_residual",  # #489 — EOD delayed-feed residual tracker; read-only (Polygon replay + DB/audit), no broker calls
+    "rt_miss_digest",  # #489 — 10:00 ET residual real-time-miss morning digest; read-only (mi_audit_log + Telegram)
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     "coverage_probe",  # S2 coverage loop — zero-LLM EOD blind-spot probe; shadow tables + audit only, no broker calls
@@ -1895,6 +1896,15 @@ async def _orb_window_cleanup_job():
     except Exception as e:
         logger.error(f"ORB window cleanup failed: {e}")
         await notify_job_failure("orb_window_cleanup", str(e))
+
+
+async def _rt_miss_digest_job():
+    """Run at 10:00 AM ET. ONE morning digest of the residual real-time EP misses the watchdog recorded
+    audit-only during the 9:31-9:44 ORB window (operator 7/21 — replaces the per-ticker Telegram blast).
+    Intelligence-side, read-only (mi_audit_log + Telegram); no broker calls, no LIVE gate (observability)."""
+    from agents.market_intelligence.ep_detector import send_rt_miss_digest
+    n = await send_rt_miss_digest()
+    logger.info(f"rt_miss_digest_job: {n} residual real-time miss(es) summarized")
 
 
 async def _eod_ep_recap_job():
@@ -5109,6 +5119,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_delayed_residual_job, "delayed_residual"),
         CronTrigger(hour=16, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="delayed_residual",
+        replace_existing=True,
+    )
+
+    # #489 residual real-time-miss morning digest: 10:00 AM ET — ONE summary of the misses the watchdog
+    # recorded audit-only during the ORB window (operator 7/21; replaces the per-ticker Telegram blast).
+    _scheduler.add_job(
+        audit_wrap(_rt_miss_digest_job, "rt_miss_digest"),
+        CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="rt_miss_digest",
         replace_existing=True,
     )
 
