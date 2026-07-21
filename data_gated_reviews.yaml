@@ -987,7 +987,7 @@ reviews:
       agents/market_intelligence/fishhook_detector.py and reconcile
       before declaring the shadow telemetry trustworthy.
       Origin: 2026-04-30 fishhook V3 deploy.
-    status: done  # 2026-07-21 RAN: DRIFT CONFIRMED — /fishhook median_r=0.40 (over ALL settled; r_5d is floored max-excursion, worst=0.0) & hit=96% (r_5d>0) diverge from the explorer's pos-cohort median ~1.1 / funnel-hit 13-19% that the promotion gate was designed for. Telemetry NOT trustworthy as displayed; reconciliation tracked as PLAN #497 (blocks fishhook_v3_promotion_check).
+    status: done  # 2026-07-21 RETIRED — fishhook setup removed (operator)
     added_on: 2026-04-30
 
   - review_id: fishhook_v3_promotion_check
@@ -1009,7 +1009,7 @@ reviews:
       If hit_rate or median R is borderline, defer 30 days for more data.
       Origin: 2026-04-30 fishhook V3 deploy. Promotion thresholds in
       mi_strategies.promotion_thresholds.shadow_to_paper.
-    status: pending
+    status: done  # 2026-07-21 RETIRED — fishhook setup removed (operator)
     added_on: 2026-04-30
 
   - review_id: minute_volume_curves_baseline

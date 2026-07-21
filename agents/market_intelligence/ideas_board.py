@@ -5,7 +5,7 @@ genuinely tradeable list. An entry must be COMPLETED + GRADUATED before its name
 here. Today the only graduated entry is **MAGNA53 EP**.
 
 NOT in play (operator 2026-06-16, corrected repeatedly):
-  • Shadow / in-development entries — **tight coil / flag, fishhook, anticipation, wick,
+  • Shadow / in-development entries — **tight coil / flag, anticipation, wick,
     parabolic** — are being COMPLETED (the priority work, esp. anticipation #270). They are
     surfaced as "in development" drill-down buttons, never the in-play list.
   • **9M is the stock FILTER** (the universe that identifies candidates which feed the real
@@ -52,7 +52,7 @@ def render_ideas_summary(*, today, magna53, sip_rows) -> str:
         lines.append("  _no graduated entry firing right now_")
     lines.append(_SEP)
     lines.append("🔬 *In development* (not yet in play — completing):")
-    lines.append("  ⏱️ anticipation · 🚩 flag/coil · 🪝 fishhook")
+    lines.append("  ⏱️ anticipation · 🚩 flag/coil")
     lines.append(_SEP)
     lines.append("_Tap a button to observe · 9M = stock filter → /9m · watchlist → /sugarbabies_")
     return "\n".join(lines)

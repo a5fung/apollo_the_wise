@@ -1008,11 +1008,6 @@ def _format_evening_briefing(
     wick_today_tickers: list[str] | None = None,
     wick_fill_rate_30d: float | None = None,
     wick_settled_30d: int = 0,
-    fishhook_open_count: int = 0,
-    fishhook_open_tickers: list[str] | None = None,
-    fishhook_settled_60d: int = 0,
-    fishhook_median_r_60d: float | None = None,
-    fishhook_hit_rate_60d: float | None = None,
     cohort_babies: list[dict] | None = None,
     undercut_rallies: list[dict] | None = None,
     v1_closeout_line: str | None = None,
@@ -1209,27 +1204,6 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"Wick candidates fetch failed: {e}")
 
-    # Fishhook V3 (TI3) — open anchors today + 60d telemetry
-    fishhook_open_count = 0
-    fishhook_open_tickers: list[str] = []
-    fishhook_median_r_60d: float | None = None
-    fishhook_hit_rate_60d: float | None = None
-    fishhook_settled_60d = 0
-    try:
-        from agents.market_intelligence.db import get_fishhook_outcomes_window
-        fh_60d = await get_fishhook_outcomes_window(60)
-        open_rows = [r for r in fh_60d if r["state"] in ("pending", "promoted", "reclaimed")]
-        fishhook_open_count = len(open_rows)
-        fishhook_open_tickers = [r["ticker"] for r in open_rows[:30]]
-        settled_fh = [r for r in fh_60d if r["state"] in ("settled", "invalidated") and r.get("r_5d") is not None]
-        fishhook_settled_60d = len(settled_fh)
-        if settled_fh:
-            rs_sorted = sorted(float(r["r_5d"]) for r in settled_fh)
-            fishhook_median_r_60d = rs_sorted[len(rs_sorted) // 2]
-            fishhook_hit_rate_60d = sum(1 for r in rs_sorted if r > 0) / len(rs_sorted)
-    except Exception as e:
-        logger.warning(f"Fishhook outcomes fetch failed: {e}")
-
     # v1.0 close-out countdown (#426, #418 §5) — one line, computed from DB
     # ground truth. Guarded: a failure here must NEVER break the briefing.
     v1_closeout_line: str | None = None
@@ -1264,11 +1238,6 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         wick_today_tickers=wick_today_tickers,
         wick_fill_rate_30d=wick_fill_rate_30d,
         wick_settled_30d=wick_settled_30d,
-        fishhook_open_count=fishhook_open_count,
-        fishhook_open_tickers=fishhook_open_tickers,
-        fishhook_settled_60d=fishhook_settled_60d,
-        fishhook_median_r_60d=fishhook_median_r_60d,
-        fishhook_hit_rate_60d=fishhook_hit_rate_60d,
         cohort_babies=cohort_babies,
         undercut_rallies=undercut_rallies,
         v1_closeout_line=v1_closeout_line,

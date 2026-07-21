@@ -72,7 +72,6 @@ ROUTING_TABLE = [
     ("sugar babies", "_handle_9m_ep_query"),
     ("9m", "_handle_9m_ep_query"),
     ("wick watch", "_handle_wick_query"),
-    ("fishhook", "_handle_fishhook_query"),
     ("flags", "_handle_flag_query"),                      # bare word, before theme net
     ("setup RCAT", "_handle_setup_query"),
     ("ep outcomes", "_handle_ep_outcomes"),               # before general ep

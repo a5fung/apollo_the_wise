@@ -62,7 +62,6 @@ JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
 JOB_PARABOLIC_SCAN = "parabolic_scan"
 JOB_WICK_FORWARD_RETURNS = "wick_forward_returns"
-JOB_FISHHOOK_EOD = "fishhook_eod_pass"
 JOB_FLAG_SCAN = "flag_continuation_scan"
 JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
@@ -132,7 +131,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # detection scans
     "ep_scan", "ep_scan_open", "ep_scan_start", "ep_scan_stop",
     "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
-    "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
+    "flag_continuation_scan", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
@@ -2112,7 +2111,7 @@ async def _sugar_babies_cohort_refresh_job():
     Pure observability — no trade impact. Surfaced via `/sugarbabies` Telegram
     command and the evening briefing 🍬 Persistent Sugar Babies section.
 
-    Slots between 5:15 parabolic_scan and 5:20 fishhook_eod. Fast aggregation
+    Slots between 5:15 parabolic_scan and 5:25 flag_scan. Fast aggregation
     query (~24 rows) — runs in milliseconds. mi_daily_closes volume is the
     ground truth (catches confirmed + materialized-anticipation alert days
     uniformly; the 12% of anticipations that didn't pan out are excluded by
@@ -2793,7 +2792,7 @@ async def _backup_health_check_job():
 async def _flag_scan_job():
     """Run at 5:25 PM ET. Continuation-flag detector daily pass.
 
-    Slots between 5:20 fishhook_eod and 5:30 post_nightly_audit. Persists
+    Slots between 5:22 sugar_babies cohort refresh and 5:30 post_nightly_audit. Persists
     every scored ticker (incl. `unqualified`) to mi_flag_candidates so
     thresholds can be retuned offline. TRIGGERED rows fire single-ticker
     Telegram alerts as found; daily digest summarizes the rest with
@@ -2867,28 +2866,6 @@ async def _wick_forward_returns_job():
     except Exception as e:
         logger.error(f"Wick forward-returns failed: {e}", exc_info=True)
         await notify_job_failure(JOB_WICK_FORWARD_RETURNS, str(e))
-        return None
-
-
-async def _fishhook_eod_job():
-    """Run at 5:20 PM ET. Fishhook V3 (gap-up undercut & reclaim) state-machine pass.
-
-    Slots between 5:15 parabolic_scan and 5:30 post_nightly_audit. Detects
-    today's gap-up anchors (gap≥8%, close>open) and walks every open anchor
-    forward to advance state (pending → promoted → reclaimed → settled).
-    Shadow phase — no orders, no Telegram alerts; rows accrue in
-    mi_fishhook_anchors for promotion review.
-    """
-    logger.info("Fishhook EOD pass starting...")
-    try:
-        from agents.market_intelligence.collector import et_today
-        from agents.market_intelligence.fishhook_detector import run_eod_pass
-        n = await run_eod_pass(et_today())
-        logger.info(f"Fishhook EOD pass: {n} rows touched")
-        return None
-    except Exception as e:
-        logger.error(f"Fishhook EOD pass failed: {e}", exc_info=True)
-        await notify_job_failure(JOB_FISHHOOK_EOD, str(e))
         return None
 
 
@@ -5396,18 +5373,7 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=900,
     )
 
-    # Fishhook V3 EOD: 5:20 PM ET — slots between 5:15 parabolic_scan and 5:30
-    # post_nightly_audit. Shadow-phase telemetry (expected_min_rows=None — many
-    # zero-anchor days expected; no L2 alarm on empty result).
-    _scheduler.add_job(
-        audit_wrap(_fishhook_eod_job, JOB_FISHHOOK_EOD),
-        CronTrigger(hour=17, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
-        id=JOB_FISHHOOK_EOD,
-        replace_existing=True,
-        misfire_grace_time=900,
-    )
-
-    # Sugar Babies cohort refresh: 5:22 PM ET — slots between 5:20 fishhook_eod
+    # Sugar Babies cohort refresh: 5:22 PM ET — slots between 5:15 parabolic_scan
     # and 5:25 flag_scan. Pure observability — refreshes Pradeep-class
     # persistent watchlist from trailing-180d 9M EOD prints. Fast aggregation
     # (~24 rows, ~ms). Surfaced via /sugarbabies + evening briefing section.
@@ -5419,8 +5385,8 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=3600,
     )
 
-    # Continuation-flag scan: 5:25 PM ET — slots between 5:20 fishhook_eod and
-    # 5:30 post_nightly_audit. Telemetry-only (phase=shadow); persists all
+    # Continuation-flag scan: 5:25 PM ET — slots between 5:22 sugar_babies cohort
+    # refresh and 5:30 post_nightly_audit. Telemetry-only (phase=shadow); persists all
     # stages, Telegrams TRIGGERED + COILED + new-tightening on non-empty days.
     _scheduler.add_job(
         audit_wrap(_flag_scan_job, JOB_FLAG_SCAN),

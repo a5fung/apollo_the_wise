@@ -60,7 +60,6 @@ HIDDEN_OK = {
     "why",
     "wick",
     "watchlist",
-    "fishhook",
     # Singular aliases paired with plural BotCommand
     "sugarbaby",
     # /flags + /flag — legacy aliases of /htf (renamed flag→HTF, #356 2026-06-27);

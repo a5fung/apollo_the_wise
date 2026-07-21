@@ -109,7 +109,6 @@ Rules:
 - When `strategy_promotions.checks` is non-empty AND any entry has `next_phase` != null, append a "📈 *Strategy promotion check:*" line after 🔁 listing each non-top-of-ladder strategy on its own indented bullet: `<strategy_id>: <eligible '✓ ready' OR top blocking_reason>` (e.g. `shadow_orb_5m: need 30 paired closed (have 12)`). Skip strategies already at the top of the ladder. Omit the section entirely if every strategy is at top-of-ladder.
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
-- When `fishhook.n_settled >= 10`, append a "🪝 *Fishhook:*" line after 🔁 summarizing gap-up undercut & reclaim telemetry. Cite `n_total` anchors, `n_settled`, `median_r`, `hit_rate`, and the shallow-vs-deep slice when both have data: `45 anchors, 12 settled; R 1.18, hit 17%; shallow R 1.31 (n=8) vs deep R 0.61 (n=4)`. The shallow-vs-deep gap matters — Stage-0 evidence said deeper drift inverts the edge; if deep starts winning, threshold revisit. If `n_settled < 10`, omit the line entirely.
 - The `pending_reviews` field (data-gated "Reviews ready") is surfaced separately as a deterministic appendix below your output (#412 — the titles are actionable and must not be truncated). Do NOT render a Reviews-ready section yourself.
 - When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count> (last seen <last_seen>, <days_ago>d ago)`. **Use `days_ago` to judge live-vs-resolved: if a type's `days_ago` is STALE relative to the 7-day window (it stopped firing days back), label it LIKELY-RESOLVED and do NOT treat it as a live concern — a mid-week hotfix shows up exactly as a count that went silent (e.g. ep_scan_failed last 5/26). Only call a type live-concerning when `days_ago` is small (fired in the last day or two).** These are non-fatal errors caught by try/except in jobs that didn't crash hard. If `audit_errors.total == 0`, omit the section entirely.
 - When `strategy_promotions.checks` includes a strategy with `eligible=false` AND its top blocking_reason references a 0-count metric (e.g. "have 0"), the line MUST include the diagnostic context from `metrics.cohort_breakdown` if present (e.g. `shadow_orb_5m: have 0 paired closed (1 shadow vs 3 live, zero overlap)`). The 0-count number alone forces a follow-up question; the breakdown answers it inline.
@@ -269,7 +268,6 @@ async def _gather_and_aggregate(
     crypto = await _aggregate_crypto_readiness(window_days)
     shadow_orb = await _aggregate_shadow_orb_outcomes(window_days)
     wick = await _aggregate_wick_outcomes(window_days)
-    fishhook = await _aggregate_fishhook_outcomes(window_days)
     strategy_promotions = await _aggregate_promotion_checks()
     pending_reviews = await _aggregate_pending_reviews(today)
     missed_opps = await _aggregate_missed_opportunities(window_days)
@@ -294,7 +292,6 @@ async def _gather_and_aggregate(
         "crypto": crypto,
         "shadow_orb": shadow_orb,
         "wick": wick,
-        "fishhook": fishhook,
         "strategy_promotions": strategy_promotions,
         "pending_reviews": pending_reviews,
         "missed_opportunities": missed_opps,
@@ -1416,86 +1413,6 @@ async def _aggregate_wick_outcomes(window_days: int) -> dict:
         "fill_rate": fill_rate,
         "median_fwd_3d_from_high": round(float(med_high), 2) if med_high is not None else None,
         "median_fwd_3d_from_close": round(float(med_close), 2) if med_close is not None else None,
-    }
-
-
-async def _aggregate_fishhook_outcomes(window_days: int) -> dict:
-    """Fishhook V3 (TI3) telemetry roll-up — gap-up undercut & reclaim.
-
-    Reframed post-Stage-0 as a base-rate harvester (R≈1.1, hit≈13-19%),
-    NOT the original "deep-drift = explosive reclaim" thesis. Surfaces:
-      * state distribution (anchor count, promotion/reclaim/settle rates)
-      * R + hit-rate on settled rows (settled = reclaimed and held 5d)
-      * shallow vs deep drift slice — confirms the inverted-edge finding
-        as data accrues; if deep drift starts winning, threshold revisit.
-
-    Returns empty dict if `mi_fishhook_anchors` doesn't exist.
-    """
-    from agents.market_intelligence.db import get_pool
-    pool = await get_pool()
-    try:
-        async with pool.acquire() as conn:
-            schema_check = await conn.fetchval(
-                "SELECT to_regclass('public.mi_fishhook_anchors')"
-            )
-            if schema_check is None:
-                return {}
-
-            row = await conn.fetchrow(
-                """
-                WITH w AS (
-                    SELECT * FROM mi_fishhook_anchors
-                    WHERE anchor_date >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
-                ),
-                settled AS (
-                    SELECT * FROM w
-                    WHERE state IN ('settled','invalidated') AND r_5d IS NOT NULL
-                ),
-                shallow AS (
-                    SELECT r_5d FROM settled WHERE drift_pct_max > -0.05
-                ),
-                deep AS (
-                    SELECT r_5d FROM settled WHERE drift_pct_max <= -0.08
-                )
-                SELECT
-                  (SELECT COUNT(*) FROM w)                                        AS n_total,
-                  (SELECT COUNT(*) FROM w WHERE state='pending')                  AS n_pending,
-                  (SELECT COUNT(*) FROM w WHERE state='promoted')                 AS n_promoted,
-                  (SELECT COUNT(*) FROM w WHERE state='reclaimed')                AS n_reclaimed,
-                  (SELECT COUNT(*) FROM w WHERE state='settled')                  AS n_settled,
-                  (SELECT COUNT(*) FROM w WHERE state='invalidated')              AS n_invalidated,
-                  (SELECT COUNT(*) FROM w WHERE state='expired_no_promotion')     AS n_no_promotion,
-                  (SELECT COUNT(*) FROM w WHERE state='expired_no_reclaim')       AS n_no_reclaim,
-                  (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r_5d) FROM settled) AS median_r,
-                  (SELECT 1.0 * COUNT(*) FILTER (WHERE r_5d > 0) / NULLIF(COUNT(*), 0) FROM settled) AS hit_rate,
-                  (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r_5d) FROM shallow) AS shallow_median_r,
-                  (SELECT COUNT(*) FROM shallow)                                  AS n_shallow,
-                  (SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r_5d) FROM deep)    AS deep_median_r,
-                  (SELECT COUNT(*) FROM deep)                                     AS n_deep
-                """,
-                window_days,
-            )
-    except Exception:
-        logger.exception("fishhook aggregator failed")
-        return {}
-
-    n_total = int(row["n_total"] or 0)
-    n_settled = int(row["n_settled"] or 0)
-    return {
-        "n_total": n_total,
-        "n_pending": int(row["n_pending"] or 0),
-        "n_promoted": int(row["n_promoted"] or 0),
-        "n_reclaimed": int(row["n_reclaimed"] or 0),
-        "n_settled": n_settled,
-        "n_invalidated": int(row["n_invalidated"] or 0),
-        "n_no_promotion": int(row["n_no_promotion"] or 0),
-        "n_no_reclaim": int(row["n_no_reclaim"] or 0),
-        "median_r": round(float(row["median_r"]), 2) if row["median_r"] is not None else None,
-        "hit_rate": round(float(row["hit_rate"]), 3) if row["hit_rate"] is not None else None,
-        "shallow_median_r": round(float(row["shallow_median_r"]), 2) if row["shallow_median_r"] is not None else None,
-        "n_shallow": int(row["n_shallow"] or 0),
-        "deep_median_r": round(float(row["deep_median_r"]), 2) if row["deep_median_r"] is not None else None,
-        "n_deep": int(row["n_deep"] or 0),
     }
 
 

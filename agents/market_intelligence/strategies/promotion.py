@@ -210,7 +210,7 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
         # 0-settled (or low n) doesn't force a follow-up question. Counts
         # rows in non-terminal states so user sees the pipeline progression.
         # Generic across telemetry strategies — uses extras["state"] when
-        # present (fishhook anchors carry it; others may not).
+        # present (telemetry anchors carry it; others may not).
         non_term: dict[str, int] = {}
         for r in rows:
             state = (r.extras or {}).get("state") if r.extras else None

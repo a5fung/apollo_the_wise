@@ -2,7 +2,7 @@
 
 Pins the renderer contract: "Stocks in Play" = GRADUATED entries ONLY (≥paper) — today just
 MAGNA53 EP HIGH (+ any apollo_eligible substrate row). Shadow/in-development entries (coil/
-flag, fishhook, anticipation) and the 9M universe are NOT in play — they're observed via the
+flag, anticipation) and the 9M universe are NOT in play — they're observed via the
 drill-down buttons / /9m / /sugarbabies. The board is small / sometimes empty by design.
 The interactive button→edit→back nav is a live-smoke, not unit-testable.
 """
@@ -54,7 +54,7 @@ def test_apollo_eligible_substrate_row_is_in_play_but_not_shadow_tiers():
 def test_in_development_section_lists_the_shadow_entries():
     out = _render()
     dev = out.split("In development")[1]
-    assert "anticipation" in dev and "flag" in dev and "fishhook" in dev
+    assert "anticipation" in dev and "flag" in dev
     assert "9M = stock filter" in out                          # 9M framed as filter, not a play
 
 
@@ -62,7 +62,7 @@ def test_ideas_strategies_is_single_source_for_keyboard_and_taskmap():
     from channels.telegram import TelegramChannel
     strategies = TelegramChannel._IDEAS_STRATEGIES
     keys = [k for k, _l, _t in strategies]
-    assert keys == ["magna53", "9m", "flags", "fishhook", "anticipation"]
+    assert keys == ["magna53", "9m", "flags", "anticipation"]
     assert len(set(keys)) == len(keys)
     for _k, label, task in strategies:
         assert task.startswith("/")

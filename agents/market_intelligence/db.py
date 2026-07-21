@@ -285,24 +285,6 @@ async def _seed_strategies_registry(conn) -> None:
                 },
             },
         },
-        {
-            "strategy_id": "fishhook_v3",
-            "name": "Fishhook (Gap-Up Undercut & Reclaim)",
-            "family": "long",
-            "phase": "shadow",
-            "signal_type": "fishhook_v3",
-            "outcomes_table": "mi_fishhook_anchors",
-            "promotion_model": "telemetry_review",
-            "promotion_thresholds": {
-                "shadow_to_paper": {
-                    "metric_key": "n_settled",
-                    "min_count": 60,
-                    "min_median_r": 1.0,
-                    "min_hit_rate": 0.13,
-                    "review_required": False,
-                },
-            },
-        },
     ]
     await conn.executemany(
         """
@@ -1545,64 +1527,6 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_wick_candidates_date
                 ON mi_wick_candidates(alert_date);
-        """)
-
-        # Fishhook V3 anchors (gap-up undercut & reclaim, base-rate harvester).
-        # Stage-0 explorer (scripts/fishhook_v3_explorer.py) measured median
-        # R_5d ~1.1 across 240 threshold permutations — the original V3
-        # "deeper drift = bigger reclaim" thesis was disproven by the data.
-        # Reframed as a high-frequency / low-R fade-to-anchor setup. One row
-        # per anchor; `state` tracks the full lifecycle so the table is the
-        # single source of truth for both watchlist (in-flight) and outcome
-        # (settled) views. State transitions:
-        #   pending              — anchor recorded; trap window not yet elapsed
-        #   promoted             — close < anchor_open in T+3..T+10
-        #   reclaimed            — high >= anchor_open in T+25 from promotion
-        #   settled              — 5 sessions post-reclaim; R_5d computed
-        #   expired_no_promotion — T+10 elapsed without ever drifting
-        #   expired_no_reclaim   — T+25 elapsed without crossing back
-        #   invalidated          — close < washout_low post-reclaim (trap re-traps)
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS mi_fishhook_anchors (
-                id                          SERIAL PRIMARY KEY,
-                ticker                      TEXT NOT NULL,
-                anchor_date                 DATE NOT NULL,
-                prev_close                  FLOAT NOT NULL,
-                anchor_open                 FLOAT NOT NULL,
-                anchor_close                FLOAT NOT NULL,
-                gap_pct                     FLOAT NOT NULL,
-                in_top2000                  BOOLEAN NOT NULL,
-                in_ep_alerts                BOOLEAN NOT NULL,
-                state                       TEXT NOT NULL,
-                washout_low                 FLOAT,
-                washout_session_offset      INT,
-                drift_pct_max               FLOAT,
-                promoted_session_offset     INT,
-                reclaim_session_offset      INT,
-                reclaim_open                FLOAT,
-                reclaim_close               FLOAT,
-                reclaim_open_vs_anchor_pct  FLOAT,
-                actual_entry_price          FLOAT,
-                fwd_1d_high_pct             FLOAT,
-                fwd_3d_high_pct             FLOAT,
-                fwd_5d_high_pct             FLOAT,
-                fwd_10d_high_pct            FLOAT,
-                fwd_5d_close_pct            FLOAT,
-                r_5d                        FLOAT,
-                invalidated_within_5d       BOOLEAN,
-                n_fwd_sessions_available    INT,
-                created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (ticker, anchor_date),
-                CHECK (state IN (
-                    'pending','promoted','reclaimed','settled',
-                    'expired_no_promotion','expired_no_reclaim','invalidated'
-                ))
-            );
-            CREATE INDEX IF NOT EXISTS idx_fishhook_state
-                ON mi_fishhook_anchors(state, anchor_date DESC);
-            CREATE INDEX IF NOT EXISTS idx_fishhook_anchor_date
-                ON mi_fishhook_anchors(anchor_date);
         """)
 
         # Continuation-flag detector candidates (post-runup VCP / Qullamaggie
@@ -3956,118 +3880,6 @@ async def get_wick_pending_candidates(lookback_sessions: int = 3) -> list[dict]:
               )
             ORDER BY w.alert_date DESC, w.volume DESC
         """, lookback_sessions)
-    return [dict(r) for r in rows]
-
-
-async def insert_fishhook_anchor(record: dict[str, Any]) -> None:
-    """Idempotent insert of a freshly-detected fishhook anchor (state='pending').
-
-    UNIQUE (ticker, anchor_date) — repeat EOD passes for the same date are
-    safe; existing rows are not touched (state-machine transitions go
-    through `update_fishhook_anchor`, not this function).
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_fishhook_anchors
-                (ticker, anchor_date, prev_close, anchor_open, anchor_close,
-                 gap_pct, in_top2000, in_ep_alerts, state)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-            ON CONFLICT (ticker, anchor_date) DO NOTHING
-        """,
-            record["ticker"],
-            record["anchor_date"] if isinstance(record["anchor_date"], date)
-                else date.fromisoformat(record["anchor_date"]),
-            record["prev_close"],
-            record["anchor_open"],
-            record["anchor_close"],
-            record["gap_pct"],
-            record["in_top2000"],
-            record["in_ep_alerts"],
-        )
-
-
-async def get_open_fishhook_anchors(today: "str | date") -> list[dict]:
-    """Anchors in non-terminal states (pending/promoted/reclaimed) — the
-    EOD pass walks each forward to advance state. Bounded lookback prevents
-    sweeping ancient orphans that never settled (early-table noise).
-    """
-    pool = await get_pool()
-    if isinstance(today, str):
-        today = date.fromisoformat(today)
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT id, ticker, anchor_date, prev_close, anchor_open,
-                   anchor_close, gap_pct, in_top2000, in_ep_alerts, state,
-                   washout_low, washout_session_offset, drift_pct_max,
-                   promoted_session_offset, reclaim_session_offset,
-                   reclaim_open, reclaim_close, reclaim_open_vs_anchor_pct,
-                   actual_entry_price
-            FROM mi_fishhook_anchors
-            WHERE state IN ('pending', 'promoted', 'reclaimed')
-              AND anchor_date >= $1::date - INTERVAL '60 days'
-            ORDER BY anchor_date ASC
-        """, today)
-    return [dict(r) for r in rows]
-
-
-_FISHHOOK_UPDATE_ALLOWED = {
-    "state",
-    "washout_low", "washout_session_offset", "drift_pct_max",
-    "promoted_session_offset",
-    "reclaim_session_offset", "reclaim_open", "reclaim_close",
-    "reclaim_open_vs_anchor_pct", "actual_entry_price",
-    "fwd_1d_high_pct", "fwd_3d_high_pct", "fwd_5d_high_pct",
-    "fwd_10d_high_pct", "fwd_5d_close_pct",
-    "r_5d", "invalidated_within_5d", "n_fwd_sessions_available",
-}
-
-
-async def update_fishhook_anchor(anchor_id: int, **fields) -> None:
-    """Partial update on an anchor row. Keys must be in the allow-list."""
-    if not fields:
-        return
-    sets = []
-    args: list[Any] = []
-    for k, v in fields.items():
-        if k not in _FISHHOOK_UPDATE_ALLOWED:
-            continue
-        args.append(v)
-        sets.append(f"{k} = ${len(args)}")
-    if not sets:
-        return
-    args.append(anchor_id)
-    sql = (
-        f"UPDATE mi_fishhook_anchors SET {', '.join(sets)}, updated_at = NOW() "
-        f"WHERE id = ${len(args)}"
-    )
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(sql, *args)
-
-
-async def get_fishhook_outcomes_window(window_days: int) -> list[dict]:
-    """All anchors within the trailing window — used by the strategy adapter
-    and `/fishhook` Telegram surface. Includes every state so the adapter
-    can map terminal-vs-pending; downstream slices by state itself.
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT id, ticker, anchor_date, prev_close, anchor_open,
-                   anchor_close, gap_pct, in_top2000, in_ep_alerts, state,
-                   washout_low, washout_session_offset, drift_pct_max,
-                   promoted_session_offset, reclaim_session_offset,
-                   reclaim_open, reclaim_close, reclaim_open_vs_anchor_pct,
-                   actual_entry_price,
-                   fwd_1d_high_pct, fwd_3d_high_pct, fwd_5d_high_pct,
-                   fwd_10d_high_pct, fwd_5d_close_pct,
-                   r_5d, invalidated_within_5d, n_fwd_sessions_available,
-                   created_at, updated_at
-            FROM mi_fishhook_anchors
-            WHERE anchor_date >= CURRENT_DATE - $1::int
-            ORDER BY anchor_date DESC, ticker
-        """, window_days)
     return [dict(r) for r in rows]
 
 
