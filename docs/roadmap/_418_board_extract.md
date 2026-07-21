@@ -128,7 +128,7 @@ PLAN.md open tasks: **104**. Extract lines below: **104**. (Counts match — no 
 - #311 | 2026-08-01 | pending | Build the Multi-Setup Book: per-setup judges, tightness→expansion graduation, parabolic-short book, regime-adaptive selection. | GATES: -
 - #312 | 2026-10-01 | pending | Build the Capital & Autonomy Ladder: live unified_allocator, formal promotion ladder with auto-demotion on breach. | GATES: -
 - #313 | 2026-08-01 | pending | Build Institution-grade ops: replay-everything CI + per-role LLM-spend-vs-P&L cost governance. | GATES: -
-- #314 | 2026-07-15 | pending | Build the trading-ideas detector book: parabolic-short, wick-fill, fishhook U&R, base+catalyst convergence, shape classifier, RMV. | GATES: graduation gates in data_gated_reviews.yaml; refs #283 (wick-fill), #54 (RMV)
+- #314 | 2026-07-15 | pending | Build the trading-ideas detector book: parabolic-short, wick-fill, TI3 U&R (fishhook retired 2026-07-21 — needs a fresh non-fishhook approach if pursued), base+catalyst convergence, shape classifier, RMV. | GATES: graduation gates in data_gated_reviews.yaml; refs #283 (wick-fill), #54 (RMV)
 
 ## Spec / detail docs
 (No task lines — index-only section pointing to docs/roadmap, docs/decisions, docs/setups, docs/methodology, data_gated_reviews.yaml.)

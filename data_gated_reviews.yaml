@@ -227,12 +227,21 @@ reviews:
     #    MODERATE→HIGH. NO extension (keep status quo — no THE-LINE change needed to not-act).
     #    Re-check ~9/15 ONLY if the band composition shifts; else operator closes.
     action_when_ready: |
+      NOTE (2026-07-21): scripts/fishhook_explorer.py was removed with the
+      fishhook_v3 retirement. The command below no longer runs as-is — the
+      2026-07-13 result recorded above already answers this review (16% vs
+      35% bar, no extension). If band composition shifts before 9/15 and a
+      re-run is genuinely warranted, rebuild a small one-off script over the
+      same predicate (moderate-band positive-label rate) — do not resurrect
+      fishhook_explorer.
+
       docker exec apollo-market python -m scripts.fishhook_explorer
         --moderate-band-eval --days 90 --label-threshold 0.10
         --out /tmp/fishhook_moderate_band.csv
       Eyeball positive-label rate. If ≥ 35% pick the level (55/58/60) with the
       cleanest precision and promote to live conviction floor in ep_detector.py.
-      Telemetry origin: fishhook_explorer 2026-04-29 cohort had n=1 eligible.
+      Telemetry origin: fishhook_explorer 2026-04-29 cohort had n=1 eligible
+      (historical; tool since removed).
 
       ⚠ Dead-zone dependency (2026-04-29): gap[10,15)+strong stocks with thin
       pre-market shares (<25K floor) are systematically dead-zoned by the
@@ -407,7 +416,7 @@ reviews:
       sweep yields > 2x precision lift at recall ≥ 50%, build TI3 Stage 1
       detector. Otherwise close TI3 permanently.
       Origin: fishhook_explorer.py docstring + project_trading_ideas_backlog.md.
-    status: pending
+    status: done  # 2026-07-21 RETIRED — fishhook removed; TI3 (#314) needs a fresh non-fishhook approach if pursued
     added_on: 2026-04-29
 
   - review_id: rs_theme_dash_forward_returns
@@ -1818,9 +1827,9 @@ reviews:
 
       If yes, evaluate live cutover at $10K starting size, MAGNA53-only
       on live account (live_real_enabled=True). All other strategies
-      (9M Day 2, fishhook_v3, future) continue real-Alpaca-paper
-      execution at the paper-tier of the maturation pipeline
-      (shadow → paper → real $).
+      (9M Day 2, future — fishhook_v3 retired 2026-07-21, no longer a
+      strategy) continue real-Alpaca-paper execution at the paper-tier
+      of the maturation pipeline (shadow → paper → real $).
 
       Earliest review 2026-05-22 (matches drawdown breaker shadow window).
       Practical date range: 2026-05-22 → 2026-05-24, possibly slipping to
@@ -1914,7 +1923,8 @@ reviews:
           UPDATE mi_strategies SET phase='live', live_real_enabled=true
           WHERE strategy_id='magna53';
 
-        Leave 9M Day 2 / fishhook_v3 / etc. at phase='paper' — they
+        Leave 9M Day 2 / etc. at phase='paper' (fishhook_v3 retired
+        2026-07-21 — no strategy row to leave) — they
         continue submitting to Alpaca paper account for real execution
         feedback at the paper-tier of the maturation pipeline.
 

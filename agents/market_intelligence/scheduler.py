@@ -4860,7 +4860,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # write `mi_anticipation_lifecycle` off that phantom universe nightly, contaminating the
     # shadow telemetry. The matched pair is UN-REGISTERED to stop active contamination. The
     # gap-anchored machine (`replay`/`evaluate_candidate` + `mi_anticipation_lifecycle`) now
-    # belongs to FAMILY B / #297 (delayed-EP/fishhook rework) to reclaim — it is NOT the
+    # belongs to FAMILY B / #297 (delayed-EP rework) to reclaim — it is NOT the
     # Family-A consolidation rebuild. Its phantom rows are #297's to archive/clean (decoupled
     # from this Phase 1, per advisor 6/17). IDs remain in INTELLIGENCE_OWNED_JOB_IDS
     # (classified-but-unregistered is harmless) so #297 re-registration is a one-block uncomment.

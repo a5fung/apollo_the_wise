@@ -595,7 +595,7 @@ def evaluate_candidate(bars, gap_day, min_base=MATURE_DAYS):
 # ═════════════════════════════════════════════════════════════════════════════
 # FAMILY A — "consolidation plays post a runup" (ADR 0013, operator-signed §2). A SEPARATE
 # lifecycle from the gap-anchored machine above (`replay`/`evaluate_candidate` = FAMILY B, the
-# delayed-EP/fishhook rework, #297): runup → coil (constructive tightening; undercut ALLOWED) →
+# delayed-EP rework, #297): runup → coil (constructive tightening; undercut ALLOWED) →
 # [3 entry modes DEFERRED]. This Phase-1 build is the SHADOW RECORDER only — it confirms the
 # runup canary + records the coil/tightness telemetry per (ticker, anchor_date). The signed
 # deliverable is the SHORTLIST for operator judgment; tightness is ORDERING-ONLY (an open

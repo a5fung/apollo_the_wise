@@ -316,14 +316,18 @@ U&R (on undercut of the base/consolidation low → reclaim; tightest stop). EP N
 
 **U&R is a GENERIC MECHANIC, not a family member** (operator nuance 6/16): "price falls below SOME
 reference point → reclaims it." Reference = a consolidation/base low (Family A), an EP low, an MA,
-congestion, etc. Reusable across families (`fishhook_detector` + `anticipation.detect_gdl_reclaim` are
-reclaim-mechanic implementations). Do NOT treat U&R as owned by one family.
+congestion, etc. Reusable across families (`fishhook_detector` + `anticipation.detect_gdl_reclaim` were
+reclaim-mechanic implementations — `fishhook_detector` retired 2026-07-21, operator call; the mechanic
+survives in `anticipation.detect_gdl_reclaim`). Do NOT treat U&R as owned by one family.
 
 **Fishhook / delayed-EP are FAMILY B (the EP family), NOT Family A** (operator correction 6/16): a
 delayed-EP REQUIRES an EP first (fishhook's gap-up IS the EP), then re-enters — often via a U&R on the
 EP low. The EP is not an "optional gate on consolidation"; delayed-EP is its own EP-family play. **FAMILY
 B = the EP family (MAGNA53 / 9M / delayed-EP / fishhook) = the NEXT rework, SEPARATE** from the current
-Family-A build. ⇒ current scope tightens to Family A only; fishhook stays put.
+Family-A build. ⇒ current scope tightens to Family A only; fishhook stays put. (2026-07-21 update:
+fishhook_v3 was retired outright — operator call, discretionary re-entry doesn't belong in the automated
+core — rather than staying put for the Family-B rework; the delayed-EP concept survives in #297/#314 for
+a possible future non-fishhook approach.)
 
 Anticipation is NOT a from-scratch detector — it's a sibling in FAMILY A sharing the substrate. Three
 unification decisions:
@@ -337,13 +341,16 @@ unification decisions:
    - **Anticipate** — enter BEFORE the move, in the tightness. Stop = tight-range low. (anticipation entry)
    - **Confirm / flag** — WAIT for the confirmed breakout (base_high + vol). Stop = base/breakout low. (#94)
    - **U&R (undercut & rally)** — undercut the low → RECLAIM it. Stop = the undercut/washout low (TIGHTEST,
-     biggest cushion — the U&R paradox). Mechanic ALREADY EXISTS: `fishhook_detector` (gap-up undercut &
-     reclaim state machine) + `anticipation.detect_gdl_reclaim`. REUSE it — but on the shared post-runup
-     TIGHT universe (higher conviction), NOT fishhook's broad gap-up/low-R harvester universe.
+     biggest cushion — the U&R paradox). Mechanic EXISTS: `anticipation.detect_gdl_reclaim` (a gap-up
+     undercut & reclaim state machine also existed as `fishhook_detector`, retired 2026-07-21). REUSE the
+     surviving implementation — but on the shared post-runup TIGHT universe (higher conviction), not a
+     broad gap-up/low-R harvester universe.
 ⇒ Build = ONE shared universe → ONE coil detection (undercut allowed) → THREE entry modes. All three
-mechanics already exist (anticipation / flag-break / fishhook-reclaim) — the unification is pointing them
-at the shared coiled universe. Formalize as an ADR (reshapes flags + anticipation + fishhook). Reconcile:
-does fishhook-the-broad-harvester stay separate, or fold its reclaim mechanic into the U&R mode?
+mechanics existed (anticipation / flag-break / fishhook-reclaim) — the unification was pointing them
+at the shared coiled universe. Formalize as an ADR (reshapes flags + anticipation). RESOLVED 2026-07-21:
+fishhook-the-broad-harvester did NOT get folded into U&R — operator retired it outright (discretionary
+delayed-EP re-entry doesn't belong in the automated core); #297/#314 track a possible future non-fishhook
+delayed-EP approach.
 
 ### LAYERING — anticipation (a TACTIC) ≠ Stocks in Play (operator 2026-06-16, recurring correction)
 **Anticipation is ONE tactic** (runup → tight spot → entry); it produces a ranked candidate feed.

@@ -271,7 +271,7 @@ Daily state-machine scan for the post-runup VCP / tightening flag setup. **Shado
 /flags TICKER          → 14d stage history for one ticker
 ```
 
-**Scan schedule:** 5:25 PM ET, mon-fri (between fishhook 5:20 and post-nightly audit 5:30).
+**Scan schedule:** 5:25 PM ET, mon-fri (between 5:22 sugar-babies cohort refresh and 5:30 post-nightly audit).
 
 **SSoT:** `docs/setups/flag_continuation.md`.
 

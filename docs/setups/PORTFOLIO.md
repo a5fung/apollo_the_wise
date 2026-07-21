@@ -35,7 +35,7 @@ Operator decisions locked this session. **Ships follow their gates; nothing depl
 The single most useful reframe (your own framing, made explicit): a setup is one of **three different kinds of thing**, and we've been conflating them.
 
 - **SELECTION** — *what stock to watch.* Generates a cohort/watchlist. (EP, 9M, themes, parabolic-short universe.)
-- **ENTRY** — *how/when to get in*, on an already-selected stock. (ORB, flag-breakout, support-test, MA-pullback, U&R, fishhook, wick-fill, low-vol-rest.)
+- **ENTRY** — *how/when to get in*, on an already-selected stock. (ORB, flag-breakout, support-test, MA-pullback, U&R, wick-fill, low-vol-rest.)
 - **QUALIFIER** — *a score/filter that gates or ranks* selection or entry, never traded alone. (catalyst_type, theme membership, RMV, regime.)
 
 **The core defect this exposes:** today MAGNA53 and 9M each hardcode ONE entry (1-min ORB; Day-2 ORB w/ prior-low stop). The methodology says selection should produce a watch-cohort, and entry should be *chosen* from the entry layer based on how the stock sets up. That mismatch **is** the 9M problem (#65) and is why the entry-technique detectors exist but only run in shadow today (the 9M cohort IS wired into their universe via P7.3b — see the relationship map — they just don't *trade* yet).
@@ -50,7 +50,7 @@ One mental model — **stocks in play, surfaced from any setup; some Apollo auto
 |---|---|---|---|---|
 | **A** | **SIP infrastructure** | Make `mi_stocks_in_play` ingest ALL selection signals + carry `automation_class` (apollo-traded vs inform-operator). TODAY it holds only `sugar_baby_cohort` (193, all `informational`) — ADR 0004's multi-source/3-axis vision is under-built. The literal "combine the two." | **P1 (enabler)** | scope in #167 |
 | **B** | **Selection** (Layer 1) | MAGNA53 EP · 9M EP · themes · parabolic — cohort generators | P1: MAGNA53 + theme/narrative (North Star) | MAGNA53 cutover 6/22; theme gate ~Q4 |
-| **C** | **Entry techniques** (Layer 2) | the 5 tight-range (#94–98) + ORB variants + fishhook + wick | **P2** (your #2-to-trade = flag/consolidation class) | graduation N≥10 **7/15** |
+| **C** | **Entry techniques** (Layer 2) | the 5 tight-range (#94–98) + ORB variants + wick (fishhook retired 2026-07-21) | **P2** (your #2-to-trade = flag/consolidation class) | graduation N≥10 **7/15** |
 | **D** | **9M re-architecture** (#65) | standing 9M-entry telemetry + Day-2-ORB-legacy → flag-path decision | P2 | telemetry build in #167; gate 7/15 |
 | **E** | **Qualifiers** (Layer 3) | catalyst_type · RMV · theme-membership-gating | P2/P3 | RMV Phase-2 **6/9**; theme gate ~Q4 |
 
@@ -79,7 +79,7 @@ One mental model — **stocks in play, surfaced from any setup; some Apollo auto
 | **MA-pullback** (#96) | `mi_flag_ma_pullbacks` | shadow | N≥10 (7/15) | Pull back to SMA10/20, light volume. |
 | **U&R Undercut & Rally** (#98) | `mi_flag_undercut_rally` | **shadow (new 5/31)** | N≥10 (7/15) | Undercut `base_low` (2–8%) → reclaim. Morales/OWL. |
 | **Low-vol rest** (#97) | — | **NOT BUILT** | — | Entry #4; unbuilt gap. |
-| **Fishhook** (TI3) | `fishhook_v3` | shadow | N≥10 (6/15→7/15) | **Delayed entry for failed-day-1 EPs** — pullback/reclaim on subsequent days. |
+| **Fishhook** (TI3) | `fishhook_v3` | **RETIRED 2026-07-21** | — | Was: delayed entry for failed-day-1 EPs (pullback/reclaim on subsequent days). Operator call: discretionary delayed-EP re-entry doesn't belong in the automated find-EP-and-take-the-initial-trade core. #297/#314 track a possible future non-fishhook approach. |
 | **Wick-fill** (P22/TI2) | `wick_fill` | shadow | N≥30 fills, fill-rate≥0.5 | Fill on an intraday wick + ride recovery. Execution edge, not a pattern. |
 
 ## Layer 3 — QUALIFIERS (score/filter; never traded alone)
@@ -117,13 +117,11 @@ One mental model — **stocks in play, surfaced from any setup; some Apollo auto
             ┌─────────────── ENTRY LAYER ───────────────┐
    1m/5m ORB · Flag-breakout · Support-test · MA-pullback ·
    U&R · Low-vol-rest(unbuilt) · Wick-fill
-                                 ▲
-   failed day-1 EP ─────► FISHHOOK (delayed re-entry on later days)
 ```
 
 **Worked examples (yours):**
 - **9M EP → watch-cohort → consolidation (low RMV) → flag-breakout entry.** This path is **ALREADY wired (P7.3b, shadow)** — 9M EPs enter the flag universe and some progress to TIGHTENING. The mechanical **Day-2 ORB is a LEGACY/BRIDGE** entry running in *parallel* (paper). #65 = *which mechanism trades the cohort, and when* (the entry-techniques graduate 7/15) — NOT a missing wire.
-- **Fishhook = delayed EP entry** — for EPs that failed day 1; the entry comes on a later-day pullback/reclaim. Tied to the EP setup, not standalone.
+- **Fishhook = delayed EP entry** (RETIRED 2026-07-21 — operator call: discretionary re-entry doesn't belong in the automated core; #297/#314 track a possible future non-fishhook approach) — was: for EPs that failed day 1, the entry comes on a later-day pullback/reclaim, tied to the EP setup, not standalone.
 - **MAGNA53 EP** currently = selection **and** entry (1m ORB) fused. Same conflation as 9M.
 
 ---

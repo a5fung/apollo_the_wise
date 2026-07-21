@@ -86,7 +86,7 @@ no-drift · #122 & #197 accruing (N<10).
   `paper_r_expectancy_validation` (GATE 3, 23≥10) · `unified_allocator_phase_1b` (#44 promotion, 21≥15).
 - **Detection / methodology (overlap North Star + Family A):** flag_proximity_band_calibration ·
   flag_ma_pin_filter · flag_proximity_bypass_hysteresis · flag_detector_post_breakout_label ·
-  ep_cooldown_resetup_admission · rel_volume_large_cap_floor · theme_engine_narrative_blindness · fishhook_v3 ·
+  ep_cooldown_resetup_admission · rel_volume_large_cap_floor · theme_engine_narrative_blindness ·
   p74_alpha_capture_stage2 · gap_atr_3_5x_band · nbis_rubric_calibration · mna_filter_direction_blindness ·
   gate5h_value_invariant · silent_failure_taxonomy · adv_probe_retirement · extraction_pipeline_smoke ·
   breadth_cluster_view · perplexity_sanitizer · trade_stream_stop_placement.
