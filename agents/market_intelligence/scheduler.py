@@ -1082,7 +1082,6 @@ async def _delayed_residual_job():
     full-real-time (design realtime_detection_feed_design_2026-07-20.md §14)."""
     from agents.market_intelligence.ep_delayed_residual import (
         run_delayed_residual_scan, backfill_residual_outcomes, evaluate_o9_escalation)
-    from agents.market_intelligence.db import get_pool, log_audit_event
     run_date = datetime.now(_ET).strftime("%Y-%m-%d")
     missed, residual = await run_delayed_residual_scan(run_date)
     logger.info(f"delayed_residual_job {run_date}: {missed} missed, {residual} residual beyond hybrid")
@@ -1103,7 +1102,6 @@ async def _delayed_residual_job():
             f"O-9 met: {o9['count']} residual misses, median fwd-5d {o9['median_fwd5d']}%",
             json.dumps(o9))
         if not recent:
-            from agents.market_intelligence.briefing import send_telegram_message
             await send_telegram_message(
                 f"🚨 O-9 ESCALATION MET — {o9['count']} delay-missed residual EPs (last 15d), median "
                 f"fwd-5d +{o9['median_fwd5d']}% (≥ +8% bar): the delayed feed is now costing WINNING EPs. "
