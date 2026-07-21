@@ -987,7 +987,7 @@ reviews:
       agents/market_intelligence/fishhook_detector.py and reconcile
       before declaring the shadow telemetry trustworthy.
       Origin: 2026-04-30 fishhook V3 deploy.
-    status: pending
+    status: done  # 2026-07-21 RAN: DRIFT CONFIRMED — /fishhook median_r=0.40 (over ALL settled; r_5d is floored max-excursion, worst=0.0) & hit=96% (r_5d>0) diverge from the explorer's pos-cohort median ~1.1 / funnel-hit 13-19% that the promotion gate was designed for. Telemetry NOT trustworthy as displayed; reconciliation tracked as PLAN #497 (blocks fishhook_v3_promotion_check).
     added_on: 2026-04-30
 
   - review_id: fishhook_v3_promotion_check
@@ -4840,7 +4840,7 @@ reviews:
       Output: append findings to docs/decisions/0003-ep-selectivity-overhaul.md.
       No code change unless ≥2 fixtures show same pattern (sample-size
       discipline — single-fixture adjustment is overfit).
-    status: pending
+    status: done  # 2026-07-21 RAN (docs/decisions/0003 §2026-07-21): premise STALE — rubric now scores NBIS 13.76/39 WEAK (not 27/39), 16pt gap. Root: a2=0 (eps −109%)+a6=0 (no milestone) sink a1=3 (+684% rev) = hypergrowth-pre-profit tension. NO code change (single fixture=overfit); watch for a 2nd instance.
     added_on: 2026-05-19
 
   - review_id: rubric_safety_net_yoy_required

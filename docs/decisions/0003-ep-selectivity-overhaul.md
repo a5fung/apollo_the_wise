@@ -647,3 +647,25 @@ sittings.
 - `analysis/2026-05-16/catalyst_labels.csv` — operator labeling sheet
 - `scripts/ep_selectivity_shadow_sim.py` — retrospective R1-R5 sim
 - `analysis/2026-05-16/shadow_sim.md` — projected cohort delta
+
+---
+
+## 2026-07-21 — NBIS 2026-03-16 rubric calibration (review: nbis_rubric_calibration_gap)
+
+Review premise (5/19) was "NBIS scored 27.0/39 strong vs operator game_changer (3pt gap)." **The premise
+is now STALE** — re-running `scripts/probes/_nbis_rubric_diagnostic.py` today, the rubric scores NBIS
+**13.76/39 (weak)** — a 16pt gap, not 3pt (rubric/extraction moved since 5/19). Per-axis: a1=3 (rev yoy
++684%, max) · a2=0 (eps yoy −109%) · a3=2 (margins flat) · a4=None (partial_consensus_data → `max_available`
+capped 34) · a5=2 (reaffirmed) · a6=0 (no milestone). composite_raw=12 → scaled 13.76, no caps.
+
+**Diagnosis:** the rubric is behaving as designed — it heavily penalizes negative EPS (a2=0) and
+no-milestone (a6=0), which sinks a name whose only max axis is revenue growth. This is the
+**hypergrowth-pre-profit tension**: a +684%-revenue neo-cloud in an active AI theme scores "weak" because
+it isn't yet profitable and crossed no discrete milestone, while the operator's game_changer label weights
+the revenue explosion far above those gates.
+
+**Decision: NO code change** (single fixture = overfit, per the review's own DoD). Real calibration tension,
+but a one-name weight tweak is the overfit the discipline forbids. **Watch for a 2nd fixture** of the same
+shape (hypergrowth revenue + negative EPS + no milestone, operator game_changer, rubric weak) → at N≥2,
+open a rubric-weight recalibration via CHANGE_PROCESS. Secondary note: a4=None (missing consensus) capped
+max_available at 34/39 — a data-completeness gap that independently depresses the score.
