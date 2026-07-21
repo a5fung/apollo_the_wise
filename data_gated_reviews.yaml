@@ -505,7 +505,7 @@ reviews:
       -- focused implementation session, not data-accrual.
       SELECT 1;
     threshold: 1
-    earliest_review_date: 2026-06-23
+    earliest_review_date: 2026-07-27  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       PART B (still pending) — Tighter Path B sentiment_reasoning
       proximity check (~18 FP avoided per quarter). Polygon's AI
@@ -3791,7 +3791,7 @@ reviews:
       -- technical dependency on other reviews.
       SELECT 0;
     threshold: 0
-    earliest_review_date: 2026-05-31
+    earliest_review_date: 2026-07-28  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Decide on render target (Telegram vs dashboard) + missing-
       indicator priority. Spec out:
@@ -3840,7 +3840,7 @@ reviews:
          OR 'ninem_universe_watch' = ANY(universe_sources)
          AND scan_date <= CURRENT_DATE - 21;
     threshold: 30
-    earliest_review_date: 2026-06-08
+    earliest_review_date: 2026-07-25  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Run scripts/ep_delayed_capture_audit.py against the
       post-P7.2-ship window. Compare to baseline:
@@ -4106,7 +4106,7 @@ reviews:
     predicate_sql: |
       SELECT COUNT(*) FROM mi_themes WHERE theme_date >= CURRENT_DATE - 7;
     threshold: 1
-    earliest_review_date: 2026-06-01  # pulled fwd from 06-16: mechanism PINNED 05-31, design = North Star week (operator call)
+    earliest_review_date: 2026-07-28  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Design (cross-sector narrative themes the RS-sector clustering can't see):
       1. TOP-DOWN LLM emerging-theme SYNTHESIS pass (the capability gap operator flagged
@@ -4319,7 +4319,7 @@ reviews:
         AND s.adv_20 IS NOT NULL
         AND (s.adv_20 * s.close) >= 50000000;
     threshold: 10
-    earliest_review_date: 2026-06-15
+    earliest_review_date: 2026-07-24  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Pull the N≥10 cases. Compute 5d forward outcome for each.
       If <30% win rate, ship a `rel_volume ≥ 0.5x AND ADV ≥ $50M`
@@ -4773,7 +4773,7 @@ reviews:
              OR hard_stop > stop_price + 0.01)  -- 1c tolerance for trail rounding
         AND pnl_attribution IS NULL;
     threshold: 1
-    earliest_review_date: 2026-05-19
+    earliest_review_date: 2026-07-27  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Predicate fires when ≥1 trade closed since the KLAR fix shows a
       stop_price ordering violation (the bug class Gate 5 G can't catch).
@@ -5155,7 +5155,7 @@ reviews:
         | Trading-path failure | any exception in entry/exit/stop | Telegram immediately, ESCALATED framing |
     predicate_sql: null
     threshold: 0
-    earliest_review_date: 2026-05-26
+    earliest_review_date: 2026-07-23  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Spent a week spotting more examples + thinking about edge cases.
       Then ship in phases:
