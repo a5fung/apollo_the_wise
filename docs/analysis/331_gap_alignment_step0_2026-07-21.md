@@ -46,3 +46,33 @@ magnitude-independent separation in the boosted (+1) direction.**
 
 No shadow build is carded (ADR 0033 rollout step 3 is gated on this table passing — it did not).
 The #331 axis should not proceed to shadow without a redesign or an operator decision to drop.
+
+---
+
+## Evidence enrichment (operator 2026-07-21: defer — collect more, dig into extremes)
+
+Probe: `scripts/probes/_331_gap_alignment_evidence.py` (regime + timeframe + extreme-case dump).
+
+**The averages were hiding the real story — it's DISTRIBUTION SHAPE, not means:**
+- **punch_through** = tight, positive-skew, LOW downside. Its 6 biggest winners: +34% to +49%
+  (HPE, SLS, CUE, HIMX, LUNR, BAND); its 6 biggest *losers* only −0.4% to −5.8%. It rarely crashes —
+  reliable modest-to-big, small tail risk.
+- **fades_into_congestion** = a BARBELL / high-variance. It owns BOTH the biggest winners
+  (FCEL +76%, HTCO +72%, SHAZ +56%) AND the biggest losers (GLND −35%, HTCO −21%). Its higher *avg*
+  (11.9% vs 10.1%) is fat-tail-driven, not a broad edge — deeply-below-overhead names that either
+  explode (bounce/squeeze/reversal) or die.
+- **clears_base_near_miss** = the middling class (avg 8.8%, worst win-rate).
+
+So STEP-0's "punch_through doesn't beat fades on average" is TRUE but incomplete: punch_through is
+the *safer* distribution, fades is the *lottery*. A simple +1-for-punch_through misses that; the real
+question is whether we want to credit reliability (punch_through) or chase the fat right tail (fades,
+with its matching left tail). That is exactly why it's not ship/kill yet.
+
+**Regime**: the cohort is Bull-heavy (Bull N~200 computable; Choppy 23, Correcting 14, Crisis ~38 —
+all underpowered). Cannot yet say whether the effect is regime-dependent → **need accrual across
+more Choppy/Correcting/Crisis days.**
+
+**Decision: DEFER (not kill, not promote).** Collect more evidence across regimes + timeframes; the
+extreme-case list (in the evidence probe output) is the visual-review queue — pull up the standouts
+(the fades monster-winners FCEL/HTCO/SHAZ, the punch_through clean winners HPE/HIMX/BAND) to see what
+the structures actually look like. Re-run the evidence probe as the shadow cohort accrues.
