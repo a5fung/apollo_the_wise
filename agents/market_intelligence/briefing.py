@@ -2376,12 +2376,19 @@ def _judge_direction(score_tier, floor_tier) -> "str | None":
     return "promote" if a > b else ("demote" if a < b else "hold")
 
 
+def _judge_authoritative(ep: dict) -> bool:
+    """The judge's tier is load-bearing for this alert (grade_engine_authority='judge'). Extracted
+    from three briefing helpers that shared the bare predicate (#338-F). NOT the same as the
+    compound scheduler check (judge AND HIGH) or agent.py's truthy-existence check — those stay."""
+    return ep.get("grade_engine_authority") == "judge"
+
+
 def resolve_headline_grade(ep: dict) -> tuple:
     """(emoji, label) for the alert's ticker line. RESOLVES TO THE JUDGE when the judge is
     load-bearing (grade_engine_authority='judge') — so a judge-promoted HIGH never headlines the
     contradicted floor grade (LZB: floor 'routine' under a judge HIGH). Floor/fallback authority →
     the Claude catalyst grade, as before."""
-    if ep.get("grade_engine_authority") == "judge":
+    if _judge_authoritative(ep):
         d = _judge_direction(ep.get("score_tier"), ep.get("baseline_floor_tier"))
         dtxt = f" ({d})" if d else ""
         return TIER_EMOJI.get(ep.get("score_tier", ""), ""), f"Judge: {ep.get('score_tier')}{dtxt}"
@@ -2402,7 +2409,7 @@ def format_grade_provenance(ep: dict) -> str:
     if pplx:
         agree = "✓agree" if ep.get("gemini_validation") == ep.get("catalyst_quality") else "✗differs"
         parts.append(f"Perplexity: {pplx} ({agree})")
-    if ep.get("grade_engine_authority") == "judge":
+    if _judge_authoritative(ep):
         d = _judge_direction(ep.get("score_tier"), ep.get("baseline_floor_tier"))
         parts.append(f"*Judge: {ep.get('score_tier')}{f' {d}' if d else ''}* ← authoritative")
     return "🔎 " + " · ".join(parts)
@@ -2413,7 +2420,7 @@ def resolve_why_text(ep: dict) -> str:
     authoritative — it was showing the FLOOR's analysis (claude_analysis) under an authoritative
     judge, the same coherence gap #319 fixed for the headline. Floor/fallback authority (or a judge
     that rendered no rationale) → the floor analysis, as before."""
-    if ep.get("grade_engine_authority") == "judge":
+    if _judge_authoritative(ep):
         jr = (ep.get("judge_rationale") or "").strip()
         if jr:
             return jr
@@ -2430,7 +2437,7 @@ def format_judge_trace_suffix(ep: dict) -> str:
     if mat:
         bits.append(f"materiality {mat}")
     if ep.get("has_direct_source"):
-        bits.append("direct-source ✓")
+        bits.append("direct-source present")
     return (" · " + " · ".join(bits)) if bits else ""
 
 

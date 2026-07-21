@@ -39,6 +39,7 @@ import asyncio
 from collections import Counter
 
 from agents.market_intelligence.db import get_pool, get_theme_heat_asof
+from agents.market_intelligence.catalyst_materiality import MATERIALITY_TIERS
 from agents.market_intelligence.ep_grade_judge import format_tier_transition, grade_holistic
 # Single source for the marker-recompute (shared with the monthly review); re-exported here so
 # scripts.eval_judge_enrich.recompute_has_direct_source keeps resolving.
@@ -83,8 +84,11 @@ ORDER BY alert_date, ticker
 """
 
 # Materiality tiers that mean "the judge leaned on materiality" (the highest-risk pattern when
-# has_direct_source was falsely "no" — ADR 0011 rubric clause 1/2).
-_MATERIAL_LEAN = {"transformative", "material"}
+# has_direct_source was falsely "no" — ADR 0011 rubric clause 1/2). Derived from the
+# catalyst_materiality SSoT vocab ("material" and above) so it can't drift (#338-G); the call
+# site keeps its own null-handling (`(x or "").lower() in _MATERIAL_LEAN`), so this is NOT
+# is_material() (which fail-opens None→True — different semantics).
+_MATERIAL_LEAN = set(MATERIALITY_TIERS[MATERIALITY_TIERS.index("material"):])
 
 
 async def _fetch_theme_heat_asof(conn, ticker: str, alert_date):

@@ -100,11 +100,11 @@ def test_why_falls_back_when_judge_has_no_rationale():
 # ── #329-trace: format_judge_trace_suffix — divergence cues on the fire line ──
 def test_trace_suffix_includes_materiality_and_source():
     s = format_judge_trace_suffix({"judge_materiality_tier": "transformative", "has_direct_source": True})
-    assert s == " · materiality transformative · direct-source ✓"
+    assert s == " · materiality transformative · direct-source present"
 
 
 def test_trace_suffix_partial_and_empty():
     assert format_judge_trace_suffix({"judge_materiality_tier": "minor"}) == " · materiality minor"
-    assert format_judge_trace_suffix({"has_direct_source": True}) == " · direct-source ✓"
+    assert format_judge_trace_suffix({"has_direct_source": True}) == " · direct-source present"
     assert format_judge_trace_suffix({}) == ""               # byte-identical fire line when absent
     assert format_judge_trace_suffix({"has_direct_source": False}) == ""
