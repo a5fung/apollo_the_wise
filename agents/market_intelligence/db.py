@@ -6009,8 +6009,15 @@ async def get_crypto_vs_market_pulse() -> dict:
             for tk in _PULSE_MARKET:
                 r2, r4 = await _asset_returns(conn, "mi_daily_closes", "ticker", tk, "trade_date", "close")
                 market.append({"sym": tk, "r2": r2, "r4": r4})
-    except Exception as e:  # loud-ok: pulse is display-only; a fetch failure just omits the section
+    except Exception as e:  # display-only; a fetch failure omits the section — but AUDIT it, don't drop
+        # silently (#493: the pulse vanished from the 7/21 evening brief with only an unfindable warning;
+        # a silently-omitted operator-facing section IS a silent failure — make the next one queryable).
         logger.warning(f"get_crypto_vs_market_pulse failed (non-fatal): {e}")
+        try:
+            await log_audit_event("crypto_pulse_omitted",
+                                  "CRYPTO vs MARKET pulse omitted from brief (fetch failed)", str(e))
+        except Exception:  # loud-ok: audit best-effort; never let observability break the caller
+            pass
         return {}
     ce = [a["r4"] for a in crypto if a["sym"] in ("BTC", "ETH") and a["r4"] is not None]
     qqq4 = next((m["r4"] for m in market if m["sym"] == "QQQ"), None)
