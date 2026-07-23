@@ -5198,7 +5198,7 @@ reviews:
       Status check: shipping FMP 402 alert tonight (2026-05-19) as proof
       we take this seriously. That's Phase 1 of Phase 3 — config-error
       class, one instance. Systematic audit deferred to this review.
-    status: pending
+    status: done  # 2026-07-23 COMPLETE — audit delivered: docs/analysis/silent_failure_taxonomy_2026-07-23.md (8-class taxonomy T1-T8 + 13 real-gap findings, ALL no-money observability; Tier-1 = F1 naked-position-watchdog silent-death). Fix workstream filed as PLAN #501 (complementary to #466 — the 13 are gate-INVISIBLE, distinct from #466's 81 gate-visible baseline). Opus-verified F1 vs code.
     added_on: 2026-05-19
 
   - review_id: gate5_adel_deliverables_status_check
