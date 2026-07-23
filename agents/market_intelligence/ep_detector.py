@@ -2949,23 +2949,32 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 qr = _extracted.get("q_revenue_usd") or {}
                 gc = _extracted.get("guidance_change") or {}
                 _downgrade_reason = None
-                try:
-                    await log_audit_event(
-                        "catalyst_downgrade_carveout_applied",
-                        f"{ticker}: kept {catalyst_quality} "
-                        f"(beat {qr.get('beat_vs_est_pct'):.1f}% + "
-                        f"{gc.get('direction')}:{gc.get('confidence')})",
-                        json.dumps({
-                            "ticker": ticker,
-                            "alert_date": today.isoformat(),
-                            "kept_quality": catalyst_quality,
-                            "beat_vs_est_pct": qr.get("beat_vs_est_pct"),
-                            "guidance_direction": gc.get("direction"),
-                            "guidance_confidence": gc.get("confidence"),
-                        }),
-                    )
-                except Exception:
-                    pass
+                # Per-ticker-per-day dedup on the AUDIT EMIT only — the carve-out
+                # DECISION above (_downgrade_reason = None) is idempotent and MUST
+                # run every scan. Without this guard the event re-fires on every
+                # 5-min scan for an earnings name (CLF logged 13× 2026-07-23 →
+                # 9m_alerts_per_day L2 false-alarm); mirrors the weak-downgrade
+                # guard below (line ~3035). DB-backed → restart-immune.
+                if await _should_log_catalyst_earnings_event_today(
+                    "catalyst_downgrade_carveout_applied", ticker
+                ):
+                    try:
+                        await log_audit_event(
+                            "catalyst_downgrade_carveout_applied",
+                            f"{ticker}: kept {catalyst_quality} "
+                            f"(beat {qr.get('beat_vs_est_pct'):.1f}% + "
+                            f"{gc.get('direction')}:{gc.get('confidence')})",
+                            json.dumps({
+                                "ticker": ticker,
+                                "alert_date": today.isoformat(),
+                                "kept_quality": catalyst_quality,
+                                "beat_vs_est_pct": qr.get("beat_vs_est_pct"),
+                                "guidance_direction": gc.get("direction"),
+                                "guidance_confidence": gc.get("confidence"),
+                            }),
+                        )
+                    except Exception:
+                        pass
 
             # #321 LIVE rescue (operator 6/28: it's a BUG — the gate fires "no prior-year comparable"
             # when the comparable IS available, just not in the news corpus). Recover the YoY from the

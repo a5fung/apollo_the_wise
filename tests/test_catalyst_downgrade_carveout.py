@@ -97,3 +97,43 @@ def test_carveout_handles_non_numeric_beat():
         "guidance_change": {"direction": "raised", "confidence": "high"},
     }
     assert not _should_apply_yoy_carveout(extracted)
+
+
+# ── Emit-dedup wiring pin (2026-07-23) ──────────────────────────────────────
+# The carve-out AUDIT event must be guarded per-ticker-per-day, SAME as the
+# weak-downgrade — else it re-fires on every 5-min scan for an earnings name
+# (CLF logged catalyst_downgrade_carveout_applied 13× 2026-07-23 08:10→09:05,
+# driving a 9m_alerts_per_day L2 false-alarm). The carve-out DECISION
+# (_downgrade_reason = None) stays UNGUARDED — it is idempotent and must run
+# every scan. Source-level pin so a refactor can't silently drop the guard.
+import re
+from pathlib import Path
+
+_EP_SRC = (Path(__file__).resolve().parent.parent
+           / "agents" / "market_intelligence" / "ep_detector.py").read_text()
+
+
+def test_carveout_audit_emit_is_dedup_guarded():
+    """catalyst_downgrade_carveout_applied log_audit_event must sit inside an
+    `await _should_log_catalyst_earnings_event_today(...)` guard (logs once per
+    ticker per day, not once per 5-min scan)."""
+    guard = re.search(
+        r'_should_log_catalyst_earnings_event_today\(\s*'
+        r'"catalyst_downgrade_carveout_applied"', _EP_SRC)
+    emit = re.search(
+        r'log_audit_event\(\s*"catalyst_downgrade_carveout_applied"', _EP_SRC)
+    assert guard, "carve-out emit lost its per-day dedup guard (L2 false-alarm regression)"
+    assert emit, "carve-out log_audit_event not found (refactor?)"
+    assert guard.start() < emit.start(), "the dedup guard must precede the carve-out emit"
+    assert emit.start() - guard.start() < 600, "the guard must wrap the emit (same block)"
+
+
+def test_carveout_decision_runs_before_the_emit_guard():
+    """The carve-out DECISION (_downgrade_reason = None) must appear BEFORE the
+    emit-dedup guard, so clearing the downgrade stays idempotent every scan even
+    when the audit row is deduped away."""
+    block = _EP_SRC[_EP_SRC.find("Carve-out (2026-05-28"):]
+    none_idx = block.find("_downgrade_reason = None")
+    guard_idx = block.find("_should_log_catalyst_earnings_event_today")
+    assert none_idx != -1 and guard_idx != -1
+    assert none_idx < guard_idx, "the carve-out decision must run outside/before the emit-dedup guard"
