@@ -70,7 +70,7 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     "ticker":             {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
 
     # ── Entry-fill lifecycle ───────────────────────────────────────────
-    "entry_order_id":     {"order_manager.submit_entry", "order_manager.attempt_day1_reentry", "order_manager.cancel_unfilled_entries"},
+    "entry_order_id":     {"order_manager.submit_entry", "order_manager._submit", "order_manager.attempt_day1_reentry", "order_manager.cancel_unfilled_entries"},  # _submit = #500 relocated entry-write (multi-col atomic; same as submit_entry)
     "entry_price":        {"entry_pipeline._skip", "order_manager.check_fills", "trade_stream._process_entry_fill"},
     "entry_shares":       {"entry_pipeline._skip", "order_manager.check_fills", "trade_stream._process_entry_fill"},
     "filled_at":          {"order_manager.check_fills", "order_manager.attempt_day1_reentry", "trade_stream._process_entry_fill"},
@@ -101,7 +101,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         # _process_entry_fill via COALESCE) stay inline and remain
         # authorized writers — splitting them would lose atomicity.
         "order_manager.set_stop_order_id",  # T1.5a helper — SOLO mutations
-        "order_manager.submit_entry", "order_manager.check_fills",
+        "order_manager.submit_entry", "order_manager._submit",  # _submit = #500 relocated entry-write (multi-col atomic)
+        "order_manager.check_fills",
         "order_manager.update_stop", "order_manager.attempt_day1_reentry",
         "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
         "order_manager._sync_positions_for_mode",
@@ -160,7 +161,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "entry_pipeline._skip", "live_tracker._insert_skipped_trade",
         # T1.3 (2026-05-18) removed live_tracker.update_open_positions_live —
         # close-path status='closed' write now delegated to finalize_stop_fill.
-        "order_manager.submit_entry", "order_manager.check_fills",
+        "order_manager.submit_entry", "order_manager._submit",  # _submit = #500 relocated entry-write (multi-col atomic)
+        "order_manager.check_fills",
         "order_manager.attempt_day1_reentry", "order_manager._finalize_full_exit_locked",
         "order_manager._finalize_stop_fill_locked", "order_manager.cancel_unfilled_entries",
         "order_manager._sync_positions_for_mode", "order_manager._update_trade_status",
