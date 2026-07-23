@@ -84,6 +84,57 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-07-23 — #500 Price-aware initial ORB entry: bounded limit-buy fallback when price is already above the ORB high (+ broker-cancel reason capture) [operator-SIGNED]
+
+**Trigger**: ARWR 2026-07-22 (live) — +19.57% gap HIGH EP; the 9:31:00.8 stop-limit bracket
+went pending_new → cancelled by Alpaca within ~1 min because price (~$89.06) was already above
+the $87.92 ORB-high trigger (an in-the-money buy stop is invalid at the broker); operator saw
+"entry cancelled, no reason." SMCI (sitting AT its ORB high) filled the same morning. The
+re-entry path has handled exactly this since May (`attempt_day1_reentry` ~615); the initial
+entry never did — so the entry mechanism failed preferentially on the most violent gappers.
+
+**Evidence**: `docs/analysis/500_orb_entry_price_aware_proposal_2026-07-23.md` — full-history
+cancelled-entry cohort N=11 (read-only prod SQL + SIP tape): in-the-money-stop class **N=2**
+(ARWR live, CADL paper) — FLAGGED small-N (below the N≥10 bar; the branch is an order-type
+correctness fix per the 2026-05-20 gate-inversion precedent, but the 1.5× chase cap IS a
+threshold calibrated on N=2). ARWR fallback sim: +0.16R/−0.16R day-1-close bounds, MFE
++1.7R–2.1R, risk inflation ≤1.37× (admitted). CADL (+14.8% chase, 11.3× inflation, −3R/−11R
+sims) is the cap's sole historical drop — **operator reviewed + confirmed the drop list per
+rule 3 at sign-off 2026-07-23**. Adjacent classes NOT fixed (named to prevent attribution
+drift): LULD rejects (#475 review), gap-through-limit (#22 / known-limitation 4).
+
+**Anticipated effect**: entries where price ≤ ORB high at submit — byte-identical bracket
+(zero behavior change; the overwhelming majority). When price > ORB high at submit (~2% of
+the 89 historical submissions, concentrated in the strongest gappers): a bounded limit buy
+(`latest×1.002`, risk-inflation cap `CHASE_RISK_INFLATION_CAP=1.5` env-tunable, worst case
+1.5% equity vs the sized 1.0%) replaces a guaranteed broker cancel; beyond the cap →
+`setup:chase_cap_exceeded` skip + Telegram (fail-safe: missed entry, never a bad fill). The
+retry re-decides the branch. `mi_live_orders` records the ACTUAL order (type/limit; no fake
+trigger row for the limit fallback). Broker cancels/rejects now persist a `broker:*`
+skip_reason with a last-vs-trigger diagnosis (`order_manager.broker_terminal_reason`, WS +
+polling paths) + Alpaca's terminal order snapshot merged into `mi_live_orders.raw_response`
+— "no reason" cannot recur. Hardening ride-along: `place_limit_buy_with_stop` now passes
+`OrderClass.OTO` + `StopLossRequest` + the naked-order guard (the alpaca-py
+silently-dropped-stop_loss gotcha — a latent NAKED-limit-buy bug on the re-entry path, which
+had never fired in prod: 0 limit buys in 89 historical entries). Est. ~1 engaged entry /
+6 weeks at current alert volume.
+
+**Reversion-flag**: NEW for `submit_entry` (extends the re-entry's price-aware branch — in
+code since May, never fired in prod — to the initial entry, with a chase bound the re-entry
+lacks). Hard revert = delete the `_pick_entry`/`_chase_cap_reason` branch in `submit_entry`
+(restores the unconditional bracket) + revert the `broker:`/`setup:chase_cap_exceeded`
+skip-reason additions. The `place_limit_buy_with_stop` OTO/naked-guard hardening should
+survive any revert — it fixes a latent naked-order bug independently of #500.
+
+**Status**: operator-SIGNED 2026-07-23 (decisions §7 of the analysis doc: branch + 1.5× cap +
+CADL drop-list + reason capture approved; option B cancel-triggered retry DEFERRED,
+data-gated on post-fix residual `broker:entry_cancelled` rows). Built 2026-07-23
+(`tests/test_500_price_aware_entry.py`), NOT yet deployed. Pre-deploy: paper smoke of the OTO
+limit-buy order shape (operator-run). Verify-live layers: (L1) deploy-day below-orbH entries
+byte-identical brackets; (L2) first engaged fallback — log line + OTO stop leg + honest
+mi_live_orders row; (L3) next broker cancel carries a `broker:*` reason, never a bare
+"cancelled".
+
 ### 2026-07-19 — Large-cap rel_volume floor SHADOW observer added (audit-only, no criteria change)
 
 Telemetry only, no detection-criterion change (operator shadow-approved 2026-07-19).

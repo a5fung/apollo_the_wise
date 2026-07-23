@@ -72,6 +72,8 @@ Pre-market sugar babies → 9:31 ET cron places stop-limit BUY at prior day's hi
 
 Routes through `entry_pipeline.submit_trade_entry` (unified pipeline shared with MAGNA53 since 2026-04-24). Strategy-specific differences (stop source, sizing) injected via `spec_builder` callback.
 
+**#500 price-aware entry (2026-07-23) applies here too** — `order_manager.submit_entry` is shared, so if the latest trade is already above the trigger (prior day's high) at submit, the entry goes out as a bounded limit buy instead of a guaranteed-cancel stop-limit, capped at 1.5× planned risk (planned = trigger − prior-day-low; the wider 9M stop makes the cap looser in % terms than MAGNA53's). Full spec + change log: `docs/setups/magna53_ep.md` 2026-07-23 entry (the ORB-entry-mechanics SSoT). Currently dormant for 9M — Day-2 ORB retired to shadow 2026-06-18 (no submits) — but it binds automatically if the strategy ever re-enters paper.
+
 ### Anticipation cadence carve-out
 
 Silent anticipations hit DB/audit only; Telegram fires only when `gap ≥ 10% OR proj_vol ≥ 25M`. Tightens noise on borderline anticipations.

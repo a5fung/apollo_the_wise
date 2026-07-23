@@ -257,10 +257,14 @@ async def test_check_fills_recognizes_one_l_canceled_end_to_end():
     cancel_results = [r for r in results if r["action"] == "canceled"]
     assert len(cancel_results) == 1
     assert cancel_results[0]["ticker"] == "YYY"
-    # _update_trade_status wrote status='cancelled' + skip_reason='canceled'
+    # #500: check_fills now writes a broker:* reason (not the bare status word).
+    # This fake row carries no orb_high, so broker_terminal_reason short-circuits
+    # to the bare prefix (no price diagnosis, no network fetch). The one-L
+    # 'canceled' is still RECOGNIZED (the #183 boundary this test pins) — it just
+    # yields status='cancelled' + a broker:entry_cancelled reason now.
     conn.execute.assert_called_once_with(
         "UPDATE mi_live_trades SET status = $2, skip_reason = $3 WHERE id = $1",
-        502, "cancelled", "canceled",
+        502, "cancelled", "broker:entry_cancelled",
     )
 
 

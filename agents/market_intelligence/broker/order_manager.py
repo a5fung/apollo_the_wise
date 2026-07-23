@@ -19,12 +19,17 @@ from agents.market_intelligence.backtester.filters import validate_orb_entry
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_REENTRY_GAP_THROUGH,
+    BROKER_ENTRY_CANCELLED,
+    BROKER_ENTRY_EXPIRED,
+    BROKER_ENTRY_REJECTED,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_ACCOUNT_FETCH_FAILED,
+    SETUP_CHASE_CAP_EXCEEDED,
     SETUP_PRICE_EXCEEDS_CAP,
     SETUP_SIZE_TOO_SMALL,
     SETUP_STOP_TOO_WIDE,
     SETUP_ZERO_RANGE,
+    humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import (
@@ -57,6 +62,50 @@ def stop_limit_buy_price(stop_price: float) -> float:
     order arrives) — that requires latency reduction, not wider buffer.
     """
     return round(max(stop_price * 1.005, stop_price + 0.02), 2)
+
+
+# #500 (2026-07-23): bound the price-aware fallback's chase. Entry shares are
+# sized on PLANNED risk (orb_high - stop); a fallback limit-buy fill at
+# `limit` carries ACTUAL risk (limit - stop). Cap actual/planned so a runaway
+# gapper can't silently multiply per-trade risk (CADL 2026-04-20 would have
+# been 11.3x planned; ARWR 2026-07-22 was 1.37x → admitted). 1.5x = worst-case
+# 1.5% equity on a full stop-out at the standard 1%-risk sizing. Evidence +
+# operator sign-off: docs/analysis/500_orb_entry_price_aware_proposal_2026-07-23.md
+CHASE_RISK_INFLATION_CAP = float(os.getenv("CHASE_RISK_INFLATION_CAP", "1.5"))
+
+
+async def broker_terminal_reason(event_norm: str, ticker: str, trigger_price) -> str:
+    """#500 reason capture: build a `broker:*` skip_reason for an entry order
+    the BROKER killed (cancel/reject/expire).
+
+    Alpaca sends no textual reason anywhere (order object, WS payload,
+    dashboard — confirmed in the ARWR 2026-07-22 incident), so synthesize the
+    diagnosis Alpaca won't: last trade vs the entry trigger at event time.
+    `last > trigger` at a cancel = the in-the-money-stop class this fix exists
+    for. Degrades to the bare prefix on any data problem — never raises, never
+    blocks the status update.
+    """
+    prefix = {
+        "cancelled": BROKER_ENTRY_CANCELLED,
+        "canceled": BROKER_ENTRY_CANCELLED,
+        "rejected": BROKER_ENTRY_REJECTED,
+        "expired": BROKER_ENTRY_EXPIRED,
+    }.get(event_norm, BROKER_ENTRY_CANCELLED)
+    if trigger_price is None:
+        return prefix  # no trigger to compare against — skip the price fetch
+    try:
+        latest = await alpaca.get_latest_trade(ticker)
+        if latest and latest.get("price") and trigger_price is not None:
+            px = float(latest["price"])
+            trig = float(trigger_price)
+            rel = "above" if px > trig else "at/below"
+            diagnosis = f"last ${px:.2f} {rel} trigger ${trig:.2f} at event"
+            if px > trig:
+                diagnosis += " — in-the-money stop (#500 class)"
+            return f"{prefix}: {diagnosis}"
+    except Exception as e:
+        logger.debug(f"broker-cancel diagnosis failed for {ticker}: {e}")
+    return prefix
 
 
 # ── Order Preparation ────────────────────────────────────────────────────────
@@ -210,33 +259,101 @@ async def submit_entry(trade_id: int) -> dict | None:
     ticker = trade["ticker"]
     account_mode = trade.get("account_mode") or current_account_mode()
     signal_type = trade.get("signal_type") or "unknown"
-    coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-    try:
-        order = await alpaca.place_bracket_order(
+
+    # #500 price-aware entry (2026-07-23, operator-signed): a stop-limit BUY
+    # whose trigger is already below the market is invalid at the broker —
+    # Alpaca kills it instead of filling (ARWR 2026-07-22: pending_new →
+    # cancelled within ~1 min on a +19.6% gapper). Mirror the re-entry branch
+    # (attempt_day1_reentry): when the latest trade is above the ORB high,
+    # place a bounded limit buy instead. Fail-open: any data problem selects
+    # the bracket (pre-#500 behavior, byte-identical).
+    orb_high_f = float(trade["orb_high"])
+    _stop_raw = trade["stop_price"] if trade["stop_price"] is not None else trade["orb_low"]
+    stop_loss_f = float(_stop_raw)
+
+    async def _pick_entry() -> tuple[str, float | None]:
+        """('stop_limit', None) = the normal bracket; ('limit', px) = fallback."""
+        latest = await alpaca.get_latest_trade(ticker)
+        if latest and latest.get("price") and float(latest["price"]) > orb_high_f:
+            return "limit", round(float(latest["price"]) * 1.002, 2)
+        return "stop_limit", None
+
+    def _chase_cap_reason(fallback_limit: float) -> str | None:
+        """Skip-reason when the fallback chases too far; None = within cap."""
+        planned = orb_high_f - stop_loss_f
+        actual = fallback_limit - stop_loss_f
+        if planned > 0 and actual <= CHASE_RISK_INFLATION_CAP * planned:
+            return None
+        return (
+            f"{SETUP_CHASE_CAP_EXCEEDED}: limit ${fallback_limit:.2f} risk "
+            f"${actual:.2f}/sh vs planned ${planned:.2f}/sh "
+            f"(cap {CHASE_RISK_INFLATION_CAP:.2f}x, ORB high ${orb_high_f:.2f})"
+        )
+
+    async def _skip_chase_capped(reason: str, status: str) -> None:
+        await _update_trade_status(trade_id, status, skip_reason=reason)
+        await log_audit_event(
+            "entry_chase_cap_skipped",
+            f"{ticker} [{account_mode}]: {reason}",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "orb_high": orb_high_f, "stop": stop_loss_f,
+            }),
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ No entry for {ticker}: {humanize(reason)}"
+        )
+
+    async def _submit(entry_type: str, fallback_limit: float | None, submit_coid: str) -> dict:
+        if entry_type == "limit":
+            logger.info(
+                f"{ticker}: price above ORB high ${orb_high_f:.2f} — "
+                f"limit-buy fallback at ${fallback_limit:.2f} (#500)"
+            )
+            return await alpaca.place_limit_buy_with_stop(
+                ticker=ticker,
+                qty=trade["entry_shares"],
+                limit_price=fallback_limit,
+                stop_loss_price=trade["stop_price"],
+                account_mode=account_mode,
+                client_order_id=submit_coid,
+            )
+        return await alpaca.place_bracket_order(
             ticker=ticker,
             qty=trade["entry_shares"],
             stop_price=trade["orb_high"],
             limit_price=stop_limit_buy_price(trade["orb_high"]),
             stop_loss_price=trade["stop_price"],
             account_mode=account_mode,
-            client_order_id=coid,
+            client_order_id=submit_coid,
         )
+
+    entry_type, fallback_limit = await _pick_entry()
+    if entry_type == "limit":
+        _cap_reason = _chase_cap_reason(fallback_limit)
+        if _cap_reason:
+            await _skip_chase_capped(_cap_reason, "cancelled")
+            return None
+
+    coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+    try:
+        order = await _submit(entry_type, fallback_limit, coid)
     except Exception as e:
         # 1 retry after 5s for transient errors
         logger.warning(f"Entry order failed for {ticker}, retrying: {e}")
         await asyncio.sleep(5)
         try:
+            # Re-decide the order type: 5s is long at 9:31 — price may have
+            # crossed the ORB high either way since the first attempt (#500).
+            entry_type, fallback_limit = await _pick_entry()
+            if entry_type == "limit":
+                _cap_reason = _chase_cap_reason(fallback_limit)
+                if _cap_reason:
+                    await _skip_chase_capped(_cap_reason, "order_failed")
+                    return None
             # New COID for retry so client_order_id stays unique
             coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-            order = await alpaca.place_bracket_order(
-                ticker=ticker,
-                qty=trade["entry_shares"],
-                stop_price=trade["orb_high"],
-                limit_price=stop_limit_buy_price(trade["orb_high"]),
-                stop_loss_price=trade["stop_price"],
-                account_mode=account_mode,
-                client_order_id=coid,
-            )
+            order = await _submit(entry_type, fallback_limit, coid)
         except Exception as e2:
             logger.error(f"Entry order failed after retry for {ticker}: {e2}")
             await _update_trade_status(
@@ -275,19 +392,24 @@ async def submit_entry(trade_id: int) -> dict | None:
             WHERE id = $1
         """, trade_id, entry_order_id, stop_order_id)
 
+        # #500: record the ACTUAL order placed. A limit fallback has no
+        # trigger price and its limit is the latest-based fallback limit —
+        # never write the bracket's legacy columns for it.
         await conn.execute("""
             INSERT INTO mi_live_orders
                 (trade_id, alpaca_order_id, ticker, side, order_type, qty,
                  stop_price, limit_price, status, raw_response)
-            VALUES ($1, $2, $3, 'buy', 'stop_limit', $4, $5, $6, $7, $8::jsonb)
+            VALUES ($1, $2, $3, 'buy', $9, $4, $5, $6, $7, $8::jsonb)
             ON CONFLICT (alpaca_order_id) DO NOTHING
         """,
             trade_id, entry_order_id, ticker,
             float(trade["entry_shares"]),
-            float(trade["orb_high"]),
-            stop_limit_buy_price(float(trade["orb_high"])),
+            None if entry_type == "limit" else float(trade["orb_high"]),
+            fallback_limit if entry_type == "limit"
+            else stop_limit_buy_price(float(trade["orb_high"])),
             order["status"],
             json.dumps(order),
+            entry_type,
         )
 
         # OTO bracket child stop-loss leg — tag with purpose='stop_loss' so
@@ -320,8 +442,8 @@ async def check_fills() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
-            SELECT id, ticker, entry_order_id, entry_shares, orb_low, stop_price,
-                   entry_attempt, account_mode
+            SELECT id, ticker, entry_order_id, entry_shares, orb_low, orb_high,
+                   stop_price, entry_attempt, account_mode
             FROM mi_live_trades
             WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
         """)
@@ -410,8 +532,13 @@ async def check_fills() -> list[dict]:
             results.append({"ticker": ticker, "action": "filled", "price": filled_price})
 
         elif status in _CANCEL_LIKE_ORDER_STATUSES:
-            await _update_trade_status(trade["id"], "cancelled", skip_reason=status)
-            logger.info(f"Order {status}: {ticker}")
+            # #500 reason capture (polling backup path): never write the bare
+            # broker status — synthesize the price-vs-trigger diagnosis.
+            skip_reason = await broker_terminal_reason(
+                status, ticker, trade.get("orb_high"),
+            )
+            await _update_trade_status(trade["id"], "cancelled", skip_reason=skip_reason)
+            logger.info(f"Order {status}: {ticker} ({skip_reason})")
             results.append({"ticker": ticker, "action": status})
 
     # Check Day 1 stop-outs for re-entry (max 2 attempts per Qullamaggie)

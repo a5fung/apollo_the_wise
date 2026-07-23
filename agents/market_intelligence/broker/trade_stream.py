@@ -30,6 +30,7 @@ from alpaca.trading.stream import TradingStream
 
 from agents.market_intelligence.audit_events import ENTRY_ORDER_REJECTED
 from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.broker.skip_reasons import humanize
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.db import get_pool, log_audit_event
@@ -1017,6 +1018,31 @@ async def _process_stop_fill(
 # ── Cancel/Reject Handler ──────────────────────────────────────────────────
 
 
+def _terminal_order_snapshot(order) -> dict:
+    """#500: the broker-side evidence for a killed order — Alpaca's lifecycle
+    timestamps + final order fields. Alpaca provides no textual reason, so
+    these timestamps (canceled_at / failed_at / expired_at) plus the
+    synthesized price diagnosis are the whole record. Defensive getattr
+    everywhere — WS payload shapes vary; this must never raise."""
+    def _iso(x):
+        return x.isoformat() if x is not None and hasattr(x, "isoformat") else None
+
+    def _s(x):
+        return None if x is None else str(x)
+
+    return {
+        "status": _s(getattr(order, "status", None)),
+        "canceled_at": _iso(getattr(order, "canceled_at", None)),
+        "failed_at": _iso(getattr(order, "failed_at", None)),
+        "expired_at": _iso(getattr(order, "expired_at", None)),
+        "updated_at": _iso(getattr(order, "updated_at", None)),
+        "filled_qty": _s(getattr(order, "filled_qty", None)),
+        "order_type": _s(getattr(order, "type", None) or getattr(order, "order_type", None)),
+        "limit_price": _s(getattr(order, "limit_price", None)),
+        "stop_price": _s(getattr(order, "stop_price", None)),
+    }
+
+
 async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     """Handle order cancellation, expiry, or rejection."""
     order = data.order
@@ -1038,11 +1064,33 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         """, order_id, account_mode)
 
     if entry_trade:
+        # #500 reason capture (2026-07-23): Alpaca sends NO textual reason on a
+        # cancel/reject, so never write the bare event word (the ARWR 7/22
+        # "entry cancelled, no reason"). Synthesize last-vs-trigger diagnosis
+        # (broker:* skip_reason) + persist the terminal order snapshot.
+        from agents.market_intelligence.broker.order_manager import broker_terminal_reason
+        skip_reason = await broker_terminal_reason(
+            event_norm, symbol, entry_trade["entry_price"],
+        )
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE mi_live_trades SET status = 'cancelled', skip_reason = $2 WHERE id = $1",
-                entry_trade["id"], event_norm,
+                entry_trade["id"], skip_reason,
             )
+            try:
+                await conn.execute("""
+                    UPDATE mi_live_orders SET
+                        status = $2,
+                        cancelled_at = COALESCE(cancelled_at, NOW()),
+                        raw_response = COALESCE(raw_response, '{}'::jsonb)
+                            || jsonb_build_object('terminal', $3::jsonb)
+                    WHERE alpaca_order_id = $1
+                """, order_id, event_norm, json.dumps(_terminal_order_snapshot(order)))
+            except Exception as snap_err:
+                # Observability only — never block the status update / Telegram.
+                logger.warning(
+                    f"terminal-snapshot persist failed for {symbol} {order_id[:8]}: {snap_err}"
+                )
         # #475 telemetry (observability only — the status update above is
         # unchanged): entry orders dying at the BROKER. e.g. AEHR 2026-07-15,
         # an exchange-level LULD rejection on a +29.5% gapper. Routine 10:00 ET
@@ -1062,6 +1110,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     "account_mode": account_mode,
                     "event_norm": event_norm,
                     "order_id": order_id,
+                    "skip_reason": skip_reason,  # #500 — carries the diagnosis
                     "gap_pct": float(entry_trade["gap_pct"]) if entry_trade["gap_pct"] is not None else None,
                     "ep_score": float(entry_trade["ep_score"]) if entry_trade["ep_score"] is not None else None,
                     "entry_price": float(entry_trade["entry_price"]) if entry_trade["entry_price"] is not None else None,
@@ -1079,9 +1128,12 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         icon = "🚫" if event_norm == "rejected" else "🗑"
         await send_telegram_message(
             f"{mode_prefix(account_mode)}{icon} *Entry {event_norm.upper()}:* {symbol}\n"
-            f"Order {order_id[:8]} — no position opened."
+            f"Order {order_id[:8]} — no position opened.\n"
+            f"{humanize(skip_reason)}"
         )
-        logger.info(f"WS [{account_mode}]: entry order {event_norm}: {symbol}")
+        logger.info(
+            f"WS [{account_mode}]: entry order {event_norm}: {symbol} ({skip_reason})"
+        )
         return
 
     # 2. Stop-loss leg cancellation — signals open position is now unprotected

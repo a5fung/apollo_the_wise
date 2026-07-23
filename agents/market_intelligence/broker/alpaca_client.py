@@ -777,7 +777,16 @@ async def place_limit_buy_with_stop(
 ) -> dict:
     """
     Place a limit buy with attached stop-loss.
-    Used for re-entry when price has already passed ORB high (stop-limit would never trigger).
+    Used for re-entry AND the #500 initial-entry fallback when price has
+    already passed ORB high (a stop-limit's trigger would be in-the-money —
+    Alpaca cancels those instead of filling).
+
+    #500 hardening (2026-07-23): explicit OrderClass.OTO + StopLossRequest —
+    alpaca-py silently drops a bare `stop_loss` kwarg without the order_class
+    (the documented place_bracket_order gotcha; this path previously passed a
+    plain dict and no order_class, risking a NAKED limit buy). Same
+    naked-order guard as place_bracket_order: no stop leg back from Alpaca →
+    cancel the entry and raise so the caller's retry/failure path fires.
     """
     try:
         client = get_trading_client(account_mode)
@@ -788,11 +797,25 @@ async def place_limit_buy_with_stop(
             type=OrderType.LIMIT,
             time_in_force=TimeInForce.DAY,
             limit_price=round(limit_price, 2),
-            stop_loss={"stop_price": round(stop_loss_price, 2)},
+            order_class=OrderClass.OTO,
+            stop_loss=StopLossRequest(stop_price=round(stop_loss_price, 2)),
         )
         if client_order_id:
             req_kwargs["client_order_id"] = client_order_id
         order = client.submit_order(LimitOrderRequest(**req_kwargs))
+        # Safety: Alpaca must accept the stop_loss leg, otherwise the position
+        # would be unprotected on fill. Verify before trusting this order.
+        if not extract_stop_leg_id(order):
+            try:
+                client.cancel_order_by_id(order.id)
+            except Exception as cancel_err:
+                logger.error(
+                    f"Failed to cancel naked limit-buy {ticker} {order.id}: {cancel_err}"
+                )
+            raise RuntimeError(
+                f"Limit-buy {order.id} for {ticker} returned no stop_loss leg — "
+                f"Alpaca rejected the stop. Entry cancelled."
+            )
         logger.info(
             f"Limit buy placed: {ticker} qty={qty} "
             f"limit={limit_price:.2f} SL={stop_loss_price:.2f} "

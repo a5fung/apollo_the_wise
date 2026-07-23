@@ -27,7 +27,7 @@ import json
 from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -279,6 +279,12 @@ async def _run_entry_reject(monkeypatch, event: str = "rejected",
     monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
     audit = audit or AsyncMock()
     monkeypatch.setattr(ts, "log_audit_event", audit)
+    # #500: the reason-capture diagnosis fetches the latest trade — stub it so
+    # the test never touches the network (bare broker:* prefix path).
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(
+        om, "alpaca", MagicMock(get_latest_trade=AsyncMock(return_value=None)),
+    )
 
     sent: list[str] = []
 

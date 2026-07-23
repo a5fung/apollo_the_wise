@@ -27,6 +27,7 @@ SETUP_SIZE_TOO_SMALL       = "setup:size_too_small"
 SETUP_PRICE_EXCEEDS_CAP    = "setup:price_exceeds_cap"
 SETUP_ACCOUNT_FETCH_FAILED = "setup:account_fetch_failed"
 SETUP_FADED_FROM_ORB       = "setup:faded_from_orb"
+SETUP_CHASE_CAP_EXCEEDED   = "setup:chase_cap_exceeded"  # #500 bounded-chase gate
 
 # ── block: safeguards (circuit breakers, position limits, strategy gate) ──
 BLOCK_MAX_POSITIONS              = "block:max_positions"
@@ -59,8 +60,18 @@ WINDOW_OUT_OF_ORB   = "window:out_of_orb"
 WINDOW_DUPLICATE    = "window:duplicate"
 WINDOW_PROPOSAL_EXPIRED = "window:proposal_expired"  # #436 — unconfirmed staged proposal outlived its ORB day
 
+# ── broker: the BROKER killed an accepted entry order (#500 reason capture) ──
+# Alpaca sends NO textual reason on cancel/reject/expire, so these reasons
+# carry a synthesized price-vs-trigger diagnosis in the detail suffix (see
+# order_manager.broker_terminal_reason). Replaces the pre-#500 bare
+# `skip_reason="cancelled"` that gave the operator "entry cancelled, no reason"
+# (ARWR 2026-07-22).
+BROKER_ENTRY_CANCELLED = "broker:entry_cancelled"
+BROKER_ENTRY_REJECTED  = "broker:entry_rejected"
+BROKER_ENTRY_EXPIRED   = "broker:entry_expired"
+
 # Convenience: valid category prefixes (for sanity-check asserts)
-VALID_CATEGORIES = frozenset({"filter", "setup", "block", "infra", "window"})
+VALID_CATEGORIES = frozenset({"filter", "setup", "block", "infra", "window", "broker"})
 
 
 # ── Human-readable labels for Telegram ──────────────────────────────────────
@@ -79,6 +90,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_PRICE_EXCEEDS_CAP:    "Price exceeds per-share cap",
     SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
+    SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
     BLOCK_CIRCUIT_BREAKER:         "5-loss circuit breaker tripped",
@@ -100,6 +112,9 @@ _HUMAN_LABELS: dict[str, str] = {
     WINDOW_OUT_OF_ORB:          "Arrived after ORB window closed",
     WINDOW_DUPLICATE:           "Duplicate — trade already exists",
     WINDOW_PROPOSAL_EXPIRED:    "Staged proposal expired — ORB day passed unconfirmed",
+    BROKER_ENTRY_CANCELLED:     "Broker cancelled the entry order",
+    BROKER_ENTRY_REJECTED:      "Broker rejected the entry order",
+    BROKER_ENTRY_EXPIRED:       "Entry order expired unfilled",
 }
 
 
