@@ -3851,4 +3851,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # conservative BY DESIGN (the latency guard). History lives in the
     # catalyst_q_rev_yoy_shadow_recovered audit rows (last emitted 2026-07-02).
 
+    # ── #498 TQS Stage 1 — tape-quality SHADOW annotation ─────────────────────────────────
+    # (docs/design/tape_quality_score.md §4 Stage 1, operator-AUTHORIZED 2026-07-21 —
+    # TELEMETRY-ONLY.) Placed as the LAST post-scan block, architecturally DOWNSTREAM of
+    # every decision path: the floor score/tier (candidate loop), the judge override, the
+    # composite authority, and _emit_grade_decision (post-loop block above) have ALL fully
+    # settled before this runs — TQS cannot reach the grade, the entry, or sizing by
+    # construction (THE LINE; the Stage-4 gate/demote decision is operator-only, never here).
+    # It reads mi_daily_closes (strictly PRE-alert bars — no lookahead) and writes ONLY the
+    # mi_ep_alerts tape_* columns + the display-only r['tape_quality'] key (rendered by
+    # send_ep_alert; nothing in grading/entry reads it). UNIVERSAL — every scored alert row,
+    # all tiers (wide-and-loose is bad across ALL EP charts, not just #331's fades cohort).
+    # Bounded + fail-open: pure DB reads + arithmetic (no LLM) under a hard wait_for ceiling,
+    # so a DB stall can't delay the latency-sensitive HIGH alerts the caller sends next; any
+    # failure/timeout leaves tape columns NULL and the alert renders without a TAPE line.
+    try:
+        from agents.market_intelligence.tape_quality import annotate_ep_alerts_tape_quality
+        await asyncio.wait_for(annotate_ep_alerts_tape_quality(results), timeout=20)
+    except Exception as _tqe:
+        logger.warning(f"tape-quality annotation failed (non-critical): {_tqe}")
+
     return results

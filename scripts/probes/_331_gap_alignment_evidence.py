@@ -34,8 +34,13 @@ _COHORT_SQL = """
     LEFT JOIN mi_market_regime r ON r.regime_date = s.alert_date
     ORDER BY s.alert_date, s.ticker
 """
+# low_price/volume added for the #498 TQS ex-junk cut (tape_quality needs full OHLCV). The
+# high_price IS NOT NULL filter stays — classify()'s max() over highs requires it. (Tiny window-
+# semantics note: the step0 TQS probe fetched WITHOUT this filter, so a NULL-high row inside a
+# name's last-20 slots shifts the window by one bar here — negligible for an offline cut.)
 _BARS_SQL = """
-    SELECT ticker, trade_date, open_price, high_price, close FROM mi_daily_closes
+    SELECT ticker, trade_date, open_price, high_price, low_price, close, volume
+    FROM mi_daily_closes
     WHERE ticker = ANY($1::text[]) AND high_price IS NOT NULL ORDER BY ticker, trade_date
 """
 
@@ -115,10 +120,15 @@ async def main():
     for t in bars_by:
         bars_by[t].sort(key=lambda b: b["trade_date"])
 
+    # #498 TQS Stage-1 stratifier — the PRODUCTION module (agents.market_intelligence.
+    # tape_quality) is the SSoT now; _tape_quality_step0.py validated it (6/6 labelled).
+    from agents.market_intelligence.tape_quality import tape_quality
+
     rows = []
     for row in cohort:
         det = classify(bars_by.get(row["ticker"], []), row["alert_date"])
-        rows.append({**row, **det})
+        tape_tier = tape_quality(bars_by.get(row["ticker"], []), row["alert_date"])["tier"]
+        rows.append({**row, **det, "tape_tier": tape_tier})
     comp = [r for r in rows if r.get("marker") in _MARKERS]
     print(f"#331 EVIDENCE — cohort N={len(cohort)}, computable {len(comp)}\n")
 
@@ -131,6 +141,22 @@ async def main():
         band = [r for r in comp if r["regime"] == reg]
         if band:
             _xtab(band, f"regime={reg}", "fwd_5d_pct")
+
+    # ── #498 TQS ex-junk cut (Stage 1: tape_clean+watch vs tape_junk) ──────────────────────
+    # The design's §3 reframe check: junk-filtering shouldn't kill the fades edge, only the
+    # crash tail — "fades + ex-junk" is the interesting #331-v2 cell. tape 'unknown' rows are
+    # excluded from BOTH sides (no tape read ≠ clean; mirrors the step0 probe's computable-only
+    # tiering).
+    print("== #498 TQS ex-junk cut (tape_clean+watch vs tape_junk) ==")
+    tier_counts = {t: sum(1 for r in comp if r["tape_tier"] == t)
+                   for t in ("tape_clean", "tape_watch", "tape_junk", "unknown")}
+    print(f"  tape tiers over computable rows: {tier_counts}\n")
+    exjunk = [r for r in comp if r["tape_tier"] in ("tape_clean", "tape_watch")]
+    junk = [r for r in comp if r["tape_tier"] == "tape_junk"]
+    for key in ("fwd_5d_pct", "fwd_10d_pct"):
+        _xtab(exjunk, f"ex-junk (clean+watch), {key}", key)
+        if junk:
+            _xtab(junk, f"junk-only, {key}", key)
 
     print("== EXTREME CASES for visual review ==")
     for m in _MARKERS:

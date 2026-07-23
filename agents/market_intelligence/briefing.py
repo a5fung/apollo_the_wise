@@ -2617,6 +2617,25 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     except Exception as _e:
         logger.debug(f"Rubric snapshot in EP alert failed (non-critical): {_e}")
 
+    # ── #498 TQS Stage 1 — TAPE line + 20-day NTR sparkline (TELEMETRY display only;
+    # docs/design/tape_quality_score.md). Reads ONLY the display-only ep['tape_quality']
+    # annotation the post-scan shadow attached in run_ep_scan (no recompute, no DB read here) —
+    # absent key (annotator failed / older row) → no line. `unknown` renders "unseasoned",
+    # never "clean" (guardrail A). Guarded like the rubric/theme sections above: any failure
+    # renders the alert WITHOUT the tape line — never breaks the alert.
+    try:
+        from agents.market_intelligence.tape_quality import format_tape_line
+        _tqs = ep.get("tape_quality")
+        if _tqs:
+            _tape_line = format_tape_line(_tqs)
+            if _tape_line:
+                text += "\n" + _tape_line
+            _spark = _tqs.get("sparkline")
+            if _spark:
+                text += f"\n`{_spark}`"
+    except Exception as _tqe:
+        logger.debug(f"Tape-quality line in EP alert failed (non-critical): {_tqe}")
+
     await send_telegram_message(text, chat_id)
 
     # Post to Twitter/X

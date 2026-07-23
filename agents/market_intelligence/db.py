@@ -2668,6 +2668,19 @@ async def _ensure_ep_alert_columns(conn) -> None:
             "grade_engine_authority TEXT",
             "rubric_version TEXT",
             "setup_class TEXT",
+            # #498 TQS Stage 1 (docs/design/tape_quality_score.md): tape-quality SHADOW
+            # annotation — TELEMETRY-ONLY, written post-grade by
+            # tape_quality.annotate_ep_alerts_tape_quality via update_ep_alert_tape_quality
+            # below; NEVER read by any grading/sizing/entry/safeguard path (THE LINE).
+            # tape_tier ∈ tape_clean|tape_watch|tape_junk|'unknown' (<15 live bars — renders
+            # "unseasoned", never junk); NULL = annotator never ran / failed (distinct from
+            # 'unknown' = ran, insufficient bars).
+            "tape_tier TEXT",
+            "tape_spike_ct INT",
+            "tape_held INT",
+            "tape_rev INT",
+            "tape_bmr2 FLOAT",
+            "tape_ntr_med FLOAT",
         )))
     _EP_ALERT_COLUMNS_ENSURED = True
 
@@ -2690,6 +2703,44 @@ async def update_ep_alert_setup_class(ticker: str, alert_date: "date", setup_cla
             "UPDATE mi_ep_alerts SET setup_class = $3 WHERE ticker = $1 AND alert_date = $2",
             ticker, alert_date, setup_class,
         )
+
+
+# #498 TQS Stage 1 — the ONLY statement that writes tape_* columns. Module-level constant so
+# tests/test_tape_quality.py can pin that the SET clause touches tape_* columns EXCLUSIVELY
+# (the telemetry-only property, mechanically asserted — mirrors the
+# EP_ALERT_JUDGE_RESULT_UPDATE_SQL pinned-SQL convention above).
+EP_ALERT_TAPE_UPDATE_SQL = """
+    UPDATE mi_ep_alerts SET
+        tape_tier = $3,
+        tape_spike_ct = $4,
+        tape_held = $5,
+        tape_rev = $6,
+        tape_bmr2 = $7,
+        tape_ntr_med = $8
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
+async def update_ep_alert_tape_quality(
+    conn: Any, ticker: str, alert_date: "date", tqs: dict[str, Any],
+) -> None:
+    """#498 TQS Stage 1 — persist the tape-quality SHADOW annotation onto the alert row.
+
+    TELEMETRY-ONLY (THE LINE): the SET clause touches ONLY tape_* columns — never
+    score_tier / ep_score / judge_* / any grading, sizing, or safeguard column. A bug here
+    can only leave the tape read wrong or NULL, never move a grade or a trade (mirrors
+    update_ep_alert_setup_class's P0-visibility contract exactly). Takes a live conn — the
+    caller (tape_quality.annotate_ep_alerts_tape_quality) annotates a whole scan's results
+    inside one acquire (the get_9m_alert_same_day conn-taking pattern). The row was already
+    INSERTed earlier in the same scan by insert_ep_alert; columns guaranteed by
+    _ensure_ep_alert_columns. tier 'unknown' (<15 live bars) persists with NULL components —
+    deliberately distinct from an all-NULL row (annotator never ran/failed)."""
+    await conn.execute(
+        EP_ALERT_TAPE_UPDATE_SQL,
+        ticker, alert_date, tqs.get("tier"),
+        tqs.get("spike_ct"), tqs.get("held"), tqs.get("rev"),
+        tqs.get("bmr2"), tqs.get("ntr_med"),
+    )
 
 
 async def get_9m_alert_same_day(conn: Any, ticker: str, alert_date: Any) -> bool:
@@ -8240,6 +8291,30 @@ async def get_daily_bars_asof(
           AND trade_date < $2
           AND trade_date >= $2::date - $3::int
           AND high_price IS NOT NULL AND low_price IS NOT NULL
+        ORDER BY trade_date ASC
+    """, ticker, alert_date, days)
+    return [dict(r) for r in rows]
+
+
+async def get_tape_bars_asof(
+    conn: Any, ticker: str, alert_date: Any, days: int = 380,
+) -> list[dict]:
+    """OHLCV bars for the #498 tape-quality (TQS) window — STRICTLY PRIOR to alert_date
+    (trade_date < alert_date, no lookahead), oldest first. READ-ONLY telemetry accessor.
+
+    Deliberately NOT `get_daily_bars_asof` above: that accessor SQL-filters NULL-high/low rows,
+    which would silently SLIDE the last-20-session window vs the VALIDATED probe
+    (scripts/probes/_tape_quality_step0.py, 6/6 on the operator-labelled cases) — the probe's
+    cohort numbers were computed with dead/NULL rows still occupying window slots;
+    `tape_quality._live()` owns liveness filtering INSIDE the window, exactly as validated.
+    `days`=380 mirrors get_daily_bars_asof's budget (~260 trading rows ≫ the 20-session
+    window); sparse/halted names simply come up short → tier 'unknown' ("unseasoned")."""
+    rows = await conn.fetch("""
+        SELECT trade_date, open_price, high_price, low_price, close, volume
+        FROM mi_daily_closes
+        WHERE ticker = $1
+          AND trade_date < $2
+          AND trade_date >= $2::date - $3::int
         ORDER BY trade_date ASC
     """, ticker, alert_date, days)
     return [dict(r) for r in rows]
