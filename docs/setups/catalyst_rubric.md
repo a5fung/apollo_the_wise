@@ -1,12 +1,14 @@
 # Catalyst Rubric — Multi-axis fundamentals grader
 
-**Phase**: PROVISIONAL — telemetry-only, not yet a production filter.
+**Phase**: LIVE — production gate. `CATALYST_RUBRIC_GATE_ENABLED` defaults
+`true` (`constants.py`); the gate downgrades real grades
+(`catalyst_quality → "routine"`, feeds `score_tier`) in `ep_detector.py`
+(~line 2858). Shipped 2026-05-19 (Phase 5); operator-signed fixes
+2026-06-28 (#320/#321, see change log).
 **Origin**: ADR 0003 EP Selectivity Phase 1 (2026-05-16), user mandate
 2026-05-14 for "rare EPs, not 100+/quarter."
 **Design doc**: `analysis/2026-05-16/catalyst_rubric_design.md`
-**Code**: `scripts/score_catalyst_rubric.py` + `scripts/fetch_ep_fundamentals.py`
-**Future production wiring**: Phase 3 telemetry → Phase 5 calibration →
-Phase 6 gating ship per `~/.claude/plans/i-want-to-plan-groovy-horizon.md`.
+**Code**: `agents/market_intelligence/catalyst_rubric.py` + `scripts/fetch_ep_fundamentals.py`
 
 ## Definition
 
@@ -224,6 +226,17 @@ trade reactions.
 (to be filed when rubric ships to production gating in Phase 6).
 
 ## Change log (newest first)
+
+### 2026-07-24 — FL-5 reconcile: doc synced to code
+
+Header was stale: read "PROVISIONAL — telemetry-only, not yet a production
+filter" long after the Phase 5 ship (2026-05-19). `CATALYST_RUBRIC_GATE_ENABLED`
+defaults `true` and the gate downgrades `catalyst_quality` to `routine` in
+`ep_detector.py` (~line 2858), which feeds `score_tier` — this is a live
+production filter, not telemetry-only. Also corrected the `Code:` pointer
+(`scripts/score_catalyst_rubric.py` → `agents/market_intelligence/catalyst_rubric.py`,
+which holds the live axis-scoring/`LABEL_BANDS`/composite logic that
+`catalyst_rubric_runtime.py` calls at the gate call site). No code changed.
 
 ### 2026-07-13 — #416: M&A-filter binding-context guards A/B/C (operator-signed 7/12, rulings-pack R6)
 

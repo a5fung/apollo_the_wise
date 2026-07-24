@@ -24,13 +24,20 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 
 ### Filters (any failure → skip)
 
-1. **Pre-market volume**: relative gate — `pm_rvol ≥ MIN_PM_RVOL` (1.0× session-anchored RVOL@T)
-2. **Pre-market shares absolute floor** (with carve-out): `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` — relative anomaly trumps absolute count for low-float names
+**Pre-grade** (candidate scan, before catalyst classification runs):
+1. **Gap floor**: `gap_pct ≥ MIN_GAP_PCT` (10.0% hard floor, env `EP_MIN_GAP_PCT`) — applied building the candidate list itself (ep_detector.py ~1567)
+2. **Pre-market volume**: relative gate — `pm_rvol ≥ MIN_PM_RVOL` (1.0× session-anchored RVOL@T)
 3. **EP cooldown**: skip if alerted within last 60 days, UNLESS `gap_pct ≥ 15% AND is_earnings_day` (fresh earnings catalyst bypasses cooldown)
 4. **Extension cap**: `(prev_close − min5) / min5 ≥ 50%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=50.0`, ep_detector.py:1858-1866). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
 5. **Already scored today**: dedup within scan day
-6. **M&A filter** (`ma_filter.is_likely_ma`): catalyst='mna' OR keyword scan OR Polygon news headlines — skip
-7. **Session RVOL@T** (post-9:30): same primitive as pre-market, but session-anchored. Threshold `MIN_SESSION_RVOL = 1.0`
+6. **Session RVOL@T** (post-9:30): same primitive as pre-market, but session-anchored. Threshold `MIN_SESSION_RVOL = 1.0`
+
+**Post-grade** (`_post_grade_filters`, ep_detector.py ~1260 — run AFTER catalyst
+classification so they can condition on `catalyst_quality`; moved here #405,
+2026-07-03, "so we can use catalyst_quality in the carve-out condition"):
+7. **M&A filter** (`ma_filter.is_likely_ma`): catalyst='mna' OR keyword scan OR Polygon news headlines — skip
+8. **Routine + low gap**: `catalyst_quality == "routine" AND gap_pct < 12%` → skip
+9. **Pre-market shares absolute floor** (with carve-out): `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` OR (R6 carve-out) `gap_pct ≥ 10% AND catalyst_quality == "strong"` — relative anomaly / high-conviction trumps absolute count for low-float names
 
 ### Catalyst grading (Claude + Perplexity + SEC EDGAR)
 
@@ -50,17 +57,25 @@ LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or No
 
 ### Score computation (`_score_ep`)
 
-Multi-factor: gap_pct + pm_rvol + catalyst_quality multiplier + regime + RS + prior_momentum (a 3-month extension PENALTY: −25 at ≥+50% / −15 at ≥+30%, Qullamaggie-sourced — not a positive factor; corrected 2026-07-18 from the imprecise "extension"). Catalyst weights:
-- `game_changer`: 1.0×
-- `strong`: 0.7×
-- `routine`: 0.3×
+Multi-factor: gap_pct + pm_rvol + catalyst_quality component + regime + RS + prior_momentum (a 3-month extension PENALTY: −25 at ≥+50% / −15 at ≥+30%, Qullamaggie-sourced — not a positive factor; corrected 2026-07-18 from the imprecise "extension"). Catalyst is an ADDITIVE component (not a multiplier) of the `breakdown` (ep_detector.py ~1140-1146):
+- `game_changer`: +25
+- `strong`: +15
+- `routine` (or anything else): +0
 
 `_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `rel_volume` (RVOL / projected open-intensity), `catalyst` (quality tier), `float` (low-float bonus), `neglect` (52w-high distance), `vol_conviction` (pre-market volume percentile), `prior_momentum` (the extension PENALTY above), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
 
 Score thresholds:
 - `< 50` → skip (below MODERATE)
 - `50 ≤ score < ep_threshold` → MODERATE (briefing only)
-- `≥ ep_threshold` (regime-dependent, typically 65-75) → HIGH (immediate Telegram + ORB submission window)
+- `≥ ep_threshold` (regime-dependent, `regime.py`: Bull=65, Choppy=70, Correcting=75, Crisis=80 — range 65-80) → HIGH (immediate Telegram + ORB submission window)
+
+**Holistic Grade Judge overwrite**: when `holistic_judge_enabled` is ON (toggle,
+ADR 0011/W2c — SHIPPED DORMANT, see 2026-06-08 change-log entry below), the
+judge OVERWRITES the authoritative `score_tier` computed above — the field the
+caller/ORB job actually reads. `baseline_floor_tier` is preserved as the
+counterfactual and `grade_engine_authority` stamps which engine (`judge` vs
+`fallback`) decided. Toggle OFF (current default) → floor score_tier stands,
+byte-identical to the thresholds above.
 
 ### Earnings-day MODERATE → HIGH override (legacy override, kept)
 
@@ -70,7 +85,7 @@ If `tier == MODERATE` AND `gap_pct ≥ 10%` AND `is_earnings_day` → promote to
 
 ### Submission window
 
-HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup cancels any unfilled `order_placed`.
+HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute < 45` — combined with the market-open gate (`now_et.hour > 9 OR (now_et.hour == 9 AND now_et.minute >= 31)`), the effective window is **9:31–9:44** ET (`scheduler.py` ~891-897), not the full 9:00 hour. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup cancels any unfilled `order_placed`.
 
 ## Known limitations / open questions
 
@@ -83,6 +98,23 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-07-24 — FL-5 reconcile: doc synced to code
+
+Six stale items corrected (no code change): (a) catalyst weights were
+documented as multipliers (1.0×/0.7×/0.3×) — code is an ADDITIVE component
+(`game_changer`→+25, `strong`→+15, `routine`→+0, ep_detector.py ~1140); (b)
+`ep_threshold` range was "65-75" — `regime.py` runs Bull=65/Choppy=70/
+Correcting=75/**Crisis=80**, so the true range is 65-80; (c) ORB submission
+window text implied the full 9:00 hour — the market-open gate makes the
+effective window **9:31-9:44** ET; (d) `MIN_GAP_PCT=10%` hard floor added to
+the filter list (was undocumented); (e) the filter list now separates
+**pre-grade** filters from the **post-grade** ones (M&A filter, routine+low-gap
+skip, pm-shares floor carve-out — all in `_post_grade_filters`, moved
+post-classification by #405 2026-07-03 specifically so they can read
+`catalyst_quality`) instead of presenting all seven as one undifferentiated
+pre-grade cascade; (f) added a note that the Holistic Grade Judge (toggle,
+currently OFF) overwrites `score_tier` when enabled.
 
 ### 2026-07-23 — #500 Price-aware initial ORB entry: bounded limit-buy fallback when price is already above the ORB high (+ broker-cancel reason capture) [operator-SIGNED]
 

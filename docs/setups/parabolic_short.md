@@ -2,7 +2,7 @@
 
 **Phase**: Shadow (telemetry-only). Promotion path: `telemetry_review` per `strategies/registry.py`.
 **Origin**: Stamatoudis / Quallamaggie methodology — short the climax of a multi-week vertical run, expecting violent mean-reversion.
-**Code**: `agents/market_intelligence/parabolic_detector.py`, scheduler 17:25 ET cron `parabolic_scan`.
+**Code**: `agents/market_intelligence/parabolic_detector.py`, scheduler 17:15 ET cron `parabolic_scan`.
 
 ## Definition
 
@@ -13,11 +13,29 @@ A stock that has gone vertically up over weeks (parabolic) eventually exhausts a
 ## Universe / eligibility
 
 - **Liquidity**: dollar volume ≥ $10M today (so the position can be entered + borrowed)
+- **Security type**: CS/ADRC only, or unknown (rejects ETFs/funds via `mi_security_types`) — SQL pre-filter, `db.get_parabolic_universe`
+- **Price**: close ≥ $5
 - **Cap-tier prior-move thresholds** (Qullamaggie):
   - Large cap (≥ $10B): prior_move ≥ 50%
   - Mid cap ($2-10B): prior_move ≥ 100%
   - Small cap (< $2B): prior_move ≥ 200%
-- Universe sourced from daily history; per-ticker compute serially.
+- **History**: ≥ 60 prior sessions (need history for SMA-50 + base anchor walk)
+- Universe sourced from daily history via a permissive SQL pre-filter (false positives are fine —
+  they hit the per-ticker compute and resolve to `unqualified`); per-ticker compute runs under
+  `asyncio.Semaphore(10)` bounded concurrency (`_SCAN_CONCURRENCY`, parabolic_detector.py:37),
+  not serial.
+
+### HARD-GATE filter: M&A / one-shot-news exclusion (Perplexity)
+
+Climax/anticipation candidates (not `watch` — no Telegram alert, no API spend justified) are run
+through `_apply_exclusions` → `_news_check_for_exclusion` (parabolic_detector.py ~509): a Perplexity
+query asks whether the move was driven by a buyout/acquisition/merger/take-private/FDA
+approval/lawsuit ruling/earnings surprise in the last 30 days. A positive (`is_event_driven=true`)
+verdict excludes the candidate from Telegram/alert (row persists with `excluded_reason` /
+`excluded_source` / `excluded_detail` in `mi_parabolic_candidates`, so filtered names are still
+reviewable). Verdicts cache in `mi_parabolic_exclusions` with a TTL so a repeat scan short-circuits
+without another Perplexity call. Fail-open: any Perplexity error or unparseable verdict → do NOT
+exclude (noise reducer, not a safety gate).
 
 ## Detection criteria (current)
 
@@ -33,7 +51,7 @@ The compute function (`compute_parabolic_metrics`, `parabolic_detector.py:198`) 
    - Daily rates: `(1 + roc_n) ^ (1/n) − 1`
    - Threshold 1.10 holds names through 1-2 day pre-climax consolidation (CAR 4/20 had 1.11)
 
-### Burst checklist (≥ 3 of 4 needed for anticipation, all 4 also for climax)
+### Burst checklist (≥ 3 of 4 needed for BOTH anticipation and climax — same `burst_score >= _MIN_ANTICIPATION_SCORE` threshold; climax adds the 2 extra hard gates below, not a stricter burst count)
 
 1. `days_up_streak ≥ 3` — consecutive close > prior close ending today
 2. `gap_count_3d ≥ 2` — last 3 sessions where open > prior close × 1.01
@@ -67,6 +85,19 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 2. ~~Earnings-day check has fail-soft inconsistency~~ — **resolved 2026-05-08**. All four sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as "earnings day = True". Defensive direction at each site: parabolic suppresses climax, EP boost fires, cooldown bypasses, override promotes.
 
 ## Change log (newest first)
+
+### 2026-07-24 — FL-5 reconcile: doc synced to code
+
+Four stale items corrected (no code change): (a) the Burst-checklist header claimed "all 4" burst
+items needed for climax — code's climax gate uses the SAME `burst_score >= 3` threshold as
+anticipation (`_MIN_ANTICIPATION_SCORE=3`) plus 2 SEPARATE hard gates (days_up_streak, earnings);
+the doc's own "Climax tier" section already had this right, only the checklist header contradicted
+it — header corrected; (b) cron time "17:25" → **17:15** ET (`scheduler.py` line 5370); (c)
+"per-ticker compute serially" → `asyncio.Semaphore(10)` bounded concurrency (`_SCAN_CONCURRENCY`);
+(d) added the undocumented universe gates (close ≥ $5, CS/ADRC-only, ≥60 prior sessions —
+`db.get_parabolic_universe`) and the Perplexity-based M&A/one-shot-news exclusion
+(`_news_check_for_exclusion`, parabolic_detector.py ~509) as a documented HARD-GATE filter (was
+entirely undocumented, in violation of the CLAUDE.md hard-gate filter-list rule).
 
 ### 2026-05-08 (session 2) — Aligned `is_earnings_day` fail-soft direction across all 4 sites
 

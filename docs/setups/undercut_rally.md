@@ -52,7 +52,10 @@ Detector: `flag_detector.run_intraday_undercut_rally_scan` (every 5 min, gated
 - **Intraday Telegram FYI is OFF by default**, gated by `UNDERCUT_RALLY_INTRADAY_FYI`
   (default false — NOT the shared `SHADOW_DETECTOR_TELEGRAM_ENABLED`). Flip on when
   U&R graduates to a tradeable real-time setup (the reclaim moment then matters for
-  entry). `/undercutrally` (`/ur`) — today + 7d + per-ticker 30d, always on demand.
+  entry). **On-demand surface: `/detectors` (today + 7d counts per detector) / `/detectors
+  TICKER` (30-day hits per detector)** — `/undercutrally` (`/ur`) was RETIRED #218
+  (2026-06-06 operator command review), consolidated into `/detectors` alongside
+  `/flagbreaks` `/supporttests` `/mapullbacks` `/lowvolrests`.
 - EOD reconciliation in `reconcile_flag_state_post_eod` flips `parent_invalidated_eod`
   if the parent ticker classified INVALIDATED at the 5:25 PM scan (audit:
   `flag_undercut_rally_reconciled`). Backward-check filters `parent_invalidated_eod = FALSE`.
@@ -66,14 +69,21 @@ Detector: `flag_detector.run_intraday_undercut_rally_scan` (every 5 min, gated
 - Arbitrary swing-low universe (beyond `mi_flag_candidates`) — needs a swing-low detector.
 
 ## Change log
+- **2026-07-24 — FL-5 reconcile: doc synced to code.** `/undercutrally` (`/ur`) was retired
+  #218 (2026-06-06 operator command review) — folded into the consolidated `/detectors` /
+  `/detectors TICKER` roll-up (`agent.py::_handle_detectors_query`) along with the other 4
+  entry-technique detector commands. Also removed the dead `fishhook_detector.py` path
+  reference below (no such file in the codebase; likely renamed/absorbed before this doc's
+  first ship). No code change.
 - **2026-05-31 (same day, post-ship)** — surfacing set to **evening-brief roundup +
-  on-demand `/undercutrally`**; intraday Telegram FYI gated OFF by default
-  (`UNDERCUT_RALLY_INTRADAY_FYI`, NOT the shared shadow env), per operator (quiet
-  shadow phase; flip on at graduation). `get_undercut_rallies` getter + brief block.
+  on-demand `/undercutrally`** (superseded 2026-06-06, see above); intraday Telegram FYI
+  gated OFF by default (`UNDERCUT_RALLY_INTRADAY_FYI`, NOT the shared shadow env), per
+  operator (quiet shadow phase; flip on at graduation). `get_undercut_rallies` getter +
+  brief block.
 - **2026-05-31** — V1 shipped (shadow). Table + predicate + 5-min scan + EOD
-  reconcile + `/undercutrally` + 12/12 predicate tests. Thresholds seeded
-  (2%/8%/0%); tune on `undercut_rally_signal_n10`. Built per operator directive
-  ("build U&R now as a shadow, surface via Telegram FYI, collect data to refine")
+  reconcile + `/undercutrally` (superseded 2026-06-06, see above) + 12/12 predicate tests.
+  Thresholds seeded (2%/8%/0%); tune on `undercut_rally_signal_n10`. Built per operator
+  directive ("build U&R now as a shadow, surface via Telegram FYI, collect data to refine")
   + advisor design pass (depth-band adjacency to support-test, max-undercut cap,
-  v1 scope discipline). Distinct from `fishhook_detector.py` and wick-fill
-  (`wick_tracker.py`) — those are different mechanics (pullback-to-MA reclaim; fill-on-wick).
+  v1 scope discipline). Distinct from wick-fill (`wick_tracker.py`) — different mechanics
+  (pullback-to-MA reclaim vs fill-on-wick).

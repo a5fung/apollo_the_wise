@@ -2,7 +2,10 @@
 
 **Phase**: Stages 1–2 (intraday 9M + sugar-baby EOD) Live (paper/telemetry). **Stage 3 (Day-2 ORB)
 RETIRED → shadow 2026-06-18** (operator-signed; #327 read — see change log; flip EXECUTED,
-DB-confirmed shadow). Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-first).
+DB-confirmed shadow), then **DEPRECATED (terminal) 2026-07-05/06** (#424, ADR 0022 §1 —
+`mi_strategies.phase='deprecated'`; the `_9m_day2_orb_job` short-circuits the whole entry loop
+when the registry reads the strategy as deprecated, `scheduler.py` ~4362). Replacement entry =
+consolidation tightness→expansion (#327 Phase B, shadow-first).
 **Origin**: Pradeep Bonde virgin 9-million-share (9M) day methodology.
 **Code**:
 - Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`)
@@ -44,7 +47,7 @@ For each ticker in snapshot:
 8. **Extension gate**: prev_close ≤ 1.20 × MA-10 (filter already-extended chase risk; unknown MA → skip per IPO/Day-1 case)
 9. **Confirmed 9M (`is_9m_actual`)**: `today_volume ≥ 8.9M AND dollar_volume ≥ $50M`. Pre-9:30 → False (Polygon snapshot stale)
 10. **Anticipation (`is_9m_anticipation`)**: `minutes_since_open ≥ 30 AND today_volume ≥ 3M AND dollar_volume ≥ $30M AND projected_vol ≥ 12M`
-11. **ADV anomaly gate**: `effective_vol ≥ 3 × adv_20` (effective = projected for anticipation, today_volume for actual). Unknown ADV → skip (IPO Day 1-2 case)
+11. **ADV anomaly gate**: `effective_vol ≥ 3 × adv_20` (effective = projected for anticipation, today_volume for actual). **Unknown ADV REJECTS** (`if not adv: continue`, ninem_detector.py ~289 — needs ≥10 prior sessions; IPO Day 1-2 case)
 
 ### Stage 2 — Sugar Baby (EOD sweep)
 
@@ -54,7 +57,7 @@ Mirrors intraday gates against `mi_daily_closes` data (final EOD bars):
 - dollar_volume ≥ $50M
 - close > open (green day)
 - (close - low) / (high - low) ≥ 0.75 (close in upper 25% of range)
-- volume ≥ 3 × adv_20 (or unknown ADV passes)
+- volume ≥ 3 × adv_20 (`a.adv_20 IS NOT NULL` required — **unknown ADV REJECTS**, needs ≥10 prior sessions; `db.py::get_eod_9m_sugar_babies` ~3479)
 - net_up ≥ 3% vs prev_close (categorical, NOT just close > open — rejects gap-down wick-fills like WU 4/24)
 
 **Trend gate** (added 2026-05-08): REJECT if all three structural metrics indicate a destroyed name:
@@ -76,11 +79,20 @@ Routes through `entry_pipeline.submit_trade_entry` (unified pipeline shared with
 
 ### Anticipation cadence carve-out
 
-Silent anticipations hit DB/audit only; Telegram fires only when `gap ≥ 10% OR proj_vol ≥ 25M`. Tightens noise on borderline anticipations.
+**Stale as of #133 / 2026-06-07 EOD consolidation** — anticipations no longer fire any
+real-time Telegram threshold. Silent anticipations hit DB/audit only every scan tick; the
+per-tick user-facing digest carries only ACTUAL 9M crossings (see Per-scan digest below).
+Anticipation ("Pace") visibility moved to `_9m_pace_digest_job` — an EOD (16:00 ET) rollup,
+now folded into the 16:55 Market Close Digest (#479, `scheduler.py` ~2467-2557): unfiltered
+top-20 by projected volume (dedup'd against tickers that also fired actual today), no
+gap%/proj_vol floor.
 
-### Per-scan digest (Wave C #5, 2026-05-07)
+### Per-scan digest (Wave C #5, 2026-05-07; Pace split out #133/2026-06-07)
 
-User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit events unchanged. One digest per scan tick with sections by tier (Actual / Pace).
+User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit events unchanged.
+One digest per scan tick, **Actual crossings only** — Pace (anticipation) alerts were moved to
+the hourly-then-EOD `_9m_pace_digest_job` (2026-06-07) and no longer appear in the per-tick
+digest at all.
 
 ## Known limitations / open questions
 
@@ -91,6 +103,20 @@ User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit eve
 3. **9M Day-2 ORB = legacy/bridge mechanism, NOT the methodology entry (#65, architecture direction analyzed 2026-05-31, advisor-reviewed).** Per Pradeep methodology the 9M event is a WATCH-UNIVERSE trigger; the *intended* entry comes from tightness→expansion (the flag-class / entry-technique layer). That path is **already wired and running in shadow** (P7.3b `ninem_universe_watch` carryforward, 2026-05-17) and is the **TARGET** 9M entry. The mechanical Day-2 ORB (Stage 3 above) runs in **parallel as a legacy/bridge** — the only 9M *paper* entry until the entry-technique detectors (flag-break #94 / support-test #95 / MA-pullback #96 / U&R #98) graduate (N≥10, earliest 7/15). Evidence 2026-05-31: N=4 clean-closed = −$1,541 / 75% loss; it mechanically enters clinical biotechs (ROIV/PURR) the MAGNA53 revenue-stage gate would block — a *gateable* defect, not proof the strategy is worthless. **Which mechanism trades the cohort is a layer-2 (evidence-gated) decision** — do NOT demote `9m_day2` on N=4 (demote→shadow freezes the cohort at N=4 forever; shadow = no fills). Operational options A (deprecate) / B (revenue-stage gate now) / C (rename) in `data_gated_reviews.yaml::ninem_day2_mechanical_vs_methodology_alignment`. Portfolio map: `docs/setups/PORTFOLIO.md`. **→ RESOLVED 2026-06-18 (option A, deprecate): #327 replay (N=36, not N=4) confirmed Day-2 ORB has no robust edge → retired to shadow, consolidation entry is the replacement. See the 2026-06-18 change-log entry (the layer-2 evidence-gated decision this limitation deferred).**
 
 ## Change log (newest first)
+
+### 2026-07-24 — FL-5 reconcile: doc synced to code
+
+Five stale items corrected (no code change): (a) "unknown ADV passes" was backwards for both
+the intraday gate (`if not adv: continue`, ninem_detector.py ~289) and the EOD sweep
+(`a.adv_20 IS NOT NULL` required, db.py `get_eod_9m_sugar_babies`) — **unknown ADV REJECTS**
+(needs ≥10 prior sessions); (b) the 2026-05-13 change-log's "intraday does NOT run M&A filter
+/ future scope" line was superseded the very next day (`c4243aa`, 2026-05-14) — intraday DOES
+run it now, annotated in place rather than rewritten; (c) Stage 3 progressed past "shadow
+2026-06-18" to **DEPRECATED (terminal) 2026-07-05/06** (#424, ADR 0022 §1); (d) the
+"Telegram fires when gap≥10% OR proj_vol≥25M" real-time anticipation clause is gone — Pace
+alerts are DB/audit-only intraday, surfaced as an unfiltered top-20 EOD rollup folded into the
+16:55 Market Close Digest (#479); (e) the per-tick digest carries **Actual crossings only**,
+not "Actual/Pace" sections (Pace split out to the EOD job 2026-06-07, #133).
 
 ### 2026-06-18 — RETIRE 9M Day-2 ORB entry → shadow (consolidation replacement) [operator-SIGNED]
 
@@ -182,7 +208,7 @@ Flag detector's `compute_flag_metrics` runs the normal per-ticker eligibility (c
 
 **Reversion-flag**: NEW integration point (the M&A filter itself is unchanged; this just wires it into the 9M sugar baby loop). Fail-open on Polygon outage — don't block sugar baby logging if news fetch raises.
 
-**Status**: shipped 2026-05-13. Intraday 9M scan (`run_9m_scan`) still does NOT run the M&A filter (informational alerts, no trade triggered directly). Filed as future scope if intraday FP becomes an issue.
+**Status**: shipped 2026-05-13. Intraday 9M scan (`run_9m_scan`) at ship time still did NOT run the M&A filter (informational alerts, no trade triggered directly); filed as future scope. **[Corrected 2026-07-24 (FL-5 reconcile) — this WAS closed the very next day: commit `c4243aa` (2026-05-14) added the M&A pin filter to `run_9m_scan` itself (`is_likely_ma` call, ninem_detector.py ~311, fail-open on Polygon error). Intraday now runs the same M&A check as the EOD sugar-baby path — no longer future scope.]**
 
 ### 2026-05-08 — Sugar baby destroyed-name trend gate (ATEC 5/07 incident)
 

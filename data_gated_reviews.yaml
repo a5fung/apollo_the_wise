@@ -173,7 +173,7 @@ reviews:
       separate winners from losers (i.e. is the SILO thin-WINNER an artifact of the small N, or
       real)? If thin triggers systematically fail at N≥30, knob #2 REOPENS → propose a $-vol floor
       via CHANGE_PROCESS + sign-off; if SILO-class thin winners persist, the NO-floor decision is
-      CONFIRMED. Either way: update SSoT decisions #1/#2 in docs/setups/anticipation_reentry.md with
+      CONFIRMED. Either way: update SSoT decisions #1/#2 in docs/setups/delayed_ep_reentry.md with
       the N≥30 verdict, and re-bump this review (recurring, not one-shot). Tuning thresholds = a
       detection-criterion change → N≥30 backtest + operator sign-off (CHANGE_PROCESS), never
       self-certified.

@@ -29,7 +29,7 @@ criteria were swapped/added.
 | **Flagpole magnitude** | `pivot_high / 40d_low ≥ 1.9×` (≥90% in ~8wk) | spec `C≥1.9×C₄₀` / `High₄₀≥1.9×Low₄₀` | `_RUNUP_MIN_RATIO=1.90`, `_RUNUP_LOOKBACK_DAYS=40` |
 | **Flag depth** | `base_low ≥ 0.75×pivot_high` (≤25% pullback, on the ABSOLUTE low) | spec `Close≥0.75×High₄₀`, tightened to the low | `_FLAG_DEPTH_MIN=0.75` |
 | **Trend** | `close ≥ sma_50` AND MAs stacked `10≥20≥50` (Stage-2 uptrend) | spec "above the 10/20/50 MAs" | `_SMA50_WINDOW` + the trend block |
-| **Stage-2 (long-term)** | `close ≥ 200d MA` AND `pivot_high ≥ 75% of the 52w high` (near highs, not a crash-recovery) | spec "Stage-2 uptrend (Minervini)" | `_SMA200_WINDOW`, `_STAGE2_NEAR_HIGH_MIN`; needs `_HISTORY_DAYS=260` |
+| **Stage-2 (long-term)** | `close ≥ 200d MA` AND `pivot_high ≥ 75% of the 52w high` (near highs, not a crash-recovery) | spec "Stage-2 uptrend (Minervini)" | `_SMA200_WINDOW`, `_STAGE2_NEAR_HIGH_MIN`; needs `_HISTORY_DAYS=380` |
 | **Flagpole data-artifact** | reject a >50% single-day close jump with `vol < 2× window avg` | Gemini 6/27 (split / bad-tick backstop) | runup-window guard |
 | **Flagpole volume** | ≥1 day in the 40d window at `vol ≥ 2× window avg` | spec "undeniable institutional demand"; Gemini 6/27 | `spike_days ≥ 1` |
 | **Liquidity** | ADV > 500k shares, ADR > 4% | spec | ✅ ENCODED 6/28 in `compute_flag_metrics` (per-ticker — so EVERY universe path is gated, not just the organic SQL one; VERIFY found the $5M dollar-vol floor didn't cover it). Tunable named constants: `_HTF_MIN_ADV_SHARES=500_000` (firm liquidity floor) + `_HTF_MIN_ADR_PCT=0.04` (STARTING value — 4% is NOT canonical, sources 3-6%; DATA-GATED tune `htf_adr_threshold_tune` once the breakout-shadow accrues N≥10 settled winners). Impact: dropped 1 of 2 current candidates (under-liquid). |
@@ -62,6 +62,17 @@ the 10/20-day **EMA** (exit only on a daily close below). Stop = the tightest-da
 max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height added to the breakout.
 
 ## Change log
+- **2026-07-24 — FL-5 reconcile: doc synced to code (missing change-log entry added).** `_HISTORY_DAYS`
+  is **380**, not 260 — the 6/27 entries below say "90→260" but the code moved a third time, same day,
+  in a follow-up commit (`1f2f7a8`) that was never logged here: `get_recent_daily_history` filters by
+  CALENDAR days, not row count, so `_HISTORY_DAYS=260` calendar only yielded ~178 TRADING rows (< 200) —
+  `sma_200` silently came back `None` and the 200MA Stage-2 gate (added earlier that same day, see
+  below) never actually fired; the near-high gate alone was carrying NCI's rejection. Bumped 260→380
+  calendar (~261 trading rows via the ~0.685 trading/calendar-day ratio) so the 200MA check fires for
+  real — reverified live: AGL 3.68× above / XMTR 1.59× / NCI 0.66× BELOW (now caught by BOTH the 200MA
+  and near-high gates). Advisor-caught 6/27, same day as the Stage-2 gate ship below. No code change in
+  this reconcile — doc-only correction + backfilled change-log entry.
+
 - **2026-07-19 — Doc cross-ref only: ADR 0026 D1 / card C4 (flag_continuation retirement).**
   **Trigger**: `#354`/ADR 0026 card C4 rewrote `flag_continuation.md` to document its retirement as a
   standalone strategy and absorption as the Confirm(b) entry; added a pointer here for discoverability.
@@ -97,7 +108,8 @@ max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height ad
   10/20/50 alone PASSES a sharp crash-recovery (the short MAs catch up fast): NCI spiked $110 → crashed
   $4 → bounced to $11 (−90% from its high, BELOW the 200d) and read as a "221% flagpole" that was a
   dead-cat bounce. Added the spec's "Stage-2 uptrend" long-term gate — `close ≥ 200d MA` AND
-  `pivot_high ≥ 75% of the 52w high` — and extended `_HISTORY_DAYS` 90→260 (a 200MA/52w-high needs ~250d).
+  `pivot_high ≥ 75% of the 52w high` — and extended `_HISTORY_DAYS` 90→260 (a 200MA/52w-high needs ~250d;
+  **superseded same-day, 260→380 — see the 2026-07-24 entry above, `_HISTORY_DAYS` is 380 in code**).
   Confirmed on the live eyeball: AGL (100% of 52w high, 4.32× 200MA) + XMTR (95%, 1.70×) KEPT; NCI (10%,
   0.81×) REJECTED. Test: `test_crash_recovery_rejected_stage2`.
 
