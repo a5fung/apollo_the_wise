@@ -32,17 +32,27 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-19 Sun evening PDT — weekend-push wrap)
+## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-23 Thu evening PDT — the deploy-night wrap)
 
-**Board 89** (PT-day started 95; net −6, all real closes/operator-ruled drops). Everything pushed to
-`main`. Authoritative in-flight state = **PLAN.md** (`check_plan.py --today`) + the desktop pickup memory.
-**Monday 7/20 verify-lives** (deployed, market-gated): #194 (dashboard auto-export — check
-`/home/apollo/auto_export.log` fired at 23:30 UTC + pushed), #480 (Trades dash now LIVE-only — glance it
-shows 5 rows not 39), #487 (rel_volume large-cap shadow — first row only if a HIGH large-cap low-relvol
-alert fires), #471 day-2 (theme re-granularization armed run ~17:04 ET), plus #402/#332/#461/#306/#475/
-#479/#330/#416/#322. **Dropped this weekend:** #384 (X posting — revoke the X dev app), #420 (uptime
-pinger), #280 (staging paper acct → precondition folded onto #281). **Next:** continue the D-CLOSE grind
-(#415/#442/#176/#265/#258/#485/#407). *(7/13 detail below is historical.)*
+**Board 86** (flat this session — closed #493, filed #501). Everything pushed to `main` (HEAD d212334).
+Authoritative in-flight state = **PLAN.md** (`check_plan.py --today`) + the desktop pickup memory.
+
+**DEPLOYED tonight 7/23 (operator-approved, market-closed) — both containers green:** #500 (ORB
+price-aware entry — `broker/` so it runs on apollo-**EXECUTION**, shipped via the TWO-STEP `deploy.sh
+execution`, NOT market-agent alone), #498 (TQS TAPE line, apollo-market), + a carveout-dedup L2 fix. Gate 5 G
+caught #500's new `_submit` writer wasn't in ALLOWED_WRITERS → registered it (operator-approved). The 2 open
+live positions (NVCR/SMCI) stayed safe (broker-side stops) through the execution restart.
+
+**7/24 verify-lives (event-gated on the market):** #500 (a violent gapper crossing orb_high in-window gets a
+real fill / a named skip — or the G6 replace-smoke on the next MARKET-HOURS deploy) · #498 (TAPE line + NTR
+sparkline render on a live EP alert — verify the SURFACE) · carveout dedup (logs once/ticker on the next
+earnings-carveout name).
+
+**Parked on OPERATOR (5 rebumped tonight, due-today→next week):** #357 (Sugar-Baby Stage-1 badge — role
+SIGNED, BUILDABLE) · #416 (M&A FP amendment — deployed, verify-live) · #356 (HTF #397 GO/NO-GO ruling) ·
+#307/#255 (precedent-retrieval, corpus-gated). **Standing:** #489 authoritative-flip (`ep_rt_gap_authoritative`
+— THE LINE, operator-only, samples accruing) · the LIKELY-BUILT(20) reclassify sweep (housekeeping). *(7/13
+detail below is historical.)*
 
 ### (historical) CLOSE 2026-07-13 evening PDT — the M1-d reframe + coverage-loop day
 
