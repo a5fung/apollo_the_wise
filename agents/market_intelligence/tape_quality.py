@@ -133,10 +133,14 @@ def format_tape_line(tqs: "dict[str, Any] | None") -> str:
                 "no tape read; base-age/IPO gates own the trade)")
     label = tier.replace("tape_", "")
     spike_ct = tqs.get("spike_ct", 0)
+    # held/reversed breakdown only when there ARE spikes — no "(0 held/0 rev)" noise on a clean
+    # tape. Display labels are plain-words (operator 2026-07-24 readability): "N held/M rev"
+    # (was NH/MR) and "2nd-widest X.X×" (was bmr2 — the internal metric name / tape_bmr2 column
+    # are UNCHANGED; only the alert label is renamed).
+    breakdown = f" ({tqs.get('held', 0)} held/{tqs.get('rev', 0)} rev)" if spike_ct else ""
     return (
-        f"TAPE: *{label}* · {spike_ct} spike{'' if spike_ct == 1 else 's'}"
-        f" ({tqs.get('held', 0)}H/{tqs.get('rev', 0)}R)"
-        f" · bmr2 {tqs.get('bmr2', 0.0):.1f} · ADR {tqs.get('adr', 0.0):.1f}%"
+        f"TAPE: *{label}* · {spike_ct} spike{'' if spike_ct == 1 else 's'}{breakdown}"
+        f" · 2nd-widest {tqs.get('bmr2', 0.0):.1f}× · ADR {tqs.get('adr', 0.0):.1f}%"
     )
 
 

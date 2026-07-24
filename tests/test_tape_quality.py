@@ -335,22 +335,23 @@ def test_format_line_clean():
     line = format_tape_line(tape_quality(_fcel_bars(), _ALERT))
     assert line.startswith("TAPE:")
     assert "clean" in line
-    assert "0 spikes (0H/0R)" in line
-    assert "bmr2 1.4" in line
+    assert "0 spikes ·" in line       # no "(0 held/0 rev)" breakdown on a clean tape
+    assert "held" not in line
+    assert "2nd-widest 1.4×" in line
     assert "ADR" in line
 
 
 def test_format_line_junk_counts():
     line = format_tape_line(tape_quality(_glnd_bars(), _ALERT))
     assert "junk" in line
-    assert "3 spikes (1H/2R)" in line
-    assert "bmr2 2.1" in line
+    assert "3 spikes (1 held/2 rev)" in line
+    assert "2nd-widest 2.1×" in line
 
 
 def test_format_line_watch_singular_spike():
     line = format_tape_line(tape_quality(_one_rev_bars(), _ALERT))
     assert "watch" in line
-    assert "1 spike (0H/1R)" in line
+    assert "1 spike (0 held/1 rev)" in line
     assert "1 spikes" not in line
 
 
@@ -578,7 +579,7 @@ def test_ep_alert_renders_tape_line_and_sparkline():
           "catalyst_quality": "strong", "rel_volume": 3.0, "tape_quality": tqs}
     text = _send_alert_capture(ep)
     assert "TAPE: *junk*" in text
-    assert "3 spikes (1H/2R)" in text
+    assert "3 spikes (1 held/2 rev)" in text
     assert f"`{tqs['sparkline']}`" in text
 
 
