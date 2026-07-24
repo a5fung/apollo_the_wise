@@ -195,10 +195,23 @@ async def _check_safeguards(
         # See docs/setups/safeguards.md change log 2026-06-04.
 
         today = et_today()
+        # FL-2 daily-loss COVERAGE fix (operator-signed 2026-07-24, CHANGE_PROCESS in
+        # safeguards.md): attribute each realized loss to its CLOSE day (ET), NOT alert_date.
+        # A multi-day position (Day 2-5: SMA trail / partials / time-stop) that stops out
+        # today was INVISIBLE to this backstop under `alert_date = today` — its loss got
+        # mis-attributed to the (prior) alert day. Each realized loss now counts ONCE, on the
+        # day it is realized: this CLOSES the multi-day under-count hole (the safety win) AND
+        # removes the old alert-day OVER-attribution — net MORE-CORRECT, not uniformly tighter
+        # (some days it counts less: old 5/21 -$1505 -> new -$643, the position wasn't lost yet
+        # on its alert day). Cannot false-trip (every trip still maps to real realized losses
+        # >= 2%). Backtest: old vs new disagreed on 12/28 loss-days ($0-under-old days had real
+        # losses: 6/24 -$1483, 5/26 -$862). closed_at 100% populated on closed trades (0/40
+        # NULL); ET conversion per the TIMESTAMPTZ->ET-date rule (CLAUDE.md time-handling).
         today_losses = await conn.fetchval("""
             SELECT COALESCE(SUM(total_pnl), 0)
             FROM mi_live_trades
-            WHERE alert_date = $1 AND status = 'closed' AND total_pnl < 0
+            WHERE (closed_at AT TIME ZONE 'America/New_York')::date = $1
+              AND status = 'closed' AND total_pnl < 0
               AND account_mode = $2
         """, today, account_mode)
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
