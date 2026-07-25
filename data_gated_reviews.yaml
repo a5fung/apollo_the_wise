@@ -7394,3 +7394,51 @@ reviews:
       (docs/design/tape_quality_score.md §4, THE LINE). Never on agent authority.
     status: pending
     added_on: 2026-07-21
+
+  - review_id: exit_tune_cohort_review
+    title: "Exit-rule cohort review — RECURRING at n=20/40/60/80/100 closed live trades (#503/#306)"
+    question: |
+      Re-run the exit-side forensic on the accumulated live cohort and re-decide
+      the profit-taking rule. Operator 2026-07-25: this is deliberately NOT
+      one-and-done - "it needs to run a bunch more times as n grows... it needs
+      different regimes, themes, conditions to get right."
+
+      Each run re-answers, on the LARGER cohort:
+      (a) per-trade forensic - entry vs plan, MFE-before-exit, exit reason,
+          holding period, regime at alert; classify variance / entry-quality /
+          entry-mechanics / exit-discipline / regime (method:
+          docs/analysis/503_zero_for_nine_forensic_2026-07-25.md);
+      (b) the INTRADAY partial sweep - sell 1/3 at trigger L then stop to
+          breakeven; sweep L over %, R-multiple and ADR/ATR bases (method:
+          docs/analysis/306_intraday_partial_analysis_2026-07-25.md);
+      (c) SEGMENTED BY CHARACTER (operator 7/25: fast/gappy/small-cap/high-ADR
+          names need more aggressive taking than slow large caps) - reuse
+          pivot_analysis.character_profile, do NOT invent a parallel taxonomy;
+      (d) holding-period distribution - the n=9 cut showed live mean 0.28 DAYS
+          vs paper winners 4-24 days, every paper winner held >=4 days.
+
+      The n=9 baseline could NOT populate (c): ~2-3 trades per character bucket.
+      Populating the segmentation is the main reason this recurs.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE account_mode = 'live' AND status = 'closed';
+    threshold: 20
+    earliest_review_date: 2026-08-01
+    status: pending
+    action_when_ready: |
+      Run (a)-(d) above on the full cohort, then RE-BUMP `threshold` to the next
+      milestone - 20 -> 40 -> 60 -> 80 -> 100 (RECURRING, not one-shot; the same
+      idiom as model_selection_quarterly_review / kill_scale_bands_quarterly_review,
+      which re-bump their date each run). Record each run as its own dated doc so
+      the series is comparable across regimes.
+
+      ⚖ THE LINE: any exit-rule change is CHANGE_PROCESS + #151 harness +
+      operator sign-off. This review produces EVIDENCE and a recommendation; it
+      never flips anything.
+
+      TERMINAL CONDITION (operator 2026-07-25): once the exit rule is FINALLY
+      DECIDED and signed, this stops being a calibration series and CONVERTS to a
+      routine monthly-or-quarterly EFFECTIVENESS review (did the shipped rule do
+      what the calibration predicted?) - retitle + re-key onto a date cadence
+      rather than an n-threshold. Do NOT close it at that point; convert it.
+    added_on: 2026-07-25
