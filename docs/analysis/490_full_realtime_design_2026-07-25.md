@@ -1,6 +1,23 @@
 # #490 FULL Real-Time Detection — Design for Operator Sign-off (2026-07-25)
 
-**Status**: DESIGN ONLY — no code changed. Detection-criterion change on the money path (THE LINE):
+> # ✅ SIGNED BY THE OPERATOR — 2026-07-24 PT (session 7/24-25)
+>
+> **All six §11 forks ruled, aligned on the recommendations:**
+> 1. **Design SIGNED** — §2 prev_close authority (Polygon `prevDay.c` sole denominator, date-keyed
+>    Alpaca cross-check) + §3 tick-quality Q1-Q4 (incl. mandatory bar corroboration for any RT-only
+>    admission, and replacing the 30pp clamp that would have rejected the NVVE +95% class) + §5
+>    architecture. **Build RT-1.**
+> 2. **9:43 tick — YES**, added at RT-3.
+> 3. **Shadow duration — whichever is LONGER**: ≥10 trading days AND ≥5 residual-class catch days.
+> 4. **Shadow surfacing — DIGEST ONLY** (upholds the 7/21 noise ruling; no per-catch Telegram).
+> 5. **Batch — 100/call now**, probe 200 in RT-0 before adopting.
+> 6. **§9.4 O-9 disposition APPROVED** — retire it as an escalation trigger + rebase its columns to
+>    the cross basis, folded into RT-1.
+>
+> Still NOT authorized by this signature: the RT-3 authoritative flip, the RT-5 volume flip, and any
+> deploy. Those remain separately operator-executed per the cutover ladder.
+
+**Status**: SIGNED 2026-07-24 → RT-1 dark build authorized. No code changed by this doc. Detection-criterion change on the money path (THE LINE):
 every authority flip is operator-executed; CHANGE_PROCESS gates every phase; nothing here is
 self-authorizing. This doc **supersedes** `realtime_full_cutover_design_2026-07-20.md` (the Option-A
 runbook — its architecture is inherited, its evidence base and prev_close/tick-quality design are
