@@ -118,10 +118,13 @@ going-private deal was announced **4/14** (independently corroborated in-repo �
 whole time"*). By the 05-04 COILED the announcement had aged out of the 10-session window. AVNS is a
 *mature* pin — the existing rule's job, not this one's.
 
-## 6. The path I tested and rejected
+## 6. The path I tested — evidence against it (operator to rule)
 
 The obvious fix — let the flag path reuse the EP Claude-classifier verdict (`catalyst_quality='mna'`,
-which fired on ATAI 07-16) — **does not survive contact with the data. Do not ship it.**
+which fired on ATAI 07-16) — does not survive contact with the data on the sample available.
+**My lean: don't extend the stored classifier verdict to sibling detectors at N=2. That is a
+recommendation, not a ruling** — `is_likely_ma` is shared with the EP/9M money paths, so the scope call
+is the operator's.
 
 1. The verdict is not in `mi_ep_alerts` (the filter suppresses *before* the alert row is written). It
    lives only in `mi_audit_log`. Joining flag rows to that store within 21d yields 3 rows / 2 tickers:
@@ -140,8 +143,10 @@ which fired on ATAI 07-16) — **does not survive contact with the data. Do not 
 
    `matches_mna_keywords` returns `None` even for ATAI — *"speculation about strategic/M&A activity"*
    is not in the keyword list. Corroborating the label against its own evidence text would veto ATAI
-   too, and the guards cannot separate the true verdict from the junk one. **Classifier-verdict sharing
-   is 1-true / 1-junk at ticker level on the only sample that exists.**
+   too, and the guards cannot separate the true verdict from the junk one. **The finding: on the only
+   sample that exists (N=2 tickers), the stored classifier verdict is 1-true/1-junk and the existing
+   guards cannot discriminate.** N=2 is below the discipline-rule-1 bar in both directions — it is not
+   enough to ship this path, and not enough to close it permanently either.
 
 **Guard-C check (verified, no action needed):** `is_likely_ma` short-circuits on
 `catalyst_quality=='mna'` guarded only by `text_implies_acquirer_or_completed(catalyst_texts or [])` —
