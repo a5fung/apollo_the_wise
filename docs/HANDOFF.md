@@ -32,6 +32,65 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
+## 3. WHERE WE ARE (in-flight, as of 2026-07-24 — 🏁 v1.0 DECLARED; session restarted for a model update)
+
+**🏁 Apollo v1.0 is DECLARED SHIPPED** — operator signed §8 of `docs/roadmap/v1-closeout-productization.md`
+(2026-07-24). All 8 FL gates green; #418/#425 closed. The blocking/launch lens retires → the board is now the
+**#419 Phase-2 program**; the operator's role narrows to sign-offs + data-gated sittings. **Board 83**,
+everything pushed to `main` (HEAD 9fdbb57), clean tree. Authoritative in-flight state = **PLAN.md**
+(`check_plan.py --today`) + the desktop pickup memory.
+
+**Shipped + LIVE today (deployed 7/24 ~22:15 ET, both containers green):**
+- **Daily-loss safeguard fix** (money-path, operator-signed CHANGE_PROCESS): `broker/live_tracker.py` now
+  attributes realized losses by CLOSE day (`closed_at`, ET), not `alert_date` — multi-day positions that
+  stopped out today were invisible to the −2% backstop. Correct-attribution, NOT "uniformly stricter"
+  (advisor-corrected). Backtested (old query mis-attributed 12/28 loss-days); `safeguards.md` change-log +
+  reversion flag; deployed via `deploy.sh execution` (broker/ = execution-owned two-step).
+- **FL-5 doc reconcile** — 10 setup docs synced to code; the sweep confirmed **the code is correct** across all
+  safeguards + detection thresholds (drift was doc-lag). 2 non-blocking code-vs-intent noted for their
+  graduations: Family-B `reenter_count` (paused) + HTF breakout "150% ADV" vs recent-5-bar-avg (shadow, #397).
+- **#184/#261 re-homed to #419 Phase-2** · **#498 TQS** + **#415** allocator telemetry CLOSED (verified live) ·
+  TAPE label renamed for readability · carveout dedup deployed · **#501** silent-failure hardening filed.
+
+**⚠ 7/25 — the one open verify:** confirm the daily-loss gate runs CLEAN on the first ORB entry-check (the fix
+is deployed + code-verified; the actual BLOCK is event-gated on a real >2% day).
+
+**Phase-2 / standing:** 5 operator-parked tasks re-surface ~7/28-30 (#357 buildable · #416 · #356 · #307/#255) ·
+#489 authoritative-flip (THE LINE, operator-only) · #501/#466 silent-failure hardening · LIKELY-BUILT sweep.
+*(7/13 detail below is historical.)*ootstrap
+
+**Written 2026-07-07 (desktop). The operator is moving to a LAPTOP for ~1 week and will start
+fresh Claude Code sessions there.** This file is IN THE REPO (git-synced), so a laptop session
+gets it on `git pull`. It exists because the machine-local context does NOT transfer (see §1).
+
+---
+
+## 1. THE transition fact — what does and does NOT cross machines
+
+| Surface | Location | Crosses to laptop? |
+|---|---|---|
+| **CLAUDE.md** (rules, protocol, THE LINE, schedules, architecture) | repo root | ✅ via `git pull` |
+| **PLAN.md** (every task: project · ETA · status · detail — the SoT) | repo root | ✅ via `git pull` |
+| **docs/decisions/** (ADRs 0011–0024, all signed) · **docs/roadmap/** | repo | ✅ via `git pull` |
+| **This file (docs/HANDOFF.md)** — the in-flight "where we are" | repo | ✅ via `git pull` |
+| **The pickup + MEMORY.md + ~40 feedback/project memories** | `~/.claude/projects/.../memory/` | ❌ **machine-local — NOT on the laptop** |
+
+**So on the laptop, the load-bearing rules (CLAUDE.md) and all tasks (PLAN.md) and all design
+(ADRs) ARE present. What's missing is the accumulated memory files.** §4 backstops the most
+load-bearing of those; the rest is nuance the signed ADRs + PLAN.md task detail already carry.
+
+## 2. Laptop OPEN ritual (do this first, every session)
+1. `git pull origin main`
+2. `python scripts/operator_now.py` (you're **PDT**; harness clock is UTC — never trust it for dates)
+3. `python scripts/check_plan.py --today` → the day's plan (this reads PLAN.md, the SoT — works fine on the laptop)
+4. **Read THIS file (§3) for in-flight context** (it replaces the machine-local pickup you won't have)
+5. State the day's plan before reacting.
+
+CLOSE ritual is unchanged (reconcile PLAN.md → `check_plan.py` must pass → commit+push). Your
+laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays the source of truth,
+so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
+(the desktop's week-old pickup self-heals via PLAN.md).
+
 ## 3. WHERE WE ARE (in-flight, as of CLOSE 2026-07-23 Thu evening PDT — the deploy-night wrap)
 
 **Board 86** (flat this session — closed #493, filed #501). Everything pushed to `main` (HEAD d212334).
