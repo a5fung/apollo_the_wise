@@ -261,8 +261,25 @@ Day-1 re-entry fallback is silently dead) · D-8 money-clean + ratchet is the v1
 
 - [x] Finish line (§2) — definitions accepted (or edited) and signed: **operator, 2026-07-07 — accepted as-is, no edits**
 - [x] Dispositions (§4) walked; DECISION items answered: **operator, 2026-07-07 — all 9 decisions confirmed, none revised**
-- [ ] v1.0 DECLARED (all FL green): ____________  date: ________  ← carried by **#425** (declaration walk, ~7/14–7/21, soak-bound)
+- [x] v1.0 DECLARED (all FL green): **operator, 2026-07-24**  date: **2026-07-24**  ← walked + signed via #425
 
 **Walk record (2026-07-07):** operator signed the finish line + dispositions. Live clocks at sign-off:
 FL-1 5/10 · FL-3 0/7 (⚠ streak not advancing — under investigation) · FL-4 1/5 · FL-8 4/4 ✓ · 24 blocking
 open · projected declaration ~7/14. #418 closes here; #425 carries the all-green declaration.
+
+**🏁 DECLARATION record (2026-07-24) — v1.0 SHIPPED.** Operator declared Apollo v1.0 live at the #425 walk.
+Final FL evidence, all verified this walk:
+- **FL-1** 10/10 ✓ soak clean (`STOP_ACK_TIMEOUT_GATE` confirmed ON) · **FL-3** 7/7 ✓ · **FL-4** 5/5 ✓ (ingest
+  `live_r1` since 7/17) · **FL-8** 4/4 ✓ — all four auto-metered green (`scripts/v1_closeout_status.py`).
+- **FL-2** fences: operator ruled ACCEPT paper-mode proof (fences mode-identical + preflight-walked; THE LINE
+  argues against manufacturing live losses). The daily-loss coverage gap surfaced by the FL-5 reconcile was
+  FIXED before signing — realized losses now attributed by CLOSE day (ET), not `alert_date`; backtested
+  (old query mis-attributed 12/28 loss-days) + operator-signed CHANGE_PROCESS (`safeguards.md`) + deployed
+  live to apollo-execution + code-verified in the running container.
+- **FL-5** docs reconciled: 10 setup docs synced to code (the reconcile confirmed every safeguard number +
+  detection threshold already matched code — doc-lag only, the code was correct).
+- **FL-6** cost envelope done (#378) · **FL-7** board-zero (#184/#261 re-homed to #419 Phase-2 by operator).
+
+**#418 + #425 CLOSE here.** The blocking/launch lens retires; the board becomes the #419 Phase-2 program.
+The operating cadence is now the product — scan → judge → enter → manage → EOD audit → weekly review →
+data-gated sittings — and the operator's role narrows to sign-offs + sittings (the D5 posture).
