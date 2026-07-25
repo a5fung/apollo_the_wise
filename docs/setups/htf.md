@@ -61,7 +61,64 @@ Scale 33–50% into strength 3–5 days post-breakout → move the remainder to 
 the 10/20-day **EMA** (exit only on a daily close below). Stop = the tightest-day low / 10–20 EMA, hard
 max-loss 5–8%. Sizing risk 0.5–1% of equity. Target = the flagpole height added to the breakout.
 
+## M&A suppression on the actionable stages (`flag_scan`, not `compute_flag_metrics`)
+
+Backfilled into this SSoT 2026-07-24 (#502) — these layers had lived only in `flag_detector.py`. They
+run AFTER scoring, on `COILED`/`TRIGGERED` rows only (WATCH/TIGHTENING are digest-suppressed already, so
+gating them would multiply the API cost for no visible benefit). A hit rewrites the persisted row to
+`stage='unqualified'` with `reason='mna_filter:<source>'` — kept, not deleted, so the filter's hit rate
+stays auditable.
+
+**Why the setup needs this at all:** once price is pinned at an announced deal value it stops moving.
+Range collapses to bid–ask noise and volume bleeds out — which is *mechanically identical to a coil*.
+The tightness that scores a deal-pinned name COILED **is** the pin. Geometry alone cannot tell them apart.
+
+| Layer | Test | Catches |
+|---|---|---|
+| 1 — news | `ma_filter.is_likely_ma(check_polygon=True, polygon_lookback_days=21)` | deals Polygon has a headline for |
+| 2 — mature pin | median (H−L)/C over last **10** sessions < **0.5%** AND ≥**5** sub-0.5% sessions | pins ≥ ~3-4 weeks old |
+| 3 — fresh pin (#502) | 5-session band ≤ **2.5%** AND ≥**5×** volume spike (max vol last 10 / mean vol sessions 11–40) | pins days old |
+
+Layers 2 and 3 are complementary by *deal age*, not redundant: layer 2's window still holds
+pre-announcement volatility while a deal is fresh; layer 3's volume event ages out of its 10-session
+window once a deal matures. Both fail OPEN — a missing signature never suppresses.
+
 ## Change log
+- **2026-07-24 — Layer 3 added: FRESH deal-pin suppression (#502). OPERATOR-SIGNED.**
+  **Trigger**: operator, 2026-07-24 — the nightly HTF digest surfaced `ATAI` as the single 🌀 COILED
+  actionable setup; ATAI is a buyout. Root cause: a cash-deal pin is indistinguishable from a coil on
+  geometry, and *both* existing layers structurally cannot reach a FRESH pin. Layer 1 found nothing —
+  Polygon returned 2 ATAI articles in 21 days, neither carrying an M&A keyword (the #416 guards are NOT
+  implicated; nothing ever matched, so nothing vetoed). Layer 2 needs a 10-session median under 0.5%,
+  which a 6-session-old deal cannot reach — ATAI's median was 1.735% with 1 sub-0.5% day.
+  **Evidence**: 405-row replay of every historical COILED/TRIGGERED row using the SHIPPED
+  `_evaluate_fresh_pin` (not a lookalike sim — the #416 lesson), window 2026-05-04 → 07-24, 89 tickers.
+  11 rows / 4 tickers suppressed (ATAI ×2, CCRN ×2, KALV ×4, PAYO ×3); **393 preserved**, including
+  `HUM` — the nearest non-pin by band (3.07%) — which went on to **+25.7%** over the next 20 sessions.
+  The two populations do not overlap: every fresh pin ≥ 12.6× spike, every non-pin ≤ 2.9×. Band ∈
+  {2.0, 2.5, 3.0} crossed with spike ∈ {5×, 10×} all select the same 11 rows, so neither threshold is
+  load-bearing. Prior measured behaviour: layer 2 had fired **5 times in its lifetime** and caught KALV
+  ~29 days *after* KALV's first 4-session COILED leak; ATAI/CCRN/PAYO leaked and were never caught.
+  ⚠ **Single-regime limitation** — that window is one regime. Per the #454 finding that the kill/scale
+  envelope was silently bull-conditional, this calibration carries the same caveat and is due a re-cut
+  at the quarterly band review.
+  **Also tested and NOT shipped**: reusing the EP Claude-classifier `catalyst_quality='mna'` verdict.
+  It is not in `mi_ep_alerts` (the filter suppresses before the alert row is written) and the audit-log
+  store is 1-true/1-junk on N=2 — `ACLS` was graded `mna` while its own summary read "No recent news or
+  catalysts found", then ran $164 → $191. The guards cannot discriminate (`matches_mna_keywords`
+  returns `None` for ATAI too). Filed under #416; N=2 is below the bar to ship it *or* to close it.
+  **Anticipated effect**: ~11 actionable rows suppressed per ~3 months (of 405). ATAI leaves the board.
+  Layer 2's own hit rate is unchanged — layer 3 is purely additive; where both fire, the mature label
+  wins (3 KALV rows). New audit source string `deal_pin_fresh` alongside `deal_pin_signature`.
+  **Reversion-flag**: REFINEMENT of the 2026-05-11 deal-pin-signature change. Same intent — catch
+  zero-news M&A targets by price signature; the prior statistic is correct for mature pins and simply
+  has no reach on fresh ones. Not a reversal: nothing layer 2 catches is given up.
+  **Status**: shipped, awaiting field validation — verify = ATAI absent as COILED from the rendered
+  nightly HTF digest. Scope is flag-only (HTF is shadow, no order fires); extending the conjunction to
+  EP/9M would change detection on money paths and was deliberately excluded.
+  Full evidence: `docs/analysis/htf_deal_pin_fresh_2026-07-24.md`; replay:
+  `scripts/probes/_502_fresh_pin_replay.py`.
+
 - **2026-07-24 — FL-5 reconcile: doc synced to code (missing change-log entry added).** `_HISTORY_DAYS`
   is **380**, not 260 — the 6/27 entries below say "90→260" but the code moved a third time, same day,
   in a follow-up commit (`1f2f7a8`) that was never logged here: `get_recent_daily_history` filters by

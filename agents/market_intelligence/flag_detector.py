@@ -281,6 +281,30 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
 _DEAL_PIN_LOOKBACK_DAYS          = 10
 _DEAL_PIN_RANGE_THRESHOLD        = 0.005
 _DEAL_PIN_MIN_SUB_THRESHOLD_DAYS = 5
+
+# Layer 3b — FRESH deal pins (#502, operator-signed 2026-07-24). The rule above
+# needs a 10-session median under 0.5%, which a days-old deal structurally cannot
+# reach: its window still holds the pre-announcement volatility. Measured over the
+# table's lifetime it had fired 5 times ever, and caught KALV ~29 days AFTER its
+# first 4-session COILED leak; ATAI/CCRN/PAYO leaked and were never caught.
+#
+# A fresh pin is instead a two-axis conjunction — price welded in a narrow band
+# AND a preceding announcement-sized volume event. Either axis alone is ambiguous
+# (a quiet coil is also narrow; a gapper is also heavy), the pair is not. Over a
+# 405-row replay the two populations do not overlap: every fresh pin >= 12.6x
+# spike, every non-pin <= 2.9x, and the nearest non-pin by band (HUM, +25.7% over
+# the next 20 sessions) sits at 3.07% band / 1.0x spike. Band in {2.0, 2.5, 3.0}
+# crossed with spike in {5, 10} all select the same 11 rows, so neither threshold
+# is load-bearing. Full evidence: docs/analysis/htf_deal_pin_fresh_2026-07-24.md.
+_FRESH_PIN_BAND_DAYS       = 5      # sessions the price must stay welded across
+_FRESH_PIN_BAND_MAX        = 0.025  # (max high - min low) / avg close
+_FRESH_PIN_VOL_EVENT_DAYS  = 10     # window the announcement volume must fall in
+_FRESH_PIN_VOL_BASE_START  = 11     # baseline ADV window (1-indexed, inclusive)
+_FRESH_PIN_VOL_BASE_END    = 40
+_FRESH_PIN_VOL_SPIKE_MIN   = 5.0    # max event volume / baseline ADV
+# Deep enough to serve BOTH evaluators from one fetch (mature rule reads the
+# first _DEAL_PIN_LOOKBACK_DAYS rows; the fresh rule needs the ADV baseline).
+_PIN_HISTORY_DAYS          = _FRESH_PIN_VOL_BASE_END
 # (Removed 2026-06-27: the #80 runup-scaled proximity band — superseded by the
 # HTF flat ≤25% absolute-low depth gate. #80 relaxed the band to ~35% for high-
 # runup names, right for a generic flag but wrong for HTF where ≤25% is the
@@ -1160,10 +1184,19 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
             async def _deal_pin_check(r: dict) -> None:
                 try:
                     sig = pin_map.get(r["ticker"])
-                    if sig and sig.get("is_pin"):
+                    # Mature pin (10-session median) OR fresh pin (#502 band +
+                    # volume-event conjunction). Distinct reasons so the two
+                    # rules stay separable in offline review; the mature rule
+                    # wins the label when both fire, since it's the older and
+                    # more specific signature.
+                    if sig and (sig.get("is_pin") or sig.get("is_fresh_pin")):
+                        mature = bool(sig.get("is_pin"))
                         r["original_stage"] = r["stage"]
                         r["stage"] = "unqualified"
-                        r["reason"] = "mna_filter:deal_pin_signature"
+                        r["reason"] = (
+                            "mna_filter:deal_pin_signature" if mature
+                            else "mna_filter:deal_pin_fresh"
+                        )
                         await db.insert_flag_candidate(r)
                         # Same-trading-day audit dedup (#89). Same detector
                         # tag as the keyword-match flag site above — both
@@ -1171,16 +1204,27 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                         # detector) so first-of-day wins regardless of
                         # which sub-path (keyword vs deal_pin) fires first.
                         from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+                        source = "deal_pin_signature" if mature else "deal_pin_fresh"
+                        if mature:
+                            detail_txt = (
+                                f"median {sig['median_range_pct']:.3%}, "
+                                f"{sig['sub_threshold_days']}/{sig['total_days']} sub-0.5%"
+                            )
+                        else:
+                            detail_txt = (
+                                f"band {sig['band_pct']:.2%} over {sig['band_days']}d "
+                                f"(max {sig['band_max']:.2%}), "
+                                f"vol spike {sig['vol_spike_x']:.1f}x "
+                                f"(min {sig['spike_min']:.0f}x)"
+                            )
                         if await should_log_mna_filter_fired(r["ticker"], "flag"):
                             await db.log_audit_event(
                                 "mna_filter_fired",
-                                f"{r['ticker']} via deal_pin_signature (flag) — "
-                                f"median {sig['median_range_pct']:.3%}, "
-                                f"{sig['sub_threshold_days']}/{sig['total_days']} sub-0.5%",
+                                f"{r['ticker']} via {source} (flag) — {detail_txt}",
                                 detail=str({
                                     "detector": "flag",
                                     "stage": r["original_stage"],
-                                    "source": "deal_pin_signature",
+                                    "source": source,
                                     **sig,
                                 })[:500],
                             )
@@ -1246,11 +1290,70 @@ def _evaluate_deal_pin(rows: list) -> Optional[dict]:
     }
 
 
+def _evaluate_fresh_pin(rows: list) -> Optional[dict]:
+    """Pure-function evaluator for a FRESH deal pin (#502).
+
+    `rows` must be newest-first. Returns None when there isn't enough history to
+    judge (caller fails open — a missing signature never suppresses).
+
+    Conjunction, both required:
+      band  — (max high - min low) / avg close over the last _FRESH_PIN_BAND_DAYS
+      spike — max volume in the last _FRESH_PIN_VOL_EVENT_DAYS, over the mean
+              volume of the _FRESH_PIN_VOL_BASE_START.._END window behind it
+    """
+    if len(rows) < _FRESH_PIN_VOL_BASE_START:
+        return None
+    band_rows = rows[:_FRESH_PIN_BAND_DAYS]
+    if len(band_rows) < _FRESH_PIN_BAND_DAYS:
+        return None
+    closes = [float(r["close"]) for r in band_rows]
+    avg_close = sum(closes) / len(closes)
+    if avg_close <= 0:
+        return None
+    band = (
+        max(float(r["high_price"]) for r in band_rows)
+        - min(float(r["low_price"]) for r in band_rows)
+    ) / avg_close
+
+    # Baseline window is 1-indexed and inclusive; a short tail is fine as long as
+    # the guard above left us at least one baseline bar.
+    baseline = [
+        float(r["volume"]) for r in rows[_FRESH_PIN_VOL_BASE_START - 1:_FRESH_PIN_VOL_BASE_END]
+        if r["volume"] is not None
+    ]
+    event = [
+        float(r["volume"]) for r in rows[:_FRESH_PIN_VOL_EVENT_DAYS]
+        if r["volume"] is not None
+    ]
+    if not baseline or not event:
+        return None
+    adv = sum(baseline) / len(baseline)
+    if adv <= 0:
+        return None
+    spike = max(event) / adv
+
+    return {
+        "band_pct": band,
+        "vol_spike_x": spike,
+        "band_days": len(band_rows),
+        "baseline_days": len(baseline),
+        "is_fresh_pin": (
+            band <= _FRESH_PIN_BAND_MAX and spike >= _FRESH_PIN_VOL_SPIKE_MIN
+        ),
+        "band_max": _FRESH_PIN_BAND_MAX,
+        "spike_min": _FRESH_PIN_VOL_SPIKE_MIN,
+    }
+
+
 async def _check_deal_pin_signatures_batch(
     tickers: list[str],
     scan_date: date,
 ) -> dict[str, dict]:
-    """Batch version: one DB round-trip for N tickers' last _DEAL_PIN_LOOKBACK_DAYS bars.
+    """Batch version: one DB round-trip for N tickers' last _PIN_HISTORY_DAYS bars.
+
+    Serves BOTH pin evaluators off the single fetch — the mature rule reads the
+    leading _DEAL_PIN_LOOKBACK_DAYS rows (unchanged behaviour), the fresh rule
+    (#502) needs the deeper ADV baseline behind them.
 
     Returns {ticker: signature_dict} for every ticker with enough data;
     tickers with insufficient history are omitted (caller fails open).
@@ -1262,10 +1365,10 @@ async def _check_deal_pin_signatures_batch(
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT ticker, high_price, low_price, close
+            SELECT ticker, rn, high_price, low_price, close, volume
             FROM (
                 SELECT
-                    ticker, high_price, low_price, close,
+                    ticker, high_price, low_price, close, volume,
                     ROW_NUMBER() OVER (
                         PARTITION BY ticker ORDER BY trade_date DESC
                     ) AS rn
@@ -1278,16 +1381,24 @@ async def _check_deal_pin_signatures_batch(
                   AND close > 0
             ) sub
             WHERE rn <= $3
+            ORDER BY ticker, rn
             """,
-            tickers, scan_date, _DEAL_PIN_LOOKBACK_DAYS,
+            tickers, scan_date, _PIN_HISTORY_DAYS,
         )
     by_ticker: dict[str, list] = {}
     for r in rows:
         by_ticker.setdefault(r["ticker"], []).append(r)
     out: dict[str, dict] = {}
     for ticker, ticker_rows in by_ticker.items():
-        sig = _evaluate_deal_pin(ticker_rows)
-        if sig is not None:
+        # The outer SELECT is ordered, but sort defensively — the fresh-pin
+        # evaluator slices positionally and silently mis-reads a shuffled list,
+        # unlike the mature rule's order-independent median/count.
+        ticker_rows = sorted(ticker_rows, key=lambda r: r["rn"])
+        sig = _evaluate_deal_pin(ticker_rows[:_DEAL_PIN_LOOKBACK_DAYS]) or {}
+        fresh = _evaluate_fresh_pin(ticker_rows)
+        if fresh:
+            sig = {**sig, **fresh}
+        if sig:
             out[ticker] = sig
     return out
 
