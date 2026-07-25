@@ -5,8 +5,10 @@ gappers and records every name that crossed +10% vs prev close INSIDE the 9:31-9
 REAL time, but which the ~16-min-delayed detection feed showed below 10% through the window (so the
 live scan missed it). Each row carries whether the 5% hybrid (Pass-1 delayed superset + Pass-2 rt
 confirm) WOULD have caught it. `hybrid_caught=false` is the structural residual — flat pre-market
-then explode — that the hybrid can never catch; its count + forward outcome is the escalation
-dashboard for going full-real-time (design doc `realtime_detection_feed_design_2026-07-20.md` §14).
+then explode — that the hybrid can never catch. #490 §9.4 (operator-signed 2026-07-24): this table
+is no longer an ESCALATION dashboard (the full-RT question is decided) — it is the RT-2 shadow
+proof-join + the RT-4 post-cutover regression monitor, on the honest CROSS basis
+(design doc `490_full_realtime_design_2026-07-25.md` §9.4).
 
 Read-only vs prod trade state (Polygon minute bars + grouped daily); writes mi_ep_delayed_residual.
 """
@@ -137,18 +139,25 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         for r in out:
+            # #490 §9.4 — cross-basis columns stamped at insert (cross_px = the price at the
+            # moment of the real-time cross; the honest baseline the day CLOSE is not).
+            cross_px = r.prev_close * (1 + r.rt_gap / 100)
+            cross_to_close = round((r.day_close / cross_px - 1) * 100, 2) if r.day_close else None
+            cross_to_high = round(((r.prev_close * (1 + r.day_high_gap / 100)) / cross_px - 1) * 100, 2)
             await conn.execute("""
                 INSERT INTO mi_ep_delayed_residual
                     (run_date, ticker, cross_tick_et, rt_gap, delayed_gap, day_high_gap,
-                     hybrid_caught, prev_close, baseline_close)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                     hybrid_caught, prev_close, baseline_close, cross_to_close_pct, cross_to_high_pct)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                 ON CONFLICT (run_date, ticker) DO UPDATE SET
                     cross_tick_et=EXCLUDED.cross_tick_et, rt_gap=EXCLUDED.rt_gap,
                     delayed_gap=EXCLUDED.delayed_gap, day_high_gap=EXCLUDED.day_high_gap,
                     hybrid_caught=EXCLUDED.hybrid_caught, prev_close=EXCLUDED.prev_close,
-                    baseline_close=EXCLUDED.baseline_close, computed_at=NOW()
+                    baseline_close=EXCLUDED.baseline_close,
+                    cross_to_close_pct=EXCLUDED.cross_to_close_pct,
+                    cross_to_high_pct=EXCLUDED.cross_to_high_pct, computed_at=NOW()
             """, rd, r.ticker, r.cross_tick, r.rt_gap, r.delayed_gap, r.day_high_gap,
-                 r.hybrid_caught, r.prev_close, r.day_close)
+                 r.hybrid_caught, r.prev_close, r.day_close, cross_to_close, cross_to_high)
 
     n_missed = len(out)
     n_residual = sum(1 for r in out if not r.hybrid_caught)
@@ -172,28 +181,39 @@ async def run_delayed_residual_scan(run_date: str) -> tuple[int, int]:
     return (n_missed, n_residual)
 
 
-# ── G3 + O-9 escalation trigger (#490 §1.3; operator-pinned 2026-07-20: 5 misses / median fwd-5d ≥ +8%) ──
-O9_MIN_MISSES = 5             # ≥ this many settled residual misses over the window …
-O9_MEDIAN_FWD5D_MIN = 8.0     # … AND their median fwd_5d_pct ≥ this (real winners we're missing, not faders)
-O9_WINDOW_DAYS = 21          # ≈ 15 trading days
+# ── O-9 DISPOSITION (#490 §9.4, operator-signed 2026-07-24) ──────────────────────────────────
+# The O-9 escalation trigger (operator-pinned 7/20: ≥5 residual misses / median fwd-5d ≥ +8%)
+# is RETIRED — its question ("escalate to full-RT?") was consumed by the operator's #490 ruling,
+# and its metric ran on the known-wrong close basis (C3). What remains here:
+#   - `backfill_residual_outcomes` keeps its column NAMES but the basis becomes honest: fwd_1d/
+#     fwd_5d are computed vs cross_px (the price AT the real-time cross), not the day close.
+#   - `residual_regression_stats` is the re-pointed RT-4 REGRESSION MONITOR: post-cutover the
+#     residual count should read ~0; any sustained nonzero = the overlay is leaking.
+#   - `rt_shadow_capture_join` is the RT-2 daily proof-join (every hybrid_caught=false row on a
+#     shadow day must have a same-day `ep_rt_universe_catch`).
+O9_WINDOW_DAYS = 21          # ≈ 15 trading days — the regression monitor's rolling window
 
 
 async def backfill_residual_outcomes() -> int:
-    """G3 (#490 RT-1): stamp fwd_1d_pct + fwd_5d_pct on SETTLED residual rows so the O-9 trigger can
-    read forward outcomes. For each mi_ep_delayed_residual row with fwd_5d_pct NULL whose run_date
-    has ≥5 forward trading-day closes in mi_daily_closes, compute the return vs baseline_close.
-    Read-only vs trade state (only UPDATEs the residual dashboard). Returns rows stamped."""
+    """G3 (#490 RT-1): stamp fwd_1d_pct + fwd_5d_pct on SETTLED residual rows. #490 §9.4: the
+    basis is CROSS_PX = prev_close × (1 + rt_gap/100) — the price at the moment of the real-time
+    cross (the columns keep their names, the basis becomes honest; the old close-basis
+    understated the winners the dashboard exists to find, C3). Also stamps the cross_to_*
+    columns on any row the boot backfill missed. Read-only vs trade state (only UPDATEs the
+    residual dashboard). Returns rows stamped."""
     pool = await db.get_pool()
     updated = 0
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT run_date, ticker, baseline_close FROM mi_ep_delayed_residual
+            SELECT run_date, ticker, prev_close, rt_gap, day_high_gap, baseline_close
+            FROM mi_ep_delayed_residual
             WHERE fwd_5d_pct IS NULL AND baseline_close IS NOT NULL
+              AND prev_close IS NOT NULL AND prev_close > 0 AND rt_gap IS NOT NULL
               AND run_date <= (CURRENT_DATE - INTERVAL '8 days')
         """)
         for r in rows:
-            base = float(r["baseline_close"]) if r["baseline_close"] else None
-            if not base:
+            cross_px = float(r["prev_close"]) * (1 + float(r["rt_gap"]) / 100)
+            if cross_px <= 0:
                 continue
             fwd = await conn.fetch("""
                 SELECT close FROM mi_daily_closes
@@ -203,26 +223,36 @@ async def backfill_residual_outcomes() -> int:
             closes = [float(x["close"]) for x in fwd if x["close"]]
             if len(closes) < 5:
                 continue   # not enough forward data settled yet
+            base_close = float(r["baseline_close"])
+            cross_to_close = round((base_close / cross_px - 1) * 100, 2)
+            cross_to_high = (round(((float(r["prev_close"]) * (1 + float(r["day_high_gap"]) / 100))
+                                    / cross_px - 1) * 100, 2)
+                             if r["day_high_gap"] is not None else None)
             await conn.execute("""
-                UPDATE mi_ep_delayed_residual SET fwd_1d_pct=$1, fwd_5d_pct=$2
-                WHERE run_date=$3 AND ticker=$4
-            """, round((closes[0] / base - 1) * 100, 2), round((closes[4] / base - 1) * 100, 2),
-               r["run_date"], r["ticker"])
+                UPDATE mi_ep_delayed_residual SET fwd_1d_pct=$1, fwd_5d_pct=$2,
+                    cross_to_close_pct=COALESCE(cross_to_close_pct, $3),
+                    cross_to_high_pct=COALESCE(cross_to_high_pct, $4)
+                WHERE run_date=$5 AND ticker=$6
+            """, round((closes[0] / cross_px - 1) * 100, 2),
+               round((closes[4] / cross_px - 1) * 100, 2),
+               cross_to_close, cross_to_high, r["run_date"], r["ticker"])
             updated += 1
     if updated:
         await db.log_audit_event(
             "ep_residual_outcomes_backfilled",
-            f"G3: stamped fwd outcomes on {updated} settled residual row(s)",
-            json.dumps({"updated": updated}))
-    logger.info(f"backfill_residual_outcomes: {updated} rows stamped")
+            f"G3: stamped fwd outcomes (cross-basis, #490 §9.4) on {updated} settled residual row(s)",
+            json.dumps({"updated": updated, "basis": "cross_px"}))
+    logger.info(f"backfill_residual_outcomes: {updated} rows stamped (cross-basis)")
     return updated
 
 
-async def evaluate_o9_escalation() -> dict:
-    """O-9 (#490 §1.3, operator-pinned 2026-07-20): should we trigger the full-real-time cutover?
-    Over the last ≈15 trading days, count residual (hybrid_caught=false) misses WITH settled
-    outcomes; TRIGGER when count ≥ O9_MIN_MISSES AND their median fwd_5d_pct ≥ O9_MEDIAN_FWD5D_MIN
-    (the delay is costing WINNING EPs, not faders). Read-only. Returns {count, median_fwd5d, triggered}."""
+async def residual_regression_stats() -> dict:
+    """#490 §9.4 — the re-pointed RT-4 regression monitor (formerly `evaluate_o9_escalation`,
+    RETIRED as a trigger: the operator's #490 ruling consumed its question; it must not keep
+    reporting "not triggered" on a dead basis against a decided question). Over the rolling
+    O9_WINDOW_DAYS window: count residual (hybrid_caught=false) misses with settled outcomes +
+    their median fwd_5d_pct (now cross-basis). Post-cutover (RT-3) the count should trend ~0;
+    any sustained nonzero = the overlay is leaking. Read-only. Returns {count, median_fwd5d}."""
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(f"""
@@ -232,7 +262,37 @@ async def evaluate_o9_escalation() -> dict:
         """)
     vals = [float(r["fwd_5d_pct"]) for r in rows]
     median = statistics.median(vals) if vals else None
-    triggered = len(vals) >= O9_MIN_MISSES and median is not None and median >= O9_MEDIAN_FWD5D_MIN
     return {"count": len(vals),
-            "median_fwd5d": round(median, 2) if median is not None else None,
-            "triggered": triggered}
+            "median_fwd5d": round(median, 2) if median is not None else None}
+
+
+async def rt_shadow_capture_join(run_date: str) -> dict:
+    """#490 RT-2 daily proof-join (piggybacks the 16:35 residual job): every
+    `hybrid_caught=false` residual row on a shadow day must have a same-day in-window
+    `ep_rt_universe_catch` audit event. Post-cutover (RT-3) the same join inverts into the
+    standing verifier — a residual row with no catch = regression alarm. Read-only vs trade
+    state. Returns {residual_total, caught_by_rt, missing: [tickers]}."""
+    rd = datetime.strptime(run_date, "%Y-%m-%d").date()
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        residual_rows = await conn.fetch("""
+            SELECT ticker FROM mi_ep_delayed_residual
+            WHERE run_date = $1 AND hybrid_caught = false
+        """, rd)
+        catch_rows = await conn.fetch("""
+            SELECT detail FROM mi_audit_log WHERE event_type = 'ep_rt_universe_catch'
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+        """, rd)
+    caught: set = set()
+    for r in catch_rows:
+        try:
+            j = json.loads(r["detail"]) if isinstance(r["detail"], str) else (r["detail"] or {})
+            if j.get("ticker"):
+                caught.add(j["ticker"])
+        except (ValueError, TypeError):
+            continue
+    residual = [r["ticker"] for r in residual_rows]
+    missing = [t for t in residual if t not in caught]
+    return {"residual_total": len(residual),
+            "caught_by_rt": len(residual) - len(missing),
+            "missing": missing}

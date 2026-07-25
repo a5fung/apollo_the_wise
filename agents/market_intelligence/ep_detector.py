@@ -103,6 +103,26 @@ EP_PASS1_SUPERSET_GAP_PCT = float(os.environ.get("EP_PASS1_SUPERSET_GAP_PCT", 5.
 # when the RT infra (EP_RT_PASS2_ENABLED) is on; own kill switch.
 EP_RT_MISS_WATCHDOG_ENABLED = os.environ.get("EP_RT_MISS_WATCHDOG_ENABLED", "true").lower() == "true"
 
+# ── #490 FULL real-time detection — RT-1 dark build (design signed 2026-07-24,
+# docs/analysis/490_full_realtime_design_2026-07-25.md). Master flag OFF (deploy default) =
+# byte-identical to the #489 hybrid: Pass-0 never fetches, no overlay, no volume shadow.
+# When ON: overlay real-time Alpaca SIP prices on the full ~3,325-ticker RT universe every
+# scan tick. gap AUTHORITY stays the separate `ep_rt_universe_authoritative` runtime toggle
+# (mi_safeguard_state, ~60s, no deploy — default off = shadow: rt logged + catch events only,
+# delayed still decides). Volume authority is `ep_rt_volume_authoritative` (own toggle, §6.1,
+# flipped ≥3 market days after the gap per the cutover ladder). Rollback rungs R1-R5: §8.
+EP_RT_UNIVERSE_ENABLED = os.environ.get("EP_RT_UNIVERSE_ENABLED", "false").lower() == "true"
+EP_RT_UNIVERSE_CONCURRENCY = int(os.environ.get("EP_RT_UNIVERSE_CONCURRENCY", "1"))
+EP_RT_UNIVERSE_TIMEOUT_S = float(os.environ.get("EP_RT_UNIVERSE_TIMEOUT_S", "15"))
+# §3 tick-quality guard thresholds (Q1-Q4) — env-tunable, rejections LOUD
+# (`ep_rt_tick_quality_reject` + reason enum; the C1 silent-clamp lesson mechanized).
+EP_RT_QBAND_PCT = float(os.environ.get("EP_RT_QBAND_PCT", "0.5"))                       # Q1 NBBO band width
+EP_RT_QUOTE_MAX_AGE_PREOPEN_S = float(os.environ.get("EP_RT_QUOTE_MAX_AGE_PREOPEN_S", "300"))  # Q2 pre-open
+EP_RT_QUOTE_MAX_AGE_RTH_S = float(os.environ.get("EP_RT_QUOTE_MAX_AGE_RTH_S", "30"))    # Q2 RTH
+EP_RT_BAR_MAX_AGE_S = float(os.environ.get("EP_RT_BAR_MAX_AGE_S", "600"))               # Q3 bar age ≤ 10 min
+EP_RT_INSANE_GAP_PCT = float(os.environ.get("EP_RT_INSANE_GAP_PCT", "200"))             # Q4 absolute insanity bound
+EP_RT_HALT_TRADE_AGE_S = float(os.environ.get("EP_RT_HALT_TRADE_AGE_S", "90"))          # §4 halt-suspect trade age
+
 
 def _pass1_gap_floor() -> float:
     """The Pass-1 (delayed universe screen) gap floor: the lower superset when the hybrid is on,
@@ -1483,7 +1503,408 @@ async def _emit_large_cap_relvol_floor_shadow(r: dict, now_et: datetime) -> None
         logger.warning(f"large_cap_relvol_floor_shadow failed for {r.get('ticker')}: {_e}")
 
 
-async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> list[dict]:
+# ── #490 RT-1 helpers (design docs/analysis/490_full_realtime_design_2026-07-25.md) ──────────
+
+def _ts_age_s(ts, now_et: datetime) -> "float | None":
+    """Age of a (tz-aware Alpaca) timestamp vs now_et, in seconds. None on any failure —
+    a bad/naive timestamp must degrade the guard it feeds, never raise on the scan path."""
+    if ts is None:
+        return None
+    try:
+        return (now_et - ts).total_seconds()
+    except Exception:  # loud-ok: age None → the consuming guard treats the input as stale/unknown
+        return None
+
+
+def _bar_date_et(ts) -> "date | None":
+    """ET calendar date of an Alpaca bar timestamp (bars are stamped at bar OPEN — midnight ET
+    for daily bars, so the ET date IS the trading date). None-safe."""
+    if ts is None:
+        return None
+    try:
+        from agents.market_intelligence.collector import _ET
+        return ts.astimezone(_ET).date()
+    except Exception:  # loud-ok: unparseable ts → no date match → the §2.1 fail-safe (no cross-check)
+        return None
+
+
+def _alpaca_ref_close(sn: dict, prev_trade_date: "date | None") -> "float | None":
+    """§2.1 DATE-KEYED prev_close cross-check reference: whichever Alpaca bar (daily_bar OR
+    previous_daily_bar) has bar-date == the known previous trading date. Pre-open that selects
+    daily_bar (which still holds T-1 — proven by 190/190 T-2 matches on the OTHER field);
+    post-rollover it selects previous_daily_bar. No clock heuristic — the date does the
+    selection, so the Alpaca-internal rollover moment can't bite. None = no cross-check
+    available (new listing / data gap / neither date matches, incl. holiday-approximation
+    misses of `last_trading_day`) → caller keeps the Polygon denominator UNVERIFIED and any
+    RT-only admission additionally requires Q3 bar corroboration (design O1 fail-safe)."""
+    if prev_trade_date is None:
+        return None
+    for close_key, ts_key in (("daily_bar_close", "daily_bar_ts"),
+                              ("prev_close", "prev_daily_bar_ts")):
+        close = sn.get(close_key)
+        if close and _bar_date_et(sn.get(ts_key)) == prev_trade_date:
+            return close
+    return None
+
+
+# §2.2 corporate-action (split) guard — one Polygon reference call per morning, cached for the
+# day. A FAILED fetch is NOT cached (retried next tick) so a transient reference outage falls
+# back to the 0.5% cross-check alone for that tick only (today's protection level).
+_corp_action_date: "date | None" = None
+_corp_action_set: "set[str] | None" = None
+
+
+async def _corp_action_holds_today(today: "date") -> "set[str] | None":
+    global _corp_action_date, _corp_action_set
+    if _corp_action_date == today:
+        return _corp_action_set
+    from agents.market_intelligence import collector
+    holds = await collector.get_splits_today(today.isoformat())
+    if holds is not None:
+        _corp_action_date, _corp_action_set = today, holds
+    return holds
+
+
+# §4 halt quarantine session state — per-day in-memory set of tickers seen with a FRESH print
+# this RTH session (distinguishes "halted mid-morning" from "just thin"). Wiped on date change
+# and on container restart (restart → nothing is halt_suspect until re-observed — fail-open to
+# today's delayed-fallback semantics, never a false quarantine).
+_rt_fresh_seen_date: "date | None" = None
+_rt_fresh_seen: set = set()
+
+
+def _rt_track_fresh_prints(snaps: dict, now_et: datetime) -> None:
+    """Record every ticker whose latest_trade is fresh (age ≤ EP_RT_HALT_TRADE_AGE_S) this RTH
+    session. Called once per rt fetch BEFORE halt-suspect evaluation."""
+    global _rt_fresh_seen_date, _rt_fresh_seen
+    if _is_premarket(now_et):
+        return
+    adate = now_et.date()
+    if _rt_fresh_seen_date != adate:
+        _rt_fresh_seen = set()
+        _rt_fresh_seen_date = adate
+    for sym, sn in snaps.items():
+        age = _ts_age_s(sn.get("price_ts"), now_et)
+        if age is not None and age <= EP_RT_HALT_TRADE_AGE_S:
+            _rt_fresh_seen.add(sym)
+
+
+def _is_halt_suspect(ticker: str, sn: dict, now_et: datetime) -> bool:
+    """§4: RTH-only heuristic — latest_trade frozen (age > EP_RT_HALT_TRADE_AGE_S) AND the quote
+    is invalid-or-stale (Q1/Q2 fail), for a name that had a fresh print earlier this session.
+    A halt_suspect cannot be RT-only admitted this tick; it re-admits naturally at the next
+    5-min tick once prints/quotes refresh (post-resume ORB mechanics stay the real backstop)."""
+    if _is_premarket(now_et) or ticker not in _rt_fresh_seen:
+        return False
+    trade_age = _ts_age_s(sn.get("price_ts"), now_et)
+    if trade_age is None or trade_age <= EP_RT_HALT_TRADE_AGE_S:
+        return False
+    bid, ask = sn.get("bid"), sn.get("ask")
+    quote_valid = bid is not None and ask is not None and bid > 0 and ask > bid
+    quote_age = _ts_age_s(sn.get("quote_ts"), now_et)
+    quote_fresh = quote_age is not None and quote_age <= EP_RT_QUOTE_MAX_AGE_RTH_S
+    return not (quote_valid and quote_fresh)
+
+
+def _q3_bar_corroborated(sn: dict, prev_close: float, now_et: datetime) -> bool:
+    """Q3 — bar corroboration, REQUIRED for every RT-ONLY admission (extends the shipped
+    never-loosen rule): minute_bar present, volume > 0, bar age ≤ EP_RT_BAR_MAX_AGE_S, and
+    bar-close gap ≥ MIN_GAP_PCT − 0.5pp. Consolidated minute bars exclude most condition-coded
+    prints per SIP aggregation rules — a phantom print cannot mint a qualifying bar with
+    volume behind it. No name enters the scored cohort on one print alone."""
+    mb_close = sn.get("minute_close")
+    if not mb_close or not (sn.get("minute_volume") or 0) > 0 or not prev_close:
+        return False
+    bar_age = _ts_age_s(sn.get("minute_ts"), now_et)
+    if bar_age is None or bar_age > EP_RT_BAR_MAX_AGE_S:
+        return False
+    return (mb_close - prev_close) / prev_close * 100 >= MIN_GAP_PCT - 0.5
+
+
+def _rt_quality_read(sn: dict, prev_close: float, now_et: datetime,
+                     rt_only: bool) -> "tuple[float | None, str | None, dict]":
+    """§3 tick-quality guards Q1-Q4 on one rt snapshot. Returns (price, reject_reason, meta).
+
+    price None + reason None  → no usable rt read at all (silent per-ticker delayed fallback).
+    price None + reason set   → a LOUD guard rejection (caller emits ep_rt_tick_quality_reject
+                                with the reason enum: no_quote | crossed_quote | outside_band |
+                                stale_quote | no_bar_confirm | insane_gap).
+    price set                 → the accepted rt price (latest_trade, or the fresh minute-bar
+                                close when Q1 rejected the print — meta['basis']).
+
+    Q1 (NBBO band) runs only on a VALID (bid>0, ask>bid) and FRESH (Q2: ≤300s pre-open / ≤30s
+    RTH) quote; without one, Q1 is unavailable and Q3 governs admission. `rt_only=True` makes
+    Q3 mandatory (every universe admission); rt_only=False (an already-delayed-corroborated
+    Pass-2 candidate) skips the mandatory-Q3 clause."""
+    meta: dict = {"q1_pass": False, "q3_pass": False, "basis": "latest_trade",
+                  "quote_state": None, "minute_close": sn.get("minute_close")}
+    price = sn.get("price")
+    bid, ask = sn.get("bid"), sn.get("ask")
+    if bid is None or ask is None:
+        quote_state = "missing"
+    elif not (bid > 0 and ask > bid):
+        quote_state = "invalid"   # one-sided, zero, crossed/locked — the phantom-cross vector
+    else:
+        q_max_age = EP_RT_QUOTE_MAX_AGE_PREOPEN_S if _is_premarket(now_et) else EP_RT_QUOTE_MAX_AGE_RTH_S
+        q_age = _ts_age_s(sn.get("quote_ts"), now_et)
+        quote_state = "fresh" if (q_age is not None and q_age <= q_max_age) else "stale"
+    meta["quote_state"] = quote_state
+    q3_pass = _q3_bar_corroborated(sn, prev_close, now_et)
+    meta["q3_pass"] = q3_pass
+
+    if not price:
+        # No trade print — a fresh corroborating bar can still carry the read; else silent fallback.
+        if q3_pass:
+            price = sn.get("minute_close")
+            meta["basis"] = "minute_bar"
+        else:
+            return None, None, meta
+    elif quote_state == "fresh":
+        mid = (bid + ask) / 2
+        band = max(EP_RT_QBAND_PCT / 100 * mid, 0.01)
+        if (bid - band) <= price <= (ask + band):
+            meta["q1_pass"] = True
+        elif q3_pass:
+            # Print outside the band (likely late-reported / condition-coded / off-exchange odd
+            # print) → fall through to the fresh minute-bar close.
+            price = sn.get("minute_close")
+            meta["basis"] = "minute_bar"
+        else:
+            return None, "outside_band", meta
+    # quote_state stale/invalid/missing → Q1 skipped (unavailable) → Q3 governs admission below.
+
+    rt_gap = (price - prev_close) / prev_close * 100
+    meta["rt_gap"] = rt_gap
+    # Q4 — absolute insanity bound (replaces the 30pp delta clamp for the universe path, which
+    # structurally rejected the NVVE +95% class): hard-reject only rt_gap > EP_RT_INSANE_GAP_PCT
+    # or price outside [0.25×, 4×] prev_close UNLESS Q1 AND Q3 both pass (a real +100% mover has
+    # a real NBBO and real printed bars).
+    if (rt_gap > EP_RT_INSANE_GAP_PCT or price < 0.25 * prev_close or price > 4 * prev_close) \
+            and not (meta["q1_pass"] and q3_pass):
+        return None, "insane_gap", meta
+    if rt_only and not q3_pass:
+        # Q3 mandatory — name the most-informative failed guard: a band-passed fresh print that
+        # merely lacks the bar is no_bar_confirm; an uncheckable print is named by its quote gap.
+        reason = ("no_bar_confirm" if quote_state == "fresh"
+                  else {"missing": "no_quote", "invalid": "crossed_quote", "stale": "stale_quote"}[quote_state])
+        return None, reason, meta
+    return price, None, meta
+
+
+def _delayed_gap_for(snap: "dict | None", prev_close: float) -> "float | None":
+    """The delayed (Polygon snapshot) gap for a ticker — same price chain as the Pass-1 loop
+    (min.c → day.o → lastTrade.p). None when no delayed price exists (the pure rt-only class)."""
+    if not snap or not prev_close:
+        return None
+    current = (snap.get("min", {}).get("c")
+               or snap.get("day", {}).get("o")
+               or snap.get("lastTrade", {}).get("p", 0))
+    if not current:
+        return None
+    return (current - prev_close) / prev_close * 100
+
+
+_SESSION_MINUTES = 390  # 6.5-hour regular session (shared by Pass-1 + the Pass-0 admit path)
+
+
+def _snap_candidate(ticker: str, snap: dict, prev_close: float, current_price: float,
+                    gap_pct: float, adv_map: dict, minutes_since_open: "int | None") -> dict:
+    """Build the Pass-1 candidate dict for one ticker (#490 RT-1 extraction — shared verbatim
+    by the delayed Pass-1 loop and the Pass-0 universe admission path so the two can never
+    drift). Byte-identical to the pre-#490 inline block (freeze-tested)."""
+    # Volume: day.v for regular session, min.av for accumulated (includes pre-mkt)
+    today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
+    adv = adv_map.get(ticker)
+    # prevDay.v as temporary placeholder — proper 20-day ADV computed later for non-universe stocks
+    adv_source = "rs_universe" if adv else "pending"
+    if not adv:
+        adv = snap.get("prevDay", {}).get("v") or None
+
+    raw_rvol = round((today_volume / adv), 2) if adv and adv > 0 else None
+    # Open intensity: projected full-day RVOL = raw_rvol * (390 / min_elapsed)
+    # Gate: only project after 15 minutes (9:45 AM). The opening 15 minutes are
+    # structurally dense — every stock shows 10-30x projected RVOL at 9:31 AM
+    # regardless of real institutional interest. Before the gate, use raw RVOL.
+    open_intensity = None
+    if raw_rvol is not None and minutes_since_open and today_volume > 0:
+        if minutes_since_open >= 15:
+            open_intensity = round(raw_rvol * (_SESSION_MINUTES / minutes_since_open), 1)
+        # else: intensity stays None — vol filter uses raw_rvol pre-9:45
+
+    return {
+        "ticker": ticker,
+        "prev_close": prev_close,
+        "current_price": current_price,
+        "gap_pct": round(gap_pct, 2),
+        "today_volume": today_volume,
+        "adv": adv,
+        "adv_source": adv_source,
+        "rel_volume": raw_rvol,
+        "projected_vol_multiple": open_intensity,  # field name kept for DB compat
+        "gap_pct_delayed": round(gap_pct, 2),   # #489 Pass-1 delayed gap (both readings kept)
+        "price_source": "polygon_delayed",       # Pass-2/Pass-0 overwrite when the rt gap decides
+    }
+
+
+async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, snapshots: dict,
+                                     adv_map: dict, minutes_since_open: "int | None",
+                                     now_et: datetime,
+                                     prev_trade_date: "date | None") -> "tuple[list[dict], dict | None]":
+    """#490 Pass-0 — full-universe real-time overlay (design §5.1). ONE Alpaca SIP fetch of the
+    whole RT universe per tick (the watchdog + Pass-2 reuse the returned map — one fetch, not
+    three). For every universe ticker NOT already a Pass-1 candidate whose rt gap crosses the
+    real MIN_GAP_PCT floor: run the §2 prev_close guards (date-keyed cross-check, split hold) +
+    §3 Q1-Q4 tick-quality (Q3 mandatory — RT-only admission) + §4 halt quarantine, then
+      - SHADOW (`ep_rt_universe_authoritative` off, default): emit `ep_rt_universe_catch`
+        audit-only (digest surfacing per the 7/21 noise ruling) — NOT admitted, no LLM spend;
+      - AUTHORITATIVE (operator-flipped, RT-3): ADMIT it as a real candidate
+        (price_source='alpaca_sip_universe'; rt price faces MIN_GAP_PCT directly).
+    Polygon prevDay.c stays the SOLE gap denominator (§2). Every failure rung degrades to the
+    hybrid path (§5.3): per-ticker miss → that ticker stays delayed; batch failure →
+    ep_rt_universe_degraded; whole-fetch failure / budget breach → today's shadow-hybrid +
+    deduped Telegram via maybe_alert_api_failure. NEVER raises. Returns (candidates, snaps|None).
+
+    Master flag OFF (deploy default) → pure no-op, candidates returned unchanged (freeze-tested
+    byte-identical)."""
+    if not (EP_RT_UNIVERSE_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
+        return candidates, None
+    try:
+        from agents.market_intelligence import collector
+        authoritative = await get_runtime_toggle(
+            "ep_rt_universe_authoritative", "EP_RT_UNIVERSE_AUTHORITATIVE", default=False)
+        stats: dict = {}
+        try:
+            snaps = await asyncio.wait_for(
+                collector.get_alpaca_snapshots_batch(
+                    [t for t, _ in rt_universe],
+                    concurrency=EP_RT_UNIVERSE_CONCURRENCY, stats=stats),
+                timeout=EP_RT_UNIVERSE_TIMEOUT_S)
+        except Exception as e:
+            # §5.3 rung 3 — whole-fetch failure / total budget breach → the tick runs EXACTLY
+            # today's shadow-hybrid; sustained outage is loud within one dedup window (#370 idiom).
+            from agents.market_intelligence.llm_health import maybe_alert_api_failure
+            logger.warning(f"#490 Pass-0 universe fetch failed — hybrid tick: {e}")
+            await maybe_alert_api_failure("alpaca", e, context="ep_rt_universe")
+            return candidates, None
+        if stats.get("batches_failed"):
+            # §5.3 rung 2 — those symbols degrade per rung 1; the rest stay RT.
+            await log_audit_event(
+                "ep_rt_universe_degraded",
+                f"RT universe fetch degraded: {stats['batches_failed']}/{stats.get('batches_total')} "
+                f"batches failed, {len(rt_universe) - len(snaps)} symbols missing @ {now_et:%H:%M} ET",
+                json.dumps({"batches_failed": stats["batches_failed"],
+                            "batches_total": stats.get("batches_total"),
+                            "symbols_missing": len(rt_universe) - len(snaps),
+                            "tick_et": now_et.strftime("%H:%M")}))
+        if not snaps:
+            return candidates, None
+        _rt_track_fresh_prints(snaps, now_et)   # §4 — before any suspect evaluation this tick
+        holds = await _corp_action_holds_today(now_et.date())
+        adate = now_et.date()
+        in_candidates = {c["ticker"] for c in candidates}
+        for tkr, pc in rt_universe:
+            if tkr in in_candidates or not pc:
+                continue   # the candidate cohort is Pass-2's job (cross-check + floor, one place)
+            sn = snaps.get(tkr)
+            if not sn:
+                continue   # rung 1: per-ticker symbology miss → hybrid semantics (fail-safe)
+            price = sn.get("price")
+            if not price:
+                continue
+            raw_gap = (price - pc) / pc * 100
+            if raw_gap < MIN_GAP_PCT:
+                continue   # guards are evaluated only on the would-be-catch set (bounded events)
+            # §2.2 — corporate-action hold: a split effective today makes "settled yesterday"
+            # vendor-ambiguous; no RT-only admission that day.
+            if holds and tkr in holds:
+                if _audit_dedupe_check(tkr, adate, "ep_rt_corp_action_hold"):
+                    await log_audit_event(
+                        "ep_rt_corp_action_hold",
+                        f"{tkr} split effective today — RT-only admission held (delayed-path semantics)",
+                        json.dumps({"ticker": tkr, "rt_gap": round(raw_gap, 2),
+                                    "tick_et": now_et.strftime("%H:%M")}))
+                continue
+            # §4 — halt quarantine: frozen print + dead quote on a previously-fresh name.
+            if _is_halt_suspect(tkr, sn, now_et):
+                if _audit_dedupe_check(tkr, adate, "ep_rt_halt_suspect"):
+                    await log_audit_event(
+                        "ep_rt_halt_suspect",
+                        f"{tkr} rt {raw_gap:.1f}% but print frozen + quote dead @ {now_et:%H:%M} ET — "
+                        f"no RT-only admission this tick",
+                        json.dumps({"ticker": tkr, "rt_gap": round(raw_gap, 2),
+                                    "trade_age_s": _ts_age_s(sn.get("price_ts"), now_et),
+                                    "tick_et": now_et.strftime("%H:%M")}))
+                continue
+            # §2.1 — date-keyed prev_close cross-check (Polygon prevDay.c stays the denominator).
+            a_ref = _alpaca_ref_close(sn, prev_trade_date)
+            if a_ref is not None and abs(a_ref - pc) / pc * 100 > 0.5:
+                if _audit_dedupe_check(tkr, adate, "ep_rt_prev_close_mismatch"):
+                    await log_audit_event(
+                        "ep_rt_prev_close_mismatch",
+                        f"{tkr} prev_close alpaca {a_ref} vs polygon {pc} (date-keyed) — using delayed",
+                        json.dumps({"ticker": tkr, "alpaca": a_ref, "polygon": pc,
+                                    "prev_trade_date": prev_trade_date.isoformat() if prev_trade_date else None,
+                                    "tick_et": now_et.strftime("%H:%M")}))
+                continue   # degrade to delayed semantics — exactly today's fail direction
+            # §3 — Q1-Q4; Q3 is ALWAYS mandatory here (every one of these is an RT-only admission;
+            # an unverified prev_close (a_ref None) is covered by the same mandatory Q3, per §2.1).
+            rt_price, reject, meta = _rt_quality_read(sn, pc, now_et, rt_only=True)
+            if rt_price is None:
+                if reject and _audit_dedupe_check(tkr, adate, "ep_rt_tick_quality_reject"):
+                    await log_audit_event(
+                        "ep_rt_tick_quality_reject",
+                        f"{tkr} rt {raw_gap:.1f}% REJECTED ({reject}) @ {now_et:%H:%M} ET",
+                        json.dumps({"ticker": tkr, "reason": reject, "rt_gap": round(raw_gap, 2),
+                                    "quote_state": meta.get("quote_state"),
+                                    "tick_et": now_et.strftime("%H:%M")}))
+                continue
+            rt_gap = (rt_price - pc) / pc * 100
+            if rt_gap < MIN_GAP_PCT:
+                continue   # the accepted (band/bar-fallback) price fell back below the floor
+            delayed_gap = _delayed_gap_for(snapshots.get(tkr), pc)
+            # The shadow-proof event — fires in BOTH modes (the RT-2 proof-join and the RT-4
+            # regression monitor read it). AUDIT-ONLY + morning digest (operator fork 4, 7/21
+            # noise ruling) — never a per-catch Telegram. Includes the latest_trade-vs-minute_bar
+            # divergence (§3 accepted-risk measurement).
+            if _audit_dedupe_check(tkr, adate, "ep_rt_universe_catch"):
+                await log_audit_event(
+                    "ep_rt_universe_catch",
+                    f"{tkr} rt {rt_gap:.1f}% ≥{MIN_GAP_PCT:.0f} vs delayed "
+                    f"{'%.1f%%' % delayed_gap if delayed_gap is not None else 'n/a'} @ {now_et:%H:%M} ET"
+                    + ("" if authoritative else " (SHADOW — would have caught)"),
+                    json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
+                                "delayed_gap": round(delayed_gap, 2) if delayed_gap is not None else None,
+                                "tick_et": now_et.strftime("%H:%M"), "authoritative": authoritative,
+                                "basis": meta.get("basis"), "q1_pass": meta.get("q1_pass"),
+                                "quote_state": meta.get("quote_state"),
+                                "trade_price": price, "minute_close": meta.get("minute_close"),
+                                "prev_close_verified": a_ref is not None}))
+            if not authoritative:
+                continue   # SHADOW: not admitted, no LLM spend
+            snap = snapshots.get(tkr) or {}
+            cand = _snap_candidate(tkr, snap, pc, rt_price, rt_gap, adv_map, minutes_since_open)
+            cand["price_source"] = "alpaca_sip_universe"
+            cand["gap_pct_rt"] = round(rt_gap, 2)
+            if delayed_gap is not None:
+                cand["gap_pct_delayed"] = round(delayed_gap, 2)
+            else:
+                del cand["gap_pct_delayed"]   # no delayed read exists — never present rt as delayed
+            cand["prev_close_alpaca"] = a_ref
+            cand["prev_close_verified"] = a_ref is not None
+            age = _ts_age_s(sn.get("price_ts"), now_et)
+            if age is not None:
+                cand["rt_price_age_s"] = round(age, 1)
+            candidates.append(cand)
+        return candidates, snaps
+    except Exception as e:
+        # §5.3 rung 6 — outer belt: unexpected exception → the hybrid path, never a blind tick.
+        logger.warning(f"#490 Pass-0 overlay failed — degrading to the hybrid path: {e}")
+        return candidates, None
+
+
+async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
+                                prev_trade_date: "date | None" = None,
+                                snaps: "dict | None" = None) -> list[dict]:
     """#489 hybrid Pass 2 — real-time Alpaca SIP confirm on the superset candidates.
 
     When EP_RT_PASS2_ENABLED: fetch rt prices, recompute the gap on the rt price (Polygon prev_close
@@ -1491,23 +1912,33 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
     gap the decided `gap_pct`. Then RE-APPLY the real MIN_GAP_PCT floor. In shadow (toggle off) the
     decided gap stays delayed, so every superset-only admit is dropped here -> the live cohort is
     byte-identical to today; the rt reading rides along for scan-log shadow columns + floor-flip
-    events. NEVER raises; every failure degrades to exactly the delayed 10%-floor path."""
+    events. NEVER raises; every failure degrades to exactly the delayed 10%-floor path.
+
+    #490 RT-1: `prev_trade_date` arms the §2.1 DATE-KEYED prev_close cross-check (ships as a BUG
+    FIX regardless of the cutover — pre-open Alpaca's previous_daily_bar deterministically holds
+    T-2, so the old field-hardcoded compare silently censored the RT read of every candidate whose
+    prior day moved >0.5%). `snaps` accepts the Pass-0 pre-fetched universe map (no second fetch);
+    None → Pass-2 fetches its own cohort exactly as before."""
     if not EP_RT_PASS2_ENABLED or not candidates:
         return candidates
     try:
         from agents.market_intelligence import collector
         authoritative = await get_runtime_toggle(
             "ep_rt_gap_authoritative", "EP_RT_GAP_AUTHORITATIVE", default=False)
-        snaps = await collector.get_alpaca_snapshots_batch([c["ticker"] for c in candidates])
+        if snaps is None:
+            snaps = await collector.get_alpaca_snapshots_batch([c["ticker"] for c in candidates])
         adate = now_et.date()
 
         def _floor(cs):
             # Re-apply the REAL floor to the decided gap. A superset-only admit (delayed<10%) whose
             # rt read is MISSING under authority is DROPPED — a fetch miss must never loosen detection.
+            # #490: `_rt_admit_block` extends the same never-loosen rule — an unverified-prev_close
+            # flip-up without Q3 bar corroboration (§2.1) or a halt_suspect (§4) is likewise DROPPED.
             out = []
             for c in cs:
-                if authoritative and c.get("gap_pct_delayed", c["gap_pct"]) < MIN_GAP_PCT and "gap_pct_rt" not in c:
-                    continue
+                if authoritative and c.get("gap_pct_delayed", c["gap_pct"]) < MIN_GAP_PCT:
+                    if "gap_pct_rt" not in c or c.get("_rt_admit_block"):
+                        continue
                 if c["gap_pct"] >= MIN_GAP_PCT:
                     out.append(c)
             return out
@@ -1520,33 +1951,75 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
                             "authoritative": authoritative}))
             return _floor(candidates)
 
+        _rt_track_fresh_prints({c["ticker"]: snaps[c["ticker"]] for c in candidates
+                                if c["ticker"] in snaps}, now_et)   # §4 session state (RTH no-op premarket)
         for c in candidates:
+            if c.get("price_source") == "alpaca_sip_universe":
+                continue   # #490: Pass-0 already rt-priced + Q1-Q4-validated this one (the 30pp
+                           # clamp below would structurally reject the NVVE class it carries)
             sn = snaps.get(c["ticker"])
             rt_price = sn.get("price") if sn else None
             if not rt_price:
                 continue   # no rt read → per-ticker fallback to the delayed gap
             pc = c["prev_close"]
-            a_pc = sn.get("prev_close")
-            if a_pc and pc and abs(a_pc - pc) / pc * 100 > 0.5:
+            # §2.1 date-keyed cross-check (the pre-open T-2 bug fix): select whichever Alpaca bar
+            # matches the known prev trading date; None = no cross-check available → keep the
+            # Polygon denominator UNVERIFIED (any authoritative flip-up then requires Q3 below).
+            a_ref = _alpaca_ref_close(sn, prev_trade_date)
+            if a_ref is not None and pc and abs(a_ref - pc) / pc * 100 > 0.5:
                 if _audit_dedupe_check(c["ticker"], adate, "ep_rt_prev_close_mismatch"):
                     await log_audit_event("ep_rt_prev_close_mismatch",
-                        f"{c['ticker']} prev_close alpaca {a_pc} vs polygon {pc} — using delayed",
-                        json.dumps({"ticker": c["ticker"], "alpaca": a_pc, "polygon": pc}))
+                        f"{c['ticker']} prev_close alpaca {a_ref} vs polygon {pc} (date-keyed) — using delayed",
+                        json.dumps({"ticker": c["ticker"], "alpaca": a_ref, "polygon": pc,
+                                    "prev_trade_date": prev_trade_date.isoformat() if prev_trade_date else None}))
                 continue
             dl = c.get("gap_pct_delayed", c["gap_pct"])
             rt_gap = (rt_price - pc) / pc * 100
             if abs(rt_gap - dl) > 30:   # bad print / odd-lot / symbology mismatch → keep delayed
+                # #490 C1 fix: the clamp is LOUD now — "zero clamp events" was vacuous when it
+                # silently continued. (Pass-2 delayed-fallback population keeps this clamp; the
+                # universe path replaced it with Q4, see _rt_quality_read.)
+                if _audit_dedupe_check(c["ticker"], adate, "ep_rt_gap_clamped"):
+                    await log_audit_event("ep_rt_gap_clamped",
+                        f"{c['ticker']} rt {rt_gap:.1f}% vs delayed {dl:.1f}% (Δ>30pp) — keeping delayed",
+                        json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2),
+                                    "delayed_gap": round(dl, 2), "tick_et": now_et.strftime("%H:%M")}))
                 continue
             c["gap_pct_rt"] = round(rt_gap, 2)
-            c["prev_close_alpaca"] = a_pc
+            c["prev_close_alpaca"] = a_ref
+            c["prev_close_verified"] = a_ref is not None
             ts = sn.get("price_ts")
             if ts is not None:
                 try:
                     c["rt_price_age_s"] = round((now_et - ts).total_seconds(), 1)
                 except Exception:  # loud-ok: rt_price_age_s is observability-only; a bad timestamp just omits it
                     pass
+            # #490 never-loosen extensions on the RT-only (superset flip-up) admission class:
+            # unverified prev_close requires Q3 bar corroboration (§2.1); a halt_suspect cannot
+            # be RT-only admitted this tick (§4). Only consulted by _floor under authority;
+            # in shadow they are telemetry (the reject/halt events still measure the class).
+            if rt_gap >= MIN_GAP_PCT > dl:
+                if a_ref is None and not _q3_bar_corroborated(sn, pc, now_et):
+                    c["_rt_admit_block"] = "no_bar_confirm"
+                    if _audit_dedupe_check(c["ticker"], adate, "ep_rt_tick_quality_reject"):
+                        await log_audit_event("ep_rt_tick_quality_reject",
+                            f"{c['ticker']} flip-up rt {rt_gap:.1f}% REJECTED (no_bar_confirm — "
+                            f"prev_close unverified) @ {now_et:%H:%M} ET",
+                            json.dumps({"ticker": c["ticker"], "reason": "no_bar_confirm",
+                                        "rt_gap": round(rt_gap, 2), "prev_close_verified": False,
+                                        "tick_et": now_et.strftime("%H:%M")}))
+                elif _is_halt_suspect(c["ticker"], sn, now_et):
+                    c["_rt_admit_block"] = "halt_suspect"
+                    if _audit_dedupe_check(c["ticker"], adate, "ep_rt_halt_suspect"):
+                        await log_audit_event("ep_rt_halt_suspect",
+                            f"{c['ticker']} flip-up rt {rt_gap:.1f}% but print frozen + quote dead — "
+                            f"no RT-only admission this tick",
+                            json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2),
+                                        "tick_et": now_et.strftime("%H:%M")}))
             if authoritative:
                 c["gap_pct"] = round(rt_gap, 2)
+                c["current_price"] = rt_price   # §6.4 (C5): the alert/scan-log/Telegram row renders
+                                                # the price the decision actually used
                 c["price_source"] = "alpaca_sip"
             if rt_gap >= MIN_GAP_PCT > dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_up"):
                 _flip_msg = (f"{c['ticker']} rt {rt_gap:.1f}% ≥10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
@@ -1572,7 +2045,8 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime) -> lis
 _WATCHDOG_BG_TASKS: set = set()
 
 
-async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime) -> None:
+async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
+                            snaps: "dict | None" = None) -> None:
     """#489 real-time MISS detector — ALERT-ONLY (records; a morning digest sends the summary). The
     hybrid structurally can't catch the residual (flat-premarket-then-explode) class in real time, but
     this CAN surface it: each in-window tick, fetch REAL-TIME Alpaca SIP prices for the full RT universe
@@ -1581,7 +2055,10 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime) ->
     `caught` (the PRE-Pass-2 5% superset — so the hybrid-catchable class is excluded and only the TRUE
     residual, delayed <5%, is flagged; no double-fire w/ the floor-flip). Audit-only (operator 7/21 —
     `send_rt_miss_digest` sends ONE morning summary, not a per-tick blast). #490's Pass-0 fetch in
-    OBSERVE mode — never changes what we enter, not THE LINE. Deduped per ticker/day; never raises."""
+    OBSERVE mode — never changes what we enter, not THE LINE. Deduped per ticker/day; never raises.
+
+    #490 RT-1: `snaps` accepts the Pass-0 pre-fetched universe map (§5.1 — one universe fetch per
+    tick, not two). None (universe flag off / Pass-0 degraded) → own fetch, exactly as before."""
     if not (EP_RT_MISS_WATCHDOG_ENABLED and EP_RT_PASS2_ENABLED) or not rt_universe:
         return
     mod = now_et.hour * 60 + now_et.minute
@@ -1590,7 +2067,8 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime) ->
     try:
         from agents.market_intelligence import collector
         pc_map = {t: pc for t, pc in rt_universe}
-        snaps = await collector.get_alpaca_snapshots_batch(list(pc_map.keys()))
+        if snaps is None:
+            snaps = await collector.get_alpaca_snapshots_batch(list(pc_map.keys()))
         adate = now_et.date()
         # Missed crossers = real-time ≥10% but NOT a scan candidate (the delay couldn't see them).
         missed = []
@@ -1645,7 +2123,12 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime) ->
 async def send_rt_miss_digest(run_date=None) -> int:
     """#489 (operator 7/21): ONE morning digest of the residual real-time EP misses. The watchdog records
     each `ep_rt_live_miss` audit-only per in-window tick; this sends a single summary after the ORB window
-    instead of a per-ticker blast. No-money observability; safe no-op if none. Returns the count."""
+    instead of a per-ticker blast. No-money observability; safe no-op if none. Returns the count.
+
+    #490 RT-1 (operator fork 4 — shadow surfacing DIGEST-ONLY): the same digest carries the day's
+    `ep_rt_universe_catch` shadow events (Pass-0 would-have-caught, incl. pre-open — a window the
+    watchdog never covers). Zero catch events (universe flag off, today's prod) → the message is
+    byte-identical to before."""
     d = run_date or et_today()
     try:
         pool = await get_pool()
@@ -1655,27 +2138,51 @@ async def send_rt_miss_digest(run_date=None) -> int:
                   AND (created_at AT TIME ZONE 'America/New_York')::date = $1
                 ORDER BY created_at
             """, d)
+            catch_rows = await conn.fetch("""
+                SELECT detail FROM mi_audit_log WHERE event_type='ep_rt_universe_catch'
+                  AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+                ORDER BY created_at
+            """, d)
     except Exception as e:  # loud-ok: digest is best-effort observability; audit rows remain durable
         logger.warning(f"send_rt_miss_digest query failed (non-fatal): {e}")
         return 0
-    items = []
-    for r in rows:
-        try:
-            j = json.loads(r["detail"]) if isinstance(r["detail"], str) else (r["detail"] or {})
-            items.append(f"{j.get('ticker', '?')} +{j.get('rt_gap', '?')}% @{j.get('tick_et', '?')}")
-        except (ValueError, TypeError):
-            continue
-    if not items:
+
+    def _parse(rs):
+        out = []
+        for r in rs:
+            try:
+                j = json.loads(r["detail"]) if isinstance(r["detail"], str) else (r["detail"] or {})
+                out.append(j)
+            except (ValueError, TypeError):
+                continue
+        return out
+
+    miss_js = _parse(rows)
+    items = [f"{j.get('ticker', '?')} +{j.get('rt_gap', '?')}% @{j.get('tick_et', '?')}" for j in miss_js]
+    miss_tickers = {j.get("ticker") for j in miss_js}
+    catch_items = [
+        f"{j.get('ticker', '?')} +{j.get('rt_gap', '?')}% @{j.get('tick_et', '?')}"
+        for j in _parse(catch_rows)
+        if j.get("ticker") not in miss_tickers   # the in-window overlap is already in the miss line
+    ]
+    if not items and not catch_items:
         return 0
-    try:
-        from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(
+    parts = []
+    if items:
+        parts.append(
             f"🚨 Real-time EP misses today ({len(items)} residual — the delay-missed class the hybrid can't "
             f"catch): " + " · ".join(items) + ". No entry (observability); grade/catalyst unconfirmed = "
             f"Part B / #490 shadow.")
-    except Exception:  # loud-ok: Telegram best-effort; the ep_rt_live_miss audit rows are durable
+    if catch_items:
+        parts.append(
+            f"👁 #490 rt-universe shadow catches ({len(catch_items)} more, guard-passing): "
+            + " · ".join(catch_items) + ".")
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(" ".join(parts))
+    except Exception:  # loud-ok: Telegram best-effort; the audit rows are durable
         pass
-    return len(items)
+    return len(items) + len(catch_items)
 
 
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
@@ -1688,6 +2195,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     today = et_today()
     today_str = today.strftime("%Y-%m-%d")
     prev_date = prev_close_date or today_str  # fallback
+
+    # #490 §2.1 — the KNOWN previous trading date, for the date-keyed Alpaca prev_close
+    # cross-check (selects daily_bar vs previous_daily_bar by bar-date, no clock heuristic).
+    # last_trading_day approximates weekends only; on a post-holiday morning neither Alpaca
+    # bar matches → the cross-check cleanly reports "unavailable" (§2.1/O1 fail-safe:
+    # Polygon denominator kept unverified, RT-only admission requires Q3) — never a wrong-day compare.
+    from shared.dates import last_trading_day
+    if prev_close_date and prev_close_date != today_str:
+        _prev_trade_date = date.fromisoformat(prev_close_date)
+    else:
+        _prev_trade_date = last_trading_day(today - timedelta(days=1))
 
     # Get regime for threshold adjustment
     regime = await get_latest_regime()
@@ -1784,7 +2302,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Minutes since market open — used for projected volume calculation post-open
     from agents.market_intelligence.collector import _ET
     now_et = datetime.now(_ET)
-    _SESSION_MINUTES = 390  # 6.5-hour regular session
+    # _SESSION_MINUTES is module-level (390) — shared with _snap_candidate since #490 RT-1.
     if now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 30):
         _minutes_since_open = max(1, (now_et.hour - 9) * 60 + (now_et.minute - 30))
     else:
@@ -1844,38 +2362,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if gap_pct < _pass1_gap_floor():   # #489: superset floor when hybrid on; else MIN_GAP_PCT
                 continue
 
-            # Volume: day.v for regular session, min.av for accumulated (includes pre-mkt)
-            today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
-            adv = adv_map.get(ticker)
-            # prevDay.v as temporary placeholder — proper 20-day ADV computed below for non-universe stocks
-            adv_source = "rs_universe" if adv else "pending"
-            if not adv:
-                adv = snap.get("prevDay", {}).get("v") or None
-
-            raw_rvol = round((today_volume / adv), 2) if adv and adv > 0 else None
-            # Open intensity: projected full-day RVOL = raw_rvol * (390 / min_elapsed)
-            # Gate: only project after 15 minutes (9:45 AM). The opening 15 minutes are
-            # structurally dense — every stock shows 10-30x projected RVOL at 9:31 AM
-            # regardless of real institutional interest. Before the gate, use raw RVOL.
-            open_intensity = None
-            if raw_rvol is not None and _minutes_since_open and today_volume > 0:
-                if _minutes_since_open >= 15:
-                    open_intensity = round(raw_rvol * (_SESSION_MINUTES / _minutes_since_open), 1)
-                # else: intensity stays None — vol filter uses raw_rvol pre-9:45
-
-            candidates.append({
-                "ticker": ticker,
-                "prev_close": prev_close,
-                "current_price": current_price,
-                "gap_pct": round(gap_pct, 2),
-                "today_volume": today_volume,
-                "adv": adv,
-                "adv_source": adv_source,
-                "rel_volume": raw_rvol,
-                "projected_vol_multiple": open_intensity,  # field name kept for DB compat
-                "gap_pct_delayed": round(gap_pct, 2),   # #489 Pass-1 delayed gap (both readings kept)
-                "price_source": "polygon_delayed",       # Pass-2 overwrites when it applies the rt gap
-            })
+            # Volume / ADV / open-intensity + the dict shape live in _snap_candidate (#490 RT-1
+            # extraction — shared verbatim with the Pass-0 universe admission path).
+            candidates.append(_snap_candidate(
+                ticker, snap, prev_close, current_price, gap_pct, adv_map, _minutes_since_open))
         except Exception:
             continue
 
@@ -1886,12 +2376,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # so the watchdog EXCLUDES them and flags only the TRUE residual (delayed <5%, never a candidate). Else a
     # 5-10%-delayed ticker that Pass-2 shadow-drops double-fires floor-flip + watchdog (AEHR, 7/21).
     _superset = {c["ticker"] for c in candidates}
-    candidates = await _apply_realtime_pass2(candidates, now_et)
+    # #490 Pass-0 — full-universe rt overlay (no-op + no fetch when EP_RT_UNIVERSE_ENABLED is off,
+    # the deploy default). One universe fetch per tick: Pass-2 and the watchdog reuse `_rt_snaps`.
+    candidates, _rt_snaps = await _apply_rt_universe_overlay(
+        candidates, _rt_universe, snapshots, adv_map, _minutes_since_open, now_et, _prev_trade_date)
+    candidates = await _apply_realtime_pass2(
+        candidates, now_et, prev_trade_date=_prev_trade_date, snaps=_rt_snaps)
     # #489: launch the alert-only miss watchdog CONCURRENTLY, not inline — it fetches the full RT universe
     # (~34 sequential Alpaca calls) and must NEVER sit on the ORB-window scoring/entry critical path (its
     # result is never consumed). Audit-only (send_rt_miss_digest sends the morning summary); the task-set
     # holds a strong ref (asyncio only keeps a weak one).
-    _wt = asyncio.create_task(_rt_miss_watchdog(_rt_universe, _superset, now_et))
+    # #490: exclusion set = the pre-Pass-2 superset ∪ anything that IS a candidate now (a Pass-0
+    # authoritative admit is a real scan candidate — the watchdog must not re-flag it as a miss).
+    _wt = asyncio.create_task(_rt_miss_watchdog(
+        _rt_universe, _superset | {c["ticker"] for c in candidates}, now_et, snaps=_rt_snaps))
     _WATCHDOG_BG_TASKS.add(_wt)
     _wt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
 
@@ -2054,6 +2552,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "adv": c.get("adv"),
             "adv_source": c.get("adv_source"),
             "minutes_since_open": _minutes_since_open,
+            # #490 G1 (design M5/C4 — REQUIRED RT-1 scope): the per-row rt-vs-delayed evidence
+            # the RT-2 shadow gates read. Columns exist since #489; never threaded until now.
+            "gap_pct_rt": c.get("gap_pct_rt"),
+            "gap_pct_delayed": c.get("gap_pct_delayed"),
+            "price_source": c.get("price_source"),
+            "rt_price_age_s": c.get("rt_price_age_s"),
+            "prev_close_alpaca": c.get("prev_close_alpaca"),
         }
 
     def _log_filtered(c: dict, reason: str) -> None:
@@ -2072,6 +2577,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # without adding a DB round-trip to the common no-downgrade path.
     _magna53_mode_fetched = False
     _magna53_account_mode: str | None = None
+
+    # ── #490 §6.1 — real-time volume/RVOL refresh (co-requisite, SEPARATE flip) ────────────
+    # ONE batched Alpaca minute-bars call on the scored cohort only (≤20 syms), summed into the
+    # two RVOL@T anchors. The delayed `day.v`/`min.av` hasn't seen the flat-premarket class's
+    # real session volume, so the session anchor false-rejects (`session_rvol_too_low`) exactly
+    # the names the RT gap admits. Authority = `ep_rt_volume_authoritative` runtime toggle
+    # (default off; RT-5, operator-flipped ≥3 market days after the gap flip). Toggle off →
+    # shadow telemetry only (ep_rt_volume_shadow / ep_rt_rvol_gate_flip — the named flip list).
+    # Master flag off → no fetch, byte-identical.
+    _rt_vol_map: dict = {}
+    _rt_vol_authoritative = False
+    if EP_RT_UNIVERSE_ENABLED and EP_RT_PASS2_ENABLED and candidates:
+        try:
+            _rt_vol_authoritative = await get_runtime_toggle(
+                "ep_rt_volume_authoritative", "EP_RT_VOLUME_AUTHORITATIVE", default=False)
+            from agents.market_intelligence.collector import get_alpaca_minute_cum_volumes
+            _rt_vol_map = await get_alpaca_minute_cum_volumes(
+                [c["ticker"] for c in candidates[:20]], now_et)
+        except Exception as _ve:  # loud-ok: rt volume degrades to the delayed read — today's behavior
+            logger.warning(f"#490 rt volume fetch failed (delayed volume keeps deciding): {_ve}")
+            _rt_vol_map = {}
 
     for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
         ticker = c["ticker"]
@@ -2095,6 +2621,22 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 premkt_vol, session_vol = c["today_volume"], 0
             else:
                 premkt_vol, session_vol = 0, c["today_volume"]
+            _rt_vols = _rt_vol_map.get(ticker)
+            if _rt_vols is not None and _rt_vol_authoritative:
+                # #490 §6.1 AUTHORITATIVE (RT-5, operator-flipped): the rt cumulatives replace
+                # the delayed single-bucket split as the RVOL@T anchor inputs, and the
+                # candidate's today-volume-derived figures follow (§6.2 — rel_volume /
+                # today's $-vol / open-intensity projection all derive from today_volume).
+                premkt_vol, session_vol = _rt_vols["pm_vol"], _rt_vols["session_vol"]
+                c["vol_delayed"] = c["today_volume"]
+                c["today_volume"] = premkt_vol + session_vol
+                c["volume_source"] = "alpaca_sip_minute"
+                if c.get("adv") and c["adv"] > 0:
+                    c["rel_volume"] = round(c["today_volume"] / c["adv"], 2)
+                    rel_volume = c["rel_volume"] or 0
+                    if _minutes_since_open and _minutes_since_open >= 15 and c["today_volume"] > 0:
+                        c["projected_vol_multiple"] = round(
+                            c["rel_volume"] * (_SESSION_MINUTES / _minutes_since_open), 1)
             rvol_info = await compute_rvol_at_time(
                 ticker=ticker,
                 now_et=now_et,
@@ -2114,6 +2656,47 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             phase_label = "pre-open" if anchor == "pm" else "session"
             c["pm_rvol"] = rvol_info["rvol_at_time"]  # column reused for both anchors
             c["pm_rvol_baseline_n"] = rvol_info["baseline_n"]
+            # #490 §6.1 SHADOW (toggle off): would the RVOL@T gate decide differently on the rt
+            # cumulatives? Logged BEFORE the gate-skip below so false-rejected names still
+            # accrue evidence. ep_rt_rvol_gate_flip = the NAMED flip list (CHANGE_PROCESS rule 3
+            # — reviewed by the operator at RT-2, never self-classified). Once per ticker/day.
+            _rt_vols = _rt_vol_map.get(ticker)
+            if _rt_vols is not None and not _rt_vol_authoritative:
+                try:
+                    _rt_rvol_info = await compute_rvol_at_time(
+                        ticker=ticker, now_et=now_et,
+                        today_premkt_vol=_rt_vols["pm_vol"],
+                        today_session_vol=_rt_vols["session_vol"],
+                    )
+                    if _rt_rvol_info:
+                        _gate_fail_delayed = (
+                            rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                            and rvol_info["rvol_at_time"] < threshold)
+                        _gate_fail_rt = (
+                            _rt_rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                            and _rt_rvol_info["rvol_at_time"] < threshold)
+                        _would_flip = _gate_fail_delayed != _gate_fail_rt
+                        _vol_ev = "ep_rt_rvol_gate_flip" if _would_flip else "ep_rt_volume_shadow"
+                        if _audit_dedupe_check(ticker, today, _vol_ev):
+                            await log_audit_event(
+                                _vol_ev,
+                                f"{ticker} {anchor}_rvol delayed={rvol_info['rvol_at_time']:.2f}x "
+                                f"rt={_rt_rvol_info['rvol_at_time']:.2f}x"
+                                + (" — GATE WOULD FLIP (SHADOW)" if _would_flip else ""),
+                                json.dumps({
+                                    "ticker": ticker, "alert_date": today.isoformat(),
+                                    "anchor": anchor,
+                                    "vol_delayed": c["today_volume"],
+                                    "vol_rt_pm": _rt_vols["pm_vol"],
+                                    "vol_rt_session": _rt_vols["session_vol"],
+                                    "rvol_delayed": rvol_info["rvol_at_time"],
+                                    "rvol_rt": _rt_rvol_info["rvol_at_time"],
+                                    "would_rvol_gate_flip": _would_flip,
+                                    "tick_et": now_et.strftime("%H:%M"),
+                                }),
+                            )
+                except Exception as _vse:  # loud-ok: shadow-only — never touches the live gate
+                    logger.debug(f"{ticker}: rt volume shadow skipped — {_vse}")
             if (
                 rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
                 and rvol_info["rvol_at_time"] < threshold

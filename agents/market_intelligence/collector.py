@@ -226,12 +226,28 @@ async def get_snapshot_all() -> dict[str, dict]:
         return {}
 
 
-async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0) -> dict[str, dict]:
+async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0,
+                                     concurrency: int = 1,
+                                     stats: dict | None = None) -> dict[str, dict]:
     """#489 real-time SIP snapshots for a bounded EP Pass-2 symbol list (the delayed Polygon
-    detection feed's real-time confirm). Batches at <=100 symbols/call. Returns
-    {ticker: {price, price_ts, prev_close, minute_close, day_volume, minute_volume}} — missing
-    symbols omitted (Alpaca symbology gaps → caller falls back to delayed). NEVER raises; {} on
-    total failure. Mirrors get_alpaca_news idioms (paper creds, run_in_executor, fail-soft)."""
+    detection feed's real-time confirm). Batches at <=100 symbols/call (operator-ruled batch
+    size, #490 fork 5 — probe 200 in RT-0 before adopting). Returns
+    {ticker: {price, price_ts, prev_close, minute_close, day_volume, minute_volume, ...}} —
+    missing symbols omitted (Alpaca symbology gaps → caller falls back to delayed). NEVER
+    raises; {} on total failure. Mirrors get_alpaca_news idioms (paper creds, run_in_executor,
+    fail-soft).
+
+    #490 RT-1 additions (design §2.1/§3/§5 — all backward-compatible extra keys/kwargs):
+      - per-symbol: BOTH daily bars with their timestamps (`daily_bar_close/daily_bar_ts`,
+        `prev_daily_bar_ts`) for the DATE-KEYED prev_close cross-check (pre-open Alpaca's
+        `previous_daily_bar` deterministically holds T-2 — 190/190 proof, design §1.2);
+        `latest_quote` fields (`bid/ask/bid_size/ask_size/quote_ts`) for the Q1 NBBO band;
+        `minute_ts` for Q3 bar-age corroboration.
+      - `concurrency` (default 1 = today's proven serial behavior): >1 runs chunk fetches
+        under an asyncio.Semaphore — the §5.2 wall-clock margin option.
+      - `stats` (optional out-param): filled with {batches_total, batches_failed} so the
+        Pass-0 caller can emit the §5.3 rung-2 `ep_rt_universe_degraded` audit event.
+    """
     if not tickers:
         return {}
     try:
@@ -250,21 +266,35 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0)
     client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
     loop = asyncio.get_event_loop()
     out: dict[str, dict] = {}
-    for i in range(0, len(tickers), 100):
-        chunk = tickers[i:i + 100]
+    chunks = [tickers[i:i + 100] for i in range(0, len(tickers), 100)]
+
+    async def _fetch_chunk(chunk):
         req = StockSnapshotRequest(symbol_or_symbols=chunk, feed=feed)
-        snaps = None
         for attempt in range(2):
             try:
-                snaps = await asyncio.wait_for(
+                return await asyncio.wait_for(
                     loop.run_in_executor(None, lambda r=req: client.get_stock_snapshot(r)),
                     timeout=timeout_s,
                 )
-                break
             except Exception as e:
                 if attempt == 1:
                     logger.warning(f"Alpaca snapshot batch failed ({len(chunk)} syms): {e}")
+        return None
+
+    if concurrency > 1:
+        sem = asyncio.Semaphore(concurrency)
+
+        async def _guarded(chunk):
+            async with sem:
+                return await _fetch_chunk(chunk)
+        results = await asyncio.gather(*[_guarded(c) for c in chunks])
+    else:
+        results = [await _fetch_chunk(c) for c in chunks]
+
+    batches_failed = 0
+    for snaps in results:
         if not snaps:
+            batches_failed += 1
             continue
         for sym, sn in snaps.items():
             try:
@@ -272,6 +302,7 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0)
                 mb = getattr(sn, "minute_bar", None)
                 db_ = getattr(sn, "daily_bar", None)
                 pdb = getattr(sn, "previous_daily_bar", None)
+                lq = getattr(sn, "latest_quote", None)
                 price = getattr(lt, "price", None) if lt else None
                 if price is None and mb:
                     price = getattr(mb, "close", None)
@@ -282,10 +313,98 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0)
                     "minute_close": getattr(mb, "close", None) if mb else None,
                     "day_volume": getattr(db_, "volume", None) if db_ else None,
                     "minute_volume": getattr(mb, "volume", None) if mb else None,
+                    # #490 RT-1 (§2.1 date-keyed cross-check + §3 tick-quality inputs)
+                    "minute_ts": getattr(mb, "timestamp", None) if mb else None,
+                    "daily_bar_close": getattr(db_, "close", None) if db_ else None,
+                    "daily_bar_ts": getattr(db_, "timestamp", None) if db_ else None,
+                    "prev_daily_bar_ts": getattr(pdb, "timestamp", None) if pdb else None,
+                    "bid": getattr(lq, "bid_price", None) if lq else None,
+                    "ask": getattr(lq, "ask_price", None) if lq else None,
+                    "bid_size": getattr(lq, "bid_size", None) if lq else None,
+                    "ask_size": getattr(lq, "ask_size", None) if lq else None,
+                    "quote_ts": getattr(lq, "timestamp", None) if lq else None,
                 }
             except Exception:  # loud-ok: one malformed symbol in the batch is skipped best-effort — caller degrades that ticker to the delayed gap
                 continue
+    if stats is not None:
+        stats["batches_total"] = len(chunks)
+        stats["batches_failed"] = batches_failed
     return out
+
+
+async def get_alpaca_minute_cum_volumes(tickers: list[str], now_et: datetime,
+                                        timeout_s: float = 6.0) -> dict[str, dict]:
+    """#490 §6.1 volume/RVOL refresh — ONE batched multi-symbol Alpaca minute-bars call on
+    the candidate cohort only (≤~50 syms), summed into the two RVOL@T anchors:
+    pm (04:00–09:29 ET cumulative) + session (09:30 ET–now cumulative). Feeds
+    `compute_rvol_at_time` under the `ep_rt_volume_authoritative` runtime toggle; in shadow
+    (toggle off) it powers the (vol_delayed, vol_rt, would_rvol_gate_flip) telemetry.
+    Returns {ticker: {"pm_vol": int, "session_vol": int}} — missing symbols omitted.
+    NEVER raises; {} on any failure (caller keeps the delayed volume — today's behavior)."""
+    if not tickers:
+        return {}
+    try:
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+        from alpaca.data.enums import DataFeed
+    except ImportError as e:
+        logger.warning(f"alpaca-py bars import failed: {e}")
+        return {}
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret:
+        logger.warning("Alpaca credentials not set; skipping RT minute volumes")
+        return {}
+    feed = DataFeed.SIP if os.environ.get("ALPACA_DATA_FEED", "iex").lower() == "sip" else DataFeed.IEX
+    client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
+    loop = asyncio.get_event_loop()
+    session_start_min = 9 * 60 + 30
+    start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)  # pm anchor (04:00 ET)
+    try:
+        req = StockBarsRequest(symbol_or_symbols=list(tickers), timeframe=TimeFrame.Minute,
+                               start=start, feed=feed)
+        bars = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda r=req: client.get_stock_bars(r)),
+            timeout=timeout_s,
+        )
+    except Exception as e:  # loud-ok: shadow/authoritative volume degrades to the delayed read, never blocks the scan
+        logger.warning(f"Alpaca minute-volume batch failed ({len(tickers)} syms): {e}")
+        return {}
+    out: dict[str, dict] = {}
+    data = getattr(bars, "data", None) or {}
+    for sym, blist in data.items():
+        pm_vol = session_vol = 0
+        try:
+            for b in blist or []:
+                ts = getattr(b, "timestamp", None)
+                vol = int(getattr(b, "volume", 0) or 0)
+                if ts is None:
+                    continue
+                bt = ts.astimezone(_ET)
+                if bt.hour * 60 + bt.minute < session_start_min:
+                    pm_vol += vol
+                else:
+                    session_vol += vol
+            out[sym] = {"pm_vol": pm_vol, "session_vol": session_vol}
+        except Exception:  # loud-ok: one malformed symbol skipped — that ticker keeps the delayed volume
+            continue
+    return out
+
+
+async def get_splits_today(execution_date: str) -> "set[str] | None":
+    """#490 §2.2 corporate-action (split) guard — the one Polygon reference call per morning.
+    Returns the set of tickers with a split EFFECTIVE on `execution_date` (YYYY-MM-DD), or
+    None when the reference call FAILS (caller falls back to the 0.5% cross-check alone —
+    today's protection level; the degrade event stays loud). Cached per-day by the caller
+    (`ep_detector._corp_action_holds_today`). Polygon Starter includes reference endpoints."""
+    try:
+        data = await _polygon_get("/v3/reference/splits",
+                                  {"execution_date": execution_date, "limit": "1000"})
+        return {r["ticker"] for r in data.get("results", []) if r.get("ticker")}
+    except Exception as e:  # loud-ok: None = "no split data" → cross-check-only protection (design §2.2)
+        logger.warning(f"Polygon splits reference failed for {execution_date}: {e}")
+        return None
 
 
 async def fetch_all_ticker_types() -> dict[str, dict]:

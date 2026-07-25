@@ -1035,6 +1035,23 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_ep_delayed_residual_date
                 ON mi_ep_delayed_residual(run_date DESC);
+            -- #490 §9.4 (operator-signed 2026-07-24) — CROSS-basis outcome columns. The old
+            -- fwd_1d/5d basis (baseline_close = the day CLOSE, i.e. AFTER the intraday move)
+            -- understates the very winners the residual dashboard exists to find (C3). Both
+            -- new columns are derivable in pure SQL from existing columns:
+            --   cross_px = prev_close × (1 + rt_gap/100)   (the price at the moment of the cross)
+            ALTER TABLE mi_ep_delayed_residual ADD COLUMN IF NOT EXISTS cross_to_close_pct FLOAT;
+            ALTER TABLE mi_ep_delayed_residual ADD COLUMN IF NOT EXISTS cross_to_high_pct FLOAT;
+            -- Idempotent one-time backfill of ALL prior rows (only rows still NULL are touched).
+            -- The old fwd_1d/5d columns are NOT deleted — their writers are re-based to cross_px
+            -- going forward (ep_delayed_residual.backfill_residual_outcomes).
+            UPDATE mi_ep_delayed_residual SET
+                cross_to_close_pct = (baseline_close / (prev_close * (1 + rt_gap/100.0)) - 1) * 100,
+                cross_to_high_pct  = ((prev_close * (1 + day_high_gap/100.0))
+                                      / (prev_close * (1 + rt_gap/100.0)) - 1) * 100
+            WHERE cross_to_close_pct IS NULL
+              AND prev_close IS NOT NULL AND prev_close > 0 AND rt_gap IS NOT NULL
+              AND baseline_close IS NOT NULL AND day_high_gap IS NOT NULL;
         """)
 
         # ── Audit log — critical events queryable from Telegram ──────────
@@ -6181,7 +6198,10 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
     Each record: {scan_date, ticker, gap_pct, prev_close, rel_volume,
                   filter_reason, ep_score, score_tier, catalyst_quality,
                   scan_time_et, rank_by_gap, projected_vol_multiple, pm_rvol,
-                  adv, adv_source, minutes_since_open}.
+                  adv, adv_source, minutes_since_open,
+                  gap_pct_rt, gap_pct_delayed, price_source, rt_price_age_s,
+                  prev_close_alpaca}  ← #490 G1 shadow columns (existed since
+                  #489, threaded RT-1 — the RT-2 shadow gates read them).
     Never raises — scan must not be blocked by logging failures.
     """
     if not records:
@@ -6194,9 +6214,12 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
                     (scan_date, ticker, gap_pct, prev_close, rel_volume,
                      filter_reason, ep_score, score_tier, catalyst_quality,
                      scan_time_et, rank_by_gap, projected_vol_multiple,
-                     pm_rvol, adv, adv_source, minutes_since_open)
+                     pm_rvol, adv, adv_source, minutes_since_open,
+                     gap_pct_rt, gap_pct_delayed, price_source,
+                     rt_price_age_s, prev_close_alpaca)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-                        $10, $11, $12, $13, $14, $15, $16)
+                        $10, $11, $12, $13, $14, $15, $16,
+                        $17, $18, $19, $20, $21)
             """, [
                 (
                     r["scan_date"], r["ticker"], r.get("gap_pct"),
@@ -6207,6 +6230,9 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
                     r.get("projected_vol_multiple"), r.get("pm_rvol"),
                     r.get("adv"), r.get("adv_source"),
                     r.get("minutes_since_open"),
+                    r.get("gap_pct_rt"), r.get("gap_pct_delayed"),
+                    r.get("price_source"), r.get("rt_price_age_s"),
+                    r.get("prev_close_alpaca"),
                 )
                 for r in records
             ])

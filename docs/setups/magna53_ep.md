@@ -99,6 +99,54 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-07-25 — #490 RT-1: full real-time detection built DARK (shadow note only — NO criteria change)
+
+**Trigger**: operator ruling 2026-07-24 ("there isn't a rational reason to not use real-time
+data when we are trading real-time") + the signed design
+`docs/analysis/490_full_realtime_design_2026-07-25.md` (all 6 forks ruled). Detection reads a
+~15-17-min-stale Polygon snapshot while execution is already Alpaca SIP; the class the #489
+hybrid structurally cannot catch holds the biggest moves (NVVE +95.3% cross→high; TRAX +46.6%).
+
+**Evidence**: design §9 — N=47 residual (hybrid_caught=false) cases, prod-measured on the
+CROSS basis; 190/190 prev_close mismatch events proven to be Alpaca's pre-open T-2 off-by-one
+(§1.2), not vendor noise.
+
+**What shipped (ALL dark — `EP_RT_UNIVERSE_ENABLED` default false; runtime toggles
+`ep_rt_universe_authoritative` / `ep_rt_volume_authoritative` default off; flags-off is
+freeze-tested byte-identical)**: Pass-0 full-universe Alpaca SIP overlay (one fetch/tick,
+reused by Pass-2 + the miss watchdog); tick-quality guards Q1-Q4 (NBBO band + quote freshness +
+MANDATORY minute-bar corroboration for any RT-only admission + absolute insanity bound
+replacing the 30pp clamp on the universe path) with a loud `ep_rt_tick_quality_reject` reason
+enum; halt quarantine (heuristic, §4); corporate-action (split) hold (§2.2); G1 scan-log
+columns populated (`gap_pct_rt/gap_pct_delayed/price_source/rt_price_age_s/prev_close_alpaca`);
+`ep_rt_universe_catch` shadow events (audit-only, digest surfacing per the 7/21 noise ruling);
+volume/RVOL shadow (§6.1, own flip); `current_price` coherence under authority (§6.4);
+cross-basis residual columns + O-9 retired as a trigger (§9.4).
+
+**Live-behavior deltas that ride the CURRENT hybrid (bug fix + observability, not criteria)**:
+(1) the Pass-2 prev_close cross-check is now DATE-KEYED (§2.1) — pre-open, Alpaca's
+`previous_daily_bar` deterministically holds T-2, so the old compare silently dropped the RT
+read of every candidate whose prior day moved >0.5% (the pre-open shadow was censored:
+flip-up 29 RTH vs 2 pre-open). Fail direction unchanged (real mismatches still degrade to
+delayed); (2) the Pass-2 30pp clamp emits `ep_rt_gap_clamped` (C1 — clamps were invisible).
+
+**NOT changed**: `MIN_GAP_PCT=10.0` (the 2026-05-17 R2 decision is preserved — and will be
+enforced on truthful data post-flip), ORB window 9:31-9:44, scoring weights, safeguards,
+sizing, the delayed Polygon path (retained as universe/reference/failure-ladder, §7). The
+detection COHORT is untouched until the operator executes RT-3 (`ep_rt_universe_authoritative`
++ `ep_rt_gap_authoritative` on) after the RT-2 shadow packet — that flip gets its own
+change-log entry (data source: "Polygon delayed reference + Alpaca SIP real-time universe
+overlay").
+
+**Reversion-flag**: NEW (first change to the detection data source; extends #489's shipped
+shadow architecture). Rollback: R1-R5 (§8) — every rung instant + independent, landing on
+byte-identical prior behavior.
+
+**Status**: built 2026-07-25 (dark), NOT deployed. Next: operator deploys
+(`deploy.sh market-agent`) → operator sets `EP_RT_UNIVERSE_ENABLED=true` for RT-2 shadow
+(gates: ≥10 trading days AND ≥5 residual-catch days, 8 measurable gates, 3 operator-reviewed
+named lists) → RT-3 operator flip.
+
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 
 Six stale items corrected (no code change): (a) catalyst weights were

@@ -1080,36 +1080,48 @@ async def _ep_scan_job():
 
 async def _delayed_residual_job():
     """#489 — EOD delayed-feed residual tracker. Records the QUALITY in-window (9:31-9:44) 10%-crossers
-    the ~16-min Polygon detection delay made us miss + whether the 5% hybrid would catch each. The
-    hybrid_caught=false rows (flat-premarket-then-explode) are the escalation dashboard for going
-    full-real-time (design realtime_detection_feed_design_2026-07-20.md §14)."""
+    the ~16-min Polygon detection delay made us miss + whether the 5% hybrid would catch each.
+
+    #490 §9.4 (operator-signed 2026-07-24): the O-9 escalation trigger is RETIRED — its question
+    ("escalate to full-RT?") was consumed by the #490 ruling, and its metric ran on the wrong (close)
+    basis. This job now (a) stamps CROSS-basis forward outcomes, (b) runs the RT-2/RT-4 proof-join
+    (every hybrid_caught=false row on a shadow/cutover day must have a same-day
+    `ep_rt_universe_catch`), and (c) logs the regression-monitor stats (post-cutover the residual
+    count should trend ~0 — a sustained nonzero = the overlay is leaking)."""
     from agents.market_intelligence.ep_delayed_residual import (
-        run_delayed_residual_scan, backfill_residual_outcomes, evaluate_o9_escalation)
+        run_delayed_residual_scan, backfill_residual_outcomes,
+        residual_regression_stats, rt_shadow_capture_join)
     run_date = datetime.now(_ET).strftime("%Y-%m-%d")
     missed, residual = await run_delayed_residual_scan(run_date)
     logger.info(f"delayed_residual_job {run_date}: {missed} missed, {residual} residual beyond hybrid")
-    # G3: stamp forward outcomes on settled misses so the O-9 escalation trigger can read them.
+    # G3: stamp forward outcomes on settled misses (cross-basis since #490 §9.4).
     await backfill_residual_outcomes()
-    # O-9 (#490 §1.3, operator-pinned 7/20): auto-trigger the real-time cutover when the delay is
-    # now costing WINNING EPs at the bar (≥5 residual misses/15d, median fwd-5d ≥ +8%). Deduped 7d.
-    o9 = await evaluate_o9_escalation()
-    logger.info(f"O-9 check: count={o9['count']} median_fwd5d={o9['median_fwd5d']} triggered={o9['triggered']}")
-    if o9["triggered"]:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            recent = await conn.fetchval("""
-                SELECT count(*) FROM mi_audit_log WHERE event_type='o9_escalation_met'
-                  AND created_at > NOW() - INTERVAL '7 days'
-            """)
-        await log_audit_event("o9_escalation_met",
-            f"O-9 met: {o9['count']} residual misses, median fwd-5d {o9['median_fwd5d']}%",
-            json.dumps(o9))
-        if not recent:
-            await send_telegram_message(
-                f"🚨 O-9 ESCALATION MET — {o9['count']} delay-missed residual EPs (last 15d), median "
-                f"fwd-5d +{o9['median_fwd5d']}% (≥ +8% bar): the delayed feed is now costing WINNING EPs. "
-                f"→ Execute the #490 real-time cutover (runbook pre-built; ~2-4 day build/shadow, "
-                f"docs/analysis/realtime_full_cutover_design_2026-07-20.md).")
+    stats = await residual_regression_stats()
+    logger.info(f"residual regression monitor: count={stats['count']} median_fwd5d={stats['median_fwd5d']}")
+    # #490 RT-2/RT-4 proof-join — only meaningful once the Pass-0 overlay is fetching (the master
+    # env flag); before that there are no catch events and 0-coverage would be pure noise.
+    from agents.market_intelligence.ep_detector import EP_RT_UNIVERSE_ENABLED
+    if EP_RT_UNIVERSE_ENABLED:
+        join = await rt_shadow_capture_join(run_date)
+        await log_audit_event(
+            "ep_rt_shadow_capture",
+            f"{run_date}: {join['caught_by_rt']}/{join['residual_total']} residual crossers had a "
+            f"same-day ep_rt_universe_catch"
+            + (f" — MISSING: {', '.join(join['missing'])}" if join["missing"] else ""),
+            json.dumps({"run_date": run_date, **join}))
+        if join["missing"]:
+            # In shadow this is an RT-2 gate-1 miss to explain; post-flip (RT-4) it is the
+            # regression alarm — the overlay leaked a catchable name. Audit-only here; the
+            # existing 🔴 residual Telegram in run_delayed_residual_scan already surfaces
+            # miss days loudly (digest-only surfacing per the 7/21 noise ruling).
+            from agents.market_intelligence.db import get_runtime_toggle
+            if await get_runtime_toggle("ep_rt_universe_authoritative",
+                                        "EP_RT_UNIVERSE_AUTHORITATIVE", default=False):
+                await log_audit_event(
+                    "ep_rt_postcutover_residual_regression",
+                    f"{run_date}: {len(join['missing'])} residual crosser(s) with NO rt catch under "
+                    f"AUTHORITATIVE overlay — the overlay is leaking: {', '.join(join['missing'])}",
+                    json.dumps({"run_date": run_date, "missing": join["missing"]}))
 
 
 async def _paper_trade_tracker_job():
