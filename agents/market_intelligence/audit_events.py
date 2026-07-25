@@ -123,3 +123,16 @@ TELEGRAM_SEND_FAILED = "telegram_send_failed"
 
 # ── Crypto / data ingest ────────────────────────────────────────────────────
 CRYPTO_INGEST_ERROR = "crypto_ingest_error"
+
+# ── Evening briefing send observability (#495, 2026-07-21/25) ──────────────
+# send_telegram_message returns False on failure without raising (never
+# raises — see its own docstring), so a silently-failed 18:00 ET evening
+# brief was invisible AND undiagnosable after a container restart (the
+# 2026-07-20 false alarm: "did it send?" was unanswerable from the DB).
+# Emitted by send_evening_briefing() itself, not the scheduler job wrapper —
+# the wrapper only catches raised exceptions, and send_telegram_message's
+# own TELEGRAM_SEND_FAILED audit doesn't cover its early-return paths
+# (missing TELEGRAM_BOT_TOKEN / empty TELEGRAM_ALLOWED_USER_IDS), so the
+# sender is the only site that observes every False-return cause.
+EVENING_BRIEF_SENT = "evening_brief_sent"
+EVENING_BRIEF_SEND_FAILED = "evening_brief_send_failed"

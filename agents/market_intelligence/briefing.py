@@ -50,6 +50,7 @@ from agents.market_intelligence.db import (
 from agents.market_intelligence.data_quality import get_quality_warnings
 from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI, TIER_RANK
 from agents.market_intelligence.theme_engine import get_today_themes
+from agents.market_intelligence.audit_events import EVENING_BRIEF_SENT, EVENING_BRIEF_SEND_FAILED
 
 logger = logging.getLogger(__name__)
 
@@ -1078,6 +1079,48 @@ def _format_evening_briefing(
     return "\n".join(sections)
 
 
+async def _emit_evening_brief_outcome(success: bool, today_str: str, chars: int) -> None:
+    """#495: durable send-confirmation for the 18:00 ET evening brief — extracted
+    so it's testable without standing up send_evening_briefing's full DB gather.
+
+    send_telegram_message returns False on failure without raising (never raises —
+    see its docstring), so without this the send outcome was LOG-ONLY: a same-day
+    container restart erased the only record and "did tonight's brief send?" was
+    unanswerable from the DB (the 2026-07-20 false-alarm gap). Each log_audit_event
+    call is wrapped even though log_audit_event itself never raises — matches the
+    idiom used above for ep_catalyst_suppressed/premarket_gap_risk — so a future
+    change to that contract can never take down a brief that already sent.
+    """
+    if success:
+        logger.info(f"Evening briefing sent for {today_str}")
+        try:
+            await log_audit_event(
+                EVENING_BRIEF_SENT, f"evening brief sent for {today_str} ({chars} chars)",
+                f'{{"date": "{today_str}", "chars": {chars}}}')
+        except Exception as e:  # loud-ok: telemetry-of-telemetry; the brief already sent
+            logger.warning(f"evening_brief_sent audit emit failed (non-fatal): {e}")
+    else:
+        logger.error("Failed to send evening briefing")
+        # The audit row is written FIRST and unconditionally — durable regardless
+        # of whether the best-effort alert below itself lands.
+        try:
+            await log_audit_event(
+                EVENING_BRIEF_SEND_FAILED, f"evening brief FAILED to send for {today_str}",
+                f'{{"date": "{today_str}"}}')
+        except Exception as e:  # loud-ok: fallback-of-the-fallback — nothing above
+            logger.warning(f"evening_brief_send_failed audit emit failed (non-fatal): {e}")
+        try:
+            # send_telegram_message already strips markup to plain on a 400, so a
+            # False return above is a real send failure, not a formatting one —
+            # worth flagging. No explicit chat_id: goes to the default operator
+            # (first TELEGRAM_ALLOWED_USER_IDS entry) — the right fallback target
+            # if a bad chat_id was what caused the original failure.
+            await send_telegram_message(
+                f"⚠️ Evening brief FAILED to send for {today_str} — it did not reach you; check logs.")
+        except Exception:  # loud-ok: the alert is best-effort; the evening_brief_send_failed audit row is durable
+            pass
+
+
 async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
     Assemble and send the evening briefing (regime + RS + themes + velocity + pullbacks).
@@ -1245,24 +1288,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     )
 
     success = await send_telegram_message(text, chat_id)
-    if success:
-        logger.info(f"Evening briefing sent for {today_str}")
-        # #495: durable send-confirmation — so "did tonight's brief actually send?" is answerable
-        # from the DB after a restart (the 2026-07-20 false-alarm gap: send success/failure was
-        # log-only, so a same-day restart erased the only record).
-        await log_audit_event("evening_brief_sent", f"evening brief sent for {today_str} ({len(text)} chars)",
-                              f'{{"date": "{today_str}", "chars": {len(text)}}}')
-    else:
-        logger.error("Failed to send evening briefing")
-        # #495: a silent brief-miss must not be invisible — durable audit row + a best-effort alert
-        # (send_telegram_message already strips markup to plain on a 400, so a False return is a real
-        # send failure, not a formatting one — worth flagging).
-        await log_audit_event("evening_brief_send_failed", f"evening brief FAILED to send for {today_str}",
-                              f'{{"date": "{today_str}"}}')
-        try:
-            await send_telegram_message(f"⚠️ Evening brief FAILED to send for {today_str} — it did not reach you; check logs.")
-        except Exception:  # loud-ok: the alert is best-effort; the evening_brief_send_failed audit row is durable
-            pass
+    await _emit_evening_brief_outcome(success, today_str, len(text))
 
     # Compute scored themes for Twitter theme tweet
     scored_themes = []
