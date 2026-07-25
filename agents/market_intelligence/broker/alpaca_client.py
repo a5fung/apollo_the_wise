@@ -744,6 +744,97 @@ async def get_minute_bars_window(
         return []
 
 
+async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> list[dict]:
+    """Fetch 1-minute bars for `ticker` over [start, end] (tz-aware ET datetimes).
+
+    Real-time Alpaca counterpart to `collector.get_minute_bars` (Polygon, ~15-17
+    min delayed on our Starter plan) — built for the #306 intraday path recorder
+    (`order_manager.track_open_position_extremes`) so the live book's minute path
+    is captured while a fast trade is still open, not 15+ minutes after it closed.
+    `end` is typically `now_et` for an in-progress day, or a day's 16:00 ET close
+    for the EOD sweep's per-day backfill.
+
+    Returns `[]` on any exception — callers already per-ticker try/except and
+    `continue`, so a failed fetch degrades to "no bars this poll for this
+    ticker," self-healing on the next poll (the fetch window is always the full
+    day-so-far, never incremental, so nothing is permanently lost).
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        client = _get_data_client()
+        et = ZoneInfo("America/New_York")
+        request = StockBarsRequest(
+            symbol_or_symbols=ticker,
+            timeframe=TimeFrame.Minute,
+            start=start,
+            end=end,
+            feed=get_data_feed(),
+        )
+        # The alpaca-py SDK call is SYNCHRONOUS network I/O; the Polygon fetch it
+        # replaces here (collector.get_minute_bars) is async aiohttp. A naive
+        # `client.get_stock_bars(request)` would ADD blocking to the execution
+        # event loop during RTH (incl. the ORB window) — asyncio.to_thread offloads
+        # the call to a worker thread instead (#306 mandate; money-path hygiene,
+        # not style).
+        bars = await asyncio.to_thread(client.get_stock_bars, request)
+        bar_data = bars.data if hasattr(bars, 'data') else bars
+        bar_set = bar_data.get(ticker, []) or []
+        return [
+            {
+                "t_et": b.timestamp.astimezone(et),
+                "open": float(b.open),
+                "high": float(b.high),
+                "low": float(b.low),
+                "close": float(b.close),
+                "volume": int(b.volume),
+                "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+            }
+            for b in bar_set
+            if b.timestamp is not None
+        ]
+    except Exception as e:
+        logger.error(f"Failed to get minute-bar range for {ticker} [{start}..{end}]: {e}")
+        return []
+
+
+async def persist_intraday_bars(ticker: str, bars: list[dict]) -> None:
+    """Batch upsert 1-minute bars (from `get_minute_bars_range`) into
+    `mi_intraday_bars` (#306 intraday path recorder).
+
+    Mirrors `_persist_first_bar`'s fire-and-forget contract: errors are logged,
+    never raised — this is a shadow analytics writer and must never affect the
+    caller (`track_open_position_extremes`, which also touches
+    lowest/highest_price_seen in the same job). `ON CONFLICT (ticker, bar_time)
+    DO NOTHING` makes re-polling the same window idempotent by construction —
+    the 5-min poll always refetches the full day-so-far, so a duplicate bar on
+    every call is expected and harmless, not an error case.
+    """
+    if not bars:
+        return
+    try:
+        from agents.market_intelligence.db import get_pool
+        records = [
+            (ticker, b["t_et"], b["open"], b["high"], b["low"], b["close"], b["volume"], b.get("vwap"))
+            for b in bars
+            if b.get("t_et") is not None
+        ]
+        if not records:
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.executemany(
+                """
+                INSERT INTO mi_intraday_bars
+                    (ticker, bar_time, open, high, low, close, volume, vwap)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (ticker, bar_time) DO NOTHING
+                """,
+                records,
+            )
+    except Exception as e:
+        logger.warning(f"mi_intraday_bars batch write-through failed for {ticker}: {e}")
+
+
 # ── Price Data ──────────────────────────────────────────────────────────────
 
 

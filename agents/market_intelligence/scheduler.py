@@ -107,6 +107,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
     "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
     JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
+    "position_path_eod_sweep",  # #306 — 16:10 ET path-recorder EOD completion sweep
     "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
     "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
     "unified_allocator_shadow",
@@ -1812,11 +1813,18 @@ async def _stop_ack_timeout_watchdog_job():
 async def _track_open_position_extremes_job():
     """Run every 5 min during market hours (9:30 AM - 4:00 PM ET, mon-fri).
 
-    Polls Polygon for minute bars per open ticker, then updates each open
-    trade's lowest_price_seen / highest_price_seen via monotonic
-    LEAST/GREATEST. Feeds setup-quality analytics — does this setup let
-    trades run high before exit (good edge to keep) or drag toward stop
-    (tighten or drop)?
+    #306 (2026-07-25): subsumed into the Alpaca-sourced intraday path recorder
+    — same job id, same cron slot. Fetches real-time Alpaca minute bars per
+    ticker with an open-OR-closed-today position (the #310-class fix that
+    captures fast trades' final minutes), upserts the full path into
+    mi_intraday_bars, then updates each trade's lowest_price_seen /
+    highest_price_seen via monotonic LEAST/GREATEST over the in-hold window
+    only. Feeds setup-quality analytics (does this setup let trades run high
+    before exit, or drag toward stop?) AND the offline intraday
+    partial-profit sweep. Full contract — the two correctness clamps, the
+    #310-class selection predicate, the time-stop provenance note — lives on
+    order_manager.track_open_position_extremes's docstring; don't duplicate
+    it here, keep it in sync if either changes.
     """
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
@@ -1830,6 +1838,32 @@ async def _track_open_position_extremes_job():
             logger.info(f"track_position_extremes: updated {n} open trade rows")
     except Exception as e:
         logger.error(f"track_position_extremes failed: {e}")
+
+
+async def _position_path_eod_sweep_job():
+    """Run once at 16:10 ET, mon-fri (#306, 2026-07-25).
+
+    The last `*/5` poll of `_track_open_position_extremes_job` fires at
+    15:55, so bars 15:55-16:00 and any position closed in that window need
+    one final pass. Also heals restart-day `mi_intraday_bars` coverage holes
+    for open multi-day positions (`sweep=True` — see
+    order_manager.track_open_position_extremes / _sweep_multi_day_coverage).
+    DB-write only (log_audit_event on a persistent gap, never Telegram) —
+    scheduled off :00-:05 so it stays clear of the EOD digest chain, and
+    before the 16:15 post-EOD audit.
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            track_open_position_extremes,
+        )
+        n = await track_open_position_extremes(sweep=True)
+        if n:
+            logger.info(f"position_path_eod_sweep: updated {n} trade rows")
+    except Exception as e:
+        logger.error(f"position_path_eod_sweep failed: {e}")
 
 
 async def _evening_position_backstop_job():
@@ -5314,11 +5348,16 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Worst-price / best-price tracking for open positions: every 5 min from
-    # 9:30 AM to 4:00 PM ET (2026-05-10). Polls Polygon minute bars per open
-    # ticker, monotonic LEAST/GREATEST updates lowest_price_seen +
-    # highest_price_seen on mi_live_trades. Powers setup-quality analytics
-    # (does this setup let trades run high before exit, or drag near stop?).
+    # Intraday path recorder + worst-price/best-price tracking for open
+    # positions: every 5 min from 9:30 AM to 4:00 PM ET (2026-05-10; subsumed
+    # to Alpaca-sourced path recording #306, 2026-07-25 — same id, same cron
+    # slot). Fetches real-time Alpaca minute bars per ticker with an
+    # open-OR-closed-today position (#310-class fix), upserts the path into
+    # mi_intraday_bars, then monotonic LEAST/GREATEST updates
+    # lowest_price_seen + highest_price_seen on mi_live_trades over the
+    # in-hold window only. Powers setup-quality analytics (does this setup
+    # let trades run high before exit, or drag near stop?) AND the offline
+    # intraday partial-profit sweep (docs/design/306_intraday_path_recorder_2026-07-25.md).
     _scheduler.add_job(
         audit_wrap(_track_open_position_extremes_job, "track_position_extremes"),
         CronTrigger(
@@ -5328,6 +5367,22 @@ def start_scheduler() -> AsyncIOScheduler:
         id="track_position_extremes",
         replace_existing=True,
         misfire_grace_time=180,
+    )
+
+    # Intraday path recorder EOD completion sweep: once at 16:10 PM ET (#306,
+    # 2026-07-25). The last */5 poll above fires 15:55, so this catches bars
+    # 15:55-16:00 + any position closed in that window, and heals restart-day
+    # mi_intraday_bars coverage holes for open multi-day positions. DB-write
+    # only, no Telegram.
+    _scheduler.add_job(
+        audit_wrap(_position_path_eod_sweep_job, "position_path_eod_sweep"),
+        CronTrigger(
+            hour=16, minute=10,
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id="position_path_eod_sweep",
+        replace_existing=True,
+        misfire_grace_time=600,
     )
 
     # Stuck-fill watchdog (Gate 5 deliverable D, 2026-05-14). Every 60s

@@ -12,7 +12,7 @@ import logging
 import math
 import os
 from contextlib import asynccontextmanager
-from datetime import date, datetime, time as datetime_time, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.backtester.filters import validate_orb_entry
@@ -3692,28 +3692,171 @@ async def prepare_9m_day2_orb_order(
     return spec, None
 
 
-async def track_open_position_extremes() -> int:
-    """Update worst-price / best-price seen for every open position.
+_PATH_MIN_DAY_BARS = 300  # #306 sweep gap-heal threshold — a full RTH day is ~390
+                          # 1-min bars; < 300 flags a restart-day hole worth a refetch.
+_PATH_SWEEP_LOOKBACK_DAYS = 30  # matches scripts/backfill_position_extremes.py's
+                                # Polygon-request cap — bounds the EOD sweep's per-day
+                                # coverage backfill so it can't runaway-request history.
 
-    Runs every 5 min during market hours. For each unique ticker with open
-    trades, fetches today's minute bars from Polygon, takes the recent
-    period's MIN(low) and MAX(high), and applies monotonic LEAST/GREATEST
-    against the persisted values on every trade row for that ticker.
+
+async def _sweep_multi_day_coverage(pool, open_trades, today_open_et: datetime) -> None:
+    """16:10 ET EOD sweep helper (#306; `sweep=True` only). For every position in
+    this poll's population that filled on a PRIOR day (still open, or closed
+    today after a multi-day hold), counts recorded `mi_intraday_bars` rows per
+    prior trading day since `filled_at` and refetches any day whose count
+    suggests a restart-day hole (a mid-day container restart during that day's
+    5-min polling window). Bounded to the last `_PATH_SWEEP_LOOKBACK_DAYS` days.
+
+    Audit-only on a persistent gap (`log_audit_event`, never `send_telegram_
+    message`) — this is a shadow coverage heal, not an alertable condition.
+    """
+    thirty_days_ago = today_open_et - timedelta(days=_PATH_SWEEP_LOOKBACK_DAYS)
+    for trade in open_trades:
+        filled_at = trade["filled_at"]
+        if not filled_at or filled_at >= today_open_et:
+            continue  # filled today — already covered by the day-so-far fetch above
+        ticker = trade["ticker"]
+        lookback_start = max(filled_at, thirty_days_ago)
+        try:
+            async with pool.acquire() as conn:
+                day_rows = await conn.fetch(
+                    """
+                    SELECT (bar_time AT TIME ZONE 'America/New_York')::date AS d,
+                           count(*) AS n
+                    FROM mi_intraday_bars
+                    WHERE ticker = $1 AND bar_time >= $2
+                    GROUP BY 1
+                    """,
+                    ticker, lookback_start,
+                )
+        except Exception as e:
+            logger.warning(f"path sweep: {ticker} day-coverage query failed: {e}")
+            continue
+
+        for row in day_rows:
+            day, n = row["d"], row["n"]
+            if n >= _PATH_MIN_DAY_BARS:
+                continue
+            day_start = datetime.combine(day, datetime_time(9, 30), tzinfo=_ET)
+            day_end = datetime.combine(day, datetime_time(16, 0), tzinfo=_ET)
+            try:
+                refetched = await alpaca.get_minute_bars_range(ticker, day_start, day_end)
+            except Exception as e:
+                logger.warning(f"path sweep: {ticker} {day} refetch failed: {e}")
+                continue
+            if refetched:
+                await alpaca.persist_intraday_bars(ticker, refetched)
+            if len(refetched) < _PATH_MIN_DAY_BARS:
+                await log_audit_event(
+                    "path_coverage_gap",
+                    f"{ticker} {day}: {len(refetched)}/390 bars",
+                )
+
+
+async def track_open_position_extremes(sweep: bool = False) -> int:
+    """Alpaca-sourced intraday path recorder + extremes maintainer (#306, 2026-07-25).
+
+    Runs every 5 min during market hours (job id `track_position_extremes`,
+    unchanged cron slot) plus one 16:10 ET EOD completion sweep (`sweep=True`,
+    job id `position_path_eod_sweep`). This SUBSUMES the prior Polygon-only
+    extremes job — same function name, same job id, same registry entries
+    (`scripts/audit_column_writes.py` / `scripts/preflight_db_updates.py`
+    authorize `order_manager.track_open_position_extremes` by name) — a body
+    rewrite, not a repoint. Full design:
+    docs/design/306_intraday_path_recorder_2026-07-25.md
+
+    Two defects fixed together (the card's framing was only the first):
+    (1) Polygon `get_minute_bars` on our Starter plan is ~15-17 min delayed, so
+        a fast trade's path was invisible while it was still open. Alpaca
+        (`get_minute_bars_range`, feed = `get_data_feed()`) is real-time.
+    (2) The selection predicate below is open-OR-closed-today, not open-only —
+        a trade that fills 09:36 and stops 09:39 is picked up via `closed_at`
+        by the very next poll, so every trade's final minutes get captured.
+        This is the #310 bug class (`pivot_stop_shadow`'s `closed_at::date =
+        today` exact match silently dropped 7 of 9 same-day round trips) —
+        the predicate is a tz-aware TIMESTAMPTZ `>=` comparison, NEVER a
+        `::date` cast, so it is immune to the UTC-rollover failure mode.
+
+    Two correctness clamps (load-bearing — state them, don't just imply them):
+    (A) RECORDING window != EXTREMES window, AND both are capped at 16:00 ET.
+        Bars are persisted for the whole fetch window (today-so-far, capped at
+        16:00 — NEVER `now_et` directly, which at the 16:10 sweep would pull in
+        after-hours prints) — including post-exit same-day bars up to that cap,
+        which is wanted for offline review context (§2b: "through 16:00 ...
+        never further"). Extremes are computed ONLY over bars with `filled_at
+        <= t` AND (`t <= closed_at` if closed, else unbounded up to the SAME
+        16:00-capped fetch window if still open) — a post-stop-out pop must
+        never contaminate `highest_price_seen` (the HUT post-stop re-cross
+        class the parent analysis relied on excluding), and an OPEN position's
+        "unbounded" upper bound must never silently mean "post-close" just
+        because the sweep runs after 16:00.
+    (B) The in-hold lower bound stays `t >= filled_at` exactly as before #306
+        (was `t >= filled_ms` against epoch-ms Polygon bars — same semantic,
+        now compared as tz-aware datetimes) — so extremes stay comparable with
+        every historical value and with the sim contract's SC-1 boundary
+        (design doc §2a).
+
+    `highest_price_seen` IS read by a decision-adjacent path: the time-stop
+    scan (scheduler.py, JOB_TIME_STOP_SCAN) uses an excursion-from-high
+    discriminator to surface 9M Day 2 meanderer candidates for the operator's
+    `/timestop` command — an operator-CONFIRMED sell, not an automated one.
+    That population is holds >= 5 trading days, for which a source that used
+    to be ~15 min delayed is immaterial — every bar has long since been
+    polled by the time it's read, and both vendors serve the same
+    consolidated tape. The sub-15-minute trades whose values actually change
+    under this repoint are already closed and can never re-enter the
+    time-stop population. Net behavior change to time-stop: none — only the
+    PROVENANCE of an already-settled number moved (THE-LINE hygiene note, not
+    a code gate).
 
     Lifetime extremes (across the whole trade, including any Day-1 re-entry
     attempts) — not per-attempt. Initialized to entry_price by
     trade_stream._process_entry_fill; this job tightens (lows down, highs
     up) over the trade's life.
 
-    Returns count of trade rows updated.
+    Returns count of trade rows updated (extremes UPDATEs only — path-recording
+    upserts are not counted, matching the pre-#306 return-value contract).
     """
     pool = await get_pool()
+    now_et = datetime.now(_ET)
+    today_open_et = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    # Fetch window end is capped at 16:00 ET, never raw `now_et` (verify-against-
+    # design catch, 2026-07-25): at the 16:10 EOD sweep now_et=16:10, and for an
+    # OPEN position closed_at is None, so the extremes upper bound below is
+    # unbounded — whatever the fetch window's end is. Without this cap, a
+    # 16:00-16:10 print would (a) leak into highest/lowest_price_seen for every
+    # still-open position, contradicting clamp A's "now if open" (now means
+    # trading-day now, not post-close), and (b) violate §2b's recording
+    # boundary ("through 16:00 of its fill/exit days only, never further").
+    # During the regular */5 poll this is a no-op (now_et is always < 16:00).
+    window_end_et = min(now_et, today_open_et.replace(hour=16, minute=0, second=0, microsecond=0))
+    if window_end_et <= today_open_et:
+        # Pre-open cron fires (the `*/5` slot starts at hour=9, i.e. 9:00-9:25,
+        # before the 9:30 open) would otherwise request an INVERTED
+        # [today_open_et, window_end_et] window from Alpaca for any already-open
+        # multi-day position — fails safe (get_minute_bars_range catches the
+        # exception and returns []), but every such fire logs a spurious error.
+        # Nothing to fetch before the open; skip outright.
+        return 0
+
     async with pool.acquire() as conn:
-        open_trades = await conn.fetch("""
-            SELECT id, ticker, filled_at
+        # Open OR closed-today — NOT open-only (defect #2) — and a tz-aware
+        # TIMESTAMPTZ `>=` comparison, NEVER `closed_at::date = <today>` (the
+        # #310 bug class). Status vocabulary deliberately not enumerated on the
+        # closed side: `closed_at >= $1` is immune to vocabulary drift (prod
+        # today uses 'closed').
+        open_trades = await conn.fetch(
+            """
+            SELECT id, ticker, filled_at, closed_at
             FROM mi_live_trades
-            WHERE status = 'filled' AND remaining_shares > 0
-        """)
+            WHERE filled_at IS NOT NULL
+              AND (
+                (status = 'filled' AND remaining_shares > 0)
+                OR closed_at >= $1
+              )
+            """,
+            today_open_et,
+        )
     if not open_trades:
         return 0
 
@@ -3722,50 +3865,54 @@ async def track_open_position_extremes() -> int:
     for t in open_trades:
         by_ticker[t["ticker"]].append(t)
 
-    from agents.market_intelligence.collector import get_minute_bars, et_today
-    today_str = et_today().isoformat()
-
-    # Per-trade filtering by filled_at (#74): Polygon get_minute_bars returns
-    # extended-hours bars including pre-market, which captured BW's pre-open
-    # dip at $14.51 below the $16.49 stop and stored it as lowest_price_seen
-    # even though the trade only filled at 9:53 ET. Fix: only consider bars
-    # whose timestamp >= trade's filled_at.
     update_rows: list[tuple[int, float, float]] = []
     for ticker, trades in by_ticker.items():
         try:
-            bars = await get_minute_bars(ticker, today_str, today_str)
+            bars = await alpaca.get_minute_bars_range(ticker, today_open_et, window_end_et)
         except Exception as e:
             logger.warning(f"track_extremes: {ticker} minute bars fetch failed: {e}")
             continue
         if not bars:
             continue
+
+        # PATH write — every fetched bar, including post-exit same-day bars
+        # (clamp A). Fire-and-forget-safe (persist_intraday_bars never raises).
+        await alpaca.persist_intraday_bars(ticker, bars)
+
         for trade in trades:
             filled_at = trade["filled_at"]
             if not filled_at:
                 continue
-            filled_ms = int(filled_at.timestamp() * 1000)
+            closed_at = trade["closed_at"]
+            # Clamp B: in-hold lower bound unchanged. Clamp A: upper bound is
+            # closed_at when the trade has closed, else unbounded (still open)
+            # — never the fetch window's post-exit tail.
             in_hold = [
                 b for b in bars
-                if b.get("t") and int(b["t"]) >= filled_ms
-                and b.get("l") and b.get("h")
+                if b.get("t_et") is not None
+                and filled_at <= b["t_et"]
+                and (closed_at is None or b["t_et"] <= closed_at)
             ]
             if not in_hold:
                 continue
-            period_low = min(float(b["l"]) for b in in_hold)
-            period_high = max(float(b["h"]) for b in in_hold)
+            period_low = min(b["low"] for b in in_hold)
+            period_high = max(b["high"] for b in in_hold)
             if period_low <= 0 or period_high <= 0:
                 continue
             update_rows.append((trade["id"], period_low, period_high))
 
-    if not update_rows:
-        return 0
-    async with pool.acquire() as conn:
-        await conn.executemany("""
-            UPDATE mi_live_trades SET
-                lowest_price_seen = LEAST(COALESCE(lowest_price_seen, $2), $2),
-                highest_price_seen = GREATEST(COALESCE(highest_price_seen, $3), $3)
-            WHERE id = $1
-        """, update_rows)
+    if update_rows:
+        async with pool.acquire() as conn:
+            await conn.executemany("""
+                UPDATE mi_live_trades SET
+                    lowest_price_seen = LEAST(COALESCE(lowest_price_seen, $2), $2),
+                    highest_price_seen = GREATEST(COALESCE(highest_price_seen, $3), $3)
+                WHERE id = $1
+            """, update_rows)
+
+    if sweep:
+        await _sweep_multi_day_coverage(pool, open_trades, today_open_et)
+
     return len(update_rows)
 
 
