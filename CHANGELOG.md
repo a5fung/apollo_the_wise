@@ -8,6 +8,12 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-07-14 — Theme ecosystems (ADR 0032) Phase 1 · Marios-litmus PASS · /themes v2
+- Theme ecosystem read-model (no-money, Fable-built/Opus-verified): a curated 20-bucket taxonomy (`theme_ecosystems.yaml`, operator-signed; AI DISTRIBUTED across E-AISEMI/E-AIINFRA/E-SAAS+E-CYBR) + `mi_theme_ecosystems` Haiku-at-birth mapping + a breadth-weighted boosted score + a hierarchical `/themes` v2 board. Litmus vs Marios (cyber-dominant): Apollo DETECTED perfectly (cohort RS 75→89) but had SURFACED it as 1 buried line of 63; the board now ranks E-CYBR #1. **Lesson ([[verify-operator-facing-surface]]): "verify-live green" checked DB data, not the Telegram render — `/themes` routed orchestrator-side to a handler the ecosystem render was never wired into. Verify the operator-facing SURFACE.**
+
+### 2026-07-12/13 — session growth gate · 2 Fable red-teams · 6-fork rulings pack
+- Growth gate (`check_plan` HARD): a session may not END with more open tasks than the PT-day began; `--today` pins the baseline, operator `--carryover` is the only escape (after a month of fake burndown, 99→116). Fable via Agent-model-override ran 2 red-teams (composition + v1-readiness) — all code-verified, 3 fixes deployed same-night. 6-fork rulings pack approved wholesale: soak STRICT · FL-4 synthetic criterion + dry_run · 0025 slice→MERGE prompt v2 · giveback = close-below DECISION-LINE · RED-3 sizing clamp · #416 signed. **Lesson: verify premium-model output vs code — 1 of 6 REDs was over-rated (the NULL was a deliberate fail-safe).**
+
 ### 2026-07-16 — FIRST REAL-MONEY FILL chain VERIFIED (#413 closed) · #150 reservation-race retry verified-live
 - MANE 7/15 (live, $119.34×8): ORB bracket → entry filled → stop-refresh hit the EXACT share-reservation race (`held_for_orders:8, available:0`, old stop leg named) → `_is_share_reservation_lag` bounded retry placed the stop 3s later (bc100ddb) → old leg canceled clean → held overnight protected → stop filled 7/16 open, −$2.40, exits row written. Zero naked-stop alarms, WS+reconcile agreed; TSEM 7/14 = 2nd clean instance. Closes #413 (first-fill chain watch) AND #150 (the FTRE-class retry, event-gated since 5/09 — observed clean on real money). Lesson: the two rarest-event gates both cleared on one trade — check event-gated tasks against EVERY live fill.
 

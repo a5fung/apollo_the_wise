@@ -9,6 +9,25 @@
 - **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first" etc.) unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
 - **Concise — no essays; never mention session length or ending/deferring a session — keep working.** A decision = the fork + a 1-line rec.
 
+## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
+
+Work routes to the model that fits it; each carries its own responsibility. Standing default, not a per-session choice.
+
+| Who | Owns |
+|---|---|
+| **Fable** (`Agent`, `model:"fable"`) | The hardest work — design, complex analysis, adversarial review, **complex implementation**, to execution depth. |
+| **Sonnet cards** (`model:"sonnet"`) | Basic + mechanical implementation — scoped well-specified builds, tests, refactors, sweeps. |
+| **Opus** (main loop) | Orchestration + routing, operator-facing judgment, surfacing THE LINE, **verifying everything that comes back**, session rituals, the final report. |
+| **`advisor`** | Consultation BEFORE committing to an approach + the FINAL review before declaring done. |
+
+"Implementation" appears in two rows deliberately — the split is **complexity, not task type**. Don't keep hard work on Opus just because the context is already here; that's the failure this rule corrects. Trivial one-liners stay inline (card overhead > the work).
+
+**Non-negotiables, all model-agnostic:**
+- **THE LINE doesn't move.** Sign-off + CHANGE_PROCESS + backtest + verify-live apply no matter which model wrote it.
+- **Never rubber-stamp a premium model** — verify its output against code/data before it reaches the operator (1 of 6 REDs was over-rated 7/12; a "NULL bug" was a deliberate fail-safe).
+- **Never manufacture work** to feed a model — the mechanism being easy doesn't make the work infinite.
+- **⚠ Capacity:** subagents INHERIT the session model — on a Fable session a review fleet burned 75% of capacity (7/17). Pass an explicit `model:` on EVERY spawn; run the SESSION on Opus and reach for Fable per-task.
+
 ## Session Protocol (open + close — the anti-drift ritual)
 
 **SoT for ALL planned work = `PLAN.md`** — the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed — mechanical because every prose-discipline reconcile here has failed, only gates hold. (Consolidated 2026-06-16 after the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× — `feedback-runway-not-in-open-ritual`.)
@@ -49,7 +68,7 @@ NOT reasons (these mean *just do it*): "it's late / after-hours," "it's minor/qu
 
 Same SoT as Session Protocol above: `PLAN.md` at repo root (projects → tasks → ETA + status; the long-horizon launch lives there as dated tasks). Run `python scripts/check_plan.py --today` for the day's plan. Only `data_gated_reviews.yaml` retains separate runtime behavior (YAML predicates, weekly auto-surface) and it references #IDs back into PLAN.md.
 
-**"run fable weekend block N"** (operator trigger, inline-Fable design sessions) → open `docs/roadmap/fable-weekend-blocks.md` §Block N and execute it to pure-execution depth. Fable DESIGNS only — SSoT + CHANGE_PROCESS + sign-off + backtest before any live flip (THE LINE).
+**"run fable weekend block N"** (operator trigger, inline-Fable design sessions) → open `docs/roadmap/fable-weekend-blocks.md` §Block N and execute it to pure-execution depth. Fable's output still clears SSoT + CHANGE_PROCESS + sign-off + backtest before any live flip (THE LINE) — scope per the operating model above, no longer design-only.
 
 ## 🛑 Trading Setup Changes — Read SSoT First (NON-NEGOTIABLE)
 
@@ -316,13 +335,9 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 - **#471 flip executed** (operator-named, Fable-double-checked): `theme_subtheme_arm=on` 17:15 ET; first armed run Fri nightly. **#413+#150 closed on ONE trade** — MANE 7/15 (live) verified the first-fill chain AND the reservation-race retry — lesson: **check event-gated tasks against every live fill** (#269's AKTS event had fired unnoticed too). **B6 + #468 converge**: the EP score's 70-79 band is anti-predictive (60-69 is the BEST) → the lever is score composition, not thresholds → meta-rubric block. **#476 root cause** = the March `biotech max_themes=0` sector-cap (silent Pass-2 drop + nightly shadow-promote resurrection) — Option A ruled, replay-calibrated to per-family cap ≤6. **#477** = one bare `_` in `(ingest dry_run)` flipped the brief chunk's entity parity (Telegram blames a far-downstream offset). Push night: 3 closes + 8 builds (109→106); Friday staged via `decision_digest_2026-07-17.md`. Lesson: prod mutations need operator-NAMED actions (classifier) — batch asks into digests.
 
-### 2026-07-14 — Theme ecosystems (ADR 0032) Phase 1 shipped · Marios-litmus PASS · /themes v2
+### 2026-07-24/25 — 🏁 v1.0 DECLARED · ATAI deal-pin (#502) · breaker live-path (#454 p3) · operating model
 
-- **ADR 0032 Phase 1** — theme ecosystem read-model (no-money, Fable-built/Opus-verified): a curated 20-bucket taxonomy (`theme_ecosystems.yaml`, operator-signed; **AI DISTRIBUTED** across E-AISEMI/E-AIINFRA/E-SAAS+E-CYBR, not one bucket) + `mi_theme_ecosystems` Haiku-at-birth mapping + a member-union breadth-weighted **boosted** score (rs_composite, anti-frag dedup) + a hierarchical `/themes` v2 board. **Litmus vs Marios** (cyber-dominant): Apollo DETECTS perfectly (cohort RS 75→89) but had SURFACED it as 1 buried line of 63 — the board now ranks **E-CYBR #1**; drowned cohorts (INS/REIT/BANKFIN) collapse to single ranked aggregates. **Lesson (memory [[verify-operator-facing-surface]]):** "verify-live green" checked DB data, not the actual Telegram render — still FLAT (`/themes` routed orchestrator-side to a handler the ecosystem render wasn't wired into). Verify the operator-facing SURFACE. Phase 2-3 designed to exec depth (#471, 13 forks); ecosystem view is **/themes-ONLY** — briefing/HUD still flat (#473); root-yaml-COPY bandaid recurs (#474).
-
-### 2026-07-12/13 — growth gate · 2 red-teams · rulings pack EXECUTED (Fable window)
-
-- **Session growth gate** (`check_plan` HARD): a session may not END with more open tasks than the PT-day began — `--today` pins the baseline, the plain gate fails commits over it; operator `--carryover` = the only escape. After a month of fake burndown (99→116). **Fable via Agent-model-override** (no /model switch) ran 2 red-teams — composition (giveback l=c evidence ≠ resting-stop rule · allocator multiplier bypassed caps · update_stop lock) + v1-readiness (two soak clocks · fail-open clean-day · unmonitored drawdown staleness) — all code-verified, 3 fixes deployed same-night (soak failure-events + sync-orphan emitters · 16:12 job watched + drawdown fail-open alerts · FL-4 meter gated on promotion). **6-fork rulings pack approved wholesale**: soak STRICT (start 7/8) · FL-4 synthetic criterion + dry_run flipped · 0025 slice→MERGE prompt v2 (corpus 14/14, flip corpus-cleared) · giveback = close-below DECISION-LINE (not resting stop) · RED-3 sizing clamp shipped both money containers · #416 signed (N-gate sim: 7 flips; FRMI row unparseable — prove guard-B pre-ship). Lesson: verify premium-model output vs code — 1 of 6 REDs was over-rated (the NULL was a deliberate fail-safe).
+- **v1.0 declared shipped 7/24** (§8 signed; all 8 FL gates green) — the blocking/launch lens RETIRES, the board becomes the #419 Phase-2 program. **#502**: the nightly HTF digest surfaced ATAI (a buyout) as its only actionable COILED setup — a cash-deal pin is *mechanically indistinguishable from a coil*; the tightness that scores it COILED IS the pin. Both M&A layers structurally couldn't reach a FRESH pin (Polygon had 2 articles/21d, no keyword; the layer-2 backstop needs a 10-session median it can't fill — it had fired 5× ever and caught KALV 29 days late). Shipped a two-axis conjunction (5d band ≤2.5% AND ≥5× vol spike); replay of the SHIPPED fn over 405 rows = 11 suppressed / 393 preserved, HUM (+25.7%) free. **Rejected + documented**: reusing the EP classifier verdict — the store is 1-true/1-junk (ACLS graded `mna` while its own summary said "no catalysts found", then ran +16%). **#454 p3**: drawdown-breaker live-path exercise, 37/37, ZERO writes — set-tier-then-restore was rejected because REDUCE returns `ok=True`@0.5×, so a crash silently half-sizes live entries. Lessons: a filter list is the operator's call (CHANGE_PROCESS r3) — state findings, not rulings; and 3 harness "failures" were MY wrong expectations, the code was right.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
