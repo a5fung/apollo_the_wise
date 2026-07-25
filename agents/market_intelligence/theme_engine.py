@@ -995,6 +995,44 @@ async def _emit_pipeline_diagnostic(
     return findings
 
 
+def _restore_sub_theme_links(themes: list[dict], sub_theme_parents: dict[str, str]) -> None:
+    """Reconcile every continuing sub-theme's `parent_theme` against today's FINAL
+    snapshot. Mutates `themes` in place. Must be the last thing that touches
+    `parent_theme` before `_save_themes`.
+
+    Root cause (#471): `_rescore_existing_theme` rebuilds each theme dict from
+    scratch every night and never copies `parent_theme` forward from the loaded
+    row — so a child's link to its parent survived exactly one day (the
+    birth-day write) and went NULL on every save after that, even though
+    nothing about the relationship changed. `_emit_pipeline_diagnostic`'s
+    orphan remediation above only CLEARS a stale link mid-pipeline when it
+    fires — it never restores a live one, and it can't see drops caused by
+    `_run_thesis_merge_pass` (runs after the last diagnostic call, before
+    save). This function is the single reconciliation point that sees the
+    truly final list.
+
+    For every theme whose name is a key in `sub_theme_parents`:
+      - parent still present (non-Retired) in `themes` -> parent_theme (re)set
+      - parent not present                             -> parent_theme cleared
+        (genuine orphan — same semantics as the diagnostic remediation above,
+        just re-checked against final state instead of a mid-pipeline one)
+
+    Retired rows are skipped: their `parent_theme` is a deliberate successor
+    pointer (`theme_auto_retired`), not a sub-theme link, and must not be
+    clobbered here.
+    """
+    if not sub_theme_parents:
+        return
+    live_names = {t["name"] for t in themes if t.get("stage") != "Retired"}
+    for t in themes:
+        if t.get("stage") == "Retired":
+            continue
+        parent = sub_theme_parents.get(t["name"])
+        if parent is None:
+            continue
+        t["parent_theme"] = parent if parent in live_names else None
+
+
 # Back-compat alias — older call sites used this name. New code should call
 # `_emit_pipeline_diagnostic` directly.
 async def _check_unique_ticker_sets(themes: list[dict], stage_label: str) -> int:
@@ -2187,6 +2225,14 @@ async def _rescore_existing_theme(
             "description": existing_desc,
             "tickers": tickers,
             "pct_above_20sma": pct_breadth,
+            # #471: carry the sub-theme link forward — this function rebuilds
+            # the dict from scratch, so a copied-over `existing` field is the
+            # only way it survives past birth day. `_restore_sub_theme_links`
+            # (run_theme_engine, right before _save_themes) is still the final
+            # authority on whether the link is genuinely still live; this is
+            # belt-and-suspenders so intermediate stages (e.g. the
+            # "never split a sub-theme further" guard below) see it too.
+            "parent_theme": theme.get("parent_theme"),
         }, changelog
 
     # Momentum score (50%): trimmed mean RS composite of strong constituents
@@ -2338,6 +2384,8 @@ async def _rescore_existing_theme(
         "description": description,
         "tickers": final_tickers,
         "pct_above_20sma": pct_breadth,
+        # #471: see the Fading-branch return above — same carry-forward.
+        "parent_theme": theme.get("parent_theme"),
     }, changelog
 
 
@@ -5406,6 +5454,13 @@ async def run_theme_engine(
             f"split from '{fat['name']}'"
         )
 
+    # Fold today's newborn links into the running parent map regardless of
+    # whether the `if new_sub_themes` block below runs — `_restore_sub_theme_links`
+    # (called just before `_save_themes`) needs the union of prior-day links +
+    # today's splits to reconcile every continuing child, not just ones merged
+    # again this run.
+    prior_sub_parents.update(this_run_sub_parents)
+
     if new_sub_themes:
         combined_sub_parents = {**prior_sub_parents, **this_run_sub_parents}
         await _emit_pipeline_diagnostic(
@@ -5518,6 +5573,12 @@ async def run_theme_engine(
             ),
         )
         logger.info(f"Theme engine: auto-retired {len(lost)} dropped theme(s), {with_successor} with successor")
+
+    # #471: reconcile parent_theme against the truly final list right before
+    # save — see _restore_sub_theme_links docstring. Must run after the
+    # auto-retire block above (retire_rows can drop a parent from `all_themes`
+    # too) and after _run_thesis_merge_pass, so it's the last mutation.
+    _restore_sub_theme_links(all_themes, prior_sub_parents)
 
     if all_themes:
         await _save_themes(all_themes)
