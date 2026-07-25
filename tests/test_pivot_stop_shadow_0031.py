@@ -160,3 +160,146 @@ async def test_shadow_logs_row_and_never_mutates_trades(monkeypatch):
     # the insert carries baseline + p1 numerics and the plain-dict/None profile (jsonb codec)
     args = conn.execute.await_args_list[0].args
     assert isinstance(args[5], float)  # baseline_exit_r
+
+
+# ── #310: same-day round trips silently dropped forever (no fwd bars on their own close
+# day + an exact `closed_at = today` match meant they were never revisited) ────────────
+@pytest.mark.asyncio
+async def test_insufficient_forward_bars_skipped_with_audit_no_insert(monkeypatch):
+    """A same-day round trip has few/no forward bars yet — must be DEFERRED (no row), with
+    a reasoned audit event, not silently dropped. FAILS pre-fix: `if not fwd: continue`
+    only caught the EMPTY case, so these 2 non-empty-but-too-few bars sailed through and
+    got INSERTed as a garbage 'held to end' row."""
+    from agents.market_intelligence import pivot_stop_shadow as pss
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+
+    closed_trade = {"id": 77, "ticker": "WULF", "alert_date": date(2026, 7, 6),
+                    "account_mode": "live", "entry_price": 10.0, "entry_shares": 100,
+                    "hard_stop": 9.0}
+    fwd_bars = [_bar(date(2026, 7, 7) + timedelta(days=i), 10.5, 10.0, 10.2) for i in range(2)]
+
+    conn.fetch = AsyncMock(side_effect=[[closed_trade], fwd_bars])
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    audit = AsyncMock()
+    monkeypatch.setattr(pss, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(pss, "log_audit_event", audit)
+
+    n = await pss.run_pivot_stop_shadow(date(2026, 7, 8))
+
+    assert n == 0
+    conn.execute.assert_not_awaited()  # no garbage row
+    assert any(c.args and c.args[0] == "pivot_stop_shadow_skipped"
+              for c in audit.await_args_list)
+    assert any("insufficient_forward_bars" in c.kwargs.get("summary", "")
+              for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_bad_inputs_skipped_with_audit_no_insert(monkeypatch):
+    """Non-positive entry/stop/shares must be DEFERRED with an audit event, not the old
+    silent `continue` (no event was ever emitted for this branch pre-fix)."""
+    from agents.market_intelligence import pivot_stop_shadow as pss
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+
+    bad_trade = {"id": 5, "ticker": "ZZZZ", "alert_date": date(2026, 7, 1),
+                "account_mode": "live", "entry_price": 0.0, "entry_shares": 100,
+                "hard_stop": 9.0}
+    conn.fetch = AsyncMock(side_effect=[[bad_trade]])
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    audit = AsyncMock()
+    monkeypatch.setattr(pss, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(pss, "log_audit_event", audit)
+
+    n = await pss.run_pivot_stop_shadow(date(2026, 7, 8))
+
+    assert n == 0
+    conn.execute.assert_not_awaited()
+    assert any(c.args and c.args[0] == "pivot_stop_shadow_skipped"
+              for c in audit.await_args_list)
+    assert any("bad_inputs" in c.kwargs.get("summary", "") for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_same_day_roundtrip_shadowed_once_min_bars_exist(monkeypatch):
+    """#310's whole point: once _MIN_FWD_BARS forward bars have accumulated (over later
+    catch-up runs), a same-day round trip DOES get shadowed."""
+    from agents.market_intelligence import pivot_stop_shadow as pss
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+
+    closed_trade = {"id": 88, "ticker": "CRCL", "alert_date": date(2026, 7, 6),
+                    "account_mode": "live", "entry_price": 10.0, "entry_shares": 100,
+                    "hard_stop": 9.0}
+    fwd_bars = [_bar(date(2026, 7, 7) + timedelta(days=i), 10.5 + i * 0.1, 10.0 + i * 0.1,
+                     10.2 + i * 0.1) for i in range(pss._MIN_FWD_BARS)]
+    hist_bars = [_bar(date(2026, 1, 1) + timedelta(days=i), 10.1, 9.9, 10.0) for i in range(80)]
+
+    conn.fetch = AsyncMock(side_effect=[[closed_trade], fwd_bars, hist_bars])
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    monkeypatch.setattr(pss, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(pss, "log_audit_event", AsyncMock())
+
+    n = await pss.run_pivot_stop_shadow(date(2026, 7, 13))
+
+    assert n == 1
+    writes = [c.args[0] for c in conn.execute.await_args_list]
+    assert len(writes) == 1 and "INSERT INTO mi_pivot_stop_shadow" in writes[0]
+
+
+@pytest.mark.asyncio
+async def test_catchup_query_uses_lookback_not_exact_day_match(monkeypatch):
+    """Root cause pin: the old query matched `closed_at::date = today` EXACTLY, so a trade
+    skipped once (0 forward bars on its own close day) was never looked at again. The new
+    query must pass a lookback-days param (beyond signal_type/account_mode/today) so the
+    SAME trade is re-considered on later runs, and must not do an exact-date match."""
+    from agents.market_intelligence import pivot_stop_shadow as pss
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[]])
+    monkeypatch.setattr(pss, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(pss, "log_audit_event", AsyncMock())
+
+    n = await pss.run_pivot_stop_shadow(date(2026, 7, 20), signal_type="magna53",
+                                        account_mode="live")
+
+    assert n == 0
+    query, *params = conn.fetch.await_args_list[0].args
+    assert params == ["magna53", "live", date(2026, 7, 20), pss._CATCHUP_LOOKBACK_DAYS]
+    assert "closed_at" in query
+    assert "= $3" not in query  # no longer an exact-date match on closed_at
+
+
+@pytest.mark.asyncio
+async def test_rerun_does_not_duplicate_rows(monkeypatch):
+    """Idempotency: once a trade is shadowed, the (unchanged) `NOT EXISTS` filter means it
+    never reappears in a later run's row set — the second run logs 0 more, and only ONE
+    INSERT happens across both runs. The insert itself keeps `ON CONFLICT (trade_id) DO
+    NOTHING` as the natural-key backstop (trade_id is the table's PRIMARY KEY)."""
+    from agents.market_intelligence import pivot_stop_shadow as pss
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+
+    closed_trade = {"id": 99, "ticker": "HUT", "alert_date": date(2026, 7, 6),
+                    "account_mode": "live", "entry_price": 10.0, "entry_shares": 100,
+                    "hard_stop": 9.0}
+    fwd_bars = [_bar(date(2026, 7, 7) + timedelta(days=i), 10.5 + i * 0.1, 10.0 + i * 0.1,
+                     10.2 + i * 0.1) for i in range(6)]
+    hist_bars = [_bar(date(2026, 1, 1) + timedelta(days=i), 10.1, 9.9, 10.0) for i in range(80)]
+
+    # 1st run: trade is un-shadowed -> gets inserted. 2nd run: NOT EXISTS now excludes it
+    # (already shadowed) -> empty row set, nothing to (re-)insert.
+    conn.fetch = AsyncMock(side_effect=[[closed_trade], fwd_bars, hist_bars, []])
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    monkeypatch.setattr(pss, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(pss, "log_audit_event", AsyncMock())
+
+    n1 = await pss.run_pivot_stop_shadow(date(2026, 7, 13))
+    n2 = await pss.run_pivot_stop_shadow(date(2026, 7, 14))
+
+    assert n1 == 1
+    assert n2 == 0
+    assert conn.execute.await_count == 1
+    insert_sql = conn.execute.await_args_list[0].args[0]
+    assert "ON CONFLICT (trade_id) DO NOTHING" in insert_sql

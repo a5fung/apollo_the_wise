@@ -31,6 +31,49 @@ from agents.market_intelligence.pivot_analysis import annotate_pivot_stops, char
 
 logger = logging.getLogger(__name__)
 
+# #310 catch-up (fixes the silent same-day-round-trip drop): forward bars for a trade
+# closed on day D don't exist until D+1's close is ingested (mi_daily_closes refreshes at
+# 17:00 ET; this job runs at 17:42 ET) — the old exact `closed_at::date = today` WHERE meant
+# a trade with zero forward bars on its own close day was looked at exactly ONCE, silently
+# `continue`d, and NEVER revisited (measured: 7/7 same-day live closes since 2026-07-06, 0
+# shadow rows; 2/2 overnight holds shadowed fine). This window instead re-scans recently
+# -closed, not-yet-shadowed trades every run so they're picked up once bars accumulate. 45d
+# is ~8x the 40-bar fwd-fetch cap in calendar days — comfortable headroom past weekends/
+# holidays for any actively-listed ticker to clear _MIN_FWD_BARS.
+_CATCHUP_LOOKBACK_DAYS = 45
+
+# annotate_pivot_stops (pivot_analysis.py) drives confirmed_swing_lows(bars, k=2) by default:
+# a fractal-low CANDIDATE only exists at index i where `k <= i < len(bars) - k`
+# (pivot_analysis.py confirmed_swing_lows) — that range is EMPTY for len(bars) < 2k+1 = 5.
+# Below 5 forward bars a confirmed P1 pivot stop is PROVABLY impossible (not just unlikely):
+# pivot_stops is guaranteed all-None and the P1 arm degenerates to hard-stop-only,
+# indistinguishable from baseline by construction — not a real counterfactual. 5 is the floor
+# below which a replay is DEFERRED (left for a later run once more bars exist) rather than
+# logged with a partial/garbage row. (A naive `trade_date >= alert_date` fetch — including
+# the alert-day bar itself — would let a same-day trade "pass" this guard with exactly one
+# bar; the ladder skips any day `<= alert_date` (exit_logic.apply_daily_exit_step), so that
+# one bar never runs a real step and the replay mark-to-closes on it as if the trade "held to
+# end" — do NOT do that. Forward bars stay strictly `trade_date > alert_date`.)
+_MIN_FWD_BARS = 5
+
+# Skip-reason enum for the `pivot_stop_shadow_skipped` audit event (#310 — replaces the old
+# silent `continue`, the reason other tooling/telegram can filter the audit log on).
+_SKIP_BAD_INPUTS = "bad_inputs"
+_SKIP_INSUFFICIENT_BARS = "insufficient_forward_bars"
+
+
+async def _log_skip(ticker: str, trade_id: int, reason: str, detail: str) -> None:
+    """Audit a skipped trade instead of the old silent `continue` (#310). No row is written —
+    the trade stays un-shadowed and is re-tried on the next run once the underlying condition
+    (more forward bars) resolves. `reason` is one of the `_SKIP_*` enum tags above."""
+    try:
+        await log_audit_event(
+            "pivot_stop_shadow_skipped",
+            summary=f"{reason}: {ticker} trade {trade_id}",
+            detail=detail)
+    except Exception as _e:  # loud-ok: telemetry-of-telemetry, same as the error/logged emitters below
+        logger.warning("pivot_stop_shadow skip-audit emit failed (non-fatal): %s", _e)
+
 
 def _arm_replay(bars: list[dict], *, alert_date, entry_price, hard_stop, shares,
                 trail_mode: str, profile: dict | None = None,
@@ -81,7 +124,12 @@ def _arm_replay(bars: list[dict], *, alert_date, entry_price, hard_stop, shares,
 
 async def run_pivot_stop_shadow(today: date, *, signal_type: str = "magna53",
                                 account_mode: str = "live") -> int:
-    """Log the pivot-stop shadow for LIVE trades closed on `today` not yet shadowed.
+    """Log the pivot-stop shadow for LIVE trades closed in the last _CATCHUP_LOOKBACK_DAYS
+    days and not yet shadowed (#310 catch-up, not an exact `closed_at = today` match — a
+    same-day round trip has zero forward bars on its own close day and must be revisited on
+    a LATER run once bars accumulate). Idempotent: `mi_pivot_stop_shadow.trade_id` is the
+    natural key (PRIMARY KEY) — the `NOT EXISTS` filter plus `ON CONFLICT (trade_id) DO
+    NOTHING` on the insert together guarantee a re-run never double-inserts.
     Pure compute + DB/audit — no broker calls, no live-exit change. Returns rows logged."""
     pool = await get_pool()
     logged = 0
@@ -91,27 +139,34 @@ async def run_pivot_stop_shadow(today: date, *, signal_type: str = "magna53",
                    t.entry_shares, t.hard_stop
             FROM mi_live_trades t
             WHERE t.status = 'closed' AND t.signal_type = $1 AND t.account_mode = $2
-              AND (t.closed_at AT TIME ZONE 'America/New_York')::date = $3
+              AND (t.closed_at AT TIME ZONE 'America/New_York')::date BETWEEN ($3::date - $4) AND $3
               AND NOT EXISTS (SELECT 1 FROM mi_pivot_stop_shadow p WHERE p.trade_id = t.id)
-        """, signal_type, account_mode, today)
+        """, signal_type, account_mode, today, _CATCHUP_LOOKBACK_DAYS)
         for r in rows:
             try:
                 entry = float(r["entry_price"] or 0)
                 hard_stop = float(r["hard_stop"] or 0)
                 shares = float(r["entry_shares"] or 0)
                 if entry <= 0 or hard_stop <= 0 or shares <= 0:
+                    await _log_skip(r["ticker"], r["id"], _SKIP_BAD_INPUTS,
+                                    f"entry={entry} hard_stop={hard_stop} shares={shares}")
                     continue
-                # the trade's own forward bars + profile history (one fetch each)
+                # the trade's own forward bars (strictly AFTER alert_date — see _MIN_FWD_BARS
+                # comment on why `>=` would be wrong here) — fetched first so an
+                # insufficient-bars skip doesn't waste the 260-row history fetch below.
                 fwd = [dict(b) for b in await conn.fetch("""
                     SELECT trade_date, high_price, low_price, close FROM mi_daily_closes
                     WHERE ticker=$1 AND trade_date > $2 ORDER BY trade_date LIMIT 40
                 """, r["ticker"], r["alert_date"])]
+                if len(fwd) < _MIN_FWD_BARS:
+                    await _log_skip(r["ticker"], r["id"], _SKIP_INSUFFICIENT_BARS,
+                                    f"{len(fwd)} fwd bar(s) since {r['alert_date']}, "
+                                    f"need >={_MIN_FWD_BARS}")
+                    continue
                 hist = [dict(b) for b in await conn.fetch("""
                     SELECT trade_date, high_price, low_price, close FROM mi_daily_closes
                     WHERE ticker=$1 AND trade_date <= $2 ORDER BY trade_date DESC LIMIT 260
                 """, r["ticker"], r["alert_date"])][::-1]
-                if not fwd:
-                    continue
 
                 profile = character_profile(hist)
                 pivot_stops = annotate_pivot_stops(fwd)
@@ -122,6 +177,10 @@ async def run_pivot_stop_shadow(today: date, *, signal_type: str = "magna53",
                 p2 = (_arm_replay(fwd, trail_mode="character_ma", profile=profile, **common)
                       if profile else None)
                 if base is None:
+                    # only reachable via risk<=0 (hard_stop >= entry_price) — the earlier
+                    # guard already ruled out empty bars / non-positive shares.
+                    await _log_skip(r["ticker"], r["id"], _SKIP_BAD_INPUTS,
+                                    f"non-positive risk: entry={entry} hard_stop={hard_stop}")
                     continue
                 await conn.execute("""
                     INSERT INTO mi_pivot_stop_shadow
