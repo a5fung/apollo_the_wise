@@ -161,8 +161,10 @@ BLOCKING_TASK_IDS = frozenset({
     347, 256, 405, 317, 150, 413, 276, 303,
     # small-build class (S-A=#421, S-B=#422, S-D=#423, S-E=#424; S-C folded into #378)
     421, 422, 378, 423, 424, 404, 412, 290, 195, 280, 420,
-    # careful-path class
-    184, 287, 261, 417, 183,
+    # careful-path class (#184 + #261 RE-HOMED to #419 Phase-2 by operator 2026-07-24
+    # at the v1.0 declaration — ruled not v1.0-blocking: #184's R1 stop-repair is live +
+    # R2/R3 are propose-only; #261 is a scripts-folder reorg with no trading impact.)
+    287, 417, 183,
 })
 
 _PLAN_TASK_RE = re.compile(r"^- #(\d+)\s*\|")
