@@ -242,6 +242,64 @@ def _dependency_gate(tasks, errors, today) -> None:
                 pass
 
 
+_SHIPPED_CODE_DIRS = ("agents/", "core/", "channels/", "shared/", "main.py")
+_OWN_COMMIT = re.compile(r"^#(\d+)[:.\s]")
+
+
+def _shipped_pending_gate(tasks, errors) -> None:
+    """A `pending` task whose OWN commit already shipped product code is contradictory — `pending`
+    means NOT STARTED, and code named after the task exists. That contradiction is what makes a line
+    read as unstarted months after it shipped, which then generates a DUPLICATE card: on 2026-07-25
+    #495 (built 7/21, `786b294`) and #402 both did exactly that in one day, and the existing
+    LIKELY-BUILT surface is ADVISORY so it got triaged as housekeeping and ignored.
+
+    Deliberately NARROW so it can be a GATE rather than more wallpaper. Measured 2026-07-25 on the
+    live board: matching ANY `#N` mention in a commit touching code flags 31 of 84 tasks (subjects
+    cross-reference IDs constantly — unusable). Requiring the subject to START with `#N` — this
+    repo's convention for "this commit IS that task's work" — and to touch product code flags **4 of
+    55 pending**. Four is actionable; thirty-one is noise, and noise is how the advisory surface died.
+
+    Fix by correcting the STATUS (a task with shipped code is at minimum `in_progress`, usually
+    `deployed` + a verify-date), never by deleting the tag. `in_progress` is exempt: a multi-part
+    task legitimately ships part 1 while remaining open."""
+    import subprocess
+    pending = {t["id"]: t for t in tasks if str(t["status"]).lower() == "pending"}
+    if not pending:
+        return
+    try:
+        log = subprocess.run(["git", "log", "--all", "--format=%h%x00%s"], cwd=str(REPO),
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=10)
+        if log.returncode != 0:
+            return
+    except Exception:
+        return  # git unavailable — never block a commit on infra
+    first: dict[int, tuple[str, str]] = {}
+    for line in log.stdout.splitlines():
+        sha, _, subj = line.partition("\x00")
+        m = _OWN_COMMIT.match(subj)
+        if not m:
+            continue
+        tid = int(m.group(1))
+        if tid in pending and tid not in first:
+            first[tid] = (sha, subj)
+    for tid, (sha, subj) in sorted(first.items()):
+        try:
+            files = subprocess.run(["git", "show", "--name-only", "--format=", "-r", sha],
+                                   cwd=str(REPO), capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=10).stdout
+        except Exception:
+            continue
+        if not any(f.startswith(_SHIPPED_CODE_DIRS) for f in files.splitlines() if f.strip()):
+            continue
+        t = pending[tid]
+        errors.append(
+            f"L{t['line']}: task #{tid} is `pending` but its OWN commit {sha} already shipped product "
+            f"code (\"{subj[:60]}\") — `pending` means NOT STARTED, so the line is stale and will "
+            f"generate a duplicate card (the #495/#402 class, 2026-07-25). Correct the STATUS: "
+            f"`in_progress` if work remains, `deployed` + a verify-date if it shipped.")
+
+
 def _rebump_gate(tasks, errors) -> None:
     """Rebump cap — HARD RULE (operator 2026-06-28): a task ETA may be rebumped AT MOST ONCE; a
     2nd+ bump needs [ok:reason] (operator approval) or [blocked:reason] (physically impossible). The
@@ -407,6 +465,7 @@ def main(argv: list[str]) -> int:
             errors.append(f"L{t['line']}: task #{t['id']} ETA {t['eta']} is PAST (today {today}) — "
                           f"rebump to a future date at CLOSE, or close the task")
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
+    _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
