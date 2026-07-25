@@ -7412,8 +7412,11 @@ reviews:
           breakeven; sweep L over %, R-multiple and ADR/ATR bases (method:
           docs/analysis/306_intraday_partial_analysis_2026-07-25.md);
       (c) SEGMENTED BY CHARACTER (operator 7/25: fast/gappy/small-cap/high-ADR
-          names need more aggressive taking than slow large caps) - reuse
-          pivot_analysis.character_profile, do NOT invent a parallel taxonomy;
+          names need more aggressive taking than slow large caps). Key this on
+          ADR20 (the frozen probe convention). NOT pivot_analysis.character_profile
+          - verified 2026-07-25 to be the WRONG tool: it profiles MA-respect and
+          pullback depth (the trail-side axis) and carries no run-rate notion.
+          The ADR% convention already exists in flag_detector; reuse that;
       (d) holding-period distribution - the n=9 cut showed live mean 0.28 DAYS
           vs paper winners 4-24 days, every paper winner held >=4 days.
 
