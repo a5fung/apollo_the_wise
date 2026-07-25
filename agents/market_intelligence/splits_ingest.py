@@ -108,6 +108,24 @@ async def _get_old_close(ticker: str, trade_date) -> float | None:
         )
 
 
+def _as_split_legs(raw_from, raw_to) -> tuple[int | None, int | None]:
+    """Parse a Polygon split ratio into whole-share legs, or (None, None).
+
+    Polygon's /v3/reference/splits feed carries mutual-fund share-class
+    reorganizations alongside real share splits — ratios like `1:0.9623`
+    (NBGAX/NRACX/NSNRX/… 2026-07-24, 21 of that day's 26 rows). They are not
+    splits, never touch the CS/ADRC universe, and `int()` silently truncated
+    them to a degenerate `split_to=0` row.
+    """
+    try:
+        legs = (float(raw_from), float(raw_to))
+    except (TypeError, ValueError):
+        return (None, None)
+    if any(leg != int(leg) or int(leg) < 1 for leg in legs):
+        return (None, None)
+    return (int(legs[0]), int(legs[1]))
+
+
 async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
     """Re-fetch + overwrite cached history for one (ticker, execution_date).
     Returns (ticker, success, n_bars_written)."""
@@ -216,6 +234,7 @@ async def run_splits_ingest(since: date | None = None) -> dict:
 
     # 1. Fetch + upsert
     n_new = 0
+    n_fractional = 0
     try:
         results = await fetch_splits(since)
         for r in results:
@@ -223,19 +242,32 @@ async def run_splits_ingest(since: date | None = None) -> dict:
                 exec_date = date.fromisoformat(r["execution_date"])
             except (KeyError, ValueError):
                 continue
+            # Fund share-class reorgs are not splits — skip at the source so
+            # they stop minting one split_detected each. 2026-07-24 they were
+            # 21 of 26 rows and drove a 6.5x split_detected delta into the
+            # cooldowns_per_day L2 anomaly. One aggregate line instead.
+            split_from, split_to = _as_split_legs(r.get("split_from"), r.get("split_to"))
+            if split_from is None:
+                n_fractional += 1
+                continue
             inserted = await upsert_split(
                 ticker=r["ticker"],
                 execution_date=exec_date,
-                split_from=int(r["split_from"]),
-                split_to=int(r["split_to"]),
+                split_from=split_from,
+                split_to=split_to,
                 polygon_id=r.get("id"),
             )
             if inserted:
                 n_new += 1
                 await log_audit_event(
                     "split_detected",
-                    f"{r['ticker']} {r['execution_date']} {r['split_from']}:{r['split_to']}",
+                    f"{r['ticker']} {r['execution_date']} {split_from}:{split_to}",
                 )
+        if n_fractional:
+            await log_audit_event(
+                "splits_ingest_fractional_skipped",
+                f"{n_fractional} non-integer ratios skipped (fund share-class reorgs, not splits)",
+            )
     except Exception as e:
         logger.error(f"Splits fetch failed: {e}")
         await log_audit_event("splits_ingest_error", f"fetch failed: {e}")

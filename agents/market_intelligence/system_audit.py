@@ -137,9 +137,15 @@ class MetricSpec:
 
 
 async def _today_cooldowns(conn) -> float:
+    # `removed_at` is TIMESTAMPTZ and the container runs UTC, so both
+    # `removed_at::date` and CURRENT_DATE resolve to the UTC day. The nightly
+    # job fires 17:30 ET (same UTC date) so the metric was right in practice,
+    # but an on-demand /audit after 8 PM ET read the NEXT day and returned 0.
+    # ET-anchor both sides per the CLAUDE.md TIMESTAMPTZ rule.
     row = await conn.fetchrow(
         "SELECT COUNT(*) AS n FROM mi_validation_cooldowns "
-        "WHERE removed_at::date = CURRENT_DATE"
+        "WHERE (removed_at AT TIME ZONE 'America/New_York')::date "
+        "    = (now() AT TIME ZONE 'America/New_York')::date"
     )
     return float(row["n"] or 0)
 
@@ -596,8 +602,13 @@ _SHADOW_ORB_METRICS: list[MetricSpec] = [
 _NIGHTLY_METRICS: list[MetricSpec] = [
     MetricSpec(
         "cooldowns_per_day", _today_cooldowns,
+        # ET-anchored to match _today_cooldowns — this string is pasted into the
+        # Telegram anomaly alert and run by hand, often late ET, where a
+        # UTC CURRENT_DATE silently returns the next day (i.e. zero rows).
         "SELECT theme_name, COUNT(*) FROM mi_validation_cooldowns "
-        "WHERE removed_at::date = CURRENT_DATE GROUP BY 1 ORDER BY 2 DESC LIMIT 15;",
+        "WHERE (removed_at AT TIME ZONE 'America/New_York')::date "
+        "    = (now() AT TIME ZONE 'America/New_York')::date "
+        "GROUP BY 1 ORDER BY 2 DESC LIMIT 15;",
         ["agents/market_intelligence/db.py::get_active_themes",
          "agents/market_intelligence/theme_engine.py::_validate_theme_membership"],
     ),
