@@ -7144,7 +7144,10 @@ reviews:
       SELECT COUNT(*) FROM mi_consolidation_entry_shadow
       WHERE entry_mode = 'anticipate' AND outcome IS NOT NULL
     threshold: 50
-    earliest_review_date: 2026-08-15
+    # Date made NON-BLOCKING 2026-07-26 (operator: data-readiness triggers, not the calendar).
+    # Firing is AND, so a future date can only DELAY a review whose evidence is already in.
+    # At unblock: count=108 vs threshold=50.
+    earliest_review_date: 2026-07-26
     action_when_ready: >-
       Split the settled cohort at 2026-07-12: report old (N=34, -1.23R) vs NEW settles
       separately. Sign-flip on the new cohort -> operator re-look at #395. Still negative ->
@@ -7170,7 +7173,10 @@ reviews:
       SELECT COUNT(*) FROM mi_consolidation_entry_shadow
       WHERE entry_mode IN ('confirm', 'ur') AND outcome IS NOT NULL;
     threshold: 10
-    earliest_review_date: 2026-08-02
+    # Date made NON-BLOCKING 2026-07-26 (operator: data-readiness triggers, not the calendar).
+    # Firing is AND, so a future date can only DELAY a review whose evidence is already in.
+    # At unblock: count=103 vs threshold=10.
+    earliest_review_date: 2026-07-26
     action_when_ready: >-
       Review the Confirm cohort (and U&R cohort separately, if any rows exist by then): median realized_r,
       win%, expectancy, outlier-carry check. IF a real edge holds -> CHANGE_PROCESS + operator sign-off ->

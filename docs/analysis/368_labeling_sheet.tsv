@@ -1,0 +1,191 @@
+row	stratum	date	ticker	grade	theme	fwd_5d_pct	catalyst_type	catalyst	LABEL	NOTE
+1	themed	2026-03-24	ANNA	-	Crude Oil Price Momentum ETFs & Pure-Play E&P		-	(no catalyst on record)		
+2	themed	2026-03-26	ANNA	-	Permian & U.S. Mid-Continent Pure-Play E&P		-	(no catalyst on record)		
+3	themed	2026-04-02	BATL	-	Enterprise Server & AI Infrastructure Hardware		-	(no catalyst on record)		
+4	themed	2026-04-13	ANNA	-	Permian & U.S. Mid-Continent Pure-Play E&P		-	(no catalyst on record)		
+5	themed	2026-04-13	SYRE	-	Inflammatory Disease & Immunology Biologics		-	(no catalyst on record)		
+6	themed	2026-04-14	BE	-	AI Data Center Power Infrastructure		-	(no catalyst on record)		
+7	themed	2026-04-16	AEHR	-	Semiconductor Probe Card & Front-End Test Equipment		-	(no catalyst on record)		
+8	themed	2026-04-22	KYTX	-	Autonomous Military Drone Swarm & AI Defense Software		-	(no catalyst on record)		
+9	themed	2026-04-24	INTC	-	Silicon Carbide Power Semiconductors & EV Infrastructure		-	(no catalyst on record)		
+10	themed	2026-04-27	ORKA	floor	Inflammatory Disease & Immunology Biologics	11.2	-	Historical scan: 30.4% gap, 5.6x rvol		
+11	themed	2026-04-29	BE	HIGH	AI Data Center Power Infrastructure	5.2	-	No specific news or catalyst directly explains a gap up in BE stock (likely Bloom Energy) based on available market data. General gap ups in stocks this week tie to Mag 7 earnings like Alphabet, Microsoft, Amazon, and Me		
+12	themed	2026-04-29	STX	HIGH	AI Memory & Storage	23.1	-	STX stock gapped up due to Seagate Technology's fiscal third-quarter earnings beat and a blowout fourth-quarter forecast that exceeded Wall Street expectations, confirming strong demand for storage chips driven by AI dat		
+13	themed	2026-04-30	MRAM	floor	AI Memory & Storage	24.1	-	Historical scan: 36.9% gap, 38.4x rvol		
+14	themed	2026-04-30	VIAV	floor	Optical Components & Transceiver Manufacturers	8.8	-	Historical scan: 31.8% gap, 3.8x rvol		
+15	themed	2026-05-01	AXTI	HIGH	Optical Components & Transceiver Manufacturers	34.8	-	AXTI stock gapped down pre-market on April 27, opening at $71.91 after closing at $76.16 the prior day and pulling back to $70.08 on heavy volume of 3 million shares, driven by profit-taking after a 240% rally from its 2		
+16	themed	2026-05-05	DOCN	floor	Edge Cloud & Developer CDN Platforms	7.8	-	Historical scan: 19.7% gap, 3.9x rvol		
+17	themed	2026-05-06	AMD	HIGH	Custom AI Silicon & Chip Architecture Licensing	11.3	-	AMD stock gapped up due to strong Q1 2026 earnings reported after the close on May 5, beating expectations across the board. Revenue hit $10.25 billion, up 37.8% year-over-year and 3.6% above Wall Street's $9.84 billion		
+18	themed	2026-05-06	ARM	floor	Custom AI Silicon & Chip Architecture Licensing	-2.1	-	Historical scan: 11.1% gap, 3.9x rvol		
+19	themed	2026-05-06	GLW	floor	Optical Components & Transceiver Manufacturers	16.6	-	Historical scan: 16.8% gap, 3.3x rvol		
+20	themed	2026-05-06	HUT	floor	Crypto Asset Recovery	3.0	-	Historical scan: 26.2% gap, 4.6x rvol		
+21	themed	2026-05-07	DDOG	floor	Network Security & Zero-Trust Edge	8.8	-	Historical scan: 30.8% gap, 5.7x rvol		
+22	themed	2026-05-07	FTNT	floor	Network Security & Zero-Trust Edge	13.0	-	Historical scan: 17.0% gap, 3.3x rvol		
+23	themed	2026-05-07	HIMX	floor	Power Semiconductor & Mixed-Signal Display Drivers	36.0	-	Historical scan: 25.1% gap, 9.0x rvol		
+24	themed	2026-05-08	LASR	HIGH	Optical Components & Transceiver Manufacturers	17.4	-	nLIGHT (LASR) gapped up following its impressive Q1 CY2026 earnings release, with revenue of $80.18 million beating estimates by 11.2% (55.2% YoY growth), non-GAAP EPS of $0.20 exceeding consensus, and Q2 guidance of $78		
+25	themed	2026-05-11	BW	floor	Petroleum Refining & Downstream Fuels	16.5	-	Historical scan: 14.9% gap, 3.5x rvol		
+26	themed	2026-05-11	MRAM	floor	AI Memory & Storage	29.2	-	Historical scan: 33.8% gap, 44.2x rvol		
+27	themed	2026-05-12	VG	HIGH	Petroleum Refining & Downstream Fuels	12.7	-	No relevant search results on VG stock gap up or catalysts. Data shows EQNR up to $38.22 on May 11 with support at $35.70 and resistance at $37.68, but nothing on VG.		
+28	themed	2026-05-13	TSEM	floor	AI Memory & Storage	4.7	-	Historical scan: 15.0% gap, 2.7x rvol		
+29	themed	2026-05-13	WOLF	floor	Silicon Carbide Power Semiconductors & EV Infrastructure	15.6	-	Historical scan: 24.0% gap, 6.9x rvol		
+30	themed	2026-05-14	POET	floor	Optical Components & Transceiver Manufacturers	-1.5	-	Historical scan: 21.2% gap, 2.9x rvol		
+31	themed	2026-05-20	ALAB	HIGH	Custom AI Silicon & Chip Architecture Licensing		-	ALAB’s latest gap up is being driven by a clear fundamental catalyst: an RBC Capital Markets call tied to Amazon/Anthropic AI infrastructure demand. Key points behind the move: • RBC reiterated its Outperform rating on		
+32	themed	2026-05-20	ARM	HIGH	Custom AI Silicon & Chip Architecture Licensing		-	ARM gapped up on a cluster of AI-driven bullish catalysts centered on its latest earnings and analyst reactions: 1) Earnings beat and raised outlook   Arm just reported fiscal Q4 results that beat on both EPS and revenu		
+33	themed	2026-05-21	GFS	floor	Semiconductor Wafer Foundry & Advanced IC Manufacturing	13.8	-	Historical scan: 10.3% gap, 2.8x rvol		
+34	themed	2026-05-21	INFQ	floor	Chip Architecture Licensing & CPU/GPU Compute Revival	24.1	-	Historical scan: 20.8% gap, 9.0x rvol		
+35	themed	2026-05-22	PPTA	HIGH	Precious & Streaming Metals Royalty & Junior Miners	9.9	-	Perpetua Resources (PPTA) gapped up on a very specific fundamental catalyst: U.S. government support and renewed attention on its Stibnite Gold Project’s strategic antimony supply role, combined with a strong project upd		
+36	themed	2026-05-26	LUNR	floor	Satellite Imagery & Geospatial Intelligence	34.1	-	Historical scan: 10.4% gap, 4.2x rvol		
+37	themed	2026-05-26	MNTS	floor	Satellite Imagery & Geospatial Intelligence	43.4	-	Historical scan: 75.6% gap, 41.6x rvol		
+38	themed	2026-05-28	KTOS	floor	Defense Electronics & Avionics Mission Systems	2.4	-	Historical scan: 11.6% gap, 2.9x rvol		
+39	themed	2026-05-29	DELL	HIGH	IT Infrastructure Deployment & Data Center Systems Integration	11.5	-	DELL’s latest gap-up was driven by a massive upside earnings surprise and AI-related upside in its Q1 FY27 report, which confirmed an acceleration in AI server demand and much stronger-than-expected top-line growth. Key		
+40	themed	2026-05-29	NXT	floor	AI Data Center Power Infrastructure	-1.2	-	Historical scan: 13.7% gap, 2.4x rvol		
+41	themed	2026-05-29	TSSI	floor	IT Infrastructure Deployment & Data Center Systems Integration	-1.9	-	Historical scan: 16.0% gap, 6.5x rvol		
+42	themed	2026-06-02	GRRR	HIGH	Network Security & Zero-Trust Edge	-9.2	pre_catalyst_anticipation	Gorilla Technology Group (GRRR) gapped up on renewed AI/speculation interest ahead of and around its Q1 2026 earnings/corporate update cycle, rather than on a single major fundamental surprise like an acquisition or larg		
+43	themed	2026-06-02	MRVL	floor	Custom AI Silicon & Chip Architecture Licensing	11.5	-	Historical scan: 15.5% gap, 4.7x rvol		
+44	themed	2026-06-03	NVTS	floor	Power Semiconductor & Mixed-Signal Display Drivers	2.3	-	Historical scan: 18.5% gap, 3.4x rvol		
+45	themed	2026-06-05	AGX	HIGH	AI Data Center Power Infrastructure	0.9	sales_acceleration	[SEC 8-K filed 2026-06-04, items 2.02,9.01] AGX (Argan Inc.) gapped up on the back of a very strong earnings print released after yesterday’s close, which materially beat expectations and highlighted record results. Key		
+46	themed	2026-06-18	SWBI	judge	Firearms & Personal Defense Manufacturing	8.8	sales_acceleration	[SEC 8-K filed 2026-06-17, items 2.02,9.01] Smith & Wesson Brands (SWBI) has been gapping on relatively thin, headline‑light newsflow, so the most recent gap up is primarily a positioning/flow move rather than a clean, s		
+47	themed	2026-06-22	SYRE	judge	Inflammatory Disease & Immunology Biologics	1.7	sales_acceleration	The specific catalyst is concrete and fresh: Spyre Therapeutics announced on June 15, 2026 that the 12-week induction data from Part A of its Phase 2 SKYLINE study of SPY002 in active Ulcerative Colitis met its primary e		
+48	themed	2026-06-24	FCEL	judge	AI Data Center Power Infrastructure	75.7	sales_acceleration	The catalyst is a freshly disclosed (June 22–23, 2026) Capital Equipment Purchase Agreement with Fit Energy USA LP for up to 380 MW of fuel cell power systems targeting data center applications, with an immediate 30 MW i		
+49	themed	2026-06-25	MU	judge	AI Memory & Storage	-1.2	shortage	Micron reported record fiscal Q3 2026 results with revenue of $41.46B — a massive 74% sequential surge from $23.86B and a staggering 346% year-over-year increase from $9.30B — accompanied by an 84.6% GAAP gross margin an		
+50	themed	2026-06-30	AVAV	judge	Defense Drones & Unmanned Aerial Systems	21.4	sales_acceleration	AeroVironment reported fiscal Q4 2026 earnings on June 29, 2026, with record quarterly revenue of $641.6M (up 133% YoY vs. $275.1M) and full fiscal year revenue of $1.976B (up 141% YoY) — both figures massively exceeding		
+51	themed	2026-07-06	WULF	judge	Crypto Asset Recovery	10.7	sales_acceleration	TeraWulf announced two transformative transactions today: (1) a 20-year lease agreement with Anthropic for ~401 MW of critical IT load at its Justified Data Campus in Hawesville, KY, expected to generate approximately $1		
+52	themed	2026-07-07	DOCN	judge	Edge Cloud & Developer CDN Platforms	8.3	sales_acceleration	DigitalOcean pre-announced record Q2 2026 preliminary results today (July 7, 2026) via an 8-K (Item 2.02), revealing revenue growth accelerating sharply to 29% YoY (up from 14% in Q2 2025), RPO surging more than 10X YoY		
+53	themed	2026-07-08	PENG	judge	AI Cloud GPU & Datacenter Colocation Platforms	14.5	theme	Penguin Solutions reported record Q3 FY2026 results with net sales of $479M (up 48% YoY) and non-GAAP diluted EPS of $0.84 (up 79% YoY), both exceeding expectations. Critically, the company also raised its full-year outl		
+54	themed	2026-07-10	CRCL	judge	CLO & Structured Credit Income	1.1	policy	The specific catalyst is today's Benzinga headline (2026-07-10) reporting that Circle Internet Group received approval from the U.S. Office of the Comptroller of the Currency (OCC) to operate a National Digital Currency		
+55	themed	2026-07-14	CLSK	judge	Crypto Asset Recovery	16.7	sales_acceleration	CleanSpark announced today (July 14, 2026) a 20-year triple-net lease with a high-investment-grade global technology company for its Sandersville, Georgia data center campus (175 MW of critical IT load), generating $6.6B		
+56	themed	2026-07-14	TSEM	judge	Semiconductor Wafer Foundry & Advanced IC Manufacturing	6.0	policy	Tower Semiconductor filed a 6-K on July 14, 2026 announcing a Japan government (METI)-backed strategic capacity expansion for 300mm Silicon Photonics, Silicon Germanium, and advanced packaging — a transformative, governm		
+57	themed	2026-07-15	AEHR	judge	Semiconductor Wafer Foundry & Advanced IC Manufacturing	15.3	sales_acceleration	Aehr Test Systems reported Q4 FY2026 earnings on July 14, 2026, featuring a decisive revenue acceleration (+33% YoY to $18.8M), a return to GAAP profitability ($0.04 EPS vs. a $(0.10) loss a year ago), and — most critica		
+58	themed	2026-07-20	HUT	judge	Bitcoin Mining & Crypto Infrastructure Operators		sales_acceleration	The fresh catalyst today (2026-07-20) is Hut 8's announcement of a 15-year, $9.8B capacity lease for 352MW at the second phase of its Beacon Point (Texas) data center campus — a triple-net, take-or-pay contract with a hi		
+59	themed	2026-07-20	IREN	judge	Bitcoin & Crypto Mining Infrastructure		sales_acceleration	IREN announced $2.8 billion in new multi-year AI Cloud contracts with leading AI developers (including Microsoft, NVIDIA, Perplexity, Figure AI, and others), simultaneously raising its 2026 ARR target from $3.7B to over		
+60	themeless_winner	2026-04-27	MANE	floor	-	14.4	-	Historical scan: 19.5% gap, 7.9x rvol		
+61	themeless_winner	2026-04-28	BBBY	floor	-	18.1	-	Historical scan: 33.3% gap, 26.8x rvol		
+62	themeless_winner	2026-04-28	SKYQ	floor	-	21.9	-	Historical scan: 13.9% gap, 10.0x rvol		
+63	themeless_winner	2026-04-29	ICLR	floor	-	8.2	-	Historical scan: 13.4% gap, 4.1x rvol		
+64	themeless_winner	2026-04-29	NEO	floor	-	8.2	-	Historical scan: 13.6% gap, 6.2x rvol		
+65	themeless_winner	2026-04-29	NXPI	floor	-	5.1	-	Historical scan: 22.1% gap, 4.0x rvol		
+66	themeless_winner	2026-04-29	SIMO	floor	-	14.3	-	Historical scan: 30.7% gap, 8.0x rvol		
+67	themeless_winner	2026-04-30	BAND	floor	-	33.8	-	Historical scan: 27.9% gap, 10.5x rvol		
+68	themeless_winner	2026-04-30	DRVN	floor	-	5.0	-	Historical scan: 11.1% gap, 5.5x rvol		
+69	themeless_winner	2026-04-30	FTAI	HIGH	-	15.3	-	The search results don't contain information about FTAI stock or a gap up event for that ticker. The results cover SPY institutional buying, Chow Tai Fook (CJEWY) gapping down, Avis (CAR) collapsing from a short squeeze		
+70	themeless_winner	2026-04-30	NVCR	floor	-	13.2	-	Historical scan: 12.0% gap, 7.5x rvol		
+71	themeless_winner	2026-04-30	PI	HIGH	-	9.1	-	Impinj (PI) stock gapped up following its Q1 2026 earnings release on April 29 after market close, where EPS came in at $0.14 versus $0.64 consensus but shares rose 1.15% as the market had priced in even worse outcomes.		
+72	themeless_winner	2026-04-30	TTMI	HIGH	-	5.3	-	TTMI stock gapped up due to strong Q1 2026 earnings released on April 29, building on prior momentum from Stifel's April 24 price target hike from $108 to $135 with a Buy rating, citing AI infrastructure, defense moderni		
+73	themeless_winner	2026-05-01	CUE	floor	-	36.2	-	Historical scan: 129.0% gap, 53.5x rvol		
+74	themeless_winner	2026-05-01	FIVN	floor	-	13.9	-	Historical scan: 17.3% gap, 7.6x rvol		
+75	themeless_winner	2026-05-01	ISPC	floor	-	11.0	-	Historical scan: 15.9% gap, 23.8x rvol		
+76	themeless_winner	2026-05-01	TEAM	floor	-	8.4	-	Historical scan: 20.9% gap, 4.2x rvol		
+77	themeless_winner	2026-05-01	TWLO	HIGH	-	11.1	-	Twilio (TWLO) stock gapped up due to a strong Q1 2026 earnings beat, AI-driven product momentum, raised full-year guidance, and a wave of bullish Wall Street upgrades. The stock surged 20.64% on April 30, 2026, closing n		
+78	themeless_winner	2026-05-04	BB	floor	-	18.5	-	Historical scan: 12.5% gap, 3.7x rvol		
+79	themeless_winner	2026-05-04	OUST	floor	-	8.3	-	Historical scan: 13.1% gap, 3.7x rvol		
+80	themeless_winner	2026-05-05	CYRX	HIGH	-	13.1	-	Cryoport (CYRX) gapped up due to its Q1 2026 earnings release on May 4, showing 16% year-over-year revenue growth to $47.8 million, beating estimates of $44.87 million, with commercial CGT revenue up 26% to $9.1 million		
+81	themeless_winner	2026-05-05	FTRE	HIGH	-	11.5	-	FTRE gapped up on strong Q1 earnings results, reporting revenue of $636.5 million and non-GAAP EPS of $0.16, both clear beats against expectations. Despite this, the stock shrugged off the profit beat as it failed to res		
+82	themeless_winner	2026-05-05	GPK	floor	-	6.1	-	Historical scan: 13.7% gap, 3.0x rvol		
+83	themeless_winner	2026-05-05	IART	HIGH	-	9.3	-	Integra LifeSciences (IART) gapped up due to its Q1 2026 earnings release today showing revenues of $391.9 million, up 2.4% reported and 1.3% organic, with strong growth in wound reconstruction products like Integra Skin		
+84	themeless_winner	2026-05-05	PAY	floor	-	6.6	-	Historical scan: 13.7% gap, 4.4x rvol		
+85	themeless_winner	2026-05-05	STRL	floor	-	10.3	-	Historical scan: 37.4% gap, 5.7x rvol		
+86	themeless_winner	2026-05-06	AVTX	floor	-	11.3	-	Historical scan: 40.2% gap, 31.5x rvol		
+87	themeless_winner	2026-05-06	BLMN	floor	-	7.5	-	Historical scan: 22.6% gap, 5.5x rvol		
+88	themeless_winner	2026-05-06	FLEX	HIGH	-	9.4	-	Flex reported Q4 fiscal 2026 earnings this morning before market open, beating analyst expectations with adjusted EPS of $0.93 versus consensus estimates, on revenue of $7.48 billion. The company raised full-year FY2027		
+89	themeless_winner	2026-05-06	LIVN	HIGH	-	9.8	-	LivaNova (LIVN) has no confirmed gap up catalyst in recent reports. Upcoming Q1 earnings are the key near-term driver, with analysts forecasting 90 cents per share on $346.1 million revenue for the March quarter, support		
+90	themeless_winner	2026-05-06	OSS	floor	-	11.0	-	Historical scan: 17.0% gap, 14.8x rvol		
+91	themeless_winner	2026-05-06	SLP	floor	-	5.8	-	Historical scan: 10.2% gap, 7.1x rvol		
+92	themeless_winner	2026-05-07	AAON	floor	-	13.3	-	Historical scan: 45.5% gap, 11.8x rvol		
+93	themeless_winner	2026-05-07	AGL	floor	-	31.3	-	Historical scan: 56.5% gap, 10.1x rvol		
+94	themeless_winner	2026-05-07	ARRY	HIGH	-	11.6	-	Array (NASDAQ:ARRY) stock gapped up 10.9% to $9.03 after Q1 CY2026 earnings beat revenue expectations by 10.8% at $223.4 million despite a 26.1% year-over-year decline, with non-GAAP EPS of $0.06 significantly topping co		
+95	themeless_winner	2026-05-07	DGII	floor	-	7.7	-	Historical scan: 13.9% gap, 2.7x rvol		
+96	themeless_winner	2026-05-07	EZPW	floor	-	7.1	-	Historical scan: 10.6% gap, 3.1x rvol		
+97	themeless_winner	2026-05-07	FLNC	floor	-	44.4	-	Historical scan: 41.6% gap, 10.1x rvol		
+98	themeless_winner	2026-05-07	KLIC	floor	-	7.3	-	Historical scan: 13.0% gap, 4.4x rvol		
+99	themeless_winner	2026-05-07	MTSI	HIGH	-	16.5	-	MACOM Technology Solutions (MTSI) gapped up on anticipation of Q1 earnings reporting before the bell today, with expectations of 21% year-over-year revenue growth to around $320 million, slowing from last quarter's 30% b		
+100	themeless_winner	2026-05-07	PCT	floor	-	44.3	-	Historical scan: 22.2% gap, 2.6x rvol		
+101	themeless_winner	2026-05-07	ROOT	floor	-	6.9	-	Historical scan: 14.4% gap, 3.3x rvol		
+102	themeless_winner	2026-05-07	SEZL	floor	-	6.7	-	Historical scan: 17.0% gap, 4.7x rvol		
+103	themeless_winner	2026-05-07	SITM	HIGH	-	13.1	-	SiTime (SITM) did not gap up—its stock dropped 3.9% after Q1 2026 earnings despite a $1.44 EPS beat that topped consensus. The pre-earnings 18% rally had priced in overly optimistic expectations, creating a classic sell-		
+104	themeless_winner	2026-05-07	WRBY	floor	-	10.1	-	Historical scan: 12.5% gap, 4.4x rvol		
+105	themeless_winner	2026-05-07	XMTR	floor	-	14.6	-	Historical scan: 34.8% gap, 6.7x rvol		
+106	themeless_winner	2026-05-08	AKAM	floor	-	12.0	-	Historical scan: 24.6% gap, 5.0x rvol		
+107	themeless_winner	2026-05-08	AMN	floor	-	9.2	-	Historical scan: 15.9% gap, 5.7x rvol		
+108	themeless_winner	2026-05-08	ASYS	floor	-	6.8	-	Historical scan: 16.9% gap, 4.5x rvol		
+109	themeless_winner	2026-05-08	INOD	floor	-	35.2	-	Historical scan: 59.8% gap, 19.9x rvol		
+110	themeless_winner	2026-05-08	PTCT	floor	-	5.8	-	Historical scan: 14.9% gap, 6.3x rvol		
+111	themeless_winner	2026-05-08	WEST	HIGH	-	8.8	-	Pinnacle West Capital (PNW), often referred to as WEST in market contexts, gapped up on strong Q1 2026 earnings reported May 4 after market close. Adjusted EPS beat estimates with robust demand from Arizona's population		
+112	themeless_winner	2026-05-08	WLDN	HIGH	-	10.9	-	Willdan Group (WLDN) gapped up on strong Q1 2026 earnings reported after market close on May 7, beating expectations with $8.5 million profit and 44% EPS growth to $0.64 per share, plus raised full-year guidance. This fo		
+113	themeless_winner	2026-05-11	DGXX	floor	-	23.8	-	Historical scan: 11.9% gap, 20.4x rvol		
+114	themeless_winner	2026-05-11	HTCO	floor	-	71.9	-	Historical scan: 20.2% gap, 4.1x rvol		
+115	themeless_winner	2026-05-11	NVEC	floor	-	7.0	-	Historical scan: 10.8% gap, 4.6x rvol		
+116	themeless_winner	2026-05-11	WYFI	floor	-	15.7	-	Historical scan: 10.5% gap, 6.1x rvol		
+117	themeless_winner	2026-05-12	AMBQ	floor	-	11.1	-	Historical scan: 16.4% gap, 10.3x rvol		
+118	themeless_winner	2026-05-12	HLIT	floor	-	7.0	-	Historical scan: 13.4% gap, 8.7x rvol		
+119	themeless_winner	2026-05-12	SIBN	HIGH	-	8.3	-	No recent news or catalysts found explaining a gap up in SIBN stock. Citadel Advisors and UBS Group portfolio holdings show no specific changes or disclosures tied to SIBN as a driver. Check real-time trading data for vo		
+120	themeless_winner	2026-05-12	TE	HIGH	-	22.7	-	T1 Energy (TE) gapped up ahead of its Q1 2026 earnings release before market open today, with the stock rallying 13% intraday to near $6.85 on thin volume. Technicals show short-term momentum building, with price above t		
+121	themeless_winner	2026-05-12	VPG	floor	-	26.2	-	Historical scan: 26.0% gap, 4.8x rvol		
+122	themeless_winner	2026-05-12	VSTS	floor	-	5.0	-	Historical scan: 26.7% gap, 8.8x rvol		
+123	themeless_winner	2026-05-12	WEN	floor	-	6.8	-	Historical scan: 12.6% gap, 7.2x rvol		
+124	themeless_winner	2026-05-12	ZBRA	floor	-	9.0	-	Historical scan: 14.7% gap, 3.8x rvol		
+125	themeless_winner	2026-05-13	AIP	HIGH	-	8.2	-	Arteris Inc (AIP) gapped up ahead of its fiscal Q1 2026 earnings release due May 12, following a multi-month breakout fueled by its MIPS collaboration announcement that drove 60% gains in 30 days. High-margin 92% gross m		
+126	themeless_winner	2026-05-13	NBIS	floor	-	12.8	-	Historical scan: 13.8% gap, 2.7x rvol		
+127	themeless_winner	2026-05-13	PSNL	floor	-	24.6	-	Historical scan: 12.9% gap, 3.4x rvol		
+128	themeless_winner	2026-05-13	SLS	floor	-	39.4	-	Historical scan: 21.0% gap, 7.8x rvol		
+129	themeless_winner	2026-05-14	ARX	HIGH	-	17.7	-	ARX (Accelerant Holdings) gapped up 3.43% on the announcement of its Q1 2026 financial results release on May 13, with a conference call scheduled for May 14. The stock movement reflects investor anticipation ahead of ea		
+130	themeless_winner	2026-05-14	GO	floor	-	10.3	-	Historical scan: 17.7% gap, 4.2x rvol		
+131	themeless_winner	2026-05-14	ONDS	floor	-	8.1	-	Historical scan: 12.8% gap, 5.0x rvol		
+132	themeless_winner	2026-05-14	PCT	floor	-	7.3	-	Historical scan: 13.4% gap, 4.5x rvol		
+133	themeless_winner	2026-05-14	STUB	HIGH	-	20.6	-	Based on the search results provided, there is no information indicating that STUB (StubHub Holdings) gapped up. In fact, the only mention of STUB in the materials shows it listed among stocks with various price movement		
+134	themeless_winner	2026-05-14	TRT	floor	-	52.5	-	Historical scan: 11.7% gap, 3.8x rvol		
+135	themeless_winner	2026-05-15	GLOB	HIGH	-	8.0	-	GLOB is gapping up on a clean earnings reaction plus some “relief rally” dynamics around the ongoing lawsuit headlines. Key near-term catalysts and why the stock is higher: 1) Solid Q1 earnings and guidance (primary po		
+136	themeless_winner	2026-05-18	BIO	floor	-	5.6	-	Historical scan: 11.0% gap, 4.4x rvol		
+137	themeless_winner	2026-05-18	CMPS	floor	-	18.2	-	Historical scan: 12.2% gap, 2.3x rvol		
+138	themeless_winner	2026-05-18	SHAZ	floor	-	20.5	-	Historical scan: 11.3% gap, 4.7x rvol		
+139	themeless_winner	2026-05-18	TE	floor	-	54.3	-	Historical scan: 18.2% gap, 5.6x rvol		
+140	themeless_winner	2026-05-19	BKKT	floor	-	34.7	-	Historical scan: 13.9% gap, 5.8x rvol		
+141	themeless_winner	2026-05-20	TATT	floor	-	6.5	-	Historical scan: 16.1% gap, 3.6x rvol		
+142	themeless_winner	2026-05-21	BIRK	floor	-	14.8	-	Historical scan: 10.6% gap, 4.2x rvol		
+143	themeless_winner	2026-05-21	QBTS	floor	-	22.6	-	Historical scan: 12.7% gap, 4.7x rvol		
+144	themeless_winner	2026-05-21	RGTI	floor	-	26.1	-	Historical scan: 10.7% gap, 5.5x rvol		
+145	themeless_winner	2026-05-21	RLAY	HIGH	-	8.9	-	RLAY gapped up on bullish clinical data and a clear Phase 3 catalyst, not on earnings. The main driver was Relay Therapeutics’ zovegalisib triplet data in HR+/HER2- metastatic breast cancer. In Phase 1/2, the combo with		
+146	themeless_winner	2026-05-22	HLIT	floor	-	16.3	-	Historical scan: 12.6% gap, 8.1x rvol		
+147	themeless_winner	2026-05-22	IMRX	floor	-	10.5	-	Historical scan: 14.8% gap, 14.1x rvol		
+148	themeless_winner	2026-05-22	SG	floor	-	8.2	-	Historical scan: 10.5% gap, 2.8x rvol		
+149	themeless_winner	2026-05-22	WW	floor	-	37.9	-	Historical scan: 12.2% gap, 2.0x rvol		
+150	themeless_winner	2026-05-26	ASPI	floor	-	23.2	-	Historical scan: 15.0% gap, 3.6x rvol		
+151	themeless_winner	2026-05-26	CCOI	floor	-	8.8	-	Historical scan: 11.0% gap, 2.6x rvol		
+152	themeless_winner	2026-05-26	ESLT	floor	-	5.8	-	Historical scan: 11.7% gap, 2.6x rvol		
+153	themeless_winner	2026-05-26	IPWR	floor	-	34.4	-	Historical scan: 13.4% gap, 5.4x rvol		
+154	themeless_winner	2026-05-26	JOYY	floor	-	7.9	-	Historical scan: 11.9% gap, 3.0x rvol		
+155	themeless_winner	2026-05-26	MOD	floor	-	6.2	-	Historical scan: 17.8% gap, 3.7x rvol		
+156	themeless_winner	2026-05-26	PONY	floor	-	20.8	-	Historical scan: 15.5% gap, 4.7x rvol		
+157	themeless_winner	2026-05-26	POWI	floor	-	5.8	-	Historical scan: 11.8% gap, 3.1x rvol		
+158	themeless_winner	2026-05-26	QNTM	floor	-	11.1	-	Historical scan: 13.7% gap, 5.0x rvol		
+159	themeless_winner	2026-05-26	RDW	HIGH	-	20.9	-	RDW’s recent gap up has been driven by a cluster of bullish defense and space-contract headlines, led by a new multi‑year NATO UAS deal plus follow‑on U.S. Army drone orders and positive backlog/earnings momentum. Key n		
+160	themeless_winner	2026-05-27	ASTI	floor	-	44.8	-	Historical scan: 13.5% gap, 7.6x rvol		
+161	themeless_winner	2026-05-27	BBWI	HIGH	-	5.8	-	Bath & Body Works (BBWI) has not had a widely reported, single company‑specific catalyst (like earnings, guidance, or a major corporate announcement) in the very latest tape; the recent gap move is most likely tied to br		
+162	themeless_winner	2026-05-27	CRSR	HIGH	-	33.4	-	I don’t have any reliable, up‑to‑date news or tape‑level data in the feed you’ve provided that explains the most recent gap up in Corsair Gaming (CRSR), and none of the results shown are about the stock or its catalysts.		
+163	themeless_winner	2026-05-27	QFIN	floor	-	9.6	-	Historical scan: 10.4% gap, 7.7x rvol		
+164	themeless_winner	2026-05-28	AIRO	floor	-	11.1	-	Historical scan: 10.2% gap, 6.4x rvol		
+165	themeless_winner	2026-05-28	CRSR	floor	-	7.0	-	Historical scan: 12.9% gap, 25.8x rvol		
+166	themeless_winner	2026-05-28	DOO	floor	-	8.1	-	Historical scan: 10.0% gap, 3.2x rvol		
+167	themeless_winner	2026-05-28	PHR	floor	-	12.8	-	Historical scan: 18.1% gap, 4.1x rvol		
+168	themeless_winner	2026-05-28	RCAT	floor	-	11.6	-	Historical scan: 16.3% gap, 8.9x rvol		
+169	themeless_winner	2026-05-28	SNOW	floor	-	19.1	-	Historical scan: 35.2% gap, 5.6x rvol		
+170	themeless_winner	2026-05-28	UMAC	floor	-	16.1	-	Historical scan: 32.8% gap, 13.3x rvol		
+171	themeless_winner	2026-05-29	CHA	floor	-	5.0	-	Historical scan: 14.7% gap, 9.3x rvol		
+172	themeless_winner	2026-05-29	HPE	floor	-	49.3	-	Historical scan: 12.0% gap, 6.3x rvol		
+173	themeless_winner	2026-05-29	MX	floor	-	12.1	-	Historical scan: 18.0% gap, 6.5x rvol		
+174	themeless_winner	2026-05-29	NTAP	floor	-	7.0	-	Historical scan: 24.1% gap, 7.6x rvol		
+175	themeless_winner	2026-05-29	PD	floor	-	7.5	-	Historical scan: 25.4% gap, 5.4x rvol		
+176	themeless_winner	2026-05-29	QURE	floor	-	8.7	-	Historical scan: 15.7% gap, 2.4x rvol		
+177	themeless_winner	2026-06-01	ALOY	HIGH	-	33.5	policy	ALOY gapped up on a new strategic rare-earth supply MOU announced with Ramaco Resources. REalloys said the non-binding agreement could give it rights to up to 20% of future mixed rare earth carbonate production from Rama		
+178	themeless_winner	2026-06-01	ELMT	floor	-	18.7	-	Historical scan: 24.7% gap, 11.3x rvol		
+179	themeless_winner	2026-06-01	FLNC	floor	-	10.4	-	Historical scan: 24.0% gap, 5.8x rvol		
+180	themeless_winner	2026-06-05	GIII	floor	-	8.4	-	Historical scan: 11.9% gap, 4.1x rvol		
+181	themeless_winner	2026-06-05	MRLN	floor	-	6.0	-	Historical scan: 28.0% gap, 18.7x rvol		
+182	themeless_winner	2026-06-08	NRIX	HIGH	-	20.9	sales_acceleration	[SEC 8-K filed 2026-06-08, items 1.01,7.01,9.01] NRIX gapped up on the announcement of a major global collaboration deal with Roche around its BTK degrader bexobrutideg, which materially improves the company’s financial		
+183	themeless_winner	2026-06-11	ELVN	judge	-	17.3	sales_acceleration	[SEC 8-K filed 2026-06-11, items 7.01,8.01,9.01] ELVN’s recent gap up is being driven by a cluster of bullish, stock‑specific catalysts centered on its lead CML asset ELVN‑001, plus visible institutional accumulation and		
+184	themeless_winner	2026-06-11	IDCC	judge	-	8.0	sales_acceleration	The recent gap up in InterDigital (IDCC) was driven by a combination of strong fundamental momentum and forward guidance rather than a single one-off headline like M&A or an index addition. Key current catalysts behind		
+185	themeless_winner	2026-06-12	AKTS	judge	-	15.6	policy	AKTS gapped up because the market appears to be reacting to a biotech re-rating story tied to Aktis Oncology’s Lilly partnership, which is the clearest catalyst surfaced in the available results. One result explicitly de		
+186	themeless_winner	2026-06-12	SHAZ	judge	-	56.4	theme	[SEC 8-K filed 2026-06-12, items 7.01,9.01] SHAZ (SharonAI Holdings) has been gapping up on the back of AI-sector momentum plus a major long-term contract win and heightened trading interest; the primary identifiable fun		
+187	themeless_winner	2026-06-16	RXT	judge	-	38.5	theme	[SEC 8-K filed 2026-06-16, items 7.01,8.01,9.01] RXT’s gap up looks like a technical/flow-driven move rather than a clean single fundamental headline catalyst; the stock is squeezing higher on momentum, volume, and atten		
+188	themeless_winner	2026-06-17	LZB	judge	-	5.2	sales_acceleration	[SEC 8-K filed 2026-06-16, items 2.02,7.01,9.01] La-Z-Boy (LZB) is gapping up on the back of a strong fiscal Q4 earnings print that substantially beat expectations, showed clear margin expansion, and highlighted solid re		
+189	themeless_winner	2026-06-22	DFTX	judge	-	28.7	sales_acceleration	The latest identifiable catalyst around DFTX is sector sympathy buying tied to renewed interest in psychedelic‑therapy names after President Trump’s executive order directing the FDA to accelerate psychedelic drug review		
+190	themeless_winner	2026-06-24	ABSI	judge	-	19.6	sales_acceleration	The catalyst is a fresh SEC 8-K filed June 24, 2026, with an accompanying press release announcing positive interim Phase 1 data from the HEADLINE trial of ABS-201, Absci's anti-prolactin receptor (PRLR) antibody. Key hi		
