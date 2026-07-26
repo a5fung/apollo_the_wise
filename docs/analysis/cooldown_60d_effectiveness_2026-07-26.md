@@ -55,3 +55,41 @@ NOT any row, because cancelled/skipped rows are not positions (AEHR 2026-07-15 w
 never held, yet its alert still armed the cooldown). `ret_5d` is close-basis and therefore understates
 intraday excursions — see the #503/#306 cross-basis finding; it is directionally fine for a
 population comparison but should not be read as achievable P&L.
+
+---
+
+## Addendum — the "is the tail identifiable in advance?" question is already instrumented, and the answer so far is NO
+
+Above I said the only honest path to loosening the cooldown is evidence the tail is identifiable
+ex-ante, and that it was "not investigated here." **It is already instrumented** — `#170` emits
+`cooldown_resetup_admit_shadow` for suppressed candidates that look like RE-SETUPS (hard gap + weeks
+since the prior alert). It is telemetry-only and fail-open: the candidate stays suppressed live, the
+shadow just accrues the cohort. 139 raw events since 2026-06-02, which is **11 distinct ticker-days**
+(events fire per 5-min scan tick — do not read the raw count as the sample).
+
+**Discrimination test — do re-setups beat the rest of the cooldown-blocked pool?**
+
+| cohort | n | mean 5d | median 5d | winners | best |
+|---|---|---|---|---|---|
+| RE-SETUP (hard gap + weeks since) | 11 | **−3.9%** | +1.3% | 6/11 (55%) | +14% |
+| other cooldown-blocked | 91 | −0.3% | −2.6% | 36/91 (40%) | **+56%** |
+
+**Mixed, and the mean goes the wrong way.** Re-setups win on median (+1.3% vs −2.6%) and win-rate
+(55% vs 40%), but LOSE on mean (−3.9% vs −0.3%), dragged by RUM −25.3%, BTGO −19.3%, RLAY −15.4%.
+
+**The decisive point: the criterion misses the tail it would need to justify itself.** FCEL's +88%
+(2026-06-26) is not in the re-setup cohort at all; the FCEL re-setup it did capture (07-14) returned
++2.1%. The best re-setup was ORKA +14.2% — against +56% available in the general pool. So the
+criterion is not selecting for the big movers; it is selecting a slightly-higher-median,
+worse-mean subset.
+
+**Verdict: do not admit the re-setup class on this evidence.** n=11 is too small for a real verdict
+and the shadow keeps accruing for free — but the direction is not encouraging, and "higher median,
+worse mean, misses the tail" is the profile of a criterion that adds variance without adding edge.
+
+**The bar for revisiting:** the re-setup cohort beating the rest on BOTH mean AND median at n≥30 —
+the same both-measures rule the ORB-cutoff review uses, and for the same reason (one or two tail
+anecdotes must not carry the decision).
+
+Data note: `RLAY 2026-06-02` appears twice in `mi_ep_missed_outcomes` — duplicate rows, immaterial
+here (both −15.4%) but worth knowing if that table is used for counting.
