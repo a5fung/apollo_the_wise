@@ -440,3 +440,30 @@ def test_briefing_size_line_flag_on_shows_regime_multiplier_even_without_vix(mon
     # Under the flag the multiplier no longer depends on VIX -- must show
     # even on a VIX-null day (pre-#456 this line was hidden entirely).
     assert "size ≈0.50×" in out
+
+
+# ── The floor must survive a failing alert (advisor review 2026-07-26) ────────
+
+@pytest.mark.asyncio
+async def test_floor_still_returned_when_the_alert_itself_raises(monkeypatch):
+    """Ruling 5 asked for BOTH: floor the size AND page. On conflict the floor
+    wins — it is the safety property.
+
+    The alert does get_pool -> conn.fetch -> log_audit_event -> Telegram, and it
+    only runs when the regime feed is ALREADY broken. An unguarded await there
+    would propagate out of prepare_orb_order and abort sizing entirely, so the
+    fail-LOUD mechanism would defeat the fail-SAFE one it exists to announce.
+    """
+    monkeypatch.setattr(constants, "REGIME_SIZING_ENABLED", True)
+
+    async def boom(**kwargs):
+        raise RuntimeError("pool exhausted")
+
+    with patch.object(om, "_alert_regime_sizing_fallback_once", boom):
+        # stale regime (no row at all) -> the fallback branch
+        got = await om._resolve_regime_risk_pct(None, _TUE, "live", base_pct=0.01)
+
+    assert got == pytest.approx(0.01 * constants.REGIME_SIZING_FALLBACK_MULTIPLIER), (
+        "a failing alert aborted sizing instead of returning the floor — the "
+        "fail-loud path must never block the fail-safe one"
+    )

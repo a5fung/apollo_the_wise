@@ -239,13 +239,30 @@ async def _resolve_regime_risk_pct(
     is_unrecognized = (not is_stale) and label not in REGIME_RISK_MULTIPLIER
 
     if is_stale or is_unrecognized:
-        await _alert_regime_sizing_fallback_once(
-            account_mode=account_mode or current_account_mode(),
-            regime_date=regime_date,
-            label=label,
-            today=today,
-            reason="missing_or_stale" if is_stale else "unrecognized_label",
-        )
+        # PAGING MUST NEVER BLOCK THE FLOOR (advisor review, 2026-07-26). The alert
+        # does get_pool() -> conn.fetch -> log_audit_event -> Telegram; any of those
+        # can raise, and this branch runs ONLY when the regime feed is already
+        # broken — precisely the moment not to introduce a second failure mode. An
+        # unguarded await here would propagate out of prepare_orb_order instead of
+        # returning the floored size, i.e. the fail-LOUD mechanism would defeat the
+        # fail-SAFE one it exists to announce. Ruling 5 asked for both: floor AND
+        # page. The floor is the safety property, so it wins on conflict.
+        # loud-ok: the failure is reported (logger.exception) and the sizing
+        # decision is unaffected — swallowing here is the fail-safe direction.
+        try:
+            await _alert_regime_sizing_fallback_once(
+                account_mode=account_mode or current_account_mode(),
+                regime_date=regime_date,
+                label=label,
+                today=today,
+                reason="missing_or_stale" if is_stale else "unrecognized_label",
+            )
+        except Exception:
+            logger.exception(
+                "regime sizing fallback alert FAILED — sizing still floored to "
+                f"{REGIME_SIZING_FALLBACK_MULTIPLIER:.2f}x (label={label!r} "
+                f"regime_date={regime_date})"
+            )
         return base_pct * REGIME_SIZING_FALLBACK_MULTIPLIER
 
     return base_pct * regime_risk_multiplier(label)
