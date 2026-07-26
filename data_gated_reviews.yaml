@@ -7469,10 +7469,22 @@ reviews:
     predicate_sql: |
       SELECT COUNT(DISTINCT (ticker, scan_date)) FROM mi_ep_scan_log
       WHERE filter_reason ILIKE 'EP cooldown%' AND gap_pct >= 15;
-    threshold: 75
-    earliest_review_date: 2026-09-01
+    threshold: 55
+    earliest_review_date: 2026-10-01
     status: pending
     action_when_ready: |
+      ⚠ CALIBRATION NOTE (set 2026-07-26 from measured accrual, NOT guessed): the
+      cohort was 39 distinct ticker-days at registration and is DECELERATING with
+      the regime - May 20, Jun 15, Jul 4 (through 07-21). A 75 bar projected 6+
+      months out and risked becoming an unreachable gate (the #335 failure mode:
+      a threshold nobody can hit, so the question never gets asked). 55 needs ~16
+      more and is reachable even at the reduced rate.
+
+      If the count STALLS anyway - still <55 by ~2027-01 - do NOT keep waiting.
+      Run the analysis at whatever n exists, report the wider error bars honestly,
+      and re-date. An underpowered answer that names its own limits beats a
+      question that silently never gets asked.
+
       Assumption-free analysis over `mi_ep_scan_log` (filter_reason ILIKE
       'EP cooldown%') joined to alerts + forward outcomes. Test ALL available
       factors together rather than one pre-chosen story - at minimum: gap_pct,
