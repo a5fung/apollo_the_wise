@@ -7152,6 +7152,13 @@ reviews:
       Split the settled cohort at 2026-07-12: report old (N=34, -1.23R) vs NEW settles
       separately. Sign-flip on the new cohort -> operator re-look at #395. Still negative ->
       surface the stop-the-shadow fork explicitly. Rulings land on #353's line.
+      ** ALSO SPLIT BY ORIGIN (added 2026-07-26). The predicate above keys on entry_mode
+      alone, so its count BLENDS family_a/anticipate with 9m/anticipate -- the same
+      family-average error one level down, and the operator's 7/26 reframe is explicit that
+      each member is evaluated SEPARATELY against its own bar. Measured 2026-07-26:
+      family_a/anticipate n=97 mean -0.322R median -1.000R win 33.0%; 9m/anticipate n=11
+      mean -0.030R median -1.000R win 36.4%. Report and rule on the two origins separately --
+      do NOT issue one blended anticipate verdict. **
     status: pending
     added_on: 2026-07-12
     cross_refs: ["task #353", "task #394", consolidation_anticipate_paper_graduation]

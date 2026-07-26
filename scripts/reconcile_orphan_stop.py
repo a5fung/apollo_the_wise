@@ -73,8 +73,20 @@ async def _main(ticker: str, alert_date: date, apply: bool) -> int:
         print(f"[ABORT] remaining_shares={trade['remaining_shares']}; nothing to protect")
         return 2
 
-    # Query Alpaca for open orders on this ticker.
-    open_orders = await alpaca.get_open_orders(ticker=ticker)
+    # Query Alpaca for open orders on this ticker. raise_on_error=True (F16
+    # sweep, #456, 2026-07-26): without it, an Alpaca read failure silently
+    # returns [] and this script would print "no open SELL stop order found
+    # ... may genuinely be naked" — indistinguishable from a real naked
+    # position and misleading for whoever is reading this to decide next
+    # steps. Fail loud instead so a broker-read failure is never mistaken
+    # for a confirmed-naked verdict.
+    try:
+        open_orders = await alpaca.get_open_orders(ticker=ticker, raise_on_error=True)
+    except Exception as e:
+        print(f"\n[ABORT] broker read failed for {ticker}: {e!r} — cannot determine "
+              f"stop coverage. This is NOT a naked-position verdict, just an unreadable "
+              f"broker. Re-run once Alpaca is reachable.")
+        return 5
     print(f"\nAlpaca open orders for {ticker}: {len(open_orders)}")
     for o in open_orders:
         print(f"  id={o.get('id')} side={o.get('side')} type={o.get('order_type')} "

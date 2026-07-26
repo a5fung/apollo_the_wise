@@ -106,7 +106,7 @@ async def test_mixed_cohort_partitions_correctly():
     stop_order = [{"id": "s1", "symbol": "DRIFT", "side": "sell", "type": "stop",
                    "stop_price": 100.0, "status": "accepted"}]
 
-    async def _get(*, ticker, account_mode=None):
+    async def _get(*, ticker, account_mode=None, raise_on_error=False):
         if ticker == "NAKD":
             return []
         if ticker == "DRIFT":

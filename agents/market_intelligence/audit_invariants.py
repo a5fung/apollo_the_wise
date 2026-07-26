@@ -106,7 +106,14 @@ async def classify_naked_positions(body: dict) -> dict:
         if not ticker:
             continue
         try:
-            open_orders = await alpaca_client.get_open_orders(ticker=ticker)
+            # raise_on_error=True (F16 sweep, #456, 2026-07-26): makes the
+            # except below the LIVE path for a genuine broker-read failure,
+            # not just a genuinely-empty book. No behavior change — this
+            # classifier already fails open to REAL NAKED on any exception
+            # (documented above: "safer to over-alert"), which is exactly
+            # what the default [] fallback produced anyway; this just makes
+            # the intent explicit instead of relying on an internal swallow.
+            open_orders = await alpaca_client.get_open_orders(ticker=ticker, raise_on_error=True)
             # An open sell-side stop or stop-limit on the position is broker
             # coverage. get_open_orders returns standalone orders (not OTO
             # parents) so we check the order's own fields directly — using

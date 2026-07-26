@@ -1677,9 +1677,22 @@ async def _stop_ack_timeout_watchdog_job():
             # CRITICAL on 2026-05-27), confirm with the broker.
             try:
                 existing = await alpaca.get_open_orders(
-                    ticker, account_mode=account_mode,
+                    ticker, account_mode=account_mode, raise_on_error=True,
                 )
             except Exception as get_err:
+                # F16 sweep (#456, 2026-07-26): raise_on_error=True added so this
+                # except is actually REACHABLE — previously get_open_orders' own
+                # [] fallback swallowed the failure internally and this branch
+                # never fired. NOTE this does not change end-state: the branch
+                # still sets existing=[] and proceeds fail-open (place a fallback
+                # stop) exactly as the swallowed-[] path already did. Unlike the
+                # sibling defer-on-unreadable sites (_try_adopt_existing_stop's
+                # _BROKER_UNREADABLE sentinel, _ensure_stop_coverage's early
+                # return None), this site does NOT defer — it proceeds as if
+                # uncovered, which risks the same duplicate-stop hazard those
+                # siblings were built to avoid. Left unchanged (fail-open vs
+                # defer is a safeguard-policy call, operator's to make) — flagged
+                # in the #456 sweep report, not resolved here.
                 existing = []
                 logger.warning(
                     f"stop_ack_watchdog: get_open_orders({ticker}) failed: "
