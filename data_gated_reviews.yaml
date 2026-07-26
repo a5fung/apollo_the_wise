@@ -7532,3 +7532,59 @@ reviews:
       + operator sign-off + shadow-first before any live admission.
       Evidence: docs/analysis/cooldown_60d_effectiveness_2026-07-26.md
     added_on: 2026-07-26
+
+  - review_id: htf_sizing_left_on_legacy_formula
+    title: "#456 — the HTF shadow was deliberately left on the PRE-#456 sizing formula; it cannot stay there once HTF touches money"
+    question: >-
+      Operator-ruled 2026-07-26: "we're not enabling HTF to live money yet, so
+      leave to old for now is fine" — AND, in the same breath, "we can't leave it
+      permanently in the old model, so note to review this later." This review IS
+      that note, mechanized so it cannot be lost.
+
+      STATE: every other sizing site folded into the regime-keyed map
+      (REGIME_SIZING_ENABLED). `flag_detector.prepare_htf_breakout_order` did NOT
+      — it stays on `vix_scaled_risk_pct` + the separate `qqq_ema_bullish` halve
+      unconditionally, and a test pins it FLAG-INVARIANT so the divergence is
+      deliberate rather than drift.
+
+      WHY it was left: (1) its only caller hardcodes `regime_record=None`, so
+      folding would just pin the shadow at the 0.25x floor forever — no regime
+      signal reaches it either way; (2) the change is NOT the uniform scale it
+      looks like — `max_position = notional * 0.20` clamps every stop under ~5%
+      to an identical share count, so folding shifts the ratio non-uniformly
+      (measured 0.625x / 0.415x / 0.250x / 0.248x at 2/3/5/8% stops) and would
+      put a discontinuity in the #356 dataset for zero benefit today.
+
+      THE QUESTION when this fires: HTF is no longer shadow-only, so the legacy
+      formula is now sizing something that matters. Fold it — which means wiring
+      the caller to pass a REAL regime_record (the precondition that makes the
+      fold meaningful at all), not just deleting the branch. Confirm the
+      non-uniform clamp interaction above is acceptable at the notional HTF
+      actually trades at, and re-baseline any #356 evidence that spans the change
+      so pre- and post-fold rows are not pooled as one cohort.
+
+      ⚖ Sizing on a money path => THE LINE: CHANGE_PROCESS + safeguards.md SSoT +
+      operator sign-off before the fold goes live.
+      Refs: task #356 (HTF), #456 (the sizing card), docs/setups/safeguards.md,
+      docs/analysis/456_regime_sizing_proposal_2026-07-26.md
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_strategies
+      WHERE (signal_type ILIKE '%htf%' OR family ILIKE '%htf%')
+        AND phase IN ('paper', 'live')
+    threshold: 1
+    # Fires the moment HTF is registered beyond shadow — i.e. exactly when "not
+    # enabling HTF to live money yet" stops being true. There is no HTF row in
+    # mi_strategies at all today (verified 2026-07-26), so the count is 0 and
+    # this stays quiet until that changes.
+    # ⚠ EVENT-GATED, so it can never fire on its own if HTF is abandoned. The
+    # backstop against silent stranding is the duplicate note carried on task
+    # #356's own PLAN.md line — do not remove that note in favour of this entry.
+    earliest_review_date: 2026-07-26
+    action_when_ready: >-
+      Wire prepare_htf_breakout_order's caller to pass a real regime_record, then
+      fold the site into regime_risk_multiplier and delete the flag-invariance
+      test that pins the legacy path. Re-baseline #356 evidence spanning the
+      change. CHANGE_PROCESS + sign-off first.
+    status: pending
+    added_on: 2026-07-26
+    cross_refs: ["task #356", "task #456"]
