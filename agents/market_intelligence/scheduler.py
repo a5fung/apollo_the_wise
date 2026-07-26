@@ -1680,24 +1680,50 @@ async def _stop_ack_timeout_watchdog_job():
                     ticker, account_mode=account_mode, raise_on_error=True,
                 )
             except Exception as get_err:
-                # F16 sweep (#456, 2026-07-26): raise_on_error=True added so this
-                # except is actually REACHABLE — previously get_open_orders' own
-                # [] fallback swallowed the failure internally and this branch
-                # never fired. NOTE this does not change end-state: the branch
-                # still sets existing=[] and proceeds fail-open (place a fallback
-                # stop) exactly as the swallowed-[] path already did. Unlike the
-                # sibling defer-on-unreadable sites (_try_adopt_existing_stop's
+                # DEFER on an unreadable broker (#456, operator-ruled 2026-07-26).
+                # This branch became reachable in the same card's F16 sweep
+                # (raise_on_error=True above; get_open_orders' own [] fallback
+                # used to swallow the failure internally). It previously fell
+                # through with existing=[] and placed a stop BLIND — which
+                # defeats the very check it sits inside: the broker query exists
+                # because a REDUNDANT stop is rejected with `insufficient qty
+                # available`, i.e. the BW #119 false CRITICAL of 2026-05-27
+                # (see the #128 comment above). Acting on an unreadable broker
+                # re-creates exactly that bug.
+                # Now matches the sibling policy (_try_adopt_existing_stop's
                 # _BROKER_UNREADABLE sentinel, _ensure_stop_coverage's early
-                # return None), this site does NOT defer — it proceeds as if
-                # uncovered, which risks the same duplicate-stop hazard those
-                # siblings were built to avoid. Left unchanged (fail-open vs
-                # defer is a safeguard-policy call, operator's to make) — flagged
-                # in the #456 sweep report, not resolved here.
-                existing = []
+                # return None): skip this trade, retry next cycle. Cheap — this
+                # job runs every 30s during market hours — and a genuinely naked
+                # position is independently covered by _ensure_stop_coverage and
+                # the 15-min order-status reconcile.
+                # The audit event_type is deliberately NOT one of the three the
+                # dedup above matches, so deferring does NOT burn the
+                # once-per-day remediation attempt; its own 1-hour dedup keeps a
+                # sustained outage from flooding the log at 2 rows/minute.
                 logger.warning(
                     f"stop_ack_watchdog: get_open_orders({ticker}) failed: "
-                    f"{get_err} — proceeding with remediation (fail-open)"
+                    f"{get_err} — DEFERRING to next cycle (fail-safe)"
                 )
+                recently_logged = await conn.fetchval(
+                    "SELECT 1 FROM mi_audit_log "
+                    "WHERE event_type = 'stop_ack_broker_unreadable' "
+                    "AND summary LIKE $1 "
+                    "AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1",
+                    f"{ticker} #{trade_id}%",
+                )
+                if not recently_logged:
+                    await log_audit_event(
+                        "stop_ack_broker_unreadable",
+                        f"{ticker} #{trade_id}: broker unreadable "
+                        f"({get_err}) — deferred, retrying next cycle",
+                        detail=_json.dumps({
+                            "trade_id": trade_id,
+                            "ticker": ticker,
+                            "account_mode": account_mode,
+                            "error": str(get_err),
+                        }),
+                    )
+                continue
             sell_orders = [
                 o for o in existing
                 if str(o.get("side", "")).lower().endswith("sell")
