@@ -832,14 +832,39 @@ async def morning_stop_refresh() -> int:
     At 9:35 AM, ensure stop orders are active for all Day 2+ positions.
     Alpaca DAY stops expire overnight — re-place them as GTC.
     Returns count of stops refreshed.
+
+    SAME-DAY EXCLUSION (ADR 0029 D1, signed 2026-07-12, shipped 2026-07-26). The
+    docstring above always said "Day 2+", but the query did not enforce it — it
+    selected every filled position including ones that filled THIS MORNING, whose
+    stop is an OTO child placed atomically with the entry. Refreshing those raced
+    the broker's own child order and produced the WULF `insufficient qty
+    available` self-conflict. Entry day = the OTO child owns the stop BY
+    CONSTRUCTION; the refresh exists solely to replace overnight-expired DAY
+    stops, which by definition cannot apply to a same-morning fill. Excluding
+    them removes the 9:35 collision at the root — the #433 retry machinery stays
+    as belt-and-suspenders and is expected to go quiet.
+
+    Day-1 RE-ENTRY is covered by the same exclusion and deliberately so (advisor
+    carve-in, ADR 0029): `attempt_day1_reentry` places a FRESH OTO bracket on the
+    same alert_date after a stop-out, so its protection is likewise its own
+    atomically-placed child.
+
+    This job NEVER discovers stops — a NULL/stale `stop_order_id` is a MIRROR
+    defect, healed by the remediation stack (3-source capture at fill,
+    `sync_positions` Path-C naked remediation, #184b R1 ingest repointing), never
+    by this refresh. So a genuinely-naked same-day trade is still caught; it is
+    not silently skipped forever. Risk framing: this NARROWS a live job — it does
+    strictly less, on a cohort whose protection already exists.
     """
+    today = et_today()
     pool = await get_pool()
     async with pool.acquire() as conn:
         trades = await conn.fetch("""
             SELECT id, ticker, remaining_shares, stop_price, stop_order_id
             FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0
-        """)
+              AND alert_date <> $1
+        """, today)
 
     refreshed = 0
     refreshed_tickers: list[str] = []
