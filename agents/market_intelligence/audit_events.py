@@ -74,6 +74,17 @@ ORB_CANCELLATION_CLASSIFICATION = "orb_cancellation_classification"
 # entry_order_rejections_systematic data-gated review — observe before fixing.
 ENTRY_ORDER_REJECTED = "entry_order_rejected"
 
+# ── Regime-keyed risk sizing (#456, operator-ruled 2026-07-26) ──────────────
+# Fires when a real-money sizing site (MAGNA53 ORB / 9M Day2) reads a missing,
+# stale (regime_date older than the last completed trading day), or
+# unrecognized regime label — sizes at the 0.25x fail-safe floor per operator
+# ruling 5 ("it should fail loud so we can fix"). Audit-log-as-state dedup
+# (mirrors INTRADAY_DRAWDOWN_CROSSING): one row per ET day per account_mode is
+# both the durable record AND the Telegram dedup marker — only gated behind
+# REGIME_SIZING_ENABLED (see constants.py); byte-identical no-op when the flag
+# is off (today's VIX-scaled + qqq_ema_bullish-halve formula never emits this).
+SIZING_REGIME_FALLBACK = "sizing_regime_fallback"
+
 # ── Trade-state / broker hygiene ────────────────────────────────────────────
 NAKED_POSITION_DETECTED = "naked_position_detected"
 NAKED_POSITION_REMEDIATION_FAILED = "naked_position_remediation_failed"

@@ -253,7 +253,18 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         ep_bits.append(f"VIX {vix:.1f}")
     ep_bits.append(f"filter {_ep_threshold_context(ep_thresh)}")
-    if vix is not None:
+    # #456: this is DISPLAY only (not a sizing site) — kept in sync with
+    # order_manager._resolve_regime_risk_pct's flag branch so the briefing
+    # never shows a multiplier that diverges from what an ORB entry actually
+    # sizes at. Under REGIME_SIZING_ENABLED the multiplier no longer depends
+    # on VIX, so the line is no longer nested under `if vix is not None` for
+    # that branch (a VIX-null day must not hide it once regime sizing is live).
+    from agents.market_intelligence.constants import REGIME_SIZING_ENABLED
+    if REGIME_SIZING_ENABLED:
+        from agents.market_intelligence.constants import regime_risk_multiplier
+        _mult = regime_risk_multiplier(label)
+        ep_bits.append(f"size ≈{_mult:.2f}×")
+    elif vix is not None:
         from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
         _mult = vix_scaled_risk_pct(vix) / RISK_PCT
         if regime.get("qqq_ema_bullish") is False:

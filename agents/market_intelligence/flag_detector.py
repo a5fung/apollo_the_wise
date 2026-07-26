@@ -120,7 +120,9 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
     (a stop-limit BUY); stop = the TIGHTEST of {base_low, sma_10, sma_20} within the 5-8% cap; sizing off a
     FIXED notional. The reject gates become would_reject_reason (the row is ALWAYS returned — the shadow
     wants the rejects). Returns (spec, would_reject_reason); would_reject_reason is None on a clean order."""
-    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
+    from agents.market_intelligence.constants import (
+        vix_scaled_risk_pct, RISK_PCT, REGIME_SIZING_ENABLED, regime_risk_multiplier,
+    )
     notional = float(notional) if notional is not None else HTF_SHADOW_NOTIONAL
     entry = float(base_high)
     would_reject = None
@@ -142,10 +144,27 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
     min_risk = entry * 0.02
     if risk_per_share < min_risk:
         risk_per_share = min_risk   # 2% floor — guards a near-zero stop from oversizing
-    vix_value = regime_record.get("vix") if regime_record else None
-    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
-    if regime_record and regime_record.get("qqq_ema_bullish") is False:
-        risk_pct *= 0.5
+    # #456 — same fold as the real broker sizing sites, gated behind the same
+    # flag, for formula consistency (order_manager.py's docstring). This
+    # function is deliberately PURE (no I/O, no execution-boundary import,
+    # per the module docstring) so it calls the pure `regime_risk_multiplier`
+    # lookup directly, NOT the async fail-loud resolver — this is a SHADOW
+    # path (never submitted, no real money), and its only caller
+    # (flag_detector.py's intraday scan) always passes regime_record=None
+    # today, so under the flag this pins the shadow's multiplier at the
+    # 0.25x floor permanently (a uniform scale on the fixed shadow notional —
+    # doesn't corrupt the #356 edge dataset, but is a real behavior change
+    # under the flag; documented in safeguards.md rather than rewiring the
+    # caller to fetch a real regime, which is out of this card's scope).
+    if REGIME_SIZING_ENABLED:
+        risk_pct = RISK_PCT * regime_risk_multiplier(
+            regime_record.get("regime") if regime_record else None
+        )
+    else:
+        vix_value = regime_record.get("vix") if regime_record else None
+        risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
+        if regime_record and regime_record.get("qqq_ema_bullish") is False:
+            risk_pct *= 0.5
     risk_dollars = notional * risk_pct
     shares = math.floor(risk_dollars / risk_per_share) if risk_per_share > 0 else 0
     max_position = notional * 0.20

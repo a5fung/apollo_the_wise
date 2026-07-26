@@ -1,5 +1,7 @@
 """Shared constants and helpers for the Market Intelligence agent."""
 
+import os
+
 # ── Position sizing ──────────────────────────────────────────────────────────
 ACCOUNT_SIZE = 100_000       # Total account value ($)
 RISK_PCT = 0.01              # 1% account risk per trade
@@ -18,8 +20,13 @@ def vix_scaled_risk_pct(vix_value: float | None, base_pct: float = RISK_PCT) -> 
       VIX > 30  → still 0.25× base (clamp)
 
     Returns base_pct unchanged when vix_value is None (no VIX ingest yet,
-    or fetch failed). This is the conservative fallback — equivalent to
-    the existing binary RISK_PCT * 0.5 halving when regime is bearish.
+    or fetch failed). **This is a FAIL-OPEN, not "conservative"** — it sizes
+    at FULL base risk on unknown volatility (the comment here mislabeled the
+    direction for over a year; corrected #456 2026-07-26, no functional
+    change — every pre-2026-03 day and any future VIX-ingest regression rode
+    this at full risk). Superseded by `regime_risk_multiplier()` below when
+    `REGIME_SIZING_ENABLED=true`; kept byte-identical here so the flag-OFF
+    path reproduces today's exact behavior.
 
     Use cases when VIX is wired up:
     - entry_pipeline._size_position can call this with the latest VIX
@@ -38,8 +45,58 @@ def vix_scaled_risk_pct(vix_value: float | None, base_pct: float = RISK_PCT) -> 
     scaled_multiplier = min(1.0, scaled_multiplier)
     return base_pct * scaled_multiplier
 
+
+# ── Regime-keyed risk multiplier (#456, operator-ruled 2026-07-26) ───────────
+# Replaces vix_scaled_risk_pct() + the separate qqq_ema_bullish binary halve as
+# the SINGLE sizing axis for real-money entries. Operator: "vix shouldn't be
+# the thing that controls sizing, we have a full regime" — VIX still affects
+# sizing, but only once, as one input INTO the regime classifier (regime.py),
+# not as a second independent scale. Full analysis + evidence:
+# docs/analysis/456_regime_sizing_proposal_2026-07-26.md. SSoT change-log +
+# sizing-composition doc: docs/setups/safeguards.md.
+#
+# FEATURE-FLAGGED. Default OFF reproduces today's exact behavior byte-for-byte
+# (vix_scaled_risk_pct + the qqq_ema_bullish halve, both left in place above/
+# at each call site). Flip to on via env var (no code change) once the
+# operator signs off on the live flip — see safeguards.md "Flip steps".
+REGIME_SIZING_ENABLED = os.environ.get("REGIME_SIZING_ENABLED", "false").lower() == "true"
+
+# Bull/Choppy/Correcting evidenced directionally (N≥10 for Bull=29, pooled
+# non-Bull=14); Correcting (n=5) and Crisis (n=0) are STRUCTURAL PRIORS, not
+# measurements — flagged as such in the safeguards.md change-log (CHANGE_PROCESS
+# rule 2). Quarterly review 2026-08-01 re-evaluates as the live cohort accrues.
+REGIME_RISK_MULTIPLIER: dict[str, float] = {
+    "Bull": 1.00,
+    "Choppy": 0.75,
+    "Correcting": 0.50,
+    "Crisis": 0.25,
+}
+# Unknown / stale / missing / unrecognized-label floor (operator ruling 5:
+# "it should fail loud so we can fix" — the floor pairs with a Telegram+audit
+# fail-loud alert at the call site, NOT inside this pure lookup; see
+# broker/order_manager.py's resolver).
+REGIME_SIZING_FALLBACK_MULTIPLIER = 0.25
+
+
+def regime_risk_multiplier(regime_label: str | None) -> float:
+    """PURE lookup: regime label -> risk multiplier (#456). No I/O, no async —
+    deliberately importable from execution-boundary-pure shadow code
+    (flag_detector.py's HTF breakout shadow) as well as the real broker sizing
+    sites. An unrecognized label (including None) falls back to the maximal-
+    caution floor — future-proof against label renames; unknown vocabulary
+    must never silently full-size.
+
+    Callers that need the FAIL-LOUD side effect (staleness detection, Telegram
+    + audit dedup) do NOT call this directly — see
+    broker.order_manager._resolve_regime_risk_pct, the single async resolver
+    both real sizing sites (MAGNA53 ORB + 9M Day2) call so the fold can never
+    drift between them.
+    """
+    if regime_label is None:
+        return REGIME_SIZING_FALLBACK_MULTIPLIER
+    return REGIME_RISK_MULTIPLIER.get(regime_label, REGIME_SIZING_FALLBACK_MULTIPLIER)
+
 # ── Live trading ─────────────────────────────────────────────────────────────
-import os
 LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
 
 # ── Dual-account architecture (#66, 2026-05-10) ───────────────────────────────

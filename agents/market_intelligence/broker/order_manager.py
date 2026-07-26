@@ -37,8 +37,11 @@ from agents.market_intelligence.constants import (
     mode_prefix,
     active_account_modes,
     LIVE_TRADING_ENABLED,
+    RISK_PCT,
+    REGIME_SIZING_FALLBACK_MULTIPLIER,
 )
 from agents.market_intelligence.db import get_pool, log_audit_event, get_manual_halt_state
+from agents.market_intelligence.audit_events import SIZING_REGIME_FALLBACK
 
 logger = logging.getLogger(__name__)
 
@@ -111,16 +114,164 @@ async def broker_terminal_reason(event_norm: str, ticker: str, trigger_price) ->
 # ── Order Preparation ────────────────────────────────────────────────────────
 
 
+def _regime_sizing_freshness_threshold(today: date) -> date:
+    """The oldest `regime_date` that still counts as FRESH when read at an ORB
+    entry on `today` (#456).
+
+    The regime nightly runs at 17:00 ET and stamps `regime_date` = the day it
+    ran, so an ORB entry the FOLLOWING trading morning is EXPECTED to read
+    yesterday's row — not today's (today's nightly hasn't run yet). The naive
+    predicate `regime_date < last_trading_day(today)` is wrong: on any
+    ordinary trading day `last_trading_day(today) == today`, so it would floor
+    + fail-loud EVERY morning. The correct threshold is the last completed
+    trading day strictly BEFORE today.
+
+    Known limitation (documented, not fixed — see safeguards.md): weekend-only,
+    no market-holiday calendar (matches `last_trading_day`'s own docstring).
+    The trading day after a market holiday reads one day tighter than
+    necessary and floors+alerts as a false positive (~9x/yr). Safe-direction
+    (floors size, doesn't oversize) — accepted rather than building a holiday
+    calendar for this.
+    """
+    from agents.market_intelligence.collector import last_trading_day
+    return last_trading_day(today - timedelta(days=1))
+
+
+async def _alert_regime_sizing_fallback_once(
+    *, account_mode: str, regime_date: date | None, label: str | None,
+    today: date, reason: str,
+) -> None:
+    """Ruling 5 (#456, operator 2026-07-26): "it should fail loud so we can
+    fix." Missing / stale / unrecognized regime sizes at the fail-safe floor
+    AND pages — Telegram + audit, deduped ONCE per ET day per account_mode so
+    a broken nightly can't spam one alert per candidate. Audit-log-as-state
+    dedup, same idiom as `intraday_drawdown._already_alerted_today`: the
+    day's first occurrence writes ONE audit row (the durable record AND the
+    dedup marker); later occurrences the same day/mode are silent no-ops
+    (mirrors the drawdown-crossing precedent — a duplicate doesn't re-log).
+
+    Known race (accepted, documented — matches the #461-class precedent): the
+    ORB monitor processes up to 5 candidates concurrently (`Semaphore(5)` +
+    `gather`), so on the FIRST fallback morning multiple candidates can all
+    read "not yet alerted" before any commits — bounded to at most a handful
+    of duplicate Telegrams that morning, never more. The audit row remains the
+    single source of truth surviving restarts; this is a Telegram-count
+    nicety, not a sizing-correctness concern (the floor multiplier applies
+    correctly regardless of the race).
+    """
+    marker = f"account_mode={account_mode}"
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT summary FROM mi_audit_log
+            WHERE event_type = $1
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $2
+            """,
+            SIZING_REGIME_FALLBACK, today,
+        )
+    if any(marker in (r["summary"] or "") for r in rows):
+        return  # already alerted this ET day for this account_mode
+
+    detail_date = regime_date.isoformat() if regime_date else "none"
+    summary = (
+        f"{marker} regime sizing fallback ({reason}): last regime_date seen="
+        f"{detail_date} label={label!r} -> floor "
+        f"{REGIME_SIZING_FALLBACK_MULTIPLIER:.2f}x"
+    )
+    await log_audit_event(SIZING_REGIME_FALLBACK, summary)
+    await send_telegram_message(
+        f"{mode_prefix(account_mode)}🚨 Regime sizing FALLBACK ({reason}): "
+        f"last regime_date seen {detail_date}, label={label or 'none'} — "
+        f"sizing floored to {REGIME_SIZING_FALLBACK_MULTIPLIER:.0%}. Regime "
+        f"feed may be broken — check the nightly regime job."
+    )
+
+
+async def _resolve_regime_risk_pct(
+    regime_record: dict | None,
+    today: date,
+    account_mode: str | None,
+    base_pct: float = RISK_PCT,
+) -> float:
+    """#456 — the SINGLE regime-keyed risk_pct resolver. Both real-money
+    sizing sites (`prepare_orb_order` / MAGNA53, `prepare_9m_day2_orb_order` /
+    9M Day2) call this — no scattered copies of the fold, per this repo's
+    documented history of hand-synced duplicates drifting apart.
+
+    `REGIME_SIZING_ENABLED=false` (default): reproduces today's exact
+    behavior — `vix_scaled_risk_pct(vix)` with the separate `qqq_ema_bullish`
+    binary halve. Byte-identical to pre-#456 code; this is the untouched
+    behavior the feature flag protects.
+
+    `REGIME_SIZING_ENABLED=true`: `risk_pct = base_pct *
+    regime_risk_multiplier(label)`. The `qqq_ema_bullish` halve is FOLDED
+    (operator ruling 2 — "VIX is not the only gate"; the regime classifier
+    already scores the bearish tape, the halve double-counted it) and VIX no
+    longer scales sizing directly — it only feeds the regime classifier.
+    Missing / stale (`regime_date` older than the last completed trading day
+    before `today`) / unrecognized-label regime floors to
+    `REGIME_SIZING_FALLBACK_MULTIPLIER` (0.25x) AND fires the fail-loud alert
+    (ruling 5).
+    """
+    from agents.market_intelligence.constants import (
+        REGIME_SIZING_ENABLED,
+        REGIME_RISK_MULTIPLIER,
+        regime_risk_multiplier,
+        vix_scaled_risk_pct,
+    )
+
+    if not REGIME_SIZING_ENABLED:
+        vix_value = regime_record.get("vix") if regime_record else None
+        risk_pct = vix_scaled_risk_pct(vix_value, base_pct=base_pct)
+        if regime_record and regime_record.get("qqq_ema_bullish") is False:
+            risk_pct *= 0.5
+        return risk_pct
+
+    from agents.market_intelligence.db import _coerce_date
+
+    label = regime_record.get("regime") if regime_record else None
+    regime_date = (
+        _coerce_date(regime_record.get("regime_date")) if regime_record else None
+    )
+    threshold = _regime_sizing_freshness_threshold(today)
+    is_stale = regime_date is None or regime_date < threshold
+    is_unrecognized = (not is_stale) and label not in REGIME_RISK_MULTIPLIER
+
+    if is_stale or is_unrecognized:
+        await _alert_regime_sizing_fallback_once(
+            account_mode=account_mode or current_account_mode(),
+            regime_date=regime_date,
+            label=label,
+            today=today,
+            reason="missing_or_stale" if is_stale else "unrecognized_label",
+        )
+        return base_pct * REGIME_SIZING_FALLBACK_MULTIPLIER
+
+    return base_pct * regime_risk_multiplier(label)
+
+
 async def prepare_orb_order(
     alert: dict,
     orb_bar: dict,
     atr_14: float,
     regime_record: dict | None,
     account_mode: str | None = None,
+    today: date | None = None,
 ) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares/risk from ORB bar and account equity.
     Returns (spec, None) on success or (None, reason) on any rejection.
+
+    `today` (#456): pass the SAME `today` the caller already resolved for the
+    regime fetch / alerts query / `submit_trade_entry` (e.g.
+    `process_new_alerts_live`'s `today` param) — the regime-sizing staleness
+    gate must compare against that value, not a fresh `et_today()` call made
+    independently inside this function. A second, unpinned clock read here
+    could silently diverge from the caller's `today` under
+    `EXECUTION_MODE=http` (cross-container) or a slow bar-fetch retry
+    spanning a midnight ET boundary. Defaults to `et_today()` only for
+    callers that don't have one on hand (e.g. tests, or the HTF path).
     """
     orb_high = orb_bar["high"]
     orb_low = orb_bar["low"]
@@ -147,18 +298,15 @@ async def prepare_orb_order(
         logger.error(f"Cannot get account equity for {ticker}, aborting order prep: {e}")
         return None, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
-    # Position sizing: P19 — VIX-scaled continuous risk pct (2026-05-14).
-    # Reads regime_record["vix"] when available; falls back to binary
-    # bearish-halve if VIX isn't ingested yet. Continuous formula
-    # (in constants.vix_scaled_risk_pct):
-    #   VIX ≤ 15  → 1.0× base    VIX 20 → 0.75×    VIX 25 → 0.50×
-    #   VIX 30+   → 0.25× floor
-    # Bearish regime additionally halves (preserves existing safety).
-    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
-    vix_value = regime_record.get("vix") if regime_record else None
-    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
-    if regime_record and regime_record.get("qqq_ema_bullish") is False:
-        risk_pct *= 0.5
+    # Position sizing (#456): regime-keyed risk_pct when REGIME_SIZING_ENABLED,
+    # else byte-identical to the pre-#456 P19 VIX-scaled + qqq_ema_bullish-halve
+    # formula. Single resolver — see _resolve_regime_risk_pct's docstring.
+    if today is None:
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
+    risk_pct = await _resolve_regime_risk_pct(
+        regime_record, today, account_mode, base_pct=RISK_PCT,
+    )
 
     risk_dollars = equity * risk_pct
     risk_per_share = orb_high - orb_low
@@ -3593,6 +3741,7 @@ async def prepare_9m_day2_orb_order(
     orb_bar: dict,
     regime_record: dict | None = None,
     account_mode: str | None = None,
+    today: date | None = None,
 ) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares for a 9M sugar baby Day 2 ORB entry.
@@ -3602,7 +3751,13 @@ async def prepare_9m_day2_orb_order(
 
     sugar_baby: dict from get_pending_9m_sugar_babies() — must have ticker, low_price.
     orb_bar: dict with 'high' and 'low' from alpaca.get_first_bar().
-    regime_record: optional, used to halve risk in bearish QQQ regime.
+    regime_record: used by the #456 regime-keyed sizing resolver (falls back to
+      the pre-#456 VIX+EMA-halve formula when REGIME_SIZING_ENABLED is off).
+    today: pass the SAME `today` the caller already resolved (e.g.
+      `submit_9m_day2_trade`'s `today = et_today()`) — see prepare_orb_order's
+      docstring for why a second independent `et_today()` call here would be
+      an unpinned second clock source in the money path. Defaults to a fresh
+      `et_today()` for callers that don't have one on hand.
 
     Returns (spec, None) on success or (None, reason) on any rejection. Reasons
     use the bounded vocabulary from skip_reasons.py so callers can write to
@@ -3653,12 +3808,14 @@ async def prepare_9m_day2_orb_order(
         logger.error(f"9M Day2 {ticker}: cannot get account equity — {e}")
         return None, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
-    # P19 VIX-scaled sizing (same path as MAGNA53 prepare_orb_order).
-    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
-    vix_value = regime_record.get("vix") if regime_record else None
-    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
-    if regime_record and regime_record.get("qqq_ema_bullish") is False:
-        risk_pct *= 0.5
+    # Position sizing (#456): same single resolver as MAGNA53 prepare_orb_order
+    # — see _resolve_regime_risk_pct's docstring.
+    if today is None:
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
+    risk_pct = await _resolve_regime_risk_pct(
+        regime_record, today, account_mode, base_pct=RISK_PCT,
+    )
 
     risk_dollars = equity * risk_pct
     shares = math.floor(risk_dollars / risk_per_share)

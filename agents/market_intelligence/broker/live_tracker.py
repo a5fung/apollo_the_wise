@@ -386,10 +386,16 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 regime: dict | None,
                 account_mode: str,
                 _atr=atr_14,
+                _today=today,
             ) -> tuple[dict | None, str | None]:
+                # #456: thread the SAME `today` this function already resolved
+                # (used above for the regime fetch + alerts query + the
+                # submit_trade_entry(today=...) call below) into the regime-
+                # sizing staleness gate — not a second, independent et_today()
+                # clock read inside order_manager.py.
                 return await prepare_orb_order(
                     alert_ctx, orb_bar, _atr or 0, regime,
-                    account_mode=account_mode,
+                    account_mode=account_mode, today=_today,
                 )
 
             return await submit_trade_entry(
@@ -1108,8 +1114,11 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
     async def _ninem_spec_builder(
         alert_ctx: dict, orb_bar: dict, regime: dict | None, account_mode: str,
     ) -> tuple[dict | None, str | None]:
+        # #456: thread this function's own `today` (already used above for the
+        # submit_trade_entry(today=...) call) into the regime-sizing
+        # staleness gate, not a second independent et_today() clock read.
         return await prepare_9m_day2_orb_order(
-            alert_ctx, orb_bar, regime, account_mode=account_mode,
+            alert_ctx, orb_bar, regime, account_mode=account_mode, today=today,
         )
 
     # on_skip fires for every terminal skip (safeguard, no-bar, fade, spec fail).
