@@ -120,9 +120,7 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
     (a stop-limit BUY); stop = the TIGHTEST of {base_low, sma_10, sma_20} within the 5-8% cap; sizing off a
     FIXED notional. The reject gates become would_reject_reason (the row is ALWAYS returned — the shadow
     wants the rejects). Returns (spec, would_reject_reason); would_reject_reason is None on a clean order."""
-    from agents.market_intelligence.constants import (
-        vix_scaled_risk_pct, RISK_PCT, REGIME_SIZING_ENABLED, regime_risk_multiplier,
-    )
+    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
     notional = float(notional) if notional is not None else HTF_SHADOW_NOTIONAL
     entry = float(base_high)
     would_reject = None
@@ -144,27 +142,29 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
     min_risk = entry * 0.02
     if risk_per_share < min_risk:
         risk_per_share = min_risk   # 2% floor — guards a near-zero stop from oversizing
-    # #456 — same fold as the real broker sizing sites, gated behind the same
-    # flag, for formula consistency (order_manager.py's docstring). This
-    # function is deliberately PURE (no I/O, no execution-boundary import,
-    # per the module docstring) so it calls the pure `regime_risk_multiplier`
-    # lookup directly, NOT the async fail-loud resolver — this is a SHADOW
-    # path (never submitted, no real money), and its only caller
-    # (flag_detector.py's intraday scan) always passes regime_record=None
-    # today, so under the flag this pins the shadow's multiplier at the
-    # 0.25x floor permanently (a uniform scale on the fixed shadow notional —
-    # doesn't corrupt the #356 edge dataset, but is a real behavior change
-    # under the flag; documented in safeguards.md rather than rewiring the
-    # caller to fetch a real regime, which is out of this card's scope).
-    if REGIME_SIZING_ENABLED:
-        risk_pct = RISK_PCT * regime_risk_multiplier(
-            regime_record.get("regime") if regime_record else None
-        )
-    else:
-        vix_value = regime_record.get("vix") if regime_record else None
-        risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
-        if regime_record and regime_record.get("qqq_ema_bullish") is False:
-            risk_pct *= 0.5
+    # #456 — this HTF shadow site is DELIBERATELY NOT folded into the regime map
+    # (operator-ruled 2026-07-26: "we're not enabling HTF to live money yet, so
+    # leave to old for now is fine"). It stays on the pre-#456 VIX+halve formula
+    # regardless of REGIME_SIZING_ENABLED.
+    #
+    # Why folding it would be a net negative today: this function's only caller
+    # (the intraday scan below) passes `regime_record=None`, so the fold would
+    # pin the shadow at the 0.25x floor permanently — no regime signal reaches
+    # it either way, so there is nothing to gain.
+    #
+    # And the cost is NOT the "uniform scale" it looks like: `max_position =
+    # notional * 0.20` currently clamps every stop distance under ~5% to the
+    # SAME share count, so folding changes the ratio non-uniformly — measured
+    # 0.625x / 0.415x / 0.250x / 0.248x at 2 / 3 / 5 / 8% stops. That would put a
+    # discontinuity in the #356 dataset for no benefit. (The graded edge itself
+    # is safe either way — mi_htf_breakout_shadow settles on realized_r, which
+    # is share-count independent — but shares/position_size/risk_dollars shift.)
+    #
+    # Revisit when this path is wired to a real regime AND HTF is a money path.
+    vix_value = regime_record.get("vix") if regime_record else None
+    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
+    if regime_record and regime_record.get("qqq_ema_bullish") is False:
+        risk_pct *= 0.5
     risk_dollars = notional * risk_pct
     shares = math.floor(risk_dollars / risk_per_share) if risk_per_share > 0 else 0
     max_position = notional * 0.20

@@ -371,36 +371,52 @@ async def test_prepare_9m_day2_orb_order_threads_caller_supplied_today():
 # ── Site #3: flag_detector HTF breakout shadow (pure, never submitted) ─────
 
 
-def test_htf_shadow_flag_off_byte_identical(monkeypatch):
-    monkeypatch.setattr(constants, "REGIME_SIZING_ENABLED", False)
+def test_htf_shadow_is_flag_INVARIANT(monkeypatch):
+    """Operator-ruled 2026-07-26: the HTF shadow is deliberately NOT folded —
+    "we're not enabling HTF to live money yet, so leave to old for now is fine."
+
+    So this site must produce the SAME sizing whether the flag is on or off. It
+    stays on the pre-#456 VIX+halve formula unconditionally.
+    """
     from agents.market_intelligence import flag_detector as fd
-    spec, reject = fd.prepare_htf_breakout_order(
-        base_high=100.0, base_low=90.0, regime_record=None,
+    results = {}
+    for flag in (False, True):
+        monkeypatch.setattr(constants, "REGIME_SIZING_ENABLED", flag)
+        spec, _ = fd.prepare_htf_breakout_order(
+            base_high=100.0, base_low=90.0, regime_record=None,
+        )
+        results[flag] = (spec["risk_dollars"], spec["shares"], spec["position_size"])
+    assert results[False] == results[True], (
+        "the HTF shadow site is responding to REGIME_SIZING_ENABLED — it was "
+        "deliberately left on the old formula (operator ruling 2026-07-26)."
     )
-    # VIX None -> fail-open full base; regime_record None -> no EMA halve.
-    assert spec["risk_dollars"] == pytest.approx(1000.0)
+    # And that shared result is the OLD formula: VIX None -> fail-open full
+    # base, regime_record None -> no EMA halve.
+    assert results[False][0] == pytest.approx(1000.0)
 
 
-def test_htf_shadow_flag_on_none_regime_pins_to_floor(monkeypatch):
-    # Documented behavior change (not a bug): the caller always hardcodes
-    # regime_record=None today, so under the flag this permanently floors
-    # the shadow's fixed-notional multiplier at 0.25x. Uniform scale on a
-    # fixed notional; doesn't corrupt the #356 edge dataset. See safeguards.md.
+def test_htf_shadow_ignores_a_regime_label_even_when_one_is_passed(monkeypatch):
+    """Guards the revert specifically. If someone re-folds this site, a passed
+    regime label would start moving the size — this pins that it does not.
+
+    Note the caller (flag_detector's intraday scan) hardcodes regime_record=None
+    today, which is half of why folding buys nothing here; the other half is that
+    `max_position = notional * 0.20` clamps sub-5% stops to an identical share
+    count, so a fold shifts the ratio NON-uniformly (0.625x/0.415x/0.250x/0.248x
+    at 2/3/5/8% stops) and would put a discontinuity in the #356 dataset.
+    """
     monkeypatch.setattr(constants, "REGIME_SIZING_ENABLED", True)
     from agents.market_intelligence import flag_detector as fd
-    spec, reject = fd.prepare_htf_breakout_order(
-        base_high=100.0, base_low=90.0, regime_record=None,
+    spec_corr, _ = fd.prepare_htf_breakout_order(
+        base_high=100.0, base_low=90.0, regime_record={"regime": "Correcting"},
     )
-    assert spec["risk_dollars"] == pytest.approx(250.0)
-
-
-def test_htf_shadow_flag_on_uses_regime_label_when_provided(monkeypatch):
-    monkeypatch.setattr(constants, "REGIME_SIZING_ENABLED", True)
-    from agents.market_intelligence import flag_detector as fd
-    spec, reject = fd.prepare_htf_breakout_order(
+    spec_bull, _ = fd.prepare_htf_breakout_order(
         base_high=100.0, base_low=90.0, regime_record={"regime": "Bull"},
     )
-    assert spec["risk_dollars"] == pytest.approx(1000.0)
+    # Neither label may scale it — both ride the old VIX path (vix absent ->
+    # full base), so both are identical and unfloored.
+    assert spec_corr["risk_dollars"] == pytest.approx(1000.0)
+    assert spec_bull["risk_dollars"] == pytest.approx(1000.0)
 
 
 # ── Operator-facing display line (briefing.py) stays in sync with the flag ─
