@@ -221,7 +221,14 @@ reviews:
         AND created_at > NOW() - INTERVAL '90 days'
         AND created_at < NOW() - INTERVAL '10 days'
     threshold: 15
-    earliest_review_date: 2026-09-15
+    # Date made NON-BLOCKING 2026-07-26 (operator: "if we reach it earlier, we
+    # should review earlier"). Firing is AND, so a future date can only DELAY a
+    # review whose data is already in. Measured that day: count=49 vs thr=15 —
+    # over 3x the bar, parked behind a date 7 weeks out. Surfacing != changing:
+    # this is a detection criterion, so any floor change still needs
+    # CHANGE_PROCESS + operator sign-off; this only puts a ready question on the
+    # weekly board instead of leaving it silently parked.
+    earliest_review_date: 2026-07-26
     # >> RAN 2026-07-13 (Opus): fishhook --moderate-band-eval 90d → positive-label rate 16/99 =
     #    16% vs the 35% promotion bar. gap[10,15)+strong does NOT carry the edge to lift
     #    MODERATE→HIGH. NO extension (keep status quo — no THE-LINE change needed to not-act).
