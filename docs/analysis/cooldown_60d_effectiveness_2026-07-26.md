@@ -93,3 +93,78 @@ anecdotes must not carry the decision).
 
 Data note: `RLAY 2026-06-02` appears twice in `mi_ep_missed_outcomes` — duplicate rows, immaterial
 here (both −15.4%) but worth knowing if that table is used for counting.
+
+---
+
+## Addendum 2 — WHY #170 selects the worse subset: the implementation contradicts its own review
+
+The addendum above said the re-setup criterion "misses the tail." Measuring *why* produced a sharper
+finding, and it is not that the idea was wrong — it is that **the shipped classifier uses the exact
+proxy its originating review had already identified as bad.**
+
+### The review got it right
+
+`data_gated_reviews::ep_cooldown_resetup_admission` (status: resolved) states the problem precisely:
+
+> "The 60-day EP cooldown uses **TIME as a proxy** for 'still extended from the prior EP' — but it is
+> catalyst- AND structure-blind... Proposed: ADMIT a re-setup (pulled-back + re-based/**not-extended**
+> + fresh strong catalyst); SUPPRESS only a still-extended re-fire... **Catalyst-freshness is one
+> input; 'is it still extended' is the bigger one.**"
+
+Its predicate screens on `gap_pct >= 15` — no time term.
+
+### The implementation used time anyway
+
+`ep_detector._is_cooldown_resetup` (line ~148):
+```python
+days_since_prior_alert >= EP_COOLDOWN_RESETUP_MIN_DAYS   # = 10
+and gap_pct >= 15.0
+```
+Half the review (the gap screen) survived. The other half — extension/structure — was replaced by a
+**10-day separation test**, i.e. the same TIME proxy the review had just argued against.
+
+### The data says time is not merely imperfect — it is INVERTED
+
+Cooldown-blocked candidates with a forward outcome, bucketed by days since the prior alert:
+
+| days since prior alert | n | mean 5d | median 5d | winners |
+|---|---|---|---|---|
+| **0–7 (continuation)** | 30 | **+4.0%** | −0.6% | 47% |
+| 8–20 | 17 | +0.7% | −4.6% | 47% |
+| **21+ (#170's admit zone)** | 28 | **−6.0%** | −6.1% | **32%** |
+
+Monotonic, and backwards from what #170 selects for. Requiring `≥10 days` steers the classifier
+*away* from the best bucket and into the worst. **FCEL's +88% came 2 days after its prior alert** — it
+could never have been flagged.
+
+The winners are not "the prior EP played out, here is a fresh setup." They are **continuations** — a
+name already in motion gapping again.
+
+### Gap size, by contrast, discriminates well
+
+| cut | n | mean 5d | median 5d | winners |
+|---|---|---|---|---|
+| gap ≥15% | 24 | **+5.8%** | **+3.3%** | **62%** |
+| gap <15% | 78 | −2.7% | −5.2% | 35% |
+| gap ≥15% AND ≤7d | 12 | **+11.0%** | +5.1% | 58% |
+
+Positive on BOTH mean and median only in the gap-≥15% cells — the same screen the review's predicate
+already used, and the same both-measures bar the ORB-cutoff review requires.
+
+### What NOT to do
+
+**Do not re-point the shadow.** (Operator, 2026-07-26.) The classifier only *labels*; every input it
+would need is already persisted — `mi_ep_scan_log` carries **1,187 cooldown rows / 403 at gap ≥15% /
+39 distinct ticker-days** (2026-04-20 → 07-21), joinable to alerts and forward returns. Re-pointing a
+label would just swap one pre-committed hypothesis (long separation) for another (short separation, or
+gap) — repeating the error that produced this finding.
+
+**Instead: when n supports it, run the analysis with NO pre-committed criterion** and let the data
+name the discriminator. Registered as `cooldown_admission_unassumed`.
+
+### Honest limits on everything above
+
+`ret_5d` is the STOCK's close-to-close move, **not a trade outcome**. These candidates were dropped
+before scoring/grading/ORB entry, so none of this says what a *trade* would have returned — an entry
+with a stop clips losers and rides winners, which changes the distribution. Sizing the real cost needs
+a pipeline replay, not a returns join. The n=12 best cell is a hypothesis, not a rule.

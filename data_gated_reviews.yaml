@@ -7445,3 +7445,53 @@ reviews:
       what the calibration predicted?) - retitle + re-key onto a date cadence
       rather than an n-threshold. Do NOT close it at that point; convert it.
     added_on: 2026-07-25
+
+  - review_id: cooldown_admission_unassumed
+    question: |
+      Should the 60-day EP cooldown admit some suppressed candidates - and if
+      so, on WHAT criterion? Deliberately UNASSUMED: do not pre-commit to a
+      hypothesis, let the data name the discriminator.
+
+      Why this framing (operator 2026-07-26): the prior attempt failed exactly
+      by pre-committing. `ep_cooldown_resetup_admission` correctly argued TIME
+      is a bad proxy for "still extended" - then the shipped classifier
+      (`_is_cooldown_resetup`) used a 10-day separation test anyway. Measured
+      2026-07-26, that time test is not merely weak but INVERTED: 0-7d since
+      the prior alert returns +4.0% mean / 47% win, while 21d+ (the admit zone)
+      returns -6.0% / 32% win. It steers toward the worst bucket. FCEL's +88%
+      came 2 days after its prior alert and could never have been flagged.
+      Gap size DOES discriminate (>=15%: 62% win, positive mean AND median;
+      <15%: 35% win, negative both) - but that is one factor found post-hoc on
+      n=24, not a rule to enshrine.
+
+      So: NO new shadow, NO re-pointed label. Every input is already persisted.
+      Run the analysis clean when n supports it.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT (ticker, scan_date)) FROM mi_ep_scan_log
+      WHERE filter_reason ILIKE 'EP cooldown%' AND gap_pct >= 15;
+    threshold: 75
+    earliest_review_date: 2026-09-01
+    status: pending
+    action_when_ready: |
+      Assumption-free analysis over `mi_ep_scan_log` (filter_reason ILIKE
+      'EP cooldown%') joined to alerts + forward outcomes. Test ALL available
+      factors together rather than one pre-chosen story - at minimum: gap_pct,
+      days-since-prior-alert, EXTENSION at the re-alert (the factor the original
+      review said was "the bigger one" and which was never actually implemented),
+      catalyst grade/freshness, RVOL, ADV/market-cap, regime, and whether the
+      PRIOR alert was itself traded or a winner. Report what separates winners
+      from losers; explicitly report if NOTHING does.
+
+      Ship bar (same both-measures rule as the ORB-cutoff review, for the same
+      reason - tail anecdotes must not carry it): an admission rule ships only
+      if its cohort beats the suppressed remainder on BOTH mean AND median.
+
+      MEASUREMENT CAVEAT, mandatory: `ret_*` is the STOCK's close-to-close move,
+      not a trade outcome - these candidates were dropped before scoring/grading/
+      ORB entry. Any cost/benefit claim needs a PIPELINE REPLAY (would it have
+      scored, graded HIGH, and filled?), not a returns join. State which you did.
+
+      Detection criterion on the money path => THE LINE: CHANGE_PROCESS + EP SSoT
+      + operator sign-off + shadow-first before any live admission.
+      Evidence: docs/analysis/cooldown_60d_effectiveness_2026-07-26.md
+    added_on: 2026-07-26
