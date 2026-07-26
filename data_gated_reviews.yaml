@@ -7470,7 +7470,12 @@ reviews:
       SELECT COUNT(DISTINCT (ticker, scan_date)) FROM mi_ep_scan_log
       WHERE filter_reason ILIKE 'EP cooldown%' AND gap_pct >= 15;
     threshold: 55
-    earliest_review_date: 2026-10-01
+    # Deliberately NON-BLOCKING (operator 2026-07-26: "if we reach it earlier, we
+    # should review earlier"). Firing is AND (count >= threshold AND today >=
+    # this date), so a late date can only DELAY a review whose data is already
+    # ready. Data-readiness is the whole question here, and the threshold already
+    # encodes it — a calendar floor adds nothing and can only get in the way.
+    earliest_review_date: 2026-07-26
     status: pending
     action_when_ready: |
       ⚠ CALIBRATION NOTE (set 2026-07-26 from measured accrual, NOT guessed): the
