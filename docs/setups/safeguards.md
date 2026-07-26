@@ -308,7 +308,28 @@ not impossible.
 
 **Known limitations carried forward** (see "Position sizing" section above for detail): staleness gate is weekend-only, no market-holiday calendar (~9 false-positive floor+alert mornings/yr, safe-direction); the fail-loud dedup has a bounded race under the ORB monitor's 5-way concurrency (a handful of duplicate Telegrams possible on the first fallback morning, never a sizing-correctness issue); the offline `backtester/engine.py` / `backtester/tracker.py` sizing copies are UNCHANGED (not one of the 3 identified sizing sites) and will diverge from live sizing if/when used for future regime-replay evidence work.
 
-**Status**: SHIPPED 2026-07-26, flag OFF (no live behavior change). Tests: `tests/test_regime_sizing.py` (25 tests — pure-lookup table, flag-OFF numeric parity, all 4 regime levels fresh, staleness both directions incl. the weekend edge, unrecognized-label floor, fail-loud dedup incl. per-account_mode + next-day reset, both real sizing sites routing through the one shared resolver + threading the caller's `today` rather than an independent clock read, the HTF shadow site, and the briefing display line); full suite 3744 passed. `preflight_datetime_hygiene.py` + `preflight_no_silent_failures.py` both green (baseline unchanged). Advisor-reviewed pre-ship (caught + fixed the naive staleness predicate that would have floored+alerted every morning, and the `today`-threading gap); the fail-loud dedup SQL is untested against a real Postgres (mocked only, inherits `intraday_drawdown`'s precedent — see "Position sizing" section above) — flagged for the operator's call. Awaiting operator review of this SSoT + the flag name before any live flip; the flip itself requires its own shadow-verify (paper ≥3 sessions incl. one label transition) per CHANGE_PROCESS rule 5.
+**Status**: SHIPPED 2026-07-26 flag OFF → **FLIPPED LIVE 2026-07-26 (operator: "flip it")**.
+
+**⚠ CHANGE_PROCESS rule 5 DEVIATION — recorded, not skipped silently.** Rule 5 requires
+"Field-validate before ship to live. Shadow phase or paper-only first," and the paragraph below
+originally specified paper ≥3 sessions incl. one label transition. **That validation was not
+achievable and the requirement was waived by the operator.** Measured 2026-07-26: there are **0
+enabled strategies at `phase='paper'`** (`mi_strategies`: magna53=live, parabolic_short/shadow_orb_5m/
+wick_fill=shadow, 9m_day2/fishhook_v3/flag_continuation=deprecated) and the last paper fill was
+**2026-07-14**, 12 days prior. A paper-only flip would therefore have exercised nothing — it is a
+no-op, not a validation, and waiting on it would have been waiting on an event that cannot occur.
+An account_mode-gated two-stage flip (paper first, live second) was built and then reverted for
+exactly this reason.
+
+**Compensating controls the operator named when ruling** (2026-07-26, on being shown the +22%
+risk/trade increase): the **2% daily-loss limit** and the **tiered drawdown breaker** — "we can adjust
+and we have other protection if portfolio losses mount." Plus: the flip is instantly reversible with
+no code change (`REGIME_SIZING_ENABLED=false` + redeploy), flag-OFF parity is numerically pinned by
+test, and the first live exercise is a single ORB window that can be inspected before the next.
+
+**Watch on first live use**: confirm an actual entry sizes at the regime multiplier (Correcting →
+0.50× base), and that no `sizing_regime_fallback` alert fires — a fallback on a normal morning would
+mean the staleness predicate is wrong in production despite passing the week-long date check. Tests: `tests/test_regime_sizing.py` (25 tests — pure-lookup table, flag-OFF numeric parity, all 4 regime levels fresh, staleness both directions incl. the weekend edge, unrecognized-label floor, fail-loud dedup incl. per-account_mode + next-day reset, both real sizing sites routing through the one shared resolver + threading the caller's `today` rather than an independent clock read, the HTF shadow site, and the briefing display line); full suite 3744 passed. `preflight_datetime_hygiene.py` + `preflight_no_silent_failures.py` both green (baseline unchanged). Advisor-reviewed pre-ship (caught + fixed the naive staleness predicate that would have floored+alerted every morning, and the `today`-threading gap); the fail-loud dedup SQL is untested against a real Postgres (mocked only, inherits `intraday_drawdown`'s precedent — see "Position sizing" section above) — flagged for the operator's call. Awaiting operator review of this SSoT + the flag name before any live flip; the flip itself requires its own shadow-verify (paper ≥3 sessions incl. one label transition) per CHANGE_PROCESS rule 5.
 
 ### 2026-07-24 — FL-2 daily-loss COVERAGE fix: realized losses attributed by CLOSE day, not `alert_date` (operator-signed; coverage-increasing; NO %-threshold change)
 
