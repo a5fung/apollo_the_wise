@@ -112,6 +112,16 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # AND NEED_EXEC (recreate the running broker), else the fix lands in the image but
       # the live apollo-execution stays stale — the LZB silent-dark class.
       agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
+      # scheduler.py + constants.py are the SAME class (found 2026-07-26, #456).
+      # apollo-execution loads scheduler.py and KEEPS 29 EXECUTION_OWNED_JOB_IDS
+      # (stop_ack_timeout_watchdog, morning_stop_refresh, partial_exit_scan,
+      # order_status_reconcile, time_stop_scan, …) — verified in its boot log:
+      # "Job partition: role=execution — kept 29, removed 56". constants.py
+      # carries SERVICE_ROLE + the sizing constants that job path reads. Both
+      # matched the generic market-agent arm below, so a scheduler-only fix
+      # would build into the image and leave the RUNNING apollo-execution stale:
+      # the identical silent-dark class as #324 above, just via a different file.
+      agents/market_intelligence/scheduler.py|agents/market_intelligence/constants.py) NEED_MARKET=1; NEED_EXEC=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
       tests/*|docs/*|*.md|.apollo_open_tasks.json|.githooks/*) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
       # The two KNOWN market-agent-only runtime yamls keep their narrow scope (the
