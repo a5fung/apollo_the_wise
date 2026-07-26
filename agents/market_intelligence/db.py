@@ -6106,12 +6106,21 @@ _PULSE_CRYPTO = [("BTC", "bitcoin"), ("ETH", "ethereum"), ("SOL", "solana")]
 _PULSE_MARKET = ["QQQ", "SPY", "IWM"]
 
 
-async def _asset_returns(conn, table, idcol, idval, datecol, closecol) -> tuple:
+async def _asset_returns(conn, table, idcol, idval, datecol, closecol,
+                         as_of: "date | None" = None) -> tuple:
     """(2wk, 4wk) trailing % return for one asset, vs the nearest close <= today-N days.
-    Table/column names are hardcoded constants (not user input). None on missing data."""
-    latest = await conn.fetchrow(
-        f"SELECT {closecol} AS cl, {datecol} AS d FROM {table} "
-        f"WHERE {idcol}=$1 AND {closecol} IS NOT NULL ORDER BY {datecol} DESC LIMIT 1", idval)
+    Table/column names are hardcoded constants (not user input). None on missing data.
+    `as_of` caps the anchor close at that date — #479 recomputes yesterday's pulse
+    at compose time (no snapshot table needed); None keeps latest-close behavior."""
+    if as_of is not None:
+        latest = await conn.fetchrow(
+            f"SELECT {closecol} AS cl, {datecol} AS d FROM {table} "
+            f"WHERE {idcol}=$1 AND {closecol} IS NOT NULL AND {datecol} <= $2 "
+            f"ORDER BY {datecol} DESC LIMIT 1", idval, as_of)
+    else:
+        latest = await conn.fetchrow(
+            f"SELECT {closecol} AS cl, {datecol} AS d FROM {table} "
+            f"WHERE {idcol}=$1 AND {closecol} IS NOT NULL ORDER BY {datecol} DESC LIMIT 1", idval)
     if not latest:
         return (None, None)
     lc, ld = float(latest["cl"]), latest["d"]
@@ -6127,21 +6136,23 @@ async def _asset_returns(conn, table, idcol, idval, datecol, closecol) -> tuple:
     return (await _past(14), await _past(28))
 
 
-async def get_crypto_vs_market_pulse() -> dict:
+async def get_crypto_vs_market_pulse(as_of: "date | None" = None) -> dict:
     """Cross-asset strength pulse (#493, slice 1 of the Market Strength Map #494): trailing
     2wk/4wk return, crypto (BTC/ETH/SOL from crypto_daily_closes) vs the equity market
     (QQQ/SPY/IWM from mi_daily_closes). Returns {crypto, market, verdict, lead_4w} or {} if
-    unavailable. Verdict = BTC/ETH avg-4wk vs QQQ-4wk. Display-only, no entry impact."""
+    unavailable. Verdict = BTC/ETH avg-4wk vs QQQ-4wk. Display-only, no entry impact.
+    `as_of` recomputes the pulse anchored at that date (#479 delta brief diffs today's
+    verdict against the prior trading day's — recomputed, zero new persistence)."""
     pool = await get_pool()
     try:
         async with pool.acquire() as conn:
             crypto = []
             for sym, cid in _PULSE_CRYPTO:
-                r2, r4 = await _asset_returns(conn, "crypto_daily_closes", "coin_id", cid, "date", "close_usd")
+                r2, r4 = await _asset_returns(conn, "crypto_daily_closes", "coin_id", cid, "date", "close_usd", as_of)
                 crypto.append({"sym": sym, "r2": r2, "r4": r4})
             market = []
             for tk in _PULSE_MARKET:
-                r2, r4 = await _asset_returns(conn, "mi_daily_closes", "ticker", tk, "trade_date", "close")
+                r2, r4 = await _asset_returns(conn, "mi_daily_closes", "ticker", tk, "trade_date", "close", as_of)
                 market.append({"sym": tk, "r2": r2, "r4": r4})
     except Exception as e:  # display-only; a fetch failure omits the section — but AUDIT it, don't drop
         # silently (#493: the pulse vanished from the 7/21 evening brief with only an unfindable warning;
@@ -6160,6 +6171,89 @@ async def get_crypto_vs_market_pulse() -> dict:
         lead = round(sum(ce) / len(ce) - qqq4, 1)
         verdict = "LEADING" if lead >= 3 else ("LAGGING" if lead <= -3 else "IN LINE")
     return {"crypto": crypto, "market": market, "verdict": verdict, "lead_4w": lead}
+
+
+# --- #479 delta-brief substrate (read-only; zero new tables) -------------------
+# Every "yesterday" below is resolved from existing dated tables — never via
+# _resolve_score_date-style latest-fallbacks, which would silently make
+# yesterday == today and zero every diff (the trap the design §2 calls out).
+
+async def get_regime_recent(as_of: "str | date", limit: int = 10) -> list[dict[str, Any]]:
+    """Newest-first regime rows with regime_date <= as_of — today's row, the
+    prior trading row (holiday-proof: it's just the previous ROW), the label
+    streak, and the flips-this-week window all come from this one fetch."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT regime_date, regime, vix, ep_threshold, description
+            FROM mi_market_regime
+            WHERE regime_date <= $1
+            ORDER BY regime_date DESC
+            LIMIT $2
+        """, _to_date(as_of), limit)
+    return [dict(r) for r in rows]
+
+
+async def get_prior_score_date(d: "str | date") -> "date | None":
+    """Most recent mi_stock_scores date STRICTLY before d (None if none).
+    The explicit resolver for the leaders diff — get_rs_leaders' own
+    _resolve_score_date falls back to the LATEST date on a miss, which for a
+    prior-day fetch would silently return TODAY and zero the diff."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date < $1",
+            _to_date(d),
+        )
+
+
+async def get_theme_prior_within(
+    d: "str | date", max_gap_days: int = 4,
+) -> dict[str, dict[str, Any]]:
+    """Per-theme LAST-SEEN row strictly before d, at most max_gap_days back,
+    keyed by name — the #479 theme-diff substrate. Themes legitimately skip
+    days: a strict yesterday-join manufactures ~6.5 phantom 'births'/day
+    (design §1). Callers must additionally guard rs_avg > 0 — a zero prior
+    manufactured a fake +70.6 'move' on 7/24 (compute_theme_movers does this)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        target = _to_date(d)
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (name)
+                name, theme_date, rs_avg, stage, days_active, tickers
+            FROM mi_themes
+            WHERE theme_date < $1 AND theme_date >= $1::date - $2::int
+            ORDER BY name, theme_date DESC
+        """, target, max_gap_days)
+    return {r["name"]: dict(r) for r in rows}
+
+
+async def get_theme_first_seen_count(d: "str | date") -> int:
+    """Themes whose FIRST-EVER mi_themes appearance is on d — the 'seeded'
+    count. Births are counted, never itemized (4.2/day, median birth rs_avg
+    86.3 — born-high is the norm, not news; design §1.2)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        n = await conn.fetchval("""
+            SELECT COUNT(*) FROM (
+                SELECT name, MIN(theme_date) AS first_seen
+                FROM mi_themes GROUP BY name
+            ) t WHERE t.first_seen = $1
+        """, _to_date(d))
+    return int(n or 0)
+
+
+async def get_flag_breaks_count(d: "str | date") -> int:
+    """Count of intraday flag-break detections (mi_flag_breaks, #94 shadow)
+    on date d — the delta brief shows the count when nonzero (/detectors has
+    the detail); 2.5/day but bursty, 26 active days of 90 (design §1.8)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        n = await conn.fetchval(
+            "SELECT COUNT(*) FROM mi_flag_breaks WHERE break_date = $1",
+            _to_date(d),
+        )
+    return int(n or 0)
 
 
 async def get_rs_turners(

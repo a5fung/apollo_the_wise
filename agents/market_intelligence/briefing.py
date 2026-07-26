@@ -218,6 +218,26 @@ def _ep_threshold_context(thresh: int) -> str:
 
 # ── Section formatters ─────────────────────────────────────────────────────────
 
+def _regime_size_multiplier(regime: dict) -> float | None:
+    """DISPLAY-only EP size multiplier (#456) — kept in sync with
+    order_manager._resolve_regime_risk_pct's flag branch so no briefing surface
+    ever shows a multiplier that diverges from what an ORB entry actually sizes
+    at. Factored out of _format_regime_section for #479 (the delta brief needs
+    the same number on its regime lines). Returns None when not computable."""
+    from agents.market_intelligence.constants import REGIME_SIZING_ENABLED
+    vix = regime.get("vix")
+    if REGIME_SIZING_ENABLED:
+        from agents.market_intelligence.constants import regime_risk_multiplier
+        return regime_risk_multiplier(regime.get("regime", "Unknown"))
+    if vix is not None:
+        from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
+        mult = vix_scaled_risk_pct(vix) / RISK_PCT
+        if regime.get("qqq_ema_bullish") is False:
+            mult *= 0.5
+        return mult
+    return None
+
+
 def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     """Compact regime block (#479 2026-07-17: was ~20 lines with every metric
     stated TWICE — the grouped 'why' description AND a full raw re-dump of the
@@ -253,22 +273,13 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         ep_bits.append(f"VIX {vix:.1f}")
     ep_bits.append(f"filter {_ep_threshold_context(ep_thresh)}")
-    # #456: this is DISPLAY only (not a sizing site) — kept in sync with
-    # order_manager._resolve_regime_risk_pct's flag branch so the briefing
-    # never shows a multiplier that diverges from what an ORB entry actually
-    # sizes at. Under REGIME_SIZING_ENABLED the multiplier no longer depends
-    # on VIX, so the line is no longer nested under `if vix is not None` for
-    # that branch (a VIX-null day must not hide it once regime sizing is live).
-    from agents.market_intelligence.constants import REGIME_SIZING_ENABLED
-    if REGIME_SIZING_ENABLED:
-        from agents.market_intelligence.constants import regime_risk_multiplier
-        _mult = regime_risk_multiplier(label)
-        ep_bits.append(f"size ≈{_mult:.2f}×")
-    elif vix is not None:
-        from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
-        _mult = vix_scaled_risk_pct(vix) / RISK_PCT
-        if regime.get("qqq_ema_bullish") is False:
-            _mult *= 0.5
+    # #456: DISPLAY only (not a sizing site) — _regime_size_multiplier stays in
+    # sync with order_manager._resolve_regime_risk_pct's flag branch. Under
+    # REGIME_SIZING_ENABLED the multiplier no longer depends on VIX, so it is
+    # not nested under `if vix is not None` (a VIX-null day must not hide it
+    # once regime sizing is live).
+    _mult = _regime_size_multiplier(regime)
+    if _mult is not None:
         ep_bits.append(f"size ≈{_mult:.2f}×")
     lines.append("  " + " · ".join(ep_bits) + "  ·  `/regime` full matrix")
     return "\n".join(lines)
@@ -848,8 +859,10 @@ def _format_quality_warnings(warnings: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _format_signal_quality_section(summary: dict, section_num: int = 6) -> str:
-    """Format weekly signal quality report (shown on Fridays)."""
+def _format_signal_quality_section(summary: dict, section_num: int | None = 6) -> str:
+    """Format weekly signal quality report (shown on Fridays).
+    section_num=None drops the numeric prefix (#479 delta brief appends this
+    un-numbered on Friday nights)."""
     has_rs = summary.get("rs_avg_1m") is not None
     has_ep = summary.get("ep_total", 0) > 0
 
@@ -857,7 +870,8 @@ def _format_signal_quality_section(summary: dict, section_num: int = 6) -> str:
     if not has_rs and not has_ep:
         return ""
 
-    lines = [f"*{section_num}. SIGNAL QUALITY (30d)*"]
+    prefix = f"{section_num}. " if section_num is not None else ""
+    lines = [f"*{prefix}SIGNAL QUALITY (30d)*"]
 
     rs_avg = summary.get("rs_avg_1m")
     spy_avg = summary.get("spy_avg_1m")
@@ -1013,18 +1027,19 @@ def _format_evening_briefing(
     quality_warnings: list[str] | None = None,
     signal_quality_summary: dict | None = None,
     cooldowns: list[dict] | None = None,
-    sugar_babies: list[dict] | None = None,
-    ninem_anticipations: list[dict] | None = None,
     ep_outcomes: list[dict] | None = None,
     wick_today_count: int = 0,
     wick_today_tickers: list[str] | None = None,
     wick_fill_rate_30d: float | None = None,
     wick_settled_30d: int = 0,
-    cohort_babies: list[dict] | None = None,
     undercut_rallies: list[dict] | None = None,
-    v1_closeout_line: str | None = None,
     eco_map: dict[str, str] | None = None,
 ) -> str:
+    """#479: the MONDAY (weekly reference/anchor) full brief — Tue–Fri render the
+    materiality delta via brief_composer.compose_evening_brief instead. Retired
+    from this signature 2026-07-26 (operator-ruled): the v1.0 closeout line
+    (stale since the 7/24 declaration) and all 9M/sugar-baby params (strategy
+    retired; `/9m` + `/sugarbabies` stay on demand)."""
     # Theme section: use scorecard if RS data available, else legacy format
     if theme_rs_data:
         theme_section = _format_theme_scorecard(
@@ -1049,11 +1064,6 @@ def _format_evening_briefing(
         f"*Apollo Evening Briefing — {briefing_date}*",
         "",
     ]
-
-    # v1.0 close-out countdown (#426, #418 §5) — the anti-idle driving surface.
-    if v1_closeout_line:
-        sections.append(v1_closeout_line)
-        sections.append("")
 
     # Data quality warnings (prepended before section 1 if any)
     if quality_warnings:
@@ -1080,6 +1090,20 @@ def _format_evening_briefing(
     for _sec in (velocity_section, recovery_section, turners_section):
         if _sec:
             sections.append(_sec)
+            sections.append("")
+
+    # #479: EP outcomes recap + Friday signal quality — previously fetched but
+    # silently DISCARDED by this formatter (two of the 11 orphaned params the
+    # design gave homes). The delta brief surfaces them Tue–Fri; the Monday
+    # anchor gets the same sections here.
+    ep_outcomes_section = _format_ep_outcomes_section(ep_outcomes or [], section_num=7)
+    if ep_outcomes_section:
+        sections.append(ep_outcomes_section)
+        sections.append("")
+    if signal_quality_summary:
+        sq_section = _format_signal_quality_section(signal_quality_summary, section_num=8)
+        if sq_section:
+            sections.append(sq_section)
             sections.append("")
 
     cooldown_footer = _format_cooldown_footer(cooldowns or [])
@@ -1132,25 +1156,190 @@ async def _emit_evening_brief_outcome(success: bool, today_str: str, chars: int)
             pass
 
 
+async def _compose_delta_brief(
+    today: date,
+    regime: dict,
+    rs_leaders: list[dict],
+    themes: list[dict],
+    scored_themes: list[dict],
+    velocity: list[dict],
+    turners: list[dict] | None,
+    recovery: list[dict] | None,
+    crypto_pulse: dict,
+    warnings: list[str] | None,
+    cooldowns: list[dict] | None,
+    ep_outcomes: list[dict] | None,
+    wick_today_count: int | None,
+    wick_fill_rate_30d: float | None,
+    wick_settled_30d: int,
+    undercut_rallies: list[dict] | None,
+    signal_quality_summary: dict | None,
+) -> str:
+    """#479 Tue–Fri path: fetch the prior-trading-day substrate (read-only,
+    existing dated tables — zero new persistence) and hand everything to the
+    pure composer. Every prior-side fetch degrades to None on failure so the
+    composer renders an explicit "Δ skipped / fetch failed" line — silence is
+    never ambiguous with "didn't run"."""
+    from agents.market_intelligence.brief_composer import (
+        BriefData, compose_evening_brief, prior_trading_day,
+    )
+    from agents.market_intelligence.db import (
+        get_regime_recent, get_theme_prior_within, get_theme_first_seen_count,
+        get_prior_score_date, get_flag_breaks_count,
+    )
+
+    prior_td = prior_trading_day(today)
+
+    # Prior score date resolved EXPLICITLY (never _resolve_score_date's
+    # latest-fallback, which would make yesterday == today and zero the diff).
+    prior_sd = None
+    try:
+        prior_sd = await get_prior_score_date(today)
+    except Exception as e:
+        logger.warning(f"prior score date fetch failed: {e}")
+
+    results = await asyncio.gather(
+        get_regime_recent(today, limit=10),
+        get_theme_prior_within(today),
+        get_theme_first_seen_count(today),
+        get_crypto_vs_market_pulse(as_of=prior_td),
+        get_flag_breaks_count(today),
+        get_rs_leaders(prior_sd, limit=100) if prior_sd else asyncio.sleep(0),
+        return_exceptions=True,
+    )
+
+    def _ok(value, name):
+        if isinstance(value, BaseException):
+            logger.warning(f"delta-brief fetch '{name}' failed: {value}")
+            return None
+        return value
+
+    regime_history = _ok(results[0], "regime_recent")
+    theme_prior = _ok(results[1], "theme_prior")
+    theme_births = _ok(results[2], "theme_births")
+    crypto_prior = _ok(results[3], "crypto_prior") or {}
+    flag_breaks = _ok(results[4], "flag_breaks")
+    leaders_prior = _ok(results[5], "leaders_prior") if prior_sd else None
+
+    # Prior-day theme MEMBERSHIP (for the unanchored delta) is a same-date
+    # concept: use only rows at the latest prior theme_date.
+    themed_tickers_prior: set | None = None
+    if theme_prior:
+        latest_prior = max(r["theme_date"] for r in theme_prior.values())
+        themed_tickers_prior = set()
+        for r in theme_prior.values():
+            if r["theme_date"] == latest_prior:
+                themed_tickers_prior.update(r.get("tickers") or [])
+
+    themed_tickers_today: set = set()
+    for t in themes:
+        themed_tickers_today.update(t.get("tickers") or [])
+
+    # Attach display descriptions to today's leader rows (deep-jump lines).
+    try:
+        from agents.market_intelligence.universe import get_description
+        for s in rs_leaders:
+            if "desc" not in s:
+                s["desc"] = get_description(s.get("ticker")) or s.get("sector") or ""
+    except Exception as e:  # display garnish only — never block the brief on it
+        logger.warning(f"leader description attach failed: {e}")
+
+    # Cooldowns newly started today (ET day of removed_at).
+    cooldowns_new = 0
+    for c in cooldowns or []:
+        ra = c.get("removed_at")
+        if ra is not None and ra.astimezone(_ET).date() == today:
+            cooldowns_new += 1
+
+    # Rotation clusters (≥2 names per sector — same rule as the Monday section).
+    by_sector: dict[str, int] = {}
+    for s in turners or []:
+        sec = s.get("sector")
+        if sec:
+            by_sector[sec] = by_sector.get(sec, 0) + 1
+    rotation_clusters = sorted(
+        ((k, v) for k, v in by_sector.items() if v >= 2), key=lambda x: -x[1]
+    )
+
+    # RISING qualifying count uses the same display filter as the Monday
+    # section (2 consecutive positive weeks), on the un-capped fetch.
+    velocity_qual = len([
+        s for s in velocity if (s.get("v1w") or 0) > 0 and (s.get("v2w") or 0) > 0
+    ])
+
+    sq_block = None
+    if signal_quality_summary:
+        sq_block = _format_signal_quality_section(signal_quality_summary, section_num=None) or None
+
+    data = BriefData(
+        briefing_date=today,
+        prior_trading_date=prior_td,
+        regime=regime,
+        regime_history=regime_history,
+        size_mult=_regime_size_multiplier(regime),
+        crypto_pulse=crypto_pulse or {},
+        crypto_pulse_prior=crypto_prior,
+        theme_scores=scored_themes,
+        theme_prior=theme_prior,
+        theme_births_today=theme_births,
+        theme_days_active={
+            t["name"]: t.get("days_active") for t in themes
+            if t.get("name") and t.get("days_active") is not None
+        },
+        rs_leaders=rs_leaders,
+        rs_leaders_prior=leaders_prior,
+        prior_leader_depth=100,
+        themed_tickers_today=themed_tickers_today,
+        themed_tickers_prior=themed_tickers_prior,
+        ep_outcomes=ep_outcomes,
+        wick_today_count=wick_today_count,
+        wick_fill_rate_30d=wick_fill_rate_30d,
+        wick_settled_30d=wick_settled_30d,
+        undercut_today_count=len(undercut_rallies) if undercut_rallies is not None else None,
+        flag_breaks_today=flag_breaks,
+        velocity_qual=velocity_qual,
+        recovery_qual=len(recovery) if recovery is not None else None,
+        recovery_top=(recovery[0].get("ticker") if recovery else None),
+        rotation_clusters=rotation_clusters,
+        cooldowns_active=len(cooldowns) if cooldowns is not None else None,
+        cooldowns_new_today=cooldowns_new,
+        quality_block=_format_quality_warnings(warnings) if warnings else None,
+        signal_quality_block=sq_block,
+        is_friday=today.weekday() == 4,
+    )
+    return compose_evening_brief(data)
+
+
 async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
-    Assemble and send the evening briefing (regime + RS + themes + velocity + pullbacks).
+    Assemble and send the evening briefing. #479 (operator-ruled 2026-07-26):
+    Monday = the FULL brief (weekly reference/anchor, legacy section stack);
+    Tue–Fri (and weekend runs) = the materiality DELTA brief vs the prior
+    trading day, composed by brief_composer.compose_evening_brief.
     Returns the briefing text.
     """
     today = _et_today()
     today_str = today.strftime("%Y-%m-%d")
 
+    from agents.market_intelligence.brief_composer import brief_mode
     from agents.market_intelligence.db import get_active_cooldowns as _get_active_cooldowns
+
+    mode = brief_mode(today)
 
     regime, rs_leaders, themes, velocity, pullbacks, turners, recovery, crypto_pulse, fund_flags, prior_theme_scores, warnings, cooldowns = (
         await asyncio.gather(
             get_latest_regime(include_breadth_history=True),
             get_rs_leaders(today_str, limit=30),
             get_today_themes(today_str),
-            get_rs_velocity(today_str, min_rs=40.0, limit=15),
+            # limit=200 (was 15): the delta brief's "Rising N qual" state line
+            # needs an honest qualifying COUNT, not a capped slice (#479); the
+            # Monday RISING section still renders its top-6 only.
+            get_rs_velocity(today_str, min_rs=40.0, limit=200),
             get_ma_pullbacks(today_str),
             get_rs_turners(today_str),
-            get_rs_recovery(today_str),
+            # limit=500 (was 12): "Recovery N qual" is the raw qualifying count
+            # (avg ~76/day, design §1.6); Monday's section still shows top-10.
+            get_rs_recovery(today_str, limit=500),
             get_crypto_vs_market_pulse(),
             get_fundamental_flags(today_str),
             get_prior_theme_scores(today_str),
@@ -1184,8 +1373,19 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     # pull, 5 PM ET) before this job (8 PM ET); unmapped names degrade to the
     # ❔ footnote. load_ecosystem_assignments itself degrades to {} on any DB
     # failure → _format_theme_scorecard falls back to the legacy stage view.
-    from agents.market_intelligence.theme_ecosystems import load_ecosystem_assignments
-    eco_map = await load_ecosystem_assignments()
+    # #479: only the Monday full brief renders the ecosystem scorecard — the
+    # delta brief diffs at THEME level (ecosystem grouping is presentational
+    # and mi_theme_ecosystems is current-state-only / undiffable, design §2).
+    eco_map: dict[str, str] = {}
+    if mode == "full":
+        from agents.market_intelligence.theme_ecosystems import load_ecosystem_assignments
+        eco_map = await load_ecosystem_assignments()
+
+    # Scored themes (trimmed-mean comp per theme) — the delta brief's theme
+    # levels AND the theme tweet both use this; computed once here.
+    scored_themes: list[dict] = []
+    if theme_rs_data and themes:
+        scored_themes, _ = _compute_scored_themes(themes, theme_rs_data, prior_theme_scores or {})
 
     # Weekly signal quality section (Fridays only: weekday 4)
     signal_quality_summary = None
@@ -1196,42 +1396,22 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         except Exception as e:
             logger.warning(f"Signal quality summary failed: {e}")
 
-    # 9M Sugar Babies — fetched separately to avoid disrupting the positional gather tuple
-    sugar_babies: list[dict] = []
-    try:
-        from agents.market_intelligence.db import get_eod_9m_sugar_babies
-        sugar_babies = await get_eod_9m_sugar_babies(today_str)
-    except Exception as e:
-        logger.warning(f"9M sugar babies fetch failed: {e}")
+    # 9M / sugar-baby sections: REMOVED entirely (#479, operator-ruled
+    # 2026-07-26 — strategy retired; `/9m` + `/sugarbabies` stay on demand).
+    # v1.0 closeout line: RETIRED (#479 — stale since the 7/24 declaration).
 
-    # Persistent Sugar Babies cohort (Pradeep-class — ≥3 9M EOD prints / 180d)
-    cohort_babies: list[dict] = []
-    try:
-        from agents.market_intelligence.db import get_sugar_babies_cohort_latest
-        cohort_babies = await get_sugar_babies_cohort_latest(limit=10)
-    except Exception as e:
-        logger.warning(f"Sugar babies cohort fetch failed: {e}")
-
-    # U&R (Undercut & Rally, #98) — today's detections for the quiet roundup
-    # (separate fetch like sugar_babies to avoid disrupting the positional gather)
-    undercut_rallies: list[dict] = []
+    # U&R (Undercut & Rally, #98) — today's detections. None = fetch FAILED
+    # (the delta brief must say "fetch failed", never fake a quiet zero).
+    undercut_rallies: list[dict] | None = None
     try:
         from agents.market_intelligence.db import get_undercut_rallies
         undercut_rallies = await get_undercut_rallies(today_str)
     except Exception as e:
         logger.warning(f"U&R fetch failed: {e}")
 
-    # 9M anticipation-only alerts — surface silent pace-projected alerts so nothing goes unseen
-    ninem_anticipations: list[dict] = []
-    try:
-        from agents.market_intelligence.db import get_today_9m_ep_alerts
-        all_9m = await get_today_9m_ep_alerts(today_str)
-        ninem_anticipations = [a for a in all_9m if a.get("is_anticipation")]
-    except Exception as e:
-        logger.warning(f"9M anticipation fetch failed: {e}")
-
-    # EP outcomes for today — every HIGH detected should have a terminal state
-    ep_outcomes: list[dict] = []
+    # EP outcomes for today — every HIGH detected should have a terminal state.
+    # None = fetch failed (distinct from a genuine zero-EP day).
+    ep_outcomes: list[dict] | None = None
     try:
         from agents.market_intelligence.db import get_ep_outcomes
         all_outcomes = await get_ep_outcomes(days_back=1)
@@ -1239,8 +1419,8 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"EP outcomes fetch failed: {e}")
 
-    # Wick Watch (P22) — today's count + 30d fill rate
-    wick_today_count = 0
+    # Wick Watch (P22) — today's count + 30d fill rate. Count None = fetch failed.
+    wick_today_count: int | None = None
     wick_today_tickers: list[str] = []
     wick_fill_rate_30d: float | None = None
     wick_settled_30d = 0
@@ -1258,53 +1438,54 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"Wick candidates fetch failed: {e}")
 
-    # v1.0 close-out countdown (#426, #418 §5) — one line, computed from DB
-    # ground truth. Guarded: a failure here must NEVER break the briefing.
-    v1_closeout_line: str | None = None
-    try:
-        from scripts.v1_closeout_status import compute_and_render
-        _pool = await get_pool()
-        async with _pool.acquire() as _conn:
-            v1_closeout_line = await compute_and_render(_conn, today=today)
-    except Exception as e:
-        logger.warning(f"v1.0 closeout status failed: {e}")
-
-    text = _format_evening_briefing(
-        regime=regime,
-        rs_leaders=rs_leaders,
-        themes=themes,
-        velocity=velocity,
-        pullbacks=pullbacks,
-        turners=turners,
-        recovery=recovery,
-        crypto_pulse=crypto_pulse,
-        briefing_date=today_str,
-        fund_flags=fund_flags,
-        theme_rs_data=theme_rs_data,
-        prior_theme_scores=prior_theme_scores,
-        quality_warnings=warnings,
-        signal_quality_summary=signal_quality_summary,
-        cooldowns=cooldowns,
-        sugar_babies=sugar_babies,
-        ninem_anticipations=ninem_anticipations,
-        ep_outcomes=ep_outcomes,
-        wick_today_count=wick_today_count,
-        wick_today_tickers=wick_today_tickers,
-        wick_fill_rate_30d=wick_fill_rate_30d,
-        wick_settled_30d=wick_settled_30d,
-        cohort_babies=cohort_babies,
-        undercut_rallies=undercut_rallies,
-        v1_closeout_line=v1_closeout_line,
-        eco_map=eco_map,
-    )
+    if mode == "delta":
+        text = await _compose_delta_brief(
+            today=today,
+            regime=regime,
+            rs_leaders=rs_leaders,
+            themes=themes,
+            scored_themes=scored_themes,
+            velocity=velocity,
+            turners=turners,
+            recovery=recovery,
+            crypto_pulse=crypto_pulse,
+            warnings=warnings,
+            cooldowns=cooldowns,
+            ep_outcomes=ep_outcomes,
+            wick_today_count=wick_today_count,
+            wick_fill_rate_30d=wick_fill_rate_30d,
+            wick_settled_30d=wick_settled_30d,
+            undercut_rallies=undercut_rallies,
+            signal_quality_summary=signal_quality_summary,
+        )
+    else:
+        text = _format_evening_briefing(
+            regime=regime,
+            rs_leaders=rs_leaders,
+            themes=themes,
+            velocity=velocity,
+            pullbacks=pullbacks,
+            turners=turners,
+            recovery=recovery,
+            crypto_pulse=crypto_pulse,
+            briefing_date=today_str,
+            fund_flags=fund_flags,
+            theme_rs_data=theme_rs_data,
+            prior_theme_scores=prior_theme_scores,
+            quality_warnings=warnings,
+            signal_quality_summary=signal_quality_summary,
+            cooldowns=cooldowns,
+            ep_outcomes=ep_outcomes,
+            wick_today_count=wick_today_count or 0,
+            wick_today_tickers=wick_today_tickers,
+            wick_fill_rate_30d=wick_fill_rate_30d,
+            wick_settled_30d=wick_settled_30d,
+            undercut_rallies=undercut_rallies,
+            eco_map=eco_map,
+        )
 
     success = await send_telegram_message(text, chat_id)
     await _emit_evening_brief_outcome(success, today_str, len(text))
-
-    # Compute scored themes for Twitter theme tweet
-    scored_themes = []
-    if theme_rs_data and themes:
-        scored_themes, _ = _compute_scored_themes(themes, theme_rs_data, prior_theme_scores or {})
 
     # Send RS leaders chart mosaic + theme table image + post to Twitter/X
     mosaic_bytes = None

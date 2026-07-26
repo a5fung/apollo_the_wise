@@ -654,45 +654,21 @@ async def test_briefing_wire_survives_computation_exception(monkeypatch):
     assert v1_closeout_line is None  # guard swallowed it, did not raise
 
 
-def test_send_evening_briefing_wraps_v1_closeout_in_try_except():
-    """Structural pin (mirrors TestBriefingUsesGather in test_recent_changes.py):
-    the v1_closeout_status call inside send_evening_briefing's source must sit
-    inside a try/except that logs rather than propagates, so a computation bug
-    can never take down the whole evening briefing."""
+def test_v1_closeout_line_retired_from_evening_briefing():
+    """#479 (operator-ruled 2026-07-26): the v1.0 closeout line is RETIRED from
+    the evening brief — stale since the 7/24 v1.0 declaration. The compute
+    module keeps its own tests above (history / ad-hoc use); the brief must
+    neither call it nor accept the parameter anymore."""
     import inspect
 
     from agents.market_intelligence import briefing
 
     src = inspect.getsource(briefing.send_evening_briefing)
-    assert "v1_closeout_status" in src
-    assert "compute_and_render" in src
-
-    # Isolate the v1-closeout block and confirm it's inside its own try/except
-    # whose except body logs (not just `pass`/silent).
-    idx = src.index("compute_and_render")
-    block = src[max(0, idx - 400):idx + 200]
-    assert "try:" in block
-    assert "except Exception" in block
-    assert "logger.warning" in block
-
-
-def test_format_evening_briefing_accepts_v1_closeout_line_param():
-    """The formatter must accept + surface the line (consolidate-surfaces rule:
-    no new command/message, just a new param on the existing formatter)."""
-    import inspect
-
-    from agents.market_intelligence import briefing
+    assert "v1_closeout_status" not in src
+    assert "compute_and_render" not in src
 
     sig = inspect.signature(briefing._format_evening_briefing)
-    assert "v1_closeout_line" in sig.parameters
-
-    text = briefing._format_evening_briefing(
-        regime={"regime": "Unknown", "ep_threshold": 70},
-        rs_leaders=[], themes=[], velocity=[], pullbacks=[],
-        briefing_date="2026-07-06",
-        v1_closeout_line="\U0001F3C1 v1.0: FL-1 3/10 · blocking 20 open · decl ~7/20",
-    )
-    assert "FL-1 3/10" in text
+    assert "v1_closeout_line" not in sig.parameters
 
 
 def test_render_line_is_markdown_entity_safe_for_all_gate_modes():
