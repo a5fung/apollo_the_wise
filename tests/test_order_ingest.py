@@ -1,6 +1,8 @@
 """#184(b) — broker-order INGEST (ADR 0008 inc-2b). Pins the safety-critical behavior of the DARK
 mutation module: COID parse/validate truth table, the FAIL-CLOSED toggle, R1 repair-when-live vs
-dry-run-writes-nothing vs no-overwrite-a-live-pointer, the per-cycle cap, and foreign-COID-never.
+dry-run-writes-nothing vs no-overwrite-a-live-pointer, the per-cycle cap, foreign-COID-never, and
+the cleanup-race guards (CLSK 2026-07-14: a row mid-10:00-ORB-cleanup must never be read as an
+untracked order/position — while a genuinely untracked one must STILL propose).
 """
 import sys
 from datetime import date
@@ -80,11 +82,32 @@ def _dbrow(ticker, stop_order_id, trade_id=1):
 
 def _wire_conn(conn):
     """Route conn.fetchval by SQL: strategy exists (mi_strategies) / not-already-seen (mi_audit_log).
-    R1's live write goes through the mocked order_manager.set_stop_order_id, not conn."""
+    R1's live write goes through the mocked order_manager.set_stop_order_id, not conn.
+    conn.fetch defaults to [] (no claimed order ids, no recently-closed tickers) — the race-guard
+    tests override it via _wire_fetch."""
     async def _fv(sql, *a):
         return True if "mi_strategies" in sql else None
     conn.fetchval = AsyncMock(side_effect=_fv)
     conn.execute = AsyncMock(return_value="OK")
+    conn.fetch = AsyncMock(return_value=[])
+
+
+def _wire_fetch(conn, *, trade_refs=None, live_order_ids=None, recently_closed=None):
+    """Route conn.fetch by SQL shape onto the three race-guard reads:
+    - coverage_drift._fetch_all_known_order_ids (any-status entry/stop pointers) ← trade_refs
+      [(entry_id, stop_id), ...] — the REAL shared helper runs against this mock, so the test
+      exercises the exact set D2 detection uses;
+    - mi_live_orders.alpaca_order_id ← live_order_ids;
+    - recently-closed tickers (closed_at window) ← recently_closed."""
+    async def _f(sql, *a):
+        if "mi_live_orders" in sql:
+            return [{"alpaca_order_id": i} for i in (live_order_ids or [])]
+        if "closed_at" in sql:
+            return [{"ticker": t} for t in (recently_closed or [])]
+        if "entry_order_id" in sql:
+            return [{"entry_order_id": e, "stop_order_id": s} for e, s in (trade_refs or [])]
+        return []
+    conn.fetch = AsyncMock(side_effect=_f)
 
 
 async def _run(conn, mode, db_rows, open_orders, positions=None, ssid_applied=True):
@@ -205,3 +228,101 @@ async def test_r2_foreign_coid_never_proposed():
     n, fv, audit, tg, ssid = await _run(conn, "live_r1", [], [buy])
     assert n == 0
     assert not any(c.args[0] == oi.INGEST_PROPOSED for c in audit.await_args_list)
+
+
+# ─────────────── cleanup-race guards (the CLSK 2026-07-14 false positive) ───────────────
+def _buy(oid="96c48f58", ticker="CLSK", coid="apollo_live_magna53_CLSK_1784035864776"):
+    return {"id": oid, "symbol": ticker, "side": "buy", "type": "stop_limit",
+            "client_order_id": coid, "stop_price": 15.1, "qty": 44}
+
+
+@pytest.mark.asyncio
+async def test_r2_clsk_cleanup_race_not_proposed():
+    """The CLSK 2026-07-14 10:00:00 scenario, verbatim from prod: the 10:00 ORB cleanup flipped
+    trade 257 order_placed→cancelled at .324s while the broker order (same id, existed since
+    9:31) sat pending_cancel — so db_rows (OPEN only) no longer lists CLSK, but the cancelled
+    row STILL references the order id. Must NOT propose reconstruction."""
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    _wire_fetch(conn, trade_refs=[("96c48f58", "c5f23062")])  # the cancelled row's pointers
+    n, fv, audit, tg, ssid = await _run(conn, "dry_run", [], [_buy()])
+    assert n == 0
+    assert not any(c.args[0] == oi.INGEST_PROPOSED for c in audit.await_args_list)
+    tg.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_r2_nulled_trade_pointer_still_claimed_via_live_orders():
+    """The cleanup's prior-fills branch (Day-1 re-entry) NULLs mi_live_trades.entry_order_id —
+    the any-status trades set loses the id, but the mi_live_orders row written at submission
+    survives and must still claim it. Must NOT propose."""
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    _wire_fetch(conn, trade_refs=[], live_order_ids=["96c48f58"])
+    n, fv, audit, tg, ssid = await _run(conn, "dry_run", [], [_buy()])
+    assert n == 0
+    assert not any(c.args[0] == oi.INGEST_PROPOSED for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_r2_genuinely_untracked_still_proposed_alongside_claims():
+    """The guard must not blind the detector: with OTHER orders claimed, an order referenced
+    NOWHERE (the a41e7c6a submit-crash class writes neither table) still proposes."""
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    _wire_fetch(conn, trade_refs=[("OTHER_ENTRY", "OTHER_STOP")], live_order_ids=["OTHER_ORD"])
+    n, fv, audit, tg, ssid = await _run(conn, "dry_run", [], [_buy()])
+    assert n == 1
+    props = [c for c in audit.await_args_list if c.args[0] == oi.INGEST_PROPOSED]
+    assert props and '"class": "r2"' in props[0].args[2]
+    ssid.assert_not_awaited()  # still proposal-only — no mutation path
+
+
+@pytest.mark.asyncio
+async def test_r3i_mid_close_race_not_proposed():
+    """R3i shares the race class (no order id to match, so the claim is the recently-closed
+    ticker): a broker position whose row closed inside the claim window is a close transition
+    racing the scan, NOT an untracked position. Must NOT propose."""
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    _wire_fetch(conn, recently_closed=["NVDA"])
+    pos = {"symbol": "NVDA", "qty": 10, "avg_entry_price": 500.0}
+    n, fv, audit, tg, ssid = await _run(conn, "dry_run", [], [], positions=[pos])
+    assert n == 0
+    assert not any(c.args[0] == oi.INGEST_PROPOSED for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_r3i_unrelated_recent_close_does_not_blind():
+    """A recent close on a DIFFERENT ticker claims nothing — the untracked NVDA position still
+    proposes (the claim is per-ticker, and it expires; delayed, never blinded)."""
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    _wire_fetch(conn, recently_closed=["OTHR"])
+    pos = {"symbol": "NVDA", "qty": 10, "avg_entry_price": 500.0}
+    n, fv, audit, tg, ssid = await _run(conn, "dry_run", [], [], positions=[pos])
+    assert n == 1
+    assert any(c.args[0] == oi.INGEST_PROPOSED and '"class": "r3i"' in c.args[2]
+               for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_r1_behavior_unchanged_by_race_guards():
+    """R1 is LIVE — its matcher keys on rows PRESENT in db_rows (a mid-cleanup row simply drops
+    out and R1 takes no action), so the race guards must not touch it: a null-pointer repair
+    still routes through the authorized writer even when the claim sets are populated."""
+    from tests.conftest import make_mock_pool
+    _, conn = make_mock_pool()
+    _wire_conn(conn)
+    _wire_fetch(conn, trade_refs=[("SOME_ENTRY", "STOP123")], live_order_ids=["STOP123"],
+                recently_closed=["AAPL"])
+    orders = [_stop("STOP123", "AAPL", "apollo_live_magna53_AAPL_1715450123456")]
+    n, fv, audit, tg, ssid = await _run(conn, "live_r1", [_dbrow("AAPL", None)], orders)
+    assert n == 1
+    ssid.assert_awaited_once()
+    assert any(c.args[0] == oi.INGEST_RECONSTRUCTED for c in audit.await_args_list)

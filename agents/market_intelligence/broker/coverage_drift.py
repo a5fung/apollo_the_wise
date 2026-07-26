@@ -119,7 +119,13 @@ async def _fetch_all_known_order_ids(conn, account_mode: str) -> set[str]:
     Read-only; unbounded on purpose (no time window) — a recency cut would
     reintroduce the false positive for orders referenced by older rows. Cheap:
     two columns off one mode's rows (idx_live_trades_account_mode), and the
-    table is a personal trade log, not market data."""
+    table is a personal trade log, not market data.
+
+    ⚠ SECOND CONSUMER: order_ingest._fetch_claimed_order_ids reuses this as
+    R2's tracking set — the SAME cleanup-window race false-fired D2 and R2
+    together on CLSK 2026-07-14, and sharing the helper is what keeps
+    detection's and ingest's notions of "tracked" from drifting apart again.
+    Changes here change ingest's race guard too."""
     rows = await conn.fetch(
         """
         SELECT entry_order_id, stop_order_id

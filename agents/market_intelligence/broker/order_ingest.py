@@ -214,13 +214,82 @@ async def _upsert_stop_order(conn, trade_id: int, order: dict) -> None:
 
 
 # ─────────────────────────── R2 / R3i — dry-run proposals only ────────────────────────
+_RECENT_CLOSE_CLAIM_MINUTES = 30  # ≥2 reconcile cycles — a genuine gap persists and re-proposes
+
+
+async def _fetch_claimed_order_ids(conn, account_mode: str) -> set[str]:
+    """Every broker order id the DB mirror references ANYWHERE — R2's "is this order actually
+    untracked?" set. Matching OPEN rows only is the CLSK 2026-07-14 false positive: the 10:00 ET
+    ORB-window cleanup (and the 4:05 PM EOD cleanup, /pause, and every other DB-side status
+    transition) flips a row out of the open set while the broker order sits in its cancel window,
+    and the reconcile cycle — cron-collided at the same second — reads "broker has it, DB doesn't"
+    for a row that had existed since 9:31 under the same order id. Two sources, both ANY-status:
+
+      - mi_live_trades entry/stop pointers, any status — reuses coverage_drift's
+        _fetch_all_known_order_ids, the operator-signed D2 fix for the SAME race (0c4e358; D2 and
+        R2 false-fired together on CLSK, only D2 got fixed). Shared helper on purpose: detection's
+        and ingest's tracking sets can never drift apart again.
+      - mi_live_orders.alpaca_order_id — covers the one path that NULLs a trades pointer: the
+        cleanup's prior-fills branch (order_manager.cancel_unfilled_entries, Day-1 re-entry
+        pattern) sets entry_order_id=NULL, but the mi_live_orders row written at submission
+        survives and still claims the id. Mode-unfiltered on purpose (ids are unique broker UUIDs;
+        an id we recorded in ANY mode is not "untracked" in the reconstruction sense).
+
+    A genuinely untracked order (referenced NOWHERE — the a41e7c6a submit-crash class writes
+    neither table) is unaffected and still proposes. Cheap: two-column reads off a personal trade
+    log, once per 15-min cycle."""
+    from agents.market_intelligence.broker.coverage_drift import _fetch_all_known_order_ids
+    claimed = await _fetch_all_known_order_ids(conn, account_mode)
+    rows = await conn.fetch(
+        "SELECT alpaca_order_id FROM mi_live_orders WHERE alpaca_order_id IS NOT NULL")
+    claimed.update(r["alpaca_order_id"] for r in rows)
+    return claimed
+
+
+async def _fetch_recently_closed_tickers(conn, account_mode: str) -> set[str]:
+    """R3i's guard for the same race class. Positions carry NO broker order id, so R2's
+    exact-identity match is unavailable; the nearest identity is "a row for this (ticker, mode)
+    just left the open set". Any close transition (stop-fill finalize, full exit, sync_positions)
+    can race the scan exactly like the 10:00 cleanup raced CLSK: broker position snapshot taken
+    before the row flipped 'closed' → the open-rows check reads a tracked position as untracked.
+    A row whose closed_at is inside the claim window claims its ticker; the claim EXPIRES after
+    _RECENT_CLOSE_CLAIM_MINUTES, so a position that genuinely persists (mirror truly wrong) is
+    proposed 1-2 cycles later — DELAYED, never blinded — and D1 detection (unchanged, keyed on
+    open rows) already pages it in real time regardless.
+
+    On 'cancelled' rows: MOSTLY they set no closed_at (measured 2026-07-26: 41 of 45 NULL), which
+    is the sensible shape — a cancelled unfilled entry holds no position, so it should not claim
+    one. The 4 exceptions do claim their ticker for the window. That is deliberate-safe rather
+    than a bug: an extra claim only DELAYS a dry-run proposal by a cycle, whereas a missing claim
+    is the false positive this guard exists to stop. Do not "fix" it by filtering status without
+    re-checking that direction.
+
+    NOW() and closed_at both come from the DB clock — no client tz involved (the recurring
+    tz-bug class)."""
+    rows = await conn.fetch(
+        """SELECT DISTINCT ticker FROM mi_live_trades
+           WHERE account_mode = $1 AND closed_at > NOW() - make_interval(mins => $2)""",
+        account_mode, _RECENT_CLOSE_CLAIM_MINUTES)
+    return {r["ticker"] for r in rows}
+
+
 async def _handle_r2_r3i(conn, account_mode: str, mode: str, open_orders: list, positions: list,
                          db_rows: list) -> int:
     """R2 (untracked apollo BUY entry) + R3i (untracked position) — reconstruction. Today these are
     PROPOSAL-ONLY (dry-run): the reconstruction contract (§3) is emitted for operator review; the
     live write waits for real observations + sign-off (spec: don't build authority for a
-    zero-observation case). Returns the count proposed."""
+    zero-observation case). Returns the count proposed.
+
+    Race-safety (the CLSK 2026-07-14 false R2): "untracked" is decided against the tickers of OPEN
+    rows AND the order ids of ANY-status rows (_fetch_claimed_order_ids) — a row mid-transition
+    (10:00/EOD cleanup, /pause, stop-fill finalize) still claims its order id, so a DB-side status
+    flip racing the scan can never be read as a mirror gap. R3i, which has no order id to match,
+    uses the recently-closed-ticker claim (_fetch_recently_closed_tickers) instead. The in-flight
+    submission window is already safe: submit_entry mutates an EXISTING row whose pre-submission
+    status ('confirmed') is in OPEN_POSITION_STATUSES, so tracked_tickers covers it."""
     tracked_tickers = {r["ticker"] for r in db_rows}
+    claimed_order_ids = await _fetch_claimed_order_ids(conn, account_mode)
+    recently_closed = await _fetch_recently_closed_tickers(conn, account_mode)
     acted = 0
 
     # R2 — broker apollo BUY orders (unfilled) with no open DB row for the ticker
@@ -233,6 +302,11 @@ async def _handle_r2_r3i(conn, account_mode: str, mode: str, open_orders: list, 
             continue
         ticker = o["symbol"]
         if ticker in tracked_tickers:
+            continue
+        if o["id"] in claimed_order_ids:
+            # The mirror references this exact order id somewhere (any status) — a row
+            # mid-cleanup/mid-close, NOT an untracked order (CLSK 2026-07-14). Not a finding;
+            # no audit row (same silence as the tracked_tickers skip above).
             continue
         parsed = parse_coid(coid)
         if not parsed:
@@ -261,6 +335,11 @@ async def _handle_r2_r3i(conn, account_mode: str, mode: str, open_orders: list, 
             return acted
         ticker = p.get("symbol")
         if not ticker or ticker in tracked_tickers:
+            continue
+        if ticker in recently_closed:
+            # A row for this ticker closed inside the claim window — a close transition racing
+            # the scan (the CLSK race class), not an untracked position. The claim expires in
+            # _RECENT_CLOSE_CLAIM_MINUTES; a position that genuinely persists proposes then.
             continue
         sig = _signature(account_mode, "r3", ticker, None)
         if await _already_seen(conn, sig):
