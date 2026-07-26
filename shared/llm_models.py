@@ -69,6 +69,12 @@ SYNTHESIS_MODEL = SONNET
 # with the flip (judge timeout 15->25s; ep_detector post-loop 60->110s) —
 # Opus is slower and a tight timeout converts quality into fail-open noise.
 JUDGE_MODEL = OPUS
+# Ensemble-divergence SHADOW 2nd opinion (#301, ADR 0011 sibling — zero-authority
+# MONITOR, never a grade input). Deliberately SONNET, not OPUS: the point is an
+# INDEPENDENT second read on the JUDGE_MODEL verdict, so it must differ in
+# model/tier from JUDGE_MODEL, not just be a cheaper rerun of the same model.
+# Also cheap — ~2-5 calls/day expected (HIGH-tier verdicts only).
+JUDGE_DIVERGENCE_MODEL = SONNET
 # Grounded-summary catalyst grade (#190 — Haiku confabulated on raw headlines)
 GROUNDED_GRADE_MODEL = SONNET
 # Deterministic-adjacent materiality assessment (catalyst_materiality.py)

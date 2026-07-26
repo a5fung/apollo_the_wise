@@ -3958,6 +3958,24 @@ async def _coverage_probe_job():
     await run_coverage_probe(et_today())
 
 
+async def _theme_axis_co_move_refresh_job():
+    """#329 STEP-0 — EOD recompute of the theme-axis shadow's INDEPENDENT co-movement check
+    for TODAY's themed rows. The shadow writer rides the 7:00–10:00 AM EP scan, when today's
+    mi_daily_closes rows don't exist yet (the 17:00 nightly pull ingests them) — so the live
+    path logged co_moving=NULL on every row, permanently; the #367 health read's ~90%
+    not-computable was largely this instrumentation artifact, not signal absence. SHADOW:
+    writes ONLY mi_theme_axis_shadow's three co-movement columns + mi_audit_log; the theme
+    cohort is re-derived STRICTLY-PRIOR (no lookahead, no born-today-theme circularity — see
+    refresh_co_movement_for_date's docstring). Never raises past the wrapper."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import get_pool
+    from agents.market_intelligence.theme_axis_shadow import refresh_co_movement_for_date
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        out = await refresh_co_movement_for_date(conn, et_today())
+    logger.info(f"theme-axis co-movement EOD refresh: {out}")
+
+
 async def _chart_axis_shadow_weekly_digest_job():
     """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. RE-RENDERS
     each delta's chart from the audit row's ticker+alert_date (render is deterministic — no saved-PNG
@@ -5028,6 +5046,20 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_coverage_probe_job, "coverage_probe"),
         CronTrigger(hour=17, minute=55, day_of_week="mon-fri", timezone="America/New_York"),
         id="coverage_probe",
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # #329 STEP-0 theme-axis co-movement EOD refresh: 5:58 PM ET mon-fri — same dependency
+    # the 17:55 coverage probe rides (the 17:00 nightly pull must have ingested TODAY's
+    # mi_daily_closes). The intraday shadow writer can never compute same-day co-movement
+    # (closes don't exist at scan time), so without this the independent check beside the
+    # structural attributor stays permanently NULL on the live path. Shadow-table-only
+    # writes (mi_theme_axis_shadow + mi_audit_log) — never a grade/theme/trade table.
+    _scheduler.add_job(
+        audit_wrap(_theme_axis_co_move_refresh_job, "theme_axis_co_move_refresh"),
+        CronTrigger(hour=17, minute=58, day_of_week="mon-fri", timezone="America/New_York"),
+        id="theme_axis_co_move_refresh",
         replace_existing=True,
         misfire_grace_time=900,
     )

@@ -1188,6 +1188,38 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS co_moving BOOLEAN;
         """)
 
+        # ── Theme-relevance label cohort (#329 STEP-0 part 3 → labeled at #368) ──────────
+        # SHADOW/TELEMETRY ONLY — the themeless-winner-INCLUSIVE cohort seed for the
+        # operator's theme-relevance ground-truth labeling (#368); the #335 flip gate is
+        # grade-CORRECTNESS over this cohort. THIN by design: identity + the deterministic
+        # enrolment stratum (theme_axis_shadow.classify_label_stratum) + the outcome numbers
+        # that JUSTIFIED enrolment (the selection rule's audit trail) + the operator's label
+        # fields. Everything else (attribution signals, judge fire_axes, theme heat) JOINS at
+        # read time from mi_theme_axis_shadow / mi_ep_alerts on (ticker, alert_date) — no
+        # snapshot copies to go stale (the EOD co-movement refresh UPDATES the shadow table
+        # after seeding could have copied it). Label vocabulary is deliberately UNCONSTRAINED
+        # TEXT — the labeling methodology is the operator's call (#368, THE LINE); this table
+        # owns only the COHORT. Seeder: scripts/seed_theme_relevance_cohort.py (idempotent;
+        # its upsert never overwrites a row the operator has already labeled).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_relevance_cohort (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                stratum TEXT NOT NULL,
+                enrol_fwd_5d_pct FLOAT,
+                enrol_n_sessions_5d INT,
+                seeded_at TIMESTAMPTZ DEFAULT NOW(),
+                operator_label TEXT,
+                operator_note TEXT,
+                labeled_at TIMESTAMPTZ,
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_relevance_cohort_unlabeled
+                ON mi_theme_relevance_cohort(alert_date DESC)
+                WHERE operator_label IS NULL;
+        """)
+
         # ── Structure-axis shadow (#330, ADR 0016) — meta-rubric structure-axis measurement
         # scaffold, the #329 child axis 2 of 3 (theme #328 · structure #330 · gap-alignment #331).
         # SHADOW ONLY: logs, per scored EP HIGH/MODERATE, the 3 AS-OF (no-lookahead) structure
@@ -1225,6 +1257,40 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_structure_axis_shadow_date
                 ON mi_structure_axis_shadow(alert_date DESC);
+        """)
+
+        # ── Judge ensemble-divergence SHADOW (#301) — zero-authority 2nd-model monitor ──
+        # APPEND-ONLY (unlike the axis shadows above, which upsert latest-scan-wins): one
+        # row per (ticker, alert_date) HIGH-tier judge verdict that got a 2nd opinion — the
+        # caller's once-per-ticker-per-day dedupe guard (ep_detector._audit_dedupe_check)
+        # keeps it at one row/day per ticker in practice, but this table intentionally has
+        # no UNIQUE constraint (a genuine re-alert on the same ticker+date, e.g. a corrected
+        # catalyst re-scored later, should accrue a NEW comparison row, not silently
+        # overwrite the earlier one — divergence history is the point of the table).
+        # ZERO AUTHORITY (THE LINE): written by judge_divergence.py only, NEVER read by
+        # any grade/entry/exit path — read only by the weekly review digest line
+        # (system_review.py._judge_divergence_section) and ad-hoc operator review.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_judge_divergence (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                primary_model TEXT NOT NULL,
+                primary_tier TEXT,
+                primary_grade TEXT,
+                primary_direction TEXT,
+                primary_confidence FLOAT,
+                secondary_model TEXT NOT NULL,
+                secondary_tier TEXT,
+                secondary_grade TEXT,
+                secondary_direction TEXT,
+                secondary_confidence FLOAT,
+                secondary_rationale TEXT,
+                agree BOOLEAN NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_judge_divergence_date
+                ON mi_judge_divergence(alert_date DESC);
         """)
 
         # ── Coverage probe (S2, EP↔theme coverage loop 2026-07-13) ────────────────────
@@ -6842,6 +6908,9 @@ async def purge_old_data() -> dict[str, int]:
     - mi_ep_catalyst_metrics: 180 days (covers B6 backtests against
       methodology changes; raw corpus columns ~50KB/row, ~15MB/month
       ingest — 6mo window holds ~90MB which is trivial on Hetzner)
+    - mi_judge_divergence: 180 days (#301 — ~2-5 rows/day, matches the
+      mi_ep_catalyst_metrics window: enough history for the >=30-row gated
+      divergence-rate review without unbounded append-only growth)
 
     Returns dict with row counts deleted per table.
     """
@@ -6866,6 +6935,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_flag_breaks": today - timedelta(days=365),
             "mi_stocks_in_play": today - timedelta(days=180),
             "mi_ep_catalyst_metrics": today - timedelta(days=180),
+            "mi_judge_divergence": today - timedelta(days=180),
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
@@ -6882,6 +6952,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_flag_breaks": "break_date",
             "mi_stocks_in_play": "entry_date",
             "mi_ep_catalyst_metrics": "alert_date",
+            "mi_judge_divergence": "alert_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())
@@ -6899,6 +6970,31 @@ async def purge_old_data() -> dict[str, int]:
                 logger.info(f"Purged {count} rows from {table} (older than {cutoff})")
 
     return deleted
+
+
+async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
+    """#301 — weekly aggregate over `mi_judge_divergence` for the system_review digest
+    line. Read-only, zero-authority (THE LINE — this feeds a Telegram appendix, never a
+    grade path). `n=0` when the window has no rows; the caller renders nothing in that
+    case rather than a misleading 0% line (matches the crypto/mfe_capture appendix
+    convention)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT COUNT(*) AS n,
+                   COUNT(*) FILTER (WHERE NOT agree) AS n_disagree,
+                   MAX(secondary_model) AS secondary_model
+            FROM mi_judge_divergence
+            WHERE alert_date >= $1
+            """,
+            window_start,
+        )
+    return {
+        "n": row["n"] if row else 0,
+        "n_disagree": row["n_disagree"] if row else 0,
+        "secondary_model": row["secondary_model"] if row else None,
+    }
 
 
 async def log_job_run(job_name: str) -> None:

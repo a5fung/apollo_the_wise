@@ -220,6 +220,16 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     except Exception:
         logger.exception("early-window drift section render failed")
 
+    # Judge ensemble-divergence SHADOW line (#301, 2026-07-26) — ZERO AUTHORITY, informational
+    # only (THE LINE: this reads mi_judge_divergence, never a grade path). ONE line per the
+    # consolidate-not-proliferate build-spec; omitted entirely when the window has no rows.
+    try:
+        divergence_section = await _judge_divergence_section(window_start)
+        if divergence_section:
+            message = f"{message}\n\n{divergence_section}"
+    except Exception:
+        logger.exception("judge-divergence section render failed")
+
     # Cost envelope (FL-6 / #378 S-C, 2026-07-12) — the deterministic MTD-spend line: the
     # ONE routine surface that completes FL-6 (the /status board + budget alert already exist).
     try:
@@ -1621,6 +1631,35 @@ async def _early_window_drift_section() -> str:
     return (
         f"\U0001F4C9 *Early-window drift* (live, #454 vs {env['source']}): "
         f"rolling mean {mean_r:+.2f}R over {n} closed trades — {pos}. _{caveat}_"
+    )
+
+
+async def _judge_divergence_section(window_start: date) -> str:
+    """#301 P1 ensemble-divergence SHADOW — ONE line: how often the independent 2nd-model
+    (JUDGE_DIVERGENCE_MODEL, currently Sonnet) check disagreed with the primary holistic
+    judge's (JUDGE_MODEL, currently Opus) HIGH-tier verdict this window.
+
+    ZERO AUTHORITY (THE LINE): purely informational, mirrors the crypto/mfe_capture/
+    early-window-drift appendix posture — SURFACES the disagreement rate, never verdicts on
+    it or proposes a threshold change. Consolidate-not-proliferate build-spec: this is the
+    ONE weekly-review line for #301, not a new digest section.
+
+    Omitted entirely when the window has no rows (n=0) — no misleading 0% line, same
+    no-data convention as `_format_crypto_section` / `_format_mfe_capture_section`."""
+    from agents.market_intelligence.db import get_judge_divergence_stats
+    stats = await get_judge_divergence_stats(window_start)
+    n = stats.get("n") or 0
+    if n == 0:
+        return ""
+    n_disagree = stats.get("n_disagree") or 0
+    pct = round(100 * n_disagree / n)
+    # >25% flags for a grounding investigation per the PLAN #301 build-spec's gated-review
+    # threshold — this line just flags it; the review itself is the operator's call.
+    flag = " ⚠" if pct > 25 else ""
+    secondary_model = stats.get("secondary_model") or "2nd model"
+    return (
+        f"\U0001F50D *Judge 2nd-opinion (#301, {secondary_model}):* "
+        f"{n_disagree}/{n} disagreed ({pct}%) with the HIGH-tier judge verdict this week{flag}"
     )
 
 

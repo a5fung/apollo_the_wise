@@ -111,6 +111,34 @@ were removed same-day along with the cache thread-through itself — see that fi
 
 ---
 
+## Theme axis (#328 credit · #329 STEP-0 measurement) — shadow, accruing
+
+Credit table + rollout: ADR 0015 (operator-signed 2026-07-04). Measurement scaffold =
+`theme_axis_shadow.py` → `mi_theme_axis_shadow` (as-of heat via `db.get_theme_heat_asof`,
+no lookahead; structural ticker/keyword + company-name attribution, matched terms persisted;
+co-movement check). Full STEP-0 design + independence argument:
+`docs/design/329_step0_structural_attribution_2026-07-26.md`. Operational facts:
+
+- **Attribution is STRUCTURAL, never the LLM catalyst axis** (6/24 decision — LLM-attribute +
+  LLM-audit is circular). Known limitation on record (#367, 7/06): the company-name signal is
+  dead against the current corpus (subject 8-Ks are self-referential); corpus fix = ADR 0019
+  §2.3 (S3), not a matcher change.
+- **Independent check = co-movement (tape)** — different mechanism AND different input from
+  the text attributor. Its live-path columns were structurally NULL (the intraday writer runs
+  before today's `mi_daily_closes` exist); the `theme_axis_co_move_refresh` scheduler job
+  (17:58 ET, after the 17:00 nightly pull) recomputes them EOD, re-deriving the cohort
+  STRICTLY-prior (`alert_date − 1d`) so a theme born from the day's own move can never grade
+  its own co-movement.
+- **Label cohort (#368 input)** = `mi_theme_relevance_cohort` — themeless-winner-INCLUSIVE
+  strata (`themed` = every themed row; `themeless_winner` = themeless + settled fwd_5d ≥ +5%),
+  enrolment rule `theme_axis_shadow.classify_label_stratum`, seeder
+  `scripts/seed_theme_relevance_cohort.py` (idempotent; never overwrites an operator label).
+  The #335 flip gate is grade-CORRECTNESS over this cohort — disagreement-rate is a health
+  gauge only, never a flip gate.
+- **ASYMMETRIC by decision**: boost theme-as-driver, never penalize themeless.
+
+---
+
 ## Structure axis (#330, ADR 0016)
 
 **Scope boundary vs #331**: #330 grades the structure the stock brought INTO the catalyst day

@@ -21,11 +21,17 @@ structurally blind to today:
      the STEP-1 health read measures which one actually separates "theme is the driver" from
      "uses theme vocabulary").
 
-This module owns ONLY the pure attribution logic + the shadow-table writer. It reads `r`
-(read-only) and writes ONLY `mi_theme_axis_shadow` (+ the mi_ticker_overrides company-name
-CACHE, an additive persistent lookup, never mutated in a way that could affect grading). It
-never mutates trade state, never touches the live grade/judge output, and never raises into
-the caller (the writer swallows every error to an audit event — pure telemetry throughout).
+This module owns ONLY the pure attribution logic + the shadow-table writer, plus two
+STEP-0-completion pieces (2026-07-26 unblock): the EOD co-movement refresh (the intraday
+writer runs before today's mi_daily_closes exist, so signal (4) was structurally NULL on
+every live row — see refresh_co_movement_for_date) and the deterministic enrolment rule
+for the themeless-winner-INCLUSIVE label cohort (classify_label_stratum, seeded by
+scripts/seed_theme_relevance_cohort.py into mi_theme_relevance_cohort for #368 labeling).
+It reads `r` (read-only) and writes ONLY `mi_theme_axis_shadow` (+ the mi_ticker_overrides
+company-name CACHE, an additive persistent lookup, never mutated in a way that could affect
+grading). It never mutates trade state, never touches the live grade/judge output, and never
+raises into the caller (the writer swallows every error to an audit event — pure telemetry
+throughout).
 
 Both (2) and (3)/(4) are logged side by side — NEITHER is a flip-gate (#329 6/24: the
 disagreement rate is a HEALTH GAUGE ONLY). The #368 STEP-2 weighting decision is the
@@ -37,6 +43,7 @@ import asyncio
 import logging
 import re
 import statistics
+from datetime import timedelta
 from typing import Any
 
 from agents.market_intelligence.collector import get_fmp_profile
@@ -277,6 +284,20 @@ async def _ensure_company_names(conn: Any, tickers: list[str]) -> dict[str, str]
     return {**cached, **fetched}
 
 
+async def _cohort_co_movement(conn: Any, ticker: str, alert_date: Any,
+                              cohort_tickers: "list[str]") -> tuple:
+    """The ONE moves-fetch + co-movement derivation (subject excluded from the cohort
+    side) — shared by compute_step1_signals (scan-time) and refresh_co_movement_for_date
+    (EOD), same divergence rationale as compute_step1_signals' G1 note. Returns
+    (ticker_move, cohort_move, co_moving)."""
+    peers = [t for t in cohort_tickers if (t or "").upper() != ticker.upper()]
+    moves = await get_daily_moves(conn, alert_date, [ticker] + peers)
+    ticker_move = moves.get(ticker.upper())
+    cohort_moves = [moves[t.upper()] for t in peers if t.upper() in moves]
+    cohort_move, co_moving = compute_co_movement(ticker_move, cohort_moves)
+    return ticker_move, cohort_move, co_moving
+
+
 async def compute_step1_signals(conn, ticker: str, alert_date, grounded_text,
                                 cohort_tickers: "list[str]") -> dict:
     """The ONE #367 STEP-1 pipeline (d2-review G1): name-attribution (a) +
@@ -289,11 +310,8 @@ async def compute_step1_signals(conn, ticker: str, alert_date, grounded_text,
         grounded_text, subject_ticker=ticker,
         cohort_tickers=cohort_tickers, names_by_ticker=names_by_ticker,
     )
-    peers = [t for t in cohort_tickers if (t or "").upper() != ticker.upper()]
-    moves = await get_daily_moves(conn, alert_date, [ticker] + peers)
-    ticker_move = moves.get(ticker.upper())
-    cohort_moves = [moves[t.upper()] for t in peers if t.upper() in moves]
-    cohort_move, co_moving = compute_co_movement(ticker_move, cohort_moves)
+    ticker_move, cohort_move, co_moving = await _cohort_co_movement(
+        conn, ticker, alert_date, cohort_tickers)
     return {
         "name_score": name_score, "name_attributable": name_attributable,
         "matched_names": matched_names, "ticker_move": ticker_move,
@@ -385,3 +403,101 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
             )
         except Exception:
             pass
+
+
+# ─── STEP-1 (b) EOD refresh (#329 STEP-0 completion, 2026-07-26) ──────────────────────────
+# THE INSTRUMENTATION ARTIFACT: the live writer runs inside the 7:00–10:00 AM EP scan, but
+# mi_daily_closes rows for TODAY are only ingested by the 17:00 nightly pull — so
+# get_daily_moves(alert_date=today) is ALWAYS empty at scan time and every live-path row logs
+# co_moving=NULL, permanently. The #367 health read's "~90% not computable" was substantially
+# THIS (a dark instrument, not an absent signal — memory [[shadow-zero-effect-check-
+# instrumentation]]); without the refresh, the INDEPENDENT co-movement check the 6/24 decision
+# requires beside the structural attributor never accrues on the live path at all.
+
+async def refresh_co_movement_for_date(conn: Any, trade_date: Any) -> dict:
+    """EOD recompute of the co-movement columns (cohort_move / ticker_move / co_moving) for
+    `trade_date`'s THEMED mi_theme_axis_shadow rows, once today's closes exist. Returns
+    {"refreshed": n, "skipped": m} (skipped = rows whose theme cohort can't be re-derived).
+    Idempotent — recomputes unconditionally from the same inputs, so a re-run converges.
+
+    AS-OF DISCIPLINE (lookahead + circularity): the cohort is re-derived via
+    get_theme_heat_asof at `trade_date - 1 day` — STRICTLY-PRIOR theme state. This exactly
+    reproduces what the scan-time writer saw (at 9:35 AM its `theme_date <= alert_date`
+    read could not include today's snapshot — the nightly theme run hadn't written it yet),
+    and it keeps a theme BORN FROM today's very move (tonight's run may have landed by the
+    time this job fires) from grading its own co-movement — that born-today cohort would be
+    trivially co-moving and would corrupt the check's independence. NEVER raises — swallows
+    to an audit event (SHADOW contract, same as log_theme_axis_shadow). Writes ONLY the
+    three co-movement columns of mi_theme_axis_shadow."""
+    try:
+        rows = await conn.fetch("""
+            SELECT ticker, alert_date FROM mi_theme_axis_shadow
+            WHERE alert_date = $1 AND themeless_flag = FALSE
+        """, trade_date)
+        refreshed = skipped = 0
+        for row in rows:
+            ticker, alert_date = row["ticker"], row["alert_date"]
+            heat = await get_theme_heat_asof(
+                conn, ticker, alert_date - timedelta(days=1))  # strictly-prior — see docstring
+            if heat is None:
+                skipped += 1  # cohort not re-derivable (e.g. theme first snapshotted today)
+                continue
+            ticker_move, cohort_move, co_moving = await _cohort_co_movement(
+                conn, ticker, alert_date, heat["tickers"])
+            await conn.execute("""
+                UPDATE mi_theme_axis_shadow
+                SET cohort_move = $3, ticker_move = $4, co_moving = $5
+                WHERE ticker = $1 AND alert_date = $2
+            """, ticker, alert_date, cohort_move, ticker_move, co_moving)
+            refreshed += 1
+        if rows:
+            await log_audit_event(
+                "theme_axis_co_move_refreshed",
+                f"{trade_date}: {refreshed} themed row(s) recomputed, {skipped} skipped "
+                f"(cohort not re-derivable strictly-prior)",
+            )
+        return {"refreshed": refreshed, "skipped": skipped}
+    except Exception as _e:  # SHADOW: telemetry failure must never propagate
+        logger.warning(f"theme-axis co-movement refresh failed for {trade_date}: {_e}")
+        try:
+            await log_audit_event(
+                "theme_axis_co_move_refresh_failed",
+                f"{trade_date}: {type(_e).__name__}: {_e}",
+            )
+        except Exception:  # loud-ok: fallback-of-the-fallback — the audit sink itself failed; logger.warning above already surfaced the primary failure
+            pass
+        return {"refreshed": 0, "skipped": 0}
+
+
+# ─── Part 3 (#329 STEP-0): themeless-winner-INCLUSIVE label-cohort enrolment rule ─────────
+# Deterministic + documented because the #335 flip gate is grade-CORRECTNESS over the cohort
+# this rule seeds (operator 6/24: "themeless-winner-INCLUSIVE labeled cohort, FULL STOP") —
+# the selection itself must be auditable. "Winner" reuses the ESTABLISHED win bar (fwd_5d
+# >= +5%: the same cut ADR 0015's STEP-0 calibration table and the #331 STEP-0 tables report
+# as "win >= +5%"); "settled" = all 5 forward sessions accrued (mi_ep_scan_outcomes'
+# n_sessions_5d, per its nightly recompute contract). Starting values, not tuned here.
+LABEL_WINNER_FWD_5D_PCT = 5.0
+LABEL_SETTLED_MIN_SESSIONS_5D = 5
+
+
+def classify_label_stratum(
+    themeless_flag: bool, fwd_5d_pct: "float | None", n_sessions_5d: "int | None",
+) -> "str | None":
+    """Enrolment stratum for one mi_theme_axis_shadow row (None = not enrolled).
+
+    - 'themed'           — every themed row, REGARDLESS of outcome: the asymmetric boost's
+                           only acting population (boost theme-as-driver, never penalize
+                           themeless), so correctness needs its false-positive side labeled
+                           — themed rows where the theme was NOT the driver.
+    - 'themeless_winner' — themeless + SETTLED fwd_5d >= the win bar: the undiscovered-theme
+                           blind-spot population ("not seeing a theme ≠ no theme exists",
+                           operator 6/24 restated 7/26) — the false-NEGATIVE side.
+    Themeless non-winners are deliberately NOT auto-enrolled (review-load: the operator
+    feels the COUNT; a control stratum is an operator add at #368 if wanted)."""
+    if not themeless_flag:
+        return "themed"
+    if (fwd_5d_pct is not None and n_sessions_5d is not None
+            and n_sessions_5d >= LABEL_SETTLED_MIN_SESSIONS_5D
+            and fwd_5d_pct >= LABEL_WINNER_FWD_5D_PCT):
+        return "themeless_winner"
+    return None

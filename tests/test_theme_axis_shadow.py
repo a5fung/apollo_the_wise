@@ -19,11 +19,15 @@ from tests.conftest import make_mock_pool
 
 from agents.market_intelligence.theme_axis_shadow import (
     CO_MOVEMENT_FLOOR_PCT,
+    LABEL_SETTLED_MIN_SESSIONS_5D,
+    LABEL_WINNER_FWD_5D_PCT,
     _normalize_company_name,
+    classify_label_stratum,
     compute_co_movement,
     compute_name_attribution,
     compute_structural_attribution,
     log_theme_axis_shadow,
+    refresh_co_movement_for_date,
 )
 
 
@@ -523,3 +527,151 @@ def test_co_movement_wired_into_writer(monkeypatch):
     assert args[14] == 3.0   # cohort_move = median(FRND=4.0, OTHR=2.0), subject excluded
     assert args[15] == 6.0   # ticker_move
     assert args[16] is True  # same sign (both positive), cohort_move clears the floor
+
+
+# ─── EOD co-movement refresh (#329 STEP-0 completion) ─────────────────────────────────────
+# The intraday writer runs before today's mi_daily_closes exist -> co_moving is NULL on every
+# live row; refresh_co_movement_for_date is the 17:58 EOD recompute that makes the INDEPENDENT
+# check actually accrue. These pin its as-of discipline + shadow contract.
+
+from datetime import date  # noqa: E402  (test-local import, mirrors file style)
+
+
+def _make_refresh_conn(rows):
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=rows)
+    conn.execute = AsyncMock()
+    return conn
+
+
+def test_refresh_recomputes_co_movement_strictly_prior(monkeypatch):
+    """A themed row on trade_date gets its co-movement recomputed EOD, with the theme cohort
+    re-derived at alert_date MINUS 1 DAY — strictly-prior state, reproducing what the 9:35 AM
+    scan saw (today's theme snapshot didn't exist yet) and blocking the born-today-theme
+    circularity (a cohort born from today's move would trivially co-move)."""
+    conn = _make_refresh_conn([{"ticker": "TICK", "alert_date": date(2026, 7, 24)}])
+    captured = {}
+
+    async def _fake_heat(_conn, ticker, asof):
+        captured["asof"] = asof
+        return {"name": "Robotics", "stage": "Accelerating", "score": 88.0,
+                "tickers": ["TICK", "FRND", "OTHR"], "description": ""}
+
+    async def _fake_moves(_conn, trade_date, tickers):
+        captured["moves_date"] = trade_date
+        return {"TICK": 6.0, "FRND": 4.0, "OTHR": 2.0}
+
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _fake_heat)
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_daily_moves", _fake_moves)
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.log_audit_event", AsyncMock())
+
+    out = _run(refresh_co_movement_for_date(conn, date(2026, 7, 24)))
+
+    assert captured["asof"] == date(2026, 7, 23)      # STRICTLY prior — the load-bearing pin
+    assert captured["moves_date"] == date(2026, 7, 24)  # moves are the alert day's own
+    assert out == {"refreshed": 1, "skipped": 0}
+    sql = conn.execute.await_args.args[0]
+    assert "UPDATE mi_theme_axis_shadow" in sql
+    # Writes ONLY the three co-movement columns — never attribution/heat/grade columns.
+    for col in ("cohort_move", "ticker_move", "co_moving"):
+        assert col in sql
+    for col in ("name_attribution", "structural_attribution", "theme_stage", "grade"):
+        assert col not in sql
+    args = conn.execute.await_args.args
+    assert args[3] == 3.0    # cohort_move = median(FRND, OTHR), subject excluded
+    assert args[4] == 6.0    # ticker_move
+    assert args[5] is True   # co_moving
+
+
+def test_refresh_selects_only_themed_rows_for_the_date():
+    """The refresh query is scoped to trade_date AND themeless_flag = FALSE — themeless rows
+    have no cohort to co-move with and must stay NULL, not be recomputed."""
+    conn = _make_refresh_conn([])
+    _run(refresh_co_movement_for_date(conn, date(2026, 7, 24)))
+    sql = conn.fetch.await_args.args[0]
+    assert "themeless_flag = FALSE" in sql
+    assert "alert_date = $1" in sql
+
+
+def test_refresh_skips_rows_whose_cohort_is_not_rederivable(monkeypatch):
+    """heat=None at the strictly-prior as-of (e.g. the theme's first snapshot IS today) ->
+    the row is skipped (columns stay NULL), never guessed from today's snapshot."""
+    conn = _make_refresh_conn([{"ticker": "NEWB", "alert_date": date(2026, 7, 24)}])
+
+    async def _no_heat(_conn, _t, _d):
+        return None
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _no_heat)
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.log_audit_event", AsyncMock())
+
+    out = _run(refresh_co_movement_for_date(conn, date(2026, 7, 24)))
+    assert out == {"refreshed": 0, "skipped": 1}
+    conn.execute.assert_not_awaited()
+
+
+def test_refresh_never_raises_on_db_error(monkeypatch):
+    """SHADOW contract: a refresh failure must swallow to an audit event, never propagate
+    (the job wrapper would otherwise mark the whole EOD chain red for pure telemetry)."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=RuntimeError("db down"))
+    audit = AsyncMock()
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.log_audit_event", audit)
+
+    out = _run(refresh_co_movement_for_date(conn, date(2026, 7, 24)))  # must not raise
+    assert out == {"refreshed": 0, "skipped": 0}
+    assert audit.await_count == 1
+    assert audit.await_args.args[0] == "theme_axis_co_move_refresh_failed"
+
+
+def test_refresh_job_registered_after_nightly_pull():
+    """Source pin: scheduler registers theme_axis_co_move_refresh at 17:58 ET (after the
+    17:00 nightly pull ingests today's mi_daily_closes — the same dependency the 17:55
+    coverage probe rides). Without the job the independent check never accrues live."""
+    import inspect
+    from agents.market_intelligence import scheduler as sched
+    src = inspect.getsource(sched)
+    assert 'id="theme_axis_co_move_refresh"' in src
+    idx = src.index('id="theme_axis_co_move_refresh"')
+    block = src[idx - 400:idx]
+    assert "hour=17, minute=58" in block
+
+
+# ─── classify_label_stratum (#329 STEP-0 part 3 — the label-cohort enrolment rule) ─────────
+
+def test_stratum_themed_enrols_regardless_of_outcome():
+    """Every themed row enrols — the asymmetric boost's only acting population; its
+    false-positive side needs labels even (especially) when the trade went nowhere."""
+    assert classify_label_stratum(False, None, None) == "themed"
+    assert classify_label_stratum(False, -12.0, 5) == "themed"
+    assert classify_label_stratum(False, 40.0, 5) == "themed"
+
+
+def test_stratum_themeless_settled_winner_enrols():
+    assert classify_label_stratum(True, 12.0, 5) == "themeless_winner"
+    # Boundary: the established win bar is >= +5% (not strict >).
+    assert classify_label_stratum(True, LABEL_WINNER_FWD_5D_PCT, 5) == "themeless_winner"
+
+
+def test_stratum_themeless_unsettled_or_loser_not_enrolled():
+    assert classify_label_stratum(True, 12.0, LABEL_SETTLED_MIN_SESSIONS_5D - 1) is None
+    assert classify_label_stratum(True, 4.9, 5) is None      # below the win bar
+    assert classify_label_stratum(True, None, None) is None  # no outcome row at all
+    assert classify_label_stratum(True, 12.0, None) is None  # outcome without session count
+
+
+def test_seeder_upsert_never_overwrites_operator_labels():
+    """Source pin on the seeding script: the ON CONFLICT update must be guarded by
+    `operator_label IS NULL` — re-seeding can top up the cohort but NEVER clobber a row the
+    operator already labeled (the labels are #368's ground truth)."""
+    from pathlib import Path
+    src = Path(__file__).resolve().parent.parent / "scripts" / "seed_theme_relevance_cohort.py"
+    text = src.read_text()
+    assert "operator_label IS NULL" in text
+    # The enrolment rule is the ONE shared classifier, not a re-implementation.
+    assert "from agents.market_intelligence.theme_axis_shadow import classify_label_stratum" \
+        in text

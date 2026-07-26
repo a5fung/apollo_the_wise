@@ -348,11 +348,18 @@ async def grade_holistic(
     image_png: bytes | None = None,
     chart_note: str | None = None,
     include_axis_reads: bool = False,
+    log_caller: str = "ep_grade_judge",
 ) -> dict | None:
     """One holistic judge call. Returns the verdict dict (schema), or None on any
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
     `semaphore` (shared with the catalyst grader in prod) bounds total Anthropic
     concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff.
+
+    `log_caller` (#301, 2026-07-26): defaults to `"ep_grade_judge"` — byte-identical to
+    every existing call site. The ensemble-divergence SHADOW (judge_divergence.py) is the
+    one caller that overrides it (to `"judge_divergence"`) so its Sonnet 2nd-opinion spend
+    is attributable in the cost envelope SEPARATELY from the primary Opus judge's spend,
+    not blended into the same `api_usage` caller bucket.
 
     `image_png` (#267 chart-vision, W4) optionally attaches a point-in-time daily chart so
     the judge can read the price/MA/volume structure. `chart_note` is the CANDIDATE chart-axis
@@ -377,4 +384,4 @@ async def grade_holistic(
         normalize=_normalize_verdict, label="holistic judge",
         subject=payload.get("ticker") or "",
         semaphore=semaphore, timeout=timeout, model=model, image_png=image_png,
-        log_caller="ep_grade_judge")  # #377 cost meter
+        log_caller=log_caller)  # #377 cost meter

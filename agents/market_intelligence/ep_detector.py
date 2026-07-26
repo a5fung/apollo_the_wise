@@ -4309,6 +4309,43 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             except Exception as _jtge:
                                 logger.warning(
                                     f"judge theme-gap feed failed for {r.get('ticker')}: {_jtge}")
+                            # ── #301 ensemble-divergence SHADOW ─────────────────────
+                            # ZERO AUTHORITY (THE LINE): fire-and-forget 2nd-model
+                            # (Sonnet) independent grade on the primary judge's
+                            # HIGH-tier verdict, for operator visibility only — never
+                            # touches r/score_tier/the alert. Placed HERE, strictly
+                            # AFTER the DB-first write above succeeded (v.get('tier')
+                            # is the SETTLED primary verdict), so it can only ever run
+                            # once the primary path has fully completed. Gated on the
+                            # once-per-ticker-per-day dedupe guard (the EP scan re-runs
+                            # every 5 min; without it a HIGH alert re-fires the 2nd-
+                            # model call on every tick, ~36x/day instead of the
+                            # designed ~2-5/day). Dedupe key uses `today` (NOT
+                            # r["alert_date"]) deliberately — _audit_dedupe_check shares
+                            # ONE module-level set that CLEARS whenever its scan_date arg
+                            # differs from the previous call's, regardless of event name;
+                            # the sibling theme_axis_shadow_adjusted guard just below
+                            # keys off `today` too, so matching it here is what keeps the
+                            # two guards from clearing each other's state (r["alert_date"]
+                            # == today for every candidate today, but `today` is the
+                            # guaranteed-matching key, not an assumption about `r`).
+                            # launch_divergence_check schedules a background asyncio.Task
+                            # and returns immediately — it is NEVER awaited, so a slow/
+                            # failed/timed-out 2nd-model call cannot add latency here or
+                            # anywhere downstream.
+                            if v.get("tier") == "HIGH" and _audit_dedupe_check(
+                                r["ticker"], today, "judge_divergence_check"
+                            ):
+                                try:
+                                    from agents.market_intelligence.judge_divergence import (
+                                        launch_divergence_check,
+                                    )
+                                    launch_divergence_check(
+                                        r["ticker"], r["alert_date"], payload, v,
+                                    )
+                                except Exception as _jde:
+                                    logger.warning(
+                                        f"judge divergence launch failed for {r.get('ticker')}: {_jde}")
                 if do_override:
                     r["score_tier"] = new_tier
                     r["grade_engine_authority"] = authority

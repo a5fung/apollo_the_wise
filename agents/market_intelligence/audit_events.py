@@ -124,6 +124,16 @@ TELEGRAM_SEND_FAILED = "telegram_send_failed"
 # ── Crypto / data ingest ────────────────────────────────────────────────────
 CRYPTO_INGEST_ERROR = "crypto_ingest_error"
 
+# ── Judge ensemble-divergence SHADOW (#301, 2026-07-26) ─────────────────────
+# Zero-authority 2nd-model (JUDGE_DIVERGENCE_MODEL=Sonnet) check on HIGH-tier
+# primary-judge (JUDGE_MODEL=Opus) verdicts — see judge_divergence.py. NEVER
+# alters a grade; logs agree/disagree to mi_judge_divergence. CHECK_FAILED
+# fires on a 2nd-model call/write failure (fail-open, counted so the module
+# can't go silently dark — the #173 lesson); DETECTED fires when the two
+# models disagree on tier (informational, no action taken).
+JUDGE_DIVERGENCE_DETECTED = "judge_divergence_detected"
+JUDGE_DIVERGENCE_CHECK_FAILED = "judge_divergence_check_failed"
+
 # ── Evening briefing send observability (#495, 2026-07-21/25) ──────────────
 # send_telegram_message returns False on failure without raising (never
 # raises — see its own docstring), so a silently-failed 18:00 ET evening
