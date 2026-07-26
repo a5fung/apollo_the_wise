@@ -212,6 +212,10 @@ def _bump_count(title: str) -> int:
 
 _BLOCKED_BY = re.compile(r'blocked_by:?\s*#(\d+)', re.I)
 _DEFER_UNTIL = re.compile(r'defer_until:\s*(\d{4}-\d{2}-\d{2})', re.I)
+_BLOCKED_TAG = re.compile(r'\[blocked:', re.I)
+_REVALIDATED = re.compile(r'revalidated:\s*(\d{4}-\d{2}-\d{2})', re.I)
+_STALE_BLOCK_BUMPS = 5     # [blocked:] buys unlimited bumps below this
+_REVALIDATE_MAX_AGE = 45   # days a re-validation stays good
 
 
 def _dependency_gate(tasks, errors, today) -> None:
@@ -298,6 +302,53 @@ def _shipped_pending_gate(tasks, errors) -> None:
             f"code (\"{subj[:60]}\") — `pending` means NOT STARTED, so the line is stale and will "
             f"generate a duplicate card (the #495/#402 class, 2026-07-25). Correct the STATUS: "
             f"`in_progress` if work remains, `deployed` + a verify-date if it shipped.")
+
+
+def _stale_block_gate(tasks, errors, today) -> None:
+    """Close the [blocked:] free-pass on the rebump cap (operator 2026-07-26:
+    "I don't want this work to be blocked for no reason going forward").
+
+    `_rebump_gate` forbids a 2nd+ rebump WITHOUT `[ok:]` or `[blocked:]` — but a
+    `[blocked:]` tag then buys UNLIMITED bumps. Measured on the live board that day:
+    15 open tasks carried a block tag and TEN sat at [b4]+, each bump justified by
+    re-writing a block reason. That is how a task stays parked for months.
+
+    Worse, the reason itself can be WRONG: #329 sat blocked on #335's flip for a
+    decision #329's OWN TEXT exempted ("advisory/shadow composite is UN-GATED →
+    build it NOW") — the foundation gated on the roof, idle for weeks. Nothing
+    re-checked it because a written block reason is self-certifying.
+
+    So past `_STALE_BLOCK_BUMPS` rebumps, a block must be RE-VALIDATED with a dated
+    `revalidated:YYYY-MM-DD` marker, fresh within `_REVALIDATE_MAX_AGE` days. The
+    date is the point: it forces the block to be RE-STATED against today's reality
+    rather than inherited from a phase that has since passed.
+
+    Threshold chosen from measurement, not taste: [b5]+ flags 3 tasks (actionable);
+    [b4]+ would flag 10 (which becomes wallpaper, the failure mode that let the
+    LIKELY-BUILT surface be ignored)."""
+    for t in tasks:
+        if str(t["status"]).lower() in ("completed", "done", "closed", "deleted"):
+            continue
+        title = t["title"]
+        if not _BLOCKED_TAG.search(title):
+            continue
+        if _bump_count(title) < _STALE_BLOCK_BUMPS:
+            continue
+        m = _REVALIDATED.search(title)
+        fresh = False
+        if m:
+            try:
+                fresh = (today - date.fromisoformat(m.group(1))).days <= _REVALIDATE_MAX_AGE
+            except ValueError:
+                fresh = False
+        if not fresh:
+            errors.append(
+                f"L{t['line']}: task #{t['id']} is [b{_bump_count(title)}] AND carries a [blocked:] tag "
+                f"with no fresh `revalidated:YYYY-MM-DD` (within {_REVALIDATE_MAX_AGE}d). A block tag "
+                f"buys UNLIMITED rebumps, so a stale/wrong block parks a task indefinitely (#329 sat "
+                f"blocked on a decision its own text exempted). RE-STATE the block against today: is the "
+                f"blocker still real, and what CONCRETE condition clears it? Then tag "
+                f"`revalidated:{today}` — or un-block it.")
 
 
 def _rebump_gate(tasks, errors) -> None:
@@ -466,6 +517,7 @@ def main(argv: list[str]) -> int:
                           f"rebump to a future date at CLOSE, or close the task")
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
+    _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
