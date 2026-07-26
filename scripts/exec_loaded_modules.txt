@@ -1,0 +1,46 @@
+# GENERATED — do not hand-edit.
+# Regenerate: docker exec <container> python -m scripts.preflight_exec_deploy_scope --emit
+#
+# Every agents/market_intelligence module that apollo-execution loads.
+# deploy.sh routes a change to any of these to the EXECUTION scope as
+# well as market-agent — otherwise the fix builds into the image and the
+# RUNNING execution container stays stale (#456). Drift is caught by the
+# preflight that generated this file.
+agents/market_intelligence/__init__.py
+agents/market_intelligence/agent.py
+agents/market_intelligence/audit_events.py
+agents/market_intelligence/backtester/__init__.py
+agents/market_intelligence/backtester/engine.py
+agents/market_intelligence/backtester/filters.py
+agents/market_intelligence/backtester/intraday.py
+agents/market_intelligence/backtester/models.py
+agents/market_intelligence/backtester/safeguards.py
+agents/market_intelligence/backtester/tracker.py
+agents/market_intelligence/briefing.py
+agents/market_intelligence/broker/__init__.py
+agents/market_intelligence/broker/exit_logic.py
+agents/market_intelligence/broker/skip_reasons.py
+agents/market_intelligence/catalyst_materiality.py
+agents/market_intelligence/close_digest.py
+agents/market_intelligence/collector.py
+agents/market_intelligence/constants.py
+agents/market_intelligence/data_quality.py
+agents/market_intelligence/db.py
+agents/market_intelligence/earnings_calendar.py
+agents/market_intelligence/ep_detector.py
+agents/market_intelligence/ep_grade_judge.py
+agents/market_intelligence/execution_client.py
+agents/market_intelligence/execution_routes.py
+agents/market_intelligence/fundamentals.py
+agents/market_intelligence/judge_transport.py
+agents/market_intelligence/ma_filter.py
+agents/market_intelligence/minute_volume.py
+agents/market_intelligence/outcome_tracker.py
+agents/market_intelligence/prose_markers.py
+agents/market_intelligence/regime.py
+agents/market_intelligence/rs_engine.py
+agents/market_intelligence/scheduler.py
+agents/market_intelligence/state_alerts.py
+agents/market_intelligence/theme_engine.py
+agents/market_intelligence/theme_merge_arm.py
+agents/market_intelligence/trading_calendar.py

@@ -112,17 +112,26 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # AND NEED_EXEC (recreate the running broker), else the fix lands in the image but
       # the live apollo-execution stays stale — the LZB silent-dark class.
       agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
-      # scheduler.py + constants.py are the SAME class (found 2026-07-26, #456).
-      # apollo-execution loads scheduler.py and KEEPS 29 EXECUTION_OWNED_JOB_IDS
-      # (stop_ack_timeout_watchdog, morning_stop_refresh, partial_exit_scan,
-      # order_status_reconcile, time_stop_scan, …) — verified in its boot log:
-      # "Job partition: role=execution — kept 29, removed 56". constants.py
-      # carries SERVICE_ROLE + the sizing constants that job path reads. Both
-      # matched the generic market-agent arm below, so a scheduler-only fix
-      # would build into the image and leave the RUNNING apollo-execution stale:
-      # the identical silent-dark class as #324 above, just via a different file.
-      agents/market_intelligence/scheduler.py|agents/market_intelligence/constants.py) NEED_MARKET=1; NEED_EXEC=1 ;;
-      agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
+      agents/market_intelligence/*|scripts/*)
+          NEED_MARKET=1
+          # #456 (2026-07-26): broker/ above is NOT the whole execution surface.
+          # apollo-execution runs scheduler.py and keeps 29 EXECUTION_OWNED jobs
+          # ("Job partition: role=execution — kept 29" in its boot log), and those
+          # job paths import 38 modules from agents/market_intelligence — db.py,
+          # regime.py, collector.py, trading_calendar.py, scheduler.py, constants.py
+          # among them. All of those matched this generic arm and got NEED_MARKET
+          # only, so a fix to any of them built into the shared image and left the
+          # RUNNING execution container on old code. Silent-dark: no error, no
+          # signal. Found while shipping the stop-ack watchdog defer, which would
+          # itself have shipped dark.
+          # The subset is MACHINE-DERIVED into scripts/exec_loaded_modules.txt and
+          # drift-checked by preflight [5n/7] — deliberately not hand-enumerated
+          # here, because a hand-synced list is the exact drift that already cost
+          # us #474 (root-yaml COPY) and #260 (three ticker-extraction copies).
+          if grep -Fxq "$f" scripts/exec_loaded_modules.txt 2>/dev/null; then
+              NEED_EXEC=1
+          fi
+          ;;
       tests/*|docs/*|*.md|.apollo_open_tasks.json|.githooks/*) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
       # The two KNOWN market-agent-only runtime yamls keep their narrow scope (the
       # 2026-07-09 incident: the catch-all dragged all 3 services into review-yaml-only
@@ -168,10 +177,12 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
      && docker ps --format '{{.Names}}' | grep -qx 'apollo-execution'; then
     EXEC_DRIFT=1
     echo ""
-    echo "⚠️  EXECUTION-RUNTIME DRIFT (#324): this pull changed broker/ or execution_routes,"
-    echo "    which RUN on apollo-execution — but scope '$SCOPE' does NOT recreate it."
-    echo "    After this deploy you MUST also run:  bash scripts/deploy.sh execution"
-    echo "    (else the fix lands in the image but the LIVE broker stays on stale code)."
+    echo "⚠️  EXECUTION-RUNTIME DRIFT (#324/#456): this pull changed code that RUNS on"
+    echo "    apollo-execution — broker/, execution_routes, or one of the 38 modules its"
+    echo "    jobs import (scripts/exec_loaded_modules.txt) — but scope '$SCOPE' does NOT"
+    echo "    recreate it. After this deploy you MUST also run:"
+    echo "        bash scripts/deploy.sh execution"
+    echo "    (else the fix lands in the image but the LIVE execution container stays stale)."
   fi
 fi
 
@@ -421,11 +432,30 @@ if [[ "$SERVICES" == *market-agent* ]]; then
 fi
 
 echo ""
+echo "=== [5n/7] Preflight execution-deploy-scope check (#456 — silent-dark-execution class) ==="
+# Keeps deploy.sh's own execution routing honest. apollo-execution imports a large
+# subset of agents/market_intelligence (38 modules, NOT just broker/); a change to
+# any of them must recreate the running execution container or it stays stale with
+# no error and no signal. scripts/exec_loaded_modules.txt is that subset, and it is
+# MACHINE-DERIVED, not hand-written — this gate re-derives it by importing the
+# execution entrypoint and FAILS if the container now imports something the list
+# (and therefore the routing above) would miss. Under-coverage fails; over-coverage
+# only warns, since a stale entry costs an extra recreate, not a dark deploy.
+if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_exec_deploy_scope; then
+  echo ""
+  echo "DEPLOY FAILED — apollo-execution imports modules that deploy.sh would not route"
+  echo "to the execution scope, so a change to one of them would ship silent-dark there."
+  echo "Regenerate the list and commit it:"
+  echo "    docker exec $PREFLIGHT_CONTAINER python -m scripts.preflight_exec_deploy_scope --emit"
+  exit 18
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
 # #324: re-surface the execution-runtime drift as the LAST line — the DEPLOY OK above is
 # exactly what masked the LZB silent-dark deploy. Impossible to miss here.
 if [ "${EXEC_DRIFT:-0}" = 1 ]; then
   echo ""
-  echo "⚠️  NOT DONE: broker/execution_routes changed — apollo-execution is STILL on stale code."
-  echo "    Run now:  bash scripts/deploy.sh execution   (#324, feedback_deploy_both_excludes_execution)"
+  echo "⚠️  NOT DONE: execution-loaded code changed — apollo-execution is STILL on stale code."
+  echo "    Run now:  bash scripts/deploy.sh execution   (#324/#456, feedback_deploy_both_excludes_execution)"
 fi
