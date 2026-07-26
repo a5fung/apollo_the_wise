@@ -14,6 +14,18 @@
 # can't be determined, it runs the suite (fail-safe: a safety gate must not fail open).
 set -uo pipefail
 
+# Resolve a real interpreter. `python` is commonly a SHELL ALIAS (zsh: alias
+# python=python3) which does NOT exist in this hook's non-interactive env — so a
+# bare `python` here fails with "command not found" and the gate blocks EVERY
+# commit, training operators onto --no-verify. Found 2026-07-26 on a clone where
+# core.hooksPath was also unset, so the gates had never run at all.
+PY_BIN="${APOLLO_PY:-$(command -v python3 || command -v python || true)}"
+if [ -z "$PY_BIN" ]; then
+    echo "✘ pre-push: no python3 on PATH — cannot run the gates."
+    echo "  Set APOLLO_PY=/path/to/python3, or bypass once with --no-verify."
+    exit 1
+fi
+
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
@@ -37,7 +49,7 @@ if [ "$py_changed" -eq 0 ]; then
 fi
 
 echo "▶ pre-push: running full test suite (python -m pytest tests/ -q) — mirrors CI…"
-if ! python -m pytest tests/ -q; then
+if ! "$PY_BIN" -m pytest tests/ -q; then
     echo "✘ pre-push: test suite FAILED — push blocked (this is exactly what CI would reject)."
     echo "  Fix the failures, or bypass with: git push --no-verify (emergency only)."
     exit 1

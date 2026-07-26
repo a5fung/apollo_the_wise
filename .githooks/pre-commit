@@ -13,6 +13,18 @@
 # operators toward --no-verify, which defeats the point.
 set -uo pipefail
 
+# Resolve a real interpreter. `python` is commonly a SHELL ALIAS (zsh: alias
+# python=python3) which does NOT exist in this hook's non-interactive env — so a
+# bare `python` here fails with "command not found" and the gate blocks EVERY
+# commit, training operators onto --no-verify. Found 2026-07-26 on a clone where
+# core.hooksPath was also unset, so the gates had never run at all.
+PY_BIN="${APOLLO_PY:-$(command -v python3 || command -v python || true)}"
+if [ -z "$PY_BIN" ]; then
+    echo "✘ pre-commit: no python3 on PATH — cannot run the gates."
+    echo "  Set APOLLO_PY=/path/to/python3, or bypass once with --no-verify."
+    exit 1
+fi
+
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
@@ -21,9 +33,9 @@ cd "$repo_root"
 # 2026-05-24 SNDK class bug (YAML last-wins silently overwriting
 # status fields) at commit time, not at deploy time.
 if git diff --cached --name-only | grep -qx 'data_gated_reviews.yaml'; then
-    if ! python scripts/preflight_yaml_dupe_keys.py >/dev/null 2>&1; then
+    if ! "$PY_BIN" scripts/preflight_yaml_dupe_keys.py >/dev/null 2>&1; then
         echo "✘ pre-commit: data_gated_reviews.yaml has duplicate keys within a review entry."
-        echo "  Run: python scripts/preflight_yaml_dupe_keys.py"
+        echo "  Run: python3 scripts/preflight_yaml_dupe_keys.py"
         echo "  Fix the duplicates, re-stage, re-commit."
         echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
         exit 1
@@ -36,7 +48,7 @@ fi
 # snapshot it cross-checks) is staged — which is every CLOSE. Replaces the old
 # BACKLOG/snapshot filing gate; makes "know the plan / no gaps" mechanical, not prose.
 if git diff --cached --name-only | grep -qE '^(PLAN\.md|\.apollo_open_tasks\.json)$'; then
-    if ! python scripts/check_plan.py; then
+    if ! "$PY_BIN" scripts/check_plan.py; then
         echo "✘ pre-commit: PLAN.md failed the single-SoT gate (see above)."
         echo "  Every task needs a project + ETA + status; no open task may have a PAST ETA"
         echo "  (CLOSE rebumps stale dates); every open task must be filed. Fix, re-stage, re-commit."
@@ -69,9 +81,9 @@ fi
 # shadow-0-rows (#173) class where a real failure is swallowed behind a default.
 # Escape genuine control-flow with '# loud-ok: <reason>'. Mirrors deploy.sh [5k/7].
 if git diff --cached --name-only | grep -qE '^(agents|core|channels|shared)/.*\.py$'; then
-    if ! python scripts/preflight_no_silent_failures.py >/dev/null 2>&1; then
+    if ! "$PY_BIN" scripts/preflight_no_silent_failures.py >/dev/null 2>&1; then
         echo "✘ pre-commit: a NEW broad+silent except (swallowed failure) was introduced (#381)."
-        echo "  Run: python scripts/preflight_no_silent_failures.py"
+        echo "  Run: python3 scripts/preflight_no_silent_failures.py"
         echo "  Surface it (raise / log+alert / failure_policy.py decorator), or annotate"
         echo "  genuine control-flow with '# loud-ok: <reason>'. Do NOT bury it via --update-baseline."
         echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
@@ -88,10 +100,10 @@ fi
 # Known-uncited legacy gates are tracked debt (see scripts/gate_provenance_baseline.json);
 # never bury a NEW one via --update-baseline.
 if git diff --cached --name-only | grep -qE '^(scripts/gate_provenance_registry\.py|scripts/gate_provenance_baseline\.json|scripts/check_gate_provenance\.py|agents/market_intelligence/(anticipation|flag_detector|ninem_detector|ep_detector|db)\.py)$'; then
-    if ! python -m scripts.check_gate_provenance >/dev/null 2>&1; then
+    if ! "$PY_BIN" -m scripts.check_gate_provenance >/dev/null 2>&1; then
         echo "✘ pre-commit: a cohort-shaping gate lacks a source citation, or drifted from the"
         echo "  registry's recorded value (#358, ADR 0013 provenance rule)."
-        echo "  Run: python -m scripts.check_gate_provenance"
+        echo "  Run: python3 -m scripts.check_gate_provenance"
         echo "  Add a real citation (never fabricate one), or update the registry's value in the"
         echo "  SAME commit as a signed value change. Do NOT bury a new omission via --update-baseline."
         echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
