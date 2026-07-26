@@ -138,6 +138,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
     "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
+    "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
     "delayed_residual",  # #489 — EOD delayed-feed residual tracker; read-only (Polygon replay + DB/audit), no broker calls
