@@ -139,7 +139,14 @@ async def run_pivot_stop_shadow(today: date, *, signal_type: str = "magna53",
                    t.entry_shares, t.hard_stop
             FROM mi_live_trades t
             WHERE t.status = 'closed' AND t.signal_type = $1 AND t.account_mode = $2
-              AND (t.closed_at AT TIME ZONE 'America/New_York')::date BETWEEN ($3::date - $4) AND $3
+              -- $4 MUST carry an explicit ::int cast. Postgres has BOTH
+              -- `date - integer -> date` AND `date - date -> integer`, so an
+              -- uncast $4 lets asyncpg infer it as `date`, making the left side
+              -- an integer and the comparison `date >= integer` — which is the
+              -- exact error that crashed this job nightly from 2026-07-25
+              -- (the #310 catch-up fix) until 2026-07-27. Never drop the cast.
+              AND (t.closed_at AT TIME ZONE 'America/New_York')::date
+                  BETWEEN ($3::date - $4::int) AND $3::date
               AND NOT EXISTS (SELECT 1 FROM mi_pivot_stop_shadow p WHERE p.trade_id = t.id)
         """, signal_type, account_mode, today, _CATCHUP_LOOKBACK_DAYS)
         for r in rows:
