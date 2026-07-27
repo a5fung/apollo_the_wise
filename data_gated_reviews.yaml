@@ -7588,3 +7588,57 @@ reviews:
     status: pending
     added_on: 2026-07-26
     cross_refs: ["task #356", "task #456"]
+
+  - review_id: lane2_narrative_grouping_quality
+    title: "#167 — Lane-2 narrative grouping: enough live runs to judge whether it finds subtle shared stories"
+    question: >-
+      Operator 2026-07-27: keep the lane and keep collecting, but answer the real
+      question — "are we discovering the subtle theme for 2+ EPs well?" This is that
+      re-surface, gated on DATA (live run count), not a calendar.
+
+      WHY A RUN COUNT AND NOT A DATE: Lane-2 is a RARE-EVENT detector by design. It
+      catches cross-sector / govt-policy stories the RS+correlation engine
+      structurally misses (Lane 1 needs price CORRELATION; a story binding
+      non-co-moving names is invisible to it — validated on the 2026-05-28 drone
+      cohort). So low output is EXPECTED and a low proposal count is not evidence of
+      failure. What makes it judgeable is the number of live OPPORTUNITIES, which is
+      why this counts runs.
+
+      STATE AT REGISTRATION (forward-only, since 2026-06-07 — the earlier 90 runs
+      were hindsight BACKFILL crammed into two days, 06-04 x67 and 06-06 x23, and
+      must NEVER be pooled with live): 33 runs · 15 dropped below the 2-alert gate ·
+      16 ran and found no shared story · 2 proposed. Both proposals look genuine
+      (Bitcoin miners -> AI data centers 07-20; AI memory demand 06-25).
+
+      THE QUESTION WHEN THIS FIRES: on the accumulated no-story days, was "no shared
+      story" CORRECT? Test it OBJECTIVELY, not by asking an LLM to re-grade an LLM —
+      did those tickers later land in the SAME theme via any lane, or co-move
+      market-adjusted afterwards? A later shared theme is ground truth that a story
+      existed and Lane-2 missed it. Then rule: leave as-is, widen (input richness /
+      prompt / the <2 gate), or retire.
+
+      Standing input from the 2026-07-27 audit
+      (docs/analysis/167_lane2_grouping_quality_2026-07-27.md): the leading
+      hypothesis is INPUT RICHNESS — a subtle cross-sector link is undetectable if
+      the per-ticker catalyst text the model sees is one truncated line.
+
+      Grouping changes affect DETECTION => THE LINE: CHANGE_PROCESS + operator
+      sign-off before any live change. The lane stays shadow/advisory meanwhile.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'narrative_theme_discovery_ran'
+        AND created_at >= '2026-06-07'
+    threshold: 50
+    # 33 forward runs at registration; ~4-5/week => ~50 around early September.
+    # Date deliberately NON-BLOCKING (set to registration day): firing is AND, so a
+    # future date could only DELAY a review whose evidence is already in — the exact
+    # calendar-block pattern the operator ruled against on 2026-07-26.
+    earliest_review_date: 2026-07-27
+    action_when_ready: >-
+      Pull the no-story days accumulated since 2026-06-07. For each, check whether its
+      alert tickers later shared a theme (any lane) or co-moved market-adjusted. Report
+      genuine-miss count vs correctly-declined, split from any LLM opinion. Then the
+      operator rules: leave / widen / retire. Rulings land on #167's PLAN line.
+    status: pending
+    added_on: 2026-07-27
+    cross_refs: ["task #167", "task #240"]
