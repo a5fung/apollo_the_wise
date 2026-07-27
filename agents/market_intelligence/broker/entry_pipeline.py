@@ -26,6 +26,8 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_STRATEGY_DEPRECATED,
     BLOCK_MAX_POSITIONS,
     BLOCK_STRATEGY_POSITION_CAP,
+    cap_block_reason,
+    strategy_cap_block_reason,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_FADED_FROM_ORB,
@@ -534,9 +536,8 @@ async def submit_trade_entry(
                 # Byte-identical reason format to the STEP-2 gate — the
                 # ledger's 'cap_blocked' mapping + the #197 CAP+1 alert both
                 # match on it.
-                cap_reason = (
-                    f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS} "
-                    f"(mode={account_mode})"
+                cap_reason = cap_block_reason(
+                    open_count, MAX_CONCURRENT_LIVE_POSITIONS, account_mode,
                 )
             else:
                 # Per-strategy cap (#65) — identical TOCTOU shape, covered by
@@ -550,9 +551,8 @@ async def submit_trade_entry(
                         conn, account_mode, signal_type,
                     )
                     if strat_open >= int(strat_cap):
-                        cap_reason = (
-                            f"{BLOCK_STRATEGY_POSITION_CAP}: {signal_type} "
-                            f"{strat_open}/{strat_cap} (mode={account_mode})"
+                        cap_reason = strategy_cap_block_reason(
+                            signal_type, strat_open, strat_cap, account_mode,
                         )
             if cap_reason is None:
                 trade_id = await conn.fetchval(

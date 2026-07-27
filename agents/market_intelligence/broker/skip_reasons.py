@@ -145,3 +145,31 @@ def humanize(reason: str | None) -> str:
     if detail:
         return f"{label} ({detail})"
     return label
+
+
+# ── Cap-block reason builders (#484, 2026-07-27) ─────────────────────────────
+# These strings are CONSUMED BY STRING MATCH, not just displayed: the #197 CAP+1
+# alert and the ledger's `cap_blocked` mapping both key off the exact format. Each
+# was hand-copied into TWO call sites — `live_tracker._check_safeguards` (the cheap
+# STEP-2 early gate) and `entry_pipeline.submit_trade_entry` STEP-6 (the
+# authoritative recount under the #461 per-mode cap lock) — so an edit to one copy
+# alone would silently break the alert with nothing failing loudly. `count_open_
+# positions` had already been deduped for exactly this reason; only the reason
+# BUILDING hadn't. Formats are byte-identical to the copies they replace.
+#
+# Both flagged copies were global-cap only; the per-STRATEGY pair below was found
+# duplicated the same way while fixing it — same class, same risk.
+
+def cap_block_reason(open_count: int, cap: int, account_mode: str) -> str:
+    """Global per-mode position-cap block reason. Matched by the #197 CAP+1 alert."""
+    return f"{BLOCK_MAX_POSITIONS}: {open_count}/{cap} (mode={account_mode})"
+
+
+def strategy_cap_block_reason(
+    signal_type: str, strat_open: int, strat_cap: int, account_mode: str,
+) -> str:
+    """Per-strategy (#65) position-cap block reason, enforced within the global envelope."""
+    return (
+        f"{BLOCK_STRATEGY_POSITION_CAP}: {signal_type} "
+        f"{strat_open}/{strat_cap} (mode={account_mode})"
+    )

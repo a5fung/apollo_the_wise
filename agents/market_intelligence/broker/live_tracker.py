@@ -39,6 +39,8 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_DAILY_LOSS,
     BLOCK_MAX_POSITIONS,
     BLOCK_TRADING_PAUSED,
+    cap_block_reason,
+    strategy_cap_block_reason,
     INFRA_HALT_STATE_UNREADABLE,
     SETUP_ACCOUNT_FETCH_FAILED,
     WINDOW_DUPLICATE,
@@ -151,9 +153,11 @@ async def _check_safeguards(
                 f"Safeguard [{account_mode}] blocked: max positions "
                 f"({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})"
             )
-            return False, (
-                f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS} "
-                f"(mode={account_mode})"
+            # #484: built by the SHARED helper — this string is string-MATCHED by
+            # the #197 CAP+1 alert, and it used to be hand-copied into
+            # entry_pipeline's STEP-6 recount too.
+            return False, cap_block_reason(
+                open_count, MAX_CONCURRENT_LIVE_POSITIONS, account_mode,
             ), 0.0
 
         # Per-strategy concurrent-position cap (#65). Enforced WITHIN the
@@ -173,10 +177,8 @@ async def _check_safeguards(
                         f"Safeguard [{account_mode}/{signal_type}] blocked: "
                         f"per-strategy cap ({strat_open}/{strat_cap})"
                     )
-                    from agents.market_intelligence.broker.skip_reasons import BLOCK_STRATEGY_POSITION_CAP
-                    return False, (
-                        f"{BLOCK_STRATEGY_POSITION_CAP}: {signal_type} "
-                        f"{strat_open}/{strat_cap} (mode={account_mode})"
+                    return False, strategy_cap_block_reason(
+                        signal_type, strat_open, strat_cap, account_mode,
                     ), 0.0
 
         # Daily loss limit (per-mode)
