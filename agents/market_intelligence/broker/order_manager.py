@@ -689,7 +689,7 @@ async def check_fills() -> list[dict]:
                 """, trade["entry_order_id"], filled_qty, filled_price)
 
             await send_telegram_message(
-                f"{mode_prefix()}✅ *FILLED:* {ticker} (attempt {trade.get('entry_attempt', 1)})\n"
+                f"{mode_prefix(account_mode)}✅ *FILLED:* {ticker} (attempt {trade.get('entry_attempt', 1)})\n"
                 f"Entry: ${filled_price:.2f} × {filled_qty:.0f} shares\n"
                 f"Stop: ${trade['stop_price']:.2f}"
             )
@@ -2223,6 +2223,7 @@ async def _finalize_partial_exit_locked(
         return
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
 
     # Idempotency: a duplicate WS fill for the same order_id no-ops.
@@ -2267,7 +2268,7 @@ async def _finalize_partial_exit_locked(
         }),
     )
     await send_telegram_message(
-        f"{mode_prefix()}📤 *Partial exit FILLED:* {ticker}\n"
+        f"{mode_prefix(account_mode)}📤 *Partial exit FILLED:* {ticker}\n"
         f"Sold {shares} shares @${filled_price:.2f}\n"
         f"P&L: ${pnl:+,.2f} | Remaining: {new_remaining}"
     )
@@ -2379,6 +2380,7 @@ async def _finalize_full_exit_locked(
         return
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
 
     if any(e.get("order_id") == order_id for e in exits):
@@ -2423,7 +2425,7 @@ async def _finalize_full_exit_locked(
 
     emoji = "✅" if total_pnl > 0 else "❌"
     await send_telegram_message(
-        f"{mode_prefix()}{emoji} *Closed:* {ticker} — {reason}\n"
+        f"{mode_prefix(account_mode)}{emoji} *Closed:* {ticker} — {reason}\n"
         f"Exit @${filled_price:.2f} × {filled_qty:.0f} shares\n"
         f"Total P&L: ${total_pnl:+,.2f}"
     )
@@ -2466,6 +2468,7 @@ async def _finalize_stop_fill_locked(
         return
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
 
     if any(e.get("order_id") == order_id for e in exits):
@@ -2512,7 +2515,7 @@ async def _finalize_stop_fill_locked(
     )
 
     await send_telegram_message(
-        f"{mode_prefix()}❌ *Stopped out:* {ticker} @${filled_price:.2f}\n"
+        f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${filled_price:.2f}\n"
         f"P&L: ${pnl:+,.2f} | shares: {filled_qty}"
     )
 
@@ -2730,14 +2733,19 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: st
             )
 
     if cancelled:
-        # Telegram digest uses global mode_prefix — cancellations span both modes
-        # in dual-account; per-trade mode is captured in the per-line audit events.
+        # #444: thread this function's OWN account_mode param (already in scope —
+        # it's the filter used in the query above). When None (the batch cleanup
+        # paths), mode_prefix(None) == mode_prefix() — byte-identical to before,
+        # since cancellations genuinely span both modes and per-trade mode is
+        # captured in the per-line audit events. When set (operator /pause passes
+        # account_mode="live"), every cancelled row IS that one mode — the digest
+        # now labels correctly instead of falling back to the legacy global.
         await send_telegram_message(
-            f"{mode_prefix()}🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
+            f"{mode_prefix(account_mode)}🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
         )
     if failed_tickers:
         await send_telegram_message(
-            f"{mode_prefix()}⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
+            f"{mode_prefix(account_mode)}⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
         )
     return cancelled
 

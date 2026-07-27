@@ -56,6 +56,7 @@ from agents.market_intelligence.constants import (
     CIRCUIT_BREAKER_COOLDOWN_DAYS,
     current_account_mode,
     mode_prefix,
+    resolve_strategy_mode_nonfatal,
 )
 
 logger = logging.getLogger(__name__)
@@ -333,6 +334,14 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         logger.info("No HIGH EP alerts today for live trading")
         return []
 
+    # #444: this whole function is MAGNA53-only (signal_type="magna53" below) —
+    # every alert in this batch shares ONE account_mode, so resolve it once for
+    # the two digest surfaces (crash + skip-digest) instead of falling back to
+    # the legacy global per message. Fail-open, never raises (mirrors the
+    # ep_detector downgrade-ping precedent) — a resolve miss degrades to the
+    # exact prior behavior (mode_prefix(None) == mode_prefix()), never blocks entry.
+    _magna53_mode = await resolve_strategy_mode_nonfatal("magna53")
+
     logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts: {[a['ticker'] for a in alerts]}")
     try:
         await log_audit_event("orb_triggered", f"[{trigger}] {len(alerts)} alerts: {[a['ticker'] for a in alerts]}")
@@ -438,7 +447,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 logger.exception(f"ORB crash audit_log write also failed for {tkr}")
             try:
                 await send_telegram_message(
-                    f"{mode_prefix()}🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
+                    f"{mode_prefix(_magna53_mode)}🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
                 )
             except Exception:
                 logger.exception(
@@ -471,7 +480,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         )
         try:
             await send_telegram_message(
-                f"{mode_prefix()}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
+                f"{mode_prefix(_magna53_mode)}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
             )
         except Exception as e:
             logger.error(f"ORB grouped-skip Telegram failed — {e}")
@@ -567,8 +576,22 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
         # 1. Hard-stop verification: re-call without hard_stop if Alpaca says
         # position is still open (stop didn't actually trigger yet).
+        #
+        # ⚠ account_mode is LOAD-BEARING (#444, fixed 2026-07-27) — same defect
+        # class as morning_stop_refresh's get_order, but with a worse failure
+        # mode. Without it this read defaults to current_account_mode() =
+        # "paper" inside apollo-execution, so a LIVE position is looked up in the
+        # PAPER book and comes back None → `not pos` → the branch below feeds
+        # finalize_stop_fill a SYNTHETIC close, marking a still-open real
+        # position as closed and dropping it out of stop management entirely.
+        # That is state corruption, not just churn. It had not fired yet (no
+        # `inferred_close` rows exist in prod) because the SMA-trail stopped_out
+        # branch had not been reached for a live position — loaded, not
+        # triggered. Fixed before it could.
         if step.action == "stopped_out":
-            pos = await alpaca.get_position(ticker)
+            pos = await alpaca.get_position(
+                ticker, account_mode=trade["account_mode"],
+            )
             if not pos or pos["qty"] <= 0:
                 # T1.3 refactor 2026-05-18: delegate close commit to
                 # finalize_stop_fill (the canonical authorized writer for
@@ -860,7 +883,8 @@ async def morning_stop_refresh() -> int:
     pool = await get_pool()
     async with pool.acquire() as conn:
         trades = await conn.fetch("""
-            SELECT id, ticker, remaining_shares, stop_price, stop_order_id
+            SELECT id, ticker, remaining_shares, stop_price, stop_order_id,
+                   account_mode
             FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0
               AND alert_date <> $1
@@ -875,9 +899,23 @@ async def morning_stop_refresh() -> int:
         if not stop_price or not trade["remaining_shares"]:
             continue
 
-        # Check if existing stop order is still active
+        # Check if existing stop order is still active.
+        #
+        # ⚠ account_mode is LOAD-BEARING here (#444, fixed 2026-07-27). Without
+        # it this read defaulted to current_account_mode(), which resolves to
+        # "paper" inside apollo-execution — so a LIVE stop_order_id was looked up
+        # in the PAPER book, always returned None, and this "still active → skip"
+        # branch was unreachable dead code. The job then cancelled and re-placed
+        # every live Day-2+ stop EVERY morning at an identical price, each cycle
+        # leaving a window with no resting stop on a real position. Confirmed in
+        # prod on SMCI: 9:35 ET replacements on 07-22, 07-23 and 07-24, all
+        # $28.5 → $28.50, one of which raised an APIError and needed the #433
+        # retry. Passing the trade's OWN mode makes the skip branch reachable, so
+        # an already-active stop is left alone.
         if trade["stop_order_id"]:
-            order = await alpaca.get_order(trade["stop_order_id"])
+            order = await alpaca.get_order(
+                trade["stop_order_id"], account_mode=trade["account_mode"],
+            )
             if order and str(order.get("status", "")).split(".")[-1].lower() in ("new", "accepted", "held"):
                 logger.debug(f"Stop still active for {ticker}")
                 continue

@@ -270,6 +270,13 @@ async def submit_trade_entry(
                 await on_skip(reason)
             except Exception as e:
                 logger.warning(f"{strategy_label} {ticker}: on_skip hook raised — {e}")
+        # #444: bound BEFORE the try so a resolve failure (or `strategy` not yet
+        # assigned in the enclosing scope — _skip can fire ahead of the phase-gate
+        # line for the open-position guard) leaves this None rather than unbound.
+        # mode_prefix(None) == mode_prefix() — the CAP+1 alert below degrades to
+        # today's exact legacy-global behavior instead of silently vanishing into
+        # the except below it (a NameError here would have been swallowed).
+        _skip_mode = None
         try:
             # Attribute the filtered trade to the OWNING strategy's account so the EOD summary
             # shows a live-strategy skip under LIVE, not paper (operator 7/8). Resolved here
@@ -310,7 +317,7 @@ async def submit_trade_entry(
             _is_cap = isinstance(reason, str) and reason.startswith(BLOCK_MAX_POSITIONS)
             if _is_cap and _cq == "game_changer":
                 await send_telegram_message(
-                    f"{mode_prefix()}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
+                    f"{mode_prefix(_skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
                     f"game\\_changer · score {alert_context.get('ep_score', '?')} · "
                     f"blocked by full position cap.\n"
                     f"_Would auto-enter under the cap+1 rule (SHADOW — not live). "
