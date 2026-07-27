@@ -35,11 +35,36 @@ async def test_breach_when_two_same_family_opens(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_no_breach_one_same_family(monkeypatch):
+async def test_one_same_family_NOW_emits(monkeypatch):
+    """Threshold lowered 2 → 1 (operator-ruled 2026-07-27). This test previously
+    pinned the opposite (`breach is False` for a single same-family position) and
+    it was right to — at the old threshold it was correct behavior.
+
+    Why it changed: at 2, the shadow was structurally incapable of firing. It had
+    recorded ZERO events since shipping 7/12, because an emit needed two EXISTING
+    same-family positions plus the candidate, while the live book has reached 4
+    concurrent positions ONCE and averages 1.50. The zero was honest, not broken
+    instrumentation — there was simply nothing to observe. At 1, an emit means
+    "this entry makes two positions share a theme", which is the base rate needed
+    before anyone can argue for a blocking cap.
+
+    Still SHADOW — this can never block an entry.
+    """
     _setup(monkeypatch, ["AAA", "CCC"],
            _themes(("Insurance Underwriters", ("NEWT", "AAA")), ("Other", ("CCC",))))
     info = await ef.check_family_exposure("NEWT", "live")
-    assert info["breach"] is False and info["same_family"] == ["AAA"]
+    assert info["breach"] is True and info["same_family"] == ["AAA"]
+
+
+@pytest.mark.asyncio
+async def test_zero_same_family_still_never_emits(monkeypatch):
+    """The floor that must hold at ANY threshold: an entry sharing a theme with
+    NOTHING open is not a concentration event. Guards against lowering the
+    threshold to 0 and turning every entry into an alert."""
+    _setup(monkeypatch, ["CCC"],
+           _themes(("Insurance Underwriters", ("NEWT",)), ("Other", ("CCC",))))
+    info = await ef.check_family_exposure("NEWT", "live")
+    assert info["breach"] is False and info["same_family"] == []
 
 
 @pytest.mark.asyncio

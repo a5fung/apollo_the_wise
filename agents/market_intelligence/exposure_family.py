@@ -22,7 +22,24 @@ logger = logging.getLogger(__name__)
 
 # The candidate would become the (N+1)th same-family position; emit when the EXISTING
 # same-family count is already >= this (i.e. the entry lifts exposure above it).
-EXPOSURE_FAMILY_SHADOW_THRESHOLD = 2
+#
+# LOWERED 2 -> 1 (operator-ruled 2026-07-27) because at 2 this shadow was
+# structurally incapable of ever firing, and had recorded ZERO events since it
+# shipped 7/12. Measured on the live book (2026-05-01 → 07-27, days holding
+# anything): max concurrent positions EVER = 4, average = 1.50, only 4 days with
+# 2+ and ONE day with 3+. At threshold 2 an emit needs two EXISTING same-family
+# positions plus the candidate — i.e. three of a book that has only twice
+# exceeded two positions in total. The zero was honest, not broken
+# instrumentation; the mechanism simply had nothing to act on.
+#
+# The premortem's R1 risk ("5 same-family EP HIGHs fill all 5 slots = one bet at
+# ~100% deployment") is therefore real in principle and unobserved in practice —
+# the binding constraint today is book SIZE, not correlation. At 1, an emit means
+# "this entry makes two positions share a theme", which is the base rate we
+# actually need before anyone can argue for a blocking cap. Still SHADOW: this
+# constant gates an observe-only audit/Telegram emit and can never block an entry
+# (entry_pipeline stage 2b is error-wrapped, #94 pattern).
+EXPOSURE_FAMILY_SHADOW_THRESHOLD = 1
 
 
 async def check_family_exposure(ticker: str, account_mode: str) -> dict | None:
