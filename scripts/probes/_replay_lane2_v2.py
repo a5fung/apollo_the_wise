@@ -1,36 +1,56 @@
-"""#167 Lane-2 grouping v2 — forward-era REPLAY driver (operator-run, read-only by default).
+"""#167 Lane-2 grouping v2 — REGISTRY-mode forward-era REPLAY driver
+(operator-run, read-only by default).
 
-Replays the NEW v2 behavior (grounded input + 10-trading-day rolling window +
-same-day anchor) over the forward-era alert history by calling the REAL
+Replays the v2 REGISTRY behavior (operator reframe 2026-07-27: incremental
+state-carrying — today's alerts + compact ACTIVE-narrative roster + watch-list
+seeds, instead of the superseded re-read-a-10-day-pool draft) over the
+forward-era alert history by calling the REAL
 `theme_engine.discover_narrative_themes` with the `lane2_grouping_v2` flag
 forced ON **in-process only** (the DB toggle is never touched) and
-`persist=False` (ZERO writes). The v1 baseline for comparison is production's
-actual history — v1 already ran live over these dates, so it is not re-run.
+`persist=False` (ZERO writes).
+
+REGISTRY CHAINING: in production the roster is the lane's own persisted rows;
+with persist=False nothing is written, so this driver chains an IN-MEMORY
+registry across days — `db.get_lane2_active_narratives` /
+`db.get_lane2_pending_seeds` are patched to serve it (mirroring the SQL's
+latest-per-name / latest-per-ticker windowed semantics exactly), and it is
+updated after each day from the run's own `proposals` / `new_seeds` output —
+precisely the rows the persist path would have written. All roster HYGIENE
+(seed consumption, today-supersedes-seed, LANE2_ROSTER_MAX) lives in
+theme_engine and is therefore exercised for real, not simulated.
+
+The v1 baseline for comparison is production's actual history — v1 already ran
+live over these dates, so it is not re-run. The prior POOL-mode replay results
+(23 proposals, 18 near-duplicates of one narrative) are the operator's
+/tmp/lane2_replay.json.
 
 Modes
 -----
---no-llm            Deterministic leg only: per-day gate decision, pool
-                    composition, dedup outcome, anchor set, input-source mix,
-                    prompt size. No API call, no key needed. SAFE ANYWHERE.
---offline FILE      Serve alerts from a JSON pull (see query below) instead of
-                    the live DB — lets the replay run off-box. Without it, the
-                    script reads the DB via db.get_ep_alerts_window (SELECT
-                    only; intended to be run in the market-agent container).
+--no-llm            Deterministic leg only: per-day gate decision, today-pool
+                    composition, roster state, prompt size. No API call, no
+                    key needed. SAFE ANYWHERE. Approximates registry growth
+                    (every unplaced qualifying alert becomes a seed, story =
+                    head of its evidence) so roster-bearing prompt sizes are
+                    estimable — joins/births need the model, so narrative
+                    counts from this leg are NOT meaningful.
+--offline FILE      Serve today-alerts from a JSON pull (query below) instead
+                    of the live DB — lets the replay run off-box. Without it,
+                    the script reads the DB via db.get_today_ep_alerts
+                    (SELECT only; intended for the market-agent container).
 --persist-backfill  OPERATOR-ONLY: persist replay proposals under the
                     SEGREGATED source 'narrative_cogap_backfill' (the #167
-                    hindsight-segregation lane, same as
-                    _backfill_narrative_discovery.py) so
+                    hindsight-segregation lane) so
                     `theme_engine.evaluate_narrative_themes(days=60,
-                    include_backfill=True)` can score them (fwd_5d/10d,
-                    live_unified). ⚠ Replaces prior narrative_cogap_backfill
-                    rows for replayed dates; FORWARD rows are protected by the
-                    DO NOTHING guard in persist_narrative_theme_candidates.
+                    include_backfill=True)` can score them. Watch-list seeds
+                    are NEVER persisted on backfill runs (engine-enforced) —
+                    hindsight seeds must not enter the forward watch list.
                     Default is persist=False — no writes at all.
 
 The LLM leg uses the production model (shared.llm_models.THEME_MODEL =
 claude-sonnet-4-6) at max_tokens=1500 — identical to live. Requires
-ANTHROPIC_API_KEY. ~25-30 gated days × ~8-15k input tokens ≈ $1-2 total at
-Sonnet rates ($3/MTok in, $15/MTok out).
+ANTHROPIC_API_KEY. Registry mode sends only TODAY's documents + a compact
+roster (vs the pool draft's ~25-35k input tokens/night); the driver prints
+measured usage per night and a total.
 
 Offline data pull (prod, SELECT only):
   ssh apollo@87.99.134.162 "docker exec apollo-postgres psql -U apollo -d apollo -tA -c \"
@@ -60,8 +80,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from agents.market_intelligence import theme_engine  # noqa: E402
 from agents.market_intelligence.theme_engine import (  # noqa: E402
-    LANE2_WINDOW_TRADING_DAYS, _build_lane2_v2_prompt, _dedupe_lane2_pool,
-    _lane2_input_text, _lane2_window_start, discover_narrative_themes,
+    LANE2_ROSTER_MAX, LANE2_SEED_STORY_BUDGET, LANE2_WINDOW_TRADING_DAYS,
+    _build_lane2_registry_prompt, _lane2_input_text, _lane2_qualifies,
+    _lane2_window_start, discover_narrative_themes,
 )
 
 
@@ -80,15 +101,61 @@ def _trading_days(start: date, end: date):
         d += timedelta(days=1)
 
 
-async def _replay_one(scan_d: date, rows_for_window, *, no_llm: bool,
+class _MemRegistry:
+    """In-memory stand-in for the lane's own persisted rows (persist=False ⇒
+    nothing hits the DB). `active`/`pending` mirror the patched readers' SQL:
+    latest row per name / per ticker, window_start <= run_date < before,
+    ordered most-recently-touched first."""
+
+    def __init__(self) -> None:
+        self.narrative_rows: list[dict] = []  # {run_date, name, tickers, thesis}
+        self.seed_rows: list[dict] = []       # {run_date, ticker, story}
+
+    @staticmethod
+    def _latest(rows: list[dict], key: str, window_start: date, before: date) -> list[dict]:
+        best: dict[str, dict] = {}
+        for r in rows:
+            if window_start <= r["run_date"] < before:
+                cur = best.get(r[key])
+                if cur is None or r["run_date"] > cur["run_date"]:
+                    best[r[key]] = r
+        out = sorted(best.values(), key=lambda r: r[key])
+        out.sort(key=lambda r: r["run_date"], reverse=True)  # stable: run_date DESC, key ASC
+        return out
+
+    def active(self, window_start: date, before: date) -> list[dict]:
+        return [dict(r) for r in self._latest(self.narrative_rows, "name", window_start, before)]
+
+    def pending(self, window_start: date, before: date) -> list[dict]:
+        return [dict(r) for r in self._latest(self.seed_rows, "ticker", window_start, before)]
+
+    def apply_day(self, scan_d: date, proposals: list[dict], new_seeds: list[dict]) -> None:
+        for p in proposals or []:
+            self.narrative_rows.append({"run_date": scan_d, "name": p["name"],
+                                        "tickers": list(p["tickers"]),
+                                        "thesis": p.get("thesis")})
+        for s in new_seeds or []:
+            self.seed_rows.append({"run_date": scan_d, "ticker": s["ticker"],
+                                   "story": s["story"]})
+
+
+async def _replay_one(scan_d: date, reg: _MemRegistry, rows_offline, *, no_llm: bool,
                       persist_backfill: bool) -> dict:
     """One replay day through the REAL discover_narrative_themes (flag forced ON
-    in-process; DB toggle untouched)."""
+    in-process; DB toggle untouched; registry served from memory)."""
     async def fake_flag():
         return True
 
-    async def fake_window(d_from, d_to):
-        return [r for r in rows_for_window if d_from <= r["alert_date"] <= d_to]
+    async def fake_today(d):
+        dd = d if isinstance(d, date) else date.fromisoformat(str(d))
+        day = [r for r in rows_offline if r["alert_date"] == dd]
+        return sorted(day, key=lambda r: r.get("ep_score") or 0, reverse=True)
+
+    async def fake_active(window_start, before):
+        return reg.active(window_start, before)
+
+    async def fake_pending(window_start, before):
+        return reg.pending(window_start, before)
 
     async def _noop_audit(*a, **k):
         return None
@@ -98,38 +165,50 @@ async def _replay_one(scan_d: date, rows_for_window, *, no_llm: bool,
 
     patches = [
         patch("agents.market_intelligence.db.get_lane2_grouping_v2_enabled", fake_flag),
+        patch("agents.market_intelligence.db.get_lane2_active_narratives", fake_active),
+        patch("agents.market_intelligence.db.get_lane2_pending_seeds", fake_pending),
         patch("agents.market_intelligence.spend_tracker.log_anthropic_call_safe", _noop_spend),
         # audit rows are prod telemetry — a replay must not write them even on-box
         patch("agents.market_intelligence.db.log_audit_event", _noop_audit),
     ]
-    if rows_for_window is not None:
-        patches.append(patch("agents.market_intelligence.db.get_ep_alerts_window", fake_window))
+    if rows_offline is not None:
+        patches.append(patch("agents.market_intelligence.db.get_today_ep_alerts", fake_today))
 
-    ctxs = [p.start() for p in patches]
+    started = [p.start() for p in patches]  # noqa: F841
     try:
         if no_llm:
-            # Deterministic leg: gate/pool/prompt only — replicates the exact
-            # pre-LLM path of discover_narrative_themes v2 using the same
-            # helpers the live function calls.
-            window_rows = await fake_window(_lane2_window_start(scan_d), scan_d) \
-                if rows_for_window is not None else []
-            pool, today_tk = _dedupe_lane2_pool(window_rows, scan_d)
+            # Deterministic leg — replicates the exact pre-LLM path of
+            # _discover_lane2_registry using the same helpers the live code
+            # calls, then APPROXIMATES state growth (all-seed) for sizing.
+            from agents.market_intelligence.db import get_today_ep_alerts
+            alerts = await get_today_ep_alerts(scan_d) if rows_offline is not None else []
+            cand = [a for a in alerts if _lane2_qualifies(a)]
+            ws = _lane2_window_start(scan_d)
+            active = reg.active(ws, scan_d)
+            seeds = reg.pending(ws, scan_d)
+            member_set = {tk for n in active for tk in (n.get("tickers") or [])}
+            today_set = {a["ticker"] for a in cand}
+            seeds = [s for s in seeds
+                     if s["ticker"] not in member_set and s["ticker"] not in today_set]
+            active, seeds = active[:LANE2_ROSTER_MAX], seeds[:LANE2_ROSTER_MAX]
             src = {"grounded": 0, "analysis": 0, "catalyst": 0, "none": 0}
-            for a in pool:
+            for a in cand:
                 src[_lane2_input_text(a)[1]] += 1
-            gated = bool(today_tk) and len(pool) >= 2
-            prompt = _build_lane2_v2_prompt(pool, today_tk) if gated else ""
-            return {
-                "date": str(scan_d), "gated": gated,
-                "today": sorted(today_tk), "pool": [
-                    {"ticker": a["ticker"], "alert_date": str(a["alert_date"]),
-                     "ep": a.get("ep_score"), "src": _lane2_input_text(a)[1]}
-                    for a in pool],
-                "input_sources": src,
-                "prompt_chars": len(prompt), "est_input_tokens": len(prompt) // 4,
-            }
+            prompt = _build_lane2_registry_prompt(cand, active, seeds) if cand else ""
+            # sizing approximation: every qualifying name seeds (no model → no joins)
+            approx = [{"ticker": a["ticker"],
+                       "story": _lane2_input_text(a)[0][:LANE2_SEED_STORY_BUDGET]}
+                      for a in cand]
+            reg.apply_day(scan_d, [], approx)
+            return {"date": str(scan_d), "gated": bool(cand),
+                    "today": sorted(today_set),
+                    "roster_active": len(active), "roster_seeds": len(seeds),
+                    "input_sources": src, "prompt_chars": len(prompt),
+                    "est_input_tokens": len(prompt) // 4}
         out = await discover_narrative_themes(
             scan_d, persist=persist_backfill, backfilled=True)
+        if not out.get("error"):
+            reg.apply_day(scan_d, out.get("proposals") or [], out.get("new_seeds") or [])
         return {"date": str(scan_d), **{k: v for k, v in out.items() if k != "date"}}
     finally:
         for p in patches:
@@ -142,7 +221,7 @@ async def main() -> None:
     ap.add_argument("--start", default="2026-06-08")
     ap.add_argument("--end", default="2026-07-24")
     ap.add_argument("--no-llm", action="store_true",
-                    help="deterministic gate/pool/prompt replay only — no API call")
+                    help="deterministic gate/roster/prompt replay only — no API call")
     ap.add_argument("--persist-backfill", action="store_true",
                     help="OPERATOR-ONLY: write proposals under narrative_cogap_backfill")
     ap.add_argument("--out", help="write per-day results JSON here")
@@ -152,28 +231,53 @@ async def main() -> None:
     if args.persist_backfill and args.no_llm:
         ap.error("--persist-backfill requires the LLM leg")
 
+    reg = _MemRegistry()
     results = []
     for scan_d in _trading_days(date.fromisoformat(args.start), date.fromisoformat(args.end)):
-        r = await _replay_one(scan_d, rows, no_llm=args.no_llm,
+        r = await _replay_one(scan_d, reg, rows, no_llm=args.no_llm,
                               persist_backfill=args.persist_backfill)
         results.append(r)
         if args.no_llm:
             flag = "GATED" if r["gated"] else "  -  "
             src = r["input_sources"]
-            print(f"{r['date']}  {flag}  today={len(r['today']):2d} pool={len(r['pool']):2d} "
+            print(f"{r['date']}  {flag}  today={len(r['today']):2d} "
+                  f"roster={r['roster_active']:2d}A/{r['roster_seeds']:2d}S "
                   f"g/a/c={src['grounded']}/{src['analysis']}/{src['catalyst']} "
                   f"~{r['est_input_tokens']:5d} tok  today:{','.join(r['today'])}")
         else:
-            print(f"{r['date']}  themes={r.get('themes', 0)}  {r.get('names', [])}"
+            u = r.get("usage") or {}
+            regs = r.get("registry") or {}
+            print(f"{r['date']}  roster={regs.get('active', 0):2d}A/{regs.get('seeds', 0):2d}S  "
+                  f"join={r.get('joined', [])} new={r.get('born', [])} "
+                  f"seeds+={len(r.get('new_seeds') or [])} "
+                  f"tok_in={u.get('input_tokens', '?')}"
                   f"{'  ERR:' + str(r['error'])[:80] if r.get('error') else ''}")
 
     if args.out:
         Path(args.out).write_text(json.dumps(results, indent=1))
         print(f"\nwrote {args.out}")
 
-    n_gated = sum(1 for r in results if r.get("gated") or r.get("themes", 0) or r.get("names"))
-    print(f"\n{len(results)} weekdays replayed · window={LANE2_WINDOW_TRADING_DAYS}td "
-          f"· {n_gated} day(s) past the v2 gate" if args.no_llm else "")
+    if args.no_llm:
+        n_gated = sum(1 for r in results if r.get("gated"))
+        toks = [r["est_input_tokens"] for r in results if r.get("gated")]
+        print(f"\n{len(results)} weekdays replayed · memory={LANE2_WINDOW_TRADING_DAYS}td "
+              f"· {n_gated} evaluated day(s) · est input tok/night "
+              f"min/med/max = {min(toks)}/{sorted(toks)[len(toks)//2]}/{max(toks)}"
+              if toks else "\nno gated days")
+    else:
+        joins = sum(len(r.get("joined") or []) for r in results)
+        births = sum(len(r.get("born") or []) for r in results)
+        final = reg.active(date.fromisoformat(args.start) - timedelta(days=1),
+                           date.fromisoformat(args.end) + timedelta(days=1))
+        toks = [r["usage"]["input_tokens"] for r in results
+                if r.get("usage", {}).get("input_tokens") is not None]
+        print(f"\n{len(results)} weekdays replayed · {births} narrative(s) born · "
+              f"{joins} join event(s) · {len(final)} distinct narrative(s) all-era")
+        for nrow in final:
+            print(f"  [{nrow['run_date']}] {nrow['name']}: {','.join(nrow['tickers'])}")
+        if toks:
+            print(f"input tokens/night min/med/max/total = "
+                  f"{min(toks)}/{sorted(toks)[len(toks)//2]}/{max(toks)}/{sum(toks)}")
 
 
 if __name__ == "__main__":

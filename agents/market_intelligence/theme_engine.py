@@ -384,15 +384,44 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
-# ── #167 Lane-2 grouping v2 (operator-ruled 2026-07-27) ──────────────────────
+# ── #167 Lane-2 grouping v2 — INCREMENTAL NARRATIVE REGISTRY (operator-ruled ──
+# 2026-07-27; registry reframe same day, superseding the rolling-pool draft).
 # Flag: mi_safeguard_state 'lane2_grouping_v2' (db.get_lane2_grouping_v2_enabled,
 # FAIL-CLOSED OFF). OFF ⇒ discover_narrative_themes is byte-identical to v1
 # (pinned by tests/test_lane2_grouping_v2.py). GRADE-AFFECTING when ON — the
 # lane feeds the judge's active_narratives; see the flag docstring in db.py.
-LANE2_WINDOW_TRADING_DAYS = 10  # rolling lookback in TRADING days — operator-measured on the real
-                                # cohort: WULF 07-06 → HUT/IREN 07-20 is exactly 10 trading days;
-                                # a 5-day window misses WULF entirely, 7 catches each adjacent
-                                # link but never the whole chain (167 audit §2/§4).
+#
+# The registry design (replaces "re-read a 10-day pool of full documents
+# nightly", which re-derived — and re-NAMED — the same dominant story every
+# night: 18 of the 23 pool-replay proposals were one narrative under different
+# wordings, and each near-duplicate could auto-promote into live mi_themes):
+#   • STATE = the lane's own persisted output. ACTIVE narratives are the
+#     latest source='narrative_cogap' row per name within the memory horizon;
+#     single-name stories persist as source='narrative_seed' watch-list rows
+#     (1-member; see the wall notes on get_lane2_pending_seeds).
+#   • Each night the model sees ONLY today's qualifying alerts WITH full
+#     evidence (grounded_text→claude_analysis→catalyst, unchanged budgets),
+#     plus the compact roster (names + theses + members — never the members'
+#     documents), and answers ONE question per name: JOIN an active narrative,
+#     BIRTH a new theme (2+ names incl. >=1 today), or SEED the watch list.
+#   • Dedup is STRUCTURAL: a continuing story is a JOIN (same name, members
+#     unioned) — never a fresh proposal to be de-duplicated after the fact.
+#   • Drift bounds: name+thesis are FROZEN at birth (a join can never re-write
+#     the story definition, so a wrong join cannot compound semantically);
+#     a join must include >=1 same-day qualifying alert (a narrative cannot be
+#     kept alive by re-listing old members); members are FIFO-capped
+#     (LANE2_REGISTRY_MAX_MEMBERS); an untouched narrative ages out of the
+#     roster after LANE2_WINDOW_TRADING_DAYS trading days (absence-based
+#     expiry, the get_active_themes(stale_after_days=…) idiom — horizon below).
+LANE2_WINDOW_TRADING_DAYS = 10  # REGISTRY MEMORY HORIZON in TRADING days (roster staleness for
+                                # narratives AND seeds) — operator-measured on the real cohort:
+                                # WULF 07-06 → HUT/IREN 07-20 is exactly 10 trading days, and the
+                                # WULF→CLSK seed link (07-06→07-14) is 8 CALENDAR days, so the
+                                # theme-engine's 7-calendar-day staleness idiom would have expired
+                                # the seed one day short — trading-day math at 10 is the measured
+                                # minimum memory (167 audit §2/§4). NOTE: unlike the superseded
+                                # fixed pool, a narrative TOUCHED by a join refreshes its
+                                # last-seen, so a living story is remembered indefinitely.
 LANE2_GROUNDED_BUDGET = 10000   # per-ticker chars of grounded_text — a SAFETY CEILING, in practice
                                 # the FULL document (era max observed 9,615; build_grounded_text is
                                 # upstream-bounded by its inputs). A head-slice budget was tested on
@@ -408,6 +437,19 @@ LANE2_ANALYSIS_BUDGET = 1500    # claude_analysis fallback cap (median 722; matc
                                 # payload cap in ep_grade_judge.assemble_judge_inputs).
 LANE2_CATALYST_BUDGET = 500     # catalyst last resort — the column is hard-truncated at 500
                                 # upstream anyway (62/62 forward-era rows, 167 audit §3).
+LANE2_REGISTRY_MAX_MEMBERS = 12  # FIFO member cap per narrative — a join appends new joiners and
+                                 # drops the OLDEST members past the cap, so a hot macro story
+                                 # cannot accrete an unbounded cohort into the judge context or
+                                 # the auto-promote path (the "ever-growing re-promoting cohort"
+                                 # failure mode). 12 ≈ 2-3× the largest genuine observed cohort
+                                 # (WULF/CLSK/HUT/IREN = 4).
+LANE2_ROSTER_MAX = 20            # prompt-side cap on roster lines (narratives / seeds each),
+                                 # most-recent first — bounds prompt growth if the registry runs
+                                 # hot; ~100-150 chars/line so a full roster is ~3-6k chars.
+LANE2_SEED_STORY_BUDGET = 160    # chars (~25 words) for a watch-list story line — the seed is a
+                                 # LINKING HOOK for a future pairing, not an evidence store; the
+                                 # full document is re-fetched from the alert row if it ever
+                                 # groups.
 
 # Narrative-definition rules shared VERBATIM by the v1 and v2 prompts. Prompt
 # bias was tested and DISCONFIRMED as the primary driver of the misses (167
@@ -436,6 +478,11 @@ _LANE2_JSON_CONTRACT = (
 )
 _LANE2_NAME_BREADTH_RULE = (
     "The name's breadth must match the group: every grouped ticker must individually fit the name."
+)
+_LANE2_REGISTRY_JSON_CONTRACT = (
+    'Return ONLY JSON: {"themes":[{"name":"<=6 words","catalyst_type":"theme|govt_policy|shortage|'
+    'sales_acceleration|new_product|management_change|other","tickers":["TICK","TICK"],'
+    '"thesis":"one sentence"}],"seeds":[{"ticker":"TICK","story":"<=25 words"}]}. '
 )
 
 
@@ -475,62 +522,160 @@ def _lane2_input_text(a: dict) -> tuple[str, str]:
     return "", "none"
 
 
-def _dedupe_lane2_pool(alerts: list[dict], scan_date) -> tuple[list[dict], set[str]]:
-    """Cross-day dedup for the v2 pool + the same-day anchor set.
-
-    Dedup rule (operator question answered here): per ticker keep the
-    HIGHEST-ep_score qualifying alert in-window; ties → the LATEST alert_date.
-    Rationale: (a) it is the same semantics get_today_ep_alerts already applies
-    within a day (DISTINCT ON ticker ORDER BY ep_score DESC), extended across
-    days — one dedup rule, not two; (b) the strongest alert is the one carrying
-    the substantive catalyst evidence (WULF's ep-96 Anthropic-lease day, not a
-    weak follow-through re-alert whose text is generic continuation prose).
-
-    The anchor set is computed BEFORE dedup: a ticker with ANY qualifying alert
-    ON scan_date is a same-day anchor even when dedup keeps an older, stronger
-    row for its evidence text.
-
-    Returns (pool sorted by alert_date then ticker, today_tickers)."""
-    best: dict[str, dict] = {}
-    today_tickers: set[str] = set()
-    for a in alerts:
-        if not _lane2_qualifies(a):
-            continue
-        tk = a["ticker"]
-        if a["alert_date"] == scan_date:
-            today_tickers.add(tk)
-        cur = best.get(tk)
-        if cur is None or (
-            ((a.get("ep_score") or 0), a["alert_date"])
-            > ((cur.get("ep_score") or 0), cur["alert_date"])
-        ):
-            best[tk] = a
-    pool = sorted(best.values(), key=lambda r: (r["alert_date"], r["ticker"]))
-    return pool, today_tickers
+def _norm_narrative_name(name: str) -> str:
+    """Canonical form for narrative-name matching (JOIN detection): lowercase,
+    every non-alphanumeric run collapsed to one space. Catches the observed
+    drift classes — case, hyphen-vs-space ("data-center"/"data center"),
+    stray punctuation — WITHOUT any fuzzy matching (a semantically different
+    wording is deliberately NOT a match; the model is instructed to reuse the
+    exact roster name, and a missed join surfaces in the replay/audit rather
+    than being force-merged)."""
+    return re.sub(r"[^a-z0-9]+", " ", str(name).lower()).strip()
 
 
-def _build_lane2_v2_prompt(pool: list[dict], today_tickers: set[str]) -> str:
-    """v2 grouping prompt: multi-day pool, dated lines (TODAY marks anchors),
-    budgeted grounded evidence. Narrative-definition rules are the shared
-    _LANE2_NARRATIVE_RULES verbatim — only the framing (multi-day input) and
-    the anchor requirement differ from v1."""
+def _build_lane2_registry_prompt(
+    today: list[dict], active: list[dict], seeds: list[dict],
+) -> str:
+    """v2 REGISTRY prompt: today's qualifying alerts with full budgeted
+    evidence, plus the compact state — ACTIVE narratives (name + members +
+    last-seen + frozen thesis) and the single-name WATCH LIST. Cold start
+    (both rosters empty) simply omits the state blocks: the prompt degrades to
+    v1-plus-seeds. Narrative-definition rules are the shared
+    _LANE2_NARRATIVE_RULES verbatim (prompt bias was tested and DISCONFIRMED
+    as a recall lever — do not reword them)."""
     lines = []
-    for a in pool:
+    for a in today:
         text, _src = _lane2_input_text(a)
-        tag = "TODAY" if a["ticker"] in today_tickers else str(a["alert_date"])
-        lines.append(f"- {a['ticker']} [{tag}] (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {text}")
+        lines.append(f"- {a['ticker']} (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {text}")
+    roster = ""
+    if active:
+        roster += "ACTIVE tracked narratives (from prior sessions):\n" + "\n".join(
+            f'- "{n["name"]}" [members: {", ".join(n.get("tickers") or [])}; '
+            f'last seen {n["run_date"]}]: {" ".join(str(n.get("thesis") or "").split())[:300]}'
+            for n in active
+        ) + "\n\n"
+    if seeds:
+        roster += "WATCH LIST (recent single-name stories, no cohort yet):\n" + "\n".join(
+            f'- {s["ticker"]} ({s["run_date"]}): {s["story"]}' for s in seeds
+        ) + "\n\n"
     return (
-        f"Below are gap-up momentum stocks from the last {LANE2_WINDOW_TRADING_DAYS} trading days "
-        "(today's are marked TODAY) and their catalyst evidence. Identify EMERGING "
-        "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. "
+        "Below are TODAY's gap-up momentum stocks and their catalyst evidence. For each, decide "
+        "whether it CONTINUES one of the ACTIVE tracked narratives, forms a NEW theme that 2 OR "
+        "MORE names genuinely SHARE, or stands alone. "
         + _LANE2_NARRATIVE_RULES
-        + "Stocks:\n" + "\n".join(lines) + "\n\n"
-        + _LANE2_JSON_CONTRACT
-        + "Include a theme ONLY if 2+ of the listed tickers truly share it AND at least one member "
-        "is marked TODAY (a group made only of prior-day names is stale context, not a new "
-        "signal); otherwise themes=[]. "
+        + roster
+        + "Stocks TODAY:\n" + "\n".join(lines) + "\n\n"
+        + _LANE2_REGISTRY_JSON_CONTRACT
+        + "JOIN: if a TODAY stock continues the SAME underlying story as an ACTIVE narrative, "
+        "return that narrative's name EXACTLY as listed; tickers = only the names joining it now "
+        "(TODAY's, plus any WATCH LIST names sharing the story). NEVER re-propose an active "
+        "narrative's story under new wording. "
+        "NEW: mint a new name ONLY for a story no ACTIVE narrative covers; it needs 2+ tickers "
+        "drawn from TODAY's stocks and the WATCH LIST, at least one from TODAY. "
+        "SEEDS: each TODAY stock with a REAL specific story that joins nothing and pairs with "
+        "nothing -> one seeds entry (<=25-word story); omit stocks with no specific story. "
         + _LANE2_NAME_BREADTH_RULE
     )
+
+
+def _lane2_registry_clean(
+    themes: list[dict],
+    raw_seeds: list[dict],
+    active: list[dict],
+    offered_seeds: list[dict],
+    today_set: set[str],
+) -> tuple[list[dict], list[dict], list[tuple[str, str]]]:
+    """Deterministic post-parse enforcement for the registry mode. Pure
+    function (unit-tested directly; the replay exercises the same code).
+
+    JOIN (model reused a roster name, matched via _norm_narrative_name):
+      • identity is FROZEN — name and thesis come from the REGISTRY row, never
+        the model's re-wording (a wrong join can't rewrite the story, so drift
+        cannot compound);
+      • additions = listed tickers that qualify TODAY or sit on the offered
+        watch list; a join with NO same-day addition is DROPPED (a narrative
+        cannot be kept alive by re-listing old members — staleness must bite);
+      • members = registry members + additions appended in listing order,
+        FIFO-trimmed to LANE2_REGISTRY_MAX_MEMBERS (oldest drop first).
+    NEW: tickers filtered to today ∪ watch list; needs >=2 members and >=1
+      TODAY anchor, else dropped (hallucinated tickers can't pad a cohort).
+    Same-run collapse: two model themes resolving to the same canonical name
+      (join or birth) merge into ONE entry — structural dedup, no heuristics.
+    Overlap TRIPWIRE (surface, never rule): a NEW theme sharing >=2 members
+      with an active narrative is flagged for the operator (possible duplicate
+      the model failed to join) but persisted UNMERGED — over-merging two
+      genuinely distinct stories on the same cohort (e.g. a miners' halving
+      squeeze vs the miners' AI pivot) is as bad as under-merging.
+    SEEDS: kept only for TODAY-qualifying tickers that were not placed in any
+      theme tonight and are not already members of an active narrative;
+      whitespace-collapsed, budgeted to LANE2_SEED_STORY_BUDGET.
+
+    Returns (clean_themes, new_seeds, possible_dups) where possible_dups is
+    [(new_name, existing_name), …]."""
+    by_norm = {_norm_narrative_name(n["name"]): n for n in active}
+    seed_tk = {s["ticker"] for s in offered_seeds}
+    entries: dict[str, dict] = {}  # canonical-norm-name -> entry (insertion-ordered)
+    for t in (themes or []):
+        nm = str(t.get("name") or "").strip()
+        raw_tks = [x for x in (t.get("tickers") or []) if isinstance(x, str)]
+        if not nm or not raw_tks:
+            continue
+        reg = by_norm.get(_norm_narrative_name(nm))
+        if reg is not None:
+            additions = [tk for tk in dict.fromkeys(raw_tks)
+                         if tk in today_set or tk in seed_tk]
+            if not (set(additions) & today_set):
+                continue  # join needs fresh same-day evidence — never a re-listing touch
+            key = _norm_narrative_name(reg["name"])
+            e = entries.get(key)
+            if e is None:
+                e = {"name": str(reg["name"])[:80],
+                     "tickers": list(dict.fromkeys(reg.get("tickers") or [])),
+                     "thesis": str(reg.get("thesis") or "")[:500],
+                     "catalyst_type": t.get("catalyst_type"),
+                     "joined": True}
+                entries[key] = e
+            for tk in additions:
+                if tk not in e["tickers"]:
+                    e["tickers"].append(tk)
+        else:
+            tks = [tk for tk in dict.fromkeys(raw_tks)
+                   if tk in today_set or tk in seed_tk]
+            if len(tks) < 2 or not (set(tks) & today_set):
+                continue
+            key = _norm_narrative_name(nm)
+            e = entries.get(key)
+            if e is None:
+                entries[key] = {"name": nm[:80], "tickers": tks,
+                                "thesis": str(t.get("thesis") or "")[:500],
+                                "catalyst_type": t.get("catalyst_type"),
+                                "joined": False}
+            else:
+                for tk in tks:
+                    if tk not in e["tickers"]:
+                        e["tickers"].append(tk)
+    clean: list[dict] = []
+    possible_dups: list[tuple[str, str]] = []
+    for e in entries.values():
+        if len(e["tickers"]) > LANE2_REGISTRY_MAX_MEMBERS:
+            e["tickers"] = e["tickers"][-LANE2_REGISTRY_MAX_MEMBERS:]
+        if not e["joined"]:
+            for nrow in active:
+                if len(set(e["tickers"]) & set(nrow.get("tickers") or [])) >= 2:
+                    possible_dups.append((e["name"], nrow["name"]))
+        clean.append(e)
+    placed = {tk for e in clean for tk in e["tickers"]}
+    member_set = {tk for n in active for tk in (n.get("tickers") or [])}
+    new_seeds: list[dict] = []
+    seen: set[str] = set()
+    for s in (raw_seeds or []):
+        tk = s.get("ticker")
+        story = " ".join(str(s.get("story") or "").split())
+        if (tk in today_set and tk not in placed and tk not in member_set
+                and tk not in seen and story):
+            new_seeds.append({"ticker": tk, "story": story[:LANE2_SEED_STORY_BUDGET]})
+            seen.add(tk)
+    return clean, new_seeds, possible_dups
 
 
 async def discover_narrative_themes(scan_date=None, persist: bool = True, backfilled: bool = False) -> dict:
@@ -548,20 +693,18 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
     Two modes, selected per-run by the 'lane2_grouping_v2' DB flag (fail-closed):
     - v1 (flag OFF, the default — byte-identical to pre-flag behavior, pinned
       by tests/test_lane2_grouping_v2.py): today's alerts only, catalyst[:280].
-    - v2 (#167 grouping fix, operator-ruled 2026-07-27): pools the last
-      LANE2_WINDOW_TRADING_DAYS trading days of qualifying alerts (per-ticker
-      dedup: highest ep_score, tie → latest), feeds budgeted
-      grounded_text→claude_analysis→catalyst evidence, requires >=1 SAME-DAY
-      anchor in every proposal, and reports the input-source mix in the audit
-      summary so a degraded (fallback-heavy) day is visible.
+    - v2 (#167 REGISTRY mode, operator-ruled 2026-07-27): incremental,
+      state-carrying — today's qualifying alerts with budgeted
+      grounded_text→claude_analysis→catalyst evidence, evaluated against the
+      lane's own ACTIVE-narrative roster + single-name watch list
+      (_discover_lane2_registry; design notes at the LANE2_* constants).
 
     FULLY error-wrapped — never raises into the caller (the nightly pull).
     """
     import json
-    from datetime import date as _date
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.db import (
-        get_today_ep_alerts, get_ep_alerts_window, persist_narrative_theme_candidates,
+        get_today_ep_alerts, persist_narrative_theme_candidates,
         log_audit_event, get_lane2_grouping_v2_enabled,
     )
     out = {"date": None, "alerts": 0, "themes": 0, "names": [], "error": None}
@@ -569,47 +712,30 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         scan_date = scan_date or et_today()
         out["date"] = scan_date if isinstance(scan_date, str) else scan_date.strftime("%Y-%m-%d")
         v2 = await get_lane2_grouping_v2_enabled()
-        today_tk: "set[str] | None" = None  # non-None ⇔ v2 path (drives anchor rule + audit format)
-        if not v2:
-            alerts = await get_today_ep_alerts(scan_date)
-            cand = [a for a in alerts
-                    if (a.get("ep_score") or 0) >= 50.0 and (a.get("catalyst") or a.get("claude_analysis"))]
-            out["alerts"] = len(cand)
-            if len(cand) < 2:
-                await log_audit_event("narrative_theme_discovery_ran",
-                                      f"{out['date']}: {len(cand)} qualifying alert(s) (<2) — no grouping")
-                return out
-            lines = []
-            for a in cand:
-                cat = (a.get("catalyst") or a.get("claude_analysis") or "")[:280]
-                lines.append(f"- {a['ticker']} (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {cat}")
-            prompt = (
-                "Below are today's gap-up momentum stocks and their catalysts. Identify EMERGING "
-                "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. "
-                + _LANE2_NARRATIVE_RULES
-                + "Stocks:\n" + "\n".join(lines) + "\n\n"
-                + _LANE2_JSON_CONTRACT
-                + "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]. "
-                + _LANE2_NAME_BREADTH_RULE
-            )
-        else:
-            scan_d = _date.fromisoformat(scan_date) if isinstance(scan_date, str) else scan_date
-            window_rows = await get_ep_alerts_window(_lane2_window_start(scan_d), scan_d)
-            cand, today_tk = _dedupe_lane2_pool(window_rows, scan_d)
-            src_counts = {"grounded": 0, "analysis": 0, "catalyst": 0, "none": 0}
-            for a in cand:
-                src_counts[_lane2_input_text(a)[1]] += 1
-            out["alerts"] = len(today_tk)  # keeps the v1 meaning: same-day qualifying count
-            out["pool"] = len(cand)
-            out["window_trading_days"] = LANE2_WINDOW_TRADING_DAYS
-            out["input_sources"] = src_counts
-            if not today_tk or len(cand) < 2:
-                await log_audit_event(
-                    "narrative_theme_discovery_ran",
-                    f"{out['date']}: v2({LANE2_WINDOW_TRADING_DAYS}td) {len(today_tk)} today / "
-                    f"{len(cand)} pooled — below gate (needs >=1 today anchor + pool >=2) — no grouping")
-                return out
-            prompt = _build_lane2_v2_prompt(cand, today_tk)
+        if v2:
+            return await _discover_lane2_registry(
+                scan_date, out, persist=persist, backfilled=backfilled)
+        alerts = await get_today_ep_alerts(scan_date)
+        cand = [a for a in alerts
+                if (a.get("ep_score") or 0) >= 50.0 and (a.get("catalyst") or a.get("claude_analysis"))]
+        out["alerts"] = len(cand)
+        if len(cand) < 2:
+            await log_audit_event("narrative_theme_discovery_ran",
+                                  f"{out['date']}: {len(cand)} qualifying alert(s) (<2) — no grouping")
+            return out
+        lines = []
+        for a in cand:
+            cat = (a.get("catalyst") or a.get("claude_analysis") or "")[:280]
+            lines.append(f"- {a['ticker']} (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {cat}")
+        prompt = (
+            "Below are today's gap-up momentum stocks and their catalysts. Identify EMERGING "
+            "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. "
+            + _LANE2_NARRATIVE_RULES
+            + "Stocks:\n" + "\n".join(lines) + "\n\n"
+            + _LANE2_JSON_CONTRACT
+            + "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]. "
+            + _LANE2_NAME_BREADTH_RULE
+        )
         client = _get_anthropic_client()
         msg = await client.messages.create(
             model=THEME_MODEL, max_tokens=1500,
@@ -628,27 +754,14 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             tks = [x for x in (t.get("tickers") or []) if x in cand_tk]
             if not (t.get("name") and len(tks) >= 2):
                 continue
-            if today_tk is not None and not (set(tks) & today_tk):
-                # v2 anchor rule: a cohort made only of prior-day names is stale
-                # context, not a new signal — enforced here, not just prompted.
-                continue
             clean.append({"name": str(t["name"])[:80], "tickers": tks,
                           "thesis": (t.get("thesis") or "")[:500],
                           "catalyst_type": t.get("catalyst_type")})
         n = (await persist_narrative_theme_candidates(scan_date, clean, backfilled=backfilled)) if persist else len(clean)
         out["themes"] = n
         out["names"] = [t["name"] for t in clean]
-        if today_tk is None:
-            await log_audit_event("narrative_theme_discovery_ran",
-                                  f"{out['date']}: {len(cand)} alerts -> {n} narrative theme(s): {out['names']}")
-        else:
-            src = out["input_sources"]
-            await log_audit_event(
-                "narrative_theme_discovery_ran",
-                f"{out['date']}: v2({LANE2_WINDOW_TRADING_DAYS}td) {len(cand)} pooled "
-                f"({len(today_tk)} today; input grounded={src['grounded']} "
-                f"analysis={src['analysis']} catalyst={src['catalyst']}) "
-                f"-> {n} narrative theme(s): {out['names']}")
+        await log_audit_event("narrative_theme_discovery_ran",
+                              f"{out['date']}: {len(cand)} alerts -> {n} narrative theme(s): {out['names']}")
         return out
     except Exception as e:
         # #376: a credit-exhaustion failure here silently yields no narrative
@@ -662,6 +775,118 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             pass
         out["error"] = str(e)[:200]
         return out
+
+
+async def _discover_lane2_registry(
+    scan_date, out: dict, *, persist: bool, backfilled: bool,
+) -> dict:
+    """#167 Lane-2 v2 REGISTRY mode (design notes at the LANE2_* constants).
+    Called ONLY from discover_narrative_themes with the flag ON; runs inside
+    its caller's try/except (any raise lands in the shared fail-open path).
+
+    Nightly shape: fetch TODAY's qualifying alerts (same population rule as
+    v1) → read the lane's own state (ACTIVE narratives + watch-list seeds,
+    both windowed to LANE2_WINDOW_TRADING_DAYS trading days, PRIOR sessions
+    only) → one Sonnet call (today's full evidence + compact roster) →
+    _lane2_registry_clean enforcement → persist themes (narrative_cogap) and
+    seeds (narrative_seed; skipped on backfill runs so hindsight rows can
+    never enter the forward watch list).
+
+    ANTI-CIRCULARITY: the roster readers are hard-scoped to the lane's own
+    sources ('narrative_cogap' / 'narrative_seed') — judge_inferred and
+    coverage_probe rows can never enter this prompt, so the judge's own
+    inferences cannot reach the judge's active_narratives via this lane
+    (the judge_theme_gap.py wall, preserved by construction).
+
+    AUTO-PROMOTE interaction (narrative_cogap IS allowlisted): a JOIN writes
+    a new (run_date=today, name) row, so get_shadow_theme_candidates'
+    DISTINCT ON (name) sees ONE cohort per story — never a fresh near-
+    duplicate name per night. A narrative re-enters the promote window only
+    while genuinely touched (join = fresh same-day alert), its membership is
+    FIFO-capped, and an untouched narrative leaves the roster after the
+    horizon and live mi_themes via the 7d recency cap — bounded, not
+    ever-growing. Seeds are 1-member rows under a NON-allowlisted source:
+    structurally below _PROMOTE_MIN_MEMBERS AND outside both walls."""
+    import json
+    from datetime import date as _date
+    from agents.market_intelligence.db import (
+        get_today_ep_alerts, get_lane2_active_narratives, get_lane2_pending_seeds,
+        persist_narrative_theme_candidates, persist_lane2_seeds, log_audit_event,
+    )
+    scan_d = _date.fromisoformat(scan_date) if isinstance(scan_date, str) else scan_date
+    alerts = await get_today_ep_alerts(scan_d)
+    cand = [a for a in alerts if _lane2_qualifies(a)]
+    src_counts = {"grounded": 0, "analysis": 0, "catalyst": 0, "none": 0}
+    for a in cand:
+        src_counts[_lane2_input_text(a)[1]] += 1
+    out["alerts"] = len(cand)
+    out["input_sources"] = src_counts
+    window_start = _lane2_window_start(scan_d)
+    active = await get_lane2_active_narratives(window_start, scan_d)
+    seeds = await get_lane2_pending_seeds(window_start, scan_d)
+    # Roster hygiene (deterministic, here so live and replay share it):
+    # a seed whose ticker already sits in an active narrative is consumed;
+    # a seed alerting again TODAY is superseded by its own fresh evidence line.
+    member_set = {tk for n in active for tk in (n.get("tickers") or [])}
+    today_set = {a["ticker"] for a in cand}
+    seeds = [s for s in seeds
+             if s["ticker"] not in member_set and s["ticker"] not in today_set]
+    active = active[:LANE2_ROSTER_MAX]
+    seeds = seeds[:LANE2_ROSTER_MAX]
+    out["registry"] = {"active": len(active), "seeds": len(seeds)}
+    if not cand:
+        await log_audit_event(
+            "narrative_theme_discovery_ran",
+            f"{out['date']}: v2reg 0 qualifying today — no evaluation "
+            f"(roster {len(active)} active / {len(seeds)} seeds)")
+        return out
+    prompt = _build_lane2_registry_prompt(cand, active, seeds)
+    out["prompt_chars"] = len(prompt)
+    client = _get_anthropic_client()
+    msg = await client.messages.create(
+        model=THEME_MODEL, max_tokens=1500,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
+    from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+    await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
+                                   usage=getattr(msg, "usage", None))
+    usage = getattr(msg, "usage", None)
+    if usage is not None and getattr(usage, "input_tokens", None) is not None:
+        out["usage"] = {"input_tokens": usage.input_tokens,
+                        "output_tokens": getattr(usage, "output_tokens", None)}
+    raw = _extract_json_object(msg.content[0].text if msg.content else "")
+    parsed = json.loads(raw)
+    themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
+    raw_seeds = parsed.get("seeds", []) if isinstance(parsed, dict) else []
+    clean, new_seeds, possible_dups = _lane2_registry_clean(
+        themes, raw_seeds, active, seeds, today_set)
+    for born_name, existing_name in possible_dups:
+        await log_audit_event(
+            "lane2_possible_duplicate_narrative",
+            f"{out['date']}: new '{born_name}' shares >=2 members with active "
+            f"'{existing_name}' — surfaced for operator review, NOT auto-merged")
+    n = (await persist_narrative_theme_candidates(scan_d, clean, backfilled=backfilled)) if persist else len(clean)
+    ns = (await persist_lane2_seeds(scan_d, new_seeds)) if (persist and not backfilled) else len(new_seeds)
+    joined_names = [e["name"] for e in clean if e["joined"]]
+    born_names = [e["name"] for e in clean if not e["joined"]]
+    out["themes"] = n
+    out["names"] = [e["name"] for e in clean]
+    out["joined"] = joined_names
+    out["born"] = born_names
+    out["seeds"] = ns
+    # Full per-proposal detail — the replay chains its in-memory registry off
+    # these exact fields, so replay state evolves precisely as prod rows would.
+    out["proposals"] = [{"name": e["name"], "tickers": list(e["tickers"]),
+                         "thesis": e["thesis"], "joined": e["joined"]} for e in clean]
+    out["new_seeds"] = new_seeds
+    await log_audit_event(
+        "narrative_theme_discovery_ran",
+        f"{out['date']}: v2reg {len(cand)} today (grounded={src_counts['grounded']} "
+        f"analysis={src_counts['analysis']} catalyst={src_counts['catalyst']}) "
+        f"roster {len(active)} active / {len(seeds)} seeds -> "
+        f"{len(joined_names)} join + {len(born_names)} new + {ns} seed(s): {out['names']}")
+    return out
 
 
 async def evaluate_narrative_themes(days: int = 30, include_backfill: bool = False) -> list[dict]:

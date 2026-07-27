@@ -1,24 +1,31 @@
-"""#167 Lane-2 grouping v2 (operator-ruled 2026-07-27) — flag-gated behavior pins.
+"""#167 Lane-2 grouping v2 — REGISTRY mode (operator-ruled 2026-07-27) — flag-gated pins.
 
-The four load-bearing contracts:
+The load-bearing contracts:
 1. Flag OFF ⇒ discover_narrative_themes is BYTE-IDENTICAL to the pre-flag v1
    behavior — the prompt is compared against a FROZEN copy of the original v1
    template (any drift of the shared _LANE2_NARRATIVE_RULES / contract strings
-   breaks this test), and the window fetch is never touched.
-2. The rolling window is 10 TRADING days (weekend-skipping) — the operator's
-   measured chain WULF 07-06 → HUT/IREN 07-20 must fit exactly.
-3. Cross-day dedup: per ticker keep highest ep_score, tie → latest date; the
-   same-day anchor set is computed BEFORE dedup.
-4. Missing grounded_text degrades gracefully (grounded → claude_analysis →
-   catalyst), never crashes, and the fallback mix is VISIBLE in the audit
-   summary.
+   breaks this test), and no registry surface is ever touched.
+2. Registry memory horizon is 10 TRADING days (weekend-skipping) — the
+   operator's measured chain (WULF 07-06 → HUT/IREN 07-20; seed link
+   WULF→CLSK = 8 calendar days) must fit.
+3. Dedup is STRUCTURAL: a continuing story JOINS the active narrative —
+   registry name + thesis are FROZEN (never the model's re-wording), and two
+   same-run proposals of the same story collapse to ONE row.
+4. Precision floor: a genuinely DIFFERENT narrative is NOT merged; member
+   overlap with an active narrative only fires a surface-only tripwire audit.
+5. Walls: 'narrative_seed' can never auto-promote nor reach the judge's
+   active_narratives; the roster readers are hard-scoped to the lane's own
+   sources (anti-circularity — judge_inferred/coverage_probe never enter).
+6. Missing grounded_text degrades gracefully (grounded → claude_analysis →
+   catalyst) and the fallback mix is VISIBLE in the audit summary.
 
 GRADE-AFFECTING context: Lane-2 proposals feed the judge's active_narratives
-(ep_detector → assemble_judge_inputs), so the OFF-is-identical pin is a money
--path safety, not a style preference.
+(ep_detector → assemble_judge_inputs) and can auto-promote into live mi_themes,
+so the OFF-is-identical pin is a money-path safety, not a style preference.
 """
 from __future__ import annotations
 
+import inspect
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -29,11 +36,12 @@ import agents.market_intelligence.db as db
 import agents.market_intelligence.spend_tracker as spend_tracker
 from agents.market_intelligence import theme_engine
 from agents.market_intelligence.theme_engine import (
+    LANE2_REGISTRY_MAX_MEMBERS,
+    LANE2_SEED_STORY_BUDGET,
     LANE2_WINDOW_TRADING_DAYS,
-    _build_lane2_v2_prompt,
-    _dedupe_lane2_pool,
-    _lane2_input_text,
+    _lane2_registry_clean,
     _lane2_window_start,
+    _norm_narrative_name,
     discover_narrative_themes,
 )
 
@@ -56,14 +64,22 @@ def _alert(ticker, d, ep=80.0, gap=12.0, catalyst=_LONG_CATALYST,
     }
 
 
+def _narrative(name, tickers, d=date(2026, 7, 20), thesis="Frozen registry thesis."):
+    return {"run_date": d, "name": name, "tickers": list(tickers), "thesis": thesis}
+
+
+def _seed(ticker, d=date(2026, 7, 6), story="20-year AI data-center lease worth $3.7B."):
+    return {"run_date": d, "ticker": ticker, "story": story}
+
+
 class _FakeMsg:
     def __init__(self, text):
         self.content = [SimpleNamespace(text=text)]
         self.usage = None
 
 
-def _wire(monkeypatch, *, flag_on, today_alerts=(), window_alerts=(),
-          llm_response='{"themes": []}'):
+def _wire(monkeypatch, *, flag_on, today_alerts=(), active=(), pending=(),
+          llm_response='{"themes": [], "seeds": []}'):
     """Patch every side-effecting dependency; return (captured_kwargs, mocks)."""
     captured: dict = {}
 
@@ -82,14 +98,18 @@ def _wire(monkeypatch, *, flag_on, today_alerts=(), window_alerts=(),
     mocks = SimpleNamespace(
         flag=AsyncMock(return_value=flag_on),
         today=AsyncMock(return_value=list(today_alerts)),
-        window=AsyncMock(return_value=list(window_alerts)),
+        active=AsyncMock(return_value=[dict(n) for n in active]),
+        pending=AsyncMock(return_value=[dict(s) for s in pending]),
         persist=AsyncMock(side_effect=lambda d, themes, backfilled=False: len(themes)),
+        persist_seeds=AsyncMock(side_effect=lambda d, seeds: len(seeds)),
         audit=AsyncMock(),
     )
     monkeypatch.setattr(db, "get_lane2_grouping_v2_enabled", mocks.flag)
     monkeypatch.setattr(db, "get_today_ep_alerts", mocks.today)
-    monkeypatch.setattr(db, "get_ep_alerts_window", mocks.window)
+    monkeypatch.setattr(db, "get_lane2_active_narratives", mocks.active)
+    monkeypatch.setattr(db, "get_lane2_pending_seeds", mocks.pending)
     monkeypatch.setattr(db, "persist_narrative_theme_candidates", mocks.persist)
+    monkeypatch.setattr(db, "persist_lane2_seeds", mocks.persist_seeds)
     monkeypatch.setattr(db, "log_audit_event", mocks.audit)
     return captured, mocks
 
@@ -143,15 +163,17 @@ async def test_flag_off_is_byte_identical_v1(monkeypatch):
     out = await discover_narrative_themes(d)
 
     # Exact prompt bytes of the pre-flag implementation — grounded_text unread,
-    # 280-char truncation intact, no dates/TODAY markers.
+    # 280-char truncation intact, no roster blocks, no seeds contract.
     assert captured["messages"][0]["content"] == _v1_frozen_prompt(cand)
     assert captured["model"] == theme_engine.THEME_MODEL
     assert captured["max_tokens"] == 1500
-    # v1 path never touches the window fetch or the anchor rule.
-    mocks.window.assert_not_awaited()
+    # v1 path never touches any registry surface.
+    mocks.active.assert_not_awaited()
+    mocks.pending.assert_not_awaited()
+    mocks.persist_seeds.assert_not_awaited()
     mocks.today.assert_awaited_once()
     assert out["themes"] == 1 and out["names"] == ["AI data-center buildout"]
-    assert "pool" not in out and "input_sources" not in out
+    assert "registry" not in out and "input_sources" not in out and "proposals" not in out
     # v1 audit summary format unchanged.
     assert mocks.audit.await_args.args[1] == \
         "2026-07-14: 2 alerts -> 1 narrative theme(s): ['AI data-center buildout']"
@@ -176,51 +198,23 @@ async def test_flag_fail_closed_on_db_error(monkeypatch):
     assert await db.get_lane2_grouping_v2_enabled() is False
 
 
-# ── 2. ten TRADING days, not calendar ────────────────────────────────────────
+# ── 2. ten TRADING days of registry memory, not calendar ─────────────────────
 
-def test_window_start_ten_trading_days_across_weekends():
+def test_memory_horizon_ten_trading_days_across_weekends():
     # Operator-measured chain: from Mon 2026-07-20, ten trading days back is
-    # Mon 2026-07-06 — the window must reach WULF (07-06) and CLSK (07-14).
+    # Mon 2026-07-06 — a narrative/seed last touched 07-06 must still be
+    # visible on 07-20 (WULF chain), and the WULF→CLSK seed link (07-06 →
+    # 07-14 = 8 CALENDAR days) must survive — a 7-calendar-day expiry would
+    # kill it one day short.
     assert LANE2_WINDOW_TRADING_DAYS == 10
     assert _lane2_window_start(date(2026, 7, 20)) == date(2026, 7, 6)
+    assert _lane2_window_start(date(2026, 7, 14)) <= date(2026, 7, 6)  # seed link survives
     # Mid-week anchor crossing two weekends.
     assert _lane2_window_start(date(2026, 6, 17)) == date(2026, 6, 3)
-    # A 14-calendar-day window would be wrong: calendar arithmetic from 07-20
-    # lands on 07-10 after 10 days — trading-day math is what reaches 07-06.
     assert (date(2026, 7, 20) - _lane2_window_start(date(2026, 7, 20))).days == 14
 
 
-# ── 3. cross-day dedup + anchor set ──────────────────────────────────────────
-
-def test_dedupe_highest_ep_wins_tie_latest_and_anchor_precedes_dedup():
-    today = date(2026, 7, 14)
-    rows = [
-        # WULF: strongest alert 07-06 (ep 96) beats a weak 07-13 re-alert.
-        _alert("WULF", date(2026, 7, 6), ep=96.0),
-        _alert("WULF", date(2026, 7, 13), ep=55.0),
-        # CLSK: alerted TODAY with ep 61, but an older ep-80 row wins the text —
-        # CLSK must STILL be a same-day anchor (anchor set precedes dedup).
-        _alert("CLSK", date(2026, 7, 9), ep=80.0),
-        _alert("CLSK", today, ep=61.0),
-        # TSEM: ep tie across two days → latest wins.
-        _alert("TSEM", date(2026, 7, 10), ep=70.0),
-        _alert("TSEM", today, ep=70.0),
-        # Non-qualifying rows are invisible to pool AND anchors.
-        _alert("JUNK", today, ep=42.0),
-        _alert("BLNK", today, ep=88.0, catalyst=None, analysis=None),
-    ]
-    pool, anchors = _dedupe_lane2_pool(rows, today)
-    kept = {a["ticker"]: a for a in pool}
-    assert set(kept) == {"WULF", "CLSK", "TSEM"}
-    assert kept["WULF"]["alert_date"] == date(2026, 7, 6) and kept["WULF"]["ep_score"] == 96.0
-    assert kept["CLSK"]["alert_date"] == date(2026, 7, 9) and kept["CLSK"]["ep_score"] == 80.0
-    assert kept["TSEM"]["alert_date"] == today  # tie → latest
-    assert anchors == {"CLSK", "TSEM"}
-    # Pool ordering is deterministic (date, ticker) — stable prompts replay-compare cleanly.
-    assert [a["ticker"] for a in pool] == ["WULF", "CLSK", "TSEM"]
-
-
-# ── 4. input fallback chain + degraded-day visibility ────────────────────────
+# ── 3. input fallback chain + degraded-day visibility ────────────────────────
 
 def test_input_text_fallback_chain_budgets_and_flattening():
     d = date(2026, 7, 14)
@@ -230,96 +224,351 @@ def test_input_text_fallback_chain_budgets_and_flattening():
     # practice (era max grounded_text = 9,615 chars).
     assert theme_engine.LANE2_GROUNDED_BUDGET >= 9615
     rich = _alert("WULF", d, grounded="  line one\nline two  " + "x" * 6300 + " AI data-center lease " + "y" * 2000)
-    text, tag = _lane2_input_text(rich)
+    text, tag = theme_engine._lane2_input_text(rich)
     assert tag == "grounded"
     assert len(text) <= theme_engine.LANE2_GROUNDED_BUDGET
     assert "AI data-center lease" in text  # deep-in-doc evidence retained
     assert "\n" not in text and text.startswith("line one line two")
 
     no_grounded = _alert("CLSK", d, grounded=None)
-    text, tag = _lane2_input_text(no_grounded)
+    text, tag = theme_engine._lane2_input_text(no_grounded)
     assert tag == "analysis" and text.startswith("Grounded analysis:")
 
     catalyst_only = _alert("TSEM", d, grounded="   ", analysis=None)
-    text, tag = _lane2_input_text(catalyst_only)
+    text, tag = theme_engine._lane2_input_text(catalyst_only)
     assert tag == "catalyst" and len(text) <= theme_engine.LANE2_CATALYST_BUDGET
 
     barren = _alert("HQ", d, grounded=None, analysis=None, catalyst=None)
-    assert _lane2_input_text(barren) == ("", "none")  # never crashes
+    assert theme_engine._lane2_input_text(barren) == ("", "none")  # never crashes
 
 
 @pytest.mark.asyncio
-async def test_v2_degraded_day_visible_in_audit_summary(monkeypatch):
+async def test_v2reg_degraded_day_visible_in_audit_summary(monkeypatch):
     today = date(2026, 7, 14)
-    window = [
-        _alert("WULF", date(2026, 7, 6), ep=96.0),                       # grounded
-        _alert("CLSK", today, ep=61.0, grounded=None),                    # → analysis
-        _alert("TSEM", today, ep=55.0, grounded=None, analysis=None),     # → catalyst
+    alerts = [
+        _alert("WULF", today, ep=96.0),                                # grounded
+        _alert("CLSK", today, ep=61.0, grounded=None),                 # → analysis
+        _alert("TSEM", today, ep=55.0, grounded=None, analysis=None),  # → catalyst
     ]
-    captured, mocks = _wire(monkeypatch, flag_on=True, window_alerts=window)
+    captured, mocks = _wire(monkeypatch, flag_on=True, today_alerts=alerts)
     out = await discover_narrative_themes(today)
     assert out["input_sources"] == {"grounded": 1, "analysis": 1, "catalyst": 1, "none": 0}
     summary = mocks.audit.await_args.args[1]
-    assert "input grounded=1 analysis=1 catalyst=1" in summary
-    assert f"v2({LANE2_WINDOW_TRADING_DAYS}td)" in summary
+    assert "grounded=1 analysis=1 catalyst=1" in summary
+    assert "v2reg" in summary
 
 
-# ── v2 gate, prompt shape, anchor enforcement ────────────────────────────────
+# ── v2 REGISTRY: gate, cold start, roster plumbing ───────────────────────────
 
 @pytest.mark.asyncio
-async def test_v2_gate_requires_today_anchor(monkeypatch):
+async def test_v2reg_gate_zero_qualifying_today_no_llm(monkeypatch):
     today = date(2026, 7, 20)
-    # A rich pool with NO same-day qualifying alert must not call the LLM —
-    # nothing to anchor a new proposal on.
-    window = [_alert("WULF", date(2026, 7, 6)), _alert("CLSK", date(2026, 7, 14))]
-    captured, mocks = _wire(monkeypatch, flag_on=True, window_alerts=window)
+    # Rich registry but nothing qualifying today → no LLM call, state untouched.
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("JUNK", today, ep=42.0)],  # below ep 50
+        active=[_narrative("Miners pivot to AI", ["WULF", "CLSK"])])
     out = await discover_narrative_themes(today)
     assert not captured and out["themes"] == 0
-    assert out["pool"] == 2 and out["alerts"] == 0
-    assert "below gate" in mocks.audit.await_args.args[1]
-    mocks.window.assert_awaited_once_with(date(2026, 7, 6), today)
+    assert out["alerts"] == 0 and out["registry"] == {"active": 1, "seeds": 0}
+    assert "no evaluation" in mocks.audit.await_args.args[1]
+    mocks.persist.assert_not_awaited()
+    mocks.persist_seeds.assert_not_awaited()
+    # Roster readers are called with the trading-day window, PRIOR days only.
+    mocks.active.assert_awaited_once_with(_lane2_window_start(today), today)
+    mocks.pending.assert_awaited_once_with(_lane2_window_start(today), today)
 
 
 @pytest.mark.asyncio
-async def test_v2_lone_today_alert_groups_against_pool(monkeypatch):
-    # The audit's §4 fix: a lone same-day alert (v1 killed the whole run) now
-    # groups against the rolling pool.
-    today = date(2026, 7, 14)
-    window = [_alert("WULF", date(2026, 7, 6), ep=96.0), _alert("CLSK", today, ep=61.0)]
+async def test_v2reg_cold_start_omits_roster_blocks_and_births_from_today(monkeypatch):
+    # Empty registry (cold start / post-outage drain): prompt degrades to
+    # v1-plus-seeds; 2+ same-day names can still birth a narrative.
+    today = date(2026, 6, 11)
+    alerts = [_alert("HUT", today, ep=75.0), _alert("IREN", today, ep=72.0)]
     captured, mocks = _wire(
-        monkeypatch, flag_on=True, window_alerts=window,
-        llm_response='{"themes": [{"name": "Bitcoin miners pivot to AI", '
-                     '"catalyst_type": "theme", "tickers": ["WULF", "CLSK"], '
-                     '"thesis": "Miners lease HPC capacity to AI tenants."}]}')
+        monkeypatch, flag_on=True, today_alerts=alerts,
+        llm_response='{"themes": [{"name": "Miners to AI data centers", '
+                     '"catalyst_type": "theme", "tickers": ["HUT", "IREN"], '
+                     '"thesis": "Both lease HPC capacity."}], "seeds": []}')
     out = await discover_narrative_themes(today)
-    assert out["themes"] == 1 and out["names"] == ["Bitcoin miners pivot to AI"]
     prompt = captured["messages"][0]["content"]
-    assert "- WULF [2026-07-06]" in prompt
-    assert "- CLSK [TODAY]" in prompt
-    assert "last 10 trading days" in prompt
-    assert _GROUNDED[:80].strip().split()[0] in prompt  # grounded body, not catalyst[:280]
+    assert "ACTIVE tracked narratives (from prior sessions):" not in prompt  # roster block absent
+    assert "WATCH LIST (recent single-name stories" not in prompt
+    assert "Stocks TODAY:" in prompt and '"seeds"' in prompt
+    assert out["themes"] == 1 and out["born"] == ["Miners to AI data centers"]
+    assert out["joined"] == [] and out["registry"] == {"active": 0, "seeds": 0}
+
+
+# ── v2 REGISTRY: structural dedup (JOIN) ─────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_v2reg_join_keeps_registry_identity_and_unions_members(monkeypatch):
+    today = date(2026, 7, 22)
+    reg = _narrative("AI data-center infrastructure buildout", ["WULF", "CLSK"],
+                     d=date(2026, 7, 20), thesis="Frozen registry thesis.")
+    # Model reuses the name modulo case/punctuation (normalize must catch it)
+    # and re-words the thesis — the registry identity must win on BOTH.
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("APLD", today, ep=70.0)],
+        active=[reg],
+        llm_response='{"themes": [{"name": "AI Data Center Infrastructure Buildout", '
+                     '"catalyst_type": "theme", "tickers": ["APLD", "WULF"], '
+                     '"thesis": "A re-worded thesis that must NOT stick."}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    persisted = mocks.persist.await_args.args[1]
+    assert len(persisted) == 1
+    assert persisted[0]["name"] == "AI data-center infrastructure buildout"  # verbatim registry name
+    assert persisted[0]["tickers"] == ["WULF", "CLSK", "APLD"]  # union, join order kept
+    assert persisted[0]["thesis"] == "Frozen registry thesis."  # thesis frozen at birth
+    assert out["joined"] == ["AI data-center infrastructure buildout"] and out["born"] == []
+    assert "1 join + 0 new" in mocks.audit.await_args.args[1]
+    # A joined proposal refreshes the SAME name → downstream DISTINCT ON (name)
+    # (judge context + auto-promote) sees ONE cohort, not a near-duplicate.
 
 
 @pytest.mark.asyncio
-async def test_v2_anchor_rule_enforced_on_output(monkeypatch):
-    # Even if the model proposes a cohort of only prior-day names, it is dropped
-    # mechanically — the anchor rule is code, not just prompt.
-    today = date(2026, 7, 20)
-    window = [
-        _alert("WULF", date(2026, 7, 6), ep=96.0),
-        _alert("CLSK", date(2026, 7, 14), ep=61.0),
-        _alert("HUT", today, ep=75.0),
-        _alert("IREN", today, ep=72.0),
-    ]
+async def test_v2reg_same_run_reproposals_collapse_to_one_row(monkeypatch):
+    # The 18-of-23 failure class: the same story proposed twice under different
+    # wordings in ONE response must collapse into ONE persisted row.
+    today = date(2026, 7, 22)
+    reg = _narrative("AI data center power infrastructure deals", ["VRT", "ETN"])
     captured, mocks = _wire(
-        monkeypatch, flag_on=True, window_alerts=window,
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("PWR", today, ep=66.0), _alert("NRG", today, ep=64.0)],
+        active=[reg],
         llm_response='{"themes": ['
-                     '{"name": "Stale prior-day pair", "catalyst_type": "theme", '
-                     '"tickers": ["WULF", "CLSK"], "thesis": "no anchor"}, '
-                     '{"name": "Miners to AI data centers", "catalyst_type": "theme", '
-                     '"tickers": ["WULF", "CLSK", "HUT", "IREN"], "thesis": "anchored"}]}')
+                     '{"name": "AI data center power infrastructure deals", '
+                     '"catalyst_type": "theme", "tickers": ["PWR", "VRT"], "thesis": "x"}, '
+                     '{"name": "AI Data-Center Power Infrastructure Deals", '
+                     '"catalyst_type": "theme", "tickers": ["NRG", "ETN"], "thesis": "y"}], '
+                     '"seeds": []}')
     out = await discover_narrative_themes(today)
-    assert out["names"] == ["Miners to AI data centers"]
     persisted = mocks.persist.await_args.args[1]
-    assert [t["name"] for t in persisted] == ["Miners to AI data centers"]
-    assert persisted[0]["tickers"] == ["WULF", "CLSK", "HUT", "IREN"]
+    assert len(persisted) == 1 and out["themes"] == 1
+    assert persisted[0]["name"] == "AI data center power infrastructure deals"
+    assert persisted[0]["tickers"] == ["VRT", "ETN", "PWR", "NRG"]
+
+
+@pytest.mark.asyncio
+async def test_v2reg_join_requires_fresh_today_evidence(monkeypatch):
+    # A "join" that adds no same-day qualifying ticker is a re-listing touch —
+    # dropped, so a narrative can never keep itself alive (staleness must bite)
+    # and the model cannot resurrect a story with zero fresh market evidence.
+    today = date(2026, 7, 22)
+    reg = _narrative("Miners pivot to AI", ["WULF", "CLSK"])
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("GOLD", today, ep=60.0)],
+        active=[reg], pending=[_seed("HUT", d=date(2026, 7, 15))],
+        llm_response='{"themes": ['
+                     '{"name": "Miners pivot to AI", "catalyst_type": "theme", '
+                     '"tickers": ["WULF", "CLSK"], "thesis": "re-listing"}, '
+                     '{"name": "Miners pivot to AI", "catalyst_type": "theme", '
+                     '"tickers": ["HUT"], "thesis": "seed-only touch"}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    assert out["themes"] == 0 and out["names"] == []
+    assert mocks.persist.await_args.args[1] == []
+
+
+# ── v2 REGISTRY: precision floor + tripwire ──────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_v2reg_precision_floor_distinct_story_not_merged(monkeypatch):
+    # A genuinely different narrative (no name match, no member overlap) must
+    # persist as its OWN row — over-merging is as bad as under-merging.
+    today = date(2026, 6, 15)
+    reg = _narrative("AI data-center infrastructure buildout", ["NVDA", "VRT"])
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("GOLD", today, ep=68.0), _alert("AEM", today, ep=63.0)],
+        active=[reg],
+        llm_response='{"themes": [{"name": "Precious metals breakout", '
+                     '"catalyst_type": "theme", "tickers": ["GOLD", "AEM"], '
+                     '"thesis": "Gold miners surge on metal highs."}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    persisted = mocks.persist.await_args.args[1]
+    assert [t["name"] for t in persisted] == ["Precious metals breakout"]
+    assert persisted[0]["thesis"] == "Gold miners surge on metal highs."  # model thesis kept for births
+    assert out["born"] == ["Precious metals breakout"] and out["joined"] == []
+    # No overlap → no duplicate tripwire.
+    assert not [c for c in mocks.audit.await_args_list
+                if c.args[0] == "lane2_possible_duplicate_narrative"]
+
+
+@pytest.mark.asyncio
+async def test_v2reg_overlap_tripwire_surfaces_but_never_merges(monkeypatch):
+    # Same cohort, plausibly different story: surfaced to the operator via an
+    # audit event, persisted UNMERGED — the filter list is the operator's call.
+    today = date(2026, 7, 23)
+    reg = _narrative("Miners pivot to AI", ["CLSK", "HUT", "WULF"])
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("CLSK", today, ep=71.0), _alert("HUT", today, ep=65.0)],
+        active=[reg],
+        llm_response='{"themes": [{"name": "Bitcoin halving supply squeeze", '
+                     '"catalyst_type": "theme", "tickers": ["CLSK", "HUT"], '
+                     '"thesis": "Halving economics squeeze."}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    assert out["born"] == ["Bitcoin halving supply squeeze"]  # persisted, not merged
+    trip = [c for c in mocks.audit.await_args_list
+            if c.args[0] == "lane2_possible_duplicate_narrative"]
+    assert len(trip) == 1
+    assert "'Bitcoin halving supply squeeze'" in trip[0].args[1]
+    assert "'Miners pivot to AI'" in trip[0].args[1]
+    assert "NOT auto-merged" in trip[0].args[1]
+
+
+# ── v2 REGISTRY: seeds (cross-day birth without a pool) ──────────────────────
+
+@pytest.mark.asyncio
+async def test_v2reg_lone_alert_becomes_seed(monkeypatch):
+    # The WULF 07-06 class: a lone qualifying alert with a real story becomes a
+    # watch-list seed (story whitespace-collapsed + budgeted) — NOT a theme.
+    today = date(2026, 7, 6)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True, today_alerts=[_alert("WULF", today, ep=96.0)],
+        llm_response='{"themes": [], "seeds": [{"ticker": "WULF", '
+                     '"story": "20-year  AI data-center\\nlease with hyperscaler, ~$3.7B."}]}')
+    out = await discover_narrative_themes(today)
+    assert out["themes"] == 0 and out["seeds"] == 1
+    seeds = mocks.persist_seeds.await_args.args[1]
+    assert seeds == [{"ticker": "WULF",
+                      "story": "20-year AI data-center lease with hyperscaler, ~$3.7B."}]
+    assert len(seeds[0]["story"]) <= LANE2_SEED_STORY_BUDGET
+
+
+@pytest.mark.asyncio
+async def test_v2reg_seed_pairs_with_today_alert_to_birth_narrative(monkeypatch):
+    # The CLSK 07-14 class: today's lone alert + a prior-day seed = a 2-member
+    # birth — the cross-day accretion the pool used to provide, without
+    # re-reading prior days' documents.
+    today = date(2026, 7, 14)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("CLSK", today, ep=61.0)],
+        pending=[_seed("WULF", d=date(2026, 7, 6))],
+        llm_response='{"themes": [{"name": "Bitcoin miners pivot to AI leases", '
+                     '"catalyst_type": "theme", "tickers": ["WULF", "CLSK"], '
+                     '"thesis": "Miners lease HPC capacity to AI tenants."}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    prompt = captured["messages"][0]["content"]
+    assert "WATCH LIST" in prompt and "- WULF (2026-07-06):" in prompt
+    persisted = mocks.persist.await_args.args[1]
+    assert persisted[0]["tickers"] == ["WULF", "CLSK"]
+    assert out["born"] == ["Bitcoin miners pivot to AI leases"]
+
+
+@pytest.mark.asyncio
+async def test_v2reg_seed_hygiene_placed_member_and_hallucinated_dropped(monkeypatch):
+    today = date(2026, 7, 20)
+    reg = _narrative("Miners pivot to AI", ["WULF", "CLSK"])
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("HUT", today, ep=75.0), _alert("IREN", today, ep=72.0)],
+        active=[reg],
+        llm_response='{"themes": [{"name": "Miners pivot to AI", '
+                     '"catalyst_type": "theme", "tickers": ["HUT", "WULF"], "thesis": "j"}], '
+                     '"seeds": ['
+                     '{"ticker": "HUT", "story": "placed tonight — must not seed"}, '
+                     '{"ticker": "CLSK", "story": "already a member — must not seed"}, '
+                     '{"ticker": "ZZZZ", "story": "not qualifying today — hallucinated"}, '
+                     '{"ticker": "IREN", "story": "real leftover story"}, '
+                     '{"ticker": "IREN", "story": "duplicate entry"}]}')
+    out = await discover_narrative_themes(today)
+    seeds = mocks.persist_seeds.await_args.args[1]
+    assert seeds == [{"ticker": "IREN", "story": "real leftover story"}]
+    assert out["seeds"] == 1
+
+
+@pytest.mark.asyncio
+async def test_v2reg_roster_hygiene_seed_superseded_by_membership_and_today(monkeypatch):
+    # A seed whose ticker is already a narrative member (consumed) or alerts
+    # again today (superseded by fresh evidence) never re-enters the prompt.
+    today = date(2026, 7, 21)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("IREN", today, ep=70.0), _alert("APLD", today, ep=66.0)],
+        active=[_narrative("Miners pivot to AI", ["WULF", "CLSK"])],
+        pending=[_seed("CLSK"), _seed("IREN"), _seed("SMCI", story="AI server demand")])
+    out = await discover_narrative_themes(today)
+    prompt = captured["messages"][0]["content"]
+    # Seed lines carry a dated prefix "- TICK (YYYY-MM-DD):" — distinct from
+    # today-stock lines "- TICK (gap …" — so match on the dated form.
+    assert "- SMCI (2026-07-06):" in prompt   # genuine pending seed survives
+    assert "- CLSK (2026-" not in prompt      # consumed by membership
+    assert "- IREN (2026-" not in prompt      # superseded by today's own alert line
+    assert out["registry"] == {"active": 1, "seeds": 1}
+
+
+# ── v2 REGISTRY: ticker hygiene + member cap ─────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_v2reg_birth_needs_two_real_members_and_today_anchor(monkeypatch):
+    today = date(2026, 7, 20)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("HUT", today, ep=75.0)],
+        pending=[_seed("WULF"), _seed("CLSK")],
+        llm_response='{"themes": ['
+                     # hallucinated member filtered → 1 real member → dropped
+                     '{"name": "Broken cohort", "catalyst_type": "theme", '
+                     '"tickers": ["HUT", "FAKE"], "thesis": "x"}, '
+                     # seed-only birth (no today anchor) → dropped
+                     '{"name": "Stale seed pair", "catalyst_type": "theme", '
+                     '"tickers": ["WULF", "CLSK"], "thesis": "y"}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    assert out["themes"] == 0 and mocks.persist.await_args.args[1] == []
+
+
+def test_v2reg_member_cap_fifo_drops_oldest():
+    active = [_narrative("Mega story", [f"T{i:02d}" for i in range(11)])]  # 11 members
+    themes = [{"name": "Mega story", "catalyst_type": "theme",
+               "tickers": ["NEW1", "NEW2"], "thesis": "join"}]
+    clean, seeds, dups = _lane2_registry_clean(
+        themes, [], active, [], today_set={"NEW1", "NEW2"})
+    assert len(clean) == 1
+    got = clean[0]["tickers"]
+    assert len(got) == LANE2_REGISTRY_MAX_MEMBERS == 12
+    assert got[-2:] == ["NEW1", "NEW2"]      # newest joiners kept
+    assert "T00" not in got and got[0] == "T01"  # oldest member aged off the front
+
+
+def test_v2reg_norm_name_matches_wording_drift_not_different_stories():
+    assert _norm_narrative_name("AI Data-Center  Buildout!") == \
+        _norm_narrative_name("ai data center buildout")
+    assert _norm_narrative_name("AI data center power deals") != \
+        _norm_narrative_name("AI data center leasing boom")
+
+
+# ── v2 REGISTRY: walls (anti-circularity + auto-promote) ─────────────────────
+
+def test_v2reg_walls_by_construction():
+    # 1. Watch-list seeds can NEVER auto-promote into live mi_themes …
+    assert "narrative_seed" not in db.AUTO_PROMOTE_THEME_SOURCES
+    # … and NEVER reach the judge's active_narratives input.
+    assert "narrative_seed" not in inspect.getsource(db.get_narrative_theme_candidates)
+    # 2. The roster the model sees comes from the lane's OWN output only —
+    # a judge inference (judge_inferred) or probe row can never steer the lane
+    # that feeds the judge (the judge_theme_gap.py anti-circularity wall).
+    for fn in (db.get_lane2_active_narratives, db.get_lane2_pending_seeds):
+        src = inspect.getsource(fn)
+        sql = src[src.index('conn.fetch'):]
+        assert "judge_inferred" not in sql and "coverage_probe" not in sql
+        assert "backfill" not in sql and "rs_slope_synthesis" not in sql and "shadow_v2" not in sql
+    assert "source = 'narrative_cogap'" in inspect.getsource(db.get_lane2_active_narratives)
+    assert "source = 'narrative_seed'" in inspect.getsource(db.get_lane2_pending_seeds)
+
+
+@pytest.mark.asyncio
+async def test_v2reg_backfill_never_writes_seeds(monkeypatch):
+    # Hindsight (backfill) runs must not plant seeds into the FORWARD watch
+    # list — themes go to the segregated backfill source, seeds are skipped.
+    today = date(2026, 7, 6)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True, today_alerts=[_alert("WULF", today, ep=96.0)],
+        llm_response='{"themes": [], "seeds": [{"ticker": "WULF", "story": "s"}]}')
+    out = await discover_narrative_themes(today, persist=True, backfilled=True)
+    mocks.persist_seeds.assert_not_awaited()
+    assert out["seeds"] == 1  # still REPORTED (the replay chains off it) — just not persisted
+    assert mocks.persist.await_args.kwargs.get("backfilled") is True

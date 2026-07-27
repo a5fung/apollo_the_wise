@@ -35,14 +35,28 @@ themes emerge from price action, never a hypothesis fed in):
     Drops the whole pass below 2 qualifying alerts (`len(cand) < 2`) and requires
     `len(tks) >= 2` to keep any proposed theme — **structurally needs 2+ co-occurring
     names**, never a single ticker.
-    **v2 (built dark 2026-07-27, flag `lane2_grouping_v2` in mi_safeguard_state,
-    FAIL-CLOSED OFF — see change log below):** when ON, the lane pools the last
-    10 TRADING days of qualifying alerts (per-ticker dedup: highest ep_score,
-    tie → latest), feeds budgeted `grounded_text`→`claude_analysis`→`catalyst`
-    evidence instead of `catalyst[:280]`, and requires every proposal to contain
-    ≥1 SAME-DAY anchor name (enforced in code, not just prompted). A lone
-    same-day alert becomes groupable against the pool. OFF is byte-identical to
-    v1 (pinned by `tests/test_lane2_grouping_v2.py`). ⚠ GRADE-AFFECTING: this
+    **v2 — INCREMENTAL NARRATIVE REGISTRY (built dark 2026-07-27, flag
+    `lane2_grouping_v2` in mi_safeguard_state, FAIL-CLOSED OFF — see change log
+    below):** when ON, the lane is state-carrying instead of re-derive-nightly.
+    State = the lane's own persisted rows: ACTIVE narratives (latest
+    `source='narrative_cogap'` row per name, `db.get_lane2_active_narratives`)
+    + a single-name WATCH LIST (`source='narrative_seed'`,
+    `db.get_lane2_pending_seeds` / `persist_lane2_seeds`), both windowed to
+    `LANE2_WINDOW_TRADING_DAYS` (10) trading days since last touch. Each night
+    ONE Sonnet call sees only TODAY's qualifying alerts with full budgeted
+    `grounded_text`→`claude_analysis`→`catalyst` evidence plus the compact
+    roster, and answers per name: JOIN an active narrative (registry name +
+    thesis FROZEN, members unioned, FIFO-capped at 12, needs ≥1 same-day
+    addition), BIRTH a new theme (2+ tickers from today + watch list, ≥1 from
+    today), or SEED the watch list (lone name with a real story — the cross-day
+    accretion hook: WULF 07-06 seed + CLSK 07-14 alert = a 2-member birth).
+    Dedup is STRUCTURAL (a continuing story is a join, never a new name);
+    member overlap between a birth and an active narrative only fires the
+    surface-only `lane2_possible_duplicate_narrative` audit tripwire — never an
+    auto-merge. Seeds are outside BOTH walls by construction (not in
+    `AUTO_PROMOTE_THEME_SOURCES`, not in `get_narrative_theme_candidates`'s
+    source list). OFF is byte-identical to v1 (pinned by
+    `tests/test_lane2_grouping_v2.py`). ⚠ GRADE-AFFECTING: this
     lane feeds the judge's `active_narratives` — the flip is operator-gated
     (CHANGE_PROCESS + fresh judge-robustness eval; the ADR-0030
     `preflight_judge_eval_gate` will fire on the grade-surface drift by design).
@@ -129,7 +143,58 @@ docstring are the durable SSoT going forward).
 
 ## Change log
 
-### 2026-07-27 — #167 Lane-2 grouping v2: grounded input + 10-trading-day rolling window (BUILT DARK, flag OFF)
+### 2026-07-27 (b) — #167 Lane-2 v2 reframed: incremental narrative REGISTRY (supersedes same-day pool draft; still dark, flag OFF)
+
+- **Trigger**: operator, same day, on the pool-draft replay results — "is there
+  a smarter way to optimize this given that the overlap and rediscovering the
+  same thing there's an efficiency cost here?" The pool replay (2026-06-08 →
+  07-24, $1.67) proved recall (23 proposals vs v1's 2; both audited misses
+  caught) but 18 of 23 were ONE narrative re-minted under different wordings —
+  a 10-day window re-reading the dominant story nightly re-derives and re-names
+  it by construction, and each near-duplicate could auto-promote into live
+  `mi_themes` (`narrative_cogap` is allowlisted).
+- **Evidence**: the pool replay itself (operator-run; per-day results were in
+  `/tmp/lane2_replay.json` in apollo-market) — e.g. 06-12/06-16/06-17/06-24/
+  06-25/06-30/07-06/07-07/07-08/07-22 are all "AI data-center infrastructure
+  buildout/power/leasing" re-namings. Also the double cost: ~25-35k input
+  tokens/night re-sending 10 days of full documents.
+- **What changed** (design, not population): same flag, same qualifying rule,
+  same evidence budgets, same `_LANE2_NARRATIVE_RULES` verbatim. The WINDOW
+  mechanism is replaced by carried STATE — see the Lane-2 architecture bullet
+  above for the full mechanics (registry roster + watch-list seeds + JOIN /
+  BIRTH / SEED contract + drift bounds). Superseded pool code removed:
+  `_dedupe_lane2_pool`, `_build_lane2_v2_prompt`, `db.get_ep_alerts_window`.
+  New: `db.get_lane2_active_narratives` / `get_lane2_pending_seeds` /
+  `persist_lane2_seeds`, `theme_engine._discover_lane2_registry` /
+  `_lane2_registry_clean` / `_build_lane2_registry_prompt` /
+  `_norm_narrative_name`; constants `LANE2_REGISTRY_MAX_MEMBERS=12`,
+  `LANE2_ROSTER_MAX=20`, `LANE2_SEED_STORY_BUDGET=160`.
+  `LANE2_WINDOW_TRADING_DAYS=10` is retained as the registry MEMORY horizon
+  (absence-based expiry, the `get_active_themes(stale_after_days=…)` idiom —
+  but in TRADING days at the operator-measured chain length: the 7-calendar-day
+  live-theme idiom would expire the WULF→CLSK seed link (8 calendar days) one
+  day short). Drift bounds: name+thesis frozen at birth; a join needs ≥1
+  same-day qualifying addition (no self-sustaining touches); FIFO member cap;
+  hindsight/backfill runs never write seeds. Auto-promote interaction: a join
+  refreshes ONE (run_date, name) row per story, so `DISTINCT ON (name)` gives
+  auto-promote a single cohort per narrative; re-promotion happens only while
+  the story is genuinely touched, and live rows age out via the themes 7d
+  recency cap — bounded, not ever-growing.
+- **Anticipated effect** (when flipped ON): near-duplicate proposal stream
+  collapses (pool replay's 18-of-23 → joins of one narrative); prompt cost
+  drops from ~25-35k to today's-docs + compact roster; cohorts accrete across
+  days indefinitely while touched (no 10-day forgetting cliff); audit rows show
+  `v2reg … N join + M new + K seed(s)` + the duplicate tripwire.
+- **Reversion-flag**: REFINEMENT of 2026-07-27 (a) below (same intent — richer
+  input + cross-day accretion — different window mechanism; (a) was never
+  flipped ON, so no live behavior reverts).
+- **Status**: built dark, flag OFF (OFF byte-identical re-pinned). NOT
+  deployed, NOT committed at authoring time. Registry-mode replay over the same
+  era is the next gate; then operator sign-off on the surviving-narrative list
+  (CHANGE_PROCESS r3), fresh judge-robustness eval (ADR-0030), then
+  `set_lane2_grouping_v2_enabled(True)`.
+
+### 2026-07-27 (a) — #167 Lane-2 grouping v2: grounded input + 10-trading-day rolling window (SUPERSEDED same day by (b) — never flipped ON)
 
 - **Trigger**: 167 grouping-quality audit
   (`docs/analysis/167_lane2_grouping_quality_2026-07-27.md`) — verdict "precise
@@ -172,11 +237,12 @@ docstring are the durable SSoT going forward).
   `collector.prev_trading_days` (ET-frame, weekend-skipping).
 - **Reversion-flag**: NEW (first change to Lane-2 grouping behavior since the
   lane shipped; no prior threshold on this surface).
-- **Status**: built dark, flag OFF (OFF byte-identical pinned by
-  `tests/test_lane2_grouping_v2.py`). NOT deployed, NOT committed at authoring
-  time. Live flip requires: operator sign-off on the replay cohort list (a
-  filter/proposal list is the operator's call — CHANGE_PROCESS r3), fresh
-  judge-robustness eval (ADR-0030 gate), then `set_lane2_grouping_v2_enabled(True)`.
+- **Status**: SUPERSEDED same day by entry (b) above (registry reframe) after
+  the replay exposed structural near-duplication — never flipped ON, no live
+  behavior existed to revert. The two operator-ruled levers (rich input +
+  cross-day accretion) carry forward into (b); the pool mechanics
+  (`_dedupe_lane2_pool`, `_build_lane2_v2_prompt`, `db.get_ep_alerts_window`)
+  were removed with the reframe.
 
 ### 2026-07-18 — judge → narrative-radar feed for judge-only theme inferences (#322)
 - **What**: new `agents/market_intelligence/judge_theme_gap.py` +

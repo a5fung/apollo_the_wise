@@ -5794,6 +5794,101 @@ async def get_narrative_theme_candidates(
         return [dict(r) for r in rows]
 
 
+async def get_lane2_active_narratives(
+    window_start: "str | date", before_date: "str | date",
+) -> list[dict]:
+    """#167 Lane-2 v2 REGISTRY roster — the ACTIVE-narrative state fed back into
+    the nightly grouping prompt: latest row PER NAME from the lane's OWN prior
+    output, `window_start <= run_date < before_date` (prior sessions only — a
+    same-day row is never its own context, so a re-run re-derives today from
+    scratch). A narrative untouched for LANE2_WINDOW_TRADING_DAYS trading days
+    falls out of the window = absence-based expiry (the
+    get_active_themes(stale_after_days=…) idiom, horizon rationale at the
+    constant in theme_engine.py). Ordered most-recently-touched first so the
+    prompt's LANE2_ROSTER_MAX truncation keeps the live end of the roster.
+
+    ⚠ ANTI-CIRCULARITY (the judge_theme_gap.py wall, preserved by
+    construction): source = 'narrative_cogap' ONLY — never 'judge_inferred' or
+    'coverage_probe' (a judge inference must not steer the lane that feeds the
+    judge's own active_narratives input), never 'narrative_cogap_backfill'
+    (hindsight population, #167 segregation), never 'rs_slope_synthesis' /
+    'shadow_v2' (cross-lane name reuse on the (run_date, name) PK would let
+    this lane's DO-UPDATE persist hijack a sibling lane's same-day row)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT run_date, name, tickers, thesis FROM (
+                SELECT DISTINCT ON (name) run_date, name, tickers, thesis
+                FROM mi_theme_candidates_shadow
+                WHERE source = 'narrative_cogap'
+                  AND run_date >= $1 AND run_date < $2
+                ORDER BY name, run_date DESC
+            ) latest
+            ORDER BY run_date DESC, name
+        """, _to_date(window_start), _to_date(before_date))
+        return [dict(r) for r in rows]
+
+
+async def get_lane2_pending_seeds(
+    window_start: "str | date", before_date: "str | date",
+) -> list[dict]:
+    """#167 Lane-2 v2 REGISTRY watch list — recent SINGLE-NAME stories
+    (source='narrative_seed', written by persist_lane2_seeds): latest row per
+    ticker, same prior-sessions-only window + expiry as
+    get_lane2_active_narratives. These are the cross-day linking hooks that
+    let a cohort assemble across days (the WULF 07-06 → CLSK 07-14 class)
+    without re-reading prior days' full documents nightly.
+
+    WALLS (both hold BY CONSTRUCTION, no code change needed): 'narrative_seed'
+    is (a) NOT in AUTO_PROMOTE_THEME_SOURCES — a 1-member watch row can never
+    auto-promote into live mi_themes — and (b) NOT in
+    get_narrative_theme_candidates' source IN-list — it never reaches the
+    judge's active_narratives input. Operator surfaces see it only via
+    get_shadow_theme_candidates(include_probe=True), like coverage_probe."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT run_date, ticker, story FROM (
+                SELECT DISTINCT ON (tickers[1])
+                       run_date, tickers[1] AS ticker, thesis AS story
+                FROM mi_theme_candidates_shadow
+                WHERE source = 'narrative_seed'
+                  AND run_date >= $1 AND run_date < $2
+                ORDER BY tickers[1], run_date DESC
+            ) latest
+            ORDER BY run_date DESC, ticker
+        """, _to_date(window_start), _to_date(before_date))
+        return [dict(r) for r in rows]
+
+
+async def persist_lane2_seeds(run_date: "str | date", seeds: list[dict]) -> int:
+    """#167 Lane-2 v2 REGISTRY — write tonight's watch-list seeds
+    ([{ticker, story}]) as 1-member rows under source='narrative_seed'
+    (name 'Seed: <TICK>'; same ticker on a later day = a new (run_date, name)
+    row; the roster reader takes the latest per ticker). SOURCE-SCOPED like
+    every sibling writer on this table: clears only its own same-day rows and
+    upserts through _upsert_theme_candidate_shadow's source-guarded conflict
+    path, so it can never clobber or hijack another lane's rows. Returns rows
+    written. NOTE: the caller skips this entirely on backfill runs — hindsight
+    seeds must never enter the forward watch list."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rd = _to_date(run_date)
+        await conn.execute(
+            "DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1 AND source = 'narrative_seed'",
+            rd)
+        n = 0
+        for s in (seeds or []):
+            tk = s.get("ticker")
+            story = s.get("story")
+            if not tk or not story:
+                continue
+            await _upsert_theme_candidate_shadow(
+                conn, rd, f"Seed: {tk}", [tk], story, "narrative_seed")
+            n += 1
+        return n
+
+
 async def get_recent_rs_batch(
     tickers: list[str], d: "str | date", days: int = 3,
 ) -> dict[str, list[float]]:
@@ -6745,30 +6840,6 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
         results = [dict(r) for r in rows]
         results.sort(key=lambda r: r.get("ep_score", 0), reverse=True)
         return results
-
-
-async def get_ep_alerts_window(d_from: "str | date", d_to: "str | date") -> list[dict[str, Any]]:
-    """#167 Lane-2 v2 — window fetch for the rolling-pool grouping: the best
-    (highest ep_score) LIVE alert per (ticker, alert_date) across
-    [d_from, d_to], i.e. exactly get_today_ep_alerts' per-day dedup semantics
-    (DISTINCT ON ticker, ep_score DESC) extended over a date range. No
-    rs_composite lateral join — Lane-2 never reads it and the window spans
-    ~11 trading days. CROSS-day per-ticker dedup is deliberately NOT done here:
-    it lives in theme_engine._dedupe_lane2_pool (pure Python) so the rule is
-    unit-testable and the same-day anchor set can be derived before dedup."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT DISTINCT ON (a.ticker, a.alert_date) a.*
-            FROM mi_ep_alerts a
-            WHERE a.alert_date >= $1 AND a.alert_date <= $2
-              AND COALESCE(a.source, 'live') = 'live'
-            ORDER BY a.ticker, a.alert_date, a.ep_score DESC
-            """,
-            _to_date(d_from), _to_date(d_to),
-        )
-        return [dict(r) for r in rows]
 
 
 async def get_active_tracked_stocks() -> list[str]:
