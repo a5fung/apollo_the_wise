@@ -384,61 +384,232 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
+# ── #167 Lane-2 grouping v2 (operator-ruled 2026-07-27) ──────────────────────
+# Flag: mi_safeguard_state 'lane2_grouping_v2' (db.get_lane2_grouping_v2_enabled,
+# FAIL-CLOSED OFF). OFF ⇒ discover_narrative_themes is byte-identical to v1
+# (pinned by tests/test_lane2_grouping_v2.py). GRADE-AFFECTING when ON — the
+# lane feeds the judge's active_narratives; see the flag docstring in db.py.
+LANE2_WINDOW_TRADING_DAYS = 10  # rolling lookback in TRADING days — operator-measured on the real
+                                # cohort: WULF 07-06 → HUT/IREN 07-20 is exactly 10 trading days;
+                                # a 5-day window misses WULF entirely, 7 catches each adjacent
+                                # link but never the whole chain (167 audit §2/§4).
+LANE2_GROUNDED_BUDGET = 10000   # per-ticker chars of grounded_text — a SAFETY CEILING, in practice
+                                # the FULL document (era max observed 9,615; build_grounded_text is
+                                # upstream-bounded by its inputs). A head-slice budget was tested on
+                                # the replay pull and FALSIFIED: the SEC/XBRL boilerplate fills the
+                                # head and the linking evidence sits mid-doc (CLSK 'AI'@6394,
+                                # JBL 'AI'@4430, SNX 'AI'@6593, WULF 'data center'@2653), with the
+                                # story-naming web synthesis LAST in build_grounded_text's order —
+                                # a 2.5k head slice re-creates the exact misses this fix targets.
+                                # Cost: realistic July pools (11-18 names, all grounded) ≈ 25-35k
+                                # input tokens ≈ $0.08-0.11/run at Sonnet $3/MTok; worst-case pool
+                                # ≈ 60k tokens ≈ $0.18/run. Once nightly: trivial.
+LANE2_ANALYSIS_BUDGET = 1500    # claude_analysis fallback cap (median 722; matches the judge
+                                # payload cap in ep_grade_judge.assemble_judge_inputs).
+LANE2_CATALYST_BUDGET = 500     # catalyst last resort — the column is hard-truncated at 500
+                                # upstream anyway (62/62 forward-era rows, 167 audit §3).
+
+# Narrative-definition rules shared VERBATIM by the v1 and v2 prompts. Prompt
+# bias was tested and DISCONFIRMED as the primary driver of the misses (167
+# audit §5) — do NOT reword these as a recall lever; the v2 levers are input
+# richness and the rolling window only.
+_LANE2_NARRATIVE_RULES = (
+    "Themes MAY span sectors and "
+    "RS levels (e.g. a government-policy theme spanning Industrials + Tech + Defense). A theme "
+    "must be a real shared story/catalyst, NOT a generic sector label.\n"
+    "CRITICAL: a theme is a SPECIFIC shared NARRATIVE / DRIVER (a technology cycle, a "
+    "government policy, a supply shortage, a product category, a specific industry catalyst) "
+    "— NOT a generic CATALYST-TYPE that names coincidentally share because of the calendar. "
+    "'They all beat Q1 earnings', 'broad earnings-beat momentum', 'raised guidance', or "
+    "'relief rally' are NOT themes (those are catalyst categories, not narratives). A bare "
+    "one-word catchall ('AI', 'software', 'tech') is also too generic — BUT a SPECIFIC "
+    "AI/tech-DRIVEN narrative IS a valid theme (e.g. 'AI-native/vertical SaaS adoption', "
+    "'AI data-center buildout', 'edge-AI silicon'). Group ONLY when the names share a SPECIFIC "
+    "emerging story a trader would name as a theme (e.g. 'nuclear/AI power demand', 'defense "
+    "drone expansion', 'quantum computing', 'GLP-1 obesity', 'edge-AI silicon', 'AI-native SaaS'). "
+    "If there is NO genuine shared narrative across 2+ of these names, return an EMPTY "
+    "list — do NOT force groupings.\n\n"
+)
+_LANE2_JSON_CONTRACT = (
+    'Return ONLY JSON: {"themes":[{"name":"<=6 words","catalyst_type":"theme|govt_policy|shortage|'
+    'sales_acceleration|new_product|management_change|other","tickers":["TICK","TICK"],"thesis":"one sentence"}]}. '
+)
+_LANE2_NAME_BREADTH_RULE = (
+    "The name's breadth must match the group: every grouped ticker must individually fit the name."
+)
+
+
+def _lane2_window_start(scan_date):
+    """First alert_date inside the v2 window: scan_date minus
+    LANE2_WINDOW_TRADING_DAYS trading days. Uses the repo's weekend-skipping
+    prev_trading_days helper (holidays inside the window shrink the effective
+    count by one — same approximation every other caller accepts). ET-frame
+    dates only; callers pass et_today()-derived dates, never date.today()."""
+    from agents.market_intelligence.collector import prev_trading_days
+    return prev_trading_days(LANE2_WINDOW_TRADING_DAYS, from_date=scan_date)[-1]
+
+
+def _lane2_qualifies(a: dict) -> bool:
+    """SAME qualifying rule as v1 (ep>=50 + catalyst-or-claude_analysis) — v2
+    changes the text FED and the window, never the population definition, so
+    replay populations stay comparable with the 167 audit's 62-alert cohort."""
+    return (a.get("ep_score") or 0) >= 50.0 and bool(a.get("catalyst") or a.get("claude_analysis"))
+
+
+def _lane2_input_text(a: dict) -> tuple[str, str]:
+    """Evidence text for one pooled alert + its source tag.
+    Priority (operator ruling 1): grounded_text (SEC-8K-grounded body, 81%
+    coverage, budgeted) → claude_analysis (grounded when a direct source
+    exists, #360) → catalyst (100% hard-truncated Perplexity preamble — last
+    resort). Whitespace is collapsed so each pool entry stays one prompt line.
+    The tag feeds the audit summary so a degraded (fallback-heavy) day is
+    distinguishable from a rich one."""
+    for field, budget, tag in (
+        ("grounded_text", LANE2_GROUNDED_BUDGET, "grounded"),
+        ("claude_analysis", LANE2_ANALYSIS_BUDGET, "analysis"),
+        ("catalyst", LANE2_CATALYST_BUDGET, "catalyst"),
+    ):
+        v = a.get(field)
+        if v and str(v).strip():
+            return " ".join(str(v)[:budget].split()), tag
+    return "", "none"
+
+
+def _dedupe_lane2_pool(alerts: list[dict], scan_date) -> tuple[list[dict], set[str]]:
+    """Cross-day dedup for the v2 pool + the same-day anchor set.
+
+    Dedup rule (operator question answered here): per ticker keep the
+    HIGHEST-ep_score qualifying alert in-window; ties → the LATEST alert_date.
+    Rationale: (a) it is the same semantics get_today_ep_alerts already applies
+    within a day (DISTINCT ON ticker ORDER BY ep_score DESC), extended across
+    days — one dedup rule, not two; (b) the strongest alert is the one carrying
+    the substantive catalyst evidence (WULF's ep-96 Anthropic-lease day, not a
+    weak follow-through re-alert whose text is generic continuation prose).
+
+    The anchor set is computed BEFORE dedup: a ticker with ANY qualifying alert
+    ON scan_date is a same-day anchor even when dedup keeps an older, stronger
+    row for its evidence text.
+
+    Returns (pool sorted by alert_date then ticker, today_tickers)."""
+    best: dict[str, dict] = {}
+    today_tickers: set[str] = set()
+    for a in alerts:
+        if not _lane2_qualifies(a):
+            continue
+        tk = a["ticker"]
+        if a["alert_date"] == scan_date:
+            today_tickers.add(tk)
+        cur = best.get(tk)
+        if cur is None or (
+            ((a.get("ep_score") or 0), a["alert_date"])
+            > ((cur.get("ep_score") or 0), cur["alert_date"])
+        ):
+            best[tk] = a
+    pool = sorted(best.values(), key=lambda r: (r["alert_date"], r["ticker"]))
+    return pool, today_tickers
+
+
+def _build_lane2_v2_prompt(pool: list[dict], today_tickers: set[str]) -> str:
+    """v2 grouping prompt: multi-day pool, dated lines (TODAY marks anchors),
+    budgeted grounded evidence. Narrative-definition rules are the shared
+    _LANE2_NARRATIVE_RULES verbatim — only the framing (multi-day input) and
+    the anchor requirement differ from v1."""
+    lines = []
+    for a in pool:
+        text, _src = _lane2_input_text(a)
+        tag = "TODAY" if a["ticker"] in today_tickers else str(a["alert_date"])
+        lines.append(f"- {a['ticker']} [{tag}] (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {text}")
+    return (
+        f"Below are gap-up momentum stocks from the last {LANE2_WINDOW_TRADING_DAYS} trading days "
+        "(today's are marked TODAY) and their catalyst evidence. Identify EMERGING "
+        "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. "
+        + _LANE2_NARRATIVE_RULES
+        + "Stocks:\n" + "\n".join(lines) + "\n\n"
+        + _LANE2_JSON_CONTRACT
+        + "Include a theme ONLY if 2+ of the listed tickers truly share it AND at least one member "
+        "is marked TODAY (a group made only of prior-day names is stale context, not a new "
+        "signal); otherwise themes=[]. "
+        + _LANE2_NAME_BREADTH_RULE
+    )
+
+
 async def discover_narrative_themes(scan_date=None, persist: bool = True, backfilled: bool = False) -> dict:
     """C2/C3 rung-1 NARRATIVE-theme discovery (#167, shadow/advisory).
 
-    Groups the day's EP alerts by SHARED CATALYST-NARRATIVE via one Sonnet call and
+    Groups EP alerts by SHARED CATALYST-NARRATIVE via one Sonnet call and
     writes proposals to `mi_theme_candidates_shadow` (source='narrative_cogap').
     Catches cross-sector / govt-policy themes the RS+correlation engine structurally
     misses — validated on the 2026-05-28 drone cohort (step-b + the §5 PASS, 6/2).
-    Advisory ONLY: no live `mi_themes` mutation; operator confirms before canonization.
+    Advisory ONLY: no live `mi_themes` mutation; operator confirms before
+    canonization — but NOTE the proposals DO feed the judge's active_narratives
+    context (get_narrative_theme_candidates → assemble_judge_inputs), so what
+    this lane proposes is GRADE-AFFECTING (db.get_lane2_grouping_v2_enabled).
+
+    Two modes, selected per-run by the 'lane2_grouping_v2' DB flag (fail-closed):
+    - v1 (flag OFF, the default — byte-identical to pre-flag behavior, pinned
+      by tests/test_lane2_grouping_v2.py): today's alerts only, catalyst[:280].
+    - v2 (#167 grouping fix, operator-ruled 2026-07-27): pools the last
+      LANE2_WINDOW_TRADING_DAYS trading days of qualifying alerts (per-ticker
+      dedup: highest ep_score, tie → latest), feeds budgeted
+      grounded_text→claude_analysis→catalyst evidence, requires >=1 SAME-DAY
+      anchor in every proposal, and reports the input-source mix in the audit
+      summary so a degraded (fallback-heavy) day is visible.
 
     FULLY error-wrapped — never raises into the caller (the nightly pull).
     """
     import json
+    from datetime import date as _date
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.db import (
-        get_today_ep_alerts, persist_narrative_theme_candidates, log_audit_event,
+        get_today_ep_alerts, get_ep_alerts_window, persist_narrative_theme_candidates,
+        log_audit_event, get_lane2_grouping_v2_enabled,
     )
     out = {"date": None, "alerts": 0, "themes": 0, "names": [], "error": None}
     try:
         scan_date = scan_date or et_today()
         out["date"] = scan_date if isinstance(scan_date, str) else scan_date.strftime("%Y-%m-%d")
-        alerts = await get_today_ep_alerts(scan_date)
-        cand = [a for a in alerts
-                if (a.get("ep_score") or 0) >= 50.0 and (a.get("catalyst") or a.get("claude_analysis"))]
-        out["alerts"] = len(cand)
-        if len(cand) < 2:
-            await log_audit_event("narrative_theme_discovery_ran",
-                                  f"{out['date']}: {len(cand)} qualifying alert(s) (<2) — no grouping")
-            return out
-        lines = []
-        for a in cand:
-            cat = (a.get("catalyst") or a.get("claude_analysis") or "")[:280]
-            lines.append(f"- {a['ticker']} (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {cat}")
-        prompt = (
-            "Below are today's gap-up momentum stocks and their catalysts. Identify EMERGING "
-            "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. Themes MAY span sectors and "
-            "RS levels (e.g. a government-policy theme spanning Industrials + Tech + Defense). A theme "
-            "must be a real shared story/catalyst, NOT a generic sector label.\n"
-            "CRITICAL: a theme is a SPECIFIC shared NARRATIVE / DRIVER (a technology cycle, a "
-            "government policy, a supply shortage, a product category, a specific industry catalyst) "
-            "— NOT a generic CATALYST-TYPE that names coincidentally share because of the calendar. "
-            "'They all beat Q1 earnings', 'broad earnings-beat momentum', 'raised guidance', or "
-            "'relief rally' are NOT themes (those are catalyst categories, not narratives). A bare "
-            "one-word catchall ('AI', 'software', 'tech') is also too generic — BUT a SPECIFIC "
-            "AI/tech-DRIVEN narrative IS a valid theme (e.g. 'AI-native/vertical SaaS adoption', "
-            "'AI data-center buildout', 'edge-AI silicon'). Group ONLY when the names share a SPECIFIC "
-            "emerging story a trader would name as a theme (e.g. 'nuclear/AI power demand', 'defense "
-            "drone expansion', 'quantum computing', 'GLP-1 obesity', 'edge-AI silicon', 'AI-native SaaS'). "
-            "If there is NO genuine shared narrative across 2+ of these names, return an EMPTY "
-            "list — do NOT force groupings.\n\n"
-            "Stocks:\n" + "\n".join(lines) + "\n\n"
-            'Return ONLY JSON: {"themes":[{"name":"<=6 words","catalyst_type":"theme|govt_policy|shortage|'
-            'sales_acceleration|new_product|management_change|other","tickers":["TICK","TICK"],"thesis":"one sentence"}]}. '
-            "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]. "
-            "The name's breadth must match the group: every grouped ticker must individually fit the name."
-        )
+        v2 = await get_lane2_grouping_v2_enabled()
+        today_tk: "set[str] | None" = None  # non-None ⇔ v2 path (drives anchor rule + audit format)
+        if not v2:
+            alerts = await get_today_ep_alerts(scan_date)
+            cand = [a for a in alerts
+                    if (a.get("ep_score") or 0) >= 50.0 and (a.get("catalyst") or a.get("claude_analysis"))]
+            out["alerts"] = len(cand)
+            if len(cand) < 2:
+                await log_audit_event("narrative_theme_discovery_ran",
+                                      f"{out['date']}: {len(cand)} qualifying alert(s) (<2) — no grouping")
+                return out
+            lines = []
+            for a in cand:
+                cat = (a.get("catalyst") or a.get("claude_analysis") or "")[:280]
+                lines.append(f"- {a['ticker']} (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {cat}")
+            prompt = (
+                "Below are today's gap-up momentum stocks and their catalysts. Identify EMERGING "
+                "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. "
+                + _LANE2_NARRATIVE_RULES
+                + "Stocks:\n" + "\n".join(lines) + "\n\n"
+                + _LANE2_JSON_CONTRACT
+                + "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]. "
+                + _LANE2_NAME_BREADTH_RULE
+            )
+        else:
+            scan_d = _date.fromisoformat(scan_date) if isinstance(scan_date, str) else scan_date
+            window_rows = await get_ep_alerts_window(_lane2_window_start(scan_d), scan_d)
+            cand, today_tk = _dedupe_lane2_pool(window_rows, scan_d)
+            src_counts = {"grounded": 0, "analysis": 0, "catalyst": 0, "none": 0}
+            for a in cand:
+                src_counts[_lane2_input_text(a)[1]] += 1
+            out["alerts"] = len(today_tk)  # keeps the v1 meaning: same-day qualifying count
+            out["pool"] = len(cand)
+            out["window_trading_days"] = LANE2_WINDOW_TRADING_DAYS
+            out["input_sources"] = src_counts
+            if not today_tk or len(cand) < 2:
+                await log_audit_event(
+                    "narrative_theme_discovery_ran",
+                    f"{out['date']}: v2({LANE2_WINDOW_TRADING_DAYS}td) {len(today_tk)} today / "
+                    f"{len(cand)} pooled — below gate (needs >=1 today anchor + pool >=2) — no grouping")
+                return out
+            prompt = _build_lane2_v2_prompt(cand, today_tk)
         client = _get_anthropic_client()
         msg = await client.messages.create(
             model=THEME_MODEL, max_tokens=1500,
@@ -455,15 +626,29 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         clean = []
         for t in (themes or []):
             tks = [x for x in (t.get("tickers") or []) if x in cand_tk]
-            if t.get("name") and len(tks) >= 2:
-                clean.append({"name": str(t["name"])[:80], "tickers": tks,
-                              "thesis": (t.get("thesis") or "")[:500],
-                              "catalyst_type": t.get("catalyst_type")})
+            if not (t.get("name") and len(tks) >= 2):
+                continue
+            if today_tk is not None and not (set(tks) & today_tk):
+                # v2 anchor rule: a cohort made only of prior-day names is stale
+                # context, not a new signal — enforced here, not just prompted.
+                continue
+            clean.append({"name": str(t["name"])[:80], "tickers": tks,
+                          "thesis": (t.get("thesis") or "")[:500],
+                          "catalyst_type": t.get("catalyst_type")})
         n = (await persist_narrative_theme_candidates(scan_date, clean, backfilled=backfilled)) if persist else len(clean)
         out["themes"] = n
         out["names"] = [t["name"] for t in clean]
-        await log_audit_event("narrative_theme_discovery_ran",
-                              f"{out['date']}: {len(cand)} alerts -> {n} narrative theme(s): {out['names']}")
+        if today_tk is None:
+            await log_audit_event("narrative_theme_discovery_ran",
+                                  f"{out['date']}: {len(cand)} alerts -> {n} narrative theme(s): {out['names']}")
+        else:
+            src = out["input_sources"]
+            await log_audit_event(
+                "narrative_theme_discovery_ran",
+                f"{out['date']}: v2({LANE2_WINDOW_TRADING_DAYS}td) {len(cand)} pooled "
+                f"({len(today_tk)} today; input grounded={src['grounded']} "
+                f"analysis={src['analysis']} catalyst={src['catalyst']}) "
+                f"-> {n} narrative theme(s): {out['names']}")
         return out
     except Exception as e:
         # #376: a credit-exhaustion failure here silently yields no narrative

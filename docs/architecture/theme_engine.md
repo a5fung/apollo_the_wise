@@ -35,6 +35,17 @@ themes emerge from price action, never a hypothesis fed in):
     Drops the whole pass below 2 qualifying alerts (`len(cand) < 2`) and requires
     `len(tks) >= 2` to keep any proposed theme — **structurally needs 2+ co-occurring
     names**, never a single ticker.
+    **v2 (built dark 2026-07-27, flag `lane2_grouping_v2` in mi_safeguard_state,
+    FAIL-CLOSED OFF — see change log below):** when ON, the lane pools the last
+    10 TRADING days of qualifying alerts (per-ticker dedup: highest ep_score,
+    tie → latest), feeds budgeted `grounded_text`→`claude_analysis`→`catalyst`
+    evidence instead of `catalyst[:280]`, and requires every proposal to contain
+    ≥1 SAME-DAY anchor name (enforced in code, not just prompted). A lone
+    same-day alert becomes groupable against the pool. OFF is byte-identical to
+    v1 (pinned by `tests/test_lane2_grouping_v2.py`). ⚠ GRADE-AFFECTING: this
+    lane feeds the judge's `active_narratives` — the flip is operator-gated
+    (CHANGE_PROCESS + fresh judge-robustness eval; the ADR-0030
+    `preflight_judge_eval_gate` will fire on the grade-surface drift by design).
   - `run_theme_synthesis` (#240, `theme_synthesis.py`, source='rs_slope_synthesis')
     — cross-ticker RS-slope: proposes cohorts from coordinated accelerators/turners,
     `_MIN_MEMBERS = 3` — **structurally needs 3+ coordinated movers**.
@@ -117,6 +128,55 @@ standalone memory file exists; this section + `judge_theme_gap.py`'s module
 docstring are the durable SSoT going forward).
 
 ## Change log
+
+### 2026-07-27 — #167 Lane-2 grouping v2: grounded input + 10-trading-day rolling window (BUILT DARK, flag OFF)
+
+- **Trigger**: 167 grouping-quality audit
+  (`docs/analysis/167_lane2_grouping_quality_2026-07-27.md`) — verdict "precise
+  but shallow": 3 genuine misses + 1 borderline on 13 judgeable no-story days,
+  all the same shape (cross-sector demand-side story written as company
+  events). Operator ruled exactly two changes (2026-07-27): feed the real
+  evidence; 10-TRADING-day rolling window. Proposals 3–5 explicitly out of
+  scope.
+- **Evidence**: forward-era replay data in the audit — `catalyst` hard-truncated
+  at 500 chars in 62/62 qualifying alerts with only 280 fed (~4% of available
+  evidence read), `grounded_text` populated 50/62 (81%) at median 7,413 chars
+  and unused; the WULF 07-06 → CLSK 07-14 → HUT/IREN 07-20 accretion (pairwise
+  corr +0.47..+0.87) structurally invisible same-day; prompt bias tested and
+  DISCONFIRMED (§5) — the narrative-definition prompt text is therefore shared
+  VERBATIM between v1/v2 (`_LANE2_NARRATIVE_RULES`), never reworded as a recall
+  lever. Window size operator-measured on the real cohort: full chain = 10
+  trading days; 5 misses WULF, 7 never sees the whole cohort.
+- **Anticipated effect** (when flipped ON): the 15-per-33-runs `<2`-gate drops
+  shrink (lone same-day alerts group against the pool); input-source mix
+  appears in every `narrative_theme_discovery_ran` audit row
+  (`input grounded=G analysis=A catalyst=C` — degraded days visible); expected
+  recall gain on the 3 audited miss classes, precision guarded by the
+  same-day-anchor rule + unchanged narrative-definition prompt + replay before
+  flip. More/different proposals reach the judge's `active_narratives` ⇒
+  grade surface drifts ⇒ ADR-0030 `preflight_judge_eval_gate` fires on deploy —
+  expected, requires a fresh judge-robustness eval, never suppress.
+- **Mechanics**: DB flag `lane2_grouping_v2` (`db.get/set_lane2_grouping_v2_enabled`,
+  mi_safeguard_state, FAIL-CLOSED OFF, instant no-redeploy revert). Window
+  fetch `db.get_ep_alerts_window` (per-(ticker,day) best row, live-source only);
+  cross-day dedup in `theme_engine._dedupe_lane2_pool` — highest ep_score wins,
+  tie → latest date (same semantics as `get_today_ep_alerts`' same-day
+  `DISTINCT ON ... ep_score DESC`, extended across days; the strongest alert
+  carries the substantive evidence). Anchor set computed BEFORE dedup. Budgets:
+  grounded 10,000 chars (= FULL doc in practice — era max 9,615; a 2.5k
+  head-slice was tested on the replay pull and FALSIFIED: SEC boilerplate fills
+  the head, the linking evidence sits at char 2.4k–6.6k, and the story-naming
+  web synthesis is LAST in `build_grounded_text`'s order) / analysis 1,500 /
+  catalyst 500. Realistic cost ≈ 25–35k input tokens ≈ $0.08–0.11/run at
+  Sonnet 4.6 rates (worst-case ≈ $0.18). Trading-day math via
+  `collector.prev_trading_days` (ET-frame, weekend-skipping).
+- **Reversion-flag**: NEW (first change to Lane-2 grouping behavior since the
+  lane shipped; no prior threshold on this surface).
+- **Status**: built dark, flag OFF (OFF byte-identical pinned by
+  `tests/test_lane2_grouping_v2.py`). NOT deployed, NOT committed at authoring
+  time. Live flip requires: operator sign-off on the replay cohort list (a
+  filter/proposal list is the operator's call — CHANGE_PROCESS r3), fresh
+  judge-robustness eval (ADR-0030 gate), then `set_lane2_grouping_v2_enabled(True)`.
 
 ### 2026-07-18 — judge → narrative-radar feed for judge-only theme inferences (#322)
 - **What**: new `agents/market_intelligence/judge_theme_gap.py` +

@@ -3150,6 +3150,52 @@ async def set_theme_subtheme_arm_enabled(enabled: bool) -> None:
         """, *_SUBTHEME_ARM_TOGGLE, "on" if enabled else "off")
 
 
+_LANE2_V2_TOGGLE = ("lane2_grouping_v2", "paper")  # (safeguard, account_mode) PK
+
+
+async def get_lane2_grouping_v2_enabled() -> bool:
+    """#167 Lane-2 grouping v2 (grounded_text input + 10-trading-day rolling
+    window, operator-ruled 2026-07-27) — DB-backed toggle, the
+    get_theme_subtheme_arm_enabled idiom. Durable across restarts
+    (mi_safeguard_state), instant flip with NO redeploy.
+    FAIL-CLOSED: any error or missing row → False. OFF ⇒
+    theme_engine.discover_narrative_themes is byte-identical to the v1
+    same-day / catalyst[:280] behavior (pinned by
+    tests/test_lane2_grouping_v2.py).
+    ⚠ GRADE-AFFECTING when ON: Lane-2 proposals feed the judge's
+    active_narratives context (get_narrative_theme_candidates →
+    ep_detector L4154 → ep_grade_judge.assemble_judge_inputs), so what this
+    lane proposes can change grades and therefore trades. The flip is
+    OPERATOR-gated behind CHANGE_PROCESS sign-off + a fresh judge-robustness
+    eval (the ADR 0030 preflight_judge_eval_gate WILL fire on the grade-surface
+    drift — that is by design, never suppress it)."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = $2", *_LANE2_V2_TOGGLE)
+        return bool(row) and row["state"] == "on"
+    except Exception as e:  # noqa: BLE001 — fail-closed to the v1 lane is the contract
+        logger.warning(f"lane2_grouping_v2 read failed → v1 lane (fail-closed): {e}")
+        return False
+
+
+async def set_lane2_grouping_v2_enabled(enabled: bool) -> None:
+    """Flip the #167 Lane-2 grouping v2 toggle (OPERATOR-gated — never
+    self-authorize; grade-affecting via the judge's active_narratives input,
+    see get_lane2_grouping_v2_enabled). Upserts the mi_safeguard_state row."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
+        """, *_LANE2_V2_TOGGLE, "on" if enabled else "off")
+
+
 _MANUAL_HALT = ("manual_trading_halt", "live")  # (safeguard, account_mode) PK
 
 
@@ -6699,6 +6745,30 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
         results = [dict(r) for r in rows]
         results.sort(key=lambda r: r.get("ep_score", 0), reverse=True)
         return results
+
+
+async def get_ep_alerts_window(d_from: "str | date", d_to: "str | date") -> list[dict[str, Any]]:
+    """#167 Lane-2 v2 — window fetch for the rolling-pool grouping: the best
+    (highest ep_score) LIVE alert per (ticker, alert_date) across
+    [d_from, d_to], i.e. exactly get_today_ep_alerts' per-day dedup semantics
+    (DISTINCT ON ticker, ep_score DESC) extended over a date range. No
+    rs_composite lateral join — Lane-2 never reads it and the window spans
+    ~11 trading days. CROSS-day per-ticker dedup is deliberately NOT done here:
+    it lives in theme_engine._dedupe_lane2_pool (pure Python) so the rule is
+    unit-testable and the same-day anchor set can be derived before dedup."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT DISTINCT ON (a.ticker, a.alert_date) a.*
+            FROM mi_ep_alerts a
+            WHERE a.alert_date >= $1 AND a.alert_date <= $2
+              AND COALESCE(a.source, 'live') = 'live'
+            ORDER BY a.ticker, a.alert_date, a.ep_score DESC
+            """,
+            _to_date(d_from), _to_date(d_to),
+        )
+        return [dict(r) for r in rows]
 
 
 async def get_active_tracked_stocks() -> list[str]:
