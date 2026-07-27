@@ -422,8 +422,10 @@ def _patch_annotator(monkeypatch, bars_by):
 
 def test_annotator_records_fields_without_touching_tier_or_score(monkeypatch):
     """THE #498 Stage-1 pin: with TQS ON vs OFF, the graded alert dict is BYTE-IDENTICAL apart
-    from the added display-only 'tape_quality' key — even when the tape verdict is junk on a
-    HIGH. score_tier / ep_score / authority / every other field untouched."""
+    from the added display-only 'tape_quality' + 'vol_profile' keys — even when the tape
+    verdict is junk on a HIGH. score_tier / ep_score / authority / every other field
+    untouched. (The vol-profile Slice-1 sibling rides the same loop under the same
+    telemetry-only contract — see tests/test_vol_profile.py for its own pins.)"""
     _patch_annotator(monkeypatch, {"JUNKY": _glnd_bars(), "CLEANY": _fcel_bars()})
 
     results = _mk_results()
@@ -431,25 +433,37 @@ def test_annotator_records_fields_without_touching_tier_or_score(monkeypatch):
     _run(annotate_ep_alerts_tape_quality(results))
 
     for r_after, r_before in zip(results, before):
-        stripped = {k: v for k, v in r_after.items() if k != "tape_quality"}
-        assert stripped == r_before          # byte-identical minus the annotation
+        stripped = {k: v for k, v in r_after.items()
+                    if k not in ("tape_quality", "vol_profile")}
+        assert stripped == r_before          # byte-identical minus the annotations
         assert r_after["score_tier"] == r_before["score_tier"]
         assert r_after["ep_score"] == r_before["ep_score"]
     assert results[0]["tape_quality"]["tier"] == "tape_junk"   # junk verdict, HIGH untouched
     assert results[1]["tape_quality"]["tier"] == "tape_clean"
     assert len(results[0]["tape_quality"]["sparkline"]) == 20
+    # The vol sibling annotated too (20 fixture bars < 50 → honest 'unseasoned' shape).
+    assert results[0]["vol_profile"]["hist_n"] == 20
+    assert "r5_50" not in results[0]["vol_profile"]
 
 
 def test_annotator_writes_only_the_pinned_tape_sql(monkeypatch):
-    from agents.market_intelligence.db import EP_ALERT_TAPE_UPDATE_SQL
+    """Every statement the annotator loop issues is one of the two PINNED telemetry updates
+    (tape_* / vol_*) — nothing else can reach the row from here."""
+    from agents.market_intelligence.db import (
+        EP_ALERT_TAPE_UPDATE_SQL, EP_ALERT_VOL_UPDATE_SQL,
+    )
     conn = _patch_annotator(monkeypatch, {"JUNKY": _glnd_bars(), "CLEANY": _fcel_bars()})
 
     _run(annotate_ep_alerts_tape_quality(_mk_results()))
 
-    assert conn.execute.await_count == 2
-    for call in conn.execute.await_args_list:
-        assert call.args[0] == EP_ALERT_TAPE_UPDATE_SQL
-    junky = conn.execute.await_args_list[0].args
+    assert conn.execute.await_count == 4     # tape + vol, per candidate
+    tape_calls = [c for c in conn.execute.await_args_list
+                  if c.args[0] == EP_ALERT_TAPE_UPDATE_SQL]
+    vol_calls = [c for c in conn.execute.await_args_list
+                 if c.args[0] == EP_ALERT_VOL_UPDATE_SQL]
+    assert len(tape_calls) == 2 and len(vol_calls) == 2
+    assert len(tape_calls) + len(vol_calls) == conn.execute.await_count
+    junky = tape_calls[0].args
     assert junky[1] == "JUNKY" and junky[2] == _ALERT
     assert junky[3] == "tape_junk"
     assert junky[4] == 3 and junky[5] == 1 and junky[6] == 2   # spike_ct / held / rev
@@ -472,16 +486,26 @@ def test_tape_update_sql_touches_only_tape_columns():
 
 def test_annotator_persists_unknown_with_null_components(monkeypatch):
     """'unknown' rows persist tier='unknown' + NULL components — post-hoc distinguishable from
-    an all-NULL row (annotator never ran)."""
+    an all-NULL row (annotator never ran). The vol sibling mirrors the shape: hist_n with
+    NULL metric components on an unseasoned (<50-bar) name."""
+    from agents.market_intelligence.db import (
+        EP_ALERT_TAPE_UPDATE_SQL, EP_ALERT_VOL_UPDATE_SQL,
+    )
     conn = _patch_annotator(monkeypatch, {"IPO": _fcel_bars()[:10]})
 
     results = [{"ticker": "IPO", "alert_date": _ALERT, "ep_score": 70.0, "score_tier": "HIGH"}]
     _run(annotate_ep_alerts_tape_quality(results))
 
-    args = conn.execute.await_args.args
-    assert args[3] == "unknown"
-    assert args[4] is None and args[5] is None and args[6] is None and args[7] is None
+    tape_args = next(c.args for c in conn.execute.await_args_list
+                     if c.args[0] == EP_ALERT_TAPE_UPDATE_SQL)
+    assert tape_args[3] == "unknown"
+    assert tape_args[4] is None and tape_args[5] is None \
+        and tape_args[6] is None and tape_args[7] is None
     assert results[0]["tape_quality"]["tier"] == "unknown"
+    vol_args = next(c.args for c in conn.execute.await_args_list
+                    if c.args[0] == EP_ALERT_VOL_UPDATE_SQL)
+    assert vol_args[3] == 10                                   # vol_hist_n persists
+    assert vol_args[4] is None and vol_args[5] is None and vol_args[6] is None
 
 
 def test_annotator_isolates_per_candidate_failures(monkeypatch):
@@ -504,18 +528,25 @@ def test_annotator_isolates_per_candidate_failures(monkeypatch):
     assert results[1]["tape_quality"]["tier"] == "tape_clean"
     assert audit.await_count == 1
     assert audit.await_args.args[0] == "tape_quality_shadow_failed"
+    # Vol sibling: no bars for the failed candidate → skipped (the fetch failure was
+    # already audited once above — no double-count); the healthy sibling still annotated.
+    assert "vol_profile" not in results[0]
+    assert results[1]["vol_profile"]["hist_n"] == 20
 
 
 def test_annotator_db_first_no_line_when_row_write_fails(monkeypatch):
     """DB-first (the fire_axes discipline): if the row write fails, r is NOT annotated — the
-    alert never renders a TAPE line the row lacks."""
+    alert never renders a TAPE (or VOL) line the row lacks."""
+    import agents.market_intelligence.vol_profile as vpm
     conn = _patch_annotator(monkeypatch, {"JUNKY": _glnd_bars(), "CLEANY": _fcel_bars()})
     conn.execute = AsyncMock(side_effect=RuntimeError("db down"))
     monkeypatch.setattr(tq, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(vpm, "log_audit_event", AsyncMock())
 
     results = _mk_results()
     _run(annotate_ep_alerts_tape_quality(results))
     assert all("tape_quality" not in r for r in results)
+    assert all("vol_profile" not in r for r in results)
 
 
 def test_annotator_empty_results_never_touches_the_pool(monkeypatch):

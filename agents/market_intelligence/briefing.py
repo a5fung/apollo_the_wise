@@ -2835,24 +2835,40 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     except Exception as _e:
         logger.debug(f"Rubric snapshot in EP alert failed (non-critical): {_e}")
 
-    # ── #498 TQS Stage 1 — TAPE line + 20-day NTR sparkline (TELEMETRY display only;
-    # docs/design/tape_quality_score.md). Reads ONLY the display-only ep['tape_quality']
-    # annotation the post-scan shadow attached in run_ep_scan (no recompute, no DB read here) —
-    # absent key (annotator failed / older row) → no line. `unknown` renders "unseasoned",
-    # never "clean" (guardrail A). Guarded like the rubric/theme sections above: any failure
-    # renders the alert WITHOUT the tape line — never breaks the alert.
+    # ── #498 TQS Stage 1 + vol-profile Slice 1 — TAPE/VOL lines + 20-day sparklines
+    # (TELEMETRY display only; docs/design/tape_quality_score.md +
+    # docs/analysis/volume_profile_alert_context_2026-07-27.md). Reads ONLY the display-only
+    # ep['tape_quality'] / ep['vol_profile'] annotations the post-scan shadow attached in
+    # run_ep_scan (no recompute, no DB read here) — absent key (annotator failed / older
+    # row) → no line. `unknown`/<50-bars renders "unseasoned", never "clean". When BOTH
+    # sparklines exist they render as 4-char-labeled rows (`NTR `/`VOL `) that column-align
+    # per session — the pair IS the deliverable (the QBTS read is a divergence between the
+    # two series); a lone NTR spark keeps the legacy unlabeled render. Guarded like the
+    # rubric/theme sections above: any failure renders the alert WITHOUT these lines —
+    # never breaks the alert.
     try:
         from agents.market_intelligence.tape_quality import format_tape_line
+        from agents.market_intelligence.vol_profile import format_vol_line
         _tqs = ep.get("tape_quality")
+        _vp = ep.get("vol_profile")
         if _tqs:
             _tape_line = format_tape_line(_tqs)
             if _tape_line:
                 text += "\n" + _tape_line
-            _spark = _tqs.get("sparkline")
-            if _spark:
-                text += f"\n`{_spark}`"
+        if _vp:
+            _vol_line = format_vol_line(_vp)
+            if _vol_line:
+                text += "\n" + _vol_line
+        _ntr_spark = _tqs.get("sparkline") if _tqs else None
+        _vol_spark = _vp.get("sparkline") if _vp else None
+        if _ntr_spark and _vol_spark:
+            text += f"\n`NTR {_ntr_spark}`\n`VOL {_vol_spark}`"
+        elif _ntr_spark:
+            text += f"\n`{_ntr_spark}`"
+        elif _vol_spark:
+            text += f"\n`VOL {_vol_spark}`"
     except Exception as _tqe:
-        logger.debug(f"Tape-quality line in EP alert failed (non-critical): {_tqe}")
+        logger.debug(f"Tape/vol context lines in EP alert failed (non-critical): {_tqe}")
 
     await send_telegram_message(text, chat_id)
 

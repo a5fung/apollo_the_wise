@@ -2764,6 +2764,21 @@ async def _ensure_ep_alert_columns(conn) -> None:
             "tape_rev INT",
             "tape_bmr2 FLOAT",
             "tape_ntr_med FLOAT",
+            # Volume-profile Slice 1 (docs/analysis/volume_profile_alert_context_2026-07-27.md,
+            # operator-ruled 7/24 "display + collect, not trading yet"): vol-context SHADOW
+            # annotation — TELEMETRY-ONLY, written post-grade by
+            # vol_profile.annotate_one_vol_profile (alert-time metrics, same bars as TQS) and
+            # vol_profile.eod_vol_landmark_pass (vol_alert_vs_max — EOD truth, 16:10 recap);
+            # NEVER read by any grading/sizing/entry/safeguard path (THE LINE).
+            # vol_hist_n = live pre-alert sessions in the fetched window (the depth-honesty
+            # denominator: <50 → 'unseasoned', "1y" labels require ≥252). All-NULL row =
+            # annotator never ran / failed; vol_lab50 NULL while vol_hist_n ≥ 50 = no ≥avg
+            # volume day found in the ~260-session lookback (a REAL extreme, not a failure).
+            "vol_hist_n INT",
+            "vol_r5_50 FLOAT",
+            "vol_lab50 INT",
+            "vol_lab50_ratio FLOAT",
+            "vol_alert_vs_max FLOAT",
         )))
     _EP_ALERT_COLUMNS_ENSURED = True
 
@@ -2823,6 +2838,62 @@ async def update_ep_alert_tape_quality(
         ticker, alert_date, tqs.get("tier"),
         tqs.get("spike_ct"), tqs.get("held"), tqs.get("rev"),
         tqs.get("bmr2"), tqs.get("ntr_med"),
+    )
+
+
+# Volume-profile Slice 1 — the ONLY statement that writes the alert-time vol_* metrics.
+# Module-level constant so tests/test_vol_profile.py can pin that the SET clause touches
+# vol_* columns EXCLUSIVELY (the telemetry-only property, mechanically asserted — mirrors
+# EP_ALERT_TAPE_UPDATE_SQL above).
+EP_ALERT_VOL_UPDATE_SQL = """
+    UPDATE mi_ep_alerts SET
+        vol_hist_n = $3,
+        vol_r5_50 = $4,
+        vol_lab50 = $5,
+        vol_lab50_ratio = $6
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
+async def update_ep_alert_vol_profile(
+    conn: Any, ticker: str, alert_date: "date", vp: dict[str, Any],
+) -> None:
+    """Volume-profile Slice 1 — persist the alert-time vol-context SHADOW annotation.
+
+    TELEMETRY-ONLY (THE LINE): the SET clause touches ONLY vol_* columns — never
+    score_tier / ep_score / judge_* / any grading, sizing, or safeguard column (the
+    update_ep_alert_tape_quality contract, verbatim). Takes a live conn — the caller
+    (vol_profile.annotate_one_vol_profile, driven per-candidate from the TQS annotator
+    loop on the SAME already-fetched bars) runs inside the annotator's acquire.
+    'unseasoned' rows (<50 live pre-alert sessions) persist vol_hist_n with NULL metric
+    components — deliberately distinct from an all-NULL row (annotator never ran/failed)."""
+    await conn.execute(
+        EP_ALERT_VOL_UPDATE_SQL,
+        ticker, alert_date,
+        vp.get("hist_n"), vp.get("r5_50"), vp.get("lab50"), vp.get("lab50_ratio"),
+    )
+
+
+# Volume-profile Slice 1 (V4) — the ONLY statement that writes the EOD landmark ratio.
+# vol_*-only for the same mechanically-pinned telemetry contract as the SQL above.
+EP_ALERT_VOL_LANDMARK_UPDATE_SQL = """
+    UPDATE mi_ep_alerts SET
+        vol_alert_vs_max = $3
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
+async def update_ep_alert_vol_landmark(
+    conn: Any, ticker: str, alert_date: "date", vs_max: float,
+) -> None:
+    """Volume-profile Slice 1 (V4) — persist alert-day EOD volume ÷ max pre-alert volume
+    (min(252, available) sessions). Written by vol_profile.eod_vol_landmark_pass from the
+    16:10 EOD EP recap — a different lifecycle from the in-scan annotator (the alert row
+    may predate a same-day redeploy), so this one re-runs the idempotent column ensure.
+    TELEMETRY-ONLY (THE LINE): vol_alert_vs_max and nothing else."""
+    await _ensure_ep_alert_columns(conn)
+    await conn.execute(
+        EP_ALERT_VOL_LANDMARK_UPDATE_SQL, ticker, alert_date, vs_max,
     )
 
 

@@ -179,16 +179,24 @@ async def annotate_ep_alerts_tape_quality(results: list[dict]) -> None:
     row lacks.
 
     NEVER raises; per-candidate failures are isolated (one bad ticker can't suppress the
-    rest) and counted via a `tape_quality_shadow_failed` audit event."""
+    rest) and counted via a `tape_quality_shadow_failed` audit event.
+
+    Also drives the volume-profile Slice-1 sibling (`vol_profile.annotate_one_vol_profile`,
+    docs/analysis/volume_profile_alert_context_2026-07-27.md) on the SAME already-fetched
+    bars — zero extra queries. Each axis runs under its own guard so neither's failure can
+    suppress the other; the vol sibling carries the identical telemetry-only contract
+    (vol_* columns + display-only `r["vol_profile"]` key, THE LINE) and its own
+    `vol_profile_shadow_failed` audit event."""
     if not results:
         return
     pool = await get_pool()
     async with pool.acquire() as conn:
         for r in results:
+            ticker, alert_date = r.get("ticker"), r.get("alert_date")
+            if not ticker or not alert_date:
+                continue
+            bars = None
             try:
-                ticker, alert_date = r.get("ticker"), r.get("alert_date")
-                if not ticker or not alert_date:
-                    continue
                 bars = await get_tape_bars_asof(conn, ticker, alert_date)
                 tqs = tape_quality(bars, alert_date)
                 tqs["sparkline"] = tape_sparkline(bars, alert_date)
@@ -206,3 +214,14 @@ async def annotate_ep_alerts_tape_quality(results: list[dict]) -> None:
                     pass            # share the same DB outage; already logger.warning'd and
                                      # the scan must still proceed (SHADOW contract; mirrors
                                      # structure_axis_shadow's identical inner guard).
+            # Volume-profile Slice-1 sibling — SAME bars, own guard (bars None = the fetch
+            # above already failed and was audited; nothing to compute from). Deferred
+            # import: vol_profile imports from this module at its top, so a module-level
+            # import here would be circular.
+            if bars is not None:
+                try:
+                    from agents.market_intelligence.vol_profile import annotate_one_vol_profile
+                    await annotate_one_vol_profile(conn, r, bars)
+                except Exception as _ve:  # annotate_one never raises by contract — this
+                    logger.warning(         # belt-and-braces guard covers import failure.
+                        f"vol-profile sibling failed for {ticker}: {_ve}")

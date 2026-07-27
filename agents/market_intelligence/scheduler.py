@@ -2047,15 +2047,29 @@ async def _eod_ep_recap_job():
         else:
             judge_line = "⚖️ Judge demoted 0 floor-HIGHs"
 
+        # Vol-profile Slice 1 (V4, docs/analysis/volume_profile_alert_context_2026-07-27.md):
+        # alert-day volume landmark, EOD truth — rendered HERE and not on the alert because
+        # 128/196 alerts fire pre-9:45 where "on pace for #1" is premarket noise. All tiers
+        # (the ~23% fire rate was measured all-tier). Display + telemetry only (THE LINE);
+        # the pass never raises — [] on any failure (audited inside).
+        from agents.market_intelligence.vol_profile import eod_vol_landmark_pass
+        landmark_lines = await eod_vol_landmark_pass(today)
+        landmark_block = ""
+        if landmark_lines:
+            landmark_block = ("📊 Vol landmark" + ("s" if len(landmark_lines) > 1 else "")
+                              + ":\n" + "\n".join(f"  • {l}" for l in landmark_lines))
+
         if not today_outcomes:
             # Still report feed health — the silent-feed case is exactly why this exists.
-            if feed_alert or feed_tel["bars_fetched"] > 0 or _demoted:
+            if feed_alert or feed_tel["bars_fetched"] > 0 or _demoted or landmark_lines:
                 prefix = "⚠️ " if feed_alert else ""
                 # #479: folded into the 16:55 Market Close Digest (same render text).
                 close_digest.contribute(
                     "EP",
                     f"{prefix}*EP EOD Recap — {today_str}*\n"
-                    f"No HIGH EPs today.\n{judge_line}\n{feed_line}"
+                    f"No HIGH EPs today.\n{judge_line}\n"
+                    + (landmark_block + "\n" if landmark_block else "")
+                    + feed_line
                 )
             logger.info("EOD EP recap: no HIGH EPs today")
             return
@@ -2080,6 +2094,8 @@ async def _eod_ep_recap_job():
         if dropped:
             lines.append(f"  • …{dropped} more missed")
 
+        if landmark_block:
+            lines.append(landmark_block)
         lines.append(feed_line)
         if feed_alert:
             lines.insert(0, "⚠️ *Feed health flagged — see 📡 line below*")
