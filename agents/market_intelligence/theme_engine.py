@@ -542,7 +542,19 @@ def _build_lane2_registry_prompt(
     (both rosters empty) simply omits the state blocks: the prompt degrades to
     v1-plus-seeds. Narrative-definition rules are the shared
     _LANE2_NARRATIVE_RULES verbatim (prompt bias was tested and DISCONFIRMED
-    as a recall lever — do not reword them)."""
+    as a recall lever — do not reword them).
+
+    BIRTH-BIAS CORRECTION (operator-aligned, first registry replay): the
+    original instruction made seeding costless and the model filed shared
+    stories as separate seeds (06-17 AEHR+JBL both seeded; 07-20 IREN seeded
+    while HUT joined the same story). The decision block is now ordered
+    JOIN → NEW → SEED with NEW framed as the EXPECTED outcome for shared
+    evidence and SEED an explicit last resort + a pre-answer self-check.
+    The deterministic birth guards (>=2 members, >=1 today anchor, duplicate
+    tripwire) are unchanged — the threshold moved, not the floor. Calibration
+    telemetry: the lane2_decision_record audit stream (seed→narrative
+    conversion rate + lag) makes the next tune empirical
+    (data_gated_reviews: lane2_seed_birth_calibration)."""
     lines = []
     for a in today:
         text, _src = _lane2_input_text(a)
@@ -566,14 +578,22 @@ def _build_lane2_registry_prompt(
         + roster
         + "Stocks TODAY:\n" + "\n".join(lines) + "\n\n"
         + _LANE2_REGISTRY_JSON_CONTRACT
-        + "JOIN: if a TODAY stock continues the SAME underlying story as an ACTIVE narrative, "
+        + "Decide in this order. "
+        "1) JOIN: if a TODAY stock continues the SAME underlying story as an ACTIVE narrative, "
         "return that narrative's name EXACTLY as listed; tickers = only the names joining it now "
-        "(TODAY's, plus any WATCH LIST names sharing the story). NEVER re-propose an active "
-        "narrative's story under new wording. "
-        "NEW: mint a new name ONLY for a story no ACTIVE narrative covers; it needs 2+ tickers "
-        "drawn from TODAY's stocks and the WATCH LIST, at least one from TODAY. "
-        "SEEDS: each TODAY stock with a REAL specific story that joins nothing and pairs with "
-        "nothing -> one seeds entry (<=25-word story); omit stocks with no specific story. "
+        "(TODAY's, plus any WATCH LIST names sharing the story). A stock that fits an ACTIVE "
+        "narrative must be JOINED, never seeded. NEVER re-propose an active narrative's story "
+        "under new wording. "
+        "2) NEW: when 2 OR MORE names — TODAY's stocks and/or WATCH LIST names, at least one "
+        "from TODAY — share a story no ACTIVE narrative covers, you MUST return them as ONE new "
+        "themes entry. This is the EXPECTED outcome for shared evidence — never file the same "
+        "story as two separate seeds. Check every pairing: TODAY+TODAY and TODAY+WATCH LIST. "
+        "3) SEED — last resort: a TODAY stock whose REAL specific story matches NOTHING else "
+        "visible tonight (no ACTIVE narrative, no other TODAY stock, no WATCH LIST entry) -> one "
+        "seeds entry (<=25-word story); omit stocks with no specific story. "
+        "Before answering, re-check your seeds: if any two of them tell the same story, or a "
+        "seed's story matches an ACTIVE narrative or a WATCH LIST entry, move those names into "
+        "themes instead. "
         + _LANE2_NAME_BREADTH_RULE
     )
 
@@ -610,6 +630,10 @@ def _lane2_registry_clean(
       theme tonight and are not already members of an active narrative;
       whitespace-collapsed, budgeted to LANE2_SEED_STORY_BUDGET.
 
+    Each clean entry carries `added` — the tickers NEWLY placed into that
+    narrative tonight (join additions; for a birth, all members) — the decision
+    -record telemetry keys seed→narrative conversions off it.
+
     Returns (clean_themes, new_seeds, possible_dups) where possible_dups is
     [(new_name, existing_name), …]."""
     by_norm = {_norm_narrative_name(n["name"]): n for n in active}
@@ -633,11 +657,12 @@ def _lane2_registry_clean(
                      "tickers": list(dict.fromkeys(reg.get("tickers") or [])),
                      "thesis": str(reg.get("thesis") or "")[:500],
                      "catalyst_type": t.get("catalyst_type"),
-                     "joined": True}
+                     "joined": True, "added": []}
                 entries[key] = e
             for tk in additions:
                 if tk not in e["tickers"]:
                     e["tickers"].append(tk)
+                    e["added"].append(tk)
         else:
             tks = [tk for tk in dict.fromkeys(raw_tks)
                    if tk in today_set or tk in seed_tk]
@@ -649,11 +674,12 @@ def _lane2_registry_clean(
                 entries[key] = {"name": nm[:80], "tickers": tks,
                                 "thesis": str(t.get("thesis") or "")[:500],
                                 "catalyst_type": t.get("catalyst_type"),
-                                "joined": False}
+                                "joined": False, "added": list(tks)}
             else:
                 for tk in tks:
                     if tk not in e["tickers"]:
                         e["tickers"].append(tk)
+                        e["added"].append(tk)
     clean: list[dict] = []
     possible_dups: list[tuple[str, str]] = []
     for e in entries.values():
@@ -823,13 +849,17 @@ async def _discover_lane2_registry(
     out["input_sources"] = src_counts
     window_start = _lane2_window_start(scan_d)
     active = await get_lane2_active_narratives(window_start, scan_d)
-    seeds = await get_lane2_pending_seeds(window_start, scan_d)
+    seeds_all = await get_lane2_pending_seeds(window_start, scan_d)
+    # Seed origins PRE-hygiene: the conversion telemetry must see a seed even
+    # when tonight's hygiene hides it from the prompt (e.g. the ticker
+    # re-alerts today and then joins — that IS a conversion, lag = today-seeded).
+    seed_origin = {s["ticker"]: s["run_date"] for s in seeds_all}
     # Roster hygiene (deterministic, here so live and replay share it):
     # a seed whose ticker already sits in an active narrative is consumed;
     # a seed alerting again TODAY is superseded by its own fresh evidence line.
     member_set = {tk for n in active for tk in (n.get("tickers") or [])}
     today_set = {a["ticker"] for a in cand}
-    seeds = [s for s in seeds
+    seeds = [s for s in seeds_all
              if s["ticker"] not in member_set and s["ticker"] not in today_set]
     active = active[:LANE2_ROSTER_MAX]
     seeds = seeds[:LANE2_ROSTER_MAX]
@@ -880,6 +910,48 @@ async def _discover_lane2_registry(
     out["proposals"] = [{"name": e["name"], "tickers": list(e["tickers"]),
                          "thesis": e["thesis"], "joined": e["joined"]} for e in clean]
     out["new_seeds"] = new_seeds
+    # ── DECISION RECORD (operator: "if this info is captured, it allows us to
+    # tune over time") — per-name outcome + seed→narrative conversions, making
+    # the seed-vs-birth threshold EMPIRICAL: every seed that later converts was
+    # a deferred birth; every seed that expires unconverted was correctly held.
+    # One mi_audit_log row per evaluated night (event 'lane2_decision_record',
+    # detail = queryable JSON); the run-count-gated review
+    # `lane2_seed_birth_calibration` (data_gated_reviews.yaml) re-tunes on it.
+    seeded_tk = {s["ticker"] for s in new_seeds}
+    outcomes: dict[str, dict] = {}
+    for tk in sorted(today_set):
+        outcome, narr = "none", None
+        for e in clean:
+            if tk in e["tickers"]:
+                outcome = "join" if e["joined"] else "birth"
+                narr = e["name"]
+                break
+        if outcome == "none" and tk in seeded_tk:
+            outcome = "seed"
+        outcomes[tk] = {"outcome": outcome} if narr is None else \
+            {"outcome": outcome, "narrative": narr}
+    conversions = [
+        {"ticker": tk, "seeded": str(seed_origin[tk]),
+         "lag_days": (scan_d - seed_origin[tk]).days, "narrative": e["name"]}
+        for e in clean for tk in e["added"] if tk in seed_origin
+    ]
+    record = {
+        "date": out["date"], "offered": sorted(today_set),
+        "watchlist_offered": [s["ticker"] for s in seeds],
+        "outcomes": outcomes, "seed_conversions": conversions,
+    }
+    out["decision_record"] = record
+    if not backfilled:
+        # Hindsight (backfill) runs never write telemetry — the calibration
+        # stream must stay a pure forward record.
+        _mix = {k: sum(1 for o in outcomes.values() if o["outcome"] == k)
+                for k in ("join", "birth", "seed", "none")}
+        await log_audit_event(
+            "lane2_decision_record",
+            f"{out['date']}: offered={len(outcomes)} join={_mix['join']} "
+            f"birth={_mix['birth']} seed={_mix['seed']} none={_mix['none']} "
+            f"conversions={len(conversions)}",
+            detail=json.dumps(record))
     await log_audit_event(
         "narrative_theme_discovery_ran",
         f"{out['date']}: v2reg {len(cand)} today (grounded={src_counts['grounded']} "

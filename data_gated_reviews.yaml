@@ -7642,3 +7642,44 @@ reviews:
     status: pending
     added_on: 2026-07-27
     cross_refs: ["task #167", "task #240"]
+
+  - review_id: lane2_seed_birth_calibration
+    title: "#167 Lane-2 registry: tune the seed-vs-birth threshold from decision records"
+    question: >-
+      Is the registry lane's seeding bias calibrated? The first registry replay showed
+      a bias TOWARD seeding (06-17 AEHR+JBL filed as two separate seeds instead of a
+      birth; 07-20 IREN seeded while HUT joined the same story) — corrected at build
+      time by the prompt's JOIN->NEW->SEED ordering + seed-last-resort self-check
+      (theme_engine._build_lane2_registry_prompt). The decision-record stream makes
+      the next tune EMPIRICAL: every seed that LATER converts into a narrative member
+      was a deferred birth; every seed that expires unconverted was correctly held.
+      From the accrued lane2_decision_record events compute (a) seed->narrative
+      conversion rate, (b) median conversion lag (lag_days), (c) the nightly
+      join/birth/seed/none mix. High conversion (>~40%) or short median lag (<=3d)
+      = still birth-shy; near-zero conversion with healthy birth counts = calibrated;
+      near-zero WITH near-zero births = over-corrected (check the duplicate tripwire
+      and precision first).
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'lane2_decision_record'
+    threshold: 20
+    # RUN-COUNT gated, not date (operator ruling 2026-07-26: a future date can only
+    # DELAY a review whose evidence is already in). 20 evaluated nights ~= 4 trading
+    # weeks at the replay-era rate (27 evaluated nights / 35 weekdays), ~15-20 seed
+    # decisions — enough for a directional conversion read without waiting a quarter.
+    # Records are written ONLY when the lane2_grouping_v2 flag is ON and never on
+    # backfill runs, so this cannot fire before the live flip and cannot be polluted
+    # by hindsight rows. Date below is the registration day = non-blocking.
+    earliest_review_date: 2026-07-27
+    action_when_ready: >-
+      SELECT summary, detail FROM mi_audit_log WHERE event_type='lane2_decision_record'
+      ORDER BY created_at; parse the JSON details. Pair each night's "seed" outcomes
+      with later seed_conversions entries for the same ticker (unpaired after
+      LANE2_WINDOW_TRADING_DAYS trading days = expired-unconverted = correctly held).
+      Report conversion rate + median lag + outcome mix, split from any LLM opinion.
+      Then the operator rules: keep the prompt-level bias as shipped, strengthen it,
+      or add a mechanical same-night pairing rule. Grouping changes affect DETECTION
+      => THE LINE: CHANGE_PROCESS + operator sign-off before any live change.
+    status: pending
+    added_on: 2026-07-27
+    cross_refs: ["task #167"]

@@ -541,6 +541,110 @@ def test_v2reg_norm_name_matches_wording_drift_not_different_stories():
         _norm_narrative_name("AI data center leasing boom")
 
 
+# ── v2 REGISTRY: birth bias correction + decision-record telemetry ───────────
+
+@pytest.mark.asyncio
+async def test_v2reg_prompt_orders_join_new_seed_with_seed_as_last_resort(monkeypatch):
+    # First registry replay regression: seeding was costless and the model
+    # filed shared stories as separate seeds (06-17 AEHR+JBL; 07-20 IREN).
+    # Pin the corrected decision block: JOIN → NEW(expected) → SEED(last
+    # resort) + the pre-answer self-check. Deterministic guards unchanged.
+    today = date(2026, 6, 17)
+    captured, _ = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("AEHR", today, ep=70.0), _alert("JBL", today, ep=68.0)])
+    await discover_narrative_themes(today)
+    prompt = captured["messages"][0]["content"]
+    assert "Decide in this order." in prompt
+    assert "you MUST return them as ONE new themes entry" in prompt
+    assert "never file the same story as two separate seeds" in prompt
+    assert "must be JOINED, never seeded" in prompt
+    assert "SEED — last resort" in prompt
+    assert "re-check your seeds" in prompt
+    assert prompt.index("1) JOIN:") < prompt.index("2) NEW:") < prompt.index("3) SEED")
+
+
+@pytest.mark.asyncio
+async def test_v2reg_decision_record_outcomes_and_seed_conversion(monkeypatch):
+    # Operator: "if this info is captured, it allows us to tune over time" —
+    # per-name outcome + seed→narrative conversions, one audit row per
+    # evaluated night, queryable JSON detail (lane2_seed_birth_calibration
+    # review keys off it).
+    import json as _json
+    today = date(2026, 7, 14)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("CLSK", today, ep=61.0),
+                      _alert("IREN", today, ep=64.0),
+                      _alert("WDFC", today, ep=55.0)],
+        active=[_narrative("Clean-power infrastructure for AI compute", ["APLD"])],
+        pending=[_seed("WULF", d=date(2026, 7, 6))],
+        llm_response='{"themes": ['
+                     '{"name": "Clean-power infrastructure for AI compute", '
+                     '"catalyst_type": "theme", "tickers": ["CLSK", "WULF"], '
+                     '"thesis": "join with seed conversion"}], '
+                     '"seeds": [{"ticker": "IREN", "story": "GPU cloud contract"}]}')
+    out = await discover_narrative_themes(today)
+    recs = [c for c in mocks.audit.await_args_list
+            if c.args[0] == "lane2_decision_record"]
+    assert len(recs) == 1
+    assert "offered=3 join=1 birth=0 seed=1 none=1 conversions=1" in recs[0].args[1]
+    detail = _json.loads(recs[0].kwargs.get("detail") or recs[0].args[2])
+    assert detail == out["decision_record"]
+    assert detail["offered"] == ["CLSK", "IREN", "WDFC"]
+    assert detail["outcomes"]["CLSK"] == {
+        "outcome": "join", "narrative": "Clean-power infrastructure for AI compute"}
+    assert detail["outcomes"]["IREN"] == {"outcome": "seed"}
+    assert detail["outcomes"]["WDFC"] == {"outcome": "none"}
+    # WULF: seeded 07-06, pulled into the narrative 07-14 → conversion, lag 8d.
+    assert detail["seed_conversions"] == [{
+        "ticker": "WULF", "seeded": "2026-07-06", "lag_days": 8,
+        "narrative": "Clean-power infrastructure for AI compute"}]
+    # The record precedes the run summary — the LAST audit call is still the
+    # narrative_theme_discovery_ran line (pinned elsewhere).
+    assert mocks.audit.await_args.args[0] == "narrative_theme_discovery_ran"
+
+
+@pytest.mark.asyncio
+async def test_v2reg_decision_record_counts_conversion_even_when_seed_realerts_today(monkeypatch):
+    # Hygiene hides a re-alerting seed from the prompt, but conversion
+    # telemetry must still see it: WULF seeded 07-06, re-alerts 07-14 and
+    # joins → conversion with lag, keyed off the PRE-hygiene seed map.
+    import json as _json
+    today = date(2026, 7, 14)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True,
+        today_alerts=[_alert("WULF", today, ep=88.0), _alert("CLSK", today, ep=61.0)],
+        pending=[_seed("WULF", d=date(2026, 7, 6))],
+        llm_response='{"themes": [{"name": "Miners pivot to AI leases", '
+                     '"catalyst_type": "theme", "tickers": ["WULF", "CLSK"], '
+                     '"thesis": "birth"}], "seeds": []}')
+    out = await discover_narrative_themes(today)
+    conv = out["decision_record"]["seed_conversions"]
+    assert conv == [{"ticker": "WULF", "seeded": "2026-07-06", "lag_days": 8,
+                     "narrative": "Miners pivot to AI leases"}]
+    assert out["decision_record"]["outcomes"]["WULF"]["outcome"] == "birth"
+    # And the seed line itself was hidden from the prompt (superseded by today).
+    assert "- WULF (2026-07-06):" not in captured["messages"][0]["content"]
+    _json.loads([c for c in mocks.audit.await_args_list
+                 if c.args[0] == "lane2_decision_record"][0].kwargs.get("detail"))
+
+
+@pytest.mark.asyncio
+async def test_v2reg_decision_record_not_persisted_on_backfill(monkeypatch):
+    # Hindsight runs must not pollute the forward calibration stream — the
+    # record still rides on `out` (the replay chains off it) but no
+    # lane2_decision_record audit row is written.
+    today = date(2026, 7, 6)
+    captured, mocks = _wire(
+        monkeypatch, flag_on=True, today_alerts=[_alert("WULF", today, ep=96.0)],
+        llm_response='{"themes": [], "seeds": [{"ticker": "WULF", "story": "s"}]}')
+    out = await discover_narrative_themes(today, persist=True, backfilled=True)
+    assert out["decision_record"]["outcomes"]["WULF"] == {"outcome": "seed"}
+    assert not [c for c in mocks.audit.await_args_list
+                if c.args[0] == "lane2_decision_record"]
+
+
 # ── v2 REGISTRY: walls (anti-circularity + auto-promote) ─────────────────────
 
 def test_v2reg_walls_by_construction():
