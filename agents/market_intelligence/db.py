@@ -1333,6 +1333,51 @@ async def initialize_schema() -> None:
                 ON mi_coverage_probe(alert_date DESC);
         """)
 
+        # ── Theme BIRTH-GATE candidate ledger (theme consolidation Phase 1,
+        # 2026-07-27 — 3-state toggle 'theme_birth_gate', fail-closed 'off').
+        # ONE ledger for every would-be live-theme birth, any discovery path:
+        # a NEW cohort is recorded on its 1st sighting and may only BIRTH into
+        # mi_themes on its >=2nd distinct-day sighting AND passing the derived
+        # RS floor (level-OR-rising — see theme_birth_gate.py). Rows persist
+        # after birth/join (the 14d "including quiet ones" memory that ends the
+        # #476 discover-kill-re-mint loop). Written in BOTH 'observe' (verdicts
+        # recorded, nothing acted on — the forward-evidence accrual state) and
+        # 'on' (acting); mode 'off' ⇒ table untouched (off-parity pinned by
+        # tests/test_theme_birth_gate.py). `mode`/`last_reason`/`join_overlap`/
+        # `ledger_overlap` capture WHICH lever decided and the inputs that drove
+        # it, so the observe-period review (theme_birth_gate_observe_calibration)
+        # judges the gate from stored rows, never a re-derivation.
+        # p3_* columns are EVIDENCE ANNOTATION ONLY (coverage_probe's market-
+        # adjusted co-movement primitive, kept per the 2026-07-27 ruling) —
+        # never a blocking criterion in Phase 1 (that threshold is underived).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_birth_candidates (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                first_seen DATE NOT NULL,
+                last_seen DATE NOT NULL,
+                sightings INT NOT NULL DEFAULT 1,
+                tickers TEXT[] NOT NULL,
+                source TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'watching',
+                last_outcome TEXT,
+                last_reason TEXT,
+                mode TEXT,
+                rs_avg FLOAT,
+                rs_traj5 FLOAT,
+                join_overlap FLOAT,
+                ledger_overlap FLOAT,
+                p3_co_moving BOOLEAN,
+                p3_spy_move FLOAT,
+                born_date DATE,
+                join_target TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_birth_cand_last_seen
+                ON mi_theme_birth_candidates(last_seen DESC);
+        """)
+
         # ── Correlation clusters — statistical pre-pass for theme discovery ──────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_correlation_clusters (
@@ -3194,6 +3239,74 @@ async def set_lane2_grouping_v2_enabled(enabled: bool) -> None:
             ON CONFLICT (safeguard, account_mode) DO UPDATE
               SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
         """, *_LANE2_V2_TOGGLE, "on" if enabled else "off")
+
+
+_THEME_BIRTH_GATE_TOGGLE = ("theme_birth_gate", "paper")  # (safeguard, account_mode) PK
+# 3-state, the broker_order_ingest INGEST_MODES idiom (off / dry_run / live_r1):
+#   off     — byte-identical to today (production default; pinned by test).
+#   observe — the gate COMPUTES + RECORDS its verdict on every would-be birth
+#             (ledger + audit rows accrue: verdict, deciding lever, member-avg
+#             RS, 5-session ΔRS, IoS overlaps) but ACTS on nothing — every
+#             theme is born exactly as it would have been, promote untouched,
+#             shadow_v2/coverage_probe still run, allowlist unchanged. The
+#             deploy state: forward evidence accrues BEFORE the gate ever
+#             touches a live theme (the shadow-first discipline every other
+#             flip in this repo followed).
+#   on      — the gate acts (births filtered, shadow_v2 + coverage_probe
+#             retired, allowlist minus shadow_v2). OPERATOR-gated flip.
+BIRTH_GATE_MODES = ("off", "observe", "on")
+
+
+async def get_theme_birth_gate_mode() -> str:
+    """Theme consolidation Phase 1 (operator-ruled 2026-07-27) — the 3-state
+    birth-gate toggle (see BIRTH_GATE_MODES above), DB-backed in
+    mi_safeguard_state (durable across restarts, instant no-redeploy flip).
+    FAIL-CLOSED: any read error, missing row, or unrecognized state string →
+    'off' (byte-identical to today — the contract pinned by
+    tests/test_theme_birth_gate.py).
+    When 'on': (1) every NEW live-theme birth (Lane-1 discovery AND the
+    shadow_promoted path — the path that previously bypassed adjudication
+    entirely) must clear the gate: join-or-new vs the live board +14d ledger,
+    two-sighting bar, derived RS floor (>=70 OR rising 5-session trajectory —
+    derivation docs/analysis/theme_birth_gate_derivation_2026-07-27.md);
+    (2) the shadow_v2 stream is RETIRED (its a/a2 selectors fold into Lane-1
+    discovery) and 'shadow_v2' leaves the auto-promote allowlist;
+    (3) the coverage_probe job is RETIRED (P3 survives as evidence annotation).
+    ⚠ GRADE-AFFECTING + AUTO-PROMOTE reach when 'on': theme output feeds the
+    judge's active_narratives and auto-promotes into live mi_themes. Both mode
+    transitions (off→observe deploy, observe→on flip) are OPERATOR-gated;
+    observe→on additionally requires the forward-evidence review
+    (theme_birth_gate_observe_calibration in data_gated_reviews.yaml) +
+    CHANGE_PROCESS sign-off on the derived cell — never self-authorize."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = $2", *_THEME_BIRTH_GATE_TOGGLE)
+        state = row["state"] if row else "off"
+        return state if state in BIRTH_GATE_MODES else "off"  # unrecognized → off (fail closed)
+    except Exception as e:  # noqa: BLE001 — fail-closed to today's ungated engine is the contract
+        logger.warning(f"theme_birth_gate mode read failed → 'off' (fail-closed): {e}")
+        return "off"
+
+
+async def set_theme_birth_gate_mode(mode: str) -> None:
+    """Set the birth-gate mode (OPERATOR-gated — never self-authorize; see
+    get_theme_birth_gate_mode for the transition gates). Validates against
+    BIRTH_GATE_MODES — an invalid string raises rather than silently writing a
+    state every reader would fail-closed to 'off'. Upserts mi_safeguard_state."""
+    if mode not in BIRTH_GATE_MODES:
+        raise ValueError(f"invalid theme_birth_gate mode {mode!r} — expected one of {BIRTH_GATE_MODES}")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
+        """, *_THEME_BIRTH_GATE_TOGGLE, mode)
 
 
 _MANUAL_HALT = ("manual_trading_halt", "live")  # (safeguard, account_mode) PK
@@ -5948,6 +6061,25 @@ AUTO_PROMOTE_THEME_SOURCES = frozenset({
 # construction, not because anyone remembered to name them.
 
 
+async def resolve_auto_promote_sources(gate_mode: "str | None" = None) -> frozenset:
+    """The EFFECTIVE auto-promote allowlist for this run (theme consolidation
+    Phase 1, operator-ruled 2026-07-27). Mode 'off' OR 'observe' (and any read
+    error) ⇒ the full AUTO_PROMOTE_THEME_SOURCES — byte-identical to today
+    (observe must change NOTHING behavioral; the shadow_v2 retirement is an
+    ACT, so it belongs to 'on' only). Mode 'on' ⇒ 'shadow_v2' is retired from
+    the allowlist (decision 1: the stream stops running AND its stale
+    ≤7d-window rows can no longer graduate — defense in depth on both walls).
+    Shared by BOTH walls (get_shadow_theme_candidates' default reader +
+    promote_shadow_themes' re-filter) so they cannot drift. `gate_mode` lets a
+    caller that already resolved the mode this run pass it in (one read per
+    run); None ⇒ read it here."""
+    if gate_mode is None:
+        gate_mode = await get_theme_birth_gate_mode()
+    if gate_mode == "on":
+        return AUTO_PROMOTE_THEME_SOURCES - frozenset({"shadow_v2"})
+    return AUTO_PROMOTE_THEME_SOURCES
+
+
 async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False) -> list[dict]:
     """ALL shadow theme candidates — the FULL shadow lane: ADR-0007 correlation ('shadow_v2'),
     #167 narrative co-gap ('narrative_cogap'), and #240 synthesis ('rs_slope_synthesis'),
@@ -5967,6 +6099,15 @@ async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False
     /promotetheme one-tap in promote_candidate_by_name) — non-allowlisted cohorts stay
     visible and operator-promotable, never auto-promoted. Pinned by
     tests/test_coverage_probe.py (default-exclude + unknown-source pins)."""
+    # Phase-1 birth gate (2026-07-27): the auto-promote branch reads the
+    # EFFECTIVE allowlist (shadow_v2 retired only in mode 'on'; the full
+    # frozen set — byte-identical — in 'off' AND 'observe'). Operator surfaces
+    # (include_probe=True) still see EVERYTHING, so the resolve call is
+    # skipped entirely on that branch.
+    sources = (
+        list(AUTO_PROMOTE_THEME_SOURCES) if include_probe
+        else list(await resolve_auto_promote_sources())
+    )
     pool = await get_pool()
     async with pool.acquire() as conn:
         # ONE query, branch by parameter (review 7/17) — two near-identical
@@ -5978,8 +6119,131 @@ async def get_shadow_theme_candidates(days: int = 7, include_probe: bool = False
             WHERE run_date >= CURRENT_DATE - $1::int
               AND ($2::boolean OR source = ANY($3::text[]))
             ORDER BY name, run_date DESC
-        """, days, include_probe, list(AUTO_PROMOTE_THEME_SOURCES))
+        """, days, include_probe, sources)
     return [dict(r) for r in rows]
+
+
+# ── Theme birth-gate ledger + evidence readers (Phase 1, 2026-07-27) ─────────
+# All writers here fire ONLY in 'observe' or 'on' mode (callers check); mode
+# 'off' ⇒ these functions are never invoked (off-parity pin).
+
+
+async def get_recent_birth_candidates(days: int = 14) -> list[dict]:
+    """The gate's join-or-new memory: every ledger candidate seen in the last
+    `days` days INCLUDING quiet/held/born ones — the carried state that ends
+    the discover-kill-re-mint loop (#476 class). Overlap matching happens in
+    theme_birth_gate (Python-side intersection-over-smaller)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, name, first_seen, last_seen, sightings, tickers,
+                   source, status, last_outcome, rs_avg, rs_traj5, born_date, join_target
+            FROM mi_theme_birth_candidates
+            WHERE last_seen >= CURRENT_DATE - $1::int
+            ORDER BY last_seen DESC, id
+        """, days)
+    return [dict(r) for r in rows]
+
+
+async def record_birth_candidate_sighting(
+    candidate_id: "int | None",
+    name: str,
+    tickers: list[str],
+    source: str,
+    today: "str | date",
+    *,
+    outcome: str,
+    reason: "str | None" = None,
+    mode: str = "on",
+    rs_avg: "float | None",
+    rs_traj5: "float | None",
+    join_overlap: "float | None" = None,
+    ledger_overlap: "float | None" = None,
+    p3_co_moving: "bool | None" = None,
+    p3_spy_move: "float | None" = None,
+    join_target: "str | None" = None,
+) -> int:
+    """Upsert ONE gate evaluation into the ledger. candidate_id None ⇒ new
+    candidate row (sighting 1). Existing id ⇒ union members, bump last_seen,
+    and increment `sightings` ONLY on a new distinct day (a same-day re-propose
+    is one sighting — the two-sighting bar counts DAYS, not proposals).
+    `status` transitions: watching → born (outcome='birth') / joined stays
+    'watching' (a join target may die; the cohort can still birth later).
+    `reason` = the DECIDING LEVER (pass_rs_level / pass_rs_rising / join /
+    await_second_sighting / held_floor / held_no_rs); `mode` = observe|on —
+    together with rs_avg / rs_traj5 / the IoS overlaps these make the observe
+    period judgeable from stored rows alone. Returns the candidate id."""
+    td = _to_date(today)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if candidate_id is None:
+            return await conn.fetchval("""
+                INSERT INTO mi_theme_birth_candidates
+                    (name, first_seen, last_seen, sightings, tickers, source,
+                     status, last_outcome, last_reason, mode, rs_avg, rs_traj5,
+                     join_overlap, ledger_overlap, p3_co_moving, p3_spy_move,
+                     born_date, join_target)
+                VALUES ($1, $2, $2, 1, $3, $4,
+                        CASE WHEN $5 = 'birth' THEN 'born' ELSE 'watching' END,
+                        $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                        CASE WHEN $5 = 'birth' THEN $2 ELSE NULL END, $14)
+                RETURNING id
+            """, name, td, list(tickers), source, outcome, reason, mode,
+                 rs_avg, rs_traj5, join_overlap, ledger_overlap,
+                 p3_co_moving, p3_spy_move, join_target)
+        await conn.execute("""
+            UPDATE mi_theme_birth_candidates SET
+                sightings = sightings + CASE WHEN last_seen < $2 THEN 1 ELSE 0 END,
+                last_seen = GREATEST(last_seen, $2),
+                tickers = (SELECT ARRAY(
+                    SELECT DISTINCT t FROM unnest(tickers || $3::text[]) AS t ORDER BY t)),
+                status = CASE WHEN $4 = 'birth' THEN 'born' ELSE status END,
+                last_outcome = $4,
+                last_reason = $5,
+                mode = $6,
+                rs_avg = $7, rs_traj5 = $8,
+                join_overlap = $9,
+                ledger_overlap = $10,
+                p3_co_moving = COALESCE($11, p3_co_moving),
+                p3_spy_move = COALESCE($12, p3_spy_move),
+                born_date = CASE WHEN $4 = 'birth' THEN $2 ELSE born_date END,
+                join_target = COALESCE($13, join_target),
+                updated_at = NOW()
+            WHERE id = $1
+        """, candidate_id, td, list(tickers), outcome, reason, mode,
+             rs_avg, rs_traj5, join_overlap, ledger_overlap,
+             p3_co_moving, p3_spy_move, join_target)
+        return candidate_id
+
+
+async def get_cohort_rs_snapshot(
+    tickers: list[str], sessions_back: int = 5,
+) -> tuple["float | None", "float | None"]:
+    """(avg member rs_composite at the LATEST score_date, same at the score_date
+    `sessions_back` sessions earlier) — the birth gate's level + trajectory
+    inputs. Members without a row on a date are excluded from that date's avg;
+    a date with NO scored members averages to None (the gate treats unknown as
+    not-passing THAT arm, never as a pass)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        latest = await conn.fetchval("SELECT MAX(score_date) FROM mi_stock_scores")
+        if latest is None:
+            return None, None
+        prior = await conn.fetchval("""
+            SELECT score_date FROM mi_stock_scores
+            WHERE score_date < $1 GROUP BY score_date
+            ORDER BY score_date DESC OFFSET $2 LIMIT 1
+        """, latest, max(0, sessions_back - 1))
+        rows = await conn.fetch("""
+            SELECT score_date, AVG(rs_composite) AS avg_rs
+            FROM mi_stock_scores
+            WHERE ticker = ANY($1) AND score_date = ANY($2::date[])
+              AND rs_composite IS NOT NULL
+            GROUP BY score_date
+        """, [t.upper() for t in tickers],
+             [d for d in (latest, prior) if d is not None])
+        by_date = {r["score_date"]: float(r["avg_rs"]) for r in rows}
+        return by_date.get(latest), (by_date.get(prior) if prior else None)
 
 
 async def get_prior_theme_scores(d: "str | date") -> dict[str, float]:

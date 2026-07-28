@@ -578,11 +578,29 @@ async def _nightly_data_pull():
     # WITHOUT touching live mi_themes / the brief. ERROR-WRAPPED + non-fatal: a failure
     # here must NEVER break the live theme run above. Shadow-only until the N-night diff
     # validates promotion (ADR 0007 §5). Skips non-trading days with the rest of this job.
+    #
+    # Theme consolidation Phase 1 (operator-ruled 2026-07-27, decision 1): in mode
+    # 'on' the shadow_v2 STREAM IS RETIRED — its a/a2 selectors were ported INTO
+    # run_theme_engine's discovery pool first (5a above runs them), so skipping here
+    # loses nothing. Fail-closed mode read: 'off'/'observe'/error ⇒ the pass runs
+    # exactly as today (byte-identical — observe must change NOTHING behavioral).
+    # Audited nightly when retired, never silent.
     try:
-        from agents.market_intelligence.theme_engine import run_theme_discovery_shadow
-        shadow_summary = await run_theme_discovery_shadow(_today, clusters=correlation_clusters)
-        logger.info(f"Theme shadow pass (ADR 0007): {shadow_summary}")
-        summary_parts.append(f"shadow:{shadow_summary.get('shadow_themes', 0)}")
+        from agents.market_intelligence.db import get_theme_birth_gate_mode
+        if (await get_theme_birth_gate_mode()) == "on":
+            logger.info("Theme shadow pass (ADR 0007) SKIPPED — shadow_v2 stream retired (birth-gate ON)")
+            await log_audit_event(
+                "shadow_v2_stream_retired",
+                summary="shadow_v2 discovery stream retired (theme_birth_gate mode 'on') — "
+                        "a/a2 selectors run inside Lane-1 discovery",
+                detail="run_theme_discovery_shadow skipped; no source='shadow_v2' rows written tonight",
+            )
+            summary_parts.append("shadow:retired")
+        else:
+            from agents.market_intelligence.theme_engine import run_theme_discovery_shadow
+            shadow_summary = await run_theme_discovery_shadow(_today, clusters=correlation_clusters)
+            logger.info(f"Theme shadow pass (ADR 0007): {shadow_summary}")
+            summary_parts.append(f"shadow:{shadow_summary.get('shadow_themes', 0)}")
     except Exception as e:
         logger.warning(f"Theme shadow pass failed (non-fatal, ADR 0007): {e}")
         # Audit the swallowed failure — a bare logger.warning let #173 die silently for
@@ -4008,8 +4026,26 @@ async def _coverage_probe_job():
     cohorts feed mi_theme_candidates_shadow (source='coverage_probe', SURFACE-ONLY — the
     nightly auto-promote carve-out in get_shadow_theme_candidates keeps them off the
     promote lane; /promotetheme is the only graduation path). run_coverage_probe is
-    fully defensively wrapped — a probe failure can never break the EOD chain."""
+    fully defensively wrapped — a probe failure can never break the EOD chain.
+
+    Theme consolidation Phase 1 (operator-ruled 2026-07-27, decision 2): in mode
+    'on' this JOB IS RETIRED — 0 confirmed cohorts / 0 candidates lifetime; its
+    P3 market-adjusted co-movement primitive survives as the birth gate's
+    evidence annotation (theme_birth_gate._p3_annotation, importing the same
+    coverage_probe helpers). Fail-closed mode read: 'off'/'observe'/error ⇒ the
+    probe runs exactly as today (observe changes nothing behavioral). Audited
+    on skip, never silent."""
     from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import get_theme_birth_gate_mode
+    if (await get_theme_birth_gate_mode()) == "on":
+        logger.info("coverage probe SKIPPED — job retired (birth-gate mode 'on'); P3 lives on in theme_birth_gate")
+        await log_audit_event(
+            "coverage_probe_retired",
+            summary="coverage_probe job retired (theme_birth_gate mode 'on') — "
+                    "P3 co-movement survives as the birth gate's evidence annotation",
+            detail="run_coverage_probe skipped; mi_coverage_probe/mi_theme_candidates_shadow untouched",
+        )
+        return
     from agents.market_intelligence.coverage_probe import run_coverage_probe
     await run_coverage_probe(et_today())
 

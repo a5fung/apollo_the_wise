@@ -66,7 +66,7 @@ from agents.market_intelligence.db import (
     add_validation_cooldown, get_cooldown_set, get_globally_banned_tickers,
     get_operator_protected_set, get_ticker_breadth_above_sma20,
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
-    get_theme_subtheme_arm_enabled,
+    get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
 # Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
@@ -1054,6 +1054,14 @@ async def evaluate_narrative_themes(days: int = 30, include_backfill: bool = Fal
 async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
     """ADR 0007 SHADOW PASS — DRAFT 2026-05-31; VERIFY + TUNE MONDAY on the server.
 
+    ⚠ RETIRED behind the `theme_birth_gate` toggle (consolidation Phase 1,
+    operator-ruled 2026-07-27, decision 1): in mode 'on' the nightly caller
+    (scheduler 5b) SKIPS this pass — the a/a2 selectors below were ported into
+    run_theme_engine's Lane-1 discovery pool first, and 'shadow_v2' leaves the
+    effective auto-promote allowlist (db.resolve_auto_promote_sources). Modes
+    'off' AND 'observe' ⇒ this pass runs exactly as it always has
+    (byte-identical — observe changes nothing behavioral).
+
     Runs the NEW nascent-discovery selectors (a/a2) on top of the widened assembly
     (c/c2) through the EXISTING discovery prompt, and writes PROPOSED themes to
     `mi_theme_candidates_shadow` — WITHOUT touching live `mi_themes` / the brief.
@@ -2009,17 +2017,28 @@ async def promote_shadow_themes(today) -> int:
     clobber promoted rows, and the ON CONFLICT update is guarded (WHERE source='shadow_promoted') so it
     never overwrites a native live theme that happens to share a canonicalized name. Returns # promoted."""
     from agents.market_intelligence.db import (
-        AUTO_PROMOTE_THEME_SOURCES, get_shadow_theme_candidates,
+        get_shadow_theme_candidates, resolve_auto_promote_sources,
     )
+    # Phase-1 birth gate (2026-07-27): resolve the 3-state mode ONCE per run —
+    # it selects the effective allowlist below and the first-crossing gate in
+    # the loop. Fail-closed read: 'off'/error ⇒ full allowlist + no gate =
+    # byte-identical; 'observe' ⇒ full allowlist + verdicts recorded, nothing
+    # acted on; 'on' ⇒ allowlist minus shadow_v2 + the gate acts.
+    _gate_mode = await get_theme_birth_gate_mode()
+    _gate_acting = _gate_mode == "on"
     cands = await get_shadow_theme_candidates(days=_PROMOTE_WINDOW_DAYS)
     # ⚠️ AUTO-PROMOTE WALL 2 of 2 (S3 2026-07-13; ALLOWLIST-inverted #469 2026-07-16,
     # fork F-C = surface-only): the reader above already returns only the vetted
-    # AUTO_PROMOTE_THEME_SOURCES by default; this re-filter is deliberate defense in
-    # depth so that even a future reader-default flip can never auto-promote an
-    # un-vetted source into live mi_themes (→ live judge context/R4 → THE LINE).
-    # Non-allowlisted cohorts graduate ONLY via the operator's /promotetheme.
+    # allowlist by default; this re-filter is deliberate defense in depth so that
+    # even a future reader-default flip can never auto-promote an un-vetted source
+    # into live mi_themes (→ live judge context/R4 → THE LINE). Non-allowlisted
+    # cohorts graduate ONLY via the operator's /promotetheme.
     # Pinned by tests/test_coverage_probe.py (never-promotes-probe + unknown-source pins).
-    cands = [c for c in cands if c.get("source") in AUTO_PROMOTE_THEME_SOURCES]
+    # Phase-1 birth gate (2026-07-27): BOTH walls share resolve_auto_promote_sources —
+    # the full frozen allowlist in 'off' AND 'observe' (byte-identical), minus the
+    # retired 'shadow_v2' only when acting ('on').
+    _allowed_sources = await resolve_auto_promote_sources(_gate_mode)
+    cands = [c for c in cands if c.get("source") in _allowed_sources]
     cohorts = [c for c in cands if len(c.get("tickers") or []) >= _PROMOTE_MIN_MEMBERS]
     if not cohorts:
         logger.info("[promote] no shadow cohort met the >=%d-member bar", _PROMOTE_MIN_MEMBERS)
@@ -2032,7 +2051,10 @@ async def promote_shadow_themes(today) -> int:
         # E-UNASSIGNED row that the nightly self-heal never revisits.
         themes = [{"name": c["name"], "tickers": list(c.get("tickers") or []),
                    "thesis": c.get("thesis"),
-                   "description": c.get("thesis")} for c in cohorts]
+                   "description": c.get("thesis"),
+                   # carried for the Phase-1 birth gate's ledger row only —
+                   # read by no other consumer (upsert/canonicalize ignore it).
+                   "source": c.get("source")} for c in cohorts]
         await _canonicalize_theme_names(conn, themes, today)
         prior_rows = await conn.fetch("""
             SELECT DISTINCT ON (name) name, days_active
@@ -2048,7 +2070,26 @@ async def promote_shadow_themes(today) -> int:
               AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
         """, _all_members)
         _rs_by_tk = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
+        # ── Phase-1 BIRTH GATE on the promote path (mode observe|on). This is
+        # THE previously-ungated bypass (theme_engine.py:1999 in the 2026-07-27
+        # design — no RS floor, no adjudication): a FIRST-EVER crossing into
+        # live mi_themes must now clear the same gate Lane-1 births clear.
+        # Re-promotions of names with ANY prior mi_themes row are MAINTENANCE
+        # of an existing live theme — never gated (the second leg of the
+        # existing-live-themes-are-untouched guarantee). 'off' ⇒ zero gate
+        # reads, byte-identical. 'observe' ⇒ verdicts recorded, EVERY cohort
+        # still promotes exactly as today. Observe-mode fidelity carve-out:
+        # because an observe-held cohort IS still promoted (so tomorrow it has
+        # a prior row and would read as maintenance), a candidate whose ledger
+        # row is still 'watching' keeps being evaluated — that is how the
+        # two-sighting/floor progression accrues real forward evidence on this
+        # lane; once its verdict reaches 'birth' the row flips to 'born' and
+        # evaluation stops. (_gate_mode resolved once, above.)
+        _gate_ledger = None
+        _gate_board: list[dict] | None = None
+        _gate_outcomes: list[dict] = []
         n = 0
+        n_gated_out = 0
         new_grads = []  # genuinely-NEW shadow→live crossings (no prior live row); re-promotions stay silent
         written = []    # themes actually upserted — the ecosystem mapper's input
         for t in themes:
@@ -2057,6 +2098,37 @@ async def promote_shadow_themes(today) -> int:
             rs_avg = sum(_vals) / len(_vals) if _vals else None
             prior = prior_map.get(t["name"])
             prior_days_active = prior.get("days_active") if prior else None
+            if _gate_mode in ("observe", "on"):
+                from agents.market_intelligence.theme_birth_gate import (
+                    BIRTH_GATE_LEDGER_DAYS, evaluate_birth, find_ledger_match,
+                )
+                from agents.market_intelligence.db import get_recent_birth_candidates
+                if _gate_ledger is None:
+                    _gate_ledger = await get_recent_birth_candidates(
+                        days=BIRTH_GATE_LEDGER_DAYS)
+                    _gate_board = await get_active_themes()
+                _consult = prior is None
+                if not _consult and _gate_mode == "observe":
+                    # observe carve-out (see block comment): keep evaluating a
+                    # cohort we're still watching even though observe promoted it.
+                    _m, _ = find_ledger_match(members, _gate_ledger)
+                    _consult = bool(_m) and _m.get("status") == "watching"
+                if _consult:
+                    res = await evaluate_birth(
+                        t["name"], members, f"promote:{t.get('source') or 'unknown'}",
+                        today, _gate_board, mode=_gate_mode,
+                        ledger=_gate_ledger, rs_by_ticker=_rs_by_tk)
+                    res["name"] = t["name"]
+                    _gate_outcomes.append(res)
+                    if res["outcome"] != "birth":
+                        logger.info(
+                            f"[promote/birth gate/{_gate_mode}] '{t['name']}' → {res['outcome']}"
+                            + (f" (target: {res['join_target']})" if res.get("join_target") else "")
+                            + f" rs={res['rs_avg']} traj5={res['traj5']} sightings={res['sightings']}")
+                        if _gate_acting:
+                            n_gated_out += 1
+                            continue
+                        # observe: fall through — the cohort promotes exactly as today.
             wrote = await _upsert_promoted_theme(
                 conn, t["name"], members, t.get("thesis"),
                 f"Graduated from the shadow lane ({len(members)} members).", today,
@@ -2068,14 +2140,23 @@ async def promote_shadow_themes(today) -> int:
                     new_grads.append(t["name"])
         await log_audit_event(
             "shadow_themes_promoted",
-            summary=f"Graduated {n} shadow cohort(s) into live mi_themes ({len(new_grads)} new)",
-            detail=f"promoted={[t['name'] for t in themes]} new={new_grads}")
+            summary=f"Graduated {n} shadow cohort(s) into live mi_themes ({len(new_grads)} new)"
+                    + (f" — {n_gated_out} held at the birth gate" if n_gated_out else ""),
+            detail=f"promoted={[t['name'] for t in themes]} new={new_grads}"
+                   + (f" gated={[o['name'] for o in _gate_outcomes if o['outcome'] != 'birth']}"
+                      if n_gated_out else ""))
+    if _gate_outcomes:
+        from agents.market_intelligence.theme_birth_gate import audit_gate_outcomes
+        await audit_gate_outcomes("promote", _gate_outcomes, today, mode=_gate_mode)
     logger.info("[promote] graduated %d shadow cohort(s) into mi_themes", n)
     # Self-verify (#370 systematic-failure-guard) — the nightly run confirms ITSELF, no human in the
     # loop. SILENT-FAILURE (cohorts qualified but 0 written) -> alert, never a silent degrade.
     # SUCCESS -> a one-line operator confirm so "it fired" is visible (silent success is invisible).
     from agents.market_intelligence.briefing import send_telegram_message
-    if len(cohorts) > 0 and n == 0:
+    # Gate-held cohorts are a DELIBERATE hold, not a silent failure — subtract
+    # them before the zero-writes alarm (n_gated_out is always 0 in modes
+    # 'off' AND 'observe', so both conditions are byte-identical to today).
+    if len(cohorts) - n_gated_out > 0 and n == 0:
         await log_audit_event(
             "shadow_promotion_silent_failure",
             summary=f"{len(cohorts)} shadow cohort(s) qualified but 0 graduated",
@@ -5463,6 +5544,31 @@ async def run_theme_engine(
         logger.warning("Theme engine: no RS data — run RS engine first")
         return [], []
 
+    # ── Theme consolidation Phase 1 (operator-ruled 2026-07-27): resolve the
+    # 3-state birth-gate mode ONCE per run (mi_safeguard_state, fail-closed
+    # 'off' — db.BIRTH_GATE_MODES). 'off' ⇒ every branch below is skipped and
+    # the run is byte-identical to today (pinned by tests/test_theme_birth_gate.py).
+    # 'observe' ⇒ the gate COMPUTES + RECORDS its verdict on every new birth
+    # but acts on nothing — themes are born exactly as today (also pinned; the
+    # a/a2 fold below is an ACT, so it too is 'on'-only). 'on' ⇒ (a) the
+    # ADR-0007 a/a2 selectors (accelerators + recovery-slope) — which
+    # previously existed ONLY in the retired shadow_v2 pass — feed Lane-1
+    # discovery (the port ships BEFORE the stream retirement so nothing is
+    # lost), and (b) every NEW discovered theme must clear the ONE birth gate
+    # before it can persist.
+    birth_gate_mode = await get_theme_birth_gate_mode()
+    birth_gate_on = birth_gate_mode == "on"
+    accelerators: list[dict] = []
+    recovery: list[dict] = []
+    if birth_gate_on:
+        from agents.market_intelligence.db import (
+            get_rs_accelerators, get_rs_recovery_slope,
+        )
+        accelerators, recovery = await asyncio.gather(
+            get_rs_accelerators(today_str),
+            get_rs_recovery_slope(today_str),
+        )
+
     # Enrich with sector data (concurrent, rate-limited by semaphore)
     async def _enrich_sector(stock: dict) -> None:
         if not stock.get("sector"):
@@ -5475,6 +5581,11 @@ async def run_theme_engine(
     # below the top-60 cut were all blank-sector on 5/28. _enrich_sector no-ops on
     # already-set sectors, so this only fetches the genuinely-blank ones.
     _enrich_pool = _all_candidate_pool(leaders, velocity_all, turners_all)
+    if birth_gate_on:
+        # a/a2 port: enrich sector + (below) descriptions for the selector pools
+        # too — same shape run_theme_discovery_shadow used (an undescribed or
+        # blank-sector candidate is silently unclusterable). No-op when OFF.
+        _enrich_pool = _enrich_pool + list(accelerators) + list(recovery)
     logger.info(f"Theme engine: enriching sector for {len(_enrich_pool)} candidate-pool stocks...")
     await asyncio.gather(*[_enrich_sector(s) for s in _enrich_pool])
 
@@ -5601,6 +5712,29 @@ async def run_theme_engine(
         leaders, covered_tickers, revalidated_out)
     logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders (discovery) · "
                 f"{len(assignment_pool)} assignment candidates (RS≥{ASSIGN_POOL_RS_FLOOR:.0f}, #476)")
+
+    # ── a/a2 selector port (Phase 1, flag ON only): fold accelerators +
+    # recovery-slope candidates into the DISCOVERY pool — the same
+    # covered/revalidated/THEME_RS_MIN filters the shadow pass applied
+    # (run_theme_discovery_shadow step 4). They deliberately do NOT join the
+    # assignment pool (discovery-only, matching the shadow's semantics: these
+    # selectors exist to surface igniting cohorts, not to force-assign
+    # singletons). OFF ⇒ this block is dead and `uncovered` is byte-identical.
+    if birth_gate_on and (accelerators or recovery):
+        _seen_unc = {s["ticker"] for s in uncovered}
+        _n_folded = 0
+        for s in [*accelerators, *recovery]:
+            tk = s["ticker"]
+            if tk in covered_tickers or tk in revalidated_out or tk in _seen_unc:
+                continue
+            if (s.get("rs_composite") or s.get("rs_now") or 0) >= THEME_RS_MIN:
+                _seen_unc.add(tk)
+                uncovered.append(s)
+                stocks_by_ticker.setdefault(tk, s)
+                _n_folded += 1
+        logger.info(
+            f"Theme engine: a/a2 port folded {_n_folded} selector candidate(s) into discovery "
+            f"(accelerators={len(accelerators)}, recovery_slope={len(recovery)}; birth-gate ON)")
 
     # Elite covered: RS 80+ stocks already in themes — sent to Claude for
     # sub-theme analysis. These are strong enough to warrant checking if
@@ -5755,6 +5889,63 @@ async def run_theme_engine(
                     continue
                 logger.info(f"[name inheritance] '{nt['name']}' → '{old_name}' (Jaccard match with retired theme)")
                 nt["name"] = old_name
+
+    # --- Step 3a.5: ONE BIRTH GATE (theme consolidation Phase 1; mode observe|on) ---
+    # Runs AFTER name-inheritance (gate the FINAL name) and BEFORE the #266
+    # birth validation (deterministic + cheap first; the LLM validator only
+    # sees gate-passers). Join-or-new vs today's board + the 14d candidate
+    # ledger, two-sighting bar, derived RS floor (level-OR-rising) — see
+    # theme_birth_gate.py. Names already live on the board are RE-EMISSIONS,
+    # not births — they pass through untouched (the merge passes own them),
+    # which is one leg of the existing-live-themes-are-untouched guarantee.
+    # Mode semantics: 'off' ⇒ this block is dead and new_themes is
+    # byte-identical. 'observe' ⇒ every verdict is computed + recorded (ledger
+    # + audit) but new_themes is NEVER filtered — the forward-evidence state.
+    # 'on' ⇒ only gate-passing births persist.
+    if birth_gate_mode in ("observe", "on") and new_themes:
+        from agents.market_intelligence.theme_birth_gate import (
+            BIRTH_GATE_LEDGER_DAYS, audit_gate_outcomes, evaluate_birth,
+        )
+        from agents.market_intelligence.db import get_recent_birth_candidates
+        _gate_ledger = await get_recent_birth_candidates(days=BIRTH_GATE_LEDGER_DAYS)
+        _rs_map = {
+            tk: s.get("rs_composite") for tk, s in stocks_by_ticker.items()
+            if s.get("rs_composite") is not None
+        }
+        _live_names = {t["name"] for t in updated_themes}
+        _gate_passed: list[dict] = []
+        _gate_outcomes: list[dict] = []
+        for nt in new_themes:
+            if nt["name"] in _live_names:
+                _gate_passed.append(nt)  # re-emission of a live name, not a birth
+                continue
+            res = await evaluate_birth(
+                nt["name"], list(nt.get("tickers") or []), "live", today,
+                updated_themes, mode=birth_gate_mode,
+                covered_tickers=covered_tickers,
+                ledger=_gate_ledger, rs_by_ticker=_rs_map)
+            res["name"] = nt["name"]
+            _gate_outcomes.append(res)
+            if res["outcome"] == "birth" or not birth_gate_on:
+                # observe: the theme is born exactly as it would have been —
+                # the verdict lives in the ledger/audit rows only.
+                _gate_passed.append(nt)
+            if res["outcome"] != "birth" and birth_gate_on:
+                changelog.append({
+                    "type": "theme_birth_gated",
+                    "theme": nt["name"],
+                    "outcome": res["outcome"],
+                    "join_target": res.get("join_target"),
+                    "tickers": list(nt.get("tickers") or []),
+                })
+            if res["outcome"] != "birth":
+                logger.info(
+                    f"[birth gate/{birth_gate_mode}] '{nt['name']}' → {res['outcome']}"
+                    + (f" (target: {res['join_target']})" if res.get("join_target") else "")
+                    + f" rs={res['rs_avg']} traj5={res['traj5']} sightings={res['sightings']}")
+        new_themes = _gate_passed
+        if _gate_outcomes:
+            await audit_gate_outcomes("lane1", _gate_outcomes, today, mode=birth_gate_mode)
 
     # --- Step 3b (#266, operator-signed 2026-06-17): validate DISCOVERED themes AT BIRTH ---
     # Run AFTER name-inheritance (the validator judges members against the FINAL name) and

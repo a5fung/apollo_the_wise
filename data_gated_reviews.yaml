@@ -7683,3 +7683,64 @@ reviews:
     status: pending
     added_on: 2026-07-27
     cross_refs: ["task #167"]
+
+  - review_id: theme_birth_gate_observe_calibration
+    title: "Birth gate observe-period: forward verdicts vs actual theme outcomes (observe -> on gate)"
+    question: >-
+      Does the birth gate's derived cell (RS>=70 OR pre-birth 5-session dRS>=0,
+      two-sighting bar, join-or-new at 0.5 IoS) hold up on FORWARD evidence, not
+      just the 254-birth replay? During the 'observe' deploy state every would-be
+      birth gets a recorded verdict (outcome + deciding lever + member-avg RS +
+      dRS + IoS overlaps, in mi_theme_birth_candidates + the theme_birth_gate
+      audit rows) while the theme is born exactly as today — so each verdict has
+      a ground-truth outcome to compare against. Specifically: (a) of the births
+      the gate WOULD have held (held_floor / held_no_rs), how many went on to
+      mature (survive the 7d board / reach Accelerating+ / last >=14 days)? —
+      the forward false-negative rate vs the replay's 8.2%; (b) of the would-be
+      JOIN verdicts, was the join target genuinely the same bet (operator
+      eyeball on the named pairs)?; (c) did await_second_sighting verdicts
+      resolve correctly (a theme present >=2 days would have birthed one day
+      later — only 1-day corpses are true kills)?; (d) does the rising-arm
+      rescue fire on the weak-born-then-matured class it was derived for?
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'theme_birth_gate' AND summary LIKE '%/observe]%'
+    threshold: 20
+    # RUN-COUNT gated, not date (operator ruling 2026-07-26: a future date can
+    # only DELAY a review whose evidence is already in). One audit row per
+    # gated lane per night (lane1 + promote both emit when they evaluated
+    # anything); at the July birth rate (~5.9/day) nearly every trading night
+    # emits both -> 20 rows ~= 2 trading weeks of observe coverage, ~50-120
+    # per-candidate verdicts. Rows are written ONLY in mode 'observe' (the
+    # '%/observe]%' summary tag) — mode 'off' writes nothing, so this cannot
+    # fire before the observe deploy; mode-'on' rows deliberately do not count
+    # (the review gates observe->on, so only observe evidence qualifies).
+    # Date below is the registration day = non-blocking.
+    earliest_review_date: 2026-07-27
+    action_when_ready: >-
+      Pull the verdicts: SELECT summary, detail FROM mi_audit_log WHERE
+      event_type='theme_birth_gate' AND summary LIKE '%/observe]%' ORDER BY
+      created_at; parse the JSON details (per candidate: name, outcome, reason
+      = deciding lever, rs_avg, traj5, join_target, join_overlap, sightings).
+      Join each non-birth verdict to mi_themes forward rows for that theme
+      name: matured = survived the 7d board OR reached Accelerating/Mainstream
+      OR >=14 distinct days (the derivation's umbrella,
+      docs/analysis/theme_birth_gate_derivation_2026-07-27.md). Report per
+      lever: held_floor/held_no_rs forward FN rate vs the replay's 8.2%; the
+      join pairs list (operator judges same-bet vs distinct — CHANGE_PROCESS
+      r3: the filter list is the operator's call, state findings not rulings);
+      await_second_sighting resolution split (>=2-day themes = delayed-not-
+      lost, 1-day corpses = true kills); rising-arm rescues with their peak
+      RS. Lane-1 caveat (documented in the SSoT): observe cannot re-sight a
+      cohort the ungated engine already birthed, so Lane-1 sighting counts
+      read verdict-at-first-sighting — judge (c) from mi_themes presence, not
+      ledger sightings; the promote lane re-evaluates 'watching' cohorts
+      nightly and accrues true progressions. THEN the operator rules: sign the
+      derived cell + the forward FN list, or adjust the cell (a threshold
+      change re-enters CHANGE_PROCESS with this data as the backtest). Flip
+      gates after signing: fresh ADR-0030 judge-robustness eval (the
+      preflight_judge_eval_gate WILL fire on the grade-surface drift — by
+      design, never suppress), then set_theme_birth_gate_mode('on').
+    status: pending
+    added_on: 2026-07-27
+    cross_refs: ["task #505", "task #506"]

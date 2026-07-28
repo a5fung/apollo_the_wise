@@ -63,7 +63,9 @@ themes emerge from price action, never a hypothesis fed in):
   - `run_theme_synthesis` (#240, `theme_synthesis.py`, source='rs_slope_synthesis')
     — cross-ticker RS-slope: proposes cohorts from coordinated accelerators/turners,
     `_MIN_MEMBERS = 3` — **structurally needs 3+ coordinated movers**.
-- **S2/S3 coverage_probe** (2026-07-13, `coverage_probe.py`, source='coverage_probe')
+- **S2/S3 coverage_probe** (2026-07-13, `coverage_probe.py`, source='coverage_probe';
+  ⚠ RETIRED behind the `theme_birth_gate` flag 2026-07-27 — see the Phase-1
+  section below; P3 survives as the birth gate's evidence primitive)
   — a THIRD, deterministic (zero-LLM) lane: for every themeless HIGH/MODERATE alert,
   independently re-discovers a peer cohort via P1 named-entity match (a peer
   company's name appearing in the alert's own `grounded_text`) + P3 market-adjusted
@@ -141,7 +143,158 @@ scope).
 standalone memory file exists; this section + `judge_theme_gap.py`'s module
 docstring are the durable SSoT going forward).
 
+## ONE birth gate + lane retirements (consolidation Phase 1, 2026-07-27 — 3-state toggle `theme_birth_gate`, fail-closed 'off')
+
+Behind `mi_safeguard_state` toggle `theme_birth_gate`
+(`db.get/set_theme_birth_gate_mode`, **3 states — the `broker_order_ingest`
+off/dry_run/live idiom**, `db.BIRTH_GATE_MODES = ("off","observe","on")`,
+fail-closed 'off' on any error or unrecognized string, instant no-redeploy
+transitions, OPERATOR-gated):
+
+- **`off`** (today's production state) ⇒ **byte-identical to the pre-gate
+  engine** (pinned by `tests/test_theme_birth_gate.py`).
+- **`observe`** (the DEPLOY state) ⇒ **zero behavioural difference from
+  `off`** — every theme is born exactly as today, promote untouched, the
+  retirements inactive, allowlist unchanged, Telegram parity pinned — while
+  the gate COMPUTES and RECORDS its verdict on every would-be birth: per
+  candidate the outcome, the DECIDING LEVER (`reason` ∈ pass_rs_level /
+  pass_rs_rising / join / await_second_sighting / held_floor / held_no_rs),
+  member-avg RS, pre-birth 5-session ΔRS, IoS overlaps vs board/ledger, and
+  `mode`, persisted in `mi_theme_birth_candidates` + the `theme_birth_gate`
+  audit rows (summary tag `[lane/observe]`). The ledger POPULATES in observe
+  so join-or-new — the biggest lever, 50/106 in the July replay — is
+  exercised, not starved. Forward evidence therefore accrues BEFORE the gate
+  ever touches a live theme (the shadow-first discipline every prior flip
+  followed); the observe→on comparison is the run-count-gated review
+  `theme_birth_gate_observe_calibration` (data_gated_reviews.yaml — fires at
+  20 observe-mode gate rows ≈ 2 trading weeks, NEVER date-gated per the
+  2026-07-26 ruling). Observe fidelity notes: on the promote lane a
+  still-`watching` ledger cohort keeps being re-evaluated even though observe
+  promoted it (so two-sighting/floor progressions accrue real data); on Lane 1
+  an observe-born cohort can't re-sight (it's covered next night), so Lane-1
+  verdicts read as-at-first-sighting and the review judges the two-sighting
+  lever from mi_themes presence (≥2-day themes = delayed-not-lost).
+- **`on`** ⇒ the gate ACTS:
+
+- **ONE birth gate on every live-theme birth path** (`theme_birth_gate.py`):
+  Lane-1 discovery (`run_theme_engine` step 3a.5, after name-inheritance,
+  before #266 birth validation) AND `promote_shadow_themes` first-ever
+  crossings — the previously-ungated bypass. Order: join-or-new (≥0.5
+  intersection-over-smaller vs the live board; member-majority-covered
+  refinement proposals are carved out — the merge/Route-A machinery owns
+  those) → two-sighting bar (≥2 distinct days vs the 14d
+  `mi_theme_birth_candidates` ledger, quiet entries included — the #476
+  re-mint memory) → derived floor (member-avg RS ≥ 70 **OR** pre-birth
+  5-session cohort ΔRS ≥ 0; derivation:
+  `docs/analysis/theme_birth_gate_derivation_2026-07-27.md` — the flat ≥70
+  start was derived AGAINST: it kills 19.4% of everything that ever matured;
+  the rising arm exists because weak-born maturers are RISING pre-birth
+  (+2.5 median) and weak-born corpses are FALLING (−5.3)).
+- **Existing live themes untouched, three legs**: re-promotions of any name
+  with a prior `mi_themes` row bypass the gate (maintenance); Lane-1
+  re-emissions of live names pass ungated (merge owns them); the gate never
+  mutates `mi_themes` (a `join` only suppresses an INSERT). Board survivors of
+  the retired funnel persist via the daily engine itself (`get_active_themes`
+  reads all sources; day-2+ rows are `source='live'` — verified vs prod).
+- **shadow_v2 stream RETIRED** (decision 1): the nightly
+  `run_theme_discovery_shadow` call is skipped (audited
+  `shadow_v2_stream_retired`), and `shadow_v2` leaves the EFFECTIVE
+  auto-promote allowlist (`db.resolve_auto_promote_sources`, shared by both
+  walls). Its a/a2 selectors (`get_rs_accelerators` + `get_rs_recovery_slope`)
+  were PORTED into Lane-1 discovery first — same covered/RS≥THEME_RS_MIN
+  filters the shadow applied, discovery-pool only.
+- **coverage_probe job RETIRED** (decision 2: 0 confirmed cohorts lifetime):
+  `_coverage_probe_job` skips (audited `coverage_probe_retired`). Its P3
+  market-adjusted co-movement primitive survives as the gate's EVIDENCE
+  ANNOTATION (`theme_birth_gate._p3_annotation` — never a blocking criterion;
+  that threshold is underived).
+- **Counter-only observability (design §7)**: one `theme_birth_gate` audit row
+  per gated run/lane — `[lane/mode] N birth / N join / N awaiting-2nd-sighting /
+  N held-floor` (emitted in observe AND on). No thresholds in the health line;
+  those derive after the funnel settles.
+
+**Graduation path (honest, shadow-first)**: deploy in `observe` → ~2 trading
+weeks alongside the real engine → `theme_birth_gate_observe_calibration`
+fires on run count → operator judges forward FN/join/two-sighting evidence
+against the 254-replay numbers and signs the cell + FN list (CHANGE_PROCESS
+r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
+(the preflight gate fires on grade-surface drift by design — never suppress)
+→ `set_theme_birth_gate_mode('on')`.
+
 ## Change log
+
+### 2026-07-27 (d) — Phase-1 BIRTH GATE + shadow_v2/coverage_probe retirements (built dark, flag OFF)
+
+- **Trigger**: theme-consolidation design ruled ADOPT on all six decisions
+  (operator, 2026-07-27) — ~5.9 births/day vs a 56% lifetime corpse rate; the
+  `shadow_promoted` path graduates with NO floor/adjudication (RS-38.7 Hospital
+  and RS-49.1 Utilities graduated the same night the design was ruled).
+- **Evidence** (CHANGE_PROCESS r1 — threshold change, backtest attached):
+  254-birth replay, `docs/analysis/theme_birth_gate_derivation_2026-07-27.md`.
+  Key: birth-RS LEVEL does not separate matured (median 90.8) from corpses
+  (88.5); flat ≥70 = 19.4% FN at 40% precision; 19% of ALL matured themes were
+  born <70 and their PRE-birth 5-session trajectory separates (+2.5 vs −5.3
+  median) → derived cell = RS≥70 OR Δ5≥0. July's 106 births replayed through
+  the full gate: 50 join + 5 two-sighting kills + 7 floor kills → 44/month
+  ≈ 2.4/day (design estimate 40–55 ✓).
+- **Anticipated effect** (when flipped ON): births ~5.9/day → ~2.4/day, biased
+  to twice-sighted, level-or-rising cohorts; the sub-RS-70-and-falling
+  graduate class never births; board drifts toward its 86 median; corpse rate
+  falls (watch via the `theme_birth_gate` audit counters + §7 metrics).
+- **Reversion-flag**: NEW (first gate on theme birth; no prior criterion on
+  this surface). Instant revert = mode 'off' (byte-identical, no redeploy).
+- **Status**: built dark, mode 'off' — NOT deployed, NOT flipped. 3-state
+  toggle (off/observe/on — coordinator+operator-agreed same day: a dark
+  deploy of a 2-state flag teaches nothing; observe accrues forward verdicts
+  BEFORE the gate acts, matching how every prior flip validated). Deploy plan:
+  ship in 'observe' → the run-count-gated review
+  `theme_birth_gate_observe_calibration` (data_gated_reviews.yaml) fires at
+  20 observe rows ≈ 2 trading weeks → operator signs the derived cell + the
+  FORWARD FN list (CHANGE_PROCESS r3 — findings stated, operator rules; the
+  254-replay is the backtest, the observe period the field validation) →
+  fresh ADR-0030 judge eval → mode 'on'. Tests:
+  `tests/test_theme_birth_gate.py` (30) — off byte-identical, observe
+  zero-behavioural-difference (writes/Telegram parity pinned) with verdicts +
+  levers + inputs recorded and the ledger populating, every threshold at its
+  boundary, weekend two-sighting, existing-live-themes-untouched, a/a2 port
+  present in Lane-1 discovery when acting.
+
+### 2026-07-27 (c) — #167 registry: birth-bias correction + decision-record telemetry (still dark, flag OFF)
+
+- **Trigger**: first registry replay (operator-run, ~$0.40). Architecture
+  CONFIRMED — 23 near-duplicate pool proposals → 4 distinct narratives + 4
+  joins; the miner chain assembled (WULF 07-06 birth → CLSK 07-14 join → HUT
+  07-20 join) and power-landlord vs hardware-supply-chain stayed correctly
+  SEPARATE. Regression: a bias TOWARD seeding — 06-17 AEHR+JBL (pool-caught)
+  filed as two separate seeds instead of a birth; 07-20 IREN seeded while HUT
+  joined the same story. Seeding was the costless choice and nothing pushed
+  back.
+- **What changed**: (1) `_build_lane2_registry_prompt` decision block
+  reordered JOIN → NEW → SEED: NEW framed as the EXPECTED outcome when 2+
+  visible names share a story ("never file the same story as two separate
+  seeds"), a stock fitting an ACTIVE narrative "must be JOINED, never
+  seeded", SEED demoted to explicit last resort + a pre-answer seed
+  self-check. Deterministic birth guards UNCHANGED (>=2 members, >=1 today
+  anchor, duplicate tripwire) — threshold moved, not the floor.
+  (2) DECISION RECORD (operator: "if this info is captured, it allows us to
+  tune over time"): one `lane2_decision_record` mi_audit_log row per
+  evaluated night (JSON detail: offered names, per-name outcome
+  join/birth/seed/none, watch list offered, seed→narrative conversions with
+  origin date + lag_days, keyed off the PRE-hygiene seed map so a re-alerting
+  seed that joins still counts). Never written on backfill runs (forward-pure
+  stream). Makes the seed-vs-birth threshold EMPIRICAL: a converting seed was
+  a deferred birth; an expiring one was correctly held.
+  (3) Run-count-gated review `lane2_seed_birth_calibration` registered in
+  `data_gated_reviews.yaml`: fires at 20 decision-record nights (~4 trading
+  weeks at the replay-era rate, ~15-20 seed decisions — a directional
+  conversion read), date field non-blocking per the 2026-07-26 ruling;
+  records only accrue with the flag ON, so it cannot fire pre-flip.
+- **Reversion-flag**: REFINEMENT of (b) (prompt-instruction ordering +
+  telemetry; no population/guard change; never flipped ON).
+- **Status**: built dark, flag OFF (OFF byte-identical re-pinned; 26 tests).
+  Next gate: re-run the replay post-deploy — 06-17 and 07-20 must now
+  birth/join, correctly-silent days must stay silent, both known-goods
+  survive.
 
 ### 2026-07-27 (b) — #167 Lane-2 v2 reframed: incremental narrative REGISTRY (supersedes same-day pool draft; still dark, flag OFF)
 
