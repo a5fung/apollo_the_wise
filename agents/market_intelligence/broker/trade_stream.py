@@ -1151,9 +1151,24 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             account_mode=account_mode,
         )
         if event_norm == "expired":
+            # #507 (2026-07-28): the old text promised "GTC re-issue at 4:05 PM ET"
+            # — a time that had ALWAYS ALREADY PASSED, because this handler only
+            # runs once the stop has expired (~16:15) while eod_cleanup runs at
+            # 16:05. It was structurally incapable of being true, and a false
+            # all-clear is worse than silence: it is exactly what stops an
+            # operator acting on a correct alarm.
+            #
+            # What ACTUALLY happens, traced: eod_cleanup (16:05) cancels unfilled
+            # orders + syncs positions — it never re-issues stops. NOTHING
+            # re-issues after hours. The stop-ack watchdog (cron hour="9-15") is
+            # the only re-placer, so it restores the stop at 09:00 ET — half an
+            # hour BEFORE the open. The bare window is 16:15 → 09:00, entirely
+            # outside market hours, and a stop would not execute then anyway.
+            # So the position is protected again before it can be hit.
             await send_telegram_message(
                 f"{mode_prefix(account_mode)}ℹ️ *EOD stop expired (expected):* {symbol}\n"
-                f"{stop_trade['remaining_shares']:.0f} sh — GTC re-issue at 4:05 PM ET."
+                f"{stop_trade['remaining_shares']:.0f} sh — bare overnight; "
+                f"auto-replaced at 9:00 AM ET, before the open. No action needed."
             )
             logger.info(
                 f"WS [{account_mode}]: EOD stop expired (expected): {symbol} "

@@ -28,7 +28,7 @@ import os
 import re
 import statistics
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 from zoneinfo import ZoneInfo
@@ -1341,7 +1341,25 @@ def _format_naked_position_alert(body: dict) -> str:
                 f"filled_at={r.get('filled_at')}"
             )
         sections.append("")
-        sections.append("Immediate operator action: place stop via Alpaca web UI.")
+        # #507 (2026-07-28): the ask must match what the operator can actually
+        # DO right now. Outside 09:00-16:00 ET a stop cannot execute anyway, and
+        # the stop-ack watchdog (cron hour="9-15") auto-replaces at 09:00 —
+        # before the open. On 2026-07-27 this alarm fired at 16:28 demanding
+        # "immediate action" on a position that was never at risk and would have
+        # been covered automatically; the operator placed one by hand for
+        # nothing. Detection was right; the INSTRUCTION was wrong.
+        # Still surfaced either way — silence would be worse — but the after-
+        # hours form says what is true instead of manufacturing urgency.
+        _now_et = datetime.now(_ET)
+        _market_hours = (_now_et.weekday() < 5 and time(9, 30) <= _now_et.time() <= time(16, 0))
+        if _market_hours:
+            sections.append("Immediate operator action: place stop via Alpaca web UI.")
+        else:
+            sections.append(
+                "⏸️ Outside market hours — a stop cannot execute now, and the "
+                "stop-ack watchdog auto-replaces at 9:00 AM ET, before the open. "
+                "No action needed unless it is still bare after 9:00."
+            )
 
     if db_drift:
         if sections:
