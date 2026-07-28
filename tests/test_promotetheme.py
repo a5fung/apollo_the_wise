@@ -13,6 +13,14 @@ import pytest
 from agents.market_intelligence import theme_engine as te
 from agents.market_intelligence import db as dbmod
 
+
+@pytest.fixture(autouse=True)
+def _birth_gate_off(monkeypatch):
+    """Phase-1 birth gate (2026-07-27): pin the 3-state 'theme_birth_gate' mode 'off' so
+    these pre-gate promote pins exercise the byte-identical legacy path without
+    a real DB read (fail-closed OFF is the production default)."""
+    monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
+
 _TODAY = _dt.date(2026, 6, 29)
 
 

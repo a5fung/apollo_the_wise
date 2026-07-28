@@ -31,6 +31,15 @@ _TODAY = _dt.date(2026, 7, 13)
 _PRIOR = _dt.date(2026, 7, 10)
 
 
+@pytest.fixture(autouse=True)
+def _birth_gate_off(monkeypatch):
+    """Theme consolidation Phase 1 (2026-07-27): promote_shadow_themes now reads
+    the 3-state 'theme_birth_gate' mode once per run. Pin it 'off' here so these pre-gate
+    pins keep exercising the byte-identical legacy path without a real DB read
+    (fail-closed OFF is the production default until the operator signs the flip)."""
+    monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
+
+
 def _run(coro):
     return asyncio.run(coro)
 

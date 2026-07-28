@@ -1,5 +1,13 @@
 """Coverage probe (S2, EP↔theme coverage loop — design 2026-07-13 §3).
 
+⚠ JOB RETIRED behind the `theme_birth_gate` toggle (theme consolidation Phase 1,
+operator-ruled 2026-07-27, decision 2 — 0 confirmed cohorts / 0 candidates
+lifetime): in mode 'on', scheduler._coverage_probe_job skips run_coverage_probe
+(audited `coverage_probe_retired`). This MODULE stays: its pure helpers —
+market_adjust_moves (P3 market-adjusted co-movement), cohort_overlap — are the
+birth gate's kept evidence primitives (theme_birth_gate.py imports them). Modes
+'off' AND 'observe' ⇒ the job runs exactly as documented below (byte-identical).
+
 ONE EOD SHADOW job: for each of the day's THEMELESS EP alerts (HIGH + MODERATE — fork
 F-A: ALL themeless alerts, never judge-gated), build a candidate peer cohort from three
 DETERMINISTIC, zero-LLM evidence sources and log it to `mi_coverage_probe`:
