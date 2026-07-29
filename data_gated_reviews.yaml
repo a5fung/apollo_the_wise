@@ -7744,3 +7744,56 @@ reviews:
     status: pending
     added_on: 2026-07-27
     cross_refs: ["task #505", "task #506"]
+
+  - review_id: exit_regime_interaction_review
+    question: >-
+      Operator 2026-07-29: "regime itself needs to be combined with sell discipline,
+      and we need to find a balance — i.e. does taking early profits in correcting vs
+      bull regime work better... there is a POTENTIAL FOR PROFITS with existing trades,
+      but we need more trades/data to find the real answer here."
+
+      This is that re-look, gated on TRADE COUNT, not a date.
+
+      STATE AT REGISTRATION (2026-07-29). Live EP cohort, regime-split by joining
+      mi_market_regime on alert_date: Correcting n=6 realized -0.97R / peak 1.75R;
+      Choppy n=4 -0.82R / 1.98R; Bull n=1 -1.00R / 0.48R. ZERO winners in any regime.
+      So regime does NOT yet discriminate on live trades — the giveback is UNIFORM,
+      average peak ~1.8R against average realized ~-0.9R, 10 of 10. What today's data
+      proves is that NOTHING BANKS THE EXCURSION; it cannot yet say whether the right
+      exit differs by regime.
+
+      Shadow cohort is directional and INVERTS the intuition: consolidation
+      `anticipate` is WORST in Bull (n=21, -0.577R, largest excursion 3.30R) versus
+      Choppy (n=92, -0.240R, 2.16R) — strongest tape, furthest run, most given back.
+      `confirm` mirrors it. Bull is the thin cell everywhere and there is no
+      Bull/confirm cell at all.
+
+      METHOD, already proven — do not rebuild it: regime is RECONSTRUCTED by joining
+      mi_market_regime (367 days, back to 2025-03-03, all four labels) on the entry or
+      alert date. Do NOT rely on mi_consolidation_entry_shadow.regime_at_entry, which
+      is populated on only 41 of 265 rows. Run the cut across EVERY setup — live EP,
+      consolidation, HTF, wick, 9M — per the operator; it costs nothing.
+
+      WHEN THIS FIRES, the question: does the best exit rule differ by regime, or is
+      one rule right everywhere? Specifically — does taking profit earlier in
+      Correcting/Choppy beat holding, and does Bull deserve a looser hand? Report each
+      regime cell with n, and state plainly which cells are still too thin to rule on.
+
+      Exit discipline on the money path => THE LINE: CHANGE_PROCESS + operator sign-off
+      before any rule ships. This review produces evidence, not a rule.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE status = 'closed' AND account_mode = 'live'
+    threshold: 25
+    # 10 closed live trades at registration. 25 gives a plausible 3-way regime split
+    # (the current 6/4/1 cannot support one). Trade-count gated, never a date — a
+    # future date could only delay a review whose evidence is already in (ruled 7/26).
+    earliest_review_date: 2026-07-29
+    action_when_ready: >-
+      Re-run the regime x exit cut across all setups using the date join. Report
+      realized R, peak R and win rate per regime cell with n. Name which cells remain
+      too thin. Then the operator rules whether the exit rule varies by regime.
+      Rulings land on #508's PLAN line.
+    status: pending
+    added_on: 2026-07-29
+    cross_refs: ["task #508", "task #503"]
