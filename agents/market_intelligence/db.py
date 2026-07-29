@@ -6183,18 +6183,25 @@ async def record_birth_candidate_sighting(
                      status, last_outcome, last_reason, mode, rs_avg, rs_traj5,
                      join_overlap, ledger_overlap, p3_co_moving, p3_spy_move,
                      born_date, join_target)
-                VALUES ($1, $2, $2, 1, $3, $4,
+                -- EVERY $2 carries an explicit ::date. Without it the
+                -- `CASE WHEN ... THEN $2 ELSE NULL END` arm lets asyncpg deduce
+                -- $2 as TEXT while the first_seen/last_seen arms deduce DATE,
+                -- and the whole statement dies with "inconsistent types deduced
+                -- for parameter $2: text versus date". That crashed the ENTIRE
+                -- nightly_data_pull on 2026-07-28 and left mi_themes at 0 rows.
+                -- Same class as the #310 pivot_stop crash fixed the same day.
+                VALUES ($1, $2::date, $2::date, 1, $3, $4,
                         CASE WHEN $5 = 'birth' THEN 'born' ELSE 'watching' END,
                         $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                        CASE WHEN $5 = 'birth' THEN $2 ELSE NULL END, $14)
+                        CASE WHEN $5 = 'birth' THEN $2::date ELSE NULL END, $14)
                 RETURNING id
             """, name, td, list(tickers), source, outcome, reason, mode,
                  rs_avg, rs_traj5, join_overlap, ledger_overlap,
                  p3_co_moving, p3_spy_move, join_target)
         await conn.execute("""
             UPDATE mi_theme_birth_candidates SET
-                sightings = sightings + CASE WHEN last_seen < $2 THEN 1 ELSE 0 END,
-                last_seen = GREATEST(last_seen, $2),
+                sightings = sightings + CASE WHEN last_seen < $2::date THEN 1 ELSE 0 END,
+                last_seen = GREATEST(last_seen, $2::date),
                 tickers = (SELECT ARRAY(
                     SELECT DISTINCT t FROM unnest(tickers || $3::text[]) AS t ORDER BY t)),
                 status = CASE WHEN $4 = 'birth' THEN 'born' ELSE status END,
@@ -6206,7 +6213,7 @@ async def record_birth_candidate_sighting(
                 ledger_overlap = $10,
                 p3_co_moving = COALESCE($11, p3_co_moving),
                 p3_spy_move = COALESCE($12, p3_spy_move),
-                born_date = CASE WHEN $4 = 'birth' THEN $2 ELSE born_date END,
+                born_date = CASE WHEN $4 = 'birth' THEN $2::date ELSE born_date END,
                 join_target = COALESCE($13, join_target),
                 updated_at = NOW()
             WHERE id = $1

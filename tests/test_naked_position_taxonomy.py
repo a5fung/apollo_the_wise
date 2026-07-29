@@ -122,8 +122,25 @@ async def test_mixed_cohort_partitions_correctly():
     assert db_drift_tickers == {"DRIFT"}
 
 
-def test_formatter_real_naked_only():
-    """Render: only NAKED section, no DB-drift section."""
+def test_formatter_real_naked_only(monkeypatch):
+    """Render: only NAKED section, no DB-drift section.
+
+    ⚠ TIME-FROZEN deliberately. #507 (2026-07-28) made the action line branch on
+    ET market hours, which silently made this test CLOCK-DEPENDENT — it passed at
+    09:40 ET and failed the same evening, purely because of when it ran. That
+    would have broken CI at random. Freeze to a known intraday moment so the
+    assertion means something.
+    """
+    import agents.market_intelligence.system_audit as sa
+    from datetime import datetime as _dt
+    _frozen = _dt(2026, 7, 28, 11, 0, tzinfo=sa._ET)
+
+    class _FrozenDT(_dt):
+        @classmethod
+        def now(cls, tz=None):
+            return _frozen
+    monkeypatch.setattr(sa, "datetime", _FrozenDT)
+
     from agents.market_intelligence.system_audit import _format_naked_position_alert
     text = _format_naked_position_alert({
         "real_naked": [{"ticker": "AAPL", "alert_date": "2026-05-28", "filled_at": None}],
