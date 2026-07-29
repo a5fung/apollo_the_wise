@@ -191,7 +191,9 @@ def test_theme_itemize_boundary_just_over_emits():
     text = compose_evening_brief(_quiet_data(**_one_theme(78.0, 70.0)))  # Δ +8.0
     assert "⚡ 1 material tonight" in text
     assert "*THEME BREAK*" in text
-    assert "+8.0" in text
+    # #479 relabel (2026-07-28): "78 +8.0" became "RS 78  ▲8  (was 70)" —
+    # the bare pair gave no clue which number was the level and which the move.
+    assert "RS  78" in text and "▲8" in text and "(was 70)" in text
 
 
 def test_theme_emphasis_boundary():
@@ -219,7 +221,8 @@ def test_theme_itemize_cap_top5_overflow_counted():
         prior[f"TH{i}"] = {"rs_avg": 80.0, "stage": "Nascent", "days_active": 3,
                            "theme_date": THU - timedelta(days=1), "tickers": []}
     text = compose_evening_brief(_quiet_data(theme_scores=scores, theme_prior=prior))
-    assert "THEMES — 6 moved ≥8, top 5:*" in text
+    # header now says what it IS: biggest moves, not a leaderboard of the best
+    assert "THEMES — 6 moved ≥8 pts — biggest 5:*" in text
     assert "_+1 more ≥8" in text
     assert text.count("`TH") == 5   # exactly five itemized
 

@@ -418,8 +418,18 @@ def _theme_material(data: BriefData) -> tuple[list[str] | None, dict]:
     if len(movers) == 1:
         lines.append("📊 *THEME BREAK*")
     elif movers:
-        cap_note = f", top {THEME_ITEMIZE_CAP}:" if len(movers) > THEME_ITEMIZE_CAP else ":"
-        lines.append(f"📊 *THEMES — {len(movers)} moved ≥{THEME_ITEMIZE_DELTA:.0f}{cap_note}*")
+        # Operator 2026-07-28: "all of it is very confusing". The old header read
+        # "N moved ≥8, top 5:" which implied a LEADERBOARD of the best themes.
+        # It is neither: "moved ≥8" counts moves in EITHER direction, and "top 5"
+        # means the five BIGGEST MOVES, not the five strongest. On a red day that
+        # renders five collapsing themes under a heading that looks like a ranking.
+        # Say what it is.
+        cap_note = (f" — biggest {THEME_ITEMIZE_CAP}:" if len(movers) > THEME_ITEMIZE_CAP
+                    else ":")
+        lines.append(
+            f"📊 *THEMES — {len(movers)} moved ≥{THEME_ITEMIZE_DELTA:.0f} pts"
+            f"{cap_note}*"
+        )
     else:
         lines.append("📊 *THEMES*")
 
@@ -439,7 +449,16 @@ def _theme_material(data: BriefData) -> tuple[list[str] | None, dict]:
             suffix += f"  {_esc(m['stage'])}"   # stage flip rides the qualified mover
         if m["name"] == top_today and top_today != top_prior:
             suffix += "  ← now #1"
-        lines.append(f"{mark}`{name:<{width}} {m['level']:>3.0f} {m['delta']:+.1f}`{suffix}")
+        # Label the two numbers and show where it CAME FROM. The bare
+        # "25 -31.0" gave no clue that 25 is the theme's RS now and -31 is the
+        # move, nor that it stood at 56 yesterday — so a big faller read as a
+        # weak leaderboard entry (operator 2026-07-28).
+        _arrow = "▼" if m["delta"] < 0 else "▲"
+        _was = m["level"] - m["delta"]
+        lines.append(
+            f"{mark}`{name:<{width}} RS {m['level']:>3.0f}  {_arrow}{abs(m['delta']):.0f}"
+            f"  (was {_was:.0f})`{suffix}"
+        )
 
     for g in grads:
         lines.append(f"🎓 Graduated: {_esc(g)} — survived validation week")
