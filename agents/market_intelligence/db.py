@@ -2153,6 +2153,59 @@ async def initialize_schema() -> None:
                 computed_at          TIMESTAMPTZ DEFAULT NOW()
             );
 
+            -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
+            -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
+            -- with WHEN, and the daily-close peak a close-driven rule could have seen), what
+            -- it KEPT, and the judgment context (judge verdicts, partial, stop-ever-above-
+            -- entry). RECORD + DISPLAY ONLY — no exit rule lives here (THE LINE); workstream
+            -- 2 replays candidate rules against these rows. Written nightly (17:46 ET,
+            -- catch-up window) BEFORE mi_intraday_bars' 120d retention purges the peak's
+            -- minute-level WHEN. NO regime column BY DESIGN: regime is reconstructed at read
+            -- time via mi_market_regime ON regime_date = alert_date (never denormalised —
+            -- the mi_consolidation_entry_shadow.regime_at_entry 41/265 lesson).
+            CREATE TABLE IF NOT EXISTS mi_sell_discipline_records (
+                trade_id              INT PRIMARY KEY,
+                ticker                TEXT NOT NULL,
+                signal_type           TEXT,
+                account_mode          TEXT,
+                alert_date            DATE,
+                fill_day              DATE,
+                close_day             DATE,
+                filled_at             TIMESTAMPTZ,
+                closed_at             TIMESTAMPTZ,
+                entry_price           DOUBLE PRECISION,
+                risk_per_share        DOUBLE PRECISION,   -- entry − hard_stop (orb_low fallback)
+                entry_shares          DOUBLE PRECISION,
+                realized_pnl          DOUBLE PRECISION,
+                realized_r            DOUBLE PRECISION,   -- what we KEPT
+                peak_price            DOUBLE PRECISION,   -- intraday-axis in-hold peak
+                peak_r                DOUBLE PRECISION,   -- what it REACHED
+                peak_time             TIMESTAMPTZ,        -- minute-bar WHEN (NULL = unknown)
+                peak_day              DATE,
+                peak_hold_day         INT,                -- 1-based trading-day index of the peak
+                peak_source           TEXT,               -- minute_bars | extremes[+daily] | daily_high[+extremes] | none
+                peak_bars_n           INT,                -- in-hold minute bars seen (coverage honesty)
+                peak_close            DOUBLE PRECISION,   -- daily-close-axis peak (16:00 ET closes while open)
+                peak_close_r          DOUBLE PRECISION,
+                peak_close_day        DATE,
+                giveback_r            DOUBLE PRECISION,   -- peak_r − realized_r (the gap)
+                capture_pct           DOUBLE PRECISION,   -- realized_r / peak_r when peak_r > 0
+                hold_trading_days     INT,
+                stop_above_entry_ever BOOLEAN,
+                partial_taken         BOOLEAN,
+                judge_verdicts_n      INT,
+                judge_last_verdict    TEXT,
+                judge_last_verdict_date DATE,
+                judge_last_verdict_r  DOUBLE PRECISION,
+                judge_first_warn_verdict TEXT,            -- first non-HOLD shadow verdict, if any
+                judge_first_warn_date DATE,
+                judge_first_warn_r    DOUBLE PRECISION,
+                pnl_attribution       TEXT,               -- non-NULL = bug-distorted P&L; cohort reads filter it
+                created_at            TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_sell_discipline_close_day
+                ON mi_sell_discipline_records(close_day DESC);
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales

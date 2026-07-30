@@ -138,6 +138,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
     "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
+    "sell_discipline_recorder",  # #508 WS1 — reached-vs-kept record per closed trade; pure compute + DB/audit, no broker calls, no rule
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
@@ -3886,6 +3887,25 @@ async def _pivot_stop_shadow_job():
         await notify_job_failure("pivot_stop_shadow", str(e))
 
 
+async def _sell_discipline_recorder_job():
+    """Run at 17:46 ET (EOD, after the 17:00 nightly close pull + the 17:38/17:42 shadows).
+    #508 WS1: write one durable sell-discipline record per newly-closed trade (ALL setups,
+    both account modes) — what it REACHED (intraday + daily-close axes, with WHEN) vs what
+    it KEPT — BEFORE mi_intraday_bars' 120d retention purges the minute-level peak timing.
+    Catch-up window (the #310 lesson), idempotent. RECORD ONLY — no exit rule, no broker
+    calls, no live-trade mutation (THE LINE). Surfaces on the 16:02 mgmt-judge Telegram
+    (records for a trade closed today appear on the NEXT day's digest; same-day closes
+    show as provisional lines meanwhile)."""
+    try:
+        from agents.market_intelligence.sell_discipline import record_sell_discipline
+        from agents.market_intelligence.collector import et_today
+        n = await record_sell_discipline(et_today())
+        logger.info(f"sell-discipline recorder: wrote {n} record(s)")
+    except Exception as e:
+        logger.error(f"sell-discipline recorder job failed: {e}", exc_info=True)
+        await notify_job_failure("sell_discipline_recorder", str(e))
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -5107,6 +5127,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_pivot_stop_shadow_job, "pivot_stop_shadow"),
         CronTrigger(hour=17, minute=42, day_of_week="mon-fri", timezone="America/New_York"),
         id="pivot_stop_shadow",
+        replace_existing=True,
+    )
+
+    # #508 WS1 sell-discipline RECORDER — 17:46 ET mon-fri, after the 17:00 nightly close pull
+    # (close-day daily rows exist) and the 17:38/17:42 counterfactual shadows. One durable
+    # reached-vs-kept record per newly-closed trade; record + display only, no exit rule.
+    _scheduler.add_job(
+        audit_wrap(_sell_discipline_recorder_job, "sell_discipline_recorder"),
+        CronTrigger(hour=17, minute=46, day_of_week="mon-fri", timezone="America/New_York"),
+        id="sell_discipline_recorder",
         replace_existing=True,
     )
 

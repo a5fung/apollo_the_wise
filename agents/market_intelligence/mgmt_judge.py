@@ -13,10 +13,13 @@ R-math note (ADR 0014 / advisor 2026-06-17): the R denominator is the ORIGINAL e
 a negative denominator → garbage R that won't throw). R is None when orb_low is absent or >= entry.
 """
 import asyncio
+import logging
 from typing import Optional
 
 from agents.market_intelligence.judge_transport import invoke_forced_tool
 from shared.llm_models import JUDGE_MODEL as MODEL
+
+logger = logging.getLogger(__name__)
 
 # The bounded management-verdict vocabulary (ADR 0014). An out-of-enum answer → fail-open (None).
 VERDICTS = ("HOLD", "PARTIAL_TAKE", "TRAIL_TIGHTEN", "FORCE_EXIT")
@@ -214,11 +217,30 @@ async def _fetch_entry_thesis(ticker, alert_date) -> Optional[dict]:
     return dict(row) if row else None
 
 
+async def _sell_discipline_tail(positions: list, snaps: dict, today) -> str:
+    """#508 WS1: the unified sell-discipline section that rides this Telegram surface.
+    Fail-open LOUDLY (audit + log) — a surface failure must never block the judge digest."""
+    from agents.market_intelligence.db import log_audit_event
+    try:
+        from agents.market_intelligence.sell_discipline import build_sell_discipline_section
+        return await build_sell_discipline_section(positions, snaps, today)
+    except Exception as e:
+        logger.error(f"sell-discipline surface failed: {e}", exc_info=True)
+        try:
+            await log_audit_event(
+                "sell_discipline_surface_error", f"{today}: {type(e).__name__}: {e}")
+        except Exception:  # loud-ok: audit-of-the-audit; logger.error above already fired
+            pass
+        return "📼 Sell discipline: surface failed (see audit log)."
+
+
 async def run_position_mgmt_judge(send: bool = False) -> str:
     """ADR 0014 daily pass: one SHADOW management verdict per open live position. DB-sourced ground
     truth (feedback_scheduler_aggregators_db_sourced — no module state), current price from a live
     snapshot, fail-open per position (None verdict → audit `position_mgmt_judge_null`, no row, never
-    raises). ZERO execution authority — telemetry + a digest line only."""
+    raises). ZERO execution authority — telemetry + a digest line only. The #508 sell-discipline
+    section (reached vs kept, recorder-only) is appended to the SAME message in every branch —
+    the operator asked for ONE unified surface on the judge Telegram he already receives."""
     from agents.market_intelligence.db import (
         get_open_live_trades, insert_position_mgmt_decision, log_audit_event)
     from agents.market_intelligence.collector import get_snapshot_all, et_today
@@ -226,54 +248,55 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
 
     today = et_today()
     positions = await get_open_live_trades()
+    snaps: dict = {}
     if not positions:
-        msg = "🧭 Mgmt-judge (shadow): no open positions today."
-        if send:
-            from agents.market_intelligence.briefing import send_telegram_message
-            await send_telegram_message(msg)
-        return msg
-
-    snaps = await get_snapshot_all()
-    if not snaps:
-        # get_snapshot_all swallows errors → {}. If the whole snapshot is empty, EVERY price would
-        # be None and the judge would grade EVERY position blind-on-price → a full batch of garbage
-        # verdicts in the very telemetry the operator labels. Skip the pass instead (advisor).
-        from agents.market_intelligence.briefing import send_telegram_message
-        await log_audit_event(
-            "position_mgmt_judge_skipped", f"{today}: empty snapshot — pass skipped, no rows written")
-        msg = "🧭 Mgmt-judge (shadow): snapshot empty — pass skipped (no blind-on-price verdicts)."
-        if send:
-            await send_telegram_message(msg)
-        return msg
-
-    client = _get_claude()
-    lines = []
-    for pos in positions:
-        tk = pos.get("ticker")
-        px = snapshot_price(snaps.get(tk))
-        if px is None:
-            # Per-ticker missing price: don't write a price-blind verdict for this one — audit + skip.
+        text = "🧭 Mgmt-judge (shadow): no open positions today."
+    else:
+        snaps = await get_snapshot_all()
+        if not snaps:
+            # get_snapshot_all swallows errors → {}. If the whole snapshot is empty, EVERY price
+            # would be None and the judge would grade EVERY position blind-on-price → a full batch
+            # of garbage verdicts in the very telemetry the operator labels. Skip the pass instead
+            # (advisor). The discipline tail still renders — records don't need a live snapshot.
             await log_audit_event(
-                "position_mgmt_judge_null", f"{tk} {today}: no live price in snapshot — skipped")
-            lines.append(f"⚠️ {tk} — no live price (skipped)")
-            continue
-        thesis = await _fetch_entry_thesis(tk, pos.get("alert_date"))
-        payload = assemble_mgmt_inputs(pos, px, thesis)
-        verdict = await manage_holistic(client, payload)
-        if verdict:
-            await insert_position_mgmt_decision(
-                pos.get("id"), tk, today, account_mode=pos.get("account_mode"),
-                verdict=verdict["verdict"], rationale=verdict["rationale"],
-                confidence=verdict.get("confidence"), payload=payload,
-                hold_days=pos.get("hold_days"), current_price=px, model=MODEL)
-            lines.append(format_mgmt_line(payload, verdict))
+                "position_mgmt_judge_skipped",
+                f"{today}: empty snapshot — pass skipped, no rows written")
+            text = "🧭 Mgmt-judge (shadow): snapshot empty — pass skipped (no blind-on-price verdicts)."
         else:
-            await log_audit_event(
-                "position_mgmt_judge_null", f"{tk} {today}: management judge fail-open (no verdict)")
-            lines.append(f"⚠️ {tk} — judge fail-open (no verdict)")
+            client = _get_claude()
+            lines = []
+            for pos in positions:
+                tk = pos.get("ticker")
+                px = snapshot_price(snaps.get(tk))
+                if px is None:
+                    # Per-ticker missing price: don't write a price-blind verdict — audit + skip.
+                    await log_audit_event(
+                        "position_mgmt_judge_null",
+                        f"{tk} {today}: no live price in snapshot — skipped")
+                    lines.append(f"⚠️ {tk} — no live price (skipped)")
+                    continue
+                thesis = await _fetch_entry_thesis(tk, pos.get("alert_date"))
+                payload = assemble_mgmt_inputs(pos, px, thesis)
+                verdict = await manage_holistic(client, payload)
+                if verdict:
+                    await insert_position_mgmt_decision(
+                        pos.get("id"), tk, today, account_mode=pos.get("account_mode"),
+                        verdict=verdict["verdict"], rationale=verdict["rationale"],
+                        confidence=verdict.get("confidence"), payload=payload,
+                        hold_days=pos.get("hold_days"), current_price=px, model=MODEL)
+                    lines.append(format_mgmt_line(payload, verdict))
+                else:
+                    await log_audit_event(
+                        "position_mgmt_judge_null",
+                        f"{tk} {today}: management judge fail-open (no verdict)")
+                    lines.append(f"⚠️ {tk} — judge fail-open (no verdict)")
 
-    text = (f"🧭 Mgmt-judge — SHADOW, zero authority · {len(positions)} open\n\n"
-            + "\n\n".join(lines))
+            text = (f"🧭 Mgmt-judge — SHADOW, zero authority · {len(positions)} open\n\n"
+                    + "\n\n".join(lines))
+
+    section = await _sell_discipline_tail(positions, snaps, today)
+    if section:
+        text += "\n\n" + section
     if send:
         from agents.market_intelligence.briefing import send_telegram_message
         await send_telegram_message(text)
