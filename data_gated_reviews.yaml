@@ -7563,16 +7563,26 @@ reviews:
       SELECT LEAST(
         (SELECT COUNT(*) FROM mi_live_trades
           WHERE account_mode = 'live' AND status = 'closed'),
-        -- WINNER GATE (added 2026-07-30). Raw trade count is NOT sufficient: the
-        -- W2 replay stalled not on sample size but on having ZERO live winners —
-        -- every candidate's COST side (what a profit-taking rule gives up on a
-        -- real runner) was priced from 2 PAPER winners, one of which dominated.
-        -- Twenty more losers would fire this review and still not settle it.
-        -- So the count is CAPPED until >=2 live trades have both reached +2R and
-        -- closed positive: 10 x priced_winners means the gate opens at 2 winners.
-        -- Today: 12 closed, 0 winners, 0 priced winners -> predicate returns 0.
+        -- ── RUNNER GATE (2026-07-30, REPLACED a winner gate the operator broke) ──
+        -- My first version required 2 live WINNERS. The operator caught the catch-22:
+        -- "if our sell rules need improvement, current 3-day profit take may not yield
+        -- 2 winners for a long time." Exactly right — live trades die at 1.5 days, never
+        -- reach the day-3 partial, and always close ~-1R, so the gate waited on an
+        -- outcome the rule under test structurally prevents. It could never open.
+        --
+        -- THE FIX, and the conceptual correction: the COST of a profit-taking rule is
+        -- priced by trades that RAN PAST the trigger, NOT by trades that WON. MANE
+        -- reached +7.92R and closed -0.23R: take 1/3 at +2R and you can price exactly
+        -- what that third gave up on the run to 7.92R. A give-back trade is a PERFECT
+        -- laboratory — you have the whole path. I had conflated "did the trade work"
+        -- with "can we price the rule"; they are different questions.
+        --
+        -- So: count live trades whose peak reached >=4R, i.e. WELL past any candidate
+        -- trigger, which is what makes both benefit AND cost measurable. Satisfiable
+        -- under the current rule, because reaching +4R does not require surviving to
+        -- day 3. Today: 1 (MANE 7.92R) -> 10, so the trade count still binds.
         (SELECT 10 * COUNT(*) FROM mi_sell_discipline_records
-          WHERE account_mode = 'live' AND peak_r >= 2 AND realized_r > 0)
+          WHERE account_mode = 'live' AND peak_r >= 4)
       );
     threshold: 20
     earliest_review_date: 2026-08-01
