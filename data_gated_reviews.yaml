@@ -1579,7 +1579,35 @@ reviews:
       (no trips) the whole window, note "calm period, no effectiveness data yet"
       + extend.
       Origin: 2026-06-03 #174 active flip (operator: track effectiveness going forward).
-    # ── RUN 2026-07-30 (inline, read-only). VERDICT: NET-HELPED, KEEP AS-IS. ──
+    # ── RUN 2026-07-30 (inline, read-only). ──
+    # ⚠⚠ VERDICT CORRECTED BY THE OPERATOR MID-REVIEW: "why looking at paper? we've
+    # switched to real money a month ago." He is RIGHT and my first verdict was
+    # WORTHLESS — it measured the PAPER account, which is the account this review's
+    # own predicate names (written PRE-CUTOVER, when paper WAS the system).
+    #
+    # THE ANSWER THAT MATTERS — ON LIVE MONEY THE BREAKER HAS NEVER ACTED:
+    #   live: state=WATCH · peak $5,000 (2026-07-03) · drawdown -4.36% · evaluated
+    #   2026-07-29 · 28 equity snapshots. Its ONLY live event is drawdown_watch_entered
+    #   on 2026-07-28.
+    #   Tiers: WATCH -4% (multiplier 1.0x = WARNING ONLY, sizes nothing down),
+    #   REDUCE -7%, BLOCK -12%. At -4.36% it sits in the tier that does NOTHING.
+    # So on real money: TRACKING correctly, PROTECTING nothing yet — REDUCE has never
+    # fired live, BLOCK has never fired anywhere, zero entries carry
+    # skip_reason block:drawdown_breaker lifetime.
+    #
+    # WHAT IS STILL PROVEN: the mechanism is wired and evaluates daily on BOTH modes,
+    # and it correctly transitioned live->WATCH when the drawdown crossed 4%.
+    #
+    # THE PAPER READ, kept only as pre-cutover context and NOT as the verdict:
+    # one REDUCE trip 2026-06-05 -> 07-06 (31d); enforcement was real (REDUCE-window
+    # n=6 avg risk $297 / notional $7,311 vs $917 / $18,504 outside = ~1/3 normal,
+    # the 0.5x compounding with regime sizing); those 6 lost $2,493 at reduced size.
+    # ⚠ AND EVEN THAT IS WEAKER THAN IT LOOKS — the operator caught this too: SYRE
+    # alone is -$1,483 of the -$2,493 (60%), the other five average ~-$200. So the
+    # paper "saving" rests on ONE trade being small, not on a broad effect. Comparison
+    # group outside the window is a SINGLE trade.
+    # ── VERDICT: UNPROVEN ON LIVE. Keep ACTIVE, change nothing, re-look when live
+    # drawdown actually reaches REDUCE (-7%) — that is the first real test. ──
     # (a) TRIPS JUSTIFIED — yes, and sparing: exactly ONE REDUCE trip in the whole
     #     active phase (entered 2026-06-05, released 2026-07-06 = 31 days), then
     #     WATCH released 07-20 and WATCH re-entered 07-28. BLOCK has NEVER fired and
@@ -1601,7 +1629,7 @@ reviews:
     # NO CHANGE_PROCESS action — thresholds untouched, breaker keeps its ACTIVE
     # phase. Re-look naturally if BLOCK ever fires or a REDUCE window coincides
     # with a genuine winner cohort (that is the case this review could not test).
-    status: resolved
+    status: pending
 
     added_on: 2026-06-03
 
