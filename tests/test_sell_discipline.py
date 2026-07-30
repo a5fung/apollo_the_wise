@@ -409,3 +409,19 @@ def test_missing_adr_yields_null_not_a_fabricated_number():
     assert rec["peak_r"] is not None          # R still computes
     assert rec["peak_adr"] is None            # normalised axis honestly absent
     assert rec["stop_per_adr"] is None
+
+
+def test_insert_column_count_matches_placeholder_count():
+    """The gap that let a broken INSERT ship on 2026-07-30.
+
+    The existing test counts BOUND ARGS (41) and passed while the SQL still had
+    37 placeholders — arg-count and placeholder-count are different failures, and
+    only the database catches the second ("INSERT has more target columns than
+    expressions"). This one is static, so it catches it before prod does.
+    """
+    import re
+    from agents.market_intelligence.sell_discipline import _INSERT_SQL
+    cols = _INSERT_SQL[_INSERT_SQL.index("(trade_id"):_INSERT_SQL.index("VALUES")]
+    n_cols = cols.count(",") + 1
+    n_ph = len(set(re.findall(r"\$\d+", _INSERT_SQL[_INSERT_SQL.index("VALUES"):])))
+    assert n_cols == n_ph, f"{n_cols} columns vs {n_ph} placeholders"

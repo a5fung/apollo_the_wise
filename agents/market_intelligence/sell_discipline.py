@@ -338,8 +338,14 @@ _INSERT_SQL = """
          hold_trading_days, stop_above_entry_ever, partial_taken,
          judge_verdicts_n, judge_last_verdict, judge_last_verdict_date, judge_last_verdict_r,
          judge_first_warn_verdict, judge_first_warn_date, judge_first_warn_r, pnl_attribution)
+    -- 41 placeholders. Adding the 4 ADR columns to the list above without extending
+    -- THIS line gave "INSERT has more target columns than expressions" (2026-07-30).
+    -- Note the test that counts BOUND ARGS (41) passed while this was still 37 —
+    -- arg-count and placeholder-count are different failures and only the database
+    -- catches the second.
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-            $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37)
+            $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,
+            $38,$39,$40,$41)
     ON CONFLICT (trade_id) DO NOTHING
 """
 
