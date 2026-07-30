@@ -496,3 +496,29 @@ def test_cited_phrases_route_to_their_handlers(routed):
             f'cited phrase "{phrase}" routed to {result["handler"]}, '
             f"expected {handler} — the brief would orphan this signal"
         )
+
+
+# ── #508/#456: the sizing floor must be VISIBLE, never silent ────────────────
+
+def test_sizing_floor_blocks_are_surfaced():
+    """First fired 2026-07-30 (SIMO/EME/PWR) — the day after Crisis regime cut
+    risk to ~$12/trade. Those setups were not traded SMALLER, they were NOT
+    TRADED. Operator ruled accept-and-flag: the block is correct, the silence
+    was not."""
+    from agents.market_intelligence.brief_composer import _ep_state_line
+    line = _ep_state_line({"ok": True, "high": 1, "moderate": 0, "sizing_blocked": 3})
+    assert "3 setup(s) unreachable" in line and "sizing floor" in line
+
+
+def test_no_blocks_adds_no_noise():
+    from agents.market_intelligence.brief_composer import _ep_state_line
+    line = _ep_state_line({"ok": True, "high": 1, "moderate": 0, "sizing_blocked": 0})
+    assert "unreachable" not in line
+
+
+def test_fetch_failure_is_distinguishable_from_a_clear_day():
+    """None must NOT render as 0 — 'we couldn't check' and 'nothing was blocked'
+    are different facts and the operator acts differently on each."""
+    from agents.market_intelligence.brief_composer import _ep_state_line
+    line = _ep_state_line({"ok": True, "high": 1, "moderate": 0, "sizing_blocked": None})
+    assert "unavailable" in line

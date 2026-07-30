@@ -191,6 +191,16 @@ class BriefData:
     # None = fetch failed.
     ep_outcomes: list[dict] | None = field(default_factory=list)
 
+    # #508/#456 (2026-07-30): count of today's setups SKIPPED because the sizing
+    # multiplier left <1 share (`setup:size_too_small`). NOT "traded smaller" —
+    # NOT TRADED AT ALL. It first fired 2026-07-30, the day after the regime went
+    # Crisis (0.25x -> ~$12 risk/trade): SIMO/EME/PWR all had per-share stop
+    # distances of $16-29, which cannot fit in $12. Operator ruled ACCEPT AND FLAG
+    # — "in crisis, risk management comes first" — so this is DISPLAY ONLY: it
+    # changes no sizing and blocks nothing. It exists because a partially-halted
+    # account should never be a silent state. None = fetch failed.
+    sizing_blocked_today: int | None = None
+
     # detectors (today counts; None = fetch failed)
     wick_today_count: int | None = 0
     wick_fill_rate_30d: float | None = None
@@ -556,7 +566,8 @@ def _ep_material(data: BriefData) -> tuple[list[str] | None, dict]:
     """Class 4: HIGHs that produced an entry, or anomalous terminal states
     (no terminal state at all / infra:* skip). Detection is old news by evening
     — HIGHs alert in real time intraday (design §1.5)."""
-    counts = {"high": 0, "moderate": 0, "entered": 0, "ok": data.ep_outcomes is not None}
+    counts = {"high": 0, "moderate": 0, "entered": 0, "ok": data.ep_outcomes is not None,
+              "sizing_blocked": data.sizing_blocked_today}
     if data.ep_outcomes is None:
         return None, counts
     high = [o for o in data.ep_outcomes if o.get("score_tier") == "HIGH"]
@@ -677,8 +688,15 @@ def _lenses_state_line(data: BriefData) -> str:
 def _ep_state_line(counts: dict) -> str:
     if not counts["ok"]:
         return "EP: outcomes fetch failed — `/eps`"
-    return (f"EP: {counts['high']} HIGH · {counts['moderate']} MOD · "
+    line = (f"EP: {counts['high']} HIGH · {counts['moderate']} MOD · "
             f"no entries · `/eps`")
+    # Surface the sizing-floor blocks (see BriefData.sizing_blocked_today).
+    n = counts.get("sizing_blocked")
+    if n:
+        line += f"\n⚠️ {n} setup(s) unreachable — sizing floor (<1 share) · `/why`"
+    elif n is None:
+        line += "\n⚠️ sizing-floor count unavailable"
+    return line
 
 
 def _detectors_state_line(data: BriefData) -> str:

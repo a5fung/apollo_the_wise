@@ -1156,6 +1156,33 @@ async def _emit_evening_brief_outcome(success: bool, today_str: str, chars: int)
             pass
 
 
+async def _fetch_sizing_blocked_today(today) -> "int | None":
+    """#508/#456 — count today's setups skipped by the sizing floor
+    (`setup:size_too_small`, i.e. <1 share after the multipliers).
+
+    DISPLAY ONLY. Operator ruled ACCEPT AND FLAG 2026-07-30 — "in crisis, risk
+    management comes first": the block itself is CORRECT (Crisis regime at 0.25x
+    leaves ~$12 risk/trade, and a $16-29 per-share stop cannot fit in that). What
+    was wrong is that it was SILENT — a partially-halted account should never be
+    an invisible state. First fired 2026-07-30 (SIMO, EME, PWR); zero occurrences
+    before that, lifetime.
+
+    Fail-soft: returns None on error so the brief says "unavailable" rather than
+    showing 0, which would be indistinguishable from a genuinely clear day.
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_live_trades "
+                "WHERE alert_date = $1::date AND skip_reason LIKE '%size_too_small%'",
+                today,
+            )
+    except Exception as e:  # loud-ok: display-only; None renders as "unavailable"
+        logger.warning(f"sizing-blocked count failed (non-fatal): {e}")
+        return None
+
+
 async def _compose_delta_brief(
     today: date,
     regime: dict,
@@ -1292,6 +1319,7 @@ async def _compose_delta_brief(
         themed_tickers_today=themed_tickers_today,
         themed_tickers_prior=themed_tickers_prior,
         ep_outcomes=ep_outcomes,
+        sizing_blocked_today=await _fetch_sizing_blocked_today(today),
         wick_today_count=wick_today_count,
         wick_fill_rate_30d=wick_fill_rate_30d,
         wick_settled_30d=wick_settled_30d,
