@@ -5727,7 +5727,15 @@ reviews:
         AND d0.open_price > 0
         AND d10.close IS NOT NULL;
     threshold: 10
-    earliest_review_date: 2026-07-15
+    # RE-SCOPED 2026-07-30 to the operator's standing priority (ruled 2026-07-29):
+    # "getting existing EP profitable is the critical thing, until then I'm not in a hurry
+    # to add new setups to live trades." This review asks to graduate a NEW setup toward
+    # live entry, so it is IMPORTANT-BUT-NOT-URGENT BY RULING — not neglected, correctly
+    # parked. Date moved out so it stops reporting as OVERDUE weekly; its data threshold is
+    # already met and keeps accruing, which only strengthens the eventual read.
+    # RE-OPEN EARLY the moment EP profitability is established — see task #508 and
+    # data_gated_reviews::exit_regime_interaction_review.
+    earliest_review_date: 2026-09-15
     action_when_ready: |
       Re-run scripts/_b94_intraday_flag_break_evidence.py. Built-in
       decision gate at the end fires one of:
@@ -5809,7 +5817,15 @@ reviews:
         AND d0.close > 0
         AND d10.close IS NOT NULL;
     threshold: 10
-    earliest_review_date: 2026-07-15
+    # RE-SCOPED 2026-07-30 to the operator's standing priority (ruled 2026-07-29):
+    # "getting existing EP profitable is the critical thing, until then I'm not in a hurry
+    # to add new setups to live trades." This review asks to graduate a NEW setup toward
+    # live entry, so it is IMPORTANT-BUT-NOT-URGENT BY RULING — not neglected, correctly
+    # parked. Date moved out so it stops reporting as OVERDUE weekly; its data threshold is
+    # already met and keeps accruing, which only strengthens the eventual read.
+    # RE-OPEN EARLY the moment EP profitability is established — see task #508 and
+    # data_gated_reviews::exit_regime_interaction_review.
+    earliest_review_date: 2026-09-15
     action_when_ready: |
       Pull cohort. Compute 5d/10d forward returns from current_price
       (the bounce-detection price).
@@ -5927,7 +5943,15 @@ reviews:
         AND d0.close > 0
         AND d10.close IS NOT NULL;
     threshold: 10
-    earliest_review_date: 2026-07-15
+    # RE-SCOPED 2026-07-30 to the operator's standing priority (ruled 2026-07-29):
+    # "getting existing EP profitable is the critical thing, until then I'm not in a hurry
+    # to add new setups to live trades." This review asks to graduate a NEW setup toward
+    # live entry, so it is IMPORTANT-BUT-NOT-URGENT BY RULING — not neglected, correctly
+    # parked. Date moved out so it stops reporting as OVERDUE weekly; its data threshold is
+    # already met and keeps accruing, which only strengthens the eventual read.
+    # RE-OPEN EARLY the moment EP profitability is established — see task #508 and
+    # data_gated_reviews::exit_regime_interaction_review.
+    earliest_review_date: 2026-09-15
     action_when_ready: |
       Pull cohort. Compute 5d/10d forward returns from current_price
       (the bounce-detection price, NOT next-day open like #94 — this
@@ -6862,7 +6886,16 @@ reviews:
       MANUFACTURED by the 1.2x agreement boost WITHOUT a direct source (the
       confident-confabulation population). As of 2026-06-10: N=0 in that slice
       (1 boost tick total, NRIX, direct-source-corroborated).
-    predicate_sql: null
+    # FIXED 2026-07-30: this was `predicate_sql: null` WITH `threshold: 5` — incoherent,
+    # since no query can satisfy a count. The board therefore rendered "count None≥5" and
+    # the entry read as an OVERDUE REVIEW for ~4 weeks when it was really an UNMEASURABLE
+    # one: a defect wearing a pending badge. (A null predicate IS a legitimate pattern here
+    # for date-surfaced reviews — but those pair it with threshold 0, as
+    # `narrative_theme_discovery_promote_gate` does.) The telemetry existed all along:
+    # 31 `perplexity_boost_shadow` audit rows. Made it measurable instead.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'perplexity_boost_shadow'
     threshold: 5
     earliest_review_date: 2026-07-01
     action_when_ready: |
