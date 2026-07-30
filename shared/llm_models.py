@@ -21,12 +21,74 @@ Rules:
 Pricing tables (core/spend.py, agents/.../spend_tracker.py) key off these
 constants so a tier bump re-prices spend logging automatically; ids kept ONLY
 for pricing historical rows live in the LEGACY section.
+
+── AUTO-RESOLUTION (operator-ruled 2026-07-30) ───────────────────────────────
+Tiers TRACK the newest concrete release automatically ("go with the leaders,
+but have guardrails … and we can always trace back to when they were updated").
+The tier constants below are RESOLVED at import via shared/model_resolver.py:
+
+    override (this file) > resolution cache (logs/model_resolution.json,
+    written nightly by the market-agent's model_resolution_refresh job)
+    > committed pin (this file)
+
+No network at import and none per LLM call — resolution is a local cache-file
+read; missing/corrupt cache, an unparseable id, or ANY resolver failure falls
+back to the committed pin. A resolved model takes effect at PROCESS BOOT (the
+running process keeps its boot-time binding) and is never silent: the release
+is Telegram'd when detected, and the boot recorder Telegrams + audit-logs +
+persists every effective change to `mi_model_resolution` (queryable "what was
+the judge running on date X").
+
+🔙 ROLLBACK — the 9:31am path when grades look wrong after a model change:
+    ONE EDIT: set the tier's entry in `_TIER_OVERRIDES` below to the last-good
+    concrete id (e.g. "opus": "claude-opus-4-8") → deploy. The override beats
+    the resolver unconditionally. Clear it back to None to resume tracking.
+Housekeeping after a green judge eval on a newly-resolved id: bump that tier's
+*_PIN to the evaluated id in the same commit (keeps the fail-safe floor current;
+preflight_model_resolution.py nags when the pin trails the resolved id).
 """
 
-# ── Tiers (raw model ids) ────────────────────────────────────────────────────
-SONNET = "claude-sonnet-4-6"
-HAIKU = "claude-haiku-4-5-20251001"
-OPUS = "claude-opus-4-8"
+from shared.model_resolver import TierResolution as _TierResolution
+from shared.model_resolver import resolve_tier as _resolve_tier
+
+# ── Tier pins (committed fail-safe floor — never auto-edited) ────────────────
+SONNET_PIN = "claude-sonnet-4-6"
+HAIKU_PIN = "claude-haiku-4-5-20251001"
+OPUS_PIN = "claude-opus-4-8"
+
+# ── Explicit tier overrides — THE one-edit rollback lever (see docstring) ────
+# A non-None value bypasses the resolver for that tier. Changing an entry is a
+# model-selection decision: its own commit, with rationale (and the judge-eval
+# gate hard-fails a judge-affecting override that was never evaluated).
+_TIER_OVERRIDES: dict[str, str | None] = {
+    "opus": None,
+    "sonnet": None,
+    "haiku": None,
+}
+
+# ── Tiers (resolved at import — concrete model ids) ──────────────────────────
+_res_opus = _resolve_tier("opus", OPUS_PIN, _TIER_OVERRIDES["opus"])
+_res_sonnet = _resolve_tier("sonnet", SONNET_PIN, _TIER_OVERRIDES["sonnet"])
+_res_haiku = _resolve_tier("haiku", HAIKU_PIN, _TIER_OVERRIDES["haiku"])
+
+OPUS = _res_opus.model
+SONNET = _res_sonnet.model
+HAIKU = _res_haiku.model
+
+# Forensics for the boot recorder + deploy gates: how each tier was resolved.
+TIER_RESOLUTIONS: dict[str, _TierResolution] = {
+    "opus": _res_opus,
+    "sonnet": _res_sonnet,
+    "haiku": _res_haiku,
+}
+
+_TIER_BY_ID: dict[str, str] = {OPUS: "opus", SONNET: "sonnet", HAIKU: "haiku"}
+
+
+def tier_of(model_id: str) -> "str | None":
+    """Which resolved tier a bound model id belongs to; None for static legacy
+    pins (e.g. METRICS_EXTRACTION_MODEL's deliberate SONNET_4_5 pin)."""
+    return _TIER_BY_ID.get(model_id)
 
 # Legacy ids — kept for pricing historical spend rows / deliberate pins only.
 SONNET_4_5 = "claude-sonnet-4-5"
@@ -98,12 +160,27 @@ HEALTHCHECK_MODEL = HAIKU
 # Both spend tables (core/spend.py orchestrator-side, agents/.../spend_tracker.py
 # market-agent-side) import this. The 2026-06-09 stale-rate bug (Haiku 0.80/4.00,
 # Opus 15/75) existed precisely because the rates lived in two hand-typed copies.
-# Verified against the live model catalog 2026-06-09.
+# Verified against the live model catalog 2026-06-09; tier rows re-verified
+# against the 2026-07 catalog (opus-5 $5/$25, sonnet-5 sticker $3/$15 — the
+# sonnet-5 intro discount through 2026-08-31 is deliberately NOT modeled, so
+# spend is over- not under-stated during the intro window).
+#
+# AUTO-RESOLUTION NOTE: the tier keys (SONNET/HAIKU/OPUS) are the RESOLVED ids,
+# so a resolver-tracked release re-prices automatically at its tier's rate. The
+# *_PIN keys stay priced explicitly so HISTORICAL spend rows written under the
+# pinned id keep pricing after the tier resolves forward (when resolution ==
+# pin the duplicate dict key is harmless — same value). LIMIT, stated plainly:
+# a new release that changes its TIER's price would be mispriced here until
+# this table is hand-updated — models.list carries no pricing, so the resolver
+# cannot verify rates. Unknown ids fall back to DEFAULT_PRICING_PER_MTOK.
 PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     SONNET:     {"input": 3.00, "output": 15.00},
+    SONNET_PIN: {"input": 3.00, "output": 15.00},
     SONNET_4_5: {"input": 3.00, "output": 15.00},
     HAIKU:      {"input": 1.00, "output": 5.00},
+    HAIKU_PIN:  {"input": 1.00, "output": 5.00},
     OPUS:       {"input": 5.00, "output": 25.00},
+    OPUS_PIN:   {"input": 5.00, "output": 25.00},
     OPUS_4_7:   {"input": 5.00, "output": 25.00},
     OPUS_4_6:   {"input": 5.00, "output": 25.00},
     # ── Perplexity (#377 cost meter) ─────────────────────────────────────────
