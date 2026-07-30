@@ -7560,8 +7560,20 @@ reviews:
       The n=9 baseline could NOT populate (c): ~2-3 trades per character bucket.
       Populating the segmentation is the main reason this recurs.
     predicate_sql: |
-      SELECT COUNT(*) FROM mi_live_trades
-      WHERE account_mode = 'live' AND status = 'closed';
+      SELECT LEAST(
+        (SELECT COUNT(*) FROM mi_live_trades
+          WHERE account_mode = 'live' AND status = 'closed'),
+        -- WINNER GATE (added 2026-07-30). Raw trade count is NOT sufficient: the
+        -- W2 replay stalled not on sample size but on having ZERO live winners —
+        -- every candidate's COST side (what a profit-taking rule gives up on a
+        -- real runner) was priced from 2 PAPER winners, one of which dominated.
+        -- Twenty more losers would fire this review and still not settle it.
+        -- So the count is CAPPED until >=2 live trades have both reached +2R and
+        -- closed positive: 10 x priced_winners means the gate opens at 2 winners.
+        -- Today: 12 closed, 0 winners, 0 priced winners -> predicate returns 0.
+        (SELECT 10 * COUNT(*) FROM mi_sell_discipline_records
+          WHERE account_mode = 'live' AND peak_r >= 2 AND realized_r > 0)
+      );
     threshold: 20
     earliest_review_date: 2026-08-01
     status: pending
@@ -7899,8 +7911,23 @@ reviews:
       Exit discipline on the money path => THE LINE: CHANGE_PROCESS + operator sign-off
       before any rule ships. This review produces evidence, not a rule.
     predicate_sql: >-
-      SELECT COUNT(*) FROM mi_live_trades
-      WHERE status = 'closed' AND account_mode = 'live'
+      SELECT LEAST(
+        (SELECT COUNT(*) FROM mi_live_trades
+          WHERE status = 'closed' AND account_mode = 'live'),
+        -- REGIME-DIVERSITY GATE (added 2026-07-30). Trade count alone cannot answer
+        -- "does the right exit differ by regime" — measured 2026-07-30 the live cells
+        -- were Bull n=1, Choppy n=4, Correcting n=6, Crisis n=0. Twenty-five more
+        -- trades all in one regime would fire this review and still answer nothing.
+        -- Capped until at least 3 DISTINCT regimes have >=4 live closes each:
+        -- 9 x that count means the gate opens at 3 qualifying regimes.
+        -- Today: 2 qualifying regimes (Choppy 4, Correcting 6) -> 18, so the trade
+        -- count still binds; at 25 trades in 2 regimes this correctly holds at 18.
+        (SELECT 9 * COUNT(*) FROM (
+            SELECT r.regime FROM mi_live_trades t
+              JOIN mi_market_regime r ON r.regime_date = t.alert_date
+             WHERE t.status = 'closed' AND t.account_mode = 'live'
+             GROUP BY r.regime HAVING COUNT(*) >= 4) q)
+      );
     threshold: 25
     # 10 closed live trades at registration. 25 gives a plausible 3-way regime split
     # (the current 6/4/1 cannot support one). Trade-count gated, never a date — a
