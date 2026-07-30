@@ -1579,7 +1579,30 @@ reviews:
       (no trips) the whole window, note "calm period, no effectiveness data yet"
       + extend.
       Origin: 2026-06-03 #174 active flip (operator: track effectiveness going forward).
-    status: pending
+    # ── RUN 2026-07-30 (inline, read-only). VERDICT: NET-HELPED, KEEP AS-IS. ──
+    # (a) TRIPS JUSTIFIED — yes, and sparing: exactly ONE REDUCE trip in the whole
+    #     active phase (entered 2026-06-05, released 2026-07-06 = 31 days), then
+    #     WATCH released 07-20 and WATCH re-entered 07-28. BLOCK has NEVER fired and
+    #     zero entries carry skip_reason block:drawdown_breaker, lifetime. The
+    #     harshest tier stayed unused — no evidence of trigger-happiness.
+    # (b) ENFORCEMENT IS REAL, not nominal — paper closed trades, alert_date basis:
+    #     REDUCE window n=6 avg risk budget $297 / avg notional $7,311
+    #     outside       n=1 avg risk budget $917 / avg notional $18,504
+    #     ~1/3 of normal risk, i.e. the breaker's 0.5x COMPOUNDING with regime
+    #     sizing. It is genuinely sizing down, not just logging that it would.
+    # (c) NET: those 6 REDUCE-window trades lost $2,493 AT REDUCED SIZE; at the
+    #     outside-window risk level the same trades would have lost roughly 3x that.
+    #     THE TIERED DESIGN'S EXPLICIT RISK — missing the recovery-winners that pay
+    #     for losses — DID NOT MATERIALISE: 1 winner in 6 during the window. There
+    #     were no recovery winners to miss.
+    # ⚠ HONEST LIMIT: the comparison group is a SINGLE trade (n=1 outside), so
+    #     "saved ~2/3" is DIRECTIONAL, not measured. What is solid: enforcement
+    #     works, the trip was sparing, and the feared cost did not appear.
+    # NO CHANGE_PROCESS action — thresholds untouched, breaker keeps its ACTIVE
+    # phase. Re-look naturally if BLOCK ever fires or a REDUCE window coincides
+    # with a genuine winner cohort (that is the case this review could not test).
+    status: resolved
+
     added_on: 2026-06-03
 
   - review_id: flag_ma_pin_filter
