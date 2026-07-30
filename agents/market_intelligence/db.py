@@ -2432,6 +2432,18 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_stocks_in_play_expires
                 ON mi_stocks_in_play(expires_at);
         """)
+        # CREATE TABLE IF NOT EXISTS does NOT add columns to a table that already
+        # exists — the ADR-normalised columns (#508, 2026-07-30) landed a day after
+        # the table did, so they need explicit ALTERs. The recorder failed LOUDLY and
+        # wrote 0 rows when they were missing, which is the correct failure mode, but
+        # the fix is here. Idempotent; safe on every boot.
+        for _col, _typ in (("stop_pct", "DOUBLE PRECISION"),
+                           ("stop_per_adr", "DOUBLE PRECISION"),
+                           ("peak_adr", "DOUBLE PRECISION"),
+                           ("realized_adr", "DOUBLE PRECISION")):
+            await conn.execute(
+                f"ALTER TABLE mi_sell_discipline_records "
+                f"ADD COLUMN IF NOT EXISTS {_col} {_typ};")
 
         # ── Strategy maturity registry ───────────────────────────────────
         # One row per strategy. `phase` controls whether entries are allowed
