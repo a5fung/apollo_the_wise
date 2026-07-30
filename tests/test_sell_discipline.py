@@ -425,3 +425,41 @@ def test_insert_column_count_matches_placeholder_count():
     n_cols = cols.count(",") + 1
     n_ph = len(set(re.findall(r"\$\d+", _INSERT_SQL[_INSERT_SQL.index("VALUES"):])))
     assert n_cols == n_ph, f"{n_cols} columns vs {n_ph} placeholders"
+
+
+def test_deprecated_cohorts_are_labelled_not_hidden():
+    """Operator 2026-07-30: "sell discipline still tracks 9m day2 but it's
+    deprecated."
+
+    KEPT rather than removed, deliberately: 9m_day2 is the ONLY cohort with a
+    positive kept (+0.2R) and it is the evidence that the day-3 partial WORKS
+    when it fires (8.0d avg hold, 4 partials) versus live magna53 (1.5d, zero).
+    Deleting it would delete the finding. But unlabelled it reads as a live
+    comparison, and nothing in that block can trade.
+    """
+    from agents.market_intelligence.sell_discipline import format_sell_discipline_section
+    txt = format_sell_discipline_section({
+        "recorded": [], "live_cohort": None, "shadow": {},
+        "phases": {"9m_day2": "deprecated", "magna53": "live"},
+        "cohorts": [
+            {"signal_type": "9m_day2", "account_mode": "paper", "n": 7,
+             "reached_avg": 2.1, "kept_avg": 0.2},
+            {"signal_type": "magna53", "account_mode": "paper", "n": 24,
+             "reached_avg": 2.3, "kept_avg": -0.8},
+        ],
+    })
+    dep = [l for l in txt.splitlines() if "9m_day2" in l][0]
+    live = [l for l in txt.splitlines() if "magna53" in l][0]
+    assert "deprecated" in dep and "cannot trade" in dep
+    assert "deprecated" not in live          # a live strategy is never mislabelled
+    assert "n=7" in dep                      # and the data is still shown
+
+
+def test_missing_phase_map_tags_nothing_rather_than_wrongly():
+    from agents.market_intelligence.sell_discipline import format_sell_discipline_section
+    txt = format_sell_discipline_section({
+        "recorded": [], "live_cohort": None, "shadow": {}, "phases": {},
+        "cohorts": [{"signal_type": "9m_day2", "account_mode": "paper", "n": 7,
+                     "reached_avg": 2.1, "kept_avg": 0.2}],
+    })
+    assert "deprecated" not in txt

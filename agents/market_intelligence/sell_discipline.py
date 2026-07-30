@@ -500,8 +500,19 @@ def format_sell_discipline_section(data: dict) -> str:
         body.append("OTHER RECORDED COHORTS · avg reached → kept")
         for c in data["cohorts"]:
             label = f"{c.get('signal_type') or '?'}/{c.get('account_mode') or '?'}"
+            # Mark DEPRECATED strategies (operator 2026-07-30: "sell discipline still
+            # tracks 9m day2 but it's deprecated"). KEPT rather than removed, on
+            # purpose: 9m_day2 is the ONLY cohort with a positive kept (+0.2R) and it
+            # is what proved the day-3 partial WORKS when it fires (avg hold 8.0d, 5 of
+            # 7 reached day 3, 4 partials) versus live magna53 (1.5d, 0 partials).
+            # Dropping it would delete the evidence behind the exit thesis. But shown
+            # unlabelled it reads as a live comparison, which it is not — nothing here
+            # can trade. Phase comes from mi_strategies so the tag stays true if a
+            # phase changes.
+            phase = (data.get("phases") or {}).get(c.get("signal_type"))
+            tag = "  (deprecated — cannot trade)" if phase == "deprecated" else ""
             body.append(f" {label:<14} n={c['n']:<3} {_r(c.get('reached_avg'))}"
-                        f" → {_r(c.get('kept_avg'))}")
+                        f" → {_r(c.get('kept_avg'))}{tag}")
 
     sh = data.get("shadow") or {}
     shadow_lines = []
@@ -579,6 +590,16 @@ async def build_sell_discipline_section(
             WHERE pnl_attribution IS NULL AND account_mode <> 'live'
             GROUP BY 1, 2 ORDER BY 2, 1
         """)
+        # Strategy phases so the render can mark DEPRECATED cohorts (#508, operator
+        # 2026-07-30: "sell discipline still tracks 9m day2 but it's deprecated").
+        # Read from mi_strategies rather than hardcoded, so the tag stays true if a
+        # phase changes. Fail-soft: an empty map tags nothing, never tags wrongly.
+        try:
+            phases = {r["strategy_id"]: r["phase"] for r in await conn.fetch(
+                "SELECT strategy_id, phase FROM mi_strategies")}
+        except Exception as e:  # loud-ok: display-only; no tag beats a wrong tag
+            logger.warning(f"strategy phases unavailable (non-fatal): {e}")
+            phases = {}
         consol = await conn.fetch("""
             SELECT entry_mode, count(*) AS n,
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY fwd_mfe_r) AS reached,
@@ -633,6 +654,7 @@ async def build_sell_discipline_section(
             "partials": live_stats["partials"], "stop_above": live_stats["stop_above"],
             "regimes": [(r["regime"], r["n"], _f(r["kept"])) for r in regimes],
         } if live_stats and live_stats["n"] else None,
+        "phases": phases,
         "cohorts": [
             {"signal_type": c["signal_type"], "account_mode": c["account_mode"], "n": c["n"],
              "reached_avg": _f(c["reached_avg"]), "kept_avg": _f(c["kept_avg"])}
