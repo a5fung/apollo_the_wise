@@ -4386,6 +4386,13 @@ reviews:
         AND a.rel_volume < 0.5
         AND s.adv_20 IS NOT NULL
         AND (s.adv_20 * s.close) >= 50000000;
+    # ⚠ SAME INFLATION BUG AS ITS SIBLING (flagged 2026-07-30, NOT yet fixed).
+    # This predicate JOINs mi_stock_scores on `score_date <= alert_date` with no
+    # DISTINCT/LATERAL, so ONE alert counts once per historical score row. Its
+    # small-cap sibling (`rel_volume_small_cap_biotech_floor_evidence`) reported
+    # 159 when the real cohort was 4 — ~40x. **Whatever count this shows is
+    # UNTRUSTWORTHY; do NOT treat a READY badge here as evidence.** Fix it the same
+    # way (DISTINCT + LATERAL latest-score-before-alert) before running this review.
     threshold: 10
     earliest_review_date: 2026-07-24  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
@@ -4483,20 +4490,46 @@ reviews:
       ONLY if evidence supports broader bug class.
 
       Per feedback_sample_size_discipline: N≥10 before ship.
+    # ⚠ PREDICATE FIXED 2026-07-30 — the original JOINed EVERY mi_stock_scores row
+    # with score_date <= alert_date, so ONE alert counted ONCE PER HISTORICAL SCORE
+    # ROW. It reported 159 when the real cohort is 4 — a ~40x inflation — and this
+    # review sat "READY (159>=10)" for weeks on a number that was pure artifact.
+    # The LATERAL takes the LATEST score row before the alert, which is also the
+    # methodologically right read: judge the stock's ADV/sector AS OF the alert,
+    # not "at any point in its history".
     predicate_sql: |
-      SELECT COUNT(*)
-        FROM mi_ep_alerts a
-        JOIN mi_stock_scores s
-          ON s.ticker = a.ticker AND s.score_date <= a.alert_date
-       WHERE a.alert_date >= CURRENT_DATE - 90
-         AND a.score_tier = 'HIGH'
-         AND a.rel_volume IS NOT NULL
-         AND a.rel_volume < 0.5
-         AND s.adv_20 IS NOT NULL
-         AND (s.adv_20 * s.close) < 50000000
-         AND (s.sector ILIKE '%biotech%'
-              OR s.sector ILIKE '%pharma%'
-              OR s.sector ILIKE '%health%');
+      SELECT COUNT(*) FROM (
+        SELECT DISTINCT a.ticker, a.alert_date
+          FROM mi_ep_alerts a
+          JOIN LATERAL (
+            SELECT adv_20, close, sector
+              FROM mi_stock_scores s
+             WHERE s.ticker = a.ticker AND s.score_date <= a.alert_date
+             ORDER BY s.score_date DESC LIMIT 1
+          ) s ON TRUE
+         WHERE a.alert_date >= CURRENT_DATE - 90
+           AND a.score_tier = 'HIGH'
+           AND a.rel_volume IS NOT NULL
+           AND a.rel_volume < 0.5
+           AND s.adv_20 IS NOT NULL
+           AND (s.adv_20 * s.close) < 50000000
+           AND (s.sector ILIKE '%biotech%'
+                OR s.sector ILIKE '%pharma%'
+                OR s.sector ILIKE '%health%')
+      ) x;
+    # ── RUN 2026-07-30 (inline, read-only). VERDICT: NO SHIP — INSUFFICIENT EVIDENCE.
+    # THE GATE FIRED ON AN ARTIFACT (see above). Entry-aware cohort, the methodology
+    # this review's own action_when_ready demands: on the looser any-score-row read,
+    # 12 distinct alerts -> 7 NEVER FILLED (cancelled/skipped) -> 5 closed (3 paper,
+    # 2 live), 1 winner = 20% WR (paper -$1,910, live -$26.53). On the CORRECTED
+    # as-of-alert predicate the cohort is 4.
+    # The decision matrix says WR<30% -> ship the filter, and 20% clears it — BUT it
+    # requires N>=10 ENTRY-AWARE and there are FIVE (four by the corrected read).
+    # CHANGE_PROCESS demands N>=10 for any criterion change. Shipping an ENTRY FILTER
+    # on 5 trades is precisely the overfitting that rule exists to prevent. NOT SHIPPED.
+    # ⚠ INDEPENDENTLY WEAKENS THE CASE: 7 of 12 never filled at all. A thin name often
+    # doesn't trade through its ORB high, so the setup is ALREADY partly self-filtering.
+    # Re-look when the CORRECTED predicate reaches 10 entry-aware CLOSES — not 10 alerts.
     threshold: 10
     earliest_review_date: 2026-07-01
     action_when_ready: |
