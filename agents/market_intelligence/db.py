@@ -2189,6 +2189,16 @@ async def initialize_schema() -> None:
                 peak_close_r          DOUBLE PRECISION,
                 peak_close_day        DATE,
                 giveback_r            DOUBLE PRECISION,   -- peak_r − realized_r (the gap)
+                -- ADR-normalised axis (#508, 2026-07-30). R is NOT comparable across
+                -- trades: live stop widths span 0.14x-0.97x of the ticker's own 20d
+                -- ADR, so R mostly measures STOP TIGHTNESS. MANE 7.92R and QBTS 3.74R
+                -- were the SAME move (~1.1 ADR). These columns express the excursion
+                -- in units that mean the same thing on every ticker, so regime and
+                -- stock-character tuning isn't confounded by stop width.
+                stop_pct              DOUBLE PRECISION,   -- stop distance, % of entry
+                stop_per_adr          DOUBLE PRECISION,   -- stop width / 20d ADR
+                peak_adr              DOUBLE PRECISION,   -- excursion in ADR units
+                realized_adr          DOUBLE PRECISION,   -- outcome in ADR units
                 capture_pct           DOUBLE PRECISION,   -- realized_r / peak_r when peak_r > 0
                 hold_trading_days     INT,
                 stop_above_entry_ever BOOLEAN,

@@ -304,7 +304,10 @@ async def test_record_sell_discipline_writes_row_and_audits(monkeypatch):
     ins = conn.execute.await_args_list[0]
     assert "INSERT INTO mi_sell_discipline_records" in ins.args[0]
     assert "ON CONFLICT (trade_id) DO NOTHING" in ins.args[0]            # idempotent re-runs
-    assert len(ins.args) - 1 == 37                                       # every column bound
+    # 41 = 37 + the 4 ADR-normalised columns added 2026-07-30 (stop_pct, stop_per_adr,
+    # peak_adr, realized_adr). This count is LOAD-BEARING: a column/placeholder mismatch
+    # silently writes the WRONG value into the WRONG column, which nothing else catches.
+    assert len(ins.args) - 1 == 41                                       # every column bound
     assert ins.args[1] == 279 and ins.args[2] == "QBTS"                  # trade_id, ticker
     audit.assert_awaited()                                               # loud on success too
     # the scan SQL carries the explicit casts (the date>=integer prod-crash class)
@@ -368,3 +371,41 @@ async def test_mgmt_judge_section_failure_is_loud_not_blocking(monkeypatch):
     assert "surface failed" in text                                       # and says so
     assert any("sell_discipline_surface_error" in c.args[0]
                for c in audit.await_args_list)                            # audited, never swallowed
+
+
+# ── #508: R is not comparable across trades — the ADR-normalised axis ────────
+
+def test_adr_normalised_makes_two_identical_moves_read_the_same():
+    """THE reason this axis exists. MANE and QBTS made near-identical real moves
+    (8.76% vs 8.64%, both ~1.1 ADR) and scored 7.92R vs 3.74R — because MANE's
+    stop was 0.14 of a daily range and QBTS's was 0.32. R was measuring stop
+    tightness, not trade quality, so a "+3R partial" would fire on one and not
+    the other for reasons unrelated to the trade working."""
+    from agents.market_intelligence.sell_discipline import compute_sell_record
+    def _mk(entry, stop, peak, adr):
+        return dict(id=1, ticker="X", signal_type="magna53", account_mode="live",
+                    alert_date=date(2026, 7, 1), entry_price=entry, stop_price=stop,
+                    hard_stop=stop, orb_low=stop, entry_shares=100, total_pnl=0.0,
+                    highest_price_seen=peak, filled_at=_et(2026,7,1,9,32), closed_at=_et(2026,7,2,15,0),
+                    adr_20_pct=adr, pnl_attribution=None)
+    mane = compute_sell_record(_mk(100.0, 98.89, 108.76, 8.01))
+    qbts = compute_sell_record(_mk(100.0, 97.69, 108.64, 7.33))
+    # R disagrees wildly...
+    assert mane["peak_r"] > 2 * qbts["peak_r"]
+    # ...ADR units agree, which is the whole point
+    assert abs(mane["peak_adr"] - qbts["peak_adr"]) < 0.15
+    assert 1.0 < mane["peak_adr"] < 1.3
+
+
+def test_missing_adr_yields_null_not_a_fabricated_number():
+    """A ticker with too little history must render NULL, never a made-up value."""
+    from agents.market_intelligence.sell_discipline import compute_sell_record
+    rec = compute_sell_record(
+        dict(id=2, ticker="Y", signal_type="magna53", account_mode="live",
+             alert_date=date(2026, 7, 1), entry_price=100.0, stop_price=98.0,
+             hard_stop=98.0, orb_low=98.0, entry_shares=100, total_pnl=0.0,
+             highest_price_seen=105.0, filled_at=_et(2026,7,1,9,32), closed_at=_et(2026,7,2,15,0),
+             adr_20_pct=None, pnl_attribution=None))
+    assert rec["peak_r"] is not None          # R still computes
+    assert rec["peak_adr"] is None            # normalised axis honestly absent
+    assert rec["stop_per_adr"] is None

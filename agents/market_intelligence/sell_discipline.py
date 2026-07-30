@@ -221,6 +221,32 @@ def compute_sell_record(
         or jc.pop("judge_saw_stop_above_entry")
     )
 
+    # ── ADR-NORMALISED axis (#508, 2026-07-30) — R is NOT comparable across trades ──
+    # MEASURED on the live cohort: stop width ranges 0.14x to 0.97x of the stock's OWN
+    # 20d average daily range — a 7x spread. So the R denominator is mostly measuring
+    # STOP TIGHTNESS, not trade quality. MANE and QBTS made near-identical moves
+    # (8.76% vs 8.64%, both ~1.1 ADR) and scored 7.92R vs 3.74R. NVCR made the LARGEST
+    # real move of the cohort (1.90 ADR) and scored the LOWEST R of the four movers.
+    #
+    # A "+3R partial" therefore fires constantly on tight-stopped names and almost never
+    # on wide-stopped ones, INDEPENDENT of whether the trade is working. This field
+    # records the same excursion in units that mean the same thing on every ticker, so
+    # the operator's tuning axes (regime, biotech/small-cap character) are not
+    # confounded by stop width when the cohort is finally large enough to read.
+    #
+    # DISPLAY/TELEMETRY ONLY — nothing reads this to make a decision. Recording it NOW
+    # so the data accruing from today is usable later; 25 more trades measured on an
+    # uncalibrated R would leave us exactly where we are, with more rows.
+    adr_pct = _f(trade.get("adr_20_pct"))
+    stop_pct = round((entry - stop_price) / entry * 100, 4) if (
+        stop_price is not None and entry) else None
+    stop_per_adr = round(stop_pct / adr_pct, 4) if (
+        stop_pct is not None and adr_pct) else None
+    peak_adr = round(peak_r * stop_pct / adr_pct, 4) if (
+        peak_r is not None and stop_pct is not None and adr_pct) else None
+    realized_adr = round(realized_r * stop_pct / adr_pct, 4) if (
+        realized_r is not None and stop_pct is not None and adr_pct) else None
+
     giveback_r = round(peak_r - realized_r, 4) if (peak_r is not None and realized_r is not None) else None
     capture_pct = (round(realized_r / peak_r, 4)
                    if (peak_r is not None and peak_r > 0 and realized_r is not None) else None)
@@ -240,6 +266,8 @@ def compute_sell_record(
         "peak_source": peak_source, "peak_bars_n": minute_bars_n,
         "peak_close": peak_close, "peak_close_r": peak_close_r, "peak_close_day": peak_close_day,
         "giveback_r": giveback_r, "capture_pct": capture_pct,
+        "stop_pct": stop_pct, "stop_per_adr": stop_per_adr,
+        "peak_adr": peak_adr, "realized_adr": realized_adr,
         "hold_trading_days": hold_trading_days,
         "stop_above_entry_ever": stop_above_entry_ever,
         "partial_taken": bool(trade.get("partial_taken")),
@@ -254,7 +282,17 @@ _SCAN_SQL = """
     SELECT t.id, t.ticker, t.signal_type, t.account_mode, t.alert_date, t.entry_price,
            t.hard_stop, t.orb_low, t.entry_shares, t.total_pnl, t.stop_price,
            t.breakeven_active, t.partial_taken, t.highest_price_seen, t.filled_at,
-           t.closed_at, t.pnl_attribution
+           t.closed_at, t.pnl_attribution,
+           -- 20d ADR as of the alert, from the ticker's OWN prior bars (#508,
+           -- 2026-07-30). Needed because R is not comparable across trades — see the
+           -- ADR-normalised block in compute_sell_record. Strictly PRE-alert bars, so
+           -- no lookahead. NULL when a ticker has too little history; the normalised
+           -- fields then render NULL rather than a fabricated number.
+           (SELECT AVG((d.high_price - d.low_price) / NULLIF(d.close, 0) * 100)
+              FROM mi_daily_closes d
+             WHERE d.ticker = t.ticker
+               AND d.trade_date <  t.alert_date
+               AND d.trade_date >= t.alert_date - 30) AS adr_20_pct
     FROM mi_live_trades t
     WHERE t.status = 'closed' AND t.filled_at IS NOT NULL AND t.closed_at IS NOT NULL
       -- $2 carries an explicit ::int cast: Postgres has BOTH `date - integer -> date`
@@ -296,7 +334,8 @@ _INSERT_SQL = """
          filled_at, closed_at, entry_price, risk_per_share, entry_shares,
          realized_pnl, realized_r, peak_price, peak_r, peak_time, peak_day, peak_hold_day,
          peak_source, peak_bars_n, peak_close, peak_close_r, peak_close_day,
-         giveback_r, capture_pct, hold_trading_days, stop_above_entry_ever, partial_taken,
+         giveback_r, capture_pct, stop_pct, stop_per_adr, peak_adr, realized_adr,
+         hold_trading_days, stop_above_entry_ever, partial_taken,
          judge_verdicts_n, judge_last_verdict, judge_last_verdict_date, judge_last_verdict_r,
          judge_first_warn_verdict, judge_first_warn_date, judge_first_warn_r, pnl_attribution)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
@@ -309,7 +348,8 @@ _INSERT_COLS = (
     "filled_at", "closed_at", "entry_price", "risk_per_share", "entry_shares",
     "realized_pnl", "realized_r", "peak_price", "peak_r", "peak_time", "peak_day", "peak_hold_day",
     "peak_source", "peak_bars_n", "peak_close", "peak_close_r", "peak_close_day",
-    "giveback_r", "capture_pct", "hold_trading_days", "stop_above_entry_ever", "partial_taken",
+    "giveback_r", "capture_pct", "stop_pct", "stop_per_adr", "peak_adr", "realized_adr",
+    "hold_trading_days", "stop_above_entry_ever", "partial_taken",
     "judge_verdicts_n", "judge_last_verdict", "judge_last_verdict_date", "judge_last_verdict_r",
     "judge_first_warn_verdict", "judge_first_warn_date", "judge_first_warn_r", "pnl_attribution",
 )
