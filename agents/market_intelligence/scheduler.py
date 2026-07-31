@@ -165,6 +165,11 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "monthly_backward_check_sweep", "news_quality_drift_check",
     "source_gap_finder", "backup_health_check", "telegram_poll_watchdog",
     "weekly_cleanup",
+    # model registry (#509) — INTELLIGENCE, and deliberately not execution: both
+    # only read models.list + write the resolution cache/audit rows, and the boot
+    # recorder is already `runs_intelligence_jobs()`-gated, so running them on
+    # execution too would double-record and double-Telegram every release.
+    "model_resolution_refresh", "judge_eval_divergence_check",
 })
 
 
