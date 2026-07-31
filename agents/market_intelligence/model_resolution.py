@@ -109,13 +109,13 @@ logger = logging.getLogger(__name__)
 # preflight_judge_eval_gate.py uses (REPO / "scripts" / "evals" / ...).
 _EVAL_RECORD_PATH = Path(__file__).resolve().parents[2] / "scripts" / "evals" / "judge_eval_pass_record.json"
 
+# Operator-facing. The mechanism detail (which gate parses what) belongs in the
+# docstrings, not in his Telegram — he needs to know the grade surface moved and
+# what the nightly check will now say about it.
 _JUDGE_EVAL_NOTE = (
-    "ADR-0030's preflight_judge_eval_gate blocks a DEPLOY only when the COMMITTED "
-    "JUDGE_MODEL pin changes without a fresh passing eval — it cannot see this "
-    "runtime auto-resolution (shared/llm_models.py AUTO-RESOLUTION docstring). "
-    "The nightly check_judge_eval_divergence WARNs when the two drift apart; run "
-    "the judge robustness eval on the resolved id, then bump JUDGE's pin, to "
-    "formally adopt it."
+    "The judge now runs a model its last evaluation did not cover, so the nightly "
+    "6:09 PM check will flag it until you re-run the eval or accept it as-is. "
+    "Deploys are not blocked by this."
 )
 
 
@@ -146,6 +146,36 @@ def _role_source(role: str, model_id: str) -> tuple[str, str]:
         tier = llm_models.RESOLVED_ROLES.get(role, "?")
         return res.source, res.note or f"tier={tier}"
     return "static", "static registry pin (not in RESOLVED_ROLES)"
+
+
+def _render_transitions(changes: list[tuple]) -> list[str]:
+    """`[(role, prev_id, new_id), ...]` -> grouped operator-facing lines.
+
+    One block per DISTINCT version transition, listing what runs on it in plain
+    words. Eleven roles moving sonnet-4-6 -> sonnet-5 is ONE block, not eleven
+    lines. Roles with no label degrade to a readable form of their own name
+    (llm_models.label_for), so a role added later can never render blank.
+    """
+    from shared.llm_models import label_for, pretty_model
+    from shared.telegram_format import esc
+
+    groups: dict[tuple, list[str]] = {}
+    for role, prev, new in changes:
+        groups.setdefault((prev, new), []).append(label_for(role))
+    # Strongest tier first — the judge is the one that moves the grade surface, so
+    # it must not sit under nine sonnet roles. Unknown families sort last, never
+    # crash the render.
+    rank = {"opus": 0, "sonnet": 1, "haiku": 2}
+    def _order(item):
+        (prev, new), _roles = item
+        from shared.llm_models import tier_of
+        return (rank.get(tier_of(new) or "", 9), new)
+    out: list[str] = []
+    for (prev, new), roles in sorted(groups.items(), key=_order):
+        out.append(f"<b>{esc(pretty_model(prev))} → {esc(pretty_model(new))}</b>")
+        out.append(f"  {esc(' · '.join(sorted(roles)))}")
+        out.append("")
+    return out
 
 
 async def _send_telegram(text: str) -> None:
@@ -188,17 +218,19 @@ async def record_boot_resolution() -> None:
             )
         real = [c for c in changes if c[1] is not None]
         if real:
-            lines = ["🤖 <b>LLM model change took effect this boot</b>"]
-            for role, prev, model, source in real:
-                lines.append(f"{code(esc(role))}: {code(esc(prev))} → "
-                             f"{code(esc(model))} ({esc(source)})")
-            lines.append("Watch <code>judge_high_rate_daily</code> / grade metrics "
-                         "across this change (L2 audit).")
+            lines = ["🤖 <b>Models updated this restart</b>", ""]
+            # GROUPED BY TRANSITION, not one line per role (operator 2026-07-31:
+            # "could use some better formatting"). 11 roles moving between the same
+            # two ids rendered as 11 near-identical SCREAMING_SNAKE lines; what he
+            # actually needs is "these two versions changed, and here is what runs
+            # on each".
+            lines.extend(_render_transitions([(r, p, m) for r, p, m, _ in real]))
+            lines.append("Watch grade rates over the next few days "
+                         "(<code>judge_high_rate_daily</code>, L2 audit).")
             if any(r == "JUDGE_MODEL" for r, *_ in real):
                 lines.append(esc(_JUDGE_EVAL_NOTE))
-            lines.append("Rollback (one edit): set the tier in "
-                         "<code>_TIER_OVERRIDES</code> in shared/llm_models.py "
-                         "and redeploy.")
+            lines.append("Undo: pin the tier in "
+                         "<code>shared/llm_models.py</code> and redeploy.")
             await _send_telegram("\n".join(lines))
         elif changes:
             logger.info("model_resolution: baseline recorded for %d role(s)", len(changes))
@@ -264,6 +296,7 @@ async def refresh_model_resolution() -> int:
 
     Raises on API failure (audit_wrap records the failed run; the cache — and
     therefore the trading system's bindings — are left untouched)."""
+    from shared.llm_models import pretty_model
     from shared.telegram_format import code, esc
 
     ids = await _list_model_ids()
@@ -336,14 +369,16 @@ async def refresh_model_resolution() -> int:
         affected_roles = sorted(
             role for role, tier in llm_models.RESOLVED_ROLES.items() if tier in changed_tiers
         )
-        lines = ["🆕 <b>New Claude release detected</b> (models.list)"]
+        lines = ["🆕 <b>New Claude model available</b>", ""]
         for tier, old, new in real:
-            lines.append(f"{esc(tier)}: {code(esc(old))} → {code(esc(new))}")
-        lines.append("Takes effect at the <b>next deploy/restart</b> of each "
-                     "service — nothing changed mid-session.")
+            lines.append(f"<b>{esc(pretty_model(old))} → {esc(pretty_model(new))}</b>")
+        lines.append("")
+        lines.append("Nothing changed yet — models bind at the <b>next "
+                     "deploy or restart</b>, never mid-session.")
         if affected_roles:
-            lines.append(f"⚠ These roles auto-track this release and will move at "
-                         f"next boot: {esc(', '.join(affected_roles))}.")
+            from shared.llm_models import label_for
+            named = " · ".join(sorted(label_for(r) for r in affected_roles))
+            lines.append(f"Will move then: {esc(named)}.")
             if "JUDGE_MODEL" in affected_roles:
                 lines.append(esc(_JUDGE_EVAL_NOTE))
         lines.append("Don't want it? One edit BEFORE the next deploy: pin the "

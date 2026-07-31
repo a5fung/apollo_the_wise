@@ -128,8 +128,12 @@ def test_boot_recorder_real_change_writes_audits_and_telegrams(monkeypatch):
     assert fired == ["model_resolution_change"]
     tg_mock.assert_awaited_once()
     text = tg_mock.await_args.args[0]
-    assert "JUDGE_MODEL" in text and "claude-opus-5" in text
-    assert "_TIER_OVERRIDES" in text  # rollback lever always mentioned
+    # Operator-facing wording (operator 2026-07-31 "could use some better
+    # formatting"): plain-words role names and versions, NOT our constants and
+    # raw ids. Pins the intent, so a revert to the log-dump form fails here.
+    assert "grading judge" in text and "Opus 4.8 → Opus 5" in text
+    assert "JUDGE_MODEL" not in text and "claude-opus-5" not in text
+    assert "Undo:" in text  # rollback lever always mentioned
 
 
 def test_boot_recorder_never_raises_on_db_failure(monkeypatch):
@@ -188,9 +192,13 @@ def test_refresh_new_release_telegrams_and_flags_judge(monkeypatch, tmp_path):
     _run(mr.refresh_model_resolution())
     tg_mock.assert_awaited_once()
     text = tg_mock.await_args.args[0]
-    assert "opus" in text and "claude-opus-5" in text
-    assert "JUDGE_MODEL" in text  # RESOLVED_ROLES-driven callout
-    assert "ADR-0030" in text
+    assert "Opus 4.8 → Opus 5" in text and "claude-opus-5" not in text
+    # the callout is still RESOLVED_ROLES-driven, but named in plain words
+    assert "grading judge" in text and "JUDGE_MODEL" not in text
+    # the judge-eval caveat survives the rewording — it just no longer cites an
+    # ADR number, a gate filename and a docstring at the operator
+    assert "last evaluation did not cover" in text
+    assert "ADR-0030" not in text and "preflight_judge_eval_gate" not in text
 
 
 def test_refresh_disappeared_tier_accepted_loudly(monkeypatch, tmp_path):
@@ -377,3 +385,33 @@ def test_refresh_is_silent_about_pins_that_are_current(monkeypatch, tmp_path):
 
     assert [c for c in audit.await_args_list if c.args[0] == "model_pin_drift"] == []
     tg.assert_not_awaited()
+
+
+# ─── message shape (operator 2026-07-31: "could use some better formatting") ──
+
+def test_transitions_group_by_version_not_one_line_per_role():
+    """The complaint: 11 roles moving between the SAME two versions rendered as
+    11 near-identical SCREAMING_SNAKE lines. One block per transition instead."""
+    changes = [(f"R{i}_MODEL", "claude-sonnet-4-6", "claude-sonnet-5") for i in range(9)]
+    changes.append(("JUDGE_MODEL", "claude-opus-4-8", "claude-opus-5"))
+    out = "\n".join(mr._render_transitions(changes))
+    assert out.count("Sonnet 4.6 → Sonnet 5") == 1, "sonnet block rendered more than once"
+    assert out.count("Opus 4.8 → Opus 5") == 1
+    assert "claude-sonnet-5" not in out and "_MODEL" not in out
+
+
+def test_strongest_tier_is_listed_first():
+    """The judge moves the grade surface — it must not sit under nine sonnet roles."""
+    out = mr._render_transitions([
+        ("THEME_MODEL", "claude-sonnet-4-6", "claude-sonnet-5"),
+        ("JUDGE_MODEL", "claude-opus-4-8", "claude-opus-5"),
+    ])
+    joined = "\n".join(out)
+    assert joined.index("Opus") < joined.index("Sonnet")
+
+
+def test_unlabelled_role_renders_readably_never_blank():
+    """A role added later without a label must degrade, not vanish or crash."""
+    out = "\n".join(mr._render_transitions([
+        ("SOME_FUTURE_MODEL", "claude-opus-4-8", "claude-opus-5")]))
+    assert "some future" in out

@@ -155,6 +155,50 @@ _TIER_OVERRIDES: dict[str, str | None] = {
 # `model=` default to effective_model("JUDGE_MODEL") at import. Every role
 # NOT listed here is completely unaffected: effective_model on it just
 # returns the plain module constant, unchanged behavior. ─────────────────────
+# ── Operator-facing role labels ──────────────────────────────────────────────
+# The change notification is read by the OPERATOR, not by us: SCREAMING_SNAKE
+# constants are our notation leaking into his Telegram. Labels say what the role
+# DOES. Deliberately fallback-safe rather than exhaustive — a role added later
+# without a label degrades to a readable form of its own name, so this map can
+# never rot into a KeyError or a blank line.
+ROLE_LABELS: dict[str, str] = {
+    "JUDGE_MODEL": "grading judge",
+    "JUDGE_DIVERGENCE_MODEL": "second-opinion check",
+    "THEME_ADVISOR_MODEL": "theme advisor",
+    "THEME_MODEL": "theme discovery",
+    "ORCHESTRATOR_MODEL": "orchestrator",
+    "MARKET_AGENT_MODEL": "market agent",
+    "SYNTHESIS_MODEL": "synthesis",
+    "GROUNDED_GRADE_MODEL": "catalyst grading",
+    "MATERIALITY_MODEL": "materiality",
+    "METRICS_EXTRACTION_MODEL": "metrics extraction",
+    "CATALYST_TYPE_MODEL": "catalyst type",
+    "DESCRIPTION_MODEL": "descriptions",
+    "ECOSYSTEM_ASSIGN_MODEL": "ecosystem assignment",
+    "POSTMORTEM_MODEL": "trade postmortems",
+    "SYSTEM_REVIEW_MODEL": "weekly review",
+    "COMPRESSION_MODEL": "conversation compression",
+    "HEALTHCHECK_MODEL": "health check ping",
+}
+
+
+def label_for(role: str) -> str:
+    """Plain-words name for a role, for operator-facing text."""
+    if role in ROLE_LABELS:
+        return ROLE_LABELS[role]
+    return role.removesuffix("_MODEL").replace("_", " ").lower() or role
+
+
+def pretty_model(model_id: str) -> str:
+    """`claude-opus-4-8` -> `Opus 4.8`; `claude-haiku-4-5-20251001` -> `Haiku 4.5`.
+    Unparseable ids come back unchanged — never invent a name."""
+    parsed = _parse_model_id(model_id)
+    if not parsed:
+        return model_id
+    ver = ".".join(str(n) for n in parsed.version)
+    return f"{parsed.family.capitalize()} {ver}"
+
+
 RESOLVED_ROLES: dict[str, str] = {
     # ── ALL roles opted in (operator 2026-07-31: "opt all in") ──────────────
     # The first build covered ONLY the judge, which was backwards: the judge is
