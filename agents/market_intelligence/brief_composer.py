@@ -257,15 +257,45 @@ def _flips_this_week(hist: list[dict]) -> int:
     )
 
 
-def _cluster_state(regime: dict) -> tuple[bool, int, int]:
-    """(fires, red_count, window) via the existing breadth cluster rule."""
+def _cluster_window(history: list) -> tuple[bool, int, int]:
+    """(fires, red_count, window) over ONE already-sliced window."""
     from agents.market_intelligence.breadth_color_rules import (
         cluster_fires, red_count_in_window, CLUSTER_WINDOW,
     )
-    history = regime.get("breadth_history_5d") or []
     if len(history) >= CLUSTER_WINDOW and cluster_fires(history):
         return True, red_count_in_window(history), CLUSTER_WINDOW
     return False, 0, CLUSTER_WINDOW
+
+
+def _cluster_state(regime: dict) -> tuple[bool, int, int]:
+    """(fires, red_count, window) for TODAY's window (history is newest-first)."""
+    from agents.market_intelligence.breadth_color_rules import CLUSTER_WINDOW
+    return _cluster_window((regime.get("breadth_history_5d") or [])[:CLUSTER_WINDOW])
+
+
+def _cluster_prior(regime: dict) -> tuple[bool, int, int] | None:
+    """YESTERDAY's cluster window, or None when it cannot be reconstructed.
+
+    The fetch asks for CLUSTER_WINDOW + 1 newest-first days, so dropping today
+    (`history[1:]`) IS yesterday's exact window — no snapshot table needed. With
+    only CLUSTER_WINDOW rows (fresh install, or a gap in breadth_monitor) the
+    prior is genuinely UNKNOWN and we say so rather than inventing a transition
+    (design §4: silence must never be ambiguous).
+    """
+    from agents.market_intelligence.breadth_color_rules import CLUSTER_WINDOW
+    history = regime.get("breadth_history_5d") or []
+    if len(history) < CLUSTER_WINDOW + 1:
+        return None
+    return _cluster_window(history[1:CLUSTER_WINDOW + 1])
+
+
+def _cluster_change_phrase(fires: bool, red_n: int, window: int, prior) -> str:
+    """Say what MOVED. Never just the end state — that is the defect this fixes."""
+    if prior is None:
+        return f"breadth cluster {red_n}/{window} red (prior window unknown)"
+    if not prior[0]:
+        return f"breadth cluster FIRED — {red_n}/{window} red (was clear)"
+    return f"breadth cluster {prior[1]}/{window} → {red_n}/{window} red"
 
 
 def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
@@ -288,8 +318,18 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
     vix_delta = round(vix_t - vix_p, 1) if (vix_t is not None and vix_p is not None) else None
     vix_fires = vix_delta is not None and abs(vix_delta) >= VIX_MATERIAL_DELTA
     fires, red_n, window = _cluster_state(data.regime)
+    prior_cluster = _cluster_prior(data.regime)
+    # A STANDING cluster is not news. It fired last night too, and the night
+    # before — restating it verbatim is exactly the "didn't actually say what
+    # changed" the operator called out (2026-07-31). Material only on a
+    # TRANSITION: started firing, cleared, or the red count moved. An unknown
+    # prior counts as a change, so a live cluster can never be silently withheld
+    # — the render then discloses that the prior is unknown.
+    cluster_changed = fires if prior_cluster is None else (
+        (fires, red_n) != (prior_cluster[0], prior_cluster[1]))
+    cluster_cleared = bool(prior_cluster and prior_cluster[0] and not fires)
 
-    if not (flipped or thr_changed or vix_fires or fires):
+    if not (flipped or thr_changed or vix_fires or cluster_changed or cluster_cleared):
         return None, False
 
     emoji = _REGIME_EMOJI.get(label_t, "⚫")
@@ -298,8 +338,11 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
         lines.append(f"{emoji} *REGIME: {_esc(label_p).upper()} → {_esc(label_t).upper()}*")
     elif thr_changed:
         lines.append(f"{emoji} *REGIME — EP filter {thr_p} → {thr_t}*")
-    elif fires:
-        lines.append(f"{emoji} *REGIME — breadth cluster {red_n}/{window} red*")
+    elif cluster_cleared:
+        was = prior_cluster[1] if prior_cluster else None
+        lines.append(f"{emoji} *REGIME — breadth cluster CLEARED* (was {was}/{window} red)")
+    elif cluster_changed:
+        lines.append(f"{emoji} *REGIME — {_cluster_change_phrase(fires, red_n, window, prior_cluster)}*")
     else:
         lines.append(f"{emoji} *REGIME — VIX {vix_t:.1f} ({vix_delta:+.1f} d/d)*")
 
@@ -323,8 +366,11 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
             bits.append(f"{_ordinal(n_flips)} flip this week — chop")
     if bits:
         lines.append("   " + " · ".join(bits))
-    if fires:
-        lines.append(f"   ⚠️ Cluster {red_n}/{window} red — deterioration")
+    if fires and prior_cluster and prior_cluster[0] and red_n != prior_cluster[1]:
+        direction = "worse" if red_n > prior_cluster[1] else "better"
+        lines.append(f"   ⚠️ Cluster {prior_cluster[1]}/{window} → {red_n}/{window} red ({direction})")
+    elif fires and prior_cluster is None:
+        lines.append(f"   ⚠️ Cluster {red_n}/{window} red — no prior window to compare")
     lines.append("   `/regime` full matrix")
     return lines, flipped
 
@@ -642,6 +688,12 @@ def _regime_state_line(data: BriefData) -> str:
         bits.append(f"filter ≥{thr}")
     if data.size_mult is not None:
         bits.append(f"size ≈{data.size_mult:.2f}×")
+    # A STANDING cluster stops being MATERIAL once reported, but must never become
+    # INVISIBLE — carried here, marked standing, so a 5/5-red market cannot quietly
+    # drop out of the brief on day two.
+    fires, red_n, window = _cluster_state(data.regime)
+    if fires:
+        bits.append(f"⚠️ cluster {red_n}/{window} red (standing)")
     return " · ".join(bits) + " · `/regime`"
 
 

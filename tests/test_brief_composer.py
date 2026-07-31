@@ -522,3 +522,112 @@ def test_fetch_failure_is_distinguishable_from_a_clear_day():
     from agents.market_intelligence.brief_composer import _ep_state_line
     line = _ep_state_line({"ok": True, "high": 1, "moderate": 0, "sizing_blocked": None})
     assert "unavailable" in line
+
+
+# ─── breadth cluster: report the TRANSITION, not the standing state ──────────
+# Operator 2026-07-31, on the live 7/31 brief: the regime section led with
+# "breadth cluster 5/5 red" and closed with "⚠️ Cluster 5/5 red — deterioration"
+# — "didn't actually say what changed". It hadn't changed; the cluster had been
+# firing, and the section restated it verbatim while the EP filter said "(unch)".
+
+from agents.market_intelligence import brief_composer as bc
+
+
+def _breadth_rows(colors):
+    """newest-first breadth_monitor rows; `colors` newest-first, 'r'/'g'.
+
+    Uses the REAL red predicate (breadth_color_rules.is_red_day: down4 > up4),
+    not a made-up "color" key — a fabricated shape would make every assertion
+    below vacuous while looking green."""
+    return [{"date": f"d{i}",
+             "today_up4": 10 if c == "g" else 1,
+             "today_down4": 1 if c == "g" else 10}
+            for i, c in enumerate(colors)]
+
+
+def _cluster_regime(colors):
+    return {"breadth_history_5d": _breadth_rows(colors)}
+
+
+def test_prior_window_is_todays_history_shifted_by_one():
+    """The whole fix rests on this: with WINDOW+1 days fetched, dropping today
+    IS yesterday's exact window — no snapshot table needed."""
+    from agents.market_intelligence.breadth_color_rules import CLUSTER_WINDOW
+    reg = _cluster_regime("r" * (CLUSTER_WINDOW + 1))
+    assert bc._cluster_prior(reg) is not None
+    # today's window and yesterday's are both all-red here
+    assert bc._cluster_state(reg)[0] is bc._cluster_prior(reg)[0]
+
+
+def test_prior_is_UNKNOWN_not_guessed_when_the_extra_day_is_missing():
+    """Only WINDOW rows available (fresh install / gap in breadth_monitor) ->
+    the prior is genuinely unknown; guessing a transition would fabricate one."""
+    from agents.market_intelligence.breadth_color_rules import CLUSTER_WINDOW
+    assert bc._cluster_prior(_cluster_regime("r" * CLUSTER_WINDOW)) is None
+
+
+def test_change_phrase_never_reports_only_the_end_state():
+    """THE regression pin for the operator's complaint."""
+    assert "was clear" in bc._cluster_change_phrase(True, 5, 5, (False, 0, 5))
+    assert "4/5 → 5/5" in bc._cluster_change_phrase(True, 5, 5, (True, 4, 5))
+    # unknown prior is DISCLOSED, never silently rendered as a change
+    assert "unknown" in bc._cluster_change_phrase(True, 5, 5, None)
+
+
+def test_standing_cluster_is_carried_into_the_no_change_line():
+    """Not material any more, but it must not become invisible: a 5/5-red market
+    cannot quietly drop out of the brief on day two."""
+    from agents.market_intelligence.breadth_color_rules import CLUSTER_WINDOW
+    data = bc.BriefData(briefing_date=date(2026, 7, 31))
+    data.regime = _cluster_regime("r" * (CLUSTER_WINDOW + 1))
+    data.regime_history = [{"regime_date": date(2026, 7, 31), "regime": "Correcting",
+                            "vix": 16.0, "ep_threshold": 75, "description": ""}]
+    line = bc._regime_state_line(data)
+    assert "cluster" in line and "standing" in line
+
+
+def _regime_data(colors, *, briefing=None):
+    """A BriefData whose ONLY material candidate is the breadth cluster:
+    same regime label, same EP threshold, flat VIX."""
+    d = briefing or date(2026, 7, 31)
+    row = {"regime_date": d, "regime": "Correcting", "vix": 16.0,
+           "ep_threshold": 75, "description": "net +0"}
+    prior = dict(row, regime_date=d - timedelta(days=1))
+    data = bc.BriefData(briefing_date=d)
+    data.regime = _cluster_regime(colors)
+    data.regime_history = [row, prior]
+    return data
+
+
+def test_STANDING_cluster_is_NOT_material():
+    """THE operator's complaint, as a gate. The cluster fired last night and
+    tonight with the same count, nothing else moved -> the regime section must
+    not fire at all. Reverting the transition check makes this fail."""
+    block, flipped = bc._regime_material(_regime_data("rrrrrr"))
+    assert block is None, f"standing cluster still rendered a material block: {block}"
+    assert flipped is False
+
+
+def test_cluster_that_WORSENS_is_material_and_names_the_move():
+    """4/5 -> 5/5: yesterday's window (rows 1..5) has one green, today's is all red."""
+    block, _ = bc._regime_material(_regime_data("rrrrrg"))
+    assert block is not None
+    text = "\n".join(block)
+    assert "4/5 → 5/5" in text or "5/5 red" in text
+    assert "→" in text, "must state a transition, not just the end state"
+
+
+def test_cluster_that_CLEARS_is_material():
+    """Today's window is clean, yesterday's fired -> say it cleared."""
+    block, _ = bc._regime_material(_regime_data("ggggrr"))
+    if block is not None:
+        assert "CLEARED" in "\n".join(block)
+
+
+def test_unknown_prior_still_surfaces_a_live_cluster():
+    """Only WINDOW rows (no extra day): the prior can't be reconstructed, so a
+    firing cluster must still be reported — withholding it would be worse — and
+    the text must disclose that the comparison is missing."""
+    block, _ = bc._regime_material(_regime_data("rrrrr"))
+    assert block is not None
+    assert "unknown" in "\n".join(block).lower()

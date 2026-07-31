@@ -5601,7 +5601,14 @@ async def get_latest_regime(
             return None
         result = dict(row)
         if include_breadth_history:
-            result["breadth_history_5d"] = await _fetch_breadth_history(conn)
+            # CLUSTER_WINDOW + 1 days: the extra (oldest) row lets the brief
+            # composer reconstruct YESTERDAY's cluster window exactly
+            # (history[1:]) and so report the cluster as a TRANSITION rather
+            # than restating a standing state every night (operator 2026-07-31:
+            # the regime section "didn't actually say what changed").
+            from agents.market_intelligence.breadth_color_rules import CLUSTER_WINDOW
+            result["breadth_history_5d"] = await _fetch_breadth_history(
+                conn, limit=CLUSTER_WINDOW + 1)
         return result
 
 
