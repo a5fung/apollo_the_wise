@@ -135,27 +135,7 @@ Market Intelligence agent (Docker, :8006)
 PostgreSQL (pgvector) + Redis
 ```
 **Key rule:** Only the market agent is exposed as a sub-agent. All trading/market features live inside it.
-
-## Code Layout
-```
-core/          orchestrator.py, router.py, context.py, memory.py, confirmations.py
-agents/
-  market_intelligence/
-    agent.py           # execute_task() routes by keyword
-    db.py              # All DB queries — single source of truth for schema
-    rs_engine.py       # RS scoring (~9700 stocks)
-    ep_detector.py     # MAGNA53 EP scoring + Claude + Perplexity validation
-    theme_engine.py    # Theme discovery, dedup, lifecycle
-    briefing.py        # Briefing formatters + send_telegram_message
-    scheduler.py       # APScheduler jobs
-    system_audit.py    # L1/L2/L3 anomaly + invariant scans
-    audit_invariants.py # Shared invariant library (used by readiness_check.py)
-    broker/
-      entry_pipeline.py # Single funnel for ORB bracket entries (MAGNA53 + 9M Day 2)
-      ...
-channels/      telegram.py, webhooks.py
-shared/        models.py, registry.py, secrets.py
-```
+**`agents/market_intelligence/db.py` is the single source of truth for every DB query + the schema** — add queries there, never inline in a caller.
 
 ## Adding an Orchestrator Tool
 1. Tool schema → `core/router.py` → `get_orchestrator_tools()`
@@ -257,21 +237,6 @@ One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_s
 - Skip-reason machine prefixes (`infra:subscribe_timeout: ...`) → run through `humanize()` before user display. DB keeps machine prefix; user sees prose.
 - Reserve Telegram for terminal/actionable events. Self-healing/transient → `mi_audit_log` only.
 
-## Daily Schedule (ET)
-Full job registrations + rationale live in `scheduler.py` (CronTrigger). The spine:
-| Time | Job |
-|---|---|
-| 7:00 AM | EP scan starts (every 5 min → stops 10:00 AM + ORB unfilled-entry cleanup) |
-| 9:00 AM | Morning briefing |
-| 9:31 AM | ORB monitor — bracket orders |
-| 9:35 AM | Stop refresh Day 2+ |
-| 3:45 PM | Partial-exit scan (Day 3-5, intraday so the stop-replace settles same-day; #361) |
-| 4:00–4:55 PM (EOD chain) | 9M-pace + entry-technique digests · EP recap · post-EOD L1/L2/L3 audit · judge-delta digest · news-quality drift · position update (SMA trail + stops) · time-stop scan |
-| 5:00–5:30 PM (nightly) | Data pull (RS/regime/themes/missed-EP/errors) · Sugar-Babies refresh · continuation-flag scan · post-nightly audit |
-| 8:00 / 9:00 PM | Evening briefing · evening position backstop (2nd `sync_positions`) |
-| intraday | flag-break scan (5-min, shadow #94) · order-status reconcile (DB↔Alpaca silent-stop catcher, 15-min + boot, #123) |
-| 2 AM · Fri 6 PM · Sun 8 AM · Monthly 1st | baseline refresh (30d) · Friday watchlist · weekly self-audit · monthly backward-check sweep |
-
 ## Pre-commit hooks (one-time setup per clone)
 After fresh clone, activate the local pre-commit gates:
 ```bash
@@ -330,10 +295,6 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 ---
 
 ## Changes Made — Recent
-
-### 2026-07-16 — THEME_SUBTHEME_ARM flipped · first-fill chain verified · the big-push night
-
-- **#471 flip executed** (operator-named, Fable-double-checked): `theme_subtheme_arm=on` 17:15 ET; first armed run Fri nightly. **#413+#150 closed on ONE trade** — MANE 7/15 (live) verified the first-fill chain AND the reservation-race retry — lesson: **check event-gated tasks against every live fill** (#269's AKTS event had fired unnoticed too). **B6 + #468 converge**: the EP score's 70-79 band is anti-predictive (60-69 is the BEST) → the lever is score composition, not thresholds → meta-rubric block. **#476 root cause** = the March `biotech max_themes=0` sector-cap (silent Pass-2 drop + nightly shadow-promote resurrection) — Option A ruled, replay-calibrated to per-family cap ≤6. **#477** = one bare `_` in `(ingest dry_run)` flipped the brief chunk's entity parity (Telegram blames a far-downstream offset). Push night: 3 closes + 8 builds (109→106); Friday staged via `decision_digest_2026-07-17.md`. Lesson: prod mutations need operator-NAMED actions (classifier) — batch asks into digests.
 
 ### 2026-07-24/25 — 🏁 v1.0 DECLARED · ATAI deal-pin (#502) · breaker live-path (#454 p3) · operating model
 

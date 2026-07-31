@@ -563,6 +563,16 @@ def main(argv: list[str]) -> int:
         errors.append(gate_err)
     elif not base:
         print("[plan] NOTE: no session baseline today — run `check_plan.py --today` at OPEN to arm the growth gate.")
+    elif base.get("pt_date") != today.isoformat():
+        # A baseline from a PRIOR day is the QUIET failure: the file EXISTS, so the
+        # `not base` note above never fires, and _growth_gate_error skips — the
+        # burndown ceiling is off and nothing says so. That happens exactly on a day
+        # the OPEN ritual wasn't run, which is the day you'd most want to be told
+        # (operator 2026-07-31: the ritual is triggered by hand with "start the day",
+        # not by a SessionStart hook — CLAUDE.md claimed a hook that never existed).
+        print(f"[plan] WARN — growth gate is NOT ARMED today: the baseline on disk is from "
+              f"{base.get('pt_date')}, not {today.isoformat()}. The burndown ceiling is NOT being "
+              f"enforced this session. Run `check_plan.py --today` (the OPEN ritual) to arm it.")
 
     if errors:
         print(f"[plan] FAIL — {len(errors)} issue(s) in PLAN.md:")
