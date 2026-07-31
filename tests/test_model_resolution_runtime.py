@@ -46,13 +46,17 @@ def test_current_role_bindings_reports_resolved_value_for_judge(monkeypatch):
 
 
 def test_role_source_static_for_non_resolved_role():
-    """Only JUDGE_DIVERGENCE_MODEL is un-tracked now (operator opted all other
-    roles in 2026-07-31); it stays static ON PURPOSE so it remains an
-    INDEPENDENT second read on the judge."""
-    from shared import llm_models
-    assert llm_models.role_resolution("JUDGE_DIVERGENCE_MODEL") is None
-    assert llm_models.effective_model("JUDGE_DIVERGENCE_MODEL") == \
-        llm_models.JUDGE_DIVERGENCE_MODEL
+    """EVERY registry role is tracked now (operator 2026-07-31: "all models need
+    a path to upgrade, nothing shall remain stale"), so the un-tracked branch has
+    no real role left to exercise — assert it against a synthetic name instead of
+    deleting the coverage. `_role_source` must degrade to "static", never raise,
+    for anything it doesn't know.
+    """
+    assert llm_models.role_resolution("SOME_FUTURE_MODEL") is None
+    assert llm_models.effective_model("SOME_FUTURE_MODEL") == ""
+    source, note = mr._role_source("SOME_FUTURE_MODEL", "claude-whatever")
+    assert source == "static"
+    assert "not in RESOLVED_ROLES" in note
 
 
 
@@ -273,3 +277,40 @@ def test_divergence_never_raises_even_if_audit_write_fails(monkeypatch, tmp_path
         audit=audit_mock, telegram=tg_mock,
     )
     _run(mr.check_judge_eval_divergence())  # must not raise
+
+
+# ─── fallback-pin staleness (operator 2026-07-31: nothing shall remain stale) ─
+
+def _dt(days_ago: int) -> str:
+    from datetime import datetime, timedelta, timezone
+    return (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
+
+
+def test_stale_tier_pins_quiet_when_pin_equals_served():
+    from shared import llm_models
+    resolved = dict(llm_models._TIER_PINS)          # served == pinned everywhere
+    changed = {t: _dt(400) for t in resolved}
+    assert mr.stale_tier_pins(resolved, changed) == []
+
+
+def test_stale_tier_pins_quiet_inside_the_grace_window():
+    """A release that landed yesterday is NOT drift — the pin is allowed to lag
+    while the new model is still being watched."""
+    resolved = {"opus": "claude-opus-5"}
+    assert mr.stale_tier_pins(resolved, {"opus": _dt(3)}) == []
+
+
+def test_stale_tier_pins_reports_a_pin_left_behind_for_a_month():
+    from shared import llm_models
+    got = mr.stale_tier_pins({"opus": "claude-opus-5"}, {"opus": _dt(45)})
+    assert len(got) == 1
+    tier, pin, served, days = got[0]
+    assert (tier, pin, served) == ("opus", llm_models.OPUS_PIN, "claude-opus-5")
+    assert days == 45
+
+
+def test_stale_tier_pins_never_dates_drift_it_cannot_date():
+    """No changed_at (first-ever record) or an unparseable one must NOT be
+    reported — a guessed age would be fabricated evidence."""
+    assert mr.stale_tier_pins({"opus": "claude-opus-5"}, {}) == []
+    assert mr.stale_tier_pins({"opus": "claude-opus-5"}, {"opus": "not-a-date"}) == []

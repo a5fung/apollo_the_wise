@@ -13,9 +13,11 @@ pricing function, but uses market-agent's `db.get_pool` directly.
 Use from any market-agent module that makes an Anthropic call:
 
     from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
-    response = await client.messages.create(...)
+    from shared.llm_models import effective_model
+    model = effective_model("THEME_ADVISOR_MODEL")   # never a hardcoded id
+    response = await client.messages.create(model=model, ...)
     await log_anthropic_call_safe(
-        model="claude-haiku-4-5-20251001",
+        model=model,
         caller="theme_advisor",
         usage=response.usage,
     )

@@ -178,13 +178,21 @@ RESOLVED_ROLES: dict[str, str] = {
     "CATALYST_TYPE_MODEL": "haiku",
     "COMPRESSION_MODEL": "haiku",
     "HEALTHCHECK_MODEL": "haiku",
-    # ⚠ DELIBERATELY ABSENT — JUDGE_DIVERGENCE_MODEL. It is the #301 independent
-    # second read on JUDGE_MODEL's verdict, and its whole value is being a
-    # DIFFERENT model/tier, "not just a cheaper rerun of the same model" (its own
-    # registry comment). If it tracked the resolver alongside the judge, both
-    # would drift toward the same family generation and the independence — the
-    # entire point of the check — would quietly erode. Stays hand-pinned ON
-    # PURPOSE. Do not "complete the set" by adding it.
+    # JUDGE_DIVERGENCE_MODEL tracks the SONNET tier — deliberately a DIFFERENT
+    # tier from JUDGE_MODEL (opus), never a different VINTAGE.
+    #
+    # I first excluded this to protect the #301 independence ("not just a cheaper
+    # rerun of the same model" — its own registry comment). The operator caught
+    # that excluding it meant NOTHING would ever update it: "all models need a
+    # path to upgrade, nothing shall remain stale." He is right, and my exclusion
+    # recreated the exact staleness this whole change exists to kill — the second
+    # opinion would have sat on sonnet-4-6 while the judge advanced every
+    # release, so the gap would widen until the "independent read" was simply a
+    # much WEAKER model rather than a different one.
+    #
+    # INDEPENDENCE COMES FROM THE TIER, NOT FROM THE VINTAGE. Keep this bound to
+    # a tier that differs from JUDGE_MODEL's; do NOT point both at the same tier.
+    "JUDGE_DIVERGENCE_MODEL": "sonnet",
 }
 
 # Resolved ONCE at import (cache-FILE read only — never a network call, never
@@ -260,7 +268,11 @@ GROUNDED_GRADE_MODEL = SONNET
 # Deterministic-adjacent materiality assessment (catalyst_materiality.py)
 MATERIALITY_MODEL = SONNET
 # Multi-quarter catalyst metrics extraction (catalyst_metrics_extractor.py)
-METRICS_EXTRACTION_MODEL = SONNET_4_5  # stale-looking pin, flagged 2026-06-09 — revisit deliberately
+METRICS_EXTRACTION_MODEL = SONNET  # was SONNET_4_5, a pin flagged stale 2026-06-09 and never
+# revisited — the exact rot the resolver exists to kill. Runtime already resolved this role to
+# the newest sonnet (it is in RESOLVED_ROLES); this re-points the OFFLINE FALLBACK too, so a
+# resolver outage degrades to current-sonnet instead of two generations back. Same tier, same
+# $3/$15 rate — no cost change. (operator 2026-07-31: "nothing shall remain stale")
 # Catalyst TYPE classification (fire identity; cheap, structured)
 CATALYST_TYPE_MODEL = HAIKU
 

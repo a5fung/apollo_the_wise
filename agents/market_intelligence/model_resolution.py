@@ -207,6 +207,47 @@ async def record_boot_resolution() -> None:
         logger.error(f"model_resolution boot recorder failed (non-fatal): {e}")
 
 
+# ── Fallback-pin staleness ───────────────────────────────────────────────────
+# The resolver keeps the LIVE bindings current. The `*_PIN` literals in
+# shared/llm_models.py are the OFFLINE FALLBACK — what every role degrades to if
+# models.list is unreachable at boot. Nothing advances those; left alone they rot
+# exactly like the hand-maintained bindings did (theme advisor on opus-4-6, the
+# metrics extractor on a sonnet-4-5 pin flagged 2026-06-09 and never revisited).
+# So the pin gets a path too (operator 2026-07-31: "all models need a path to
+# upgrade, nothing shall remain stale"): once a tier has served a NEWER model for
+# 30 days straight, say so — daily audit row, monthly Telegram nudge (day 30, 60,
+# 90 …), so it is a standing reminder and not a daily nag.
+_PIN_DRIFT_DAYS = 30
+
+
+def stale_tier_pins(resolved: dict, changed_at: dict, now=None) -> list[tuple]:
+    """(tier, pin, served_id, days_behind) for each tier whose fallback pin has
+    sat behind the served model for >= _PIN_DRIFT_DAYS.
+
+    A tier with no `changed_at` (baseline/first record) is NOT reported — we
+    can't date the drift, and guessing would fabricate the age.
+    """
+    from datetime import datetime, timezone
+    from shared import llm_models
+
+    now = now or datetime.now(timezone.utc)
+    out = []
+    for tier, served in sorted(resolved.items()):
+        pin = llm_models._TIER_PINS.get(tier)
+        if not pin or served == pin:
+            continue
+        since = changed_at.get(tier)
+        if not since:
+            continue
+        try:
+            days = (now - datetime.fromisoformat(since)).days
+        except (ValueError, TypeError):
+            continue
+        if days >= _PIN_DRIFT_DAYS:
+            out.append((tier, pin, served, days))
+    return out
+
+
 # ── Nightly refresh ──────────────────────────────────────────────────────────
 
 async def _list_model_ids() -> list[str]:
@@ -309,6 +350,24 @@ async def refresh_model_resolution() -> int:
                      "tier in <code>_TIER_OVERRIDES</code> "
                      "(shared/llm_models.py).")
         await _send_telegram("\n".join(lines))
+
+    # the fallback pins get an upgrade path too — see stale_tier_pins()
+    for tier, pin, served, days in stale_tier_pins(resolved, changed_at):
+        await log_audit_event(
+            "model_pin_drift",
+            f"{tier}: offline fallback pin {pin} is {days}d behind served {served}",
+            "re-point the *_PIN literal in shared/llm_models.py — live bindings "
+            "are already current; only a resolver outage would serve the pin",
+        )
+        if days % _PIN_DRIFT_DAYS == 0:  # monthly nudge, not a daily nag
+            await _send_telegram(
+                f"🧷 <b>Fallback pin behind</b> — {esc(tier)} has served "
+                f"{code(esc(served))} for {days}d while the offline fallback is "
+                f"still {code(esc(pin))}.\nNo live impact (bindings resolve at "
+                f"boot); it only bites during a models.list outage. Fix: "
+                f"re-point <code>{esc(tier.upper())}_PIN</code> in "
+                f"shared/llm_models.py."
+            )
     return len(resolved)
 
 

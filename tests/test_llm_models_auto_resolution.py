@@ -37,36 +37,69 @@ def test_judge_model_is_the_plain_pin_alias():
 
 # ─── RESOLVED_ROLES scope ────────────────────────────────────────────────────
 
-def test_the_divergence_model_is_NOT_auto_resolved():
-    """THE scope pin, and the one that matters (operator opted all roles in
-    2026-07-31).
+def _role_constants():
+    """Every `*_MODEL` role binding the registry defines, by introspection.
 
-    JUDGE_DIVERGENCE_MODEL is the #301 independent second read on the judge's
-    verdict, and its whole value is being a DIFFERENT model/tier — "not just a
-    cheaper rerun of the same model", per its own registry comment. If it
-    tracked the resolver alongside JUDGE_MODEL, both would drift toward the same
-    family generation and the independence that IS the check would quietly
-    erode.
-
-    This fails loud if someone "completes the set" later. That is the intended
-    failure — the exclusion is deliberate, not an oversight.
+    Introspected, NOT hand-listed — a hand-list is the same rot it is meant to
+    catch (a role added next month wouldn't be in it).
     """
-    assert "JUDGE_DIVERGENCE_MODEL" not in llm_models.RESOLVED_ROLES
-    assert llm_models.effective_model("JUDGE_DIVERGENCE_MODEL") == \
-        llm_models.JUDGE_DIVERGENCE_MODEL
-    assert llm_models.role_resolution("JUDGE_DIVERGENCE_MODEL") is None
+    return {n: v for n, v in vars(llm_models).items()
+            if n.endswith("_MODEL") and isinstance(v, str)}
 
 
-def test_every_other_role_binding_IS_tracked():
-    """The operator's "opt all in" — a role added to the registry later that
-    nobody opts in is exactly the staleness this replaced (theme advisor
-    stranded on opus-4-6; METRICS_EXTRACTION_MODEL still on a 2026-06-09 pin).
+def test_EVERY_role_has_an_upgrade_path():
+    """THE gate. Operator 2026-07-31: "all models need a path to upgrade,
+    nothing shall remain stale."
+
+    A role in the registry but absent from RESOLVED_ROLES is FROZEN FOREVER —
+    nothing on earth would ever advance it. That is exactly the rot this card
+    exists to kill (theme advisor stranded on opus-4-6 while the judge moved to
+    opus-4-8; the metrics extractor sat on a sonnet-4-5 pin flagged 2026-06-09
+    and never revisited).
+
+    Fails on the NEXT role someone adds without opting it in. That is the point:
+    the upgrade path is now a default you must not forget, not a favour.
     """
-    for role in ("JUDGE_MODEL", "THEME_MODEL", "THEME_ADVISOR_MODEL",
-                 "SYNTHESIS_MODEL", "COMPRESSION_MODEL",
-                 "METRICS_EXTRACTION_MODEL", "GROUNDED_GRADE_MODEL",
-                 "MATERIALITY_MODEL", "CATALYST_TYPE_MODEL"):
-        assert role in llm_models.RESOLVED_ROLES, f"{role} left behind"
+    missing = sorted(set(_role_constants()) - set(llm_models.RESOLVED_ROLES))
+    assert not missing, (
+        f"role(s) with NO upgrade path — they can never advance: {missing}. "
+        "Add each to RESOLVED_ROLES with its tier."
+    )
+
+
+def test_no_role_falls_back_to_a_superseded_pin():
+    """The other half of stale: a role can be tracked and STILL name an old id
+    as its offline fallback (METRICS_EXTRACTION_MODEL = SONNET_4_5 did exactly
+    that until 2026-07-31). Every role must bind to a CURRENT tier pin, so a
+    resolver outage degrades to today's model, not to 2025's.
+    """
+    current = {llm_models.OPUS, llm_models.SONNET, llm_models.HAIKU}
+    stale = {n: v for n, v in _role_constants().items() if v not in current}
+    assert not stale, f"role(s) pinned to a superseded id: {stale}"
+
+
+def test_the_divergence_model_tracks_a_DIFFERENT_TIER_than_the_judge():
+    """#301's independence pin, restated after the operator's 2026-07-31 ruling.
+
+    JUDGE_DIVERGENCE_MODEL is the independent second read on JUDGE_MODEL's
+    verdict — "not just a cheaper rerun of the same model", per its own registry
+    comment. I first protected that by EXCLUDING it from auto-resolution, which
+    was wrong: it froze the second opinion on sonnet-4-6 while the judge advanced
+    every release, so the check would have decayed into "a much weaker model"
+    rather than "a different one".
+
+    INDEPENDENCE IS THE TIER, NOT THE VINTAGE. Both track latest; they must
+    never track the SAME tier.
+    """
+    judge = llm_models.RESOLVED_ROLES["JUDGE_MODEL"]
+    diverge = llm_models.RESOLVED_ROLES["JUDGE_DIVERGENCE_MODEL"]
+    assert judge != diverge, (
+        "the divergence check has collapsed into a rerun of the judge — "
+        f"both resolve tier '{judge}'"
+    )
+    # ...and the live values must differ too, not just the tier labels.
+    assert llm_models.effective_model("JUDGE_DIVERGENCE_MODEL") != \
+        llm_models.effective_model("JUDGE_MODEL")
 
 
 def test_unknown_role_name_effective_model_is_empty_not_a_crash():

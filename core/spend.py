@@ -15,10 +15,7 @@ import os
 from datetime import date, datetime
 from typing import Any, Optional
 
-from shared.llm_models import (
-    DEFAULT_PRICING_PER_MTOK as _DEFAULT_PRICING,
-    PRICING_PER_MTOK as _PRICING,
-)
+from shared.llm_models import pricing_for as _pricing_for
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +27,11 @@ def _cost_for_call(
     cache_creation_tokens: int = 0,
     cache_read_tokens: int = 0,
 ) -> float:
-    """Compute dollar cost for a single API call."""
-    prices = _PRICING.get(model, _DEFAULT_PRICING)
+    """Compute dollar cost for a single API call. `pricing_for` (not a raw dict
+    `.get`) so an auto-resolved RESOLVED_ROLES id not yet in PRICING_PER_MTOK
+    prices at its tier's rate instead of silently falling to the flat default
+    (#509 — a resolved id could otherwise be mispriced)."""
+    prices = _pricing_for(model)
     base_input = prices["input"]
 
     # Regular input tokens (exclude cached portions)
