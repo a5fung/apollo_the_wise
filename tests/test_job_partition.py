@@ -126,3 +126,101 @@ def test_intelligence_leak_guard_fires(monkeypatch):
     s = _FakeScheduler(_ALL)
     with pytest.raises(RuntimeError, match="execution-owned jobs survived"):
         sched._apply_role_partition(s, "intelligence")
+
+
+# ─── The gap the 2026-07-31 boot failure exposed ─────────────────────────────
+# Every test above feeds the guard a SYNTHETIC job set, so the whole file stayed
+# green while two really-registered jobs (model_resolution_refresh,
+# judge_eval_divergence_check) were in NEITHER manifest — apollo-market then
+# refused to boot in production. The guard was right; nothing tested it against
+# the REAL registration. Static parsing can't close this either: only 61 of the
+# 90 ids are literal `id="..."` kwargs, the rest come from constants and loops —
+# and model_resolution_refresh was one of the 29 a source scan misses.
+
+class _CapturingScheduler:
+    """Stands in for AsyncIOScheduler: records what start_scheduler registers."""
+    def __init__(self, *a, **k):
+        self._jobs = []
+
+    def add_job(self, func, trigger=None, *a, id=None, **k):
+        self._jobs.append(_FakeJob(id))
+
+    def get_jobs(self):
+        return list(self._jobs)
+
+    def remove_job(self, jid):
+        self._jobs = [j for j in self._jobs if j.id != jid]
+
+    def start(self):
+        pass
+
+    def shutdown(self, *a, **k):
+        pass
+
+
+def _really_registered_job_ids(monkeypatch) -> set:
+    """The job ids start_scheduler ACTUALLY registers, captured at the moment
+    the partition guard runs — i.e. exactly the set the guard sees at boot.
+
+    Read at partition time, not after start(), because order_status_reconcile_boot
+    is registered AFTER the partition pass on purpose (it is conditional).
+    """
+    seen = {}
+    real_partition = sched._apply_role_partition
+
+    def _spy(scheduler, role):
+        seen["ids"] = {j.id for j in scheduler.get_jobs()}
+        return real_partition(scheduler, role)
+
+    monkeypatch.setattr(sched, "AsyncIOScheduler", _CapturingScheduler)
+    monkeypatch.setattr(sched, "_apply_role_partition", _spy)
+    import asyncio
+    asyncio.run(_start(sched))
+    assert seen.get("ids"), "start_scheduler registered nothing — the spy never ran"
+    return seen["ids"]
+
+
+async def _start(mod):
+    # inside a loop: start_scheduler fires a create_task for the stale-run reaper
+    mod.start_scheduler()
+
+
+def test_every_REALLY_registered_job_is_classified(monkeypatch):
+    """The one that would have caught the 2026-07-31 outage.
+
+    A registered-but-unclassified job silently routes to intelligence (the
+    check_fills omission class), so the guard refuses to boot — meaning this is
+    not a style rule: an unclassified job takes the market agent DOWN.
+    """
+    registered = _really_registered_job_ids(monkeypatch)
+    assert len(registered) > 80, f"only {len(registered)} jobs captured — spy is wrong"
+    unclassified = registered - sched.EXECUTION_OWNED_JOB_IDS - sched.INTELLIGENCE_OWNED_JOB_IDS
+    assert not unclassified, (
+        f"registered but in NEITHER manifest: {sorted(unclassified)} — apollo-market "
+        f"and apollo-execution will BOTH refuse to boot. Classify each in "
+        f"EXECUTION_OWNED_JOB_IDS or INTELLIGENCE_OWNED_JOB_IDS."
+    )
+
+
+def test_no_manifest_entry_is_a_ghost(monkeypatch):
+    """The other direction: an id in a manifest that nothing registers any more.
+
+    The boot guard only checks this for the EXECUTION set, so a renamed or
+    deleted intelligence job leaves a ghost entry that nothing catches — and the
+    next reader trusts the manifest as the job list.
+    """
+    registered = _really_registered_job_ids(monkeypatch)
+    allowed_absent = {
+        # registered AFTER the partition pass, conditionally — by design
+        "order_status_reconcile_boot",
+        # DELIBERATELY unregistered, parked for #297 to reclaim (see db.py:8729 —
+        # the Family-B lifecycle writers; the board's last reader was repointed to
+        # Family-A). Kept in the manifest on purpose, so they are not ghosts.
+        "anticipation_readiness", "anticipation_3b",
+    }
+    ghosts = (sched.EXECUTION_OWNED_JOB_IDS | sched.INTELLIGENCE_OWNED_JOB_IDS) - registered - allowed_absent
+    assert not ghosts, (
+        f"manifest lists job(s) nothing registers: {sorted(ghosts)} — either the job was "
+        f"renamed/deleted and the entry went stale, or it is parked on purpose (then add it "
+        f"to allowed_absent WITH the reason)."
+    )
