@@ -314,3 +314,66 @@ def test_stale_tier_pins_never_dates_drift_it_cannot_date():
     reported — a guessed age would be fabricated evidence."""
     assert mr.stale_tier_pins({"opus": "claude-opus-5"}, {}) == []
     assert mr.stale_tier_pins({"opus": "claude-opus-5"}, {"opus": "not-a-date"}) == []
+
+
+def _seed_cache(tmp_path, resolved, changed_at):
+    """Write a prior resolution cache so the refresh has a real 'previous'."""
+    from shared.model_resolver import write_cache
+    return write_cache(resolved, changed_at, cache_path=tmp_path / "cache.json")
+
+
+def test_refresh_EXERCISES_the_pin_drift_branch_audit_and_telegram(monkeypatch, tmp_path):
+    """The consumer side of stale_tier_pins, not just the pure function.
+
+    In production this branch first executes ~30 days after a release — i.e. a
+    green suite would prove nothing about it until then. Seed a cache whose opus
+    resolution is 45 days old and ahead of OPUS_PIN, then assert the guardrail
+    can actually SPEAK: a `model_pin_drift` audit row, and (day 45 is not a
+    multiple of 30) NO Telegram.
+    """
+    from shared import llm_models
+    audit, tg = AsyncMock(), AsyncMock()
+    _seed_cache(tmp_path, {"opus": "claude-opus-5"}, {"opus": _dt(45)})
+    _mock_refresh_deps(monkeypatch, tmp_path, LIVE_IDS, audit=audit, telegram=tg)
+
+    _run(mr.refresh_model_resolution())
+
+    drift = [c for c in audit.await_args_list if c.args[0] == "model_pin_drift"]
+    assert len(drift) == 1, "the pin-drift audit row never fired"
+    assert llm_models.OPUS_PIN in drift[0].args[1] and "claude-opus-5" in drift[0].args[1]
+    assert "45d behind" in drift[0].args[1]
+    tg.assert_not_awaited()  # 45 % 30 != 0 — daily row, not a daily nag
+
+
+def test_refresh_pin_drift_nudges_on_the_monthly_boundary(monkeypatch, tmp_path):
+    """Day 60 IS a multiple of 30 -> the Telegram nudge renders. Pins the text
+    the operator would actually receive, including that it says there is no live
+    impact (bindings resolve at boot; only a models.list outage serves the pin).
+    """
+    from shared import llm_models
+    audit, tg = AsyncMock(), AsyncMock()
+    _seed_cache(tmp_path, {"opus": "claude-opus-5"}, {"opus": _dt(60)})
+    _mock_refresh_deps(monkeypatch, tmp_path, LIVE_IDS, audit=audit, telegram=tg)
+
+    _run(mr.refresh_model_resolution())
+
+    tg.assert_awaited_once()
+    text = tg.await_args.args[0]
+    assert "OPUS_PIN" in text and llm_models.OPUS_PIN in text and "claude-opus-5" in text
+    assert "No live impact" in text
+
+
+def test_refresh_is_silent_about_pins_that_are_current(monkeypatch, tmp_path):
+    """No drift when the served id IS the pin — the guardrail must not cry wolf
+    on the normal state, or its one real firing gets ignored."""
+    from shared import llm_models
+    audit, tg = AsyncMock(), AsyncMock()
+    ids = [llm_models.OPUS_PIN, llm_models.SONNET_PIN, llm_models.HAIKU_PIN]
+    _seed_cache(tmp_path, dict(llm_models._TIER_PINS),
+                {t: _dt(400) for t in llm_models._TIER_PINS})
+    _mock_refresh_deps(monkeypatch, tmp_path, ids, audit=audit, telegram=tg)
+
+    _run(mr.refresh_model_resolution())
+
+    assert [c for c in audit.await_args_list if c.args[0] == "model_pin_drift"] == []
+    tg.assert_not_awaited()
