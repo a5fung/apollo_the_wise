@@ -146,12 +146,19 @@ async def main() -> int:
     import anthropic
     from agents.market_intelligence.ep_grade_judge import (
         grade_holistic, RUBRIC_VERSION, RUBRIC_HASH,
+        MODEL as _JUDGE_MODEL_DEFAULT,
     )
     from agents.market_intelligence.ep_detector import CATALYST_GRADE_PROMPT_VERSION
-    from shared.llm_models import JUDGE_MODEL
+
+    # #509: record the id the eval ACTUALLY ran on, not the committed pin —
+    # ep_grade_judge.MODEL is resolver-tracked and can differ from
+    # shared.llm_models.JUDGE_MODEL. This value feeds judge_eval_pass_record.json,
+    # which agents/.../model_resolution.py::check_judge_eval_divergence compares
+    # against the LIVE resolution — a mislabeled record would corrupt that check.
+    actual_model = model_override or _JUDGE_MODEL_DEFAULT
 
     client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-    print(f"Eval: {len(cases)} cases | model={JUDGE_MODEL} | rubric={RUBRIC_VERSION} ({RUBRIC_HASH}) "
+    print(f"Eval: {len(cases)} cases | model={actual_model} | rubric={RUBRIC_VERSION} ({RUBRIC_HASH}) "
           f"| corpus={corpus['_meta']['corpus_version']}", flush=True)
 
     if model_override:
@@ -179,7 +186,7 @@ async def main() -> int:
     print(json.dumps({
         "keys": {"rubric_version": RUBRIC_VERSION, "rubric_hash": RUBRIC_HASH,
                  "catalyst_grade_prompt_version": CATALYST_GRADE_PROMPT_VERSION,
-                 "judge_model": JUDGE_MODEL,
+                 "judge_model": actual_model,
                  "corpus_version": corpus["_meta"]["corpus_version"],
                  "corpus_sha1": __import__("hashlib").sha1(open(corpus_path,"rb").read()).hexdigest()[:12]},
         "summary": summary,

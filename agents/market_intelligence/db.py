@@ -1083,7 +1083,10 @@ async def initialize_schema() -> None:
         #     AND resolved_at < (('2026-08-14'::date + 1)::timestamp
         #                        AT TIME ZONE 'America/New_York')
         #   ORDER BY resolved_at DESC LIMIT 1;
-        # (shape exercised against prod psql 2026-07-30 — see get_model_resolution_asof)
+        # (see get_model_resolution_asof. The `resolved_at < (date+1) AT TIME ZONE`
+        # cast pattern was verified read-only against prod's mi_audit_log 2026-07-31
+        # — this table itself does not exist in prod yet, this feature is unshipped;
+        # do not claim more verification than that.)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_model_resolution (
                 id SERIAL PRIMARY KEY,
@@ -9964,7 +9967,10 @@ async def insert_model_resolution(role: str, model: str, source: str,
 async def get_model_resolution_asof(role: str, on_date: date) -> "dict | None":
     """Which model `role` was running on ET date `on_date` — the operator's
     "what was the judge running on 2026-08-14?" query. Uses the last change at
-    or before the END of that ET day. SQL shape exercised on prod 2026-07-30."""
+    or before the END of that ET day (works even on a day with zero grade
+    decisions — boot-driven, not decision-driven). The `resolved_at <
+    (date+1) AT TIME ZONE` cast pattern was verified read-only against prod's
+    mi_audit_log 2026-07-31 (this table itself is not yet in prod)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -9980,6 +9986,46 @@ async def get_model_resolution_asof(role: str, on_date: date) -> "dict | None":
             role, on_date,
         )
     return dict(row) if row else None
+
+
+async def get_judge_grade_decisions_for_date(on_date: date) -> list[dict]:
+    """`ep_grade_decision` audit payloads (each carries `judge_model`/`judge_tier`/
+    `judge_direction` — see ep_detector.py::_emit_grade_decision) for a specific ET
+    date, parsed PYTHON-SIDE. Mirrors system_audit.py::_judge_decision_rows_today's
+    established safety pattern (mi_audit_log.detail is TEXT and can hold malformed
+    rows — a SQL `->>`/`::jsonb` cast crashed on this exact table once, 7/11 corpus
+    mine — never repeat that mistake here), generalized to an arbitrary date instead
+    of hardcoded CURRENT_DATE.
+
+    Pairs with `get_model_resolution_asof("JUDGE_MODEL", on_date)` to answer "what
+    was the judge running on date X, and how did its grades look that day" — join
+    is simply the shared `on_date` in application code:
+
+        asof = await get_model_resolution_asof("JUDGE_MODEL", on_date)
+        rows = await get_judge_grade_decisions_for_date(on_date)
+        high_rate = (sum(r.get("judge_tier") == "HIGH" for r in rows) / len(rows)
+                     if rows else None)
+
+    Malformed rows are SKIPPED, never crash the query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT detail FROM mi_audit_log
+            WHERE event_type = 'ep_grade_decision'
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $1::date
+            """,
+            on_date,
+        )
+    out: list[dict] = []
+    for r in rows:
+        try:
+            d = json.loads(r["detail"]) if isinstance(r["detail"], str) else r["detail"]
+            if isinstance(d, dict):
+                out.append(d)
+        except (ValueError, TypeError):
+            continue
+    return out
 
 
 async def get_sip_feed_telemetry(trade_date: date) -> dict[str, int]:

@@ -8,20 +8,34 @@ automatically; safety comes from guardrails + traceability, not frozen pins.
 There is NO `-latest` alias in the API — `models.list` returns concrete ids
 (claude-opus-5, claude-opus-4-8, claude-haiku-4-5-20251001, …), so "latest"
 means resolving that list. This module is the ONE implementation of that
-resolution, used by three consumers that must agree byte-for-byte:
+resolution, used by two consumers that must agree byte-for-byte:
 
-  1. shared/llm_models.py            — binds tier constants at import (cache read only)
-  2. agents/.../model_resolution.py  — the nightly refresh job (writes the cache)
-  3. scripts/preflight_judge_eval_gate.py + preflight_model_resolution.py
+  1. shared/llm_models.py `RESOLVED_ROLES`/`effective_model` — resolved ONCE
+     per role, at whichever point a RESOLVED_ROLES role's value is first read
+     (cache read only; NOT the plain OPUS/SONNET/HAIKU tier constants, which
+     stay static literals for the host-side deploy gate's sake — see
+     shared/llm_models.py's AUTO-RESOLUTION docstring for why).
+  2. agents/.../model_resolution.py `refresh_model_resolution` — the nightly
+     refresh job (calls models.list, writes the cache) and
+     `check_judge_eval_divergence` (the guardrail that reads what #1
+     resolved and compares it to the last passing eval).
+
+The host-side deploy gates (scripts/preflight_judge_eval_gate.py,
+scripts/preflight_model_registry.py) do NOT import this module — they
+statically parse committed source and never execute Python, so a cache-file
+resolution is invisible to them by construction; that is the deliberate
+guardrail split, not a gap (see shared/llm_models.py).
 
 DESIGN CONTRACT — read before touching:
-  * PURE STDLIB, no app imports (llm_models imports THIS, never the reverse;
-    the host-side deploy gates import it too). No network in the resolve path.
+  * PURE STDLIB, no app imports (llm_models imports THIS, never the reverse).
+    No network in the resolve path.
   * Resolution is CACHE-FILE based: the nightly refresh job calls models.list
     and writes `logs/model_resolution.json` (bind-mounted in prod, so the
-    market-agent writes it and the execution container + host deploy gates read
-    it). Import-time resolution ONLY reads that file — zero API calls per LLM
-    invocation, zero at import.
+    market-agent writes it and the execution container reads the same file).
+    `resolve_tier` ONLY reads that file — zero network calls in this path,
+    ever (not at import, not per invocation, not in the nightly refresh's own
+    resolve step — only `refresh_model_resolution`'s `models.list` call hits
+    the network, and that is the one deliberate exception, nightly).
   * FAIL SAFE, always: any failure (missing/corrupt cache, unparseable id,
     family mismatch, resolver bug) returns the committed PIN. A resolver
     exception must never take the trading system down — resolve_tier cannot

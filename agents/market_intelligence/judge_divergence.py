@@ -89,10 +89,12 @@ async def _run(ticker: str, alert_date, payload: dict, primary_verdict: dict) ->
         from agents.market_intelligence.audit_events import (
             JUDGE_DIVERGENCE_CHECK_FAILED, JUDGE_DIVERGENCE_DETECTED,
         )
-        from agents.market_intelligence.ep_grade_judge import grade_holistic
-        from shared.llm_models import (
-            JUDGE_MODEL as _PRIMARY_MODEL, JUDGE_DIVERGENCE_MODEL as _MODEL,
+        # MODEL (not JUDGE_MODEL) — #509: label with the id that ACTUALLY
+        # graded the primary verdict (resolver-tracked), not the committed pin.
+        from agents.market_intelligence.ep_grade_judge import (
+            MODEL as _PRIMARY_MODEL, grade_holistic,
         )
+        from shared.llm_models import JUDGE_DIVERGENCE_MODEL as _MODEL
 
         # IDENTICAL payload, model-swapped only (PLAN #301 build-spec). Own semaphore +
         # timeout, distinct log_caller so this ~2-5 calls/day Sonnet spend is attributable

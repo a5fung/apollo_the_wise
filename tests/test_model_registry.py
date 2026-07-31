@@ -38,10 +38,13 @@ def test_registry_prices_every_role_binding():
 
 
 def test_spend_consumers_share_the_registry_table():
+    # #509: both consumers route through llm_models.pricing_for (not a raw dict
+    # reference) so an auto-resolved RESOLVED_ROLES id prices at its tier's rate
+    # instead of the flat default — still ONE source of truth, now a function.
     from agents.market_intelligence import spend_tracker
     from core import spend
-    assert spend_tracker._PRICING is llm_models.PRICING_PER_MTOK
-    assert spend._PRICING is llm_models.PRICING_PER_MTOK
+    assert spend_tracker._pricing_for is llm_models.pricing_for
+    assert spend._pricing_for is llm_models.pricing_for
 
 
 def test_gate_catches_stray_literal(tmp_path: Path):

@@ -1,38 +1,76 @@
-"""Model auto-resolution runtime — refresh job + boot recorder (operator-ruled 2026-07-30).
+"""Model auto-resolution runtime — refresh job + boot recorder + eval-divergence
+guardrail (operator-ruled 2026-07-30). See shared/llm_models.py's AUTO-RESOLUTION
+docstring for the full design (why the module-level constants there MUST stay
+static, and why this file is where the actual dynamic behavior lives instead).
 
-The policy ("track the leaders; guardrails + traceability provide the safety")
-is implemented in three moving parts; this module is the two runtime ones:
+Four moving parts, all here except the resolve-itself (shared/model_resolver.py,
+imported by shared/llm_models.py at import time — cache-file read only):
 
-  1. `refresh_model_resolution` — nightly intelligence-side job (18:05 ET).
-     Calls the API's `models.list`, computes the newest concrete id per tier
-     (shared/model_resolver.py ordering), and atomically rewrites the
-     resolution cache (`logs/model_resolution.json`, bind-mounted so the
-     execution container and the host deploy gates see the same file). A tier
-     change is NEVER silent: audit event `model_release_detected` + Telegram,
-     BEFORE the change takes effect — the new id only binds at the next
-     process boot, so the operator has a window to set the one-edit override
-     in shared/llm_models.py if they don't want it.
+  1. `refresh_model_resolution` — nightly intelligence-side job. Calls the API's
+     `models.list`, computes the newest concrete id per tier (shared/model_resolver.py
+     ordering), and atomically rewrites the resolution cache
+     (`logs/model_resolution.json`, bind-mounted so the execution container and the
+     host deploy gates could read the same file — though the deploy gate deliberately
+     does not; see shared/llm_models.py). A tier change is NEVER silent: audit event
+     `model_release_detected` + Telegram, BEFORE the change takes effect — the new id
+     only binds at the next process boot (shared.llm_models.RESOLVED_ROLES /
+     effective_model), so the operator has a window to set an override in
+     shared/llm_models.py `_TIER_OVERRIDES` if they don't want it.
 
-  2. `record_boot_resolution` — boot hook (intelligence/combined role only, so
-     the execution container never double-writes). Persists what every LLM
-     ROLE is *effectively* running this process into `mi_model_resolution`
-     (insert-on-change, effective-dated in ET) and Telegrams + audit-logs any
-     change (`model_resolution_change`). This table answers "what was the
-     judge running on 2026-08-14?" (db.get_model_resolution_asof) and joins by
-     `effective_date` to the grade metrics — `judge_high_rate_daily` /
-     `judge_demote_share_daily` read `ep_grade_decision` audit rows keyed by
-     the same ET date, so a grade anomaly is attributable to a model change:
+  2. `record_boot_resolution` — boot hook (intelligence/combined role only, so the
+     execution container never double-writes). Persists what every LLM ROLE is
+     *effectively* running this process — via `shared.llm_models.effective_model`,
+     so a RESOLVED_ROLES role (today: JUDGE_MODEL) reports its TRUE live value, not
+     the static constant — into `mi_model_resolution` (insert-on-change,
+     effective-dated in ET) and Telegrams + audit-logs any change
+     (`model_resolution_change`). This answers "what was the judge running on
+     2026-08-14?":
 
-       SELECT g.et_date, c.model
-       FROM (SELECT (created_at AT TIME ZONE 'America/New_York')::date AS et_date
-             FROM mi_audit_log WHERE event_type = 'ep_grade_decision'
-             GROUP BY 1) g
-       LEFT JOIN mi_model_resolution c
-         ON c.role = 'JUDGE_MODEL' AND c.effective_date <= g.et_date
-       ...  -- (shape exercised on prod 2026-07-30)
+       SELECT model FROM mi_model_resolution
+       WHERE role = 'JUDGE_MODEL'
+         AND resolved_at < (('2026-08-14'::date + 1)::timestamp
+                            AT TIME ZONE 'America/New_York')
+       ORDER BY resolved_at DESC LIMIT 1;
+       -- (db.get_model_resolution_asof; the timestamptz `<`-vs-`(date+1) AT TIME
+       -- ZONE` cast pattern verified read-only against prod's mi_audit_log
+       -- 2026-07-31 — mi_model_resolution itself does not exist in prod yet, this
+       -- branch is unshipped)
 
-Part 3 (the resolve itself) lives in shared/model_resolver.py and runs at
-import of shared/llm_models.py — cache-file read only, fail-safe to the pins.
+     Joins BY DATE to the grade metrics: `judge_high_rate_daily` (system_audit.py)
+     reads `mi_audit_log` rows with `event_type='ep_grade_decision'`, grouped by
+     `(created_at AT TIME ZONE 'America/New_York')::date` — same ET-date key. The
+     per-day payload is TEXT (can hold malformed rows; a raw SQL `->>` cast crashed
+     on this exact table once, 7/11 corpus mine) so, mirroring
+     `system_audit._judge_decision_rows_today`'s established safety pattern,
+     `db.get_judge_grade_decisions_for_date(on_date)` fetches + parses it
+     Python-side. So the correlated answer to "what was the judge running on date X,
+     and how did its grades look" is two calls joined by the same `on_date`:
+
+       asof   = await db.get_model_resolution_asof("JUDGE_MODEL", on_date)
+       rows   = await db.get_judge_grade_decisions_for_date(on_date)
+       high_rate = (sum(r["judge_tier"] == "HIGH" for r in rows) / len(rows)
+                    if rows else None)
+
+     — `asof["model"]` answers even on a quiet day with zero decisions (boot-driven,
+     not decision-driven); `rows` gives the SAME malformed-row safety
+     `judge_high_rate_daily` itself relies on, rather than duplicating a SQL JSON
+     cast that has already broken production once on this table.
+
+  3. `check_judge_eval_divergence` — NEW nightly WARN (never a block, item 2 of the
+     #509 design): compares what THIS process is actually running the judge on
+     (`shared.llm_models.effective_model("JUDGE_MODEL")`) against the model recorded
+     in the last PASSING judge-robustness eval
+     (`scripts/evals/judge_eval_pass_record.json`). This is exactly the comparison
+     `scripts/preflight_judge_eval_gate.py` structurally cannot make — that gate runs
+     on the HOST at deploy with no API/DB access and only ever re-parses this repo's
+     COMMITTED source (the static `JUDGE_MODEL` pin), so a cache-resolved runtime
+     value is invisible to it by construction. Loud WARN only (audit + Telegram):
+     upgrading the judge needs a paid eval + operator sign-off (ADR-0030); a hard
+     deploy block would hold every unrelated change hostage over a model release.
+
+Part 4 (the resolve itself) lives in shared/model_resolver.py + is consumed by
+shared/llm_models.py's `RESOLVED_ROLES`/`effective_model` at import — cache-file
+read only, fail-safe to the pin, never a network call in that path.
 
 Guardrails in the refresh (fail-safe by construction):
   * unparseable ids are never candidates (can't order → can't adopt);
@@ -45,8 +83,10 @@ Guardrails in the refresh (fail-safe by construction):
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+from pathlib import Path
 
 from agents.market_intelligence.constants import runs_intelligence_jobs
 from agents.market_intelligence.db import (
@@ -65,28 +105,47 @@ from shared.model_resolver import (
 
 logger = logging.getLogger(__name__)
 
+# scripts/evals/judge_eval_pass_record.json — same repo-relative path
+# preflight_judge_eval_gate.py uses (REPO / "scripts" / "evals" / ...).
+_EVAL_RECORD_PATH = Path(__file__).resolve().parents[2] / "scripts" / "evals" / "judge_eval_pass_record.json"
+
 _JUDGE_EVAL_NOTE = (
-    "ADR-0030: the judge robustness eval is DUE on the new id — deploys warn "
-    "for 14 days, then the judge-eval gate blocks."
+    "ADR-0030's preflight_judge_eval_gate blocks a DEPLOY only when the COMMITTED "
+    "JUDGE_MODEL pin changes without a fresh passing eval — it cannot see this "
+    "runtime auto-resolution (shared/llm_models.py AUTO-RESOLUTION docstring). "
+    "The nightly check_judge_eval_divergence WARNs when the two drift apart; run "
+    "the judge robustness eval on the resolved id, then bump JUDGE's pin, to "
+    "formally adopt it."
 )
 
 
 def current_role_bindings() -> dict[str, str]:
-    """ROLE constant → concrete model id, from the registry (this process)."""
-    return {
+    """ROLE constant name -> the model id THIS PROCESS is EFFECTIVELY running for
+    that role. For a `llm_models.RESOLVED_ROLES` role (today: JUDGE_MODEL) this is
+    the cache-resolved value (`llm_models.effective_model`) — the id
+    `ep_grade_judge.py` actually binds its default `model=` to at import, which can
+    differ from the plain registry constant. Every other role is its static
+    constant, unchanged."""
+    bindings = {
         name: value
         for name, value in vars(llm_models).items()
         if name.endswith("_MODEL") and isinstance(value, str)
     }
+    for role in llm_models.RESOLVED_ROLES:
+        bindings[role] = llm_models.effective_model(role)
+    return bindings
 
 
-def _role_source(model_id: str) -> tuple[str, str]:
-    """(source, note) for a bound id: how the registry arrived at it."""
-    tier = llm_models.tier_of(model_id)
-    if tier is None:
-        return "static", "static legacy pin (not tier-resolved)"
-    res = llm_models.TIER_RESOLUTIONS[tier]
-    return res.source, res.note or f"tier={tier}"
+def _role_source(role: str, model_id: str) -> tuple[str, str]:
+    """(source, note) for a bound id: how the registry arrived at it. Role-driven
+    (not a value->tier reverse lookup) — a role not in RESOLVED_ROLES is always
+    "static" regardless of whether its id happens to parse into a known family
+    (e.g. THEME_ADVISOR_MODEL's literal OPUS pin is static, not tier-tracked)."""
+    res = llm_models.role_resolution(role)
+    if res is not None:
+        tier = llm_models.RESOLVED_ROLES.get(role, "?")
+        return res.source, res.note or f"tier={tier}"
+    return "static", "static registry pin (not in RESOLVED_ROLES)"
 
 
 async def _send_telegram(text: str) -> None:
@@ -118,7 +177,7 @@ async def record_boot_resolution() -> None:
             prev = last["model"] if last else None
             if prev == model:
                 continue
-            source, note = _role_source(model)
+            source, note = _role_source(role, model)
             await insert_model_resolution(role, model, source, prev, detail=note)
             changes.append((role, prev, model, source))
             event = "model_resolution_change" if prev else "model_resolution_baseline"
@@ -218,7 +277,7 @@ async def refresh_model_resolution() -> int:
     for tier, _old, _new in changes:
         changed_at[tier] = now_iso
 
-    candidates = {t: [i for i in ids if llm_models.tier_of(i) == t or t in i] for t in TIERS}
+    candidates = {t: [i for i in ids if llm_models.tier_of(i) == t] for t in TIERS}
     path = write_cache(resolved, changed_at, candidates=candidates)
     logger.info("model_resolution: cache refreshed at %s — %s", path, resolved)
 
@@ -230,19 +289,102 @@ async def refresh_model_resolution() -> int:
             f"takes effect at next boot; cache={path}",
         )
     if real:
-        bindings = current_role_bindings()
+        changed_tiers = {t for t, _o, _n in real}
+        # RESOLVED_ROLES-driven, not a value->tier reverse lookup: which auto-
+        # tracked roles sit on a tier that just moved (today: JUDGE_MODEL/opus).
+        affected_roles = sorted(
+            role for role, tier in llm_models.RESOLVED_ROLES.items() if tier in changed_tiers
+        )
         lines = ["🆕 <b>New Claude release detected</b> (models.list)"]
         for tier, old, new in real:
             lines.append(f"{esc(tier)}: {code(esc(old))} → {code(esc(new))}")
         lines.append("Takes effect at the <b>next deploy/restart</b> of each "
                      "service — nothing changed mid-session.")
-        judge_tier = llm_models.tier_of(bindings.get("JUDGE_MODEL", ""))
-        if any(t == judge_tier for t, _o, _n in real):
-            lines.append(f"⚠ The JUDGE (currently "
-                         f"{code(esc(bindings.get('JUDGE_MODEL', '?')))}) will move "
-                         f"at next boot. {esc(_JUDGE_EVAL_NOTE)}")
+        if affected_roles:
+            lines.append(f"⚠ These roles auto-track this release and will move at "
+                         f"next boot: {esc(', '.join(affected_roles))}.")
+            if "JUDGE_MODEL" in affected_roles:
+                lines.append(esc(_JUDGE_EVAL_NOTE))
         lines.append("Don't want it? One edit BEFORE the next deploy: pin the "
                      "tier in <code>_TIER_OVERRIDES</code> "
                      "(shared/llm_models.py).")
         await _send_telegram("\n".join(lines))
     return len(resolved)
+
+
+# ── Nightly eval-divergence guardrail ────────────────────────────────────────
+
+async def check_judge_eval_divergence() -> None:
+    """NEW nightly in-container guardrail (item 2 of the #509 design): compares
+    the model this process is ACTUALLY running the judge on
+    (`llm_models.effective_model("JUDGE_MODEL")`) against the model recorded in
+    the last PASSING judge-robustness eval
+    (`scripts/evals/judge_eval_pass_record.json`). Sees exactly what
+    `scripts/preflight_judge_eval_gate.py` structurally cannot: that gate runs on
+    the HOST at deploy with no API/DB access, re-parsing this repo's COMMITTED
+    source only — a cache-resolved runtime value is invisible to it by
+    construction (see shared/llm_models.py AUTO-RESOLUTION docstring).
+
+    Loud WARN only (audit event `judge_model_eval_divergence` + Telegram) —
+    NEVER a block. Adopting a new judge id needs a paid eval + operator sign-off
+    (ADR-0030); a hard block here would hold every unrelated deploy hostage over
+    a model release the operator hasn't even decided to adopt yet. Never raises —
+    a guardrail bug must not take the nightly chain down."""
+    from shared.telegram_format import code, esc
+
+    try:
+        running = llm_models.effective_model("JUDGE_MODEL")
+        try:
+            record = (
+                json.loads(_EVAL_RECORD_PATH.read_text(encoding="utf-8"))
+                if _EVAL_RECORD_PATH.exists() else None
+            )
+        except Exception as e:
+            await log_audit_event(
+                "model_resolution_eval_check_error",
+                f"could not read judge eval pass record: {e}",
+                f"path={_EVAL_RECORD_PATH}",
+            )
+            return
+
+        evaluated = record.get("judge_model") if isinstance(record, dict) else None
+        if not evaluated:
+            await log_audit_event(
+                "model_resolution_eval_check_error",
+                "no judge eval pass record found (or record missing 'judge_model') "
+                "— cannot compare",
+                f"path={_EVAL_RECORD_PATH}",
+            )
+            return
+
+        if running == evaluated:
+            return  # in sync — no news, nothing to log or send
+
+        await log_audit_event(
+            "judge_model_eval_divergence",
+            f"JUDGE_MODEL running {running} but last PASSING eval was on {evaluated}",
+            f"eval run_at={record.get('run_at')}; not blocking — run the judge "
+            f"robustness eval on {running} and get it green to make it the new "
+            f"evaluated baseline (ADR-0030).",
+        )
+        await _send_telegram(
+            "⚠️ <b>Judge model diverged from its last evaluated baseline</b>\n"
+            f"Running: {code(esc(running))}\n"
+            f"Last evaluated (passing): {code(esc(evaluated))}\n"
+            "Not blocking deploys — but live grades are running on an UNEVALUATED "
+            "id. Run the judge robustness eval to confirm quality (then bump "
+            "JUDGE's pin), or set an override in <code>_TIER_OVERRIDES</code> "
+            "(shared/llm_models.py) to hold it back."
+        )
+    except Exception as e:
+        logger.error(f"check_judge_eval_divergence failed (non-fatal): {e}")
+        try:
+            await log_audit_event(
+                "model_resolution_eval_check_error",
+                f"check_judge_eval_divergence crashed: {type(e).__name__}: {e}",
+            )
+        except Exception:  # loud-ok: fallback-of-the-fallback — log_audit_event
+            # never raises by its own contract, but if it somehow did, logger.error
+            # above already surfaced the original failure loudly; nothing above
+            # this can handle a SECOND failure in the error-reporting path itself.
+            pass

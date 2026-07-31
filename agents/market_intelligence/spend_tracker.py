@@ -37,10 +37,9 @@ from typing import Any
 from agents.market_intelligence.db import get_pool
 from shared.llm_models import (
     DEFAULT_PERPLEXITY_REQUEST_FEE_USD as _DEFAULT_PPLX_FEE,
-    DEFAULT_PRICING_PER_MTOK as _DEFAULT_PRICING,
     PERPLEXITY_REQUEST_FEE_USD as _PPLX_FEE,
-    PRICING_PER_MTOK as _PRICING,
 )
+from shared.llm_models import pricing_for as _pricing_for
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,10 @@ def _cost_for_call(
     cache_creation_tokens: int = 0,
     cache_read_tokens: int = 0,
 ) -> float:
-    prices = _PRICING.get(model, _DEFAULT_PRICING)
+    """`pricing_for` (not a raw dict `.get`) so an auto-resolved RESOLVED_ROLES
+    id not yet in PRICING_PER_MTOK prices at its tier's rate instead of the
+    flat default (#509)."""
+    prices = _pricing_for(model)
     base_input = prices["input"]
     regular_input = max(input_tokens - cache_creation_tokens - cache_read_tokens, 0)
     cost = (
@@ -199,7 +201,7 @@ async def log_perplexity_call(
     input_tokens = _get(usage, "prompt_tokens")
     output_tokens = _get(usage, "completion_tokens")
 
-    prices = _PRICING.get(model, _DEFAULT_PRICING)
+    prices = _pricing_for(model)
     request_fee = _PPLX_FEE.get(model, _DEFAULT_PPLX_FEE)
     token_cost = (
         (input_tokens / 1_000_000) * prices["input"]
