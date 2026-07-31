@@ -16,7 +16,7 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
 3. **`max_concurrent_positions`** (`BLOCK_MAX_POSITIONS`) — count of open `mi_live_trades` rows in `db.OPEN_POSITION_STATUSES` = `('filled','order_placed','confirmed')` ≥ `MAX_CONCURRENT_LIVE_POSITIONS` (5). Bounds total simultaneous exposure. **`pending_confirmation` is EXCLUDED (#436 fork B, 2026-07-11):** a staged-paper proposal is inert (no broker order, no confirm path since #364) so it is not a position and must not consume a slot; a real auto-entry flips `pending_confirmation → confirmed` in-process so it is counted the instant it is real. The vocabulary is the single constant `db.OPEN_POSITION_STATUSES`, reused by `get_open_position_count`, `live_tracker.count_open_positions` (the shared cap-count SQL: `_check_safeguards` per-mode + per-strategy AND the #461 insert-time recheck), and `coverage_drift` so "open" can never drift between the cap and the drift detector. **Enforced transactionally (#461, 2026-07-18):** the `_check_safeguards` read is the cheap early gate; the AUTHORITATIVE check is an atomic recount + INSERT (+ auto-enter confirm flip) in one transaction under a per-`account_mode` `pg_advisory_xact_lock` at the entry pipeline's insert step, so concurrent candidates can never both pass on a stale count (see change log 2026-07-18 — cap VALUE unchanged).
 4. **PDT guards** — ⚠️ **RETIRED 2026-06-04 (#181).** FINRA Rule 4210 + Alpaca's new intraday-margin framework eliminated the PDT designation and the $25K floor; the `BLOCK_PDT_LOCKOUT_ACTIVE` / `BLOCK_PDT_LOCKOUT_IMMINENT` guards were removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check (margin-deficit orders rejected) — no Apollo-side day-trade gate replaces it. See change log 2026-06-04. *(Was: at equity < $25K, block if `pattern_day_trader=True` or `daytrade_count ≥ 3`.)*
 5. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of `total_pnl` of trades **CLOSED today** (ET, by `closed_at` — **NOT** `alert_date`; FL-2 coverage fix 2026-07-24) that realized a loss, ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop on today's **realized** losses, including **multi-day positions that stop out today** (Day 2-5 SMA-trail / partial / time-stop closes). Magnitude-based, not count-based.
-6. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **DEPRECATED**: superseded by drawdown breaker (#7); will be removed after #7 promotes to active. Threshold bumped 5→10 on 2026-05-08 as a stand-in.
+6. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **KEPT — operator-ruled 2026-07-31 ("we should keep the circuit breaker"). NO LONGER DEPRECATED; the removal pre-committed below is CANCELLED.** Threshold bumped 5→10 on 2026-05-08. ⚠ Two structural properties are ACCEPTED, not fixed (constants.py:319): it is **self-perpetuating** — a loss closing DURING cooldown advances `latest_loss_at` and re-arms for another 24h — and **methodology-blind**, since a closed-trade streak over-weights losers when the methodology holds winners to a trailing stop. Both were observed live on 2026-07-31: FTNT closed −$6.63 at 09:37:50 on 07-30, which alone re-armed the cooldown to 09:37:50 on 07-31 and blocked FLNC/COHU/NWL/FET (all alerted 09:31:00) plus MPWR (09:35:42) — six live alerts, zero entries. See change log 2026-07-31.
 7. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. **EFFECTIVENESS REVIEWED 2026-07-30 — VERDICT: UNPROVEN ON LIVE MONEY (review stays OPEN).** ⚠ My first pass concluded 'net-helped' off the PAPER account and the operator corrected it: *"why looking at paper? we've switched to real money a month ago."* The review's own predicate names paper because it was written PRE-CUTOVER. **On LIVE the breaker has NEVER acted**: state WATCH, peak $5,000 (07-03), drawdown −4.36%, 28 snapshots, evaluated 07-29 — and WATCH is multiplier 1.0×, a warning that sizes nothing down. REDUCE needs −7%, BLOCK −12%; neither has fired live, and zero entries carry `block:drawdown_breaker` lifetime. **So: tracking correctly, protecting nothing yet.** The first real test is a live drawdown reaching −7%. One REDUCE trip in the whole active phase (2026-06-05 → 07-06, 31 days); BLOCK has never fired and zero entries carry `block:drawdown_breaker` lifetime. PRE-CUTOVER PAPER CONTEXT ONLY (not the verdict): one REDUCE trip 06-05→07-06 (31d) where enforcement was real — REDUCE-window n=6 avg risk $297 / notional $7,311 vs $917 / $18,504 outside, ~1/3 of normal (the 0.5× compounding with regime sizing). ⚠ But that paper 'saving' rests on ONE trade: SYRE is −$1,483 of the −$2,493 total (60%), the other five average ~−$200, and the comparison group outside the window is a SINGLE trade. Directional at best. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
 
 ## Position sizing — regime-keyed risk multiplier (#456, operator-ruled 2026-07-26)
@@ -162,8 +162,8 @@ ORDER BY s.snapshot_date DESC;
 
 **Flip steps**:
 1. Set `DRAWDOWN_BREAKER_PHASE=active` (env var, restart container).
-2. Mark `CIRCUIT_BREAKER_CONSEC_LOSSES` and `CIRCUIT_BREAKER_COOLDOWN_DAYS` deprecated in `constants.py` with a 30-day removal comment.
-3. Remove the count-based block from `_check_safeguards` (lines 184-210) after 30 days of clean drawdown-active operation. Keep constants in place during the deprecation window for easier rollback.
+2. ~~Mark `CIRCUIT_BREAKER_CONSEC_LOSSES` / `CIRCUIT_BREAKER_COOLDOWN_DAYS` deprecated.~~ **CANCELLED — operator-ruled 2026-07-31: the count-based breaker is KEPT.**
+3. ~~Remove the count-based block from `_check_safeguards` after 30 days of clean drawdown-active operation.~~ **CANCELLED, same ruling.** The two breakers now run TOGETHER: count-based (hard block on a 10-loss streak) + tiered drawdown (sizes down, then blocks on equity drawdown). Removing either needs a fresh operator sign-off.
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
 ## Kill / scale criteria — live-money evaluation bands (✅ SIGNED by operator 2026-06-12 — #268b)
@@ -287,6 +287,53 @@ overridden again. Pre-commitment is preserved by making overrides visible,
 not impossible.
 
 ## Change log (newest first)
+
+### 2026-07-31 — Count-based `circuit_breaker` KEPT; its pre-committed removal CANCELLED (operator-ruled)
+
+**Change**: none to behavior. The breaker's `DEPRECATED` marking and the removal steps it was queued
+for are cancelled. `CIRCUIT_BREAKER_CONSEC_LOSSES` (10) and `CIRCUIT_BREAKER_COOLDOWN_DAYS` (1) are
+UNCHANGED and `_check_safeguards` is untouched. Documentation-only.
+
+**Operator ruling (2026-07-31)**: *"we should keep the circuit breaker."*
+
+**What the prior decision actually was** — worth stating exactly, because "deprecated" reads as "off"
+and it was neither off nor a plan to run without a breaker. The 2026-05-18 decision was to run ONE
+breaker instead of two: retire the COUNT-based block and let the TIERED DRAWDOWN breaker carry the
+job (WATCH → REDUCE 0.5× at −7% → BLOCK at −12%). Rationale: a strategy that cuts losers fast and
+holds winners to a trailing stop produces loss streaks by construction, so counting closed trades
+over-weights losses (*methodology-blind*), and the count-based cooldown re-arms itself when a loss
+closes during it (*self-perpetuating*). Both criticisms remain TRUE — under this ruling they are
+ACCEPTED, not answered.
+
+**Why the prior reasoning no longer holds** (CHANGE_PROCESS r3). The removal was conditioned on
+"after #7 promotes to active". #7 DID promote (2026-06-03) — but the 2026-07-30 effectiveness review
+found it **UNPROVEN ON LIVE MONEY: it has never acted.** State is WATCH at −4.36% drawdown, and WATCH
+is multiplier 1.0× — it sizes nothing down. REDUCE needs −7%, BLOCK −12%; neither has fired live, and
+zero entries carry `block:drawdown_breaker` lifetime. The condition was met in NAME (a phase flag
+flipped) and not in SUBSTANCE (nothing became protected). Executing the removal would have retired
+the only BREAKER that has actually fired on real money in favour of one that has not, while the live
+cohort is 0-for-9 (#503). ⚠ Precision: removal was never "no protection" — `daily_loss_limit` (−2%),
+`max_concurrent_positions` (5) and the `/pause` manual halt are untouched by any of this. What was at
+stake was the loss-STREAK block specifically.
+
+**Accepted consequence, stated plainly so it is not a surprise later.** A loss streak can cancel whole
+trading days, and the cancellation is arbitrary in timing: the cooldown expires at
+`latest_loss_at + 24h` — the WALL-CLOCK time the last loss closed — so an expiry landing inside the
+09:31–09:45 ORB submission window kills most of that day's entries, and an expiry after 09:45 kills
+all of them.
+
+**Evidence — the live day that prompted the ruling (2026-07-31, verified vs prod)**: six live-mode EP
+alerts, ZERO entries, empty book. FLNC · COHU · NWL · FET all alerted at 09:31:00 ET and MPWR at
+09:35:42, each blocked `block:circuit_breaker: cooldown until 2026-07-31T13:37:50Z`; BLZE (09:56:31)
+missed the window entirely (`window:out_of_orb`). The cooldown traced to a SINGLE loss — FTNT closed
+−$6.63 at 09:37:50 ET on 07-30 — which is the self-perpetuating property, observed live. Second
+occurrence in a week (CORZ, 07-28). The trip itself was CORRECT, not spurious: ten consecutive losses
+is a true reading of a real problem, and that problem is #503's subject.
+
+**Not ruled here**: the cooldown's anchoring. The operator ruled on WHETHER to keep the breaker, not
+on its timing mechanics. Any change to the anchor, the threshold, or the cooldown length is a separate
+safeguard change needing its own sign-off + backtest.
+
 
 ### 2026-07-26 — Regime-keyed risk multiplier replaces VIX-scaled sizing + fail-open→fail-safe (#456 DoD(a), operator-ruled; SHIPPED BEHIND A FLAG, flag OFF — no live behavior change yet)
 
@@ -469,8 +516,8 @@ the lever is a **slot policy**, not a quality filter. N=13/9 are at/below the N�
   CHANGE_PROCESS change-log entry here. Until then `max_concurrent_positions` is
   unchanged at 5. (game_changer is narrow → slow accrual, by design.)
 - **#198 — CLOSED as obsolete.** It proposed a conviction-override of the count-based
-  `circuit_breaker` (#5), which is **deprecated** (superseded by the tiered drawdown
-  breaker #6). The tiered breaker already solves #198's actual pain — it *sizes down*
+  `circuit_breaker`, which was then slated for removal — **that plan is CANCELLED (operator 2026-07-31, the breaker is KEPT)**, so
+  #198's target still exists; it stays closed on its own merits below. The tiered breaker already solves #198's actual pain — it *sizes down*
   (REDUCE 0.5×) through normal-variance loss streaks instead of hard-blocking, so a
   great setup during a normal drawdown is admitted at reduced size, not killed. The
   only residual "override" target would be the −12% BLOCK catastrophic floor, and

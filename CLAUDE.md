@@ -228,7 +228,7 @@ One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_s
 - `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
 - `mi_live_trades` = actual Alpaca order table
 - ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
-- Safeguards (SSoT `docs/setups/safeguards.md`): max 5 positions (`MAX_CONCURRENT_LIVE_POSITIONS`), 2% daily loss limit, tiered drawdown breaker (active 2026-06-03). Count-based circuit breaker (10 losses) is DEPRECATED — superseded by the drawdown breaker.
+- Safeguards (SSoT `docs/setups/safeguards.md`): max 5 positions (`MAX_CONCURRENT_LIVE_POSITIONS`), 2% daily loss limit, tiered drawdown breaker (active 2026-06-03). Count-based circuit breaker (10 losses) is **KEPT** (operator-ruled 2026-07-31, cancelling its queued removal — the plan was to run ONE breaker, the drawdown one; it promoted 6/03 but has never ACTED on live money, so the swap was met in NAME only). BOTH run. ⚠ It is self-perpetuating: a loss closing during cooldown re-arms it 24h from THAT close, so its expiry can land inside the 9:31-9:45 ORB window and cancel most of a day's entries (6 alerts / 0 entries, 2026-07-31).
 - Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime halt, #345)
 
 ### Telegram Formatting
