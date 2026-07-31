@@ -26,7 +26,16 @@ from agents.market_intelligence.catalyst_materiality import format_market_cap
 logger = logging.getLogger(__name__)
 
 from agents.market_intelligence.judge_transport import invoke_forced_tool
-from shared.llm_models import JUDGE_MODEL as MODEL  # Wave-1 default; the live model is chosen by the W1 eval.
+from shared.llm_models import effective_model
+
+# The live judge model — #509 auto-resolution: RESOLVED_ROLES tracks the newest
+# opus release via the nightly-refreshed cache, fail-safe to shared.llm_models.
+# JUDGE_MODEL (the committed pin) on any error/missing cache/unparseable id.
+# Resolved ONCE at import (this module's first import = process boot), never
+# per-call — "the running process keeps its boot-time binding" (see
+# shared/llm_models.py AUTO-RESOLUTION docstring). This is the ONE real call
+# site #509 auto-switches; every other ROLE_MODEL constant stays hand-pinned.
+MODEL = effective_model("JUDGE_MODEL")
 
 GRADES = ("game_changer", "strong", "routine", "mna")
 TIERS = ("HIGH", "MODERATE", "none")

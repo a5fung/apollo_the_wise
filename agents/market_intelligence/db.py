@@ -1069,6 +1069,40 @@ async def initialize_schema() -> None:
                 ON mi_audit_log(event_type);
         """)
 
+        # ── Model-resolution history (operator-ruled auto-tracking, 2026-07-30) ──
+        # Effective-dated record of which concrete model each LLM ROLE ran on and
+        # since when — the operator's traceability ask ("we can always trace back
+        # to when they were updated"). One row per CHANGE (plus a first-boot
+        # baseline row per role); the boot recorder in model_resolution.py is the
+        # only writer. `effective_date` is the ET date the binding took effect, so
+        # a change is joinable by date to the grade metrics (judge_high_rate_daily
+        # reads ep_grade_decision audit rows keyed by the same ET date). As-of
+        # query ("what was the judge running on 2026-08-14?"):
+        #   SELECT model FROM mi_model_resolution
+        #   WHERE role = 'JUDGE_MODEL'
+        #     AND resolved_at < (('2026-08-14'::date + 1)::timestamp
+        #                        AT TIME ZONE 'America/New_York')
+        #   ORDER BY resolved_at DESC LIMIT 1;
+        # (see get_model_resolution_asof. The `resolved_at < (date+1) AT TIME ZONE`
+        # cast pattern was verified read-only against prod's mi_audit_log 2026-07-31
+        # — this table itself does not exist in prod yet, this feature is unshipped;
+        # do not claim more verification than that.)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_model_resolution (
+                id SERIAL PRIMARY KEY,
+                role TEXT NOT NULL,
+                model TEXT NOT NULL,
+                source TEXT NOT NULL DEFAULT 'pin',
+                prev_model TEXT,
+                resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                effective_date DATE NOT NULL
+                    DEFAULT (NOW() AT TIME ZONE 'America/New_York')::date,
+                detail TEXT DEFAULT ''
+            );
+            CREATE INDEX IF NOT EXISTS idx_model_resolution_role_at
+                ON mi_model_resolution(role, resolved_at DESC);
+        """)
+
         # ── Health-guard OPEN FLAGS — persistence tracking (PLAN #370 increment 2) ──
         # The null-rate / job-liveness sweeps alert DAY-1/2 of a silent break, then SELF-SILENCE:
         # as the persisting break walks into the rolling 30-date baseline, the baseline drops below
@@ -9894,6 +9928,104 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
             )
     except Exception as e:
         logger.warning(f"audit log write failed ({event_type}): {e}")
+
+
+# ── Model-resolution history (traceability for auto-tracked LLM models) ──────
+
+async def get_latest_model_resolution(role: str) -> "dict | None":
+    """Most recent effective binding recorded for a role, or None."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT role, model, source, prev_model, resolved_at, effective_date
+            FROM mi_model_resolution
+            WHERE role = $1::text
+            ORDER BY resolved_at DESC
+            LIMIT 1
+            """,
+            role,
+        )
+    return dict(row) if row else None
+
+
+async def insert_model_resolution(role: str, model: str, source: str,
+                                  prev_model: "str | None", detail: str = "") -> None:
+    """Record that `role` is now effectively running on `model` (boot recorder).
+    resolved_at/effective_date default server-side (NOW / ET date of NOW)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO mi_model_resolution (role, model, source, prev_model, detail)
+            VALUES ($1::text, $2::text, $3::text, $4::text, $5::text)
+            """,
+            role, model, source, prev_model, detail[:2000],
+        )
+
+
+async def get_model_resolution_asof(role: str, on_date: date) -> "dict | None":
+    """Which model `role` was running on ET date `on_date` — the operator's
+    "what was the judge running on 2026-08-14?" query. Uses the last change at
+    or before the END of that ET day (works even on a day with zero grade
+    decisions — boot-driven, not decision-driven). The `resolved_at <
+    (date+1) AT TIME ZONE` cast pattern was verified read-only against prod's
+    mi_audit_log 2026-07-31 (this table itself is not yet in prod)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT role, model, source, resolved_at, effective_date
+            FROM mi_model_resolution
+            WHERE role = $1::text
+              AND resolved_at < (($2::date + 1)::timestamp
+                                 AT TIME ZONE 'America/New_York')
+            ORDER BY resolved_at DESC
+            LIMIT 1
+            """,
+            role, on_date,
+        )
+    return dict(row) if row else None
+
+
+async def get_judge_grade_decisions_for_date(on_date: date) -> list[dict]:
+    """`ep_grade_decision` audit payloads (each carries `judge_model`/`judge_tier`/
+    `judge_direction` — see ep_detector.py::_emit_grade_decision) for a specific ET
+    date, parsed PYTHON-SIDE. Mirrors system_audit.py::_judge_decision_rows_today's
+    established safety pattern (mi_audit_log.detail is TEXT and can hold malformed
+    rows — a SQL `->>`/`::jsonb` cast crashed on this exact table once, 7/11 corpus
+    mine — never repeat that mistake here), generalized to an arbitrary date instead
+    of hardcoded CURRENT_DATE.
+
+    Pairs with `get_model_resolution_asof("JUDGE_MODEL", on_date)` to answer "what
+    was the judge running on date X, and how did its grades look that day" — join
+    is simply the shared `on_date` in application code:
+
+        asof = await get_model_resolution_asof("JUDGE_MODEL", on_date)
+        rows = await get_judge_grade_decisions_for_date(on_date)
+        high_rate = (sum(r.get("judge_tier") == "HIGH" for r in rows) / len(rows)
+                     if rows else None)
+
+    Malformed rows are SKIPPED, never crash the query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT detail FROM mi_audit_log
+            WHERE event_type = 'ep_grade_decision'
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $1::date
+            """,
+            on_date,
+        )
+    out: list[dict] = []
+    for r in rows:
+        try:
+            d = json.loads(r["detail"]) if isinstance(r["detail"], str) else r["detail"]
+            if isinstance(d, dict):
+                out.append(d)
+        except (ValueError, TypeError):
+            continue
+    return out
 
 
 async def get_sip_feed_telemetry(trade_date: date) -> dict[str, int]:

@@ -6,6 +6,22 @@ This is the durable record of WHICH model powers each LLM role, WHY, and WHAT WO
 CHANGE IT. Its purpose is **incremental** quarterly review — diff against this baseline,
 don't re-evaluate every model from scratch.
 
+**#509 exception (operator-ruled 2026-07-30):** "a new release is a CANDIDATE, never an
+auto-adoption" below still governs the COMMITTED registry pin (`shared/llm_models.py`
+`*_PIN` constants) and this playbook is still how a pin formally changes. `JUDGE_MODEL`
+specifically is now ALSO in `shared/llm_models.py`'s `RESOLVED_ROLES` — its ACTUAL live
+calls (`ep_grade_judge.py`'s `MODEL`) auto-track the newest opus release via a
+nightly-refreshed cache, ahead of any eval, guarded by: (1) the pin is the fail-safe
+floor and a cache id is NEVER adopted below it; (2) a model change is never silent
+(Telegram + `mi_model_resolution` audit trail); (3) a nightly WARN
+(`model_resolution.py::check_judge_eval_divergence`) flags when the running id diverges
+from the last passing eval; (4) rollback is one edit (`_TIER_OVERRIDES`). See
+`shared/llm_models.py`'s AUTO-RESOLUTION docstring for the full mechanism and why the
+host-side deploy gate (`preflight_judge_eval_gate.py`) cannot see this runtime value.
+This does NOT loosen step 5 below for FORMALLY adopting a release (bumping the pin) —
+it means production can be running ahead of the pin, which is precisely what the
+divergence WARN exists to surface.
+
 ## How to run the quarterly review INCREMENTALLY (do not start from zero)
 
 1. **List what's new since `Last reviewed`:** new Claude releases, new Perplexity tiers,

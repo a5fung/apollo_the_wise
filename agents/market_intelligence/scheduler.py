@@ -75,6 +75,8 @@ JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
 JOB_9M_PACE_DIGEST = "9m_pace_digest"
 JOB_CATALYST_DOWNGRADE_DIGEST = "catalyst_downgrade_digest"
 JOB_JUDGE_DELTA_DIGEST = "judge_delta_digest"
+JOB_MODEL_RESOLUTION_REFRESH = "model_resolution_refresh"
+JOB_JUDGE_EVAL_DIVERGENCE_CHECK = "judge_eval_divergence_check"
 
 # ── Service-split job partition (#256 W2, 2026-06-13) ────────────────────────
 # The EXECUTION service owns broker / streams / safeguards / trade-state jobs;
@@ -5012,6 +5014,14 @@ def start_scheduler() -> AsyncIOScheduler:
     # Boot marker: forensic anchor for paper/live $ mode at process start.
     asyncio.create_task(_emit_boot_audit_marker())
 
+    # #509 model auto-resolution: record what every LLM role is EFFECTIVELY
+    # running this boot (traceability — "what was the judge running on date X").
+    # Intelligence/combined role only internally guarded inside the function
+    # (runs_intelligence_jobs()) — the execution container shares the DB/
+    # registry and would otherwise double-write.
+    from agents.market_intelligence.model_resolution import record_boot_resolution
+    asyncio.create_task(record_boot_resolution())
+
     # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri.
     # expected_min_rows recalibrated 5000→3500 (#263, 2026-06-10), then
     # 3500→2200 (2026-07-02): #286 (dd4eeb4, 6/15, operator-signed) added the
@@ -5627,6 +5637,38 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_theme_synthesis_job, "theme_synthesis"),
         CronTrigger(hour=18, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
         id="theme_synthesis",
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # #509 model auto-resolution — nightly refresh: 6:08 PM ET, calls
+    # models.list and writes logs/model_resolution.json. expected_min_rows=3:
+    # TIERS is always (opus, sonnet, haiku) — fewer than 3 resolved tiers is a
+    # genuine anomaly (models.list came back missing a whole family), not a
+    # quiet day. A new release is never silent (Telegram + audit inside the
+    # job); this job only ever WRITES the cache — no role's live binding
+    # changes until that role's process next boots (shared/llm_models.py
+    # RESOLVED_ROLES / effective_model).
+    from agents.market_intelligence.model_resolution import (
+        check_judge_eval_divergence, refresh_model_resolution,
+    )
+    _scheduler.add_job(
+        audit_wrap(refresh_model_resolution, JOB_MODEL_RESOLUTION_REFRESH, expected_min_rows=3),
+        CronTrigger(hour=18, minute=8, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_MODEL_RESOLUTION_REFRESH,
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # #509 guardrail — 6:09 PM ET, right after the refresh above (though
+    # logically independent: it compares THIS PROCESS's boot-time judge
+    # binding, fixed since last boot, against the last passing eval — not
+    # anything the refresh just wrote). WARN only, never blocks (see
+    # model_resolution.py::check_judge_eval_divergence docstring).
+    _scheduler.add_job(
+        audit_wrap(check_judge_eval_divergence, JOB_JUDGE_EVAL_DIVERGENCE_CHECK),
+        CronTrigger(hour=18, minute=9, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_JUDGE_EVAL_DIVERGENCE_CHECK,
         replace_existing=True,
         misfire_grace_time=900,
     )

@@ -102,6 +102,21 @@ nondeterminism in deploys = wrong). Instead it is a **hash-keyed pass record**:
 (market-agent / both) — orchestrator-only deploys don't re-gate. Corpus lives under `scripts/`
 (market-agent-owned in deploy.sh's drift map — corpus edits don't drag 3-service scope).
 
+**Addendum (#509, 2026-07-30/31) — a gap this gate cannot close by construction, closed
+elsewhere:** "A model swap changes `JUDGE_MODEL`. Nothing can ship ungraded silently" is
+true only for the COMMITTED pin — this gate runs on the HOST at deploy with no API/DB
+access, so it can only ever `ast`-parse `shared/llm_models.py`'s literal source. Per the
+2026-07-30 operator ruling ("go with the leaders … we can always trace back to when they
+were updated"), `JUDGE_MODEL`'s ACTUAL live calls now auto-track the newest opus release
+via a nightly-refreshed cache (`shared/llm_models.py` `RESOLVED_ROLES`/`effective_model`)
+— a value this gate structurally cannot see, by design (the constant it reads stays a
+static literal on purpose; see that file's AUTO-RESOLUTION docstring). The gap is closed
+by a SEPARATE nightly in-container guardrail instead:
+`agents/market_intelligence/model_resolution.py::check_judge_eval_divergence` compares
+what the process is actually running against this pass record's `judge_model` and WARNs
+(Telegram + audit, never a deploy block) on drift. This gate's own contract — deterministic,
+host-side, blocks on a committed-pin mismatch — is UNCHANGED.
+
 ## 5. What feeds #335 / the 7/18 M1 sitting
 
 The first Arm-1 run produces the **robustness map** (per-class failure rates) — the missing

@@ -68,7 +68,12 @@ from agents.market_intelligence.broker.skip_reasons import (
 )
 from agents.market_intelligence.ma_filter import is_likely_ma
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
-from shared.llm_models import GROUNDED_GRADE_MODEL, JUDGE_MODEL
+from shared.llm_models import GROUNDED_GRADE_MODEL
+# MODEL (not JUDGE_MODEL) — #509: the audit trail must record the id that
+# ACTUALLY graded the call. grade_holistic()'s default `model=` is bound to
+# ep_grade_judge.MODEL (resolver-tracked); shared.llm_models.JUDGE_MODEL is
+# only the committed pin the deploy gate checks, and can lag the live value.
+from agents.market_intelligence.ep_grade_judge import MODEL as _JUDGE_MODEL_ACTUAL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
 
 logger = logging.getLogger(__name__)
@@ -424,7 +429,7 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
             "rubric_version": RUBRIC_VERSION,
             "rubric_hash": RUBRIC_HASH,
             "grade_prompt_version": CATALYST_GRADE_PROMPT_VERSION,
-            "judge_model": JUDGE_MODEL,
+            "judge_model": _JUDGE_MODEL_ACTUAL,
             "floor_tier": floor_tier,
             "floor_catalyst_quality": r.get("catalyst_quality"),
             "judge_grade": v.get("grade"),
