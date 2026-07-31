@@ -79,6 +79,14 @@ def _load_baseline() -> dict | None:
         return None
 
 
+def _write_baseline(data: dict) -> dict:
+    try:
+        BASELINE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+    return data
+
+
 def _pin_daily_baseline(count: int, today: date) -> dict:
     """First OPEN of the PT day pins the starting count; later same-day calls leave it (else a
     mid-session `--today` after opening tasks would silently re-baseline upward and game the gate)."""
@@ -86,12 +94,45 @@ def _pin_daily_baseline(count: int, today: date) -> dict:
     if cur and cur.get("pt_date") == today.isoformat():
         return cur
     data = {"pt_date": today.isoformat(), "baseline_count": count,
-            "carryover_allowance": 0, "carryover_reason": None}
-    try:
-        BASELINE.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except OSError:
-        pass
-    return data
+            "carryover_allowance": 0, "carryover_reason": None,
+            "last_seen_date": (cur or {}).get("last_seen_date"),
+            "last_seen_count": (cur or {}).get("last_seen_count")}
+    return _write_baseline(data)
+
+
+def _record_watermark(base: dict | None, count: int, today: date) -> None:
+    """Remember the LAST count observed on the LAST day check_plan ran (operator 2026-07-31).
+
+    This is what makes a skipped day carry over instead of leaving a hole: every plain run — the
+    pre-commit gate and the CLOSE reconcile alike — drops a watermark, and the next PT day arms its
+    ceiling from it. So running CLOSE is not incidental: **it is what sets tomorrow's ceiling.**"""
+    data = dict(base or {})
+    if data.get("last_seen_date") == today.isoformat() and data.get("last_seen_count") == count:
+        return
+    data["last_seen_date"] = today.isoformat()
+    data["last_seen_count"] = count
+    _write_baseline(data)
+
+
+def _arm_from_watermark(base: dict | None, today: date) -> dict | None:
+    """A PT day that never ran the OPEN ritual inherits the PREVIOUS day's ending count as its
+    ceiling (operator 2026-07-31: "on days i skip it should just carry over the next day
+    automatically"). Returns the armed baseline, or None when there is nothing to carry.
+
+    Deliberately taken from the previous day's WATERMARK, never from today's current count: pinning
+    "now" at the first commit of the day would bake any tasks already opened this session into the
+    ceiling and silently ratchet it upward — the exact gaming `_pin_daily_baseline` refuses."""
+    if base and base.get("pt_date") == today.isoformat():
+        return base  # already armed today
+    prev_date = (base or {}).get("last_seen_date")
+    prev_count = (base or {}).get("last_seen_count")
+    if not prev_date or prev_count is None or prev_date == today.isoformat():
+        return None
+    return _write_baseline({
+        "pt_date": today.isoformat(), "baseline_count": prev_count,
+        "carryover_allowance": 0, "carryover_reason": None,
+        "armed_from": prev_date,  # provenance: carried, not pinned at OPEN
+        "last_seen_date": prev_date, "last_seen_count": prev_count})
 
 
 def _growth_gate_error(cur_count: int, base: dict | None, today: date) -> str | None:
@@ -558,7 +599,13 @@ def main(argv: list[str]) -> int:
     # SESSION GROWTH GATE (operator 2026-07-12, HARD): the day's open count may not END above where
     # it began. Hard-fails the commit when over ceiling; an operator carryover is the only escape.
     base = _load_baseline()
+    # A skipped OPEN no longer leaves a hole: carry the previous day's ending count forward.
+    base = _arm_from_watermark(base, today) or base
     gate_err = _growth_gate_error(len(tasks), base, today)
+    if base and base.get("armed_from"):
+        print(f"[plan] NOTE: growth gate CARRIED OVER from {base['armed_from']} "
+              f"(ceiling {base['baseline_count']}) — the OPEN ritual wasn't run today, so the day "
+              f"inherits where the last one ended.")
     if gate_err:
         errors.append(gate_err)
     elif not base:
@@ -573,6 +620,10 @@ def main(argv: list[str]) -> int:
         print(f"[plan] WARN — growth gate is NOT ARMED today: the baseline on disk is from "
               f"{base.get('pt_date')}, not {today.isoformat()}. The burndown ceiling is NOT being "
               f"enforced this session. Run `check_plan.py --today` (the OPEN ritual) to arm it.")
+
+    # Drop the watermark on EVERY plain run (pre-commit + the CLOSE reconcile), pass or fail —
+    # a failing run still observed a real count, and tomorrow's ceiling should reflect it.
+    _record_watermark(base, len(tasks), today)
 
     if errors:
         print(f"[plan] FAIL — {len(errors)} issue(s) in PLAN.md:")

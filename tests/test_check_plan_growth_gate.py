@@ -75,3 +75,71 @@ def test_unarmed_day_WARNS_instead_of_passing_silently(monkeypatch, tmp_path, ca
     out = capsys.readouterr().out
     assert "NOT ARMED" in out, "an unarmed day passed without saying so"
     assert rc == 0, "the warning must not fail the commit — it is a notice, not a gate"
+
+
+# ─── carry-over: a skipped OPEN inherits yesterday's ending count ────────────
+# operator 2026-07-31: "on days i skip it should just carry over the next day
+# automatically. I also run close at end of session/day" — the CLOSE run is what
+# leaves the watermark that arms tomorrow, so the two halves are one mechanism.
+
+def test_skipped_day_inherits_yesterdays_ENDING_count(monkeypatch, tmp_path):
+    from datetime import timedelta
+    from scripts import check_plan as cp
+    y = (TODAY - timedelta(days=1)).isoformat()
+    monkeypatch.setattr(cp, "BASELINE", tmp_path / "b.json")
+    cp._write_baseline({"pt_date": y, "baseline_count": 90,
+                        "last_seen_date": y, "last_seen_count": 84})
+    armed = cp._arm_from_watermark(cp._load_baseline(), TODAY)
+    assert armed["baseline_count"] == 84, "must carry yesterday's END (84), not its START (90)"
+    assert armed["pt_date"] == TODAY.isoformat()
+    assert armed["armed_from"] == y  # provenance visible, so the note can say so
+
+
+def test_carried_ceiling_still_FAILS_on_growth(monkeypatch, tmp_path):
+    from datetime import timedelta
+    from scripts import check_plan as cp
+    y = (TODAY - timedelta(days=1)).isoformat()
+    monkeypatch.setattr(cp, "BASELINE", tmp_path / "b.json")
+    cp._write_baseline({"pt_date": y, "baseline_count": 90,
+                        "last_seen_date": y, "last_seen_count": 84})
+    armed = cp._arm_from_watermark(cp._load_baseline(), TODAY)
+    assert _growth_gate_error(84, armed, TODAY) is None      # at the line
+    err = _growth_gate_error(85, armed, TODAY)               # one over
+    assert err and "started at 84" in err
+
+
+def test_carry_NEVER_reads_todays_count(monkeypatch, tmp_path):
+    """The anti-gaming pin. If the carry took 'the count right now', a session that
+    opened 3 tasks before its first commit would bake them into its own ceiling."""
+    from datetime import timedelta
+    from scripts import check_plan as cp
+    y = (TODAY - timedelta(days=1)).isoformat()
+    monkeypatch.setattr(cp, "BASELINE", tmp_path / "b.json")
+    cp._write_baseline({"pt_date": y, "baseline_count": 90,
+                        "last_seen_date": y, "last_seen_count": 84})
+    # _arm_from_watermark takes no count argument at all — it CANNOT see today's.
+    import inspect
+    assert "count" not in inspect.signature(cp._arm_from_watermark).parameters
+
+
+def test_nothing_to_carry_leaves_it_unarmed(monkeypatch, tmp_path):
+    """First run after this shipped: an old baseline has no watermark. Degrade to
+    the loud NOT-ARMED warning rather than inventing a ceiling."""
+    from datetime import timedelta
+    from scripts import check_plan as cp
+    monkeypatch.setattr(cp, "BASELINE", tmp_path / "b.json")
+    cp._write_baseline({"pt_date": (TODAY - timedelta(days=1)).isoformat(), "baseline_count": 90})
+    assert cp._arm_from_watermark(cp._load_baseline(), TODAY) is None
+
+
+def test_watermark_records_on_every_run_and_today_wins(monkeypatch, tmp_path):
+    from scripts import check_plan as cp
+    monkeypatch.setattr(cp, "BASELINE", tmp_path / "b.json")
+    cp._record_watermark(None, 84, TODAY)
+    assert cp._load_baseline()["last_seen_count"] == 84
+    cp._record_watermark(cp._load_baseline(), 81, TODAY)     # later run, fewer tasks
+    assert cp._load_baseline()["last_seen_count"] == 81      # LAST wins, not the lowest
+    # an explicit OPEN still pins authoritatively, and must not lose the watermark
+    pinned = cp._pin_daily_baseline(81, TODAY)
+    assert pinned["baseline_count"] == 81
+    assert cp._load_baseline().get("last_seen_date") == TODAY.isoformat()
