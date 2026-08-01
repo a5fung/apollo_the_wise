@@ -1,5 +1,11 @@
 # Exit discipline (#508 / #503) — state of the work, 2026-08-01
 
+> ✅ **APPROVED AS THE SSoT FOR APOLLO EXIT DISCIPLINE (external review, 2026-08-01).** Ruling:
+> file it, let `exit_tune_cohort_review` sleep until T1 (20 closed live trades), and take the
+> exit debate out of active working memory. **Do not re-open any part of §3 before its trigger
+> in §5 fires.** The next live question is §3.5 — why live trades die in 1.5 days — which is an
+> ENTRY/REGIME investigation, not an exit one.
+
 **Purpose of this document:** a single self-contained statement of where the exit-discipline work
 stands, so nothing has to be re-asked. Goals, what is settled, what is not, what is built, what
 unlocks the next decision, and who does what.
