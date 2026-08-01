@@ -262,7 +262,10 @@ def _cluster_window(history: list) -> tuple[bool, int, int]:
     from agents.market_intelligence.breadth_color_rules import (
         cluster_fires, red_count_in_window, CLUSTER_WINDOW,
     )
-    if len(history) >= CLUSTER_WINDOW and cluster_fires(history):
+    # No length guard here: cluster_fires and red_count_in_window BOTH already
+    # enforce >= CLUSTER_WINDOW internally (breadth_color_rules is the SSoT for
+    # what counts as a window) — re-checking it would put that contract in two files.
+    if cluster_fires(history):
         return True, red_count_in_window(history), CLUSTER_WINDOW
     return False, 0, CLUSTER_WINDOW
 
@@ -287,6 +290,30 @@ def _cluster_prior(regime: dict) -> tuple[bool, int, int] | None:
     if len(history) < CLUSTER_WINDOW + 1:
         return None
     return _cluster_window(history[1:CLUSTER_WINDOW + 1])
+
+
+def _cluster_addendum(fires: bool, red_n: int, window: int, prior,
+                      *, headline: bool) -> str | None:
+    """The cluster line for the BODY of the regime block, or None.
+
+    Two jobs, both learned the hard way tonight:
+      1. NEVER restate the headline. The original defect was `breadth cluster 5/5
+         red` followed by `⚠️ Cluster 5/5 red — deterioration`; re-adding a delta
+         line under a delta headline would have re-created it in new words.
+      2. NEVER go silent on a live cluster. When something else (VIX, a label
+         flip, an EP-filter change) takes the headline while the cluster is
+         firing-but-unchanged, this is the ONLY place it can appear — the
+         `— no change —` state line is skipped whenever a regime block exists.
+         Without the standing branch the red cluster is in the brief nowhere.
+    """
+    if not fires or headline:
+        return None
+    if prior is None:
+        return f"   ⚠️ Cluster {red_n}/{window} red — no prior window to compare"
+    if prior[0] and red_n != prior[1]:
+        direction = "worse" if red_n > prior[1] else "better"
+        return f"   ⚠️ Cluster {prior[1]}/{window} → {red_n}/{window} red ({direction})"
+    return f"   ⚠️ Cluster {red_n}/{window} red (standing)"
 
 
 def _cluster_change_phrase(fires: bool, red_n: int, window: int, prior) -> str:
@@ -329,7 +356,10 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
         (fires, red_n) != (prior_cluster[0], prior_cluster[1]))
     cluster_cleared = bool(prior_cluster and prior_cluster[0] and not fires)
 
-    if not (flipped or thr_changed or vix_fires or cluster_changed or cluster_cleared):
+    # `cluster_cleared` is deliberately absent from this gate: whenever it is true,
+    # `fires` differs from `prior_cluster[0]`, so `cluster_changed` is already true
+    # by construction. It survives below purely to pick the WORDING.
+    if not (flipped or thr_changed or vix_fires or cluster_changed):
         return None, False
 
     emoji = _REGIME_EMOJI.get(label_t, "⚫")
@@ -339,8 +369,8 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
     elif thr_changed:
         lines.append(f"{emoji} *REGIME — EP filter {thr_p} → {thr_t}*")
     elif cluster_cleared:
-        was = prior_cluster[1] if prior_cluster else None
-        lines.append(f"{emoji} *REGIME — breadth cluster CLEARED* (was {was}/{window} red)")
+        lines.append(f"{emoji} *REGIME — breadth cluster CLEARED* "
+                     f"(was {prior_cluster[1]}/{window} red)")
     elif cluster_changed:
         lines.append(f"{emoji} *REGIME — {_cluster_change_phrase(fires, red_n, window, prior_cluster)}*")
     else:
@@ -366,11 +396,13 @@ def _regime_material(data: BriefData) -> tuple[list[str] | None, bool]:
             bits.append(f"{_ordinal(n_flips)} flip this week — chop")
     if bits:
         lines.append("   " + " · ".join(bits))
-    if fires and prior_cluster and prior_cluster[0] and red_n != prior_cluster[1]:
-        direction = "worse" if red_n > prior_cluster[1] else "better"
-        lines.append(f"   ⚠️ Cluster {prior_cluster[1]}/{window} → {red_n}/{window} red ({direction})")
-    elif fires and prior_cluster is None:
-        lines.append(f"   ⚠️ Cluster {red_n}/{window} red — no prior window to compare")
+    # Cluster is the HEADLINE only when nothing higher-priority took the slot.
+    cluster_is_headline = (not flipped and not thr_changed
+                           and (cluster_cleared or cluster_changed))
+    addendum = _cluster_addendum(fires, red_n, window, prior_cluster,
+                                 headline=cluster_is_headline)
+    if addendum:
+        lines.append(addendum)
     lines.append("   `/regime` full matrix")
     return lines, flipped
 

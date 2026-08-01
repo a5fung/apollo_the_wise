@@ -156,7 +156,7 @@ def _render_transitions(changes: list[tuple]) -> list[str]:
     lines. Roles with no label degrade to a readable form of their own name
     (llm_models.label_for), so a role added later can never render blank.
     """
-    from shared.llm_models import label_for, pretty_model
+    from shared.llm_models import label_for, pretty_model, tier_of
     from shared.telegram_format import esc
 
     groups: dict[tuple, list[str]] = {}
@@ -168,7 +168,6 @@ def _render_transitions(changes: list[tuple]) -> list[str]:
     rank = {"opus": 0, "sonnet": 1, "haiku": 2}
     def _order(item):
         (prev, new), _roles = item
-        from shared.llm_models import tier_of
         return (rank.get(tier_of(new) or "", 9), new)
     out: list[str] = []
     for (prev, new), roles in sorted(groups.items(), key=_order):
@@ -388,13 +387,19 @@ async def refresh_model_resolution() -> int:
 
     # the fallback pins get an upgrade path too — see stale_tier_pins()
     for tier, pin, served, days in stale_tier_pins(resolved, changed_at):
-        await log_audit_event(
-            "model_pin_drift",
-            f"{tier}: offline fallback pin {pin} is {days}d behind served {served}",
-            "re-point the *_PIN literal in shared/llm_models.py — live bindings "
-            "are already current; only a resolver outage would serve the pin",
-        )
-        if days % _PIN_DRIFT_DAYS == 0:  # monthly nudge, not a daily nag
+        # BOTH the row and the nudge are throttled to the monthly boundary. An
+        # ungated audit write would insert one row per stale tier per weekday
+        # FOREVER once a pin drifts, each restating an identical fact — unbounded
+        # log growth carrying no new signal. Known gap: a missed run can step over
+        # the boundary (29 -> 32) and skip a month; the condition persists, so the
+        # next boundary reports it. That beats a daily row nobody reads.
+        if days % _PIN_DRIFT_DAYS == 0:
+            await log_audit_event(
+                "model_pin_drift",
+                f"{tier}: offline fallback pin {pin} is {days}d behind served {served}",
+                "re-point the *_PIN literal in shared/llm_models.py — live bindings "
+                "are already current; only a resolver outage would serve the pin",
+            )
             await _send_telegram(
                 f"🧷 <b>Fallback pin behind</b> — {esc(tier)} has served "
                 f"{code(esc(served))} for {days}d while the offline fallback is "

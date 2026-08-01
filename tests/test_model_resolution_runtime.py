@@ -330,27 +330,20 @@ def _seed_cache(tmp_path, resolved, changed_at):
     return write_cache(resolved, changed_at, cache_path=tmp_path / "cache.json")
 
 
-def test_refresh_EXERCISES_the_pin_drift_branch_audit_and_telegram(monkeypatch, tmp_path):
-    """The consumer side of stale_tier_pins, not just the pure function.
-
-    In production this branch first executes ~30 days after a release — i.e. a
-    green suite would prove nothing about it until then. Seed a cache whose opus
-    resolution is 45 days old and ahead of OPUS_PIN, then assert the guardrail
-    can actually SPEAK: a `model_pin_drift` audit row, and (day 45 is not a
-    multiple of 30) NO Telegram.
+def test_refresh_pin_drift_is_SILENT_between_monthly_boundaries(monkeypatch, tmp_path):
+    """Throttled 2026-07-31 (/simplify efficiency finding): the audit row used to
+    be ungated, so once a pin drifted it inserted one row per stale tier per
+    weekday FOREVER, each restating an identical fact. Both the row and the nudge
+    now fire only on the monthly boundary. Day 45 is between boundaries -> silence.
     """
-    from shared import llm_models
     audit, tg = AsyncMock(), AsyncMock()
     _seed_cache(tmp_path, {"opus": "claude-opus-5"}, {"opus": _dt(45)})
     _mock_refresh_deps(monkeypatch, tmp_path, LIVE_IDS, audit=audit, telegram=tg)
 
     _run(mr.refresh_model_resolution())
 
-    drift = [c for c in audit.await_args_list if c.args[0] == "model_pin_drift"]
-    assert len(drift) == 1, "the pin-drift audit row never fired"
-    assert llm_models.OPUS_PIN in drift[0].args[1] and "claude-opus-5" in drift[0].args[1]
-    assert "45d behind" in drift[0].args[1]
-    tg.assert_not_awaited()  # 45 % 30 != 0 — daily row, not a daily nag
+    assert [c for c in audit.await_args_list if c.args[0] == "model_pin_drift"] == []
+    tg.assert_not_awaited()
 
 
 def test_refresh_pin_drift_nudges_on_the_monthly_boundary(monkeypatch, tmp_path):
@@ -365,6 +358,11 @@ def test_refresh_pin_drift_nudges_on_the_monthly_boundary(monkeypatch, tmp_path)
 
     _run(mr.refresh_model_resolution())
 
+    # the guardrail must be able to SPEAK — in production this branch first runs
+    # ~30 days after a release, so nothing else proves it works
+    drift = [c for c in audit.await_args_list if c.args[0] == "model_pin_drift"]
+    assert len(drift) == 1, "the pin-drift audit row never fired"
+    assert llm_models.OPUS_PIN in drift[0].args[1] and "60d behind" in drift[0].args[1]
     tg.assert_awaited_once()
     text = tg.await_args.args[0]
     assert "OPUS_PIN" in text and llm_models.OPUS_PIN in text and "claude-opus-5" in text

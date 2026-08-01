@@ -481,6 +481,10 @@ def main(argv: list[str]) -> int:
         else:
             print("  (none)")
         base = _pin_daily_baseline(len(tasks), today)
+        # OPEN drops a watermark too, so a day where the operator runs `--today`
+        # and never commits still arms TOMORROW's carry-over. Previously only the
+        # plain run recorded it, so an open-but-no-commit day left no mark at all.
+        _record_watermark(base, len(tasks), today)
         ceiling = base["baseline_count"] + base.get("carryover_allowance", 0)
         print(f"\n-- GROWTH GATE — day started at {base['baseline_count']} open tasks. This session must "
               f"END <= {ceiling} (HARD, operator 2026-07-12: no session ends bigger than it began).")
@@ -503,10 +507,7 @@ def main(argv: list[str]) -> int:
         base = _pin_daily_baseline(len(tasks), today)
         base["carryover_allowance"] = base.get("carryover_allowance", 0) + n
         base["carryover_reason"] = reason
-        try:
-            BASELINE.write_text(json.dumps(base, indent=2), encoding="utf-8")
-        except OSError:
-            pass
+        _write_baseline(base)
         print(f"[carryover] today's growth ceiling raised by {n} -> "
               f"{base['baseline_count'] + base['carryover_allowance']} (reason: {reason}).")
         return 0

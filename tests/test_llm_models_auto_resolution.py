@@ -177,3 +177,13 @@ def test_pricing_for_unpinned_release_falls_back_to_tier_rate():
 def test_pricing_for_totally_unknown_id_falls_back_to_default():
     assert llm_models.pricing_for("gpt-4-turbo") == llm_models.DEFAULT_PRICING_PER_MTOK
     assert llm_models.pricing_for("claude-fable-5") == llm_models.DEFAULT_PRICING_PER_MTOK
+
+
+def test_every_tracked_role_has_an_operator_facing_label():
+    """/simplify altitude finding: ROLE_LABELS is a THIRD hand-maintained
+    enumeration of roles. label_for() falls back rather than crashing, so a
+    missing entry is quiet — a mechanically-generated label forever, no alarm.
+    This is the alarm.
+    """
+    missing = sorted(set(llm_models.RESOLVED_ROLES) - set(llm_models.ROLE_LABELS))
+    assert not missing, f"role(s) with no operator-facing label: {missing}"

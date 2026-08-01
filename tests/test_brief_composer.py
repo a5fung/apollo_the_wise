@@ -631,3 +631,36 @@ def test_unknown_prior_still_surfaces_a_live_cluster():
     block, _ = bc._regime_material(_regime_data("rrrrr"))
     assert block is not None
     assert "unknown" in "\n".join(block).lower()
+
+
+def test_standing_cluster_STILL_SHOWS_when_something_else_takes_the_headline():
+    """/simplify altitude finding, and a real hole I shipped tonight.
+
+    The "never invisible" guarantee lived in _regime_state_line — which the
+    composer only renders when regime produced NO material block. So on a night
+    where VIX (or a flip, or an EP-filter change) took the headline while the
+    cluster was firing-but-UNCHANGED, the old delta line said nothing AND the
+    state line was skipped: the live red cluster appeared nowhere in the brief.
+    """
+    d = date(2026, 7, 31)
+    row = {"regime_date": d, "regime": "Correcting", "vix": 20.0,
+           "ep_threshold": 75, "description": "net +0"}
+    prior = dict(row, regime_date=d - timedelta(days=1), vix=16.0)  # VIX +4.0 -> material
+    data = bc.BriefData(briefing_date=d)
+    data.regime = _cluster_regime("rrrrrr")        # firing, and UNCHANGED vs prior window
+    data.regime_history = [row, prior]
+
+    block, _ = bc._regime_material(data)
+    assert block is not None, "VIX move should have produced a block"
+    text = "\n".join(block)
+    assert "VIX" in text, "VIX should own the headline here"
+    assert "luster" in text and "standing" in text, (
+        "a live red cluster went unmentioned while another trigger took the headline")
+
+
+def test_addendum_never_restates_the_headline():
+    """The original defect, in its second form: a delta line under a delta
+    headline would repeat the same two numbers in different words."""
+    assert bc._cluster_addendum(True, 5, 5, (True, 4, 5), headline=True) is None
+    assert bc._cluster_addendum(True, 5, 5, (True, 4, 5), headline=False) is not None
+    assert bc._cluster_addendum(False, 0, 5, (True, 4, 5), headline=False) is None
