@@ -73,9 +73,28 @@ That biases every candidate DOWN, so the measured edge is a floor.
 that the same rule fires at 7.7× different real distances across names.
 
 **B. Move the trigger to ADR** (e.g. 1/3 at 1 daily range). One consistent distance for every ticker;
-best on this cohort at every matched shape. Costs: a new unit in the exit path, and it needs
-`adr_20_pct` present at exit time (it is recorded now, but 11 of 43 historical rows lack a usable
-ratio — all paper, all with stops at/above entry).
+best on this cohort at every matched shape.
+
+⚠ **The obvious objection to B — "the exit path can't see ADR intraday, so this is a rule plus an
+unbuilt data dependency" — was raised and does NOT hold. Checked 2026-08-01:**
+
+- `mi_live_trades` already carries an **`atr_14`** column, written **at entry** by
+  `entry_pipeline.py:562/575` from a value `process_new_alerts_live` computes
+  (`live_tracker.py:392`, `compute_atr_14`). It is persisted on the trade row before the position
+  ever needs an exit decision.
+- **Coverage on the money path is complete: 12 of 12 filled live trades have it** (paper 24 of 32).
+- So the exit path does not need to compute or fetch anything at trigger time — it reads a column on
+  a row it already loads. That is a one-column change, not a data build.
+
+**Two honest gaps in that, which is why B still is not free:**
+
+1. **ATR-14 is not the ADR-20 this analysis used.** ATR uses true range (gaps included) over 14 days;
+   the recorder's `adr_20_pct` is `(high−low)/close` over ~20. Measured across the 12 live trades they
+   track at **0.82–1.14×** (mean ≈0.98) and the ORDERING is preserved — NVCR stays the widest stop,
+   MANE the tightest. But a rule shipped in ATR should have the replay re-run in ATR before sign-off;
+   it is the same one-line conversion, so this is cheap, not hard.
+2. Historical coverage is imperfect (11 of 43 recorder rows lack a usable ADR ratio — all paper, all
+   with stops recorded at/above entry), which limits backtest depth, not live implementability.
 
 **C. Rule nothing yet; fix the measurement gate first.** ⚠ Note that the #508 review gate I set is
 itself written in R (`peak_r >= 4`, currently 1 trade). In ADR terms the same cohort has 5 trades past
