@@ -99,6 +99,67 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-01 — #490: gap authority SPLIT — the REMOVE half gets its own toggle (built OFF, awaiting sign-off)
+
+**Trigger**: operator, 2026-08-01, on being shown the volume cost of the RT cutover — *"with 30+
+more EP that is potentially traded, that's adding a lot if true, may mean we need more filters if we
+let this cohort in, not that is a reason to block them if legit"* → *"fix the vol"*.
+
+`ep_rt_gap_authoritative` does two opposite things at once. Measured per-day over 7/21-7/31:
+
+| half | effect | per day |
+|---|---|---|
+| flip-UP (`rt ≥ 10 > delayed`) | **admits** candidates the stale gap rejected | **+25.0** |
+| flip-DOWN (`rt < 10 ≤ delayed`) | **removes** stale false-admits | **−13.9** |
+
+Against a baseline of 1.86 HIGH alerts/day and 0.57 live entries/day, the admit half is a large
+expansion — and grading runs only on ADMITTED candidates (`ep_detector.py:1888`), so it lands on the
+LLM path whose end-to-end latency (median 27s, max 150s, measured at ~2 candidates/tick) is what
+keeps detection inside the 09:45 ORB cutoff. **The remove half has no such cost: it shrinks the
+cohort.** They were inseparable only because one assignment drove both.
+
+**Evidence** (CHANGE_PROCESS r1 — N≥10 evaluated; full working
+`docs/analysis/490_delay_missed_eps_2026-08-01.md`): 111 `ep_rt_floor_flip_down` ticker-days over
+the 8 days the telemetry has existed. Of those, **11 became scored alerts — all 11 HIGH — and 4
+reached a live trade row. 3 filled:**
+
+| ticker | date | delayed gap | RT gap | outcome |
+|---|---|---|---|---|
+| WKC | 2026-07-24 | 11.63% | 8.91% | closed **−$23.80** |
+| QBTS | 2026-07-27 | 11.29% | 9.50% | closed **−$22.26** |
+| FTNT | 2026-07-30 | 10.79% | 7.77% | closed **−$6.63** |
+| ARM | 2026-07-30 | 15.46% | 8.34% | cancelled, unfilled |
+
+**−$52.69 of a −$224.01 30-day total (23.5% of the loss) from 3 of 17 trades — none of which ever
+qualified on real-time data, and every one a loser.**
+
+⚠ **Honest N**: the criterion is evaluated on 111 events / 11 alerts, but the P&L attribution rests
+on **3 filled trades**. Telemetry only starts 2026-07-21, so a longer window does not exist yet.
+Three trades is not a distribution — the case rests on the mechanism (these names did not meet the
+10% floor on truthful data) rather than on the size of the measured saving.
+
+**What shipped**: `ep_rt_gap_down_authoritative` (runtime toggle + `EP_RT_GAP_DOWN_AUTHORITATIVE`
+env), consulted ONLY when `ep_rt_gap_authoritative` is off, so full authority still subsumes it.
+
+**Never-loosen, structurally**: the branch is guarded by `rt_gap < MIN_GAP_PCT <= dl` — the flip-DOWN
+condition exactly — so it can only push a decided gap BELOW the floor. A superset-only admit
+(`dl < MIN_GAP_PCT`) fails `MIN_GAP_PCT <= dl`, is never touched, and `_floor` drops it as today.
+`tests/test_490_gap_down_authority.py` pins this with a 144-case sweep over (delayed, rt) pairs on
+both the verified and unverified prev_close paths, asserting the admitted set is a SUBSET of today's.
+**Mutation-tested**: removing the guard fails 3 tests including the sweep.
+
+`ep_rt_floor_flip_down` now carries `acted` — without it the event read identically in both modes and
+verify-live could not tell whether the cleanup was running.
+
+**NOT changed**: `MIN_GAP_PCT=10.0`, the ORB window, scoring weights, safeguards, sizing, and the
+flip-UP half — which stays gated behind `ep_rt_gap_authoritative` exactly as before.
+
+**Reversion-flag**: NEW (splits an existing toggle; neither half changes meaning). Reversion = set
+the toggle back off — no code change, no deploy.
+
+**Status**: **BUILT, SHIPPED OFF. Default off is byte-identical to today (test-pinned).** The live
+flip is a detection-criterion change and needs operator sign-off — NOT taken.
+
 ### 2026-07-25 — #490 RT-1: full real-time detection built DARK (shadow note only — NO criteria change)
 
 **Trigger**: operator ruling 2026-07-24 ("there isn't a rational reason to not use real-time

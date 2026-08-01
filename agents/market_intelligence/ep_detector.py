@@ -1930,6 +1930,11 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
         from agents.market_intelligence import collector
         authoritative = await get_runtime_toggle(
             "ep_rt_gap_authoritative", "EP_RT_GAP_AUTHORITATIVE", default=False)
+        # #490 split (2026-08-01): the REMOVE half on its own toggle. Subsumed by full gap
+        # authority — when `authoritative` is on it already removes, so this is only consulted
+        # in the else-branch. Default off = byte-identical to today.
+        down_authoritative = (not authoritative) and await get_runtime_toggle(
+            "ep_rt_gap_down_authoritative", "EP_RT_GAP_DOWN_AUTHORITATIVE", default=False)
         if snaps is None:
             snaps = await collector.get_alpaca_snapshots_batch([c["ticker"] for c in candidates])
         adate = now_et.date()
@@ -2026,6 +2031,18 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 c["current_price"] = rt_price   # §6.4 (C5): the alert/scan-log/Telegram row renders
                                                 # the price the decision actually used
                 c["price_source"] = "alpaca_sip"
+            elif down_authoritative and rt_gap < MIN_GAP_PCT <= dl:
+                # #490 DOWN-ONLY authority — the REMOVE half of `ep_rt_gap_authoritative`, split out
+                # so the stale-false-admit cleanup can run WITHOUT the flip-up expansion (which adds
+                # ~+25 candidates/day to the LLM grading path and eats the 09:45 ORB latency margin;
+                # evidence: docs/analysis/490_delay_missed_eps_2026-08-01.md §6).
+                # STRICTLY REMOVAL: the guard `rt_gap < MIN_GAP_PCT <= dl` is the flip-DOWN condition
+                # exactly, so this branch can only ever push a decided gap BELOW the floor. It can
+                # never admit — a superset-only admit (dl < MIN_GAP_PCT) fails `MIN_GAP_PCT <= dl`
+                # and is left on the delayed path, where `_floor` drops it as it does today.
+                c["gap_pct"] = round(rt_gap, 2)
+                c["current_price"] = rt_price
+                c["price_source"] = "alpaca_sip"
             if rt_gap >= MIN_GAP_PCT > dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_up"):
                 _flip_msg = (f"{c['ticker']} rt {rt_gap:.1f}% ≥10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
                              + ("" if authoritative else " (SHADOW — would have caught)"))
@@ -2036,9 +2053,17 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 # The hybrid-catchable class is "the fix works" shadow proof, not an actionable miss; it stays
                 # in mi_audit_log for /audit + the residual dashboard. The residual class digests once/morning.
             elif rt_gap < MIN_GAP_PCT <= dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_down"):
+                # `acted` distinguishes a real removal from shadow telemetry — without it the event
+                # reads identically in both modes and verify-live cannot tell whether the cleanup
+                # is actually running.
+                _acted = authoritative or down_authoritative
                 await log_audit_event("ep_rt_floor_flip_down",
-                    f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit cleaned)",
-                    json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2)}))
+                    f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit "
+                    + ("REMOVED)" if _acted else "cleaned — SHADOW, still admitted)"),
+                    json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
+                                "acted": _acted, "authoritative": authoritative,
+                                "down_authoritative": down_authoritative,
+                                "tick_et": now_et.strftime("%H:%M")}))
         return _floor(candidates)
     except Exception as e:
         logger.warning(f"Pass-2 failed, degrading to delayed 10% floor: {e}")
