@@ -7532,6 +7532,43 @@ reviews:
     status: pending
     added_on: 2026-07-21
 
+  - review_id: first_live_winner
+    title: "FIRST profitable live MAGNA53 close — the single event that most changes the exit analysis (#503/#508)"
+    question: |
+      Fires the first time a live MAGNA53 trade closes GREEN. Operator 2026-08-01
+      asked for a trigger on "winners come up"; nothing watched for one.
+
+      WHY THIS MATTERS MORE THAN A TRADE COUNT: every exit candidate scored so far
+      has been measured against LOSING trades only - the live cohort is 0-for-12,
+      and the paper cohort's winners are confounded (22 of 24 Bull-regime, 19 of 24
+      predate the 2026-06-05 ORB-window fix). So the cost of a profit-take rule -
+      what the remaining 2/3 gives up when a trade RUNS - has never been observed on
+      real money. A single live winner is the first data point that can price it,
+      and it directly unlocks docs/analysis/508_exit_discipline_STATE_2026-08-01.md
+      section 3.3 (partial vs full exit), which no amount of additional losing
+      trades can resolve.
+
+      It is also the first evidence that the strategy can work at all: the shadow
+      ORB control shows zero winners across BULL and Correcting months alike, so a
+      live winner would be genuinely new information about the setup, not only
+      about the exit.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_sell_discipline_records
+       WHERE account_mode = 'live' AND signal_type = 'magna53'
+         AND realized_r > 0
+    threshold: 1
+    earliest_review_date: 2026-08-04
+    status: pending
+    action_when_ready: |
+      Pull the full price path for that trade (minute bars, not the recorded peak -
+      the peak instrumentation is blind under ~10 minutes). Then re-run
+      scripts/probes/_508_exit_rule_replay.py and read the cost/win column, which
+      until now has rested on 2 paper trades that disagree in sign. Report what each
+      candidate rule WOULD have given up on the winner. Do NOT re-open the unit
+      question (state doc 3.2) on this trigger; it has its own gate.
+    added_on: 2026-08-01
+    cross_refs: ["task #503", "task #508", "docs/setups/exit_discipline.md"]
+
   - review_id: exit_regime_separability
     title: "Exit regime-conditioning becomes READABLE — live trades in a BULL tape reach n=4 (#503/#508)"
     question: |

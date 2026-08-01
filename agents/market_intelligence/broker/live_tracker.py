@@ -835,6 +835,28 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
             f"close=${step.bar_close:.2f} partial_shares={step.partial_shares:.0f}"
         )
 
+        # ── Announce the DECISION, not just the downstream fill (operator 2026-08-01:
+        # "is telegram hooked up to notify me of profit takes"). It was not: this job
+        # had ZERO Telegram calls, so a partial the system CHOSE to take reached him
+        # only as a broker fill event with no statement of why or at what level. On a
+        # rule whose whole purpose is "take profit at X", the reasoning is the message.
+        # Self-catching: a notification failure must never abort a money action that
+        # is about to run on the next line.
+        try:
+            _entry = trade.get("entry_price")
+            _risk = (_entry - hard_stop) if (_entry and hard_stop) else None
+            _rem = trade.get("remaining_shares")
+            r_now = ((step.bar_close - _entry) / _risk) if (_risk and _entry) else None
+            await send_telegram_message(
+                f"{mode_prefix(trade.get('account_mode'))}💰 *Profit-take firing: {ticker}*\n"
+                f"day {step.hold_days} · close ${step.bar_close:.2f}"
+                + (f" · {r_now:+.2f}R" if r_now is not None else "")
+                + f"\nSelling {int(step.partial_shares)} of {int(_rem)} sh, "
+                f"stop moves to breakeven (${_entry:.2f})."
+            )
+        except Exception:  # loud-ok: send_telegram_message self-catches and returns False; this guards the f-string/format path only. The partial below MUST run regardless.
+            logger.warning(f"partial-decision notify failed for {ticker}", exc_info=True)
+
         partial_ok = await execute_partial_exit(trade["id"], int(step.partial_shares))
         # finalize_partial_exit commits the DB state on the actual WS fill; if
         # the helper aborts/fails it has already audit-logged + (where relevant)

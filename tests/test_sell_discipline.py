@@ -468,3 +468,50 @@ def test_missing_phase_map_tags_nothing_rather_than_wrongly():
                      "reached_avg": 2.1, "kept_avg": 0.2}],
     })
     assert "deprecated" not in txt
+
+
+# ─── profit-take DECISION notification (operator 2026-08-01) ──────────────────
+
+def test_partial_decision_notification_uses_only_bound_locals():
+    """The notification I first wrote referenced `entry`, `risk` and `remaining`,
+    none of which are bound in run_partial_exits — it was inside a try/except, so
+    it would have raised NameError and silently NEVER notified while looking
+    shipped. A substring check said "OK"; only the AST caught it. This pins it.
+    """
+    import ast, pathlib
+    src = pathlib.Path("agents/market_intelligence/broker/live_tracker.py").read_text()
+    tree = ast.parse(src)
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.AsyncFunctionDef) and n.name == "run_partial_exits")
+    bound = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+    bound |= {n.arg for n in ast.walk(fn) if isinstance(n, ast.arg)}
+    module_level = {n.name for n in ast.walk(tree)
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    module_level |= {a.asname or a.name.split(".")[0] for n in ast.walk(tree)
+                     if isinstance(n, (ast.Import, ast.ImportFrom)) for a in n.names}
+    loads = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+    # module-level ASSIGNMENTS too (logger = ...), and the real builtins module —
+    # `dir(__builtins__)` is a dict here, not a module, which is why the first
+    # version of this test flagged dict/isinstance/list.
+    import builtins
+    module_level |= {n.id for n in tree.body
+                     for n in ast.walk(n) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+    unresolved = loads - bound - module_level - set(dir(builtins))
+    assert not unresolved, f"run_partial_exits loads names bound nowhere: {sorted(unresolved)}"
+
+
+def test_partial_decision_is_announced_before_the_sell():
+    """The operator asked whether Telegram covers profit takes. It did not — this
+    job had zero Telegram calls. Pin that the DECISION is announced, and that the
+    announcement cannot abort the money action that follows it.
+    """
+    import pathlib
+    src = pathlib.Path("agents/market_intelligence/broker/live_tracker.py").read_text()
+    i = src.index("async def run_partial_exits")
+    seg = src[i:i + 9000]
+    notify = seg.index("Profit-take firing")
+    # the ACTUAL call site, not an earlier mention in a docstring/comment
+    sell = seg.index("partial_ok = await execute_partial_exit")
+    assert notify < sell, "the sell must not run before the operator is told why"
+    guard = seg[notify:sell]
+    assert "except Exception" in guard, "a notify failure must never abort the partial"
