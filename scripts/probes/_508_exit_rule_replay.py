@@ -502,6 +502,36 @@ def sim_close_rule(t: Trade, level: float | None, day_gate: int | None, frac: fl
 
 # ── candidates ───────────────────────────────────────────────────────────────
 
+# ── REGIME-CONDITIONAL RULES (operator 2026-08-01) ───────────────────────────
+# "runners probably happen more often in bull markets, so one possibility is that
+# we have more aggressive profit take on bear markets and let runners go in bull
+# markets. The ask is to have all permutations ready once we have the samples."
+#
+# A conditional rule picks its trigger from the regime recorded at ALERT time, so
+# one rule can take profit early in Correcting and late (or never) in Bull. A
+# level of None means DO NOTHING in that regime — that is the "let it run" arm.
+_REGIME_KEY = {"Bull": "bull", "Choppy": "chop", "Correcting": "corr", "Crisis": "corr"}
+
+
+def sim_regime_rule(t: Trade, levels: dict, frac: float, unit: str = "R",
+                    full_exit: bool = False) -> Result | None:
+    """`levels` maps bull/chop/corr -> trigger level (or None = hold, no rule).
+
+    Unknown/missing regime returns None (UNMEASURABLE, excluded from the mean) —
+    never silently treated as one of the arms, which would invent evidence for a
+    regime the trade was not in.
+    """
+    key = _REGIME_KEY.get(t.rec.get("regime") or "")
+    if key is None:
+        return None
+    lvl = levels.get(key)
+    if lvl is None:                       # "let runners go" arm: do nothing
+        return Result(t.nothing_r, t.nothing_r, triggered=False)
+    if unit == "ADR":
+        return sim_adr_rule(t, lvl, frac, full_exit=full_exit)
+    return sim_r_rule(t, lvl, frac, full_exit=full_exit)
+
+
 def candidates():
     c = {}
     c["actual"] = None                       # recorded realized_r (deployed system as-run)
@@ -519,6 +549,24 @@ def candidates():
         c[f"ADR{lvl:g}_part1/3+BE"] = (lambda L: lambda t: sim_adr_rule(t, L, 1 / 3))(lvl)
     for lvl in (1.0, 1.5):
         c[f"ADR{lvl:g}_exit_all"] = (lambda L: lambda t: sim_adr_rule(t, L, 1.0, full_exit=True))(lvl)
+
+    # ── the regime permutation grid: tight in weak tape, loose/none in Bull ──
+    # Named <bull>/<chop>/<corr>. "none" = hold, no profit-take in that regime.
+    for name, lv in (
+        ("rgm_none/2R/2R",   {"bull": None, "chop": 2.0, "corr": 2.0}),
+        ("rgm_none/1R/1R",   {"bull": None, "chop": 1.0, "corr": 1.0}),
+        ("rgm_4R/2R/1R",     {"bull": 4.0,  "chop": 2.0, "corr": 1.0}),
+        ("rgm_4R/3R/2R",     {"bull": 4.0,  "chop": 3.0, "corr": 2.0}),
+        ("rgm_3R/2R/2R",     {"bull": 3.0,  "chop": 2.0, "corr": 2.0}),
+        ("rgm_6R/3R/2R",     {"bull": 6.0,  "chop": 3.0, "corr": 2.0}),
+    ):
+        c[f"{name}_part1/3+BE"] = (lambda L: lambda t: sim_regime_rule(t, L, 1 / 3))(lv)
+    # full-exit arm of the same idea: bank it entirely when the tape is weak
+    for name, lv in (
+        ("rgm_none/2R/2R", {"bull": None, "chop": 2.0, "corr": 2.0}),
+        ("rgm_none/3R/2R", {"bull": None, "chop": 3.0, "corr": 2.0}),
+    ):
+        c[f"{name}_exit_all"] = (lambda L: lambda t: sim_regime_rule(t, L, 1.0, full_exit=True))(lv)
     for lvl in (1.5, 2.0, 3.0):
         c[f"R{lvl:g}_exit_all"] = (lambda L: lambda t: sim_r_rule(t, L, 1.0, full_exit=True))(lvl)
     for lvl in (1.0, 2.0):
@@ -661,6 +709,34 @@ def run():
         for (name, n, trig, mean, da, dn, cw, nw, bl, nl, amb, mrg) in agg(names, ts):
             print(f"  {name:<28} {trig:>4} {fmt(mean)} {fmt(da, 8)} {fmt(dn, 9)} "
                   f"{fmt(cw, 9)} {nw:>3} {fmt(bl, 9)} {nl:>3} {amb:>3} {mrg:>3}")
+
+    # ── PER-REGIME SEGMENTATION (operator 2026-08-01, asked repeatedly) ──────
+    # Runners plausibly cluster in Bull, so a single blended mean can hide that the
+    # right rule DIFFERS by tape. Every cell prints its own n so an under-powered
+    # cell cannot be read as a result — which is the whole point of having the
+    # permutations ready BEFORE the samples arrive.
+    print("\n--- PER-REGIME (live+paper magna53). Each cell: mean kept R (n). "
+          "n<4 is NOT a result — it is a placeholder waiting for samples. ---")
+    mag = [t for t in trades if t.rec["signal_type"] == "magna53"]
+    regimes = ["Bull", "Choppy", "Correcting"]
+    counts = {rg: len([t for t in mag if t.rec["regime"] == rg]) for rg in regimes}
+    print("    cohort n by regime: " + " · ".join(f"{rg} {counts[rg]}" for rg in regimes)
+          + f" · unknown {len([t for t in mag if t.rec['regime'] not in regimes])}")
+    hdr = f"  {'rule':<30}" + "".join(f"{rg:>16}" for rg in regimes)
+    print(hdr)
+    for name in names:
+        if name == "nothing":
+            continue
+        cells = []
+        for rg in regimes:
+            sub = [t for t in mag if t.rec["regime"] == rg
+                   and t.rec["trade_id"] in results[name]]
+            if not sub:
+                cells.append(f"{'—':>16}")
+                continue
+            mean = sum(results[name][t.rec["trade_id"]].kept_r for t in sub) / len(sub)
+            cells.append(f"{mean:>+11.2f} (n{len(sub)})")
+        print(f"  {name:<30}" + "".join(cells))
 
     # optimistic sensitivity (aggregate only)
     print("\n--- AMBIGUITY SENSITIVITY (all 43): mean kept, pessimistic vs optimistic ----")
