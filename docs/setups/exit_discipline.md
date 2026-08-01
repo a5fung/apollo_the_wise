@@ -107,9 +107,11 @@ Full evidence, all figures independently recomputed twice:
 ### 2026-08-01 — SSoT created; no behaviour change
 
 **Trigger**: A proposed change to the profit-take rule (`docs/analysis/508_change_proposal_profit_trigger_2026-08-01.md`)
-had no SSoT to update, which `CHANGE_PROCESS.md` r6/r7 require. Creating the file also surfaced that
-the deployed rule's day-5 unconditional branch — a de-facto full time-exit — was undocumented and had
-been mis-stated in analysis as "gates profit-taking at day 3".
+had no file under CHANGE_PROCESS discipline to update (r6/r7). ⚠ Creating it also corrected TWO of my
+own errors: the rule is **not** undocumented — it is in `EP_TRADING_RULES.md` §B5, written by the
+operator 2026-03-27 — and describing it as "gates profit-taking at day 3" omitted the day-5
+unconditional branch. What is genuinely unwritten is only the day-5-while-underwater INTERACTION that
+closes the remainder.
 
 **Evidence**: n/a — this entry documents existing behaviour, read directly from
 `broker/exit_logic.py` at commit `6f8652d`. Measured columns above come from 43 recorded closed
