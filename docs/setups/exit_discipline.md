@@ -163,10 +163,30 @@ a spike between polls is still caught. It reuses `execute_partial_exit`, which r
 **before** selling under a per-trade advisory lock — no window where the stop over-covers the
 position, and no resting order.
 
-**Status**: **BUILT, SHIPPED OFF.** `constants.PROFIT_TRIGGER_R = None`. The constant IS the
-reversion path. 7 tests, two mutation-checked. Awaiting: backtest through the #151 harness, then
-operator flips the constant, then verify-live against the pre-committed reversion triggers in
-`docs/analysis/508_change_proposal_profit_trigger_2026-08-01.md`.
+**Status**: **LIVE — `constants.PROFIT_TRIGGER_R = 2` set 2026-08-01, operator-signed.**
+Take 1/3 at entry + 2 × risk_per_share, then stop to breakeven. **Reversion = set the constant back
+to `None`** (restores the day-3/day-5 rule with no code change) and redeploy market-agent +
+execution.
+
+Deployed inert first and verified in prod (both containers read `None`, `scan_profit_triggers`
+present), THEN flipped — so the code path was proven live before it was allowed to act.
+
+**Validation performed** (CHANGE_PROCESS r1 = N≥10 historical samples; we have 36):
+- Replay over 36 magna53 closed trades, 34 candidate rules, every figure independently recomputed
+  twice.
+- **Re-scored under the REAL 5-minute-poll fill**, not the idealised limit fill the proposal assumed:
+  +2R is −0.56 either way (delta −0.00), worst case across candidates 0.04R. **+0.43R vs actual.**
+- **Code-vs-rule parity** (`scripts/probes/_508_trigger_parity.py`): the shipped predicate reproduces
+  the replay's decisions — 11 agree, 0 diverge, 1 unmeasurable (MANE, which the shipped code DOES
+  fire on, so the measured number excludes the cohort's biggest runner and is conservative).
+
+**Watch for** (pre-committed, `docs/analysis/508_change_proposal_profit_trigger_2026-08-01.md`):
+1. Partial fires, remainder scratched at breakeven, trade then runs ≥+4R same session — one
+   occurrence is a review, two is a revert.
+2. Next 10 closed live trades worse than the same 10 replayed under the incumbent.
+
+⚠ **Not expected to make the strategy profitable.** The shadow control shows zero winners across
+bull AND correcting months with no broker involved. This makes losses smaller.
 
 
 ### 2026-08-01 — SSoT created; no behaviour change

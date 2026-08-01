@@ -125,6 +125,12 @@ def _install_common(monkeypatch, step, exec_spy, *, captured_kwargs=None):
 
 
 def test_run_partial_exits_fires_partial(monkeypatch):
+    # #508: ownership of the partial is now conditional. With PROFIT_TRIGGER_R set,
+    # the intraday trigger owns it and this job stands down. Pin the LEGACY path by
+    # forcing the flag OFF rather than depending on whatever the shipped default is —
+    # a test that silently changes meaning when a constant moves is worse than no test.
+    import agents.market_intelligence.constants as _c
+    monkeypatch.setattr(_c, "PROFIT_TRIGGER_R", None)
     calls = []
 
     async def exec_spy(trade_id, shares, **k):
@@ -190,6 +196,8 @@ def test_eod_job_skips_partial_decision_and_never_fires(monkeypatch):
 
 
 def test_wick_day_still_fires_partial_with_real_decision(monkeypatch):
+    import agents.market_intelligence.constants as _c
+    monkeypatch.setattr(_c, "PROFIT_TRIGGER_R", None)   # legacy path — see above
     # REGRESSION (advisor #361): a Day-4 position whose forming 3:45 bar wicked
     # to/through its hard_stop intraday but recovered green must STILL take the
     # partial. Without skip_hard_stop_close=True, apply_daily_exit_step would
@@ -237,3 +245,24 @@ def test_no_double_fire_across_both_jobs(monkeypatch):
     asyncio.run(live_tracker.update_open_positions_live())
 
     assert calls == [(1, 30)], f"partial must fire exactly once: {calls}"
+
+
+def test_3_45_job_stands_down_when_the_intraday_trigger_owns_the_partial(monkeypatch):
+    """#508 companion to the two above: the SAME no-double-fire property, now across
+    THREE actors. With PROFIT_TRIGGER_R set the intraday trigger owns the partial, so
+    the 3:45 job must pass skip_partial_decision=True and take nothing."""
+    import agents.market_intelligence.constants as _c
+    monkeypatch.setattr(_c, "PROFIT_TRIGGER_R", 2.0)
+    calls = []
+
+    async def exec_spy(trade_id, shares, **k):
+        calls.append((trade_id, shares))
+        return True
+
+    kwargs_seen = []
+    _install_common(monkeypatch, _partial_step(), exec_spy, captured_kwargs=kwargs_seen)
+    asyncio.run(live_tracker.run_partial_exits())
+
+    assert kwargs_seen, "apply_daily_exit_step not called"
+    assert kwargs_seen[0].get("skip_partial_decision") is True, \
+        "with the intraday trigger ON, the 3:45 job must suppress its own decision"

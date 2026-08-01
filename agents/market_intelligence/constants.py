@@ -326,7 +326,7 @@ DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
 # reversion path for this change is this constant, not a code revert.
 # Evidence: docs/analysis/508_change_proposal_profit_trigger_2026-08-01.md
 # (+0.43R/trade vs actual on the live cohort under the REAL 5-min-poll fill model).
-PROFIT_TRIGGER_R: float | None = None
+PROFIT_TRIGGER_R: float | None = 2.0   # LIVE 2026-08-01 (operator-signed). Set to None to revert.
 
 CIRCUIT_BREAKER_CONSEC_LOSSES = 10   # Pause after N consecutive losses (EP win rate ~25% → P(10 consec) ≈ 5.6%, vs P(5) = 24%).
                                      # Bumped 5→10 on 2026-05-08: at 5 the breaker tripped on 6-loss streak (BSX 4/23 → AMD 5/07)

@@ -24,10 +24,21 @@ def _fn(name):
                 if isinstance(n, (ast.AsyncFunctionDef, ast.FunctionDef)) and n.name == name)
 
 
-def test_trigger_is_OFF_by_default():
+def test_trigger_value_matches_the_SSoT():
+    """Was "must be OFF"; that froze the shipped default and would have had to be
+    deleted the moment the operator flipped it — a guard you delete is not a guard.
+    What actually matters is that CODE AND SSoT CANNOT DIVERGE: whatever the constant
+    says, docs/setups/exit_discipline.md must say the same. Stale SSoT is worse than
+    no SSoT (CHANGE_PROCESS r6)."""
     from agents.market_intelligence import constants
-    assert constants.PROFIT_TRIGGER_R in (None, 0), (
-        "shipped default must be OFF — this constant IS the reversion path")
+    ssot = pathlib.Path("docs/setups/exit_discipline.md").read_text()
+    v = constants.PROFIT_TRIGGER_R
+    if not v:
+        assert "PROFIT_TRIGGER_R = None" in ssot, "SSoT must record that the trigger is OFF"
+    else:
+        assert f"PROFIT_TRIGGER_R = {v:g}" in ssot, (
+            f"constant is {v:g} but the SSoT does not record that value — "
+            "code and doc have diverged")
 
 
 def test_trigger_returns_immediately_when_off():
