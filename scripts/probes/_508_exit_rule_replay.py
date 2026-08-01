@@ -152,7 +152,8 @@ REC_COLS = ("trade_id ticker signal_type account_mode alert_date fill_day close_
             "closed_at entry_price risk_per_share entry_shares realized_pnl realized_r peak_price "
             "peak_r peak_time peak_day peak_hold_day peak_source peak_bars_n peak_close peak_close_r "
             "peak_close_day giveback_r capture_pct hold_trading_days stop_above_entry_ever "
-            "partial_taken pnl_attribution regime").split()
+            "partial_taken pnl_attribution regime "
+            "stop_pct stop_per_adr peak_adr realized_adr").split()
 
 _DATES = {"alert_date", "fill_day", "close_day", "peak_day", "peak_close_day"}
 _TS = {"filled_at", "closed_at", "peak_time"}
@@ -416,6 +417,31 @@ def sim_r_rule(t: Trade, level: float, frac: float, be_only=False, full_exit=Fal
                   marginal=marginal)
 
 
+def adr_per_r(t: Trade) -> float | None:
+    """How many ADR one R is worth for this trade, or None when unusable.
+
+    `stop_per_adr` = stop_pct / adr_pct is recorded per trade, so a trigger of L
+    ADR is simply an R-trigger of L / stop_per_adr — the whole fill/breakeven
+    engine is reused unchanged, no new price data.
+
+    None (never a guess) when the ratio is missing or <= 0. That happens when the
+    recorded stop sat AT or ABOVE entry (10 of the 11 unusable rows carry
+    stop_above_entry_ever=t), which makes the ratio meaningless rather than small.
+    Verified 2026-08-01: for all 12 LIVE rows stop_pct == risk_per_share/entry*100
+    exactly, so the ratio is the ORIGINAL entry risk, not a trailed stop.
+    """
+    v = t.rec.get("stop_per_adr")
+    return v if (v is not None and v > 0) else None
+
+
+def sim_adr_rule(t: Trade, level: float, frac: float, full_exit=False) -> Result | None:
+    """Trigger at `level` x the ticker's own 20d ADR. None when unmeasurable."""
+    a = adr_per_r(t)
+    if a is None:
+        return None
+    return sim_r_rule(t, level / a, frac, full_exit=full_exit)
+
+
 def _inhold_closes(t: Trade):
     return [(i, d) for i, d in enumerate(t.days) if d.inhold_close and d.close is not None]
 
@@ -483,6 +509,14 @@ def candidates():
     for lvl in (1.0, 1.5, 2.0, 3.0):
         c[f"R{lvl:g}_part1/3+BE"] = (lambda L: lambda t: sim_r_rule(t, L, 1 / 3))(lvl)
     c["R2_part1/2+BE"] = lambda t: sim_r_rule(t, 2.0, 0.5)
+    # ── same rules, measured in the ticker's OWN daily range instead of in R.
+    # The point of the comparison (operator 2026-08-01): stop width spans 0.15-1.17
+    # ADR across the live cohort, so one "+2R" rule fires at 7.7x different real
+    # distances. These ask what happens when the trigger is a CONSTANT distance.
+    for lvl in (0.5, 1.0, 1.5, 2.0):
+        c[f"ADR{lvl:g}_part1/3+BE"] = (lambda L: lambda t: sim_adr_rule(t, L, 1 / 3))(lvl)
+    for lvl in (1.0, 1.5):
+        c[f"ADR{lvl:g}_exit_all"] = (lambda L: lambda t: sim_adr_rule(t, L, 1.0, full_exit=True))(lvl)
     for lvl in (1.5, 2.0, 3.0):
         c[f"R{lvl:g}_exit_all"] = (lambda L: lambda t: sim_r_rule(t, L, 1.0, full_exit=True))(lvl)
     for lvl in (1.0, 2.0):
@@ -505,6 +539,12 @@ def fmt(v, w=7, d=2):
     return f"{v:+{w}.{d}f}" if v is not None else " " * (w - 1) + "—"
 
 
+def _mean_over(res: dict, trades) -> float | None:
+    """Mean kept_r over the trades this candidate could actually be measured on."""
+    vs = [res[t.rec["trade_id"]].kept_r for t in trades if t.rec["trade_id"] in res]
+    return sum(vs) / len(vs) if vs else None
+
+
 def run():
     trades = load()
     cands = candidates()
@@ -514,7 +554,11 @@ def run():
             results[name] = {t.rec["trade_id"]:
                              Result(t.rec["realized_r"], t.rec["realized_r"]) for t in trades}
         else:
-            results[name] = {t.rec["trade_id"]: fn(t) for t in trades}
+            # None = the rule is UNMEASURABLE on this trade (no usable ADR ratio),
+            # which is not the same as "did not trigger". Dropping the key excludes
+            # it from that candidate's mean instead of scoring it as a miss.
+            results[name] = {t.rec["trade_id"]: r for t in trades
+                             if (r := fn(t)) is not None}
 
     by_cohort = defaultdict(list)
     for t in trades:
@@ -538,6 +582,7 @@ def run():
         print(f"  {fl:<24}: n={len(ids)} {ids}")
     amb_any = sorted({t.rec['trade_id'] for t in trades
                       for nm in results if nm not in ('actual',)
+                      and t.rec['trade_id'] in results[nm]
                       and results[nm][t.rec['trade_id']].ambiguous})
     print(f"  trades hitting ambiguous intra-day ordering under >=1 candidate: {amb_any}")
 
@@ -575,7 +620,8 @@ def run():
     def agg(names, ts, res_key="kept_r"):
         rows = []
         for name in names:
-            rs = [results[name][t.rec["trade_id"]] for t in ts]
+            rs = [results[name][t.rec["trade_id"]] for t in ts
+                  if t.rec["trade_id"] in results[name]]
             kept = [getattr(r, res_key) for r in rs]
             n = len(ts)
             if not n:
@@ -612,7 +658,8 @@ def run():
     for name in names:
         if name == "actual":
             continue
-        rs = [results[name][t.rec["trade_id"]] for t in allt]
+        rs = [results[name][t.rec["trade_id"]] for t in allt
+              if t.rec["trade_id"] in results[name]]
         p = sum(r.kept_r for r in rs) / len(rs)
         o = sum(r.kept_r_opt for r in rs) / len(rs)
         if abs(p - o) > 1e-9:
@@ -625,7 +672,8 @@ def run():
     print(f"  bar-covered live trades: {len(bars_live)} of {len(live)} "
           f"({[t.rec['ticker'] for t in bars_live]})")
     for name in [n for n in names if n.startswith("R")]:
-        rs_all = [(t, results[name][t.rec["trade_id"]]) for t in live]
+        rs_all = [(t, results[name][t.rec["trade_id"]]) for t in live
+                  if t.rec["trade_id"] in results[name]]
         trig_realism = defaultdict(int)
         for t, r in rs_all:
             if r.triggered:
@@ -670,7 +718,7 @@ def run():
             if not sub:
                 continue
             cells = "  ".join(
-                f"{name.split('_')[0]}={fmt(sum(results[name][t.rec['trade_id']].kept_r for t in sub) / len(sub))}"
+                f"{name.split('_')[0]}={fmt(_mean_over(results[name], sub))}"
                 for name in show)
             note = "  (n<5 — DO NOT read a preference from this cell)" if len(sub) < 5 else ""
             print(f"    {rg:<11} n={len(sub):<3} {cells}{note}")
