@@ -7541,7 +7541,7 @@ reviews:
       aggressive profit take on bear markets and let runners go in bull markets."
 
       THE BLOCKER THIS WATCHES (docs/analysis/508_exit_discipline_STATE_2026-08-01.md
-      §3.4): regime is currently CONFOUNDED WITH COHORT. Bull is 22 of 23 PAPER
+      §3.4): regime is currently CONFOUNDED WITH COHORT. Bull is 22 of 24 PAPER
       trades; Correcting is 7 of 7 LIVE; only Choppy has both sides. So today's
       per-regime grid cannot separate "bull markets run further" from "paper behaves
       differently from live" - and live trades hold 1.5d vs paper 3.2d WITHIN every
@@ -7665,6 +7665,20 @@ reviews:
     earliest_review_date: 2026-08-01
     status: pending
     action_when_ready: |
+      ⚠ STALL CLAUSE (added 2026-08-01, mirroring cooldown_admission_unassumed).
+      THE KILL/SCALE BANDS ACTIVATE AT THE SAME n=20 (PLAN #503, projected
+      ~2026-08-20) and on a 0-for-12 start REDUCE is the modal outcome with KILL
+      live. If a band action, /pause or a demotion halts live accrual, this
+      predicate freezes below threshold and is NEVER surfaced again -
+      escalate_overdue_reviews only reports READY or ERRORING reviews, so a
+      healthily-pending 12/20 goes silent permanently. So: if live accrual halts,
+      OR n < 20 by 2026-10-01, RUN THIS REVIEW AT WHATEVER n EXISTS. A smaller
+      honest read beats an indefinite wait.
+      ⚠ RE-BASELINE, do not blend: if #503 changes the ENTRY, trades taken under
+      the old mechanics are a different population (19 of 24 paper trades predate
+      the 2026-06-05 ORB-window fix and filled as late as 11:35 ET, which the
+      current system cancels at 10:00).
+
       Run (a)-(d) above on the full cohort, then RE-BUMP `threshold` to the next
       milestone - 20 -> 40 -> 60 -> 80 -> 100 (RECURRING, not one-shot; the same
       idiom as model_selection_quarterly_review / kill_scale_bands_quarterly_review,

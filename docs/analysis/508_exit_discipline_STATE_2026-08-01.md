@@ -40,6 +40,16 @@ Every figure below was independently recomputed twice, the second time by a revi
 reimplemented the simulation from prose and matched every digit.
 
 **2.1 The deployed rule is effectively inert on live money.**
+**What the deployed rule actually is** (stated because parking a rule you have not described is how
+it gets misremembered): it takes 1/3 off at hold-day ≥3, and **unconditionally at day ≥5 even when
+underwater** — which arms breakeven and, with breakeven above an underwater close, closes the
+remainder in the same step (`exit_logic.py:301-303`, `:337-373`). So it is also a **de-facto day-5
+full time-exit**. `hold_days` counts **calendar** days from `alert_date` (`exit_logic.py:217`), so a
+Friday entry hits the day-3 gate on its 2nd trading day. It runs in `run_partial_exits` (3:45 PM ET)
+and `update_open_positions_live` (4:45 PM ET). Before day 10 nothing else can act: the SMA trail needs
+≥10 closes and the giveback hook is default-off with no live caller — **which is the mechanical reason
+10 of 12 live losses print exactly −1R.**
+
 It gates profit-taking at hold-day 3. Live trades hold **1.50 days** on average; **1 of 12** has ever
 reached day 3; **0 partials have ever fired on live money.** Its measured value on the live cohort is
 **+0.09R per trade** — last of all 34 candidates tested.
@@ -66,9 +76,22 @@ all 4 gave everything back.
 20-day average daily range — a 7.7× spread.** So one "+2R" trigger fires after 0.31 of a normal day's
 move on MANE and after 2.35 days on NVCR. This is arithmetic, not a sample artifact.
 
-**2.5 The live cohort's losses are not an exit problem.**
-10 of 12 stopped out at a full −1R; **4 never went green at all.** No exit rule can act on a trade
-that never shows a profit. Exit rules can only improve the 4 trades that ran.
+**2.5 The live cohort's losses are largely not an exit problem.**
+10 of 12 stopped out at a full −1R.
+
+⚠ **Corrected 2026-08-01 — the "4 never went green" figure is NOT verified and one case is known
+false.** The peak instrumentation reads `highest_price_seen`, which is blind under ~10 minutes, and
+**all four of those trades lived inside that window**: CRCL 9.5 min, WDFC 9.3 min, TSEM 11.7 min,
+**HUT 51 seconds**. CRCL's true intraday peak was **+1.62R** against a recorded 0.00. So the correct
+statement is: *at least 4 trades that ran, and an unknown number of the 4 short-lived ones, are
+addressable by an exit rule.* **Every recorded peak here is a FLOOR**, which biases every candidate's
+measured edge DOWN.
+
+⚠ **The triggers inherit this undercount.** T3 and T1's runner term both key on the same recorded
+`peak_adr`, so a fast trade that ran and reversed inside 10 minutes does not count toward either.
+Fixing the instrumentation (minute-bar peaks for short holds) would raise both counts — that is a
+build, not a wait, and it is the one thing on this page that could be accelerated rather than
+waited for.
 
 ---
 
@@ -86,10 +109,44 @@ nothing in this data ran. **No live trade has ever run**, so the upside that a p
 a full exit forgoes has never been observed on real money. The comparison is undecidable until it is.
 
 **3.4 Whether regime should condition the rule.** **Regime is confounded with cohort**: Bull is 22 of
-23 paper trades, Correcting is 7 of 7 live, only Choppy has both sides (4 live / 2 paper). Today's
-grid cannot separate "bull markets run further" from "paper behaves differently from live."
+**24** paper magna53 trades, Correcting is 7 of 7 live, only Choppy has both sides (4 live / 2
+paper). Today's grid cannot separate "bull markets run further" from "paper behaves differently
+from live."
 
-**3.5 Why live trades die in 1.5 days.** Not explained by stop width (tight-stopped live trades hold
+⚠ **A second confound §3.4 originally missed: paper is also OLD ENTRY MECHANICS.** 19 of the 24
+paper magna53 entries predate the 2026-06-05 timezone/ORB-window fix (`8de7849`), and the data
+shows it — paper fills as late as **11:35 ET** (KURA), 11:31 (TEAM), 10:53 (AMD), all of which
+today's system hard-cancels at 10:00. Later fills select for breakouts that already persisted.
+So "paper vs live" is *regime* **and** *entry era*, and KURA — one of only two magna53 winners
+powering every cost/win figure — is one of the impossible-today fills.
+
+**3.5 Why live trades die in 1.5 days.** ⭐ **A CONTROL ALREADY EXISTS AND NOBODY HAD USED IT.**
+
+`mi_orb_shadow_trades` runs the SAME alert universe through the SAME gates and the SAME exit ladder
+with **no broker, no real fills, no real stops**, since 2026-04-29. That makes it the clean test of
+"is this live execution, or is it the setup?" — it removes the execution axis entirely.
+
+**Closed shadow trades, by month** (⚠ n=16 of 241 rows — 132 never entered, 48 still open, 45
+gate-blocked; the hold figures below are CLOSED rows only, an earlier read of mine that included open
+positions was wrong):
+
+| month | regime era | n | mean hold | winners | mean R |
+|---|---|---|---|---|---|
+| 2026-05 | Bull | 4 | 2.50d | **0** | −0.81 |
+| 2026-06 | Bull | 5 | 1.40d | **0** | −0.85 |
+| 2026-07 | Choppy/Correcting | 7 | 1.29d | **0** | −0.99 |
+
+**Zero winners in every month, including the two BULL months, with no broker involved.** Holds are
+1.3–2.5 days throughout — matching live's 1.50, not paper's 3.17.
+
+**What that implies, stated at the strength n=16 supports:** the short hold and the round-trip to −1R
+are properties of **the setup as currently specified — ORB entry with an ORB-low stop — not of live
+execution, and not solely of the July tape.** It also means the PAPER cohort's 3.17-day hold is the
+outlier that needs explaining (see §3.4's entry-era confound: 19 of 24 paper trades predate the
+2026-06-05 ORB-window fix, with fills as late as 11:35 ET that today's system cancels at 10:00).
+
+⚠ Not conclusive: 16 closed trades, and 48 shadow positions are still open. But this is evidence that
+**already exists** — no waiting required — and it points away from exits and away from execution. Not explained by stop width (tight-stopped live trades hold
 1.33 days, wide-stopped 1.67) nor by regime (live holds are 1.0–1.7 days in *every* regime, while
 paper holds 2.9–6.0 in every regime). **This is upstream of exits and is the larger open question.**
 
@@ -123,12 +180,34 @@ paper holds 2.9–6.0 in every regime). **This is upstream of exits and is the l
 | **T3** | **Live trades that RAN** (peak ≥ 1.5 daily ranges) | 2 (SMCI 1.68, NVCR 2.35) | Prices what a partial gives up vs a full exit — resolves 3.3 |
 | **T4** | **Any live trade holding ≥3 days** | 1 of 12 ever | Would make the *current* rule non-inert and testable as-deployed |
 
+### ⚠ WHAT STOPS THE CLOCK — read this before trusting the triggers
+
+**The single most likely way this work dies is not being wrong; it is going silent.**
+
+1. **The kill/scale bands activate at the SAME n=20** (PLAN #503; projected ~2026-08-20), and on a
+   0-for-12 start **REDUCE is the modal outcome and KILL is live.** If the band reduces or halts live
+   trading, **live accrual stops and every trigger on this page goes quiet forever** — the escalation
+   job only surfaces reviews that are READY or ERRORING, so a healthily-pending predicate frozen at
+   12/20 is never mentioned again. This is scheduled, not hypothetical.
+2. **STALL CLAUSE (added 2026-08-01, mirroring `cooldown_admission_unassumed`):** if live accrual halts
+   — band action, `/pause`, demotion — or if n < 20 by **2026-10-01**, **run the review at whatever n
+   exists** rather than continuing to sleep. A smaller honest read beats an indefinite wait.
+3. **ABANDONMENT / RE-BASELINE:** if #503 concludes the entries themselves are the problem and they
+   are changed, the pre-change cohort is **re-baselined, not blended** — trades taken under different
+   entry mechanics are a different population (see §3.4's entry-era confound).
+
 **T1 and T2 are AUTOMATIC and independent of each other** — both are `data_gated_reviews.yaml`
 predicates, evaluated every weeknight at 17:30 ET by `escalate_overdue_reviews()` inside
 `_post_nightly_audit_job`, which Telegrams when a review becomes ready and escalates again if a
 ready review is left sitting. Verified 2026-08-01 against prod: T1 returns 12/20, T2 returns 1/4.
 **T3 and T4 are NOT independently automatic** — they are read and reported whenever T1 or T2
 fires. That is deliberate: neither unlocks a decision on its own, they qualify one.
+
+⚠ **Two honest caveats on T1's mechanics**: (a) its first term counts **all** live closes with no
+`signal_type` filter, so another strategy graduating to live would advance it with out-of-cohort
+trades — the comparison cohort and T2 are magna53-only; (b) "re-runs at 20/40/60/80/100" overstates
+it — only the **notification** is automatic; each later milestone is a manual threshold re-bump, and
+the runner conjunct scales with it (at 40 it silently requires 4 runners, at 100 it requires 10).
 
 Why T2 exists separately: a bull tape could arrive long before 20 closed trades, and it is the
 ONLY thing that breaks the regime/cohort confound. Without it the regime question would have
@@ -142,7 +221,10 @@ waited on an unrelated counter.
 2. **Live trades in a bull market.** One. This is the specific gap blocking the regime question — not
    sample size in general.
 3. **Live trades that survive.** One has reached day 3, ever.
-4. **An explanation for the 1.5-day death.** Not stop width, not regime. Unknown.
+4. **An explanation for the 1.5-day death.** Not stop width, not regime, and — per the shadow control
+   — **not live execution either.** The remaining candidate is the setup specification itself: an ORB
+   entry filled in the first 2-3 minutes with a stop at the ORB low is maximally exposed to
+   opening-auction whipsaw. Unproven, but it is now the leading hypothesis rather than one of four.
 
 Note what is *not* missing: instrumentation. The recorder, the engine, the regime grid and the
 recurring trigger are all built and verified. **We are waiting on trades, not on tools.**
@@ -153,12 +235,22 @@ recurring trigger are all built and verified. **We are waiting on trades, not on
 
 **Operator**
 - **Decision pending: none required now.** The rule change is deliberately parked (see 3.1–3.4).
-- **One judgement call available if he wants to act early:** ship a profit trigger now on the
-  strength of 2.3 (every alternative beats the inert day-3 rule), accepting that the *level* is not
-  yet tuned. This is a real option, not a recommendation — it trades an unmeasured level for escaping
-  a rule that has fired once in twelve trades.
+- **One judgement call available if he wants to act early:** ship a profit trigger now, accepting
+  that the *level* is not yet tuned. ⚠ **Corrected 2026-08-01:** an earlier draft justified this with
+  "every alternative beats the inert day-3 rule". **That is true on LIVE only.** On paper the current
+  rule scores +0.36 against +0.27 (1/3@2R), +0.29 (1/3@3R) and +0.35 (1/2@2R) — it BEATS them — and
+  paper is the only cohort containing winners. So the honest case is narrower: the current rule is
+  worth +0.09/trade where the money actually is, and any profit trigger is worth +0.36 to +0.47 there.
+  It is a real option, not a recommendation.
+- **Dollar frame, which is the strongest argument for waiting and was missing:** live 1R ≈ $18.5; the
+  whole 12-trade cohort lost ≈$224; the best candidate's edge is ≈$17/trade. **Waiting 8 more trades
+  forgoes roughly $50–150.** That is what "waiting is cheap" means numerically.
 - The larger question worth his time: **why do live trades die in 1.5 days** (3.5) — entry quality,
   entry mechanics, or regime. This is #503's original question and it is upstream of all exit work.
+  **START WITH THE SHADOW CONTROL (§3.5)** — it already shows 0 winners across bull AND correcting
+  months with no broker involved, which points at the setup specification rather than at execution or
+  tape. Working that data costs nothing and it reframes the session before any of the confounded
+  paper comparison is touched.
 
 **System (automatic, no one needs to remember)**
 - Recorder captures every closed live trade with correct normalised fields.
