@@ -41,6 +41,30 @@ if hold_days >= 3 and not partial_taken and entry_price:
   regardless · after partial move stop floor to breakeven.* It is Qullamaggie methodology, not an
   accident.
 
+  ⚖ **OPERATOR RULING 2026-08-01: the day-5 unconditional sell is NOT needed.** *"We don't need to
+  sell on day 5, especially given we have breakeven stop and have taken profit if it survived 5d
+  likely. Not that this is a bad rule per se — it may be a good one for example for biotech which
+  tends to run just for days per Pradeep, but we can look into that later not now."*
+
+  **His premise is confirmed empirically, and more strongly than he put it.** Every partial that has
+  ever fired — all 10 across both cohorts — fired **while IN PROFIT**, at 1.24% to 23.00% above
+  entry, on calendar days 4-7:
+
+  | fire day | tickers | price vs entry at fire |
+  |---|---|---|
+  | 4 | BW, RCAT | +11.04%, +18.38% |
+  | 5 | CRSR, TEAM, GOOGL | +23.00%, +5.07%, +2.83% |
+  | 6 | SMCI, FTRE | +1.24%, +2.94% |
+  | 7 | IBM, QURE, PURR | +10.75%, +7.76%, +5.60% |
+
+  **So the "regardless" property has never once been exercised.** The day-5 branch has fired 8 times
+  and every one of them was already profitable — the branch that makes it unconditional has no
+  observed effect in 43 recorded trades. Removing it would have changed nothing that has ever
+  happened.
+
+  ▶ **Status: ruled, rides the profit-trigger change** (`508_change_proposal_profit_trigger_2026-08-01.md`,
+  which removes the time-based partial entirely). It is not being ripped out separately.
+
   **What IS undocumented is the interaction**: at day 5 while underwater, taking 1/3 arms breakeven,
   breakeven sits above the current close, so the effective stop (`max(hard_stop, active_sma,
   entry_price)`) exceeds price and the remaining 2/3 closes in the same step. So the two documented
@@ -96,7 +120,14 @@ Full evidence, all figures independently recomputed twice:
 3. **The unit question is unresolved.** Entry-to-stop distance spans 0.15-1.17 ADR (7.7×), so "+2R"
    is not one distance. Whether the trigger should be in R or in daily ranges cannot be settled with
    current data — see the state doc §3.2.
-4. **The strategy's problem is probably upstream of exits.** The shadow ORB control — same alerts,
+4. **DEFERRED (operator 2026-08-01, "later not now"): a character-conditioned time exit.** He noted
+   the day-5 rule "may be a good one for example for biotech which tends to run just for days per
+   Pradeep." So the question is not whether a time exit is wrong, but whether it should be keyed to
+   the NAME's character rather than applied flat. This is the same axis as the exit review's
+   segmentation item (c) — fast/gappy/small-cap/high-ADR names needing different handling from slow
+   large caps. **Not being pursued now.** Revisit alongside that segmentation once the cohort supports
+   it; do not re-open it earlier.
+5. **The strategy's problem is probably upstream of exits.** The shadow ORB control — same alerts,
    same gates, no broker — shows **zero winners across bull AND correcting months**. Exit changes
    make losses smaller; they are not expected to make the strategy profitable.
 
