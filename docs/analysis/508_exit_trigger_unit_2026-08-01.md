@@ -117,13 +117,29 @@ unbuilt data dependency" — was raised and does NOT hold. Checked 2026-08-01:**
 2. Historical coverage is imperfect (11 of 43 recorder rows lack a usable ADR ratio — all paper, all
    with stops recorded at/above entry), which limits backtest depth, not live implementability.
 
-**C. Rule nothing yet; fix the measurement gate first.** ⚠ Note that the #508 review gate I set is
-itself written in R (`peak_r >= 4`, currently 1 trade). In ADR terms the same cohort has 5 trades past
-1 daily range. **The gate inherits the flaw it was meant to study** and should be re-keyed before it
-is used to decide anything.
+**C. Rule nothing yet; fix the measurement gate first.** ✅ **DONE 2026-08-01** — this needed no
+ruling, because it changes when we LOOK, never what we trade. `exit_tune_cohort_review`'s runner term
+was `peak_r >= 4` (1 trade), i.e. keyed in the very unit this review exists to interrogate. Now
+`peak_adr >= 1.5` (2 trades), chosen to preserve the original intent — 4R was ~2× a 2R candidate
+trigger, so 1.5 ADR is 1.5× the 1-ADR candidate — rather than to manufacture readiness. (`peak_adr`,
+not `peak_atr`: peak_adr is what the recorder stores; no `peak_atr` column exists.)
+
+⚠ **The re-key does NOT open the gate**, which is worth stating because the opposite was assumed: the
+predicate is a `LEAST()` and the FIRST term still binds — 12 closed live trades against a threshold of
+20. Verified against prod: the predicate returns 12 both before and after. The runner term simply
+stops being the artificial blocker, so cohort size — the honest constraint — governs again.
 
 ## Recommended sequencing (mine, not a ruling)
 
-Re-key the gate (C) regardless of A-vs-B — it costs nothing and it is currently miscounting the
-evidence 1-vs-5. Then rule A or B on the next cohort with at least one winner in it, since no
-candidate here has ever been tested against a trade that ran.
+**Do not rule A vs B on this cohort.** Every candidate here has been scored only against trades that
+lost; none has ever met a trade that ran. Optimising an exit on loss-cutting evidence alone risks
+fitting a mean-reversion exit into a momentum strategy — capping precisely the fat right tail the
+whole method depends on.
+
+⚠ **But gate the decision on EXCURSION, not on WINS.** The operator broke exactly that catch-22 on
+2026-07-30: *"if our sell rules need improvement, current 3-day profit take may not yield 2 winners
+for a long time."* A gate that waits for winners waits on the outcome the rule under test structurally
+prevents, and can never open. A gate that waits for trades which RAN — regardless of how they closed —
+is satisfiable and gives a complete price path to measure both benefit and cost. That distinction is
+the difference between a gate that opens and one that never does, and the re-keyed
+`peak_adr >= 1.5` term is already the excursion form.
