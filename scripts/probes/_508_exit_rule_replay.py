@@ -424,9 +424,11 @@ def adr_per_r(t: Trade) -> float | None:
     ADR is simply an R-trigger of L / stop_per_adr — the whole fill/breakeven
     engine is reused unchanged, no new price data.
 
-    None (never a guess) when the ratio is missing or <= 0. That happens when the
-    recorded stop sat AT or ABOVE entry (10 of the 11 unusable rows carry
-    stop_above_entry_ever=t), which makes the ratio meaningless rather than small.
+    None (never a guess) when the ratio is missing or <= 0. ⚠ HISTORICAL: before the
+    2026-08-01 recorder fix + backfill this returned None on 11 of 43 rows — which
+    were precisely the 11 biggest movers, because the recorder had captured the
+    TRAILED stop. Post-backfill it is 0 of 43. The branch stays as the guard for
+    genuinely missing ADR data.
     Verified 2026-08-01: for all 12 LIVE rows stop_pct == risk_per_share/entry*100
     exactly, so the ratio is the ORIGINAL entry risk, not a trailed stop.
     """

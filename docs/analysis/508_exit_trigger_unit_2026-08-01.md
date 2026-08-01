@@ -1,6 +1,10 @@
 # #508 — What unit should the profit-taking trigger be measured in?
 
 **Date:** 2026-08-01 · **Status:** EVIDENCE ONLY — no rule shipped, no live exit changed.
+**Verification:** every figure independently recomputed twice (second reviewer reimplemented the
+sim contract from prose and reproduced both tables exactly). Three of my own interpretive claims
+were over-read and are struck through below. **Bottom line: R is not a consistent unit (firm);
+which unit is BETTER is unresolved and this data cannot resolve it.**
 **THE LINE:** exit discipline is strategy. This document exists so the operator can rule; it does
 not rule. Any change needs CHANGE_PROCESS + sign-off + backtest.
 
@@ -71,21 +75,62 @@ agree with the live table.
 | 1/3 at **2 ADR** | 6 | +0.32 | **+0.22** |
 | exit ALL at 1 ADR | 7 | +0.46 | **−0.78** |
 
-Three things fall out, and they point the opposite way to the live table:
+⚠ **A SECOND INDEPENDENT REVIEW CHECKED THESE NUMBERS AND THEY REPRODUCE EXACTLY — but it also
+found that my reading of them was over-stated. Both corrections are below; the raw material is
+embedded so the averages cannot be re-read as patterns later.**
 
-1. **The ADR advantage does not replicate.** `1 ADR` — the best rule on the live cohort (+0.69) — is
-   among the WORST here (+0.22), below +2R and +3R. Best-ADR (+0.38) and best-R (+0.37) are a
-   rounding error apart. **The unit question is not settled by this evidence; it is contradicted by
-   it.**
-2. **The zero-winner artifact is now measurable rather than hypothesised.** "Exit ALL at 1 ADR" —
-   which topped the live table at +1.42 — costs **−0.78 per winner**. It is the single most
-   destructive rule in the grid on trades that actually run, exactly as caveat 1 warned.
-3. **Only the FAR triggers leave winners alone**: +3R (+0.26) and 2 ADR (+0.22) are the only two that
-   HELP winners. Every near trigger taxes them. The operator's original instinct — take profit far
-   out, not close in — is the one thing both cohorts support.
+**What `cost/win` actually measures** (I described it loosely): it is mean(rule − DO-NOTHING) over
+trades whose do-nothing terminal exit finished above entry. The baseline is do-nothing, not actual,
+and "winner" is not `realized_r > 0`. In magna53 that is **two trades — KURA and BW** — and they
+disagree in sign on the very rules I said "help winners":
 
-n(winners) = 2. This is directional, not a result. But it is now measured on trades that ran, which
-nothing in the first version of this document was.
+| rule | KURA | BW | mean |
+|---|---|---|---|
+| 1/3 at **+3R** | **+0.87** | **−0.35** | +0.26 |
+| 1/3 at **2 ADR** | never fires (2 ADR = 12.1R) | +0.44 | +0.22 |
+| 1/3 at **1 ADR** | never fires (1 ADR = 6.0R) | −0.52 | −0.26 |
+| exit ALL at 1 ADR | never fires | **−1.56** | −0.78 |
+| 1/3 at **+1R** | +0.20 | −1.02 | −0.41 |
+
+So "+3R helps winners" is a sign-disagreeing two-trade mean, and "2 ADR helps / exit-all costs −0.78"
+is **half of one BW number** — KURA contributes zero because those triggers cannot fire on it.
+Sharper still: KURA's stop is 0.166 ADR, so its "+3R" **IS** 0.50 ADR — the far-in-R fill and the
+near-in-ADR fill are the same print. The units are not even distinguishable on that trade.
+
+**And the cohort "contradiction" is one or two trades interacting with trigger geometry, not two
+cohorts disagreeing about units.** On paper, ADR1's poor showing is almost entirely **SYRE** — a
+−4.57R overnight gap-through whose peak clears the +1R trigger by 8 cents, so R1 fires and scratches
+at breakeven (+4.90R saved) while ADR1's trigger sits higher and misses. Remove SYRE and ADR1 is
+~+1.5R BETTER than R1 across the other 23. On live, ADR1's edge is MANE (+1.52, genuine) plus **WKC
+(+1.33, a fill clearing its trigger by 0.49 of a cent — the engine flags it marginal)**.
+
+**Corrections to my own claims, in plain terms:**
+1. ❌ "1 ADR is among the worst on paper" — over-read. It is one gap-through trade.
+2. ❌ "Only +3R and 2 ADR help winners" — over-read twice: the sample is 2 trades that disagree in
+   sign, and across the full grid several other slow/far rules also show positive cost/win
+   (R3_exit_all +0.90, day2close +0.85, closeR2 next-open +0.37).
+3. ❌ "The only 2 winners in the dataset" — **false.** There are **5** do-nothing winners once the
+   data is repaired (KURA, BW, plus GOOGL, IBM, FPS in the 9M Day-2 cohort). On those three, "+3R
+   helps" does NOT hold (−0.11).
+4. ✅ What survives: **the near-vs-far direction.** Near triggers tax the trades that run; far/slow
+   ones do not. That holds across every cut I can make — but on 2–5 trades.
+
+**The regime confound, which on its own blocks the comparison:** paper is **22 of 24 Bull**
+(2026-04-17 → 06-22); live is **11 of 12 Choppy or Correcting** (07-06 → 07-30). The cohorts do not
+overlap in time and differ in the one variable most likely to drive excursion. Even a real
+live-vs-paper difference could not be attributed to the trigger unit.
+
+**One structural gap neither regime nor stop width explains:** live trades hold **1.5 days** and
+paper **3.2** — and that holds *within every regime* (live Correcting 1.71d vs paper Bull 2.91d,
+paper Choppy 6.0d). Stop width does not explain it either (live stops under 0.5 ADR hold 1.33d, wider
+ones 1.67d). **10 of 12 live trades stopped out at a full −1R and 4 never went green at all**, while
+every paper trade that made money held ≥3 days. Whatever separates the two cohorts is not the exit
+rule, and an exit rule cannot reach it.
+
+n(do-nothing winners) = 2 in magna53, 5 across all cohorts. Directional at best, and every
+subsidiary ranking above rests on one or two trades. **The one thing this document establishes
+firmly is arithmetic and cohort-independent: R is not a consistent unit.** Everything about WHICH
+unit performs better is unresolved, and the data that exists cannot resolve it.
 
 ## Three caveats that constrain how far this can be read
 
@@ -119,8 +164,14 @@ nothing in the first version of this document was.
    (the original entry risk, already the basis of `realized_r`) and stores `adr_20_pct` RAW, so
    nothing downstream reconstructs the ticker's range from a stop-derived ratio. The 12 live rows were
    clean only by luck — all 12 lost, so no stop ever trailed above entry, and the bug was invisible in
-   the money cohort. **The 43 historical rows still carry the corrupt values and need a backfill
-   before any cohort number here is re-quoted.**
+   the money cohort. ✅ **All 43 rows were backfilled the same day and independently re-verified:
+   43/43 internally consistent, and the 12 live rows byte-for-byte unchanged across all 35 columns.**
+   Every number in this document is post-backfill.
+
+   ⚠ Corrected 2026-08-01 (second review): the earlier claim that the ADR family "has been scored
+   against losing trades ONLY, everywhere in the dataset" is **no longer true** — repairing the data
+   made 5 do-nothing winners measurable (KURA, BW in magna53; GOOGL, IBM, FPS in 9m_day2), 3 of which
+   were previously in the corrupted set.
 
 ### The gap-day hazard — checked, and it does not apply (but only by accident)
 
@@ -173,8 +224,8 @@ unbuilt data dependency" — was raised and does NOT hold. Checked 2026-08-01:**
    track at **0.82–1.14×** (mean ≈0.98) and the ORDERING is preserved — NVCR stays the widest stop,
    MANE the tightest. But a rule shipped in ATR should have the replay re-run in ATR before sign-off;
    it is the same one-line conversion, so this is cheap, not hard.
-2. Historical coverage is imperfect (11 of 43 recorder rows lack a usable ADR ratio — all paper, all
-   with stops recorded at/above entry), which limits backtest depth, not live implementability.
+2. ~~Historical coverage is imperfect (11 of 43 rows lack a usable ADR ratio).~~ **Fixed — 0 of 43
+   now lack one.** That gap was the recorder bug in caveat 3, not a data limitation.
 
 **C. Rule nothing yet; fix the measurement gate first.** ✅ **DONE 2026-08-01** — this needed no
 ruling, because it changes when we LOOK, never what we trade. `exit_tune_cohort_review`'s runner term
