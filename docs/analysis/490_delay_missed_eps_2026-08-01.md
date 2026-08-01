@@ -74,10 +74,14 @@ inside the 09:45 ORB cutoff.** Every one of the 32 clears it, not just the media
 
 ▶ **The flip recovers these. This is not a modelling assumption — both legs are measured.**
 
-⚠ **One residual risk, stated plainly:** the 150s ceiling was measured on the DELAYED scan's
-candidate load. Real-time detection produces a larger candidate set (621 RT events in 7 days), and
-grading cost scales with candidates, so per-tick wall clock could rise. That is the thing to watch on
-rollout — not a reason to withhold the flip, but it is the failure mode if one appears.
+⚠ **This margin is conditional, and §6 shows the condition is not met by default.** The 150s ceiling
+was measured on the DELAYED scan's candidate load — roughly 2 candidates per tick. Grading runs only
+on admitted candidates (`ep_detector.py:1888`), so flipping `UNIVERSE_AUTHORITATIVE` adds ~19.4
+names/day to the grading path. **At ~10× the load a 2.5-minute worst case has no headroom left.**
+
+I originally wrote this as "a thing to watch on rollout, not a reason to withhold the flip." **That
+was wrong** — see §6. The load increase and the latency margin are the same variable, so it is a
+precondition, not a monitoring item.
 
 ## 3. Supporting aggregate — late arrivals are not weaker setups
 
@@ -143,7 +147,54 @@ mechanism" test: the live grader sees pre-move news; a retro grader cannot.
 *eliminate* names — anything failing on quant alone is settled), but the surviving names would stay
 unresolved, and §1 already answers the operator's question without them.
 
-## 5. What this does and does not establish
+## 6. Volume effect per toggle — measured, and none is free
+
+**Operator, 2026-08-01:** *"with 30+ more EP that is potentially traded, that's adding a lot if true,
+may mean we need more filters if we let this cohort in, not that is a reason to block them if
+legit."*
+
+The flip is three independent runtime toggles, all currently OFF in prod (`EP_RT_PASS2_ENABLED` and
+`EP_RT_UNIVERSE_ENABLED` are both **true** — the RT layer runs and observes today; only the
+*authoritative* flags are off). Each writes a shadow audit event that fires in **both** modes, so the
+volume effect is directly measurable without flipping anything.
+
+| toggle | shadow event | admits/day | removes/day | net |
+|---|---|---|---|---|
+| `EP_RT_UNIVERSE_AUTHORITATIVE` | `ep_rt_universe_catch` | **+19.4** | — | **+19.4** |
+| `EP_RT_GAP_AUTHORITATIVE` | `ep_rt_floor_flip_up` / `_down` | **+25.0** | **−13.9** | **+11.1** |
+| `EP_RT_VOLUME_AUTHORITATIVE` | `ep_rt_rvol_gate_flip` | 12.2 flips, **both directions** | | **±12.2** |
+
+*(ticker-days, deduped per ticker per day by `_audit_dedupe_check`; 5-9 trading days each.)*
+
+**Baseline for scale: 1.86 HIGH alerts/day and 0.57 live entries/day today.**
+
+▶ **I was right to withhold a sequence. None of the three is volume-neutral** — including
+`GAP_AUTHORITATIVE`, which I had guessed might be accuracy-only. It is the second-largest volume add.
+
+⚠ **The `_down` leg is the one genuinely attractive number: −13.9/day stale false-admits** — names we
+currently score, and could trade, that real-time data says never qualified. That is a pure quality
+gain with *negative* volume. It cannot be taken alone: it is bundled with the +25.0 `_up` leg inside
+the same toggle. **Splitting that toggle is the one code change worth considering** — it would let us
+take the cleanup without the expansion.
+
+### The finding that changes the shape of the decision
+
+`ep_detector.py:1888` — `if not authoritative: continue  # SHADOW: not admitted, no LLM spend`.
+
+**Grading only runs on admitted candidates.** So flipping `UNIVERSE_AUTHORITATIVE` puts ~19.4
+additional names/day through Claude + Perplexity.
+
+**That directly attacks §2's safety margin.** The latency ceiling that made recovery look safe —
+max 150s, worst case 09:40 tick + 150s = 09:42:30 against a 09:45 cutoff — was measured at today's
+load of roughly 2 candidates per tick. At ~10× the candidates, a 2.5-minute worst case has **no
+headroom to give**.
+
+**So the filter question and the latency question are the same question.** "Flip now, add filters
+later" does not decompose: the volume that needs filtering is also the volume that would push grading
+past the ORB window and re-create the exact miss the flip is meant to fix. Filters are not a
+follow-up item here — they are load-bearing for the flip working at all.
+
+## 7. What this does and does not establish
 
 **Established:** legitimate, fully-qualified EPs are being lost to detection latency — three of them
 proven by our own logged skip reason, at a rate of roughly 1 in 4 HIGH alerts.
