@@ -329,11 +329,38 @@ async def submit_trade_entry(
             logger.error(f"{strategy_label} {ticker}: cap+1 candidate alert failed — {e}")
         return {"ticker": ticker, "action": action, "reason": reason}
 
+    # #465 (money-path audit R4): the two pre-checks below and the ON CONFLICT
+    # target had NO account_mode filter, violating dual-account invariant 3
+    # ("account_mode filter on every trade query"). A PAPER row therefore
+    # suppressed a LIVE entry on the same ticker/day — fail-safe in direction
+    # (skip, never double-order) but a REAL entry silently dropped and mislabeled
+    # `window:duplicate`. Overlap is plausible, not theoretical: a 9M day is often
+    # an EP day (9M-Day2 paper x magna53 live). Zero collisions in 258 rows so far;
+    # fixed before it bites, not after.
+    # The strategy row is not fetched until the phase gate (1a) below, so resolve
+    # the mode here rather than REORDERING a money-path gate to suit a dedup filter.
+    # Fail-safe: if the strategy is unknown (legacy path / pre-seed), fall back to
+    # the process-wide mode — which reproduces exactly the pre-#465 behaviour for
+    # that case rather than inventing a new one.
+    # #444 pins that a resolver failure must NOT break the entry path — its test
+    # ("resolver boom") caught this line unguarded, which would have turned a
+    # registry hiccup into a dropped entry. Degrade to the process-wide mode, which
+    # is exactly the pre-#465 behaviour, rather than propagating.
+    try:
+        from agents.market_intelligence.strategies.registry import get_strategy as _get_strategy
+        _dedup_strategy = await _get_strategy(signal_type)
+        _dedup_mode = (get_strategy_account_mode(_dedup_strategy)
+                       if _dedup_strategy is not None else current_account_mode())
+    except Exception as e:  # loud-ok: falls back to the pre-#465 behaviour; logged, never silent
+        logger.warning(f"{strategy_label} {ticker}: dedup mode resolve failed ({e}) — "
+                       f"falling back to process mode")
+        _dedup_mode = current_account_mode()
     # 1. Duplicate check — trade row already exists for this ticker+date.
     async with pool.acquire() as conn:
         exists = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker=$1 AND alert_date=$2)",
-            ticker, today,
+            "SELECT EXISTS(SELECT 1 FROM mi_live_trades "
+            "WHERE ticker=$1 AND alert_date=$2 AND account_mode=$3)",
+            ticker, today, _dedup_mode,
         )
     if exists:
         logger.debug(f"{strategy_label} {ticker}: trade row already exists")
@@ -360,10 +387,11 @@ async def submit_trade_entry(
               AND status = 'filled'
               AND remaining_shares > 0
               AND alert_date != $2
+              AND account_mode = $3
             ORDER BY alert_date DESC
             LIMIT 1
             """,
-            ticker, today,
+            ticker, today, _dedup_mode,
         )
     if already_open is not None:
         reason = f"{BLOCK_TICKER_OPEN_POSITION}: open since {already_open.isoformat()}"
@@ -564,7 +592,7 @@ async def submit_trade_entry(
                          position_size, risk_dollars, signal_type, account_mode, proposed_at)
                     VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
                             $10,$11,$12,$12,$13,$14,$15,$16,NOW())
-                    ON CONFLICT (ticker, alert_date) DO NOTHING
+                    ON CONFLICT (ticker, alert_date, account_mode) DO NOTHING
                     RETURNING id
                     """,
                     ticker, today,

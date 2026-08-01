@@ -756,7 +756,7 @@ async def initialize_schema() -> None:
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 filled_at TIMESTAMPTZ,
                 closed_at TIMESTAMPTZ,
-                UNIQUE (ticker, alert_date)
+                UNIQUE (ticker, alert_date, account_mode)
             );
             CREATE INDEX IF NOT EXISTS idx_live_trades_status
                 ON mi_live_trades(status);
@@ -2567,6 +2567,31 @@ async def initialize_schema() -> None:
 
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
+            -- #465 (money-path audit R4, 2026-08-01): the same-day dedup key was
+            -- CROSS-MODE. UNIQUE(ticker, alert_date) with no account_mode meant a
+            -- PAPER row suppressed a LIVE entry on the same ticker/day via
+            -- ON CONFLICT DO NOTHING — fail-safe in direction (skip, never
+            -- double-order) but a REAL entry silently dropped and mislabeled
+            -- `window:duplicate`. Restores dual-account invariant 3.
+            --
+            -- Safe as a straight swap: the new key is strictly WEAKER than the old
+            -- one, so every existing row already satisfies it and no data can
+            -- violate the new constraint. Guarded on the auto-generated name of the
+            -- old table-level UNIQUE; idempotent, and a no-op on fresh installs
+            -- where the CREATE TABLE above already has the 3-column form.
+            ALTER TABLE mi_live_trades
+                DROP CONSTRAINT IF EXISTS mi_live_trades_ticker_alert_date_key;
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                     WHERE conname = 'mi_live_trades_ticker_alert_date_mode_key'
+                ) THEN
+                    ALTER TABLE mi_live_trades
+                        ADD CONSTRAINT mi_live_trades_ticker_alert_date_mode_key
+                        UNIQUE (ticker, alert_date, account_mode);
+                END IF;
+            END $$;
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS entry_attempt INT NOT NULL DEFAULT 1;
             ALTER TABLE mi_live_trades
