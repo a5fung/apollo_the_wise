@@ -63,6 +63,27 @@ worse than +2R on this cohort. The deployed day-3 rule is worth almost nothing b
    comparable. Paper stop widths are also degenerate in places (CRSR at 0.01 ADR), which is what
    inflates its R to 12.36.
 
+### The gap-day hazard — checked, and it does not apply (but only by accident)
+
+Raised against option B: Episodic Pivots are defined by large gap-ups, and ATR uses TRUE range, so if
+the stored `atr_14` window includes the alert day the unit is inflated and a "1 ATR" target sits much
+further away than "1 ADR".
+
+**The size of the hazard is real.** Recomputing both ways over the 12 live trades, including the
+alert day inflates the unit by up to **57%** (WDFC 6.75 → 10.61; THC 7.56 → 10.70; NVCR 0.88 → 1.12).
+
+**But the stored value excludes it.** For all 12, `atr_14` matches the EXCLUDING-alert-day
+recomputation to three decimals and differs from the including version. Reason, per
+`backtester/filters.py::compute_atr_14`: the live path computes ATR at 9:31, and `mi_daily_closes`
+does not yet carry today's bar — so the window is strictly pre-alert.
+
+⚠ **That exclusion is INCIDENTAL, not enforced.** It holds because of ingest timing, not because any
+code asserts it. If the daily-bar ingest ever moved earlier, or ATR were ever recomputed for a trade
+after the close (a re-entry path, a backfill), the same function would silently start including the
+gap day and inflate the unit by up to 57% — with no error. **If a rule ships on this unit, that
+property needs a test pinning it**, or the rule's trigger distance quietly drifts on exactly the
+gappiest names, which are the ones the strategy exists to trade.
+
 Peak is also **understated for very short holds** — the instrumentation reads `highest_price_seen`,
 which is blind under ~10 minutes (CRCL's true intraday peak was +1.62R against a recorded 0.00).
 That biases every candidate DOWN, so the measured edge is a floor.

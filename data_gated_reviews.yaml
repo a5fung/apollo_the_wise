@@ -7577,12 +7577,29 @@ reviews:
         -- laboratory — you have the whole path. I had conflated "did the trade work"
         -- with "can we price the rule"; they are different questions.
         --
-        -- So: count live trades whose peak reached >=4R, i.e. WELL past any candidate
-        -- trigger, which is what makes both benefit AND cost measurable. Satisfiable
-        -- under the current rule, because reaching +4R does not require surviving to
-        -- day 3. Today: 1 (MANE 7.92R) -> 10, so the trade count still binds.
+        -- So: count live trades whose peak ran WELL past any candidate trigger, which
+        -- is what makes both benefit AND cost measurable. Satisfiable under the current
+        -- rule, because running does not require surviving to day 3.
+        --
+        -- ── RE-KEYED TO ADR 2026-08-01: the gate was written in R, and R is not a unit ──
+        -- docs/analysis/508_exit_trigger_unit_2026-08-01.md measured entry-to-stop
+        -- distance at 0.15-1.17 ADR across the same 12 live trades - a 7.7x spread. So
+        -- `peak_r >= 4` does not mean "ran a long way"; it partly means "had a tight
+        -- stop". CRSR (paper) recorded +12.36R on 0.06 of a daily range. The gate was
+        -- keyed in the very unit the review exists to interrogate - it inherited the
+        -- flaw it was built to study, and it counted the evidence 1-vs-5.
+        --
+        -- Threshold picked to PRESERVE THE ORIGINAL INTENT, not to manufacture
+        -- readiness: 4R against a ~2R candidate trigger was "~2x past it", so the ADR
+        -- analogue of 1.5x the 1-ADR candidate is peak_adr >= 1.5 -> today 2 trades
+        -- (NVCR 2.35, SMCI 1.68) -> 20. Note `peak_adr`, NOT `peak_atr`: peak_adr is
+        -- what the recorder actually stores; no peak_atr column exists.
+        --
+        -- ⚠ This re-key does NOT open the gate. LEAST() still binds on the FIRST term:
+        -- 12 closed live trades vs threshold 20. The runner term simply stops being the
+        -- artificial blocker, so cohort size - the honest constraint - governs again.
         (SELECT 10 * COUNT(*) FROM mi_sell_discipline_records
-          WHERE account_mode = 'live' AND peak_r >= 4)
+          WHERE account_mode = 'live' AND peak_adr >= 1.5)
       );
     threshold: 20
     earliest_review_date: 2026-08-01
