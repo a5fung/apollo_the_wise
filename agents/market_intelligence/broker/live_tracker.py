@@ -822,9 +822,18 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
         # branch keeps the partial decision alive — faithful to the validated
         # live behavior. We still act ONLY on partial_fired; the close path is
         # never executed from this partial-only job.
+        # #508 — when the intraday profit trigger is ON it OWNS the partial, so the
+        # 3:45 time-gate must stand down or both could act on the same position.
+        # Done at the CALLER, not by editing exit_logic: that module is pure decision
+        # logic with no config dependency, and it already exposes exactly this seam
+        # (`update_open_positions_live` at 4:45 has passed skip_partial_decision=True
+        # since #361 for the same reason — one owner per decision).
+        # PROFIT_TRIGGER_R = None restores the day-3/day-5 rule with no code change.
+        from agents.market_intelligence.constants import PROFIT_TRIGGER_R
         step = apply_daily_exit_step(state, daily_bars[0], today,
                                      integer_partial_shares=True,
-                                     skip_hard_stop_close=True)
+                                     skip_hard_stop_close=True,
+                                     skip_partial_decision=bool(PROFIT_TRIGGER_R))
 
         if not step.partial_fired:
             results.append({"ticker": ticker, "action": "no_partial"})

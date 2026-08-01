@@ -71,3 +71,39 @@ def test_it_never_fires_twice_on_one_trade():
     src = ast.get_source_segment(SRC, _fn("scan_profit_triggers"))
     assert "partial_taken" in src and "FALSE" in src, (
         "must exclude trades whose partial already fired — the 3:45 job may also act")
+
+
+def test_time_gate_stands_down_when_the_trigger_is_on():
+    """Exactly one owner per decision. With PROFIT_TRIGGER_R set, the 3:45 time gate
+    must not also take a partial — and with it None, the old rule must still run."""
+    src = pathlib.Path("agents/market_intelligence/broker/live_tracker.py").read_text()
+    i = src.index("async def run_partial_exits")
+    seg = src[i:i + 9000]
+    assert "skip_partial_decision=bool(PROFIT_TRIGGER_R)" in seg, (
+        "the 3:45 job must stand down when the intraday trigger owns the partial")
+
+
+def test_exit_logic_stays_pure_no_config_dependency():
+    """exit_logic is the shared decision SSoT for live, paper and shadow. A config
+    import there would make the same inputs produce different outputs per process."""
+    src = pathlib.Path("agents/market_intelligence/broker/exit_logic.py").read_text()
+    assert "PROFIT_TRIGGER_R" not in src, "keep the flag at the caller, not in pure logic"
+
+
+def test_skip_flag_genuinely_suppresses_the_day5_branch():
+    """BEHAVIOURAL, not a string match. Day 5 and underwater is the exact case the
+    old rule fires on unconditionally — the one the operator ruled out. Prove the
+    flag governs it in both directions, so 'stands down' is a fact not a comment."""
+    from datetime import date
+    from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+    state = {"alert_date": date(2026, 7, 20), "remaining_shares": 300, "entry_price": 100.0,
+             "hard_stop": 95.0, "partial_taken": False, "breakeven_active": False,
+             "exits": [], "running_closes": [99.0] * 12}
+    bar = {"close": 98.0, "high": 99.0, "low": 97.0}          # underwater
+    day = date(2026, 7, 25)                                    # calendar day 5
+    on = apply_daily_exit_step(state, bar, day, integer_partial_shares=True,
+                               skip_hard_stop_close=True, skip_partial_decision=True)
+    off = apply_daily_exit_step(state, bar, day, integer_partial_shares=True,
+                                skip_hard_stop_close=True, skip_partial_decision=False)
+    assert off.partial_fired is True, "day-5 unconditional branch should fire when NOT skipped"
+    assert on.partial_fired is False, "trigger ON must suppress the time gate entirely"
