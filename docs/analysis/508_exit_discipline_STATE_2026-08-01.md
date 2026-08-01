@@ -119,11 +119,20 @@ paper holds 2.9–6.0 in every regime). **This is upstream of exits and is the l
 | # | Trigger | Status today | What it unlocks |
 |---|---|---|---|
 | **T1** | **20 closed live trades** | **12 of 20** — 8 more needed | The recurring review fires automatically; the full 34-rule comparison re-runs |
-| **T2** | **Live trades in a BULL tape** | 1 of 12 so far | Makes the regime grid readable — separates "bull runs further" from "paper ≠ live" |
+| **T2** | **Live trades in a BULL tape reach 4** | **1 of 4** | Makes the regime grid readable — separates "bull runs further" from "paper ≠ live". **AUTOMATIC** since 2026-08-01: `exit_regime_separability` in `data_gated_reviews.yaml`, evaluated nightly, fires independently of T1 |
 | **T3** | **Live trades that RAN** (peak ≥ 1.5 daily ranges) | 2 (SMCI 1.68, NVCR 2.35) | Prices what a partial gives up vs a full exit — resolves 3.3 |
 | **T4** | **Any live trade holding ≥3 days** | 1 of 12 ever | Would make the *current* rule non-inert and testable as-deployed |
 
-**T1 is automatic** — no one has to remember it. T2/T3/T4 are read and reported at each T1 run.
+**T1 and T2 are AUTOMATIC and independent of each other** — both are `data_gated_reviews.yaml`
+predicates, evaluated every weeknight at 17:30 ET by `escalate_overdue_reviews()` inside
+`_post_nightly_audit_job`, which Telegrams when a review becomes ready and escalates again if a
+ready review is left sitting. Verified 2026-08-01 against prod: T1 returns 12/20, T2 returns 1/4.
+**T3 and T4 are NOT independently automatic** — they are read and reported whenever T1 or T2
+fires. That is deliberate: neither unlocks a decision on its own, they qualify one.
+
+Why T2 exists separately: a bull tape could arrive long before 20 closed trades, and it is the
+ONLY thing that breaks the regime/cohort confound. Without it the regime question would have
+waited on an unrelated counter.
 
 ---
 

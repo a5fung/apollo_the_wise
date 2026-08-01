@@ -7532,6 +7532,51 @@ reviews:
     status: pending
     added_on: 2026-07-21
 
+  - review_id: exit_regime_separability
+    title: "Exit regime-conditioning becomes READABLE — live trades in a BULL tape reach n=4 (#503/#508)"
+    question: |
+      Fires the moment the regime question stops being unanswerable, WITHOUT waiting
+      for exit_tune_cohort_review's n=20. Operator 2026-08-01: "runners probably
+      happen more often in bull markets, so one possibility is that we have more
+      aggressive profit take on bear markets and let runners go in bull markets."
+
+      THE BLOCKER THIS WATCHES (docs/analysis/508_exit_discipline_STATE_2026-08-01.md
+      §3.4): regime is currently CONFOUNDED WITH COHORT. Bull is 22 of 23 PAPER
+      trades; Correcting is 7 of 7 LIVE; only Choppy has both sides. So today's
+      per-regime grid cannot separate "bull markets run further" from "paper behaves
+      differently from live" - and live trades hold 1.5d vs paper 3.2d WITHIN every
+      regime, so that alternative explanation is real, not theoretical.
+
+      What breaks the confound is LIVE trades in a BULL tape - not more trades of any
+      kind. At n=4 the live-Bull cell can be compared against live-Correcting (n=7)
+      WITHIN the live cohort, which removes the paper-vs-live axis entirely. 4 is the
+      same bar the replay's own per-regime table prints as its "n<4 is NOT a result"
+      floor, so this threshold and that table agree by construction.
+
+      ⚠ This review does NOT decide anything. It re-runs the 34-candidate grid
+      (scripts/probes/_508_exit_rule_replay.py) segmented by regime and reports
+      whether the regime-conditional family (rgm_<bull>/<chop>/<corr>, incl. the
+      "let runners go in Bull" arm) now separates. Any exit change remains
+      CHANGE_PROCESS + operator sign-off + backtest.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_sell_discipline_records r
+        JOIN mi_market_regime g ON g.regime_date = r.alert_date
+       WHERE r.account_mode = 'live' AND r.signal_type = 'magna53'
+         AND g.regime = 'Bull'
+    threshold: 4
+    earliest_review_date: 2026-08-04
+    status: pending
+    action_when_ready: |
+      Re-run the replay's PER-REGIME section and state plainly which regimes have
+      become separable and which have not. Then either (a) report that the
+      regime-conditional arms now differ meaningfully and hand the operator the
+      comparison, or (b) report that they still do not and say what is still
+      missing. Do NOT re-open §3.1/3.2/3.3 of the state doc on this trigger - they
+      have their own gates. Record the run as a dated doc so the series is
+      comparable across regimes.
+    added_on: 2026-08-01
+    cross_refs: ["task #503", "task #508", "docs/analysis/508_exit_discipline_STATE_2026-08-01.md"]
+
   - review_id: exit_tune_cohort_review
     title: "Exit-rule cohort review — RECURRING at n=20/40/60/80/100 closed live trades (#503/#306)"
     question: |
