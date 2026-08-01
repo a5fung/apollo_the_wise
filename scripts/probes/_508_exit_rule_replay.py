@@ -392,6 +392,60 @@ def _find_trigger(t: Trade, trig_price: float):
     return None
 
 
+# ── 5-MINUTE-POLL FILL MODEL (build step 1, 2026-08-01) ──────────────────────
+# The signed +0.47R was measured under LIMIT-at-level fills: fill AT the trigger
+# price, guaranteed by price continuity. The design we are actually building does
+# NOT rest an order — `track_position_extremes` polls every 5 minutes, reads the
+# minute bars since the last poll, and only THEN sells. So:
+#   * DETECTION is not lossy — a spike between polls is still in the bars.
+#   * The FILL is at the price when the job acts, which can be better OR worse
+#     than the trigger. That is the whole difference, and it is what this models.
+# Fill proxy: the OPEN of the first bar at a 5-minute boundary strictly after the
+# trigger minute (the job runs at :00/:05/:10…; its sell hits at that moment).
+# Returns None when the trigger day has no bar coverage — poll fills are simply
+# not measurable there, and scoring them as anything would be invention.
+POLL_MINUTES = 5
+
+
+def _poll_fill_price(t: Trade, day_i: int, trig_time) -> float | None:
+    """Price the 5-minute poll would actually transact at, or None if unmeasurable."""
+    day = t.days[day_i]
+    if not day.covered or trig_time is None:
+        return None
+    for b in day.bars:
+        bt = b[0]
+        if bt <= trig_time:
+            continue
+        if bt.minute % POLL_MINUTES == 0:     # the first poll boundary after the touch
+            return b[1]                        # its OPEN — when the sell lands
+    return None
+
+
+def sim_r_rule_poll(t: Trade, level: float, frac: float, full_exit=False) -> Result | None:
+    """Same rule, filled at the next 5-minute poll instead of at the trigger."""
+    trig_price = t.entry + level * t.risk
+    hit = _find_trigger(t, trig_price)
+    if hit is None:
+        nr = t.nothing_r
+        return Result(nr, nr, triggered=False)
+    day_i, bar_time, realism, marginal = hit
+    px = _poll_fill_price(t, day_i, bar_time)
+    if px is None:
+        return None                            # unmeasurable — excluded, never guessed
+    fill_r = t.to_r(px)
+    if full_exit:
+        return Result(fill_r, fill_r, triggered=True, realism=realism, marginal=marginal)
+    pess, opt, amb = _remainder_after(t, day_i, bar_time)
+    return Result(frac * fill_r + (1 - frac) * pess,
+                  frac * fill_r + (1 - frac) * opt,
+                  triggered=True, ambiguous=amb, realism=realism, marginal=marginal)
+
+
+def sim_adr_rule_poll(t: Trade, level: float, frac: float) -> Result | None:
+    a = adr_per_r(t)
+    return None if a is None else sim_r_rule_poll(t, level / a, frac)
+
+
 def sim_r_rule(t: Trade, level: float, frac: float, be_only=False, full_exit=False) -> Result:
     """Intraday R-trigger: at entry + level*risk, sell `frac` (or arm BE only, or exit all)."""
     trig_price = t.entry + level * t.risk
@@ -541,6 +595,10 @@ def candidates():
     for lvl in (1.0, 1.5, 2.0, 3.0):
         c[f"R{lvl:g}_part1/3+BE"] = (lambda L: lambda t: sim_r_rule(t, L, 1 / 3))(lvl)
     c["R2_part1/2+BE"] = lambda t: sim_r_rule(t, 2.0, 0.5)
+    # the SAME rules under the 5-minute-poll fill — what we are actually building
+    for lvl in (1.0, 2.0, 3.0):
+        c[f"R{lvl:g}_part1/3+BE_POLL5"] = (lambda L: lambda t: sim_r_rule_poll(t, L, 1 / 3))(lvl)
+    c["ADR1_part1/3+BE_POLL5"] = lambda t: sim_adr_rule_poll(t, 1.0, 1 / 3)
     # ── same rules, measured in the ticker's OWN daily range instead of in R.
     # The point of the comparison (operator 2026-08-01): stop width spans 0.15-1.17
     # ADR across the live cohort, so one "+2R" rule fires at 7.7x different real
