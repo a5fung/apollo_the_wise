@@ -2471,7 +2471,8 @@ async def initialize_schema() -> None:
         # the table did, so they need explicit ALTERs. The recorder failed LOUDLY and
         # wrote 0 rows when they were missing, which is the correct failure mode, but
         # the fix is here. Idempotent; safe on every boot.
-        for _col, _typ in (("stop_pct", "DOUBLE PRECISION"),
+        for _col, _typ in (("adr_20_pct", "DOUBLE PRECISION"),
+                           ("stop_pct", "DOUBLE PRECISION"),
                            ("stop_per_adr", "DOUBLE PRECISION"),
                            ("peak_adr", "DOUBLE PRECISION"),
                            ("realized_adr", "DOUBLE PRECISION")):

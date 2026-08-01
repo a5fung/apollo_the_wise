@@ -238,8 +238,19 @@ def compute_sell_record(
     # so the data accruing from today is usable later; 25 more trades measured on an
     # uncalibrated R would leave us exactly where we are, with more rows.
     adr_pct = _f(trade.get("adr_20_pct"))
-    stop_pct = round((entry - stop_price) / entry * 100, 4) if (
-        stop_price is not None and entry) else None
+    # ⚠ FIXED 2026-08-01 — this read `stop_price`, which is the CURRENT stop on the
+    # trade row, i.e. the TRAILED stop by the time a trade closes. Every trade that
+    # RAN had its stop moved up, so stop_pct came out ~0 (or negative), and the whole
+    # ADR family derived from it was garbage on exactly the winners this field exists
+    # to measure. Verified over the 43-row cohort: every paper trade above +1.02R was
+    # corrupted (BW/FTRE/RCAT/TEAM/KURA/SMCI/QURE/PURR recorded stop_pct = 0.0000 with
+    # true entry risk 0.78-10.56%; GOOGL -3.47 vs 0.83; FPS -10.96 vs 11.42), and CRSR
+    # recorded 0.0276 against a true 4.2454 — which made it look like +12.36R on 0.06
+    # of a daily range when the real move was ~9.5 daily ranges on a mid-range stop.
+    # The 12 LIVE rows happened to be clean ONLY because all 12 lost, so no stop ever
+    # trailed above entry — the bug was invisible in the money cohort by luck.
+    # `risk` IS the original entry risk (it already drives realized_r); use it.
+    stop_pct = round(risk / entry * 100, 4) if (risk is not None and entry) else None
     stop_per_adr = round(stop_pct / adr_pct, 4) if (
         stop_pct is not None and adr_pct) else None
     peak_adr = round(peak_r * stop_pct / adr_pct, 4) if (
@@ -266,6 +277,11 @@ def compute_sell_record(
         "peak_source": peak_source, "peak_bars_n": minute_bars_n,
         "peak_close": peak_close, "peak_close_r": peak_close_r, "peak_close_day": peak_close_day,
         "giveback_r": giveback_r, "capture_pct": capture_pct,
+        # adr_20_pct stored RAW (2026-08-01): the review gate and any future rule must
+        # key off the ticker's own daily range directly, NEVER off a stop-derived
+        # ratio — a ratio inherits any stop-recording defect, which is what corrupted
+        # every winner above.
+        "adr_20_pct": round(adr_pct, 4) if adr_pct is not None else None,
         "stop_pct": stop_pct, "stop_per_adr": stop_per_adr,
         "peak_adr": peak_adr, "realized_adr": realized_adr,
         "hold_trading_days": hold_trading_days,
@@ -334,18 +350,19 @@ _INSERT_SQL = """
          filled_at, closed_at, entry_price, risk_per_share, entry_shares,
          realized_pnl, realized_r, peak_price, peak_r, peak_time, peak_day, peak_hold_day,
          peak_source, peak_bars_n, peak_close, peak_close_r, peak_close_day,
-         giveback_r, capture_pct, stop_pct, stop_per_adr, peak_adr, realized_adr,
+         giveback_r, capture_pct, adr_20_pct, stop_pct, stop_per_adr, peak_adr, realized_adr,
          hold_trading_days, stop_above_entry_ever, partial_taken,
          judge_verdicts_n, judge_last_verdict, judge_last_verdict_date, judge_last_verdict_r,
          judge_first_warn_verdict, judge_first_warn_date, judge_first_warn_r, pnl_attribution)
-    -- 41 placeholders. Adding the 4 ADR columns to the list above without extending
-    -- THIS line gave "INSERT has more target columns than expressions" (2026-07-30).
-    -- Note the test that counts BOUND ARGS (41) passed while this was still 37 —
-    -- arg-count and placeholder-count are different failures and only the database
-    -- catches the second.
+    -- 42 placeholders (adr_20_pct added 2026-08-01). Adding a column above without
+    -- extending THIS line gave "INSERT has more target columns than expressions"
+    -- (2026-07-30). Note the test that counts BOUND ARGS passed while this line was
+    -- still short — arg-count and placeholder-count are different failures and only
+    -- the database catches the second. tests/test_sell_discipline*.py now compares
+    -- the two counts statically, which is what caught the 42nd here.
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
             $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,
-            $38,$39,$40,$41)
+            $38,$39,$40,$41,$42)
     ON CONFLICT (trade_id) DO NOTHING
 """
 
@@ -354,7 +371,7 @@ _INSERT_COLS = (
     "filled_at", "closed_at", "entry_price", "risk_per_share", "entry_shares",
     "realized_pnl", "realized_r", "peak_price", "peak_r", "peak_time", "peak_day", "peak_hold_day",
     "peak_source", "peak_bars_n", "peak_close", "peak_close_r", "peak_close_day",
-    "giveback_r", "capture_pct", "stop_pct", "stop_per_adr", "peak_adr", "realized_adr",
+    "giveback_r", "capture_pct", "adr_20_pct", "stop_pct", "stop_per_adr", "peak_adr", "realized_adr",
     "hold_trading_days", "stop_above_entry_ever", "partial_taken",
     "judge_verdicts_n", "judge_last_verdict", "judge_last_verdict_date", "judge_last_verdict_r",
     "judge_first_warn_verdict", "judge_first_warn_date", "judge_first_warn_r", "pnl_attribution",

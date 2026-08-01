@@ -620,17 +620,25 @@ def run():
     def agg(names, ts, res_key="kept_r"):
         rows = []
         for name in names:
-            rs = [results[name][t.rec["trade_id"]] for t in ts
-                  if t.rec["trade_id"] in results[name]]
-            kept = [getattr(r, res_key) for r in rs]
-            n = len(ts)
-            if not n:
+            # PAIR trade->result, dropping unmeasurable trades TOGETHER (found by the
+            # 2026-08-01 adversarial review). Two bugs lived here: `n = len(ts)` divided
+            # by the FULL cohort while `kept` summed only measurable trades — scoring an
+            # unmeasurable trade as kept_r = 0 rather than excluding it — and `zip(ts, rs)`
+            # silently MISALIGNED trades with results the moment any were dropped, so
+            # cost/win, gain/los, nW and nL were garbage on any such row. The live table
+            # was unaffected (all 12 measurable) but the paper rows printed nonsense.
+            pairs = [(t, results[name][t.rec["trade_id"]]) for t in ts
+                     if t.rec["trade_id"] in results[name]]
+            if not pairs:
                 continue
+            rs = [r for _t, r in pairs]
+            kept = [getattr(r, res_key) for r in rs]
+            n = len(pairs)          # the MEASURABLE denominator, not the cohort size
             mean = sum(kept) / n
-            act = sum(t.rec["realized_r"] for t in ts) / n
-            noth = sum(t.nothing_r for t in ts) / n
-            winners = [(t, r) for t, r in zip(ts, rs) if t.nothing_r > 0]
-            losers = [(t, r) for t, r in zip(ts, rs) if t.nothing_r <= 0]
+            act = sum(t.rec["realized_r"] for t, _r in pairs) / n
+            noth = sum(t.nothing_r for t, _r in pairs) / n
+            winners = [(t, r) for t, r in pairs if t.nothing_r > 0]
+            losers = [(t, r) for t, r in pairs if t.nothing_r <= 0]
             cw = (sum(getattr(r, res_key) - t.nothing_r for t, r in winners) / len(winners)
                   if winners else None)
             bl = (sum(getattr(r, res_key) - t.nothing_r for t, r in losers) / len(losers)

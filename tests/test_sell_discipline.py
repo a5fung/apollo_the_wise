@@ -307,7 +307,7 @@ async def test_record_sell_discipline_writes_row_and_audits(monkeypatch):
     # 41 = 37 + the 4 ADR-normalised columns added 2026-07-30 (stop_pct, stop_per_adr,
     # peak_adr, realized_adr). This count is LOAD-BEARING: a column/placeholder mismatch
     # silently writes the WRONG value into the WRONG column, which nothing else catches.
-    assert len(ins.args) - 1 == 41                                       # every column bound
+    assert len(ins.args) - 1 == 42                                       # every column bound
     assert ins.args[1] == 279 and ins.args[2] == "QBTS"                  # trade_id, ticker
     audit.assert_awaited()                                               # loud on success too
     # the scan SQL carries the explicit casts (the date>=integer prod-crash class)
@@ -421,8 +421,13 @@ def test_insert_column_count_matches_placeholder_count():
     """
     import re
     from agents.market_intelligence.sell_discipline import _INSERT_SQL
-    cols = _INSERT_SQL[_INSERT_SQL.index("(trade_id"):_INSERT_SQL.index("VALUES")]
-    n_cols = cols.count(",") + 1
+    # Slice to the CLOSING PAREN of the column list, not to "VALUES": the gap between
+    # them holds an explanatory comment, and any comma in that prose inflated the count
+    # (false-positived 2026-08-01 on a comment — which is how a guard gets deleted
+    # rather than trusted). Parse the column list itself.
+    start = _INSERT_SQL.index("(trade_id")
+    cols = _INSERT_SQL[start:_INSERT_SQL.index(")", start)]
+    n_cols = len([c for c in cols.replace("\n", " ").split(",") if c.strip(" (")])
     n_ph = len(set(re.findall(r"\$\d+", _INSERT_SQL[_INSERT_SQL.index("VALUES"):])))
     assert n_cols == n_ph, f"{n_cols} columns vs {n_ph} placeholders"
 

@@ -23,8 +23,11 @@ So a single "+2R" trigger fires after:
 - **0.31 of a normal day's move** on MANE (stop 0.15 ADR), but
 - **2.35 days** on NVCR (stop 1.17 ADR).
 
-The most extreme case is in the paper cohort: **CRSR recorded +12.36R — and 0.06 of a daily range.**
-Its stop was 0.01 ADR wide. Twelve R of a hair.
+~~The most extreme case is in the paper cohort: CRSR recorded +12.36R — and 0.06 of a daily range.~~
+❌ **RETRACTED 2026-08-01 (adversarial review) — this exhibit was BACKWARDS and it was mine.** CRSR's
+recorded `stop_pct` of 0.0276% is not its entry risk; its true `risk_per_share/entry` is **4.2454%**.
+Its original stop was **0.77 ADR — mid-range for this cohort — and its move was ~9.5 daily ranges.**
+The number was an artifact of the bug in the section below, not evidence for the argument.
 
 The inverse also holds: **NVCR made the biggest real move of the 12 live trades (2.35 daily ranges)
 and scored the LOWEST R of the four that went anywhere (2.00R)** — purely because its stop was widest.
@@ -48,8 +51,41 @@ pure conversion (`L ADR` = `L / stop_per_adr` in R) so the same validated fill m
 | 1/3 at **0.5 ADR** + breakeven | 6 | −0.32 | +0.61 |
 | exit ALL at 1 ADR | 5 | +0.49 | +1.42 |
 
-Directionally: **the ADR unit beats the R unit at the same rule shape**, and the operator's +3R is
-worse than +2R on this cohort. The deployed day-3 rule is worth almost nothing because it fires once.
+Directionally on THIS cohort: the ADR unit beats the R unit at the same rule shape, and +3R is worse
+than +2R. The deployed day-3 rule is worth almost nothing because it fires once.
+
+## ⚠ THAT CONCLUSION DOES NOT SURVIVE THE DATA REPAIR — read this before ruling
+
+After the recorder bug (caveat 3) was fixed and all 43 rows backfilled, the paper cohort — **which
+contains the only 2 winners in the dataset** — became measurable for the first time. It does not
+agree with the live table.
+
+**paper/magna53, n=24 — Δ vs actual, and what each rule COSTS the 2 winners:**
+
+| rule | fires | Δactual | cost per winner |
+|---|---|---|---|
+| 1/3 at **+1R** | 9 | +0.37 | **−0.41** |
+| 1/3 at **0.5 ADR** | 9 | +0.38 | −0.03 |
+| 1/3 at **1 ADR** | 7 | **+0.22** | −0.26 |
+| 1/3 at **+3R** | 6 | +0.29 | **+0.26** |
+| 1/3 at **2 ADR** | 6 | +0.32 | **+0.22** |
+| exit ALL at 1 ADR | 7 | +0.46 | **−0.78** |
+
+Three things fall out, and they point the opposite way to the live table:
+
+1. **The ADR advantage does not replicate.** `1 ADR` — the best rule on the live cohort (+0.69) — is
+   among the WORST here (+0.22), below +2R and +3R. Best-ADR (+0.38) and best-R (+0.37) are a
+   rounding error apart. **The unit question is not settled by this evidence; it is contradicted by
+   it.**
+2. **The zero-winner artifact is now measurable rather than hypothesised.** "Exit ALL at 1 ADR" —
+   which topped the live table at +1.42 — costs **−0.78 per winner**. It is the single most
+   destructive rule in the grid on trades that actually run, exactly as caveat 1 warned.
+3. **Only the FAR triggers leave winners alone**: +3R (+0.26) and 2 ADR (+0.22) are the only two that
+   HELP winners. Every near trigger taxes them. The operator's original instinct — take profit far
+   out, not close in — is the one thing both cohorts support.
+
+n(winners) = 2. This is directional, not a result. But it is now measured on trades that ran, which
+nothing in the first version of this document was.
 
 ## Three caveats that constrain how far this can be read
 
@@ -58,10 +94,33 @@ worse than +2R on this cohort. The deployed day-3 rule is worth almost nothing b
    moment one trade runs. **It is not a recommendation and must not be read as one.**
 2. **n=12, and the gap between +2R and 1 ADR is one extra trade triggering (5 vs 4).** The ranking is
    directional, not significant.
-3. **The paper cohort cannot arbitrate.** No paper trade ever reached even 1 ADR (max 0.64, mean 0.15,
-   vs live max 2.35 / mean 0.70), so ADR rules never fire there and the two cohorts are not
-   comparable. Paper stop widths are also degenerate in places (CRSR at 0.01 ADR), which is what
-   inflates its R to 12.36.
+3. **THE MEASUREMENT DESTROYS ITSELF ON WINNERS — the most important finding in this document, and
+   it arrived from the adversarial review rather than from me.** The recorder derived stop width from
+   the trade row's `stop_price`, which by the time a trade CLOSES is the **trailed** stop. So every
+   trade that RAN — i.e. every winner, the only trades that can price an exit rule's cost — recorded
+   a stop width of ~0, and every ADR field derived from it is garbage.
+
+   Verified across all 43 rows: **every paper trade above +1.02R is corrupted.** BW, FTRE, RCAT, TEAM,
+   KURA, SMCI, QURE, PURR all recorded `stop_pct = 0.0000` against true entry risk of 0.78–10.56%;
+   GOOGL recorded −3.47 vs a true 0.83; FPS −10.96 vs 11.42. The 11 rows I excluded as "unusable" are
+   not a random gap — **they are precisely the 11 biggest movers in the dataset.**
+
+   So the earlier claim "no paper trade ever reached 1 ADR" is FALSE. The true statement is that the
+   recorder could not SEE their excursion. GOOGL, recomputed from its implied ADR, reached ~2.8 daily
+   ranges.
+
+   **Consequence for the ruling: combined with zero live winners, the ADR trigger family has been
+   scored against losing trades ONLY — everywhere in the dataset, not just live.** That is a stronger
+   limitation than caveats 1 and 2 admit on their own.
+
+   **Consequence going forward, which is worse:** the moment any breakeven or trailing rule ships, the
+   stop moves on exactly the trades #508 needs to measure — so the defect would have kept
+   regenerating. ✅ **FIXED 2026-08-01**: the recorder now derives stop width from `risk_per_share`
+   (the original entry risk, already the basis of `realized_r`) and stores `adr_20_pct` RAW, so
+   nothing downstream reconstructs the ticker's range from a stop-derived ratio. The 12 live rows were
+   clean only by luck — all 12 lost, so no stop ever trailed above entry, and the bug was invisible in
+   the money cohort. **The 43 historical rows still carry the corrupt values and need a backfill
+   before any cohort number here is re-quoted.**
 
 ### The gap-day hazard — checked, and it does not apply (but only by accident)
 
