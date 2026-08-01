@@ -1902,6 +1902,18 @@ async def _track_open_position_extremes_job():
         n = await track_open_position_extremes()
         if n:
             logger.info(f"track_position_extremes: updated {n} open trade rows")
+
+        # #508 — profit trigger runs IMMEDIATELY AFTER, on the bars the recorder
+        # just persisted. Deliberately a separate function (not a branch inside
+        # the recorder, which is name-registered in the column-write authority
+        # gate) and deliberately sequential (not its own cron) so it can never
+        # read a poll's bars before they land. OFF unless PROFIT_TRIGGER_R is set.
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            scan_profit_triggers,
+        )
+        fired = await scan_profit_triggers()
+        if fired:
+            logger.info(f"profit trigger: {fired}")
     except Exception as e:
         logger.error(f"track_position_extremes failed: {e}")
 

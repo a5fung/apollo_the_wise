@@ -3935,6 +3935,98 @@ async def _sweep_multi_day_coverage(pool, open_trades, today_open_et: datetime) 
                 )
 
 
+async def scan_profit_triggers() -> list[dict]:
+    """#508 — take 1/3 when the position first trades at entry + PROFIT_TRIGGER_R x risk.
+
+    Runs on the 5-minute cadence, immediately AFTER track_open_position_extremes has
+    persisted this poll's minute bars, and reads those bars back from mi_intraday_bars.
+
+    WHY A SEPARATE FUNCTION, not a branch inside the recorder: that recorder is
+    name-registered in the column-write authority gate
+    (`audit_column_writes.ALLOWED_WRITERS` owns highest/lowest_price_seen for
+    `order_manager.track_open_position_extremes`, and preflight_db_updates.py lists it).
+    Folding a partial-exit — which writes exits/remaining_shares/stop_order_id via
+    execute_partial_exit — into that name would both trip Gate 5 G and blur a pure
+    recorder into a money action. #500 already cost us a deploy on exactly that class.
+
+    MECHANISM (operator's, 2026-08-01): no resting order. This detects, then calls the
+    proven `execute_partial_exit`, which reduces the stop FIRST under a per-trade advisory
+    lock, verifies, and only then sells — so the position is never unprotected and there is
+    no window where the stop over-covers the position.
+
+    DETECTION IS BAR-BASED, not spot: a spike between polls is still seen, because the
+    trigger tests the in-hold minute HIGH. Only the fill moment moves (measured cost vs an
+    idealised limit fill: <=0.04R, nil at +2R — build step 1).
+
+    OFF unless constants.PROFIT_TRIGGER_R is set. Returns per-trade outcome dicts.
+    """
+    from agents.market_intelligence.constants import PROFIT_TRIGGER_R
+    if not PROFIT_TRIGGER_R:
+        return []
+
+    pool = await get_pool()
+    now_et = datetime.now(_ET)
+    today_open_et = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    if now_et <= today_open_et:
+        return []
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, ticker, entry_price, hard_stop, stop_price, remaining_shares,
+                   partial_taken, filled_at, account_mode
+            FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+              AND filled_at IS NOT NULL
+              AND COALESCE(partial_taken, FALSE) = FALSE
+            """
+        )
+    results: list[dict] = []
+    for t in rows:
+        def _num(v):
+            return float(v) if v is not None else None
+        entry = _num(t["entry_price"])
+        stop = _num(t["hard_stop"]) or _num(t["stop_price"])
+        if not entry or not stop or stop >= entry:
+            continue
+        target = entry + PROFIT_TRIGGER_R * (entry - stop)
+        async with pool.acquire() as conn:
+            hi = await conn.fetchval(
+                """
+                SELECT MAX(high) FROM mi_intraday_bars
+                 WHERE ticker = $1 AND bar_time >= $2
+                """,
+                t["ticker"], t["filled_at"],
+            )
+        if hi is None or float(hi) < target:
+            continue
+        shares = int(float(t["remaining_shares"]) // 3)
+        if shares < 1:
+            results.append({"ticker": t["ticker"], "action": "too_small_to_split"})
+            continue
+        try:
+            await send_telegram_message(
+                f"{mode_prefix(t['account_mode'])}\U0001F4B0 *Profit target hit: {t['ticker']}*\n"
+                f"traded ${float(hi):.2f} >= ${target:.2f} "
+                f"({PROFIT_TRIGGER_R:g}R above ${entry:.2f})\n"
+                f"Taking {shares} of {int(float(t['remaining_shares']))} sh, "
+                f"stop moves to breakeven."
+            )
+        except Exception:  # loud-ok: notification must never abort the money action below
+            logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
+        ok = await execute_partial_exit(t["id"], shares)
+        await log_audit_event(
+            "profit_trigger_fired" if ok else "profit_trigger_failed",
+            f"{t['ticker']}: high ${float(hi):.2f} >= {PROFIT_TRIGGER_R:g}R target ${target:.2f}",
+            json.dumps({"trade_id": t["id"], "shares": shares, "entry": entry,
+                        "target": target, "high": float(hi)}),
+        )
+        results.append({"ticker": t["ticker"],
+                        "action": "partial_submitted" if ok else "partial_failed",
+                        "shares": shares})
+    return results
+
+
 async def track_open_position_extremes(sweep: bool = False) -> int:
     """Alpaca-sourced intraday path recorder + extremes maintainer (#306, 2026-07-25).
 

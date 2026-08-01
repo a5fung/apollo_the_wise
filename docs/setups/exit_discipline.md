@@ -135,6 +135,40 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-01 — Intraday profit trigger BUILT (shipped OFF; operator-signed)
+
+**Trigger**: operator 2026-07-30 (*"1/3rd at 3R then move stop to breakeven"*), sharpened 2026-08-01
+— the day-3 gate "may not be optimal" because live trades die before reaching it. Confirmed: it has
+fired **once in 12 live trades**.
+
+**Evidence**: N=36 magna53 closed trades, 34 candidate rules replayed, every figure independently
+recomputed twice. Incumbent +0.09R/trade on live; 1/3-at-+2R +0.47R. Re-scored under the REAL
+5-minute-poll fill (not the idealised limit fill the proposal assumed): **+0.43R vs actual on the 11
+measurable trades, and the mechanism change costs ≤0.04R** — nil at +2R.
+
+**Anticipated effect**: partial fires ~1 in 3 live trades instead of 1 in 12; full −1R losses fall
+from 10-in-12 toward ~6-in-12. **No change to win rate** — it makes some losses smaller, it does not
+make losers into winners.
+
+**Reversion-flag**: REVERSAL of the 2026-03-27 "v2 rules" decision (`EP_TRADING_RULES.md` §B5).
+Per CHANGE_PROCESS r4 the prior reasoning was not *wrong* — it assumed trades survive to day 3, true
+of the population it was designed against (paper mean hold 3.17d, 9 of 24 reached day 3) and false
+live (1.50d, 1 of 12). **Inapplicable, not mis-specified** — so if live holds ever lengthen, revisit.
+
+**Implementation**: `order_manager.scan_profit_triggers()`, called sequentially from the existing
+5-minute `track_position_extremes` job on the bars that job just persisted. Deliberately NOT a branch
+inside the recorder — that function is name-registered in the column-write authority gate, and a
+money action there would trip Gate 5 G (#500 class). Detection is BAR-based (in-hold `MAX(high)`), so
+a spike between polls is still caught. It reuses `execute_partial_exit`, which reduces the stop
+**before** selling under a per-trade advisory lock — no window where the stop over-covers the
+position, and no resting order.
+
+**Status**: **BUILT, SHIPPED OFF.** `constants.PROFIT_TRIGGER_R = None`. The constant IS the
+reversion path. 7 tests, two mutation-checked. Awaiting: backtest through the #151 harness, then
+operator flips the constant, then verify-live against the pre-committed reversion triggers in
+`docs/analysis/508_change_proposal_profit_trigger_2026-08-01.md`.
+
+
 ### 2026-08-01 — SSoT created; no behaviour change
 
 **Trigger**: A proposed change to the profit-take rule (`docs/analysis/508_change_proposal_profit_trigger_2026-08-01.md`)
