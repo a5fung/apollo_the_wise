@@ -121,22 +121,34 @@ cohort.** They were inseparable only because one assignment drove both.
 **Evidence** (CHANGE_PROCESS r1 — N≥10 evaluated; full working
 `docs/analysis/490_delay_missed_eps_2026-08-01.md`): 111 `ep_rt_floor_flip_down` ticker-days over
 the 8 days the telemetry has existed. Of those, **11 became scored alerts — all 11 HIGH — and 4
-reached a live trade row. 3 filled:**
+reached a live trade row.**
 
-| ticker | date | delayed gap | RT gap | outcome |
-|---|---|---|---|---|
-| WKC | 2026-07-24 | 11.63% | 8.91% | closed **−$23.80** |
-| QBTS | 2026-07-27 | 11.29% | 9.50% | closed **−$22.26** |
-| FTNT | 2026-07-30 | 10.79% | 7.77% | closed **−$6.63** |
-| ARM | 2026-07-30 | 15.46% | 8.34% | cancelled, unfilled |
+⚠ **Only 2 of the 4 would actually have been prevented, and the timing is why.** `live_tracker.
+process_new_alerts_live` selects `FROM mi_ep_alerts WHERE alert_date = $1 AND score_tier = 'HIGH'` —
+**it reads the alert ROW, not the current tick's candidate list.** So dropping a candidate only
+prevents an entry if the flip-down happens on the tick that would have WRITTEN the alert. A
+flip-down after that is telemetry: the row already exists and the 09:31 entry proceeds.
 
-**−$52.69 of a −$224.01 30-day total (23.5% of the loss) from 3 of 17 trades — none of which ever
-qualified on real-time data, and every one a loser.**
+| ticker | date | delayed | RT | flip-down @ | alert written @ | prevented? | P&L |
+|---|---|---|---|---|---|---|---|
+| WKC | 07-24 | 11.63% | 8.91% | 08:15:00 | 08:15:00 (same tick) | ✅ **yes** | **−$23.80** |
+| QBTS | 07-27 | 11.29% | 9.50% | 07:20:01 | 07:20:00 (same tick) | ✅ **yes** | **−$22.26** |
+| FTNT | 07-30 | 10.79% | 7.77% | 09:30:05 | 07:00:00 | ❌ no — 2.5h late | −$6.63 |
+| ARM | 07-30 | 15.46% | 8.34% | 09:45:10 | 08:55:00 | ❌ no — after entry | $0 (cancelled) |
+
+**Defensible saving: −$46.06 of a −$224.01 30-day total (20.6% of the loss) from 2 of 17 trades** —
+neither of which ever qualified on real-time data, and both losers.
 
 ⚠ **Honest N**: the criterion is evaluated on 111 events / 11 alerts, but the P&L attribution rests
-on **3 filled trades**. Telemetry only starts 2026-07-21, so a longer window does not exist yet.
-Three trades is not a distribution — the case rests on the mechanism (these names did not meet the
+on **2 filled trades**. Telemetry only starts 2026-07-21, so a longer window does not exist yet.
+Two trades is not a distribution — the case rests on the mechanism (these names did not meet the
 10% floor on truthful data) rather than on the size of the measured saving.
+
+▶ **FTNT exposes a separate and arguably larger gap, NOT fixed here.** Its alert was written at
+07:00 on stale pre-market data; at **09:30:05 — one minute before the entry — the system recorded
+that its real-time gap was 7.77%, below the 10% floor — and entered anyway**, because nothing
+re-validates an alert against real-time data at submission time. That is an entry-path change, needs
+its own sign-off, and is filed under #490 rather than smuggled into this one.
 
 **What shipped**: `ep_rt_gap_down_authoritative` (runtime toggle + `EP_RT_GAP_DOWN_AUTHORITATIVE`
 env), consulted ONLY when `ep_rt_gap_authoritative` is off, so full authority still subsumes it.

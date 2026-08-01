@@ -173,9 +173,41 @@ volume effect is directly measurable without flipping anything.
 
 ⚠ **The `_down` leg is the one genuinely attractive number: −13.9/day stale false-admits** — names we
 currently score, and could trade, that real-time data says never qualified. That is a pure quality
-gain with *negative* volume. It cannot be taken alone: it is bundled with the +25.0 `_up` leg inside
-the same toggle. **Splitting that toggle is the one code change worth considering** — it would let us
-take the cleanup without the expansion.
+gain with *negative* volume. It was bundled with the +25.0 `_up` leg inside the same toggle.
+
+▶ **SPLIT BUILT 2026-08-01, shipped OFF** — `ep_rt_gap_down_authoritative`. Structurally
+removal-only (guarded by the flip-DOWN condition itself), pinned by a 144-case sweep, mutation-tested.
+SSoT: `docs/setups/magna53_ep.md`. **The live flip needs operator sign-off — not taken.**
+
+### What the down-leg cleanup is actually worth — and the correction that halved it
+
+111 flip-down ticker-days → 11 scored alerts (all HIGH) → 4 live trade rows.
+
+⚠ **My first pass reported all 4 as preventable, worth −$52.69. That was wrong.**
+`live_tracker.process_new_alerts_live` selects `FROM mi_ep_alerts WHERE alert_date = $1 AND
+score_tier = 'HIGH'` — **the alert ROW, not the current tick's candidate list.** Dropping a candidate
+therefore prevents an entry only when the flip-down lands on the tick that WRITES the alert. Later
+flip-downs are pure telemetry.
+
+| ticker | date | delayed | RT | flip-down @ | alert written @ | prevented? | P&L |
+|---|---|---|---|---|---|---|---|
+| WKC | 07-24 | 11.63% | 8.91% | 08:15:00 | 08:15:00 (same tick) | ✅ **yes** | **−$23.80** |
+| QBTS | 07-27 | 11.29% | 9.50% | 07:20:01 | 07:20:00 (same tick) | ✅ **yes** | **−$22.26** |
+| FTNT | 07-30 | 10.79% | 7.77% | 09:30:05 | 07:00:00 | ❌ no — 2.5h late | −$6.63 |
+| ARM | 07-30 | 15.46% | 8.34% | 09:45:10 | 08:55:00 | ❌ no — after entry | $0 (cancelled) |
+
+**Defensible: −$46.06 of a −$224.01 30-day total (20.6% of the loss), from 2 of 17 trades.**
+Honest N — the criterion is evaluated on 111 events, but the money rests on **2 filled trades**.
+
+### The larger gap FTNT exposes — no real-time re-validation at entry
+
+FTNT's alert was written at **07:00** on a stale 10.79% gap. At **09:30:05 — one minute before the
+09:31 entry — the system logged its real-time gap as 7.77%, below the 10% floor.** It entered anyway.
+
+**Nothing re-checks an alert against real-time data at submission time.** The gap-down toggle cannot
+fix this: by 09:30 the alert row already exists, and the entry job reads rows. The fix is a
+re-validation inside `submit_trade_entry` — an **entry-path change touching real money, so it needs
+its own sign-off.** Filed under #490; deliberately not folded into the toggle split.
 
 ### The finding that changes the shape of the decision
 
