@@ -123,9 +123,23 @@ round-tripped (MANE +7.92R → −0.23R).
   near −0.33R (the 1/3-at-+2R-then-breakeven outcome).
 - **No change to win rate.** This does not make losers into winners; it makes some of them smaller.
 
-**Reversion-flag: NEW.** No prior documented decision selects the day-3 gate — it has no change-log
-entry anywhere, which is itself why item 1 above matters. This supersedes an undocumented default
-rather than reversing a reasoned choice.
+**Reversion-flag: REVERSAL of the 2026-03-27 "v2 rules" decision.** ⚠ **Corrected 2026-08-01 — an
+earlier draft called this NEW and said the day-3 gate was undocumented. Both wrong.** The operator
+wrote the rule himself (commit `bbbd442`) and documented it in `EP_TRADING_RULES.md` §B5: *Day 1-2
+hold full · Day 3-4 sell 1/3 only if in profit · Day 5 sell 1/3 regardless.* It is Qullamaggie
+methodology — hold through the early noise, let the move develop, take profit into strength.
+
+**So CHANGE_PROCESS r4 applies: a reversal must explain why the prior reasoning was WRONG, not merely
+incomplete.** The honest statement is narrower than "wrong":
+
+- The prior reasoning assumes trades SURVIVE to day 3 to be reduced. That assumption held in the
+  paper/backtest population it was designed against (mean hold 3.17 days, 9 of 24 reached day 3).
+- It does not hold for the live population: **mean hold 1.50 days, 1 of 12 ever reached day 3, zero
+  partials ever fired.** The rule is not mis-specified; it is **inapplicable** to how these trades
+  actually behave.
+- That is a change in the FACTS, not a defect in the original judgement — which is exactly why this
+  should be reversible if live holds lengthen. If the strategy's holds return to 3+ days, the day-3
+  rule becomes applicable again and this reversal should be revisited.
 
 **Status: proposed, awaiting operator sign-off.**
 

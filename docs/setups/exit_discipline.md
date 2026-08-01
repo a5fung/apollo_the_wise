@@ -4,8 +4,12 @@
 profit-take, the breakeven arm, the trail, and the time-stop. It does NOT own entry criteria (see
 `magna53_ep.md`, `ninem.md`) or portfolio-level blocks (see `safeguards.md`).
 
-Created 2026-08-01. Until then the exit rule lived only in `broker/exit_logic.py` with no SSoT — which
-is why it had no change-log entry and its behaviour was repeatedly mis-stated in analysis. Read this
+Created 2026-08-01. **⚠ It is NOT true that the exit rule was undocumented — that was my error, twice.**
+The operator wrote it down in **`EP_TRADING_RULES.md` §B5** (repo root) on 2026-03-27; I missed it by
+searching only `docs/setups/`. What was missing is a file under the CHANGE_PROCESS discipline — with a
+change log, a limitations section, and the measured record — which is what this file adds.
+`EP_TRADING_RULES.md` remains the methodology statement; this file is the operational SSoT and defers
+to it on intent. Read this
 file **entirely** before changing any exit behaviour, per `CHANGE_PROCESS.md`.
 
 ---
@@ -28,9 +32,20 @@ if hold_days >= 3 and not partial_taken and entry_price:
     take_partial = (hold_days <= 4 and bar_close > entry_price) or hold_days >= 5
 ```
 - Day 3-4: take 1/3 **only if the close is above entry**.
-- Day ≥5: take 1/3 **unconditionally, even underwater** — which arms breakeven, and with breakeven
-  above an underwater close the remainder closes in the same step. **This is a de-facto day-5 full
-  time-exit** and is not documented anywhere else.
+- Day ≥5: take 1/3 **unconditionally, even underwater**.
+
+  ⚠ **CORRECTION 2026-08-01: I twice called this undocumented. It is not.** It is the operator's own
+  rule, written by him on 2026-03-27 (commit `bbbd442`, "v2 rules") and documented in
+  **`EP_TRADING_RULES.md` §B5** at the repo root — which I missed because I searched `docs/setups/`
+  only. Verbatim there: *Day 1-2 hold full · Day 3-4 sell 1/3 only if in profit · Day 5 sell 1/3
+  regardless · after partial move stop floor to breakeven.* It is Qullamaggie methodology, not an
+  accident.
+
+  **What IS undocumented is the interaction**: at day 5 while underwater, taking 1/3 arms breakeven,
+  breakeven sits above the current close, so the effective stop (`max(hard_stop, active_sma,
+  entry_price)`) exceeds price and the remaining 2/3 closes in the same step. So the two documented
+  rules together behave as a **day-5 full exit when the trade is underwater** — a consequence neither
+  rule states on its own.
 - `hold_days` is **calendar** days from `alert_date`, not trading days — a Friday entry reaches "day
   3" on its second trading day.
 - Sizing: 1/3 of remaining, integer shares live. `scale_fraction` overrides the FRACTION only; it
