@@ -46,6 +46,38 @@ remainder in the same step (a de-facto day-5 full time-exit). `hold_days` is **c
 **TO**: take 1/3 when the position first trades at **entry + 2 × risk_per_share**, then move the stop
 to breakeven. Time-based partial removed.
 
+## 🔴 IMPLEMENTATION GAP — found by the operator 2026-08-01, and it changes the build
+
+**The deployed exit path is DAILY-CLOSE ONLY, but the replay modelled an INTRADAY limit fill.**
+
+Verified in code: `exit_logic.py` is *"pure **daily**-exit-step decision logic"* (line 1);
+`apply_daily_exit_step(state, daily_bar, ...)` takes **one daily bar**; `live_tracker.py:549` fetches
+`get_index_history(ticker, today, today)` — today's daily bar — and the partial condition tests
+**`bar_close`**, not the day's high. The job runs once at 3:45 PM ET.
+
+**So a +2R rule dropped into the existing machinery would fire only if the trade is still ≥+2R at
+3:45 PM.** On this cohort that is close to never: trades round-trip inside day one (MANE touched
++7.92R intraday and closed −0.23R). The replay's contract is explicitly a resting limit —
+*"fill AT the trigger price… an in-hold peak ≥ trigger guarantees a limit fill"* — so **the +0.47R
+in the evidence table is only achievable with an intraday mechanism. Implemented on the daily close
+it would capture a small fraction of it, and the proposal's headline number would be wrong.**
+
+**Correct implementation: a resting broker-side limit order for 1/3 at `entry + 2 × risk`, placed at
+entry time**, alongside the existing bracket. That matches the replayed contract exactly, needs no
+intraday polling, and fires on the touch rather than at 3:45 PM.
+
+⚠ **This is a bigger change than the daily-close version and its risks are different:**
+- The current entry is an OTO bracket (entry + stop). Adding a profit leg makes it a three-leg
+  order, and **the stop's quantity must reduce when the profit leg fills** or the position is
+  over-protected/under-protected. That interacts with `#184`'s stop-pointer mirror and the
+  `extract_stop_leg_id` path.
+- Partial fills of the profit leg (odd lots at 1-53 shares live) need defined handling.
+- It touches order submission, not just an EOD decision — i.e. `broker/` code on the money path.
+
+**Consequence for sign-off: the "one config flag" reversion claim below is TOO OPTIMISTIC for this
+version.** Reverting a resting-order design means cancelling live legs, not flipping a boolean. That
+should be part of what is being signed.
+
 **Unchanged**: position sizing, the initial ORB-low stop, the SMA trail (day ≥10), the time-stop,
 every portfolio safeguard, and the 9M Day-2 path.
 
@@ -109,7 +141,36 @@ Written before shipping so the abort is not a judgement call afterwards:
 2. **Realized R over the next 10 closed live trades worse than the same 10 replayed under the
    incumbent.** The replay scores both counterfactually on every trade, so this is measurable without
    any extra instrumentation.
-3. **Reversion cost: one config change.** No redeploy of unrelated code.
+3. **Reversion cost.** ⚠ Depends on the implementation above: a daily-close version is one config
+   flag, but the resting-limit version — the only one that delivers the modelled +0.47R — requires
+   cancelling live profit legs on open positions as well. Plan the revert as an operation, not a
+   toggle.
+
+## Notification coverage — checked 2026-08-01, and there is a gap
+
+**What DOES reach you today:**
+- Broker-side fills, partial fills, stop fills, cancels and rejects — `trade_stream.py` has 23
+  Telegram sites, incl. `📊 Partial fill: {symbol}`. So when a profit leg actually fills at the
+  broker, you are told.
+- Regime **flips** (label change / EP-filter change) surface in the evening brief's regime block.
+- Review triggers T1 and T2 escalate on their own (nightly 17:30 ET).
+
+**What does NOT reach you, and should before this ships:**
+- ⚠ **`run_partial_exits` — the 3:45 PM partial job — contains ZERO Telegram calls.** Verified. Its
+  scheduler wrapper only logs (`scheduler.py:1417-1427`) and notifies on *failure*. So a partial that
+  the SYSTEM decides to take is announced only as a downstream broker fill, with no message saying
+  *why* it fired or at what level. On a rule whose whole point is "take profit at +2R", the decision
+  itself should be announced, not just its execution.
+- ⚠ **No trigger fires on a WINNER.** Nothing watches for the first profitable live close — which is
+  the single event that would most change this analysis (it is what unlocks §3.3, partial-vs-full).
+- ⚠ **No trigger fires on a regime CHANGE per se** — the brief reports it, but nothing links a regime
+  flip back to "the exit review's regime cell just became reachable".
+
+**Recommended to ship WITH the rule (all no-money, observability only):**
+1. Telegram on every profit-take decision: ticker, trigger level, R at fire, shares taken, new stop.
+2. A `first_live_winner` data-gated review — fires the first time a live trade closes green.
+3. Extend T2's review to also fire on a regime flip INTO Bull while live positions exist, so the
+   regime cell being reachable is announced when it happens rather than at n=20.
 
 ## What continues unchanged either way
 
