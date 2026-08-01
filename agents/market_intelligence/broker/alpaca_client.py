@@ -222,7 +222,7 @@ async def verify_dual_account_clients() -> dict:
     for mode in modes:
         try:
             client = get_trading_client(mode)
-            account = client.get_account()
+            account = await _sdk(client.get_account)
             result[mode] = {
                 "ok": True,
                 "equity": float(account.equity),
@@ -232,6 +232,31 @@ async def verify_dual_account_clients() -> dict:
             result[mode] = {"ok": False, "error": str(e)}
             logger.error(f"Dual-account boot verify FAILED for mode={mode}: {e}")
     return result
+
+
+# ── Blocking-SDK offload (#464, money-path audit R3) ─────────────────────────
+# alpaca-py's TradingClient is SYNCHRONOUS network I/O. Called bare inside `async
+# def`, a hung Alpaca endpoint freezes the ENTIRE event loop — WebSocket fill
+# handling, every scheduled job, and the order-status reconcile that is supposed to
+# be the safety net for exactly that failure. Latent since day one.
+#
+# `_sdk()` offloads the call to a worker thread and bounds it. Two properties worth
+# stating because they are the whole safety case:
+#   * to_thread does NOT reorder awaits WITHIN a coroutine — `await _sdk(f)` still
+#     completes before the next line, so read-modify-write sequences keep their
+#     order. What changes is that OTHER tasks may now interleave, which is the
+#     point; the per-trade advisory locks (#151) already guard the DB side.
+#   * A timeout raises TimeoutError to the CALLER rather than hanging. Every call
+#     site here is already inside try/except and returns a failure sentinel, so a
+#     timeout degrades to the same path as any other API error.
+# Budgets are generous — this is a hang breaker, not a latency SLO.
+_SDK_TIMEOUT_DEFAULT = 30.0     # reads: account, orders, positions
+_SDK_TIMEOUT_WRITE = 45.0       # writes: submit / replace / cancel / close
+
+
+async def _sdk(fn, *args, timeout: float = _SDK_TIMEOUT_DEFAULT, **kwargs):
+    """Run a blocking alpaca-py call off the event loop, bounded."""
+    return await asyncio.wait_for(asyncio.to_thread(fn, *args, **kwargs), timeout)
 
 
 # ── Account ──────────────────────────────────────────────────────────────────
@@ -245,7 +270,7 @@ async def get_account(account_mode: str | None = None) -> dict:
     """
     try:
         client = get_trading_client(account_mode)
-        account = client.get_account()
+        account = await _sdk(client.get_account)
         return {
             "equity": float(account.equity),
             "buying_power": float(account.buying_power),
@@ -306,7 +331,7 @@ async def place_bracket_order(
         )
         if client_order_id:
             req_kwargs["client_order_id"] = client_order_id
-        order = client.submit_order(StopLimitOrderRequest(**req_kwargs))
+        order = await _sdk(client.submit_order, StopLimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
         # Safety: Alpaca must accept the stop_loss leg, otherwise the position is
         # unprotected on fill. alpaca-py silently drops invalid fields; verify legs
         # came back before we trust this order.
@@ -315,7 +340,7 @@ async def place_bracket_order(
             # Abort: cancel the entry order so we don't fill naked, then raise so
             # the caller's retry fires (or the trade fails cleanly).
             try:
-                client.cancel_order_by_id(order.id)
+                await _sdk(client.cancel_order_by_id, order.id, timeout=_SDK_TIMEOUT_WRITE)
             except Exception as cancel_err:
                 logger.error(f"Failed to cancel naked bracket {ticker} {order.id}: {cancel_err}")
             raise RuntimeError(
@@ -354,7 +379,7 @@ async def place_stop_order(
         )
         if client_order_id:
             req_kwargs["client_order_id"] = client_order_id
-        order = client.submit_order(StopOrderRequest(**req_kwargs))
+        order = await _sdk(client.submit_order, StopOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
         logger.info(f"Stop order placed: {ticker} qty={qty} stop={stop_price:.2f} id={order.id}")
         return _order_to_dict(order)
     except Exception as e:
@@ -392,7 +417,7 @@ async def place_market_on_open_sell(
         )
         if client_order_id:
             req_kwargs["client_order_id"] = client_order_id
-        order = client.submit_order(MarketOrderRequest(**req_kwargs))
+        order = await _sdk(client.submit_order, MarketOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
         logger.info(f"Market-on-open sell placed: {ticker} qty={qty} id={order.id}")
         return _order_to_dict(order)
     except Exception as e:
@@ -418,7 +443,7 @@ async def place_market_sell(
         )
         if client_order_id:
             req_kwargs["client_order_id"] = client_order_id
-        order = client.submit_order(MarketOrderRequest(**req_kwargs))
+        order = await _sdk(client.submit_order, MarketOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
         logger.info(f"Market sell placed: {ticker} qty={qty} id={order.id}")
         return _order_to_dict(order)
     except Exception as e:
@@ -488,7 +513,7 @@ async def replace_order(
     if client_order_id is not None:
         kwargs["client_order_id"] = client_order_id
     request = ReplaceOrderRequest(**kwargs)
-    new_order = client.replace_order_by_id(order_id, request)
+    new_order = await _sdk(client.replace_order_by_id, order_id, request, timeout=_SDK_TIMEOUT_WRITE)
     logger.info(
         f"Order replaced: {order_id} → {new_order.id} "
         f"(qty={qty} stop_price={stop_price})"
@@ -500,7 +525,7 @@ async def cancel_order(order_id: str, account_mode: str | None = None) -> bool:
     """Cancel an order by ID. Returns True if successful."""
     try:
         client = get_trading_client(account_mode)
-        client.cancel_order_by_id(order_id)
+        await _sdk(client.cancel_order_by_id, order_id, timeout=_SDK_TIMEOUT_WRITE)
         logger.info(f"Order cancelled: {order_id}")
         return True
     except Exception as e:
@@ -512,7 +537,7 @@ async def get_order(order_id: str, account_mode: str | None = None) -> dict | No
     """Get order details by ID."""
     try:
         client = get_trading_client(account_mode)
-        order = client.get_order_by_id(order_id)
+        order = await _sdk(client.get_order_by_id, order_id)
         return _order_to_dict(order)
     except Exception as e:
         logger.error(f"Failed to get order {order_id}: {e}")
@@ -539,7 +564,7 @@ async def get_open_orders(
         request = GetOrdersRequest(status=QueryOrderStatus.OPEN)
         if ticker:
             request.symbols = [ticker]
-        orders = client.get_orders(request)
+        orders = await _sdk(client.get_orders, request)
         return [_order_to_dict(o) for o in orders]
     except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then [] or re-raise
         logger.error(f"Failed to get open orders: {e}")
@@ -559,7 +584,7 @@ async def get_position(ticker: str, account_mode: str | None = None) -> dict | N
     """Get position for a specific ticker."""
     try:
         client = get_trading_client(account_mode)
-        pos = client.get_open_position(ticker)
+        pos = await _sdk(client.get_open_position, ticker)
         return _position_to_dict(pos)
     except Exception as e:
         # 404 = no position, not an error
@@ -585,7 +610,7 @@ async def get_all_positions(
     """
     try:
         client = get_trading_client(account_mode)
-        positions = client.get_all_positions()
+        positions = await _sdk(client.get_all_positions)
         return [_position_to_dict(p) for p in positions]
     except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then [] or re-raise
         logger.error(f"Failed to get all positions: {e}")
@@ -608,9 +633,9 @@ async def close_position(
     try:
         client = get_trading_client(account_mode)
         if qty:
-            order = client.close_position(ticker, close_options={"qty": str(qty)})
+            order = await _sdk(client.close_position, ticker, close_options={"qty": str(qty)}, timeout=_SDK_TIMEOUT_WRITE)
         else:
-            order = client.close_position(ticker)
+            order = await _sdk(client.close_position, ticker, timeout=_SDK_TIMEOUT_WRITE)
         logger.info(f"Position closed: {ticker} qty={qty or 'all'}")
         return _order_to_dict(order)
     except Exception as e:
@@ -666,7 +691,7 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
             end=end,
             feed=get_data_feed(),
         )
-        bars = client.get_stock_bars(request)
+        bars = await _sdk(client.get_stock_bars, request)
         bar_data = bars.data if hasattr(bars, 'data') else bars
         bar_set = bar_data.get(ticker, [])
         if not bar_set:
@@ -722,7 +747,7 @@ async def get_minute_bars_window(
             end=end,
             feed=get_data_feed(),
         )
-        bars = client.get_stock_bars(request)
+        bars = await _sdk(client.get_stock_bars, request)
         bar_data = bars.data if hasattr(bars, 'data') else bars
         bar_set = bar_data.get(ticker, []) or []
         return [
@@ -843,7 +868,7 @@ async def get_latest_trade(ticker: str) -> dict | None:
     try:
         from alpaca.data.requests import StockLatestTradeRequest
         client = _get_data_client()
-        result = client.get_stock_latest_trade(
+        result = await _sdk(client.get_stock_latest_trade,
             StockLatestTradeRequest(symbol_or_symbols=ticker)
         )
         t = result.get(ticker)
@@ -893,12 +918,12 @@ async def place_limit_buy_with_stop(
         )
         if client_order_id:
             req_kwargs["client_order_id"] = client_order_id
-        order = client.submit_order(LimitOrderRequest(**req_kwargs))
+        order = await _sdk(client.submit_order, LimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
         # Safety: Alpaca must accept the stop_loss leg, otherwise the position
         # would be unprotected on fill. Verify before trusting this order.
         if not extract_stop_leg_id(order):
             try:
-                client.cancel_order_by_id(order.id)
+                await _sdk(client.cancel_order_by_id, order.id, timeout=_SDK_TIMEOUT_WRITE)
             except Exception as cancel_err:
                 logger.error(
                     f"Failed to cancel naked limit-buy {ticker} {order.id}: {cancel_err}"
