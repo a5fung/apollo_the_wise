@@ -141,8 +141,37 @@ prefix never reaches Telegram.
 
 **Reversion-flag**: NEW. Reversion = set `ep_rt_entry_gap_recheck` off — ~60s, no deploy.
 
-**Status**: **BUILT, SHIPPED OFF (`ep_rt_entry_gap_recheck` default false).** Default off is
-byte-identical to today. The live flip is the operator's — NOT taken.
+**Status**: **LIVE — operator SIGNED OFF 2026-08-01 ("yes"), flipped 20:34 ET.**
+
+Shipped OFF, verified inert in both containers, THEN flipped. Deployed `market-agent` → `execution`
+(both green).
+
+**Prod proof the guard is not a silent no-op** (run in-container after the flip, on real data):
+```
+apollo-execution:
+  FTNT -> BLOCK: setup:gap_below_floor: rt 5.6% < 10% floor
+          (alert said 10.8%, last $161.80 vs prev close $153.22)
+```
+FTNT's actual 7/30 entry was $166.65 against a $153.22 prev close = **8.8%, below the floor** — the
+entry we should not have taken.
+
+⚠ **The guard only ACTS on apollo-execution, and that is where entries run** (`EXECUTION_MODE=http`,
+so `trigger_orb_entry` POSTs there — *"creds + broker live in execution"*). On apollo-market the same
+call **fails open**, because that container's Alpaca credentials are deliberately blanked (creds
+isolation). That is the designed direction, but it means **if `EXECUTION_MODE` were ever set back to
+`inprocess`, this guard would silently stop working** rather than fail loudly. Worth knowing before
+anyone touches that env var.
+
+**Reversion**: set `ep_rt_entry_gap_recheck` to `'off'` — ~60s, no deploy.
+
+**Verify-live due Monday 2026-08-03**, and the reversion trigger is pre-committed:
+1. Expect `setup:gap_below_floor` skips ONLY on names whose real-time gap is genuinely under 10% —
+   spot-check each against `mi_daily_closes` prev close.
+2. ⚠ **If it blocks more than roughly a third of the day's HIGH alerts, revert and investigate
+   before the next session.** The measured rate is ~1 in 6 live entries; a much higher rate means the
+   real-time read or the denominator is wrong, not that the cohort collapsed.
+3. Negative control: confirm entries still HAPPEN. Zero entries with zero `gap_below_floor` skips
+   means the ORB job did not run, not that the guard is quiet.
 
 ### 2026-08-01 — #490: gap authority SPLIT — the REMOVE half gets its own toggle (built OFF, awaiting sign-off)
 
