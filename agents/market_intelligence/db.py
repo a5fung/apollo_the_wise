@@ -7727,6 +7727,14 @@ async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
             """
             SELECT COUNT(*) AS n,
                    COUNT(*) FILTER (WHERE NOT agree) AS n_disagree,
+                   -- DIRECTION (added 2026-08-02). A bare rate reads as "the judge is a coin
+                   -- flip"; the first 18 rows were 9 disagreements ALL of them HIGH->MODERATE and
+                   -- ZERO the other way. That is a systematic tier bias in the 2nd model, not
+                   -- noise, and the two call for opposite responses.
+                   COUNT(*) FILTER (WHERE NOT agree AND primary_tier = 'HIGH'
+                                    AND secondary_tier <> 'HIGH')            AS n_stricter,
+                   COUNT(*) FILTER (WHERE NOT agree AND primary_tier <> 'HIGH'
+                                    AND secondary_tier = 'HIGH')             AS n_looser,
                    MAX(secondary_model) AS secondary_model
             FROM mi_judge_divergence
             WHERE alert_date >= $1
@@ -7736,6 +7744,8 @@ async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
     return {
         "n": row["n"] if row else 0,
         "n_disagree": row["n_disagree"] if row else 0,
+        "n_stricter": row["n_stricter"] if row else 0,
+        "n_looser": row["n_looser"] if row else 0,
         "secondary_model": row["secondary_model"] if row else None,
     }
 

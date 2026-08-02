@@ -1657,9 +1657,25 @@ async def _judge_divergence_section(window_start: date) -> str:
     # threshold — this line just flags it; the review itself is the operator's call.
     flag = " ⚠" if pct > 25 else ""
     secondary_model = stats.get("secondary_model") or "2nd model"
+    # DIRECTION, not just rate (2026-08-02). A bare "50% disagreed ⚠" reads as "the judge is a
+    # coin flip" — but the first 18 rows were 9 disagreements ALL HIGH->MODERATE and ZERO the
+    # other way. One-directional disagreement is a systematic tier bias in the cheaper 2nd model;
+    # a scattered one would be genuine instability. They call for opposite responses, so the rate
+    # alone is not just incomplete, it is misleading.
+    strict = stats.get("n_stricter") or 0
+    loose = stats.get("n_looser") or 0
+    if n_disagree and (strict == n_disagree or loose == n_disagree):
+        direction = (f" — ALL {n_disagree} one-directional "
+                     f"({'2nd model stricter' if strict else '2nd model looser'}), "
+                     f"i.e. systematic tier bias, not instability")
+    elif n_disagree:
+        direction = f" — {strict} stricter / {loose} looser"
+    else:
+        direction = ""
     return (
         f"\U0001F50D *Judge 2nd-opinion (#301, {secondary_model}):* "
         f"{n_disagree}/{n} disagreed ({pct}%) with the HIGH-tier judge verdict this week{flag}"
+        f"{direction}"
     )
 
 

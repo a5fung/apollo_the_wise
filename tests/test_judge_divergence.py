@@ -241,16 +241,22 @@ def test_ep_detector_trigger_is_never_awaited_and_is_gated():
 
 def test_get_judge_divergence_stats_shape(monkeypatch):
     pool, conn = make_mock_pool()
-    conn.fetchrow = AsyncMock(return_value={"n": 12, "n_disagree": 4, "secondary_model": JUDGE_DIVERGENCE_MODEL})
+    conn.fetchrow = AsyncMock(return_value={"n": 12, "n_disagree": 4, "n_stricter": 4,
+                                            "n_looser": 0, "secondary_model": JUDGE_DIVERGENCE_MODEL})
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
 
+    # n_stricter/n_looser added 2026-08-02: a bare rate reads as "the judge is a coin flip", but
+    # the first 18 live rows were 9 disagreements ALL HIGH->MODERATE and zero the other way —
+    # systematic tier bias, not instability. The two call for opposite responses.
     stats = _run(db.get_judge_divergence_stats(date(2026, 7, 20)))
-    assert stats == {"n": 12, "n_disagree": 4, "secondary_model": JUDGE_DIVERGENCE_MODEL}
+    assert stats == {"n": 12, "n_disagree": 4, "n_stricter": 4, "n_looser": 0,
+                     "secondary_model": JUDGE_DIVERGENCE_MODEL}
 
 
 def test_get_judge_divergence_stats_no_rows(monkeypatch):
     pool, conn = make_mock_pool()
-    conn.fetchrow = AsyncMock(return_value={"n": 0, "n_disagree": 0, "secondary_model": None})
+    conn.fetchrow = AsyncMock(return_value={"n": 0, "n_disagree": 0, "n_stricter": 0,
+                                            "n_looser": 0, "secondary_model": None})
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
 
     stats = _run(db.get_judge_divergence_stats(date(2026, 7, 20)))
@@ -295,3 +301,36 @@ def test_digest_line_renders_without_flag_under_25_pct(monkeypatch):
     assert "1/10" in line
     assert "10%" in line
     assert "⚠" not in line
+
+
+# ── DIRECTION, not just rate (2026-08-02) ────────────────────────────────────────────────────
+# The weekly review reported "9/18 disagreed (50%) ⚠", which reads as "the HIGH-tier judge is a
+# coin flip". The live rows said something else: all 9 were HIGH->MODERATE and ZERO the other way.
+# One-directional disagreement is a systematic tier bias in the cheaper 2nd model; a scattered one
+# would be genuine instability. They call for OPPOSITE responses, so reporting the rate alone is
+# not merely incomplete — it points at the wrong conclusion.
+
+def _line(monkeypatch, stats):
+    from agents.market_intelligence import system_review
+    monkeypatch.setattr(db, "get_judge_divergence_stats", AsyncMock(return_value=stats))
+    return _run(system_review._judge_divergence_section(date(2026, 7, 20)))
+
+
+def test_all_one_direction_is_called_systematic_not_instability(monkeypatch):
+    line = _line(monkeypatch, {"n": 18, "n_disagree": 9, "n_stricter": 9, "n_looser": 0,
+                               "secondary_model": JUDGE_DIVERGENCE_MODEL})
+    assert "one-directional" in line and "systematic tier bias" in line
+    assert "stricter" in line
+
+
+def test_mixed_directions_are_reported_as_a_split(monkeypatch):
+    line = _line(monkeypatch, {"n": 18, "n_disagree": 9, "n_stricter": 5, "n_looser": 4,
+                               "secondary_model": JUDGE_DIVERGENCE_MODEL})
+    assert "5 stricter / 4 looser" in line
+    assert "one-directional" not in line, "a genuine split must NOT be labelled systematic"
+
+
+def test_full_agreement_adds_no_direction_clause(monkeypatch):
+    line = _line(monkeypatch, {"n": 18, "n_disagree": 0, "n_stricter": 0, "n_looser": 0,
+                               "secondary_model": JUDGE_DIVERGENCE_MODEL})
+    assert "stricter" not in line and "one-directional" not in line
