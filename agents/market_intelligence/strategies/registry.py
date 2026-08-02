@@ -87,11 +87,40 @@ async def _load_all() -> dict[str, Strategy]:
     return out
 
 
+def assert_no_deprecated_but_enabled(strategies: dict) -> None:
+    """`phase='deprecated'` AND `enabled=true` must be IMPOSSIBLE, not merely currently-false.
+
+    ⚠ Found 2026-08-02: ALL THREE deprecated strategies were sitting enabled — 9M Day 2 (since
+    2026-07-06), Continuation Flag, and Fishhook. The phase gate blocks entries so nothing traded,
+    which is exactly why it went unnoticed for 26 days: the rows kept their jobs registered and
+    their code paths live while looking retired.
+
+    That half-alive state has already cost something. 9M Day 2 stayed in the shared
+    `submit_trade_entry` funnel long enough for #490's submission-time gap guard to come within one
+    review of applying MAGNA53's 10% floor to a strategy whose own bar is 3%.
+
+    RAISES — deliberately loud, like the scheduler's job-partition guard. A retired strategy that
+    silently stays enabled is worse than one that fails the boot: the first is discovered by a
+    defect, the second by a stack trace.
+    """
+    bad = sorted(
+        s.name for s in strategies.values()
+        if (s.phase or "").lower() == "deprecated" and s.enabled
+    )
+    if bad:
+        raise RuntimeError(
+            "mi_strategies: deprecated strategies are still enabled — "
+            f"{', '.join(bad)}. `deprecated` is terminal (ADR 0022 §1): set enabled=false. "
+            "A half-retired row keeps its jobs registered and its code paths live."
+        )
+
+
 async def load_strategies(force: bool = False) -> dict[str, Strategy]:
     """Return all strategies keyed by strategy_id. Cached process-wide."""
     global _CACHE
     if _CACHE is None or force:
         _CACHE = await _load_all()
+        assert_no_deprecated_but_enabled(_CACHE)
     return _CACHE
 
 
