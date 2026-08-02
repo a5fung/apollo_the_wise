@@ -1498,17 +1498,33 @@ async def _emit_l1(name: str, body: dict) -> None:
         text = _format_naked_position_alert(body)
     else:
         text = _format_l1_alert(name, body)
+    _detail = {
+        "level": 1, "key": name,
+        "summary": body.get("summary"),
+        "count": body.get("count"),
+        "drill_sql": body.get("drill_sql"),
+        "code_pointers": body.get("code_pointers"),
+        "offending": (body.get("offending") or [])[:6],
+    }
+    # #140 follow-up (2026-08-02): PERSIST the naked-position classification.
+    # It was computed above and rendered into the Telegram text — then DROPPED, because this
+    # detail dict wrote a fixed key set. So the severity that distinguishes 🚨 REAL-NAKED (real $
+    # unprotected) from ⚠️ DB-DRIFT (broker HAS the stop, only our column is empty) existed for
+    # exactly one message and then evaporated.
+    #
+    # Consequence, found on the 2026-07-27 QBTS alert: every later review is STRUCTURALLY unable
+    # to tell the two apart — the weekly system review flagged it "UNVERIFIED", and answering it
+    # took reconstructing the exit from `mi_live_trades.exits` (reason=stop_hit ⇒ a stop existed
+    # ⇒ DB drift, no exposure). An alert whose severity cannot be recovered afterwards cannot be
+    # triaged afterwards.
+    if name == "naked_position":
+        _detail["real_naked"] = body.get("real_naked") or []
+        _detail["db_drift"] = body.get("db_drift") or []
+        _detail["classified"] = ("real_naked" in body) or ("db_drift" in body)
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L1 {name}",
-        detail=json.dumps({
-            "level": 1, "key": name,
-            "summary": body.get("summary"),
-            "count": body.get("count"),
-            "drill_sql": body.get("drill_sql"),
-            "code_pointers": body.get("code_pointers"),
-            "offending": (body.get("offending") or [])[:6],
-        }),
+        detail=json.dumps(_detail),
     )
     try:
         from agents.market_intelligence.briefing import send_telegram_message
