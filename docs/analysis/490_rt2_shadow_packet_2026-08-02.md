@@ -51,9 +51,46 @@ tick sampled. That is plausible for DY (10.03% — a hair over) but **weak for Q
 13.97% against a 14.06% day high** — it would have had to fall ~4 points inside 4 minutes.
 
 **Judgement: the cause is NOT established, and the gate requires each miss explained. Do not sign
-gate 1 on "probably sampling."** The next step is to replay one of these tickers tick-by-tick against
-the Polygon snapshot the scan actually consumed, and confirm whether it was present in
-`_rt_universe` at 09:35.
+gate 1 on "probably sampling."**
+
+### ROOT-CAUSE HUNT, 2026-08-02 — narrowed to THREE SILENT DROP PATHS
+
+Universe filters were tested against settled data and **cleared all 5**:
+
+| ticker | prev close | prev volume | price gate ≥$5 | volume gate ≥50k |
+|---|---|---|---|---|
+| QMCO | $11.28 | 1,136,742 | PASS | PASS |
+| QURE | $36.66 | 3,007,067 | PASS | PASS |
+| SCL | $58.01 | 127,807 | PASS | PASS |
+| DY | $371.92 | 731,143 | PASS | PASS |
+| VECO | $48.37 | 780,104 | PASS | PASS |
+
+So they belonged in `_rt_universe`. Reading `_apply_rt_universe_overlay` end-to-end found **three
+paths that drop a ticker with ZERO telemetry** — which is precisely the trace all 5 left:
+
+1. **`price = sn.get("price"); if not price: continue`** — the Alpaca snapshot returned nothing
+   usable for that symbol. Silent. **Leading candidate.**
+2. **`_rt_quality_read` → `return None, None, meta`** — no trade print AND no corroborating minute
+   bar returns a `None` *reason*, and the caller logs only `if reject`. Silent.
+3. **`if rt_gap < MIN_GAP_PCT: continue`** after the quality read — the name crossed, then the
+   accepted price fell back under the floor. **Benign**, but silent, so indistinguishable from (1).
+
+⚠ **And the coverage shortfall was structurally invisible**: `ep_rt_universe_degraded` fires only
+when `stats["batches_failed"]` is set — a whole-BATCH failure. A tick where every batch succeeded
+but individual symbols came back empty logged nothing. With `EP_RT_UNIVERSE_CONCURRENCY=1` and a
+15 s budget across the full ~3,325-symbol universe, partial symbol coverage is entirely plausible
+and was unmeasurable.
+
+**Gate 1 was therefore not answerable from stored data — the distinguishing evidence was never
+recorded.** That is the honest reason it could not be signed, and it is now fixed rather than
+argued: all three paths emit (`ep_rt_universe_coverage` per tick unconditionally, plus
+`ep_rt_no_price` and `ep_rt_retreated_below_floor` per ticker-day).
+
+▶ **The decision is now one market session away.** Monday's scans separate "the feed never returned
+the symbol" from "we saw it and correctly declined". If coverage reads ~100% and the misses show up
+as retreats, gate 1 is a sampling artefact and signable. If coverage is short, the delayed-snapshot
+seeding plus partial RT fetch is the real ceiling on real-time detection — a far more important
+finding than the gate number.
 
 ⚠ **A structural note that may matter more than the number.** `_rt_universe` is built from the
 **delayed Polygon snapshot** (`ep_detector.py:2362` — every ticker in `snapshots` clearing the

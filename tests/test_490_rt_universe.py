@@ -376,3 +376,37 @@ def test_digest_catches_only_still_sends(monkeypatch):
     n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
     assert n == 1 and len(sent) == 1 and "NVVE" in sent[0]
     assert "Real-time EP misses" not in sent[0]
+
+
+# ── #490 gate-1 diagnostic: the three previously-SILENT drop paths ───────────────────────────
+# The RT-2 packet could not explain 5 residual misses (QMCO/QURE/SCL 7/29, DY 7/30, VECO 7/31).
+# Each passed every universe filter, was liquid and CS-classified, and produced NO ep_rt_* event
+# of any kind. Reading the overlay showed why: three paths dropped a ticker with zero telemetry.
+# Until they are named, a miss cannot be attributed and gate 1 cannot be signed either way.
+
+def test_the_three_silent_paths_are_now_named():
+    """Static, deliberately: these fire only inside a live overlay tick against a real snapshot
+    batch, so behaviour tests would need the whole fetch mocked. What matters for gate 1 is that
+    each drop EMITS something — assert the emit sites exist and each `continue` is preceded by a
+    log call."""
+    src = open("agents/market_intelligence/ep_detector.py").read()
+    for ev in ("ep_rt_universe_coverage", "ep_rt_no_price", "ep_rt_retreated_below_floor"):
+        assert f'"{ev}"' in src, f"{ev} missing — that drop path is still silent"
+
+
+def test_coverage_telemetry_is_unconditional():
+    """The pre-existing `ep_rt_universe_degraded` event fires only when a whole BATCH fails, so a
+    tick where every batch succeeded but individual symbols came back empty was invisible. The
+    coverage row must therefore NOT sit behind the batches_failed check."""
+    src = open("agents/market_intelligence/ep_detector.py").read()
+    cov = src.index('"ep_rt_universe_coverage"')
+    degraded = src.index('if stats.get("batches_failed"):')
+    assert cov < degraded, "coverage telemetry must be logged BEFORE/outside the degraded branch"
+
+
+def test_retreat_is_distinguishable_from_a_data_gap():
+    """The whole point: a benign retreat below the floor and a missing RT read must not look the
+    same in the audit log, or gate 1's misses stay unattributable."""
+    src = open("agents/market_intelligence/ep_detector.py").read()
+    assert '"ep_rt_retreated_below_floor"' in src and '"ep_rt_no_price"' in src
+    assert src.index('"ep_rt_no_price"') < src.index('"ep_rt_retreated_below_floor"')

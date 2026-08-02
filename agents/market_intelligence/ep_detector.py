@@ -1791,6 +1791,32 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
             logger.warning(f"#490 Pass-0 universe fetch failed — hybrid tick: {e}")
             await maybe_alert_api_failure("alpaca", e, context="ep_rt_universe")
             return candidates, None
+        # #490 gate-1 diagnostic (2026-08-02): per-tick RT snapshot COVERAGE, logged
+        # UNCONDITIONALLY. The degraded event below only fires on a whole-BATCH failure, so a tick
+        # where every batch succeeded but individual symbols came back empty was invisible — and
+        # `price = sn.get("price"); if not price: continue` below drops those symbols with ZERO
+        # telemetry. That silent path is the leading explanation for the 5 unexplained gate-1
+        # misses (QMCO/QURE/SCL 7/29, DY 7/30, VECO 7/31), each of which passed every universe
+        # filter, was liquid and CS-classified, and yet produced no ep_rt_* event of any kind.
+        # Audit-only, one row per tick (~36/day in window). See
+        # docs/analysis/490_rt2_shadow_packet_2026-08-02.md.
+        try:
+            _uni_n, _snap_n = len(rt_universe), len(snaps or {})
+            _missing = [t for t, _ in rt_universe if t not in (snaps or {})]
+            await log_audit_event(
+                "ep_rt_universe_coverage",
+                f"RT snapshot coverage {_snap_n}/{_uni_n} "
+                f"({100.0 * _snap_n / _uni_n if _uni_n else 0:.1f}%), "
+                f"{len(_missing)} symbol(s) absent @ {now_et:%H:%M} ET",
+                json.dumps({"universe": _uni_n, "returned": _snap_n,
+                            "missing_count": len(_missing),
+                            "missing_sample": sorted(_missing)[:40],
+                            "batches_failed": stats.get("batches_failed"),
+                            "tick_et": now_et.strftime("%H:%M"),
+                            "authoritative": authoritative}))
+        except Exception as _ce:   # loud-ok: diagnostics must never break the scan
+            logger.warning(f"#490 coverage telemetry failed (non-fatal): {_ce}")
+
         if stats.get("batches_failed"):
             # §5.3 rung 2 — those symbols degrade per rung 1; the rest stay RT.
             await log_audit_event(
@@ -1815,6 +1841,13 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                 continue   # rung 1: per-ticker symbology miss → hybrid semantics (fail-safe)
             price = sn.get("price")
             if not price:
+                # #490: the snapshot came back for this symbol but carries no price. Distinct from
+                # "absent from the response" (counted above) — both were previously silent.
+                if _audit_dedupe_check(tkr, adate, "ep_rt_no_price"):
+                    await log_audit_event(
+                        "ep_rt_no_price",
+                        f"{tkr} in RT universe but snapshot carries no price @ {now_et:%H:%M} ET",
+                        json.dumps({"ticker": tkr, "tick_et": now_et.strftime("%H:%M")}))
                 continue
             raw_gap = (price - pc) / pc * 100
             if raw_gap < MIN_GAP_PCT:
@@ -1865,7 +1898,19 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                 continue
             rt_gap = (rt_price - pc) / pc * 100
             if rt_gap < MIN_GAP_PCT:
-                continue   # the accepted (band/bar-fallback) price fell back below the floor
+                # #490: BENIGN (the name crossed, then the accepted price fell back under the
+                # floor) — but previously silent, so it was indistinguishable from a data gap.
+                # Naming it is what lets gate 1's misses be attributed rather than guessed at.
+                if _audit_dedupe_check(tkr, adate, "ep_rt_retreated_below_floor"):
+                    await log_audit_event(
+                        "ep_rt_retreated_below_floor",
+                        f"{tkr} raw {raw_gap:.1f}% but accepted price reads {rt_gap:.1f}% "
+                        f"(< {MIN_GAP_PCT:.0f}% floor) @ {now_et:%H:%M} ET — no catch",
+                        json.dumps({"ticker": tkr, "raw_gap": round(raw_gap, 2),
+                                    "accepted_gap": round(rt_gap, 2),
+                                    "basis": meta.get("basis"),
+                                    "tick_et": now_et.strftime("%H:%M")}))
+                continue
             delayed_gap = _delayed_gap_for(snapshots.get(tkr), pc)
             # The shadow-proof event — fires in BOTH modes (the RT-2 proof-join and the RT-4
             # regression monitor read it). AUDIT-ONLY + morning digest (operator fork 4, 7/21
