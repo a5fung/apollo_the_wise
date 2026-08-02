@@ -3038,6 +3038,22 @@ async def _post_nightly_audit_job():
         logger.error(f"Null-rate sweep failed: {e}", exc_info=True)
         await notify_job_failure("null_rate_sweep", str(e))
 
+    # Row-count DRIFT sweep (#340): a hand-pinned `expected_min_rows` rots silently — when the real
+    # distribution steps down legitimately the job sits `empty_result` forever and the red light
+    # stops meaning anything (#286: nightly_data_pull red EVERY market day for 2+ weeks). Flags a
+    # >25% drop vs the trailing median AND pins that have gone stale. Own try/except — a health
+    # guard that dies silently is the failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_row_count_drift_sweep
+        drift = await run_row_count_drift_sweep()
+        logger.info(
+            f"Row-count drift sweep: {drift['jobs_scanned']} jobs, "
+            f"{len(drift['drops'])} drop(s), {len(drift['stale_floors'])} stale floor(s), "
+            f"{len(drift['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Row-count drift sweep failed: {e}", exc_info=True)
+        await notify_job_failure("row_count_drift_sweep", str(e))
+
     # Job-liveness sweep (#370 increment 3): a scheduled job that RAN successfully but produced
     # NOTHING (theme synthesis truncating to 0 cohorts; theme-shadow 0 rows #173) — reads each output
     # table's real new-row count, NOT the lying self-report. Own try/except; internally robust.

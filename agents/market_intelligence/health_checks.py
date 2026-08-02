@@ -58,6 +58,7 @@ DEFERRED next increment: (5) the specific hard-check registry (backups etc., CHA
 from __future__ import annotations
 
 import logging
+import statistics
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -1095,3 +1096,147 @@ async def _send_recovery_note(check_kind: str, target_key: str) -> None:
         await send_telegram_message(body)
     except Exception as e:
         logger.warning("recovery_note: telegram send failed for %s: %s", target_key, e)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# ROW-COUNT DRIFT sweep (#340) — the delta-check that replaces trusting a FROZEN floor
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+#
+# `audit_run(job_id, expected_min_rows=N)` compares each run against a HAND-PINNED N. That
+# constant rots, and its rot is silent in the worst direction: when the real distribution steps
+# DOWN for a legitimate reason, the job sits `empty_result` forever and the red light stops
+# meaning anything. Twice now:
+#   • #263 (2026-06-10) 5000 → 3500 after a universe change.
+#   • #286 (2026-06-15) added a liquidity floor: nightly rows 3,888-4,008 → 2,467-2,530. The
+#     stale 3500 pin left `nightly_data_pull` empty_result EVERY market day for 2+ WEEKS — a
+#     permanently-red signal nobody read — until it was recalibrated 3500 → 2200 on 7/02.
+#
+# Operator's design (#340): alert on a >X% night-over-night DROP vs the TRAILING MEDIAN rather
+# than vs a frozen baseline — catches a genuine collapse AND auto-adapts to an intended step
+# without the deadlock, plus a one-time transition note so an intended step-down is NOTED once
+# rather than silent.
+#
+# TWO signals, because they catch opposite failures:
+#   A. DROP        — latest run is >DROP_PCT below the trailing median → the data broke.
+#   B. STALE FLOOR — the job keeps tripping `empty_result` while its row counts are STABLE →
+#                    the PIN is wrong, not the data. This is the #286 class specifically, and
+#                    signal A alone would never catch it: after the step, the new level becomes
+#                    the median and the drop check goes quiet — correctly — while the frozen pin
+#                    stays red forever. B is what turns 2+ weeks of unread red into one alert.
+#
+# ADDITIVE, deliberately. `expected_min_rows` stays as the absolute-catastrophe floor (it catches
+# a 0-row run on day one, before any median exists). Signal A is the sensitive relative check;
+# together they cover sudden collapse, slow rot, and miscalibration. Removing the pin in favour
+# of the median alone would lose the cold-start guarantee.
+#
+# Calibration against the real incident: the #286 step was −36.5% (3,888 → 2,467); ordinary
+# wobble INSIDE the post-step band (2,467-2,530) is ~2.5%. DROP_PCT = 25% sits well clear of the
+# noise and well under the real step. `_MIN_HISTORY` keeps a thin history from alerting at all.
+
+_ROWCOUNT_DROP_PCT = 0.25      # >25% below the trailing median → flag
+_ROWCOUNT_MIN_HISTORY = 5      # need this many prior runs before the median means anything
+_ROWCOUNT_WINDOW = 10          # trailing runs forming the median
+_STALE_FLOOR_MIN_RUNS = 3      # consecutive empty_results before we suspect the PIN
+_STALE_FLOOR_STABILITY = 0.10  # ...and only if those runs' spread is within 10% of their median
+
+
+async def run_row_count_drift_sweep(conn=None) -> dict[str, Any]:
+    """#340 — flag row-count DROPS against a trailing median, and PINS that have gone stale.
+
+    Returns `{"jobs_scanned": n, "drops": [...], "stale_floors": [...], "errors": [...]}`.
+    Never raises: a health guard that dies silently is the failure it exists to prevent.
+    """
+    out: dict[str, Any] = {"jobs_scanned": 0, "drops": [], "stale_floors": [], "errors": []}
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            rows = await c.fetch(
+                """
+                SELECT job_id, started_at, status, rows_written, expected_min_rows
+                FROM mi_job_runs
+                WHERE rows_written IS NOT NULL
+                  AND started_at >= NOW() - INTERVAL '45 days'
+                ORDER BY job_id, started_at DESC
+                """
+            )
+    except Exception as e:
+        logger.error("row_count_drift: query failed: %s", e, exc_info=True)
+        out["errors"].append(f"query: {e}")
+        return out
+
+    by_job: dict[str, list] = {}
+    for r in rows:
+        by_job.setdefault(r["job_id"], []).append(r)
+
+    for job_id, runs in by_job.items():
+        try:
+            out["jobs_scanned"] += 1
+            counts = [int(r["rows_written"]) for r in runs]      # newest first
+            latest, history = counts[0], counts[1:1 + _ROWCOUNT_WINDOW]
+            if len(history) < _ROWCOUNT_MIN_HISTORY:
+                continue                                          # thin history → cannot judge
+
+            median = statistics.median(history)
+            if median > 0 and latest < median * (1 - _ROWCOUNT_DROP_PCT):
+                out["drops"].append({
+                    "job_id": job_id, "latest": latest, "median": median,
+                    "drop_pct": round((1 - latest / median) * 100, 1),
+                    "at": runs[0]["started_at"],
+                })
+
+            # Signal B — the pin, not the data. Consecutive empty_results whose row counts are
+            # TIGHT means the job is producing a stable new normal that the pin no longer admits.
+            leading = 0
+            for r in runs:
+                if r["status"] != "empty_result":
+                    break
+                leading += 1
+            if leading >= _STALE_FLOOR_MIN_RUNS:
+                s_counts = counts[:leading]
+                s_med = statistics.median(s_counts)
+                spread = (max(s_counts) - min(s_counts)) / s_med if s_med else 1.0
+                if spread <= _STALE_FLOOR_STABILITY:
+                    out["stale_floors"].append({
+                        "job_id": job_id, "consecutive": leading,
+                        "stable_at": int(s_med),
+                        "expected_min_rows": runs[0]["expected_min_rows"],
+                        "spread_pct": round(spread * 100, 1),
+                    })
+        except Exception as e:                       # one bad job must not kill the sweep
+            logger.warning("row_count_drift: job %s failed: %s", job_id, e)
+            out["errors"].append(f"{job_id}: {e}")
+
+    await _emit_row_count_drift(out)
+    return out
+
+
+async def _emit_row_count_drift(out: dict[str, Any]) -> None:
+    """Audit row always; ONE grouped Telegram only when there is something to act on."""
+    try:
+        import json
+        await log_audit_event(
+            "row_count_drift_sweep",
+            f"{out['jobs_scanned']} jobs · {len(out['drops'])} drop(s) · "
+            f"{len(out['stale_floors'])} stale floor(s) · {len(out['errors'])} error(s)",
+            json.dumps(out, default=str),
+        )
+    except Exception as e:
+        logger.warning("row_count_drift: audit log failed: %s", e)
+
+    if not out["drops"] and not out["stale_floors"]:
+        return                                    # Telegram is reserved for real failures
+    lines = ["*Row-count drift*", "```"]
+    for d in out["drops"]:
+        lines.append(f"DROP  {d['job_id']}: {d['latest']} vs median {int(d['median'])} "
+                     f"(-{d['drop_pct']}%)")
+    for s in out["stale_floors"]:
+        lines.append(f"PIN?  {s['job_id']}: {s['consecutive']} straight empty_result at a stable "
+                     f"~{s['stable_at']} rows (pin {s['expected_min_rows']}) — recalibrate")
+    lines.append("```")
+    if out["stale_floors"]:
+        lines.append("_PIN? = the floor looks stale, not the data — this is the #286 class._")
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.warning("row_count_drift: telegram send failed: %s", e)
