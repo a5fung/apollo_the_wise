@@ -99,6 +99,67 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-02 — #490: real-time admission requires the level to SUSTAIN 3 bars (BUILT OFF, operator-signed)
+
+**Trigger**: operator 2026-08-02 — *"target should be stable, in fact just a single 1min bar touching
+>10% may be too lose especially for premarket, maybe we should see that move sustain with a few
+bars."* Prompted by two cases he read himself: **MYGN 07-30** (*"I don't see >10% except for on
+specific 1min bar and it crashed back down immediately… next day it dropped 46%"*) and **QURE 07-29**
+(touched 12.3% inside the 09:30 bar, closed it at 9.7%, decayed all morning).
+
+**The argument is a priori, NOT the backtest.** A level that holds three consecutive minutes is a
+LEVEL; a level touched once and gone is a PRINT. This is the reasoning already embedded in the Q3
+print-corroboration guard, applied one level up — Q3 asks *is this print real*, this asks *is this
+LEVEL real*. ⚠ **The operator named the central risk himself — *"this is selecting criteria based on
+hindsight of wins"*** — so the outcome table below is used ONLY as a safety check that nothing
+valuable is destroyed, never to select the rule.
+
+**Evidence** (r1: N≥10; we have 97) — `scripts/probes/_490_sustain_rule.py` over all 97
+`ep_rt_universe_catch` events:
+
+| rule | admits | med open→close | med open→high | med open→low | win ≥+5% |
+|---|---|---|---|---|---|
+| 1 bar (today) | 81 | +3.9% | +9.8% | −1.7% | 41% |
+| 2 consecutive | 67 | +4.0% | +10.0% | −1.7% | 45% |
+| **3 consecutive (SIGNED)** | **46** | **+5.0%** | **+10.4%** | **−1.2%** | **50%** |
+| 3 of last 5 | 50 | +4.1% | +10.0% | −1.4% | 48% |
+| 7 of last 10 | 10 | +0.2% | +5.9% | −2.8% | 20% |
+
+Two signs it is not curve-fit: **it reverses** (7-of-10 is worse than doing nothing — a fitted curve
+would be monotone), and **risk improves with return** (median open→low −1.7% → −1.2%), the opposite
+of what fitting to wins usually buys. **M-of-N was tested as the operator asked and is NOT used** —
+consecutive beats it at equal strictness.
+
+⚠ **I recommended N=2; the operator signed N=3.** Recorded as his call. My argument was overfit
+exposure — 3 is the argmax of the table and drops 10 good names incl. RACC (+31%) vs 3 for N=2.
+
+**Anticipated effect**: roughly 57% of today's real-time catches survive. **This changes DETECTION
+only** — operator ruling the same day, *"once open we are trading 1-min bars as per today"*: the
+09:31 ORB entry mechanics are untouched.
+
+**Implementation**: `_sustain_ok` (pure predicate) + a gate at the would-be-catch in
+`_apply_rt_universe_overlay`, evaluated BEFORE the catch is logged (test-pinned — after would make
+it cosmetic). Bars come from a new `collector.get_alpaca_minute_closes`, batched, memoised per tick,
+on the tiny would-be-catch set (~0-3 symbols/tick). **BACKWARD-looking only** — a forward wait would
+push detection past the 09:45 ORB cutoff and recreate the miss #490 exists to remove.
+
+⚠ **FAILS OPEN on an undecidable verdict, and this is the load-bearing property.** No bars, too few
+bars, a fetch error, or the toggle off ⇒ today's behaviour. Pre-market bars are genuinely sparse
+(SCL had no 09:30 bar at all); converting "no data" into "reject" would silently become "reject
+everything pre-market" — a far bigger change than the one signed. **Mutation-tested**: making sparse
+bars reject fails 2 tests. Both rejects and undecidables are logged BY NAME
+(`ep_rt_sustain_reject` / `ep_rt_sustain_undecidable`) so "the rule is on" cannot look identical to
+"the rule never had data" — the exact instrumentation trap that made gate 1 unanswerable.
+
+**Reversion-flag**: NEW. Reversion = `ep_rt_sustain_enabled` off (~60s, no deploy).
+
+**Status**: **BUILT, SHIPPED OFF** (`ep_rt_sustain_enabled` default false ⇒ byte-identical to today).
+15 tests. The live flip is the operator's and is NOT taken.
+
+**Watch for** (pre-committed): first 30 live catches vs the replay's prediction — materially worse
+means the replay was fitted, revert; a rejected name running ≥+20% once is a review, twice a revert.
+
+
 ### 2026-08-01 — #490: MIN_GAP_PCT now enforced at SUBMISSION, not only at the scan tick (BUG FIX; built OFF)
 
 **Trigger — operator ruling, 2026-08-01**: *"the blocking live path is in fact correct given the

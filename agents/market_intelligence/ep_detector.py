@@ -121,6 +121,15 @@ EP_RT_UNIVERSE_CONCURRENCY = int(os.environ.get("EP_RT_UNIVERSE_CONCURRENCY", "1
 EP_RT_UNIVERSE_TIMEOUT_S = float(os.environ.get("EP_RT_UNIVERSE_TIMEOUT_S", "15"))
 # §3 tick-quality guard thresholds (Q1-Q4) — env-tunable, rejections LOUD
 # (`ep_rt_tick_quality_reject` + reason enum; the C1 silent-clamp lesson mechanized).
+# #490 SUSTAIN rule (operator-signed 2026-08-02, N=3). A price level that holds across N
+# consecutive minutes is a LEVEL; a level touched in one minute and gone is a PRINT. Same reasoning
+# as the Q3 print-corroboration guard, one level up: Q3 asks "is this print real", this asks "is this
+# LEVEL real". Evidence + the overfitting caveat the operator raised himself:
+# docs/analysis/490_change_proposal_sustain_rule_2026-08-02.md.
+# BACKWARD-looking only — a forward wait would push detection past the 09:45 ORB cutoff and recreate
+# the very miss #490 exists to remove.
+EP_RT_SUSTAIN_BARS = int(os.environ.get("EP_RT_SUSTAIN_BARS", "3"))
+EP_RT_SUSTAIN_LOOKBACK_MIN = int(os.environ.get("EP_RT_SUSTAIN_LOOKBACK_MIN", "15"))
 EP_RT_QBAND_PCT = float(os.environ.get("EP_RT_QBAND_PCT", "0.5"))                       # Q1 NBBO band width
 EP_RT_QUOTE_MAX_AGE_PREOPEN_S = float(os.environ.get("EP_RT_QUOTE_MAX_AGE_PREOPEN_S", "300"))  # Q2 pre-open
 EP_RT_QUOTE_MAX_AGE_RTH_S = float(os.environ.get("EP_RT_QUOTE_MAX_AGE_RTH_S", "30"))    # Q2 RTH
@@ -1626,6 +1635,30 @@ def _q3_bar_corroborated(sn: dict, prev_close: float, now_et: datetime) -> bool:
     return (mb_close - prev_close) / prev_close * 100 >= MIN_GAP_PCT - 0.5
 
 
+def _sustain_ok(series: "list | None", prev_close: float, bars: int) -> "tuple[bool | None, dict]":
+    """#490 — did the >=MIN_GAP_PCT level HOLD for the last `bars` consecutive minutes?
+
+    `series` = [(HH:MM, close), ...] oldest->newest. Returns (verdict, detail):
+      True  — the last `bars` real bars all closed >= MIN_GAP_PCT
+      False — they did not
+      None  — UNDECIDABLE (no series, or fewer than `bars` real bars available)
+
+    ⚠ `None` is not a rejection and callers must not treat it as one. Pre-market bars are genuinely
+    sparse (SCL had no 09:30 bar at all), and a rule that silently converted "no data" into "reject"
+    would become "reject everything pre-market" — a far bigger change than the one signed.
+    """
+    if bars <= 1:
+        return None, {"reason": "disabled"}
+    if not series:
+        return None, {"reason": "no_bars"}
+    window = series[-bars:]
+    if len(window) < bars:
+        return None, {"reason": "too_few_bars", "have": len(window), "need": bars}
+    gaps = [round((c - prev_close) / prev_close * 100, 2) for _hhmm, c in window]
+    return (all(g >= MIN_GAP_PCT for g in gaps),
+            {"gaps": gaps, "minutes": [hhmm for hhmm, _c in window]})
+
+
 def _rt_quality_read(sn: dict, prev_close: float, now_et: datetime,
                      rt_only: bool) -> "tuple[float | None, str | None, dict]":
     """§3 tick-quality guards Q1-Q4 on one rt snapshot. Returns (price, reject_reason, meta).
@@ -1777,6 +1810,11 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
         from agents.market_intelligence import collector
         authoritative = await get_runtime_toggle(
             "ep_rt_universe_authoritative", "EP_RT_UNIVERSE_AUTHORITATIVE", default=False)
+        # #490 sustain rule — own toggle so it reverts in ~60s with no deploy, independent of the
+        # authority flip. Default OFF = byte-identical to today.
+        _sustain_on = await get_runtime_toggle(
+            "ep_rt_sustain_enabled", "EP_RT_SUSTAIN_ENABLED", default=False)
+        _sustain_bars: dict = {}   # per-TICK memo: one bar request per ticker, not per check
         stats: dict = {}
         try:
             snaps = await asyncio.wait_for(
@@ -1911,6 +1949,47 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                                     "basis": meta.get("basis"),
                                     "tick_et": now_et.strftime("%H:%M")}))
                 continue
+            # ── #490 SUSTAIN gate (operator-signed 2026-08-02, N=3) ──────────────────────
+            # Runs HERE, at the would-be-catch, because the set is tiny (~0-3 symbols a tick) so a
+            # short batched bar request is cheap — and because deciding admission anywhere else
+            # would split the decision from its evidence. `_sustain_bars` memoises per TICK, so a
+            # second catch in the same tick costs nothing.
+            # FAIL-OPEN on an undecidable verdict: no bars / too few bars => today's behaviour.
+            # That is the operator's own pre-market case; converting "no data" into "reject" would
+            # silently become "reject everything pre-market".
+            if _sustain_on and EP_RT_SUSTAIN_BARS > 1:
+                if tkr not in _sustain_bars:
+                    try:
+                        from agents.market_intelligence.collector import get_alpaca_minute_closes
+                        _fetched = await get_alpaca_minute_closes(
+                            [tkr], now_et, lookback_min=EP_RT_SUSTAIN_LOOKBACK_MIN)
+                        _sustain_bars[tkr] = _fetched.get(tkr)
+                    except Exception as _se:   # loud-ok: rule unavailable -> fall through, never block
+                        logger.warning(f"#490 sustain bars fetch failed for {tkr}: {_se}")
+                        _sustain_bars[tkr] = None
+                _held, _sd = _sustain_ok(_sustain_bars.get(tkr), pc, EP_RT_SUSTAIN_BARS)
+                if _held is False:
+                    # REJECTED. Logged by name so dropped candidates stay auditable — a rule whose
+                    # rejects are invisible cannot be judged later (pre-committed watch item).
+                    if _audit_dedupe_check(tkr, adate, "ep_rt_sustain_reject"):
+                        await log_audit_event(
+                            "ep_rt_sustain_reject",
+                            f"{tkr} rt {rt_gap:.1f}% but the level did NOT hold "
+                            f"{EP_RT_SUSTAIN_BARS} consecutive bars @ {now_et:%H:%M} ET — no catch",
+                            json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
+                                        "bars_required": EP_RT_SUSTAIN_BARS,
+                                        "tick_et": now_et.strftime("%H:%M"), **_sd}))
+                    continue
+                if _held is None and _audit_dedupe_check(tkr, adate, "ep_rt_sustain_undecidable"):
+                    # Fail-open, but NAMED — otherwise "the rule is on" and "the rule never had
+                    # data" look identical in the log, which is the instrumentation trap that made
+                    # gate 1 unanswerable in the first place.
+                    await log_audit_event(
+                        "ep_rt_sustain_undecidable",
+                        f"{tkr} sustain rule UNAVAILABLE ({_sd.get('reason')}) @ {now_et:%H:%M} ET "
+                        f"— admitted on today's behaviour",
+                        json.dumps({"ticker": tkr, "rt_gap": round(rt_gap, 2),
+                                    "tick_et": now_et.strftime("%H:%M"), **_sd}))
             delayed_gap = _delayed_gap_for(snapshots.get(tkr), pc)
             # The shadow-proof event — fires in BOTH modes (the RT-2 proof-join and the RT-4
             # regression monitor read it). AUDIT-ONLY + morning digest (operator fork 4, 7/21

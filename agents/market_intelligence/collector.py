@@ -392,6 +392,70 @@ async def get_alpaca_minute_cum_volumes(tickers: list[str], now_et: datetime,
     return out
 
 
+async def get_alpaca_minute_closes(tickers: list[str], now_et: "datetime",
+                                   lookback_min: int = 15,
+                                   timeout_s: float = 6.0) -> dict[str, list]:
+    """#490 sustain rule — recent per-minute CLOSES for a small ticker set, newest last.
+
+    Returns `{ticker: [(HH:MM, close), ...]}`, oldest→newest, missing symbols omitted.
+
+    Deliberately separate from `get_alpaca_minute_cum_volumes`, which fetches the SAME bars but
+    from 04:00 ET and sums them into two cumulative totals — it discards the per-bar closes and
+    runs at a different point in the scan. This one asks for a short window (`lookback_min`) on the
+    tiny would-be-catch set (typically 0-3 symbols a tick), so it is a small request rather than a
+    reuse of a large one.
+
+    NEVER raises; `{}` on any failure — the caller must then treat the sustain rule as unavailable
+    and fall through to today's behaviour rather than rejecting on missing data.
+    """
+    if not tickers:
+        return {}
+    try:
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+        from alpaca.data.enums import DataFeed
+    except ImportError as e:
+        logger.warning(f"alpaca-py bars import failed: {e}")
+        return {}
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret:
+        logger.warning("Alpaca credentials not set; skipping RT minute closes")
+        return {}
+    feed = DataFeed.SIP if os.environ.get("ALPACA_DATA_FEED", "iex").lower() == "sip" else DataFeed.IEX
+    client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
+    loop = asyncio.get_event_loop()
+    start = now_et - timedelta(minutes=lookback_min)
+    try:
+        req = StockBarsRequest(symbol_or_symbols=list(tickers), timeframe=TimeFrame.Minute,
+                               start=start, feed=feed)
+        bars = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda r=req: client.get_stock_bars(r)),
+            timeout=timeout_s,
+        )
+    except Exception as e:  # loud-ok: sustain rule degrades to unavailable, never blocks the scan
+        logger.warning(f"Alpaca minute-close batch failed ({len(tickers)} syms): {e}")
+        return {}
+    out: dict[str, list] = {}
+    data = getattr(bars, "data", None) or {}
+    for sym, blist in data.items():
+        series = []
+        try:
+            for b in blist or []:
+                ts = getattr(b, "timestamp", None)
+                close = getattr(b, "close", None)
+                if ts is None or close is None:
+                    continue
+                series.append((ts.astimezone(_ET).strftime("%H:%M"), float(close)))
+            series.sort()
+            if series:
+                out[sym] = series
+        except Exception:  # loud-ok: one malformed symbol omitted -> rule unavailable for it
+            continue
+    return out
+
+
 async def get_splits_today(execution_date: str) -> "set[str] | None":
     """#490 §2.2 corporate-action (split) guard — the one Polygon reference call per morning.
     Returns the set of tickers with a split EFFECTIVE on `execution_date` (YYYY-MM-DD), or
