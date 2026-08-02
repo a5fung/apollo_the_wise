@@ -20,7 +20,7 @@ FILTER_MCAP_TOO_SMALL        = "filter:mcap_too_small"
 FILTER_PM_RVOL_TOO_LOW       = "filter:pm_rvol_too_low"
 FILTER_SESSION_RVOL_TOO_LOW  = "filter:session_rvol_too_low"
 
-# ── setup: order-prep rejections (prepare_orb_order / prepare_9m_day2_orb_order) ─
+# ── setup: order-prep rejections (prepare_orb_order / prepare_prior_day_low_orb_order) ─
 SETUP_STOP_TOO_WIDE        = "setup:stop_too_wide"
 SETUP_ZERO_RANGE           = "setup:zero_range"
 SETUP_SIZE_TOO_SMALL       = "setup:size_too_small"

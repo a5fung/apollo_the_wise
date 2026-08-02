@@ -12,7 +12,7 @@ Covers:
                   NOT alert; missing / stale / unrecognized-label floors to
                   0.25x AND fires the fail-loud Telegram+audit alert, deduped
                   once per ET day per account_mode.
-  - prepare_orb_order (MAGNA53) and prepare_9m_day2_orb_order (9M Day2) both
+  - prepare_orb_order (MAGNA53) and prepare_prior_day_low_orb_order (9M Day2) both
     route through the shared resolver (pinned so they can't drift apart).
   - flag_detector.prepare_htf_breakout_order (HTF shadow, site #3): flag OFF
     byte-identical; flag ON folds via the pure lookup only (no alerting — the
@@ -332,14 +332,14 @@ async def test_prepare_orb_order_threads_caller_supplied_today_not_a_fresh_clock
 
 
 @pytest.mark.asyncio
-async def test_prepare_9m_day2_orb_order_routes_through_shared_resolver():
+async def test_prepare_prior_day_low_orb_order_routes_through_shared_resolver():
     fake_resolver = AsyncMock(return_value=0.0075)
     with patch.object(om, "_resolve_regime_risk_pct", fake_resolver), \
          patch.object(om.alpaca, "get_account", AsyncMock(return_value={"equity": 4835.0})):
         sugar_baby = {"ticker": "TEST", "low_price": 19.0, "alert_date": _MON}
         orb_bar = {"high": 20.0, "low": 19.0}
         regime_record = {"regime": "Choppy"}
-        spec, reason = await om.prepare_9m_day2_orb_order(
+        spec, reason = await om.prepare_prior_day_low_orb_order(
             sugar_baby, orb_bar, regime_record=regime_record, account_mode="paper",
         )
     assert reason is None
@@ -354,14 +354,14 @@ async def test_prepare_9m_day2_orb_order_routes_through_shared_resolver():
 
 
 @pytest.mark.asyncio
-async def test_prepare_9m_day2_orb_order_threads_caller_supplied_today():
+async def test_prepare_prior_day_low_orb_order_threads_caller_supplied_today():
     fake_resolver = AsyncMock(return_value=0.01)
     caller_today = date(2026, 6, 15)
     with patch.object(om, "_resolve_regime_risk_pct", fake_resolver), \
          patch.object(om.alpaca, "get_account", AsyncMock(return_value={"equity": 4835.0})):
         sugar_baby = {"ticker": "TEST", "low_price": 19.0, "alert_date": _MON}
         orb_bar = {"high": 20.0, "low": 19.0}
-        await om.prepare_9m_day2_orb_order(
+        await om.prepare_prior_day_low_orb_order(
             sugar_baby, orb_bar, regime_record={"regime": "Bull"},
             account_mode="paper", today=caller_today,
         )

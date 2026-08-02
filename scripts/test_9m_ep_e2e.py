@@ -6,7 +6,7 @@ Verifies:
 2. insert_9m_ep_alert / get_today_9m_ep_alerts round-trip
 3. insert_9m_sugar_baby / get_pending_9m_sugar_babies / update_9m_sugar_baby_status
 4. get_eod_9m_sugar_babies filter logic (volume/price/green/range criteria)
-5. prepare_9m_day2_orb_order order spec calculation
+5. prepare_prior_day_low_orb_order order spec calculation
 6. run_9m_eod_sweep integration (reads from mi_daily_closes test row)
 7. Agent routing keyword coverage
 8. outcome_tracker._compute_9m_ep_outcomes (import only — no DB side effects without live data)
@@ -218,7 +218,7 @@ async def test_eod_filter_logic(conn) -> bool:
 
 
 def test_order_spec_logic() -> bool:
-    """Verify prepare_9m_day2_orb_order calculation logic (pure math, no DB)."""
+    """Verify prepare_prior_day_low_orb_order calculation logic (pure math, no DB)."""
     import math
 
     # Simulate the core calculation
@@ -290,7 +290,7 @@ def test_imports() -> bool:
         ("agents.market_intelligence.db", "get_9m_live_trades"),
         ("agents.market_intelligence.db", "get_9m_ep_history"),
         ("agents.market_intelligence.outcome_tracker", "_compute_9m_ep_outcomes"),
-        ("agents.market_intelligence.broker.order_manager", "prepare_9m_day2_orb_order"),
+        ("agents.market_intelligence.broker.order_manager", "prepare_prior_day_low_orb_order"),
         ("agents.market_intelligence.broker.live_tracker", "submit_9m_day2_trade"),
     ]
     for mod_name, attr in modules:

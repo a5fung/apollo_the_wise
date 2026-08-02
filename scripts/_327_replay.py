@@ -11,7 +11,7 @@ Two arms on every 9M name (full-universe expectancy — a no-fill / never-consol
 scores 0R, never silently dropped; advisor 2026-06-18):
   ARM 1  DAY-2 ORB     entry day = alert_date+1; entry = break of the Day-2 opening-range
                        high; STOP = prior day's low (the 9M breakout-day low — the live
-                       prepare_9m_day2_orb_order rule, NOT the ORB low). Skip if >15% wide.
+                       prepare_prior_day_low_orb_order rule, NOT the ORB low). Skip if >15% wide.
   ARM 2  CONSOLIDATION the 9M day is the runup anchor; wait for a coil (tight/quiet base),
                        then take the intraday FIRST5-break on the first expansion day
                        (entry = first-5-min OR high, STOP = first-5-min OR low — tight).

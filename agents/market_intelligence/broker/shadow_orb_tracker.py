@@ -24,7 +24,7 @@ from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.entry_pipeline import check_fade_guard
 from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
 from agents.market_intelligence.broker.order_manager import (
-    prepare_9m_day2_orb_order,
+    prepare_prior_day_low_orb_order,
     prepare_orb_order,
 )
 from agents.market_intelligence.broker.skip_reasons import (
@@ -174,7 +174,7 @@ async def _process_candidate(
             alert_ctx, synthetic_orb_bar, atr_14 or 0, regime_record,
         )
     else:
-        spec, reject = await prepare_9m_day2_orb_order(
+        spec, reject = await prepare_prior_day_low_orb_order(
             alert_ctx, synthetic_orb_bar, regime_record,
         )
 

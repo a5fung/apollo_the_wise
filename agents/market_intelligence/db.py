@@ -2613,7 +2613,7 @@ async def initialize_schema() -> None:
             -- position_size_multiplier: 1.0 = full Apollo sizing; 0.5 = half-size
             -- (e.g. for newly-promoted 9M Day 2 ramp). Applied in entry_pipeline
             -- post-spec-builder so it covers both prepare_orb_order and
-            -- prepare_9m_day2_orb_order paths uniformly.
+            -- prepare_prior_day_low_orb_order paths uniformly.
             -- max_concurrent_positions: NULL = share global MAX_CONCURRENT_LIVE_POSITIONS;
             -- integer = per-strategy slot cap on top of the global envelope.
             ALTER TABLE mi_strategies

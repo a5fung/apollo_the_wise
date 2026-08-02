@@ -195,7 +195,7 @@ async def _resolve_regime_risk_pct(
     base_pct: float = RISK_PCT,
 ) -> float:
     """#456 — the SINGLE regime-keyed risk_pct resolver. Both real-money
-    sizing sites (`prepare_orb_order` / MAGNA53, `prepare_9m_day2_orb_order` /
+    sizing sites (`prepare_orb_order` / MAGNA53, `prepare_prior_day_low_orb_order` /
     9M Day2) call this — no scattered copies of the fold, per this repo's
     documented history of hand-synced duplicates drifting apart.
 
@@ -3761,7 +3761,7 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-async def prepare_9m_day2_orb_order(
+async def prepare_prior_day_low_orb_order(
     sugar_baby: dict,
     orb_bar: dict,
     regime_record: dict | None = None,
@@ -3769,10 +3769,28 @@ async def prepare_9m_day2_orb_order(
     today: date | None = None,
 ) -> tuple[dict | None, str | None]:
     """
-    Compute entry/stop/shares for a 9M sugar baby Day 2 ORB entry.
+    ORB entry with a PRIOR-DAY-LOW stop — a geometry, not a strategy.
 
-    Key difference from prepare_orb_order(): stop = prior day's low (the 9M breakout
-    day low), not today's ORB low. This anchors risk to the institutional "wall."
+    ⚠ RENAMED 2026-08-02 from `prepare_9m_day2_orb_order`. Nothing here is 9M-specific;
+    it was named after its first caller, which is why retiring the (dead) 9M Day 2
+    strategy appeared to be blocked on it. The 5-min ORB shadow lane runs this geometry
+    as a #482 bracket variant (105 acted rows) and must keep doing so.
+
+    ⚠ It is NOT `prepare_orb_order` with one argument changed — a line-by-line diff on
+    2026-08-02 found EIGHT divergences, not the one the old docstring claimed:
+      1. stop source          — prior-day low vs today's ORB low
+      2. stop-width policy    — stop distance > 15% vs ORB range > 1.5x ATR
+      3. risk floor           — 2% minimum risk_per_share here; none there
+      4. validity check       — rejects prior_day_low >= orb_high (impossible for ORB)
+      5. atr_14               — not taken here; required there
+      6. risk_dollars         — the ACTUAL (shares x risk) here; the BUDGET there
+      7. skip reason          — size_too_small here; price_exceeds_cap there
+      8. spec payload         — trade_type/sugar_baby_date vs score/catalyst/atr
+    These are two different RISK POLICIES. A merge would need five strategy hooks on
+    the money path, which is worse than two clearly-named functions. Do not merge them.
+
+    Stop = prior day's low anchors risk to the institutional "wall" rather than to the
+    opening range.
 
     sugar_baby: dict from get_pending_9m_sugar_babies() — must have ticker, low_price.
     orb_bar: dict with 'high' and 'low' from alpaca.get_first_bar().

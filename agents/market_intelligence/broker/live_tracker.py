@@ -1203,7 +1203,7 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
     sugar_baby: row from get_pending_9m_sugar_babies() — must have ticker,
     alert_date, low_price. Returns status dict for logging.
     """
-    from agents.market_intelligence.broker.order_manager import prepare_9m_day2_orb_order
+    from agents.market_intelligence.broker.order_manager import prepare_prior_day_low_orb_order
     from agents.market_intelligence.db import get_latest_regime, update_9m_sugar_baby_status
 
     ticker = sugar_baby["ticker"]
@@ -1221,7 +1221,7 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
         # #456: thread this function's own `today` (already used above for the
         # submit_trade_entry(today=...) call) into the regime-sizing
         # staleness gate, not a second independent et_today() clock read.
-        return await prepare_9m_day2_orb_order(
+        return await prepare_prior_day_low_orb_order(
             alert_ctx, orb_bar, regime, account_mode=account_mode, today=today,
         )
 
@@ -1230,7 +1230,7 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
     async def _on_skip(_reason: str) -> None:
         await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
 
-    # alert_context must include the keys prepare_9m_day2_orb_order needs
+    # alert_context must include the keys prepare_prior_day_low_orb_order needs
     # (low_price etc.) plus the common EP fields the pipeline passes to DB insert.
     alert_context = {
         **sugar_baby,
