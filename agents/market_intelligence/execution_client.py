@@ -64,7 +64,7 @@ _CROSS_FNS = frozenset({
     "get_stream_status", "get_first_bar",
     "subscribe_orb_candidate", "reset_bar_stream_daily_state",
     "record_skipped_trade", "trigger_orb_entry",
-    "submit_9m_day2_trade", "execute_partial_exit", "sync_positions",
+    "execute_partial_exit", "sync_positions",
     "sync_positions_for_mode", "place_timestop_sell", "cancel_unfilled_entries",
 })
 
@@ -87,7 +87,7 @@ _HTTP_COMMAND_TIMEOUT_SECONDS = 180.0
 # Cross-fns that run heavy synchronous execution-side work → command (long) read
 # budget. Everything else in _CROSS_FNS is a fast read/registration → read budget.
 _SLOW_COMMAND_FNS = frozenset({
-    "trigger_orb_entry", "submit_9m_day2_trade", "execute_partial_exit",
+    "trigger_orb_entry", "execute_partial_exit",
     "sync_positions", "sync_positions_for_mode", "place_timestop_sell",
     "cancel_unfilled_entries",
 })
@@ -364,14 +364,8 @@ async def record_skipped_trade(*args, **kwargs):
     return await _dispatch("record_skipped_trade", _record_skipped_trade_inprocess, args, kwargs)
 
 
-async def _submit_9m_day2_trade_inprocess(*args, **kwargs):
-    from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade as _f
-    return await _f(*args, **kwargs)
 
 
-async def submit_9m_day2_trade(*args, **kwargs):
-    """9M Day-2 ORB entry submission (operator command + scheduler handoff)."""
-    return await _dispatch("submit_9m_day2_trade", _submit_9m_day2_trade_inprocess, args, kwargs)
 
 
 # ── Operator commands (trade-state mutations) ────────────────────────────────

@@ -3797,7 +3797,7 @@ async def prepare_prior_day_low_orb_order(
     regime_record: used by the #456 regime-keyed sizing resolver (falls back to
       the pre-#456 VIX+EMA-halve formula when REGIME_SIZING_ENABLED is off).
     today: pass the SAME `today` the caller already resolved (e.g.
-      `submit_9m_day2_trade`'s `today = et_today()`) — see prepare_orb_order's
+      the caller's `today = et_today()`) — see prepare_orb_order's
       docstring for why a second independent `et_today()` call here would be
       an unpinned second clock source in the money path. Defaults to a fresh
       `et_today()` for callers that don't have one on hand.

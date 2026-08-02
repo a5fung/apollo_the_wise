@@ -3489,41 +3489,25 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_9m_trades(self, request: AgentRequest) -> AgentResponse:
         """
-        Show 9M Day 2 ORB trade log, or manually trigger a Day 2 trade for a ticker.
+        Show the 9M Day 2 ORB trade LOG (historical — the strategy is retired, #515 2026-08-02).
         Commands:
           '9m trades [Nd]'    — show recent 9M trades
-          'trade 9m TICKER'   — manually queue Day 2 ORB for TICKER
+          'trade 9m TICKER'   — retired; answers with a pointer, never submits
         """
         import re as _re
         from agents.market_intelligence.db import get_9m_live_trades
 
         task = request.task.lower()
 
-        # Manual trigger: 'trade 9m TICKER'
-        manual_match = _re.search(r'trade\s+9m\s+([A-Z]{1,5})', request.task.upper())
+        # Manual Day-2 trigger REMOVED 2026-08-02 (#515) — the 9M Day 2 ENTRY strategy is
+        # retired. The 9M trade LOG below stays: those trades happened and remain readable.
+        manual_match = __import__('re').search(r'trade\s+9m\s+([A-Z]{1,5})', request.task.upper())
         if manual_match:
-            ticker = manual_match.group(1)
-            from agents.market_intelligence.db import get_pending_9m_sugar_babies
-            from agents.market_intelligence.collector import et_today, prev_trading_days
-            from agents.market_intelligence.execution_client import submit_9m_day2_trade
-
-            today = et_today()
-            yesterday = prev_trading_days(1, from_date=today)[0]
-            candidates = await get_pending_9m_sugar_babies(yesterday)
-            match = next((c for c in candidates if c["ticker"] == ticker), None)
-            if not match:
-                return self._ok(
-                    request,
-                    f"No pending 9M sugar baby for {ticker} from {yesterday}. "
-                    f"Check 'show 9m' for available candidates.",
-                )
-            result = await submit_9m_day2_trade(match)
-            action = result.get("action", "unknown")
             return self._ok(
                 request,
-                f"9M Day2 `{ticker}`: {action}" + (
-                    f" (trade_id={result['trade_id']})" if result.get("trade_id") else ""
-                ),
+                "9M Day 2 entries are retired (#515, 2026-08-02) — the strategy was deprecated "
+                "and its entry path removed. 9M *detection* is unaffected: use `/9m` for current "
+                "characters, or `9m trades` for the historical log.",
             )
 
         # Trade log view
