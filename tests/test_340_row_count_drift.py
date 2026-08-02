@@ -27,25 +27,23 @@ _T0 = datetime(2026, 7, 31, 17, 0)
 def _runs(job_id, counts, *, status="success", pin=2200):
     """Newest-first run rows, as the sweep's query returns them."""
     return [{"job_id": job_id, "started_at": _T0 - timedelta(days=i), "rows_written": c,
-             "status": status if not isinstance(status, list) else status[i],
+             "status": status,
              "expected_min_rows": pin}
             for i, c in enumerate(counts)]
 
 
 def _wire(monkeypatch, rows):
-    class _Conn:
-        async def fetch(self, *a, **k):
-            return rows
+    # conftest.make_mock_pool exists precisely to stop this being hand-rolled a 4th time
+    # (extracted per /simplify 2026-05-28 once the rule of three was crossed).
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
 
-    class _Acq:
-        async def __aenter__(self): return _Conn()
-        async def __aexit__(self, *a): return False
-
-    class _Pool:
-        def acquire(self): return _Acq()
+    async def _fetch(*a, **k):
+        return rows
+    conn.fetch = _fetch
 
     async def _pool():
-        return _Pool()
+        return pool
     monkeypatch.setattr(hc, "get_pool", _pool)
 
     logged, sent = [], []
@@ -125,8 +123,10 @@ def test_unstable_counts_are_NOT_called_a_stale_pin(monkeypatch):
 
 
 def test_a_single_empty_result_is_not_yet_a_pin_problem(monkeypatch):
-    _wire(monkeypatch, _runs("j", [2500] * 6,
-                             status=["empty_result"] + ["success"] * 5, pin=3500))
+    rows = _runs("j", [2500] * 6, status="empty_result", pin=3500)
+    for r in rows[1:]:
+        r["status"] = "success"          # only the NEWEST run tripped the pin
+    _wire(monkeypatch, rows)
     assert _run()["stale_floors"] == []
 
 

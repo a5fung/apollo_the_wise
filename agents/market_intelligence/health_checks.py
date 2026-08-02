@@ -57,6 +57,7 @@ DEFERRED next increment: (5) the specific hard-check registry (backups etc., CHA
 """
 from __future__ import annotations
 
+import json
 import logging
 import statistics
 from datetime import datetime, timedelta
@@ -1147,7 +1148,7 @@ _STALE_FLOOR_MIN_RUNS = 3      # consecutive empty_results before we suspect the
 _STALE_FLOOR_STABILITY = 0.10  # ...and only if those runs' spread is within 10% of their median
 
 
-async def run_row_count_drift_sweep(conn=None) -> dict[str, Any]:
+async def run_row_count_drift_sweep() -> dict[str, Any]:
     """#340 — flag row-count DROPS against a trailing median, and PINS that have gone stale.
 
     Returns `{"jobs_scanned": n, "drops": [...], "stale_floors": [...], "errors": [...]}`.
@@ -1220,7 +1221,6 @@ async def run_row_count_drift_sweep(conn=None) -> dict[str, Any]:
 async def _emit_row_count_drift(out: dict[str, Any]) -> None:
     """Audit row always; ONE grouped Telegram only when there is something to act on."""
     try:
-        import json
         await log_audit_event(
             "row_count_drift_sweep",
             f"{out['jobs_scanned']} jobs · {len(out['drops'])} drop(s) · "
