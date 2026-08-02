@@ -167,11 +167,23 @@ anyone touches that env var.
 **Verify-live due Monday 2026-08-03**, and the reversion trigger is pre-committed:
 1. Expect `setup:gap_below_floor` skips ONLY on names whose real-time gap is genuinely under 10% —
    spot-check each against `mi_daily_closes` prev close.
-2. ⚠ **If it blocks more than roughly a third of the day's HIGH alerts, revert and investigate
-   before the next session.** The measured rate is ~1 in 6 live entries; a much higher rate means the
-   real-time read or the denominator is wrong, not that the cohort collapsed.
+2. ⚠ **Revert trigger — needs an ABSOLUTE FLOOR before the ratio is allowed to mean anything:
+   revert only if `HIGH alerts ≥ 4` AND `>1/3 of them blocked`.** The measured rate is ~1 in 6 live
+   entries; a much higher rate means the real-time read or the denominator is wrong, not that the
+   cohort collapsed. **Below N=4, do NOT act on the percentage** — with 2 alerts a single correct
+   block reads as 50% and would revert a working guard, and with 0 alerts the ratio is undefined
+   and passes vacuously. Under the floor, inspect each block by hand against `mi_daily_closes`
+   prev close instead. (Same small-denominator trap as `_ROWCOUNT_MIN_MEDIAN` in #340 and the
+   negative-control leg above — a percentage carries no signal until the denominator is real.)
 3. Negative control: confirm entries still HAPPEN. Zero entries with zero `gap_below_floor` skips
    means the ORB job did not run, not that the guard is quiet.
+4. ⚠ **Attribute every skip to WHICH guard fired — the two shadow each other.**
+   `ep_rt_gap_down_authoritative` removes a stale name at the SCAN tick, so it never becomes an
+   alert and never reaches the 09:31 check; `ep_rt_entry_gap_recheck` only ever sees what survived
+   upstream. The measured split is real (WKC + QBTS were caught at the alert tick, FTNT at 09:30),
+   but a raw count of `setup:gap_below_floor` will read artificially LOW and must not be read as
+   "the entry check is inert" — it may simply be shadowed. Count `ep_rt_floor_flip_down` with
+   `"acted": true` separately from `setup:gap_below_floor` skips.
 
 ### 2026-08-01 — #490: gap authority SPLIT — the REMOVE half gets its own toggle (built OFF, awaiting sign-off)
 
