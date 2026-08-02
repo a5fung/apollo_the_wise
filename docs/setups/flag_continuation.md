@@ -17,6 +17,34 @@
 > the retirement inside the 3-setup family model and completes the param reconciliation. `flag_detector.py`
 > and the `/flags` board are **untouched** by this change — they remain the live HTF setup's code+telemetry.
 
+> ⚠ **DISABLED 2026-08-02** — `mi_strategies.enabled` flipped `true → false` (operator-directed:
+> *"keep our system clean is ok"*). It had been `phase='deprecated'` **but still `enabled=true` since
+> 2026-07-05** — a legal-but-half-alive state that kept the registry row live while it looked retired.
+> All three deprecated strategies were in it (9M Day 2 for 26 days, Continuation Flag, Fishhook). That
+> combination is now **impossible**: `strategies.registry.assert_no_deprecated_but_enabled` raises at
+> load. **The detector was NOT touched** — `_flag_scan_job` still runs 17:25 ET and still stages
+> (7/31: 562 unqualified · 9 INVALIDATED · 3 WATCH · 2 TIGHTENING · 1 COILED).
+
+## Why the DETECTOR exists but the STRATEGY does not — the one-paragraph answer
+
+Per the operator's **SETUP vs FAMILY** definition (CLAUDE.md, 2026-08-02): *a setup needs a clear buy
+point AND stop; a family is a chart condition that hosts setups but is not tradeable itself.*
+
+- **`flag_detector.py` is STAGING, and it is LIVE** — it computes the general runup → coil → tighten →
+  break state machine (`WATCH/TIGHTENING/COILED/TRIGGERED/INVALIDATED`) over the universe. Operator,
+  2026-08-02: *"flag detector is on, that can just be detecting flags in general of which the real
+  setups can be sourced from, the whole stage of run up, coil etc is useful overall, though some
+  parameters differ like how steep run up is etc."* It is **the live HTF setup's engine** (`htf.md`)
+  and it feeds the `/watch` board.
+- **`flag_continuation` the STRATEGY is dead** because "a continuation flag" names a *shape*, not an
+  entry: on its own it has no buy point and no stop. The tradeable thing sourced from that shape is
+  the **Confirm (b)** entry mode of the consolidation family, and that lives elsewhere
+  (`anticipation.py::confirm_signal_at`, shadow-only).
+- ⚠ **Therefore the parameters legitimately DIFFER by consumer** — runup steepness, coil tightness,
+  whether an undercut disqualifies. Anticipate wants one thing, a breakout entry another, HTF another.
+  **Do not "reconcile" the detector to a single universe**; that would collapse a shared capability
+  into one caller's preferences. Shared staging underneath, per-setup parameters on top.
+
 **Phase**: **Deprecated** (`mi_strategies.phase='deprecated'`, terminal — ADR 0022 §1 / #424, 2026-07-05/06;
 confirmed by ADR 0026 §D1, 2026-07-19). No promotion path; `entry_pipeline._phase_gate_skip_reason` treats
 `deprecated` like `shadow` (never fires an order) as defense-in-depth. The detector *code* underneath
