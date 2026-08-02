@@ -289,3 +289,57 @@ needed, only the log line that now exists.
    the gate**, not for failing the system — and it is the operator's call, not a measurement.
 3. **The residual number to judge is 89.7% on 29 sound cases, with 3 near-floor stragglers already
    instrumented.**
+
+
+---
+
+# SUSTAIN-RULE REPLAY — 2026-08-02
+
+**Operator**: *"just a single 1min bar touching >10% may be too lose especially for premarket, maybe
+we should see that move sustain with a few bars"* … *"not just consecutive, say 3 of last 5 bars is
+above, or 5 of last 10 bars, etc."*
+
+**Design decision taken before any number**: every rule looks **BACKWARD** from the detection tick.
+Waiting N bars forward would push detection past the 09:45 ORB cutoff and recreate the exact miss the
+real-time work exists to remove. Backward costs zero latency, and the bars are already fetched for Q3
+corroboration. Probe: `scripts/probes/_490_sustain_rule.py`, cohort = all 97 universe catches.
+
+| rule | admits | % of today | med open→close | med open→high | med open→low | win ≥+5% |
+|---|---|---|---|---|---|---|
+| 1 bar (today) | 81 | 100% | +3.9% | +9.8% | −1.7% | 41% |
+| 2 consecutive | 67 | 83% | +4.0% | +10.0% | −1.7% | 45% |
+| **3 consecutive** | **46** | **57%** | **+5.0%** | **+10.4%** | **−1.2%** | **50%** |
+| 2 of last 3 | 71 | 88% | +4.0% | +9.8% | −1.7% | 45% |
+| 3 of last 5 | 50 | 62% | +4.1% | +10.0% | −1.4% | 48% |
+| 5 of last 10 | 26 | 32% | +3.0% | +9.3% | −2.1% | 38% |
+| 7 of last 10 | 10 | 12% | +0.2% | +5.9% | −2.8% | 20% |
+
+## What the data says
+
+1. **3 consecutive is best on EVERY axis at once** — highest median close, highest median high,
+   **shallowest median low (−1.2% vs −1.7%)**, best win rate. The risk side improves alongside the
+   return side, which is the shape you want from a genuine quality filter rather than a return-chase.
+2. **It is not monotonic — beyond 3 it degrades sharply.** 5-of-10 and 7-of-10 are worse than doing
+   nothing. So this is a real optimum, not "stricter is better".
+3. **Consecutive beats M-of-N at equal strictness.** 3-consecutive (46 admits, +5.0%) beats 3-of-5
+   (50 admits, +4.1%); 2-of-3 is indistinguishable from 2-consecutive. **The flexibility does not pay
+   here** — persistence right at the tick is what carries the signal.
+4. **Cost**: 3-consecutive drops 35 of 81. Those dropped had a median open→close of just **+1.3%**
+   (mostly flat, i.e. correctly dropped) — but **10 of them ran ≥+5%, including RACC (+31%)**, the
+   cohort's best name.
+
+## ⚠ Honest limits — do not treat this as settled
+
+- **n = 46-81 and SEVEN rules were compared.** That is real multiplicity; the +3.9% → +5.0% gap could
+  be noise on its own. What raises it above noise is the **coherent monotone pattern** (1→2→3
+  improving on all four metrics simultaneously, then reversing) rather than any single cell.
+- **5 shadow days.** One regime.
+- **Outcomes are day-level open→close/high/low, not what our ORB entry with an ORB-low stop would
+  actually have captured.** The direction is informative; the magnitudes are not our P&L.
+- The pre-market sparse-bar case is handled by judging the window on the bars that exist — worth
+  re-checking explicitly if a rule ships, since it is the case the operator specifically flagged.
+
+## Status
+
+**Evidence only. Nothing changed.** A sustain requirement is a DETECTION-CRITERION change → SSoT read,
+`CHANGE_PROCESS.md`, N≥10 (satisfied: 97), and **operator sign-off** before anything ships.
