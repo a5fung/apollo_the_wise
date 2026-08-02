@@ -42,7 +42,7 @@ fi
 . /home/apollo/apollo_the_wise/infra/ops_lib.sh || {
     echo "$(date -u +%FT%TZ) FATAL: ops_lib.sh missing" >> "$LOG_FILE"; exit 1; }
 
-cleanup() { docker rm -f "$CONTAINER" >/dev/null 2>&1 || true; rm -f "$ERR_TMP"; }
+cleanup() { docker rm -f -v "$CONTAINER" >/dev/null 2>&1 || true; rm -f "$ERR_TMP"; }
 # EXIT trap (d3 review): an external kill (cron timeout wrapper, SIGTERM)
 # mid-run must not leak the restore container + tmp file until tomorrow.
 trap cleanup EXIT
@@ -66,8 +66,15 @@ if [ -z "$(find "$LATEST" -mmin -1560 2>/dev/null)" ]; then
     fail "latest dump older than 26h: $(basename "$LATEST")"
 fi
 
-# 2. Ephemeral restore target (no volume; bounded memory; auto-removed).
-docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+# 2. Ephemeral restore target (bounded memory; auto-removed WITH its anonymous volume).
+# ⚠ 2026-08-02: the old comment claimed "no volume" and it was WRONG. The postgres image
+# declares VOLUME /var/lib/postgresql/data, so `docker run` ALWAYS creates an anonymous
+# volume here — and `docker rm` WITHOUT -v leaves it behind. This leaked ~1.4 GB EVERY
+# NIGHT: 34 orphaned volumes / ~48 GB had accumulated by the time the disk watchdog fired
+# at 85%. `-v` removes the anonymous volume with the container. It CANNOT touch the live
+# database: docker_postgres_data is a NAMED volume on a different container, and -v only
+# removes anonymous volumes belonging to the container being removed.
+docker rm -f -v "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" --memory=2g \
     -e POSTGRES_USER=apollo -e POSTGRES_PASSWORD=restorecheck -e POSTGRES_DB=apollo \
     "$IMAGE" >/dev/null 2>"$ERR_TMP" || fail "restore container failed to start: $(tail -c 300 "$ERR_TMP")"
