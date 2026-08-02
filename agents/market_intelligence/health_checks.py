@@ -1134,6 +1134,13 @@ async def _send_recovery_note(check_kind: str, target_key: str) -> None:
 # noise and well under the real step. `_MIN_HISTORY` keeps a thin history from alerting at all.
 
 _ROWCOUNT_DROP_PCT = 0.25      # >25% below the trailing median → flag
+# ⚠ Added 2026-08-01 after the FIRST live run, which found exactly one "drop": `shadow_orb_entry`
+# at 0 rows vs a median of 1 = a 100% collapse. It was a Saturday. On a job that normally writes
+# a single row, any quiet day is a 100% drop — pure noise, and noise is how a guard gets muted
+# and then misses the real failure (the calibration risk this file already warns about). A
+# percentage is only meaningful once the median is big enough for a percentage to mean anything;
+# below this, the ABSOLUTE `expected_min_rows` floor is the right instrument and already runs.
+_ROWCOUNT_MIN_MEDIAN = 20      # medians under this are too small for a % drop to carry signal
 _ROWCOUNT_MIN_HISTORY = 5      # need this many prior runs before the median means anything
 _ROWCOUNT_WINDOW = 10          # trailing runs forming the median
 _STALE_FLOOR_MIN_RUNS = 3      # consecutive empty_results before we suspect the PIN
@@ -1177,7 +1184,7 @@ async def run_row_count_drift_sweep(conn=None) -> dict[str, Any]:
                 continue                                          # thin history → cannot judge
 
             median = statistics.median(history)
-            if median > 0 and latest < median * (1 - _ROWCOUNT_DROP_PCT):
+            if median >= _ROWCOUNT_MIN_MEDIAN and latest < median * (1 - _ROWCOUNT_DROP_PCT):
                 out["drops"].append({
                     "job_id": job_id, "latest": latest, "median": median,
                     "drop_pct": round((1 - latest / median) * 100, 1),

@@ -169,3 +169,18 @@ def test_threshold_sits_between_the_noise_and_the_real_step(pct):
     """Calibration is an assertion, not a comment: #286's real step was -36.5%; in-band wobble is
     ~2.5%. The threshold must separate them, or the guard is either noisy or blind."""
     assert 0.025 < pct < 0.365
+
+
+def test_tiny_jobs_do_not_produce_percentage_noise(monkeypatch):
+    """Found by the FIRST live run, not by design: shadow_orb_entry sits at a median of 1 row, so a
+    quiet Saturday reads as a 100% collapse. On small counts a percentage carries no signal, and a
+    noisy guard gets muted — which is how the real failure then gets missed. The absolute
+    expected_min_rows floor is the correct instrument down there and already runs."""
+    _wire(monkeypatch, _runs("shadow_orb_entry", [0, 1, 1, 0, 1, 1, 1]))
+    assert _run()["drops"] == []
+
+
+def test_large_jobs_still_flag_after_the_min_median_guard(monkeypatch):
+    """The guard must not blunt the case the card exists for."""
+    _wire(monkeypatch, _runs("nightly_data_pull", [400] + [2500] * 6))
+    assert len(_run()["drops"]) == 1
