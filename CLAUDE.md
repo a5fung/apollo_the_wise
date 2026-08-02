@@ -322,9 +322,24 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-07-24/25 — 🏁 v1.0 DECLARED · ATAI deal-pin (#502) · breaker live-path (#454 p3) · operating model
+### 2026-08-01/02 — exit + entry discipline live · #490 RT-2 resolved · 2 rules made mechanical
 
-- **v1.0 declared shipped 7/24** (§8 signed; all 8 FL gates green) — the blocking/launch lens RETIRES, the board becomes the #419 Phase-2 program. **#502**: the nightly HTF digest surfaced ATAI (a buyout) as its only actionable COILED setup — a cash-deal pin is *mechanically indistinguishable from a coil*; the tightness that scores it COILED IS the pin. Both M&A layers structurally couldn't reach a FRESH pin (Polygon had 2 articles/21d, no keyword; the layer-2 backstop needs a 10-session median it can't fill — it had fired 5× ever and caught KALV 29 days late). Shipped a two-axis conjunction (5d band ≤2.5% AND ≥5× vol spike); replay of the SHIPPED fn over 405 rows = 11 suppressed / 393 preserved, HUM (+25.7%) free. **Rejected + documented**: reusing the EP classifier verdict — the store is 1-true/1-junk (ACLS graded `mna` while its own summary said "no catalysts found", then ran +16%). **#454 p3**: drawdown-breaker live-path exercise, 37/37, ZERO writes — set-tier-then-restore was rejected because REDUCE returns `ok=True`@0.5×, so a crash silently half-sizes live entries. Lessons: a filter list is the operator's call (CHANGE_PROCESS r3) — state findings, not rulings; and 3 harness "failures" were MY wrong expectations, the code was right.
+- **3 money-path filters live (signed, toggle-reversible ~60s)**: +2R profit trigger (#508), stale-gap
+  scan cleanup, submission-time gap re-check. The latter two would have blocked **3 of the last 17
+  live trades — all losers, ~23% of the month's loss**. Each shipped OFF → verified inert in prod →
+  THEN flipped; that sequence is the point.
+- **#490 gate 1 resolved with NO market day** (operator pushed twice, both right). Coverage ruled out
+  by running the production call: 98%, the 114 absent all PREFERRED shares. Tick replay showed the
+  residual metric **over-counts** — it scores intrabar crosses a 5-min sampler shouldn't catch. Sustain
+  rule (3 consecutive bars) live, argued from mechanism not the return table (he named the overfit
+  risk himself).
+- **2 lessons made MECHANICAL, not promised again** — both now in THIS file because memory drifted
+  within 24h: the **report format** (asked 5×) and **SETUP vs FAMILY** (a setup needs a buy AND a stop;
+  continuation is a family).
+- **Silent-failure sweep**: 3 no-telemetry drop paths in the RT overlay; a deploy-scope hole that would
+  have left ENTRY code stale on the trading server (lazy imports invisible to the generator); a guard
+  applying MAGNA53's 10% floor to a 3% strategy. **Lesson: a guard that always fires is not a guard** —
+  a transitive import walk returned 132 of ~150 modules and was rejected for a narrow rule.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

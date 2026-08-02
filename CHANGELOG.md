@@ -8,6 +8,9 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-07-24/25 — v1.0 DECLARED · ATAI deal-pin (#502) · breaker live-path (#454 p3) · operating model
+- v1.0 shipped 7/24 (§8 signed, all 8 FL gates green) — the blocking/launch lens retires, the board becomes the #419 Phase-2 program. **#502**: a cash-deal pin is mechanically indistinguishable from a coil — the tightness that scores it COILED *is* the pin; both M&A layers structurally could not reach a FRESH pin, so a two-axis conjunction (5d band ≤2.5% AND ≥5× vol spike) shipped — 11 suppressed / 393 preserved over 405 rows, HUM (+25.7%) free. Rejected + documented: reusing the EP classifier verdict (its store is 1-true/1-junk — ACLS graded `mna` while its own summary said "no catalysts found", then ran +16%). **#454 p3**: drawdown-breaker live-path exercise, 37/37, ZERO writes; set-tier-then-restore was rejected because REDUCE returns ok=True@0.5×, so a crash would silently half-size live entries. **Lessons**: a filter list is the operator's call (CHANGE_PROCESS r3) — state findings, not rulings; and 3 harness "failures" were wrong expectations, the code was right.
+
 ### 2026-07-14 — Theme ecosystems (ADR 0032) Phase 1 · Marios-litmus PASS · /themes v2
 - Theme ecosystem read-model (no-money, Fable-built/Opus-verified): a curated 20-bucket taxonomy (`theme_ecosystems.yaml`, operator-signed; AI DISTRIBUTED across E-AISEMI/E-AIINFRA/E-SAAS+E-CYBR) + `mi_theme_ecosystems` Haiku-at-birth mapping + a breadth-weighted boosted score + a hierarchical `/themes` v2 board. Litmus vs Marios (cyber-dominant): Apollo DETECTED perfectly (cohort RS 75→89) but had SURFACED it as 1 buried line of 63; the board now ranks E-CYBR #1. **Lesson ([[verify-operator-facing-surface]]): "verify-live green" checked DB data, not the Telegram render — `/themes` routed orchestrator-side to a handler the ecosystem render was never wired into. Verify the operator-facing SURFACE.**
 
