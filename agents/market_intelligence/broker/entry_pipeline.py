@@ -31,6 +31,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_FADED_FROM_ORB,
+    SETUP_GAP_BELOW_FLOOR,
     WINDOW_DUPLICATE,
     BLOCK_TICKER_OPEN_POSITION,
     humanize,
@@ -147,6 +148,70 @@ async def check_fade_guard(
         f"L=${orb_low:.2f}, faded {fade_pct:.1f}%)"
     )
     return False, reason
+
+
+async def check_rt_gap_floor(
+    ticker: str, alert_context: dict,
+) -> tuple[bool, str | None]:
+    """#490 — re-check the gap against REAL-TIME price at submission. Return (ok, skip_reason).
+
+    **This is a bug fix, not a new filter** (operator ruling 2026-08-01: *"the blocking live path is
+    in fact correct given the price retreated from the 10% gap, so in a way the current path is a
+    bug"*). `MIN_GAP_PCT = 10.0` is an existing, signed detection criterion. The alert row is written
+    on whichever scan tick first scored it HIGH — often hours before the open — and
+    `live_tracker.process_new_alerts_live` then selects that ROW at 09:31 without re-reading price.
+    So a name that retreated below the floor in between was entered anyway, in violation of the
+    system's own criterion. Measured: FTNT 2026-07-30 was logged at 7.77% at 09:30:05, one minute
+    before entry, and entered; WKC, QBTS and FTNT all faded below the floor pre-entry and all lost.
+
+    **FAIL OPEN — a bad tick must never kill a good entry.** Identical posture to
+    `check_fade_guard`'s silent-on-data-failure rule. We block ONLY on a positive, trustworthy read
+    that is below the floor. Every other path returns ok: toggle off, no `prev_close` on the alert,
+    no/zero/negative latest trade, or any exception at all.
+
+    Toggle-gated by `ep_rt_entry_gap_recheck` (default OFF) so it ships inert and reverts in ~60s
+    with no deploy.
+    """
+    try:
+        from agents.market_intelligence.db import get_prev_close, get_runtime_toggle
+        if not await get_runtime_toggle(
+            "ep_rt_entry_gap_recheck", "EP_RT_ENTRY_GAP_RECHECK", default=False):
+            return True, None
+
+        # `mi_ep_alerts` carries no prev_close column, so it is fetched from mi_daily_closes —
+        # the SAME Polygon denominator the detector uses, so the scan and this guard cannot
+        # disagree about one name on one day. (An earlier draft read `alert_context["prev_close"]`,
+        # which does not exist: the guard would have silently failed open and done nothing.)
+        alert_date = alert_context.get("alert_date")
+        if alert_date is None:
+            return True, None
+        prev_close = await get_prev_close(ticker, alert_date)
+        if not prev_close or prev_close <= 0:
+            return True, None          # no denominator → cannot judge → let it through
+
+        latest = await alpaca.get_latest_trade(ticker)
+        if not latest or not latest.get("price"):
+            return True, None          # feed flakiness → let it through (fade-guard rule)
+        price = float(latest["price"])
+        if price <= 0:
+            return True, None
+
+        from agents.market_intelligence.ep_detector import MIN_GAP_PCT
+        rt_gap = (price - prev_close) / prev_close * 100
+        if rt_gap >= MIN_GAP_PCT:
+            return True, None
+
+        alert_gap = alert_context.get("gap_pct")
+        alert_txt = f"{float(alert_gap):.1f}%" if alert_gap is not None else "n/a"
+        return False, (
+            f"{SETUP_GAP_BELOW_FLOOR}: rt {rt_gap:.1f}% < {MIN_GAP_PCT:.0f}% floor "
+            f"(alert said {alert_txt}, last ${price:.2f} vs prev close ${prev_close:.2f})"
+        )
+    except Exception as e:
+        # loud-ok: this guard may only ever REMOVE entries. Any failure inside it must land on
+        # today's behaviour, never on a block — an exception here must not become a silent halt.
+        logger.warning(f"rt gap re-check failed for {ticker} (non-fatal, entry proceeds): {e}")
+        return True, None
 
 
 # ── Main pipeline ────────────────────────────────────────────────────────────
@@ -464,6 +529,14 @@ async def submit_trade_entry(
     fade_ok, fade_reason = await check_fade_guard(ticker, orb_bar, fade_midpoint_ratio)
     if not fade_ok:
         return await _skip(fade_reason, audit_event="orb_faded")
+
+    # 4b. #490 real-time gap re-check — enforce MIN_GAP_PCT at SUBMISSION, not just at the scan
+    # tick that wrote the alert row hours earlier. Placed here, beside the fade guard, because it
+    # is the same class of gate (setup quality read off live price) and it must run BEFORE sizing
+    # and submission. Fails open on every non-answer; see check_rt_gap_floor.
+    gap_ok, gap_reason = await check_rt_gap_floor(ticker, alert_context)
+    if not gap_ok:
+        return await _skip(gap_reason, audit_event="orb_gap_below_floor")
 
     # 5. Strategy-specific spec build. Pass account_mode so the builder
     # fetches equity from the correct Alpaca account when sizing.

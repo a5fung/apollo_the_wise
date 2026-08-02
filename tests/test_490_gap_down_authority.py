@@ -24,11 +24,16 @@ _NOW = datetime(2026, 7, 31, 9, 35, 0, tzinfo=_ET)
 _PC = 100.0          # prev_close — keeps gap arithmetic readable: price 108 => +8%, 112 => +12%
 
 
-def _wire(monkeypatch, *, full=False, down=False):
+def _wire(monkeypatch, *, full=False, down=False, real_dedupe=False):
     """Wire Pass-2 with the two gap toggles set INDEPENDENTLY.
 
     The pre-existing helpers in test_490_prev_close_datekey.py return one value for every toggle
     name, which cannot express "full off, down on" — the exact combination under test here.
+
+    `real_dedupe=True` keeps the GENUINE `_audit_dedupe_check` (with its module state reset) instead
+    of the always-True stub. The dedupe-behaviour tests need this: with the stub every call logs, so
+    a test asserting "3 events across 3 ticks" passes no matter what the key is — vacuous. My first
+    version of those two tests had exactly that bug, and only the out-of-window one caught it.
     """
     monkeypatch.setattr(ep_detector, "EP_RT_PASS2_ENABLED", True)
 
@@ -39,7 +44,11 @@ def _wire(monkeypatch, *, full=False, down=False):
             return down
         return default
     monkeypatch.setattr(ep_detector, "get_runtime_toggle", _toggle)
-    monkeypatch.setattr(ep_detector, "_audit_dedupe_check", lambda *a, **k: True)
+    if real_dedupe:
+        monkeypatch.setattr(ep_detector, "_audit_dedupe", set())
+        monkeypatch.setattr(ep_detector, "_audit_dedupe_date", None)
+    else:
+        monkeypatch.setattr(ep_detector, "_audit_dedupe_check", lambda *a, **k: True)
     monkeypatch.setattr(ep_detector, "_rt_fresh_seen", set())
     monkeypatch.setattr(ep_detector, "_rt_fresh_seen_date", None)
     events = []
@@ -170,6 +179,46 @@ def test_flip_down_event_distinguishes_acted_from_shadow(monkeypatch):
     _run([_cand("STALE", 12.0)], _SNAPS)
     down_ev2 = [e for e in ev2 if e[0] == "ep_rt_floor_flip_down"]
     assert down_ev2 and '"acted": false' in down_ev2[0][2] and "SHADOW" in down_ev2[0][1]
+
+
+def test_pre_entry_window_logs_per_tick_not_once_per_day(monkeypatch):
+    """The measurement subset. Day-level dedupe records THAT a name went stale, not whether it was
+    STILL stale at 09:31 when the entry fires — which is the number the entry-time re-validation
+    decision needs. Inside 09:15-09:35 the dedupe key carries the tick, so consecutive ticks each
+    log; outside it, the day-level behaviour is unchanged.
+    """
+    ev = _wire(monkeypatch, full=False, down=True, real_dedupe=True)
+    for minute in (20, 25, 30):
+        now = datetime(2026, 7, 31, 9, minute, 0, tzinfo=_ET)
+        asyncio.run(ep_detector._apply_realtime_pass2(
+            [_cand("STALE", 12.0)], now, prev_trade_date=_PREV, snaps=_SNAPS))
+    downs = [e for e in ev if e[0] == "ep_rt_floor_flip_down"]
+    assert len(downs) == 3, f"expected one per tick in-window, got {len(downs)}"
+    assert all('"pre_entry": true' in e[2] for e in downs)
+
+
+def test_outside_the_window_still_dedupes_once_per_day(monkeypatch):
+    """The bound. Only the pre-entry window gets per-tick resolution — the rest of the day keeps
+    the original once-per-ticker-per-day volume."""
+    ev = _wire(monkeypatch, full=False, down=True, real_dedupe=True)
+    for hour, minute in ((7, 20), (7, 25), (8, 15)):
+        now = datetime(2026, 7, 31, hour, minute, 0, tzinfo=_ET)
+        asyncio.run(ep_detector._apply_realtime_pass2(
+            [_cand("STALE", 12.0)], now, prev_trade_date=_PREV, snaps=_SNAPS))
+    downs = [e for e in ev if e[0] == "ep_rt_floor_flip_down"]
+    assert len(downs) == 1, f"expected one per DAY out-of-window, got {len(downs)}"
+    assert '"pre_entry": false' in downs[0][2]
+
+
+def test_measurement_subset_changes_no_admission_decision(monkeypatch):
+    """It is telemetry. The admitted set must be identical whether the tick falls inside the
+    pre-entry window or outside it."""
+    for now in (datetime(2026, 7, 31, 9, 30, 0, tzinfo=_ET),      # in window
+                datetime(2026, 7, 31, 7, 30, 0, tzinfo=_ET)):     # out of window
+        _wire(monkeypatch, full=False, down=True)
+        out = asyncio.run(ep_detector._apply_realtime_pass2(
+            _all_three(), now, prev_trade_date=_PREV, snaps=_SNAPS))
+        assert _tickers(out) == {"CLEAN"}
 
 
 def test_down_toggle_never_admits_across_the_gap_range(monkeypatch):

@@ -28,6 +28,11 @@ SETUP_PRICE_EXCEEDS_CAP    = "setup:price_exceeds_cap"
 SETUP_ACCOUNT_FETCH_FAILED = "setup:account_fetch_failed"
 SETUP_FADED_FROM_ORB       = "setup:faded_from_orb"
 SETUP_CHASE_CAP_EXCEEDED   = "setup:chase_cap_exceeded"  # #500 bounded-chase gate
+# #490 2026-08-01: the alert row is written on the scan tick that scored it (often hours before the
+# open); nothing re-checked the gap at submission, so a name that retreated below MIN_GAP_PCT before
+# 09:31 was still entered. Operator ruled that a BUG, not a new filter — the 10% floor is an existing
+# signed criterion and the entry path simply was not enforcing it.
+SETUP_GAP_BELOW_FLOOR      = "setup:gap_below_floor"
 
 # ── block: safeguards (circuit breakers, position limits, strategy gate) ──
 BLOCK_MAX_POSITIONS              = "block:max_positions"
@@ -90,6 +95,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_PRICE_EXCEEDS_CAP:    "Price exceeds per-share cap",
     SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
+    SETUP_GAP_BELOW_FLOOR:      "Gap retreated below the 10% floor before entry",
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",

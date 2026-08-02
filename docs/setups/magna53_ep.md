@@ -99,6 +99,51 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-01 — #490: MIN_GAP_PCT now enforced at SUBMISSION, not only at the scan tick (BUG FIX; built OFF)
+
+**Trigger — operator ruling, 2026-08-01**: *"the blocking live path is in fact correct given the
+price retreated from the 10% gap, so in a way the current path is a bug."*
+
+**This is a bug fix, not a criteria change, and the distinction is the whole point.** `MIN_GAP_PCT =
+10.0` is an existing signed criterion (2026-05-17 R2). `live_tracker.process_new_alerts_live` selects
+`FROM mi_ep_alerts WHERE alert_date = $1 AND score_tier = 'HIGH'` — **the alert ROW, written on
+whichever scan tick first scored it, often hours before the open** — and submits at 09:31 without
+ever re-reading price. A name that retreated below the floor in between was entered **in violation of
+the system's own criterion.** Nothing about the 10% threshold is being changed here; it is being
+applied at the moment the money moves.
+
+⚠ **I initially framed this as a new filter needing CHANGE_PROCESS r1's N≥10 before it could ship.
+That was the wrong standard** — r1 governs *threshold changes*. There is no threshold change here.
+
+**Evidence** (`docs/analysis/490_delay_missed_eps_2026-08-01.md`): FTNT 2026-07-30 — alert written
+07:00 on a stale 10.79% gap; at **09:30:05, one minute before entry, the system logged its real-time
+gap at 7.77%** — and entered anyway, for −$6.63. All three names that faded below the floor before
+entry (WKC −$23.80, QBTS −$22.26, FTNT −$6.63) lost money. A gap that retreats before the open is the
+setup failing its own premise, which is what the criterion exists to catch.
+
+**Implementation**: `entry_pipeline.check_rt_gap_floor`, called as stage 4b — beside the fade guard
+(same class of gate: setup quality read off live price) and BEFORE sizing and submission. Denominator
+is `db.get_prev_close` reading `mi_daily_closes`, i.e. the **same Polygon prev_close the detector
+uses as its sole denominator**, so the scan and this guard cannot disagree about one name on one day.
+(`mi_ep_alerts` has no prev_close column — an earlier draft read `alert_context["prev_close"]`, which
+does not exist, and would have silently failed open and done nothing.)
+
+**FAIL OPEN, deliberately.** It blocks ONLY on a positive, trustworthy real-time read below the
+floor. Toggle off, no prev bar, no/zero/negative last trade, or ANY exception → the entry proceeds
+exactly as today. Same posture as `check_fade_guard`'s silent-on-data-failure rule: on a guard that
+can only remove entries, a failure that blocks is far worse than one that lets a marginal trade
+through. `tests/test_490_entry_gap_recheck.py` pins both invariants (21 tests incl. the floor
+boundary — at exactly 10.00% it must PASS, not block). **Mutation-tested**: making it fail closed
+fails 3 tests.
+
+New skip reason `setup:gap_below_floor`, rendered via `humanize()` (test-pinned) so the machine
+prefix never reaches Telegram.
+
+**Reversion-flag**: NEW. Reversion = set `ep_rt_entry_gap_recheck` off — ~60s, no deploy.
+
+**Status**: **BUILT, SHIPPED OFF (`ep_rt_entry_gap_recheck` default false).** Default off is
+byte-identical to today. The live flip is the operator's — NOT taken.
+
 ### 2026-08-01 — #490: gap authority SPLIT — the REMOVE half gets its own toggle (built OFF, awaiting sign-off)
 
 **Trigger**: operator, 2026-08-01, on being shown the volume cost of the RT cutover — *"with 30+

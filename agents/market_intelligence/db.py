@@ -3562,6 +3562,30 @@ async def get_runtime_toggle(name: str, env_var: str, default: bool = True) -> b
     return val
 
 
+async def get_prev_close(ticker: str, before_date) -> "float | None":
+    """Settled previous close for `ticker` strictly BEFORE `before_date` (Polygon-sourced
+    `mi_daily_closes`). None when we have no prior bar — callers MUST treat that as "cannot judge"
+    and fail open, never as zero.
+
+    #490 (2026-08-01): added for `entry_pipeline.check_rt_gap_floor`. The denominator deliberately
+    matches the detector's — `_apply_realtime_pass2` keeps "Polygon prev_close as the SOLE
+    denominator" — so the entry-time gap re-check and the scan cannot disagree about the same name
+    on the same day. `mi_ep_alerts` carries no prev_close column, which is why this exists rather
+    than reading it off the alert row.
+
+    `trade_date < $2` (not `= last_trading_day`) so holidays and data gaps degrade to the most
+    recent real bar instead of returning None.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT close FROM mi_daily_closes
+            WHERE ticker = $1 AND trade_date < $2 AND close > 0
+            ORDER BY trade_date DESC LIMIT 1
+        """, ticker, before_date)
+    return float(row["close"]) if row and row["close"] is not None else None
+
+
 # update_ep_alert_grade_override merged into update_ep_alert_judge_result
 # (#247, 2026-06-10) — the judge_*-write + score_tier override are one atomic
 # UPDATE now; the two-statement window is gone.

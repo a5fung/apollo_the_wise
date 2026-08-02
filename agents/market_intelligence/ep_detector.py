@@ -2043,6 +2043,17 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 c["gap_pct"] = round(rt_gap, 2)
                 c["current_price"] = rt_price
                 c["price_source"] = "alpaca_sip"
+            # #490 measurement subset (2026-08-01, telemetry-only): the day-level dedupe logs a
+            # flip-down ONCE per ticker per day, so it records THAT a name went stale but not
+            # whether it was STILL stale at 09:31 when the entry fires. That is exactly the number
+            # the entry-time re-validation decision needs, and it is currently unmeasurable —
+            # FTNT 7/30 is a single observation. Inside the pre-entry window the dedupe key carries
+            # the tick, giving per-tick resolution where the entry decision is made. Outside it,
+            # unchanged. Bounded: only flip-down names, only 9:15-9:35, audit-only, no Telegram.
+            # Computed HERE, above the flip-up branch, so the flip-down below stays an `elif` —
+            # the original control flow is preserved exactly rather than restructured.
+            _fd_pre_entry = now_et.hour == 9 and 15 <= now_et.minute <= 35
+            _fd_key = f"ep_rt_floor_flip_down@{now_et:%H:%M}" if _fd_pre_entry else "ep_rt_floor_flip_down"
             if rt_gap >= MIN_GAP_PCT > dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_up"):
                 _flip_msg = (f"{c['ticker']} rt {rt_gap:.1f}% ≥10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
                              + ("" if authoritative else " (SHADOW — would have caught)"))
@@ -2052,7 +2063,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 # #489: AUDIT-ONLY (operator 7/21 — was a per-ticker Telegram, too noisy: 10+/volatile open).
                 # The hybrid-catchable class is "the fix works" shadow proof, not an actionable miss; it stays
                 # in mi_audit_log for /audit + the residual dashboard. The residual class digests once/morning.
-            elif rt_gap < MIN_GAP_PCT <= dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_down"):
+            elif rt_gap < MIN_GAP_PCT <= dl and _audit_dedupe_check(c["ticker"], adate, _fd_key):
                 # `acted` distinguishes a real removal from shadow telemetry — without it the event
                 # reads identically in both modes and verify-live cannot tell whether the cleanup
                 # is actually running.
@@ -2061,7 +2072,8 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                     f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit "
                     + ("REMOVED)" if _acted else "cleaned — SHADOW, still admitted)"),
                     json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
-                                "acted": _acted, "authoritative": authoritative,
+                                "acted": _acted, "pre_entry": _fd_pre_entry,
+                                "authoritative": authoritative,
                                 "down_authoritative": down_authoritative,
                                 "tick_et": now_et.strftime("%H:%M")}))
         return _floor(candidates)
