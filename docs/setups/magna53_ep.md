@@ -153,8 +153,21 @@ bars reject fails 2 tests. Both rejects and undecidables are logged BY NAME
 
 **Reversion-flag**: NEW. Reversion = `ep_rt_sustain_enabled` off (~60s, no deploy).
 
-**Status**: **BUILT, SHIPPED OFF** (`ep_rt_sustain_enabled` default false ⇒ byte-identical to today).
-15 tests. The live flip is the operator's and is NOT taken.
+**Status**: **LIVE — operator signed the flip 2026-08-02 09:53 ET** (*"flip it now, it's more
+conservative regardless"*). Shipped OFF, verified inert in both containers, then flipped; both
+confirmed reading `True`.
+
+⚠ **Its BLAST RADIUS today is telemetry, not trading, and that should not be misread as "it works".**
+`ep_rt_universe_authoritative` and `ep_rt_gap_authoritative` are both still **False**, so a
+universe catch is SHADOW — logged, never admitted. The sustain rule therefore changes *which shadow
+catches get recorded*, and pre-filters the cohort so that when RT-3 is eventually flipped the
+admission set is already correct. **It cannot affect a live trade while the authority toggles are
+off.**
+
+**The operator's reasoning is structurally correct**: the gate can only `continue` — it removes
+would-be catches and can never admit one. There is no path by which it loosens detection.
+
+15 tests. **Reversion**: `ep_rt_sustain_enabled` off, ~60s, no deploy.
 
 **Watch for** (pre-committed): first 30 live catches vs the replay's prediction — materially worse
 means the replay was fitted, revert; a rejected name running ≥+20% once is a review, twice a revert.
