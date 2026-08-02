@@ -27,6 +27,18 @@ SHADOW_MESSAGE = (
 )
 
 
+_TOP_SQL = """
+    SELECT u.symbol, s.rs_overall, s.rs_in_bucket, s.mcap_bucket
+    FROM crypto_rs_scores s
+    JOIN crypto_universe u ON u.coin_id = s.coin_id
+    WHERE s.score_date = $1
+      AND s.mcap_bucket = ANY($2)
+      AND s.rs_overall IS NOT NULL
+    ORDER BY s.rs_overall DESC
+    LIMIT $3
+"""
+
+
 async def render_crypto_top(category: Optional[str] = None, limit: int = 10) -> str:
     """Top RS-vs-BTC list, optionally filtered by category."""
     if not CRYPTO_RS_ENABLED:
@@ -55,41 +67,59 @@ async def render_crypto_top(category: Optional[str] = None, limit: int = 10) -> 
                 latest, category.lower(), limit,
             )
         else:
-            rows = await conn.fetch(
-                """
-                SELECT u.symbol, s.rs_overall, s.rs_in_bucket, s.mcap_bucket
-                FROM crypto_rs_scores s
-                JOIN crypto_universe u ON u.coin_id = s.coin_id
-                WHERE s.score_date = $1 AND s.rs_overall IS NOT NULL
-                ORDER BY s.rs_overall DESC
-                LIMIT $2
-                """,
-                latest, limit,
-            )
+            # ⚠ TWO BUCKETS (operator 2026-08-02: "perhaps we can have two buckets, big and small
+            # caps"). A single flat board ranked on rs_overall is structurally dominated by the
+            # small end — the universe is 202 micro + 66 mid against 12 large + 6 mega — so the
+            # top 8 came back all micro and ETH, the move he was actually watching, never appeared
+            # despite holding 1-month RS of 84-91 for a week.
+            #
+            # rs_overall is kept as the ranking metric INSIDE each side (not rs_in_bucket): the
+            # question is "what is strong", and a micro-cap that is #1 of 202 is genuinely stronger
+            # than one that is merely #1 of 6. Splitting the BOARD fixes visibility without
+            # rewriting what strength means.
+            #
+            # BIG = mega+large, SMALL = mid+micro. 'unknown' (4 coins) is deliberately excluded
+            # from both rather than dumped into one — an unclassified coin is not evidence of size.
+            per_side = max(1, limit // 2)
+            rows_big = await conn.fetch(_TOP_SQL, latest, ("mega", "large"), per_side)
+            rows_small = await conn.fetch(_TOP_SQL, latest, ("mid", "micro"), per_side)
+            rows = None
         btc_d_row = await conn.fetchrow(
             "SELECT dominance_pct FROM crypto_btc_dominance "
             "WHERE date = $1",
             latest,
         )
 
-    if not rows:
-        return f"_No coins matched (category={category})._"
+    def _table(rs_rows) -> list:
+        out = ["```", f"{'#':<3}{'SYM':<10}{'RS':>6} {'BUCKET':>10} {'BUCK_RS':>8}"]
+        for i, r in enumerate(rs_rows, start=1):
+            rs = float(r["rs_overall"]) if r["rs_overall"] is not None else 0.0
+            b_rs = float(r["rs_in_bucket"]) if r["rs_in_bucket"] is not None else 0.0
+            out.append(
+                f"{i:<3}{(r['symbol'] or '?'):<10}{rs:>6.1f} {r['mcap_bucket']:>10} {b_rs:>8.1f}"
+            )
+        out.append("```")
+        return out
 
-    header = f"*Crypto RS · top {limit}{' · ' + category if category else ''}*"
+    btc_bit = ""
     if btc_d_row and btc_d_row["dominance_pct"]:
-        header += f"  ·  BTC.D *{float(btc_d_row['dominance_pct']):.1f}%*"
+        btc_bit = f"  ·  BTC.D *{float(btc_d_row['dominance_pct']):.1f}%*"
 
-    body_lines = ["```"]
-    body_lines.append(f"{'#':<3}{'SYM':<10}{'RS':>6} {'BUCKET':>10} {'BUCK_RS':>8}")
-    for i, r in enumerate(rows, start=1):
-        rs = float(r["rs_overall"]) if r["rs_overall"] is not None else 0.0
-        bucket_rs = float(r["rs_in_bucket"]) if r["rs_in_bucket"] is not None else 0.0
-        body_lines.append(
-            f"{i:<3}{(r['symbol'] or '?'):<10}{rs:>6.1f} {r['mcap_bucket']:>10} {bucket_rs:>8.1f}"
-        )
-    body_lines.append("```")
-    body_lines.append(f"_data: {latest}_")
-    return f"{header}\n\n" + "\n".join(body_lines)
+    if rows is not None:                      # category-filtered — unchanged single table
+        if not rows:
+            return f"_No coins matched (category={category})._"
+        header = f"*Crypto RS · top {limit} · {category}*{btc_bit}"
+        return f"{header}\n\n" + "\n".join(_table(rows) + [f"_data: {latest}_"])
+
+    if not rows_big and not rows_small:
+        return "_No crypto RS data yet — first ingest pending._"
+    lines = [f"*Crypto RS*{btc_bit}", "", "*🐘 Big caps* _(mega + large)_"]
+    lines += _table(rows_big) if rows_big else ["_none_"]
+    lines += ["", "*🐜 Small caps* _(mid + micro)_"]
+    lines += _table(rows_small) if rows_small else ["_none_"]
+    lines += ["", f"_data: {latest} · RS is ranked across the WHOLE universe, so a small-cap "
+                  f"score is not comparable to a big-cap one by size alone._"]
+    return "\n".join(lines)
 
 
 async def render_alt_season_status() -> str:
