@@ -180,10 +180,17 @@ the only code change in the range was this one. Toggle set in `mi_safeguard_stat
 
 **Reversion**: set that row to `'off'` — takes effect within ~60s, no deploy, no code change.
 
-**Verify-live due Monday 2026-08-03** (first market session): expect `ep_rt_floor_flip_down` events
-carrying `"acted": true` and the summary suffix `REMOVED`, and expect the named tickers NOT to appear
-in `mi_ep_alerts` for that date. A flip-down event still reading `SHADOW` means the toggle is not
-being honoured.
+**Verify-live due Monday 2026-08-03** (first market session), THREE legs — the third is the one that
+makes the check non-vacuous:
+
+1. `ep_rt_floor_flip_down` events carry `"acted": true` and the summary suffix `REMOVED`. Still
+   reading `SHADOW` ⇒ the toggle is not being honoured.
+2. The tickers named in those events do NOT appear in `mi_ep_alerts` for that date.
+3. ⚠ **NEGATIVE CONTROL — confirm the scan ran at all** (any `ep_rt_*` event for 2026-08-03).
+   Flip-downs averaged 13.9/day, but that is an average and a quiet Monday can legitimately produce
+   zero. Without this leg, "no flip-down rows" passes legs 1-2 vacuously and is indistinguishable
+   from the detector never running. (`shadow-zero-effect-check-instrumentation`: a dark mechanism
+   reading zero effect is usually an artifact until the acting population is confirmed.)
 
 ### 2026-07-25 — #490 RT-1: full real-time detection built DARK (shadow note only — NO criteria change)
 
