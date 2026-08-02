@@ -8095,15 +8095,32 @@ reviews:
       ⚠ At registration NONE of the 18 rows had a settled fwd_5d — the whole cohort is
       2026-07-27..07-31 — so nobody could be scored either way. That is why this is
       data-gated rather than answered now.
+      ⚠⚠ AND all 18 were graded by claude-opus-4-8 vs claude-sonnet-4-6, whereas #509 upgraded
+      the roles on 2026-07-31 to claude-opus-5 vs claude-sonnet-5. The clustering evidence
+      above therefore describes a model pair that NO LONGER RUNS, and the predicate counts only
+      the CURRENT pair. Expect the count to restart from ~0 — that is correct, not a bug.
     predicate_sql: |
-      -- Disagreed rows that have actually SETTLED a 5-day forward outcome. Counting rows
-      -- alone would fire on an unscoreable cohort, which is the failure this review exists
-      -- to avoid — the metric must be answerable, not merely present.
+      -- TWO gates, both load-bearing.
+      -- (1) SETTLED, not merely present: counting rows would fire on an unscoreable cohort,
+      --     which is the failure this review exists to avoid.
+      -- (2) CURRENT MODEL PAIR only. ⚠ Found 2026-08-02: all 18 registration-time rows were
+      --     graded by claude-opus-4-8 vs claude-sonnet-4-6, but #509 upgraded the roles on
+      --     2026-07-31 and the live pair is now claude-opus-5 vs claude-sonnet-5. Pooling the
+      --     two pairs would answer "do these two models disagree" with data from two DIFFERENT
+      --     experiments — the pre-upgrade rows describe a pairing that no longer runs. They
+      --     stay in the table as history; they must not enter this verdict.
       SELECT COUNT(*)
       FROM mi_judge_divergence d
       JOIN mi_ep_scan_outcomes o
         ON o.ticker = d.ticker AND o.scan_date = d.alert_date
-      WHERE NOT d.agree AND o.fwd_5d_pct IS NOT NULL;
+      WHERE NOT d.agree
+        AND o.fwd_5d_pct IS NOT NULL
+        AND d.primary_model   = (SELECT model FROM mi_model_resolution
+                                  WHERE role = 'JUDGE_MODEL'
+                                  ORDER BY resolved_at DESC LIMIT 1)
+        AND d.secondary_model = (SELECT model FROM mi_model_resolution
+                                  WHERE role = 'JUDGE_DIVERGENCE_MODEL'
+                                  ORDER BY resolved_at DESC LIMIT 1);
     threshold: 15
     # 9 disagreements existed at registration, none settled. 15 SETTLED disagreements is
     # still thin for a verdict but enough to see a direction; a smaller bar would invite
