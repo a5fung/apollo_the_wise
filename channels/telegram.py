@@ -1776,6 +1776,20 @@ class TelegramChannel:
             BotCommand("syncnow",      "/syncnow [paper|live] — operator-confirm DB↔broker sync_positions"),
             BotCommand("pause",        "⏸️ HALT all new real-money entries (instant kill switch)"),
             BotCommand("resume",       "▶️ Resume real-money entries after /pause"),
+            # #513 (operator-approved 2026-08-02). 32 commands were DISPATCHED but absent from
+            # this list, so they worked only if you already knew to type them — the May-2026
+            # invisible-command class at 5x the size. Curated, not exhaustive: a 40-item menu is
+            # the same overwhelm #513 exists to fix. Aliases deduped (/flag, /reviews,
+            # /sugarbaby, /trade). Continuation surfaces (/watch, /flags) deliberately EXCLUDED —
+            # Continuation Flag is phase=deprecated, and it is a FAMILY not a setup (see the
+            # SETUP vs FAMILY definition in CLAUDE.md). /positions excluded too: it maps to
+            # _handle_watchlist, so its NAME lies — /trades is the real positions+P&L surface.
+            BotCommand("audit",        "/audit <topic> — full backward-check tables on demand"),
+            BotCommand("why",          "/why TICKER — one day deep: detection → entry → exit"),
+            BotCommand("setup",        "/setup TICKER — every detector hit, dated timeline"),
+            BotCommand("regime",       "Market regime + breadth"),
+            BotCommand("themes",       "Active themes — what is leading"),
+            BotCommand("htf",          "Higher-timeframe setups"),
             BotCommand("status",       "System health + API spend"),
             BotCommand("help",         "Capabilities, rules, command reference"),
         ]
