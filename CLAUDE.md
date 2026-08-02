@@ -77,6 +77,24 @@ Same SoT as Session Protocol above: `PLAN.md` at repo root (projects → tasks �
 
 **"run fable weekend block N"** (operator trigger, inline-Fable design sessions) → open `docs/roadmap/fable-weekend-blocks.md` §Block N and execute it to pure-execution depth. Fable's output still clears SSoT + CHANGE_PROCESS + sign-off + backtest before any live flip (THE LINE) — scope per the operating model above, no longer design-only.
 
+## 📛 SETUP vs FAMILY — a definition, not a preference (operator 2026-08-02, HARD)
+
+*"continuation is NOT a setup, we went over this a thousand times, it's a family… a trading setup
+needs a clear buy and stop point, continuation does not on its own… that setup needs a name and
+continuation flag is not. Just cut out this confusion every time."*
+
+- **SETUP = a named entry with a DEFINED BUY POINT AND STOP.** MAGNA53 EP (buy ORB high, stop ORB
+  low) is a setup. If you cannot state where it buys and where it stops, **it is not a setup.**
+- **FAMILY = a chart condition/context that can HOST several setups** but is not tradeable itself.
+  **Continuation / consolidation-post-runup is a FAMILY.** So is "Family A" (ADR 0013).
+- Within a family the tradeable entries each need **their own name** — buy-early-on-anticipation vs
+  buy-the-breakout are DIFFERENT setups with different buy/stop, not one thing.
+- ⚠ **Never call a family a setup, never call a detector/stage-board a setup.** The continuation-flag
+  detector emits WATCH/TIGHTENING/COILED/TRIGGERED — those are STATES, not setups. `#354` folds it
+  into Family A for exactly this reason.
+- Filed here (not memory) because it has been re-litigated repeatedly; a definition that keeps
+  getting re-derived belongs on the always-loaded surface.
+
 ## 🛑 Trading Setup Changes — Read SSoT First (NON-NEGOTIABLE)
 
 **Before changing ANY detection criterion** (parabolic, EP, 9M, flag, wick, convergence, future setups) **OR portfolio safeguard** (max_positions, daily_loss_limit, circuit_breaker, drawdown_breaker, PDT — see `docs/setups/safeguards.md`):
