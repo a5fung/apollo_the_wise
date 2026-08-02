@@ -8,6 +8,13 @@
 - **Max 1 rebump.** Due/overdue task → UNBLOCK + SHIP, not re-date. A 2nd bump is FORBIDDEN without my sign-off — tag `[ok:reason]`/`[blocked:reason]`. Gated in `check_plan._rebump_gate`.
 - **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first" etc.) unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
 - **Concise — no essays; never mention session length or ending/deferring a session — keep working.** A decision = the fork + a 1-line rec.
+- **📐 REPORT FORMAT — HARD, asked 5× across multiple days (operator 2026-08-02: *"how can I get the format I asked for without asking again and again"*). It lives HERE, not in memory, because memory was recalled and still drifted inside 24h — same lesson as every other prose-discipline failure in this file: only the always-loaded surface holds.** EVERY progress report / summary / status:
+  1. **Header carries the SUBSTANCE** — name the thing AND the result. *"#340 — a stale data-quality threshold now surfaces in 3 days instead of never"*, NOT *"#340 — shipped and verified"* (status theatre).
+  2. **Bullets. Titled blocks (problem / what shipped / result / action) once there is >1 idea. NO prose paragraphs** — a bolded lead-in followed by 3 sentences is still a paragraph, and is the exact drift that keeps recurring.
+  3. **One line per bullet** where possible.
+  4. **Action ALWAYS stated, including "none"** — he must never infer whether something waits on him.
+  5. **Reasoning / caveats / rejected alternatives → the commit, PLAN.md or the SSoT. Not the message.** If it does not change his decision, cut it.
+  ⚠ Partial compliance reads as non-compliance: one explanatory paragraph undoes a well-formatted message. Template + why: memory `report-like-an-exec-summary`.
 
 ## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
 
