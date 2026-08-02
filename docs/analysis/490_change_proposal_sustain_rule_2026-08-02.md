@@ -1,6 +1,7 @@
 # CHANGE PROPOSAL — require the ≥10% move to SUSTAIN before real-time admission (#490)
 
-**Status: DRAFT, awaiting operator sign-off. Nothing built, nothing flipped.**
+**Status: N=3 SIGNED by the operator 2026-08-02. NOT YET BUILT.**
+⚠ He signed **3 consecutive**, overriding my recommendation of 2 — recorded as his call, not mine.
 Per `docs/setups/CHANGE_PROCESS.md`. SSoT to update in the same commit: `docs/setups/magna53_ep.md`.
 
 ---
@@ -119,3 +120,34 @@ Because the selection risk cannot be argued away, it gets measured:
 It does not make the strategy profitable, and it is not a fix for entries or exits. It reduces noise
 admitted at detection. The shadow ORB control still shows zero winners across bull and correcting
 months with no broker involved — that problem is upstream of this and untouched.
+
+
+---
+
+## 8. Implementation path — resolved 2026-08-02, and it is nearly FREE
+
+**The constraint**: the Alpaca snapshot carries exactly ONE minute bar (`minute_close`,
+`minute_volume`, `minute_ts`) — enough for the existing Q3 print check, not for a 3-bar rule. And
+scan ticks are 5 minutes apart, so per-tick history cannot reconstruct consecutive MINUTES.
+
+**The resolution**: `collector.get_alpaca_minute_cum_volumes` (`ep_detector.py:2683`) **already makes
+one batched multi-symbol Alpaca minute-bars call on the candidate cohort (≤~50 symbols)** for the
+volume shadow — and then sums the bars into two cumulative totals and **discards the per-bar
+closes**. The bars this rule needs are already being fetched and thrown away.
+
+⇒ Extend that call to return per-bar closes alongside the volume sums. **No new network call, no
+added latency on the path that has to clear the 09:45 ORB cutoff** — which matters, because that
+budget is exactly what the earlier gate-1 work established as load-bearing.
+
+⚠ **One ordering wrinkle to solve in the build, not hand-wave**: the volume call happens at line
+~2683, *after* the Pass-0 universe overlay (~1774-1900) where a catch is currently decided. Either
+the sustain check moves to the later stage, or the bar fetch moves earlier. **Moving a fetch earlier
+in a hot path is the riskier of the two** — prefer evaluating the sustain rule where the bars already
+are, and have the overlay record a provisional catch that the later stage confirms or drops.
+
+**Operator ruling on the pre-market question** (2026-08-02): *"once open we are trading 1-min bars as
+per today"* — i.e. the 09:31 ORB entry mechanics are UNCHANGED. This rule governs **detection /
+admission only**, and my earlier A-vs-B framing conflated the two. Nothing about entry moves.
+
+**Reversion**: `ep_rt_sustain_enabled` runtime toggle (instant, no deploy) + `EP_RT_SUSTAIN_BARS`
+env for the count. Default OFF = today's behaviour.
