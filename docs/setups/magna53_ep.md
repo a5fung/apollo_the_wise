@@ -164,6 +164,24 @@ anyone touches that env var.
 
 **Reversion**: set `ep_rt_entry_gap_recheck` to `'off'` — ~60s, no deploy.
 
+⚠ **CORRECTED same evening (found by the `/simplify` pass, two reviewers independently): the guard
+originally baked MAGNA53's floor into a SHARED pipeline stage.** `submit_trade_entry` is the single
+funnel for MAGNA53 **and** 9M Day 2, and `check_rt_gap_floor` imported `ep_detector.MIN_GAP_PCT`
+(10%) directly — so it would have applied MAGNA53's criterion to 9M Day 2, whose own signed bar is
+**3% gap OR 4% intraday gain** (`ninem_detector._MIN_GAP_PCT`). That is rewriting another strategy's
+entry discipline: THE LINE.
+
+**Live exposure was ZERO and that was luck, not design** — 9M Day 2 is `phase=deprecated`, and the
+phase gate (`entry_pipeline.py:481`) runs BEFORE stage 4b (line 544), so it never reached the guard.
+Both reviewers predicted live 9M skips on Monday; verified against `mi_strategies` and the call
+order, that prediction is wrong. The defect was LATENT — it would have fired the moment 9M Day 2 was
+ever re-enabled.
+
+**Fix**: the floor is now a per-strategy PARAMETER (`rt_gap_floor_pct`, default `None` = opt out),
+exactly the idiom `check_fade_guard` already uses for `ratio`. MAGNA53 opts in at its own 10% from
+`live_tracker.py`; 9M Day 2 does not. A test asserts the shared funnel no longer imports any one
+strategy's constant, and another asserts the same price blocks at 10% and passes at 3%.
+
 **Verify-live due Monday 2026-08-03**, and the reversion trigger is pre-committed:
 1. Expect `setup:gap_below_floor` skips ONLY on names whose real-time gap is genuinely under 10% —
    spot-check each against `mi_daily_closes` prev close.

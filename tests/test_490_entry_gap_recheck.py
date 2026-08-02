@@ -46,9 +46,15 @@ def _wire(monkeypatch, *, enabled=True, price=None, prev_close=_PREV_CLOSE,
     monkeypatch.setattr(entry_pipeline.alpaca, "get_latest_trade", _latest)
 
 
-def _run(alert=None):
+_MAGNA53_FLOOR = 10.0
+
+
+def _run(alert=None, floor=_MAGNA53_FLOOR):
+    """`floor` is MAGNA53's 10% criterion. It is a PARAMETER, not a constant baked into the
+    guard: `submit_trade_entry` is the shared funnel for MAGNA53 and 9M Day 2, and 9M's bar is
+    3% / 4% intraday. See test_does_not_impose_one_strategys_floor_on_another."""
     return asyncio.run(entry_pipeline.check_rt_gap_floor(
-        "FTNT", alert if alert is not None else {"alert_date": _DATE, "gap_pct": 10.79}))
+        "FTNT", alert if alert is not None else {"alert_date": _DATE, "gap_pct": 10.79}, floor))
 
 
 # ── invariant 1: it blocks the real case ─────────────────────────────────────────────────────
@@ -134,3 +140,38 @@ def test_humanize_renders_the_new_reason():
     from agents.market_intelligence.broker.skip_reasons import humanize
     out = humanize(f"{SETUP_GAP_BELOW_FLOOR}: rt 7.8% < 10% floor")
     assert "setup:" not in out and out
+
+
+# ── the guard must not impose one strategy's criterion on another ────────────────────────────
+
+def test_defaults_to_skip_when_no_floor_is_passed(monkeypatch):
+    """Default None = opt-OUT. A strategy must ASK for this check, or the shared funnel would
+    silently apply someone else's rule to it."""
+    _wire(monkeypatch, price=107.77)          # would block at a 10% floor
+    assert asyncio.run(entry_pipeline.check_rt_gap_floor(
+        "FTNT", {"alert_date": _DATE, "gap_pct": 10.79})) == (True, None)
+
+
+def test_does_not_impose_one_strategys_floor_on_another(monkeypatch):
+    """THE defect this parameter exists to prevent, caught by the /simplify efficiency pass.
+
+    `submit_trade_entry` is the single funnel for MAGNA53 AND 9M Day 2. The guard originally
+    imported `ep_detector.MIN_GAP_PCT` (MAGNA53's 10%) directly, so it would have blocked any 9M
+    Day 2 entry under 10% — while 9M's own criterion is 3% gap or 4% intraday gain. That is
+    rewriting another strategy's entry discipline, i.e. THE LINE.
+
+    Same price, same alert: blocked at MAGNA53's floor, allowed at 9M's.
+    """
+    _wire(monkeypatch, price=105.0)           # +5% vs prev close
+    assert _run(floor=10.0)[0] is False, "must block below MAGNA53's 10%"
+    assert _run(floor=3.0) == (True, None), "must NOT block above 9M's 3%"
+
+
+def test_magna53_call_site_actually_opts_in():
+    """Wiring, not just behaviour — a guard nobody passes a floor to is silently inert."""
+    src = open("agents/market_intelligence/broker/live_tracker.py").read()
+    assert "rt_gap_floor_pct=_MAGNA53_MIN_GAP_PCT" in src
+    pipe = open("agents/market_intelligence/broker/entry_pipeline.py").read()
+    assert "check_rt_gap_floor(ticker, alert_context, rt_gap_floor_pct)" in pipe
+    assert "from agents.market_intelligence.ep_detector import MIN_GAP_PCT" not in pipe, \
+        "the shared funnel must not bake in one strategy's constant"

@@ -17,6 +17,11 @@ import logging
 from datetime import date, datetime, time, timedelta, timezone
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
+# #490: MAGNA53's OWN gap criterion, imported here so the opt-in at the call site names the
+# strategy whose rule it is. Deliberately NOT imported inside entry_pipeline — that file is the
+# SHARED funnel for MAGNA53 and 9M Day 2, and baking one strategy's constant into it is exactly
+# how the 10%-floor-applied-to-a-3%-strategy defect happened.
+from agents.market_intelligence.ep_detector import MIN_GAP_PCT as _MAGNA53_MIN_GAP_PCT
 from agents.market_intelligence.broker.entry_pipeline import (
     ACTION_AUTO_ENTERED,
     ACTION_AUTO_ENTER_FAILED,
@@ -422,6 +427,9 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 # width + 10:00 ET cleanup already cover dead-cat fills.
                 # Midpoint check was over-strict; drop it.
                 fade_midpoint_ratio=None,
+                # #490: MAGNA53 opts IN to the submission-time gap re-check at its OWN 10% floor.
+                # 9M Day 2 (line ~1248) deliberately does NOT — its bar is 3%, not 10%.
+                rt_gap_floor_pct=_MAGNA53_MIN_GAP_PCT,
                 aggregate_skips=True,
             )
 

@@ -151,7 +151,7 @@ async def check_fade_guard(
 
 
 async def check_rt_gap_floor(
-    ticker: str, alert_context: dict,
+    ticker: str, alert_context: dict, floor_pct: float | None = None,
 ) -> tuple[bool, str | None]:
     """#490 — re-check the gap against REAL-TIME price at submission. Return (ok, skip_reason).
 
@@ -172,6 +172,8 @@ async def check_rt_gap_floor(
     Toggle-gated by `ep_rt_entry_gap_recheck` (default OFF) so it ships inert and reverts in ~60s
     with no deploy.
     """
+    if floor_pct is None:
+        return True, None      # strategy did not opt in — see rt_gap_floor_pct
     try:
         from agents.market_intelligence.db import get_prev_close, get_runtime_toggle
         if not await get_runtime_toggle(
@@ -196,15 +198,14 @@ async def check_rt_gap_floor(
         if price <= 0:
             return True, None
 
-        from agents.market_intelligence.ep_detector import MIN_GAP_PCT
         rt_gap = (price - prev_close) / prev_close * 100
-        if rt_gap >= MIN_GAP_PCT:
+        if rt_gap >= floor_pct:
             return True, None
 
         alert_gap = alert_context.get("gap_pct")
         alert_txt = f"{float(alert_gap):.1f}%" if alert_gap is not None else "n/a"
         return False, (
-            f"{SETUP_GAP_BELOW_FLOOR}: rt {rt_gap:.1f}% < {MIN_GAP_PCT:.0f}% floor "
+            f"{SETUP_GAP_BELOW_FLOOR}: rt {rt_gap:.1f}% < {floor_pct:.0f}% floor "
             f"(alert said {alert_txt}, last ${price:.2f} vs prev close ${prev_close:.2f})"
         )
     except Exception as e:
@@ -301,6 +302,12 @@ async def submit_trade_entry(
     stop_label: str = "Stop",
     on_skip: SkipHook | None = None,
     fade_midpoint_ratio: float | None = FADE_MIDPOINT_RATIO,
+    # #490 — the real-time gap floor to re-check at submission, per STRATEGY.
+    # None = skip (the DEFAULT, deliberately): `submit_trade_entry` is the shared funnel for
+    # MAGNA53 *and* 9M Day 2, and MIN_GAP_PCT is MAGNA53's 10% criterion. 9M Day 2's own bar is
+    # 3% gap OR 4% intraday gain (`ninem_detector._MIN_GAP_PCT`), so enforcing 10% there would
+    # silently rewrite ANOTHER strategy's entry discipline. Same idiom as fade_midpoint_ratio.
+    rt_gap_floor_pct: float | None = None,
     aggregate_skips: bool = False,
 ) -> dict:
     """Single entry-submission pipeline.
@@ -534,7 +541,7 @@ async def submit_trade_entry(
     # tick that wrote the alert row hours earlier. Placed here, beside the fade guard, because it
     # is the same class of gate (setup quality read off live price) and it must run BEFORE sizing
     # and submission. Fails open on every non-answer; see check_rt_gap_floor.
-    gap_ok, gap_reason = await check_rt_gap_floor(ticker, alert_context)
+    gap_ok, gap_reason = await check_rt_gap_floor(ticker, alert_context, rt_gap_floor_pct)
     if not gap_ok:
         return await _skip(gap_reason, audit_event="orb_gap_below_floor")
 
