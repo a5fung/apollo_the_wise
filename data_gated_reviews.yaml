@@ -8079,3 +8079,45 @@ reviews:
     status: pending
     added_on: 2026-07-29
     cross_refs: ["task #508", "task #503"]
+
+  - review_id: judge_divergence_marginal_high_signal
+    title: >-
+      #301 2nd-opinion divergence — do the DISAGREED HIGHs underperform the AGREED ones?
+    question: >-
+      The 2nd-opinion check reads "9/18 disagreed (50%)", which invites "the judge is a
+      coin flip". It is not. Measured 2026-08-02: ALL 9 disagreements were HIGH->MODERATE
+      and ZERO went the other way, and they CLUSTER on the weak edge of HIGH — avg
+      ep_score 63.3 (range 50-84) vs 71.1 (60-96) for agreements, avg gap 12.7% vs 15.1%,
+      and the catalyst mix flips from 8-of-9 game_changer (agree) to 5-of-9 merely strong
+      (disagree). So the check behaves as a MARGINAL-HIGH detector, not a reliability
+      alarm. The only question that makes it actionable: on those marginal HIGHs, was the
+      stricter model RIGHT? Compare forward return of disagreed-HIGH vs agreed-HIGH.
+      ⚠ At registration NONE of the 18 rows had a settled fwd_5d — the whole cohort is
+      2026-07-27..07-31 — so nobody could be scored either way. That is why this is
+      data-gated rather than answered now.
+    predicate_sql: |
+      -- Disagreed rows that have actually SETTLED a 5-day forward outcome. Counting rows
+      -- alone would fire on an unscoreable cohort, which is the failure this review exists
+      -- to avoid — the metric must be answerable, not merely present.
+      SELECT COUNT(*)
+      FROM mi_judge_divergence d
+      JOIN mi_ep_scan_outcomes o
+        ON o.ticker = d.ticker AND o.scan_date = d.alert_date
+      WHERE NOT d.agree AND o.fwd_5d_pct IS NOT NULL;
+    threshold: 15
+    # 9 disagreements existed at registration, none settled. 15 SETTLED disagreements is
+    # still thin for a verdict but enough to see a direction; a smaller bar would invite
+    # reading noise as signal on a cohort this size.
+    earliest_review_date: 2026-08-07
+    action_when_ready: >-
+      Split the divergence cohort on `agree` and compare forward return (5d and 10d) with
+      n per side, plus the same split on ep_score band and catalyst_quality so the
+      marginal-HIGH clustering can be confirmed or dropped. THREE outcomes, all legitimate:
+      (a) disagreed-HIGHs underperform => the 2nd opinion is a real conviction signal and
+      the operator rules whether it earns any authority (THE LINE — it has ZERO today by
+      design, #301); (b) no difference => confirmed a model-TIER artifact, keep it as
+      telemetry and stop treating the rate as a warning; (c) still too thin => say so and
+      re-gate rather than ruling on noise. The agent reports the split; the operator rules.
+    status: pending
+    added_on: 2026-08-02
+    cross_refs: ["task #301", "task #207"]
