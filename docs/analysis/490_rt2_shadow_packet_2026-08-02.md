@@ -227,3 +227,65 @@ volatility) were **correct calls**. The 5-day run does not make them EPs.
 `⚠️ UNJUSTIFIED-DEMOTION sweep` heading is LOADED and was wrong here.** It labelled two correct
 judgements "unjustified" purely because price rose afterwards. Rename it to something neutral —
 "demotions that subsequently ran" — so the surface asks a question instead of asserting an error.
+
+
+---
+
+# GATE 1 RESOLVED WITHOUT A MARKET DAY — 2026-08-02
+
+**Operator: *"is missing data from illiquid stocks? If so, they may be needed to be ignored anyways"*
+then *"why we need market day to test this?"*** Both pushes were right. Neither needed waiting.
+
+## Coverage is NOT the cause — ruled out by running the production call
+
+Replayed `get_alpaca_snapshots_batch` at the exact production settings (concurrency 1, 15 s budget)
+over a 5,594-symbol universe rebuilt from settled data with the scan's own filters:
+
+```
+elapsed 1.5s of a 15s budget   ·   batches_failed 0 of 56
+returned 5,480 / 5,594 = 98.0%   ·   all 5,480 carry a price
+absent: 114 — every one a PREFERRED share (BACpB, ALLpJ, ATHpA, AXSpE …)
+DY 401.07 · QURE 43.60 · VECO 50.49 · QMCO 10.93 · SCL 64.14  ← all five present and priced
+```
+
+**So the operator's instinct was right in substance**: the data we do not get is data we should be
+ignoring anyway (preferred shares). But it does not explain the misses, because **all five missing
+names ARE returned, with prices**, and the fetch has 10× headroom against its timeout.
+
+## Tick-by-tick replay — the residual metric OVER-COUNTS
+
+Polygon minute bars, gap measured at each 5-minute scan tick against the settled prev close:
+
+| ticker | day high | ≥10% at a TICK CLOSE? | verdict |
+|---|---|---|---|
+| QURE | +14.6% | **NO** — peaks 9.7% at 09:30 close (12.3% intrabar), decays all morning | **not a miss** |
+| DY | +12.6% | **NO** — never above 9.6% at any tick | **not a miss** |
+| QMCO | +13.6% | **YES** — 09:35 close **+11.0%** | genuine miss |
+| SCL | +15.1% | **YES** — 09:40 close **+10.3%** | genuine miss |
+| VECO | +12.0% | **YES** — 09:40 close **+10.7%** | genuine miss |
+
+⚠ **QURE and DY are not detection failures — they are metric failures.** `mi_ep_delayed_residual`
+records a **continuous intrabar cross**; detection samples every 5 minutes and requires the level to
+be there when it looks. QURE touched 12.3% inside the 09:30 bar and closed it at 9.7%. Declining to
+trade that is CORRECT behaviour, and counting it as a missed catch is the metric's error.
+
+**Gate 1 restated on a sound denominator: 26 of 29 = 89.7%.** Still short of 95%, but the failure is
+3 cases, not 5 — and two of the "misses" were the system behaving properly.
+
+## The 3 genuine misses share one property: they are ALL within 1pp of the floor
+
++11.0%, +10.3%, +10.7%. The replay uses the minute-bar CLOSE; the scan uses Alpaca's latest trade at
+the tick instant. A few cents' difference between those two flips a name at +10.3% to under 10.0%.
+That is precisely the `rt_gap < MIN_GAP_PCT` path — **which was silent until today and now emits
+`ep_rt_retreated_below_floor`.** Monday attributes these three specifically; no new investigation is
+needed, only the log line that now exists.
+
+## What this changes for the decision
+
+1. **The RT feed is healthy.** 98% coverage, 10× timeout headroom, zero batch failures. The
+   "delayed-snapshot ceiling" worry raised earlier today is NOT supported.
+2. **Gate 1's ≥95% bar may be unreachable by construction**, because its denominator counts intrabar
+   crosses a 5-minute sampler cannot and should not catch. That is an argument for **re-specifying
+   the gate**, not for failing the system — and it is the operator's call, not a measurement.
+3. **The residual number to judge is 89.7% on 29 sound cases, with 3 near-floor stragglers already
+   instrumented.**
