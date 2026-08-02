@@ -7715,6 +7715,58 @@ async def purge_old_data() -> dict[str, int]:
     return deleted
 
 
+async def get_setup_performance_review(lookback_days: int = 90) -> list[dict[str, Any]]:
+    """STANDING per-setup entry/stop/outcome geometry — the review that runs whether we are
+    winning or losing (operator 2026-08-02).
+
+    *"every setup, entry/stop, win/losses, etc will need periodic review regardless if we're
+    winning or losing. We're not trying to overfit, but we need to regularly monitor, ask
+    questions, test assumptions, finetune where appropriate, so this becomes a standing process."*
+
+    Built after doing this cut BY HAND on 2026-08-02 found what no existing surface did: all 12
+    closed live trades exited `stop_hit` with ZERO by any other route, half died inside 25 minutes,
+    the stop sat at 0.46x the instrument's own ADR, and four trades reached >=+2R before closing at
+    a full loss. The weekly review had judge / loser / drift / MFE sections and nothing that asked
+    "how is each SETUP's entry-and-stop geometry actually behaving".
+
+    Read-only, zero-authority (THE LINE): this feeds a Telegram appendix and NEVER a grade, entry,
+    stop or size. It reports and flags N-sufficiency; the operator rules.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT t.signal_type,
+                   t.account_mode,
+                   COUNT(*)                                              AS n,
+                   COUNT(*) FILTER (WHERE t.total_pnl > 0)               AS wins,
+                   ROUND(SUM(t.total_pnl)::numeric, 2)                   AS total_pnl,
+                   -- exit-reason concentration: "12 of 12 stop_hit" was the tell that nothing
+                   -- ever reached a profit-take, which no win-rate number would have shown.
+                   MODE() WITHIN GROUP (ORDER BY t.exits->0->>'reason')  AS top_exit,
+                   COUNT(*) FILTER (WHERE t.exits->0->>'reason' = 'stop_hit') AS n_stop_hit,
+                   -- winners becoming losers — the failure a low-win-rate strategy cannot survive
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.peak_r)      AS med_peak_r,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.realized_r)  AS med_realized_r,
+                   COUNT(*) FILTER (WHERE r.peak_r >= 2 AND r.realized_r < 0) AS ran_then_lost,
+                   -- stop geometry vs the INSTRUMENT's own volatility, not the opening range
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.stop_per_adr) AS med_stop_per_adr,
+                   -- fast deaths: a stop inside normal intraday range is hit by noise
+                   COUNT(*) FILTER (WHERE r.peak_source = 'extremes'
+                                    AND r.peak_r = 0)                     AS blind_peaks
+            FROM mi_live_trades t
+            LEFT JOIN mi_sell_discipline_records r ON r.trade_id = t.id
+            WHERE t.status = 'closed'
+              AND t.alert_date >= CURRENT_DATE - $1::int
+            GROUP BY t.signal_type, t.account_mode
+            HAVING COUNT(*) > 0
+            ORDER BY COUNT(*) DESC
+            """,
+            lookback_days,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
     """#301 — weekly aggregate over `mi_judge_divergence` for the system_review digest
     line. Read-only, zero-authority (THE LINE — this feeds a Telegram appendix, never a

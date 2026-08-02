@@ -22,6 +22,7 @@ import anthropic
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.failure_policy import advisory_fail_open
 from agents.market_intelligence.db import (
+    get_setup_performance_review,
     get_active_cooldowns,
     get_audit_log,
     get_correlation_clusters,
@@ -219,6 +220,18 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
             message = f"{message}\n\n{drift_section}"
     except Exception:
         logger.exception("early-window drift section render failed")
+
+    # STANDING setup review (operator 2026-08-02): per-setup entry/stop geometry, run WIN OR
+    # LOSE. Added after the same cut done by hand found what no existing section did — every
+    # live exit was a stop, half died inside 25 min, stop sat at 0.46x ADR, and 4 trades ran
+    # past +2R then closed red. SURFACES + asks; never prescribes (THE LINE, r3). The anti-
+    # overfit guard is the N-gate inside, not the cadence.
+    try:
+        setup_section = await _setup_performance_section()
+        if setup_section:
+            message = f"{message}\n\n{setup_section}"
+    except Exception:
+        logger.exception("setup-performance section render failed")
 
     # Judge ensemble-divergence SHADOW line (#301, 2026-07-26) — ZERO AUTHORITY, informational
     # only (THE LINE: this reads mi_judge_divergence, never a grade path). ONE line per the
@@ -1677,6 +1690,77 @@ async def _judge_divergence_section(window_start: date) -> str:
         f"{n_disagree}/{n} disagreed ({pct}%) with the HIGH-tier judge verdict this week{flag}"
         f"{direction}"
     )
+
+
+_SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see the docstring
+
+
+async def _setup_performance_section(lookback_days: int = 90) -> str:
+    """STANDING per-setup entry/stop geometry review (operator 2026-08-02).
+
+    *"every setup, entry/stop, win/losses, etc will need periodic review regardless if we're
+    winning or losing... we're not trying to overfit, but we need to regularly monitor, ask
+    questions, test assumptions."*
+
+    ⚠ **The anti-overfit guard is the N-GATE, not the cadence.** Running weekly is fine; asking a
+    QUESTION every week on n=3 is how you tune on noise. Below `_SETUP_REVIEW_MIN_N` a setup is
+    reported with its numbers and explicitly marked "monitoring only — no question asked".
+
+    ⚠ **SURFACES, never prescribes** (THE LINE + CHANGE_PROCESS r3): it can say "every exit was a
+    stop" or "4 ran past +2R then closed red". It must never say which stop to use.
+
+    The three cuts, each chosen because it caught something a win-rate number hid on 2026-08-02:
+      · exit-reason concentration  — 12 of 12 stop_hit meant nothing EVER reached a profit-take
+      · peak_r vs realized_r       — winners becoming losers, fatal to a low-win-rate strategy
+      · stop / ADR                 — geometry vs the instrument's own volatility (measured 0.46)
+    """
+    try:
+        rows = await get_setup_performance_review(lookback_days)
+    except Exception:
+        logger.exception("system_review: setup-performance section failed")
+        return ""
+    if not rows:
+        return ""
+
+    L = [f"\U0001F9EA *Setup review — entry/stop geometry ({lookback_days}d)*",
+         "_Runs win or lose. Surfaces questions, never verdicts._", "```"]
+    asks: list[str] = []
+    for r in rows:
+        n = r["n"] or 0
+        label = f"{r['signal_type']}/{r['account_mode']}"
+        wins = r["wins"] or 0
+        line = f"{label:<20} n={n:<3} W={wins}/{n}  ${r['total_pnl']}"
+        L.append(line)
+        bits = []
+        if r["top_exit"]:
+            bits.append(f"exits: {r['n_stop_hit']}/{n} {r['top_exit']}")
+        if r["med_peak_r"] is not None:
+            bits.append(f"peak {float(r['med_peak_r']):+.2f}R -> real {float(r['med_realized_r']):+.2f}R")
+        if r["med_stop_per_adr"] is not None:
+            bits.append(f"stop/ADR {float(r['med_stop_per_adr']):.2f}")
+        if bits:
+            L.append("   " + " · ".join(bits))
+        if r["blind_peaks"]:
+            L.append(f"   ⚠ {r['blind_peaks']} peak(s) unreadable (fast exit, recorder blind <10m)")
+        # QUESTIONS — only when the sample can carry one.
+        if n < _SETUP_REVIEW_MIN_N:
+            L.append(f"   (n<{_SETUP_REVIEW_MIN_N} — monitoring only, no question asked)")
+            continue
+        if r["n_stop_hit"] == n:
+            asks.append(f"{label}: every one of {n} exits was the stop — nothing reached a "
+                        f"profit-take or trail. Is that the design working, or the exit path "
+                        f"never engaging?")
+        if (r["ran_then_lost"] or 0) >= 2:
+            asks.append(f"{label}: {r['ran_then_lost']} trades reached ≥+2R and still closed red "
+                        f"— winners converting to losers.")
+        if r["med_stop_per_adr"] is not None and float(r["med_stop_per_adr"]) < 0.6:
+            asks.append(f"{label}: median stop is {float(r['med_stop_per_adr']):.2f}× the "
+                        f"instrument's own ADR — inside normal daily range.")
+    L.append("```")
+    if asks:
+        L.append("*Questions for you:*")
+        L += [f"• {a}" for a in asks]
+    return "\n".join(L)
 
 
 def _format_mfe_capture_section(data: dict) -> str:
