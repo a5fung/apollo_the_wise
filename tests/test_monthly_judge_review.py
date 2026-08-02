@@ -52,7 +52,11 @@ def test_unjustified_demotion_sweep():
 def test_formatter_surfaces_not_prescribes():
     text = format_judge_review(aggregate_judge_review(_ROWS), 30)
     assert "MONTHLY JUDGE REVIEW" in text
-    assert "UNJUSTIFIED-DEMOTION" in text and "CCC" in text
+    # Renamed 2026-08-02 on the operator's ruling: "UNJUSTIFIED" ASSERTED an error the data
+    # cannot show. He reviewed both flagged names and ruled the judge CORRECT on each — a 5-day
+    # run does not make a name an EP. The heading must ASK, not accuse; this test now pins that.
+    assert "DEMOTIONS THAT SUBSEQUENTLY RAN" in text and "CCC" in text
+    assert "UNJUSTIFIED" not in text, "the heading must not assert an error the data cannot show"
     assert "OPERATOR labeling" in text
     # SURFACES facts, never prescribes code (feedback_weekly_review_surface_not_prescribe).
     assert "proposed change" not in text.lower() and "should " not in text.lower()

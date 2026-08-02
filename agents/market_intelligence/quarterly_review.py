@@ -151,6 +151,107 @@ def _extract_summary_section(stdout: str, max_lines: int = 25) -> str:
     return "\n".join(lines[band_idx - 1 : end])
 
 
+# ── #513 — DECISION-FIRST digest ──────────────────────────────────────────────────────────────
+# Operator 2026-08-01, reading the 8/01 sweep: *"it contains so much info, not all formatted well,
+# and I have no idea what to do with it. with so much text, it becomes overwhelming, drown with
+# data, so only option is paste it here."*
+#
+# The defect was RENDERING, not content: 13 scripts each pasted a raw table, and the two items that
+# actually needed him were buried mid-message (4 M&A-suppressed movers incl. CLRO +358%, and 2 judge
+# demotions that then ran). Every script still runs and still writes its audit row — nothing stops
+# being measured. Full tables move to `/audit <topic>`.
+#
+# Classification is MARKER-BASED on the scripts' own output, deliberately: the scripts already
+# announce their verdicts, so re-deriving them here would be a second source of truth that drifts.
+# Unrecognised output degrades to "review" rather than being silently called green — a digest that
+# reports "all clear" because it failed to parse is the failure mode this rewrite exists to remove.
+_NEEDS_YOU = [
+    ("MATERIAL-MISS CANDIDATE", "suppressed names that then ran — verify false positive"),
+    ("For OPERATOR labeling",   "label the judge's calls right/wrong"),
+    ("HARD-gate",               "filter list needs your judgement (agent may not classify)"),
+]
+_WAITING = [
+    ("INSUFFICIENT for ship", "accruing"),
+    ("ACCRUING",              "accruing"),
+    ("< 10.",                 "accruing"),
+    ("data-gated",            "accruing"),
+]
+_CONCLUDED = [
+    ("STRUCTURAL NO-GO", "no-go — structural, not tuning"),
+    ("NO-SHIP",          "no-ship, its own rule decided"),
+    ("No drift events",  "clean"),
+    ("VERDICT: GO",      "go-supportive"),
+]
+
+
+def _classify(stdout: str) -> "tuple[str, str]":
+    """(bucket, one-line note). Buckets: 'you' | 'waiting' | 'done' | 'review'."""
+    if not stdout.strip():
+        return "review", "no output"
+    for marker, note in _NEEDS_YOU:
+        if marker in stdout:
+            return "you", note
+    for marker, note in _CONCLUDED:
+        if marker in stdout:
+            return "done", note
+    for marker, note in _WAITING:
+        if marker in stdout:
+            return "waiting", note
+    return "review", "output not auto-classified — open /audit"
+
+
+def _money_line(results: list) -> "str | None":
+    """The one number worth surfacing, lifted from whichever script printed it."""
+    for r in results:
+        for ln in (r.get("stdout_summary") or "").splitlines():
+            if "total P&L" in ln or "Realized (alerts that became trades)" in ln:
+                return ln.strip().lstrip("💵").strip()
+    return None
+
+
+def _render_digest(results: list, started_at, elapsed: float) -> str:
+    """Decisions → money → one line per check. Never a raw table."""
+    you, waiting, done, review, failed = [], [], [], [], []
+    for r in results:
+        if r["exit_code"] != 0:
+            failed.append(r)
+            continue
+        bucket, note = _classify(r.get("stdout_summary") or "")
+        {"you": you, "waiting": waiting, "done": done, "review": review}[bucket].append((r, note))
+
+    L = ["📊 *Monthly backward-check sweep*",
+         f"_{started_at.strftime('%Y-%m-%d')} · {len(results)} checks · {elapsed:.0f}s_", ""]
+
+    if you:
+        L.append("*⚖️ NEEDS YOUR CALL*")
+        for r, note in you:
+            L.append(f"• {r['label']} — {note}")
+            L.append(f"    `/audit {r['module'].rsplit('.', 1)[-1]}`")
+        L.append("")
+    else:
+        L.append("*⚖️ NEEDS YOUR CALL* — none")
+        L.append("")
+
+    money = _money_line(results)
+    if money:
+        L += [f"*💵 {money}*", ""]
+
+    if failed:
+        L.append("*🔴 FAILED TO RUN*")
+        L += [f"• {r['label']} — {(r['stderr_tail'] or '')[:80]}" for r in failed]
+        L.append("")
+
+    L.append("*Everything else*")
+    for r, note in done:
+        L.append(f"✅ {r['label']} — {note}")
+    for r, note in waiting:
+        L.append(f"⏳ {r['label']} — {note}")
+    for r, note in review:
+        L.append(f"👀 {r['label']} — {note}")
+    L += ["", "_Full tables: `/audit <topic>`. Every check still ran and still wrote its audit row._"]
+    return "\n".join(L)
+
+
 async def run_quarterly_sweep() -> dict:
     """Execute every registered backward-check script. Returns a dict
     with per-script outcome + an aggregated message ready for Telegram.
@@ -194,37 +295,13 @@ async def run_quarterly_sweep() -> dict:
                 "stderr_tail": f"FAILED: {type(e).__name__}: {str(e)[:300]}",
             })
 
-    # Aggregate into one Telegram digest
+    # Aggregate into ONE decision-first digest (#513) — see _render_digest.
     elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()
-    lines = [
-        f"📊 *Monthly backward-check sweep* — regime-shift monitor",
-        f"_{started_at.strftime('%Y-%m-%d %H:%M')} UTC · "
-        f"{len(results)} scripts · {elapsed:.0f}s_",
-        "_Watch for band-level WR shifts vs prior month — that's the regime signal._",
-        "",
-    ]
-    for r in results:
-        ok = "✅" if r["exit_code"] == 0 else "🔴"
-        lines.append(f"{ok} *{r['label']}*")
-        if r["stdout_summary"]:
-            # Wrap in code block for monospace rendering
-            lines.append("```")
-            lines.append(r["stdout_summary"][:1500])
-            lines.append("```")
-        if r["exit_code"] != 0 and r["stderr_tail"]:
-            lines.append(f"_error: {r['stderr_tail'][:200]}_")
-        lines.append("")
-
-    lines.append("_Re-runnable on demand via `docker exec apollo-market "
-                 "python -m agents.market_intelligence.quarterly_review`. "
-                 "Re-calibration decisions still require backward-check "
-                 "evidence + advisor review per quarterly-rule discipline._")
-
     return {
         "started_at": started_at.isoformat(),
         "elapsed_sec": elapsed,
         "results": results,
-        "digest_message": "\n".join(lines),
+        "digest_message": _render_digest(results, started_at, elapsed),
     }
 
 

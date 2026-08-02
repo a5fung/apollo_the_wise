@@ -134,9 +134,15 @@ def format_judge_review(agg, days):
             L.append(f"   {tier:9s} {_stat_line(agg['by_tier'][tier])}")
     L.append("")
     ud = agg["unjustified_demotes"]
-    L.append(f"⚠️  UNJUSTIFIED-DEMOTION sweep (judge demoted, ran ≥+{_UNJUSTIFIED_DEMOTE_5D:.0f}% in 5d) — {len(ud)}:")
+    # Renamed 2026-08-02 (operator ruling). "UNJUSTIFIED" ASSERTED an error the data cannot show:
+    # he reviewed both flagged names — CLF (net loss behind a tripled EBITDA) and WKC (profit surge
+    # from transient fuel-price volatility) — and ruled the judge CORRECT on both: *"aligned, the
+    # stocks looks fine but not true EP moving."* A 5-day run does not make a name an EP, so the
+    # heading was labelling correct judgements as errors purely because price rose. Neutral now: it
+    # asks a question instead of asserting one.
+    L.append(f"🔎 DEMOTIONS THAT SUBSEQUENTLY RAN (≥+{_UNJUSTIFIED_DEMOTE_5D:.0f}% in 5d) — {len(ud)}. Not necessarily wrong; the 5d move is not an EP verdict:")
     if not ud:
-        L.append("   (none — no winners demoted this window)")
+        L.append("   (none this window)")
     for r in ud[:15]:
         L.append(f"   {r['alert_date']} {r['ticker']:6s} "
                  f"{format_tier_transition(r.get('baseline_floor_tier'), r.get('judge_tier'))}"
