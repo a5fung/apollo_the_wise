@@ -82,6 +82,33 @@ def derive_loaded_modules() -> set[str]:
     return paths
 
 
+def derive_broker_modules(root: Path) -> set[str]:
+    """Every `broker/*.py` — execution-loaded BY DEFINITION, not by observation.
+
+    WHY (found 2026-08-02). `derive_loaded_modules` samples `sys.modules` after importing the
+    entrypoints, so it only sees IMPORT-TIME imports. A module imported LAZILY inside a function
+    body is invisible to it. `broker/entry_pipeline.py` is exactly that:
+    `live_tracker.process_new_alerts_live` is imported inside `_orb_monitor_job`, and with
+    `EXECUTION_MODE=http` that job RUNS ON apollo-execution — yet entry_pipeline was absent from the
+    generated list, so a change to it alone would not have routed to the execution scope and the
+    container would have kept running stale ENTRY code. The #456 silent-dark class, on the money
+    path.
+
+    ⚠ A transitive AST closure was tried first and REJECTED: seeded from either the entrypoints or
+    from broker/ it returns 132 of ~150 modules, because everything in this package eventually
+    imports everything. That makes the scope gate meaningless ("always deploy both") rather than
+    safer. A shipped guard that always fires is not a guard.
+
+    So the rule is definitional and narrow instead, matching CLAUDE.md's own statement that
+    *"broker/ + execution_routes RUN on apollo-execution"*. Unioned with the runtime derivation,
+    which still covers everything reached at import time or dynamically.
+    """
+    d = root / "agents" / "market_intelligence" / "broker"
+    if not d.is_dir():
+        return set()
+    return {str(f.resolve().relative_to(root)) for f in d.glob("*.py")}
+
+
 def read_list(root: Path) -> set[str]:
     p = root / _LIST_REL
     if not p.exists():
@@ -97,7 +124,10 @@ def main() -> int:
     emit = "--emit" in sys.argv
 
     try:
-        derived = derive_loaded_modules()
+        # UNION of two derivations — neither alone is sufficient. Runtime sampling misses
+        # modules imported LAZILY inside function bodies (entry_pipeline, 2026-08-02). The broker
+        # rule is definitional. Under-coverage is the silent-dark direction, so take both.
+        derived = derive_loaded_modules() | derive_broker_modules(root)
     except Exception as e:  # an import failure here is itself a real problem
         print(f"✘ preflight exec-deploy-scope: could not import the execution "
               f"entrypoint to derive the module set: {e!r}")
