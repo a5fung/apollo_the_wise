@@ -169,8 +169,21 @@ flip-UP half — which stays gated behind `ep_rt_gap_authoritative` exactly as b
 **Reversion-flag**: NEW (splits an existing toggle; neither half changes meaning). Reversion = set
 the toggle back off — no code change, no deploy.
 
-**Status**: **BUILT, SHIPPED OFF. Default off is byte-identical to today (test-pinned).** The live
-flip is a detection-criterion change and needs operator sign-off — NOT taken.
+**Status**: **LIVE — operator SIGNED OFF 2026-08-01 ("yes to both"), flipped 20:00 ET.**
+
+Shipped OFF first and verified inert, then flipped — so the code path was proven live before it was
+allowed to act. Deploy sequence (`ep_detector.py` is in `exec_loaded_modules.txt`, so BOTH services
+run it): `deploy.sh market-agent` → `deploy.sh execution`, both green. Delta read before deploying —
+the only code change in the range was this one. Toggle set in `mi_safeguard_state`
+(`ep_rt_gap_down_authoritative` / `global` / `on`); **both containers confirmed reading
+`down=True, full=False`** — i.e. the remove half is acting and the flip-UP half is still gated.
+
+**Reversion**: set that row to `'off'` — takes effect within ~60s, no deploy, no code change.
+
+**Verify-live due Monday 2026-08-03** (first market session): expect `ep_rt_floor_flip_down` events
+carrying `"acted": true` and the summary suffix `REMOVED`, and expect the named tickers NOT to appear
+in `mi_ep_alerts` for that date. A flip-down event still reading `SHADOW` means the toggle is not
+being honoured.
 
 ### 2026-07-25 — #490 RT-1: full real-time detection built DARK (shadow note only — NO criteria change)
 
