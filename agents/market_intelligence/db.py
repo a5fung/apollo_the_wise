@@ -7753,12 +7753,19 @@ async def get_setup_performance_review(lookback_days: int = 90) -> list[dict[str
                    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.stop_per_adr) AS med_stop_per_adr,
                    -- fast deaths: a stop inside normal intraday range is hit by noise
                    COUNT(*) FILTER (WHERE r.peak_source = 'extremes'
-                                    AND r.peak_r = 0)                     AS blind_peaks
+                                    AND r.peak_r = 0)                     AS blind_peaks,
+                   -- ⚠ PHASE (2026-08-02). Without it a RETIRED strategy's historical rows sit
+                   -- unmarked beside live ones and read as still running — the operator saw
+                   -- 9m_day2 in this section hours after we deleted it and reasonably asked
+                   -- "why is it back?". The rows are old paper trades (newest 2026-06-10); the
+                   -- section was simply not saying so.
+                   MAX(s.phase)                                           AS phase
             FROM mi_live_trades t
             LEFT JOIN mi_sell_discipline_records r ON r.trade_id = t.id
+            LEFT JOIN mi_strategies s ON s.signal_type = t.signal_type
             WHERE t.status = 'closed'
               AND t.alert_date >= CURRENT_DATE - $1::int
-            GROUP BY t.signal_type, t.account_mode
+            GROUP BY t.signal_type, t.account_mode, s.phase
             HAVING COUNT(*) > 0
             ORDER BY COUNT(*) DESC
             """,

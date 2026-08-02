@@ -1729,7 +1729,14 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
         n = r["n"] or 0
         label = f"{r['signal_type']}/{r['account_mode']}"
         wins = r["wins"] or 0
-        line = f"{label:<20} n={n:<3} W={wins}/{n}  ${r['total_pnl']}"
+        # ⚠ RETIRED cohorts must be MARKED (2026-08-02). Historical rows of a deleted strategy
+        # otherwise sit unlabelled beside live ones and read as still running — the operator saw
+        # 9m_day2 here hours after we deleted it and reasonably asked "why is it back?". The rows
+        # were old paper trades; the section simply was not saying so.
+        phase = (r.get("phase") or "").lower()
+        retired = phase == "deprecated"
+        tag = "  [RETIRED — history only]" if retired else ""
+        line = f"{label:<20} n={n:<3} W={wins}/{n}  ${r['total_pnl']}{tag}"
         L.append(line)
         bits = []
         if r["top_exit"]:
@@ -1743,6 +1750,9 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
         if r["blind_peaks"]:
             L.append(f"   ⚠ {r['blind_peaks']} peak(s) unreadable (fast exit, recorder blind <10m)")
         # QUESTIONS — only when the sample can carry one.
+        if retired:
+            L.append("   (retired strategy — shown for history, no question asked)")
+            continue
         if n < _SETUP_REVIEW_MIN_N:
             L.append(f"   (n<{_SETUP_REVIEW_MIN_N} — monitoring only, no question asked)")
             continue

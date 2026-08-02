@@ -26,7 +26,7 @@ def _run(c):
 def _row(**kw):
     base = dict(signal_type="magna53", account_mode="live", n=12, wins=0, total_pnl=-224.01,
                 top_exit="stop_hit", n_stop_hit=12, med_peak_r=0.56, med_realized_r=-1.00,
-                ran_then_lost=4, med_stop_per_adr=0.46, blind_peaks=5)
+                ran_then_lost=4, med_stop_per_adr=0.46, blind_peaks=5, phase="live")
     base.update(kw)
     return base
 
@@ -95,3 +95,29 @@ def test_renders_nothing_when_there_is_no_data(monkeypatch):
 def test_a_query_failure_degrades_to_silence_not_a_broken_review(monkeypatch):
     monkeypatch.setattr(sr, "get_setup_performance_review", AsyncMock(side_effect=RuntimeError("db")))
     assert _run(sr._setup_performance_section()) == ""
+
+
+# ── retired strategies must be MARKED, never read as running ─────────────────────────────────
+# The operator saw 9m_day2 in this section hours after we deleted the strategy and reasonably
+# asked "why is it back?". The rows were old paper trades (newest 2026-06-10) — the section was
+# simply not saying so. Unlabelled history beside live cohorts is how confusion gets built in.
+
+def test_a_retired_strategy_is_labelled_as_history(monkeypatch):
+    out = _section(monkeypatch, [_row(signal_type="9m_day2", account_mode="paper",
+                                      n=7, wins=3, phase="deprecated")])
+    assert "RETIRED" in out and "history only" in out
+
+
+def test_a_retired_strategy_never_generates_a_question(monkeypatch):
+    """Even with every trigger tripped — there is nothing left to tune on a deleted strategy."""
+    out = _section(monkeypatch, [_row(signal_type="9m_day2", n=30, n_stop_hit=30,
+                                      ran_then_lost=5, med_stop_per_adr=0.2,
+                                      phase="deprecated")])
+    assert "Questions for you" not in out
+    assert "retired strategy" in out
+
+
+def test_a_live_strategy_is_not_labelled_retired(monkeypatch):
+    out = _section(monkeypatch, [_row(phase="live")])
+    assert "RETIRED" not in out
+    assert "Questions for you" in out
