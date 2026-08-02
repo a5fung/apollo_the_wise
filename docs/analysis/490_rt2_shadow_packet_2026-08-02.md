@@ -134,3 +134,59 @@ zeros.
 2. **Re-measure gate 5** on the unbiased denominator.
 3. **Operator reviews the two named lists** (gates 4 and 6).
 4. Gate 7 is deferrable to the RT-5 decision, but should be filed now.
+
+
+---
+
+# OPERATOR RULINGS — 2026-08-02
+
+## Gate 6 (the would-have-caught cohort) — *"not against smaller stocks per say, but some of those charts looks quite poor"* … *"looks about right in terms of vol split"*
+
+**Ruled: size is not the objection, TRADABILITY is.** He endorsed the dollar-volume split as the
+right lever. Not yet a shipped threshold — no number is signed.
+
+⚠ **The tension to carry into any threshold work**: a liquidity floor would have cut **RACC, the
+single best performer in the cohort (+31.1% open→close, $1M dollar volume)**. Whatever floor is
+proposed must be scored against that, not just against the names it cleans up.
+
+## Gate 4 (tick-quality rejects) — two named rulings
+
+- **MYGN 07-30 `no_bar_confirm` — ruled a GOOD rejection.** Operator: *"I don't see >10% except for
+  on specific 1min bar and it crashed back down immediately, so this is a good avoid, especially
+  knowing next day it dropped 46%."* This is the guard working exactly as designed: a single
+  uncorroborated print, no confirming minute bar, rejected.
+- **FET 07-31 `stale_quote` — operator says the setup LOOKS LEGIT and asked why a stale quote is
+  grounds for rejection.** Answered below; the honest reading is that the reject reason is
+  MIS-NAMED, and the real cause is the mandatory bar corroboration.
+
+### What the three reasons actually mean (`_rt_quality_read`, `ep_detector.py:1660-1697`)
+
+For a name only real-time data can admit (`rt_only=True`), **Q3 — a corroborating minute bar — is
+MANDATORY**. The reason string names the most-informative *failed* guard, which is why it misleads:
+
+| reason | what actually happened |
+|---|---|
+| `no_bar_confirm` | quote FRESH, print in-band, but **no confirming minute bar** — a lone print nothing else supports (MYGN) |
+| `stale_quote` | **no confirming minute bar**, AND the quote was too old (>30s RTH / >300s pre-open) to cross-check the print either |
+| `outside_band` | quote fresh, but the print sits outside bid/ask ±0.5% and no bar corroborates — a late-reported / off-exchange odd print |
+
+**So `stale_quote` does NOT mean "we rejected it because the quote was stale."** In every case the
+binding constraint is the missing minute bar; the quote state only decides what the failure is
+*called*. FET was rejected for want of corroboration, not for quote age.
+
+⚠ **The structural consequence, and it is the actionable part: 10 of the 14 rejects fired
+PRE-MARKET** (07:00-09:15). Pre-market is exactly where minute bars are sparsest and quotes thinnest,
+so a mandatory-bar rule is at its strictest precisely where a real pre-open mover is hardest to
+corroborate. That is a design trade-off, not a bug — but it is the reason a name like FET that
+"looks legit" gets dropped, and it should be an explicit operator decision rather than a side effect.
+
+## Judge demotions — operator ALIGNED with the judge
+
+*"aligned, the stocks looks fine but not true EP moving."* Both CLF (HIGH→MODERATE, still a net loss
+behind a tripled EBITDA) and WKC (tier held, profit surge attributed to transient fuel-price
+volatility) were **correct calls**. The 5-day run does not make them EPs.
+
+▶ **Consequence for #513 (the digest rebuild): the monthly sweep's
+`⚠️ UNJUSTIFIED-DEMOTION sweep` heading is LOADED and was wrong here.** It labelled two correct
+judgements "unjustified" purely because price rose afterwards. Rename it to something neutral —
+"demotions that subsequently ran" — so the surface asks a question instead of asserting an error.
