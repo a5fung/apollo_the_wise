@@ -1543,6 +1543,10 @@ def _format_loser_section(loser_breakdown: dict) -> str:
     return "\n".join(lines)
 
 
+_REVIEWS_RENDER_CAP = 8      # an un-scannable wall is WHY the list got ignored
+_REVIEWS_STALE_DAYS = 30     # ripe this long = forgotten, not waiting
+
+
 def _format_pending_reviews_section(pending: dict) -> str:
     """Deterministic Reviews-ready appendix (#412) — data-gated reviews whose
     threshold flipped this week. Rendered in code (not the LLM) so an actionable
@@ -1551,12 +1555,48 @@ def _format_pending_reviews_section(pending: dict) -> str:
     ready = (pending or {}).get("ready") or []
     if not ready:
         return ""
-    lines = ["📅 *Reviews ready* — data-gated thresholds flipped; action needed:"]
-    for r in ready:
+
+    # ⚠ AGE + a CAP (2026-08-02). The registry had 124 reviews with **50 already ripe, the oldest
+    # 72 days** — they surfaced here every Sunday and nothing happened. A list that fires and is
+    # ignored is not a gate, it is a pile; the same defect the PLAN board had before the growth
+    # ceiling. Two teeth, both deliberately mild:
+    #   1. AGE per item — "ripe 72d" makes a forgotten review impossible to read as new.
+    #   2. A CAP on how many render — an un-scannable wall is WHY it got ignored. The overflow is
+    #      COUNTED, never hidden: silently truncating would be the same failure wearing a tidier
+    #      face.
+    # Deliberately NOT auto-closing or auto-deferring anything: a stale review still holds a real
+    # question, and disposing of it is the operator's call (this file's own status semantics).
+    from datetime import date as _date
+    from agents.market_intelligence.collector import et_today as _et_today
+    _today = _et_today()
+
+    def _age(r):
+        d = r.get("earliest_review_date")
+        if isinstance(d, str):
+            try:
+                d = _date.fromisoformat(d)
+            except ValueError:
+                return None
+        return (_today - d).days if isinstance(d, _date) else None
+
+    scored = sorted(ready, key=lambda r: -(_age(r) or 0))
+    shown, overflow = scored[:_REVIEWS_RENDER_CAP], scored[_REVIEWS_RENDER_CAP:]
+    n_stale = sum(1 for r in scored if (_age(r) or 0) >= _REVIEWS_STALE_DAYS)
+
+    head = f"📅 *Reviews ready* ({len(scored)}) — data-gated thresholds flipped; action needed:"
+    if n_stale:
+        head += f"\n⚠️ _{n_stale} have been ripe ≥{_REVIEWS_STALE_DAYS}d — surfacing is not triage._"
+    lines = [head]
+    for r in shown:
         title = (r.get("title") or r.get("review_id") or "?").strip()
         action = (r.get("action_when_ready") or "").strip()
         first = action.split(". ")[0].rstrip(".") if action else ""
-        lines.append(f"• *{title}*" + (f" — {first}." if first else ""))
+        age = _age(r)
+        tag = f" _[ripe {age}d]_" if age else ""
+        lines.append(f"• *{title}*{tag}" + (f" — {first}." if first else ""))
+    if overflow:
+        lines.append(f"_…and {len(overflow)} more ripe, oldest-first above. "
+                     f"Full list: `/reviews`._")
     return "\n".join(lines)
 
 

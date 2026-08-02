@@ -5750,7 +5750,10 @@ reviews:
         within a reasonable window
       - feedback_methodology_insights_need_periodic_revalidation.md
         — this entry IS the periodic re-evaluation
-    status: pending
+    status: done
+    closed_on: 2026-08-02
+    closed_reason: >-
+      CLOSED 2026-08-02 — SUPERSEDED, not answered. The 9M Day 2 ENTRY strategy was deleted today (#515: job, submit path, facade entries, strategy row disabled), so no new Day-2 position can ever exist and a time-stop on that cohort has nothing left to act on. The historical cohort remains readable in mi_live_trades for anyone re-opening the question; the 9M CHARACTER detection is untouched and unaffected.
     added_on: 2026-05-23
 
   - review_id: intraday_flag_break_signal_n10
@@ -7085,7 +7088,10 @@ reviews:
       false-boosts -> the axis earns a narrow role; doesn't -> hold/kill with
       evidence on BOTH easy and hard cohorts.
       Promotion is NEVER agent-self-certified (ADR 0011).
-    status: pending
+    status: done
+    closed_on: 2026-08-02
+    closed_reason: >-
+      CLOSED 2026-08-02 — the DECISION was made and signed on 2026-08-01 when task #343 closed: hold, no promotion. The eval's own read was that the signal is too thin to promote (C-B = 2/36), so 'hold' is the designed outcome rather than a deferral, and all 37 shadow detail rows were hand-inspected before signing. Nothing remains to wait for.
     added_on: 2026-06-18
 
   - review_id: ep_mcap_floor_500m_review
