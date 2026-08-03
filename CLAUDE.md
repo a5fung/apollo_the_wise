@@ -324,22 +324,18 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-02 — money-path filters live · chart-vision paused · 3 rules made MECHANICAL
+### 2026-08-03 — the week's lesson: correct code, wrong surface
 
-- **3 money-path filters live (signed, toggle-reversible ~60s)**: +2R trigger (#508), stale-gap scan
-  cleanup, submission-time gap re-check — the latter two would have blocked **3 of the last 17 live
-  trades, all losers**. Each shipped OFF → verified inert → THEN flipped; that sequence is the point.
-- **#490 gate 1 resolved with NO market day** (operator pushed twice, both right): coverage ruled out
-  on the production call (98%; the 114 absent are all PREFERRED shares), and tick replay showed the
-  residual metric OVER-counts intrabar crosses. Sustain rule (3 bars) live, argued from mechanism.
-- **Chart-vision drip PAUSED, capability KEPT (#519)** — 336 calls ≈85% of judge spend for ZERO trade
-  influence. **Root cause was a DEFAULT**: `grade_holistic`'s `log_caller` defaulted to the live
-  bucket, so an experiment was invisible inside production spend. Now required; 8 lanes were
-  mislabelled, not 1. New-lane detector added — the anomaly detector is cold-start gated by design.
-- **3 rules made MECHANICAL because memory and prose both failed**: report format (asked 6× → a Stop
-  hook, `scripts/report_format_gate.py`), SETUP vs FAMILY, and deprecated-but-enabled strategies.
-- **Lesson that keeps repeating**: a guard that always fires is not a guard — and a gate that only
-  exists on one machine is not a gate (`.claude/` was gitignored; the wiring test caught it).
+- **Three defects this week were all the same shape** — the code was right and the thing that
+  carries it was not: a skip-row insert naming a constraint that had been renamed (2 days silent),
+  a reviews board keying off a field its own payload never supplied (inert from the day it shipped),
+  and a format gate that lived only on one machine because `.claude/` was gitignored.
+- **So verify the SURFACE, not the code** — the rendered message, the deployed image, the actual row.
+  A passing test on fabricated input proves nothing about production.
+- **Chart-vision paused, capability kept.** Root cause was a DEFAULT argument sending experimental
+  spend into the production bucket. Defaults hide things; make the caller name itself.
+- **A guard that always fires is not a guard.** Two broad checks were built and thrown away this
+  week after measuring their false-positive rate — keep them narrow or they get switched off.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

@@ -253,3 +253,30 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 - **Validation cooldown**: `mi_validation_cooldowns` (14-day cooldown on validation removal); fixes CAR-in-Data-Center churn.
 - **Hardening for live trading prep**: orphaned stop remediation; yfinance 30s timeout wrapper; data pull 4:30 → 5:00 PM ET.
 - **Theme engine + EP detector fixes**: scratchpad in tool schemas; Unknown sector keyword fallback; post-assignment validation. EP: 15-min projection gate (≥ 9:45 AM); extension via `MIN(close)` over 5d.
+
+## 2026-08-01 → 08-03 — money-path filters live · chart-vision paused · four rules made mechanical
+
+- **3 entry filters live** (+2R profit trigger, stale-gap cleanup, submission-time gap re-check).
+  The latter two would have blocked 3 of the last 17 live trades, all losers. Each shipped OFF →
+  verified inert → then flipped.
+- **#490 gate 1 resolved with no market day** — coverage ruled out on the production call (98%,
+  the absent names all preferred shares); tick replay showed the residual metric over-counts
+  intrabar crosses. Sustain rule (3 consecutive bars) live, argued from mechanism not returns.
+- **Chart-vision drip PAUSED, capability kept (#519)** — 336 calls, ~85% of judge spend, zero trade
+  influence. Root cause was a DEFAULT: `grade_holistic`'s `log_caller` defaulted to the live bucket,
+  so an experiment was invisible inside production spend. Now required; 8 lanes were mislabelled,
+  not 1. New-lane detector added (the anomaly detector is cold-start gated by design).
+- **Skip rows silently failing since 8/01** — #465 swapped the `mi_live_trades` unique constraint
+  and `_insert_skipped_trade` kept naming the old 2-column target, so every skip insert raised into
+  a swallowed log line. Cost the durable terminal state AND the duplicate-suppression anchor;
+  surfaced only as a double Telegram on 8/03. Fixed at 3 sites + guarded.
+- **9M Day 2 ENTRY deleted (#515)**, character kept. The coupling (a shadow lane running on a
+  builder named after a dead strategy) was the diagnosis, not an obstacle → renamed, not merged;
+  a proposed merge died when a diff found 8 real differences against a docstring claiming one.
+- **Reviews registry**: ran every ripe predicate — the pile was half what was claimed, and the
+  oldest items were TRIPWIRES whose zero count means the bug has not recurred. Age was rendering
+  good news as neglect.
+- **4 rules made MECHANICAL** because prose and memory both failed: report format (a Stop hook),
+  SETUP vs FAMILY, deprecated-but-enabled strategies, and plain-words reporting.
+- **Lesson repeated all week**: a guard that always fires is not a guard; a gate that exists on one
+  machine is not a gate; and a deletion is not done when the code compiles.
