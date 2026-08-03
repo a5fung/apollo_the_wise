@@ -94,7 +94,21 @@ async def _run(ticker: str, alert_date, payload: dict, primary_verdict: dict) ->
         from agents.market_intelligence.ep_grade_judge import (
             MODEL as _PRIMARY_MODEL, grade_holistic,
         )
-        from shared.llm_models import JUDGE_DIVERGENCE_MODEL as _MODEL
+        # ⚠ FIXED 2026-08-03. This imported JUDGE_DIVERGENCE_MODEL as a FROZEN LITERAL while the
+        # line directly above correctly resolves the PRIMARY through the #509 resolver. Two
+        # consequences, both silent:
+        #   1. The shadow kept grading on claude-sonnet-4-6 after the registry had resolved this
+        #      role to claude-sonnet-5 (mi_model_resolution, 2026-07-31) — the exact staleness the
+        #      operator ruled against on 7/30: "all models need a path to upgrade, nothing shall
+        #      remain stale", a ruling that SPECIFICALLY overturned excluding this role.
+        #   2. Its data-gated review (`judge_divergence_marginal_high_signal`) counts only rows
+        #      whose models match the CURRENTLY resolved pair — so every row written said
+        #      sonnet-4-6, the predicate compared against sonnet-5, and the count was frozen at
+        #      ZERO. Not accruing slowly: never accruing.
+        # Independence is the TIER, not the vintage — resolving dynamically keeps the second
+        # opinion on a DIFFERENT tier from the Opus primary, which is the whole point of the check.
+        from shared.llm_models import effective_model
+        _MODEL = effective_model("JUDGE_DIVERGENCE_MODEL")
 
         # IDENTICAL payload, model-swapped only (PLAN #301 build-spec). Own semaphore +
         # timeout, distinct log_caller so this ~2-5 calls/day Sonnet spend is attributable

@@ -334,3 +334,30 @@ def test_full_agreement_adds_no_direction_clause(monkeypatch):
     line = _line(monkeypatch, {"n": 18, "n_disagree": 0, "n_stricter": 0, "n_looser": 0,
                                "secondary_model": JUDGE_DIVERGENCE_MODEL})
     assert "stricter" not in line and "one-directional" not in line
+
+
+# ── #509 staleness: the SECOND opinion must track its tier too (2026-08-03) ──────────────────
+
+def test_the_secondary_model_is_RESOLVED_not_a_frozen_literal():
+    """It imported JUDGE_DIVERGENCE_MODEL as a frozen literal while the line directly above
+    correctly resolved the PRIMARY through the #509 resolver. Two silent consequences:
+
+    1. The shadow kept grading on claude-sonnet-4-6 after the registry had resolved this role to
+       claude-sonnet-5 — the exact staleness the operator ruled against on 2026-07-30 ("all models
+       need a path to upgrade, nothing shall remain stale"), a ruling that SPECIFICALLY overturned
+       excluding this role.
+    2. Its data-gated review counts only rows matching the CURRENTLY resolved pair, so every row
+       said sonnet-4-6, the predicate compared against sonnet-5, and the count was frozen at ZERO.
+       Not accruing slowly — never accruing.
+    """
+    src = open("agents/market_intelligence/judge_divergence.py").read()
+    assert 'effective_model("JUDGE_DIVERGENCE_MODEL")' in src
+    assert "import JUDGE_DIVERGENCE_MODEL as _MODEL" not in src, \
+        "a frozen import here freezes the divergence review's count at zero, forever"
+
+
+def test_the_secondary_still_resolves_to_a_DIFFERENT_TIER_than_the_primary():
+    """Independence is the TIER, not the vintage — that was the operator's own framing when he
+    overturned the exclusion. Resolving dynamically must not collapse both arms onto one model."""
+    from shared.llm_models import effective_model
+    assert effective_model("JUDGE_DIVERGENCE_MODEL") != effective_model("JUDGE_MODEL")
