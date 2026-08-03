@@ -67,12 +67,35 @@ def test_the_correctly_formatted_version_passes():
     assert prose_blocks(_THE_FIX) == []
 
 
-def test_bullets_are_free_even_when_they_carry_two_sentences():
-    """The rule is 'no prose paragraphs', not 'no second sentence anywhere'. Gating inside bullets
-    would make the format unusable and the gate would be turned off."""
+def test_a_bullet_may_carry_TWO_sentences():
+    """The rule is 'no paragraphs', not 'no second sentence anywhere' — claim plus the number
+    behind it is the format working, and gating it would get the whole thing switched off."""
     text = ("- **Root cause.** The call let a lane skip naming who pays, so it billed the live "
-            "lane instead. That is why the report could not separate them at all, ever.")
+            "lane instead of its own, which is why no report could ever separate the two.")
     assert prose_blocks(text) == []
+
+
+def test_a_THREE_sentence_bullet_is_still_a_paragraph():
+    """Operator 2026-08-03, one day after this gate shipped: *"you are reverting back to being too
+    wordy"* — about a message that WAS all bullets, each carrying three sentences. Exempting
+    bullets wholesale just moved the drift inside them."""
+    text = ("- **Two alerts today have no permanent record.** FTK at 8:45 and LIND at 9:55, both "
+            "blocked, both before the fix landed. Their reasons are in the audit log, so /why "
+            "still answers — only the trade rows are missing.")
+    assert prose_blocks(text), "a 3-sentence bullet must trip the gate"
+
+
+def test_a_SHORT_three_sentence_bullet_passes():
+    """Length is half the test — three terse clauses are not a paragraph."""
+    text = "- Fixed. Deployed. Verified."
+    assert prose_blocks(text) == []
+
+
+def test_the_bullet_thresholds_are_the_MEASURED_ones():
+    """Chosen from 548 report-sized messages, not taste: 16% blocked at (180, 3) vs 6% at
+    (180, 4), which was too loose to catch the drift the operator named."""
+    import report_format_gate as g
+    assert (g._BULLET_MIN_CHARS, g._BULLET_MIN_SENTENCES) == (180, 3)
 
 
 def test_a_long_single_sentence_header_passes():

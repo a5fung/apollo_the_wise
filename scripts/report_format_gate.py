@@ -15,7 +15,12 @@ A PROSE PARAGRAPH outside a bullet. CLAUDE.md names this precisely: *"a bolded l
 
 Deliberately narrow. A guard that always fires is not a guard (the 2026-08-01 transitive-import
 lesson), and a broad style checker would fire on ordinary answers and get switched off within a
-week. Bullets are free-form; only unbulleted multi-sentence blocks trip it.
+week.
+
+⚠ **Bullets were fully exempt for exactly one day.** On 2026-08-03 the operator said *"you are
+reverting back to being too wordy"* — about a message that WAS all bullets, each carrying three
+sentences. The exemption was too generous: the drift simply moved inside the bullet. A bullet may
+now carry two sentences (claim + the number behind it); three in a long bullet is a paragraph.
 
 NOT CHECKED, on purpose: the "action always stated" rule and the "header carries substance" rule.
 Both are semantic, both would misfire on a plain answer to a plain question, and a gate that cries
@@ -40,6 +45,14 @@ _MIN_SENTENCES = 2
 # and summaries, and gating a two-line answer would be exactly the over-firing this avoids.
 _MIN_MESSAGE_CHARS = 400
 
+# A BULLET may carry a second sentence (claim + the number behind it). Three sentences in a long
+# bullet is a paragraph wearing a bullet — the operator caught exactly that on 2026-08-03, one day
+# after this gate shipped exempting bullets wholesale. Thresholds MEASURED against 548 report-sized
+# messages from that session: 16% would have been blocked at (180 chars, 3 sentences), vs 6% at
+# 4 sentences (too loose to catch the drift) — a rate that is signal without becoming wallpaper.
+_BULLET_MIN_CHARS = 180
+_BULLET_MIN_SENTENCES = 3
+
 _SENTENCE_END = re.compile(r"[.!?](?:\*\*|\*|`|\)|\"|')?(?:\s|$)")
 _BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)]|>)\s")
 _HEADING = re.compile(r"^\s*#{1,6}\s")
@@ -56,9 +69,17 @@ def prose_blocks(text: str) -> list[str]:
             continue
         if in_fence or not line.strip():
             continue
-        if _BULLET.match(line) or _HEADING.match(line) or _TABLE.match(line):
+        if _HEADING.match(line) or _TABLE.match(line):
             continue
-        if len(line) >= _MIN_CHARS and len(_SENTENCE_END.findall(line)) >= _MIN_SENTENCES:
+        n_sent = len(_SENTENCE_END.findall(line))
+        if _BULLET.match(line):
+            # blockquotes stay fully exempt — they are the operator quoted back, not my prose
+            if line.lstrip().startswith(">"):
+                continue
+            if len(line) >= _BULLET_MIN_CHARS and n_sent >= _BULLET_MIN_SENTENCES:
+                out.append(line)
+            continue
+        if len(line) >= _MIN_CHARS and n_sent >= _MIN_SENTENCES:
             out.append(line)
     return out
 
