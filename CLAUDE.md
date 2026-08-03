@@ -44,7 +44,7 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
 2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`). **On a fresh machine where the local `memory/` (pickup) is absent — e.g. a laptop — read `docs/HANDOFF.md` instead** (git-synced; the memory dir is machine-local).
-3. STATE that day's plan before reacting to the first message.
+3. STATE that day's plan before reacting to the first message — **and WHO is doing each piece** (Fable / Sonnet / me), in one line. ⚠ Operator 2026-08-03: *"I don't want to keep reminding, you have three models… use them wisely."* This is a CHECKPOINT, not a gate, and deliberately so: the mechanical half is already clean (57/57 spawns that session carried an explicit `model:`) while the half that drifts — *should this task have been delegated at all* — is a judgement made when work STARTS, which no hook can see. Stating the split at OPEN puts it where he can catch it on day one instead of a week later.
 
 **CLOSE** (when the operator wraps, or before ending):
 1. **Update `PLAN.md` — the single reconcile step.** For every task touched this session: set its status; REBUMP any ETA now ≤ today to a real future date (or close the task). FILE every new item / deferral / finding / watch-item as a PLAN.md line under a project with an ETA — chat & pickup prose do NOT count (the pickup gets rewritten, PLAN.md doesn't). Refresh `.apollo_open_tasks.json` from the harness so the completeness cross-check stays honest.
