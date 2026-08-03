@@ -99,3 +99,43 @@ def test_category_filter_still_renders_ONE_table(monkeypatch):
 def test_shadow_mode_still_short_circuits(monkeypatch):
     monkeypatch.setattr(cb, "CRYPTO_RS_ENABLED", False)
     assert _run() == cb.SHADOW_MESSAGE
+
+
+# ── one surface: /crypto must RESOLVE, and it carries the alt-season read ────────────────────
+# The flip on 2026-08-02 turned on surfaces that could not be reached: /crypto answered "Unknown
+# command" because the slash dispatcher checks its own dict FIRST and never falls through to the
+# keyword router that would have matched. I had verified the RENDERER and called that verified —
+# the exact "verify the operator-facing surface" failure.
+
+def test_crypto_is_dispatched_as_a_slash_command():
+    src = open("agents/market_intelligence/agent.py").read()
+    assert '"/crypto":         self._handle_crypto_query' in src, \
+        "handler exists but the dispatcher never reaches it — answers 'Unknown command'"
+
+
+def test_crypto_is_registered_in_the_telegram_menu():
+    assert 'BotCommand("crypto"' in open("channels/telegram.py").read()
+
+
+def test_altseason_is_NOT_a_second_command():
+    """Folded into /crypto's header. Two commands for one screen is the surface-count problem that
+    left 32 commands dispatched-but-invisible."""
+    assert 'BotCommand("altseason"' not in open("channels/telegram.py").read()
+    assert '"/altseason":' not in open("agents/market_intelligence/agent.py").read()
+
+
+def test_the_board_carries_the_alt_season_read(monkeypatch):
+    _wire(monkeypatch, [_row("ETH", 65.0, "mega")], [_row("AKE", 100.0, "micro")])
+    monkeypatch.setattr(cb, "render_alt_season_status",
+                        AsyncMock(return_value="_Alt-season: armed · TOTAL3 $754B_"))
+    out = _run()
+    assert "Alt-season" in out
+    assert out.index("Alt-season") < out.index("Big caps"), "state is CONTEXT for the board"
+
+
+def test_a_broken_status_header_never_costs_the_board(monkeypatch):
+    """Degrade, don't disappear — a status-block failure must not lose the RS view."""
+    _wire(monkeypatch, [_row("ETH", 65.0, "mega")], [_row("AKE", 100.0, "micro")])
+    monkeypatch.setattr(cb, "render_alt_season_status", AsyncMock(side_effect=RuntimeError("db")))
+    out = _run()
+    assert "Big caps" in out and "ETH" in out

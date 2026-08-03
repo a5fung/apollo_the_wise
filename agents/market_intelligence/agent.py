@@ -5442,6 +5442,11 @@ class MarketIntelligenceAgent(BaseAgent):
             "/trades":         self._handle_trades_detail,
             "/trade":          self._handle_trade_query,
             "/why":            self._handle_why_query,
+            # #513 follow-up 2026-08-02: /crypto was reachable ONLY via the keyword router,
+            # which the slash dispatcher never reaches — so it answered "Unknown command".
+            # /altseason is deliberately NOT registered: it folded into /crypto's header
+            # (operator: "fold it"); the keyword router still answers the phrase.
+            "/crypto":         self._handle_crypto_query,
             "/audit":          self._handle_audit_topic,
             "/parabolic":      self._handle_parabolic_exclusion,
             "/wick":           self._handle_wick_query,

@@ -1784,6 +1784,7 @@ class TelegramChannel:
             # Continuation Flag is phase=deprecated, and it is a FAMILY not a setup (see the
             # SETUP vs FAMILY definition in CLAUDE.md). /positions excluded too: it maps to
             # _handle_watchlist, so its NAME lies — /trades is the real positions+P&L surface.
+            BotCommand("crypto",       "Crypto RS — alt-season state + big/small-cap boards"),
             BotCommand("audit",        "/audit <topic> — full backward-check tables on demand"),
             BotCommand("why",          "/why TICKER — one day deep: detection → entry → exit"),
             BotCommand("setup",        "/setup TICKER — every detector hit, dated timeline"),

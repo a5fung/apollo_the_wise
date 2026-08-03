@@ -113,7 +113,19 @@ async def render_crypto_top(category: Optional[str] = None, limit: int = 10) -> 
 
     if not rows_big and not rows_small:
         return "_No crypto RS data yet — first ingest pending._"
-    lines = [f"*Crypto RS*{btc_bit}", "", "*🐘 Big caps* _(mega + large)_"]
+    # ONE surface (operator 2026-08-02: "fold it"). /altseason was a separate command showing the
+    # three-signal rotation state; it is the CONTEXT for reading the board below, not a rival to
+    # it. Two commands for one screen is exactly the surface-count problem that had 32 commands
+    # dispatched-but-invisible. Failure here degrades to the board alone — a status-block error
+    # must never cost the operator the RS view.
+    lines = [f"*Crypto RS*{btc_bit}", ""]
+    try:
+        alt = await render_alt_season_status(compact=True)
+        if alt:
+            lines += [alt, ""]
+    except Exception:
+        logger.exception("crypto: alt-season header failed (board still rendered)")
+    lines += ["*🐘 Big caps* _(mega + large)_"]
     lines += _table(rows_big) if rows_big else ["_none_"]
     lines += ["", "*🐜 Small caps* _(mid + micro)_"]
     lines += _table(rows_small) if rows_small else ["_none_"]
@@ -122,8 +134,10 @@ async def render_crypto_top(category: Optional[str] = None, limit: int = 10) -> 
     return "\n".join(lines)
 
 
-async def render_alt_season_status() -> str:
-    """`/altseason` output — three-signal status + trigger state."""
+async def render_alt_season_status(compact: bool = False) -> str:
+    """Three-signal rotation state. `compact=True` is the one-line header folded into `/crypto`
+    (operator 2026-08-02: "fold it"); the full block is kept for the alert path and any caller
+    that wants it standalone."""
     if not CRYPTO_RS_ENABLED:
         return SHADOW_MESSAGE
 
@@ -159,6 +173,18 @@ async def render_alt_season_status() -> str:
     from datetime import datetime
     from zoneinfo import ZoneInfo
     et = ZoneInfo("America/New_York")
+    if compact:
+        # One line for the /crypto header: the rotation READ, not the raw numbers. BTC.D already
+        # renders in the board's own header, so repeating the block there would be noise.
+        state = "armed"
+        if last_alert:
+            cu = last_alert["cooldown_until"]
+            state = ("FIRED — cooldown to " + cu.astimezone(et).date().isoformat()
+                     if cu and cu > datetime.now(et)
+                     else f"armed (last fired {last_alert['triggered_at'].astimezone(et).date()})")
+        t3 = f"TOTAL3 ${float(total3['total3_mcap_usd'])/1e9:,.0f}B" if total3 else "TOTAL3 n/a"
+        st = f"stables ${float(stable['total_stable_mcap'])/1e9:,.0f}B" if stable else "stables n/a"
+        return f"_Alt-season: {state} · {t3} · {st}_"
     if last_alert:
         triggered_et = last_alert["triggered_at"].astimezone(et).date()
         cu = last_alert["cooldown_until"]
