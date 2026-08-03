@@ -369,8 +369,13 @@ async def submit_trade_entry(
             # but make it VISIBLE -- an *_error audit row is on the alerting path.
             logger.error(f"{strategy_label} {ticker}: _insert_skipped_trade raised — {e}")
             try:
+                # REUSE the event the scheduler's out-of-ORB path already emits
+                # (scheduler.py ~1005) rather than minting a second name for the same class --
+                # two names for one failure make any aggregation over it quietly wrong.
                 await log_audit_event(
-                    "skip_row_insert_error", f"{ticker} {today} — {type(e).__name__}: {e}",
+                    "skip_row_write_error",
+                    f"{ticker} {today} entry-pipeline skip row NOT persisted — "
+                    f"{type(e).__name__}: {e}",
                 )
             except Exception:  # loud-ok: log_audit_event self-catches; the logger.error above already fired
                 pass

@@ -121,7 +121,9 @@ def test_a_failed_skip_row_insert_raises_an_audit_event():
     must never alter entry behaviour — but failing SILENTLY is what hid it."""
     src = (_ROOT / "agents/market_intelligence/broker/entry_pipeline.py").read_text()
     i = src.index("_insert_skipped_trade raised")
-    assert "skip_row_insert_error" in src[i:i + 700]
+    assert "skip_row_write_error" in src[i:i + 900], (
+        "reuse the event name the scheduler path already emits — two names for one failure "
+        "class make aggregation over it quietly wrong")
 
 
 def test_the_insert_failure_still_fails_open():
