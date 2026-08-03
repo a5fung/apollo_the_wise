@@ -3075,7 +3075,9 @@ async def _post_nightly_audit_job():
                 "inert_sweep_detected", f"{lane['table']}: {lane['swept']} sweep is measuring nothing",
                 json.dumps(lane))
         if inert["inert"]:
-            from agents.market_intelligence.briefing import send_telegram_message
+            # NO function-local import here: `send_telegram_message` is bound at MODULE level, and a
+            # local `from ... import` would make the name local to this whole function — the
+            # 2026-05-20 UnboundLocalError outage class, caught by preflight [import-shadowing].
             lines = ["🔴 *SWEEP IS MEASURING NOTHING* — a study that varies a setting produced",
                      "identical results across every variant, so the setting is not reaching the code:",
                      "```"]
