@@ -114,8 +114,18 @@ def test_no_OTHER_code_path_runs_the_shadow():
 # ── the capability is kept ───────────────────────────────────────────────────────────────────
 
 def test_both_jobs_are_STILL_REGISTERED():
-    """Unregistering would trip the scheduler's role-partition completeness guard at boot, and
-    would also discard the ability to resume. Paused is not deleted."""
+    """Paused is not retired — and the distinction is the whole point of the park.
+
+    ⚠ An earlier version of this docstring said de-registering would trip the role-partition
+    completeness guard. That was WRONG, caught by the /simplify altitude pass: for
+    INTELLIGENCE_OWNED ids the guard is ONE-DIRECTIONAL (registered ⊆ classified), and the
+    manifest's own comment says a classified-but-unregistered intelligence id is harmless. Only
+    EXECUTION_OWNED is checked bidirectionally — which is why `9m_day2_orb`, RETIRED the same day,
+    had to be removed from that frozenset when its registration went.
+
+    The real reason: the pause is TEMPORARY pending the #519 offline eval. Keeping the
+    registration makes resuming a one-kwarg change with the job body, audit dedupe and digest all
+    still wired. Park is for paused; deletion is for retired."""
     for jid in _JOB_IDS:
         _add_job_call(jid)          # raises if the registration is gone
         assert jid in _SCHED

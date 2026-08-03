@@ -4964,7 +4964,16 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=17, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
         id="chart_axis_shadow",
         replace_existing=True,
-        next_run_time=None,          # registered (role-partition guard) but never auto-fires
+        # ⚠ CORRECTED 2026-08-02 (the /simplify altitude pass caught the rationale, not the code):
+        # an earlier comment here claimed de-registering would trip the role-partition guard. It
+        # would NOT — for INTELLIGENCE_OWNED ids that guard is ONE-DIRECTIONAL (registered ⊆
+        # classified, scheduler.py:~218), so a classified-but-unregistered intelligence job is
+        # explicitly harmless; only EXECUTION_OWNED is checked bidirectionally. The REAL reason to
+        # keep these registered is that the pause is TEMPORARY, pending the #519 offline eval:
+        # resuming is deleting one kwarg, with the job body, the audit dedupe and the digest all
+        # still wired. Contrast `9m_day2_orb`, RETIRED the same day and correctly de-registered
+        # outright — park is for paused, deletion is for retired.
+        next_run_time=None,
     )
     # Sunday 19:30 ET — push the week's new chart-axis deltas (chart inline) for operator labeling
     # + the running N vs the 7/31 backstop. Empty week → quiet.

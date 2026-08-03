@@ -291,7 +291,6 @@ def test_imports() -> bool:
         ("agents.market_intelligence.db", "get_9m_ep_history"),
         ("agents.market_intelligence.outcome_tracker", "_compute_9m_ep_outcomes"),
         ("agents.market_intelligence.broker.order_manager", "prepare_prior_day_low_orb_order"),
-        ("agents.market_intelligence.broker.live_tracker", "submit_9m_day2_trade"),
     ]
     for mod_name, attr in modules:
         try:

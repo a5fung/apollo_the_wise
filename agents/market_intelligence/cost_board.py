@@ -425,11 +425,17 @@ async def _unannounced_new_lanes(candidates: list[dict]) -> list[dict]:
     dedupe in run_daily_spend_alarm) — no new table, and a caller is announced exactly once ever."""
     if not candidates:
         return []
+    names = [c["caller"] for c in candidates]
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Matched against the CANDIDATES rather than pulling every caller ever announced: the
+        # result is then O(candidates) (0-3/day, already past the $0.10 + zero-baseline filter)
+        # instead of O(all-lanes-ever), whatever the audit log grows to. A TIME bound would be
+        # wrong here -- the dedupe means "announced once EVER", so an old lane must never age
+        # back into being announceable.
         seen = {r["summary_caller"] for r in await conn.fetch(
             "SELECT DISTINCT summary AS summary_caller FROM mi_audit_log "
-            "WHERE event_type = 'cost_new_lane'")}
+            "WHERE event_type = 'cost_new_lane' AND summary = ANY($1::text[])", names)}
     return [c for c in candidates if c["caller"] not in seen]
 
 

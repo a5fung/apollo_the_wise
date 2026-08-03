@@ -53,8 +53,8 @@ CATALYST_GRADE = {
 # Strategy priority for tie-breaking (lower index = higher priority)
 STRATEGY_PRIORITY = {
     "magna53": 0,
-    "9m_day2": 1,
-    "flag_continuation": 2,
+    # 9m_day2 removed 2026-08-02 (#515) with its scorer -- no candidate can carry that strategy.
+    "flag_continuation": 1,
 }
 
 
@@ -113,45 +113,14 @@ def score_magna53(
     )
 
 
-def score_9m_day2(
-    *,
-    ticker: str,
-    alert_date: date,
-    close_in_range_pct: float,
-    gap_proxy_pct: float,
-    vol_ratio_adv: Optional[float],
-    regime_label: str = "Bull",
-) -> RankableCandidate:
-    """Map a 9M Day 2 sugar baby to a RankableCandidate.
-
-    Setup quality blends close-in-range (top-quartile breakouts vs mid-range
-    weakness) with gap magnitude. Catalyst is intrinsic (virgin 9M day per
-    Pradeep Bonde methodology — no need for news classification).
-    """
-    close_pct = float(close_in_range_pct or 0) * 100.0  # 0-1 → 0-100
-    gap = float(gap_proxy_pct or 0)
-    gap_score = min(30.0, max(0.0, gap)) / 30.0 * 100.0
-    setup = 0.5 * close_pct + 0.5 * gap_score
-    catalyst = 100.0
-    vr = float(vol_ratio_adv) if vol_ratio_adv is not None else 5.0
-    volume = min(10.0, vr) / 10.0 * 100.0
-    regime = 60.0 if regime_label == "Crisis" else 100.0
-    composite = (
-        W_SETUP * setup + W_CATALYST * catalyst
-        + W_VOLUME * volume + W_REGIME * regime
-    )
-    return RankableCandidate(
-        ticker=ticker, alert_date=alert_date, strategy="9m_day2",
-        setup_quality=setup, catalyst=catalyst, volume=volume,
-        regime=regime, composite=composite,
-        pm_rvol=None, gap_pct=gap,
-        raw_dimensions={
-            "close_in_range_pct": close_in_range_pct,
-            "gap_proxy_pct": gap_proxy_pct,
-            "vol_ratio_adv": vr,
-            "regime": regime_label,
-        },
-    )
+# score_9m_day2 REMOVED 2026-08-02 (#515). The Day-2 ENTRY strategy is retired, and with the
+# `_9m_day2_orb_job` gone the ONLY writer of `mi_pending_allocations` is `enqueue_pending_allocation`
+# at ep_detector.py, which enqueues `strategy="magna53"` and nothing else -- so no row this scorer
+# could rank can ever be created again. Verified against prod before removing: the 80 residual
+# `9m_day2` rows are all `alert_date <= 2026-07-14`, and `get_pending_allocations_for_date` reads
+# SAME-DAY rows only, so they are unreachable too. A straggler would fall to the `else:` arm below,
+# which logs "unknown strategy" and skips -- the correct handling for a retired strategy anyway.
+# (The 9M stock CHARACTER that feeds other setups is a separate live signal and is untouched.)
 
 
 def _tie_break_key(c: RankableCandidate) -> tuple:
@@ -240,15 +209,6 @@ def candidates_from_pending_rows(
                     catalyst_quality=raw.get("catalyst_quality"),
                     pm_rvol=raw.get("pm_rvol"),
                     gap_pct=raw.get("gap_pct"),
-                    regime_label=regime_label,
-                )
-            elif strat == "9m_day2":
-                c = score_9m_day2(
-                    ticker=r["ticker"],
-                    alert_date=r["alert_date"],
-                    close_in_range_pct=raw.get("close_in_range_pct") or 0,
-                    gap_proxy_pct=raw.get("gap_proxy_pct") or 0,
-                    vol_ratio_adv=raw.get("vol_ratio_adv"),
                     regime_label=regime_label,
                 )
             else:

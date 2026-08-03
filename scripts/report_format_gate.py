@@ -63,20 +63,41 @@ def prose_blocks(text: str) -> list[str]:
     return out
 
 
+# Only the tail is ever needed, and the transcript accumulates every tool call and result for the
+# whole session (megabytes by evening). Reading it whole on EVERY turn made the cost grow with the
+# square of session length, for a few KB of signal.
+_TAIL_BYTES = 256_000
+
+
+def _tail_lines(transcript_path: str) -> list[str]:
+    """The last complete lines of the file, bounded. Falls back to the whole file only if the
+    bounded chunk holds no complete line (a single message larger than the chunk)."""
+    try:
+        with open(transcript_path, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            size = fh.tell()
+            fh.seek(max(0, size - _TAIL_BYTES))
+            chunk = fh.read()
+        if size > _TAIL_BYTES:
+            chunk = chunk.split(b"\n", 1)[1] if b"\n" in chunk else b""
+        lines = chunk.decode("utf-8", "replace").splitlines()
+        if lines:
+            return lines
+        with open(transcript_path, encoding="utf-8") as fh:
+            return fh.readlines()
+    except OSError:
+        return []
+
+
 def last_assistant_text(transcript_path: str) -> str:
     """The final assistant message in the transcript — the thing the operator is about to read.
 
     Tolerant by construction: an unreadable or unfamiliar transcript returns "", which lets the
     turn through. A formatting gate must never be able to wedge a session."""
-    try:
-        with open(transcript_path, encoding="utf-8") as fh:
-            lines = fh.readlines()
-    except OSError:
-        return ""
-    for raw in reversed(lines):
+    for raw in reversed(_tail_lines(transcript_path)):
         try:
             entry = json.loads(raw)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             continue
         if entry.get("type") != "assistant":
             continue
