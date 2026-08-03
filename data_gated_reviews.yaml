@@ -294,7 +294,31 @@ reviews:
       ~1/6 win rate, close as "filter doing its job"; if it improves
       (≥3/6 or +R positive), lift the floor.
       Sim script: scripts/orb_sim_filtered_candidates.py.
-    status: pending
+    status: done
+    closed_on: 2026-08-03
+    outcome: |
+      ANSWERED — DO NOT LIFT. Full write-up:
+      docs/analysis/conviction_floor_extension_2026-08-03.md
+
+      Current 90d cohort, MODERATE band (the cell in question): n=22, 19 labelled, 4 with 5d
+      return >= +10% = 21.1% positive-label rate against the review's own 35% bar. Up from the
+      16% measured 2026-07-13, still nowhere near. MEDIAN IS NEGATIVE (-0.77%); the mean (+1.88%)
+      is carried by two outliers (QBTS +38.5%, ASPI +30.6%) against losers of similar size
+      (LAC -25.4%). Four winners in nineteen is the ~1/6 rate this review pre-committed to close
+      on as "filter doing its job".
+
+      Agrees with the independent 2026-05-04 ORB simulation already recorded here (n=6, 1 win,
+      -3.01R): five of six closed green but stopped intraday. Closing-price edge is not entry
+      edge, and this band is where that gap bites.
+
+      UNITS TRAP, recorded because it nearly produced a false answer: mi_ep_missed_outcomes mixes
+      units in one row -- gap_pct is a PERCENT, ret_5d is a FRACTION. Comparing ret_5d >= 10
+      returned 0.0%, a plausible-looking number wrong by 100x.
+
+      CAVEAT NOT RESOLVED: the 2026-04-29 dead-zone bias (thin pre-market share names in this band
+      are gated out before 9:45) is unconfirmed-fixed, and it biases TOWARD this answer. The honest
+      re-open trigger is that fix landing -- not more elapsed time, since more of a biased sample
+      cannot answer the question the bias creates.
     added_on: 2026-04-29
 
   - review_id: theme_engine_dup_incident
