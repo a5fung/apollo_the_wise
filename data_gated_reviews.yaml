@@ -4169,7 +4169,38 @@ reviews:
          high-quality unknown = coverage failure (->#149); marginal = truly-none floor.
       3. Validate classifier forward behavior (distribution, hard-failure rate).
       4. Feed catalyst_type as a dimension into phase5_meta_rubric_calibration.
-    status: pending
+    status: done
+    closed_on: 2026-08-03
+    outcome: |
+      ANSWERED, both halves. Write-up:
+      docs/analysis/catalyst_type_forward_signal_2026-08-03.md
+
+      (a) FORWARD SIGNAL, beta-stripped (excess vs QQQ), clean-forward cohort alert_date>=2026-06-02
+      only: sales_acceleration n=31 median +8.53% excess / 90% win; policy n=7 +6.83% / 100%;
+      theme n=4 +27.38% / 100%; pre_catalyst_anticipation, shortage, new_product all n<=2.
+      ONLY sales_acceleration is populated enough to read.
+
+      The 90% was checked for the obvious fakes: outcome coverage is a purely TEMPORAL cut (all 20
+      missing rows are dated >= 2026-07-27, unsettled), and excess-vs-QQQ already removes the bull
+      confound (excess median sits ABOVE raw). NOT ruled out: a momentum-factor tailwind QQQ does
+      not capture, and a single two-month regime.
+
+      (b) UNKNOWN-RATE KPI DOES NOT EXIST AS SPECIFIED. The classifier never emits 'unknown' -- the
+      gap appears as NULL, conflating "ran and found nothing" with "never ran / failed". Same shape
+      as the phase3_telemetry_coverage_check defect. The coverage QUESTION is still answered and the
+      answer is good: 14 untyped of 81, ALL dated 2026-06-02..06-05 (the first four days after the
+      5/30 ship); 0 untyped in July and August, i.e. 100% coverage since 6/06. Rollout tail, not an
+      ongoing discovery gap -- the ->#149 coverage-failure branch does NOT fire.
+
+      CROSS-READ worth carrying: these alerts show +8.5% median 5d EXCESS at 90% win while the live
+      traded record over an overlapping window is 0-for-9 (#503). Not a contradiction -- this is
+      close-to-close on the ALERT, #503 is entry-and-stop on the TRADE. Same split the
+      conviction_floor_extension review hit the same day. Selection looks healthy, execution does
+      not; that is #508's territory, not the alert rubric's.
+
+      NOT ACTED ON: one populated cell, one regime. Step 4 (feed catalyst_type into
+      phase5_meta_rubric_calibration) is the right home and is a scoring change = CHANGE_PROCESS +
+      sign-off. Separately worth fixing: emit an explicit 'unknown' instead of NULL.
     added_on: 2026-05-30
 
   - review_id: theme_engine_narrative_blindness
