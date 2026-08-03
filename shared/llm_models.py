@@ -104,7 +104,13 @@ from shared.model_resolver import resolve_tier as _resolve_tier
 # never auto-edited) ──────────────────────────────────────────────────────────
 SONNET_PIN = "claude-sonnet-4-6"
 HAIKU_PIN = "claude-haiku-4-5-20251001"
-OPUS_PIN = "claude-opus-4-8"
+OPUS_PIN = "claude-opus-5"   # bumped 2026-08-03 (operator-confirmed) after the judge-robustness
+                             # eval PASSED 36/36 on claude-opus-5 — every hard trap class, every
+                             # degradation class, and every positive control at 1.0. The resolver
+                             # had already moved live grading to opus-5 on 7/31; this aligns the
+                             # committed FAIL-SAFE FLOOR with what production actually runs, so a
+                             # resolver failure now falls back to a model that has been evaluated
+                             # rather than one that has not. Prior pin: claude-opus-4-8.
 
 # ── Tiers (raw model ids) — PLAIN LITERAL ALIASES, never auto-edited or
 # resolver-bound. See AUTO-RESOLUTION above for why these specifically must

@@ -24,7 +24,10 @@ from shared.model_resolver import TierResolution
 # ─── The gate constraint: constants stay plain literals ─────────────────────
 
 def test_tier_constants_are_plain_literal_pins():
-    assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-4-8"
+    # OPUS_PIN bumped to claude-opus-5 on 2026-08-03 (operator-confirmed) after the
+    # judge-robustness eval passed 36/36 on it. The pin is the committed FAIL-SAFE FLOOR, so this
+    # assertion is meant to move WITH a deliberate bump and to fail loudly on an accidental one.
+    assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-5"
     assert llm_models.SONNET == llm_models.SONNET_PIN == "claude-sonnet-4-6"
     assert llm_models.HAIKU == llm_models.HAIKU_PIN == "claude-haiku-4-5-20251001"
 

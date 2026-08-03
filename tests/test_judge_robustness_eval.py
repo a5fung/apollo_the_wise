@@ -79,7 +79,10 @@ def test_summarize_soft_class_below_bar_fails():
 def test_run_eval_fake_client_scores_and_retries():
     calls = {"n": 0}
 
-    async def fake_grade(client, payload, *, semaphore=None, timeout=None, include_axis_reads=False):
+    # log_caller became REQUIRED on grade_holistic 2026-08-02 and run_eval now threads it, so the
+    # fake must accept it or this stops exercising the real call shape.
+    async def fake_grade(client, payload, *, semaphore=None, timeout=None,
+                         include_axis_reads=False, log_caller=None):
         calls["n"] += 1
         if payload["ticker"] == "FLKY" and calls.setdefault("flky", 0) == 0:
             calls["flky"] = 1

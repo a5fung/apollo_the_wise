@@ -115,11 +115,17 @@ async def run_eval(cases: list[dict], grade_fn, client, concurrency: int = 3,
     sem = asyncio.Semaphore(concurrency)
 
     async def one(case):
+        # log_caller became REQUIRED on grade_holistic 2026-08-02 (an experiment had been billing
+        # the LIVE judge's bucket). This eval's spend gets its own bucket for the same reason: it
+        # is authorised per run and must be countable on its own, never blended into production
+        # grading. ~36 calls, roughly $1.50.
         verdict = await grade_fn(client, case["payload"], semaphore=sem,
-                                 timeout=timeout, include_axis_reads=True)
+                                 timeout=timeout, include_axis_reads=True,
+                                 log_caller="judge_robustness_eval")
         if verdict is None:  # transport/timeout/malformed — retry ONCE; a verdict is never retried
             verdict = await grade_fn(client, case["payload"], semaphore=sem,
-                                     timeout=timeout, include_axis_reads=True)
+                                     timeout=timeout, include_axis_reads=True,
+                                     log_caller="judge_robustness_eval")
         if verdict is None:
             return {"case_id": case["id"], "class": case["class"], "passed": False,
                     "verdict": None, "failed_predicates": ["NO_VERDICT (2x None)"],

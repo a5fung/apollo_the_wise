@@ -309,19 +309,24 @@ def test_stale_tier_pins_quiet_inside_the_grace_window():
 
 
 def test_stale_tier_pins_reports_a_pin_left_behind_for_a_month():
+    # SERVED must be a model the pin is NOT. Anchored on a hypothetical future id rather than a
+    # real one: this asserts the drift MECHANISM, and pinning it to whatever opus id is current
+    # made it silently stop testing anything the day the pin was bumped (2026-08-03).
     from shared import llm_models
-    got = mr.stale_tier_pins({"opus": "claude-opus-5"}, {"opus": _dt(45)})
+    _future = "claude-opus-99"
+    assert _future != llm_models.OPUS_PIN, "fixture must differ from the live pin"
+    got = mr.stale_tier_pins({"opus": _future}, {"opus": _dt(45)})
     assert len(got) == 1
     tier, pin, served, days = got[0]
-    assert (tier, pin, served) == ("opus", llm_models.OPUS_PIN, "claude-opus-5")
+    assert (tier, pin, served) == ("opus", llm_models.OPUS_PIN, _future)
     assert days == 45
 
 
 def test_stale_tier_pins_never_dates_drift_it_cannot_date():
     """No changed_at (first-ever record) or an unparseable one must NOT be
     reported — a guessed age would be fabricated evidence."""
-    assert mr.stale_tier_pins({"opus": "claude-opus-5"}, {}) == []
-    assert mr.stale_tier_pins({"opus": "claude-opus-5"}, {"opus": "not-a-date"}) == []
+    assert mr.stale_tier_pins({"opus": "claude-opus-99"}, {}) == []
+    assert mr.stale_tier_pins({"opus": "claude-opus-99"}, {"opus": "not-a-date"}) == []
 
 
 def _seed_cache(tmp_path, resolved, changed_at):
@@ -353,8 +358,14 @@ def test_refresh_pin_drift_nudges_on_the_monthly_boundary(monkeypatch, tmp_path)
     """
     from shared import llm_models
     audit, tg = AsyncMock(), AsyncMock()
-    _seed_cache(tmp_path, {"opus": "claude-opus-5"}, {"opus": _dt(60)})
-    _mock_refresh_deps(monkeypatch, tmp_path, LIVE_IDS, audit=audit, telegram=tg)
+    # The refresh RECOMPUTES the tier from the available ids, so the drift this test asserts only
+    # exists if the catalogue offers something NEWER than the committed pin. Pinning the fixture to
+    # a real id made it silently stop testing anything the day OPUS_PIN was bumped to opus-5
+    # (2026-08-03) — served then equalled the pin and no drift could occur. A hypothetical future
+    # id keeps this about the MECHANISM rather than about today's pin value.
+    _ids = LIVE_IDS + ["claude-opus-99"]
+    _seed_cache(tmp_path, {"opus": "claude-opus-99"}, {"opus": _dt(60)})
+    _mock_refresh_deps(monkeypatch, tmp_path, _ids, audit=audit, telegram=tg)
 
     _run(mr.refresh_model_resolution())
 

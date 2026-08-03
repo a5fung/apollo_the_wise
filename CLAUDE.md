@@ -63,6 +63,16 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
+## COST EFFICIENCY — HARD RULE (operator 2026-08-03)
+
+*"cost efficiency is a must for all work going forward"* — after a $1.30 eval was run 3x (~$4) by piping it to `sed` to PREVIEW instead of saving it.
+
+- **CAPTURE ONCE, READ MANY.** Anything that spends money or mutates state: full output to a file on the FIRST run, then read the file. **Never re-run to re-read.**
+- **STATE THE COST BEFORE SPENDING** — measured from `api_usage`, not guessed.
+- **TRY THE $0 PATH FIRST** — outcome-join, replay, or read what already ran. [[rigor-before-paid-eval-spend]]
+- **ONE PAID RUN PER QUESTION** — capture everything, post-process locally.
+- **Subagent fleets are real spend** — scope each card off what you already hold.
+
 ## Default to DOING, not tracking (bias to action)
 
 When you discover an issue or a worth-doing improvement, **default to fixing/building it in the same session.** Filing-to-backlog is the EXCEPTION, allowed only with a NAMED reason from this closed list:
@@ -326,16 +336,14 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ### 2026-08-03 — the week's lesson: correct code, wrong surface
 
-- **Three defects this week were all the same shape** — the code was right and the thing that
-  carries it was not: a skip-row insert naming a constraint that had been renamed (2 days silent),
-  a reviews board keying off a field its own payload never supplied (inert from the day it shipped),
-  and a format gate that lived only on one machine because `.claude/` was gitignored.
-- **So verify the SURFACE, not the code** — the rendered message, the deployed image, the actual row.
-  A passing test on fabricated input proves nothing about production.
-- **Chart-vision paused, capability kept.** Root cause was a DEFAULT argument sending experimental
-  spend into the production bucket. Defaults hide things; make the caller name itself.
-- **A guard that always fires is not a guard.** Two broad checks were built and thrown away this
-  week after measuring their false-positive rate — keep them narrow or they get switched off.
+- **Four defects this week shared one shape** — the code was right and the thing carrying it was
+  not: an insert naming a renamed constraint (2 days silent), a board keying off a field its payload
+  never supplied (inert from day one), a gate living only on one machine (`.claude/` gitignored),
+  and a sweep whose varied setting never reached the code (91 days).
+- **So verify the SURFACE** — the rendered message, the deployed image, the actual row. A passing
+  test on fabricated input proves nothing about production.
+- **A guard that always fires is not a guard.** Three broad checks were built and thrown away this
+  week after measuring their false-positive rate.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
