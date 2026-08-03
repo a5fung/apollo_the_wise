@@ -1054,15 +1054,24 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     Daily digest summarizes the rest.
     """
     from agents.market_intelligence import db
-    from agents.market_intelligence.strategies.registry import should_run
 
-    if not await should_run("flag_continuation"):
-        await db.log_audit_event(
-            "strategy_disabled_skip",
-            "flag_continuation disabled — skipping daily scan",
-        )
-        return {"TRIGGERED": [], "COILED": [], "TIGHTENING": [],
-                "WATCH": [], "INVALIDATED": [], "unqualified": []}
+    # ⚠ NO STRATEGY GATE HERE — removed 2026-08-03 after it silently starved the detector.
+    #
+    # This used to bail on `should_run("flag_continuation")`. On 2026-08-02 the deprecated
+    # `flag_continuation` STRATEGY row was correctly disabled (it can never place an order), and
+    # that ALSO switched off the DETECTOR — which is a different thing and was meant to stay live.
+    # Measured cost: `mi_flag_candidates` went 577 rows on 7/31 to ZERO on 8/03, and
+    # `mi_htf_breakout_shadow` wrote nothing at all, because THIS SCAN IS HTF'S ENGINE. #356's
+    # go-live evidence stalled without a single error being raised — the job reported success.
+    #
+    # Operator, 2026-08-02, stating the distinction directly: *"flag detector is on, that can just
+    # be detecting flags in general of which the real setups can be sourced from."* A SETUP needs a
+    # buy point and a stop; continuation is a FAMILY that hosts setups. Retiring the strategy must
+    # never retire the detection that other setups are sourced from.
+    #
+    # Safe by construction: this module places no orders — it writes `mi_flag_candidates`, emits
+    # digests, and feeds HTF. Entry gating belongs at the ENTRY path, which is where a strategy
+    # phase is actually meaningful. Pinned by tests/test_flag_detector_not_strategy_gated.py.
 
     # P7.2 (2026-05-17): get_flag_universe now returns dict[ticker, sources]
     # so we can record which universe pattern admitted each ticker. The
