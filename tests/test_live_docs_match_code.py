@@ -145,3 +145,31 @@ def test_readme_does_not_recommend_a_raw_compose_deploy():
         context = readme[max(0, line_start - 400):m.end()]
         assert "Do NOT deploy" in context or "scripts/deploy.sh" in context, \
             f"README shows a raw compose deploy with no warning: {m.group(0)}"
+
+
+# ── the README backlog must not become a second source of truth (2026-08-02) ────────────────
+
+def test_readme_backlog_points_at_plan_and_does_not_relist_it():
+    """Operator: *"the backlog section is not updated."* It carried a P-numbered list that had gone
+    six weeks stale — most damagingly it still said live trading was PENDING, when MAGNA53 had been
+    trading real money since 2026-06-22.
+
+    The fix is not to hand-sync it. `PLAN.md` is the single SoT precisely because the plan once
+    lived across ~7 hand-synced surfaces and the launch runway was missed three times. So the rule
+    is: the README's backlog section NAMES PLAN.md and does not re-list it."""
+    readme = (_ROOT / "README.md").read_text()
+    idx = readme.index("## Backlog")
+    section = readme[idx:]
+    assert "PLAN.md" in section, "the backlog section must name PLAN.md as the source of truth"
+    assert "check_plan.py" in section, "it must give the command that prints the real plan"
+
+
+def test_readme_does_not_claim_live_trading_is_still_pending():
+    """The single most wrong line in the file: 'Flip LIVE_TRADING_ENABLED=true after P3 validation
+    and regime improves' — written before the 2026-06-22 cutover and still there six weeks later."""
+    readme = (_ROOT / "README.md").read_text()
+    for m in re.finditer(r"LIVE_TRADING_ENABLED=true", readme):
+        window = readme[m.start(): m.start() + 260]
+        assert not re.search(r"after P3|Flip .* after|when regime improves", window), (
+            "README still presents going live as a FUTURE step; it happened 2026-06-22")
+

@@ -778,6 +778,10 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 
 ## Backlog / Upgrade Path
 
+> 📌 **These lists stop at June 2026 and are kept as a record, not maintained.** The current
+> change record is `CHANGELOG.md` (+ `CLAUDE.md` § Changes Made — Recent for the last few days);
+> the current PLAN is `PLAN.md`. Do not add new entries here.
+
 ### Recently completed (June 2026)
 - ✅ **Drawdown breaker → TIERED + ACTIVE (#174, 6/3)** — flipped shadow→enforced on paper; binary -5% trip replaced by WATCH/REDUCE/BLOCK size-down tiers (see Safeguards). Armed *before* live cutover by operator decision (validate the full system with the safeguard live)
 - ✅ **PDT-lockout safeguard RETIRED (#181, 6/4)** — FINRA Rule 4210 + Alpaca intraday-margin eliminated the PDT designation / $25K floor; `BLOCK_PDT_LOCKOUT_*` guards removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check
@@ -871,18 +875,27 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 
 ---
 
-### Priority backlog
+### Backlog — where it actually lives
 
-The critical path to live trading: **P3 data accumulation → P16 live**. Flip when regime improves from Crisis and ~10 closed paper trades are on record.
+⚠ **`PLAN.md` is the single source of truth for all planned work.** Run:
 
-| # | Item | Why now |
+```bash
+python scripts/check_plan.py --today     # overdue + due-today = the day's plan
+python scripts/check_plan.py             # gate: every task needs a project + ETA + status
+```
+
+This section used to carry its own P-numbered list. It is **not** maintained as a second backlog —
+that is exactly the failure `PLAN.md` was consolidated to end (the plan once lived across ~7
+hand-synced surfaces and the launch runway was missed three times). What follows is a status note on
+the old P-list, kept only so the numbers still resolve.
+
+| Old ID | What it was | Status (2026-08-02) |
 |---|---|---|
-| P10 | **Conditional auto-entry alerts** | Not standalone price alerts (TradingView handles those). Becomes valuable only when fused: trigger AND ticker has Accelerating/Mainstream theme AND RS ≥ threshold AND permissive regime → auto-prepare/propose trade. Defer until live trading is on. |
-| P13 | **Theme constituent churn detection** | Flag stocks entering/exiting a theme 2+ times in 10 days. Auto-suggest permanent exclusion. *(Would read the daily `mi_themes` snapshots — there is no `mi_theme_history` table; this line proposed one.)* |
-| P16 | **Live trading** | Flip `LIVE_TRADING_ENABLED=true` after P3 validation data is solid and regime improves from Crisis. |
-| P17 | **Monthly & quarterly system reviews** | Weekly review ships already. Add monthly (1st Sun, 30d window, Opus) + quarterly (regime-conditional stats) after weekly has 3+ cycles and is trusted. |
-| P18 | **+3R / 72h partial-profit path** | Current partial is hold-day based. Add R-multiple trigger (`price ≥ entry + 3×initial_risk → sell 1/3`) as additional path. Needs 10+ closed trades of data first. |
-| P19 | **VIX-scaled continuous risk sizing** | Binary today (`RISK_PCT=0.01`, halved when QQQ EMA bearish). Continuous `risk = base × max(0, 1 - (VIX-15)/20)` is cleaner but needs VIX ingest. Revisit after 3+ months live. |
-| P20 | **Earnings-week IV pre-pass** | Blocked: Polygon free tier has no IV. |
-| P21 | **Cross-asset thematic validation** | Parallel RS on commodity/futures ETFs (CPER, URA, HG). Equity theme + commodity RS alignment → boost theme conviction ×1.2. |
-| — | **MAGNA53 simulator** | Interactive frontend: slider over gap/RVOL/catalyst/float/regime → shows final score + component breakdown. Needs web UI. |
+| P16 | Flip `LIVE_TRADING_ENABLED=true` | ✅ **DONE — live since 2026-06-22.** MAGNA53 trades real money; 39 live trades to date. This line claimed the system had not gone live for six weeks. |
+| P17 | Monthly & quarterly system reviews | ✅ **DONE.** Weekly review + a monthly backward-check sweep (rebuilt decision-first, #513) + a quarterly methodology sweep. |
+| P18 | +3R / 72h partial-profit path | ✅ **SUPERSEDED — shipped 2026-08-01 as a +2R profit trigger (#508)**, operator-signed and toggle-reversible. |
+| P13 | Theme constituent churn detection | → tracked as **#476** (name/member churn) in the theme-ecosystems project. |
+| P21 | Cross-asset thematic validation | → tracked as **#494**, the unified market-strength map. |
+| P10 | Conditional auto-entry alerts (fused: trigger AND theme stage AND RS AND regime) | ⚠ **Unscheduled — not in `PLAN.md`.** Its own gate ("defer until live trading is on") has now cleared. Recorded here so the idea is not lost; it is NOT a committed task. |
+| P19 | VIX-scaled continuous risk sizing | ⚠ **Unscheduled — not in `PLAN.md`.** Touches sizing, so it is operator-authority work (see `CLAUDE.md` § THE LINE), not something to pick up unprompted. |
+| P20 | Earnings-week IV pre-pass | ⛔ **Blocked, and structurally** — our Polygon tier has no implied-volatility data. Needs a data purchase before it is a task at all. |
