@@ -120,8 +120,15 @@ def test_crypto_is_registered_in_the_telegram_menu():
 def test_altseason_is_NOT_a_second_command():
     """Folded into /crypto's header. Two commands for one screen is the surface-count problem that
     left 32 commands dispatched-but-invisible."""
-    assert 'BotCommand("altseason"' not in open("channels/telegram.py").read()
-    assert '"/altseason":' not in open("agents/market_intelligence/agent.py").read()
+    assert 'BotCommand("altseason"' not in open("channels/telegram.py").read(), \
+        "must not add a menu entry — surface count is the problem"
+
+
+def test_altseason_is_still_ALIASED_so_muscle_memory_does_not_break():
+    """Dispatched but unregistered: anyone who typed /altseason yesterday gets the board, not a
+    wall of 'Available:' commands. Same idiom the codebase already uses for /flag vs /flags."""
+    src = open("agents/market_intelligence/agent.py").read()
+    assert '"/altseason":      self._handle_crypto_query' in src
 
 
 def test_the_board_carries_the_alt_season_read(monkeypatch):

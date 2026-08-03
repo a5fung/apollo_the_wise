@@ -5447,6 +5447,10 @@ class MarketIntelligenceAgent(BaseAgent):
             # /altseason is deliberately NOT registered: it folded into /crypto's header
             # (operator: "fold it"); the keyword router still answers the phrase.
             "/crypto":         self._handle_crypto_query,
+            # alias (muscle memory) — folded into /crypto's header, so it is dispatched
+            # but NOT registered in the menu: surface count stays flat, and anyone who
+            # typed /altseason yesterday gets the board instead of a wall of commands.
+            "/altseason":      self._handle_crypto_query,
             "/audit":          self._handle_audit_topic,
             "/parabolic":      self._handle_parabolic_exclusion,
             "/wick":           self._handle_wick_query,
