@@ -30,8 +30,8 @@
 - Post-init `verify_dual_account_clients()` smoke-tests both accounts, emits `dual_account_boot_verified` (success) or `dual_account_boot_failed` (per-mode error detail).
 
 **Per-strategy sizing/cap** (#65, two mi_strategies columns):
-- `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline AFTER spec_builder so it covers both `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly. Multiplies shares; recomputes position_size + risk_dollars.
-- `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`. Use case: 9M Day 2 starts at multiplier=0.5 + cap=2 when promoting to live.
+- `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline AFTER spec_builder so it covers every builder uniformly — `prepare_orb_order` and `prepare_prior_day_low_orb_order` (renamed from `prepare_9m_day2_orb_order` 2026-08-02, #515). Multiplies shares; recomputes position_size + risk_dollars.
+- `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`. Use case: a newly promoted strategy starts at multiplier=0.5 + cap=2. (The original worked example was 9M Day 2; that strategy was DELETED 2026-08-02, #515 — no strategy is currently promoting, and every live row sits at multiplier=1.0.)
 
 **The 3 correctness invariants (the safety backbone — never relax any):**
 1. Mode-bound client order IDs at every submission site.

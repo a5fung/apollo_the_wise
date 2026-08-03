@@ -1,16 +1,30 @@
-# 9M EP — Virgin 9M, Sugar Baby, Day 2 ORB
+# 9M EP — Virgin 9M + Sugar Baby (the CHARACTER). Day 2 ORB entry: DELETED.
 
-**Phase**: Stages 1–2 (intraday 9M + sugar-baby EOD) Live (paper/telemetry). **Stage 3 (Day-2 ORB)
-RETIRED → shadow 2026-06-18** (operator-signed; #327 read — see change log; flip EXECUTED,
-DB-confirmed shadow), then **DEPRECATED (terminal) 2026-07-05/06** (#424, ADR 0022 §1 —
-`mi_strategies.phase='deprecated'`; the `_9m_day2_orb_job` short-circuits the whole entry loop
-when the registry reads the strategy as deprecated, `scheduler.py` ~4362). Replacement entry =
-consolidation tightness→expansion (#327 Phase B, shadow-first).
+> ⚠ **READ THIS FIRST (2026-08-02, #515).** Operator: *"9m is a stock character, 9m day2 is dead and
+> needs to be gone period."* The **9M CHARACTER is live and untouched** — the intraday scan, the
+> alerts table, the sugar-baby EOD sweep and the Pradeep cohort all keep running. The **Day-2 ORB
+> ENTRY strategy has been DELETED from the codebase**, not merely disabled: the job, the entry
+> function, the execution-facade route and the strategy row are gone. **Stage 3 below is kept as
+> HISTORY, marked RETIRED — do not implement from it.** It stays because the 6/18 evidence and the
+> reasoning are why the next reader will not re-litigate a retired entry; deleting the section would
+> lose the argument and keep the temptation.
+
+**Phase**: Stages 1–2 (intraday 9M + sugar-baby EOD) **LIVE** (paper/telemetry).
+**Stage 3 (Day-2 ORB): RETIRED → shadow 2026-06-18** (operator-signed, #327 read — see change log),
+**DEPRECATED (terminal) 2026-07-05/06** (#424, ADR 0022 §1), **CODE DELETED 2026-08-02** (#515).
+Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-first).
 **Origin**: Pradeep Bonde virgin 9-million-share (9M) day methodology.
-**Code**:
-- Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`)
-- EOD sweep: `run_9m_eod_sweep` called from nightly_data_pull → writes `mi_9m_day2_candidates`
-- Day 2 ORB execution: `_9m_day2_orb_job` 9:31 ET cron + `submit_9m_day2_trade` via `entry_pipeline.submit_trade_entry`
+**Code (what exists TODAY)**:
+- Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`) — **LIVE**
+- EOD sweep: `run_9m_eod_sweep` called from nightly_data_pull — **LIVE**. ⚠ It no longer writes the
+  Day-2 candidate list; the `mi_9m_day2_candidates` TABLE is retained for history (rows kept, writer gone).
+- Pradeep cohort: `mi_sugar_babies_cohort` — **LIVE, and a DIFFERENT table** from
+  `mi_9m_day2_candidates` (which was renamed FROM `mi_9m_sugar_babies`). A grep for `sugar_bab` hits
+  both sides; never pattern-match between them.
+- Day 2 ORB execution: **GONE** — `_9m_day2_orb_job`, `submit_9m_day2_trade` and the facade route were
+  all removed 2026-08-02. The generic ORB order builder survives, renamed
+  `order_manager.prepare_prior_day_low_orb_order` (it was never 9M-specific; the 5-min ORB shadow lane
+  carrying the #482 evidence runs on it).
 
 ## Definition
 
@@ -19,7 +33,8 @@ Pradeep Bonde's "virgin" 9M is a stock trading 9M+ shares for the first time in 
 Apollo runs 9M as a **three-stage pipeline**:
 1. **Intraday 9M EP** — real-time scan during the trading session detecting either confirmed (9M+ already) or anticipated (projected ≥ 12M) days
 2. **Sugar Baby** — EOD confirmation that today met all the going-in shape criteria (confirmed 9M day + close-in-upper-range + green); becomes Day 2 ORB candidate
-3. **Day 2 ORB** — next morning's first-minute breakout above prior day's high; entry on stop-limit, stop at prior day's low
+3. ~~**Day 2 ORB**~~ — **RETIRED, CODE DELETED 2026-08-02 (#515).** Kept below as history only.
+   Stages 1–2 now feed the WATCH UNIVERSE; the entry comes from the tightness→expansion layer.
 
 This is the **only Apollo strategy that is purely quantitative** — no LLM in the detection loop.
 
@@ -67,15 +82,24 @@ Mirrors intraday gates against `mi_daily_closes` data (final EOD bars):
 
 A virgin 9M needs uptrending or fresh-news context. A destroyed name bouncing on heavy volume is distressed unwinding, not institutional accumulation. ANY one of the three passing keeps the candidate (allows pullback-from-highs / recently-broke-out / long-uptrend shapes through). Missing data → keep (insufficient data to judge as destroyed).
 
-Confirmed Sugar Babies → `mi_9m_day2_candidates` table. They become Day 2 ORB candidates.
+Confirmed Sugar Babies → historically written to the `mi_9m_day2_candidates` table. **The WRITER was
+removed 2026-08-02 (#515) with the Day-2 entry; the table and its rows are retained as history.**
+The surviving consumer of the 9M character is the watch universe, not an entry.
 
-### Stage 3 — Day 2 ORB (next morning)
+### Stage 3 — Day 2 ORB (next morning) — ⛔ RETIRED 2026-06-18, CODE DELETED 2026-08-02 (#515)
+
+> **HISTORY ONLY. None of the code described in this section exists.** Retained deliberately: the
+> #327 replay (N=36) that killed it is the argument against rebuilding it. See the 2026-06-18
+> change-log entry below for the evidence, and `docs/analysis/515_9m_day2_removal_scope_2026-08-02.md`
+> for what the deletion touched.
 
 Pre-market sugar babies → 9:31 ET cron places stop-limit BUY at prior day's high, OTO bracket with stop_loss at **prior day's low** (NOT ORB low, NOT ATR-based).
 
 Routes through `entry_pipeline.submit_trade_entry` (unified pipeline shared with MAGNA53 since 2026-04-24). Strategy-specific differences (stop source, sizing) injected via `spec_builder` callback.
 
-**#500 price-aware entry (2026-07-23) applies here too** — `order_manager.submit_entry` is shared, so if the latest trade is already above the trigger (prior day's high) at submit, the entry goes out as a bounded limit buy instead of a guaranteed-cancel stop-limit, capped at 1.5× planned risk (planned = trigger − prior-day-low; the wider 9M stop makes the cap looser in % terms than MAGNA53's). Full spec + change log: `docs/setups/magna53_ep.md` 2026-07-23 entry (the ORB-entry-mechanics SSoT). Currently dormant for 9M — Day-2 ORB retired to shadow 2026-06-18 (no submits) — but it binds automatically if the strategy ever re-enters paper.
+**#500 price-aware entry (2026-07-23) applies here too** — `order_manager.submit_entry` is shared, so if the latest trade is already above the trigger (prior day's high) at submit, the entry goes out as a bounded limit buy instead of a guaranteed-cancel stop-limit, capped at 1.5× planned risk (planned = trigger − prior-day-low; the wider 9M stop makes the cap looser in % terms than MAGNA53's). Full spec + change log: `docs/setups/magna53_ep.md` 2026-07-23 entry (the ORB-entry-mechanics SSoT). **No longer applicable to 9M**: the Day-2 entry was deleted 2026-08-02 (#515), so there is no 9M
+submit path for this to bind to. The mechanic itself is live and unchanged for MAGNA53, and would
+apply to any FUTURE strategy that adopts `prepare_prior_day_low_orb_order`.
 
 ### Anticipation cadence carve-out
 
@@ -103,6 +127,32 @@ digest at all.
 3. **9M Day-2 ORB = legacy/bridge mechanism, NOT the methodology entry (#65, architecture direction analyzed 2026-05-31, advisor-reviewed).** Per Pradeep methodology the 9M event is a WATCH-UNIVERSE trigger; the *intended* entry comes from tightness→expansion (the flag-class / entry-technique layer). That path is **already wired and running in shadow** (P7.3b `ninem_universe_watch` carryforward, 2026-05-17) and is the **TARGET** 9M entry. The mechanical Day-2 ORB (Stage 3 above) runs in **parallel as a legacy/bridge** — the only 9M *paper* entry until the entry-technique detectors (flag-break #94 / support-test #95 / MA-pullback #96 / U&R #98) graduate (N≥10, earliest 7/15). Evidence 2026-05-31: N=4 clean-closed = −$1,541 / 75% loss; it mechanically enters clinical biotechs (ROIV/PURR) the MAGNA53 revenue-stage gate would block — a *gateable* defect, not proof the strategy is worthless. **Which mechanism trades the cohort is a layer-2 (evidence-gated) decision** — do NOT demote `9m_day2` on N=4 (demote→shadow freezes the cohort at N=4 forever; shadow = no fills). Operational options A (deprecate) / B (revenue-stage gate now) / C (rename) in `data_gated_reviews.yaml::ninem_day2_mechanical_vs_methodology_alignment`. Portfolio map: `docs/setups/PORTFOLIO.md`. **→ RESOLVED 2026-06-18 (option A, deprecate): #327 replay (N=36, not N=4) confirmed Day-2 ORB has no robust edge → retired to shadow, consolidation entry is the replacement. See the 2026-06-18 change-log entry (the layer-2 evidence-gated decision this limitation deferred).**
 
 ## Change log (newest first)
+
+### 2026-08-02 — Day-2 ORB entry DELETED (the strategy, not the character) [#515, operator-directed]
+
+**Operator**: *"9m is a stock character, 9m day2 is dead and needs to be gone period."*
+
+**REMOVED**: `_9m_day2_orb_job` + its scheduler id, `broker/live_tracker.submit_9m_day2_trade`, the
+`execution_client` facade route, the Day-2 candidate WRITER and watchlist render inside
+`ninem_detector.py`, and the `mi_strategies` row. Also swept the same evening: an unreachable
+`cross_strategy_allocator.score_9m_day2()` and a stale reference in `scripts/test_9m_ep_e2e.py`.
+
+**KEPT, deliberately**: 9M CHARACTER detection (`9m_ep_scan`, `mi_9m_ep_alerts`), the sugar-baby EOD
+sweep, `mi_sugar_babies_cohort`, the `/9m` surfaces, and the `mi_9m_day2_candidates` TABLE (rows are
+history; only the writer went).
+
+**The finding that shaped it — the deletion was NOT a clean cut.** The 5-min ORB shadow lane, which
+carries the open #482 bracket-geometry evidence and is not 9M at all, imported
+`prepare_9m_day2_orb_order`. That coupling was the diagnosis, not an obstacle: shared ORB mechanics
+had been NAMED after their first caller, so the only place another strategy could find them was
+inside a dead one. Resolved by RENAMING to `prepare_prior_day_low_orb_order`, not by merging the two
+builders — a proposal to merge them was killed when a line-by-line diff found **8** real differences
+against a docstring claiming one (stop source, stop-width policy, 2% risk floor, validity check,
+atr_14, risk_dollars semantics, skip reason, spec payload).
+
+**Verify-live**: 9M character detection still writing `mi_9m_ep_alerts`, and the shadow lane still
+writing `mi_orb_shadow_trades` — the anti-over-deletion guards, and the checks that mattered.
+
 
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 

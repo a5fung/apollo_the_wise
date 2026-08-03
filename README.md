@@ -2,6 +2,27 @@
 
 A Telegram-based trading assistant for momentum / episodic-pivot (EP) methodology (Qullamaggie, Pradeep Bonde, Marios Stamatoudis). Full RS + EP + theme engine + paper/live Alpaca ORB trading.
 
+## What is actually trading today
+
+*Verified against the `mi_strategies` rows on prod, 2026-08-02. This table is the one place that
+answers "what places orders"; everything below is detail. **If it disagrees with `mi_strategies`,
+the database is right** — and the disagreement is a bug worth fixing in the same commit.*
+
+| Strategy | Phase | Places orders? |
+|---|---|---|
+| **MAGNA53 EP** | `live` | **Yes — real money.** The only one. |
+| Parabolic short | `shadow` | No — telemetry only |
+| 5-min ORB shadow | `shadow` | No — carries the #482 bracket-geometry evidence |
+| Wick fill | `shadow` | No — telemetry only |
+| 9M Day 2 | `deprecated` | No — **code DELETED 2026-08-02 (#515)** |
+| Continuation flag | `deprecated` | No — the *detector* stays live and feeds HTF; the strategy is dead |
+| Fishhook v3 | `deprecated` | No — machinery removed 2026-07-21 |
+
+⚠ **Detector ≠ strategy.** Several detectors run live and place no orders — they feed watch
+surfaces. A **setup** needs a defined buy point AND stop; a **family** (e.g. continuation) is a
+chart condition that can host setups but is not tradeable on its own. See `CLAUDE.md` § SETUP vs
+FAMILY — this distinction has been re-litigated repeatedly.
+
 ---
 
 ## What Apollo Does
@@ -17,9 +38,9 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | "Send evening briefing" | Regime + RS leaders + active themes + MA pullbacks |
 | "Send morning briefing" | EP alerts recap + regime context (pre-market) |
 | "Any EPs today?" | EP alerts with MAGNA53 score, catalyst quality, Perplexity cross-validation |
-| "9m" / "show 9m" | 9M EP intraday detections + today's sugar babies (Day 2 ORB watchlist) |
-| "9m trades" | Day 2 ORB trade log with P&L for 9M entries |
-| "9m performance" | Sugar baby history: volume, range quality, Day 2 outcome |
+| "9m" / "show 9m" | 9M EP intraday detections + today's sugar babies (the 9M CHARACTER — a watch universe, not an entry) |
+| "9m trades" | Historical 9M trade log with P&L *(the Day-2 ORB entry was deleted 2026-08-02, #515 — this is history now)* |
+| "9m performance" | Sugar baby history: volume, range quality, next-day outcome |
 | "What's the market regime?" | Bull/Choppy/Correcting/Crisis + VIX + breadth + MA context |
 | "Top RS stocks" | Momentum leaders ranked by 1M/3M/6M composite RS |
 | "What themes are active?" | Persistent themes with lifecycle stage + constituent stocks |
@@ -30,7 +51,7 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | "Best Accelerating theme stocks with fundamentals" | Screener filtered to Accelerating themes with EPS/revenue data |
 | "AXTI is working, track it" | Apollo asks questions, adds to tracking + seeds theme |
 | Any stock/investment question | Apollo consults market agent before answering |
-| `/setup TICKER [days]` | Reverse-lookup detector chronology across 10 tables (EP, 9M, wick, parabolic, flag, themes, trades) with TradingView chart link |
+| `/setup TICKER [days]` | Reverse-lookup detector chronology across 11 tables (EP, 9M, wick, parabolic, flag, themes, trades, watchlist) with TradingView chart link |
 | `/flags` / `/flags TICKER` | Continuation flag detector (VCP / Qullamaggie tightening) — today's COILED + TRIGGERED, or 14d ticker history |
 | `/detectors` | Intraday entry-technique detector roll-up (#218) — flag-break / support-test / MA-pullback / low-vol-rest / U&R (all shadow) |
 | `/watchlist` | Friday curated watchlist (Friday 6 PM ET) — best ideas across all sources + TradingView import block |
@@ -307,7 +328,7 @@ Replaces the count-based 10-loss circuit breaker (self-perpetuating + methodolog
   | REDUCE | drawdown ≤ -7% | 0.5× |
   | BLOCK | drawdown ≤ -12% | 0.0× (catastrophic floor) |
 
-- **Sizing**: `final_shares = floor(shares × strategy.position_size_multiplier × tier_multiplier)` — per-strategy and tier multipliers compound (a 9M Day 2 trade in REDUCE = 0.5 × 0.5 = 0.25×)
+- **Sizing**: `final_shares = floor(shares × strategy.position_size_multiplier × tier_multiplier)` — per-strategy and tier multipliers compound (a 0.5× strategy in REDUCE = 0.5 × 0.5 = 0.25×)
 - **Min-history gate**: ≥7 snapshots (don't trip on sparse history); **stale-data fail-open** if the newest snapshot is >48h old (silent cron-failure protection)
 - **Account-mode scoping**: paper history doesn't carry to live; live cutover starts a fresh peak
 
@@ -321,8 +342,12 @@ Replaces the count-based 10-loss circuit breaker (self-perpetuating + methodolog
 
 Replaces the cron-order FCFS slot grab (5/7 incident: 9M Day 2 took all available slots before MAGNA53 ORB monitor). Shared queue + composite scoring across strategies.
 
+> ⚠ **Currently a ONE-strategy contest (2026-08-02).** 9M Day 2 was deleted (#515) and its scorer with
+> it, so MAGNA53 is the only strategy that enqueues. The machinery stays — it is what a second live
+> strategy plugs into — but it is not arbitrating anything today.
+
 **Scoring (Phase 1):**
-- 40% setup quality (MAGNA53 = ep_score; 9M Day 2 = blend of close-in-range + gap)
+- 40% setup quality (MAGNA53 = ep_score)
 - 30% catalyst (game_changer 100, strong 70, routine 30; 9M intrinsic 100)
 - 20% volume (pm_rvol or vol/ADV ratio, capped + normalized)
 - 10% regime (Bull 100, Crisis 60)
@@ -413,7 +438,7 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 
 **EP diagnostic from Telegram:** "Why not EP ARAI?" → runs filter checks in sequence, stops at first failure, fetches recent news. Returns specific answer (e.g. `❌ Price filter: $0.67 < $5 minimum`) instead of a generic checklist.
 
-**`/setup TICKER`**: reverse-lookup detector chronology across ~10 tables (EP, 9M intraday, 9M sugar, wick, parabolic, flag, themes, live/paper trades, weekly watchlist) with TradingView chart-link button. Answers "what did Apollo see in $XNDU?" — see also `/why TICKER` for EP-specific lifecycle.
+**`/setup TICKER`**: reverse-lookup detector chronology across 11 tables (EP, 9M intraday, 9M sugar, wick, parabolic, flag, themes, live/paper trades, weekly watchlist) with TradingView chart-link button. Answers "what did Apollo see in $XNDU?" — see also `/why TICKER` for EP-specific lifecycle.
 
 ### Market Regime
 
@@ -524,7 +549,7 @@ Show logs excluded → exclusion events
 | 7:00 AM | 4:00 AM | MAGNA53 EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions; allocator queue starts filling |
 | 9:00 AM | 6:00 AM | Morning briefing → Telegram |
 | 9:30 AM | 6:30 AM | 9M EP intraday scan starts (every 5 min) |
-| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs; 9M Day 2 ORB entries placed (parallel via `asyncio.gather`) |
+| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs (MAGNA53). *(9M Day-2 ORB entries also fired here until 2026-08-02, when that strategy was deleted — #515.)* |
 | 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions; **cross-strategy allocator shadow** — scores queue, emits `unified_allocation_decided` |
 | 9:35–10:00 AM | 6:35–7:00 AM | Fill checker — poll Alpaca for order fills |
 | 10:00 AM | 7:00 AM | MAGNA53 EP scan stops; ORB unfilled-entry cleanup |
@@ -620,7 +645,7 @@ Apollo_Assistant/
 │           ├── bar_stream.py        # Alpaca StockDataStream — subscribe EP candidates, fire ORB on first bar
 │           ├── trade_stream.py      # WebSocket fill events — purpose-tagged routing (entry/partial/full/stop)
 │           ├── order_manager.py     # Order lifecycle — finalize_partial_exit / finalize_full_exit / finalize_stop_fill
-│           ├── entry_pipeline.py    # SSoT funnel — submit_trade_entry for MAGNA53 + 9M Day 2
+│           ├── entry_pipeline.py    # SSoT funnel — submit_trade_entry (MAGNA53; 9M Day 2 removed #515)
 │           ├── skip_reasons.py      # 18 bounded skip-reason constants (filter:* / setup:* / block:* / infra:* / window:*)
 │           ├── live_tracker.py      # Real-time ORB monitor + Day 2+ management + _check_safeguards
 │           ├── drawdown_breaker.py  # Daily account equity snapshot + state machine (shadow #39)
@@ -672,10 +697,16 @@ bash start_market.sh
 - `POLYGON_API_KEY`
 - `PERPLEXITY_API_KEY`
 - `FMP_API_KEY`
-- `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` — from Alpaca dashboard
-- `ALPACA_PAPER=true` — paper trading mode (default safe)
-- `LIVE_TRADING_ENABLED=false` — master kill switch
-- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `INTERNAL_API_SECRET`
+- `ENABLE_LIVE_MODE=true` — turns on the dual-account setup; `false` = paper-only dev opt-out
+- `ALPACA_PAPER_API_KEY`, `ALPACA_PAPER_SECRET_KEY` — paper-api.alpaca.markets
+- `ALPACA_LIVE_API_KEY`, `ALPACA_LIVE_SECRET_KEY` — api.alpaca.markets (required when `ENABLE_LIVE_MODE=true`)
+- `LIVE_TRADING_ENABLED=false` — master kill switch, disables ALL submits (boot-read; `/pause` is the runtime halt)
+- `ALPACA_DATA_FEED=iex` — `sip` only with an Algo Trader Plus subscription
+- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `INTERNAL_API_SECRET`, `TRADINGVIEW_WEBHOOK_SECRET`
+
+> ⚠ `ALPACA_API_KEY` / `ALPACA_SECRET_KEY` / `ALPACA_PAPER` are **legacy** (pre-#66, 2026-05-10).
+> They are still remapped to the `ALPACA_PAPER_*` pair at boot for one migration cycle — do not
+> start a new install on them. Canonical list: `CLAUDE.md` § Required Env Vars.
 
 ---
 
@@ -683,15 +714,33 @@ bash start_market.sh
 
 Target: Hetzner CPX21 Ashburn (~$8/mo), Docker Compose, Telegram long-polling.
 
+⛔ **Do NOT deploy with a raw `docker compose up --build`.** That skips the preflight, and doing it
+caused the 2026-05-13 outage (a `phase='live'` strategy under `ENABLE_LIVE_MODE=false` raised
+`KeyError: 'ALPACA_LIVE_API_KEY'`, which the old boot smoke could not catch). Use the script:
+
 ```bash
-docker compose -f docker/docker-compose.prod.yml up -d --build
+bash scripts/deploy.sh market-agent    # agents/market_intelligence/, scripts/
+bash scripts/deploy.sh orchestrator    # channels/, core/, main.py
+bash scripts/deploy.sh both            # shared/, docker/, requirements/
+bash scripts/deploy.sh execution       # SECOND STEP — see below
 ```
+
+The scope is REQUIRED (#154) and the pull runs a drift guard that aborts if it touched files owned
+by a service outside your scope. The preflight walks every enabled non-shadow strategy through the
+same `_check_safeguards` path a real ORB entry takes.
+
+⚠ **`both` does NOT include execution.** `broker/` and the execution routes run on the separate
+`apollo-execution` service; a change there needs the SECOND step or the entry code silently stays
+stale on the trading server. The deploy script tells you when this applies — believe it.
 
 Includes Uptime Kuma (self-hosted status dashboard) + Apollo self-reports startup health and scheduler failures directly to Telegram.
 
-**Monthly cost:** ~$20–40 (server + APIs). Jumps to ~$50–70 with Polygon Starter.
+**Monthly cost:** ~$190. Flat subscriptions are $148 (Hetzner $15 · Polygon/Massive $33 · Alpaca
+Algo Trader Plus $100) plus roughly $40–50 of metered LLM + Perplexity spend. Live figures and the
+per-lane breakdown: `/cost` in Telegram (`agents/market_intelligence/cost_board.py` holds the flat
+numbers, and is the SoT if this line drifts).
 
-See `docker/docker-compose.prod.yml` and the deployment notes in the project memory for the full checklist.
+See `docker/docker-compose.prod.yml` and `CLAUDE.md` § Production Deploy for the full checklist.
 
 ---
 
@@ -829,7 +878,7 @@ The critical path to live trading: **P3 data accumulation → P16 live**. Flip w
 | # | Item | Why now |
 |---|---|---|
 | P10 | **Conditional auto-entry alerts** | Not standalone price alerts (TradingView handles those). Becomes valuable only when fused: trigger AND ticker has Accelerating/Mainstream theme AND RS ≥ threshold AND permissive regime → auto-prepare/propose trade. Defer until live trading is on. |
-| P13 | **Theme constituent churn detection** | Flag stocks entering/exiting a theme 2+ times in 10 days. Auto-suggest permanent exclusion. Query `mi_theme_history`. |
+| P13 | **Theme constituent churn detection** | Flag stocks entering/exiting a theme 2+ times in 10 days. Auto-suggest permanent exclusion. *(Would read the daily `mi_themes` snapshots — there is no `mi_theme_history` table; this line proposed one.)* |
 | P16 | **Live trading** | Flip `LIVE_TRADING_ENABLED=true` after P3 validation data is solid and regime improves from Crisis. |
 | P17 | **Monthly & quarterly system reviews** | Weekly review ships already. Add monthly (1st Sun, 30d window, Opus) + quarterly (regime-conditional stats) after weekly has 3+ cycles and is trusted. |
 | P18 | **+3R / 72h partial-profit path** | Current partial is hold-day based. Add R-multiple trigger (`price ≥ entry + 3×initial_risk → sell 1/3`) as additional path. Needs 10+ closed trades of data first. |
