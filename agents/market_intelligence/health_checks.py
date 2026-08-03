@@ -1283,6 +1283,17 @@ _SWEEP_LANES: tuple[tuple[str, str, str, int], ...] = (
 )
 _SWEEP_SUBJECT_KEYS = ("trade_id", "ticker")
 
+# Columns that LOOK like a swept study parameter but are NOT — each must say why, because the
+# discovery gate (tests/test_inert_sweep_registry_complete.py) refuses to let anything be silently
+# omitted. This is the same shape as the scheduler's role-partition guard: everything discovered
+# must be CLASSIFIED, in one list or the other, or the check fails.
+_NOT_SWEEP_PARAMS: dict[str, str] = {
+    "account_mode": "paper vs live ROUTING, not a studied variable — the two arms are different "
+                    "accounts, not variants of one experiment, so identical results are expected.",
+    "score_tier":   "the alert's own HIGH/MODERATE grade — a classification of the subject, not a "
+                    "parameter we vary over it.",
+}
+
 
 async def run_inert_sweep_check() -> dict[str, Any]:
     """Flag parameter sweeps whose variants all produce identical results.
