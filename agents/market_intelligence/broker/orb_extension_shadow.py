@@ -71,15 +71,33 @@ def _simulate_day1(
 ) -> dict:
     """Run Day-1 entry simulation against pre-fetched 1-min bars.
 
-    Fill threshold uses stop_limit_buy_price(stop) so the sim matches the
-    live broker's stop-limit BUY semantics (high must reach the LIMIT
-    price, not the stop trigger).
+    Fill threshold is stop_limit_buy_price(LIMIT) — the ORB-HIGH breakout trigger, which is what
+    the live stop-limit BUY actually requires the price to reach.
+
+    ⚠ FIXED 2026-08-03. This read `stop_limit_buy_price(stop)` from the feature's first commit
+    (9e8a8ae, 2026-05-04) and `limit` was never referenced in the body at all — so the sim bought
+    just above the STOP-LOSS FLOOR instead of the breakout trigger. Since price sits between
+    orb_low and orb_high right after the range forms, that threshold is crossed within minutes of
+    the open, which is why 28 of 31 simulated trades "filled" even though every one of them was a
+    REAL entry that never triggered by 10:00 ET and was cancelled.
+
+    The consequence was worse than optimism: **all six tested cutoffs produced byte-identical
+    results for every trade**, because the wrong threshold was already crossed long before the
+    earliest cutoff. The review would have read that as "10:00 is already optimal" — a false
+    negative manufactured by the bug. Confirmed against stored rows before fixing: MRVL
+    limit 259.80 / stop 252.43 filled at 253.69, which is exactly the stop-derived threshold, not
+    the 261.10 the real trigger required.
+
+    The docstring above previously asserted the correct rule while the code did the opposite —
+    the comment was not evidence.
+
+    NOTE: shadow only. This module submits nothing; it has no broker calls at all.
 
     Returns dict with: would_fill, fill_at, fill_price, entry_attempts,
     final_status (one of 'no_cross_by_cutoff', 'max_attempts_stopped',
     'open_eod'), exits (list of intraday stop-out legs), day1_close.
     """
-    fill_limit = stop_limit_buy_price(stop)
+    fill_limit = stop_limit_buy_price(limit)
     cur_t = proposed_at
     attempts = 0
     exits: list[dict] = []

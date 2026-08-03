@@ -1228,6 +1228,33 @@ reviews:
       _orb_window_cleanup_job cron + skip_reasons.
       Origin: 2026-05-04 cancelled-ORB lifecycle analysis (orb_extension_lifecycle_report.md).
     status: pending
+    blocked_note_2026_08_03: |
+      ⚠ DO NOT ANSWER FROM THE CURRENT DATA — it is invalid. The simulator
+      (_simulate_day1) computed its fill threshold from the STOP, not the LIMIT: the `limit`
+      parameter was never referenced in the body, from the feature's first commit (9e8a8ae,
+      2026-05-04). It therefore bought just above the stop-loss floor instead of the ORB-high
+      breakout trigger.
+
+      Signature of the bug, not a market finding: all SIX cutoffs returned byte-identical results
+      for every one of the 31 trades, because the wrong threshold is crossed within minutes of the
+      open. 28/31 "filled" -- every one a REAL entry that never triggered by 10:00 and was
+      cancelled. Risk was understated ~5x (fill->stop ~0.5% instead of orb_high->orb_low).
+      Confirmed on stored rows: MRVL limit 259.80 / stop 252.43 filled 253.69 = exactly the
+      stop-derived price, not the 261.10 the real trigger required.
+
+      Reading that aggregate would have concluded "10:00 is already optimal" -- a false negative
+      manufactured by the bug.
+
+      FIXED 2026-08-03 (shadow-only module, zero broker calls) + 6 behavioural tests that fail
+      against the old code. THE 31 EXISTING ROWS ARE STILL WRONG and must be recomputed before this
+      review is answered -- they are recomputable from stored data (entry_price, stop_price,
+      entry_shares, proposed_at in mi_live_trades + re-fetchable Day-1 minute bars), so this is a
+      backfill, not a fresh N>=20 wait.
+
+      Independent upper bound while we are here: against the CORRECT trigger, only 12 of 30 real
+      ORB-unfilled trades ever reached it at any point in the day. So even an unlimited extension
+      could help at most 40% of these cancellations -- and reaching the price does not guarantee a
+      fill.
     added_on: 2026-05-04
 
   - review_id: unified_allocator_phase_1b
@@ -6519,7 +6546,31 @@ reviews:
       (was top-300-RS only, leaving ~19% of theme tickers without
       sector). One-shot backfill ran on 2026-05-27 (26/32 tickers
       enriched, 6 unmatched are ETFs or deprecated tickers).
-    status: pending
+    status: deferred
+    deferred_on: 2026-08-03
+    deferred_reason: |
+      ANSWERED AND DEFERRED BY THE REVIEW'S OWN RULE (>=70% accidental -> build a guard;
+      <70% -> defer permanently). All 36 mismatched pairs audited individually against each
+      theme's description and day-by-day membership: only 7 of 36 (19%) are genuinely accidental
+      RS-correlation clustering.
+
+      The other 29 are sector-VENDOR tagging noise around thematically-correct clusters -- crypto
+      miners split Technology vs Financial Services, space/satellite Technology vs Industrials,
+      steel Industrials vs Basic Materials. Real GICS-boundary ambiguity in the sector data, not a
+      clustering mistake; every one of those themes is a coherent business story.
+
+      The predicate also inflates its own count: 13 of the 36 come from 2-member themes where
+      "modal sector" is an alphabetical tie-break between two singletons -- a coin flip, not a
+      disagreement.
+
+      SEPARATE, NARROWER BUG FOUND UNDERNEATH (not what this review asked, and NOT fixed): all 7
+      genuine cases trace to one mechanism. `Regulated Gas & Electric Distribution Utilities`
+      flip-flops Nascent<->Retired night to night; on the nights it is Retired, its orphaned members
+      get force-clustered into the nearest sector-adjacent theme (`U.S. Petroleum Refining`) rather
+      than left unassigned. Recurred 3 of the last 7 trading days, self-corrects within a day --
+      which makes it LESS spottable than this review assumed, not more.
+
+      Honest re-open trigger: that instability recurring, NOT elapsed time.
     added_on: 2026-05-27
 
   - review_id: after_hours_partial_exit_reliability
