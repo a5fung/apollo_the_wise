@@ -59,7 +59,7 @@ async def _main(target_date: date, apply: bool, reason: str) -> None:
                         (ticker, alert_date, ep_score, catalyst_quality, gap_pct,
                          regime, status, skip_reason)
                     VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7)
-                    ON CONFLICT (ticker, alert_date) DO NOTHING
+                    ON CONFLICT (ticker, alert_date, account_mode) DO NOTHING  # 3-col since #465
                 """, r["ticker"], target_date, r["ep_score"], r["catalyst_quality"],
                     r["gap_pct"], r["regime"], reason)
                 inserted += 1

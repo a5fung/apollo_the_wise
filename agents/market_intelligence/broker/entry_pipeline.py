@@ -362,7 +362,18 @@ async def submit_trade_entry(
                 signal_type=signal_type, account_mode=_skip_mode,
             )
         except Exception as e:
+            # This swallow is WHY the #465 constraint drift ran unnoticed from 2026-08-01 to
+            # 2026-08-03: the insert raised on every skip, the ERROR went to the container log,
+            # and nothing operator-facing changed until the missing row let a duplicate Telegram
+            # through. Keep failing OPEN (a recording failure must never alter entry behaviour)
+            # but make it VISIBLE -- an *_error audit row is on the alerting path.
             logger.error(f"{strategy_label} {ticker}: _insert_skipped_trade raised — {e}")
+            try:
+                await log_audit_event(
+                    "skip_row_insert_error", f"{ticker} {today} — {type(e).__name__}: {e}",
+                )
+            except Exception:  # loud-ok: log_audit_event self-catches; the logger.error above already fired
+                pass
         try:
             await log_audit_event(audit_event, f"{strategy_label} {ticker} — {reason}")
         except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); a Telegram skip/block alert always follows below (its own try/except is loud)

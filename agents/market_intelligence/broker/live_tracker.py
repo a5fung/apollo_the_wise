@@ -1181,7 +1181,17 @@ async def _insert_skipped_trade(
                 (ticker, alert_date, ep_score, catalyst_quality, gap_pct,
                  regime, status, skip_reason, signal_type, account_mode)
             VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7, $8, $9)
-            ON CONFLICT (ticker, alert_date) DO NOTHING
+            -- MUST match the LIVE constraint. #465 (commit 5de10cb, 2026-08-01 16:45 ET) dropped
+            -- mi_live_trades_ticker_alert_date_key and replaced it with the 3-column
+            -- mi_live_trades_ticker_alert_date_mode_key, but this clause kept naming the 2-column
+            -- target -- so from the next boot EVERY skip-row insert raised
+            -- "no unique or exclusion constraint matching the ON CONFLICT specification",
+            -- was swallowed into a logged ERROR, and no HIGH EP got a durable terminal row.
+            -- Surfaced 2026-08-03 as a DOUBLE Telegram: the row is also the duplicate-suppression
+            -- anchor (step 1 of submit_trade_entry), so with it missing the bar_stream and cron_9_31
+            -- monitors both ran FTK to completion and both messaged the operator.
+            -- tests/test_live_trades_conflict_target.py pins this against the declared schema.
+            ON CONFLICT (ticker, alert_date, account_mode) DO NOTHING
         """,
             ticker, today, ep_score, catalyst_quality, gap_pct, regime,
             skip_reason, signal_type, account_mode,

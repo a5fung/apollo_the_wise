@@ -55,7 +55,7 @@ async def main() -> int:
                        entry_price, entry_shares, remaining_shares, stop_order_id)
                    VALUES ($1, (NOW() AT TIME ZONE 'America/New_York')::date, $2, $3, 'filled',
                            10.0, 1, 1, NULL)
-                   ON CONFLICT (ticker, alert_date)
+                   ON CONFLICT (ticker, alert_date, account_mode)  -- 3-col since #465
                    DO UPDATE SET stop_order_id = NULL, status = 'filled', account_mode = $2,
                                  signal_type = $3
                    RETURNING id""", TICKER, MODE, SENTINEL_SIGNAL_TYPE)
