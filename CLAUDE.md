@@ -15,6 +15,7 @@
   4. **Action ALWAYS stated, including "none"** — he must never infer whether something waits on him.
   5. **Reasoning / caveats / rejected alternatives → the commit, PLAN.md or the SSoT. Not the message.** If it does not change his decision, cut it.
   ⚠ Partial compliance reads as non-compliance: one explanatory paragraph undoes a well-formatted message. Template + why: memory `report-like-an-exec-summary`.
+  🔒 **MECHANICAL SINCE 2026-08-02 — asked a 6th time the same day this text was written, which proved the always-loaded surface is NOT enough on its own.** `scripts/report_format_gate.py` runs as a **Stop hook** (`.claude/settings.json`) and BLOCKS the reply when it finds a prose paragraph outside a bullet — the one drift that keeps recurring, and the only rule here that is objectively decidable from the text. It is deliberately narrow (bullets are free; short replies are never gated; headings/tables/code/quotes exempt) because a guard that always fires is not a guard, and it fails OPEN on every error so a formatting check can never wedge a session. Rules 1/4/5 (header substance · action stated · reasoning to the commit) stay judgement calls — no gate can decide them without crying wolf.
 
 ## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
 
