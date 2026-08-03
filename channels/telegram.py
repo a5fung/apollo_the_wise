@@ -1649,10 +1649,19 @@ class TelegramChannel:
                 # Inside code block — wrap in <pre>
                 result.append(f"<pre>{html_mod.escape(part)}</pre>")
             else:
-                # Outside code block — convert *bold* to <b>, escape HTML
+                # Outside code block — escape HTML, then restore inline markup.
                 escaped = html_mod.escape(part)
-                # Restore bold: *text* → <b>text</b>
+                # Bold: *text* → <b>text</b>
                 escaped = re.sub(r"\*([^*]+)\*", r"<b>\1</b>", escaped)
+                # Italic: _text_ → <i>text</i>.
+                # ⚠ MISSING until 2026-08-02 — the operator saw raw underscores in Telegram.
+                # ANY message containing ``` takes this HTML path (Markdown v1 cannot do code
+                # blocks), so every `_italic_` in every digest rendered as literal underscores.
+                # Not a crypto bug: it hit every fenced surface.
+                # The lookarounds are load-bearing — they stop intra-word underscores
+                # (`rs_overall`, `mcap_bucket`, `total_pnl`) from being eaten as italic markers,
+                # which would swallow the text between two unrelated identifiers.
+                escaped = re.sub(r"(?<![\w\\])_([^_\n]+)_(?!\w)", r"<i>\1</i>", escaped)
                 result.append(escaped)
         return "".join(result)
 
