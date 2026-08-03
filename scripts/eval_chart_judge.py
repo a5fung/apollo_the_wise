@@ -119,9 +119,10 @@ async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, out
     payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)  # SAME text payload, all arms
 
     # Arm A is eval-only (the live baseline = no note/no image); B + C come from the shared core.
-    a = await asyncio.gather(*[grade_one(client, sem, payload, None, None) for _ in range(replicates)])
+    a = await asyncio.gather(*[grade_one(client, sem, payload, None, None, "chart_axis_eval")
+                               for _ in range(replicates)])
     a_modal, a_stable, a_tiers = modal_stable(a)
-    bc = await grade_b_c(client, sem, payload, png, replicates)
+    bc = await grade_b_c(client, sem, payload, png, replicates, log_caller="chart_axis_eval")
     return {
         "ticker": ticker, "alert_date": alert_date, "label": label, "floor": row["floor_tier"],
         "png_path": png_path, "n_daily": n_daily,

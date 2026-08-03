@@ -4027,7 +4027,8 @@ async def _run_chart_axis_shadow(today):
                 grounded_text, _ = await resolve_grounded_text(dict(row), company, grounded=False)
                 payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)
 
-                bc = await ca.grade_b_c(client, sem, payload, png, _CHART_AXIS_SHADOW_REPLICATES)
+                bc = await ca.grade_b_c(client, sem, payload, png, _CHART_AXIS_SHADOW_REPLICATES,
+                                        log_caller="chart_axis_shadow")
                 if bc["b_verdict"] is None or bc["c_verdict"] is None:
                     # an arm fully failed (API) — leave NO marker so a same-day re-run retries.
                     logger.warning(f"chart-axis shadow {ticker}: arm produced no verdict — retry")

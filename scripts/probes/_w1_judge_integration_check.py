@@ -50,7 +50,8 @@ async def main():
                                     market_cap=_MKTCAP, sector="Healthcare",
                                     materiality_tier=rule_mat)
     assert payload["materiality_tier"] == "transformative", "W4: tier did not reach payload"
-    verdict = await grade_holistic(_get_claude(), payload, timeout=20)
+    verdict = await grade_holistic(_get_claude(), payload, timeout=20,
+                                   log_caller="judge_integration_probe")
     print(f"[2] grade_holistic → {verdict}")
     if verdict is not None:
         await db.update_ep_alert_judge_result(

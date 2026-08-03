@@ -243,7 +243,8 @@ async def stage_judge(args) -> None:
                 # for anything that still fails.)
                 v = None
                 for attempt in range(4):
-                    v = await grade_holistic(client, payload, timeout=30)
+                    v = await grade_holistic(client, payload, timeout=30,
+                                             log_caller="selection_replay_268")
                     if v is not None:
                         break
                     await asyncio.sleep(20 * (attempt + 1))

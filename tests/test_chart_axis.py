@@ -59,7 +59,8 @@ def _run_b_c(b_tiers, c_tiers, png=b"\x89PNG"):
 
     sem = asyncio.Semaphore(3)
     with patch.object(ca, "grade_holistic", new=AsyncMock(side_effect=_fake)):
-        return asyncio.run(ca.grade_b_c(object(), sem, {"ticker": "X"}, png, replicates=3))
+        return asyncio.run(ca.grade_b_c(object(), sem, {"ticker": "X"}, png, replicates=3,
+                                        log_caller="chart_axis_shadow"))
 
 
 def test_grade_b_c_stable_and_differ_is_a_delta():

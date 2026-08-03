@@ -69,7 +69,8 @@ async def _grade_all_models(client, sem, row, grounded: bool) -> dict:
     for name, model in MODELS:
         async with sem:
             try:
-                v = await grade_holistic(client, payload, model=model, timeout=30)
+                v = await grade_holistic(client, payload, model=model, timeout=30,
+                                         log_caller="judge_model_eval")
             except Exception as e:
                 v = {"_err": str(e)[:60]}
         out[name] = v

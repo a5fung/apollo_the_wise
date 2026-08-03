@@ -23,7 +23,7 @@ def _captured_prompt(**kw):
         return {"tier": "HIGH"}
 
     with patch.object(ep_grade_judge, "invoke_forced_tool", new=AsyncMock(side_effect=_fake)):
-        asyncio.run(grade_holistic(object(), _PAYLOAD, **kw))
+        asyncio.run(grade_holistic(object(), _PAYLOAD, log_caller="ep_grade_judge", **kw))
     return cap
 
 

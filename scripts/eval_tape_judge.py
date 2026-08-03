@@ -177,7 +177,8 @@ async def fetch_prior_daily(conn, ticker, alert_date, lookback=80):
 
 async def _grade(client, sem, payload):
     async with sem:
-        return await grade_holistic(client, payload, timeout=30)
+        return await grade_holistic(client, payload, timeout=30,
+                                    log_caller="tape_judge_eval")
 
 
 def _modal_stable(verdicts: list):

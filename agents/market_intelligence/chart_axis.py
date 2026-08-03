@@ -78,24 +78,32 @@ async def render_prior_day_chart(ticker: str, alert_date: date):
     return png, len(daily)
 
 
-async def grade_one(client, sem, payload, image_png, chart_note):
+async def grade_one(client, sem, payload, image_png, chart_note, log_caller: str):
     """One sem-bounded judge call (shared by grade_b_c's B/C arms + the eval's arm A). Public —
-    imported cross-module, so no leading underscore."""
+    imported cross-module, so no leading underscore.
+
+    `log_caller` is REQUIRED and has no default on purpose (2026-08-02). Every call through here
+    is a SHADOW or an EVAL, never the live 9:45 grade — so it must never land in the live judge's
+    `api_usage` bucket. It used to, by inheriting `grade_holistic`'s old default, which is how 336
+    chart-vision calls became invisible inside `ep_grade_judge`.""" 
     async with sem:
         return await grade_holistic(client, payload, timeout=40,
-                                    image_png=image_png, chart_note=chart_note)
+                                    image_png=image_png, chart_note=chart_note,
+                                    log_caller=log_caller)
 
 
-async def grade_b_c(client, sem, payload, png, replicates: int) -> dict:
+async def grade_b_c(client, sem, payload, png, replicates: int, log_caller: str) -> dict:
     """Grade arm B (text-only axis note, NO image) + arm C (note + chart) FRESH ×`replicates` each,
     in ONE run, and return the modal-stability comparison. `visual_changed` (the chart's marginal
     effect = the labelable delta) is True ONLY when BOTH arms are modal-stable across replicates AND
     the two modals differ — an arm that itself flips is noise, not a chart effect. SHADOW only; the
     live grade path never calls this (it grades once, no note/image)."""
     b = await asyncio.gather(
-        *[grade_one(client, sem, payload, None, CHART_AXIS_NOTE_TEXT_ONLY) for _ in range(replicates)])
+        *[grade_one(client, sem, payload, None, CHART_AXIS_NOTE_TEXT_ONLY, log_caller)
+          for _ in range(replicates)])
     c = await asyncio.gather(
-        *[grade_one(client, sem, payload, png, CHART_AXIS_NOTE) for _ in range(replicates)])
+        *[grade_one(client, sem, payload, png, CHART_AXIS_NOTE, log_caller)
+          for _ in range(replicates)])
     b_modal, b_stable, b_tiers = modal_stable(b)
     c_modal, c_stable, c_tiers = modal_stable(c)
     return {

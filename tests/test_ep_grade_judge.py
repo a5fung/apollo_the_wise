@@ -95,7 +95,7 @@ def test_normalize_omitted_axes_stay_none_not_empty():
 # ── grade_holistic: happy path + FAIL-OPEN ───────────────────────────────────
 def test_grade_happy_path():
     client = _Client(inp=dict(_VALID))
-    v = _run(grade_holistic(client, {"ticker": "NRIX"}))
+    v = _run(grade_holistic(client, {"ticker": "NRIX"}, log_caller="ep_grade_judge"))
     assert v["tier"] == "HIGH" and v["direction_vs_floor"] == "promote"
     assert client.messages.calls == 1
 
@@ -103,33 +103,33 @@ def test_grade_happy_path():
 def test_grade_demote_verdict_passes_through():
     client = _Client(inp=dict(_VALID, grade="routine", tier="none", direction_vs_floor="demote",
                               materiality_tier="immaterial", fire_axes=[]))
-    v = _run(grade_holistic(client, {"ticker": "BIGCO"}))
+    v = _run(grade_holistic(client, {"ticker": "BIGCO"}, log_caller="ep_grade_judge"))
     assert v["direction_vs_floor"] == "demote" and v["tier"] == "none"
 
 
 def test_grade_none_client_fails_open():
-    assert _run(grade_holistic(None, {"ticker": "X"})) is None
+    assert _run(grade_holistic(None, {"ticker": "X"}, log_caller="ep_grade_judge")) is None
 
 
 def test_grade_api_error_fails_open():
     client = _Client(exc=RuntimeError("503"))
-    assert _run(grade_holistic(client, {"ticker": "X"})) is None
+    assert _run(grade_holistic(client, {"ticker": "X"}, log_caller="ep_grade_judge")) is None
 
 
 def test_grade_malformed_output_fails_open():
     client = _Client(inp={"grade": "nonsense"})  # missing required + bad enum
-    assert _run(grade_holistic(client, {"ticker": "X"})) is None
+    assert _run(grade_holistic(client, {"ticker": "X"}, log_caller="ep_grade_judge")) is None
 
 
 def test_grade_timeout_fails_open():
     client = _Client(inp=dict(_VALID), delay=0.2)
-    assert _run(grade_holistic(client, {"ticker": "X"}, timeout=0.05)) is None
+    assert _run(grade_holistic(client, {"ticker": "X"}, timeout=0.05, log_caller="ep_grade_judge")) is None
 
 
 def test_grade_respects_semaphore():
     client = _Client(inp=dict(_VALID))
     sem = asyncio.Semaphore(1)
-    v = _run(grade_holistic(client, {"ticker": "X"}, semaphore=sem))
+    v = _run(grade_holistic(client, {"ticker": "X"}, semaphore=sem, log_caller="ep_grade_judge"))
     assert v["tier"] == "HIGH"
 
 
@@ -307,7 +307,7 @@ def test_normalize_passes_axis_reads_through():
 def test_grade_holistic_preserves_axis_reads():
     reads = [{"axis": "structure", "lit": False, "direction": "hold", "note": "extended"}]
     client = _Client(inp=dict(_VALID, axis_reads=reads))
-    v = _run(grade_holistic(client, {"ticker": "X"}, include_axis_reads=True))
+    v = _run(grade_holistic(client, {"ticker": "X"}, include_axis_reads=True, log_caller="ep_grade_judge"))
     assert v["axis_reads"] == reads
 
 

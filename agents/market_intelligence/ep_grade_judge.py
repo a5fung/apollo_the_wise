@@ -357,18 +357,26 @@ async def grade_holistic(
     image_png: bytes | None = None,
     chart_note: str | None = None,
     include_axis_reads: bool = False,
-    log_caller: str = "ep_grade_judge",
+    log_caller: str,
 ) -> dict | None:
     """One holistic judge call. Returns the verdict dict (schema), or None on any
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
     `semaphore` (shared with the catalyst grader in prod) bounds total Anthropic
     concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff.
 
-    `log_caller` (#301, 2026-07-26): defaults to `"ep_grade_judge"` — byte-identical to
-    every existing call site. The ensemble-divergence SHADOW (judge_divergence.py) is the
-    one caller that overrides it (to `"judge_divergence"`) so its Sonnet 2nd-opinion spend
-    is attributable in the cost envelope SEPARATELY from the primary Opus judge's spend,
-    not blended into the same `api_usage` caller bucket.
+    `log_caller` (#377 cost meter) is the `api_usage` bucket this call's dollars land in.
+    **REQUIRED — no default (2026-08-02).** It used to default to `"ep_grade_judge"`, and that
+    default is exactly how the chart-vision shadow spent 336 calls invisibly: it took the
+    default, its dollars merged into the LIVE judge's bucket, and no cost surface could ever
+    separate an experiment from production. The meter, the board, the daily alarm, the
+    per-caller anomaly detector and the reduction detector all worked — they were reading a
+    bucket that had two things in it. A default that silently attributes experimental spend to
+    the production lane is the defect; removing it makes every new lane NAME itself.
+
+    `judge_divergence` already did this correctly (it overrode the default), which is the
+    tell: the mechanism existed and was documented, and the next lane still didn't use it.
+    Convention did not hold, so this is a signature now. `tests/test_judge_spend_attribution.py`
+    additionally pins that only the LIVE grade path may use the `"ep_grade_judge"` label.
 
     `image_png` (#267 chart-vision, W4) optionally attaches a point-in-time daily chart so
     the judge can read the price/MA/volume structure. `chart_note` is the CANDIDATE chart-axis

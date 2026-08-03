@@ -56,7 +56,8 @@ async def _replay_one(client, sem, row, grounded: bool, narratives=None) -> dict
     payload, rule_mat = build_judge_payload(row, grounded_text, _mc, sector,
                                             active_narratives=narratives)
     async with sem:
-        verdict = await grade_holistic(client, payload, timeout=30)
+        verdict = await grade_holistic(client, payload, timeout=30,
+                                       log_caller="judge_backfill_replay")
 
     has_grounded = bool(grounded_text)
     # Flip-authorizing iff the verdict rests on faithful inputs (deterministic anchor or

@@ -372,6 +372,67 @@ async def compute_caller_cost_anomalies(today: date, lookback_days: int = 30) ->
     return _caller_cost_anomalies_from_rows(rows, today, lookback_days)
 
 
+# ── NEW-LANE detection (2026-08-02) — the blind spot the two detectors above share ──
+#
+# Operator, after the chart-vision shadow ran 336 calls unnoticed: *"we can have hidden costs that
+# provides no value that is running and no way for us to know about in time."*
+#
+# Neither detector above can see a lane switching ON. compute_caller_cost_anomalies is COLD-START
+# GATED by design (its own docstring: "so a brand-new caller can't false-positive on day 2") and the
+# reduction heuristics answer "is existing spend reducible", never "should this exist at all". A new
+# lane therefore ramps invisibly until it is big enough to move a total — which for an $11/month
+# experiment is never.
+#
+# This is the complement, and deliberately the WEAKEST possible statement: a caller that has never
+# spent before is spending now. No judgement about whether it should — that is the operator's call,
+# and the only thing being claimed is "this started".
+_NEW_LANE_MIN_USD = 0.10      # below a dime over the window it is a smoke test, not a lane
+_NEW_LANE_RECENT_DAYS = 3     # a lane that starts on a Friday is still new on Monday
+
+
+def _new_lanes_from_rows(rows, today: date, recent_days: int = _NEW_LANE_RECENT_DAYS,
+                         lookback_days: int = 30, daily: "dict | None" = None) -> list[dict]:
+    """Callers spending in the last `recent_days` with ZERO spend across the whole baseline window.
+
+    Pure (unit-testable without a DB). The once-ever dedupe lives in the async layer — a sparse
+    monthly caller would otherwise re-announce itself every month, which is the "repeated
+    non-actionable Telegram" failure run_daily_spend_alarm already learned on 7/17."""
+    daily = daily if daily is not None else _daily_caller_series(rows)
+    out = []
+    for caller, series in daily.items():
+        recent_spend = sum(_window_series(series, today, "spend", 0, recent_days))
+        if recent_spend < _NEW_LANE_MIN_USD:
+            continue
+        baseline = sum(_window_series(series, today, "spend", recent_days,
+                                      lookback_days + recent_days))
+        if baseline > 0:
+            continue
+        recent_calls = int(sum(_window_series(series, today, "calls", 0, recent_days)))
+        out.append({
+            "type": "new_lane", "caller": caller,
+            "recent_spend": round(recent_spend, 2), "recent_calls": recent_calls,
+            "window_days": recent_days,
+            "note": f"{caller} started spending — ${recent_spend:.2f} over {recent_calls} calls "
+                    f"in {recent_days}d, nothing in the prior {lookback_days}d. "
+                    f"Is it meant to be running, and what is it buying?",
+        })
+    out.sort(key=lambda r: r["recent_spend"], reverse=True)
+    return out
+
+
+async def _unannounced_new_lanes(candidates: list[dict]) -> list[dict]:
+    """Drop lanes already announced once. The audit log IS the state (same idiom as the budget-cap
+    dedupe in run_daily_spend_alarm) — no new table, and a caller is announced exactly once ever."""
+    if not candidates:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        seen = {r["summary_caller"] for r in await conn.fetch(
+            "SELECT DISTINCT summary AS summary_caller FROM mi_audit_log "
+            "WHERE event_type = 'cost_new_lane'")}
+    return [c for c in candidates if c["caller"] not in seen]
+
+
 def _reduction_opportunities_from_totals(totals: dict[str, dict]) -> list[dict]:
     """Pure heuristic layer (unit-testable without a DB): Opus-where-Sonnet-
     fits + oversized prompts. Advisory surfacing ONLY — never auto-applies
@@ -479,10 +540,12 @@ async def compute_cost_watchdog(today: date, lookback_days: int = 30) -> dict:
     heuristics (7/17 api_usage scan-cost discipline: don't read the same
     indexed range twice per caller check)."""
     rows = await _fetch_caller_window(today, lookback_days)
-    daily = _daily_caller_series(rows)  # derived ONCE here, shared by both consumers below
+    daily = _daily_caller_series(rows)  # derived ONCE here, shared by all three consumers below
     anomalies = _caller_cost_anomalies_from_rows(rows, today, lookback_days, daily=daily)
     opportunities = _reduction_opportunities_from_rows(rows, today, lookback_days, daily=daily)
-    return {"anomalies": anomalies, "opportunities": opportunities}
+    new_lanes = await _unannounced_new_lanes(
+        _new_lanes_from_rows(rows, today, lookback_days=lookback_days, daily=daily))
+    return {"anomalies": anomalies, "opportunities": opportunities, "new_lanes": new_lanes}
 
 
 def render_cost_watchdog(w: dict) -> str:
@@ -492,9 +555,13 @@ def render_cost_watchdog(w: dict) -> str:
     #477 parity discipline."""
     anomalies = w.get("anomalies") or []
     opportunities = w.get("opportunities") or []
-    if not anomalies and not opportunities:
+    new_lanes = w.get("new_lanes") or []
+    if not anomalies and not opportunities and not new_lanes:
         return ""
     lines = ["*🐕 WATCHDOG*", "```"]
+    for n in new_lanes:
+        lines.append(f"NEW {n['caller']:<22} ${n['recent_spend']:.2f} / {n['recent_calls']} calls "
+                     f"in {n['window_days']}d - never spent before")
     for a in anomalies:
         lines.append(f"! {a['caller']:<24} today ${a['today_spend']:.2f} vs "
                      f"median ${a['median30']:.2f} ({a['ratio']:.1f}x) - {a['leak_class']}")
@@ -511,13 +578,28 @@ async def run_cost_watchdog(today: date) -> dict | None:
     advisory and surface via /cost + this audit row, not a daily push."""
     w = await compute_cost_watchdog(today)
     anomalies, opportunities = w["anomalies"], w["opportunities"]
-    if not anomalies and not opportunities:
+    new_lanes = w.get("new_lanes") or []
+    if not anomalies and not opportunities and not new_lanes:
         return None
     await log_audit_event(
         "cost_watchdog_check",
-        summary=f"{len(anomalies)} caller anomaly(ies), {len(opportunities)} reduction opportunity(ies)",
+        summary=f"{len(anomalies)} caller anomaly(ies), {len(opportunities)} reduction opportunity(ies)"
+                + (f", {len(new_lanes)} NEW lane(s)" if new_lanes else ""),
         detail=json.dumps(w),
     )
+    if new_lanes:
+        from agents.market_intelligence.briefing import send_telegram_message
+        # Announced ONCE per caller, ever — the audit rows written here are the dedupe state, so
+        # they must be written even if the Telegram fails, and BEFORE nothing else can re-announce.
+        lines = ["🆕 *NEW SPEND LANE* — something started costing money:", "```"]
+        for n in new_lanes[:5]:
+            lines.append(f"{n['caller']:<22} ${n['recent_spend']:.2f} / {n['recent_calls']} calls "
+                         f"in {n['window_days']}d")
+        lines.append("```")
+        lines.append("Is it meant to be running, and what is it buying?\n/cost for the full board")
+        for n in new_lanes:
+            await log_audit_event("cost_new_lane", summary=n["caller"], detail=json.dumps(n))
+        await send_telegram_message("\n".join(lines))
     if anomalies:
         from agents.market_intelligence.briefing import send_telegram_message
         # Caller names are snake_case — the #477 parity class means they MUST

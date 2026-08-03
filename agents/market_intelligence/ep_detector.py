@@ -4322,6 +4322,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 verdict = await grade_holistic(
                     _get_claude(), payload,
+                    # THE LIVE grade path — the one caller entitled to this bucket. Passed
+                    # explicitly since 2026-08-02 (the default was removed); same string, so
+                    # attribution is byte-identical to every historical row.
+                    log_caller="ep_grade_judge",
                     # 15→25s with the 2026-06-10 JUDGE_MODEL=OPUS flip — Opus
                     # is slower; the eval's only ERR row was an Opus timeout.
                     # A tight ceiling converts model quality into fail-open.

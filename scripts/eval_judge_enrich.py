@@ -185,7 +185,8 @@ async def run_regrade(days: int, limit: int, replicates: int) -> None:
             p, _m = build_judge_payload(r, grounded, mc, sector, active_narratives=narr)
             blind_tiers = []
             for _ in range(max(1, replicates)):
-                v = await grade_holistic(_get_client(), p, timeout=25)
+                v = await grade_holistic(_get_client(), p, timeout=25,
+                                         log_caller="judge_enrich_eval")
                 blind_tiers.append(v.get("tier") if v else None)
             stable = len(set(blind_tiers)) == 1
             blind = blind_tiers[0]
@@ -194,7 +195,8 @@ async def run_regrade(days: int, limit: int, replicates: int) -> None:
             pe, _m = build_judge_payload(
                 r, grounded, mc, sector, active_narratives=narr,
                 has_direct_source=True, theme_stage=stage, theme_score=score)
-            ve = await grade_holistic(_get_client(), pe, timeout=25, include_axis_reads=True)
+            ve = await grade_holistic(_get_client(), pe, timeout=25, include_axis_reads=True,
+                                      log_caller="judge_enrich_eval")
             enriched = ve.get("tier") if ve else None
 
             rec = (r["ticker"], r["alert_date"], blind, enriched, stable, stage, score)
