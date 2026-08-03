@@ -5245,7 +5245,25 @@ reviews:
     # axes/a1/raw_axis_scores keys) — re-scoring means re-deriving the axes from the stored
     # fundamentals via the current rubric OR re-extracting from the raw corpus (LLM cost). So this
     # is a DEDICATED backtest session (like #290), not a quick run → tracked as PLAN #448. Still READY.
-    status: pending
+    status: done
+    closed_on: 2026-08-03
+    outcome: |
+      SUPERSEDED — the work shipped 2026-07-16 and the operator ruled the same day; this entry was
+      simply never flipped, so it kept surfacing as the oldest ready item on the board.
+
+      Backtest: scripts/_b6_forward_backtest.py + docs/analysis/448_b6_forward_backtest_2026-07-16.md
+      (deterministic re-derive, NO LLM spend — the feared 96-corpus re-extraction was avoided).
+
+      FINDING: the composite gate is INVERTED on this cohort. Live PASS n=7 median 5d −5.1% / win
+      29% vs live DOWNGRADE n=40 median 0.0% / win 50%; downgrade-precision 50%, a coin flip. BOTH
+      decision-matrix failure legs fired at once, so the matrix contradicted itself — meaning the
+      composite carries no forward signal here and THRESHOLD RETUNING IS THE WRONG LEVER.
+
+      OPERATOR RULED 2026-07-16: option A, OBSERVE. Threshold 22 UNCHANGED (n=7 live-PASS is too
+      thin to move a live gate; the market-condition hypothesis was checked and refuted).
+
+      SUCCESSOR, already registered and correctly NOT ripe: `b6_gate_inversion_recheck`
+      (threshold 8 more live-PASS, earliest 2026-09-15). PLAN #448 is event-gated on it.
     added_on: 2026-05-19
 
   - review_id: silent_failure_taxonomy_audit
