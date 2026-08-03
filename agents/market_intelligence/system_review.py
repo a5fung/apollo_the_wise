@@ -1579,9 +1579,22 @@ def _format_pending_reviews_section(pending: dict) -> str:
                 return None
         return (_today - d).days if isinstance(d, _date) else None
 
-    scored = sorted(ready, key=lambda r: -(_age(r) or 0))
+    # ⚠ AGE MEANS DIFFERENT THINGS FOR DIFFERENT KINDS (2026-08-03). Running every ripe predicate
+    # against prod showed the oldest items on this board were TRIPWIRES — `orb_entry_stuck_pending_
+    # new` (P0) reads 0/1 across 67 days because the RDW bug HAS NOT RECURRED since its 5/28 fix.
+    # Rendering that as "ripe 67d, oldest" turns good news into an accusation of neglect, and I was
+    # one step from closing it — which would have deleted a working tripwire. So age is shown only
+    # where it means waiting; a tripwire reports the silence instead, and a cadence review just
+    # says it is due.
+    def _kind(r):
+        k = (r.get("kind") or "accrual").strip().lower()
+        return k if k in ("accrual", "tripwire", "cadence") else "accrual"
+
+    # Only ACCRUAL age counts as staleness — a quiet tripwire is the system working.
+    scored = sorted(ready, key=lambda r: -((_age(r) or 0) if _kind(r) == "accrual" else -1))
     shown, overflow = scored[:_REVIEWS_RENDER_CAP], scored[_REVIEWS_RENDER_CAP:]
-    n_stale = sum(1 for r in scored if (_age(r) or 0) >= _REVIEWS_STALE_DAYS)
+    n_stale = sum(1 for r in scored
+                  if _kind(r) == "accrual" and (_age(r) or 0) >= _REVIEWS_STALE_DAYS)
 
     head = f"📅 *Reviews ready* ({len(scored)}) — data-gated thresholds flipped; action needed:"
     if n_stale:
@@ -1591,8 +1604,15 @@ def _format_pending_reviews_section(pending: dict) -> str:
         title = (r.get("title") or r.get("review_id") or "?").strip()
         action = (r.get("action_when_ready") or "").strip()
         first = action.split(". ")[0].rstrip(".") if action else ""
-        age = _age(r)
-        tag = f" _[ripe {age}d]_" if age else ""
+        age, kind = _age(r), _kind(r)
+        if kind == "tripwire":
+            fired = (r.get("current_count") or 0) >= (r.get("threshold") or 1)
+            tag = (" _[FIRED]_" if fired
+                   else f" _[no recurrence in {age}d]_" if age else " _[armed]_")
+        elif kind == "cadence":
+            tag = " _[periodic — due]_"
+        else:
+            tag = f" _[ripe {age}d]_" if age else ""
         lines.append(f"• *{title}*{tag}" + (f" — {first}." if first else ""))
     if overflow:
         lines.append(f"_…and {len(overflow)} more ripe, oldest-first above. "

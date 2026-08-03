@@ -102,6 +102,16 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
             "current_count": count,
             "threshold": threshold,
             "action_when_ready": (e.get("action_when_ready") or "").strip(),
+            # ⚠ ADDED 2026-08-03. The #517 teeth shipped 8/02 — per-item AGE, the ≥30d stale
+            # banner, and oldest-first ordering — all key off `earliest_review_date`, and this
+            # payload did not carry it. So every one of them was INERT in production: `_age()`
+            # returned None, the tag rendered empty, the banner never fired, and the "oldest-first"
+            # sort compared 0 to 0. The unit tests passed because they fed the renderer fabricated
+            # dicts that DID have the field. Same class as `/audit` and `/crypto`: correct code,
+            # wrong payload, nothing failing.
+            "earliest_review_date": earliest.isoformat() if hasattr(earliest, "isoformat") else earliest,
+            # `kind` drives HOW age is read — see the vocabulary in data_gated_reviews.yaml.
+            "kind": (e.get("kind") or "accrual"),
         }
         if is_ready:
             ready.append(entry_summary)

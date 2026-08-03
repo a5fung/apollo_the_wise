@@ -47,6 +47,9 @@ def find_duplicate_keys(src: str) -> list[tuple[str, dict[str, int]]]:
 # Deliberately narrow: it checks membership in the documented vocabulary and nothing else. It does
 # NOT judge whether a status is the RIGHT one -- that is triage, and a gate cannot do it.
 DOCUMENTED_STATUSES = {"pending", "done", "deferred"}
+# `kind` is OPTIONAL (absent = accrual, today's behaviour) but a TYPO must not silently
+# degrade a tripwire back into an age-ranked accrual item.
+DOCUMENTED_KINDS = {"accrual", "tripwire", "cadence"}
 
 
 def find_status_problems(src: str) -> list:
@@ -66,6 +69,9 @@ def find_status_problems(src: str) -> list:
         elif entry["status"] not in DOCUMENTED_STATUSES:
             out.append((rid, f"status {entry['status']!r} is not one of "
                              f"{sorted(DOCUMENTED_STATUSES)}"))
+        if "kind" in entry and entry["kind"] not in DOCUMENTED_KINDS:
+            out.append((rid, f"kind {entry['kind']!r} is not one of {sorted(DOCUMENTED_KINDS)} "
+                             f"— a typo here silently re-ranks a tripwire as a stale accrual item"))
     return out
 
 

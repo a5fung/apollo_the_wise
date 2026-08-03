@@ -14,6 +14,16 @@
 #   earliest_review_date: ISO date — never surface as ready before this
 #   action_when_ready: what the user should do when surfaced
 #   status: pending | done | deferred
+#   kind: accrual | tripwire | cadence   (optional; default accrual)
+#         accrual  — needs N samples before the question can be ANSWERED. Age = how long it has
+#                    been answerable and unanswered, i.e. real staleness.
+#         tripwire — fires on an OCCURRENCE/recurrence. count 0 means the bug HAS NOT happened,
+#                    which is GOOD NEWS. Age here = length of the silence, never neglect.
+#                    ADDED 2026-08-03: rendering these by age put `orb_entry_stuck_pending_new`
+#                    (P0, 0/1 across 67 post-fix days) at the top of the "most neglected" list,
+#                    one step from being closed — which would have deleted a working tripwire.
+#         cadence  — a periodic review on a date, not a data threshold (quarterly sweeps,
+#                    ideation items). threshold 0 is correct for these, not a bug.
 #   added_on: ISO date when entry was created (for audit)
 #
 #   Optional fields for status=deferred:
@@ -59,6 +69,7 @@
 reviews:
 
   - review_id: model_selection_quarterly_review
+    kind: cadence
     title: "Quarterly LLM model-selection review (incremental, not from-scratch)"
     question: |
       Has any new model (Claude release, Perplexity tier, price change) appeared
@@ -184,6 +195,7 @@ reviews:
       checkpoint) so the conclusion is re-confirmed even between data-gated surfacings.
 
   - review_id: kill_scale_bands_quarterly_review
+    kind: cadence
     title: "Quarterly kill/scale band review (operator sign-off condition #1, 2026-06-12)"
     question: |
       Are the SIGNED live-money kill/scale bands (safeguards.md, #268b) still
@@ -427,6 +439,7 @@ reviews:
     added_on: 2026-04-29
 
   - review_id: rs_theme_dash_forward_returns
+    kind: cadence
     title: "RS theme dashboard forward-returns column (R4)"
     question: |
       Backlog item R4: add forward-return column to themes table. Requires
@@ -444,6 +457,7 @@ reviews:
     status: pending
 
   - review_id: mna_filter_direction_blindness_path_a
+    kind: tripwire
     title: "M&A filter — Part B proximity check (Path B multi-ticker bleed residual)"
     status_note: |
       Parts A + C SHIPPED 2026-05-25. POSTPONED behind #270 per operator 6/14
@@ -747,6 +761,7 @@ reviews:
     added_on: 2026-04-30
 
   - review_id: adv_probe_retirement
+    kind: tripwire
     title: "ADV top-50 probe — retire or promote (Option 2)"
     question: |
       Option 2 logged-only probe bumps non-universe ADV-from-Polygon from top-20
@@ -2241,6 +2256,7 @@ reviews:
       after_cap_1 sees the cleaned-up state).
 
   - review_id: canonicalize_ticker_set_evolution
+    kind: tripwire
     title: "Canonicalize misses ticker-set-evolution cases (followup to C2)"
     question: |
       `_canonicalize_theme_names` uses `DISTINCT ON (name) ORDER BY name,
@@ -2400,6 +2416,7 @@ reviews:
       doesn't need this strip. Confirmed by grep.
 
   - review_id: trade_stream_stop_placement_without_orders_row
+    kind: tripwire
     title: "trade_stream.py places stops without mi_live_orders row (2 edge case sites)"
     question: |
       Two code paths in `agents/market_intelligence/broker/trade_stream.py`
@@ -3743,6 +3760,7 @@ reviews:
     resolution_2026_07_04: |
       CLOSED as OBE (operator 7/4): the 7/1 monthly sweep's own verdict stands (EOD-TRIGGERED is post-hoc, structural NO-GO); HTF Phase-3 rides the #94 intraday break instead.
   - review_id: breadth_cluster_view_ideation
+    kind: cadence
     title: "Breadth cluster-matrix view + missing Stockbee secondaries"
     question: |
       Pradeep tweet 2026-05-15 showed Stockbee Market Monitor in
@@ -4824,6 +4842,7 @@ reviews:
       live cutover.
 
   - review_id: gate5h_value_invariant_proposal
+    kind: tripwire
     title: "Gate 5 H: value-invariant preflight for sensitive trade-state columns"
     question: |
       Gate 5 G column-write authority preflight (shipped 2026-05-17) closes
@@ -6830,6 +6849,7 @@ reviews:
     resolution_2026_07_04: |
       CLOSED (operator 7/4): the 6/3 resolution stands (entry-side fill-rate class, order-record-grounded; exit-side activation is broker-identical paper/live + covered by #123 + never-naked). Successor = PLAN #414 (gated entry-tuning: widen limit vs stop-market-with-chase-cap, CHANGE_PROCESS, composes with #180).
   - review_id: orb_entry_stuck_pending_new
+    kind: tripwire
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
     closed_on: 2026-05-28
     outcome: |
@@ -7099,6 +7119,7 @@ reviews:
     added_on: 2026-06-18
 
   - review_id: ep_mcap_floor_500m_review
+    kind: cadence
     title: "EP $500M market-cap floor — is it filtering out net-winner near-miss gappers? (BLZE $487M seed)"
     question: |
       Over the accumulated NEAR-MISS cohort (clean EP-eligible gappers filtered ONLY
@@ -7235,6 +7256,7 @@ reviews:
     added_on: 2026-07-07
 
   - review_id: exposure_family_cap_promotion
+    kind: tripwire
     title: "#452 exposure-family SHADOW -> BLOCKING promotion (premortem R1 — the correlated book)"
     question: >-
       The shadow counter (entry_pipeline 2b hook) has observed since 7/12: does the count prove
@@ -7392,6 +7414,7 @@ reviews:
     added_on: 2026-07-09
 
   - review_id: broker_order_ingest_promotion
+    kind: cadence
     title: "Broker-order ingest (#184b) — ADVANCE the dark→live phase (don't let it sit dark)"
     question: |
       R1 stop-pointer repair (#184b, ADR 0008 inc-2b — the a41e7c6a false-naked closer) ships DARK
@@ -7428,6 +7451,7 @@ reviews:
     added_on: 2026-07-11
 
   - review_id: entry_order_rejections_systematic
+    kind: tripwire
     title: "Entry-order rejections (#475) — is the AEHR-class LULD reject systematic?"
     question: |
       AEHR 2026-07-15 (live): exchange-level LULD rejection of the ORB stop-limit
@@ -7543,6 +7567,7 @@ reviews:
     added_on: 2026-07-21
 
   - review_id: first_live_winner
+    kind: tripwire
     title: "FIRST profitable live MAGNA53 close — the single event that most changes the exit analysis (#503/#508)"
     question: |
       Fires the first time a live MAGNA53 trade closes GREEN. Operator 2026-08-01
@@ -7811,6 +7836,7 @@ reviews:
     added_on: 2026-07-26
 
   - review_id: htf_sizing_left_on_legacy_formula
+    kind: tripwire
     title: "#456 — the HTF shadow was deliberately left on the PRE-#456 sizing formula; it cannot stay there once HTF touches money"
     question: >-
       Operator-ruled 2026-07-26: "we're not enabling HTF to live money yet, so

@@ -75,3 +75,58 @@ def test_it_never_auto_closes_or_defers(monkeypatch):
 
 def test_empty_stays_silent(monkeypatch):
     assert _render(monkeypatch, []) == ""
+
+
+# ── the payload must carry what the renderer reads (2026-08-03) ──────────────────────────────
+
+def test_the_ready_payload_carries_the_fields_the_renderer_keys_off():
+    """THE bug this file's 8/02 teeth shipped with: `_format_pending_reviews_section` reads
+    `earliest_review_date` for the age tag, the ≥30d banner and the oldest-first sort — and
+    `data_gated_reviews.build_review_summary` did not put it in the payload. Every tooth was inert
+    in production while these tests passed on fabricated dicts that DID have the field.
+
+    Same class as /audit and /crypto shipping with working handlers and no registration: correct
+    code, wrong payload, nothing failing."""
+    src = open("agents/market_intelligence/data_gated_reviews.py").read()
+    i = src.index("entry_summary = {")
+    block = src[i:i + 1600]
+    assert '"earliest_review_date"' in block, "renderer reads it; payload must supply it"
+    assert '"kind"' in block
+
+
+def test_a_quiet_tripwire_reports_SILENCE_not_staleness():
+    """orb_entry_stuck_pending_new reads 0/1 across 67 post-fix days because the RDW bug has not
+    recurred. Rendering that as 'ripe 67d' turned good news into the top of a neglect list."""
+    from agents.market_intelligence.system_review import _format_pending_reviews_section
+    out = _format_pending_reviews_section({"ready": [{
+        "review_id": "orb_entry_stuck_pending_new", "title": "P0 — ORB entry stuck",
+        "kind": "tripwire", "current_count": 0, "threshold": 1,
+        "earliest_review_date": "2026-05-28", "action_when_ready": "Pull the rows."}]})
+    assert "no recurrence" in out and "ripe" not in out
+
+
+def test_a_FIRED_tripwire_says_so():
+    from agents.market_intelligence.system_review import _format_pending_reviews_section
+    out = _format_pending_reviews_section({"ready": [{
+        "review_id": "x", "title": "T", "kind": "tripwire", "current_count": 3,
+        "threshold": 1, "earliest_review_date": "2026-05-28", "action_when_ready": "Act."}]})
+    assert "FIRED" in out
+
+
+def test_a_quiet_tripwire_never_counts_toward_the_stale_banner():
+    """Otherwise the banner reads 'N ripe ≥30d — surfacing is not triage' about tripwires that are
+    working exactly as intended."""
+    from agents.market_intelligence.system_review import _format_pending_reviews_section
+    out = _format_pending_reviews_section({"ready": [{
+        "review_id": "x", "title": "T", "kind": "tripwire", "current_count": 0, "threshold": 1,
+        "earliest_review_date": "2026-01-01", "action_when_ready": "Act."}]})
+    assert "surfacing is not triage" not in out
+
+
+def test_accrual_still_shows_age_and_still_trips_the_banner():
+    """The 8/02 teeth must survive: a genuinely stale accrual item is still called out."""
+    from agents.market_intelligence.system_review import _format_pending_reviews_section
+    out = _format_pending_reviews_section({"ready": [{
+        "review_id": "x", "title": "T", "kind": "accrual", "current_count": 99, "threshold": 10,
+        "earliest_review_date": "2026-01-01", "action_when_ready": "Act."}]})
+    assert "ripe" in out and "surfacing is not triage" in out
