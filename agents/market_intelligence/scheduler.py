@@ -3070,10 +3070,26 @@ async def _post_nightly_audit_job():
             f"Inert-sweep check: {inert['lanes_scanned']} lane(s), "
             f"{len(inert['inert'])} inert, {len(inert['skipped'])} skipped, "
             f"{len(inert['errors'])} error(s)")
-        for lane in inert["inert"]:
+        # ANNOUNCE ONCE PER LANE, not nightly. The condition persists until someone recomputes the
+        # stored rows, so an un-deduped alert would repeat every night about a defect already known
+        # and already filed — which is how a real signal becomes wallpaper. Same idiom as the
+        # new-lane detector and the 7/17 budget-alarm re-fire fix: the audit log IS the state.
+        _already = set()
+        try:
+            from agents.market_intelligence.db import get_pool as _pool_for_dedupe
+            _p = await _pool_for_dedupe()
+            async with _p.acquire() as _c:
+                _already = {r["t"] for r in await _c.fetch(
+                    "SELECT DISTINCT split_part(summary, ':', 1) AS t FROM mi_audit_log "
+                    "WHERE event_type = 'inert_sweep_detected'")}
+        except Exception as e:  # loud-ok: logged, and failing OPEN here only risks a duplicate alert, never a missed one
+            logger.warning(f"inert-sweep dedupe read failed (will re-announce): {e}")
+        fresh = [l for l in inert["inert"] if l["table"] not in _already]
+        for lane in fresh:
             await log_audit_event(
                 "inert_sweep_detected", f"{lane['table']}: {lane['swept']} sweep is measuring nothing",
                 json.dumps(lane))
+        inert["inert"] = fresh
         if inert["inert"]:
             # NO function-local import here: `send_telegram_message` is bound at MODULE level, and a
             # local `from ... import` would make the name local to this whole function — the

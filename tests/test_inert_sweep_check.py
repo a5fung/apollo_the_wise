@@ -92,3 +92,23 @@ def test_the_check_does_not_judge_plausibility():
     src = inspect.getsource(hc.run_inert_sweep_check)
     for overreach in ("mean", "median", "stddev", "outlier", "plausib"):
         assert overreach not in src.lower()
+
+
+def test_the_alert_announces_ONCE_per_lane_not_nightly():
+    """The condition persists until someone recomputes the stored rows, so an un-deduped alert
+    would fire every night about a defect already known and already filed. That is how a real
+    signal becomes wallpaper — the same failure the 7/17 budget-alarm re-fire fix addressed, and
+    the reason the new-lane detector dedupes too. The audit log is the state; no new table."""
+    sched = open("agents/market_intelligence/scheduler.py").read()
+    i = sched.index("run_inert_sweep_check")
+    block = sched[i:i + 2600]
+    assert "inert_sweep_detected" in block
+    assert "SELECT DISTINCT" in block, "must read prior announcements before alerting again"
+
+
+def test_the_dedupe_fails_OPEN():
+    """If the dedupe read breaks, the cost must be a duplicate alert — never a missed one. A
+    health guard that goes quiet on its own error is the failure it exists to prevent."""
+    sched = open("agents/market_intelligence/scheduler.py").read()
+    i = sched.index("inert-sweep dedupe read failed")
+    assert "will re-announce" in sched[i:i + 120]
