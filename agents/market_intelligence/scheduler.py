@@ -3057,6 +3057,36 @@ async def _post_nightly_audit_job():
     # Job-liveness sweep (#370 increment 3): a scheduled job that RAN successfully but produced
     # NOTHING (theme synthesis truncating to 0 cohorts; theme-shadow 0 rows #173) — reads each output
     # table's real new-row count, NOT the lying self-report. Own try/except; internally robust.
+    # #521 INERT-SWEEP CHECK (2026-08-03): a study that varies a parameter must produce variation.
+    # `mi_orb_extension_shadow` swept six cutoffs for 91 days and every one returned an identical
+    # result for every trade — a one-word bug (fill threshold read the STOP, not the LIMIT) that
+    # nobody could see until the review's N>=20 threshold tripped. Operator: "disappointing to have
+    # bad data for months, need to prevent this going forward." Own try/except — a health guard that
+    # dies silently is the failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_inert_sweep_check
+        inert = await run_inert_sweep_check()
+        logger.info(
+            f"Inert-sweep check: {inert['lanes_scanned']} lane(s), "
+            f"{len(inert['inert'])} inert, {len(inert['skipped'])} skipped, "
+            f"{len(inert['errors'])} error(s)")
+        for lane in inert["inert"]:
+            await log_audit_event(
+                "inert_sweep_detected", f"{lane['table']}: {lane['swept']} sweep is measuring nothing",
+                json.dumps(lane))
+        if inert["inert"]:
+            from agents.market_intelligence.briefing import send_telegram_message
+            lines = ["🔴 *SWEEP IS MEASURING NOTHING* — a study that varies a setting produced",
+                     "identical results across every variant, so the setting is not reaching the code:",
+                     "```"]
+            for lane in inert["inert"][:3]:
+                lines.append(f"{lane['table']}  ({lane['multi_variant_subjects']} subjects, 0 varied)")
+            lines.append("```")
+            await send_telegram_message("\n".join(lines))
+    except Exception as e:  # loud-ok: logger.error + notify_job_failure — a health guard that dies silently is the failure it exists to prevent
+        logger.error(f"Inert-sweep check failed: {e}", exc_info=True)
+        await notify_job_failure("inert_sweep_check", str(e))
+
     try:
         from agents.market_intelligence.health_checks import run_job_liveness_sweep
         jl = await run_job_liveness_sweep()

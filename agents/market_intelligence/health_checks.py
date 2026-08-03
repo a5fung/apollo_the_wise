@@ -1247,3 +1247,93 @@ async def _emit_row_count_drift(out: dict[str, Any]) -> None:
         await send_telegram_message("\n".join(lines))
     except Exception as e:
         logger.warning("row_count_drift: telegram send failed: %s", e)
+
+# ── #521 INERT-SWEEP CHECK (2026-08-03) ───────────────────────────────────────────────────────
+#
+# WHY. `mi_orb_extension_shadow` swept six entry-cutoff times for three months and every one of
+# them returned a BYTE-IDENTICAL result for every trade. The cause was a one-word bug — the
+# simulator computed its fill threshold from the STOP instead of the LIMIT, so the threshold was
+# crossed within minutes of the open, long before the earliest cutoff could matter. Nobody looked
+# until the review's N>=20 threshold tripped on 2026-08-03, ninety-one days later, and the answer
+# it would have given ("10:00 is already optimal") was manufactured by the bug.
+#
+# Operator, on being told: *"disappointing to have bad data for months, need to prevent this going
+# forward."*
+#
+# THE CHECK, stated as narrowly as it can be: **a study that varies a parameter must produce
+# variation.** If a sweep has >=2 variants and >=MIN_SUBJECTS subjects, and every subject scores
+# IDENTICALLY across all of them, the sweep is inert — the parameter is not reaching the code, or
+# the code is not reading it. That is decidable from the data alone; it needs no view on whether
+# the numbers are *right*.
+#
+# WHAT IT DELIBERATELY DOES NOT DO: judge plausibility, ranges, or units. Those need a model of the
+# domain and would cry wolf; a guard that always fires is not a guard (2026-08-01). This one fires
+# only on a signature that is always a defect.
+#
+# ⚠ The registry below is HAND-MAINTAINED, and that is a real cost: a new sweep lane that is not
+# added here is not checked. It is four entries, adding one is part of building a sweep, and the
+# alternative — inferring "which column is the swept parameter" — was rejected as too magic to
+# trust on money-adjacent telemetry.
+_SWEEP_LANES: tuple[tuple[str, str, str, int], ...] = (
+    # (table, swept-parameter column, outcome column, min subjects before judging)
+    ("mi_orb_extension_shadow", "cutoff_minute", "total_pnl", 10),
+    ("mi_giveback_shadow", "arm", "realized_r", 10),
+    ("mi_htf_management_shadow", "trail_mode", "realized_r", 10),
+    ("mi_consolidation_entry_shadow", "entry_mode", "realized_r", 10),
+)
+_SWEEP_SUBJECT_KEYS = ("trade_id", "ticker")
+
+
+async def run_inert_sweep_check() -> dict[str, Any]:
+    """Flag parameter sweeps whose variants all produce identical results.
+
+    Returns {"lanes_scanned", "inert", "skipped", "errors"}. Never raises — a health check that
+    dies silently is the failure it exists to prevent, so each lane is isolated."""
+    from agents.market_intelligence.db import get_pool
+
+    out: dict[str, Any] = {"lanes_scanned": 0, "inert": [], "skipped": [], "errors": []}
+    pool = await get_pool()
+    for table, sweep_col, outcome_col, min_subjects in _SWEEP_LANES:
+        try:
+            async with pool.acquire() as conn:
+                cols = {r["column_name"] for r in await conn.fetch(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name=$1", table)}
+                if not cols:
+                    out["skipped"].append({"table": table, "why": "table absent"})
+                    continue
+                subject = next((k for k in _SWEEP_SUBJECT_KEYS if k in cols), None)
+                if subject is None or sweep_col not in cols or outcome_col not in cols:
+                    out["skipped"].append({"table": table, "why": "expected columns absent"})
+                    continue
+                row = await conn.fetchrow(f"""
+                    WITH per_subject AS (
+                        SELECT {subject} AS s,
+                               COUNT(DISTINCT {sweep_col}) AS n_variants,
+                               COUNT(DISTINCT COALESCE({outcome_col}::text, '~null~')) AS n_outcomes
+                        FROM {table} GROUP BY {subject}
+                    )
+                    SELECT COUNT(*) AS subjects,
+                           COUNT(*) FILTER (WHERE n_variants > 1) AS multi_variant_subjects,
+                           COUNT(*) FILTER (WHERE n_variants > 1 AND n_outcomes > 1) AS varied
+                    FROM per_subject
+                """)
+            out["lanes_scanned"] += 1
+            multi = int(row["multi_variant_subjects"] or 0)
+            varied = int(row["varied"] or 0)
+            if multi < min_subjects:
+                out["skipped"].append({"table": table, "why": f"only {multi} multi-variant subjects "
+                                                              f"(<{min_subjects}) — too early to judge"})
+                continue
+            if varied == 0:
+                out["inert"].append({
+                    "table": table, "swept": sweep_col, "outcome": outcome_col,
+                    "multi_variant_subjects": multi,
+                    "note": (f"{table}: {multi} subjects each scored across multiple {sweep_col} "
+                             f"values and NOT ONE produced a different {outcome_col}. The swept "
+                             f"parameter is not reaching the code, or the code is not reading it — "
+                             f"this sweep is measuring nothing."),
+                })
+        except Exception as e:  # loud-ok: recorded in out["errors"] and surfaced by the caller — per-lane isolation so one bad table cannot blind the other three
+            out["errors"].append({"table": table, "error": f"{type(e).__name__}: {e}"})
+    return out
+

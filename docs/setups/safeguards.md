@@ -130,6 +130,8 @@ These are deliberate, not oversights. Future readers should understand the reaso
 
 1. **Manual deposits/withdrawals**: not detected; deferred. See above.
 2. **Quarterly hard peak reset**: not implemented. Using rolling 30-day window instead. Natural recency. Revisit if a stretched-out drawdown leaves a stale peak that prevents legitimate recovery.
+   - ⚖️ **OPERATOR-RULED 2026-08-03 — KEEP THE ROLLING WINDOW. Do not switch to a high-water mark.** His reason, verbatim: *"leave it otherwise it'll take too long to recover."* A fixed high-water mark would hold the reference at an old peak and keep sizing suppressed long after the account started recovering.
+   - ⚠ **The trade-off he accepted, stated plainly so it is never re-derived as a surprise:** the reference peak follows a decline DOWNWARD, so under a slow enough bleed the −7% REDUCE tier can be structurally unreachable however large the cumulative loss. Observed live on 2026-08-03: the $5,000 cutover peak rolled out of the 30-day window on 8/02, the reference became $4,967.16, and the measured drawdown IMPROVED −4.49% → −3.86% while the account gained nothing (equity $4,775.56). **This is the accepted cost of faster recovery, not an open defect.** The intraday 2% daily-loss limit remains the fast-timescale backstop.
 3. **Cross-mode peak transfer**: paper peak does NOT inform live peak (mode-scoped table). Intentional — live cutover starts a fresh peak per CLAUDE.md cutover plan. If this proves wrong (e.g., user wants paper history as live's seed peak), it's a small change.
 
 ## Promotion plan (shadow → active)
