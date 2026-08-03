@@ -323,24 +323,22 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-01/02 — exit + entry discipline live · #490 RT-2 resolved · 2 rules made mechanical
+### 2026-08-02 — money-path filters live · chart-vision paused · 3 rules made MECHANICAL
 
-- **3 money-path filters live (signed, toggle-reversible ~60s)**: +2R profit trigger (#508), stale-gap
-  scan cleanup, submission-time gap re-check. The latter two would have blocked **3 of the last 17
-  live trades — all losers, ~23% of the month's loss**. Each shipped OFF → verified inert in prod →
-  THEN flipped; that sequence is the point.
-- **#490 gate 1 resolved with NO market day** (operator pushed twice, both right). Coverage ruled out
-  by running the production call: 98%, the 114 absent all PREFERRED shares. Tick replay showed the
-  residual metric **over-counts** — it scores intrabar crosses a 5-min sampler shouldn't catch. Sustain
-  rule (3 consecutive bars) live, argued from mechanism not the return table (he named the overfit
-  risk himself).
-- **2 lessons made MECHANICAL, not promised again** — both now in THIS file because memory drifted
-  within 24h: the **report format** (asked 5×) and **SETUP vs FAMILY** (a setup needs a buy AND a stop;
-  continuation is a family).
-- **Silent-failure sweep**: 3 no-telemetry drop paths in the RT overlay; a deploy-scope hole that would
-  have left ENTRY code stale on the trading server (lazy imports invisible to the generator); a guard
-  applying MAGNA53's 10% floor to a 3% strategy. **Lesson: a guard that always fires is not a guard** —
-  a transitive import walk returned 132 of ~150 modules and was rejected for a narrow rule.
+- **3 money-path filters live (signed, toggle-reversible ~60s)**: +2R trigger (#508), stale-gap scan
+  cleanup, submission-time gap re-check — the latter two would have blocked **3 of the last 17 live
+  trades, all losers**. Each shipped OFF → verified inert → THEN flipped; that sequence is the point.
+- **#490 gate 1 resolved with NO market day** (operator pushed twice, both right): coverage ruled out
+  on the production call (98%; the 114 absent are all PREFERRED shares), and tick replay showed the
+  residual metric OVER-counts intrabar crosses. Sustain rule (3 bars) live, argued from mechanism.
+- **Chart-vision drip PAUSED, capability KEPT (#519)** — 336 calls ≈85% of judge spend for ZERO trade
+  influence. **Root cause was a DEFAULT**: `grade_holistic`'s `log_caller` defaulted to the live
+  bucket, so an experiment was invisible inside production spend. Now required; 8 lanes were
+  mislabelled, not 1. New-lane detector added — the anomaly detector is cold-start gated by design.
+- **3 rules made MECHANICAL because memory and prose both failed**: report format (asked 6× → a Stop
+  hook, `scripts/report_format_gate.py`), SETUP vs FAMILY, and deprecated-but-enabled strategies.
+- **Lesson that keeps repeating**: a guard that always fires is not a guard — and a gate that only
+  exists on one machine is not a gate (`.claude/` was gitignored; the wiring test caught it).
 
 Older entries → `CHANGELOG.md` (search any concept).
 
