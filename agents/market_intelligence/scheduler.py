@@ -4939,9 +4939,31 @@ def start_scheduler() -> AsyncIOScheduler:
     # deltas the operator labels. SHADOW: audit-only writes, never the live grade path. (#267/#343)
     _scheduler.add_job(
         audit_wrap(_chart_axis_shadow_job, "chart_axis_shadow"),
+        # ⚠ PAUSED 2026-08-02 (operator): the DAILY drip is off; the CAPABILITY is kept.
+        # Measured: 56 rows over 24 days (~2.3/day against a cap of 8), 336 judge calls,
+        # ~$11/mo — about 85% of all ep_grade_judge spend — for 5 verdict changes, 1 clean
+        # delta, and ZERO influence on any trade (verified: the shadow never writes a grade
+        # back, and of its 5 flagged names only NNE reached a trade row, which never filled —
+        # skipped window:out_of_orb). #343 was signed "hold, no promotion" on 8/01, so it was
+        # collecting for a decision already made.
+        #
+        # NOTHING IS LOST BY STOPPING. `render_prior_day_chart` builds the chart point-in-time
+        # from stored daily OHLCV, so any historical alert can be re-graded on demand — and the
+        # offline corpus is ALREADY 4x larger (227 graded alerts with settled outcomes vs 56
+        # shadow rows), with a better scorer available: 43 closed trades carry realized R, which
+        # is what actually happened to money rather than a 5-day drift.
+        #
+        # Operator 2026-08-02: "i want chart reading to play a role but maybe not just the
+        # current way where it's not bringing value; however, i still want to leverage all the
+        # data/trades we're collecting to eval and test chart reading separately, once we can
+        # refine it properly to be valuable, we can introduce back into trading process."
+        # ⇒ the deliberate tool is `scripts/eval_chart_judge.py` (read-only, point-in-time, no
+        # lookahead, two-sided cohorts, replicate noise floor). Run it on purpose, with the spend
+        # authorised, over a real sample — do NOT resurrect a 2-a-day cron.
         CronTrigger(hour=17, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
         id="chart_axis_shadow",
         replace_existing=True,
+        next_run_time=None,          # registered (role-partition guard) but never auto-fires
     )
     # Sunday 19:30 ET — push the week's new chart-axis deltas (chart inline) for operator labeling
     # + the running N vs the 7/31 backstop. Empty week → quiet.
@@ -4950,6 +4972,10 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(day_of_week="sun", hour=19, minute=30, timezone="America/New_York"),
         id="chart_axis_shadow_weekly_digest",
         replace_existing=True,
+        # ⚠ PAUSED with the shadow (2026-08-02). It was asking the operator to label deltas for
+        # #343 — a decision SIGNED "hold, no promotion" on 8/01 — and even said so itself:
+        # "decision by 2026-07-31 (-2d)". A nag for a closed decision is pure noise.
+        next_run_time=None,
     )
 
     # S2 coverage probe: 5:55 PM ET mon-fri — after the 17:00 nightly pull has refreshed
