@@ -2200,6 +2200,29 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                                 "authoritative": authoritative,
                                 "down_authoritative": down_authoritative,
                                 "tick_et": now_et.strftime("%H:%M")}))
+            elif rt_gap >= MIN_GAP_PCT and dl >= MIN_GAP_PCT and _audit_dedupe_check(
+                    c["ticker"], adate, "ep_rt_admit"):
+                # #490 leg 2, added 2026-08-03 — TELEMETRY ONLY, no control-flow change (third arm
+                # of the existing chain; both branches above are untouched).
+                #
+                # The two branches above fire only when RT and delayed DISAGREE across the floor,
+                # and the flip-UP is deduped once per DAY. So when they AGREE — the case for an
+                # alert that is about to be written — nothing is recorded at all. FTK on 2026-08-03
+                # made that concrete: flip-DOWN at 07:25 (rt 7.6%), alert WRITTEN at 08:45 on a
+                # delayed 10.45%, flip-DOWN again at 09:20 (rt 8.75%). The overlay demonstrably ran
+                # at 08:45 and did not remove it, which is consistent with a genuine recovery above
+                # the floor — but NOTHING logged the passing value, so verify-live leg 2 ("removed
+                # tickers absent from mi_ep_alerts") could be neither confirmed nor refuted.
+                #
+                # An unanswerable verify leg is worse than a failing one: it reads as a pass.
+                await log_audit_event(
+                    "ep_rt_admit",
+                    f"{c['ticker']} rt {rt_gap:.1f}% and delayed {dl:.1f}% BOTH >=10 "
+                    f"@ {now_et:%H:%M} ET — real-time AGREES with the admit",
+                    json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2),
+                                "delayed_gap": round(dl, 2),
+                                "tick_et": now_et.strftime("%H:%M"),
+                                "authoritative": authoritative}))
         return _floor(candidates)
     except Exception as e:
         logger.warning(f"Pass-2 failed, degrading to delayed 10% floor: {e}")

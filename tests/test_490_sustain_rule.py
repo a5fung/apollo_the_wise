@@ -113,3 +113,32 @@ def test_bars_are_memoised_per_tick():
     """One bar request per ticker per tick, not one per check — this sits in the scan path."""
     src = open("agents/market_intelligence/ep_detector.py").read()
     assert "if tkr not in _sustain_bars:" in src
+
+
+# ── #490 leg 2: the overlay must record AGREEMENT, not only disagreement (2026-08-03) ────────
+
+def test_the_overlay_logs_when_rt_AGREES_with_the_admit():
+    """Verify-live leg 2 was UNANSWERABLE on 2026-08-03, which is worse than failing — it reads as
+    a pass. FTK flipped DOWN at 07:25, alerted at 08:45 on a delayed 10.45%, flipped DOWN again at
+    09:20. The overlay ran at 08:45 and did not remove it (consistent with a genuine recovery), but
+    only DISAGREEMENT was ever logged, so the passing value did not exist anywhere."""
+    src = open("agents/market_intelligence/ep_detector.py").read()
+    assert '"ep_rt_admit"' in src
+
+
+def test_the_admit_event_is_a_THIRD_arm_not_a_rewrite():
+    """The two existing branches are money-path control flow. The new telemetry must hang off the
+    end of the same chain, leaving them byte-identical."""
+    src = open("agents/market_intelligence/ep_detector.py").read()
+    up = src.index('"ep_rt_floor_flip_up"')
+    down = src.index('"ep_rt_floor_flip_down"', up)
+    admit = src.index('"ep_rt_admit"', down)
+    assert up < down < admit, "ep_rt_admit must come after both existing branches"
+    assert "elif rt_gap >= MIN_GAP_PCT and dl >= MIN_GAP_PCT" in src
+
+
+def test_the_admit_event_is_deduped_per_ticker_per_day():
+    """Unbounded it would fire for every admitted candidate on every 5-minute tick."""
+    src = open("agents/market_intelligence/ep_detector.py").read()
+    i = src.index('"ep_rt_admit"')
+    assert "_audit_dedupe_check(" in src[max(0, i - 400):i + 400]
