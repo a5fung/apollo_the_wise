@@ -693,7 +693,7 @@ reviews:
       as a sister-finding while closing the 1.5-2x hypothesis. Sample
       already large enough; calendar gate is for session sequencing,
       not data accrual.
-    status: closed  # 2026-07-19: window artifact — 3-5x now +0.59% (was -0.75%); gap/ATR is NOT a live EP criterion (entry gates on absolute gap%); operator OK to close, not adopting
+    status: done   # normalised from 'closed' 2026-08-03 — the schema vocabulary is pending|done|deferred  # 2026-07-19: window artifact — 3-5x now +0.59% (was -0.75%); gap/ATR is NOT a live EP criterion (entry gates on absolute gap%); operator OK to close, not adopting
     added_on: 2026-05-25
 
   - review_id: dead_zone_reevaluation
@@ -3314,7 +3314,7 @@ reviews:
           filed (related to B1/B2)
         - perplexity_hallucination_keyword_leak — affects D1 catalyst
           fetch (filed today)
-    status: shipped
+    status: done   # normalised from 'shipped' 2026-08-03 — the schema vocabulary is pending|done|deferred
     added_on: 2026-05-14
     shipped_on: 2026-05-17
     shipped_notes: |
@@ -4969,7 +4969,7 @@ reviews:
         (c) softer gate: allow scoring on Axes 4+5+6 alone
         Backtest before shipping.
       If <10 cases: extend window 30d.
-    status: closed
+    status: done   # normalised from 'closed' 2026-08-03 — the schema vocabulary is pending|done|deferred
     closed_on: 2026-05-28
     outcome: |
       Predicate hit N=10 on 2026-05-28 (SNOW-triggered). Carve-out subset
@@ -5194,7 +5194,7 @@ reviews:
       classifier (confirm pullback vs still-extended); THEN CHANGE_PROCESS ship
       decision on cooldown length / override.
     cross_refs: [theme_axis_gating_logic, "task #170", "task #171 (/setup+/why observability)"]
-    status: resolved  # 2026-07-12 SITTING: NO-GO ratified — the 7/11 full-history backtest (docs/analysis/170_resetup_backtest_table_2026-07-11.md, N=89) answered the owed realized-R + like-for-like baseline: the admitted cohort runs BELOW the live EP book (+5.6% vs +7.4% median) and the gap filter is anti-selective; the 6/01 N=22 edge did not replicate. Cooldown stays as-is; task #170 closed.
+    status: done   # normalised from 'resolved' 2026-08-03 — the schema vocabulary is pending|done|deferred  # 2026-07-12 SITTING: NO-GO ratified — the 7/11 full-history backtest (docs/analysis/170_resetup_backtest_table_2026-07-11.md, N=89) answered the owed realized-R + like-for-like baseline: the admitted cohort runs BELOW the live EP book (+5.6% vs +7.4% median) and the gap filter is anti-selective; the 6/01 N=22 edge did not replicate. Cooldown stays as-is; task #170 closed.
     added_on: 2026-06-01
 
   - review_id: b6_forward_backtest_first_eval
@@ -6432,6 +6432,10 @@ reviews:
 
   - review_id: after_hours_partial_exit_reliability
     title: "P4 — After-hours partial-exit reliability (IBM cascade R4 class)"
+    status: done   # ADDED 2026-08-03 — the entry carried closed_on + a full
+                   # outcome but NO status key, so the renderer skipped it
+                   # silently. Harmless here (it really is done) but the same
+                   # omission on a LIVE question would hide it forever.
     closed_on: 2026-05-28
     outcome: |
       Investigation complete. Cohort scan (90d): 6 after-hours partial-exit
@@ -6950,7 +6954,7 @@ reviews:
          unimported by the live path.
 
       Doc: docs/decisions/0010-materiality-fire-status-activation.md. Task #189.
-    status: closed
+    status: done   # normalised from 'closed' 2026-08-03 — the schema vocabulary is pending|done|deferred
     added_on: 2026-06-07
     closed_on: 2026-06-10
     outcome: >
@@ -7176,7 +7180,7 @@ reviews:
       real edge holds -> CHANGE_PROCESS + operator sign-off -> flip shadow->PAPER = #353 (register + wire
       entry -> phase=paper, in PARALLEL with live magna53). IF thin/negative -> iterate the coil gates or
       extend the shadow. NEVER auto-flip — paper is a real-money-path decision (THE LINE).
-    status: resolved  # 2026-07-12 SITTING (B1): NO-GO — anticipate settled N=34 at -1.23R mean / -1.00R median / 18% win (docs/analysis/395_go_nogo_evidence_2026-07-11.md); real entries KILLED, #353 stays gated. Operator chose KEEP OBSERVING -> successor trigger: consolidation_anticipate_signflip_watch.
+    status: done   # normalised from 'resolved' 2026-08-03 — the schema vocabulary is pending|done|deferred  # 2026-07-12 SITTING (B1): NO-GO — anticipate settled N=34 at -1.23R mean / -1.00R median / 18% win (docs/analysis/395_go_nogo_evidence_2026-07-11.md); real entries KILLED, #353 stays gated. Operator chose KEEP OBSERVING -> successor trigger: consolidation_anticipate_signflip_watch.
     added_on: 2026-06-29
 
   - review_id: htf_breakout_paper_graduation
