@@ -50,6 +50,15 @@ VARIANTS (stop below entry):
 Every variant row is compared PAIRED against the baseline on the SAME subset of trades,
 so ATR/PDL skips can't tilt the totals.
 
+SCALE GUARD: mi_intraday_bars stores as-traded prices captured live; mi_daily_closes is
+retroactively SPLIT-ADJUSTED (Polygon adjusted=true). DLLL 2026-05-22 trades at $88 in
+minute bars but $13 in the daily series — every daily-derived quantity (prior-day low,
+ATR14, the day-1..5 extension walk) would be nonsense at minute scale. Fix: when the
+entry-day minute close and daily close diverge > 2%, the ticker's whole daily series is
+rescaled by (minute close / daily close) before use. Affected names are listed in the
+output. Relative daily moves are preserved (the series is internally consistent), so the
+extension stays valid in entry-day price units.
+
 Inputs (pulled 2026-08-03 from prod, gitignored):
   scripts/_stopw_trades.tsv  46 closed mi_live_trades rows
   scripts/_stopw_alerts.tsv  327 distinct (ticker, alert_date) HIGH mi_ep_alerts
@@ -137,15 +146,36 @@ def load_alerts():
 
 
 # ── daily-bar helpers ────────────────────────────────────────────────────────
-def prior_day_low(daily, ticker, date):
-    prev = [b for b in daily.get(ticker, []) if b["d"] < date and b["l"] is not None]
+SCALE_FIXED = []                       # (ticker, date, ratio) — split-adjust mismatches
+
+
+def scaled_daily(daily, minute, ticker, date):
+    """The ticker's daily series rescaled into entry-day MINUTE price units.
+    mi_daily_closes is retroactively split-adjusted; mi_intraday_bars is as-traded on
+    capture day. Ratio anchor = entry-day minute close / entry-day daily close."""
+    series = daily.get(ticker, [])
+    bars = minute.get((ticker, date))
+    day0 = next((b for b in series if b["d"] == date), None)
+    if not bars or not day0 or not day0["c"]:
+        return series
+    ratio = bars[-1]["c"] / day0["c"]
+    if abs(ratio - 1) <= 0.02:
+        return series
+    SCALE_FIXED.append((ticker, date, round(ratio, 3)))
+    return [{**b, "o": b["o"] and b["o"] * ratio, "h": b["h"] and b["h"] * ratio,
+             "l": b["l"] and b["l"] * ratio, "c": b["c"] and b["c"] * ratio}
+            for b in series]
+
+
+def prior_day_low(series, date):
+    prev = [b for b in series if b["d"] < date and b["l"] is not None]
     return prev[-1]["l"] if prev else None
 
 
-def atr14_prior(daily, ticker, date):
+def atr14_prior(series, date):
     """Mean of the last 14 Wilder TRs using bars STRICTLY BEFORE `date`
     (what the 9:31 live path can see — compute_atr_14's live asymmetry note)."""
-    bars = [b for b in daily.get(ticker, []) if b["d"] < date]
+    bars = [b for b in series if b["d"] < date]
     if len(bars) < 15:
         return None
     trs = []
@@ -157,8 +187,8 @@ def atr14_prior(daily, ticker, date):
     return statistics.fmean(trs[-14:]) if len(trs) >= 14 else None
 
 
-def forward_days(daily, ticker, date, n=FWD_DAYS):
-    return [b for b in daily.get(ticker, []) if b["d"] > date][:n]
+def forward_days(series, date, n=FWD_DAYS):
+    return [b for b in series if b["d"] > date][:n]
 
 
 # ── the replay core (identical mechanics for every variant) ──────────────────
@@ -266,9 +296,10 @@ def build_cohort_a(trades, minute, daily):
         if entry_idx is None:
             excl["no locatable entry bar"] += 1
             continue
+        ser = scaled_daily(daily, minute, t["ticker"], t["date"])
         res = replay_trade(bars, entry_idx, t["entry"], t["orb_l"], t["atr"],
-                           prior_day_low(daily, t["ticker"], t["date"]),
-                           forward_days(daily, t["ticker"], t["date"]))
+                           prior_day_low(ser, t["date"]),
+                           forward_days(ser, t["date"]))
         if not res or "orb_1.0x" not in res:
             excl["baseline unreplayable"] += 1
             continue
@@ -302,10 +333,11 @@ def build_cohort_b(alerts, minute, daily, trade_keys):
         if entry_idx is None:
             excl["never triggered in 9:31-9:44 window"] += 1
             continue
+        ser = scaled_daily(daily, minute, a["ticker"], a["date"])
         res = replay_trade(bars, entry_idx, orb_h, orb_l,
-                           atr14_prior(daily, a["ticker"], a["date"]),
-                           prior_day_low(daily, a["ticker"], a["date"]),
-                           forward_days(daily, a["ticker"], a["date"]))
+                           atr14_prior(ser, a["date"]),
+                           prior_day_low(ser, a["date"]),
+                           forward_days(ser, a["date"]))
         if not res or "orb_1.0x" not in res:
             excl["baseline unreplayable"] += 1
             continue
@@ -327,7 +359,8 @@ def sweep_table(rows, label):
         print(f"\n--- {horizon} ---")
         hdr = (f"{'variant':<10} {'n':>3} {'medDist%':>8} {'stopped':>7} "
                f"{'rescued':>7} {'rescEndR':>8} {'shrink':>6} "
-               f"{'win%':>5} {'medR':>6} {'meanR':>7} {'totR':>7} {'baseTotR':>8} {'dTotR':>7}")
+               f"{'win%':>5} {'medR':>6} {'totR':>7} {'baseTotR':>8} {'dTotR':>7} {'dTotEx5':>8} "
+               f"{'up/dn':>7}")
         print(hdr)
         print("-" * len(hdr))
         for vname, _k, _m in VARIANTS:
@@ -344,17 +377,25 @@ def sweep_table(rows, label):
                       if not y[sk] and not x[sk]]
             rs = [x[rk] for x in v]
             brs = [y[rk] for y in b]
+            deltas = sorted((x[rk] - y[rk] for x, y in zip(v, b)), reverse=True)
+            ex5 = f"{sum(deltas[5:]):>+8.1f}" if n >= 30 else f"{'-':>8}"
+            nd_up = sum(1 for d in deltas if d > 1e-9)
+            nd_dn = sum(1 for d in deltas if d < -1e-9)
             print(f"{vname:<10} {n:>3} {_med([x['dist_pct'] for x in v]):>8.1f} "
                   f"{stopped:>7} {len(rescued):>7} "
                   f"{(_med(rescued) if rescued else float('nan')):>8.2f} "
                   f"{(_med(shrink) if shrink else float('nan')):>6.2f} "
                   f"{100 * sum(1 for x in rs if x > 0) / n:>4.0f}% "
-                  f"{_med(rs):>6.2f} {statistics.fmean(rs):>7.2f} {sum(rs):>7.1f} "
-                  f"{sum(brs):>8.1f} {sum(rs) - sum(brs):>+7.1f}")
+                  f"{_med(rs):>6.2f} {sum(rs):>7.1f} "
+                  f"{sum(brs):>8.1f} {sum(rs) - sum(brs):>+7.1f} {ex5} "
+                  f"{nd_up:>3}/{nd_dn:<3}")
         print("  rescued = baseline stopped at this horizon, variant not; rescEndR = the")
         print("  rescued trades' MEDIAN end R (in the variant's own R units).")
         print("  shrink = base/variant stop distance on trades BOTH survive (winner R divides by it).")
         print("  dTotR = variant total R minus BASELINE total R on the SAME subset (paired).")
+        print("  dTotEx5 = dTotR after dropping the variant's 5 BEST per-trade deltas (n>=30")
+        print("  only) — if the sign flips, the whole gain lives in a handful of outliers.")
+        print("  up/dn = trades where the variant beat / trailed the baseline (rest = ties).")
 
 
 def rescue_detail(rows, label, vname="orb_2.0x"):
@@ -428,11 +469,13 @@ def main():
 
     # replay fidelity: actual realized R vs replayed baseline R
     print("\nReplay fidelity — actual realized R (total_pnl/risk_dollars) vs replayed "
-          "baseline (day-0 / day-5):")
+          "baseline (day-0 / day-5), plus the orb_2.0x counterfactual:")
     for r in a_rows:
         b = r["res"]["orb_1.0x"]
+        w = r["res"].get("orb_2.0x")
+        wtxt = (f"   2.0x d0 {w['r0']:+6.2f}R d5 {w['r5']:+6.2f}R" if w else "")
         print(f"  {r['mode']:<5} {r['ticker']:<6} {r['date']}  actual {r['actual_r']:+6.2f}R"
-              f"   replay d0 {b['r0']:+6.2f}R  d5 {b['r5']:+6.2f}R"
+              f"   replay d0 {b['r0']:+6.2f}R  d5 {b['r5']:+6.2f}R{wtxt}"
               f"{'  [fwd truncated]' if b['truncated'] else ''}")
 
     for rows, label in ((live, "COHORT A / LIVE (12 real-money trades)"),
@@ -456,8 +499,28 @@ def main():
     print(f"  forward window truncated (<{FWD_DAYS} daily bars): {trunc}")
     print(f"  current stop distance / ATR14, cohort B: median "
           f"{_med(atr_b):.2f}x (n={len(atr_b)})")
-    sweep_table(b_rows, "COHORT B / SIMULATED HIGH-ALERT ENTRIES")
+    if SCALE_FIXED:
+        print(f"  split-adjust scale fixes applied (daily series rescaled to entry-day "
+              f"minute price units): {SCALE_FIXED}")
+
+    # the concentration problem, stated up front: top-5 baseline day-0 R contributors
+    top = sorted(b_rows, key=lambda r: r["res"]["orb_1.0x"]["r0"], reverse=True)[:5]
+    print("\n  top-5 baseline day-0 R (drive nearly the whole cohort-B total; all are"
+          "\n  micro-ORB geometry the live pipeline may filter out on mcap/ADV):")
+    for r in top:
+        x = r["res"]["orb_1.0x"]
+        print(f"    {r['ticker']:<6} {r['date']}  entry {r['entry']:<8} "
+              f"dist {x['dist_pct']:.2f}%  day0 {x['r0']:+.2f}R  day5 {x['r5']:+.2f}R")
+
+    sweep_table(b_rows, "COHORT B / SIMULATED HIGH-ALERT ENTRIES (all replayable)")
     stop_time_hist(b_rows, "COHORT B")
+
+    # executable-geometry slice: stop distance >= 1% of entry. A sub-1% stop distance
+    # means constant-risk notional > 100x the risk budget (position caps bind long
+    # before) and sits inside microcap bid-ask noise — those R numbers are not
+    # realisable. This slice is the honest tradeable read of cohort B.
+    b_exec = [r for r in b_rows if r["res"]["orb_1.0x"]["dist_pct"] >= 1.0]
+    sweep_table(b_exec, "COHORT B / EXECUTABLE SLICE (baseline stop distance >= 1% of entry)")
 
     print("\nFIDELITY LIMITS (also stated in the doc): minute-bar lows, not ticks; stop "
           "fills on a bar-low touch; sim entries fill at ORB high with zero slippage; no "
