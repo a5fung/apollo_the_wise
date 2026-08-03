@@ -50,8 +50,14 @@ Thumbs.db
 .idea/
 *.swp
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings — machine-specific (permissions, worktrees) stay OUT.
+# `.claude/*` not `.claude/`: git will not descend into an excluded DIRECTORY, so an
+# un-ignore below it can never match. Ignoring the CONTENTS instead makes the negation work.
+.claude/*
+# ...but settings.json carries the Stop hook that gates the report format (2026-08-02). A gate
+# that only exists on one machine is not a gate — it must travel with the repo, and CI must be
+# able to assert it is wired.
+!.claude/settings.json
 
 # #267 chart-vision eval — emitted chart PNGs (runtime output, not source)
 _chart_eval/
