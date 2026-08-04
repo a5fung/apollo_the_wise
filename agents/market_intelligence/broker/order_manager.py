@@ -1538,6 +1538,24 @@ async def _trade_advisory_try_lock(trade_id: int):
             await pool.release(conn)
 
 
+async def _breaker_already_alerted(trade_id: int) -> bool:
+    """Has the breaker-open Telegram already gone out for this trade?
+
+    The audit row is the state — same idiom as the budget-alarm re-fire fix (7/17) and the
+    new-lane detector. Fails OPEN (returns False, i.e. alert) on any error: a duplicate message is
+    a nuisance, a missed one on a live money path is not."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            n = await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_audit_log WHERE event_type = 'partial_exit_circuit_open' "
+                "AND detail::jsonb ->> 'trade_id' = $1::text", str(trade_id))
+        return bool(n and int(n) > 1)   # >1: this cycle's row is already written above
+    except Exception as e:  # loud-ok: logged; failing open only risks a duplicate alert, never a missed one
+        logger.warning(f"breaker-alert dedupe check failed (will alert): {e}")
+        return False
+
+
 async def execute_partial_exit(
     trade_id: int, shares: int, *, force: bool = False,
 ) -> bool:
@@ -1591,15 +1609,27 @@ async def execute_partial_exit(
                     "threshold": _PARTIAL_EXIT_BREAKER_THRESHOLD,
                 }),
             )
-            await send_telegram_message(
-                f"🛑 *Partial-exit circuit breaker OPEN*\n"
-                f"{fail_count} partial-exit failures since the last clean exit — "
-                f"automatic partial exits are PAUSED to stop retries into the same "
-                f"fault.\n\n"
-                f"Trade {trade_id} was skipped. Investigate (`show errors 7d`), then "
-                f"`/partialnow TICKER CONFIRM` to act manually (bypasses the breaker "
-                f"+ a clean run closes it)."
-            )
+            # ⚠ ALERT ONCE PER TRADE, not once per cycle (2026-08-04). The breaker exists to stop
+            # RETRIES into a fault; it was still letting the 5-minute job re-alert on every pass.
+            # PLTR today: the same pair of messages every 5 minutes for hours, about a condition
+            # already reported and already actioned — the operator's words were "I've been
+            # bombarded with these msg non stop, this is a really really bad bug".
+            #
+            # A breaker that is OPEN is by definition a KNOWN state. Re-announcing it is not
+            # information; it buries the ONE message that mattered. The audit row above still fires
+            # every cycle — the durable record stays complete, only the Telegram is deduped.
+            already_alerted = await _breaker_already_alerted(trade_id)
+            if not already_alerted:
+                await send_telegram_message(
+                    f"🛑 *Partial-exit circuit breaker OPEN*\n"
+                    f"{fail_count} partial-exit failures since the last clean exit — "
+                    f"automatic partial exits are PAUSED to stop retries into the same "
+                    f"fault.\n\n"
+                    f"Trade {trade_id} was skipped. Investigate (`show errors 7d`), then "
+                    f"`/partialnow TICKER CONFIRM` to act manually (bypasses the breaker "
+                    f"+ a clean run closes it).\n\n"
+                    f"_This alert fires ONCE per trade while the breaker stays open._"
+                )
             return False
         # force=True: operator override — record it but proceed.
         logger.warning(
