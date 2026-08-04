@@ -78,3 +78,55 @@ entry-basis comparison on the same cohort.
   and that is a scoring change = CHANGE_PROCESS + sign-off.
 - **Worth fixing separately:** have the classifier emit an explicit `unknown` rather than NULL, so
   "found nothing" and "did not run" stop being the same value.
+
+---
+
+# ⚠ CORRECTION — 2026-08-04: the headline number above was measured on the wrong basis
+
+**What I reported: `sales_acceleration` n=31, median +8.53% "excess vs QQQ", 90% win rate.**
+**That comparison was apples-to-oranges and the numbers are not usable as stated.**
+
+`mi_ep_scan_outcomes.fwd_5d_pct` is a **high-watermark** return — `MAX(high)` over the forward
+sessions versus the scan-date close (`outcome_tracker._compute_ep_scan_outcomes`, stated in its own
+docstring). I subtracted QQQ's **close-to-close** return from it. That compares *the stock's best
+moment* against *the market's endpoint*, which is positive almost by construction.
+
+Caught by a Sonnet card on `theme_as_ep_signal` the next day, which hit the same trap, noticed that
+BOTH of its buckets showed positive "excess" — impossible for an unbiased control — and re-derived.
+I then re-ran this cohort three ways:
+
+| basis | n | median excess | win rate |
+|---|---|---|---|
+| **stock MFE vs QQQ close-to-close** (what I reported — INVALID) | 31 | +8.53% | 90% |
+| **close-to-close vs close-to-close** | 32 | **−0.85%** | **44%** |
+| **MFE vs MFE** (fair like-for-like) | 34 | **+6.32%** | **82%** |
+
+## What is actually true
+
+- **These alerts DO move.** Against the market's own best excursion they still gain ~6% at the
+  median, 82% of the time. That is a real, like-for-like edge.
+- **The move does NOT persist to the close.** Five days later they are ~1% BEHIND the market, and
+  under half finish ahead.
+
+## What that changes
+
+**The claim "the stocks it flags go up" over-claimed persistence and is withdrawn.** The accurate
+statement is narrower and more useful:
+
+> Selection finds stocks that make a large favourable excursion. That excursion does not survive to
+> the close. So the edge is real but **transient**, and capturing it depends entirely on exit
+> timing.
+
+**This strengthens rather than overturns the #503 conclusion.** "Exit discipline is where the money
+is" now rests on measured alert-level behaviour, not only on 3 trades: the move is there to be
+banked and is gone by the close, which is precisely what a profit trigger exists for.
+
+**It also weakens "entry quality is ruled out".** On a close-to-close basis the alerts are roughly
+market-neutral, so selection cannot be pronounced healthy on this evidence. It can only be said that
+selection produces movement.
+
+## The lesson, since this is the third basis/units error in three days
+
+Two columns in the same family measure different things — `fwd_5d_pct` is a high-watermark,
+`ret_5d` in `mi_ep_missed_outcomes` is a fraction, `gap_pct` beside it is a percent. **Read the
+producing code before differencing two series, not the column name.**

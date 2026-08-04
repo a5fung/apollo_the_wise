@@ -4202,6 +4202,19 @@ reviews:
       ANSWERED, both halves. Write-up:
       docs/analysis/catalyst_type_forward_signal_2026-08-03.md
 
+      ⚠ CORRECTED 2026-08-04 — THE (a) NUMBERS BELOW WERE MEASURED ON A BROKEN BASIS.
+      fwd_5d_pct is a HIGH-WATERMARK (MAX(high) vs scan-date close, per outcome_tracker's own
+      docstring); I differenced it against QQQ's CLOSE-TO-CLOSE return, i.e. the stock's best moment
+      vs the market's endpoint — positive almost by construction. Re-derived three ways:
+        stock-MFE vs QQQ-close (reported, INVALID): +8.53% median, 90% win
+        close-to-close vs close-to-close:           -0.85% median, 44% win
+        MFE vs MFE (fair like-for-like):            +6.32% median, 82% win
+      TRUE READING: these alerts DO move (they beat the market's own best excursion 82% of the
+      time) but the move does NOT persist — five days later they sit ~1% BEHIND the market. The
+      edge is real but TRANSIENT, so capturing it depends entirely on exit timing. "The stocks it
+      flags go up" over-claimed persistence and is WITHDRAWN. Full correction:
+      docs/analysis/catalyst_type_forward_signal_2026-08-03.md.
+
       (a) FORWARD SIGNAL, beta-stripped (excess vs QQQ), clean-forward cohort alert_date>=2026-06-02
       only: sales_acceleration n=31 median +8.53% excess / 90% win; policy n=7 +6.83% / 100%;
       theme n=4 +27.38% / 100%; pre_catalyst_anticipation, shortage, new_product all n<=2.

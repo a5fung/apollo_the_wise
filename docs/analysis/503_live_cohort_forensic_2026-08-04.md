@@ -46,9 +46,17 @@ failing.
 current, including prior-day-low: **every loser still lost at every width**, and the simulated
 cohort's apparent gains were carried by ≤5 outliers that vanish when removed.
 
-**(b) Entry quality — ruled out.** Alerts market-adjusted return **+8.5% median over five days at a
-90% win rate** (`catalyst_type_forward_signal`, 2026-08-03). Selection is healthy; the gap is
-between the alert and the trade.
+**(b) Entry quality — NOT ruled out; amended 2026-08-04.** I originally wrote "ruled out — alerts
+return +8.5% median above market at a 90% win rate". **That number was measured on a broken basis**
+(the stock's best excursion against the market's closing return) and is withdrawn — see the
+correction appended to `catalyst_type_forward_signal_2026-08-03.md`. Re-derived like-for-like:
+alerts beat the market's own best excursion by ~6% at the median, 82% of the time, but finish five
+days later ~1% BEHIND it with a 44% win rate.
+
+So selection produces MOVEMENT, not persistence. Entry quality cannot be pronounced healthy on this
+evidence. **What it does show is that the move is there to be banked and is gone by the close** —
+which strengthens (d) rather than weakening it, and now rests on alert-level behaviour rather than
+on three trades.
 
 **(a) Variance — insufficient alone.** P(13 straight losses) at a 25-30% win rate is well under 1%.
 Variance does not explain the streak by itself; regime plus three banked-then-lost winners does.
