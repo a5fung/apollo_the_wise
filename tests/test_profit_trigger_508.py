@@ -118,3 +118,63 @@ def test_skip_flag_genuinely_suppresses_the_day5_branch():
                                 skip_hard_stop_close=True, skip_partial_decision=False)
     assert off.partial_fired is True, "day-5 unconditional branch should fire when NOT skipped"
     assert on.partial_fired is False, "trigger ON must suppress the time gate entirely"
+
+
+# ── the 2026-08-04 bombardment (operator: "bombarded with these msg non stop") ────────────────
+# The volume was a PAIR of messages every 5 minutes. `_breaker_already_alerted` fixed one; these
+# pin the other. The announcement re-fired because BOTH selection conditions are sticky while the
+# partial keeps failing: `partial_taken` only flips on SUCCESS, and `MAX(high) >= target` having
+# once been true is true forever. So an unharvestable position announced every cycle for hours.
+
+
+def test_the_profit_target_announcement_is_deduped_per_trade():
+    src = ast.get_source_segment(SRC, _fn("scan_profit_triggers"))
+    notify = src.index("send_telegram_message")
+    guard = src.rindex("_profit_trigger_already_announced", 0, notify)
+    assert "if not await" in src[guard - 40:guard], (
+        "the announcement must be gated on the per-trade dedupe, not fired unconditionally")
+
+
+def test_the_dedupe_reads_DURABLE_state_not_process_memory():
+    """A service restart must not re-arm the loop. Process-local state would mean every deploy
+    re-bombards the operator about a condition already reported."""
+    src = ast.get_source_segment(SRC, _fn("_profit_trigger_already_announced"))
+    assert "mi_audit_log" in src, "the audit row is the state — it survives a restart"
+    assert "set()" not in src and "global " not in src
+
+
+def test_the_dedupe_counts_ANY_prior_row_not_more_than_one():
+    """Ordering differs from the breaker's: this runs BEFORE the cycle writes its own audit row,
+    so `> 1` would let exactly one duplicate through every time. Off-by-one is the whole bug."""
+    fn = _fn("_profit_trigger_already_announced")
+    body = "\n".join(ast.get_source_segment(SRC, s) or "" for s in fn.body
+                     if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant)))
+    assert "> 0" in body and "> 1" not in body, (
+        "checked against the executable body — the docstring names the breaker's `> 1` "
+        "deliberately, to explain the difference")
+
+
+def test_the_dedupe_watches_BOTH_outcome_events():
+    """`profit_trigger_failed` is the row a repeatedly-failing trade writes — miss it and the
+    dedupe never engages on the exact case that caused the bombardment."""
+    src = ast.get_source_segment(SRC, _fn("_profit_trigger_already_announced"))
+    assert "profit_trigger_failed" in src and "profit_trigger_fired" in src
+
+
+def test_the_dedupe_fails_OPEN():
+    """A missed alert on a live money path is worse than a duplicate. Same direction as the
+    breaker dedupe and the inert-sweep check."""
+    src = ast.get_source_segment(SRC, _fn("_profit_trigger_already_announced"))
+    i = src.index("except Exception")
+    assert "return False" in src[i:], "on any error it must still announce"
+
+
+def test_the_audit_TRAIL_is_not_deduped_only_the_telegram():
+    """The durable record must stay complete every cycle — the dedupe is a notification fix, not
+    a logging fix. A quiet system that also stops recording is how a real signal is lost."""
+    src = ast.get_source_segment(SRC, _fn("scan_profit_triggers"))
+    audit = src.index('"profit_trigger_fired" if ok else "profit_trigger_failed"')
+    guard = src.index("_profit_trigger_already_announced")
+    assert guard < audit, "guard is above; the audit call must sit outside it"
+    assert "_profit_trigger_already_announced" not in src[audit:], (
+        "the audit write must never be conditioned on the dedupe")

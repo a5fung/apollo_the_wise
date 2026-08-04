@@ -11,6 +11,7 @@ import json
 import logging
 import math
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -40,7 +41,12 @@ from agents.market_intelligence.constants import (
     RISK_PCT,
     REGIME_SIZING_FALLBACK_MULTIPLIER,
 )
-from agents.market_intelligence.db import get_pool, log_audit_event, get_manual_halt_state
+from agents.market_intelligence.db import (
+    get_pool,
+    log_audit_event,
+    get_manual_halt_state,
+    get_runtime_toggle,
+)
 from agents.market_intelligence.audit_events import SIZING_REGIME_FALLBACK
 
 logger = logging.getLogger(__name__)
@@ -1456,6 +1462,207 @@ def _is_share_reservation_lag(err: Exception) -> bool:
     )
 
 
+# ── #508 leg-safe stop reduction (2026-08-04) ─────────────────────────────────
+# Alpaca REJECTS any qty change on an advanced-order leg (42210000, "qty cannot
+# be changed for advanced orders") — and every MAGNA53 entry's stop IS an OTO
+# bracket leg (place_bracket_order / place_limit_buy_with_stop). So the atomic
+# replace that execute_partial_exit relies on can structurally NEVER reduce a
+# bracket-leg stop. PLTR trade 307, 2026-08-04 — the first live +2R
+# profit-trigger fire — failed exactly here (fail-safe: the rejected replace
+# left the original leg live; nothing was harvested).
+#
+# Empirical basis — scripts/probes/_508_oto_leg_probe.py, paper, 2026-08-04:
+#   T1  replace(leg, qty)                → REJECTED 42210000 (the PLTR bug)
+#   T1b leg after the failed replace     → STILL LIVE (rejection is atomic)
+#   T2  replace(leg, stop_price only)    → OK — price moves on legs still work
+#   T2b the replacement order            → STILL order_class=oto (no detach)
+#   T3  replace(replacement, qty)        → REJECTED 42210000 (once a leg,
+#       always a leg — "detach via replace" is dead)
+#   T4  2nd stop while the leg holds     → REJECTED 40310000 insufficient qty
+#       (no over-cover transition; equally, a duplicate stop can never be
+#       accepted while another one lives — the broker's share-reservation
+#       system is itself the no-duplicate guard)
+#   T5  market sell while the leg holds  → REJECTED 40310000 (can't sell first)
+#   T6  cancel → cancel CONFIRMED +15ms → reservation released +78ms (the
+#       release LAGS the confirm by ~60ms — the IBM 2026-05-27 race, measured)
+#       → reduced stop accepted FIRST TRY at +87ms → partial sell accepted.
+#
+# CONCLUSION: for a bracket-leg stop, cancel-then-new is the ONLY mechanism
+# Alpaca permits (T1/T3/T4/T5 close every alternative). What made IBM 5/27 a
+# race was submitting the new stop BEFORE the share reservation cleared; this
+# path GATES the submit on the broker's own release signal (qty_available),
+# retries the reservation-lag rejection, and funnels every failure into the
+# caller's existing abort machinery (post-lock _ensure_stop_coverage
+# re-protect to broker truth). The position is unprotected only from
+# cancel-confirm to new-stop-accept — measured ~72ms on paper — and that
+# exposure is structural: no Alpaca ordering avoids it for a bracket leg.
+_ADVANCED_ORDER_CLASSES = frozenset({"oto", "oco", "otoco", "bracket"})
+_LEG_SAFE_CANCEL_CONFIRM_BUDGET_S = 3.0
+_LEG_SAFE_RELEASE_BUDGET_S = 5.0
+_LEG_SAFE_POLL_S = 0.1
+_LEG_SAFE_STOP_ATTEMPTS = 4
+
+
+def _is_advanced_qty_rejection(err: Exception) -> bool:
+    """Alpaca 42210000 'qty cannot be changed for advanced orders' — the exact
+    PLTR 2026-08-04 rejection. Deterministic + structural (the stop is a
+    bracket leg), so retrying the replace is pointless; route to leg-safe."""
+    msg = str(err).lower()
+    return ("qty cannot be changed" in msg) or (
+        "42210000" in msg and "advanced" in msg
+    )
+
+
+async def _reduce_stop_via_cancel_new(
+    trade_id: int,
+    ticker: str,
+    old_stop_id: str,
+    new_remaining: int,
+    stop_price: float,
+    signal_type: str,
+    account_mode: str,
+) -> tuple[dict | None, dict]:
+    """#508 — reduce a BRACKET-LEG stop to `new_remaining` shares via
+    verified-cancel → reservation-release gate → new stop. See the block
+    comment above for why replace cannot work on a leg and why gating on
+    qty_available closes the IBM 2026-05-27 cancel+new race.
+
+    Returns (new_stop_order, outcome); outcome["kind"] ∈:
+      "ok"          — reduced stop accepted; timings_ms attached.
+      "protected"   — the cancel REQUEST failed and the old leg verified still
+                      live: the position never stopped being protected.
+      "stop_filled" — the old stop FILLED (full qty) during the cancel: the
+                      position is exiting via the stop; nothing to partial,
+                      nothing left to protect.
+      "naked"       — the old stop is (or may be) gone and no reduced stop
+                      could be placed: caller must route to the abort
+                      machinery (old-stop probe → null → post-lock
+                      _ensure_stop_coverage re-protect to broker truth).
+    Never raises — every failure is an outcome. Broker-only: no DB writes here
+    (the caller owns persistence + audit under the advisory lock).
+    """
+    t0 = time.monotonic()
+    timings: dict = {}
+
+    def _ms() -> float:
+        return round((time.monotonic() - t0) * 1000, 1)
+
+    # 1) Request the cancel. cancel_order returns False on ANY API error
+    #    (including "already canceled/filled") — classification happens below
+    #    against the order's actual status, not the request's return value.
+    cancel_ok = await alpaca.cancel_order(old_stop_id, account_mode=account_mode)
+    timings["cancel_req_ms"] = _ms()
+
+    # 2) Confirm the leg reached a terminal state. `filled` → the stop beat us.
+    cancel_confirmed = False
+    last_status: str | None = None
+    filled_qty = 0.0
+    deadline = t0 + _LEG_SAFE_CANCEL_CONFIRM_BUDGET_S
+    while True:
+        chk = await alpaca.get_order(old_stop_id, account_mode=account_mode)
+        last_status = _canonical_order_status(chk.get("status") if chk else None)
+        if chk:
+            try:
+                filled_qty = float(chk.get("filled_qty") or 0)
+            except (TypeError, ValueError):
+                filled_qty = 0.0
+        if last_status == "filled":
+            return None, {
+                "kind": "stop_filled", "timings": timings,
+                "cancel_confirmed": False,
+                "detail": (f"stop {old_stop_id} FILLED during cancel — "
+                           f"position is exiting via the stop"),
+            }
+        if last_status in _CANCEL_LIKE_ORDER_STATUSES or last_status == "replaced":
+            cancel_confirmed = True
+            timings["cancel_confirm_ms"] = _ms()
+            break
+        if time.monotonic() >= deadline:
+            break
+        await asyncio.sleep(_LEG_SAFE_POLL_S)
+
+    if not cancel_confirmed:
+        if not cancel_ok and last_status in _STOP_CONFIRMED_LIVE_STATUSES:
+            # Cancel request failed AND the leg is verifiably still resting —
+            # the position never stopped being protected. Clean abort.
+            return None, {
+                "kind": "protected", "timings": timings,
+                "cancel_confirmed": False,
+                "detail": (f"cancel failed; old stop {old_stop_id} still live "
+                           f"(status={last_status}) — position protected"),
+            }
+        # Cancel accepted but not yet terminal (pending_cancel limbo), or the
+        # order state is unreadable. The stop MAY die at any moment with no
+        # replacement coming — that is a naked hazard, not a safe walk-away.
+        # Route to the re-protect machinery, which resolves against broker
+        # truth (still-live stop → coverage met; dead → full stop placed).
+        return None, {
+            "kind": "naked", "timings": timings,
+            "cancel_confirmed": False,
+            "detail": (f"cancel not confirmed within "
+                       f"{_LEG_SAFE_CANCEL_CONFIRM_BUDGET_S:g}s "
+                       f"(last status={last_status})"),
+        }
+
+    if filled_qty > 0:
+        # A partial stop-fill raced in before the cancel — DB new_remaining is
+        # stale vs the broker. Do NOT place a possibly-wrong-size stop; route
+        # to the re-protect machinery, which sizes off live broker qty.
+        return None, {
+            "kind": "naked", "timings": timings,
+            "cancel_confirmed": True,
+            "detail": (f"old stop partially filled ({filled_qty:g} sh) before "
+                       f"cancel — re-protect to broker truth"),
+        }
+
+    # 3) Release gate — THE fix for the IBM 2026-05-27 race. The reservation
+    #    (held_for_orders) clears ~60ms AFTER the cancel confirms (probe T6);
+    #    submitting before it clears is exactly what produced the May
+    #    "insufficient qty available" naked. Wait for the broker's own release
+    #    signal. On timeout we still attempt placement — the submit itself is
+    #    ground truth, and its retry loop absorbs stragglers.
+    release_deadline = time.monotonic() + _LEG_SAFE_RELEASE_BUDGET_S
+    while time.monotonic() < release_deadline:
+        pos = await alpaca.get_position(ticker, account_mode=account_mode)
+        avail = pos.get("qty_available") if pos else None
+        if avail is not None and float(avail) >= new_remaining:
+            timings["avail_release_ms"] = _ms()
+            break
+        await asyncio.sleep(_LEG_SAFE_POLL_S)
+
+    # 4) Place the reduced stop. Probe T4: a stop can NEVER be accepted while
+    #    another stop still holds the shares (40310000), so an accept here is
+    #    broker-side proof there is no surviving duplicate.
+    last_err: Exception | None = None
+    for attempt in range(1, _LEG_SAFE_STOP_ATTEMPTS + 1):
+        try:
+            coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+            new_stop = await alpaca.place_stop_order(
+                ticker, new_remaining, float(stop_price),
+                account_mode=account_mode, client_order_id=coid,
+            )
+            timings["stop_accept_ms"] = _ms()
+            timings["stop_attempts"] = attempt
+            return new_stop, {"kind": "ok", "timings": timings,
+                              "cancel_confirmed": True, "detail": None}
+        except Exception as e:
+            last_err = e
+            if _is_share_reservation_lag(e) and attempt < _LEG_SAFE_STOP_ATTEMPTS:
+                logger.warning(
+                    f"leg-safe reduce {ticker}: reduced-stop attempt {attempt}"
+                    f"/{_LEG_SAFE_STOP_ATTEMPTS} hit reservation lag: {e} — retrying"
+                )
+                await asyncio.sleep(0.3)
+                continue
+            break
+    return None, {
+        "kind": "naked", "timings": timings, "cancel_confirmed": True,
+        "detail": (f"reduced stop placement failed after cancel "
+                   f"({type(last_err).__name__ if last_err else 'unknown'}: "
+                   f"{last_err})"),
+    }
+
+
 # ── #151 cross-PROCESS trade-state lock (advisory, DB-global) ─────────────────
 # execute_partial_exit and _ensure_stop_coverage run in DIFFERENT PROCESSES in
 # production (service split, EXECUTION_MODE=http — the partial is HTTP-triggerable
@@ -1553,6 +1760,42 @@ async def _breaker_already_alerted(trade_id: int) -> bool:
         return bool(n and int(n) > 1)   # >1: this cycle's row is already written above
     except Exception as e:  # loud-ok: logged; failing open only risks a duplicate alert, never a missed one
         logger.warning(f"breaker-alert dedupe check failed (will alert): {e}")
+        return False
+
+
+async def _profit_trigger_already_announced(trade_id: int) -> bool:
+    """Has the 💰 profit-target-hit Telegram already gone out for this trade?
+
+    ⚠ THE OTHER HALF OF THE 2026-08-04 BOMBARDMENT. The operator's words were "I've been
+    bombarded with these msg non stop" and the volume was a PAIR of messages every 5 minutes:
+    the breaker-open alert (deduped earlier today by `_breaker_already_alerted`) AND this
+    announcement, which fired unconditionally at the top of every `scan_profit_triggers` pass.
+
+    It re-fires because BOTH of its conditions are sticky. `partial_taken` only flips TRUE on a
+    SUCCESSFUL partial, so a trade whose partial keeps failing is re-selected every cycle; and the
+    trigger tests `MAX(high) >= target` over the whole in-hold window, which having once been true
+    is true forever. So a position that can't be harvested announces its target hit every 5 minutes
+    for as long as it stays open — which for PLTR 307 was hours, and would have resumed at 9:30
+    tomorrow with nothing but this changed.
+
+    Same idiom as the breaker dedupe: the audit row IS the state (no new table), the
+    `profit_trigger_fired` / `profit_trigger_failed` rows still land EVERY cycle so the durable
+    record stays complete, and only the Telegram is deduped. Fails OPEN (returns False, i.e.
+    announce) — a duplicate message is a nuisance; a missed one on a live money path is not.
+
+    Note the ordering difference from `_breaker_already_alerted`: that one runs AFTER its own audit
+    row is written, so it tests > 1. This one runs BEFORE the cycle's row, so ANY prior row means
+    already announced — hence > 0."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            n = await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_audit_log "
+                "WHERE event_type IN ('profit_trigger_fired', 'profit_trigger_failed') "
+                "AND detail::jsonb ->> 'trade_id' = $1::text", str(trade_id))
+        return bool(n and int(n) > 0)
+    except Exception as e:  # loud-ok: logged; failing open only risks a duplicate alert
+        logger.warning(f"profit-trigger announce dedupe check failed (will announce): {e}")
         return False
 
 
@@ -1723,14 +1966,41 @@ async def execute_partial_exit(
             }),
         )
 
-        # Step 1: Atomically REPLACE stop with reduced qty. Replace is race-free
-        # vs cancel+new (IBM 2026-05-27 false-naked: 43ms between cancel + new
-        # submit; Alpaca's share-reservation system hadn't cleared so the new
-        # stop was rejected with "insufficient qty available" — held_for_orders
-        # = 26). Alpaca's replace_order_by_id is atomic broker-side: no share
-        # release window.
+        # Step 1: reduce the stop to new_remaining BEFORE selling anything.
+        # Two mechanisms, routed by what the stop IS (#508, 2026-08-04):
+        #   * SIMPLE stop → atomic REPLACE, race-free vs cancel+new (IBM
+        #     2026-05-27 false-naked: 43ms between cancel + new submit;
+        #     Alpaca's share-reservation hadn't cleared so the new stop was
+        #     rejected "insufficient qty available" — held_for_orders = 26).
+        #   * OTO/BRACKET LEG → Alpaca REJECTS any qty replace (42210000, the
+        #     PLTR 2026-08-04 failure) and every MAGNA53 entry's stop is a
+        #     leg, so the profit-trigger could never harvest. Leg-safe path:
+        #     verified cancel → reservation-release gate → new reduced stop
+        #     (_reduce_stop_via_cancel_new; empirical basis in its block
+        #     comment). Gated by runtime toggle `partial_exit_leg_safe`
+        #     (mi_safeguard_state / PARTIAL_EXIT_LEG_SAFE, default OFF): when
+        #     OFF, legs keep failing exactly as PLTR did — replace rejected,
+        #     original stop intact, clean abort (fail-safe, but no harvest).
         new_stop_id = None
         if old_stop_id and stop_price and new_remaining > 0:
+            leg_safe_on = await get_runtime_toggle(
+                "partial_exit_leg_safe", "PARTIAL_EXIT_LEG_SAFE", default=False)
+            stop_is_leg = False
+            if leg_safe_on:
+                try:
+                    _cur_stop = await alpaca.get_order(
+                        old_stop_id, account_mode=account_mode)
+                    stop_is_leg = (
+                        str((_cur_stop or {}).get("order_class") or "").lower()
+                        in _ADVANCED_ORDER_CLASSES
+                    )
+                except Exception as _clserr:
+                    # Unreadable → try the replace first; the 42210000 net in
+                    # the retry loop still routes a real leg to leg-safe.
+                    logger.warning(
+                        f"execute_partial_exit: could not read order_class for "
+                        f"{old_stop_id} ({_clserr}) — trying replace first")
+                    stop_is_leg = False
             # Same-window retry (#136 follow-through). replace_order is atomic
             # so the original cancel-new race shouldn't recur, but other
             # transient broker failures (5xx, network blip) still warrant
@@ -1739,27 +2009,75 @@ async def execute_partial_exit(
             # expensive vs a 1s wait + retry.
             new_stop_order = None
             last_err: Exception | None = None
-            for attempt in (1, 2):
-                try:
-                    coid_stop = alpaca.make_client_order_id(
-                        account_mode, signal_type, ticker,
+            reduce_outcome: dict | None = None
+            if not stop_is_leg:
+                for attempt in (1, 2):
+                    try:
+                        coid_stop = alpaca.make_client_order_id(
+                            account_mode, signal_type, ticker,
+                        )
+                        new_stop_order = await alpaca.replace_order(
+                            old_stop_id,
+                            qty=new_remaining,
+                            stop_price=float(stop_price),
+                            account_mode=account_mode,
+                            client_order_id=coid_stop,
+                        )
+                        break
+                    except Exception as e:
+                        last_err = e
+                        if leg_safe_on and _is_advanced_qty_rejection(e):
+                            # The broker says the stop IS an advanced-order
+                            # leg — deterministic, retrying is pointless.
+                            logger.warning(
+                                f"execute_partial_exit: {ticker} stop "
+                                f"{old_stop_id} is an advanced-order leg "
+                                f"(42210000) — routing to leg-safe cancel+new")
+                            stop_is_leg = True
+                            break
+                        logger.warning(
+                            f"execute_partial_exit: replace attempt {attempt} failed "
+                            f"for {ticker}: {e}"
+                        )
+                        if attempt < 2:
+                            await asyncio.sleep(1.5)
+            if leg_safe_on and stop_is_leg and new_stop_order is None:
+                new_stop_order, reduce_outcome = await _reduce_stop_via_cancel_new(
+                    trade_id, ticker, old_stop_id, new_remaining,
+                    float(stop_price), signal_type, account_mode,
+                )
+                _kind = reduce_outcome["kind"]
+                if _kind == "stop_filled":
+                    # The stop FILLED while we tried to cancel it — the
+                    # position is exiting AT the stop; nothing left to partial,
+                    # nothing left to protect. The stop-fill WS flow owns
+                    # finalization.
+                    await log_audit_event(
+                        "partial_exit_aborted",
+                        f"{ticker}: old stop filled during leg-safe cancel — "
+                        f"position exiting via stop, no partial taken",
+                        json.dumps({
+                            "trade_id": trade_id, "ticker": ticker,
+                            "old_stop_id": old_stop_id,
+                            "stage": "leg_safe_cancel_new",
+                            "detail": reduce_outcome["detail"],
+                            "timings_ms": reduce_outcome["timings"],
+                        }),
                     )
-                    new_stop_order = await alpaca.replace_order(
-                        old_stop_id,
-                        qty=new_remaining,
-                        stop_price=float(stop_price),
-                        account_mode=account_mode,
-                        client_order_id=coid_stop,
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⚠️ Partial exit for {ticker} "
+                        f"aborted: the stop FILLED first — position is exiting "
+                        f"via the stop. No partial taken."
                     )
-                    break
-                except Exception as e:
-                    last_err = e
-                    logger.warning(
-                        f"execute_partial_exit: replace attempt {attempt} failed "
-                        f"for {ticker}: {e}"
-                    )
-                    if attempt < 2:
-                        await asyncio.sleep(1.5)
+                    return False
+                if _kind != "ok":
+                    # "protected" / "naked" — hand to the EXISTING abort
+                    # machinery below (the persist-try raises): it probes the
+                    # old stop on the broker and routes live → clean protected
+                    # abort, dead → null pointer + post-lock
+                    # _ensure_stop_coverage re-protect to broker truth.
+                    last_err = RuntimeError(
+                        f"#508 leg-safe reduce: {reduce_outcome['detail']}")
             try:
                 if new_stop_order is None:
                     raise last_err if last_err else RuntimeError("replace_order unreached")
@@ -1791,6 +2109,13 @@ async def execute_partial_exit(
                         "trade_id": trade_id, "ticker": ticker,
                         "new_stop_id": new_stop_id, "new_remaining": new_remaining,
                         "stop_price": float(stop_price),
+                        # #508: which mechanism reduced the stop + measured
+                        # leg-safe timings (cancel/release/accept ms) — the
+                        # verify-live evidence for the naked-window size.
+                        "mechanism": ("leg_safe_cancel_new" if reduce_outcome
+                                      else "replace"),
+                        **({"timings_ms": reduce_outcome["timings"]}
+                           if reduce_outcome else {}),
                     }),
                 )
             except Exception as e:
@@ -4053,13 +4378,18 @@ async def scan_profit_triggers() -> list[dict]:
             results.append({"ticker": t["ticker"], "action": "too_small_to_split"})
             continue
         try:
-            await send_telegram_message(
-                f"{mode_prefix(t['account_mode'])}\U0001F4B0 *Profit target hit: {t['ticker']}*\n"
-                f"traded ${float(hi):.2f} >= ${target:.2f} "
-                f"({PROFIT_TRIGGER_R:g}R above ${entry:.2f})\n"
-                f"Taking {shares} of {int(float(t['remaining_shares']))} sh, "
-                f"stop moves to breakeven."
-            )
+            # ⚠ ANNOUNCE ONCE PER TRADE, not once per 5-minute cycle (2026-08-04). Both selection
+            # conditions are sticky while the partial keeps failing, so this re-fired every pass
+            # for hours — half of the "bombarded with these msg non stop" pair. See
+            # `_profit_trigger_already_announced`. The audit rows below still fire every cycle.
+            if not await _profit_trigger_already_announced(t["id"]):
+                await send_telegram_message(
+                    f"{mode_prefix(t['account_mode'])}\U0001F4B0 *Profit target hit: {t['ticker']}*\n"
+                    f"traded ${float(hi):.2f} >= ${target:.2f} "
+                    f"({PROFIT_TRIGGER_R:g}R above ${entry:.2f})\n"
+                    f"Taking {shares} of {int(float(t['remaining_shares']))} sh, "
+                    f"stop moves to breakeven."
+                )
         except Exception:  # loud-ok: notification must never abort the money action below
             logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
         ok = await execute_partial_exit(t["id"], shares)

@@ -970,6 +970,11 @@ def _order_to_dict(order) -> dict:
         "stop_price": float(order.stop_price) if order.stop_price else None,
         "limit_price": float(order.limit_price) if order.limit_price else None,
         "status": _enum_value(order.status),
+        # #508 (2026-08-04): 'oto'/'oco'/'bracket'/'otoco' vs 'simple'. Load-
+        # bearing for execute_partial_exit's leg-safe routing — Alpaca REJECTS
+        # qty changes on advanced-order legs (42210000), and a fetched LEG
+        # carries its parent's order_class (probe: _508_oto_leg_probe.py T2b).
+        "order_class": _enum_value(getattr(order, "order_class", None)),
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "filled_at": order.filled_at.isoformat() if order.filled_at else None,
         "legs": [_order_to_dict(leg) for leg in order.legs] if order.legs else [],

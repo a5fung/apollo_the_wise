@@ -135,6 +135,93 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-04 — The profit-trigger Telegram now announces ONCE per trade, not once per 5-minute poll
+
+**Trigger**: operator, 2026-08-04 — *"profit take failed and I've been bombarded with these msg non
+stop, this is a really really bad bug."* The volume was a **pair** of messages every 5 minutes for
+hours on PLTR 307: the partial-exit circuit-breaker alert, and the `💰 Profit target hit`
+announcement at the top of `scan_profit_triggers`.
+
+**Why it repeated**: both of the trigger's selection conditions are *sticky while the partial keeps
+failing*. `partial_taken` only flips TRUE on a SUCCESSFUL partial, so a trade whose partial fails is
+re-selected on every pass; and detection is `MAX(high) >= target` over the whole in-hold window,
+which having once been true is true forever. A position that cannot be harvested therefore
+re-announces its target hit every poll for as long as it stays open — and would have resumed at
+09:30 the next session.
+
+**Fix**: both messages are now deduped per trade against `mi_audit_log` — `_breaker_already_alerted`
+(breaker) and `_profit_trigger_already_announced` (announcement). The audit row IS the state, so the
+dedupe **survives a service restart** (a process-local set would re-arm the loop on every deploy).
+Both fail OPEN: on a read error the message still goes out, because a duplicate is a nuisance and a
+missed one on a money path is not. **Only the Telegram is deduped — the `profit_trigger_fired` /
+`profit_trigger_failed` audit rows still land every cycle**, so the durable record stays complete.
+
+**Not a rule change**: no threshold, fraction, target or stop is touched. This is notification
+behaviour on a fail-safe path. Tests: `tests/test_profit_trigger_508.py` (6 added, all fail against
+the pre-fix code), including one that pins the audit trail as NOT deduped.
+
+### 2026-08-04 — Profit-trigger partial could NEVER execute on MAGNA53 (bracket-leg stop) — leg-safe mechanism, shipped OFF
+
+**Trigger**: PLTR trade 307, the FIRST live +2R profit-trigger fire. Alpaca rejected the stop
+reduction with `42210000 "qty cannot be changed for advanced orders"`. Every MAGNA53 entry is an OTO
+bracket, so its stop is an advanced-order LEG — the qty-replace in `execute_partial_exit` is
+structurally rejected on ALL of them. Fail-safe (the rejected replace left the original stop live;
+nothing harvested), but the operator-signed rule could never execute.
+
+**Evidence** (mechanism bug fix, not a criteria change — the 2R trigger / 1/3 fraction / stop level /
+breakeven move are untouched): empirical paper probe `scripts/probes/_508_oto_leg_probe.py` (full
+responses + ms timings captured in `scripts/probes/_508_oto_leg_probe_output.json`, run 2026-08-04
+15:52 ET on a real filled OTO bracket):
+- qty replace on the leg → REJECTED 42210000 (reproduces PLTR); the leg stays LIVE after the
+  rejection (atomic — confirms the abort path's fail-safe assumption).
+- price-only replace on the leg → OK, but the replacement is STILL `order_class=oto`, and a qty
+  replace on the replacement → REJECTED 42210000. Once a leg, always a leg — no detach trick.
+- a second stop while the leg holds the shares → REJECTED 40310000 insufficient qty; a market sell
+  while the leg holds → REJECTED 40310000. No over-cover transition, no sell-first ordering exists.
+- cancel → cancel CONFIRMED +15ms → share reservation released +78ms (**the release lags the cancel
+  confirm by ~60ms — the IBM 2026-05-27 race, now measured**) → reduced stop accepted FIRST try at
+  +87ms → partial sell accepted with the reduced stop live.
+
+**Conclusion**: cancel-then-new is the ONLY mechanism Alpaca permits on a bracket leg. The May
+incident was not "cancel+new is unusable" — it was cancel+new WITHOUT waiting for the broker's
+share-reservation release. New `_reduce_stop_via_cancel_new` (order_manager) gates the new-stop
+submit on `qty_available` covering the remainder, retries the reservation-lag rejection, and funnels
+every failure into the existing #151 abort machinery (old-stop probe → clean protected abort if the
+leg still lives; null + in-process `_ensure_stop_coverage` re-protect to broker truth otherwise).
+Simple (non-leg) stops keep the atomic replace path byte-for-byte.
+
+**Naked window, stated honestly**: from cancel-confirm to new-stop-accept the position has NO resting
+stop — measured ~72ms on paper, bounded by poll budgets (3s cancel-confirm + 5s release + 4 placement
+attempts) with the in-process re-protect and the sync cron behind it. This exposure is structural on
+Alpaca (every alternative ordering is rejected, per the probe); it occurs only at +2R in profit, with
+the market far above the stop. Duplicate-stop risk is closed by the broker itself: a stop can never
+be ACCEPTED while another one holds the shares (40310000), so an accept is broker-side proof the old
+reservation cleared.
+
+**Anticipated effect**: the +2R partial becomes executable on bracket-protected (= all MAGNA53)
+positions. `partial_exit_stop_replaced` audit rows now carry `mechanism` +
+`timings_ms` (cancel/release/accept) so the live naked-window size is verifiable per fire.
+
+**Reversion-flag**: REFINEMENT of 2026-08-01 (mechanism only). Contains a scoped REVERSAL of the
+#136 2026-05-27 "replace, never cancel+new" rule for LEGS ONLY — prior reasoning ("cancel+new races
+the share reservation") was not wrong, it was incomplete: it treated the race as intrinsic to
+cancel+new when it is intrinsic to submitting BEFORE the reservation release, and it never accounted
+for bracket legs where replace-qty is impossible. Replace remains the rule for simple stops.
+
+**Status**: shipped OFF (runtime toggle `partial_exit_leg_safe`, `mi_safeguard_state` /
+`PARTIAL_EXIT_LEG_SAFE`, default off, ~60s flip, no deploy) — awaiting live verification, then flip.
+Tests: `tests/test_partial_exit_leg_safe_508.py` (7 of 8 fail against the pre-fix code; the 8th pins
+today's toggle-OFF fail-safe).
+
+**Known limitation (same bug class, latent)**: `_ensure_stop_coverage`'s under-covered branch uses a
+qty-only replace and would hit 42210000 if the surviving stop were ever a LEG under-covering a grown
+position. A full-size bracket leg is never *under*-covered, so reaching that branch needs the position
+to grow past the leg or the leg to partly die — argued rare, but UNMEASURED; the count of
+`stop_coverage_repair_failed` audit rows is the number, and reading it is step 1 of #523. It fails LOUD
+(`stop_coverage_repair_failed` audit + Telegram, retried next cycle). Not changed here to keep this
+diff verifiable; fold into the leg-safe helper after the partial-exit path is verified live.
+
+
 ### 2026-08-01 — Intraday profit trigger BUILT (shipped OFF; operator-signed)
 
 **Trigger**: operator 2026-07-30 (*"1/3rd at 3R then move stop to breakeven"*), sharpened 2026-08-01

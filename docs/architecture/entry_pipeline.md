@@ -19,3 +19,10 @@
 - `alpaca_client.extract_stop_leg_id(order)` is the canonical helper — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Robust against Python 3.11+ Enum stringification (`str(OrderType.STOP)` → `"OrderType.STOP"`).
 - Used in: `place_bracket_order` (naked-order guard), `submit_entry`, `check_fills`, `attempt_day1_reentry`, `_process_entry_fill`. Never re-implement the loop.
 - `_process_entry_fill` checks 3 sources before remediation: WS event legs, DB `stop_order_id`, REST refetch.
+
+## Bracket-leg stop semantics (#508, 2026-08-04 — empirically established)
+
+- A stop that is an OTO/bracket LEG (every MAGNA53 entry's stop) **cannot have its qty changed** — Alpaca rejects with `42210000 "qty cannot be changed for advanced orders"`, and the original leg stays LIVE after the rejection (atomic). Price-only replace works, but the replacement **remains a leg** (`order_class=oto`) — replacing never detaches it. A second stop, or any sell, is rejected `40310000` while the leg holds the shares. Probe + raw responses: `scripts/probes/_508_oto_leg_probe.py` / `_508_oto_leg_probe_output.json`.
+- Consequence: a partial exit on a bracket-protected position MUST cancel the leg first. `order_manager._reduce_stop_via_cancel_new` is the only sanctioned way to do that: verified cancel → **gate on `qty_available` release** (the share reservation clears ~60ms AFTER the cancel confirms — the IBM 2026-05-27 race, measured) → new reduced stop (retry on reservation lag) → verify live → sell. Toggle `partial_exit_leg_safe` (default OFF). Simple stops keep the atomic qty-replace.
+- After the first leg-safe partial, the position's stop is a SIMPLE stop — subsequent qty/price replaces work normally.
+- `_order_to_dict` carries `order_class` (`'oto'/'oco'/'otoco'/'bracket'/'simple'`) — the leg-detection signal. Do not drop it.
