@@ -5133,7 +5133,7 @@ reviews:
       AND (detail::jsonb ->> 'reason' = 'q_rev_yoy_missing_no_prior_year_comparable'
            OR event_type = 'catalyst_downgrade_carveout_applied');
     threshold: 5
-    earliest_review_date: 2026-07-27
+    earliest_review_date: 2026-08-07
     # >> PROGRESS 2026-07-13 (Opus) — SEGMENTED + recoverability proven; fix + per-case count next:
     #  * The 149 "weak_downgrade" events are a MIX; segment by reason code: 51 are LEGIT low-
     #    composite (rubric_composite<22 — YoY present, correctly downgraded, NOT a data gap) →
@@ -8130,9 +8130,16 @@ reviews:
       later — only 1-day corpses are true kills)?; (d) does the rising-arm
       rescue fire on the weak-born-then-matured class it was derived for?
     predicate_sql: >-
-      SELECT COUNT(*) FROM mi_audit_log
-      WHERE event_type = 'theme_birth_gate' AND summary LIKE '%/observe]%'
-    threshold: 20
+      SELECT COUNT(DISTINCT theme_date) FROM mi_themes WHERE theme_date >= '2026-07-29'
+    threshold: 8
+    # RE-KEYED 2026-08-03 (operator: "make sure we have trigger to flip at end of week").
+    # WAS: >=20 theme_birth_gate audit rows. That counts ~2 rows PER RUN so it lands ~08-12,
+    # and I had separately mis-described it to the operator as "20 RUNS" (~4 weeks). BOTH
+    # readings were wrong. This encodes the criteria actually recommended and accepted:
+    # enough CLEAN nightly theme pulls since the 2026-07-28 crash to trust the code —
+    # measured on the thing that ACTUALLY broke, mi_themes being written at all (the crash
+    # wrote ZERO rows that night, so a day present here is a clean pull by construction).
+    # 8 distinct days from 07-29 lands Friday 2026-08-07 (29,30,31,03,04,05,06,07); 4 today.
     # RUN-COUNT gated, not date (operator ruling 2026-07-26: a future date can
     # only DELAY a review whose evidence is already in). One audit row per
     # gated lane per night (lane1 + promote both emit when they evaluated

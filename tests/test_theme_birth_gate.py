@@ -731,3 +731,38 @@ async def test_mode_on_existing_theme_reemission_is_never_gated(monkeypatch):
     dbmod.record_birth_candidate_sighting.assert_not_awaited()
     assert not [e for e in changelog if e.get("type") == "theme_birth_gated"]
     assert "Existing Live Theme" in [t["name"] for t in saved]
+
+
+# ── the forward false-negative signal (operator 2026-08-03) ──────────────────────────────────
+
+def test_the_gate_reports_previously_held_candidates_that_later_passed():
+    """The operator asked what would monitor a bad flip. A held candidate that LATER re-presents
+    and passes is a theme this gate DELAYED — the only forward measure of the cost he cares about,
+    because his north star is spotting a theme EARLY.
+
+    The risk is not hypothetical: the 2026-08-03 replay found 21 of 44 sub-70 births matured, and
+    Domestic Steel was born at RS 27.8 and reached 92. The data was already captured in
+    mi_theme_birth_candidates and rendered NOWHERE — you had to know to ask."""
+    src = open("agents/market_intelligence/theme_birth_gate.py").read()
+    assert "_count_delayed_births" in src
+    assert "previously-held later PASSED" in src, "it must reach the line the operator reads"
+
+
+def test_the_counter_cannot_break_the_run_it_observes():
+    """This gate already took the entire nightly theme pull down once (2026-07-28). An
+    observability counter must never be able to repeat that."""
+    import ast
+    tree = ast.parse(open("agents/market_intelligence/theme_birth_gate.py").read())
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.AsyncFunctionDef) and n.name == "_count_delayed_births")
+    handlers = [h for n in ast.walk(fn) if isinstance(n, ast.Try) for h in n.handlers]
+    assert handlers, "the counter must catch its own failure"
+    # the except arm must RETURN a value, not re-raise into the caller
+    assert any(isinstance(x, ast.Return) for h in handlers for x in ast.walk(h)), \
+        "the handler must return a fallback count rather than propagate"
+
+
+def test_a_zero_count_is_silent():
+    """Zero is the healthy reading and must not add noise to every nightly line."""
+    src = open("agents/market_intelligence/theme_birth_gate.py").read()
+    assert 'if delayed else ""' in src

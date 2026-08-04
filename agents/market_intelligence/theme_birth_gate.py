@@ -288,6 +288,25 @@ async def evaluate_birth(
     }
 
 
+async def _count_delayed_births() -> int:
+    """Candidates the gate HELD that later re-presented and passed — the forward false-negative
+    signal. Zero is the healthy reading. Fails to 0 rather than breaking the run: a counter that
+    takes the nightly pull down would repeat the 2026-07-28 crash this gate already caused once."""
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return int(await conn.fetchval("""
+                SELECT COUNT(*) FROM mi_theme_birth_candidates
+                WHERE status = 'born'
+                  AND last_reason IN ('pass_rs_level', 'pass_rs_rising')
+                  AND sightings > 1
+            """) or 0)
+    except Exception as e:  # loud-ok: logged; a counter must never break the gate it observes
+        logger.warning(f"[birth gate] delayed-birth count failed (reporting 0): {e}")
+        return 0
+
+
 async def audit_gate_outcomes(
     lane: str, outcomes: list[dict], today: Any, mode: str = "on",
 ) -> None:
@@ -303,11 +322,22 @@ async def audit_gate_outcomes(
              "held_floor": 0, "held_no_rs": 0}
         for o in outcomes:
             n[o["outcome"]] = n.get(o["outcome"], 0) + 1
+        # ⚠ THE FALSE-NEGATIVE COUNT (added 2026-08-03, operator asked what would monitor a bad
+        # flip). A held candidate that LATER re-presents and passes is a theme this gate delayed —
+        # the only forward measure of the cost the operator actually cares about, because his north
+        # star is spotting a theme EARLY. The replay showed the risk is real: 21 of 44 sub-70 births
+        # matured, and Domestic Steel was born at RS 27.8 and reached 92.
+        #
+        # It was already captured in mi_theme_birth_candidates and rendered NOWHERE — you had to
+        # know to ask. Surfacing it on the line that already reports every run makes the observe
+        # period judgeable instead of trusted. Counter-only; it changes no decision.
+        delayed = await _count_delayed_births()
         await log_audit_event(
             "theme_birth_gate",
             summary=(f"{today} [{lane}/{mode}] birth-gate: {n['birth']} birth / {n['join']} join / "
                      f"{n['await_second_sighting']} awaiting-2nd-sighting / "
-                     f"{n['held_floor'] + n['held_no_rs']} held-floor"),
+                     f"{n['held_floor'] + n['held_no_rs']} held-floor"
+                     + (f" · ⚠ {delayed} previously-held later PASSED" if delayed else "")),
             detail=json.dumps([
                 {k: (str(v) if k == "join_target" and v else v)
                  for k, v in o.items() if k != "candidate_id"}
