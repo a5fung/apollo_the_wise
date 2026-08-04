@@ -5721,7 +5721,16 @@ async def get_rs_leaders(
 ) -> list[dict[str, Any]]:
     """Top RS stocks for a given date, filtered to liquid names (min ADV + min price).
     Excludes leveraged/inverse ETFs, broad index ETFs, and small-cap biotech/pharma.
-    Set min_adv=0 to get all stocks unfiltered."""
+    Set min_adv=0 to get all stocks unfiltered.
+
+    ⚠ Ties are broken by TICKER, deliberately (2026-08-04). `rs_composite` alone is not a
+    total order — RS is a percentile and names bunch at the top, so with a bare
+    `ORDER BY rs_composite DESC` + LIMIT, membership at the cut is whatever the planner
+    happens to return. The #479 design measured this directly: two identical prod queries
+    returned different owners of rank 7. Harmless for a display list; NOT harmless for the
+    §1.7b persistent-unanchored alarm, which DIFFS this set across sessions — an arbitrary
+    boundary name would manufacture a phantom "entered/left" event out of nothing.
+    Measured 2026-08-04: 2 names tied at the top-60 boundary RS of 96.4."""
     from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -5738,7 +5747,7 @@ async def get_rs_leaders(
                       SELECT 1 FROM mi_tracked_stocks t
                       WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
                   )
-                ORDER BY s.rs_composite DESC NULLS LAST
+                ORDER BY s.rs_composite DESC NULLS LAST, s.ticker
                 LIMIT $2
             """, score_date, limit * 2, min_adv, SKIP_TICKERS_LIST, min_price)
             filtered = []
@@ -5755,7 +5764,7 @@ async def get_rs_leaders(
                 SELECT * FROM mi_stock_scores
                 WHERE score_date = $1
                   AND ticker != ALL($3)
-                ORDER BY rs_composite DESC NULLS LAST
+                ORDER BY rs_composite DESC NULLS LAST, ticker
                 LIMIT $2
             """, score_date, limit, SKIP_TICKERS_LIST)
             return [dict(r) for r in rows]
@@ -6856,6 +6865,26 @@ async def get_prior_score_date(d: "str | date") -> "date | None":
         )
 
 
+async def get_recent_score_dates(as_of: "str | date", n: int) -> list[date]:
+    """The `n` most recent DISTINCT mi_stock_scores dates on/before `as_of`,
+    NEWEST-FIRST — the #479 §1.7b session list for the persistent-unanchored
+    computation. SESSION-based, not calendar-based: a weekend/holiday simply
+    has no row and is skipped, so a 5-session streak is never broken by a
+    non-trading day. Callers must still check that the newest returned date
+    IS `as_of` before trusting it as "today" — the RS job may not have
+    written yet, exactly the staleness get_prior_score_date's docstring
+    warns about."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT score_date FROM mi_stock_scores
+            WHERE score_date <= $1
+            ORDER BY score_date DESC
+            LIMIT $2
+        """, _to_date(as_of), n)
+        return [r["score_date"] for r in rows]
+
+
 async def get_theme_prior_within(
     d: "str | date", max_gap_days: int = 4,
 ) -> dict[str, dict[str, Any]]:
@@ -6890,6 +6919,40 @@ async def get_theme_first_seen_count(d: "str | date") -> int:
             ) t WHERE t.first_seen = $1
         """, _to_date(d))
     return int(n or 0)
+
+
+async def get_themed_tickers_on_dates(
+    dates: list[date],
+) -> tuple[dict[date, set], set]:
+    """(tickers_by_date, dates_with_any_theme_row) for EXACTLY the dates
+    given — the #479 §1.7b multi-session theme-membership substrate.
+
+    Unlike get_today_themes (used for the live "as of today" render), this
+    does NOT fall back to the latest available date on a miss: silently
+    substituting a different date's theme membership would misattribute
+    which past SESSIONS a name was actually unanchored on.
+
+    The second return value lets a caller distinguish "nothing was themed
+    that day" (a real, if unlikely, market state — tickers_by_date[d] would
+    legitimately be empty) from "the theme engine didn't run that day"
+    (mi_themes has ZERO rows for d — membership is UNKNOWABLE, not empty).
+    Silently treating the latter as the former would inflate that session's
+    unanchored set and could manufacture a fake persistent-set change."""
+    if not dates:
+        return {}, set()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT theme_date, tickers FROM mi_themes
+            WHERE theme_date = ANY($1::date[])
+        """, dates)
+    out: dict = {d: set() for d in dates}
+    present: set = set()
+    for r in rows:
+        d = r["theme_date"]
+        present.add(d)
+        out.setdefault(d, set()).update(r["tickers"] or [])
+    return out, present
 
 
 async def get_flag_breaks_count(d: "str | date") -> int:

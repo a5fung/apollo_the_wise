@@ -61,6 +61,32 @@ def _mk_rows(names, sector="Technology", start_rs=200.0):
     ]
 
 
+def _persist_sessions(entry_pattern, briefing_date=THU, n=6):
+    """Newest-first list of {"date","leaders","themed_tickers"} for the
+    #479 §1.7b persistent-unanchored substrate. `entry_pattern` maps
+    ticker -> the set of session indices (0=today .. n-1=oldest) on which
+    that ticker is UNANCHORED (RS>=90, no theme) — everything else about
+    the session is inert (themed_tickers always empty) so a test can
+    isolate exactly which sessions a name qualifies on."""
+    sessions = []
+    for i in range(n):
+        leaders = [
+            {"ticker": t, "rs_composite": 95.0, "sector": "Technology"}
+            for t, idxs in entry_pattern.items() if i in idxs
+        ]
+        sessions.append({
+            "date": briefing_date - timedelta(days=i),
+            "leaders": leaders,
+            "themed_tickers": set(),
+        })
+    return sessions
+
+
+# Quiet default: the SAME two names unanchored on all 6 sessions -> today's
+# and the prior session's persistent sets are identical -> silent (§1.7b).
+_QUIET_UNANCHORED_SESSIONS = _persist_sessions({"AAA": set(range(6)), "BBB": set(range(6))})
+
+
 def _quiet_data(**over):
     prior_rows = _mk_rows([f"T{i:02d}" for i in range(30)])
     data = BriefData(
@@ -83,6 +109,7 @@ def _quiet_data(**over):
         rs_leaders_prior=prior_rows,
         themed_tickers_today={"FCX"},
         themed_tickers_prior={"FCX"},
+        unanchored_sessions=_QUIET_UNANCHORED_SESSIONS,
         ep_outcomes=[{
             "ticker": "ZZZ", "score_tier": "MODERATE",
             "trade_status": "filtered", "pt_status": None, "skip_reason": "block:x",
@@ -664,3 +691,127 @@ def test_addendum_never_restates_the_headline():
     assert bc._cluster_addendum(True, 5, 5, (True, 4, 5), headline=True) is None
     assert bc._cluster_addendum(True, 5, 5, (True, 4, 5), headline=False) is not None
     assert bc._cluster_addendum(False, 0, 5, (True, 4, 5), headline=False) is None
+
+
+# ─── #479 §1.7b: unanchored persistence (5-session RS>=90 itemized-on-change) ─
+# Design: the raw daily unanchored population (part a's standing count) never
+# empties and churns 4.3 names/day — a naive fires-only line on it "would have
+# shouted 10 capped names every single night". Part b's 5-consecutive-SESSION
+# filter is what makes a CHANGE rare and worth a look: a name stuck there a
+# week is a theme-engine coverage gap, not routine churn.
+
+from agents.market_intelligence.brief_composer import compute_persistent_unanchored_sets
+
+
+def test_unanchored_persistent_entry_fires():
+    """AAA is unanchored on sessions 0-4 (today's 5-session window) but NOT
+    on session 5 (the oldest of the prior window) — it just completed its
+    5th straight session, so it ENTERS the persistent set today."""
+    sessions = _persist_sessions({"AAA": {0, 1, 2, 3, 4}})
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=sessions))
+    assert "⚡" in text.split("\n")[1] or "material tonight" in text.split("\n")[1]
+    assert "entered" in text and "`AAA`" in text
+    assert "left" not in text.split("entered")[0]  # no spurious "left" line
+
+
+def test_unanchored_persistent_exit_fires():
+    """BBB is unanchored on sessions 1-5 (the prior window) but NOT on
+    session 0 (today) — it drops out of the persistent set today."""
+    sessions = _persist_sessions({"BBB": {1, 2, 3, 4, 5}})
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=sessions))
+    assert "left" in text and "`BBB`" in text
+
+
+def test_unanchored_persistent_SILENT_when_unchanged():
+    """THE load-bearing case: the same names persistent on every session ->
+    today's and yesterday's persistent sets are identical -> nothing renders
+    for this signal at all (not even a quiet-state line — design §1.7b is
+    fires-only, unlike every other class in this file)."""
+    sessions = _persist_sessions({"AAA": set(range(6)), "CCC": set(range(6))})
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=sessions))
+    assert "✅ Nothing material tonight" in text
+    assert "Unanchored persistent" not in text
+    assert "⚓" not in text
+
+
+def test_unanchored_persistent_weekend_gap_does_not_break_streak():
+    """Session dates carry a REAL weekend gap (Mon back to the prior Fri) —
+    the streak is SESSION-based (position in the list), not calendar-based;
+    a 3-calendar-day gap between two adjacent sessions must not reset it."""
+    dates = [date(2026, 8, 3),   # Mon (today)
+             date(2026, 7, 31),  # Fri  <- weekend gap from Monday
+             date(2026, 7, 30),  # Thu
+             date(2026, 7, 29),  # Wed
+             date(2026, 7, 28),  # Tue
+             date(2026, 7, 27)]  # Mon (oldest of the 6)
+    sessions = [
+        {
+            "date": d,
+            "leaders": ([{"ticker": "AAA", "rs_composite": 95.0, "sector": "Technology"}]
+                        if i in (0, 1, 2, 3, 4) else []),
+            "themed_tickers": set(),
+        }
+        for i, d in enumerate(dates)
+    ]
+    result = compute_persistent_unanchored_sets(sessions)
+    assert result is not None
+    today_set, prior_set = result
+    assert "AAA" in today_set        # unanchored on all 5 most-recent sessions
+    assert "AAA" not in prior_set    # was NOT unanchored 5 sessions ago
+
+
+def test_unanchored_persistent_fetch_failure_renders_visible_line():
+    """None = fetch failed — must render a "could not run" line, never a
+    silent omission (this file's rule, same as every other class)."""
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=None))
+    assert "could not run" in text
+    assert "`/themes`" in text
+
+
+def test_unanchored_persistent_stale_today_session_renders_visible_line():
+    """sessions[0] not matching the briefing date (the RS job hasn't posted
+    yet) must never silently masquerade as today's session — that would
+    diff the WRONG pair of windows and look correct while lying."""
+    stale = _persist_sessions({"AAA": {0, 1, 2, 3, 4}}, briefing_date=THU - timedelta(days=1))
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=stale))
+    assert "no scores for today" in text
+
+
+def test_unanchored_standing_line_unaffected_by_persistent_block_firing():
+    """Part (a) — the standing count line — must render exactly as before
+    even on a night part (b) fires; #479 build must not touch it."""
+    sessions = _persist_sessions({"AAA": {0, 1, 2, 3, 4}})
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=sessions))
+    assert "Unanchored" in text and "(±0)" in text and "Cooldowns 17 (+3)" in text
+
+
+def test_unanchored_persistent_preserves_theme_delta_skipped_on_double_failure():
+    """theme_prior ALSO missing tonight: the persistent-set event firing
+    must not swallow the separate "Δ skipped" failure line."""
+    sessions = _persist_sessions({"AAA": {0, 1, 2, 3, 4}})
+    text = compose_evening_brief(_quiet_data(unanchored_sessions=sessions, theme_prior=None))
+    assert "Δ skipped" in text
+    assert "entered" in text and "`AAA`" in text
+
+
+def test_rs_leader_ordering_breaks_ties_deterministically():
+    """#479 §1.7b (2026-08-04). The persistent-unanchored alarm DIFFS the leader set across
+    sessions, so the set must be a function of the data alone — never of planner whim.
+
+    `rs_composite` is a percentile and names bunch at the top, so it is not a total order:
+    with a bare `ORDER BY rs_composite DESC` + LIMIT, whoever owns the cut is arbitrary. The
+    design measured two identical prod queries returning different owners of rank 7, and on
+    2026-08-04 two names sat tied at the top-60 boundary RS of 96.4. An arbitrary boundary
+    name would manufacture a phantom 'entered'/'left' event out of nothing — the exact noise
+    this whole redesign exists to remove.
+
+    Pinned as a test because the fix is one word in an ORDER BY and would be trivially lost.
+    """
+    import pathlib
+    src = pathlib.Path("agents/market_intelligence/db.py").read_text()
+    i = src.index("async def get_rs_leaders")
+    body = src[i:i + 3000]
+    assert "ORDER BY rs_composite DESC NULLS LAST\n" not in body, "bare rs ordering is non-deterministic"
+    assert "ORDER BY s.rs_composite DESC NULLS LAST\n" not in body
+    assert body.count("DESC NULLS LAST, s.ticker") == 1, "the min_adv>0 branch needs the tiebreaker"
+    assert body.count("DESC NULLS LAST, ticker") == 1, "the unfiltered branch needs it too"

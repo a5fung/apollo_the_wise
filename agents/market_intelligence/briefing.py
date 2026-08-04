@@ -1183,6 +1183,38 @@ async def _fetch_sizing_blocked_today(today) -> "int | None":
         return None
 
 
+async def _fetch_unanchored_sessions(today: date) -> list[dict]:
+    """#479 §1.7b substrate: the last UNANCHORED_SESSIONS_NEEDED distinct
+    mi_stock_scores dates on/before today (SESSION-based via
+    get_recent_score_dates, so a weekend/holiday gap never breaks the
+    5-session streak), each paired with its top-30 RS leader rows
+    (get_rs_leaders — the SAME liquidity/ETF filters used everywhere else in
+    the brief, reused rather than re-implemented) and that date's theme
+    membership.
+
+    Raises on any session date with ZERO mi_themes rows — converted to None
+    by the caller's _ok(), which renders a visible "could not run" line. A
+    date with no theme rows means the theme engine didn't run that day, so
+    membership is UNKNOWABLE, not "nothing was themed"; silently treating it
+    as the latter would inflate that session's unanchored set and could
+    manufacture a fake persistent-set change."""
+    from agents.market_intelligence.brief_composer import UNANCHORED_SESSIONS_NEEDED
+    from agents.market_intelligence.db import get_recent_score_dates, get_themed_tickers_on_dates
+
+    dates = await get_recent_score_dates(today, UNANCHORED_SESSIONS_NEEDED)
+    if not dates:
+        return []
+    leaders_lists = await asyncio.gather(*(get_rs_leaders(d, limit=30) for d in dates))
+    themed_by_date, dates_with_theme_rows = await get_themed_tickers_on_dates(dates)
+    missing = [d for d in dates if d not in dates_with_theme_rows]
+    if missing:
+        raise RuntimeError(f"no mi_themes rows for session date(s) {missing}")
+    return [
+        {"date": d, "leaders": leaders, "themed_tickers": themed_by_date.get(d, set())}
+        for d, leaders in zip(dates, leaders_lists)
+    ]
+
+
 async def _compose_delta_brief(
     today: date,
     regime: dict,
@@ -1232,6 +1264,7 @@ async def _compose_delta_brief(
         get_crypto_vs_market_pulse(as_of=prior_td),
         get_flag_breaks_count(today),
         get_rs_leaders(prior_sd, limit=100) if prior_sd else asyncio.sleep(0),
+        _fetch_unanchored_sessions(today),
         return_exceptions=True,
     )
 
@@ -1247,6 +1280,7 @@ async def _compose_delta_brief(
     crypto_prior = _ok(results[3], "crypto_prior") or {}
     flag_breaks = _ok(results[4], "flag_breaks")
     leaders_prior = _ok(results[5], "leaders_prior") if prior_sd else None
+    unanchored_sessions = _ok(results[6], "unanchored_sessions")
 
     # Prior-day theme MEMBERSHIP (for the unanchored delta) is a same-date
     # concept: use only rows at the latest prior theme_date.
@@ -1318,6 +1352,7 @@ async def _compose_delta_brief(
         prior_leader_depth=100,
         themed_tickers_today=themed_tickers_today,
         themed_tickers_prior=themed_tickers_prior,
+        unanchored_sessions=unanchored_sessions,
         ep_outcomes=ep_outcomes,
         sizing_blocked_today=await _fetch_sizing_blocked_today(today),
         wick_today_count=wick_today_count,

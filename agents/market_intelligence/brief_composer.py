@@ -70,6 +70,20 @@ THEME_GRADUATION_DAYS = 7
 # Sector grouping is therefore sound for the LEADERS band only — do NOT reuse it
 # for the recovery band (26% coverage; 3 of 69 recovery names had a sector 7/24).
 
+# Unanchored persistence (design §1.7 part b): a name RS>=90 in no theme on
+# 5 CONSECUTIVE TRADING SESSIONS (not calendar days — a weekend/holiday gap
+# never resets the streak, since sessions are the distinct dated rows in
+# mi_stock_scores) is a theme-engine COVERAGE GAP, not routine churn — the
+# design's 62-day sample held that persistent set at 6 names including the
+# #1-#4 RS leaders. Fires ONLY when the set CHANGES vs the set computed one
+# session earlier; the raw daily unanchored population (RS>=80, part a's
+# standing count) averages 16/day with 4.3 new entrants/day and zero empty
+# days — itemizing THAT would shout every night, which is why this sits
+# behind a 5-session filter instead of the raw daily set.
+UNANCHORED_PERSISTENT_RS_FLOOR = 90.0   # higher bar than the standing-count 80 (part a)
+UNANCHORED_PERSISTENT_STREAK = 5        # consecutive SESSIONS
+UNANCHORED_SESSIONS_NEEDED = UNANCHORED_PERSISTENT_STREAK + 1  # +1 to diff vs the prior window
+
 # ── Reachability — every hint below is pinned against agent.py's dispatch ──────
 # tests/test_brief_composer.py fails if any of these is absent from the dispatch
 # dict / routing cascade (the 7/20 orphaning failure this task exists to correct).
@@ -186,6 +200,16 @@ class BriefData:
     # theme membership (for the unanchored standing count)
     themed_tickers_today: set = field(default_factory=set)
     themed_tickers_prior: set | None = None
+
+    # unanchored persistence (#479 §1.7b) — newest-first list of
+    # {"date": date, "leaders": [...], "themed_tickers": set(...)}; sessions[0]
+    # MUST be the briefing date's own score_date (checked at render time,
+    # never assumed — a stale sessions[0] would silently diff the wrong pair
+    # of windows). Needs UNANCHORED_SESSIONS_NEEDED sessions to diff today's
+    # 5-session persistent set against the set computed one session earlier.
+    # None = fetch failed (renders a visible "could not run" line — never a
+    # silent omission).
+    unanchored_sessions: list[dict] | None = None
 
     # EP recap — today's outcome rows (get_ep_outcomes filtered to today);
     # None = fetch failed.
@@ -681,16 +705,100 @@ def _ep_material(data: BriefData) -> tuple[list[str] | None, dict]:
     return lines, counts
 
 
-def compute_unanchored(leaders: list[dict], themed_tickers: set) -> list[str]:
-    """RS 80+ leaders in no theme (same-date membership) — parity with the
-    legacy _format_unanchored_section filter (ETF prefix + index skips)."""
+def compute_unanchored(
+    leaders: list[dict], themed_tickers: set, *, rs_floor: float = 80.0,
+) -> list[str]:
+    """RS >= rs_floor leaders in no theme (same-date membership) — parity
+    with the legacy _format_unanchored_section filter (ETF prefix + index
+    skips). rs_floor defaults to 80 (the standing-count bar, design §1.7
+    part a — _standing_state_line's threshold, untouched by this default);
+    the 5-session persistence check (part b) calls this with rs_floor=90
+    (UNANCHORED_PERSISTENT_RS_FLOOR). Same predicate, parameterized floor —
+    extracted so the ETF-prefix / index-skip logic has exactly one copy for
+    both callers to share, rather than a second copy that can drift."""
     return [
         s["ticker"] for s in leaders
-        if (s.get("rs_composite") or 0) >= 80
+        if (s.get("rs_composite") or 0) >= rs_floor
         and s.get("ticker") not in themed_tickers
         and not str(s.get("ticker") or "").startswith("X")
         and s.get("ticker") not in ("SPY", "QQQ", "IWM")
     ]
+
+
+def compute_persistent_unanchored_sets(
+    sessions: list[dict], *,
+    rs_floor: float = UNANCHORED_PERSISTENT_RS_FLOOR,
+    streak: int = UNANCHORED_PERSISTENT_STREAK,
+) -> tuple[set[str], set[str]] | None:
+    """(persistent_today, persistent_prior): tickers unanchored
+    (compute_unanchored, same rs_floor) on EVERY one of the last `streak`
+    sessions, computed as of sessions[0] (today) and as of sessions[1] (one
+    session earlier) — the one-session shift is what lets the caller report
+    what CHANGED rather than just the standing state (design §1.7).
+
+    `sessions` MUST be ordered NEWEST-FIRST. Needs streak+1 sessions total
+    (one extra to shift the prior window) — returns None when there isn't
+    enough dated session history yet (not a failure: nothing to compare
+    yet, so the caller stays silent rather than reporting a fake
+    "no change")."""
+    if len(sessions) < streak + 1:
+        return None
+
+    def _unanchored(session: dict) -> set[str]:
+        return set(compute_unanchored(
+            session.get("leaders") or [], session.get("themed_tickers") or set(),
+            rs_floor=rs_floor,
+        ))
+
+    today_sets = [_unanchored(s) for s in sessions[:streak]]
+    prior_sets = [_unanchored(s) for s in sessions[1:streak + 1]]
+    persistent_today = today_sets[0].intersection(*today_sets[1:])
+    persistent_prior = prior_sets[0].intersection(*prior_sets[1:])
+    return persistent_today, persistent_prior
+
+
+def _persistent_unanchored_material(data: BriefData) -> list[str] | None:
+    """Class 2 (THEME MOVES), folded into the theme block by the assembler:
+    itemized ONLY when the 5-consecutive-SESSION persistent-unanchored set
+    (RS>=90, in no theme, same-date membership) CHANGED vs the set computed
+    one session earlier — SILENT when unchanged (design §1.7: the raw daily
+    unanchored population averages 16/day with 4.3 new entrants/day and
+    ZERO empty days; a fires-only section on THAT raw set "would have
+    shouted 10 capped names every single night" — the exact noise this
+    whole redesign exists to remove). A name that survives 5 straight
+    sessions with no theme claiming it is a THEME-ENGINE COVERAGE GAP, not
+    routine churn (the design's sample held the #1-#4 RS leaders in the
+    persistent set).
+
+    A fetch failure, a stale sessions[0] (today's score_date hasn't posted
+    yet — the same class of bug get_prior_score_date's docstring warns
+    about: silently comparing the wrong pair of windows would look correct
+    while lying), or too little session history all render a VISIBLE line —
+    never a silent omission (this file's "silence ≠ didn't run" rule, same
+    as every other class here)."""
+    if data.unanchored_sessions is None:
+        return ["⚠️ Unanchored persistent-set check could not run — session fetch failed · `/themes`"]
+    sessions = data.unanchored_sessions
+    if not sessions or sessions[0].get("date") != data.briefing_date:
+        return ["⚠️ Unanchored persistent-set check skipped — no scores for today · `/themes`"]
+    result = compute_persistent_unanchored_sets(sessions)
+    if result is None:
+        return None  # not enough dated session history yet — nothing to compare, nothing to hide
+    today_set, prior_set = result
+    entered = sorted(today_set - prior_set)
+    left = sorted(prior_set - today_set)
+    if not entered and not left:
+        return None
+    tag = f"{UNANCHORED_PERSISTENT_STREAK}-session, RS≥{UNANCHORED_PERSISTENT_RS_FLOOR:.0f}"
+    lines: list[str] = []
+    if entered:
+        lines.append(f"⚓ Unanchored persistent ({tag}) — entered: "
+                     + " ".join(f"`{_esc(t)}`" for t in entered))
+    if left:
+        lines.append(f"⚓ Unanchored persistent ({tag}) — left: "
+                     + " ".join(f"`{_esc(t)}`" for t in left))
+    lines.append("   _theme-engine coverage gap — no theme claimed these names all week · `/themes`_")
+    return lines
 
 
 # ── State block (one line per quiet area — every line asserts the check RAN) ──
@@ -830,6 +938,18 @@ def compose_evening_brief(data: BriefData) -> str:
     regime_block, regime_flipped = _regime_material(data)
     crypto_block = _crypto_material(data)
     theme_block, theme_counts = _theme_material(data)
+    persistent_lines = _persistent_unanchored_material(data)
+    if persistent_lines:
+        if theme_block:
+            theme_block = theme_block + persistent_lines
+        else:
+            # Seed with the theme STATE line (not a bare header) — a night
+            # where theme_prior ALSO failed must not lose "Δ skipped" just
+            # because the persistent-set event fired instead (that would be
+            # exactly the silent omission this file's honesty rule forbids,
+            # now reachable via a material night rather than a quiet one).
+            theme_block = (["📊 *THEMES*", "   " + _theme_state_line(data, theme_counts)]
+                           + persistent_lines)
     leaders_block, jumps = _leaders_material(data)
     ep_block, ep_counts = _ep_material(data)
 
