@@ -4477,7 +4477,11 @@ reviews:
       feedback_sample_size_discipline, doesn't ship until N≥10
       similar cases accumulate.
     predicate_sql: |
-      SELECT COUNT(*) FROM mi_ep_alerts a
+      -- FIXED 2026-08-04: was COUNT(*) over a JOIN on `s.score_date <= a.alert_date`, which
+      -- fans out to EVERY prior score row per alert — it returned 5710 where the true alert
+      -- count is 88, so this review read READY on a number 65x too large. COUNT(DISTINCT a.id)
+      -- counts ALERTS, which is what the threshold means.
+      SELECT COUNT(DISTINCT a.id) FROM mi_ep_alerts a
       JOIN mi_stock_scores s
         ON s.ticker = a.ticker AND s.score_date <= a.alert_date
       WHERE a.alert_date >= CURRENT_DATE - 90
@@ -4505,7 +4509,35 @@ reviews:
       similar to R6 carve-out structure. Env flag
       `LARGE_CAP_RELVOL_FLOOR_ENABLED=true`. SSoT entry in
       magna53_ep.md change log.
-    status: pending
+    status: done
+    closed_on: 2026-08-04
+    outcome: |
+      ANSWERED AND SUPERSEDED — the decision this review gates was already made on 2026-07-19.
+
+      Its own decision matrix cleared for the THIRD time running: N=24 entry-aware closed HIGH
+      alerts in the floor cohort (rel_volume < 0.5, ADV$ >= $50M), 3 wins = 12.5% win rate against
+      its own <30% ship bar, avg -$151/trade. The rate has been consistent across three pulls on the
+      same rolling predicate: 7 alerts (5/18) -> 20 (7/19) -> 24 (8/4), landing 12-15% every time.
+      Live sub-cohort: 10 closed, ZERO wins.
+
+      Cohort-bias check clean: of 64 non-closed floor alerts, 63 are SELECTIVE exclusions by other
+      filters already in the pipeline and 1 is TEMPORAL (PLTR, filled 8/4, still open). The 24
+      closes are the correct population.
+
+      BUT the operator already ruled on 7/19: NOT a direct live flip. A shadow-only observer
+      (_emit_large_cap_relvol_floor_shadow) was shipped instead, per THE LINE — no live-money gate
+      change on retrospective evidence alone. Change log: docs/setups/magna53_ep.md, 2026-07-19.
+
+      The live-flip decision belongs to the SUCCESSOR review `large_cap_relvol_floor_shadow_evidence`
+      (threshold 10 FORWARD-settled shadow-flagged closes; 6 settled today, earliest 2026-09-01).
+      That one is correctly not-yet-ready. Leaving this entry pending duplicated it and invited a
+      future session to re-litigate a question the operator has already answered.
+
+      ⚠ PREDICATE WAS BROKEN AND IS NOW FIXED (2026-08-04). It read COUNT(*) across a JOIN on
+      `s.score_date <= a.alert_date`, fanning every alert out to every prior score row: it returned
+      **5710 where the true count is 100**. This review had been reading READY on a number ~57x too
+      large. Fixed to COUNT(DISTINCT a.id) before closing, so a future re-opener does not inherit
+      the landmine, and a lint now rejects the shape (scripts/preflight_yaml_dupe_keys.py).
     added_on: 2026-05-17
     notes_2026_05_18: |
       INITIAL CLOSE-TO-CLOSE METRIC ANALYSIS WAS WRONG. Both cohort

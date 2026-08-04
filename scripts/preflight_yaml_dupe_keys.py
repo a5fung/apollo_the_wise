@@ -52,6 +52,41 @@ DOCUMENTED_STATUSES = {"pending", "done", "deferred"}
 DOCUMENTED_KINDS = {"accrual", "tripwire", "cadence"}
 
 
+def find_fanout_predicates(src: str) -> list:
+    """Predicates that COUNT(*) across a JOIN on an INEQUALITY without DISTINCT — the shape that
+    silently multiplies the count.
+
+    Found 2026-08-04 in `rel_volume_large_cap_floor_evidence`: it joined `mi_stock_scores` on
+    `score_date <= alert_date`, so every alert fanned out to EVERY prior score row. It returned
+    **5710 where the true alert count was 100** — a 57x overstatement, and the review had been
+    reading READY on it. A threshold means nothing if the number it gates is the wrong shape.
+
+    Narrow on purpose: an equality join cannot fan out this way, and DISTINCT or LATERAL means the
+    author has already handled it. Exactly one entry matched when this was written, and it was the
+    live defect — the check is silent afterwards until someone writes the same shape again."""
+    import re as _re
+    import yaml as _yaml
+    try:
+        doc = _yaml.safe_load(src)
+    except Exception:
+        return []
+    out = []
+    for entry in (doc or {}).get("reviews") or []:
+        if not isinstance(entry, dict) or entry.get("status") != "pending":
+            continue
+        pred = entry.get("predicate_sql") or ""
+        if not pred.strip():
+            continue
+        if (_re.search(r"\bJOIN\b", pred, _re.I)
+                and _re.search(r"\bON\b[^\n]*?(<=|>=|<|>)", pred, _re.I)
+                and _re.search(r"COUNT\(\s*\*\s*\)", pred, _re.I)
+                and not _re.search(r"DISTINCT|LATERAL", pred, _re.I)):
+            out.append((entry.get("review_id", "<no id>"),
+                        "COUNT(*) across a JOIN on an inequality with no DISTINCT/LATERAL — "
+                        "this fans out and overstates the count"))
+    return out
+
+
 def find_status_problems(src: str) -> list:
     """(review_id, problem) for entries whose status is missing or off-vocabulary."""
     import yaml
@@ -81,7 +116,7 @@ def main() -> int:
         return 2
     src = REGISTRY.read_text(encoding="utf-8")
     issues = find_duplicate_keys(src)
-    status_issues = find_status_problems(src)
+    status_issues = find_status_problems(src) + find_fanout_predicates(src)
     if status_issues:
         print(f"YAML lint FAILED: {len(status_issues)} entry(ies) with a missing/off-schema status.")
         print("The renderer surfaces ONLY status in (pending, deferred) — anything else is skipped")
