@@ -1373,7 +1373,9 @@ async def _compose_delta_brief(
     return compose_evening_brief(data)
 
 
-async def send_evening_briefing(chat_id: int | None = None) -> str:
+async def send_evening_briefing(
+    chat_id: int | None = None, *, dry_run: bool = False,
+) -> str:
     """
     Assemble and send the evening briefing. #479 (operator-ruled 2026-07-26):
     Monday = the FULL brief (weekly reference/anchor, legacy section stack);
@@ -1546,6 +1548,16 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
             undercut_rallies=undercut_rallies,
             eco_map=eco_map,
         )
+
+    # dry_run: COMPOSE ONLY — no Telegram, no audit row, no chart mosaic, no Twitter post.
+    # Added 2026-08-04 after I rendered this brief for review by monkey-patching
+    # `send_telegram_message` on the module, the patch did not take, and the operator received a
+    # SECOND evening brief at 19:45 — a duplicate message, on the day spent removing duplicate
+    # messages. There was no supported way to LOOK at this brief without sending it, so the
+    # workaround was inevitable and so was the accident. Inspecting is now a supported path;
+    # monkey-patching a sender is not a review technique.
+    if dry_run:
+        return text
 
     success = await send_telegram_message(text, chat_id)
     await _emit_evening_brief_outcome(success, today_str, len(text))
