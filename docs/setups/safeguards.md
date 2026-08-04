@@ -293,6 +293,37 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-08-04 — A stop is now resting during EVERY minute of market hours (post-close refresh, 16:20 ET)
+
+**Trigger**: operator, 2026-08-04 — *"do we have a stop always during market hours ... if not,
+then it's all garbage."* The answer was **no, for the first five minutes of every session.**
+
+**The hole, measured both ways in prod**: the entry bracket is submitted `TimeInForce.DAY`, so its
+stop LEG expires at the 16:00 close. `morning_stop_refresh` re-placed it as a standalone GTC — but
+at **09:35**. PLTR 307 on 2026-08-04: leg expired at 16:00, and the live account then reported zero
+open orders with all 6 shares free. QBTS on 2026-07-28: refreshed 09:35, stopped out 09:36:24. So
+every Day-2+ position traded 09:30-09:35 with no resting stop — the most volatile five minutes of
+the day, and the ones an overnight gap resolves into.
+
+**Change**: new job `post_close_stop_refresh` at **16:20 ET** (execution-owned) places the next
+session's GTC stop the evening before, covering **same-day fills too**. `morning_stop_refresh` is
+unchanged and stays as the backstop for a stop that dies overnight.
+
+**Why 16:20 is safe where 09:35-same-day was not**: ADR 0029 D1 removed same-day fills from the
+morning pass because at 09:35 their OTO child is LIVE and holding the shares, so re-placing raced
+it (the WULF `insufficient qty available` self-conflict). After the close that child has already
+expired — there is nothing to race. The asymmetry is deliberate and pinned by a test.
+
+**Direction of change**: strictly MORE protection — it adds coverage, changes no stop PRICE, no
+threshold, no sizing. Idempotent: a position whose stop is already resting is skipped (the #444
+account-mode fix keeps that skip branch reachable). A position it cannot protect now Telegrams and
+writes a `stop_refresh_failed` audit row instead of only logging.
+
+**Residual gap**: 16:00-16:20 ET, and after-hours if a stop is placed but the venue will not act on
+it outside regular hours. Accepted — the operator's condition is market hours.
+
+**Tests**: `tests/test_stop_always_during_market_hours.py` (11).
+
 ### 2026-07-31 — Count-based `circuit_breaker` KEPT; its pre-committed removal CANCELLED (operator-ruled)
 
 **Change**: none to behavior. The breaker's `DEPRECATED` marking and the removal steps it was queued

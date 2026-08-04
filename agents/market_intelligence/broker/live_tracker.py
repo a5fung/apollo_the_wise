@@ -891,11 +891,46 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
 # ── Morning Stop Refresh ─────────────────────────────────────────────────────
 
 
+async def post_close_stop_refresh() -> int:
+    """16:20 ET — put a live GTC stop on every open position BEFORE the next open.
+
+    ⚖ **THE GOAL, operator 2026-08-04, verbatim: *"do we have a stop always during
+    market hours"*.** Until this job, the answer was NO for five minutes a day.
+
+    THE HOLE IT CLOSES. An entry bracket is submitted `TimeInForce.DAY`, so its stop
+    LEG dies at the 16:00 close. `morning_stop_refresh` re-places it as a standalone
+    GTC — but at **09:35**, five minutes after the open. Verified on PLTR 307
+    (2026-08-04): leg expired 16:00, and the live account then showed zero open
+    orders with all 6 shares free. Verified the other way on QBTS (2026-07-28):
+    refreshed 09:35, stopped out 09:36:24. So every Day-2+ position traded the first
+    five minutes of its session — the most volatile five minutes, the ones an
+    overnight gap resolves into — with no resting stop.
+
+    WHY AFTER THE CLOSE IS THE SAFE PLACE, and 09:35 same-day was not. The ADR-0029
+    exclusion below exists because at 09:35 a same-morning fill's OTO child is LIVE
+    and holding the shares, so re-placing raced it (the WULF `insufficient qty
+    available` self-conflict). At 16:20 that child has ALREADY EXPIRED — there is
+    nothing to race. That is the whole reason this job can cover same-day fills when
+    the morning one must not, and it is why `include_same_day` is True here.
+
+    Idempotent by construction: the still-active check below skips any position whose
+    stop is already resting, so a position that somehow kept its stop is left alone.
+    `morning_stop_refresh` stays exactly as it is — belt and braces, not replaced.
+    """
+    return await _stop_refresh(include_same_day=True, label="post-close")
+
+
 async def morning_stop_refresh() -> int:
     """
     At 9:35 AM, ensure stop orders are active for all Day 2+ positions.
     Alpaca DAY stops expire overnight — re-place them as GTC.
     Returns count of stops refreshed.
+
+    ⚠ As of 2026-08-04 this is the BACKSTOP, not the primary: `post_close_stop_refresh`
+    (16:20 ET) now places the GTC stop the evening before, so a position normally
+    arrives at the open already protected and every trade here hits the
+    "still active → skip" branch. Kept because a stop that dies overnight (broker-side
+    cancel, a fill that did not settle) must still be caught before the day trades.
 
     SAME-DAY EXCLUSION (ADR 0029 D1, signed 2026-07-12, shipped 2026-07-26). The
     docstring above always said "Day 2+", but the query did not enforce it — it
@@ -920,19 +955,34 @@ async def morning_stop_refresh() -> int:
     not silently skipped forever. Risk framing: this NARROWS a live job — it does
     strictly less, on a cohort whose protection already exists.
     """
+    return await _stop_refresh(include_same_day=False, label="Morning")
+
+
+async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
+    """Shared body for both stop-refresh passes. The ONLY difference between them is
+    whether same-day fills are in scope — see each caller's docstring for why."""
     today = et_today()
     pool = await get_pool()
     async with pool.acquire() as conn:
-        trades = await conn.fetch("""
-            SELECT id, ticker, remaining_shares, stop_price, stop_order_id,
-                   account_mode
-            FROM mi_live_trades
-            WHERE status = 'filled' AND remaining_shares > 0
-              AND alert_date <> $1
-        """, today)
+        if include_same_day:
+            trades = await conn.fetch("""
+                SELECT id, ticker, remaining_shares, stop_price, stop_order_id,
+                       account_mode
+                FROM mi_live_trades
+                WHERE status = 'filled' AND remaining_shares > 0
+            """)
+        else:
+            trades = await conn.fetch("""
+                SELECT id, ticker, remaining_shares, stop_price, stop_order_id,
+                       account_mode
+                FROM mi_live_trades
+                WHERE status = 'filled' AND remaining_shares > 0
+                  AND alert_date <> $1
+            """, today)
 
     refreshed = 0
     refreshed_tickers: list[str] = []
+    unprotected: list[str] = []
     for trade in trades:
         ticker = trade["ticker"]
         stop_price = trade["stop_price"]
@@ -966,14 +1016,29 @@ async def morning_stop_refresh() -> int:
         if success:
             refreshed += 1
             refreshed_tickers.append(ticker)
-            logger.info(f"Morning stop refreshed: {ticker} @${stop_price:.2f}")
+            logger.info(f"{label} stop refreshed: {ticker} @${stop_price:.2f}")
+        else:
+            # A position we could not re-protect must never be a log line only —
+            # that is the exact shape of the gap this job exists to close.
+            unprotected.append(ticker)
 
     if refreshed:
         # #475 (2026-07-15): routine housekeeping — expected every morning for
         # every Day 2+ position (DAY stops expire overnight). Log only; failures
         # in update_stop() keep their own loud paths.
         logger.info(
-            f"Morning: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
+            f"{label}: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
+        )
+    if unprotected:
+        logger.error(f"{label}: FAILED to place a stop for {', '.join(unprotected)}")
+        await log_audit_event(
+            "stop_refresh_failed",
+            f"{label}: could not place a stop for {', '.join(unprotected)}",
+            json.dumps({"pass": label, "tickers": unprotected}),
+        )
+        await send_telegram_message(
+            f"🚨 *No stop on {', '.join(unprotected)}* — the {label} stop refresh "
+            f"could not place one. The position is unprotected for the next session."
         )
     return refreshed
 

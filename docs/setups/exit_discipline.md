@@ -135,6 +135,27 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-04 — The partial-exit breaker can now be reset, because it had deadlocked the fix
+
+**Trigger**: operator, 2026-08-04 — *"we take partial profit at 2R ... if not, then it's all
+garbage."* The rule could not fire, and clearing the reason it could not fire was itself blocked.
+
+**The deadlock**: the breaker closed on exactly one condition — a SUCCESSFUL partial
+(`partial_exit_committed`). The bracket-leg defect made every partial fail, so the breaker opened by
+that defect also prevented the automatic path from ever demonstrating the fix. Three failures, no
+exit.
+
+**Change**: `_consecutive_partial_exit_failures` now counts from the most recent
+`partial_exit_committed` **or `partial_exit_breaker_reset`** row. The reset is a deliberate, audited
+row naming the fault it clears. It deletes nothing — the failures stay in the log — and it moves
+only the window, so failures after a reset count normally against the unchanged threshold of 3.
+
+**Not a weakening**: without it the only escape was `/partialnow` (force=True), which bypasses the
+breaker entirely AND requires the operator to act manually — strictly worse on both counts than an
+audited reset.
+
+**Tests**: `tests/test_partial_at_2r_is_reachable.py` (7).
+
 ### 2026-08-04 — The profit-trigger Telegram now announces ONCE per trade, not once per 5-minute poll
 
 **Trigger**: operator, 2026-08-04 — *"profit take failed and I've been bombarded with these msg non

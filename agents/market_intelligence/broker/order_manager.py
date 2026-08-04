@@ -1415,6 +1415,14 @@ async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BRE
     bounds the lookback when there is NO recorded success yet (fresh system / never
     succeeded), so ancient history can't trip it.
 
+    A `partial_exit_breaker_reset` row closes it the same way a success does
+    (2026-08-04). Without one there was NO way out: the breaker only closed on a
+    successful partial, and after the bracket-leg defect every partial failed — so
+    the fix could not prove itself because the breaker opened by the bug it fixed
+    still blocked the automatic path. The reset is a deliberate, audited row naming
+    the fault it clears; it is not a silent bypass, and it clears nothing about WHY
+    the failures happened — they stay in the log.
+
     Counts only broker-interaction failures — NOT benign aborts (dedup against a
     pending exit, trade-not-found), which share the `partial_exit_aborted`
     event_type but carry a non-failure `stage`. Genuine signals:
@@ -1430,7 +1438,8 @@ async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BRE
             SELECT COUNT(*) AS n FROM mi_audit_log
             WHERE created_at > COALESCE(
                     (SELECT MAX(created_at) FROM mi_audit_log
-                     WHERE event_type = 'partial_exit_committed'),
+                     WHERE event_type IN ('partial_exit_committed',
+                                          'partial_exit_breaker_reset')),
                     NOW() - ($1 || ' days')::interval
                   )
               AND (

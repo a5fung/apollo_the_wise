@@ -105,7 +105,8 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "orb_window_cleanup", "shadow_orb_entry", "shadow_orb_exit",
     "orb_reclassify_eod", "bar_stream_cleanup",
     # lifecycle / reconcile / safeguards
-    "paper_trade_tracker", "morning_stop_refresh", "live_position_update",
+    "paper_trade_tracker", "morning_stop_refresh", "post_close_stop_refresh",
+    "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
     "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
     JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
@@ -1233,6 +1234,28 @@ async def _stream_health_watchdog():
             asyncio.create_task(start_trade_stream())
     except Exception as e:
         logger.error(f"Stream watchdog error: {e}")
+
+
+async def _post_close_stop_refresh_job():
+    """Run at 4:20 PM ET. Put a GTC stop on every open position for the next session.
+
+    ⚖ Operator 2026-08-04: *"do we have a stop always during market hours"* — until
+    this job the answer was no for the first five minutes of every session. The entry
+    bracket's stop leg is DAY and dies at the 16:00 close; the morning refresh only
+    re-placed it at 09:35. Placing it now means the position arrives at the open
+    already protected. Slotted at 16:20 — after eod_cleanup (16:05) and the order
+    reconcile (16:15), so the expired leg is already known dead.
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.live_tracker import post_close_stop_refresh  # exec-boundary-ok: moves-with-job (W2)
+        count = await post_close_stop_refresh()
+        logger.info(f"Post-close stop refresh: {count} stops placed")
+    except Exception as e:
+        logger.error(f"Post-close stop refresh failed: {e}")
+        await notify_job_failure("post_close_stop_refresh", str(e))
 
 
 async def _morning_stop_refresh_job():
@@ -5274,6 +5297,18 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="morning_stop_refresh",
         replace_existing=True,
+    )
+
+    # Post-close stop refresh: 4:20 PM ET — place the next session's GTC stop the
+    # evening before, so a position is never unprotected during market hours.
+    # Closes the 9:30-9:35 hole left by the DAY-lifetime bracket leg (operator
+    # 2026-08-04: "as long as during market hours there's a stop in place").
+    _scheduler.add_job(
+        audit_wrap(_post_close_stop_refresh_job, "post_close_stop_refresh"),
+        CronTrigger(hour=16, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
+        id="post_close_stop_refresh",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # ORB window cleanup: 10:00 AM ET — cancel unfilled entries once ORB window
