@@ -1168,7 +1168,8 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             await send_telegram_message(
                 f"{mode_prefix(account_mode)}ℹ️ *EOD stop expired (expected):* {symbol}\n"
                 f"{stop_trade['remaining_shares']:.0f} sh — bare overnight; "
-                f"auto-replaced at 9:00 AM ET, before the open. No action needed."
+                f"the 4:20 PM refresh puts a GTC stop back on tonight, so it is "
+                f"protected from the open. No action needed."
             )
             logger.info(
                 f"WS [{account_mode}]: EOD stop expired (expected): {symbol} "
