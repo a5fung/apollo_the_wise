@@ -122,3 +122,60 @@ def test_the_fully_covered_branch_still_aborts_cleanly():
     src = ast.get_source_segment(SRC, _fn("execute_partial_exit"))
     i = src.index("if fully_covered:")
     assert "return False" in src[i:i + 700]
+
+
+# ── The handshake itself: an optimisation, never a veto (2026-08-05, follow-up) ──
+#
+# The 09:30 abort did more than mislead — it SHORT-CIRCUITED the sell's own retry loop,
+# which exists for exactly the rejection it was guarding against. A strict pre-check
+# standing in front of looser recovery turned a transient open-of-session lag into a
+# 15-minute, three-scan recovery. Operator: "We should make this foolproof."
+
+
+def test_the_availability_budget_is_wide_enough_for_the_open():
+    """3s was measured too tight on a real fire. The leg-safe path already allows 5s for the
+    same broker signal; this is the same handshake and must not be stricter than it."""
+    import agents.market_intelligence.broker.order_manager as om
+    budget = om._AVAIL_POLL_ATTEMPTS * om._AVAIL_POLL_INTERVAL_S
+    assert budget >= om._LEG_SAFE_RELEASE_BUDGET_S, (
+        "the pre-sell handshake must not give up sooner than the leg-safe release gate")
+    assert budget >= 10
+
+
+def test_a_timed_out_handshake_FALLS_THROUGH_to_the_sell():
+    """The whole fix. On timeout it must attempt the sell, not abort — the sell's own
+    reservation-lag retry is the real recovery and was never being reached."""
+    src = ast.get_source_segment(SRC, _fn("execute_partial_exit"))
+    i = src.index("if not avail_ok and new_stop_id:")
+    block = src[i:i + 1400]
+    assert "avail_ok = True" in block, "must proceed to the sell"
+
+
+def test_the_fall_through_REQUIRES_a_confirmed_stop_reduction():
+    """Selling without a verified stop behind it is the one case still worth vetoing, so the
+    fall-through is bound to new_stop_id rather than applied unconditionally."""
+    src = ast.get_source_segment(SRC, _fn("execute_partial_exit"))
+    assert "if not avail_ok and new_stop_id:" in src
+
+
+def test_the_fall_through_is_justified_by_the_rejection_being_CLEAN():
+    """It is only safe because `_is_share_reservation_lag` matches a clean rejection where no
+    order was placed — so a retry cannot oversell. If that ever stops being true, this
+    reasoning must be revisited, which is why it is pinned here."""
+    src = ast.get_source_segment(SRC, _fn("_is_share_reservation_lag"))
+    assert "no order was placed" in src and "retry can't oversell" in src
+
+
+def test_the_sell_retries_more_than_twice():
+    """Two attempts 0.5s apart did not outlive the lag at the open."""
+    import agents.market_intelligence.broker.order_manager as om
+    assert om._SELL_RETRY_ATTEMPTS >= 4
+    assert om._SELL_RETRY_BACKOFF_S >= 0.5
+
+
+def test_the_sell_retry_still_only_catches_the_RESERVATION_LAG():
+    """Widening the retry count must not widen WHAT is retried — an ambiguous failure must
+    still fall through to rollback rather than being re-sent."""
+    src = ast.get_source_segment(SRC, _fn("execute_partial_exit"))
+    i = src.index("_SELL_RETRY_ATTEMPTS")
+    assert "_is_share_reservation_lag" in src[max(0, i - 200):i + 200]

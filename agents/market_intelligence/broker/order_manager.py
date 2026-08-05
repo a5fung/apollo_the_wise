@@ -1507,6 +1507,17 @@ def _is_share_reservation_lag(err: Exception) -> bool:
 # exposure is structural: no Alpaca ordering avoids it for a bracket leg.
 _ADVANCED_ORDER_CLASSES = frozenset({"oto", "oco", "otoco", "bracket"})
 _LEG_SAFE_CANCEL_CONFIRM_BUDGET_S = 3.0
+# ── Share-release handshake before the partial SELL (2026-08-05, PLTR 307) ───
+# Alpaca frees the shares a reduced stop no longer needs ASYNCHRONOUSLY, so the sell must
+# wait on the broker's own `qty_available` signal. The budget was 3s (12 x 0.25s) and that
+# was too tight at the open: PLTR's shares had not freed, the gate ABORTED, and — worse —
+# aborting skipped the sell's own reservation-lag retry that exists for this exact case.
+# Widened, and the gate now falls through to the sell instead of vetoing it.
+_AVAIL_POLL_ATTEMPTS = 40          # 40 x 0.25s = 10s (was 12 = 3s)
+_AVAIL_POLL_INTERVAL_S = 0.25
+_SELL_RETRY_ATTEMPTS = 4           # was 2 — the lag outlived 2 attempts at the open
+_SELL_RETRY_BACKOFF_S = 0.75       # was 0.5
+
 _LEG_SAFE_RELEASE_BUDGET_S = 5.0
 _LEG_SAFE_POLL_S = 0.1
 _LEG_SAFE_STOP_ATTEMPTS = 4
@@ -2393,13 +2404,35 @@ async def execute_partial_exit(
         if not abort_reprotect:
             avail_ok = False
             last_avail = None
-            for _ in range(12):  # ~3s budget at 0.25s/poll
+            for _ in range(_AVAIL_POLL_ATTEMPTS):
                 _pos = await alpaca.get_position(ticker, account_mode=account_mode)
                 last_avail = _pos.get("qty_available") if _pos else None
                 if last_avail is not None and last_avail >= shares:
                     avail_ok = True
                     break
-                await asyncio.sleep(0.25)
+                await asyncio.sleep(_AVAIL_POLL_INTERVAL_S)
+            # `new_stop_id` is set only after the reduced stop was placed AND verified
+            # live, so it is the confirmation this fall-through depends on. Without it
+            # (no prior stop to reduce) we keep the strict abort — selling without a
+            # confirmed stop behind it is the one case worth vetoing.
+            if not avail_ok and new_stop_id:
+                # ⚠ THE GATE IS AN OPTIMISATION, NOT A VETO (2026-08-05, PLTR 307).
+                # The old 3s budget ABORTED here — and in doing so short-circuited the
+                # sell's OWN retry loop below, which exists for exactly this rejection.
+                # A stricter pre-check standing in front of looser recovery turned a
+                # transient open-of-session lag into a 15-minute, three-scan recovery.
+                #
+                # Attempting the sell anyway is SAFE and is the broker's own contract:
+                # `_is_share_reservation_lag` matches only a CLEAN rejection — no order is
+                # placed — so a retry cannot oversell. The reduction is confirmed live, so
+                # falling through cannot sell against a failed stop either.
+                logger.warning(
+                    f"execute_partial_exit: {ticker} qty_available={last_avail} < {shares} "
+                    f"after {_AVAIL_POLL_ATTEMPTS * _AVAIL_POLL_INTERVAL_S:g}s, but the stop "
+                    f"reduction is CONFIRMED — attempting the sell anyway; a clean "
+                    f"reservation rejection is retryable and cannot oversell"
+                )
+                avail_ok = True
             if not avail_ok:
                 # ⚠ 2026-08-05, PLTR 307 — this branch ASSUMED the wrong world and told the
                 # operator the position was protected while 2 of 6 shares had no stop behind
@@ -2501,12 +2534,12 @@ async def execute_partial_exit(
                         )
                         break
                     except Exception as _se:
-                        if _is_share_reservation_lag(_se) and _attempt < 2:
+                        if _is_share_reservation_lag(_se) and _attempt < _SELL_RETRY_ATTEMPTS:
                             logger.warning(
                                 f"execute_partial_exit: {ticker} sell hit share-reservation "
                                 f"lag (attempt {_attempt + 1}/3): {_se} — retry in 0.5s"
                             )
-                            await asyncio.sleep(0.5)
+                            await asyncio.sleep(_SELL_RETRY_BACKOFF_S)
                             coid_sell = alpaca.make_client_order_id(
                                 account_mode, signal_type, ticker,
                             )
