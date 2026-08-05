@@ -501,6 +501,65 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
 # ── Day 2+ Position Management ──────────────────────────────────────────────
 
 
+async def _load_exit_state(
+    trade: dict, today: date,
+) -> tuple[dict | None, list | None, str | None]:
+    """Shared per-trade state-load preamble for `run_partial_exits` (3:45 PM)
+    and `update_open_positions_live` (4:45 PM) — #363.
+
+    Before this extraction the two jobs carried a BYTE-FOR-BYTE identical
+    state-load preamble: the running_closes/exits JSON coerce, the
+    `hard_stop = trade.get('hard_stop') or stop_price` fallback, the
+    `remaining_shares<=0 or today<=alert_date` skip guard, the
+    `get_index_history` daily-bar fetch + no-data branch, and the 8-key
+    `state` dict fed into `apply_daily_exit_step`. RISK this closes: editing
+    the preamble in one job and not the other silently drifts them — one
+    feeds the PARTIAL, the other the TRAIL (both money-adjacent).
+
+    Deliberately does NOT call `apply_daily_exit_step` — the decision call
+    (+ each job's own `skip_*` kwargs) stays PER-JOB, untouched by this
+    extraction. Also deliberately does NOT log or touch a `results` list —
+    each caller keeps its own log wording (`"No daily bar..."` vs
+    `"run_partial_exits: no daily bar..."`) and its own `results.append`
+    shape, so those stay caller-owned.
+
+    Returns `(state, daily_bars, skip_reason)`:
+      - success: `(state, daily_bars, None)`.
+      - `skip_reason="silent"`: the pre-existing `remaining_shares<=0 or
+        today<=alert_date` guard fired — caller does a bare `continue`
+        (nothing appended to `results`), exactly as before extraction.
+      - `skip_reason="no_data"`: no daily bar yet for `today` — caller logs
+        (its own wording) and appends `{"ticker": ..., "action": "no_data"}`
+        to `results`, exactly as before extraction.
+    """
+    alert_date = trade["alert_date"]
+    running_closes_in = trade.get("running_closes", [])
+    if isinstance(running_closes_in, str):
+        running_closes_in = json.loads(running_closes_in or "[]")
+    exits_in = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+    hard_stop = trade.get("hard_stop") or trade["stop_price"]
+
+    if trade["remaining_shares"] <= 0 or today <= alert_date:
+        return None, None, "silent"
+
+    today_str = today.strftime("%Y-%m-%d")
+    daily_bars = await get_index_history(trade["ticker"], today_str, today_str)
+    if not daily_bars:
+        return None, None, "no_data"
+
+    state = {
+        "alert_date": alert_date,
+        "remaining_shares": trade["remaining_shares"],
+        "entry_price": trade["entry_price"],
+        "hard_stop": hard_stop,
+        "partial_taken": trade.get("partial_taken", False),
+        "breakeven_active": trade.get("breakeven_active", False),
+        "exits": exits_in,
+        "running_closes": running_closes_in,
+    }
+    return state, daily_bars, None
+
+
 async def update_open_positions_live(today: date | None = None) -> list[dict]:
     """
     Update open live positions: SMA10/20 trail + stop updates (EOD, on the close).
@@ -543,33 +602,13 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
     for trade in open_trades:
         trade = dict(trade)
         ticker = trade["ticker"]
-        alert_date = trade["alert_date"]
-        running_closes_in = trade.get("running_closes", [])
-        if isinstance(running_closes_in, str):
-            running_closes_in = json.loads(running_closes_in or "[]")
-        exits_in = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
-        hard_stop = trade.get("hard_stop") or trade["stop_price"]
-
-        if trade["remaining_shares"] <= 0 or today <= alert_date:
+        state, daily_bars, skip = await _load_exit_state(trade, today)
+        if skip == "silent":
             continue
-
-        today_str = today.strftime("%Y-%m-%d")
-        daily_bars = await get_index_history(ticker, today_str, today_str)
-        if not daily_bars:
+        if skip == "no_data":
             logger.debug(f"No daily bar for {ticker} on {today}")
             results.append({"ticker": ticker, "action": "no_data"})
             continue
-
-        state = {
-            "alert_date": alert_date,
-            "remaining_shares": trade["remaining_shares"],
-            "entry_price": trade["entry_price"],
-            "hard_stop": hard_stop,
-            "partial_taken": trade.get("partial_taken", False),
-            "breakeven_active": trade.get("breakeven_active", False),
-            "exits": exits_in,
-            "running_closes": running_closes_in,
-        }
 
         # #361: partials moved to run_partial_exits() (3:45 PM, market-hours).
         # This 4:45 EOD job bypasses the partial branch so it never double-fires
@@ -580,7 +619,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
         logger.info(
             f"Processing {ticker}: day={step.hold_days} close=${step.bar_close:.2f} "
-            f"low=${step.bar_low:.2f} stop=${hard_stop:.2f} "
+            f"low=${step.bar_low:.2f} stop=${state['hard_stop']:.2f} "
             f"shares={trade['remaining_shares']:.0f} partial={state['partial_taken']}"
         )
 
@@ -715,7 +754,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
         logger.info(
             f"{ticker}: effective_stop=${step.effective_stop:.2f} "
-            f"(hard=${hard_stop or 0:.2f} sma={step.active_sma or 0:.2f} "
+            f"(hard=${state['hard_stop'] or 0:.2f} sma={step.active_sma or 0:.2f} "
             f"be={'yes' if step.new_breakeven_active else 'no'})"
         )
 
@@ -785,33 +824,13 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
     for trade in open_trades:
         trade = dict(trade)
         ticker = trade["ticker"]
-        alert_date = trade["alert_date"]
-        running_closes_in = trade.get("running_closes", [])
-        if isinstance(running_closes_in, str):
-            running_closes_in = json.loads(running_closes_in or "[]")
-        exits_in = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
-        hard_stop = trade.get("hard_stop") or trade["stop_price"]
-
-        if trade["remaining_shares"] <= 0 or today <= alert_date:
+        state, daily_bars, skip = await _load_exit_state(trade, today)
+        if skip == "silent":
             continue
-
-        today_str = today.strftime("%Y-%m-%d")
-        daily_bars = await get_index_history(ticker, today_str, today_str)
-        if not daily_bars:
+        if skip == "no_data":
             logger.debug(f"run_partial_exits: no daily bar for {ticker} on {today}")
             results.append({"ticker": ticker, "action": "no_data"})
             continue
-
-        state = {
-            "alert_date": alert_date,
-            "remaining_shares": trade["remaining_shares"],
-            "entry_price": trade["entry_price"],
-            "hard_stop": hard_stop,
-            "partial_taken": trade.get("partial_taken", False),
-            "breakeven_active": trade.get("breakeven_active", False),
-            "exits": exits_in,
-            "running_closes": running_closes_in,
-        }
 
         # Single-source-of-truth partial decision. We discard everything in
         # `step` EXCEPT partial_fired / partial_shares — the SMA-trail, stop,
@@ -861,7 +880,7 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
         # is about to run on the next line.
         try:
             _entry = trade.get("entry_price")
-            _risk = (_entry - hard_stop) if (_entry and hard_stop) else None
+            _risk = (_entry - state["hard_stop"]) if (_entry and state["hard_stop"]) else None
             _rem = trade.get("remaining_shares")
             r_now = ((step.bar_close - _entry) / _risk) if (_risk and _entry) else None
             await send_telegram_message(

@@ -3222,29 +3222,60 @@ async def update_ep_alert_judge_result(
             rubric_version)
 
 
-_JUDGE_TOGGLE = ("holistic_judge_enabled", "paper")  # (safeguard, account_mode) PK
+async def get_safeguard_state(safeguard: str, account_mode: str) -> "Any | None":
+    """Generic `mi_safeguard_state` row read by (safeguard, account_mode) PK — #348.
+    Returns the FULL row (every column: state, last_transition_at,
+    last_evaluation_at, last_drawdown_pct, last_peak, last_peak_date, updated_at)
+    or `None` when no row exists.
+
+    Deliberately does NOT catch exceptions and does NOT apply a fail-direction —
+    every existing caller (get_holistic_judge_enabled, get_manual_halt_state,
+    drawdown_breaker.read_breaker_state, kill_scale_bands.get_last_band, ...)
+    already wraps its OWN call in its OWN try/except with its OWN fail-direction
+    (fail-closed False, fail-SAFE 'unreadable', fail-open 'OK', or no try/except
+    at all — an uncaught propagate). Baking a direction in here would be WRONG
+    for at least one of them; a raw DB error must surface to the caller exactly
+    as a raw `conn.fetchrow()` call would."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchrow(
+            "SELECT * FROM mi_safeguard_state WHERE safeguard = $1 AND account_mode = $2",
+            safeguard, account_mode)
 
 
-async def get_holistic_judge_enabled() -> bool:
-    """W2b (#243 / ADR 0011): DB-backed kill switch for the Holistic Grade Judge's grade
-    AUTHORITY. Durable across restarts (mi_safeguard_state), instant revert with NO redeploy.
-    FAIL-CLOSED: any error or missing row → False (the conviction floor drives the grade). A
-    toggle-read exception must NEVER default to judge — that is the load-bearing safety."""
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = $2", *_JUDGE_TOGGLE)
-        return bool(row) and row["state"] == "on"
-    except Exception as e:  # noqa: BLE001 — fail-closed to floor is the contract
-        logger.warning(f"holistic_judge_enabled read failed → floor (fail-closed): {e}")
-        return False
+async def set_safeguard_state(
+    safeguard: str, account_mode: str, state: str, *, bump_on_change: bool = False,
+) -> "bool | None":
+    """Generic `mi_safeguard_state` write by (safeguard, account_mode) PK — #348.
 
+    `bump_on_change=False` (default) — the UNCONDITIONAL ('always-bump') upsert.
+    Every existing always-bump writer (set_holistic_judge_enabled,
+    set_composite_authority_enabled, set_theme_subtheme_arm_enabled,
+    set_lane2_grouping_v2_enabled, set_theme_birth_gate_mode, set_trading_halted)
+    ran this EXACT SQL, byte-for-byte, differing only in the bound
+    (safeguard, account_mode, state) triple: always bumps last_transition_at +
+    updated_at to NOW() regardless of whether the state actually changed. Does
+    NOT catch exceptions — mirrors set_trading_halted's pre-existing contract
+    that a write failure must propagate, never be silently swallowed (the
+    command handler reads the state back and reports the ACTUAL value, so a
+    silent upsert failure can never be reported as success). Returns None.
 
-async def set_holistic_judge_enabled(enabled: bool) -> None:
-    """Flip the Holistic Grade Judge authority toggle (OPERATOR-gated — the W2 go-live gate).
-    Upserts the mi_safeguard_state row. Paper-only (the judge never touches real money)."""
+    `bump_on_change=True` — delegates to `claim_safeguard_state_transition`
+    (the single-winner CONDITIONAL-bump primitive, simplify GROUP 4,
+    2026-07-03) and returns ITS bool (True only if THIS call's write actually
+    changed the persisted state). #348 found this half of the originally-
+    described duplication (drawdown_breaker's old inline CASE-WHEN upsert +
+    kill_scale_bands.set_last_band's old inline CASE-WHEN upsert) was ALREADY
+    consolidated into `claim_safeguard_state_transition` on 2026-07-03 — both
+    of ITS two live-money callers (drawdown_breaker.recompute_drawdown_state,
+    kill_scale_bands.set_last_band) already share it and were deliberately
+    NOT re-pointed at this kwarg: they already dedup, so migrating them here
+    is pure churn on money-adjacent code (the live drawdown breaker + the
+    kill-scale band single-winner dedup) for zero further duplication
+    reduction. This kwarg exists so a FUTURE conditional-bump caller has one
+    generic entry point instead of a third copy."""
+    if bump_on_change:
+        return await claim_safeguard_state_transition(safeguard, account_mode, state)
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -3253,7 +3284,33 @@ async def set_holistic_judge_enabled(enabled: bool) -> None:
             VALUES ($1, $2, $3, NOW(), NOW())
             ON CONFLICT (safeguard, account_mode) DO UPDATE
               SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
-        """, *_JUDGE_TOGGLE, "on" if enabled else "off")
+        """, safeguard, account_mode, state)
+    return None
+
+
+_JUDGE_TOGGLE = ("holistic_judge_enabled", "paper")  # (safeguard, account_mode) PK
+
+
+async def get_holistic_judge_enabled() -> bool:
+    """W2b (#243 / ADR 0011): DB-backed kill switch for the Holistic Grade Judge's grade
+    AUTHORITY. Durable across restarts (mi_safeguard_state), instant revert with NO redeploy.
+    FAIL-CLOSED: any error or missing row → False (the conviction floor drives the grade). A
+    toggle-read exception must NEVER default to judge — that is the load-bearing safety.
+    #348: now via get_safeguard_state (shared read); the fail-direction above is UNCHANGED —
+    still applied at this call site, not inside the shared helper."""
+    try:
+        row = await get_safeguard_state(*_JUDGE_TOGGLE)
+        return bool(row) and row["state"] == "on"
+    except Exception as e:  # noqa: BLE001 — fail-closed to floor is the contract
+        logger.warning(f"holistic_judge_enabled read failed → floor (fail-closed): {e}")
+        return False
+
+
+async def set_holistic_judge_enabled(enabled: bool) -> None:
+    """Flip the Holistic Grade Judge authority toggle (OPERATOR-gated — the W2 go-live gate).
+    Upserts the mi_safeguard_state row. Paper-only (the judge never touches real money).
+    #348: now via set_safeguard_state (shared always-bump upsert; byte-identical SQL)."""
+    await set_safeguard_state(*_JUDGE_TOGGLE, "on" if enabled else "off")
 
 
 _COMPOSITE_TOGGLE = ("composite_authority_enabled", "paper")  # (safeguard, account_mode) PK
@@ -3265,13 +3322,10 @@ async def get_composite_authority_enabled() -> bool:
     restarts (mi_safeguard_state), instant revert with NO redeploy.
     FAIL-CLOSED: any error or missing row → False (the base grade drives the tier — DARK by
     default). A toggle-read exception must NEVER default to composite — that is the
-    load-bearing safety."""
+    load-bearing safety.
+    #348: now via get_safeguard_state (shared read); fail-direction UNCHANGED, still applied here."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = $2", *_COMPOSITE_TOGGLE)
+        row = await get_safeguard_state(*_COMPOSITE_TOGGLE)
         return bool(row) and row["state"] == "on"
     except Exception as e:  # noqa: BLE001 — fail-closed to the base grade is the contract
         logger.warning(f"composite_authority_enabled read failed → base grade (fail-closed): {e}")
@@ -3280,16 +3334,9 @@ async def get_composite_authority_enabled() -> bool:
 
 async def set_composite_authority_enabled(enabled: bool) -> None:
     """Flip the M1-d composite-authority toggle (OPERATOR-gated — the M1-d go-live gate).
-    Upserts the mi_safeguard_state row. Paper-only (the composed tier never touches real money)."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
-                                            last_transition_at, updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE
-              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
-        """, *_COMPOSITE_TOGGLE, "on" if enabled else "off")
+    Upserts the mi_safeguard_state row. Paper-only (the composed tier never touches real money).
+    #348: now via set_safeguard_state (shared always-bump upsert; byte-identical SQL)."""
+    await set_safeguard_state(*_COMPOSITE_TOGGLE, "on" if enabled else "off")
 
 
 _SUBTHEME_ARM_TOGGLE = ("theme_subtheme_arm", "paper")  # (safeguard, account_mode) PK
@@ -3302,13 +3349,10 @@ async def get_theme_subtheme_arm_enabled() -> bool:
     the get_holistic_judge_enabled idiom.
     FAIL-CLOSED: any error or missing row → False. OFF ⇒ the theme engine is
     byte-identical to pre-Phase-2 behavior (the ADR-0025 build-dark discipline);
-    the flip is OPERATOR-gated behind the §1.4 backtest sign-off."""
+    the flip is OPERATOR-gated behind the §1.4 backtest sign-off.
+    #348: now via get_safeguard_state (shared read); fail-direction UNCHANGED, still applied here."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = $2", *_SUBTHEME_ARM_TOGGLE)
+        row = await get_safeguard_state(*_SUBTHEME_ARM_TOGGLE)
         return bool(row) and row["state"] == "on"
     except Exception as e:  # noqa: BLE001 — fail-closed to today's engine is the contract
         logger.warning(f"theme_subtheme_arm read failed → arm OFF (fail-closed): {e}")
@@ -3318,16 +3362,9 @@ async def get_theme_subtheme_arm_enabled() -> bool:
 async def set_theme_subtheme_arm_enabled(enabled: bool) -> None:
     """Flip the ADR 0032 Phase 2 re-granularization arm (OPERATOR-gated — never
     self-authorize; the flip gate is the §1.4 backtest + operator sign-off).
-    Upserts the mi_safeguard_state row. No-money surface (themes are detection)."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
-                                            last_transition_at, updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE
-              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
-        """, *_SUBTHEME_ARM_TOGGLE, "on" if enabled else "off")
+    Upserts the mi_safeguard_state row. No-money surface (themes are detection).
+    #348: now via set_safeguard_state (shared always-bump upsert; byte-identical SQL)."""
+    await set_safeguard_state(*_SUBTHEME_ARM_TOGGLE, "on" if enabled else "off")
 
 
 _LANE2_V2_TOGGLE = ("lane2_grouping_v2", "paper")  # (safeguard, account_mode) PK
@@ -3348,13 +3385,10 @@ async def get_lane2_grouping_v2_enabled() -> bool:
     lane proposes can change grades and therefore trades. The flip is
     OPERATOR-gated behind CHANGE_PROCESS sign-off + a fresh judge-robustness
     eval (the ADR 0030 preflight_judge_eval_gate WILL fire on the grade-surface
-    drift — that is by design, never suppress it)."""
+    drift — that is by design, never suppress it).
+    #348: now via get_safeguard_state (shared read); fail-direction UNCHANGED, still applied here."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = $2", *_LANE2_V2_TOGGLE)
+        row = await get_safeguard_state(*_LANE2_V2_TOGGLE)
         return bool(row) and row["state"] == "on"
     except Exception as e:  # noqa: BLE001 — fail-closed to the v1 lane is the contract
         logger.warning(f"lane2_grouping_v2 read failed → v1 lane (fail-closed): {e}")
@@ -3364,16 +3398,9 @@ async def get_lane2_grouping_v2_enabled() -> bool:
 async def set_lane2_grouping_v2_enabled(enabled: bool) -> None:
     """Flip the #167 Lane-2 grouping v2 toggle (OPERATOR-gated — never
     self-authorize; grade-affecting via the judge's active_narratives input,
-    see get_lane2_grouping_v2_enabled). Upserts the mi_safeguard_state row."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
-                                            last_transition_at, updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE
-              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
-        """, *_LANE2_V2_TOGGLE, "on" if enabled else "off")
+    see get_lane2_grouping_v2_enabled). Upserts the mi_safeguard_state row.
+    #348: now via set_safeguard_state (shared always-bump upsert; byte-identical SQL)."""
+    await set_safeguard_state(*_LANE2_V2_TOGGLE, "on" if enabled else "off")
 
 
 _THEME_BIRTH_GATE_TOGGLE = ("theme_birth_gate", "paper")  # (safeguard, account_mode) PK
@@ -3412,13 +3439,10 @@ async def get_theme_birth_gate_mode() -> str:
     transitions (off→observe deploy, observe→on flip) are OPERATOR-gated;
     observe→on additionally requires the forward-evidence review
     (theme_birth_gate_observe_calibration in data_gated_reviews.yaml) +
-    CHANGE_PROCESS sign-off on the derived cell — never self-authorize."""
+    CHANGE_PROCESS sign-off on the derived cell — never self-authorize.
+    #348: now via get_safeguard_state (shared read); fail-direction UNCHANGED, still applied here."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = $2", *_THEME_BIRTH_GATE_TOGGLE)
+        row = await get_safeguard_state(*_THEME_BIRTH_GATE_TOGGLE)
         state = row["state"] if row else "off"
         return state if state in BIRTH_GATE_MODES else "off"  # unrecognized → off (fail closed)
     except Exception as e:  # noqa: BLE001 — fail-closed to today's ungated engine is the contract
@@ -3430,18 +3454,12 @@ async def set_theme_birth_gate_mode(mode: str) -> None:
     """Set the birth-gate mode (OPERATOR-gated — never self-authorize; see
     get_theme_birth_gate_mode for the transition gates). Validates against
     BIRTH_GATE_MODES — an invalid string raises rather than silently writing a
-    state every reader would fail-closed to 'off'. Upserts mi_safeguard_state."""
+    state every reader would fail-closed to 'off'. Upserts mi_safeguard_state.
+    #348: now via set_safeguard_state (shared always-bump upsert; byte-identical SQL) —
+    the mode validation stays HERE, before the write, unchanged."""
     if mode not in BIRTH_GATE_MODES:
         raise ValueError(f"invalid theme_birth_gate mode {mode!r} — expected one of {BIRTH_GATE_MODES}")
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
-                                            last_transition_at, updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE
-              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
-        """, *_THEME_BIRTH_GATE_TOGGLE, mode)
+    await set_safeguard_state(*_THEME_BIRTH_GATE_TOGGLE, mode)
 
 
 _MANUAL_HALT = ("manual_trading_halt", "live")  # (safeguard, account_mode) PK
@@ -3457,13 +3475,10 @@ async def get_manual_halt_state() -> str:
     (a halt that fails open under stress is worse than none — protect capital). The
     DISTINCT "unreadable" state lets the gate use a distinct skip reason so the
     operator is never told "you paused" when a DB error caused the block. Mirrors the
-    fail-direction of the sibling safeguard reads (account fetch fails closed)."""
+    fail-direction of the sibling safeguard reads (account fetch fails closed).
+    #348: now via get_safeguard_state (shared read); fail-direction UNCHANGED, still applied here."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = $2", *_MANUAL_HALT)
+        row = await get_safeguard_state(*_MANUAL_HALT)
         return "on" if (row and row["state"] == "on") else "off"
     except Exception as e:  # noqa: BLE001 — fail-SAFE to halted is the contract
         logger.warning(f"manual_halt_state read failed → unreadable (failing safe): {e}")
@@ -3474,16 +3489,10 @@ async def set_trading_halted(halted: bool) -> None:
     """Flip the manual real-money trading halt (#345, operator `/pause`/`/resume`).
     Upserts the mi_safeguard_state row. Does NOT swallow errors — the command
     handler MUST read the state back via get_manual_halt_state() and report the
-    ACTUAL value, so a silent upsert failure can never be reported as success."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
-                                            last_transition_at, updated_at)
-            VALUES ($1, $2, $3, NOW(), NOW())
-            ON CONFLICT (safeguard, account_mode) DO UPDATE
-              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
-        """, *_MANUAL_HALT, "on" if halted else "off")
+    ACTUAL value, so a silent upsert failure can never be reported as success.
+    #348: now via set_safeguard_state (shared always-bump upsert; byte-identical SQL,
+    still no try/except — a write failure still propagates uncaught)."""
+    await set_safeguard_state(*_MANUAL_HALT, "on" if halted else "off")
 
 
 async def claim_safeguard_state_transition(

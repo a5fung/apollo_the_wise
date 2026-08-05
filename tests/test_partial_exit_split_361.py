@@ -266,3 +266,125 @@ def test_3_45_job_stands_down_when_the_intraday_trigger_owns_the_partial(monkeyp
     assert kwargs_seen, "apply_daily_exit_step not called"
     assert kwargs_seen[0].get("skip_partial_decision") is True, \
         "with the intraday trigger ON, the 3:45 job must suppress its own decision"
+
+
+# ── #363: shared `_load_exit_state` preamble ─────────────────────────────────
+#
+# Both jobs now load per-trade state through ONE function instead of two
+# byte-identical copies. These tests pin (a) both jobs actually route through
+# it with the SAME (trade, today) args — the anti-divergence property the
+# extraction exists to create — and (b) its three outcomes (silent skip /
+# no_data / success) are exactly what the pre-extraction inline code did.
+
+
+def test_both_jobs_route_through_the_same_shared_loader(monkeypatch):
+    real_loader = live_tracker._load_exit_state
+    calls = []
+
+    async def spy(trade, today):
+        calls.append((dict(trade), today))
+        return await real_loader(trade, today)
+
+    monkeypatch.setattr(live_tracker, "_load_exit_state", spy)
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(_FakeConn([_trade_row()]))))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[{"l": 108.0, "c": 110.0, "h": 111.0, "o": 109.0}]))
+    monkeypatch.setattr(live_tracker, "apply_daily_exit_step",
+                        lambda state, bar, today, **kw: _partial_step())
+    monkeypatch.setattr(live_tracker, "execute_partial_exit",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "update_stop",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "execute_full_exit",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+    monkeypatch.setattr(live_tracker, "send_telegram_message",
+                        lambda *a, **k: asyncio.sleep(0, result=True))
+
+    asyncio.run(live_tracker.run_partial_exits(today=date(2026, 6, 23)))
+    asyncio.run(live_tracker.update_open_positions_live(today=date(2026, 6, 23)))
+
+    assert len(calls) == 2, f"expected exactly 1 loader call per job: {calls}"
+    (trade_a, today_a), (trade_b, today_b) = calls
+    assert trade_a == trade_b, "both jobs must load state for the SAME trade row"
+    assert today_a == today_b == date(2026, 6, 23)
+
+
+def test_load_exit_state_silent_skip_on_zero_remaining():
+    row = _trade_row()
+    row["remaining_shares"] = 0
+    result = asyncio.run(live_tracker._load_exit_state(row, date(2026, 6, 23)))
+    assert result == (None, None, "silent")
+
+
+def test_load_exit_state_silent_skip_on_same_day_alert():
+    row = _trade_row()  # alert_date = 2026-06-18
+    result = asyncio.run(live_tracker._load_exit_state(row, row["alert_date"]))
+    assert result == (None, None, "silent")
+
+
+def test_load_exit_state_no_data(monkeypatch):
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[]))
+    result = asyncio.run(live_tracker._load_exit_state(_trade_row(), date(2026, 6, 23)))
+    assert result == (None, None, "no_data")
+
+
+def test_load_exit_state_success_builds_expected_state_and_bars(monkeypatch):
+    bar = {"l": 108.0, "c": 110.0, "h": 111.0, "o": 109.0}
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[bar]))
+    row = _trade_row()
+    state, daily_bars, skip = asyncio.run(live_tracker._load_exit_state(row, date(2026, 6, 23)))
+    assert skip is None
+    assert daily_bars == [bar]
+    assert state == {
+        "alert_date": row["alert_date"],
+        "remaining_shares": row["remaining_shares"],
+        "entry_price": row["entry_price"],
+        "hard_stop": row["hard_stop"],
+        "partial_taken": row["partial_taken"],
+        "breakeven_active": row["breakeven_active"],
+        "exits": row["exits"],
+        "running_closes": row["running_closes"],
+    }
+
+
+def test_run_partial_exits_no_data_appends_exactly_one_result(monkeypatch):
+    conn = _FakeConn([_trade_row()])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[]))
+    results = asyncio.run(live_tracker.run_partial_exits(today=date(2026, 6, 23)))
+    assert results == [{"ticker": "TEST", "action": "no_data"}]
+
+
+def test_run_partial_exits_silent_skip_appends_nothing(monkeypatch):
+    row = _trade_row()
+    row["remaining_shares"] = 0
+    conn = _FakeConn([row])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    results = asyncio.run(live_tracker.run_partial_exits(today=date(2026, 6, 23)))
+    assert results == []
+
+
+def test_update_open_positions_live_no_data_appends_exactly_one_result(monkeypatch):
+    conn = _FakeConn([_trade_row()])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    monkeypatch.setattr(live_tracker, "get_index_history",
+                        lambda *_a, **_k: asyncio.sleep(0, result=[]))
+    results = asyncio.run(live_tracker.update_open_positions_live(today=date(2026, 6, 23)))
+    assert results == [{"ticker": "TEST", "action": "no_data"}]
+
+
+def test_update_open_positions_live_silent_skip_appends_nothing(monkeypatch):
+    row = _trade_row()
+    row["remaining_shares"] = 0
+    conn = _FakeConn([row])
+    monkeypatch.setattr(live_tracker, "get_pool",
+                        lambda: asyncio.sleep(0, result=_FakePool(conn)))
+    results = asyncio.run(live_tracker.update_open_positions_live(today=date(2026, 6, 23)))
+    assert results == []

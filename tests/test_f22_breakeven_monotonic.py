@@ -30,3 +30,14 @@ def test_partial_job_persists_nothing():
     assert "UPDATE mi_live_trades" not in src, (
         "run_partial_exits must persist NOTHING (BW 5/14 optimistic-write protocol)"
     )
+
+
+def test_shared_preamble_loader_persists_nothing():
+    # #363: the state-load preamble both jobs now share (`_load_exit_state`) must
+    # stay a pure read — an UPDATE added here later would be invisible to the
+    # `run_partial_exits`-only source scan above AND would hit BOTH jobs at once.
+    src = inspect.getsource(live_tracker._load_exit_state)
+    assert "UPDATE mi_live_trades" not in src, (
+        "_load_exit_state must persist NOTHING — it is the shared read-only "
+        "preamble for both the 3:45 and 4:45 jobs (#363)"
+    )

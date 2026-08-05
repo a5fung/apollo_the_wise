@@ -1512,6 +1512,28 @@ _LEG_SAFE_POLL_S = 0.1
 _LEG_SAFE_STOP_ATTEMPTS = 4
 
 
+def _is_stop_already_at_target(err: Exception) -> bool:
+    """Alpaca 42210000 "order parameters are not changed" — the stop ALREADY has the qty and
+    price we are asking for, so the reduction is a no-op, not a failure.
+
+    ⚠ WHY THIS EXISTS — PLTR 307, 2026-08-05, a DEADLOCK on live money. The 09:30 attempt
+    reduced the stop 6 → 4 successfully, then aborted before selling because the freed shares
+    had not been released yet. Every retry from 09:35 onward then tried to reduce a stop that
+    was ALREADY 4 @ $143.28, which Alpaca correctly rejects as a no-op — so the partial could
+    never progress past a step it had already completed, and each attempt logged a
+    `place_new_stop` abort, which the circuit breaker COUNTS. Three of those and the breaker
+    would have closed the door on it permanently.
+
+    Treating this as success is not a leniency: the broker is stating that the order already
+    holds the parameters we requested, which is precisely the post-condition the replace exists
+    to establish. Deliberately NARROW — it matches only the not-changed message, never a
+    generic 42210000 (the advanced-order-leg rejection carries a different message and is
+    matched separately by `_is_advanced_qty_rejection`).
+    """
+    msg = str(err).lower()
+    return "parameters are not changed" in msg or "order parameters are not changed" in msg
+
+
 def _is_advanced_qty_rejection(err: Exception) -> bool:
     """Alpaca 42210000 'qty cannot be changed for advanced orders' — the exact
     PLTR 2026-08-04 rejection. Deterministic + structural (the stop is a
@@ -2035,6 +2057,36 @@ async def execute_partial_exit(
                         break
                     except Exception as e:
                         last_err = e
+                        if _is_stop_already_at_target(e):
+                            # The stop ALREADY holds the qty+price we asked for — a prior
+                            # attempt reduced it and then aborted before selling (PLTR 307,
+                            # 2026-08-05). Adopt the live stop and continue to the sell rather
+                            # than re-failing a step that is already done; without this the
+                            # partial deadlocks forever and each retry feeds the breaker.
+                            try:
+                                _oo = await alpaca.get_open_orders(account_mode=account_mode)
+                                _cur = _live_sell_stops(
+                                    [o for o in _oo if o.get("symbol") == ticker])
+                            except Exception as _rerr:  # loud-ok: logged; falls to normal abort
+                                logger.warning(
+                                    f"execute_partial_exit: {ticker} stop reported already at "
+                                    f"target but open orders unreadable ({_rerr}) — aborting")
+                                break
+                            if len(_cur) == 1 and abs(
+                                    float(_cur[0].get("qty") or 0) - new_remaining) <= 0.5:
+                                logger.info(
+                                    f"execute_partial_exit: {ticker} stop already at target "
+                                    f"({new_remaining} sh) — adopting {_cur[0]['id'][:8]} and "
+                                    f"proceeding to sell")
+                                new_stop_order = _cur[0]
+                                last_err = None
+                                break
+                            logger.error(
+                                f"execute_partial_exit: {ticker} broker says parameters "
+                                f"unchanged but live stops do not match target "
+                                f"{new_remaining}: {[(o.get('id','')[:8], o.get('qty')) for o in _cur]}"
+                                f" — aborting rather than guessing")
+                            break
                         if leg_safe_on and _is_advanced_qty_rejection(e):
                             # The broker says the stop IS an advanced-order
                             # leg — deterministic, retrying is pointless.
@@ -2349,29 +2401,86 @@ async def execute_partial_exit(
                     break
                 await asyncio.sleep(0.25)
             if not avail_ok:
+                # ⚠ 2026-08-05, PLTR 307 — this branch ASSUMED the wrong world and told the
+                # operator the position was protected while 2 of 6 shares had no stop behind
+                # them. Its premise was "shares are still held ⇒ the OLD full-size stop is
+                # still resting ⇒ over-covered ⇒ safe to walk away". That is ONE of two worlds
+                # with the identical symptom. On PLTR the NEW reduced stop was already
+                # confirmed live (`partial_exit_stop_replaced`, 4 sh of a 6-sh position) and
+                # the hold was something else — so the same `qty_available` reading meant
+                # UNDER-covered, the exact opposite, and the abort left a real gap that
+                # nothing repairs until the 16:05 sync.
+                #
+                # So: ASK THE BROKER instead of inferring. Coverage is a fact on the broker,
+                # never a deduction from a share count.
+                covered = None
+                _pos_qty = None
+                try:
+                    _oo = await alpaca.get_open_orders(account_mode=account_mode)
+                    covered = sum(
+                        float(o.get("qty") or 0)
+                        for o in _live_sell_stops(
+                            [o for o in _oo if o.get("symbol") == ticker])
+                    )
+                    _p = await alpaca.get_position(ticker, account_mode=account_mode)
+                    _pos_qty = float(_p.get("qty")) if _p and _p.get("qty") is not None else None
+                except Exception as _cerr:  # loud-ok: logged; unreadable ⇒ assume under-covered
+                    logger.warning(
+                        f"execute_partial_exit: could not read broker coverage for {ticker} "
+                        f"after the availability budget ({_cerr}) — assuming UNDER-covered")
+
+                # Unreadable broker ⇒ NOT provably covered ⇒ re-protect. Never the reverse:
+                # this branch's whole failure was assuming safety it had not established.
+                fully_covered = (
+                    covered is not None and _pos_qty is not None
+                    and covered >= _pos_qty - 0.5
+                )
                 logger.error(
                     f"execute_partial_exit: {ticker} qty_available={last_avail} < {shares} "
-                    f"after budget — old stop likely still reserving shares "
-                    f"(pending_replace limbo); aborting BEFORE sell (over-covered, safe)"
+                    f"after budget; broker stop coverage={covered} vs position={_pos_qty} — "
+                    f"{'over-covered, safe to abort' if fully_covered else 'UNDER-COVERED, re-protecting'}"
                 )
                 await log_audit_event(
                     "partial_exit_aborted",
-                    f"{ticker}: shares not free (qty_available={last_avail} < {shares}) — "
-                    f"sell skipped, position over-covered (safe), retry next window",
+                    f"{ticker}: shares not free (qty_available={last_avail} < {shares}) — sell "
+                    f"skipped; stop coverage {covered} vs position {_pos_qty} "
+                    f"({'over-covered, safe' if fully_covered else 'UNDER-COVERED → re-protect'})",
                     json.dumps({
                         "trade_id": trade_id, "ticker": ticker, "shares": shares,
                         "qty_available": last_avail, "new_remaining": new_remaining,
                         "new_stop_id": new_stop_id, "old_stop_id": old_stop_id,
                         "stage": "verify_shares_free",
+                        "stop_coverage": None if covered is _BROKER_UNREADABLE else covered,
+                        "position_qty": _pos_qty,
+                        "fully_covered": fully_covered,
                     }),
                 )
+                if fully_covered:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
+                        f"shares not free to sell (available {last_avail} < {shares}).\n"
+                        f"_Stop still covers the full {_pos_qty:.0f} sh — position protected, "
+                        f"no shares sold. Cron will retry next window._"
+                    )
+                    return False
+                # UNDER-covered: the stop was already reduced but the sell never happened, so
+                # the position is short of cover. Do NOT claim protection. Hand to the same
+                # post-lock machinery every other abort path uses — it re-protects to BROKER
+                # truth once the advisory lock releases, which is the only correct sizing
+                # source here (DB `remaining_shares` is still the pre-partial number).
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
                     f"shares not free to sell (available {last_avail} < {shares}).\n"
-                    f"_Old stop likely still settling (pending_replace) — position "
-                    f"protected, no shares sold. Cron will retry next window._"
+                    f"_No shares sold, but the stop had already been reduced to "
+                    f"{covered if covered is not None else '?'} sh on a "
+                    f"{_pos_qty if _pos_qty is not None else '?'} sh position — "
+                    f"RE-PROTECTING to full size now._"
                 )
-                return False
+                # ⚠ SET THE FLAG AND FALL THROUGH — do NOT return here. `abort_reprotect` is
+                # consumed AFTER the advisory lock releases (the post-lock block below);
+                # returning inside the lock would skip the re-protect entirely and make this
+                # whole fix inert, which is exactly the shape of the bug it repairs.
+                abort_reprotect = True
 
             # Step 2: Market sell the partial (shares are now free from the stop).
             try:

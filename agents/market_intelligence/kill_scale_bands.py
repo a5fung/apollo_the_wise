@@ -243,13 +243,12 @@ _LAST_BAND_SAFEGUARD = "kill_scale_band"  # mi_safeguard_state PK with account_m
 
 
 async def get_last_band(account_mode: str = "live") -> tuple[str | None, str | None]:
-    """The last-evaluated band + its transition date (for dedup + the 'since' on the alert)."""
-    from agents.market_intelligence.db import get_pool
-    pool = await get_pool()
-    async with pool.acquire() as c:
-        row = await c.fetchrow(
-            "SELECT state, last_transition_at FROM mi_safeguard_state "
-            "WHERE safeguard = $1 AND account_mode = $2", _LAST_BAND_SAFEGUARD, account_mode)
+    """The last-evaluated band + its transition date (for dedup + the 'since' on the alert).
+
+    #348: now via db.get_safeguard_state (shared read, `SELECT *` covers both `state` and
+    `last_transition_at`) — the no-try/except (errors propagate uncaught) is UNCHANGED."""
+    from agents.market_intelligence.db import get_safeguard_state
+    row = await get_safeguard_state(_LAST_BAND_SAFEGUARD, account_mode)
     if not row:
         return None, None
     since = row["last_transition_at"].date().isoformat() if row["last_transition_at"] else None

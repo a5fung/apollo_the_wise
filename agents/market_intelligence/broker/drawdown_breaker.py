@@ -56,6 +56,7 @@ from agents.market_intelligence.constants import (
 from agents.market_intelligence.db import (
     claim_safeguard_state_transition,
     get_pool,
+    get_safeguard_state,
     log_audit_event,
 )
 
@@ -477,17 +478,12 @@ async def read_breaker_state(mode: str) -> str:
 
     Used by _check_safeguards() in active phase. Zero compute, single index hit.
     Fail-safe: any DB error returns 'OK' (don't block on infra failure).
+
+    #348: now via db.get_safeguard_state (shared read); fail-direction UNCHANGED,
+    still applied here, not inside the shared helper.
     """
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """
-                SELECT state FROM mi_safeguard_state
-                WHERE safeguard = $1 AND account_mode = $2
-                """,
-                _SAFEGUARD_NAME, mode,
-            )
+        row = await get_safeguard_state(_SAFEGUARD_NAME, mode)
         return row["state"] if row else _STATE_OK
     except Exception as e:
         logger.warning(f"read_breaker_state failed for {mode}: {e}")
