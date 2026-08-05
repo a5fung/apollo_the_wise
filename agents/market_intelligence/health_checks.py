@@ -64,7 +64,12 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import (
+    get_pool, log_audit_event,
+    get_latest_two_theme_dates, get_theme_retired_candidate_names,
+    get_theme_history_window, get_theme_member_departures,
+    get_theme_quality_alerted_targets, get_recent_rs_batch, get_rs_on_date,
+)
 from shared.dates import et_today  # canonical ET-today (tz-bug-class centralization, /simplify 6/25)
 
 _ET = ZoneInfo("America/New_York")  # codebase tz rule — never naive datetime.now()
@@ -1347,4 +1352,393 @@ async def run_inert_sweep_check() -> dict[str, Any]:
         except Exception as e:  # loud-ok: recorded in out["errors"] and surfaced by the caller — per-lane isolation so one bad table cannot blind the other three
             out["errors"].append({"table": table, "error": f"{type(e).__name__}: {e}"})
     return out
+
+
+# ── #531 NIGHTLY THEME QUALITY CHECK (2026-08-04) ────────────────────────────────────────────────
+#
+# WHY. Operator, verbatim: "i'm really asking for quality checks regularly to make sure our themes
+# are solid without me needing to check it and review manually" — he should learn a theme defect
+# from a Telegram, not from an investigation (which is how #368's diagnosis happened: 5 of 9 theme-
+# credit false positives traced to one mechanism nobody was watching for).
+#
+# FOUR candidate signatures were measured against 97 real trading days of prod mi_themes
+# (2026-03-19..2026-08-04, captured once via ssh) before anything shipped. Two survived; two were
+# DROPPED — dropping is the documented good outcome, not a shortfall (see each write-up below).
+#
+# SIGNATURE A — "a theme retired while healthy" (#368/F2's exact target). MEASURED: 165 distinct
+# retirement incidents (`mi_audit_log.theme_retired`, clustered — the event re-fires nightly for up
+# to ~7 days while the theme lingers in `existing`'s recency window, so incidents are keyed on
+# theme NAME, first occurrence). Of those, 129 carry an EXPLICIT same-day `mi_themes` Retired row —
+# a DIFFERENT, legitimate mechanism (ADR-0025 Arm-A 2-member dissolve on a validation-flagged
+# member, or Pass1/1.5 engine-drop consolidation) that #368/F2 does not touch and this check
+# deliberately does NOT fire on (hand-verified: Heavy Transportation Equipment Manufacturers,
+# Casual Dining Restaurant Turnaround, Specialty Pharma — all exactly 2 members, explicit Retired
+# row same day, score=0/rs_avg=None — the validator correctly dissolving a flagged pair, not a
+# silent-death bug). Of the remaining SILENT vanishes (no row at all, any stage, on the retirement
+# date), 6 had a healthy last-known state (Fading stage, rs_avg NOT NULL) immediately before
+# vanishing — the exact #368/F2 signature (a "held"/score-delta Fading row that still cleared the
+# strong-member floor, wrongly counted toward the 5-day retire streak): 'Single-Cell Genomics &
+# Spatial Biology Instrumentation' (4/21, rs_avg 88.0), 'Lithium & Battery Critical Minerals Mining'
+# (4/29, 93.8), 'Workforce Solutions & Technical Staffing Services' (5/06, 80.3), 'Precision
+# Frequency & Timing Defense Electronics' (5/12, 80.2), 'Chip Architecture Licensing & CPU/GPU
+# Compute Revival' (5/15, 82.8), and the verified prod case: 'Bitcoin Mining & Crypto Infrastructure
+# Operators' (8/04, 84.9 on 8/03). 6/165 = a clean, low-noise signal — every firing hand-checked and
+# real. NOTE, named deliberately (not left to only live in reasoning): a SEPARATE, DIFFERENT class
+# — a healthy Fading theme dropped via the Pass1/1.5 ENGINE-DROP path (explicit same-day Retired
+# row, e.g. 'AI Memory & Storage' 7/13 rs_avg 95.4 the day before) — was seen 4x in the same window
+# and is NOT covered here: F2 does not fix it (it never reaches `_count_consecutive_fading`), so
+# alerting it under this signature would point at the wrong remediation. Filed as a future
+# candidate, not silently dropped.
+#
+# TWO measurement bugs found and fixed before trusting the number (both worth naming — a guard
+# built on a buggy measurement is not a guard): (1) using `theme_date <= retirement_date` instead
+# of `< ` double-counted a coincidental SAME-NAME rediscovery born in the identical nightly run as
+# the old instance's retirement (e.g. 'Precious Metals Royalty & Streaming Companies' 8/03 — a 2-
+# ticker Fading sub-theme retired AND a 4-ticker Nascent theme with the identical Haiku-generated
+# name was born, same run) — fixed by requiring the lookup strictly BEFORE the retirement date.
+# (2) the daily re-fire of `theme_retired` (discovered via this measurement) would have made an
+# un-clustered incident count meaningless — fixed by clustering same-name events >7 days apart into
+# one incident and keying dedupe on theme name alone (never name+date), so the persisting condition
+# doesn't wallpaper the channel on night two.
+#
+# SIGNATURE B — "a member pruned while its RS was rising" (#368/F3's exact target — the
+# `ticker_prune_held_rising` hold is supposed to catch and HOLD these, not let them prune).
+# MEASURED: mirroring the ENGINE'S OWN exact prune gate (PRUNE_RS_HARD=25 candidate on any day;
+# PRUNE_RS_SOFT=35 candidate only on the 3rd consecutive sub-floor day; >=35 never a candidate —
+# an earlier pass that skipped this gate would have false-fired on tickers the engine was never
+# going to prune at all) and excluding (a) #214 mass-evictions (>=3 leavers AND >=50% of the
+# theme's membership gone at once — a validation strip, not a daily prune) and (b) tickers that
+# MOVED to another live theme the same night (present somewhere in today's board — reassignment,
+# not a prune): 164 prune-shaped exits over the window, 25 RISING (theme_engine._rs_rising: newest
+# RS > oldest RS over the last 6 sessions, >=4 points of history). Of the 14 with a full 10-session
+# forward window: 11 recovered to RS>=50, 2 stayed dead, 1 sat in limbo — 79% recovered, vs the
+# FALLING control (the hold correctly still prunes these): 35/97 = 36% recovered. That 79-vs-36
+# spread, not the raw firing count, is the evidence these are real defects, not noise — an ignited
+# recovery pruned early, not routine decay. Verified case inside the window: IREN + APLD pruned
+# from 'AI Compute & GPU Data Center Hosting Operators' 7/22 while both were igniting (the exact
+# #368 miner-cohort mechanism F3 now holds instead of prunes).
+#
+# DROPPED — fragmentation (2+ live themes sharing >=50% of the smaller theme's members): 251
+# day-level firings across 122 DISTINCT theme-name pairs in the same window — far too broad to ship
+# (a guard that always fires is not a guard). More important than the noise count: the #368
+# diagnosis already identified the real fragmentation signature as "zero crypto x AI pairs were
+# EVER proposed for adjudication" (theme_merge_arm's Stage-A family gap), not "two themes overlap"
+# — overlap is Arm-B's normal INPUT (the machinery that resolves it working as intended), so an
+# overlap-percentage alarm would fire on healthy operation and need domain judgment ("same cohort,
+# or two adjacent-but-distinct industries?") to tell real fragmentation from coincidence — exactly
+# what this check's template (#521 inert-sweep) refuses to do. The real check (pairs never
+# proposed) is F1's territory: withdrawn at its own gate 2026-08-04, filed #529, gated on #471
+# (parent/child persistence not yet built). Building a parallel overlap alarm now would duplicate
+# work already scoped correctly elsewhere and would not be trustworthy on its own terms.
+#
+# DROPPED — churn (a theme born-and-dead inside N days, repeatedly, in one ticker neighbourhood):
+# 42 of 301 distinct names (14%) born-and-gone within 5 calendar days — mostly normal Nascent
+# mortality (a cluster that just didn't have legs), not evidence of a defect on its own. The
+# "repeatedly, in the same neighbourhood" qualifier the operator specified requires clustering
+# short-lived themes by ticker-overlap across MULTIPLE deaths — the same neighbourhood-identity
+# problem fragmentation has, and the same reason it isn't trustworthy to ship today.
+#
+# Measurement + hand-checks: docs/analysis/531_theme_quality_measurement_2026-08-04.md.
+#
+# WIRING: registered in `_post_nightly_audit_job` (scheduler.py) the same way `run_inert_sweep_check`
+# is — own try/except so a failure here can't break the audit job; each signature isolated inside
+# `run_theme_quality_check` (one bad query can't blind the other). Dedupe copies the inert-sweep
+# idiom exactly (`mi_audit_log` IS the state; `SELECT DISTINCT split_part(summary, ':', 1)`) and
+# fails OPEN — a broken dedupe read costs a duplicate alert, never a missed one. Both event types
+# ('theme_retired_while_healthy', 'theme_member_pruned_while_rising') persist forever once
+# announced — each finding is a discrete past event (a specific retirement, a specific prune), not
+# an ongoing condition that can "heal" the way a null column can, so there is no resolve/re-open
+# path here (unlike increment 2's reconcile above).
+
+# Mirrors theme_engine.py's exact prune-gate constants + rising test — mirrored (not imported) so
+# this file's lightweight-import discipline holds (see `_is_trading_day`'s docstring), with a pin
+# test (tests/test_theme_quality_check.py) asserting byte-parity against the real engine values so
+# a future threshold change can't silently drift this check out of sync with what it's guarding.
+_PRUNE_RS_HARD_MIRROR = 25.0
+_PRUNE_RS_SOFT_MIRROR = 35.0
+_PRUNE_HOLD_MIN_POINTS_MIRROR = 4
+
+
+def _rs_rising_mirror(hist: list[float]) -> bool:
+    """Mirrors theme_engine._rs_rising exactly: newest-first `hist`, rising iff
+    >=4 points AND hist[0] (newest) > hist[-1] (oldest, up to 6 sessions back)."""
+    return len(hist) >= _PRUNE_HOLD_MIN_POINTS_MIRROR and hist[0] > hist[-1]
+
+
+_RETIREMENT_LOOKBACK_DAYS = 7  # mirrors get_active_themes(stale_after_days=7) — the engine's
+                               # own definition of "still the same lifecycle"
+
+
+def _evaluate_theme_retirement(today, history: list[dict]) -> dict | None:
+    """Pure decision for ONE candidate name (already known to have a fresh `theme_retired`
+    audit event): given its mi_themes rows in [today-7, today] (most-recent-first, from
+    `get_theme_history_window`), decide whether this was a SILENT vanish from a healthy
+    Fading state — the #368/F2 signature — vs. one of the other legitimate retirement
+    shapes this check must stay silent on.
+
+    Returns a flag dict when: (a) NO row exists for `today` itself — an explicit same-day
+    row means a DIFFERENT mechanism (ADR-0025 Arm-A 2-member dissolve, or Pass1/1.5
+    engine-drop consolidation) that F2 doesn't touch, and firing on it would point at the
+    wrong fix; AND (b) the most recent PRIOR row (theme_date < today, within
+    `_RETIREMENT_LOOKBACK_DAYS` — `get_active_themes`'s own liveness horizon, enforced HERE
+    too, not just by the caller's SQL bound, so this function stays correct even if a wider
+    history list is ever passed in) has stage == 'Fading' AND rs_avg IS NOT NULL (the theme
+    still cleared the strong-member floor the day it vanished). Returns None otherwise —
+    including a weak Fading row (rs_avg IS NULL, the CORRECT, expected retirement shape), a
+    stale reused-name row outside the lookback, and no prior history at all.
+    """
+    if history and history[0]["theme_date"] == today:
+        return None  # explicit same-day row — a different, non-F2 mechanism
+    prior = next((r for r in history if r["theme_date"] < today), None)
+    if prior is None:
+        return None  # no recent history to judge — can't confirm "healthy"
+    if (today - prior["theme_date"]).days > _RETIREMENT_LOOKBACK_DAYS:
+        return None  # a reused name's stale prior life — not "just retired while healthy"
+    if prior["stage"] != "Fading" or prior["rs_avg"] is None:
+        return None
+    return {
+        "prior_date": prior["theme_date"],
+        "prior_rs_avg": prior["rs_avg"],
+        "prior_score": prior.get("score"),
+    }
+
+
+def _is_mass_eviction(n_gone: int, prior_member_count: int) -> bool:
+    """Mirrors theme_engine.py's #214 mass-eviction signature: >=3 leavers AND >=50% of
+    prior membership gone at once — a validation strip / Arm-A dissolve, not a daily prune.
+    The rising-hold only concerns individual PRUNE decisions; scoring a strip event here
+    would be pure noise (unrelated to RS trajectory by construction)."""
+    return n_gone >= 3 and n_gone * 2 >= prior_member_count
+
+
+def _evaluate_pruned_while_rising(rs_now: float | None, hist3: list[float], hist6: list[float]) -> dict | None:
+    """Pure decision for ONE ticker that left a still-alive theme overnight (already known
+    to not be part of a mass-eviction and not present in any theme today — i.e. not moved):
+    does this look like a #368/F3 hold regression?
+
+    `hist3`/`hist6` are the ticker's most-recent-first rs_composite history (3 and 6
+    sessions respectively, from ONE `get_recent_rs_batch(..., days=6)` call — hist3 is
+    hist6[:3]). Mirrors the ENGINE'S OWN exact prune-candidacy gate before judging rising,
+    so a ticker the engine was never going to prune in the first place (e.g. RS 40, never a
+    candidate at all) can't false-fire here for leaving for some OTHER reason (validation,
+    reassignment already excluded upstream):
+      rs_now < HARD(25)          -> a prune candidate every day
+      HARD <= rs_now < SOFT(35)  -> a candidate ONLY if the last 3 sessions were ALL < SOFT
+      rs_now >= SOFT             -> never a prune candidate — not this check's concern
+    Returns a flag dict only when it WAS a prune candidate AND `_rs_rising_mirror(hist6)` is
+    True. Returns None otherwise (falling exits — the hold correctly still prunes those).
+    """
+    if rs_now is None:
+        return None
+    if rs_now < _PRUNE_RS_HARD_MIRROR:
+        candidate = True
+    elif rs_now < _PRUNE_RS_SOFT_MIRROR:
+        candidate = len(hist3) >= 3 and all(v < _PRUNE_RS_SOFT_MIRROR for v in hist3)
+    else:
+        candidate = False
+    if not candidate or not _rs_rising_mirror(hist6):
+        return None
+    return {"rs_now": rs_now, "hist": list(hist6)}
+
+
+async def _check_theme_retirements(conn, today) -> dict[str, Any]:
+    """Signature A. Isolated by the caller's try/except — a bad query here must not blind
+    signature B. Returns {"flags": [...], "errors": [...]}."""
+    out: dict[str, Any] = {"flags": [], "errors": []}
+    start = today - timedelta(days=1)
+    names = await get_theme_retired_candidate_names(conn, start, today)
+    if not names:
+        return out
+    history_by_name = await get_theme_history_window(conn, names, today, lookback_days=7)
+    for name in names:
+        verdict = _evaluate_theme_retirement(today, history_by_name.get(name, []))
+        if verdict is not None:
+            out["flags"].append({"name": name, **verdict})
+    return out
+
+
+async def _check_pruned_while_rising(conn, today, prior_date) -> dict[str, Any]:
+    """Signature B. Isolated by the caller's try/except — a bad query here must not blind
+    signature A. Returns {"flags": [...], "errors": [...]}."""
+    out: dict[str, Any] = {"flags": [], "errors": []}
+    departures = await get_theme_member_departures(conn, today, prior_date)
+    if not departures:
+        return out
+
+    by_theme: dict[str, list[dict]] = {}
+    for d in departures:
+        by_theme.setdefault(d["name"], []).append(d)
+
+    candidates: list[dict] = []
+    for name, rows in by_theme.items():
+        # Mass-eviction is judged on ALL leavers (moved + not-moved) — a structural split
+        # (e.g. one 18-member theme dividing into two child themes, 16 moved + 1 straggler)
+        # must be excluded WHOLESALE, before the moved-filter would otherwise shrink it down
+        # to "1 of 18", hiding the split and scoring the straggler as an ordinary prune day.
+        prior_member_count = rows[0]["prior_member_count"]
+        if _is_mass_eviction(len(rows), prior_member_count):
+            continue
+        gone = [r for r in rows if not r["moved_today"]]
+        if not gone:
+            continue
+        candidates.extend({"name": name, "ticker": r["ticker"]} for r in gone)
+
+    if not candidates:
+        return out
+
+    tickers = sorted({c["ticker"] for c in candidates})
+    # rs_now must be the ticker's EXACT-today value, not "most recent available" —
+    # get_recent_rs_batch silently falls back to a prior date for a ticker absent from
+    # today's snapshot, which would misrepresent a stale value as current. A ticker with no
+    # row for `today` at all is exactly the engine's SEPARATE missing-data prune branch
+    # (theme_engine.py's `missing_rs_tickers`), which prunes on 5-day history and never
+    # consults `_rs_rising` — scoring it here would be a false analogy to what the engine did.
+    rs_today = await get_rs_on_date(conn, tickers, today)
+    rs_hist = await get_recent_rs_batch(tickers, today, days=6)
+    for c in candidates:
+        rs_now = rs_today.get(c["ticker"])
+        if rs_now is None:
+            continue  # not in today's RS snapshot — the engine's other prune path, not ours
+        hist6 = rs_hist.get(c["ticker"], [])
+        verdict = _evaluate_pruned_while_rising(rs_now, hist6[:3], hist6)
+        if verdict is not None:
+            out["flags"].append({**c, **verdict})
+    return out
+
+
+def _format_retirement_flag(f: dict[str, Any]) -> str:
+    # Plain text, no Markdown entities — this line lives INSIDE a ``` code block (below), where
+    # Telegram Legacy Markdown does not parse further formatting. Theme names are free text from
+    # Haiku (can contain &, -, digits, anything) — inline backticks/asterisks around a dynamic
+    # value is exactly the class of bug #148/#121 exist to prevent (unbalanced entities -> 400).
+    return (
+        f"RETIRED  {f['name']}: was Fading, rs_avg {f['prior_rs_avg']:.1f} "
+        f"on {f['prior_date'].isoformat()}, gone the next run"
+    )
+
+
+def _format_prune_flag(f: dict[str, Any]) -> str:
+    hist = ", ".join(f"{v:.0f}" for v in f["hist"])
+    return (
+        f"PRUNED   {f['ticker']} left {f['name']}: RS {f['rs_now']:.1f} while rising — "
+        f"last 6 sessions (newest→oldest): {hist}"
+    )
+
+
+async def run_theme_quality_check(conn=None) -> dict[str, Any]:
+    """Nightly THEME QUALITY check (#531, operator 2026-08-04) — the two signatures measured
+    and hand-verified above. Runs both signatures, each isolated so a bad query in one can't
+    blind the other; dedupes each against its own permanent history (the inert-sweep idiom,
+    failing OPEN); logs an audit row + sends ONE grouped Telegram only for NEW findings.
+
+    Returns a summary dict: dates used, per-signature flag counts (fresh only), errors.
+    """
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await run_theme_quality_check(acquired)
+
+    today = et_today()
+    summary: dict[str, Any] = {
+        "today": today.isoformat(),
+        "retired_while_healthy": [],
+        "pruned_while_rising": [],
+        "errors": [],
+    }
+
+    # ── Signature A ──────────────────────────────────────────────────────────────────────────
+    try:
+        a_result = await _check_theme_retirements(conn, today)
+        summary["retired_while_healthy"] = a_result["flags"]
+    except Exception as e:
+        logger.warning("theme_quality_check: retirement signature failed: %s", e)
+        summary["errors"].append({"signature": "retired_while_healthy", "error": str(e)})
+
+    # ── Signature B ──────────────────────────────────────────────────────────────────────────
+    try:
+        dates = await get_latest_two_theme_dates(conn)
+        if dates is None:
+            summary["errors"].append({"signature": "pruned_while_rising",
+                                       "error": "fewer than 2 distinct theme_date snapshots — skip"})
+        else:
+            latest_date, prior_date = dates
+            b_result = await _check_pruned_while_rising(conn, latest_date, prior_date)
+            summary["pruned_while_rising"] = b_result["flags"]
+    except Exception as e:
+        logger.warning("theme_quality_check: prune signature failed: %s", e)
+        summary["errors"].append({"signature": "pruned_while_rising", "error": str(e)})
+
+    # ── Dedupe (fails OPEN — a broken read costs a duplicate alert, never a missed one) ───────
+    async def _dedupe(flags: list[dict], event_type: str, key_fn) -> list[dict]:
+        try:
+            already = await get_theme_quality_alerted_targets(conn, event_type)
+        except Exception as e:
+            logger.warning("theme_quality_check: dedupe read failed for %s (will re-announce): %s",
+                           event_type, e)
+            already = set()
+        return [f for f in flags if key_fn(f) not in already]
+
+    fresh_retirements = await _dedupe(
+        summary["retired_while_healthy"], "theme_retired_while_healthy", lambda f: f["name"])
+    fresh_prunes = await _dedupe(
+        summary["pruned_while_rising"], "theme_member_pruned_while_rising",
+        lambda f: f"{f['ticker']}@{f['name']}")
+
+    for f in fresh_retirements:
+        await log_audit_event(
+            "theme_retired_while_healthy",
+            f"{f['name']}: retired while healthy (Fading rs_avg={f['prior_rs_avg']:.1f} "
+            f"on {f['prior_date'].isoformat()})",
+            detail=str(f),
+        )
+    for f in fresh_prunes:
+        await log_audit_event(
+            "theme_member_pruned_while_rising",
+            f"{f['ticker']}@{f['name']}: pruned while RS rising (RS={f['rs_now']:.1f})",
+            detail=str(f),
+        )
+
+    summary["retired_while_healthy"] = fresh_retirements
+    summary["pruned_while_rising"] = fresh_prunes
+
+    # ── Alert ────────────────────────────────────────────────────────────────────────────────
+    if fresh_retirements or fresh_prunes:
+        # Dynamic free-text (theme names, tickers) goes INSIDE a ``` code block — the same
+        # discipline as run_inert_sweep_check / run_row_count_drift_sweep — so Legacy Markdown
+        # never attempts to parse entities out of Haiku-generated names (verify-operator-facing-
+        # surface: an unbalanced `_`/`*` in a name must not be able to lose the whole alert).
+        lines = ["🩺 THEME QUALITY", ""]
+        if fresh_retirements:
+            lines.append("Retired while healthy (#368/F2 regression guard):")
+            lines.append("```")
+            lines.extend(_format_retirement_flag(f) for f in fresh_retirements)
+            lines.append("```")
+        if fresh_prunes:
+            lines.append("Member pruned while rising (#368/F3 regression guard):")
+            lines.append("```")
+            lines.extend(_format_prune_flag(f) for f in fresh_prunes)
+            lines.append("```")
+        lines.append("")
+        lines.append("These are the two theme-lifecycle bugs #368 fixed (F2/F3) — this is the "
+                     "nightly guard that the fixes keep working (#531).")
+        body = "\n".join(lines)
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(body)
+        except Exception as e:
+            logger.warning("theme_quality_check: telegram send failed: %s", e)
+            summary["errors"].append({"telegram": str(e)})
+    else:
+        note = (
+            f"clean: {len(summary.get('retired_while_healthy', []))} retirement flag(s), "
+            f"{len(summary.get('pruned_while_rising', []))} prune flag(s)"
+            + (f"; {len(summary['errors'])} error(s)" if summary["errors"] else "")
+        )
+        await log_audit_event("theme_quality_clean", note, detail=str(summary))
+
+    if summary["errors"]:
+        logger.warning("theme_quality_check completed with %d error(s): %s",
+                       len(summary["errors"]), summary["errors"])
+
+    return summary
 

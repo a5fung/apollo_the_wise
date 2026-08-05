@@ -3128,6 +3128,25 @@ async def _post_nightly_audit_job():
         logger.error(f"Inert-sweep check failed: {e}", exc_info=True)
         await notify_job_failure("inert_sweep_check", str(e))
 
+    # THEME QUALITY check (#531, operator 2026-08-04: "quality checks regularly to make sure our
+    # themes are solid without me needing to check it and review manually"). Two signatures,
+    # measured against 97 days of real prod mi_themes before shipping: (A) a theme retired while
+    # its last-known state was healthy (the #368/F2 regression guard) and (B) a member pruned
+    # while its RS was rising (the #368/F3 regression guard). Dedupe + Telegram + audit rows all
+    # happen inside run_theme_quality_check (mirrors the null/job-liveness sweeps' internal
+    # persistence, same idiom as run_inert_sweep_check's dedupe: mi_audit_log IS the state, no new
+    # table, fails OPEN). Own try/except — a health guard that dies silently is the failure it
+    # exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_theme_quality_check
+        tq = await run_theme_quality_check()
+        logger.info(
+            f"Theme quality check: {len(tq['retired_while_healthy'])} retirement flag(s), "
+            f"{len(tq['pruned_while_rising'])} prune flag(s), {len(tq['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Theme quality check failed: {e}", exc_info=True)
+        await notify_job_failure("theme_quality_check", str(e))
+
     try:
         from agents.market_intelligence.health_checks import run_job_liveness_sweep
         jl = await run_job_liveness_sweep()

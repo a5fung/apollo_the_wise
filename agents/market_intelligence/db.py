@@ -11172,6 +11172,163 @@ async def get_weekly_theme_churn(days: int = 7) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ── Nightly THEME QUALITY health check (2026-08-04, operator: "quality checks
+# regularly to make sure our themes are solid without me needing to check it
+# manually") — read-only queries backing agents/market_intelligence/health_checks.py
+# ::run_theme_quality_check. See that module for the two signatures + the
+# measurement that dropped fragmentation/churn as too noisy to ship.
+
+async def get_latest_two_theme_dates(conn=None) -> "tuple | None":
+    """The two most recent DISTINCT mi_themes.theme_date values, latest first.
+    None if fewer than 2 distinct dates exist (not enough history to diff —
+    the caller's signal to skip, not to flag)."""
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await get_latest_two_theme_dates(acquired)
+    rows = await conn.fetch(
+        "SELECT DISTINCT theme_date FROM mi_themes ORDER BY theme_date DESC LIMIT 2"
+    )
+    if len(rows) < 2:
+        return None
+    return (rows[0]["theme_date"], rows[1]["theme_date"])
+
+
+async def get_theme_retired_candidate_names(
+    conn, start_date: "date", end_date: "date"
+) -> list[str]:
+    """Distinct theme names with a 'theme_retired' mi_audit_log event whose ET
+    date falls in [start_date, end_date] inclusive — the candidate pool for the
+    retired-while-healthy check. `log_audit_event("theme_retired", f"Retired:
+    {name}", ...)` (theme_engine.py) is the ONLY writer of this event_type;
+    'Retired: ' is a fixed 9-char prefix, hence the substring(10) split.
+
+    A short WINDOW rather than exact-today: the theme engine (17:00 ET) and
+    this check's host (17:30 ET) normally leave 30 minutes of margin, but if
+    the engine runs late and its retirement event lands after 17:30, an
+    exact-today query would miss it FOREVER (the next night's window is
+    tomorrow's date, not today's). The caller's permanent per-name dedupe
+    (mirroring run_inert_sweep_check) makes a wider window free — it can only
+    widen the catch, never double-fire.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT substring(summary from 10) AS name
+        FROM mi_audit_log
+        WHERE event_type = 'theme_retired'
+          AND (created_at AT TIME ZONE 'America/New_York')::date BETWEEN $1 AND $2
+        """,
+        start_date, end_date,
+    )
+    return [r["name"] for r in rows]
+
+
+async def get_theme_history_window(
+    conn, names: list[str], asof: "date", lookback_days: int = 7
+) -> dict[str, list[dict]]:
+    """mi_themes rows for `names` with theme_date in [asof-lookback_days, asof],
+    most-recent-first per name. Bounded (not 'most recent row ever') so a stale
+    healthy row from weeks back — a name reused after a long gap, see #531's
+    measurement notes — can't masquerade as "just retired while healthy";
+    `stale_after_days=7` mirrors `get_active_themes`'s own liveness horizon,
+    the engine's own definition of "still the same lifecycle."
+    """
+    if not names:
+        return {}
+    rows = await conn.fetch(
+        """
+        SELECT name, theme_date, stage, rs_avg, score
+        FROM mi_themes
+        WHERE name = ANY($1::text[])
+          AND theme_date >= $2::date - ($3 || ' days')::interval
+          AND theme_date <= $2::date
+        ORDER BY name, theme_date DESC
+        """,
+        names, asof, str(lookback_days),
+    )
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["name"], []).append(dict(r))
+    return out
+
+
+async def get_theme_member_departures(conn, today: "date", prior_date: "date") -> list[dict]:
+    """Tickers present in a theme's PRIOR snapshot but absent from its TODAY
+    snapshot, for themes alive (stage != 'Retired') on BOTH dates — a theme
+    that vanished entirely is signature A's (retired-while-healthy) territory,
+    not a member departure. One row per (name, ticker) departure, carrying the
+    theme's prior member count (the #214 mass-eviction gate needs it) and
+    whether the ticker is present in ANY theme today (moved, not pruned — a
+    reassignment or `_enforce_max_themes_per_stock` drop is not a prune and
+    must not be scored against the rising-hold).
+
+    Same unnest+LAG shape as `get_weekly_theme_churn`, narrowed to exactly the
+    two most-recent snapshots (that function's rolling week is the wrong grain
+    for a nightly regression check keyed on "did last night's transition prune
+    a rising member").
+    """
+    rows = await conn.fetch(
+        """
+        WITH cur AS (
+            SELECT name, stage, tickers FROM mi_themes WHERE theme_date = $1
+        ),
+        prev AS (
+            SELECT name, stage, tickers FROM mi_themes WHERE theme_date = $2
+        ),
+        continuing AS (
+            SELECT p.name, p.tickers AS prior_tickers, c.tickers AS today_tickers
+            FROM prev p JOIN cur c ON c.name = p.name
+            WHERE p.stage != 'Retired' AND c.stage != 'Retired'
+        ),
+        today_universe AS (
+            SELECT DISTINCT unnest(tickers) AS ticker FROM cur WHERE stage != 'Retired'
+        )
+        SELECT co.name,
+               g.ticker,
+               COALESCE(array_length(co.prior_tickers, 1), 0) AS prior_member_count,
+               EXISTS (SELECT 1 FROM today_universe u WHERE u.ticker = g.ticker) AS moved_today
+        FROM continuing co
+        CROSS JOIN LATERAL unnest(co.prior_tickers) AS g(ticker)
+        WHERE NOT (g.ticker = ANY(co.today_tickers))
+        """,
+        today, prior_date,
+    )
+    return [dict(r) for r in rows]
+
+
+async def get_rs_on_date(conn, tickers: list[str], d: "date") -> dict[str, float]:
+    """Exact rs_composite for `tickers` on EXACTLY `d` — no fallback to a nearby prior date.
+    Deliberately narrower than `get_recent_rs_batch` (which silently walks back to the nearest
+    PRIOR date for a ticker missing today's row — right for a trajectory read, wrong for "is
+    this ticker even in today's RS snapshot"). A ticker absent from the return dict is not in
+    today's snapshot at all — theme_engine.py's `missing_rs_tickers` branch, which prunes on
+    plain history and never consults `_rs_rising`; the prune-quality check must not score a
+    stale value against that ticker as if it were current."""
+    if not tickers:
+        return {}
+    rows = await conn.fetch(
+        """
+        SELECT ticker, rs_composite FROM mi_stock_scores
+        WHERE ticker = ANY($1::text[]) AND score_date = $2 AND rs_composite IS NOT NULL
+        """,
+        tickers, d,
+    )
+    return {r["ticker"]: float(r["rs_composite"]) for r in rows}
+
+
+async def get_theme_quality_alerted_targets(conn, event_type: str) -> set[str]:
+    """Dedup set for a theme-quality finding kind — mirrors run_inert_sweep_check's
+    idiom exactly (`SELECT DISTINCT split_part(summary, ':', 1) ...`). The audit
+    log IS the state; no new table. Caller must fail OPEN on a read error (a
+    duplicate alert is acceptable, a permanently-missed one is not)."""
+    rows = await conn.fetch(
+        "SELECT DISTINCT split_part(summary, ':', 1) AS t FROM mi_audit_log "
+        "WHERE event_type = $1",
+        event_type,
+    )
+    return {r["t"] for r in rows}
+
+
 async def get_ticker_breadth_above_sma20(
     tickers: list[str], trade_date: "str | date"
 ) -> float | None:

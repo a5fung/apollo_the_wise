@@ -12,6 +12,7 @@
 - **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429. **Thesis-aware since #368 (2026-08-04)**: all three callers (rescore, #266 birth validation, Arm-B post-merge) pass the theme's own description; the prompt shows it and instructs judging against the THESIS, not the name alone — a member whose CURRENT driver matches the thesis stays even when its legacy industry label differs (the 7/27 WULF/CORZ eviction class). `_is_garbage` theses are omitted.
 - **Member pruning (#368, 2026-08-04 — rising-recovery hold)**: hard prune (RS<25, 1 day) and soft prune (RS<35, 3 consecutive days) both SKIP a member whose RS is RISING over the last `PRUNE_HOLD_WINDOW_SESSIONS` (6) sessions (newest > oldest, ≥4 points; short history ⇒ prune as before). Mirrors the birth gate's derived level-OR-rising cell on the retention surface; changelog type `ticker_prune_held_rising`. Backtest: 77% of rising-held names recovered to RS≥50 in 10 sessions vs 31% of the falling control (N=13 scored / 25 held, `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md`).
 - **Retire streak counts WEAK-Fading rows only (#368, 2026-08-04)**: `_count_consecutive_fading` counts Fading rows with `rs_avg IS NULL` (the weak branch's); a Fading row WITH rs_avg (score-delta fade / hysteresis-held recovery — the strong floor passed that day) BREAKS the 5-day retire streak. Evidence: the crypto-miner lineage re-qualified healthy 8/03 (elite pair, rs_avg 84.9) yet retired 8/04 off the held row; 14 retirements in Jun–Aug carried a healthy-held row in their terminal streak ('AI Memory & Storage': six of its last eight days).
+- **Nightly THEME QUALITY check (#531, 2026-08-04, `health_checks.run_theme_quality_check`, wired into `_post_nightly_audit_job`)**: the regression guard that keeps F2/F3 above working — a theme retiring while its last-known state was healthy (Fading, `rs_avg` populated, then a silent vanish — no explicit `mi_themes` row) or a member pruned while its RS was rising over the F3 hold window. Measured against 97 real trading days before shipping: 6/165 retirement incidents and 25/164 prune-shaped exits, both hand-verified real (79% of rising-held exits recovered to RS≥50 in 10 sessions vs 36% falling control). Deliberately does NOT fire on the ADR-0025 Arm-A 2-member dissolve shape or a Pass1/1.5 engine-drop retirement (different mechanisms, F2 doesn't touch them — the latter is a named, measured gap: 4 occurrences in the window, e.g. 'AI Memory & Storage' 07-13, filed as a future candidate). Fragmentation and churn signatures were ALSO measured (251 firings/122 pairs; 42/301 short-lived names) and DROPPED as too noisy / needing neighbourhood-clustering work not yet built — full measurement + both-ways proof in `docs/analysis/531_theme_quality_measurement_2026-08-04.md`. Dedupe (audit-log-based, permanent per finding, fails open) mirrors `run_inert_sweep_check`'s idiom.
 - **⛔ Arm-B Stage-A family `compute_infra` (#368) — BUILT, GATED, NOT SHIPPED (2026-08-04)**: the crypto-mining and AI-datacenter framings of one physical asset base never share a stem family, and the majority-sector fallback cannot form for converting miners (FMP splits them Financial Services / Technology / blank) — so **ZERO crypto pairs have EVER been proposed for adjudication** (verified: 0 of 99 merge events mention crypto or bitcoin, while insurance and fintech pairs ran nightly). The family that fixes that was written and then HELD, because its own pre-deploy gate ran the two frozen historical pairs through the REAL Stage-B judge and neither consolidates: **P1 (07-21) → DISTINCT** (the gate's stated hold condition) and **P2 (08-04) → PARENT_CHILD**, which on this file's own operator-signed terms is not a consolidation — the v2 prompt ruling (7/12, rulings-pack R3) exists precisely because v1 *"answered PARENT_CHILD to pure slices, which keeps both themes and leaves the fragmentation (#274's whole purpose) unfixed"*. There is also no persistence path for a PARENT_CHILD verdict today: `parent_theme` + `sub_theme_parents` are ADR 0032 Phase 2 = **#471, not built**. So the change is correct and premature. Gated on #471 Phase 2, tracked as #529. The adjudicator's real behaviour here is itself the finding: it consolidates only when the theme's THESIS TEXT names the conversion (P2's thesis said *"not bitcoin price"*; P1's read as a crypto theme with one lease headline) — which makes thesis quality, not stem families, the live lever.
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — a bad-description removal once permanently banned TSEM from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
@@ -225,6 +226,43 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 → `set_theme_birth_gate_mode('on')`.
 
 ## Change log
+
+### 2026-08-04 (b) — #531 nightly THEME QUALITY check (two regression guards, observability-only)
+
+- **Trigger**: operator, verbatim: *"i'm really asking for quality checks regularly to make sure
+  our themes are solid without me needing to check it and review manually."*
+- **What shipped**: `health_checks.run_theme_quality_check`, wired into `_post_nightly_audit_job`
+  (17:30 ET) the same way `run_inert_sweep_check` is. Two signatures, each isolated (one bad query
+  can't blind the other): (A) a theme retired while its last-known state was healthy (Fading,
+  `rs_avg` populated, then silently vanished — the #368/F2 regression guard); (B) a member pruned
+  from a still-alive theme while its RS was rising over F3's hold window (the #368/F3 regression
+  guard). Two other candidates (fragmentation, churn) were measured and DROPPED — see below.
+- **Evidence** (CHANGE_PROCESS — this is observability, not a strategy/detection-criterion change,
+  so no backtest-before-deploy gate applies, but the same measurement discipline was used anyway):
+  97 real trading days of prod `mi_themes` + RS history, captured once via read-only ssh. Signature
+  A: 6 of 165 distinct retirement incidents fired, every one hand-verified real (129 of the 165 were
+  a DIFFERENT legitimate mechanism — ADR-0025 Arm-A 2-member dissolve / engine-drop consolidation —
+  and correctly excluded). Signature B: 25 of 164 prune-shaped exits fired; of the scored ones, 79%
+  recovered to RS≥50 in 10 sessions vs 36% of the falling control — the spread, not the raw count,
+  is what proves these are real defects. Full write-up + both-ways proof + live dry run against
+  real prod data (2026-08-04): `docs/analysis/531_theme_quality_measurement_2026-08-04.md`.
+- **Dropped**: fragmentation (251 day-level firings / 122 distinct theme-name pairs — the real
+  fragmentation signature is F1's territory, "zero pairs ever proposed," not "themes overlap";
+  overlap is Arm-B's normal input) and churn (42/301 short-lived names, mostly normal Nascent
+  mortality — the operator's "repeatedly, in one neighbourhood" qualifier needs ticker-overlap
+  clustering not yet built). Both reasoned through in the measurement doc.
+- **No-money / observability-only**: reads `mi_themes` + `mi_audit_log`, writes only audit rows +
+  Telegram. Nothing under `broker/`, no detection-criterion or safeguard changed.
+- **Dedupe**: `db.get_theme_quality_alerted_targets`, mirrors `run_inert_sweep_check`'s idiom
+  exactly (`mi_audit_log` IS the state, `SELECT DISTINCT split_part(summary, ':', 1)`, fails OPEN).
+  Each finding is a discrete past event (a specific retirement, a specific prune) — dedupe is
+  permanent once announced, no resolve/re-open path (unlike the null/job-liveness sweeps' reconcile).
+- **Reversion-flag**: NEW (first check of this class). Revert = remove the `run_theme_quality_check`
+  call site in `_post_nightly_audit_job`.
+- **Status**: built + tested (26 new tests, suite 4379 green), NOT deployed, NOT committed.
+- **Caveat for verify-live**: #368's F2/F3 are committed locally but not yet deployed to prod — the
+  first live run of this check WILL alert on the 2026-08-04 Bitcoin Mining retirement (a real,
+  correct alert on a defect the fix hasn't reached production for yet, not a broken new guard).
 
 ### 2026-08-04 — #368 crypto→AI-conversion consolidation (four fixes, live-on-deploy)
 
