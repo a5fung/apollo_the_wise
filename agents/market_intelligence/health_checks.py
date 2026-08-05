@@ -69,6 +69,9 @@ from agents.market_intelligence.db import (
     get_latest_two_theme_dates, get_theme_retired_candidate_names,
     get_theme_history_window, get_theme_member_departures,
     get_theme_quality_alerted_targets, get_recent_rs_batch, get_rs_on_date,
+    get_reactivation_sessions, get_high_ep_ticker_days,
+    get_ticker_ecosystem_membership, get_mapped_theme_stages_before,
+    get_reactivation_alerted_ecosystems, persist_reactivation_seed,
 )
 from shared.dates import et_today  # canonical ET-today (tz-bug-class centralization, /simplify 6/25)
 
@@ -1739,6 +1742,289 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
     if summary["errors"]:
         logger.warning("theme_quality_check completed with %d error(s): %s",
                        len(summary["errors"]), summary["errors"])
+
+    return summary
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# #534 D3(b) — ECOSYSTEM REACTIVATION detector (2026-08-05, design doc
+# docs/analysis/534_theme_universe_expansion_2026-08-05.md §5b). Deterministic, $0, no LLM.
+#
+# THE SIGNAL: a dormant ecosystem "coming back alive" (operator, 2026-08-04, on the duplicate
+# defense themes: "multiple defense stocks moving and having EP around the same time… this group
+# is coming back alive after a dormant period"). EP alerts are the only signal in the system that
+# sees a wake-up on day one — RS is a 1/3/6-month lookback, so a dormant group has low RS by
+# construction, and on 08-04 the signal EXISTED in prod only as five duplicate births nobody
+# aggregated. This detector is that aggregation: nightly, map recent HIGH EP tickers to their
+# ecosystems (mi_theme_ecosystems lineage memory), and fire when a DORMANT ecosystem collects a
+# cluster against a quiet trailing baseline. Observability + a discovery seed — NEVER a theme
+# birth (the source is allowlist-excluded from auto-promote; the birth gate owns promotion).
+#
+# THRESHOLDS — DERIVED, NOT PICKED (replayed over 66 real prod sessions 2026-05-06..2026-08-05,
+# 324 HIGH ticker-day alerts; capture + scripts in the #534 build report):
+#
+#   WINDOW = 5 sessions, CLUSTER >= 3 distinct tickers. The (session, ecosystem) cluster-size
+#   distribution over the window: size-1 = 104 pairs, size-2 = 35, size-3 = 11, size-4 = 4
+#   (dormant-ecosystem subset: 48 / 15 / 3 / 2). K=3 sits at the elbow: pairs are ~10× more
+#   common than triples and are ALREADY other machinery's territory (Lane-2's 2-member same-day
+#   anchor; the birth gate's two-sighting arm). Hand-checked what K=2 would admit — 4 extra
+#   incidents: DDOG+FTNT (unrelated May earnings gaps), QBTS+RGTI (a pair, not a group),
+#   AEHR+TSEM (unconnected semi stories), HUT+IREN (the July miner wake-up — real, but the
+#   Lane-2 v2 registry's own acceptance case, 2-member-shaped). K=3 keeps only group-scale.
+#
+#   BASELINE = 15 prior sessions, QUIET = <= 1 distinct mapped ticker. Across the whole replay
+#   only TWO dormant-ecosystem clusters >= 3 exist, and the baseline separates them exactly:
+#   E-DEF 08-04/08-05 (baseline 0 — fires, the real wake-up) vs E-AISEMI 07-31..08-05
+#   (ARM+LRCX+SIMO, all reporting EARNINGS the same night 07-30, baseline 2 = AEHR+TSEM —
+#   correctly suppressed). Q=2 would admit the semis earnings night; B=10 shortens the memory
+#   below AEHR/TSEM and admits it too. THIS is the §5 confounder proof: the dormancy + quiet-
+#   baseline preconditions are what separate a wake-up from a broad earnings week — the late-July
+#   "Technology cluster of 14" fired NOTHING (its names map to LIVE ecosystems — E-AISEMI,
+#   E-AIINFRA, E-SAAS, all with non-Fading themes — or map nowhere, having no theme lineage).
+#
+#   DORMANCY is judged at the WINDOW-START session S0 (board strictly before S0, 7-day liveness
+#   horizon mirroring get_active_themes(stale_after_days=7)): dormant = no mapped live theme, or
+#   every one Fading. Anchored at S0, not tonight, because births DURING the window are the
+#   engine REACTING to the same burst (all five 08-04 defense births land inside it) — judged at
+#   D they mask the exact signal this detector exists to surface. Measured: judging dormancy at
+#   D never fires at all on the fixture.
+#
+#   MAPPING: ticker -> e_codes via ANY non-Retired mi_themes membership row (theme_date <= D)
+#   whose name is in mi_theme_ecosystems — INCLUDING tonight's board (the reactive births are
+#   how new wake-up names reach the dormant lineage's e_code; strictly-prior membership maps 0
+#   of the 4 defense tickers — the dead themes never held them), else the taxonomy's exemplar
+#   tickers. SECTOR fallback was measured and REJECTED: a conservative 1:1 sector map added
+#   E-INDL@05-06 (9 unrelated industrials — CYRX cold-chain, GEO prisons, BLBD buses: a breadth
+#   week, not a group) and E-COMM@05-14 (NBIS+STUB+VSNT — three unrelated stories sharing a
+#   sector label). Sector grouping is exactly the "earnings surge is not a theme" trap.
+#
+# RESULT at the chosen shape: ONE incident in 66 sessions — E-DEF first-fire 2026-08-04,
+# 4 tickers {AMRC, PLTR, TSAT, VOYG}, baseline 0, board-at-S0 all-Fading. (KTOS, the 5th design
+# ticker, alerts 08-05 and joins via that night's board when the engine maps it.) An incident
+# self-terminates in ~W sessions (its own alerts walk into the baseline; the reactive births end
+# dormancy at S0 as the window advances) — measured 4 fire-days max, hence the RECENCY-bounded
+# dedupe (10 days > the longest incident, < a genuine re-awakening months later).
+#
+# WIRING: _post_nightly_audit_job (scheduler.py), 17:30 ET — after the 17:00 theme engine, so
+# tonight's board + ecosystem mappings exist when the detector reads them. Own try/except;
+# dedupe fails OPEN; a missing table/column is SKIPPED with a distinct reason, never a finding.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+
+REACT_WINDOW_SESSIONS = 5    # burst window (sessions present in the data, never calendar days)
+REACT_BASELINE_SESSIONS = 15  # trailing quiet-memory window (≈ the design's "prior three weeks")
+REACT_MIN_CLUSTER = 3        # distinct mapped alert tickers in-window to call it a group
+REACT_MAX_BASELINE = 1       # "quiet": at most 1 distinct mapped ticker in the baseline
+REACT_DEDUPE_DAYS = 10       # one announcement per incident (longest measured incident: 4 fire-days)
+_REACT_BOARD_LOOKBACK_DAYS = 7  # mirrors get_active_themes(stale_after_days=7) — pinned by test
+
+
+def _is_missing_db_object(e: Exception) -> bool:
+    """A missing table/column (asyncpg UndefinedTable/UndefinedColumn, or the textual
+    'does not exist' a raw driver error carries) — the caller SKIPS with a distinct
+    reason instead of reporting a finding or an error. Checked by NAME so this module
+    never imports asyncpg (lightweight-import discipline, see _is_trading_day)."""
+    return type(e).__name__ in ("UndefinedTableError", "UndefinedColumnError") \
+        or "does not exist" in str(e)
+
+
+def _evaluate_ecosystem_reactivation(
+    window_by_eco: dict[str, set],
+    baseline_by_eco: dict[str, set],
+    live_stages_by_eco: dict[str, dict[str, str]],
+    window_dates_by_eco: dict[str, set] | None = None,
+) -> list[dict[str, Any]]:
+    """Pure decision over pre-aggregated per-ecosystem sets: fire when a DORMANT
+    ecosystem (no live theme at window-start, or every one Fading) collected
+    >= REACT_MIN_CLUSTER distinct alert tickers in-window against a quiet trailing
+    baseline (<= REACT_MAX_BASELINE distinct mapped tickers). Returns flag dicts,
+    deterministically ordered by e_code. All three preconditions measured against
+    real prod incidents — see the #534 section header for what each one excludes."""
+    flags: list[dict[str, Any]] = []
+    for e_code in sorted(window_by_eco):
+        tickers = window_by_eco[e_code]
+        if len(tickers) < REACT_MIN_CLUSTER:
+            continue
+        baseline = baseline_by_eco.get(e_code, set())
+        if len(baseline) > REACT_MAX_BASELINE:
+            continue  # not quiet — the E-AISEMI earnings-night shape stays silent
+        stages = live_stages_by_eco.get(e_code, {})
+        if stages and any(st != "Fading" for st in stages.values()):
+            continue  # a live non-Fading theme at window start — not dormant
+        dates = (window_dates_by_eco or {}).get(e_code, set())
+        flags.append({
+            "e_code": e_code,
+            "tickers": sorted(tickers),
+            "n_window": len(tickers),
+            "n_days": len(dates),
+            "n_baseline": len(baseline),
+            "baseline_tickers": sorted(baseline),
+            "fading_themes": sorted(stages),
+        })
+    return flags
+
+
+def _format_reactivation_flag(f: dict[str, Any], display_name: str = "") -> list[str]:
+    """The operator lines for one firing — plain text inside a ``` code block (the
+    #148/#121 discipline: no Markdown entities around dynamic strings)."""
+    disp = f" ({display_name})" if display_name else ""
+    dorm = ("all themes Fading" if f.get("fading_themes") else "no live theme")
+    days = f["n_days"] if f.get("n_days") else "?"
+    return [
+        f"{f['e_code']}{disp} reactivating: {f['n_window']} EPs/{days}d, {dorm}",
+        f"  {' '.join(f['tickers'])} · baseline {f['n_baseline']} "
+        f"in prior {REACT_BASELINE_SESSIONS} sessions",
+    ]
+
+
+async def run_ecosystem_reactivation_check(conn=None) -> dict[str, Any]:
+    """Nightly ECOSYSTEM REACTIVATION detector (#534 D3(b)) — see the section header
+    for the derived thresholds and the both-ways measurement. Fires an operator line
+    + seeds a discovery candidate (source='ecosystem_reactivation', allowlist-excluded
+    from auto-promote — the birth gate owns whether anything becomes a theme).
+
+    Returns {today, sessions_used, flags (fresh only), skipped, errors}.
+    """
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await run_ecosystem_reactivation_check(acquired)
+
+    today = et_today()
+    summary: dict[str, Any] = {
+        "today": today.isoformat(), "sessions_used": 0,
+        "flags": [], "skipped": [], "errors": [],
+    }
+
+    need = REACT_WINDOW_SESSIONS + REACT_BASELINE_SESSIONS
+    try:
+        sessions = await get_reactivation_sessions(conn, today, need)
+        if len(sessions) < need:
+            summary["skipped"].append(
+                f"only {len(sessions)} sessions in the data (need {need}) — skip")
+            return summary
+        summary["sessions_used"] = len(sessions)
+        window_days = sessions[-REACT_WINDOW_SESSIONS:]
+        baseline_days = sessions[:-REACT_WINDOW_SESSIONS]
+        s0 = window_days[0]
+
+        alerts = await get_high_ep_ticker_days(conn, sessions[0], today)
+        tickers = sorted({a["ticker"] for a in alerts})
+        membership = await get_ticker_ecosystem_membership(conn, tickers, today)
+
+        # Exemplar fallback from the taxonomy (fail-safe loader: a broken YAML
+        # degrades to membership-only mapping, never raises).
+        exemplars: dict[str, str] = {}
+        display: dict[str, str] = {}
+        try:
+            from agents.market_intelligence.theme_ecosystems import get_ecosystems
+            for eco in get_ecosystems():
+                code = eco.get("e_code")
+                if not code:
+                    continue
+                display[code] = eco.get("name") or ""
+                for tk in (eco.get("exemplars") or []):
+                    exemplars[str(tk).upper()] = code
+        except Exception as e:
+            logger.warning("ecosystem_reactivation: taxonomy load failed — "
+                           "membership-only mapping: %s", e)
+
+        def _map(tk: str) -> list[str]:
+            ecos = membership.get(tk)
+            if ecos:
+                return ecos
+            return [exemplars[tk]] if tk in exemplars else []
+
+        window_set = set(window_days)
+        win_by_eco: dict[str, set] = {}
+        base_by_eco: dict[str, set] = {}
+        win_dates_by_eco: dict[str, set] = {}
+        for a in alerts:
+            for ec in _map(a["ticker"]):
+                if a["alert_date"] in window_set:
+                    win_by_eco.setdefault(ec, set()).add(a["ticker"])
+                    win_dates_by_eco.setdefault(ec, set()).add(a["alert_date"])
+                else:
+                    base_by_eco.setdefault(ec, set()).add(a["ticker"])
+
+        board_rows = await get_mapped_theme_stages_before(
+            conn, s0, lookback_days=_REACT_BOARD_LOOKBACK_DAYS)
+        live_stages: dict[str, dict[str, str]] = {}
+        for r in board_rows:
+            live_stages.setdefault(r["e_code"], {})[r["name"]] = r["stage"]
+
+        flags = _evaluate_ecosystem_reactivation(
+            win_by_eco, base_by_eco, live_stages, win_dates_by_eco)
+    except Exception as e:
+        if _is_missing_db_object(e):
+            summary["skipped"].append(f"missing table/column — skip: {e}")
+            logger.warning("ecosystem_reactivation: missing DB object — skipped: %s", e)
+        else:
+            logger.warning("ecosystem_reactivation: detection failed: %s", e)
+            summary["errors"].append({"stage": "detect", "error": str(e)})
+        return summary
+
+    # ── Dedupe (RECENCY-bounded, fails OPEN — a broken read costs a duplicate alert,
+    #    never a missed one) ─────────────────────────────────────────────────────────
+    try:
+        already = await get_reactivation_alerted_ecosystems(conn, days=REACT_DEDUPE_DAYS)
+    except Exception as e:
+        logger.warning("ecosystem_reactivation: dedupe read failed (will re-announce): %s", e)
+        already = set()
+    fresh = [f for f in flags if f["e_code"] not in already]
+    summary["flags"] = fresh
+
+    if not fresh:
+        await log_audit_event(
+            "ecosystem_reactivation_clean",
+            f"clean: {len(flags)} flag(s), {len(flags) - len(fresh)} deduped"
+            + (f"; {len(summary['skipped'])} skipped" if summary["skipped"] else ""),
+            detail=str(summary),
+        )
+        return summary
+
+    # ── Audit + discovery seed per fresh firing ───────────────────────────────────
+    for f in fresh:
+        await log_audit_event(
+            "ecosystem_reactivation",
+            f"{f['e_code']}: reactivating — {f['n_window']} EP tickers in "
+            f"{REACT_WINDOW_SESSIONS} sessions ({', '.join(f['tickers'])}), "
+            f"baseline {f['n_baseline']}, "
+            + ("all themes Fading" if f["fading_themes"] else "no live theme"),
+            detail=str(f),
+        )
+        try:
+            hist = f["fading_themes"]
+            thesis = (
+                f"Ecosystem reactivation signal ({today.isoformat()}): "
+                f"{f['n_window']} HIGH EP alerts in {REACT_WINDOW_SESSIONS} sessions "
+                f"({', '.join(f['tickers'])}) vs {f['n_baseline']} in the prior "
+                f"{REACT_BASELINE_SESSIONS}; "
+                + (f"dormant lineage at window start: {', '.join(hist)}."
+                   if hist else "no live theme at window start.")
+            )
+            await persist_reactivation_seed(today, f["e_code"], f["tickers"], thesis)
+        except Exception as e:
+            # The seed is the secondary output — its failure must not cost the alert.
+            logger.warning("ecosystem_reactivation: seed write failed for %s: %s",
+                           f["e_code"], e)
+            summary["errors"].append({"stage": "seed", "e_code": f["e_code"],
+                                      "error": str(e)})
+
+    # ── Alert (ONE grouped Telegram; dynamic text inside a code block) ────────────
+    lines = ["🌱 ECOSYSTEM REACTIVATION", "", "```"]
+    for f in fresh:
+        lines.extend(_format_reactivation_flag(f, display.get(f["e_code"], "")))
+    lines.append("```")
+    lines.append("")
+    lines.append("A dormant ecosystem is collecting fresh EP alerts — a discovery "
+                 "candidate was seeded with the cohort. The birth gate decides "
+                 "whether it becomes a theme; nothing is auto-promoted (#534).")
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.warning("ecosystem_reactivation: telegram send failed: %s", e)
+        summary["errors"].append({"telegram": str(e)})
 
     return summary
 

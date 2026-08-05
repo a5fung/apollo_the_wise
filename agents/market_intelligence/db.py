@@ -11338,6 +11338,147 @@ async def get_theme_quality_alerted_targets(conn, event_type: str) -> set[str]:
     return {r["t"] for r in rows}
 
 
+# ── Nightly ECOSYSTEM REACTIVATION detector (#534 D3(b), 2026-08-05) — read-only
+# queries + the seed writer backing health_checks.py::run_ecosystem_reactivation_check.
+# Design + threshold derivation: docs/analysis/534_theme_universe_expansion_2026-08-05.md
+# §5(b) and the measurement in health_checks.py's #534 section header.
+
+
+async def get_reactivation_sessions(conn, asof: "date", n: int) -> list["date"]:
+    """The last `n` TRADING SESSIONS present in the data, ascending — the union of
+    distinct mi_stock_scores.score_date (the nightly data spine) and distinct HIGH
+    mi_ep_alerts.alert_date (the intraday detector can have today's session before
+    the RS run lands). 'Sessions present in the data', never calendar arithmetic —
+    holidays simply aren't rows. Both are DATE columns written in ET by their
+    producers (et_today discipline), so no AT TIME ZONE conversion applies here."""
+    rows = await conn.fetch(
+        """
+        SELECT d FROM (
+            SELECT DISTINCT score_date AS d FROM mi_stock_scores WHERE score_date <= $1
+            UNION
+            SELECT DISTINCT alert_date FROM mi_ep_alerts
+            WHERE alert_date <= $1 AND score_tier = 'HIGH'
+        ) u ORDER BY d DESC LIMIT $2
+        """,
+        asof, n,
+    )
+    return sorted(r["d"] for r in rows)
+
+
+async def get_high_ep_ticker_days(conn, start: "date", end: "date") -> list[dict]:
+    """Distinct (alert_date, ticker) HIGH EP alerts in [start, end] inclusive —
+    the detector's raw signal. Ticker-day deduped (the scan re-fires intraday);
+    HIGH only, matching the §5 measurement (73 HIGH/60d) — MODERATE is briefing
+    material, not a wake-up vote."""
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT alert_date, ticker FROM mi_ep_alerts
+        WHERE score_tier = 'HIGH' AND alert_date BETWEEN $1 AND $2
+        """,
+        start, end,
+    )
+    return [dict(r) for r in rows]
+
+
+async def get_ticker_ecosystem_membership(
+    conn, tickers: list[str], asof: "date"
+) -> dict[str, list[str]]:
+    """ticker -> [e_code, ...]: every ecosystem whose MAPPED theme lineage has ever
+    held the ticker (any non-Retired mi_themes row with theme_date <= asof whose
+    name is in mi_theme_ecosystems). Includes TONIGHT's board deliberately — the
+    engine's same-night reactive births (the five 08-04 defense duplicates) are how
+    a NEW wake-up ticker gets connected to the dormant lineage's e_code; the dead
+    themes by construction never held the new names (measured: strictly-prior
+    membership maps 0 of the 4 defense fixture tickers). E-UNASSIGNED excluded —
+    it is a triage lane, not an ecosystem."""
+    if not tickers:
+        return {}
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT g.ticker, e.e_code
+        FROM mi_themes t
+        JOIN mi_theme_ecosystems e ON e.theme_name = t.name
+        CROSS JOIN LATERAL unnest(t.tickers) AS g(ticker)
+        WHERE t.stage != 'Retired'
+          AND t.theme_date <= $2
+          AND e.e_code != 'E-UNASSIGNED'
+          AND g.ticker = ANY($1::text[])
+        """,
+        tickers, asof,
+    )
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        out.setdefault(r["ticker"], []).append(r["e_code"])
+    return out
+
+
+async def get_mapped_theme_stages_before(
+    conn, cutoff: "date", lookback_days: int = 7
+) -> list[dict]:
+    """The ecosystem board STRICTLY BEFORE `cutoff`: latest stage per mapped theme
+    name with theme_date in [cutoff - lookback_days, cutoff), non-Retired survivors
+    only. `lookback_days=7` mirrors get_active_themes(stale_after_days=7) — the
+    engine's own liveness horizon. The Retired filter sits OUTSIDE the latest-row
+    subquery so an older non-Retired row can never resurrect a name whose latest
+    row is Retired. Returns [{e_code, name, stage}]."""
+    rows = await conn.fetch(
+        """
+        SELECT e.e_code, s.name, s.stage FROM (
+            SELECT DISTINCT ON (name) name, stage
+            FROM mi_themes
+            WHERE theme_date >= $1::date - ($2 || ' days')::interval
+              AND theme_date < $1::date
+            ORDER BY name, theme_date DESC
+        ) s
+        JOIN mi_theme_ecosystems e ON e.theme_name = s.name
+        WHERE s.stage != 'Retired' AND e.e_code != 'E-UNASSIGNED'
+        """,
+        cutoff, str(lookback_days),
+    )
+    return [dict(r) for r in rows]
+
+
+async def get_reactivation_alerted_ecosystems(conn, days: int = 10) -> set[str]:
+    """Dedup set: e_codes with an 'ecosystem_reactivation' audit event in the last
+    `days` days (summary is 'E-XXX: ...', hence the split_part — the inert-sweep
+    idiom). RECENCY-BOUNDED, unlike the theme-quality dedupe's forever-set: a
+    reactivation is a recurring condition (the same ecosystem can legitimately wake
+    again months later), while ONE incident fires for at most ~W sessions before
+    its own alerts walk into the trailing baseline and self-terminate it (measured:
+    the defense incident sustains 4 fire-days). TIMESTAMPTZ arithmetic (NOW() -
+    interval), never a bare ::date cast. Caller must fail OPEN on a read error."""
+    rows = await conn.fetch(
+        "SELECT DISTINCT split_part(summary, ':', 1) AS t FROM mi_audit_log "
+        "WHERE event_type = 'ecosystem_reactivation' "
+        "  AND created_at >= NOW() - ($1 || ' days')::interval",
+        str(days),
+    )
+    return {r["t"] for r in rows}
+
+
+async def persist_reactivation_seed(
+    run_date: "str | date", e_code: str, tickers: list[str], thesis: "str | None",
+) -> None:
+    """Write ONE reactivation discovery seed to mi_theme_candidates_shadow under
+    source='ecosystem_reactivation' (name 'Reactivation: <E-CODE>', unique per
+    (run_date, name) by construction). Goes through _upsert_theme_candidate_shadow's
+    source-guarded conflict path like every sibling lane writer — it can never
+    clobber or hijack another lane's rows.
+
+    ⚠ THE SAFETY WALL, BY CONSTRUCTION (#469 allowlist): 'ecosystem_reactivation'
+    is deliberately NOT in AUTO_PROMOTE_THEME_SOURCES (it can never auto-promote
+    into live mi_themes) and NOT in get_narrative_theme_candidates' source list
+    (it never enters the judge's active_narratives context). Operator surfaces see
+    it via get_shadow_theme_candidates(include_probe=True) → /themes lookup +
+    /promotetheme — the birth gate + operator own whether it becomes a theme.
+    Pinned by tests/test_ecosystem_reactivation.py."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _upsert_theme_candidate_shadow(
+            conn, _to_date(run_date), f"Reactivation: {e_code}",
+            tickers, thesis, "ecosystem_reactivation")
+
+
 async def get_ticker_breadth_above_sma20(
     tickers: list[str], trade_date: "str | date"
 ) -> float | None:

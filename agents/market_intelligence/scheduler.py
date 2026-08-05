@@ -3147,6 +3147,29 @@ async def _post_nightly_audit_job():
         logger.error(f"Theme quality check failed: {e}", exc_info=True)
         await notify_job_failure("theme_quality_check", str(e))
 
+    # ECOSYSTEM REACTIVATION detector (#534 D3(b), 2026-08-05 — design §5b of
+    # docs/analysis/534_theme_universe_expansion_2026-08-05.md): a DORMANT ecosystem (no live
+    # theme / all-Fading at the alert window's start) collecting >=3 distinct HIGH EP tickers
+    # within 5 sessions against a quiet 15-session baseline — the deterministic $0 aggregation
+    # of the wake-up that prod expressed on 08-04 as five duplicate defense births nobody
+    # aggregated. Thresholds derived from a 66-session replay (health_checks.py #534 header).
+    # Output: operator line + a discovery seed (source='ecosystem_reactivation', allowlist-
+    # excluded from auto-promote — the birth gate owns promotion; NEVER births a theme itself).
+    # Runs HERE (17:30 ET) deliberately: after the 17:00 theme engine, so tonight's board and
+    # its ecosystem mappings exist when the detector reads them. Dedupe/audit/Telegram live
+    # inside run_ecosystem_reactivation_check (mi_audit_log IS the state, fails OPEN). Own
+    # try/except — a health guard that dies silently is the failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_ecosystem_reactivation_check
+        er = await run_ecosystem_reactivation_check()
+        logger.info(
+            f"Ecosystem reactivation check: {len(er['flags'])} firing(s), "
+            f"{len(er['skipped'])} skipped, {len(er['errors'])} error(s) "
+            f"over {er['sessions_used']} sessions")
+    except Exception as e:
+        logger.error(f"Ecosystem reactivation check failed: {e}", exc_info=True)
+        await notify_job_failure("ecosystem_reactivation_check", str(e))
+
     try:
         from agents.market_intelligence.health_checks import run_job_liveness_sweep
         jl = await run_job_liveness_sweep()
