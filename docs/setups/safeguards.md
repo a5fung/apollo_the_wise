@@ -293,6 +293,70 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-08-05 — `circuit_breaker`: a REALIZED PARTIAL now counts as an outcome (operator-signed)
+
+**Change**: the streak query reads closed trades **UNION realized partial exits on still-open
+trades**. `CIRCUIT_BREAKER_CONSEC_LOSSES` (10) and `CIRCUIT_BREAKER_COOLDOWN_DAYS` (1) are
+UNCHANGED, and the rule is still "are the last N outcomes ALL losses". This changes WHAT COUNTS as
+an outcome, not the threshold or the pause.
+
+**Trigger**: 2026-08-05 — five HIGH alerts (APPS, KTOS, KODK, TATT, KMT) all `block:circuit_breaker`,
+cooldown to 15:50 ET, armed by BLZE closing −$36.79 at 15:50 the previous day. Second occurrence in
+six days (2026-07-31 blocked six).
+
+**Operator's reasoning** (2026-08-05): *"winners tend to be held longer, so in case of PLTR we're
+holding, if it continues to do well, we'll continue to hold, though we took partial profit today, so
+this circuit breaker will remain basically for a long time"* and *"what we need to prevent is
+perpetual blockers otherwise we'll never trade."*
+
+**The bias, measured.** The streak read CLOSED trades only. Losers close fast — all 14 live losses
+closed within ~a day — while winners are HELD by design. So the only event that could break the
+streak was a winner CLOSING, the very thing the methodology delays. **14 closed live trades, ZERO
+winners**: that escape has never once been able to fire. This is the *methodology-blind* property the
+2026-07-31 ruling ACCEPTED; it is now answered rather than accepted.
+
+**⚠ This invalidates the 2026-07-31 ruling's stated premise** (CHANGE_PROCESS r3). That entry kept
+the breaker partly because the drawdown breaker "has never acted" on live money. The count-based
+breaker had not acted either at that time — it has now blocked **11 entries across two days**
+(6 on 07-31, 5 on 08-05). The keep-ruling stands; its "never acted" framing does not.
+
+**Evidence (r1, N=14 ≥ 10)** — `scripts/probes/_535_breaker_replay.py`, read-only, $0:
+
+| loss-expiry window | unblocks 2026-08-05? | still trips on the real 14-loss streak? |
+|---|---|---|
+| none (shipped behaviour) | no | yes |
+| 21 days | no | yes — peaks at 11 |
+| **14 days** | yes | **NO — peaks at 8, never trips** |
+| 10 days | yes | **NO — peaks at 6** |
+| 7 days | yes | **NO — peaks at 6** |
+
+**So loss-expiry was REJECTED**: every window that would have unblocked today also leaves the breaker
+unable to fire on the exact bleed it exists for, because those losses arrived ~1 per 2 days and would
+expire faster than they accumulate. That is disarming the safeguard, not modernising it. The operator
+proposed expiry and the replay ruled it out — recorded here so it is not re-proposed without new data.
+
+**Partials-count, by contrast, is surgical**: threshold untouched, nothing disarmed, and today's
+$33.27 (PLTR 307, 2 sh @ $165.69, 09:45 ET — the FIRST realized profit on live money) breaks the
+streak from 09:45 onward. Verified against prod: that row now sorts above BLZE's loss, so the last 10
+outcomes are no longer all losses.
+
+**Not counted: UNREALIZED gains.** 5 of 12 live trades reached +1R or better and ALL FIVE finished
+losers (#503); "currently up" is near-uninformative here and counting it would disarm the breaker
+during exactly the round-tripping it should catch. The +2R trigger converts held winners into
+realized profit anyway, so partials capture most of the intent without the round-trip risk.
+
+**Honest limitation**: one partial closes the breaker. That is a low bar and deliberately matches the
+existing semantics (any win breaks the streak). If it later proves too easy, the fix is a size or
+count qualifier on the partial — an operator threshold, not a mechanism change. And if the trade
+later closes red, that close enters as its own loss: nothing is erased in either direction.
+
+**Reversion-flag**: REFINEMENT of the 2026-07-31 keep-ruling. Reversion = drop the UNION arm; the
+threshold and cooldown never moved. Tests: `tests/test_circuit_breaker_partials_535.py` (7),
+including one that fails if loss-expiry is ever added without re-running the replay.
+
+**Per-mode isolation preserved**: both arms filter `account_mode`, so a paper partial can never clear
+a live breaker.
+
 ### 2026-08-04 — A stop is now resting during EVERY minute of market hours (post-close refresh, 16:20 ET)
 
 **Trigger**: operator, 2026-08-04 — *"do we have a stop always during market hours ... if not,

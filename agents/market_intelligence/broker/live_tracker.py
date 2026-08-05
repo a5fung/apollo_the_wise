@@ -238,10 +238,48 @@ async def _check_safeguards(
         # backtester semantics — without it, once N losses close, no new
         # entries can ever fire (the trailing-N window is permanently
         # all-losses until a winner ages into it).
+        # ⚖ REALIZED PARTIAL PROFITS COUNT AS OUTCOMES (operator-signed 2026-08-05).
+        # The streak read CLOSED trades only, and that is structurally biased against this
+        # methodology: losers close fast (all 14 live losses closed within ~a day) while
+        # winners are HELD by design. So the one event that could break the streak — a
+        # winner closing — is the very thing the strategy delays, and a held winner
+        # contributed nothing however well it did. Operator: *"winners tend to be held
+        # longer... this circuit breaker will remain basically for a long time"* and *"what
+        # we need to prevent is perpetual blockers otherwise we'll never trade."*
+        #
+        # A realized partial is BANKED money and enters the outcome sequence at its own exit
+        # time, exactly like a close. It is not a special-case reset: the rule is still "are
+        # the last N outcomes ALL losses", and a win anywhere in that window answers no.
+        # Nothing is erased — if the trade later closes red, that close enters as its own
+        # loss, so the record stays honest in both directions.
+        #
+        # ⚠ REJECTED, with evidence: expiring old losses by age. The replay
+        # (`docs/analysis/535_circuit_breaker_partials_2026-08-05.md`) showed EVERY window
+        # that would have unblocked 2026-08-05 also makes the breaker unable to fire on the
+        # real 14-loss streak it exists for — at 14 days its peak count is 8, below the
+        # threshold of 10, because those losses arrived ~1 per 2 days and expire faster than
+        # they accumulate. That is disarming the safeguard, not modernising it.
+        #
+        # UNREALIZED gains are deliberately NOT counted: 5 of 12 live trades reached +1R or
+        # better and ALL FIVE finished losers (#503), so "currently up" has been close to
+        # uninformative here — and counting it would disarm the breaker precisely during the
+        # round-tripping it should catch.
         recent_closed = await conn.fetch("""
             SELECT total_pnl, closed_at FROM mi_live_trades
             WHERE status = 'closed' AND total_pnl IS NOT NULL
               AND account_mode = $2
+            UNION ALL
+            -- Realized partial exits on STILL-OPEN trades. `exits` is the same array
+            -- `total_pnl` is summed from on close, so this reads banked cash, never
+            -- mark-to-market (verified on PLTR 307: total_pnl 33.27 = the single 2-share
+            -- exit, while the position's unrealized was ~89).
+            SELECT (e->>'pnl')::double precision AS total_pnl,
+                   (e->>'time')::timestamptz     AS closed_at
+              FROM mi_live_trades t
+              CROSS JOIN LATERAL jsonb_array_elements(t.exits::jsonb) AS e
+             WHERE t.status <> 'closed' AND t.account_mode = $2
+               AND t.exits IS NOT NULL
+               AND e ? 'pnl' AND e ? 'time'
             ORDER BY closed_at DESC LIMIT $1
         """, CIRCUIT_BREAKER_CONSEC_LOSSES, account_mode)
 
