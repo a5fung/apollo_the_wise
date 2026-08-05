@@ -6186,6 +6186,55 @@ async def persist_lane2_seeds(run_date: "str | date", seeds: list[dict]) -> int:
         return n
 
 
+# ── #491 M2 — seeded assignment-pool exemption (2026-08-05, operator-approved D1) ────
+# Fork F-D, operator-ruled: the admission scope is ONLY these two price-action-anchored
+# seed sources — an ACTIVE Lane-2 narrative row ('narrative_cogap') or an ecosystem-
+# reactivation seed ('ecosystem_reactivation', #536/#534) — NEVER a raw RS band. That
+# scope is what stops the exemption becoming a back door around the assignment pool's
+# RS floor: every admitted name earned its way in through a lane that already judged
+# its price action + catalyst. Widening this tuple (or adding an RS-band admission
+# path) re-opens the F-D ruling — the scope is pinned by
+# tests/test_seeded_pool_exemption.py. Deliberately NOT included: 'narrative_seed'
+# (a 1-name watch row is a hook, not a narrative), 'judge_inferred' / 'coverage_probe'
+# (anti-circularity walls), 'narrative_cogap_backfill' (hindsight population),
+# 'shadow_v2' (retired lane).
+SEEDED_ASSIGN_SOURCES = ("narrative_cogap", "ecosystem_reactivation")
+
+
+async def get_seeded_assignment_tickers(
+    window_start: "str | date", before_date: "str | date",
+) -> dict[str, dict]:
+    """#491 M2 — tickers named in an ACTIVE seeded row (SEEDED_ASSIGN_SOURCES only,
+    `window_start <= run_date < before_date`): {ticker: {source, run_date, name}},
+    keyed to each ticker's NEWEST triggering row (the operator-facing "why was this
+    name admitted" pointer). PRIOR SESSIONS ONLY, like get_lane2_active_narratives —
+    tonight's lane rows are written AFTER the theme engine's assignment pass, so a
+    same-day row structurally cannot be its own admission ticket; callers window with
+    theme_engine._lane2_window_start (LANE2_WINDOW_TRADING_DAYS trading days).
+
+    READ-ONLY over mi_theme_candidates_shadow — this accessor feeds the assignment
+    pool and never writes anything; the assignment LLM + its existing walls (global
+    bans, pair cooldowns, post-assignment F4 validation) own what happens next."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT run_date, source, name, tickers
+            FROM mi_theme_candidates_shadow
+            WHERE source = ANY($3::text[])
+              AND run_date >= $1 AND run_date < $2
+            ORDER BY run_date DESC, name
+        """, _to_date(window_start), _to_date(before_date),
+            list(SEEDED_ASSIGN_SOURCES))
+        out: dict[str, dict] = {}
+        for r in rows:
+            for tk in (r["tickers"] or []):
+                tk = str(tk).upper()
+                if tk and tk not in out:  # newest-first ordering → first hit wins
+                    out[tk] = {"source": r["source"], "run_date": r["run_date"],
+                               "name": r["name"]}
+        return out
+
+
 async def get_recent_rs_batch(
     tickers: list[str], d: "str | date", days: int = 3,
 ) -> dict[str, list[float]]:

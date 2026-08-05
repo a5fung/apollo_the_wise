@@ -67,6 +67,7 @@ from agents.market_intelligence.db import (
     get_operator_protected_set, get_ticker_breadth_above_sma20,
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
     get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
+    get_seeded_assignment_tickers,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
 # Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
@@ -3184,7 +3185,7 @@ async def _assign_uncovered_to_themes(
 EXISTING THEMES:
 {chr(10).join(theme_lines)}
 
-UNCOVERED STOCKS (RS >= 50, not in any active theme):
+UNCOVERED STOCKS (not in any active theme; each line shows its RS):
 {chr(10).join(stock_lines)}
 {cooldown_note}
 Rules:
@@ -4558,6 +4559,46 @@ def _build_theme_pools(
     return uncovered, assignment_pool
 
 
+def _seeded_pool_admissions(
+    seeded_triggers: dict[str, dict],
+    covered_tickers: set[str],
+    revalidated_out: set[str],
+    pool_tickers: set[str],
+) -> list[str]:
+    """#491 M2 (2026-08-05, operator-approved D1) — the PURE admission decision for
+    the seeded assignment-pool exemption. Pure — no I/O, no RS input BY DESIGN.
+
+    A business-model pivot is a crash-recovery cohort: RS is a 1/3/6-month lookback,
+    so the pivot has low trailing RS by construction and can never clear the
+    assignment pool's RS floor (B2 — on 2026-08-04 every one of the ten ex-miner
+    names sat under the 70 floor while the correct live AI theme was 3 members
+    wide). The price-action lanes are the only signal with no RS lag and they
+    already carry the cohort's names — so a SEEDED ticker is admitted regardless of
+    RS floor and fetch rank.
+
+    Fork F-D (operator-ruled): seeded = named in an ACTIVE Lane-2 narrative row or
+    an ecosystem-reactivation seed (db.SEEDED_ASSIGN_SOURCES) — NEVER a raw RS band.
+    That is why this function takes NO RS argument: admission is membership in
+    `seeded_triggers`, full stop. Adding an RS parameter here widens the ruled
+    scope and must fail tests/test_seeded_pool_exemption.py.
+
+    Never admitted, in order of the checks below:
+    - covered names (any stage incl. Fading) — covered-exclusivity (B1) is the
+      custody verb's territory (M-CORE), deliberately NOT bypassed here;
+    - names validation-removed THIS run (same-run re-assignment guard);
+    - names already in the pool (they made it on merit; no duplicate rows).
+
+    Returns admitted tickers, sorted for deterministic prompts/logs. Bounded by
+    construction (~15/night at current lane volume — §4.4); the caller logs a
+    loud warning if a fat lane night ever exceeds that, rather than capping."""
+    return sorted(
+        tk for tk in seeded_triggers
+        if tk not in covered_tickers
+        and tk not in revalidated_out
+        and tk not in pool_tickers
+    )
+
+
 def _sector_group(theme_name: str) -> tuple[str, int] | None:
     """Return (group_key, max_themes) if the theme name matches any keyword group."""
     low = theme_name.lower()
@@ -5830,6 +5871,71 @@ async def run_theme_engine(
         leaders, covered_tickers, revalidated_out)
     logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders (discovery) · "
                 f"{len(assignment_pool)} assignment candidates (RS≥{ASSIGN_POOL_RS_FLOOR:.0f}, #476)")
+
+    # ── #491 M2: seeded assignment-pool exemption (2026-08-05, operator-approved D1) ──
+    # Admission decision + scope rationale live in _seeded_pool_admissions (pure) and
+    # db.SEEDED_ASSIGN_SOURCES (fork F-D: two seeded sources, never a raw RS band).
+    # ASSIGNMENT pool only — discovery stays top-40 untouched; downstream walls
+    # (global ban filter, pair-cooldown prompt constraint, post-assignment F4
+    # validation, exclusions) all apply unchanged because admitted names enter the
+    # standard pool. Window = LANE2_WINDOW_TRADING_DAYS trading days, PRIOR sessions
+    # only (tonight's lane rows are written after this run — scheduler step 5c).
+    # Fail-open on the fetch: a broken read costs one night of the exemption, never
+    # the run.
+    try:
+        seeded_triggers = await get_seeded_assignment_tickers(
+            _lane2_window_start(today), today)
+    except Exception as e:
+        logger.warning(f"Theme engine: seeded-pool fetch failed — "
+                       f"no M2 exemption this run (#491): {e}")
+        seeded_triggers = {}
+    if seeded_triggers:
+        m2_candidates = _seeded_pool_admissions(
+            seeded_triggers, covered_tickers, revalidated_out,
+            {s["ticker"] for s in assignment_pool})
+        m2_admitted: list[str] = []
+        if m2_candidates:
+            # The exemption's whole point: the score row is fetched EXPLICITLY from
+            # mi_stock_scores — a seeded name needs no leaders-fetch rank and no
+            # floor clearance. No score row at all ⇒ nothing to show the LLM ⇒ skip.
+            m2_rs = await get_rs_for_tickers(today_str, m2_candidates)
+            m2_sectors = await get_sectors_batch(
+                [tk for tk in m2_candidates if tk in m2_rs and tk not in stocks_by_ticker])
+            for tk in m2_candidates:
+                rs_row = m2_rs.get(tk)
+                if not rs_row:
+                    continue
+                stock = stocks_by_ticker.get(tk) or {
+                    "ticker": tk,
+                    "rs_composite": rs_row.get("rs_composite", 0) or 0,
+                    "rs_1m": rs_row.get("rs_1m", 0) or 0,
+                    "rs_3m": rs_row.get("rs_3m", 0) or 0,
+                    "rs_6m": rs_row.get("rs_6m", 0) or 0,
+                    "sector": m2_sectors.get(tk, "Unknown"),
+                }
+                stocks_by_ticker.setdefault(tk, stock)
+                assignment_pool.append(stock)
+                m2_admitted.append(tk)
+        if m2_admitted:
+            _m2_lines = []
+            for tk in m2_admitted:
+                trg = seeded_triggers.get(tk) or {}
+                _m2_lines.append(
+                    f"{tk} (RS {(m2_rs.get(tk) or {}).get('rs_composite', 0) or 0:.0f}) "
+                    f"← {trg.get('source', '?')} '{trg.get('name', '?')}' {trg.get('run_date', '?')}")
+            logger.info(f"Theme engine: #491 M2 admitted {len(m2_admitted)} seeded "
+                        f"ticker(s) to the assignment pool past the RS floor: {m2_admitted}")
+            if len(m2_admitted) > 15:
+                # §4.4's "~15/night by construction" bound — a fat lane night is a
+                # finding to surface, never a reason to silently cap or drop names.
+                logger.warning(f"Theme engine: #491 M2 admissions ({len(m2_admitted)}) "
+                               f"exceed the design's ~15/night bound — investigate lane volume")
+            await log_audit_event(
+                "seeded_pool_admission",
+                summary=f"#491 M2: {len(m2_admitted)} seeded ticker(s) admitted to the "
+                        f"assignment pool past the RS floor",
+                detail="\n".join(_m2_lines),
+            )
 
     # ── a/a2 selector port (Phase 1, flag ON only): fold accelerators +
     # recovery-slope candidates into the DISCOVERY pool — the same
