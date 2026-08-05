@@ -258,8 +258,22 @@ THEME_RS_MIN = 50.0
 # (it has velocity/turners/clusters for emerging names, and shouldn't
 # force-cluster static-strong singletons; advisor 7/17). No-money (themes);
 # reversible; verify the next nightly's assignments are sane.
-ASSIGN_POOL_RS_FLOOR = 90.0
-ASSIGN_POOL_CEILING = 200
+# ⚖ WIDENED 2026-08-05 (operator-signed, #534 D2): floor 90 → 70, ceiling 200 → 600.
+# His ask: *"we maybe need a larger universe and some sub groupings and show the highest RS,
+# biggest, strongest etc. but other stocks are still in a theme but not at the top."* This is
+# the "still in a theme but not at the top" half — existing themes gain their mid-RS members
+# rather than new noise themes being born (DISCOVERY is untouched at top-40, so this cannot
+# mint a single new theme).
+# Measured before the change: 104 themes / 319 distinct tickers / avg 3.3 members against 1,762
+# liquid names; of liquid RS 70-89, only 22% were in any theme. All liquid RS>=70 is 517 names,
+# so ceiling 600 covers the band with headroom. Cost ~+$0.20/day.
+# ⚠ Does NOT address the 100 unthemed liquid RS-90+ names — verified 2026-08-05: 0 of them are
+# outside the pool. 28 are removed upstream by is_sector_filtered (Healthcare < $50, which cuts
+# the #1 and #2 names in the market) and 72 sit inside the pool and are simply never assigned
+# because no matching theme exists. That is theme SUPPLY (discovery breadth, still top-40), a
+# separate lever — do not expect this change to move it.
+ASSIGN_POOL_RS_FLOOR = 70.0
+ASSIGN_POOL_CEILING = 600
 # A theme is "well-covered" if >= this many of its stocks still show strong RS
 THEME_COVERAGE_MIN = 3
 # Retire a theme after this many consecutive fading days

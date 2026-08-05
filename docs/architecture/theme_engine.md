@@ -227,6 +227,44 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 
 ## Change log
 
+### 2026-08-05 — assignment pool widened: RS floor 90 → 70, ceiling 200 → 600 (#534 D2, operator-signed)
+
+**Change**: `ASSIGN_POOL_RS_FLOOR` 90.0 → 70.0, `ASSIGN_POOL_CEILING` 200 → 600.
+**DISCOVERY IS UNTOUCHED at top-40**, so this cannot mint a single new theme — it only lets
+existing themes gain members.
+
+**Operator's ask** (2026-08-05): *"we maybe need a larger universe and some sub groupings and show
+the highest RS, biggest, strongest etc. but other stocks are still in a theme but not at the top."*
+This ships the "still in a theme but not at the top" half.
+
+**Measured before the change** (prod, 2026-08-04/05): 104 themes · 319 distinct tickers · avg 3.3
+members, against **1,762 liquid names** (adv₂₀ ≥ 500k, close ≥ $10). Coverage by band: RS 90+ 39%,
+**RS 70-89 22%**, under 70 10%. All liquid RS ≥ 70 = **517 names**, so ceiling 600 covers the band
+with headroom. Cost ≈ **+$0.20/day** on a $0.50/day theme stack.
+
+**⚠ What this does NOT fix, stated so nobody re-derives it.** The 100 unthemed liquid RS-90+ names
+are **not** a reach problem — verified 2026-08-05, replicating `get_rs_leaders`' own filters:
+
+| cause | count |
+|---|---|
+| removed upstream by `is_sector_filtered` (Healthcare < $50) | **28** |
+| inside the pool, seen, never assigned | **72** |
+| outside the pool's reach | **0** |
+
+The filter cut includes **CDNA (rank 1, RS 100) and TRAX (rank 2, RS 99.9)** — 5 of the top 20. The
+72 fail because assignment can only place a name into a theme that ALREADY EXISTS, and 104 narrow
+themes averaging 3.3 members often have no home for a strong name; 12 of those 72 sit inside
+discovery's own top-40 seed. **That is theme SUPPLY — discovery breadth — a separate lever, still
+top-40, deliberately not changed here.**
+
+**Direction / risk**: strictly additive membership; no theme is born, retired or renamed by this.
+The accepted cost is junk assignments — watch the next nightly's assignments for names joining
+themes they do not belong to.
+
+**Reversion**: the two constants. Tests `tests/test_theme_assignment_pool.py` are re-based on the
+CONSTANTS rather than literals, so a future widening still exercises the floor and the ceiling
+instead of passing vacuously.
+
 ### 2026-08-04 (b) — #531 nightly THEME QUALITY check (two regression guards, observability-only)
 
 - **Trigger**: operator, verbatim: *"i'm really asking for quality checks regularly to make sure
