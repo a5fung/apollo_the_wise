@@ -281,7 +281,13 @@ PRUNE_MIN_TICKERS = 2    # Never prune a theme below this many stocks
 # ignition WHILE rising, splitting one real cohort into competing shards.
 # Fail-conservative: short/missing history ⇒ prune exactly as before.
 PRUNE_HOLD_WINDOW_SESSIONS = 6   # today + 5 prior — the birth gate's Δ5 idiom
-PRUNE_HOLD_MIN_POINTS = 4        # fewer points than this ⇒ no hold (prune as before)
+PRUNE_HOLD_MIN_POINTS = 4        # ⚠ DATA points of RS history, NOT points of RS INCREASE.
+                                 # The test is `len(hist) >= 4 and hist[0] > hist[-1]`: four
+                                 # readings and ANY rise over the window qualifies — RS 1.8 →
+                                 # 3.1 holds. "points" read as magnitude once on 2026-08-04
+                                 # and produced a wrong description of the rule to the
+                                 # operator; the name is ambiguous, so it is spelled out here.
+                                 # Fewer readings than this ⇒ no hold (prune as before).
 MAX_THEMES_PER_STOCK = 2 # A stock can belong to at most 2 themes (primary + sub-theme)
 MIN_SHARED_FOR_MERGE = 3 # Min |intersection| before two themes can be merged on overlap.
                          # Same gate as rs-theme-dash dedup — kills tiny-alias false positives.
