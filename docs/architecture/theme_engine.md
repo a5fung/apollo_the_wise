@@ -9,7 +9,10 @@
 - Bottom-up from price action — themes emerge from RS, not hypotheses
 - Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
 - **Engine-drop themes skip Fading**: Pass1 cap_drop / Pass1.5 absorption removals get a synthetic Retired row (`theme_auto_retired` audit; `parent_theme=successor` recovered from the pass audit events) — the 5-day Fading→Retired path can't complete under the 7d recency cap. Stub until canonicalization (R3).
-- **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429.
+- **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429. **Thesis-aware since #368 (2026-08-04)**: all three callers (rescore, #266 birth validation, Arm-B post-merge) pass the theme's own description; the prompt shows it and instructs judging against the THESIS, not the name alone — a member whose CURRENT driver matches the thesis stays even when its legacy industry label differs (the 7/27 WULF/CORZ eviction class). `_is_garbage` theses are omitted.
+- **Member pruning (#368, 2026-08-04 — rising-recovery hold)**: hard prune (RS<25, 1 day) and soft prune (RS<35, 3 consecutive days) both SKIP a member whose RS is RISING over the last `PRUNE_HOLD_WINDOW_SESSIONS` (6) sessions (newest > oldest, ≥4 points; short history ⇒ prune as before). Mirrors the birth gate's derived level-OR-rising cell on the retention surface; changelog type `ticker_prune_held_rising`. Backtest: 77% of rising-held names recovered to RS≥50 in 10 sessions vs 31% of the falling control (N=13 scored / 25 held, `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md`).
+- **Retire streak counts WEAK-Fading rows only (#368, 2026-08-04)**: `_count_consecutive_fading` counts Fading rows with `rs_avg IS NULL` (the weak branch's); a Fading row WITH rs_avg (score-delta fade / hysteresis-held recovery — the strong floor passed that day) BREAKS the 5-day retire streak. Evidence: the crypto-miner lineage re-qualified healthy 8/03 (elite pair, rs_avg 84.9) yet retired 8/04 off the held row; 14 retirements in Jun–Aug carried a healthy-held row in their terminal streak ('AI Memory & Storage': six of its last eight days).
+- **⛔ Arm-B Stage-A family `compute_infra` (#368) — BUILT, GATED, NOT SHIPPED (2026-08-04)**: the crypto-mining and AI-datacenter framings of one physical asset base never share a stem family, and the majority-sector fallback cannot form for converting miners (FMP splits them Financial Services / Technology / blank) — so **ZERO crypto pairs have EVER been proposed for adjudication** (verified: 0 of 99 merge events mention crypto or bitcoin, while insurance and fintech pairs ran nightly). The family that fixes that was written and then HELD, because its own pre-deploy gate ran the two frozen historical pairs through the REAL Stage-B judge and neither consolidates: **P1 (07-21) → DISTINCT** (the gate's stated hold condition) and **P2 (08-04) → PARENT_CHILD**, which on this file's own operator-signed terms is not a consolidation — the v2 prompt ruling (7/12, rulings-pack R3) exists precisely because v1 *"answered PARENT_CHILD to pure slices, which keeps both themes and leaves the fragmentation (#274's whole purpose) unfixed"*. There is also no persistence path for a PARENT_CHILD verdict today: `parent_theme` + `sub_theme_parents` are ADR 0032 Phase 2 = **#471, not built**. So the change is correct and premature. Gated on #471 Phase 2, tracked as #529. The adjudicator's real behaviour here is itself the finding: it consolidates only when the theme's THESIS TEXT names the conversion (P2's thesis said *"not bitcoin price"*; P1's read as a crypto theme with one lease headline) — which makes thesis quality, not stem families, the live lever.
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — a bad-description removal once permanently banned TSEM from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
@@ -222,6 +225,51 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 → `set_theme_birth_gate_mode('on')`.
 
 ## Change log
+
+### 2026-08-04 — #368 crypto→AI-conversion consolidation (four fixes, live-on-deploy)
+
+- **Trigger**: #368 labelling — 5 of the operator's 9 theme-credit false positives are ONE
+  systematic mistake (converting miners filed under crypto mining: HUT ×2, WULF, CLSK, IREN).
+  Operator asked for "the crypto to AI definition" next. Diagnosis: NOT a missing definition —
+  the 7/08 birth thesis already said "miners as power/data-center landlords for the AI compute
+  boom"; the phenomenon fragmented across 8+ names because (M1) Arm-B Stage A had no family for
+  either framing (zero pairs EVER proposed — audit-verified), (M2) single-print pruning evicted
+  the rising recovery cohort on day 2 of its ignition, (M3) name-vs-description validation
+  removed WULF/CORZ from the AI theme whose own thesis was the conversion (7/27 dissolve + 14d
+  cooldowns), (M4) the retire counter ran through a hysteresis-held recovery row and retired the
+  lineage 8/04 — the day after it re-qualified healthy.
+- **What changed**: (F1) `compute_infra` family — **WITHDRAWN before ship, see above; the working
+  tree carries no change to `theme_merge_arm.py`**; (F2) `_count_consecutive_fading` counts weak (rs_avg-NULL) Fading rows only;
+  (F3) rising-recovery hold on hard+soft prune (`PRUNE_HOLD_WINDOW_SESSIONS=6`,
+  `PRUNE_HOLD_MIN_POINTS=4`, strict newest>oldest; `ticker_prune_held_rising` changelog); (F4)
+  `_validate_theme_membership(thesis=…)` from all three callers, garbage-guarded.
+- **Evidence** (CHANGE_PROCESS r1, backtests on frozen prod exports —
+  `scripts/probes/_368_crypto_ai_consolidation_replay.py` + `docs/analysis/
+  368_crypto_ai_consolidation_2026-08-04.md`): lifecycle replay's current-arm reproduces prod's
+  exact death sequence (held-Fading rs_avg 84.9 on 8/03 → retired 8/04); fixed arm holds all six
+  cohort names in ONE lineage 7/22–24 and SURVIVES to 8/04 holding APLD CBRS CIFR CRWV HUT vs
+  prod's zero surviving themes. F3 backtest N=13 scored (25 held): 77% recovered vs 31% falling
+  control; FP cost median 6 sessions (nightly re-check). F2 blast radius: 14 affected
+  retirements Jun–Aug, several plainly wrong. Stage-A replay: crypto×AI pairs available from
+  6/01; 1–2 budget displacements/night (bounded; cooldowns not modeled).
+- **Anticipated effect**: the framings meet the corpus-cleared adjudicator on night 1 both
+  exist → one surviving conversion lineage instead of competing shards; igniting recovery
+  members stay through their V-bottom; themes stop retiring the day after recovering; ~14/2mo
+  fewer wrong retirements; validator keeps thesis-consistent members. The 3 uncovered
+  mislabelled alerts (HUT 5/06 · WULF 7/06 · CLSK 7/14) belong to the Lane-2 v2 registry flip
+  (operator-gated) — deliberately NOT duplicated here; ditto shadow_v2 re-mint churn (birth-gate
+  Phase 1 owns it).
+- **Reversion-flag**: F1 NOT SHIPPED (withdrawn at its gate) · F2 REFINEMENT of the FADING_RETIRE_AFTER
+  mechanism · F3 NEW (first trajectory term on pruning) · F4 NEW (first thesis input to
+  validation). Each independently revertible (family entry / streak predicate / hold branch /
+  thesis kwarg).
+- **Pre-deploy gate**: run the probe's `--adjudicate` (~4 Haiku calls ≈ $0.02) where the key
+  lives — expected MERGE (P1-0721) / MERGE (P2-0804) / DISTINCT (optical negative control). A
+  DISTINCT on P1 means the adjudicator won't consolidate the framings — hold F1, the rest stand
+  alone. The Stage-B pass record is NOT invalidated (its hash covers the adjudication prompt +
+  tool schema only; F1 is Stage-A).
+- **Status**: built + tested (40 new tests, suite 4378 green), NOT deployed, NOT committed —
+  awaiting the adjudicate check + operator review.
 
 ### 2026-07-27 (d) — Phase-1 BIRTH GATE + shadow_v2/coverage_probe retirements (built dark, flag OFF)
 

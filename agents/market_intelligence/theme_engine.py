@@ -271,6 +271,17 @@ NEW_THEME_MIN_STOCKS = 2
 PRUNE_RS_HARD = 25.0     # RS below this → prune after 1 day (crash/scandal)
 PRUNE_RS_SOFT = 35.0     # RS below this → prune after 3 consecutive days (slow decay)
 PRUNE_MIN_TICKERS = 2    # Never prune a theme below this many stocks
+# #368 rising-recovery hold (2026-08-04): a sub-floor member whose RS trajectory
+# is RISING is an igniting recovery name, not the dead weight the prune floors
+# exist for — hold it. Mirrors the birth gate's derived level-OR-rising cell
+# (weak-born maturers RISE pre-birth +2.5 median, corpses FALL −5.3 —
+# docs/analysis/theme_birth_gate_derivation_2026-07-27.md), applied to the
+# member-retention surface: the converting-miner cohort (WULF/IREN/APLD, RS<25
+# for weeks post-crash) was pruned from its own theme on day 2 of the 7/21-23
+# ignition WHILE rising, splitting one real cohort into competing shards.
+# Fail-conservative: short/missing history ⇒ prune exactly as before.
+PRUNE_HOLD_WINDOW_SESSIONS = 6   # today + 5 prior — the birth gate's Δ5 idiom
+PRUNE_HOLD_MIN_POINTS = 4        # fewer points than this ⇒ no hold (prune as before)
 MAX_THEMES_PER_STOCK = 2 # A stock can belong to at most 2 themes (primary + sub-theme)
 MIN_SHARED_FOR_MERGE = 3 # Min |intersection| before two themes can be merged on overlap.
                          # Same gate as rs-theme-dash dedup — kills tiny-alias false positives.
@@ -1366,11 +1377,22 @@ async def _get_theme_history(name: str, days: int = 10, tickers: list[str] | Non
 
 
 async def _count_consecutive_fading(name: str, tickers: list[str] | None = None) -> int:
-    """Count how many consecutive recent days this theme has been Fading."""
+    """Count consecutive recent WEAK-Fading days for the retire decision.
+
+    Only rows the weak branch emitted count — those carry rs_avg=None (the
+    scored path always writes a numeric rs_avg). A Fading row WITH rs_avg is a
+    theme that passed the strong-member floor that day and wears Fading for
+    display only (score-delta fade, or a recovery flip held by the hysteresis
+    damper) — it BREAKS the retire streak (#368, 2026-08-04). Evidence:
+    'Bitcoin Mining & Crypto Infrastructure Operators' re-qualified healthy on
+    8/03 (elite pair, rs_avg 84.9) but the hysteresis-held Fading row kept the
+    streak unbroken at 6 → the theme retired 8/04, one day AFTER its recovery
+    confirmed — then the whole cohort had to be re-discovered from scratch.
+    """
     history = await _get_theme_history(name, days=10, tickers=tickers)
     count = 0
     for row in history:
-        if row["stage"] == "Fading":
+        if row["stage"] == "Fading" and row.get("rs_avg") is None:
             count += 1
         else:
             break
@@ -2283,7 +2305,8 @@ async def _validate_new_themes_at_birth(
         if len(tks) < NEW_THEME_MIN_STOCKS:
             continue
         validated = await _validate_theme_membership(
-            nt["name"], tks, changelog, protected=protected)
+            nt["name"], tks, changelog, protected=protected,
+            thesis=nt.get("description") or nt.get("thesis"))
         if len(validated) != len(tks):
             stripped = sorted(set(tks) - set(validated))
             nt["tickers"] = validated
@@ -2302,11 +2325,22 @@ async def _validate_theme_membership(
     changelog: list[dict],
     protected: set[tuple[str, str]] | None = None,
     dissolve_flagged_pair: bool = False,
+    thesis: str | None = None,
 ) -> list[str]:
     """
     Ask Claude (THEME_MODEL = Sonnet) whether each stock's description is consistent
     with the theme. Removes stocks that clearly don't belong. Runs Mon/Wed/Fri during
     re-scoring.
+
+    thesis (#368, 2026-08-04): the theme's OWN description/thesis, when the caller
+    has one. Without it the validator judges static business descriptions against
+    the theme NAME alone — which evicts a company whose CURRENT driver matches the
+    theme but whose legacy classification differs. Evidence: on 7/27 it removed
+    WULF + CORZ ("Bitcoin mining facilities…" descriptions) from 'AI Compute & GPU
+    Data Center Hosting Operators' — a theme whose stored thesis literally read
+    "Bitcoin-miner-to-AI infrastructure" — dissolving the theme and fencing both
+    names out for 14d. Garbage theses (_is_garbage) are omitted so a bad
+    Perplexity/Haiku description can never shield bad members.
 
     dissolve_flagged_pair (ADR 0025 Arm A, #274 — callers pass merge_arm_enabled()):
     when True and the theme has exactly 2 members, a flagged removal PROCEEDS past the
@@ -2344,16 +2378,32 @@ async def _validate_theme_membership(
             stock_lines_parts.append(f"- {tk}: (use your knowledge of this ticker)")
     stock_lines = "\n".join(stock_lines_parts)
 
+    # #368: include the theme's own thesis when the caller supplied a sane one —
+    # membership is judged against what the theme IS ABOUT, not its name alone.
+    _thesis = (thesis or "").strip()
+    thesis_block = ""
+    thesis_instruction = ""
+    if _thesis and not _is_garbage(_thesis):
+        thesis_block = f"Theme thesis: {_thesis[:300]}\n\n"
+        thesis_instruction = (
+            "Judge against the THESIS above, not the theme name alone: a stock whose "
+            "CURRENT driver matches the thesis BELONGS even when its legacy industry "
+            "label differs (e.g. a company repurposing its existing infrastructure "
+            "for the theme's driver, as described by the thesis).\n"
+        )
+
     prompt = (
         f"Theme: \"{theme_name}\"\n\n"
+        + thesis_block +
         f"Stocks in this theme:\n{stock_lines}\n\n"
         f"Identify stocks that DO NOT BELONG in this theme.\n"
         f"A stock does not belong if its core business is in a DIFFERENT INDUSTRY than the theme — "
         f"e.g. a car rental company in a data center theme, a mining company in a biotech theme, "
         f"a retailer in a semiconductor theme. Be DECISIVE: wrong industry = remove. "
         f"Do not keep a stock just because you are unsure — if the business sector clearly differs "
-        f"from the theme, flag it.\n\n"
-        f"Return JSON only: {{\"remove\": [\"TICKER1\", \"TICKER2\"]}} or {{\"remove\": []}} if all belong."
+        f"from the theme, flag it.\n"
+        + thesis_instruction +
+        f"\nReturn JSON only: {{\"remove\": [\"TICKER1\", \"TICKER2\"]}} or {{\"remove\": []}} if all belong."
     )
 
     try:
@@ -2630,6 +2680,17 @@ def _check_description_quality(
     return True, ""
 
 
+def _rs_rising(hist: list[float]) -> bool:
+    """True when a member's recent RS trajectory is RISING (newest > oldest).
+
+    `hist` is newest-first (get_recent_rs_batch ordering). Requires
+    PRUNE_HOLD_MIN_POINTS points — short history fails closed (not rising), so
+    pruning behaves exactly as before for data-poor names. Strict `>`: a flat
+    sub-floor name is not an ignition and still prunes on any down-wobble.
+    """
+    return len(hist) >= PRUNE_HOLD_MIN_POINTS and hist[0] > hist[-1]
+
+
 async def _rescore_existing_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
@@ -2667,6 +2728,7 @@ async def _rescore_existing_theme(
 
     # --- Pruning: remove weak stocks before scoring ---
     prune_candidates: list[tuple[str, float, str]] = []  # (ticker, rs, reason)
+    hard_check: list[tuple[str, float]] = []   # sub-PRUNE_RS_HARD today — trajectory-checked below
     soft_check_tickers: list[str] = []
     missing_rs_tickers: list[str] = []   # in theme but absent from today's RS data
 
@@ -2680,7 +2742,7 @@ async def _rescore_existing_theme(
             missing_rs_tickers.append(tk)
             continue
         if rs_now < PRUNE_RS_HARD:
-            prune_candidates.append((tk, rs_now, f"RS {rs_now:.0f} < {PRUNE_RS_HARD:.0f} (hard)"))
+            hard_check.append((tk, rs_now))
         elif rs_now < PRUNE_RS_SOFT:
             soft_check_tickers.append(tk)
 
@@ -2693,12 +2755,46 @@ async def _rescore_existing_theme(
             if hist and all(v < PRUNE_RS_HARD for v in hist):
                 prune_candidates.append((tk, hist[0], f"RS {hist[0]:.0f} consistently < {PRUNE_RS_HARD:.0f} (no current data)"))
 
-    # Soft prune: check 3-day history
-    if soft_check_tickers:
-        rs_history = await get_recent_rs_batch(soft_check_tickers, today, days=3)
+    # Hard + soft prune share one trajectory fetch (#368 rising-recovery hold):
+    # a sub-floor member whose RS is RISING over the window is held, not pruned —
+    # see the PRUNE_HOLD_* constants for the derivation pointer. Falling or
+    # data-poor members prune exactly as before.
+    if hard_check or soft_check_tickers:
+        traj_history = await get_recent_rs_batch(
+            [tk for tk, _ in hard_check] + soft_check_tickers,
+            today, days=PRUNE_HOLD_WINDOW_SESSIONS)
+
+        for tk, rs_now in hard_check:
+            hist = traj_history.get(tk, [])
+            if _rs_rising(hist):
+                changelog.append({
+                    "type": "ticker_prune_held_rising", "theme": name, "ticker": tk,
+                    "rs": rs_now,
+                    "reason": (f"RS {rs_now:.0f} < {PRUNE_RS_HARD:.0f} but rising "
+                               f"({hist[-1]:.0f} → {hist[0]:.0f} over {len(hist)} sessions) — held"),
+                })
+                logger.info(
+                    f"Theme '{name}': held {tk} (RS {rs_now:.0f} sub-floor but rising "
+                    f"{hist[-1]:.0f} → {hist[0]:.0f}) — #368 rising-recovery hold")
+                continue
+            prune_candidates.append((tk, rs_now, f"RS {rs_now:.0f} < {PRUNE_RS_HARD:.0f} (hard)"))
+
+        # Soft prune: 3 consecutive days below the soft floor (most-recent-first
+        # history — hist[:3] is exactly the old 3-day window), unless rising.
         for tk in soft_check_tickers:
-            hist = rs_history.get(tk, [])
-            if len(hist) >= 3 and all(v < PRUNE_RS_SOFT for v in hist):
+            hist = traj_history.get(tk, [])
+            if len(hist) >= 3 and all(v < PRUNE_RS_SOFT for v in hist[:3]):
+                if _rs_rising(hist):
+                    changelog.append({
+                        "type": "ticker_prune_held_rising", "theme": name, "ticker": tk,
+                        "rs": hist[0],
+                        "reason": (f"RS below {PRUNE_RS_SOFT:.0f} for 3 days but rising "
+                                   f"({hist[-1]:.0f} → {hist[0]:.0f} over {len(hist)} sessions) — held"),
+                    })
+                    logger.info(
+                        f"Theme '{name}': held {tk} (soft-floor but rising "
+                        f"{hist[-1]:.0f} → {hist[0]:.0f}) — #368 rising-recovery hold")
+                    continue
                 rs_now = hist[0]
                 prune_candidates.append((tk, rs_now, f"RS below {PRUNE_RS_SOFT:.0f} for 3 consecutive days"))
 
@@ -2731,7 +2827,8 @@ async def _rescore_existing_theme(
         _pre_validation = list(tickers)
         tickers = await _validate_theme_membership(
             name, tickers, changelog, protected=protected,
-            dissolve_flagged_pair=_dissolve_arm)
+            dissolve_flagged_pair=_dissolve_arm,
+            thesis=theme.get("description"))
         if _dissolve_arm and len(_pre_validation) == 2 and len(tickers) < PRUNE_MIN_TICKERS:
             # ADR 0025 Arm A: validation flagged a member of a 2-member theme →
             # the theme DISSOLVES (evidence-triggered, never a bare count). The
@@ -5415,6 +5512,7 @@ async def _run_thesis_merge_pass(
                 validated = await _validate_theme_membership(
                     winner["name"], union, changelog, protected=protected,
                     dissolve_flagged_pair=True,
+                    thesis=winner.get("description"),
                 )
                 merges_executed += 1  # a gutted merge still consumed the night's action
                 if len(validated) < PRUNE_MIN_TICKERS:

@@ -63,9 +63,15 @@ def _quiet_rescore_io(monkeypatch):
     async def fake_breadth(tickers, today):
         return 0.9
 
+    async def fake_rs_batch(tickers, today, days=3):
+        # #368: the prune paths now fetch trajectory history for sub-floor
+        # members; empty history = fail-conservative (prune exactly as before).
+        return {}
+
     monkeypatch.setattr(theme_engine, "_get_theme_history", fake_history)
     monkeypatch.setattr(theme_engine, "_news_check", fake_news)
     monkeypatch.setattr(theme_engine, "get_ticker_breadth_above_sma20", fake_breadth)
+    monkeypatch.setattr(theme_engine, "get_recent_rs_batch", fake_rs_batch)
 
 
 # ── Fix point 1: _rescore_existing_theme carries parent_theme forward ────────

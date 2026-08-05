@@ -31,7 +31,7 @@ def _audit_capture(monkeypatch):
 async def test_birth_validation_strips_mismatch_and_audits(monkeypatch):
     events = _audit_capture(monkeypatch)
 
-    async def fake_validate(name, tickers, changelog, protected=None):
+    async def fake_validate(name, tickers, changelog, protected=None, thesis=None):
         return [t for t in tickers if t != "CAR"]   # strip the wrong-industry member
 
     monkeypatch.setattr(theme_engine, "_validate_theme_membership", fake_validate)
@@ -47,7 +47,7 @@ async def test_birth_validation_strips_mismatch_and_audits(monkeypatch):
 async def test_birth_validation_noop_when_all_belong(monkeypatch):
     events = _audit_capture(monkeypatch)
 
-    async def fake_validate(name, tickers, changelog, protected=None):
+    async def fake_validate(name, tickers, changelog, protected=None, thesis=None):
         return list(tickers)   # nothing flagged
 
     monkeypatch.setattr(theme_engine, "_validate_theme_membership", fake_validate)
@@ -63,7 +63,7 @@ async def test_birth_validation_noop_when_all_belong(monkeypatch):
 async def test_birth_validation_skips_below_minimum(monkeypatch):
     calls: list[str] = []
 
-    async def fake_validate(name, tickers, changelog, protected=None):
+    async def fake_validate(name, tickers, changelog, protected=None, thesis=None):
         calls.append(name)
         return list(tickers)
 

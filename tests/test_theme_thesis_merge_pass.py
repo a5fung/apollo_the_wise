@@ -50,7 +50,8 @@ def _wire(monkeypatch, verdicts_by_other: dict, validate=None):
     async def fake_adjudicate(anchor, other, **kw):
         return verdicts_by_other[other["name"]]
 
-    async def fake_validate(name, tickers, changelog, protected=None, dissolve_flagged_pair=False):
+    async def fake_validate(name, tickers, changelog, protected=None, dissolve_flagged_pair=False,
+                            thesis=None):
         return list(tickers) if validate is None else await validate(name, tickers)
 
     monkeypatch.setenv("THEME_MERGE_ARM", "1")
