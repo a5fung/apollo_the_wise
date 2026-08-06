@@ -219,8 +219,14 @@ reviews:
       are mis-set, recalibrate rather than keep overriding; (d) the standing
       demote-side watch-metric (judge-demoted cohort forward R - Phase B showed
       demotes averaging +1.01R, i.e. NOT reliably saves).
-    predicate_sql: null
-    threshold: 0
+    # RE-GATED 2026-08-06 from a bare date to the sample floor the evaluator itself
+    # enforces (was `predicate_sql: null` + `threshold: 0`, i.e. date-surfaced only).
+    # See the RUN block below: at n<20 the strategy-health arms cannot evaluate, so a
+    # date-surfaced quarterly review can only ever report "cannot evaluate".
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE status = 'closed' AND account_mode = 'live' AND total_pnl IS NOT NULL
+    threshold: 20
     earliest_review_date: 2026-08-01
     status: pending
     action_when_ready: |
@@ -231,6 +237,65 @@ reviews:
       keep/retune to the operator, log the outcome as a safeguards.md
       change-log entry (bands are never silently re-tuned). Re-bump
       earliest_review_date +1 quarter each run (recurring, not one-shot).
+    # ── RUN 2026-08-06 (read-only, $0). THE BANDS ARE FINE. THE COHORT IS NOT. ──
+    #
+    # (a) LIVE R-DISTRIBUTION vs the Phase B envelope — measured, all 14 closed
+    #     live trades:
+    #                            calibration envelope      live reality
+    #       expectancy           +0.95R                    -0.82R
+    #       win rate             30%                       0%   (0 of 14)
+    #       worst losing streak  15                        14 and running
+    #       cumulative R         maxDD -24.1R              -11.5R
+    #       trailing-20 p5       -0.63R                    n/a (n<20)
+    #
+    # ⚠ FIRST, THE THING I ALMOST GOT WRONG AND CHECKED: at -0.82R the trailing-20
+    # expectancy is already past the REDUCE threshold (<= -0.70R), so the state
+    # SHOULD read REDUCE and mi_safeguard_state says HOLD — which looks like a
+    # safeguard that failed to transition. It is not. `evaluate_kill_scale_bands`
+    # applies a 20-trade sample floor (_SAMPLE_FLOOR, kill_scale_bands.py:125) and
+    # returns HOLD below it; the live evaluator prints exactly that:
+    #   "n=14 · t20=n/a · t40=n/a · streak=14 · cum=-11.5R
+    #    14 closed trades < 20 sample floor — only equity guards bind"
+    # HOLD is CORRECT behaviour, not a missed transition. Verified by running
+    # scripts/evaluate_kill_scale_bands.py against prod before writing this.
+    #
+    # (b) THE BANDS WILL BIND ON THEIR OWN, SOON, WITHOUT ANY CHANGE:
+    #       streak arm   REDUCE at >= 16 — we are at 14, i.e. TWO more losses
+    #       expectancy   REDUCE at <= -0.70R — already true at -0.82R, but invisible
+    #                    until trade 20 (six more trades)
+    #       KILL arms    cum <= -30R (at -11.5R) or t20 <= -1.05R — not close
+    #     So the design is working as signed: a kill rule that does not fire on the
+    #     normal variance of a healthy year, reaching for the REDUCE rung first.
+    #     NO RETUNE PROPOSED. Nothing here argues the thresholds are mis-set —
+    #     there are zero kill_scale_override rows (one transition ever, `live ∅ →
+    #     HOLD` on 2026-06-19), so criterion (c)'s "repeated overrides in one
+    #     direction" does not apply.
+    #
+    # 🔴 (c) THE FINDING THAT MATTERS IS NOT ABOUT THE BANDS. **13 of the 14 closed
+    #     live trades closed on DAY 0** (hold_days=0; MANE 1 day, SMCI 2). Not one
+    #     took a partial, not one armed breakeven. The calibration envelope
+    #     describes a strategy that HOLDS positions — +0.95R expectancy at a 30%
+    #     win rate only exists if winners run. Live, entries are stopped out
+    #     intraday almost every time, so the band arithmetic is being applied to a
+    #     population the calibration never contemplated. That is an ENTRY and
+    #     STOP-GEOMETRY question, not a sizing question, and re-tuning bands would
+    #     paper over it.
+    #     The one live position that survived day 0 is the one that is working:
+    #     PLTR, entry $149.05, high $166.08, partial taken, breakeven armed.
+    #
+    # ⚖ THE OPERATOR DECISION THIS SURFACES (his sole authority — THE LINE; I am
+    #   NOT proposing a change and have made none): the bands' REDUCE rung is ~2
+    #   losses away and will halve risk automatically. The question is whether to
+    #   keep feeding live entries into an 0-for-14 cohort until the safeguard
+    #   catches it, or to pause live entries and fix the day-0 stop-out rate first.
+    #   Both are legitimate; the bands were pre-committed in 2026-06 precisely so
+    #   a drawdown would not force this in the moment.
+    #
+    # RE-GATED at n=20 closed live trades (see `predicate_sql` above) — the point
+    # where the strategy-health arms can actually evaluate and this review can do
+    # its real job. A calendar quarter would surface it again with the same
+    # "n<20, cannot evaluate" answer.
+    reviewed_on: 2026-08-06
 
   - review_id: conviction_floor_extension
     title: "Conviction floor extension to gap[10,15)+strong band"
@@ -1727,10 +1792,18 @@ reviews:
       (shallower drawdowns / cleaner recovery) WITHOUT disproportionately missing
       the recovery-winners that pay for losses (the tiered design's explicit
       risk)? Counterfactual = the affected entries' full-size outcomes.
+    # RE-POINTED 2026-08-06. The old predicate counted PAPER equity snapshots — the
+    # account this review was written against pre-cutover, and the exact thing the
+    # operator rejected mid-review on 07-30 ("why looking at paper? we've switched to
+    # real money a month ago"). It counted the clock ticking, not the mechanism acting,
+    # so it went ripe on day 14 and stayed ripe forever regardless of the answer.
+    # Now it counts the ONLY event that can test this breaker: a REDUCE or BLOCK tier
+    # actually engaging on LIVE money. Zero today; silent until one fires.
     predicate_sql: |
-      SELECT COUNT(DISTINCT snapshot_date) FROM mi_account_equity_snapshots
-      WHERE account_mode = 'paper' AND snapshot_date > DATE '2026-06-03'
-    threshold: 14
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type IN ('drawdown_reduce_entered', 'drawdown_block_entered')
+        AND summary LIKE 'live%'
+    threshold: 1
     earliest_review_date: 2026-07-01
     action_when_ready: |
       Pull the active-phase record since 2026-06-03: tier-transition audit
@@ -1795,7 +1868,26 @@ reviews:
     # NO CHANGE_PROCESS action — thresholds untouched, breaker keeps its ACTIVE
     # phase. Re-look naturally if BLOCK ever fires or a REDUCE window coincides
     # with a genuine winner cohort (that is the case this review could not test).
+    #
+    # ── RE-CHECKED 2026-08-06: nothing has changed, and the entry is now GATED ON
+    # THE EVENT its own 07-30 verdict named instead of on a date. ──
+    # The 07-30 run already produced the answer ("UNPROVEN ON LIVE... re-look when
+    # live drawdown actually reaches REDUCE") — but the gate was left as a paper
+    # snapshot count, so an ANSWERED review kept resurfacing as ripe work. That is
+    # the same defect pattern found in wave_c_part2 and adv_probe today: the
+    # predicate measured the instrument running, not the population it hunts.
+    #
+    # Confirmed against prod today, unchanged from 07-30:
+    #   live breaker state = WATCH since 2026-07-28, drawdown -3.73%, last eval 08-05
+    #   live REDUCE events: 0 · live BLOCK events: 0 · lifetime, since the 06-03 flip
+    #   entries carrying skip_reason like '%drawdown%': 0 rows
+    #   EVERY reduce/release row in mi_audit_log is `paper:` — 64 days ACTIVE on live
+    #   money and the mechanism has never once engaged.
+    # WATCH (-4%) carries multiplier 1.0x, so the tier it currently sits in is
+    # informational by design. It is tracking correctly and protecting nothing yet.
+    # [[a-rule-is-not-live-until-it-has-fired-once]]
     status: pending
+    regated_on: 2026-08-06
 
     added_on: 2026-06-03
 
