@@ -273,29 +273,29 @@ def role_resolution(role: str) -> "_TierResolution | None":
 
 # ── Role bindings (what each subsystem actually calls) ───────────────────────
 # Orchestrator tool-use loop (core/orchestrator.py)
-ORCHESTRATOR_MODEL = SONNET
+ORCHESTRATOR_MODEL = effective_model("ORCHESTRATOR_MODEL")
 # Market agent's own small LLM calls (agents/.../agent.py)
-MARKET_AGENT_MODEL = HAIKU
+MARKET_AGENT_MODEL = effective_model("MARKET_AGENT_MODEL")
 
 # Theme engine: discovery/assignment/validation (Sonnet since #213 — Haiku
 # misread narrowing name qualifiers as membership filters)
-THEME_MODEL = SONNET
+THEME_MODEL = effective_model("THEME_MODEL")
 # Theme engine's senior-advisor escalation (capped 3 calls/run).
 # 2026-06-09: opus-4-6 → opus-4-8. Same price tier ($5/$25), strictly more
 # capable, and aligns the advisor with the model the judge eval compares
 # against (the drift that motivated this registry).
-THEME_ADVISOR_MODEL = OPUS
+THEME_ADVISOR_MODEL = effective_model("THEME_ADVISOR_MODEL")
 # Ticker-description generation (theme engine chunked + nightly backfill)
-DESCRIPTION_MODEL = HAIKU
+DESCRIPTION_MODEL = effective_model("DESCRIPTION_MODEL")
 # Theme → ecosystem bucket pick (ADR 0032 Phase 1, theme_ecosystems.py).
 # Cheap structured single-code classification against a FIXED 20-bucket
 # taxonomy with a scratchpad-first forced tool — Haiku tier; a deterministic
 # keyword/exemplar fallback backstops abstains/errors, so a misfire degrades
 # to E-UNASSIGNED (read-model only, no money path).
-ECOSYSTEM_ASSIGN_MODEL = HAIKU
+ECOSYSTEM_ASSIGN_MODEL = effective_model("ECOSYSTEM_ASSIGN_MODEL")
 # Cross-ticker emerging-theme synthesis (theme_synthesis.py — #240 advisory
 # feed; Sonnet: the same cross-sector narrative reasoning tier as THEME_MODEL)
-SYNTHESIS_MODEL = SONNET
+SYNTHESIS_MODEL = effective_model("SYNTHESIS_MODEL")
 
 # EP holistic grade judge (ADR 0011; W1 eval owns this choice).
 # OPUS since 2026-06-10: operator-labeled closed-gap eval (lit Lane-2 theme
@@ -306,35 +306,35 @@ SYNTHESIS_MODEL = SONNET
 # quality-over-cost on the load-bearing path. Live latency budgets raised
 # with the flip (judge timeout 15->25s; ep_detector post-loop 60->110s) —
 # Opus is slower and a tight timeout converts quality into fail-open noise.
-JUDGE_MODEL = OPUS
+JUDGE_MODEL = effective_model("JUDGE_MODEL")
 # Ensemble-divergence SHADOW 2nd opinion (#301, ADR 0011 sibling — zero-authority
 # MONITOR, never a grade input). Deliberately SONNET, not OPUS: the point is an
 # INDEPENDENT second read on the JUDGE_MODEL verdict, so it must differ in
 # model/tier from JUDGE_MODEL, not just be a cheaper rerun of the same model.
 # Also cheap — ~2-5 calls/day expected (HIGH-tier verdicts only).
-JUDGE_DIVERGENCE_MODEL = SONNET
+JUDGE_DIVERGENCE_MODEL = effective_model("JUDGE_DIVERGENCE_MODEL")
 # Grounded-summary catalyst grade (#190 — Haiku confabulated on raw headlines)
-GROUNDED_GRADE_MODEL = SONNET
+GROUNDED_GRADE_MODEL = effective_model("GROUNDED_GRADE_MODEL")
 # Deterministic-adjacent materiality assessment (catalyst_materiality.py)
-MATERIALITY_MODEL = SONNET
+MATERIALITY_MODEL = effective_model("MATERIALITY_MODEL")
 # Multi-quarter catalyst metrics extraction (catalyst_metrics_extractor.py)
-METRICS_EXTRACTION_MODEL = SONNET  # was SONNET_4_5, a pin flagged stale 2026-06-09 and never
+METRICS_EXTRACTION_MODEL = effective_model("METRICS_EXTRACTION_MODEL")  # was SONNET_4_5, a pin flagged stale 2026-06-09 and never
 # revisited — the exact rot the resolver exists to kill. Runtime already resolved this role to
 # the newest sonnet (it is in RESOLVED_ROLES); this re-points the OFFLINE FALLBACK too, so a
 # resolver outage degrades to current-sonnet instead of two generations back. Same tier, same
 # $3/$15 rate — no cost change. (operator 2026-07-31: "nothing shall remain stale")
 # Catalyst TYPE classification (fire identity; cheap, structured)
-CATALYST_TYPE_MODEL = HAIKU
+CATALYST_TYPE_MODEL = effective_model("CATALYST_TYPE_MODEL")
 
 # Trade postmortem narration (postmortem.py)
-POSTMORTEM_MODEL = SONNET
+POSTMORTEM_MODEL = effective_model("POSTMORTEM_MODEL")
 # Sunday weekly system review narration (system_review.py)
-SYSTEM_REVIEW_MODEL = SONNET
+SYSTEM_REVIEW_MODEL = effective_model("SYSTEM_REVIEW_MODEL")
 
 # Orchestrator conversation compression (core/context.py)
-COMPRESSION_MODEL = HAIKU
+COMPRESSION_MODEL = effective_model("COMPRESSION_MODEL")
 # /agents health-check ping (channels/telegram.py — 5 tokens)
-HEALTHCHECK_MODEL = HAIKU
+HEALTHCHECK_MODEL = effective_model("HEALTHCHECK_MODEL")
 
 # ── Pricing ($ per 1M tokens) — ONE copy ─────────────────────────────────────
 # Both spend tables (core/spend.py orchestrator-side, agents/.../spend_tracker.py

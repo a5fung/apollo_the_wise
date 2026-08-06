@@ -42,11 +42,52 @@ def _module_consts(path: Path) -> dict:
                 out[name] = node.value.value
             elif isinstance(node.value, ast.Name):
                 out[name] = ("__alias__", node.value.id)
+            elif (isinstance(node.value, ast.Call)
+                  and isinstance(node.value.func, ast.Name)
+                  and node.value.func.id == "effective_model"
+                  and node.value.args
+                  and isinstance(node.value.args[0], ast.Constant)):
+                # 2026-08-06: role constants now bind to the RESOLVER
+                # (`JUDGE_MODEL = effective_model("JUDGE_MODEL")`), because binding them to the
+                # raw tier pin meant every caller imported a stale model while the resolver
+                # reported the new one — 28 of that day's 34 Sonnet calls ran on sonnet-4-6 a
+                # week after "everything is updated". This gate reads SOURCE, never imports, so
+                # it cannot ask the resolver; it records the ROLE and the tier's fallback pin.
+                # That is the honest thing to hash on: the gate's job is detecting a change to
+                # the grade surface, and a resolver-driven model change IS such a change — it
+                # must still trip the eval gate, exactly as a hand-edited pin did.
+                out[name] = ("__role__", node.value.args[0].value)
     # one-hop alias resolution (JUDGE_MODEL = OPUS; OPUS = "claude-...")
     for k, v in list(out.items()):
         if isinstance(v, tuple) and v[0] == "__alias__":
             out[k] = out.get(v[1])
+    # resolver-bound roles: report the tier's fallback pin, which is what a source-only reader
+    # can honestly know. RESOLVED_ROLES maps role -> tier; the tier's *_PIN holds the literal.
+    roles_to_tier = _resolved_roles_map(tree)
+    for k, v in list(out.items()):
+        if isinstance(v, tuple) and v[0] == "__role__":
+            tier = roles_to_tier.get(v[1])
+            out[k] = out.get(f"{tier.upper()}_PIN") if tier else None
     return out
+
+
+def _resolved_roles_map(tree) -> dict:
+    """RESOLVED_ROLES as {role: tier}, read from source without importing."""
+    for node in tree.body:
+        # ⚠ RESOLVED_ROLES is an ANNOTATED assignment (`RESOLVED_ROLES: dict[str, str] = {...}`),
+        # which ast models as AnnAssign, NOT Assign. Handling only Assign silently returned {},
+        # which made every resolver-bound role read as None — a SILENT blinding of this gate,
+        # the same shape as the bug the gate change is fixing. Both node types, deliberately.
+        tgt = None
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            tgt = node.targets[0]
+        elif isinstance(node, ast.AnnAssign):
+            tgt = node.target
+        if (tgt is not None and isinstance(tgt, ast.Name) and tgt.id == "RESOLVED_ROLES"
+                and isinstance(node.value, ast.Dict)):
+            return {k.value: v.value for k, v in zip(node.value.keys, node.value.values)
+                    if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)}
+    return {}
 
 
 def extract_live_keys(judge_src: Path = JUDGE_SRC, detector_src: Path = DETECTOR_SRC,
