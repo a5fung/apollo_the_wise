@@ -1245,7 +1245,7 @@ reviews:
       _orb_window_cleanup_job cron + skip_reasons.
       Origin: 2026-05-04 cancelled-ORB lifecycle analysis (orb_extension_lifecycle_report.md).
     status: pending
-    earliest_review_date: '2026-09-01'
+    earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
     regate_reason: >-
       RE-GATED 2026-08-06 — it read RIPE on POISONED data. The 8/03 simulator fix landed but the stor
@@ -1360,7 +1360,7 @@ reviews:
         feedback_sample_size_discipline: methodology changes need
         N≥10 backtest evidence. We have N=2.
     status: pending
-    earliest_review_date: '2026-09-01'
+    earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
     regate_reason: >-
       RE-GATED 2026-08-06 — the predicate fires on ANY decision day (22 of 30), but the operator's 7/
@@ -4397,7 +4397,7 @@ reviews:
       evidence is rows AFTER that fix promotes from shadow; pre-promotion rows carry
       contaminated theme labels. Data quality here is gated on the ADR-0007 promotion.
     status: pending
-    earliest_review_date: '2026-09-01'
+    earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
     regate_reason: >-
       RE-GATED 2026-08-06 — N=72 clears the bar but its own stated upstream dependency (clean theme l
@@ -5090,7 +5090,7 @@ reviews:
       cheap; could be added to audit_invariants.py as
       `check_stop_price_ordering` for proactive detection (vs reactive).
     status: pending
-    earliest_review_date: '2026-09-01'
+    earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
     regate_reason: >-
       RE-GATED 2026-08-06 — the tripwire's 3 hits are all FALSE POSITIVES: FPS 6/25, IBM 6/10, GOOGL 
@@ -6660,7 +6660,7 @@ reviews:
       sector). One-shot backfill ran on 2026-05-27 (26/32 tickers
       enriched, 6 unmatched are ETFs or deprecated tickers).
     status: deferred
-    earliest_review_date: '2026-11-01'
+    earliest_review_date: 2026-11-01
     regated_on: 2026-08-06
     regate_reason: >-
       RE-GATED 2026-08-06 — it was ANSWERED and deferred on 8/03 by its own <70% rule; it reads ripe 
