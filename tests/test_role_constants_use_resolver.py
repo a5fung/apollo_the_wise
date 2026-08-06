@@ -77,3 +77,40 @@ def test_resolution_is_observable_per_role():
     see what a role actually resolved to and why — keep it."""
     import shared.llm_models as m
     assert hasattr(m, "role_resolution")
+
+
+# ── The second half of the same bug: a container with no cache falls back silently ──
+#
+# The constants were rebound to the resolver, and the market agent then ran claude-sonnet-5.
+# The ORCHESTRATOR still ran claude-sonnet-4-6, because the resolver reads a cache FILE at
+# logs/model_resolution.json and the orchestrator did not mount that directory. Its own
+# resolution said it plainly — source='pin', note='no resolution cache' — and nothing surfaced
+# that to anyone. Only the market agent runs model_resolution_refresh, so it is the sole writer
+# and every other service must READ the same file rather than keep its own.
+
+
+def test_every_service_that_calls_an_llm_can_SEE_the_resolution_cache():
+    """A service without the cache mount silently degrades to the tier pin. That is invisible in
+    logs, invisible in tests, and produced a week of stale models in production."""
+    import yaml
+    compose = yaml.safe_load(pathlib.Path("docker/docker-compose.prod.yml").read_text())
+    services = compose["services"]
+    cache_dir = "/app/logs"
+    for name in ("orchestrator", "market-agent"):
+        svc = services.get(name)
+        assert svc, f"{name} missing from compose"
+        mounts = svc.get("volumes") or []
+        assert any(cache_dir in str(v) for v in mounts), (
+            f"{name} does not mount {cache_dir}, so shared/llm_models cannot read the model "
+            f"resolution cache and every LLM call there silently falls back to the tier PIN")
+
+
+def test_the_cache_is_read_only_where_it_is_not_written():
+    """Exactly one writer (the market agent runs model_resolution_refresh). A second writer could
+    race the file and leave two services on different models — the bug wearing a new shape."""
+    import yaml
+    compose = yaml.safe_load(pathlib.Path("docker/docker-compose.prod.yml").read_text())
+    mounts = compose["services"]["orchestrator"].get("volumes") or []
+    logs = [str(v) for v in mounts if "/app/logs" in str(v)]
+    assert logs and all(v.rstrip().endswith(":ro") for v in logs), (
+        "the orchestrator must mount the resolution cache READ-ONLY — it is not the writer")

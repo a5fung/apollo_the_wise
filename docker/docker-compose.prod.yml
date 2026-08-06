@@ -82,6 +82,14 @@ services:
         condition: service_healthy
     volumes:
       - /etc/ssl/certs:/etc/ssl/certs:ro  # System CA certs
+      # ⚠ 2026-08-06 — the model-resolution cache, READ-ONLY. Without this mount the
+      # orchestrator has no cache file, so shared/llm_models falls back to the tier PIN and
+      # every orchestrator LLM call silently runs a stale model while the market agent runs
+      # the current one. Measured that day: orchestrator on claude-sonnet-4-6 while the market
+      # agent was on claude-sonnet-5, a week after model auto-tracking was reported done.
+      # Only the market agent RUNS model_resolution_refresh (an intelligence-owned job), so it
+      # is the only writer — the orchestrator must read the same file, never keep its own.
+      - /home/apollo/apollo_the_wise/logs:/app/logs:ro
     restart: always
     logging: *default-logging
     deploy:

@@ -85,7 +85,18 @@ reviews:
     predicate_sql: null
     threshold: 0
     earliest_review_date: 2026-08-01
-    status: pending
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      RETIRED as a manual review — it contradicts the design the operator ruled on
+      2026-07-30 and restated 2026-08-06: models auto-track the newest in their TIER,
+      he is notified on a change, and guardrails catch degradation. Verbatim:
+      "There is no manual prompt and checks to update models, that is the design we
+      aligned on and that is how it should be." A quarterly prompt asking a human to
+      go compare models is exactly the manual step that design removes, and surfacing
+      it re-created the confusion on 08-06. Cross-tier moves (should the JUDGE be a
+      different tier at all?) remain a real question and belong on a PLAN line with
+      evidence, NOT on a calendar.
     action_when_ready: |
       FOLLOW THE PLAYBOOK: docs/model_selection_baseline.md → "PLAYBOOK —
       evaluating a new model and executing a flip" (codified 2026-06-10 from the
