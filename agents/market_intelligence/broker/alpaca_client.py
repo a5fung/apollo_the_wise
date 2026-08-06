@@ -921,8 +921,15 @@ async def get_latest_trade(ticker: str) -> dict | None:
     try:
         from alpaca.data.requests import StockLatestTradeRequest
         client = _get_data_client()
+        # ⚠ feed= IS REQUIRED (2026-08-06). Without it alpaca-py defaults to IEX — roughly 2-3%
+        # of consolidated volume — while this account pays for SIP. Every other request in this
+        # module passes get_data_feed(); this one did not, so the price-aware entry guard (#500,
+        # order_manager.py:448 — "has price already run past the ORB high?") was deciding off a
+        # partial tape and could read a stale, lower last trade.
+        # Found while investigating the INSM rejection; it did NOT cause that one (the SIP tape
+        # showed the same 128.96 prints) — it is a real defect on its own merits.
         result = await _sdk(client.get_stock_latest_trade,
-            StockLatestTradeRequest(symbol_or_symbols=ticker)
+            StockLatestTradeRequest(symbol_or_symbols=ticker, feed=get_data_feed())
         )
         t = result.get(ticker)
         if t:
