@@ -405,7 +405,6 @@ reviews:
       < 5/week (false-positive sanity). If both pass, post a CLAUDE.md
       Recent entry confirming the audit layer is now load-bearing.
       Origin: 2026-04-24 session 5, deferred per backlog P24.
-    status: deferred
     deferred_reason: |
       2026-05-24 spot-check: 3 of 5 random metrics ≥14 (skip_count_setup
       n=22, validation_rate_limited_count n=22, audit_errors_per_day
@@ -424,6 +423,32 @@ reviews:
     deferred_until: 2026-07-23
     earliest_review_date: 2026-07-23
     added_on: 2026-04-29
+    # ── ANSWERED + CLOSED 2026-08-06 (measured against prod, $0) ───────────────
+    # The 2026-05-24 deferral asked for 60 more days of accumulation. It has had
+    # 74. Depth is now met on the refined criterion this entry itself proposed:
+    #
+    #   22 metrics tracked. ALL 22 have >= 25 days of history.
+    #   20 of 22 have 70-104 days. Span 2026-04-25 -> 2026-08-06.
+    #   The two thinnest (judge_high_rate_daily, judge_demote_share_daily, 25d)
+    #   only STARTED 2026-07-13 — new metrics, not stalled ones, and already
+    #   past system_audit's own `>= 14 = full L2` cold-start tier.
+    #   HIGH_ep_entry_rate, the 2026-05-24 laggard at n=5, is now n=90.
+    #
+    # False-positive sanity (the other half of the bar): 60 days of audit rows
+    # carry 89 `anomaly_detected` = ~1.5/day. Live, and not flooding.
+    #
+    # So the audit layer is LOAD-BEARING. No CLAUDE.md entry needed — the
+    # cold-start tiers in the L1/L2/L3 section already describe the live rule.
+    #
+    # ⚠ ONE ORPHAN, deliberately not filed as a task: fishhook_promotion_rate_30d
+    # / fishhook_reclaim_rate_30d / fishhook_anchors_per_day stop dead at
+    # 2026-07-21 (82 days each, then nothing). That is CORRECT, not a defect —
+    # no Python file in the repo references `fishhook` at all; the detector is
+    # gone and PLAN #314 holds fishhook U&R as unbuilt future work (TI3). The
+    # rows are dead baselines for a dead metric. If TI3 is ever built they will
+    # resume on their own.
+    status: done
+    closed_on: 2026-08-06
 
   - review_id: correlation_engine_revalidation
     title: "Correlation clustering precision/recall revalidation"
@@ -824,7 +849,53 @@ reviews:
       (line ~556) and remove the probe instrumentation. If zero matches OR no
       winners, retire by reverting the cap to 20.
       Origin: 2026-04-30 dead-zone investigation, advisor priority B.
-    status: pending
+    # ── ANSWERED 2026-08-06 (measured against prod, $0) ───────────────────────
+    # THE ANSWER IS ZERO, and the reason is structural, not statistical:
+    # `ep_detector.py:2791` scores `candidates[:20]`. Ranks 21-50 receive real
+    # ADV and a real rel_volume (:2636-2643) but NEVER enter the scoring loop,
+    # so they cannot produce an alert of any tier. The probe is telemetry-only
+    # exactly as this entry assumed — confirmed in code, not inferred.
+    #
+    # WHAT THE PROBE ACTUALLY BOUGHT, over 3 months / 3,445 rows / 522 tickers:
+    #   16 ticker-days ever synthesized rel_volume >= 3x.
+    #   4 of those landed inside 09:30-09:44 ET (the submission window):
+    #     ERNA 2026-05-07  142.8x  fwd_5d +103%  <- ARTIFACT, see below
+    #     SKK  2026-05-06   58.5x  fwd_5d  +5.7%
+    #     GDC  2026-05-06   14.8x  fwd_5d +13.7%  <- the ONLY genuine hit
+    #     SLP  2026-05-06    3.8x  fwd_5d  +5.8%
+    #
+    # ⚠ ERNA IS A CORPORATE-ACTION ARTIFACT, not a missed winner. `split_applied
+    # | ERNA 2026-05-04 25:1 — 171 bars overwritten` (2026-05-07 00:18). A 25:1
+    # reverse split against unadjusted volume manufactures exactly this shape;
+    # ERNA's rel_volume collapses to 4.9x on 05-08 and 3.2x on 05-13 once the
+    # split is applied. The single most spectacular number the probe ever
+    # produced was noise. Any future universe-widening replay MUST screen
+    # mi_audit_log `split_applied` before believing a volume spike.
+    #
+    # ⚠ SLP is NOT a probe->HIGH conversion either, though it looks like one.
+    # SLP DID alert HIGH on 2026-05-06 with rel_volume 7.06x — but `rank_by_gap`
+    # is a PER-TICK gap ordering, so a name sits at rank 21 on one scan tick and
+    # inside the top 20 on the next. SLP alerted through the ordinary scored
+    # path on a tick where it ranked <= 20. The cap is a per-tick budget, not a
+    # hard universe exclusion — names bounce across it all morning.
+    #
+    # ⇒ MEASURED COST OF THE TOP-20 CAP: about ONE name per quarter (GDC,
+    # +13.7% in 5 days, never alerted on any tick). Real, but small.
+    #
+    # ⇒ FEEDS THE UNIVERSE QUESTION (operator 2026-08-05: "our RS/theme universe
+    # is too small... we need to fundamentally expand it but intelligently").
+    # This is direct evidence that the per-tick top-20 scan cap is NOT where the
+    # missing stocks are. One name a quarter does not explain the gap he is
+    # seeing. The widening work belongs in #538 (discovery), not here.
+    #
+    # ACTION: the review is ANSWERED and closed. The retire-vs-keep of the
+    # 30 extra Polygon calls/tick is deliberately handed to #538 rather than
+    # executed now — that work may want this instrument still armed while it
+    # measures coverage, and killing the only ruler mid-measurement is the
+    # expensive mistake. No money, no detection change either way (scoring
+    # already stops at 20).
+    status: done
+    closed_on: 2026-08-06
     added_on: 2026-04-30
 
   - review_id: narrative_theme_discovery_promote_gate
@@ -7247,10 +7318,16 @@ reviews:
     # for date-surfaced reviews — but those pair it with threshold 0, as
     # `narrative_theme_discovery_promote_gate` does.) The telemetry existed all along:
     # 31 `perplexity_boost_shadow` audit rows. Made it measurable instead.
+    #
+    # RE-POINTED 2026-08-06 at the slice that would actually justify Part 2 (was
+    # `COUNT(*) >= 5` over ALL boost rows — that counts the INSTRUMENT running,
+    # not the population it hunts, so it went ripe at 44 rows while the target
+    # slice sat at zero). See the ANSWERED block below.
     predicate_sql: >-
       SELECT COUNT(*) FROM mi_audit_log
       WHERE event_type = 'perplexity_boost_shadow'
-    threshold: 5
+        AND summary LIKE '%HIGH%' AND summary LIKE '%direct=False%'
+    threshold: 1
     earliest_review_date: 2026-07-01
     action_when_ready: |
       1. Run scripts/analyze_perplexity_boost_shadow.py (read-only; prints the
@@ -7264,7 +7341,35 @@ reviews:
          final tier, so the boost's blast radius is the floor/fallback path +
          judge-input bias — re-scope Part 2 against that reality before building.
       Task #233 holds the full context.
+    # ── ANSWERED 2026-08-06 (measured against prod, $0 — no eval spend) ───────
+    # THE TARGET POPULATION DOES NOT EXIST. 44 `perplexity_boost_shadow` rows,
+    # 2026-06-08 -> 2026-08-06 (60 days). Split by the exact Part-2 slice —
+    # tier HIGH *and* has_direct_source=False:
+    #
+    #   HIGH + direct=True   27   <- every single HIGH is directly sourced
+    #   HIGH + direct=False   0   <- the confident-confabulation slice
+    #   MODERATE + True      12
+    #   MODERATE + False      5   (AUGO, XE, SEDG, SG, BLZE)
+    #
+    # N=0 after 60 days and 44 boost events, unchanged from the N=0 recorded on
+    # 2026-06-10. The 1.2x agreement boost has never once manufactured a HIGH
+    # without a direct source. Part 2 would be a corpus-demotion re-grade with
+    # nothing to demote, and the live flip downstream has no population to act
+    # on — so building it is spend against a hypothetical.
+    #
+    # ⇒ Part 2 is RETIRED as designed. The shadow logging STAYS (it is a single
+    # audit row per boost tick, free) — this is the instrument, not the build.
+    #
+    # ⇒ RE-GATED ON THE POPULATION, NOT A DATE. Every prior re-gate here moved a
+    # calendar date and surfaced an unanswerable question again; two dates have
+    # already been burned that way (and on 2026-08-06 a re-gate of five OTHER
+    # reviews silently no-op'd because the dates were quoted). The predicate now
+    # counts the slice that would actually justify Part 2 (see `predicate_sql`
+    # above). It stays at zero and stays silent until a real
+    # HIGH-without-direct-source appears — then it surfaces on its own, with a
+    # cohort to look at.
     status: pending
+    regated_on: 2026-08-06
     added_on: 2026-06-10
 
   - review_id: ninem_day2_retire_for_consolidation
