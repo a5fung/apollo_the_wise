@@ -1099,6 +1099,10 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         # class. Rows accumulate in mi_audit_log and feed the
         # `entry_order_rejections_systematic` data-gated review: observe whether
         # the pattern is systematic before designing any retry mechanism.
+        broker_reason = None
+        if event_norm in ("rejected", "cancelled", "canceled", "expired"):
+            broker_reason = await alpaca.fetch_broker_reject_reason(
+                order_id, datetime.now(timezone.utc), account_mode=account_mode)
         try:
             await log_audit_event(
                 ENTRY_ORDER_REJECTED,
@@ -1111,6 +1115,17 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     "event_norm": event_norm,
                     "order_id": order_id,
                     "skip_reason": skip_reason,  # #500 — carries the diagnosis
+                    # ⚠ ALPACA'S OWN WORDS (2026-08-06, INSM). Everything above this line
+                    # is a diagnosis we SYNTHESISE; this is the broker stating the cause.
+                    # It lives on the trade-updates EVENT, not the order — the order object
+                    # has no reason field, and the SDK's TradeUpdate model has none either,
+                    # so raw_data=False parses it away before this handler runs. Recovered
+                    # by a targeted lookup instead of flipping the stream to raw dicts,
+                    # which would rewrite every handler on the FILL path to recover a field
+                    # needed only on a terminal failure. INSM would have read:
+                    #   "[6098] Stop Price Already Triggered/Exceeds $ Threshold"
+                    # instead of hours of inference.
+                    "broker_reason": broker_reason,
                     "gap_pct": float(entry_trade["gap_pct"]) if entry_trade["gap_pct"] is not None else None,
                     "ep_score": float(entry_trade["ep_score"]) if entry_trade["ep_score"] is not None else None,
                     "entry_price": float(entry_trade["entry_price"]) if entry_trade["entry_price"] is not None else None,
@@ -1126,10 +1141,13 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 f"entry_order_rejected telemetry emit failed for {symbol}: {_e}"
             )
         icon = "🚫" if event_norm == "rejected" else "🗑"
+        # The broker's own reason goes to the OPERATOR, not just the audit row. INSM sat
+        # unexplained for hours with the answer already in Alpaca's payload.
+        reason_line = f"\n_Broker: {broker_reason}_" if broker_reason else ""
         await send_telegram_message(
             f"{mode_prefix(account_mode)}{icon} *Entry {event_norm.upper()}:* {symbol}\n"
             f"Order {order_id[:8]} — no position opened.\n"
-            f"{humanize(skip_reason)}"
+            f"{humanize(skip_reason)}{reason_line}"
         )
         logger.info(
             f"WS [{account_mode}]: entry order {event_norm}: {symbol} ({skip_reason})"

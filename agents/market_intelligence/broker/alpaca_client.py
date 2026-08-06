@@ -863,6 +863,59 @@ async def persist_intraday_bars(ticker: str, bars: list[dict]) -> None:
 # ── Price Data ──────────────────────────────────────────────────────────────
 
 
+async def fetch_broker_reject_reason(
+    order_id: str, at, account_mode: str | None = None, window_s: int = 4,
+) -> str | None:
+    """Alpaca's OWN words for why it killed an order — the one place they exist.
+
+    ⚠ WHY THIS EXISTS — INSM, 2026-08-06. A live entry was rejected 3.4ms after submit on a
+    stock that then ran +33%. The order object carries NO reason field (confirmed on the REST
+    payload, every key), and `TradeUpdate` — the SDK model our trade stream receives — has no
+    `reason` field either, so with `raw_data=False` the SDK parses the reason away before our
+    handler ever sees it. We had been discarding it on every rejection.
+
+    It IS present, on the `rejected` EVENT (not the order) in the trade-updates history:
+
+        "reason": "[6098] Stop Price Already Triggered/Exceeds $ Threshold"
+
+    That single line identified the cause after hours of inference. Deliberately a targeted
+    lookup rather than flipping the stream to raw_data=True: that flip would rewrite every
+    handler on the fill path — the money path — to work on dicts, to recover a field needed
+    only on a terminal failure.
+
+    Returns None on anything unexpected. NEVER raises: a diagnostic must not be able to break
+    the rejection handling it is diagnosing.
+    """
+    import json as _json
+    import urllib.request
+    from datetime import timedelta
+    try:
+        # Reuse the module's own mode resolution + env contract rather than inventing a
+        # second one — a diverging credential path is how a paper key ends up querying live.
+        mode = _resolve_account_mode(account_mode)
+        env_prefix = f"ALPACA_{mode.upper()}_"
+        key = _require_alpaca_env(f"{env_prefix}API_KEY", mode)
+        secret = _require_alpaca_env(f"{env_prefix}SECRET_KEY", mode)
+        base = ("https://paper-api.alpaca.markets" if mode == "paper"
+                else "https://api.alpaca.markets")
+        lo = (at - timedelta(seconds=window_s)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        hi = (at + timedelta(seconds=window_s)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        url = f"{base}/v2/events/trades?since={lo}&until={hi}"
+        req = urllib.request.Request(url, headers={
+            "APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            for raw in r:
+                line = raw.decode(errors="replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                ev = _json.loads(line[5:])
+                if str((ev.get("order") or {}).get("id")) == str(order_id) and ev.get("reason"):
+                    return str(ev["reason"])[:300]
+    except Exception as e:  # loud-ok: logged; a missing diagnosis must never break the handler
+        logger.warning(f"broker reject-reason lookup failed for {order_id}: {e}")
+    return None
+
+
 async def get_latest_trade(ticker: str) -> dict | None:
     """Fetch the latest trade price for a ticker. Used for price-aware re-entry."""
     try:
