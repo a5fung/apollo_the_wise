@@ -24,15 +24,28 @@
 # watchdog_heartbeat). Dedup state lives in FILES, deliberately NOT the DB —
 # the watchdog must keep working when postgres is the thing that's down.
 #
+# Two-tier confirmation for the service-down check (#532, 2026-08-06): see
+# the comment above check_service() for the measurement that justifies it.
+# Hard-down states alert on tick 1, unchanged. Soft (ambiguous / likely
+# mid-deploy) states need 2 consecutive failing ticks (~5 min) before they
+# promote to a real DOWN alert — tracked in a per-service "$svc.pending"
+# file alongside the existing "$svc.down" alert-state file.
+#
 # Known blind spot (accepted): runs on the same host it watches — whole-host
 # death needs an external pinger (filed as a follow-up).
 
 set -uo pipefail  # not -e: every failure routes through explicit handling
 
-APP_DIR=/home/apollo/apollo_the_wise
+# APP_DIR/STATE_DIR/LOG_FILE overrides are test hooks (same pattern as the
+# pre-existing WATCHDOG_SERVICES_OVERRIDE below) — added for
+# tests/test_service_watchdog_532.py, which runs this script for real
+# against a temp STATE_DIR/LOG_FILE and a fake `docker` on PATH instead of
+# the production host paths. Defaults are unchanged production values, so
+# behaviour is identical to before when nothing overrides them.
+APP_DIR=${WATCHDOG_APP_DIR_OVERRIDE:-/home/apollo/apollo_the_wise}
 ENV_FILE=$APP_DIR/.env
-STATE_DIR=/home/apollo/backups/watchdog_state
-LOG_FILE=/home/apollo/backups/watchdog.log
+STATE_DIR=${WATCHDOG_STATE_DIR_OVERRIDE:-/home/apollo/backups/watchdog_state}
+LOG_FILE=${WATCHDOG_LOG_FILE_OVERRIDE:-/home/apollo/backups/watchdog.log}
 REALERT_SECS=$((6 * 3600))
 
 # Space-separated container list; override for testing only.
@@ -53,13 +66,39 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 # Shared telemetry helpers (log / telegram_alert / audit_event) — one canonical
-# copy; the per-script copies drifted within a day (d3 /simplify).
+# copy; the per-script copies drifted within a day (d3 /simplify). Sourced via
+# $APP_DIR (not a hardcoded literal) so the WATCHDOG_APP_DIR_OVERRIDE test
+# hook above can point this at a real ops_lib.sh checkout; resolves to the
+# exact same production path when unset.
 # shellcheck disable=SC1091
-. /home/apollo/apollo_the_wise/infra/ops_lib.sh || {
+. "$APP_DIR/infra/ops_lib.sh" || {
     echo "$(date -u +%FT%TZ) FATAL: ops_lib.sh missing" >> "$LOG_FILE"; exit 1; }
 
 check_service() {
-    # Echoes a failure reason, or nothing when healthy.
+    # Echoes "<tier>::<reason>" (tier = hard|soft) on failure, or nothing
+    # when healthy. Tier is decided HERE, at the point each failure mode is
+    # known, rather than by pattern-matching the reason text later — the
+    # reason text is prose for the operator, not a stable machine contract.
+    #
+    # ── Two-tier confirmation (#532, 2026-08-06) ──────────────────────────
+    # 30-day production query of mi_audit_log: 10 service_down alerts,
+    # ZERO real outages. Every one was a deploy restart caught mid-flight —
+    # `docker healthcheck: starting`, `container state: created`,
+    # `container state: removing`, `container state: restarting`, and the
+    # orchestrator's HTTP /health probe failing while the container
+    # restarted — and every one recovered on the very next 5-min tick.
+    # These states are AMBIGUOUS: indistinguishable, in a single snapshot,
+    # from the start of a real failure. They are the SOFT tier below and
+    # require a 2nd consecutive failing tick (~5 min later, via the
+    # "$svc.pending" file in the main loop) before promoting to an actual
+    # DOWN alert.
+    # HARD states (exited/dead/paused/container-not-found/inspect-timeout/
+    # docker-reported-unhealthy) still alert on tick 1, unchanged — none of
+    # these describe a container mid-healthy-deploy. `unhealthy` in
+    # particular is safe to trust immediately: Docker itself only reports it
+    # after the healthcheck's own start_period has elapsed AND `retries`
+    # consecutive probes have failed, so a container that genuinely fails to
+    # boot still alerts fast via Docker's own model — no invented timer.
     local svc="$1"
     local state health rc
     # timeout (d3 review): a hung docker daemon — exactly the class a liveness
@@ -68,25 +107,43 @@ check_service() {
     state=$(timeout 8 docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null)
     rc=$?
     if [ "$rc" = 124 ]; then
-        echo "docker inspect timed out — daemon unresponsive?"
+        echo "hard::docker inspect timed out — daemon unresponsive?"
         return
     elif [ "$rc" != 0 ]; then
-        echo "container not found"
+        echo "hard::container not found"
         return
     fi
     if [ "$state" != "running" ]; then
-        echo "container state: $state"
+        case "$state" in
+            exited|dead|paused)
+                echo "hard::container state: $state" ;;
+            *)
+                # starting/created/restarting/removing/anything else
+                # unlisted — ambiguous mid-deploy states, soft tier. Note
+                # `restarting` sits here even though a crash-loop is a real
+                # outage: a crash-loop STAYS `restarting` across many ticks,
+                # so it still alerts on tick 2 (~10 min), just not tick 1.
+                echo "soft::container state: $state" ;;
+        esac
         return
     fi
     health=$(timeout 8 docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$svc" 2>/dev/null)
     if [ -n "$health" ] && [ "$health" != "healthy" ]; then
-        echo "docker healthcheck: $health"
+        if [ "$health" = "unhealthy" ]; then
+            echo "hard::docker healthcheck: $health"
+        else
+            # Docker healthcheck status is one of starting/healthy/unhealthy
+            # — "healthy" is filtered above, "unhealthy" just above, so the
+            # only thing that reaches here is "starting" (the exact 8/02 and
+            # 8/04 false-alarm pattern above).
+            echo "soft::docker healthcheck: $health"
+        fi
         return
     fi
     # Independent HTTP probe where the host can reach one directly.
     if [ "$svc" = "apollo-orchestrator" ]; then
         curl -fsS -m 10 http://127.0.0.1:8000/health >/dev/null 2>&1 \
-            || { echo "HTTP /health probe failed (port 8000)"; return; }
+            || { echo "soft::HTTP /health probe failed (port 8000)"; return; }
     fi
 }
 
@@ -123,9 +180,49 @@ alert_state() {
 }
 
 for svc in $SERVICES; do
-    reason=$(check_service "$svc")
+    raw=$(check_service "$svc")
+    tier="${raw%%::*}"
+    reason="${raw#*::}"
     state_file="$STATE_DIR/$svc.down"
-    case "$(alert_state "$state_file" "$([ -n "$reason" ] && echo 1 || echo 0)")" in
+    pending_file="$STATE_DIR/$svc.pending"
+    active=0
+
+    if [ -z "$reason" ]; then
+        # Healthy. Drop any stale soft-tier pending observation — silently:
+        # per #532 design, a soft-down that clears before its 2nd confirming
+        # tick must produce NO Telegram / NO audit row, log line only.
+        if [ -f "$pending_file" ]; then
+            log "PENDING CLEARED: $svc — cleared before 2nd confirming tick"
+            rm -f "$pending_file"
+        fi
+    elif [ "$tier" != "soft" ] || [ -f "$state_file" ]; then
+        # `!= "soft"` (not `== "hard"`) deliberately: check_service() only
+        # ever tags "hard" or "soft" today, but this is a liveness
+        # watchdog — if a future return point ever forgot the tag, failing
+        # toward "alert now" is the safe direction, not "silently wait a
+        # tick". Hard-down: alert immediately (tick 1), unchanged pre-#532
+        # behaviour.
+        # `-f "$state_file"` also covers a service ALREADY confirmed DOWN
+        # (reached via hard, or a prior soft promotion) that is STILL
+        # failing, hard or soft — it must stay active without re-entering
+        # the 2-tick pending gate below, or a `restarting` crash-loop would
+        # spuriously RECOVER every other tick as a fresh pending file cycles.
+        # The 2-tick gate applies only to the clear -> failing transition.
+        [ -f "$pending_file" ] && rm -f "$pending_file"
+        active=1
+    else
+        # Soft tier, not yet confirmed down: require a 2nd CONSECUTIVE
+        # failing tick (~5 min, the next cron run) before promoting to DOWN.
+        if [ -f "$pending_file" ]; then
+            rm -f "$pending_file"
+            active=1
+        else
+            echo "$now" > "$pending_file"
+            log "PENDING: $svc — $reason (soft tier, confirming on next tick)"
+        fi
+    fi
+
+    case "$(alert_state "$state_file" "$active")" in
         fire)
             log "DOWN: $svc — $reason"
             audit_event "service_down" "watchdog: $svc DOWN — $reason"

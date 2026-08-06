@@ -1383,6 +1383,7 @@ reviews:
     status: pending
     earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
+    regate_kind: date
     regate_reason: >-
       RE-GATED 2026-08-06 — it read RIPE on POISONED data. The 8/03 simulator fix landed but the stor
       ed rows were never recomputed: verified today, mi_orb_extension_shadow still returns ZERO trade
@@ -1498,6 +1499,7 @@ reviews:
     status: pending
     earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
+    regate_kind: date
     regate_reason: >-
       RE-GATED 2026-08-06 — the predicate fires on ANY decision day (22 of 30), but the operator's 7/
       4 disposition requires GENUINELY CONTESTED days, and measured with that honest condition since 
@@ -1888,6 +1890,7 @@ reviews:
     # [[a-rule-is-not-live-until-it-has-fired-once]]
     status: pending
     regated_on: 2026-08-06
+    regate_kind: predicate
 
     added_on: 2026-06-03
 
@@ -4562,6 +4565,7 @@ reviews:
     status: pending
     earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
+    regate_kind: date
     regate_reason: >-
       RE-GATED 2026-08-06 — N=72 clears the bar but its own stated upstream dependency (clean theme l
       abels) is unmet: measured this week, the theme universe covers 319 of ~9,700 names and 70% of H
@@ -5255,6 +5259,7 @@ reviews:
     status: pending
     earliest_review_date: 2026-09-01
     regated_on: 2026-08-06
+    regate_kind: date
     regate_reason: >-
       RE-GATED 2026-08-06 — the tripwire's 3 hits are all FALSE POSITIVES: FPS 6/25, IBM 6/10, GOOGL 
       5/19 are trailed stops sitting above entry on winners, which its own comment says should not co
@@ -6825,6 +6830,7 @@ reviews:
     status: deferred
     earliest_review_date: 2026-11-01
     regated_on: 2026-08-06
+    regate_kind: date
     regate_reason: >-
       RE-GATED 2026-08-06 — it was ANSWERED and deferred on 8/03 by its own <70% rule; it reads ripe 
       only because that deferral never moved the dates. Its honest re-open trigger is the Nascent<->R
@@ -7462,6 +7468,7 @@ reviews:
     # cohort to look at.
     status: pending
     regated_on: 2026-08-06
+    regate_kind: predicate
     added_on: 2026-06-10
 
   - review_id: ninem_day2_retire_for_consolidation

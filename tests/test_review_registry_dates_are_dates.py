@@ -44,14 +44,36 @@ def test_the_gate_it_protects_still_requires_a_date():
     assert "isinstance(earliest, date)" in src
 
 
-def test_a_regated_review_actually_has_a_future_date():
-    """Re-gating means moving the date. A review marked regated_on but left on a past date is
-    the same silent no-op wearing a different disguise."""
+def test_a_regated_review_actually_moves_its_gate():
+    """A re-gate must change something that stops the review surfacing. There are two honest
+    ways to do that and this test must not force the wrong one.
+
+    `regate_kind: date`      — pushed the calendar floor out. The date MUST move forward, or the
+                               review resurfaces tomorrow and the re-gate was theatre. This is
+                               the 2026-08-06 bug that created this file.
+    `regate_kind: predicate` — repointed predicate_sql at the population/event that would
+                               actually change the decision, leaving the date alone ON PURPOSE.
+
+    ⚠ Do NOT "fix" a predicate re-gate by also pushing its date out. For an EVENT-gated review
+    (first live REDUCE tier · first HIGH-without-direct-source) a future date is actively
+    harmful: the event can fire next week and the date floor would suppress the surface until
+    the quarter turns — the review would go quiet at exactly the moment it had something to say.
+    A predicate that reads 0 is already the gate; the date is a floor it does not need.
+    """
     stale = []
     for r in REG:
         if not r.get("regated_on"):
             continue
-        e = r.get("earliest_review_date")
-        if not isinstance(e, date) or e <= r["regated_on"]:
-            stale.append(f"{r['review_id']}: regated {r.get('regated_on')} but earliest={e!r}")
+        kind = r.get("regate_kind")
+        if kind not in ("date", "predicate"):
+            stale.append(f"{r['review_id']}: regated {r['regated_on']} but regate_kind="
+                         f"{kind!r} — say which gate moved (date|predicate)")
+        elif kind == "date":
+            e = r.get("earliest_review_date")
+            if not isinstance(e, date) or e <= r["regated_on"]:
+                stale.append(f"{r['review_id']}: regate_kind=date but earliest={e!r} "
+                             f"is not after regated_on {r['regated_on']}")
+        elif not str(r.get("predicate_sql") or "").strip():
+            stale.append(f"{r['review_id']}: regate_kind=predicate but predicate_sql is empty — "
+                         f"nothing gates it at all")
     assert not stale, "\n  ".join(stale)
