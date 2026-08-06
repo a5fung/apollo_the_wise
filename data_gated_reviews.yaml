@@ -627,7 +627,14 @@ reviews:
 
       Origin: 2026-05-25 Task #90 90d audit analysis (parts A+C shipped
       same session per "bugs don't sit" discipline).
-    status: pending
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      CLOSED 2026-08-06 — SUPERSEDED by its own 6/14 scope-correction. #119 killed the Path-B bleed t
+      his was built around, and the entry's own status_note records that the designed fix (corpus ref
+      etch + sentence-proximity) would NOT touch the current residual, which fires via the Claude cla
+      ssifier and keyword-in-text. The live question now has a newer home with an operator ruling: PL
+      AN #516 (WEN/LCID via polygon_news, UMAC via keyword_in_text_0).
     added_on: 2026-05-25
 
   - review_id: mna_filter_accuracy_review
@@ -1213,7 +1220,6 @@ reviews:
     predicate_sql: |
       SELECT COUNT(DISTINCT trade_id) FROM mi_orb_extension_shadow
     threshold: 20
-    earliest_review_date: 2026-07-15
     action_when_ready: |
       Aggregate per cutoff:
         SELECT cutoff_minute,
@@ -1239,6 +1245,13 @@ reviews:
       _orb_window_cleanup_job cron + skip_reasons.
       Origin: 2026-05-04 cancelled-ORB lifecycle analysis (orb_extension_lifecycle_report.md).
     status: pending
+    earliest_review_date: '2026-09-01'
+    regated_on: 2026-08-06
+    regate_reason: >-
+      RE-GATED 2026-08-06 — it read RIPE on POISONED data. The 8/03 simulator fix landed but the stor
+      ed rows were never recomputed: verified today, mi_orb_extension_shadow still returns ZERO trade
+      s whose result differs across the six cutoffs, i.e. the original bug signature. Any answer from
+       these rows is manufactured. Needs the recompute-backfill first.
     blocked_note_2026_08_03: |
       ⚠ DO NOT ANSWER FROM THE CURRENT DATA — it is invalid. The simulator
       (_simulate_day1) computed its fill threshold from the STOP, not the LIMIT: the `limit`
@@ -1291,7 +1304,6 @@ reviews:
       WHERE event_type = 'unified_allocation_decided'
         AND created_at > NOW() - INTERVAL '30 days'
     threshold: 15
-    earliest_review_date: 2026-08-04
     action_when_ready: |
       Pull the audit events:
         SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, summary, detail
@@ -1348,6 +1360,12 @@ reviews:
         feedback_sample_size_discipline: methodology changes need
         N≥10 backtest evidence. We have N=2.
     status: pending
+    earliest_review_date: '2026-09-01'
+    regated_on: 2026-08-06
+    regate_reason: >-
+      RE-GATED 2026-08-06 — the predicate fires on ANY decision day (22 of 30), but the operator's 7/
+      4 disposition requires GENUINELY CONTESTED days, and measured with that honest condition since 
+      #415 shipped (7/24) the count is ZERO. The gate is counting the wrong thing.
     added_on: 2026-05-08
     resolution_2026_07_04: |
       DISPOSITION 7/4 (operator): HOLD Phase-1A shadow + ADD TELEMETRY (docs/analysis/allocator_1b_comparison_2026-07-03.md: zero head-to-head days — pool mismatch + 9m_day2 shadow-demotion confounds; 6/6 intercepted winners positive-fwd = picks plausibly sound). Telemetry = PLAN #415 (real-contest eligibility flag + next-ranked cascade info + slots snapshot cadence). Re-review when genuine contested days accrue.
@@ -3960,7 +3978,14 @@ reviews:
       priority-sequencing not technical dependency; removed in
       favor of a concrete calendar date so it can surface in
       Sunday weekly review on its own.
-    status: pending
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      CLOSED 2026-08-06 — the ideation was decided AND BUILT. Verified: agents/market_intelligence/br
+      eadth_color_rules.py exists (the per-class colour-rule SSoT this specced), and agent.py renders
+       the matrix (3 _render_breadth_matrix references); the cluster-deterioration fire is wired into
+       briefing.py. Residual not covered and deliberately NOT smuggled into this close: the 13%/34d t
+      hrust and a Worden proxy were never computed — enhancements, not this review's question.
     added_on: 2026-05-15
 
   - review_id: p74_alpha_capture_stage2
@@ -4029,7 +4054,14 @@ reviews:
            rate — if >20%, structural fundamentals fetch issue
         3. Investigate per-alert path: is the rubric scorer wired
            AFTER the catalyst classifier returns?
-    status: pending
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      CLOSED 2026-08-06 — it monitors an event vocabulary that never shipped. Verified: catalyst_rubr
+      ic_scored / theme_context_scored have ZERO rows all-time in prod and ZERO references anywhere i
+      n the codebase. The real grading surface is ep_grade_decision, which runs ~1:1 with alerts (38 
+      decisions vs 35 alerts over 7d) and is already watched by system_audit. Written against a pre-s
+      hip event vocabulary; coverage of the actual surface is healthy.
     added_on: 2026-05-17
 
   - review_id: phase5_meta_rubric_calibration
@@ -4355,7 +4387,6 @@ reviews:
       WHERE a.score_tier = 'HIGH' AND o.fwd_10d_pct IS NOT NULL
         AND a.alert_date >= '2026-06-02';
     threshold: 40
-    earliest_review_date: 2026-08-01
     action_when_ready: |
       Theme-member vs theme-less forward returns (excess-vs-index, 10-20d) on the
       forward cohort; if the lift holds, set the theme axis weight in phase5 (>=
@@ -4366,6 +4397,15 @@ reviews:
       evidence is rows AFTER that fix promotes from shadow; pre-promotion rows carry
       contaminated theme labels. Data quality here is gated on the ADR-0007 promotion.
     status: pending
+    earliest_review_date: '2026-09-01'
+    regated_on: 2026-08-06
+    regate_reason: >-
+      RE-GATED 2026-08-06 — N=72 clears the bar but its own stated upstream dependency (clean theme l
+      abels) is unmet: measured this week, the theme universe covers 319 of ~9,700 names and 70% of H
+      IGH alerts sit outside it, and coverage FELL after the 8/05 pool widening (PLAN #538). ⚠ When t
+      his does run: mi_ep_scan_outcomes.fwd_5d_pct is a HIGH-WATERMARK, not a close-to-close return —
+       differencing it against a close-to-close benchmark is invalid and was retracted once already o
+      n 8/03.
     added_on: 2026-05-30
 
   - review_id: orb_5m_reentry_hybrid_replay
@@ -5031,7 +5071,6 @@ reviews:
              OR hard_stop > stop_price + 0.01)  -- 1c tolerance for trail rounding
         AND pnl_attribution IS NULL;
     threshold: 1
-    earliest_review_date: 2026-07-27  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Predicate fires when ≥1 trade closed since the KLAR fix shows a
       stop_price ordering violation (the bug class Gate 5 G can't catch).
@@ -5051,6 +5090,13 @@ reviews:
       cheap; could be added to audit_invariants.py as
       `check_stop_price_ordering` for proactive detection (vs reactive).
     status: pending
+    earliest_review_date: '2026-09-01'
+    regated_on: 2026-08-06
+    regate_reason: >-
+      RE-GATED 2026-08-06 — the tripwire's 3 hits are all FALSE POSITIVES: FPS 6/25, IBM 6/10, GOOGL 
+      5/19 are trailed stops sitting above entry on winners, which its own comment says should not co
+      unt. The `stop_price > entry_price` disjunct is wrong for a ratcheting trail. Zero true orderin
+      g violations exist.
     added_on: 2026-05-18
 
   - review_id: extraction_pipeline_first_live_run_smoke
@@ -5267,7 +5313,13 @@ reviews:
           policy = Pradeep #2) but the system did not verify that — it
           floored it. Cross-ref phase5_meta_rubric_calibration + memory
           project_ep_conviction_floor_overrides_theme.
-    status: deferred
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      CLOSED 2026-08-06 — the operator already ruled 7/11 that this folds into #368 D2/D3 + #335 STEP
+      -3, and the entry's own deferred_reason says so. It re-fires weekly only because the deferral d
+      ate lapsed while those tasks stayed open. Owned by #368 (in_progress, operator labelling underw
+      ay — 90 labels read) and #335 (deployed).
     deferred_reason: "Theme-stage→rubric-gate = a grading-methodology decision = operator's call (THE LINE), NOT an independent agent run. Folds into the M1 judge-composition sitting 7/18 (#335) + the #368 theme-boost weighting decision (same theme-axis-as-load-bearing question). Deferred there rather than run standalone (operator 7/11)."
     deferred_on: 2026-07-11
     deferred_until: 2026-07-18
@@ -6400,7 +6452,13 @@ reviews:
       - feedback_sample_size_discipline.md (N≥30 gate)
       - feedback_validate_metric_before_decision.md (ORB sim required,
         not drift)
-    status: pending
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      CLOSED 2026-08-06 — the forcing function moved into the monthly sweep, which owns the promote/c
+      lose/observe gate. Verified: quarterly_review.py:96 runs scripts/_b78_decliner_band_bounce_sign
+      al.py, and mi_job_runs shows monthly_backward_check_sweep succeeded 2026-08-01 18:00 ET. The re
+      gistry copy was a second surface for a check that now runs itself.
     added_on: 2026-05-23
 
   - review_id: sugar_baby_convergence_backtest_first_eval
@@ -6578,7 +6636,6 @@ reviews:
       JOIN modal_sector ms ON ms.name = ws.name AND ms.theme_date = ws.theme_date
       WHERE ws.sector != ms.modal;
     threshold: 10
-    earliest_review_date: 2026-07-15
     action_when_ready: |
       1. Pull the 30-day cohort of sector-mismatch theme-ticker pairs
          via the predicate SQL.
@@ -6603,6 +6660,12 @@ reviews:
       sector). One-shot backfill ran on 2026-05-27 (26/32 tickers
       enriched, 6 unmatched are ETFs or deprecated tickers).
     status: deferred
+    earliest_review_date: '2026-11-01'
+    regated_on: 2026-08-06
+    regate_reason: >-
+      RE-GATED 2026-08-06 — it was ANSWERED and deferred on 8/03 by its own <70% rule; it reads ripe 
+      only because that deferral never moved the dates. Its honest re-open trigger is the Nascent<->R
+      etired flip-flop force-clustering RECURRING, not elapsed time.
     deferred_on: 2026-08-03
     deferred_reason: |
       ANSWERED AND DEFERRED BY THE REVIEW'S OWN RULE (>=70% accidental -> build a guard;
@@ -7627,7 +7690,14 @@ reviews:
       coverage_drift wiring (order_status_reconcile is EXECUTION_OWNED — a stale execution image =
       zero proposals). `docker inspect apollo-execution` age vs the last #184b commit.
       Ref: PLAN #184, docs/analysis/184b_broker_order_ingest_spec_2026-07-06.md §7.
-    status: pending
+    status: done
+    closed_on: 2026-08-06
+    outcome: >-
+      CLOSED 2026-08-06 — the advance it existed to force HAPPENED. Verified in prod: mi_safeguard_st
+      ate broker_order_ingest = 'live_r1', last transition 2026-07-17, which is this review's own ear
+      liest_review_date. PLAN #184 owns increments 2 and 3. NOTE for whoever reads this: the R2/R3 dr
+      y_run->live advance currently has NO trigger of its own — per the standing dark-needs-a-trigger
+       rule that wants a successor entry or a #184 sub-line.
     added_on: 2026-07-11
 
   - review_id: entry_order_rejections_systematic
