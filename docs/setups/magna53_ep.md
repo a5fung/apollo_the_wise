@@ -99,6 +99,55 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-07 — #541: the entry trigger is now ASK-aware, not last-trade-aware (OPERATOR-SIGNED, LIVE)
+
+**Trigger**: two live entries killed by the venue in single-digit milliseconds, two days running.
+
+| date | ticker | ORB high (trigger) | last trade | ASK | venue verdict |
+|---|---|---|---|---|---|
+| 08-06 | INSM | 129.41 | 128.674 | **129.48** | `[6098] Stop Price Already Triggered` |
+| 08-07 | QNST | 19.80 | 19.50 | **19.83** | `Unsolicited: Bad Stop 19.8` |
+
+**Root cause**: a buy-stop placed at or below the current OFFER is immediately marketable, so it
+is not a stop, and the venue refuses it. `#500`'s price-aware entry guard already owns exactly
+this question — *"has price already run past the ORB high, so the trigger would be
+in-the-money?"* — but it answered using `get_latest_trade`. On a thin first-minute gapper the last
+trade and the offer diverge badly: both names read "not through" on trades and "already through"
+on the ask.
+
+⚠ **This is why three months of paper probes never reproduced it.** Paper fills against a synthetic
+book with a tight spread; the live failure needs a WIDE ASK, which is what a thin gapper has in its
+first minute and what paper does not model. The 08-06 probe deliberately tested the
+trigger-already-printed shape on paper and saw it ACCEPTED — a false clear.
+
+**Change**: `_pick_entry` now ALSO switches to the limit-buy fallback when `ask > orb_high`, at
+`ask * 1.002`. New `alpaca_client.get_latest_quote` (SIP feed, same discipline as
+`get_latest_trade`; a zero/absent ask returns None rather than 0.0, so a broken quote can never
+read as a cheap offer).
+
+**Not a new entry rule** — this is `#500`'s signed mechanism given the price reference the venue
+actually uses. The trigger LEVEL is unchanged (the ORB high), the protective stop is unchanged (the
+ORB low), and sizing is unchanged (planned risk).
+
+**Bounded by the existing chase cap**, recomputed on the two real orders: QNST fallback $19.87 =
+**1.12x** planned risk; INSM $129.74 = **1.10x**. `CHASE_RISK_INFLATION_CAP` is 1.5x, so both are
+comfortably inside and an outsized chase is still refused.
+
+**Evidence**: n=2, both first-minute gappers, both measured from the SIP NBBO at the exact
+submission timestamp plus Alpaca's own event-stream reason. ⚠ **Honest limit — the RATE is not
+measured**: how often the ask sits through the trigger on setups NOT worth taking is unknown, and
+was offered to the operator as a pre-ship measurement. He ruled to ship without it, on the basis
+that the alternative is a known-zero (the order is cancelled and we get nothing either way).
+
+**Ship**: shipped behind `mi_safeguard_state('entry_ask_aware', <mode>)`, DEFAULT OFF, then flipped
+ON for `live` by the operator on 2026-08-07 ("deploy and live now"). Fails CLOSED on an unreadable
+flag or quote. 7 tests incl. a premise test that fails if the trade-vs-ask divergence ever stops
+being the discriminator. Reversible with one row, no redeploy.
+
+**Cost of NOT doing it, measured**: INSM ran +33% intraday; QNST posted record revenue +43% YoY and
+net income +496%. Both entries were lost to a mechanism, not to judgement.
+
+
 ### 2026-08-02 — #490: real-time admission requires the level to SUSTAIN 3 bars (BUILT OFF, operator-signed)
 
 **Trigger**: operator 2026-08-02 — *"target should be stable, in fact just a single 1min bar touching

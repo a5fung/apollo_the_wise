@@ -83,6 +83,26 @@ def stop_limit_buy_price(stop_price: float) -> float:
 CHASE_RISK_INFLATION_CAP = float(os.getenv("CHASE_RISK_INFLATION_CAP", "1.5"))
 
 
+async def _ask_aware_entry_enabled(account_mode: str) -> bool:
+    """Runtime toggle for the ask-aware entry fallback (2026-08-07). DEFAULT OFF.
+
+    Entry discipline is THE LINE, so this ships dark: the operator flips it with a
+    `mi_safeguard_state` row — no redeploy, reversible the same way, same idiom as
+    the other runtime safeguards.
+
+    Fails CLOSED (returns False) on any read error. An unreadable flag must leave
+    entry behaviour exactly as it was; the one thing it must never do is silently
+    enable a money-path change because a query hiccupped.
+    """
+    try:
+        from agents.market_intelligence import db
+        row = await db.get_safeguard_state("entry_ask_aware", account_mode)
+        return bool(row) and str(row.get("state", "")).lower() == "on"
+    except Exception as e:
+        logger.warning(f"entry_ask_aware flag unreadable, staying OFF: {e}")
+        return False
+
+
 async def broker_terminal_reason(event_norm: str, ticker: str, trigger_price) -> str:
     """#500 reason capture: build a `broker:*` skip_reason for an entry order
     the BROKER killed (cancel/reject/expire).
@@ -443,10 +463,56 @@ async def submit_entry(trade_id: int) -> dict | None:
     stop_loss_f = float(_stop_raw)
 
     async def _pick_entry() -> tuple[str, float | None]:
-        """('stop_limit', None) = the normal bracket; ('limit', px) = fallback."""
+        """('stop_limit', None) = the normal bracket; ('limit', px) = fallback.
+
+        #500 asks ONE question — "has price already run past the ORB high, so a
+        stop-limit trigger would be in-the-money and get cancelled?" — and until
+        2026-08-07 it answered using the last TRADE only. The venue answers it using
+        the OFFER, and on a thin first-minute gapper the two disagree:
+
+            QNST 08-07  trigger 19.80   last 19.50    ASK 19.83  -> venue cancelled
+            INSM 08-06  trigger 129.41  last 128.67   ASK 129.48 -> venue cancelled
+
+        Both read "not through" on trades and "already through" on the ask; both were
+        killed in single-digit milliseconds ("Unsolicited: Bad Stop 19.8" / "[6098]
+        Stop Price Already Triggered"). Two high-quality setups lost in two days —
+        INSM ran +33%, QNST posted record revenue +43% YoY.
+
+        So the ASK becomes a second trigger for the SAME already-signed fallback. This
+        is not a new entry rule: #500's intent covers this case exactly, it simply
+        could not see it. The existing chase cap still bounds the result — on both
+        names above the fallback lands at ~1.1x planned risk, well inside
+        CHASE_RISK_INFLATION_CAP.
+
+        ⚖ Gated on `entry_ask_aware` (mi_safeguard_state, default OFF) so the deploy
+        changes nothing until the operator flips it — entry discipline is THE LINE.
+        Fails CLOSED to the pre-existing behaviour on any error or missing quote: a
+        quote we could not read must never be treated as a cheap offer.
+        """
         latest = await alpaca.get_latest_trade(ticker)
         if latest and latest.get("price") and float(latest["price"]) > orb_high_f:
             return "limit", round(float(latest["price"]) * 1.002, 2)
+
+        if await _ask_aware_entry_enabled(account_mode):
+            try:
+                quote = await alpaca.get_latest_quote(ticker)
+                ask = float((quote or {}).get("ask") or 0)
+                if ask > orb_high_f:
+                    await log_audit_event(
+                        "entry_ask_above_trigger",
+                        f"{ticker} [{account_mode}]: ask ${ask:.2f} > ORB high "
+                        f"${orb_high_f:.2f} — limit fallback (a stop there is cancelled "
+                        f"by the venue)",
+                        json.dumps({
+                            "ticker": ticker, "orb_high": orb_high_f, "ask": ask,
+                            "last_trade": (latest or {}).get("price"),
+                            "account_mode": account_mode,
+                        }),
+                    )
+                    return "limit", round(ask * 1.002, 2)
+            except Exception as e:
+                logger.warning(f"{ticker}: ask-aware entry check failed, using stop-limit: {e}")
+
         return "stop_limit", None
 
     def _chase_cap_reason(fallback_limit: float) -> str | None:
@@ -3870,6 +3936,178 @@ async def _ensure_stop_coverage(
             f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
             f"(no live stop, under-covered)"
         )
+
+
+async def _coverage_gap_already_alerted_today(trade_id: int, today) -> bool:
+    """Has the `position_unprotected` Telegram already gone out for this trade
+    TODAY (ET)?
+
+    Same idiom as `_profit_trigger_already_announced` (#508, the 5-minute
+    bombardment fix): the audit row IS the state, checked BEFORE this cycle's
+    own row lands — hence `> 0`, matching that function's ordering (not
+    `_breaker_already_alerted`'s post-write `> 1`). The audit row itself still
+    lands EVERY cycle a gap persists (durable record, same as
+    `stop_coverage_repaired` / `stop_coverage_repair_failed` above); only the
+    Telegram is deduped.
+
+    Scoped to the ET SESSION (today), not "ever": a gap that was open
+    yesterday and is STILL open today is a fresh fact worth a fresh alert, not
+    permanent silence — "per trade per session", not "per trade for life".
+
+    Fails OPEN (returns False, i.e. alert) on any error — a duplicate message
+    is a nuisance; a missed one on a live money path is not.
+
+    ⚠ Guards `detail <> ''` BEFORE the `::jsonb` cast. `log_audit_event`'s `detail`
+    defaults to `""` for callers that omit it, and Postgres does not guarantee
+    AND-clause evaluation order — an empty-string row (of ANY event_type, not just
+    this one) sailing through to the cast would raise `invalid input syntax for
+    type json` and trip the fail-open path on every call, which would silently
+    defeat the dedupe (advisor review, #527).
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            n = await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_audit_log "
+                "WHERE event_type = 'position_unprotected' "
+                "AND detail IS NOT NULL AND detail <> '' "
+                "AND detail::jsonb ->> 'trade_id' = $1::text "
+                "AND (created_at AT TIME ZONE 'America/New_York')::date = $2",
+                str(trade_id), today,
+            )
+        return bool(n and int(n) > 0)
+    except Exception as e:  # loud-ok: logged; failing open only risks a duplicate alert, never a missed one
+        logger.warning(f"coverage-gap dedupe check failed (will alert): {e}")
+        return False
+
+
+async def check_position_coverage() -> dict:
+    """#527 market-hours coverage DETECTOR — every ~15 min, 09:31-15:55 ET.
+
+    Answers the only question that matters: does every LIVE open position have a
+    resting stop RIGHT NOW? Reads BROKER TRUTH per position, never DB state —
+    `stop_order_id` being non-NULL only means a stop was placed at SOME point, not
+    that one is resting now (the 2026-08-04 PLTR hole: the coverage machinery that
+    should have caught a dead DAY-tif leg simply hadn't been built yet — see PLAN.md
+    #527 for the corrected timeline).
+
+    ⚠ DETECTOR ONLY. Never places, cancels, or repairs an order — `_ensure_stop_coverage`
+    (above) already owns repair, called from `sync_positions` and the partial-exit
+    abort paths. This function must never become a second order-emission site; that
+    would be a strategy/safeguard-shaped change reserved for the operator (THE LINE).
+
+    Scope: `mi_live_trades` rows with status='filled' AND remaining_shares > 0 AND
+    account_mode='live' — paper is deliberately excluded (no real dollars at risk).
+
+    Coverage test: sum the qty of every live sell-stop on the ticker via
+    `_live_sell_stops` — the SAME filter `_ensure_stop_coverage` uses, so "covered"
+    can't drift between the detector and the repairer — and compare to
+    `remaining_shares` with the SAME 0.5-share tolerance used throughout this module
+    (`_ensure_stop_coverage`'s own decision tree, the 2523 qty-sync, the 2415 adopt).
+
+    Fail OPEN AND LOUD on a broker-read error (F16 idiom: `raise_on_error=True`). A
+    read failure is NEVER treated as "covered" — it writes `position_unprotected_check_failed`
+    for that ticker and moves on; one ticker's broker error must not blind the scan to
+    the rest of the book (and must not silently read as "all clear" for the ticker that
+    failed either).
+
+    Dedup (#508 bombardment idiom): the `position_unprotected` audit row lands EVERY
+    cycle a gap persists (durable record); the Telegram fires once per trade per ET
+    session via `_coverage_gap_already_alerted_today`. Silent on a normally-covered
+    book — no row, no message, nothing (CLAUDE.md 2026-08-03: a guard that always
+    fires is not a guard).
+
+    DEFERS to an in-flight partial exit (advisor review, #527) — takes the SAME
+    non-blocking `_trade_advisory_try_lock` `_ensure_stop_coverage` uses, for the
+    SAME reason: `execute_partial_exit`'s cancel-then-new-stop sequence has a
+    measured ~72ms (longer under retry) window with genuinely ZERO live stops
+    while it re-protects itself mid-flight. Reading that window as a GAP would be
+    a false positive on a position that IS actively being protected right now —
+    it just isn't finished yet. The partial's own abort path re-protects via
+    `_ensure_stop_coverage` if it fails, so skipping here is a defer, not a blind
+    spot. Deferred tickers land in the `deferred` bucket, not `gaps`.
+
+    Returns `{"examined", "covered", "gaps", "check_failed", "deferred"}` for
+    callers/tests.
+    """
+    from agents.market_intelligence.collector import et_today
+
+    today = et_today()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trades = await conn.fetch("""
+            SELECT id, ticker, remaining_shares, account_mode
+            FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0 AND account_mode = 'live'
+        """)
+
+    examined = 0
+    covered = 0
+    gaps: list[dict] = []
+    check_failed: list[dict] = []
+    deferred: list[str] = []
+
+    for trade in trades:
+        trade = dict(trade)
+        examined += 1
+        trade_id = trade["id"]
+        ticker = trade["ticker"]
+        account_mode = trade["account_mode"]
+        target = float(trade["remaining_shares"])
+
+        async with _trade_advisory_try_lock(trade_id) as have_lock:
+            if not have_lock:
+                deferred.append(ticker)
+                continue
+
+            try:
+                open_orders = await alpaca.get_open_orders(
+                    ticker, account_mode=account_mode, raise_on_error=True,
+                )
+            except Exception as e:
+                logger.error(f"check_position_coverage: broker read failed for {ticker}: {e}")
+                check_failed.append({"ticker": ticker, "trade_id": trade_id, "error": str(e)})
+                await log_audit_event(
+                    "position_unprotected_check_failed",
+                    f"{ticker}: could not read broker open orders — coverage UNKNOWN, "
+                    f"NOT claimed covered: {e}",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "remaining_shares": target, "error": str(e),
+                    }),
+                )
+                continue
+
+            live_stops = _live_sell_stops(open_orders)
+            live_qty = sum(float(o.get("qty") or 0) for o in live_stops)
+
+            if live_qty >= target - 0.5:
+                covered += 1
+                continue
+
+            # Gap. Audit row lands every cycle; Telegram is deduped per trade per session.
+            gaps.append({"ticker": ticker, "trade_id": trade_id,
+                         "target": target, "live_qty": live_qty})
+            await log_audit_event(
+                "position_unprotected",
+                f"{ticker}: live stop qty {live_qty:.0f} < {target:.0f} shares held — GAP",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "expected_qty": target, "found_qty": live_qty,
+                }),
+            )
+            if not await _coverage_gap_already_alerted_today(trade_id, today):
+                try:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}🚨 *Position unprotected: {ticker}*\n"
+                        f"Expected a stop covering {target:.0f} sh, found {live_qty:.0f} sh live.\n"
+                        f"Detector only — no repair fired. Check the broker now."
+                    )
+                except Exception:  # loud-ok: the durable audit row above already landed; notify must never raise past this point
+                    logger.warning(f"position_unprotected Telegram failed for {ticker}", exc_info=True)
+
+    return {"examined": examined, "covered": covered, "gaps": gaps,
+            "check_failed": check_failed, "deferred": deferred}
 
 
 async def sync_positions() -> list[str]:

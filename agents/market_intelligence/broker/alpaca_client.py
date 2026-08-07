@@ -940,6 +940,48 @@ async def get_latest_trade(ticker: str) -> dict | None:
         return None
 
 
+async def get_latest_quote(ticker: str) -> dict | None:
+    """Latest NBBO bid/ask. Used by the #500 price-aware entry guard.
+
+    ⚠ WHY THE ASK AND NOT THE LAST TRADE (2026-08-07). #500 asks "has price already
+    run past the ORB high, so a stop-limit trigger would be in-the-money?" — and it
+    answered that with `get_latest_trade`. The VENUE answers it with the OFFER, and
+    on a thin first-minute gapper those diverge badly:
+
+        QNST 08-07  trigger 19.80   last trade 19.50   ASK 19.83  -> cancelled
+        INSM 08-06  trigger 129.41  last trade 128.67  ASK 129.48 -> cancelled
+
+    Both read as "price has not passed the ORB high" on trades and as "already
+    through" on the offer. Alpaca cancelled both in single-digit milliseconds
+    ("Unsolicited: Bad Stop 19.8" / "[6098] Stop Price Already Triggered"), which is
+    exactly the class #500 exists to catch — it simply could not see it.
+
+    Same `feed=get_data_feed()` discipline as get_latest_trade: an IEX-only quote is
+    a partial book and would understate the offer, re-creating the blind spot one
+    level down.
+    """
+    try:
+        from alpaca.data.requests import StockLatestQuoteRequest
+        client = _get_data_client()
+        result = await _sdk(client.get_stock_latest_quote,
+            StockLatestQuoteRequest(symbol_or_symbols=ticker, feed=get_data_feed())
+        )
+        q = result.get(ticker)
+        if not q:
+            return None
+        ask = float(getattr(q, "ask_price", 0) or 0)
+        bid = float(getattr(q, "bid_price", 0) or 0)
+        # A zero/absent ask is no information, not a cheap offer — never let it read
+        # as "the market is below our trigger".
+        if ask <= 0:
+            return None
+        return {"ask": ask, "bid": bid,
+                "timestamp": q.timestamp.isoformat() if getattr(q, "timestamp", None) else None}
+    except Exception as e:
+        logger.error(f"Failed to get latest quote for {ticker}: {e}")
+        return None
+
+
 # ── Limit Buy (for re-entry when price > ORB high) ─────────────────────────
 
 
