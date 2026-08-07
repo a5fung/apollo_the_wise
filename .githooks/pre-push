@@ -9,9 +9,23 @@
 #
 # Bypass a single push (emergency hotfix only): `git push --no-verify`.
 #
-# Only runs when the pushed commits touch Python — a docs/PLAN-only push skips the
-# suite so the gate doesn't train operators toward --no-verify. If the pushed range
-# can't be determined, it runs the suite (fail-safe: a safety gate must not fail open).
+# Only runs when the pushed commits touch Python OR a DATA FILE THE SUITE READS — a
+# genuinely docs-only push still skips the suite so the gate doesn't train operators
+# toward --no-verify. If the pushed range can't be determined, it runs the suite
+# (fail-safe: a safety gate must not fail open).
+#
+# ⚠ THE DATA-FILE HALF EXISTS BECAUSE THE PYTHON-ONLY PREDICATE SHIPPED A RED CI
+# (2026-08-06). Commit `a9d93eb` changed ONLY `data_gated_reviews.yaml` — zero .py
+# files — so this hook skipped the suite and let through a push that broke
+# `test_review_registry_dates_are_dates`, which READS that yaml. CI caught it; the
+# local gate whose whole job is to mirror CI did not. CLAUDE.md already documented
+# this exact gap for CLAUDE.md ("a docs-only push skips the pre-push pytest gate, so
+# this only surfaces in CI") — it was a known papercut that simply bit a different
+# file. Generalised here rather than patched for one filename.
+#
+# `tests/test_prepush_covers_test_read_data_files.py` keeps _DATA_RE honest: it scans
+# tests/ for repo-root data reads and fails if any is not matched by this pattern, so
+# the list cannot silently rot as new data-driven tests are added.
 set -uo pipefail
 
 # Resolve a real interpreter. `python` is commonly a SHELL ALIAS (zsh: alias
@@ -29,6 +43,10 @@ fi
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
+# Paths whose content the SUITE READS — a change to any of these can turn the suite red
+# with no .py file touched. Kept in one place, and pinned by a test (see header).
+_DATA_RE='\.py$|^(CLAUDE|PLAN)\.md$|^data_gated_reviews\.ya?ml$|^docs/setups/.*\.md$|^tests/|^docker/docker-compose.*\.ya?ml$'
+
 zero="0000000000000000000000000000000000000000"
 saw_ref=0
 py_changed=0
@@ -38,14 +56,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$zero" ] && continue                 # branch delete — nothing to test
     if [ "$remote_sha" = "$zero" ]; then
         py_changed=1                                       # new branch/ref → run the suite
-    elif git diff --name-only "$remote_sha..$local_sha" 2>/dev/null | grep -qE '\.py$'; then
+    elif git diff --name-only "$remote_sha..$local_sha" 2>/dev/null | grep -qE "$_DATA_RE"; then
         py_changed=1
     fi
 done
 [ "$saw_ref" -eq 0 ] && py_changed=1                       # couldn't read refs → fail-safe
 
 if [ "$py_changed" -eq 0 ]; then
-    exit 0                                                  # no Python in this push — skip
+    exit 0                                       # nothing the suite reads — skip
 fi
 
 echo "▶ pre-push: running full test suite (python -m pytest tests/ -q) — mirrors CI…"
