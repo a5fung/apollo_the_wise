@@ -1005,7 +1005,19 @@ catalyst, say so explicitly."""
                 try:
                     response = await _get_claude().messages.create(
                         model=GROUNDED_GRADE_MODEL,  # #190: grade the grounded summary on Sonnet (Haiku confabulated on raw headlines)
-                        max_tokens=300,
+                        # ⚠ 2026-08-07: was 300 and it became BINDING the moment this role tracked
+                        # to Sonnet 5 — the SECOND cap sized for the previous model's verbosity to
+                        # break the same day (the extractor's was the first). Measured in
+                        # api_usage: on sonnet-4-6 this ran avg 228 / p90 265 / max 300 output
+                        # tokens. On sonnet-5: avg 284, **median 298, p90 300, p99 300** — pegged.
+                        # The response is a TOOL CALL whose JSON gets truncated mid-object, so
+                        # `result["analysis"]` raises KeyError('analysis') and the whole grade
+                        # fails open to routine. Correlation, same hour: 16 of 29 calls at the cap
+                        # / 16 `live_enriched_grade_failed` rows.
+                        # ⚠ SILENT, and that is the real defect (operator, 2026-08-07: "another
+                        # silent failure"). It writes an audit row and alerts NOBODY; it surfaced
+                        # only as a side-delta inside an unrelated L2 anomaly. Detection is #543.
+                        max_tokens=1500,
                         tools=[_CATALYST_TOOL],
                         tool_choice={"type": "tool", "name": "classify_catalyst"},
                         messages=[{"role": "user", "content": prompt}],
