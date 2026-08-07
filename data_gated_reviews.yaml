@@ -8134,6 +8134,50 @@ reviews:
           differently from live ones". What makes it readable is LIVE trades in a
           Bull tape - not merely more trades. Re-read (c0) at every run of this
           review and state which regimes have become separable;
+
+          📌 RE-MEASURED 2026-08-06, and it is starker than the 08-01 note: of the
+          14 closed LIVE trades, the regime split is Correcting 7 / Choppy 6 /
+          Crisis 1 - **ZERO in a Bull tape, ever.** The entire 0-for-14 live record
+          was compiled in non-bull conditions, on a momentum methodology that is
+          explicitly a bull-market strategy. That does not excuse the record, but
+          it does mean every exit-rule conclusion drawn from this cohort - INCLUDING
+          (e) below - is a non-bull conclusion and must not be generalised without
+          re-testing. The tape turned Bull ~2026-08-04 (evening brief 08-06: "Regime
+          BULL, 3rd day"), so bull-tape live trades begin accruing NOW. That is the
+          single most valuable data this series can acquire, and it is why
+          `exit_tune_bull_regime_read` exists as a separate trigger below rather
+          than waiting for the next n-milestone;
+
+      (e) STOP GEOMETRY - entry-stop WIDTH relative to the stock's own volatility,
+          and whether a floor on it helps. Added 2026-08-06 (operator: "we need to
+          continue to perform this periodically as we have more trade samples and
+          experience different market types/regimes").
+          Method + full result: docs/analysis/live_cohort_day0_stopout_2026-08-06.md
+          Re-runnable harness: scripts/probes/_stop_floor_forward_replay.py
+          FINDINGS TO CARRY FORWARD, so they are not re-derived or re-proposed:
+            * The ORB-low stop lands at 0.15x-1.18x of the stock's ADR20 with no
+              relationship to the stock's character - measured twice now, on two
+              different cohorts (07-25: 0.15-1.19x; 08-06: 0.15-1.18x). The stop's
+              width is essentially random.
+            * A volatility FLOOR on that stop was tested and REFUTED. Day-0 survival
+              looked decisive (4 of 14 rescued, and they were the 4 biggest movers)
+              but the forward replay showed survival was DELAY: all four hit the
+              wider stop within 1-6 sessions. Realized: k=0 (deployed) -7.33R,
+              k=0.5 -5.67R, k=0.75 -9.00R, k=1.0 -12.33R. Floor alone, partial off:
+              -14.00R at every k, zero winners.
+            * ⚠ THE MECHANISM, which is the durable lesson and generalises beyond
+              this axis: widening the stop widens the R-unit, which RAISES the +2R
+              target. MANE's target moved 121.98 -> 132.32 against a 129.80 peak, so
+              the floor DESTROYS the partial on the very trade it was meant to save.
+              Stop width and profit-take trigger are NOT independent axes. Any future
+              candidate that changes the R-unit must be swept jointly with the
+              take-profit level, never in isolation.
+            * k=0.5's entire edge over k=0 is ONE trade (HUT). n=14. Not evidence.
+          RE-TEST CONDITION (do not simply repeat it): re-run at each n-milestone AND
+          on the first bull-tape read, because every trade above was non-bull. A floor
+          that fails when nothing trends may behave differently when things run - that
+          is a genuine open question, not a rehabilitation of a dead idea. State
+          plainly at each run whether the refutation still holds;
       (c) SEGMENTED BY CHARACTER (operator 7/25: fast/gappy/small-cap/high-ADR
           names need more aggressive taking than slow large caps). Key this on
           ADR20 (the frozen probe convention). NOT pivot_analysis.character_profile
@@ -8220,7 +8264,75 @@ reviews:
       routine monthly-or-quarterly EFFECTIVENESS review (did the shipped rule do
       what the calibration predicted?) - retitle + re-key onto a date cadence
       rather than an n-threshold. Do NOT close it at that point; convert it.
+
+      ⚠ REGIME AXIS IS NOT COVERED BY THIS PREDICATE (2026-08-06). This review fires
+      on TRADE COUNT only, so 20 trades all taken in one tape would satisfy it while
+      answering nothing about a different tape - and the operator's ask is explicitly
+      both ("more trade samples AND different market types/regimes"). The companion
+      `exit_tune_bull_regime_read` carries the regime trigger. Run BOTH; neither
+      substitutes for the other.
     added_on: 2026-07-25
+
+  - review_id: exit_tune_bull_regime_read
+    title: "Exit-rule read in a BULL tape — the regime cell the live cohort has never had"
+    question: |
+      Every exit-rule conclusion we hold was measured on live trades taken in
+      Correcting, Choppy or Crisis tape. Do any of them survive a bull market?
+
+      MEASURED 2026-08-06, and this is the whole reason the review exists: of the
+      14 closed live trades, the regime split is **Correcting 7 / Choppy 6 /
+      Crisis 1 — ZERO in Bull.** The methodology (Qullamaggie / Bonde momentum) is
+      a bull-market strategy, and it has never once been run live in one. So the
+      0-for-14 record, the day-0 stop-out rate, the stop-floor refutation and the
+      +2R partial's measured benefit are ALL non-bull results.
+
+      The tape turned Bull ~2026-08-04 (evening brief 08-06: "Regime BULL, 3rd
+      day"), so this cell starts filling now.
+
+      Re-run methods (a)-(e) of `exit_tune_cohort_review` restricted to the
+      bull-tape live trades, and answer three things the parent review cannot:
+      (1) Do trades still die on the entry day, or do they run? The non-bull cohort
+          closed 10 of 14 on the alert date with a mean hold well under a day.
+      (2) Does the +2R partial still look like the best available rule, or does it
+          start capping runners? It is the only mechanism that helped the non-bull
+          cohort (-13.15R -> -7.33R), but every winner it produced was a +0.67R
+          bank and NO trade in the entire sweep rode to strength. If runners exist
+          in a bull tape, the same rule may be leaving the actual edge behind —
+          which is the operator's own 2026-08-01 hypothesis ("runners probably
+          happen more often in bull markets... more aggressive profit take on bear
+          markets and let runners go in bull markets").
+      (3) Does the stop-floor refutation still hold? See (e) — a floor that failed
+          when nothing trended is not automatically wrong when things run.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE account_mode = 'live' AND status = 'closed' AND regime = 'Bull'
+    threshold: 8
+    earliest_review_date: 2026-08-06
+    status: pending
+    action_when_ready: |
+      ⚠ Threshold 8 is deliberately BELOW the parent's 20. This is not a
+      calibration cohort, it is a DIRECTIONAL read on a cell that has been empty
+      for the entire live program — 8 trades cannot decide an exit rule but they
+      can say whether the non-bull conclusions transfer at all, and that is worth
+      knowing early rather than at n=40.
+
+      ⚠ STALL CLAUSE, same as the parent: if live accrual halts (kill/scale band
+      action, /pause, demotion) OR this sits below 8 on 2026-11-01, run it at
+      whatever n exists and say so. A smaller honest read beats an indefinite wait —
+      `escalate_overdue_reviews` only surfaces READY or ERRORING entries, so a
+      healthily-pending 3/8 goes silent forever.
+
+      ⚠ Do NOT blend bull trades into the parent's aggregate and call it done. The
+      point is the CONTRAST between cells. Report bull-only figures alongside the
+      non-bull baseline (Correcting 7 / Choppy 6 / Crisis 1, cohort -13.15R,
+      0 winners, 10 of 14 closing on the alert date) so the difference is legible.
+
+      RECURRING: on completion re-bump `threshold` 8 -> 20 -> 40, mirroring the
+      parent's idiom, and record each run as its own dated doc.
+
+      ⚖ THE LINE: evidence and a recommendation only. Any exit-rule change is
+      CHANGE_PROCESS + #151 harness + operator sign-off.
+    added_on: 2026-08-06
 
   - review_id: cooldown_admission_unassumed
     question: |
