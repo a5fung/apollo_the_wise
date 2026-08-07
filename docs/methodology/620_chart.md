@@ -85,6 +85,58 @@ justified.
 **That is the most important line in the article for us.** The 620 is subordinate to a clear price
 reference. Modelling it as an independent signal generator would misrepresent how it is used.
 
+## ⚠ WHERE IT SITS IN THE PROCESS — operator, 2026-08-07, and this governs how it may be tested
+
+> *"it's critical to note that 620 is used to fine-tune entry, not stock selection or only entry
+> tool. In TEAM's case, it's already an EP, it already has the fundamentals, the software theme
+> and daily chart etc. I used 620 to pick entry after all this already lined up."*
+
+**The 620 is the LAST step, not a signal in its own right.** By the time it is consulted the name
+is already a decision — it answers *when*, never *whether*.
+
+The stack on TEAM, in order:
+
+1. EP alert (the setup qualifies at all)
+2. Fundamentals (record revenue +43% YoY, net income +496%)
+3. Theme (software cohort gapping together on rising sector RS)
+4. Daily chart
+5. **620-chart → entry timing only**
+
+⇒ **Sweeping the 620 standalone across all names would measure something the operator never does.**
+The correct population is names that have ALREADY passed everything upstream. For Apollo that is
+the Day-1 stop-out set: stocks we already wanted, already entered, and got shaken out of.
+
+⇒ The narrow, honest question for #545: *given a stock we already qualified, does the 620 find a
+better second entry than the opening break did?*
+
+This also explains the two TEAM entries without either being wrong: Apollo bought the opening break
+on one timing rule with no second look; the operator bought the same conviction four hours later at
+a better price, off a chart saying the turn was in. Same stock, same thesis, different timing layer.
+
+## Worked example — TEAM, 2026-08-07 (computed, not recalled)
+
+5-minute bars, 6/20 EMA and 6/20 MACD with the eSignal 9-period signal line:
+
+| ET | close | MACD | signal | event |
+|---|---|---|---|---|
+| 11:10 | 144.00 | −1.86 | −1.28 | MACD stretched to its low |
+| 11:15 | 144.49 | −1.72 | −1.37 | **turns up** (the hook) |
+| 11:40 | 143.68 | −1.54 | −1.58 | **bullish MACD cross** |
+| ~12:05 | 144.40 | −0.89 | −1.27 | **operator entry ≈ $144.39** |
+| 12:25 | 145.94 | +0.09 | −0.67 | 6/20 EMA cross (confirmation) |
+
+- Price based $143.06–143.69 for ~40 minutes beneath the turning MACD — his "price chart also
+  forming bottom".
+- He entered ~25 min after the MACD signal and **~20 min before the EMA cross** — i.e. inside the
+  exact window the source says to use, and ahead of the confirmation that arrives too late.
+- Apollo, by contrast, entered the opening break at $147.13 and was stopped at $143.21 within
+  20 minutes. Low of day was $141.51 at 13:55 ET, after his entry.
+
+His stated rule — *"I waited for the 6 period stretched and turning while price chart also forming
+bottom"* — is therefore **three computable conditions**: MACD extended below its recent floor, the
+first up-tick out of it, and a basing price range. Not a judgement call, and all of it derivable
+from `mi_intraday_bars`.
+
 ## Why this is recorded here
 
 The operator used it on 2026-08-07 to enter TEAM at $144.39 — the same stock Apollo was stopped out
