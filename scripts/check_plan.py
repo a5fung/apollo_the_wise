@@ -62,6 +62,42 @@ _PROJECT = re.compile(r"^##\s+(.+?)\s*$")
 # date-stamped; a plain to-build title ("build X + deploy market-agent") must NOT trip it.
 _DEPLOY_MARKER = re.compile(r"DEPLOYED|>>\s*BUILT|verify-live|VERIFY-LIVE|deployed \d{4}-")
 
+# --- SWEEP SUPPRESSION (2026-08-06) -----------------------------------------------------------
+# `_DEPLOY_MARKER` asks "has this line EVER mentioned a deploy", not "is this line's headline
+# lying". Task lines accumulate `>>` updates forever, so any multi-part task that ships ONE piece
+# matches for the rest of its life and can never stop matching. Measured 2026-08-06 on the live
+# board: all 9 flagged tasks were checked one by one and **all 9 were already correctly
+# classified** — a 100% false-positive rate. Three of them (#261, #327, #452) even carried a prose
+# note from the 2026-07-31 sweep saying "checked, classification is HONEST, no change" and were
+# re-flagged anyway, because prose is invisible to a regex.
+#
+# That is this repo's own documented failure mode — "a guard that always fires is not a guard"
+# (CLAUDE.md 2026-08-03) — and it is precisely why the operator's 07-18 note says this surface
+# "got triaged as housekeeping and ignored". A surface at 9/9 noise trains you to skip it, and
+# then the ONE real misclassification hides in the list.
+#
+# Fix mirrors the `revalidated:` idiom already used by the stale-block gate below: a dated
+# `swept:YYYY-MM-DD` marker suppresses the line until the marker ages out. The date is the point —
+# it forces a RE-CHECK against today's reality on a cadence rather than silencing it forever, and
+# a line that materially changes gets re-swept when its marker expires.
+_SWEPT = re.compile(r'swept:\s*(\d{4}-\d{2}-\d{2})', re.I)
+_SWEEP_MAX_AGE = 30        # days a LIKELY-BUILT sweep-check stays good
+
+
+def _sweep_is_fresh(title: str, today: date) -> bool:
+    """True when the line carries a `swept:YYYY-MM-DD` marker within `_SWEEP_MAX_AGE` days.
+
+    A malformed or future-dated marker is NOT fresh — it must not become a way to permanently
+    silence the surface by typing an unparseable date."""
+    m = _SWEPT.search(title)
+    if not m:
+        return False
+    try:
+        age = (today - date.fromisoformat(m.group(1))).days
+    except ValueError:
+        return False
+    return 0 <= age <= _SWEEP_MAX_AGE
+
 # --- SESSION GROWTH GATE (operator 2026-07-12, HARD) ------------------------------------------
 # A session may NOT end with more open tasks than the PT-day began with. The open count is
 # monotonic NON-INCREASING per day unless the operator signs a carryover. This is the mechanical
@@ -469,8 +505,11 @@ def main(argv: list[str]) -> int:
         if not verify_due:
             print("  (none)")
         # LIKELY-BUILT (operator 2026-07-18): status says to-build, line says built. Reclassify.
-        likely_built = [t for t in tasks if t["status"] in ("in_progress", "pending")
-                        and _DEPLOY_MARKER.search(t["title"])]
+        # Lines carrying a fresh `swept:YYYY-MM-DD` are suppressed — see _sweep_is_fresh.
+        _lb_all = [t for t in tasks if t["status"] in ("in_progress", "pending")
+                   and _DEPLOY_MARKER.search(t["title"])]
+        likely_built = [t for t in _lb_all if not _sweep_is_fresh(t["title"], today)]
+        _suppressed = len(_lb_all) - len(likely_built)
         print(f"\n-- LIKELY-BUILT ({len(likely_built)}) — line reads as built but status is still "
               f"in_progress/pending: flip to `deployed` (+ a verify-date ETA) or close --")
         if likely_built:
@@ -480,6 +519,11 @@ def main(argv: list[str]) -> int:
             print("  (a SURFACE, not a gate — partial deploys legitimately linger; reclassify the truly built.)")
         else:
             print("  (none)")
+        if _suppressed:
+            # Say what was hidden and when it comes back — a suppression you cannot see is
+            # indistinguishable from a surface that stopped working.
+            print(f"  ({_suppressed} suppressed by a fresh `swept:` marker — re-surfaces "
+                  f"{_SWEEP_MAX_AGE}d after each sweep date.)")
         base = _pin_daily_baseline(len(tasks), today)
         # OPEN drops a watermark too, so a day where the operator runs `--today`
         # and never commits still arms TOMORROW's carry-over. Previously only the
