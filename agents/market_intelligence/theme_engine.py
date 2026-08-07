@@ -1976,10 +1976,33 @@ async def _save_themes(themes: list[dict]) -> None:
         # Remove LIVE themes that were merged/retired — not in the final list. Scoped to
         # source='live' so a same-day re-run can't clobber shadow_promoted rows (#226 graduation,
         # which runs AFTER this in the nightly pull and owns its own source='shadow_promoted' rows).
+        #
+        # ⚠ AND NEVER THE RETIRED TOMBSTONES (#539, 2026-08-07). This DELETE was eating the
+        # engine's OWN death certificates and resurrecting dead themes:
+        #
+        #   08-04 run 1  lifecycle-retires `Bitcoin Mining & Crypto Infrastructure Operators`
+        #                and writes the engine-drop tombstone (stage='Retired', source='live').
+        #   08-04 runs 2/3 (17:10, 17:12) no longer SEE that theme, so its name is absent from
+        #                `final_names` — and this DELETE removes the tombstone run 1 just wrote.
+        #                VERIFIED: mi_themes ends the night with ZERO rows for 08-04.
+        #   08-05        `get_active_themes(stale_after_days=7)` reads latest-per-name, finds the
+        #                surviving 08-03 Fading row, and reloads the theme WHOLESALE.
+        #
+        # It had been dead-and-walking for three weeks: {CIFR,HUT} in every row 07-20 -> 08-06,
+        # named "Bitcoin Mining" while its own thesis text says "AI data center lease" / "Nvidia".
+        #
+        # The #214 RETIRED-GAP guard in `get_active_themes` is CORRECT and was defeated only
+        # because the row it reads no longer existed. So the fix belongs here, not there.
+        #
+        # `stage != 'Retired'` is the whole change. A genuine revival still works: a theme the
+        # engine DOES produce this run is in `final_names`, never reaches this DELETE, and its
+        # row is rewritten by the ON CONFLICT DO UPDATE above — which overwrites `stage`. Only
+        # names the engine no longer emits keep their tombstone, which is exactly the intent.
         final_names = [t["name"] for t in themes]
         await conn.execute("""
             DELETE FROM mi_themes
             WHERE theme_date = $1 AND name != ALL($2) AND source = 'live'
+              AND stage != 'Retired'
         """, today, final_names)
 
 
