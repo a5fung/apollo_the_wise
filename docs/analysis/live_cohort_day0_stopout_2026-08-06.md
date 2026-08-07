@@ -111,6 +111,63 @@ rule improves outcomes; the day-0 stop-out rate is what caps them.**
 * Two names (WULF, BTDR) had tight stops *and* went straight down — a tight stop is not always
   wrong, and this does not say every stop should be widened.
 
+## D. Would a volatility floor on the stop have saved them?
+
+Replay: `stop = max(ORB low, entry − k × ADR20)`. The floor only binds on the tight half; where
+the ORB low is already wider than k×ADR nothing changes. "Survives" = the entry day's LOW never
+reached the floored stop, so there is no event-ordering ambiguity — it either got hit that day or
+it did not.
+
+| floor k | trades surviving day 0 (of 14) |
+|---|---|
+| 0.30 | 1 |
+| **0.50** | **3** |
+| **0.75** | **4** |
+| 1.00 | 4 |
+
+**Which four survive at k=0.75 is the whole finding:**
+
+| ticker | stop ÷ range | day-0 R | best over 5 sessions |
+|---|---|---|---|
+| MANE | 0.15 | +7.92 | +4.41 |
+| HUT  | 0.20 | +1.73 | **+8.32** |
+| QBTS | 0.35 | +3.26 | **+8.88** |
+| SMCI | 0.52 | +2.90 | +3.21 |
+
+**The four trades a floored stop rescues are exactly the four with the largest forward moves.**
+Not a subset, not a majority — the same four, ranked the same way.
+
+The four tight-stop names it does NOT rescue (CRCL, BTDR, WULF, TSEM) get stopped even at k=1.00,
+and all four were genuinely going down (−2.80R, −1.62R, −0.05R, −0.41R over five sessions). The
+floor does not save bad trades, which is the correct behaviour.
+
+**The cost is close to zero in R terms.** Sizing is risk-based (`risk_dollars ÷ stop distance =
+shares`), so a wider stop buys fewer shares for the same dollars at risk. A trade that still fails
+still loses ≈1R — the same money, just at a wider stop with a smaller position.
+
+⚠ **What this does NOT establish, and it is the gap before any change:** surviving day 0 is not
+the same as finishing profitably. These trades would then be open into day 1+ carrying the wider
+stop, and this replay does not follow them there. HUT's +8.32R and QBTS's +8.88R arrived over five
+sessions; whether either would have held the floored stop through day 2 is unmeasured.
+
+## Path forward
+
+1. ✅ **Done (this doc, $0):** the axis is stop WIDTH, not selection, and k≈0.75 × ADR is the
+   candidate floor.
+2. **Next, $0:** carry the four survivors forward past day 0 with the floored stop *and* the now-live
+   +2R partial and breakeven arm, to a realized R. That is the number that decides it. Note MANE,
+   QBTS and SMCI all cleared +2R on day 0 and would bank the partial; HUT reached only +1.73R on
+   day 0 and would not.
+3. **Operator's, then:** CHANGE_PROCESS — read `docs/setups/magna53_ep.md` in full, backtest at
+   N≥10 (14 live + the paper cohort qualify), sign-off, SSoT updated in the same commit. No live
+   flip before that.
+
+⛔ **What NOT to do: add a "stop too tight" filter.** The system already refuses trades whose stop
+is too WIDE (`setup:stop_too_wide` — AEVA was skipped by it on 2026-08-06 at 13.4% > 1.5× ATR).
+The absent mirror-image guard looks like the obvious symmetric fix, and the data says it would be
+a mistake: skipping tight-stop setups would have deleted MANE, HUT, QBTS and SMCI — the four best
+opportunities in the cohort. The problem is the stop, not the setup. Widen, do not skip.
+
 ## What this does not do
 
 It proposes no change to stop placement, sizing, or entry criteria. Any of those is
