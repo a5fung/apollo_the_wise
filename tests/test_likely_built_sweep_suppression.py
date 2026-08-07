@@ -19,6 +19,7 @@ from datetime import date, timedelta
 import pytest
 
 from scripts.check_plan import (
+    _SWEPT,
     _DEPLOY_MARKER,
     _SWEEP_MAX_AGE,
     _sweep_is_fresh,
@@ -89,6 +90,64 @@ def test_mutation_removing_the_age_bound_would_break_expiry():
     assert not _sweep_is_fresh(ancient, TODAY), "the real implementation must reject it"
 
 
+def test_an_EDITED_line_invalidates_its_sweep_immediately():
+    """The date alone answers the wrong question (advisor, 2026-08-06).
+
+    A sweep asserts "I read THIS line and its status is honest". The moment the line gains a
+    `>> SHIPPED` update that judgement is void — waiting out a 30-day timer would hide exactly
+    the misclassification this surface is the board's only detector for. So the marker carries a
+    fingerprint of the line it was made against.
+    """
+    from scripts.check_plan import sweep_fingerprint
+    body = _line()
+    fp = sweep_fingerprint(body)
+    swept = f"{body} [swept:2026-08-06:{fp}]"
+    assert _sweep_is_fresh(swept, TODAY), "an unchanged line should stay suppressed"
+
+    edited = swept.replace("verify-live pending.", "verify-live pending. >> SHIPPED 08-07.")
+    assert not _sweep_is_fresh(edited, TODAY), (
+        "a line edited after its sweep must re-surface immediately, not in 30 days")
+
+
+def test_a_marker_with_no_fingerprint_still_works_on_the_timer():
+    """Backwards compatibility: date-only markers predate the fingerprint and must not all go
+    stale at once, but they get no content protection — only the timer."""
+    assert _sweep_is_fresh(_line("[swept:2026-08-06]"), TODAY)
+
+
+def test_a_WRONG_fingerprint_does_not_suppress():
+    assert not _sweep_is_fresh(_line("[swept:2026-08-06:dead]"), TODAY)
+
+
+def test_fingerprint_ignores_the_marker_itself():
+    """Otherwise the hash would have to hash itself — stamping would change what it stamped."""
+    from scripts.check_plan import sweep_fingerprint
+    body = _line()
+    assert sweep_fingerprint(body) == sweep_fingerprint(f"{body} [swept:2026-08-06:abcd]")
+    assert sweep_fingerprint(body) == sweep_fingerprint(f"{body} [swept:1999-01-01 — a note]")
+
+
+def test_every_swept_marker_on_the_live_board_matches_its_line():
+    """The markers actually written into PLAN.md must still be valid against their current
+    content. A mismatch here means a swept line was edited without re-sweeping — which is the
+    stale-judgement case, and the board would be quietly hiding it."""
+    import pathlib
+    from scripts.check_plan import _TASK, sweep_fingerprint
+    bad = []
+    for raw in pathlib.Path("PLAN.md").read_text(encoding="utf-8").splitlines():
+        m = _TASK.match(raw)
+        if not m or "swept:" not in raw:
+            continue
+        title = m.group(4)
+        got = _SWEPT.search(title)
+        if not got or not got.group(2):
+            continue                       # date-only marker, covered by the timer test
+        if got.group(2).lower() != sweep_fingerprint(title):
+            bad.append(f"#{m.group(1)}: marker {got.group(2)} != content {sweep_fingerprint(title)}")
+    assert not bad, ("swept markers no longer match their line — re-sweep or drop the marker:\n  "
+                     + "\n  ".join(bad))
+
+
 def test_every_swept_marker_on_the_live_board_is_parseable_and_not_future():
     """The markers actually written into PLAN.md must all work. A typo'd marker fails open, so
     this would not hide a task — but it WOULD mean a sweep someone believed they recorded is not
@@ -96,7 +155,9 @@ def test_every_swept_marker_on_the_live_board_is_parseable_and_not_future():
     import pathlib
     import re as _re
     txt = pathlib.Path("PLAN.md").read_text(encoding="utf-8")
-    found = _re.findall(r"swept:\s*([^\s\]—]+)", txt, _re.I)
+    # Capture the DATE only — a marker may carry an optional `:hash` suffix, which is checked by
+    # test_every_swept_marker_on_the_live_board_matches_its_line, not here.
+    found = _re.findall(r"swept:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[^\s\]:—]+)", txt, _re.I)
     assert found, "expected sweep markers on the board; if the sweep idiom is retired, delete this test"
     bad = []
     for raw in found:

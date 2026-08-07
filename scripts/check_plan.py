@@ -80,15 +80,39 @@ _DEPLOY_MARKER = re.compile(r"DEPLOYED|>>\s*BUILT|verify-live|VERIFY-LIVE|deploy
 # `swept:YYYY-MM-DD` marker suppresses the line until the marker ages out. The date is the point —
 # it forces a RE-CHECK against today's reality on a cadence rather than silencing it forever, and
 # a line that materially changes gets re-swept when its marker expires.
-_SWEPT = re.compile(r'swept:\s*(\d{4}-\d{2}-\d{2})', re.I)
+_SWEPT = re.compile(r'swept:\s*(\d{4}-\d{2}-\d{2})(?::([0-9a-f]{4}))?', re.I)
 _SWEEP_MAX_AGE = 30        # days a LIKELY-BUILT sweep-check stays good
+
+# The whole `[swept:...]` bracket, stripped before hashing so the marker cannot hash itself.
+_SWEPT_TAG = re.compile(r'\s*\[swept:[^\]]*\]', re.I)
+
+
+def sweep_fingerprint(title: str) -> str:
+    """4-hex-char digest of the line WITHOUT its sweep tag — what the sweep was a judgement about.
+
+    Content-keyed, not just time-keyed, because a date alone answers the wrong question. A sweep
+    asserts "I read THIS line and its status is honest". If the line then gains a `>> SHIPPED`
+    update, that judgement is void immediately — waiting out a 30-day timer would hide exactly the
+    misclassification the surface exists to catch, and this surface is the board's only detector
+    for it. So the marker carries the content it was made against, and any edit invalidates it.
+    """
+    import hashlib
+    body = _SWEPT_TAG.sub("", title).strip()
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:4]
 
 
 def _sweep_is_fresh(title: str, today: date) -> bool:
-    """True when the line carries a `swept:YYYY-MM-DD` marker within `_SWEEP_MAX_AGE` days.
+    """True when the line carries a `swept:YYYY-MM-DD[:hash]` marker that is BOTH recent and
+    still about this line's current content.
 
-    A malformed or future-dated marker is NOT fresh — it must not become a way to permanently
-    silence the surface by typing an unparseable date."""
+    Three ways to be stale, all deliberate:
+      * older than `_SWEEP_MAX_AGE` days — a re-read is due on cadence regardless;
+      * the line changed since the sweep (fingerprint mismatch) — the judgement is void NOW;
+      * malformed or future-dated — must never buy silence. `swept:2099-01-01` would otherwise
+        mute a task for 73 years, and a typo'd date would mute it forever.
+    A marker with no hash is accepted while in date (backwards compatible) but re-surfaces on the
+    normal timer; new sweeps should write the hash.
+    """
     m = _SWEPT.search(title)
     if not m:
         return False
@@ -96,7 +120,12 @@ def _sweep_is_fresh(title: str, today: date) -> bool:
         age = (today - date.fromisoformat(m.group(1))).days
     except ValueError:
         return False
-    return 0 <= age <= _SWEEP_MAX_AGE
+    if not (0 <= age <= _SWEEP_MAX_AGE):
+        return False
+    stamped = m.group(2)
+    if stamped and stamped.lower() != sweep_fingerprint(title):
+        return False        # line edited since the sweep — judgement no longer applies
+    return True
 
 # --- SESSION GROWTH GATE (operator 2026-07-12, HARD) ------------------------------------------
 # A session may NOT end with more open tasks than the PT-day began with. The open count is
