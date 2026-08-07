@@ -121,7 +121,15 @@ Partial already taken: {_b(p.get('partial_taken'))}
 Entry grade tier: {p.get('entry_grade_tier') or 'n/a'}  |  EP score: {p.get('ep_score')}  |  catalyst quality: {p.get('catalyst_quality')}
 Catalyst: {p.get('catalyst') or 'n/a'}
 
-Return the verdict + a one-sentence rationale citing the decisive factor."""
+Return the verdict + a rationale.
+
+RATIONALE FORMAT — this lands in a Telegram digest the operator scans, not reads:
+- **25 words MAX.** Longer gets clipped mid-thought and reads as a wall of prose.
+- **Lead with the decisive factor**, not with context. "Stop still at breakeven at +3.8R" — not
+  "Thesis is fully intact and the position is up after two days, but...".
+- **State the ACTION.** The verdict is the header; the rationale says what to do about it.
+- No restating the numbers already in the header (pct, R, hold days) — the operator can see them.
+- No hedging clauses. One fact, one action."""
 
 
 def _normalize_mgmt_verdict(raw: dict) -> Optional[dict]:
@@ -185,10 +193,24 @@ def snapshot_price(snap: Optional[dict]) -> Optional[float]:
 _VERDICT_EMOJI = {"HOLD": "🟢", "PARTIAL_TAKE": "🟡", "TRAIL_TIGHTEN": "🟡", "FORCE_EXIT": "🔴"}
 
 
-def _clip(text: str, n: int = 240) -> str:
-    """Collapse whitespace + clip to a WORD boundary (never mid-word) with an ellipsis."""
+def _clip(text: str, n: int = 150) -> str:
+    """Collapse whitespace + clip to a SENTENCE boundary where possible, else a word boundary.
+
+    ⚠ 2026-08-07: was n=240 and clipped only on words, which produced exactly what the operator
+    flags in every report — a prose paragraph truncated mid-thought ("...the decisive action is
+    raising the trail to lock in profit on this…"). Two changes: the prompt now caps the rationale
+    at 25 words and demands it lead with the decisive factor, and this clips at the last SENTENCE
+    end inside the budget so a trimmed line still finishes a thought. Falls back to the word
+    boundary when there is no sentence break to cut at.
+    """
     text = " ".join((text or "").split())
-    return text if len(text) <= n else text[:n].rsplit(" ", 1)[0].rstrip(" ,;:—-") + "…"
+    if len(text) <= n:
+        return text
+    window = text[:n]
+    cut = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+    if cut >= n // 2:                       # a sentence end late enough to be worth keeping
+        return window[:cut + 1]
+    return window.rsplit(" ", 1)[0].rstrip(" ,;:—-") + "…"
 
 
 def format_mgmt_line(payload: dict, verdict: dict) -> str:
