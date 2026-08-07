@@ -3242,9 +3242,35 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 # scratchpad + assignments + occasional verbose runs. Prompt
                 # also restructured to push reasoning into analysis_scratchpad
                 # instead of pre-tool free text.
-                max_tokens=4000,
+                #
+                # 🔴 THAT FIX REGRESSED, AND THE OUTAGE WAS TOTAL (2026-08-07).
+                # api_usage: EVERY theme_assignment call from 07-28 to 08-07
+                # returned EXACTLY 4000 output tokens — the wall, not a natural
+                # stop. Outcome on every one of them: 11x
+                # `assignment_llm_proposed` "proposed 0 assignment(s)" and 2x
+                # `assignment_silent_stop` (08-06, 08-07). **Not one successful
+                # assignment in the window.** The component that puts stocks
+                # INTO themes had produced nothing for at least ten days, while
+                # the board showed 91 themes averaging 3.2 members and an entire
+                # gapping software cohort belonged to none (#471).
+                #
+                # Raising the ceiling again would repeat the May patch and buy
+                # another few months. The structural cause is that `auto` lets
+                # the model spend the whole budget on prose and never reach a
+                # tool call — "no tool_uses" IS the failure path below. So:
+                #   * tool_choice `any` — it MUST call one of the two tools
+                #     (assign or advisor). Free text can no longer consume the
+                #     budget, which makes the failure mode impossible rather
+                #     than merely less likely.
+                #   * 4000 → 8000 as belt-and-braces for genuinely long
+                #     assignment lists. ⚠ Raising a cap costs NOTHING extra —
+                #     billing is on tokens generated, not the ceiling.
+                # ⚠ SILENT BY CONSTRUCTION: "proposed 0 assignments" is a
+                # TELEMETRY line, not an error, so a total outage read as a
+                # quiet night. Detection is #543's DoD.
+                max_tokens=8000,
                 tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
-                tool_choice={"type": "auto"},
+                tool_choice={"type": "any"},
                 messages=messages,
             )
             # #377 cost meter — per-turn (each loop iter is a billed call).

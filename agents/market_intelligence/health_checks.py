@@ -1646,8 +1646,48 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
         "today": today.isoformat(),
         "retired_while_healthy": [],
         "pruned_while_rising": [],
+        "assignment_producing_nothing": [],
         "errors": [],
     }
+
+    # ── Signature C — THE ASSIGNMENT STAGE PRODUCED NOTHING (#543, 2026-08-07) ────────────────
+    # Added after a TOTAL, TEN-DAY, SILENT outage: every `theme_assignment` call from 07-28 to
+    # 08-07 burned exactly its 4000-token ceiling and ended in either "proposed 0 assignment(s)"
+    # (11x) or `assignment_silent_stop` (2x). Not one successful assignment in the window, while
+    # the board showed 91 themes averaging 3.2 members and a whole gapping software cohort in
+    # none. The operator found it by asking; nothing told anyone.
+    #
+    # It hid because "proposed 0 assignments" is a TELEMETRY line, not an error — a total outage
+    # reads exactly like a quiet night. So the signature is deliberately about the STREAK, not a
+    # single night: zero assignments on ONE night is normal (nothing needed re-homing); zero on
+    # THREE CONSECUTIVE nights the engine ran is a dead stage.
+    try:
+        c_rows = await conn.fetch("""
+            SELECT (created_at AT TIME ZONE 'America/New_York')::date AS d,
+                   count(*) FILTER (WHERE event_type = 'assignment_silent_stop')       AS stops,
+                   count(*) FILTER (WHERE event_type = 'assignment_llm_proposed'
+                                    AND summary LIKE '%proposed 0 assignment%')        AS zeros,
+                   count(*) FILTER (WHERE event_type = 'assignment_llm_proposed'
+                                    AND summary NOT LIKE '%proposed 0 assignment%')    AS produced
+              FROM mi_audit_log
+             WHERE event_type IN ('assignment_llm_proposed', 'assignment_silent_stop')
+               AND created_at > now() - interval '10 days'
+             GROUP BY 1 ORDER BY 1 DESC LIMIT 5
+        """)
+        # Only nights the stage actually RAN count — a weekend with no run is not a failure.
+        ran = [r for r in c_rows if (r["stops"] + r["zeros"] + r["produced"]) > 0]
+        barren = []
+        for r in ran[:3]:
+            if r["produced"] == 0:
+                barren.append({"date": r["d"].isoformat(),
+                               "silent_stops": int(r["stops"]), "zero_proposals": int(r["zeros"])})
+            else:
+                break          # streak broken by a night that produced something
+        if len(barren) >= 3:
+            summary["assignment_producing_nothing"] = barren
+    except Exception as e:
+        logger.warning("theme_quality_check: assignment-barren signature failed: %s", e)
+        summary["errors"].append({"signature": "assignment_producing_nothing", "error": str(e)})
 
     # ── Signature A ──────────────────────────────────────────────────────────────────────────
     try:
@@ -1705,6 +1745,37 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
     summary["pruned_while_rising"] = fresh_prunes
 
     # ── Alert ────────────────────────────────────────────────────────────────────────────────
+    barren = summary.get("assignment_producing_nothing") or []
+    if barren:
+        # Deliberately NOT deduped and NOT grouped with the two lifecycle signatures: this is a
+        # STAGE OUTAGE, not a per-theme finding, and it must keep shouting every night until it
+        # is fixed. The 07-28→08-07 outage was silent for ten days precisely because its only
+        # trace was a routine-looking telemetry line.
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            n = len(barren)
+            body = "\n".join([
+                "🔴 THEME ASSIGNMENT IS PRODUCING NOTHING",
+                "",
+                f"{n} consecutive engine nights with ZERO successful assignments:",
+                "```",
+                *[f"{b['date']}  silent_stops={b['silent_stops']}  zero_proposals={b['zero_proposals']}"
+                  for b in barren],
+                "```",
+                "This is the stage that puts stocks INTO themes. Zero for one night is normal;",
+                "zero for three consecutive runs means it is dead — check max_tokens exhaustion",
+                "and tool_choice on theme_engine's assignment loop (#543, the 2026-08-07 outage).",
+            ])
+            await send_telegram_message(body)
+        except Exception as e:
+            logger.warning("theme_quality_check: barren-assignment telegram failed: %s", e)
+            summary["errors"].append({"telegram_barren": str(e)})
+        await log_audit_event(
+            "theme_assignment_barren",
+            f"{len(barren)} consecutive engine nights with zero successful theme assignments",
+            detail=str(barren),
+        )
+
     if fresh_retirements or fresh_prunes:
         # Dynamic free-text (theme names, tickers) goes INSIDE a ``` code block — the same
         # discipline as run_inert_sweep_check / run_row_count_drift_sweep — so Legacy Markdown
