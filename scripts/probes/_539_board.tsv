@@ -1,0 +1,849 @@
+theme_date	name	source	stage	score	rs_avg	days_active	parent_theme	tickers
+2026-07-27	Aerospace Structural Materials & Advanced Composites	live	Retired	0.00		3	Defense Precision Components & Mission-Critical Subsystems	
+2026-07-27	AI Compute & GPU Data Center Hosting Operators	live	Retired	0.00		2		
+2026-07-27	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Mainstream	75.80	91.70	3		AMPL,INTA,AVPT
+2026-07-27	AI-Powered Software Development & DevOps Platforms	live	Retired	0.00		4		
+2026-07-27	Analog & Microcontroller Semiconductors — Automotive & Industrial Cycle Recovery	live	Fading	19.20		1		ADI,NXPI,ON,TXN
+2026-07-27	Antibody-Based Oncology & Autoimmune Biologics	live	Retired	0.00		4		
+2026-07-27	Automotive Components & Tire Suppliers	live	Fading	36.04		1		GT,ADNT
+2026-07-27	B2B Data Intelligence & Professional Information Services	live	Retired	0.00		2		
+2026-07-27	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	77.50	95.10	17		ACIW,PAY,QTWO
+2026-07-27	B2B Marketing Automation & Customer Engagement SaaS	live	Fading	29.41		7		KVYO,HUBS
+2026-07-27	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	61.44		5		CIFR,HUT
+2026-07-27	Canadian Big Banks	live	Accelerating	65.20	70.50	6		RY,BMO,TD,CM,BNS
+2026-07-27	Casual Dining Restaurant Turnaround	live	Mainstream	78.30	96.60	22		EAT,CBRL
+2026-07-27	Clinical-Stage Oncology Biotech	live	Nascent	76.80	93.70	3		ELVN,TGTX
+2026-07-27	Cloud Communications & Contact Center Platforms	live	Fading	32.07		2		BAND,FIVN
+2026-07-27	Cloud Data Storage & Analytics Infrastructure	live	Mainstream	71.10	82.20	10		BLZE,SNOW
+2026-07-27	Cloud Observability & AIOps Monitoring Platforms	live	Fading	25.66		9		DDOG,PD
+2026-07-27	Cloud Supply Chain & Warehouse Management Software	live	Mainstream	71.60	83.20	5		MANH,SPSC
+2026-07-27	Coastal & Suburban Residential Rental REITs	live	Fading	18.84		11		EQR,AMH,ESS,AVB,INVH
+2026-07-27	Commercial Real Estate Brokerage & Advisory Services	live	Mainstream	61.00	62.10	8		JLL,CBRE,NMRK
+2026-07-27	Consumer Fintech & Digital Credit Platforms	live	Mainstream	71.70	83.30	18		DAVE,SEZL
+2026-07-27	Containerboard & Corrugated Packaging Producers	live	Accelerating	77.60	95.20	4		SW,IP,PKG
+2026-07-27	Copper Mining & Production	live	Nascent	61.70	63.40	5		SCCO,HBM,FCX,ERO,TGB
+2026-07-27	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	75.20	90.40	13		BILL,NAVN,WEX
+2026-07-27	Cross-Border & International Payments Processing	live	Mainstream	71.10	82.20	4		GPN,EEFT
+2026-07-27	Cruise Line & Ocean Travel Recovery	shadow_promoted	Nascent	84.20	84.20	1		LIND,RCL,NCLH
+2026-07-27	Custom AI Silicon & Chip Architecture Licensing	live	Fading	40.19		62		CRDO,ARM,QUIK,ALAB,MRVL,CEVA
+2026-07-27	Cyber Exposure Management & Vulnerability Assessment	live	Fading	62.90	65.80	3		TENB,RPD,QLYS
+2026-07-27	Defense Precision Components & Mission-Critical Subsystems	live	Fading	71.95		1	Defense Prime Contractors & Aerospace Systems	DPC,HXL,FEIM
+2026-07-27	Defense Prime Contractors & Aerospace Systems	live	Fading	19.20		1		LMT,RTX
+2026-07-27	Department Store Retail Recovery	live	Nascent	70.30	80.60	1		KSS,DDS
+2026-07-27	Digital Advertising Technology Platforms	live	Fading	31.21		13		QNST,MGNI
+2026-07-27	Digital Insurance Distribution & Marketplace Platforms	live	Retired	0.00		13		
+2026-07-27	Digital Payments Processing & Merchant Acquiring Networks	live	Fading	28.75		5		PYPL,FOUR
+2026-07-27	Domestic Steel Producers	live	Retired	0.00		7	U.S. Domestic Steel Producers	
+2026-07-27	Emerging Market Digital Commerce & Fintech Platforms	live	Fading	29.45		8		SE,MELI
+2026-07-27	Enterprise HR & Workforce Management SaaS	live	Mainstream	76.40	92.80	8		ALIT,WDAY,PCTY
+2026-07-27	Enterprise Server, Storage & Data Infrastructure Hardware	live	Nascent	78.10	96.30	4		DELL,STX,NTAP,HPE
+2026-07-27	European Bank Stocks	live	Nascent	69.60	79.20	25		BCS,SAN,BBVA,LYG,ING,NWG
+2026-07-27	Financial Compliance & Regulatory Reporting SaaS	live	Fading	23.20		1		WK,DFIN
+2026-07-27	Financial Services Vertical SaaS	live	Fading	23.59		4		SSNC,JKHY
+2026-07-27	For-Profit Education & Career Training Providers	live	Fading	7.57		1		CVSA,STRA
+2026-07-27	Franchise Auto Dealership Groups	live	Mainstream	79.30	98.70	14		ABG,PAG,SAH
+2026-07-27	Global Crude & Product Tanker Fleet Operators	live	Mainstream	68.90	77.70	7		NAT,TNK,INSW,DHT,FRO,TRMD
+2026-07-27	Global Steel & Metal Producers Recovery	live	Nascent	68.90	77.80	4		TX,MT
+2026-07-27	Heavy Transportation Equipment Manufacturers	live	Retired	0.00		2		
+2026-07-27	Hospital & Behavioral Health Facility Procedure Volume Recovery	shadow_promoted	Nascent	38.73	38.73	1		BSX,HCA,UHS,THC
+2026-07-27	Hotel REIT Recovery & Re-Rating	live	Nascent	78.40	96.80	1		RLJ,XHR
+2026-07-27	Independent Power Producers & Nuclear Generation	live	Fading	43.52		2		VST,CEG
+2026-07-27	Industrial Automation & Electrical Control Systems	live	Fading	40.77		1		HLIO,AME,ROK
+2026-07-27	Industrial Construction Execution & On-Site Supply Chain	live	Nascent	75.20	90.30	2		SUNB,DNOW,TPC,RYZ
+2026-07-27	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Accelerating	62.80	65.50	3		DCI,FELE,IR,IEX,KAI
+2026-07-27	Industrial & Logistics REITs	live	Mainstream	68.80	77.70	13		FR,TRNO,EGP,STAG
+2026-07-27	Inflammatory Disease & Immunology Biologics	live	Nascent	79.40	98.80	48		ORKA,SYRE
+2026-07-27	Insurance Brokerage & Distribution Services	live	Mainstream	67.50	75.10	14		AON,BRO,AJG
+2026-07-27	IT Distribution & Technology Services Providers	live	Nascent	77.20	94.30	4		INGM,EFOR
+2026-07-27	Korean Financial Sector Recovery	live	Fading	57.36		3		SHG,KB
+2026-07-27	Life Insurance & Annuity Providers	live	Mainstream	75.60	91.20	21		UNM,PFG,MET,PRU
+2026-07-27	Life Science Tools & Analytical Instruments	live	Mainstream	71.40	82.80	12		WAT,MTD,TMO
+2026-07-27	Liquid Biopsy & Multi-Cancer Early Detection	live	Fading	31.21		14		GRAL,GH
+2026-07-27	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	71.10	82.20	6		XRAY,INSP,TNDM,CNMD
+2026-07-27	Medical Device Sterilization & Surgical Supply Infrastructure	live	Retired	0.00		2		
+2026-07-27	Molecular Diagnostics & DNA-Based Genetic Testing	live	Mainstream	72.40	84.80	12		QGEN,BLLN
+2026-07-27	Multifamily Apartment REITs	live	Fading	15.36		9		CPT,UDR
+2026-07-27	Network Security & Zero-Trust Edge	live	Fading	70.30	80.60	47		VRNS,OKTA,CRWD,BB,RBRK,NET,PANW,CVLT,FTNT
+2026-07-27	Office REIT Recovery & Re-Rating	live	Mainstream	75.30	90.60	16		HIW,BXP,SLG,CDP
+2026-07-27	Online Insurance Comparison & Digital Marketplace Platforms	live	Nascent	72.10	84.20	11		MAX,EVER
+2026-07-27	Open-Air & Strip Mall Retail REITs	live	Mainstream	68.30	76.70	11		KRG,UE,FRT,BRX,SKT,PECO,KIM,REG
+2026-07-27	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	76.70	93.40	22		MBX,PTGX,CORT,XERS,VKTX
+2026-07-27	Powersports & Recreational Vehicle Manufacturers	live	Fading	59.12		3		PII,HOG
+2026-07-27	Precious Metals Miners & Royalty Streamers	live	Fading	24.00		3		EGO,FSM
+2026-07-27	Precious Metals Royalty & Streaming Companies	live	Fading	24.00		1	Precious Metals Miners & Royalty Streamers	FNV,RGLD
+2026-07-27	Private Mortgage Insurance	live	Mainstream	69.10	78.10	21		MTG,RDN,NMIH,ESNT
+2026-07-27	Professional Advisory & Business Services	live	Mainstream	76.80	93.50	11		CBZ,CRAI
+2026-07-27	Property & Casualty Insurance Underwriters	live	Mainstream	69.00	78.00	21		CINF,THG,CB,HIG,ALL,HCI,WRB,TRV,ORI,SKWD,AFG,AXS,ACGL
+2026-07-27	Regulated Gas & Electric Distribution Utilities	shadow_promoted	Nascent	49.12	49.12	1		AVA,BKH,NJR,NWE,POR,SR
+2026-07-27	Semiconductor Wafer Foundry & Advanced IC Manufacturing	live	Mainstream	58.10	56.30	56		MKSI,ACMR,KLAC,UCTT,AMAT,TSEM,UMC,ICHR
+2026-07-27	Senior & Long-Term Care Healthcare REITs	live	Mainstream	70.50	81.10	10		VTR,NHI,OHI,LTC
+2026-07-27	Smart Home Security & Comfort Systems	live	Accelerating	73.50	87.00	3		REZI,ALRM
+2026-07-27	SMB & Workforce Business Services Platforms	live	Mainstream	77.30	94.70	15		LZ,NSP
+2026-07-27	Specialty Catastrophe Property Insurance Underwriters	live	Retired	0.00		14		
+2026-07-27	Specialty Insurance Underwriting & Brokerage	live	Mainstream	70.50	80.90	14		PLMR,RYAN
+2026-07-27	Targeted Protein Degradation Oncology	live	Fading	36.35		16	Clinical-Stage Oncology Biotech	KYMR,GLUE
+2026-07-27	Traditional Staffing & Talent Placement Services	live	Nascent	79.80	99.50	11		MAN,RHI
+2026-07-27	Truckload & LTL Freight Carriers	live	Mainstream	74.70	89.50	15		TFII,WERN,KNX,LSTR,ARCB,SNDR,RXO,HUBG
+2026-07-27	Uniform Rental & Managed Workwear Services	live	Mainstream	78.20	96.30	8		CTAS,VSTS
+2026-07-27	U.S. Apparel & Fashion Recovery	live	Mainstream	77.70	95.50	10		RVLV,UA,CROX
+2026-07-27	U.S. Apparel & Lifestyle Brand Recovery	live	Fading	72.80	85.70	2		OXM,VSXY
+2026-07-27	U.S. Domestic Steel Producers	live	Accelerating	75.50	91.00	4		STLD,NUE
+2026-07-27	Used Vehicle & Mobility Asset Rental Recovery	live	Retired	0.00		2		
+2026-07-27	U.S. Passenger Airlines	live	Fading	65.70	71.40	14		LUV,UAL,SKYW,DAL,ALK,ALGT
+2026-07-27	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	79.10	98.30	18		DK,PARR,PBF,VLO,PSX,MPC,DINO
+2026-07-27	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	64.90	69.90	18		HBAN,USB,ZION,UMBF,WAL,RF,WSFS,FITB,EWBC,KEY,CFG,HWC,MTB,TFC,WTFC,GBCI,SSB,FHN,PNC,BOKF
+2026-07-27	Wealth Management & Retail Brokerage Platforms	live	Mainstream	73.00	86.10	14		HOOD,SF,SCHW,SEIC,RJF,LPLA,AMP
+2026-07-28	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Mainstream	74.90	89.80	4		INTA,AVPT,AMPL
+2026-07-28	Analog & Microcontroller Semiconductors — Automotive & Industrial Cycle Recovery	live	Fading	15.36		1		NXPI,TXN
+2026-07-28	Asset Management & Fund Administration Platform Ecosystem	live	Nascent	74.50	89.00	1		BX,SSNC
+2026-07-28	Automotive Components & Tire Suppliers	live	Fading	28.84		1		GT,ADNT
+2026-07-28	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	78.50	97.10	18		PAY,QTWO,ACIW
+2026-07-28	B2B Marketing Automation & Customer Engagement SaaS	live	Accelerating	71.20	82.40	8		HUBS,KVYO
+2026-07-28	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	49.15		5		CIFR,HUT
+2026-07-28	Canadian Big Banks	live	Mainstream	64.70	69.50	7		BMO,TD,CM,BNS,RY
+2026-07-28	Casual Dining Restaurant Turnaround	live	Mainstream	78.60	97.20	23		CBRL,EAT
+2026-07-28	Clinical-Stage Oncology Biotech	live	Nascent	72.00	84.00	4		TGTX,ELVN
+2026-07-28	Cloud Communications & Contact Center Platforms	live	Retired	0.00		3		
+2026-07-28	Cloud Data Storage & Analytics Infrastructure	live	Fading	56.88		10		BLZE,SNOW
+2026-07-28	Cloud Observability & AIOps Monitoring Platforms	live	Fading	20.53		9		DDOG,PD
+2026-07-28	Cloud Supply Chain & Warehouse Management Software	live	Accelerating	75.20	90.40	6		MANH,SPSC
+2026-07-28	Coastal & Suburban Residential Rental REITs	live	Fading	15.07		11		EQR,AMH,ESS,AVB,INVH
+2026-07-28	Commercial Real Estate Brokerage & Advisory Services	live	Accelerating	63.90	67.80	9		NMRK,CBRE,JLL
+2026-07-28	Consumer Fintech & Digital Credit Platforms	live	Mainstream	71.50	83.10	19		SEZL,DAVE
+2026-07-28	Consumer Staples Packaged Food & Snack Brand Recovery	shadow_promoted	Nascent	90.33	90.33	1		LW,UTZ,CAG
+2026-07-28	Containerboard & Corrugated Packaging Producers	live	Accelerating	77.60	95.20	5		PKG,IP,SW
+2026-07-28	Copper Mining & Production	live	Fading	49.36		5		SCCO,HBM,FCX,TGB
+2026-07-28	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	76.50	93.00	14		NAVN,BILL,WEX
+2026-07-28	Cross-Border & International Payments Processing	live	Accelerating	74.50	89.10	5		EEFT,GPN
+2026-07-28	Cruise Line & Ocean Travel Recovery	live	Nascent	77.40	94.80	2		NCLH,LIND,RCL
+2026-07-28	Custom AI Silicon & Chip Architecture Licensing	live	Fading	32.15		62		CRDO,QUIK,MRVL
+2026-07-28	Cyber Exposure Management & Vulnerability Assessment	live	Fading	61.90	63.80	3		RPD,TENB,QLYS
+2026-07-28	Defense Precision Components & Mission-Critical Subsystems	live	Fading	72.70	85.40	1	Defense Prime Contractors & Aerospace Systems	HXL,FEIM
+2026-07-28	Defense Prime Contractors & Aerospace Systems	live	Fading	15.36		1		LMT,RTX
+2026-07-28	Department Store Retail Recovery	live	Nascent	70.90	81.80	2		DDS,KSS
+2026-07-28	Digital Advertising Technology Platforms	live	Retired	0.00		14		
+2026-07-28	Digital Payments Processing & Merchant Acquiring Networks	live	Accelerating	74.00	88.00	6		PYPL,FOUR
+2026-07-28	Domestic Steel Producers	live	Accelerating	76.00	92.00	8		NUE,STLD
+2026-07-28	Emerging Market Digital Commerce & Fintech Platforms	live	Retired	0.00		9		
+2026-07-28	Enterprise HR & Workforce Management SaaS	live	Mainstream	77.30	94.50	9		PCTY,WDAY,ALIT
+2026-07-28	Enterprise Server, Storage & Data Infrastructure Hardware	live	Mainstream	76.10	92.20	5		NTAP,HPE,STX,DELL
+2026-07-28	European Bank Stocks	live	Nascent	62.90	65.80	26		NWG,ING,LYG,BCS,BBVA,SAN
+2026-07-28	Financial Compliance & Regulatory Reporting SaaS	live	Accelerating	71.90	83.80	2		DFIN,WK
+2026-07-28	Financial Services Vertical SaaS	live	Retired	0.00		5		
+2026-07-28	For-Profit Education & Career Training Providers	live	Fading	6.05		1		CVSA,STRA
+2026-07-28	Franchise Auto Dealership Groups	live	Mainstream	79.30	98.60	15		SAH,ABG,PAG
+2026-07-28	Global Crude & Product Tanker Fleet Operators	live	Mainstream	66.90	73.80	8		TNK,TRMD,INSW,DHT,FRO,NAT
+2026-07-28	Global Steel & Metal Producers Recovery	live	Fading	55.12		4		TX,MT
+2026-07-28	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Fading	30.98		1		UHS,THC
+2026-07-28	Hotel REIT Recovery & Re-Rating	live	Nascent	77.70	95.50	2		RLJ,XHR
+2026-07-28	Independent Power Producers & Nuclear Generation	live	Fading	34.82		2		VST,CEG
+2026-07-28	Industrial Automation & Electrical Control Systems	live	Fading	32.61		1		HLIO,AME,ROK
+2026-07-28	Industrial Construction Execution & On-Site Supply Chain	live	Nascent	70.50	80.90	3		TPC,RYZ,DNOW,SUNB
+2026-07-28	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Accelerating	67.70	75.40	4		DCI,FELE,KAI,IR,IEX
+2026-07-28	Industrial & Logistics REITs	live	Mainstream	63.70	67.50	14		FR,EGP,STAG,TRNO
+2026-07-28	Inflammatory Disease & Immunology Biologics	live	Nascent	78.20	96.50	49		SYRE,ORKA
+2026-07-28	Insurance Brokerage & Distribution Services	live	Accelerating	71.50	82.90	15		AJG,AON,BRO
+2026-07-28	IT Distribution & Technology Services Providers	live	Mainstream	77.40	94.80	5		INGM,EFOR
+2026-07-28	Korean Financial Sector Recovery	live	Fading	45.89		3		SHG,KB
+2026-07-28	Life Insurance & Annuity Providers	live	Mainstream	75.20	90.30	22		MET,UNM,PFG,PRU
+2026-07-28	Life Science Tools & Analytical Instruments	live	Mainstream	73.20	86.30	13		MTD,WAT,TMO
+2026-07-28	Liquid Biopsy & Multi-Cancer Early Detection	live	Retired	0.00		15		
+2026-07-28	Medical Device Mean-Reversion & Rotation Recovery	live	Accelerating	72.90	85.90	7		XRAY,CNMD,INSP,TNDM
+2026-07-28	Molecular Diagnostics & DNA-Based Genetic Testing	live	Mainstream	74.50	89.00	13		BLLN,QGEN
+2026-07-28	Multifamily Apartment REITs	live	Fading	12.29		9		CPT,UDR
+2026-07-28	Network Security & Zero-Trust Edge	live	Fading	66.20	72.40	47		NET,CVLT,OKTA,VRNS,RBRK,BB,CRWD,PANW,FTNT
+2026-07-28	Office REIT Recovery & Re-Rating	live	Mainstream	73.40	86.80	17		CDP,HIW,SLG,BXP
+2026-07-28	Online Insurance Comparison & Digital Marketplace Platforms	live	Nascent	75.60	91.20	12		MAX,EVER
+2026-07-28	Open-Air & Strip Mall Retail REITs	live	Mainstream	65.20	70.50	12		UE,PECO,SKT,FRT,KRG,KIM,BRX,REG
+2026-07-28	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Fading	70.30	80.50	22		XERS,MBX,PTGX,CORT
+2026-07-28	Powersports & Recreational Vehicle Manufacturers	live	Fading	47.30		3		PII,HOG
+2026-07-28	Precious Metals Miners & Royalty Streamers	live	Fading	19.20		3		EGO,FSM
+2026-07-28	Precious Metals Royalty & Streaming Companies	live	Fading	19.20		1	Precious Metals Miners & Royalty Streamers	FNV,RGLD
+2026-07-28	Private Mortgage Insurance	live	Mainstream	70.00	80.00	22		MTG,ESNT,RDN,NMIH
+2026-07-28	Professional Advisory & Business Services	live	Mainstream	77.50	94.90	12		CRAI,CBZ
+2026-07-28	Property & Casualty Insurance Underwriters	live	Mainstream	68.90	77.90	22		WRB,TRV,ALL,ACGL,CB,AFG,HCI,HIG,AXS,ORI,SKWD,THG,CINF
+2026-07-28	Regulated Gas & Electric Distribution Utilities	live	Retired	0.00		2		
+2026-07-28	Semiconductor Wafer Foundry & Advanced IC Manufacturing	live	Fading	46.48		56		AMAT,UMC
+2026-07-28	Senior & Long-Term Care Healthcare REITs	live	Mainstream	65.50	70.90	11		LTC,NHI,OHI,VTR
+2026-07-28	Smart Home Security & Comfort Systems	live	Mainstream	73.50	87.00	4		REZI,ALRM
+2026-07-28	SMB & Workforce Business Services Platforms	live	Mainstream	78.60	97.20	16		NSP,LZ
+2026-07-28	Specialty Insurance Underwriting & Brokerage	live	Fading	56.40		14		PLMR,RYAN
+2026-07-28	Specialty Pharma — Rare Disease & Cardiopulmonary Therapeutics	live	Nascent	79.00	98.10	1		KNSA,LQDA
+2026-07-28	Targeted Protein Degradation Oncology	live	Fading	29.08		16	Clinical-Stage Oncology Biotech	KYMR,GLUE
+2026-07-28	Traditional Staffing & Talent Placement Services	live	Nascent	79.70	99.30	12		RHI,MAN
+2026-07-28	Truckload & LTL Freight Carriers	live	Fading	68.00	76.00	15		HUBG,KNX,TFII,ARCB,RXO,WERN,SNDR
+2026-07-28	Uniform Rental & Managed Workwear Services	live	Mainstream	77.70	95.40	9		CTAS,VSTS
+2026-07-28	U.S. Apparel & Fashion Recovery	live	Mainstream	77.60	95.20	11		UA,RVLV,CROX
+2026-07-28	U.S. Apparel & Lifestyle Brand Recovery	live	Mainstream	72.20	84.40	3		VSXY,OXM
+2026-07-28	U.S. Passenger Airlines	live	Accelerating	68.20	76.40	15		ALK,LUV,SKYW,UAL,ALGT,DAL
+2026-07-28	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	78.40	96.80	19		NJR,VLO,SR,DK,AVA,PBF,PSX,DINO,PARR,NWE,BKH,MPC
+2026-07-28	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	63.80	67.50	19		WAL,SSB,EWBC,KEY,USB,UMBF,WSFS,ZION,PNC,FITB,HWC,FHN,GBCI,RF,TFC,WTFC,HBAN,CFG,BOKF,MTB
+2026-07-28	Wealth Management & Retail Brokerage Platforms	live	Mainstream	73.40	86.80	15		RJF,LPLA,AMP,SF,SCHW,HOOD,SEIC
+2026-07-29	AI-Augmented Business Process Outsourcing & IT Services	live	Nascent	73.10	86.20	1		EXLS,G
+2026-07-29	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Accelerating	76.20	92.30	5		INTA,AMPL,AVPT
+2026-07-29	Analog & Microcontroller Semiconductors — Automotive & Industrial Cycle Recovery	live	Fading	12.29		1		NXPI,TXN
+2026-07-29	Asset Management & Fund Administration Platform Ecosystem	live	Nascent	72.60	85.20	2		BX,SSNC
+2026-07-29	Automotive Components & Tire Suppliers	live	Fading	23.07		1		GT,ADNT
+2026-07-29	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	78.80	97.70	19		PAY,QTWO,ACIW
+2026-07-29	B2B Marketing Automation & Customer Engagement SaaS	live	Accelerating	73.80	87.70	9		KVYO,HUBS
+2026-07-29	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	39.32		5		CIFR,HUT
+2026-07-29	Canadian Big Banks	live	Mainstream	60.00	60.00	8		RY,BMO,TD,BNS,CM
+2026-07-29	Casual Dining & Full-Service Restaurant Chain Recovery	live	Nascent	79.40	98.80	1		EAT,CAKE
+2026-07-29	Casual Dining Restaurant Turnaround	live	Retired	0.00		24		
+2026-07-29	Clinical-Stage Oncology Biotech	live	Nascent	70.50	81.10	5		TGTX,ELVN
+2026-07-29	Cloud Data Storage & Analytics Infrastructure	live	Mainstream	70.20	80.50	11		BLZE,SNOW
+2026-07-29	Cloud Observability & AIOps Monitoring Platforms	live	Fading	74.30	88.70	9		PD,DDOG
+2026-07-29	Cloud Supply Chain & Warehouse Management Software	live	Accelerating	78.50	97.00	7		MANH,SPSC
+2026-07-29	Coastal & Suburban Residential Rental REITs	live	Fading	59.20	58.30	11		AMH,INVH,AVB,ESS,EQR
+2026-07-29	Commercial Real Estate Brokerage & Advisory Services	live	Fading	51.12		9		NMRK,CBRE,JLL
+2026-07-29	Consumer Fintech & Digital Credit Platforms	live	Fading	57.20		19		SEZL,DAVE
+2026-07-29	Consumer Staples Packaged Food & Snack Brand Recovery	live	Nascent	72.90	85.80	2		CAG,LW
+2026-07-29	Containerboard & Corrugated Packaging Producers	live	Accelerating	75.70	91.40	6		SW,IP,PKG
+2026-07-29	Copper Mining & Production	live	Fading	39.49		5		SCCO,HBM,FCX,TGB
+2026-07-29	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	77.80	95.60	15		BILL,WEX,NAVN
+2026-07-29	Cross-Border & International Payments Processing	live	Accelerating	75.80	91.70	6		EEFT,GPN
+2026-07-29	Cruise Line & Ocean Travel Recovery	live	Nascent	71.10	82.20	3		RCL,NCLH
+2026-07-29	Custom AI Silicon & Chip Architecture Licensing	live	Fading	25.72		62		QUIK,MRVL
+2026-07-29	Cyber Exposure Management & Vulnerability Assessment	live	Fading	63.00	66.00	3		TENB,RPD,QLYS
+2026-07-29	Defense Precision Components & Mission-Critical Subsystems	live	Fading	58.16		1	Defense Prime Contractors & Aerospace Systems	HXL,FEIM
+2026-07-29	Defense Prime Contractors & Aerospace Systems	live	Fading	12.29		1		LMT,RTX
+2026-07-29	Department Store Retail Recovery	live	Nascent	70.40	80.80	3		DDS,KSS
+2026-07-29	Dermatology & Atopic Immunology Biologics	live	Nascent	76.50	93.00	1		FBRX,APGE
+2026-07-29	Digital Payments Processing & Merchant Acquiring Networks	live	Accelerating	77.10	94.20	7		PYPL,FOUR
+2026-07-29	Domestic Steel Producers	live	Retired	0.00		9	U.S. Domestic Steel Producers	
+2026-07-29	Enterprise HR & Workforce Management SaaS	live	Mainstream	78.70	97.40	10		WDAY,ALIT,PCTY
+2026-07-29	Enterprise Server, Storage & Data Infrastructure Hardware	live	Fading	71.70	83.50	5		DELL,HPE,STX,NTAP
+2026-07-29	European Bank Stocks	live	Nascent	59.50	58.90	27		BBVA,SAN,BCS,ING,NWG,LYG
+2026-07-29	Financial Compliance & Regulatory Reporting SaaS	live	Accelerating	73.80	87.50	3		DFIN,WK
+2026-07-29	For-Profit Education & Career Training Providers	live	Fading	4.84		1		CVSA,STRA
+2026-07-29	Franchise Auto Dealership Groups	live	Mainstream	79.40	98.80	16		ABG,PAG,SAH
+2026-07-29	Global Crude & Product Tanker Fleet Operators	live	Mainstream	67.50	75.10	9		NAT,FRO,INSW,DHT,TRMD,TNK
+2026-07-29	Global Steel & Metal Producers Recovery	live	Fading	44.10		4		TX,MT
+2026-07-29	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Fading	24.78		1		UHS,THC
+2026-07-29	Hotel REIT Recovery & Re-Rating	live	Nascent	77.60	95.20	3		RLJ,XHR
+2026-07-29	Independent Power Producers & Nuclear Generation	live	Fading	27.85		2		VST,CEG
+2026-07-29	Industrial Automation & Electrical Control Systems	live	Retired	0.00		2		
+2026-07-29	Industrial Construction Execution & On-Site Supply Chain	live	Fading	56.40		3		TPC,RYZ,DNOW,SUNB
+2026-07-29	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Accelerating	65.20	70.40	5		FELE,IR,IEX,DCI,KAI
+2026-07-29	Industrial & Logistics REITs	live	Fading	50.96		14		FR,EGP,STAG,TRNO
+2026-07-29	Inflammatory Disease & Immunology Biologics	live	Mainstream	75.50	91.00	50		SYRE,ORKA
+2026-07-29	Insurance Brokerage & Distribution Services	live	Accelerating	73.60	87.20	16		AON,BRO,AJG
+2026-07-29	Investment Research & Financial Analytics Data Platforms	live	Nascent	71.60	83.20	1		MORN,IT
+2026-07-29	IT Distribution & Technology Services Providers	live	Mainstream	76.20	92.30	6		EFOR,INGM
+2026-07-29	Korean Financial Sector Recovery	live	Fading	36.71		3		SHG,KB
+2026-07-29	Life Insurance & Annuity Providers	live	Mainstream	74.80	89.70	23		UNM,MET,PRU,PFG
+2026-07-29	Life Science Tools & Analytical Instruments	live	Mainstream	73.90	87.80	14		MTD,TMO,WAT
+2026-07-29	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	73.60	87.20	8		INSP,TNDM,XRAY,CNMD
+2026-07-29	Molecular Diagnostics & DNA-Based Genetic Testing	live	Mainstream	72.80	85.70	14		BLLN,QGEN
+2026-07-29	Multifamily Apartment REITs	live	Fading	9.83		9		CPT,UDR
+2026-07-29	Network Security & Zero-Trust Edge	live	Mainstream	66.00	72.00	48		PANW,FTNT,NET,CVLT,RBRK,BB,OKTA,CRWD,VRNS
+2026-07-29	Office REIT Recovery & Re-Rating	live	Mainstream	76.90	93.90	18		CDP,BXP,HIW,SLG
+2026-07-29	Online Insurance Comparison & Digital Marketplace Platforms	live	Nascent	75.40	90.80	13		EVER,MAX
+2026-07-29	Open-Air & Strip Mall Retail REITs	live	Mainstream	63.50	67.10	13		BRX,REG,PECO,SKT,KRG,UE,FRT,KIM
+2026-07-29	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	72.10	84.20	23		XERS,MBX,PTGX,CORT
+2026-07-29	Powersports & Recreational Vehicle Manufacturers	live	Fading	37.84		3		PII,HOG
+2026-07-29	Precious Metals Miners & Royalty Streamers	live	Fading	15.36		3		EGO,FSM
+2026-07-29	Precious Metals Royalty & Streaming Companies	live	Fading	15.36		1	Precious Metals Miners & Royalty Streamers	FNV,RGLD
+2026-07-29	Private Mortgage Insurance	live	Mainstream	71.10	82.10	23		ESNT,NMIH,MTG,RDN
+2026-07-29	Professional Advisory & Business Services	live	Nascent	78.60	97.20	13		CBZ,CRAI
+2026-07-29	Property & Casualty Insurance Underwriters	live	Mainstream	69.60	79.10	23		SKWD,ORI,HCI,AXS,AFG,WRB,ALL,ACGL,THG,CB,HIG,TRV,CINF
+2026-07-29	Regulated Gas & Electric Distribution Utilities	shadow_promoted	Nascent	35.47	35.47	3		AVA,BKH,NJR,NWE,POR,SR
+2026-07-29	Semiconductor Wafer Foundry & Advanced IC Manufacturing	live	Retired	0.00		57		
+2026-07-29	Senior & Long-Term Care Healthcare REITs	live	Mainstream	65.80	71.60	12		NHI,OHI,VTR,LTC
+2026-07-29	Smart Home Security & Comfort Systems	live	Mainstream	72.00	84.00	5		ALRM,REZI
+2026-07-29	SMB & Workforce Business Services Platforms	live	Mainstream	79.20	98.30	17		NSP,LZ
+2026-07-29	Specialty Insurance Underwriting & Brokerage	live	Accelerating	70.80	81.70	15		PLMR,RYAN
+2026-07-29	Specialty Pharma — Rare Disease & Cardiopulmonary Therapeutics	live	Retired	0.00		2		
+2026-07-29	Targeted Protein Degradation Oncology	live	Fading	23.27		16	Clinical-Stage Oncology Biotech	KYMR,GLUE
+2026-07-29	Tax Preparation & Consumer Financial Software Platforms	live	Nascent	70.30	80.60	1		HRB,INTU
+2026-07-29	Traditional Staffing & Talent Placement Services	live	Mainstream	79.70	99.50	13		RHI,MAN
+2026-07-29	Truckload & LTL Freight Carriers	live	Fading	63.90	67.80	15		HUBG,ARCB,RXO,SNDR,TFII,WERN,KNX
+2026-07-29	Uniform Rental & Managed Workwear Services	live	Mainstream	76.40	92.80	10		CTAS,VSTS
+2026-07-29	U.S. Apparel & Fashion Recovery	live	Mainstream	75.30	90.70	12		CROX,UA,RVLV
+2026-07-29	U.S. Apparel & Lifestyle Brand Recovery	live	Fading	57.76		3		VSXY,OXM
+2026-07-29	U.S. Domestic Steel Producers	live	Accelerating	71.80	83.50	5		STLD,NUE
+2026-07-29	U.S. Passenger Airlines	live	Fading	54.56		15		ALK,LUV,SKYW,UAL,ALGT,DAL
+2026-07-29	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	78.30	96.50	20		DINO,PBF,PARR,VLO,MPC,PSX,DK
+2026-07-29	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	65.80	71.60	20		USB,PNC,UMBF,ZION,FHN,HBAN,RF,WAL,BOKF,SSB,KEY,HWC,WSFS,MTB,CFG,FITB,EWBC,WTFC,TFC
+2026-07-29	Wealth Management & Retail Brokerage Platforms	live	Mainstream	73.70	87.40	16		SEIC,SF,AMP,RJF,HOOD,LPLA,SCHW
+2026-07-30	AI-Augmented Business Process Outsourcing & IT Services	live	Nascent	70.20	80.30	2		G,EXLS
+2026-07-30	AI & Data Center Semiconductor Surge	shadow_promoted	Nascent	27.53	27.53	1		LRCX,SIMO,ARM
+2026-07-30	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Accelerating	74.70	89.30	6		AVPT,INTA,AMPL
+2026-07-30	Analog & Microcontroller Semiconductors — Automotive & Industrial Cycle Recovery	live	Fading	9.83		1		NXPI,TXN
+2026-07-30	Asset Management & Fund Administration Platform Ecosystem	live	Nascent	70.80	81.70	3		SSNC,BX
+2026-07-30	Automotive Components & Tire Suppliers	live	Retired	0.00		2		
+2026-07-30	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	78.50	97.00	20		PAY,ACIW,QTWO
+2026-07-30	B2B Marketing Automation & Customer Engagement SaaS	live	Fading	59.04		9		KVYO,HUBS
+2026-07-30	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	31.46		5		CIFR,HUT
+2026-07-30	Canadian Big Banks	live	Mainstream	66.20	72.30	9		CM,TD,BNS,RY,BMO
+2026-07-30	Casual Dining & Full-Service Restaurant Chain Recovery	live	Nascent	79.50	99.00	2		CAKE,EAT
+2026-07-30	China Consumer Internet & Digital Marketplace Platforms	live	Nascent	77.20	94.50	1		ATHM,BZ
+2026-07-30	Cinema Exhibition & Premium Large-Format Recovery	live	Nascent	78.10	96.20	1		CNK,IMAX
+2026-07-30	Clinical-Stage Oncology Biotech	live	Mainstream	70.20	80.40	6		ELVN,TGTX
+2026-07-30	Cloud Contact Center & CCaaS Communication Platforms	live	Nascent	78.80	97.60	1		FIVN,RNG
+2026-07-30	Cloud Data Storage & Analytics Infrastructure	live	Mainstream	70.70	81.50	12		BLZE,SNOW
+2026-07-30	Cloud Observability & AIOps Monitoring Platforms	live	Accelerating	71.80	83.50	10		DDOG,PD
+2026-07-30	Cloud Supply Chain & Warehouse Management Software	live	Accelerating	77.00	94.00	8		SPSC,MANH
+2026-07-30	Coastal & Suburban Residential Rental REITs	live	Retired	0.00		12		
+2026-07-30	Commercial Real Estate Brokerage & Advisory Services	live	Accelerating	72.70	85.40	10		NMRK,JLL,CBRE
+2026-07-30	Consumer Fintech & Digital Credit Platforms	live	Fading	45.76		19		SEZL,DAVE
+2026-07-30	Consumer Staples Packaged Food & Snack Brand Recovery	live	Fading	72.60	85.20	2		LW,CAG
+2026-07-30	Containerboard & Corrugated Packaging Producers	live	Mainstream	75.50	91.00	7		PKG,IP,SW
+2026-07-30	Copper Mining & Production	live	Mainstream	57.80	55.60	6		SCCO,FCX,TGB,HBM
+2026-07-30	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	77.20	94.40	16		WEX,BILL,NAVN
+2026-07-30	Cross-Border & International Payments Processing	live	Fading	60.64		6		EEFT,GPN
+2026-07-30	Cruise Line & Ocean Travel Recovery	live	Fading	56.88		3		RCL,NCLH
+2026-07-30	Custom AI Silicon & Chip Architecture Licensing	live	Fading	20.58		62		QUIK,MRVL
+2026-07-30	Cyber Exposure Management & Vulnerability Assessment	live	Nascent	63.00	66.10	4		TENB,QLYS,RPD
+2026-07-30	Defense Precision Components & Mission-Critical Subsystems	live	Fading	46.53		1	Defense Prime Contractors & Aerospace Systems	HXL,FEIM
+2026-07-30	Defense Prime Contractors & Aerospace Systems	live	Fading	9.83		1		LMT,RTX
+2026-07-30	Department Store Retail Recovery	live	Nascent	71.70	83.30	4		DDS,KSS
+2026-07-30	Dermatology & Atopic Immunology Biologics	live	Nascent	77.20	94.40	2		APGE,FBRX
+2026-07-30	Digital Payments Processing & Merchant Acquiring Networks	live	Accelerating	75.50	91.00	8		PYPL,FOUR
+2026-07-30	Enterprise HR & Workforce Management SaaS	live	Mainstream	77.00	94.00	11		WDAY,ALIT,PCTY
+2026-07-30	Enterprise Server, Storage & Data Infrastructure Hardware	live	Fading	70.60	81.20	5		DELL,NTAP,HPE,STX
+2026-07-30	European Bank Stocks	live	Nascent	74.00	88.00	28		ING,LYG,BBVA,BCS,SAN,NWG
+2026-07-30	Financial Compliance & Regulatory Reporting SaaS	live	Fading	59.04		3		DFIN,WK
+2026-07-30	For-Profit Education & Career Training Providers	live	Fading	3.87		1		CVSA,STRA
+2026-07-30	Franchise Auto Dealership Groups	live	Mainstream	77.40	94.80	17		ABG,SAH,PAG
+2026-07-30	Global Crude & Product Tanker Fleet Operators	live	Mainstream	73.70	87.30	10		DHT,FRO,TRMD,NAT,TNK,INSW
+2026-07-30	Global Steel & Metal Producers Recovery	live	Nascent	70.40	80.80	5		MT,TX
+2026-07-30	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Fading	19.83		1		UHS,THC
+2026-07-30	Hotel REIT Recovery & Re-Rating	live	Nascent	71.90	83.80	4		RLJ,XHR
+2026-07-30	Independent Power Producers & Nuclear Generation	live	Fading	22.28		2		VST,CEG
+2026-07-30	Industrial Construction Execution & On-Site Supply Chain	live	Fading	67.50	75.00	3		TPC,DNOW,SUNB,RYZ
+2026-07-30	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Accelerating	68.20	76.40	6		IEX,KAI,DCI,FELE,IR
+2026-07-30	Industrial & Logistics REITs	live	Fading	40.77		14		FR,EGP,STAG,TRNO
+2026-07-30	Inflammatory Disease & Immunology Biologics	live	Mainstream	77.90	95.80	51		SYRE,ORKA
+2026-07-30	Insurance Brokerage & Distribution Services	live	Accelerating	68.50	77.00	17		AJG,AON,BRO
+2026-07-30	Investment Research & Financial Analytics Data Platforms	live	Fading	57.28		1		MORN,IT
+2026-07-30	IT Distribution & Technology Services Providers	live	Mainstream	76.00	92.10	7		EFOR,INGM
+2026-07-30	Korean Financial Sector Recovery	live	Fading	29.37		3		SHG,KB
+2026-07-30	Life Insurance & Annuity Providers	live	Mainstream	75.50	91.00	24		PRU,UNM,PFG,MET
+2026-07-30	Life Science Tools & Analytical Instruments	live	Mainstream	72.00	83.90	15		WAT,MTD,TMO
+2026-07-30	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	77.70	95.40	9		XRAY,TNDM,CNMD,INSP
+2026-07-30	Molecular Diagnostics & DNA-Based Genetic Testing	live	Fading	58.24		14		BLLN,QGEN
+2026-07-30	Multifamily Apartment REITs	live	Retired	0.00		10		
+2026-07-30	Network Security & Zero-Trust Edge	live	Fading	68.90	77.70	48		VRNS,FTNT,PANW,OKTA,CRWD,RBRK,NET,CVLT
+2026-07-30	Office REIT Recovery & Re-Rating	live	Mainstream	77.10	94.20	19		BXP,SLG,HIW,CDP
+2026-07-30	Online Insurance Comparison & Digital Marketplace Platforms	live	Nascent	73.50	87.00	14		EVER,MAX
+2026-07-30	Open-Air & Strip Mall Retail REITs	live	Mainstream	62.50	65.00	14		KRG,FRT,KIM,SKT,BRX,REG,PECO,UE
+2026-07-30	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	75.80	91.70	24		XERS,PTGX,MBX,CORT
+2026-07-30	Powersports & Recreational Vehicle Manufacturers	live	Fading	30.27		3		PII,HOG
+2026-07-30	Precious Metals Miners & Royalty Streamers	live	Fading	12.29		3		EGO,FSM
+2026-07-30	Precious Metals Royalty & Streaming Companies	live	Fading	12.29		1	Precious Metals Miners & Royalty Streamers	FNV,RGLD
+2026-07-30	Private Mortgage Insurance	live	Mainstream	70.10	80.10	24		ESNT,NMIH,MTG,RDN
+2026-07-30	Professional Advisory & Business Services	live	Nascent	78.20	96.40	14		CRAI,CBZ
+2026-07-30	Property & Casualty Insurance Underwriters	live	Mainstream	68.10	76.10	24		HCI,CB,CINF,HIG,ORI,AFG,ACGL,SKWD,ALL,TRV,THG,AXS,WRB
+2026-07-30	Regulated Gas & Electric Distribution Utilities	live	Retired	0.00		4		
+2026-07-30	Senior & Long-Term Care Healthcare REITs	live	Mainstream	60.00	60.00	13		OHI,VTR,LTC,NHI
+2026-07-30	Smart Home Security & Comfort Systems	live	Mainstream	70.20	80.30	6		ALRM,REZI
+2026-07-30	SMB & Workforce Business Services Platforms	live	Mainstream	78.50	97.10	18		LZ,NSP
+2026-07-30	Specialty Insurance Underwriting & Brokerage	live	Fading	56.64		15		PLMR,RYAN
+2026-07-30	Specialty Pharma — Rare Disease & Cardiopulmonary Therapeutics	live	Nascent	79.00	98.00	3		KNSA,LQDA
+2026-07-30	Targeted Protein Degradation Oncology	live	Retired	0.00		17		
+2026-07-30	Tax Preparation & Consumer Financial Software Platforms	live	Fading	56.24		1		HRB,INTU
+2026-07-30	Traditional Staffing & Talent Placement Services	live	Mainstream	79.40	98.80	14		MAN,RHI
+2026-07-30	Truckload & LTL Freight Carriers	live	Fading	51.12		15		HUBG,ARCB,SNDR,TFII,KNX
+2026-07-30	Uniform Rental & Managed Workwear Services	live	Mainstream	74.40	88.80	11		CTAS,VSTS
+2026-07-30	U.S. Apparel & Fashion Recovery	live	Mainstream	70.90	81.80	13		RVLV,CROX,UA
+2026-07-30	U.S. Apparel & Lifestyle Brand Recovery	live	Fading	46.21		3		VSXY,OXM
+2026-07-30	US-China Tariff Truce — Consumer Goods & Digital Beneficiaries	shadow_promoted	Nascent	70.58	70.58	1		HAS,MAT,SONO,BZ
+2026-07-30	U.S. Domestic Steel Producers	live	Accelerating	73.40	86.80	6		NUE,STLD
+2026-07-30	U.S. Passenger Airlines	live	Fading	67.80	75.70	15		ALGT,ALK,SKYW,UAL,LUV,DAL
+2026-07-30	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	78.90	97.80	21		BKH,DK,VLO,PSX,MPC,PBF,AVA,NWE,PARR,DINO,NJR
+2026-07-30	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	64.70	69.30	21		UMBF,ZION,SSB,HWC,PNC,TFC,HBAN,MTB,FITB,WSFS,WAL,EWBC,WTFC,BOKF,KEY,RF,USB,CFG,FHN
+2026-07-30	Vacation Ownership & Timeshare Resort Recovery	live	Nascent	30.00	0.00	1		HGV,TNL,VAC
+2026-07-30	Wealth Management & Retail Brokerage Platforms	live	Mainstream	74.30	88.70	17		HOOD,AMP,SEIC,SF,SCHW,LPLA,RJF
+2026-07-31	AI-Augmented Business Process Outsourcing & IT Services	live	Fading	56.16		2		G,EXLS
+2026-07-31	AI data center infrastructure buildout	shadow_promoted	Nascent	46.07	46.07	1		BLZE,FLNC,MPWR
+2026-07-31	AI & Data Center Semiconductor Surge	live	Retired	0.00		2		
+2026-07-31	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Accelerating	76.70	93.40	7		AMPL,AVPT,INTA
+2026-07-31	Analog & Microcontroller Semiconductors — Automotive & Industrial Cycle Recovery	live	Retired	0.00		2		
+2026-07-31	Asset Management & Fund Administration Platform Ecosystem	live	Nascent	70.10	80.20	4		SSNC,BX
+2026-07-31	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	76.50	93.00	21		PAY,ACIW
+2026-07-31	B2B Marketing Automation & Customer Engagement SaaS	live	Fading	47.23		9		KVYO,HUBS
+2026-07-31	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	25.17		5		CIFR,HUT
+2026-07-31	Branded Packaged Food & Consumer Staples Producers	live	Nascent	30.00	0.00	1		CPB,GIS,KHC
+2026-07-31	Canadian Big Banks	live	Mainstream	64.30	68.60	10		TD,RY,CM,BNS,BMO
+2026-07-31	Casual Dining & Full-Service Restaurant Chain Recovery	live	Nascent	79.60	99.20	3		EAT,CAKE
+2026-07-31	China Consumer Internet & Digital Marketplace Platforms	live	Nascent	77.60	95.20	2		BZ,ATHM
+2026-07-31	Cinema Exhibition & Premium Large-Format Recovery	live	Nascent	77.90	95.80	2		IMAX,CNK
+2026-07-31	Clinical-Stage Oncology Biotech	live	Mainstream	71.50	83.00	7		ELVN,TGTX
+2026-07-31	Cloud Contact Center & CCaaS Communication Platforms	live	Nascent	78.10	96.20	2		FIVN,RNG
+2026-07-31	Cloud Data Storage & Analytics Infrastructure	live	Mainstream	70.70	81.30	13		SNOW,BLZE
+2026-07-31	Cloud Observability & AIOps Monitoring Platforms	live	Accelerating	71.80	83.70	11		PD,DDOG
+2026-07-31	Cloud Supply Chain & Warehouse Management Software	live	Accelerating	78.90	97.80	9		SPSC,MANH
+2026-07-31	Commercial Real Estate Brokerage & Advisory Services	live	Accelerating	72.20	84.50	11		NMRK,JLL,CBRE
+2026-07-31	Consumer Fintech & Digital Credit Platforms	live	Fading	36.61		19		SEZL,DAVE
+2026-07-31	Consumer Staples Packaged Food & Snack Brand Recovery	live	Fading	58.08		2		LW,CAG
+2026-07-31	Containerboard & Corrugated Packaging Producers	live	Mainstream	71.70	83.30	8		PKG,IP,SW
+2026-07-31	Copper Mining & Production	live	Fading	46.24		6		SCCO,FCX,HBM
+2026-07-31	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	76.80	93.60	17		WEX,NAVN,BILL
+2026-07-31	Cross-Border & International Payments Processing	live	Retired	0.00		7		
+2026-07-31	Cruise Line & Ocean Travel Recovery	live	Fading	45.50		3		RCL,NCLH
+2026-07-31	Custom AI Silicon & Chip Architecture Licensing	live	Retired	0.00		63		
+2026-07-31	Cyber Exposure Management & Vulnerability Assessment	live	Mainstream	64.00	68.00	5		RPD,QLYS,TENB
+2026-07-31	Defense Precision Components & Mission-Critical Subsystems	live	Fading	37.22		1		HXL,FEIM
+2026-07-31	Defense Prime Contractors & Aerospace Systems	live	Retired	0.00		2		
+2026-07-31	Department Store Retail Recovery	live	Nascent	70.50	81.10	5		DDS,KSS
+2026-07-31	Dermatology & Atopic Immunology Biologics	live	Nascent	77.10	94.20	3		APGE,FBRX
+2026-07-31	Digital Payments Processing & Merchant Acquiring Networks	live	Accelerating	74.60	89.20	9		PYPL,FOUR
+2026-07-31	Domestic Steel Producers	live	Accelerating	72.40	84.80	10		STLD,NUE
+2026-07-31	Enterprise HR & Workforce Management SaaS	live	Mainstream	76.20	92.30	12		WDAY,PCTY,ALIT
+2026-07-31	Enterprise Server, Storage & Data Infrastructure Hardware	live	Fading	56.48		5		DELL,NTAP,HPE,STX
+2026-07-31	European Bank Stocks	live	Mainstream	74.10	88.30	29		LYG,ING,BBVA,SAN,BCS,NWG
+2026-07-31	Family Dining & Quick-Service Restaurant Chain Recovery	live	Nascent	79.20	98.30	1		CBRL,JACK
+2026-07-31	Financial Compliance & Regulatory Reporting SaaS	live	Fading	47.23		3		DFIN,WK
+2026-07-31	For-Profit Education & Career Training Providers	live	Retired	0.00		2		
+2026-07-31	For-Profit & Vocational Post-Secondary Education Operators	live	Nascent	47.50	35.10	1		LAUR,LINC,LOPE,PRDO,STRA,UTI
+2026-07-31	Franchise Auto Dealership Groups	live	Mainstream	76.70	93.30	18		SAH,ABG,PAG
+2026-07-31	Global Crude & Product Tanker Fleet Operators	live	Mainstream	71.40	82.80	11		INSW,TNK,TRMD,FRO,NAT,DHT
+2026-07-31	Global Steel & Metal Producers Recovery	live	Fading	56.32		5		MT,TX
+2026-07-31	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Fading	71.70	83.30	1		THC,UHS
+2026-07-31	Hotel REIT Recovery & Re-Rating	live	Nascent	75.00	90.00	5		XHR,RLJ
+2026-07-31	Independent Power Producers & Nuclear Generation	live	Retired	0.00		3		
+2026-07-31	Industrial Construction Execution & On-Site Supply Chain	live	Mainstream	70.80	81.50	4		DNOW,TPC,RYZ
+2026-07-31	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Mainstream	67.70	75.30	7		FELE,IR,DCI,KAI,IEX
+2026-07-31	Industrial HVAC, Plumbing & Fabricated Copper Products	live	Nascent	73.10	86.20	1		CSW,MLI
+2026-07-31	Industrial & Logistics REITs	live	Fading	32.61		14		FR,EGP,STAG,TRNO
+2026-07-31	Inflammatory Disease & Immunology Biologics	live	Mainstream	77.00	94.00	52		ORKA,SYRE
+2026-07-31	Insurance Brokerage & Distribution Services	live	Mainstream	66.50	73.00	18		BRO,AJG,AON
+2026-07-31	Investment Research & Financial Analytics Data Platforms	live	Retired	0.00		2		
+2026-07-31	IT Distribution & Technology Services Providers	live	Fading	60.80		7		EFOR,INGM
+2026-07-31	Korean Financial Sector Recovery	live	Fading	23.49		3		SHG,KB
+2026-07-31	Life Insurance & Annuity Providers	live	Mainstream	74.90	89.80	25		UNM,PFG,PRU,MET
+2026-07-31	Life Science Tools & Analytical Instruments	live	Mainstream	73.70	87.30	16		TMO,WAT,MTD
+2026-07-31	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	76.50	93.00	10		TNDM,INSP,CNMD,XRAY
+2026-07-31	Molecular Diagnostics & DNA-Based Genetic Testing	live	Fading	46.59		14		BLLN,QGEN
+2026-07-31	Network Security & Zero-Trust Edge	live	Fading	74.20	88.40	48		FTNT,VRNS,CRWD,RBRK,CVLT,OKTA,NET,PANW
+2026-07-31	Office REIT Recovery & Re-Rating	live	Mainstream	76.20	92.40	20		BXP,HIW,CDP,SLG
+2026-07-31	Online Insurance Comparison & Digital Marketplace Platforms	live	Fading	58.80		14		EVER,MAX
+2026-07-31	Open-Air & Strip Mall Retail REITs	live	Fading	61.90	63.70	14		KIM,FRT,KRG,PECO,REG,BRX,UE,SKT
+2026-07-31	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	78.30	96.50	25		PTGX,XERS,CORT,MBX
+2026-07-31	Powersports & Recreational Vehicle Manufacturers	live	Fading	24.22		3		PII,HOG
+2026-07-31	Precious Metals Miners & Royalty Streamers	live	Fading	9.83		3		EGO,FSM
+2026-07-31	Precious Metals Royalty & Streaming Companies	live	Fading	9.83		1	Precious Metals Miners & Royalty Streamers	FNV,RGLD
+2026-07-31	Private Mortgage Insurance	live	Mainstream	71.60	83.10	25		RDN,NMIH,ESNT,MTG
+2026-07-31	Professional Advisory & Business Services	live	Mainstream	77.80	95.50	15		CRAI,CBZ
+2026-07-31	Property & Casualty Insurance Underwriters	live	Mainstream	66.80	73.60	25		ALL,TRV,AFG,WRB,ACGL,AXS,HCI,CINF,SKWD,HIG,ORI,THG,CB
+2026-07-31	Senior & Long-Term Care Healthcare REITs	live	Fading	64.70	69.30	13		VTR,LTC,OHI,NHI
+2026-07-31	Smart Home Security & Comfort Systems	live	Fading	56.16		6		ALRM,REZI
+2026-07-31	SMB & Workforce Business Services Platforms	live	Mainstream	78.40	96.80	19		NSP,LZ
+2026-07-31	Specialty Insurance Underwriting & Brokerage	live	Fading	45.31		15		PLMR,RYAN
+2026-07-31	Specialty Pharma — Rare Disease & Cardiopulmonary Therapeutics	live	Retired	0.00		4		
+2026-07-31	Tax Preparation & Consumer Financial Software Platforms	live	Fading	44.99		1		HRB,INTU
+2026-07-31	Traditional Staffing & Talent Placement Services	live	Mainstream	79.50	99.00	15		MAN,RHI
+2026-07-31	Truckload & LTL Freight Carriers	live	Mainstream	64.20	68.30	16		TFII,ARCB,KNX,SNDR,HUBG
+2026-07-31	Uniform Rental & Managed Workwear Services	live	Mainstream	72.50	85.00	12		CTAS,VSTS
+2026-07-31	U.S. Apparel & Fashion Recovery	live	Fading	66.50	73.00	13		UA,RVLV,CROX
+2026-07-31	U.S. Apparel & Lifestyle Brand Recovery	live	Fading	36.97		3		VSXY,OXM
+2026-07-31	US-China Tariff Truce — Consumer Goods & Digital Beneficiaries	live	Fading	56.46		1		HAS,MAT
+2026-07-31	U.S. Multifamily & Residential Apartment REITs	live	Nascent	30.00	0.00	1		AVB,CPT,EQR,MAA,UDR
+2026-07-31	U.S. Passenger Airlines	live	Mainstream	68.20	76.40	16		DAL,ALGT,ALK,LUV,SKYW,UAL
+2026-07-31	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	78.40	96.90	22		VLO,PARR,MPC,PBF,DINO,PSX
+2026-07-31	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	64.80	69.70	22		EWBC,HWC,BOKF,PNC,FITB,USB,RF,FHN,KEY,HBAN,UMBF,CFG,SSB,ZION,WAL,MTB,WSFS,TFC,WTFC
+2026-07-31	Vacation Ownership & Timeshare Resort Recovery	live	Fading	24.00		1		TNL,VAC
+2026-07-31	Wealth Management & Retail Brokerage Platforms	live	Mainstream	75.30	90.60	18		SF,LPLA,AMP,SEIC,SCHW,RJF
+2026-08-03	AI-Augmented Business Process Outsourcing & IT Services	live	Fading	44.93		2		G,EXLS
+2026-08-03	AI data center infrastructure buildout	live	Retired	0.00		2		
+2026-08-03	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Mainstream	75.20	90.50	8		AVPT,AMPL,INTA
+2026-08-03	Alphabet (Google) Platform Re-Rating	shadow_promoted	Nascent	71.20	71.20	1		GOOG,GOOGL,GOOGM,GOOGN
+2026-08-03	Asset Management & Fund Administration Platform Ecosystem	live	Nascent	73.30	86.70	5		BX,SSNC
+2026-08-03	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	75.20	90.30	22		PAY,ACIW
+2026-08-03	B2B Marketing Automation & Customer Engagement SaaS	live	Fading	37.79		9		KVYO,HUBS
+2026-08-03	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	72.50	84.90	5		CIFR,HUT
+2026-08-03	Branded Packaged Food & Consumer Staples Producers	live	Fading	24.00		1		CPB,GIS,KHC
+2026-08-03	Canadian Big Banks	live	Mainstream	63.40	66.90	11		RY,BMO,TD,BNS,CM
+2026-08-03	Casual Dining & Full-Service Restaurant Chain Recovery	live	Nascent	79.60	99.20	4		EAT,CAKE
+2026-08-03	China Consumer Internet & Digital Marketplace Platforms	live	Nascent	76.50	93.10	3		BZ,ATHM
+2026-08-03	Cinema Exhibition & Premium Large-Format Recovery	live	Nascent	78.00	96.00	3		IMAX,CNK
+2026-08-03	Clinical-Stage Oncology Biotech	live	Fading	57.20		7		ELVN,TGTX
+2026-08-03	Cloud Contact Center & CCaaS Communication Platforms	live	Nascent	77.40	94.80	3		RNG,FIVN
+2026-08-03	Cloud Data Storage & Analytics Infrastructure	live	Mainstream	73.20	86.30	14		SNOW,BLZE
+2026-08-03	Cloud Observability & AIOps Monitoring Platforms	live	Fading	57.44		11		PD,DDOG
+2026-08-03	Cloud Supply Chain & Warehouse Management Software	live	Mainstream	77.60	95.20	10		MANH,SPSC
+2026-08-03	Commercial, Office & Home Furniture Retailers and Manufacturers	live	Nascent	79.20	98.50	1		MLKN,HNI,BOBS
+2026-08-03	Commercial Real Estate Brokerage & Advisory Services	live	Accelerating	72.90	85.80	12		NMRK,JLL,CBRE
+2026-08-03	Consumer Fintech & Digital Credit Platforms	live	Fading	75.00	90.00	19		DAVE,SEZL
+2026-08-03	Consumer Staples Packaged Food & Snack Brand Recovery	live	Fading	46.46		2		LW,CAG
+2026-08-03	Containerboard & Corrugated Packaging Producers	live	Mainstream	73.50	87.00	9		SW,IP,PKG
+2026-08-03	Copper Mining & Production	live	Fading	59.40	58.80	6		FCX,SCCO,HBM
+2026-08-03	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	76.20	92.40	18		WEX,NAVN,BILL
+2026-08-03	Cruise Line & Ocean Travel Recovery	live	Fading	36.40		3		RCL,NCLH
+2026-08-03	Cyber Exposure Management & Vulnerability Assessment	live	Mainstream	68.00	76.00	6		RPD,TENB,QLYS
+2026-08-03	Defense Electronics & Aerospace Subsystem Suppliers	shadow_promoted	Nascent	77.90	77.90	1		ARXS,MRCY,DFNS,AADX
+2026-08-03	Defense Precision Components & Mission-Critical Subsystems	live	Retired	0.00		2		
+2026-08-03	Department Store Retail Recovery	live	Mainstream	72.90	85.80	6		KSS,DDS
+2026-08-03	Dermatology & Atopic Immunology Biologics	live	Nascent	76.20	92.50	4		APGE,FBRX
+2026-08-03	Digital Insurance Distribution & InsurTech Platforms	live	Nascent	79.50	99.00	1		GSHD,LIFE
+2026-08-03	Digital Payments Processing & Merchant Acquiring Networks	live	Accelerating	76.20	92.30	10		FOUR,PYPL
+2026-08-03	Domestic Steel Producers	live	Retired	0.00		11	U.S. Domestic Steel Producers	
+2026-08-03	Electrical Infrastructure Products & Systems Installation	live	Nascent	77.00	93.90	1		ATKR,IESC
+2026-08-03	Enterprise HR & Workforce Management SaaS	live	Mainstream	73.40	86.80	13		PCTY,ALIT,WDAY
+2026-08-03	Enterprise Server, Storage & Data Infrastructure Hardware	live	Mainstream	73.10	86.20	6		HPE,STX,NTAP,DELL
+2026-08-03	European Bank Stocks	live	Accelerating	75.50	91.00	30		LYG,NWG,ING,BCS,SAN,BBVA
+2026-08-03	Family Dining & Quick-Service Restaurant Chain Recovery	live	Nascent	78.70	97.50	2		CBRL,JACK
+2026-08-03	Financial Compliance & Regulatory Reporting SaaS	live	Fading	37.79		3		DFIN,WK
+2026-08-03	For-Profit & Vocational Post-Secondary Education Operators	live	Fading	38.00		1		LAUR,STRA
+2026-08-03	Franchise Auto Dealership Groups	live	Mainstream	75.20	90.50	19		ABG,PAG,SAH
+2026-08-03	Global Crude & Product Tanker Fleet Operators	live	Mainstream	71.30	82.50	12		INSW,TNK,FRO,DHT,TRMD,NAT
+2026-08-03	Global Steel & Metal Producers Recovery	live	Fading	45.06		5		MT,TX
+2026-08-03	Gold & Precious Metals Miners Rotation	live	Nascent	52.50	45.10	1		SBSW,KGC,NEM,GFI,IAG,AU,EGO,PAAS,HL,EXK,FSM,CDE,AGI,CGAU,HYMC,SSRM,PPTA,AG
+2026-08-03	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Accelerating	71.90	83.80	2		THC,UHS
+2026-08-03	Hotel REIT Recovery & Re-Rating	live	Mainstream	73.80	87.70	6		RLJ,XHR
+2026-08-03	Industrial Construction Execution & On-Site Supply Chain	live	Mainstream	72.00	83.90	5		TPC,DNOW,RYZ
+2026-08-03	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Mainstream	70.90	81.80	8		DCI,IEX,IR,FELE
+2026-08-03	Industrial HVAC, Plumbing & Fabricated Copper Products	live	Nascent	74.70	89.40	2		CSW,MLI
+2026-08-03	Industrial & Logistics REITs	live	Fading	26.09		14		FR,EGP,STAG,TRNO
+2026-08-03	Inflammatory Disease & Immunology Biologics	live	Mainstream	76.50	93.00	53		SYRE,ORKA
+2026-08-03	Insurance Brokerage & Distribution Services	live	Fading	53.20		18		BRO,AJG,AON
+2026-08-03	IT Distribution & Technology Services Providers	live	Fading	48.64		7		EFOR,INGM
+2026-08-03	Korean Financial Sector Recovery	live	Retired	0.00		4		
+2026-08-03	Life Insurance & Annuity Providers	live	Mainstream	72.70	85.40	26		UNM,MET,PRU
+2026-08-03	Life Science Tools & Analytical Instruments	live	Mainstream	72.70	85.30	17		MTD,WAT,TMO
+2026-08-03	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	73.70	87.40	11		XRAY,TNDM,INSP,CNMD
+2026-08-03	Molecular Diagnostics & DNA-Based Genetic Testing	live	Fading	37.27		14		BLLN,QGEN
+2026-08-03	Network Security & Zero-Trust Edge	live	Mainstream	71.20	82.30	49		NET,FTNT,CVLT,OKTA,PANW,VRNS,RBRK,CRWD
+2026-08-03	Office REIT Recovery & Re-Rating	live	Mainstream	75.70	91.40	21		CDP,SLG,BXP,HIW
+2026-08-03	Online Insurance Comparison & Digital Marketplace Platforms	live	Fading	47.04		14		EVER,MAX
+2026-08-03	Open-Air & Strip Mall Retail REITs	live	Fading	49.52		14		KIM,FRT,KRG,PECO,REG,BRX,UE,SKT
+2026-08-03	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	76.30	92.60	26		CORT,MBX,PTGX,XERS
+2026-08-03	Powersports & Recreational Vehicle Manufacturers	live	Retired	0.00		4		
+2026-08-03	Precious Metals Miners & Royalty Streamers	live	Retired	0.00		4		
+2026-08-03	Precious Metals Royalty & Streaming Companies	live	Nascent	46.10	32.20	2		FNV,RGLD,WPM,OR
+2026-08-03	Private Mortgage Insurance	live	Mainstream	70.20	80.40	26		MTG,ESNT,RDN,NMIH
+2026-08-03	Professional Advisory & Business Services	live	Mainstream	75.20	90.40	16		CBZ,CRAI
+2026-08-03	Property & Casualty Insurance Underwriters	live	Mainstream	71.30	82.60	26		ACGL,HCI,ORI,CINF,AXS,WRB,THG,TRV,HIG,AFG,ALL,CB,SKWD
+2026-08-03	Quantum Computing Hardware & Software	shadow_promoted	Nascent	57.72	57.72	3		QBTS,QUBT,RGTI,INFQ,XNDU
+2026-08-03	Senior & Long-Term Care Healthcare REITs	live	Fading	51.76		13		VTR,LTC,OHI,NHI
+2026-08-03	Small Modular & Advanced Nuclear Reactor Development	live	Nascent	52.70	45.40	1		OKLO,NNE,SMR
+2026-08-03	Smart Home Security & Comfort Systems	live	Fading	44.93		6		ALRM,REZI
+2026-08-03	Smart Utility Metering & Water Infrastructure Hardware	live	Nascent	64.40	68.80	1		ITRI,MWA
+2026-08-03	SMB & Workforce Business Services Platforms	live	Mainstream	77.30	94.70	20		NSP,LZ
+2026-08-03	Specialty Insurance Underwriting & Brokerage	live	Fading	36.25		15		PLMR,RYAN
+2026-08-03	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	live	Nascent	78.00	96.00	1		KNSA,OMER
+2026-08-03	Tax Preparation & Consumer Financial Software Platforms	live	Fading	35.99		1		HRB,INTU
+2026-08-03	Traditional Staffing & Talent Placement Services	live	Mainstream	78.40	96.80	16		MAN,RHI
+2026-08-03	Truckload & LTL Freight Carriers	live	Fading	51.36		16		ARCB,SNDR
+2026-08-03	Uniform Rental & Managed Workwear Services	live	Fading	58.00		12		CTAS,VSTS
+2026-08-03	U.S. Apparel & Fashion Recovery	live	Mainstream	72.50	85.00	14		RVLV,CROX,UA
+2026-08-03	U.S. Apparel & Lifestyle Brand Recovery	live	Fading	29.57		3		VSXY,OXM
+2026-08-03	US-China Tariff Truce — Consumer Goods & Digital Beneficiaries	live	Fading	45.17		1		HAS,MAT
+2026-08-03	U.S. Domestic Steel Producers	live	Accelerating	72.20	84.30	7		NUE,STLD
+2026-08-03	U.S. Multifamily & Residential Apartment REITs	live	Fading	24.00		1		AVB,CPT,EQR,MAA,UDR
+2026-08-03	U.S. Passenger Airlines	live	Accelerating	74.50	89.00	17		ALK,DAL,ALGT,UAL,SKYW,LUV
+2026-08-03	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	75.60	91.20	23		PBF,DINO,VLO,PARR,MPC,PSX
+2026-08-03	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	66.00	72.00	23		EWBC,FHN,KEY,WSFS,SSB,FITB,HBAN,MTB,PNC,BOKF,WAL,HWC,CFG,UMBF,TFC,ZION,RF,USB,WTFC
+2026-08-03	Vacation Ownership & Timeshare Resort Recovery	live	Fading	19.20		1		TNL,VAC
+2026-08-03	Wealth Management & Retail Brokerage Platforms	live	Mainstream	74.30	88.70	19		LPLA,SCHW,RJF,SF,AMP,SEIC
+2026-08-04	Aerospace Precision Components & Supply Chain	shadow_promoted	Nascent	71.30	82.50	1		DPC,BA,HONA
+2026-08-04	AI-Augmented Business Process Outsourcing & IT Services	live	Fading	28.75		2		G,EXLS
+2026-08-04	AI Data Center Infrastructure Buildout	shadow_promoted	Retired	54.30	54.30	1	Cloud Data Storage & Analytics Infrastructure	BTDR,AMRC,BLZE
+2026-08-04	AI GPU Compute Infrastructure & Cloud Services	shadow_promoted	Nascent	63.20	66.50	1		APLD,CBRS,CRWV
+2026-08-04	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Mainstream	74.00	88.10	9		AVPT,AMPL,INTA
+2026-08-04	Alphabet (Google) Platform Re-Rating	live	Nascent	62.20	64.40	2		GOOGL,GOOGM,GOOG,GOOGN
+2026-08-04	Asset Management & Fund Administration Platform Ecosystem	live	Mainstream	73.60	87.20	6		BX,SSNC
+2026-08-04	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	76.10	92.20	23		ACIW,PAY
+2026-08-04	B2B Marketing Automation & Customer Engagement SaaS	live	Fading	24.18		9		KVYO,HUBS
+2026-08-04	Branded Packaged Food & Consumer Staples Producers	live	Fading	15.36		1		CPB,KHC
+2026-08-04	Canadian Big Banks	live	Fading	40.58		11		RY,BMO,TD,BNS,CM
+2026-08-04	Casual Dining & Full-Service Restaurant Chain Recovery	live	Nascent	79.30	98.70	5		EAT,CAKE
+2026-08-04	China Consumer Internet & Digital Marketplace Platforms	live	Nascent	74.20	88.30	4		BZ,ATHM
+2026-08-04	Cinema Exhibition & Premium Large-Format Recovery	live	Nascent	78.00	96.00	4		CNK,IMAX
+2026-08-04	Clinical-Stage Oncology Biotech	live	Fading	36.61		7		ELVN,TGTX
+2026-08-04	Cloud Contact Center & CCaaS Communication Platforms	live	Nascent	78.60	97.20	4		FIVN,RNG
+2026-08-04	Cloud Data Storage & Analytics Infrastructure	live	Accelerating	79.00	98.00	15		SNOW,BLZE,AMRC
+2026-08-04	Cloud Observability & AIOps Monitoring Platforms	live	Fading	36.76		11		PD,DDOG
+2026-08-04	Cloud Supply Chain & Warehouse Management Software	live	Mainstream	77.60	95.20	11		MANH,SPSC
+2026-08-04	Commercial, Office & Home Furniture Retailers and Manufacturers	live	Nascent	79.10	98.20	2		BOBS,HNI,MLKN
+2026-08-04	Commercial Real Estate Brokerage & Advisory Services	live	Accelerating	73.20	86.50	13		NMRK,JLL,CBRE
+2026-08-04	Consumer Fintech & Digital Credit Platforms	live	Accelerating	71.80	83.60	20		DAVE,SEZL
+2026-08-04	Consumer Staples Packaged Food & Snack Brand Recovery	live	Fading	29.74		2		LW,CAG
+2026-08-04	Containerboard & Corrugated Packaging Producers	live	Mainstream	73.90	87.80	10		PKG,SW,IP
+2026-08-04	Copper Mining & Production	live	Fading	38.02		6		FCX,SCCO,HBM
+2026-08-04	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	76.80	93.50	19		NAVN,BILL,WEX
+2026-08-04	Cruise Line & Ocean Travel Recovery	live	Fading	23.30		3		RCL,NCLH
+2026-08-04	Cyber Exposure Management & Vulnerability Assessment	live	Fading	64.70	69.40	6		QLYS,RPD,TENB
+2026-08-04	Defense Electronics & Aerospace Subsystem Suppliers	live	Nascent	72.80	85.60	2		DFNS,AADX,ARXS,MRCY
+2026-08-04	Defense ISR & Unmanned Systems Intelligence	live	Nascent	68.70	77.40	1		HAWK,AVEX
+2026-08-04	Department Store Retail Recovery	live	Mainstream	71.70	83.30	7		KSS,DDS
+2026-08-04	Dermatology & Atopic Immunology Biologics	live	Fading	48.77		4		APGE,FBRX
+2026-08-04	Digital Insurance Distribution & InsurTech Platforms	live	Nascent	79.70	99.40	2		GSHD,LIFE
+2026-08-04	Digital Payments Processing & Merchant Acquiring Networks	live	Mainstream	76.60	93.20	11		PYPL,FOUR
+2026-08-04	Domestic Steel Producers	live	Retired	0.00		12	U.S. Domestic Steel Producers	
+2026-08-04	Electrical Connectivity & Utility Network Hardware	live	Nascent	74.10	88.20	1		PLPC,BDC
+2026-08-04	Electrical Infrastructure Products & Systems Installation	live	Nascent	76.30	92.60	2		IESC,ATKR
+2026-08-04	Enterprise HR & Workforce Management SaaS	live	Mainstream	76.30	92.70	14		ALIT,WDAY,PCTY
+2026-08-04	Enterprise Server, Storage & Data Infrastructure Hardware	live	Mainstream	69.60	79.20	7		HPE,NTAP,STX,DELL
+2026-08-04	European Bank Stocks	live	Mainstream	72.70	85.30	31		BBVA,NWG,ING,BCS,SAN,LYG
+2026-08-04	Family Dining & Quick-Service Restaurant Chain Recovery	live	Nascent	77.80	95.70	3		JACK,CBRL
+2026-08-04	Financial Compliance & Regulatory Reporting SaaS	live	Fading	24.18		3		DFIN,WK
+2026-08-04	For-Profit & Vocational Education Operators	shadow_promoted	Nascent	18.00	18.00	1		LINC,LOPE,PRDO,UTI,CVSA
+2026-08-04	For-Profit & Vocational Post-Secondary Education Operators	live	Fading	24.32		1		LAUR,STRA
+2026-08-04	Franchise Auto Dealership Groups	live	Mainstream	70.70	81.50	20		PAG,SAH,ABG
+2026-08-04	Global Crude & Product Tanker Fleet Operators	live	Mainstream	63.40	66.80	13		FRO,TNK,INSW,TRMD,DHT,NAT
+2026-08-04	Global Steel & Metal Producers Recovery	live	Fading	28.84		5		MT,TX
+2026-08-04	Gold & Precious Metals Miners Rotation	live	Fading	33.60		1		EGO,CGAU
+2026-08-04	Government & Defense IT Services Providers	shadow_promoted	Nascent	73.27	73.27	1		EFOR,LDOS,DXC
+2026-08-04	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Accelerating	72.80	85.70	3		UHS,THC
+2026-08-04	Hotel REIT Recovery & Re-Rating	live	Fading	47.23		6		RLJ,XHR
+2026-08-04	Industrial Construction Execution & On-Site Supply Chain	live	Fading	46.08		5		TPC,DNOW
+2026-08-04	Industrial Equipment Rental & Material Handling	shadow_promoted	Nascent	90.47	90.47	1		HRI,SUNB,CMCO
+2026-08-04	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Mainstream	69.80	79.60	9		FELE,IEX,DCI,IR
+2026-08-04	Industrial HVAC, Plumbing & Fabricated Copper Products	live	Nascent	73.90	87.80	3		MLI,CSW
+2026-08-04	Industrial Lifting, Material Handling & Equipment Rental	live	Nascent	79.00	97.90	1		HRI,CMCO
+2026-08-04	Industrial & Logistics REITs	live	Retired	0.00		15		
+2026-08-04	Inflammatory Disease & Immunology Biologics	live	Mainstream	77.50	95.10	54		ORKA,SYRE
+2026-08-04	Insurance Brokerage & Distribution Services	live	Fading	34.05		18		BRO,AJG,AON
+2026-08-04	IT Distribution & Technology Services Providers	live	Fading	31.13		7		EFOR,INGM
+2026-08-04	Junior Precious Metals Miners Rotation	live	Fading	34.08		1		PPTA,FSM
+2026-08-04	Life Insurance & Annuity Providers	live	Mainstream	70.60	81.20	27		MET,UNM,PRU
+2026-08-04	Life Science Tools & Analytical Instruments	live	Mainstream	68.00	76.00	18		MTD,WAT,TMO
+2026-08-04	Management Consulting & Research Advisory Services	live	Nascent	74.50	89.00	1		IT,HURN
+2026-08-04	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	77.40	94.90	12		TNDM,CNMD,INSP,XRAY
+2026-08-04	Molecular Diagnostics & DNA-Based Genetic Testing	live	Fading	23.86		14		BLLN,QGEN
+2026-08-04	Net Lease Single-Tenant REIT Recovery	live	Fading	24.00		1		NNN,O,WPC
+2026-08-04	Network Security & Zero-Trust Edge	live	Mainstream	68.90	77.80	50		CRWD,OKTA,NET,FTNT,VRNS,CVLT,PANW,RBRK
+2026-08-04	Office REIT Recovery & Re-Rating	live	Mainstream	72.60	85.20	22		HIW,CDP,BXP,SLG
+2026-08-04	Online Insurance Comparison & Digital Marketplace Platforms	live	Fading	30.11		14		EVER,MAX
+2026-08-04	Open-Air & Strip Mall Retail REITs	live	Fading	31.69		14		KIM,FRT,PECO,REG,BRX,SKT
+2026-08-04	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	76.90	93.80	27		CORT,PTGX,MBX,XERS
+2026-08-04	Precious Metals Royalty & Streaming Companies	live	Fading	29.50		2		FNV,RGLD
+2026-08-04	Private Equity & Alternative Asset Management Platforms	live	Nascent	73.00	86.00	1		ARES,HLNE
+2026-08-04	Private Mortgage Insurance	live	Mainstream	70.00	80.00	27		RDN,ESNT,MTG,NMIH
+2026-08-04	Professional Advisory & Business Services	live	Mainstream	75.60	91.20	17		CRAI,CBZ
+2026-08-04	Property & Casualty Insurance Underwriters	live	Mainstream	73.40	86.70	27		THG,HCI,ACGL,WRB,AFG,CB,TRV,ORI,CINF,SKWD,ALL,HIG
+2026-08-04	Quantum Computing Hardware & Software	live	Nascent	63.80	67.50	4		RGTI,QUBT,INFQ,XNDU,QBTS
+2026-08-04	Regulated Water Utility Infrastructure	live	Fading	24.00		1		AWK,AWR,CWT,WTRG
+2026-08-04	Senior & Long-Term Care Healthcare REITs	live	Fading	33.13		13		VTR,OHI
+2026-08-04	Senior & Mid-Tier Gold & Silver Miners	shadow_promoted	Nascent	16.74	16.74	1		NEM,AEM,KGC,AU,GFI,HMY,AGI,SBSW,SSRM,PAAS,HL,CDE,IAG,EQX,OR,AG,EXK,SVM
+2026-08-04	Small Modular & Advanced Nuclear Reactor Development	live	Fading	33.73		1		NNE,SMR
+2026-08-04	Smart Home Security & Comfort Systems	live	Fading	28.75		6		ALRM,REZI
+2026-08-04	Smart Utility Metering & Water Infrastructure Hardware	live	Fading	41.22		1		ITRI,MWA
+2026-08-04	SMB & Workforce Business Services Platforms	live	Mainstream	78.00	96.10	21		NSP,LZ
+2026-08-04	Specialty Insurance Underwriting & Brokerage	live	Fading	23.20		15		PLMR,RYAN
+2026-08-04	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	live	Nascent	77.80	95.70	2		KNSA,OMER
+2026-08-04	Tax Preparation & Consumer Financial Software Platforms	live	Fading	23.04		1		HRB,INTU
+2026-08-04	Technology Intellectual Property Licensing	live	Nascent	70.30	80.50	1		DLB,IDCC
+2026-08-04	Traditional Staffing & Talent Placement Services	live	Mainstream	79.20	98.40	17		MAN,RHI
+2026-08-04	Truckload & LTL Freight Carriers	live	Fading	32.87		16		ARCB,SNDR
+2026-08-04	Uniform Rental & Managed Workwear Services	live	Fading	37.12		12		CTAS,VSTS
+2026-08-04	U.S. Apparel & Fashion Recovery	live	Mainstream	73.70	87.50	15		UA,CROX,RVLV
+2026-08-04	U.S. Apparel & Lifestyle Brand Recovery	live	Retired	0.00		4		
+2026-08-04	US-China Tariff Truce — Consumer Goods & Digital Beneficiaries	live	Fading	28.91		1		HAS,MAT
+2026-08-04	U.S. Domestic Steel Producers	live	Accelerating	72.20	84.50	8		STLD,NUE
+2026-08-04	U.S. Government/Defense Contract Surge	shadow_promoted	Nascent	70.53	70.53	1		PLTR,TSAT,VOYG,AMRC
+2026-08-04	U.S. Government/Defense Spending Surge	shadow_promoted	Nascent	70.53	70.53	1		PLTR,TSAT,VOYG,AMRC
+2026-08-04	U.S. Multifamily & Residential Apartment REITs	live	Fading	15.36		1		AVB,CPT,EQR,MAA,UDR
+2026-08-04	U.S. Passenger Airlines	live	Accelerating	75.80	91.60	18		LUV,DAL,ALK,SKYW,UAL,ALGT
+2026-08-04	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	73.40	86.80	24		PBF,MPC,PARR,VLO,DINO,PSX
+2026-08-04	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	64.90	69.80	24		MTB,CFG,WSFS,SSB,WAL,FHN,HBAN,ZION,HWC,TFC,WTFC,USB,UMBF,FITB,BOKF,PNC,EWBC,RF,KEY
+2026-08-04	Vacation Ownership & Timeshare Resort Recovery	live	Fading	12.29		1		TNL,VAC
+2026-08-04	Wealth Management & Retail Brokerage Platforms	live	Mainstream	72.70	85.50	20		SF,SEIC,LPLA,AMP,RJF,SCHW
+2026-08-05	Aerospace Precision Components & Supply Chain	live	Nascent	72.00	84.10	2		BA,DPC
+2026-08-05	AI-Augmented Business Process Outsourcing & IT Services	live	Retired	0.00		3		
+2026-08-05	AI Data Center Infrastructure Buildout	shadow_promoted	Nascent	46.83	46.83	2		BTDR,AMRC,BLZE
+2026-08-05	AI GPU Compute Infrastructure & Cloud Services	live	Fading	50.56		1		APLD,CRWV
+2026-08-05	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Mainstream	75.60	91.20	10		AMPL,AVPT,INTA
+2026-08-05	Alphabet (Google) Platform Re-Rating	live	Fading	49.76		2		GOOGL,GOOG
+2026-08-05	Asset Management & Fund Administration Platform Ecosystem	live	Retired	0.00		7		
+2026-08-05	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	75.00	90.00	24		PAY,ACIW
+2026-08-05	B2B Marketing Automation & Customer Engagement SaaS	live	Fading	19.35		9		KVYO,HUBS
+2026-08-05	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	58.00		5		CIFR,HUT
+2026-08-05	Branded Packaged Food & Consumer Staples Producers	live	Fading	12.29		1		CPB,KHC
+2026-08-05	Building Envelope, Ceilings & Interior Construction Products	live	Nascent	71.20	82.30	1		AWI,CSL
+2026-08-05	Canadian Big Banks	live	Fading	32.46		11		RY,BMO,TD,BNS,CM
+2026-08-05	Casual Dining & Full-Service Restaurant Chain Recovery	live	Mainstream	79.40	98.80	6		EAT,CAKE
+2026-08-05	China Consumer Internet & Digital Marketplace Platforms	live	Nascent	71.40	82.80	5		ATHM,BZ
+2026-08-05	Cinema Exhibition & Premium Large-Format Recovery	live	Nascent	77.70	95.30	5		CNK,IMAX
+2026-08-05	Clinical-Stage Oncology Biotech	live	Fading	29.29		7		ELVN,TGTX
+2026-08-05	Cloud Contact Center & CCaaS Communication Platforms	live	Nascent	78.80	97.60	5		RNG,FIVN
+2026-08-05	Cloud Data Storage & Analytics Infrastructure	live	Accelerating	79.30	98.60	16		SNOW,BLZE
+2026-08-05	Cloud Observability & AIOps Monitoring Platforms	live	Mainstream	73.50	87.00	12		PD,DDOG
+2026-08-05	Cloud Supply Chain & Warehouse Management Software	live	Mainstream	77.30	94.60	12		MANH,SPSC
+2026-08-05	Commercial, Office & Home Furniture Retailers and Manufacturers	live	Nascent	78.60	97.20	3		MLKN,BOBS,HNI
+2026-08-05	Commercial Real Estate Brokerage & Advisory Services	live	Mainstream	71.60	83.20	14		JLL,NMRK,CBRE
+2026-08-05	Consumer Fintech & Digital Credit Platforms	live	Fading	57.44		20		DAVE,SEZL
+2026-08-05	Consumer Staples Packaged Food & Snack Brand Recovery	live	Fading	23.79		2		LW,CAG
+2026-08-05	Containerboard & Corrugated Packaging Producers	live	Mainstream	73.20	86.50	11		PKG,SW,IP
+2026-08-05	Copper Mining & Production	live	Fading	61.80	63.50	6		FCX,SCCO,HBM
+2026-08-05	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	75.70	91.30	20		WEX,BILL
+2026-08-05	Cruise Line & Ocean Travel Recovery	live	Fading	18.64		3		RCL,NCLH
+2026-08-05	Cyber Exposure Management & Vulnerability Assessment	live	Mainstream	71.20	82.30	7		RPD,QLYS,TENB
+2026-08-05	Defense Electronics & Aerospace Subsystem Suppliers	live	Nascent	72.80	85.50	3		AADX,DFNS,ARXS,MRCY
+2026-08-05	Defense ISR & Unmanned Systems Intelligence	live	Fading	54.96		1		HAWK,AVEX
+2026-08-05	Department Store Retail Recovery	live	Fading	57.36		7		KSS,DDS
+2026-08-05	Dermatology & Atopic Immunology Biologics	live	Fading	39.01		4		APGE,FBRX
+2026-08-05	Digital Insurance Distribution & InsurTech Platforms	live	Nascent	79.70	99.30	3		LIFE,GSHD
+2026-08-05	Digital Payments Processing & Merchant Acquiring Networks	live	Mainstream	71.80	83.60	12		FOUR,PYPL
+2026-08-05	Electrical Connectivity & Utility Network Hardware	live	Nascent	75.10	90.20	2		BDC,PLPC
+2026-08-05	Electrical Infrastructure Products & Systems Installation	live	Nascent	76.00	91.90	3		IESC,ATKR
+2026-08-05	Enterprise HR & Workforce Management SaaS	live	Mainstream	77.00	94.00	15		WDAY,ALIT,PCTY
+2026-08-05	Enterprise Server, Storage & Data Infrastructure Hardware	live	Mainstream	73.10	86.10	8		HPE,NTAP,STX,DELL
+2026-08-05	European Bank Stocks	live	Mainstream	72.50	85.10	32		LYG,BBVA,SAN,BCS,NWG,ING
+2026-08-05	Family Dining & Quick-Service Restaurant Chain Recovery	live	Nascent	79.10	98.20	4		JACK,CBRL
+2026-08-05	Financial Compliance & Regulatory Reporting SaaS	live	Fading	19.35		3		DFIN,WK
+2026-08-05	For-Profit & Vocational Education Operators	live	Fading	14.40		1		LOPE,UTI,CVSA
+2026-08-05	For-Profit & Vocational Post-Secondary Education Operators	live	Fading	19.46		1		LAUR,STRA
+2026-08-05	Franchise Auto Dealership Groups	live	Fading	56.56		20		PAG,SAH,ABG
+2026-08-05	Global Crude & Product Tanker Fleet Operators	live	Fading	50.72		13		FRO,TNK,INSW,DHT,NAT
+2026-08-05	Global Steel & Metal Producers Recovery	live	Fading	72.20	84.30	5		MT,TX
+2026-08-05	Gold & Precious Metals Miners Rotation	live	Fading	26.88		1		EGO,CGAU
+2026-08-05	Government & Defense IT Services Providers	live	Fading	58.61		1		INGM,LDOS,EFOR
+2026-08-05	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Accelerating	73.00	85.90	4		UHS,THC
+2026-08-05	Hotel REIT Recovery & Re-Rating	live	Fading	37.79		6		RLJ,XHR
+2026-08-05	Industrial Construction Execution & On-Site Supply Chain	live	Fading	36.86		5		TPC,DNOW
+2026-08-05	Industrial Equipment Rental & Material Handling	live	Retired	0.00		2	Industrial Lifting, Material Handling & Equipment Rental	
+2026-08-05	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Mainstream	68.80	77.60	10		DCI,FELE,IR,IEX
+2026-08-05	Industrial HVAC, Plumbing & Fabricated Copper Products	live	Nascent	74.00	88.10	4		MLI,CSW
+2026-08-05	Industrial Lifting, Material Handling & Equipment Rental	live	Nascent	78.50	96.90	2		SUNB,CMCO,HRI
+2026-08-05	Industrial Process Equipment, Automation & Flow Control	live	Nascent	69.00	78.10	1		EMR,FLS,LECO
+2026-08-05	Inflammatory Disease & Immunology Biologics	live	Nascent	76.30	92.70	55		ORKA,SYRE
+2026-08-05	Insurance Brokerage & Distribution Services	live	Fading	65.30	70.60	18		AON,AJG,BRO
+2026-08-05	IT Distribution & Technology Services Providers	live	Retired	0.00		8	Government & Defense IT Services Providers	
+2026-08-05	Junior Precious Metals Miners Rotation	live	Fading	27.26		1		PPTA,FSM
+2026-08-05	Life Insurance & Annuity Providers	live	Fading	56.48		27		MET,UNM,PRU
+2026-08-05	Life Science Tools & Analytical Instruments	live	Mainstream	69.50	79.10	19		TMO,MTD,WAT
+2026-08-05	Management Consulting & Research Advisory Services	live	Retired	0.00		2		
+2026-08-05	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	73.80	87.60	13		INSP,TNDM,XRAY,CNMD
+2026-08-05	Mobile App Platform & Advertising Monetization	live	Nascent	79.80	99.70	1		BSP,APPS
+2026-08-05	Molecular Diagnostics & DNA-Based Genetic Testing	live	Fading	19.08		14		BLLN,QGEN
+2026-08-05	Net Lease Single-Tenant REIT Recovery	live	Fading	19.20		1		NNN,O
+2026-08-05	Network Security & Zero-Trust Edge	live	Mainstream	69.10	78.20	51		CRWD,NET,PANW,OKTA,VRNS,CVLT,RBRK,FTNT
+2026-08-05	Office REIT Recovery & Re-Rating	live	Mainstream	69.40	78.70	23		CDP,BXP,HIW,SLG
+2026-08-05	Online Insurance Comparison & Digital Marketplace Platforms	live	Fading	24.08		14		EVER,MAX
+2026-08-05	Open-Air & Strip Mall Retail REITs	live	Fading	25.35		14		KIM,FRT,PECO,REG,BRX,SKT
+2026-08-05	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	75.90	91.80	28		CORT,XERS,PTGX,MBX
+2026-08-05	Precious Metals Miners Rotation	live	Nascent	52.50	44.90	1		SBSW,HYMC,AUGO,NEM,AEM,KGC,AU,GFI,HMY,AGI,SSRM,PAAS,HL,CDE,IAG,EQX,AG,EXK,SVM
+2026-08-05	Precious Metals Royalty & Streaming Companies	live	Fading	23.60		2		FNV,RGLD
+2026-08-05	Private Equity & Alternative Asset Management Platforms	live	Nascent	72.40	84.80	2		HLNE,ARES
+2026-08-05	Private Mortgage Insurance	live	Mainstream	69.90	79.90	28		ESNT,NMIH,MTG,RDN
+2026-08-05	Professional Advisory & Business Services	live	Fading	60.48		17		CRAI,CBZ
+2026-08-05	Property & Casualty Insurance Underwriters	live	Mainstream	69.10	78.20	28		THG,TRV,SKWD,ORI,HIG,HCI,ACGL,ALL,AFG,WRB,CINF,CB
+2026-08-05	Quantum Computing Hardware & Software	live	Nascent	62.90	65.80	5		QBTS,RGTI,XNDU,QUBT,INFQ
+2026-08-05	Regulated Water Utility Infrastructure	live	Fading	19.20		1		AWK,AWR,CWT,WTRG
+2026-08-05	Senior & Long-Term Care Healthcare REITs	live	Fading	26.50		13		VTR,OHI
+2026-08-05	Senior & Mid-Tier Gold & Silver Miners	live	Retired	0.00		2	Precious Metals Miners Rotation	
+2026-08-05	Small Modular & Advanced Nuclear Reactor Development	live	Fading	26.98		1		NNE,SMR
+2026-08-05	Smart Home Security & Comfort Systems	live	Fading	23.00		6		ALRM,REZI
+2026-08-05	Smart Utility Metering & Water Infrastructure Hardware	live	Fading	32.97		1		ITRI,MWA
+2026-08-05	SMB & Workforce Business Services Platforms	live	Mainstream	75.10	90.20	22		NSP,LZ
+2026-08-05	Specialty Insurance Underwriting & Brokerage	live	Fading	70.70	81.40	15		PLMR,RYAN
+2026-08-05	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	live	Nascent	75.80	91.50	3		KNSA,OMER
+2026-08-05	Tax Preparation & Consumer Financial Software Platforms	live	Fading	18.43		1		HRB,INTU
+2026-08-05	Technology Intellectual Property Licensing	live	Nascent	70.50	81.10	2		IDCC,DLB
+2026-08-05	Traditional Staffing & Talent Placement Services	live	Mainstream	78.70	97.30	18		RHI,MAN
+2026-08-05	Truckload & LTL Freight Carriers	live	Fading	26.30		16		ARCB,SNDR
+2026-08-05	Uniform Rental & Managed Workwear Services	live	Fading	29.70		12		CTAS,VSTS
+2026-08-05	U.S. Apparel & Fashion Recovery	live	Fading	58.96		15		CROX,RVLV
+2026-08-05	US-China Tariff Truce — Consumer Goods & Digital Beneficiaries	live	Fading	23.13		1		HAS,MAT
+2026-08-05	U.S. Domestic Steel Producers	live	Accelerating	71.50	83.00	9		STLD,NUE
+2026-08-05	U.S. Government/Defense Contract Surge	live	Retired	0.00		2	U.S. Government/Defense Spending Surge	
+2026-08-05	U.S. Government/Defense Spending Surge	live	Retired	0.00		2		
+2026-08-05	U.S. Multifamily & Residential Apartment REITs	live	Fading	12.29		1		AVB,CPT,EQR,MAA
+2026-08-05	U.S. Passenger Airlines	live	Accelerating	75.40	90.90	19		DAL,UAL,ALGT,SKYW,ALK,LUV
+2026-08-05	U.S. Petroleum Refining & Downstream Processing	live	Mainstream	64.40	68.80	25		PARR,PBF,PSX,MPC,DINO,VLO
+2026-08-05	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	63.60	67.20	25		KEY,MTB,RF,EWBC,CFG,WSFS,HBAN,FITB,ZION,HWC,FHN,SSB,USB,PNC,BOKF,UMBF,TFC,WTFC,WAL
+2026-08-05	Vacation Ownership & Timeshare Resort Recovery	live	Fading	9.83		1		TNL,VAC
+2026-08-05	Wealth Management & Retail Brokerage Platforms	live	Mainstream	72.90	85.80	21		RJF,LPLA,AMP,SCHW,SEIC,SF
+2026-08-06	Aerospace Precision Components & Supply Chain	live	Nascent	71.80	83.70	3		BA,DPC
+2026-08-06	AI Data Center Infrastructure Buildout	live	Retired	0.00		3	Cloud Data Storage & Analytics Infrastructure	
+2026-08-06	AI GPU Compute Infrastructure & Cloud Services	live	Fading	40.45		1		APLD,CRWV
+2026-08-06	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	live	Mainstream	78.30	96.60	11		INTA,AVPT,AMPL
+2026-08-06	Alphabet (Google) Platform Re-Rating	live	Fading	39.81		2		GOOGL,GOOG
+2026-08-06	B2B Digital Financial Infrastructure & Payment Rails Modernization	live	Mainstream	71.10	82.20	25		PAY,ACIW
+2026-08-06	B2B Marketing Automation & Customer Engagement SaaS	live	Retired	0.00		10		
+2026-08-06	Bitcoin Mining & Crypto Infrastructure Operators	live	Fading	46.40		5		CIFR,HUT
+2026-08-06	Branded Packaged Food & Consumer Staples Producers	live	Fading	9.83		1		CPB,KHC
+2026-08-06	Building Envelope, Ceilings & Interior Construction Products	live	Nascent	70.60	81.20	2		AWI,CSL
+2026-08-06	Canadian Big Banks	live	Mainstream	58.80	57.60	12		TD,BNS,BMO,RY,CM
+2026-08-06	Casual Dining & Full-Service Restaurant Chain Recovery	live	Mainstream	79.50	98.90	7		CAKE,EAT
+2026-08-06	China Consumer Internet & Digital Marketplace Platforms	live	Mainstream	70.80	81.50	6		BZ,ATHM
+2026-08-06	Cinema Exhibition & Premium Large-Format Recovery	live	Mainstream	77.00	94.10	6		CNK,IMAX
+2026-08-06	Clinical-Stage Oncology Biotech	live	Fading	23.43		7		ELVN,TGTX
+2026-08-06	Cloud Contact Center & CCaaS Communication Platforms	live	Mainstream	78.00	96.00	6		RNG,FIVN
+2026-08-06	Cloud Data Storage & Analytics Infrastructure	live	Mainstream	79.30	98.70	17		BLZE,SNOW
+2026-08-06	Cloud Observability & AIOps Monitoring Platforms	live	Fading	58.80		12		PD,DDOG
+2026-08-06	Cloud Supply Chain & Warehouse Management Software	live	Mainstream	76.50	93.10	13		MANH,SPSC
+2026-08-06	Commercial, Office & Home Furniture Retailers and Manufacturers	live	Nascent	77.90	95.80	4		MLKN,BOBS,HNI
+2026-08-06	Commercial Real Estate Brokerage & Advisory Services	live	Fading	57.28		14		JLL,CBRE
+2026-08-06	Consumer Fintech & Digital Credit Platforms	live	Fading	45.95		20		DAVE,SEZL
+2026-08-06	Consumer Staples Packaged Food & Snack Brand Recovery	live	Fading	19.03		2		LW,CAG
+2026-08-06	Containerboard & Corrugated Packaging Producers	live	Mainstream	70.60	81.20	12		IP,SW,PKG
+2026-08-06	Copper Mining & Production	live	Accelerating	64.40	68.80	7		SCCO,FCX,HBM
+2026-08-06	Corporate Spend, Expense Management & Financial Operations Software	live	Mainstream	74.10	88.20	21		BILL,WEX
+2026-08-06	Cruise Line & Ocean Travel Recovery	live	Retired	0.00		4		
+2026-08-06	Cyber Exposure Management & Vulnerability Assessment	live	Mainstream	71.10	82.20	8		TENB,RPD,QLYS
+2026-08-06	Defense Electronics & Aerospace Subsystem Suppliers	live	Nascent	75.20	90.50	4		AADX,MRCY,ARXS,DFNS
+2026-08-06	Defense ISR & Unmanned Systems Intelligence	live	Fading	72.10	84.20	1		AVEX,HAWK
+2026-08-06	Department Store Retail Recovery	live	Fading	45.89		7		KSS,DDS
+2026-08-06	Dermatology & Atopic Immunology Biologics	live	Fading	31.21		4		APGE,FBRX
+2026-08-06	Digital Insurance Distribution & InsurTech Platforms	live	Nascent	79.50	99.00	4		LIFE,GSHD
+2026-08-06	Digital Payments Processing & Merchant Acquiring Networks	live	Fading	57.44		12		FOUR,PYPL
+2026-08-06	Electrical Connectivity & Utility Network Hardware	live	Nascent	76.10	92.20	3		PLPC,BDC
+2026-08-06	Electrical Infrastructure Products & Systems Installation	live	Nascent	75.70	91.30	4		IESC,ATKR
+2026-08-06	Enterprise HR & Workforce Management SaaS	live	Mainstream	76.80	93.60	16		ALIT,WDAY,PCTY
+2026-08-06	Enterprise Server, Storage & Data Infrastructure Hardware	live	Mainstream	74.20	88.50	9		HPE,STX,DELL,NTAP
+2026-08-06	European Bank Stocks	live	Mainstream	73.50	87.10	33		ING,LYG,SAN,NWG,BBVA,BCS
+2026-08-06	Family Dining & Quick-Service Restaurant Chain Recovery	live	Nascent	77.90	95.80	5		CBRL,JACK
+2026-08-06	Financial Compliance & Regulatory Reporting SaaS	live	Retired	0.00		4		
+2026-08-06	For-Profit & Vocational Education Operators	live	Fading	11.52		1		LOPE,CVSA
+2026-08-06	For-Profit & Vocational Post-Secondary Education Operators	live	Fading	15.56		1		LAUR,STRA
+2026-08-06	Franchise Auto Dealership Groups	live	Fading	45.25		20		PAG,SAH,ABG
+2026-08-06	Global Crude & Product Tanker Fleet Operators	live	Mainstream	65.30	70.50	14		NAT,FRO,INSW,TNK,DHT
+2026-08-06	Global Steel & Metal Producers Recovery	live	Accelerating	71.50	83.00	6		MT,TX
+2026-08-06	Gold & Precious Metals Miners Rotation	live	Fading	70.80	81.50	1		CGAU,EGO
+2026-08-06	Government & Defense IT Services Providers	live	Fading	71.40	82.80	1		INGM,EFOR,LDOS
+2026-08-06	Hospital & Behavioral Health Facility Procedure Volume Recovery	live	Accelerating	72.30	84.50	5		UHS,THC
+2026-08-06	Hotel REIT Recovery & Re-Rating	live	Fading	30.23		6		RLJ,XHR
+2026-08-06	Industrial Construction Execution & On-Site Supply Chain	live	Mainstream	75.30	90.70	6		DNOW,TPC
+2026-08-06	Industrial Equipment Rental & Material Handling	live	Nascent	77.80	95.70	3		HRI,CMCO,SUNB
+2026-08-06	Industrial Fluid Control, Filtration & Water Infrastructure Equipment	live	Mainstream	66.70	73.30	11		DCI,FELE,IR,IEX
+2026-08-06	Industrial HVAC, Plumbing & Fabricated Copper Products	live	Nascent	74.30	88.60	5		CSW,MLI
+2026-08-06	Industrial Process Equipment, Automation & Flow Control	live	Nascent	67.80	75.70	2		LECO,EMR,FLS
+2026-08-06	Inflammatory Disease & Immunology Biologics	live	Nascent	78.50	97.10	56		SYRE,ORKA
+2026-08-06	Insurance Brokerage & Distribution Services	live	Fading	52.24		18		AON,AJG,BRO
+2026-08-06	Junior Precious Metals Miners Rotation	live	Fading	21.81		1		PPTA,FSM
+2026-08-06	Life Insurance & Annuity Providers	live	Mainstream	71.50	82.90	28		PRU,UNM,MET
+2026-08-06	Life Science Tools & Analytical Instruments	live	Mainstream	70.00	79.90	20		WAT,MTD,TMO
+2026-08-06	Medical Device Mean-Reversion & Rotation Recovery	live	Mainstream	69.50	79.10	14		CNMD,XRAY,INSP,TNDM
+2026-08-06	Mobile App Platform & Advertising Monetization	live	Nascent	79.90	99.80	2		APPS,BSP
+2026-08-06	Molecular Diagnostics & DNA-Based Genetic Testing	live	Retired	0.00		15		
+2026-08-06	Net Lease Single-Tenant REIT Recovery	live	Fading	15.36		1		NNN,O
+2026-08-06	Network Security & Zero-Trust Edge	live	Mainstream	69.30	78.50	52		RBRK,OKTA,FTNT,NET,VRNS,PANW,CRWD,CVLT
+2026-08-06	Office REIT Recovery & Re-Rating	live	Mainstream	64.70	69.30	24		HIW,BXP,CDP,SLG
+2026-08-06	Online Insurance Comparison & Digital Marketplace Platforms	live	Fading	19.27		14		EVER,MAX
+2026-08-06	Open-Air & Strip Mall Retail REITs	live	Fading	20.28		14		PECO,SKT
+2026-08-06	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	live	Mainstream	79.20	98.50	29		PTGX,MBX,XERS,CORT
+2026-08-06	Precious Metals Equities Rally	live	Nascent	58.90	57.80	1		NEM,PAAS,AU,GFI,HL,KGC,HYMC,EXK,CDE,SVM,IAG,AGI,HMY,EQX,AG,SSRM,SBSW,AUGO,AEM,FNV,RGLD
+2026-08-06	Precious Metals Miners Rotation	live	Retired	0.00		2	Precious Metals Equities Rally	
+2026-08-06	Precious Metals Royalty & Streaming Companies	live	Retired	0.00		3	Precious Metals Equities Rally	
+2026-08-06	Private Equity & Alternative Asset Management Platforms	live	Nascent	70.80	81.50	3		ARES,HLNE
+2026-08-06	Private Mortgage Insurance	live	Mainstream	67.60	75.20	29		NMIH,MTG,RDN,ESNT
+2026-08-06	Professional Advisory & Business Services	live	Fading	48.38		17		CRAI,CBZ
+2026-08-06	Property & Casualty Insurance Underwriters	live	Mainstream	69.80	79.70	29		CB,ALL,ACGL,HIG,SKWD,HCI,ORI,CINF,THG,TRV,WRB,AFG
+2026-08-06	Quantum Computing Hardware & Software	live	Nascent	62.40	64.90	6		XNDU,QBTS,QUBT,RGTI,INFQ
+2026-08-06	Regulated Water Utility Infrastructure	live	Fading	15.36		1		AWK,AWR,CWT,WTRG
+2026-08-06	Senior & Long-Term Care Healthcare REITs	live	Fading	21.20		13		VTR,OHI
+2026-08-06	Small Modular & Advanced Nuclear Reactor Development	live	Fading	21.59		1		NNE,SMR
+2026-08-06	Smart Home Security & Comfort Systems	live	Fading	18.40		6		ALRM,REZI
+2026-08-06	Smart Utility Metering & Water Infrastructure Hardware	live	Fading	26.38		1		ITRI,MWA
+2026-08-06	SMB & Workforce Business Services Platforms	live	Fading	60.08		22		NSP,LZ
+2026-08-06	Specialty Insurance Underwriting & Brokerage	live	Accelerating	70.80	81.50	16		RYAN,PLMR
+2026-08-06	Specialty Pharmaceutical Commercialization & Rare Disease Drugs	live	Nascent	77.90	95.80	4		OMER,KNSA
+2026-08-06	Tax Preparation & Consumer Financial Software Platforms	live	Retired	0.00		2		
+2026-08-06	Technology Intellectual Property Licensing	live	Retired	0.00		3		
+2026-08-06	Traditional Staffing & Talent Placement Services	live	Mainstream	73.30	86.70	19		RHI,MAN
+2026-08-06	Truckload & LTL Freight Carriers	live	Fading	21.04		16		ARCB,SNDR
+2026-08-06	Uniform Rental & Managed Workwear Services	live	Fading	23.76		12		CTAS,VSTS
+2026-08-06	U.S. Apparel & Fashion Recovery	live	Fading	47.17		15		CROX,RVLV
+2026-08-06	US-China Tariff Truce — Consumer Goods & Digital Beneficiaries	live	Fading	18.50		1		HAS,MAT
+2026-08-06	U.S. Domestic Steel Producers	live	Accelerating	71.00	82.10	10		NUE,STLD
+2026-08-06	U.S. Government/Defense Contract Surge	shadow_promoted	Nascent	69.20	69.20	3		PLTR,TSAT,VOYG,AMRC
+2026-08-06	U.S. Multifamily & Residential Apartment REITs	live	Fading	9.83		1		AVB,CPT,MAA
+2026-08-06	U.S. Passenger Airlines	live	Mainstream	74.60	89.20	20		LUV,ALGT,DAL,ALK,UAL,SKYW
+2026-08-06	U.S. Petroleum Refining & Downstream Processing	live	Fading	65.10	70.20	25		PBF,MPC,PSX,PARR,VLO,DINO
+2026-08-06	U.S. Regional & Mid-Cap Commercial Banks	live	Mainstream	61.00	62.10	26		CFG,SSB,FHN,UMBF,USB,HBAN,FITB,KEY,WTFC,TFC,WSFS,HWC,PNC,BOKF,WAL,EWBC,ZION,RF,MTB
+2026-08-06	Vacation Ownership & Timeshare Resort Recovery	live	Fading	7.86		1		TNL,VAC
+2026-08-06	Wealth Management & Retail Brokerage Platforms	live	Mainstream	72.50	85.00	22		SEIC,AMP,RJF,LPLA,SCHW,SF
