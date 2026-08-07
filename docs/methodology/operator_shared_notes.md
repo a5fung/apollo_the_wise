@@ -10,6 +10,47 @@ durable home that survives context compaction — grep here before asking the op
 
 ---
 
+## 2026-08-07 — the 620-CHART (Gil Morales / theowltrader.com), operator-shared: article + 2 screenshots
+
+**Full spec captured separately at `docs/methodology/620_chart.md`** — it ran long enough (source
+article, both worked examples, the process-ordering constraint, and a computed TEAM example) to
+warrant its own file. This entry is the index pointer so the append-only log stays the single place
+to grep.
+
+⚠ **CAPTURE FAILURE THAT PROMPTED IT:** the operator had shared this "a while back" and asked
+2026-08-07 whether we still had a record. **We did not** — nothing in memory, nothing in the repo.
+It was shared in a session whose context is gone and was never transcribed here, which is exactly
+what this file exists to prevent. The governing memory `feedback_capture_operator_shared_notes`
+was ALSO missing from the memory directory; written on 2026-08-07.
+
+**The essentials** (detail in the dedicated file):
+- 5-min candles · 6-EMA + 20-EMA · MACD on the same 6/20 periods · eSignal `(6,20,C,9)`, where the
+  trailing digit is an auto-fill the author does not tune.
+- **MACD cross is the SIGNAL; the 6-over-20 EMA cross is CONFIRMATION and lags ~1 hour** — by then
+  price is "well up and away from the original entry".
+- MACD **stretch** (fast pulling from slow) marks extension; its flattening is his take-profit.
+- The 20-EMA is the intraday guide rail.
+- The author calls it **"a tool, NOT a trading system"**, twice, and subordinates it to price (his
+  NVDA short came from the $400 Century Mark alone, MACD only confirming).
+
+⚖ **THE CONSTRAINT THAT GOVERNS ANY EVAL** (operator, verbatim): *"it's critical to note that 620
+is used to fine-tune entry, not stock selection or only entry tool. In TEAM's case, it's already an
+EP, it already has the fundamentals, the software theme and daily chart etc. I used 620 to pick
+entry after all this already lined up."* → the 620 is the LAST step; testing it standalone across
+all names measures something he never does.
+
+**Worked example, computed from real bars — TEAM 2026-08-07** (he entered $144.39 on the same stock
+Apollo was stopped out of at $143.21 that morning): MACD stretched to −1.86 at 11:10 ET, turned up
+11:15, bullish cross 11:40, his entry ~12:05, 6/20 EMA cross 12:25. He entered ~25 min AFTER the
+MACD signal and ~20 min BEFORE the EMA confirmation. His stated rule — *"I waited for the 6 period
+stretched and turning while price chart also forming bottom"* — is three computable conditions.
+
+**Maps to the build:** PLAN #545 (entry/exit tactics program) — the one specifiable piece of the
+"other technicals" behind his delayed entries. Population for any sweep = the Day-1 stop-out set
+(names already qualified), NOT all names.
+
+---
+
 ## 2026-06-27 — ANTICIPATION coil POSITIVE EXAMPLES + the detector's structure gap (operator-shared, charts) — grounds setup #354
 
 Operator reviewed the anticipation labeling worksheet (258 post-RMV-fix candidates) and flagged it's
