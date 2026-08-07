@@ -1101,8 +1101,33 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         # the pattern is systematic before designing any retry mechanism.
         broker_reason = None
         if event_norm in ("rejected", "cancelled", "canceled", "expired"):
+            _evt_at = datetime.now(timezone.utc)
             broker_reason = await alpaca.fetch_broker_reject_reason(
-                order_id, datetime.now(timezone.utc), account_mode=account_mode)
+                order_id, _evt_at, account_mode=account_mode)
+            if not broker_reason:
+                # ⚠ 2026-08-07: the inline lookup runs ~76ms after the event and Alpaca's
+                # events history has NOT indexed it yet — measured on QNST, where the reason
+                # ("Unsolicited: Bad Stop 19.8") was retrievable by hand minutes later but
+                # came back NULL here. Re-ask in the BACKGROUND so the reason still lands,
+                # without sleeping in this handler (every other order event queues behind it).
+                # Late is fine for a post-mortem on an order that is already dead; blocking
+                # the money path is not.
+                async def _late_reason(_oid=order_id, _at=_evt_at, _mode=account_mode,
+                                       _tid=entry_trade["id"], _tkr=entry_trade["ticker"]):
+                    try:
+                        late = await alpaca.fetch_broker_reject_reason_later(
+                            _oid, _at, account_mode=_mode)
+                        if not late:
+                            return
+                        await log_audit_event(
+                            "entry_order_reject_reason_late",
+                            f"{_tkr} [{_mode}] order {_oid[:8]} — broker reason (late): {late}",
+                            json.dumps({"trade_id": _tid, "ticker": _tkr, "order_id": _oid,
+                                        "account_mode": _mode, "broker_reason": late}),
+                        )
+                    except Exception as _e:   # loud-ok: a diagnostic must never surface here
+                        logger.warning(f"late reject-reason lookup failed for {_oid}: {_e}")
+                asyncio.create_task(_late_reason())
         try:
             await log_audit_event(
                 ENTRY_ORDER_REJECTED,

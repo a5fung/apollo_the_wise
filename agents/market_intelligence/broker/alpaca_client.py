@@ -885,6 +885,10 @@ async def fetch_broker_reject_reason(
 
     Returns None on anything unexpected. NEVER raises: a diagnostic must not be able to break
     the rejection handling it is diagnosing.
+
+    ⚠ ONE ATTEMPT, ON PURPOSE — this runs INLINE in the trade-stream handler, which is the money
+    path. Do not add sleeps or retries here; use `fetch_broker_reject_reason_later` off the hot
+    path instead (2026-08-07).
     """
     import json as _json
     import urllib.request
@@ -938,6 +942,35 @@ async def get_latest_trade(ticker: str) -> dict | None:
     except Exception as e:
         logger.error(f"Failed to get latest trade for {ticker}: {e}")
         return None
+
+
+async def fetch_broker_reject_reason_later(
+    order_id: str, at, account_mode: str | None = None,
+    delays: tuple[int, ...] = (3, 10, 30),
+) -> str | None:
+    """Re-ask for the broker's reason AFTER a delay. Run this OFF the hot path.
+
+    ⚠ WHY, and it is the whole reason #540's first live firing failed. QNST was cancelled
+    2026-08-07 13:31:10.777 with `"Unsolicited: Bad Stop 19.8"` sitting on the event stream, and
+    the inline lookup 76 MILLISECONDS later returned NULL — while the identical query by hand,
+    minutes afterwards, returned it immediately. The lookup was never wrong; it was too early.
+    Alpaca's trade-events history has not indexed an event that recent.
+
+    Yesterday's INSM test passed only because it read a rejection that was already hours old, so
+    it could not have caught this. That is the trap in verifying a live mechanism against a
+    historical replay.
+
+    Deliberately a SEPARATE function rather than retries inside the inline call: the caller runs
+    in the trade-stream handler, and sleeping there would stall processing of every other order
+    event behind it. The order is already dead — the reason is a post-mortem, so it can arrive
+    late, but it must not arrive at the cost of the money path.
+    """
+    for delay in delays:
+        await asyncio.sleep(delay)
+        found = await fetch_broker_reject_reason(order_id, at, account_mode=account_mode)
+        if found:
+            return found
+    return None
 
 
 async def get_latest_quote(ticker: str) -> dict | None:
