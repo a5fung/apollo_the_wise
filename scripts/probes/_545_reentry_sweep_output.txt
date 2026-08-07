@@ -1,0 +1,77 @@
+#545 Phase 1 — re-entry sweep over 15 live stop-outs (READ-ONLY EVIDENCE; THE LINE: nothing changed, nothing proposed)
+contract check — leg-1 stop-only sim -15.00R vs actual -14.17R on n=15 (divergence = slippage + the two live raised-stop exits; full recon lives in _stop_floor_replay_output.txt)
+620 fixture — TEAM first warm-up-gated bullish MACD(6,20) cross at 11:40 ET close 143.68 (methodology doc, from mi_intraday_bars: 11:40 close 143.68) → AGREES
+
+== population reference (POST-stop-out, in the ORIGINAL trade's r-unit) ==
+tkr            stop@ET  d  peak5R  green  class
+QBTS       07-28 09:36  1   +8.88   True  BIG WINNER (peak, not close)
+HUT        07-20 09:31  0   +8.32   True  BIG WINNER (peak, not close)
+MANE       07-16 09:30  1   +4.41   True  BIG WINNER (peak, not close)
+THC        07-24 12:43  0   +2.60   True  BIG WINNER (peak, not close)
+TEAM       08-07 09:43  0   +1.55   True    ⚠ session incomplete at capture
+FTNT       07-30 09:37  0   +0.84   True  
+WKC        07-24 12:02  0   +0.59   True  
+SMCI       07-27 10:37  3   +0.38   True  
+WDFC       07-10 09:40  0   +0.25   True  
+WULF       07-06 09:57  0   -0.04  False  NEVER GREEN
+TSEM       07-14 09:44  0   -0.41  False  NEVER GREEN
+CRCL       07-10 09:40  0   -0.59   True  
+BTDR       08-04 09:46  0   -0.68  False  NEVER GREEN
+NVCR       07-24 15:36  1   -0.87  False  NEVER GREEN
+BLZE       08-04 15:50  0   -0.90  False  NEVER GREEN
+big winners (peak5 >= +2R): ['HUT', 'MANE', 'QBTS', 'THC']
+never green: ['BLZE', 'BTDR', 'NVCR', 'TSEM', 'WULF']
+
+== per-trade realized R by variant (live exit ruleset on the re-entry leg; · = no fire, n/a = window absent, ! = unsettled at data end) ==
+tkr       NDO-pdl    NDO-o5l SD-5mclear        HL2        HL3        HC2        HC3     BASE20     BASE30     BASE45   620-6/20   620-8/24  620-12/26
+WULF            ·     +0.67      -1.00      -1.00      -1.00      -1.00           ·          ·          ·          ·     -1.00      -1.00      -1.00 
+CRCL            ·     -1.00      -1.00      -1.00      -1.00      -1.00      -1.00           ·          ·     -1.00      -1.00      -1.00      -1.00 
+WDFC       -1.00           ·          ·     -1.00      -1.00      -1.00      -1.00      +0.67           ·          ·     -1.00      -1.00      -1.00 
+TSEM       +0.67      -1.00           ·     +0.67      -1.00      +0.67      -1.00      -1.00           ·          ·     -1.00      -1.00      -1.00 
+MANE       +0.67      +0.67           ·     -1.00      -1.00      -1.00           ·     -1.00      -1.00           ·     -1.00      +0.67      -1.00 
+HUT        +0.67      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00 
+SMCI       -1.00           ·     +0.67      -1.00      -1.00      +0.67      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00 
+NVCR       -1.00           ·          ·          ·          ·          ·          ·          ·          ·          ·     -1.00      -1.00      -1.00 
+THC        +1.98!    +11.83!    +10.03!     -1.00      -1.00      -1.00      -1.00      +8.10!     +8.10!          ·     -1.00      -1.00      -1.00 
+WKC        -1.00      +0.67      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00      -1.00           ·     -1.00      -1.00      -1.00 
+QBTS            ·     -1.00      -1.00      +0.67      -1.00      +0.67      +0.67      +0.67           ·          ·     -1.00      -1.00      -1.00 
+FTNT       +2.94!     +0.67           ·     -1.00           ·     -1.00      -1.00           ·          ·     -1.00      -1.00      -1.00      -1.00 
+BLZE       -1.00      -1.00           ·          ·          ·          ·          ·          ·          ·          ·     +0.67      +0.67      +0.67 
+BTDR       -1.00      -1.00           ·     -1.00      -1.00      -1.00      -1.00      -1.00      -1.00           ·     -1.00      -1.00      -1.00 
+TEAM          n/a        n/a     +0.67      +0.06!     +0.12!     +0.59!     +0.06!     +2.09!     +2.09!     +2.32!     +2.65!     +2.64!     +2.89!
+
+== SCORING (the reframed yardstick: winners HELD and losers AVOIDED, then realized R, then the cost) ==
+variant      fires  winHeld   QBTS    HUT lossAvoid 2ndStops   costR    netR     net$  exBest   gapAw  uns
+NDO-pdl      11/14    3/4    +0.00  +0.67     2/5          6   -6.00   +0.92   -41.96   -2.02   +0.92    2
+NDO-o5l      11/14    2/4    -1.00  -1.00     2/5          6   -6.00   +8.50  +144.99   -3.33   +8.49    1
+SD-5mclear    8/15    1/4    -1.00  -1.00     4/5          5   -5.00   +6.37  +113.68   -3.67   +5.07    1
+HL2          13/15    1/4    +0.67  -1.00     3/5         10  -10.00   -8.60  -213.48   -9.27   -9.19    1
+HL3          12/15    0/4    -1.00  -1.00     2/5         11  -11.00  -10.88  -275.67  -11.00  -10.88    1
+HC2          13/15    1/4    +0.67  -1.00     3/5          9   -9.00   -6.41  -151.98   -7.08   -7.47    1
+HC3          11/15    1/4    +0.67  -1.00     3/5          9   -9.00   -8.27  -180.29   -8.94   -8.84    1
+BASE20       10/15    2/4    +0.67  -1.00     3/5          6   -6.00   +5.53  +153.26   -2.57   +4.68    2
+BASE30        7/15    1/4    +0.00  -1.00     4/5          5   -5.00   +5.20  +143.25   -2.91   +4.97    2
+BASE45        5/15    0/4    +0.00  -1.00     5/5          4   -4.00   -1.68   +33.86   -4.00   -1.91    1
+620-6/20     15/15    0/4    -1.00  -1.00     1/5         13  -13.00   -9.68  -164.94  -12.33   -9.68    1
+620-8/24     15/15    1/4    -1.00  -1.00     1/5         12  -12.00   -8.02  -127.71  -10.67   -8.02    1
+620-12/26    15/15    0/4    -1.00  -1.00     1/5         13  -13.00   -9.44  -153.43  -12.33   -9.44    1
+
+== fire detail (entry time/px/stop; verify against the tape, not trusted blind) ==
+NDO-pdl     WDFC d1 09:30 @266.31 stp 261.49 | TSEM d1 09:30 @257.44 stp 252.01 | MANE d2 09:30 @108.51 stp 104.46 | HUT d1 09:30 @104.66 stp 99.10 | SMCI d4 09:30 @28.64 stp 28.50 | NVCR d2 09:30 @17.97 stp 17.60 | THC d1 09:30 @238.48 stp 229.37 | WKC d1 09:30 @38.08 stp 37.81 | FTNT d1 09:30 @154.01 stp 152.23 | BLZE d1 09:30 @19.79 stp 19.65 | BTDR d1 09:30 @11.75 stp 11.25
+            degenerate-guard skips: WULF:degenerate:entry<=stop, CRCL:degenerate:entry<=stop, QBTS:degenerate:r_unit<0.3%
+NDO-o5l     WULF d1 09:35 @21.24 stp 21.17 | CRCL d1 09:35 @65.36 stp 63.30 | TSEM d1 09:35 @262.78 stp 256.42 | MANE d2 09:35 @108.94 stp 105.01 | HUT d1 09:35 @105.36 stp 104.62 | THC d1 09:35 @235.48 stp 234.23 | WKC d1 09:35 @38.12 stp 37.32 | QBTS d2 09:35 @17.14 stp 17.00 | FTNT d1 09:35 @154.57 stp 153.61 | BLZE d1 09:35 @18.43 stp 18.34 | BTDR d1 09:35 @11.77 stp 11.52
+            degenerate-guard skips: WDFC:degenerate:entry<=stop, SMCI:degenerate:r_unit<0.3%, NVCR:degenerate:r_unit<0.3%
+SD-5mclear  WULF d0 10:06 @23.80 stp 23.38 | CRCL d0 09:53 @68.89 stp 67.76 | HUT d0 09:50 @104.89 stp 102.83 | SMCI d3 10:49 @28.89 stp 28.57 | THC d0 15:04 @234.22 stp 232.64 | WKC d0 12:10 @39.72 stp 38.99 | QBTS d1 10:41 @17.77 stp 17.50 | TEAM d0 10:03 @145.53 stp 143.00
+HL2         WULF d0 10:14 @23.99 stp 23.38 | CRCL d0 10:44 @67.55 stp 66.01 | WDFC d0 09:54 @294.87 stp 285.80 | TSEM d0 10:29 @255.44 stp 252.01 | MANE d1 10:44 @118.99 stp 115.24 | HUT d0 10:09 @106.13 stp 100.81 | SMCI d3 10:49 @29.00 stp 28.50 | THC d0 13:19 @233.24 stp 232.23 | WKC d0 12:14 @39.66 stp 38.52 | QBTS d1 10:09 @17.45 stp 17.26 | FTNT d0 10:39 @157.03 stp 155.74 | BTDR d0 10:49 @12.34 stp 11.98 | TEAM d0 10:09 @149.62 stp 141.51
+HL3         WULF d0 10:34 @24.41 stp 23.38 | CRCL d0 13:04 @67.45 stp 65.62 | WDFC d0 11:19 @274.80 stp 271.10 | TSEM d0 10:34 @259.00 stp 252.01 | MANE d1 12:28 @113.36 stp 112.27 | HUT d0 11:34 @101.59 stp 99.31 | SMCI d3 10:54 @29.00 stp 28.50 | THC d0 13:49 @231.36 stp 229.94 | WKC d0 13:09 @39.73 stp 38.52 | QBTS d1 10:39 @17.62 stp 17.26 | BTDR d0 10:54 @12.31 stp 11.98 | TEAM d0 10:14 @149.20 stp 141.51
+            degenerate-guard skips: FTNT:degenerate:r_unit<0.3%
+HC2         WULF d0 10:29 @24.48 stp 23.38 | CRCL d0 10:24 @67.45 stp 66.61 | WDFC d0 11:54 @266.64 stp 263.20 | TSEM d0 10:29 @255.44 stp 252.01 | MANE d1 12:33 @113.71 stp 112.27 | HUT d0 09:44 @104.23 stp 100.81 | SMCI d3 12:04 @28.93 stp 28.50 | THC d0 12:59 @233.15 stp 232.23 | WKC d0 12:43 @39.75 stp 38.52 | QBTS d1 10:04 @17.57 stp 17.26 | FTNT d0 10:19 @158.63 stp 157.18 | BTDR d0 10:29 @12.21 stp 12.02 | TEAM d0 10:04 @146.96 stp 141.51
+HC3         CRCL d0 10:29 @67.83 stp 66.61 | WDFC d0 11:58 @268.18 stp 263.20 | TSEM d0 10:34 @259.00 stp 252.01 | HUT d0 09:49 @104.54 stp 100.81 | SMCI d3 12:09 @29.02 stp 28.50 | THC d0 14:04 @233.12 stp 229.94 | WKC d0 14:19 @39.16 stp 38.52 | QBTS d1 10:34 @17.47 stp 17.26 | FTNT d0 13:39 @153.74 stp 152.55 | BTDR d0 10:49 @12.34 stp 11.98 | TEAM d0 10:09 @149.62 stp 141.51
+BASE20      WDFC d0 14:05 @267.29 stp 265.61 | TSEM d0 11:39 @265.86 stp 261.99 | MANE d1 10:40 @121.05 stp 119.02 | HUT d0 11:09 @101.66 stp 99.68 | SMCI d3 12:10 @29.12 stp 28.73 | THC d0 15:04 @234.22 stp 232.23 | WKC d0 12:41 @39.75 stp 39.54 | QBTS d1 10:35 @17.54 stp 17.27 | BTDR d0 10:46 @12.35 stp 12.04 | TEAM d0 12:27 @145.53 stp 143.37
+BASE30      MANE d1 12:17 @114.01 stp 112.27 | HUT d0 11:09 @101.66 stp 99.31 | SMCI d3 12:10 @29.12 stp 28.73 | THC d0 15:04 @234.22 stp 232.23 | WKC d0 12:45 @39.78 stp 39.53 | BTDR d0 10:46 @12.28 stp 11.98 | TEAM d0 12:27 @145.53 stp 143.37
+BASE45      CRCL d0 13:01 @67.15 stp 66.21 | HUT d0 12:05 @102.85 stp 100.81 | SMCI d3 12:10 @29.12 stp 28.73 | FTNT d0 13:45 @154.66 stp 153.03 | TEAM d0 12:23 @144.93 stp 142.83
+620-6/20    WULF d0 11:49 @23.79 stp 23.38 | CRCL d0 12:49 @66.30 stp 65.62 | WDFC d0 11:19 @274.80 stp 271.10 | TSEM d0 13:09 @259.99 stp 252.01 | MANE d1 11:54 @113.64 stp 112.27 | HUT d0 11:14 @101.14 stp 99.31 | SMCI d3 13:34 @29.09 stp 28.50 | NVCR d2 09:49 @17.96 stp 17.24 | THC d0 13:14 @233.26 stp 232.23 | WKC d0 12:09 @39.69 stp 38.52 | QBTS d1 12:59 @18.09 stp 17.26 | FTNT d0 12:24 @154.43 stp 153.30 | BLZE d1 10:14 @18.08 stp 17.47 | BTDR d0 13:29 @11.84 stp 11.68 | TEAM d0 11:44 @143.68 stp 141.51
+620-8/24    WULF d0 11:54 @23.86 stp 23.38 | CRCL d0 12:49 @66.30 stp 65.62 | WDFC d0 11:58 @268.18 stp 263.20 | TSEM d0 13:19 @259.88 stp 252.01 | MANE d1 12:03 @112.86 stp 112.27 | HUT d0 13:09 @101.37 stp 99.31 | SMCI d3 13:34 @29.09 stp 28.50 | NVCR d2 09:54 @17.94 stp 17.24 | THC d0 13:29 @232.44 stp 231.67 | WKC d0 12:14 @39.66 stp 38.52 | QBTS d1 12:59 @18.09 stp 17.26 | FTNT d0 12:24 @154.43 stp 153.30 | BLZE d1 10:24 @17.95 stp 17.47 | BTDR d0 13:34 @11.82 stp 11.68 | TEAM d0 11:54 @143.69 stp 141.51
+620-12/26   WULF d0 11:54 @23.86 stp 23.38 | CRCL d0 14:04 @66.16 stp 65.42 | WDFC d0 12:04 @267.85 stp 263.20 | TSEM d0 13:29 @260.69 stp 252.01 | MANE d1 12:08 @113.21 stp 112.27 | HUT d0 13:09 @101.37 stp 99.31 | SMCI d3 14:54 @29.05 stp 28.50 | NVCR d2 09:59 @18.03 stp 17.24 | THC d0 13:49 @231.36 stp 229.94 | WKC d0 12:19 @39.70 stp 38.52 | QBTS d1 15:04 @17.79 stp 17.26 | FTNT d0 12:24 @154.43 stp 153.30 | BLZE d1 10:34 @18.00 stp 17.47 | BTDR d0 14:04 @11.74 stp 11.61 | TEAM d0 11:59 @143.50 stp 141.51
+
+(EVIDENCE ONLY — no change made or proposed; entry/exit/stop discipline is the operator's sole authority. THE LINE.)
