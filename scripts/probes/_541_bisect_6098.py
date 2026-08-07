@@ -124,12 +124,13 @@ async def run(execute: bool) -> int:
             print(f"  {rec['id']:34} -> {rec.get('status')}  "
                   f"{rec.get('broker_reason') or rec.get('raw','')}")
     finally:
-        for oid in placed:
-            try:
-                await alpaca.cancel_order(oid, account_mode=_ACCOUNT_MODE)
-            except Exception:
-                pass
-        print(f"cleanup: cancelled {len(placed)}")
+        # Cancel-then-LOOK. A bare cancel loop lived here until 2026-08-06 and it is what
+        # left 7 unowned INSM shares on the paper account: case 2 places a trigger ~5% above
+        # the market, INSM ran +33% that session, the order FILLED, and the cancel silently
+        # no-op'd on an already-terminal order. See _probe_safety.teardown's docstring.
+        from _probe_safety import teardown
+        await teardown(alpaca, placed, account_mode=_ACCOUNT_MODE,
+                       symbols=[c["sym"] for c in cases if not c.get("skip")])
 
     with open(_OUT, "w") as f:
         json.dump({"insm_last": insm_last, "msft_last": msft_last, "results": results},

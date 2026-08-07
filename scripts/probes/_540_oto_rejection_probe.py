@@ -132,12 +132,11 @@ async def run(execute: bool) -> int:
             print(f"  {rec['id']:38} -> {rec.get('status_after_1s') or rec.get('exception_type')}"
                   f"  {rec.get('exception_raw','')[:110]}")
     finally:
-        for oid in placed:
-            try:
-                await alpaca.cancel_order(oid, account_mode=_ACCOUNT_MODE)
-            except Exception:
-                pass
-        print(f"\ncleanup: cancelled {len(placed)} order(s)")
+        # Cancel-then-LOOK (2026-08-06). This probe's header claims "triggers sit FAR above the
+        # market so nothing can fill" — that assumption is exactly what failed on the sibling
+        # #541 probe when the underlying ran +33% intraday. Verify instead of asserting.
+        from _probe_safety import teardown
+        await teardown(alpaca, placed, account_mode=_ACCOUNT_MODE, symbols=[_SYMBOL])
 
     with open(_OUT, "w") as f:
         json.dump({"symbol": _SYMBOL, "last": px, "results": results}, f, indent=2, default=str)

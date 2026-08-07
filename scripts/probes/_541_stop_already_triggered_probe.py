@@ -114,12 +114,11 @@ async def run(execute: bool) -> int:
             results.append(rec)
             print(f"  {rec['id']:36} -> {rec.get('status')}  {rec.get('broker_reason') or rec.get('raw','')}")
     finally:
-        for oid in placed:
-            try:
-                await alpaca.cancel_order(oid, account_mode=_ACCOUNT_MODE)
-            except Exception:
-                pass
-        print(f"cleanup: cancelled {len(placed)}")
+        # Cancel-then-LOOK (2026-08-06). Arm A deliberately sits a trigger BETWEEN the last
+        # price and the session high — i.e. squarely in reach — so a fill here is likely, not
+        # exotic. A cancel cannot undo one. See _probe_safety.teardown.
+        from _probe_safety import teardown
+        await teardown(alpaca, placed, account_mode=_ACCOUNT_MODE, symbols=[sym])
 
     a = next(r for r in results if r["id"].startswith("A"))
     b = next(r for r in results if r["id"].startswith("B"))
