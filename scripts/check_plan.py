@@ -101,6 +101,31 @@ def sweep_fingerprint(title: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()[:4]
 
 
+def _marker_age_days(pattern, title: str, today: date) -> int | None:
+    """Age in days of a dated `<name>:YYYY-MM-DD` marker, or None when it cannot be trusted.
+
+    Shared by BOTH dated markers in this file — `swept:` (the LIKELY-BUILT surface) and
+    `revalidated:` (the stale-block gate). They were written independently and had already
+    drifted: the newer one rejected future dates, the older one did not, so a
+    `revalidated:2099-01-01` computed a NEGATIVE age, satisfied `<= 45`, and read as fresh —
+    buying indefinite silence on the one gate here that actually blocks commits. Nothing had
+    exploited it (checked: zero future-dated markers on the board), but two copies of
+    "parse a date, subtract, compare" is how that divergence happened, so there is now one.
+
+    None means "do not trust this marker" and every caller must treat it as NOT fresh:
+      * absent, malformed, or an impossible date (`2026-13-45`) — a typo must never buy silence;
+      * dated in the FUTURE — the cheapest way to mute a task forever.
+    """
+    m = pattern.search(title)
+    if not m:
+        return None
+    try:
+        age = (today - date.fromisoformat(m.group(1))).days
+    except ValueError:
+        return None
+    return age if age >= 0 else None
+
+
 def _sweep_is_fresh(title: str, today: date) -> bool:
     """True when the line carries a `swept:YYYY-MM-DD[:hash]` marker that is BOTH recent and
     still about this line's current content.
@@ -113,15 +138,10 @@ def _sweep_is_fresh(title: str, today: date) -> bool:
     A marker with no hash is accepted while in date (backwards compatible) but re-surfaces on the
     normal timer; new sweeps should write the hash.
     """
+    age = _marker_age_days(_SWEPT, title, today)
+    if age is None or age > _SWEEP_MAX_AGE:
+        return False
     m = _SWEPT.search(title)
-    if not m:
-        return False
-    try:
-        age = (today - date.fromisoformat(m.group(1))).days
-    except ValueError:
-        return False
-    if not (0 <= age <= _SWEEP_MAX_AGE):
-        return False
     stamped = m.group(2)
     if stamped and stamped.lower() != sweep_fingerprint(title):
         return False        # line edited since the sweep — judgement no longer applies
@@ -440,13 +460,14 @@ def _stale_block_gate(tasks, errors, today) -> None:
             continue
         if _bump_count(title) < _STALE_BLOCK_BUMPS:
             continue
-        m = _REVALIDATED.search(title)
-        fresh = False
-        if m:
-            try:
-                fresh = (today - date.fromisoformat(m.group(1))).days <= _REVALIDATE_MAX_AGE
-            except ValueError:
-                fresh = False
+        # Shared with the `swept:` marker via _marker_age_days — which also closed a real hole
+        # here: this check had no lower bound, so `revalidated:2099-01-01` gave a NEGATIVE age
+        # that satisfied `<= _REVALIDATE_MAX_AGE` and read as fresh, muting a COMMIT-BLOCKING
+        # gate indefinitely. Found 2026-08-07 by the /simplify reuse+altitude passes, which
+        # noticed the two markers had drifted. No board task was future-dated, so this is
+        # hardening, not a fix for an active break.
+        _rv_age = _marker_age_days(_REVALIDATED, title, today)
+        fresh = _rv_age is not None and _rv_age <= _REVALIDATE_MAX_AGE
         if not fresh:
             errors.append(
                 f"L{t['line']}: task #{t['id']} is [b{_bump_count(title)}] AND carries a [blocked:] tag "

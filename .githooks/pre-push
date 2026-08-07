@@ -26,6 +26,19 @@
 # `tests/test_prepush_covers_test_read_data_files.py` keeps _DATA_RE honest: it scans
 # tests/ for repo-root data reads and fails if any is not matched by this pattern, so
 # the list cannot silently rot as new data-driven tests are added.
+#
+# ⚖ MEASURED COST OF WIDENING, so the trade-off is visible rather than assumed (/simplify
+# efficiency pass, 2026-08-07, over the last 14 days / 336 commits): 144 (43%) touched .py
+# and ran the suite before and after; 172 (51%) touched ONLY listed data files and now run
+# it where they previously skipped; 20 (6%) still skip. So the full-suite rate on push goes
+# 43% -> 94%, ≈86 min of added suite time over 14 days (~6 min/day, on push not on commit).
+# ACCEPTED: this repo's commits touch PLAN.md constantly and those files genuinely ARE read
+# by tests, so the alternative is the silent-red-CI class this predicate exists to close.
+# ⚠ But note the tension with this hook's own reasoning — at 94% it is close to "always
+# runs", and a gate that always fires is what trains --no-verify. If push latency starts
+# drawing complaints, the next move is NOT to shrink _DATA_RE (that reopens the gap) but to
+# run only the tests that READ the changed data file; the keeper test already computes that
+# mapping. Recorded here so whoever hits that decides with the numbers, not from scratch.
 set -uo pipefail
 
 # Resolve a real interpreter. `python` is commonly a SHELL ALIAS (zsh: alias

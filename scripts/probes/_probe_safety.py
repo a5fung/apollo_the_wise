@@ -42,7 +42,9 @@ async def teardown(alpaca, order_ids, *, account_mode: str, symbols=None) -> dic
     """
     assert account_mode == "paper", "probe teardown is PAPER-ONLY"
     order_ids = list(order_ids or [])
-    symbols = sorted(set(symbols or []))
+    # NOT sorted/deduped here — the verify pass below appends to it and the flatten pass
+    # re-derives `sorted(set(...))` anyway, so doing it now is work whose result is discarded.
+    symbols = list(symbols or [])
     out = {"cancelled": 0, "filled": [], "flattened": [], "errors": []}
 
     for oid in order_ids:

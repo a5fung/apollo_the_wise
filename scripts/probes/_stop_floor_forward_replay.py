@@ -156,7 +156,8 @@ def load_minute() -> dict[str, list[dict]]:
         dt = datetime.fromtimestamp(t_ms / 1000, tz=ET)
         if not ((dt.hour, dt.minute) >= (9, 30) and dt.hour < 16):
             continue                                   # RTH only
-        by[p[0]].append({"t": t_ms, "dt": dt, "o": _f(p[2]), "h": _f(p[3]),
+        by[p[0]].append({"t": t_ms, "dt": dt, "d": dt.date().isoformat(),
+                         "o": _f(p[2]), "h": _f(p[3]),
                          "l": _f(p[4]), "c": _f(p[5])})
     for tk in by:
         by[tk].sort(key=lambda b: b["t"])
@@ -176,6 +177,15 @@ def adr20_pct(daily: list[dict], alert_date: str) -> float | None:
 
 # ── the replay ───────────────────────────────────────────────────────────────
 
+def floor_stop(t: dict, k: float) -> float:
+    """Volatility-floored stop for trade `t` at sweep level `k` — whichever of the hard
+    stop / ADR20-scaled floor gives MORE room (MIN in price terms: the floor may only
+    WIDEN a stop, never tighten one). Single source for the two sweep sites below so the
+    formula can't drift between the main sweep and the gap-aware sensitivity line."""
+    floor_px = t["entry"] * (1 - k * (t["adr20"] or 0) / 100)
+    return min(t["hard_stop"], floor_px)
+
+
 def replay(trade: dict, bars: list[dict], stop_k: float, partial_on: bool,
            gap_aware: bool = False) -> dict:
     """One trade under the 3-mechanism model. Returns realized R (basis entry-stop_k),
@@ -187,13 +197,12 @@ def replay(trade: dict, bars: list[dict], stop_k: float, partial_on: bool,
     filled_ms = int(trade["filled_at"].timestamp() * 1000)
     alert = trade["alert_date"]
 
-    sessions = sorted({b["dt"].date().isoformat() for b in bars
-                       if b["dt"].date().isoformat() >= alert})
+    sessions = sorted({b["d"] for b in bars if b["d"] >= alert})
     if not sessions or sessions[0] != alert:
         return {"error": "no_entry_day_bars"}
     day_of = {d: i for i, d in enumerate(sessions)}
-    horizon = [b for b in bars if alert <= b["dt"].date().isoformat()
-               and day_of[b["dt"].date().isoformat()] <= TIME_STOP_SESSION]
+    horizon = [b for b in bars if alert <= b["d"]
+               and day_of[b["d"]] <= TIME_STOP_SESSION]
     # stop scan includes the fill bar; partial scan starts strictly after it
     walk = [b for b in horizon if b["t"] + 60_000 > filled_ms]
     if not walk:
@@ -206,7 +215,7 @@ def replay(trade: dict, bars: list[dict], stop_k: float, partial_on: bool,
            "gap_throughs": 0, "settled": True, "exit_via": None, "stop_hit_bar": None}
     last_bar = walk[-1]
     for b in walk:
-        di = day_of[b["dt"].date().isoformat()]
+        di = day_of[b["d"]]
         # pessimistic: LOW first. On the FILL bar the low can predate the fill second,
         # so a stop-out there requires the bar to CLOSE at/below the stop.
         is_fill_bar = b["t"] <= filled_ms
@@ -239,7 +248,7 @@ def replay(trade: dict, bars: list[dict], stop_k: float, partial_on: bool,
             break
     if pos > 1e-9:                                     # data ran out with position open
         out["settled"] = False
-        out["close_day"] = day_of[last_bar["dt"].date().isoformat()]
+        out["close_day"] = day_of[last_bar["d"]]
         out["exit_via"] = "UNSETTLED_mtm_data_end"
         pnl_ps += pos * (last_bar["c"] - entry)
     out["r"] = pnl_ps / r_unit
@@ -316,7 +325,7 @@ def main() -> None:
         t["stop_ratio"] = ((t["entry"] - stop0) / t["entry"] * 100) / t["adr20"] \
             if t["adr20"] else None
         bars = minute.get(t["ticker"], [])
-        d0 = [b for b in bars if b["dt"].date().isoformat() == t["alert_date"]]
+        d0 = [b for b in bars if b["d"] == t["alert_date"]]
         if not d0:
             problems.append(f"{t['ticker']}: no entry-day minute bars")
         else:
@@ -325,8 +334,7 @@ def main() -> None:
                 problems.append(f"{t['ticker']}: entry {t['entry']} outside day-0 bar range "
                                 f"[{lo}, {hi}] — split/adjustment mismatch?")
         # actual close session index (for the reconciliation table)
-        sess = sorted({b["dt"].date().isoformat() for b in bars
-                       if b["dt"].date().isoformat() >= t["alert_date"]})
+        sess = sorted({b["d"] for b in bars if b["d"] >= t["alert_date"]})
         cd = t["closed_at"].astimezone(ET).date().isoformat()
         t["actual_close_day"] = sess.index(cd) if cd in sess else None
         t["actual_exit_px"] = t["exits"][0]["price"] if t["exits"] else None
@@ -404,8 +412,7 @@ def main() -> None:
             row = f"{t['ticker']:<5} {t['stop_ratio'] or 0:5.2f} "
             base_r = None
             for k in K_SWEEP:
-                floor_px = t["entry"] * (1 - k * (t["adr20"] or 0) / 100)
-                stop_k = min(t["hard_stop"], floor_px)   # MIN in price = wider stop only
+                stop_k = floor_stop(t, k)
                 bound = stop_k < t["hard_stop"] - 1e-9
                 r = replay(t, minute.get(t["ticker"], []), stop_k, partial_on=partial_on)
                 if r.get("error"):
@@ -446,7 +453,7 @@ def main() -> None:
         for k in K_SWEEP:
             tot = 0.0
             for t in trades:
-                stop_k = min(t["hard_stop"], t["entry"] * (1 - k * (t["adr20"] or 0) / 100))
+                stop_k = floor_stop(t, k)
                 r = replay(t, minute.get(t["ticker"], []), stop_k,
                            partial_on=partial_on, gap_aware=True)
                 if not r.get("error"):
