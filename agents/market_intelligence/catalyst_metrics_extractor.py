@@ -189,7 +189,31 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
                 model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
                 usage=SimpleNamespace(**(data.get("usage") or {})),
             )
-            content = data["content"][0]["text"].strip()
+            # ⚠ 2026-08-07 ROOT CAUSE OF THE 08-06/08-07 EXTRACTION OUTAGE.
+            # This read `data["content"][0]["text"]` — it assumed the FIRST content
+            # block is the answer. That held for sonnet-4-6 and stopped holding the
+            # moment this role tracked to sonnet-5, which returns a THINKING block
+            # first. `[0]` is then `{"type": "thinking", ...}` with no "text" key, so
+            # every call died on `KeyError: 'text'` (logged as the generic "extraction
+            # call failed") and the caller graded 14 earnings names as weak on an
+            # exception. Take the first block that IS text, rather than assuming
+            # position — the shape is a list precisely because it can hold more than
+            # one kind of block.
+            _blocks = data.get("content") or []
+            content = next(
+                (b.get("text", "") for b in _blocks
+                 if isinstance(b, dict) and b.get("type") == "text" and b.get("text")),
+                "",
+            ).strip()
+            if not content:
+                # Be explicit rather than falling into a confusing JSON error: name the
+                # block types we got, so the NEXT response-shape change is diagnosable
+                # from one log line instead of a morning of forensics.
+                logger.warning(
+                    "catalyst_metrics_extractor: no text block in response "
+                    f"(block types: {[b.get('type') for b in _blocks if isinstance(b, dict)]})"
+                )
+                return None
 
             # Strip optional code fences
             if content.startswith("```"):
