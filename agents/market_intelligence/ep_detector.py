@@ -3624,6 +3624,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # can't score.
             _downgrade_reason = None
             _rubric_result = None
+            # Set when extraction FAILED and we deliberately did not downgrade
+            # (operator 2026-08-07) — carried so the audit row can say so.
+            _extraction_failed_no_downgrade = None
             from agents.market_intelligence.constants import (
                 CATALYST_RUBRIC_GATE_ENABLED, CATALYST_RUBRIC_MIN_COMPOSITE,
             )
@@ -3675,7 +3678,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _qr_block_check = _extracted.get("q_revenue_usd") or {}
                     has_q_rev_value = isinstance(_qr_block_check.get("value"), (int, float))
                     if extraction_error:
-                        _downgrade_reason = f"extraction_failed_{extraction_error[:60]}"
+                        # ⚖ OPERATOR 2026-08-07, mid-incident: *"we shouldn't downgrade
+                        # stocks due to call failure."* A failed CALL is not evidence of a
+                        # weak quarter — it is the ABSENCE of evidence, and case (a) above
+                        # says so in its own words ("the rubric never got a chance").
+                        # Downgrading here conflated "we don't know" with "it's weak".
+                        #
+                        # BLAST RADIUS, measured on the morning this was found: 14 of 14
+                        # earnings names knocked to `routine` on 08-07, which is what caps
+                        # the score under 50 — including a whole software cohort gapping
+                        # together (DOCS +178%, PUBM +36%, TEAM +33%, plus NET/TWLO/FROG)
+                        # against weeks of rising software RS. Zero HIGH alerts that
+                        # morning, and none of it was a judgement about the setups.
+                        #
+                        # Same shape as the SNOW 2026-05-28 carve-out below, which is
+                        # operator-signed for exactly this class ("lost-alpha, not
+                        # cosmetic") — a missing YoY there, a dead API call here. Leave the
+                        # catalyst as graded and let the downstream judge rule on it; the
+                        # audit row still records that extraction failed, so this is
+                        # visible rather than silent.
+                        _downgrade_reason = None
+                        _extraction_failed_no_downgrade = extraction_error
                     elif _quality == "low" and not has_q_rev_value:
                         _downgrade_reason = "news_corpus_sparse_no_q_rev"
                     elif has_q_rev_value:
@@ -3791,6 +3814,29 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         _downgrade_reason = (
                             f"q_rev_yoy_{_ryoy:.1f}pct_below_"
                             f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered")
+
+            # Extraction died and we deliberately kept the grade (operator 2026-08-07).
+            # Emitted BEFORE the downgrade block so it is recorded even though nothing
+            # is downgraded — a silent no-downgrade would be indistinguishable from a
+            # healthy extraction, which is how the 08-06/08-07 outage went unnoticed for
+            # a full session. Per-ticker-per-day dedup, same idiom as the carve-out above.
+            if _extraction_failed_no_downgrade:
+                try:
+                    if await _should_log_catalyst_earnings_event_today(
+                        ticker, "catalyst_extraction_failed_grade_kept"
+                    ):
+                        await log_audit_event(
+                            "catalyst_extraction_failed_grade_kept",
+                            f"{ticker}: extraction FAILED ({_extraction_failed_no_downgrade[:60]}) "
+                            f"— catalyst KEPT at {catalyst_quality}, not downgraded to routine",
+                            json.dumps({
+                                "ticker": ticker,
+                                "extraction_error": _extraction_failed_no_downgrade,
+                                "catalyst_quality_kept": catalyst_quality,
+                            }),
+                        )
+                except Exception as _e:
+                    logger.warning(f"{ticker}: could not log extraction-failed-grade-kept: {_e}")
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality

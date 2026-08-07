@@ -164,7 +164,17 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
                 },
                 json={
                     "model": _EXTRACTION_MODEL,
-                    "max_tokens": 2000,
+                    # 2026-08-07: was 2000 and it became BINDING the moment this role
+                    # tracked to Sonnet 5. Measured in api_usage: on sonnet-4-6 this call
+                    # ran 489-561 output tokens (max ever 720) — nowhere near the cap. On
+                    # sonnet-5 it runs 1431-1544 avg and hit EXACTLY 2000 on 3 calls, i.e.
+                    # truncated mid-JSON -> parse fails -> `extraction_call_failed`.
+                    # Extraction failures: ZERO on every day before 08-06, 8 on 08-06 (the
+                    # day the role moved), 14 of 14 on 08-07. Raised well clear of the new
+                    # model's natural length rather than to a number that merely fits
+                    # today's worst case — the whole failure was a ceiling sized for the
+                    # previous model's verbosity. See PLAN #542.
+                    "max_tokens": 8000,
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )
