@@ -321,6 +321,15 @@ _FRESH_PIN_VOL_EVENT_DAYS  = 10     # window the announcement volume must fall i
 _FRESH_PIN_VOL_BASE_START  = 11     # baseline ADV window (1-indexed, inclusive)
 _FRESH_PIN_VOL_BASE_END    = 40
 _FRESH_PIN_VOL_SPIKE_MIN   = 5.0    # max event volume / baseline ADV
+
+# Layer 3 STICKY carry (#502 refinement, 2026-08-06). Measured a 2-3 session
+# HOLE between layer 3 aging out (the announcement volume event falls out of
+# its 10-session window on session 11) and layer 2 reaching its 10-session
+# median < 0.5% (needs ~session 13). ATAI leaked COILED on 07-30 and 07-31 in
+# that hole. Bridges it with margin, no new persistent state — see
+# _evaluate_fresh_pin's docstring for the mechanism and its release condition.
+_FRESH_PIN_STICKY_SESSIONS = 5
+
 # Deep enough to serve BOTH evaluators from one fetch (mature rule reads the
 # first _DEAL_PIN_LOOKBACK_DAYS rows; the fresh rule needs the ADV baseline).
 _PIN_HISTORY_DAYS          = _FRESH_PIN_VOL_BASE_END
@@ -1213,18 +1222,22 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                 try:
                     sig = pin_map.get(r["ticker"])
                     # Mature pin (10-session median) OR fresh pin (#502 band +
-                    # volume-event conjunction). Distinct reasons so the two
-                    # rules stay separable in offline review; the mature rule
-                    # wins the label when both fire, since it's the older and
-                    # more specific signature.
+                    # volume-event conjunction, possibly STICKY-carried from a
+                    # prior session — #502 refinement 2026-08-06). Distinct
+                    # reasons so all three stay separable in offline review;
+                    # the mature rule wins the label when both fire, since
+                    # it's the older and more specific signature.
                     if sig and (sig.get("is_pin") or sig.get("is_fresh_pin")):
                         mature = bool(sig.get("is_pin"))
+                        sticky_from = 0 if mature else int(sig.get("sticky_from_session") or 0)
                         r["original_stage"] = r["stage"]
                         r["stage"] = "unqualified"
-                        r["reason"] = (
-                            "mna_filter:deal_pin_signature" if mature
-                            else "mna_filter:deal_pin_fresh"
-                        )
+                        if mature:
+                            r["reason"] = "mna_filter:deal_pin_signature"
+                        elif sticky_from:
+                            r["reason"] = "mna_filter:deal_pin_sticky"
+                        else:
+                            r["reason"] = "mna_filter:deal_pin_fresh"
                         await db.insert_flag_candidate(r)
                         # Same-trading-day audit dedup (#89). Same detector
                         # tag as the keyword-match flag site above — both
@@ -1232,11 +1245,22 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                         # detector) so first-of-day wins regardless of
                         # which sub-path (keyword vs deal_pin) fires first.
                         from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
-                        source = "deal_pin_signature" if mature else "deal_pin_fresh"
+                        source = (
+                            "deal_pin_signature" if mature
+                            else "deal_pin_sticky" if sticky_from
+                            else "deal_pin_fresh"
+                        )
                         if mature:
                             detail_txt = (
                                 f"median {sig['median_range_pct']:.3%}, "
                                 f"{sig['sub_threshold_days']}/{sig['total_days']} sub-0.5%"
+                            )
+                        elif sticky_from:
+                            detail_txt = (
+                                f"band {sig['band_pct']:.2%} over {sig['band_days']}d "
+                                f"(max {sig['band_max']:.2%}), "
+                                f"pin verified {sticky_from} session"
+                                f"{'s' if sticky_from != 1 else ''} ago"
                             )
                         else:
                             detail_txt = (
@@ -1318,16 +1342,52 @@ def _evaluate_deal_pin(rows: list) -> Optional[dict]:
     }
 
 
-def _evaluate_fresh_pin(rows: list) -> Optional[dict]:
-    """Pure-function evaluator for a FRESH deal pin (#502).
+def _evaluate_fresh_pin(rows: list, *, _sticky: bool = False) -> Optional[dict]:
+    """Pure-function evaluator for a FRESH deal pin (#502; STICKY carry #502
+    refinement, 2026-08-06).
 
     `rows` must be newest-first. Returns None when there isn't enough history to
     judge (caller fails open — a missing signature never suppresses).
 
-    Conjunction, both required:
+    Conjunction, both required, evaluated on TODAY's own data (rows[0:]):
       band  — (max high - min low) / avg close over the last _FRESH_PIN_BAND_DAYS
       spike — max volume in the last _FRESH_PIN_VOL_EVENT_DAYS, over the mean
               volume of the _FRESH_PIN_VOL_BASE_START.._END window behind it
+
+    STICKY carry: the announcement volume spike ages out of its own
+    _FRESH_PIN_VOL_EVENT_DAYS window on session 11, but layer 2 (the mature
+    pin, a 10-session median) needs until ~session 13 to pick the name back
+    up — a measured 2-3 session hole where a fresh, still-pinned deal reads
+    as a plain coil and leaks onto the actionable board (ATAI, 07-30/07-31).
+    If today's OWN conjunction does not fire but today's band is STILL
+    <= _FRESH_PIN_BAND_MAX (still looks welded), re-run this exact function
+    — the shipped code path, never a parallel lookalike (#416) — on
+    `rows[i:]` for i in 1.._FRESH_PIN_STICKY_SESSIONS, i.e. "was this a
+    verified fresh pin as of i sessions ago?". The first hit is carried
+    forward and recorded in `sticky_from_session`.
+
+    The release condition IS the design's whole safety property: stickiness
+    requires TODAY's own band to still be <= _FRESH_PIN_BAND_MAX. The moment
+    the deal breaks or price starts moving again, the band widens past that,
+    stickiness lapses on its own, and no state needs to be cleaned up — there
+    is none. The `_sticky` kwarg guards recursion: a carried-verdict lookup
+    checks only that ONE session's own conjunction and never itself tries to
+    carry further, so this can never recurse more than one level deep.
+
+    Caveat (measured, not just theoretical): the caller fetches exactly
+    _PIN_HISTORY_DAYS rows, so a carried lookup at offset i sees a baseline
+    window of (_PIN_HISTORY_DAYS - _FRESH_PIN_VOL_BASE_START + 1 - i) bars,
+    not the full one that session actually had at the time — the as-of
+    verdict is an APPROXIMATION of the historical day's own verdict, not a
+    byte-for-byte replay of it. A shorter baseline lowers the ADV denominator,
+    which can only ever RAISE the computed spike ratio — so in principle this
+    could carry-fire on a session that would not have fired if evaluated with
+    its true full baseline. The #502 refinement replay (2026-08-06,
+    405+2-row corpus) measured this directly rather than leaving it as an
+    open risk: zero of the 407 evaluated rows flipped in that direction (the
+    one row whose fresh-flag changed under the shortened baseline, AVNS, was
+    independently suppressed by the mature rule both before and after,
+    so it produced no observable behaviour change either way).
     """
     if len(rows) < _FRESH_PIN_VOL_BASE_START:
         return None
@@ -1360,17 +1420,39 @@ def _evaluate_fresh_pin(rows: list) -> Optional[dict]:
         return None
     spike = max(event) / adv
 
-    return {
+    is_fresh_pin_today = (
+        band <= _FRESH_PIN_BAND_MAX and spike >= _FRESH_PIN_VOL_SPIKE_MIN
+    )
+
+    result = {
         "band_pct": band,
         "vol_spike_x": spike,
         "band_days": len(band_rows),
         "baseline_days": len(baseline),
-        "is_fresh_pin": (
-            band <= _FRESH_PIN_BAND_MAX and spike >= _FRESH_PIN_VOL_SPIKE_MIN
-        ),
+        "is_fresh_pin": is_fresh_pin_today,
         "band_max": _FRESH_PIN_BAND_MAX,
         "spike_min": _FRESH_PIN_VOL_SPIKE_MIN,
+        "sticky_from_session": 0,
     }
+
+    if is_fresh_pin_today:
+        return result
+    if _sticky:
+        # An as-of-i-sessions-ago lookup — report that session's own verdict
+        # only; never chain a sticky lookup off another one.
+        return result
+    if band > _FRESH_PIN_BAND_MAX:
+        # Release condition: today no longer looks welded. No carry attempt.
+        return result
+
+    for i in range(1, _FRESH_PIN_STICKY_SESSIONS + 1):
+        carried = _evaluate_fresh_pin(rows[i:], _sticky=True)
+        if carried and carried["is_fresh_pin"]:
+            result["is_fresh_pin"] = True
+            result["sticky_from_session"] = i
+            break
+
+    return result
 
 
 async def _check_deal_pin_signatures_batch(

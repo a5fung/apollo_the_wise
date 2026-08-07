@@ -76,14 +76,108 @@ The tightness that scores a deal-pinned name COILED **is** the pin. Geometry alo
 | Layer | Test | Catches |
 |---|---|---|
 | 1 — news | `ma_filter.is_likely_ma(check_polygon=True, polygon_lookback_days=21)` | deals Polygon has a headline for |
-| 2 — mature pin | median (H−L)/C over last **10** sessions < **0.5%** AND ≥**5** sub-0.5% sessions | pins ≥ ~3-4 weeks old |
-| 3 — fresh pin (#502) | 5-session band ≤ **2.5%** AND ≥**5×** volume spike (max vol last 10 / mean vol sessions 11–40) | pins days old |
+| 2 — mature pin | median (H−L)/C over last **10** sessions < **0.5%** AND ≥**5** sub-0.5% sessions | pins ≥ ~3-4 weeks old (~session 13+) |
+| 3 — fresh pin (#502) | 5-session band ≤ **2.5%** AND ≥**5×** volume spike (max vol last 10 / mean vol sessions 11–40) | pins days old, through session 10 |
+| 3b — sticky carry (#502 refinement, 2026-08-06) | today's band still ≤ **2.5%** AND layer 3's own conjunction fired as-of 1–**5** sessions ago (re-runs the shipped `_evaluate_fresh_pin` on the trailing window; no new persistent state) | bridges the measured session-11–12 hole below |
 
-Layers 2 and 3 are complementary by *deal age*, not redundant: layer 2's window still holds
-pre-announcement volatility while a deal is fresh; layer 3's volume event ages out of its 10-session
-window once a deal matures. Both fail OPEN — a missing signature never suppresses.
+⚠ **Layers 2 and 3 were documented as "complementary by deal age" — that was FALSE, and is
+corrected here (2026-08-06, #502).** Measured against production: layer 3's own-data conjunction
+stops firing on session 11 (the announcement's volume event ages out of its 10-session window);
+layer 2 doesn't reach a qualifying 10-session median until ~session 13. Sessions 11–12 are a real,
+measured hole where a still-pinned deal reads as a plain coil and leaks onto the actionable board —
+this is exactly what happened to ATAI on 2026-07-30/07-31 (see change log below). Layer 3b closes
+that hole by carrying layer 3's own last-verified verdict forward, released the moment today's own
+band stops looking pinned. All layers fail OPEN — a missing signature never suppresses.
 
 ## Change log
+- **2026-08-06 — Layer 3b added: STICKY carry bridges the layer-2/layer-3 hand-off hole (#502
+  refinement). OPERATOR-SIGNED.**
+  **Trigger**: the 2026-07-24 layer-3 change log (below) documented layers 2 and 3 as "complementary
+  by deal age." That claim was never verified against production and turned out to be false — a real
+  setup (ATAI) leaked through a measured 2-3 session hole between the two layers.
+  **Root cause**, session-by-session against the real ATAI cash-buyout (announced 2026-07-16,
+  165.6M shares that day vs ~16.6M baseline; price welded $7.15-7.22 since):
+
+  | session after announcement | Layer 3 (fresh) | Layer 2 (mature) median | outcome |
+  |---|---|---|---|
+  | 07-23 … 07-29 | FIRES (spike 18.3-18.7x) | 0.70-1.73% — no | suppressed correctly |
+  | **07-30** | **STOPS** — the 07-16 spike falls out of the 10-session window on session 11 | 0.696% — no | **COILED, leaked** |
+  | **07-31** | no | 0.627% — no | **COILED, leaked** |
+  | 08-03 | no | 0.523% — no, misses by 0.023pp | (no candidate row) |
+  | 08-04 onward | no | 0.453%, 6 sub-0.5 days — WOULD fire | masked by an unrelated ADR gate |
+
+  Precisely: `_FRESH_PIN_VOL_EVENT_DAYS = 10` means the announcement's volume ages out of layer 3's
+  own event window on session 11 — and worse, that same volume then falls INTO layer 3's baseline
+  window (sessions 11-40), inflating the ADV denominator and dragging the spike ratio down further.
+  Layer 2's 10-session median needs until ~session 13 to fall under 0.5%. Sessions 11-12 (calendar
+  07-30/07-31) are a genuine hole, not a documentation gap — confirmed live: `mi_flag_candidates`
+  shows `mna_filter:deal_pin_fresh` on ATAI 07-23→07-29, then bare **COILED** (no `mna_filter:*`
+  reason, i.e. unsuppressed) on 07-30 and 07-31, then `adr_3.0pct_below_4pct` — a DIFFERENT,
+  unrelated liquidity gate — from 08-04 onward. **Layer 2 is untested in the field here, not
+  proven**: its 08-04 median (0.453%, 6 sub-0.5 days) would have qualified, but the row was already
+  marked unqualified by the ADR gate before layer 2 ever got a chance to evaluate it — so this
+  incident does not confirm layer 2 would have closed the hole on its own eventually; it confirms
+  only that something else happened to mask the symptom from session 13 on.
+  **The fix** (mechanism, not a threshold move — none of `_FRESH_PIN_BAND_MAX`,
+  `_FRESH_PIN_VOL_SPIKE_MIN`, `_FRESH_PIN_VOL_EVENT_DAYS`, or layer 2's `_DEAL_PIN_RANGE_THRESHOLD`
+  moved): `_evaluate_fresh_pin` now re-runs itself (the shipped function, not a parallel evaluator —
+  the #416 lesson) on the trailing window for 1..`_FRESH_PIN_STICKY_SESSIONS` (=5) sessions back
+  whenever today's own conjunction doesn't fire but today's band still reads ≤ `_FRESH_PIN_BAND_MAX`.
+  A hit is carried forward and labelled `sticky_from_session=i`; recursion is guarded to exactly one
+  level (a carried lookup never itself tries to carry). The release condition — today's own band
+  widening past the max — is the design's whole safety property: no new persistent state exists, so
+  there is nothing to leave stale when a deal breaks or price starts moving again. Audited under a
+  distinct source string, `deal_pin_sticky`, kept separate from `deal_pin_fresh` so the carry's hit
+  rate stays independently reviewable.
+  **Evidence**: extended the 2026-07-24 replay's SAME 405-row/89-ticker corpus (2026-05-04 → 07-24,
+  frozen — `scripts/probes/_502_bars.tsv`, unchanged) with a NEW extension pull covering 2026-07-25 →
+  08-06 (`scripts/probes/_502_bars_ext_20260806.tsv`) — this is NOT the identical corpus the original
+  evidence used; it is that corpus plus everything actionable since, confirmed via direct query that
+  no COILED/TRIGGERED row for ANY ticker exists in 07-25→08-06 other than ATAI's two leak sessions
+  (`mi_flag_candidates` grouped by scan_date/stage, 07-20→08-06). Run against the SHIPPED
+  `_evaluate_fresh_pin` (`scripts/probes/_502_fresh_pin_replay.py`):
+  - **ATAI 07-30 and 07-31 are now suppressed** — band 0.84% both days (still reads as welded),
+    carried from 1 and 2 sessions back respectively. This is the regression the fix targets, closed.
+  - **HUM is still preserved** — all 5 HUM rows in the base window remain `is_fresh_pin=False`; every
+    HUM band (3.07-10.64%) sits above `_FRESH_PIN_BAND_MAX`, so the release condition exits before
+    any carry is attempted. The designated canary is untouched.
+  - **The original 11 rows are unchanged** — same 11 rows (ATAI ×2, CCRN ×2, KALV ×4, PAYO ×3), all
+    still firing on their OWN data (`sticky_from_session=0`), byte-identical to pre-refinement
+    behaviour; the sticky path never engages for rows whose own conjunction already fires.
+  - **Net new production-behaviour change: exactly 2 rows** — ATAI 07-30 and 07-31, both hand-checked
+    above. One additional row (AVNS, 2026-05-04) picked up a `sticky_from_session=5` fresh-pin flag
+    it didn't have before, but AVNS was ALREADY suppressed by the mature rule (`is_pin=True`) both
+    before and after this change, and the mature label always wins when both fire — so AVNS's
+    production outcome and reason string (`deal_pin_signature`) are unaffected either way. Hand-
+    checked, zero behavioural impact, noted for completeness rather than shipped as a "new"
+    suppression.
+  This is the narrow bridge it was meant to be, not a widened surface: 2 rows change outcome, both
+  are the diagnosed leak, and the false-positive population (HUM, the 393 preserved rows) is intact.
+  **Known approximation, measured not just asserted**: the carried lookup reuses the caller's already-
+  fetched `_PIN_HISTORY_DAYS`-row window, so a carry at offset `i` sees a baseline `i` bars shorter
+  than that session's own historical evaluation would have had — the as-of verdict approximates the
+  historical day's own verdict rather than replaying it byte-for-byte. A shorter baseline can only
+  ever RAISE the computed spike ratio, so in principle a carry could fire where the true historical
+  day would not have. This replay measured that risk directly instead of leaving it theoretical: 0 of
+  407 rows flipped in that direction (AVNS's fresh-flag changed under the shortened baseline but was
+  independently mature-suppressed regardless, so it produced no behaviour change).
+  **Anticipated effect**: closes the ATAI-class leak going forward — a fresh pin that ages past
+  session 10 while still genuinely welded stays suppressed through session ~15 (5-session bridge with
+  margin over the measured 2-3 session hole) instead of surfacing as an actionable COILED/TRIGGERED
+  row on the digest.
+  **Reversion-flag**: REFINEMENT of the 2026-07-24 layer-3 change directly below — same intent
+  (suppress a still-pinned M&A target that geometry alone cannot distinguish from a coil), closing a
+  hand-off gap that change's own evidence didn't test for. Not a reversal: every row layer 3 already
+  caught keeps firing exactly as before (own-data, `sticky_from_session=0`); the carry only ever adds
+  coverage in the specific band-still-holds-but-event-window-elapsed shape.
+  **Status**: shipped, awaiting field validation — verify = ATAI (or any future fresh-pin case)
+  absent as COILED/TRIGGERED from the rendered nightly HTF digest through the point its own mature-pin
+  median would take over. Scope is flag-only (HTF is shadow, no order fires); unchanged from the
+  2026-07-24 entry's scope carve-out.
+  Tests: `tests/test_flag_fresh_deal_pin_502.py` (bridge, release, bound, fail-open, no-recursion,
+  mutation-check — 7 new cases). Replay: `scripts/probes/_502_fresh_pin_replay.py --pull-ext` (base
+  window `--pull` is now frozen and should NOT be re-run — see the script's own docstring for why).
+
 - **2026-07-24 — Layer 3 added: FRESH deal-pin suppression (#502). OPERATOR-SIGNED.**
   **Trigger**: operator, 2026-07-24 — the nightly HTF digest surfaced `ATAI` as the single 🌀 COILED
   actionable setup; ATAI is a buyout. Root cause: a cash-deal pin is indistinguishable from a coil on
