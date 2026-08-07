@@ -1,0 +1,85 @@
+cohort n=14 · actual total -11.46R (doc basis: pnl/planned risk_dollars) · -13.15R (realized entry-stop unit — the replay's basis) · avg risk budget $25.14/trade
+
+== 1. k=0 RECONCILIATION — stop-only replay vs actual (partial OFF: the +2R rule was not live for any of these; actual_R on the realized entry-stop unit) ==
+tkr   actual_R   sim_R   diff act_day sim_day  act_exit init_stop  note
+WULF     -1.00   -1.00  +0.00       0       0     23.80     23.80  slippage only
+CRCL     -1.01   -1.00  +0.01       0       0     69.28     69.29  slippage only
+WDFC     -1.04   -1.00  +0.04       0       0    286.72    287.06  slippage only
+TSEM     -1.00   -1.00  +0.00       0       0    266.33    266.34  slippage only
+MANE     -0.23   -1.00  -0.77       1       1    119.04    118.02  stop RAISED live (daily mgmt engine) — model diverges by design
+HUT      -1.07   -1.00  +0.07       0       0    101.31    101.45  slippage only
+SMCI     -0.70   -1.00  -0.30       3       3     28.79     28.50  stop RAISED live (daily mgmt engine) — model diverges by design
+NVCR     -1.00   -1.00  -0.00       1       1     18.00     18.00  slippage only
+THC      -1.01   -1.00  +0.01       0       0    233.53    233.58  slippage only
+WKC      -1.03   -1.00  +0.03       0       0     38.97     39.00  slippage only
+QBTS     -1.00   -1.00  +0.00       1       1     17.75     17.75  slippage only
+FTNT     -1.03   -1.00  +0.03       0       0    160.02    160.19  slippage only
+BLZE     -1.02   -1.00  +0.02       0       0     20.06     20.10  slippage only
+BTDR     -1.03   -1.00  +0.03       0       0     12.47     12.48  slippage only
+
+reconciliation on the 12 trades that actually exited AT their initial stop: sim -12.00R vs actual -12.22R (max per-trade |diff| 0.068R)
+VERDICT: RECONCILED (divergences named above are the excluded live mechanisms)
+
+== ADR20 cross-check (stop ÷ range vs doc §A) ==
+  MANE  adr20  7.25%  stop/range 0.15 (doc 0.15)
+  HUT   adr20  9.73%  stop/range 0.20 (doc 0.2)
+  CRCL  adr20  7.19%  stop/range 0.27 (doc 0.27)
+  BTDR  adr20 10.09%  stop/range 0.29 (doc 0.29)
+  QBTS  adr20  6.65%  stop/range 0.35 (doc 0.35)
+  WULF  adr20  8.45%  stop/range 0.39 (doc 0.39)
+  TSEM  adr20  6.83%  stop/range 0.41 (doc 0.41)
+  SMCI  adr20  5.98%  stop/range 0.55 (doc 0.52)  ⚠ off vs doc
+  BLZE  adr20  9.07%  stop/range 0.86 (doc 0.87)
+  FTNT  adr20  4.28%  stop/range 0.91 (doc 0.93)
+  THC   adr20  3.53%  stop/range 0.95 (doc 0.95)
+  WKC   adr20  2.60%  stop/range 1.11 (doc 1.12)
+  WDFC  adr20  2.78%  stop/range 1.12 (doc 1.12)
+  NVCR  adr20  5.06%  stop/range 1.19 (doc 1.18)
+
+== SWEEP — partial ON (the ruleset deployed today) ==
+tkr   ratio |   k=0.0  P@ cls |   k=0.5  P@ cls |  k=0.75  P@ cls |   k=1.0  P@ cls   (P@ = partial-fire session, cls = close session; * floor bound, ! unsettled at data end, ? official daily low does not corroborate)
+WULF   0.39 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+CRCL   0.27 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+WDFC   1.12 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  
+TSEM   0.41 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+MANE   0.15 |   +0.67   0  1  |   +0.67   0  1* |   -1.00   -  1* |   -1.00   -  1* 
+HUT    0.20 |   -1.00   -  0  |   +0.67   2  5* |   +0.67   3  5* |   -1.00   -  6* 
+SMCI   0.55 |   +0.67   0  2  |   +0.67   0  2  |   +0.67   0  2* |   -1.00   -  4* 
+NVCR   1.19 |   +0.67   1  1  |   +0.67   1  1  |   +0.67   1  1  |   +0.67   1  1  
+THC    0.95 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0* 
+WKC    1.11 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  
+QBTS   0.35 |   +0.67   0  1  |   +0.67   0  1* |   -1.00   -  1* |   -1.00   -  2* 
+FTNT   0.91 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0* 
+BLZE   0.86 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0* 
+BTDR   0.29 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+
+  k=0.0  total   -7.33R ($ -199.65 at actual budgets) · win 4/14 · day-0 closes 10 · floor bound 0 · partial fired 4 · unsettled 0 · ex-best(MANE) -8.00R
+  k=0.5  total   -5.67R ($ -166.49 at actual budgets) · win 5/14 · day-0 closes 9 · floor bound 7 · partial fired 5 · unsettled 0 · ex-best(MANE) -6.33R
+  k=0.75 total   -9.00R ($ -244.64 at actual budgets) · win 3/14 · day-0 closes 9 · floor bound 8 · partial fired 3 · unsettled 0 · ex-best(HUT) -9.67R
+  k=1.0  total  -12.33R ($ -314.34 at actual budgets) · win 1/14 · day-0 closes 9 · floor bound 11 · partial fired 1 · unsettled 0 · ex-best(NVCR) -13.00R
+  gap-aware stop fills (min(open,stop)): k=0.0: -7.52R  k=0.5: -5.67R  k=0.75: -9.00R  k=1.0: -12.33R  
+
+== SWEEP — partial OFF (floor alone, isolation view) ==
+tkr   ratio |   k=0.0  P@ cls |   k=0.5  P@ cls |  k=0.75  P@ cls |   k=1.0  P@ cls   (P@ = partial-fire session, cls = close session; * floor bound, ! unsettled at data end, ? official daily low does not corroborate)
+WULF   0.39 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+CRCL   0.27 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+WDFC   1.12 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  
+TSEM   0.41 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+MANE   0.15 |   -1.00   -  1  |   -1.00   -  1* |   -1.00   -  1* |   -1.00   -  1* 
+HUT    0.20 |   -1.00   -  0  |   -1.00   -  6* |   -1.00   -  6* |   -1.00   -  6* 
+SMCI   0.55 |   -1.00   -  3  |   -1.00   -  3  |   -1.00   -  4* |   -1.00   -  4* 
+NVCR   1.19 |   -1.00   -  1  |   -1.00   -  1  |   -1.00   -  1  |   -1.00   -  1  
+THC    0.95 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0* 
+WKC    1.11 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  
+QBTS   0.35 |   -1.00   -  1  |   -1.00   -  1* |   -1.00   -  1* |   -1.00   -  2* 
+FTNT   0.91 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0* 
+BLZE   0.86 |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0  |   -1.00   -  0* 
+BTDR   0.29 |   -1.00   -  0  |   -1.00   -  0* |   -1.00   -  0* |   -1.00   -  0* 
+
+  k=0.0  total  -14.00R ($ -351.92 at actual budgets) · win 0/14 · day-0 closes 10 · floor bound 0 · partial fired 0 · unsettled 0 · ex-best(WULF) -13.00R
+  k=0.5  total  -14.00R ($ -351.92 at actual budgets) · win 0/14 · day-0 closes 9 · floor bound 7 · partial fired 0 · unsettled 0 · ex-best(WULF) -13.00R
+  k=0.75 total  -14.00R ($ -351.92 at actual budgets) · win 0/14 · day-0 closes 9 · floor bound 8 · partial fired 0 · unsettled 0 · ex-best(WULF) -13.00R
+  k=1.0  total  -14.00R ($ -351.92 at actual budgets) · win 0/14 · day-0 closes 9 · floor bound 11 · partial fired 0 · unsettled 0 · ex-best(WULF) -13.00R
+  gap-aware stop fills (min(open,stop)): k=0.0: -14.19R  k=0.5: -14.00R  k=0.75: -14.00R  k=1.0: -14.00R  
+
+(EVIDENCE ONLY — no change made or proposed; stop placement is the operator's sole authority. THE LINE.)
