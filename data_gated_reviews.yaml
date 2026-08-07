@@ -8259,6 +8259,16 @@ reviews:
       operator sign-off. This review produces EVIDENCE and a recommendation; it
       never flips anything.
 
+      🔗 **RUNS INSIDE #545 (filed 2026-08-07).** The operator asked that all entry/exit
+      analysis be connected rather than answered one axis at a time: *"we already have triggers to
+      eval once we have more samples, are they linked? We should connect all the entry/exit
+      analysis work."* THIS REVIEW IS THE ACCRUAL VEHICLE; #545 is the FRAME that says which
+      variants are worth accruing toward. So: when this fires at n=20/40/60/80/100, execute
+      methods (a)-(e) INSIDE #545's parameter grid, and feed the result back to #545 rather than
+      writing a standalone dated doc that #545 then has to rediscover. If #545's grid has not been
+      designed yet at the time this fires, run it anyway (the stall clause above stands) and say
+      explicitly which cells of the grid the run did and did not cover.
+
       TERMINAL CONDITION (operator 2026-07-25): once the exit rule is FINALLY
       DECIDED and signed, this stops being a calibration series and CONVERTS to a
       routine monthly-or-quarterly EFFECTIVENESS review (did the shipped rule do
@@ -8329,6 +8339,10 @@ reviews:
 
       RECURRING: on completion re-bump `threshold` 8 -> 20 -> 40, mirroring the
       parent's idiom, and record each run as its own dated doc.
+
+      🔗 **RUNS INSIDE #545 (filed 2026-08-07)** — the entry/exit tactics program. This review
+      owns ONE cell of its grid, and it is the cell nothing else can fill: the regime axis. Report
+      into #545, not as an orphan doc. See exit_tune_cohort_review's identical note.
 
       ⚖ THE LINE: evidence and a recommendation only. Any exit-rule change is
       CHANGE_PROCESS + #151 harness + operator sign-off.
