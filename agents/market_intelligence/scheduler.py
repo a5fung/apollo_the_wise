@@ -106,6 +106,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "orb_reclassify_eod", "bar_stream_cleanup",
     # lifecycle / reconcile / safeguards
     "paper_trade_tracker", "morning_stop_refresh", "post_close_stop_refresh",
+    "position_coverage_check",  # #527 — market-hours broker-truth coverage detector
     "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
     "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
@@ -1270,6 +1271,47 @@ async def _morning_stop_refresh_job():
     except Exception as e:
         logger.error(f"Morning stop refresh failed: {e}")
         await notify_job_failure("morning_stop_refresh", str(e))
+
+
+async def _position_coverage_check_job():
+    """Run every ~15 min, 09:31-15:55 ET (#527 DoD's stated window). #527 market-hours
+    coverage DETECTOR — reads BROKER truth for every LIVE open position and confirms a
+    live sell-stop covers it. DETECTOR ONLY: never places/cancels/repairs an order
+    (`_ensure_stop_coverage` owns repair). Silent on a normally-covered book; Telegrams
+    + writes `position_unprotected` on a real gap, deduped to once per trade per
+    session. See `order_manager.check_position_coverage` for the full contract.
+
+    ⚠ The cron slot below (`hour="9-15", minute="*/15"`) follows `track_position_extremes`'s
+    REGISTRATION idiom, but fires wider than 09:31-15:55 — at 9:00/9:15 a Day-2+
+    position genuinely EXISTS in mi_live_trades (unlike track_position_extremes, whose
+    early fires ARE no-ops for lack of intraday bar data). The guard below enforces the
+    DoD's stated window explicitly rather than relying on the cron slot alone (advisor
+    review, #527) — so a 9:00/9:15 tick no-ops here, in code, not by accident of what
+    data happens to exist yet.
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    now_et = datetime.now(_ET)
+    if not (
+        (now_et.hour == 9 and now_et.minute >= 31)
+        or (10 <= now_et.hour <= 14)
+        or (now_et.hour == 15 and now_et.minute <= 55)
+    ):
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            check_position_coverage,
+        )
+        result = await check_position_coverage()
+        if result["gaps"] or result["check_failed"]:
+            logger.warning(
+                f"position_coverage_check: examined {result['examined']}, "
+                f"gaps {len(result['gaps'])}, check_failed {len(result['check_failed'])}"
+            )
+    except Exception as e:
+        logger.error(f"Position coverage check failed: {e}")
+        await notify_job_failure("position_coverage_check", str(e))
 
 
 async def _premarket_gap_risk_job():
@@ -5339,6 +5381,20 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="morning_stop_refresh",
         replace_existing=True,
+    )
+
+    # Position coverage check: every ~15 min, 09:31-15:55 ET (#527) — DETECTOR ONLY,
+    # reads broker truth and confirms a live sell-stop covers every LIVE open
+    # position. Cron slot uses the same hour="9-15" REGISTRATION idiom as
+    # track_position_extremes below, but — unlike that job — a Day-2+ position
+    # genuinely exists at 9:00/9:15, so the DoD's 09:31-15:55 window is enforced
+    # explicitly inside _position_coverage_check_job, not left to the cron slot.
+    _scheduler.add_job(
+        audit_wrap(_position_coverage_check_job, "position_coverage_check"),
+        CronTrigger(hour="9-15", minute="*/15", day_of_week="mon-fri", timezone="America/New_York"),
+        id="position_coverage_check",
+        replace_existing=True,
+        misfire_grace_time=300,
     )
 
     # Post-close stop refresh: 4:20 PM ET — place the next session's GTC stop the

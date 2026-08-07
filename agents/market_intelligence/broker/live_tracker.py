@@ -54,7 +54,10 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.db import get_pool, get_manual_halt_state, _coerce_date, OPEN_POSITION_STATUSES
+from agents.market_intelligence.db import (
+    get_pool, get_manual_halt_state, _coerce_date, OPEN_POSITION_STATUSES,
+    log_audit_event,
+)
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
     MAX_CONCURRENT_LIVE_POSITIONS,
@@ -1017,7 +1020,18 @@ async def morning_stop_refresh() -> int:
 
 async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     """Shared body for both stop-refresh passes. The ONLY difference between them is
-    whether same-day fills are in scope — see each caller's docstring for why."""
+    whether same-day fills are in scope — see each caller's docstring for why.
+
+    #527 Part 1 (2026-08-07): emits ONE `stop_refresh_ran` audit row per run,
+    UNCONDITIONALLY — including the all-quiet case where nothing needs doing.
+    Before this, the function only ever logged via `logger.info`/`logger.error`
+    and stayed completely silent when every position was already covered, so
+    "ran and found everything fine" was indistinguishable from "never ran at
+    all". Measured in prod: `post_close_stop_refresh` produced ZERO
+    `mi_audit_log` rows in the three days since it shipped (PLAN.md #527) —
+    not proof it was broken, just proof we had no way to tell either way.
+    Telemetry only: no placement/threshold/ordering decision below changed.
+    """
     today = et_today()
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1037,14 +1051,21 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
                   AND alert_date <> $1
             """, today)
 
+    examined = len(trades)
     refreshed = 0
     refreshed_tickers: list[str] = []
     unprotected: list[str] = []
+    already_covered: list[str] = []
+    skipped: list[dict] = []  # [{"ticker": ..., "reason": "no_stop_price" | "no_remaining_shares"}]
     for trade in trades:
         ticker = trade["ticker"]
         stop_price = trade["stop_price"]
 
         if not stop_price or not trade["remaining_shares"]:
+            skipped.append({
+                "ticker": ticker,
+                "reason": "no_stop_price" if not stop_price else "no_remaining_shares",
+            })
             continue
 
         # Check if existing stop order is still active.
@@ -1066,6 +1087,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
             )
             if order and str(order.get("status", "")).split(".")[-1].lower() in ("new", "accepted", "held"):
                 logger.debug(f"Stop still active for {ticker}")
+                already_covered.append(ticker)
                 continue
 
         # Re-place stop
@@ -1097,6 +1119,29 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
             f"🚨 *No stop on {', '.join(unprotected)}* — the {label} stop refresh "
             f"could not place one. The position is unprotected for the next session."
         )
+
+    # #527 Part 1 — proof-of-run, UNCONDITIONAL (fires even when nothing needed doing;
+    # that all-quiet case is exactly what was previously unprovable). Per-ticker
+    # breakdown goes in `detail` (JSON), not the summary — the summary stays a fixed
+    # 4-number shape so it reads the same whether 1 position or 40 were examined.
+    reason_counts: dict[str, int] = {}
+    for s in skipped:
+        reason_counts[s["reason"]] = reason_counts.get(s["reason"], 0) + 1
+    skip_summary = ", ".join(f"{k}={v}" for k, v in sorted(reason_counts.items())) or "none"
+    await log_audit_event(
+        "stop_refresh_ran",
+        f"{label}: examined {examined}, placed {refreshed}, "
+        f"already-covered {len(already_covered)}, skipped {len(skipped)} ({skip_summary})",
+        json.dumps({
+            "pass": label,
+            "examined": examined,
+            "placed": refreshed,
+            "placed_tickers": refreshed_tickers,
+            "already_covered": already_covered,
+            "skipped": skipped,
+            "unprotected": unprotected,
+        }),
+    )
     return refreshed
 
 
