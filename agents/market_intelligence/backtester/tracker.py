@@ -60,18 +60,43 @@ def format_trade_attempts(entries_raw, exits_raw, prefix: str = "  ") -> list[st
     lines.append(f"{prefix}ORB entry=${ep:.2f} stop=${es:.2f}{sh_str}")
 
     num_att = max((e.get("attempt", i + 1) for i, e in enumerate(entries)), default=0)
-    exits_by_att = {ex.get("attempt", i + 1): ex for i, ex in enumerate(exits)}
+    # ⚠ ONE ATTEMPT CAN HAVE SEVERAL EXIT LEGS — a partial profit-take and then a stop. This
+    # used to be `{ex.get("attempt", i + 1): ex for ...}`, a dict, so two legs of the SAME
+    # attempt COLLIDED and the later one silently overwrote the earlier (operator 2026-08-08).
+    #
+    # The live case that exposed it: FIGS 08-07 took +$6.90 on a +2R partial and then lost
+    # $13.74 on the remainder. The partial carries no `attempt` key so it defaulted to 1; the
+    # stop carries an explicit `attempt: 1`. The stop won, and the view rendered
+    # "→ 13:51 (stop_hit) P&L $-14" — hiding BOTH the profit-take and the true net (-$6.84).
+    # His words: *"I completely missed this and never saw the telegram."*
+    exits_by_att: dict = {}
+    for i, ex in enumerate(exits):
+        exits_by_att.setdefault(ex.get("attempt", i + 1), []).append(ex)
+
     for e in entries:
         att = e.get("attempt", "?")
         in_t = e.get("time", "")
         in_str = in_t[11:16] if len(in_t) >= 16 else in_t[:10]
-        ex = exits_by_att.get(att, {})
-        out_t = ex.get("time", "")
-        out_str = out_t[11:16] if len(out_t) >= 16 else "open"
-        reason = ex.get("reason", "open")
-        ex_pnl = ex.get("pnl", 0)
+        legs = exits_by_att.get(att) or [{}]
         att_label = f"#{att} " if num_att > 1 else ""
-        lines.append(f"{prefix}{att_label}{in_str} → {out_str} ({reason}) P&L ${ex_pnl:+.0f}")
+        for j, ex in enumerate(legs):
+            out_t = ex.get("time", "")
+            out_str = out_t[11:16] if len(out_t) >= 16 else "open"
+            reason = ex.get("reason", "open")
+            ex_pnl = ex.get("pnl", 0)
+            sh = ex.get("shares")
+            px = ex.get("price")
+            # Shares/price only on multi-leg exits: on the ordinary one-leg case this line has
+            # read the same way for months and there is no reason to churn it.
+            detail = ""
+            if len(legs) > 1 and sh is not None and px is not None:
+                detail = f" {float(sh):g}sh @${float(px):.2f}"
+            # Indent continuation legs so the attempt they belong to stays obvious.
+            lead = f"{prefix}{att_label}{in_str} → " if j == 0 else f"{prefix}{' ' * len(att_label)}      ↳ "
+            lines.append(f"{lead}{out_str} ({reason}){detail} P&L ${ex_pnl:+.0f}")
+        if len(legs) > 1:
+            net = sum(float(x.get("pnl") or 0) for x in legs)
+            lines.append(f"{prefix}{' ' * len(att_label)}      = net P&L ${net:+.0f}")
 
     return lines
 

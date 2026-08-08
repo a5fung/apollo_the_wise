@@ -6567,10 +6567,32 @@ class MarketIntelligenceAgent(BaseAgent):
             # this is a fresh name and not a multi-try grind.
             attempts_label = "attempt" if attempts == 1 else "attempts"
             attempts_suffix = f" · {attempts} {attempts_label}" if attempts else ""
-            return [
+            out = [
                 f"  {emoji} *{r['ticker']}* ${pnl:+,.0f} ({hold}d){date_suffix}{attempts_suffix}",
                 f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",
             ]
+            # ⚠ EVERY LEG, not just the last one (operator 2026-08-08). The two lines above
+            # render `exits[-1]`, so a trade that TOOK PROFIT and was then stopped out showed
+            # only the stop — the profit-take was invisible. His words: *"I completely missed
+            # this and never saw the telegram, and in /trades it just shows the total realized
+            # loss… at the very least /trades should show the partial profit taken for closed
+            # trades."*
+            # The live case: FIGS 08-07 banked +$6.90 on a +2R partial, then lost $13.74 on the
+            # remainder. /trades rendered "❌ FIGS -$7 · stop hit" and nothing else — the system
+            # had done the right thing first and the surface hid it.
+            if len(exits) > 1:
+                legs = []
+                for e in exits:
+                    px, sh = e.get("price"), e.get("shares")
+                    epnl = e.get("pnl")
+                    why = (e.get("reason") or "?").replace("_", " ")
+                    if px is None or sh is None:
+                        continue
+                    pnl_part = f" ${float(epnl):+,.2f}" if epnl is not None else ""
+                    legs.append(f"{float(sh):g}sh @${float(px):.2f}{pnl_part} ({why})")
+                if legs:
+                    out.append("      ↳ " + " → ".join(legs))
+            return out
 
         async def _build_summary() -> str:
             """Open positions (with live Alpaca prices) + last 5 closed + totals."""
