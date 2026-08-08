@@ -99,11 +99,14 @@ def test_alt_season_is_named_when_dominance_is_falling():
                                            "risk": None} for w in ("1M", "3M", "6M")}}]}
     falling = dict(base, btc_dominance={"dominance_pct": 52.0, "change_30d": -1.4})
     assert "ALT SEASON" in format_strength_map(falling)
-    rising = dict(base, btc_dominance={"dominance_pct": 60.0, "change_30d": 0.8})
+    rising = dict(base, btc_dominance={"dominance_pct": 60.0, "change_30d": 1.2})
     assert "BTC leading" in format_strength_map(rising)
-    flat = dict(base, btc_dominance={"dominance_pct": 56.8, "change_30d": 0.1})
-    assert "flat" in format_strength_map(flat), (
-        "a small move must read as FLAT, not be rounded into a direction")
+    # 0.6pts is BELOW the measured median 30-day move (0.71) — it must NOT earn a direction.
+    typical = dict(base, btc_dominance={"dominance_pct": 56.8, "change_30d": 0.6})
+    out = format_strength_map(typical)
+    assert "TYPICAL" in out and "leading" not in out.split("BTC dominance")[1], (
+        "a move smaller than the typical 30-day move was labelled a direction — that is "
+        "noise sold as signal, which is what the 0.5pt first guess did")
 
 
 def test_short_dominance_history_says_so_instead_of_guessing():
@@ -129,6 +132,29 @@ def test_it_does_not_read_the_dead_slope_column():
     assert "slope_30d" not in code, (
         "strength_map reads slope_30d again — that column is dead (97/97 NULL) and nothing "
         "writes it")
+
+
+def test_the_dominance_band_is_CALIBRATED_not_guessed():
+    """My first band was ±0.5pts, picked because it looked small. Measured against the 97 days
+    we hold: the MEDIAN absolute 30-day change is 0.71pts (mean 1.12, range of the whole series
+    3.36pts). A 0.5 band therefore called the median move a direction — noise as signal, roughly
+    half the time. The band is now the median itself."""
+    from agents.market_intelligence.strength_map import _DOM_TYPICAL_30D
+    assert 0.6 <= _DOM_TYPICAL_30D <= 0.9, (
+        f"dominance band {_DOM_TYPICAL_30D} is outside the measured typical move (~0.71pts) — "
+        "re-measure before changing it")
+
+
+def test_the_dominance_number_carries_its_SCALE():
+    """0.8 sounds like nothing until you know the median 30-day move is 0.7 and the entire
+    97-day range is 3.4 points. Operator asked "0.8 points is out of 100?" — the answer has to
+    be on the surface, not in my head."""
+    base = {"complexes": [{"name": "Energy", "has_risk_pair": False,
+                           "windows": {w: {"anchor": 1.0, "expression": 1.0, "spread": 0.0,
+                                           "risk": None} for w in ("1M", "3M", "6M")}}]}
+    out = format_strength_map(dict(base, btc_dominance={"dominance_pct": 56.8,
+                                                        "change_30d": 0.8}))
+    assert "out of 100" in out and "typical 30d move" in out, out
 
 
 def test_the_columns_line_up():

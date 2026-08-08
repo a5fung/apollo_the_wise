@@ -45,6 +45,16 @@ logger = logging.getLogger(__name__)
 # Trading-day lookbacks. Calendar months would drift against holidays; these are bar counts.
 _WINDOWS = (("1M", 21), ("3M", 63), ("6M", 126))
 
+# CALIBRATED, not guessed. Measured over the 97 days of dominance we hold (2026-04-27 →
+# 2026-08-07): full range 55.37-58.73 = 3.36pts, sd 0.99, and across 69 overlapping 30-day
+# windows the MEDIAN ABSOLUTE change is 0.71pts (mean 1.12, min -3.04, max +1.23).
+#
+# So a 0.5pt band — my first guess — would have called the MEDIAN move a direction, i.e.
+# labelled noise as a signal about half the time. The band is the median instead: a move has to
+# beat the typical move before it earns the word "leading". Re-measure if the regime changes;
+# this is a calibration, not a constant.
+_DOM_TYPICAL_30D = 0.7
+
 # `anchor` = the asset itself. `senior`/`junior` = its equity expression, split by SIZE where that
 # split is real. A complex with no honest size pair simply has no `junior`.
 COMPLEXES: tuple[dict[str, Any], ...] = (
@@ -191,13 +201,17 @@ def format_strength_map(data: dict) -> str:
         chg = dom.get("change_30d")
         if chg is None:
             tag = f" (only {dom.get('history_days', 0)}d of history — need 30)"
-        elif chg <= -0.5:
+        elif chg <= -_DOM_TYPICAL_30D:
             tag = f" {chg:+.1f}pts/30d — alts leading (ALT SEASON tilt)"
-        elif chg >= 0.5:
+        elif chg >= _DOM_TYPICAL_30D:
             tag = f" {chg:+.1f}pts/30d — BTC leading"
         else:
-            tag = f" {chg:+.1f}pts/30d — flat"
+            tag = f" {chg:+.1f}pts/30d — TYPICAL, no tilt"
         out.append(f"{'Crypto':<15}BTC dominance {float(dom['dominance_pct']):.1f}%{tag}")
+        # The number is meaningless without its scale — 0.8 sounds like nothing until you know
+        # the median 30-day move is 0.7 and the whole 97-day range is 3.4 points.
+        out.append(f"{'':<15}  (dominance = BTC's share of ALL crypto, out of 100; "
+                   f"typical 30d move {_DOM_TYPICAL_30D}pts)")
     out.append("```")
     out.append("_spread = stocks minus asset · risk = juniors minus seniors "
                "(crypto calls it alt season) · a READ, not a rule_")
