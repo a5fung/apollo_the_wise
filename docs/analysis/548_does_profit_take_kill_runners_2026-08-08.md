@@ -112,3 +112,44 @@ so a fixed-R trigger fires constantly on tight-stopped names and never on wide-s
 - The replay assumes the FIXED mechanism (limit fill AT the 2R level, real-time breakeven). The
   currently deployed mechanism does neither — see #548 — so these numbers describe the rule as
   intended, not as it presently runs.
+
+---
+
+## Addendum — "where does a true runner sell?" (operator, 2026-08-08)
+
+**The mechanism you're thinking of is real: a close below `max(SMA10, SMA20)`.** Not SMA10 alone
+— the trail takes the HIGHER (tighter) of the two, evaluated **once a day against the close**
+(`exit_logic.py`, `trail_mode="sma"`, the deployed default). Nothing in the exit path sees
+intraday price, so it is a close-only decision.
+
+So a runner's full ladder is:
+
+1. **+2R intraday** → sell 1/3, arm breakeven. *(New on 2026-08-01. The only intraday mechanism.)*
+2. **Breakeven stop** on the remaining 2/3.
+3. **Close below max(SMA10, SMA20)** → trail out. **Needs ≥10 daily closes to exist at all.**
+4. *(Day 3-5 partial — being replaced by (1).)*
+
+### ⚠ On live money, step 3 has never happened and currently cannot
+
+| | live | paper |
+|---|---|---|
+| closed trades | 17 | 34 |
+| average hold | **0.1 days** | 3.8 days |
+| longest hold | **2 days** | 23 days |
+| ever reached day 10 | **0** | 5 |
+| `sma_trail_stop` exits | **0** | 2 |
+
+Live exit reasons, all 18 legs across 17 trades: **17 × `stop_hit`, 1 × `partial_profit`.** The
+moving-average trail is not a rule the live book has ever been subject to — it is a rule the live
+book has never survived long enough to reach.
+
+**So the honest answer to "where does a true runner sell": on live money, nowhere — there has
+never been a runner.** The trail is the designed answer and it is currently theoretical. It has
+fired exactly twice in the system's history, both in paper.
+
+This reframes the +2R discussion: today the +2R partial is not competing with the MA trail for a
+runner's profit, because the trail has never had a trade to act on. It is competing with
+`stop_hit` at −1R.
+
+⚠ It also means the runner-preservation evidence in this document is **entirely paper-derived**,
+and paper is the only cohort where trades live long enough for a trail to matter.
