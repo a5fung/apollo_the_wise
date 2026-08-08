@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import re
+from shared.llm_response import first_text
 
 # Materiality tiers (ordinal). Higher = more material to the company.
 MATERIALITY_TIERS = ("immaterial", "minor", "material", "transformative")
@@ -228,7 +229,7 @@ async def judge_materiality_llm(client, *, company, sector, market_cap,
     await log_anthropic_call_safe(model=_MODEL, caller="catalyst_materiality",
                                    usage=getattr(resp, "usage", None),
                                    stop_reason=getattr(resp, "stop_reason", None))
-    raw = getattr(resp.content[0], "text", "") or ""
+    raw = first_text(resp)  # #544: never content[0]
     try:
         tier = (json.loads(_extract_json_object(raw)).get("tier") or "").lower()
     except (ValueError, AttributeError):

@@ -78,6 +78,7 @@ from shared.models import AgentName, AgentRequest, AgentResponse
 logger = logging.getLogger(__name__)
 
 from shared.llm_models import MARKET_AGENT_MODEL
+from shared.llm_response import first_text
 
 # Common short words that match the ticker regex but are never tickers.
 # Shared across all three ticker-extraction call sites in execute_task.
@@ -6924,7 +6925,7 @@ class MarketIntelligenceAgent(BaseAgent):
         await log_anthropic_call_safe(model=MARKET_AGENT_MODEL, caller="market_agent_general",
                                        usage=getattr(response, "usage", None),
                                        stop_reason=getattr(response, "stop_reason", None))
-        return self._ok(request, result=response.content[0].text)
+        return self._ok(request, result=first_text(response))  # #544: never content[0]
 
 
 async def _build_hud_text() -> str:

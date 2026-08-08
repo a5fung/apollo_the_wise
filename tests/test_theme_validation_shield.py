@@ -23,6 +23,11 @@ from agents.market_intelligence import theme_engine
 def _fake_client(remove_list):
     """Async Anthropic client stub whose messages.create returns {"remove": [...]}."""
     class _Block:
+        # `type` is REQUIRED on every fake block (#544): the real API always sets it, and
+        # our reader now selects BY type instead of by position. A fake without it is a
+        # shape production never produces — the exact "fabricated input proves nothing"
+        # trap that let the 08-06 thinking-block outage through every existing test.
+        type = "text"
         text = json.dumps({"remove": remove_list})
 
     class _Resp:

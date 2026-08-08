@@ -1033,9 +1033,31 @@ catalyst, say so explicitly."""
         await log_anthropic_call_safe(model=GROUNDED_GRADE_MODEL, caller="ep_catalyst_grade",
                                        usage=getattr(response, "usage", None),
                                        stop_reason=getattr(response, "stop_reason", None))
+        # ⚠ The SECOND shape failure of 2026-08-06, and it is a DIFFERENT bug from the
+        # extractor's: `Claude catalyst classification failed for INOD: 'analysis'` — a
+        # KeyError on a response KEY, not a block position. Cause: when max_tokens cuts a
+        # forced tool call off, the SDK still returns a tool_use block with PARTIAL input.
+        # `quality` is emitted first and survives; `analysis` gets truncated away, and
+        # `result["analysis"]` raises straight into the fail-open below, grading a real
+        # catalyst as routine. This ran at max_tokens=300 with 25% of calls at the cap.
+        #
+        # Two fixes, because the ceiling alone is not a guarantee: the cap is now 1500, AND a
+        # truncated response is REJECTED outright rather than half-read (#543/#544 — same rule
+        # the shared judge transport now enforces).
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            raise ValueError(
+                f"catalyst grade TRUNCATED at max_tokens for {ticker} — refusing to grade on a "
+                "partial tool call")
         tool_block = next(b for b in response.content if b.type == "tool_use")
         result = tool_block.input
-        return result["quality"], result["analysis"]
+        # .get() with an explicit check, not [] — a missing key must read as "the model did not
+        # answer", never as an exception indistinguishable from a network failure.
+        quality, analysis = result.get("quality"), result.get("analysis")
+        if not quality:
+            raise ValueError(
+                f"catalyst grade returned no quality for {ticker} "
+                f"(keys: {sorted(result)}, stop_reason={getattr(response, 'stop_reason', None)})")
+        return quality, analysis or ""
     except Exception as e:
         # #273: a credit-exhaustion failure here silently turns every catalyst
         # into "routine" — alert it (terminal + actionable) before failing open.

@@ -39,6 +39,7 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 logger = logging.getLogger(__name__)
 
 from shared.llm_models import METRICS_EXTRACTION_MODEL as _EXTRACTION_MODEL
+from shared.llm_response import content_block_types, first_text
 
 _EXTRACTION_PROMPT = """You will extract structured earnings metrics from news articles about {ticker}.
 
@@ -201,19 +202,17 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
             # exception. Take the first block that IS text, rather than assuming
             # position — the shape is a list precisely because it can hold more than
             # one kind of block.
-            _blocks = data.get("content") or []
-            content = next(
-                (b.get("text", "") for b in _blocks
-                 if isinstance(b, dict) and b.get("type") == "text" and b.get("text")),
-                "",
-            ).strip()
+            # ONE canonical reader (#544, shared/llm_response.py) — this hand-rolled loop was
+            # the original fix and is now the ninth-plus caller of the same rule. Keeping a
+            # local copy is how `extract_stop_leg_id` nearly got four divergent versions.
+            content = first_text(data).strip()
             if not content:
                 # Be explicit rather than falling into a confusing JSON error: name the
                 # block types we got, so the NEXT response-shape change is diagnosable
                 # from one log line instead of a morning of forensics.
                 logger.warning(
                     "catalyst_metrics_extractor: no text block in response "
-                    f"(block types: {[b.get('type') for b in _blocks if isinstance(b, dict)]})"
+                    f"(block types: {content_block_types(data)})"
                 )
                 return None
 

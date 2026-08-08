@@ -53,6 +53,7 @@ from agents.market_intelligence.backtester.tracker import (
 from core.notifications import notify_job_failure, notify_job_success
 from core.job_audit import audit_wrap
 from shared.llm_models import DESCRIPTION_MODEL
+from shared.llm_response import first_text
 
 logger = logging.getLogger(__name__)
 
@@ -490,7 +491,7 @@ async def _nightly_data_pull():
                                                usage=getattr(resp, "usage", None),
                                                stop_reason=getattr(resp, "stop_reason", None))
                 import json
-                raw = resp.content[0].text.strip()
+                raw = first_text(resp).strip()  # #544: never content[0]
                 # Strip markdown code fences if present
                 if raw.startswith("```"):
                     raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]

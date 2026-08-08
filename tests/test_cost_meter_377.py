@@ -328,6 +328,7 @@ def test_site_catalyst_materiality_logs_row(captured_inserts):
         cache_read_input_tokens = 0
 
     class _TextBlock:
+        type = "text"  # required (#544): the reader selects by type
         text = '{"tier": "material"}'
 
     class _Resp:

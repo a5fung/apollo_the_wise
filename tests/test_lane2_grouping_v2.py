@@ -74,7 +74,8 @@ def _seed(ticker, d=date(2026, 7, 6), story="20-year AI data-center lease worth 
 
 class _FakeMsg:
     def __init__(self, text):
-        self.content = [SimpleNamespace(text=text)]
+        # type="text" is required (#544) — the reader selects by type, not position.
+        self.content = [SimpleNamespace(type="text", text=text)]
         self.usage = None
 
 

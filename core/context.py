@@ -12,6 +12,7 @@ import anthropic
 from shared.llm_models import COMPRESSION_MODEL
 from shared.models import ConversationMessage, MessageRole
 from shared.secrets import get_secrets
+from shared.llm_response import first_text
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
     except Exception:
         pass
 
-    return response.content[0].text
+    return first_text(response)  # #544: never content[0]
 
 
 def build_system_prompt(

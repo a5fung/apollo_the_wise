@@ -78,6 +78,7 @@ from agents.market_intelligence.theme_merge_arm import (
     family_of,
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
+from shared.llm_response import content_block_types, first_text
 
 # Global ticker ban — fires when a ticker has been validation-removed from
 # ≥ N distinct themes in the last D days. Closes the per-(theme, ticker)
@@ -804,7 +805,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
                                        usage=getattr(msg, "usage", None),
                                        stop_reason=getattr(msg, "stop_reason", None))
-        raw = _extract_json_object(msg.content[0].text if msg.content else "")
+        raw = _extract_json_object(first_text(msg))  # #544: never content[0]
         parsed = json.loads(raw)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
         cand_tk = {a["ticker"] for a in cand}
@@ -919,7 +920,7 @@ async def _discover_lane2_registry(
     if usage is not None and getattr(usage, "input_tokens", None) is not None:
         out["usage"] = {"input_tokens": usage.input_tokens,
                         "output_tokens": getattr(usage, "output_tokens", None)}
-    raw = _extract_json_object(msg.content[0].text if msg.content else "")
+    raw = _extract_json_object(first_text(msg))  # #544: never content[0]
     parsed = json.loads(raw)
     themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
     raw_seeds = parsed.get("seeds", []) if isinstance(parsed, dict) else []
@@ -1295,7 +1296,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             await log_anthropic_call_safe(model=DESCRIPTION_MODEL, caller="theme_descriptions",
                                            usage=getattr(resp, "usage", None),
                                            stop_reason=getattr(resp, "stop_reason", None))
-            raw = resp.content[0].text.strip()
+            raw = first_text(resp).strip()  # #544: never content[0]
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
                 raw = raw.rstrip("```").strip()
@@ -2493,10 +2494,11 @@ async def _validate_theme_membership(
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
             raise ValueError("empty validation response")
-        raw_block = resp.content[0]
-        raw = (getattr(raw_block, "text", "") or "").strip()
+        raw = first_text(resp).strip()  # #544: never content[0]
         if not raw:
-            raise ValueError(f"validation returned no text (stop_reason={resp.stop_reason})")
+            raise ValueError(
+                f"validation returned no text (stop_reason={resp.stop_reason}, "
+                f"blocks={content_block_types(resp)})")
         # Strip code fences if present
         if raw.startswith("```"):
             parts = raw.split("\n", 1)
@@ -3668,7 +3670,7 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             ),
             messages=[{"role": "user", "content": f"{question}\n\nContext:\n{context}"}],
         )
-        verdict = resp.content[0].text
+        verdict = first_text(resp)  # #544: never content[0]
         await log_audit_event(
             "advisor_call",
             summary=f"[{caller}] {question[:120]}",
