@@ -35,6 +35,28 @@ import re
 import pytest
 
 MI = pathlib.Path("agents/market_intelligence")
+def _code_only(src: str) -> str:
+    """Source with comments and docstrings removed.
+
+    An ABSENCE assertion against raw source is self-defeating: the comment recording why a
+    phrase was removed contains that phrase. Four tests in this repo have failed on their own
+    explanation. Only executable text can honestly answer "does the code still say X?".
+    """
+    import io
+    import tokenize
+    out, prev_end, prev_tok = [], (1, 0), None
+    for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+        if tok.type == tokenize.COMMENT:
+            continue
+        if tok.type == tokenize.STRING and prev_tok in (None, tokenize.INDENT,
+                                                        tokenize.NEWLINE, tokenize.NL):
+            continue  # a bare string expression = a docstring
+        if tok.start != prev_end:
+            out.append(" ")
+        out.append(tok.string)
+        prev_end, prev_tok = tok.end, tok.type
+    return "".join(out)
+
 TRACKER = (MI / "spend_tracker.py").read_text(encoding="utf-8")
 BOARD = (MI / "cost_board.py").read_text(encoding="utf-8")
 SCHED = (MI / "scheduler.py").read_text(encoding="utf-8")
@@ -372,3 +394,117 @@ def test_both_truncation_guards_share_ONE_definition_of_truncated():
     ep = (MI / "ep_detector.py").read_text(encoding="utf-8")
     assert 'getattr(response, "stop_reason", None) == "max_tokens"' not in ep, (
         "ep_detector hand-rolls the truncation check again")
+
+
+# ── the check must not blame a call site for rows that predate the mechanism ───────────────
+#
+# Its FIRST live night (2026-08-08) it Telegrammed 🟠 NOT REPORTING naming `theme_synthesis`,
+# on the strength of a single NULL row from the 08-07 nightly theme run — written at 22:05
+# UTC, three hours BEFORE the commit that instrumented that call site existed. The call site
+# was provably correct; the row simply predated it, as every row in the table necessarily did
+# at that moment. The alert text then sent the reader to "fix" a correct call site.
+#
+# These are BEHAVIOURAL, not source-scans: the bug was in what the query counted, and a grep
+# for a constant cannot see that.
+
+class _FakeUsageConn:
+    """Routes the two shapes compute_truncation_check issues: the instrumentation-floor
+    fetchval, and the per-caller GROUP BY. `rows` is filtered by the floor the way Postgres
+    would, so the test exercises the actual exclusion rather than asserting an argument."""
+
+    def __init__(self, floor, rows):
+        self._floor, self._rows = floor, rows
+        self.floor_applied = None
+
+    async def fetchval(self, sql, *args):
+        assert "min(created_at)" in sql and "stop_reason IS NOT NULL" in sql
+        return self._floor
+
+    async def fetch(self, sql, *args):
+        assert "created_at >= $2" in sql, (
+            "the per-caller query no longer applies an instrumentation floor — it will blame "
+            "callers for rows written before stop_reason was ever recorded")
+        self.floor_applied = args[1]
+        kept = [r for r in self._rows if r["at"] >= args[1]]
+        agg: dict[str, dict] = {}
+        for r in kept:
+            a = agg.setdefault(r["caller"], {"caller": r["caller"], "calls": 0,
+                                             "truncated": 0, "unreported": 0, "cap_hit": None})
+            a["calls"] += 1
+            a["truncated"] += r["stop_reason"] == "max_tokens"
+            a["unreported"] += r["stop_reason"] is None
+        return list(agg.values())
+
+
+class _FakeUsagePool:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def acquire(self):
+        conn = self._conn
+
+        class _Ctx:
+            async def __aenter__(self):
+                return conn
+
+            async def __aexit__(self, *a):
+                return False
+        return _Ctx()
+
+
+def _run_check(monkeypatch, floor, rows):
+    import asyncio
+    from agents.market_intelligence import cost_board as cb
+    conn = _FakeUsageConn(floor, rows)
+    monkeypatch.setattr(cb, "get_pool", lambda: _fake_pool(conn))
+    return asyncio.run(cb.compute_truncation_check()), conn
+
+
+async def _fake_pool(conn):
+    return _FakeUsagePool(conn)
+
+
+def test_a_null_row_written_before_instrumentation_is_not_a_wiring_gap(monkeypatch):
+    """The exact 2026-08-08 false positive, replayed."""
+    from datetime import datetime, timedelta, timezone
+    floor = datetime(2026, 8, 8, 0, 53, tzinfo=timezone.utc)   # the instrumenting commit
+    rows = [
+        # the 08-07 nightly run — NULL because stop_reason did not exist yet
+        {"caller": "theme_synthesis", "stop_reason": None, "at": floor - timedelta(hours=3)},
+        # a healthy post-instrumentation call from the same caller
+        {"caller": "theme_synthesis", "stop_reason": "end_turn", "at": floor + timedelta(hours=1)},
+    ]
+    out, conn = _run_check(monkeypatch, floor, rows)
+    assert conn.floor_applied == floor
+    assert out["unreported"] == [], (
+        "theme_synthesis was reported as not-reporting on the strength of a row written "
+        "before stop_reason existed — the false positive this fix exists to remove")
+
+
+def test_a_null_row_written_AFTER_instrumentation_is_still_caught(monkeypatch):
+    """The floor must not become a blanket amnesty — a genuine gap appearing after the
+    mechanism exists is precisely what this check is for."""
+    from datetime import datetime, timedelta, timezone
+    floor = datetime(2026, 8, 8, 0, 53, tzinfo=timezone.utc)
+    rows = [
+        {"caller": "some_new_writer", "stop_reason": None, "at": floor + timedelta(days=1)},
+    ]
+    out, _ = _run_check(monkeypatch, floor, rows)
+    assert [x["caller"] for x in out["unreported"]] == ["some_new_writer"]
+
+
+def test_no_row_has_EVER_reported_is_its_own_louder_signal(monkeypatch):
+    """If nothing anywhere reports stop_reason the mechanism itself is dark — strictly worse
+    than one unwired caller. Returning an empty result would be the silent pass this whole
+    check exists to prevent."""
+    out, _ = _run_check(monkeypatch, None, [])
+    assert out["instrumentation_dark"] is True
+    assert out["truncating"] == [] and out["unreported"] == []
+
+
+def test_the_alert_no_longer_blames_a_missing_kwarg():
+    """Post-refactor a call site structurally cannot omit stop_reason, so 'your call site is
+    missing stop_reason' points the reader at provably correct code."""
+    assert "call site is missing stop_reason" not in _code_only(BOARD), (
+        "the NOT-REPORTING alert still tells the operator a call site is missing the kwarg — "
+        "impossible since 2026-08-08, and it misdirected the reader the first night it fired")

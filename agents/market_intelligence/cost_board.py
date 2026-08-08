@@ -659,9 +659,36 @@ _TRUNC_BY_DESIGN = {
 
 
 async def compute_truncation_check(lookback_hours: int = 24) -> dict:
-    """Per-caller truncation + reporting-coverage over the window. Pure read on api_usage."""
+    """Per-caller truncation + reporting-coverage over the window. Pure read on api_usage.
+
+    ⚠ Rows written BEFORE stop_reason instrumentation existed are excluded, and that is not a
+    detail — without it this check cries wolf for a full window after every rollout. It did,
+    on its first live night (2026-08-08): it named `theme_synthesis` as a missing call site
+    on the strength of one NULL row from the 08-07 nightly theme run — written at 22:05 UTC,
+    THREE HOURS before the commit that instrumented that very call site existed. The call
+    site was correct; the rows simply predated it, as every row in the table necessarily did.
+    A caller cannot be blamed for not reporting a field that had not been built yet.
+
+    The floor is DERIVED from the data (the earliest row that ever carried a stop_reason)
+    rather than pinned to a date, so it needs no maintenance and cannot rot. It is also the
+    conservative choice: it only ever excludes rows from before the mechanism's very first
+    success, so a genuine wiring gap that appears AFTER instrumentation exists is still
+    caught in full — which is the case this check is actually for.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # When did stop_reason first get recorded at all? Everything before this instant is
+        # pre-instrumentation and carries no information about call-site wiring.
+        floor = await conn.fetchval(
+            "SELECT min(created_at) FROM api_usage WHERE stop_reason IS NOT NULL")
+        if floor is None:
+            # No call has EVER reported a stop_reason. That is not "nothing to report" — it
+            # means the mechanism itself is dark, which is strictly worse than any single
+            # caller being unwired. Returning an empty result here would be the exact silent
+            # pass this check exists to prevent, so it gets its own louder signal.
+            return {"window_hours": lookback_hours, "truncating": [], "unreported": [],
+                    "instrumentation_dark": True}
+
         rows = await conn.fetch("""
             SELECT caller,
                    count(*)                                                    AS calls,
@@ -670,8 +697,9 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
                    max(output_tokens) FILTER (WHERE stop_reason = 'max_tokens') AS cap_hit
               FROM api_usage
              WHERE created_at > now() - ($1 || ' hours')::interval
+               AND created_at >= $2
              GROUP BY 1
-        """, str(int(lookback_hours)))
+        """, str(int(lookback_hours)), floor)
 
     truncating, unreported = [], []
     for r in rows:
@@ -688,7 +716,8 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
 
     truncating.sort(key=lambda x: (-x["pct"], -x["truncated"]))
     return {"window_hours": lookback_hours, "truncating": truncating,
-            "unreported": unreported}
+            "unreported": unreported, "instrumentation_dark": False,
+            "since": floor.isoformat()}
 
 
 async def run_truncation_check() -> dict | None:
@@ -703,6 +732,20 @@ async def run_truncation_check() -> dict | None:
     the ceiling is fixed."""
     t = await compute_truncation_check()
     truncating, unreported = t["truncating"], t["unreported"]
+    if t.get("instrumentation_dark"):
+        # Worse than any single unwired caller: nothing anywhere is reporting stop_reason,
+        # so truncation is once again undetectable. Shout, and do not dedupe.
+        await log_audit_event(
+            "llm_truncation_check",
+            summary="stop_reason is dark — NO api_usage row has ever reported one",
+            detail=json.dumps(t))
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(
+            "🔴 *TRUNCATION DETECTION IS DARK*\n"
+            "No API call has ever recorded why the model stopped, so a cut-off "
+            "response cannot be told from a complete one. This is the outage the "
+            "check exists to catch, one level up.")
+        return t
     if not truncating and not unreported:
         return None
     await log_audit_event(
@@ -729,6 +772,12 @@ async def run_truncation_check() -> dict | None:
         for x in unreported[:6]:
             lines.append(f"{x['caller']:<28} {x['calls']} call"
                          f"{'' if x['calls'] == 1 else 's'}, stop_reason always NULL")
-        lines += ["```", "Their spend_tracker call site is missing stop_reason (#543)."]
+        # NOT "the call site is missing stop_reason" any more — since 2026-08-08 the trackers
+        # derive it from the response, so a call site structurally cannot omit it. Saying
+        # otherwise sends the reader to inspect a call site that is provably correct, which
+        # is exactly what happened the first night this fired.
+        lines += ["```", "The trackers derive stop_reason from the response, so this is NOT "
+                  "a missing kwarg: either the response shape stopped carrying stop_reason, "
+                  "or something outside the two spend trackers is writing api_usage rows."]
     await send_telegram_message("\n".join(lines))
     return t
