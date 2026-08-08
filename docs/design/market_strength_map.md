@@ -45,7 +45,7 @@ A **two-layer map**:
 
 Surface = evening brief and/or `/hud`. **No new commands** (operator constraint 2026-07-20).
 
-## ⚠ THE CORE OPEN QUESTION — asset ↔ equity mixing (operator, must resolve at design time)
+## ✅ RESOLVED 2026-08-08 — asset ↔ equity mixing: GROUP THEM (the hybrid complex)
 
 The asset-vs-equity split is **not clean**. A precious-metals move shows up in *both* gold/silver
 (the asset) *and* the miners (equities) — and we want to see strength in both, plus their relationship.
@@ -53,7 +53,9 @@ Same for crypto ↔ crypto miners/MSTR/COIN, energy/commodities ↔ energy equit
 An equity expression is a **leveraged, higher-beta play on the underlying asset plus idiosyncratic
 equity risk** — miners can lead, confirm, or lag the metal, and that divergence is itself signal.
 
-**How do we mix the two? Options to weigh (do NOT decide yet — flesh out in #494):**
+**OPERATOR RULED 2026-08-08: option 3, the COMPLEX.** The two rejected options are kept below with the reason each lost, so neither is re-proposed later.
+
+**The options as they were weighed:**
 
 1. **Separate** — asset-class RS (gold, crypto, oil) as one layer; equity RS (ecosystem board) as
    another. Simple; loses the link.
@@ -116,13 +118,51 @@ stated choice — that IS the operator's call and the reason this session exists
   (micro-caps dominate the leaderboard; `mcap_bucket`/`rs_in_bucket` exist but the default view ignores
   them) + young coins NULL composite (HYPE has 174 bars, ~1wk short of the 6-mo window). → #492-B.
 
-## Phased slices + status
+## Phased slices + status (the #494 deliverable — sequence follows the 08-08 ruling)
+
+**The unit is a COMPLEX: an asset anchor + its equity expression + the divergence between them.**
+
+| complex | asset anchor (have) | equity expression (have) |
+|---|---|---|
+| Precious metals | GLD · IAU · SLV · PPLT | GDX · GDXJ · SIL |
+| Crypto | BTC/ETH/SOL (`crypto_daily_closes`, 289 tokens) | MSTR · COIN · miners |
+| Energy | USO · UNG | XLE · XOP |
+| Industrial metals | CPER · DBC | COPX · XME |
+| Uranium | — | URA |
+| Agriculture | WEAT · CORN | — |
+| Macro backdrop | TLT (rates) · UUP (dollar) | — |
+
+All 20 ETF proxies already carry **279 daily bars** in `mi_daily_closes` (2025-06-30 → today) — no
+new ingest, no spot feed. 279 clears the composite RS window (~126 bars for the 6-month leg).
 
 - **Slice 1 — crypto-vs-market pulse (#493): SHIPPED 2026-07-20** (evening brief, under regime).
-- **#492-B — crypto-token depth:** tiered (bucketed) RS + partial-history composite fallback (un-shadow after).
-- **#491 — theme thesis-drift:** stale-identity anchoring (crypto-miner → neocloud).
-- **#494 — full design:** the asset↔equity mixing decision + the top asset-class layer + Metals/Energy
-  rows + how it all drills into the ecosystem board. **Design-first before building further slices.**
+  Retrofit later as the Crypto complex's top line rather than a separate surface.
+
+- **Slice 2 — the complex TABLE, read-only, no ranking.** Compute per complex: anchor return,
+  equity-expression return, and the **spread** between them, over 1M/3M/6M. Render in the evening
+  brief. ⚠ **Deliberately ships BEFORE any cross-asset ranking** — the spread is the new
+  information ("miners are outrunning the metal"), and it needs no common RS frame to be correct.
+  This is the slice that answers his original question and it is unblocked today.
+
+- **Slice 3 — the common cross-asset frame. ⛔ BLOCKED ON A SECOND OPERATOR RULING.** Gold runs
+  ~12% annualised vol, a junior miner ~60%. Ranking them on one scale requires choosing raw
+  trailing-return percentile vs vol-adjusted, and that choice CHANGES WHAT RANKS TOP. It is a
+  criteria decision, not an implementation detail — surface it, do not pick it silently. Slice 2
+  is designed to be useful without it.
+
+- **Slice 4 — asset-class leadership row** ("where is the money going?"), built on slice 3's frame.
+  Blocked by slice 3.
+
+- **Slice 5 — drill-down wiring**: from a leading complex into the ecosystem board (equities) or
+  tiered token RS (crypto, #492-B). Depends on #492-B for the crypto side.
+
+**Dependencies now unblocked by the ruling:** #493 (retrofit into the Crypto complex) and #492-B
+(crypto-token depth) can be sequenced — both were waiting on the mixing decision.
+
+**Surface constraint, unchanged:** evening brief and/or `/hud`. **No new commands.**
+
+⚠ **Data hygiene before any percentile:** `crypto_daily_closes` carries at least one row stamped
+`1969-12-31` (epoch zero) which would skew any "since inception" frame. Clean it in slice 2.
 
 ## Related
 
