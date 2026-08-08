@@ -118,6 +118,39 @@ stated choice — that IS the operator's call and the reason this session exists
   (micro-caps dominate the leaderboard; `mcap_bucket`/`rs_in_bucket` exist but the default view ignores
   them) + young coins NULL composite (HYPE has 174 bars, ~1wk short of the 6-mo window). → #492-B.
 
+## ⭐ THE RISK-SPECTRUM AXIS (operator 2026-08-08) — a complex has TWO spreads, not one
+
+His words, kept verbatim because the framing is the contribution:
+
+> *"maybe there's sub splits on market cap for example, works for crypto as well, if smaller caps
+> rise faster which is expected in a bull market with more risk taking, ppl going further into
+> riskier spectrum, this is info. In crypto world, this is called alt season."*
+
+So a complex carries **two independent readings**, and conflating them loses the second:
+
+1. **DIRECTION** — anchor vs its equity expression. *Are the miners outrunning the metal?*
+2. **RISK APPETITE** — large-cap expression vs small-cap expression **inside the same complex**.
+   *Are the juniors outrunning the seniors?* Small-caps leading = money moving further out the
+   risk curve. **This is the same phenomenon crypto calls ALT SEASON**, and naming it that way
+   makes it one concept across every asset class instead of a crypto curiosity.
+
+**It generalises because the pairs already exist as ETFs:**
+
+| complex | senior / large | junior / small | the risk read |
+|---|---|---|---|
+| Precious metals | **GDX** (senior miners) | **GDXJ** (junior miners) | juniors leading = risk-on in metals |
+| Energy | **XLE** (integrated majors) | **XOP** (E&P, higher beta) | E&P leading = risk-on in energy |
+| Crypto | BTC | alts (`crypto_rs_scores.mcap_bucket`, `crypto_btc_dominance`) | falling dominance = **alt season** |
+
+⚠ **Only claim the split where it is REAL.** Uranium (URA alone), agriculture (WEAT/CORN) and the
+macro row have no honest large-vs-small pair in what we hold — those complexes show DIRECTION
+only. Inventing a spectrum from two ETFs that merely differ in composition (e.g. XME vs COPX,
+which differ by *metal*, not by *size*) would be a fabricated signal, and a fabricated signal is
+worse than a missing one.
+
+⚠ **This is a READ, not a rule.** It says where risk appetite is going; it does not size, enter or
+exit anything.
+
 ## Phased slices + status (the #494 deliverable — sequence follows the 08-08 ruling)
 
 **The unit is a COMPLEX: an asset anchor + its equity expression + the divergence between them.**

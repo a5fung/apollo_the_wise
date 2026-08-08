@@ -1020,6 +1020,7 @@ def _format_evening_briefing(
     turners: list[dict] | None = None,
     recovery: list[dict] | None = None,
     crypto_pulse: dict | None = None,
+    strength_map: dict | None = None,
     briefing_date: str = "",
     fund_flags: dict[str, dict] | None = None,
     theme_rs_data: dict[str, dict] | None = None,
@@ -1079,6 +1080,16 @@ def _format_evening_briefing(
     crypto_pulse_section = _format_crypto_pulse_section(crypto_pulse or {})
     if crypto_pulse_section:
         sections.append(crypto_pulse_section)
+        sections.append("")
+    # #494 slice-2 of the Market Strength Map: the COMPLEX table — each asset next to the
+    # equities that express it, plus the SPREAD between them (operator-ruled 2026-08-08:
+    # "group them"). Sits directly under the crypto pulse, which is slice 1 of the same map.
+    # Fetched by the async caller and passed in, exactly like `crypto_pulse` — this formatter
+    # is SYNC and must stay that way.
+    from agents.market_intelligence.strength_map import format_strength_map
+    strength_map_section = format_strength_map(strength_map or {})
+    if strength_map_section:
+        sections.append(strength_map_section)
         sections.append("")
     sections += [
         _format_rs_section(rs_leaders[:10], section_num=2, fund_flags=fund_flags),  # top-10 (#479)
@@ -1391,6 +1402,17 @@ async def send_evening_briefing(
 
     mode = brief_mode(today)
 
+    # #494 slice 2 — the strength map is fetched OUTSIDE the gather below, deliberately.
+    # That gather is the brief's critical path: if one coroutine raises, asyncio.gather kills
+    # the whole brief. The map is a READ-ONLY section and must never be able to do that, so it
+    # gets its own try/except and degrades to "no section" instead.
+    strength_map: dict | None = None
+    try:
+        from agents.market_intelligence.strength_map import compute_strength_map
+        strength_map = await compute_strength_map(today)
+    except Exception as e:  # loud-ok: read-only section; the brief matters more than the map
+        logger.warning(f"strength map unavailable, brief continues without it: {e}")
+
     regime, rs_leaders, themes, velocity, pullbacks, turners, recovery, crypto_pulse, fund_flags, prior_theme_scores, warnings, cooldowns = (
         await asyncio.gather(
             get_latest_regime(include_breadth_history=True),
@@ -1533,6 +1555,7 @@ async def send_evening_briefing(
             turners=turners,
             recovery=recovery,
             crypto_pulse=crypto_pulse,
+            strength_map=strength_map,
             briefing_date=today_str,
             fund_flags=fund_flags,
             theme_rs_data=theme_rs_data,

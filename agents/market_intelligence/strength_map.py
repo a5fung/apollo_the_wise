@@ -1,0 +1,187 @@
+"""Market Strength Map — slice 2: the COMPLEX table (#494). READ-ONLY, no money.
+
+Operator's north star (2026-07-20): *"Do we have a holistic view of where strength is? It can be
+crypto, healthcare, gold/silver, whatever it is."*
+
+He ruled the design fork on 2026-08-08: **GROUP them.** A **complex** is an asset anchor plus the
+equities that express it, shown together — because a precious-metals move appears in BOTH gold and
+the miners, and the relationship between them is itself the signal. The two rejected options
+(separate layers / one combined ranking) and why they lost are in
+`docs/design/market_strength_map.md`.
+
+**A complex carries TWO readings, and conflating them loses the second** (operator, same day):
+
+1. **DIRECTION** — anchor vs its equity expression. *Are the miners outrunning the metal?*
+2. **RISK APPETITE** — senior vs junior INSIDE the complex. *Are the juniors outrunning the
+   seniors?* His words: *"if smaller caps rise faster which is expected in a bull market with more
+   risk taking, ppl going further into riskier spectrum, this is info. In crypto world, this is
+   called alt season."* Naming it that way makes it ONE concept across every asset class rather
+   than a crypto curiosity.
+
+⚠ **The risk read is only shown where the pair is REAL.** GDX/GDXJ is senior-vs-junior miners and
+XLE/XOP is majors-vs-E&P — both are genuine size/beta splits. Uranium, agriculture and the macro
+row have no honest pair in what we hold, so they show DIRECTION only. Two ETFs that differ by
+*metal* rather than by *size* (XME vs COPX) would be a fabricated spectrum, and a fabricated
+signal is worse than a missing one.
+
+⚠ **This is a READ, not a rule.** It says where strength and risk appetite are; it sizes nothing,
+enters nothing, exits nothing.
+
+**Deliberately ships BEFORE any cross-asset ranking.** Ranking gold against a junior miner on one
+scale needs a common frame (raw return vs vol-adjusted) that changes what ranks top — a criteria
+decision still owed by the operator. The SPREAD needs no such frame to be correct, which is why
+it is sequenced first.
+"""
+from __future__ import annotations
+
+import logging
+from datetime import date
+from typing import Any
+
+from agents.market_intelligence.db import get_pool
+
+logger = logging.getLogger(__name__)
+
+# Trading-day lookbacks. Calendar months would drift against holidays; these are bar counts.
+_WINDOWS = (("1M", 21), ("3M", 63), ("6M", 126))
+
+# `anchor` = the asset itself. `senior`/`junior` = its equity expression, split by SIZE where that
+# split is real. A complex with no honest size pair simply has no `junior`.
+COMPLEXES: tuple[dict[str, Any], ...] = (
+    {"name": "Precious metals", "anchor": ["GLD", "SLV"], "senior": ["GDX"], "junior": ["GDXJ"]},
+    {"name": "Energy", "anchor": ["USO", "UNG"], "senior": ["XLE"], "junior": ["XOP"]},
+    # No size pair: URA is the only uranium vehicle we carry; WEAT/CORN are different crops, not
+    # different sizes. Direction only — see the module docstring on fabricated spectrums.
+    {"name": "Uranium", "anchor": [], "senior": ["URA"], "junior": []},
+    {"name": "Agriculture", "anchor": ["WEAT", "CORN"], "senior": [], "junior": []},
+    {"name": "Macro backdrop", "anchor": ["TLT", "UUP"], "senior": [], "junior": []},
+)
+
+_CLOSES_SQL = """
+    SELECT ticker, trade_date, close
+      FROM mi_daily_closes
+     WHERE ticker = ANY($1::text[]) AND trade_date <= $2
+     ORDER BY ticker, trade_date
+"""
+
+
+def _ret(closes: list[float], bars: int) -> float | None:
+    """Trailing % return over `bars` trading days. None when the history is short — ABSENT, never
+    fabricated from whatever happens to be there."""
+    if len(closes) <= bars or closes[-bars - 1] == 0:
+        return None
+    return (closes[-1] / closes[-bars - 1] - 1.0) * 100.0
+
+
+def _basket(series: dict[str, list[float]], tickers: list[str], bars: int) -> float | None:
+    """Equal-weighted mean return across a basket. A ticker with insufficient history drops out
+    rather than dragging the basket to None — but an EMPTY basket stays None."""
+    vals = [r for t in tickers if (r := _ret(series.get(t, []), bars)) is not None]
+    return sum(vals) / len(vals) if vals else None
+
+
+async def compute_strength_map(today: date) -> dict:
+    """Per complex, per window: anchor return, expression return, DIRECTION spread, and the
+    RISK spread (junior − senior) where a real size pair exists. Pure read."""
+    tickers = sorted({t for c in COMPLEXES for k in ("anchor", "senior", "junior") for t in c[k]})
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_CLOSES_SQL, tickers, today)
+        # BTC dominance already carries its own 30d slope — the crypto risk read is a solved
+        # problem in `crypto/`, so use it rather than re-deriving an alt-season proxy here.
+        dom = await conn.fetchrow(
+            "SELECT date, dominance_pct, slope_30d FROM crypto_btc_dominance "
+            "WHERE date <= $1 ORDER BY date DESC LIMIT 1", today)
+
+    series: dict[str, list[float]] = {}
+    for r in rows:
+        series.setdefault(r["ticker"], []).append(float(r["close"]))
+
+    out = []
+    for c in COMPLEXES:
+        wins = {}
+        for label, bars in _WINDOWS:
+            anchor = _basket(series, c["anchor"], bars)
+            senior = _basket(series, c["senior"], bars)
+            junior = _basket(series, c["junior"], bars)
+            expression = _basket(series, c["senior"] + c["junior"], bars)
+            wins[label] = {
+                "anchor": anchor,
+                "expression": expression,
+                # DIRECTION: are the equities outrunning the asset?
+                "spread": (expression - anchor)
+                          if (anchor is not None and expression is not None) else None,
+                # RISK APPETITE: juniors over seniors. Only when BOTH sides are real.
+                "risk": (junior - senior)
+                        if (senior is not None and junior is not None) else None,
+            }
+        if any(v["anchor"] is not None or v["expression"] is not None for v in wins.values()):
+            out.append({"name": c["name"], "windows": wins,
+                        "has_risk_pair": bool(c["senior"] and c["junior"])})
+
+    return {"today": today, "complexes": out,
+            "btc_dominance": dict(dom) if dom else None}
+
+
+def _pct(v: float | None) -> str:
+    """Fixed width so the columns line up in a Telegram monospace block. `—` means NOT COMPUTED
+    (insufficient history or no such leg) — never 0, which would read as "flat"."""
+    return f"{'—':>6}" if v is None else f"{v:+6.1f}"
+
+
+def format_strength_map(data: dict) -> str:
+    """Telegram block. Empty string when there is nothing to say — keeps the brief tight."""
+    rows = data.get("complexes") or []
+    if not rows:
+        return ""
+    out = ["*🗺 Strength map — the asset vs the stocks that express it*", "```"]
+    # Header and data share ONE spacing recipe: 6-wide cells, a space inside each pair, two
+    # spaces between the 1M and 3M groups. Written once as a helper so they cannot drift —
+    # the first version had a 2-char mismatch and the columns collided on real numbers.
+    def _row(label: str, a, b, c_, d) -> str:
+        return f"{label[:15]:<15}{a:>6} {b:>6}  {c_:>6} {d:>6}"
+
+    out.append(_row("", "-- 1M", "--", "-- 3M", "--"))
+    out.append(_row("", "asset", "stks", "asset", "stks"))
+    for c in rows:
+        w1, w3 = c["windows"]["1M"], c["windows"]["3M"]
+        out.append(_row(c["name"], _pct(w1["anchor"]).strip(), _pct(w1["expression"]).strip(),
+                        _pct(w3["anchor"]).strip(), _pct(w3["expression"]).strip()))
+        # THE SPREAD is the new information — stated in words, not left to be eyeballed.
+        s = w1["spread"]
+        if s is not None:
+            who = "stocks lead" if s > 0 else "asset leads"
+            out.append(f"{'':<15}  {who} by {abs(s):.1f}pts")
+        # RISK APPETITE. Shown WHENEVER the size pair is real, including when it is flat —
+        # otherwise a quiet reading is indistinguishable from a missing one, and "risk appetite
+        # is not moving" is itself information (operator 2026-08-08).
+        if c.get("has_risk_pair"):
+            r = w1["risk"]
+            if r is None:
+                out.append(f"{'':<15}  risk: not computed")
+            elif abs(r) < 1.0:
+                out.append(f"{'':<15}  risk: flat ({r:+.1f}pts jr-vs-sr)")
+            else:
+                who = "juniors" if r > 0 else "seniors"
+                out.append(f"{'':<15}  risk: {who} +{abs(r):.1f}pts "
+                           f"— {'risk-ON' if r > 0 else 'risk-off'}")
+    dom = data.get("btc_dominance")
+    if dom and dom.get("dominance_pct") is not None:
+        slope = dom.get("slope_30d")
+        if slope is None:
+            tag = " (30d trend not computed)"
+        elif slope < 0:
+            tag = " falling — alts leading (ALT SEASON tilt)"
+        else:
+            tag = " rising — BTC leading"
+        out.append(f"{'Crypto':<15}BTC dominance {float(dom['dominance_pct']):.1f}%{tag}")
+    out.append("```")
+    out.append("_spread = stocks minus asset · risk = juniors minus seniors "
+               "(crypto calls it alt season) · a READ, not a rule_")
+    return "\n".join(out)
+
+
+async def build_strength_map_section(today: date) -> str:
+    """Assemble + render. Raises to the caller on DB failure; the brief fail-opens loudly so a
+    map problem can never cost the operator the rest of his briefing."""
+    return format_strength_map(await compute_strength_map(today))
