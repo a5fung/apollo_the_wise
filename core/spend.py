@@ -70,6 +70,13 @@ async def initialize_spend_schema() -> None:
                 cache_read      INT NOT NULL DEFAULT 0,
                 cost_usd        DOUBLE PRECISION NOT NULL DEFAULT 0
             );
+            -- stop_reason (#543, 2026-08-07): the model's OWN report of why it stopped.
+            -- 'max_tokens' = TRUNCATED. Kept in parity with the market-agent's
+            -- spend_tracker._ensure_schema — BOTH containers write this one table, and
+            -- the daily truncation check reports any caller whose stop_reason is always
+            -- NULL, so an orchestrator-side omission would make that guard fire every
+            -- night forever.
+            ALTER TABLE api_usage ADD COLUMN IF NOT EXISTS stop_reason TEXT;
 
             CREATE INDEX IF NOT EXISTS idx_api_usage_created
                 ON api_usage(created_at);
@@ -83,6 +90,7 @@ async def log_api_usage(
     output_tokens: int,
     cache_creation_tokens: int = 0,
     cache_read_tokens: int = 0,
+    stop_reason: Any = None,
 ) -> float:
     """
     Log a single API call's token usage.  Returns computed cost in USD.
@@ -94,6 +102,10 @@ async def log_api_usage(
         output_tokens: Total output tokens from response.usage
         cache_creation_tokens: Tokens written to cache
         cache_read_tokens: Tokens read from cache
+        stop_reason: `response.stop_reason` (#543). 'max_tokens' means the response was
+            TRUNCATED — pass it at every call site. A site that omits it writes NULL, and
+            the daily truncation check reports NULL-only callers precisely so a forgotten
+            site announces itself instead of becoming the next silent blind spot.
     """
     cost = _cost_for_call(
         model, input_tokens, output_tokens,
@@ -107,11 +119,12 @@ async def log_api_usage(
                 """
                 INSERT INTO api_usage
                     (model, caller, input_tokens, output_tokens,
-                     cache_creation, cache_read, cost_usd)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                     cache_creation, cache_read, cost_usd, stop_reason)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 """,
                 model, caller, input_tokens, output_tokens,
                 cache_creation_tokens, cache_read_tokens, cost,
+                str(stop_reason) if stop_reason is not None else None,
             )
     except Exception as e:
         logger.warning(f"Failed to log API usage: {e}")

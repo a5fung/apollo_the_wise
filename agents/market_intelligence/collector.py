@@ -1387,6 +1387,7 @@ def _pplx_cache_put(key: tuple, answer: str) -> None:
 
 async def search_news_perplexity(
     query: str, recency: str = "month", system_prompt: str | None = None,
+    *, fresh: bool = False,
 ) -> str:
     """Use Perplexity Sonar for news search. Returns a synthesized answer string.
 
@@ -1406,8 +1407,11 @@ async def search_news_perplexity(
     # Same-run dedupe: an identical question asked twice inside 15 minutes costs a second
     # $0.006 search fee for an answer we already hold. See the block above for why this is
     # narrow and why failures are never stored.
+    # `fresh=True` opts OUT — for a HUMAN asking "what's happening with X right now". The TTL
+    # was reasoned about for automated scan chains; serving a person 15-minute-old news when
+    # they explicitly asked for current news is a staleness bug wearing a cost fix's clothes.
     _ck = (query, recency, system_prompt)
-    _cached = _pplx_cache_get(_ck)
+    _cached = None if fresh else _pplx_cache_get(_ck)
     if _cached is not None:
         global _PPLX_CACHE_HITS
         _PPLX_CACHE_HITS += 1

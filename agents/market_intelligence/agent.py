@@ -4486,7 +4486,7 @@ class MarketIntelligenceAgent(BaseAgent):
             get_current_regime(),
             search_news_perplexity(
                 f"What happened with {ticker} stock recently? Why did it move? Latest catalyst.",
-                recency="week",
+                recency="week", fresh=True,  # a human asked; never serve cached news
             ),
             return_exceptions=True,
         )
@@ -5177,7 +5177,8 @@ class MarketIntelligenceAgent(BaseAgent):
         themes_task = get_today_themes(today_str)
         sector_task = get_ticker_sector(ticker)
         news_task = (
-            search_news_perplexity(f"What is happening with {ticker} stock? Recent news, catalyst, or business developments.", recency="month")
+            search_news_perplexity(f"What is happening with {ticker} stock? Recent news, catalyst, or business developments.", recency="month",
+                                   fresh=True)  # a human asked; never serve cached news
             if is_research else asyncio.sleep(0)
         )
         rs_result, fund_result, themes, sector_cache, news_result = await asyncio.gather(

@@ -161,3 +161,31 @@ def test_the_cache_cannot_grow_without_bound(monkeypatch):
     for i in range(collector._PPLX_CACHE_MAX + 40):
         collector._pplx_cache_put((f"q{i}", "week", None), "answer")
     assert len(collector._PPLX_CACHE) <= collector._PPLX_CACHE_MAX
+
+
+def test_a_human_asking_for_news_never_gets_a_cached_answer(monkeypatch):
+    """The TTL was reasoned about for automated scan chains. The two interactive paths in
+    agent.py answer a PERSON asking "what's happening with X" — serving them a 15-minute-old
+    answer when they explicitly asked for current news is a staleness bug wearing a cost fix's
+    clothes. `fresh=True` opts out."""
+    calls = _patch_transport(monkeypatch, ["first", "second"])
+    q = "What is happening with NVDA stock?"
+
+    a = asyncio.run(collector.search_news_perplexity(q, fresh=True))
+    b = asyncio.run(collector.search_news_perplexity(q, fresh=True))
+
+    assert (a, b) == ("first", "second")
+    assert len(calls) == 2, "fresh=True still served a cached answer to an interactive caller"
+
+
+def test_the_interactive_agent_paths_actually_pass_fresh():
+    """Pins the wiring, not just the capability — the escape hatch is worthless unwired."""
+    import pathlib
+    src = pathlib.Path("agents/market_intelligence/agent.py").read_text(encoding="utf-8")
+    for marker in ("What is happening with {ticker} stock?",
+                   "What happened with {ticker} stock recently?"):
+        i = src.find(marker)
+        assert i > 0, f"interactive perplexity call site not found: {marker}"
+        assert "fresh=True" in src[i:i + 400], (
+            f"the interactive path '{marker}' no longer opts out of the news cache — a human "
+            "asking for current news can be served a 15-minute-old answer")

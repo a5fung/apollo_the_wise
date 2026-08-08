@@ -217,6 +217,7 @@ class Apollo:
                     output_tokens=usage.output_tokens,
                     cache_creation_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
                     cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+                    stop_reason=getattr(response, "stop_reason", None),
                 )
             except Exception as e:
                 # WARNING not DEBUG — this hid the May 2026 spend-logger

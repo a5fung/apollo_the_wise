@@ -120,6 +120,7 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
             caller="context_compression",
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
+            stop_reason=getattr(response, "stop_reason", None),
         )
     except Exception:
         pass

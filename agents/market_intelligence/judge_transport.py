@@ -79,6 +79,36 @@ async def invoke_forced_tool(
 
     try:
         resp = await asyncio.wait_for(_call(), timeout=timeout)
+        # A TRUNCATED response is a judge FAILURE and must take the fail-open path (#543,
+        # 2026-08-07). MEASURED, and it is not what anyone assumed: when `max_tokens` cuts a
+        # forced-tool call off, the SDK still hands back a `tool_use` block with PARTIALLY
+        # populated input. `grade`/`tier`/`direction` come first in the JSON and survive;
+        # `rationale` and `confidence` are what get cut. `_normalize_verdict` reads those with
+        # `.get()`, so it happily returned a COMPLETE-LOOKING VERDICT built from an incomplete
+        # answer. Over the 7 days to 08-07: 7 of 49 ep_grade_judge verdicts had NULL confidence
+        # (exactly the 7 at-cap calls) and TWO — AMRC and RDW — promoted to HIGH with a
+        # ZERO-LENGTH rationale. HIGH drives the alert and the ORB entry.
+        #
+        # This is a BUG FIX restoring ADR 0011's signed intent, not a new rule: that ADR already
+        # says "judge error/timeout -> conviction-floor grade". A response we cut off IS a judge
+        # error; we simply had no way to see it until stop_reason was recorded. Raising the
+        # ceiling makes truncation rare — this makes it HARMLESS when it happens anyway.
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            logger.warning(
+                f"{label} TRUNCATED for {subject} (max_tokens={max_tokens}) — failing open to "
+                "the floor rather than grading on a partial verdict (#543)")
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event(
+                    "judge_verdict_truncated",
+                    subject or label,
+                    f"{label} hit max_tokens={max_tokens}; verdict discarded, floor kept",
+                )
+            except Exception as _te:
+                # Telemetry must never change the fail-open outcome, but it must not vanish
+                # either — the WARNING above already carried the actionable fact.
+                logger.warning(f"{label}: truncation audit row failed to write: {_te}")
+            return None
         tool_block = next(b for b in resp.content if getattr(b, "type", None) == "tool_use")
         verdict = normalize(tool_block.input)
         # COST METER (#377). Isolated from the verdict path: this runs AFTER the

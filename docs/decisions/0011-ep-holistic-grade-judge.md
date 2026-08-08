@@ -248,16 +248,38 @@ the normalizer are all untouched. Only the response ceiling moved.
 
 **What was wrong.** `invoke_forced_tool` carried a default `max_tokens=500` and `grade_holistic`
 never overrode it. Measured over the 7 days to 2026-08-07: **7 of 49 `ep_grade_judge` calls
-(14.3%) ended at EXACTLY 500 output tokens** — the model was cut off mid-JSON. A truncated
-forced-tool response has no parseable `tool_use` block, so `invoke_forced_tool`'s fail-open
-(§Fail-open above) returned `None` and the caller fell back to the **conviction-floor grade**.
-That fail-open is correct and stays; what was wrong is that it was being triggered by our own
-ceiling rather than by a judge failure, on the hot path before the 9:45 ORB cutoff.
+(14.3%) ended at EXACTLY 500 output tokens** — the model was cut off mid-JSON.
 
-**Why it was invisible.** Nothing distinguishes "the judge declined" from "we cut the judge
-off." Both land as a floor grade and a `judge_timeout_fallback`-class row. It was found only by
-sweeping `api_usage.output_tokens` against each caller's cap while chasing the theme-assignment
-outage the same day.
+**⚠ AND IT DID NOT FAIL OPEN. Measured, not assumed** — my first draft of this entry said the
+truncated calls fell back to the conviction floor. **That was wrong, and the truth is worse.**
+When `max_tokens` cuts a forced-tool call off, the SDK still returns a `tool_use` block with
+**partially populated input**. `grade`, `tier` and `direction_vs_floor` come first in the emitted
+JSON and survive; `rationale` and `confidence` are what get cut. `_normalize_verdict` reads those
+with `.get()`, so it returned a **complete-looking verdict built from an incomplete answer**.
+
+The evidence, from `ep_grade_decision` audit rows over the same 7 days:
+- **49 verdicts, 2 nulls.** If truncation had failed open we would see ~7 nulls. We saw 2.
+- **7 of the 49 verdicts have `confidence = NULL`** — exactly the 7 at-cap calls.
+- **Two of them — AMRC and RDW — PROMOTED to HIGH with a zero-length rationale.** HIGH drives
+  the alert and the ORB entry. Those are live promotions decided by a response we cut off before
+  it finished.
+
+So the defect was not "the floor was reached too often." It was **grading on truncated input,
+including promotions, with no trace.**
+
+**Why it was invisible.** A partial verdict is structurally indistinguishable from a complete
+one: the enum fields validate, the row writes, the alert fires. There was no
+`judge_timeout_fallback` to count and nothing anywhere said "this answer was cut off." It was
+found only by sweeping `api_usage.output_tokens` against each caller's cap while chasing the
+theme-assignment outage the same day, then correlating the at-cap count against NULL-confidence
+verdicts.
+
+**Second change, same commit — a truncated verdict now FAILS OPEN.** `invoke_forced_tool` checks
+`stop_reason == 'max_tokens'` and discards the verdict, writing a `judge_verdict_truncated`
+audit row. This restores §Fail-open's signed intent ("judge error/timeout → conviction-floor
+grade") — a response we cut off IS a judge error; we simply had no way to detect one until
+`stop_reason` was recorded. It applies to every judge on the shared transport, not just this one.
+Raising the ceiling makes truncation rare; this makes it harmless when it happens anyway.
 
 **Change.** `max_tokens=1500` passed explicitly at the `grade_holistic` call site (not by moving
 the shared transport default — `mgmt_judge` measured 0% at-cap on a 188-token average and does

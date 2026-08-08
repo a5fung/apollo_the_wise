@@ -188,3 +188,50 @@ def test_the_three_pegged_ceilings_were_raised():
     assert m and int(m.group(1)) >= 1500, (
         "ep_grade_judge is back on the 500-token transport default — one entry grade in "
         "seven was decided by truncation at that ceiling (ADR 0011, load-bearing on entry)")
+
+
+# ── a truncated verdict must not become a grade ───────────────────────────────────────────
+
+def test_a_truncated_judge_verdict_fails_open():
+    """MEASURED 2026-08-07, and it is not what anyone assumed: a `max_tokens` cut on a forced
+    tool call still yields a `tool_use` block with PARTIAL input. grade/tier/direction come
+    first in the JSON and survive; rationale and confidence get cut. `_normalize_verdict`
+    reads those with `.get()`, so it returned a complete-LOOKING verdict from an incomplete
+    answer — 7 of 49 ep_grade_judge verdicts had NULL confidence (exactly the 7 at-cap calls)
+    and two of them PROMOTED to HIGH with a zero-length rationale. HIGH drives the alert and
+    the ORB entry.
+
+    ADR 0011 §Fail-open already says a judge error takes the conviction floor. A response we
+    cut off IS a judge error. This is that rule finally being enforceable."""
+    src = (MI / "judge_transport.py").read_text(encoding="utf-8")
+    assert 'getattr(resp, "stop_reason", None) == "max_tokens"' in src, (
+        "the shared judge transport no longer discards truncated verdicts — a cut-off "
+        "response can again be graded on, including promotions to HIGH (ADR 0011)")
+    assert "judge_verdict_truncated" in src, "the truncated-verdict audit trail is gone"
+    # it must bail BEFORE normalize() ever sees the partial input
+    head = src.split('getattr(resp, "stop_reason", None) == "max_tokens"')[1]
+    assert head.index("return None") < head.index("normalize(tool_block.input)"), (
+        "the truncation check no longer short-circuits before normalize() — a partial verdict "
+        "would still be built")
+
+
+def test_the_orchestrator_container_reports_stop_reason_too():
+    """core/spend.py writes to the SAME api_usage table from the orchestrator container. If it
+    never reported stop_reason, its callers would be NULL forever and the nightly NULL arm
+    would fire every single night — a guard that always fires is not a guard."""
+    src = pathlib.Path("core/spend.py").read_text(encoding="utf-8")
+    assert "ALTER TABLE api_usage ADD COLUMN IF NOT EXISTS stop_reason TEXT" in src, (
+        "core/spend.py's schema is out of parity with spend_tracker's — whichever container "
+        "boots first wins and the column may never appear")
+    assert "stop_reason" in src.split("INSERT INTO api_usage")[1][:400], (
+        "core/spend.py's INSERT omits stop_reason")
+    import ast as _ast
+    missing = []
+    for path in ("core/context.py", "core/orchestrator.py", "channels/telegram.py"):
+        tree = _ast.parse(pathlib.Path(path).read_text(encoding="utf-8"))
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.Call) and getattr(node.func, "id", None) == "log_api_usage":
+                if "stop_reason" not in {k.arg for k in node.keywords if k.arg}:
+                    missing.append(f"{path}:{node.lineno}")
+    assert not missing, (
+        "orchestrator-side spend call sites not reporting stop_reason: " + ", ".join(missing))

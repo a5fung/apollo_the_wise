@@ -1225,6 +1225,7 @@ class TelegramChannel:
                         model=HEALTHCHECK_MODEL, caller="healthcheck",
                         input_tokens=getattr(_u, "input_tokens", 0) or 0,
                         output_tokens=getattr(_u, "output_tokens", 0) or 0,
+                        stop_reason=getattr(resp, "stop_reason", None),
                     )
             except Exception:
                 pass
