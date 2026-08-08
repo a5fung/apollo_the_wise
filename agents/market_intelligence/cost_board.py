@@ -701,7 +701,7 @@ async def run_truncation_check(today: date) -> dict | None:
     if truncating:
         lines += ["🔴 *TRUNCATED* — responses cut off by max_tokens (silent corruption):", "```"]
         for x in truncating[:6]:
-            lines.append(f"{x['caller']:<26} {x['truncated']}/{x['calls']} calls "
+            lines.append(f"{x['caller']:<28} {x['truncated']}/{x['calls']} calls "
                          f"({x['pct']}%) at {x['cap']} tokens")
         lines += ["```", "Raise the ceiling on these callers - a cut-off tool call "
                   "reads downstream as an empty result, not an error."]
@@ -710,7 +710,8 @@ async def run_truncation_check(today: date) -> dict | None:
             lines.append("")
         lines += ["🟠 *NOT REPORTING* — these callers cannot be checked for truncation:", "```"]
         for x in unreported[:6]:
-            lines.append(f"{x['caller']:<26} {x['calls']} calls, stop_reason always NULL")
+            lines.append(f"{x['caller']:<28} {x['calls']} call"
+                         f"{'' if x['calls'] == 1 else 's'}, stop_reason always NULL")
         lines += ["```", "Their spend_tracker call site is missing stop_reason (#543)."]
     await send_telegram_message("\n".join(lines))
     return t
