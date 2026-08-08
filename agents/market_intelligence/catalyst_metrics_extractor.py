@@ -181,16 +181,14 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
             )
             r.raise_for_status()
             data = r.json()
-            # #377 cost meter — raw-REST usage is a DICT (not an SDK object), so wrap it
-            # in a namespace for log_anthropic_call's getattr-based reader.
+            # #377 cost meter — raw-HTTP path: `data` is the response JSON dict, which the
+            # tracker's shared readers handle directly (no more SimpleNamespace wrap — that
+            # wrap existed only to survive the old getattr-based usage reader, #543).
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
-            from types import SimpleNamespace
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(
                 model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
-                usage=SimpleNamespace(**(data.get("usage") or {})),
-                # raw-HTTP path: stop_reason is a dict key, not an attribute (#543)
-                stop_reason=data.get("stop_reason"),
+                response=data,
             )
             # ⚠ 2026-08-07 ROOT CAUSE OF THE 08-06/08-07 EXTRACTION OUTAGE.
             # This read `data["content"][0]["text"]` — it assumed the FIRST content

@@ -6953,8 +6953,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=MARKET_AGENT_MODEL, caller="market_agent_general",
-                                       usage=getattr(response, "usage", None),
-                                       stop_reason=getattr(response, "stop_reason", None))
+                                       response=response)
         return self._ok(request, result=first_text(response))  # #544: never content[0]
 
 

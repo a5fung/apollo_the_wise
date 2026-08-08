@@ -636,10 +636,13 @@ async def run_cost_watchdog(today: date) -> dict | None:
 # `api_usage.stop_reason` (this same commit) makes truncation SELF-REPORTING — the model tells
 # us it was cut off — instead of inferred from output_tokens against a cap we never stored.
 #
-# The NULL arm matters as much as the max_tokens arm: `stop_reason` is threaded by hand through
-# ~20 call sites, which is exactly the copy-paste pattern spend_tracker's own docstring warns
-# about. A call site that forgets writes NULL, and NULL is reported here — so a missed site
-# announces itself rather than becoming the next blind spot.
+# The NULL arm is DEFENCE IN DEPTH since 2026-08-08: the spend trackers now take the raw
+# response and derive stop_reason themselves, so a call site structurally cannot omit it (the
+# old hand-threaded kwarg was the same copy-paste pattern spend_tracker's own docstring warns
+# about, and this arm caught the omissions only next-morning). It stays because it still
+# catches what structure cannot: a response whose SHAPE stopped carrying stop_reason, or a
+# writer outside the two sanctioned trackers. NULL here should now be genuinely rare — and
+# therefore genuinely alarming.
 
 _TRUNC_MIN_CALLS = 2      # 1 truncation on a chatty caller is noise; 2 is a pattern
 _TRUNC_PCT_FLOOR = 50.0   # ...unless the caller is low-volume, where 1-of-1 IS the outage shape

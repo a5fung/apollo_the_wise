@@ -19,8 +19,22 @@ Use from any market-agent module that makes an Anthropic call:
     await log_anthropic_call_safe(
         model=model,
         caller="theme_advisor",
-        usage=response.usage,
+        response=response,
     )
+
+THE CONTRACT IS THE RAW RESPONSE, NOT ITS PIECES (#543, 2026-08-08). These
+functions take `response=` and derive token usage AND stop_reason internally
+(via `shared.llm_response`) — a call site structurally CANNOT report cost
+without also reporting why the model stopped. The old `usage=`/`stop_reason=`
+kwargs are REMOVED, not deprecated: `stop_reason` was hand-threaded as
+`getattr(resp, "stop_reason", None)` at ~22 sites, the identical copy-paste
+shape the paragraph below warns about, and a silently-optional kwarg is how
+the 2026-08-07 truncation outage could only be DETECTED next-morning (the
+nightly NULL arm) instead of PREVENTED. A site that genuinely aggregates
+hand-built counts (none exist today) must construct a response-shaped dict
+`{"usage": {...}, "stop_reason": ...}` — an explicit, reviewable act, never
+an omittable kwarg. The nightly NULL/truncation check stays as defence in
+depth.
 
 `log_anthropic_call_safe` is the SANCTIONED call-site wrapper (S2/F9, post-#377).
 Call sites must call it directly and must NOT re-wrap it in their own
@@ -42,6 +56,12 @@ from shared.llm_models import (
     PERPLEXITY_REQUEST_FEE_USD as _PPLX_FEE,
 )
 from shared.llm_models import pricing_for as _pricing_for
+from shared.llm_response import (
+    perplexity_finish_reason as _pplx_finish_reason,
+    perplexity_usage_tokens as _pplx_usage_tokens,
+    stop_reason as _stop_reason_of,
+    usage_tokens as _usage_tokens_of,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -113,43 +133,45 @@ async def log_anthropic_call(
     *,
     model: str,
     caller: str,
-    usage: Any,
-    stop_reason: Any = None,
+    response: Any,
 ) -> float:
-    """Log an Anthropic API call. `usage` is the response.usage object from
-    the SDK. Returns the computed cost in USD. Raises on DB failure
-    (callers should wrap if they want fail-soft semantics).
+    """Log an Anthropic API call. `response` is the RAW response — the SDK object
+    or the raw-HTTP JSON dict; token usage and stop_reason are both derived from
+    it here. Returns the computed cost in USD. Raises on DB failure (callers
+    should wrap if they want fail-soft semantics).
 
     Why no fail-soft default: spend-tracker silently swallowing errors is
     exactly how the May 2026 outage hid for 12 days. Surface failures
     loudly at the call site; the call site can choose try/except + WARNING.
 
-    `stop_reason` (#543) is `getattr(resp, "stop_reason", None)` — pass it at EVERY
-    call site. 'max_tokens' means the model was CUT OFF by the ceiling, which is a
-    silent corruption: forced-tool JSON truncates mid-object and reads downstream as
-    an empty result. A site that omits it writes NULL, and NULL is itself surfaced by
-    the truncation health check — a forgotten call site announces itself rather than
-    hiding, which is the failure mode this whole column exists to end.
+    Why `response=` and not `usage=` + `stop_reason=` (#543): the split kwargs
+    made stop_reason omittable, and an omitted stop_reason means truncation at
+    that site can only be DETECTED next morning (the nightly NULL arm), not
+    prevented — the 2026-08-07 outage shape. Taking the response once makes
+    passing one without the other impossible. The old kwargs are gone, not
+    deprecated: a leftover old-style call raises TypeError instead of quietly
+    writing NULLs, and the AST scan in test_truncation_self_reporting_543
+    fails the build before it could ever run.
     """
+    usage = _usage_tokens_of(response)
     if usage is None:
-        logger.warning(f"log_anthropic_call({caller}): usage is None — skipping")
+        logger.warning(f"log_anthropic_call({caller}): response carries no usage — skipping")
         return 0.0
-    if stop_reason is None:
+    stop = _stop_reason_of(response)
+    if stop is None:
+        # A completed SDK response always carries stop_reason; a raw-HTTP dict should too.
+        # Reaching here means the response SHAPE changed under us — warn now, and the row's
+        # NULL is surfaced by the nightly truncation check (defence in depth, #543).
         logger.warning(
-            f"log_anthropic_call({caller}): no stop_reason passed — truncation at this "
-            "call site cannot be detected (#543); pass getattr(resp, 'stop_reason', None)")
-
-    input_tokens = getattr(usage, "input_tokens", 0) or 0
-    output_tokens = getattr(usage, "output_tokens", 0) or 0
-    cache_creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
-    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+            f"log_anthropic_call({caller}): response carries no stop_reason — truncation at "
+            "this call site cannot be detected (#543)")
 
     cost = _cost_for_call(
         model=model,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cache_creation_tokens=cache_creation,
-        cache_read_tokens=cache_read,
+        input_tokens=usage["input_tokens"],
+        output_tokens=usage["output_tokens"],
+        cache_creation_tokens=usage["cache_creation_input_tokens"],
+        cache_read_tokens=usage["cache_read_input_tokens"],
     )
 
     await _ensure_schema()
@@ -162,9 +184,9 @@ async def log_anthropic_call(
                  cache_creation, cache_read, cost_usd, stop_reason)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
-            model, caller, input_tokens, output_tokens,
-            cache_creation, cache_read, cost,
-            str(stop_reason) if stop_reason is not None else None,
+            model, caller, usage["input_tokens"], usage["output_tokens"],
+            usage["cache_creation_input_tokens"], usage["cache_read_input_tokens"],
+            cost, stop,
         )
     return cost
 
@@ -173,8 +195,7 @@ async def log_anthropic_call_safe(
     *,
     model: str,
     caller: str,
-    usage: Any,
-    stop_reason: Any = None,
+    response: Any,
 ) -> None:
     """The SANCTIONED call-site wrapper for `log_anthropic_call` (S2/F9, 2026-07-03).
 
@@ -190,8 +211,7 @@ async def log_anthropic_call_safe(
     try/except-pass; that reintroduces the same blind spot this fixes.
     """
     try:
-        await log_anthropic_call(model=model, caller=caller, usage=usage,
-                                 stop_reason=stop_reason)
+        await log_anthropic_call(model=model, caller=caller, response=response)
     except Exception as e:  # loud-ok: sanctioned single warning sink for #377 cost-meter call sites (S2/F9) — the one place allowed to swallow a tracker failure, and it does so loudly
         logger.warning(f"spend tracking failed at {caller}: {e}")
 
@@ -199,9 +219,8 @@ async def log_anthropic_call_safe(
 async def log_perplexity_call(
     *,
     caller: str,
-    usage: Any = None,
+    response: Any,
     model: str = "sonar-pro",
-    finish_reason: Any = None,
 ) -> float:
     """Log a Perplexity (#377 cost meter) call to api_usage. Separate shape from
     Anthropic because Perplexity (a) names its usage fields OpenAI-style
@@ -209,22 +228,19 @@ async def log_perplexity_call(
     (b) charges a per-request SEARCH FEE on top of the token cost. Both are folded
     into one `cost_usd` row here.
 
-    `usage` is the `usage` object from the Perplexity JSON response — a plain dict
-    OR an attribute object. We accept either via _get(); tokens default to 0 if
-    absent (the per-request fee still lands, which is the dominant cost anyway).
-    `model` selects the token + fee rates ("sonar-pro" default, "sonar" for the
-    cheaper validation path). Returns the computed cost in USD. Raises on DB
-    failure — callers wrap in try/except for fail-soft (mirrors log_anthropic_call).
+    `response` is the RAW Perplexity JSON (the `r.json()` dict) — tokens and
+    finish_reason are derived from it here, same #543 contract as
+    `log_anthropic_call`: a site cannot report cost without reporting why the
+    model stopped. Tokens default to 0 when the usage block is absent (the
+    per-request fee still lands, which is the dominant cost anyway). `model`
+    selects the token + fee rates ("sonar-pro" default, "sonar" for the cheaper
+    validation path). Returns the computed cost in USD. Raises on DB failure —
+    callers wrap in try/except for fail-soft (mirrors log_anthropic_call).
     """
-    def _get(u: Any, key: str) -> int:
-        if u is None:
-            return 0
-        if isinstance(u, dict):
-            return int(u.get(key) or 0)
-        return int(getattr(u, key, 0) or 0)
-
-    input_tokens = _get(usage, "prompt_tokens")
-    output_tokens = _get(usage, "completion_tokens")
+    usage = _pplx_usage_tokens(response)
+    input_tokens = usage["prompt_tokens"]
+    output_tokens = usage["completion_tokens"]
+    reason = _pplx_finish_reason(response)
 
     prices = _pricing_for(model)
     request_fee = _PPLX_FEE.get(model, _DEFAULT_PPLX_FEE)
@@ -248,7 +264,7 @@ async def log_perplexity_call(
             # Perplexity names it finish_reason and says 'length' for truncation. Normalised
             # to Anthropic's vocabulary so ONE health check covers both providers. Never NULL:
             # NULL is reserved to mean "a call site forgot to report" (#543).
-            "max_tokens" if str(finish_reason) == "length"
-            else (str(finish_reason) if finish_reason is not None else "n/a"),
+            "max_tokens" if str(reason) == "length"
+            else (str(reason) if reason is not None else "n/a"),
         )
     return cost

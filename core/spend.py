@@ -16,6 +16,10 @@ from datetime import date, datetime
 from typing import Any, Optional
 
 from shared.llm_models import pricing_for as _pricing_for
+from shared.llm_response import (
+    stop_reason as _stop_reason_of,
+    usage_tokens as _usage_tokens_of,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,13 +88,10 @@ async def initialize_spend_schema() -> None:
 
 
 async def log_api_usage(
+    *,
     model: str,
     caller: str,
-    input_tokens: int,
-    output_tokens: int,
-    cache_creation_tokens: int = 0,
-    cache_read_tokens: int = 0,
-    stop_reason: Any = None,
+    response: Any,
 ) -> float:
     """
     Log a single API call's token usage.  Returns computed cost in USD.
@@ -98,18 +99,25 @@ async def log_api_usage(
     Args:
         model: Model ID (e.g. "claude-sonnet-4-6")
         caller: Where the call originated (e.g. "orchestrator", "context_compression")
-        input_tokens: Total input tokens from response.usage
-        output_tokens: Total output tokens from response.usage
-        cache_creation_tokens: Tokens written to cache
-        cache_read_tokens: Tokens read from cache
-        stop_reason: `response.stop_reason` (#543). 'max_tokens' means the response was
-            TRUNCATED — pass it at every call site. A site that omits it writes NULL, and
-            the daily truncation check reports NULL-only callers precisely so a forgotten
-            site announces itself instead of becoming the next silent blind spot.
+        response: The RAW Anthropic response (SDK object or raw-HTTP dict). Token
+            usage AND stop_reason are derived from it here — same #543 contract as
+            the market-agent's spend_tracker, which writes the SAME api_usage table:
+            a call site structurally cannot report cost without also reporting why
+            the model stopped ('max_tokens' = TRUNCATED). The old per-token +
+            `stop_reason=` kwargs are removed, not deprecated — hand-threading
+            stop_reason at every site is how one site forgets, writes NULL forever,
+            and the nightly NULL arm fires until someone traces it (which stays on
+            as defence in depth, not as the primary mechanism).
     """
+    usage = _usage_tokens_of(response)
+    if usage is None:
+        # Mirrors spend_tracker: no usage object → nothing meterable → no row.
+        logger.warning(f"log_api_usage({caller}): response carries no usage — skipping")
+        return 0.0
+
     cost = _cost_for_call(
-        model, input_tokens, output_tokens,
-        cache_creation_tokens, cache_read_tokens,
+        model, usage["input_tokens"], usage["output_tokens"],
+        usage["cache_creation_input_tokens"], usage["cache_read_input_tokens"],
     )
 
     try:
@@ -122,9 +130,9 @@ async def log_api_usage(
                      cache_creation, cache_read, cost_usd, stop_reason)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 """,
-                model, caller, input_tokens, output_tokens,
-                cache_creation_tokens, cache_read_tokens, cost,
-                str(stop_reason) if stop_reason is not None else None,
+                model, caller, usage["input_tokens"], usage["output_tokens"],
+                usage["cache_creation_input_tokens"], usage["cache_read_input_tokens"],
+                cost, _stop_reason_of(response),
             )
     except Exception as e:
         logger.warning(f"Failed to log API usage: {e}")

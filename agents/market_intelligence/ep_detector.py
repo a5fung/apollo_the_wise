@@ -41,7 +41,6 @@ from typing import Any, NamedTuple, Optional
 import anthropic
 
 from agents.market_intelligence.collector import et_today
-from agents.market_intelligence.collector import pplx_finish_reason
 from agents.market_intelligence.collector import (
     get_snapshot_all,
     get_index_history,
@@ -1033,8 +1032,7 @@ catalyst, say so explicitly."""
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=GROUNDED_GRADE_MODEL, caller="ep_catalyst_grade",
-                                       usage=getattr(response, "usage", None),
-                                       stop_reason=getattr(response, "stop_reason", None))
+                                       response=response)
         # ⚠ The SECOND shape failure of 2026-08-06, and it is a DIFFERENT bug from the
         # extractor's: `Claude catalyst classification failed for INOD: 'analysis'` — a
         # KeyError on a response KEY, not a block position. Cause: when max_tokens cuts a
@@ -1111,9 +1109,7 @@ Respond with ONLY the classification word."""
                   # model (not sonar-pro). Never alters the validation result.
                 from agents.market_intelligence.spend_tracker import log_perplexity_call
                 await log_perplexity_call(
-                    caller="perplexity_catalyst_validate", model="sonar",
-                    usage=_data.get("usage"),
-                    finish_reason=pplx_finish_reason(_data),
+                    caller="perplexity_catalyst_validate", model="sonar", response=_data,
                 )
             except Exception:
                 pass

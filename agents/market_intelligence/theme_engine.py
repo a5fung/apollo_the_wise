@@ -803,8 +803,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
-                                       usage=getattr(msg, "usage", None),
-                                       stop_reason=getattr(msg, "stop_reason", None))
+                                       response=msg)
         raw = _extract_json_object(first_text(msg))  # #544: never content[0]
         parsed = json.loads(raw)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
@@ -914,8 +913,7 @@ async def _discover_lane2_registry(
     # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
     from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
     await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
-                                   usage=getattr(msg, "usage", None),
-                                   stop_reason=getattr(msg, "stop_reason", None))
+                                   response=msg)
     usage = getattr(msg, "usage", None)
     if usage is not None and getattr(usage, "input_tokens", None) is not None:
         out["usage"] = {"input_tokens": usage.input_tokens,
@@ -1294,8 +1292,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=DESCRIPTION_MODEL, caller="theme_descriptions",
-                                           usage=getattr(resp, "usage", None),
-                                           stop_reason=getattr(resp, "stop_reason", None))
+                                           response=resp)
             raw = first_text(resp).strip()  # #544: never content[0]
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -2491,8 +2488,7 @@ async def _validate_theme_membership(
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_validation",
-                                       usage=getattr(resp, "usage", None),
-                                       stop_reason=getattr(resp, "stop_reason", None))
+                                       response=resp)
         # Defensive extraction — the model occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
@@ -3286,8 +3282,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
-                                           usage=getattr(response, "usage", None),
-                                           stop_reason=getattr(response, "stop_reason", None))
+                                           response=response)
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -3684,8 +3679,7 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
         await log_anthropic_call_safe(
             model=THEME_ADVISOR_MODEL,
             caller=f"theme_advisor_{caller}",
-            usage=getattr(resp, "usage", None),
-            stop_reason=getattr(resp, "stop_reason", None),
+            response=resp,
         )
         return verdict
     except Exception as e:
@@ -3810,8 +3804,7 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_split",
-                                           usage=getattr(response, "usage", None),
-                                           stop_reason=getattr(response, "stop_reason", None))
+                                           response=response)
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -4407,8 +4400,7 @@ In every other case, skip the advisor and call `report_themes` immediately, with
             await log_anthropic_call_safe(
                 model=THEME_MODEL,
                 caller="theme_discovery",
-                usage=getattr(response, "usage", None),
-                stop_reason=getattr(response, "stop_reason", None),
+                response=response,
             )
 
             # Model produced no tool call. Don't silently discard the whole discovery

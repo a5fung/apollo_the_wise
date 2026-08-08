@@ -1276,9 +1276,7 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
                 except Exception as e:
                     logger.debug(f"Perplexity health usage parse failed: {e}")
                 await log_perplexity_call(
-                    caller="perplexity_health", model="sonar-pro",
-                    usage=_j.get("usage"),
-                    finish_reason=pplx_finish_reason(_j),
+                    caller="perplexity_health", model="sonar-pro", response=_j,
                 )
             except Exception as e:
                 logger.debug(f"Perplexity health cost-meter log failed: {e}")
@@ -1309,18 +1307,6 @@ _PERPLEXITY_DISCLAIMER_MARKERS: tuple[str, ...] = (
     "search results reference",
     "search results focus on",
 )
-
-
-def pplx_finish_reason(data: Any) -> str | None:
-    """Perplexity's stop reason, off its raw JSON. `'length'` is its word for truncation.
-
-    Extracted because this exact `(choices or [{}])[0].get(...)` dance was hand-copied to three
-    call sites across two files on the night we shipped a whole helper module arguing against
-    doing precisely that (#544). One schema change should mean one edit.
-    """
-    if not isinstance(data, dict):
-        return None
-    return ((data.get("choices") or [{}])[0] or {}).get("finish_reason")
 
 
 def strip_perplexity_disclaimer(text: str | None) -> tuple[str, bool]:
@@ -1448,9 +1434,7 @@ async def search_news_perplexity(
                     # Covers #186A + the ~11 indirect callers of this choke point.
                     from agents.market_intelligence.spend_tracker import log_perplexity_call
                     await log_perplexity_call(
-                        caller="perplexity_news_search", model="sonar-pro",
-                        usage=_data.get("usage"),
-                        finish_reason=pplx_finish_reason(_data),
+                        caller="perplexity_news_search", model="sonar-pro", response=_data,
                     )
                 except Exception as e:
                     logger.debug(f"Perplexity news search cost-meter log failed: {e}")

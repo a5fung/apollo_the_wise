@@ -201,72 +201,103 @@ def test_theme_discovery_logs_row_with_nonzero_cost(monkeypatch, captured_insert
     assert cost == pytest.approx(0.021, abs=1e-6)
 
 
-# ── Rollout: usage-SHAPE traps (the silent-zero-row class) ───────────────────
+# ── Rollout: usage-SHAPE duality (the silent-zero-row class, ENGINEERED AWAY) ─
 #
-# log_anthropic_call reads tokens via getattr(usage, "input_tokens", 0). On a
-# raw-REST site (catalyst_metrics_extractor) the SDK isn't used — usage is a
-# plain DICT, on which getattr returns the default 0 → a zero-cost row that ships
-# green against the attribute-object mocks above. The rollout fixed this by
-# wrapping the dict in a SimpleNamespace at that one site. These cases pin BOTH
-# the trap (a bare dict logs zero) AND the fix (the wrap logs nonzero), so a
-# regression that drops the wrap fails here instead of silently mis-metering.
+# Pre-08-08 history: log_anthropic_call read tokens via getattr(usage, ...), so
+# the raw-REST site (catalyst_metrics_extractor), whose usage is a plain DICT,
+# logged silent zero-cost rows until it wrapped the dict in a SimpleNamespace.
+# The #543 response-only contract removed the trap at the ROOT: the tracker now
+# derives tokens via shared.llm_response, which handles dict and object shapes
+# identically, so the wrap is gone. These cases pin that both shapes meter
+# correctly — a regression back to attr-only reading fails here as zero-cost.
 
-def test_anthropic_dict_usage_unwrapped_logs_zero(captured_inserts):
-    # Documents the trap: a raw dict passed straight to log_anthropic_call reads
-    # 0 tokens (getattr misses dict keys) — this is WHY the raw-REST site wraps it.
-    cost = _run(spend_tracker.log_anthropic_call(
-        model="claude-sonnet-4-6", caller="raw_dict",
-        usage={"input_tokens": 5000, "output_tokens": 1000},
-    ))
-    assert cost == 0.0
-    assert len(captured_inserts) == 1
-    _m, _c, in_tok, out_tok, _cc, _cr, logged_cost, _sr = captured_inserts[0]
-    assert in_tok == 0 and out_tok == 0 and logged_cost == 0.0
-
-
-def test_anthropic_dict_usage_wrapped_logs_nonzero(captured_inserts):
-    # The fix the metrics-extractor site applies: SimpleNamespace(**usage_dict).
-    from types import SimpleNamespace
+def test_anthropic_raw_http_dict_response_logs_nonzero(captured_inserts):
+    # The catalyst_metrics_extractor shape: r.json() passed straight in, no wrap.
     cost = _run(spend_tracker.log_anthropic_call(
         model="claude-sonnet-4-6", caller="catalyst_metrics_extractor",
-        usage=SimpleNamespace(**{"input_tokens": 5000, "output_tokens": 1000}),
+        response={"usage": {"input_tokens": 5000, "output_tokens": 1000},
+                  "stop_reason": "end_turn"},
     ))
     # Sonnet = $3/M in, $15/M out → 5000/1e6*3 + 1000/1e6*15 = 0.015 + 0.015 = 0.030
     assert cost == pytest.approx(0.030, abs=1e-6)
     assert len(captured_inserts) == 1
-    _m, caller, in_tok, out_tok, _cc, _cr, logged_cost, _sr = captured_inserts[0]
+    _m, caller, in_tok, out_tok, _cc, _cr, logged_cost, sr = captured_inserts[0]
     assert caller == "catalyst_metrics_extractor"
     assert in_tok == 5000 and out_tok == 1000 and logged_cost > 0
+    # stop_reason came out of the SAME dict — nothing separate to thread (#543).
+    assert sr == "end_turn"
+
+
+def test_anthropic_sdk_object_response_logs_nonzero(captured_inserts):
+    # The SDK-object shape, same derivation path.
+    from types import SimpleNamespace
+    resp = SimpleNamespace(
+        usage=SimpleNamespace(input_tokens=5000, output_tokens=1000,
+                              cache_creation_input_tokens=0, cache_read_input_tokens=0),
+        stop_reason="max_tokens",
+    )
+    cost = _run(spend_tracker.log_anthropic_call(
+        model="claude-sonnet-4-6", caller="sdk_object", response=resp,
+    ))
+    assert cost == pytest.approx(0.030, abs=1e-6)
+    _m, _c, in_tok, out_tok, _cc, _cr, _cost, sr = captured_inserts[0]
+    assert in_tok == 5000 and out_tok == 1000
+    # A truncation travels with the cost row automatically — the point of #543.
+    assert sr == "max_tokens"
+
+
+def test_anthropic_usageless_response_skips_the_row(captured_inserts):
+    # No usage object → nothing meterable → no row (and no crash). The discovery
+    # tests' fake clients rely on this exact behavior.
+    cost = _run(spend_tracker.log_anthropic_call(
+        model="claude-sonnet-4-6", caller="no_usage", response=object(),
+    ))
+    assert cost == 0.0
+    assert captured_inserts == []
 
 
 # ── Rollout: the Perplexity meter (separate shape) ───────────────────────────
 #
 # Perplexity usage uses OpenAI naming (prompt_tokens / completion_tokens) and
-# charges a per-request SEARCH FEE on top of tokens. log_perplexity_call maps the
-# names + folds in the fee. These pin (a) the dict-naming map, (b) the fee, and
-# (c) the cheaper "sonar" rate vs "sonar-pro".
+# charges a per-request SEARCH FEE on top of tokens. log_perplexity_call takes
+# the RAW r.json() dict (#543), maps the names + folds in the fee. These pin
+# (a) the dict-naming map, (b) the fee, (c) the cheaper "sonar" rate vs
+# "sonar-pro", and (d) finish_reason derived from the same dict.
 
 def test_perplexity_logs_tokens_plus_request_fee(captured_inserts):
     cost = _run(spend_tracker.log_perplexity_call(
         caller="perplexity_news_search", model="sonar-pro",
-        usage={"prompt_tokens": 2000, "completion_tokens": 500},
+        response={"usage": {"prompt_tokens": 2000, "completion_tokens": 500},
+                  "choices": [{"finish_reason": "stop"}]},
     ))
     # sonar-pro = $3/M in, $15/M out, +$0.010/req medium-context search fee:
     #   2000/1e6*3 + 500/1e6*15 + 0.010 = 0.006 + 0.0075 + 0.010 = 0.0235
     assert cost == pytest.approx(0.0235, abs=1e-6)
     assert len(captured_inserts) == 1
-    model, caller, in_tok, out_tok, _cc, _cr, logged_cost, _sr = captured_inserts[0]
+    model, caller, in_tok, out_tok, _cc, _cr, logged_cost, sr = captured_inserts[0]
     assert model == "sonar-pro" and caller == "perplexity_news_search"
     # OpenAI naming was correctly mapped onto the api_usage in/out columns.
     assert in_tok == 2000 and out_tok == 500
     assert logged_cost > 0
+    # finish_reason came off the SAME dict the tokens did (#543).
+    assert sr == "stop"
+
+
+def test_perplexity_length_normalises_to_max_tokens(captured_inserts):
+    # 'length' is Perplexity's word for truncation — one vocabulary, one check.
+    _run(spend_tracker.log_perplexity_call(
+        caller="perplexity_news_search", model="sonar-pro",
+        response={"usage": {"prompt_tokens": 10, "completion_tokens": 10},
+                  "choices": [{"finish_reason": "length"}]},
+    ))
+    assert captured_inserts[0][7] == "max_tokens"
 
 
 def test_perplexity_sonar_cheaper_rate_and_fee(captured_inserts):
     # The ep_detector validation path uses the cheaper "sonar" model.
     cost = _run(spend_tracker.log_perplexity_call(
         caller="perplexity_catalyst_validate", model="sonar",
-        usage={"prompt_tokens": 1000, "completion_tokens": 100},
+        response={"usage": {"prompt_tokens": 1000, "completion_tokens": 100}},
     ))
     # sonar = $1/M in, $1/M out, +$0.008/req fee:
     #   1000/1e6*1 + 100/1e6*1 + 0.008 = 0.001 + 0.0001 + 0.008 = 0.0091
@@ -275,14 +306,16 @@ def test_perplexity_sonar_cheaper_rate_and_fee(captured_inserts):
 
 
 def test_perplexity_no_usage_still_logs_request_fee(captured_inserts):
-    # A health-ping response may carry no usage block — the per-request fee (the
-    # dominant cost) must still land, with zero tokens.
+    # A health-ping response may parse to an empty dict — the per-request fee
+    # (the dominant cost) must still land, with zero tokens, and stop_reason
+    # must be 'n/a' rather than NULL (NULL is reserved for the unreported arm).
     cost = _run(spend_tracker.log_perplexity_call(
-        caller="perplexity_health", model="sonar-pro", usage=None,
+        caller="perplexity_health", model="sonar-pro", response={},
     ))
     assert cost == pytest.approx(0.010, abs=1e-6)
-    _m, _c, in_tok, out_tok, _cc, _cr, _cost, _sr = captured_inserts[0]
+    _m, _c, in_tok, out_tok, _cc, _cr, _cost, sr = captured_inserts[0]
     assert in_tok == 0 and out_tok == 0
+    assert sr == "n/a"
 
 
 def test_perplexity_log_failure_preserves_caller_result(monkeypatch):
@@ -300,7 +333,7 @@ def test_perplexity_log_failure_preserves_caller_result(monkeypatch):
         try:
             await spend_tracker.log_perplexity_call(
                 caller="perplexity_news_search", model="sonar-pro",
-                usage={"prompt_tokens": 10, "completion_tokens": 10},
+                response={"usage": {"prompt_tokens": 10, "completion_tokens": 10}},
             )
         except Exception:
             pass

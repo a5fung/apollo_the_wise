@@ -1931,10 +1931,7 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
     )
     # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
     from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
-    await log_anthropic_call_safe(
-        model=_MODEL, caller="system_review_weekly", usage=getattr(resp, "usage", None),
-        stop_reason=getattr(resp, "stop_reason", None),
-    )
+    await log_anthropic_call_safe(model=_MODEL, caller="system_review_weekly", response=resp)
     return "".join(block.text for block in resp.content if hasattr(block, "text")).strip()
 
 

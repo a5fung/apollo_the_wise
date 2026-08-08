@@ -115,13 +115,10 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
 
     try:
         from core.spend import log_api_usage
-        usage = response.usage
         await log_api_usage(
             model=COMPRESSION_MODEL,
             caller="context_compression",
-            input_tokens=usage.input_tokens,
-            output_tokens=usage.output_tokens,
-            stop_reason=getattr(response, "stop_reason", None),
+            response=response,
         )
     except Exception:
         pass

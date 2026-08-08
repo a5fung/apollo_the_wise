@@ -1263,14 +1263,9 @@ class TelegramChannel:
                 # spend_tracker imports agents.market_intelligence.db, which is
                 # NOT in the orchestrator image — that import would silently fail).
                 from core.spend import log_api_usage
-                _u = getattr(resp, "usage", None)
-                if _u is not None:
-                    await log_api_usage(
-                        model=HEALTHCHECK_MODEL, caller="healthcheck",
-                        input_tokens=getattr(_u, "input_tokens", 0) or 0,
-                        output_tokens=getattr(_u, "output_tokens", 0) or 0,
-                        stop_reason=getattr(resp, "stop_reason", None),
-                    )
+                await log_api_usage(
+                    model=HEALTHCHECK_MODEL, caller="healthcheck", response=resp,
+                )
             except Exception:
                 pass
             return True, ""

@@ -14,23 +14,31 @@ So the fix is not a bigger number. It is that **the model now tells us it was cu
 `api_usage.stop_reason` is recorded on every call, and a daily check turns `'max_tokens'` into
 a 🔴 Telegram. These tests pin the two halves that make that non-optional:
 
-  1. every call site reports stop_reason (the column is worthless with holes in it), and
-  2. a call site that FORGETS is itself reported — the NULL arm — so the hand-threading, which
-     is the same copy-paste shape `spend_tracker`'s own docstring warns about, cannot quietly
-     create the next blind spot.
+  1. a call site structurally CANNOT omit stop_reason (2026-08-08): the loggers take the RAW
+     RESPONSE and derive usage + stop_reason together — the old split `usage=`/`stop_reason=`
+     kwargs are REMOVED, so the forgetting bug is impossible rather than detected. The AST
+     scan below fails the build on any site not passing `response=`, and the removed kwargs
+     raise TypeError at runtime, and
+  2. the NULL arm stays as DEFENCE IN DEPTH — it now guards the residue structure can't reach
+     (a response shape that stops carrying stop_reason; a writer outside the two sanctioned
+     trackers), not the primary forgetting case.
 
 Scope note: this catches the CEILING class only. It would NOT have caught the 08-06 extraction
 outage — that response finished normally (`stop_reason='end_turn'`) and broke on a positional
 `content[0]` assumption. Model-contract shape testing is #544, deliberately separate.
 """
 import ast
+import inspect
 import pathlib
 import re
+
+import pytest
 
 MI = pathlib.Path("agents/market_intelligence")
 TRACKER = (MI / "spend_tracker.py").read_text(encoding="utf-8")
 BOARD = (MI / "cost_board.py").read_text(encoding="utf-8")
 SCHED = (MI / "scheduler.py").read_text(encoding="utf-8")
+SPEND = pathlib.Path("core/spend.py").read_text(encoding="utf-8")
 
 
 # ── the column ────────────────────────────────────────────────────────────────────────────
@@ -57,21 +65,29 @@ def test_perplexity_truncation_is_normalised_to_anthropic_vocabulary():
     """Perplexity says finish_reason='length' for the same event Anthropic calls
     stop_reason='max_tokens'. If the two are not normalised, ONE check cannot cover both
     providers and the cheaper Perplexity path becomes the blind spot."""
-    assert '"max_tokens" if str(finish_reason) == "length"' in TRACKER, (
+    assert '"max_tokens" if str(reason) == "length"' in TRACKER, (
         "Perplexity's 'length' is no longer mapped to 'max_tokens' — the truncation check "
         "silently stops covering the Perplexity callers")
 
 
 def test_perplexity_rows_are_never_null():
-    """NULL is reserved to mean 'a call site forgot to report'. If Perplexity rows were NULL
-    too, the NULL arm would cry wolf on them nightly and get ignored — the failure mode that
-    kills every over-broad guard in this repo."""
-    assert 'else (str(finish_reason) if finish_reason is not None else "n/a")' in TRACKER, (
+    """NULL is reserved to mean 'stop_reason genuinely could not be derived'. If Perplexity
+    rows were NULL too, the NULL arm would cry wolf on them nightly and get ignored — the
+    failure mode that kills every over-broad guard in this repo."""
+    assert 'else (str(reason) if reason is not None else "n/a")' in TRACKER, (
         "Perplexity rows can write NULL stop_reason, which collides with the "
-        "missing-call-site meaning of NULL")
+        "unreported-caller meaning of NULL")
 
 
-# ── every call site reports ───────────────────────────────────────────────────────────────
+# ── the forgetting bug is IMPOSSIBLE, not detected (2026-08-08) ──────────────────────────
+#
+# The loggers take the RAW RESPONSE and derive usage + stop_reason together. Three layers
+# make a forgotten stop_reason impossible rather than next-morning-detected:
+#   a. the functions no longer HAVE usage=/stop_reason=/finish_reason= parameters — an
+#      old-style call raises TypeError at the call site (pinned by signature + probe below);
+#   b. the AST scan fails the build on any call site that does not pass `response=`;
+#   c. the nightly NULL arm (cost_board) stays as defence in depth for what structure cannot
+#      reach.
 
 def _call_sites():
     """Every spend_tracker invocation in the package, found by parsing rather than grepping —
@@ -103,25 +119,83 @@ def test_there_are_call_sites_to_check():
         "and a broken scan makes the coverage test below vacuously green")
 
 
-def test_every_call_site_reports_why_the_model_stopped():
-    """The column is only as good as its coverage. A site that omits the kwarg writes NULL
-    and becomes un-checkable — which is precisely the state the whole system was in until
-    today."""
+def test_every_call_site_passes_the_raw_response():
+    """The whole #543 close-out: cost and stop_reason travel as ONE object, so a site cannot
+    report spend while leaving truncation invisible. A site that fails here was written
+    against the pre-08-08 split-kwarg contract and would TypeError in production."""
     missing = [
         f"{f}:{ln} ({fn})" for f, ln, fn, kw in _call_sites()
-        if not ({"stop_reason", "finish_reason"} & kw)
+        if "response" not in kw
     ]
     assert not missing, (
-        "these spend-tracker call sites do not report why the model stopped, so truncation "
-        "there is invisible (#543): " + ", ".join(missing))
+        "these spend-tracker call sites do not pass the raw response, so they cannot report "
+        "why the model stopped (#543): " + ", ".join(missing))
 
 
-def test_a_forgotten_call_site_warns_at_runtime():
-    """Belt-and-braces for the site added AFTER this test was written: the tracker itself
-    logs a WARNING when stop_reason is absent, so it shows up in logs even before the
-    nightly check reports it."""
-    assert "no stop_reason passed" in TRACKER, (
-        "log_anthropic_call no longer warns when a call site omits stop_reason")
+def test_no_call_site_uses_the_removed_split_kwargs():
+    """The old shape must not creep back in — a `usage=` site compiles fine and only fails
+    when the call actually runs (inside a try/except at half the sites, i.e. silently). The
+    build is where it has to die."""
+    stale = [
+        f"{f}:{ln} ({fn})" for f, ln, fn, kw in _call_sites()
+        if {"usage", "stop_reason", "finish_reason"} & kw
+    ]
+    assert not stale, (
+        "these call sites still use the removed usage=/stop_reason=/finish_reason= kwargs "
+        "(pre-08-08 contract): " + ", ".join(stale))
+
+
+def test_the_split_kwargs_are_gone_from_the_functions_themselves():
+    """Signature-level pin: the impossibility lives in the function, not in reviewer
+    vigilance. If someone re-adds an optional stop_reason= kwarg 'for convenience', that is
+    today's bug reintroduced — the silently-optional kwarg IS the defect class."""
+    from agents.market_intelligence import spend_tracker
+
+    for fn in (spend_tracker.log_anthropic_call, spend_tracker.log_anthropic_call_safe):
+        params = set(inspect.signature(fn).parameters)
+        assert params == {"model", "caller", "response"}, (
+            f"{fn.__name__} signature drifted to {params} — the response-only contract is "
+            "what makes a forgotten stop_reason impossible")
+    pplx_params = set(inspect.signature(spend_tracker.log_perplexity_call).parameters)
+    assert pplx_params == {"caller", "response", "model"}, (
+        f"log_perplexity_call signature drifted to {pplx_params}")
+
+
+def test_an_old_style_call_raises_instead_of_writing_nulls():
+    """Runtime pin of the same fact: the pre-08-08 call shape must fail LOUDLY at the call
+    site (TypeError on binding, before any coroutine or DB work exists), never degrade into
+    a NULL row. This is the difference between impossible and detected."""
+    from agents.market_intelligence import spend_tracker
+
+    with pytest.raises(TypeError):
+        spend_tracker.log_anthropic_call(
+            model="m", caller="c", usage=object(), stop_reason="end_turn")
+    with pytest.raises(TypeError):
+        spend_tracker.log_anthropic_call_safe(model="m", caller="c", usage=object())
+    with pytest.raises(TypeError):
+        spend_tracker.log_perplexity_call(caller="c", usage={}, finish_reason="stop")
+    # And the response argument is not optional — "forgot entirely" is also a TypeError.
+    with pytest.raises(TypeError):
+        spend_tracker.log_anthropic_call_safe(model="m", caller="c")
+
+
+def test_derivation_goes_through_the_canonical_response_readers():
+    """`shared.llm_response` is the one place that reads a response (#544). If the trackers
+    re-grow their own getattr chains, the next response-shape change lands in one copy and
+    not the other — the exact bug class both #543 and #544 exist to end."""
+    for src, label in ((TRACKER, "spend_tracker.py"), (SPEND, "core/spend.py")):
+        assert "from shared.llm_response import" in src, (
+            f"{label} no longer derives usage/stop_reason via shared.llm_response — "
+            "response introspection is being re-implemented locally")
+    assert 'getattr(usage, "input_tokens"' not in TRACKER, (
+        "spend_tracker hand-rolls usage reading again instead of using shared.llm_response")
+
+
+def test_a_shapeless_response_still_warns_at_runtime():
+    """Belt-and-braces: if a response stops carrying stop_reason (SDK/shape drift), the
+    tracker WARNs immediately — logs first, then the nightly NULL arm the next morning."""
+    assert "carries no stop_reason" in TRACKER, (
+        "log_anthropic_call no longer warns when a response carries no stop_reason")
 
 
 # ── the detection ─────────────────────────────────────────────────────────────────────────
@@ -216,25 +290,39 @@ def test_a_truncated_judge_verdict_fails_open():
 
 
 def test_the_orchestrator_container_reports_stop_reason_too():
-    """core/spend.py writes to the SAME api_usage table from the orchestrator container. If it
-    never reported stop_reason, its callers would be NULL forever and the nightly NULL arm
-    would fire every single night — a guard that always fires is not a guard."""
-    src = pathlib.Path("core/spend.py").read_text(encoding="utf-8")
-    assert "ALTER TABLE api_usage ADD COLUMN IF NOT EXISTS stop_reason TEXT" in src, (
+    """core/spend.py writes to the SAME api_usage table from the orchestrator container — it
+    was missed once already on this exact task, which would have left the NULL arm firing
+    nightly forever. Same response-only contract, same three enforcement layers."""
+    assert "ALTER TABLE api_usage ADD COLUMN IF NOT EXISTS stop_reason TEXT" in SPEND, (
         "core/spend.py's schema is out of parity with spend_tracker's — whichever container "
         "boots first wins and the column may never appear")
-    assert "stop_reason" in src.split("INSERT INTO api_usage")[1][:400], (
+    assert "stop_reason" in SPEND.split("INSERT INTO api_usage")[1][:400], (
         "core/spend.py's INSERT omits stop_reason")
+
+    # Signature: response-only, so an orchestrator-side site cannot forget either.
+    from core.spend import log_api_usage
+    params = set(inspect.signature(log_api_usage).parameters)
+    assert params == {"model", "caller", "response"}, (
+        f"log_api_usage signature drifted to {params} — the orchestrator container is back "
+        "on the omittable-kwarg contract")
+    with pytest.raises(TypeError):
+        log_api_usage(model="m", caller="c", input_tokens=1, output_tokens=1)
+
+    # Every orchestrator-side call site passes the raw response and none uses the old shape.
     import ast as _ast
-    missing = []
+    bad = []
+    seen = 0
     for path in ("core/context.py", "core/orchestrator.py", "channels/telegram.py"):
         tree = _ast.parse(pathlib.Path(path).read_text(encoding="utf-8"))
         for node in _ast.walk(tree):
             if isinstance(node, _ast.Call) and getattr(node.func, "id", None) == "log_api_usage":
-                if "stop_reason" not in {k.arg for k in node.keywords if k.arg}:
-                    missing.append(f"{path}:{node.lineno}")
-    assert not missing, (
-        "orchestrator-side spend call sites not reporting stop_reason: " + ", ".join(missing))
+                seen += 1
+                kw = {k.arg for k in node.keywords if k.arg}
+                if "response" not in kw or ({"input_tokens", "output_tokens", "stop_reason"} & kw):
+                    bad.append(f"{path}:{node.lineno}")
+    assert seen >= 3, f"only {seen} log_api_usage call sites found — the orchestrator scan is broken"
+    assert not bad, (
+        "orchestrator-side spend call sites not on the response-only contract: " + ", ".join(bad))
 
 
 def test_a_caller_that_truncates_BY_DESIGN_does_not_alert():

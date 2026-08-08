@@ -120,10 +120,7 @@ async def invoke_forced_tool(
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         if log_caller:
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
-            await log_anthropic_call_safe(
-                model=model, caller=log_caller, usage=getattr(resp, "usage", None),
-                stop_reason=getattr(resp, "stop_reason", None),
-            )
+            await log_anthropic_call_safe(model=model, caller=log_caller, response=resp)
         return verdict
     except Exception as e:  # noqa: BLE001 — fail-open is the contract
         # #273: credit exhaustion must ALERT (terminal + actionable), never vanish into the

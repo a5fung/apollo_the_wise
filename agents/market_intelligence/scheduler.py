@@ -488,8 +488,7 @@ async def _nightly_data_pull():
                 from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
                 await log_anthropic_call_safe(model=DESCRIPTION_MODEL,
                                                caller="description_backfill",
-                                               usage=getattr(resp, "usage", None),
-                                               stop_reason=getattr(resp, "stop_reason", None))
+                                               response=resp)
                 import json
                 raw = first_text(resp).strip()  # #544: never content[0]
                 # Strip markdown code fences if present

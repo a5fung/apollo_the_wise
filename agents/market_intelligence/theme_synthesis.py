@@ -254,8 +254,7 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=SYNTHESIS_MODEL, caller="theme_synthesis",
-                                       usage=getattr(resp, "usage", None),
-                                       stop_reason=getattr(resp, "stop_reason", None))
+                                       response=resp)
         stop_reason = getattr(resp, "stop_reason", None)
         tool_input = next(
             (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},
