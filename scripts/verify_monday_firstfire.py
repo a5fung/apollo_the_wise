@@ -48,13 +48,15 @@ async def check_jobs(conn, target):
     if not rows:
         print("   (no job runs recorded for this ET day yet)")
         return
-    bad = [r for r in rows if (r["status"] or "").lower() in ("error", "failed", "aborted")]
+    # 'interrupted' (#528/#512, added 2026-08-08) — process killed/restarted mid-run; not a
+    # confirmed failure, but still worth a human look on the Monday sweep.
+    bad = [r for r in rows if (r["status"] or "").lower() in ("error", "failed", "aborted", "interrupted")]
     if bad:
         print(f"   ⚠️  {len(bad)} job(s) NOT clean — inspect:")
         for r in bad:
             print(f"        {r['job_id']:32} {r['status']:8} {r['error_message'] or ''}")
     else:
-        print(f"   ✅ all {len(rows)} job runs clean (no error/aborted)")
+        print(f"   ✅ all {len(rows)} job runs clean (no error/aborted/interrupted)")
     for jid, when in (("intraday_signals_eod_digest", "16:00"),
                       ("9m_pace_digest", "16:20")):
         hit = [r for r in rows if r["job_id"] == jid]

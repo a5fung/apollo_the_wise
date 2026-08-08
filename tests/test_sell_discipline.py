@@ -331,6 +331,13 @@ async def test_record_sell_discipline_writes_row_and_audits(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_record_sell_discipline_skips_no_r_frame_loudly(monkeypatch):
+    """#528/#512 family: no valid R frame (CRMD trade 137's shape — hard_stop >= entry,
+    no orb_low fallback) writes NO row to mi_sell_discipline_records (never junk), audits
+    once loudly, and — this is the "skip once, remember" fix — writes ONE row to
+    mi_sell_discipline_skips so the 120d catch-up scan stops re-selecting this permanently-
+    invalid trade every night. Before the fix, conn.execute was never awaited at all here;
+    the mutation check is test_scan_sql_excludes_remembered_skips below (revert the SCAN_SQL
+    change and it goes red on a live catch-up scan re-selecting an already-skipped trade)."""
     from tests.conftest import make_mock_pool
     pool, conn = make_mock_pool()
     bad = _qbts()
@@ -346,9 +353,21 @@ async def test_record_sell_discipline_skips_no_r_frame_loudly(monkeypatch):
 
     n = await sd.record_sell_discipline(date(2026, 7, 30))
     assert n == 0
-    conn.execute.assert_not_awaited()                                    # no junk row
+    conn.execute.assert_awaited_once()                                   # the skip-memory write, not a records row
+    skip_sql, skip_args = conn.execute.await_args.args[0], conn.execute.await_args.args[1:]
+    assert "INSERT INTO mi_sell_discipline_records" not in skip_sql       # never a junk record row
+    assert "INSERT INTO mi_sell_discipline_skips" in skip_sql
+    assert skip_args[0] == 279 and skip_args[1] == "QBTS"                 # trade_id, ticker
     assert any("sell_discipline_record_skipped" in c.args[0]
                for c in audit.await_args_list)                           # …but never silent
+
+
+def test_scan_sql_excludes_remembered_skips():
+    """#528/#512: the catch-up scan must never re-select a trade already recorded in
+    mi_sell_discipline_skips — that NOT EXISTS clause is what turns a nightly-forever skip
+    (CRMD trade 137) into a one-time skip. Revert it and a previously-skipped trade re-enters
+    the scan every night (this is the mutation this test pins)."""
+    assert "NOT EXISTS (SELECT 1 FROM mi_sell_discipline_skips" in sd._SCAN_SQL
 
 
 # ── the surface rides the judge Telegram in every branch ─────────────────────────────────

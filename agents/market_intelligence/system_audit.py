@@ -1699,7 +1699,7 @@ async def _run_job_runs_report(window_hours: int = 24) -> str:
                    expected_min_rows, error_message
             FROM mi_job_runs
             WHERE started_at >= NOW() - ($1 || ' hours')::INTERVAL
-              AND status IN ('failed', 'empty_result')
+              AND status IN ('failed', 'empty_result', 'interrupted')
             ORDER BY started_at DESC LIMIT 20
             """,
             str(window_hours),
@@ -1742,6 +1742,10 @@ async def _run_job_runs_report(window_hours: int = 24) -> str:
                     f"  {ts} {r['job_id']}: {r['rows_written'] or 0} rows "
                     f"(expected ≥ {r['expected_min_rows']})"
                 )
+            elif r["status"] == "interrupted":
+                # #528/#512 — never render this as FAILED: the process died, work outcome unknown.
+                err = (r["error_message"] or "")[:120]
+                parts.append(f"  {ts} {r['job_id']} INTERRUPTED: {err}")
             else:
                 err = (r["error_message"] or "")[:120]
                 parts.append(f"  {ts} {r['job_id']} FAILED: {err}")

@@ -11,6 +11,21 @@ misses today:
 - **Silent zero** — job exits clean but wrote 0 rows when it should have
   written ≥ N. Status flips to 'empty_result', Telegram fires immediately.
 
+- **Killed mid-run** (#512) — a process kill (deploy/OOM/SIGTERM) delivers
+  `asyncio.CancelledError` at whatever await point the job happened to be
+  suspended on (e.g. mid rate-limit sleep). `except Exception` does NOT catch
+  this — `CancelledError` is `BaseException`, not `Exception`, since Python
+  3.8 — which is exactly why `minute_volume_curves_refresh`'s 2026-07-31 kill
+  wrote nothing (no audit row, no alert; confirmed by an empty `mi_audit_log`
+  sweep for that window). Status flips to 'interrupted' (never 'failed' — the
+  work may have completed; we only know the process died) and the exception
+  is RE-RAISED unchanged so cooperative cancellation still propagates —
+  swallowing `CancelledError` can hang shutdown. This write is BEST-EFFORT:
+  it races the same process teardown that caused the problem, so it is not
+  the only backstop — `scheduler.py::_reap_stale_running_runs` (#528)
+  reconciles any row still 'running' from a PRIOR process at the next boot,
+  regardless of whether this write landed.
+
 Usage:
 
     async def _crypto_nightly_ingest_job():
@@ -23,9 +38,12 @@ like briefings, alerts, monitors that don't write tabular rows.
 
 Exceptions inside the context are recorded as status='failed' and re-raised
 so existing `notify_job_failure` callers in scheduler.py keep working.
+CancelledError is recorded as status='interrupted' (see above) and re-raised.
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -127,13 +145,45 @@ async def audit_run(job_id: str, expected_min_rows: Optional[int] = None):
 
     Yields a `JobRun` handle; the wrapped job sets `run.rows_written` if it
     declares an `expected_min_rows`. Exceptions are recorded as status='failed'
-    and re-raised so existing notify_job_failure handlers fire.
+    and re-raised so existing notify_job_failure handlers fire. CancelledError
+    (#512 — process killed mid-run) is recorded separately as status=
+    'interrupted' and re-raised — see module docstring.
     """
     started_at = time.monotonic()
     run = JobRun(job_id, expected_min_rows)
     run.run_id = await _record_start(job_id, expected_min_rows)
     try:
         yield run
+    except asyncio.CancelledError:
+        # #512: BaseException, not Exception — must be caught explicitly or it
+        # skips the `except Exception` below entirely and this job vanishes
+        # with no trace. Never claim 'failed'/'success' here: the process died,
+        # so whether the work completed is genuinely unknown (#528 found a case
+        # where it had). Best-effort — the write itself races the same
+        # teardown that's cancelling us — so keep this branch FAST (no network
+        # calls): _record_finish is one UPDATE, and the audit-log event name
+        # ends in "_error" so it rides the existing %error% Telegram sweeps
+        # (briefing.py, system_review.py, system_audit.py) instead of making
+        # its own httpx round-trip inside a cancellation handler. If neither
+        # write lands before the process dies, scheduler.py's boot-time reap
+        # (#528) is the guaranteed backstop on next start.
+        reason = "cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables"
+        await _record_finish(
+            run.run_id, job_id, started_at,
+            status="interrupted",
+            rows_written=run.rows_written,
+            error_message=reason,
+        )
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "job_cancelled_error",
+                f"{job_id}: {reason}",
+                json.dumps({"job_id": job_id, "rows_written": run.rows_written}),
+            )
+        except Exception as e:
+            logger.warning(f"audit_run: failed to log cancellation audit event for {job_id}: {e}")
+        raise
     except Exception as e:
         await _record_finish(
             run.run_id, job_id, started_at,
@@ -164,7 +214,6 @@ async def audit_run(job_id: str, expected_min_rows: Optional[int] = None):
             )
             logger.error(f"audit_run: empty_result — {msg}")
             try:
-                import json
                 from agents.market_intelligence.db import log_audit_event
                 await log_audit_event(
                     "job_empty_result",

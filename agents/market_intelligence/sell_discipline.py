@@ -318,6 +318,11 @@ _SCAN_SQL = """
       AND (t.closed_at AT TIME ZONE 'America/New_York')::date
           BETWEEN ($1::date - $2::int) AND $1::date
       AND NOT EXISTS (SELECT 1 FROM mi_sell_discipline_records s WHERE s.trade_id = t.id)
+      -- #528/#512 family: a trade already known to have no valid R frame (structural —
+      -- entry/hard_stop/orb_low/shares don't change once closed) is remembered in
+      -- mi_sell_discipline_skips so it stops re-entering this scan every night forever
+      -- (CRMD trade 137, found 2026-08-08). See record_sell_discipline's skip-write.
+      AND NOT EXISTS (SELECT 1 FROM mi_sell_discipline_skips k WHERE k.trade_id = t.id)
 """
 
 _MINUTE_PEAK_SQL = """
@@ -342,6 +347,17 @@ _DAILY_SQL = """
 _DECISIONS_SQL = """
     SELECT decision_date, verdict, r_multiple, stop_above_entry
     FROM mi_position_mgmt_decisions WHERE position_id = $1 ORDER BY decision_date
+"""
+
+# #528/#512 family — "skip once, remember": a trade with no valid R frame is structurally
+# invalid (entry/hard_stop/orb_low/shares are static once closed) and can never resolve on
+# its own, so re-scanning it every night just re-logs the same skip forever (CRMD trade 137).
+# ON CONFLICT DO NOTHING keeps this idempotent against the 120d catch-up window re-selecting
+# the same trade before this write lands.
+_SKIP_INSERT_SQL = """
+    INSERT INTO mi_sell_discipline_skips (trade_id, ticker, reason)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (trade_id) DO NOTHING
 """
 
 _INSERT_SQL = """
@@ -406,11 +422,17 @@ async def record_sell_discipline(today: date) -> int:
                     decisions=[dict(d) for d in decisions],
                 )
                 if rec is None:
+                    reason = (
+                        f"no valid R frame (entry={trade.get('entry_price')} "
+                        f"hard_stop={trade.get('hard_stop')} orb_low={trade.get('orb_low')} "
+                        f"shares={trade.get('entry_shares')})"
+                    )
                     await log_audit_event(
                         "sell_discipline_record_skipped",
-                        f"{trade['ticker']} trade {trade['id']}: no valid R frame "
-                        f"(entry={trade.get('entry_price')} hard_stop={trade.get('hard_stop')} "
-                        f"orb_low={trade.get('orb_low')} shares={trade.get('entry_shares')})")
+                        f"{trade['ticker']} trade {trade['id']}: {reason}")
+                    # Remember it — this condition is permanent for a closed trade, so
+                    # without this the 120d catch-up window re-flags it every night (#528/#512).
+                    await conn.execute(_SKIP_INSERT_SQL, trade["id"], trade["ticker"], reason)
                     continue
                 await conn.execute(_INSERT_SQL, *(rec[c] for c in _INSERT_COLS))
                 logged += 1

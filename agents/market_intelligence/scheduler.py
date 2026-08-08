@@ -50,7 +50,7 @@ from agents.market_intelligence.backtester.tracker import (
     run_paper_trade_tracker,
     format_tracker_telegram,
 )
-from core.notifications import notify_job_failure, notify_job_success
+from core.notifications import notify_job_failure, notify_job_success, notify_owner
 from core.job_audit import audit_wrap
 from shared.llm_models import DESCRIPTION_MODEL
 from shared.llm_response import first_text
@@ -4873,30 +4873,83 @@ async def _emit_boot_audit_marker() -> None:
         logger.error(f"Boot marker audit write failed: {e}", exc_info=True)
 
 
-async def _reap_stale_running_runs() -> None:
-    """Mark any mi_job_runs row stuck at status='running' for >2h as 'aborted'.
+_REAP_REASON = (
+    "process restarted mid-run — row was still 'running' at boot of a new "
+    "process; outcome unknown (work may have completed), check the job's "
+    "output table directly"
+)
 
-    Process kills (SIGTERM during deploy, OOM, real hang) leave the audit row
-    behind because audit_run's finally-equivalent path never reaches the DB
-    UPDATE. No legitimate job in this codebase runs >1h, so 2h is safe margin.
-    Surfaces as `stale_runs_reaped` audit event — climb in count is a leading
-    indicator of something other than deploys (real hangs, DB locks).
+
+async def _reap_stale_running_runs(boot_time: datetime) -> None:
+    """Mark any mi_job_runs row still status='running' from BEFORE this
+    process started as 'interrupted' (#528).
+
+    Was gated on `started_at < NOW() - INTERVAL '2 hours'` (an arbitrary hang
+    heuristic) since 2026-05-03 — the exact bug #528 found: `nightly_data_pull`
+    id=118746 (started 17:00 ET, killed by a 17:07 deploy) sat 'running' for
+    DAYS because nothing restarted market-agent again within a window that
+    would age it past 2h before ANOTHER boot could reap it. This process has
+    not fired a single job at the point this task runs (`boot_time` is
+    captured before any `add_job()` call, let alone `_scheduler.start()`), so
+    ANY 'running' row with `started_at < boot_time` is unambiguously orphaned
+    from a PRIOR process — no time-based guess needed, and the row gets
+    caught on the VERY NEXT boot instead of possibly never.
+
+    ⚠ Role-scoped (#256 W2 split): `apollo-execution` and `apollo-market`
+    (intelligence) are SEPARATE containers sharing this table. An execution
+    restart must never reap an intelligence job that is genuinely still
+    running in the OTHER, un-restarted container (and vice versa) — that
+    would be a false 'interrupted' on a live job. `combined` (single-process/
+    dev) sweeps every job_id, matching pre-split behavior.
+
+    Deliberately does NOT guess whether the work finished — #528 found a case
+    where it had (12,293 mi_daily_closes rows written that same evening) — so
+    the marker says 'interrupted', never 'aborted'/'failed'/'success'. A real
+    hang inside a still-alive process is a DIFFERENT problem this sweep
+    cannot see (it only runs once, at boot); that stays a live investigation,
+    not a silent reclassification.
+
+    Surfaces two ways when (and only when) rows are actually reaped — a
+    normal shutdown between jobs matches zero rows and produces NOTHING:
+    the durable `stale_runs_reaped` audit event, and a direct Telegram via
+    `notify_owner` (not `notify_job_failure` — that renders "Scheduled job
+    failed", which is exactly the claim #528 says not to make).
+    """
+    from agents.market_intelligence.constants import SERVICE_ROLE
+    args: list = [boot_time, _REAP_REASON]
+    if SERVICE_ROLE == "execution":
+        scope_clause = "AND job_id = ANY($3::text[])"
+        args.append(sorted(EXECUTION_OWNED_JOB_IDS))
+    elif SERVICE_ROLE == "intelligence":
+        scope_clause = "AND NOT (job_id = ANY($3::text[]))"
+        args.append(sorted(EXECUTION_OWNED_JOB_IDS))
+    else:  # combined — single process owns every job, sweep all (pre-split behavior)
+        scope_clause = ""
+    sql = f"""
+        UPDATE mi_job_runs
+           SET status='interrupted',
+               finished_at=NOW(),
+               error_message=$2
+         WHERE status='running' AND started_at < $1 {scope_clause}
+     RETURNING job_id, started_at
     """
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch("""
-                UPDATE mi_job_runs
-                   SET status='aborted',
-                       finished_at=NOW(),
-                       error_message='started_at exceeded 2h threshold (likely killed mid-run or hung)'
-                 WHERE status='running' AND started_at < NOW() - INTERVAL '2 hours'
-             RETURNING job_id, started_at
-            """)
+            rows = await conn.fetch(sql, *args)
         if rows:
             detail = ", ".join(f"{r['job_id']}@{r['started_at']:%Y-%m-%d %H:%M}Z" for r in rows)
-            await log_audit_event("stale_runs_reaped", f"reaped {len(rows)} rows: {detail}")
-            logger.warning(f"Reaped {len(rows)} stale mi_job_runs rows: {detail}")
+            await log_audit_event("stale_runs_reaped", f"reaped {len(rows)} interrupted row(s): {detail}")
+            logger.warning(f"Reaped {len(rows)} stale mi_job_runs row(s) as interrupted: {detail}")
+            try:
+                await notify_owner(
+                    f"🔶 *{len(rows)} job run(s) marked interrupted*\n"
+                    f"Still showing 'running' at startup — the prior process died mid-run "
+                    f"(deploy/restart). Outcome unknown, not a confirmed failure; the work "
+                    f"may have completed — check the output table if it matters.\n{detail}"
+                )
+            except Exception as e:
+                logger.warning(f"Stale-run reap: notify failed (non-fatal): {e}")
     except Exception as e:
         logger.error(f"Stale-run reap failed: {e}", exc_info=True)
 
@@ -4962,7 +5015,9 @@ def start_scheduler() -> AsyncIOScheduler:
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
 
     # Reap stale 'running' rows from prior process kills before any new job fires.
-    asyncio.create_task(_reap_stale_running_runs())
+    # boot_time captured HERE — before add_job()/_scheduler.start() below — is
+    # the provable "this process has not run a job yet" cutoff (#528).
+    asyncio.create_task(_reap_stale_running_runs(datetime.now(_ET)))
 
     # Boot marker: forensic anchor for paper/live $ mode at process start.
     asyncio.create_task(_emit_boot_audit_marker())

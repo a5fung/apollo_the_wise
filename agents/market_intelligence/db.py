@@ -2250,6 +2250,21 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_sell_discipline_close_day
                 ON mi_sell_discipline_records(close_day DESC);
 
+            -- #528/#512 family fold-in: a trade with NO valid R frame (e.g. hard_stop >=
+            -- entry_price AND no usable orb_low — CRMD trade 137, found 2026-08-08) can never
+            -- resolve on its own once closed (entry/hard_stop/orb_low/entry_shares are static),
+            -- so it re-entered the 120d catch-up scan and re-logged `sell_discipline_record_skipped`
+            -- EVERY night forever. This is the "skip once, remember" memory: the FIRST time a trade
+            -- is found structurally invalid it is recorded here (and still audited once, loudly, in
+            -- record_sell_discipline); every night after, the scan's NOT EXISTS excludes it, so the
+            -- recorder never mutates or deletes the trade and never re-flags a permanently-known case.
+            CREATE TABLE IF NOT EXISTS mi_sell_discipline_skips (
+                trade_id   INT PRIMARY KEY,
+                ticker     TEXT NOT NULL,
+                reason     TEXT NOT NULL,
+                first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
