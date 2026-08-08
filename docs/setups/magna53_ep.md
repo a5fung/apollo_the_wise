@@ -99,6 +99,47 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-08 — #516: a keyword match may no longer overrule a contrary classification (OPERATOR-SIGNED)
+
+**Ruling:** he judged 8 M&A suppressions across #514 and 2026-08-08. **7 were false positives**
+(WEN, UMAC, LCID, FRMI, SOUN, LII, SCZM); **1 was correct** (CLRO). On the last four: *"none of
+these are MA."*
+
+**Change:** in `ma_filter.is_likely_ma`, when `catalyst_quality` is present AND is not `'mna'`,
+the keyword-scan path is skipped. Our own graded view is no longer overridden by a bare word
+match.
+
+**Why this and not the obvious rule.** The obvious fix — *require the classifier to concur* —
+would have released **CLRO, the one correct suppression**: CLRO was killed at the `9m_intraday`
+detector before grading ran, so it has **no classification at all**. This guard only fires on a
+CONTRARY verdict, so a name with no verdict is untouched. That distinction is the design.
+
+**Measured over 73 fires / 60 days:** 28 (classifier agrees) stay suppressed · 27 (no
+classification) unaffected · **18 released**. Of the released, the 4 he ruled are confirmed false
+positives.
+
+**The case that decided the binding-phrase question.** A prior test asserted that binding wording
+should override a `routine` classification. **UMAC disproves it in production:** matched keyword
+**"definitive agreement"** — the most binding phrase there is — while the real catalyst was
+**Russell 2000 index inclusion plus a drone-sector tailwind**. The classifier said `routine` and
+was right. That test is inverted, with the reason recorded in it.
+
+**The safety net:** a veto FALLS THROUGH to the `polygon_news` check, which is deliberately NOT
+gated. A genuine deal carrying a real headline still suppresses there. The keyword path simply
+may no longer be the sole basis for overriding our own graded view.
+
+⚠ **NOT FIXED, and PARKED by the operator (*"I don't know enough to make a call here yet"*):**
+`polygon_news` fired on WEN ×5, LCID ×2 and FRMI — all with **no stored classification and no
+stored news summary**. It is simultaneously the worst-performing path and the only one that keeps
+no evidence of why it fired, which is why FRMI is unjudgeable after the fact. Separate decision.
+
+**Telemetry:** `mna_keyword_vetoed_by_classifier` is written ONLY when the veto actually changed
+the outcome, so the row count is a direct measure of the rule's effect. Isolated in its own
+try/except — telemetry can never alter the verdict.
+
+Tests: `tests/test_ma_keyword_veto_516.py` (7), mutation-checked against broadening the rule to
+"require concurrence" (which correctly fails the CLRO test) and against removing it entirely.
+
 ### 2026-08-07 — #541: the entry trigger is now ASK-aware, not last-trade-aware (OPERATOR-SIGNED, LIVE)
 
 **Trigger**: two live entries killed by the venue in single-digit milliseconds, two days running.

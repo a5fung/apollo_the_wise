@@ -82,11 +82,35 @@ async def test_negated_keyword_not_suppressed():                    # MMED end-t
 
 @pytest.mark.asyncio
 async def test_real_binding_keyword_still_fires():
+    # ⚠ UPDATED 2026-08-08 (#516, operator-signed) — this assertion was INVERTED by his ruling,
+    # and the reason is a production case, not a preference.
+    #
+    # It used to assert that a binding phrase overrides a `routine` classification. UMAC is the
+    # counter-example: matched keyword **"definitive agreement"** — the most binding wording
+    # there is — while the actual catalyst was **Russell 2000 index inclusion plus a drone-sector
+    # tailwind**. The classifier called it `routine` and was RIGHT; the keyword was wrong. He
+    # ruled UMAC "no MA".
+    #
+    # So a contrary classification now vetoes the keyword path even for binding phrasing.
+    #
+    # THE SAFETY NET, and it is why this is acceptable: the veto FALLS THROUGH to the
+    # polygon_news check below it, which is NOT gated. A genuine deal carrying a real headline
+    # still suppresses there. The keyword path is no longer allowed to be the sole basis for
+    # overriding our own graded view.
     is_mna, tel = await is_likely_ma(
         "XYZ", catalyst_quality="routine",
         catalyst_texts=["XYZ entered a definitive agreement to be acquired by ABC in an all-cash buyout"],
         check_polygon=False)
-    assert is_mna is True and tel["source"].startswith("keyword_in_text")
+    assert is_mna is False, (
+        "a keyword — even a binding one — overrode a contrary classification again; UMAC proved "
+        "that 'definitive agreement' can appear in text about an index inclusion")
+
+    # ...and with the polygon backstop available, a real deal is still caught.
+    is_mna_binding, _ = await is_likely_ma(
+        "XYZ", catalyst_quality="mna",
+        catalyst_texts=["XYZ entered a definitive agreement to be acquired by ABC in an all-cash buyout"],
+        check_polygon=False)
+    assert is_mna_binding is True, "a classifier-confirmed binding deal must still suppress"
 
 @pytest.mark.asyncio
 async def test_classifier_target_side_still_suppressed():

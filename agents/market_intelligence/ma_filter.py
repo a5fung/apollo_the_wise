@@ -20,6 +20,7 @@ price signature — median daily (H-L)/close < ~0.3% across 7+ of 10 sessions.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import date
@@ -703,7 +704,33 @@ async def is_likely_ma(
                 "catalyst_quality": catalyst_quality,
             }
 
-    if catalyst_texts:
+    # ── #516 GUARD D — a keyword match may NOT overrule a CONTRARY classification ──────────
+    # OPERATOR-SIGNED 2026-08-08 after ruling 8 suppressions: 7 were false positives.
+    #
+    # All four of the keyword-path misfires he ruled — LII, SCZM, SOUN, UMAC — had ALREADY been
+    # classified by our own grader as something OTHER than M&A (`routine`), and were suppressed
+    # anyway because a word like "merger" or "takeover" appeared somewhere in the text. SOUN is
+    # the clearest: its own stored summary says the move was "driven primarily by a blowout Q2
+    # earnings print", and the filter killed it on the word "merger".
+    #
+    # So: when we have ALREADY FORMED A VIEW and that view is not M&A, a bare keyword match is
+    # not allowed to override it. This is strictly narrower than "require the classifier to
+    # concur", and that distinction is load-bearing:
+    #
+    #   ⚠ CLRO — the ONE correct suppression in the ruled set — has NO classification at all
+    #     (killed at the 9m_intraday detector before grading ran). Requiring concurrence would
+    #     have RELEASED it. This guard cannot touch it: no verdict → no veto → unchanged.
+    #
+    # Measured over 73 fires in 60 days: 28 where the classifier agrees stay suppressed, 27 with
+    # no classification are unaffected, 18 are released. Of the released, the 4 he ruled are all
+    # confirmed false positives.
+    #
+    # ⚠ It deliberately does NOT gate the polygon_news path below. That path fires on headlines
+    # for tickers that were never graded (WEN ×5, LCID ×2, FRMI all have no classification), so
+    # gating it here would do nothing — and it is a SEPARATE problem the operator has parked.
+    _classifier_disagrees = bool(catalyst_quality) and catalyst_quality != "mna"
+
+    if catalyst_texts and not _classifier_disagrees:
         hit = matches_mna_in_any(catalyst_texts)
         if hit:
             kw, idx = hit
@@ -715,6 +742,25 @@ async def is_likely_ma(
                     "ticker": ticker,
                     "matched_keyword": kw,
                 }
+
+    # Telemetry for the guard above: record ONLY when it actually changed the outcome — i.e. a
+    # keyword WOULD have matched and the contrary classification vetoed it. Silent otherwise,
+    # so the row count is a direct measure of the rule's effect and not background noise.
+    if _classifier_disagrees and catalyst_texts:
+        _would_have = matches_mna_in_any(catalyst_texts)
+        if _would_have and not keyword_context_is_nonbinding(
+                catalyst_texts[_would_have[1]], _would_have[0]):
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event(
+                    "mna_keyword_vetoed_by_classifier",
+                    f"{ticker}: kept — classifier said '{catalyst_quality}', "
+                    f"keyword '{_would_have[0]}' did not override it (#516)",
+                    json.dumps({"ticker": ticker, "catalyst_quality": catalyst_quality,
+                                "matched_keyword": _would_have[0]}),
+                )
+            except Exception as e:  # loud-ok: telemetry must never change the filter verdict
+                logger.warning(f"{ticker}: #516 veto telemetry failed: {e}")
 
     if check_polygon:
         polygon_hit = await polygon_news_has_mna_headline(
