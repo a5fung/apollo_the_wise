@@ -151,6 +151,7 @@ def apply_daily_exit_step(
     character_ma_window: int = 20,
     character_ma_kind: str = "sma",
     character_undercut: float = 0.0,
+    prior_closes: list[float] | None = None,
 ) -> ExitStep:
     """Compute one daily exit step.
 
@@ -190,6 +191,26 @@ def apply_daily_exit_step(
       surfaces as an `sma_trail_stop` close; the ExitStep.effective_stop value reveals which
       input bound). See `giveback_floor` above for arm/floor semantics + fail-loud config
       validation. Opt-in for the #306 harvest sweep harness (Card 2); no live caller passes it.
+
+    prior_closes: the STOCK's daily closes from BEFORE entry, oldest-first (#548,
+      2026-08-08). The trail is *the stock's* 10/20-day moving average — a standard
+      indicator that exists every day, with or without our position
+      (`EP_TRADING_RULES.md` §B4: "Trail your stop with the 10- or 20-day moving
+      average… Exit on first daily close below the active MA"). Without this the trail
+      averaged `running_closes`, which starts EMPTY at fill and holds only the closes
+      observed while WE held — i.e. the mean of our holding period. It therefore could
+      not exist until ~10 trading days held, and on live money (max hold 2 days) it was
+      structurally dead: 0 fires in 17 trades, 2 fires ever, both paper, both at exactly
+      10 closes. The operator caught it: *"10d MA exists regardless of how long we
+      traded it."*
+
+      ⚠ Feeds the TRAIL INDICATORS ONLY. `giveback_floor` and the peak it derives from
+      `max(running_closes)` deliberately still see the HELD period alone — a pre-entry
+      high is not a gain we ever had, and folding it in would arm the giveback floor
+      against a peak the position never reached.
+
+      None (DEFAULT) = byte-identical to every existing caller.
+
     """
     if trail_mode not in ("sma", "ema_10_20", "sma_10_20_handoff", "pivot_swing", "character_ma"):
         raise ValueError(f"apply_daily_exit_step: unknown trail_mode {trail_mode!r}")
@@ -247,10 +268,15 @@ def apply_daily_exit_step(
 
     # 2. Trail indicator — SMA10/20 (default, UNCHANGED), the 10/20 EMA (opt-in, #396),
     # or the SMA10→SMA20 handoff (opt-in, ADR 0023 Card 2 sweep — Axis B).
+    # THE TRAIL SEES THE STOCK'S HISTORY, the peak/giveback logic below does not (#548).
+    # `running_closes` is our HELD period; `trail_closes` prepends the stock's prior closes so
+    # SMA10/20 is the real 10/20-day moving average from day one instead of the mean of however
+    # long we happen to have been in. Empty/None prior_closes -> identical to the old behavior.
+    trail_closes = list(prior_closes or []) + running_closes
     active_sma = None
     if trail_mode == "ema_10_20":
-        ema_10 = ema(running_closes, 10)
-        ema_20 = ema(running_closes, 20)
+        ema_10 = ema(trail_closes, 10)
+        ema_20 = ema(trail_closes, 20)
         if ema_20 is not None:
             active_sma = ema_10 if (ema_10 is not None and ema_10 > ema_20) else ema_20
         elif ema_10 is not None:
@@ -268,14 +294,14 @@ def apply_daily_exit_step(
         # character profile (pivot_analysis.character_profile). <window closes → no line
         # yet (no exit — mirrors the existing None-guard behavior).
         if character_ma_kind == "ema":
-            _line = ema(running_closes, character_ma_window)
+            _line = ema(trail_closes, character_ma_window)
         else:
-            _line = (sum(running_closes[-character_ma_window:]) / character_ma_window
-                     if len(running_closes) >= character_ma_window else None)
+            _line = (sum(trail_closes[-character_ma_window:]) / character_ma_window
+                     if len(trail_closes) >= character_ma_window else None)
         active_sma = _line * (1.0 - character_undercut) if _line is not None else None
     else:
-        sma_10 = sum(running_closes[-10:]) / 10 if len(running_closes) >= 10 else None
-        sma_20 = sum(running_closes[-20:]) / 20 if len(running_closes) >= 20 else None
+        sma_10 = sum(trail_closes[-10:]) / 10 if len(trail_closes) >= 10 else None
+        sma_20 = sum(trail_closes[-20:]) / 20 if len(trail_closes) >= 20 else None
         if trail_mode == "sma_10_20_handoff":
             # SMA10 until a partial is taken, then SMA20 (a SINGLE sma, not the max()).
             # partial_taken here is the PRIOR-day state (step 3 flips it AFTER this), so the

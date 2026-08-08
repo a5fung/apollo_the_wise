@@ -18,7 +18,7 @@ Run: python -m pytest tests/test_partial_exit_split_361.py -v
 """
 import asyncio
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -347,7 +347,58 @@ def test_load_exit_state_success_builds_expected_state_and_bars(monkeypatch):
         "breakeven_active": row["breakeven_active"],
         "exits": row["exits"],
         "running_closes": row["running_closes"],
+        # #548: the MA trail is the STOCK's 10/20-day average, so the state now also carries
+        # the stock's closes from BEFORE entry. The stub returns the same bar for both fetches.
+        "prior_closes": [110.0],
     }
+
+
+def test_load_exit_state_fetches_prior_closes_from_BEFORE_the_entry(monkeypatch):
+    """The trail must average the STOCK's history, not our holding period (#548, operator:
+    *"10d MA exists regardless of how long we traded it"*). Two things have to be true and
+    only the second is obvious:
+
+    1. a prior-close window is requested at all, and
+    2. it ENDS THE DAY BEFORE alert_date — the entry day's own close arrives separately via
+       `running_closes` on the first daily pass, so including it here double-counts it into
+       the mean."""
+    calls = []
+
+    def _hist(ticker, start, end, *a, **k):
+        calls.append((start, end))
+        return asyncio.sleep(0, result=[{"l": 1.0, "c": 2.0}])
+
+    monkeypatch.setattr(live_tracker, "get_index_history", _hist)
+    row = _trade_row()
+    state, _bars, _skip = asyncio.run(
+        live_tracker._load_exit_state(row, date(2026, 6, 23)))
+
+    assert len(calls) == 2, f"expected today's bar + a prior-close window, got {calls}"
+    _start, end = calls[1]
+    alert = row["alert_date"]
+    assert end == (alert - timedelta(days=1)).strftime("%Y-%m-%d"), (
+        f"prior-close window ends {end}, must end the day BEFORE alert_date {alert} — "
+        "otherwise the entry day's close is counted twice in the moving average")
+    assert state["prior_closes"] == [2.0]
+
+
+def test_a_failed_prior_close_fetch_does_not_break_position_management(monkeypatch):
+    """This pass also carries the HARD STOP. An indicator-input hiccup must degrade to the
+    pre-#548 behavior (held-period closes only), never abort the pass."""
+    seen = {"n": 0}
+
+    def _hist(*_a, **_k):
+        seen["n"] += 1
+        if seen["n"] == 1:
+            return asyncio.sleep(0, result=[{"l": 108.0, "c": 110.0}])
+        raise RuntimeError("history provider down")
+
+    monkeypatch.setattr(live_tracker, "get_index_history", _hist)
+    state, bars, skip = asyncio.run(
+        live_tracker._load_exit_state(_trade_row(), date(2026, 6, 23)))
+    assert skip is None, "a prior-close failure aborted the position-management pass"
+    assert bars == [{"l": 108.0, "c": 110.0}]
+    assert state["prior_closes"] == []
 
 
 def test_run_partial_exits_no_data_appends_exactly_one_result(monkeypatch):

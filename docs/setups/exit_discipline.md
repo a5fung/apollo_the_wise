@@ -100,9 +100,25 @@ was permitted to exist.
 **What is NOT wrong:** `max(SMA10, SMA20)` is faithful to §B4 ("use 10-SMA when 10 > 20, else
 20-SMA") — max() picks exactly that. Do not "fix" it.
 
-**The fix** is the data source: seed from the stock's own prior closes (`mi_daily_closes` carries
-279 bars/ticker) rather than from our holding period. ⚖ **NOT DONE — THE LINE + CHANGE_PROCESS**,
-filed on #548.
+**FIXED 2026-08-08 — operator: *"fix it, it's a bug"*.** `apply_daily_exit_step` takes a new
+`prior_closes` kwarg (the stock's closes from BEFORE entry) and the trail now averages
+`prior_closes + running_closes`. `live_tracker._load_exit_state` fetches a 40-calendar-day window
+ending the **day before** `alert_date` — the entry day's own close arrives via `running_closes` on
+the first pass, and including it here would double-count it.
+
+**Three deliberate properties:**
+- **`prior_closes=None` is byte-identical to the old behavior**, so every non-live caller
+  (backtester, shadow trackers, sweep harnesses) is untouched.
+- **The prior closes feed the TRAIL INDICATORS ONLY.** `giveback_floor` and its peak
+  (`max(running_closes)`) still see the held period alone — a pre-entry high is not a gain the
+  position ever had, and folding it in would arm the giveback floor against a peak we never
+  reached. Seeding `running_closes` itself would have fixed the trail and silently broken this;
+  a test pins it.
+- **The fetch is FAIL-SOFT.** Any history error leaves `prior_closes` empty (= old behavior) and
+  logs. That pass also carries the hard stop; an indicator input must never abort it.
+
+Tests: `tests/test_ma_trail_uses_stock_history_548.py` (6), mutation-checked against reverting the
+trail, leaking prior closes into the peak, and swapping `max()` for `min()`.
 
 Worth stating for that sign-off: §B4 activates the trail only once it **surpasses the hard-stop
 floor**, and the effective stop is `max(hard_stop, active_sma, entry_price)` — so a seeded MA can

@@ -588,6 +588,32 @@ async def _load_exit_state(
     if not daily_bars:
         return None, None, "no_data"
 
+    # THE STOCK'S OWN CLOSES BEFORE ENTRY (#548, 2026-08-08 — operator: *"10d MA exists
+    # regardless of how long we traded it"*). The trail is the STOCK's 10/20-day moving
+    # average (EP_TRADING_RULES §B4); without this it averaged only the closes observed
+    # while we held, so it could not exist until ~10 trading days in and was structurally
+    # dead on a book whose longest hold is 2 days.
+    #
+    # 40 calendar days back covers the 20 trading closes SMA20 needs with room for holidays.
+    # Window ENDS the day BEFORE alert_date: the entry day's own close arrives through
+    # `running_closes` on the first daily pass, and double-counting it would skew the mean.
+    #
+    # FAIL-SOFT ON PURPOSE: any failure leaves prior_closes empty, which is byte-identical
+    # to the pre-#548 behavior. A history hiccup must never abort a position-management
+    # pass — that pass also carries the hard stop.
+    prior_closes: list[float] = []
+    try:
+        _hist = await get_index_history(
+            trade["ticker"],
+            (alert_date - timedelta(days=40)).strftime("%Y-%m-%d"),
+            (alert_date - timedelta(days=1)).strftime("%Y-%m-%d"),
+        )
+        prior_closes = [float(b["c"]) for b in (_hist or []) if b.get("c") is not None]
+    except Exception as e:  # loud-ok: display/indicator input, never the stop itself
+        logger.warning(
+            f"{trade['ticker']}: prior-close fetch for the MA trail failed ({e}) — trail "
+            "falls back to held-period closes only (pre-#548 behavior)")
+
     state = {
         "alert_date": alert_date,
         "remaining_shares": trade["remaining_shares"],
@@ -597,6 +623,9 @@ async def _load_exit_state(
         "breakeven_active": trade.get("breakeven_active", False),
         "exits": exits_in,
         "running_closes": running_closes_in,
+        # Not part of the persisted trade state — recomputed each pass from price history,
+        # so there is nothing to migrate and nothing to go stale.
+        "prior_closes": prior_closes,
     }
     return state, daily_bars, None
 
@@ -655,6 +684,8 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         # This 4:45 EOD job bypasses the partial branch so it never double-fires
         # the partial — it owns ONLY the SMA-trail + stop-update + summary here.
         step = apply_daily_exit_step(state, daily_bars[0], today,
+                                          # #548: the trail is the STOCK's MA, not our hold-period mean
+                                          prior_closes=state.get("prior_closes"),
                                      integer_partial_shares=True,
                                      skip_partial_decision=True)
 
@@ -721,6 +752,8 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             # #361: partial branch is owned by run_partial_exits (3:45) — keep
             # skip_partial_decision=True here so this EOD job never partials.
             step = apply_daily_exit_step(state, daily_bars[0], today,
+                                              # #548: the trail is the STOCK's MA, not our hold-period mean
+                                              prior_closes=state.get("prior_closes"),
                                          integer_partial_shares=True,
                                          skip_hard_stop_close=True,
                                          skip_partial_decision=True)
@@ -899,6 +932,8 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
         # PROFIT_TRIGGER_R = None restores the day-3/day-5 rule with no code change.
         from agents.market_intelligence.constants import PROFIT_TRIGGER_R
         step = apply_daily_exit_step(state, daily_bars[0], today,
+                                          # #548: the trail is the STOCK's MA, not our hold-period mean
+                                          prior_closes=state.get("prior_closes"),
                                      integer_partial_shares=True,
                                      skip_hard_stop_close=True,
                                      skip_partial_decision=bool(PROFIT_TRIGGER_R))
