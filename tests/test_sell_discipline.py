@@ -248,7 +248,15 @@ def _render_data():
                      "reached_avg": 1.1, "kept_avg": -0.4}],
         "shadow": {"consol": [("anticipate", 118, 2.44, -0.27), ("confirm", 43, 0.7, -0.1)],
                    "htf": (2, 0.51, -1.0), "wick": (65, 8.1, 2.3),
-                   "giveback_n": 1, "pivot_n": 8},
+                   "giveback_n": 1,
+                   # DoD leg 3 (#508 verify 2026-08-08): the surface renders what a
+                   # CANDIDATE RULE would have kept, not a row count. `changed` is the
+                   # load-bearing number — an average can drift merely because a profile
+                   # is NULL on some trades, so "changed 0" is what says the candidate
+                   # did nothing at all.
+                   "pivot_cf": {"n": 8, "abstained": 5, "reached": 2.04,
+                                "actual": -0.56, "p1": -0.56, "p2": -0.47,
+                                "p1_diff": 0, "p2_diff": 0}},
     }
 
 
@@ -263,7 +271,13 @@ def test_renderer_full_surface():
     assert "extremes-poll peak" in out                                   # …and the footnote explains it
     assert "Correcting 6" in out and "regime@entry" in out               # reconstructed, not stored
     assert "consol-anticipate" in out and "wick (pct frame)" in out
-    assert "giveback n=1 · pivot n=8" in out
+    assert "giveback store: n=1" in out
+    # leg 3 of the DoD: a candidate rule's would-have-kept, replayable not argued
+    assert "CANDIDATE RULE" in out
+    assert "pivot-stop  n=8 (5 abstained)" in out
+    assert "changed 0" in out, (
+        "the surface no longer reports how many trades a candidate rule would have "
+        "CHANGED — without that, an inert candidate reads as a working one")
     assert len(out) < 2500                                               # rides the 4096-char digest
 
 

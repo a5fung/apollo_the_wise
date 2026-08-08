@@ -484,7 +484,7 @@ def format_sell_discipline_section(data: dict) -> str:
     """Pure renderer. Monospace code block, no pipe tables, one idea per line.
     `data` keys (all optional): open_lines [str], provisional [dict], recorded [dict],
     live_cohort {n,wins,reached_avg,kept_avg,partials,stop_above,regimes:[(name,n,kept)]},
-    cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf, wick, giveback_n, pivot_n}.
+    cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf, wick, giveback_n, pivot_cf}.
     Returns "" when there is nothing at all to show."""
     body: list[str] = []
 
@@ -546,9 +546,19 @@ def format_sell_discipline_section(data: dict) -> str:
     if shadow_lines:
         body.append("SHADOW SETUPS (no live $) · median reached → kept")
         body.extend(shadow_lines)
-    if sh.get("giveback_n") is not None or sh.get("pivot_n") is not None:
-        body.append(f"counterfactual stores: giveback n={sh.get('giveback_n', 0)}"
-                    f" · pivot n={sh.get('pivot_n', 0)}")
+    cf = sh.get("pivot_cf") or {}
+    if cf.get("n"):
+        body.append("CANDIDATE RULE · would it have kept more? (live $, replay)")
+        body.append(f" pivot-stop  n={cf['n']} ({cf.get('abstained', 0)} abstained)"
+                    f"  reached {_r(cf.get('reached'))}")
+        # The DIFF count is the load-bearing number, not the average: an average can move
+        # simply because a profile is NULL on some trades. "changed 0" means the candidate
+        # would have done nothing at all, which is the finding.
+        body.append(f"  actual {_r(cf.get('actual'))}"
+                    f" · p1 {_r(cf.get('p1'))} (changed {cf.get('p1_diff', 0)})"
+                    f" · p2 {_r(cf.get('p2'))} (changed {cf.get('p2_diff', 0)})")
+    if sh.get("giveback_n") is not None:
+        body.append(f"giveback store: n={sh.get('giveback_n', 0)}")
 
     if not body:
         return ""
@@ -592,11 +602,26 @@ async def build_sell_discipline_section(
             FROM mi_sell_discipline_records
             WHERE account_mode = 'live' AND pnl_attribution IS NULL
         """)
-        # Regime is RECONSTRUCTED here via the date join — never stored on the record.
+        # ⚠ REGIME FRAME — read this before changing the join (#508 verify, 2026-08-08).
+        # This used to RECONSTRUCT regime by joining mi_market_regime on alert_date. That
+        # produced a DIFFERENT answer from `exit_tune_bull_regime_read`, the trigger that gates
+        # every bull-tape conclusion: the trigger counts `mi_live_trades.regime` (stamped at
+        # entry) and read Bull 3, while this surface read Bull 6. They disagreed on 5 of 17
+        # trades — WULF, TSEM, FTNT, BTDR, BLZE — because a day's regime can be REVISED after
+        # the entry was taken (08-04 was Choppy at 09:31 and resolved Bull).
+        #
+        # Both numbers are true; they answer different questions. For an EXIT-RULE read the
+        # question is "what tape did we believe we were entering into", because that is the
+        # information the decision actually had. A later revision cannot retro-justify or
+        # retro-condemn a decision made without it. So: the STAMPED value wins, and this
+        # surface now agrees with the trigger that gates the review it feeds.
+        #
+        # The operator reads BOTH surfaces. Two numbers for one question is the failure class
+        # he has been calling out all week, and it nearly caught me twice in two days.
         regimes = await conn.fetch("""
-            SELECT COALESCE(mr.regime, '?') AS regime, count(*) AS n, sum(r.realized_r) AS kept
+            SELECT COALESCE(t.regime, '?') AS regime, count(*) AS n, sum(r.realized_r) AS kept
             FROM mi_sell_discipline_records r
-            LEFT JOIN mi_market_regime mr ON mr.regime_date = r.alert_date
+            JOIN mi_live_trades t ON t.id = r.trade_id
             WHERE r.account_mode = 'live' AND r.pnl_attribution IS NULL
             GROUP BY 1 ORDER BY n DESC, regime
         """)
@@ -639,7 +664,26 @@ async def build_sell_discipline_section(
             FROM mi_wick_candidates WHERE fwd_10d_from_close_pct IS NOT NULL
         """)
         giveback_n = await conn.fetchval("SELECT count(*) FROM mi_giveback_shadow")
-        pivot_n = await conn.fetchval("SELECT count(*) FROM mi_pivot_stop_shadow")
+        # DoD leg 3 (#508): "what a CANDIDATE RULE would have kept". This line used to render
+        # two bare ROW COUNTS — which answers "does the store have rows", not the question the
+        # task exists for. mi_pivot_stop_shadow already carries the answer per trade
+        # (baseline_exit_r = what we actually kept, p1/p2_exit_r = what each candidate profile
+        # would have kept), so the surface just was not asking.
+        # ⚠ DISPLAY ONLY. Rendering what a rule WOULD have kept is evidence; changing a rule is
+        # THE LINE (CHANGE_PROCESS + sign-off). This makes candidate rules replayable so they
+        # stop being argued — including, as of today, showing when a candidate does NOTHING.
+        pivot_cf = await conn.fetchrow("""
+            SELECT count(*) AS n,
+                   count(*) FILTER (WHERE abstained) AS abstained,
+                   avg(mfe_r) AS reached,
+                   avg(baseline_exit_r) AS actual,
+                   avg(p1_exit_r) AS p1,
+                   avg(p2_exit_r) AS p2,
+                   count(*) FILTER (WHERE p1_exit_r IS DISTINCT FROM baseline_exit_r) AS p1_diff,
+                   count(*) FILTER (WHERE p2_exit_r IS NOT NULL
+                                      AND p2_exit_r IS DISTINCT FROM baseline_exit_r) AS p2_diff
+            FROM mi_pivot_stop_shadow WHERE account_mode = 'live'
+        """)
 
     open_lines = []
     for pos in open_positions:
@@ -681,7 +725,7 @@ async def build_sell_discipline_section(
             "consol": [(c["entry_mode"], c["n"], _f(c["reached"]), _f(c["kept"])) for c in consol],
             "htf": (htf["n"], _f(htf["reached"]), _f(htf["kept"])) if htf and htf["n"] else None,
             "wick": (wick["n"], _f(wick["reached"]), _f(wick["kept"])) if wick and wick["n"] else None,
-            "giveback_n": giveback_n, "pivot_n": pivot_n,
+            "giveback_n": giveback_n, "pivot_cf": dict(pivot_cf) if pivot_cf else None,
         },
     }
     return format_sell_discipline_section(data)
