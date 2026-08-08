@@ -644,6 +644,16 @@ async def run_cost_watchdog(today: date) -> dict | None:
 _TRUNC_MIN_CALLS = 2      # 1 truncation on a chatty caller is noise; 2 is a pattern
 _TRUNC_PCT_FLOOR = 50.0   # ...unless the caller is low-volume, where 1-of-1 IS the outage shape
 
+# Callers where truncation is DELIBERATE and means nothing is wrong. Found by running the
+# check against prod rather than by reasoning about it: `healthcheck` sends the literal word
+# "ping" with max_tokens=5 and discards the text — it only cares that the API answered. It
+# therefore reports stop_reason='max_tokens' on EVERY call, forever, and would have fired this
+# alert every single night. A guard that always fires is not a guard (CLAUDE.md 08-03).
+# Keep this list SHORT and justified per entry — it is the one place a real outage could hide.
+_TRUNC_BY_DESIGN = {
+    "healthcheck",   # orchestrator liveness ping: max_tokens=5, response text unused
+}
+
 
 async def compute_truncation_check(lookback_hours: int = 24) -> dict:
     """Per-caller truncation + reporting-coverage over the window. Pure read on api_usage."""
@@ -663,7 +673,7 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
     truncating, unreported = [], []
     for r in rows:
         calls, trunc = int(r["calls"]), int(r["truncated"])
-        if trunc:
+        if trunc and r["caller"] not in _TRUNC_BY_DESIGN:
             pct = round(100.0 * trunc / calls, 1)
             if trunc >= _TRUNC_MIN_CALLS or pct >= _TRUNC_PCT_FLOOR:
                 truncating.append({"caller": r["caller"], "calls": calls, "truncated": trunc,

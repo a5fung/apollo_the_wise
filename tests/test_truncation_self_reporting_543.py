@@ -235,3 +235,28 @@ def test_the_orchestrator_container_reports_stop_reason_too():
                     missing.append(f"{path}:{node.lineno}")
     assert not missing, (
         "orchestrator-side spend call sites not reporting stop_reason: " + ", ".join(missing))
+
+
+def test_a_caller_that_truncates_BY_DESIGN_does_not_alert():
+    """Found by running the check against prod, not by reasoning about it: the orchestrator's
+    `healthcheck` sends the literal word "ping" with max_tokens=5 and throws the text away —
+    it only cares that the API answered. It reports stop_reason='max_tokens' on every single
+    call, forever, and would have fired this alert nightly from day one. A guard that always
+    fires is not a guard."""
+    assert "_TRUNC_BY_DESIGN" in BOARD, "the by-design truncation exemption is gone"
+    assert '"healthcheck"' in BOARD.split("_TRUNC_BY_DESIGN = {")[1][:300], (
+        "healthcheck is no longer exempt — it pings with max_tokens=5 and will alert every "
+        "night forever")
+    assert 'r["caller"] not in _TRUNC_BY_DESIGN' in BOARD, (
+        "the exemption is declared but never applied")
+
+
+def test_the_exemption_list_stays_short():
+    """It is the one place a real outage could hide. Every entry needs a stated reason."""
+    seg = BOARD.split("_TRUNC_BY_DESIGN = {")[1].split("}")[0]
+    entries = [ln for ln in seg.strip().split("\n") if ln.strip().startswith('"')]
+    assert len(entries) <= 3, (
+        f"{len(entries)} callers are exempt from the truncation alert — this list is becoming "
+        "the blind spot it was meant to prevent")
+    for e in entries:
+        assert "#" in e, f"exempt caller with no stated reason: {e.strip()}"
