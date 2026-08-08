@@ -2303,8 +2303,11 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
             SELECT ticker, rs_composite FROM mi_stock_scores
             WHERE ticker = ANY($1) AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
         """, t["tickers"])
-        _rs = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
-        _vals = [_rs[tk] for tk in t["tickers"] if tk in _rs]
+        # #407: the dict-then-filter was redundant — the query above is already
+        # `WHERE ticker = ANY($1)` with these exact tickers, so every returned row is a member
+        # by construction. (The BATCH site above genuinely needs its `_rs_by_tk` map: it fetches
+        # once for all themes and then indexes per-theme members, which is a different job.)
+        _vals = [r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None]
         rs_avg = sum(_vals) / len(_vals) if _vals else None
         prior = await conn.fetchrow("""
             SELECT days_active FROM mi_themes WHERE name = $1 AND theme_date < $2

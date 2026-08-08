@@ -288,6 +288,14 @@ async def get_account(account_mode: str | None = None) -> dict:
         # #370 input-side: a broker READ failing = a genuine alpaca API outage (not a per-call data
         # condition). Fire the deduped provider alert (per error-class / ~6h), THEN re-raise — the
         # caller's behavior is unchanged. The alert is alert-only + swallow-safe (never masks the raise).
+        #
+        # ⚠ #407 reviewed extracting these three call sites into a shared helper and RULED KEEP
+        # INLINE. The reason recorded then — a "raise-vs-[] asymmetry" between the sites — was the
+        # wrong reason; that asymmetry is surmountable and would not have blocked a helper. The
+        # REAL reason is that this is a MONEY PATH: three visible lines at each broker read say
+        # plainly what happens when the broker is down, and a helper would move that behaviour one
+        # indirection away from the code that depends on it. Two lines of duplication buys explicit
+        # money-path clarity. Do not "simplify" it without re-reading this.
         from agents.market_intelligence.llm_health import maybe_alert_api_failure
         await maybe_alert_api_failure("alpaca", e, context="get_account")
         raise
