@@ -40,17 +40,47 @@ def test_class_enabled_cumulative():
 @pytest.mark.asyncio
 async def test_get_ingest_mode_fail_closed(monkeypatch):
     from tests.conftest import make_mock_pool
+    from agents.market_intelligence import db
     pool, conn = make_mock_pool()
+    # #449: get_ingest_mode now reaches the DB through db.get_safeguard_state, whose OWN
+    # function body resolves get_pool in db.py's module namespace — NOT order_ingest's
+    # imported binding. Both are patched with the SAME mock pool so this test is valid
+    # unchanged both before and after that refactor (mirrors the drawdown_breaker /
+    # kill_scale_bands precedent documented in test_safeguard_state_348.py).
     monkeypatch.setattr(oi, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
 
     conn.fetchrow = AsyncMock(return_value={"state": "live_r1"})
-    assert await oi.get_ingest_mode() == "live_r1"          # a valid state passes through
+    assert await oi.get_ingest_mode() == "live_r1"          # a valid state passes through (ON case)
 
     conn.fetchrow = AsyncMock(return_value={"state": "garbage"})
     assert await oi.get_ingest_mode() == "off"              # unrecognized → OFF (fail closed)
 
     conn.fetchrow = AsyncMock(side_effect=RuntimeError("db down"))
     assert await oi.get_ingest_mode() == "off"              # DB error → OFF (fail closed, THE LINE)
+
+
+@pytest.mark.asyncio
+async def test_get_ingest_mode_missing_row_falls_back_to_env(monkeypatch):
+    """No row (toggle never flipped) → the BROKER_ORDER_INGEST_MODE env var, NOT a hardcoded
+    'off' — this is DIFFERENT from the DB-error and unrecognized-DB-state cases above, which
+    DO hard-fail to 'off'. An invalid env value coerces to 'off' the same way an invalid DB
+    state does; no env at all also lands on 'off' (its own hardcoded env default)."""
+    from tests.conftest import make_mock_pool
+    from agents.market_intelligence import db
+    pool, conn = make_mock_pool()
+    monkeypatch.setattr(oi, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    conn.fetchrow = AsyncMock(return_value=None)
+
+    monkeypatch.setenv("BROKER_ORDER_INGEST_MODE", "dry_run")
+    assert await oi.get_ingest_mode() == "dry_run"           # missing row → env (NOT 'off')
+
+    monkeypatch.setenv("BROKER_ORDER_INGEST_MODE", "not_a_real_mode")
+    assert await oi.get_ingest_mode() == "off"               # invalid env also coerces to off
+
+    monkeypatch.delenv("BROKER_ORDER_INGEST_MODE", raising=False)
+    assert await oi.get_ingest_mode() == "off"               # no env either → off (its hardcoded default)
 
 
 # ─────────────────────────── validate_coid truth table ───────────────────────────

@@ -344,6 +344,7 @@ async def initialize_schema() -> None:
                 market_cap FLOAT,
                 sma_10 FLOAT,
                 sma_20 FLOAT,
+                sma_40 FLOAT,
                 sma_50 FLOAT,
                 close FLOAT,
                 raw_1m FLOAT,
@@ -401,6 +402,13 @@ async def initialize_schema() -> None:
                                           -- (live column with data); a rename is a deferred migration.
                 confidence_multiplier FLOAT DEFAULT 1.0,
                 vol_percentile FLOAT,
+                pm_rvol FLOAT,
+                pm_rvol_baseline_n INT,
+                -- detected_at: actual moment the EP detector emitted the alert.
+                -- Distinct from created_at so future migrations can backfill rows
+                -- without poisoning the timeline (FLY/YSS migration artifact set
+                -- created_at=2026-03-28 13:26 on every pre-2026-03-20 row).
+                detected_at TIMESTAMPTZ,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
             ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS vol_percentile FLOAT;
@@ -422,6 +430,13 @@ async def initialize_schema() -> None:
                 breadth_pct_above_40ma FLOAT,
                 bo_bd_ratio_5d FLOAT,
                 pct4_ratio_10d FLOAT,
+                t2108 FLOAT,
+                pradeep_1m_50 INT,
+                pradeep_3m_25 INT,
+                full_up4_count INT,
+                full_down4_count INT,
+                consec_breakdown_days INT,
+                breadth_monitor JSONB,
                 description TEXT,
                 ep_threshold INT DEFAULT 70,
                 created_at TIMESTAMPTZ DEFAULT NOW()
@@ -532,6 +547,14 @@ async def initialize_schema() -> None:
                 q_revenue_yoy_pct DOUBLE PRECISION,
                 extraction_quality TEXT,
                 raw_json JSONB NOT NULL,
+                -- Carry-forward raw input persistence (2026-05-19 — see B6 plan).
+                -- Per-source columns so we can SELECT raw_alpaca_news_json IS NOT NULL
+                -- to track when each source started populating.
+                raw_polygon_news_json JSONB,
+                raw_alpaca_news_json JSONB,
+                raw_fmp_news_json JSONB,
+                raw_perplexity_text TEXT,
+                raw_claude_analysis_text TEXT,
                 extracted_at TIMESTAMPTZ DEFAULT NOW(),
                 PRIMARY KEY (ticker, alert_date)
             );
@@ -555,6 +578,11 @@ async def initialize_schema() -> None:
                 ticker TEXT PRIMARY KEY,
                 description TEXT,
                 notes TEXT,
+                sector TEXT,
+                industry TEXT,
+                -- #367 STEP-1: persistent company-name cache (mirrors sector/industry) so the
+                -- theme-axis name-matching signal doesn't re-fetch yfinance on every scored HIGH.
+                company_name TEXT,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
 
@@ -564,6 +592,9 @@ async def initialize_schema() -> None:
                 ticker TEXT NOT NULL,
                 close FLOAT NOT NULL,
                 volume BIGINT,
+                open_price FLOAT,
+                high_price FLOAT,
+                low_price FLOAT,
                 PRIMARY KEY (trade_date, ticker)
             );
             ALTER TABLE mi_daily_closes ADD COLUMN IF NOT EXISTS open_price FLOAT;
@@ -612,6 +643,16 @@ async def initialize_schema() -> None:
                 volume BIGINT NOT NULL,
                 close_in_range_pct FLOAT NOT NULL,
                 day2_status TEXT NOT NULL DEFAULT 'pending',
+                -- Going-in shape: captured at EOD sweep so weekly review can slice
+                -- outcomes by setup geometry (quiet breakout vs pullback reversal
+                -- vs falling knife vs extended continuation). Bucketing is derived
+                -- at query time from raw metrics so definitions can evolve.
+                prev_5d_pct FLOAT,
+                prev_20d_pct FLOAT,
+                prev_vs_sma10 FLOAT,
+                prev_vs_sma50 FLOAT,
+                sma50_slope_pct FLOAT,
+                prior_sessions INT,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (ticker, alert_date)
             );
@@ -954,6 +995,20 @@ async def initialize_schema() -> None:
                 ep_score FLOAT,
                 score_tier TEXT,
                 catalyst_quality TEXT,
+                scan_time_et TIMESTAMPTZ,
+                rank_by_gap INT,
+                projected_vol_multiple FLOAT,
+                pm_rvol FLOAT,
+                adv FLOAT,
+                adv_source TEXT,
+                minutes_since_open INT,
+                -- #489 hybrid real-time detection (Alpaca SIP Pass-2): gap_pct is the AUTHORITATIVE
+                -- (decided) gap = delayed in shadow, rt after the flip; these carry both readings.
+                gap_pct_rt FLOAT,
+                gap_pct_delayed FLOAT,
+                price_source TEXT,
+                rt_price_age_s FLOAT,
+                prev_close_alpaca FLOAT,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (scan_date, ticker)
             );
@@ -1030,6 +1085,11 @@ async def initialize_schema() -> None:
                 baseline_close FLOAT,
                 fwd_1d_pct FLOAT,
                 fwd_5d_pct FLOAT,
+                -- #490 §9.4 (operator-signed 2026-07-24) — CROSS-basis outcome columns. The old
+                -- fwd_1d/5d basis (baseline_close = the day CLOSE, i.e. AFTER the intraday move)
+                -- understates the very winners the residual dashboard exists to find (C3).
+                cross_to_close_pct FLOAT,
+                cross_to_high_pct FLOAT,
                 computed_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (run_date, ticker)
             );
@@ -1190,19 +1250,30 @@ async def initialize_schema() -> None:
                 -- Lets the later data-sizing pass separate a STRONG peer-cohort-ticker match
                 -- (theme-as-driver) from a TRIVIAL own-keyword match — the bare int can't.
                 matched_terms TEXT[] NOT NULL DEFAULT '{}',
+                -- #367 STEP-1: refined relevance signals, inheriting the #369 finding that
+                -- ticker-intersection is the WRONG instrument (grounded_text is the raw 8-K,
+                -- which names peers by COMPANY NAME, not ticker). Nullable schema-evolution
+                -- columns (established pattern — see mi_daily_closes open/high/low_price).
+                -- (a) company-NAME matching: same shape as the structural-attribution columns
+                -- above (score/attributable/matched-terms), but matching normalized company
+                -- NAMES against grounded_text instead of tickers.
+                name_attribution_score INT NOT NULL DEFAULT 0,
+                name_attributable BOOLEAN NOT NULL DEFAULT FALSE,
+                matched_names TEXT[] NOT NULL DEFAULT '{}',
+                -- (b) co-movement: is the ticker moving WITH its theme cohort that day? NULL
+                -- when not computable (no cohort price data for alert_date). co_moving is a
+                -- separate NULLABLE bool (not a default-False) so "not computable" is
+                -- distinguishable from "computed False" — a health-gauge read must not conflate
+                -- the two.
+                cohort_move FLOAT,
+                ticker_move FLOAT,
+                co_moving BOOLEAN,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (ticker, alert_date)
             );
             CREATE INDEX IF NOT EXISTS idx_theme_axis_shadow_date
                 ON mi_theme_axis_shadow(alert_date DESC);
 
-            -- #367 STEP-1: refined relevance signals, inheriting the #369 finding that
-            -- ticker-intersection is the WRONG instrument (grounded_text is the raw 8-K,
-            -- which names peers by COMPANY NAME, not ticker). Nullable schema-evolution
-            -- columns (established pattern — see mi_daily_closes open/high/low_price).
-            -- (a) company-NAME matching: same shape as the structural-attribution columns
-            -- above (score/attributable/matched-terms), but matching normalized company
-            -- NAMES against grounded_text instead of tickers.
             ALTER TABLE mi_theme_axis_shadow
                 ADD COLUMN IF NOT EXISTS name_attribution_score INT NOT NULL DEFAULT 0;
             ALTER TABLE mi_theme_axis_shadow
@@ -1620,6 +1691,9 @@ async def initialize_schema() -> None:
                 score                       INT,
                 stage                       TEXT NOT NULL,
                 is_earnings_today           BOOLEAN,
+                excluded_reason             TEXT,
+                excluded_source             TEXT,
+                excluded_detail             TEXT,
                 created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE (ticker, scan_date)
             );
@@ -1723,6 +1797,24 @@ async def initialize_schema() -> None:
                 reason                      TEXT,
                 score                       INT,
                 held_from_stage             TEXT,
+                fresh_tight_fires           BOOLEAN,
+                fresh_2bar_tr_pct           FLOAT,
+                atr14_pct                   FLOAT,
+                -- RMV Phase 1 (TI #54, 2026-05-09): telemetry-only persistence.
+                -- 0-100 contraction index per DeepVue; both windows persisted for
+                -- offline Phase 2 divergence analysis vs _compute_fresh_tightening.
+                rmv_5d                      FLOAT,
+                rmv_15d                     FLOAT,
+                -- P7.2 audit trail (2026-05-17): records which universe pattern(s)
+                -- admitted this ticker for the scan. Possible tags:
+                --   'rs_top200'           — top-200 RS leader (organic)
+                --   'rs_1m_80'            — rs_1m percentile ≥ 80 (organic burst)
+                --   'momentum_25pct'      — +25% off 10d min close (organic burst)
+                --   'magna53_failed_r3'   — R3-stopped MAGNA53 within last 7d
+                --   'ninem_universe_watch'— 9M EP within last 14d (P7.3b, Pradeep
+                --                            methodology: 9M = watchlist trigger)
+                -- A ticker admitted by multiple patterns captures all tags.
+                universe_sources            TEXT[] DEFAULT '{}',
                 created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE (ticker, scan_date)
             );
@@ -1956,6 +2048,35 @@ async def initialize_schema() -> None:
                 target_r        FLOAT NOT NULL,       -- "capture" = fwd MFE ≥ this × risk (settlement def)
                 origin          TEXT NOT NULL,        -- '9m' (a 9M day seeded the runup) | 'family_a' (general)
                 entry_mode      TEXT NOT NULL DEFAULT 'anticipate',  -- 'anticipate' (in-coil) | 'confirm' (base-high break) — #354 ADR 0013 §1
+                -- ── #327 shadow-fix pack (operator-signed 2026-07-14 —
+                -- docs/analysis/327_shadow_fix_proposal_2026-07-14.md). ALL additive, NULL default:
+                -- pre-fix rows keep NULL = "not measured" (backfill-safe; the settled June cohort's
+                -- readings live in the diagnostic, re-derivable offline from the recorded columns). ──
+                -- §1 quality gate — RECORDED per fire, never filters the write (A/B: both cohorts
+                -- accrue; the diagnostic's ETF magnitude was UNVERIFIED, hence flag-don't-gate).
+                -- Components recorded raw so the RS floor (~60–70 band, flag uses 65) can be re-cut:
+                would_pass_quality BOOLEAN,
+                is_common_stock BOOLEAN,   -- CS/ADRC or unknown-type = TRUE
+                above_50sma     BOOLEAN,
+                rs_at_entry     FLOAT,                -- mi_stock_scores.rs_composite
+                adv20_dollar    FLOAT,                -- 20-bar mean close×volume
+                -- §2 stop geometry — structural_low is now the HEADLINE stop on anticipate fires
+                -- (stop_kind='structural_low'); the validated fire-bar low keeps accruing here so the
+                -- legacy bet stays re-derivable; sub1pct_reject flags sub-1% coiled_low fires
+                -- (min observed 0.06% — noise stops; 64% of the diagnostic loss was gap slippage):
+                coiled_low      FLOAT,
+                stop_pct        FLOAT,                -- headline stop, % of entry
+                sub1pct_reject  BOOLEAN,
+                -- §4 regime label as-of the fire (mi_market_regime.regime) — the regime-gate question
+                -- stays unanswerable until a trending leg accrues; record it so the split is free:
+                regime_at_entry TEXT,
+                -- §5 measurement bounds — outcome now settles under the PESS intrabar bound (aligned
+                -- with realized_r; a bar spanning target+stop reads 'stop', not 'capture');
+                -- bound_conflict marks rows where the legacy OPT bound disagreed (NULL = settled
+                -- pre-fix under opt); realized_r_h12 = the same +1R/+3R ladder time-stopped at the
+                -- bet's 12-bar horizon ("report both horizons"):
+                bound_conflict  BOOLEAN,
+                realized_r_h12  FLOAT,
                 -- settlement (filled by a later phase; NULL = still open / unsettled) --
                 outcome         TEXT,                 -- capture | stop | open | NULL(unsettled)
                 realized_r      FLOAT,
@@ -3564,7 +3685,10 @@ async def get_runtime_toggle(name: str, env_var: str, default: bool = True) -> b
       ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
     Fail direction: DB error → the env value (fail-open to env — these toggle
     grade-quality behaviors, NOT capital; the capital gate is get_manual_halt_state,
-    which fails CLOSED). The 60s cache keeps reads off hot scan paths."""
+    which fails CLOSED). The 60s cache keeps reads off hot scan paths.
+    #449: the raw SQL now goes through get_safeguard_state (shared read, same idiom as
+    get_manual_halt_state / get_holistic_judge_enabled since #348); fail-direction UNCHANGED
+    — still applied HERE, not inside the shared helper."""
     import os as _os
     import time as _time
     now = _time.monotonic()
@@ -3573,11 +3697,7 @@ async def get_runtime_toggle(name: str, env_var: str, default: bool = True) -> b
         return hit[1]
     env_val = _os.environ.get(env_var, "true" if default else "false").lower() == "true"
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state "
-                "WHERE safeguard = $1 AND account_mode = 'global'", name)
+        row = await get_safeguard_state(name, "global")
         val = (row["state"] == "on") if row else env_val
     except Exception as e:  # loud-ok: fail-open to the env value (grade-quality toggle, not capital)
         logger.warning(f"runtime toggle {name} read failed → env fallback: {e}")

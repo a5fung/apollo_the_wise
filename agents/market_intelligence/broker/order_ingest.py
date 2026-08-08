@@ -29,7 +29,7 @@ from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import mode_prefix
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import get_pool, get_safeguard_state, log_audit_event
 
 logger = logging.getLogger(__name__)
 _ET = ZoneInfo("America/New_York")
@@ -51,16 +51,16 @@ async def get_ingest_mode() -> str:
     """The 3-state ingest toggle. FAIL-CLOSED — UNLIKE get_runtime_toggle (which fails to the env
     value because it governs grade-quality); this governs trade-state MUTATION, so ANY uncertainty
     — DB error, or an unrecognized state string — resolves to 'off' (no write). Precedence:
-    mi_safeguard_state.state (validated) → env → 'off'."""
+    mi_safeguard_state.state (validated) → env → 'off'.
+    #449: the raw SQL now goes through db.get_safeguard_state (shared read, same idiom as
+    get_manual_halt_state / get_runtime_toggle); fail-direction UNCHANGED — still applied HERE,
+    not inside the shared helper (a missing row falls to the env value, NOT to 'off' — that
+    asymmetry vs an unrecognized-state/DB-error is why validate/coerce stays local, per-caller)."""
     import os
     env_raw = os.environ.get(_INGEST_ENV, "off").lower()
     env_mode = env_raw if env_raw in INGEST_MODES else "off"
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT state FROM mi_safeguard_state WHERE safeguard = $1 AND account_mode = 'global'",
-                INGEST_TOGGLE)
+        row = await get_safeguard_state(INGEST_TOGGLE, "global")
         state = row["state"] if row else env_mode
         return state if state in INGEST_MODES else "off"  # unrecognized → off (fail closed)
     except Exception as e:  # loud-ok: fail CLOSED (no mutation) on any read error — THE LINE
