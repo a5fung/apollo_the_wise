@@ -86,17 +86,49 @@ def test_a_complex_with_NO_pair_shows_no_risk_line_at_all():
 
 def test_alt_season_is_named_when_dominance_is_falling():
     """His word, kept in the output — it makes this one concept across every asset class rather
-    than a crypto curiosity."""
+    than a crypto curiosity.
+
+    ⚠ The trend is DERIVED here, not read from `crypto_btc_dominance.slope_30d`. That column is
+    DEAD: 97 rows since 2026-04-27, every one NULL, because `crypto/ingest.py` only ever writes
+    (date, dominance_pct, total_mcap_usd). The operator caught it on the very first render —
+    *"why is btc 30 day trend missing? we've been shadowing for longer."* Reported as the CHANGE
+    IN PERCENTAGE POINTS because "dominance fell 1.4pts in a month" is a sentence he can act on
+    and a regression coefficient is not."""
     base = {"complexes": [{"name": "Energy", "has_risk_pair": False,
                            "windows": {w: {"anchor": 1.0, "expression": 1.0, "spread": 0.0,
                                            "risk": None} for w in ("1M", "3M", "6M")}}]}
-    falling = dict(base, btc_dominance={"dominance_pct": 52.0, "slope_30d": -0.4})
+    falling = dict(base, btc_dominance={"dominance_pct": 52.0, "change_30d": -1.4})
     assert "ALT SEASON" in format_strength_map(falling)
-    rising = dict(base, btc_dominance={"dominance_pct": 60.0, "slope_30d": 0.4})
+    rising = dict(base, btc_dominance={"dominance_pct": 60.0, "change_30d": 0.8})
     assert "BTC leading" in format_strength_map(rising)
-    unknown = dict(base, btc_dominance={"dominance_pct": 56.8, "slope_30d": None})
-    assert "not computed" in format_strength_map(unknown), (
-        "a NULL slope must say so — it must not silently read as 'BTC leading'")
+    flat = dict(base, btc_dominance={"dominance_pct": 56.8, "change_30d": 0.1})
+    assert "flat" in format_strength_map(flat), (
+        "a small move must read as FLAT, not be rounded into a direction")
+
+
+def test_short_dominance_history_says_so_instead_of_guessing():
+    """The failure this replaces printed nothing and looked like a system fault. If we genuinely
+    lack 30 days, say how much we have — never default to a direction."""
+    base = {"complexes": [{"name": "Energy", "has_risk_pair": False,
+                           "windows": {w: {"anchor": 1.0, "expression": 1.0, "spread": 0.0,
+                                           "risk": None} for w in ("1M", "3M", "6M")}}]}
+    thin = dict(base, btc_dominance={"dominance_pct": 56.8, "change_30d": None,
+                                     "history_days": 12})
+    out = format_strength_map(thin)
+    assert "12d of history" in out and "need 30" in out, out
+    assert "leading" not in out.split("BTC dominance")[1], (
+        "a missing trend rendered as a direction — a NULL must never imply BTC or alts leading")
+
+
+def test_it_does_not_read_the_dead_slope_column():
+    """Regression guard: `slope_30d` has never once been populated. Reading it again would
+    silently reinstate the blank the operator caught."""
+    import pathlib as _pl
+    src = _pl.Path("agents/market_intelligence/strength_map.py").read_text(encoding="utf-8")
+    code = "\n".join(l.split("#", 1)[0] for l in src.split("\n"))
+    assert "slope_30d" not in code, (
+        "strength_map reads slope_30d again — that column is dead (97/97 NULL) and nothing "
+        "writes it")
 
 
 def test_the_columns_line_up():

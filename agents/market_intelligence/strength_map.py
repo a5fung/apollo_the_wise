@@ -87,11 +87,32 @@ async def compute_strength_map(today: date) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_CLOSES_SQL, tickers, today)
-        # BTC dominance already carries its own 30d slope — the crypto risk read is a solved
-        # problem in `crypto/`, so use it rather than re-deriving an alt-season proxy here.
-        dom = await conn.fetchrow(
-            "SELECT date, dominance_pct, slope_30d FROM crypto_btc_dominance "
-            "WHERE date <= $1 ORDER BY date DESC LIMIT 1", today)
+        # ⚠ `crypto_btc_dominance.slope_30d` LOOKS like the alt-season read and is a DEAD
+        # COLUMN: 97 rows since 2026-04-27, every one NULL. The insert in `crypto/ingest.py`
+        # writes only (date, dominance_pct, total_mcap_usd) — nothing has ever populated the
+        # slope. Operator caught it on the first render ("we've been shadowing for longer").
+        #
+        # So derive the trend HERE from the dominance series we already store, rather than
+        # adding a writer for a field with one consumer. Reported as the CHANGE IN PERCENTAGE
+        # POINTS over ~30 days, not a regression slope: "dominance fell 1.4pts in a month" is
+        # a sentence he can act on; a slope coefficient is not.
+        dom_rows = await conn.fetch(
+            "SELECT date, dominance_pct FROM crypto_btc_dominance "
+            "WHERE date <= $1 ORDER BY date DESC LIMIT 45", today)
+        dom = None
+        if dom_rows:
+            latest = dom_rows[0]
+            # Walk back to the first row at least 30 days older; None if history is short —
+            # ABSENT, never a fabricated zero.
+            prior = next((r for r in dom_rows
+                          if (latest["date"] - r["date"]).days >= 30), None)
+            dom = {
+                "date": latest["date"],
+                "dominance_pct": latest["dominance_pct"],
+                "change_30d": (float(latest["dominance_pct"]) - float(prior["dominance_pct"]))
+                              if prior and prior["dominance_pct"] is not None else None,
+                "history_days": (latest["date"] - dom_rows[-1]["date"]).days,
+            }
 
     series: dict[str, list[float]] = {}
     for r in rows:
@@ -167,13 +188,15 @@ def format_strength_map(data: dict) -> str:
                            f"— {'risk-ON' if r > 0 else 'risk-off'}")
     dom = data.get("btc_dominance")
     if dom and dom.get("dominance_pct") is not None:
-        slope = dom.get("slope_30d")
-        if slope is None:
-            tag = " (30d trend not computed)"
-        elif slope < 0:
-            tag = " falling — alts leading (ALT SEASON tilt)"
+        chg = dom.get("change_30d")
+        if chg is None:
+            tag = f" (only {dom.get('history_days', 0)}d of history — need 30)"
+        elif chg <= -0.5:
+            tag = f" {chg:+.1f}pts/30d — alts leading (ALT SEASON tilt)"
+        elif chg >= 0.5:
+            tag = f" {chg:+.1f}pts/30d — BTC leading"
         else:
-            tag = " rising — BTC leading"
+            tag = f" {chg:+.1f}pts/30d — flat"
         out.append(f"{'Crypto':<15}BTC dominance {float(dom['dominance_pct']):.1f}%{tag}")
     out.append("```")
     out.append("_spread = stocks minus asset · risk = juniors minus seniors "
