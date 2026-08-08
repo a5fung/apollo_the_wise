@@ -409,6 +409,67 @@ async def initialize_schema() -> None:
                 -- without poisoning the timeline (FLY/YSS migration artifact set
                 -- created_at=2026-03-28 13:26 on every pre-2026-03-20 row).
                 detected_at TIMESTAMPTZ,
+                -- The block below mirrors _ensure_ep_alert_columns (this file), which is the
+                -- LIVE writer of these columns — invoked lazily, once per process (a module flag
+                -- skips it after the first call), from insert_ep_alert/update_ep_alert_judge_result
+                -- rather than at boot, to avoid 14 DDL round-trips per alerted candidate per 5-min
+                -- scan tick (#247). Folded here too so a FRESH install's CREATE also describes
+                -- reality; _ensure_ep_alert_columns' ALTER stays as the live idempotent writer for
+                -- already-deployed databases and is NOT removed.
+                --
+                -- Column provenance: `source`/catalyst_type (#155/C1 advisory) ·
+                -- in_active_theme/in_narrative_cohort (judge theme/narrative inputs) ·
+                -- fire_status FROZEN historical + fire_axes judge-written (#249) ·
+                -- grounded_text/baseline_floor_tier/judge_*/grade_engine_authority
+                -- (#240/#243 holistic judge: corpus, floor counterfactual, verdict columns,
+                -- and which engine drove the tier). Materiality shadow columns (#189/ADR
+                -- 0010) retired #249 — historical rows keep them, frozen. `setup_class`
+                -- (#332/ADR 0028 C1): the deterministic setup-class tag — P0 VISIBILITY
+                -- ONLY, never read by any grading/sizing/safeguard path (THE LINE).
+                source TEXT DEFAULT 'live',
+                catalyst_type TEXT,
+                catalyst_type_rationale TEXT,
+                in_active_theme BOOLEAN,
+                in_narrative_cohort BOOLEAN,
+                fire_status TEXT,
+                fire_axes TEXT[],
+                grounded_text TEXT,
+                baseline_floor_tier TEXT,
+                judge_tier TEXT,
+                judge_direction TEXT,
+                judge_rationale TEXT,
+                judge_materiality_tier TEXT,
+                grade_engine_authority TEXT,
+                rubric_version TEXT,
+                setup_class TEXT,
+                -- #498 TQS Stage 1 (docs/design/tape_quality_score.md): tape-quality SHADOW
+                -- annotation — TELEMETRY-ONLY, written post-grade by
+                -- tape_quality.annotate_ep_alerts_tape_quality via update_ep_alert_tape_quality;
+                -- NEVER read by any grading/sizing/entry/safeguard path (THE LINE).
+                -- tape_tier ∈ tape_clean|tape_watch|tape_junk|'unknown' (<15 live bars — renders
+                -- "unseasoned", never junk); NULL = annotator never ran / failed (distinct from
+                -- 'unknown' = ran, insufficient bars).
+                tape_tier TEXT,
+                tape_spike_ct INT,
+                tape_held INT,
+                tape_rev INT,
+                tape_bmr2 FLOAT,
+                tape_ntr_med FLOAT,
+                -- Volume-profile Slice 1 (docs/analysis/volume_profile_alert_context_2026-07-27.md,
+                -- operator-ruled 7/24 "display + collect, not trading yet"): vol-context SHADOW
+                -- annotation — TELEMETRY-ONLY, written post-grade by
+                -- vol_profile.annotate_one_vol_profile (alert-time metrics, same bars as TQS) and
+                -- vol_profile.eod_vol_landmark_pass (vol_alert_vs_max — EOD truth, 16:10 recap);
+                -- NEVER read by any grading/sizing/entry/safeguard path (THE LINE).
+                -- vol_hist_n = live pre-alert sessions in the fetched window (the depth-honesty
+                -- denominator: <50 → 'unseasoned', "1y" labels require ≥252). All-NULL row =
+                -- annotator never ran / failed; vol_lab50 NULL while vol_hist_n ≥ 50 = no ≥avg
+                -- volume day found in the ~260-session lookback (a REAL extreme, not a failure).
+                vol_hist_n INT,
+                vol_r5_50 FLOAT,
+                vol_lab50 INT,
+                vol_lab50_ratio FLOAT,
+                vol_alert_vs_max FLOAT,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
             ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS vol_percentile FLOAT;
@@ -437,6 +498,12 @@ async def initialize_schema() -> None:
                 full_down4_count INT,
                 consec_breakdown_days INT,
                 breadth_monitor JSONB,
+                -- QQQ EMA trend context. Live writer is the lazy per-call ALTER in
+                -- upsert_regime (this file) — folded here too so a fresh install's CREATE
+                -- also describes reality; that ALTER stays as-is for existing databases.
+                qqq_ema_10 FLOAT,
+                qqq_ema_20 FLOAT,
+                qqq_ema_bullish BOOLEAN,
                 description TEXT,
                 ep_threshold INT DEFAULT 70,
                 created_at TIMESTAMPTZ DEFAULT NOW()
@@ -459,6 +526,14 @@ async def initialize_schema() -> None:
                 score FLOAT,
                 description TEXT,
                 tickers TEXT[],
+                rs_avg FLOAT,
+                parent_theme TEXT,
+                days_active INT NOT NULL DEFAULT 0,
+                consecutive_accelerating INT NOT NULL DEFAULT 0,
+                pct_above_20sma REAL,
+                -- #226 shadow->live graduation: 'live' = natively discovered by the engine;
+                -- 'shadow_promoted' = graduated from mi_theme_candidates_shadow by promote_shadow_themes.
+                source TEXT NOT NULL DEFAULT 'live',
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
 
@@ -794,6 +869,22 @@ async def initialize_schema() -> None:
                 proposed_at TIMESTAMPTZ,
                 confirmed_at TIMESTAMPTZ,
                 skip_reason TEXT,
+                entry_attempt INT NOT NULL DEFAULT 1,
+                signal_type TEXT,
+                -- #66 dual-account routing (2026-05-10). NOTE: this column is load-bearing for the
+                -- UNIQUE constraint below — without it a fresh CREATE would fail
+                -- ("column account_mode named in key does not exist"). Found during #258 schema
+                -- consolidation: this table previously relied entirely on the trailing ALTER below,
+                -- which is a no-op on a database that already has the column but does nothing to
+                -- help a genuinely fresh install, where the CREATE itself would have errored.
+                account_mode TEXT NOT NULL DEFAULT 'paper',
+                -- Worst-price-vs-you / best-price-in-your-favor tracking (2026-05-10). Captures the
+                -- lowest and highest market prices observed during a trade's open life.
+                lowest_price_seen NUMERIC,
+                highest_price_seen NUMERIC,
+                -- pnl_attribution: NULL = methodology (default). Non-NULL means the P&L on this row
+                -- was distorted by a system bug, not the methodology being evaluated.
+                pnl_attribution TEXT,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 filled_at TIMESTAMPTZ,
                 closed_at TIMESTAMPTZ,
@@ -818,7 +909,9 @@ async def initialize_schema() -> None:
                 submitted_at TIMESTAMPTZ DEFAULT NOW(),
                 filled_at TIMESTAMPTZ,
                 cancelled_at TIMESTAMPTZ,
-                raw_response JSONB
+                raw_response JSONB,
+                purpose TEXT,
+                exit_reason TEXT
             );
 
             CREATE TABLE IF NOT EXISTS mi_orb_shadow_trades (
@@ -2350,6 +2443,7 @@ async def initialize_schema() -> None:
                 -- were the SAME move (~1.1 ADR). These columns express the excursion
                 -- in units that mean the same thing on every ticker, so regime and
                 -- stock-character tuning isn't confounded by stop width.
+                adr_20_pct            DOUBLE PRECISION,   -- 20d ADR%, the denominator for stop_per_adr/peak_adr
                 stop_pct              DOUBLE PRECISION,   -- stop distance, % of entry
                 stop_per_adr          DOUBLE PRECISION,   -- stop width / 20d ADR
                 peak_adr              DOUBLE PRECISION,   -- excursion in ADR units
