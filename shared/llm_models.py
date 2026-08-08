@@ -99,6 +99,9 @@ touches the literals above:
 from shared.model_resolver import TierResolution as _TierResolution
 from shared.model_resolver import parse_model_id as _parse_model_id
 from shared.model_resolver import resolve_tier as _resolve_tier
+from datetime import date as _date
+from datetime import datetime as _dt
+from zoneinfo import ZoneInfo as _ZoneInfo
 
 # ── Tier pins (committed fail-safe floor — what the deploy gate validates;
 # never auto-edited) ──────────────────────────────────────────────────────────
@@ -120,6 +123,36 @@ HAIKU = HAIKU_PIN
 OPUS = OPUS_PIN
 
 # Legacy ids — kept for pricing historical spend rows / deliberate pins only.
+SONNET_5 = "claude-sonnet-5"
+
+# Anthropic's introductory rate for claude-sonnet-5, valid THROUGH 2026-08-31; it reverts to
+# the standard sonnet-tier $3/$15 on 09-01. A date check, not a constant to be flipped by
+# hand — the flip would be a calendar task, and calendar tasks are how a rate table goes
+# stale. Dates in ET because that is the frame every other comparison in this system uses.
+_SONNET_5_INTRO = {"input": 2.00, "output": 10.00}
+_SONNET_5_INTRO_UNTIL = _date(2026, 8, 31)
+
+
+try:
+    _ET_TZ = _ZoneInfo("America/New_York")
+except Exception as _tzerr:  # pragma: no cover — missing tzdata in a stripped image
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "llm_models: no America/New_York tz data (%s) — claude-sonnet-5 will price at its "
+        "STANDARD rate rather than the introductory one. Over-stating spend, not under.",
+        _tzerr,
+    )
+    _ET_TZ = None
+
+
+def _sonnet_5_intro_active() -> bool:
+    """True while the introductory rate applies. Falls to the STANDARD (higher) rate if the
+    clock is unusable — over-stating spend is the safe direction; UNDER-stating it hides
+    growth, which is the failure mode the operator is actively watching for."""
+    if _ET_TZ is None:
+        return False
+    return _dt.now(_ET_TZ).date() <= _SONNET_5_INTRO_UNTIL
+
 SONNET_4_5 = "claude-sonnet-4-5"
 OPUS_4_7 = "claude-opus-4-7"
 OPUS_4_6 = "claude-opus-4-6"
@@ -367,6 +400,15 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     OPUS_PIN:   {"input": 5.00, "output": 25.00},
     OPUS_4_7:   {"input": 5.00, "output": 25.00},
     OPUS_4_6:   {"input": 5.00, "output": 25.00},
+    # claude-sonnet-5 was MISSING here and fell through to the sonnet-tier rate ($3/$15).
+    # That is its STANDARD rate and will be right again from 2026-09-01 — but Anthropic is
+    # running an INTRODUCTORY $2/$10 through 2026-08-31, so we were overstating it by 50%.
+    # MEASURED 2026-08-07: sonnet-5 is 24.7% of the 7-day bill and $1.84 of $22.30 was pure
+    # accounting error — on the exact metric the operator is watching rise. Handled by
+    # `_SONNET_5_INTRO_UNTIL` in pricing_for rather than a hardcoded number, so it CORRECTS
+    # ITSELF on 09-01 instead of needing a calendar task nobody will action. Under-pricing
+    # after the intro ends would be the worse error, so the fallback direction is standard.
+    SONNET_5:   {"input": 3.00, "output": 15.00},
     # ── Perplexity (#377 cost meter) ─────────────────────────────────────────
     # Token rates verified against https://docs.perplexity.ai/guides/pricing
     # (fetched 2026-06-25). Perplexity bills BOTH per-token AND a per-request
@@ -388,7 +430,14 @@ def pricing_for(model_id: str) -> dict[str, float]:
     resolution) — same $/tier as the pin, the best available estimate
     (models.list carries no pricing) and LOGGED every time so a stale rate
     table doesn't stay a silent mis-price. Final fallback:
-    DEFAULT_PRICING_PER_MTOK, for ids in no recognised family at all."""
+    DEFAULT_PRICING_PER_MTOK, for ids in no recognised family at all.
+
+    One dated special case: claude-sonnet-5 bills at an INTRODUCTORY $2/$10 through
+    2026-08-31 and its standard $3/$15 after. Encoded as a date check rather than a
+    hardcoded number so it corrects itself — a calendar task to flip a constant on 09-01
+    is a task nobody actions, and this repo has the scar tissue to prove it."""
+    if model_id == SONNET_5 and _sonnet_5_intro_active():
+        return _SONNET_5_INTRO
     exact = PRICING_PER_MTOK.get(model_id)
     if exact is not None:
         return exact
