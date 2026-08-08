@@ -45,15 +45,63 @@ logger = logging.getLogger(__name__)
 # Trading-day lookbacks. Calendar months would drift against holidays; these are bar counts.
 _WINDOWS = (("1M", 21), ("3M", 63), ("6M", 126))
 
-# CALIBRATED, not guessed. Measured over the 97 days of dominance we hold (2026-04-27 →
-# 2026-08-07): full range 55.37-58.73 = 3.36pts, sd 0.99, and across 69 overlapping 30-day
-# windows the MEDIAN ABSOLUTE change is 0.71pts (mean 1.12, min -3.04, max +1.23).
+# ── The dominance band RE-CALIBRATES ITSELF on every run ──────────────────────────────────
 #
-# So a 0.5pt band — my first guess — would have called the MEDIAN move a direction, i.e.
-# labelled noise as a signal about half the time. The band is the median instead: a move has to
-# beat the typical move before it earns the word "leading". Re-measure if the regime changes;
-# this is a calibration, not a constant.
-_DOM_TYPICAL_30D = 0.7
+# Operator, 2026-08-08: *"this need to be recalibrated, it may become more volatile phase, but
+# when and how often"*. The answer is EVERY RUN, from the data — because in this repo a
+# threshold a human has to remember to re-measure is a threshold that goes stale, and a stale
+# threshold is the exact failure class that keeps recurring here.
+#
+# The band is the MEDIAN ABSOLUTE 30-day change over the trailing window: a move must beat the
+# typical move before it earns the word "leading". Measured 2026-08-08 on the first 97 days it
+# came out at 0.71pts — which is why my hand-picked 0.5 was wrong: it labelled the median move
+# a direction, i.e. sold noise as signal roughly half the time.
+#
+# ⭐ AND THE BAND MOVING IS ITSELF THE SIGNAL HE IS ASKING ABOUT. If the typical 30-day move
+# widens from 0.7 to 2.0, crypto has entered a more volatile phase — that belongs on the
+# surface, not buried inside a constant. `_dominance_band` returns the recent band, the
+# baseline band, and whether it has widened materially.
+_DOM_BAND_FLOOR = 0.3        # never call a sub-0.3pt move a direction, however quiet the tape
+_DOM_BAND_DEFAULT = 0.7      # used ONLY when there is too little history to measure
+_DOM_RECENT_DAYS = 60        # "now"
+_DOM_BASELINE_DAYS = 240     # "normally"
+_DOM_WIDEN_RATIO = 1.5       # recent/baseline above this = a genuinely more volatile phase
+
+
+def _median(xs: list[float]) -> float | None:
+    if not xs:
+        return None
+    s = sorted(xs)
+    n = len(s)
+    return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2.0
+
+
+def _abs_30d_moves(rows: list[tuple]) -> list[float]:
+    """|change| over ~30 days for every day we can pair, oldest-first rows of (date, pct)."""
+    out = []
+    for i, (d, v) in enumerate(rows):
+        prior = next((p for pd, p in rows[:i][::-1] if (d - pd).days >= 30), None)
+        if prior is not None:
+            out.append(abs(float(v) - float(prior)))
+    return out
+
+
+def _dominance_band(rows: list[tuple]) -> dict:
+    """Self-calibrating band + the volatility-phase read. `rows` oldest-first (date, pct)."""
+    if not rows:
+        return {"band": _DOM_BAND_DEFAULT, "measured": False}
+    newest = rows[-1][0]
+    recent = _median(_abs_30d_moves([r for r in rows
+                                     if (newest - r[0]).days <= _DOM_RECENT_DAYS]))
+    baseline = _median(_abs_30d_moves([r for r in rows
+                                       if (newest - r[0]).days <= _DOM_BASELINE_DAYS]))
+    band = max(recent if recent is not None else _DOM_BAND_DEFAULT, _DOM_BAND_FLOOR)
+    widened = bool(recent and baseline and baseline > 0
+                   and recent / baseline >= _DOM_WIDEN_RATIO)
+    return {"band": round(band, 2), "measured": recent is not None,
+            "recent": None if recent is None else round(recent, 2),
+            "baseline": None if baseline is None else round(baseline, 2),
+            "widened": widened}
 
 # `anchor` = the asset itself. `senior`/`junior` = its equity expression, split by SIZE where that
 # split is real. A complex with no honest size pair simply has no `junior`.
@@ -106,9 +154,11 @@ async def compute_strength_map(today: date) -> dict:
         # adding a writer for a field with one consumer. Reported as the CHANGE IN PERCENTAGE
         # POINTS over ~30 days, not a regression slope: "dominance fell 1.4pts in a month" is
         # a sentence he can act on; a slope coefficient is not.
+        # 400 rows, not 45: the band is re-derived from the trailing window every run, so it
+        # needs the baseline history too — see `_dominance_band`.
         dom_rows = await conn.fetch(
             "SELECT date, dominance_pct FROM crypto_btc_dominance "
-            "WHERE date <= $1 ORDER BY date DESC LIMIT 45", today)
+            "WHERE date <= $1 ORDER BY date DESC LIMIT 400", today)
         dom = None
         if dom_rows:
             latest = dom_rows[0]
@@ -116,12 +166,15 @@ async def compute_strength_map(today: date) -> dict:
             # ABSENT, never a fabricated zero.
             prior = next((r for r in dom_rows
                           if (latest["date"] - r["date"]).days >= 30), None)
+            asc = [(r["date"], r["dominance_pct"]) for r in reversed(dom_rows)
+                   if r["dominance_pct"] is not None]
             dom = {
                 "date": latest["date"],
                 "dominance_pct": latest["dominance_pct"],
                 "change_30d": (float(latest["dominance_pct"]) - float(prior["dominance_pct"]))
                               if prior and prior["dominance_pct"] is not None else None,
                 "history_days": (latest["date"] - dom_rows[-1]["date"]).days,
+                **_dominance_band(asc),
             }
 
     series: dict[str, list[float]] = {}
@@ -199,19 +252,27 @@ def format_strength_map(data: dict) -> str:
     dom = data.get("btc_dominance")
     if dom and dom.get("dominance_pct") is not None:
         chg = dom.get("change_30d")
+        band = dom.get("band", _DOM_BAND_DEFAULT)
         if chg is None:
             tag = f" (only {dom.get('history_days', 0)}d of history — need 30)"
-        elif chg <= -_DOM_TYPICAL_30D:
+        elif chg <= -band:
             tag = f" {chg:+.1f}pts/30d — alts leading (ALT SEASON tilt)"
-        elif chg >= _DOM_TYPICAL_30D:
+        elif chg >= band:
             tag = f" {chg:+.1f}pts/30d — BTC leading"
         else:
             tag = f" {chg:+.1f}pts/30d — TYPICAL, no tilt"
         out.append(f"{'Crypto':<15}BTC dominance {float(dom['dominance_pct']):.1f}%{tag}")
-        # The number is meaningless without its scale — 0.8 sounds like nothing until you know
-        # the median 30-day move is 0.7 and the whole 97-day range is 3.4 points.
-        out.append(f"{'':<15}  (dominance = BTC's share of ALL crypto, out of 100; "
-                   f"typical 30d move {_DOM_TYPICAL_30D}pts)")
+        # The number is meaningless without its scale, and the scale is re-derived every run —
+        # so print the band actually in use rather than a remembered constant.
+        src = "measured" if dom.get("measured") else "default, too little history"
+        out.append(f"{'':<15}  (share of ALL crypto, out of 100 · typical 30d move "
+                   f"{band}pts — {src})")
+        # ⭐ A WIDENING BAND IS ITSELF THE SIGNAL (operator 2026-08-08). If moves are getting
+        # bigger, crypto has entered a more volatile phase — that belongs on the surface, not
+        # buried inside a threshold that quietly re-tunes.
+        if dom.get("widened"):
+            out.append(f"{'':<15}  ⚠ MORE VOLATILE PHASE: recent moves {dom['recent']}pts vs "
+                       f"{dom['baseline']}pts normally")
     out.append("```")
     out.append("_spread = stocks minus asset · risk = juniors minus seniors "
                "(crypto calls it alt season) · a READ, not a rule_")

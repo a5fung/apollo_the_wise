@@ -134,15 +134,79 @@ def test_it_does_not_read_the_dead_slope_column():
         "writes it")
 
 
-def test_the_dominance_band_is_CALIBRATED_not_guessed():
-    """My first band was ±0.5pts, picked because it looked small. Measured against the 97 days
-    we hold: the MEDIAN absolute 30-day change is 0.71pts (mean 1.12, range of the whole series
-    3.36pts). A 0.5 band therefore called the median move a direction — noise as signal, roughly
-    half the time. The band is now the median itself."""
-    from agents.market_intelligence.strength_map import _DOM_TYPICAL_30D
-    assert 0.6 <= _DOM_TYPICAL_30D <= 0.9, (
-        f"dominance band {_DOM_TYPICAL_30D} is outside the measured typical move (~0.71pts) — "
-        "re-measure before changing it")
+def test_the_band_RECALIBRATES_ITSELF_every_run():
+    """Operator: *"this need to be recalibrated, it may become more volatile phase, but when and
+    how often"*. Answer: every run, from the data.
+
+    A threshold a human has to remember to re-measure is a threshold that goes stale, and stale
+    thresholds are the failure class that keeps recurring in this repo. My first band was a
+    hand-picked 0.5pts — below the measured median 30-day move of 0.71, so it labelled the
+    TYPICAL move a direction, selling noise as signal about half the time."""
+    from agents.market_intelligence.strength_map import _dominance_band
+    from datetime import date, timedelta
+
+    d0 = date(2026, 1, 1)
+    # a series whose 30-day moves are ~2pts
+    rows = [(d0 + timedelta(days=i), 50.0 + (i // 30) * 2.0) for i in range(0, 200)]
+    b = _dominance_band(rows)
+    assert b["measured"] is True
+    assert 1.0 <= b["band"] <= 3.0, b
+    # ...and a quiet series must produce a TIGHTER band, so a small move still counts
+    quiet = [(d0 + timedelta(days=i), 50.0 + (i % 4) * 0.05) for i in range(0, 200)]
+    assert _dominance_band(quiet)["band"] < b["band"]
+
+
+def test_a_widening_band_is_SURFACED_as_a_volatility_phase():
+    """The band moving IS the signal he was asking about. If moves are getting bigger, crypto
+    has entered a more volatile phase — that belongs on the surface, not quietly absorbed into
+    a self-tuning threshold that shows nothing."""
+    from agents.market_intelligence.strength_map import _dominance_band
+    from datetime import date, timedelta
+
+    d0 = date(2026, 1, 1)
+    calm = [(d0 + timedelta(days=i), 50.0 + (i // 30) * 0.3) for i in range(0, 180)]
+    wild = [(d0 + timedelta(days=180 + i), 51.8 + (i // 30) * 3.0) for i in range(0, 60)]
+    b = _dominance_band(calm + wild)
+    assert b["widened"] is True, b
+    assert b["recent"] > b["baseline"], b
+
+    steady = [(d0 + timedelta(days=i), 50.0 + (i // 30) * 0.5) for i in range(0, 240)]
+    assert _dominance_band(steady)["widened"] is False
+
+
+def test_a_floor_stops_a_dead_quiet_tape_calling_everything_a_signal():
+    """Self-calibration cuts both ways: in a flat month the median move approaches zero, and
+    without a floor every rounding wobble would become 'BTC leading'."""
+    from agents.market_intelligence.strength_map import _dominance_band, _DOM_BAND_FLOOR
+    from datetime import date, timedelta
+    d0 = date(2026, 1, 1)
+    frozen = [(d0 + timedelta(days=i), 50.0) for i in range(0, 200)]
+    assert _dominance_band(frozen)["band"] >= _DOM_BAND_FLOOR
+
+
+def test_too_little_history_uses_the_default_AND_SAYS_SO():
+    """Never silently apply a default as though it were measured."""
+    from agents.market_intelligence.strength_map import _dominance_band, _DOM_BAND_DEFAULT
+    b = _dominance_band([])
+    assert b["band"] == _DOM_BAND_DEFAULT and b["measured"] is False
+    base = {"complexes": [{"name": "Energy", "has_risk_pair": False,
+                           "windows": {w: {"anchor": 1.0, "expression": 1.0, "spread": 0.0,
+                                           "risk": None} for w in ("1M", "3M", "6M")}}]}
+    out = format_strength_map(dict(base, btc_dominance={
+        "dominance_pct": 56.8, "change_30d": 0.8, "band": 0.7, "measured": False}))
+    assert "too little history" in out, out
+
+
+def test_the_band_SHOWN_is_the_band_USED():
+    """A self-tuning threshold that prints a different number than it applies is worse than a
+    stale constant, because it looks accountable and is not."""
+    base = {"complexes": [{"name": "Energy", "has_risk_pair": False,
+                           "windows": {w: {"anchor": 1.0, "expression": 1.0, "spread": 0.0,
+                                           "risk": None} for w in ("1M", "3M", "6M")}}]}
+    # 0.6 is BELOW a 0.9 band -> must read TYPICAL, and 0.9 must be the number printed
+    out = format_strength_map(dict(base, btc_dominance={
+        "dominance_pct": 56.8, "change_30d": 0.6, "band": 0.9, "measured": True}))
+    assert "TYPICAL" in out and "0.9pts" in out, out
 
 
 def test_the_dominance_number_carries_its_SCALE():
