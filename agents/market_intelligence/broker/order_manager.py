@@ -83,6 +83,25 @@ def stop_limit_buy_price(stop_price: float) -> float:
 CHASE_RISK_INFLATION_CAP = float(os.getenv("CHASE_RISK_INFLATION_CAP", "1.5"))
 
 
+async def _breakeven_at_broker_enabled(account_mode: str) -> bool:
+    """Runtime toggle for the REAL-TIME breakeven stop (#548, 2026-08-08). DEFAULT OFF.
+
+    Operator signed off on the fix; this ships DARK anyway, because #508's own history is the
+    argument for it: that change was deployed INERT, confirmed in prod, and only then flipped —
+    "so the path was proven before it was allowed to act on money". Same idiom as
+    `entry_ask_aware`: one `mi_safeguard_state` row, no redeploy, reversible the same way.
+
+    Fails CLOSED. An unreadable flag must leave exit behaviour exactly as it is.
+    """
+    try:
+        from agents.market_intelligence import db
+        row = await db.get_safeguard_state("breakeven_at_broker", account_mode)
+        return bool(row) and str(row.get("state", "")).lower() == "on"
+    except Exception as e:
+        logger.warning(f"breakeven_at_broker flag unreadable, staying OFF: {e}")
+        return False
+
+
 async def _ask_aware_entry_enabled(account_mode: str) -> bool:
     """Runtime toggle for the ask-aware entry fallback (2026-08-07). DEFAULT OFF.
 
@@ -2090,6 +2109,33 @@ async def execute_partial_exit(
         #     OFF, legs keep failing exactly as PLTR did — replace rejected,
         #     original stop intact, clean abort (fail-safe, but no harvest).
         new_stop_id = None
+        # ── REAL-TIME BREAKEVEN (#548, 2026-08-08) ────────────────────────────────────────
+        # The Telegram says "stop moves to breakeven" and, until now, nothing did: it set
+        # `breakeven_active = TRUE` in the DB, and ONLY `exit_logic`'s DAILY pass consumed that
+        # flag. FIGS 08-07 stopped out at 09:51 the same morning — about six hours before any
+        # daily pass could act — so the remaining 41 shares still sat behind the ORIGINAL stop
+        # and lost $13.74 on a trade that had already banked a profit.
+        #
+        # ⚠ THE CHEAP PART, and why this needs no new broker machinery: the stop is ALREADY
+        # being re-created here to reduce its quantity (a bracket leg's qty cannot be replaced —
+        # 42210000 — so it is cancel-then-new either way). Breakeven is therefore a PRICE
+        # ARGUMENT to an operation that already happens: zero extra orders, zero extra legs,
+        # zero new failure modes. That is what makes it shippable under the operator's
+        # broker-simplicity constraint while the 2R-limit half is still being designed.
+        #
+        # max() — it can only ever RAISE the stop. If the original stop is already above entry
+        # (a trailed or gapped-up position) it stays put; breakeven never loosens protection.
+        _entry = trade.get("entry_price")
+        if stop_price and _entry and await _breakeven_at_broker_enabled(account_mode):
+            _be = max(float(stop_price), float(_entry))
+            if _be > float(stop_price):
+                await log_audit_event(
+                    "partial_exit_breakeven_armed",
+                    f"{ticker}: stop moves to breakeven ${_be:.2f} (was ${float(stop_price):.2f}, "
+                    f"entry ${float(_entry):.2f}) on the reduced {new_remaining}-share stop",
+                )
+                stop_price = _be
+
         if old_stop_id and stop_price and new_remaining > 0:
             leg_safe_on = await get_runtime_toggle(
                 "partial_exit_leg_safe", "PARTIAL_EXIT_LEG_SAFE", default=False)

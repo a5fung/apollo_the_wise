@@ -204,6 +204,48 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-08 — Real-time breakeven at the BROKER — SHIPPED DARK (#548 defect 2)
+
+**Operator signed off** (*"yes to both… stop to breakeven needs to be real-time"*). **Deployed
+INERT behind `mi_safeguard_state('breakeven_at_broker', <mode>)`, DEFAULT OFF**, because #508's
+own history is the argument: that change shipped inert, was confirmed in prod, and only then
+flipped — *"so the path was proven before it was allowed to act on money."*
+
+**THE BUG.** The profit-take Telegram says *"stop moves to breakeven."* `finalize_partial_exit`
+set `breakeven_active = TRUE` **in the database**, and the only consumer of that flag is
+`exit_logic`'s DAILY pass, which runs after the close. FIGS 08-07 stopped out at **09:51 the same
+morning** — ~6h before any daily pass could act — with the remaining 41 shares still behind the
+ORIGINAL $15.19 stop, losing $13.74 on a trade that had already banked a profit. Structural, not
+bad luck: live MAGNA53 averages ~1.5-day holds and most trades die on day 0-1.
+
+**THE FIX IS A PRICE ARGUMENT, NOT NEW MACHINERY.** The stop is *already* re-created at partial
+time — a bracket leg's quantity cannot be replaced (Alpaca 42210000), so it is cancel-then-new
+regardless. Breakeven simply supplies `max(stop_price, entry_price)` to that existing operation.
+**Zero extra orders, zero extra legs, zero new failure modes** — which is why this half could ship
+while the 2R-limit half is still being designed, under the operator's ranked constraint (*"we've
+been bitten by stop orders failing at broker when it gets complex"*).
+
+- `max()` — it can only ever RAISE the stop. An original stop already above entry stays put.
+- Fails CLOSED: an unreadable toggle leaves exit behaviour exactly as it is.
+- Writes `partial_exit_breakeven_armed` naming old stop, new stop and entry — the original defect
+  was invisible precisely because nothing recorded that breakeven had NOT happened.
+
+**TO FLIP IT** (operator only — this acts on live money):
+```sql
+INSERT INTO mi_safeguard_state (safeguard, account_mode, state, updated_at)
+VALUES ('breakeven_at_broker', 'live', 'on', now())
+ON CONFLICT (safeguard, account_mode) DO UPDATE SET state='on', updated_at=now();
+```
+Reverting is the same statement with `'off'`. No redeploy either way.
+
+**VERIFY-LIVE:** the next partial that fires should log `partial_exit_breakeven_armed` AND the
+reduced stop should be created at the entry price, not the original stop. Until that is seen in
+prod this is deployed, not proven.
+
+Tests: `tests/test_breakeven_at_broker_548.py` (6), mutation-checked against removing the gate,
+swapping `max()` for `min()`, and never applying the price.
+
+
 ### 2026-08-08 — ⚠ FINDING, NOTHING CHANGED: the +2R rule fired once on live money and BOTH halves under-delivered
 
 **Operator's question, 2026-08-08:** *"if 5 got to +2R and our new profit take is at +2R with
