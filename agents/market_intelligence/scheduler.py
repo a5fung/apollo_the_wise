@@ -3105,6 +3105,22 @@ async def _post_nightly_audit_job():
         logger.error(f"Null-rate sweep failed: {e}", exc_info=True)
         await notify_job_failure("null_rate_sweep", str(e))
 
+    # DEAD-COLUMN sweep (#543): the COMPLEMENT to the null-rate sweep above, which by design
+    # skips always-null columns ("never met the populated bar") and only looks at 5 tables.
+    # A numeric column 100% NULL across its whole history is dead or unwired — binary, not a
+    # rate. Announced ONCE per column ever, because it is a build defect and not a daily
+    # condition. Found by the operator on crypto_btc_dominance.slope_30d: 97 rows, all NULL,
+    # unnoticed for three months because nothing read it.
+    try:
+        from agents.market_intelligence.health_checks import run_dead_column_sweep
+        dc = await run_dead_column_sweep()
+        logger.info(
+            f"Dead-column sweep: {dc['tables_scanned']} tables, {len(dc['dead'])} dead "
+            f"({sum(1 for d in dc['dead'] if d['new'])} new), {len(dc['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Dead-column sweep failed: {e}", exc_info=True)
+        await notify_job_failure("dead_column_sweep", str(e))
+
     # Row-count DRIFT sweep (#340): a hand-pinned `expected_min_rows` rots silently — when the real
     # distribution steps down legitimately the job sits `empty_result` forever and the red light
     # stops meaning anything (#286: nightly_data_pull red EVERY market day for 2+ weeks). Flags a

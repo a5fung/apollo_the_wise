@@ -2099,3 +2099,94 @@ async def run_ecosystem_reactivation_check(conn=None) -> dict[str, Any]:
 
     return summary
 
+
+
+# ── DEAD-COLUMN SWEEP (#543, 2026-08-08) ──────────────────────────────────────────────────
+#
+# Operator, after finding `crypto_btc_dominance.slope_30d` NULL in all 97 rows: *"we need
+# better dq checks for our tables and data, null checks at the very least, anomaly detection,
+# row counts, etc."*
+#
+# Most of that already exists — `run_null_rate_sweep` (a populated column going null),
+# `run_job_liveness_sweep` (a job producing no rows), the #340 row-count drift sweep, and the
+# L1/L2/L3 anomaly system. `slope_30d` slipped through TWO specific holes:
+#
+#   1. `_evaluate_column` SKIPS always-null columns BY DESIGN — its docstring says so:
+#      "always-null → None (never met the populated bar)". That is correct for its job (catching
+#      a column that BROKE) and it is precisely why it cannot see one that was never wired.
+#   2. `_NULL_SWEEP_TABLES` lists 5 tables. `crypto_btc_dominance` is not one of them, so
+#      nothing was looking anyway.
+#
+# THIS SWEEP IS THE COMPLEMENT, not a replacement: a numeric column that is 100% NULL across
+# its ENTIRE history, on a table with real rows, is either dead or never wired. That is binary,
+# not a rate — which is what makes it cheap to check and near-impossible to false-positive on.
+#
+# ⚠ REPORTED ONCE PER COLUMN, EVER. This is a BUILD defect, not a daily condition: a column
+# unwired today is unwired tomorrow, and re-announcing it every night is how a guard becomes
+# noise and gets muted. The audit log IS the dedupe state (same pattern as `cost_new_lane`).
+_DEAD_COL_MIN_ROWS = 30          # below this the table is too young to judge
+_DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
+
+
+async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
+    """Numeric columns that have NEVER been populated. Announced once per column, ever.
+
+    Returns {"tables_scanned", "dead" [list], "errors" [list]}.
+    """
+    from agents.market_intelligence.db import get_pool, log_audit_event
+
+    async def _run(c) -> dict[str, Any]:
+        out: dict[str, Any] = {"tables_scanned": 0, "dead": [], "errors": []}
+        tables = [r["table_name"] for r in await c.fetch(
+            """
+            SELECT table_name FROM information_schema.tables
+             WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+               AND (table_name LIKE 'mi\\_%' OR table_name LIKE 'crypto\\_%')
+             ORDER BY table_name
+            """)]
+        already = {r["summary"] for r in await c.fetch(
+            "SELECT summary FROM mi_audit_log WHERE event_type = 'dead_column_detected'")}
+
+        for table in tables:
+            try:
+                n = await c.fetchval(f'SELECT count(*) FROM "{table}"')
+                if not n or n < _DEAD_COL_MIN_ROWS:
+                    continue
+                out["tables_scanned"] += 1
+                cols = [r["column_name"] for r in await c.fetch(
+                    """
+                    SELECT column_name FROM information_schema.columns
+                     WHERE table_schema = 'public' AND table_name = $1
+                       AND data_type = ANY($2::text[])
+                    """, table, sorted(_NUMERIC_DATA_TYPES))]
+                for col in cols:
+                    # count(col) counts NON-NULL. Zero over the whole table = never written.
+                    if await c.fetchval(f'SELECT count("{col}") FROM "{table}"'):
+                        continue
+                    key = f"{table}.{col}"
+                    out["dead"].append({"table": table, "column": col, "rows": n,
+                                        "new": key not in already})
+                    if key not in already:
+                        await log_audit_event(
+                            "dead_column_detected", key,
+                            f'{{"table": "{table}", "column": "{col}", "rows": {n}}}')
+            except Exception as e:  # loud-ok: one bad table must not kill the sweep
+                out["errors"].append(f"{table}: {type(e).__name__}: {str(e)[:120]}")
+                logger.warning(f"dead-column sweep: {table} failed: {e}")
+
+        fresh = [d for d in out["dead"] if d["new"]]
+        if fresh:
+            from agents.market_intelligence.briefing import send_telegram_message
+            lines = ["🟠 *DEAD COLUMNS* — declared but never once written:", "```"]
+            for d in fresh[:10]:
+                lines.append(f"{d['table']}.{d['column']}  ({d['rows']} rows, 0 populated)")
+            lines += ["```", "Either wire the writer or drop the column — a column nothing "
+                      "writes is a promise the schema keeps making and nothing honours."]
+            await send_telegram_message("\n".join(lines))
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await get_pool()
+    async with pool.acquire() as acquired:
+        return await _run(acquired)
