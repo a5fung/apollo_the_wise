@@ -41,6 +41,7 @@ from typing import Any, NamedTuple, Optional
 import anthropic
 
 from agents.market_intelligence.collector import et_today
+from agents.market_intelligence.collector import pplx_finish_reason
 from agents.market_intelligence.collector import (
     get_snapshot_all,
     get_index_history,
@@ -75,6 +76,7 @@ from shared.llm_models import GROUNDED_GRADE_MODEL
 # only the committed pin the deploy gate checks, and can lag the live value.
 from agents.market_intelligence.ep_grade_judge import MODEL as _JUDGE_MODEL_ACTUAL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
+from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
 
@@ -1044,7 +1046,8 @@ catalyst, say so explicitly."""
         # Two fixes, because the ceiling alone is not a guarantee: the cap is now 1500, AND a
         # truncated response is REJECTED outright rather than half-read (#543/#544 — same rule
         # the shared judge transport now enforces).
-        if getattr(response, "stop_reason", None) == "max_tokens":
+        _stop = getattr(response, "stop_reason", None)
+        if is_truncated(response):
             raise ValueError(
                 f"catalyst grade TRUNCATED at max_tokens for {ticker} — refusing to grade on a "
                 "partial tool call")
@@ -1056,7 +1059,7 @@ catalyst, say so explicitly."""
         if not quality:
             raise ValueError(
                 f"catalyst grade returned no quality for {ticker} "
-                f"(keys: {sorted(result)}, stop_reason={getattr(response, 'stop_reason', None)})")
+                f"(keys: {sorted(result)}, stop_reason={_stop})")
         return quality, analysis or ""
     except Exception as e:
         # #273: a credit-exhaustion failure here silently turns every catalyst
@@ -1110,7 +1113,7 @@ Respond with ONLY the classification word."""
                 await log_perplexity_call(
                     caller="perplexity_catalyst_validate", model="sonar",
                     usage=_data.get("usage"),
-                    finish_reason=(_data.get("choices") or [{}])[0].get("finish_reason"),
+                    finish_reason=pplx_finish_reason(_data),
                 )
             except Exception:
                 pass

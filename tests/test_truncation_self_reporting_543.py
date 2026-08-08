@@ -204,12 +204,12 @@ def test_a_truncated_judge_verdict_fails_open():
     ADR 0011 §Fail-open already says a judge error takes the conviction floor. A response we
     cut off IS a judge error. This is that rule finally being enforceable."""
     src = (MI / "judge_transport.py").read_text(encoding="utf-8")
-    assert 'getattr(resp, "stop_reason", None) == "max_tokens"' in src, (
+    assert "is_truncated(resp)" in src, (
         "the shared judge transport no longer discards truncated verdicts — a cut-off "
         "response can again be graded on, including promotions to HIGH (ADR 0011)")
     assert "judge_verdict_truncated" in src, "the truncated-verdict audit trail is gone"
     # it must bail BEFORE normalize() ever sees the partial input
-    head = src.split('getattr(resp, "stop_reason", None) == "max_tokens"')[1]
+    head = src.split("is_truncated(resp)")[1]
     assert head.index("return None") < head.index("normalize(tool_block.input)"), (
         "the truncation check no longer short-circuits before normalize() — a partial verdict "
         "would still be built")
@@ -260,3 +260,27 @@ def test_the_exemption_list_stays_short():
         "the blind spot it was meant to prevent")
     for e in entries:
         assert "#" in e, f"exempt caller with no stated reason: {e.strip()}"
+
+
+def test_both_truncation_guards_share_ONE_definition_of_truncated():
+    """The check was hand-copied into the shared judge transport and the catalyst grader on the
+    same night, and the second copy's own comment said "same rule the shared judge transport
+    now enforces" — the duplication was noticed and committed anyway. That is the
+    `extract_stop_leg_id` shape, and this repo has a standing rule against it.
+
+    The PREDICATE is shared; the HANDLING is deliberately not. `judge_transport` returns None
+    into its fail-open; `ep_detector` RAISES, because its enclosing `except` is what runs the
+    #273 credit-exhaustion alert. Two contracts, one definition."""
+    from shared.llm_response import is_truncated
+    assert is_truncated({"stop_reason": "max_tokens"})
+    assert not is_truncated({"stop_reason": "end_turn"})
+    assert not is_truncated(None)
+
+    for f in ("judge_transport.py", "ep_detector.py"):
+        src = (MI / f).read_text(encoding="utf-8")
+        assert "from shared.llm_response import is_truncated" in src, (
+            f"{f} no longer uses the shared truncation predicate — the next change to what "
+            '"truncated" means will land in one copy and not the other')
+    ep = (MI / "ep_detector.py").read_text(encoding="utf-8")
+    assert 'getattr(response, "stop_reason", None) == "max_tokens"' not in ep, (
+        "ep_detector hand-rolls the truncation check again")

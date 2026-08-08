@@ -688,8 +688,12 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
             "unreported": unreported}
 
 
-async def run_truncation_check(today: date) -> dict | None:
-    """Daily, wired into the 17:52 ET spend job. Telegrams on ANY confirmed truncation
+async def run_truncation_check() -> dict | None:
+    """Daily, wired into the 17:52 ET spend job.
+
+    Takes NO `today` — unlike its two siblings in this file, which genuinely window by date.
+    This one always looks at the last 24 hours, and a parameter that lies about being
+    load-bearing is worse than no parameter: the next reader assumes it windows the query. Telegrams on ANY confirmed truncation
     (actionable-only house rule — a truncated response is silent data corruption, not a
     cost curiosity). Deliberately NOT deduped: the original went quiet for ten days
     precisely because its only trace looked routine, so this keeps shouting nightly until

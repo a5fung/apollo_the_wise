@@ -100,8 +100,7 @@ from shared.model_resolver import TierResolution as _TierResolution
 from shared.model_resolver import parse_model_id as _parse_model_id
 from shared.model_resolver import resolve_tier as _resolve_tier
 from datetime import date as _date
-from datetime import datetime as _dt
-from zoneinfo import ZoneInfo as _ZoneInfo
+from shared.dates import et_today as _et_today
 
 # ── Tier pins (committed fail-safe floor — what the deploy gate validates;
 # never auto-edited) ──────────────────────────────────────────────────────────
@@ -128,30 +127,19 @@ SONNET_5 = "claude-sonnet-5"
 # Anthropic's introductory rate for claude-sonnet-5, valid THROUGH 2026-08-31; it reverts to
 # the standard sonnet-tier $3/$15 on 09-01. A date check, not a constant to be flipped by
 # hand — the flip would be a calendar task, and calendar tasks are how a rate table goes
-# stale. Dates in ET because that is the frame every other comparison in this system uses.
+# stale.
 _SONNET_5_INTRO = {"input": 2.00, "output": 10.00}
 _SONNET_5_INTRO_UNTIL = _date(2026, 8, 31)
 
 
-try:
-    _ET_TZ = _ZoneInfo("America/New_York")
-except Exception as _tzerr:  # pragma: no cover — missing tzdata in a stripped image
-    import logging as _logging
-    _logging.getLogger(__name__).warning(
-        "llm_models: no America/New_York tz data (%s) — claude-sonnet-5 will price at its "
-        "STANDARD rate rather than the introductory one. Over-stating spend, not under.",
-        _tzerr,
-    )
-    _ET_TZ = None
-
-
 def _sonnet_5_intro_active() -> bool:
-    """True while the introductory rate applies. Falls to the STANDARD (higher) rate if the
-    clock is unusable — over-stating spend is the safe direction; UNDER-stating it hides
-    growth, which is the failure mode the operator is actively watching for."""
-    if _ET_TZ is None:
-        return False
-    return _dt.now(_ET_TZ).date() <= _SONNET_5_INTRO_UNTIL
+    """True while the introductory rate applies.
+
+    Uses `shared.dates.et_today()` — the CANONICAL ET helper — rather than constructing a
+    ZoneInfo here. This repo lost weeks to two independent timezone constructions disagreeing
+    (the pytz LMT bug, #180/#183), and CLAUDE.md names that one helper for exactly this reason:
+    a second hand-built zone is how the next audit finds two answers to one question."""
+    return _et_today() <= _SONNET_5_INTRO_UNTIL
 
 SONNET_4_5 = "claude-sonnet-4-5"
 OPUS_4_7 = "claude-opus-4-7"

@@ -13,6 +13,7 @@ import asyncio
 import base64
 import logging
 from typing import Callable, Optional
+from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ async def invoke_forced_tool(
         # says "judge error/timeout -> conviction-floor grade". A response we cut off IS a judge
         # error; we simply had no way to see it until stop_reason was recorded. Raising the
         # ceiling makes truncation rare — this makes it HARMLESS when it happens anyway.
-        if getattr(resp, "stop_reason", None) == "max_tokens":
+        if is_truncated(resp):
             logger.warning(
                 f"{label} TRUNCATED for {subject} (max_tokens={max_tokens}) — failing open to "
                 "the floor rather than grading on a partial verdict (#543)")

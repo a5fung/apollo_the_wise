@@ -1278,7 +1278,7 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
                 await log_perplexity_call(
                     caller="perplexity_health", model="sonar-pro",
                     usage=_j.get("usage"),
-                    finish_reason=(_j.get("choices") or [{}])[0].get("finish_reason"),
+                    finish_reason=pplx_finish_reason(_j),
                 )
             except Exception as e:
                 logger.debug(f"Perplexity health cost-meter log failed: {e}")
@@ -1309,6 +1309,18 @@ _PERPLEXITY_DISCLAIMER_MARKERS: tuple[str, ...] = (
     "search results reference",
     "search results focus on",
 )
+
+
+def pplx_finish_reason(data: Any) -> str | None:
+    """Perplexity's stop reason, off its raw JSON. `'length'` is its word for truncation.
+
+    Extracted because this exact `(choices or [{}])[0].get(...)` dance was hand-copied to three
+    call sites across two files on the night we shipped a whole helper module arguing against
+    doing precisely that (#544). One schema change should mean one edit.
+    """
+    if not isinstance(data, dict):
+        return None
+    return ((data.get("choices") or [{}])[0] or {}).get("finish_reason")
 
 
 def strip_perplexity_disclaimer(text: str | None) -> tuple[str, bool]:
@@ -1355,7 +1367,6 @@ def strip_perplexity_disclaimer(text: str | None) -> tuple[str, bool]:
 _PPLX_CACHE_TTL_S = 900
 _PPLX_CACHE_MAX = 256
 _PPLX_CACHE: dict[tuple, tuple[float, str]] = {}
-_PPLX_CACHE_HITS = 0
 
 
 def _pplx_cache_get(key: tuple) -> str | None:
@@ -1375,13 +1386,9 @@ def _pplx_cache_put(key: tuple, answer: str) -> None:
     if not answer:
         return
     if len(_PPLX_CACHE) >= _PPLX_CACHE_MAX:
-        # Cheapest sound eviction: drop everything already expired, then the oldest.
-        now = time.monotonic()
-        for k, (stamped, _) in list(_PPLX_CACHE.items()):
-            if now - stamped > _PPLX_CACHE_TTL_S:
-                _PPLX_CACHE.pop(k, None)
-        if len(_PPLX_CACHE) >= _PPLX_CACHE_MAX:
-            _PPLX_CACHE.pop(min(_PPLX_CACHE, key=lambda k: _PPLX_CACHE[k][0]), None)
+        # The TTL is fixed, so the oldest entry is always the one closest to (or past) expiry —
+        # evicting it IS the expired-sweep, without a second pass over the dict.
+        _PPLX_CACHE.pop(min(_PPLX_CACHE, key=lambda k: _PPLX_CACHE[k][0]), None)
     _PPLX_CACHE[key] = (time.monotonic(), answer)
 
 
@@ -1413,9 +1420,7 @@ async def search_news_perplexity(
     _ck = (query, recency, system_prompt)
     _cached = None if fresh else _pplx_cache_get(_ck)
     if _cached is not None:
-        global _PPLX_CACHE_HITS
-        _PPLX_CACHE_HITS += 1
-        logger.debug(f"perplexity search served from cache (hit #{_PPLX_CACHE_HITS})")
+        logger.debug("perplexity search served from cache")
         return _cached
     last_exc: Exception | None = None
     for attempt in (1, 2):
@@ -1445,7 +1450,7 @@ async def search_news_perplexity(
                     await log_perplexity_call(
                         caller="perplexity_news_search", model="sonar-pro",
                         usage=_data.get("usage"),
-                        finish_reason=(_data.get("choices") or [{}])[0].get("finish_reason"),
+                        finish_reason=pplx_finish_reason(_data),
                     )
                 except Exception as e:
                     logger.debug(f"Perplexity news search cost-meter log failed: {e}")

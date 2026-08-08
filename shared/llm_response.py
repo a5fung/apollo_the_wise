@@ -25,55 +25,65 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["first_text", "content_block_types"]
+__all__ = ["first_text", "content_block_types", "is_truncated"]
+
+
+def _attr(obj: Any, name: str) -> str:
+    """One dict-or-object accessor. Both response shapes are in use here — the SDK returns
+    objects, `catalyst_metrics_extractor` calls the API over urllib and sees dicts — and every
+    field below needs the same duality, so it lives in one place rather than once per field."""
+    if isinstance(obj, dict):
+        return str(obj.get(name) or "")
+    return str(getattr(obj, name, "") or "")
 
 
 def _blocks(response: Any) -> list:
     """The content list off an SDK response OR a raw-HTTP JSON dict. Empty list if absent."""
     if response is None:
         return []
-    if isinstance(response, dict):
-        blocks = response.get("content")
-    else:
-        blocks = getattr(response, "content", None)
+    blocks = response.get("content") if isinstance(response, dict) \
+        else getattr(response, "content", None)
     return list(blocks) if isinstance(blocks, (list, tuple)) else []
 
 
-def _block_type(block: Any) -> str:
-    if isinstance(block, dict):
-        return str(block.get("type") or "")
-    return str(getattr(block, "type", "") or "")
-
-
-def _block_text(block: Any) -> str:
-    if isinstance(block, dict):
-        return str(block.get("text") or "")
-    return str(getattr(block, "text", "") or "")
-
-
-def first_text(response: Any, default: str = "") -> str:
+def first_text(response: Any) -> str:
     """The first TEXT block's text — the model's actual answer.
 
-    Returns `default` (empty string) when there is no text block at all, which is a real and
-    meaningful outcome: a response that is pure thinking, or pure tool_use, has no prose answer.
-    Callers must treat "" as "the model did not answer in text" and NOT as "the model said
-    nothing was there" — conflating those is the shape of the 08-06 outage, where a parse
-    failure was read downstream as a weak catalyst.
+    Returns "" when there is no text block at all, which is a real and meaningful outcome: a
+    response that is pure thinking, or pure tool_use, has no prose answer. Callers must treat
+    "" as "the model did not answer in text" and NOT as "the model said nothing was there" —
+    conflating those is the shape of the 08-06 outage, where a parse failure was read
+    downstream as a weak catalyst.
 
     Deliberately does NOT concatenate multiple text blocks: every caller here parses a single
     JSON object or a single prose answer, and joining blocks would silently corrupt the JSON
     ones. If a caller ever genuinely needs all the prose, give it its own function.
     """
     for block in _blocks(response):
-        if _block_type(block) == "text":
-            text = _block_text(block)
-            if text:
-                return text
-    return default
+        if _attr(block, "type") == "text" and _attr(block, "text"):
+            return _attr(block, "text")
+    return ""
+
+
+def is_truncated(response: Any) -> bool:
+    """True when the model was CUT OFF by max_tokens — i.e. this response is not an answer.
+
+    Lives here, next to `first_text`, for the same reason `first_text` exists: the check was
+    hand-copied into `judge_transport.invoke_forced_tool` and `ep_detector.
+    _classify_catalyst_claude` on the same night, and the second copy's own comment said "same
+    rule the shared judge transport now enforces" — the author noticed the duplication and
+    copied it anyway. That is the `extract_stop_leg_id` shape exactly.
+
+    The PREDICATE is shared; the HANDLING deliberately is NOT. The judge transport returns None
+    into its fail-open; the catalyst grader RAISES, because its enclosing `except` is what runs
+    the #273 credit-exhaustion alert. Two genuinely different contracts, one definition of
+    "truncated".
+    """
+    return _attr(response, "stop_reason") == "max_tokens"
 
 
 def content_block_types(response: Any) -> list[str]:
     """The block types in order — for logging when `first_text` comes back empty. Knowing it
     was `['thinking']` rather than `[]` is the difference between a five-minute diagnosis and
     the two days the 08-06 outage actually took."""
-    return [_block_type(b) for b in _blocks(response)]
+    return [_attr(b, "type") for b in _blocks(response)]

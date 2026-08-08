@@ -33,12 +33,17 @@ def test_it_reverts_to_standard_by_itself(monkeypatch):
     assert m.pricing_for(m.SONNET_5) == {"input": 3.00, "output": 15.00}
 
 
-def test_a_broken_clock_over_states_rather_than_under_states(monkeypatch):
-    """Direction matters. Over-stating spend is visible and annoying; UNDER-stating it hides
-    growth, which is the exact thing being watched for."""
-    monkeypatch.setattr(m, "_ET_TZ", None)   # what a stripped image without tzdata looks like
-    assert m._sonnet_5_intro_active() is False
-    assert m.pricing_for(m.SONNET_5)["input"] == 3.00
+def test_it_uses_the_canonical_ET_helper_not_a_second_hand_built_zone():
+    """CLAUDE.md names ONE canonical ET helper (`shared.dates`) after this repo lost weeks to
+    two independent timezone constructions disagreeing — the pytz LMT bug that shifted the ORB
+    window by 56 minutes (#180/#183). A second hand-built `ZoneInfo("America/New_York")` in the
+    pricing module is how the next timezone audit finds two answers to one question."""
+    import pathlib as _pl
+    src = _pl.Path("shared/llm_models.py").read_text(encoding="utf-8")
+    assert "from shared.dates import et_today" in src, (
+        "llm_models no longer uses the canonical ET helper")
+    assert 'ZoneInfo("America/New_York")' not in src, (
+        "llm_models hand-builds its own ET zone again — use shared.dates")
 
 
 def test_the_window_boundary_is_inclusive():

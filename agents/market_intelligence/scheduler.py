@@ -4034,9 +4034,8 @@ async def _spend_alarm_job():
     # corruption (theme_assignment was dead for ten days that way). Own try/except so it can
     # never blot out the two vetted checks above, and named separately in notify_job_failure.
     try:
-        from agents.market_intelligence.collector import et_today
         from agents.market_intelligence.cost_board import run_truncation_check
-        trunc = await run_truncation_check(et_today())
+        trunc = await run_truncation_check()
         logger.info(f"truncation-check: {'FIRED' if trunc else 'quiet'}")
     except Exception as e:
         logger.error(f"truncation-check job failed: {e}", exc_info=True)
