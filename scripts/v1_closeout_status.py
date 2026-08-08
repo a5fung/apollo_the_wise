@@ -284,18 +284,62 @@ _WATCHDOG_TARGET_RE = re.compile(r"watchdog:\s*(\S+)\s+(?:DOWN|recovered)", re.I
 _SELFTEST_CONTAINER = "apollo-watchdog-selftest"
 _TRANSIENT_RECOVERY_MIN = 10
 
+# #442 (2026-08-08): infra/service_watchdog.sh's audit_event() calls for
+# service_down/service_recovered now carry a structured `detail` JSON field —
+# {"container": "<svc>", "state": "down"|"recovered"} — alongside the
+# human-readable `summary` prose they always sent (see infra/ops_lib.sh's
+# audit_event() + the two call sites in infra/service_watchdog.sh). FL-3 was
+# recovering the container name by REGEX-PARSING that prose; if the wording
+# ever drifted, the regex silently returned None and both the selftest
+# exclusion and the transient-pairing below stopped matching — over-counting
+# resets. `_watchdog_target` now reads `detail` FIRST and only falls back to
+# the regex for rows written before this field existed. That fallback is
+# GUARANTEED-ROWS-ONLY-BEFORE this date; it stays live (and LOUD — see the
+# logger.warning below) purely to keep FL-3 working on history already in
+# `mi_audit_log`. ⚠ Requires infra/service_watchdog.sh to actually be
+# redeployed to the production host (it runs there via cron) — until that
+# happens, EVERY row, including new ones, still lacks `detail` and hits the
+# fallback. Once every row in FL-3's window carries `detail`, delete the
+# fallback branch (and this constant) for real.
+WATCHDOG_STRUCTURED_SINCE = date(2026, 8, 8)
 
-def _watchdog_target(summary) -> str | None:
-    """The container a watchdog service_down/service_recovered event is about
-    (parsed from the summary, e.g. 'watchdog: apollo-market DOWN — ...')."""
+
+def _watchdog_target(row: dict) -> str | None:
+    """The container a watchdog service_down/service_recovered event is
+    about. PRIMARY: `row['detail']`, the structured JSON object the watchdog
+    writes directly (immune to prose rewording — #442). FALLBACK: regex over
+    `row['summary']` (e.g. 'watchdog: apollo-market DOWN — ...') for rows
+    that predate the structured field — see WATCHDOG_STRUCTURED_SINCE."""
+    detail = row.get("detail")
+    if detail:
+        try:
+            parsed = json.loads(detail)
+        except (json.JSONDecodeError, TypeError):
+            parsed = None
+        if isinstance(parsed, dict) and parsed.get("container"):
+            return parsed["container"]
+    # No usable structured field on this row — legacy history, or the
+    # watchdog script hasn't been redeployed yet. Fall back to the old
+    # regex, but LOUDLY: this is the exact silent-failure shape #442 closes,
+    # so every hit here (whether or not the regex itself still resolves) is
+    # logged rather than swallowed.
+    summary = row.get("summary")
     m = _WATCHDOG_TARGET_RE.search(summary or "")
-    return m.group(1) if m else None
+    target = m.group(1) if m else None
+    logger.warning(
+        "v1_closeout_status: watchdog audit row has no structured 'detail' "
+        "field (#442 fallback to summary-regex parsing); resolved target=%r "
+        "from summary=%r — expected only for rows before %s or an "
+        "undeployed watchdog script",
+        target, summary, WATCHDOG_STRUCTURED_SINCE,
+    )
+    return target
 
 
 def real_service_down_dates(rows: list[dict], transient_min: int = _TRANSIENT_RECOVERY_MIN) -> set:
-    """From service_down / service_recovered rows (each {event_type, ts, summary, d}),
-    return the ET dates that had a REAL sustained outage — the only ones that should
-    reset FL-3's ops-autonomy streak.
+    """From service_down / service_recovered rows (each {event_type, ts, summary,
+    detail, d}), return the ET dates that had a REAL sustained outage — the only
+    ones that should reset FL-3's ops-autonomy streak.
 
     Refinement (operator-signed 2026-07-07): FL-3 measures UNATTENDED-ops failures, so
     two service_down classes are NOT real outages and are excluded:
@@ -303,21 +347,28 @@ def real_service_down_dates(rows: list[dict], transient_min: int = _TRANSIENT_RE
          it is intentionally 'down', a test of the detector, not a service; and
       2. a down that `service_recovered` for the SAME container within `transient_min`
          minutes — a planned deploy/restart blip, not an autonomy failure.
-    Anything else (no recovery, or recovery beyond the window) counts as a real reset."""
+    Anything else (no recovery, or recovery beyond the window) counts as a real reset.
+    Container identity comes from `_watchdog_target` (structured `detail` field first,
+    regex-on-`summary` fallback for pre-#442 history — see that function)."""
     downs = [r for r in rows if r.get("event_type") == "service_down"]
     recovers = [r for r in rows if r.get("event_type") == "service_recovered"]
+    # Resolve each row's target ONCE up front (not inside the O(downs*recovers)
+    # pairing loop below) — a legacy row with no `detail` logs a warning inside
+    # _watchdog_target, and re-resolving the same recover row once per down row
+    # would multiply that warning by len(downs) for no benefit.
+    recover_targets = [(r, _watchdog_target(r)) for r in recovers]
     real: set = set()
     for d in downs:
-        target = _watchdog_target(d.get("summary"))
+        target = _watchdog_target(d)
         if target == _SELFTEST_CONTAINER:
             continue
         t = d.get("ts")
         transient = t is not None and any(
-            _watchdog_target(r.get("summary")) == target
+            rt == target
             and r.get("ts") is not None
             and r["ts"] >= t
             and (r["ts"] - t).total_seconds() <= transient_min * 60
-            for r in recovers
+            for r, rt in recover_targets
         )
         if not transient and d.get("d") is not None:
             real.add(d["d"])
@@ -545,7 +596,7 @@ async def gather_status(conn, today: date | None = None) -> dict:
 
     ops_rows = await conn.fetch(
         """
-        SELECT event_type, summary, created_at AS ts,
+        SELECT event_type, summary, detail, created_at AS ts,
                (created_at AT TIME ZONE 'America/New_York')::date AS d
         FROM mi_audit_log
         WHERE event_type = ANY($1::text[])
@@ -554,6 +605,8 @@ async def gather_status(conn, today: date | None = None) -> dict:
         ["backup_restore_check_ok", "watchdog_heartbeat", "service_down", "service_recovered"],
         FL3_START,
     )
+    # `detail` added #442 (was event_type/summary/ts/d only) — real_service_down_dates
+    # reads it to resolve the container without regex-parsing `summary` prose.
     ops_rows = [dict(r) for r in ops_rows]
     # FL-3 refinement (operator 2026-07-07): only REAL sustained outages reset the streak —
     # selftest/transient-deploy-blip downs are filtered out (see real_service_down_dates).

@@ -225,14 +225,23 @@ for svc in $SERVICES; do
     case "$(alert_state "$state_file" "$active")" in
         fire)
             log "DOWN: $svc — $reason"
-            audit_event "service_down" "watchdog: $svc DOWN — $reason"
+            # Structured `detail` (#442, 2026-08-08): FL-3 (v1_closeout_status.py)
+            # used to recover $svc by regex-parsing the "watchdog: $svc DOWN — ..."
+            # prose below — a reworded summary would silently break it. $svc is a
+            # fixed docker container name (SERVICES list / WATCHDOG_SERVICES_OVERRIDE
+            # test hook) so it never carries a `"` or `\` that would need JSON
+            # escaping here. The human-prose summary is UNCHANGED — this is an
+            # added machine-readable channel, not a replacement.
+            audit_event "service_down" "watchdog: $svc DOWN — $reason" \
+                "{\"container\":\"$svc\",\"state\":\"down\"}"
             telegram_alert "🔴 *Service DOWN: ${svc}*"$'\n```\n'"$reason"$'\n```\n'"Watchdog re-alerts every 6h while down; recovery is announced." ;;
         refire)
             log "STILL DOWN: $svc — $reason"
             telegram_alert "🔴 *Service STILL DOWN: ${svc}*"$'\n```\n'"$reason"$'\n```' ;;
         recover)
             log "RECOVERED: $svc"
-            audit_event "service_recovered" "watchdog: $svc recovered"
+            audit_event "service_recovered" "watchdog: $svc recovered" \
+                "{\"container\":\"$svc\",\"state\":\"recovered\"}"
             telegram_alert "🟢 *Service recovered: ${svc}*" ;;
     esac
 done

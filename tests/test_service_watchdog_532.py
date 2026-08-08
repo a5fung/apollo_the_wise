@@ -27,7 +27,9 @@ pending-file, per the #532 task spec.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -58,6 +60,15 @@ if [ "$1" = "inspect" ]; then
         *)        echo "${FAKE_DOCKER_STATUS:-running}" ;;
     esac
     exit 0
+fi
+if [ "$1" = "exec" ] && [ -n "${FAKE_DOCKER_CAPTURE:-}" ]; then
+    # #442 write-side verification: record the REAL `docker exec ... psql
+    # -c "INSERT ..."` argv audit_event() built, so a test can parse the
+    # actual SQL literal it sends — not just that the call didn't crash.
+    # One arg per line + a sentinel; none of these args contain embedded
+    # newlines in the scenarios this harness drives.
+    printf '%s\\n' "$@" >> "$FAKE_DOCKER_CAPTURE"
+    printf '%s\\n' "===END_INVOCATION===" >> "$FAKE_DOCKER_CAPTURE"
 fi
 # Anything else (audit_event's `docker exec ... psql`, the disk-prune
 # commands) — both call sites already tolerate a nonzero exit.
@@ -384,6 +395,115 @@ def test_orchestrator_http_probe_failure_is_soft_not_hard(tmp_path, fake_bin):
     full_log = _log_text(log_file)
     assert "DOWN: apollo-orchestrator" not in full_log, "false alarm — the bug #532 fixes"
     assert "PENDING CLEARED: apollo-orchestrator" in full_log
+
+
+# ─── #442 write-side verification (2026-08-08) ───────────────────────────
+# scripts/v1_closeout_status.py's tests prove the READ side (parsing a
+# hand-written `detail` JSON string). That alone proves nothing about
+# production: it doesn't catch a bash-quoting mistake in the JSON literal
+# service_watchdog.sh actually builds. These tests run the REAL script +
+# REAL ops_lib.sh audit_event() end to end and parse the ACTUAL SQL `-c`
+# argument that would have been sent to psql — shell → SQL → JSON, no
+# fabricated input.
+
+def _captured_sql_statements(capture_file: Path) -> list[str]:
+    """Parse FAKE_DOCKER_CAPTURE's one-arg-per-line log (see FAKE_DOCKER
+    above) into the `-c` SQL argument string(s) audit_event() actually
+    built — one per `docker exec ... psql ... -c "<sql>"` invocation."""
+    if not capture_file.exists():
+        return []
+    blocks = capture_file.read_text().split("===END_INVOCATION===\n")
+    sqls = []
+    for block in blocks:
+        args = block.splitlines()
+        if "-c" in args:
+            sqls.append(args[args.index("-c") + 1])
+    return sqls
+
+
+def _detail_json_for_event(capture_file: Path, event_type: str) -> dict | None:
+    """The parsed `detail` JSON from the captured audit_event() SQL INSERT
+    for `event_type` (None if the detail dollar-quote was empty)."""
+    for sql in _captured_sql_statements(capture_file):
+        if f"'{event_type}'" not in sql:
+            continue
+        m = re.search(r"\$apollo_detail\$(.*?)\$apollo_detail\$", sql, re.DOTALL)
+        assert m, f"audit_event SQL is missing the detail dollar-quote entirely: {sql!r}"
+        raw = m.group(1)
+        return json.loads(raw) if raw else None
+    return None
+
+
+def test_service_down_audit_event_emits_parseable_structured_detail(tmp_path, fake_bin):
+    """Hard-down (tick 1 alert) must produce a `service_down` audit_event()
+    call whose `detail` is valid JSON carrying the container + state — the
+    exact shape scripts/v1_closeout_status.py::_watchdog_target reads."""
+    app_dir = _make_app_dir(tmp_path)
+    state_dir = tmp_path / "state"
+    log_file = tmp_path / "watchdog.log"
+    capture_file = tmp_path / "docker_exec_calls.log"
+
+    _run(WATCHDOG_SRC, fake_bin, app_dir, state_dir, log_file,
+         {"FAKE_DOCKER_STATUS": "exited", "FAKE_DOCKER_CAPTURE": str(capture_file)})
+    assert f"DOWN: {SVC}" in _log_text(log_file)
+
+    detail = _detail_json_for_event(capture_file, "service_down")
+    assert detail == {"container": SVC, "state": "down"}
+
+
+def test_service_recovered_audit_event_emits_parseable_structured_detail(tmp_path, fake_bin):
+    app_dir = _make_app_dir(tmp_path)
+    state_dir = tmp_path / "state"
+    log_file = tmp_path / "watchdog.log"
+    capture_file = tmp_path / "docker_exec_calls.log"
+
+    _run(WATCHDOG_SRC, fake_bin, app_dir, state_dir, log_file,
+         {"FAKE_DOCKER_STATUS": "exited"})  # down first (no capture — not under test here)
+    assert f"DOWN: {SVC}" in _log_text(log_file)
+
+    _run(WATCHDOG_SRC, fake_bin, app_dir, state_dir, log_file,
+         {"FAKE_DOCKER_STATUS": "running", "FAKE_DOCKER_CAPTURE": str(capture_file)})
+    assert f"RECOVERED: {SVC}" in _log_text(log_file)
+
+    detail = _detail_json_for_event(capture_file, "service_recovered")
+    assert detail == {"container": SVC, "state": "recovered"}
+
+
+def test_ops_lib_audit_event_two_arg_call_sends_literal_empty_detail(tmp_path, fake_bin):
+    """Direct unit test of ops_lib.sh's audit_event() itself (not the full
+    watchdog script — avoids depending on a wall-clock-gated code path like
+    the heartbeat): every PRE-EXISTING 2-arg call site (backup.sh,
+    staging_restore_check.sh, service_watchdog.sh's disk-space/heartbeat
+    events) must see byte-identical SQL after #442 — a bare `''` literal
+    for detail, not a (functionally-equivalent-but-changed) dollar-quoted
+    empty string."""
+    capture_file = tmp_path / "docker_exec_calls.log"
+    base_path = os.environ.get("PATH", "/usr/bin:/bin")
+    env = {"PATH": f"{fake_bin}:{base_path}", "FAKE_DOCKER_CAPTURE": str(capture_file)}
+    script = f'source "{OPS_LIB_SRC}"; audit_event "test_two_arg" "a summary"'
+    result = subprocess.run(["bash", "-c", script], env=env, capture_output=True,
+                             text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+
+    sqls = [s for s in _captured_sql_statements(capture_file) if "'test_two_arg'" in s]
+    assert len(sqls) == 1
+    assert sqls[0].rstrip(";").endswith("'')"), sqls[0]
+
+
+def test_ops_lib_audit_event_three_arg_call_dollar_quotes_detail(tmp_path, fake_bin):
+    """The new 3rd-arg path: a real payload gets dollar-quoted and round-
+    trips through psql's SQL literal syntax as valid JSON."""
+    capture_file = tmp_path / "docker_exec_calls.log"
+    base_path = os.environ.get("PATH", "/usr/bin:/bin")
+    env = {"PATH": f"{fake_bin}:{base_path}", "FAKE_DOCKER_CAPTURE": str(capture_file)}
+    script = (f'source "{OPS_LIB_SRC}"; '
+              'audit_event "test_three_arg" "a summary" \'{"container":"x","state":"down"}\'')
+    result = subprocess.run(["bash", "-c", script], env=env, capture_output=True,
+                             text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+
+    detail = _detail_json_for_event(capture_file, "test_three_arg")
+    assert detail == {"container": "x", "state": "down"}
 
 
 # ─── Mutation check ───────────────────────────────────────────────────────

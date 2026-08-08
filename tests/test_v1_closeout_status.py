@@ -25,7 +25,9 @@ from scripts.v1_closeout_status import (
     FL3_TARGET,
     FL4_TARGET,
     FL8_TARGET,
+    WATCHDOG_STRUCTURED_SINCE,
     _recent_sundays as _recent_sundays_helper,
+    _watchdog_target,
     check_and_snapshot_resets,
     compute_and_render,
     compute_blocking_open,
@@ -191,12 +193,16 @@ def test_fl3_end_before_start_yields_zero_no_crash():
 # Only REAL sustained outages reset the ops-autonomy streak. Modeled on the exact
 # 7/5-7/6 prod events that had FL-3 falsely stuck at 0.
 
-def _dn(summary, ts, d):
-    return {"event_type": "service_down", "summary": summary, "ts": ts, "d": d}
+def _dn(summary, ts, d, detail=""):
+    # detail defaults to "" (matches every pre-#442 row's actual DB value) so
+    # every EXISTING call site below keeps exercising the regex-fallback path
+    # unchanged; only the new #442 tests pass a real structured detail.
+    return {"event_type": "service_down", "summary": summary, "ts": ts, "d": d, "detail": detail}
 
 
-def _rc(summary, ts):
-    return {"event_type": "service_recovered", "summary": summary, "ts": ts, "d": ts.date()}
+def _rc(summary, ts, detail=""):
+    return {"event_type": "service_recovered", "summary": summary, "ts": ts,
+            "d": ts.date(), "detail": detail}
 
 
 def test_real_down_excludes_watchdog_selftest():
@@ -238,6 +244,101 @@ def test_real_down_recovery_of_different_container_does_not_clear():
         _rc("watchdog: apollo-orchestrator recovered", ts + timedelta(minutes=2)),
     ]
     assert real_service_down_dates(rows) == {date(2026, 7, 6)}
+
+
+# ── #442 (2026-08-08): structured `detail` field retires the summary-prose regex
+# as the PRIMARY path. FL-3 previously recovered the container name by REGEX-
+# PARSING the watchdog's human-readable summary; if that prose ever drifted, the
+# regex silently returned None and BOTH the selftest exclusion and the
+# transient-pairing stopped matching, over-counting resets. `_watchdog_target`
+# now reads a structured `detail` JSON field first and only falls back to the
+# regex for rows written before it existed (WATCHDOG_STRUCTURED_SINCE).
+
+def test_watchdog_target_reads_structured_detail_over_regex():
+    # summary is deliberately None to prove the structured path resolves the
+    # container on its own — not merely agreeing with what the regex would say.
+    row = {"event_type": "service_down", "summary": None,
+           "detail": '{"container": "apollo-market", "state": "down"}'}
+    assert _watchdog_target(row) == "apollo-market"
+
+
+def test_watchdog_target_falls_back_to_regex_for_legacy_rows():
+    # No detail field at all (a real pre-#442 mi_audit_log row) — must still
+    # resolve via the old regex, unchanged behavior.
+    row = {"event_type": "service_down",
+           "summary": "watchdog: apollo-market DOWN — container state: exited"}
+    assert _watchdog_target(row) == "apollo-market"
+
+
+def test_watchdog_target_malformed_detail_falls_back_without_crashing():
+    # Defensive: a truncated/corrupt detail string must degrade to the regex
+    # fallback, not raise.
+    row = {"event_type": "service_down",
+           "summary": "watchdog: apollo-market DOWN — bad json",
+           "detail": "{not valid json"}
+    assert _watchdog_target(row) == "apollo-market"
+
+
+def test_watchdog_target_drifted_prose_resolves_via_structured_field():
+    # THE regression #442 exists to prevent: the human-readable summary has
+    # been REWORDED — no "watchdog:" prefix, no "DOWN" keyword, so the old
+    # regex would return None here — but the structured detail field still
+    # resolves the container correctly.
+    row = {
+        "event_type": "service_down",
+        "summary": "apollo-market is currently unreachable (was: DOWN)",  # drifted, regex-hostile
+        "detail": '{"container": "apollo-market", "state": "down"}',
+    }
+    assert _watchdog_target(row) is not None
+    assert _watchdog_target(row) == "apollo-market"
+    # Prove the regex genuinely cannot parse this summary (i.e. the test
+    # actually exercises the structured path, not a lucky regex match):
+    from scripts.v1_closeout_status import _WATCHDOG_TARGET_RE
+    assert _WATCHDOG_TARGET_RE.search(row["summary"]) is None
+
+
+def test_real_service_down_dates_drifted_prose_still_excludes_selftest_via_detail():
+    # End-to-end regression: the selftest exclusion depends on _watchdog_target
+    # resolving the container; with drifted prose the regex would return None
+    # (matching nothing, so the "== _SELFTEST_CONTAINER" check would silently
+    # fail and the synthetic self-test would wrongly count as a real outage).
+    # With detail populated, exclusion still works.
+    rows = [
+        _dn("self-check container reporting not-found", datetime(2026, 8, 8, 12, 7),
+            date(2026, 8, 8),
+            detail='{"container": "apollo-watchdog-selftest", "state": "down"}'),
+    ]
+    assert real_service_down_dates(rows) == set()
+
+
+def test_real_service_down_dates_drifted_prose_counts_real_outage_via_detail():
+    ts = datetime(2026, 8, 8, 11, 15)
+    rows = [
+        _dn("apollo-market is currently unreachable", ts, date(2026, 8, 8),
+            detail='{"container": "apollo-market", "state": "down"}'),
+    ]
+    assert real_service_down_dates(rows) == {date(2026, 8, 8)}
+
+
+def test_real_service_down_dates_drifted_prose_transient_pairing_via_detail():
+    # Same regression for the transient-pairing branch: both down + recovered
+    # summaries have drifted, but the structured detail on each still pairs
+    # them by container within the transient window.
+    ts = datetime(2026, 8, 8, 11, 15)
+    rows = [
+        _dn("apollo-market is currently unreachable", ts, date(2026, 8, 8),
+            detail='{"container": "apollo-market", "state": "down"}'),
+        _rc("apollo-market is back", ts + timedelta(minutes=5),
+            detail='{"container": "apollo-market", "state": "recovered"}'),
+    ]
+    assert real_service_down_dates(rows) == set()
+
+
+def test_watchdog_structured_since_is_pinned_to_the_442_ship_date():
+    # Pin: the fallback's whole justification is "rows on/after this date are
+    # GUARANTEED to carry detail" — a placeholder/moved date would silently
+    # widen or shrink that guarantee. #442 shipped 2026-08-08.
+    assert WATCHDOG_STRUCTURED_SINCE == date(2026, 8, 8)
 
 
 # ── FL-4 mirror quiet days ───────────────────────────────────────────────────
