@@ -293,6 +293,48 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-08-08 — Partial-exit circuit breaker is now PER ACCOUNT MODE (#525, operator-signed)
+
+**A PAPER success was closing the LIVE breaker.** `_consecutive_partial_exit_failures` counted
+failures since the last `partial_exit_committed` with **no `account_mode` filter anywhere in the
+query**, so a simulated success switched off a real safety stop.
+
+**Measured on prod before the fix — the reason this was urgent rather than theoretical:**
+
+| | successes that reset the breaker | recorded genuine failures |
+|---|---|---|
+| paper | **12** | **5** |
+| live | 2 | 0 |
+
+Twelve of the fourteen resets this breaker had ever seen came from the paper book.
+
+**Classification: BUG FIX, not a criteria change.** Invariant 3 of the dual-account safety
+backbone is *"`account_mode` filter on every trade query"* (`docs/architecture/dual_account.md`).
+This query simply violated a rule already signed; the threshold (3), the window, and the
+success-aware semantics are all unchanged.
+
+**Attribution was the hard part.** `mi_audit_log` has no `account_mode` column and these rows
+never wrote one. Mode is now resolved from an `account_mode` key written into `detail` from this
+commit onward, falling back to a `trade_id` → `mi_live_trades.account_mode` join for every
+historical row — so the fix works retroactively, not only for new rows. Both use regex extraction
+rather than `detail::json`, because prod already contains rows with malformed/truncated detail and
+a JSON cast would raise — a safety device that errors is a safety device that is off.
+
+**Deliberate asymmetries, each chosen in the fail-safe direction:**
+- A **success** closes the breaker only for **its own mode**.
+- An operator **`partial_exit_breaker_reset` still clears BOTH** — it is a deliberate, audited
+  action naming the fault it clears, and it should clear it everywhere.
+- An **unattributable failure COUNTS** for the mode being asked about; an **unattributable success
+  closes NOTHING**. Over-counting delays trading; under-counting removes a stop.
+
+**Verified against prod before deploy:** under the new logic both books read **0** failures
+(threshold 3), so nothing trips on deployment. The breaker check runs before the trade row is
+loaded, so the mode is resolved by its own one-field lookup rather than moving the breaker later.
+
+Tests: `tests/test_partial_breaker_per_mode_525.py` (8), mutation-checked against a mode-blind
+success anchor, unfiltered failures, and dropping the mode from the success row.
+
+
 ### 2026-08-05 — `circuit_breaker`: a REALIZED PARTIAL now counts as an outcome (operator-signed)
 
 **Change**: the streak query reads closed trades **UNION realized partial exits on still-open

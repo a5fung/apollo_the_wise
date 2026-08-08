@@ -1489,8 +1489,34 @@ _PARTIAL_EXIT_BREAKER_WINDOW_DAYS = 7
 _PARTIAL_EXIT_PAUSED = False
 
 
-async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BREAKER_WINDOW_DAYS) -> int:
-    """Count GENUINE partial-exit failures SINCE THE LAST SUCCESSFUL partial exit.
+async def _consecutive_partial_exit_failures(
+    account_mode: str,
+    floor_days: int = _PARTIAL_EXIT_BREAKER_WINDOW_DAYS,
+) -> int:
+    """Count GENUINE partial-exit failures SINCE THE LAST SUCCESSFUL partial exit, IN `account_mode`.
+
+    ⚠ **PER-MODE SINCE 2026-08-08 (#525, operator-signed).** This query carried NO account_mode
+    filter, so **a PAPER success closed the LIVE breaker**. Measured at the time of the fix:
+    **12 of the 14 `partial_exit_committed` rows that had ever reset this breaker were PAPER**
+    (only 2 live), and **all 5 recorded genuine failures were PAPER**. A simulated success was
+    switching off a real safety stop.
+
+    It violates invariant 3 of the dual-account safety backbone — *"account_mode filter on every
+    trade query"* (`docs/architecture/dual_account.md`) — so this is a BUG FIX against a rule
+    already signed, not a new criterion.
+
+    **Attribution:** `mi_audit_log` has no `account_mode` column and these rows never wrote one
+    into `detail`, so the mode is resolved two ways: the `account_mode` key written into `detail`
+    from this commit onward, falling back to a join on `trade_id` → `mi_live_trades.account_mode`
+    for every historical row. Both use regex extraction rather than `detail::json` because some
+    rows carry malformed/truncated detail and a JSON cast would raise on them.
+
+    **A row whose mode cannot be resolved COUNTS** — a breaker is a safety device, so an
+    unattributable failure is treated as belonging to the mode being asked about. Over-counting
+    delays trading; under-counting removes a stop.
+
+    `partial_exit_breaker_reset` stays MODE-AGNOSTIC: it is a deliberate, audited operator action
+    that clears the fault it names, and it should clear it everywhere.
 
     Success-aware breaker semantics (advisor 2026-05-29): a clean
     `partial_exit_committed` closes the breaker — only failures accrued *after*
@@ -1519,14 +1545,28 @@ async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BRE
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            """
-            SELECT COUNT(*) AS n FROM mi_audit_log
+            r"""
+            WITH tagged AS (
+                SELECT a.created_at, a.event_type, a.detail,
+                       COALESCE(
+                         substring(a.detail from '"account_mode":\s*"([a-z]+)"'),
+                         t.account_mode
+                       ) AS mode
+                  FROM mi_audit_log a
+                  LEFT JOIN mi_live_trades t
+                    ON t.id = NULLIF(substring(a.detail from '"trade_id":\s*(\d+)'), '')::int
+                 WHERE a.event_type LIKE 'partial_exit%'
+            )
+            SELECT COUNT(*) AS n FROM tagged
             WHERE created_at > COALESCE(
-                    (SELECT MAX(created_at) FROM mi_audit_log
-                     WHERE event_type IN ('partial_exit_committed',
-                                          'partial_exit_breaker_reset')),
+                    (SELECT MAX(created_at) FROM tagged
+                      -- a SUCCESS only closes the breaker for ITS OWN mode; a RESET is an
+                      -- operator action and closes it for every mode.
+                      WHERE (event_type = 'partial_exit_committed' AND mode = $2)
+                         OR event_type = 'partial_exit_breaker_reset'),
                     NOW() - ($1 || ' days')::interval
                   )
+              AND (mode = $2 OR mode IS NULL)   -- unattributable counts (fail safe)
               AND (
                 event_type IN ('partial_exit_sell_failed', 'partial_exit_rollback_failed')
                 OR (
@@ -1536,7 +1576,7 @@ async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BRE
                 )
               )
             """,
-            str(floor_days),
+            str(floor_days), account_mode,
         )
     return int(row["n"]) if row else 0
 
@@ -1961,7 +2001,25 @@ async def execute_partial_exit(
     # partial_exit_committed resets the count, so resumed clean cycles close the
     # breaker rather than staying open on stale already-remediated failures.
     # Skipped when force=True (operator chose to act); the override is recorded.
-    fail_count = await _consecutive_partial_exit_failures()
+    #
+    # ⚠ The breaker runs BEFORE the trade row is loaded (deliberately — it short-circuits
+    # without touching trade state), but #525 made it PER-MODE, and the mode lives on the
+    # trade. So resolve just that one field here. Cheap, and it keeps the early-refusal
+    # ordering intact rather than moving the breaker after the fetch.
+    #
+    # Falls back to the process's own mode if the row is missing — a trade we cannot read is
+    # about to fail the fetch below anyway, and the breaker must not crash on the way there.
+    try:
+        _pool = await get_pool()
+        async with _pool.acquire() as _c:
+            _bm = await _c.fetchval(
+                "SELECT account_mode FROM mi_live_trades WHERE id = $1", trade_id)
+        breaker_mode = _bm or current_account_mode()
+    except Exception as e:  # loud-ok: the breaker must still run, on the safest mode we know
+        logger.warning(f"execute_partial_exit: account_mode lookup failed for trade "
+                       f"{trade_id} ({e}) — breaker falls back to the process mode")
+        breaker_mode = current_account_mode()
+    fail_count = await _consecutive_partial_exit_failures(breaker_mode)
     if fail_count >= _PARTIAL_EXIT_BREAKER_THRESHOLD:
         if not force:
             logger.error(
@@ -2699,6 +2757,7 @@ async def execute_partial_exit(
                     f"re-protecting to broker truth (no rollback, no cancel)",
                     json.dumps({
                         "trade_id": trade_id, "ticker": ticker,
+                        "account_mode": account_mode,   # #525 — breaker attribution
                         "shares": shares, "new_stop_id": new_stop_id,
                         "full_remaining": full_remaining,
                         "stop_price": float(stop_price) if stop_price else None,
@@ -2879,6 +2938,12 @@ async def _finalize_partial_exit_locked(
         f"{ticker}: DB committed on WS fill — sold {shares} @${filled_price:.2f}, pnl ${pnl:+,.2f}, remaining {new_remaining}",
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
+            # #525: the row that CLOSES the breaker must say which book it closed. Until
+            # 2026-08-08 it did not, and a PAPER success closed the LIVE breaker — 12 of the
+            # 14 successes that had ever reset it were paper. The breaker query still
+            # back-derives mode via trade_id for historical rows, but a row that carries its
+            # own mode cannot be misattributed by a later schema or join change.
+            "account_mode": account_mode,
             "shares": shares, "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
             "new_remaining": new_remaining,
