@@ -47,6 +47,22 @@ async def teardown(alpaca, order_ids, *, account_mode: str, symbols=None) -> dic
     symbols = list(symbols or [])
     out = {"cancelled": 0, "filled": [], "flattened": [], "errors": []}
 
+    # ⚠ FALL BACK TO THE CANONICAL BROKER CLIENT IF THE CALLER PASSED THE WRONG OBJECT.
+    # 2026-08-08: `_548_resting_limit_smoke` passed `execution_client` — the READ facade, which
+    # has `get_all_positions`/`get_open_orders` but no `cancel_order`/`get_order`. Every cancel
+    # and every read died on a bare AttributeError, teardown reported `cancelled 0/1`, and a
+    # live ACCEPTED order was left sitting on the paper account. That is the EXACT outcome this
+    # module was written to prevent, arriving through a door it had not thought to lock.
+    #
+    # A teardown that cannot clean up is worse than no teardown, because the probe author reads
+    # "teardown: …" and believes it ran. So this does not merely warn — it goes and gets an
+    # object that works. The wrong-object case is still recorded in `errors` so it is visible.
+    if not all(hasattr(alpaca, m) for m in ("cancel_order", "get_order", "get_position")):
+        out["errors"].append(
+            f"caller passed {getattr(alpaca, '__name__', type(alpaca).__name__)} which cannot "
+            "cancel/read orders — fell back to broker.alpaca_client")
+        from agents.market_intelligence.broker import alpaca_client as alpaca
+
     for oid in order_ids:
         try:
             await alpaca.cancel_order(oid, account_mode=account_mode)
