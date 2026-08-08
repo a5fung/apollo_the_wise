@@ -111,9 +111,84 @@ async def main() -> int:
         print("   ⚠ Do NOT read Phase A alone as the whole answer.")
         return 2
 
-    print("\n── PHASE B — regular hours: not yet implemented " + "─" * 20)
-    print("   Phase A's result determines Phase B's shape; implement it once A is known.")
-    return 0
+    return await phase_b(alpaca)
+
+
+async def phase_b(alpaca) -> int:
+    """The three questions that actually remain. Needs REGULAR HOURS (a buy must fill).
+
+    Re-scoped 2026-08-08 after reading `_508_oto_leg_probe.py`'s T1-T6, already recorded in
+    order_manager.py, which answers most of what this probe was created to ask:
+      T4  a 2nd stop while the bracket leg holds  -> REJECTED 40310000 insufficient qty
+      T5  a market sell while the leg holds       -> REJECTED 40310000 "can't sell first"
+      T2  price-only replace on a leg             -> OK
+    So "rest a limit alongside the full-size stop" is already dead on T5, and the real open
+    question is narrower.
+    """
+    from agents.market_intelligence.broker import alpaca_client
+    from alpaca.trading.requests import (
+        LimitOrderRequest, MarketOrderRequest, StopOrderRequest)
+    from alpaca.trading.enums import OrderSide, TimeInForce
+    from scripts.probes._probe_safety import teardown
+
+    print("\n── PHASE B — the three questions that remain " + "─" * 22)
+    client = alpaca_client.get_trading_client("paper")
+    placed: list[str] = []
+    try:
+        print(f"   1. market BUY {SHARES * 3} {TICKER} …")
+        buy = client.submit_order(MarketOrderRequest(
+            symbol=TICKER, qty=SHARES * 3, side=OrderSide.BUY,
+            time_in_force=TimeInForce.DAY))
+        placed.append(str(buy.id))
+        for _ in range(20):
+            await asyncio.sleep(1)
+            pos = await alpaca_client.get_position(TICKER, account_mode="paper")
+            if pos and float(pos.get("qty") or 0) >= SHARES * 3:
+                break
+        else:
+            print("   buy did not fill in 20s — INCONCLUSIVE")
+            return 2
+        px = float(pos.get("current_price") or pos.get("avg_entry_price"))
+        print(f"      filled, holding {pos.get('qty')} @ ~${px:.2f}")
+
+        print("   2. attach a FULL-SIZE stop (reserves every share) …")
+        stop = client.submit_order(StopOrderRequest(
+            symbol=TICKER, qty=SHARES * 3, side=OrderSide.SELL,
+            time_in_force=TimeInForce.DAY, stop_price=round(px * 0.90, 2)))
+        placed.append(str(stop.id))
+        print(f"      stop live: {stop.id}")
+
+        # Q1 — THE DECIDING QUESTION. T5 rejected a MARKET sell while the leg holds. Is a
+        # LIMIT sell treated identically? If yes, every candidate design must reduce the stop
+        # FIRST and the choice collapses to sequencing (already-hardened code).
+        print("   3. Q1: LIMIT sell for 1/3 while the stop holds every share …")
+        try:
+            lim = client.submit_order(LimitOrderRequest(
+                symbol=TICKER, qty=SHARES, side=OrderSide.SELL,
+                time_in_force=TimeInForce.DAY, limit_price=round(px * 1.10, 2)))
+            placed.append(str(lim.id))
+            print(f"      ACCEPTED — id={lim.id} status={lim.status}")
+            print("      => a LIMIT is NOT treated like the market sell in T5. A resting limit")
+            print("         CAN coexist with the full stop, and the collision moves to FILL time.")
+        except Exception as e:
+            print(f"      REJECTED — {str(e)[:160]}")
+            print("      => same reservation rule as T5. EVERY design must reduce the stop")
+            print("         first; candidate C collapses into B and the choice is sequencing.")
+
+        # Q3 — defect 2's mechanism, at the moment we would actually use it.
+        print("   4. Q3: price-only replace of the stop to breakeven …")
+        try:
+            from alpaca.trading.requests import ReplaceOrderRequest
+            rep = client.replace_order_by_id(
+                str(stop.id), ReplaceOrderRequest(stop_price=round(px * 0.99, 2)))
+            placed.append(str(rep.id))
+            print(f"      ACCEPTED — new id={rep.id} (price-only replace works on a live stop)")
+        except Exception as e:
+            print(f"      REJECTED — {str(e)[:160]}")
+        return 0
+    finally:
+        res = await teardown(alpaca_client, placed, account_mode="paper", symbols=[TICKER])
+        print(f"   teardown: {res}")
 
 
 if __name__ == "__main__":
