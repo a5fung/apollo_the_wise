@@ -188,6 +188,8 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
             await log_anthropic_call_safe(
                 model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
                 usage=SimpleNamespace(**(data.get("usage") or {})),
+                # raw-HTTP path: stop_reason is a dict key, not an attribute (#543)
+                stop_reason=data.get("stop_reason"),
             )
             # ⚠ 2026-08-07 ROOT CAUSE OF THE 08-06/08-07 EXTRACTION OUTAGE.
             # This read `data["content"][0]["text"]` — it assumed the FIRST content

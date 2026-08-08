@@ -97,7 +97,7 @@ def test_judge_logs_row_with_nonzero_cost(captured_inserts):
     args = captured_inserts[0]
     # INSERT params order: model, caller, input_tokens, output_tokens,
     #                      cache_creation, cache_read, cost_usd
-    model, caller, in_tok, out_tok, _cc, _cr, cost = args
+    model, caller, in_tok, out_tok, _cc, _cr, cost, _sr = args
     assert model == "claude-opus-4-8"
     assert caller == "ep_grade_judge"
     assert in_tok == 1200 and out_tok == 400
@@ -192,7 +192,7 @@ def test_theme_discovery_logs_row_with_nonzero_cost(monkeypatch, captured_insert
 
     # The cost meter logged exactly one api_usage row for this turn.
     assert len(captured_inserts) == 1
-    model, caller, in_tok, out_tok, _cc, _cr, cost = captured_inserts[0]
+    model, caller, in_tok, out_tok, _cc, _cr, cost, _sr = captured_inserts[0]
     assert caller == "theme_discovery"
     assert model == te.THEME_MODEL          # Sonnet
     assert in_tok == 3000 and out_tok == 800
@@ -220,7 +220,7 @@ def test_anthropic_dict_usage_unwrapped_logs_zero(captured_inserts):
     ))
     assert cost == 0.0
     assert len(captured_inserts) == 1
-    _m, _c, in_tok, out_tok, _cc, _cr, logged_cost = captured_inserts[0]
+    _m, _c, in_tok, out_tok, _cc, _cr, logged_cost, _sr = captured_inserts[0]
     assert in_tok == 0 and out_tok == 0 and logged_cost == 0.0
 
 
@@ -234,7 +234,7 @@ def test_anthropic_dict_usage_wrapped_logs_nonzero(captured_inserts):
     # Sonnet = $3/M in, $15/M out → 5000/1e6*3 + 1000/1e6*15 = 0.015 + 0.015 = 0.030
     assert cost == pytest.approx(0.030, abs=1e-6)
     assert len(captured_inserts) == 1
-    _m, caller, in_tok, out_tok, _cc, _cr, logged_cost = captured_inserts[0]
+    _m, caller, in_tok, out_tok, _cc, _cr, logged_cost, _sr = captured_inserts[0]
     assert caller == "catalyst_metrics_extractor"
     assert in_tok == 5000 and out_tok == 1000 and logged_cost > 0
 
@@ -255,7 +255,7 @@ def test_perplexity_logs_tokens_plus_request_fee(captured_inserts):
     #   2000/1e6*3 + 500/1e6*15 + 0.010 = 0.006 + 0.0075 + 0.010 = 0.0235
     assert cost == pytest.approx(0.0235, abs=1e-6)
     assert len(captured_inserts) == 1
-    model, caller, in_tok, out_tok, _cc, _cr, logged_cost = captured_inserts[0]
+    model, caller, in_tok, out_tok, _cc, _cr, logged_cost, _sr = captured_inserts[0]
     assert model == "sonar-pro" and caller == "perplexity_news_search"
     # OpenAI naming was correctly mapped onto the api_usage in/out columns.
     assert in_tok == 2000 and out_tok == 500
@@ -281,7 +281,7 @@ def test_perplexity_no_usage_still_logs_request_fee(captured_inserts):
         caller="perplexity_health", model="sonar-pro", usage=None,
     ))
     assert cost == pytest.approx(0.010, abs=1e-6)
-    _m, _c, in_tok, out_tok, _cc, _cr, _cost = captured_inserts[0]
+    _m, _c, in_tok, out_tok, _cc, _cr, _cost, _sr = captured_inserts[0]
     assert in_tok == 0 and out_tok == 0
 
 
@@ -349,7 +349,7 @@ def test_site_catalyst_materiality_logs_row(captured_inserts):
 
     # The site passed the RIGHT model + caller to the meter.
     assert len(captured_inserts) == 1
-    model, caller, in_tok, out_tok, _cc, _cr, cost = captured_inserts[0]
+    model, caller, in_tok, out_tok, _cc, _cr, cost, _sr = captured_inserts[0]
     assert caller == "catalyst_materiality"
     assert model == cm._MODEL              # SONNET
     assert in_tok == 800 and out_tok == 60
@@ -386,7 +386,7 @@ def test_site_mgmt_judge_logs_row(captured_inserts):
 
     # The site threaded log_caller="mgmt_judge" through the transport.
     assert len(captured_inserts) == 1
-    model, caller, in_tok, out_tok, _cc, _cr, cost = captured_inserts[0]
+    model, caller, in_tok, out_tok, _cc, _cr, cost, _sr = captured_inserts[0]
     assert caller == "mgmt_judge"
     assert model == mgmt_judge.MODEL
     assert in_tok == 1500 and out_tok == 120

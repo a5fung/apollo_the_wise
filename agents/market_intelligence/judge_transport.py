@@ -91,6 +91,7 @@ async def invoke_forced_tool(
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(
                 model=model, caller=log_caller, usage=getattr(resp, "usage", None),
+                stop_reason=getattr(resp, "stop_reason", None),
             )
         return verdict
     except Exception as e:  # noqa: BLE001 — fail-open is the contract

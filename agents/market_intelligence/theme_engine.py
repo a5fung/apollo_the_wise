@@ -802,7 +802,8 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
-                                       usage=getattr(msg, "usage", None))
+                                       usage=getattr(msg, "usage", None),
+                                       stop_reason=getattr(msg, "stop_reason", None))
         raw = _extract_json_object(msg.content[0].text if msg.content else "")
         parsed = json.loads(raw)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
@@ -912,7 +913,8 @@ async def _discover_lane2_registry(
     # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
     from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
     await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
-                                   usage=getattr(msg, "usage", None))
+                                   usage=getattr(msg, "usage", None),
+                                   stop_reason=getattr(msg, "stop_reason", None))
     usage = getattr(msg, "usage", None)
     if usage is not None and getattr(usage, "input_tokens", None) is not None:
         out["usage"] = {"input_tokens": usage.input_tokens,
@@ -1291,7 +1293,8 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=DESCRIPTION_MODEL, caller="theme_descriptions",
-                                           usage=getattr(resp, "usage", None))
+                                           usage=getattr(resp, "usage", None),
+                                           stop_reason=getattr(resp, "stop_reason", None))
             raw = resp.content[0].text.strip()
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -2484,7 +2487,8 @@ async def _validate_theme_membership(
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_validation",
-                                       usage=getattr(resp, "usage", None))
+                                       usage=getattr(resp, "usage", None),
+                                       stop_reason=getattr(resp, "stop_reason", None))
         # Defensive extraction — the model occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
@@ -3277,7 +3281,8 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
-                                           usage=getattr(response, "usage", None))
+                                           usage=getattr(response, "usage", None),
+                                           stop_reason=getattr(response, "stop_reason", None))
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -3675,6 +3680,7 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             model=THEME_ADVISOR_MODEL,
             caller=f"theme_advisor_{caller}",
             usage=getattr(resp, "usage", None),
+            stop_reason=getattr(resp, "stop_reason", None),
         )
         return verdict
     except Exception as e:
@@ -3799,7 +3805,8 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_split",
-                                           usage=getattr(response, "usage", None))
+                                           usage=getattr(response, "usage", None),
+                                           stop_reason=getattr(response, "stop_reason", None))
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -4338,7 +4345,13 @@ In every other case, skip the advisor and call `report_themes` immediately, with
         # existing force_report fallback now actually LANDS because the forced call's output is
         # bounded. Criterion is UNCHANGED — the Rules block + #214 breadth + _validate_theme_membership
         # / _strip_sector_outliers gates own rejection; only narration verbosity changed.
-        _DISCOVERY_MAX_TOKENS = 4000
+        # 8000 (was 4000, 2026-08-07 #543): 29% of discovery calls in the last 7 days still
+        # ended at EXACTLY 4000 output tokens despite the 6/25 root fix above — that fix cut
+        # the truncation rate, it did not end it. This loop is tool_choice=AUTO (deliberately,
+        # so the #173 advisor path survives), which means free reasoning text can still consume
+        # the budget before the tool call lands. Headroom is the only lever that does not
+        # trade against the advisor path.
+        _DISCOVERY_MAX_TOKENS = 8000
 
         while True:
             loop_guard += 1
@@ -4390,6 +4403,7 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 model=THEME_MODEL,
                 caller="theme_discovery",
                 usage=getattr(response, "usage", None),
+                stop_reason=getattr(response, "stop_reason", None),
             )
 
             # Model produced no tool call. Don't silently discard the whole discovery

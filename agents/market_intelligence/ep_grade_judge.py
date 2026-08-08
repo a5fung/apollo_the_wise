@@ -401,4 +401,13 @@ async def grade_holistic(
         normalize=_normalize_verdict, label="holistic judge",
         subject=payload.get("ticker") or "",
         semaphore=semaphore, timeout=timeout, model=model, image_png=image_png,
+        # max_tokens 1500 (was the transport default of 500) — 2026-08-07, #543.
+        # ⚠ LOAD-BEARING ON ENTRY (ADR 0011). 16% of ep_grade_judge calls in the last 7 days
+        # ended at EXACTLY 500 output tokens, i.e. the forced-tool verdict JSON was cut off
+        # mid-object and the whole call fell into invoke_forced_tool's fail-open (verdict=None
+        # → the caller's floor grade). One entry grade in six was decided by truncation rather
+        # than by the judge. This is a BUG FIX, not a criteria change: the rubric, the tool
+        # schema and the normalizer are untouched; the model simply gets room to finish the
+        # answer it was already giving. It WILL change live grades — that is the point.
+        max_tokens=1500,
         log_caller=log_caller)  # #377 cost meter

@@ -1031,7 +1031,8 @@ catalyst, say so explicitly."""
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=GROUNDED_GRADE_MODEL, caller="ep_catalyst_grade",
-                                       usage=getattr(response, "usage", None))
+                                       usage=getattr(response, "usage", None),
+                                       stop_reason=getattr(response, "stop_reason", None))
         tool_block = next(b for b in response.content if b.type == "tool_use")
         result = tool_block.input
         return result["quality"], result["analysis"]
@@ -1087,6 +1088,7 @@ Respond with ONLY the classification word."""
                 await log_perplexity_call(
                     caller="perplexity_catalyst_validate", model="sonar",
                     usage=_data.get("usage"),
+                    finish_reason=(_data.get("choices") or [{}])[0].get("finish_reason"),
                 )
             except Exception:
                 pass

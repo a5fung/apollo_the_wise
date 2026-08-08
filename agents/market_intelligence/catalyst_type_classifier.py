@@ -190,7 +190,8 @@ async def classify_catalyst_type(
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=CATALYST_TYPE_MODEL, caller="catalyst_type_classifier",
-                                       usage=getattr(resp, "usage", None))
+                                       usage=getattr(resp, "usage", None),
+                                       stop_reason=getattr(resp, "stop_reason", None))
         block = next(b for b in resp.content if b.type == "tool_use")
         ct = block.input.get("catalyst_type")
         if ct not in CATALYST_TYPES:

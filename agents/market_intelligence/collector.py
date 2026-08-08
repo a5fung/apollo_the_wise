@@ -1269,14 +1269,15 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
                 return False, r.status_code, r.text[:300]
             try:  # #377 cost meter — additive, never alters the health verdict.
                 from agents.market_intelligence.spend_tracker import log_perplexity_call
-                _u = None
+                _j = {}
                 try:
-                    _u = r.json().get("usage")
+                    _j = r.json() or {}
                 except Exception as e:
                     logger.debug(f"Perplexity health usage parse failed: {e}")
-                    _u = None
                 await log_perplexity_call(
-                    caller="perplexity_health", model="sonar-pro", usage=_u,
+                    caller="perplexity_health", model="sonar-pro",
+                    usage=_j.get("usage"),
+                    finish_reason=(_j.get("choices") or [{}])[0].get("finish_reason"),
                 )
             except Exception as e:
                 logger.debug(f"Perplexity health cost-meter log failed: {e}")
@@ -1373,6 +1374,7 @@ async def search_news_perplexity(
                     await log_perplexity_call(
                         caller="perplexity_news_search", model="sonar-pro",
                         usage=_data.get("usage"),
+                        finish_reason=(_data.get("choices") or [{}])[0].get("finish_reason"),
                     )
                 except Exception as e:
                     logger.debug(f"Perplexity news search cost-meter log failed: {e}")

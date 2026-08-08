@@ -487,7 +487,8 @@ async def _nightly_data_pull():
                 from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
                 await log_anthropic_call_safe(model=DESCRIPTION_MODEL,
                                                caller="description_backfill",
-                                               usage=getattr(resp, "usage", None))
+                                               usage=getattr(resp, "usage", None),
+                                               stop_reason=getattr(resp, "stop_reason", None))
                 import json
                 raw = resp.content[0].text.strip()
                 # Strip markdown code fences if present
@@ -4027,6 +4028,18 @@ async def _spend_alarm_job():
     except Exception as e:
         logger.error(f"cost-watchdog job failed: {e}", exc_info=True)
         await notify_job_failure("cost_watchdog", str(e))
+    # #543 TRUNCATION CHECK. Rides this job because it reads the same table, but it is a
+    # CORRECTNESS check, not a cost one: a response cut off by max_tokens is silent data
+    # corruption (theme_assignment was dead for ten days that way). Own try/except so it can
+    # never blot out the two vetted checks above, and named separately in notify_job_failure.
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.cost_board import run_truncation_check
+        trunc = await run_truncation_check(et_today())
+        logger.info(f"truncation-check: {'FIRED' if trunc else 'quiet'}")
+    except Exception as e:
+        logger.error(f"truncation-check job failed: {e}", exc_info=True)
+        await notify_job_failure("truncation_check", str(e))
 
 
 async def _book_concentration_job():

@@ -233,12 +233,20 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
         client = _get_anthropic_client()
         resp = await client.messages.create(
             model=SYNTHESIS_MODEL,
-            # 4000 (was 2000): match the #325 theme-DISCOVERY bump. A forced tool call whose
-            # cohorts JSON exceeds the cap truncates (stop_reason='max_tokens') and silently
-            # yields an empty/partial `cohorts` — indistinguishable from a genuine "no cohorts"
-            # unless we record the stop_reason. Discovery proposed 0 for 3 days straight
-            # (6/22-24) with no way to tell which; that silent ambiguity is the bug.
-            max_tokens=4000,
+            # 8000 (was 4000, was 2000). The 4000 comment below described the bug exactly and
+            # then it happened anyway: 80% of synthesis calls in the last 7 days ended at
+            # EXACTLY 4000 output tokens. Its own prescription — "unless we record the
+            # stop_reason" — is now shipped (#543: api_usage.stop_reason + a daily truncation
+            # check), so this ceiling is no longer the only thing standing between a truncated
+            # forced-tool JSON and a silent "no cohorts".
+            # ⚠ If at-cap% does NOT fall after this raise, the cap was never the constraint —
+            # the prompt asks for more output than any envelope, and the fix is bounding the
+            # cohort count, not raising again.
+            # Original (4000, #325): a forced tool call whose cohorts JSON exceeds the cap
+            # truncates and silently yields an empty/partial `cohorts` — indistinguishable
+            # from a genuine "no cohorts". Discovery proposed 0 for 3 days straight (6/22-24)
+            # with no way to tell which; that silent ambiguity is the bug.
+            max_tokens=8000,
             tools=[_SYNTHESIS_TOOL],
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],
@@ -246,7 +254,8 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=SYNTHESIS_MODEL, caller="theme_synthesis",
-                                       usage=getattr(resp, "usage", None))
+                                       usage=getattr(resp, "usage", None),
+                                       stop_reason=getattr(resp, "stop_reason", None))
         stop_reason = getattr(resp, "stop_reason", None)
         tool_input = next(
             (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},

@@ -333,7 +333,8 @@ async def adjudicate_merge_pair(
             try:
                 from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
                 await log_anthropic_call_safe(model=model, caller="theme_merge_adjudication",
-                                              usage=getattr(resp, "usage", None))
+                                              usage=getattr(resp, "usage", None),
+                                              stop_reason=getattr(resp, "stop_reason", None))
             except Exception as e:  # spend telemetry must never break the arm
                 logger.debug(f"[merge arm] spend telemetry failed (non-fatal): {e}")
         block = next(

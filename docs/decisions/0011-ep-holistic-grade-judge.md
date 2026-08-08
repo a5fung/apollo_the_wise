@@ -238,3 +238,39 @@ The alert now **resolves to the judge** and shows the provenance:
   judge classification never clears; `judge_theme_gap.py` now feeds a `source='judge_inferred'`
   candidate into the shared shadow-radar table (surface-only, same anti-circularity walls as
   coverage_probe — never auto-promoted, never re-enters the judge's own `active_narratives`).
+
+---
+
+## Addendum 2026-08-07 (#543) — one grade in seven was decided by TRUNCATION, not by the judge
+
+**BUG FIX, not a criteria change.** The rubric (§Rubric, operator-signed), the tool schema and
+the normalizer are all untouched. Only the response ceiling moved.
+
+**What was wrong.** `invoke_forced_tool` carried a default `max_tokens=500` and `grade_holistic`
+never overrode it. Measured over the 7 days to 2026-08-07: **7 of 49 `ep_grade_judge` calls
+(14.3%) ended at EXACTLY 500 output tokens** — the model was cut off mid-JSON. A truncated
+forced-tool response has no parseable `tool_use` block, so `invoke_forced_tool`'s fail-open
+(§Fail-open above) returned `None` and the caller fell back to the **conviction-floor grade**.
+That fail-open is correct and stays; what was wrong is that it was being triggered by our own
+ceiling rather than by a judge failure, on the hot path before the 9:45 ORB cutoff.
+
+**Why it was invisible.** Nothing distinguishes "the judge declined" from "we cut the judge
+off." Both land as a floor grade and a `judge_timeout_fallback`-class row. It was found only by
+sweeping `api_usage.output_tokens` against each caller's cap while chasing the theme-assignment
+outage the same day.
+
+**Change.** `max_tokens=1500` passed explicitly at the `grade_holistic` call site (not by moving
+the shared transport default — `mgmt_judge` measured 0% at-cap on a 188-token average and does
+not need the headroom).
+
+**It will change live grades.** Roughly 1 in 7 candidates that previously got a floor grade will
+now get a real judged grade. That is the intended effect: the floor was never meant to be
+reached this often. Grade *authority* and the rubric are unchanged.
+
+**Recurrence guard.** `api_usage.stop_reason` is now recorded on every LLM call and a daily
+17:52 ET check Telegrams on any caller whose responses are being truncated — the ceiling class
+is now self-reporting instead of inferred. Callers that fail to report `stop_reason` at all are
+reported too, so a future call site cannot silently become the next blind spot.
+
+**Cost.** Worst case (every previously-truncated call now running the full extra 1000 tokens):
+**+$0.015/day**, against a ~$4-6/day total. Billing is on tokens generated, not the ceiling.

@@ -186,7 +186,8 @@ async def generate_postmortem_narrative(
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=_MODEL, caller="postmortem",
-                                       usage=getattr(resp, "usage", None))
+                                       usage=getattr(resp, "usage", None),
+                                       stop_reason=getattr(resp, "stop_reason", None))
         narrative = "".join(
             b.text for b in resp.content if hasattr(b, "text")
         ).strip()

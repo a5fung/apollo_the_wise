@@ -96,6 +96,13 @@ async def _ensure_schema() -> None:
                 cache_read      INT NOT NULL DEFAULT 0,
                 cost_usd        DOUBLE PRECISION NOT NULL DEFAULT 0
             );
+            -- stop_reason (#543, 2026-08-07): the model's OWN report of why it stopped.
+            -- 'max_tokens' = the response was TRUNCATED by the ceiling. Without this column
+            -- truncation could only be INFERRED (output_tokens == a cap we don't store), which
+            -- is how theme_assignment burned exactly 4000 tokens nightly for 10 days while
+            -- reading as "proposed 0 assignments" — a telemetry line, not an error. ALTER (not
+            -- just CREATE) because the table already exists everywhere.
+            ALTER TABLE api_usage ADD COLUMN IF NOT EXISTS stop_reason TEXT;
             CREATE INDEX IF NOT EXISTS idx_api_usage_created
                 ON api_usage(created_at);
         """)
@@ -107,6 +114,7 @@ async def log_anthropic_call(
     model: str,
     caller: str,
     usage: Any,
+    stop_reason: Any = None,
 ) -> float:
     """Log an Anthropic API call. `usage` is the response.usage object from
     the SDK. Returns the computed cost in USD. Raises on DB failure
@@ -115,10 +123,21 @@ async def log_anthropic_call(
     Why no fail-soft default: spend-tracker silently swallowing errors is
     exactly how the May 2026 outage hid for 12 days. Surface failures
     loudly at the call site; the call site can choose try/except + WARNING.
+
+    `stop_reason` (#543) is `getattr(resp, "stop_reason", None)` — pass it at EVERY
+    call site. 'max_tokens' means the model was CUT OFF by the ceiling, which is a
+    silent corruption: forced-tool JSON truncates mid-object and reads downstream as
+    an empty result. A site that omits it writes NULL, and NULL is itself surfaced by
+    the truncation health check — a forgotten call site announces itself rather than
+    hiding, which is the failure mode this whole column exists to end.
     """
     if usage is None:
         logger.warning(f"log_anthropic_call({caller}): usage is None — skipping")
         return 0.0
+    if stop_reason is None:
+        logger.warning(
+            f"log_anthropic_call({caller}): no stop_reason passed — truncation at this "
+            "call site cannot be detected (#543); pass getattr(resp, 'stop_reason', None)")
 
     input_tokens = getattr(usage, "input_tokens", 0) or 0
     output_tokens = getattr(usage, "output_tokens", 0) or 0
@@ -140,11 +159,12 @@ async def log_anthropic_call(
             """
             INSERT INTO api_usage
                 (model, caller, input_tokens, output_tokens,
-                 cache_creation, cache_read, cost_usd)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 cache_creation, cache_read, cost_usd, stop_reason)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
             model, caller, input_tokens, output_tokens,
             cache_creation, cache_read, cost,
+            str(stop_reason) if stop_reason is not None else None,
         )
     return cost
 
@@ -154,6 +174,7 @@ async def log_anthropic_call_safe(
     model: str,
     caller: str,
     usage: Any,
+    stop_reason: Any = None,
 ) -> None:
     """The SANCTIONED call-site wrapper for `log_anthropic_call` (S2/F9, 2026-07-03).
 
@@ -169,7 +190,8 @@ async def log_anthropic_call_safe(
     try/except-pass; that reintroduces the same blind spot this fixes.
     """
     try:
-        await log_anthropic_call(model=model, caller=caller, usage=usage)
+        await log_anthropic_call(model=model, caller=caller, usage=usage,
+                                 stop_reason=stop_reason)
     except Exception as e:  # loud-ok: sanctioned single warning sink for #377 cost-meter call sites (S2/F9) — the one place allowed to swallow a tracker failure, and it does so loudly
         logger.warning(f"spend tracking failed at {caller}: {e}")
 
@@ -179,6 +201,7 @@ async def log_perplexity_call(
     caller: str,
     usage: Any = None,
     model: str = "sonar-pro",
+    finish_reason: Any = None,
 ) -> float:
     """Log a Perplexity (#377 cost meter) call to api_usage. Separate shape from
     Anthropic because Perplexity (a) names its usage fields OpenAI-style
@@ -218,9 +241,14 @@ async def log_perplexity_call(
             """
             INSERT INTO api_usage
                 (model, caller, input_tokens, output_tokens,
-                 cache_creation, cache_read, cost_usd)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 cache_creation, cache_read, cost_usd, stop_reason)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
             model, caller, input_tokens, output_tokens, 0, 0, cost,
+            # Perplexity names it finish_reason and says 'length' for truncation. Normalised
+            # to Anthropic's vocabulary so ONE health check covers both providers. Never NULL:
+            # NULL is reserved to mean "a call site forgot to report" (#543).
+            "max_tokens" if str(finish_reason) == "length"
+            else (str(finish_reason) if finish_reason is not None else "n/a"),
         )
     return cost

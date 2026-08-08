@@ -338,7 +338,8 @@ then the single chosen `e_code`."""
     from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
     await log_anthropic_call_safe(model=ECOSYSTEM_ASSIGN_MODEL,
                                   caller="theme_ecosystem_assignment",
-                                  usage=getattr(resp, "usage", None))
+                                  usage=getattr(resp, "usage", None),
+                                  stop_reason=getattr(resp, "stop_reason", None))
 
     tool_uses = [b for b in resp.content if getattr(b, "type", "") == "tool_use"]
     if not tool_uses:

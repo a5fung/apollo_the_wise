@@ -229,6 +229,34 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 
 ## Change log
 
+### 2026-08-07 (b) — #543: the two theme LLM stages were being TRUNCATED, and it was invisible
+
+- **Trigger**: chasing the 10-day `theme_assignment` outage the same day, we swept every LLM
+  caller's `output_tokens` against its ceiling. Over the prior 7 days: `theme_synthesis` **60%
+  of calls ended at EXACTLY 4000 tokens**, `theme_discovery` **28.6% at 4000**,
+  `theme_assignment` **100% (7 of 7) at 4000**.
+- **Why it matters here specifically**: both stages emit a forced/expected TOOL CALL whose JSON
+  is the entire product. Truncated JSON yields no parseable `cohorts` / no `tool_use` block, and
+  every caller's fail-open turns that into "proposed 0" — which reads as a quiet night. The
+  4000-line in `theme_synthesis.py` had a June comment predicting this exact failure and naming
+  the fix ("unless we record the stop_reason"); it recurred anyway, because a comment is not a
+  column.
+- **What shipped**:
+  - `theme_synthesis` `max_tokens` 4000 → **8000**.
+  - `theme_discovery` `_DISCOVERY_MAX_TOKENS` 4000 → **8000**. Its 6/25 root fix (terse
+    scratchpad + no-free-text-before-tool prompt) cut truncation, it did not end it; this loop
+    stays `tool_choice=auto` deliberately (the #173 advisor path), so free reasoning text can
+    still consume the budget and headroom is the only lever that does not trade against it.
+  - `theme_assignment` was fixed separately the same day (`tool_choice="any"` + 8000) — the
+    structural fix, since `auto` is what let prose eat the whole budget.
+  - **`api_usage.stop_reason`** recorded on every LLM call + a daily 17:52 ET truncation check
+    that Telegrams on any truncating caller AND on any caller not reporting `stop_reason` at
+    all. Tests: `tests/test_truncation_self_reporting_546.py`.
+- **⚠ Watch**: if `theme_synthesis` at-cap% does NOT fall after a real run at 8000, the cap was
+  never the constraint — the prompt asks for more output than any envelope and the fix is
+  bounding the cohort count, not raising again.
+- **Cost**: worst case across all three raises **+$0.11/day** against a ~$4-6/day total.
+
 ### 2026-08-05 (c) — #491 M2 seeded assignment-pool exemption (theme membership, $0 LLM)
 
 - **Trigger**: #491 design D1/D3 (operator-approved 2026-08-05) — the ex-miner pivot cohort

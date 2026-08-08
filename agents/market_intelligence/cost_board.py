@@ -619,3 +619,98 @@ async def run_cost_watchdog(today: date) -> dict | None:
         lines.append("/cost for the full board")
         await send_telegram_message("\n".join(lines))
     return w
+
+
+# ── #543 TRUNCATION CHECK — "how do we make sure we don't hit a ceiling again" ─────────────
+#
+# Operator, 2026-08-07, after theme_assignment ran DEAD for ten days: *"we really need to
+# figure out how we can miss this, a complete outage, and it's a bug we've seen before,
+# unacceptable."* It IS a bug we had seen before — the same max_tokens ceiling was raised in
+# May 2026 for the same silent failure, and raising it bought three months. Raising a ceiling
+# is never the answer to this class; DETECTING that a ceiling bound is.
+#
+# What makes it silent: a truncated forced-tool call is not an error anywhere. The JSON stops
+# mid-object, the tool block is unparseable or absent, and the caller's fail-open turns that
+# into "proposed 0 cohorts" / a floor grade / None. Every one of those reads as a quiet night.
+#
+# `api_usage.stop_reason` (this same commit) makes truncation SELF-REPORTING — the model tells
+# us it was cut off — instead of inferred from output_tokens against a cap we never stored.
+#
+# The NULL arm matters as much as the max_tokens arm: `stop_reason` is threaded by hand through
+# ~20 call sites, which is exactly the copy-paste pattern spend_tracker's own docstring warns
+# about. A call site that forgets writes NULL, and NULL is reported here — so a missed site
+# announces itself rather than becoming the next blind spot.
+
+_TRUNC_MIN_CALLS = 2      # 1 truncation on a chatty caller is noise; 2 is a pattern
+_TRUNC_PCT_FLOOR = 50.0   # ...unless the caller is low-volume, where 1-of-1 IS the outage shape
+
+
+async def compute_truncation_check(lookback_hours: int = 24) -> dict:
+    """Per-caller truncation + reporting-coverage over the window. Pure read on api_usage."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT caller,
+                   count(*)                                                    AS calls,
+                   count(*) FILTER (WHERE stop_reason = 'max_tokens')          AS truncated,
+                   count(*) FILTER (WHERE stop_reason IS NULL)                 AS unreported,
+                   max(output_tokens) FILTER (WHERE stop_reason = 'max_tokens') AS cap_hit
+              FROM api_usage
+             WHERE created_at > now() - ($1 || ' hours')::interval
+             GROUP BY 1
+        """, str(int(lookback_hours)))
+
+    truncating, unreported = [], []
+    for r in rows:
+        calls, trunc = int(r["calls"]), int(r["truncated"])
+        if trunc:
+            pct = round(100.0 * trunc / calls, 1)
+            if trunc >= _TRUNC_MIN_CALLS or pct >= _TRUNC_PCT_FLOOR:
+                truncating.append({"caller": r["caller"], "calls": calls, "truncated": trunc,
+                                   "pct": pct, "cap": r["cap_hit"]})
+        # Only a caller reporting NOTHING is a wiring gap. A partial NULL count means the
+        # provider omitted the field on some responses, which is not a call-site defect.
+        if int(r["unreported"]) == calls:
+            unreported.append({"caller": r["caller"], "calls": calls})
+
+    truncating.sort(key=lambda x: (-x["pct"], -x["truncated"]))
+    return {"window_hours": lookback_hours, "truncating": truncating,
+            "unreported": unreported}
+
+
+async def run_truncation_check(today: date) -> dict | None:
+    """Daily, wired into the 17:52 ET spend job. Telegrams on ANY confirmed truncation
+    (actionable-only house rule — a truncated response is silent data corruption, not a
+    cost curiosity). Deliberately NOT deduped: the original went quiet for ten days
+    precisely because its only trace looked routine, so this keeps shouting nightly until
+    the ceiling is fixed."""
+    t = await compute_truncation_check()
+    truncating, unreported = t["truncating"], t["unreported"]
+    if not truncating and not unreported:
+        return None
+    await log_audit_event(
+        "llm_truncation_check",
+        summary=(f"{len(truncating)} caller(s) truncating, "
+                 f"{len(unreported)} not reporting stop_reason"),
+        detail=json.dumps(t),
+    )
+    from agents.market_intelligence.briefing import send_telegram_message
+    # Caller names are snake_case — #477 parity: they MUST sit inside the code fence or bare
+    # underscores break Telegram Markdown V1 italics.
+    lines = []
+    if truncating:
+        lines += ["🔴 *TRUNCATED* — responses cut off by max_tokens (silent corruption):", "```"]
+        for x in truncating[:6]:
+            lines.append(f"{x['caller']:<26} {x['truncated']}/{x['calls']} calls "
+                         f"({x['pct']}%) at {x['cap']} tokens")
+        lines += ["```", "Raise the ceiling on these callers - a cut-off tool call "
+                  "reads downstream as an empty result, not an error."]
+    if unreported:
+        if lines:
+            lines.append("")
+        lines += ["🟠 *NOT REPORTING* — these callers cannot be checked for truncation:", "```"]
+        for x in unreported[:6]:
+            lines.append(f"{x['caller']:<26} {x['calls']} calls, stop_reason always NULL")
+        lines += ["```", "Their spend_tracker call site is missing stop_reason (#543)."]
+    await send_telegram_message("\n".join(lines))
+    return t
