@@ -14,6 +14,7 @@ import asyncio
 import logging
 import os
 import re
+import time
 import urllib.parse
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
@@ -1328,6 +1329,62 @@ def strip_perplexity_disclaimer(text: str | None) -> tuple[str, bool]:
     return (text, False)
 
 
+# ── Perplexity same-run dedupe (#543 cost control, 2026-08-07) ──────────────────────────
+#
+# `perplexity_news_search` is the single largest line on the bill: 371 calls / $5.08 over the
+# 7 days to 08-07, 22.7% of ALL LLM spend, on a day the operator said *"spend increase is
+# concerning, it keeps going up"*. Almost all of it is the per-request SEARCH FEE, not tokens —
+# so the lever is CALL COUNT, and only call count.
+#
+# Eleven call sites funnel through here and several ask the IDENTICAL question about the same
+# ticker inside one run: `ep_detector` asks "What caused {ticker} stock to gap up?" from two
+# separate paths (the enrichment fetch and the gap-cause fetch) with the same recency. Every
+# one of those was a second $0.006 request for an answer we already had seconds earlier.
+#
+# So: an in-process TTL memo on the EXACT (query, recency, system_prompt) triple. Deliberately
+# narrow — different phrasings are genuinely different questions and are NOT collapsed; this
+# only kills the literal repeat.
+#
+# ⚠ FAILURES ARE NEVER CACHED. That is the #543 lesson from the same week: the catalyst
+# extractor persisted a failed extraction and every later scan served the failure back, so a
+# transient error became a sticky one and the first fix was inert. An empty/failed search must
+# retry.
+#
+# TTL is short by design: news is the one thing that must not go stale. 15 minutes covers a
+# single scan chain and nothing more.
+_PPLX_CACHE_TTL_S = 900
+_PPLX_CACHE_MAX = 256
+_PPLX_CACHE: dict[tuple, tuple[float, str]] = {}
+_PPLX_CACHE_HITS = 0
+
+
+def _pplx_cache_get(key: tuple) -> str | None:
+    """Live entry, or None. Prunes on read so the dict cannot grow without bound."""
+    hit = _PPLX_CACHE.get(key)
+    if hit is None:
+        return None
+    stamped, answer = hit
+    if time.monotonic() - stamped > _PPLX_CACHE_TTL_S:
+        _PPLX_CACHE.pop(key, None)
+        return None
+    return answer
+
+
+def _pplx_cache_put(key: tuple, answer: str) -> None:
+    """Store a SUCCESSFUL answer only — an empty string is a failure here, never a result."""
+    if not answer:
+        return
+    if len(_PPLX_CACHE) >= _PPLX_CACHE_MAX:
+        # Cheapest sound eviction: drop everything already expired, then the oldest.
+        now = time.monotonic()
+        for k, (stamped, _) in list(_PPLX_CACHE.items()):
+            if now - stamped > _PPLX_CACHE_TTL_S:
+                _PPLX_CACHE.pop(k, None)
+        if len(_PPLX_CACHE) >= _PPLX_CACHE_MAX:
+            _PPLX_CACHE.pop(min(_PPLX_CACHE, key=lambda k: _PPLX_CACHE[k][0]), None)
+    _PPLX_CACHE[key] = (time.monotonic(), answer)
+
+
 async def search_news_perplexity(
     query: str, recency: str = "month", system_prompt: str | None = None,
 ) -> str:
@@ -1346,6 +1403,16 @@ async def search_news_perplexity(
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
         return ""
+    # Same-run dedupe: an identical question asked twice inside 15 minutes costs a second
+    # $0.006 search fee for an answer we already hold. See the block above for why this is
+    # narrow and why failures are never stored.
+    _ck = (query, recency, system_prompt)
+    _cached = _pplx_cache_get(_ck)
+    if _cached is not None:
+        global _PPLX_CACHE_HITS
+        _PPLX_CACHE_HITS += 1
+        logger.debug(f"perplexity search served from cache (hit #{_PPLX_CACHE_HITS})")
+        return _cached
     last_exc: Exception | None = None
     for attempt in (1, 2):
         try:
@@ -1378,7 +1445,9 @@ async def search_news_perplexity(
                     )
                 except Exception as e:
                     logger.debug(f"Perplexity news search cost-meter log failed: {e}")
-                return _data["choices"][0]["message"]["content"]
+                _answer = _data["choices"][0]["message"]["content"]
+                _pplx_cache_put(_ck, _answer)
+                return _answer
         except Exception as e:
             # Duck-typed timeout check (matches classify_api_failure): every
             # httpx timeout type ends in "Timeout"/"TimeoutException".
