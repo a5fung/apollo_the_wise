@@ -120,6 +120,28 @@ the first pass, and including it here would double-count it.
 Tests: `tests/test_ma_trail_uses_stock_history_548.py` (6), mutation-checked against reverting the
 trail, leaking prior closes into the peak, and swapping `max()` for `min()`.
 
+**REPLAYED against every recorded trade** (`scripts/probes/_548_seeded_ma_trail_replay.py`,
+read-only). This answers the operator's own concern from the same morning — *does a trail that is
+live from day one cut the runners short?*
+
+| | n | trail fires | mean actual | mean with seeded trail | better / worse |
+|---|---|---|---|---|---|
+| paper | 33 | 10 | +0.64R | **+1.27R** | 8 / 2 |
+| live | 17 | 3 | −0.74R | +0.31R | 1 / 2 |
+
+**It does NOT cut the runners — it improves them.** The clearest case is **CRSR (peak +12.36R):
+actual +1.80R → +3.31R**, because the trail held the position through a move the day-3/5 partial
+had already clipped. QURE +0.49 → +1.14, IBM +0.47 → +0.72, FPS +0.16 → +0.50.
+
+**Where it is worse, recorded rather than buried:** KURA +0.13 → −1.00 (fired d+4) and RCAT
++1.24 → +0.62 (d+8) on paper; MANE −0.23 → −0.92 (d+1) on live. The MANE shape is the one to
+watch — a same-day round-trip can close below the trail on day one, and there the trail exits a
+position the old code would have held.
+
+⚠ **The live row is 3 trades.** 15 of 17 closed the same day, before any daily pass could run, so
+the live cohort still cannot exercise this and the +0.31R is carried by QBTS alone (−1.00 →
++2.86). Paper is the only cohort with enough hold time to judge it.
+
 Worth stating for that sign-off: §B4 activates the trail only once it **surpasses the hard-stop
 floor**, and the effective stop is `max(hard_stop, active_sma, entry_price)` — so a seeded MA can
 only ever RAISE the stop, never exit earlier than the hard stop already would. Seeding is
