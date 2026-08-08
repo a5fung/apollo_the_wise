@@ -77,7 +77,38 @@ if hold_days >= 3 and not partial_taken and entry_price:
 
 ### 2. Breakeven — armed by the partial, not independently.
 
-### 3. SMA trail — requires ≥10 daily closes, so it cannot act before day 10.
+### 3. SMA trail — ⚠ NOT the stock's moving average. It averages OUR HOLDING PERIOD.
+
+**Found 2026-08-08 by the operator**, and this line previously described the symptom as if it
+were the design: *"requires ≥10 daily closes, so it cannot act before day 10."* That is true of
+the code and false of the rule.
+
+**The rule** (`EP_TRADING_RULES.md` §B4, his own file, Qullamaggie): *"Trail your stop with the
+10- or 20-day moving average… Exit on first daily close below the active MA."* A stock's 10-day
+MA exists every day, with or without our position.
+
+**The code**: `sum(running_closes[-10:]) / 10`, where `running_closes` starts EMPTY at fill
+(`JSONB NOT NULL DEFAULT '[]'`) and gains one entry per day WE held. It is the mean of our
+holding period. Verified in prod — **nothing seeds it anywhere**: BW held 15d → 10 closes ·
+GOOGL 17d → 11 · FPS 23d → 16 · every live trade → **0**.
+
+**Consequence:** the trail cannot exist until ~10 TRADING days held (~14 calendar). Live max hold
+is 2 days, so it is structurally dead there — **0 fires in 17 live trades**. It has fired twice
+in the system's history, both paper, both at **exactly 10 closes** — it fired the first day it
+was permitted to exist.
+
+**What is NOT wrong:** `max(SMA10, SMA20)` is faithful to §B4 ("use 10-SMA when 10 > 20, else
+20-SMA") — max() picks exactly that. Do not "fix" it.
+
+**The fix** is the data source: seed from the stock's own prior closes (`mi_daily_closes` carries
+279 bars/ticker) rather than from our holding period. ⚖ **NOT DONE — THE LINE + CHANGE_PROCESS**,
+filed on #548.
+
+Worth stating for that sign-off: §B4 activates the trail only once it **surpasses the hard-stop
+floor**, and the effective stop is `max(hard_stop, active_sma, entry_price)` — so a seeded MA can
+only ever RAISE the stop, never exit earlier than the hard stop already would. Seeding is
+protective, not premature. ⚠ But what seeding would have done to the recorded cohort has **not
+been replayed**, and that replay is the evidence the change needs.
 
 ### 4. Time-stop — 9M Day-2 only; does not apply to MAGNA53.
 
