@@ -21,6 +21,23 @@ Restore returns you to **the last 02:00 ET state**. Anything that happened after
 
 ---
 
+## ⚠ Fresh-database builds — verified empirically 2026-08-08 (#258)
+
+`initialize_schema()` **could not build a genuinely empty database** between 2026-08-01 (#465)
+and 2026-08-08. `mi_live_trades`'s CREATE declared `UNIQUE (ticker, alert_date, account_mode)`
+without declaring the `account_mode` column.
+
+**This runbook was NEVER at risk** — `infra/restore.sh` restores a `pg_dump` (`gunzip | psql`)
+which carries the schema and never calls `initialize_schema()`. The broken path was a fresh
+build: a new dev box, new staging, or a rebuild without a dump.
+
+**Proven both ways on the production Postgres, on throwaway databases since dropped:**
+- PRE-fix DDL against an empty DB → `ERROR: column "account_mode" named in key does not exist`
+- POST-fix `initialize_schema()` against an empty DB → **89 tables created, no error**
+
+Guard: `tests/test_schema_alter_create_parity.py` (mutation-checked — deleting the column from
+the CREATE turns it red).
+
 ## Phase 0 — During the outage (BEFORE restore)
 
 The most important decisions happen **before** you start restoring.
