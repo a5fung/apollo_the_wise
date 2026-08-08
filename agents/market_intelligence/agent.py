@@ -6878,6 +6878,14 @@ class MarketIntelligenceAgent(BaseAgent):
 
             return self._ok(request, result="\n".join(lines))
 
+        # `/trades FIGS` — a TICKER, not a view (operator 2026-08-08: *"this should belong to
+        # /trades FIGS"*). It used to answer "Unknown view: figs", and the only way to reach the
+        # per-ticker trade timeline was the undiscoverable phrase "FIGS trade" — which for him
+        # routed to fundamentals instead. The obvious thing to type now does the obvious thing.
+        # Checked LAST so it can never shadow a real view name.
+        if view.isalpha() and 2 <= len(view) <= 5:
+            return await self._handle_trades_query(request, ticker=view.upper())
+
         return self._ok(request, result=f"Unknown view: {view}")
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:

@@ -25,6 +25,7 @@ from core.confirmations import parse_confirmation_reply, resolve_confirmation
 from shared.llm_models import HEALTHCHECK_MODEL
 from shared.models import MemoryEntry
 from shared.secrets import get_secrets
+from shared.dates import et_hhmm
 
 # ── Onboarding states ─────────────────────────────────────────────────────────
 # Stored in Redis as apollo:onboarding:{user_id}
@@ -740,15 +741,35 @@ class TelegramChannel:
                             ep = e0.get("price", e0.get("entry_price", 0))
                             es = e0.get("stop", e0.get("stop_price", 0))
                             out.append(f"{prefix}ORB entry=${ep:.2f} stop=${es:.2f}")
-                            exits_by_att = {ex.get("attempt", i+1): ex for i, ex in enumerate(exits)}
+                            # Two fixes, 2026-08-08, both already made on the market-agent copy
+                            # in backtester/tracker.py — this orchestrator-side duplicate still
+                            # had both:
+                            #  (1) TIME WAS UTC. `[11:16]` slices the stored ISO string raw, so
+                            #      a 09:35 ET fill printed as 13:35. `et_hhmm` (shared.dates) is
+                            #      the one helper; three surfaces across two containers each had
+                            #      this same slice.
+                            #  (2) LEGS COLLIDED. A dict keyed on `attempt` dropped the earlier
+                            #      leg: a partial profit-take carries no `attempt` (defaults to
+                            #      1) and the stop carries an explicit `attempt: 1`, so the stop
+                            #      silently overwrote the profit-take — the operator saw a plain
+                            #      loss on a trade that had banked money first.
+                            exits_by_att: dict = {}
+                            for i, ex in enumerate(exits):
+                                exits_by_att.setdefault(ex.get("attempt", i + 1), []).append(ex)
                             for e in entries:
                                 att = e.get("attempt", "?")
-                                in_str = (e.get("time","") or "")[:16][11:16] or "?"
-                                ex = exits_by_att.get(att, {})
-                                out_str = ((ex.get("time","") or "")[:16][11:16]) or "open"
-                                reason = ex.get("reason", "open")
-                                pnl = ex.get("pnl", 0)
-                                out.append(f"{prefix}#{att} {in_str}→{out_str} ({reason}) ${pnl:+.0f}")
+                                in_str = et_hhmm(e.get("time")) or "?"
+                                legs = exits_by_att.get(att) or [{}]
+                                for j, ex in enumerate(legs):
+                                    out_str = et_hhmm(ex.get("time")) or "open"
+                                    reason = ex.get("reason", "open")
+                                    pnl = ex.get("pnl", 0)
+                                    lead = (f"{prefix}#{att} {in_str}→" if j == 0
+                                            else f"{prefix}    ↳ ")
+                                    out.append(f"{lead}{out_str} ({reason}) ${pnl:+.0f}")
+                                if len(legs) > 1:
+                                    net = sum(float(x.get("pnl") or 0) for x in legs)
+                                    out.append(f"{prefix}    = net ${net:+.0f}")
                             return out
                         lines.append("*Last closed:*")
                         for t in p_closed_list[:3]:

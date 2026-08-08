@@ -20,6 +20,7 @@ from agents.market_intelligence.backtester.engine import _simulate_day1, _bar_da
 from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.db import get_pool
+from shared.dates import et_hhmm
 
 from agents.market_intelligence.constants import ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT
 
@@ -76,12 +77,12 @@ def format_trade_attempts(entries_raw, exits_raw, prefix: str = "  ") -> list[st
     for e in entries:
         att = e.get("attempt", "?")
         in_t = e.get("time", "")
-        in_str = in_t[11:16] if len(in_t) >= 16 else in_t[:10]
+        in_str = et_hhmm(in_t) or (in_t[:10] if in_t else "?")
         legs = exits_by_att.get(att) or [{}]
         att_label = f"#{att} " if num_att > 1 else ""
         for j, ex in enumerate(legs):
             out_t = ex.get("time", "")
-            out_str = out_t[11:16] if len(out_t) >= 16 else "open"
+            out_str = et_hhmm(out_t) or "open"
             reason = ex.get("reason", "open")
             ex_pnl = ex.get("pnl", 0)
             sh = ex.get("shares")
@@ -162,7 +163,7 @@ def format_trade_attempts_live(trade: dict, prefix: str = "  ") -> list[str]:
     for ex in exits:
         att = ex.get("attempt", "?")
         out_t = ex.get("time", "")
-        out_str = out_t[11:16] if isinstance(out_t, str) and len(out_t) >= 16 else "?"
+        out_str = et_hhmm(out_t) or "?"
         reason = ex.get("reason", "?")
         ex_pnl = ex.get("pnl", 0) or 0
         ex_shares = ex.get("shares", 0) or 0

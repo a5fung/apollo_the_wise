@@ -43,7 +43,12 @@ def _extract(name: str) -> str:
     return _TRACKER_SRC[i:j if j > 0 else len(_TRACKER_SRC)]
 
 
-_ns: dict = {"json": json}
+from datetime import datetime, timezone  # noqa: E402 — needed by the exec'd source below
+
+from shared.dates import et_hhmm as hhmm_et  # noqa: E402
+
+_ns: dict = {"json": json, "datetime": datetime, "timezone": timezone,
+             "et_hhmm": hhmm_et}
 exec(_extract("parse_json_list"), _ns)          # noqa: S102 — real source, not a fixture
 exec(_extract("format_trade_attempts"), _ns)    # noqa: S102
 format_trade_attempts = _ns["format_trade_attempts"]
@@ -127,3 +132,89 @@ def test_the_closed_list_also_shows_every_leg():
         "/trades' closed list is back to rendering only the final exit — a trade that took "
         "profit and was then stopped shows as a plain loss")
     assert re.search(r'legs\.append', seg), "the per-leg breakdown is gone"
+
+
+# ── the times were UTC (operator 2026-08-08: "we need to fix the timezone") ────────────────
+
+def test_the_timeline_renders_ET_not_UTC():
+    """These lines are read by someone reconstructing what happened inside the ORB window, and
+    they were FOUR HOURS off. FIGS took profit at 09:35 ET and stopped at 09:51 ET; the view
+    said 13:35 and 13:51 because `ts[11:16]` is a raw slice of the stored UTC ISO string.
+
+    This is the UTC-read-as-ET class CLAUDE.md's Time Handling section exists for — the same
+    shape as the pytz/LMT bug that shifted the ORB window by 56 minutes (#180/#183)."""
+    out = "\n".join(_figs_lines())
+    assert "09:35" in out and "09:51" in out, f"times are not ET:\n{out}"
+    assert "13:35" not in out and "13:51" not in out, (
+        "the trade timeline is rendering UTC again — a market surface four hours off")
+
+
+def test_it_uses_the_canonical_ET_zone_not_a_second_hand_built_one():
+    """CLAUDE.md names ONE canonical ET zone (`shared.dates._ET`). A second construction here
+    is how a future timezone audit finds two answers to one question, and pytz is banned
+    outright."""
+    # THREE surfaces across TWO containers each sliced the ISO string themselves. They all
+    # route through the one helper now, which is the whole point of putting it in shared/.
+    for f in ("agents/market_intelligence/backtester/tracker.py", "channels/telegram.py"):
+        src = pathlib.Path(f).read_text(encoding="utf-8")
+        assert "from shared.dates import et_hhmm" in src, (
+            f"{f} no longer uses the canonical ET formatter")
+        # Check USAGE, not the substring: "pytz" legitimately appears in comments explaining
+        # why it is banned, and a check that fails on its own documentation is a broken check.
+        code = "\n".join(l.split("#", 1)[0] for l in src.split("\n"))
+        assert "import pytz" not in code, f"{f} reintroduced pytz"
+        # Deliberately NOT asserting the whole file never constructs a ZoneInfo: telegram.py is
+        # ~1500 lines with unrelated, legitimate timezone code, and a first draft of this test
+        # failed on it. A guard that fires on code it was never about is worse than no guard —
+        # the repo-wide ban is the deploy gate's job (preflight_datetime_hygiene), not this
+        # test's. Scope here is the RENDERER, pinned by the et_hhmm assertion above.
+
+
+def test_naive_timestamps_are_treated_as_UTC():
+    """The container writes naive timestamps. Treating one as already-local would put a
+    09:35 ET fill at 13:35 ET — wrong in the other direction and much harder to notice."""
+    assert hhmm_et("2026-08-07T13:35:04") == "09:35"
+    assert hhmm_et("2026-08-07T13:35:04Z") == "09:35"
+    assert hhmm_et(datetime(2026, 8, 7, 13, 35, 4, tzinfo=timezone.utc)) == "09:35"
+
+
+def test_DST_is_handled_on_BOTH_sides():
+    """A hardcoded -4 offset is right in August and wrong in January. ET is EDT (-4) in
+    summer and EST (-5) in winter; both must land on 09:35."""
+    assert hhmm_et("2026-08-07T13:35:00+00:00") == "09:35"   # EDT
+    assert hhmm_et("2026-01-15T14:35:00+00:00") == "09:35"   # EST
+
+
+def test_an_unparseable_timestamp_degrades_instead_of_crashing():
+    """This is a display path on a Telegram digest — a bad row must not take the message down."""
+    assert hhmm_et("not-a-time") is None
+    assert hhmm_et(None) is None
+    assert hhmm_et("") is None
+    lines = format_trade_attempts(
+        json.dumps(_FIGS_ENTRIES),
+        json.dumps([{"pnl": -1, "time": "garbage", "reason": "stop_hit", "attempt": 1}]))
+    assert any("stop_hit" in l for l in lines)
+
+
+def test_slash_trades_TICKER_reaches_the_per_ticker_view():
+    """`/trades FIGS` answered "Unknown view: figs" — the second argument was parsed as a VIEW
+    name. The only route to the per-ticker timeline was the phrase "FIGS trade", which for the
+    operator routed to fundamentals instead. His ruling: *"this should belong to /trades FIGS"*."""
+    src = pathlib.Path("agents/market_intelligence/agent.py").read_text(encoding="utf-8")
+    i = src.find('return self._ok(request, result=f"Unknown view: {view}")')
+    assert i > 0
+    seg = src[max(0, i - 900):i]
+    assert "_handle_trades_query(request, ticker=view.upper())" in seg, (
+        "/trades TICKER no longer reaches the per-ticker view")
+    # It must be the LAST branch, so a real view name can never be swallowed as a ticker.
+    for v in ("summary", "live", "paper", "skipped", "closed"):
+        assert src.find(f'if view == "{v}":') < i, f"the ticker fallback now shadows /trades {v}"
+
+
+def test_the_orchestrator_copy_shows_every_leg_too():
+    """channels/telegram.py carried its own duplicate of this renderer with BOTH bugs — the UTC
+    slice and the attempt-key collision that hid the profit-take. One container being right is
+    not the same as the operator seeing the truth."""
+    src = pathlib.Path("channels/telegram.py").read_text(encoding="utf-8")
+    assert 'exits_by_att = {ex.get("attempt", i+1): ex for i, ex in enumerate(exits)}' not in src
+    assert 'setdefault(ex.get("attempt", i + 1), []).append(ex)' in src
