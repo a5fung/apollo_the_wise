@@ -79,25 +79,38 @@ CREATE TABLE IF NOT EXISTS crypto_category_strength (
 CREATE TABLE IF NOT EXISTS crypto_btc_dominance (
     date DATE PRIMARY KEY,
     dominance_pct NUMERIC,
-    btc_price NUMERIC,
-    total_mcap_usd NUMERIC,
-    slope_30d NUMERIC
+    total_mcap_usd NUMERIC
 );
 
 CREATE TABLE IF NOT EXISTS crypto_total3 (
     date DATE PRIMARY KEY,
-    total3_mcap_usd NUMERIC,
-    slope_30d NUMERIC,
-    sma_90d NUMERIC
+    total3_mcap_usd NUMERIC
 );
 
 CREATE TABLE IF NOT EXISTS crypto_stablecoin_flows (
     date DATE PRIMARY KEY,
     total_stable_mcap NUMERIC,
     usdt_mcap NUMERIC,
-    usdc_mcap NUMERIC,
-    slope_30d NUMERIC
+    usdc_mcap NUMERIC
 );
+
+-- FIVE DEAD COLUMNS DROPPED (#543, 2026-08-08). Declared at build time and never once
+-- written: 97 rows each since 2026-04-27, 0 populated, and NOTHING selected them — verified
+-- by grep across agents/ core/ channels/ scripts/ before removing.
+--
+-- The operator found `btc_dominance.slope_30d` the moment something finally tried to READ it
+-- ("why is btc 30 day trend missing? we've been shadowing for longer"). The dominance trend it
+-- was meant to hold is now DERIVED at read time in `strength_map.py` from the series we
+-- actually store, so nothing is lost by removing the promise the schema was making.
+--
+-- Removed from the CREATE above AND dropped here, because `CREATE TABLE IF NOT EXISTS` is a
+-- no-op on an existing table — editing the definition alone would leave prod untouched and
+-- the columns would sit there dead forever.
+ALTER TABLE crypto_btc_dominance   DROP COLUMN IF EXISTS btc_price;
+ALTER TABLE crypto_btc_dominance   DROP COLUMN IF EXISTS slope_30d;
+ALTER TABLE crypto_total3          DROP COLUMN IF EXISTS slope_30d;
+ALTER TABLE crypto_total3          DROP COLUMN IF EXISTS sma_90d;
+ALTER TABLE crypto_stablecoin_flows DROP COLUMN IF EXISTS slope_30d;
 
 CREATE TABLE IF NOT EXISTS crypto_dominance_alerts (
     id SERIAL PRIMARY KEY,
