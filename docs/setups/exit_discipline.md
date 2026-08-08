@@ -135,6 +135,53 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-08 — #508 CLOSED: the sell-discipline surface is verified live, and it says the candidates are inert
+
+**DISPLAY ONLY. No exit rule changed.** Verified by RENDERING the operator-facing section against
+production, not by reading the code — which is how both defects below were found.
+
+**THE HEADLINE, and it is the sharpest statement of the exit problem we have:**
+
+| live MAGNA53 cohort | n=17 |
+|---|---|
+| winners | **0** |
+| reached ≥ +1R | 8 |
+| reached ≥ +2R | 5 |
+| average REACHED | **+1.54R** |
+| average KEPT | **−0.91R** |
+
+Every one of the 17 ended a loser, including the five that got to +2R. Nothing banks the excursion.
+
+**CANDIDATE RULES: both replayed, both INERT.** `mi_pivot_stop_shadow` carries each candidate
+profile's would-have-kept per trade. On the live cohort, profile **p1 changed 0 of 12** trades and
+**p2 changed 0 of the 5** it was populated on (7 of 12 abstained). They would have kept exactly
+what we actually kept. Recorded here so neither is re-proposed on intuition — that is the entire
+point of making candidates replayable rather than arguable.
+
+**DEFECT 1 — the surface and the trigger disagreed on regime, 5 trades out of 17.** The section
+was labelled `regime@entry` but the query RECONSTRUCTED regime by joining `mi_market_regime` on
+`alert_date` — the regime as later REVISED. That reported **Bull 6**, while
+`exit_tune_bull_regime_read` (the trigger that gates every bull-tape conclusion) counts
+`mi_live_trades.regime`, stamped at entry, and reads **Bull 3**. The disagreeing trades: WULF,
+TSEM, FTNT, BTDR, BLZE — 08-04 was Choppy at 09:31 and resolved Bull.
+
+**RULE ADOPTED: for any exit-rule read, regime is the value STAMPED AT ENTRY.** The question an
+exit-rule analysis asks is *what tape did we believe we were entering into*, because that is the
+information the decision actually had. A later revision cannot retro-justify or retro-condemn a
+decision made without it. The reconstruction-by-date join is still correct for other questions —
+just not this one.
+
+**DEFECT 2 — DoD leg 3 rendered a row count.** `counterfactual stores: giveback n=1 · pivot n=12`
+answers "does the store have rows", not "what would a candidate rule have kept". The data was
+already there; the surface never asked. It now renders reached / actual / p1 / p2 **plus the
+CHANGED count** — deliberately load-bearing over the average, because an average drifts merely
+because a profile is NULL on some trades, and only the changed count distinguishes an inert
+candidate from a working one.
+
+**CARRIED FORWARD:** `CRMD` trade 137 is skipped by the recorder every night (hard_stop $8.45
+above entry $8.36 → no valid R frame) and cannot resolve on its own. Job-hygiene, filed on #528.
+
+
 ### 2026-08-04 — The partial-exit breaker can now be reset, because it had deadlocked the fix
 
 **Trigger**: operator, 2026-08-04 — *"we take partial profit at 2R ... if not, then it's all
