@@ -32,35 +32,62 @@ laptop sessions build their OWN local memory as you go; PLAN.md (synced) stays t
 so when the operator returns to the desktop, `check_plan --today` off PLAN.md gives the true state
 (the desktop's week-old pickup self-heals via PLAN.md).
 
-## 3. WHERE WE ARE (as of 2026-07-24 — 🏁 v1.0 DECLARED SHIPPED)
+## 3. WHERE WE ARE (as of 2026-08-07 PT — the silent-failure week)
 
-**🏁 Apollo v1.0 is DECLARED** — operator signed §8 of `docs/roadmap/v1-closeout-productization.md` (2026-07-24);
-all 8 FL gates green; #418/#425 closed; the blocking/launch lens retires → the board is now the **#419 Phase-2
-program**. **Board 83**, everything pushed to `main`, clean tree. **⚠ 7/25 verify:** the daily-loss safeguard fix
-(realized losses now attributed by CLOSE day, not `alert_date`; deployed live to apollo-execution) runs clean on
-the first ORB entry-check. **Full 7/24 detail = the desktop pickup memory + PLAN.md (`check_plan.py --today`).**
+**Board 83.** Everything pushed to `main`, clean tree, suite **4628** green, deployed + verified in
+ALL THREE containers (market-agent · orchestrator · execution). Authoritative in-flight state is
+always **PLAN.md** (`python scripts/check_plan.py --today`) + the desktop pickup memory; this
+section is the laptop's backstop.
 
-*(The 7/23 deploy-night note below is superseded but kept for continuity.)*
+**THE WEEK IN ONE LINE:** a model tier bump (sonnet-4-6 → sonnet-5) broke EP grading silently for
+two days, the operator found it by noticing there were no alerts during earnings season, and the
+whole class got closed on 08-07 evening. **Money impact of the entire cluster: $0, measured** — the
+three corrupted grades all ended $0 (two skipped out-of-ORB, one order never filled), and Friday's
+three real losses were graded HIGH by the baseline rule before the judge ran.
 
-**[superseded — 7/23]** Board 86. Everything pushed (HEAD d212334).
-Authoritative in-flight state = **PLAN.md** (`check_plan.py --today`) + the desktop pickup memory.
+**WHAT SHIPPED 08-07 (all deployed, NONE yet exercised by a real run):**
+- `api_usage.stop_reason` on every LLM call, both containers → truncation is now SELF-REPORTING
+  instead of inferred. A 17:52 ET check Telegrams any truncating caller AND any caller whose
+  stop_reason is always NULL (a missed call site announces itself).
+- Ceilings raised: `theme_synthesis` + `theme_discovery` 4000→8000, `ep_grade_judge` 500→1500,
+  `ep_catalyst_grade` 300→1500. Cost of all of it: **+$0.11/day**.
+- A truncated judge verdict is now DISCARDED, not half-read into a grade (ADR 0011 addendum).
+- `shared/llm_response.py` — ONE canonical response reader; all 10 positional `content[0]` sites
+  routed through it, with a test that blocks any new one.
+- Cost: Perplexity same-run dedupe (it is 22.7% of the bill, the largest line, bigger than any
+  Claude caller) + sonnet-5 was priced 50% too high (8% of the bill was accounting error, not spend).
 
-**DEPLOYED tonight 7/23 (operator-approved, market-closed) — both containers green:** #500 (ORB
-price-aware entry — `broker/` so it runs on apollo-**EXECUTION**, shipped via the TWO-STEP `deploy.sh
-execution`, NOT market-agent alone), #498 (TQS TAPE line, apollo-market), + a carveout-dedup L2 fix. Gate 5 G
-caught #500's new `_submit` writer wasn't in ALLOWED_WRITERS → registered it (operator-approved). The 2 open
-live positions (NVCR/SMCI) stayed safe (broker-side stops) through the execution restart.
+**⚠ MONDAY 2026-08-10 = a SIX-ITEM VERIFY on #544.** Nothing above has run for real. The two that
+matter most: (a) `theme_synthesis` at-cap % must FALL from 60% at the new ceiling — **if it does
+NOT, the cap was never the constraint** and the fix is bounding the cohort count, not raising
+again; (b) the 17:52 truncation check's FIRST real firing. Full list on the #544 PLAN line.
+⚠ When it flags a caller with a tiny ceiling, do NOT just add it to `_TRUNC_BY_DESIGN` — confirm
+that ceiling is intentional first. Every cap raised Friday was one someone thought was fine.
 
-**7/24 verify-lives (event-gated on the market):** #500 (a violent gapper crossing orb_high in-window gets a
-real fill / a named skip — or the G6 replace-smoke on the next MARKET-HOURS deploy) · #498 (TAPE line + NTR
-sparkline render on a live EP alert — verify the SURFACE) · carveout dedup (logs once/ticker on the next
-earnings-carveout name).
+**BLOCKED ON THE OPERATOR — one fork, and it is the only thing stopping a whole lane:** **#494**
+(market strength map) is now `blocked` [b3]. NOT waiting on work — design doc, inventory and gaps
+are done. Waiting on ONE ruling: how to mix asset-level strength (gold, BTC, oil) with its equity
+expression (miners, MSTR/COIN, E&Ps), which move together. SEPARATE layers / UNIFIED frame /
+**HYBRID complex (leading candidate)**. #493 and #492-B cannot be sequenced until he calls it.
 
-**Parked on OPERATOR (5 rebumped tonight, due-today→next week):** #357 (Sugar-Baby Stage-1 badge — role
-SIGNED, BUILDABLE) · #416 (M&A FP amendment — deployed, verify-live) · #356 (HTF #397 GO/NO-GO ruling) ·
-#307/#255 (precedent-retrieval, corpus-gated). **Standing:** #489 authoritative-flip (`ep_rt_gap_authoritative`
-— THE LINE, operator-only, samples accruing) · the LIKELY-BUILT(20) reclassify sweep (housekeeping). *(7/13
-detail below is historical.)*
+**STILL OPEN on #543 (ETA 08-11):** failed extractions are still CACHED as results (the bug that
+made Friday's first fix inert) · the cost watchdog still mislabels a price-per-call rise as a retry
+loop · the deferred deep fix — make a forgotten `stop_reason` IMPOSSIBLE rather than detected
+(22 call sites, both containers; not done at midnight on live telemetry).
+
+**COST BASELINE to measure against —** 7 days to 08-07, **$22.30**: perplexity_news_search $5.08
+(22.7%) · judge_robustness_eval $3.66 (an EVAL, not production — next lever, unexamined) ·
+catalyst_metrics_extractor $2.83 · ep_catalyst_grade $2.67 · ep_grade_judge $1.87 · theme_discovery
+$1.85. **Friday's 114 Perplexity searches is the before-number** for the dedupe.
+
+**LIVE-MONEY NOTES:** ask-aware entry went live 08-07 (#541, operator-signed). Friday's 3 losses
+(TEAM −$23.94 · NET −$15.39 · FIGS −$6.84) were all BULL-tape entries — `exit_tune_bull_regime_read`
+is now **3 of 8, not 0**; the "zero bull trades" claim was corrected 08-07 and must not be repeated.
+
+*(v1.0 was DECLARED 2026-07-24 — operator signed §8 of `docs/roadmap/v1-closeout-productization.md`,
+all 8 FL gates green, #418/#425 closed; the board is the #419 Phase-2 program. The 7/23-24 deploy
+notes below are superseded but kept for continuity.)*
+
 
 ### (historical) CLOSE 2026-07-13 evening PDT — the M1-d reframe + coverage-loop day
 
