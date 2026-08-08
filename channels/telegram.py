@@ -1011,6 +1011,29 @@ class TelegramChannel:
         from shared.dates import last_trading_day
 
         today_str = last_trading_day().isoformat()
+
+        # `/trades FIGS` — a TICKER argument (operator 2026-08-08: *"the /trades FIGS command
+        # just return /trades"*). This handler HARDCODED the summary task and never read
+        # `context.args`, so the ticker was discarded here, in the Telegram layer, before the
+        # agent could ever see it. The agent-side routing for `/trades TICKER` was added and
+        # verified earlier the same day by calling `execute_task` directly — which passes the
+        # string straight through and therefore could not catch this. The command a human types
+        # was still broken.
+        # ⚠ That is the verify-the-operator-facing-surface rule: the only proof that a command
+        # works is the command, not the function behind it.
+        _args = getattr(context, "args", None) or []
+        _tk = _args[0].strip().upper() if _args else ""
+        if _tk.isalpha() and 2 <= len(_tk) <= 5:
+            detail = await self._post_market_task_or_reply(
+                update, f"/trades_detail {_tk} {today_str}", update.effective_user.id,
+                f"No trades found for {_tk}.",
+            )
+            if detail is not None:
+                # No drill-down keyboard here: those buttons are summary views, and attaching
+                # them to a single-ticker answer would offer navigation that ignores the ticker.
+                await self._reply_with_fallback(update, detail)
+            return
+
         summary_text = await self._post_market_task_or_reply(
             update, f"/trades_detail summary {today_str}", update.effective_user.id, "No trade data."
         )

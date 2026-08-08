@@ -218,3 +218,48 @@ def test_the_orchestrator_copy_shows_every_leg_too():
     src = pathlib.Path("channels/telegram.py").read_text(encoding="utf-8")
     assert 'exits_by_att = {ex.get("attempt", i+1): ex for i, ex in enumerate(exits)}' not in src
     assert 'setdefault(ex.get("attempt", i + 1), []).append(ex)' in src
+
+
+# ── the Telegram layer dropped the ticker before the agent ever saw it ─────────────────────
+
+def test_the_telegram_trades_command_forwards_a_TICKER_argument():
+    """`/trades FIGS` returned the plain summary (operator, 2026-08-08: *"the /trades FIGS
+    command just return /trades"*).
+
+    The agent-side routing for `/trades TICKER` was added and verified the same day by calling
+    `execute_task("/trades FIGS")` directly — which passes the string straight through, so it
+    could not possibly catch this. `_handle_trades_command` HARDCODED
+    `f"/trades_detail summary {today_str}"` and never read `context.args`; the ticker was
+    discarded in the Telegram layer, one level above everything that was tested.
+
+    ⚠ The rule this pins: the only proof a COMMAND works is the command, not the function
+    behind it. A green agent-level test on a broken command is worse than no test."""
+    src = pathlib.Path("channels/telegram.py").read_text(encoding="utf-8")
+    i = src.find("async def _handle_trades_command")
+    assert i > 0, "the /trades handler moved — re-point this test"
+    body = src[i:i + 3000]
+    # CODE ONLY. My first version of this check matched the phrase inside the very comment
+    # explaining the bug, so a mutation that deleted the actual line still passed — the same
+    # self-satisfying-guard mistake I had just flagged in someone else's test. Caught by
+    # mutation-checking, which is the only reason a guard is worth anything.
+    code = "\n".join(l.split("#", 1)[0] for l in body.split("\n"))
+    assert "context, \"args\"" in code or "context.args" in code, (
+        "/trades no longer reads its argument — `/trades FIGS` silently returns the summary "
+        "again, discarding the ticker before the agent can route it")
+    assert "/trades_detail {_tk}" in code, (
+        "the ticker is read but not forwarded to the per-ticker view")
+    # the plain `/trades` path must be untouched
+    assert "/trades_detail summary {today_str}" in code, (
+        "the no-argument summary path is gone — /trades itself is broken")
+
+
+def test_a_non_ticker_argument_still_gets_the_summary():
+    """`/trades` with junk, or a date, must not fall into the ticker branch and lose the
+    board. Only a plain 2-5 letter token is treated as a ticker."""
+    src = pathlib.Path("channels/telegram.py").read_text(encoding="utf-8")
+    i = src.find("async def _handle_trades_command")
+    body = src[i:i + 3000]
+    code = "\n".join(l.split("#", 1)[0] for l in body.split("\n"))
+    assert "_tk.isalpha() and 2 <= len(_tk) <= 5" in code, (
+        "the ticker guard is gone or widened — a date or a view name could now be swallowed "
+        "as a ticker")
