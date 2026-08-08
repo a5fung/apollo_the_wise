@@ -69,6 +69,9 @@ that ceiling is intentional first. Every cap raised Friday was one someone thoug
 are done. Waiting on ONE ruling: how to mix asset-level strength (gold, BTC, oil) with its equity
 expression (miners, MSTR/COIN, E&Ps), which move together. SEPARATE layers / UNIFIED frame /
 **HYBRID complex (leading candidate)**. #493 and #492-B cannot be sequenced until he calls it.
+**SCHEDULED SAT 2026-08-08** (his call) — pulled in from 08-14. Data availability pre-answered:
+all 20 asset-class ETF proxies (GLD/SLV/GDX/USO/XLE/CPER/URA/TLT/UUP…) already carry 279 bars in
+`mi_daily_closes`, so the hybrid complex is buildable with NO new data source.
 
 **STILL OPEN on #543 (ETA 08-11):** failed extractions are still CACHED as results (the bug that
 made Friday's first fix inert) · the cost watchdog still mislabels a price-per-call rise as a retry

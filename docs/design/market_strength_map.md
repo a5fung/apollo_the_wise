@@ -69,6 +69,42 @@ Open sub-questions for #494: common cross-asset RS frame (trailing-return percen
 where commodity/asset price series come from (we have crypto closes + equity/ETF closes; spot metals/oil?);
 how a "complex" maps onto the existing theme/ecosystem structure; how rotation reads across asset classes.
 
+## ⚠ DATA AVAILABILITY — answered 2026-08-07, BEFORE the design session (it changes the fork)
+
+The doc listed *"where do commodity/asset price series come from (spot metals/oil?)"* as an open
+sub-question. **It is answered, and the answer removes a constraint rather than adding one:**
+
+**Every asset class we would want already has a liquid ETF proxy carried in `mi_daily_closes`, with
+279 daily bars (2025-06-30 → today, ~13 months) — no new data source, no new ingest, no spot feed.**
+
+| Complex | Asset anchor (have) | Equity expression (have) |
+|---|---|---|
+| Precious metals | GLD · IAU · SLV · PPLT | GDX · GDXJ · SIL |
+| Crypto | 289 tokens in `crypto_daily_closes` (BTC/ETH/SOL scored) | MSTR · COIN · miners (equity RS) |
+| Energy | USO · UNG | XLE · XOP |
+| Industrial metals | CPER · DBC | COPX · XME |
+| Uranium | — | URA |
+| Agriculture | WEAT · CORN | — |
+| Macro backdrop | TLT (rates) · UUP (dollar) | — |
+
+**Why this matters to the decision:** 279 bars comfortably clears the composite RS window
+(40% × 1M + 30% × 3M + 30% × 6M needs ~126 bars), so **option 3 (hybrid complex) is buildable TODAY
+on data we already ingest.** The fork is therefore a genuine design choice, not a
+choose-what-we-can-afford — which is what it would have been had the answer come back "we have no
+metals prices."
+
+**Two caveats to carry into the session, not blockers:**
+- 13 months of history means a 6-month RS window has ~7 months of lookback for percentile context.
+  Fine for ranking, thin for regime comparison across a full cycle.
+- `crypto_daily_closes` has at least one row stamped `1969-12-31` (epoch zero) — a bad row to clean
+  before any cross-asset percentile is computed off min/max dates. Cosmetic, but it would silently
+  skew a "since inception" frame.
+
+**Deliberately NOT decided here:** which of the three mixing models to adopt, and what the common
+cross-asset RS frame should be (raw trailing-return percentile vs vol-adjusted). Gold at 12%
+annualised vol and a junior miner at 60% do not belong on one raw percentile scale without a
+stated choice — that IS the operator's call and the reason this session exists.
+
 ## Findings / evidence (2026-07-20)
 
 - **Crypto IS leading the correction** (trailing return): 4wk BTC +2.0 / ETH +10.1 / SOL +8.0 vs
