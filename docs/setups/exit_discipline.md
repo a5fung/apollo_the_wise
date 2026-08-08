@@ -135,6 +135,56 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-08 — ⚠ FINDING, NOTHING CHANGED: the +2R rule fired once on live money and BOTH halves under-delivered
+
+**Operator's question, 2026-08-08:** *"if 5 got to +2R and our new profit take is at +2R with
+breakeven entry then those 5 would be winners by definition, yet you said 0 winners."* The logic is
+right. The answer is that the rule was live for only ONE of the five — and that one still lost.
+
+**FOUR OF THE FIVE PREDATE THE RULE.** `PROFIT_TRIGGER_R = 2.0` went live 2026-08-01. MANE (07-15,
+reached +7.92R), SMCI (07-22, +3.21R), NVCR (07-23, +2.00R) and QBTS (07-27, +3.74R) all closed
+before it existed. They could not fire it.
+
+**THE FIFTH — FIGS, 2026-08-07 — FIRED IT AND STILL LOST −0.37R.** Full audit trail:
+
+| time (ET) | event |
+|---|---|
+| 09:32 | entry filled, 61 sh @ $15.4951, hard stop $15.19 (R = $0.305, 2R target = **$16.11**) |
+| 09:35:01 | `partial_exit_stop_replaced` — stop reissued for 41 sh **@ $15.19** |
+| 09:35:01 | `partial_exit_sell_placed` — **market** sell 20 |
+| 09:35:02 | `profit_trigger_fired` — high $16.38 ≥ 2R target $16.11 |
+| 09:35:04 | committed — sold 20 **@ $15.84**, +$6.90 |
+| 09:51:02 | `stop_hit` — 41 sh @ **$15.16**, −$13.74 |
+
+**DEFECT 1 — the partial sells at MARKET, so it does not get the target price.** The trigger
+correctly detected the high at $16.38, then placed a market order that filled at **$15.84 = +1.13R,
+not +2R**. The high had already passed. The 08-01 build-prep doc proposed a *resting LIMIT sell at
+entry + 2×risk* precisely to avoid this; what shipped is 5-minute-poll → market sell.
+Banked $6.90 where the target level was worth ~$12.30.
+
+**DEFECT 2 — "stop moves to breakeven" is TRUE IN THE DATABASE AND ABSENT AT THE BROKER.** The
+Telegram tells the operator *"stop moves to breakeven."* `finalize_partial_exit` does set
+`breakeven_active = TRUE`. But the actual broker stop was reissued at **$15.19 — the original hard
+stop** — and `mi_live_trades.stop_price` still reads 15.19. The flag is consumed only by
+`exit_logic`'s DAILY pass (`if breakeven_active and entry_price > effective_stop: effective_stop =
+entry_price`), which runs after the close. **FIGS stopped out at 09:51 the same morning, ~6 hours
+before any daily pass could act on it.**
+
+⚠ **This is structural, not bad luck.** Live MAGNA53 average hold is ~1.5 days and most trades die
+on day 0-1, so the breakeven half of the rule can rarely protect the trades it was designed for.
+
+**ARITHMETIC OF THE ONE LIVE FIRING:**
+
+| | banked | remainder | total |
+|---|---|---|---|
+| as designed (limit @ $16.11, stop → $15.4951) | +$12.30 | $0 | **+$12.30** |
+| as it actually ran (market @ $15.84, stop @ $15.19) | +$6.90 | −$13.74 | **−$6.84** |
+
+**NOTHING HAS BEEN CHANGED.** Exit discipline is THE LINE — CHANGE_PROCESS + operator sign-off.
+Both defects are recorded here and filed for his ruling. n=1, so this is a mechanism finding, not
+a statistical one: the mechanism did not do what the rule and the Telegram both say it does.
+
+
 ### 2026-08-08 — #508 CLOSED: the sell-discipline surface is verified live, and it says the candidates are inert
 
 **DISPLAY ONLY. No exit rule changed.** Verified by RENDERING the operator-facing section against
