@@ -17,7 +17,7 @@
   6. **PLAIN WORDS. Every number carries its meaning, or it is cut** (operator 2026-08-03: *"lingo filled wordy text with no context… avoid meaningless lingo and numbers with no context"*). "0-for-9" → "the last nine live trades were all losers". Internal shorthand (excess, N=, R, cohort, precision) belongs in the commit/SSoT. **A number he cannot act on is noise — state the conclusion, not the measurement.**
   7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / verification / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut.
   ⚠ Partial compliance reads as non-compliance: one paragraph undoes a well-formatted message. Template: memory `report-like-an-exec-summary`.
-  🔒 **MECHANICAL SINCE 2026-08-02 — asked a 6th time the same day this text was written, which proved the always-loaded surface is NOT enough on its own.** `scripts/report_format_gate.py` runs as a **Stop hook** (`.claude/settings.json`) and BLOCKS the reply when it finds a prose paragraph outside a bullet — the one drift that keeps recurring, and the only rule here that is objectively decidable from the text. It is deliberately narrow (bullets are free; short replies are never gated; headings/tables/code/quotes exempt) because a guard that always fires is not a guard, and it fails OPEN on every error so a formatting check can never wedge a session. Rules 1/4/5 (header substance · action stated · reasoning to the commit) stay judgement calls — no gate can decide them without crying wolf.
+  🔒 **MECHANICAL SINCE 2026-08-02** (asked a 6th time the day this was written — the always-loaded surface is NOT enough alone). `scripts/report_format_gate.py` is a **Stop hook** (`.claude/settings.json`) BLOCKING any reply with a prose paragraph outside a bullet — the one drift that recurs and the only rule here objectively decidable from the text. Deliberately narrow (bullets free; short replies never gated; headings/tables/code/quotes exempt) — a guard that always fires is not a guard — and it fails OPEN so it can never wedge a session. Rules 1/4/5 stay judgement calls — no gate decides them without crying wolf.
 
 ## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
 
@@ -30,26 +30,26 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 | **Opus** (main loop) | Orchestration + routing, operator-facing judgment, surfacing THE LINE, **verifying everything that comes back**, session rituals, the final report. |
 | **`advisor`** | Consultation BEFORE committing to an approach + the FINAL review before declaring done. |
 
-"Implementation" appears in two rows deliberately — the split is **complexity, not task type**. Don't keep hard work on Opus just because the context is already here; that's the failure this rule corrects. Trivial one-liners stay inline (card overhead > the work).
+"Implementation" is in two rows deliberately — the split is **complexity, not task type**. Don't keep hard work on Opus because the context is here; that's the failure this corrects. Trivial one-liners stay inline (card overhead > the work).
 
 **Non-negotiables, all model-agnostic:**
 - **THE LINE doesn't move.** Sign-off + CHANGE_PROCESS + backtest + verify-live apply no matter which model wrote it.
-- **Never rubber-stamp a premium model** — verify its output against code/data before it reaches the operator (1 of 6 REDs was over-rated 7/12; a "NULL bug" was a deliberate fail-safe).
+- **Never rubber-stamp a premium model** — verify against code/data before it reaches the operator (1 of 6 REDs over-rated 7/12; a "NULL bug" was a deliberate fail-safe).
 - **Never manufacture work** to feed a model — the mechanism being easy doesn't make the work infinite.
-- **⚠ Capacity:** subagents INHERIT the session model — on a Fable session a review fleet burned 75% of capacity (7/17). Pass an explicit `model:` on EVERY spawn; run the SESSION on Opus and reach for Fable per-task.
+- **⚠ Capacity:** subagents INHERIT the session model — a Fable-session review fleet burned 75% of capacity (7/17). Explicit `model:` on EVERY spawn; SESSION on Opus, Fable per-task.
 
 ## Session Protocol (open + close — the anti-drift ritual)
 
-**SoT for ALL planned work = `PLAN.md`** — the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed — mechanical because every prose-discipline reconcile here has failed, only gates hold. (Consolidated 2026-06-16 after the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× — `feedback-runway-not-in-open-ritual`.)
+**SoT for ALL planned work = `PLAN.md`** — the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed — mechanical because every prose reconcile here failed; only gates hold. (Consolidated 2026-06-16 after the plan lived across ~7 hand-synced surfaces and the launch spine was missed 3×.)
 
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
 2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`). **On a fresh machine where the local `memory/` (pickup) is absent — e.g. a laptop — read `docs/HANDOFF.md` instead** (git-synced; the memory dir is machine-local).
-3. STATE that day's plan before reacting to the first message — **and WHO is doing each piece** (Fable / Sonnet / me), in one line (operator 2026-08-03: *"use them wisely"*; a CHECKPOINT not a gate — why it can't be gated is in commit `f578a54`).
+3. STATE the day's plan + **WHO does each piece** (Fable/Sonnet/me), then **PIN it: `delegation_report.py --route "#N:fable"`**. The declaration is the ONLY decidable delegation check — a counting gate was measured on 37 session-days and does not exist (best precision 33%). (operator 2026-08-03: *"use them wisely"*; a CHECKPOINT not a gate — why it can't be gated is in commit `f578a54`).
 
 **CLOSE** (when the operator wraps, or before ending):
 1. **Update `PLAN.md` — the single reconcile step.** For every task touched this session: set its status; REBUMP any ETA now ≤ today to a real future date (or close the task). FILE every new item / deferral / finding / watch-item as a PLAN.md line under a project with an ETA — chat & pickup prose do NOT count (the pickup gets rewritten, PLAN.md doesn't). Refresh `.apollo_open_tasks.json` from the harness so the completeness cross-check stays honest.
-2. **`python scripts/check_plan.py`** must pass — it FAILS on any missing project/ETA/status, any past ETA, or any open task not filed. Green = no gaps. Then **`check_plan.py --audit-new`** flags thin PLAN lines (short + no pointer/DoD) — it git-diffs PLAN.md vs `origin/main`, so an ADDED line is a *new OR re-titled* task (git sees both as additions); **enrich each before committing** (detail isn't hard-gateable — semantic; this scoped new-task CLOSE review is the backstop, operator 6/20).
+2. **`python scripts/delegation_report.py`** (advisory ledger: inline chunks that should have been cards vs the morning `--route`), then **`python scripts/check_plan.py`** must pass — it FAILS on any missing project/ETA/status, any past ETA, or any open task not filed. Green = no gaps. Then **`check_plan.py --audit-new`** flags thin PLAN lines (short + no pointer/DoD) — it git-diffs PLAN.md vs `origin/main`, so an ADDED line is a *new OR re-titled* task (git sees both as additions); **enrich each before committing** (detail isn't hard-gateable — semantic; this scoped new-task CLOSE review is the backstop, operator 6/20).
 3. If code changed: `git add <files>` → commit → `git push origin main` (pre-commit Gate 2 re-runs the check).
 
 **"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when confirmed in production (shadow writes rows · alert fires · cron checked). (Catches: gdrive backup 5/24–31, #173 theme-shadow 0-rows — all looked done, none were.) **The old "keep `in_progress` + a verify step" was PROSE that got forgotten — built tasks sat `in_progress` for weeks wearing a to-build headline and got re-checked/re-built (operator 2026-07-18: the daily-waste leak). MECHANICAL now:** on ship, flip the task's status to **`deployed`** and set its **ETA = the verify-date** (the day it's confirmable in prod, e.g. next market day). `deployed` = built+shipped-awaiting-verify — a distinct status from `in_progress` (to-build), so the headline can't lie. `check_plan.py --today` (the OPEN ritual) surfaces **VERIFY-DUE** (deployed tasks whose verify-date ≤ today → confirm in prod + close) and **LIKELY-BUILT** (in_progress lines reading as built → reclassify to `deployed` or close). A `deployed` task whose verify-date passes **HARD-FAILS** the commit (past-ETA gate) until you verify+close — verify-live is a gate now, not a prose intention.
@@ -335,10 +335,10 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-08 — trusting a naive "latest"
+### 2026-08-09 — measure the guard before building it
 
-- **`MAX()`/last-N on a non-uniform table** reads a stray slice as a full run — built that fix
-  twice in one evening. Also: **a dead knob is worse than none.**
+- Specced a delegation gate, **measured 37 session-days, did NOT build it** — complaint days sit
+  inside the normal range (best precision 33%). Shipped a routing declaration + ledger instead.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
