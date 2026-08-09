@@ -1,0 +1,124 @@
+#167 gate 2 — TASK B: the auto-promote path (read-only, $0, no LLM, no persist)
+Question: if Lane-2 v2 (`lane2_grouping_v2` DB flag) were flipped on, would its narrative
+cohorts clear the deterministic auto-promote bar into LIVE mi_themes, and what does that
+look like? Answered from (1) the real 45-day v2 replay output (scratchpad
+lane2_replay_full.json, 2026-06-08 -> 2026-08-07, cross-checked against an earlier
+session's independent summary at scratchpad/lane2_review.md — dates/membership match
+exactly) and (2) the real promote code (theme_engine.py, db.py) + live prod DB reads
+(read-only SELECTs; NO writes, NO safeguard-state changes, NO mi_themes mutation).
+
+=== HEADLINE (corrects the task's framing) ===
+The auto-promote path from `narrative_cogap` proposals into live `mi_themes` is NOT
+dormant or hypothetical — it is ALREADY FIRING IN PRODUCTION TODAY, independent of the
+v2 question. `discover_narrative_themes` branches exclusively on the v2 flag
+(`if v2: <registry mode> else: <v1, today's-alerts-only mode>`) — v1 and v2 can never
+run in the same nightly cycle. Confirmed live: `lane2_grouping_v2` has no row in
+`mi_safeguard_state` (fail-closed) -> v1 is what's running now. And v1 already writes
+`source='narrative_cogap'` cohorts that clear the >=3-member bar and get auto-promoted:
+  2026-07-31: "AI data center infrastructure buildout" {BLZE, FLNC, MPWR} (3 members) ->
+              promoted same night (mi_themes: 2026-07-31, Nascent, shadow_promoted).
+  2026-08-04: "AI Data Center Infrastructure Buildout" {BTDR, AMRC, BLZE} (3 members) ->
+              same pattern, different case in the name.
+So flipping v2 does NOT open a new live-mi_themes door. It changes what walks through a
+door that is already open and already in use TODAY — from 3-member same-day snapshots
+to a 12-member roster carried seven weeks under a stable name. That is the real risk
+surface, and it is a shape change, not a go/no-go on auto-promote ever touching mi_themes.
+
+=== Which of the replay's cohorts would clear the bar, on which dates, how many members ===
+The replay discovered 3 cohorts total (`born` events). Only ONE ever reaches
+_PROMOTE_MIN_MEMBERS=3 (theme_engine.py:2011):
+  - "Big pharma oncology licensing deals" (born 6/12, AKTS+NRIX) — stays at 2 members,
+    ages out of the 10-trading-day registry window (LANE2_WINDOW_TRADING_DAYS,
+    theme_engine.py:449) by ~7/01. NEVER promotes.
+  - "AI chipmaker compute deployment deals" (born 6/16, RXT+SHAZ) — stays at 2 members,
+    same fate. NEVER promotes.
+  - "AI data center infrastructure buildout" (born 6/17, 2 members) — grows via 11
+    JOIN-days, each writing a fresh source='narrative_cogap' row same-day, each one
+    picked up the SAME NIGHT by promote_shadow_themes (get_shadow_theme_candidates
+    reads the latest row per name within a trailing 3-CALENDAR-day window,
+    db.py:6545-6584) once it first clears 3 members on 6/24:
+      2026-06-24  3 members  AEHR,JBL,FCEL                       <- first promote
+      2026-06-25  4 members  +MU
+      2026-07-06  5 members  +WULF
+      2026-07-07  6 members  +DOCN
+      2026-07-08  7 members  +PENG
+      2026-07-14  9 members  +CLSK,TSEM
+      2026-07-15  9 members  (fresh write, same membership)
+      2026-07-22 10 members  +SMCI
+      2026-07-28 11 members  +CORZ
+      2026-07-29 12 members  +TER
+      2026-07-31 12 members  FIFO-rotated (LANE2_REGISTRY_MAX_MEMBERS=12,
+                 theme_engine.py:473): AEHR/JBL/FCEL/MU roll off, COHU/BLZE/FLNC/MPWR
+                 join -> WULF,DOCN,PENG,CLSK,TSEM,SMCI,CORZ,TER,COHU,BLZE,FLNC,MPWR
+  These 11 dates are where MEMBERSHIP CHANGES (a fresh proposal is written). They
+  UNDERcount total mi_themes rows: get_shadow_theme_candidates' 3-day window means
+  promote_shadow_themes would likely re-upsert the SAME (unchanged) membership again
+  on the 1-3 nights immediately following each join, until that row ages past 3 days —
+  additional theme_date rows, no new information, not enumerated here.
+  Gating check (structural, using CURRENT allowlist + CURRENT gate mode — NOT a
+  historical replay of what the board/ledger looked like on 6/24 itself):
+  'narrative_cogap' is in AUTO_PROMOTE_THEME_SOURCES (db.py:6506-6510) under BOTH
+  birth-gate modes that matter here ('off' and 'observe' return the full allowlist
+  unchanged; only 'on' retires 'shadow_v2', not narrative_cogap). Live DB check:
+  mi_safeguard_state('theme_birth_gate','paper') = 'observe' (set 2026-07-30). In
+  'observe', evaluate_birth is consulted and a verdict is LOGGED but "every cohort
+  still promotes exactly as today" (theme_engine.py:2178 comment) — so the gate would
+  not have blocked this cohort's first crossing even were v2 live now. This makes the
+  gate-mode caveat moot for the promote question, but the historical-accuracy caveat
+  stands: birth-gate state and the live board on 6/24 itself were not reconstructed.
+
+=== What promote_shadow_themes would NAME it + collision check ===
+Name is carried unchanged from the shadow proposal: "AI data center infrastructure
+buildout" every time (v2's registry reuses the SAME roster name across joins by
+design — this is NOT canonicalization at work; _canonicalize_theme_names only renames
+when a PRIOR 14-day row has the exact same ticker SET under a different name, and this
+cohort's ticker set changes on every join, so that path essentially never fires here).
+COLLISION: real, found in live data, but not the cross-lane clobber first suspected.
+Both actual same-name promotions found above (7/31, 8/04) are v1 narrative_cogap rows
+on DIFFERENT theme_dates — not two sources colliding in one run. Checked whether two
+DIFFERENT allowlisted sources (e.g. shadow_v2 + narrative_cogap) could silently
+overwrite each other's row same-night: get_shadow_theme_candidates uses
+`SELECT DISTINCT ON (name) ... ORDER BY name, run_date DESC` ACROSS ALL allowlisted
+sources in ONE query, so within a SINGLE promote_shadow_themes run, two same-named
+cohorts from different sources collapse to ONE row (latest run_date wins) before
+_upsert_promoted_theme is ever called — a same-run clobber cannot happen this way.
+What IS structurally true: _upsert_promoted_theme's ON CONFLICT guard
+(`WHERE mi_themes.source='shadow_promoted'`) does not check WHICH upstream source
+wrote the prior promoted row, so a LATER separate run proposing the identical name
+from a DIFFERENT upstream source could overwrite an earlier promotion's membership on
+that (theme_date, name) key. Not observed in the ~30 days of mi_theme_candidates_shadow
+/ mi_themes history checked here (the 7/31 and 8/04 collisions are same-source,
+different-day). Net: a genuine, already-recurring name-collision risk between v1's own
+same-day proposals and what v2's 7-week-carried roster would write under the identical
+name — this is what v2 changes, not whether the door exists.
+
+=== Reversibility ===
+Confirmed empirically from the live mi_themes history for this exact theme name (only
+2 rows exist): 2026-07-31 Nascent/shadow_promoted/{BLZE,FLNC,MPWR}, then 2026-08-03
+Retired/live/{} (tombstone, empty tickers). Mechanism: theme_engine.py's nightly
+"lost theme" reconciliation (~lines 6456-6522) — any name present in `existing`
+(get_active_themes, the 7-day-recency-capped active list) but NOT reproduced in that
+night's freshly-computed `all_themes` gets a synthesized Retired row, written as part
+of the SAME nightly run that notices the absence. This fired within ~1 trading day of
+the promoting lane going quiet (Fri 7/31 -> Mon 8/03, a weekend in between) — faster
+than, and independent of, the 7-day `stale_after_days` visibility cap (that cap is a
+secondary backstop governing whether a not-yet-tombstoned row still reads as "active"
+to readers; it is not the primary retirement trigger observed here). Net: yes,
+reversible, and empirically fast — no manual /removetheme needed to clear a one-off
+promotion once its own lane stops re-proposing it.
+
+=== Scope note (not tested, not in this $0 pass) ===
+Promotion also writes live mi_themes rows for the roster's OWN members (WULF, DOCN,
+PENG, ...). That flips `in_active_theme` (and `theme_stage`/`score` if wired) for those
+tickers on any LATER day one of them gaps and gets judge-graded — a THIRD channel
+neither gate-2 part 1 (in_narrative_cohort boolean) nor part 2 (active_narratives
+roster block, see 167_judge_narrative_roster_diff_2026-08-09.txt) tested. Flagging
+only; no budget/scope to test it here.
+
+=== Sources ===
+- Replay: /private/tmp/claude-501/.../scratchpad/lane2_replay_full.json (45 records)
+- Cross-check: /private/tmp/claude-501/.../scratchpad/lane2_review.md
+- Code: agents/market_intelligence/theme_engine.py (lines 449,473,2011,2074-2218,
+  6456-6522), agents/market_intelligence/db.py (lines 6506-6584, 3603-3626, 3652+)
+- Live DB (read-only, prod, via ssh apollo@87.99.134.162 + docker exec apollo-postgres):
+  mi_themes, mi_theme_candidates_shadow, mi_safeguard_state — queried 2026-08-09.
