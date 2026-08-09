@@ -72,3 +72,5 @@ _chart_eval_267/
 
 # session growth-gate baseline (machine-local; re-armed at OPEN)
 .apollo_session_baseline.json
+# day's routing declaration (machine-local; written at OPEN by delegation_report.py --route)
+.apollo_routing.json
