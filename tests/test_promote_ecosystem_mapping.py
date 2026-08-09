@@ -33,7 +33,10 @@ _TODAY = _dt.date(2026, 7, 16)
 
 def _wire_promote_mocks(monkeypatch, cands):
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(side_effect=[[], []])   # prior rows, RS rows
+    # #530: promote_shadow_themes now issues THREE conn.fetch calls — prior_rows
+    # (days_active), prior_desc_rows (tombstone-skipping description lookup — empty here,
+    # none of these tests exercise thesis preservation), RS rows.
+    conn.fetch = AsyncMock(side_effect=[[], [], []])   # prior rows, prior desc rows, RS rows
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))

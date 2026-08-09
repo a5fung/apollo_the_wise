@@ -109,7 +109,9 @@ async def test_promote_drops_probe_but_keeps_legit_cohorts(monkeypatch):
     """Mixed feed: the probe cohort is dropped, a legitimate lane's cohort still
     promotes — the carve-out is surgical, not a promote-lane shutdown."""
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(side_effect=[[], []])   # prior rows, RS rows
+    # #530: promote_shadow_themes now issues THREE conn.fetch calls — prior rows
+    # (days_active), prior desc rows (tombstone-skipping description lookup, empty here), RS rows.
+    conn.fetch = AsyncMock(side_effect=[[], [], []])
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))

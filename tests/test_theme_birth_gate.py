@@ -327,9 +327,12 @@ async def test_auto_promote_reader_drops_shadow_v2_only_in_mode_on(monkeypatch):
 
 # ── promote path ─────────────────────────────────────────────────────────────
 
-def _wire_promote(monkeypatch, cands, *, mode, prior_rows=None, rs_rows=None):
+def _wire_promote(monkeypatch, cands, *, mode, prior_rows=None, rs_rows=None, prior_desc_rows=None):
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(side_effect=[prior_rows or [], rs_rows or []])
+    # #530: promote_shadow_themes now issues THREE conn.fetch calls — prior_rows
+    # (days_active), prior_desc_rows (tombstone-skipping description lookup, empty by
+    # default here since none of these gate tests exercise thesis preservation), RS rows.
+    conn.fetch = AsyncMock(side_effect=[prior_rows or [], prior_desc_rows or [], rs_rows or []])
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))

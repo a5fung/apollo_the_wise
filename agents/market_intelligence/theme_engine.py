@@ -2009,6 +2009,81 @@ async def _save_themes(themes: list[dict]) -> None:
 
 _PROMOTE_WINDOW_DAYS = 3
 _PROMOTE_MIN_MEMBERS = 3
+# Mirrors `_canonicalize_theme_names`'s (#59, 2026-05-11) own 14-day prior-run window — the
+# SAME borrowed number, not a new one invented for this fix (see the resolver docstring below).
+_PRIOR_DESCRIPTION_MAX_AGE_DAYS = 14
+
+
+def _resolve_promoted_theme_description(
+    candidate_thesis: str | None,
+    desc_fallback: str,
+    tickers: list[str],
+    prior_description: str | None,
+    prior_tickers: list[str] | None,
+    prior_theme_date=None,
+    prior_stage: str | None = None,
+    today=None,
+) -> str:
+    """#530 — decide whether tonight's shadow-lane thesis text REPLACES the theme's stored
+    description or the stored text is carried forward untouched.
+
+    Rule (a pure membership-equality check — no invented specificity threshold): if the
+    cohort's ticker SET is EXACTLY unchanged from the last known `mi_themes` row for this
+    name, there is no new membership evidence to justify regenerating the text, so the
+    EXISTING description is preserved. A ticker-set CHANGE (any addition or removal) IS real
+    evidence the cohort evolved, so the fresh thesis is always allowed through in that case —
+    the theme should describe what it currently holds, not a stale membership.
+
+    Why this rule and not a "more specific" scorer: `_canonicalize_theme_names` (#59,
+    2026-05-11) already solved the analogous problem for the theme NAME — "Sonnet's theme
+    discovery generates new descriptive names every run... net effect: theme history resets
+    every rename" — by freezing the name when the ticker set exact-matches a prior run. The
+    description/thesis field never got the same treatment. shadow_v2's correlation-lane LLM
+    call re-runs fresh every night regardless of whether anything about the cohort changed,
+    and its thesis is frequently a generic price-correlation blurb ("pure-play Bitcoin
+    miners... corr 0.84") that clobbers a more specific, catalyst-grounded description already
+    on the board (#530). That matters beyond tidiness: F4 (#368) judges theme membership
+    against the theme's THESIS, so an overwritten thesis actively evicts correct members — the
+    WULF/CORZ eviction root cause traced in #491.
+
+    Two guards on the preserve branch, both borrowed from EXISTING code rather than invented
+    (found on review — a naive unbounded "last row" lookup can reach back further than
+    `_canonicalize_theme_names` itself would ever trust):
+    - **`prior_stage == 'Retired'` never preserves.** A retirement can carry its pre-retirement
+      ticker set forward on the SAME name (the auto-retire tombstone zeroes `tickers`, but that
+      is not a schema guarantee for every retirement path) — preserving a dead lineage's text
+      under a fresh live promote would resurrect stale copy instead of protecting good copy.
+    - **Older than `_PRIOR_DESCRIPTION_MAX_AGE_DAYS` (14) never preserves** — the exact window
+      `_canonicalize_theme_names` already uses for the analogous name-freeze decision. Only
+      applied to THIS decision, not to the shared `prior_rows` lookup (`prior_days_active`
+      continuity for a theme returning after a gap must NOT be windowed the same way).
+
+    Edge cases:
+    - No prior row (genuine new crossing) → nothing to preserve; candidate thesis (or the
+      fallback) is used exactly as before this fix.
+    - Prior row has no description (NULL/empty) → nothing worth preserving; candidate thesis
+      used.
+    - Ticker order differs but the SET is identical → still counts as unchanged (comparison is
+      set-based, order-independent).
+    - Operator `/promotetheme` on an unchanged cohort → same protection applies (it promotes
+      whatever the shadow lane most recently proposed, not operator-authored text, so there is
+      no case where a human explicitly typed the new wording and had it discarded).
+    - **A cohort whose membership never changes gets a STICKY description** — whatever text
+      is written on the first promote persists until a ticker moves, even if the real-world
+      story evolves (e.g. a crypto→AI pivot) while the ticker set stays fixed. This is the
+      deliberate trade-off: the alternative is letting shadow_v2's noisy re-generation back in.
+      A genuine same-membership story change reaches the board through the LIVE lane's own
+      daily re-synthesis (out of scope here) or an operator `/promotetheme` with a hand-edited
+      thesis, not through this automated path.
+    """
+    if not (prior_description and prior_tickers is not None and set(prior_tickers) == set(tickers)):
+        return candidate_thesis or desc_fallback
+    if prior_stage == "Retired":
+        return candidate_thesis or desc_fallback
+    if prior_theme_date is not None and today is not None:
+        if (today - prior_theme_date).days > _PRIOR_DESCRIPTION_MAX_AGE_DAYS:
+            return candidate_thesis or desc_fallback
+    return prior_description
 
 
 async def _upsert_promoted_theme(
@@ -2129,6 +2204,20 @@ async def promote_shadow_themes(today) -> int:
             ORDER BY name, theme_date DESC
         """, [t["name"] for t in themes], today)
         prior_map = {r["name"]: dict(r) for r in prior_rows}
+        # #530: a SEPARATE lookup for the re-mint decision — the IMMEDIATELY-prior row above
+        # (used for days_active continuity) is frequently an auto-retire TOMBSTONE
+        # (`tickers=[]`, per `_synthetic_retired_row` / the engine-drop retire_rows in this same
+        # file), which would defeat the set-equality check below before it ever compares real
+        # cohorts (a tombstone's empty ticker set never equals tonight's, so the fix would
+        # silently never fire on the single most common re-promote shape in prod: retire-by-
+        # absorption one day, re-promote the cohort the next). This query skips tombstones and
+        # finds the most recent row that actually CARRIES the cohort — batched, not N+1.
+        prior_desc_rows = await conn.fetch("""
+            SELECT DISTINCT ON (name) name, description, tickers, theme_date, stage
+            FROM mi_themes WHERE name = ANY($1) AND theme_date < $2 AND cardinality(tickers) > 0
+            ORDER BY name, theme_date DESC
+        """, [t["name"] for t in themes], today)
+        prior_desc_map = {r["name"]: dict(r) for r in prior_desc_rows}
         # Batch the RS lookup — ONE query for all members across all cohorts, not N+1 per theme.
         _all_members = list({tk for t in themes for tk in t["tickers"]})
         _rs_rows = await conn.fetch("""
@@ -2196,9 +2285,19 @@ async def promote_shadow_themes(today) -> int:
                             n_gated_out += 1
                             continue
                         # observe: fall through — the cohort promotes exactly as today.
+            # #530: resolve description BEFORE the write — unchanged cohort ⇒ preserve the
+            # existing thesis instead of tonight's freshly re-generated shadow_v2 text. Uses
+            # prior_desc_map (tombstone-skipping), NOT prior_map (immediately-prior, days_active).
+            _prior_desc = prior_desc_map.get(t["name"])
+            desc = _resolve_promoted_theme_description(
+                t.get("thesis"), f"Graduated from the shadow lane ({len(members)} members).",
+                members, _prior_desc.get("description") if _prior_desc else None,
+                _prior_desc.get("tickers") if _prior_desc else None,
+                prior_theme_date=_prior_desc.get("theme_date") if _prior_desc else None,
+                prior_stage=_prior_desc.get("stage") if _prior_desc else None, today=today)
+            t["description"] = desc   # keep the ecosystem mapper's input (below) consistent
             wrote = await _upsert_promoted_theme(
-                conn, t["name"], members, t.get("thesis"),
-                f"Graduated from the shadow lane ({len(members)} members).", today,
+                conn, t["name"], members, desc, desc, today,
                 rs_avg=rs_avg, prior_days_active=prior_days_active)
             if wrote:
                 n += 1
@@ -2311,9 +2410,23 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
             ORDER BY theme_date DESC LIMIT 1
         """, t["name"], today)
         prior_days_active = prior["days_active"] if prior else None
+        # #530: a SEPARATE ticker-bearing lookup for the re-mint decision — same reason as
+        # promote_shadow_themes (the immediately-prior row is frequently an auto-retire
+        # tombstone with `tickers=[]`, which would defeat the set-equality check below).
+        prior_desc = await conn.fetchrow("""
+            SELECT description, tickers, theme_date, stage FROM mi_themes
+            WHERE name = $1 AND theme_date < $2 AND cardinality(tickers) > 0
+            ORDER BY theme_date DESC LIMIT 1
+        """, t["name"], today)
+        desc = _resolve_promoted_theme_description(
+            t.get("thesis"), f"Operator-promoted ({len(t['tickers'])} members).", t["tickers"],
+            prior_desc.get("description") if prior_desc else None,
+            prior_desc.get("tickers") if prior_desc else None,
+            prior_theme_date=prior_desc.get("theme_date") if prior_desc else None,
+            prior_stage=prior_desc.get("stage") if prior_desc else None, today=today)
+        t["description"] = desc   # keep the ecosystem mapper's input (below) consistent
         wrote = await _upsert_promoted_theme(
-            conn, t["name"], t["tickers"], t.get("thesis"),
-            f"Operator-promoted ({len(t['tickers'])} members).", today,
+            conn, t["name"], t["tickers"], desc, desc, today,
             rs_avg=rs_avg, prior_days_active=prior_days_active)
         await log_audit_event(
             "theme_operator_promoted",

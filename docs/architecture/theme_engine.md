@@ -16,6 +16,7 @@
 - **⛔ Arm-B Stage-A family `compute_infra` (#368) — BUILT, GATED, NOT SHIPPED (2026-08-04)**: the crypto-mining and AI-datacenter framings of one physical asset base never share a stem family, and the majority-sector fallback cannot form for converting miners (FMP splits them Financial Services / Technology / blank) — so **ZERO crypto pairs have EVER been proposed for adjudication** (verified: 0 of 99 merge events mention crypto or bitcoin, while insurance and fintech pairs ran nightly). The family that fixes that was written and then HELD, because its own pre-deploy gate ran the two frozen historical pairs through the REAL Stage-B judge and neither consolidates: **P1 (07-21) → DISTINCT** (the gate's stated hold condition) and **P2 (08-04) → PARENT_CHILD**, which on this file's own operator-signed terms is not a consolidation — the v2 prompt ruling (7/12, rulings-pack R3) exists precisely because v1 *"answered PARENT_CHILD to pure slices, which keeps both themes and leaves the fragmentation (#274's whole purpose) unfixed"*. There is also no persistence path for a PARENT_CHILD verdict today: `parent_theme` + `sub_theme_parents` are ADR 0032 Phase 2 = **#471, not built**. So the change is correct and premature. Gated on #471 Phase 2, tracked as #529. The adjudicator's real behaviour here is itself the finding: it consolidates only when the theme's THESIS TEXT names the conversion (P2's thesis said *"not bitcoin price"*; P1's read as a crypto theme with one lease headline) — which makes thesis quality, not stem families, the live lever.
 - **Nightly ECOSYSTEM REACTIVATION detector (#534 D3(b), 2026-08-05, `health_checks.run_ecosystem_reactivation_check`, wired into `_post_nightly_audit_job` at 17:30 ET — after the 17:00 engine so tonight's board + ecosystem mappings exist)**: deterministic, $0, no LLM. Fires when a DORMANT ecosystem (no live mapped theme, or all-Fading, judged at the alert window's START session against the strictly-prior board, 7d liveness horizon mirroring `get_active_themes`) collects **≥3 distinct HIGH EP tickers within 5 sessions** against a **quiet 15-session trailing baseline (≤1 mapped ticker)**. Ticker→ecosystem mapping = any non-Retired `mi_themes` membership row (INCLUDING tonight's board — the engine's same-night reactive births are how new wake-up names reach the dormant lineage's e_code; the dead themes never held them) whose name is in `mi_theme_ecosystems`, else taxonomy exemplars; a SECTOR fallback was measured and rejected (it admitted two sector-label pseudo-clusters). Thresholds DERIVED from a 66-session prod replay: one incident total (E-DEF 08-04, {AMRC PLTR TSAT VOYG}, baseline 0) and the ARM+LRCX+SIMO semis earnings night correctly suppressed by the quiet-baseline precondition — the §5 "an earnings surge is not a theme" proof; derivation + hand-checks in `health_checks.py`'s #534 header. Output: operator Telegram line (`E-DEF (Defense & space) reactivating: 4 EPs/1d, no live theme`) + a discovery seed in `mi_theme_candidates_shadow` (source=`ecosystem_reactivation`, cohort in `tickers`, dormant lineage named in the thesis). **NEVER an auto-promote**: the source is excluded from `AUTO_PROMOTE_THEME_SOURCES` (#469 allowlist, by construction) and from the judge's `active_narratives` feed — visible only via operator surfaces (`include_probe=True` → /themes, /promotetheme); the birth gate owns whether a reactivation cohort becomes a theme (pinned by `tests/test_ecosystem_reactivation.py`). Dedupe is audit-log-based but RECENCY-bounded (10d — one announcement per incident; an incident self-terminates in ~5 sessions as its own alerts walk into the baseline, and the same ecosystem may legitimately wake again months later), fails open.
 - **#491 M2 — SEEDED ASSIGNMENT-POOL EXEMPTION (2026-08-05, operator-approved D1)**: a ticker named in an ACTIVE Lane-2 narrative row (`narrative_cogap`) or an ecosystem-reactivation seed (`ecosystem_reactivation`, #534/#536), ≤ `LANE2_WINDOW_TRADING_DAYS` (10) trading days old and PRIOR sessions only (tonight's lane rows are written after the assignment pass — scheduler 5c), is admitted to the ASSIGNMENT pool regardless of RS floor and fetch rank, its score row fetched explicitly via `get_rs_for_tickers` (no score row ⇒ skip). Why: RS is a 1/3/6-month lookback, so a business-model pivot is under the floor by construction (B2 — every one of the ten ex-miner names under RS 70 on 08-04 while the correct live AI theme sat 3 members wide). **Fork F-D (operator-ruled): the admission scope is ONLY those two seeded sources — NEVER a raw RS band** (`db.SEEDED_ASSIGN_SOURCES`; scope + the RS-free admission signature pinned by `tests/test_seeded_pool_exemption.py`). Never admitted: covered names any stage incl. Fading (covered-exclusivity/B1 stays M-CORE's territory), just-revalidated-out names, names already in the pool. Downstream walls unchanged (assignment LLM decides fit; global bans, pair cooldowns, post-assignment F4 validation, exclusions all apply — admitted names enter the standard pool); DISCOVERY untouched at top-40. Bounded ~15/night by construction (replay over 06-26→08-05: 45 admissions/28 nights, peak 10); >15 logs a loud warning — never a silent cap. Observability: one `seeded_pool_admission` audit row per run with per-ticker trigger pointers; fetch failure fails OPEN (one night without the exemption, never the run). Known accepted gap: seeded admissions can, like any pool name, be offered [Fading]-tagged themes — §4.4's "never migrate INTO Fading" predicate belongs to the custody verb (M-CORE, not built).
+- **#530 (2026-08-09) — the shadow-promote re-mint no longer clobbers an unchanged thesis**: `promote_shadow_themes` / `promote_candidate_by_name` used to write `description = tonight's candidate thesis` UNCONDITIONALLY every time a cohort still qualified (`_upsert_promoted_theme`'s `ON CONFLICT ... DO UPDATE SET description = EXCLUDED.description`, no comparison to what was already on the board). shadow_v2's correlation-lane LLM call re-runs fresh every night regardless of whether the cohort changed, and its thesis is frequently a generic price-correlation blurb ("pure-play Bitcoin miners... corr 0.84") — on a night the LIVE lane doesn't independently re-mint that name, this silently replaced a more specific, catalyst-grounded description already on the board. That mattered beyond tidiness: F4 (#368, line above) judges membership against the theme's own THESIS, so an overwritten thesis actively evicts correct members — the root cause of the WULF/CORZ eviction traced in #491. **Fix** (`theme_engine._resolve_promoted_theme_description`, the ONE decision point both promote paths now share): if tonight's ticker SET is EXACTLY unchanged from the last known `mi_themes` row for that name, the EXISTING description is preserved; a ticker-set CHANGE (any add/remove) is real membership evidence, so the fresh thesis is always allowed through. Mirrors the existing `_canonicalize_theme_names` (#59, 2026-05-11) precedent, which solved the identical churn problem for the theme NAME the same way — freeze on exact ticker-set match, no specificity scoring, no numeric threshold. Pinned by `tests/test_promotetheme.py` (`test_530_*`, 3 tests: unchanged cohort preserves the specific thesis, changed cohort refreshes it, no-prior-row is unaffected).
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — a bad-description removal once permanently banned TSEM from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
@@ -228,6 +229,134 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 → `set_theme_birth_gate_mode('on')`.
 
 ## Change log
+
+### 2026-08-09 — #530 shadow_v2 re-mint no longer overwrites an unchanged thesis with fresh generic text
+
+- **Trigger**: PLAN #530, filed alongside #529 — "the shadow_v2 re-mint overwrites a correct
+  theme thesis with generic crypto-beta text." #530's own note flagged that birth-gate Phase 1
+  (2026-07-27, `theme_birth_gate`) MIGHT already retire this path — checked first, and it does
+  NOT: prod's `theme_birth_gate` safeguard row is `state='observe'` today, and even at `mode='on'`
+  the gate only retires the shadow_v2 DISCOVERY stream + strips it from the auto-promote
+  allowlist for FIRST-time births; re-promotions of an existing live theme are explicit
+  "maintenance" that bypasses the gate on all three modes (`promote_shadow_themes`'s own
+  docstring). The defect lives one level lower, in the write path itself — and stays there even
+  once the gate ships `on`: `narrative_cogap` and `rs_slope_synthesis` remain on the allowlist at
+  `on` (only `shadow_v2` leaves it) and both re-promote through the SAME
+  `_upsert_promoted_theme` write. So the birth gate was never going to cover this defect at any
+  mode — not a timing gap that `on` eventually closes, a structural one this fix is the only
+  closure for.
+- **Reproduction** (code read + a regression test against the real function — a description
+  reading was explicitly disallowed by the task): `theme_engine._upsert_promoted_theme`'s SQL is
+  `ON CONFLICT (theme_date, name) DO UPDATE SET ... description = EXCLUDED.description ...` —
+  `EXCLUDED.description` is always `thesis or desc_fallback`, i.e. whatever `promote_shadow_themes`
+  or the operator's `/promotetheme` passes THIS call, with zero comparison to the description
+  already on the board. `tests/test_promotetheme.py::test_530_unchanged_cohort_preserves_
+  specific_thesis_on_remint` reproduces this directly: a same-ticker-set shadow_v2 re-proposal
+  with generic text overwrote a specific stored thesis before the fix (confirmed RED via
+  `git stash` isolating the fix commit, test file kept) — GREEN after.
+  ⚠ **What prod does NOT show, stated so nobody re-derives it and reports it as observed**: a
+  120-day replay of `mi_themes WHERE source='shadow_promoted'` (read-only, ssh) found ZERO rows
+  where the SAME name + SAME ticker set got a DIFFERENT description on a later shadow-promote —
+  the mechanism is real and provably fires (per the test above) but has not been CAUGHT firing
+  via this exact path in that window; most shadow-promoted cohorts either write byte-identical
+  text on repeat (`'AI Data Center Infrastructure Buildout'`, 08-04→08-07, three promotes,
+  identical description every time) or get superseded by the LIVE lane the very next day (the
+  crypto-miner lineage itself: `source='shadow_promoted'` only once, 07-17, then `source='live'`
+  from 07-20 on). The description CHURN actually visible in prod for the crypto lineage — the
+  text flipping between correlation-only and catalyst-specific phrasing across `theme_date` rows,
+  Jun–Aug — is the LIVE lane's own daily re-synthesis (`_save_themes` / Lane-1 discovery), a
+  separate, larger, explicitly out-of-scope mechanism (see Scope below) that `_canonicalize_
+  theme_names`'s own docstring already names ("Sonnet's theme discovery generates new descriptive
+  names every run"). So this fix hardens a latent path proven by direct test, not one caught
+  in the act via `shadow_promoted` rows specifically — Monday's verify-live is written as a
+  negative check for exactly this reason (below).
+- **Fix**: new pure helper `theme_engine._resolve_promoted_theme_description` — the ONE decision
+  point both `promote_shadow_themes` and `promote_candidate_by_name` now call before invoking
+  the shared `_upsert_promoted_theme` write. Rule: **ticker-set EXACTLY unchanged from the last
+  known TICKER-BEARING `mi_themes` row for that name ⇒ preserve that row's description; any
+  ticker addition/removal ⇒ allow the fresh thesis through.** No specificity scoring, no numeric
+  threshold — a threshold was proposed, shipped, and reverted earlier the same day this line was
+  written; this rule needs no number because it mirrors an EXISTING precedent in this file's own
+  code: `_canonicalize_theme_names` (#59, 2026-05-11) already solved the identical churn problem
+  for the theme NAME by freezing on exact ticker-set match. This closes the same gap for the
+  DESCRIPTION field.
+- **Bug found and fixed on review, before ship: the lookup must SKIP auto-retire tombstones.**
+  Every explicit Retired-row write in this file (`_synthetic_retired_row`, the engine-drop
+  `retire_rows` in `run_theme_engine`) hardcodes `"tickers": []`. A naive "compare against the
+  immediately-prior row" lookup would see that tombstone — `set() != set(tonight's cohort)` —
+  and refuse to preserve whenever a retire-by-absorption tombstone sits directly ahead of a
+  re-promote. **Measured, not estimated** (query in the commit; joins each `shadow_promoted`
+  row to the most recent PRIOR row for that name carrying a non-empty ticker set, any
+  distance back): **17 of the 93 `shadow_promoted` rows in the 120-day window have such a
+  row, all of them within 14 days** (median gap 2 days, range 1–11) — that is the population
+  this fix protects. The query returns only the ANCESTOR's date, not what sits between it and
+  tonight, so whether a Retired tombstone specifically occupies that gap is NOT separately
+  confirmed here (a short gap is also consistent with a quiet weekend with no row at all); what
+  IS confirmed is that the immediately-prior row is frequently NOT the cohort row, which is the
+  only fact the fix's correctness depends on. Fix: `promote_shadow_themes` /
+  `promote_candidate_by_name` now run a SEPARATE query (`AND cardinality(tickers) > 0`, batched
+  for the nightly path — not N+1) that
+  skips tombstones and returns the most recent row that actually CARRIES the cohort;
+  `prior_days_active` keeps reading the unfiltered immediately-prior row (that continuity must
+  NOT skip tombstones — a theme's active-day count is real regardless of a same-week
+  retire/re-promote blip). Pinned by
+  `tests/test_promotetheme.py::test_530_tombstone_between_snapshots_still_preserves` (scenario)
+  and `test_530_prior_desc_lookup_sql_filters_empty_tickers` /
+  `test_530_operator_path_prior_desc_lookup_sql_filters_empty_tickers` (the SQL text itself,
+  so a future edit that drops the `cardinality(tickers) > 0` clause fails a test even though
+  the scenario tests hand the resolver pre-filtered rows and can't see the query directly).
+- **Two more guards on the preserve branch, added on review, both borrowed from EXISTING code
+  rather than new numbers**: a prior (ticker-bearing) row with `stage='Retired'` is NEVER
+  preserved — the ticker-bearing filter above already excludes every CURRENT retirement
+  mechanism (both hardcode empty tickers), so this guard has no confirmed live case in the
+  120-day replay (the one Retired-with-tickers row found, 2026-04-10, predates that convention
+  and is also >14 days old — already caught by the age guard below); kept as a categorical,
+  zero-cost backstop against any future retirement path that doesn't follow it, stated honestly
+  rather than implied as independently evidenced. A prior row OLDER than 14 days is NEVER
+  preserved (the exact window `_canonicalize_theme_names` #59 already uses for the analogous
+  name-freeze decision — borrowed, not invented). Both apply ONLY to this decision, not to the
+  shared `prior_days_active` continuity.
+- **Edge cases** (see the function's own docstring for the full statement): no prior row
+  (genuine new crossing) → candidate thesis used, unaffected by the fix; prior row's description
+  is NULL/empty → nothing worth preserving, candidate thesis used; ticker ORDER differs but the
+  SET is identical → still counts as unchanged (set comparison, not list/order comparison);
+  operator `/promotetheme` on an unchanged cohort → same protection applies, since the operator
+  promotes whatever the shadow lane most recently proposed rather than typing new wording
+  themselves, so there is no case of discarding operator-authored text; **a cohort whose
+  membership never changes gets a STICKY description** — text written on the first promote
+  persists until a ticker moves, even if the real-world story evolves while the ticker set stays
+  fixed (a genuine same-membership story change must reach the board via the LIVE lane's own
+  daily re-synthesis or an operator hand-edit, not this automated path — a deliberate trade
+  against letting shadow_v2's noisy re-generation back in).
+- **Why membership-change, not "specificity"**: a text-quality scorer needs either a threshold
+  (banned by the task — one was tried and reverted today) or an LLM judgment call on every
+  promote (cost + another source of drift); ticker-set equality is mechanical, needs no tuning,
+  and is exactly the signal that already justifies a description refresh — the cohort itself
+  changed.
+- **Scope**: touches ONLY the two shadow-promote write paths (`_upsert_promoted_theme`'s two
+  callers). The LIVE lane's own nightly re-synthesis (`_save_themes` / Lane-1 discovery) is a
+  separate, much larger design surface (regenerates description for EVERY live theme, not just
+  shadow-promoted ones) and is explicitly out of scope — changing it would be a detection-surface
+  change needing its own CHANGE_PROCESS evidence, not a #530-shaped fix.
+- **Status**: built + tested (9 new tests in `tests/test_promotetheme.py`, 4 pre-existing tests
+  in `test_theme_birth_gate.py` / `test_coverage_probe.py` / `test_promote_ecosystem_mapping.py`
+  updated for the new `conn.fetch` call shape, full suite 4886+ passed / 7 skipped), NOT
+  deployed, NOT committed. No money/trade-state path touched (theme detection surface only).
+- **Verify-live (Monday's nightly run) — written as a negative check on purpose**: the
+  Reproduction section above already showed the exact "same cohort, different description"
+  shape hasn't been CAUGHT via `source='shadow_promoted'` rows in the last 120 days, so
+  "wait for an occurrence" is not an honest DoD. Instead: (1) confirm `promote_shadow_themes`
+  ran without error and BOTH new prior-row queries (days_active lookup + the tombstone-skipping
+  `description, tickers, theme_date, stage` lookup) fetched cleanly — no `KeyError`/SQL error in
+  the nightly log; (2) the standing negative check, good indefinitely: for EVERY
+  `source='shadow_promoted'` row written, find the MOST RECENT PRIOR row for that name that
+  carries a non-empty ticker set (skip Retired tombstones — this is the tombstone-skip fix's own
+  predicate, not the naive "immediately-prior row"). If that row's ticker set matches tonight's,
+  is not itself Retired, and is ≤14 days old, tonight's `description` MUST equal that row's
+  `description` exactly — any row breaking that invariant is the regression this fix exists to
+  prevent. (3) If a real same-membership overwrite IS eventually caught by this check on some
+  future night, that is the strongest possible confirmation and should be logged back onto this
+  line.
 
 ### 2026-08-07 (b) — #543: the two theme LLM stages were being TRUNCATED, and it was invisible
 

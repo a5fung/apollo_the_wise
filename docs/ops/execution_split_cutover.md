@@ -136,7 +136,7 @@ prior behavior. Keep this runbook open during the cutover.
 
 ## Pre-cutover gate (run locally, free) — DONE 2026-06-13
 
-`python scripts/_w2_role_dryboot.py {execution,intelligence}` dry-boots the real
+`python scripts/probes/_w2_role_dryboot.py {execution,intelligence}` dry-boots the real
 `start_scheduler()` partition in each split role against real registration:
 execution→27, intelligence→42, neither fail-loud guard raises. Re-run if the job
 set changes before cutover. (Residual the dry-boot can't cover, left for step 2b
