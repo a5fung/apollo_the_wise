@@ -686,8 +686,10 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
             # means the mechanism itself is dark, which is strictly worse than any single
             # caller being unwired. Returning an empty result here would be the exact silent
             # pass this check exists to prevent, so it gets its own louder signal.
+            # `since=None` IS that signal — one result shape, no separate boolean to keep in
+            # sync with it.
             return {"window_hours": lookback_hours, "truncating": [], "unreported": [],
-                    "instrumentation_dark": True}
+                    "since": None}
 
         rows = await conn.fetch("""
             SELECT caller,
@@ -716,8 +718,7 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
 
     truncating.sort(key=lambda x: (-x["pct"], -x["truncated"]))
     return {"window_hours": lookback_hours, "truncating": truncating,
-            "unreported": unreported, "instrumentation_dark": False,
-            "since": floor.isoformat()}
+            "unreported": unreported, "since": floor.isoformat()}
 
 
 async def run_truncation_check() -> dict | None:
@@ -732,7 +733,7 @@ async def run_truncation_check() -> dict | None:
     the ceiling is fixed."""
     t = await compute_truncation_check()
     truncating, unreported = t["truncating"], t["unreported"]
-    if t.get("instrumentation_dark"):
+    if t["since"] is None:
         # Worse than any single unwired caller: nothing anywhere is reporting stop_reason,
         # so truncation is once again undetectable. Shout, and do not dedupe.
         await log_audit_event(

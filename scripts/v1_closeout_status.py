@@ -304,20 +304,34 @@ _TRANSIENT_RECOVERY_MIN = 10
 WATCHDOG_STRUCTURED_SINCE = date(2026, 8, 8)
 
 
+def _parse_audit_detail(raw: object) -> dict | None:
+    """`mi_audit_log.detail` -> dict, or None when it is absent/unparsable.
+
+    ONE parser for this column, because it is documented as able to hold
+    malformed rows and this file plus db.py had each grown their own — the
+    copies had already drifted apart (a dropped isinstance guard, a different
+    exception tuple). The column is TEXT today so asyncpg hands back a str,
+    but the guard stays: it costs nothing and is the difference between a
+    silent fallback and a correct read if it ever becomes JSONB.
+    """
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+    except (ValueError, TypeError):   # JSONDecodeError subclasses ValueError
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
 def _watchdog_target(row: dict) -> str | None:
     """The container a watchdog service_down/service_recovered event is
     about. PRIMARY: `row['detail']`, the structured JSON object the watchdog
     writes directly (immune to prose rewording — #442). FALLBACK: regex over
     `row['summary']` (e.g. 'watchdog: apollo-market DOWN — ...') for rows
     that predate the structured field — see WATCHDOG_STRUCTURED_SINCE."""
-    detail = row.get("detail")
-    if detail:
-        try:
-            parsed = json.loads(detail)
-        except (json.JSONDecodeError, TypeError):
-            parsed = None
-        if isinstance(parsed, dict) and parsed.get("container"):
-            return parsed["container"]
+    parsed = _parse_audit_detail(row.get("detail"))
+    if parsed and parsed.get("container"):
+        return parsed["container"]
     # No usable structured field on this row — legacy history, or the
     # watchdog script hasn't been redeployed yet. Fall back to the old
     # regex, but LOUDLY: this is the exact silent-failure shape #442 closes,
@@ -690,12 +704,10 @@ async def _fetch_prior_snapshot(conn) -> dict | None:
     )
     if not row:
         return None
-    try:
-        raw = row["detail"]
-        return json.loads(raw) if isinstance(raw, str) else raw
-    except (json.JSONDecodeError, TypeError) as e:
-        logger.warning(f"v1_closeout_status: prior snapshot unparsable: {e}")
-        return None
+    parsed = _parse_audit_detail(row["detail"])
+    if parsed is None:
+        logger.warning("v1_closeout_status: prior snapshot detail absent or unparsable")
+    return parsed
 
 
 async def _persist_snapshot(conn, status: dict) -> None:

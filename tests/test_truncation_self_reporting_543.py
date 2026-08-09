@@ -498,7 +498,7 @@ def test_no_row_has_EVER_reported_is_its_own_louder_signal(monkeypatch):
     than one unwired caller. Returning an empty result would be the silent pass this whole
     check exists to prevent."""
     out, _ = _run_check(monkeypatch, None, [])
-    assert out["instrumentation_dark"] is True
+    assert out["since"] is None   # `since=None` IS the dark signal — one shape, no flag
     assert out["truncating"] == [] and out["unreported"] == []
 
 

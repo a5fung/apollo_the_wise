@@ -27,6 +27,15 @@
 -- count, so it tracks universe growth and needs no maintenance. A stray 1-row day is ~3
 -- orders of magnitude below it; a genuine run is at or above it. A partially-failed run
 -- is correctly rejected too, which is the more valuable half of this.
+--
+-- ⚠ SIBLING POLICY, deliberately NOT the same number — keep these two in view of each
+-- other. health_checks.py::run_row_count_drift_sweep answers the same underlying question
+-- ("did this run produce too few rows?") over the same 10-run window, but ALERTS at a 25%
+-- drop (_ROWCOUNT_DROP_PCT), i.e. a 75% floor. This gate is looser at 50% ON PURPOSE: the
+-- sweep's job is to NOTICE a suspicious dip, so it should be twitchy; this gate's job is to
+-- pick a usable day, so a false reject here silently publishes nothing at all. If either
+-- threshold is ever retuned, read the other first — they were set independently and only
+-- this comment connects them.
 WITH usable_score_date AS (
     SELECT score_date
       FROM mi_stock_scores
