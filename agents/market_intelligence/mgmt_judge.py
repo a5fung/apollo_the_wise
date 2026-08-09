@@ -18,6 +18,7 @@ from typing import Optional
 
 from agents.market_intelligence.judge_transport import invoke_forced_tool
 from shared.llm_models import JUDGE_MODEL as MODEL
+from shared.output_ceilings import max_tokens_for
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,7 @@ async def manage_holistic(
         normalize=_normalize_mgmt_verdict, label="management judge",
         subject=payload.get("ticker") or "",
         semaphore=semaphore, timeout=timeout, model=model,
+        max_tokens=max_tokens_for("mgmt_judge"),  # registry-explicit (was transport default)
         log_caller="mgmt_judge")  # #377 cost meter
 
 

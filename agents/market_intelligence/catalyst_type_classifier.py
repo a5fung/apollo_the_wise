@@ -39,6 +39,7 @@ import os
 from typing import Optional
 
 from shared.llm_models import CATALYST_TYPE_MODEL
+from shared.output_ceilings import max_tokens_for
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ async def classify_catalyst_type(
                 try:
                     resp = await _get_client().messages.create(
                         model=CATALYST_TYPE_MODEL,
-                        max_tokens=220,
+                        max_tokens=max_tokens_for("catalyst_type_classifier"),
                         system=_SYSTEM,
                         tools=[_CATALYST_TYPE_TOOL],
                         tool_choice={"type": "tool", "name": "classify_catalyst_type"},

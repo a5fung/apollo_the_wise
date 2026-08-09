@@ -31,6 +31,7 @@ from agents.market_intelligence.system_audit import (
     _trimmed_median_mad as _sa_trimmed_median_mad,
 )
 from shared.llm_models import PRICING_PER_MTOK, SONNET
+from shared.output_ceilings import CEILINGS, NEAR_CEILING_FRACTION, TRUNCATION_BY_DESIGN
 
 logger = logging.getLogger(__name__)
 
@@ -653,9 +654,35 @@ _TRUNC_PCT_FLOOR = 50.0   # ...unless the caller is low-volume, where 1-of-1 IS 
 # therefore reports stop_reason='max_tokens' on EVERY call, forever, and would have fired this
 # alert every single night. A guard that always fires is not a guard (CLAUDE.md 08-03).
 # Keep this list SHORT and justified per entry — it is the one place a real outage could hide.
-_TRUNC_BY_DESIGN = {
-    "healthcheck",   # orchestrator liveness ping: max_tokens=5, response text unused
-}
+# Single source since 2026-08-09: shared/output_ceilings.py (the registry the call
+# sites themselves import), so the exempt list and the ceilings can never drift apart.
+_TRUNC_BY_DESIGN = TRUNCATION_BY_DESIGN
+
+
+def _near_ceiling(rows, already: set) -> list[dict]:
+    """NEAR-CEILING arm (2026-08-09): completed responses inside the last 10% of the
+    registry cap (shared/output_ceilings.py). Threshold derivation: measured against
+    all 6,634 api_usage rows, every healthy caller's max completed output sits at
+    <=86% of its cap while every caller later caught truncating passed >=95% first —
+    0.90 sits strictly between, so it is quiet on healthy traffic and fires BEFORE
+    the first cut (the truncation arm only fires after corruption happened).
+
+    `already` = callers the truncation arm is reporting this run (reported harder
+    there); by-design pings and unregistered callers are skipped — no cap, no margin.
+    """
+    tight = []
+    for r in rows:
+        entry = CEILINGS.get(r["caller"])
+        mc = r["max_completed"]
+        if (entry is None or mc is None or r["caller"] in _TRUNC_BY_DESIGN
+                or r["caller"] in already):
+            continue
+        if mc >= NEAR_CEILING_FRACTION * entry.max_tokens:
+            tight.append({"caller": r["caller"], "max_completed": int(mc),
+                          "cap": entry.max_tokens,
+                          "pct_of_cap": round(100.0 * mc / entry.max_tokens, 1)})
+    tight.sort(key=lambda x: -x["pct_of_cap"])
+    return tight
 
 
 async def compute_truncation_check(lookback_hours: int = 24) -> dict:
@@ -689,14 +716,16 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
             # `since=None` IS that signal — one result shape, no separate boolean to keep in
             # sync with it.
             return {"window_hours": lookback_hours, "truncating": [], "unreported": [],
-                    "since": None}
+                    "tight": [], "since": None}
 
         rows = await conn.fetch("""
             SELECT caller,
                    count(*)                                                    AS calls,
                    count(*) FILTER (WHERE stop_reason = 'max_tokens')          AS truncated,
                    count(*) FILTER (WHERE stop_reason IS NULL)                 AS unreported,
-                   max(output_tokens) FILTER (WHERE stop_reason = 'max_tokens') AS cap_hit
+                   max(output_tokens) FILTER (WHERE stop_reason = 'max_tokens') AS cap_hit,
+                   max(output_tokens) FILTER (WHERE stop_reason IS NOT NULL
+                                              AND stop_reason <> 'max_tokens') AS max_completed
               FROM api_usage
              WHERE created_at > now() - ($1 || ' hours')::interval
                AND created_at >= $2
@@ -716,9 +745,11 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
         if int(r["unreported"]) == calls:
             unreported.append({"caller": r["caller"], "calls": calls})
 
+    tight = _near_ceiling(rows, already={x["caller"] for x in truncating})
+
     truncating.sort(key=lambda x: (-x["pct"], -x["truncated"]))
     return {"window_hours": lookback_hours, "truncating": truncating,
-            "unreported": unreported, "since": floor.isoformat()}
+            "unreported": unreported, "tight": tight, "since": floor.isoformat()}
 
 
 async def run_truncation_check() -> dict | None:
@@ -733,6 +764,7 @@ async def run_truncation_check() -> dict | None:
     the ceiling is fixed."""
     t = await compute_truncation_check()
     truncating, unreported = t["truncating"], t["unreported"]
+    tight = t["tight"]
     if t["since"] is None:
         # Worse than any single unwired caller: nothing anywhere is reporting stop_reason,
         # so truncation is once again undetectable. Shout, and do not dedupe.
@@ -747,12 +779,13 @@ async def run_truncation_check() -> dict | None:
             "response cannot be told from a complete one. This is the outage the "
             "check exists to catch, one level up.")
         return t
-    if not truncating and not unreported:
+    if not truncating and not unreported and not tight:
         return None
     await log_audit_event(
         "llm_truncation_check",
         summary=(f"{len(truncating)} caller(s) truncating, "
-                 f"{len(unreported)} not reporting stop_reason"),
+                 f"{len(unreported)} not reporting stop_reason, "
+                 f"{len(tight)} within 10% of their ceiling"),
         detail=json.dumps(t),
     )
     from agents.market_intelligence.briefing import send_telegram_message
@@ -766,6 +799,15 @@ async def run_truncation_check() -> dict | None:
                          f"({x['pct']}%) at {x['cap']} tokens")
         lines += ["```", "Raise the ceiling on these callers - a cut-off tool call "
                   "reads downstream as an empty result, not an error."]
+    if tight:
+        if lines:
+            lines.append("")
+        lines += ["🟡 *NEAR CEILING* — completed responses within 10% of their cap:", "```"]
+        for x in tight[:6]:
+            lines.append(f"{x['caller']:<28} {x['max_completed']} of {x['cap']} tokens "
+                         f"({x['pct_of_cap']}%)")
+        lines += ["```", "Raise these in `shared/output_ceilings.py` BEFORE they start "
+                  "cutting responses."]
     if unreported:
         if lines:
             lines.append("")

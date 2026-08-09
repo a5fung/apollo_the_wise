@@ -125,7 +125,9 @@ def test_boot_recorder_real_change_writes_audits_and_telegrams(monkeypatch):
     args = insert_mock.await_args.args
     assert args[0] == "JUDGE_MODEL" and args[1] == "claude-opus-5" and args[3] == "claude-opus-4-8"
     fired = [c.args[0] for c in audit_mock.await_args_list]
-    assert fired == ["model_resolution_change"]
+    # The ceilings sweep (2026-08-09) rides the same change event: JUDGE_MODEL has
+    # registered output ceilings, so the drift audit fires right after the change one.
+    assert fired == ["model_resolution_change", "output_ceilings_model_drift"]
     tg_mock.assert_awaited_once()
     text = tg_mock.await_args.args[0]
     # Operator-facing wording (operator 2026-07-31 "could use some better
@@ -133,6 +135,10 @@ def test_boot_recorder_real_change_writes_audits_and_telegrams(monkeypatch):
     # raw ids. Pins the intent, so a revert to the log-dump form fails here.
     assert "grading judge" in text and "Opus 4.8 → Opus 5" in text
     assert "JUDGE_MODEL" not in text and "claude-opus-5" not in text
+    # Ceilings sweep section: the callers whose max_tokens was sized on the
+    # outgoing model are named at the binding moment, not after the first cut.
+    assert "sized on the previous model" in text
+    assert "ep_grade_judge" in text and "mgmt_judge" in text
     assert "Undo:" in text  # rollback lever always mentioned
 
 

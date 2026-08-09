@@ -54,7 +54,8 @@ _WINDOW_DAYS = 7
 # (candidates: the drift/strategy-promotion/shadow-ORB/wick/silent-failures sections in the
 # system prompt below), not a further raise.
 from shared.llm_models import SYSTEM_REVIEW_MODEL as _MODEL
-_MAX_TOKENS = 2800
+from shared.output_ceilings import max_tokens_for
+_MAX_TOKENS = max_tokens_for("system_review_weekly")
 
 _SYSTEM_PROMPT = """You are Apollo's weekly self-auditor. You review metrics from \
 a momentum/EP trading assistant and surface, FACTUALLY, what's working and what \

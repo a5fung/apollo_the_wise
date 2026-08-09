@@ -29,6 +29,8 @@ import json
 import logging
 from datetime import date
 
+from shared.output_ceilings import max_tokens_for
+
 logger = logging.getLogger(__name__)
 
 # Mechanical validation bounds (the grounded part — never LLM-judged).
@@ -246,7 +248,7 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
             # truncates and silently yields an empty/partial `cohorts` — indistinguishable
             # from a genuine "no cohorts". Discovery proposed 0 for 3 days straight (6/22-24)
             # with no way to tell which; that silent ambiguity is the bug.
-            max_tokens=8000,
+            max_tokens=max_tokens_for("theme_synthesis"),
             tools=[_SYNTHESIS_TOOL],
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],

@@ -168,6 +168,7 @@ def format_market_cap(mc) -> str:
 # (point-in-time, no lookahead on the input). The LLM is a JUDGE on grounded
 # text here, not a discoverer (feedback_catalyst_sourcing_direct_over_llm).
 from shared.llm_models import MATERIALITY_MODEL as _MODEL
+from shared.output_ceilings import max_tokens_for
 
 _JUDGE_PROMPT = """You judge whether a stock's gap-up catalyst is MATERIAL relative to the company.
 Materiality = impact RELATIVE TO COMPANY SIZE, not absolute. A $50M deal is
@@ -220,7 +221,7 @@ async def judge_materiality_llm(client, *, company, sector, market_cap,
         catalyst=(catalyst or "")[:1500], analysis=(analysis or "")[:1500],
     )
     resp = await client.messages.create(
-        model=_MODEL, max_tokens=200,
+        model=_MODEL, max_tokens=max_tokens_for("catalyst_materiality"),
         system="You are a JSON API. Respond with valid JSON only.",
         messages=[{"role": "user", "content": prompt}],
     )

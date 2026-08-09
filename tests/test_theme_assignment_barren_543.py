@@ -49,9 +49,13 @@ def test_assignment_forces_a_tool_call():
 def test_assignment_ceiling_was_raised_too():
     """Belt-and-braces for genuinely long assignment lists. Raising a cap costs nothing extra —
     billing is on tokens generated, not the ceiling."""
-    m = re.search(r"max_tokens=(\d+)", _assignment_call())
-    assert m, "max_tokens not found on the assignment call"
-    assert int(m.group(1)) >= 8000, f"assignment ceiling back down to {m.group(1)}"
+    # 2026-08-09: the number moved into the ceilings registry (with its evidence);
+    # the call site must bind from there, and the registered value must hold.
+    assert 'max_tokens_for("theme_assignment")' in _assignment_call(), (
+        "theme_assignment no longer binds its ceiling from shared/output_ceilings.py")
+    from shared.output_ceilings import max_tokens_for
+    assert max_tokens_for("theme_assignment") >= 8000, (
+        f"assignment ceiling back down to {max_tokens_for('theme_assignment')}")
 
 
 # ── the detection, which is the part that was actually missing ───────────────────────────

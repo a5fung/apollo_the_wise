@@ -39,6 +39,7 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 logger = logging.getLogger(__name__)
 
 from shared.llm_models import METRICS_EXTRACTION_MODEL as _EXTRACTION_MODEL
+from shared.output_ceilings import max_tokens_for
 from shared.llm_response import content_block_types, first_text
 
 _EXTRACTION_PROMPT = """You will extract structured earnings metrics from news articles about {ticker}.
@@ -174,8 +175,9 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
                     # day the role moved), 14 of 14 on 08-07. Raised well clear of the new
                     # model's natural length rather than to a number that merely fits
                     # today's worst case — the whole failure was a ceiling sized for the
-                    # previous model's verbosity. See PLAN #542.
-                    "max_tokens": 8000,
+                    # previous model's verbosity. See PLAN #542. The number now
+                    # lives in shared/output_ceilings.py with its evidence.
+                    "max_tokens": max_tokens_for("catalyst_metrics_extractor"),
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )

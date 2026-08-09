@@ -33,6 +33,7 @@ from collections import Counter
 import anthropic
 
 from shared.llm_models import HAIKU
+from shared.output_ceilings import max_tokens_for
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +283,7 @@ async def _create_with_backoff(client, prompt: str, model: str, semaphore) -> "a
             async with (semaphore if semaphore is not None else contextlib.nullcontext()):
                 return await client.messages.create(
                     model=model,
-                    max_tokens=700,
+                    max_tokens=max_tokens_for("theme_merge_adjudication"),
                     temperature=0.0,  # C4 caveat: determinize before any flip
                     tools=[MERGE_ADJUDICATION_TOOL],
                     tool_choice={"type": "tool", "name": MERGE_ADJUDICATION_TOOL["name"]},

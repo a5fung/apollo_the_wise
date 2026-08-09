@@ -228,6 +228,26 @@ async def record_boot_resolution() -> None:
                          "(<code>judge_high_rate_daily</code>, L2 audit).")
             if any(r == "JUDGE_MODEL" for r, *_ in real):
                 lines.append(esc(_JUDGE_EVAL_NOTE))
+            # Output-ceiling sweep (2026-08-09, follow-up to #543): every max_tokens
+            # ceiling is registered with the model it was sized on
+            # (shared/output_ceilings.py). A role's model changing is THE event that
+            # invalidates those numbers — both August truncation outages happened on a
+            # role's first post-change calls — so name the exposed callers at the
+            # moment the binding changes, not after the first cut-off response.
+            from shared.output_ceilings import callers_for_role
+            exposed = sorted({c for role, *_ in real for c in callers_for_role(role)})
+            if exposed:
+                await log_audit_event(
+                    "output_ceilings_model_drift",
+                    f"{len(exposed)} output ceiling(s) were sized on a model that just "
+                    "changed: " + ", ".join(exposed),
+                    "watch the live truncation alarm + nightly near-ceiling check; "
+                    "re-evidence the entries in shared/output_ceilings.py",
+                )
+                lines.append(
+                    f"⚠ {len(exposed)} output ceiling(s) were sized on the previous "
+                    "model — the truncation alarms are watching these:")
+                lines.append(f"<code>{esc(' · '.join(exposed))}</code>")
             lines.append("Undo: pin the tier in "
                          "<code>shared/llm_models.py</code> and redeploy.")
             await _send_telegram("\n".join(lines))

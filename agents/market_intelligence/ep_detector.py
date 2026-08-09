@@ -69,6 +69,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.ma_filter import is_likely_ma
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
 from shared.llm_models import GROUNDED_GRADE_MODEL
+from shared.output_ceilings import max_tokens_for
 # MODEL (not JUDGE_MODEL) — #509: the audit trail must record the id that
 # ACTUALLY graded the call. grade_holistic()'s default `model=` is bound to
 # ep_grade_judge.MODEL (resolver-tracked); shared.llm_models.JUDGE_MODEL is
@@ -1018,7 +1019,7 @@ catalyst, say so explicitly."""
                         # ⚠ SILENT, and that is the real defect (operator, 2026-08-07: "another
                         # silent failure"). It writes an audit row and alerts NOBODY; it surfaced
                         # only as a side-delta inside an unrelated L2 anomaly. Detection is #543.
-                        max_tokens=1500,
+                        max_tokens=max_tokens_for("ep_catalyst_grade"),
                         tools=[_CATALYST_TOOL],
                         tool_choice={"type": "tool", "name": "classify_catalyst"},
                         messages=[{"role": "user", "content": prompt}],

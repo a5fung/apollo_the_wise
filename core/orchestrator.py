@@ -27,6 +27,7 @@ from core.memory import (
 )
 from core.router import auth_headers, call_agent, get_orchestrator_tools
 from shared.audit import log_action
+from shared.output_ceilings import max_tokens_for
 from shared.models import (
     AgentName,
     AgentRequest,
@@ -191,7 +192,7 @@ class Apollo:
                 response = await asyncio.wait_for(
                     self._client.messages.create(
                         model=ORCHESTRATOR_MODEL,
-                        max_tokens=4096,
+                        max_tokens=max_tokens_for("orchestrator"),
                         system=[{
                             "type": "text",
                             "text": system_prompt,

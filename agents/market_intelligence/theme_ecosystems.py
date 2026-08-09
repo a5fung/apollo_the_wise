@@ -35,6 +35,8 @@ from typing import Any
 
 import yaml
 
+from shared.output_ceilings import max_tokens_for
+
 from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.audit_events import THEME_ECOSYSTEM_ASSIGNED
 # Safe at module scope: briefing's own theme_ecosystems imports stay
@@ -329,7 +331,7 @@ then the single chosen `e_code`."""
     client = _get_anthropic_client()
     resp = await client.messages.create(
         model=ECOSYSTEM_ASSIGN_MODEL,
-        max_tokens=1000,
+        max_tokens=max_tokens_for("theme_ecosystem_assignment"),
         tools=[_ECOSYSTEM_ASSIGN_TOOL],
         tool_choice={"type": "tool", "name": "assign_theme_ecosystem"},
         messages=[{"role": "user", "content": prompt}],

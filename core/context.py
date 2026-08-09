@@ -10,6 +10,7 @@ from typing import Any
 import anthropic
 
 from shared.llm_models import COMPRESSION_MODEL
+from shared.output_ceilings import max_tokens_for
 from shared.models import ConversationMessage, MessageRole
 from shared.secrets import get_secrets
 from shared.llm_response import first_text
@@ -89,7 +90,9 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
 
     response = await client.messages.create(
         model=COMPRESSION_MODEL,
-        max_tokens=1024,
+        # RAISED 2026-08-09 via the registry (was 1024): 5/78 calls were censored at
+        # exactly 1024 — silently lossy compression (measured in api_usage).
+        max_tokens=max_tokens_for("context_compression"),
         messages=[
             {
                 "role": "user",

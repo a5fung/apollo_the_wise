@@ -48,7 +48,9 @@ the cost-log path from its verdict path).
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.db import get_pool
 from shared.llm_models import (
@@ -64,6 +66,47 @@ from shared.llm_response import (
 )
 
 logger = logging.getLogger(__name__)
+
+_ET = ZoneInfo("America/New_York")
+
+# Telegram dedup for the LIVE truncation alarm: one message per (caller, ET day).
+# Process-local by design — worst case after a restart is one repeat message.
+# The audit row is written on EVERY truncated call (never deduped).
+_TRUNCATION_TELEGRAMMED: dict[str, str] = {}
+
+
+async def _maybe_alert_truncation(*, caller: str, model: str, output_tokens: int) -> None:
+    """LIVE truncation alarm (2026-08-09, follow-up to #543).
+
+    The nightly cost_board check detects a bound ceiling NEXT-nightly; this fires
+    the moment a truncated response flows through the spend tracker — the one
+    chokepoint every instrumented call already passes (#543 contract), so every
+    call site gets a live alarm with zero per-site changes. Audit row per event;
+    Telegram deduped per (caller, ET day). NEVER raises into the logging path.
+    """
+    try:
+        from shared.output_ceilings import TRUNCATION_BY_DESIGN
+        if caller in TRUNCATION_BY_DESIGN:
+            return
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            "llm_truncation_live",
+            f"{caller} response TRUNCATED at {output_tokens} output tokens (model {model})",
+            "raise the ceiling in shared/output_ceilings.py — a cut-off response reads "
+            "downstream as an empty result, not an error",
+        )
+        today = datetime.now(_ET).date().isoformat()
+        if _TRUNCATION_TELEGRAMMED.get(caller) == today:
+            return
+        _TRUNCATION_TELEGRAMMED[caller] = today
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(
+            "🔴 *TRUNCATED (live)* — a response was just cut off by its output ceiling:\n"
+            f"```\n{caller}  at {output_tokens} tokens  ({model})\n```\n"
+            "Downstream it reads as an empty result, not an error. Raise the ceiling in "
+            "`shared/output_ceilings.py`. The nightly check repeats until fixed.")
+    except Exception as e:  # loud-ok: the alarm must never break the spend-logging path
+        logger.warning(f"live truncation alarm failed for {caller}: {e}")
 
 
 def _cost_for_call(
@@ -188,6 +231,9 @@ async def log_anthropic_call(
             usage["cache_creation_input_tokens"], usage["cache_read_input_tokens"],
             cost, stop,
         )
+    if stop == "max_tokens":
+        await _maybe_alert_truncation(
+            caller=caller, model=model, output_tokens=usage["output_tokens"])
     return cost
 
 
@@ -241,6 +287,13 @@ async def log_perplexity_call(
     input_tokens = usage["prompt_tokens"]
     output_tokens = usage["completion_tokens"]
     reason = _pplx_finish_reason(response)
+    # Perplexity names it finish_reason and says 'length' for truncation. Normalised
+    # to Anthropic's vocabulary so ONE health check covers both providers. Never NULL:
+    # NULL is reserved to mean "a call site forgot to report" (#543).
+    stop = (
+        "max_tokens" if str(reason) == "length"
+        else (str(reason) if reason is not None else "n/a")
+    )
 
     prices = _pricing_for(model)
     request_fee = _PPLX_FEE.get(model, _DEFAULT_PPLX_FEE)
@@ -260,11 +313,9 @@ async def log_perplexity_call(
                  cache_creation, cache_read, cost_usd, stop_reason)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             """,
-            model, caller, input_tokens, output_tokens, 0, 0, cost,
-            # Perplexity names it finish_reason and says 'length' for truncation. Normalised
-            # to Anthropic's vocabulary so ONE health check covers both providers. Never NULL:
-            # NULL is reserved to mean "a call site forgot to report" (#543).
-            "max_tokens" if str(reason) == "length"
-            else (str(reason) if reason is not None else "n/a"),
+            model, caller, input_tokens, output_tokens, 0, 0, cost, stop,
         )
+    if stop == "max_tokens":
+        await _maybe_alert_truncation(
+            caller=caller, model=model, output_tokens=output_tokens)
     return cost

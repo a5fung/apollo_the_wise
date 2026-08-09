@@ -39,7 +39,8 @@ logger = logging.getLogger(__name__)
 # still lands at exactly 1500, the cap was not the constraint and the fix becomes bounding the
 # 350-word ask instead of raising again.
 from shared.llm_models import POSTMORTEM_MODEL as _MODEL
-_MAX_TOKENS = 1500
+from shared.output_ceilings import max_tokens_for
+_MAX_TOKENS = max_tokens_for("postmortem")
 
 _SYSTEM_PROMPT = """You review a single closed momentum/EP trade for Apollo the Wise, a trader who follows Qullamaggie/Pradeep Bonde methodology.
 

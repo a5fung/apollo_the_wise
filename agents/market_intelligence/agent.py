@@ -78,6 +78,7 @@ from shared.models import AgentName, AgentRequest, AgentResponse
 logger = logging.getLogger(__name__)
 
 from shared.llm_models import MARKET_AGENT_MODEL
+from shared.output_ceilings import max_tokens_for
 from shared.llm_response import first_text
 
 # Common short words that match the ticker regex but are never tickers.
@@ -6938,7 +6939,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         response = await self._claude.messages.create(
             model=MARKET_AGENT_MODEL,
-            max_tokens=1024,
+            max_tokens=max_tokens_for("market_agent_general"),
             system=(
                 "You are a market intelligence assistant specializing in momentum/EP trading. "
                 "Answer concisely using ONLY the data provided below. Format for Telegram (no markdown tables). "

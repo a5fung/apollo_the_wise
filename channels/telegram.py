@@ -23,6 +23,7 @@ from telegram.ext import (
 
 from core.confirmations import parse_confirmation_reply, resolve_confirmation
 from shared.llm_models import HEALTHCHECK_MODEL
+from shared.output_ceilings import max_tokens_for
 from shared.models import MemoryEntry
 from shared.secrets import get_secrets
 from shared.dates import et_hhmm
@@ -1255,7 +1256,8 @@ class TelegramChannel:
             client = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
             resp = client.messages.create(
                 model=HEALTHCHECK_MODEL,
-                max_tokens=5,
+                # registry: truncation BY DESIGN on this liveness ping
+                max_tokens=max_tokens_for("healthcheck"),
                 messages=[{"role": "user", "content": "ping"}],
             )
             try:  # #377 cost meter — additive, never alters the health verdict.

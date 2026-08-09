@@ -274,16 +274,24 @@ def test_the_check_actually_runs():
 def test_the_three_pegged_ceilings_were_raised():
     """Measured 2026-08-07 over 7 days: theme_synthesis 60% of calls at exactly 4000,
     theme_discovery 28.6% at 4000, ep_grade_judge 14.3% at exactly 500. Raising is the
-    unblock; the check above is what stops the next one hiding for three months."""
-    syn = (MI / "theme_synthesis.py").read_text(encoding="utf-8")
-    eng = (MI / "theme_engine.py").read_text(encoding="utf-8")
-    judge = (MI / "ep_grade_judge.py").read_text(encoding="utf-8")
-    assert "max_tokens=8000" in syn, "theme_synthesis ceiling is back below 8000"
-    assert "_DISCOVERY_MAX_TOKENS = 8000" in eng, "theme_discovery ceiling is back below 8000"
-    m = re.search(r"max_tokens=(\d+)", judge)
-    assert m and int(m.group(1)) >= 1500, (
+    unblock; the check above is what stops the next one hiding for three months.
+
+    2026-08-09: the numbers moved into shared/output_ceilings.py (one registry with
+    provenance) — assert the registered value holds AND the site binds from it."""
+    from shared.output_ceilings import max_tokens_for
+
+    assert max_tokens_for("theme_synthesis") >= 8000, "theme_synthesis ceiling is back below 8000"
+    assert max_tokens_for("theme_discovery") >= 8000, "theme_discovery ceiling is back below 8000"
+    assert max_tokens_for("ep_grade_judge") >= 1500, (
         "ep_grade_judge is back on the 500-token transport default — one entry grade in "
         "seven was decided by truncation at that ceiling (ADR 0011, load-bearing on entry)")
+    for fname, caller in (("theme_synthesis.py", "theme_synthesis"),
+                          ("theme_engine.py", "theme_discovery"),
+                          ("ep_grade_judge.py", "ep_grade_judge")):
+        src = (MI / fname).read_text(encoding="utf-8")
+        assert f'max_tokens_for("{caller}")' in src, (
+            f"{fname} no longer binds its ceiling from shared/output_ceilings.py — a "
+            "re-hardcoded literal is the rot the registry exists to end")
 
 
 # ── a truncated verdict must not become a grade ───────────────────────────────────────────
@@ -354,7 +362,12 @@ def test_a_caller_that_truncates_BY_DESIGN_does_not_alert():
     call, forever, and would have fired this alert nightly from day one. A guard that always
     fires is not a guard."""
     assert "_TRUNC_BY_DESIGN" in BOARD, "the by-design truncation exemption is gone"
-    assert '"healthcheck"' in BOARD.split("_TRUNC_BY_DESIGN = {")[1][:300], (
+    # 2026-08-09: single source — the same registry the call sites bind their
+    # ceilings from, so the exemption and the ceilings can never drift apart.
+    assert "_TRUNC_BY_DESIGN = TRUNCATION_BY_DESIGN" in BOARD, (
+        "cost_board no longer takes the by-design set from shared/output_ceilings.py")
+    from shared.output_ceilings import TRUNCATION_BY_DESIGN
+    assert "healthcheck" in TRUNCATION_BY_DESIGN, (
         "healthcheck is no longer exempt — it pings with max_tokens=5 and will alert every "
         "night forever")
     assert 'r["caller"] not in _TRUNC_BY_DESIGN' in BOARD, (
@@ -363,7 +376,8 @@ def test_a_caller_that_truncates_BY_DESIGN_does_not_alert():
 
 def test_the_exemption_list_stays_short():
     """It is the one place a real outage could hide. Every entry needs a stated reason."""
-    seg = BOARD.split("_TRUNC_BY_DESIGN = {")[1].split("}")[0]
+    src = pathlib.Path("shared/output_ceilings.py").read_text(encoding="utf-8")
+    seg = src.split("TRUNCATION_BY_DESIGN = frozenset({")[1].split("})")[0]
     entries = [ln for ln in seg.strip().split("\n") if ln.strip().startswith('"')]
     assert len(entries) <= 3, (
         f"{len(entries)} callers are exempt from the truncation alert — this list is becoming "
@@ -429,10 +443,15 @@ class _FakeUsageConn:
         agg: dict[str, dict] = {}
         for r in kept:
             a = agg.setdefault(r["caller"], {"caller": r["caller"], "calls": 0,
-                                             "truncated": 0, "unreported": 0, "cap_hit": None})
+                                             "truncated": 0, "unreported": 0, "cap_hit": None,
+                                             "max_completed": None})
             a["calls"] += 1
             a["truncated"] += r["stop_reason"] == "max_tokens"
             a["unreported"] += r["stop_reason"] is None
+            # mirrors the near-ceiling FILTER: completed = known stop_reason, not truncated
+            if r["stop_reason"] not in (None, "max_tokens"):
+                out_tok = r.get("output_tokens", 0)
+                a["max_completed"] = max(a["max_completed"] or 0, out_tok)
         return list(agg.values())
 
 

@@ -79,6 +79,7 @@ from agents.market_intelligence.theme_merge_arm import (
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
 from shared.llm_response import content_block_types, first_text
+from shared.output_ceilings import max_tokens_for
 
 # Global ticker ban — fires when a ticker has been validation-removed from
 # ≥ N distinct themes in the last D days. Closes the per-(theme, ticker)
@@ -797,7 +798,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         )
         client = _get_anthropic_client()
         msg = await client.messages.create(
-            model=THEME_MODEL, max_tokens=1500,
+            model=THEME_MODEL, max_tokens=max_tokens_for("narrative_theme_discovery"),
             messages=[{"role": "user", "content": prompt}],
         )
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
@@ -907,7 +908,7 @@ async def _discover_lane2_registry(
     out["prompt_chars"] = len(prompt)
     client = _get_anthropic_client()
     msg = await client.messages.create(
-        model=THEME_MODEL, max_tokens=1500,
+        model=THEME_MODEL, max_tokens=max_tokens_for("narrative_theme_discovery"),
         messages=[{"role": "user", "content": prompt}],
     )
     # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
@@ -1286,7 +1287,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         try:
             resp = await client.messages.create(
                 model=DESCRIPTION_MODEL,
-                max_tokens=500,
+                max_tokens=max_tokens_for("theme_descriptions"),
                 messages=[{"role": "user", "content": PROMPT_PREFIX + "\n".join(chunk_lines)}],
             )
             # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
@@ -2582,7 +2583,7 @@ async def _validate_theme_membership(
                 try:
                     resp = await client.messages.create(
                         model=THEME_MODEL,
-                        max_tokens=400,
+                        max_tokens=max_tokens_for("theme_validation"),
                         system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
                         messages=[{"role": "user", "content": prompt}],
                     )
@@ -3386,7 +3387,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 # ⚠ SILENT BY CONSTRUCTION: "proposed 0 assignments" is a
                 # TELEMETRY line, not an error, so a total outage read as a
                 # quiet night. Detection is #543's DoD.
-                max_tokens=8000,
+                max_tokens=max_tokens_for("theme_assignment"),
                 tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
                 tool_choice={"type": "any"},
                 messages=messages,
@@ -3774,7 +3775,9 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
     try:
         resp = await client.messages.create(
             model=THEME_ADVISOR_MODEL,
-            max_tokens=600,
+            # RAISED 2026-08-09 via the registry: 149/151 opus-4-8 advisor calls were
+            # silently censored at exactly the old 600 cap (measured in api_usage).
+            max_tokens=max_tokens_for("theme_advisor_discovery"),  # one ceiling serves all 3 phase callers
             system=(
                 "You are a senior market intelligence analyst (Qullamaggie/O'Neil methodology). "
                 "Give direct, decisive answers. State your conclusion first, reasoning second. No hedging."
@@ -3908,7 +3911,7 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
         while True:
             response = await client.messages.create(
                 model=THEME_MODEL,
-                max_tokens=800,
+                max_tokens=max_tokens_for("theme_split"),
                 tools=[_SPLIT_TOOL, _ADVISOR_TOOL],
                 tool_choice={"type": "auto"},
                 messages=messages,
@@ -4462,7 +4465,7 @@ In every other case, skip the advisor and call `report_themes` immediately, with
         # so the #173 advisor path survives), which means free reasoning text can still consume
         # the budget before the tool call lands. Headroom is the only lever that does not
         # trade against the advisor path.
-        _DISCOVERY_MAX_TOKENS = 8000
+        _DISCOVERY_MAX_TOKENS = max_tokens_for("theme_discovery")
 
         while True:
             loop_guard += 1

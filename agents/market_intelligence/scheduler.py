@@ -53,6 +53,7 @@ from agents.market_intelligence.backtester.tracker import (
 from core.notifications import notify_job_failure, notify_job_success, notify_owner
 from core.job_audit import audit_wrap
 from shared.llm_models import DESCRIPTION_MODEL
+from shared.output_ceilings import max_tokens_for
 from shared.llm_response import first_text
 
 logger = logging.getLogger(__name__)
@@ -481,7 +482,7 @@ async def _nightly_data_pull():
 
                 resp = await client.messages.create(
                     model=DESCRIPTION_MODEL,
-                    max_tokens=2000,
+                    max_tokens=max_tokens_for("description_backfill"),
                     messages=[{"role": "user", "content": prompt}],
                 )
                 # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe

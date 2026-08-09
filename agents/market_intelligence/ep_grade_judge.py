@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 from agents.market_intelligence.judge_transport import invoke_forced_tool
 from shared.llm_models import effective_model
+from shared.output_ceilings import max_tokens_for
 
 # The live judge model — #509 auto-resolution: RESOLVED_ROLES tracks the newest
 # opus release via the nightly-refreshed cache, fail-safe to shared.llm_models.
@@ -409,5 +410,6 @@ async def grade_holistic(
         # than by the judge. This is a BUG FIX, not a criteria change: the rubric, the tool
         # schema and the normalizer are untouched; the model simply gets room to finish the
         # answer it was already giving. It WILL change live grades — that is the point.
-        max_tokens=1500,
+        # The number now lives in shared/output_ceilings.py with its evidence.
+        max_tokens=max_tokens_for("ep_grade_judge"),
         log_caller=log_caller)  # #377 cost meter
