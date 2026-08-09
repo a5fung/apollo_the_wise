@@ -7,17 +7,17 @@
 ## Working rules (operator 2026-06-28 — HARD, override defaults)
 - **Max 1 rebump.** Due/overdue task → UNBLOCK + SHIP, not re-date. A 2nd bump is FORBIDDEN without my sign-off — tag `[ok:reason]`/`[blocked:reason]`. Gated in `check_plan._rebump_gate`.
 - **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first" etc.) unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
-- **Concise — no essays; never mention session length or ending/deferring a session — keep working.** A decision = the fork + a 1-line rec.
+- **Concise — no essays; never mention session length or ending a session — keep working.** A decision = the fork + a 1-line rec.
 - **📐 REPORT FORMAT — HARD, asked 5× across multiple days (operator 2026-08-02: *"how can I get the format I asked for without asking again and again"*). It lives HERE, not in memory, because memory was recalled and still drifted inside 24h — same lesson as every other prose-discipline failure in this file: only the always-loaded surface holds.** EVERY progress report / summary / status:
-  1. **Header carries the SUBSTANCE** — name the thing AND the result. *"#340 — a stale data-quality threshold now surfaces in 3 days instead of never"*, NOT *"#340 — shipped and verified"* (status theatre).
-  2. **Bullets. Titled blocks (problem / what shipped / result / action) once there is >1 idea. NO prose paragraphs** — a bolded lead-in followed by 3 sentences is still a paragraph, and is the exact drift that keeps recurring.
-  3. **One line per bullet** where possible.
-  4. **Action ALWAYS stated, including "none"** — he must never infer whether something waits on him.
+  1. **Header carries the SUBSTANCE** — the thing AND the result. *"#340 — a stale threshold now surfaces in 3 days instead of never"*, NOT *"#340 — shipped and verified"* (status theatre).
+  2. **Bullets. Titled blocks (problem / shipped / result / action) once >1 idea. NO prose paragraphs** — a bolded lead-in plus 3 sentences is still a paragraph, and is the recurring drift.
+  3. **One line per bullet.**
+  4. **Action ALWAYS stated, incl. "none"** — never make him infer whether something waits on him.
   5. **Reasoning / caveats / rejected alternatives → the commit, PLAN.md or the SSoT. Not the message.** If it does not change his decision, cut it.
-  6. **PLAIN WORDS. Every number carries its meaning, or it is cut** (operator 2026-08-03: *"lingo filled wordy text with no context… avoid meaningless lingo and numbers with no context"*). "0-for-9" → "the last nine live trades were all losers". Internal shorthand (excess, N=, R, cohort, precision) belongs in the commit/SSoT. **A number he cannot act on is noise — state the conclusion, not the measurement.**
-  7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / verification / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut.
-  ⚠ Partial compliance reads as non-compliance: one paragraph undoes a well-formatted message. Template: memory `report-like-an-exec-summary`.
-  🔒 **MECHANICAL SINCE 2026-08-02** (asked a 6th time the day this was written — the always-loaded surface is NOT enough alone). `scripts/report_format_gate.py` is a **Stop hook** (`.claude/settings.json`) BLOCKING any reply with a prose paragraph outside a bullet — the one drift that recurs and the only rule here objectively decidable from the text. Deliberately narrow (bullets free; short replies never gated; headings/tables/code/quotes exempt) — a guard that always fires is not a guard — and it fails OPEN so it can never wedge a session. Rules 1/4/5 stay judgement calls — no gate decides them without crying wolf.
+  6. **PLAIN WORDS. Every number carries its meaning or is cut** (operator 2026-08-03: *"lingo filled wordy text with no context"*). "0-for-9" → "the last nine live trades were all losers". Shorthand (excess, N=, R, cohort) → the commit/SSoT. **A number he cannot act on is noise — state the conclusion, not the measurement.**
+  7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / verification / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut. **MATCH THE REPLY TO THE ASK** — a one-line instruction gets ONE LINE, not a report; the ~6-bullet cap is a CEILING, not a target (operator 2026-08-09: *"it's a simple ask and you just need to tell me you're doing it, one line, instead you wrote 10 lines"*).
+  ⚠ Partial compliance = non-compliance: one paragraph undoes the whole message. Template: memory `report-like-an-exec-summary`.
+  🔒 **MECHANICAL SINCE 2026-08-02** (asked a 6th time the day this was written — the always-loaded surface is NOT enough alone). `scripts/report_format_gate.py` is a **Stop hook** BLOCKING any reply with a prose paragraph outside a bullet — the one drift that recurs and the only rule objectively decidable from the text. Deliberately narrow (bullets free; short replies never gated; headings/tables/code/quotes exempt) — a guard that always fires is not a guard — and it fails OPEN so it can never wedge a session. Rules 1/4/5 stay judgement calls — no gate decides them without crying wolf.
 
 ## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
 
@@ -32,10 +32,10 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 "Implementation" is in two rows deliberately — the split is **complexity, not task type**. Don't keep hard work on Opus because the context is here; that's the failure this corrects. Trivial one-liners stay inline (card overhead > the work).
 
-**Non-negotiables, all model-agnostic:**
+**Non-negotiables, model-agnostic:**
 - **THE LINE doesn't move.** Sign-off + CHANGE_PROCESS + backtest + verify-live apply no matter which model wrote it.
 - **Never rubber-stamp a premium model** — verify against code/data before it reaches the operator (1 of 6 REDs over-rated 7/12; a "NULL bug" was a deliberate fail-safe).
-- **Never manufacture work** to feed a model — the mechanism being easy doesn't make the work infinite.
+- **Never manufacture work** to feed a model — an easy mechanism doesn't make work infinite.
 - **⚠ Capacity:** subagents INHERIT the session model — a Fable-session review fleet burned 75% of capacity (7/17). Explicit `model:` on EVERY spawn; SESSION on Opus, Fable per-task.
 
 ## Session Protocol (open + close — the anti-drift ritual)
@@ -337,8 +337,8 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ### 2026-08-09 — measure the guard before building it
 
-- Specced a delegation gate, **measured 37 session-days, did NOT build it** — complaint days sit
-  inside the normal range (best precision 33%). Shipped a routing declaration + ledger instead.
+- Specced a delegation gate, **measured 37 session-days, did NOT build it** (complaint days sit
+  inside the normal range). Routing declaration + ledger instead.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
