@@ -15,8 +15,8 @@
   4. **Action ALWAYS stated, including "none"** — he must never infer whether something waits on him.
   5. **Reasoning / caveats / rejected alternatives → the commit, PLAN.md or the SSoT. Not the message.** If it does not change his decision, cut it.
   6. **PLAIN WORDS. Every number carries its meaning, or it is cut** (operator 2026-08-03: *"lingo filled wordy text with no context… avoid meaningless lingo and numbers with no context"*). "0-for-9" → "the last nine live trades were all losers". Internal shorthand (excess, N=, R, cohort, precision) belongs in the commit/SSoT. **A number he cannot act on is noise — state the conclusion, not the measurement.**
-  7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / how you verified / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut. Unsure → cut, let him ask.
-  ⚠ Partial compliance reads as non-compliance: one explanatory paragraph undoes a well-formatted message. Template + why: memory `report-like-an-exec-summary`.
+  7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / verification / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut.
+  ⚠ Partial compliance reads as non-compliance: one paragraph undoes a well-formatted message. Template: memory `report-like-an-exec-summary`.
   🔒 **MECHANICAL SINCE 2026-08-02 — asked a 6th time the same day this text was written, which proved the always-loaded surface is NOT enough on its own.** `scripts/report_format_gate.py` runs as a **Stop hook** (`.claude/settings.json`) and BLOCKS the reply when it finds a prose paragraph outside a bullet — the one drift that keeps recurring, and the only rule here that is objectively decidable from the text. It is deliberately narrow (bullets are free; short replies are never gated; headings/tables/code/quotes exempt) because a guard that always fires is not a guard, and it fails OPEN on every error so a formatting check can never wedge a session. Rules 1/4/5 (header substance · action stated · reasoning to the commit) stay judgement calls — no gate can decide them without crying wolf.
 
 ## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
@@ -66,13 +66,13 @@ Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
 ## COST EFFICIENCY — HARD RULE (operator 2026-08-03)
 
-*"cost efficiency is a must for all work going forward"* — after a $1.30 eval was run 3x (~$4) by piping it to `sed` to PREVIEW instead of saving it.
+*"cost efficiency is a must for all work going forward"* — after a $1.30 eval ran 3x (~$4), piped to `sed` instead of saved.
 
-- **CAPTURE ONCE, READ MANY.** Anything that spends money or mutates state: full output to a file on the FIRST run, then read the file. **Never re-run to re-read.**
-- **STATE THE COST BEFORE SPENDING** — measured from `api_usage`, not guessed.
-- **TRY THE $0 PATH FIRST** — outcome-join, replay, or read what already ran. [[rigor-before-paid-eval-spend]]
-- **ONE PAID RUN PER QUESTION** — capture everything, post-process locally.
-- **Subagent fleets are real spend** — scope each card off what you already hold.
+- **CAPTURE ONCE, READ MANY.** Anything spending money or mutating state: full output to a file on run ONE, then read the file. **Never re-run to re-read.**
+- **PRICE THE WHOLE PATH UP FRONT** (operator 2026-08-09: *"a holistic view instead of piecemeal adding more cost each step of the way"*). Before the FIRST dollar: all remaining gates + the ongoing run cost, from `pricing_for()`, as ONE number. Drip-feeding the next increment is the failure.
+- **TRY THE $0 PATH FIRST** — outcome-join, replay, or read what ran. [[rigor-before-paid-eval-spend]]
+- **ONE PAID RUN PER QUESTION** — capture all, post-process locally.
+- **Subagent fleets are real spend** — scope each card off what you hold.
 
 ## Default to DOING, not tracking (bias to action)
 
@@ -337,9 +337,8 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ### 2026-08-08 — trusting a naive "latest"
 
-- **`MAX()`/last-N on a non-uniformly-populated table** reads a stray slice as a full run.
-  Built that fix twice in one evening without recognising it. **Name the class.**
-- **A dead knob is worse than none** — could never fire, documented as load-bearing.
+- **`MAX()`/last-N on a non-uniform table** reads a stray slice as a full run — built that fix
+  twice in one evening. Also: **a dead knob is worse than none.**
 
 Older entries → `CHANGELOG.md` (search any concept).
 
