@@ -8,6 +8,18 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+
+### 2026-08-03 — the week's lesson: correct code, wrong surface (graduated from CLAUDE.md 2026-08-08)
+
+- **Four defects that week shared one shape** — the code was right and the thing carrying it was
+  not: an insert naming a renamed constraint (2 days silent), a board keying off a field its payload
+  never supplied (inert from day one), a gate living only on one machine (`.claude/` gitignored),
+  and a sweep whose varied setting never reached the code (91 days).
+- **So verify the SURFACE** — the rendered message, the deployed image, the actual row. A passing
+  test on fabricated input proves nothing about production.
+- **A guard that always fires is not a guard.** Three broad checks were built and thrown away that
+  week after measuring their false-positive rate.
+
 ### 2026-07-24/25 — v1.0 DECLARED · ATAI deal-pin (#502) · breaker live-path (#454 p3) · operating model
 - v1.0 shipped 7/24 (§8 signed, all 8 FL gates green) — the blocking/launch lens retires, the board becomes the #419 Phase-2 program. **#502**: a cash-deal pin is mechanically indistinguishable from a coil — the tightness that scores it COILED *is* the pin; both M&A layers structurally could not reach a FRESH pin, so a two-axis conjunction (5d band ≤2.5% AND ≥5× vol spike) shipped — 11 suppressed / 393 preserved over 405 rows, HUM (+25.7%) free. Rejected + documented: reusing the EP classifier verdict (its store is 1-true/1-junk — ACLS graded `mna` while its own summary said "no catalysts found", then ran +16%). **#454 p3**: drawdown-breaker live-path exercise, 37/37, ZERO writes; set-tier-then-restore was rejected because REDUCE returns ok=True@0.5×, so a crash would silently half-size live entries. **Lessons**: a filter list is the operator's call (CHANGE_PROCESS r3) — state findings, not rulings; and 3 harness "failures" were wrong expectations, the code was right.
 

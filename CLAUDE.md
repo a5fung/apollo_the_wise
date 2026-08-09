@@ -15,6 +15,7 @@
   4. **Action ALWAYS stated, including "none"** — he must never infer whether something waits on him.
   5. **Reasoning / caveats / rejected alternatives → the commit, PLAN.md or the SSoT. Not the message.** If it does not change his decision, cut it.
   6. **PLAIN WORDS. Every number carries its meaning, or it is cut** (operator 2026-08-03: *"lingo filled wordy text with no context… avoid meaningless lingo and numbers with no context"*). "0-for-9" → "the last nine live trades were all losers". Internal shorthand (excess, N=, R, cohort, precision) belongs in the commit/SSoT. **A number he cannot act on is noise — state the conclusion, not the measurement.**
+  7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / how you verified / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut. Unsure → cut, let him ask.
   ⚠ Partial compliance reads as non-compliance: one explanatory paragraph undoes a well-formatted message. Template + why: memory `report-like-an-exec-summary`.
   🔒 **MECHANICAL SINCE 2026-08-02 — asked a 6th time the same day this text was written, which proved the always-loaded surface is NOT enough on its own.** `scripts/report_format_gate.py` runs as a **Stop hook** (`.claude/settings.json`) and BLOCKS the reply when it finds a prose paragraph outside a bullet — the one drift that keeps recurring, and the only rule here that is objectively decidable from the text. It is deliberately narrow (bullets are free; short replies are never gated; headings/tables/code/quotes exempt) because a guard that always fires is not a guard, and it fails OPEN on every error so a formatting check can never wedge a session. Rules 1/4/5 (header substance · action stated · reasoning to the commit) stay judgement calls — no gate can decide them without crying wolf.
 
@@ -334,16 +335,11 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-03 — the week's lesson: correct code, wrong surface
+### 2026-08-08 — trusting a naive "latest"
 
-- **Four defects this week shared one shape** — the code was right and the thing carrying it was
-  not: an insert naming a renamed constraint (2 days silent), a board keying off a field its payload
-  never supplied (inert from day one), a gate living only on one machine (`.claude/` gitignored),
-  and a sweep whose varied setting never reached the code (91 days).
-- **So verify the SURFACE** — the rendered message, the deployed image, the actual row. A passing
-  test on fabricated input proves nothing about production.
-- **A guard that always fires is not a guard.** Three broad checks were built and thrown away this
-  week after measuring their false-positive rate.
+- **`MAX()`/last-N on a non-uniformly-populated table** reads a stray slice as a full run.
+  Built that fix twice in one evening without recognising it. **Name the class.**
+- **A dead knob is worse than none** — could never fire, documented as load-bearing.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
