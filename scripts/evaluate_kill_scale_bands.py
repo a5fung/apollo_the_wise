@@ -21,7 +21,7 @@ async def main():
     print(f"\n{'='*70}\n#275 KILL/SCALE BANDS — account_mode={mode}\n{'='*70}")
     print(f"  drawdown tier (persisted): {inputs['drawdown_tier']} · "
           f"equity_above_start={inputs['equity_above_start']}")
-    print(format_band_line(verdict, override).replace("*", ""))
+    print(format_band_line(verdict, override, inputs.get("open_positions")).replace("*", ""))
     print(f"{'='*70}\n")
 
 

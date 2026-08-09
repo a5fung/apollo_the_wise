@@ -202,9 +202,28 @@ threshold below sits beyond the worst value the +0.95R year produced.
 | **REDUCE** | trailing-20 expectancy ≤ −0.70R (below healthy p5 −0.63) OR losing streak ≥ 16 (exceeds worst observed 15) | Halve risk/trade until trailing-20 expectancy ≥ 0 |
 | **KILL → paper** | trailing-20 expectancy ≤ −1.05R (worse than the worst healthy window −1.03) OR cumulative live R ≤ −30R (beyond the −24R healthy maxDD) OR drawdown breaker BLOCK tier (−12% equity) | Stop live entries; revert to paper; full postmortem + operator re-arm decision required |
 
-**Floors**: no expectancy-based REDUCE/KILL before **20 live closed trades**
-(sample-size floor) — until then only the equity-based guards (daily-loss,
-drawdown breaker) bind, and they bind from day 1.
+**Floor**: no expectancy-based REDUCE/KILL before **20 live closed trades**
+(sample-size floor) — until it clears, only the equity-based guards
+(daily-loss, drawdown breaker) bind, and they bind from day 1. A distinct-
+entry-day independence floor was proposed and measured alongside this floor
+2026-08-09, then REMOVED before shipping — see change-log entry below for
+why (it was never calibrated, and the correlation problem it targeted does
+not hold on this system's own data).
+
+**Open-book reporting (2026-08-09, informational — see change-log below)**: every
+band message also states current open-position count and days held, alongside
+the closed-trade stats — so a REDUCE/KILL landing while a runner is still open
+reads as a visibly partial picture. This is REPORT ONLY: open positions never
+enter the score, trigger, or threshold above (ruled out on evidence: 4 of 6
+live Bull trades touched ≥+1R and every one closed red; FIGS peaked past +2R
+and closed −$7 — a band that reads unrealized gains would relax exactly when
+the give-back problem is worst). Precisely: the closed-cohort triggers
+(trailing-20/-40 expectancy, losing streak, cumulative R) cannot see the open
+book at all. The pre-existing SCALE UP equity condition ("equity above
+starting equity", `mi_account_equity_snapshots`) is unchanged by this — it was
+already, by design, marked to market and therefore already reflects open
+positions; that is a signed 2026-06-12 input, not something this change added
+or touched.
 
 **Coherence note**: at 0.5% risk/trade, the healthy-year −24R maxDD ≈ −12%
 equity — the R-based kill band and the existing BLOCK tier converge at that
@@ -586,6 +605,58 @@ human-in-loop). The existing HARD gate stands and is now MORE load-bearing —
 truth table + live-requires-flag pin; full suite 1024 green). Advisor review pending
 (overloaded) — operator-signed pre-deploy. Verify-live = first MAGNA53 auto-entry Monday
 (AUTO-ENTERED Telegram + `per_strategy_sizing_applied` quarter-size + bracket has a stop leg).
+
+### 2026-08-09 — Closed-trade cohort bias: entry-day floor PROPOSED then REMOVED; open-book reporting shipped
+
+**Trigger**: operator observation — "winning trades take longer, e.g. I'd expect us to hold
+PLTR for weeks if it really works out." Measured: paper winners hold 11.9d on average vs
+0.5d for losers (live losers 0.1d), so the CLOSED cohort every strategy-health trigger reads
+is loser-heavy by construction while winners are still open and uncounted — worst exactly
+when a runner is developing. Full writeup:
+`docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md`.
+
+**What shipped — open-book reporting only**: every band message states the open-position
+count and days held alongside the closed-trade stats — REPORT ONLY, verified by test that it
+cannot move the verdict (a cohort with open "winners" by hold-time produces an identical
+band/reasons/numbers to the same cohort with an empty open book). No SIGNED threshold
+(`_KILL_T20`, `_KILL_CUM_R`, `_REDUCE_T20`, `_REDUCE_STREAK`, `_SCALE_T40`,
+`_SCALE_MIN_TRADES`) changed. Verified against prod: today's verdict is HOLD before and after
+(n=17 < 20 sample floor either way).
+
+**What was proposed and then REMOVED — the distinct-entry-day independence floor**:
+initially shipped alongside the open-book change (`_DAY_FLOOR = 12`, requiring 12 distinct
+entry days before strategy-health bands could fire, even once the 20-trade sample floor was
+met). Operator called it arbitrary. Re-measured before commit and the number did not hold up:
+
+- **It was never calibrated.** 12 was set equal to the LIVE cohort's own distinct-day count
+  on the day it was written (17 trades / 12 distinct entry days, 2026-08-09) — a floor set to
+  today's value can never bind against today's cohort, only against a smaller future one that
+  the trade floor would already be catching.
+- **The independence problem it targeted does not reproduce.** Across the fuller paper
+  closed-trade history (33 trades), only 7 distinct entry days have more than one trade, and
+  4 of those 7 mix a winner and a loser on the same day — there is no consistent within-day
+  correlation to correct for. (Live cannot test this at all: it has zero closed winners in
+  its entire 17-trade cohort, so no live day can be mixed by construction — that is not
+  evidence either way, just an untestable cohort.)
+- **The arithmetic makes any such floor moot on its own.** Normal cadence here runs ~1.3–1.4
+  trades per entry day (live 17 trades / 12 days = 1.42/day; paper 33 trades / 25 days =
+  1.32/day). A 20-trade cohort therefore already spans ~14 days by the time the sample floor
+  clears — any day floor set below ~14 is inert by construction, and 12 is below that line.
+
+So the honest outcome was removal, not a re-calibrated second number. `_DAY_FLOOR`, the
+`entry_dates`/`distinct_entry_days` plumbing, and the "not independent enough to band" branch
+are gone from `kill_scale_bands.py`; the open-book reporting (open-position count + days
+held) stays, unchanged and unaffected by the removal.
+
+**Reversion-flag**: the entry-day floor is a same-day removal of a same-day addition — it was
+never live in production and no prior decision is being reversed. The mark-open-positions-to-
+market alternative (separately considered for the open-book question) was explicitly ruled
+OUT (see analysis doc) — not a partial adoption of it.
+
+**Status**: open-book reporting shipped `agents/market_intelligence/kill_scale_bands.py`,
+operator-approved via the analysis doc. Entry-day floor proposed, measured, and removed
+pre-commit — never deployed. 20 tests (`tests/test_kill_scale_bands.py`), full suite green
+(4880 passed, 7 skipped).
 
 ### 2026-06-19 — Manual real-money trading halt `/pause` added (#345, operator-requested)
 New highest-priority runtime safeguard `manual_trading_halt` (`BLOCK_TRADING_PAUSED`):

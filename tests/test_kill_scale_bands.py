@@ -4,6 +4,8 @@ The load-bearing property: the SIGNED bands must NOT fire on the normal variance
 healthy +0.95R/30% year (#268 Phase B envelope — trailing-20 p5 −0.63R / min −1.03R,
 worst streak 15, maxDD −24.1R). These tests pin each band's boundary against that envelope.
 """
+import datetime as dt
+
 from agents.market_intelligence.kill_scale_bands import (
     evaluate_kill_scale_bands, current_losing_streak, is_transition, format_band_line,
     _SAMPLE_FLOOR, _SCALE_MIN_TRADES,
@@ -142,6 +144,32 @@ def test_format_band_line_shows_band_numbers_and_override():
     assert "regime shift" in annotated
 
 
+# ── open-book reporting (2026-08-09): REPORT ONLY — must never move the verdict itself.
+# docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md ──
+
+def test_format_band_line_open_book_omitted_when_not_supplied():
+    v = evaluate_kill_scale_bands(_rs(-1.0, 19) + [5.0], equity_above_start=False)  # REDUCE
+    line = format_band_line(v)  # open_positions not passed at all
+    assert "open book" not in line
+
+
+def test_format_band_line_open_book_flat_vs_populated():
+    v = evaluate_kill_scale_bands(_rs(-1.0, 19) + [5.0], equity_above_start=False)  # REDUCE
+
+    flat = format_band_line(v, open_positions=[])
+    assert "open book (NOT in the verdict above): flat" in flat
+
+    populated = format_band_line(
+        v, open_positions=[{"ticker": "PLTR", "hold_days": 21},
+                           {"ticker": "NVDA", "hold_days": 15}])
+    assert "open book (NOT in the verdict above): 2 position(s)" in populated
+    assert "PLTR 21d" in populated and "NVDA 15d" in populated
+    # the band + its driving numbers are IDENTICAL whether or not an open book is reported —
+    # open_positions only appends a trailing line, never edits band/reasons/numbers.
+    assert flat.split("\n")[:3] == populated.split("\n")[:3]
+    assert "REDUCE" in populated
+
+
 # ── run_band_evaluation: the live-money alert path (transition → send once + persist) ──
 
 import asyncio  # noqa: E402
@@ -272,3 +300,62 @@ def test_concurrent_transitions_dedup_to_one_alert(monkeypatch):
     assert len(sent) == 1 and "REDUCE" in sent[0]
     assert audited.count("kill_scale_band_transition") == 1
     assert store["live"] == "REDUCE"
+
+
+# ── assemble_band_inputs / assess_bands: open positions must NEVER move the verdict ──
+# (2026-08-09, docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md — "ruled out
+# on this system's own evidence: 4 of 6 live Bull trades touched >=+1R and every one closed
+# red; FIGS peaked past +2R and closed -$7". Real DB round-trip via the SAME mock-pool
+# helper (`tests/conftest.make_mock_pool`) test_safeguard_state_348.py uses, so this exercises
+# the ACTUAL query wiring, not a re-description of it.)
+
+from unittest.mock import AsyncMock  # noqa: E402
+from tests.conftest import make_mock_pool  # noqa: E402
+import agents.market_intelligence.db as dbmod  # noqa: E402
+
+
+def _closed_trade_rows(n_trades, n_days):
+    """`n_trades` closed rows shaped exactly like test_t20_below_reduce_threshold_reduces
+    (t20 = -0.70 -> REDUCE), spread over `n_days` distinct alert_dates. `n_days` no longer
+    gates anything (the entry-day independence floor was proposed, measured, and REMOVED —
+    docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md); kept only so the fixture
+    still reads as realistic dated rows for the mock pool."""
+    base = dt.date(2026, 1, 5)
+    rows = [{"total_pnl": -100.0, "risk_dollars": 100.0,
+            "alert_date": base + dt.timedelta(days=i % n_days)} for i in range(n_trades - 1)]
+    rows.append({"total_pnl": 500.0, "risk_dollars": 100.0,
+                "alert_date": base + dt.timedelta(days=(n_trades - 1) % n_days)})
+    return rows
+
+
+def _assess_with_open_rows(monkeypatch, open_rows):
+    """Wire a fake pool through db.get_pool and run the REAL assemble_band_inputs ->
+    evaluate_kill_scale_bands pipeline (assess_bands) — not a re-implementation of it."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[_closed_trade_rows(20, 20), open_rows])
+    conn.fetchval = AsyncMock(return_value="OK")               # drawdown tier
+    # 1st fetchrow = assemble_band_inputs' equity endpoints; 2nd = get_active_override's
+    # override-row lookup (assess_bands calls both) -> None so the override short-circuits.
+    conn.fetchrow = AsyncMock(
+        side_effect=[{"first_eq": 100000.0, "last_eq": 100000.0}, None])
+    monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
+    return asyncio.run(ksb.assess_bands("live"))
+
+
+def test_open_positions_never_move_the_verdict(monkeypatch):
+    inputs_flat, verdict_flat, _ = _assess_with_open_rows(monkeypatch, [])
+    inputs_open, verdict_open, _ = _assess_with_open_rows(monkeypatch, [
+        {"ticker": "PLTR", "hold_days": 21},   # a long-held "winner" by hold time alone
+        {"ticker": "NVDA", "hold_days": 15},
+    ])
+
+    # Same closed cohort -> same band, same numbers, same reasons, whether or not an open
+    # book with long-held positions exists. Only `open_positions` in the inputs differs.
+    assert verdict_flat.band == verdict_open.band == "REDUCE"
+    assert verdict_flat.trailing_20 == verdict_open.trailing_20
+    assert verdict_flat.streak == verdict_open.streak
+    assert verdict_flat.cum_r == verdict_open.cum_r
+    assert verdict_flat.reasons == verdict_open.reasons
+    assert inputs_flat["open_positions"] == []
+    assert inputs_open["open_positions"] == [
+        {"ticker": "PLTR", "hold_days": 21}, {"ticker": "NVDA", "hold_days": 15}]

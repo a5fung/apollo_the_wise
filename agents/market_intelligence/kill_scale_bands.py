@@ -104,7 +104,18 @@ def evaluate_kill_scale_bands(realized_rs, *, equity_above_start: bool,
     Precedence: the drawdown-breaker BLOCK equity guard (binds from day 1) → KILL → REDUCE →
     SCALE → HOLD. Strategy-health triggers (trailing-20 expectancy, losing streak, cumulative
     R) are gated behind the `_SAMPLE_FLOOR` (20 trades); before that only the equity guards
-    bind, per safeguards.md.
+    bind, per safeguards.md. Open positions are DELIBERATELY not an input here — see
+    docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md ("ruled out on evidence: a
+    band that reads unrealized gains relaxes precisely when the give-back problem is worst");
+    the open book is reported separately by `format_band_line`, never scored.
+
+    A distinct-entry-day independence floor was proposed and measured 2026-08-09 (same doc)
+    and then REMOVED before shipping — it was never calibrated (12 was set equal to the live
+    cohort's day count on the day it was written, so it could never bind) and the correlation
+    problem it targeted does not hold on this system's own data (only 4 of 7 multi-trade days
+    in the paper closed-trade history mix a winner and a loser; normal cadence runs ~1.3-1.4
+    trades/day, so any day floor under ~14 is inert by construction once `_SAMPLE_FLOOR` is
+    met). See the analysis doc's "REMOVED" section for the full evidence.
     """
     rs = [float(r) for r in realized_rs if r is not None]
     n = len(rs)
@@ -170,8 +181,12 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
     realized R = `total_pnl / risk_dollars` over `status='closed'` methodology trades
     (`pnl_attribution IS NULL`), chronological — the SAME definition as the #291 GATE-3
     cohort (`scripts/sip_replay_r_cohort.py`); keep them in lockstep if either changes.
+
+    Also gathers `open_positions` (REPORT ONLY — docs/analysis/
+    kill_scale_band_closed_trade_bias_2026-08-09.md; never folded into `realized_rs`, so it
+    structurally cannot reach the evaluator).
     """
-    from agents.market_intelligence.db import get_pool
+    from agents.market_intelligence.db import get_pool, OPEN_POSITION_STATUSES
     pool = await get_pool()
     async with pool.acquire() as c:
         trades = await c.fetch(
@@ -196,15 +211,29 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
                    (SELECT equity FROM mi_account_equity_snapshots
                     WHERE account_mode = $1 ORDER BY snapshot_date DESC LIMIT 1) AS last_eq
             """, account_mode)
+        # Open book — REPORT ONLY (see docstring). Same OPEN_POSITION_STATUSES single source
+        # of truth as get_open_position_count / _check_safeguards / coverage_drift, so "open"
+        # never drifts between this and the position-cap safeguard. `hold_days` is maintained
+        # by the daily close job (live_tracker), matching this evaluation's own daily cadence.
+        open_rows = await c.fetch(
+            """
+            SELECT ticker, COALESCE(hold_days, 0) AS hold_days
+            FROM mi_live_trades
+            WHERE status = ANY($1) AND account_mode = $2
+            ORDER BY alert_date ASC
+            """, list(OPEN_POSITION_STATUSES), account_mode)
 
     rs = [float(t["total_pnl"]) / float(t["risk_dollars"]) for t in trades]
+    open_positions = [{"ticker": r["ticker"], "hold_days": int(r["hold_days"])}
+                      for r in open_rows]
     # Map the persisted breaker state to a band tier; legacy TRIPPED → REDUCE (safeguards.md).
     tier = {"BLOCK": "BLOCK", "REDUCE": "REDUCE", "WATCH": "WATCH", "TRIPPED": "REDUCE"}.get(
         (dd or "OK").upper(), "OK")
     equity_above_start = (eq["first_eq"] is not None and eq["last_eq"] is not None
                           and float(eq["last_eq"]) > float(eq["first_eq"]))
     return {"realized_rs": rs, "drawdown_tier": tier,
-            "equity_above_start": equity_above_start, "account_mode": account_mode}
+            "equity_above_start": equity_above_start, "account_mode": account_mode,
+            "open_positions": open_positions}
 
 
 async def get_active_override() -> dict | None:
@@ -309,7 +338,7 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
     claim is actually won (`claimed is True`). A concurrent duplicate evaluation may also see
     `locally_transitioned=True`, but loses the atomic claim and returns `transitioned=False`."""
     try:
-        _, verdict, override = await assess_bands(account_mode)
+        inputs, verdict, override = await assess_bands(account_mode)
         prev_band, _ = await get_last_band(account_mode)
         locally_transitioned = is_transition(prev_band, verdict.band)
 
@@ -325,7 +354,8 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
                 json.dumps({"account_mode": account_mode, "prev_band": prev_band,
                             "band": verdict.band, "n_trades": verdict.n_trades,
                             "trailing_20": verdict.trailing_20, "cum_r": verdict.cum_r,
-                            "reasons": verdict.reasons}))
+                            "reasons": verdict.reasons,
+                            "open_position_count": len(inputs.get("open_positions") or [])}))
             # Don't ping for the very first HOLD baseline (∅→HOLD pre-launch) — only real signal.
             notable = not (prev_band is None and verdict.band == "HOLD")
             if send and notable:
@@ -333,7 +363,7 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
                 arrow = f"{prev_band or '∅'} → {verdict.band}"
                 await send_telegram_message(
                     f"📊 *Kill/scale band change* ({account_mode}): {arrow}\n"
-                    + format_band_line(verdict, override))
+                    + format_band_line(verdict, override, inputs.get("open_positions")))
         return {"band": verdict.band, "prev_band": prev_band, "transitioned": claimed,
                 "n_trades": verdict.n_trades, "override_active": override is not None}
     except Exception as e:  # noqa: BLE001 — telemetry must never break the EOD chain
@@ -360,15 +390,24 @@ async def band_digest_section(account_mode: str = "live") -> list[str]:
     """The weekly-review section (a SECTION of the existing digest, not a new surface —
     feedback_consolidate_surfaces). SURFACES the verdict + numbers; never prescribes code."""
     try:
-        _, verdict, override = await assess_bands(account_mode)
-        return ["", "*🎚️ Kill/scale bands* (live-money, #268b):", format_band_line(verdict, override)]
+        inputs, verdict, override = await assess_bands(account_mode)
+        return ["", "*🎚️ Kill/scale bands* (live-money, #268b):",
+                format_band_line(verdict, override, inputs.get("open_positions"))]
     except Exception as e:  # noqa: BLE001
         logger.warning("band_digest_section(%s) failed: %s", account_mode, e)
         return ["", f"_kill/scale band eval unavailable: {e}_"]
 
 
-def format_band_line(v: BandVerdict, override: dict | None = None) -> str:
-    """One-line Telegram/digest verdict — band + the numbers that drove it, override-aware."""
+def format_band_line(v: BandVerdict, override: dict | None = None,
+                     open_positions: list[dict] | None = None) -> str:
+    """One-line Telegram/digest verdict — band + the numbers that drove it, override-aware.
+
+    `open_positions` (optional, REPORT ONLY — docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md):
+    a list of `{"ticker": str, "hold_days": int}` for the account's currently-open positions.
+    Rendered so a REDUCE/KILL landing while a runner is open reads as a visibly partial
+    picture. This data NEVER reaches `evaluate_kill_scale_bands` — `v` was computed without
+    it, so nothing here can move the band; `None` (caller didn't supply it) omits the line
+    entirely, `[]` (supplied and genuinely flat) prints "flat"."""
     emoji = _BAND_EMOJI.get(v.band, "⚪")
     t20 = f"{v.trailing_20:+.2f}R" if v.trailing_20 is not None else "n/a"
     t40 = f"{v.trailing_40:+.2f}R" if v.trailing_40 is not None else "n/a"
@@ -378,4 +417,13 @@ def format_band_line(v: BandVerdict, override: dict | None = None) -> str:
     if override:
         head += (f"\n  ⚠️ operator OVERRIDE ACTIVE since {override['since']} "
                  f"({override.get('direction') or '?'}): {override.get('reason') or ''}")
+    if open_positions is not None:
+        if open_positions:
+            n_open = len(open_positions)
+            parts = ", ".join(f"{p['ticker']} {p['hold_days']}d" for p in open_positions[:5])
+            more = f" +{n_open - 5} more" if n_open > 5 else ""
+            head += (f"\n  📖 open book (NOT in the verdict above): {n_open} position(s) — "
+                     f"{parts}{more}")
+        else:
+            head += "\n  📖 open book (NOT in the verdict above): flat"
     return head

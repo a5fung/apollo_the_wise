@@ -34,6 +34,9 @@ developing.
 - KILL is NOT close: it needs cumulative <= -30R or trailing-20 <= -1.05R.
 - The book is FLAT today, so no open winner is being missed right now.
 
+**Correction (same day):** PLTR (entered 2026-08-04) is open, hold_days=3 — the book is not
+flat; the open-book line renders it (`PLTR 3d`).
+
 ## The fork for the operator
 
 Whether the band should count open positions at mark, wait for closes, or something else, is a
@@ -78,3 +81,42 @@ trades will then be loser-heavy by construction while the winner is still open a
 - No threshold change (`_REDUCE_STREAK` 16, `_REDUCE_T20` -0.70, `_KILL_*`) — those are calibrated
   and are his to move.
 - No wiring of the verdict to sizing.
+
+---
+
+## SHIPPED (2026-08-09) — recommendation 2 only; recommendation 1 REMOVED
+
+Recommendation 2 implemented in `agents/market_intelligence/kill_scale_bands.py`:
+
+- **Open-book reporting**: `format_band_line` now takes `open_positions` (ticker + hold
+  days) and appends it as a trailing, clearly-labeled line — plumbed through
+  `assemble_band_inputs` → `assess_bands` → `run_band_evaluation` / `band_digest_section`.
+  `evaluate_kill_scale_bands` itself never receives open-position data (structural
+  guarantee, not just convention), so it cannot enter the score/trigger/threshold.
+
+Recommendation 1 (`_DAY_FLOOR = 12` distinct entry days) was initially implemented alongside
+it, then REMOVED before this doc closed out — the operator called it arbitrary, and
+re-measuring the premise it rested on confirmed he was right:
+
+- **Not calibrated.** 12 was set equal to the LIVE cohort's own distinct-entry-day count on
+  the day it was written (17 trades / 12 days) — a floor pinned to today's number can never
+  bind against today's cohort.
+- **The correlation problem doesn't reproduce.** Across the fuller paper closed-trade history
+  (33 trades), only 7 distinct entry days have more than one trade, and 4 of those 7 mix a
+  winner and a loser same day — no consistent within-day correlation to correct for. Live
+  cannot test this at all: it has zero closed winners in its entire 17-trade cohort, so no
+  live day can be mixed by construction — not evidence either way, just an untestable cohort.
+- **The arithmetic alone makes any such floor moot.** This system runs ~1.3–1.4 trades per
+  entry day (live 17/12 = 1.42/day, paper 33/25 = 1.32/day). A 20-trade cohort therefore
+  already spans ~14 days by the time `_SAMPLE_FLOOR` clears — any day floor under ~14 is inert
+  by construction, and 12 sits below that line.
+
+So the honest outcome was removal, not a re-calibrated second number. `_DAY_FLOOR`, the
+`entry_dates`/`distinct_entry_days` plumbing, and the "not independent enough to band" branch
+are gone; the open-book reporting is unaffected and stays.
+
+Verified against prod (read-only, 2026-08-09): today's verdict is HOLD before and after
+(n=17 closed live trades < 20 sample floor either way — the sample floor alone accounts for
+it, independent of whether a day floor exists). 20 tests in `tests/test_kill_scale_bands.py`,
+full suite green (4880 passed, 7 skipped). SSoT updated: `docs/setups/safeguards.md`
+"Kill / scale criteria" section + change-log entry.
