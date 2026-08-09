@@ -15,6 +15,7 @@ The two failure modes that matter, and what pins them here:
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import subprocess
@@ -173,6 +174,56 @@ class TestRoutingEscape:
         proc = subprocess.run([sys.executable, str(_GATE)], input=json.dumps(p),
                               capture_output=True, text=True, env=env, timeout=30)
         assert proc.returncode == 0 and proc.stdout.strip() == ""
+
+
+# ── shared-module import failure — must fail OPEN, never crash the hook ─────────────────────
+# delegation_gate.py is a PreToolUse hook whose fail-open contract lives inside main()'s own
+# try/except; a module-scope `from delegation_shared import ...` that raised would fire BEFORE
+# that guard. Verified two ways: in-process (this class, via monkeypatch — no subprocess
+# needed to exercise main()'s own logic) and via a real subprocess invocation from a foreign
+# cwd (TestRealInvocation below) to confirm the deployed hook path still works at all.
+
+class TestSharedImportFailure:
+    def test_main_returns_zero_with_no_output_when_shared_loader_missing(self, monkeypatch, capsys):
+        """Simulates delegation_shared failing to import (see the guarded import + fallback
+        at the top of delegation_gate.py): main() must return 0 with no stdout, exactly like
+        every other fail-open path, not raise."""
+        monkeypatch.setattr(delegation_gate, "load_routing_for_day", None)
+        monkeypatch.setattr(sys, "stdin",
+                            io.StringIO(json.dumps(_payload("Edit", json.loads(_IMPL_EDIT)))))
+        assert delegation_gate.main() == 0
+        assert capsys.readouterr().out.strip() == ""
+
+    def test_classify_gated_is_inert_with_empty_fallback_dirs(self, monkeypatch):
+        """The second belt: even without the explicit main() short-circuit, empty
+        GATED_DIRS/GATED_EXCLUDE (the fallback values) make classify_gated() unable to match
+        anything — never deny, by construction of the fallback values themselves."""
+        target = f"{_REPO}/agents/market_intelligence/db.py"
+        assert classify_gated(target, _REPO) is not None   # sanity: real GATED_DIRS gates this
+        monkeypatch.setattr(delegation_gate, "GATED_DIRS", ())
+        monkeypatch.setattr(delegation_gate, "GATED_EXCLUDE", ())
+        assert classify_gated(target, _REPO) is None
+
+
+# ── real invocation, from a foreign cwd — the actual deployed hook path ─────────────────────
+
+class TestRealInvocation:
+    def test_denies_from_a_foreign_cwd(self, tmp_path):
+        """The guarded `import delegation_shared` relies on sys.path[0] being the gate's own
+        directory, which Python sets automatically for `python3 /abs/path/to/script.py` —
+        but only if invoked as an absolute/relative script path, which is exactly how the
+        real hook command in .claude/settings.json runs it. Confirms that from a cwd that is
+        NOT the repo (so a relative-import assumption bug can't hide behind cwd == scripts/),
+        the gate still actually DENIES rather than silently going inert."""
+        p = _payload("Edit", json.loads(_IMPL_EDIT))
+        proc = subprocess.run(
+            [sys.executable, str(_GATE.resolve())], input=json.dumps(p),
+            capture_output=True, text=True, cwd="/tmp",
+            env={**{k: v for k, v in os.environ.items() if k != "DELEGATION_GATE"},
+                 "APOLLO_ROUTING_FILE": "/nonexistent/routing.json"},
+            timeout=30)
+        assert proc.returncode == 0
+        assert json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
 # ── deny message is actionable ───────────────────────────────────────────────────────────────

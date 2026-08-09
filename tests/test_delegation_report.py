@@ -94,6 +94,8 @@ def test_the_older_harness_spawn_name_task_still_counts(tmp_path):
     (str(_ROOT / "agents/market_intelligence/ep_detector.py"), "impl"),
     (str(_ROOT / "core/router.py"), "impl"),
     (str(_ROOT / "scripts/check_plan.py"), "impl"),
+    (str(_ROOT / "infra/deploy.sh"), "impl"),   # widened 2026-08-09 to match delegation_gate's
+                                                 # GATED_DIRS (finding #1: the two had diverged)
     (str(_ROOT / "scripts/probes/_replay.py"), "probes"),        # probes are NOT impl
     (str(_ROOT / "PLAN.md"), "bookkeeping"),
     (str(_ROOT / "CLAUDE.md"), "bookkeeping"),
@@ -131,6 +133,107 @@ def test_render_names_the_card_shaped_file(tmp_path):
     assert "CARD-SHAPED" in out
     assert "agents/market_intelligence/ep_detector.py" in out    # named, not "you did too much"
     assert "blind spot" in out                                   # the 08-09 class, stated plainly
+
+
+def test_tests_dir_edits_now_feed_card_shaped_detection(tmp_path):
+    """2026-08-09 finding #1's stated consequence: delegation_gate.py already blocks a
+    main-loop tests/ write without a routing declaration, but the ledger used to silently
+    drop tests/ edits into an unread counter instead of counting them as card-shaped. Fixed:
+    CARD_SHAPED_CLASSES includes "tests" now, so tests/ edits land in impl_edits like any
+    other gated-dir edit, while classify_path's own "tests" label (used elsewhere) is
+    untouched."""
+    lines = [_entry(f"u{i}", TS,
+                    [_tool("Edit", file_path=str(_ROOT / "tests/test_ep_detector.py"))])
+             for i in range(4)]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert led.impl_edits["tests/test_ep_detector.py"] == 4
+    assert not led.other_edit_classes
+    out = dr.render(led, [])
+    assert "CARD-SHAPED" in out
+    assert "tests/test_ep_detector.py" in out
+
+
+def test_other_edit_classes_now_displayed(tmp_path):
+    """2026-08-09 finding #2: other_edit_classes was populated (scan_day) and never read
+    anywhere, including render() — a counter nobody displays. Now it shows up as context."""
+    lines = [_entry(f"u{i}", TS, [_tool("Edit", file_path=str(_ROOT / "docs/setups/ninem.md"))])
+             for i in range(2)]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert led.other_edit_classes["docs"] == 2
+    out = dr.render(led, [])
+    assert "other inline edits" in out
+    assert "docs 2" in out
+
+
+# ── main/opus cross-check — the headline fix (2026-08-09) ──────────────────────────────────
+# delegation_gate.py's docstring claimed a main/opus declaration was "cross-checked by the
+# CLOSE ledger". It was not: route_discrepancies() explicitly skips who in ("main", "opus")
+# and nothing else picked them up. main_route_crosscheck() is the real check.
+
+def test_crosscheck_names_observed_edits_when_main_declared(tmp_path):
+    lines = [_entry(f"u{i}", TS,
+                    [_tool("Edit", file_path=str(_ROOT / "core/router.py"))])
+             for i in range(2)]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    routes = [{"task": "#494", "who": "main", "note": ""}]
+    out = dr.main_route_crosscheck(routes, led)
+    assert len(out) == 1
+    assert "#494" in out[0] and "core/router.py (2)" in out[0]
+    assert "core/router.py (2)" in dr.render(led, routes)
+
+
+def test_crosscheck_flags_main_declared_but_nothing_observed(tmp_path):
+    lines = [_entry("u1", TS, [_tool("Bash", command="ls")])]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    routes = [{"task": "#500", "who": "opus", "note": ""}]
+    out = dr.main_route_crosscheck(routes, led)
+    assert len(out) == 1 and "zero card-shaped inline edits" in out[0]
+
+
+def test_crosscheck_flags_inline_edits_with_no_main_declared(tmp_path):
+    """The direction with teeth: card-shaped inline edits with no main/opus declared at all
+    should be structurally impossible while the gate is live (it would have denied the
+    write) — if it fires, that is the signal something is off."""
+    lines = [_entry(f"u{i}", TS,
+                    [_tool("Edit", file_path=str(_ROOT / "shared/util.py"))])
+             for i in range(3)]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    out = dr.main_route_crosscheck([], led)
+    assert len(out) == 1
+    assert "NO main/opus declared" in out[0] and "shared/util.py (3)" in out[0]
+
+
+def test_crosscheck_silent_when_nothing_to_say(tmp_path):
+    lines = [_entry("u1", TS, [_tool("Bash", command="ls")])]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    assert dr.main_route_crosscheck([], led) == []
+    assert "CROSS-CHECK" not in dr.render(led, [])
+
+
+def test_route_discrepancies_still_skips_main_opus_unchanged(tmp_path):
+    """Locks in the deliberate design: main/opus get the crosscheck above, not a gap here —
+    changing this would contradict the existing 'never a gap' contract."""
+    lines = [_entry("u1", TS, [_tool("Bash", command="ls")])]
+    _write_transcript(tmp_path / "s.jsonl", lines)
+    led = dr.scan_day(DAY, tdir=tmp_path)
+    routes = [{"task": "#1", "who": "main", "note": ""}, {"task": "#2", "who": "opus", "note": ""}]
+    assert dr.route_discrepancies(routes, led) == []
+
+
+# ── shared-module import failure — must degrade, never crash the report ────────────────────
+
+def test_report_degrades_if_shared_routing_loader_is_unavailable(monkeypatch):
+    """Simulates delegation_shared failing to import (see the module-scope guard at the top
+    of delegation_report.py): load_routes must degrade to [] rather than raise, keeping the
+    "fails OPEN everywhere" promise the module docstring makes."""
+    monkeypatch.setattr(dr, "load_routing_for_day", None)
+    assert dr.load_routes(DAY) == []
 
 
 def test_spawn_descriptions_are_treated_as_untrusted_data(tmp_path):

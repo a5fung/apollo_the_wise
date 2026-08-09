@@ -37,6 +37,12 @@ WHAT SHIPS INSTEAD — two mechanical surfaces around the semantic core:
      #494 -> sonnet, but no sonnet card ran today" IS objectively decidable, against your own
      morning promise instead of a population threshold. This also covers the count-blind spot:
      a read-only investigation shows up in the morning routing even though it never edits.
+     main/opus declarations (delegation_gate.py's escape hatch for a conscious main-loop day)
+     get a parallel but different check — main_route_crosscheck() below — since there's no
+     separate agent to watch for; it compares the declaration against the day's own observed
+     card-shaped edits instead of spawn presence (2026-08-09: this used to be entirely
+     unchecked — route_discrepancies() skipped main/opus and nothing else picked it up, while
+     the gate's own docstring claimed it WAS cross-checked. Fixed the substance.).
 
 WHAT THIS CANNOT SEE, said plainly: main-loop work that produces no tool-visible artifact
 mix shift — above all a long READ-ONLY investigation (the 08-09 miss) on a day with no
@@ -62,23 +68,50 @@ from zoneinfo import ZoneInfo
 
 _PT = ZoneInfo("America/Los_Angeles")
 REPO = Path(__file__).resolve().parents[1]
-ROUTING_FILE = REPO / ".apollo_routing.json"
 
-# Paths whose main-loop edits count as implementation work (mirrors the operating-model split:
-# these are the surfaces Sonnet cards / Fable should own above trivial size).
-IMPL_DIRS = ("agents/", "core/", "channels/", "shared/", "broker/", "scripts/")
-IMPL_EXCLUDE = ("scripts/probes/",)
-# Legitimately-main-loop bookkeeping — never counted as implementation.
-BOOKKEEPING_BASENAMES = {
-    "PLAN.md", "CLAUDE.md", "CHANGELOG.md", "HANDOFF.md",
-    ".apollo_open_tasks.json", ".apollo_session_baseline.json", ".apollo_routing.json",
-    "data_gated_reviews.yaml",
-}
+# IMPL_DIRS / IMPL_EXCLUDE / BOOKKEEPING_BASENAMES / MAIN_WHO / routing-file read+parse used to
+# be defined here AND independently in delegation_gate.py — a 2026-08-09 4-reviewer pass found
+# they'd already diverged (this file's IMPL_DIRS was missing infra/ and tests/, which the gate
+# already gated) and the routing-file reader was reimplemented twice with one honoring
+# APOLLO_ROUTING_FILE and one hardcoding the path. Now sourced from one shared module. This
+# script is a CLI reporter, not a PreToolUse hook, but it makes the same "fails OPEN, always"
+# promise (module docstring above) — an unguarded import failing here would crash before
+# main()'s own try/except ever ran, breaking that promise, so it gets the same guarded import
+# with an allow/degrade-biased fallback as the gate.
+try:
+    from delegation_shared import (
+        IMPL_DIRS, IMPL_EXCLUDE, BOOKKEEPING_BASENAMES, MAIN_WHO,
+        routing_file_path, load_routing_for_day,
+    )
+except Exception:            # noqa: BLE001 — see note above; a report must never wedge a session
+    IMPL_DIRS = ()
+    IMPL_EXCLUDE = ()
+    BOOKKEEPING_BASENAMES = frozenset()
+    MAIN_WHO = frozenset({"main", "opus"})
+    routing_file_path = lambda: REPO / ".apollo_routing.json"  # noqa: E731 - degraded fallback
+    load_routing_for_day = None
+
+# Module-level, monkeypatchable attribute (kept, rather than resolving fresh on every call) so
+# tests can redirect it exactly as before; the difference from pre-2026-08-09 is that its
+# default now honors APOLLO_ROUTING_FILE via the shared resolver instead of always hardcoding
+# the repo path — the other half of the finding-#4 divergence (the gate already honored it).
+ROUTING_FILE = routing_file_path()
 
 # >= this many main-loop edits to ONE impl file in a day reads as a built-inline chunk.
 # Measured: at 3 the flag names the real ones (ep_detector x17, theme_engine x13) while
 # 1-2-edit files are usually the trivial one-liners CLAUDE.md keeps inline.
 CARD_SHAPED_EDITS = 3
+
+# classify_path() early-returns a dedicated "tests" bucket for tests/ BEFORE it ever consults
+# IMPL_DIRS (same for "docs") — kept separate for the operator-facing label, "wrote tests" vs
+# "built a detector" is a real distinction worth keeping visible. But tests/ IS card-shaped
+# implementation work (CLAUDE.md operating model: Sonnet cards explicitly own "scoped
+# well-specified builds, tests, refactors, sweeps") and delegation_gate.py already blocks
+# main-loop tests/ writes without a routing declaration — so a main-loop day of writing tests
+# needs to feed the SAME card-shaped detection impl edits do, or it is gated on the way in and
+# invisible on the way out (2026-08-09 finding #1's stated consequence). "docs" stays out on
+# purpose: docs/ is never gated by delegation_gate.py at all (never needs a declaration).
+CARD_SHAPED_CLASSES = frozenset({"impl", "tests"})
 
 WORK_TOOLS = frozenset({"Bash", "Edit", "Write", "Read", "NotebookEdit", "Grep", "Glob"})
 SPAWN_TOOLS = frozenset({"Agent", "Task"})  # "Task" = older harness name for the same tool
@@ -227,7 +260,7 @@ def scan_day(day: str, tdir: Path | None = None) -> DayLedger:
                         ledger.longest_no_spawn_run = max(ledger.longest_no_spawn_run, ledger._run)
                         if name in EDIT_TOOLS:
                             cls = classify_path(inp.get("file_path", ""))
-                            if cls == "impl":
+                            if cls in CARD_SHAPED_CLASSES:
                                 fp = inp.get("file_path", "")
                                 try:
                                     rel = str(Path(fp).relative_to(REPO))
@@ -242,13 +275,13 @@ def scan_day(day: str, tdir: Path | None = None) -> DayLedger:
 # ── routing declaration (--route, written at OPEN) ──────────────────────────────────────────
 
 def load_routes(day: str) -> list[dict]:
-    try:
-        data = json.loads(ROUTING_FILE.read_text())
-        if data.get("pt_date") == day and isinstance(data.get("routes"), list):
-            return [r for r in data["routes"] if isinstance(r, dict)]
-    except (OSError, json.JSONDecodeError, ValueError, AttributeError):
-        pass
-    return []
+    """Thin wrapper: the actual read/parse/date-check lives in delegation_shared.
+    load_routing_for_day (shared with delegation_gate.routed_main_today, 2026-08-09 finding
+    #4). ROUTING_FILE stays a module attribute, not a fresh routing_file_path() call, so tests
+    can keep monkeypatching dr.ROUTING_FILE directly."""
+    if load_routing_for_day is None:   # delegation_shared failed to import — degrade, don't crash
+        return []
+    return load_routing_for_day(day, ROUTING_FILE)
 
 
 def save_routes(day: str, specs: list[str]) -> list[dict]:
@@ -270,19 +303,63 @@ def save_routes(day: str, specs: list[str]) -> list[dict]:
 def route_discrepancies(routes: list[dict], ledger: DayLedger) -> list[str]:
     """Declared-vs-observed, the one objectively-decidable check: a task routed to a card
     model with ZERO spawns of that model all day. Conservative on purpose — we cannot map a
-    spawn to a task #, so any spawn of the declared model clears every task declared to it."""
+    spawn to a task #, so any spawn of the declared model clears every task declared to it.
+
+    main/opus routes are deliberately SKIPPED here — not because they go unchecked, but
+    because "no X agent ran" has no meaning for the main loop (declaring main IS the work,
+    there's no separate agent whose absence would be a gap). They get a different, real check
+    instead: see main_route_crosscheck() below, which compares the declaration against the
+    day's own observed card-shaped edits rather than spawn presence. That split is what makes
+    delegation_gate.py's "cross-checked by the CLOSE ledger" claim true (2026-08-09 4-reviewer
+    finding — it used to be false: this function skipped main/opus and nothing else picked
+    them up)."""
     spawned_models = Counter(m for m, _t, _d in ledger.spawns)
     spawned_types = Counter(t for _m, t, _d in ledger.spawns)
     out = []
     for r in routes:
         who = r.get("who")
-        if who in ("main", "opus"):
+        if who in MAIN_WHO:
             continue
         if spawned_models.get(who, 0) == 0 and spawned_types.get(who, 0) == 0:
             out.append(
                 f"{r.get('task', '?')} was declared {who.upper()} work this morning, "
                 f"but no {who} agent ran today — carded elsewhere, replanned, or done inline?")
     return out
+
+
+def main_route_crosscheck(routes: list[dict], ledger: DayLedger) -> list[str]:
+    """The check delegation_gate.py's docstring promises for the day-granular main/opus
+    escape hatch — not just echoed at OPEN, actually compared against what this ledger
+    observed. Two directions:
+
+    1. main/opus declared today -> name the card-shaped inline edits actually observed (files
+       + counts, not a bare total — a number the operator can't act on is noise, CLAUDE.md
+       report-format rule 6), or say plainly that none were found.
+    2. card-shaped inline edits observed with NO main/opus declared that day -> structurally
+       shouldn't happen while delegation_gate.py is live (it would have denied the write); if
+       this fires, the gate was off (DELEGATION_GATE=off), bypassed, or the subagent
+       discriminator broke. That direction has teeth even when direction 1 stays quiet.
+
+    LIMIT, stated plainly so this doesn't just re-overclaim what got fixed: the escape is
+    still DAY-granular. This confirms card-shaped work happened on a day main/opus was
+    declared, not that the observed files match the declared task's own scope — a "#494:main"
+    declaration for one fix still nominally covers an unrelated file edited the same day."""
+    declared = [r.get("task", "?") for r in routes if r.get("who") in MAIN_WHO]
+    if declared:
+        if ledger.impl_edits:
+            named = ", ".join(f"{f} ({n})" for f, n in ledger.impl_edits.most_common(5))
+            return [f"main/opus declared ({', '.join(declared)}) — card-shaped inline edits "
+                    f"observed today: {named}"]
+        return [f"main/opus declared ({', '.join(declared)}) — zero card-shaped inline edits "
+                "observed today (declared but unused, replanned, or done via a spawn instead)"]
+    if ledger.impl_edits:
+        named = ", ".join(f"{f} ({n})" for f, n in ledger.impl_edits.most_common(5))
+        return [f"inline edits observed with NO main/opus declared today: {named} — if "
+                "delegation_gate.py was on that day, it should have denied every one of "
+                "these; if it fires on a day the gate was live, check DELEGATION_GATE isn't "
+                "'off' and the subagent discriminator still holds (no action needed for days "
+                "before the gate existed)"]
+    return []
 
 
 # ── render ───────────────────────────────────────────────────────────────────────────────────
@@ -321,6 +398,10 @@ def render(ledger: DayLedger, routes: list[dict]) -> str:
         L.append(f"  small inline impl edits (fine if trivial): "
                  + ", ".join(f"{f} x{n}" for f, n in small[:8]))
 
+    if ledger.other_edit_classes:
+        L.append("  other inline edits (context, not implementation): "
+                 + ", ".join(f"{k} {v}" for k, v in ledger.other_edit_classes.most_common()))
+
     if routes:
         gaps = route_discrepancies(routes, ledger)
         L.append(f"  routing declared at OPEN: "
@@ -333,6 +414,14 @@ def render(ledger: DayLedger, routes: list[dict]) -> str:
     else:
         L.append("  no routing declared today (OPEN step: "
                  "`delegation_report.py --route \"#N:fable\" \"#M:sonnet\"`)")
+
+    crosscheck = main_route_crosscheck(routes, ledger)
+    if crosscheck:
+        L.append("  MAIN/OPUS CROSS-CHECK (what the gate's day-granular escape actually did):")
+        L.extend(f"    - {c}" for c in crosscheck)
+        L.append("    limit: confirms card-shaped work happened on a day main/opus was "
+                 "declared, not that it matches the declared task's scope — the escape is "
+                 "still day-granular, not task-scoped.")
 
     L.append("  blind spot, stated: read-only main-loop investigations (the 2026-08-09 miss) "
              "leave no edit trail — only the OPEN routing declaration surfaces those.")

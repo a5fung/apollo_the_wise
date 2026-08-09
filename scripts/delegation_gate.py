@@ -16,7 +16,23 @@ WHAT IT IS NOT: a security boundary. It is a tripwire for the habitual inline-ed
 A determined evader can always route a write through indirection the text scan cannot see
 (variables, base64, git apply). That is fine — the target is drift, not adversaries, and the
 escape hatch is a conscious, visible DECLARATION (`delegation_report.py --route "#N:main"`),
-not a bypass. The same file the CLOSE ledger cross-checks, so the choice leaves a trail.
+not a bypass.
+
+CROSS-CHECK, MADE ACTUALLY TRUE (2026-08-09 4-reviewer pass). This docstring used to claim
+the declaration was "cross-checked by the CLOSE ledger" while delegation_report.py's
+route_discrepancies() actually SKIPPED every `who in ("main", "opus")` route outright — the
+one kind of declaration this escape hatch creates was the one kind never checked. Fixed the
+substance, not the sentence: delegation_report.py's render() now calls
+main_route_crosscheck(), which names the card-shaped inline edits actually observed on a day
+main/opus was declared (declared-scope next to observed-scope, not a bare count), and
+separately flags card-shaped inline edits found on a day with NO main/opus declared at all —
+structurally that shouldn't happen while this gate is on, so if it fires the gate was off,
+bypassed, or the subagent discriminator broke.
+LIMIT, stated plainly (not re-overclaiming what got fixed): the escape is still DAY-granular.
+Declaring "#494:main" for one task licenses every gated write for the rest of that PT day —
+the cross-check confirms card-shaped work happened on a day main was declared, not that the
+observed files match the declared task's scope. A task-scoped declaration format could see
+that; this one can't yet.
 
 MAIN LOOP vs SUBAGENT — measured, not assumed (Claude Code 2.1.221, 2026-08-09)
 A spawned card's first edit must NOT die on this gate, or delegation itself breaks. The
@@ -57,26 +73,29 @@ from zoneinfo import ZoneInfo
 _PT = ZoneInfo("America/Los_Angeles")
 REPO = Path(__file__).resolve().parents[1]
 
-# The surfaces whose main-loop edits are card-shaped work (CLAUDE.md operating model: Sonnet
-# for mechanical, Fable for the hard part). Includes broker/ even though this checkout has no
-# such dir today — delegation_report.py's IMPL_DIRS counts it as implementation and the two
-# surfaces must agree on what "implementation" means.
-GATED_DIRS = ("agents/", "core/", "channels/", "shared/", "scripts/",
-              "infra/", "tests/", "broker/")
-# Probe output is analysis artifact, not implementation (mirrors delegation_report.IMPL_EXCLUDE;
-# the probe TSVs in git status are exactly this legitimate main-thread pattern).
-GATED_EXCLUDE = ("scripts/probes/",)
-
-# Legitimately-main-loop bookkeeping — never gated, by basename wherever it lives.
-ALWAYS_ALLOWED_BASENAMES = frozenset({
-    "PLAN.md", "CLAUDE.md", "CHANGELOG.md", "HANDOFF.md",
-    ".apollo_open_tasks.json", ".apollo_session_baseline.json", ".apollo_routing.json",
-    "data_gated_reviews.yaml",
-})
-
-# "opus" counts too: in the operating model Opus IS the main loop, and the ledger's own
-# discrepancy check (route_discrepancies) already treats main and opus as the same declaration.
-_MAIN_WHO = frozenset({"main", "opus"})
+# GATED_DIRS / GATED_EXCLUDE / ALWAYS_ALLOWED_BASENAMES / _MAIN_WHO used to be defined here
+# AND independently in delegation_report.py — byte-identical copies with nothing keeping them
+# so (2026-08-09 4-reviewer finding). Now sourced from one shared, import-time-inert module.
+# GUARDED: this hook's fail-open contract lives inside main()'s try/except below; a
+# module-scope import raising would fire BEFORE that guard and crash the hook (deny nothing
+# vs. block everything — the wrong failure direction). If delegation_shared ever fails to
+# import, fall back to allow-biased values: empty dir/exclude tuples mean classify_gated()
+# can never match anything -> never denies; main() also checks this explicitly and returns
+# 0 (allow) immediately, before any classification runs — see the top of main().
+try:
+    from delegation_shared import (
+        IMPL_DIRS as GATED_DIRS,
+        IMPL_EXCLUDE as GATED_EXCLUDE,
+        BOOKKEEPING_BASENAMES as ALWAYS_ALLOWED_BASENAMES,
+        MAIN_WHO as _MAIN_WHO,
+        load_routing_for_day,
+    )
+except Exception:            # noqa: BLE001 — see guard note above; must never crash the hook
+    GATED_DIRS = ()
+    GATED_EXCLUDE = ()
+    ALWAYS_ALLOWED_BASENAMES = frozenset()
+    _MAIN_WHO = frozenset({"main", "opus"})   # real value even in fallback — see main()'s guard
+    load_routing_for_day = None
 
 _EDIT_TOOL_PATH_KEY = {"Edit": "file_path", "Write": "file_path",
                        "NotebookEdit": "notebook_path"}
@@ -172,11 +191,10 @@ def classify_gated(target: str, cwd: str) -> str | None:
 
 
 # ── routing declaration ──────────────────────────────────────────────────────────────────────
-
-def _routing_file() -> Path:
-    env = os.environ.get("APOLLO_ROUTING_FILE")     # test override, same spirit as
-    return Path(env) if env else REPO / ".apollo_routing.json"  # APOLLO_TRANSCRIPT_DIR
-
+# File path resolution + read/parse/date-check used to be reimplemented here AND independently
+# in delegation_report.load_routes (2026-08-09 finding #4: two readers, same file, one honored
+# APOLLO_ROUTING_FILE and one hardcoded the path). Both now call
+# delegation_shared.load_routing_for_day.
 
 def routed_main_today() -> bool:
     """True iff today's (PT) declaration routes at least one piece of work to the main thread.
@@ -185,14 +203,10 @@ def routed_main_today() -> bool:
     (or re-declared mid-day), not to map every file to a task number — that mapping is the
     CLOSE ledger's job. Absent/stale/corrupt file = no declaration (see module docstring for
     why absence is the trigger, not an error to fail open on)."""
-    try:
-        data = json.loads(_routing_file().read_text())
-        if data.get("pt_date") != datetime.now(_PT).date().isoformat():
-            return False
-        return any(isinstance(r, dict) and r.get("who") in _MAIN_WHO
-                   for r in data.get("routes") or [])
-    except (OSError, json.JSONDecodeError, ValueError, AttributeError):
-        return False
+    if load_routing_for_day is None:   # delegation_shared failed to import — see main()'s guard
+        return False                    # (dead in practice: main() returns before calling this)
+    routes = load_routing_for_day(datetime.now(_PT).date().isoformat())
+    return any(r.get("who") in _MAIN_WHO for r in routes)
 
 
 # ── verdict ──────────────────────────────────────────────────────────────────────────────────
@@ -206,8 +220,9 @@ def _deny(rel: str) -> None:
         "memory, scratchpad, scripts/probes/.\n"
         "If main-thread IS the right call for this work, declare it, then retry:\n"
         '    python3 scripts/delegation_report.py --route "#<task>:main:<one-line reason>"\n'
-        "The declaration is the escape by design — visible at OPEN, cross-checked by the "
-        "CLOSE ledger. A conscious decision, not a bypass."
+        "The declaration is the escape by design — visible at OPEN, and the CLOSE ledger "
+        "names what the declared day actually did (day-granular: it licenses the whole day, "
+        "not just that task). A conscious decision, not a bypass."
     )
     print(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",
@@ -219,6 +234,10 @@ def _deny(rel: str) -> None:
 def main() -> int:
     try:
         if os.environ.get("DELEGATION_GATE") == "off":
+            return 0
+        if load_routing_for_day is None:
+            # delegation_shared failed to import (see module-scope guard above) — explicit,
+            # legible fail-open rather than relying only on GATED_DIRS happening to be empty.
             return 0
         try:
             payload = json.load(sys.stdin)
