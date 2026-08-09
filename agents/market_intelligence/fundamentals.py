@@ -14,17 +14,71 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def _quarter_label(dt: Any) -> str:
-    """Convert a datetime-like to a readable label like 'Q2'25'."""
+def _fiscal_year_end_month(info: Any) -> int:
+    """The company's OWN fiscal-year-end month (1-12), from yfinance's `info['lastFiscalYearEnd']`
+    — already fetched in get_fundamentals(), so this adds no new call/dependency. Falls back to 12
+    (calendar year) when absent/unparseable: that is not a guess, it is the exact assumption every
+    caller made unconditionally before this fix, so the unknown-FYE case is no worse than before —
+    only the *known*-FYE non-calendar case (e.g. LRCX, ARM, TAL — FYE in June/March/February) is
+    now handled correctly instead of silently mislabeled."""
+    if not isinstance(info, dict):
+        return 12
+    raw = info.get("lastFiscalYearEnd")
+    if not raw:
+        return 12
     try:
-        q = (dt.month - 1) // 3 + 1
-        return f"Q{q}'{str(dt.year)[2:]}"
+        if isinstance(raw, (int, float)):
+            # UTC, not machine-local: a naive fromtimestamp() reads the epoch in the CONTAINER's
+            # tz (UTC in prod, could be anything locally) — for an FYE landing near a month
+            # boundary (Dec 31 / Jan 1-2, common on 52/53-week fiscal calendars) a tz-dependent
+            # read can shift the derived month, i.e. produce a WRONG fiscal quarter — exactly the
+            # failure mode this fix exists to remove. yfinance publishes this epoch as UTC.
+            return datetime.fromtimestamp(raw, tz=timezone.utc).month
+        if hasattr(raw, "month"):
+            return int(raw.month)
+    except Exception:  # loud-ok: optional-parse fallback — malformed lastFiscalYearEnd just
+                        # means "unknown", the safe 12 (calendar) default below, not a real failure
+        pass
+    return 12
+
+
+def _quarter_label(dt: Any, fye_month: int = 12) -> str:
+    """Convert a datetime-like to a fiscal-quarter label like 'Q2'25', honoring the company's OWN
+    fiscal-year-end month (fye_month, 1-12; 12 = calendar year = the old unconditional behavior).
+
+    Bug fixed here: this used to bucket EVERY ticker by raw calendar month
+    ((dt.month-1)//3+1), which is only correct for calendar-fiscal-year companies. For a company
+    whose fiscal year ends off-calendar (e.g. LRCX ~June, ARM March, TAL February), a real fiscal
+    Q4 report lands in a column whose calendar month maps to a DIFFERENT quarter number — so the
+    label didn't match the company's own fiscal-quarter naming (the same naming used by the news
+    extraction's `fiscal_period`, e.g. "Q4 FY2026"). That silently broke prior-year-quarter matching
+    in compute_yoy_from_prior_year for every non-calendar-FY ticker: the correct row was present in
+    the data but under the wrong label, so the deterministic (quarter, year) match never fired and
+    the fill stayed None forever — not a "no data" gap, a "mislabeled data" gap.
+
+    Fix: derive the quarter number from how many months `dt` sits before the fiscal-year-end month
+    (fye_month=12 reduces to the exact old formula, verified by test_fundamentals.py's existing
+    calendar-FY fixtures, which have no `lastFiscalYearEnd` in their mocked `info` and so still
+    default to 12 unchanged).
+
+    Off-grid guard: if `dt` isn't 0/3/6/9 months from fye_month, it doesn't sit on this company's
+    fiscal-quarter grid (irregular 52/53-week filer, or a stale/wrong fye_month) — a Q-number would
+    be a GUESS here, which the caller (compute_yoy_from_prior_year) must never do. Fall back to the
+    plain-date label; `_parse_fiscal_quarter` can't parse it, so it simply never matches and the
+    fill stays None — the explicit "leave it unfilled" path, not a fabricated quarter."""
+    try:
+        offset = (fye_month - dt.month) % 12   # 0 = dt IS the FYE month -> Q4; 3->Q3; 6->Q2; 9->Q1
+        if offset % 3 != 0:
+            return str(dt)[:7]
+        q = 4 - offset // 3
+        yr = dt.year + (1 if dt.month > fye_month else 0)  # FY labeled by its ENDING calendar year
+        return f"Q{q}'{str(yr)[2:]}"
     except Exception:
         return str(dt)[:7]
 
@@ -167,6 +221,7 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
         try:
             all_cols = sorted(list(q_income.columns))   # oldest first
             show_cols = all_cols[-8:]                   # up to 8 quarters
+            fye_month = _fiscal_year_end_month(info)    # ticker's own FYE month; 12 = calendar (unknown-FYE default)
 
             # EPS rows to try (yfinance varies by version / ticker)
             eps_row = next(
@@ -197,7 +252,7 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
             gross_row = q_income.loc["Gross Profit"] if "Gross Profit" in q_income.index else None
 
             for col in show_cols:
-                label = _quarter_label(col)
+                label = _quarter_label(col, fye_month)
                 # Find same quarter 1 year prior for YoY
                 idx = all_cols.index(col)
                 prior_col = all_cols[idx - 4] if idx >= 4 else None
@@ -427,7 +482,18 @@ async def compute_yoy_from_prior_year(
     to <3%). Match the prior-year quarter DETERMINISTICALLY by fiscal_period, compute YoY, unit/scale
     -guarded. Returns {yoy_pct, prior_period, prior_revenue_m, source} or None — None on any gap
     (no parseable period / no matching prior-year quarter / scale-inconsistent), which the caller keeps
-    as the conservative downgrade. NEVER fabricate."""
+    as the conservative downgrade. NEVER fabricate.
+
+    2026-08 fix: the (quarter, year) match below relies on `row.get("period")` — a label built by
+    `_quarter_label()` in get_fundamentals(). That label is now fiscal-year-end-aware (see its
+    docstring), not raw-calendar-month. Before the fix, a non-calendar-FY ticker (LRCX ~June FYE,
+    ARM March, TAL February) either matched nothing (silently stayed None forever) OR — worse —
+    coincidentally matched a DIFFERENT, wrong quarter that happened to calendar-collide with the
+    parsed prior_key, returning a confidently-wrong YoY (confirmed live: TAL was downgraded
+    strong->routine on 2026-07-30 off a fabricated -5.5% that the real fiscal-aware match
+    shows was actually +31.9%). No new tolerance/threshold was introduced — matching is still an
+    exact (quarter, year) equality; ambiguous cases (unknown FYE) fall back to the SAME calendar
+    assumption every caller made before this fix, not a new guess."""
     cur = _parse_fiscal_quarter(fiscal_period or "")
     if not cur or not current_value_usd or current_value_usd <= 0:
         return None
