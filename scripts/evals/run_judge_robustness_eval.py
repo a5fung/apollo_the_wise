@@ -16,6 +16,16 @@ Run (prod container has the key + the deployed judge code):
   docker cp corpus+this → apollo-market:/tmp/ → docker exec -w /app apollo-market \
       python /tmp/run_judge_robustness_eval.py /tmp/judge_robustness_corpus_v1.json
 Tests: tests/test_judge_robustness_eval.py (pure scorer truth-table + fake-client end-to-end).
+
+--differential (#167 gate 2, added 2026-08-09): a DIFFERENT question from the pass/fail gate
+above — does forcing `in_narrative_cohort=true` (the population the Lane-2 v2 criteria flip)
+move the verdict? Runs every corpus case with `in_narrative_cohort: false` TWICE (as-authored,
+then forced true), compares the two verdicts (`classify_movement`), and reports UP/UNCHANGED/DOWN
++ any HIGH-tier boundary crossing (`summarize_differential`). Cases already `true` in the corpus
+are skipped — v2 cannot move them, so re-running them spends money without adding information.
+Separate log_caller bucket (`judge_narrative_diff_eval`) from the robustness gate's
+(`judge_robustness_eval`) and from LIVE grading (`ep_grade_judge`) — #377 spend attribution.
+  python /tmp/run_judge_robustness_eval.py /tmp/judge_robustness_corpus_v1.json --differential
 """
 import asyncio
 import json
@@ -109,6 +119,118 @@ def summarize(results: list[dict]) -> dict:
     }
 
 
+# ── #167 gate 2 — DIFFERENTIAL mode ──────────────────────────────────────────────────────────
+# Question this answers: flipping v2 (Lane-2 cohort criteria) marks MORE tickers
+# `in_narrative_cohort: true`, and the judge reads that flag verbatim in the prompt
+# ("In narrative cohort (Lane 2): yes/no", ep_grade_judge.py:297). The risk is grade
+# INFLATION — more names flagged -> more names graded up -> more entries. This does NOT
+# change the robustness gate's four watched keys (rubric/hash/prompt-version/model/corpus
+# sha1), so the existing pass/fail eval is silent on it by construction; a differential
+# run is the only instrument that can see it.
+#
+# Ordinal ladders for movement comparison. `mna` is deliberately OUT of GRADE_RANK: it is
+# the M&A path (a different axis — "is this company being bought", not "how strong is the
+# catalyst"), not a rung on the game_changer/strong/routine excitement ladder. Comparing it
+# numerically against those would misclassify an M&A read as an up/down move it isn't.
+TIER_RANK = {"none": 0, "MODERATE": 1, "HIGH": 2}
+GRADE_RANK = {"routine": 0, "strong": 1, "game_changer": 2}
+
+
+def _verdict_rank(verdict: dict) -> tuple[int, int | None]:
+    return TIER_RANK.get(verdict.get("tier"), -1), GRADE_RANK.get(verdict.get("grade"))
+
+
+def classify_movement(base: dict | None, forced: dict | None) -> dict:
+    """Compare the corpus-value verdict (`base`) against the in_narrative_cohort=true
+    verdict (`forced`) for the SAME case. `crossed_into_high` is the behaviourally load-bearing
+    signal (HIGH drives the Telegram alert + the ORB submission window) — a tier hold with a
+    grade bump is inflation-but-inert; a cross into HIGH is inflation that ACTS."""
+    if base is None or forced is None:
+        return {"direction": "NO_VERDICT", "tier_delta": None, "grade_delta": None,
+                "crossed_into_high": False, "base_tier": base and base.get("tier"),
+                "forced_tier": forced and forced.get("tier"),
+                "base_grade": base and base.get("grade"),
+                "forced_grade": forced and forced.get("grade"),
+                "note": "one or both calls returned NO_VERDICT (2x None) — excluded from up/down"}
+    bt, bg = _verdict_rank(base)
+    ft, fg = _verdict_rank(forced)
+    tier_delta = ft - bt
+    grade_delta = (fg - bg) if (fg is not None and bg is not None) else None
+    if tier_delta > 0 or (tier_delta == 0 and grade_delta and grade_delta > 0):
+        direction = "UP"
+    elif tier_delta < 0 or (tier_delta == 0 and grade_delta and grade_delta < 0):
+        direction = "DOWN"
+    else:
+        direction = "UNCHANGED"
+    note = None
+    if base.get("grade") == "mna" or forced.get("grade") == "mna":
+        note = "grade includes 'mna' (M&A path) — tier compared, grade_delta not computed"
+    return {"direction": direction, "tier_delta": tier_delta, "grade_delta": grade_delta,
+            "crossed_into_high": base.get("tier") != "HIGH" and forced.get("tier") == "HIGH",
+            "base_tier": base.get("tier"), "forced_tier": forced.get("tier"),
+            "base_grade": base.get("grade"), "forced_grade": forced.get("grade"),
+            "note": note}
+
+
+def summarize_differential(results: list[dict]) -> dict:
+    """The aggregate #167 gate 2 actually needs: of the flippable population, how many
+    grade UP / are UNCHANGED / grade DOWN, plus every boundary crossing named (a crossing is
+    what changes behaviour, not the raw up/down count)."""
+    up = [r["case_id"] for r in results if r["direction"] == "UP"]
+    down = [r["case_id"] for r in results if r["direction"] == "DOWN"]
+    unchanged = [r["case_id"] for r in results if r["direction"] == "UNCHANGED"]
+    no_verdict = [r["case_id"] for r in results if r["direction"] == "NO_VERDICT"]
+    crossed = [r["case_id"] for r in results if r.get("crossed_into_high")]
+    return {"n": len(results), "up": len(up), "unchanged": len(unchanged), "down": len(down),
+            "no_verdict": len(no_verdict), "up_ids": up, "down_ids": down,
+            "unchanged_ids": unchanged, "no_verdict_ids": no_verdict,
+            "crossed_into_high": crossed}
+
+
+async def run_differential(cases: list[dict], grade_fn, client, concurrency: int = 3,
+                           timeout: float = 300.0,
+                           log_caller: str = "judge_narrative_diff_eval") -> dict:
+    """Run every FLIPPABLE case (corpus `in_narrative_cohort: false`) twice: once on the
+    payload exactly as authored (the baseline v2 cannot touch it doesn't apply to yet) and
+    once with `in_narrative_cohort` forced `true` (the state v2 would put it in). Cases
+    already `true` in the corpus are SKIPPED, not re-run: v2 cannot move them (they are
+    already the state v2 flips TO), so a second call would spend money answering a question
+    nobody is asking — the #167 cost ceiling rules that out, and it isn't information the
+    differential needs.
+
+    Retry-on-None mirrors `run_eval`'s contract (one retry for transport/timeout `None`; a
+    real verdict is never retried) — reimplemented locally rather than shared because the
+    pairing (two calls per case, compared to each other) is a genuinely different shape from
+    `run_eval`'s one-call-per-case scoring loop."""
+    sem = asyncio.Semaphore(concurrency)
+    flippable = [c for c in cases if c["payload"].get("in_narrative_cohort") is False]
+    skipped = [c["id"] for c in cases if c["payload"].get("in_narrative_cohort") is not False]
+
+    async def _call(payload):
+        v = await grade_fn(client, payload, semaphore=sem, timeout=timeout,
+                           include_axis_reads=True, log_caller=log_caller)
+        if v is None:  # transport/timeout — retry ONCE; a verdict is never retried
+            v = await grade_fn(client, payload, semaphore=sem, timeout=timeout,
+                               include_axis_reads=True, log_caller=log_caller)
+        return v
+
+    async def one(case):
+        base_payload = case["payload"]
+        forced_payload = dict(base_payload)
+        forced_payload["in_narrative_cohort"] = True
+        base_v, forced_v = await asyncio.gather(_call(base_payload), _call(forced_payload))
+        move = classify_movement(base_v, forced_v)
+        return {"case_id": case["id"], "class": case["class"], **move,
+                "base_rationale": (base_v or {}).get("rationale", "")[:300],
+                "forced_rationale": (forced_v or {}).get("rationale", "")[:300],
+                "base_axis_reads": (base_v or {}).get("axis_reads"),
+                "forced_axis_reads": (forced_v or {}).get("axis_reads")}
+
+    results = list(await asyncio.gather(*[one(c) for c in flippable]))
+    return {"results": results, "skipped_already_true": skipped,
+            "summary": summarize_differential(results)}
+
+
 async def run_eval(cases: list[dict], grade_fn, client, concurrency: int = 3,
                    timeout: float = 300.0) -> list[dict]:
     """Run every case through grade_fn(client, payload) with one retry on None."""
@@ -143,8 +265,14 @@ async def run_eval(cases: list[dict], grade_fn, client, concurrency: int = 3,
 
 
 async def main() -> int:
-    corpus_path = sys.argv[1] if len(sys.argv) > 1 else "scripts/evals/judge_robustness_corpus_v1.json"
-    model_override = sys.argv[2] if len(sys.argv) > 2 else None  # T7 ensemble arm (e.g. claude-sonnet-5)
+    # --differential (#167 gate 2): a flag, not a separate CLI, so it shares corpus loading,
+    # the model-override arm, and the client setup below verbatim — only the run+report tail
+    # branches. argv is filtered so the flag can appear in any position without disturbing the
+    # existing positional corpus_path/model_override contract other callers already rely on.
+    argv = [a for a in sys.argv[1:] if a != "--differential"]
+    differential = "--differential" in sys.argv[1:]
+    corpus_path = argv[0] if len(argv) > 0 else "scripts/evals/judge_robustness_corpus_v1.json"
+    model_override = argv[1] if len(argv) > 1 else None  # T7 ensemble arm (e.g. claude-sonnet-5)
     corpus = json.load(open(corpus_path))
     cases = corpus["cases"]
 
@@ -173,6 +301,39 @@ async def main() -> int:
         print(f"MODEL OVERRIDE: {model_override} (T7 ensemble arm)", flush=True)
     else:
         grade_fn = grade_holistic
+
+    if differential:
+        # #167 gate 2 — differential mode. Never touches the robustness gate (summarize/
+        # HARD/POSITIVE bars, judge_eval_pass_record.json) — a separate question, a separate
+        # report, no shared mutable state.
+        diff = await run_differential(cases, grade_fn, client)
+        summary = diff["summary"]
+        print(f"\n=== DIFFERENTIAL MAP (in_narrative_cohort forced true, {summary['n']} "
+              f"flippable of {len(cases)} corpus cases) ===")
+        print(f"skipped (already in_narrative_cohort=true in corpus): "
+              f"{diff['skipped_already_true'] or 'NONE'}")
+        for r in diff["results"]:
+            flag = "  <== CROSSED INTO HIGH" if r.get("crossed_into_high") else ""
+            print(f"  [{r['direction']:<10}] {r['case_id']:<5} {r['class']:<28} "
+                  f"tier {r['base_tier']}->{r['forced_tier']}  grade {r['base_grade']}->{r['forced_grade']}"
+                  f"{flag}")
+        print(f"\nUP:{summary['up']}  UNCHANGED:{summary['unchanged']}  DOWN:{summary['down']}"
+              f"  NO_VERDICT:{summary['no_verdict']}  (of {summary['n']} flippable)")
+        print(f"crossed into HIGH: {summary['crossed_into_high'] or 'NONE'}")
+
+        print("\n=== DIFFERENTIAL_RESULTS_JSON ===")
+        print(json.dumps({
+            "keys": {"rubric_version": RUBRIC_VERSION, "rubric_hash": RUBRIC_HASH,
+                     "catalyst_grade_prompt_version": CATALYST_GRADE_PROMPT_VERSION,
+                     "judge_model": actual_model,
+                     "corpus_version": corpus["_meta"]["corpus_version"],
+                     "corpus_sha1": __import__("hashlib").sha1(open(corpus_path, "rb").read()).hexdigest()[:12]},
+            "skipped_already_true": diff["skipped_already_true"],
+            "summary": summary,
+            "results": diff["results"],
+        }, separators=(",", ":")))
+        return 0
+
     results = await run_eval(cases, grade_fn, client)
     summary = summarize(results)
 

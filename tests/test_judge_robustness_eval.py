@@ -112,3 +112,119 @@ def test_run_eval_fake_client_scores_and_retries():
     s = harness.summarize(results)
     assert s["hard_failures"] == ["C4"]           # a dead hard-class case fails the gate
     assert s["pass"] is False
+
+
+# ── #167 gate 2 — differential mode (fake-client, proved BEFORE any paid run) ───────────────
+def test_classify_movement_up_down_unchanged():
+    high = {"tier": "HIGH", "grade": "strong"}
+    mod_routine = {"tier": "MODERATE", "grade": "routine"}
+    mod_strong = {"tier": "MODERATE", "grade": "strong"}
+
+    up = harness.classify_movement(mod_routine, high)
+    assert up["direction"] == "UP"
+    assert up["crossed_into_high"] is True
+
+    down = harness.classify_movement(high, mod_routine)
+    assert down["direction"] == "DOWN"
+    assert down["crossed_into_high"] is False   # dropping OUT of HIGH is not a crossing INTO it
+
+    unchanged = harness.classify_movement(mod_routine, mod_routine)
+    assert unchanged["direction"] == "UNCHANGED"
+    assert unchanged["crossed_into_high"] is False
+
+    # same tier, grade improves within it → still UP (inflation-but-inert, no boundary crossed)
+    grade_only_up = harness.classify_movement(mod_routine, mod_strong)
+    assert grade_only_up["direction"] == "UP"
+    assert grade_only_up["crossed_into_high"] is False
+
+
+def test_classify_movement_mna_excluded_from_grade_ladder():
+    """mna is the M&A path, not a rung on the game_changer/strong/routine ladder — grade_delta
+    must not be computed for it (would misclassify an M&A read as an up/down move)."""
+    base = {"tier": "MODERATE", "grade": "routine"}
+    forced = {"tier": "MODERATE", "grade": "mna"}
+    m = harness.classify_movement(base, forced)
+    assert m["grade_delta"] is None
+    assert m["direction"] == "UNCHANGED"   # tier held, grade_delta not comparable → no move claimed
+    assert "mna" in m["note"]
+
+
+def test_classify_movement_no_verdict_handled():
+    m = harness.classify_movement(None, {"tier": "HIGH", "grade": "strong"})
+    assert m["direction"] == "NO_VERDICT"
+    assert m["crossed_into_high"] is False
+
+
+def test_summarize_differential_counts_and_crossings():
+    results = [
+        {"case_id": "A", "direction": "UP", "crossed_into_high": True},
+        {"case_id": "B", "direction": "UP", "crossed_into_high": False},
+        {"case_id": "C", "direction": "UNCHANGED", "crossed_into_high": False},
+        {"case_id": "D", "direction": "DOWN", "crossed_into_high": False},
+    ]
+    s = harness.summarize_differential(results)
+    assert s == {
+        "n": 4, "up": 2, "unchanged": 1, "down": 1, "no_verdict": 0,
+        "up_ids": ["A", "B"], "down_ids": ["D"], "unchanged_ids": ["C"], "no_verdict_ids": [],
+        "crossed_into_high": ["A"],
+    }
+
+
+def test_run_differential_skips_already_true_and_pairs_calls():
+    """Fake grade_fn: promotes tier from MODERATE to HIGH ONLY when in_narrative_cohort is
+    True in the payload it actually received — the exact mechanism #167 gate 2 is testing
+    (the judge reads the flag verbatim). Proves: (1) already-true corpus cases are skipped
+    entirely (zero calls), (2) each flippable case gets exactly 2 calls (base + forced), and
+    (3) the forced call's payload really does carry in_narrative_cohort=True."""
+    calls = []
+
+    async def fake_grade(client, payload, *, semaphore=None, timeout=None,
+                         include_axis_reads=False, log_caller=None):
+        calls.append((payload["ticker"], payload["in_narrative_cohort"], log_caller))
+        if payload["in_narrative_cohort"]:
+            return {"grade": "strong", "tier": "HIGH", "direction_vs_floor": "promote",
+                    "rationale": "narrative joined", "fire_axes": ["narrative"], "confidence": 0.8}
+        return {"grade": "routine", "tier": "MODERATE", "direction_vs_floor": "hold",
+                "rationale": "no own catalyst", "fire_axes": [], "confidence": 0.6}
+
+    cases = [
+        {"id": "F1", "class": "sympathy_no_own_catalyst",
+         "payload": {"ticker": "FLIP1", "in_narrative_cohort": False}},
+        {"id": "F2", "class": "sympathy_no_own_catalyst",
+         "payload": {"ticker": "FLIP2", "in_narrative_cohort": False}},
+        {"id": "T1", "class": "structural_upgrade",
+         "payload": {"ticker": "ALREADYTRUE", "in_narrative_cohort": True}},
+    ]
+    diff = asyncio.run(harness.run_differential(cases, fake_grade, client=None))
+
+    assert diff["skipped_already_true"] == ["T1"]
+    assert len(calls) == 4                         # 2 calls each for F1/F2, none for T1
+    assert all(c[2] == "judge_narrative_diff_eval" for c in calls)   # its own spend bucket
+    forced_calls = [c for c in calls if c[1] is True]
+    assert {c[0] for c in forced_calls} == {"FLIP1", "FLIP2"}
+
+    by_id = {r["case_id"]: r for r in diff["results"]}
+    assert set(by_id) == {"F1", "F2"}              # T1 never scored — nothing to differentiate
+    assert by_id["F1"]["direction"] == "UP"
+    assert by_id["F1"]["crossed_into_high"] is True
+    assert by_id["F1"]["base_tier"] == "MODERATE" and by_id["F1"]["forced_tier"] == "HIGH"
+    s = diff["summary"]
+    assert s["up"] == 2 and s["crossed_into_high"] == ["F1", "F2"]
+
+
+def test_run_differential_retries_once_on_none():
+    calls = {"n": 0}
+
+    async def flaky_grade(client, payload, *, semaphore=None, timeout=None,
+                          include_axis_reads=False, log_caller=None):
+        calls["n"] += 1
+        if payload["in_narrative_cohort"] and calls["n"] < 3:
+            return None   # forced-arm call: None once, then succeeds on retry
+        return {"grade": "routine", "tier": "MODERATE", "direction_vs_floor": "hold",
+                "rationale": "r", "fire_axes": [], "confidence": 0.5}
+
+    cases = [{"id": "R1", "class": "sympathy_no_own_catalyst",
+              "payload": {"ticker": "RETRY", "in_narrative_cohort": False}}]
+    diff = asyncio.run(harness.run_differential(cases, flaky_grade, client=None))
+    assert diff["results"][0]["direction"] == "UNCHANGED"   # retry recovered a real verdict
+    assert calls["n"] == 3   # base call (1) + forced call None (1) + forced retry (1)
