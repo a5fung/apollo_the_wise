@@ -23,8 +23,23 @@ from agents.market_intelligence.db import get_pool
 
 logger = logging.getLogger(__name__)
 
+# 1500 (was 800, 2026-08-09 #543 nightly truncation check): the ask itself is bounded (the
+# system prompt below says "350 words max total") and the old cap was RESPECTED for 9/9 calls
+# on claude-sonnet-4-6 — output ranged 493-563 tokens, i.e. ~1.6 tokens/word including markdown,
+# ~1.42x headroom over the observed max. That headroom was too thin to survive a model swap: the
+# POSTMORTEM_MODEL role auto-resolved to claude-sonnet-5 (RESOLVED_ROLES, "sonnet" tier) and its
+# first 2 calls (8/9) BOTH hit exactly 800 — 100% truncation, immediately. This is the same
+# verbosity jump already measured on ep_catalyst_grade (avg 228->284 on the model swap) and
+# ep_grade_judge, not a growing/unbounded ask — so raising is the right fix here, not bounding
+# the prompt further. 1500 = ~2.5x the compliant-response anchor (560 = 350 words * 1.6
+# tok/word), matching the headroom ep_catalyst_grade/ep_grade_judge were raised to in the same
+# incident. Both sonnet-5 samples are CENSORED (cut off at 800, true need unknown beyond
+# "more than 800") — this is the best data-derived estimate, not a measured true need for the
+# new model. WATCH: next weekly-review run (Sun 8:00 ET) fires 2 postmortem calls; if either
+# still lands at exactly 1500, the cap was not the constraint and the fix becomes bounding the
+# 350-word ask instead of raising again.
 from shared.llm_models import POSTMORTEM_MODEL as _MODEL
-_MAX_TOKENS = 800
+_MAX_TOKENS = 1500
 
 _SYSTEM_PROMPT = """You review a single closed momentum/EP trade for Apollo the Wise, a trader who follows Qullamaggie/Pradeep Bonde methodology.
 

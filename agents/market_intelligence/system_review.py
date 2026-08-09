@@ -37,8 +37,24 @@ from agents.market_intelligence.db import (
 logger = logging.getLogger(__name__)
 
 _WINDOW_DAYS = 7
+# 2800 (was 1200, 2026-08-09 #543 nightly truncation check): this ceiling was ALREADY bounded
+# once. 5/17-7/05 (11 calls on claude-sonnet-4-6) sat at exactly 1200 on 10/11 calls (91%) — the
+# prompt was asking for more than it had room for. #306 (7/05) and #412 (7/06) moved mfe_capture
+# and the Reviews-ready list OUT of this LLM call into deterministic appendices (see
+# run_weekly_review below); the very next 4 calls (7/12-8/02, still sonnet-4-6) landed at
+# 971-1103, 0/4 at cap — the fix worked. The 8/09 call broke it again, but NOT the same way: it
+# is the FIRST call on claude-sonnet-5 (SYSTEM_REVIEW_MODEL auto-resolved via RESOLVED_ROLES,
+# "sonnet" tier) and hit the cap on its only try. Same model-swap verbosity jump as postmortem
+# and ep_catalyst_grade, not a relapse of the pre-7/05 unbounded ask. 2800 = ~2.5x the largest
+# response this caller has ever actually completed (1103, from the post-bound-the-ask period) —
+# matching the headroom postmortem was raised to in the same incident, not a guessed round
+# number. The single sonnet-5 sample is CENSORED (cut off at 1200) — true new-model need is
+# unknown beyond "more than 1200". WATCH: next Sunday 8:00 ET run (1 call); if it lands at
+# exactly 2800, the cap is not the constraint and the next move is bounding the ask again
+# (candidates: the drift/strategy-promotion/shadow-ORB/wick/silent-failures sections in the
+# system prompt below), not a further raise.
 from shared.llm_models import SYSTEM_REVIEW_MODEL as _MODEL
-_MAX_TOKENS = 1200
+_MAX_TOKENS = 2800
 
 _SYSTEM_PROMPT = """You are Apollo's weekly self-auditor. You review metrics from \
 a momentum/EP trading assistant and surface, FACTUALLY, what's working and what \
