@@ -24,7 +24,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 _GATE = _ROOT / "scripts/report_format_gate.py"
 sys.path.insert(0, str(_ROOT / "scripts"))
 
-from report_format_gate import prose_blocks  # noqa: E402
+from report_format_gate import bullet_count, prose_blocks  # noqa: E402
 
 # The verbatim shape the operator objected to on 2026-08-02: a bolded lead-in, then sentences.
 _THE_DRIFT = """Fixed, shipped, and checked on the live system.
@@ -145,7 +145,11 @@ def test_blocks_on_a_prose_report(tmp_path):
 
 
 def test_allows_a_correctly_formatted_report(tmp_path):
-    r = _run({"transcript_path": _transcript(tmp_path, _THE_FIX * 3)})
+    # Padded with a heading (exempt from both the prose and the bullet count) rather than
+    # repeating _THE_FIX, which would have tripled its 4 bullets past the length arm's cap of 6 —
+    # an artifact of the old padding trick, not a real multi-report reply.
+    padded = _THE_FIX + "\n### Confirmed in production — no further action needed on this line.\n"
+    r = _run({"transcript_path": _transcript(tmp_path, padded)})
     assert r.returncode == 0, r.stderr
 
 
@@ -170,6 +174,161 @@ def test_a_short_reply_is_never_gated(tmp_path):
     """The format rule is about progress reports and summaries. Gating a two-line answer is the
     over-firing that would get this switched off."""
     r = _run({"transcript_path": _transcript(tmp_path, "Yes — 336 of 379 calls. Action: none.")})
+    assert r.returncode == 0
+
+
+# ── LENGTH ARM — the drift that moved past the paragraph check (operator 2026-08-09) ───────────
+#
+# Calibrated against six weeks of the operator's own transcripts (1,419 replies actually shown to
+# him). 14 were genuinely complained about as too long/wordy; bullets > 6 catches 9 of them,
+# including both anchors below, at the number CLAUDE.md rule 7 already states as the hard cap.
+# Full calibration story lives in the module docstring — this file freezes the numbers so a later
+# edit can't quietly loosen the cap.
+
+# Verbatim reply that drew "this sounds too complicated, just in one simple sentence" and then,
+# two turns later, "please fix how you write ... hides the core most important points underneath
+# all the rambling" (2026-08-09, session 6bd49b80, line 30606). 13 bullets, 0 prose paragraphs —
+# it was fully "correctly formatted" and still the thing he was objecting to.
+_ANCHOR_30606 = """**Carryover recorded and #555 filed — the matcher rewrite now has its own line.**
+
+**What it says**
+- Theme identity is decided by ticker overlap alone, one day at a time.
+- Nine rules now stack on a single decision.
+- The newest sits in a gap 0.014 wide, judged on two examples.
+- The core case: overlap alone cannot tell a stray re-attachment from a genuine rename.
+
+**What I locked into it**
+- The three bad merges must stay split; the real defence duplicate must stay merged.
+- Grid must be identical at all 21 slider settings, not one.
+- The rule count must come down — ten instead of nine solves nothing.
+
+**Why it couldn't stay on #553**
+- #553 is the patch; this is the rewrite that patch is evidence for.
+- Leaving it there would repeat July's mistake of folding new work onto an old line.
+
+**Board: 84**, ceiling raised to 84 with your authorisation and the reason recorded.
+
+**Action — one thing**
+- Use **Reboot app** on share.streamlit.io next time you open the dashboard, not a reload.
+
+**Monday, unchanged**
+- Flip the breakeven stop before 09:30 ET.
+- Run the order-shape test during market hours.
+- Confirm five things landed in production.
+"""
+
+# Verbatim reply that drew "how come you still write so much ... it's a simple ask and you just
+# need to tell me you're doing it, one line, instead you wrote 10 lines" (2026-08-09, same
+# session, line 31384). 7 bullets — the exact floor of the cap; this is the anchor that rules out
+# every threshold above 6.
+_ANCHOR_31384 = """**Agreed, and this one is genuinely gateable — unlike yesterday's.**
+
+**Why it can be caught mechanically**
+- The trigger is my own written claim, not a judgement call. If a task says a check is pending, its date and status must back that up.
+- That's decidable from the board file alone, same as the gates already running before every commit.
+
+**I measured your board before carding it**
+- 12 lines are correctly marked. **7 claim a verification while sitting in a status that will never surface it** — including #548, tomorrow's breakeven work.
+- So this isn't a one-off slip, it's a standing hole.
+
+**Being built now**
+- Fails the commit when a line promises a check without a date that surfaces it, naming the task and the exact fix.
+- Must separate a pending promise from a past one already confirmed — that's the hard part, and if the noise can't be kept low it won't ship.
+- Existing 7 get flagged rather than blocking the first commit; new ones fail hard.
+
+**Action: none.** I'll verify it catches today's case before it goes in.
+"""
+
+# Six bullets, comfortably over _MIN_MESSAGE_CHARS — must pass. The cap is "over 6", not "6".
+_SIX_BULLETS_OK = """**Cost attribution fixed and live — spend is now readable per lane.**
+
+- Root cause: a grading call let a lane skip naming who pays, so it billed the live lane.
+- Scope was 8 lanes, not 1 — every offline test and replay was billing live grading too.
+- Fix: the payer is now required at the call site, not inferred afterward.
+- Verified: a day of replay traffic bills its own lane, live traffic is unaffected.
+- No threshold change, no SSoT update needed — this was a bug, not a criteria change.
+- Action: none. Closed and verified live.
+"""
+
+
+def test_the_bullet_cap_is_the_operators_own_written_number():
+    """CLAUDE.md rule 7: 'HARD BUDGET: ~6 bullets, ~1 screen, hard'. This is not re-derived from
+    the transcript search — softening it to chase a lower firing rate would be re-legislating a
+    cap the operator wrote himself."""
+    import report_format_gate as g
+    assert g._BULLET_CAP == 6
+
+
+def test_anchor_30606_thirteen_bullets_is_over_cap():
+    assert bullet_count(_ANCHOR_30606) == 13
+
+
+def test_anchor_31384_seven_bullets_is_the_floor_of_the_cap():
+    """7 is the minimum bullet count found across every genuine length complaint in the corpus —
+    the threshold cannot be raised even one notch without losing this anchor entirely."""
+    assert bullet_count(_ANCHOR_31384) == 7
+
+
+def test_six_bullets_passes():
+    assert bullet_count(_SIX_BULLETS_OK) <= 6
+
+
+def test_code_fenced_bullet_like_lines_are_not_counted():
+    """A code block or diff full of '- ' lines is data he asked to see, not my bullets."""
+    text = "Diff:\n\n```\n" + "\n".join(f"- old line {i}" for i in range(20)) + "\n```\n"
+    assert bullet_count(text) == 0
+
+
+def test_nested_sub_bullets_count_too():
+    """Intentional, not a bug: three headers with three children each is still nine lines he has
+    to read line by line -- the same wall the cap targets, however it's indented."""
+    text = "\n".join(f"  - child {i}" for i in range(9))
+    assert bullet_count(text) == 9
+
+
+def test_a_terse_reply_under_400_chars_is_never_gated_even_with_many_bullets(tmp_path):
+    """The length arm only ever runs once the message clears _MIN_MESSAGE_CHARS, same gate the
+    paragraph arm already uses. Eight short bullets that stay under 400 chars total ARE the terse
+    list he wants -- pinned so a change to _MIN_MESSAGE_CHARS can't silently widen this arm's
+    scope without a test noticing."""
+    text = "\n".join(f"- item {i}" for i in range(8))
+    assert len(text) < 400
+    r = _run({"transcript_path": _transcript(tmp_path, text)})
+    assert r.returncode == 0, r.stderr
+
+
+def test_blocks_on_the_exact_anchor_31384_via_the_hook(tmp_path):
+    """The floor case, run through the actual Stop hook subprocess — not just the pure function."""
+    r = _run({"transcript_path": _transcript(tmp_path, _ANCHOR_31384)})
+    assert r.returncode == 2
+    assert "7 bullets" in r.stderr and "cap is ~6" in r.stderr
+
+
+def test_blocks_on_the_exact_anchor_30606_via_the_hook(tmp_path):
+    r = _run({"transcript_path": _transcript(tmp_path, _ANCHOR_30606)})
+    assert r.returncode == 2
+    assert "13 bullets" in r.stderr
+
+
+def test_allows_six_bullets_via_the_hook(tmp_path):
+    r = _run({"transcript_path": _transcript(tmp_path, _SIX_BULLETS_OK)})
+    assert r.returncode == 0, r.stderr
+
+
+def test_length_block_message_states_actual_count_and_the_cap():
+    from report_format_gate import length_complaint
+    msg = length_complaint(17)
+    assert "17 bullets" in msg and "cap is ~6" in msg
+
+
+def test_a_re_entry_after_a_length_block_never_blocks_again(tmp_path):
+    r = _run({"transcript_path": _transcript(tmp_path, _ANCHOR_31384), "stop_hook_active": True})
+    assert r.returncode == 0
+
+
+def test_the_length_arm_off_switch_covers_it_too(tmp_path):
+    r = _run({"transcript_path": _transcript(tmp_path, _ANCHOR_30606)},
+             {"REPORT_FORMAT_GATE": "off"})
     assert r.returncode == 0
 
 

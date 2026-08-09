@@ -26,6 +26,44 @@ NOT CHECKED, on purpose: the "action always stated" rule and the "header carries
 Both are semantic, both would misfire on a plain answer to a plain question, and a gate that cries
 wolf is worse than no gate. This one is objectively decidable from the text alone.
 
+LENGTH ARM (added 2026-08-09, operator: *"how is this enforced? ... you always end up writing a
+book no matter what i tell you not to do it"*) -- the paragraph arm held its one line; the drift
+just moved into correctly-formatted bullets, which it does not check at all.
+
+Calibrated against the operator's own transcripts (~/.claude/projects/.../ *.jsonl, six weeks,
+1,419 replies actually shown to him), not picked by intuition:
+- 25 messages matched a verbosity-complaint keyword search; 14 were genuine (the rest were "too
+  much going on" / "way too many commands" -- about decision complexity or feature count, not
+  reply length, and excluded).
+- Length ALONE does not separate cleanly. The 08-09 anchor ("it's a simple ask ... instead you
+  wrote 10 lines", 1,037 chars) sits BELOW the accepted-reply median (1,348 chars) -- a char
+  ceiling that catches it fires on over half of history. Chars are not gated here.
+- Bullet count does separate, at the number already written into CLAUDE.md rule 7 ("~6 bullets
+  ... hard") -- that number is the operator's, not derived from this search. `bullets > 6` catches
+  9 of 14 genuine complaints, incl. both named anchors (30606: 13 bullets; 31384: 7 bullets, the
+  floor). All 5 misses (0-5 bullets each) already trip prose_blocks() above -- no residual case a
+  length arm needs to cover; the paragraph arm already gates them.
+- Firing rate, two ways -- both from the same six weeks, almost all of it predating rule 7:
+  GROSS 29% of every >=400-char reply has bullets > 6 (369/1,274); but 155 of those already trip
+  prose_blocks() and never reach this arm. MARGINAL -- of the 298 replies that actually pass the
+  paragraph arm and reach this one -- 72% have bullets > 6 (214/298). That is the real number:
+  most "correctly formatted" (no-prose-paragraph) replies in this history are still over the cap.
+  Both exceed this repo's own "signal not wallpaper" line (the paragraph arm shipped at 16%).
+  Shipped anyway because 6 is the operator's own written cap, not a number to soften for a nicer
+  rate -- the size of the number IS the finding: the bullet habit is the default, unenforced,
+  everywhere, which is exactly "how is this enforced ... you always end up writing a book" says.
+  Expect frequent blocks/rewrites at first; that is the mechanism working, not a defect.
+- Known gap, measured not fixed: an enumerated multi-part ask ("1. ... 2. ... 3. ...") legitimately
+  earns a multi-bullet answer. 39 negatives opened with numbered items; 4 (10%) also had bullets>6
+  in the reply and would now block. Low enough not to build a carve-out for (a carve-out here would
+  be a second feature fitted on 14 positives, the same objection that killed the short-ask arm) --
+  named here so a future false block on an enumerated ask isn't a surprise.
+- A short-ask-only variant (gate tighter when the opening message was a short directive) got the
+  gross rate to 16.9% without losing either anchor, but needs turn-boundary state the hook does not
+  have at runtime and adds a judgment ("your ask was short") the gate cannot defend under fail-open.
+  Not shipped. A chars-only OR arm was also tried and dropped -- zero measured residual case: every
+  0-bullet complaint in the corpus already trips the paragraph arm or predates it entirely.
+
 Exit codes (Claude Code Stop-hook contract): 0 = allow, 2 = block and feed stderr back.
 """
 from __future__ import annotations
@@ -58,6 +96,11 @@ _BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)]|>)\s")
 _HEADING = re.compile(r"^\s*#{1,6}\s")
 _TABLE = re.compile(r"^\s*\|")
 
+# CLAUDE.md rule 7, verbatim: "HARD BUDGET: ~6 bullets, ~1 screen, hard". The operator's own
+# number -- measured against his transcripts (see module docstring), not re-derived here. Do NOT
+# raise this to chase a lower firing rate; that is re-legislating a cap he wrote himself.
+_BULLET_CAP = 6
+
 
 def prose_blocks(text: str) -> list[str]:
     """Unbulleted blocks carrying >= _MIN_SENTENCES sentences and >= _MIN_CHARS characters."""
@@ -82,6 +125,25 @@ def prose_blocks(text: str) -> list[str]:
         if len(line) >= _MIN_CHARS and n_sent >= _MIN_SENTENCES:
             out.append(line)
     return out
+
+
+def bullet_count(text: str) -> int:
+    """Every bullet-shaped line, at ANY nesting depth (indented sub-bullets count too) -- the
+    same shape prose_blocks() already recognizes as a bullet. Intentional: three headers with two
+    children each is still nine lines he has to read, the same wall the cap targets. Code fences
+    and blockquotes are exempt for the same reasons they're exempt above: a fence is data he asked
+    to see, a blockquote is his own words quoted back."""
+    n, in_fence = 0, False
+    for raw in text.split("\n"):
+        line = raw.rstrip()
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if _BULLET.match(line) and not line.lstrip().startswith(">"):
+            n += 1
+    return n
 
 
 # Only the tail is ever needed, and the transcript accumulates every tool call and result for the
@@ -145,6 +207,18 @@ def complaint(blocks: list[str]) -> str:
     )
 
 
+def length_complaint(n: int) -> str:
+    return (
+        f"REPORT FORMAT GATE — {n} bullets — the cap is ~6; a one-line ask gets one line.\n\n"
+        "CLAUDE.md rule 7 (operator 2026-08-08/09): bullets are still a wall of text if there are "
+        "too many of them — the paragraph check only catches prose, and the drift moved here.\n"
+        "Rewrite: first line = the answer, he can stop there and be right. Mechanism, root cause, "
+        "verification, caveats — delete by default, they go to the commit/PLAN.md/SSoT, not the "
+        "message. Per line: would he act differently without it? No → cut. Match the reply to the "
+        "ask — a one-line instruction gets ONE LINE, not a report."
+    )
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -158,10 +232,14 @@ def main() -> int:
     if len(text) < _MIN_MESSAGE_CHARS:
         return 0
     blocks = prose_blocks(text)
-    if not blocks:
-        return 0
-    print(complaint(blocks), file=sys.stderr)
-    return 2
+    if blocks:
+        print(complaint(blocks), file=sys.stderr)
+        return 2
+    n = bullet_count(text)
+    if n > _BULLET_CAP:
+        print(length_complaint(n), file=sys.stderr)
+        return 2
+    return 0
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@
   6. **PLAIN WORDS. Every number carries its meaning or is cut** (operator 2026-08-03: *"lingo filled wordy text with no context"*). "0-for-9" → "the last nine live trades were all losers". Shorthand (excess, N=, R, cohort) → the commit/SSoT. **A number he cannot act on is noise — state the conclusion, not the measurement.**
   7. **🚨 LENGTH, not format (operator 2026-08-08: *"you 1) write too much 2) overcomplicates 3) hides the core most important points underneath all the rambling"*).** Bullets are still a wall of text; the hook only catches paragraphs, so the drift moved here. **FIRST LINE = THE ANSWER** — he can stop there and be right. **~6 bullets, ~1 screen, hard**; over that you are reporting PROCESS. **Mechanism / root cause / verification / caveats: DELETE BY DEFAULT** → the commit. Per line: *would he act differently without it?* No → cut. **MATCH THE REPLY TO THE ASK** — a one-line instruction gets ONE LINE, not a report; the ~6-bullet cap is a CEILING, not a target (operator 2026-08-09: *"it's a simple ask and you just need to tell me you're doing it, one line, instead you wrote 10 lines"*).
   ⚠ Partial compliance = non-compliance: one paragraph undoes the whole message. Template: memory `report-like-an-exec-summary`.
-  🔒 **MECHANICAL SINCE 2026-08-02** (asked a 6th time the day this was written — the always-loaded surface is NOT enough alone). `scripts/report_format_gate.py` is a **Stop hook** BLOCKING any reply with a prose paragraph outside a bullet — the one drift that recurs and the only rule objectively decidable from the text. Deliberately narrow (bullets free; short replies never gated; headings/tables/code/quotes exempt) — a guard that always fires is not a guard — and it fails OPEN so it can never wedge a session. Rules 1/4/5 stay judgement calls — no gate decides them without crying wolf.
+  🔒 **MECHANICAL SINCE 2026-08-02** (the always-loaded surface is NOT enough alone). `scripts/report_format_gate.py` is a **Stop hook** BLOCKING a prose paragraph outside a bullet OR **>6 bullets** (added 2026-08-09 — the cap was unenforced, so the drift moved into bullets) — the two drifts that recur and the only rules objectively decidable from the text. Narrow by design (short replies never gated; headings/tables/code/quotes exempt) — a guard that always fires is not a guard — and it fails OPEN so it can never wedge a session. Rules 1/4/5 stay judgement calls — no gate decides them without crying wolf.
 
 ## 🧭 Operating model — who does what (operator 2026-07-25, PERMANENT)
 
@@ -34,9 +34,9 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 **Non-negotiables, model-agnostic:**
 - **THE LINE doesn't move.** Sign-off + CHANGE_PROCESS + backtest + verify-live apply no matter which model wrote it.
-- **Never rubber-stamp a premium model** — verify against code/data before it reaches the operator (1 of 6 REDs over-rated 7/12; a "NULL bug" was a deliberate fail-safe).
+- **Never rubber-stamp a premium model** — verify against code/data first (1 of 6 REDs over-rated 7/12; a "NULL bug" was a deliberate fail-safe).
 - **Never manufacture work** to feed a model — an easy mechanism doesn't make work infinite.
-- **⚠ Capacity:** subagents INHERIT the session model — a Fable-session review fleet burned 75% of capacity (7/17). Explicit `model:` on EVERY spawn; SESSION on Opus, Fable per-task.
+- **⚠ Capacity:** subagents INHERIT the session model — a Fable-session fleet burned 75% of capacity (7/17). Explicit `model:` on EVERY spawn; SESSION on Opus, Fable per-task.
 
 ## Session Protocol (open + close — the anti-drift ritual)
 
