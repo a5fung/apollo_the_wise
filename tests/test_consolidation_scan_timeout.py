@@ -230,51 +230,74 @@ async def test_mna_checks_capped_per_run(monkeypatch):
     assert stats["written"] == 10                         # fail-OPEN: nothing dropped by the cap
 
 
-# ── Part B §1/§2/§3/§4: both arms fire; the pack fields are recorded ──────────────────────────
+# ── Part B §1/§3/§4: Confirm fires; the pack fields are recorded (Anticipate PARKED 2026-08-09 —
+#    operator: "stop the shadow ... don't kill the setup"; see scheduler.py's provenance comment
+#    at the removed anticipate fire site) ───────────────────────────────────────────────────────
 @pytest.mark.asyncio
-async def test_scan_records_both_arms_with_shadow_pack_fields(monkeypatch):
+async def test_scan_records_confirm_arm_only_anticipate_parked(monkeypatch):
     bars = _mk_bars()
     cap, _ = _patch_scan_harness(monkeypatch, bars=bars, sig=_sig(bars), csig=_csig(bars))
 
     stats, transitions, entries = {"universe": 0, "written": 0}, [], []
     await sched._consolidation_readiness_scan(_TODAY, stats, transitions, entries)
 
-    assert len(cap["inserts"]) == 2
-    by_mode = {kw["entry_mode"]: kw for _, _, kw in cap["inserts"]}
-    a, c = by_mode["anticipate"], by_mode["confirm"]
-
-    # §2 — structural_low is the HEADLINE stop; the fire-bar low keeps accruing in coiled_low:
-    assert a["stop_kind"] == "structural_low" and a["stop_price"] == 78.0
-    assert a["coiled_low"] == 79.2
-    assert a["stop_pct"] == pytest.approx((79.5 - 78.0) / 79.5 * 100, rel=1e-4)
-    assert a["sub1pct_reject"] is True                     # coiled_low risk 0.377% < 1%
-    # §1 — quality flag + raw components RECORDED (rising bars → above 50SMA; ADV ≈ $15M; RS 72):
-    assert a["would_pass_quality"] is True
-    assert a["is_common_stock"] is True and a["above_50sma"] is True
-    assert a["rs_at_entry"] == 72.0 and a["adv20_dollar"] > 5_000_000
-    # §4 — regime stamped:
-    assert a["regime_at_entry"] == "Bull"
+    # ANTICIPATE PARKED: only Confirm reaches the DB, even though a valid anticipate `sig` was
+    # available from the harness — the WIRING was turned off, not the underlying signal.
+    assert len(cap["inserts"]) == 1
+    c = cap["inserts"][0][2]
 
     # §3 — the Confirm control arm records through the SAME insert, tagged:
     assert c["entry_mode"] == "confirm"
     assert c["stop_kind"] == "base_low" and c["stop_price"] == 76.5
     assert c["coiled_low"] is None                        # anticipate-only geometry
     assert c["sub1pct_reject"] is False                   # 4.375% base_low risk
-    assert c["regime_at_entry"] == "Bull" and c["would_pass_quality"] is True
+    # §1/§4 — quality flag + regime pack fields still recorded on whichever arm is live:
+    assert c["would_pass_quality"] is True
+    assert c["regime_at_entry"] == "Bull"
 
-    # both arms surface in the fired accumulator, mode-tagged; the anticipate digest row carries
-    # the HEADLINE stop (structural_low), not the legacy fire-bar low:
+    # only Confirm surfaces in the fired accumulator now:
     modes = {(t, m) for t, _o, m, _s in entries}
-    assert modes == {("TST", "anticipate"), ("TST", "confirm")}
-    ant_row = next(s for _t, _o, m, s in entries if m == "anticipate")
-    assert ant_row["stop_price"] == 78.0
+    assert modes == {("TST", "confirm")}
+
+
+# ── the parked anticipate geometry is still LIVE CODE (un-wired, not deleted) — pin it directly
+#    against the helper so a future re-wire has coverage without going through the scan's wiring ──
+@pytest.mark.asyncio
+async def test_entry_shadow_fire_kwargs_anticipate_geometry_still_correct(monkeypatch):
+    import agents.market_intelligence.db as db
+
+    bars = _mk_bars()
+
+    async def fake_rs(d, tickers):
+        return {t: {"rs_composite": 72.0} for t in tickers}
+
+    monkeypatch.setattr(db, "get_rs_for_tickers", fake_rs)
+
+    kw = await sched._entry_shadow_fire_kwargs(
+        "TST", _sig(bars), bars, mode="anticipate", non_stock=set(),
+        regime_label="Bull", today=_TODAY)
+
+    assert kw["entry_mode"] == "anticipate"
+    # §2 — structural_low is the HEADLINE stop; the fire-bar low keeps accruing in coiled_low:
+    assert kw["stop_kind"] == "structural_low" and kw["stop_price"] == 78.0
+    assert kw["coiled_low"] == 79.2
+    assert kw["stop_pct"] == pytest.approx((79.5 - 78.0) / 79.5 * 100, rel=1e-4)
+    assert kw["sub1pct_reject"] is True                    # coiled_low risk 0.377% < 1%
+    # §1 — quality flag + raw components RECORDED (rising bars → above 50SMA; ADV ≈ $15M; RS 72):
+    assert kw["would_pass_quality"] is True
+    assert kw["is_common_stock"] is True and kw["above_50sma"] is True
+    assert kw["rs_at_entry"] == 72.0 and kw["adv20_dollar"] > 5_000_000
+    # §4 — regime stamped:
+    assert kw["regime_at_entry"] == "Bull"
 
 
 # ── Part B §1 A/B doctrine: a would-FAIL fire is still RECORDED (flag only, never a filter) ───
 @pytest.mark.asyncio
 async def test_quality_fail_still_records_the_fire(monkeypatch):
+    # Anticipate is PARKED (2026-08-09) — this exercises the A/B doctrine via the live Confirm
+    # arm now (csig, not sig); the doctrine itself (never filter the write) is mode-agnostic.
     bars = _mk_bars()
-    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, sig=_sig(bars), rs=40.0,
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), rs=40.0,
                                  non_stock={"TST"})     # ETF-classified AND RS below floor
     stats, transitions, entries = {"universe": 0, "written": 0}, [], []
     await sched._consolidation_readiness_scan(_TODAY, stats, transitions, entries)
