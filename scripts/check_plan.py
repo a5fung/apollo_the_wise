@@ -15,6 +15,10 @@ WHAT this enforces on PLAN.md (every task line `- #<id> | <YYYY-MM-DD> | <status
     the SAME past-ETA gate (verify-worded): VERIFY-LIVE in prod + close, or rebump the verify-date.
     This makes "done = VERIFIED-LIVE, not deployed" a STATUS with teeth instead of forgettable prose —
     built tasks stop sitting `in_progress` under a stale to-build headline and getting re-built;
+  - a task whose OWN TEXT asserts a pending verification (VERIFY-LIVE/VERIFY-DUE/"NOT done until"/etc)
+    must be `deployed` — else the claim has nowhere to surface from (operator 2026-08-09, the #167
+    lesson: the claim was written, the status never flipped). Pre-existing violations WARN (surfaced
+    every `--today`); a violation on a line ADDED or MODIFIED this commit HARD-FAILS;
   - task ids are unique.
 
 USAGE:
@@ -372,6 +376,115 @@ def _dependency_gate(tasks, errors, today) -> None:
                 pass
 
 
+# --- PENDING-VERIFY CLAIM GATE (operator 2026-08-09) --------------------------------------------
+# WHY: operator caught task #167's OWN TEXT reading "VERIFY-LIVE — the flip is NOT done until this
+# is confirmed" while its status sat at `in_progress` — nothing in the mechanical surfaces
+# (VERIFY-DUE / LIKELY-BUILT) would ever have surfaced it, because those key off STATUS, and the
+# status was never flipped to `deployed` in the first place. The claim was written in the
+# mechanism's own vocabulary and then the mechanism itself was skipped — "I'll verify it" is prose,
+# and prose drifts (caught twice, same shape). This gate makes the CLAIM and the STATUS the same
+# fact: if a task's own text asserts a verification is still open, its status must already be
+# `deployed` (the SoT rule, CLAUDE.md Session Protocol) — otherwise the claim has nowhere to
+# mechanically surface from.
+#
+# TRIGGER VOCABULARY (tuned against the live 84-line board, not guessed): this codebase's own idiom
+# for a live-verify checkpoint — VERIFY-LIVE / VERIFY-DUE (either case) / "NOT done until" / "must
+# be confirmed" / "confirm in prod". Deliberately NARROW: generic English "verify" is common
+# load-bearing prose here ("Opus-verified", "ETF% unverified", "verified in git", "Fable-reviewed")
+# and would be pure noise if matched — measured zero of those trip this gate on the real board.
+#
+# PENDING vs HISTORICAL (the core difficulty): the SAME phrase ("VERIFY-LIVE") is used for both an
+# OPEN claim ("VERIFY-LIVE = tomorrow's job writes the first row") and a CLOSED checkpoint ("✅
+# VERIFY-LIVE DONE 6/18: ..."), and a single task can carry both at once (#452, #471 do — a done
+# sub-checkpoint plus a still-open one). Two suppressions, both measured against the real board:
+#   1. `[ok:...]` / `[blocked:...]` / `[swept:...]` / `[revalidated:...]` tags are META-COMMENTARY
+#      about a PAST rebump/sweep decision, not a live claim about the task's current state — #261's
+#      ONLY match lives entirely inside one such tag (boilerplate rebump-reason text reused
+#      verbatim across #261/#414/#452/#479). Stripped before matching, mirroring `_SWEPT_TAG`'s
+#      bracket-strip-before-hash precedent.
+#   2. A match immediately preceded (within `_VERIFY_CLAIM_HIST_WINDOW` chars, with no intervening
+#      "▶" pending-arrow) by a "✅" checkmark is this codebase's own convention for "already
+#      confirmed" — #327 carries THREE "✅ VERIFY-LIVE DONE" checkpoints and zero open ones; none
+#      of them should fire. The intervening-▶ guard exists so "✅ built; ▶ VERIFY-LIVE" (a done note
+#      immediately followed by a NEW open one) cannot be false-suppressed by the earlier checkmark.
+# A task fires if AT LEAST ONE match survives both filters — it is not exempt just because it ALSO,
+# elsewhere on the same line, once verified something else (#452, #471).
+#
+# Measured 2026-08-09 against the live board: 19 lines carry the raw vocabulary; after both
+# suppressions, 5 are real open violations (#548 #184 #354 #471 #452) and #261/#327 are correctly
+# suppressed (see above) — 0 false positives against the operator's own manual read of all 84 lines.
+#
+# HARD-FAIL vs WARN: hard-failing the commit on all 5 pre-existing violations today would repeat
+# this repo's own documented failure mode — a gate that fails the very first commit gets bypassed
+# with `--no-verify` (three broad guards were built and binned in one week for exactly this). So:
+# a violation UNCHANGED since `HEAD:PLAN.md` (pre-existing) WARNS only, surfaced every `--today` so
+# it cannot go quiet between sessions; a violation on a line ADDED or MODIFIED this commit
+# HARD-FAILS — the #167 shape (write new VERIFY-LIVE prose without flipping status) can never land
+# again. Mirrors `_rebump_gate`'s git idiom (`HEAD:PLAN.md`, fail-open on any git error — never
+# block a commit on a git/infra hiccup; when git is unavailable every violation degrades to WARN,
+# never escalates to HARD, matching how the other git-touching gates fail open by skipping outright).
+_VERIFY_CLAIM_TRIGGER = re.compile(
+    r"verify-live|verify-due|not done until|must be confirmed|confirm in prod", re.I)
+_VERIFY_CLAIM_META_TAG = re.compile(r"\[(?:ok|blocked|swept|revalidated):[^\]]*\]", re.I)
+_VERIFY_CLAIM_HIST_WINDOW = 15   # chars back to look for a "✅ done" marker before a trigger match
+
+
+def _pending_verify_matches(title: str) -> list[str]:
+    """The surviving OPEN verify-claim snippets in `title` (empty = nothing pending asserted).
+    See the section comment above for the two suppressions (meta-tag strip, ✅-checkmark lookback)."""
+    body = _VERIFY_CLAIM_META_TAG.sub(" ", title)
+    hits = []
+    for m in _VERIFY_CLAIM_TRIGGER.finditer(body):
+        back = body[max(0, m.start() - _VERIFY_CLAIM_HIST_WINDOW):m.start()]
+        ck, pend = back.rfind("✅"), back.rfind("▶")   # ✅ done-marker, ▶ pending-marker
+        if ck != -1 and ck > pend:
+            continue   # nearest marker is a checkmark -> historical/closed, not a live claim
+        hits.append(body[m.start():min(len(body), m.end() + 50)].strip())
+    return hits
+
+
+def _pending_verify_violations(tasks):
+    """Pure (no IO): tasks whose CURRENT text asserts an open verify claim while status != deployed.
+    Split out from `_pending_verify_gate` so the classifier is unit-testable without touching git,
+    and reused by the `--today` surface so the same 5-line list appears at OPEN, not just at commit."""
+    return [t for t in tasks if t["status"] != "deployed" and _pending_verify_matches(t["title"])]
+
+
+def _pending_verify_gate(tasks, errors) -> None:
+    """Apply the pending-verify-claim check: HARD-FAIL on lines touched this commit, WARN on
+    pre-existing ones. See the section comment above for the full rationale."""
+    violations = _pending_verify_violations(tasks)
+    if not violations:
+        return
+    import subprocess
+    prior_by_id: dict[int, dict] = {}
+    git_ok = False
+    try:
+        head = subprocess.run(["git", "show", "HEAD:PLAN.md"], cwd=str(REPO),
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=5)
+        if head.returncode == 0:
+            prior_tasks, _ = parse(head.stdout)
+            prior_by_id = {t["id"]: t for t in prior_tasks}
+            git_ok = True
+    except Exception:
+        pass   # git unavailable — git_ok stays False; every violation below degrades to WARN
+    for t in violations:
+        snippet = _pending_verify_matches(t["title"])[0]
+        fix = ("set status=deployed and ETA=<the date this becomes confirmable in prod> "
+               "(the #167 lesson, operator 2026-08-09)")
+        touched = False
+        if git_ok:
+            prior = prior_by_id.get(t["id"])
+            touched = prior is None or prior["title"] != t["title"] or prior["status"] != t["status"]
+        msg = (f"L{t['line']}: task #{t['id']} asserts a PENDING verify (\"{snippet}\") but status "
+               f"is `{t['status']}`, not `deployed` — {fix}.")
+        if touched:
+            errors.append(msg)
+        else:
+            print(f"[plan] WARN — pre-existing pending-verify claim: {msg}")
+
+
 _SHIPPED_CODE_DIRS = ("agents/", "core/", "channels/", "shared/", "main.py")
 _OWN_COMMIT = re.compile(r"^#(\d+)[:.\s]")
 
@@ -574,6 +687,23 @@ def main(argv: list[str]) -> int:
             # indistinguishable from a surface that stopped working.
             print(f"  ({_suppressed} suppressed by a fresh `swept:` marker — re-surfaces "
                   f"{_SWEEP_MAX_AGE}d after each sweep date.)")
+        # PENDING-VERIFY CLAIM (operator 2026-08-09, the #167 lesson): a task's OWN TEXT asserts a
+        # verification is still open but its status says otherwise. Surfaced every OPEN — not just
+        # at commit time — so a pre-existing (WARN-only) violation can never go quiet between
+        # sessions the way #167 did.
+        pending_verify = _pending_verify_violations(tasks)
+        print(f"\n-- VERIFY-CLAIMED, NOT DEPLOYED ({len(pending_verify)}) — task text asserts a "
+              f"pending verify but status isn't `deployed`: set status=deployed + a verify-date ETA --")
+        for t in pending_verify or []:
+            # Print the matched CLAIM, not the title's first 90 chars — on these multi-KB task
+            # lines the claim sits thousands of characters into the title, so a plain title-prefix
+            # truncation (as LIKELY-BUILT's bare-ID list sidesteps by not showing content at all)
+            # would show the headline and hide the exact reason this line was flagged.
+            claim = _pending_verify_matches(t["title"])[0][:100]
+            print(f"  #{t['id']:<4} [{t['status']:<11}] {t['project']}")
+            print(f"        claim: {claim}")
+        if not pending_verify:
+            print("  (none)")
         base = _pin_daily_baseline(len(tasks), today)
         # OPEN drops a watermark too, so a day where the operator runs `--today`
         # and never commits still arms TOMORROW's carry-over. Previously only the
@@ -655,6 +785,7 @@ def main(argv: list[str]) -> int:
     _shipped_pending_gate(tasks, errors)   # `pending` + own code commit = stale line -> duplicate card (operator 7/25)
     _stale_block_gate(tasks, errors, today)   # [blocked:] is not an unlimited rebump pass (operator 7/26)
     _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
+    _pending_verify_gate(tasks, errors)   # own text claims a pending verify but status != deployed; HARD on touched, WARN on pre-existing (operator 8/09, the #167 lesson)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
     # IMMEDIATELY followed by the #id of the task that does it — forcing "name it -> point at the
