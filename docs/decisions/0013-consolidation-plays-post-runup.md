@@ -81,17 +81,25 @@ Family A (an EP run-up is just one way the run-up can happen — that subset is 
   `anticipation.compute_fresh_tightening` / `bars_to_ft_rows`).
 
 ### The three entry modes (differ ONLY by WHEN you enter)
-**STATUS (operator 6/29 — implements the 6/22 "strictly anticipate" split):** the live shadow records
-**ANTICIPATE ONLY**. Confirm was UN-WIRED 6/29 — a 2nd entry mode MUDDIES the shadow's edge measurement
-(you can't read the anticipate edge if breakout-entries are mixed into the same cohort). U&R was never
-wired. The table is the conceptual reference; only Anticipate is generated. (`confirm_signal_at` left in
-code but unused — removal = #404. **Reversion**: re-wire in `scheduler.py::_consolidation_readiness_job`
-— needs operator sign-off, it changes what the shadow measures.)
+**STATUS (operator 2026-08-09 — "stop the shadow, we have data but don't kill the setup"):** the
+live shadow now generates **CONFIRM ONLY**. Anticipate is PARKED, not deleted — `de.entry_signal_at`
+itself stays defined + tested; the fire call in `scheduler.py::_consolidation_readiness_scan` was
+removed, and the comment left at that spot carries the full provenance (git history has the exact
+removed block, same as the 6/29 Confirm un-wire it mirrors). See the 2026-08-09 change-log entry
+below for the evidence. **Reversion**: re-add the anticipate fire block in
+`_consolidation_readiness_scan` from git history — needs an operator ruling, not a fresh
+CHANGE_PROCESS N≥10 backtest (detection criteria are not changing, only whether the write happens).
+
+**Prior state (superseded by the row above):** Confirm was UN-WIRED 6/29 (a 2nd entry mode then
+muddied the Anticipate-only measurement) and RE-WIRED 2026-07-14 (#327 shadow-fix pack, operator-
+signed) as a control arm — that re-wire was never reflected in this table until now (found while
+parking Anticipate 2026-08-09; this doc had been stale on that point for 3+ weeks). U&R was never
+wired.
 
 | Mode | When you enter | Stop | Wired? |
 |---|---|---|---|
-| **Anticipate** | IN the coil, BEFORE the break | tight-range low | ✅ LIVE (the only one) |
-| **Confirm / flag** | on the CONFIRMED breakout (base_high + volume) | base / breakout low | ❌ un-wired 6/29 |
+| **Anticipate** | IN the coil, BEFORE the break | tight-range low | ❌ PARKED 2026-08-09 (data-gathering done; entry/exit dig comes after HTF) |
+| **Confirm / flag** | on the CONFIRMED breakout (base_high + volume) | base / breakout low | ✅ LIVE (control arm, re-wired 7/14) |
 | **U&R** (undercut & rally) | undercut the base low → reclaim it | undercut low (tightest → biggest cushion: the "U&R paradox") | ❌ never wired (concept) |
 
 ### U&R is a GENERIC mechanic, not a Family-A-owned setup
@@ -375,3 +383,43 @@ re-key, self-heals via carry-forward.
 **Reversion-flag:** REFINEMENT of the 2026-06-27 shadow entry above (parallel shadow → INTEGRATED as the
 live base; old peak-anchor base detection retired). **Status:** shipped, awaiting forward shadow. #327 is
 SHADOW (no trade state / money). Operator-signed the replacement.
+
+### 2026-08-09 — Anticipate PARKED (data-gathering done; dig into entry/exit comes after HTF)
+
+**Trigger**: operator, verbatim: *"on anticipate, let's stop the shadow, we have data but don't kill
+the setup, we need to dig into it more to see what's wrong with it and where the real setup is. this
+is all part of consolidation, we just need to find if there's proper entry and exit, save for later
+after we complete htf."*
+
+**Evidence**: split at 2026-07-12 (the #327 shadow-fix / Confirm re-wire point). Pre: 32 trades over
+3 days, -1.23R average. Post: 92 trades over 8 days, -0.08R average — but the TYPICAL trade stayed
+-0.84R with only a 29% win rate; the mean only rose because a handful of large winners pulled it. The
+leg carrying ~90% of the volume never flipped sign in any way that matters. 136 settled rows is
+enough to answer "does the anticipate edge exist as currently specified" (no); more fires would only
+add noise to the same answer, not new evidence.
+
+**Anticipated effect**: zero new `mi_consolidation_entry_shadow` rows with `entry_mode='anticipate'`
+going forward. The ~136 already-settled rows are untouched — they ARE the evidence for the later dig.
+OPEN anticipate rows already on the board still settle normally (`_run_entry_shadow_settlement` is
+mode-agnostic, unchanged). Confirm (control arm) is unaffected — a separate entry mode, never part of
+this ruling. Downstream checked and unaffected: the `/anticipation` board, the daily digest (its
+Anticipate section simply goes empty, code untouched by design), `get_consolidation_entry_shadow_summary`
+(GROUP BY handles fewer/no rows), the #521 inert-sweep check on this table (existing rows already prove
+variation; freezing new anticipate writes doesn't retroactively erase that), and the row-count-drift
+sweep (`consolidation_readiness`'s job-run row never reports `rows_written`, so it isn't tracked by that
+sweep at all). `evaluate_narrative_themes` does NOT read this table (checked — the "theme consolidation"
+it references is the unrelated theme-engine Phase-1 birth-gate concept).
+
+**Reversion-flag**: PAUSE of the 2026-07-14 re-wire's Anticipate half (Confirm stays live) — not a
+REVERSAL (the `entry_signal_at` in-coil timing logic is not judged wrong here, only parked pending the
+entry/exit dig this ruling calls for) and not a DELETION (`entry_signal_at` itself stays defined +
+tested; only the fire call at the scan's call site was removed — the comment left there carries the
+provenance and git history has the exact removed block, the same pattern as the 6/29 Confirm un-wire
+above). Re-wiring needs an operator ruling, same pattern as 6/29→7/14 — no fresh CHANGE_PROCESS N≥10 is
+required to restore it, since detection criteria are not changing.
+
+**Status**: prepared 2026-08-09 as a reviewed, NOT-YET-APPLIED patch (code + this doc + the one
+scan-integration test that pinned dual-arm wiring) — held per the operator's "don't flip it yourself"
+instruction pending his or the session's explicit apply. Once applied: verify-live = the next 17:35 ET
+`consolidation_readiness` digest shows zero `🎯 Anticipate entry fired today` lines while `✅ Confirm
+entry fired today` keeps appearing normally on nights Confirm fires.

@@ -3824,26 +3824,31 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
 
             anchor_date = date.fromisoformat(cons["anchor_date"])   # the coil peak = the anchor now
 
-            # #327 FORWARD SHADOW: fire the entry signals AS OF the latest bar. SHADOW recorder;
+            # #327 FORWARD SHADOW: fire the entry signal AS OF the latest bar. SHADOW recorder;
             # the open-dedup pins one row per mode to the first fire day. anchor_idx from the coil
-            # peak (guaranteed in-bars). Both modes are recorded into the ONE shadow lifecycle,
-            # tagged by entry_mode (#354 ADR 0013 §1 · re-wired dual-mode per the signed 7/14
-            # proposal §3): Anticipate = the validated in-coil signal; Confirm = the base-high
-            # breakout on the SAME §2 universe (NOT the live #94 path).
+            # peak (guaranteed in-bars). Confirm = the base-high breakout on the SAME §2 universe
+            # (NOT the live #94 path).
+            #
+            # ANTICIPATE PARKED (operator ruling, 2026-08-09 — "stop the shadow, we have data but
+            # don't kill the setup, we need to dig into it more ... this is all part of
+            # consolidation, we just need to find if there's proper entry and exit, save for later
+            # after we complete htf"). Evidence: split at the 2026-07-12 Confirm re-wire — pre 32
+            # trades/3 days at -1.23R avg, post 92 trades/8 days at -0.08R avg, but the TYPICAL
+            # trade stayed -0.84R with a 29% win rate; the mean only rose because a few large
+            # winners pulled it, the leg carrying ~90% of volume never flipped sign. The 136
+            # settled rows already answer "does this edge exist as specified" — more fires would
+            # only add noise, not new evidence.
+            # UN-WIRED, NOT DELETED — the fire call was removed here but `de.entry_signal_at`
+            # itself stays defined + tested; the same pattern un-wired Confirm on 6/29 (and
+            # Confirm was re-wired 7/14 — see ADR 0013 §1 change log 2026-08-09). OPEN anticipate
+            # rows already on the board keep settling via the mode-agnostic
+            # `_run_entry_shadow_settlement` below. Confirm (control arm) is UNAFFECTED — it is a
+            # separate entry mode and was never part of this ruling. Re-wiring needs an operator
+            # ruling (not a fresh CHANGE_PROCESS N>=10 — detection criteria are not changing).
             anchor_idx = next((j for j, b in enumerate(bars)
                                if b["date"] == cons["anchor_date"]), None)
             if anchor_idx is not None:
                 origin = "9m" if ticker in nine_m else "family_a"
-                sig = de.entry_signal_at(bars, len(bars) - 1, anchor_idx)
-                if sig:
-                    kw = await _entry_shadow_fire_kwargs(
-                        ticker, sig, bars, mode="anticipate", non_stock=non_stock,
-                        regime_label=regime_label, today=today)
-                    if await insert_consolidation_entry_shadow(ticker, anchor_date,
-                                                               origin=origin, **kw):
-                        # overlay the HEADLINE stop so the digest shows what settlement settles
-                        entries_fired.append((ticker, origin, "anticipate",
-                                              {**sig, "stop_price": kw["stop_price"]}))
                 csig = de.confirm_signal_at(bars, len(bars) - 1, anchor_idx)
                 if csig:
                     kw = await _entry_shadow_fire_kwargs(
