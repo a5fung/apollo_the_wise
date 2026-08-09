@@ -8,25 +8,30 @@ is still invisible. No claim means no warning, so it can sit at `deployed` forev
 confirmed — or worse, be closed on 'it deployed fine'." A task at `deployed` means built-and-shipped
 AWAITING PROOF; if the line names no observable, it can never honestly close.
 
-ONE shared vocabulary, not a second divergent one: both gates match through `_verify_claim_body`
-(meta-tag strip) + `_VERIFY_CLAIM_TRIGGER` — the exact trigger phrases the sibling gate already
-tuned against the live board (VERIFY-LIVE / VERIFY-DUE / "NOT done until" / "must be confirmed" /
-"confirm in prod", case-insensitive). This gate does not widen or re-tune it.
+SAME DAY UPDATE: the finding above ("4 fire, all secretly state a check in idiom the vocabulary
+missed") got fixed, but not by widening the SHARED vocabulary — that would have also widened the
+sibling HARD-FAIL gate, trading its tuned precision for this gate's recall need. Instead the gates
+now use two vocabularies from one definition point: `_VERIFY_CLAIM_TRIGGER_STRICT` (sibling gate,
+HARD-FAIL, unchanged) and `_VERIFY_CLAIM_TRIGGER_BROAD` (this gate, WARN-only, = STRICT plus the
+phrasings measured on the real board: bare "VERIFY <day-name/date>", past-tense "VERIFIED IN PROD" /
+"VERIFIED <date>"). Both still strip meta-tags through the one shared `_verify_claim_body`. This
+gate uses `_verify_claim_raw_matches`, which now matches BROAD (ALL trigger hits, historical + open)
+— never the OPEN-only `_pending_verify_matches` the sibling gate uses, and never STRICT.
 
 THE SUBTLE PART this gate must get right: a verify condition that is already SATISFIED — checkmark-
 marked historical ("✅ VERIFY-LIVE DONE 6/18: ...") — must still count as "stated". The task named an
-observable; it simply already fired. So this gate uses `_verify_claim_raw_matches` (ALL trigger
-hits, historical + open), never the OPEN-only `_pending_verify_matches` the sibling gate uses.
+observable; it simply already fired.
 
-Measured 2026-08-09 against the live 16 `deployed`-task board: 4 fire (#544 #525 #513 #539), all
-pre-existing (WARN, not HARD-FAIL). Manual read of all 4 found each ALREADY states an observable —
-just phrased outside the shared vocabulary's narrow trigger set (bare "VERIFY <date/day>:" without a
-"-live"/"-due" suffix; past-tense "VERIFIED IN PROD" vs the regex's "confirm in prod"). That is a
-finding about the shared vocabulary's recall on THIS direction, reported rather than silently fixed
-by widening the trigger the sibling gate shipped and tuned this same morning (a separate, operator-
-level decision — it would also change what the sibling gate matches). The FROZEN_* snippets below
-are pinned verbatim from PLAN.md as of that measurement, mirroring the sibling test file's own
-anti-loosening-pin idiom, so a future vocabulary change is a deliberate act, not an accident.
+Measured 2026-08-09 against the live 16 `deployed`-task board: BROAD drops the firing count from 4
+to 1 (#544 #525 #539 now correctly recognized as stating a check; #513 still fires). Manual read of
+#513 found it is a GENUINE gap, not a vocabulary miss — its only "verify" mention lives entirely
+inside a stripped `[ok:...]` meta-tag, and its real check is an event-gated ETA (the monthly sweep
+cadence), not text this gate can see. BROAD was deliberately NOT stretched further to swallow it.
+The FROZEN_* snippets below are pinned verbatim from PLAN.md as of the 2026-08-09 measurement,
+mirroring the sibling test file's own anti-loosening-pin idiom, so a future vocabulary change is a
+deliberate act, not an accident. See `tests/test_check_plan_verify_broad_vocabulary.py` for the
+dedicated BROAD-vs-STRICT relationship tests (superset proof, new-phrasing coverage, gate-1-unchanged
+pin against this same frozen corpus).
 """
 from __future__ import annotations
 
@@ -71,17 +76,25 @@ FROZEN_539_NO_TRIGGER_HIT = (
 )
 
 
-def test_frozen_board_snippets_have_zero_raw_trigger_hits():
-    # documents the 2026-08-09 finding: these 4 real deployed tasks DO state a check, but not in the
-    # shared vocabulary's exact idiom -> they are genuine hits for THIS gate today (see docstring).
-    for snippet in (FROZEN_544_NO_TRIGGER_HIT, FROZEN_525_NO_TRIGGER_HIT,
-                    FROZEN_513_NO_TRIGGER_HIT, FROZEN_539_NO_TRIGGER_HIT):
-        assert _verify_claim_raw_matches(snippet) == [], snippet
+def test_frozen_544_525_539_now_have_raw_trigger_hits_under_broad():
+    # documents the 2026-08-09 fix: these 3 real deployed tasks DO state a check, just not in
+    # STRICT's exact idiom -> BROAD (this gate's vocabulary) now recognizes all three, closing the
+    # false-positive finding recorded in the module docstring.
+    for snippet in (FROZEN_544_NO_TRIGGER_HIT, FROZEN_525_NO_TRIGGER_HIT, FROZEN_539_NO_TRIGGER_HIT):
+        assert _verify_claim_raw_matches(snippet) != [], snippet
 
 
-# ── shared vocabulary: same trigger phrases as the sibling gate, not a second definition ─────────
+def test_frozen_513_still_has_zero_raw_trigger_hits():
+    # #513's only "verify" mention lives entirely inside a stripped `[ok:...]` meta-tag -> a
+    # genuine gap, not a vocabulary miss. BROAD was deliberately NOT widened to catch this one.
+    assert _verify_claim_raw_matches(FROZEN_513_NO_TRIGGER_HIT) == []
 
-def test_shares_trigger_vocabulary_with_the_pending_gate():
+
+# ── vocabulary: BROAD is a SUPERSET of the sibling gate's STRICT triggers, not a second divergent
+#    definition (see `tests/test_check_plan_verify_broad_vocabulary.py` for the structural proof) ─
+
+def test_still_matches_every_strict_trigger_phrase():
+    # BROAD ⊇ STRICT means every STRICT-firing phrase must still fire here too.
     for phrase in ("VERIFY-LIVE", "VERIFY-DUE", "verify-live", "NOT done until",
                    "must be confirmed", "confirm in prod"):
         assert _verify_claim_raw_matches(f"some prose {phrase} more prose"), phrase
@@ -96,6 +109,7 @@ def test_generic_verify_prose_never_matches():
         "the promote path verified ALREADY-LIVE under v1",
         "operator confirms Rank Flow reads correctly on the live URL",
         "confirms signal on next active close",
+        "so no earlier date can verify it",   # #513's real board phrase — BROAD must NOT catch it
     ):
         assert _verify_claim_raw_matches(prose) == [], prose
 
@@ -166,14 +180,22 @@ def test_non_deployed_status_is_never_a_violation_of_this_gate_regardless_of_cla
 
 # ── the frozen real-board fixtures wired end-to-end ───────────────────────────────────────────────
 
-def test_frozen_board_snippets_fire_as_deployed_no_verify_violations():
+def test_frozen_544_525_539_no_longer_fire_as_violations():
+    # BROAD now recognizes the check each one states -> these 3 are no longer false positives.
     for i, snippet in enumerate((FROZEN_544_NO_TRIGGER_HIT, FROZEN_525_NO_TRIGGER_HIT,
-                                  FROZEN_513_NO_TRIGGER_HIT, FROZEN_539_NO_TRIGGER_HIT)):
+                                  FROZEN_539_NO_TRIGGER_HIT)):
         tid = 9910 + i
         tasks, perr = parse(f"## X\n- #{tid} | {FUTURE} | deployed | {snippet}\n")
         assert perr == []
-        viol = _deployed_no_verify_violations(tasks)
-        assert len(viol) == 1 and viol[0]["id"] == tid, snippet
+        assert _deployed_no_verify_violations(tasks) == [], snippet
+
+
+def test_frozen_513_still_fires_as_a_violation():
+    # the one genuine gap (#513): its only "verify" mention is inside a stripped meta-tag.
+    tasks, perr = parse(f"## X\n- #9913 | {FUTURE} | deployed | {FROZEN_513_NO_TRIGGER_HIT}\n")
+    assert perr == []
+    viol = _deployed_no_verify_violations(tasks)
+    assert len(viol) == 1 and viol[0]["id"] == 9913
 
 
 # ── hard-fail (touched this commit) vs warn (pre-existing, unchanged since HEAD:PLAN.md) ────────

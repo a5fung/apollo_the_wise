@@ -397,6 +397,12 @@ def _dependency_gate(tasks, errors, today) -> None:
 # be confirmed" / "confirm in prod". Deliberately NARROW: generic English "verify" is common
 # load-bearing prose here ("Opus-verified", "ETF% unverified", "verified in git", "Fable-reviewed")
 # and would be pure noise if matched — measured zero of those trip this gate on the real board.
+# This is `_VERIFY_CLAIM_TRIGGER_STRICT` below. THIS gate (pending-verify, HARD-FAIL) uses STRICT
+# and ONLY STRICT — a false fire here blocks a commit, so precision is non-negotiable and this
+# vocabulary is never widened for this direction. The sibling inverse gate further down
+# (`_deployed_no_verify_gate`, WARN-only) uses a WIDER `_VERIFY_CLAIM_TRIGGER_BROAD` — see that
+# gate's section comment for why a warn-only gate wants recall instead, and why the two vocabularies
+# must stay two objects, not one, even though BROAD is built by extending STRICT's own pattern.
 #
 # PENDING vs HISTORICAL (the core difficulty): the SAME phrase ("VERIFY-LIVE") is used for both an
 # OPEN claim ("VERIFY-LIVE = tomorrow's job writes the first row") and a CLOSED checkpoint ("✅
@@ -428,8 +434,38 @@ def _dependency_gate(tasks, errors, today) -> None:
 # again. Mirrors `_rebump_gate`'s git idiom (`HEAD:PLAN.md`, fail-open on any git error — never
 # block a commit on a git/infra hiccup; when git is unavailable every violation degrades to WARN,
 # never escalates to HARD, matching how the other git-touching gates fail open by skipping outright).
-_VERIFY_CLAIM_TRIGGER = re.compile(
+_VERIFY_CLAIM_TRIGGER_STRICT = re.compile(
     r"verify-live|verify-due|not done until|must be confirmed|confirm in prod", re.I)
+
+# BROAD is a strict SUPERSET of STRICT — built by extending STRICT's own pattern string, not a
+# hand-maintained parallel list, so "BROAD matches everything STRICT matches" is true by
+# construction and cannot rot out of sync as either side is edited later (`test_check_plan_verify_
+# broad_vocabulary.py` also pins this structurally). Only `_deployed_no_verify_gate` (WARN-only,
+# recall wants to win) uses BROAD; `_pending_verify_gate` (HARD-FAIL, precision wants to win) always
+# uses STRICT — see the section comments on both gates for the full rationale.
+#
+# Additions measured 2026-08-09 against the 4 real `deployed` tasks STRICT was missing on the live
+# board (#544 #525 #513 #539 — see `_deployed_no_verify_gate`'s section comment for the full read):
+#   - bare "VERIFY <day-name>" / "VERIFY <YYYY-MM-DD>", no "-live"/"-due" suffix
+#     -> #544 "▶ **VERIFY MONDAY:** theme engine 17:00 ET run ...", #539 "▶ VERIFY 2026-08-08 (Sat
+#     morning, on tonight's 17:00 ET run): ..."
+#   - past-tense "VERIFIED IN PROD" -> #525 "**VERIFIED IN PROD RIGHT AFTER DEPLOY:** `breaker[live]=0`..."
+#   - past-tense "VERIFIED <date>" (ISO or M/D) is ticket-named, not itself the phrase that fires any
+#     of the 4 -> included because the M/D shape IS real board idiom elsewhere (#356 "VERIFIED
+#     8/04", #471 "VERIFIED 7/16", #306 "VERIFIED 7/9"), just on tasks that already clear STRICT some
+#     other way on the same line, so adding it does not change today's violation count. Stated here so
+#     it reads as "grounded in real board text" rather than "imagined to satisfy the ticket."
+#   #513 is deliberately NOT covered — its only "verify" mention lives entirely inside a stripped
+#   `[ok:...]` meta-tag and, even unstripped, is generic lowercase prose ("so no earlier date can
+#   verify it"), not a stated observable. That is this gate finding a genuine gap, not a vocabulary
+#   miss — see the finding note in `_deployed_no_verify_gate`'s section comment.
+_VERIFY_CLAIM_BROAD_EXTRA = (
+    r"\bverify\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}-\d{2}-\d{2})"
+    r"|\bverified\s+in\s+prod\b"
+    r"|\bverified\s+(?:\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2})"
+)
+_VERIFY_CLAIM_TRIGGER_BROAD = re.compile(
+    _VERIFY_CLAIM_TRIGGER_STRICT.pattern + "|" + _VERIFY_CLAIM_BROAD_EXTRA, re.I)
 _VERIFY_CLAIM_META_TAG = re.compile(r"\[(?:ok|blocked|swept|revalidated):[^\]]*\]", re.I)
 _VERIFY_CLAIM_HIST_WINDOW = 15   # chars back to look for a "✅ done" marker before a trigger match
 
@@ -446,23 +482,28 @@ def _verify_claim_body(title: str) -> str:
 
 
 def _verify_claim_raw_matches(title: str) -> list[str]:
-    """ALL trigger-vocabulary hits in `title` (meta-tag-stripped), historical (✅) and open (▶)
+    """ALL BROAD trigger-vocabulary hits in `title` (meta-tag-stripped), historical (✅) and open (▶)
     alike. This is the primitive the INVERSE gate needs: "does this task's text state a verify
     condition AT ALL" does not care whether that condition already fired — a satisfied,
     checkmark-marked historical claim ("✅ VERIFY-LIVE DONE 6/18: ...") still counts as "stated"
     (the task named an observable; it happened to already clear). `_pending_verify_matches` below
-    is this same primitive further filtered down to the OPEN subset only."""
+    is this same primitive further filtered down to the OPEN subset only — and matches against
+    STRICT, not BROAD (see `_VERIFY_CLAIM_TRIGGER_BROAD`'s comment for why the two directions use
+    different vocabularies on purpose)."""
     body = _verify_claim_body(title)
     return [body[m.start():min(len(body), m.end() + 50)].strip()
-            for m in _VERIFY_CLAIM_TRIGGER.finditer(body)]
+            for m in _VERIFY_CLAIM_TRIGGER_BROAD.finditer(body)]
 
 
 def _pending_verify_matches(title: str) -> list[str]:
     """The surviving OPEN verify-claim snippets in `title` (empty = nothing pending asserted).
-    See the section comment above for the two suppressions (meta-tag strip, ✅-checkmark lookback)."""
+    See the section comment above for the two suppressions (meta-tag strip, ✅-checkmark lookback).
+    Matches against STRICT (`_VERIFY_CLAIM_TRIGGER_STRICT`), never BROAD — this is the HARD-FAIL
+    direction and precision is non-negotiable there; the WARN-only inverse gate is the one that
+    widens (see `_VERIFY_CLAIM_TRIGGER_BROAD`'s comment)."""
     body = _verify_claim_body(title)
     hits = []
-    for m in _VERIFY_CLAIM_TRIGGER.finditer(body):
+    for m in _VERIFY_CLAIM_TRIGGER_STRICT.finditer(body):
         back = body[max(0, m.start() - _VERIFY_CLAIM_HIST_WINDOW):m.start()]
         ck, pend = back.rfind("✅"), back.rfind("▶")   # ✅ done-marker, ▶ pending-marker
         if ck != -1 and ck > pend:
@@ -523,10 +564,18 @@ def _pending_verify_gate(tasks, errors) -> None:
 # no observable, the task can never honestly close, which is exactly the failure the status exists
 # to prevent.
 #
-# SAME vocabulary, ONE shared definition, NOT a second divergent one: both directions match through
-# `_verify_claim_body` (meta-tag strip) + `_VERIFY_CLAIM_TRIGGER` (VERIFY-LIVE / VERIFY-DUE / "NOT
-# done until" / "must be confirmed" / "confirm in prod", case-insensitive) — the exact vocabulary
-# the sibling gate already tuned against the live board. This gate does NOT re-tune it.
+# SHARED DEFINITION POINT, TWO VOCABULARIES ON PURPOSE (2026-08-09, same day as the finding below):
+# both directions still match through the ONE `_verify_claim_body` (meta-tag strip) — "what counts
+# as a verify claim" cannot drift into two definitions of THAT — but they no longer share one regex.
+# The sibling gate above HARD-FAILS on a touched line, so a false fire there blocks real work:
+# precision wins, and it stays on `_VERIFY_CLAIM_TRIGGER_STRICT`, untouched, forever (it is tuned and
+# it caught #471). THIS gate only WARNs, so a MISS here is the expensive error — a task that already
+# states its check gets nagged forever and the warning becomes wallpaper, exactly the failure mode
+# that killed three earlier broad guards this codebase built and binned. So this gate uses the wider
+# `_VERIFY_CLAIM_TRIGGER_BROAD` (defined right after STRICT, built by literally extending STRICT's
+# pattern string so BROAD ⊇ STRICT is true by construction — a future reader cannot "helpfully"
+# re-merge them back into one without visibly editing that construction). Never widen STRICT to
+# match this gate's needs; never narrow BROAD to match the sibling's.
 #
 # THE SUBTLE PART (the ticket's own framing): a verify condition that is already SATISFIED —
 # checkmark-marked historical ("✅ VERIFY-LIVE DONE 6/18: ...") — must still count as "stated". The
@@ -534,21 +583,22 @@ def _pending_verify_gate(tasks, errors) -> None:
 # So this gate does NOT reuse `_pending_verify_matches` (which deliberately DROPS checkmark-history
 # to find only OPEN claims) — it uses `_verify_claim_raw_matches`, the shared primitive BEFORE that
 # filter, so a purely-historical claim still counts as "stated" here even though it would count as
-# "nothing pending" for the sibling gate. One vocabulary, two different questions asked of it.
+# "nothing pending" for the sibling gate. One vocabulary (BROAD, for this gate), two different
+# questions asked of the shared `_verify_claim_body` substrate.
 #
-# Measured 2026-08-09 against the live board's 16 `deployed` tasks: 4 fire (#544 #525 #513 #539),
-# all pre-existing (unchanged since HEAD:PLAN.md) -> WARN, not HARD-FAIL; nothing reds the board.
-# Manual read of all 4 full task bodies found every one of them DOES in fact state an observable —
-# "VERIFY MONDAY:" + a numbered checklist (#544), "VERIFIED IN PROD RIGHT AFTER DEPLOY: ..." (#525),
-# "VERIFY 2026-08-08 ... Query: SELECT ..." (#539), an explicit event-gated ETA tied to a monthly
-# cadence (#513) — just phrased in idiom the SHARED vocabulary (tuned for the sibling gate's
-# precision need, not this gate's recall need) does not catch: bare "VERIFY <date/day>" without a
-# "-live"/"-due" suffix, and past-tense "VERIFIED IN PROD" vs the regex's present-tense "confirm in
-# prod". So on TODAY's board this gate is 0-for-4 by the operator's own manual read — reported as
-# the finding it is (per the ticket's own "report rather than ship a gate that reds the board"),
-# NOT quietly fixed by widening the vocabulary the sibling gate shipped and tuned this same morning.
-# That widening is a real, separate decision (it changes what the OTHER direction also matches) and
-# belongs to the operator, not to this card. WARN-only means nothing is blocked by it meanwhile.
+# UPDATE 2026-08-09, same day: measured against the live board's 16 `deployed` tasks, 4 fired under
+# STRICT-only matching (#544 #525 #513 #539), all pre-existing -> WARN, not HARD-FAIL. Manual read of
+# all 4 full task bodies found 3 of them DO in fact state an observable, just phrased outside
+# STRICT's narrow idiom: "VERIFY MONDAY:" + a numbered checklist (#544), "VERIFIED IN PROD RIGHT
+# AFTER DEPLOY: ..." (#525), "VERIFY 2026-08-08 ... Query: SELECT ..." (#539). BROAD now catches all
+# three (bare "VERIFY <day-name/date>" and past-tense "VERIFIED IN PROD" — see
+# `_VERIFY_CLAIM_TRIGGER_BROAD`'s own comment for the exact additions and which board line grounds
+# each). **#513 still fires, and correctly so** — its only "verify" mention lives entirely inside a
+# stripped `[ok:...]` meta-tag ("... so no earlier date can verify it."), not a stated observable;
+# its real check is an event-gated ETA tied to the monthly sweep cadence, not text this gate can see.
+# That is the gate finding a genuine gap, not a vocabulary miss, and BROAD was deliberately NOT
+# stretched to swallow it (see `_VERIFY_CLAIM_TRIGGER_BROAD`'s comment). WARN-only means nothing is
+# blocked by it meanwhile.
 def _deployed_no_verify_violations(tasks):
     """Pure (no IO): `deployed` tasks whose text states NO verify condition at all — checkmark-
     satisfied historical claims still count (see section comment; uses `_verify_claim_raw_matches`,
@@ -812,12 +862,16 @@ def main(argv: list[str]) -> int:
         if not pending_verify:
             print("  (none)")
         # NOTE: no `--today` surface for the inverse (deployed-no-claim) direction. Measured
-        # 2026-08-09: every current firing is, on manual read, a task that DOES state a check in
-        # idiom the shared vocabulary doesn't catch — a permanent OPEN-ritual block built entirely
-        # of known false positives is the LIKELY-BUILT 9/9 failure mode this file already documents
-        # ("triaged as housekeeping and ignored"). The gate's WARN print (every plain run, incl.
-        # pre-commit and CLOSE) already satisfies the WARN/HARD-FAIL escalation the ticket asked
-        # for; see `_deployed_no_verify_gate`'s section comment for the full finding.
+        # 2026-08-09: at the time this surface was declined, ALL 4 current firings were, on manual
+        # read, tasks that DO state a check just in idiom the (then-STRICT-only) shared vocabulary
+        # didn't catch — a permanent OPEN-ritual block built entirely of known false positives is the
+        # LIKELY-BUILT 9/9 failure mode this file already documents ("triaged as housekeeping and
+        # ignored"). `_VERIFY_CLAIM_TRIGGER_BROAD` (same day, see that gate's section comment) closed
+        # 3 of those 4 false positives; #513 remains a genuine gap, not a false positive, so this
+        # decision is due for a fresh look but is unchanged by this card (board-hygiene scope only).
+        # The gate's WARN print (every plain run, incl. pre-commit and CLOSE) already satisfies the
+        # WARN/HARD-FAIL escalation the ticket asked for; see `_deployed_no_verify_gate`'s section
+        # comment for the full finding.
         base = _pin_daily_baseline(len(tasks), today)
         # OPEN drops a watermark too, so a day where the operator runs `--today`
         # and never commits still arms TOMORROW's carry-over. Previously only the
