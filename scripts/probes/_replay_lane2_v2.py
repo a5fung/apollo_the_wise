@@ -181,7 +181,12 @@ async def _replay_one(scan_d: date, reg: _MemRegistry, rows_offline, *, no_llm: 
             # _discover_lane2_registry using the same helpers the live code
             # calls, then APPROXIMATES state growth (all-seed) for sizing.
             from agents.market_intelligence.db import get_today_ep_alerts
-            alerts = await get_today_ep_alerts(scan_d) if rows_offline is not None else []
+            # Unconditional: when --offline supplied rows this call is PATCHED (above) to
+            # serve them, and otherwise it reads the live DB — which is the documented
+            # on-box mode. The old `... if rows_offline is not None else []` hardcoded ZERO
+            # alerts for the live-DB path, so the free sizing leg silently reported "no
+            # gated days" on-box and could not price the paid leg — the one job it has.
+            alerts = await get_today_ep_alerts(scan_d)
             cand = [a for a in alerts if _lane2_qualifies(a)]
             ws = _lane2_window_start(scan_d)
             active = reg.active(ws, scan_d)
