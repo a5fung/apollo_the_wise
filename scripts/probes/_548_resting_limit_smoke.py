@@ -26,8 +26,19 @@ TWO PHASES, because only one of them works outside market hours:
 EXIT CODES: 0 = ran and learned something · 2 = could not run (market closed / setup) ·
             1 = the probe itself failed.
 
-SAFETY: paper account only, hard-asserted. Every submitted order id goes through
-`_probe_safety.teardown` (cancel → verify → flatten) in a finally block.
+SAFETY: paper account only, hard-asserted (see `_ACCOUNT_MODE` below — this was
+NOT actually a top-level assert until 2026-08-10; only `_probe_safety.teardown`
+enforced it, and only in the `finally` block, after submission). Every
+submitted order id goes through `_probe_safety.teardown` (cancel → verify →
+flatten) in a finally block.
+
+RUN LOCATION (2026-08-10, credential-wall fix): this probe does REAL order
+submission via the raw `broker.alpaca_client`, which only has credentials
+inside `apollo-execution` — `apollo-market` force-blanks all four ALPACA_*
+vars by design (creds isolation, #256 W2). Run via:
+    docker exec apollo-execution python scripts/probes/_548_resting_limit_smoke.py
+NOT `apollo-market` — that container cannot produce real creds no matter what
+bootstraps here; that's a deliberate security boundary, not a bug.
 """
 from __future__ import annotations
 
@@ -39,12 +50,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 TICKER = "F"          # deliberately cheap + liquid: a stray fill costs a few dollars
 SHARES = 1
+_ACCOUNT_MODE = "paper"          # LITERAL. never parameterised, never read from env —
+                                  # matches the pattern in _540_/_541_ sibling probes.
 
 
 async def phase_a(alpaca) -> None:
     """Is sell quantity validated at SUBMISSION? Answerable with the market shut."""
     print("\n── PHASE A — submission-time validation (flat account) " + "─" * 20)
-    positions = await alpaca.get_all_positions(account_mode="paper")
+    positions = await alpaca.get_all_positions(account_mode=_ACCOUNT_MODE)
     held = {p.symbol: float(p.qty) for p in positions}
     print(f"   paper positions: {held or '(flat)'}")
     if held.get(TICKER):
@@ -60,7 +73,7 @@ async def phase_a(alpaca) -> None:
         from agents.market_intelligence.broker import alpaca_client
         from alpaca.trading.requests import StopOrderRequest
         from alpaca.trading.enums import OrderSide, TimeInForce
-        client = alpaca_client.get_trading_client("paper")
+        client = alpaca_client.get_trading_client(_ACCOUNT_MODE)
         try:
             o = client.submit_order(StopOrderRequest(
                 symbol=TICKER, qty=SHARES, side=OrderSide.SELL,
@@ -84,12 +97,30 @@ async def phase_a(alpaca) -> None:
             from scripts.probes._probe_safety import teardown
             # the BROKER client, not the read facade — the facade cannot cancel (see
             # _probe_safety's fallback note; this probe is the incident that added it)
-            res = await teardown(alpaca_client, order_ids, account_mode="paper",
+            res = await teardown(alpaca_client, order_ids, account_mode=_ACCOUNT_MODE,
                                  symbols=[TICKER])
             print(f"   teardown: {res}")
 
 
 async def main() -> int:
+    # PAPER ONLY — hard-asserted BEFORE any credential or broker call. See module
+    # docstring: this used to be enforced only inside `_probe_safety.teardown`'s
+    # `finally` block, i.e. AFTER submission. Fixed 2026-08-10 alongside the
+    # credential-wall fix, since this probe (unlike its _540_/_541_ siblings) now
+    # runs in `apollo-execution`, which holds LIVE creds too — a typo'd literal
+    # here would reach the live account where it could not in credential-less
+    # `apollo-market`.
+    assert _ACCOUNT_MODE == "paper", "PROBE IS PAPER-ONLY"
+
+    # Fail loud + immediately if this process's env lacks Alpaca creds, instead of
+    # a confusing downstream 401. See `_probe_safety.ensure_alpaca_credentials`
+    # docstring for exactly what this does and does not fix — short version: it
+    # does NOT manufacture credentials, it validates them are already present
+    # (which they will be in `apollo-execution`, not in `apollo-market`).
+    from scripts.probes._probe_safety import ensure_alpaca_credentials
+    creds_status, creds_fallback = ensure_alpaca_credentials()
+    print(f"alpaca creds: {creds_status} (legacy_fallback={creds_fallback})")
+
     from agents.market_intelligence import execution_client as alpaca
     # The repo's own market-hours helper, not a hand-rolled hour comparison — it already knows
     # about holidays and early closes, which a naive (9,30)<=t<16 check does not.
@@ -132,7 +163,7 @@ async def phase_b(alpaca) -> int:
     from scripts.probes._probe_safety import teardown
 
     print("\n── PHASE B — the three questions that remain " + "─" * 22)
-    client = alpaca_client.get_trading_client("paper")
+    client = alpaca_client.get_trading_client(_ACCOUNT_MODE)
     placed: list[str] = []
     try:
         print(f"   1. market BUY {SHARES * 3} {TICKER} …")
@@ -142,7 +173,7 @@ async def phase_b(alpaca) -> int:
         placed.append(str(buy.id))
         for _ in range(20):
             await asyncio.sleep(1)
-            pos = await alpaca_client.get_position(TICKER, account_mode="paper")
+            pos = await alpaca_client.get_position(TICKER, account_mode=_ACCOUNT_MODE)
             if pos and float(pos.get("qty") or 0) >= SHARES * 3:
                 break
         else:
@@ -187,7 +218,7 @@ async def phase_b(alpaca) -> int:
             print(f"      REJECTED — {str(e)[:160]}")
         return 0
     finally:
-        res = await teardown(alpaca_client, placed, account_mode="paper", symbols=[TICKER])
+        res = await teardown(alpaca_client, placed, account_mode=_ACCOUNT_MODE, symbols=[TICKER])
         print(f"   teardown: {res}")
 
 

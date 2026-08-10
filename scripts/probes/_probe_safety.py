@@ -32,6 +32,45 @@ It NEVER raises — a teardown that explodes leaves more mess than it cleans.
 from __future__ import annotations
 
 
+def ensure_alpaca_credentials() -> tuple[str, bool]:
+    """Fail-loud credential preflight for a probe run via `docker exec ... python`.
+
+    Reuses `agent._bootstrap_alpaca_credentials()` verbatim — DO NOT re-implement
+    the ALPACA_API_KEY -> ALPACA_PAPER_* mapping here. A second copy of that
+    mapping is exactly the drift class this repo keeps getting bitten by.
+
+    WHAT THIS ACTUALLY BUYS YOU (2026-08-10, #548 credential-wall investigation):
+      `docker exec` spawns a FRESH python interpreter that starts from the
+      container's DECLARED env (docker-compose `environment:` + `env_file:`).
+      It does NOT see the agent process's own in-memory `os.environ` mutations
+      from its `@app.on_event("startup")` boot — those live only in that one
+      process. So every credentialed probe must re-run this itself; that part
+      is real and this call is required.
+
+      What it does NOT do: manufacture missing credentials. Production runs
+      `ENABLE_LIVE_MODE=true` (documented default, `constants.py`) — under that
+      branch `_bootstrap_alpaca_credentials` only VALIDATES the four
+      `ALPACA_{PAPER,LIVE}_{API_KEY,SECRET_KEY}` vars are present and raises a
+      clear `RuntimeError` if not; it does NOT remap the legacy `ALPACA_API_KEY`
+      var (that remap is dev-only, the `ENABLE_LIVE_MODE=false` branch). So this
+      call turns a missing/misconfigured var into a loud, immediate, documented
+      failure instead of a confusing downstream Alpaca 401 — it is a preflight,
+      not a fix for absent creds.
+
+    CONTAINER MATTERS MORE THAN THIS CALL. `apollo-market` (SERVICE_ROLE=
+    intelligence) force-blanks all four ALPACA_* vars to `""` in
+    `docker-compose.prod.yml`'s `environment:` block (creds isolation, #256 W2,
+    operator-authorized 2026-06-13) — PRESENT or overriding `.env`, not absent,
+    so no remap could fix it there even if one existed for the live branch, and
+    working around that would defeat a deliberate security boundary. Any probe
+    that touches real broker state must run against `apollo-execution` instead
+    (the only container `deploy.sh` treats as `CREDS_CONTAINER`) — see
+    `docs/ops/execution_split_cutover.md`.
+    """
+    from agents.market_intelligence.agent import _bootstrap_alpaca_credentials
+    return _bootstrap_alpaca_credentials()
+
+
 async def teardown(alpaca, order_ids, *, account_mode: str, symbols=None) -> dict:
     """Cancel `order_ids`, then verify nothing filled; flatten anything that did.
 
