@@ -115,6 +115,43 @@ untracked-order + false-naked, or the bug isn't understood). Both are cutover pr
   is the natural next PLAN item (#184 sibling), increment 3 stays gated on 2(a)/2(b)
   baking per the build-order above.
 
+## Rule-1 corollary (2026-08-10) — an UNREADABLE broker is not a confirmed read
+
+The #548 resting-mode breakeven failure path nulled `stop_order_id` whenever the reduced
+stop was "not confirmed live" after a failed replace — folding two different worlds into
+one write: a read that RETURNED a terminal status (confirmed dead — demotion legitimate)
+and a read that FAILED (raised / returned None / never left `pending_*`) — nothing
+confirmed. The increment-1 fence caught it at deploy `[5l/7]`; split in
+`order_manager.py::execute_partial_exit` (breakeven-failure branch). Three rules worth
+citing at every verify-read site:
+
+1. **`alpaca_client.get_order` swallows errors and returns `None`** — so "status not in
+   the live set" is NOT broker evidence of death. A `None` read is a FAILED read; only an
+   actual returned status in the dead set (or `filled`) confirms. Any site that computes
+   `_x_live = status in LIVE_SET` and demotes on `not _x_live` silently converts a read
+   failure into a "confirmed" demotion.
+2. **Bounded-retry the read before deciding** (Step-1b-sized budget) — transient failures
+   and settling `pending_replace` usually resolve into a confirmed live/dead, turning an
+   unknowable into a legitimate rule-1 write.
+3. **Still unverifiable → KEEP the pointer (last confirmed broker truth), do NOT demote,
+   alert, and let broker-truth machinery own it** — in-process `_ensure_stop_coverage`
+   (discovers stops via `get_open_orders raise_on_error=True`, never via the DB pointer)
+   plus the reconcile/coverage-drift net. Nulling on an unreadable broker adds NO
+   protection — placing a stop needs the same broker the read couldn't reach; it only
+   makes the DB assert something unconfirmed, which is rule 1's exact ban and the 6/04
+   FPS incident's exact shape. The counter-risk (a stale pointer to a genuinely dead
+   stop) is bounded precisely because no protective mechanism trusts the pointer — all
+   act on broker reads.
+
+Known residual of trap (1), found 2026-08-10 and deliberately NOT touched (tagged site,
+gate-green; #225's "don't refactor live error paths offline"): the partial-exit
+replacement-failure `old_stop_live` check (the `reason="partial_naked"` demotion) counts
+a `None` read as "not live" before its tagged null — its tag over-claims for the
+failed-read shape. Behavioral pin for the corollary:
+`tests/test_resting_mode_breakeven_548.py` (Case A / Case B tests — mutation-proven,
+including that a tag elsewhere in the same except block would launder a re-added
+unconfirmed null past the fence; only the behavioral test catches that).
+
 ## Consequences
 
 - A false-naked becomes structurally impossible: broker says covered → DB says covered.

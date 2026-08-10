@@ -2965,17 +2965,44 @@ async def execute_partial_exit(
                 except Exception as _bee:
                     # Rejected replace = atomic no-op broker-side — but VERIFY that,
                     # never assume it (the one lesson every incident here repeats).
-                    _red_live = False
-                    try:
-                        _chk = await alpaca.get_order(new_stop_id, account_mode=account_mode)
-                        _red_live = _canonical_order_status(
-                            _chk.get("status") if _chk else None
-                        ) in _STOP_CONFIRMED_LIVE_STATUSES
-                    except Exception as _verr:
-                        logger.warning(
-                            f"execute_partial_exit: {ticker} breakeven replace failed AND "
-                            f"reduced stop unreadable ({_verr}) — treating as unprotected")
-                    if _red_live:
+                    #
+                    # The verify read has THREE outcomes, not two, and ADR 0008 rule 1
+                    # ("write-side — never infer") forces them apart:
+                    #   live    — confirmed broker read, stop resting → defer, done.
+                    #   dead    — confirmed broker read, terminal status → the
+                    #             demotion below is broker-evidenced.
+                    #   unknown — the read RAISED, returned None (alpaca.get_order
+                    #             swallows errors and returns None, so a None read IS
+                    #             a failed read, not a status), or never left a
+                    #             transitional pending_* inside the budget. NOTHING
+                    #             was confirmed; demoting here would be inference
+                    #             from a failed op — the exact 2026-06-04 FPS
+                    #             false-naked shape ADR 0008 outlaws.
+                    # Bounded retry first: a transient read failure / settling
+                    # pending_replace usually resolves within the Step-1b-sized
+                    # budget, turning "unknown" into a confirmed live/dead.
+                    _red_outcome = "unknown"
+                    _red_status = None
+                    for _ in range(12):  # ~3s at 0.25s/retry — mirrors Step 1b
+                        try:
+                            _chk = await alpaca.get_order(
+                                new_stop_id, account_mode=account_mode)
+                        except Exception as _verr:
+                            _chk = None
+                            logger.warning(
+                                f"execute_partial_exit: {ticker} breakeven replace "
+                                f"failed AND reduced-stop read raised ({_verr}) — "
+                                f"retrying read")
+                        _red_status = _canonical_order_status(
+                            _chk.get("status") if _chk else None)
+                        if _red_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                            _red_outcome = "live"
+                            break
+                        if _red_status in _STOP_DEAD_STATUSES or _red_status == "filled":
+                            _red_outcome = "dead"
+                            break
+                        await asyncio.sleep(0.25)
+                    if _red_outcome == "live":
                         # Stop still resting at its original price: protection is
                         # exactly what it was pre-partial. Converges — the limit's
                         # fill sets breakeven_active, and the EOD pass raises the
@@ -3001,10 +3028,16 @@ async def execute_partial_exit(
                             f"protected). Limit for {shares} sh rests at "
                             f"${float(limit_price):.2f}."
                         )
-                    else:
-                        # Replace raised AND the reduced stop is not verifiably live
-                        # → treat as unprotected; re-protect to broker truth
-                        # post-lock (nets the resting limit, so target = 2/3).
+                    elif _red_outcome == "dead":
+                        # The reduced stop read back a TERMINAL status — the 2/3 is
+                        # unprotected. Null the stale pointer (it points at a dead
+                        # order) and re-protect to broker truth post-lock (nets the
+                        # resting limit, so target = 2/3).
+                        # broker-confirmed: reached ONLY when alpaca.get_order(
+                        # new_stop_id) returned an actual status in
+                        # _STOP_DEAD_STATUSES/'filled'. A raised or None read
+                        # canonicalizes to None, matches neither status set, and
+                        # lands in the "unknown" branch below — which never demotes.
                         await set_stop_order_id(
                             trade_id, None,
                             reason="breakeven_replace_failed",
@@ -3012,8 +3045,65 @@ async def execute_partial_exit(
                         )
                         be_reprotect = True
                         be_ctx = {"error": str(_bee),
+                                  "reason": f"breakeven replace failed and reduced "
+                                            f"stop confirmed dead "
+                                            f"(status={_red_status})"}
+                    else:
+                        # UNKNOWN: replace raised AND the reduced stop could not be
+                        # confirmed either way (read failed/None, or still pending_*
+                        # after the retry budget). The trade-off, stated plainly:
+                        #   * DEMOTING here (the pre-2026-08-10 behavior) asserts
+                        #     "naked" on zero broker evidence. That is the 2026-06-04
+                        #     FPS incident verbatim — the broker actually HAD stops,
+                        #     the DB lied "naked", and machinery acting on the lie
+                        #     made it worse. ADR 0008 rule 1: only a confirmed broker
+                        #     read/event may demote trade state.
+                        #   * KEEPING the pointer risks it being stale — the stop may
+                        #     really be dead while the DB claims protection it cannot
+                        #     prove. That risk is bounded because protection never
+                        #     depended on this DB write: be_reprotect still arms, and
+                        #     the post-lock _ensure_stop_coverage discovers live
+                        #     stops from BROKER TRUTH (get_open_orders
+                        #     raise_on_error=True), not from this pointer — stop
+                        #     really dead → it re-places in-process; stop alive →
+                        #     no-op; broker unreadable → it defers LOUDLY and the
+                        #     15-min reconcile + coverage-drift detector +
+                        #     broker-gated naked alarm own the divergence (ADR 0008
+                        #     rule 2: the reconciler owns divergence, guarded so it
+                        #     never acts on a degraded read).
+                        # Nulling adds NO protection either way — placing a stop
+                        # needs the same broker the read could not reach; the null
+                        # only changes what the DB *claims*, and an unconfirmed
+                        # claim is rule 1's exact ban. So: the ADR's side — do NOT
+                        # demote. (Same keep-on-unconfirmed call Step 1b's verify
+                        # already makes: "keep the best-guess stop … rather than
+                        # null it and trigger a false-naked".) No operator fork
+                        # hides here: with the broker unreadable no policy can ADD
+                        # protection, so the only choice is what the DB asserts —
+                        # and the ADR (operator-directed 2026-06-04) already ruled
+                        # that.
+                        await log_audit_event(
+                            "partial_exit_breakeven_unverifiable",
+                            f"{ticker}: breakeven replace failed AND reduced stop "
+                            f"{new_stop_id} unverifiable "
+                            f"(last_status={_red_status}) — pointer KEPT (ADR 0008: "
+                            f"no demotion without a confirmed broker read); "
+                            f"re-protect + reconciler own it",
+                            json.dumps({
+                                "trade_id": trade_id, "ticker": ticker,
+                                "stop_id": new_stop_id,
+                                "last_status": _red_status,
+                                "stop_price": float(stop_price),
+                                "breakeven_target": _be,
+                                "error": str(_bee)[:500],
+                            }),
+                        )
+                        be_reprotect = True
+                        be_ctx = {"error": str(_bee),
                                   "reason": "breakeven replace failed and reduced "
-                                            "stop not confirmed live"}
+                                            "stop UNREADABLE/unsettled — pointer "
+                                            "kept (ADR 0008), coverage re-checked "
+                                            "from broker truth"}
                 if be_stop_id:
                     # VERIFY the successor is actually live before persisting price
                     # — a replace can return an id the broker then rejects (the
@@ -3074,6 +3164,13 @@ async def execute_partial_exit(
                         # the 2/3 is unprotected. NULL the pointer, re-protect
                         # post-lock to broker truth (limit is netted → target 2/3,
                         # placed at the DB stop_price, still the original — valid).
+                        # broker-confirmed: "dead" is set ONLY when the bounded poll's
+                        # get_order(be_stop_id) returned an ACTUAL terminal status
+                        # (_STOP_DEAD_STATUSES/'filled'). A raised read propagates out
+                        # (no demotion runs) and a None/failed read canonicalizes to
+                        # None, which matches neither status set and leaves the poll
+                        # on "uncertain" — a branch that persists the pointer, never
+                        # demotes. Verified 2026-08-10 (ADR 0008 fence review).
                         await set_stop_order_id(
                             trade_id, None,
                             reason="breakeven_replace_failed",

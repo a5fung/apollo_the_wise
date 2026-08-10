@@ -10,7 +10,10 @@ faked alpaca client + faked db pool, not source-grepped):
   1. replace accepted + successor confirmed live  -> pointer + price + order row + audit.
   2. replace rejected + reduced stop still confirmed live -> deferred, protection UNCHANGED,
      pointer NOT nulled.
-  3. replace rejected + reduced stop NOT confirmed live -> pointer nulled, re-protect armed.
+  3. replace rejected + reduced stop read back CONFIRMED dead -> pointer nulled, re-protect
+     armed. Split 2026-08-10 (ADR 0008 fence, deploy [5l/7]): only an ACTUAL terminal status
+     returned by the broker may null; an UNVERIFIABLE read (None / raised / still pending_*
+     after the retry budget) must NOT null — see the Case A / Case B tests at the bottom.
   4. replace accepted but the successor never confirms inside the poll budget ("uncertain")
      -> pointer IS persisted, price is DELIBERATELY withheld. This is INTENTIONAL (the
      order_manager.py block comment says so explicitly: "do NOT record the breakeven price
@@ -222,7 +225,7 @@ async def test_outcome2_replace_rejected_but_reduced_stop_still_live_defers():
     assert "breakeven" in sent.lower() and "rejected" in sent.lower()
 
 
-# ── Outcome 3: replace rejected, reduced stop NOT confirmed live ──────────────────────
+# ── Outcome 3: replace rejected, reduced stop read back confirmed DEAD ────────────────
 
 @pytest.mark.asyncio
 async def test_outcome3_replace_rejected_and_reduced_stop_dead_nulls_pointer():
@@ -425,3 +428,109 @@ async def test_profit_take_resting_limit_fails_closed_when_read_raises(om, monke
         raise RuntimeError("db down")
     monkeypatch.setattr(db, "get_safeguard_state", _boom)
     assert await om._profit_take_resting_limit_enabled("paper") is False
+
+
+# ── ADR 0008 split (2026-08-10): a failed replace's verify read has THREE outcomes ─────
+#
+# The pre-split code folded "the broker READ a terminal status" (confirmed — may null)
+# and "the read itself FAILED" (nothing confirmed — must NOT null) into one demotion.
+# The second shape is the 2026-06-04 FPS false-naked incident verbatim and is what the
+# deploy fence [5l/7] (scripts/audit_trade_state_demotions.py) blocked. Trap pinned
+# here: alpaca_client.get_order swallows errors and returns None, so a None read is a
+# FAILED read, not a status — it must never count as broker evidence of death.
+
+def _make_get_order_flaky_then_dead():
+    """Step 1b reads the reduced stop LIVE; after the failed breakeven replace the
+    FIRST retry read fails (None — get_order's real error contract) and the SECOND
+    returns a genuine terminal status. The bounded retry must convert the transient
+    failure into a CONFIRMED dead read (Case B -> Case A) and only then demote."""
+    state = {"n": 0}
+
+    async def _get_order(order_id, account_mode=None):
+        if order_id == "new_stop_id":
+            state["n"] += 1
+            if state["n"] == 1:
+                return {"id": order_id, "status": "accepted", "order_class": "simple"}
+            if state["n"] == 2:
+                return None
+            return {"id": order_id, "status": "rejected", "order_class": "simple"}
+        return {"id": order_id, "status": "accepted", "order_class": "simple"}
+    return _get_order
+
+
+def _make_get_order_reduced_unverifiable(mode: str):
+    """Step 1b reads the reduced stop LIVE; every read after the failed breakeven
+    replace is unverifiable in one of the three real-world ways: 'none' (get_order
+    swallowed the error and returned None), 'raise' (the read raised through), or
+    'transitional' (reads fine but never leaves pending_replace in-budget)."""
+    state = {"n": 0}
+
+    async def _get_order(order_id, account_mode=None):
+        if order_id == "new_stop_id":
+            state["n"] += 1
+            if state["n"] == 1:
+                return {"id": order_id, "status": "accepted", "order_class": "simple"}
+            if mode == "none":
+                return None
+            if mode == "raise":
+                raise RuntimeError("broker read failed (test)")
+            return {"id": order_id, "status": "pending_replace", "order_class": "simple"}
+        return {"id": order_id, "status": "accepted", "order_class": "simple"}
+    return _get_order
+
+
+@pytest.mark.asyncio
+async def test_case_a_bounded_retry_converts_transient_failure_into_confirmed_dead():
+    """Case A: the demotion is allowed ONLY off a confirmed broker read. Here the
+    first post-failure read fails (None) and the retry then reads a genuine terminal
+    status — the bounded retry must rescue the confirmation, and the pointer is then
+    nulled + re-protect armed. If the retry loop is shortened to a single read, the
+    transient failure is never converted and this test reddens (mutation-proven)."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    h = _harness(om, be_result="reject", get_order_fake=_make_get_order_flaky_then_dead())
+    ok = await _run(om, h)
+
+    assert ok is True
+    h["set_stop"].assert_any_call(
+        TRADE_ID, None, reason="breakeven_replace_failed", account_mode=ACCOUNT_MODE)
+    h["ensure_cov"].assert_called_once()
+    events = [e for e, *_ in h["audited"]]
+    assert "partial_exit_breakeven_unverifiable" not in events, (
+        "a read that settled to a CONFIRMED terminal status must take the "
+        "broker-confirmed demotion path, not the unverifiable one")
+    assert "partial_exit_breakeven_deferred" not in events
+    assert "partial_exit_breakeven_armed" not in events
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure_mode", ["none", "raise", "transitional"])
+async def test_case_b_unverifiable_read_never_nulls_the_pointer(failure_mode):
+    """Case B: the replace raised AND the verify read failed every retry (None /
+    raised / never left pending_*). NOTHING was broker-confirmed, so ADR 0008 rule 1
+    forbids the demotion: the pointer (last confirmed broker truth, written by Step
+    1's verified replace) is KEPT, re-protect still arms so _ensure_stop_coverage
+    re-checks protection from BROKER truth in-process, an audit row records the
+    unverifiable state, and the operator is alerted. Re-adding the old
+    null-on-unconfirmed write in the unknown branch (the FPS 6/04 shape) must redden
+    this test (mutation-proven)."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    h = _harness(om, be_result="reject",
+                 get_order_fake=_make_get_order_reduced_unverifiable(failure_mode))
+    ok = await _run(om, h)
+
+    assert ok is True
+    null_calls = [c for c in h["set_stop"].call_args_list if c.args[1] is None]
+    assert not null_calls, (
+        "an UNVERIFIABLE broker read must never null stop_order_id (ADR 0008 rule 1: "
+        f"no demotion without a confirmed broker read/event); got {null_calls}")
+    h["ensure_cov"].assert_called_once()  # protection re-check from broker truth still arms
+    events = [e for e, *_ in h["audited"]]
+    assert "partial_exit_breakeven_unverifiable" in events
+    assert "partial_exit_breakeven_armed" not in events
+    assert "partial_exit_breakeven_deferred" not in events
+    sent = " ".join(str(c.args[0]) for c in h["telegram"].call_args_list)
+    assert "breakeven move failed" in sent.lower(), (
+        "keeping the pointer is only safe because the failure is ALERTED — the "
+        "post-lock Telegram must still fire")
