@@ -7755,7 +7755,17 @@ reviews:
       family_a/anticipate n=97 mean -0.322R median -1.000R win 33.0%; 9m/anticipate n=11
       mean -0.030R median -1.000R win 36.4%. Report and rule on the two origins separately --
       do NOT issue one blended anticipate verdict. **
-    status: pending
+    status: done
+    # ANSWERED + SUBJECT PARKED 2026-08-09 (commit e608a31), so this watch has nothing left to
+    # observe. The split it asked for WAS run: at the 07-12 Confirm re-wire, anticipate went from
+    # 32 settles / -1.23R to 92 settles over 8 days at -0.08R MEAN — but the median trade stayed
+    # -0.84R at a 29% win rate, i.e. the mean rose only because a few large winners pull it and
+    # the leg carrying ~90% of volume never flipped sign. That is the 'still negative' branch, and
+    # its stop-the-shadow fork was surfaced and RULED by the operator: *"let's stop the shadow, we
+    # have data but don't kill the setup... save for later after we complete htf"*. The entry
+    # shadow is UN-WIRED (5 lines at the fire site; entry_signal_at still defined and tested), so
+    # no new settles can arrive and re-surfacing this weekly is pure noise. The re-look belongs to
+    # the post-HTF consolidation dig, not to a counter on a parked arm.
     added_on: 2026-07-12
     cross_refs: ["task #353", "task #394", consolidation_anticipate_paper_graduation]
 
