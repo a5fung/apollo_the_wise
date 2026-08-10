@@ -230,6 +230,89 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 
 ## Change log
 
+### 2026-08-10 — output-bounded batching: the four theme LLM callers can no longer out-write their ceilings
+
+- **Trigger**: the #543 ceilings (raised 4000→8000 on 08-07) pegged AGAIN — 08-10 live:
+  theme_assignment 3/3 at 8000, theme_split 2/2 at 1750, theme_discovery 5/6 at 8000,
+  narrative_theme_discovery 1/2 at 1500 — and the nightly digest showed **three consecutive
+  engine nights with zero successful assignments** (the 08-07 `tool_choice="any"` fix changed
+  the failure's shape from silent-stop to zero-proposals without restoring the component).
+  The 08-07 note said it plainly: if at-cap% does not fall at 8000, the cap was never the
+  constraint. It was not. No ceiling was raised in this change.
+- **Root causes are NOT one shape** (measured per caller, prod `api_usage` × `mi_audit_log`):
+  - **theme_assignment**: output is LINEAR in the candidate pool (the scratchpad contract is
+    one line per ticker; measured fit on the 16 untruncated sonnet-4-6 calls:
+    `output ≈ 274 + 73.4 × pool`). #534 D2 (operator-signed 08-05) widened the pool 75-97 →
+    341-373 overnight → demand far beyond ANY ceiling. Every call since 07-18 was censored
+    at-cap; there is NO untruncated sonnet-5 assignment sample.
+  - **theme_discovery**: same class — output scales with the merged candidate population
+    (uncovered + velocity + turners + elite; 63 rendered stocks on 08-10). Only untruncated
+    sonnet-5 sample: a forced report at 7375 tokens ≈ 117/stock; its censored siblings prove
+    ≥ 127/stock on the same pool.
+  - **theme_split**: NOT an unbounded input (one theme, ~2.1K input tokens). The open-ended
+    scratchpad let a more verbose model blow the 1750 cap, and the truncated response parsed
+    as `propose_split` with `split` missing → logged **"Sonnet found theme already coherent"**
+    — an affirmative lie, twice on 08-10.
+  - **narrative_theme_discovery** (Lane-2): NOT the alert count. The raw-JSON TEXT transport
+    let sonnet-5 spend ~1000 output tokens/call on freeform deliberation around a ~300-token
+    JSON payload (sonnet-4-6: ~32 tok/alert, max completed 355 on 11 alerts; sonnet-5:
+    completed 1312 of 1500 on a FIVE-alert night, sibling truncated mid-string →
+    "Unterminated string" parse failure → 0 narrative themes).
+- **Fixes (bound the output by construction — chunk the input, or remove the freeform channel)**:
+  - **Assignment batching**: the pool is chunked into batches of ≤ `_ASSIGN_LLM_BATCH_SIZE`
+    (= 18; derivation at the constant: worst-case fit + max residual × the 3.5x measured
+    freeform model-growth ≤ 0.90 × 8000). Every batch sees the FULL theme list (input-side,
+    costs no output) — a stock's best home is never "in another batch". The shared
+    intro+theme-list prefix carries a `cache_control` breakpoint so batches 2..N read it at
+    the cached rate. Proposals are validated against the batch that carried the stock
+    (cross-batch echoes can neither duplicate nor steal an assignment); the validate/apply
+    stage runs ONCE over the union, unchanged. The advisor budget (`_MAX_ADVISOR_CALLS`)
+    stays RUN-level, shared across batches. An API failure mid-run applies the batches
+    already collected instead of dropping them.
+  - **Discovery batching**: `_discover_new_themes` is now a driver over
+    `_discover_new_themes_single`; ≤ `_DISCOVERY_LLM_BATCH_STOCKS` (= 37; derivation at the
+    constant) rendered stocks per call, full existing-themes context in every call, run-level
+    advisor budget. Partitioning (`_partition_discovery_pools`, pure): correlation-cluster
+    members are atomic (a statistical cluster is never split across calls, and its cluster
+    block travels with it); a ticker in two pools keeps both renderings in one batch; atoms
+    are sector-sorted so batch boundaries fall between sectors. **Residual risk, stated**: a
+    CROSS-sector catalyst cohort (the HBM-maker + equipment-co case) can still straddle a
+    batch boundary and fail to form; sector-sort + cluster atoms minimize but do not
+    eliminate this. Same-named themes from two batches merge by ticker union. Both callers
+    (live engine + `run_theme_discovery_shadow`) route through the driver unchanged.
+  - **Split**: terse scratchpad contract (per candidate SUB-GROUP, never per stock — the
+    proven 6/25 discovery recipe), `tool_choice="any"` (pre-tool prose can't eat the budget;
+    the advisor path survives because `consult_advisor` is a tool), and a truncated response
+    now returns no-split WITHOUT the `fat_theme_no_split` "already coherent" audit row.
+    No batching — a coherence judgment cannot be chunked, and its input is already bounded.
+  - **Lane-2**: converted to a FORCED tool call (`report_narrative_themes` schema; both v1
+    and v2reg paths; prompt text byte-unchanged). The deliberation channel no longer exists,
+    so demand returns to the measured ~32-48 tok/alert band (even a 28-alert night fits
+    0.9 × 1500). The alert list is deliberately NOT chunked — TODAY+TODAY pairing is the
+    lane's core signal and the population has never exceeded 11; a truncation now RAISES into
+    the shared fail-open (a FAILED night, never "0 themes").
+- **Truncation is never silent**: every `stop_reason='max_tokens'` already fires #543's live
+  alarm (spend_tracker → `llm_truncation_live` audit row + Telegram) — REUSED, no second
+  mechanism. What changed at the callers: a truncated response is a FAILED call — assignment
+  skips the batch (stocks stay uncovered; no `assignment_llm_proposed` "proposed 0" row),
+  discovery discards the partial and re-forces once (then returns [] loudly), split refuses
+  to read the cut as a decline, Lane-2 raises. Note: a night where EVERY assignment batch
+  truncates writes no `assignment_llm_proposed` rows at all, so the 3-night barren-streak
+  check reads it as not-run — the live truncation alarm (same night, Telegram) is the signal
+  for that case.
+- **Tests**: `tests/test_theme_batching.py` (16) + 2 in `tests/test_lane2_grouping_v2.py`;
+  each mutation-proven (break the load-bearing line → red → revert). Derivation-gate tests
+  fail if either batch constant is bumped past what the measurements support.
+- **Cost** (sonnet-5 standard $3/$15 per MTok; tonight's populations): assignment goes from
+  1 call (~26K in / 8K out, producing NOTHING, $0.20/run) to ~21 batches ≈ $1.9/run at the
+  373-stock pool — output-dominated (~117K generated); the cache_control prefix holds the
+  input share to ~$0.13 (vs ~$0.55 uncached). Discovery ≈ flat (total output ≈ demand either
+  way; themes-block input duplicated per batch ≈ +$0.05/night). Split + Lane-2 FALL (shorter
+  outputs, ≈ −$0.04). Net ≈ **+$1.7/night ≈ +$50/month at the widened #534-D2 pool**
+  (+$1.15/night during the sonnet-5 intro pricing through 08-31) — the price of the pool the
+  operator signed on 08-05 actually being processed; the pre-batching spend bought zero
+  assignments for three straight nights.
+
 ### 2026-08-09 — #530 shadow_v2 re-mint no longer overwrites an unchanged thesis with fresh generic text
 
 - **Trigger**: PLAN #530, filed alongside #529 — "the shadow_v2 re-mint overwrites a correct

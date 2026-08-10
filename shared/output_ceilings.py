@@ -128,6 +128,14 @@ CEILINGS: dict[str, OutputCeiling] = {
         "(>=2.7x model growth), 3 calls censored at 2000. No post-raise sample yet."),
 
     # ── theme engine ──
+    # 2026-08-10: the four truncating theme callers were fixed by BOUNDING THE
+    # OUTPUT BY CONSTRUCTION (input batching / forced-tool transport), not by
+    # raising these values — the 08-07 raises pegged again within days, proving
+    # the caps were never the constraint. Derivations + diagnosis per caller:
+    # theme_engine.py at _ASSIGN_LLM_BATCH_SIZE / _DISCOVERY_LLM_BATCH_STOCKS /
+    # _LANE2_NARRATIVE_TOOL, and docs/architecture/theme_engine.md 2026-08-10.
+    # Do NOT raise theme_assignment / theme_discovery / theme_split /
+    # narrative_theme_discovery again for at-cap pressure — fix the demand.
     "narrative_theme_discovery": OutputCeiling(
         1500, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "WATCH: sonnet-5 max completed 1249 (83% of cap) vs 355 on 4-6 — 3.5x model "

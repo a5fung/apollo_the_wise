@@ -73,10 +73,16 @@ def _seed(ticker, d=date(2026, 7, 6), story="20-year AI data-center lease worth 
 
 
 class _FakeMsg:
-    def __init__(self, text):
-        # type="text" is required (#544) — the reader selects by type, not position.
-        self.content = [SimpleNamespace(type="text", text=text)]
+    def __init__(self, text, stop_reason="tool_use"):
+        # 2026-08-10: the lane uses a FORCED tool call (output bounded by
+        # construction — see _LANE2_NARRATIVE_TOOL). The scripted JSON is
+        # delivered as the tool_use input, exactly as the API would return it.
+        import json as _json
+        self.content = [SimpleNamespace(type="tool_use",
+                                        name="report_narrative_themes",
+                                        input=_json.loads(text), id="t1")]
         self.usage = None
+        self.stop_reason = stop_reason
 
 
 def _wire(monkeypatch, *, flag_on, today_alerts=(), active=(), pending=(),
@@ -677,3 +683,50 @@ async def test_v2reg_backfill_never_writes_seeds(monkeypatch):
     mocks.persist_seeds.assert_not_awaited()
     assert out["seeds"] == 1  # still REPORTED (the replay chains off it) — just not persisted
     assert mocks.persist.await_args.kwargs.get("backfilled") is True
+
+
+# ── 2026-08-10: forced-tool transport + truncation honesty ───────────────────
+# The plain-text JSON transport let sonnet-5 spend ~1000 output tokens/call on
+# freeform deliberation around a ~300-token JSON payload (completed 1312 of the
+# 1500 ceiling on a FIVE-alert night; the sibling call truncated mid-string).
+# The forced tool bounds the response at the schema'd payload by construction.
+
+@pytest.mark.asyncio
+async def test_llm_call_is_forced_tool_on_both_paths(monkeypatch):
+    d = date(2026, 7, 14)
+    cand = [_alert("CLSK", d, ep=61.0), _alert("TSEM", d, ep=55.0)]
+    for flag in (False, True):
+        captured, mocks = _wire(monkeypatch, flag_on=flag, today_alerts=cand)
+        await discover_narrative_themes(d)
+        assert captured["tool_choice"] == \
+            {"type": "tool", "name": "report_narrative_themes"}, \
+            f"lane-2 (flag_on={flag}) reverted to the freeform text transport — " \
+            "sonnet-5 deliberation will eat the 1500 ceiling again"
+        assert captured["tools"][0]["name"] == "report_narrative_themes"
+
+
+@pytest.mark.asyncio
+async def test_truncated_narrative_response_is_failure_not_zero_themes(monkeypatch):
+    """2026-08-10 21:20Z: a max_tokens response died as an 'Unterminated string'
+    JSON error — and a luckier cut could have read as a genuine quiet night.
+    Truncation must land in the shared fail-open (error recorded, failed audit
+    row), never as themes=0."""
+    d = date(2026, 7, 14)
+    cand = [_alert("CLSK", d, ep=61.0), _alert("TSEM", d, ep=55.0)]
+    captured, mocks = _wire(monkeypatch, flag_on=True, today_alerts=cand)
+
+    async def truncated_create(**kwargs):
+        captured.update(kwargs)
+        return _FakeMsg('{"themes": []}', stop_reason="max_tokens")
+
+    client = SimpleNamespace(messages=SimpleNamespace(create=truncated_create))
+    monkeypatch.setattr(theme_engine, "_get_anthropic_client", lambda: client)
+
+    out = await discover_narrative_themes(d)
+
+    assert out["error"] and "TRUNCATED" in out["error"], \
+        "a truncated narrative response was read as a genuine empty result"
+    assert out["themes"] == 0
+    failed = [c for c in mocks.audit.await_args_list
+              if c.args and c.args[0] == "narrative_theme_discovery_failed"]
+    assert failed, "truncation did not write the failed audit row"

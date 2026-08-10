@@ -78,7 +78,7 @@ from agents.market_intelligence.theme_merge_arm import (
     family_of,
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
-from shared.llm_response import content_block_types, first_text
+from shared.llm_response import content_block_types, first_text, is_truncated
 from shared.output_ceilings import max_tokens_for
 
 # Global ticker ban — fires when a ticker has been validation-removed from
@@ -519,6 +519,69 @@ _LANE2_REGISTRY_JSON_CONTRACT = (
     '"thesis":"one sentence"}],"seeds":[{"ticker":"TICK","story":"<=25 words"}]}. '
 )
 
+# ── Lane-2 forced-tool transport (2026-08-10) — bound the output by construction ──
+#
+# DIAGNOSIS (measured; do NOT revert to the raw-JSON text transport): the lane's
+# output was raw JSON text on a plain call. On sonnet-4-6 that cost ~32 output
+# tokens per alert (max completed 355 on an 11-alert night, 08-04). On sonnet-5
+# the SAME population produced 1249-1312 completed / ≥1500 censored (08-06→08-10,
+# 2-5 alert nights) — the JSON payload is unchanged, so ~1000 tokens per call is
+# freeform deliberation the plain transport permits (the registry's 08-09
+# measurement: forced-tool callers grow ~1.0x cross-model, freeform callers
+# ≥2.7-3.5x). The 08-10 truncation cut the JSON mid-string → "Unterminated
+# string" parse failure → 0 narrative themes. A FORCED tool call caps the
+# response at the schema'd payload — the deliberation channel does not exist —
+# so demand returns to the measured ~32-48 tok/alert band: even a 28-alert
+# black-swan night (~2.5x the observed max) fits 0.9 × the 1500 ceiling. The
+# alert list is deliberately NOT chunked: TODAY+TODAY pairing is the lane's
+# core signal and splitting tonight's cohort across calls would break it for a
+# population never observed above 11; if a monster night ever truncates anyway,
+# the is_truncated() raise + #543 live alarm make it loud, not silent.
+_LANE2_NARRATIVE_TOOL = {
+    "name": "report_narrative_themes",
+    "description": "Report shared narrative themes among today's gap-up stocks.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "themes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "<=6 words"},
+                        "catalyst_type": {"type": "string"},
+                        "tickers": {"type": "array", "items": {"type": "string"}},
+                        "thesis": {"type": "string", "description": "one sentence"},
+                    },
+                    "required": ["name", "tickers"],
+                },
+            },
+            "seeds": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "story": {"type": "string", "description": "<=25 words"},
+                    },
+                    "required": ["ticker", "story"],
+                },
+            },
+        },
+        "required": ["themes"],
+    },
+}
+
+
+def _lane2_tool_input(msg) -> dict:
+    """The forced tool call's input dict ({} when absent) — replaces the old
+    _extract_json_object(first_text(msg)) text-parse, so a response is either
+    schema-shaped or visibly empty, never half-parsed prose."""
+    block = next((b for b in (getattr(msg, "content", None) or [])
+                  if getattr(b, "type", "") == "tool_use"), None)
+    inp = getattr(block, "input", None) if block is not None else None
+    return inp if isinstance(inp, dict) else {}
+
 
 def _lane2_window_start(scan_date):
     """First alert_date inside the v2 window: scan_date minus
@@ -797,16 +860,29 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             + _LANE2_NAME_BREADTH_RULE
         )
         client = _get_anthropic_client()
+        # Forced tool (2026-08-10) — bounds the output by construction; see
+        # _LANE2_NARRATIVE_TOOL for the measured diagnosis. Prompt text is
+        # UNCHANGED (byte-pinned by test_flag_off_is_byte_identical_v1).
         msg = await client.messages.create(
             model=THEME_MODEL, max_tokens=max_tokens_for("narrative_theme_discovery"),
+            tools=[_LANE2_NARRATIVE_TOOL],
+            tool_choice={"type": "tool", "name": "report_narrative_themes"},
             messages=[{"role": "user", "content": prompt}],
         )
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
                                        response=msg)
-        raw = _extract_json_object(first_text(msg))  # #544: never content[0]
-        parsed = json.loads(raw)
+        if is_truncated(msg):
+            # Truncation honesty (2026-08-10): a cut response previously died in
+            # json.loads ("Unterminated string") or, worse, could parse to fewer
+            # themes than the model meant. Raise into the shared fail-open so the
+            # night reads FAILED (narrative_theme_discovery_failed + #543 alarm),
+            # never "0 narrative themes".
+            raise ValueError(
+                "narrative theme discovery TRUNCATED at max_tokens — treated as a "
+                "failed run, not an empty one (llm_truncation_live already fired)")
+        parsed = _lane2_tool_input(msg)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
         cand_tk = {a["ticker"] for a in cand}
         clean = []
@@ -907,8 +983,12 @@ async def _discover_lane2_registry(
     prompt = _build_lane2_registry_prompt(cand, active, seeds)
     out["prompt_chars"] = len(prompt)
     client = _get_anthropic_client()
+    # Forced tool (2026-08-10) — bounds the output by construction; see
+    # _LANE2_NARRATIVE_TOOL for the measured diagnosis. Prompt text unchanged.
     msg = await client.messages.create(
         model=THEME_MODEL, max_tokens=max_tokens_for("narrative_theme_discovery"),
+        tools=[_LANE2_NARRATIVE_TOOL],
+        tool_choice={"type": "tool", "name": "report_narrative_themes"},
         messages=[{"role": "user", "content": prompt}],
     )
     # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
@@ -919,8 +999,15 @@ async def _discover_lane2_registry(
     if usage is not None and getattr(usage, "input_tokens", None) is not None:
         out["usage"] = {"input_tokens": usage.input_tokens,
                         "output_tokens": getattr(usage, "output_tokens", None)}
-    raw = _extract_json_object(first_text(msg))  # #544: never content[0]
-    parsed = json.loads(raw)
+    if is_truncated(msg):
+        # Truncation honesty (2026-08-10): raise into the shared fail-open (this
+        # registry mode runs inside discover_narrative_themes' try/except) so the
+        # night reads FAILED, never "0 join + 0 new". The 2026-08-10 21:20Z call
+        # died exactly here as an "Unterminated string" JSON error.
+        raise ValueError(
+            "narrative theme discovery (v2reg) TRUNCATED at max_tokens — treated as "
+            "a failed run, not an empty one (llm_truncation_live already fired)")
+    parsed = _lane2_tool_input(msg)
     themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
     raw_seeds = parsed.get("seeds", []) if isinstance(parsed, dict) else []
     clean, new_seeds, possible_dups = _lane2_registry_clean(
@@ -3212,6 +3299,66 @@ async def _rescore_existing_theme(
     }, changelog
 
 
+# ── Assignment LLM batching (2026-08-10) — bound the OUTPUT by construction ──
+#
+# The assignment prompt demands one scratchpad line per candidate stock, so the
+# response length scales LINEARLY with the pool. #534 D2 (operator-signed
+# 2026-08-05) widened the pool 75-97 → 341-373 overnight and every call since
+# pegged its ceiling (22/22 calls in the 21 days to 08-10 censored at-cap;
+# ceilings were raised 4000→8000 on 08-07 and pegged again — the cap was never
+# the constraint). No ceiling can bound an output that grows with an unbounded
+# input, so the input is chunked instead: each LLM call sees the FULL theme
+# list (input-side context, no output cost) but at most _ASSIGN_LLM_BATCH_SIZE
+# stocks, which caps that call's output demand below the registry ceiling.
+#
+# BATCH-SIZE DERIVATION (measured, not round — capture in the 2026-08-10 session):
+#   * The 16 UNtruncated sonnet-4-6 assignment calls (06-25→07-17, pools 12-22;
+#     api_usage joined to assignment_llm_proposed.candidate_pool_size) fit
+#       output_tokens ≈ 274 + 73.4 × pool_size   (max positive residual +416).
+#   * CENSORING: no untruncated sonnet-5 assignment call EXISTS — every call
+#     07-18→08-10 sat exactly at its then-cap, so the sonnet-5 tail cannot be
+#     read from assignment data. The cross-model growth factor is imported from
+#     the nearest freeform-scratchpad pair with completed samples on BOTH
+#     models: narrative_theme_discovery 355 → 1249 = 3.5x (output_ceilings.py
+#     evidence, measured 2026-08-09; the largest freeform growth measured —
+#     catalyst_metrics_extractor was ≥2.7x).
+#   * Bound each batch's worst-case predicted output under the registry's own
+#     pre-failure threshold (NEAR_CEILING_FRACTION = 0.90 of the 8000 ceiling):
+#       3.5 × (274 + 416 + 73.4 × N) ≤ 7200  →  N ≤ 18.6  →  N = 18.
+# Every constant above is traceable: 274/73.4/416 from the untruncated fit,
+# 3.5x from the registry's measured completed-sample growth, 0.90 × 8000 from
+# shared/output_ceilings.py. Re-derive if THEME_MODEL moves tiers again.
+_ASSIGN_LLM_BATCH_SIZE = 18
+
+# ── Discovery LLM batching (2026-08-10) — same class of fix ──────────────────
+#
+# Discovery output scales with the merged candidate population (uncovered +
+# velocity + turners + elite). On 2026-08-10 the live pool rendered 63 stocks
+# (23+14+9+17, container log 21:10:42Z) and sonnet-5 truncated 5 of 6 calls at
+# 8000; the single completed (forced) report ran 7375 tokens.
+#
+# BATCH-SIZE DERIVATION (measured):
+#   * Only untruncated sonnet-5 sample: 7375 tokens / 63 rendered stocks
+#     = 117 tok/stock amortized (theses + scratchpad + overhead included).
+#   * Its truncated siblings on the SAME pool prove demand ≥ 8000/63
+#     = 127 tok/stock — a censored FLOOR; the true tail is unreadable from
+#     at-cap samples. Tail allowance: the max/median per-stock ratio measured
+#     on the assignment caller's 16 untruncated calls (the nearest same-engine
+#     freeform-scratchpad population) = 130.9/87.4 = 1.5 → design cost
+#     127 × 1.5 ≈ 190 tok/stock.
+#   * Cross-check: sonnet-4-6 completed discovery reports ran ~1.9-4.0K over
+#     July pools of ~90-120 rendered stocks ≈ 25-35 tok/stock; × the 3.5x
+#     freeform growth ≈ 90-120 tok/stock — brackets the 117 measured, and 190
+#     sits above the band.
+#   * N ≤ NEAR_CEILING_FRACTION × 8000 / 190 = 7200 / 190 = 37.9 → N = 37.
+_DISCOVERY_LLM_BATCH_STOCKS = 37
+
+
+def _chunk_list(items: list, size: int) -> list[list]:
+    """Contiguous chunks of at most `size` (pure; order-preserving)."""
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+
 _THEME_ASSIGNMENT_TOOL = {
     "name": "assign_stocks_to_themes",
     "description": "Assign uncovered RS leader stocks to existing themes where they clearly fit.",
@@ -3244,6 +3391,230 @@ _THEME_ASSIGNMENT_TOOL = {
         "required": ["analysis_scratchpad", "assignments"],
     },
 }
+
+
+async def _propose_assignment_batch(
+    client,
+    batch_stocks: list[dict],
+    shared_prefix: str,
+    cooldown_note: str,
+    advisor_state: dict,
+    batch_no: int,
+    n_batches: int,
+    pool_size: int,
+) -> list[dict]:
+    """ONE bounded assignment LLM call: the FULL theme list rides in
+    `shared_prefix` (input-side context, costs no output), the stock list is
+    capped at _ASSIGN_LLM_BATCH_SIZE by the caller. Returns the raw proposal
+    dicts (possibly []); validation/apply stays with the caller so batching
+    cannot change WHAT gets accepted, only how many stocks one call narrates.
+
+    `advisor_state` carries the RUN-level advisor budget across batches —
+    _MAX_ADVISOR_CALLS was always a per-run cost bound and batching must not
+    multiply it by the batch count.
+
+    TRUNCATION HONESTY (2026-08-10): a stop_reason='max_tokens' response is a
+    FAILED batch, never "proposed 0 assignments". A truncated tool call parses
+    with keys missing (assignments → []), which is exactly how the 07-28→08-07
+    total outage read as ten quiet nights. The #543 live alarm
+    (spend_tracker._maybe_alert_truncation → llm_truncation_live audit row +
+    Telegram) has already fired by the time we see the response here — this
+    function's only extra job is to NOT convert the cut into a fake empty
+    result (so no assignment_llm_proposed row is written for a truncated call).
+    """
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    stock_lines = []
+    for s in batch_stocks:
+        ticker = s["ticker"]
+        desc = TICKER_DESC.get(ticker, "")
+        stock_lines.append(
+            f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, sector: {s.get('sector', 'Unknown')} — {desc})"
+        )
+
+    batch_note = ""
+    if n_batches > 1:
+        batch_note = (
+            f"\n(This is batch {batch_no} of {n_batches} — other batches handle the rest of the "
+            f"{pool_size}-stock candidate pool. Assess ONLY the stocks listed above.)\n"
+        )
+
+    batch_body = f"""UNCOVERED STOCKS (not in any active theme; each line shows its RS):
+{chr(10).join(stock_lines)}
+{batch_note}{cooldown_note}
+Rules:
+- Only assign if the stock's business CLEARLY matches the theme's thesis
+- When in doubt, do NOT assign — the stock will get a chance to form its own theme
+- Pick the most specific theme if multiple could fit
+- Return empty array if nothing fits — that is the correct answer
+- Use the EXACT theme name from the list above
+
+OUTPUT FORMAT — IMPORTANT:
+Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field. Free text before the tool call wastes the output budget and can cause the response to truncate before the tool is invoked.
+
+Call `assign_stocks_to_themes` directly with your reasoning in `analysis_scratchpad` (one short line per ticker: business + decision + theme name or "no fit"). The `assignments` array contains only the actual fits.
+
+Consult the advisor ONLY if either of these apply:
+- A stock could plausibly fit 2 different themes and you're not sure which is more specific
+- A stock's description is ambiguous — it could be in this theme or something unrelated
+In every other case, skip the advisor and call `assign_stocks_to_themes` immediately."""
+
+    messages: list[dict] = [{
+        "role": "user",
+        "content": [
+            # The shared prefix (intro + full theme list) is byte-identical
+            # across every batch of a run, so it carries a cache_control
+            # breakpoint: batches 2..N (and advisor turns) re-read it at the
+            # cached-input rate instead of re-billing ~6-8K tokens per call.
+            # Pattern precedent: core/orchestrator.py::_tools_with_cache_control.
+            {"type": "text", "text": shared_prefix,
+             "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": batch_body},
+        ],
+    }]
+
+    while True:
+        response = await client.messages.create(
+            model=THEME_MODEL,
+            # Bumped 1000 → 4000 (2026-05-13): silent_stop on 5/12 and 5/13
+            # were caused by Sonnet exhausting max_tokens on inline analysis
+            # text before reaching the tool call. Prompt restructured to push
+            # reasoning into analysis_scratchpad instead of pre-tool free text.
+            #
+            # 🔴 THAT FIX REGRESSED, AND THE OUTAGE WAS TOTAL (2026-08-07).
+            # api_usage: EVERY theme_assignment call from 07-28 to 08-07
+            # returned EXACTLY 4000 output tokens — the wall, not a natural
+            # stop. Outcome on every one of them: 11x
+            # `assignment_llm_proposed` "proposed 0 assignment(s)" and 2x
+            # `assignment_silent_stop` (08-06, 08-07). **Not one successful
+            # assignment in the window.** The component that puts stocks
+            # INTO themes had produced nothing for at least ten days, while
+            # the board showed 91 themes averaging 3.2 members and an entire
+            # gapping software cohort belonged to none (#471).
+            #   * tool_choice `any` (2026-08-07) — it MUST call one of the two
+            #     tools (assign or advisor), so free text can no longer
+            #     consume the budget. That fix held; what pegged the raised
+            #     8000 ceiling next was the tool call ITSELF.
+            # 🔴 THE CEILING PEGGED AGAIN AT 8000 (2026-08-10, 3/3 calls):
+            # #534 D2 widened the pool to ~373 stocks and the scratchpad's
+            # one-line-per-ticker contract makes output LINEAR in the pool.
+            # Raising the cap a third time was explicitly ruled out ("if
+            # at-cap% does NOT fall at 8000, the cap was never the
+            # constraint"). The 2026-08-10 fix is structural: the pool is
+            # BATCHED (_ASSIGN_LLM_BATCH_SIZE, derivation at its definition)
+            # so a single call's output demand cannot reach the ceiling.
+            # ⚠ SILENT BY CONSTRUCTION: "proposed 0 assignments" is a
+            # TELEMETRY line, not an error — detection is #543's live
+            # truncation alarm plus the is_truncated() gate below.
+            max_tokens=max_tokens_for("theme_assignment"),
+            tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
+            tool_choice={"type": "any"},
+            messages=messages,
+        )
+        # #377 cost meter — per-turn (each loop iter is a billed call).
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
+                                       response=response)
+
+        if is_truncated(response):
+            # Failed batch, surfaced by #543's live alarm — do NOT read the
+            # partial tool input as a genuine empty proposal list.
+            logger.warning(
+                f"Theme assignment batch {batch_no}/{n_batches} TRUNCATED at max_tokens "
+                f"({len(batch_stocks)} stocks) — batch skipped; its stocks stay uncovered "
+                f"this run. Live truncation alarm already fired (llm_truncation_live)."
+            )
+            return []
+
+        tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+        if not tool_uses:
+            # Silent-drop path — Sonnet returned text only after (often) an
+            # advisor consultation. Log the response text so we can see
+            # what reasoning the LLM offered for stopping. This was the
+            # 5/4 MXL case: advisor verdicted "add to optical" but Sonnet
+            # never called assign_stocks_to_themes.
+            text_blocks = [
+                getattr(b, "text", "")[:500] for b in response.content
+                if getattr(b, "type", "") == "text"
+            ]
+            stop_text = " | ".join(t for t in text_blocks if t)[:1500] or "(no text)"
+            logger.warning(
+                f"Theme assignment: model stopped without calling assign_stocks_to_themes "
+                f"(batch {batch_no}/{n_batches}, advisor_calls={advisor_state['calls']}). "
+                f"Response: {stop_text[:300]}"
+            )
+            await log_audit_event(
+                "assignment_silent_stop",
+                summary=(f"Sonnet stopped without proposing assignments after "
+                         f"{advisor_state['calls']} advisor call(s) (batch {batch_no}/{n_batches})"),
+                detail=json.dumps({
+                    "advisor_calls": advisor_state["calls"],
+                    "response_text": stop_text,
+                    "batch_no": batch_no,
+                    "n_batches": n_batches,
+                    "batch_size": len(batch_stocks),
+                    "candidate_pool_size": pool_size,
+                    "candidate_tickers": [s["ticker"] for s in batch_stocks][:20],
+                }),
+            )
+            return []
+
+        assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
+        if assign_block:
+            if advisor_state["calls"] == 0:
+                logger.info(f"Theme assignment batch {batch_no}/{n_batches}: Sonnet went direct (no advisor needed)")
+            else:
+                logger.info(f"Theme assignment batch {batch_no}/{n_batches}: advisor used {advisor_state['calls']}x so far this run")
+            assignments = assign_block.input.get("assignments", [])
+            # Telemetry — log every proposal so we can compare LLM intent
+            # vs final state and diagnose silent-skip filters.
+            proposals = [
+                {"ticker": a.get("ticker", ""), "theme": a.get("theme", "")}
+                for a in assignments
+            ]
+            await log_audit_event(
+                "assignment_llm_proposed",
+                summary=(f"Sonnet proposed {len(proposals)} assignment(s) "
+                         f"(batch {batch_no}/{n_batches}, advisor_calls={advisor_state['calls']})"),
+                detail=json.dumps({
+                    "advisor_calls": advisor_state["calls"],
+                    "proposals": proposals,
+                    "batch_no": batch_no,
+                    "n_batches": n_batches,
+                    "batch_size": len(batch_stocks),
+                    "candidate_pool_size": pool_size,
+                    "candidate_tickers": [s["ticker"] for s in batch_stocks][:30],
+                }),
+            )
+            return assignments
+
+        # Handle advisor calls
+        messages.append({"role": "assistant", "content": response.content})
+        tool_results = []
+        for block in tool_uses:
+            if block.name == "consult_advisor":
+                question = block.input.get("question", "")
+                context = block.input.get("context", "")
+                if advisor_state["calls"] >= _MAX_ADVISOR_CALLS:
+                    advice = "Advisor call limit reached — use your best judgment and proceed."
+                    logger.warning(f"Theme assignment: advisor call limit reached — question was: {question[:120]}")
+                else:
+                    advisor_state["calls"] += 1
+                    logger.info(
+                        f"Theme assignment: advisor call {advisor_state['calls']}/{_MAX_ADVISOR_CALLS}\n"
+                        f"  Q: {question}\n"
+                        f"  Context snippet: {context[:200]}"
+                    )
+                    advice = await _call_advisor(question, context, caller="assignment")
+                    logger.info(f"Theme assignment: advisor verdict: {advice[:300]}")
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": advice,
+                })
+        messages.append({"role": "user", "content": tool_results})
 
 
 async def _assign_uncovered_to_themes(
@@ -3290,14 +3661,6 @@ async def _assign_uncovered_to_themes(
     if not uncovered_stocks:
         return [], []
 
-    stock_lines = []
-    for s in uncovered_stocks:
-        ticker = s["ticker"]
-        desc = TICKER_DESC.get(ticker, "")
-        stock_lines.append(
-            f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, sector: {s.get('sector', 'Unknown')} — {desc})"
-        )
-
     theme_lines = []
     for t in existing_themes:
         if t.get("stage") == "Fading":
@@ -3322,195 +3685,81 @@ async def _assign_uncovered_to_themes(
             + "\n"
         )
 
-    prompt = f"""You are a market intelligence analyst. Assign uncovered stocks to existing themes ONLY when the fit is obvious.
+    # Shared prefix: intro + FULL theme list. Every batch sees every theme, so
+    # a stock's best home can never sit in "another batch" — only the STOCKS
+    # are chunked. (The theme list is input-side context; input does not count
+    # against the output ceiling that was truncating.)
+    shared_prefix = f"""You are a market intelligence analyst. Assign uncovered stocks to existing themes ONLY when the fit is obvious.
 
 EXISTING THEMES:
 {chr(10).join(theme_lines)}
+"""
 
-UNCOVERED STOCKS (not in any active theme; each line shows its RS):
-{chr(10).join(stock_lines)}
-{cooldown_note}
-Rules:
-- Only assign if the stock's business CLEARLY matches the theme's thesis
-- When in doubt, do NOT assign — the stock will get a chance to form its own theme
-- Pick the most specific theme if multiple could fit
-- Return empty array if nothing fits — that is the correct answer
-- Use the EXACT theme name from the list above
-
-OUTPUT FORMAT — IMPORTANT:
-Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field. Free text before the tool call wastes the output budget and can cause the response to truncate before the tool is invoked.
-
-Call `assign_stocks_to_themes` directly with your reasoning in `analysis_scratchpad` (one short line per ticker: business + decision + theme name or "no fit"). The `assignments` array contains only the actual fits.
-
-Consult the advisor ONLY if either of these apply:
-- A stock could plausibly fit 2 different themes and you're not sure which is more specific
-- A stock's description is ambiguous — it could be in this theme or something unrelated
-In every other case, skip the advisor and call `assign_stocks_to_themes` immediately."""
-
-    try:
-        messages: list[dict] = [{"role": "user", "content": prompt}]
-        advisor_calls = 0
-        assignments = []
-
-        while True:
-            response = await client.messages.create(
-                model=THEME_MODEL,
-                # Bumped 1000 → 4000 (2026-05-13): silent_stop on 5/12 and 5/13
-                # were caused by Sonnet exhausting max_tokens on inline analysis
-                # text before reaching the tool call. 4000 gives headroom for
-                # scratchpad + assignments + occasional verbose runs. Prompt
-                # also restructured to push reasoning into analysis_scratchpad
-                # instead of pre-tool free text.
-                #
-                # 🔴 THAT FIX REGRESSED, AND THE OUTAGE WAS TOTAL (2026-08-07).
-                # api_usage: EVERY theme_assignment call from 07-28 to 08-07
-                # returned EXACTLY 4000 output tokens — the wall, not a natural
-                # stop. Outcome on every one of them: 11x
-                # `assignment_llm_proposed` "proposed 0 assignment(s)" and 2x
-                # `assignment_silent_stop` (08-06, 08-07). **Not one successful
-                # assignment in the window.** The component that puts stocks
-                # INTO themes had produced nothing for at least ten days, while
-                # the board showed 91 themes averaging 3.2 members and an entire
-                # gapping software cohort belonged to none (#471).
-                #
-                # Raising the ceiling again would repeat the May patch and buy
-                # another few months. The structural cause is that `auto` lets
-                # the model spend the whole budget on prose and never reach a
-                # tool call — "no tool_uses" IS the failure path below. So:
-                #   * tool_choice `any` — it MUST call one of the two tools
-                #     (assign or advisor). Free text can no longer consume the
-                #     budget, which makes the failure mode impossible rather
-                #     than merely less likely.
-                #   * 4000 → 8000 as belt-and-braces for genuinely long
-                #     assignment lists. ⚠ Raising a cap costs NOTHING extra —
-                #     billing is on tokens generated, not the ceiling.
-                # ⚠ SILENT BY CONSTRUCTION: "proposed 0 assignments" is a
-                # TELEMETRY line, not an error, so a total outage read as a
-                # quiet night. Detection is #543's DoD.
-                max_tokens=max_tokens_for("theme_assignment"),
-                tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
-                tool_choice={"type": "any"},
-                messages=messages,
-            )
-            # #377 cost meter — per-turn (each loop iter is a billed call).
-            # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
-            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
-            await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
-                                           response=response)
-
-            tool_uses = [b for b in response.content if b.type == "tool_use"]
-
-            if not tool_uses:
-                # Silent-drop path — Sonnet returned text only after (often) an
-                # advisor consultation. Log the response text so we can see
-                # what reasoning the LLM offered for stopping. This was the
-                # 5/4 MXL case: advisor verdicted "add to optical" but Sonnet
-                # never called assign_stocks_to_themes.
-                text_blocks = [
-                    getattr(b, "text", "")[:500] for b in response.content
-                    if getattr(b, "type", "") == "text"
-                ]
-                stop_text = " | ".join(t for t in text_blocks if t)[:1500] or "(no text)"
-                logger.warning(
-                    f"Theme assignment: model stopped without calling assign_stocks_to_themes "
-                    f"(advisor_calls={advisor_calls}). Response: {stop_text[:300]}"
-                )
-                await log_audit_event(
-                    "assignment_silent_stop",
-                    summary=f"Sonnet stopped without proposing assignments after {advisor_calls} advisor call(s)",
-                    detail=json.dumps({
-                        "advisor_calls": advisor_calls,
-                        "response_text": stop_text,
-                        "candidate_pool_size": len(uncovered_stocks),
-                        "candidate_tickers": [s["ticker"] for s in uncovered_stocks][:20],
-                    }),
-                )
-                break
-
-            assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
-            if assign_block:
-                if advisor_calls == 0:
-                    logger.info("Theme assignment: Sonnet went direct (no advisor needed)")
-                else:
-                    logger.info(f"Theme assignment: Sonnet used advisor {advisor_calls}x before assigning")
-                assignments = assign_block.input.get("assignments", [])
-                # Telemetry — log every proposal so we can compare LLM intent
-                # vs final state and diagnose silent-skip filters.
-                proposals = [
-                    {"ticker": a.get("ticker", ""), "theme": a.get("theme", "")}
-                    for a in assignments
-                ]
-                await log_audit_event(
-                    "assignment_llm_proposed",
-                    summary=f"Sonnet proposed {len(proposals)} assignment(s) (advisor_calls={advisor_calls})",
-                    detail=json.dumps({
-                        "advisor_calls": advisor_calls,
-                        "proposals": proposals,
-                        "candidate_pool_size": len(uncovered_stocks),
-                        "candidate_tickers": [s["ticker"] for s in uncovered_stocks][:30],
-                    }),
-                )
-                break
-
-            # Handle advisor calls
-            messages.append({"role": "assistant", "content": response.content})
-            tool_results = []
-            for block in tool_uses:
-                if block.name == "consult_advisor":
-                    question = block.input.get("question", "")
-                    context = block.input.get("context", "")
-                    if advisor_calls >= _MAX_ADVISOR_CALLS:
-                        advice = "Advisor call limit reached — use your best judgment and proceed."
-                        logger.warning(f"Theme assignment: advisor call limit reached — question was: {question[:120]}")
-                    else:
-                        advisor_calls += 1
-                        logger.info(
-                            f"Theme assignment: advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS}\n"
-                            f"  Q: {question}\n"
-                            f"  Context snippet: {context[:200]}"
-                        )
-                        advice = await _call_advisor(question, context, caller="assignment")
-                        logger.info(f"Theme assignment: advisor verdict: {advice[:300]}")
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": advice,
-                    })
-            messages.append({"role": "user", "content": tool_results})
-
-    except Exception as e:
-        # #273: a credit-exhaustion BadRequestError is an APIError subclass, so
-        # it would otherwise be MISLABELED transient and retry forever silently.
-        # Detect + alert (deduped) at the top, before any branch.
-        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
-        await maybe_alert_credit_exhausted("theme assignment", e)
-        # Transient Anthropic failures (5xx, network, timeout) resolve next run —
-        # route to a non-`_error` event_type so they don't trip the L1 invariant.
-        if isinstance(e, _THEME_TRANSIENT_EXC) and not isinstance(e, _THEME_RATELIMIT_EXC):
-            logger.warning(
-                f"Claude theme assignment transient failure ({type(e).__name__}: {e}) — no assignments made, will retry next run."
-            )
-            await log_audit_event(
-                "assignment_api_failure",
-                summary="Theme assignment API failure — no stocks assigned this run",
-                detail=f"{type(e).__name__}: {e}",
-            )
-            return uncovered_stocks, []
-        if isinstance(e, anthropic.RateLimitError):
-            logger.error(f"Claude theme assignment rate-limited — no assignments made")
-            await log_audit_event(
-                "assignment_rate_limited",
-                summary="Theme assignment rate-limited — no stocks assigned this run",
-                detail=str(e),
-            )
-            return uncovered_stocks, []
-        logger.error(f"Claude theme assignment FAILED ({type(e).__name__}: {e}) — no assignments made")
-        await log_audit_event(
-            "assignment_error",
-            summary="Theme assignment error — no stocks assigned this run",
-            detail=f"{type(e).__name__}: {e}",
+    # ── Batch loop (2026-08-10): chunk the STOCKS, never the theme list ──────
+    # Derivation of _ASSIGN_LLM_BATCH_SIZE at its definition. Chunk order is
+    # the pool's RS order (assignment judges each stock against the full theme
+    # list independently — unlike discovery there is no cross-stock clustering,
+    # so contiguous slicing loses nothing).
+    batches = _chunk_list(uncovered_stocks, _ASSIGN_LLM_BATCH_SIZE)
+    n_batches = len(batches)
+    if n_batches > 1:
+        logger.info(
+            f"Theme assignment: {len(uncovered_stocks)} candidates → {n_batches} "
+            f"batches of ≤{_ASSIGN_LLM_BATCH_SIZE} stocks (output-bounding batching)"
         )
-        return uncovered_stocks, []
+    # RUN-level advisor budget shared across batches — _MAX_ADVISOR_CALLS was
+    # always a per-run cost bound and batching must not multiply it.
+    advisor_state = {"calls": 0}
+    assignments: list[dict] = []
+
+    for batch_no, batch in enumerate(batches, 1):
+        try:
+            batch_props = await _propose_assignment_batch(
+                client, batch, shared_prefix, cooldown_note,
+                advisor_state, batch_no, n_batches, len(uncovered_stocks),
+            )
+        except Exception as e:
+            # #273: a credit-exhaustion BadRequestError is an APIError subclass, so
+            # it would otherwise be MISLABELED transient and retry forever silently.
+            # Detect + alert (deduped) at the top, before any branch.
+            from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+            await maybe_alert_credit_exhausted("theme assignment", e)
+            # Transient Anthropic failures (5xx, network, timeout) resolve next run —
+            # route to a non-`_error` event_type so they don't trip the L1 invariant.
+            # Proposals already collected from EARLIER batches are still applied
+            # below (paid-for work is never dropped); the failed batch's stocks —
+            # and all later batches' — simply stay uncovered this run.
+            if isinstance(e, _THEME_TRANSIENT_EXC) and not isinstance(e, _THEME_RATELIMIT_EXC):
+                logger.warning(
+                    f"Claude theme assignment transient failure at batch {batch_no}/{n_batches} "
+                    f"({type(e).__name__}: {e}) — remaining batches skipped, will retry next run."
+                )
+                await log_audit_event(
+                    "assignment_api_failure",
+                    summary=f"Theme assignment API failure at batch {batch_no}/{n_batches} — remaining batches skipped",
+                    detail=f"{type(e).__name__}: {e}",
+                )
+            elif _THEME_RATELIMIT_EXC and isinstance(e, _THEME_RATELIMIT_EXC):
+                logger.error(f"Claude theme assignment rate-limited at batch {batch_no}/{n_batches} — remaining batches skipped")
+                await log_audit_event(
+                    "assignment_rate_limited",
+                    summary=f"Theme assignment rate-limited at batch {batch_no}/{n_batches} — remaining batches skipped",
+                    detail=str(e),
+                )
+            else:
+                logger.error(f"Claude theme assignment FAILED ({type(e).__name__}: {e}) — remaining batches skipped")
+                await log_audit_event(
+                    "assignment_error",
+                    summary=f"Theme assignment error at batch {batch_no}/{n_batches} — remaining batches skipped",
+                    detail=f"{type(e).__name__}: {e}",
+                )
+            break
+        # Partition guarantee: a proposal only counts against the batch that
+        # carried the stock, so a cross-batch echo (the model naming a ticker
+        # it was not shown) can neither duplicate nor steal an assignment —
+        # the batches partition the pool disjointly.
+        batch_tickers = {s["ticker"] for s in batch}
+        assignments.extend(a for a in batch_props if a.get("ticker", "") in batch_tickers)
 
     # Validate and apply assignments
     theme_by_name = {t["name"]: t for t in existing_themes}
@@ -3815,10 +4064,20 @@ _SPLIT_TOOL = {
             "analysis_scratchpad": {
                 "type": "string",
                 "description": (
-                    "REQUIRED. Reason through the split BEFORE deciding. "
-                    "Which stocks share a more specific catalyst vs. the broader theme? "
-                    "Is the sub-group large enough (≥3) and distinct enough to stand alone? "
-                    "What would remain in the parent — is it still coherent?"
+                    # 2026-08-10: TERSE contract, mirroring the proven 6/25
+                    # discovery fix — the old open-ended "reason through the
+                    # split" prompt let a more-verbose model burn the whole
+                    # output budget inside this field, and the truncated
+                    # response parsed with `split` missing → logged as
+                    # "declined split" (twice on 2026-08-10). Narrate
+                    # sub-GROUPS, never stock-by-stock.
+                    "REQUIRED but KEEP IT SHORT — one terse line per CANDIDATE "
+                    "SUB-GROUP (not per stock): members + shared catalyst + "
+                    "carve/decline call (e.g. 'FNV/OR/RGLD/WPM — royalty/streaming "
+                    "model, carve'). Then one line each for: sub-group size ok? "
+                    "parent still coherent? Do NOT write paragraphs or restate the "
+                    "rules — a verbose scratchpad truncates the response before "
+                    "`split` is emitted, and the truncation reads as a decline."
                 ),
             },
             "split": {
@@ -3901,7 +4160,10 @@ Self-check before calling propose_split WITHOUT advisor:
 □ Is the sub-group a clearly distinct, named sub-industry?
 □ Does the parent remain coherent after the split?
 □ Would a momentum trader track these separately?
-If any answer is "no" or "unsure" → call consult_advisor first."""
+If any answer is "no" or "unsure" → call consult_advisor first.
+
+OUTPUT FORMAT — IMPORTANT:
+Do NOT write any free-text analysis before your tool call. All reasoning belongs INSIDE the `propose_split` tool's `analysis_scratchpad` field (kept terse — one line per candidate sub-group, never per stock). Free text before the tool call wastes the output budget and can cause the response to truncate before `split` is emitted."""
 
     client = _get_anthropic_client()
     messages = [{"role": "user", "content": prompt}]
@@ -3913,7 +4175,12 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
                 model=THEME_MODEL,
                 max_tokens=max_tokens_for("theme_split"),
                 tools=[_SPLIT_TOOL, _ADVISOR_TOOL],
-                tool_choice={"type": "auto"},
+                # `any` (2026-08-10, was `auto`): the assignment path's proven
+                # recipe — the model MUST call propose_split or consult_advisor,
+                # so pre-tool free text can never eat the output budget (the
+                # 5/12-13 silent-stop class). The advisor path survives because
+                # consult_advisor is itself a tool.
+                tool_choice={"type": "any"},
                 messages=messages,
             )
             # #377 cost meter — per-turn (each loop iter is a billed call).
@@ -3921,6 +4188,20 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_split",
                                            response=response)
+
+            # TRUNCATION HONESTY (2026-08-10): a stop_reason='max_tokens'
+            # response is NOT a verdict. Twice on 2026-08-10 a truncated split
+            # response parsed as propose_split with the `split` key missing and
+            # was logged as "Sonnet found theme already coherent" — an
+            # affirmative lie. The #543 live alarm (llm_truncation_live +
+            # Telegram) has already fired via the safe wrapper above; here we
+            # just refuse to read the cut as a decline. No split this run —
+            # the theme is still fat next run and gets re-attempted.
+            if is_truncated(response):
+                logger.warning(
+                    f"[fat-theme split] '{name}': response TRUNCATED at max_tokens — NOT a "
+                    f"decline; skipping split this run (live truncation alarm already fired)")
+                return None, advisor_calls
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -4222,6 +4503,130 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> di
     return {**theme, "tickers": clean_tickers}
 
 
+def _partition_discovery_pools(
+    pools: dict[str, list[dict]],
+    correlation_clusters: list[dict],
+    batch_cap: int,
+) -> list[dict]:
+    """Partition the discovery candidate pools into batches of ≤ `batch_cap`
+    rendered stocks (pure — unit-tested directly in tests/test_theme_batching.py).
+
+    Guarantees:
+      * every pool entry lands in exactly ONE batch — nothing lost, nothing
+        duplicated (the aggregation invariant);
+      * a ticker appearing in several pools keeps ALL its pool renderings in
+        the same batch (the single-call prompt showed them together);
+      * a correlation cluster's pool members stay in ONE batch and the cluster
+        block is passed to that batch only — a statistical cluster split
+        across calls could never be proposed by either half;
+      * atoms are sector-sorted before slicing so batch boundaries fall
+        between sectors wherever possible — thematic cohorts overwhelmingly
+        share a sector. Cross-sector catalyst cohorts (the HBM maker +
+        equipment-co case) can still straddle a boundary; that residual risk
+        is documented in docs/architecture/theme_engine.md, not silently
+        accepted.
+
+    Returns [{"uncovered": [...], "velocity": [...], "turner": [...],
+    "elite": [...], "clusters": [...]}, ...].
+    """
+    pool_keys = ("uncovered", "velocity", "turner", "elite")
+
+    # ticker → its pool renderings (a ticker can legitimately sit in 2 pools).
+    by_ticker: dict[str, list[tuple[str, dict]]] = {}
+    first_seen: list[str] = []
+    for key in pool_keys:
+        for s in pools.get(key) or []:
+            tk = s["ticker"]
+            if tk not in by_ticker:
+                by_ticker[tk] = []
+                first_seen.append(tk)
+            by_ticker[tk].append((key, s))
+
+    # Atoms: correlation-cluster members merge into one indivisible unit
+    # (union-find-lite — a ticker bridging two clusters merges them); every
+    # other ticker is a singleton atom.
+    atoms: list[dict] = []
+    atom_of: dict[str, int] = {}
+
+    def _new_atom() -> int:
+        atoms.append({"tickers": [], "clusters": []})
+        return len(atoms) - 1
+
+    for c in correlation_clusters or []:
+        members = [tk for tk in (c.get("tickers") or []) if tk in by_ticker]
+        hit = sorted({atom_of[tk] for tk in members if tk in atom_of})
+        if hit:
+            ai = hit[0]
+            for other in hit[1:]:
+                for tk in atoms[other]["tickers"]:
+                    atom_of[tk] = ai
+                atoms[ai]["tickers"].extend(atoms[other]["tickers"])
+                atoms[ai]["clusters"].extend(atoms[other]["clusters"])
+                atoms[other] = {"tickers": [], "clusters": []}
+        else:
+            ai = _new_atom()
+        atoms[ai]["clusters"].append(c)
+        for tk in members:
+            if tk not in atom_of:
+                atom_of[tk] = ai
+                atoms[ai]["tickers"].append(tk)
+
+    for tk in first_seen:
+        if tk not in atom_of:
+            ai = _new_atom()
+            atom_of[tk] = ai
+            atoms[ai]["tickers"].append(tk)
+
+    def _weight(a: dict) -> int:
+        n = sum(len(by_ticker[tk]) for tk in a["tickers"])
+        if n == 0 and a["clusters"]:
+            # Cluster with no pool members still renders its ticker list.
+            n = sum(len(c.get("tickers") or []) for c in a["clusters"])
+        return n
+
+    def _sector(a: dict) -> str:
+        for tk in a["tickers"]:
+            for _key, s in by_ticker[tk]:
+                sec = s.get("sector")
+                if sec and sec != "Unknown":
+                    return sec
+        return "~cluster-only" if a["clusters"] else "~unknown"
+
+    live = [a for a in atoms if a["tickers"] or a["clusters"]]
+    live.sort(key=lambda a: (_sector(a), a["tickers"][0] if a["tickers"] else ""))
+
+    batches: list[dict] = []
+    cur: dict = {k: [] for k in pool_keys}
+    cur.update(clusters=[], _w=0)
+
+    def _flush() -> None:
+        nonlocal cur
+        if cur["_w"] or cur["clusters"]:
+            del cur["_w"]
+            batches.append(cur)
+        cur = {k: [] for k in pool_keys}
+        cur.update(clusters=[], _w=0)
+
+    for a in live:
+        w = _weight(a)
+        if cur["_w"] and cur["_w"] + w > batch_cap:
+            _flush()
+        for tk in a["tickers"]:
+            for key, s in by_ticker[tk]:
+                cur[key].append(s)
+        cur["clusters"].extend(a["clusters"])
+        cur["_w"] += w
+    _flush()
+
+    # Restore each batch's pool lists to original pool order (RS-ranked
+    # display order — the sector sort was for boundary placement only).
+    for b in batches:
+        for key in pool_keys:
+            index = {id(s): i for i, s in enumerate(pools.get(key) or [])}
+            b[key].sort(key=lambda s: index.get(id(s), 0))
+    return batches
+
+
 async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
@@ -4234,6 +4639,84 @@ async def _discover_new_themes(
     globally_banned: set[str] | None = None,
     recall_mode: bool = False,
 ) -> list[dict]:
+    """Batching driver (2026-08-10) — bounds each discovery call's OUTPUT by
+    construction. The response narrates every rendered stock (scratchpad) plus
+    a thesis per proposed theme, so output scales with the candidate
+    population; on 2026-08-10 sonnet-5 truncated 5 of 6 calls at the 8000
+    ceiling over a 63-stock pool. Chunking the STOCKS (full existing-themes
+    list in every call) caps a single call's demand below the ceiling —
+    derivation at _DISCOVERY_LLM_BATCH_STOCKS.
+
+    Fast path: ≤ _DISCOVERY_LLM_BATCH_STOCKS rendered stocks ⇒ ONE call with
+    behaviour identical to the pre-batching engine. Both callers (the live
+    engine and run_theme_discovery_shadow) route through here unchanged.
+    """
+    # Mirror the single-call renderer's hard caps BEFORE partitioning — the
+    # prompt only ever showed the first 20 velocity/turner names, and batching
+    # must not quietly widen coverage.
+    uncovered_stocks = list(uncovered_stocks or [])
+    velocity_leaders = list(velocity_leaders or [])[:20]
+    turners = list(turners or [])[:20]
+    elite_covered = list(elite_covered or [])
+
+    total = (len(uncovered_stocks) + len(velocity_leaders)
+             + len(turners) + len(elite_covered))
+    # RUN-level advisor budget shared across batches — _MAX_ADVISOR_CALLS was
+    # always a per-run cost bound and batching must not multiply it.
+    advisor_state = {"calls": 0}
+    if total <= _DISCOVERY_LLM_BATCH_STOCKS:
+        return await _discover_new_themes_single(
+            uncovered_stocks, existing_themes, stocks_by_ticker,
+            velocity_leaders, turners, elite_covered,
+            theme_exclusions=theme_exclusions,
+            correlation_clusters=correlation_clusters,
+            globally_banned=globally_banned, recall_mode=recall_mode,
+            advisor_state=advisor_state)
+
+    batches = _partition_discovery_pools(
+        {"uncovered": uncovered_stocks, "velocity": velocity_leaders,
+         "turner": turners, "elite": elite_covered},
+        correlation_clusters or [], _DISCOVERY_LLM_BATCH_STOCKS)
+    logger.info(
+        f"Theme discovery: {total} candidates → {len(batches)} batches of "
+        f"≤{_DISCOVERY_LLM_BATCH_STOCKS} rendered stocks (output-bounding batching)")
+
+    merged: dict[str, dict] = {}
+    for b in batches:
+        themes = await _discover_new_themes_single(
+            b["uncovered"], existing_themes, stocks_by_ticker,
+            b["velocity"], b["turner"], b["elite"],
+            theme_exclusions=theme_exclusions,
+            correlation_clusters=b["clusters"],
+            globally_banned=globally_banned, recall_mode=recall_mode,
+            advisor_state=advisor_state)
+        for t in themes:
+            key = (t.get("name") or "").strip().lower()
+            if key in merged:
+                # Same theme surfaced from two batches — union the members and
+                # keep the first thesis (dropping either half would lose
+                # stocks; downstream validation still gates every member).
+                seen = set(merged[key].get("tickers") or [])
+                merged[key]["tickers"] = list(merged[key].get("tickers") or []) + [
+                    tk for tk in (t.get("tickers") or []) if tk not in seen]
+            else:
+                merged[key] = dict(t)
+    return list(merged.values())
+
+
+async def _discover_new_themes_single(
+    uncovered_stocks: list[dict],
+    existing_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+    velocity_leaders: list[dict] | None = None,
+    turners: list[dict] | None = None,
+    elite_covered: list[dict] | None = None,
+    theme_exclusions: dict[str, set[str]] | None = None,
+    correlation_clusters: list[dict] | None = None,
+    globally_banned: set[str] | None = None,
+    recall_mode: bool = False,
+    advisor_state: dict | None = None,
+) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
     Also receives elite covered stocks (RS 80+) that may need sub-theme splits.
@@ -4243,8 +4726,12 @@ async def _discover_new_themes(
     theme whose name is semantically related to the original exclusion theme (fuzzy match),
     the ticker is silently stripped before the theme is returned. This prevents excluded
     tickers from sneaking back in via newly-discovered themes with different names.
+    advisor_state: run-level advisor budget shared across batches (2026-08-10);
+    None (direct/test callers) keeps a private budget.
     """
     client = _get_anthropic_client()
+    if advisor_state is None:
+        advisor_state = {"calls": 0}
 
     from agents.market_intelligence.universe import TICKER_DESC
 
@@ -4431,7 +4918,6 @@ In every other case, skip the advisor and call `report_themes` immediately, with
     try:
         client = _get_anthropic_client()
         messages: list[dict] = [{"role": "user", "content": prompt}]
-        advisor_calls = 0
         force_report = False   # once True, compel report_themes so the model commits its
                                # best judgment instead of dithering on the advisor or
                                # stopping silently — the #173 shadow-death class (a real
@@ -4519,6 +5005,27 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 response=response,
             )
 
+            # TRUNCATION HONESTY (2026-08-10): a stop_reason='max_tokens'
+            # response is NOT a report. The partial tool_use input can parse
+            # with the `themes` key missing, which used to read as a genuine
+            # "0 new themes" (observed live 2026-08-10 21:13Z: iter=1
+            # stop=max_tokens with a parsed report_themes block — the run
+            # returned truncated results as if complete). The #543 live alarm
+            # (llm_truncation_live + Telegram) has already fired via the safe
+            # wrapper above; here we discard the partial, retry ONCE in forced
+            # mode (whose output batching now bounds), then give up LOUDLY.
+            if is_truncated(response):
+                if not force_report:
+                    logger.warning(
+                        "Theme discovery: response TRUNCATED at max_tokens — discarding the "
+                        "partial and forcing a bounded report")
+                    force_report = True
+                    continue
+                logger.warning(
+                    "Theme discovery: FORCED report also truncated — returning no themes for "
+                    "this call (live truncation alarm already fired)")
+                return []
+
             # Model produced no tool call. Don't silently discard the whole discovery
             # pass (#173: the ADR-0007 shadow wrote 0 rows for days this way) — compel one
             # final report_themes so the model commits its best judgment first. A forced
@@ -4535,10 +5042,10 @@ In every other case, skip the advisor and call `report_themes` immediately, with
             # If report_themes was called, we're done
             report_block = next((b for b in tool_uses if b.name == "report_themes"), None)
             if report_block:
-                if advisor_calls == 0:
+                if advisor_state["calls"] == 0:
                     logger.info("Theme discovery: Sonnet went direct (no advisor needed)")
                 else:
-                    logger.info(f"Theme discovery: Sonnet used advisor {advisor_calls}x before reporting")
+                    logger.info(f"Theme discovery: Sonnet used advisor {advisor_state['calls']}x before reporting")
                 raw_themes = report_block.input.get("themes", [])
                 valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
                 result_themes = []
@@ -4580,13 +5087,13 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 if block.name == "consult_advisor":
                     question = block.input.get("question", "")
                     context = block.input.get("context", "")
-                    if advisor_calls >= _MAX_ADVISOR_CALLS:
+                    if advisor_state["calls"] >= _MAX_ADVISOR_CALLS:
                         advice = "Advisor call limit reached — use your best judgment and proceed."
                         logger.warning(f"Theme discovery: advisor call limit reached — question was: {question[:120]}")
                     else:
-                        advisor_calls += 1
+                        advisor_state["calls"] += 1
                         logger.info(
-                            f"Theme discovery: advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS}\n"
+                            f"Theme discovery: advisor call {advisor_state['calls']}/{_MAX_ADVISOR_CALLS}\n"
                             f"  Q: {question}\n"
                             f"  Context snippet: {context[:200]}"
                         )
@@ -4600,7 +5107,7 @@ In every other case, skip the advisor and call `report_themes` immediately, with
             messages.append({"role": "user", "content": tool_results})
             # Advisor budget spent → compel a commit on the next turn rather than let the
             # model loop on "limit reached, proceed" and ultimately report nothing (#173).
-            if advisor_calls >= _MAX_ADVISOR_CALLS:
+            if advisor_state["calls"] >= _MAX_ADVISOR_CALLS:
                 force_report = True
 
     except Exception as e:
