@@ -8804,3 +8804,39 @@ reviews:
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #559", "task #548", "task #490 (closed 2026-08-03)"]
+
+  - review_id: theme_assignment_steady_state_cost
+    title: >-
+      Steady-state cost of theme assignment after the 08-10 output-bounding fix — does the
+      backlog cost decay, and did batch=18 hold?
+    question: >-
+      Assignment went from $0.20/night buying nothing to an estimated ~$1.90/night (+$50/mo).
+      That was approved as a BACKLOG cost. After a week of real runs, what is the actual
+      steady-state cost, is the uncovered-stock pool shrinking, and are calls still truncating
+      at 8000 (which would mean batch=18 was modelled too high)?
+    # Weekday runs, not calendar days: the theme engine is mon-fri, so a Sat/Sun-inclusive
+    # clock would ripen this review on 2 real observations instead of 5.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT created_at::date)::int
+        FROM api_usage
+       WHERE caller = 'theme_assignment'
+         AND created_at >= DATE '2026-08-11';
+    threshold: 5
+    # 5 = one full trading week. Fewer cannot separate a decaying backlog from a noisy night;
+    # more delays a spend decision the operator has explicitly asked to revisit.
+    earliest_review_date: 2026-08-18
+    action_when_ready: >-
+      Report cost/night and uncovered-pool size/night AS A PAIR (cost alone is uninterpretable —
+      it is ~73 output tokens per unassigned stock, so it must be read against the pool), plus
+      the trend and implied monthly run-rate. THEN the value side, or the cost means nothing:
+      average theme membership and the count of themes holding <=3 tickers, against the
+      2026-08-10 baseline of 460 theme rows / avg 3.3 members / 350 of 460 at <=3. Three
+      outcomes: (a) cost decays and membership rises => keep, report the floor; (b) cost flat
+      and membership rises => real ongoing price for a working component, operator rules;
+      (c) membership does NOT rise => the spend bought nothing, pull it. ALSO: if
+      `theme_assignment` still shows stop_reason='max_tokens' rows, batch=18 was modelled too
+      high (no untruncated sonnet-5 sample existed to measure it) — halve it.
+    status: pending
+    kind: accrual
+    added_on: 2026-08-10
+    cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
