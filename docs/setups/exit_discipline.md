@@ -26,6 +26,19 @@ therefore evaluated **once, against the close**, not on the touch.
 same-day — #361) and `update_open_positions_live` 4:45 PM ET (SMA trail + stop update + summary;
 passes `skip_partial_decision=True` so the partial cannot double-fire).
 
+**Stop-move invariant (2026-08-10): a protective stop is RAISE-ONLY, enforced against the BROKER,
+in `update_stop` itself.** Before cancelling anything, `order_manager.update_stop` reads the live
+stop from the broker; a requested price that is not strictly above it is refused (no cancel, no
+re-place, `stop_update_aborted` audit row, returns False — the existing stop stays). An unreadable
+broker stop refuses the same way — we cannot prove the move is a raise, and leaving protection
+unchanged is the safe direction. A TERMINAL old stop (expired/cancelled/filled) or a NULL pointer
+has nothing live to floor against, so the re-protect paths (`_stop_refresh` re-placing at the DB
+price after a DAY leg expires; post-remediation naked re-protect) are exempt and unchanged. The
+floor lives in `update_stop` — the one place that talks to the broker — so every current and
+future caller inherits it; callers may still DECIDE against `mi_live_trades.stop_price`, which is
+deliberately allowed to UNDERSTATE protection (#548 uncertain branch). Defect story: change log
+2026-08-10. Tests: `tests/test_update_stop_raise_only_floor.py`.
+
 ### 1. Partial profit — day 3-5
 ```python
 if hold_days >= 3 and not partial_taken and entry_price:
@@ -203,6 +216,43 @@ Full evidence, all figures independently recomputed twice:
 ---
 
 ## Change log (newest first)
+
+### 2026-08-10 — BUG FIX: update_stop could LOWER a live stop; raise-only floor added against the broker stop
+
+**Classification: bug fix enforcing already-signed intent** (a protective long stop is raise-only —
+the production comment on `execute_partial_exit`'s `_be_outcome == "live"` branch is the signed
+intent: *"a stale (lower) value would let a later trail pass cancel this stop and re-place LOWER —
+loosening protection"*). Not a detection-criterion or strategy change; no CHANGE_PROCESS N≥10 gate.
+Nothing about WHEN the trail moves a stop or by how much changed — only whether an already-computed
+move that would LOWER the live stop is allowed to execute (it never was, by intent).
+
+**The defect.** `update_stop` cancelled the live stop and re-placed at whatever the caller computed;
+its only price reference was `mi_live_trades.stop_price`. The EOD trail decides "am I raising?"
+against that DB value (`live_tracker.py` — `step.effective_stop > current_stop + 0.01`), and
+nothing reconciles `stop_price` back from broker truth. The reachable window: the #548 resting-mode
+breakeven "uncertain" branch DELIBERATELY persists the successor stop pointer while withholding
+`stop_price` (the DB understating protection is the safe direction — pinned in
+`test_resting_mode_breakeven_548.py`; that branch is correct and was not touched). DB then sits at
+the old, LOWER value while the broker rests at breakeven; a later trail pass whose `effective_stop`
+lands between the two would cancel the good breakeven stop and re-place LOWER. Protection silently
+loosens.
+
+**The fix** — in `update_stop` itself, not at each caller, so any future caller inherits it:
+- Live (non-terminal) broker stop + requested price not strictly above it → refuse: no cancel, no
+  place, `stop_update_aborted` audit row (`reason=raise_only_floor`), return False. Equal price is
+  refused too — cancel + re-place at the same price only opens a no-stop window (the #444 shape).
+- **Fail direction, deliberate:** broker stop unreadable (`get_order` → None, or a non-terminal
+  order with no `stop_price`) → refuse the same way (`reason=broker_stop_unreadable`). An
+  unreadable stop means the move cannot be proven a raise; leaving the existing stop untouched
+  keeps protection unchanged, while proceeding blind is exactly how the defect loosens it. Loud,
+  never silent: `logger.warning` + audit row.
+- Terminal old stop (cancelled/expired/rejected/replaced/done_for_day/filled) or NULL pointer → no
+  floor; the re-protect paths re-place at the DB price exactly as before.
+
+Tests: `tests/test_update_stop_raise_only_floor.py` (9), each mutation-proved (inverted comparison,
+disabled floor, blind-proceed on unreadable, skipped no-price branch, floor applied to terminal
+stops, broker read on NULL pointer — every mutation reddened its test). `execute_partial_exit`'s own
+stop re-creation is a separate path and was not touched.
 
 ### 2026-08-08 — Real-time breakeven at the BROKER — SHIPPED DARK (#548 defect 2)
 

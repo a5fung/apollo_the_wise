@@ -1309,6 +1309,84 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         )
         return False
 
+    # ── Raise-only floor against the CURRENT BROKER stop (bug fix 2026-08-10) ──
+    # A protective long stop is raise-only — signed intent; see the breakeven
+    # branch comment at the `_be_outcome == "live"` write in
+    # execute_partial_exit ("a stale (lower) value would let a later trail
+    # pass cancel this stop and re-place LOWER — loosening protection"). The
+    # DB is NOT authoritative for the live stop price: the #548 resting-mode
+    # "uncertain" branch deliberately persists the successor stop POINTER
+    # while WITHHOLDING stop_price (the DB understating protection is the safe
+    # direction — pinned in test_resting_mode_breakeven_548.py; do not "fix"
+    # that branch), so trade["stop_price"] can sit BELOW the stop actually
+    # resting at the broker. Callers decide "should I move?" against the DB;
+    # THIS function is the one that talks to the broker, so the floor lives
+    # here — every current and future caller inherits it.
+    #
+    # FAIL DIRECTION — DELIBERATE: if the broker stop cannot be read
+    # (get_order → None, or a non-terminal order carrying no stop_price), we
+    # cannot prove the requested move is a raise, so we DO NOT act. Leaving
+    # the existing stop untouched keeps protection exactly what it was — the
+    # safe direction; proceeding blind is precisely how this defect loosens
+    # protection. Never a silent swallow: logger.warning + a
+    # stop_update_aborted audit row every time. A TERMINAL old stop
+    # (cancelled/expired/rejected/replaced/done_for_day/filled) means there is
+    # nothing live to floor against — that is the re-protect path
+    # (_stop_refresh re-placing at the DB price after a stop died) and the
+    # floor deliberately does not apply there. No pointer at all
+    # (stop_order_id NULL, the post-remediation naked case) skips the floor
+    # the same way.
+    if old_stop_id:
+        broker_order = await alpaca.get_order(old_stop_id, account_mode=account_mode)
+        broker_status = _canonical_order_status(
+            broker_order.get("status") if broker_order else None)
+        old_stop_terminal = broker_order is not None and (
+            broker_status in _STOP_DEAD_STATUSES or broker_status == "filled")
+        if not old_stop_terminal:
+            broker_stop_raw = broker_order.get("stop_price") if broker_order else None
+            if broker_stop_raw is None:
+                logger.warning(
+                    f"update_stop: {ticker} broker stop {old_stop_id} unreadable — "
+                    f"cannot prove ${new_stop_price:.2f} is a raise; existing stop "
+                    f"left untouched"
+                )
+                await log_audit_event(
+                    "stop_update_aborted",
+                    f"{ticker}: broker stop {old_stop_id} unreadable — cannot prove "
+                    f"${new_stop_price:.2f} is a raise; existing stop left untouched",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "reason": "broker_stop_unreadable",
+                        "old_stop_id": old_stop_id,
+                        "broker_status": broker_status,
+                        "db_stop_price": old_stop_price,
+                        "new_stop_price": new_stop_price,
+                    }),
+                )
+                return False
+            broker_stop_price = float(broker_stop_raw)
+            if new_stop_price <= broker_stop_price + 1e-9:
+                logger.warning(
+                    f"update_stop: {ticker} refused — requested ${new_stop_price:.2f} "
+                    f"is not above the live broker stop ${broker_stop_price:.2f} "
+                    f"({old_stop_id}); raise-only, existing stop left untouched"
+                )
+                await log_audit_event(
+                    "stop_update_aborted",
+                    f"{ticker}: requested ${new_stop_price:.2f} is not above the live "
+                    f"broker stop ${broker_stop_price:.2f} — raise-only floor; "
+                    f"existing stop left untouched",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "reason": "raise_only_floor",
+                        "old_stop_id": old_stop_id,
+                        "broker_stop_price": broker_stop_price,
+                        "db_stop_price": old_stop_price,
+                        "new_stop_price": new_stop_price,
+                    }),
+                )
+                return False
+
     await log_audit_event(
         "stop_update_started",
         f"{ticker}: ${old_stop_price} → ${new_stop_price:.2f} "
