@@ -8768,3 +8768,39 @@ reviews:
     status: pending
     added_on: 2026-08-02
     cross_refs: ["task #301", "task #207"]
+
+  - review_id: rt_admission_recut_post_2r_exits
+    title: >-
+      Re-cut real-time admission (the two OFF switches) after the 2R intraday exit stack
+      has run 14 trading days
+    question: >-
+      Do the two real-time admission switches (`ep_rt_gap_authoritative`,
+      `ep_rt_universe_authoritative`) still lose money once trades are managed by the
+      #548 intraday 2R exit rule instead of the exits that produced the -0.60R baseline?
+    # Trading-day counter, not a calendar clock: if the #548 deploy slips, the window
+    # slips with it instead of surfacing a review of the wrong exit regime.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT alert_date)::int
+        FROM mi_live_trades
+       WHERE account_mode = 'live'
+         AND alert_date >= DATE '2026-08-11';
+    threshold: 14
+    # 14 is the ORIGINAL measurement's own window, not a chosen bar: the -0.60R baseline
+    # (n=320 in-window crossers) is a 14-day cut, so a shorter re-cut is not comparable
+    # to it and a longer one delays a decision the operator has already framed.
+    earliest_review_date: 2026-08-31
+    action_when_ready: >-
+      Re-run the SAME cut as docs/analysis/490_realtime_detection_flip_evidence_2026-08-10.md
+      over the post-#548 window and report mean R for (a) all in-window real-time crossers,
+      (b) the gate-passing subset, (c) pre-open HIGH with its updated n — PLUS the number of
+      times the 2R intraday rule actually fired. A zero-firing window is a VALID answer: it
+      means the exits did not change and HOLD stands unchanged. Three outcomes: (a) mean R
+      still negative => stay off, re-gate; (b) mean R turns positive => bring the operator a
+      flip recommendation with the new n; (c) only the pre-open pocket improves => bring the
+      narrow pre-open-only admission option he declined on 2026-08-10 back with real n.
+      ADMISSION IS ENTRY DISCIPLINE = THE LINE — this review produces a recommendation only,
+      never a flip.
+    status: pending
+    kind: accrual
+    added_on: 2026-08-10
+    cross_refs: ["task #559", "task #548", "task #490 (closed 2026-08-03)"]
