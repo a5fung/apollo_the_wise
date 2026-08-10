@@ -79,6 +79,21 @@ if [ "$py_changed" -eq 0 ]; then
     exit 0                                       # nothing the suite reads — skip
 fi
 
+# CI runs TWO preflight gates BEFORE pytest (.github/workflows/tests.yml). This hook ran
+# only pytest, so a commit could pass locally, get pushed, and red CI on a gate the hook
+# never checked — exactly what happened 2026-08-09 (23 model-id literals in a new
+# registry). Every red run emails the operator; his words: "so much spam from this
+# everyday". Mirroring CI means matching ALL its steps, not just the slow one. Both are
+# static AST walks (<1s) and run FIRST so a gate failure is instant.
+for _gate in preflight_datetime_hygiene preflight_model_registry; do
+    echo "▶ pre-push: $_gate (mirrors CI)…"
+    if ! "$PY_BIN" "scripts/$_gate.py"; then
+        echo "✘ pre-push: $_gate FAILED — push blocked (CI would reject this and email you)."
+        echo "  Fix it, or bypass with: git push --no-verify (emergency only)."
+        exit 1
+    fi
+done
+
 echo "▶ pre-push: running full test suite (python -m pytest tests/ -q) — mirrors CI…"
 if ! "$PY_BIN" -m pytest tests/ -q; then
     echo "✘ pre-push: test suite FAILED — push blocked (this is exactly what CI would reject)."
