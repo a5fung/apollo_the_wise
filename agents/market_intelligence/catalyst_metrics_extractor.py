@@ -40,7 +40,35 @@ logger = logging.getLogger(__name__)
 
 from shared.llm_models import METRICS_EXTRACTION_MODEL as _EXTRACTION_MODEL
 from shared.output_ceilings import max_tokens_for
-from shared.llm_response import content_block_types, first_text
+from shared.llm_response import content_block_types, first_text, is_truncated
+
+# ── STRUCTURAL OUTPUT LOCK (2026-08-10, /simplify altitude review after #542/#543) ─────────
+# This caller broke twice on the sonnet-5 move because NOTHING structurally constrained the
+# response: output grew >=2.7x and pierced the old ceiling (#542), and a thinking block
+# arrived first and broke the positional read (#543/#544). Defect class: output unbounded
+# because nothing locks the response shape. Two locks were evaluated:
+#
+#   (a) FORCED TOOL CALL via judge_transport.invoke_forced_tool — the strong form.
+#       REJECTED here, for reasons specific to THIS call site:
+#       * invoke_forced_tool takes an SDK AsyncAnthropic client; this caller is raw httpx.
+#         Migrating the transport drags the incident-hardened #273 credit-exhaustion path
+#         (llm_health classifies httpx.HTTPStatusError from raise_for_status) into a
+#         different exception taxonomy, plus SDK client lifecycle — a large change on the
+#         EP grading path for a defect the weak lock already covers.
+#       * The extraction schema (10 fields, nested null-OR-object unions) lives IN the
+#         prompt as prose. A forced tool needs it AGAIN as input_schema: either two copies
+#         that drift, or a prompt restructure — and restructuring what the model is asked
+#         to produce is a grading-surface change this transport fix must not make (THE LINE).
+#   (b) system= JSON-API LOCK — the weak form, mirroring theme_engine.py theme_validation.
+#       CHOSEN. Measured sufficient for the defect class: theme_validation carries this
+#       exact lock and its output held ~1.0x across the 4-6 -> 5 model change (max completed
+#       293 -> 272; see shared/output_ceilings.py), while this caller — freeform, no lock —
+#       grew >=2.7x on the same change. One added request field; reader, cost logging, and
+#       error handling stay byte-identical. A smaller correct change beats a large risky
+#       one on this path.
+#
+# Byte-identical to the theme_validation lock so the two stay one pattern:
+_SYSTEM_LOCK = "You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation."
 
 _EXTRACTION_PROMPT = """You will extract structured earnings metrics from news articles about {ticker}.
 
@@ -178,6 +206,10 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
                     # previous model's verbosity. See PLAN #542. The number now
                     # lives in shared/output_ceilings.py with its evidence.
                     "max_tokens": max_tokens_for("catalyst_metrics_extractor"),
+                    # Output-shape lock — see _SYSTEM_LOCK block above for the (a)/(b)
+                    # decision. TRANSPORT ONLY: the user prompt (rubric, fields,
+                    # thresholds) is untouched; this constrains FORM, not judgment.
+                    "system": _SYSTEM_LOCK,
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )
@@ -192,6 +224,22 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
                 model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
                 response=data,
             )
+            # TRUNCATION IS A FAILURE, said out loud (2026-08-10, #543 discipline).
+            # Before this guard, a max_tokens cut surfaced only as a mid-JSON parse
+            # error ("Expecting ',' delimiter") — and a cut landing exactly after a
+            # closing brace would PARSE and grade on a cut answer, the same trap the
+            # judge transport measured (AMRC/RDW promoted to HIGH on truncated
+            # verdicts). Same predicate as judge_transport, same outcome as a parse
+            # failure: return None -> the caller's retry/fail-low path runs. The
+            # spend tracker above already fired the LIVE operator alarm + audit row
+            # off this response's stop_reason; this guard is the local behavior.
+            if is_truncated(data):
+                logger.warning(
+                    "catalyst_metrics_extractor: response TRUNCATED at "
+                    f"max_tokens={max_tokens_for('catalyst_metrics_extractor')} — "
+                    "discarding rather than grading on a cut answer (#543)"
+                )
+                return None
             # ⚠ 2026-08-07 ROOT CAUSE OF THE 08-06/08-07 EXTRACTION OUTAGE.
             # This read `data["content"][0]["text"]` — it assumed the FIRST content
             # block is the answer. That held for sonnet-4-6 and stopped holding the
@@ -451,4 +499,17 @@ async def lookup_cached_metrics(ticker: str, alert_date: date) -> dict[str, Any]
     raw = row["raw_json"]
     if isinstance(raw, str):
         raw = json.loads(raw)
+    # #543 DoD: NEVER serve a transport failure as a cached result. A row whose
+    # raw_json carries `extraction_error` holds no extracted data — it exists only
+    # because ep_detector persists whatever extract_earnings_metrics returns,
+    # including the extraction_call_failed placeholder. Serving it as cache
+    # converted one transient API failure into a PERMANENT skip for that
+    # (ticker, alert_date): every later tick saw "cached" and never re-tried.
+    # Returning None makes callers re-extract; a later success UPSERTs over the
+    # failure row. The row itself still lands (persist is unchanged) so the raw
+    # corpus columns keep their forensic/replay value — it is a forensic row now,
+    # not a cached result. Guarding here (the read) rather than at persist also
+    # heals failure rows already in prod.
+    if isinstance(raw, dict) and raw.get("extraction_error"):
+        return None
     return raw or None
