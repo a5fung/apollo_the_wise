@@ -1524,7 +1524,12 @@ async def _emit_l1(name: str, body: dict) -> None:
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L1 {name}",
-        detail=json.dumps(_detail),
+        # default=str (codebase idiom, e.g. ep_detector.py/order_ingest.py log_audit_event
+        # calls): naked_position's offending_rows/real_naked/db_drift carry raw asyncpg
+        # Record->dict values (alert_date: date, filled_at: datetime) that plain json.dumps
+        # cannot serialize. This was the 2026-08-10 incident — the highest-severity L1
+        # (naked_position) raised TypeError here and the breach was never written.
+        detail=json.dumps(_detail, default=str),
     )
     try:
         from agents.market_intelligence.briefing import send_telegram_message
@@ -1544,6 +1549,8 @@ async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, event_deltas: list[dict
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L2 {metric.name}",
+        # default=str: same class as the L1 fix above — a metric body carrying a raw date/
+        # datetime must not blow up the write.
         detail=json.dumps({
             "level": 2, "key": metric.name,
             "current": anomaly.body.get("current"),
@@ -1561,7 +1568,7 @@ async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, event_deltas: list[dict
             "event_deltas": event_deltas,
             "drill_sql": metric.drill_sql,
             "code_pointers": metric.code_pointers,
-        }),
+        }, default=str),
     )
     try:
         from agents.market_intelligence.briefing import send_telegram_message
@@ -1575,6 +1582,7 @@ async def _emit_l3(metric: MetricSpec, anomaly: Anomaly) -> None:
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L3 {metric.name}",
+        # default=str: same class as the L1/L2 fixes above.
         detail=json.dumps({
             "level": 3, "key": metric.name,
             "current": anomaly.body.get("current"),
@@ -1584,7 +1592,7 @@ async def _emit_l3(metric: MetricSpec, anomaly: Anomaly) -> None:
             "from_band": anomaly.body.get("from_band"),
             "to_band": anomaly.body.get("to_band"),
             "warming": anomaly.body.get("warming", False),
-        }),
+        }, default=str),
     )
 
 
@@ -1601,7 +1609,17 @@ async def _check_invariants(conn, *, since: date, since_dt: datetime, now_et: da
             logger.exception(f"system_audit: invariant {name} raised: {e}")
             continue
         if not ok:
-            await _emit_l1(name, body)
+            # _emit_l1 gets its OWN try/except (2026-08-10 incident): it was previously
+            # outside this function's try, so one invariant's emit failure (naked_position's
+            # unserializable date/datetime detail) propagated out of the loop and silently
+            # killed every LATER invariant in the sweep for the night — including this
+            # function's own remaining iterations. A failing emit must be loud (logged with
+            # the invariant name) but must never abort the sweep.
+            try:
+                await _emit_l1(name, body)
+            except Exception:
+                logger.exception(f"system_audit: _emit_l1 failed for invariant {name} (breach not recorded)")
+                continue
             fired += 1
     return fired
 
@@ -1630,10 +1648,20 @@ async def _scan_metrics(
             continue
         if anomaly.level == 2:
             event_deltas = await _top_event_deltas(conn)
-            await _emit_l2(metric, anomaly, event_deltas)
+            # Same emit-outside-the-try shape as _check_invariants (2026-08-10 incident):
+            # an _emit_l2/_emit_l3 failure must not abort the metric sweep either.
+            try:
+                await _emit_l2(metric, anomaly, event_deltas)
+            except Exception:
+                logger.exception(f"system_audit: _emit_l2 failed for metric {metric.name}")
+                continue
             l2_count += 1
         elif anomaly.level == 3:
-            await _emit_l3(metric, anomaly)
+            try:
+                await _emit_l3(metric, anomaly)
+            except Exception:
+                logger.exception(f"system_audit: _emit_l3 failed for metric {metric.name}")
+                continue
             l3_count += 1
     return (0, l2_count, l3_count)
 
