@@ -881,7 +881,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             # never "0 narrative themes".
             raise ValueError(
                 "narrative theme discovery TRUNCATED at max_tokens — treated as a "
-                "failed run, not an empty one (llm_truncation_live already fired)")
+                f"failed run, not an empty one ({_TRUNCATION_ALARM_NOTE})")
         parsed = _lane2_tool_input(msg)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
         cand_tk = {a["ticker"] for a in cand}
@@ -1006,7 +1006,7 @@ async def _discover_lane2_registry(
         # died exactly here as an "Unterminated string" JSON error.
         raise ValueError(
             "narrative theme discovery (v2reg) TRUNCATED at max_tokens — treated as "
-            "a failed run, not an empty one (llm_truncation_live already fired)")
+            f"a failed run, not an empty one ({_TRUNCATION_ALARM_NOTE})")
     parsed = _lane2_tool_input(msg)
     themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
     raw_seeds = parsed.get("seeds", []) if isinstance(parsed, dict) else []
@@ -3328,6 +3328,11 @@ async def _rescore_existing_theme(
 # Every constant above is traceable: 274/73.4/416 from the untruncated fit,
 # 3.5x from the registry's measured completed-sample growth, 0.90 × 8000 from
 # shared/output_ceilings.py. Re-derive if THEME_MODEL moves tiers again.
+# The #543 live truncation alarm (`llm_truncation_live`) fires per truncated call, so every
+# caller that degrades on truncation says so the same way. It was worded four different ways
+# across the five sites, which is how a rename of that event would go half-applied.
+_TRUNCATION_ALARM_NOTE = "the llm_truncation_live alarm already fired for this call"
+
 _ASSIGN_LLM_BATCH_SIZE = 18
 
 # ── Discovery LLM batching (2026-08-10) — same class of fix ──────────────────
@@ -3523,7 +3528,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             logger.warning(
                 f"Theme assignment batch {batch_no}/{n_batches} TRUNCATED at max_tokens "
                 f"({len(batch_stocks)} stocks) — batch skipped; its stocks stay uncovered "
-                f"this run. Live truncation alarm already fired (llm_truncation_live)."
+                f"this run. {_TRUNCATION_ALARM_NOTE.capitalize()}."
             )
             return []
 
@@ -4200,7 +4205,7 @@ Do NOT write any free-text analysis before your tool call. All reasoning belongs
             if is_truncated(response):
                 logger.warning(
                     f"[fat-theme split] '{name}': response TRUNCATED at max_tokens — NOT a "
-                    f"decline; skipping split this run (live truncation alarm already fired)")
+                    f"decline; skipping split this run ({_TRUNCATION_ALARM_NOTE})")
                 return None, advisor_calls
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
@@ -4595,17 +4600,20 @@ def _partition_discovery_pools(
     live = [a for a in atoms if a["tickers"] or a["clusters"]]
     live.sort(key=lambda a: (_sector(a), a["tickers"][0] if a["tickers"] else ""))
 
+    def _empty_batch() -> dict:
+        # ONE definition of a batch's shape. It was written out twice (init + _flush),
+        # so adding a pool key meant remembering to edit both.
+        return {**{k: [] for k in pool_keys}, "clusters": [], "_w": 0}
+
     batches: list[dict] = []
-    cur: dict = {k: [] for k in pool_keys}
-    cur.update(clusters=[], _w=0)
+    cur: dict = _empty_batch()
 
     def _flush() -> None:
         nonlocal cur
         if cur["_w"] or cur["clusters"]:
             del cur["_w"]
             batches.append(cur)
-        cur = {k: [] for k in pool_keys}
-        cur.update(clusters=[], _w=0)
+        cur = _empty_batch()
 
     for a in live:
         w = _weight(a)
@@ -4620,9 +4628,16 @@ def _partition_discovery_pools(
 
     # Restore each batch's pool lists to original pool order (RS-ranked
     # display order — the sector sort was for boundary placement only).
+    # The indexes describe `pools`, which does not change across batches, so they
+    # are built ONCE rather than rebuilt per batch per key (was B x len(pool_keys)
+    # full rebuilds of the same dicts).
+    pool_index = {
+        key: {id(s): i for i, s in enumerate(pools.get(key) or [])}
+        for key in pool_keys
+    }
     for b in batches:
         for key in pool_keys:
-            index = {id(s): i for i, s in enumerate(pools.get(key) or [])}
+            index = pool_index[key]
             b[key].sort(key=lambda s: index.get(id(s), 0))
     return batches
 
@@ -5023,7 +5038,7 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                     continue
                 logger.warning(
                     "Theme discovery: FORCED report also truncated — returning no themes for "
-                    "this call (live truncation alarm already fired)")
+                    f"this call ({_TRUNCATION_ALARM_NOTE})")
                 return []
 
             # Model produced no tool call. Don't silently discard the whole discovery
