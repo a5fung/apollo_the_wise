@@ -29,6 +29,9 @@ from datetime import datetime, timezone
 from alpaca.trading.stream import TradingStream
 
 from agents.market_intelligence.audit_events import ENTRY_ORDER_REJECTED
+from agents.market_intelligence.broker.stream_models import (
+    ReasonPreservingTradingStream,
+)
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import humanize
 from agents.market_intelligence.briefing import send_telegram_message
@@ -83,7 +86,9 @@ async def _start_one_stream(account_mode: str) -> None:
         )
         return
 
-    stream = TradingStream(
+    # #540: the reason-preserving subclass, NOT the bare SDK stream — the bare
+    # one drops the broker's rejection reason at parse time (see stream_models.py).
+    stream = ReasonPreservingTradingStream(
         api_key=api_key,
         secret_key=secret_key,
         paper=(account_mode == "paper"),
@@ -1100,10 +1105,23 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         # `entry_order_rejections_systematic` data-gated review: observe whether
         # the pattern is systematic before designing any retry mechanism.
         broker_reason = None
+        broker_reason_source = None
+        # ⚠ PRIMARY SOURCE (#540, 2026-08-10): the WS event ITSELF carries Alpaca's
+        # reason — the stream parses with TradeUpdateWithBrokerFields, so it is on
+        # `data` right now, race-free. The REST events-history lookup below is only
+        # the FALLBACK: it races Alpaca's indexing (QNST 8/07 — NULL 76ms after the
+        # cancel while the reason sat on the stream).
         if event_norm in ("rejected", "cancelled", "canceled", "expired"):
+            _evt_reason = getattr(data, "reason", None)
+            if _evt_reason:
+                broker_reason = str(_evt_reason)[:300]
+                broker_reason_source = "event"
             _evt_at = datetime.now(timezone.utc)
-            broker_reason = await alpaca.fetch_broker_reject_reason(
-                order_id, _evt_at, account_mode=account_mode)
+            if not broker_reason:
+                broker_reason = await alpaca.fetch_broker_reject_reason(
+                    order_id, _evt_at, account_mode=account_mode)
+                if broker_reason:
+                    broker_reason_source = "lookup"
             if not broker_reason:
                 # ⚠ 2026-08-07: the inline lookup runs ~76ms after the event and Alpaca's
                 # events history has NOT indexed it yet — measured on QNST, where the reason
@@ -1150,7 +1168,12 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     # needed only on a terminal failure. INSM would have read:
                     #   "[6098] Stop Price Already Triggered/Exceeds $ Threshold"
                     # instead of hours of inference.
+                    # Since 2026-08-10 the PRIMARY source is the WS event itself
+                    # (source="event", race-free); the REST lookup is the fallback
+                    # (source="lookup") — the source key is the live proof of which
+                    # path fired.
                     "broker_reason": broker_reason,
+                    "broker_reason_source": broker_reason_source,
                     "gap_pct": float(entry_trade["gap_pct"]) if entry_trade["gap_pct"] is not None else None,
                     "ep_score": float(entry_trade["ep_score"]) if entry_trade["ep_score"] is not None else None,
                     "entry_price": float(entry_trade["entry_price"]) if entry_trade["entry_price"] is not None else None,
@@ -1384,10 +1407,19 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     # 4. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection
     # to surface account-level issues (margin/PDT/etc.); stay quieter on expiry.
     if event_norm == "rejected":
+        # #540: the event carries the broker's reason when the stream kept it —
+        # an untracked rejection (margin/PDT/manual) should say why, not "check logs".
+        _untracked_reason = getattr(data, "reason", None)
+        _untracked_line = (
+            f"\n_Broker: {str(_untracked_reason)[:300]}_" if _untracked_reason else ""
+        )
         await send_telegram_message(
             f"{mode_prefix(account_mode)}⚠️ *Order REJECTED:* {symbol}\n"
-            f"Order {order_id[:8]} — check logs."
+            f"Order {order_id[:8]} — check logs.{_untracked_line}"
         )
-        logger.warning(f"WS [{account_mode}]: untracked rejection: {symbol} order={order_id}")
+        logger.warning(
+            f"WS [{account_mode}]: untracked rejection: {symbol} order={order_id} "
+            f"reason={_untracked_reason}"
+        )
     else:
         logger.info(f"WS [{account_mode}]: untracked {event_norm}: {symbol} order={order_id}")
