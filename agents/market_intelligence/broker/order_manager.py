@@ -102,6 +102,24 @@ async def _breakeven_at_broker_enabled(account_mode: str) -> bool:
         return False
 
 
+async def _profit_take_resting_limit_enabled(account_mode: str) -> bool:
+    """Runtime toggle for the +2R RESTING-LIMIT partial (#548 final design, built
+    2026-08-10). DEFAULT OFF — ships dark, exactly like `breakeven_at_broker`:
+    one `mi_safeguard_state` row per account_mode, no redeploy to flip, reversible
+    the same way. While OFF, the profit trigger keeps today's behaviour
+    byte-for-byte (market sell + breakeven folded into the stop re-creation).
+
+    Fails CLOSED. An unreadable flag must leave exit behaviour exactly as it is.
+    """
+    try:
+        from agents.market_intelligence import db
+        row = await db.get_safeguard_state("profit_take_resting_limit", account_mode)
+        return bool(row) and str(row.get("state", "")).lower() == "on"
+    except Exception as e:
+        logger.warning(f"profit_take_resting_limit flag unreadable, staying OFF: {e}")
+        return False
+
+
 async def _ask_aware_entry_enabled(account_mode: str) -> bool:
     """Runtime toggle for the ask-aware entry fallback (2026-08-07). DEFAULT OFF.
 
@@ -1968,6 +1986,7 @@ async def _profit_trigger_already_announced(trade_id: int) -> bool:
 
 async def execute_partial_exit(
     trade_id: int, shares: int, *, force: bool = False,
+    limit_price: float | None = None,
 ) -> bool:
     """
     Partial exit (1/3 sell). Replaces stop for remaining 2/3 first so the
@@ -1978,6 +1997,16 @@ async def execute_partial_exit(
     the operator-confirmed /partialnow command (an attended action). The
     scheduled cron path passes force=False so a string of recent failures pauses
     automatic retries instead of re-failing into the same fault daily.
+
+    limit_price (#548 final design, 2026-08-10): when supplied AND the
+    `profit_take_resting_limit` runtime toggle is ON for the trade's
+    account_mode, the 1/3 is sold with a resting GTC LIMIT at this price
+    (the +2R target) instead of a market order, and breakeven is applied to
+    the reduced stop AFTERWARDS via an atomic price-only replace. Sequence and
+    the reasoning for each step are at the resting-mode branches below. When
+    the toggle is OFF (or limit_price is None — the day-3/5 ladder and
+    /partialnow paths), behaviour is unchanged: market sell, breakeven folded
+    into the stop re-creation.
     """
     # ── HARD PAUSE (#151, 2026-06-22) — disabled until the pending_replace-race
     # fix is verified-live. Take NO partial (no stop touch): the position keeps its
@@ -2083,6 +2112,13 @@ async def execute_partial_exit(
     # re-protect (which itself takes the try-lock on this trade_id).
     abort_reprotect = False
     abort_ctx: dict = {}
+    # #548 resting mode: breakeven-replace verification failed AFTER the limit was
+    # placed — the partial STANDS (limit resting) but the reduced stop needs
+    # re-protecting to broker truth. Distinct from abort_reprotect, whose post-lock
+    # block reports "No shares sold" (false here) and returns False (also false —
+    # the sell leg succeeded).
+    be_reprotect = False
+    be_ctx: dict = {}
     async with _trade_advisory_lock(trade_id):
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -2135,9 +2171,30 @@ async def execute_partial_exit(
         stop_price = trade["stop_price"] or trade.get("hard_stop")
         old_stop_id = trade.get("stop_order_id")
 
+        # ── #548 RESTING-LIMIT MODE (final design, operator-approved shape) ──────
+        # ON only when the caller supplied the +2R target AND the runtime toggle is
+        # on for this account_mode. The sequence it selects:
+        #   1. reduce the stop to 2/3 at its CURRENT price (cancel-then-new — the
+        #      broker permits nothing else for a bracket leg);
+        #   2. rest a GTC LIMIT for the freed 1/3 at the target;
+        #   3. move the reduced stop to breakeven via atomic PRICE-ONLY replace.
+        # Why breakeven is NOT folded into step 1 here (it is in market mode): the
+        # only structurally-unprotected window in the whole sequence is
+        # cancel-confirm → new-stop-accept (~72-90ms measured). Re-creating the
+        # stop at the price it was JUST resting at cannot be price-rejected, so
+        # that window closes with near-certainty; a breakeven price could sit
+        # at/above market if price collapsed since the trigger bar (the trigger is
+        # bar-based and up to 5 minutes stale) and a rejection there would EXTEND
+        # the naked window. Step 3 is atomic: a rejected replace leaves the old
+        # stop live and untouched (probe T1b/T2 + `_548_final_sequence_probe` P4),
+        # so applying breakeven there carries zero naked risk.
+        resting_mode = bool(limit_price) and await _profit_take_resting_limit_enabled(
+            account_mode)
+
         logger.info(
             f"Partial exit: {ticker} selling {shares} of {full_remaining} shares "
-            f"(new_remaining={new_remaining}, trade_id={trade_id})"
+            f"(new_remaining={new_remaining}, trade_id={trade_id}, "
+            f"mode={'resting_limit' if resting_mode else 'market'})"
         )
         await log_audit_event(
             "partial_exit_started",
@@ -2183,8 +2240,14 @@ async def execute_partial_exit(
         #
         # max() — it can only ever RAISE the stop. If the original stop is already above entry
         # (a trailed or gapped-up position) it stays put; breakeven never loosens protection.
+        #
+        # ⚠ In RESTING-LIMIT mode (#548 final design) this fold-in is SKIPPED: breakeven is
+        # applied AFTER the limit rests, by an atomic price-only replace — see the
+        # resting-mode block comment above for why the re-created stop keeps its current
+        # price through the one genuinely-unprotected window.
         _entry = trade.get("entry_price")
-        if stop_price and _entry and await _breakeven_at_broker_enabled(account_mode):
+        if (not resting_mode and stop_price and _entry
+                and await _breakeven_at_broker_enabled(account_mode)):
             _be = max(float(stop_price), float(_entry))
             if _be > float(stop_price):
                 await log_audit_event(
@@ -2685,23 +2748,35 @@ async def execute_partial_exit(
                 # whole fix inert, which is exactly the shape of the bug it repairs.
                 abort_reprotect = True
 
-            # Step 2: Market sell the partial (shares are now free from the stop).
+            # Step 2: Sell the partial (shares are now free from the stop).
+            # Market mode: market sell, fills in seconds. Resting mode (#548): a
+            # GTC LIMIT at the +2R target — fills AT the price instead of at
+            # whatever the tape shows when the poll notices (FIGS 2026-08-07:
+            # market fill +1.13R against a +2R target, two seconds after the high).
             try:
                 coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)
                 # #150: the atomic replace frees the shares, but Alpaca's share-hold
                 # (held_for_orders) can lag the replace ack by ~ms, so an immediate
                 # sell transiently rejects with "insufficient qty available" (confirmed
-                # 2026-05-29). Retry that SPECIFIC clean rejection a few times with
+                # 2026-05-29; measured 12.8ms first-try clean after a VERIFIED-clear
+                # cancel on 2026-08-10 — the retry loop stays as belt-and-braces).
+                # Retry that SPECIFIC clean rejection a few times with
                 # backoff before the outer except rolls the partial back. Fresh COID
                 # per attempt avoids dup-COID rejection. Non-lag errors re-raise
                 # immediately (no retry) so genuine failures still roll back fast.
                 order = None
                 for _attempt in range(3):
                     try:
-                        order = await alpaca.place_market_sell(
-                            ticker, shares,
-                            account_mode=account_mode, client_order_id=coid_sell,
-                        )
+                        if resting_mode:
+                            order = await alpaca.place_limit_sell(
+                                ticker, shares, float(limit_price),
+                                account_mode=account_mode, client_order_id=coid_sell,
+                            )
+                        else:
+                            order = await alpaca.place_market_sell(
+                                ticker, shares,
+                                account_mode=account_mode, client_order_id=coid_sell,
+                            )
                         break
                     except Exception as _se:
                         if _is_share_reservation_lag(_se) and _attempt < _SELL_RETRY_ATTEMPTS:
@@ -2719,19 +2794,25 @@ async def execute_partial_exit(
                     await conn.execute("""
                         INSERT INTO mi_live_orders
                             (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
-                             purpose, exit_reason, raw_response)
-                        VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                             limit_price, purpose, exit_reason, raw_response)
+                        VALUES ($1, $2, $3, 'sell', $7, $4, $5, $8,
                                 'partial_exit', 'partial_profit', $6::jsonb)
                         ON CONFLICT (alpaca_order_id) DO NOTHING
                     """, trade_id, order["id"], ticker, float(shares),
-                        order.get("status", "new"), json.dumps(order))
+                        order.get("status", "new"), json.dumps(order),
+                        "limit" if resting_mode else "market",
+                        float(limit_price) if resting_mode else None)
+                _sell_desc = (f"limit sell {shares} @ ${float(limit_price):.2f} resting"
+                              if resting_mode else f"market sell {shares} placed")
                 await log_audit_event(
                     "partial_exit_sell_placed",
-                    f"{ticker}: market sell {shares} placed ({order.get('id')}, status={order.get('status', 'new')})",
+                    f"{ticker}: {_sell_desc} ({order.get('id')}, status={order.get('status', 'new')})",
                     json.dumps({
                         "trade_id": trade_id, "ticker": ticker,
                         "shares": shares, "order_id": order.get("id"),
                         "order_status": order.get("status"),
+                        "order_type": "limit" if resting_mode else "market",
+                        "limit_price": float(limit_price) if resting_mode else None,
                     }),
                 )
             except Exception as e:
@@ -2771,6 +2852,187 @@ async def execute_partial_exit(
                 abort_reprotect = True
                 abort_ctx = {"error": str(e)}
 
+        # ── Step 2b (#548 resting mode ONLY): move the reduced stop to BREAKEVEN
+        # via an atomic PRICE-ONLY replace, now that the limit rests.
+        #
+        # Ordering is deliberate, twice over:
+        #   * AFTER the limit: a replace transiently pairs old+new orders
+        #     (pending_replace), and the FPS 2026-06-04 incident showed the old
+        #     order can keep reserving its shares while the pair settles — doing
+        #     this first could block the 1/3 limit's acceptance. Once the limit
+        #     rests, its reservation is established and a price-only replace on
+        #     the OTHER 2/3 cannot collide with it (verified on paper 2026-08-10:
+        #     replace accepted, successor live, qty preserved, limit untouched —
+        #     `_548_final_sequence_probe.py` P3).
+        #   * PRICE-ONLY: quantity never changes, so this can never race the
+        #     share-reservation system at all, and a REJECTED replace is atomic —
+        #     the reduced stop stays live at its original price (probe T1b + P4).
+        #     Protection is therefore never worse than it was before this step.
+        #
+        # max() — breakeven can only ever RAISE the stop (same guard as the
+        # market-mode fold-in above). Gated on the same `breakeven_at_broker`
+        # toggle so the operator's one switch governs breakeven in both modes.
+        if (resting_mode and not abort_reprotect and new_stop_id and stop_price
+                and _entry and await _breakeven_at_broker_enabled(account_mode)):
+            _be = max(float(stop_price), float(_entry))
+            if _be > float(stop_price) + 1e-9:
+                be_stop_id = None
+                try:
+                    coid_be = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+                    be_order = await alpaca.replace_order(
+                        new_stop_id, stop_price=_be,
+                        account_mode=account_mode, client_order_id=coid_be,
+                    )
+                    be_stop_id = be_order["id"]
+                except Exception as _bee:
+                    # Rejected replace = atomic no-op broker-side — but VERIFY that,
+                    # never assume it (the one lesson every incident here repeats).
+                    _red_live = False
+                    try:
+                        _chk = await alpaca.get_order(new_stop_id, account_mode=account_mode)
+                        _red_live = _canonical_order_status(
+                            _chk.get("status") if _chk else None
+                        ) in _STOP_CONFIRMED_LIVE_STATUSES
+                    except Exception as _verr:
+                        logger.warning(
+                            f"execute_partial_exit: {ticker} breakeven replace failed AND "
+                            f"reduced stop unreadable ({_verr}) — treating as unprotected")
+                    if _red_live:
+                        # Stop still resting at its original price: protection is
+                        # exactly what it was pre-partial. Converges — the limit's
+                        # fill sets breakeven_active, and the EOD pass raises the
+                        # stop to entry via update_stop.
+                        await log_audit_event(
+                            "partial_exit_breakeven_deferred",
+                            f"{ticker}: breakeven replace rejected "
+                            f"({type(_bee).__name__}); reduced stop {new_stop_id} still "
+                            f"live @${float(stop_price):.2f} — protection unchanged, "
+                            f"EOD pass will raise it after the limit fills",
+                            json.dumps({
+                                "trade_id": trade_id, "ticker": ticker,
+                                "stop_id": new_stop_id,
+                                "stop_price": float(stop_price),
+                                "breakeven_target": _be,
+                                "error": str(_bee)[:500],
+                            }),
+                        )
+                        await send_telegram_message(
+                            f"{mode_prefix(account_mode)}⚠️ {ticker}: breakeven move "
+                            f"rejected ({type(_bee).__name__}) — stop stays at "
+                            f"${float(stop_price):.2f} for {new_remaining} sh (still "
+                            f"protected). Limit for {shares} sh rests at "
+                            f"${float(limit_price):.2f}."
+                        )
+                    else:
+                        # Replace raised AND the reduced stop is not verifiably live
+                        # → treat as unprotected; re-protect to broker truth
+                        # post-lock (nets the resting limit, so target = 2/3).
+                        await set_stop_order_id(
+                            trade_id, None,
+                            reason="breakeven_replace_failed",
+                            account_mode=account_mode,
+                        )
+                        be_reprotect = True
+                        be_ctx = {"error": str(_bee),
+                                  "reason": "breakeven replace failed and reduced "
+                                            "stop not confirmed live"}
+                if be_stop_id:
+                    # VERIFY the successor is actually live before persisting price
+                    # — a replace can return an id the broker then rejects (the
+                    # "looked successful, actually dead" class Step 1b guards).
+                    _be_status = None
+                    _be_outcome = "uncertain"
+                    for _ in range(12):  # ~3s at 0.25s/poll — mirrors Step 1b
+                        _chk = await alpaca.get_order(be_stop_id, account_mode=account_mode)
+                        _be_status = _canonical_order_status(_chk.get("status") if _chk else None)
+                        if _be_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                            _be_outcome = "live"
+                            break
+                        if _be_status in _STOP_DEAD_STATUSES or _be_status == "filled":
+                            _be_outcome = "dead"
+                            break
+                        await asyncio.sleep(0.25)
+                    if _be_outcome == "live":
+                        await set_stop_order_id(
+                            trade_id, be_stop_id,
+                            reason="breakeven_replacement",
+                            account_mode=account_mode,
+                        )
+                        async with pool.acquire() as conn:
+                            # stop_price MUST follow the broker here: the EOD trail
+                            # only fires when effective_stop > DB stop_price, so a
+                            # stale (lower) value would let a later trail pass
+                            # cancel this stop and re-place LOWER — loosening
+                            # protection. Keeping the DB at breakeven makes the
+                            # trail raise-only relative to the real stop.
+                            await conn.execute(
+                                "UPDATE mi_live_trades SET stop_price = $2 WHERE id = $1",
+                                trade_id, _be)
+                            await conn.execute("""
+                                INSERT INTO mi_live_orders
+                                    (trade_id, alpaca_order_id, ticker, side, order_type,
+                                     qty, stop_price, status, raw_response, purpose,
+                                     exit_reason)
+                                VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                                        'stop_loss', 'stop_hit')
+                                ON CONFLICT (alpaca_order_id) DO NOTHING
+                            """, trade_id, be_stop_id, ticker, float(new_remaining),
+                                _be, be_order.get("status", "new"), json.dumps(be_order))
+                        await log_audit_event(
+                            "partial_exit_breakeven_armed",
+                            f"{ticker}: stop moves to breakeven ${_be:.2f} (was "
+                            f"${float(stop_price):.2f}, entry ${float(_entry):.2f}) via "
+                            f"price-only replace on the reduced {new_remaining}-share "
+                            f"stop ({new_stop_id[:8]}→{be_stop_id[:8]})",
+                            json.dumps({
+                                "trade_id": trade_id, "ticker": ticker,
+                                "old_stop_id": new_stop_id, "new_stop_id": be_stop_id,
+                                "stop_price": _be, "qty": new_remaining,
+                                "mechanism": "price_only_replace",
+                            }),
+                        )
+                    elif _be_outcome == "dead":
+                        # The replace consumed the old stop and its successor died —
+                        # the 2/3 is unprotected. NULL the pointer, re-protect
+                        # post-lock to broker truth (limit is netted → target 2/3,
+                        # placed at the DB stop_price, still the original — valid).
+                        await set_stop_order_id(
+                            trade_id, None,
+                            reason="breakeven_replace_failed",
+                            account_mode=account_mode,
+                        )
+                        be_reprotect = True
+                        be_ctx = {"error": f"breakeven successor dead (status={_be_status})",
+                                  "reason": "breakeven successor stop died after replace"}
+                    else:
+                        # Uncertain (still settling after budget). The successor
+                        # LIKELY lives — persist the pointer (best broker truth; the
+                        # old id is auto-cancelled by the replace) but do NOT record
+                        # the breakeven price as fact. Ask the operator to eyeball;
+                        # the coverage detector + sync remain the mechanical net.
+                        await set_stop_order_id(
+                            trade_id, be_stop_id,
+                            reason="breakeven_replacement",
+                            account_mode=account_mode,
+                        )
+                        await log_audit_event(
+                            "partial_exit_breakeven_unverified",
+                            f"{ticker}: breakeven replace accepted "
+                            f"({new_stop_id[:8]}→{be_stop_id[:8]}) but successor not "
+                            f"confirmed live within budget (status={_be_status})",
+                            json.dumps({
+                                "trade_id": trade_id, "ticker": ticker,
+                                "old_stop_id": new_stop_id, "new_stop_id": be_stop_id,
+                                "last_status": _be_status,
+                            }),
+                        )
+                        await send_telegram_message(
+                            f"{mode_prefix(account_mode)}⚠️ {ticker}: breakeven stop "
+                            f"replace accepted but not confirmed live "
+                            f"(status={_be_status}). Verify the stop on Alpaca — "
+                            f"limit for {shares} sh rests at ${float(limit_price):.2f}."
+                        )
+
         # Step 3: Pending fill — DO NOT commit P&L / remaining_shares / partial_taken
         # at submit time. The order may be queued (after-hours) and fill at next open
         # at an unknown price; using the placement-time response here meant fill_price
@@ -2779,11 +3041,19 @@ async def execute_partial_exit(
         # Skipped on the abort path (no sell placed) — that path re-protects + alerts
         # AFTER the advisory lock releases, below.
         if not abort_reprotect:
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
-                f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
-                f"_Confirms with real P&L on fill._"
-            )
+            if resting_mode:
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}📋 *Profit-take resting:* {ticker}\n"
+                    f"Limit sell {shares} sh @ ${float(limit_price):.2f} — resting at "
+                    f"the target (Order {order['id'][:8]})\n"
+                    f"_Fills at the price or better; confirms with real P&L on fill._"
+                )
+            else:
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
+                    f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
+                    f"_Confirms with real P&L on fill._"
+                )
         # F14 (7/2 review): the former _*_out relay copies were a pure renaming
         # layer — Python `with` blocks don't create a scope, so the originals
         # (ticker/account_mode/signal_type/stop_price/abort_*) remain bound on
@@ -2861,6 +3131,55 @@ async def execute_partial_exit(
             f"No shares sold.\n{_cov_line}"
         )
         return False
+
+    # ── #548 resting mode: breakeven-replace verification failed AFTER the limit
+    # was placed. The PARTIAL stands (limit resting = the pending exit for the
+    # 1/3) — only the 2/3's stop needs re-establishing. Same post-lock idiom as
+    # the abort block above (the try-lock inside _ensure_stop_coverage is why it
+    # must run after the advisory lock releases); _ensure_stop_coverage nets the
+    # resting limit via get_pending_exit_qty, so its target resolves to the 2/3
+    # and it re-places at the DB stop_price — still the ORIGINAL stop (the price
+    # update is written only on a VERIFIED breakeven), so the price is valid.
+    if be_reprotect:
+        coverage_msg = None
+        try:
+            _pos = await alpaca.get_position(ticker, account_mode=account_mode)
+            _broker_qty = float(_pos.get("qty")) if _pos and _pos.get("qty") is not None else None
+            if _broker_qty and _broker_qty > 0:
+                coverage_msg = await _ensure_stop_coverage(
+                    trade_id, ticker, _broker_qty,
+                    float(stop_price) if stop_price else None,
+                    signal_type or "unknown",
+                    account_mode,
+                )
+        except Exception as _re:
+            logger.error(
+                f"execute_partial_exit: breakeven re-protect via _ensure_stop_coverage "
+                f"raised for {ticker}: {_re}"
+            )
+            await log_audit_event(
+                "partial_exit_reprotect_failed",
+                f"{ticker}: re-protect after breakeven-replace failure raised "
+                f"({type(_re).__name__}) — next sync cron will remediate",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "error": str(_re)[:500],
+                }),
+            )
+            coverage_msg = f"⚠️ re-protect call raised: {_re}"
+        _cov_line = coverage_msg or (
+            "_Re-protect deferred (coverage already met, or broker read failed) — "
+            "verify the stop covers the remaining shares on Alpaca; sync cron will "
+            "reconcile._"
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ {ticker}: breakeven move FAILED "
+            f"({be_ctx.get('reason', be_ctx.get('error', 'unknown'))}).\n"
+            f"Limit for {shares} sh still rests at ${float(limit_price):.2f}.\n"
+            f"{_cov_line}"
+        )
+        # The partial itself SUCCEEDED (limit resting); only breakeven degraded.
+        return True
 
     return True
 
@@ -4877,22 +5196,34 @@ async def scan_profit_triggers() -> list[dict]:
         if shares < 1:
             results.append({"ticker": t["ticker"], "action": "too_small_to_split"})
             continue
+        # #548 final design: in resting mode the 1/3 is sold with a GTC limit AT
+        # the target (fills at the price, not at whatever the tape shows when the
+        # poll notices — the FIGS 0.87R gap). The toggle is read here only for the
+        # announcement text; execute_partial_exit re-reads it as the gate.
+        _resting = await _profit_take_resting_limit_enabled(t["account_mode"])
         try:
             # ⚠ ANNOUNCE ONCE PER TRADE, not once per 5-minute cycle (2026-08-04). Both selection
             # conditions are sticky while the partial keeps failing, so this re-fired every pass
             # for hours — half of the "bombarded with these msg non stop" pair. See
             # `_profit_trigger_already_announced`. The audit rows below still fire every cycle.
             if not await _profit_trigger_already_announced(t["id"]):
+                _action_line = (
+                    f"Resting a limit to sell {shares} of "
+                    f"{int(float(t['remaining_shares']))} sh at ${target:.2f}; "
+                    f"stop moves to breakeven."
+                    if _resting else
+                    f"Taking {shares} of {int(float(t['remaining_shares']))} sh, "
+                    f"stop moves to breakeven."
+                )
                 await send_telegram_message(
                     f"{mode_prefix(t['account_mode'])}\U0001F4B0 *Profit target hit: {t['ticker']}*\n"
                     f"traded ${float(hi):.2f} >= ${target:.2f} "
                     f"({PROFIT_TRIGGER_R:g}R above ${entry:.2f})\n"
-                    f"Taking {shares} of {int(float(t['remaining_shares']))} sh, "
-                    f"stop moves to breakeven."
+                    f"{_action_line}"
                 )
         except Exception:  # loud-ok: notification must never abort the money action below
             logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
-        ok = await execute_partial_exit(t["id"], shares)
+        ok = await execute_partial_exit(t["id"], shares, limit_price=round(target, 2))
         await log_audit_event(
             "profit_trigger_fired" if ok else "profit_trigger_failed",
             f"{t['ticker']}: high ${float(hi):.2f} >= {PROFIT_TRIGGER_R:g}R target ${target:.2f}",

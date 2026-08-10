@@ -459,6 +459,60 @@ async def place_market_sell(
         raise
 
 
+async def place_limit_sell(
+    ticker: str,
+    qty: float,
+    limit_price: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place a resting LIMIT sell (#548, the +2R profit-take third).
+
+    A limit fills AT the price or better — the whole point of the resting-limit
+    design. FIGS 2026-08-07: the poll noticed +2R two seconds after the high and
+    sent a MARKET sell that filled +1.13R against a +2R target; a limit resting
+    at the target keeps the arithmetic the operator's rules depend on.
+
+    TIF = GTC, deliberately matching `place_stop_order` (our protective stops
+    are GTC): the resting third and the reduced stop share one lifetime, so
+    there is no 16:00 expiry state where the third sits with NO order at all
+    overnight and the morning has to re-arm through the dedup/adopt paths.
+
+    Price is rounded to Alpaca's tick (whole cents above $1) — the RCAT
+    2026-06-01 sub-penny rejection class applies to limits exactly as to stops.
+
+    Broker-behaviour basis (paper probes, 2026-08-10): a limit sell is REJECTED
+    (40310000 insufficient qty) while a full-size stop holds the shares — same
+    reservation rule as a market sell (T5) — so callers MUST reduce the stop
+    first; after a VERIFIED-CLEAR reduction the freed shares' limit was accepted
+    first try in 12.8ms, and the price-only replace of that reduced stop to
+    breakeven was accepted too — i.e. the ENTIRE shipped sequence is vetted
+    end-to-end against live Alpaca paper, not inferred:
+    `scripts/probes/_548_resting_limit_smoke.py` Phase B, run 2026-08-10 10:10 ET
+    (Q1 reject / Q2 12.8ms accept / Q3 replace accept).
+    """
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            type=OrderType.LIMIT,
+            time_in_force=TimeInForce.GTC,
+            limit_price=round(limit_price, 2),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, LimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        logger.info(
+            f"Limit sell placed: {ticker} qty={qty} limit={limit_price:.2f} id={order.id}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place limit sell for {ticker}: {e}")
+        raise
+
+
 def _round_stop_to_tick(price: float) -> float:
     """Round a protective sell-stop to Alpaca's minimum tick, flooring AWAY
     from the trigger so rounding can never nudge a stop toward current price

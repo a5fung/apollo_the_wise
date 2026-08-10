@@ -23,10 +23,26 @@ import re
 SRC = pathlib.Path("agents/market_intelligence/broker/order_manager.py").read_text(encoding="utf-8")
 
 
+_BLOCK_END = "if old_stop_id and stop_price and new_remaining > 0:"
+
+
 def _block() -> str:
+    """The fold-in block: the marker comment through to the stop re-creation it rides on.
+
+    ⚠ Bounded by the NEXT STATEMENT, never by a character count. It used to be
+    `SRC[i:i + 2200]`, and on 2026-08-10 the #548 resting-limit build added ~700 chars of
+    block comment ahead of the code — which pushed the `stop_price` assignment past 2200 and
+    reddened `test_the_breakeven_stop_actually_reaches_the_broker` while the behaviour was
+    completely intact. A guard that fires on comment growth is a guard nobody trusts. The
+    re-creation line is the real end of this block, so slice to it.
+    """
     i = SRC.find("REAL-TIME BREAKEVEN (#548")
     assert i > 0, "the breakeven block is gone — the Telegram is lying again"
-    return SRC[i:i + 2200]
+    j = SRC.find(_BLOCK_END, i)
+    assert j > i, (
+        "the breakeven block no longer runs into the existing stop re-creation — it has been "
+        "moved away from the operation it is supposed to be a price argument to")
+    return SRC[i:j]
 
 
 def test_the_breakeven_stop_actually_reaches_the_broker():
