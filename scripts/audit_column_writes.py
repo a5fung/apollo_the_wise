@@ -84,7 +84,16 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # backup. update_stop owns trail. entry_pipeline._skip sets initial.
     # check_fills writes on poll-fill backup (no-op for stop in normal
     # ordering since stop_price unchanged from INSERT at that point).
-    "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills"},
+    # +execute_partial_exit 2026-08-10 (#548 resting mode): it is the ONLY place that
+    # moves the stop price WITHOUT going through update_stop's cancel-then-new — it does
+    # an atomic price-only `replace_order` on the reduced stop, precisely to avoid the
+    # unprotected window a cancel-then-new opens on a live position. Delegating to
+    # update_stop would reintroduce that window, so this write is authorized here rather
+    # than refactored away. It fires ONLY after the successor stop is CONFIRMED live at
+    # the broker; the unconfirmed branch deliberately withholds the write (DB understating
+    # protection is the safe direction — pinned in test_resting_mode_breakeven_548.py).
+    "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills",
+                           "order_manager.execute_partial_exit"},
     # hard_stop: SINGLE WRITER (entry_pipeline._skip INSERT only). Per Gate 3
     # initial-stop modeling (2026-05-18) — hard_stop is the immutable
     # risk-basis for R-expectancy calc, set once at INSERT, never updated.
