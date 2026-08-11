@@ -1,5 +1,12 @@
 """Lever A — SIP-augmented R cohort for the Gate-3 live-cutover decision.
 
+⚠ RETIRED FROM THE QUARTERLY SWEEP 2026-08-11 (operator-ruled). Still runnable by
+hand; kept because it is the evidence behind the cutover decision. Both premises
+expired: MAGNA53 went live 2026-06-22 and prod now runs ALPACA_DATA_FEED=sip, so
+the IEX-vs-SIP question is closed — AND both cohorts below pin account_mode='paper',
+so an auto-re-run was re-measuring a book frozen at the cutover. Do NOT re-register
+it without repointing those filters first; see quarterly_review.py for the ruling.
+
 READ-ONLY. No DB writes, no trade-state mutation. Safe to run via
 `docker exec apollo-market python scripts/sip_replay_r_cohort.py [--days N]`.
 Also auto-re-runs monthly via the backward-check sweep (quarterly_review.py;

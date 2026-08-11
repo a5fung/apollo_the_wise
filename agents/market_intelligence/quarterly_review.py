@@ -100,16 +100,19 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # Perplexity, Claude analysis). Loud-not-silent discipline.
     ("News source quality (90d)",
      "agents.market_intelligence.news_source_quality", ["quarterly"]),
-    # SIP-replay R cohort (#223, added 2026-06-06) — Gate-3 cutover
-    # evidence. Re-runs the same-exit cross-check (synth-FILLED vs
-    # synth-CANCELLED) so the IEX adverse-selection finding is re-measured
-    # as the cohort grows / regime shifts, NOT a one-time 6/6 snapshot.
-    # The TL;DR leads the stdout so the sweep summary carries the SELECTION
-    # delta. Per feedback_methodology_insights_need_periodic_revalidation
-    # (every methodology finding gets a script in this sweep or it goes stale).
-    # Finding doc: docs/analysis/sip_replay_gate3_2026-06-06.md.
-    ("SIP-replay R cohort / Gate-3 selection (#223)",
-     "scripts.sip_replay_r_cohort", []),
+    # SIP-replay R cohort (#223) — RETIRED from this sweep 2026-08-11, operator-ruled.
+    # It measured how much the IEX feed's adverse selection was costing us, as
+    # Gate-3 evidence for the live cutover. BOTH of its premises have since expired:
+    # the cutover happened (MAGNA53 live 2026-06-22) and prod now runs
+    # ALPACA_DATA_FEED=sip, so the feed question it answers is closed. Worse, both of
+    # its cohorts pin account_mode='paper', so it had been re-measuring a book frozen
+    # at 06-22 (paper 25 closed + 28 cancelled, static; live 17 + 12 and growing,
+    # invisible to it) — a periodic re-measurement of a dead cohort, which is exactly
+    # the staleness this sweep exists to prevent, wearing the sweep's own clothes.
+    # The SCRIPT is kept: it is the evidence behind the cutover decision
+    # (docs/analysis/sip_replay_gate3_2026-06-06.md) and stays runnable by hand.
+    # Repointing it at the live/SIP era was the alternative and was rejected — that
+    # is a different measurement answering a question nobody asked.
     # ORB bar-1 wick-outlier backward check (#122, registered 2026-06-06).
     # Was orphaned — a load-bearing backward check that prints N + a
     # ship/insufficient verdict, accruing toward the N>=10 ship gate
