@@ -333,6 +333,117 @@ touches what the entry path consults, so it is explicitly the operator's call, n
 
 ---
 
+## 11. Measured: the 3-member promote floor's cost, precisely (2026-08-11 addendum)
+
+> Operator, 2026-08-11: *"are we sufficiently using the EP gap stocks to find new themes early"* —
+> not the position cap. This section measures the **member floor** (`_PROMOTE_MIN_MEMBERS = 3`,
+> `theme_engine.py:2099,2272`) in isolation from the clock (§5–§6 above), against
+> `mi_theme_candidates_shadow` directly — the population the floor filters, read BEFORE the
+> `>= _PROMOTE_MIN_MEMBERS` line runs. Read-only, $0, queries Q18–Q21 (Appendix A).
+
+**Scope**: the three sources `resolve_auto_promote_sources` actually admits
+(`db.py:6570-6586`) — `shadow_v2`, `narrative_cogap`, `rs_slope_synthesis`. Confirmed the gate
+mode has been `'observe'` continuously since 2026-07-30 with no `'on'` transition on record
+(`mi_safeguard_state`, single row) — 'off' and 'observe' resolve to the identical full allowlist,
+so this is the correct set for the ENTIRE window, not just part of it. A 2-member row from
+`coverage_probe` / `judge_inferred` / `narrative_cogap_backfill` / `narrative_seed` /
+`ecosystem_reactivation` was excluded — those sources were never auto-promote-eligible regardless
+of member count.
+
+**⚠ Data-start caveat (not a retention purge — checked)**: `purge_old_data()` (`db.py:8035-8076`)
+does not list `mi_theme_candidates_shadow` among its retention targets, and the table holds
+`narrative_cogap_backfill` rows back to 2026-05-06 — so nothing is being deleted. But the three
+scoped sources' OWN oldest rows in prod are 2026-06-24 (`rs_slope_synthesis`), 06-25
+(`narrative_cogap`), 06-26 (`shadow_v2`) — these lanes simply were not producing rows that far
+back. Effective window is **~47–48 days of the nominal 60** (2026-06-24/25/26 → 08-10), not the
+full 60. Stated plainly per instruction, not adjusted for.
+
+### 11.1 The discard count
+
+| Source | 2-member rows (discarded) | Distinct sessions | ≥3-member rows (cleared floor) | Distinct sessions |
+|---|---|---|---|---|
+| `shadow_v2` | **84** | 20 | 71 | 18 |
+| `narrative_cogap` (the literal EP-gap-alert lane, C1) | **5** | 5 | 4 | 3 |
+| `rs_slope_synthesis` | **0** | 0 | 11 | 8 |
+| **Total** | **89** | **23** (of ~34 trading days in the effective window) | **86** | — |
+
+- **89 candidate-cohort rows discarded at the 2-member floor in 23 distinct sessions** — this is
+  N=23 sessions, not N=89; some sessions produced multiple discarded cohorts same-night (max 9,
+  on 08-10; per-session counts in Appendix A Q18 — no single-day count dominates the total).
+- **89 discarded vs 86 that cleared the floor: essentially a 51/49 split of everything the three
+  lanes produce.** The floor is discarding roughly HALF of all shadow-lane candidate output by
+  row count — a large volume, independent of whether any given discard was later worth it (11.2).
+  Total (89+86=175) reconciles exactly against the raw row count for these 3 sources in-window.
+- **83 distinct ticker pairs** among the 89 rows (6 pairs recurred on a second night with a fresh
+  auto-generated name, same 2 tickers, still capped at 2 — none of the 6 ever grew a 3rd member:
+  ALLE/BCO, BLZE/P, DLB/IDCC, EFX/NIQ, PHR/WAY, WAB/WNC).
+- **1-member cohorts: zero, ever**, in any of the three sources' full history (not just this
+  window) — nothing to report separately.
+- Correction to §5's own earlier count: §5 named "the two 2-member groups" for `narrative_cogap`
+  (06-25, 07-20) — that was an undercount from an aggregate-only query (Q7 summed cardinality per
+  night, not per cohort). The precise count is **5** 2-member `narrative_cogap` rows across 5
+  nights (06-25, 07-20, 07-30, 07-31, 08-04) — Q7's "5 nights produced groups" was correct; not
+  every group on those nights was 2-member, some nights carried a viable ≥3 cohort alongside a
+  discarded one.
+
+### 11.2 Did any discarded pair later become a real theme — the number that answers the question
+
+Method: for each of the 89 discarded rows, search `mi_themes` (ANY source, ANY later
+`theme_date`) for a row whose tickers are a superset of the discarded pair AND has ≥3 members —
+a genuine family, not a re-listing of the same 2 tickers. Full query: Q19.
+
+**5 of 89 rows (5 of 83 distinct pairs) eventually appear inside a real ≥3-member theme.** But
+only **3 of those 5 reached `mi_themes` via the SAME shadow lane** (`source='shadow_promoted'`,
+i.e., the correlation cluster itself grew a 3rd member on a later night and cleared the floor
+then) — those 3 are the floor's genuine, attributable cost. The other 2 reached `mi_themes` via
+`source='live'` — Lane-1's OWN independent nightly discovery found the same pair (plus others) on
+its own, a completely different, floor-free mechanism (W1, not W2) — the floor cost those 2
+**nothing**, since Lane-1 would have surfaced them regardless of what the shadow floor was set to.
+
+| Pair | Source | Discarded | Became real theme | Days earlier we'd have seen it | Attributable to the floor? |
+|---|---|---|---|---|---|
+| LQDA, NAMS | shadow_v2 | 07-01 | 07-07, "Rare Cardiometabolic & Endocrine Specialty Pharma" (shadow_promoted, {CRNX,LQDA,MLYS,NAMS}) | **6 days** | **Yes** |
+| NSP, FA | shadow_v2 | 07-06 | 07-07, "SMB & Workforce Business Services Platforms" (shadow_promoted, {NSP,FA,LZ}) | **1 day** | **Yes** |
+| RGNX, SRPT | shadow_v2 | 07-07 | 07-08, "In Vivo Gene & Engineered Cell Therapy Clinical Re-Rating" (shadow_promoted, {RGNX,SRPT,IMMX,SRRK,VOR}) | **1 day** | **Yes** |
+| KNSL, PLMR | shadow_v2 | 07-01 | 07-02, "Specialty Insurance Underwriting & Brokerage" (**live**, {PLMR,KNSL,RYAN,WTW}) | 1 day | No — Lane-1 found it independently |
+| MLKN, BOBS | shadow_v2 | 07-14 | 08-03, "Commercial, Office & Home Furniture..." (**live**, {MLKN,HNI,BOBS}) | 20 days | No — Lane-1 found it independently |
+
+- **`narrative_cogap` — the literal EP-gap-alert lane the operator asked about — has ZERO
+  confirmed cases.** None of its 5 discarded pairs (MU/SNX, HUT/IREN, EME/PWR, COHU/MPWR,
+  AEIS/ZBRA) ever reappear in `mi_themes` with a 3rd member, in this window. 06-25 and 07-20 have
+  30+ days of forward-looking data and are solid true negatives (matches §5's "#491 ex-miner
+  story died exactly there"); 07-31 and 08-04 have only 11 and 7 days of forward window
+  respectively — right-censored, genuinely unresolved, not "no" for certain.
+- The 3 floor-attributable cases are all `shadow_v2` — the RS-correlation lane (built from RS
+  accelerators/recovery clusters, `theme_engine.py:1175`), **not** the EP-gap-alert lane (C1,
+  `narrative_cogap`, built from `get_today_ep_alerts`). Worth being precise about since the
+  operator's question names EP gap stocks specifically.
+- Right-censoring caveat applies generally to discards from the last ~2 weeks (through 08-10) —
+  insufficient forward window to know if they'll join a later theme; treat 11.2's "5 of 89" as a
+  floor, not a final count.
+
+### 11.3 Verdict: floor vs clock
+
+**The clock is the dominant, structural cost; the floor's measured cost is real but small, and
+for the EP-gap population specifically, unconfirmed in 60 days.**
+
+- Clock (§5–§6, already measured): **0 of 372** same-day EP-alert pairs visible to the entry path
+  in 60 days; **15 of 15** linking themes born the same evening as promotion; 3 seam sessions
+  with actual same-cohort fills. Structural — every co-gap link is born after the trades it would
+  describe, by construction of the clocks, on every one of 36 alert days.
+  Ordering follows the operator’s framing directly: EP-gap themes (C1/`narrative_cogap`) are
+  gated ENTIRELY by the clock in this data — the floor never had a confirmed opportunity to cost
+  anything there (0/5 attributable cases).
+- Floor (this section, newly measured): **3 confirmed cases in 60 days**, all outside the EP-gap
+  lane, 1–6 days earlier each. Volume discarded is large (89 rows, ~half of all shadow-lane
+  output) but the validated hit rate is low (3 of 83 distinct pairs, ≈4%) and zero of that 3 sits
+  in the population the operator asked about.
+- Both mechanisms gate ONLY the shadow→live promote path (W2); neither gates Lane-1's own nightly
+  discovery (W1) — 2 of the 5 "later became real" matches prove Lane-1 gets there anyway,
+  independent of the floor, so those 2 were never actually at risk from the floor setting.
+
+---
+
 ## Appendix A — the queries (all read-only, run 2026-08-11 against apollo-postgres)
 
 Raw captured output: session scratchpad `theme_seam_probe{,2,3}.out` (not committed).
@@ -395,6 +506,60 @@ SELECT * FROM mi_audit_log WHERE event_type ILIKE 'exposure_family%'
 -- Q13: write clocks by source, 14d (17:04–17:20 ET) — see §2
 SELECT theme_date, source, count(*), min(created_at), max(created_at)
 FROM mi_themes WHERE theme_date >= CURRENT_DATE-14 GROUP BY 1,2 ORDER BY 1,2;
+
+-- Q18 (§11.1): the 2-member discard count, by source and by session
+SELECT source, cardinality(tickers) AS n_members, COUNT(*) AS n_rows,
+       COUNT(DISTINCT run_date) AS n_sessions
+FROM mi_theme_candidates_shadow
+WHERE source IN ('shadow_v2','narrative_cogap','rs_slope_synthesis')
+  AND run_date >= CURRENT_DATE - 60
+GROUP BY 1,2 ORDER BY 1,2;
+-- per-session breakdown (burst check):
+SELECT run_date, COUNT(*) FILTER (WHERE source='shadow_v2') AS shadow_v2,
+       COUNT(*) FILTER (WHERE source='narrative_cogap') AS narrative_cogap,
+       COUNT(*) FILTER (WHERE source='rs_slope_synthesis') AS rs_slope_synthesis,
+       COUNT(*) AS total
+FROM mi_theme_candidates_shadow
+WHERE source IN ('shadow_v2','narrative_cogap','rs_slope_synthesis')
+  AND run_date >= CURRENT_DATE - 60 AND cardinality(tickers) = 2
+GROUP BY run_date ORDER BY run_date;
+-- → 89 rows / 23 sessions / 83 distinct unordered pairs (source breakdown: shadow_v2 84/20,
+--   narrative_cogap 5/5, rs_slope_synthesis 0/0); ≥3-member rows same window: 86 (71/4/11)
+
+-- Q19 (§11.2): for each discarded 2-member row, the first LATER real (≥3-member) theme
+-- containing both tickers, any source, any later theme_date
+WITH discarded AS (
+  SELECT source, run_date, name, tickers
+  FROM mi_theme_candidates_shadow
+  WHERE source IN ('shadow_v2','narrative_cogap','rs_slope_synthesis')
+    AND run_date >= CURRENT_DATE - 60 AND cardinality(tickers) = 2)
+SELECT d.source, d.run_date, d.name, d.tickers,
+  (SELECT MIN(theme_date) FROM mi_themes t WHERE t.theme_date > d.run_date
+     AND t.tickers @> d.tickers AND cardinality(t.tickers) >= 3) AS first_real_theme_date,
+  (SELECT string_agg(DISTINCT t.name, ' | ') FROM mi_themes t WHERE t.theme_date > d.run_date
+     AND t.tickers @> d.tickers AND cardinality(t.tickers) >= 3) AS theme_names
+FROM discarded d ORDER BY d.source, d.run_date;
+-- → 5 of 89 rows match; full mi_themes rows for the 5 pairs pulled separately (Q20) to check
+--   `source` (shadow_promoted = floor-attributable vs live = Lane-1 independent discovery)
+
+-- Q20: full mi_themes history for the 5 matched pairs, to read `source` + full ticker set
+SELECT theme_date, name, source, stage, tickers, created_at FROM mi_themes
+WHERE tickers @> ARRAY['LQDA','NAMS'] OR tickers @> ARRAY['KNSL','PLMR']
+   OR tickers @> ARRAY['NSP','FA'] OR tickers @> ARRAY['RGNX','SRPT']
+   OR tickers @> ARRAY['MLKN','BOBS']
+ORDER BY theme_date;
+
+-- Q21: birth-gate mode history (confirms full allowlist for the entire window)
+SELECT safeguard, account_mode, state, last_transition_at, updated_at
+FROM mi_safeguard_state WHERE safeguard='theme_birth_gate';
+-- → one row, state='observe', last_transition_at 2026-07-30 — no 'on' transition on record;
+--   'off'/'observe' resolve to the identical full allowlist (db.py:6570-6586)
+
+-- Data-start check (§11 caveat): confirms mi_theme_candidates_shadow is NOT in the retention
+-- purge list (db.py:8035-8076 purge_old_data) — the 06-24/25/26 floor is production history,
+-- not a deletion:
+SELECT source, MIN(run_date), MAX(run_date), COUNT(*) FROM mi_theme_candidates_shadow
+GROUP BY source ORDER BY 1;
 ```
 
 ## Appendix B — code pointers (repo @ main, 2026-08-11)
