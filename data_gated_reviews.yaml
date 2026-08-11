@@ -8841,6 +8841,17 @@ reviews:
     # (the review gates observe->on, so only observe evidence qualifies).
     # Date below is the registration day = non-blocking.
     earliest_review_date: 2026-07-27
+    # ⚠ ATTACHED 2026-08-11 — WEIGH THIS WHEN RULING, it is measured and it cuts against
+    # flipping. The gate at 'on' makes a FIRST-SIGHTING cohort wait for a second sighting,
+    # i.e. a later day. Measured consequence on the 2026-08-04 co-gap (see
+    # docs/analysis/theme_flow_and_the_0931_seam_2026-08-11.md): the defense theme holding
+    # {PLTR,TSAT,VOYG,AMRC} — created that evening BY those four EP alerts — had an
+    # observe-mode verdict of `awaiting-2nd-sighting`, so at 'on' it would NOT have been
+    # born that night at all. The operator's stated priority (2026-08-11) is *using EP gap
+    # stocks to find new themes EARLY*; this gate moves theme birth LATER by design. That
+    # is not an argument against the gate — it was operator-ruled 2026-07-27 for a real
+    # reason (churn) — but the trade is early-discovery vs board stability, and the ruling
+    # should be made knowing that, not discovered afterwards.
     action_when_ready: >-
       Pull the verdicts: SELECT summary, detail FROM mi_audit_log WHERE
       event_type='theme_birth_gate' AND summary LIKE '%/observe]%' ORDER BY
