@@ -7197,23 +7197,62 @@ async def get_prior_score_date(d: "str | date") -> "date | None":
 
 
 async def get_recent_score_dates(as_of: "str | date", n: int) -> list[date]:
-    """The `n` most recent DISTINCT mi_stock_scores dates on/before `as_of`,
-    NEWEST-FIRST — the #479 §1.7b session list for the persistent-unanchored
-    computation. SESSION-based, not calendar-based: a weekend/holiday simply
-    has no row and is skipped, so a 5-session streak is never broken by a
-    non-trading day. Callers must still check that the newest returned date
-    IS `as_of` before trusting it as "today" — the RS job may not have
-    written yet, exactly the staleness get_prior_score_date's docstring
-    warns about."""
+    """The `n` most recent DISTINCT mi_stock_scores dates on/before `as_of`
+    that are also real NYSE trading days, NEWEST-FIRST — the #479 §1.7b
+    session list for the persistent-unanchored computation. SESSION-based,
+    not calendar-based: a weekend/holiday simply has no row and is skipped,
+    so a 5-session streak is never broken by a non-trading day.
+
+    CALENDAR-FILTERED (2026-08-11, live incident): a stray single-row write
+    landed on Saturday 2026-08-08 (mi_stock_scores had exactly 1 row that
+    date, mi_themes had none). A raw DISTINCT-dates query counted that
+    Saturday as a "session", which pulled a day the theme engine could never
+    have run into the 5-session unanchored window and made
+    `_fetch_unanchored_sessions`'s zero-theme-rows guard raise every night
+    until the date aged out of the window (5 straight nights). Filtering via
+    `trading_calendar.get_market_status` (the same NYSE-holiday-aware helper
+    `system_audit`/`health_checks`/`scheduler` already use, rather than a raw
+    row-count threshold) fixes this at the source: a "session" now means a
+    real trading day, full stop, so a stray write on any non-trading date
+    (weekend OR holiday) can never masquerade as one again — no arbitrary
+    minimum-row-count to justify or tune. `get_market_status` itself fails
+    OPEN (assumes trading day) if the calendar library errors, so a library
+    outage degrades to the pre-fix behavior rather than wrongly dropping real
+    sessions.
+
+    Over-fetches candidate rows and doubles the query window if filtering
+    still leaves fewer than `n` trading-day sessions (a stray non-trading row
+    consumes a LIMIT slot without contributing a valid session) — stops once
+    either `n` valid sessions are found or the table has no more candidate
+    rows to offer (fewer rows returned than requested). Callers must still
+    check that the newest returned date IS `as_of` before trusting it as
+    "today" — the RS job may not have written yet, exactly the staleness
+    get_prior_score_date's docstring warns about.
+
+    Sole caller as of 2026-08-11: briefing._fetch_unanchored_sessions. Fixed
+    here (not at the call site) deliberately — the docstring already promises
+    "SESSION-based", so a raw non-trading-day row is wrong for ANY future
+    caller of this function, not just today's one."""
+    from agents.market_intelligence.trading_calendar import get_market_status
+
     pool = await get_pool()
+    as_of_d = _to_date(as_of)
+    fetch_n = max(n * 2, n + 4)
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT DISTINCT score_date FROM mi_stock_scores
-            WHERE score_date <= $1
-            ORDER BY score_date DESC
-            LIMIT $2
-        """, _to_date(as_of), n)
-        return [r["score_date"] for r in rows]
+        while True:
+            rows = await conn.fetch("""
+                SELECT DISTINCT score_date FROM mi_stock_scores
+                WHERE score_date <= $1
+                ORDER BY score_date DESC
+                LIMIT $2
+            """, as_of_d, fetch_n)
+            trading_dates = [
+                r["score_date"] for r in rows
+                if get_market_status(r["score_date"]).is_trading_day
+            ]
+            if len(trading_dates) >= n or len(rows) < fetch_n:
+                return trading_dates[:n]
+            fetch_n *= 2
 
 
 async def get_theme_prior_within(
