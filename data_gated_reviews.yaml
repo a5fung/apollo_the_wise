@@ -7722,9 +7722,60 @@ reviews:
       families for false-positives. Clean -> the BLOCKING card (CHANGE_PROCESS, safeguards.md
       #3 amendment, operator sign-off). Date-fires REGARDLESS of breach count — zero breaches in
       a quiet fortnight is itself reportable (the shadow ran; the book stayed uncorrelated).
-    status: pending
+    status: done
+    # ANSWERED 2026-08-11 ($0 prod replay): verdict TOO THIN — DO NOT PROMOTE. NOT CLEAN, NOT DIRTY:
+    # zero breach rows since 7/12 (all-time zero), so ZERO flagged families exist to eyeball —
+    # detector precision (the actual question) is UNTESTED. One-count date-fire ≠ evidence.
+    # THE ZERO IS HONEST, verified two ways: (1) offline replay of all ~37 stage-2b check moments
+    # (26 submitted trades + 11 post-2b setup:* skips) against mi_live_trades open intervals
+    # (OPEN_POSITION_STATUSES incl. same-minute order_placed peers) + as-of-day mi_themes membership
+    # — the correct output at EVERY check was "no breach"; (2) read-only probe of the live code in
+    # apollo-execution on 8/11: hypothetical defense candidate (VOYG) vs the open book returns
+    # breach=True on PLTR via the defense-surge themes — the detector CAN fire, and that one
+    # hypothetical positive is a TRUE family (both are one defense-spending bet).
+    # #553 CAVEAT CHECKED: the hook keys on trailing-7-day ACTIVE mi_themes snapshots at check time,
+    # so this sample read theme_date 2026-07-05..08-09 — entirely post-mid-April; the documented
+    # March–April false-merge window does NOT overlap the sample.
+    # TWO STRUCTURAL GAPS FOUND (why the key needs work before any BLOCKING card):
+    # (a) SAME-DAY THEME-BIRTH BLINDNESS: mi_themes date-D rows are written by the 17:05 ET nightly,
+    #     so the 9:31 check sees only <= D-1. On 8/4 PLTR and VOYG — the same defense family, born
+    #     that EVENING — were evaluated in the same minute (the one real correlated stack in the
+    #     window); the key could not see it, and VOYG was stopped only by a zero-range bar, not by
+    #     any correlation control. The premortem R1 risk occurred in miniature, undetected.
+    # (b) COVERAGE: only ~8 of ~37 evaluated candidates (~22%) had ANY active-theme membership at
+    #     check time; SMCI — the archetypal AI-hardware name — was in NO active theme 7/22–7/27
+    #     while it was the largest open position. A BLOCKING cap on this key is blind to ~78% of
+    #     entries. The ecosystem-key fork (stage-2 design doc 7/17, operator lean 7/19) is the fix path.
+    # RECOMMENDATION (operator's call — THE LINE): keep SHADOW observing; re-gate on EVENTS not
+    # calendar — successor entry exposure_family_cap_promotion_r2 (>=3 real breach rows to eyeball).
     added_on: 2026-07-12
     cross_refs: ["task #452", "premortem R1 (docs/analysis/premortem_450_2026-07-11.md)", "register R5"]
+
+  - review_id: exposure_family_cap_promotion_r2
+    kind: tripwire
+    title: "#452 exposure-family SHADOW -> BLOCKING, round 2 — event-gated (r1 8/11: TOO THIN, zero emissions)"
+    question: >-
+      Round 1 (2026-08-11) closed TOO THIN: four weeks of shadow produced ZERO breach emissions —
+      an honest zero (replay-verified against the book + themes), but n=0 flagged families means
+      the false-family rate is untested. This round fires on REAL events, not the calendar: with
+      >=3 exposure_family_breach rows, eyeball EACH flagged family (genuinely one correlated trade
+      vs a theme-key artifact), and weigh r1's two structural gaps (same-day theme-birth blindness;
+      ~22% candidate theme-coverage — see r1 answer above) before any BLOCKING card. PROPOSED by
+      the r1 review, not operator-ruled — operator may strike or re-shape this gate.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_audit_log WHERE event_type = 'exposure_family_breach'
+    threshold: 3
+    # earliest_review_date deliberately in the past — the COUNT is the trigger (operator ruling 7/26:
+    # data-readiness triggers, not the calendar).
+    earliest_review_date: 2026-08-11
+    action_when_ready: >-
+      Per-event: pull the audit JSON (candidate_themes, same_family_opens), judge true-family vs
+      false-family with the charts/themes of that day. All true + operator sign-off -> the BLOCKING
+      card (CHANGE_PROCESS, safeguards.md #3 amendment, backtest/replay, sign-off — THE LINE).
+      Any false-family -> fix the key first (ecosystem-key fork, 0025 merge arm) and re-arm.
+    status: pending
+    added_on: 2026-08-11
+    cross_refs: ["task #452", "exposure_family_cap_promotion (r1)", "docs/analysis/452_r1_stage2_design_2026-07-17.md"]
 
   - review_id: consolidation_anticipate_signflip_watch
     title: "Anticipate shadow OBSERVE arm — sign-flip check (the B1 7/12 'keep observing' ruling needs a mechanized re-surface)"
