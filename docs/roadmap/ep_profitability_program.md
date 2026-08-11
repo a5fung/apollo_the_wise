@@ -118,7 +118,8 @@ leader-context read would pick, and the conviction label separates outcomes.
   nothing (#471).
 - **Consequence: theme membership cannot be a ranking input until absence is unambiguous — which
   makes coverage (#563) a PREREQUISITE of the ranking work, not a parallel track.** (Also listed
-  in §6 interactions.)
+  in §6 interactions.) #560's steady-state cost check feeds directly into this: if theme
+  assignment gets pulled on cost, #563's coverage input changes under it (§6 interaction 14).
 
 **OPEN QUESTIONS** (each with what would answer it)
 1. Within one session, does ANY stored feature (ep_score, grade, gap, RS/rank, above-MAs, dollar
@@ -368,48 +369,134 @@ This is the part that makes the program holistic. Each edge is a standing constr
 10. **Sizing (out of scope, named because it interacts).** At ~$760/trade (#556), dollar totals
     are small and floors calibrated for institutional risk may be mis-scaled; all program
     readouts should be in R, not dollars. Sizing itself is untouched and operator-owned.
+11. **Judge/rubric changes → #533 (selection axis analogue of edge 1).** #533's within-day
+    readout scores alerts on TODAY's stored features, including the grade. If #335 flips the
+    theme-axis weight or #368's weighting decision lands mid-measurement, #533's readout stops
+    describing a fixed system — same comparability problem edge 1 states for exits, on selection.
+12. **Grade recalibration (§9 fork 2) → #197.** #197's cap+1 game_changer shadow is
+    promotion-gated on N≥30 fires of TODAY's game_changer population. If the operator's
+    recalibration fork lands (reserving the grade, making it rare), the population #197 is
+    accruing against changes mid-count — its N≥30 would mix pre- and post-recalibration fires.
+13. **Theme-engine structural work → #563's coverage count.** #563 counts 357 same-day
+    ticker/theme pairs against the CURRENT `mi_themes` snapshot. #553 (false-merge fix), #529
+    (crypto↔AI-infra merge, blocked_by #471), and #505/#506 (parent-child repair) all change
+    that snapshot's shape. Landing any of them mid-#563-measurement moves the denominator #563 is
+    counting against — sequence #563's read around them or re-cut after they ship.
+14. **#560's cost verdict → #563's input.** #560 measures theme-assignment's steady-state dollar
+    cost and states it will "pull it if the backlog does not clear." A pull changes what gets
+    assigned at all — the exact coverage #563 is counting. The two should be read together, not
+    independently.
+15. **The 08-06/08-07 catalyst-extractor outage (#543) sits inside the doc's own cited
+    earnings-window sample.** #543: `catalyst_metrics_extractor` threw on every call from
+    2026-08-06 for ~2 sessions, wrongly grading 14 earnings names/day as weak on an exception —
+    including the 08-07 software cohort (§2, #471). §1 calls 08-04..08-07 "most of the usable
+    within-day sample" for the ranking question. Any grade-inflation or within-day-ranking
+    conclusion drawn from 08-06/08-07 specifically is partly an artifact of a since-fixed
+    extraction bug, not pure selection signal. (Also §8 blind spot 11.)
+16. **HTF/Family-A tuning → #562's funnel diagnosis.** #562 is auditing WHERE the 104 alpha
+    names die in the TRIGGERED funnel, on the hypothesis that it borrows HTF's 90%/40d runup
+    gate (#356). If #394 (coil-finder tune) or #397 (HTF money gate) change those thresholds
+    while #562 is mid-diagnosis, the funnel's death-points move under the audit — sequence #562
+    before further HTF threshold changes, or re-read it after they land.
 
 ---
 
 ## 7. TASK INVENTORY — what is filed, where it lives, and the gaps
 
-**Selection / ranking:** #533 (within-day ranking + does the grade mean anything — in_progress,
-due 08-12, top priority) · #448 (B6 rubric backtest, pooled) · #368 (theme-axis weighting —
-blocked on operator labeling) · #335 (theme-axis load-bearing flip) · #486 (judge↔theme
-cross-validation) · #519 (chart-vision offline proof) · #547 (grade-surface regression gate gap) ·
-#331 (gap-vs-structure axis, blocked) · #333 (catalyst durability axis) · #452 (correlated-book
-shadow; operator ruled 08-11 don't promote the cap) · #561 (readable weekly movers surface).
+Format per task: **#ID (substance — status, ETA).** All PLAN.md lines below now carry a matching
+reverse pointer back to this doc + their surface (`[ep_profitability_program.md — <surface>]`) —
+navigable both directions. Board count unaffected (link-only edits).
 
-**Entry:** #559 (admission re-cut 08-31 + NEW false-block split) · #541 (trigger-at-ORB-high —
-blocked, operator fork) · #482 (bracket-geometry lab, 08-16) · #556 (ADV floor vs actual size) ·
-#557 (cooldown cost) · #359 (mcap floor review) · #540/#414 (deployed mechanism fixes) · #545
-(program frame).
+**Selection / ranking:**
+- #533 (within-day ranking + does the grade mean anything — in_progress, due 08-12, top priority)
+- #448 (B6 rubric backtest, pooled — pending, due 09-15)
+- #368 (theme-axis weighting + operator labeling — in_progress, due 08-12; the live block is
+  the operator's labeling pass, not the task status)
+- #335 (theme-axis load-bearing flip — pending, due 08-25)
+- #486 (judge↔theme cross-validation — pending, due 08-15)
+- #519 (chart-vision offline proof — in_progress, due 09-01)
+- #547 (grade-surface regression gate gap — pending, due 08-12)
+- #331 (gap-vs-structure axis — blocked, due 08-25)
+- #333 (catalyst durability axis — pending, due 08-14)
+- #452 (correlated-book shadow; operator ruled 08-11 don't promote the cap — deployed, due 09-01)
+- #561 (readable weekly movers surface — pending, due 08-29)
+- **#504 (NEW — not previously linked here). META-RUBRIC ROADMAP: sequences #368 → weight
+  calibration → #335's load-bearing flip, and names "arbitrate between competing EPs for limited
+  slots" as a first-class rubric portfolio use — the closest thing gap 4 below has to an owner
+  today (pending, due 08-13).**
+- **#560 (NEW). Measures the steady-state DOLLAR cost of theme assignment and states it will
+  "pull it if the backlog does not clear" — the backlog it is measuring IS the coverage gap
+  #563 counts, so a pull decision here changes #563's input (pending, due 08-18).**
+- **#197 (NEW). cap+1 game_changer slot SHADOW, promotion-gated N≥30 — a live slot-allocation
+  experiment conditioned on the top grade, directly touching §9 forks 1 and 2 (in_progress,
+  due 08-18).**
 
-**Delayed entry:** #562 (what IS the trigger — the gating diagnosis) · #545 (delayed/re-entry
-variants + the TEAM worked case) · #270 spec (`delayed_ep_reentry.md`, wiring gated) · #297
-(Family B EP rework) · #354 (Family-A merge) · #327/#353 (consolidation shadow→paper ladder) ·
-#394 (coil-finder tune) · #397 (HTF money gate) · #283 (wick_fill promotion).
+**Entry:**
+- #559 (admission re-cut 08-31 + NEW false-block split — pending, due 08-31)
+- #541 (trigger-at-ORB-high — blocked, operator fork, due 08-13)
+- #482 (bracket-geometry lab — pending, due 08-16)
+- #556 (ADV floor vs actual size — pending, due 08-13)
+- #557 (cooldown cost — pending, due 08-14)
+- #359 (mcap floor review — pending, due 09-22)
+- #540 (deployed mechanism fix, Alpaca rejection reasons — deployed, due 08-21)
+- #414 (deployed mechanism fix, stop-limit gap/no-trigger — deployed, due 08-13)
+- #545 (program frame — pending, due 08-14; spans Entry/Delayed-entry/Exit, see below)
+- **#488 (NEW — reclassified off the doc's own text, which was headed toward delayed entry on
+  the RMV/consolidation-guard mention; the task itself says the halt-data capture "helps the LIVE
+  ORB path (not the nightly consolidation guard)" — that is Entry). Authoritative halt data via
+  Alpaca-WS `statuses`, gated on operator entitlement confirmation (pending, due 08-15).**
 
-**Exit:** #548 (resting-limit + breakeven — deployed, verify-live due 08-14) · #306 (winner
-harvest STEP-2 sweep) · #545 (program grid) · #523 (stop-coverage leg repair) · #525 (breaker
-account-mode split) · #528 (CRMD recorder skip) · `exit_tune_cohort_review` (fires at n=20 — next
-close) · `exit_tune_bull_regime_read` (fires at 8 bull closes; 0 today).
+**Delayed entry:**
+- #562 (what IS the trigger — the gating diagnosis — pending, due 08-11, due now)
+- #545 (delayed/re-entry variants + the TEAM worked case — see Entry above for status)
+- #270 spec (`delayed_ep_reentry.md`, wiring gated — no open PLAN.md line; PLAN.md line 31 marks
+  it close-pending/done, doc-only reference now)
+- #297 (Family B EP rework — pending, due 08-13)
+- #354 (Family-A merge — in_progress, due 09-15)
+- #327 (consolidation shadow→paper ladder, step 3 — in_progress, due 08-30)
+- #353 (consolidation entry→paper graduation — blocked, due 08-12)
+- #394 (coil-finder tune — pending, due 08-16)
+- #397 (HTF money gate — pending, due 08-21)
+- #283 (wick_fill promotion — pending, due 09-01)
+- **#356 (NEW — background, not an active open question). HTF Setup 2 detection — deployed,
+  verify-live confirmed 6/29, ETA 08-12 is a re-check date not a verify date. This is where the
+  90%/40d runup gate #562 is auditing as the TRIGGERED logic's likely borrowed parameter set
+  actually comes from (`docs/setups/htf.md`) — listed for traceability, not as unfinished work.**
+
+**Exit:**
+- #548 (resting-limit + breakeven — deployed, verify-live due 08-14)
+- #306 (winner harvest STEP-2 sweep — deployed, due 08-21)
+- #545 (program grid — see Entry above for status)
+- #523 (stop-coverage leg repair — pending, due 08-11, due now)
+- #525 (breaker account-mode split — deployed, due 08-11)
+- #528 (CRMD recorder skip) — **CLOSED 2026-08-09 (commit `1f2374f`), verified in production.**
+  Kept here as historical context only; it is not open work and carries no PLAN.md line.
+- `exit_tune_cohort_review` (fires at n=20 — next close)
+- `exit_tune_bull_regime_read` (fires at 8 bull closes; 0 today)
 
 **Cross-surface / measurement:** #563 (theme coverage of EP gaps — PREREQUISITE for ranking's
-theme feature) · `mi_ep_missed_outcomes` + #468 probes + `ep_delayed_capture_audit.py` (the
-alert-level outcome machinery, already built).
+theme feature — pending, due 08-15) · `mi_ep_missed_outcomes` + #468 probes +
+`ep_delayed_capture_audit.py` (the alert-level outcome machinery, already built).
+
+⚠ **Deliberately NOT added above** — the ADR-0032 theme-hierarchy program (#538, #529, #530,
+#505, #506, #491, #553, #555, #554, #551) is a separate initiative (theme parent-child, merges,
+thesis-identity) the operator has not named as ranking work; only #563 (coverage) and #560
+(assignment backlog/cost) are that direct. Four of those IDs still matter to this program as
+**evidence sources**, not owners — see §6 interaction 13.
 
 **⚠ THE GAPS — questions with NO owning task** (the "no stones unturned" list):
 1. **Stage-2 / trend-context classifier** — SE condition 3, named by the operator as part of his
    own trigger; no task exists anywhere. Biggest single capability gap on the board.
 2. **Acting on grade inflation** — #533 MEASURES whether the label means anything; no task owns
    the recalibration fork if it confirms (reserving game_changer is a judge/rubric change:
-   CHANGE_PROCESS + sign-off). #448's decision matrix covers `composite_min` only.
+   CHANGE_PROCESS + sign-off). #448's decision matrix covers `composite_min` only. #197's cap+1
+   shadow is adjacent (a slot-COUNT experiment) but does not own recalibration either.
 3. **Naming the delayed-EP SETUP** — #562 stops at diagnosis + options; no task owns defining the
    buy point + stop and standing up its shadow lane after the operator rules.
 4. **Ranked slot allocation at entry** — the alphabetical selection is measured (#533) but no
    task owns building a ranked alternative; deliberate (entry discipline = his call), but once
-   #533 reports, the fork needs a home.
+   #533 reports, the fork needs a home. #504's roadmap NAMES this use ("arbitrate between
+   competing EPs for limited slots") without yet building it — closest thing to a future owner.
 5. **Gap-floor re-look mechanism** — #559 counts false blocks; nothing owns the design question
    "should a blocked name get a second sample inside the ORB window", which is the SE-class fix
    if he wants one.
@@ -447,6 +534,13 @@ alert-level outcome machinery, already built).
 10. **The human baseline is not fully specifiable.** The operator's own delayed entries — the
     thing the machine is meant to approximate — are, in his words, *"no hard rule so hard to
     copy"*; the SE four-condition read is the closest labelled example we hold.
+11. **Two of the four earnings-window days are contaminated by a since-fixed extraction bug.**
+    #543: `catalyst_metrics_extractor` threw on every call 2026-08-06 through ~08-07, wrongly
+    grading 14 earnings names/day as weak and caching the failure. §1 names 08-04..08-07 as
+    "most of the usable within-day sample." Grade-inflation and within-day-ranking reads that
+    include 08-06/08-07 are measuring the bug's blind spot along with real selection behavior
+    (§6 interaction 15) — not separable after the fact without re-deriving those two days' true
+    grades from raw catalyst text.
 
 ---
 
