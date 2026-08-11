@@ -458,3 +458,51 @@ Reference for our own RMV indicator (#54 / reference_rmv_tightness_metric memory
 **Key takeaway for building our RMV:** the developer's logic is **ADR-based** (Average Daily Range over a 20-day lookback x a 1.5 multiplier as the volatility/breakout yardstick; pivots merge within 0.3%, breakout at 2%, max 2 pivots). At #54 eval: compare our rmv_5d/15d COMPUTATION BASIS against this ADR(20)x1.5 approach - if ours diverges, this is the canonical reference to reconcile against (established-setup -> use the primary definition, per feedback_established_setup_use_primary_definition). Chart context: CRWD daily, RMV 57.64, "$785.66 - 20 days - 21%" pivot annotation, Avg $ Vol 2.53B.
 
 **Image saved:** `docs/methodology/rmv_developer_settings_2026-06-30.jpg` (the original screenshot - the RMVP settings panel + the CRWD chart context, preserved in-repo since the operator's Screenshots folder is transient).
+
+---
+
+## 2026-08-11 — SE as a DELAYED-EP candidate: the operator's own read, verbatim
+
+Captured live during the session, minutes after SE was skipped at the open
+(`setup:gap_below_floor: rt 9.2% < 10% floor`; it reclaimed to +10.5% by 09:35).
+
+> "regardless, SE is one i'm looking for a possible delayed EP, it gapped through while above
+> all Moving averages, with a decent looking base, looks may be moving to a stage 2 uptrend
+> after bottoming and basing for a while; also, retail group is strong where this belongs"
+
+**Why this is worth preserving rather than leaving in chat:** #562 asks *what IS our
+delayed-entry trigger today* — and the honest answer is that our machine trigger fires roughly
+once per hundred watched names. This is the HUMAN version of that trigger, stated on a live
+name, by the person whose judgement the machine is meant to approximate. It is the closest
+thing we have to a labelled positive example.
+
+**The four conditions he named, decomposed — each is separately checkable, and NONE of them is
+in the current TRIGGERED logic:**
+
+1. **Gapped through while above ALL moving averages.** Not "gapped" alone — the gap happened
+   from a position of existing strength, not off a bottom. We store `sma_10/20/40/50` in
+   `mi_stock_scores`; whether price sat above all of them at the gap is computable today.
+2. **A decent-looking base.** The prior consolidation. This is the closest to something we
+   already measure (`rmv_5d`/`rmv_15d`, the consolidation-family tightness work) — but "decent
+   looking" is a shape judgement we have never pinned to a number.
+3. **Possibly moving to a Stage 2 uptrend after bottoming and basing for a while.** Stage
+   analysis — a REGIME statement about the name, not about the day. We have no stage
+   classifier. This is the biggest gap of the four.
+4. **The GROUP is strong, and this name belongs to it.** Theme/group strength as a
+   precondition for the individual entry — the north star chain
+   (`theme-north-star-early-rs-before-mainstream`) pointed at a single trade.
+
+⚠ **CONDITION 4 FAILED ON OUR SIDE, MEASURED THE SAME MINUTE: `SE` is in NO live theme at all**
+(zero `mi_themes` rows in the last 10 days contain it). He can see the retail group is strong
+and that SE belongs to it; the system cannot. This is the same shape as the 2026-08-07 software
+cohort (#471) — the strength is real, the membership is missing — and it is a live worked
+example for **#563** (are we under-using EP gaps to find themes early).
+
+⚠ **SETUP vs FAMILY discipline (CLAUDE.md):** "delayed EP" as described here is NOT yet a setup.
+It has no stated buy point and no stated stop. Conditions 1-4 describe a CONTEXT that would make
+a name eligible; the entry and the stop still have to be named before anything is tradeable.
+That naming is exactly what **#562** owes.
+
+▶ Feeds: **#562** (delayed-entry trigger — use this as the worked positive example),
+**#563** (theme coverage of EP gap names), **#559** (the gap-floor block that kept us out of SE
+in the first place).
