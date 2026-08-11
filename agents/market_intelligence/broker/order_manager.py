@@ -3749,6 +3749,37 @@ async def expire_stale_proposals() -> int:
     return total
 
 
+def _cleanup_cancel_label(explicit_mode: str | None, touched_modes: set[str]) -> str:
+    """Telegram-prefix label for a cancel-digest that may span BOTH books.
+
+    `explicit_mode` is `cancel_unfilled_entries`'s OWN `account_mode` param.
+    When the CALLER scoped the run to one book (operator /pause passes
+    account_mode="live"), the SQL WHERE already filtered to that mode, so
+    every row IS it by construction — render via `mode_prefix(explicit_mode)`
+    exactly as before (unchanged path, do not touch).
+
+    When `explicit_mode` is None (the 10:00 ET / 4:05 PM batch cleanup paths
+    — cancellations genuinely span both books), do NOT call bare
+    `mode_prefix(None)`: it silently falls back to `current_account_mode()`,
+    which reads the `ALPACA_PAPER` env var — NOT which book the cancelled
+    rows actually belonged to. That mismatch is the 2026-08-11 RIOT bug: a
+    LIVE order's cancel-cleanup was labelled 📄 PAPER because the container's
+    global default is paper. `mode_prefix`'s None-guessing default is a known
+    fragile hazard elsewhere too — do not lean on it here; derive the label
+    from the rows actually touched instead:
+      - every touched row the same mode -> label that mode
+      - a mix of live+paper (or nothing touched — should be unreachable, since
+        callers only send a message when `cancelled`/`failed_tickers` is
+        non-empty, but never fall back to a guess even here) -> say so
+        explicitly, don't guess.
+    """
+    if explicit_mode is not None:
+        return mode_prefix(explicit_mode)
+    if len(touched_modes) == 1:
+        return mode_prefix(next(iter(touched_modes)))
+    return "⚠️ MIXED live+paper "
+
+
 async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None) -> int:
     """Cancel all unfilled entry orders. Returns count cancelled.
 
@@ -3781,6 +3812,8 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: st
     cancelled = 0
     cancelled_tickers: list[str] = []
     failed_tickers: list[str] = []
+    cancelled_modes: set[str] = set()
+    failed_modes: set[str] = set()
     logger.info(f"{reason}: {len(pending)} unfilled entries to cancel")
     event_type = "orb_unfilled_cancelled" if "ORB" in reason else "eod_unfilled_cancelled"
     if event_type == "orb_unfilled_cancelled":
@@ -3837,6 +3870,7 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: st
                 await _update_trade_status(trade["id"], "cancelled", skip_reason=reason)
             cancelled += 1
             cancelled_tickers.append(trade["ticker"])
+            cancelled_modes.add(trade_mode)
             logger.info(f"{reason} cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
             await log_audit_event(
                 event_type,
@@ -3897,6 +3931,7 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: st
                     ))
         else:
             failed_tickers.append(trade["ticker"])
+            failed_modes.add(trade_mode)
             logger.warning(f"{reason} cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
             await log_audit_event(
                 "unfilled_cancel_failed",
@@ -3910,19 +3945,27 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: st
             )
 
     if cancelled:
-        # #444: thread this function's OWN account_mode param (already in scope —
-        # it's the filter used in the query above). When None (the batch cleanup
-        # paths), mode_prefix(None) == mode_prefix() — byte-identical to before,
-        # since cancellations genuinely span both modes and per-trade mode is
-        # captured in the per-line audit events. When set (operator /pause passes
-        # account_mode="live"), every cancelled row IS that one mode — the digest
-        # now labels correctly instead of falling back to the legacy global.
+        # #444 threaded this function's OWN account_mode param (the filter used
+        # in the query above): set (operator /pause passes account_mode="live")
+        # -> every cancelled row IS that one mode, digest labels correctly.
+        #
+        # 2026-08-11 fix (RIOT mislabel): the None case — the batch cleanup
+        # paths, where cancellations genuinely span both books — must NOT fall
+        # through to bare mode_prefix(None). That silently guesses via
+        # current_account_mode() (the env default), not which book was
+        # actually touched, which is exactly how a LIVE cancel got labelled
+        # 📄 PAPER. `_cleanup_cancel_label` derives the label from the modes
+        # of the rows actually cancelled instead of guessing.
         await send_telegram_message(
-            f"{mode_prefix(account_mode)}🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
+            f"{_cleanup_cancel_label(account_mode, cancelled_modes)}🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
         )
     if failed_tickers:
+        # Same derivation for the cancel-FAILED digest — an operator dismissing
+        # a "PAPER" cancel-failure that was really live is the dangerous version
+        # of the mislabel above (a resting real-money order stays live and
+        # unflagged).
         await send_telegram_message(
-            f"{mode_prefix(account_mode)}⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
+            f"{_cleanup_cancel_label(account_mode, failed_modes)}⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
         )
     return cancelled
 

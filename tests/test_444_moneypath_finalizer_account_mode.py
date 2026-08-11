@@ -11,7 +11,10 @@ Every test below monkeypatches `current_account_mode()` to the OPPOSITE of the t
 real `account_mode` — this is load-bearing: without the opposite-value monkeypatch, a
 test would pass on the pre-fix bare-`mode_prefix()` code too (paper is usually both the
 row's mode AND the legacy default), silently proving nothing. Each assertion here was
-checked to FAIL against the pre-fix code (see comments per test).
+checked to FAIL against the code it targets (see comments per test) — for most tests
+that's the pre-#444 bare `mode_prefix()`; the `cancel_unfilled_entries` None-mode test
+(2026-08-11) instead targets the post-#444/pre-2026-08-11 code, which had the SAME
+env-fallback bug for the batch-cleanup path (see order_manager._cleanup_cancel_label).
 """
 from __future__ import annotations
 
@@ -219,10 +222,20 @@ async def test_cancel_unfilled_entries_threads_the_passed_mode(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_cancel_unfilled_entries_none_mode_is_byte_identical(monkeypatch):
-    """The batch cleanup paths (10:00 ET / 4:05 PM) pass account_mode=None because
-    cancellations genuinely span both modes — mode_prefix(None) must equal
-    mode_prefix() so this branch's behavior is UNCHANGED by the #444 thread."""
+async def test_cancel_unfilled_entries_none_mode_labels_from_actual_row_not_global(monkeypatch):
+    """SUPERSEDES the old byte-identical assertion (2026-08-11, RIOT mislabel fix,
+    docs/setups CHANGE_PROCESS not applicable — labelling-only, no strategy/sizing/
+    safeguard touched). The batch cleanup paths (10:00 ET / 4:05 PM) pass
+    account_mode=None because cancellations genuinely span both books — but the
+    PRE-fix code then called bare `mode_prefix(None)`, which silently falls back to
+    `current_account_mode()` (the env-var global), NOT the mode of the row actually
+    cancelled. That is exactly the operator-reported bug: a LIVE order's cleanup-
+    cancel was labelled PAPER because the container default is paper.
+
+    Opposite-value trap here: the row is "paper" while current_account_mode() is
+    mocked to "live" — the OLD code would have said LIVE-$ (this exact assertion,
+    inverted, was the pre-fix test — see git history). Post-fix it must say PAPER,
+    matching the row, not the global."""
     pool, conn = make_mock_pool()
     pending_row = {
         "id": 4, "ticker": "EOD1", "entry_order_id": "ord-4",
@@ -249,8 +262,11 @@ async def test_cancel_unfilled_entries_none_mode_is_byte_identical(monkeypatch):
 
     assert n == 1
     assert len(sent) == 1
-    # None -> legacy global fallback ("live" here), exactly as before the thread.
-    assert "💰 LIVE-$" in sent[0]
+    # Row is "paper" -> label must be PAPER even though the mocked global says "live".
+    assert "📄 PAPER" in sent[0] and "💰 LIVE-$" not in sent[0], (
+        f"cleanup-cancel digest used the global default instead of the actual "
+        f"cancelled row's account_mode: {sent[0]}"
+    )
 
 
 # ─── entry_pipeline._skip — CAP+1 CANDIDATE alert ────────────────────────────
