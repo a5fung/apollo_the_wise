@@ -3858,8 +3858,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # a full session. Per-ticker-per-day dedup, same idiom as the carve-out above.
             if _extraction_failed_no_downgrade:
                 try:
+                    # ⚠ arg order is (event_type, ticker) — this call had them SWAPPED until
+                    # 2026-08-11, so the dedup query matched nothing, failed open, and re-logged
+                    # every scan tick (prod 08-07: ACMR 4x, CART 2x for a once-per-day event).
                     if await _should_log_catalyst_earnings_event_today(
-                        ticker, "catalyst_extraction_failed_grade_kept"
+                        "catalyst_extraction_failed_grade_kept", ticker
                     ):
                         await log_audit_event(
                             "catalyst_extraction_failed_grade_kept",

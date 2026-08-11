@@ -3121,6 +3121,23 @@ async def _post_nightly_audit_job():
         logger.error(f"Dead-column sweep failed: {e}", exc_info=True)
         await notify_job_failure("dead_column_sweep", str(e))
 
+    # GRADING-HEALTH check (#543 DoD (c)): the share of today's catalyst-grading decisions
+    # driven by a component FAILURE rather than by the data. The 08-06/08-07 extraction
+    # outage ran that share 0% -> 53% -> 88% across three days while every existing monitor
+    # stayed green — a dead grader is indistinguishable from a weak tape unless this ratio
+    # is watched. Silent on a healthy day (every non-incident day since May has <=1 failure
+    # event, measured on prod). Own try/except — a health guard that dies silently is the
+    # failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_grading_health_check
+        gh = await run_grading_health_check()
+        logger.info(
+            f"Grading-health check: {gh['failure_n']} failure-driven of {gh['total']} "
+            f"grading decisions" + (" — ALERT" if gh["flag"] else ""))
+    except Exception as e:
+        logger.error(f"Grading-health check failed: {e}", exc_info=True)
+        await notify_job_failure("grading_health_check", str(e))
+
     # ACCOUNT-MODE GRADUATION sweep (2026-08-11): a hardcoded `account_mode`/`phase` literal
     # in a query is correct the day it ships and rots the day a strategy graduates — the
     # get_flag_universe paper-pin sat dark ~7 weeks after MAGNA53 went live 6/22. Static

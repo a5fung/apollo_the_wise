@@ -2384,3 +2384,172 @@ async def run_account_mode_graduation_sweep(conn=None) -> dict[str, Any]:
     pool = await get_pool()
     async with pool.acquire() as acquired:
         return await _run(acquired)
+
+
+# ── GRADING-HEALTH CHECK (#543 DoD (c), 2026-08-11) ──────────────────────────────────────
+#
+# The 08-06/08-07 extraction outage graded 14 earnings names/day down on an EXCEPTION and
+# nothing watched the one number that separates "weak tape" from "dead component": the share
+# of the day's catalyst-grading decisions driven by a system FAILURE rather than by the data.
+# Measured on prod mi_audit_log, that share ran 0% (08-05: 0 of 23) → 53% (08-06: 9 of 17)
+# → 88% (08-07: 46 of 52) across the incident, while every existing monitor stayed green —
+# the failure logged as `catalyst_earnings_revenue_weak_downgrade`, a normal-sounding
+# business outcome, so a total component outage read as a quiet day of weak catalysts.
+#
+# A downgrade because the numbers were weak is the system WORKING. A downgrade — or a grade
+# held with no evidence — because the extractor/judge DIED is a component outage wearing a
+# quiet tape's clothes. This check counts both sides for the ET day and alerts when the
+# failure share dominates.
+#
+# TELEMETRY ONLY (THE LINE): reads mi_audit_log; changes no grade, rubric, or threshold.
+# ⚠ SILENT on a healthy day BY DESIGN — replayed against every day since 2026-05-01 on prod:
+# fires on exactly the two incident days (08-06, 08-07); every other day has ≤1 failure
+# event and never trips the F≥2 floor (07-27 was a real 1-failure/1-data day — silent).
+# NOT deduped: an outage that persists must keep shouting nightly (same reasoning as
+# run_truncation_check — the original went quiet BECAUSE its only trace looked routine).
+_GRADING_FAILURE_EVENTS = (
+    "catalyst_extraction_failed_grade_kept",  # extraction died; grade deliberately kept (post-08-07 shape)
+    "extraction_error",                       # extraction raised; rubric never got a chance
+    "live_enriched_grade_failed",             # enriched grading path failed -> legacy fallback
+    "judge_verdict_truncated",                # judge verdict cut by its ceiling -> discarded to floor
+)
+_GRADING_DATA_EVENTS = (
+    "catalyst_earnings_revenue_weak_downgrade",  # failure-reason rows re-classed below
+    "catalyst_prose_mismatch_downgrade",
+    "catalyst_pplx_hedge_downgrade",
+    "catalyst_downgrade_carveout_applied",       # grading RAN and the data said keep — health evidence
+    "catalyst_yoy_recovered_live",               # same: the machinery worked, the data decided
+)
+# The 08-06/07 failure downgrades logged as weak_downgrade with detail reason
+# 'extraction_failed_extraction_call_failed'. That downgrade-on-failure path is gone
+# (operator 2026-08-07: "we shouldn't downgrade stocks due to call failure"), but the
+# classifier keeps the reason split so a regression that reintroduces it is counted as
+# FAILURE from day one — this is exactly what would have caught the original incident.
+_GRADING_FAILURE_REASON_PREFIXES = ("extraction_failed", "extraction_error")
+_GRADING_MIN_FAILURES = 2    # a single failure is never an outage signal
+_GRADING_MIN_DECISIONS = 3   # denominator floor — a two-decision day cannot scream
+_GRADING_FAIL_RATIO = 0.5    # incident day one read 53%; healthy days are 0-6%
+
+
+def _classify_grading_event(event_type: str, detail: str | None) -> str | None:
+    """'failure' | 'data' | None (not a grading event).
+
+    A weak_downgrade row is DATA unless its detail reason carries the failure prefix —
+    garbled/missing detail defaults to DATA, so bad JSON can never fake an outage."""
+    if event_type in _GRADING_FAILURE_EVENTS:
+        return "failure"
+    if event_type not in _GRADING_DATA_EVENTS:
+        return None
+    if event_type == "catalyst_earnings_revenue_weak_downgrade":
+        reason = ""
+        try:
+            payload = json.loads(detail or "{}")
+            reason = (payload or {}).get("reason") or ""
+        except (ValueError, TypeError):
+            reason = ""
+        if isinstance(reason, str) and reason.startswith(_GRADING_FAILURE_REASON_PREFIXES):
+            return "failure"
+    return "data"
+
+
+def _grading_row_ticker(detail: str | None, summary: str | None) -> str:
+    """Best-effort ticker for FAILURE-side dedup. Most grading events carry it in the
+    detail JSON; the rest prefix the summary with 'TICKER: ...' (judge_verdict_truncated's
+    summary IS the subject). Unparseable rows collapse onto '?' — conservative toward
+    silence, never toward a louder alert."""
+    try:
+        t = (json.loads(detail or "{}") or {}).get("ticker")
+        if t:
+            return str(t)
+    except (ValueError, TypeError):
+        pass
+    return (summary or "").split(":", 1)[0].strip() or "?"
+
+
+def _evaluate_grading_health(failure_n: int, data_n: int) -> dict[str, Any] | None:
+    """The alert predicate, pure. Fires only when failures DOMINATE a real day's
+    decisions: ≥_GRADING_MIN_FAILURES failures AND ≥_GRADING_MIN_DECISIONS total
+    AND failure share ≥ _GRADING_FAIL_RATIO. Returns the flag dict or None."""
+    total = failure_n + data_n
+    # The F-floor is redundant at the CURRENT thresholds (a 1-failure day always fails the
+    # total or ratio floor too) — kept anyway as the explicit encoding of the rule "a single
+    # failure never alerts", so it survives any future re-tuning of the other two numbers.
+    if failure_n < _GRADING_MIN_FAILURES or total < _GRADING_MIN_DECISIONS:
+        return None
+    ratio = failure_n / total
+    if ratio < _GRADING_FAIL_RATIO:
+        return None
+    return {"failure_n": failure_n, "data_n": data_n, "total": total,
+            "ratio": round(ratio, 3)}
+
+
+async def run_grading_health_check(conn=None, today=None) -> dict[str, Any]:
+    """Failure-share of today's catalyst-grading decisions (#543 DoD (c)).
+
+    Returns {"today", "failure_n", "data_n", "total", "ratio", "by_event", "flag",
+    "errors"} — "flag" is None on a healthy day and nothing is written or sent."""
+    from agents.market_intelligence.db import get_pool as _gp, log_audit_event as _log
+
+    async def _run(c) -> dict[str, Any]:
+        day = today or et_today()
+        out: dict[str, Any] = {"today": day.isoformat(), "failure_n": 0, "data_n": 0,
+                               "total": 0, "ratio": 0.0, "by_event": {}, "flag": None,
+                               "errors": []}
+        rows = await c.fetch(
+            """
+            SELECT event_type, summary, detail FROM mi_audit_log
+             WHERE event_type = ANY($1::text[])
+               AND (created_at AT TIME ZONE 'America/New_York')::date = $2::date
+            """, list(_GRADING_FAILURE_EVENTS + _GRADING_DATA_EVENTS), day)
+        by_event: dict[str, dict[str, int]] = {"failure": {}, "data": {}}
+        # FAILURE side dedupes on (event, ticker): "two failures" must mean two NAMES
+        # failed, not one name re-logged across scan ticks (prod 08-07: ACMR logged 4x by
+        # a broken emission dedup; and a persistently-failing ticker re-extracts every
+        # tick since the 08-10 cache fix). DATA-side events are already deduped per
+        # ticker/day at emission, and any inflation there only makes this check QUIETER.
+        seen_failures: set[tuple[str, str]] = set()
+        for r in rows:
+            side = _classify_grading_event(r["event_type"], r["detail"])
+            if side is None:
+                continue
+            if side == "failure":
+                key = (r["event_type"], _grading_row_ticker(r["detail"], r["summary"]))
+                if key in seen_failures:
+                    continue
+                seen_failures.add(key)
+            by_event[side][r["event_type"]] = by_event[side].get(r["event_type"], 0) + 1
+        out["failure_n"] = sum(by_event["failure"].values())
+        out["data_n"] = sum(by_event["data"].values())
+        out["total"] = out["failure_n"] + out["data_n"]
+        out["ratio"] = round(out["failure_n"] / out["total"], 3) if out["total"] else 0.0
+        out["by_event"] = by_event
+        flag = _evaluate_grading_health(out["failure_n"], out["data_n"])
+        out["flag"] = flag
+        if flag is None:
+            return out
+        pct = round(100.0 * flag["ratio"])
+        await _log(
+            "grading_health_alert",
+            f"{flag['failure_n']} of {flag['total']} grading decisions today were "
+            f"failure-driven ({pct}%)",
+            json.dumps(out))
+        from agents.market_intelligence.briefing import send_telegram_message
+        # Event names are snake_case — #477 parity: they stay inside the code fence.
+        lines = ["🔴 *GRADING HEALTH* — today's catalyst grades were decided by component "
+                 "FAILURES, not by the data:", "```",
+                 f"{flag['failure_n']} of {flag['total']} grading decisions ({pct}%) were "
+                 f"a component failing"]
+        for ev, n in sorted(by_event["failure"].items(), key=lambda kv: -kv[1]):
+            lines.append(f"  {ev:<40} {n}")
+        lines += ["```",
+                  "A weak-looking day can be a dead grader. Check the extractor/judge "
+                  "before trusting today's grades — this pattern is how the 08-06 "
+                  "extraction outage hid."]
+        await send_telegram_message("\n".join(lines))
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await _gp()
+    async with pool.acquire() as acquired:
+        return await _run(acquired)

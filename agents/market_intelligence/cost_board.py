@@ -230,6 +230,8 @@ CALLER_MIN_SAMPLE_DAYS = 5          # cold-start floor: need >=5 active history 
 CALLER_ANOMALY_MIN_USD = 0.50       # per-caller noise floor (finer than the board's $1 floor)
 _CALLER_MAD_EPS_USD = 0.05          # below this, a $ MAD is noise -> ratio-only band routing
 _RETRY_CALLS_RATIO = 1.8            # recent-vs-baseline call-count ratio flagging a retry loop
+_UNIT_COST_RATIO = 1.5              # today's $/call vs its 30d median at/above this = unit-cost driver
+_RECENT_ACTIVE_DAYS = 3             # the "current regime" for call counts — a retry loop is a TODAY event
 _OVERSIZED_PROMPT_TOKENS = 40_000   # avg input tokens/call above this = worth a prompt-size look
 _REDUCTION_MIN_SAVINGS_USD = 0.50   # noise floor for surfacing an Opus->Sonnet estimate
 
@@ -316,6 +318,59 @@ def _window_series(series: dict, today: date, key: str, start_k: int, end_k: int
             for k in range(start_k, end_k)]
 
 
+def _attribute_leak(today_spend: float, today_calls: int,
+                    hist_spend: list, hist_calls: list) -> dict:
+    """#543 attribution fix — name the DRIVER of a spend anomaly, from the actual
+    decomposition spend = calls x $/call: either call VOLUME rose, or unit COST
+    ($/call) rose, or both, and the alert says which.
+
+    The 2026-08-06 mislabel this replaces: catalyst_metrics_extractor fired 17.7x
+    and was labelled "call-volume (possible retry loop)" purely because today's
+    calls (29) dwarfed the 30d trimmed MEDIAN (3/day) — a median dominated by a
+    stale sparse-cadence July, while the CURRENT regime (earnings season) had
+    already been running 24/day for days. Call volume was FLAT vs the regime; the
+    real driver was $/call jumping to a 30d high ($0.025 vs $0.014 median — the
+    model change). The one true alarm pointed the diagnosis at retries.
+
+    Hence the two baselines here are deliberately different:
+      - unit cost is regime-stable (it is a price), so it compares against the 30d
+        trimmed median of per-active-day $/call;
+      - a retry loop is a TODAY phenomenon, so call volume compares against the
+        median of the last _RECENT_ACTIVE_DAYS active days — the current regime,
+        not a month-old cadence.
+    `hist_spend`/`hist_calls` are the caller's zero-filled day series ordered
+    yesterday-first (the shape _window_series already produces)."""
+    import statistics
+    unit_hist = [s / c for s, c in zip(hist_spend, hist_calls) if c > 0]
+    unit_p50, _, _, _ = _sa_trimmed_median_mad(unit_hist) if unit_hist else (0.0, 0.0, 0.0, 0)
+    today_unit = (today_spend / today_calls) if today_calls else 0.0
+    unit_ratio = (today_unit / unit_p50) if unit_p50 > 0 else 0.0
+    recent_active = [c for c in hist_calls if c > 0][:_RECENT_ACTIVE_DAYS]
+    recent_med = float(statistics.median(recent_active)) if recent_active else 0.0
+    recent_ratio = (today_calls / recent_med) if recent_med > 0 else 0.0
+    unit_up = unit_ratio >= _UNIT_COST_RATIO
+    volume_up = recent_ratio >= _RETRY_CALLS_RATIO
+    if unit_up and volume_up:
+        leak = (f"call-volume AND unit-cost both rose ({recent_ratio:.1f}x calls, "
+                f"{unit_ratio:.1f}x $/call)")
+    elif unit_up:
+        leak = (f"unit-cost (${today_unit:.3f}/call vs ${unit_p50:.3f} 30d median = "
+                f"{unit_ratio:.1f}x; calls flat vs recent {recent_med:.0f}/day)")
+    elif volume_up:
+        leak = (f"call-volume ({today_calls} calls vs recent {recent_med:.0f}/day = "
+                f"{recent_ratio:.1f}x, $/call flat — retry loop or new workload?)")
+    else:
+        leak = (f"no single driver (calls {recent_ratio:.1f}x recent, "
+                f"$/call {unit_ratio:.1f}x — gradual ramp)")
+    return {
+        "leak_class": leak,
+        "unit_today": round(today_unit, 4), "unit_median30": round(unit_p50, 4),
+        "unit_ratio": round(unit_ratio, 2),
+        "recent_calls_median": round(recent_med, 1),
+        "recent_calls_ratio": round(recent_ratio, 2),
+    }
+
+
 def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30,
                                      daily: "dict | None" = None) -> list[dict]:
     """Pure half of compute_caller_cost_anomalies — takes already-fetched
@@ -342,13 +397,13 @@ def _caller_cost_anomalies_from_rows(rows, today: date, lookback_days: int = 30,
             continue
         calls_p50, _, _, _ = _sa_trimmed_median_mad(active_calls) if active_calls else (0.0, 0.0, 0.0, 0)
         calls_ratio = (today_calls / calls_p50) if calls_p50 > 0 else 0.0
-        leak = ("call-volume (possible retry loop)" if calls_ratio >= _RETRY_CALLS_RATIO
-                else "per-call cost")
         out.append({
             "caller": caller, "today_spend": round(today_spend, 2),
             "median30": round(p50, 2), "mad": round(mad, 4), "ratio": round(ratio, 2),
             "today_calls": today_calls, "median_calls": round(calls_p50, 1),
-            "calls_ratio": round(calls_ratio, 2), "leak_class": leak,
+            "calls_ratio": round(calls_ratio, 2),
+            # #543: leak_class + the decomposition fields it was derived from
+            **_attribute_leak(today_spend, today_calls, hist_spend, hist_calls),
         })
     out.sort(key=lambda r: r["ratio"], reverse=True)
     return out
@@ -509,8 +564,13 @@ def _retry_loop_opportunities(
                 "type": "runaway_retries", "caller": caller,
                 "recent_avg_calls": round(recent_avg, 1), "baseline_calls": round(p50, 1),
                 "ratio": round(ratio, 2),
-                "note": f"{caller} call volume is {ratio:.1f}x baseline "
-                        f"({recent_avg:.1f}/day vs {p50:.1f}/day median) — check for a retry loop.",
+                # #543 wording: this measures a multi-day VOLUME TREND vs the 30d baseline. A
+                # retry loop is one explanation; a workload-level change (earnings season) is the
+                # other — during the 08-06/07 incident this note named only "retry loop" for what
+                # was the earnings ramp, reinforcing the anomaly alert's wrong direction.
+                "note": f"{caller} call volume is {ratio:.1f}x its 30d baseline "
+                        f"({recent_avg:.1f}/day vs {p50:.1f}/day median) — retry loop, "
+                        f"or a new workload level?",
             })
     out.sort(key=lambda r: r["ratio"], reverse=True)
     return out

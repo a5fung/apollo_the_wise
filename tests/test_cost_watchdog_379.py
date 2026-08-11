@@ -86,7 +86,7 @@ async def test_caller_anomaly_respects_noise_floor(monkeypatch):
 @pytest.mark.asyncio
 async def test_caller_anomaly_leak_class_call_volume(monkeypatch):
     """When the spike's call count also scaled up proportionally, label it
-    the call-volume/retry-loop leak class (not a per-call cost blowup)."""
+    the call-volume leak class (not a unit-cost blowup)."""
     rows = [_row("scanner", TODAY - timedelta(days=k), spend=0.20, calls=2)
             for k in range(1, 15)]
     # 50x spend AND ~50x calls -> same $/call -> call-volume leak class.
@@ -95,13 +95,15 @@ async def test_caller_anomaly_leak_class_call_volume(monkeypatch):
 
     out = await cb.compute_caller_cost_anomalies(TODAY)
 
-    assert out[0]["leak_class"] == "call-volume (possible retry loop)"
+    assert out[0]["leak_class"].startswith("call-volume (")
+    assert out[0]["recent_calls_ratio"] >= cb._RETRY_CALLS_RATIO
+    assert out[0]["unit_ratio"] < cb._UNIT_COST_RATIO
 
 
 @pytest.mark.asyncio
-async def test_caller_anomaly_leak_class_per_call_cost(monkeypatch):
+async def test_caller_anomaly_leak_class_unit_cost(monkeypatch):
     """Same call count, much higher $/call (e.g. a bloated single prompt) ->
-    per-call cost leak class, not call-volume."""
+    unit-cost leak class, not call-volume."""
     rows = [_row("judge", TODAY - timedelta(days=k), spend=0.20, calls=2)
             for k in range(1, 15)]
     rows.append(_row("judge", TODAY, spend=10.0, calls=2))
@@ -109,7 +111,123 @@ async def test_caller_anomaly_leak_class_per_call_cost(monkeypatch):
 
     out = await cb.compute_caller_cost_anomalies(TODAY)
 
-    assert out[0]["leak_class"] == "per-call cost"
+    assert out[0]["leak_class"].startswith("unit-cost (")
+    assert out[0]["unit_ratio"] >= cb._UNIT_COST_RATIO
+    assert out[0]["recent_calls_ratio"] < cb._RETRY_CALLS_RATIO
+
+
+@pytest.mark.asyncio
+async def test_caller_anomaly_leak_class_both_drivers(monkeypatch):
+    """Calls AND $/call both well above baseline -> the label must say both,
+    not silently pick one."""
+    rows = [_row("hybrid", TODAY - timedelta(days=k), spend=0.20, calls=2)
+            for k in range(1, 15)]
+    # 10x calls AND 5x $/call.
+    rows.append(_row("hybrid", TODAY, spend=10.0, calls=20))
+    _mock_pool_with_rows(monkeypatch, rows)
+
+    out = await cb.compute_caller_cost_anomalies(TODAY)
+
+    assert "call-volume AND unit-cost" in out[0]["leak_class"]
+
+
+# ── #543 attribution regression — the REAL 08-06/08-07 mislabel + the real 08-10 volume case ──
+#
+# The cost watchdog fired 17.7x on catalyst_metrics_extractor on 2026-08-06 (the extraction
+# outage) and labelled it "call-volume (possible retry loop)" — recorded verbatim in the
+# cost_watchdog_check audit row that night: {"ratio": 17.74, "calls_ratio": 9.67,
+# "leak_class": "call-volume (possible retry loop)"}. Call volume was FLAT vs the current
+# regime (29 calls vs 24/24 the two prior days; the 9.67x came from a stale sparse-July
+# median of 3/day) while $/call hit a 30d high ($0.0254 vs $0.0144 median — the model
+# change). The one true alarm pointed at retries. These fixtures are the REAL per-day
+# calls/spend series from prod api_usage, so the tests below fail if the attribution ever
+# regresses to the calls-vs-30d-median conflation.
+
+# (day-offset back from 2026-08-06, calls, spend) — catalyst_metrics_extractor, prod api_usage.
+_EXTRACTOR_HISTORY_TO_0806 = [
+    # July sparse cadence (the stale regime that poisoned the old calls median)
+    (29, 1, 0.0155), (28, 5, 0.0634), (27, 3, 0.0415), (22, 2, 0.0307),
+    (21, 2, 0.0304), (20, 1, 0.0133), (17, 2, 0.0249), (16, 2, 0.0284),
+    (15, 2, 0.0240), (14, 9, 0.1373), (13, 4, 0.0604), (10, 1, 0.0110),
+    (9, 5, 0.0693), (8, 13, 0.1873), (7, 22, 0.3070), (6, 14, 0.2073),
+    (3, 2, 0.0287),
+    # earnings-season regime — already ~24 calls/day BEFORE the incident
+    (2, 24, 0.3713), (1, 24, 0.3826),
+]
+
+
+def _real_rows(caller, anchor, history, today_calls, today_spend):
+    rows = [_row(caller, anchor - timedelta(days=k), spend=s, calls=c)
+            for k, c, s in history]
+    rows.append(_row(caller, anchor, spend=today_spend, calls=today_calls))
+    return rows
+
+
+@pytest.mark.asyncio
+async def test_real_incident_0806_extractor_is_unit_cost_not_retry_loop(monkeypatch):
+    """2026-08-06, the real data: 29 calls (flat vs the 24/24 regime), $/call at a
+    30d high. The old logic said 'retry loop'; the attribution must say unit-cost."""
+    anchor = date(2026, 8, 6)
+    _mock_pool_with_rows(
+        monkeypatch,
+        _real_rows("catalyst_metrics_extractor", anchor,
+                   _EXTRACTOR_HISTORY_TO_0806, 29, 0.7358))
+
+    out = await cb.compute_caller_cost_anomalies(anchor)
+
+    assert len(out) == 1
+    a = out[0]
+    assert a["ratio"] == pytest.approx(17.7, abs=0.5)  # the real recorded 17.7x fire
+    assert a["leak_class"].startswith("unit-cost ("), a["leak_class"]
+    assert "retry loop" not in a["leak_class"]
+    # the decomposition that justifies the label, on the real numbers
+    assert a["unit_ratio"] >= cb._UNIT_COST_RATIO          # $0.0254 vs ~$0.0144 median
+    assert a["recent_calls_ratio"] < cb._RETRY_CALLS_RATIO  # 29 vs 24/day regime
+
+
+@pytest.mark.asyncio
+async def test_real_incident_0807_extractor_is_unit_cost_not_retry_loop(monkeypatch):
+    """Day 2 of the incident (40 calls incl. the forced re-extraction, $/call 2.3x):
+    still unit-cost, still not a retry loop."""
+    anchor = date(2026, 8, 7)
+    history = [(k + 1, c, s) for k, c, s in _EXTRACTOR_HISTORY_TO_0806]
+    history.append((1, 29, 0.7358))  # 08-06 becomes yesterday
+    _mock_pool_with_rows(
+        monkeypatch,
+        _real_rows("catalyst_metrics_extractor", anchor, history, 40, 1.3150))
+
+    out = await cb.compute_caller_cost_anomalies(anchor)
+
+    assert len(out) == 1
+    assert out[0]["leak_class"].startswith("unit-cost ("), out[0]["leak_class"]
+    assert "retry loop" not in out[0]["leak_class"]
+
+
+@pytest.mark.asyncio
+async def test_real_0810_perplexity_is_genuinely_call_volume(monkeypatch):
+    """The OTHER direction, real data: perplexity_news_search 2026-08-10 ran 168
+    calls against a 49-114 weekday range with FLAT $/call — genuinely volume.
+    The attribution must still say call-volume, or the fix over-corrected."""
+    anchor = date(2026, 8, 10)
+    history = [  # (day-offset back from 2026-08-10, calls, spend) — prod api_usage
+        (29, 1, 0.0113), (28, 46, 0.5658), (27, 14, 0.1782), (26, 54, 0.6688),
+        (25, 18, 0.2532), (24, 57, 0.6915), (22, 2, 0.0225), (21, 61, 0.7670),
+        (20, 15, 0.1888), (19, 63, 0.7896), (18, 24, 0.3287), (17, 62, 0.7723),
+        (15, 1, 0.0114), (14, 75, 0.9799), (13, 43, 0.5512), (12, 78, 1.0391),
+        (11, 38, 0.5579), (10, 85, 1.1495), (7, 68, 0.8423), (6, 49, 0.7745),
+        (5, 86, 1.1532), (4, 54, 0.8665), (3, 114, 1.4410), (1, 8, 0.0918),
+    ]
+    _mock_pool_with_rows(
+        monkeypatch,
+        _real_rows("perplexity_news_search", anchor, history, 168, 1.9628))
+
+    out = await cb.compute_caller_cost_anomalies(anchor)
+
+    assert len(out) == 1
+    a = out[0]
+    assert a["leak_class"].startswith("call-volume ("), a["leak_class"]
+    assert a["recent_calls_ratio"] >= cb._RETRY_CALLS_RATIO  # 168 vs recent ~54/day
+    assert a["unit_ratio"] < cb._UNIT_COST_RATIO             # $/call flat ($0.0117 vs ~$0.0125)
 
 
 # ── cost-reduction surfacing heuristics (pure, fixture-driven) ──────────────
