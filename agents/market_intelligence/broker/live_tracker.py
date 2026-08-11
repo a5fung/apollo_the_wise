@@ -423,9 +423,19 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
 
             passed, skip_reason = await check_filters(ticker, today)
             if not passed:
+                # Attribute the filtered trade to the OWNING strategy's account
+                # (operator 7/8, same fix as the scheduler out-of-orb path + the
+                # entry_pipeline._skip path — this third writer was missed). Without
+                # it the insert falls back to current_account_mode(), which reads
+                # the legacy ALPACA_PAPER env (= 'paper' on prod), so a live-MAGNA53
+                # filter:* skip would land in the dormant PAPER book, invisible to
+                # every account_mode='live' operator surface (#447). Latent, never
+                # fired (zero filter:* rows in prod history as of 2026-08-11) —
+                # found by the account-mode literal sweep. _magna53_mode is the
+                # #444 fail-open resolve above; None degrades to today's behavior.
                 await _insert_skipped_trade(
                     ticker, today, alert, regime_record, skip_reason,
-                    signal_type="magna53",
+                    signal_type="magna53", account_mode=_magna53_mode,
                 )
                 logger.info(f"ORB filter [{trigger}]: {ticker} skipped — {skip_reason}")
                 try:

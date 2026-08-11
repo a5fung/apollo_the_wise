@@ -319,9 +319,9 @@ async def _seed_strategies_registry(conn) -> None:
     await conn.execute(
         """
         UPDATE mi_strategies
-        SET phase = 'deprecated', updated_at = NOW()
+        SET phase = 'deprecated', updated_at = NOW()  -- mode-ok: terminal-phase convergence migration; writes the phase, filters nothing that rots
         WHERE strategy_id IN ('9m_day2', 'flag_continuation')
-          AND phase != 'deprecated'
+          AND phase != 'deprecated'  -- mode-ok: idempotence guard on the same migration
         """
     )
 
@@ -5253,7 +5253,7 @@ async def enqueue_pending_allocation(
         # stock CONDITION / sugar-baby cohort that feeds other setups is separate
         # and stays live — see docs/analysis/357_sugar_babies_role_memo.)
         if await conn.fetchval(
-            "SELECT phase = 'deprecated' FROM mi_strategies WHERE signal_type = $1",
+            "SELECT phase = 'deprecated' FROM mi_strategies WHERE signal_type = $1",  # mode-ok: deprecated is TERMINAL (#424) — this literal cannot rot forward
             strategy,
         ):
             return
@@ -5281,7 +5281,7 @@ async def get_deprecated_strategy_signal_types() -> set[str]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT signal_type FROM mi_strategies WHERE phase = 'deprecated'"
+            "SELECT signal_type FROM mi_strategies WHERE phase = 'deprecated'"  # mode-ok: deprecated is TERMINAL (#424) — this literal cannot rot forward
         )
     return {r["signal_type"] for r in rows if r["signal_type"]}
 

@@ -335,10 +335,10 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-09 — measure the guard before building it
+### 2026-08-11 — account-mode literal gate [5o/7] + graduation sweep
 
-- Specced a delegation gate, **measured 37 session-days, did NOT build it** (complaint days sit
-  inside the normal range). Routing declaration + ledger instead.
+- SQL mode/phase literals need `mode-ok:`; the nightly sweep replays them on any phase
+  change / dormant pinned book, once ever. SSoT: `dual_account.md`.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

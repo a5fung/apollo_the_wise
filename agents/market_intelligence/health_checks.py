@@ -2190,3 +2190,197 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
     pool = await get_pool()
     async with pool.acquire() as acquired:
         return await _run(acquired)
+
+# ── ACCOUNT-MODE GRADUATION SWEEP (2026-08-11) ────────────────────────────────────────────
+#
+# Operator, after the get_flag_universe path-(c) rot (a query hardcoding
+# `account_mode='paper'` that went silently dark for ~7 weeks when MAGNA53 graduated to
+# live): *"1) find out if there's more cases like this ... 2) make sure when we graduate a
+# setup from paper to live, everything graduates with it and nothing is left behind to
+# become stale and dead."*
+#
+# The deploy gate (scripts/preflight_account_mode_literals.py, [5o/7]) forces every
+# hardcoded account-mode/phase literal in production SQL to carry a reviewed
+# `mode-ok:` annotation — that makes the INVENTORY complete, but a static check can
+# never see the ROT moment: the literal is correct the day it ships and still
+# annotated the day it stops matching. This sweep watches for the two data-side
+# events that CREATE the rot, and replays the inventory exactly then:
+#
+#   1. PHASE TRANSITION — any change in `mi_strategies.phase` (the graduation
+#      itself). The previous phase map is persisted in the audit log
+#      (`strategy_phase_snapshot`); a diff announces ONCE (the snapshot advancing
+#      IS the dedupe) with the pinned-literal inventory as the review checklist.
+#      This is the day-one catch: the known case would have surfaced the night of
+#      2026-06-22 instead of 7 weeks later.
+#   2. DORMANT BOOK — an account_mode book in mi_live_trades with a real history
+#      (≥30 rows) that has written NOTHING in 21+ days while another book is
+#      active, AND code still pins queries to it. Announced once per (table,
+#      mode) EVER (dead-column sweep pattern: the audit log is the dedupe state).
+#      This is the backstop for a graduation done any way that skips the
+#      registry, and it re-fires the review if an annotated pin outlives its era.
+#
+# ⚠ SILENT on a healthy day BY DESIGN: no phase change + no newly dormant pinned
+# book → no Telegram, no audit rows beyond the rolling snapshot baseline. Both
+# checks are binary and conjunctive — near-impossible to false-positive (a guard
+# that always fires is not a guard, CLAUDE.md 08-03).
+_GRAD_SNAPSHOT_EVENT = "strategy_phase_snapshot"
+_GRAD_TRANSITION_EVENT = "strategy_phase_transition"
+_DORMANT_BOOK_EVENT = "account_mode_book_dormant"
+_DORMANT_BOOK_DAYS = 21          # ~a month of calendar; long enough that a thin week can't trip it
+_DORMANT_BOOK_MIN_ROWS = 30      # below this the book never really lived — nothing to mourn
+
+
+def _pinned_literal_inventory() -> tuple[list[dict], str | None]:
+    """The gate's annotated-literal inventory (file:line + literal), fail-open.
+
+    Imported from the deploy gate so the checklist the operator sees at a
+    graduation is EXACTLY the set the gate enforces — one scanner, two moments.
+    """
+    try:
+        from scripts.preflight_account_mode_literals import collect_pinned_sites
+        return collect_pinned_sites(), None
+    except Exception as e:  # loud-ok: inventory miss degrades the message, never kills the sweep
+        return [], f"{type(e).__name__}: {str(e)[:120]}"
+
+
+def _format_pinned_sites(sites: list[dict], cap: int = 20) -> list[str]:
+    lines = [f"{s['file']}:{s['line']}  {s['text']}" for s in sites[:cap]]
+    if len(sites) > cap:
+        lines.append(f"… and {len(sites) - cap} more (run scripts/preflight_account_mode_literals.py)")
+    return lines
+
+
+async def run_account_mode_graduation_sweep(conn=None) -> dict[str, Any]:
+    """Announce phase transitions + dormant-but-still-pinned books. Once each, ever.
+
+    Returns {"transitions": [...], "dormant": [...], "baseline": bool, "errors": [...]}.
+    """
+    from agents.market_intelligence.db import get_pool, log_audit_event
+
+    async def _run(c) -> dict[str, Any]:
+        out: dict[str, Any] = {"transitions": [], "dormant": [], "baseline": False,
+                               "errors": []}
+        tg_blocks: list[str] = []
+
+        # ── 1. Phase-transition watch (the graduation moment itself) ────────
+        try:
+            rows = await c.fetch(
+                "SELECT strategy_id, phase FROM mi_strategies ORDER BY strategy_id")
+            current = {r["strategy_id"]: r["phase"] for r in rows}
+            fingerprint = ",".join(f"{k}:{v}" for k, v in sorted(current.items()))
+            prev_row = await c.fetchrow(
+                """
+                SELECT summary FROM mi_audit_log
+                 WHERE event_type = $1
+                 ORDER BY created_at DESC LIMIT 1
+                """, _GRAD_SNAPSHOT_EVENT)
+            if prev_row is None:
+                # First run on this DB: pin the baseline SILENTLY (announcing the
+                # entire registry on day one is noise, not signal).
+                await log_audit_event(_GRAD_SNAPSHOT_EVENT, fingerprint)
+                out["baseline"] = True
+            elif prev_row["summary"] != fingerprint:
+                prev = {}
+                for part in (prev_row["summary"] or "").split(","):
+                    if ":" in part:
+                        k, _, v = part.partition(":")
+                        prev[k] = v
+                changes = [
+                    {"strategy_id": sid,
+                     "old": prev.get(sid, "(new)"),
+                     "new": current.get(sid, "(removed)")}
+                    for sid in sorted(set(prev) | set(current))
+                    if prev.get(sid) != current.get(sid)
+                ]
+                out["transitions"] = changes
+                for ch in changes:
+                    await log_audit_event(
+                        _GRAD_TRANSITION_EVENT,
+                        f"{ch['strategy_id']}: {ch['old']} → {ch['new']}",
+                        json.dumps(ch))
+                # Advance the snapshot — this IS the once-per-transition dedupe.
+                await log_audit_event(_GRAD_SNAPSHOT_EVENT, fingerprint)
+                sites, inv_err = _pinned_literal_inventory()
+                lines = ["🎓 STRATEGY PHASE CHANGE — graduation checklist", "", "```"]
+                lines += [f"{ch['strategy_id']}: {ch['old']} → {ch['new']}" for ch in changes]
+                if sites:
+                    lines.append("")
+                    lines.append("Code still pinned to a mode/phase literal:")
+                    lines += _format_pinned_sites(sites)
+                lines.append("```")
+                lines.append(
+                    "A phase change moves the book a strategy writes to. Every pinned "
+                    "literal above was correct when annotated — re-judge each against "
+                    "the NEW phase map (the get_flag_universe rot class, 7 weeks dark).")
+                if inv_err:
+                    lines.append(f"(inventory scan failed: {inv_err})")
+                tg_blocks.append("\n".join(lines))
+        except Exception as e:  # loud-ok: one leg must not kill the other
+            out["errors"].append(f"phase_watch: {type(e).__name__}: {str(e)[:120]}")
+            logger.warning(f"graduation sweep phase-watch failed: {e}")
+
+        # ── 2. Dormant-book watch (the rot moment, however the flip happened) ──
+        try:
+            today = _now_et().date()
+            cutoff = today - timedelta(days=_DORMANT_BOOK_DAYS)
+            book_rows = await c.fetch(
+                "SELECT account_mode, COUNT(*) AS n, MAX(alert_date) AS last_row "
+                "FROM mi_live_trades GROUP BY account_mode")
+            books = [dict(r) for r in book_rows if r["account_mode"]]
+            active = {b["account_mode"] for b in books if b["last_row"] and b["last_row"] >= cutoff}
+            already = {r["summary"] for r in await c.fetch(
+                "SELECT summary FROM mi_audit_log WHERE event_type = $1",
+                _DORMANT_BOOK_EVENT)}
+            for b in books:
+                mode = b["account_mode"]
+                if mode in active or b["n"] < _DORMANT_BOOK_MIN_ROWS:
+                    continue
+                if not active:
+                    continue  # EVERYTHING quiet = market halt / outage, not a graduation
+                sites, inv_err = _pinned_literal_inventory()
+                # account_mode literals ONLY — a `phase='paper'` pin (boot-gate
+                # prose, terminal-phase migration) does not READ this book and
+                # must not resurrect a dormancy alarm for it.
+                pinned = [s for s in sites
+                          if s["text"].startswith("account_mode")
+                          and s["text"].endswith(f"'{mode}'")]
+                if not pinned:
+                    continue  # dormant book nothing reads = the expected end state
+                key = f"mi_live_trades.{mode}"
+                out["dormant"].append({"table": "mi_live_trades", "mode": mode,
+                                       "last_row": str(b["last_row"]), "rows": b["n"],
+                                       "pinned": len(pinned), "new": key not in already})
+                if key in already:
+                    continue
+                await log_audit_event(
+                    _DORMANT_BOOK_EVENT, key,
+                    json.dumps({"last_row": str(b["last_row"]), "rows": b["n"],
+                                "pinned_sites": len(pinned)}))
+                lines = [f"🪦 DORMANT BOOK STILL PINNED — mi_live_trades '{mode}'", "", "```",
+                         f"last new row: {b['last_row']}  ({b['n']} lifetime rows)",
+                         f"other book(s) active: {', '.join(sorted(active))}",
+                         "",
+                         f"{len(pinned)} quer{'y' if len(pinned) == 1 else 'ies'} still filter to it:"]
+                lines += _format_pinned_sites(pinned)
+                lines += ["```",
+                          "This book stopped moving but code still reads only it — the "
+                          "get_flag_universe class (dark 7 weeks). Re-judge each pin; fix or "
+                          "re-annotate. Announced once, ever."]
+                if inv_err:
+                    lines.append(f"(inventory scan failed: {inv_err})")
+                tg_blocks.append("\n".join(lines))
+        except Exception as e:  # loud-ok: one leg must not kill the other
+            out["errors"].append(f"dormant_book: {type(e).__name__}: {str(e)[:120]}")
+            logger.warning(f"graduation sweep dormant-book failed: {e}")
+
+        if tg_blocks:
+            from agents.market_intelligence.briefing import send_telegram_message
+            for block in tg_blocks:
+                await send_telegram_message(block)
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await get_pool()
+    async with pool.acquire() as acquired:
+        return await _run(acquired)

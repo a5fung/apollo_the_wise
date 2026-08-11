@@ -622,7 +622,7 @@ async def build_sell_discipline_section(
                    count(*) FILTER (WHERE partial_taken) AS partials,
                    count(*) FILTER (WHERE stop_above_entry_ever) AS stop_above
             FROM mi_sell_discipline_records
-            WHERE account_mode = 'live' AND pnl_attribution IS NULL
+            WHERE account_mode = 'live' AND pnl_attribution IS NULL  -- mode-ok: exit-discipline evidence is the real-money book by definition (#508)
         """)
         # ⚠ REGIME FRAME — read this before changing the join (#508 verify, 2026-08-08).
         # This used to RECONSTRUCT regime by joining mi_market_regime on alert_date. That
@@ -644,7 +644,7 @@ async def build_sell_discipline_section(
             SELECT COALESCE(t.regime, '?') AS regime, count(*) AS n, sum(r.realized_r) AS kept
             FROM mi_sell_discipline_records r
             JOIN mi_live_trades t ON t.id = r.trade_id
-            WHERE r.account_mode = 'live' AND r.pnl_attribution IS NULL
+            WHERE r.account_mode = 'live' AND r.pnl_attribution IS NULL  -- mode-ok: exit-discipline evidence is the real-money book by definition (#508)
             GROUP BY 1 ORDER BY n DESC, regime
         """)
         cohorts = await conn.fetch("""
@@ -704,7 +704,7 @@ async def build_sell_discipline_section(
                    count(*) FILTER (WHERE p1_exit_r IS DISTINCT FROM baseline_exit_r) AS p1_diff,
                    count(*) FILTER (WHERE p2_exit_r IS NOT NULL
                                       AND p2_exit_r IS DISTINCT FROM baseline_exit_r) AS p2_diff
-            FROM mi_pivot_stop_shadow WHERE account_mode = 'live'
+            FROM mi_pivot_stop_shadow WHERE account_mode = 'live'  -- mode-ok: exit-discipline shadow tracks the real-money book by definition (#508)
         """)
 
     open_lines = []

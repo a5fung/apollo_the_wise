@@ -3121,6 +3121,25 @@ async def _post_nightly_audit_job():
         logger.error(f"Dead-column sweep failed: {e}", exc_info=True)
         await notify_job_failure("dead_column_sweep", str(e))
 
+    # ACCOUNT-MODE GRADUATION sweep (2026-08-11): a hardcoded `account_mode`/`phase` literal
+    # in a query is correct the day it ships and rots the day a strategy graduates — the
+    # get_flag_universe paper-pin sat dark ~7 weeks after MAGNA53 went live 6/22. Static
+    # gate [5o/7] forces every such literal to carry a reviewed `mode-ok:` annotation (the
+    # inventory); THIS sweep replays that inventory at the only moments rot can happen:
+    # any mi_strategies.phase change (announced once — the audit-log snapshot advancing is
+    # the dedupe) and a pinned book going dormant 21+ days while another moves (announced
+    # once per book ever, the dead-column pattern). Silent on a healthy day by design.
+    try:
+        from agents.market_intelligence.health_checks import run_account_mode_graduation_sweep
+        gs = await run_account_mode_graduation_sweep()
+        logger.info(
+            f"Account-mode graduation sweep: {len(gs['transitions'])} phase transition(s), "
+            f"{len(gs['dormant'])} dormant pinned book(s) "
+            f"({sum(1 for d in gs['dormant'] if d['new'])} new), {len(gs['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Account-mode graduation sweep failed: {e}", exc_info=True)
+        await notify_job_failure("account_mode_graduation_sweep", str(e))
+
     # Row-count DRIFT sweep (#340): a hand-pinned `expected_min_rows` rots silently — when the real
     # distribution steps down legitimately the job sits `empty_result` forever and the red light
     # stops meaning anything (#286: nightly_data_pull red EVERY market day for 2+ weeks). Flags a

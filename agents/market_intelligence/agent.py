@@ -4174,7 +4174,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # mi_live_trades: "open" = filled + remaining_shares > 0
             table = "mi_live_trades"
             entry_col = "entry_price"
-            where_clauses.append("account_mode = 'live'")   # #447: real-money book only (paper is dormant/legacy)
+            where_clauses.append("account_mode = 'live'")   # mode-ok: #447 real-money book only (paper is dormant/legacy)
             if ticker:
                 where_clauses.append(f"ticker = ${len(params)+1}")
                 params.append(ticker.upper())
@@ -4238,7 +4238,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
                         COUNT(*) FILTER (WHERE status IN ('skipped','cancelled','order_failed')) as filtered_count
                     FROM mi_live_trades
-                    WHERE account_mode = 'live'
+                    WHERE account_mode = 'live'  -- mode-ok: #447 real-money book only
                 """)
             else:
                 totals = await conn.fetchrow("""
@@ -6611,7 +6611,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            catalyst_quality, exits, stop_order_id
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
-                      AND account_mode = 'live'
+                      AND account_mode = 'live'  -- mode-ok: #447 real-money book only
                     ORDER BY alert_date ASC
                 """)
                 pending_rows = await conn.fetch("""
@@ -6619,7 +6619,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            orb_low, stop_price, ep_score, catalyst_quality
                     FROM mi_live_trades
                     WHERE status IN ('order_placed', 'pending_confirmation')
-                      AND account_mode = 'live'
+                      AND account_mode = 'live'  -- mode-ok: #447 real-money book only
                     ORDER BY alert_date ASC, ticker
                 """)
                 closed_rows = await conn.fetch("""
@@ -6627,7 +6627,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            exits, ep_score, closed_at
                     FROM mi_live_trades
                     WHERE status = 'closed'
-                      AND account_mode = 'live'
+                      AND account_mode = 'live'  -- mode-ok: #447 real-money book only
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 5
                 """)
@@ -6637,7 +6637,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) AS losers,
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized
                     FROM mi_live_trades
-                    WHERE account_mode = 'live'
+                    WHERE account_mode = 'live'  -- mode-ok: #447 real-money book only
                 """)
                 # Per-ticker closed-attempt history — feeds open-row "prior
                 # P&L" and closed-row "N attempts" suffixes. Bounded query
@@ -6652,7 +6652,7 @@ class MarketIntelligenceAgent(BaseAgent):
                                COALESCE(SUM(total_pnl), 0) AS realized
                         FROM mi_live_trades
                         WHERE status = 'closed' AND ticker = ANY($1)
-                          AND account_mode = 'live'
+                          AND account_mode = 'live'  -- mode-ok: #447 real-money book only
                         GROUP BY ticker
                     """, relevant_tickers)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
@@ -6830,7 +6830,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            status, skip_reason, orb_high, orb_low, atr_14
                     FROM mi_live_trades
                     WHERE status IN ('skipped', 'cancelled', 'order_failed')
-                      AND account_mode = 'live'   -- #447: live book (consistent w/ the main summary)
+                      AND account_mode = 'live'   -- mode-ok: #447 live book (consistent w/ the main summary)
                     ORDER BY alert_date DESC, ticker
                     LIMIT 15
                 """)
@@ -6859,7 +6859,7 @@ class MarketIntelligenceAgent(BaseAgent):
                            exits, ep_score, closed_at
                     FROM mi_live_trades
                     WHERE status = 'closed'
-                      AND account_mode = 'live'   -- #447: live book (consistent w/ the main summary)
+                      AND account_mode = 'live'   -- mode-ok: #447 live book (consistent w/ the main summary)
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 20
                 """)
@@ -7226,7 +7226,7 @@ async def startup():
             mismatched = await conn.fetch("""
                 SELECT strategy_id, phase, live_real_enabled
                 FROM mi_strategies
-                WHERE enabled = TRUE AND phase = 'live'
+                WHERE enabled = TRUE AND phase = 'live'  -- mode-ok: the creds boot-gate is ABOUT the live phase itself
             """)
         # EXECUTION-concern (#256 W2): the missing-live-creds risk applies only
         # to a process that actually places orders. An intelligence container
@@ -7234,12 +7234,12 @@ async def startup():
         if mismatched and not _ENABLE_LIVE and runs_execution_jobs():
             ids = ", ".join(r["strategy_id"] for r in mismatched)
             msg = (
-                f"BOOT BLOCKED: strategies at phase='live' with ENABLE_LIVE_MODE=false: "
-                f"[{ids}]. The dual-account architecture routes phase='live' through "
+                f"BOOT BLOCKED: strategies at phase='live' with ENABLE_LIVE_MODE=false: "  # mode-ok: prose in an error message, not a filter
+                f"[{ids}]. The dual-account architecture routes phase='live' through "  # mode-ok: prose in an error message, not a filter
                 f"the LIVE Alpaca client, but ALPACA_LIVE_API_KEY is not set under "
                 f"ENABLE_LIVE_MODE=false. Fix: either set ENABLE_LIVE_MODE=true + "
                 f"provide ALPACA_LIVE_API_KEY/SECRET_KEY, OR downgrade these "
-                f"strategies via: UPDATE mi_strategies SET phase='paper' "
+                f"strategies via: UPDATE mi_strategies SET phase='paper' "  # mode-ok: suggested operator SQL in an error message, not a filter
                 f"WHERE strategy_id IN ({ids})"
             )
             await log_audit_event(

@@ -4643,7 +4643,7 @@ async def check_position_coverage() -> dict:
         trades = await conn.fetch("""
             SELECT id, ticker, remaining_shares, account_mode
             FROM mi_live_trades
-            WHERE status = 'filled' AND remaining_shares > 0 AND account_mode = 'live'
+            WHERE status = 'filled' AND remaining_shares > 0 AND account_mode = 'live'  -- mode-ok: real dollars only by design (see docstring)
         """)
 
     examined = 0

@@ -9,6 +9,13 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 ---
 
 
+### 2026-08-09 — measure the guard before building it (graduated from CLAUDE.md 2026-08-11)
+
+- Specced a delegation gate, measured 37 session-days, did NOT build it (complaint days sit inside
+  the normal range — best achievable precision 33%). Routing declaration + advisory ledger instead;
+  why it can't be gated: commit `f578a54`.
+
+
 ### 2026-08-03 — the week's lesson: correct code, wrong surface (graduated from CLAUDE.md 2026-08-08)
 
 - **Four defects that week shared one shape** — the code was right and the thing carrying it was

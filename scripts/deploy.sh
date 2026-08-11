@@ -451,6 +451,23 @@ if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_exec_deploy_
 fi
 
 echo ""
+echo "=== [5o/7] Preflight account-mode-literal check (get_flag_universe 7-weeks-dark rot class) ==="
+# Run on host (stdlib ast, no container — the [5h/7] pattern). A query hardcoding
+# `account_mode = 'paper'` (or `phase = '...'`) is correct the day it ships and rots
+# the day the strategy GRADUATES — the known case sat dark ~7 weeks after MAGNA53
+# went live 2026-06-22. Every such literal in agents/ core/ channels/ shared/ must
+# carry a reviewed `mode-ok: <reason>` on its line; the annotated inventory is then
+# replayed by the nightly graduation sweep (health_checks) whenever a phase actually
+# changes or a pinned book goes dormant — the moments no static check can see.
+if ! python3 scripts/preflight_account_mode_literals.py; then
+  echo ""
+  echo "DEPLOY FAILED — a hardcoded account-mode/phase literal was introduced without"
+  echo "a reviewed escape. Resolve the mode dynamically, drop the filter, or annotate"
+  echo "a deliberate book-pin with '# mode-ok: <reason>' / '-- mode-ok: <reason>'."
+  exit 19
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
 # #324: re-surface the execution-runtime drift as the LAST line — the DEPLOY OK above is
 # exactly what masked the LZB silent-dark deploy. Impossible to miss here.
