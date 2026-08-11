@@ -7770,34 +7770,56 @@ reviews:
     cross_refs: ["task #353", "task #394", consolidation_anticipate_paper_graduation]
 
   - review_id: consolidation_unification_review
-    title: "#354 ADR 0026 C5 — Confirm(b) entry-shadow first settled-R readout (the go-live trigger)"
+    title: "#354 ADR 0026 C5 — Confirm(b) round 2: does the edge hold at >=20 DISTINCT entry days (operator bar 2026-08-09)?"
     question: >-
-      ADR 0026 D1 retired flag_continuation as a standalone strategy and absorbed its breakout-entry idea
-      as the consolidation family's Confirm (b) entry mode — `anticipation.py::confirm_signal_at`, firing
-      dual-mode alongside Anticipate on the signed §2 universe (`scheduler.py:3494-3501`), writing
-      `entry_mode='confirm'` shadow rows to `mi_consolidation_entry_shadow`. Once enough settle: does
-      Confirm show a real forward edge (median/mean realized_r, win%, expectancy — outlier-robust, not
-      carried by 1 name, same bar as `consolidation_anticipate_paper_graduation`'s F1)? `entry_mode='ur'`
-      is included in the predicate for when ADR 0026 D3/C3 (undercut->WATCH_UR) lands and starts writing
-      U&R rows — it will currently always read 0 (the `mi_cons_entry_shadow_mode_chk` CHECK constraint
-      only allows 'anticipate'/'confirm' today; C3 has not landed). Realized-R is NEVER blended across
-      modes (ADR 0013:91) — review Confirm and U&R as separate cohorts, not combined with Anticipate's.
+      ROUND 1 ANSWERED 2026-08-09 (operator ruling, commit e2a721c: "no grad, next in line is htf and
+      it's actually similar to htf") — findings re-verified against prod 2026-08-11: settled Confirm
+      N=107, expectancy +0.23R/trade, mean +0.230R, median +0.225R, win 62.6% (realized_r>0),
+      99 distinct tickers. Outlier-carry PASSES — median~mean; drop-the-largest-trade holds
+      (mean +0.214R / median +0.207R / 62.3% win); drop-the-heaviest-day holds (N=34: mean +0.383R,
+      median +0.606R, 70.6% win) — the OPPOSITE failure shape from Anticipate's 8/9 park (whose mean
+      was carried by a few winners over a -0.84R median). What killed graduation is DAY CONCENTRATION:
+      107 rows = only 9 distinct entry days, 73/107 on 2026-06-26 alone and 103/107 from the
+      pre-un-wire June week (6/22-6/29) — one tape on one morning is one observation, not 73. The
+      post-7/14-re-wire slice (the CURRENT wiring) had only N=4 settled over 3 days at -0.26R mean /
+      25% win — far too thin to read, but the headline number is 96 percent OLD wiring. U&R cohort =
+      0 rows as predicted (mi_cons_entry_shadow_mode_chk still only allows anticipate/confirm;
+      ADR 0026 C3 unlanded).
+      ROUND 2 QUESTION: at >=20 DISTINCT settled entry days, does Confirm hold expectancy >=+0.20R
+      AND win >=55%, still holding without the heaviest day (the operator's recorded 8/9 bar) — with
+      the post-7/14 re-wire cohort read SEPARATELY (it must carry its own weight, not coast on the
+      June tape)? Realized-R never blended across modes (ADR 0013:91); U&R separate if C3 ever lands.
     predicate_sql: >-
-      SELECT COUNT(*) FROM mi_consolidation_entry_shadow
+      SELECT COUNT(DISTINCT entry_date) FROM mi_consolidation_entry_shadow
       WHERE entry_mode IN ('confirm', 'ur') AND outcome IS NOT NULL;
-    threshold: 10
-    # Date made NON-BLOCKING 2026-07-26 (operator: data-readiness triggers, not the calendar).
-    # Firing is AND, so a future date can only DELAY a review whose evidence is already in.
-    # At unblock: count=103 vs threshold=10.
+    threshold: 20
+    # Re-gated 2026-08-11: predicate now counts DISTINCT ENTRY DAYS (was raw rows >= 10 — met since
+    # late June, which is why this kept re-surfacing READY after the 8/9 ruling was already in).
+    # Data-derived, not calendar: 9 settled days at re-gate + 7 more days already in flight
+    # (14 unsettled rows, entries 2026-07-27..2026-08-10; ~12-bar settle lag) -> ~16 once those
+    # settle; needs ~4 more distinct fire days beyond that. Confirm is STILL ACCRUING — the 8/9
+    # anticipate park un-wired anticipate only; the scan records Confirm-only since (commit 72f2b18).
+    # earliest_review_date stays past/non-blocking (operator 2026-07-26 ruling: data-readiness
+    # triggers, not the calendar) — the predicate alone gates round 2.
     earliest_review_date: 2026-07-26
     action_when_ready: >-
-      Review the Confirm cohort (and U&R cohort separately, if any rows exist by then): median realized_r,
-      win%, expectancy, outlier-carry check. IF a real edge holds -> CHANGE_PROCESS + operator sign-off ->
-      the shadow->paper money gate is `#397` (in parallel with live magna53/HTF, same pattern as
-      `htf_breakout_paper_graduation`). IF thin/negative -> iterate the entry gates or extend the shadow
-      window, same disposition menu as `consolidation_anticipate_paper_graduation`'s NO-GO (2026-07-12).
+      Re-run the round-1 readout (median AND mean AND win% together — never the mean alone —
+      expectancy, distinct days + distinct tickers, outlier-carry, old-wiring vs post-7/14-re-wire
+      split). GO bar = the operator's 8/9 ruling: expectancy >=+0.20R AND win >=55% over >=20
+      DISTINCT DAYS, still holding without the heaviest day. BEFORE spending a second validation
+      cycle, resolve his 8/9 structural point: Family-A Confirm and HTF's breakout entry are both
+      "coil after a run, buy the break" — possibly ONE edge wearing two names; #397 (HTF money gate,
+      NEXT IN LINE per the ruling) carries the check-the-overlap note. Standing 7/29 priority ruling
+      also applies: no new LIVE setups while EP is unprofitable (shadow->paper rungs may still move).
+      IF the bar holds -> CHANGE_PROCESS + operator sign-off -> the #397-pattern money gate.
       NEVER auto-flip — paper/live is a real-money-path decision (THE LINE).
-    status: pending
+    status: deferred
+    deferred_reason: >-
+      Operator NO-GO 2026-08-09 on effective sample size: 9 distinct entry days (73/107 rows on one
+      day) — edge positive and outlier-robust, but one-tape-heavy. Higher data-derived bar set via
+      the predicate/threshold above; deliberately NOT a calendar deferral (no deferred_until — the
+      distinct-days predicate is the re-gate).
+    deferred_on: 2026-08-09
     added_on: 2026-07-19
     cross_refs: ["task #354", "docs/decisions/0026-consolidation-family-unification.md", "task #397",
                  consolidation_anticipate_paper_graduation, htf_breakout_paper_graduation]
