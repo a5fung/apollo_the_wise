@@ -573,3 +573,46 @@ trades, verified twice.
 **Reversion-flag**: NEW.
 
 **Status**: shipped (documentation only), no field validation applicable.
+
+---
+
+## 2026-08-11 — OPERATOR RULING: no peak-lock giveback floor. We let winners run.
+
+**Asked and answered the same evening.** After the nightly sell-discipline digest showed the live
+cohort reaching +1.5R on average and keeping −0.9R, I explained the peak-lock giveback floor
+(ADR 0023 Card 1 / A3, `exit_logic.giveback_floor` — default-OFF) and asked whether to bring
+evidence for arming it. His answer, verbatim:
+
+> **"no, we let winners run"**
+
+### What is ruled OUT
+Arming `giveback_floor` — a stop that cannot fall below a FRACTION OF THE PEAK GAIN once a trade
+runs past an arm threshold. It stays DEFAULT-OFF. **Do not re-propose it on the strength of a
+reached-vs-kept table**; that table is the reason it looks attractive and the ruling was made with
+that table in hand.
+
+### Why — the reasoning behind the ruling, so it is not re-litigated
+The methodology this system implements (Qullamaggie / Bonde / Stamatoudis) is carried by a small
+number of very large winners. A floor set at a fraction of peak gain does its work by CUTTING THE
+RIGHT TAIL: it converts the trade that would have run to +10R into one that stops at the floor on
+the first sharp pullback. The giveback statistic cannot see that cost, because it only measures
+what was reached and kept on trades we already exited — it has no column for the trade that would
+have kept going. **Optimising the reached→kept gap directly optimises AGAINST the tail the whole
+edge depends on.** He has flagged this risk before, on the 2R rule: *"if this +2R and especially
+breakeven stops ends up killing our chance of big winners, then it would have failed its goal."*
+
+### What is NOT ruled out — the distinction matters
+This is not "no exit rules". Already accepted and LIVE:
+- the **+2R partial** — take a third off at the target (fired correctly on ABCL 2026-08-11);
+- **breakeven at partial** — the remainder cannot lose money;
+- the **SMA10/20 trail** — it rises with the stock's own structure rather than with our P&L, and
+  by construction it never caps a runner: it only follows one.
+
+The accepted shape is therefore: **bank a piece, remove the risk, then let the rest run behind a
+trail that follows the STOCK.** What is rejected is a stop that follows OUR GAIN.
+
+### Live evidence at the moment of the ruling
+PLTR: entry $149.05, peak +5.3R, now +4.6R on 4 shares, stop at breakeven, SMA10 $144.18 (still
+below entry, so breakeven is the higher protection). ABCL: entry $8.96, +1.5R, 57 shares, stop at
+breakeven, SMA10 $6.27 — the trail will not engage for some time on a name that gapped off a low
+base. Under a half-of-peak floor PLTR would have been capped near +2.6R.
