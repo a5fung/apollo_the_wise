@@ -4167,19 +4167,24 @@ reviews:
       plumbing works: 76 9M-only names entered the flag universe
       same-day. Stage 2 verifies the alpha-capture EFFECT — does
       the basing/tightening lifecycle catch the anticipation class.
-    predicate_sql: |
-      -- Earliest viable: 21 trading days after the first R3
-      -- stop-out fires (post-2026-05-18 market open). Phase 7
-      -- ship date 2026-05-17 + 21 trading days ≈ 2026-06-18.
-      -- Predicate: ≥5 mi_flag_candidates rows tagged
-      -- `magna53_failed_r3` or `ninem_universe_watch` that have
-      -- aged through ≥21 days of flag-detector evaluation.
-      SELECT COUNT(*) FROM mi_flag_candidates
-      WHERE 'magna53_failed_r3' = ANY(universe_sources)
-         OR 'ninem_universe_watch' = ANY(universe_sources)
-         AND scan_date <= CURRENT_DATE - 21;
-    threshold: 30
-    earliest_review_date: 2026-07-25  # bumped 7/21 (operator: pull all into next week)
+    # ORIGINAL predicate/threshold/date (fired, measured 2026-08-11 — see the
+    # STAGE 2 comment block + the NEW predicate_sql below, which supersedes
+    # this one on re-gate). Kept as a comment for provenance, not a live key
+    # (a second live predicate_sql/threshold/earliest_review_date would be a
+    # duplicate-key — this file's own pre-commit gate bans that):
+    #   predicate_sql: |
+    #     -- Earliest viable: 21 trading days after the first R3
+    #     -- stop-out fires (post-2026-05-18 market open). Phase 7
+    #     -- ship date 2026-05-17 + 21 trading days ≈ 2026-06-18.
+    #     -- Predicate: ≥5 mi_flag_candidates rows tagged
+    #     -- `magna53_failed_r3` or `ninem_universe_watch` that have
+    #     -- aged through ≥21 days of flag-detector evaluation.
+    #     SELECT COUNT(*) FROM mi_flag_candidates
+    #     WHERE 'magna53_failed_r3' = ANY(universe_sources)
+    #        OR 'ninem_universe_watch' = ANY(universe_sources)
+    #        AND scan_date <= CURRENT_DATE - 21;
+    #   threshold: 30
+    #   earliest_review_date: 2026-07-25  # bumped 7/21 (operator: pull all into next week)
     action_when_ready: |
       Run scripts/ep_delayed_capture_audit.py against the
       post-P7.2-ship window. Compare to baseline:
@@ -4191,7 +4196,146 @@ reviews:
       `unqualified` ≥80% of time, the universe expansion may be too
       noisy — consider tightening the 14-day window OR adding a
       pre-filter on the 9M side.
+
+      ⚠ 2026-08-11: do NOT run the script vanilla and trust its number.
+      Its cohort window is rolling `CURRENT_DATE - 60`, which right-
+      censors any alert whose 21d forward window hasn't elapsed —
+      bound the cohort to `alert_date <= CURRENT_DATE - 21` (and
+      `>= 2026-05-18` for post-ship-only) before reading the capture
+      rate. Vanilla read 17.9%; the same logic bounded to a mature
+      window read 51.0%. See the STAGE 2 comment block below.
+    # ── STAGE 2 MEASURED 2026-08-11 — RE-GATED, not "done": P7.2 was dark for
+    # most of the window, so the combined question can't be fairly closed. ──
+    #
+    # RUN: scripts/ep_delayed_capture_audit.py on prod, ship = 2026-05-17
+    # (commits 370aed1/4022df7/9cb61b5/f025737/f82af7c, both env flags
+    # default-true, confirmed unset in prod .env; mi_flag_candidates shows
+    # first real firing 2026-05-18/05-22, so the ship date is live, not just
+    # committed). The vanilla run uses a rolling CURRENT_DATE-60 window; today
+    # that window is dominated by very recent alerts (46 of 96 fell in the
+    # last 8 days) whose 21d forward-capture window hasn't elapsed, so the raw
+    # run reads 17.9% (10/56) — a right-censoring artifact, not the answer.
+    # Corrected read bounds the cohort to 2026-05-18..2026-07-21 (day after
+    # ship through the last date with a FULLY ELAPSED 21d forward window as of
+    # today), same join logic, verified byte-for-byte against the live
+    # vanilla run on its own window (96/95/56/10 both ways) before trusting it.
+    #
+    # MAGNA53 alpha-capture (mature post-ship window, N=143 distinct tickers /
+    # 33 distinct alert days; 151 HIGH alerts, 148 failed Day 1, 104 "alpha"
+    # names that ran +5%+ within 21d — the population delayed capture targets):
+    #   53/104 = 51.0% picked up by SOME downstream detector within 21 days,
+    #   vs the 34.2% (26/76) pre-ship baseline (analysis/2026-05-16/
+    #   delayed_ep_audit.md, window 2026-03-17..2026-05-16). Real lift, but:
+    #     - baseline's raw rows are GONE from mi_ep_alerts (90d retention
+    #       purge — table's earliest row is now 2026-05-11); it cannot be
+    #       independently re-derived, only cited as originally recorded. Its
+    #       own window was itself right-censored for its last ~3 weeks, so
+    #       34.2% likely UNDERSTATES the true pre-ship rate — the true lift is
+    #       probably smaller than 51.0% vs 34.2% implies.
+    #     - the "capture" bar is loose: of the 104 alpha names, only 49 (47%)
+    #       ever reached WATCH-or-better on the flag board within their 21d
+    #       window, 18 (17%) reached TIGHTENING+, 3 (3%) COILED+, and ONE (1%)
+    #       reached TRIGGERED (an actual entry signal). Most of the credit is
+    #       the loose WATCH stage or the 9M-EP/sugar-baby/next-EP detectors,
+    #       not a completed flag entry.
+    #
+    # P7.2 (magna53_failed_r3 carryforward) — DEAD SINCE 2026-06-22, BUG FOUND
+    # AND CAUSALLY CONFIRMED (not just correlated with the paper→live
+    # cutover): get_flag_universe() path (c) in
+    # agents/market_intelligence/db.py hardcodes account_mode='paper' when
+    # reading mi_live_trades for skip_reason='block:r3_reentry_disabled'.
+    # Checked directly whether the underlying R3 block-events still happen
+    # live (they could have just stopped) —
+    #   SELECT account_mode, COUNT(*), MIN(alert_date), MAX(alert_date)
+    #   FROM mi_live_trades WHERE skip_reason='block:r3_reentry_disabled'
+    #   GROUP BY 1
+    #   → paper: 8 rows, 2026-05-21..2026-06-17 (matches the 8 tickers the
+    #     carryforward admitted). live: 13 rows / 13 distinct tickers,
+    #     2026-07-06..2026-08-07 — the R3 mechanism is alive and firing in
+    #     live mode, the carryforward query is just blind to it. Those 13
+    #     have already been MISSED, not "waiting": path (c) only looks back 7
+    #     days from each scan_date, so a fix ships-forward only — it would
+    #     have caught none of the 7/06-7/31 events even fixed today. A fix
+    #     starts a fresh count.
+    #   Direct-overlap check (do any of the 8 magna53_failed_r3 tickers show
+    #   up in the 53 captures counted above?): RLAY, DELL, DY, NVTS, RUM,
+    #   JBL, NAVN, NRIX all fall inside the mature cohort (they originate
+    #   from MAGNA53 HIGH alerts by construction). Of these, DELL (+12.3%),
+    #   NAVN (+6.6%), and RLAY (both 5/21 and 6/02 alerts, +16.6%/+6.3%) are
+    #   alpha names that WERE flag-captured — 4 of the 53 captures (7.5%)
+    #   trace directly to the carryforward mechanism, entirely from the
+    #   pre-cutover weeks (5/21-6/17) when it was still active. Zero
+    #   additional captures trace to it since 2026-06-22.
+    # MAGNA53 graduated from paper to live trading ~2026-06-22 (mi_live_trades
+    # account_mode flips paper→live that week and stays live since); the
+    # carryforward query has matched nothing since. Lifetime total: 8 distinct
+    # tickers ever admitted via magna53_failed_r3 (40 rows, 24 scan days), ALL
+    # before 2026-06-22; zero in the ~7 weeks since — more than half the
+    # post-ship measurement window. P7.2 was therefore effectively UNTESTED,
+    # not tested-and-found-wanting. Its DIRECT contribution to the 51.0% lift
+    # is small (4/53 captures, 7.5%, all pre-cutover — see overlap check
+    # below) and zero since 2026-06-22; the rest of the lift is not
+    # attributable to it. NOT FIXED (this was a measurement-only pass — no
+    # code/detection changes made).
+    #
+    # P7.3b (ninem_universe_watch) — firing continuously and healthy in raw
+    # volume (518 distinct tickers / 6,134 rows across all 60 scan days), but
+    # weaker on attribution than the raw stage-distribution suggests:
+    #   Flag-stage distribution, mature 9M-origin tickers (first tagged >=21d
+    #   ago, N=418): unqualified/INVALIDATED-only 182 (43.5%), WATCH-best 102
+    #   (24.4%), TIGHTENING-best 97 (23.2%), COILED-best 29 (6.9%),
+    #   TRIGGERED-best 8 (1.9%). So yes — 9M-origin names DO progress through
+    #   the lifecycle in a real minority of cases (32.1% reach TIGHTENING+).
+    #   BUT 362/418 (86.6%) of those mature 9M-origin tickers ALSO carry a
+    #   pre-existing organic RS tag (top-200 RS / RS-1m>=80 / 25% momentum
+    #   burst) at some point, so they likely enter the flag universe anyway.
+    #   Only 56/418 (13.4%) are 9M-watch-ONLY names — the true incremental
+    #   universe P7.3b adds; of those, 9 (16%) reach TIGHTENING+. The headline
+    #   32% overstates P7.3b's own incremental contribution.
+    #
+    # TIMING: the mature 151-alert cohort is NOT evenly spread — weekly counts
+    # (2026-05-18 through 2026-07-20 start-of-week buckets): 36, 54, 28, 6, 6,
+    # 8, 1, 5, 4, 3. 118/151 (78%) fall in the first 3 weeks (5/18-6/07), i.e.
+    # the still-paper, P7.2-still-firing regime, before the 6/22 cutover
+    # killed the carryforward. Read 51.0% as mostly a late-May/early-June
+    # number, not a July one.
+    #
+    # VERDICT vs 60-70% target: 51.0% raw clears the review's own <50%
+    # follow-up trigger by a hair, but that clearance isn't trustworthy given
+    # P7.2 never actually ran for most of the window (and the weeks it DID run
+    # dominate the sample anyway), and P7.3b's true incremental share is well
+    # under 32% — file a followup regardless of the raw number. RECOMMEND
+    # (surfacing only, not actioned): fix the account_mode filter in
+    # get_flag_universe() path (c) to accept 'live' (mirrors the same-file 9M
+    # path, which has no such filter and never went dark) — evidence the
+    # underlying events still happen: 13 live-mode R3 block-events since
+    # 2026-07-06, all already missed by the 7-day lookback and un-recoverable,
+    # but proof the mechanism has real live-mode volume to catch going
+    # forward — then let this review re-fire once magna53_failed_r3 has real
+    # fresh activity aged 21+ days.
+    #
+    # ⚠ N over rows: the predicate counted 4,742+ mi_flag_candidates ROWS
+    # (now 4,804), almost all ninem_universe_watch, because of an OR/AND
+    # precedence quirk in the predicate SQL itself (`A OR B AND C` binds as
+    # `A OR (B AND C)` — every magna53_failed_r3 row counts regardless of
+    # age). Effective independent sample for the numbers above: 143 tickers /
+    # 33 days (MAGNA53 side), 418 tickers (9M side).
+    predicate_sql: |
+      -- RE-GATED 2026-08-11: the original predicate can't distinguish fresh
+      -- activity from the frozen pre-2026-06-22 count (magna53_failed_r3 has
+      -- been dark since 2026-06-22 — see comment block above; NOT fixed by
+      -- this review). Gate on genuinely NEW magna53_failed_r3 activity, aged
+      -- >=21 scan days, so it only fires again once the account_mode bug in
+      -- get_flag_universe() path (c) is fixed and has actually run.
+      SELECT COUNT(DISTINCT ticker) FROM mi_flag_candidates
+      WHERE 'magna53_failed_r3' = ANY(universe_sources)
+        AND scan_date > '2026-08-11'
+        AND scan_date <= CURRENT_DATE - 21;
+    threshold: 5  # paper-era rate ~8 tickers/5wk (~1.6/wk); underlying live-mode R3 rate is actually higher (~13 events/4.5wk, ~2.9/wk per the account_mode check above) since events keep happening, just unmatched — so 5 + 21d aging should be reachable within a few weeks of the fix shipping, not the November a threshold-10 read would suggest.
+    earliest_review_date: 2026-09-15  # NOMINAL FLOOR ONLY, not a real estimate — the predicate is the actual gate and stays at 0 indefinitely until path (c)'s account_mode filter is fixed (not done here; THE LINE — no detection/entry-path code changed by this review)
     status: pending
+    regated_on: 2026-08-11
+    regate_kind: predicate
     added_on: 2026-05-17
 
   - review_id: phase3_telemetry_coverage_check

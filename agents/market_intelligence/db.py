@@ -4916,6 +4916,10 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           intraday move get fed into the flag detector's tightness state
           machine to catch the eventual anticipation breakout. Tag:
           `magna53_failed_r3`. Env flag `MAGNA53_FLAG_CARRYFORWARD_ENABLED`.
+          NOT account_mode-scoped (2026-08-11 fix, #p74) — a ticker's chart
+          doesn't care which Alpaca book the R3 stop-out was recorded in;
+          see the query comment for why a mode filter (hardcoded OR
+          resolver-based) is wrong here.
       (d) **9M universe-watch** (P7.3b 2026-05-17, Pradeep methodology) —
           ALL 9M EPs (sugar baby + failed-Day-2 + intraday-only) in last
           14d. Per Pradeep, 9M volume = ~1% of stocks; the event itself
@@ -5015,6 +5019,47 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
             source_map[r["ticker"]] = sources
 
         # ── Path (c): MAGNA53 carryforward (P7.2 2026-05-17) ───────────
+        # No `account_mode` filter — DELIBERATE, not an oversight (#p74
+        # 2026-08-11 fix). This query used to hardcode
+        # `AND account_mode = 'paper'`: correct on 2026-05-17 (MAGNA53 was
+        # paper-only then), silently wrong from ~2026-06-22 once MAGNA53
+        # graduated to live — a hardcoded environment literal in a query
+        # that outlived the environment it described, the same rot class
+        # as hand-pinning a model name (operator ruled against that
+        # 2026-07-30). Measured dark for the full ~7 weeks: 0 tickers
+        # admitted via this path in the trailing 30 days pre-fix.
+        #
+        # The obvious "fix" is resolving the mode from the strategy's
+        # current phase (`resolve_account_mode_for_strategy`) instead of a
+        # literal — REJECTED for this call site, not just unused:
+        #   1. It raises ValueError for phase in {shadow, deprecated}. This
+        #      function assembles paths (a)-(e) in one call; a future
+        #      MAGNA53 demotion/deprecation (9m_day2 already went
+        #      `deprecated` 2026-07-06 — not hypothetical) would take down
+        #      the ENTIRE flag universe, not just this path.
+        #   2. The non-raising alternative (`get_strategy_account_mode`)
+        #      fails open to `current_account_mode()`, which reads the
+        #      `ALPACA_PAPER` env var — reintroducing the exact
+        #      environment-literal rot class this fix removes.
+        #   3. Even if it didn't raise, resolving "today's" mode still
+        #      leaves a 7-day blind spot on any future phase flip: rows
+        #      written under the OLD mode inside the lookback window would
+        #      still be invisible — the original bug in miniature.
+        # A ticker's chart does not care which Alpaca book recorded the R3
+        # stop-out, so the durable fix is: don't filter on mode at all.
+        #
+        # Double-count check: `SELECT DISTINCT ticker` with account_mode
+        # NOT in the select list already collapses a ticker that stopped
+        # out in both books within the window to one row — no literal
+        # duplication. The only residual risk is a DIFFERENT strategy
+        # someday reusing this same skip_reason literal on mi_live_trades
+        # (nothing here scopes to signal_type='magna53' structurally,
+        # `attempt_day1_reentry` in order_manager.py doesn't gate on
+        # signal_type either) — verified empirically clean: every
+        # 'block:r3_reentry_disabled' row in mi_live_trades, across all
+        # history and both modes, has signal_type='magna53' (checked prod
+        # 2026-08-11). Out of scope here (mode resolution only per #p74);
+        # flagged for whoever next touches this path.
         r3_enabled = os.environ.get(
             "MAGNA53_FLAG_CARRYFORWARD_ENABLED", "true"
         ).lower() == "true"
@@ -5026,7 +5071,6 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
                   AND alert_date < $1::date
                   AND status = 'closed'
                   AND skip_reason = 'block:r3_reentry_disabled'
-                  AND account_mode = 'paper'
             """, scan_date)
             for r in r3_rows:
                 source_map.setdefault(r["ticker"], []).append("magna53_failed_r3")
