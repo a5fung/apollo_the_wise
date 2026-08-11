@@ -4641,6 +4641,24 @@ reviews:
       SELECT COUNT(*) FROM mi_themes WHERE theme_date >= CURRENT_DATE - 7;
     threshold: 1
     earliest_review_date: 2026-07-28  # bumped 7/21 (operator: pull all into next week)
+    # ⏱ RE-READ 2026-08-11 — PART BUILT, PART STILL TRUE, and it is now the SAME question as #563.
+    # This entry (2026-05-30) asked for a TOP-DOWN synthesis pass over coordinated RS-slope names
+    # 'or co-gappers same day'. **That capability now EXISTS and is ON**: Lane-2 narrative/co-gap
+    # discovery, v2 registry path flipped live 2026-08-09, first `lane2_decision_record` written
+    # 2026-08-10 (offered ABCL/ACHR/NESR/SLN/TH). So limb 1's BUILD is no longer missing.
+    # ⚠ BUT ITS DIAGNOSIS STILL HOLDS ON TODAY'S BOARD, measured 2026-08-11: the fragmentation it
+    # named is unchanged — 120 themes, mean 2.5 members, 95 of 120 holding <=3. And two live
+    # coverage failures this week are exactly its shape: the 08-07 software cohort gapped together
+    # while belonging to NO theme, and SE (RS 88.5, rank 281, above all MAs, in a retail group the
+    # operator can see) is in NO theme at all.
+    # ➡ DO NOT answer this standalone — it would duplicate work already scoped. **#563 is this
+    # question with a decidable DoD** (of 372 same-day EP pairs over 60 days, 15 formed a theme and
+    # 357 did not — how many of the 357 should have?), and it gates the ranking work (#533) because
+    # a MISSING theme currently means either 'no group' or 'we missed the group' and nothing tells
+    # them apart. Full framing: docs/roadmap/ep_profitability_program.md.
+    # ▶ Re-gated on #563's readout rather than a count: answer there, then close this with that
+    # answer recorded here. Limbs 2 (igniting themes mislabelled FADING) and 3 (anchors on
+    # laggards) have NOT been re-measured since 2026-05-30 and must not be assumed fixed.
     action_when_ready: |
       Design (cross-sector narrative themes the RS-sector clustering can't see):
       1. TOP-DOWN LLM emerging-theme SYNTHESIS pass (the capability gap operator flagged
