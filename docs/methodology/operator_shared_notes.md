@@ -523,48 +523,9 @@ work**. Verbatim:
 > resistance areas and had no strength to break through it, this is where chart structure is
 > important."
 
-### The three claims, separated
-
-1. **A GAP IS A SIGNAL, NOT THE SETUP.** Today a sufficient gap effectively IS the EP, so we
-   overtrade. The gap should open the question; the remaining criteria should answer it.
-2. **"NEGLECTED STOCK GAPPING THROUGH KEY LEVELS" IS NOT IMPLEMENTED.** That is Qullamaggie's
-   actual formulation and we have only the gap half of it. Both words matter — *neglected* (nobody
-   watching it beforehand) and *through key levels* (it clears something, rather than arriving
-   somewhere).
-3. **CHART STRUCTURE IS THE MISSING CRITERION.** Some entries gap INTO congestion or resistance
-   with no strength to break through. Structure decides whether the gap has anywhere to go.
-
-### Why this is credible on our own data, not just methodology
-
-2026-08-11, four alerts, one session:
-- `BW` gapped **34.9%** with RS **1.5** and rank **2397** — near the weakest stock in the
-  universe, below every moving average. Entered. Dead in 56 seconds, −$49.60.
-- `FRMI` gapped 17.0%, RS rank 1661, below every MA. Entered. Dead in 50 seconds, −$31.49.
-- `SE` gapped **10.6%** — the SMALLEST gap of the four — from **above all three moving averages**,
-  RS 88.5, rank 281. Skipped by the gap floor. The operator: *"it's the one i would've monitored
-  for entry myself."*
-
-**Gap size ranked them exactly backwards.** That is claim 1 measured on a live session.
-
-### What this means for #533
-
-The task's question changes from *"which of this morning's alerts should we have taken"* to
-**"which of this morning's alerts was a real EP at all"** — and the candidate features must lead
-with STRUCTURE, not with gap magnitude or catalyst grade:
-- **neglect before the gap** — prior volume vs its own average, prior RS, time since the last
-  large move, distance below highs;
-- **what the gap CLEARS** — does it take price through a prior high / consolidation / the 52-week
-  high, or land inside a prior range with supply overhead;
-- **position relative to structure** — above or below the 10/20/50 SMAs at the moment of the gap
-  (SE was above all three; the three we traded were below all three).
-
-⚠ SETUP vs FAMILY discipline: this does not rename anything. MAGNA53 EP keeps its buy point (ORB
-high) and stop (ORB low). What is in question is **admission** — which names get to be called an
-EP in the first place.
-
-⚠ Any change to admission criteria is a detection-criterion change: CHANGE_PROCESS + N≥10 +
-operator sign-off. The immediate work is to MEASURE whether these structural features separate
-outcomes, not to tighten anything.
+**Analysis, the three claims separated, the 08-11 evidence, and how this reframes #533: merged into
+`docs/roadmap/ep_profitability_program.md` §2 (Selection/Ranking) and the GOAL section — not
+duplicated here. That doc is the single place this question's current answer lives.**
 
 ---
 
@@ -586,45 +547,6 @@ I reported "structure does not separate" off 244 settled alerts. His response, v
 > fear is that our winrate is 10% of lower now because we are not selective enough. Then there's
 > also alternate delay entries."
 
-### What I got wrong, stated plainly
-
-I tested **one crude binary proxy** — "is close above all three SMAs" plus two fixed lookback
-high-clears — and reported the null as if it bore on STRUCTURE. It does not. **A null on a bad
-proxy is not evidence against the concept**, and I should have said so in the readout instead of
-leading with "no".
-
-### His definition of structure — CONTEXTUAL, and this is the part a fixed feature cannot capture
-
-- **The lookback is not fixed.** You go further back when the chart shows *multiple failed tests*
-  of a level; you do not when no such tests exist. A hard 20d/60d window answers a different
-  question than the one he asks of a chart.
-- **"Above key moving averages" is conditional, not required.** Sometimes you want the gap to
-  clear them; sometimes you do not, because the average is *too far away for that to be
-  realistic*. So the same feature flips sign depending on distance.
-- Structure is **part science, part art**. That is not a reason to give up on measuring it — it is
-  a reason to stop encoding it as one binary column.
-
-### The design correction — the one that actually matters
-
-**You cannot learn what a winner looks like from a cohort with no winners.** Our 19 closed live
-trades are 19 losers; the readout tried to find separation inside a population that has only one
-outcome. His fix, and it is the right one:
-
-> "The better way to see this is probably to have a few winners to compare it with."
-
-That means the reference set must come from OUTSIDE our own fills — real EP winners from market
-history — and the question becomes **"what do real EP winners look like, and how many of our
-alerts look like that?"** rather than "did our structured alerts beat our unstructured ones".
-
-### The goal, in his numbers
-
-- **Premise: be MORE SELECTIVE.** Filter the universe down to *potential real EPs* using ALL
-  factors — including ones we have not identified yet.
-- **A realistic target win rate is ~20%.**
-- **His fear: we are at 10% or below because we are not selective enough.** Measured reality is
-  worse than the fear: **0 of 19 closed live trades won.**
-- Structure is ONE criterion among several, not the answer on its own.
-- **And delayed entries are a parallel path to the same goal** — see #562, where "delayed entry" is
-  a FAMILY with an open horizon, not a single setup.
-
-⚠ Nothing here changes admission criteria. It changes what the next measurement should be.
+**Analysis (what I got wrong, his contextual definition of structure, the design correction, his
+win-rate numbers): merged into `docs/roadmap/ep_profitability_program.md` §2 (Selection/Ranking)
+and the GOAL section — not duplicated here.**
