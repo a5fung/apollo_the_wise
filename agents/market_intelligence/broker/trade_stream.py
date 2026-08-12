@@ -1205,12 +1205,16 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     # 2. Stop-loss leg cancellation — signals open position is now unprotected
     async with pool.acquire() as conn:
         stop_trade = await conn.fetchrow("""
-            SELECT id, ticker, remaining_shares, stop_price FROM mi_live_trades
+            SELECT id, ticker, remaining_shares, stop_price, entry_price, hard_stop
+            FROM mi_live_trades
             WHERE stop_order_id = $1 AND status = 'filled' AND account_mode = $2
         """, order_id, account_mode)
 
     if stop_trade:
-        from agents.market_intelligence.broker.order_manager import set_stop_order_id
+        from agents.market_intelligence.broker.order_manager import (
+            describe_stop_move,
+            set_stop_order_id,
+        )
         await set_stop_order_id(
             stop_trade["id"], None,
             reason="cancel_or_reject_null",
@@ -1268,10 +1272,36 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 )
             if replacement:
                 _settle_note = " (settled on re-check)" if rechecked else ""
+                # #560 (2026-08-12): this handler is a SAFETY-NET check, decoupled
+                # from whatever code path actually moved the stop — it exists
+                # because a stop-leg cancel is ambiguous (naked vs. replaced) until
+                # the broker positively confirms a replacement. It carries no
+                # exit-ladder context (no stop_source), so describe_stop_move
+                # INFERS the reason from prices alone — safe on live trades since
+                # only the trail and breakeven ever raise a stop (see its
+                # docstring). brief=True: when this fires alongside live_tracker's
+                # own "Stop confirmed" for the SAME move, a full repeated paragraph
+                # read as an unexplained duplicate (2026-08-12 review) — one short
+                # line plus the footer below (which says why THIS check exists) is
+                # enough; it still stands alone in the clean-race case where this
+                # is the operator's only message for the move.
+                _new_stop = replacement.get("stop_price")
+                _entry = stop_trade.get("entry_price")
+                _hard = stop_trade.get("hard_stop")
+                _old_stop = stop_trade.get("stop_price")
+                _reason_text = describe_stop_move(
+                    entry_price=float(_entry) if _entry is not None else None,
+                    hard_stop=float(_hard) if _hard is not None else None,
+                    old_stop_price=float(_old_stop) if _old_stop is not None else None,
+                    new_stop_price=float(_new_stop) if _new_stop is not None else None,
+                    brief=True,
+                )
+                _price_line = f" now ${float(_new_stop):.2f}" if _new_stop is not None else ""
                 await send_telegram_message(
-                    f"{mode_prefix(account_mode)}ℹ️ *Stop replaced:* {symbol}\n"
-                    f"_Prior leg {event_norm}; live stop `{str(replacement['id'])[:8]}` "
-                    f"in place at the broker — position protected._"
+                    f"{mode_prefix(account_mode)}ℹ️ *Stop replaced:* {symbol}{_price_line}\n"
+                    f"{_reason_text}\n"
+                    f"_Broker-side safety check after the prior stop {event_norm} — "
+                    f"confirms the position stayed protected throughout._"
                 )
                 logger.info(
                     f"WS [{account_mode}]: stop-leg {event_norm} but replacement live"

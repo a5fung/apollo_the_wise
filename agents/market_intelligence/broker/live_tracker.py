@@ -788,7 +788,12 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         # 4. Still open — update Alpaca stop if effective_stop rose
         current_stop = trade["stop_price"] or 0
         if step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
-            await update_stop(trade["id"], round(step.effective_stop, 2))
+            # #560: tell update_stop WHICH ladder input raised the stop (trail /
+            # breakeven / hard_stop / giveback_floor) so the operator-facing
+            # "Stop confirmed" Telegram (retry-recovered path) can say why —
+            # presentation only, does not touch the price being set.
+            await update_stop(trade["id"], round(step.effective_stop, 2),
+                               stop_source=step.stop_source)
 
         # #361 (2026-06-23): the partial branch moved to run_partial_exits()
         # (3:45 PM), and this job now passes skip_partial_decision=True, so

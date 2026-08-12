@@ -1251,7 +1251,130 @@ async def set_stop_order_id(
     return applied
 
 
-async def update_stop(trade_id: int, new_stop_price: float) -> bool:
+def _infer_stop_source(entry_price, old_stop_price, new_stop_price, eps: float) -> str:
+    """Shared inference used when the caller (trade_stream's decoupled WS handler)
+    has no exit_logic.ExitStep.stop_source to hand us. ORDER MATTERS (#560 review):
+    an UNCHANGED price must be checked FIRST — a morning re-issue at the same price
+    (documented in CLAUDE.md: SMCI 07-22..07-24, 9:35 ET, $28.50 -> $28.50) can sit
+    ABOVE entry from an earlier breakeven/trail move, and checking entry-relative
+    position first would misreport that stale-but-unchanged stop as "the trail just
+    rose" — a move that did not happen this call."""
+    if new_stop_price is None:
+        return "unknown"
+    if old_stop_price is not None and abs(new_stop_price - old_stop_price) <= eps:
+        return "refresh"
+    if entry_price is not None and abs(new_stop_price - entry_price) <= eps:
+        return "breakeven"
+    if entry_price is not None and new_stop_price > entry_price + eps:
+        return "trail"
+    return "hard_stop"
+
+
+_SOURCE_LABEL = {
+    "trail": "The 10/20-day moving-average trail",
+    "breakeven": "The breakeven stop",
+    "giveback_floor": "The profit-lock floor",
+    "refresh": "The overnight stop",
+    "hard_stop": "The original stop",
+    "unknown": "The stop",
+}
+
+
+def describe_stop_move(
+    *,
+    entry_price: float | None,
+    hard_stop: float | None,
+    old_stop_price: float | None,
+    new_stop_price: float | None,
+    stop_source: str | None = None,
+    brief: bool = False,
+) -> str:
+    """Plain-English, operator-facing explanation of WHY a stop moved (#560, 2026-08-12).
+
+    Two call sites need this and see different amounts of context:
+      - live_tracker knows `stop_source` exactly (exit_logic.ExitStep.stop_source —
+        the ladder input that actually set the price). Calls with `brief=False`
+        (default) — it is the FIRST/authoritative message for a given move.
+      - trade_stream reacts to a broker WebSocket event with no ladder context at
+        all, so `stop_source` is None there and gets INFERRED from price comparison
+        (`_infer_stop_source`). The inference is safe: on every live caller (both in
+        live_tracker.py) the ladder never passes ema/pivot/character trail modes or
+        the giveback hook (exit_logic.py docstrings — those are opt-in/shadow-only,
+        no live caller passes them), so a raised stop can only be the moving-average
+        trail or the breakeven floor. Calls with `brief=True` — it is a SAFETY-NET
+        confirmation that may fire alongside live_tracker's own message for the same
+        move; the full sentence would just repeat what the first message already
+        said, so `brief=True` returns one short line instead (#560 review: the two
+        messages were duplicating a whole paragraph verbatim).
+
+    Ties every "can this still lose" claim to the STOP PRICE, never to certainty —
+    "if this stop fills" — because a gap can defeat any stop (the #507 class: text
+    promising something the system cannot structurally guarantee is worse than no
+    text). Never raises: missing prices degrade to a generic but still-true line
+    rather than an exception (this only decorates a Telegram message; it must never
+    block the stop mutation it is describing).
+    """
+    try:
+        eps = 0.01
+        if stop_source is None:
+            stop_source = _infer_stop_source(entry_price, old_stop_price, new_stop_price, eps)
+
+        label = _SOURCE_LABEL.get(stop_source, _SOURCE_LABEL["unknown"])
+        above_entry = (
+            entry_price is not None and new_stop_price is not None
+            and new_stop_price > entry_price + eps
+        )
+        at_entry = (
+            entry_price is not None and new_stop_price is not None
+            and abs(new_stop_price - entry_price) <= eps
+        )
+
+        if brief:
+            if above_entry:
+                return f"{label} — stop is above your ${entry_price:.2f} entry; a fill here is a win, not a loss."
+            if at_entry:
+                return f"{label} — stop is at your ${entry_price:.2f} entry; a fill here is a scratch, not a loss."
+            return f"{label} confirmed live at the broker."
+
+        if stop_source == "trail":
+            why = "the 10/20-day moving-average trail rose"
+            if above_entry:
+                why += f" above your ${entry_price:.2f} entry"
+        elif stop_source == "breakeven":
+            why = "the trade ran far enough to arm the breakeven stop"
+        elif stop_source == "giveback_floor":
+            why = "the run-up armed the profit-lock floor"
+        elif stop_source == "refresh":
+            why = "the overnight stop expired and was reissued at the same price"
+        elif stop_source == "hard_stop":
+            why = "the original stop was (re)placed"
+        else:
+            why = "the stop changed"
+        why = why[0].upper() + why[1:]
+
+        if above_entry:
+            gain = new_stop_price - entry_price
+            tail = f" — if this stop fills, it locks in a ${gain:.2f}/share gain: a win, not a loss"
+            if hard_stop is not None and entry_price > hard_stop:
+                r = gain / (entry_price - hard_stop)
+                tail += f" (about {r:.1f}R banked beyond breakeven)"
+        elif at_entry:
+            tail = " — if this stop fills, it's a scratch, not a loss"
+        else:
+            tail = ""
+
+        return why + tail + "."
+    except Exception as e:
+        # Never let a presentation-text bug block the Telegram for a stop
+        # mutation that has ALREADY happened at the broker — degrade to a
+        # generic-but-true line and log loud so the formatting bug still surfaces.
+        logger.warning(f"describe_stop_move: formatting failed ({e}) — generic text used")
+        return "Position protected."
+
+
+async def update_stop(
+    trade_id: int, new_stop_price: float, stop_source: str | None = None,
+) -> bool:
     """Cancel old stop order and place new one at updated price.
 
     Sizes the stop against `remaining_shares` MINUS any pending partial/full
@@ -1265,6 +1388,14 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     `insufficient qty` and the position goes naked. FTRE 2026-05-09 was
     the trigger — partial sell 461 of 1384, stop attempt rejected because
     of the 461 held.
+
+    `stop_source` (#560, 2026-08-12): optional label from exit_logic.ExitStep
+    ('trail' / 'breakeven' / 'hard_stop' / 'giveback_floor') naming WHICH ladder
+    input actually set `new_stop_price`. PRESENTATION ONLY — feeds the
+    operator-facing "Stop confirmed" Telegram (via describe_stop_move) on the
+    retry-recovered path below; never affects sizing, price, or control flow.
+    None (the morning stop-refresh call site) makes describe_stop_move infer a
+    label from the prices themselves.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1469,9 +1600,24 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             # #433: CONFIRM to the operator — the position IS protected. Without
             # this, a prior transient concern (or the WS stop-cancel alert) is
             # never retracted and the operator believes the position is naked.
+            # #560 (2026-08-12): name WHY the stop moved (trail/breakeven/refresh)
+            # instead of just the new price — the operator asked why every time.
+            _reason_text = describe_stop_move(
+                entry_price=float(trade["entry_price"]) if trade.get("entry_price") is not None else None,
+                hard_stop=float(trade["hard_stop"]) if trade.get("hard_stop") is not None else None,
+                old_stop_price=old_stop_price,
+                new_stop_price=new_stop_price,
+                stop_source=stop_source,
+            )
+            _was_line = (
+                f" (was ${old_stop_price:.2f})"
+                if old_stop_price is not None and abs(old_stop_price - new_stop_price) > 0.01
+                else ""
+            )
             await send_telegram_message(
-                f"{mode_prefix(account_mode)}✅ *Stop confirmed:* {ticker} @ ${new_stop_price:.2f}\n"
-                f"_Placed on retry after a transient conflict — position protected._"
+                f"{mode_prefix(account_mode)}✅ *Stop confirmed:* {ticker} now ${new_stop_price:.2f}{_was_line}\n"
+                f"{_reason_text}\n"
+                f"_Recovered from a brief broker hiccup on the first attempt — protection never lapsed._"
             )
         except Exception as e2:
             logger.error(f"Stop re-placement also failed for {ticker}: {e2}")

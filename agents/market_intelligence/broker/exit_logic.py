@@ -53,6 +53,16 @@ class ExitStep:
     new_exits: list[dict]
     new_total_pnl: float
 
+    stop_source: str = "hard_stop"
+    """TELEMETRY ONLY — which input actually SET `effective_stop` (#560, 2026-08-12).
+    One of 'hard_stop' / 'trail' (the active_sma value) / 'breakeven' (entry_price) /
+    'giveback_floor'. Presentation layers (operator-facing Telegram) use this to say
+    WHICH rule moved the stop instead of leaving the operator to guess. Purely a label
+    on a value already computed by the existing max()-composition below — it does NOT
+    feed back into the computation, so effective_stop is byte-identical to before this
+    field existed. Default 'hard_stop' only matters for hand-built ExitStep() in tests
+    that don't set it; every real code path below sets it explicitly."""
+
 
 def ema(closes: list[float], window: int) -> float | None:
     """Standard EMA of `closes`, seeded with the SMA of the first `window` values then
@@ -263,7 +273,7 @@ def apply_daily_exit_step(
             new_remaining=0, new_partial_taken=partial_taken,
             new_breakeven_active=breakeven_active,
             new_running_closes=running_closes, new_exits=new_exits,
-            new_total_pnl=total_pnl,
+            new_total_pnl=total_pnl, stop_source="hard_stop",
         )
 
     # 2. Trail indicator — SMA10/20 (default, UNCHANGED), the 10/20 EMA (opt-in, #396),
@@ -357,11 +367,17 @@ def apply_daily_exit_step(
                 breakeven_active = True
 
     # 4. Effective stop
+    # stop_source is a pure LABEL tracking which branch last raised effective_stop —
+    # every condition/value below is byte-identical to before this label existed
+    # (#560); it only records which one fired, never changes what fires.
     effective_stop = float(hard_stop or 0)
+    stop_source = "hard_stop"
     if active_sma and active_sma > effective_stop:
         effective_stop = active_sma
+        stop_source = "trail"
     if breakeven_active and entry_price and entry_price > effective_stop:
         effective_stop = float(entry_price)
+        stop_source = "breakeven"
     # 4b. Peak-lock giveback floor (ADR 0023 Card 1, A3) — DEFAULT-OFF. One more max()
     # input: raises effective_stop to lock in a fraction of the peak gain once armed,
     # never lowers it. running_closes already includes today's close (line above).
@@ -372,6 +388,7 @@ def apply_daily_exit_step(
     )
     if gb_floor is not None and gb_floor > effective_stop:
         effective_stop = gb_floor
+        stop_source = "giveback_floor"
 
     # 5. SMA trail close
     if bar_close < effective_stop and remaining > 0:
@@ -395,7 +412,7 @@ def apply_daily_exit_step(
             new_remaining=0, new_partial_taken=partial_taken,
             new_breakeven_active=breakeven_active,
             new_running_closes=running_closes, new_exits=new_exits,
-            new_total_pnl=total_pnl,
+            new_total_pnl=total_pnl, stop_source=stop_source,
         )
 
     # 6. Still open
@@ -411,7 +428,7 @@ def apply_daily_exit_step(
         new_remaining=remaining, new_partial_taken=partial_taken,
         new_breakeven_active=breakeven_active,
         new_running_closes=running_closes, new_exits=exits,
-        new_total_pnl=total_pnl,
+        new_total_pnl=total_pnl, stop_source=stop_source,
     )
 
 
@@ -429,7 +446,7 @@ def _skip(remaining, partial_taken, breakeven_active,
         new_remaining=remaining, new_partial_taken=partial_taken,
         new_breakeven_active=breakeven_active,
         new_running_closes=running_closes, new_exits=exits,
-        new_total_pnl=total_pnl,
+        new_total_pnl=total_pnl, stop_source="none",
     )
 
 
