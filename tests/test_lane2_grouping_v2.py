@@ -730,3 +730,52 @@ async def test_truncated_narrative_response_is_failure_not_zero_themes(monkeypat
     failed = [c for c in mocks.audit.await_args_list
               if c.args and c.args[0] == "narrative_theme_discovery_failed"]
     assert failed, "truncation did not write the failed audit row"
+
+
+# ── 2026-08-11 regression: non-dict entries in a forced tool call ───────────
+#
+# `tool_choice={"type":"tool"}` forces a JSON OBJECT at the top level, but the
+# API does NOT validate nested shapes against input_schema — a model can
+# still hand back "themes" as a bare string, or as a list containing bare
+# strings instead of the declared list of objects, and likewise for "seeds".
+# Prod hit this 2026-08-11 17:13 ET, the FIRST nightly run under 6f0217d's
+# forced-tool conversion: narrative_theme_discovery_failed,
+# "'str' object has no attribute 'get'" — the v1/v2reg loops called
+# `t.get(...)` on a plain string. Three reachable crash sites, all pinned
+# here: v1 themes (discover_narrative_themes), v2reg themes and v2reg seeds
+# (both inside _lane2_registry_clean via _discover_lane2_registry).
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("flag_on", [False, True])
+@pytest.mark.parametrize("llm_response", [
+    '{"themes": "no shared narrative found among tonight\'s names"}',
+    '{"themes": ["AI data-center buildout", "quantum computing"]}',
+], ids=["themes-bare-string", "themes-list-of-strings"])
+async def test_non_dict_theme_entries_degrade_not_crash(monkeypatch, flag_on, llm_response):
+    d = date(2026, 7, 14)
+    cand = [_alert("CLSK", d, ep=61.0), _alert("TSEM", d, ep=55.0)]
+    captured, mocks = _wire(monkeypatch, flag_on=flag_on, today_alerts=cand,
+                             llm_response=llm_response)
+    out = await discover_narrative_themes(d)
+    assert out["error"] is None, \
+        f"malformed 'themes' shape crashed instead of degrading: {out['error']}"
+    assert out["themes"] == 0
+    failed = [c for c in mocks.audit.await_args_list
+              if c.args and c.args[0] == "narrative_theme_discovery_failed"]
+    assert not failed, "malformed 'themes' shape still wrote the failed audit row"
+
+
+@pytest.mark.asyncio
+async def test_non_dict_seed_entries_degrade_not_crash(monkeypatch):
+    """v2reg-only: 'seeds' is not part of the v1 schema."""
+    d = date(2026, 7, 14)
+    cand = [_alert("CLSK", d, ep=61.0), _alert("TSEM", d, ep=55.0)]
+    captured, mocks = _wire(monkeypatch, flag_on=True, today_alerts=cand,
+                             llm_response='{"themes": [], "seeds": ["CLSK", "TSEM"]}')
+    out = await discover_narrative_themes(d)
+    assert out["error"] is None, \
+        f"malformed 'seeds' shape crashed instead of degrading: {out['error']}"
+    assert out["seeds"] == 0
+    failed = [c for c in mocks.audit.await_args_list
+              if c.args and c.args[0] == "narrative_theme_discovery_failed"]
+    assert not failed, "malformed 'seeds' shape still wrote the failed audit row"

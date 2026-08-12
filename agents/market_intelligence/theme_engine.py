@@ -576,11 +576,33 @@ _LANE2_NARRATIVE_TOOL = {
 def _lane2_tool_input(msg) -> dict:
     """The forced tool call's input dict ({} when absent) — replaces the old
     _extract_json_object(first_text(msg)) text-parse, so a response is either
-    schema-shaped or visibly empty, never half-parsed prose."""
+    schema-shaped or visibly empty, never half-parsed prose.
+
+    2026-08-11 regression fix: tool_choice={"type":"tool"} forces a JSON
+    OBJECT at the top level, but the API does not validate nested shapes
+    against input_schema — a model can still hand back "themes" as a bare
+    string (e.g. a "no shared narrative tonight" explanation) or as a list
+    containing bare strings instead of the declared list of objects, and
+    likewise for "seeds". Both callers (discover_narrative_themes v1 +
+    _discover_lane2_registry, plus the pure _lane2_registry_clean they feed)
+    then did `t.get(...)` on a non-dict entry -> 'str' object has no
+    attribute 'get', caught by the outer try/except and logged as
+    narrative_theme_discovery_failed (first fired 2026-08-11 17:13 ET, the
+    first nightly run under 6f0217d's forced-tool conversion). Coerced HERE,
+    at the one transport boundary both paths share, so no downstream
+    consumer has to re-litigate the type. Non-dict entries are DROPPED, never
+    coerced into a fabricated dict — a malformed entry is a transport
+    failure, not a discovery decision."""
     block = next((b for b in (getattr(msg, "content", None) or [])
                   if getattr(b, "type", "") == "tool_use"), None)
     inp = getattr(block, "input", None) if block is not None else None
-    return inp if isinstance(inp, dict) else {}
+    if not isinstance(inp, dict):
+        return {}
+    out = dict(inp)
+    for key in ("themes", "seeds"):
+        val = out.get(key)
+        out[key] = [x for x in val if isinstance(x, dict)] if isinstance(val, list) else []
+    return out
 
 
 def _lane2_window_start(scan_date):
@@ -737,6 +759,12 @@ def _lane2_registry_clean(
     seed_tk = {s["ticker"] for s in offered_seeds}
     entries: dict[str, dict] = {}  # canonical-norm-name -> entry (insertion-ordered)
     for t in (themes or []):
+        # 2026-08-11: defense-in-depth — this function is also called
+        # directly by tests/replay under its own list[dict] contract, so a
+        # malformed (non-dict) entry is dropped here too, not only coerced
+        # by _lane2_tool_input at the live call site.
+        if not isinstance(t, dict):
+            continue
         nm = str(t.get("name") or "").strip()
         raw_tks = [x for x in (t.get("tickers") or []) if isinstance(x, str)]
         if not nm or not raw_tks:
@@ -792,6 +820,9 @@ def _lane2_registry_clean(
     new_seeds: list[dict] = []
     seen: set[str] = set()
     for s in (raw_seeds or []):
+        # 2026-08-11: same defense-in-depth as the themes loop above.
+        if not isinstance(s, dict):
+            continue
         tk = s.get("ticker")
         story = " ".join(str(s.get("story") or "").split())
         if (tk in today_set and tk not in placed and tk not in member_set
@@ -887,6 +918,10 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         cand_tk = {a["ticker"] for a in cand}
         clean = []
         for t in (themes or []):
+            # 2026-08-11: defense-in-depth alongside the _lane2_tool_input
+            # boundary coercion — a non-dict entry is dropped, not crashed on.
+            if not isinstance(t, dict):
+                continue
             tks = [x for x in (t.get("tickers") or []) if x in cand_tk]
             if not (t.get("name") and len(tks) >= 2):
                 continue
