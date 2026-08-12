@@ -857,3 +857,42 @@ The data-gated review registry (#517) is the cautionary case in this repo: 124 e
 oldest 72 days, surfacing every Sunday and ignored — **capture without a forcing function.** If
 this table stops being reviewed on Fridays it has become the same thing, and the honest move is to
 say so and replace it, not to keep appending rows.
+
+---
+
+## STANDING SCOPE RULE — the review population is every EP we DETECTED, not every EP we traded
+
+Operator, 2026-08-12: *"don't just look at what we traded, also look at all the EPs we detected but
+didn't trade for whatever reason, that's the whole group to review."*
+
+**This applies to every measurement in this plan, retroactively and going forward.**
+
+### Why it changes the answers, not just the counts
+
+- **Traded is a tiny, biased slice.** ~20 live trades against **276 HIGH alerts over 53 sessions**.
+  Restricting to fills studies the names that survived *our own filters* — which is precisely what
+  is under question. It cannot see a filter that is wrong.
+- **The skips ARE data.** Every `skip_reason` is a decision we made: `window:out_of_orb`,
+  `setup:gap_below_floor`, `setup:zero_range`, `block:*`, the position cap. The distribution of
+  those reasons says WHERE the funnel loses names, and pairing each with what the name did
+  afterwards says whether the loss was RIGHT.
+- **The canonical case is SE (2026-08-11)** — detected, skipped on the gap floor at 9.2% vs a 10%
+  floor, reclaimed to +10.5% four minutes later, and the one the operator says he would have
+  traded. It exists in the alert population and nowhere in the fill population.
+
+### What this means concretely
+
+1. **Default cohort = all detected EPs.** Fills are a SUBSET to be reported alongside, never the
+   frame. State both N's whenever they differ.
+2. **Outcome is measured on the ALERT** (forward return / MFE / MAE from the alert), so a skipped
+   name still has an outcome. This is already the plan's measurement basis — the scope rule is what
+   makes it necessary rather than convenient.
+3. **Skip-reason attribution is its own analysis and is currently unowned**: for each reason, how
+   many names, and what did they go on to do. A reason that consistently drops names that ran is a
+   candidate defect; a reason that consistently drops names that died is working.
+4. ⚠ Combine with the standing evidence rule: a single skipped name that ran is the EXPECTED cost
+   of any filter and proves nothing. Only the distribution per reason, with its N and distinct
+   sessions, licenses a conclusion.
+
+⚠ This does not license changing any skip rule. Skips are entry discipline = THE LINE; this rule
+governs what we MEASURE.
