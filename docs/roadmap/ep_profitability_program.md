@@ -70,6 +70,27 @@ Nothing is estimated; unmeasured things say "unmeasured".
 
 ---
 
+## 0a. WORKED EXAMPLES — the operator's own cases, kept HERE so they are not buried
+
+⚠ **This table is deliberately at the TOP and deliberately SHORT.** Operator, 2026-08-12: *"make
+sure all these are durably captured, we'll keep collecting evidence but don't want these important
+context and examples being lost in bigger doc as we move forward."* Every row is a real named case
+he raised; the one-line entry is the index, the verbatim capture lives in
+`docs/methodology/operator_shared_notes.md` under the dated heading. **Add rows; do not let this
+grow into prose.**
+
+| Case | Date | What it illustrates | Verbatim |
+|---|---|---|---|
+| **NBIS** | 08-12 | **The first FALSIFIABLE structure definition** — clears a level that previously rejected price (50-day; prior highs ~$227), then HOLDS it after the first pullback. Failure case stated too: gaps and falls back below, or never breaches. Also: graded "moderate" on a marginal beat while revenue grew >400% — surprise vs magnitude | notes 08-12 |
+| **EROC** | 08-12 | A CORRECT skip (stop too wide, 1.5×ATR) on a name he judged a good EP — the skip taxonomy, and the join into delayed entry: "no today" is not "no forever" | notes 08-12 |
+| **SE** | 08-11 | His four delayed-EP conditions, stated on a live name. Skipped by the gap floor at 9.2% vs 10%, reclaimed +10.5% in four minutes. RS 88.5, above all MAs, **in no theme at all** — the coverage gap in one stock | notes 08-11 |
+| **BW / FRMI** | 08-11 | Gap size ranks backwards: BW gapped 34.9% at RS 1.5 (rank 2397), FRMI 17.0% at rank 1661 — both below every MA, both dead inside 60 seconds. "A gap is a signal, not the setup" measured | plan §2 |
+| **ABCL** | 08-11 | The +2R rule's first correct live firing — limit filled AT the $10.08 target, stop to the $8.96 entry the same second | plan §5 |
+| **FIGS** | 08-07 | The two defects that opened the exit work — market sell filled +1.13R against a +2R target; "stop moves to breakeven" was a DB flag the daily pass read, hours too late | plan §5 |
+| **PLTR** | 08-05→ | Breakeven did NOT cap the runner — partial taken, stop to entry, still open at ~+4.6R six days later. The evidence behind "we let winners run" | `docs/setups/exit_discipline.md` |
+| **The 5 missed stories** | 06-15→07-31 | AUGO+HYMC · MU+SNX · HUT+IREN · EME+PWR · COHU+MPWR — 5 of the 9 clear same-day co-gap stories in 60 days; 4 were grouped the same night and discarded at the 3-member floor | plan §563 |
+
+
 ## 0. The situation, in five verified facts
 
 1. **19 closed live trades in 60 days: 0 winners, 19 losers, −$416.19 total. Best trade −$2.40.**
@@ -1109,3 +1130,133 @@ CHANGE_PROCESS + N≥10 + sign-off. Questions 1 and 2 are measurement and can pr
 - ⚠ Combined with the standing rules: no single skip proves a rule wrong (EROC illustrates,
   it does not conclude), and the population is every DETECTED EP including the ones real-time
   would have caught.
+
+---
+
+## 2026-08-12 — DESIGN: retain the 2-member co-gap cohort, promote on the third member (#563 follow-on)
+
+**The ruling being designed for** (operator, in the accepted framing): *don't lower the bar, stop
+throwing the cohort away.* A 2-member co-gap cohort becomes a retained CANDIDATE; it reaches the
+board only when it earns a third member. Design only — nothing below is decided, no code was
+changed, the `_PROMOTE_MIN_MEMBERS = 3` floor is untouched. Evidence base = the §563 measurement
+above plus fresh prod reads 2026-08-12 (captures: session scratchpad `564_*.tsv/txt`,
+`lane2_review.md`).
+
+### 1. Where retention lives — it already exists; build NOTHING new
+
+- **The rows were never physically deleted.** Every 2-member `narrative_cogap` cohort persists in
+  `mi_theme_candidates_shadow` (PK `(run_date, name)`); all 5 of the window's 2-member cohorts are
+  still there (prod read, `564_cogap_rows.tsv`). The functional discard was v1's *amnesia*: each
+  night stood alone, so nothing could ever add member 3 to a prior night's pair.
+- **The retention+completion structure is the #167 Lane-2 v2 REGISTRY — operator-signed and flipped
+  ON in prod 2026-08-09** (commit `9b4c5d7`, all three gates; flag `lane2_grouping_v2 = on`,
+  `564_flags_raw.txt`). Mechanics, all shipped: a 2-member birth stays an ACTIVE roster narrative
+  for 10 trading days (`get_lane2_active_narratives`, refreshed on touch); a later same-day
+  co-gapper JOINs it (the join writes a fresh `(today, name)` row with unioned members); the
+  nightly `promote_shadow_themes` (3-day window, latest row per name) promotes the night the row
+  reaches 3 members — the promote door was verified open during the 08-09 gate walk (commit
+  `027cc75`). Name+thesis are frozen at birth; members FIFO-capped at 12.
+- **Verified live 08-10** (audit log, `564_lane2_runs3.txt`): the roster carried **7 active
+  narratives including the EME+PWR, COHU+MPWR and AEIS+ZBRA 2-member cohorts** — i.e. the exact
+  objects the floor used to orphan were sitting as awaiting-third-member candidates.
+- Rejected alternatives: a new table (duplicates registry state); a status column (the
+  `(run_date,name)` append + latest-row-per-name read already encodes candidate state); the
+  `mi_theme_birth_candidates` ledger (different semantics — gate evaluations with 14-day memory,
+  not lane state).
+
+### 2. Retention window: **10 trading days** — derived, and it is the already-shipped constant
+
+Third-member arrival, measured in the qualifying EP-alert stream (ep_score ≥ 50) for each §563
+floor-killed story (N = 5 stories, 5 sessions — arrivals, not a load-bearing distribution):
+
+| 2-member cohort (born) | Third member in the EP stream | Arrival (trading days) |
+|---|---|---|
+| EME+PWR 07-30 (power/grid) | FLNC 07-31 (AI-DC battery storage); AMRC 08-04 | **+1** (then +3) |
+| COHU+MPWR 07-31 (semi test) | AEIS 08-04 (semicap cycle); ONTO+ACMR 08-07 | **+2** (then +5) |
+| HUT+IREN 07-20 (miners→AI-DC) | completion is BACKWARD: WULF 07-06 / CLSK 07-14 must still be remembered | **10** (WULF→HUT/IREN span) |
+| MU+SNX 06-25 (AI memory) | forward: **none in the remaining window**; backward: AEHR+JBL 06-17 (probable-grade) at 5-6 td | unrecoverable forward |
+| AUGO+HYMC 06-15 (precious metals) | **zero further gold/silver EP alerts in the entire 60 days**; only same-day IDR (blank stored fields) | unrecoverable at any window |
+
+- **Derivation**: every recoverable case fits inside 10 trading days; the binding case is
+  WULF→HUT/IREN at exactly 10 — the SAME measured case that set `LANE2_WINDOW_TRADING_DAYS = 10`
+  (and 7 *calendar* days was measured one day short on the WULF→CLSK link, per the #167 audit). The
+  two unrecoverable misses had NO third member in the EP stream at ANY horizon — AUGO+HYMC's only
+  candidate was same-day IDR (stored-data quality is the binding constraint), and Lane-1's 51-day
+  precious-metals discovery came from RS, not from EP gaps. **A longer window therefore buys
+  nothing and only accumulates stale candidates; a shorter one re-creates a measured miss.** No new
+  number is picked: the window inherits the #167-signed measurement.
+
+### 3. Board impact — quantified; the flood argument fails
+
+- Candidate inventory: **5** two-member co-gap cohorts in 60 days (<1/week); roster prompt cap 20.
+- Ceiling (all 5 eventually complete): **+5 first-time themes per 60 days**, vs **220** actual
+  first-births in the same window (+2.3%) and **89** promote-path births (+5.6%) (prod,
+  `564_board.tsv`).
+- Measured expectation from the arrival table: **+2 new board themes** (power/grid via FLNC,
+  semi-test via AEIS) **+1 refresh** of the existing crypto→AI-DC theme (the HUT+IREN join lands as
+  maintenance of a prior name, not a new seat) = **+2–3 over 60 days**.
+- Standing-board effect: ≤ +2–3 seats at any instant on the **82-theme / 4.76-mean** board
+  (+2–4%); an untouched one-off ages out via the existing 7-day recency cap. Promoted-on-third
+  cohorts enter at 3–4 members, slightly below the 4.76 mean.
+- The $0.96 registry replay over this exact window (06-08→08-07, `lane2_review.md`) birthed **3**
+  narratives total in its one realization. Every measurement says: not a flood.
+
+### 4. What it can break — stated plainly
+
+- **The bottleneck is now the model's nightly judgment, not the structure** (replay evidence,
+  N=1 realization): with retention available, the replay cleanly recovered COHU+MPWR (same-night
+  join into an active narrative), joined MU but never SNX, and never birthed EME+PWR or a
+  precious-metals narrative, never joined HUT/IREN — ~1 of 5 clear misses recovered in that run.
+  Retention *permits* recovery; the recovery rate is a forward measurement, not a guarantee.
+- **Absorption / granularity loss**: the replay's single AI-DC narrative accreted **12 members
+  spanning 4 stories §563 judged distinct** (memory, semi-test, miners-pivot, buildout). A
+  promoted catch-all is a BROAD theme feeding judge context and R4 with mixed membership. The FIFO
+  cap (12) sits exactly at the observed size. This is the granularity program's problem surfacing
+  here; it argues for measuring forward behavior before any tuning.
+- **The different-object question (the money surface), answered**: a cohort promoted on member-3
+  night enters the live board days after its founding gaps. (a) Judge context: **no change** —
+  `get_narrative_theme_candidates(days=5)` already feeds 2-member candidates into the judge's
+  `active_narratives` from night 1 (grade-affecting today, unchanged by this design). (b) **R4
+  bonus (money): begins only on the promote night** — the founding members' own alert-day grades
+  never carried it; the third member's day does. Strictly additive vs today (today none of them
+  get it), forward-only, no retroactive mutation. An asymmetry to know about, not a blocker.
+- **Birth-gate interaction**: `theme_birth_gate = observe` today. If flipped `on`, a
+  late-assembled cohort is a FIRST crossing and faces the RS-floor/two-sighting gate the night it
+  finally completes — the gate could re-kill exactly these cohorts. Sequencing fork for the
+  operator whenever the gate mode changes; in `observe` nothing is held.
+- ⚠ **BLOCKING verify-live finding: the registry is currently failing in prod.** Since the 08-09
+  flip: one clean run (08-10 21:17 UTC — 5 alerts, roster 7, 0 join + 0 birth + 5 seeds), then
+  `narrative_theme_discovery_failed` 08-10 21:20 UTC (*"Unterminated string … char 535"*) and
+  08-11 (*"'str' object has no attribute 'get'"*) (`564_lane2_runs3.txt`). **The retention lane
+  has never completed a forward birth or join** — a rule is not live until it has fired once. The
+  bug diagnosis/fix is a separate task, not part of this design.
+
+### 5. CHANGE_PROCESS verdict — partial disagreement, with the reason
+
+- **The mechanism the ruling asks for is ALREADY an operator-signed, shipped change**: the #167 v2
+  flip (2026-08-09, three gates, commit `9b4c5d7`) is precisely "retain the 2-member cohort,
+  complete it later, promote at 3." Recommending **Option A — rely on the shipped registry:
+  verify-live its first birth/join/promote, then measure forward recovery against the §563 story
+  list — changes no criterion, no floor, no lane behavior, and needs no NEW CHANGE_PROCESS cycle**;
+  the signature already exists. (Disagreeing with the "yes, sign-off required" prior only in this
+  narrow sense: a second signature would re-sign existing signed behavior.)
+- **Everything beyond A IS a detection-criterion change — CHANGE_PROCESS + evidence + sign-off**:
+  any horizon change, any floor change, a prompt nudge steering the model toward narrow
+  births/joins over absorption (Option C), or a mechanical third-member matcher (Option B —
+  already killed by §563's own negative result: stored structure fields cannot find these pairs;
+  catalyst-text judgment is what works).
+- **The operator's fork** (nothing pre-decided): **F-i** accept Option A — fix the registry
+  failure (separate task), verify-live, measure recovery over forward sessions. **F-ii** if forward
+  recovery under-delivers vs §563's story list, authorize a replay-measured Option C prompt change
+  through CHANGE_PROCESS. Rec: F-i.
+
+### What could NOT be measured
+
+- **Forward recovery rate** of the live registry — zero completed births/joins since the flip, and
+  the lane is currently failing nightly.
+- **Whether the replay's absorption behavior recurs forward** — one realization, one model call
+  per night; birth-vs-join choices are stochastic.
+- **MU+SNX and AUGO+HYMC recoverability** — bounded by stored-data quality (IDR blank fields) and
+  by the EP stream containing no later third member, not by any retention design.
+- **Outcomes** — whether recovered themes would have produced profitable entries; out of scope
+  here, consistent with §563.
