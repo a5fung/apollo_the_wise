@@ -2659,9 +2659,20 @@ async def _catalyst_downgrade_digest_job():
             line += "  _(↑ judge promoted to HIGH — authoritative)_"
         lines.append(line)
     if rescued:
-        _rtix = ", ".join(_md_escape((rs["summary"] or "").split(":", 1)[0].strip()) for rs in rescued)
+        # Belt-and-braces dedup by ticker at RENDER time, independent of the source-side
+        # guard in ep_detector.py — the digest must never inflate even if a future event
+        # is added to this query without its own per-ticker/day dedup (KRNT logged 5x on
+        # 2026-08-12 and the digest read "10 rescued" for what was really 1 rescue).
+        _seen_rescued: set[str] = set()
+        _rescued_tickers = []
+        for rs in rescued:
+            t = (rs["summary"] or "").split(":", 1)[0].strip()
+            if t and t not in _seen_rescued:
+                _seen_rescued.add(t)
+                _rescued_tickers.append(t)
+        _rtix = ", ".join(_md_escape(t) for t in _rescued_tickers)
         lines.append("")
-        lines.append(f"🟢 *{len(rescued)} rescued* — wrongly downgraded for a missing YoY, prior-year recovered (#321): {_rtix}")
+        lines.append(f"🟢 *{len(_rescued_tickers)} rescued* — wrongly downgraded for a missing YoY, prior-year recovered (#321): {_rtix}")
     lines.append("")
     lines.append("_Drilldown: `/rubric TICKER` for full breakdown._")
     try:

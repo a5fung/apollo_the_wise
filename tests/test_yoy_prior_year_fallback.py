@@ -150,3 +150,52 @@ class TestFiscalQuarterMislabelBug:
 
     def _fye_mock_ticker_helper(self) -> MagicMock:
         return _fye_mock_ticker(self._JUNE_FYE_QUARTERS, self._JUNE_FYE_REVENUES, self._JUNE_FYE_TS)
+
+
+# ── Emit-dedup wiring pin (2026-08-12) ───────────────────────────────────────
+# catalyst_yoy_recovered_live must be guarded per-ticker-per-day, same idiom as
+# the carve-out (test_catalyst_downgrade_carveout.py::test_carveout_audit_emit_is_dedup_guarded)
+# — else it re-fires on every 5-min scan for an earnings name. Operator report
+# 2026-08-12: KRNT rescued ONCE but logged 5-6x, inflating the morning digest
+# to "10 rescued" when only 1 name was actually rescued. The recovery DECISION
+# (_downgrade_reason = None) must stay UNGUARDED (idempotent, must run every
+# scan) — only the audit emit is deduped.
+import re as _re
+from pathlib import Path as _Path
+
+_EP_SRC_YOY = (_Path(__file__).resolve().parent.parent
+               / "agents" / "market_intelligence" / "ep_detector.py").read_text()
+
+
+def test_yoy_recovered_live_emit_is_dedup_guarded():
+    """catalyst_yoy_recovered_live log_audit_event must sit inside an
+    `await _should_log_catalyst_earnings_event_today(...)` guard (logs once per
+    ticker per day, not once per 5-min scan)."""
+    guard = _re.search(
+        r'_should_log_catalyst_earnings_event_today\(\s*'
+        r'"catalyst_yoy_recovered_live"', _EP_SRC_YOY)
+    emit = _re.search(
+        r'log_audit_event\(\s*"catalyst_yoy_recovered_live"', _EP_SRC_YOY)
+    assert guard, "catalyst_yoy_recovered_live emit lost its per-day dedup guard (KRNT-class regression)"
+    assert emit, "catalyst_yoy_recovered_live log_audit_event not found (refactor?)"
+    assert guard.start() < emit.start(), "the dedup guard must precede the emit"
+    assert emit.start() - guard.start() < 400, "the guard must wrap the emit (same block)"
+
+
+def test_yoy_recovered_decision_runs_before_the_emit_guard():
+    """The recovery DECISION (_downgrade_reason = None) must appear BEFORE the
+    emit-dedup guard, so clearing the downgrade stays idempotent every scan even
+    when the audit row is deduped away."""
+    block = _EP_SRC_YOY[_EP_SRC_YOY.find("#321 LIVE rescue"):]
+    none_idx = block.find("_downgrade_reason = None")
+    guard_idx = block.find("_should_log_catalyst_earnings_event_today")
+    assert none_idx != -1 and guard_idx != -1
+    assert none_idx < guard_idx, "the recovery decision must run outside/before the emit-dedup guard"
+
+
+# `extraction_error` and `live_enriched_grade_failed` are DELIBERATELY left unguarded
+# at the source (2026-08-11 commit 703d450: "the monitor dedupes its own read, so the
+# signal is safe, but the raw rows still inflate") — the grading-health check reads
+# distinct error text per failure and its own (event, ticker) read-side dedup already
+# makes the count safe; guarding the source would silently drop later distinct error
+# messages for the same ticker/day. Not touched here — still KNOWN RESIDUAL.

@@ -3838,14 +3838,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _ryoy = _rec["yoy_pct"]
                     if _ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY:
                         _downgrade_reason = None   # real growth recovered — NOT a weak/missing-comparable name
-                        await log_audit_event(
-                            "catalyst_yoy_recovered_live",
-                            f"{ticker}: kept {catalyst_quality} — recovered prior-yr YoY "
-                            f"{_ryoy:+.1f}% (>= {EARNINGS_REVENUE_GATE_MIN_YOY:.0f})",
-                            json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
-                                        "recovered_yoy_pct": _ryoy,
-                                        "prior_period": _rec.get("prior_period"),
-                                        "kept_quality": catalyst_quality}))
+                        # Per-ticker-per-day dedup on the AUDIT EMIT only — the recovery
+                        # DECISION above (_downgrade_reason = None) is idempotent and MUST
+                        # run every scan. Without this guard the event re-fires on every
+                        # 5-min scan for an earnings name (KRNT logged 5x 2026-08-12 → the
+                        # digest read "10 rescued" when only 1 name was actually rescued);
+                        # same idiom as the carve-out guard above (~line 3789) and the
+                        # 2026-08-11 extraction-failed-grade-kept fix.
+                        if await _should_log_catalyst_earnings_event_today(
+                            "catalyst_yoy_recovered_live", ticker
+                        ):
+                            await log_audit_event(
+                                "catalyst_yoy_recovered_live",
+                                f"{ticker}: kept {catalyst_quality} — recovered prior-yr YoY "
+                                f"{_ryoy:+.1f}% (>= {EARNINGS_REVENUE_GATE_MIN_YOY:.0f})",
+                                json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
+                                            "recovered_yoy_pct": _ryoy,
+                                            "prior_period": _rec.get("prior_period"),
+                                            "kept_quality": catalyst_quality}))
                     else:
                         _downgrade_reason = (
                             f"q_rev_yoy_{_ryoy:.1f}pct_below_"

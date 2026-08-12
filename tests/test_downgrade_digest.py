@@ -142,6 +142,43 @@ async def test_digest_surfaces_rescued_when_no_downgrades():
     assert "LZB" in sent[0]
 
 
+@pytest.mark.asyncio
+async def test_digest_dedupes_rescued_rows_by_ticker():
+    """Belt-and-braces: even if the source re-logs the same ticker's rescue multiple
+    times in one day (KRNT 2026-08-12: rescued once, logged 5x by an unguarded emit),
+    the digest must count/list it ONCE, not once per row."""
+    from agents.market_intelligence import scheduler
+
+    rescued_rows = [
+        {"summary": "KRNT: kept strong — recovered prior-yr YoY +11.1% (>= 5)"},
+        {"summary": "KRNT: kept strong — recovered prior-yr YoY +11.1% (>= 5)"},
+        {"summary": "KRNT: kept strong — recovered prior-yr YoY +11.1% (>= 5)"},
+        {"summary": "KRNT: kept strong — recovered prior-yr YoY +11.1% (>= 5)"},
+        {"summary": "KRNT: kept strong — recovered prior-yr YoY +11.1% (>= 5)"},
+        {"summary": "WYFI: kept strong — recovered prior-yr YoY +6.2% (>= 5)"},
+        {"summary": "NBIS: kept strong — recovered prior-yr YoY +9.0% (>= 5)"},
+        {"summary": "BRUN: kept strong — recovered prior-yr YoY +7.4% (>= 5)"},
+        {"summary": "BE: kept strong — recovered prior-yr YoY +5.5% (>= 5)"},
+        {"summary": "MRX: kept strong — recovered prior-yr YoY +8.1% (>= 5)"},
+    ]
+    pool, _conn = _make_pool([], rescued_rows=rescued_rows)
+    sent = []
+
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(scheduler, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(scheduler, "send_telegram_message", new=_fake_send):
+        await scheduler._catalyst_downgrade_digest_job()
+
+    assert len(sent) == 1
+    msg = sent[0]
+    assert "6 rescued" in msg, f"expected 6 distinct tickers, got: {msg}"
+    assert msg.count("KRNT") == 1, f"KRNT must appear once, not per duplicate row: {msg}"
+    for t in ("WYFI", "NBIS", "BRUN", "BE", "MRX"):
+        assert t in msg
+
+
 def test_humanize_rubric_composite_reason():
     """`rubric_composite_X_below_22_label_Y` → `rubric X/39 below 22 floor (Y)`."""
     from agents.market_intelligence.briefing import _humanize_downgrade_reason
