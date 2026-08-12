@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import re
 import time
 import urllib.parse
@@ -1356,6 +1357,14 @@ _PPLX_CACHE_TTL_S = 900
 _PPLX_CACHE_MAX = 256
 _PPLX_CACHE: dict[tuple, tuple[float, str]] = {}
 
+# Fix-2b (2026-08-12) — 429 bounded-retry backoff (see search_news_perplexity).
+# Default used when Perplexity omits `Retry-After`; max caps a huge/malformed
+# header so a rate-limit response can never stall an interactive call long.
+# The cap applies BEFORE jitter (+0-50%, decorrelates concurrent retries), so
+# the true worst case is MAX_S * 1.5.
+_PPLX_429_BACKOFF_DEFAULT_S = 2.0
+_PPLX_429_BACKOFF_MAX_S = 5.0
+
 
 def _pplx_cache_get(key: tuple) -> str | None:
     """Live entry, or None. Prunes on read so the dict cannot grow without bound."""
@@ -1395,6 +1404,21 @@ async def search_news_perplexity(
     second attempt. A fresh attempt is cheap insurance. Non-timeout failures
     keep the exact prior single-attempt path; if the retry also times out we
     fail open exactly as before (alert + return "").
+
+    Fix-2b (2026-08-12): the same ONE bounded retry now also covers HTTP 429,
+    honoring `Retry-After` when Perplexity sends it (+0-50% jitter, since
+    concurrent callers hit by the same burst would otherwise read the
+    identical Retry-After and retry in lockstep). Root cause confirmed from
+    prod mi_audit_log (2026-08-11): 3 `api_failure_perplexity` 429s landed in
+    the same millisecond at 17:10:36 ET, right after `theme_engine_funnel`
+    logged 6 newly-discovered themes surviving discovery. `run_theme_engine`
+    scores every survivor via `asyncio.gather(*[_score_new_theme(...) for
+    raw in new_raw])` — unconditional per new theme, no refresh-day gate —
+    and each call reaches `_news_check`'s `_SEARCH_SEM` (semaphore(5) in
+    theme_engine.py), so 5 of the 6 fired at once. Total daily volume was low
+    (36 calls that day, 183 the day before with zero 429s) — a concurrency
+    burst, not over-use. Every other non-timeout failure (5xx, other 4xx,
+    connect) keeps the exact prior single-attempt fail-open path.
     """
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
@@ -1448,6 +1472,31 @@ async def search_news_perplexity(
             # httpx timeout type ends in "Timeout"/"TimeoutException".
             if attempt == 1 and "Timeout" in type(e).__name__:
                 logger.warning(f"Perplexity search timeout (attempt 1/2) — retrying once: {e}")
+                continue
+            # Fix-2b (2026-08-12): 429 (rate-limited) — a concurrent burst from a
+            # caller (theme-engine new-theme scoring, up to 5 at once via
+            # _SEARCH_SEM — see docstring) rather than daily over-use. One
+            # bounded retry honoring `Retry-After` (fallback to a
+            # short fixed backoff when absent/unparseable, capped so an
+            # interactive `fresh=True` call never stalls long). Same bounded-
+            # ONE-retry shape as the timeout path — never adds latency to a
+            # healthy call, only to the rare one that got rate-limited.
+            _status = getattr(getattr(e, "response", None), "status_code", None)
+            if attempt == 1 and _status == 429:
+                _wait = _PPLX_429_BACKOFF_DEFAULT_S
+                try:
+                    _wait = float(e.response.headers.get("Retry-After", _wait))
+                except (TypeError, ValueError):
+                    pass
+                _wait = min(max(_wait, 0.0), _PPLX_429_BACKOFF_MAX_S)
+                # Jitter: concurrent callers hit by the SAME burst (e.g. the
+                # theme-engine rescore fan-out) would otherwise read the
+                # identical Retry-After (or the identical default) and retry
+                # in lockstep — re-tripping the exact limit that just
+                # rejected them. +0-50% decorrelates the retries.
+                _wait *= random.uniform(1.0, 1.5)
+                logger.warning(f"Perplexity search rate-limited (429, attempt 1/2) — retrying in {_wait:.1f}s")
+                await asyncio.sleep(_wait)
                 continue
             last_exc = e
             break
