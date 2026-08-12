@@ -550,3 +550,63 @@ I reported "structure does not separate" off 244 settled alerts. His response, v
 **Analysis (what I got wrong, his contextual definition of structure, the design correction, his
 win-rate numbers): merged into `docs/roadmap/ep_profitability_program.md` §2 (Selection/Ranking)
 and the GOAL section — not duplicated here.**
+
+---
+
+## 2026-08-12 — NBIS: the clearest structure example yet, AND a grading complaint
+
+Operator, live, verbatim:
+
+> "quick note on today's EP, i see NBIS is moderate due to marginal revenue beat on expectation,
+> but it was >400% reveune growth. Also, it's a good stock to review what i see in structure, it
+> gapped up through the 50d which is a resistance, pulled back and held up in the early morning,
+> also it gapped up through previous highs which as been a resistant in the past few rallies
+> around $227 price point, now it's trending up through the day (so far). If it were to gap up but
+> drop and held below those points or even gap and not breach those points, it would have been a
+> poor structure."
+
+### (1) THE GRADING COMPLAINT — beat-vs-expectation is not growth
+
+NBIS graded **moderate**, reasoned as a *marginal revenue beat on expectation* — while revenue grew
+**>400% year over year**. The rubric is scoring the SURPRISE (actual vs analyst estimate) and is
+blind to the MAGNITUDE of the underlying growth. Those are different facts and a 400% grower that
+merely meets a high bar is not the same event as a flat company beating by a cent.
+
+⚠ Unverified against the rubric code as of writing — **check what NBIS actually scored on and
+which component drove "moderate" before concluding the rubric is at fault**; the grade may have
+come from elsewhere. Feeds the SELECTION surface of The Real EP Plan.
+
+### (2) THE STRUCTURE EXAMPLE — and it is the first one that is FALSIFIABLE
+
+This is the most operationalisable statement of "gapping through key levels" he has given, because
+he stated the NEGATIVE case as well as the positive:
+
+**GOOD (what NBIS did):**
+1. Gapped **through the 50-day**, which was acting as resistance.
+2. **Pulled back and HELD** in the early morning — it did not fall back through.
+3. Gapped **through prior highs around $227**, a level that had rejected price on the past few
+   rallies.
+4. Trending up through the day.
+
+**POOR (his stated counter-case — this is what makes it measurable):**
+- gapped up, then **dropped and held BELOW** those levels; or
+- gapped and **never breached** them at all.
+
+### Why this is better than the proxy I tested and failed with
+
+My 08-12 readout tested "close above all three SMAs" as a stand-in for structure and got a null.
+This is a different and better question in three ways:
+- **It is about a LEVEL THAT PREVIOUSLY REJECTED PRICE**, not about a moving average per se. The
+  50-day counts here *because* it was resistance; the $227 high counts because it had failed
+  "the past few rallies". A generic above-the-SMA test cannot see that.
+- **It has an INTRADAY HOLD TEST.** Clearing a level at the open and holding it after a pullback
+  is a different event from gapping over it and fading. We have minute bars; this is measurable.
+- **It has an explicit failure mode**, so it can be scored on both sides rather than only counting
+  the wins.
+
+▶ This is the candidate feature the structure work should test next — NOT "above all three SMAs".
+Three checks: was there a level that had previously rejected price; did the gap CLEAR it; did price
+HOLD above it after the first pullback.
+
+⚠ Standing rule applies: NBIS is ONE name and illustrates the definition; it does not establish
+that the feature works. That needs the distribution, with N and distinct sessions.
