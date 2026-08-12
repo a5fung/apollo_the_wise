@@ -796,3 +796,64 @@ commits `16b627e`, `92f3873`, `237f516`, `96c6823`, `93dcd21`, `0627692`; probe 
 unmeasured.*
 
 ---
+
+---
+
+# CADENCE — weekly targets, daily increments, and an honest review
+
+Operator, 2026-08-12: *"let's make sure we can systematically get closer to the answer and
+implementation, it make take some time and we need to have more samples, but what i don't want to
+to deviate from the goal and not making progress. We should see what can be done each day and key
+progress/targets each week and review if we're meeting them."*
+
+## The rule that keeps this honest
+
+**A week has TWO kinds of target and both count.** Most of this plan is evidence-gated — the
+answer needs samples we do not have yet — so a week spent waiting is not automatically a failed
+week, and a week full of activity is not automatically a good one.
+
+| | What it means | How a week is judged |
+|---|---|---|
+| **SHIPPED** | work delivered — a measurement run, a mechanism built, a fork answered | did it land, verified |
+| **ACCRUED** | evidence that arrived — settled trades, alerts, decision rows | did the counter move as expected |
+
+⚠ **A week where nothing shipped AND nothing accrued is the failure mode this cadence exists to
+catch.** Say so plainly at review rather than re-dating quietly. ⚠ And per the standing rule
+above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
+
+## Review
+
+- **Daily** — the OPEN ritual (`check_plan.py --today`) already surfaces what is due. The
+  sequence above says what the day should MOVE; if a day's work does not map to a sequence step
+  or a goal term, that is the deviation the operator is guarding against.
+- **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
+  WHY. A miss gets a reason on the line, never a silent re-date.
+
+## Week of 2026-08-11 → 08-14 (short week; started Tuesday)
+
+⚠ **Token budget is the binding constraint this week** (operator 2026-08-11: ~20% until Friday's
+reset), so the target is deliberately ONE thing, not four.
+
+| Target | Type | Status |
+|---|---|---|
+| The Real EP Plan exists, named, with a goal and a sequence | SHIPPED | ✅ 08-12 |
+| The +2R exit rule fires correctly on live money | SHIPPED | ✅ 08-11 (ABCL, limit filled at the target, stop to entry same second) |
+| Theme assignment produces non-zero output | SHIPPED | ✅ 08-11 (91 new ticker slots, 0 truncation) |
+| **#563 — measure the 357 same-day pairs that never became a theme** | SHIPPED | ⏳ due 08-15 — **this week's one remaining target**, and it GATES the ranking work |
+| Settled sessions for the 08-05→08-12 window | ACCRUED | ⏳ settles ~08-18, on track |
+
+## Week of 2026-08-17 → 08-21 — provisional
+
+| Target | Type | Why then |
+|---|---|---|
+| Re-run the structure probe on the settled 08-05→08-12 window | SHIPPED | $0 re-run; the sessions that motivated the thesis finally testable |
+| Scope + build the WINNER REFERENCE SET (sequence step 3) | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. Scoping is HIS call |
+| #543 extractor re-check on ~40 calls · #471 decision-record fork | SHIPPED | both dated, both cheap |
+| More settled live trades toward a distribution worth reading | ACCRUED | 19 closed today; the 20-distinct-DAY bar on the Confirm cohort is the model for what "enough" looks like |
+
+## What this cadence must never become
+
+The data-gated review registry (#517) is the cautionary case in this repo: 124 entries, 50 ripe,
+oldest 72 days, surfacing every Sunday and ignored — **capture without a forcing function.** If
+this table stops being reviewed on Fridays it has become the same thing, and the honest move is to
+say so and replace it, not to keep appending rows.
