@@ -565,3 +565,66 @@ EP in the first place.
 ⚠ Any change to admission criteria is a detection-criterion change: CHANGE_PROCESS + N≥10 +
 operator sign-off. The immediate work is to MEASURE whether these structural features separate
 outcomes, not to tighten anything.
+
+---
+
+## 2026-08-12 (later) — operator pushes back on the structure null, and he is right
+
+I reported "structure does not separate" off 244 settled alerts. His response, verbatim:
+
+> "i don't neccessary agree here. First, our sample size is small, and EPs are rare, so I don't
+> claim that structure will reveal itself in a few trades. Also, chart structure is part science
+> part art, how you determine if it's gapping up above certain levels depends on what the chart
+> looks like, sometimes you go further back because we see multiple tests of certain levels that
+> failed previously, sometimes you don't need to if you don't see such test; sometimes you want it
+> to gap up above key moving averages, sometimes not because it's too far away and not realistic,
+> etc. etc. We can't make conclusions other than the fact that structure does matter for EPs. The
+> better way to see this is probably to have a few winners to compare it with. THe whole premise
+> here is to be more selective. And this is only one criteria, my whole point is that we need to
+> leverage all factors, some we may not know about now, to help us filter down the universe to
+> what we think are potential real EPs, and even then the win rate make by only 20% or so. What my
+> fear is that our winrate is 10% of lower now because we are not selective enough. Then there's
+> also alternate delay entries."
+
+### What I got wrong, stated plainly
+
+I tested **one crude binary proxy** — "is close above all three SMAs" plus two fixed lookback
+high-clears — and reported the null as if it bore on STRUCTURE. It does not. **A null on a bad
+proxy is not evidence against the concept**, and I should have said so in the readout instead of
+leading with "no".
+
+### His definition of structure — CONTEXTUAL, and this is the part a fixed feature cannot capture
+
+- **The lookback is not fixed.** You go further back when the chart shows *multiple failed tests*
+  of a level; you do not when no such tests exist. A hard 20d/60d window answers a different
+  question than the one he asks of a chart.
+- **"Above key moving averages" is conditional, not required.** Sometimes you want the gap to
+  clear them; sometimes you do not, because the average is *too far away for that to be
+  realistic*. So the same feature flips sign depending on distance.
+- Structure is **part science, part art**. That is not a reason to give up on measuring it — it is
+  a reason to stop encoding it as one binary column.
+
+### The design correction — the one that actually matters
+
+**You cannot learn what a winner looks like from a cohort with no winners.** Our 19 closed live
+trades are 19 losers; the readout tried to find separation inside a population that has only one
+outcome. His fix, and it is the right one:
+
+> "The better way to see this is probably to have a few winners to compare it with."
+
+That means the reference set must come from OUTSIDE our own fills — real EP winners from market
+history — and the question becomes **"what do real EP winners look like, and how many of our
+alerts look like that?"** rather than "did our structured alerts beat our unstructured ones".
+
+### The goal, in his numbers
+
+- **Premise: be MORE SELECTIVE.** Filter the universe down to *potential real EPs* using ALL
+  factors — including ones we have not identified yet.
+- **A realistic target win rate is ~20%.**
+- **His fear: we are at 10% or below because we are not selective enough.** Measured reality is
+  worse than the fear: **0 of 19 closed live trades won.**
+- Structure is ONE criterion among several, not the answer on its own.
+- **And delayed entries are a parallel path to the same goal** — see #562, where "delayed entry" is
+  a FAMILY with an open horizon, not a single setup.
+
+⚠ Nothing here changes admission criteria. It changes what the next measurement should be.
