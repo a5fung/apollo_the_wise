@@ -129,8 +129,8 @@ def test_describe_stop_move_names_trail_and_states_locked_gain_pltr():
     )
     assert "moving-average trail" in text
     assert f"${PLTR_ENTRY:.2f}" in text
-    assert "if this stop fills" in text  # tied to the stop, not an absolute guarantee
-    assert "win, not a loss" in text
+    assert "a fill here" in text  # tied to the stop, not an absolute guarantee
+    assert "banks" in text
     assert "R" in text  # R-multiple banked, in the operator's own terms
     # no raw ids, no pipe tables, no ticket-speak
     assert "|" not in text
@@ -157,7 +157,7 @@ def test_describe_stop_move_infers_trail_without_stop_source():
         stop_source=None,
     )
     assert "moving-average trail" in text
-    assert "win, not a loss" in text
+    assert "banks" in text
 
 
 def test_describe_stop_move_infers_refresh_when_price_unchanged():
@@ -209,7 +209,7 @@ def test_describe_stop_move_brief_is_short_and_distinct_from_full():
     assert brief != full
     assert len(brief) < len(full), "the safety-net confirmation must not repeat the full explanation"
     assert f"${PLTR_ENTRY:.2f}" in brief  # still stands alone if it's the only message
-    assert "win, not a loss" in brief
+    assert "banks" in brief
     assert "R banked" not in brief  # the R-multiple detail stays in the full (first) message only
 
 
@@ -290,7 +290,7 @@ async def test_update_stop_retry_recovered_telegram_names_the_trail_no_raw_id():
     assert len(confirmed) == 1, f"expected exactly one confirm Telegram, got: {sent}"
     msg = confirmed[0]
     assert "moving-average trail" in msg
-    assert "win, not a loss" in msg
+    assert "banks" in msg
     assert f"${PLTR_NEW_STOP:.2f}" in msg
     assert "dd9ed021" not in msg, "raw broker order id must not reach the operator"
     assert "|" not in msg
@@ -341,7 +341,7 @@ async def test_stop_replaced_telegram_has_reason_and_no_raw_id(monkeypatch):
     assert len(replaced) == 1, f"expected exactly one, got: {sent}"
     msg = replaced[0]
     assert "moving-average trail" in msg
-    assert "win, not a loss" in msg
+    assert "banks" in msg
     assert "dd9ed021" not in msg, "raw broker order id must not reach the operator"
     assert "safety check" in msg.lower() or "safety-net" in msg.lower() or \
         "confirms" in msg.lower(), "message should say why THIS check exists"
@@ -350,4 +350,4 @@ async def test_stop_replaced_telegram_has_reason_and_no_raw_id(monkeypatch):
     # reason line is the brief form (short, no R-multiple, no repeated "if this
     # stop fills" clause structure identical to A's).
     assert "R banked" not in msg
-    assert "banked beyond breakeven" not in msg
+    assert "beyond breakeven" not in msg

@@ -1331,9 +1331,9 @@ def describe_stop_move(
 
         if brief:
             if above_entry:
-                return f"{label} — stop is above your ${entry_price:.2f} entry; a fill here is a win, not a loss."
+                return f"{label} — stop is above your ${entry_price:.2f} entry — a fill here banks a gain."
             if at_entry:
-                return f"{label} — stop is at your ${entry_price:.2f} entry; a fill here is a scratch, not a loss."
+                return f"{label} — stop is at your ${entry_price:.2f} entry — a fill here is a scratch."
             return f"{label} confirmed live at the broker."
 
         if stop_source == "trail":
@@ -1354,12 +1354,12 @@ def describe_stop_move(
 
         if above_entry:
             gain = new_stop_price - entry_price
-            tail = f" — if this stop fills, it locks in a ${gain:.2f}/share gain: a win, not a loss"
+            tail = f" — a fill here banks ${gain:.2f}/share"
             if hard_stop is not None and entry_price > hard_stop:
                 r = gain / (entry_price - hard_stop)
-                tail += f" (about {r:.1f}R banked beyond breakeven)"
+                tail += f", {r:.1f}R beyond breakeven"
         elif at_entry:
-            tail = " — if this stop fills, it's a scratch, not a loss"
+            tail = " — if this stop fills, it's a scratch"
         else:
             tail = ""
 
