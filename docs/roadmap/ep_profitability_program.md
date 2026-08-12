@@ -1009,3 +1009,51 @@ from prod 2026-08-12; queries and raw captures in the session scratchpad (`563_*
   biotechs on four separate clinical events) were judged NOT one story. If the operator's bar
   counts a sector wave as one story, the miss count rises; the raw session groupings are in the
   scratchpad captures for re-judgment. Single grader, no second pass.
+
+---
+
+## 2026-08-12 — the delayed feed is doing a filter's job, and that reframes the real-time question
+
+Operator, on being told the review population is every DETECTED EP:
+
+> "on the point to look beyond filled trades, this is also the case for all the real-time misses
+> because we've not flipped to real-time data for EPs... we get dozens of these right now in
+> earnings season (e.g today there's 11). We decided not to flip because it'll admit too much,
+> which is the right call but only for pragmatic reasons, we are putting up an artificial filter,
+> not related to any real EP criteria, but just using delayed data because it prevents us from
+> being overwhelmed. This shows the filter issue is more stark, we have it too lose to the point
+> where we can't even fix what i consider a real bug, not using real-time data which is the
+> correct thing to use, just so we can avoid having too many stocks/EPs. With that said, this
+> cohort should also be included in our universe to review and look into given they technically
+> meet our current lose criteria."
+
+### The point, stated once
+
+**We are using a data-latency artefact as an admission filter.** Detection reads delayed Polygon
+data while the feed we pay for and trade on is real-time SIP. On 2026-08-10 the recommendation was
+HOLD — do not flip the two admission switches — and the evidence behind it was real (in-window
+real-time crossers ran −0.60R over n=320/14d, 80% stopping day-0, #559). **But that is a volume
+argument, not a criteria argument.** Nothing about "the data arrived late" is an EP criterion.
+
+So the hold is pragmatically right and structurally wrong at the same time, and the operator has
+named why: **our admission is so loose that we cannot afford to fix a real bug.** The delayed feed
+is load-bearing — it is silently doing the selectivity work the criteria should be doing.
+
+### What follows — and it changes an ORDER, not just a list
+
+1. **The real-time-detected-but-never-admitted names JOIN the review population.** They meet our
+   current criteria; they are absent only because of when the data arrived. Combined with the
+   standing scope rule above, the full universe is: filled ⊂ detected-and-skipped ⊂
+   **detected-only-in-real-time**. Report all three N's.
+2. **#559's flip question is SUBORDINATE to admission, not parallel to it.** Asking "should we
+   flip to real-time" while criteria are loose can only ever answer "no, too much volume". The
+   flip becomes genuinely answerable once admission is tight enough that volume is no longer the
+   binding objection — so **tightening criteria is the prerequisite, and #559's 08-31 re-cut
+   should say so rather than re-deriving the same volume answer.**
+3. **Earnings season is the stress case, measured**: ~11 EPs today; the alert rate ran 1-2/day in
+   late July and 7-10/day in the 08-04→08-07 window. The calendar drives the count, so any filter
+   that is really a volume limiter will look best exactly when randomness is highest.
+
+⚠ This does NOT argue for flipping the real-time switches. It argues that the reason we cannot is
+a defect in admission, and that the fix is upstream of the flip. Both remain THE LINE — entry
+discipline, operator's sole call.
