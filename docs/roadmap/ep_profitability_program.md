@@ -565,3 +565,96 @@ thesis-identity) the operator has not named as ranking work; only #563 (coverage
 commits `16b627e`, `92f3873`, `237f516`, `96c6823`, `93dcd21`, `0627692`; probe outputs
 `_p74_post_ship_audit.md` and the `_468*` series. Numbers not re-derivable from these are marked
 unmeasured.*
+
+---
+
+## 2026-08-12 — #533 readout: does chart STRUCTURE separate real EPs from noise? (measurement only; proposes nothing)
+
+**Question (operator reframe, `operator_shared_notes.md` §2026-08-12):** not "which alert should we
+have taken" but "which alert was a REAL EP at all" — gap = signal, structure = the missing filter,
+"neglected stock gapping through key levels."
+
+**HEADLINE: NO — on the data that has settled, chart structure at the gap does not separate the
+alerts that ran from the ones that died.** Once the day's tape is controlled for, no structural
+feature tested moves 5-day alert outcomes; the raw pooled read actually leans the WRONG way
+(structure-clean names did slightly worse). **The honest caveat cuts the other way too: every
+session after 08-04 — the exact sessions that motivated the thesis (SE/BW/FRMI, the TEAM/FIGS/NET
+cohort, ABCL) — is still inside its 5-day window and is NOT in this sample.** The verdict is "not
+confirmed on May–July data," not "the thesis is wrong."
+
+**Method (probe `scripts/probes/_533_structure_admission_probe.py`, inputs `_533_{alerts,bars,livetrades}.tsv`,
+captured once from prod 2026-08-12 — $0 to re-run):**
+- Unit = the ALERT (skips and stop-outs included), per §1. Cohort: every HIGH `mi_ep_alerts`
+  ticker-day 2026-05-11..08-11 — 276 alerts, 53 sessions; **settled 5-day outcomes exist for 244
+  alerts over 48 sessions** (alerts after 08-04 truncated). MODERATE (n=51) as robustness.
+- Outcome = forward return at 1/3/5/10 trading days from the gap-day OPEN (the buyable price);
+  MFE/MAE over days t+1..t+5 highs/lows (follow-through, excludes the gap-day intraday pop);
+  "ran" = a high ≥ +5% above the open within 5 days. Features computed from `mi_daily_closes`
+  bars strictly BEFORE the alert day (SMA flags agree with `mi_stock_scores` 257/276; the
+  differences are score-row staleness).
+- Two populations, reported separately per the operator's 08-12 addition: ALL alerts pooled
+  (admission — single-alert sessions included) and the 19 closed live losers + 2 open winners as
+  labelled cases.
+
+**Per-feature separation (HIGH cohort, n=244 / 48 sessions unless noted).** rank z ≈ ±2 is the
+usual significance line; sign convention: negative z = the feature's YES side did WORSE.
+
+| feature | pooled effect (median fwd5) | pooled z | tape-controlled z | verdict |
+|---|---|---|---|---|
+| prev close above ALL of SMA10/20/50 (n=101 vs 141) | −4.2% vs +0.2% | −2.49 | **−1.19** | no separation; raw lean is the session mix, and the lean is AGAINST the thesis |
+| above SMA50 / above SMA20 | −2.5% vs ~0% | −1.45 / −1.55 | — | same shape, weaker |
+| open CLEARS prior 20d high (n=131 vs 113) | −3.3% vs +2.9% | −2.29 | −1.54 (60d) | wrong-direction lean, not significant after tape control |
+| open CLEARS prior 60d high (n=96 vs 144) | −3.4% vs +1.5% | −2.43 | −1.54 | same |
+| open CLEARS all-available prior high, "blue sky" (n=65 vs 179) | −3.6% vs −0.3% | −2.06 | −1.94 | the ONLY feature that survives tape control — and its direction is OPPOSITE the thesis |
+| overhead congestion (frac of last 120 bars traded ≥ open) | heavy(>50%) +2.2% vs clean(≤10%) −3.4% | ρ=+0.15 | ρ=+0.10 | gapping INTO congestion did not hurt 5-day outcomes here |
+| neglect: 5d/50d volume ratio · days since ≥5% move · distance below highs · 20d pre-return | — | ρ = −0.13 / −0.01 / −0.07 / −0.14 | ≤0.10 | nothing separates |
+| existing: gap% · ep_score · RS composite · RS rank | — | ρ = −0.14 / +0.03 / −0.08 / +0.06 | gap% −0.05 | nothing separates (gap size mildly NEGATIVE, consistent with claim 1) |
+| catalyst grade | game_changer −0.5% (n=70) vs strong −0.3% (n=102) vs routine −5.9% (n=66) | — | — | top two grades indistinguishable; only `routine` is worse |
+
+- **Upside follow-through is structure-blind:** median 5d MFE +10.7% (above-all-3) vs +9.8%
+  (below-all-3); 10d MFE +14.0% vs +12.8%. P(ran ≥+5% in 5d): 60% vs 66% — the base rate is ~64%
+  REGARDLESS of structure; running is the norm for this cohort, which is why admission is hard.
+- **Downside was WORSE for structure-clean names in this window:** median 5d MAE −12.9%
+  (above-all-3) vs −7.7% (below-all-3) — pooled, May-heavy, so read as descriptive only.
+- **Within-session choosing view (the per-session question, kept separate):** 21 settled sessions
+  had at least one above-all-3 name AND one not; the above-all-3 bucket won the day 11 times, lost
+  10. A coin flip.
+- **MODERATE robustness:** no separation (n=14 vs 23, z −0.53).
+- **Session-mix warning, itself a finding:** above-all-3 share of the HIGH board = 48% of May
+  alerts, 52% of June, **6% of July**, — the feature tracks the month's tape at least as much as
+  the name. May contributes 148 of the 244 settled rows but only 14 of 48 sessions; N over rows
+  applies everywhere above.
+
+**The 19 closed live losers + 2 open winners as labelled cases (separate population):**
+- Directionally FOR the thesis: only 5 of 19 losers were above all 3 SMAs vs a 41% cohort base
+  rate (112/274) — the trades we took were structure-poorer than the board we alerted on. n=19,
+  and the two winners split (ABCL: clean structure, blue-sky gap; PLTR: above SMA10 only).
+- The louder pattern in the same table is the #468b one, reconfirmed on fresh names: **6 of the 14
+  settled losers' ALERTS went on to a high ≥ +5% within 5 days of the alert** (HUT +18.6%, NVCR
+  +19.2%, SMCI +12.8%, QBTS +12.7%, THC +11.8%, MANE +5.4%). The pick ran; the bracket died.
+- The 08-11 worked example survives verbatim (probe output): SE = above all three SMAs, clears
+  the 60d high, RS rank 281; BW/FRMI/RIOT = below all three, landing inside their prior ranges,
+  ranks 1641–2397. The operator's eye and these features agree perfectly on that board — but that
+  session is unsettled, and across the 21 settled multi-alert sessions the same rule was 11–10.
+
+**What could NOT be measured (say-plainly list):**
+1. **The motivating window.** No alert after 08-04 has a settled 5-day outcome at the 08-11 bar
+   cutoff — the thesis was formed on exactly the sessions this test cannot yet score. Re-run is
+   $0 (local TSVs + one bar pull) from ~08-18.
+2. "52-week high" is really "highest high in retention" (`mi_daily_closes` starts 2025-07-07;
+   ≤13 months, less for newer listings; 2 alerts had <50 prior bars — SMA50/volume undefined).
+3. Intraday structure: features use the prior close and the 9:30 open; SE's 09:35 reclaim class
+   of behaviour is invisible to daily bars.
+4. Catalyst grades on 08-06/07 are #543-contaminated — those sessions are outside the settled
+   sample anyway.
+5. Stage-2 classification (the operator's condition 3) still has no implementation; "above all
+   three SMAs" is the nearest computable proxy and may be a poor stand-in for what his eye calls
+   structure.
+
+**Action: none — no admission change is supported by this evidence (THE LINE: nothing tightened,
+nothing proposed as decided).** Tightening admission to above-the-MAs or clears-key-levels on
+May–July data would have removed the wrong names as often as the right ones. No operator fork is
+warranted today; the one dated follow-up is mechanical: re-run the probe once the 08-05..08-12
+sessions settle (~08-18) — that window is where the thesis lives, and if structure separates
+there but not in May–July, THAT becomes the fork (a tape-conditional admission question), stated
+with fresh numbers.
