@@ -1057,3 +1057,55 @@ is load-bearing — it is silently doing the selectivity work the criteria shoul
 ⚠ This does NOT argue for flipping the real-time switches. It argues that the reason we cannot is
 a defect in admission, and that the fix is upstream of the flip. Both remain THE LINE — entry
 discipline, operator's sole call.
+
+---
+
+## 2026-08-12 — the skip reasons are a TAXONOMY, and each one asks three questions
+
+Operator: *"a good portion that didn't fill are also not directly related to our selection filter
+(well they are, but we have broad category), e.g. stop too wide i saw on EROC this morning which is
+correct on 1.5x ATR but looks like a good EP to me, so even if we filter it correctly there may be
+alternate delay entry here, so it's much more complex. Also, after 9:45AM we have late arriving
+EPs, so time filter may or may not be right, etc. Many parameters to work with here, i want to
+leave no stones unturned."*
+
+### Why "why didn't it fill" is not one question
+
+A skip today is recorded as a single reason, but the reasons are of **different kinds**, and
+lumping them hides which lever is which:
+
+| Kind | Examples | What it really says |
+|---|---|---|
+| **Selection** | grade too low, gap below floor | we judged it not an EP |
+| **Risk geometry** | `stop too wide` (1.5×ATR) | it IS an EP; the trade we would construct is too expensive |
+| **Timing / mechanism** | `window:out_of_orb` (post-09:45), unfilled at the ORB high, `zero_range` | it IS an EP; our entry mechanism could not take it |
+| **Portfolio** | position cap, cooldown, breaker | nothing about this name at all |
+
+**EROC this morning is the worked case**: skipped on stop-too-wide, correct by the 1.5×ATR rule,
+and the operator's read is that it was a good EP. The rule did its job and we still did not own a
+good name.
+
+### The THREE questions every skip reason must answer
+
+1. **Was the skip right AS A SELECTION CALL?** (measure: what did the name do afterwards, per
+   reason, distribution not anecdote)
+2. **If the skip was right, does it imply a DELAYED ENTRY rather than nothing?** A stop too wide at
+   09:31 can be a perfectly good entry at 10:30 off a tighter base. This is where the skip taxonomy
+   feeds directly into the delayed-entry family (#562) — **a "no" to today is not a "no" forever.**
+3. **Is the RULE itself right?** The 09:45 ORB cutoff exists for mechanism reasons, not because an
+   EP arriving at 09:50 is a worse EP. Late-arriving EPs in earnings season are a real population.
+   Same question for the 1.5×ATR multiple.
+
+⚠ **Question 3 is the dangerous one** — it is the operator's, it is entry discipline, and it needs
+CHANGE_PROCESS + N≥10 + sign-off. Questions 1 and 2 are measurement and can proceed.
+
+### What this adds to the plan
+
+- The **skip-reason attribution** analysis (named as unowned earlier today) now has a shape: split
+  by KIND first, then run the three questions per reason, reporting distributions with N and
+  distinct sessions.
+- It is the join between the selection surface and the delayed-entry surface — the same name can
+  fail admission today and be a legitimate delayed entry tomorrow, and today we simply drop it.
+- ⚠ Combined with the standing rules: no single skip proves a rule wrong (EROC illustrates,
+  it does not conclude), and the population is every DETECTED EP including the ones real-time
+  would have caught.
