@@ -975,20 +975,27 @@ def compose_evening_brief(data: BriefData) -> str:
     # State block — one line per quiet area, fixed order (regime · crypto ·
     # themes · leaders · lenses · EP · detectors · standing). Proves every
     # check ran; a material area's info lives in its block instead.
+    # #479 (operator 2026-08-12, "unreadable — one block"): each state line is
+    # BULLETED so phone-wrapped lines cannot visually merge into one paragraph;
+    # every drill-down stays at the END of its own line. Never pipe tables.
+    def _bullet(line: str) -> str:
+        first, *rest = line.split("\n")
+        return "\n".join(["• " + first] + ["   " + r for r in rest])
+
     out.append("")
     out.append("— no change —")
     if regime_block is None:
-        out.append(_regime_state_line(data))
+        out.append(_bullet(_regime_state_line(data)))
     if crypto_block is None:
-        out.append(_crypto_state_line(data))
+        out.append(_bullet(_crypto_state_line(data)))
     if theme_block is None:
-        out.append(_theme_state_line(data, theme_counts))
-    out.append(_leaders_state_line(data, jumps))
-    out.append(_lenses_state_line(data))
+        out.append(_bullet(_theme_state_line(data, theme_counts)))
+    out.append(_bullet(_leaders_state_line(data, jumps)))
+    out.append(_bullet(_lenses_state_line(data)))
     if ep_block is None:
-        out.append(_ep_state_line(ep_counts))
-    out.append(_detectors_state_line(data))
-    out.append(_standing_state_line(data))
+        out.append(_bullet(_ep_state_line(ep_counts)))
+    out.append(_bullet(_detectors_state_line(data)))
+    out.append(_bullet(_standing_state_line(data)))
 
     if data.is_friday and data.signal_quality_block:
         out.append("")

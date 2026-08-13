@@ -598,6 +598,31 @@ instead of passing vacuously.
   first live run of this check WILL alert on the 2026-08-04 Bitcoin Mining retirement (a real,
   correct alert on a defect the fix hasn't reached production for yet, not a broken new guard).
 
+### 2026-08-13 — #479 themes state-change message redesign (observability-only)
+
+- **The nightly STATE CHANGES message is now theme-first** (operator-specified
+  2026-08-12): keeps NEW themes, upward stage transitions, shadow→live
+  graduations (folded in from `promote_shadow_themes` via a `changelog` param —
+  no more standalone 🎓 ping seconds before the state message; standalone send
+  remains when no changelog is passed), GROUP-level RS deterioration, stage-downs,
+  retirements. Per-name RS deterioration, MA breaks, composition adds/prunes and
+  nascent churn are COLLAPSED to on-demand mi_audit_log rows (`rs_deterioration`,
+  `ma_break`, `theme_composition_churn`) surfaced by the existing audit-log
+  command; composition state stays on `/themes`. Detection layer unchanged.
+- **Group-deterioration rule is DERIVED, not picked**: ≥3 members down >15 RS in
+  ~2wk AND binomial-tail P(X≥x | theme size, day base rate) ≤ 0.02 — measured on
+  89 trading days (3,902 theme-days): 1.69 fires/day observed vs 0.16 by chance
+  (10.4x lift); a raw count alone is chance-dominated at every k (k≥2 lift 1.0x).
+  Constants + full derivation: `state_alerts.py` top-of-file.
+- **Advisor output bounded by demand, not cap** (`_call_advisor`): brevity
+  contract added to the system prompt (verdict first line, ≤6 sentences) — the
+  freeform caller fills ANY cap (p50=600 at the old 600 cap; the only opus-5
+  call pegged 1500), so raising `theme_advisor_*` again is banned in the
+  registry evidence. `theme_validation` cap 400→1000 (schema-bounded, zero
+  truncations, max completed 385/400 — straight raise).
+- **Reversion-flag**: restore `send_state_alerts`'s previous flat-section render
+  (git) and drop the `changelog` param default to revert exactly.
+
 ### 2026-08-04 — #368 crypto→AI-conversion consolidation (four fixes, live-on-deploy)
 
 - **Trigger**: #368 labelling — 5 of the operator's 9 theme-credit false positives are ONE

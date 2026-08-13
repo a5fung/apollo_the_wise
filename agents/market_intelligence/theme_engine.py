@@ -2269,7 +2269,7 @@ async def _map_ecosystems_nonfatal(themes: list[dict], ctx: str) -> None:
         logger.warning(f"[{ctx}] ecosystem mapping pass failed (non-fatal): {e}")
 
 
-async def promote_shadow_themes(today) -> int:
+async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> int:
     """#226 — graduate shadow theme cohorts into the LIVE `mi_themes` table (operator 2026-06-28:
     "we need to graduate this ASAP" — the missing promo path was the gap that let cohorts sit idle).
     Reads the FULL shadow lane (`get_shadow_theme_candidates`, all sources incl 'shadow_v2'), promotes
@@ -2458,10 +2458,17 @@ async def promote_shadow_themes(today) -> int:
         # Re-promotions of already-live cohorts are steady-state maintenance (still logged in the
         # shadow_themes_promoted audit above) — not actionable, so no Telegram. (Was: fired every
         # nightly run because established cohorts keep re-qualifying → "1 theme graduated" nightly.)
-        n_new = len(new_grads)
-        _named = ", ".join(new_grads[:6]) + (f" +{n_new - 6} more" if n_new > 6 else "")
-        await send_telegram_message(
-            f"🎓 {n_new} theme(s) NEWLY graduated shadow→live: {_named}. `/themes`.")
+        # #479 (operator 2026-08-12: "can we combine these msg"): when the nightly chain passes a
+        # changelog, the graduation is FOLDED into the themes state-change message (same event
+        # class — a new live theme) instead of a standalone ping seconds apart. The standalone
+        # send remains for callers with no changelog (nothing goes silent).
+        if changelog is not None:
+            changelog.extend({"type": "theme_graduated", "theme": name} for name in new_grads)
+        else:
+            n_new = len(new_grads)
+            _named = ", ".join(new_grads[:6]) + (f" +{n_new - 6} more" if n_new > 6 else "")
+            await send_telegram_message(
+                f"🎓 {n_new} theme(s) NEWLY graduated shadow→live: {_named}. `/themes`.")
     # ADR 0032: map promoted themes to ecosystems AT promotion. This job runs
     # AFTER run_theme_engine's ensure hook (17:05 vs 17:03), so without this
     # every new promote sat E-UNASSIGNED on the board until the next nightly
@@ -4064,12 +4071,18 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
     try:
         resp = await client.messages.create(
             model=THEME_ADVISOR_MODEL,
-            # RAISED 2026-08-09 via the registry: 149/151 opus-4-8 advisor calls were
-            # silently censored at exactly the old 600 cap (measured in api_usage).
+            # 2026-08-13 (#479): do NOT raise this cap for at-cap pressure. This is a
+            # FREEFORM-PROSE caller and it fills whatever cap it gets (p50 = exactly 600
+            # at the old 600 cap on opus-4-8; the first opus-5 call pegged 1500) — the
+            # same demand-unbounded class the 2026-08-10 theme fixes diagnosed. The fix
+            # is the brevity contract in the system prompt below (bounds the demand);
+            # verdict-first ordering means any residual cut clips tail reasoning only.
             max_tokens=max_tokens_for("theme_advisor_discovery"),  # one ceiling serves all 3 phase callers
             system=(
                 "You are a senior market intelligence analyst (Qullamaggie/O'Neil methodology). "
-                "Give direct, decisive answers. State your conclusion first, reasoning second. No hedging."
+                "Give direct, decisive answers. State your conclusion first, reasoning second. No hedging. "
+                "KEEP IT SHORT: verdict on the first line, then at most 6 terse sentences of reasoning. "
+                "Do not restate the question or the context; do not enumerate stock-by-stock."
             ),
             messages=[{"role": "user", "content": f"{question}\n\nContext:\n{context}"}],
         )

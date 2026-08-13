@@ -1730,6 +1730,16 @@ class MarketIntelligenceAgent(BaseAgent):
             event_type = "stage_change"
         elif "exclusion" in task or "excluded" in task:
             event_type = "theme_excluded"
+        elif "deterior" in task:
+            # #479: per-name RS deterioration collapsed out of the nightly
+            # state-change message — "audit log deterioration" is its on-demand home.
+            event_type = "rs_deterioration"
+        elif "ma break" in task or "ma_break" in task:
+            # #479: MA breaks collapsed the same way — "audit log ma breaks".
+            event_type = "ma_break"
+        elif "churn" in task:
+            # #479: composition adds/prunes + nascent churn roll-up.
+            event_type = "theme_composition_churn"
         elif "orb" in task:
             event_type = "orb_triggered"
         event_type_like = None
@@ -1769,6 +1779,9 @@ class MarketIntelligenceAgent(BaseAgent):
             "stage_change":          "📈",
             "theme_excluded":        "🚫",
             "ticker_revalidated_out":"🗑️",
+            "rs_deterioration":      "📉",
+            "ma_break":              "🔻",
+            "theme_composition_churn": "🔄",
             "validation_error":      "🔴",
             "assignment_error":      "🔴",
             "discovery_error":       "🔴",

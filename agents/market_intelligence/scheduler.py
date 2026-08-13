@@ -648,7 +648,9 @@ async def _nightly_data_pull():
     # reads today's fresh cohorts. Error-wrapped + non-fatal: a promote failure must NEVER break the pull.
     try:
         from agents.market_intelligence.theme_engine import promote_shadow_themes
-        n_promoted = await promote_shadow_themes(_today)
+        # #479: pass the changelog so a NEW shadow→live graduation rides the themes
+        # state-change message (step 8 below) instead of a standalone ping.
+        n_promoted = await promote_shadow_themes(_today, changelog=theme_changelog)
         logger.info(f"Shadow->live graduation (#226): promoted {n_promoted}")
         summary_parts.append(f"promoted:{n_promoted}")
     except Exception as e:

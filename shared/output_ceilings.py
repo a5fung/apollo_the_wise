@@ -85,9 +85,11 @@ TRUNCATION_BY_DESIGN = frozenset({
 
 _ADVISOR = OutputCeiling(
     1500, "THEME_ADVISOR_MODEL", "claude-opus-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
-    "RAISED 2026-08-09 from 600: 149/151 opus-4-8 calls censored at exactly 600 "
-    "(silently truncating since June); largest genuinely completed 599 -> 2.5x ~ 1500. "
-    "No completed opus-5 sample yet — PROVISIONAL.",
+    "RAISED 2026-08-09 from 600. 2026-08-13 (#479): DO NOT raise again for at-cap "
+    "pressure — freeform-prose caller that fills ANY cap (api_usage: p50 = exactly "
+    "600 at the old 600 cap; the only opus-5 call pegged 1500). Demand bounded "
+    "instead: brevity contract in theme_engine._call_advisor's system prompt "
+    "(verdict first line, <=6 sentences); a residual cut clips tail reasoning only.",
 )
 
 # One shared judge-transport ceiling: ep_grade_judge.grade_holistic passes it, and
@@ -144,8 +146,11 @@ CEILINGS: dict[str, OutputCeiling] = {
         500, "DESCRIPTION_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "136 haiku calls, max completed 308 (62% of cap)."),
     "theme_validation": OutputCeiling(
-        400, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
-        "Max completed 272 on sonnet-5, 293 on 4-6 (~70% of cap); ~1.0x model growth."),
+        1000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "RAISED 2026-08-13 from 400 (#479): near-ceiling fired at 385/400. Verified in "
+        "api_usage: 508 sonnet-5 calls, ZERO truncations, max completed 385 (96% of "
+        "cap), p50 just 9 — schema-bounded JSON ({\"remove\": [...]} <= input tickers), "
+        "~1.0x model growth, so a straight raise is right: 2.5x the 385 max ~ 1000."),
     "theme_assignment": OutputCeiling(
         8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise after 10 days dead at 4000 (#543 — every call censored). "
