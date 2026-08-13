@@ -85,12 +85,40 @@ async def fetch_orb_bar_with_retry(
     strategy_label: str,
 ) -> dict | None:
     """Fetch first 1-min bar, retrying every BAR_RETRY_DELAY_SEC up to
-    BAR_RETRY_MAX attempts. The REST endpoint can take a few seconds after
-    bar close (9:31:00) to return the settled bar; single-attempt callers
-    miss any candidate that hits the gap.
+    BAR_RETRY_MAX attempts.
+
+    PRIMARY source: the 09:30 bar the WebSocket stream already delivered
+    (bar_stream.get_cached_first_bar). 2026-08-13: three HIGH alerts
+    (HLIT/CRMD/CGEM) skipped infra:no_bar because this function re-fetched
+    over REST a bar the stream had already pushed — REST minute aggregation
+    can lag bar close by more than the whole retry budget. The cache is
+    consulted on EVERY attempt (a stream bar can land during a retry sleep)
+    and only ever holds the true 09:30 ET minute, so the ORB definition is
+    unchanged.
+
+    FALLBACK: REST get_first_bar, exactly today's behaviour — the REST
+    endpoint can take a few seconds after bar close (9:31:00) to return the
+    settled bar; single-attempt callers miss any candidate that hits the gap.
     """
     bar: dict | None = None
     for attempt in range(1, BAR_RETRY_MAX + 1):
+        stream_bar = _stream_cached_bar(ticker, today)
+        if stream_bar:
+            logger.info(
+                f"{strategy_label} {ticker}: ORB bar from stream cache "
+                f"(attempt {attempt}) O={stream_bar['open']:.2f} "
+                f"H={stream_bar['high']:.2f} L={stream_bar['low']:.2f}"
+            )
+            try:
+                await log_audit_event(
+                    "orb_bar_stream_used",
+                    f"{strategy_label} {ticker} attempt {attempt} — "
+                    f"O={stream_bar['open']:.2f} H={stream_bar['high']:.2f} "
+                    f"L={stream_bar['low']:.2f}",
+                )
+            except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.info already fired immediately above
+                pass
+            return stream_bar
         bar = await alpaca.get_first_bar(ticker, today)
         if bar:
             return bar
@@ -109,6 +137,18 @@ async def fetch_orb_bar_with_retry(
                 pass
             await asyncio.sleep(BAR_RETRY_DELAY_SEC)
     return None
+
+
+def _stream_cached_bar(ticker: str, today: date) -> dict | None:
+    """Error-wrapped lookup of the stream-delivered 09:30 bar. ANY failure
+    (import, lookup, bad state) returns None so the REST fallback runs —
+    this path may narrow the bar sources to zero under no circumstances."""
+    try:
+        from agents.market_intelligence.broker import bar_stream
+        return bar_stream.get_cached_first_bar(ticker, today)
+    except Exception as e:  # loud-ok: fallback path — REST fetch proceeds identically; a cache failure must never block the entry
+        logger.warning(f"stream bar-cache lookup failed for {ticker} (non-fatal): {e}")
+        return None
 
 
 # ── Fade guard ───────────────────────────────────────────────────────────────

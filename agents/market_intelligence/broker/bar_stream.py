@@ -9,7 +9,8 @@ Flow:
   EP scan detects HIGH pre-market
     → subscribe_ep_candidate(ticker)
   9:31 AM: Alpaca pushes first bar event
-    → _handle_bar() → process_new_alerts_live(ticker)
+    → _handle_bar() caches the 09:30 bar (_first_bars — the entry pipeline's
+      PRIMARY ORB bar source, REST is fallback) → process_new_alerts_live(ticker)
   9:35 AM: unsubscribe_all() clears the subscription set
 
 For at-open upgrades (detected by the 9:31 EP scan after bar already closed):
@@ -36,6 +37,14 @@ _stream_task: asyncio.Task | None = None
 _stream_healthy: bool = False
 _subscribed: set[str] = set()          # tickers awaiting first bar
 _processed_today: set[str] = set()     # tickers already entered today (dedup)
+# Stream-delivered 09:30 ET bars, keyed by ticker — the PRIMARY ORB bar source
+# for entry_pipeline.fetch_orb_bar_with_retry (2026-08-13: REST minute
+# aggregation lagged bar close and three HIGH alerts skipped infra:no_bar
+# while this stream had already delivered the bar). Only true 09:30 ET bars
+# are ever stored (_handle_bar's minute gate), so serving from here can never
+# change WHICH minute defines the ORB. Values are the same dict shape
+# alpaca_client.get_first_bar returns.
+_first_bars: dict[str, dict] = {}
 
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -229,7 +238,49 @@ def reset_daily_state() -> None:
     """Clear processed set at start of day. Called from scheduler at 7 AM."""
     _processed_today.clear()
     _subscribed.clear()
+    _first_bars.clear()
     logger.info("Bar stream: daily state reset")
+
+
+def get_cached_first_bar(ticker: str, trade_date) -> dict | None:
+    """Return the stream-delivered 09:30 ET bar for `ticker` on `trade_date`,
+    or None. Called by entry_pipeline.fetch_orb_bar_with_retry as the PRIMARY
+    ORB bar source (REST get_first_bar stays the fallback).
+
+    Read-side guards (belt-and-braces over _handle_bar's store-side gate):
+    - timestamp must be exactly trade_date 09:30 ET — a stale prior-day bar
+      (missed daily reset) or any non-open minute is never served;
+    - OHLC sanity (0 < low <= open/close <= high, volume > 0) — a malformed
+      bar falls back to REST rather than defining a wrong ORB range.
+    Any failure returns None, i.e. today's REST behaviour.
+    """
+    from datetime import datetime as _dt
+
+    from agents.market_intelligence.collector import _ET
+
+    bar = _first_bars.get(ticker)
+    if not bar:
+        return None
+    try:
+        ts = _dt.fromisoformat(bar["timestamp"]).astimezone(_ET)
+        if ts.date() != trade_date or (ts.hour, ts.minute) != (9, 30):
+            return None
+        o, h, l, c = (float(bar["open"]), float(bar["high"]),
+                      float(bar["low"]), float(bar["close"]))
+        v = int(bar["volume"])
+        if not (0 < l <= h and l <= o <= h and l <= c <= h and v > 0):
+            logger.warning(
+                f"Bar stream: cached ORB bar for {ticker} failed sanity check "
+                f"— falling back to REST: {bar}"
+            )
+            return None
+    except Exception as e:
+        logger.warning(
+            f"Bar stream: cached ORB bar for {ticker} unreadable ({e}) — "
+            f"falling back to REST"
+        )
+        return None
+    return dict(bar)
 
 
 def get_status() -> dict:
@@ -255,6 +306,33 @@ async def _handle_bar(bar) -> None:
     if not (bar_time_et.hour == 9 and bar_time_et.minute == 30):
         logger.debug(f"Bar stream: ignoring non-open bar for {ticker} at {bar_time_et.strftime('%H:%M')}")
         return
+
+    # Cache the delivered 09:30 bar BEFORE anything else — this is the bar the
+    # entry pipeline uses (REST is fallback only; it lags bar close by seconds
+    # and cost three infra:no_bar skips on 2026-08-13). Same dict shape as
+    # alpaca_client.get_first_bar. Idempotent on re-delivery.
+    _first_bars[ticker] = {
+        "open": float(bar.open),
+        "high": float(bar.high),
+        "low": float(bar.low),
+        "close": float(bar.close),
+        "volume": int(bar.volume),
+        "timestamp": bar_time.isoformat(),
+    }
+    # #127 write-through parity with the REST path: when the cache serves the
+    # entry, get_first_bar never runs, so persist the live cohort's 9:30 bar
+    # here instead. Fire-and-forget + ON CONFLICT DO NOTHING — idempotent
+    # against the REST path's own write-through; never blocks the entry.
+    try:
+        from agents.market_intelligence.broker.alpaca_client import _persist_first_bar
+        asyncio.create_task(_persist_first_bar(
+            ticker, bar_time,
+            float(bar.open), float(bar.high), float(bar.low), float(bar.close),
+            int(bar.volume),
+            float(bar.vwap) if getattr(bar, "vwap", None) is not None else None,
+        ))
+    except Exception as e:  # loud-ok: telemetry only — _persist_first_bar self-catches; the entry decision must never wait on or fail with this write
+        logger.warning(f"Bar stream: mi_intraday_bars write-through scheduling failed for {ticker}: {e}")
 
     if ticker in _processed_today:
         logger.debug(f"Bar stream: {ticker} already processed today")
