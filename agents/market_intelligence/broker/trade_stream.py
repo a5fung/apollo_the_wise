@@ -1279,35 +1279,153 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 # exit-ladder context (no stop_source), so describe_stop_move
                 # INFERS the reason from prices alone — safe on live trades since
                 # only the trail and breakeven ever raise a stop (see its
-                # docstring). brief=True: when this fires alongside live_tracker's
-                # own "Stop confirmed" for the SAME move, a full repeated paragraph
-                # read as an unexplained duplicate (2026-08-12 review) — one short
-                # line plus the footer below (which says why THIS check exists) is
-                # enough; it still stands alone in the clean-race case where this
-                # is the operator's only message for the move.
+                # docstring).
                 _new_stop = replacement.get("stop_price")
                 _entry = stop_trade.get("entry_price")
                 _hard = stop_trade.get("hard_stop")
                 _old_stop = stop_trade.get("stop_price")
-                _reason_text = describe_stop_move(
-                    entry_price=float(_entry) if _entry is not None else None,
-                    hard_stop=float(_hard) if _hard is not None else None,
-                    old_stop_price=float(_old_stop) if _old_stop is not None else None,
-                    new_stop_price=float(_new_stop) if _new_stop is not None else None,
-                    brief=True,
-                )
-                _price_line = f" now ${float(_new_stop):.2f}" if _new_stop is not None else ""
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}ℹ️ *Stop replaced:* {symbol}{_price_line}\n"
-                    f"{_reason_text}\n"
-                    f"_Broker-side safety check after the prior stop {event_norm} — "
-                    f"confirms the position stayed protected throughout._"
-                )
-                logger.info(
-                    f"WS [{account_mode}]: stop-leg {event_norm} but replacement live"
-                    f"{_settle_note} ({replacement['id']}): {symbol} "
-                    f"trade_id={stop_trade['id']}"
-                )
+
+                # Operator (2026-08-12): "can we combine these two msg? I get two
+                # Everytime stop moves." — this WS safety-net and order_manager's
+                # own retry-recovered "Stop confirmed" fire independently for the
+                # SAME move (retry path: order_manager cancels the old leg, that
+                # cancel is what wakes THIS handler, and by the time order_manager's
+                # retry lands + it tells the operator, this recheck usually lands
+                # too). Do NOT merge the text — SUPPRESS this one when it is pure
+                # confirmation of a fact the operator already has.
+                #
+                # AGREEMENT TEST is TWO-PART, and both parts are load-bearing:
+                #   1. DB match — mi_live_trades' CURRENT stop_order_id/stop_price
+                #      (re-read fresh, NOT `stop_trade` captured before the recheck)
+                #      is this exact broker order.
+                #   2. DUPLICATE EVIDENCE — a `stop_update_retry_succeeded` audit
+                #      row exists for this exact trade_id + this exact new_stop_id.
+                #      That event type is written ONLY on order_manager's
+                #      retry-recovered branch, immediately before it sends "Stop
+                #      confirmed" — so its presence is direct proof a Telegram for
+                #      THIS order already went out (or is about to, same code path,
+                #      no gap between the two).
+                # Part 1 ALONE is not enough: on the ORDINARY happy path (attempt-1
+                # succeeds — the common case, no "brief broker hiccup") order_manager
+                # commits the SAME DB write but sends NO Telegram at all. If this WS
+                # event beats that commit (the clean-race timing), this handler is
+                # the operator's ONLY message for the move — matching DB state alone
+                # would silence it and the operator would hear NOTHING (caught in
+                # review: a version of this fix that checked only DB agreement did
+                # exactly that). Requiring part 2 means we only suppress when a
+                # second message would otherwise be genuinely redundant.
+                # POSITIVE-ONLY, mirrors the #433 fail-safe above: DB not caught up,
+                # a different price/order id, no matching retry-succeeded row, or
+                # the re-read itself failing — ALL count as disagreement and still
+                # speak. Silence is never the default.
+                _agrees = False
+                try:
+                    async with pool.acquire() as _conn2:
+                        _current = await _conn2.fetchrow(
+                            "SELECT stop_order_id, stop_price FROM mi_live_trades WHERE id = $1",
+                            stop_trade["id"],
+                        )
+                    _db_matches = bool(
+                        _current
+                        and _current["stop_order_id"] is not None
+                        and replacement.get("id") is not None
+                        and str(_current["stop_order_id"]) == str(replacement["id"])
+                        and _current["stop_price"] is not None
+                        and _new_stop is not None
+                        and abs(float(_current["stop_price"]) - float(_new_stop)) < 0.01
+                    )
+                    if _db_matches:
+                        # Match in PYTHON, not SQL: `mi_audit_log.detail` is a bare
+                        # TEXT column (`DEFAULT ''`) and ~130 call sites across the
+                        # codebase write it via log_audit_event's 2-arg form, which
+                        # leaves '' — casting `detail::jsonb` in the WHERE clause
+                        # risks Postgres evaluating that cast on an unrelated ''
+                        # row before the event_type filter narrows the scan (SQL
+                        # AND has no guaranteed evaluation order), raising and
+                        # falling into the except below on ANY unrelated row from
+                        # the same 5-minute window — the suppression would then
+                        # never fire in production while looking green in tests.
+                        # Filter to event_type + a bounded window in SQL (both
+                        # plain, non-throwing comparisons), pull the handful of
+                        # candidate `detail` strings, and json.loads + match each
+                        # in Python where a bad row can just be skipped.
+                        async with pool.acquire() as _conn3:
+                            _candidates = await _conn3.fetch(
+                                """
+                                SELECT detail FROM mi_audit_log
+                                WHERE event_type = 'stop_update_retry_succeeded'
+                                  AND created_at > NOW() - INTERVAL '5 minutes'
+                                ORDER BY created_at DESC
+                                """
+                            )
+                        _dup_evidence = False
+                        for _cand in (_candidates or []):
+                            try:
+                                _cand_detail = json.loads(_cand["detail"])
+                            except Exception:  # loud-ok: a candidate row is skipped, not the check — real stop_update_retry_succeeded rows are always written with json.dumps() detail (order_manager.py:1591-1599), so this only guards a theoretical malformed row; the outer try/except around the whole agreement test still fail-safes to "speak" on any genuine read failure.
+                                continue
+                            if (str(_cand_detail.get("trade_id")) == str(stop_trade["id"])
+                                    and str(_cand_detail.get("new_stop_id")) == str(replacement["id"])):
+                                _dup_evidence = True
+                                break
+                        _agrees = _dup_evidence
+                except Exception as _e:
+                    logger.warning(
+                        f"WS [{account_mode}]: post-replacement agreement re-check "
+                        f"failed for {symbol} ({_e}) — treating as disagreement "
+                        f"(fail-safe: still notify)"
+                    )
+                    _agrees = False
+
+                if _agrees:
+                    await log_audit_event(
+                        "stop_replacement_confirmed_silent",
+                        f"{symbol}: WS safety-net matches the trade's recorded stop "
+                        f"(${float(_new_stop):.2f}, {replacement['id']}) — Telegram "
+                        f"suppressed, operator already notified via order_manager",
+                        json.dumps({
+                            "trade_id": stop_trade["id"],
+                            "ticker": symbol,
+                            "account_mode": account_mode,
+                            "replacement_order_id": replacement.get("id"),
+                            "replacement_stop_price": float(_new_stop),
+                            "event_norm": event_norm,
+                            "rechecked": rechecked,
+                        }),
+                    )
+                    logger.info(
+                        f"WS [{account_mode}]: stop-leg {event_norm} but replacement live"
+                        f"{_settle_note} ({replacement['id']}): {symbol} "
+                        f"trade_id={stop_trade['id']} — matches DB + confirmed retry-"
+                        f"succeeded audit row, Telegram suppressed"
+                    )
+                else:
+                    # brief=True: when this DOES fire alongside live_tracker's own
+                    # "Stop confirmed" for the same move (agreement check inconclusive
+                    # either way), a full repeated paragraph reads as an unexplained
+                    # duplicate (2026-08-12 review) — one short line plus the footer
+                    # below (which says why THIS check exists) is enough; it still
+                    # stands alone in the clean-race case where this is the
+                    # operator's only message for the move.
+                    _reason_text = describe_stop_move(
+                        entry_price=float(_entry) if _entry is not None else None,
+                        hard_stop=float(_hard) if _hard is not None else None,
+                        old_stop_price=float(_old_stop) if _old_stop is not None else None,
+                        new_stop_price=float(_new_stop) if _new_stop is not None else None,
+                        brief=True,
+                    )
+                    _price_line = f" now ${float(_new_stop):.2f}" if _new_stop is not None else ""
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}ℹ️ *Stop replaced:* {symbol}{_price_line}\n"
+                        f"{_reason_text}\n"
+                        f"_Broker-side safety check after the prior stop {event_norm} — "
+                        f"confirms the position stayed protected throughout._"
+                    )
+                    logger.info(
+                        f"WS [{account_mode}]: stop-leg {event_norm} but replacement live"
+                        f"{_settle_note} ({replacement['id']}): {symbol} "
+                        f"trade_id={stop_trade['id']}"
+                    )
             else:
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"

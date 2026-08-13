@@ -20,6 +20,7 @@ rose above his $149.05 entry and overtook the earlier breakeven stop. This pins:
 """
 from __future__ import annotations
 
+import json
 from contextlib import ExitStack
 from datetime import date
 from types import SimpleNamespace
@@ -303,38 +304,64 @@ def _ws_data(order_id: str = "stop-old-1", symbol: str = "PLTR"):
     return SimpleNamespace(order=SimpleNamespace(id=order_id, symbol=symbol))
 
 
-@pytest.mark.asyncio
-async def test_stop_replaced_telegram_has_reason_and_no_raw_id(monkeypatch):
-    """Mirrors tests/test_475_alert_noise_and_rejection_telemetry.py's harness
-    (which this change must not break — pinned there separately) but with
-    entry_price/hard_stop present, and a replacement carrying a real stop_price,
-    to check the NEW content this card adds."""
+def _make_ws_pool(stop_row, db_match_row, replacement, dup_rows=None):
+    """Shared harness: entry-lookup miss (fetchrow #1), stop-leg lookup hit
+    (#2), then `db_match_row` feeds the agreement re-check's mi_live_trades
+    re-read (fetchrow #3) — the DB-match half of the agreement test.
+    `db_match_row` may be an Exception instance — AsyncMock's side_effect
+    raises it in place, exercising the re-check's own fail-safe path.
+    `dup_rows` (only consulted when `db_match_row` matches `replacement`)
+    feeds `conn.fetch`, modelling the mi_audit_log duplicate-evidence rows
+    as raw {"detail": <json text>} dicts — the shape the real handler reads
+    and parses in Python. Pass a callable instead of a list to make the
+    `.fetch()` call itself raise."""
     pool, conn = make_mock_pool()
-    stop_row = {
-        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
-        "stop_price": PLTR_OLD_STOP,
-        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
-    }
-    conn.fetchrow = AsyncMock(side_effect=[None, stop_row])
+    conn.fetchrow = AsyncMock(side_effect=[None, stop_row, db_match_row])
+    if callable(dup_rows):
+        conn.fetch = AsyncMock(side_effect=dup_rows)
+    else:
+        conn.fetch = AsyncMock(return_value=dup_rows or [])
     conn.execute = AsyncMock()
-    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
-
-    import agents.market_intelligence.broker.order_manager as om
-    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
-
-    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
-                   "stop_price": PLTR_NEW_STOP}
-    confirm = AsyncMock(side_effect=[replacement])
-    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
-    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
-
+    audit = AsyncMock()
     sent: list[str] = []
 
     async def _capture(msg, *a, **k):
         sent.append(msg)
         return True
 
-    monkeypatch.setattr(ts, "send_telegram_message", _capture)
+    return pool, conn, audit, sent, _capture
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_has_reason_and_no_raw_id(monkeypatch):
+    """Mirrors tests/test_475_alert_noise_and_rejection_telemetry.py's harness
+    (which this change must not break — pinned there separately) but with
+    entry_price/hard_stop present, and a replacement carrying a real stop_price,
+    to check the NEW content this card adds.
+
+    The DB's fresh agreement re-check (3rd fetchrow) intentionally returns the
+    OLD stop still on file — order_manager's own write has not landed yet. This
+    is the clean-race path where the WS safety-net message is the operator's
+    ONLY notice of the move, so it must still speak."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    not_yet_updated = {"stop_order_id": "old_leg_id", "stop_price": PLTR_OLD_STOP}
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    pool, conn, audit, sent, capture = _make_ws_pool(stop_row, not_yet_updated, replacement)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
     await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
 
     replaced = [m for m in sent if "Stop replaced" in m]
@@ -351,3 +378,312 @@ async def test_stop_replaced_telegram_has_reason_and_no_raw_id(monkeypatch):
     # stop fills" clause structure identical to A's).
     assert "R banked" not in msg
     assert "beyond breakeven" not in msg
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list), "disagreement must not log the silent event"
+
+
+# ── 6. WS safety-net SUPPRESSED when it agrees with the DB (the duplicate fix)
+
+# Operator: "can we combine these two msg? I get two Everytime stop moves."
+# order_manager's retry-recovered "Stop confirmed" and this WS safety-net's
+# "Stop replaced" fire independently for the SAME move. Fix: do not merge the
+# text — suppress the WS one when a duplicate genuinely exists: the trade's
+# OWN row already carries this exact order id + price AND a
+# stop_update_retry_succeeded audit row proves order_manager's Telegram-
+# sending branch actually fired for this exact order (review catch: DB
+# agreement ALONE is not enough — the ordinary happy-path stop move commits
+# the same DB write but order_manager sends NO Telegram at all, so matching
+# only the DB would silence the operator's ONLY message on that path). Any
+# daylight — DB not caught up, a different price, a mismatched/missing order
+# id, no matching retry-succeeded row, or the re-check itself erroring — must
+# still speak (fail-safe, never a silent swallow of real news).
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_silenced_when_db_and_telegram_evidence_agree(monkeypatch):
+    """order_manager already wrote this exact order id + price to the trade's
+    row AND left the stop_update_retry_succeeded audit trail proving its own
+    'Stop confirmed' Telegram fired for this exact order — the WS safety-net
+    must send NOTHING, only an audit row."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    already_recorded = {"stop_order_id": replacement["id"], "stop_price": PLTR_NEW_STOP}
+    # The real audit row order_manager writes at order_manager.py:1591-1599,
+    # immediately before its own "Stop confirmed" Telegram.
+    dup_rows = [{"detail": json.dumps({
+        "trade_id": 307, "ticker": "PLTR",
+        "new_stop_price": PLTR_NEW_STOP, "new_stop_id": replacement["id"],
+    })}]
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, already_recorded, replacement, dup_rows=dup_rows)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert sent == [], f"agreeing safety-net check must send nothing, got: {sent}"
+    silent_events = [c for c in audit.await_args_list
+                      if c.args[0] == "stop_replacement_confirmed_silent"]
+    assert len(silent_events) == 1, f"must log exactly one silent-confirm audit row: {audit.await_args_list}"
+    detail = json.loads(silent_events[0].args[2])
+    assert detail["trade_id"] == 307
+    assert detail["replacement_order_id"] == replacement["id"]
+    assert detail["replacement_stop_price"] == PLTR_NEW_STOP
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_db_agrees_but_no_telegram_was_sent(monkeypatch):
+    """THE REGRESSION CASE (review catch): DB shows this exact order id + price
+    (order_manager's ordinary, non-retry write landed) but there is NO
+    stop_update_retry_succeeded audit row — meaning order_manager took the
+    SILENT happy-path branch and sent no Telegram at all. This WS message is
+    the operator's ONLY notice of the move and must still speak; DB agreement
+    alone must never suppress it."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    already_recorded = {"stop_order_id": replacement["id"], "stop_price": PLTR_NEW_STOP}
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, already_recorded, replacement, dup_rows=[])  # no matching audit row found
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), (
+        f"DB agreement without proof a Telegram was sent must still speak "
+        f"(the ordinary happy-path move has no other message): {sent}"
+    )
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_price_differs_from_db(monkeypatch):
+    """Same order id, but the DB's recorded price does not match what the
+    broker just confirmed — a genuine mismatch, must still speak (never
+    silently swallowed)."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    # Same order id, price clearly off (well outside the cent-level epsilon) —
+    # pins that price is actually compared, not just the order id.
+    mismatched = {"stop_order_id": replacement["id"], "stop_price": PLTR_NEW_STOP - 0.05}
+    pool, conn, audit, sent, capture = _make_ws_pool(stop_row, mismatched, replacement)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), f"price mismatch must still speak: {sent}"
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_order_id_differs(monkeypatch):
+    """Same price, but a DIFFERENT order id on file — not proof this is the
+    order the trade actually depends on. Must still speak."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    other_order = {"stop_order_id": "some-other-order-id", "stop_price": PLTR_NEW_STOP}
+    pool, conn, audit, sent, capture = _make_ws_pool(stop_row, other_order, replacement)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), f"order-id mismatch must still speak: {sent}"
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_agreement_recheck_errors(monkeypatch):
+    """The fresh DB re-read itself fails (transient DB blip) — fail-safe means
+    still notify, exactly like #433's broker-read fail-safe above it."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, RuntimeError("db connection reset"), replacement)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), f"a failed re-check must still speak: {sent}"
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_dup_evidence_fetch_errors(monkeypatch):
+    """The DB half of the check agrees, but the mi_audit_log lookup itself
+    raises (transient DB blip on the SECOND query) — fail-safe still speaks."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    already_recorded = {"stop_order_id": replacement["id"], "stop_price": PLTR_NEW_STOP}
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, already_recorded, replacement,
+        dup_rows=RuntimeError("db connection reset"))
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), f"a failed audit-log read must still speak: {sent}"
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_silenced_despite_unrelated_malformed_audit_rows(monkeypatch):
+    """Pins the robustness reason for matching in Python: the 5-minute window
+    can contain OTHER event types whose `detail` is '' (the log_audit_event
+    2-arg default) or otherwise not JSON. One bad row must not block finding
+    the real match sitting alongside it — it is skipped, not fatal."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    already_recorded = {"stop_order_id": replacement["id"], "stop_price": PLTR_NEW_STOP}
+    dup_rows = [
+        {"detail": ""},                       # a bar_stream_disconnect-shaped row
+        {"detail": "not json at all"},         # defensive: any other garbage
+        {"detail": json.dumps({"trade_id": 999, "new_stop_id": "unrelated"})},
+        {"detail": json.dumps({
+            "trade_id": 307, "ticker": "PLTR",
+            "new_stop_price": PLTR_NEW_STOP, "new_stop_id": replacement["id"],
+        })},
+    ]
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, already_recorded, replacement, dup_rows=dup_rows)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert sent == [], (
+        f"a real match sitting alongside malformed/unrelated rows must still "
+        f"suppress: {sent}"
+    )
+    assert any(c.args[0] == "stop_replacement_confirmed_silent"
+               for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_retry_evidence_is_for_a_different_order(monkeypatch):
+    """Same trade_id, but the ONLY stop_update_retry_succeeded row in the
+    window names a DIFFERENT new_stop_id — an earlier, unrelated stop move on
+    the same trade. That is not proof the operator was told about THIS
+    replacement; must still speak (pins that new_stop_id is actually checked,
+    not just trade_id)."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    already_recorded = {"stop_order_id": replacement["id"], "stop_price": PLTR_NEW_STOP}
+    dup_rows = [{"detail": json.dumps({
+        "trade_id": 307, "ticker": "PLTR",
+        "new_stop_price": 148.00, "new_stop_id": "some-earlier-unrelated-order-id",
+    })}]
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, already_recorded, replacement, dup_rows=dup_rows)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), (
+        f"a retry-succeeded row for a DIFFERENT order must not suppress: {sent}"
+    )
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
