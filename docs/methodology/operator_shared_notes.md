@@ -610,3 +610,46 @@ HOLD above it after the first pullback.
 
 ⚠ Standing rule applies: NBIS is ONE name and illustrates the definition; it does not establish
 that the feature works. That needs the distribution, with N and distinct sessions.
+
+---
+
+## 2026-08-14 PRE-OPEN — a LABELLED PREDICTION on three live alerts (HTFL, ETON, VERA)
+
+⚠ **Recorded BEFORE the open, before any outcome is known.** That is what makes it evidence rather
+than hindsight — the plan's standing rule is that a case may illustrate, but a call stated in
+advance and then scored is a genuine test of the structure thesis.
+
+Operator, verbatim:
+
+> "quick note on today's EPs so far, Apollo fired 3 HTFL, ETON, VERA, market's not opened yet so i
+> don't know how they'll trade when open, however, just by quickly eyeballing the charts I see HTFL
+> and ETON clearing above key levels, both are actually moving near or above ATH; while VERA looks
+> rather poor, just chopping back above where it was a few days ago but still deep in it's
+> downtrend. THings can change and turn out anyway, but my cursory look says VERA is the weakest
+> one and one that I won't be trading if I decide."
+
+### His call, decomposed
+
+| Name | His read | The structural fact he used |
+|---|---|---|
+| **HTFL** | strong | clearing above key levels; near or above all-time high |
+| **ETON** | strong | clearing above key levels; near or above all-time high |
+| **VERA** | **weakest — would not trade** | chopping back above where it sat a few days ago, still deep in a downtrend |
+
+### Why this matters to The Real EP Plan
+
+- It is the **same structure criterion as NBIS** (2026-08-12): does the gap CLEAR a level that
+  previously mattered, or does it land inside prior chop. Here he adds the **at/near all-time-high**
+  case — the cleanest version of "nothing overhead", i.e. no supply to fight.
+- **VERA is the negative case stated in advance**: price back above a few days' chop but still
+  inside a downtrend = no level cleared, plenty overhead.
+- ⚠ He hedged it himself — *"things can change and turn out anyway"* — and the standing rule says
+  one session cannot conclude. **Three names is an illustration; the value is that the label was
+  fixed before the outcome.**
+
+### ▶ SCORE THIS — do not let it evaporate
+
+Record what each of the three actually did (forward return / MFE / MAE at 1, 3, 5, 10 days from the
+alert) and whether our system traded, skipped, or graded them differently from his read. **Add the
+result to §0a of The Real EP Plan when it settles.** If his call separates and our score does not,
+that is a direct measurement of the gap this whole plan exists to close.

@@ -82,6 +82,7 @@ grow into prose.**
 | Case | Date | What it illustrates | Verbatim |
 |---|---|---|---|
 | **NBIS** | 08-12 | **The first FALSIFIABLE structure definition** — clears a level that previously rejected price (50-day; prior highs ~$227), then HOLDS it after the first pullback. Failure case stated too: gaps and falls back below, or never breaches. Also: graded "moderate" on a marginal beat while revenue grew >400% — surprise vs magnitude | notes 08-12 |
+| **HTFL · ETON · VERA** | 08-14 | **A LABELLED PREDICTION, stated PRE-OPEN** — HTFL/ETON clearing key levels near or above all-time highs (strong); VERA chopping above a few days' range but still deep in a downtrend (**weakest, he would not trade it**). Score the outcome and compare to our grades — the label was fixed before the result | notes 08-14 |
 | **EROC** | 08-12 | A CORRECT skip (stop too wide, 1.5×ATR) on a name he judged a good EP — the skip taxonomy, and the join into delayed entry: "no today" is not "no forever" | notes 08-12 |
 | **SE** | 08-11 | His four delayed-EP conditions, stated on a live name. Skipped by the gap floor at 9.2% vs 10%, reclaimed +10.5% in four minutes. RS 88.5, above all MAs, **in no theme at all** — the coverage gap in one stock | notes 08-11 |
 | **BW / FRMI** | 08-11 | Gap size ranks backwards: BW gapped 34.9% at RS 1.5 (rank 2397), FRMI 17.0% at rank 1661 — both below every MA, both dead inside 60 seconds. "A gap is a signal, not the setup" measured | plan §2 |
