@@ -217,6 +217,84 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-14 — PROPOSAL (operator-designed, NOT SHIPPED): OCO on the freed 1/3 at +2R — closes the uncovered-shares hole
+
+**Status: DESIGN ONLY. Nothing in this entry is deployed. Ships only after operator sign-off
+(THE LINE) + CHANGE_PROCESS.** The broker question it depends on is ANSWERED — paper probe
+`scripts/probes/_548_oco_alongside_stop_probe.py`, run 2026-08-14 09:51 ET, full output in
+`docs/analysis/548_oco_probe_run_2026-08-14.log`.
+
+**THE HOLE (found live 2026-08-14 by the operator, on ETON).** The +2R resting-limit shape
+(shipped 08-10) reduces the stop to cover 2/3 at breakeven and rests a GTC limit for the freed
+1/3 at the target. **If that limit never fills, the 1/3 has NO stop.** ETON live at discovery:
+17 shares held · stop covers 12 @ $55.20 (breakeven) · limit sells 5 @ $59.58 · **5 shares
+uncovered** — a limit above the market protects nothing on a decline. Per his instruction
+(*"let's not do anything one-off or manual"*), the ETON position was NOT touched; it stays as-is
+until the real change ships.
+
+**THE DESIGN — his, verbatim:** *"can we have the 2R limit sell matched with stop at original?
+The other 2/3rd can still stick with the breakeven stop."* One accepted refinement: the 1/3's
+stop goes at **BREAKEVEN**, not the original hard stop — no reason to protect those shares less
+than the other 12.
+
+**Design constraint from his own ruling — the limit must STAY RESTING.** The cancel-below-2R /
+re-place-on-return alternative was proposed and REJECTED by him: *"stock is volatile and moves
+in & out of 2R range, if we cancel the 2R and re-sell again when it hits chances are we'll
+likely miss it again, so best way to actually fill is to keep the 2R limit sell on."* Do not
+re-propose reactive cancel/re-place shapes.
+
+**Order sequence at +2R fire (proposed):**
+1. Reduce the full-size stop to a 2/3-quantity stop at breakeven — **unchanged** from shipped
+   behaviour (verified-clear cancel-then-new on the bracket leg, leg-safe mechanism, breakeven
+   via `max(stop, entry)`).
+2. For the freed 1/3, submit **ONE OCO order** instead of the plain limit: `order_class=oco`,
+   sell qty = 1/3, **GTC**, `take_profit.limit_price` = the 2R target, `stop_loss.stop_price` =
+   breakeven. The broker holds a sibling stop leg (`status=held`) against the same shares —
+   whichever side fills cancels the other.
+
+**What covers what:** 2/3 → plain breakeven stop (trail governs it as today). 1/3 → the OCO
+(exactly one of limit/stop fills). **Broker-proven property: every share is reserved** — the
+probe's extra 1-share sell was rejected `40310000 available:0, held_for_orders:3`, naming both
+orders. The ETON shape (an uncovered 1/3) cannot exist under this design.
+
+**Terminal outcomes:**
+- **Limit fills** (target reached): OCO sibling stop auto-cancels; 1/3 banked at the target
+  price (not a market chase — the FIGS defect stays fixed); 2/3 unchanged behind breakeven+trail.
+- **OCO stop fills** (price falls to breakeven): limit auto-cancels; 1/3 out at ~breakeven. The
+  2/3's own stop sits at the same breakeven price and fires on the same move — the whole
+  position scratches, which is the intent of breakeven.
+- **Neither by close:** both OCO legs are GTC and rest overnight alongside the GTC 2/3 stop —
+  no expiry hole, no daily re-place.
+- **Partial fill of the limit** (possible when the 1/3 is >1 share): ⚠ **NOT probed** — a
+  1-share OCO cannot partial-fill. Alpaca's documented advanced-order behaviour adjusts the
+  sibling leg, but this must be confirmed (probe or first live observation via the existing
+  coverage watchdog) before the design is declared fully verified.
+
+**Broker facts (paper probe, 2026-08-14 — raw responses in the log):**
+- Request shape: `order_class=oco` with only top-level `limit_price` → REJECTED `40010001 "oco
+  orders require take_profit.limit_price"`. With `take_profit.limit_price` (+ matching top-level
+  `limit_price`) + `stop_loss.stop_price` → **ACCEPTED first try**.
+- **An OCO on the freed 1/3 COEXISTS with the separate plain 2/3 stop** — board readback shows
+  both live (`oco/limit qty 1` + `simple/stop qty 2`); the sibling stop leg rides as
+  `status=held`.
+- Cancelling the OCO parent terminates **both** legs — the pair unwinds as a unit (one cancel,
+  no orphan).
+- Sequencing constraint STANDS (08-10 probe): the OCO can only be placed AFTER the stop
+  reduction is verified-clear — a sell is rejected 40310000 while the full-size stop holds the
+  shares. Same ordering the shipped code already uses.
+
+**Build requirements to flag at implementation (not design changes):**
+- `get_open_orders` does NOT surface the OCO's held stop leg as its own row — any coverage
+  arithmetic that sums open stop-order qty would read the 1/3 as UNPROTECTED and try to
+  "repair" it (the repair would itself be rejected 40310000). `_ensure_stop_coverage` / stop
+  watchdogs must count the OCO parent's reservation as coverage.
+- The OCO's legs are advanced-order LEGS: qty-replace is structurally rejected (42210000 class);
+  price-only replace on a leg is allowed (T2). Design intent keeps the OCO stop AT breakeven —
+  the trail governs the 2/3 only.
+
+**Fallback:** not needed — the broker accepted the exact proposed shape. Had it been rejected,
+the decision would have returned to the operator; no workaround was designed.
+
 ### 2026-08-10 — BUG FIX: update_stop could LOWER a live stop; raise-only floor added against the broker stop
 
 **Classification: bug fix enforcing already-signed intent** (a protective long stop is raise-only —
