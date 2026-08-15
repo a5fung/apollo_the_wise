@@ -864,27 +864,82 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
-## Week of 2026-08-11 → 08-14 (short week; started Tuesday)
+## Week of 2026-08-11 → 08-15 — REVIEWED 2026-08-15
 
-⚠ **Token budget is the binding constraint this week** (operator 2026-08-11: ~20% until Friday's
-reset), so the target is deliberately ONE thing, not four.
+⚠ Token budget was the binding constraint (operator 2026-08-11: ~20% until Friday's reset), so
+the target was deliberately ONE thing, not four. The week ran Tue→Sat; the review itself slipped
+from Friday to Saturday for capacity and is recorded as a slip below.
 
 | Target | Type | Status |
 |---|---|---|
 | The Real EP Plan exists, named, with a goal and a sequence | SHIPPED | ✅ 08-12 |
 | The +2R exit rule fires correctly on live money | SHIPPED | ✅ 08-11 (ABCL, limit filled at the target, stop to entry same second) |
 | Theme assignment produces non-zero output | SHIPPED | ✅ 08-11 (91 new ticker slots, 0 truncation) |
-| **#563 — measure the 357 same-day pairs that never became a theme** | SHIPPED | ⏳ due 08-15 — **this week's one remaining target**, and it GATES the ranking work |
+| **#563 — measure the same-day pairs that never became a theme** | SHIPPED | ✅ 08-12, task CLOSED 08-15 — 9 clear co-gap stories in 60 days, **5 missed**, 4 of them discarded at the 3-member floor |
 | Settled sessions for the 08-05→08-12 window | ACCRUED | ⏳ settles ~08-18, on track |
 
-## Week of 2026-08-17 → 08-21 — provisional
+### VERDICT — the week shipped a great deal and moved the PLAN very little
+
+Six things landed. By this cadence's own daily test — *does the work map to a sequence step or a
+goal term* — **only #563 did.** Everything else was infrastructure or bug repair: necessary, and
+none of it brings us closer to knowing what a real EP is. That is the deviation the operator asked
+this table to catch, and it matters more than the SHIPPED tally:
+
+- **#563** — coverage read. Maps to sequence step: ranking prerequisite. ✅ the week's real progress.
+- **#567 capture/retention** — alerts kept forever, minute bars 5 years, a path for every alert
+  ticker-day, 276/276 backfilled. *Enables* measurement; is not itself a measurement.
+- **ORB stream-bar fix** — restored an entry class the bug was silently eating.
+- **#566 OCO carve-out** — closed a protection hole (shares both unprotected and untracked).
+- **#471 gate + registry sweep** — 3 gates fixed, 7 flagged as unable to move.
+- **#479 stop-message merge** — one message instead of two.
+
+### ACCRUED — and the funnel is the finding
+
+Window 2026-08-11 → 08-14, 4 sessions, `account_mode='live'`, HIGH tier.
+
+- **19 HIGH alerts → 19 trade rows → 3 fills.** Every HIGH produced a row, so there are no
+  invisible losses this week; the funnel is fully attributable.
+- **The 16 we did not take:** 6 `window:out_of_orb` (detected 09:45–09:55) · 3 `infra:no_bar`
+  (the ORB bug, fixed 08-13) · 3 `setup:gap_below_floor` (SE, GLBE, VERA) · 2 `setup:stop_too_wide`
+  (ATRO, HTFL) · 1 `setup:chase_cap_exceeded` (EROC) · 1 unfilled at the ORB window (RIOT).
+- 🔴 **9 of the 16 were MECHANICS, not judgement.** We lost more HIGH alerts to detection latency
+  and one bug than to any view about the setup. Before "are we too loose" can be answered on
+  behaviour, this says the funnel's biggest leak is not the filter at all.
+- ⚠ `block:r3_reentry_disabled` appears on the 3 FILLED rows — it blocks a RE-entry, not an entry.
+  It is not an entry loss and must not be counted as one.
+- **Live closed record: 20 trades, 1 green, −$396.86 net.** Convention, stated once and used
+  everywhere from here: the green is ETON, and per the operator's 08-15 ruling it is a *theoretical*
+  success and a *practical* failure — the profit existed only because the carve-out left the freed
+  third without a stop, and the fill depended on a small float. **Read the record as 1-in-20 with
+  the one asterisked, never as a 5% win rate that means anything yet.**
+- Week P&L: −$61.77 on 3 closes (FRMI −$31.49, BW −$49.60, ETON +$19.32).
+- 📌 Friday's own pre-open call is the week in miniature: of HTFL / ETON / VERA the operator flagged,
+  **we took exactly one — the accident.** HTFL died on stop-too-wide, VERA on the gap floor.
+
+### SLIPPED, with reasons
+
+- **The weekly review** — Friday → Saturday. Reason: capacity, stated at the time. First slip.
+- **Skip-reason attribution** — the plan names it as unowned (standing scope rule, item 3) and it
+  stayed unowned all week. It is now next week's lead target; the newly persisted alert-day minute
+  paths are what make it a $0 read.
+
+### ⚠ OUTSTANDING DECISION — do not lose it
+
+**#563 is closed; the fork it produced is NOT.** 4 of the 5 missed co-gap stories were grouped the
+same night and then discarded at the **3-member promote floor**. Whether that floor moves is a
+detection-criterion change = the operator's call (register §8, §1a row 3). It no longer has a
+PLAN.md line of its own, so it is named here.
+
+## Week of 2026-08-17 → 08-21 — targets
 
 | Target | Type | Why then |
 |---|---|---|
-| Re-run the structure probe on the settled 08-05→08-12 window | SHIPPED | $0 re-run; the sessions that motivated the thesis finally testable |
-| Scope + build the WINNER REFERENCE SET (sequence step 3) | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. Scoping is HIS call |
-| #543 extractor re-check on ~40 calls · #471 decision-record fork | SHIPPED | both dated, both cheap |
-| More settled live trades toward a distribution worth reading | ACCRUED | 19 closed today; the 20-distinct-DAY bar on the Confirm cohort is the model for what "enough" looks like |
+| **Skip-reason attribution — per reason: N, distinct sessions, and what the name DID afterwards** | SHIPPED | the lead target. This week says 9 of 16 losses are mechanics; attribution says whether a reason drops names that RAN (candidate defect) or names that died (working). $0 — prod reads over the alert-day minute paths persisted 08-15. ⚠ Coverage starts 07-28, so per-reason N is 1–6: **state N per reason; a single skipped name that ran proves nothing** (standing evidence rule) |
+| **Scope the WINNER REFERENCE SET (sequence step 3)** | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. **Scoping is HIS call.** ⚠ This REPLACES the previously-listed binary structure probe, which he rejected: *"chart structure is part science part art… the better way is to have a few winners to compare it with"* — re-running it would re-ship a null he already pushed back on |
+| #566 and #567 verify-live | SHIPPED | Monday: the first live +2R carve-out under the toggle, and the 16:22 ET alert-day path job |
+| #543 extractor re-check on ~40 calls | SHIPPED | dated 08-19, cheap |
+| More settled live trades toward a distribution worth reading | ACCRUED | 20 closed; the 20-distinct-DAY bar on the Confirm cohort is the model for what "enough" looks like |
+| Settled sessions for the 08-05→08-12 window | ACCRUED | settles ~08-18 |
 
 ## What this cadence must never become
 
