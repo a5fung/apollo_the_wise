@@ -217,7 +217,140 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-15 — BUILT (#566): OCO on the freed 1/3 at +2R + the accounting fix — SHIPPED DARK, default OFF
+
+**Status: BUILT, NOT DEPLOYED, toggle DEFAULT OFF.** Implements the 2026-08-14 operator-signed
+proposal below (design unchanged — do not re-litigate it there). Both defects in ONE change, as
+directed: the protection hole (defect 1) and the accounting hole (defect 2).
+
+**Protection half — the order shape (new runtime toggle `profit_take_oco`, default OFF):**
+- At +2R, steps 1 (reduce stop to 2/3, cancel-then-new leg-safe) and 2b (price-only replace of
+  the 2/3's stop to breakeven, gated on `breakeven_at_broker`) are **byte-for-byte unchanged**.
+- Step 2, when `profit_take_resting_limit` AND `profit_take_oco` are both ON: the freed 1/3 is
+  sold with **ONE OCO** (`alpaca_client.place_oco_sell`) — GTC limit at the +2R target +
+  sibling GTC stop at **breakeven** (`max(current stop, entry)` — never below the stop the
+  shares already had). Probe shape B verbatim: `order_class=oco` + top-level `limit_price` +
+  `take_profit.limit_price` (bare limit_price → 40010001, banked fact) + tick-rounded
+  `stop_loss.stop_price`. The limit **stays resting** — no cancel/re-place-on-price shapes
+  (operator constraint). A parent returned without a stop leg is cancelled + raised
+  (naked-third guard — a limit-only third IS the ETON hole).
+- Both sides are mirrored into `mi_live_orders`: parent `purpose='partial_exit'`, held stop leg
+  `purpose='stop_loss'` — the leg is **hidden from `get_open_orders` while held** (banked probe
+  fact), so that row is the mirror's only record of it and what routes its fill.
+  `stop_order_id` keeps tracking the 2/3's stop only; the trail governs the 2/3 only (the OCO
+  stop stays AT breakeven by construction — `update_stop` sizes `remaining − pending exits`).
+- No stop/entry anchor to price the sibling (both NULL) → falls back to the plain resting limit
+  with a loud `partial_exit_oco_fallback` audit row — never a broken OCO, never worse than today.
+
+**Accounting half — the invariant, enforced at every writer (NOT toggle-gated; these are
+bookkeeping bug fixes enforcing already-signed intent, no order behaviour changes):**
+- `trade_stream._process_stop_fill` + `order_manager._finalize_stop_fill_locked` (the two
+  writers that zeroed ETON): a stop fill now decrements by the **actual filled qty** — a
+  partial-qty fill (the 2/3 stop firing while the third rests) leaves the row **OPEN** with the
+  true remainder and books P&L on the shares that actually sold (ETON booked 17 when 12 sold).
+  Only a fill that exhausts the position closes the row. Day-1 **re-entry is gated on a FULL
+  stop-out** — re-entering on a partial-qty fill would double the position.
+- `_finalize_partial_exit_locked`: remaining is **clamped at 0** (never negative — the −5) with
+  a loud `remaining_shares_clamped` audit row when the books already disagreed; and a partial
+  fill that exhausts the position now **closes** the trade (remaining=0 on an open row is the
+  mirror-image lie).
+- A cancelled partial-exit order that had **partially filled** commits its filled portion via
+  `finalize_partial_exit` before any restore sizing (those shares sold; dropping them recreates
+  the drift).
+
+**Coverage checks audited for the held-leg blind spot (build flag 2) — the wrong-reading class:**
+- `check_position_coverage` (15-min detector) — **FIXED**: counts an open sell OCO parent's
+  unfilled qty as stop coverage (an open parent is broker-proof the sibling stop holds those
+  shares; the pair lives/dies as a unit). A **plain** sell limit still counts for NOTHING —
+  that limit-is-not-protection reading IS defect 1 and the detector must keep firing on it.
+- `trade_stream._handle_cancel_or_reject` — **FIXED (the dangerous one)**: an OCO parent's
+  cancel (which the broker emits when the sibling stop FILLS) no longer runs the plain-partial
+  restore, which would have cancelled the 2/3's good stop and placed a full-size stop the
+  broker rejects 40310000 — a genuinely naked position announced as protected. Now: leg
+  filled → no action (the leg's own fill event owns accounting); leg dead/unreadable → the
+  third IS uncovered → `_ensure_stop_coverage` from broker truth (idempotent), never a blind
+  cancel-and-restore.
+- `coverage_drift` D2 — **FIXED**: the tracking set now unions `mi_live_orders.alpaca_order_id`
+  (managed exits are tracked there, never as trade-row pointers), ending the false
+  "untracked open order" HIGH a resting GTC limit / OCO parent fired every 24h window.
+- `trade_stream._handle_partial_fill` — **FIXED**: terminal-partial routing now resolves the
+  trade via `mi_live_orders` when the order is not an entry/stop pointer (pre-fix, a resting
+  limit's terminal state reported through partial_fill events was silently dropped).
+- Audited, **no change needed**: `_ensure_stop_coverage`, `update_stop`, `sync_positions`'s
+  orphan loop (all size `broker/remaining − get_pending_exit_qty`, and the OCO parent is a
+  pending exit — targets already exclude the third); `_try_adopt_existing_stop` (the hidden leg
+  can never be adopted, correct — adopting a leg would hand the trail a pair-bound order); the
+  stop-ack watchdog (counts remaining unfilled sell orders incl. the parent, and its stop-sync
+  no-ops on a limit-only book — benign, verified by trace).
+
+**Documented interaction (emergent, stated not hidden): the trigger can RE-FIRE after the OCO
+stop scratches the third.** `scan_profit_triggers` selects on `partial_taken=FALSE` (which only
+flips on a partial-PROFIT fill) with a sticky in-hold `MAX(high)`; while the OCO rests, the
+dedup-pending guard blocks re-fires — but if the OCO **stop** side fills (third out at
+breakeven, no `partial_taken`), the pending order is gone and a later poll re-fires the
+trigger: reduce the (now 2/3) stop to its own 2/3 and rest a fresh OCO third at the same
+target. Risk never increases — every share stays behind a breakeven stop throughout — and
+re-arming a resting sell at the target after a scratch is aligned with the operator's
+keep-the-limit-resting intent; suppressing it would itself be a trigger-discipline change.
+The Telegram announcement stays once-per-trade (`_profit_trigger_already_announced`), so a
+re-fire acts quietly. Recorded so the first live occurrence reads as designed-emergent, not
+as a bug.
+
+**Partial fill of a multi-share OCO limit — the one unprobed outcome, decided in advance:**
+a 1-share OCO cannot partial-fill, so whether Alpaca down-adjusts the sibling held stop leg is
+**unverifiable without a broker fact we do not have; we do not guess.** What ships: accounting
+commits only from actual fills (terminal events + the cancelled-with-fills commit above), the
+coverage detector counts only the parent's **unfilled remainder**, and the first real
+occurrence is flagged loudly (`oco_partial_fill_observed` audit + a Telegram line saying the
+sibling-leg adjustment is UNVERIFIED) so it can be confirmed at the broker before it is relied
+on. If Alpaca in fact cancels rather than adjusts, the parent-cancel path above re-protects.
+
+**Prod-row repair (defect-2 damage already written) — PROPOSED, operator-run only (production
+write; nothing here executes it):**
+```sql
+-- 1. Review the damage (expected: exactly the ETON row at -5):
+SELECT id, ticker, account_mode, status, remaining_shares, total_pnl, closed_at
+FROM mi_live_trades WHERE remaining_shares < 0;
+
+-- 2. Repair, only after the SELECT shows exactly the expected row(s).
+--    Each row becomes remaining_shares = 0; status/closed_at/total_pnl/exits untouched
+--    (ETON's net +$19.32 is correct; the position is genuinely flat).
+UPDATE mi_live_trades SET remaining_shares = 0
+WHERE remaining_shares < 0 AND status = 'closed';
+```
+Known cosmetic residue, deliberately NOT repaired: ETON's `exits` array over-states the
+stop-hit entry's share count (17 booked vs 12 sold, at breakeven so ~$0 P&L impact). Rewriting
+exit history is a bigger intervention than the defect warrants — recorded here instead.
+
+**TO FLIP (operator only — this acts on live money; requires `profit_take_resting_limit` +
+`breakeven_at_broker` already on for the same mode):**
+```sql
+INSERT INTO mi_safeguard_state (safeguard, account_mode, state, updated_at)
+VALUES ('profit_take_oco', 'live', 'on', now())
+ON CONFLICT (safeguard, account_mode) DO UPDATE SET state='on', updated_at=now();
+```
+Reverting is the same statement with `'off'`. No redeploy either way. Fails CLOSED (an
+unreadable flag leaves the plain resting-limit behaviour).
+
+**VERIFY-LIVE:** the next +2R fire should show `partial_exit_sell_placed` with
+`order_class=oco` + a `stop_loss` leg row in `mi_live_orders`, the Telegram naming BOTH prices,
+and the 15-min coverage detector staying silent while the OCO rests. Until seen in prod this is
+built, not proven.
+
+**Tests:** `tests/test_oco_carveout_566.py` (12), `tests/test_partial_carveout_accounting_566.py`
+(14), `tests/test_oco_cancel_handler_566.py` (6), plus the D2 case in `tests/test_coverage_drift.py`
+— every terminal outcome (limit fills part/last/over-fill · stop fills partial/full/leg/over-fill ·
+neither = GTC placement · partial fill routing/cancel-commit) mutation-proven (15 mutations, each
+reddening its target test; recorded per test docstring).
+
+**Reversion-flag:** REFINEMENT of the 2026-08-10 resting-limit design (the resting limit was not
+wrong, it was incomplete — it left the third stop-less if unfilled). The accounting fixes are bug
+fixes enforcing signed intent (a closed row with live shares was never intended by anything).
+
 ### 2026-08-14 — PROPOSAL (operator-designed, NOT SHIPPED): OCO on the freed 1/3 at +2R — closes the uncovered-shares hole
+
+> **SUPERSEDED 2026-08-15 — BUILT as specified; see the #566 entry above.** Kept for the design
+> rationale and the banked broker facts.
 
 **Status: DESIGN ONLY. Nothing in this entry is deployed. Ships only after operator sign-off
 (THE LINE) + CHANGE_PROCESS.** The broker question it depends on is ANSWERED — paper probe

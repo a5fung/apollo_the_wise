@@ -34,6 +34,7 @@ from alpaca.trading.requests import (
     StopLimitOrderRequest,
     StopLossRequest,
     StopOrderRequest,
+    TakeProfitRequest,
 )
 from alpaca.trading.enums import OrderClass, OrderSide, OrderType, TimeInForce, QueryOrderStatus
 from alpaca.data.historical import StockHistoricalDataClient
@@ -510,6 +511,80 @@ async def place_limit_sell(
         return _order_to_dict(order)
     except Exception as e:
         logger.error(f"Failed to place limit sell for {ticker}: {e}")
+        raise
+
+
+async def place_oco_sell(
+    ticker: str,
+    qty: float,
+    limit_price: float,
+    stop_price: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place ONE OCO sell for the +2R carve-out third (#566): a GTC LIMIT at the
+    target with a sibling GTC STOP at breakeven — whichever side fills cancels
+    the other, so the third is NEVER limit-only (the ETON 2026-08-14 hole: a
+    resting limit above the market protects nothing on a decline; 5 shares sat
+    for hours with no stop).
+
+    Broker-behaviour basis (paper probe `scripts/probes/_548_oco_alongside_stop_probe.py`,
+    run 2026-08-14 09:51 ET, full output docs/analysis/548_oco_probe_run_2026-08-14.log):
+    - `order_class=oco` REQUIRES `take_profit.limit_price` — a bare top-level
+      `limit_price` is rejected 40010001. The accepted shape carries BOTH the
+      top-level limit_price and the matching TakeProfitRequest (probe shape B).
+    - The OCO COEXISTS with a separate plain stop on the same position; the
+      probe's extra 1-share sell was rejected 40310000 `available:0` naming both
+      orders — every share reserved, the uncovered-third hole cannot exist.
+    - The sibling stop rides as a HELD leg on the parent; one cancel of the
+      parent kills both legs (the pair unwinds as a unit).
+    - Sequencing (08-10 probe, unchanged): callers must reduce the covering
+      stop FIRST — any sell is rejected 40310000 while a full-size stop holds
+      the shares. execute_partial_exit already does this.
+
+    Both prices tick-rounded (the RCAT 2026-06-01 sub-penny rejection class);
+    the stop floors AWAY from the trigger via _round_stop_to_tick.
+
+    NAKED-THIRD GUARD: if the accepted parent comes back without a stop leg
+    (alpaca-py silently drops invalid fields — the place_bracket_order lesson),
+    the third would rest limit-only, i.e. the exact defect this order exists to
+    close. Cancel the parent and raise so the caller's abort path re-protects.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        lp = round(limit_price, 2)
+        sp = _round_stop_to_tick(stop_price)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            time_in_force=TimeInForce.GTC,
+            limit_price=lp,
+            order_class=OrderClass.OCO,
+            take_profit=TakeProfitRequest(limit_price=lp),
+            stop_loss=StopLossRequest(stop_price=sp),
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = await _sdk(client.submit_order, LimitOrderRequest(**req_kwargs), timeout=_SDK_TIMEOUT_WRITE)
+        if not extract_stop_leg_id(order):
+            try:
+                await _sdk(client.cancel_order_by_id, order.id, timeout=_SDK_TIMEOUT_WRITE)
+            except Exception as cancel_err:
+                logger.error(
+                    f"Failed to cancel stop-less OCO {ticker} {order.id}: {cancel_err}"
+                )
+            raise RuntimeError(
+                f"OCO sell {order.id} for {ticker} returned no stop leg — the third "
+                f"would rest limit-only (the ETON hole). Parent cancelled."
+            )
+        logger.info(
+            f"OCO sell placed: {ticker} qty={qty} limit={lp:.2f} stop={sp:.2f} "
+            f"id={order.id}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place OCO sell for {ticker}: {e}")
         raise
 
 

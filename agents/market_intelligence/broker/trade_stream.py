@@ -477,8 +477,47 @@ async def _handle_partial_fill(data, account_mode: str) -> None:
             order_id,
             account_mode,
         )
+        if trade is None:
+            # #566: managed exit orders (the resting +2R limit, the OCO parent,
+            # the OCO stop leg) live in mi_live_orders, NOT as entry/stop
+            # pointers on the trade row — without this fallback their trade_id
+            # resolved to None and the terminal-partial routing below could
+            # never fire for them (their fills would be dropped if the broker
+            # reported the terminal state through partial_fill events, the
+            # ARM 5/07 shape).
+            trade = await conn.fetchrow(
+                "SELECT lt.id, lt.ticker FROM mi_live_orders lo "
+                "JOIN mi_live_trades lt ON lt.id = lo.trade_id "
+                "WHERE lo.alpaca_order_id = $1 AND lt.account_mode = $2 "
+                "LIMIT 1",
+                order_id,
+                account_mode,
+            )
     trade_id = trade["id"] if trade else None
     ticker = trade["ticker"] if trade else symbol
+
+    # #566: a PARTIAL fill of a multi-share OCO parent is the ONE outcome the
+    # 2026-08-14 probe could not exercise (a 1-share OCO cannot partial-fill).
+    # Whether Alpaca down-adjusts the sibling held stop leg is UNVERIFIED —
+    # record the first real observation loudly so it can be confirmed against
+    # the broker before it is ever relied on. Audit-only marker; the 15-min
+    # coverage detector keeps reading broker truth regardless.
+    _order_class = str(getattr(order, "order_class", "") or "").split(".")[-1].lower()
+    _is_oco_parent_partial = (
+        _order_class == "oco" and "sell" in side and 0 < cum_filled < total_qty
+    )
+    if _is_oco_parent_partial:
+        await log_audit_event(
+            "oco_partial_fill_observed",
+            f"[{account_mode}] {symbol}: OCO parent PARTIALLY filled "
+            f"{cum_filled:g}/{total_qty:g} — the unprobed state (#566). Verify at "
+            f"the broker whether the sibling stop leg adjusted to the remainder.",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker, "order_id": order_id,
+                "account_mode": account_mode,
+                "cum_filled": cum_filled, "total_qty": total_qty,
+            }),
+        )
 
     summary = (
         f"[{account_mode}] {symbol} partial_fill {event_qty:g}/{total_qty:g} "
@@ -562,12 +601,17 @@ async def _handle_partial_fill(data, account_mode: str) -> None:
         )
         return
 
+    _oco_line = (
+        "\n⚠️ This is an OCO parent — whether the sibling stop leg adjusted to the "
+        "remainder is UNVERIFIED at the broker (#566 unprobed state). Check Alpaca."
+        if _is_oco_parent_partial else ""
+    )
     await send_telegram_message(
         f"{mode_prefix(account_mode)}📊 *Partial fill: {symbol}*\n"
         f"This event: {event_qty:g} sh | Cumulative: {cum_filled:g}/{total_qty:g}\n"
         f"Avg price: ${avg_price:.2f} | side: {side}\n"
         f"order={order_id}\n"
-        f"_Visibility-only — handler defers commit to terminal fill event._"
+        f"_Visibility-only — handler defers commit to terminal fill event._{_oco_line}"
     )
 
 
@@ -609,7 +653,10 @@ async def _handle_fill(data, account_mode: str) -> None:
         """, order_id, account_mode)
 
     if stop_trade:
-        await _process_stop_fill(dict(stop_trade), filled_price, pool, account_mode)
+        await _process_stop_fill(
+            dict(stop_trade), filled_price, pool, account_mode,
+            filled_qty=filled_qty,
+        )
         return
 
     # 3. Managed exit fill (partial_exit / full_exit). Atomically claim the
@@ -928,8 +975,20 @@ async def _process_entry_fill(
 
 async def _process_stop_fill(
     trade: dict, stop_fill_price: float, pool, account_mode: str,
+    filled_qty: float | None = None,
 ) -> None:
-    """Handle stop-loss fill — close trade or attempt Day 1 re-entry."""
+    """Handle stop-loss fill — close trade or attempt Day 1 re-entry.
+
+    #566 (2026-08-15): `filled_qty` is the stop order's ACTUAL filled quantity.
+    A partial-qty stop fill (the reduced 2/3 stop firing while the carve-out
+    third still rests behind its OCO) DECREMENTS remaining_shares and leaves
+    the trade OPEN — it must never mark the trade closed nor re-enter. The
+    ETON 2026-08-14 defect: this function closed unconditionally, computing
+    P&L on ALL remaining shares while the broker still held the third —
+    `status=closed, remaining_shares=0` with 5 live shares invisible to every
+    surface, then -5 when the limit later filled. `filled_qty=None` (unknown)
+    preserves the historical full-stop-out behaviour.
+    """
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.broker.order_manager import attempt_day1_reentry, MAX_ENTRY_ATTEMPTS
 
@@ -938,7 +997,19 @@ async def _process_stop_fill(
     is_day1 = trade["alert_date"] == today
     attempt = trade.get("entry_attempt", 1)
 
-    if is_day1 and attempt < MAX_ENTRY_ATTEMPTS:
+    # #566: re-entry is a FULL-stop-out concept — the whole position stopped
+    # and the setup may still be live. A partial-qty fill leaves real shares
+    # at the broker; re-entering on top of them would double the position.
+    # Gate on the claim-time snapshot (a stale-high remaining only steers
+    # AWAY from re-entry — the safe direction).
+    _claim_remaining = trade.get("remaining_shares")
+    full_stop_out = (
+        filled_qty is None
+        or _claim_remaining is None
+        or float(filled_qty) >= float(_claim_remaining) - 0.5
+    )
+
+    if is_day1 and attempt < MAX_ENTRY_ATTEMPTS and full_stop_out:
         # Restore status to 'filled' so attempt_day1_reentry can process it
         # (we set it to 'stop_processing' for the atomic claim)
         async with pool.acquire() as conn:
@@ -967,7 +1038,31 @@ async def _process_stop_fill(
                 )
             # explicit None-check (NOT `or`): a fresh remaining_shares of 0 is a real
             # value and must not fall back to the stale claim-time snapshot.
-            shares = fresh["remaining_shares"] if fresh is not None else trade["remaining_shares"]
+            remaining = fresh["remaining_shares"] if fresh is not None else trade["remaining_shares"]
+            remaining = int(remaining or 0)
+            # #566: the shares SOLD are the stop order's actual fill, never a
+            # blind "all remaining" (ETON: P&L was booked on 17 sh when the
+            # 12-sh stop filled). None (unknown qty) keeps the old full-close.
+            shares = int(filled_qty) if filled_qty is not None else remaining
+            raw_remaining = remaining - shares
+            new_remaining = max(raw_remaining, 0)
+            if raw_remaining < 0:
+                logger.error(
+                    f"_process_stop_fill: {ticker} stop fill {shares} exceeds recorded "
+                    f"remaining {remaining} — clamping remaining_shares at 0"
+                )
+                await log_audit_event(
+                    "remaining_shares_clamped",
+                    f"{ticker}: stop fill {shares} > recorded remaining {remaining} — "
+                    f"remaining_shares clamped at 0 (was heading to {raw_remaining}); "
+                    f"books already disagreed with the broker",
+                    json.dumps({
+                        "trade_id": trade["id"], "ticker": ticker,
+                        "account_mode": account_mode,
+                        "filled_qty": shares, "prior_remaining": remaining,
+                        "raw_remaining": raw_remaining,
+                    }),
+                )
             pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
 
             _raw_exits = fresh["exits"] if fresh else trade["exits"]
@@ -984,18 +1079,43 @@ async def _process_stop_fill(
             total_pnl = sum(e.get("pnl", 0) for e in exits)
 
             async with pool.acquire() as conn:
-                await conn.execute("""
-                    UPDATE mi_live_trades SET
-                        status = 'closed', exits = $2::jsonb,
-                        remaining_shares = 0, total_pnl = $3,
-                        stop_order_id = NULL, closed_at = NOW()
-                    WHERE id = $1 AND status = 'stop_processing'
-                """, trade["id"], exits, total_pnl)
+                if new_remaining > 0:
+                    # #566: partial-qty stop fill — shares remain at the broker
+                    # (the carve-out third behind its OCO). Decrement, restore
+                    # status='filled', NEVER close. The filled stop IS the
+                    # tracked stop (this path is reached by stop_order_id
+                    # match), so the pointer is nulled; the OCO leg keeps its
+                    # own mi_live_orders row and the coverage detector counts
+                    # the OCO parent's reservation.
+                    await conn.execute("""
+                        UPDATE mi_live_trades SET
+                            status = 'filled', exits = $2::jsonb,
+                            remaining_shares = $3, total_pnl = $4,
+                            stop_order_id = NULL
+                        WHERE id = $1 AND status = 'stop_processing'
+                    """, trade["id"], exits, new_remaining, total_pnl)
+                else:
+                    await conn.execute("""
+                        UPDATE mi_live_trades SET
+                            status = 'closed', exits = $2::jsonb,
+                            remaining_shares = 0, total_pnl = $3,
+                            stop_order_id = NULL, closed_at = NOW()
+                        WHERE id = $1 AND status = 'stop_processing'
+                    """, trade["id"], exits, total_pnl)
 
-        reason = "max attempts" if is_day1 else f"stop hit ({trade.get('hold_days', 0)}d)"
+        if new_remaining > 0:
+            reason = f"stop hit — {shares} of {remaining} sh"
+        elif is_day1 and full_stop_out:
+            reason = "max attempts"
+        else:
+            reason = f"stop hit ({trade.get('hold_days', 0)}d)"
+        _open_note = (
+            f"\n{new_remaining} sh remain — position stays open (resting exit still working)"
+            if new_remaining > 0 else ""
+        )
         msg = (
             f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
-            f"P&L: ${pnl:+,.2f} | {reason}"
+            f"P&L: ${pnl:+,.2f} | {reason}{_open_note}"
         )
         # Audit row BEFORE the send, with the message text — gives operator a
         # ground-truth record that the stop-out handler reached the Telegram
@@ -1046,6 +1166,106 @@ def _terminal_order_snapshot(order) -> dict:
         "limit_price": _s(getattr(order, "limit_price", None)),
         "stop_price": _s(getattr(order, "stop_price", None)),
     }
+
+
+async def _handle_oco_parent_cancel(
+    trade_id: int,
+    symbol: str,
+    order_id: str,
+    raw_parent: dict,
+    event_norm: str,
+    account_mode: str,
+    pool,
+) -> None:
+    """#566 — the OCO parent (the carve-out third's resting limit) went terminal
+    without a full fill. Two worlds produce this same event:
+
+      A. The sibling STOP LEG FILLED — the third exited at its stop and the
+         broker cancelled the parent as the pair unwound (OCO semantics). The
+         2/3's own stop is untouched and still covers; the leg's fill event
+         (its purpose='stop_loss' mi_live_orders row) owns the accounting.
+         NOTHING here needs restoring — the plain-partial restore path would
+         have cancelled that good stop and placed a full-size one the broker
+         rejects 40310000 (the shares are gone), leaving the position
+         genuinely naked.
+
+      B. The whole OCO died UNFILLED — a cancel of the parent kills both legs
+         as a unit (probe Q3, 2026-08-14) — so the third now has NO exit order
+         at all: unprotected, the very hole the OCO exists to close.
+
+    The deciding fact is the LEG's broker status. World A → audit + done.
+    World B (or an unreadable leg — fail-safe) → re-protect via
+    _ensure_stop_coverage, which sizes from BROKER truth (position qty minus
+    pending exits) and is idempotent — never a blind cancel-and-replace.
+    """
+    from agents.market_intelligence.broker.order_manager import _ensure_stop_coverage
+
+    leg_id = alpaca.extract_stop_leg_id(raw_parent)
+    leg_status = None
+    if leg_id:
+        leg = await alpaca.get_order(leg_id, account_mode=account_mode)
+        leg_status = str((leg or {}).get("status") or "").split(".")[-1].lower() or None
+
+    if leg_status == "filled":
+        await log_audit_event(
+            "oco_parent_cancelled_sibling_filled",
+            f"{symbol} [{account_mode}]: OCO parent {order_id[:8]} {event_norm} because "
+            f"its sibling stop leg {leg_id[:8]} FILLED — third exited at its stop; "
+            f"no restore needed, 2/3 stop untouched",
+            json.dumps({
+                "trade_id": trade_id, "ticker": symbol, "account_mode": account_mode,
+                "parent_order_id": order_id, "leg_order_id": leg_id,
+                "event_norm": event_norm,
+            }),
+        )
+        logger.info(
+            f"WS [{account_mode}]: OCO parent {event_norm} for {symbol} — sibling "
+            f"stop leg filled, pair unwound as designed (no restore)"
+        )
+        return
+
+    # World B (leg dead too, or unreadable): the third is uncovered. Converge
+    # from broker truth. _ensure_stop_coverage nets pending exits from
+    # mi_live_orders (the parent row was marked cancelled above, so the third
+    # is back inside the coverage target) and no-ops if actually covered.
+    await log_audit_event(
+        "oco_parent_cancelled_unfilled",
+        f"{symbol} [{account_mode}]: OCO parent {order_id[:8]} {event_norm} with "
+        f"sibling leg status={leg_status or 'unreadable'} — third uncovered, "
+        f"re-protecting from broker truth",
+        json.dumps({
+            "trade_id": trade_id, "ticker": symbol, "account_mode": account_mode,
+            "parent_order_id": order_id, "leg_order_id": leg_id,
+            "leg_status": leg_status, "event_norm": event_norm,
+        }),
+    )
+    coverage_msg = None
+    try:
+        async with pool.acquire() as conn:
+            trade_row = await conn.fetchrow("""
+                SELECT id, ticker, stop_price, signal_type
+                FROM mi_live_trades WHERE id = $1
+            """, trade_id)
+        pos = await alpaca.get_position(symbol, account_mode=account_mode)
+        broker_qty = float(pos.get("qty")) if pos and pos.get("qty") is not None else 0.0
+        if broker_qty > 0 and trade_row:
+            coverage_msg = await _ensure_stop_coverage(
+                trade_id, symbol, broker_qty,
+                float(trade_row["stop_price"]) if trade_row["stop_price"] else None,
+                trade_row["signal_type"] or "unknown",
+                account_mode,
+            )
+    except Exception as e:  # loud-ok: alert below still fires; sync cron is the backstop
+        logger.error(
+            f"WS [{account_mode}]: OCO-cancel re-protect raised for {symbol}: {e}"
+        )
+        coverage_msg = f"re-protect raised: {e}"
+    await send_telegram_message(
+        f"{mode_prefix(account_mode)}⚠️ *OCO {event_norm.upper()}:* {symbol}\n"
+        f"The carve-out third's OCO died unfilled (both legs terminal) — "
+        f"re-protecting from broker truth.\n"
+        f"{coverage_msg or '_Coverage already met or nothing held — verify on Alpaca._'}"
+    )
 
 
 async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
@@ -1449,10 +1669,52 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             UPDATE mi_live_orders SET
                 status = $2, cancelled_at = NOW()
             WHERE alpaca_order_id = $1 AND status NOT IN ('filled', 'cancelled')
-            RETURNING trade_id, purpose
+            RETURNING trade_id, purpose, raw_response
         """, order_id, event_norm)
 
     if pending_exit and pending_exit["purpose"] == "partial_exit":
+        # ── #566: commit any PARTIAL FILL the cancelled order carried, FIRST.
+        # A GTC limit (plain or OCO parent) can partially fill and then be
+        # cancelled (operator cancel; or — OCO — the sibling stop firing).
+        # Those shares SOLD; without this commit they vanish from the books
+        # (remaining_shares overstates the position — defect-2's mirror
+        # image). finalize_partial_exit is idempotent per order_id, so a
+        # racing terminal-fill event cannot double-commit.
+        _cancel_filled = float(getattr(order, "filled_qty", 0) or 0)
+        _cancel_avg = float(getattr(order, "filled_avg_price", 0) or 0)
+        if _cancel_filled > 0 and _cancel_avg > 0:
+            from agents.market_intelligence.broker.order_manager import finalize_partial_exit
+            await finalize_partial_exit(
+                pending_exit["trade_id"], int(_cancel_filled), _cancel_avg, order_id,
+            )
+
+        # ── #566: an OCO PARENT's cancel is NOT the plain-partial shape. The
+        # broker cancels the parent itself when the sibling stop leg FILLS —
+        # the third exited AT ITS STOP, the 2/3's own stop is untouched and
+        # still covers. The old restore path here would have CANCELLED that
+        # good stop and placed a full-size one that the broker rejects
+        # (40310000 — the shares are gone), leaving the position genuinely
+        # naked: the exact wrong-reading class (#566 build flag 2) that
+        # produced this whole task. Branch on the recorded order_class and
+        # never run the blind cancel-and-restore for an OCO parent.
+        _raw = pending_exit["raw_response"]
+        if isinstance(_raw, str):
+            try:
+                _raw = json.loads(_raw)
+            except Exception as _je:  # loud-ok: a malformed raw_response only downgrades to the plain-partial path below, which is the pre-#566 behaviour; logged so the row can be fixed
+                logger.warning(
+                    f"WS [{account_mode}]: raw_response unparseable for cancelled "
+                    f"exit order {order_id[:8]} ({_je}) — treating as plain partial"
+                )
+                _raw = {}
+        _is_oco_parent = str((_raw or {}).get("order_class") or "").lower() == "oco"
+        if _is_oco_parent:
+            await _handle_oco_parent_cancel(
+                pending_exit["trade_id"], symbol, order_id, _raw or {},
+                event_norm, account_mode, pool,
+            )
+            return
+
         async with pool.acquire() as conn:
             trade_row = await conn.fetchrow("""
                 SELECT id, ticker, remaining_shares, stop_price, stop_order_id

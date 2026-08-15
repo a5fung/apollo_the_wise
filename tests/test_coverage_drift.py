@@ -44,7 +44,7 @@ MOD = "agents.market_intelligence.broker.coverage_drift"
 
 
 def _setup(db_rows=None, positions=None, open_orders=None, dedup_hit=None,
-           all_db_rows=None):
+           all_db_rows=None, exit_order_rows=None):
     """Build a mocked pool/conn + patch targets for one detect_coverage_drift call.
 
     dedup_hit: return value for conn.fetchval (the _already_alerted SELECT) —
@@ -53,14 +53,21 @@ def _setup(db_rows=None, positions=None, open_orders=None, dedup_hit=None,
     all_db_rows: rows for the SECOND conn.fetch (_fetch_all_known_order_ids —
     ANY-status rows, only entry_order_id/stop_order_id read). Default None =
     same as db_rows (every open row also appears in the all-status fetch).
-    detect_coverage_drift issues the two fetches in a fixed order (open rows,
-    then all-status known ids), so a side_effect list is deterministic.
+
+    exit_order_rows: rows for the THIRD conn.fetch (#566 — the mi_live_orders
+    union inside _fetch_all_known_order_ids: managed exit orders like the
+    resting +2R limit / OCO parent+leg are tracked ONLY there). Each row needs
+    an 'alpaca_order_id' key. Default [] = no managed exit orders.
+
+    detect_coverage_drift issues the three fetches in a fixed order (open
+    rows, all-status known ids, mi_live_orders ids), so a side_effect list is
+    deterministic.
     """
     pool, conn = make_mock_pool()
     if all_db_rows is None:
-        conn.fetch = AsyncMock(return_value=db_rows or [])
-    else:
-        conn.fetch = AsyncMock(side_effect=[db_rows or [], all_db_rows])
+        all_db_rows = db_rows or []
+    conn.fetch = AsyncMock(
+        side_effect=[db_rows or [], all_db_rows, exit_order_rows or []])
     conn.fetchval = AsyncMock(return_value=dedup_hit)
     return pool, conn
 
@@ -235,6 +242,43 @@ async def test_d2_genuine_orphan_still_fires_despite_terminal_rows():
     assert "ABC" in tg.call_args[0][0]
     detected_call = next(c for c in audit.call_args_list if c.args[0] == COVERAGE_DRIFT_DETECTED)
     assert D2_UNTRACKED_ORDER_HIGH in detected_call.args[2]
+
+
+@pytest.mark.asyncio
+async def test_d2_not_flagged_when_mi_live_orders_references_order_566():
+    """#566: a managed exit order — the resting +2R limit or the OCO parent —
+    lives ONLY in mi_live_orders (it is never a trade row's entry/stop
+    pointer). It is fully tracked (the WS fill router keys on that row), so it
+    must NOT fire D2 HIGH. Before the mi_live_orders union, a resting GTC
+    limit false-alarmed as 'untracked open order' once per 24h dedup window
+    for as long as it rested. Mutation check: dropping the mi_live_orders
+    union from _fetch_all_known_order_ids reddens this test."""
+    oco_parent = {
+        "id": "oco-parent-5555", "symbol": "ETON", "side": "sell",
+        "type": "limit", "order_class": "oco",
+        "client_order_id": "apollo_live_magna53_ETON_1755180000000",
+    }
+    pool, conn = _setup(
+        db_rows=[{"id": 400, "ticker": "ETON", "entry_order_id": "entry-1",
+                  "stop_order_id": "stop-1", "status": "filled"}],
+        positions=[{"symbol": "ETON", "qty": 17.0, "avg_entry_price": 55.2}],
+        open_orders=[oco_parent],
+        exit_order_rows=[{"alpaca_order_id": "oco-parent-5555"}],
+    )
+    with patch(f"{MOD}.get_pool", new=AsyncMock(return_value=pool)), \
+         patch(f"{MOD}.alpaca.get_all_positions",
+               new=AsyncMock(return_value=[{"symbol": "ETON", "qty": 17.0,
+                                            "avg_entry_price": 55.2}])), \
+         patch(f"{MOD}.alpaca.get_open_orders", new=AsyncMock(return_value=[oco_parent])), \
+         patch(f"{MOD}.log_audit_event", new=AsyncMock()) as audit, \
+         patch(f"{MOD}.send_telegram_message", new=AsyncMock()) as tg:
+        result = await detect_coverage_drift("live")
+
+    assert result["d2_high_count"] == 0
+    assert result["d2_info_count"] == 0
+    assert result["alerted"] == 0
+    tg.assert_not_called()
+    audit.assert_not_called()  # tracked exit order = not drift = zero writes
 
 
 @pytest.mark.asyncio

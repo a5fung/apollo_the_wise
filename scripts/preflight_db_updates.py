@@ -76,6 +76,43 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
+        "order_manager._finalize_partial_exit_locked: close-at-zero branch (#566)",
+        """
+        UPDATE mi_live_trades SET
+            exits = $2::jsonb,
+            remaining_shares = $3,
+            total_pnl = $4,
+            partial_taken = TRUE,
+            breakeven_active = TRUE,
+            status = 'closed',
+            stop_order_id = NULL,
+            closed_at = NOW()
+        WHERE id = $1
+        """,
+    ),
+    (
+        "order_manager._finalize_stop_fill_locked: partial-qty branch (#566)",
+        """
+        UPDATE mi_live_trades SET
+            exits = $2::jsonb,
+            remaining_shares = $3,
+            total_pnl = $4,
+            stop_order_id = CASE WHEN stop_order_id = $5
+                                 THEN NULL ELSE stop_order_id END
+        WHERE id = $1
+        """,
+    ),
+    (
+        "trade_stream._process_stop_fill: partial-qty branch (#566)",
+        """
+        UPDATE mi_live_trades SET
+            status = 'filled', exits = $2::jsonb,
+            remaining_shares = $3, total_pnl = $4,
+            stop_order_id = NULL
+        WHERE id = $1 AND status = 'stop_processing'
+        """,
+    ),
+    (
         "order_manager.track_open_position_extremes",
         """
         UPDATE mi_live_trades SET

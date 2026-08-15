@@ -114,6 +114,11 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "order_manager.check_fills",
         "order_manager.update_stop", "order_manager.attempt_day1_reentry",
         "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
+        # #566 (2026-08-15): a partial fill that exhausts the position now CLOSES
+        # the trade atomically (status/closed_at/stop_order_id in the same UPDATE
+        # as exits/remaining) — the last shares can leave via the carve-out limit
+        # once a partial-qty stop fill no longer zeroes the row.
+        "order_manager._finalize_partial_exit_locked",
         "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
     },
@@ -141,6 +146,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     "closed_at":          {
         "order_manager.attempt_day1_reentry", "order_manager._finalize_full_exit_locked",
         "order_manager._finalize_stop_fill_locked", "order_manager.cancel_unfilled_entries",
+        # #566: close-at-zero — see stop_order_id note above.
+        "order_manager._finalize_partial_exit_locked",
         "order_manager._sync_positions_for_mode", "trade_stream._process_stop_fill",
     },
 
@@ -174,6 +181,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "order_manager.check_fills",
         "order_manager.attempt_day1_reentry", "order_manager._finalize_full_exit_locked",
         "order_manager._finalize_stop_fill_locked", "order_manager.cancel_unfilled_entries",
+        # #566: close-at-zero — see stop_order_id note above.
+        "order_manager._finalize_partial_exit_locked",
         "order_manager._sync_positions_for_mode", "order_manager._update_trade_status",
         "telegram_confirm.handle_callback",
         "trade_stream._handle_fill", "trade_stream._process_entry_fill",

@@ -125,7 +125,17 @@ async def _fetch_all_known_order_ids(conn, account_mode: str) -> set[str]:
     R2's tracking set — the SAME cleanup-window race false-fired D2 and R2
     together on CLSK 2026-07-14, and sharing the helper is what keeps
     detection's and ingest's notions of "tracked" from drifting apart again.
-    Changes here change ingest's race guard too."""
+    Changes here change ingest's race guard too.
+
+    #566 (2026-08-15): mi_live_orders.alpaca_order_id is UNIONED in. Managed
+    exit orders — the resting +2R limit, the OCO parent, the OCO stop leg —
+    are tracked ONLY there (the WS fill router keys on mi_live_orders.purpose;
+    they are never a trade row's entry/stop pointer), so without this a
+    perfectly-tracked resting GTC limit fired D2 HIGH "untracked open order"
+    every 24h dedup window for as long as it rested. Mode-unfiltered on
+    purpose (broker order ids are unique UUIDs — the same rationale as
+    order_ingest's own union, which this now mirrors, keeping detection's and
+    ingest's sets identical again)."""
     rows = await conn.fetch(
         """
         SELECT entry_order_id, stop_order_id
@@ -141,6 +151,10 @@ async def _fetch_all_known_order_ids(conn, account_mode: str) -> set[str]:
             known.add(r["entry_order_id"])
         if r["stop_order_id"]:
             known.add(r["stop_order_id"])
+    order_rows = await conn.fetch(
+        "SELECT alpaca_order_id FROM mi_live_orders WHERE alpaca_order_id IS NOT NULL"
+    )
+    known.update(r["alpaca_order_id"] for r in order_rows)
     return known
 
 

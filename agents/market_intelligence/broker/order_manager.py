@@ -120,6 +120,30 @@ async def _profit_take_resting_limit_enabled(account_mode: str) -> bool:
         return False
 
 
+async def _profit_take_oco_enabled(account_mode: str) -> bool:
+    """Runtime toggle for the +2R carve-out OCO (#566, built 2026-08-15). DEFAULT
+    OFF — ships dark, same idiom as `profit_take_resting_limit` / `breakeven_at_broker`:
+    one `mi_safeguard_state` row per account_mode, no redeploy to flip, reversible
+    the same way.
+
+    When ON (and resting mode is on), the freed 1/3 is sold with ONE OCO —
+    GTC limit at the +2R target, sibling GTC stop at breakeven — instead of a
+    bare resting limit, closing the ETON 2026-08-14 hole (a limit above the
+    market protects nothing on a decline; the third had NO stop). Only
+    MEANINGFUL when `profit_take_resting_limit` is also on: with resting mode
+    off the partial is a market sell and there is no resting third to protect.
+
+    Fails CLOSED. An unreadable flag must leave exit behaviour exactly as it is.
+    """
+    try:
+        from agents.market_intelligence import db
+        row = await db.get_safeguard_state("profit_take_oco", account_mode)
+        return bool(row) and str(row.get("state", "")).lower() == "on"
+    except Exception as e:
+        logger.warning(f"profit_take_oco flag unreadable, staying OFF: {e}")
+        return False
+
+
 async def _ask_aware_entry_enabled(account_mode: str) -> bool:
     """Runtime toggle for the ask-aware entry fallback (2026-08-07). DEFAULT OFF.
 
@@ -2415,10 +2439,37 @@ async def execute_partial_exit(
         resting_mode = bool(limit_price) and await _profit_take_resting_limit_enabled(
             account_mode)
 
+        # ── #566 OCO CARVE-OUT (operator-signed 2026-08-14) ──────────────────
+        # In resting mode the freed 1/3's exit becomes ONE OCO: GTC limit at the
+        # +2R target + sibling GTC stop at BREAKEVEN — whichever side fills
+        # cancels the other. Closes the ETON hole (a bare resting limit above
+        # the market left the third with NO stop for hours). The limit STAYS
+        # RESTING (operator constraint — no cancel/re-place-on-price shapes).
+        # The 1/3's stop sits at breakeven — max(current stop, entry) — never
+        # below the stop the shares already had; if neither anchor exists the
+        # OCO cannot be priced and we FALL BACK to the plain resting limit
+        # (today's behaviour, no worse) with a loud audit row.
+        oco_mode = False
+        oco_stop_price = None
+        if resting_mode and await _profit_take_oco_enabled(account_mode):
+            _oco_anchors = [float(v) for v in (stop_price, trade.get("entry_price"))
+                            if v is not None]
+            if _oco_anchors:
+                oco_mode = True
+                oco_stop_price = max(_oco_anchors)
+            else:
+                await log_audit_event(
+                    "partial_exit_oco_fallback",
+                    f"{ticker}: OCO toggle on but no stop/entry anchor to price the "
+                    f"sibling stop — falling back to plain resting limit",
+                    json.dumps({"trade_id": trade_id, "ticker": ticker,
+                                "limit_price": float(limit_price)}),
+                )
+
         logger.info(
             f"Partial exit: {ticker} selling {shares} of {full_remaining} shares "
             f"(new_remaining={new_remaining}, trade_id={trade_id}, "
-            f"mode={'resting_limit' if resting_mode else 'market'})"
+            f"mode={'resting_oco' if oco_mode else ('resting_limit' if resting_mode else 'market')})"
         )
         await log_audit_event(
             "partial_exit_started",
@@ -2991,7 +3042,17 @@ async def execute_partial_exit(
                 order = None
                 for _attempt in range(3):
                     try:
-                        if resting_mode:
+                        if oco_mode:
+                            # #566: ONE OCO — limit at the target + sibling stop at
+                            # breakeven. The sibling rides as a HELD leg; the third
+                            # is never limit-only (probe 2026-08-14: every share
+                            # reserved, 40310000 on any further sell).
+                            order = await alpaca.place_oco_sell(
+                                ticker, shares, float(limit_price),
+                                float(oco_stop_price),
+                                account_mode=account_mode, client_order_id=coid_sell,
+                            )
+                        elif resting_mode:
                             order = await alpaca.place_limit_sell(
                                 ticker, shares, float(limit_price),
                                 account_mode=account_mode, client_order_id=coid_sell,
@@ -3026,8 +3087,39 @@ async def execute_partial_exit(
                         order.get("status", "new"), json.dumps(order),
                         "limit" if resting_mode else "market",
                         float(limit_price) if resting_mode else None)
-                _sell_desc = (f"limit sell {shares} @ ${float(limit_price):.2f} resting"
-                              if resting_mode else f"market sell {shares} placed")
+                # #566: record the OCO's sibling STOP leg under purpose='stop_loss'
+                # so its fill routes to finalize_stop_fill (the WS router keys on
+                # mi_live_orders — the leg is NOT stop_order_id, which stays the
+                # 2/3's stop) and _verify_event_account_mode can place its events.
+                # The leg is HIDDEN from get_open_orders while held (probe
+                # 2026-08-14) — this row is the mirror's only record of it.
+                if oco_mode:
+                    _oco_leg_id = alpaca.extract_stop_leg_id(order)
+                    _oco_leg = next(
+                        (l for l in (order.get("legs") or [])
+                         if str(l.get("id")) == str(_oco_leg_id)), None)
+                    if _oco_leg_id:
+                        async with pool.acquire() as conn:
+                            await conn.execute("""
+                                INSERT INTO mi_live_orders
+                                    (trade_id, alpaca_order_id, ticker, side, order_type,
+                                     qty, stop_price, status, raw_response, purpose,
+                                     exit_reason)
+                                VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                                        'stop_loss', 'stop_hit')
+                                ON CONFLICT (alpaca_order_id) DO NOTHING
+                            """, trade_id, _oco_leg_id, ticker, float(shares),
+                                float(oco_stop_price),
+                                (_oco_leg or {}).get("status", "held"),
+                                json.dumps(_oco_leg or {}))
+                if oco_mode:
+                    _sell_desc = (f"OCO resting for {shares}: limit "
+                                  f"@ ${float(limit_price):.2f} / stop "
+                                  f"@ ${float(oco_stop_price):.2f}")
+                elif resting_mode:
+                    _sell_desc = f"limit sell {shares} @ ${float(limit_price):.2f} resting"
+                else:
+                    _sell_desc = f"market sell {shares} placed"
                 await log_audit_event(
                     "partial_exit_sell_placed",
                     f"{ticker}: {_sell_desc} ({order.get('id')}, status={order.get('status', 'new')})",
@@ -3036,7 +3128,10 @@ async def execute_partial_exit(
                         "shares": shares, "order_id": order.get("id"),
                         "order_status": order.get("status"),
                         "order_type": "limit" if resting_mode else "market",
+                        "order_class": "oco" if oco_mode else "simple",
                         "limit_price": float(limit_price) if resting_mode else None,
+                        "oco_stop_price": (float(oco_stop_price) if oco_mode else None),
+                        "oco_stop_leg_id": (_oco_leg_id if oco_mode else None),
                     }),
                 )
             except Exception as e:
@@ -3362,7 +3457,16 @@ async def execute_partial_exit(
         # Skipped on the abort path (no sell placed) — that path re-protects + alerts
         # AFTER the advisory lock releases, below.
         if not abort_reprotect:
-            if resting_mode:
+            if oco_mode:
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}📋 *Profit-take resting (OCO):* {ticker}\n"
+                    f"Limit sell {shares} sh @ ${float(limit_price):.2f} resting at the "
+                    f"target, with a stop @ ${float(oco_stop_price):.2f} on the same "
+                    f"shares (Order {order['id'][:8]})\n"
+                    f"_Whichever side fills cancels the other — the {shares} sh are "
+                    f"never without a stop. Confirms with real P&L on fill._"
+                )
+            elif resting_mode:
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}📋 *Profit-take resting:* {ticker}\n"
                     f"Limit sell {shares} sh @ ${float(limit_price):.2f} — resting at "
@@ -3549,7 +3653,32 @@ async def _finalize_partial_exit_locked(
         return
 
     shares = int(filled_qty)
-    new_remaining = int(trade["remaining_shares"]) - shares
+    prior_remaining = int(trade["remaining_shares"])
+    raw_remaining = prior_remaining - shares
+    # #566 ACCOUNTING INVARIANT: remaining_shares must NEVER go negative. The
+    # ETON 2026-08-14 shape: the 2/3 stop fill had already zeroed the row
+    # (defect: _finalize_stop_fill_locked closed unconditionally), so when the
+    # resting limit later filled its 5 shares this subtraction wrote -5. Clamp
+    # at 0 and record LOUDLY — a clamp firing means some earlier write already
+    # lied about the position and must be investigated, not papered over.
+    new_remaining = max(raw_remaining, 0)
+    if raw_remaining < 0:
+        logger.error(
+            f"finalize_partial_exit: {ticker} fill of {shares} exceeds recorded "
+            f"remaining {prior_remaining} (would be {raw_remaining}) — clamping "
+            f"remaining_shares at 0; books already disagreed with the broker"
+        )
+        await log_audit_event(
+            "remaining_shares_clamped",
+            f"{ticker}: partial-exit fill {shares} > recorded remaining "
+            f"{prior_remaining} — remaining_shares clamped at 0 (was heading to "
+            f"{raw_remaining}); an earlier close wrote the books wrong",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                "filled_qty": shares, "prior_remaining": prior_remaining,
+                "raw_remaining": raw_remaining, "order_id": order_id,
+            }),
+        )
     pnl = (filled_price - trade["entry_price"]) * shares if trade["entry_price"] else 0
 
     exits.append({
@@ -3562,20 +3691,42 @@ async def _finalize_partial_exit_locked(
     })
     total_pnl = sum(e.get("pnl", 0) for e in exits)
 
+    # #566: a partial fill that exhausts the position CLOSES the trade — e.g.
+    # the 2/3 stopped at breakeven first (which now leaves the row OPEN at 1/3)
+    # and the OCO limit then fills the rest. Leaving remaining=0 on an open row
+    # is the mirror image of the ETON defect (closed-with-shares); both lie.
+    # An already-closed row (late fill — should be unreachable once the
+    # stop-fill fix is live) just absorbs the exit without re-closing.
+    close_now = new_remaining == 0 and trade.get("status") != "closed"
     async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_live_trades SET
-                exits = $2::jsonb,
-                remaining_shares = $3,
-                total_pnl = $4,
-                partial_taken = TRUE,
-                breakeven_active = TRUE
-            WHERE id = $1
-        """, trade_id, exits, new_remaining, total_pnl)
+        if close_now:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    exits = $2::jsonb,
+                    remaining_shares = $3,
+                    total_pnl = $4,
+                    partial_taken = TRUE,
+                    breakeven_active = TRUE,
+                    status = 'closed',
+                    stop_order_id = NULL,
+                    closed_at = NOW()
+                WHERE id = $1
+            """, trade_id, exits, new_remaining, total_pnl)
+        else:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    exits = $2::jsonb,
+                    remaining_shares = $3,
+                    total_pnl = $4,
+                    partial_taken = TRUE,
+                    breakeven_active = TRUE
+                WHERE id = $1
+            """, trade_id, exits, new_remaining, total_pnl)
 
     await log_audit_event(
         "partial_exit_committed",
-        f"{ticker}: DB committed on WS fill — sold {shares} @${filled_price:.2f}, pnl ${pnl:+,.2f}, remaining {new_remaining}",
+        f"{ticker}: DB committed on WS fill — sold {shares} @${filled_price:.2f}, pnl ${pnl:+,.2f}, remaining {new_remaining}"
+        + (" — position CLOSED" if close_now else ""),
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             # #525: the row that CLOSES the breaker must say which book it closed. Until
@@ -3587,6 +3738,7 @@ async def _finalize_partial_exit_locked(
             "shares": shares, "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
             "new_remaining": new_remaining,
+            "closed": close_now,
             "order_id": order_id,
         }),
     )
@@ -3594,6 +3746,7 @@ async def _finalize_partial_exit_locked(
         f"{mode_prefix(account_mode)}📤 *Partial exit FILLED:* {ticker}\n"
         f"Sold {shares} shares @${filled_price:.2f}\n"
         f"P&L: ${pnl:+,.2f} | Remaining: {new_remaining}"
+        + (f"\nPosition closed — total P&L ${total_pnl:+,.2f}" if close_now else "")
     )
 
 
@@ -3813,26 +3966,72 @@ async def _finalize_stop_fill_locked(
     })
     total_pnl = sum(e.get("pnl", 0) for e in exits)
 
+    # #566 ACCOUNTING FIX (the ETON 2026-08-14 defect 2). This function closed
+    # the trade UNCONDITIONALLY — status='closed', remaining_shares=0 — even
+    # when the filled stop covered only PART of the position. ETON: the 2/3
+    # breakeven stop (12 sh) filled, the row was zeroed while the broker still
+    # held 5 sh behind the resting limit — no stop, no trail, invisible to
+    # every surface reading the row; the later limit fill then wrote -5.
+    # A partial-qty stop fill now DECREMENTS and the row stays OPEN; only a
+    # fill that exhausts the position closes it.
+    prior_remaining = int(trade.get("remaining_shares") or 0)
+    raw_remaining = prior_remaining - int(filled_qty)
+    new_remaining = max(raw_remaining, 0)
+    if raw_remaining < 0:
+        logger.error(
+            f"finalize_stop_fill: {ticker} stop fill {int(filled_qty)} exceeds "
+            f"recorded remaining {prior_remaining} — clamping remaining_shares at 0"
+        )
+        await log_audit_event(
+            "remaining_shares_clamped",
+            f"{ticker}: stop fill {int(filled_qty)} > recorded remaining "
+            f"{prior_remaining} — remaining_shares clamped at 0 (was heading to "
+            f"{raw_remaining}); books already disagreed with the broker",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                "filled_qty": int(filled_qty), "prior_remaining": prior_remaining,
+                "raw_remaining": raw_remaining, "order_id": order_id,
+            }),
+        )
+
     async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_live_trades SET
-                status = 'closed',
-                exits = $2::jsonb,
-                remaining_shares = 0,
-                total_pnl = $3,
-                stop_order_id = NULL,
-                closed_at = NOW()
-            WHERE id = $1
-        """, trade_id, exits, total_pnl)
+        if new_remaining > 0:
+            # Shares remain at the broker (e.g. the OCO third behind its own
+            # held stop leg). NEVER mark closed while shares remain. The stop
+            # pointer is nulled ONLY if the filled order IS the tracked stop
+            # (the OCO leg is deliberately not stop_order_id — the pointer
+            # keeps tracking the 2/3's stop).
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    exits = $2::jsonb,
+                    remaining_shares = $3,
+                    total_pnl = $4,
+                    stop_order_id = CASE WHEN stop_order_id = $5
+                                         THEN NULL ELSE stop_order_id END
+                WHERE id = $1
+            """, trade_id, exits, new_remaining, total_pnl, order_id)
+        else:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'closed',
+                    exits = $2::jsonb,
+                    remaining_shares = 0,
+                    total_pnl = $3,
+                    stop_order_id = NULL,
+                    closed_at = NOW()
+                WHERE id = $1
+            """, trade_id, exits, total_pnl)
 
     await log_audit_event(
         "stop_exit_committed",
         f"{ticker}: stopped out {filled_qty} @${filled_price:.2f}, "
-        f"pnl ${pnl:+,.2f}, total ${total_pnl:+,.2f}",
+        f"pnl ${pnl:+,.2f}, total ${total_pnl:+,.2f}"
+        + (f" — {new_remaining} sh remain, trade stays OPEN" if new_remaining > 0 else ""),
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             "shares": int(filled_qty), "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
+            "new_remaining": new_remaining,
             "attempt": attempt, "order_id": order_id,
         }),
     )
@@ -3840,6 +4039,8 @@ async def _finalize_stop_fill_locked(
     await send_telegram_message(
         f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${filled_price:.2f}\n"
         f"P&L: ${pnl:+,.2f} | shares: {filled_qty}"
+        + (f"\n{new_remaining} sh remain — position stays open (resting exit still working)"
+           if new_remaining > 0 else "")
     )
 
 
@@ -4875,26 +5076,49 @@ async def check_position_coverage() -> dict:
             live_stops = _live_sell_stops(open_orders)
             live_qty = sum(float(o.get("qty") or 0) for o in live_stops)
 
-            if live_qty >= target - 0.5:
+            # #566: the OCO carve-out's sibling stop rides HELD at the broker and
+            # `get_open_orders` HIDES a held leg (probe 2026-08-14, the exact
+            # wrong-reading class that produced the ETON incident) — so summing
+            # visible sell-stops alone would read the OCO third as NAKED and
+            # false-alarm every cycle. The OCO PARENT (sell limit,
+            # order_class=oco) IS visible, and an OPEN parent is broker-proof
+            # the sibling stop still holds those shares: the pair lives and
+            # dies as a unit (one cancel kills both; either side's fill cancels
+            # the other), and the probe's extra sell was rejected 40310000
+            # naming the parent. Count the parent's UNFILLED qty as stop
+            # coverage. Plain (non-OCO) sell limits are deliberately NOT
+            # counted — a bare limit above the market protects nothing on a
+            # decline; that IS the defect this detector exists to catch.
+            oco_stop_qty = sum(
+                max(float(o.get("qty") or 0) - float(o.get("filled_qty") or 0), 0.0)
+                for o in open_orders
+                if str(o.get("order_class") or "").lower() == "oco"
+                and "sell" in str(o.get("side") or "").lower()
+                and _canonical_order_status(o.get("status")) in _STOP_CONFIRMED_LIVE_STATUSES
+            )
+
+            if live_qty + oco_stop_qty >= target - 0.5:
                 covered += 1
                 continue
 
             # Gap. Audit row lands every cycle; Telegram is deduped per trade per session.
             gaps.append({"ticker": ticker, "trade_id": trade_id,
-                         "target": target, "live_qty": live_qty})
+                         "target": target, "live_qty": live_qty + oco_stop_qty})
             await log_audit_event(
                 "position_unprotected",
-                f"{ticker}: live stop qty {live_qty:.0f} < {target:.0f} shares held — GAP",
+                f"{ticker}: live stop qty {live_qty + oco_stop_qty:.0f} < {target:.0f} shares held — GAP",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
-                    "expected_qty": target, "found_qty": live_qty,
+                    "expected_qty": target, "found_qty": live_qty + oco_stop_qty,
+                    "plain_stop_qty": live_qty, "oco_reserved_qty": oco_stop_qty,
                 }),
             )
             if not await _coverage_gap_already_alerted_today(trade_id, today):
                 try:
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🚨 *Position unprotected: {ticker}*\n"
-                        f"Expected a stop covering {target:.0f} sh, found {live_qty:.0f} sh live.\n"
+                        f"Expected a stop covering {target:.0f} sh, found "
+                        f"{live_qty + oco_stop_qty:.0f} sh live.\n"
                         f"Detector only — no repair fired. Check the broker now."
                     )
                 except Exception:  # loud-ok: the durable audit row above already landed; notify must never raise past this point
