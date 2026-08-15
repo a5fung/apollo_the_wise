@@ -14,7 +14,7 @@ as his decision with its cost. Each surface carries at most ONE labelled recomme
 2026-08-12 findings — the "what is a real EP" reframe and his pushback on the structure readout —
 and the #562/#545 corrections that had only ever landed in PLAN.md or chat are folded in below.
 This doc, not chat or `operator_shared_notes.md`, is where an EP question's current answer lives;
-§1a is the single register of what's open, §1b is the sequence for what's next.
+§1a is the single register of what's open, §1b is the HOLISTIC PLAN — the goal arithmetic, the four conversion stages with their measured leaks, and the one ordered path.
 
 ---
 
@@ -245,49 +245,101 @@ case looked persuasive.** "Answered by" names the thing that would actually move
     (traded names only), so the intraday HOLD test / 620 timing / #559 reclaim split currently
     depend on a vendor refetch. Answered by: the operator ordering the audit's ranked gap list
     (1: stop purging `mi_ep_alerts`; 2: intraday-bar retention; 3: minute bars for every alert
-    ticker-day). **Status: OPEN — audit done, fixes unordered; retention clock running.**
+    ticker-day). **Status: ANSWERED + FIXED 2026-08-15** — all three ordered and shipped (#567): alerts kept forever, intraday bars 120d→5y, minute paths persisted for EVERY alert ticker-day, and 276 of 276 uncovered ticker-days backfilled with 0 lost. Verify-live 08-17. ⚠ Vendor recovery is proven for LIVE symbols 07-28→08-14 only — delisted/renamed untested, so do not assume a refetch rescues an older gap.
 
 ---
 
-## 1b. SEQUENCE — the systematic path (dependency order, not an importance ranking)
+## 1b. THE HOLISTIC PLAN — one goal, four conversion stages, one ordered path
 
-Per the corollary above: a step that can only produce anecdotes is not scheduled — it becomes "get
-more observations" instead. Each step tags which part of the GOAL it moves and what it is blocked
-on: **operator** (needs his ruling/enumeration) · **evidence-accrual** (needs time/more rows) ·
-**capacity** (needs agent time, available now).
+Rewritten 2026-08-15 (operator: *"work everything into a holistic plan with focus on ultimate
+goal"*). This REPLACES the earlier 8-step list, which had become a queue of separately-motivated
+tasks. Everything in this doc now hangs off the arithmetic below; anything that cannot be tied to a
+stage is out of scope and says so.
 
-0. ✅ DONE — outcome variable chosen: score every alert, not just fills (§1). Everything below
-   builds on this. *(serves: measurement foundation for all four surfaces)*
-1. **#563 — theme coverage read**, due 08-15. Gates the theme-strength feature before it can enter
-   any ranking work (§6.3, register row 5). *(serves: Selection)* Blocked on: **evidence-accrual**
-   (his judged sample of the 357 pairs).
-2. **#533 — within-day ranking + grade-conviction readout**, due 08-12, in progress. Independent of
-   #563 for non-theme features. *(serves: Selection)* Blocked on: **evidence-accrual** (multi-alert
-   days).
-3. **The structure / "real EP" question specifically** — separate from #533's general readout;
-   needs a reference set of real EP winners from OUTSIDE our fills before any conclusion is
-   possible (his 08-12 correction, register row 2). No task owns building this set; scoping it
-   (source, sample size, method) is his call, not ours to invent. *(serves: Selection)* Blocked on:
-   **operator** (unowned gap, needs his scoping) + **capacity** once scoped.
-4. **#562 — delayed-entry enumeration.** Step 1 is HIM naming the candidate follow-up shapes; no
-   further code-reading on the flag-stage machine is useful until he does (his own correction,
-   twice, same day — register row 3). *(serves: Delayed entry)* Blocked on: **operator.**
-5. **#482 — bracket-geometry shadow accrual.** Keep 1-min ORB live; accrue alternatives to N≥30
-   (5-min lane currently WORSE, 0/14 — geometry is not an obvious fix, register row 7).
-   *(serves: Exit, via entry geometry)* Blocked on: **evidence-accrual** (time).
-6. **#559 — admission re-cut**, 08-31. Pinned to 14 trading days after the 08-10 exit-stack change
-   — re-measuring sooner would just re-measure the old exits. *(serves: Entry)* Blocked on: **the
-   calendar** (a form of evidence-accrual).
-7. **The 08-10 exit stack's first live firing** (resting-limit + broker-breakeven, register row
-   12). Zero fires since ship; unmeasurable until it acts once. *(serves: Exit — the "keep the
-   winners" half of the GOAL arithmetic)* Blocked on: **evidence-accrual** (occurrence).
-8. **The recalibration forks** — grade reservation, ranked slots, gap-floor re-look, naming the
-   delayed-EP setup (§9) — each waits on its evidence step above landing, then is an **operator**
-   ruling, not an agent decision.
+### The goal, as one equation
 
-Capacity note: this is a sequence, not a sprint plan — "we don't have to do everything today or
-tomorrow" (his words). Steps 1, 2, and 5 are the only ones needing agent time now; step 3 needs his
-scoping before agent time is useful; step 4 needs his time, not ours.
+**Expectancy per trade = p·W − (1−p)·L.** With L ≈ 1R and the operator's rough marker p ≈ 20%,
+**W must exceed 4R.** Win rate and reward are ONE target (GOAL section) — a change that lifts one
+while damaging the other is a net loss.
+
+**Where we actually are:** p = 1 green in 20 closed live trades, and that one is asterisked (ETON —
+profit existed only because a bug left shares unstopped). The cohort **reaches +1.54R and keeps
+−0.91R** (§5). Both terms are failing at once.
+
+### The one fact the whole plan turns on
+
+**The population moves in our favour; the machine does not keep it.**
+
+- 64.4% of failed Day-1 names (56 of 87) made a high ≥+5% above gap-day open within 21 days.
+- 20 of 21 HIGH-cohort bracket losers ROSE over the next 5 days (#468b).
+- And still: 20 closed live trades, 1 asterisked green, −$396.86.
+
+⚠ **But "just hold longer" is NOT the answer either** — the shadow ORB control (same alerts, no
+broker involvement) shows zero winners across bull AND correcting months (`exit_discipline.md`).
+Selection and conversion are failing together, which is exactly why the GOAL couples them.
+
+### The four stages, each with its MEASURED leak
+
+Every stage below is a conversion step from "a real EP happened in the market" to "money kept".
+A leak with no number is marked UNMEASURED — that is itself the finding.
+
+| # | Stage | The question | Measured leak (date) | What would close it | Blocked on |
+|---|---|---|---|---|---|
+| **1** | **DETECT** | does a real EP become an alert, and is the grade meaningful? | `game_changer` = 59% of alerts with 0 winners on either top grade (08-11) · 5 of 9 clear co-gap stories missed, 4 killed at the 3-member floor (08-12) · **4 detectors have produced nothing for months** (08-15) | a **winner reference set from OUTSIDE our fills** — you cannot learn what a real EP looks like from 19 losers · detector-liveness alarm | **OPERATOR** (scoping the reference set) · capacity (liveness) |
+| **2** | **ADMIT** | of the alerts, which do we act on — and are we right to? | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 arrived after the 09:45 window, 3 the ORB bug) and 5 were filters · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,114 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
+| **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · #562's delayed-entry shapes | **evidence-accrual** + **OPERATOR** (naming the shapes) |
+| **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** · the 08-10 exit stack has fired only once (ABCL 08-11) — a rule is not live until it fires repeatedly | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
+
+### The ordering rule that falls out of the arithmetic
+
+🔴 **Widening stage 2 before stages 3 and 4 work would lose money FASTER.** More entries into a
+machine that converts +1.54R of excursion into −0.91R of realized result makes expectancy worse,
+not better. So the funnel finding above is a **measurement priority, not a fix-it-now priority** —
+we learn from the skips before we take more of them.
+
+That gives three lanes running at different speeds, and they are not interchangeable:
+
+- **AGENT TIME (now):** stage 1 and 2 MEASUREMENT — #533, skip attribution, detector liveness.
+- **OPERATOR TIME (blocking):** the winner reference set (stage 1) and the delayed-entry shapes
+  (#562, stage 3). Neither can be invented by an agent, and both gate real work.
+- **CALENDAR (accrual):** stages 3 and 4 need firings and settled trades, not analysis. Re-cutting
+  them sooner just re-measures the old exits (#559 is pinned to 08-31 for exactly this reason).
+
+⚠ **Nothing in stage 2 or 3 may be CHANGED off a measurement** — skip rules, floors, grades and
+geometry are entry discipline = THE LINE + CHANGE_PROCESS. This plan produces evidence and forks;
+the operator rules.
+
+### The path, in dependency order, with what each MOVES in the equation
+
+| Step | Moves | State |
+|---|---|---|
+| 0. Outcome unit = the ALERT, not the fill | all four — it is the only cohort with variance | ✅ DONE |
+| 1. #563 theme-coverage read | p, via stage 1 (unblocks theme-strength as a ranking input) | ✅ DONE 08-12, closed 08-15 |
+| 2. Capture + retention (#567) | all four — the evidence for next quarter's test now survives | ✅ DONE 08-15 (verify 08-17) |
+| 3. **#533 within-day ranking readout** | p, via stage 2 — today the choice among a morning's alerts is alphabetical | ▶ NEXT, agent time |
+| 4. **Skip-reason attribution** (3,114 rows, per reason: N, distinct sessions, forward return) | p, via stage 2 — says whether a reason drops names that RAN (defect) or names that died (working) | ▶ NEXT, agent time, $0 |
+| 5. **Winner reference set** — real EP winners from outside our fills | p and W, via stage 1 — the ONLY thing that can answer "what is a real EP" | 🔴 OPERATOR — scoping is his call |
+| 6. **#562 — name the delayed-entry shapes** | p, via stages 2–3 — 51% alpha capture but only 1 of 104 reached TRIGGERED | 🔴 OPERATOR — enumeration is his |
+| 7. Detector liveness alarm (folds into #543) | stage 1 — four detectors dark for months and nothing said so | agent time, small |
+| 8. #482 geometry · #545 grid · #559 admission re-cut (08-31) | W and L, via stage 3 | ⏳ accrual |
+| 9. The exit stack's live firings · n=20/40/60 cohort clocks | W, via stage 4 | ⏳ accrual (occurrence) |
+| 10. The recalibration forks (§9) — grade reservation, ranked slots, gap-floor re-look | p | ⏳ each waits on its evidence step, then is an OPERATOR ruling |
+
+### What would make us CHANGE this plan (stated in advance, so it is falsifiable)
+
+- **If skip attribution shows the filters mostly drop names that DIED** → stage 2 is not the leak;
+  agent time moves to stages 1 and 3, and "we are too loose" is not supported on behaviour.
+- **If the winner reference set shows our alerts already look like real EPs** → selection is not
+  the leak, and the whole weight falls on entry geometry and exits.
+- **If the exit stack fires repeatedly and the cohort still keeps −0.91R** → the excursion is not
+  capturable at this geometry, and the honest move is a different entry unit, not a better trail.
+- **If a full quarter of clean accrual still shows no distribution worth reading** → the sample
+  rate, not the analysis, is the binding constraint, and the question becomes how to observe more
+  EPs without trading more of them.
+
+⚠ **The cadence section below is what keeps this honest** — a week with nothing SHIPPED and nothing
+ACCRUED is the failure this structure exists to catch, and it is reviewed on Fridays against the
+table there, not re-dated quietly.
 
 ---
 
@@ -393,7 +445,7 @@ separation inside an all-losing population was never going to find one. His fix:
 measurement needs a **reference set of real EP winners from OUTSIDE our own fills** — the question
 becomes "what do real winners look like, and how many of our alerts look like that," not "did our
 structured alerts beat our unstructured ones." **No task owns building that reference set yet
-(register row 2, §7 gap 8, sequence §1b step 3) — this is the unresolved piece, not the null above.**
+(register row 2, §7 gap 8, §1b step 5 — the winner reference set) — this is the unresolved piece, not the null above.**
 
 **Action: none.** No admission change is supported by either the readout or the correction — nothing
 tightened, nothing proposed as decided (THE LINE).
@@ -530,7 +582,7 @@ enumerated the shapes.
 
 **Labelled recommendation (one, delayed):** #562's step 1 is HIM naming the candidate follow-up
 shapes he actually trades — not more code-reading on the flag-stage machine, which is now confirmed
-to be the wrong lane. This is blocked on the operator, not on evidence or capacity (§1b step 4).
+to be the wrong lane. This is blocked on the operator, not on evidence or capacity (§1b step 6).
 
 ---
 
@@ -769,7 +821,7 @@ thesis-identity) the operator has not named as ranking work; only #563 (coverage
 8. **A reference set of real EP winners from outside our fills** — named by the operator 2026-08-12
    as the fix for testing structure, and by extension any "what does a real EP look like" question:
    *"the better way to see this is probably to have a few winners to compare it with."* No task
-   owns building it; scoping (source, sample size, selection method) is his call (§1b step 3).
+   owns building it; scoping (source, sample size, selection method) is his call (§1b step 5).
 
 ---
 
@@ -934,8 +986,9 @@ PLAN.md line of its own, so it is named here.
 
 | Target | Type | Why then |
 |---|---|---|
-| **Skip-reason attribution — per reason: N, distinct sessions, and what the name DID afterwards** | SHIPPED | the lead target. This week says 9 of 16 losses are mechanics; attribution says whether a reason drops names that RAN (candidate defect) or names that died (working). $0 — prod reads over the alert-day minute paths persisted 08-15. ⚠ Coverage starts 07-28, so per-reason N is 1–6: **state N per reason; a single skipped name that ran proves nothing** (standing evidence rule) |
-| **Scope the WINNER REFERENCE SET (sequence step 3)** | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. **Scoping is HIS call.** ⚠ This REPLACES the previously-listed binary structure probe, which he rejected: *"chart structure is part science part art… the better way is to have a few winners to compare it with"* — re-running it would re-ship a null he already pushed back on |
+| **Skip-reason attribution (§1b step 4)** — per reason: N, distinct sessions, and what the name DID afterwards | SHIPPED | the lead target. This week says 9 of 16 losses are mechanics; attribution says whether a reason drops names that RAN (candidate defect) or names that died (working). $0 — **`mi_ep_missed_outcomes` already carries `skip_reason` alongside ret_1d/5d/20d and max_high_5d/20d across 3,114 rows since February**, so this is a read, not a new capture. ⚠ Report N and distinct sessions per reason; a single skipped name that ran proves nothing (standing evidence rule) |
+| **Scope the WINNER REFERENCE SET (§1b step 5)** | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. **Scoping is HIS call.** ⚠ This REPLACES the previously-listed binary structure probe, which he rejected: *"chart structure is part science part art… the better way is to have a few winners to compare it with"* — re-running it would re-ship a null he already pushed back on |
+| **#533 within-day ranking readout (§1b step 3)** | SHIPPED | the other agent-time step — today the choice among a morning's alerts is decided ALPHABETICALLY |
 | #566 and #567 verify-live | SHIPPED | Monday: the first live +2R carve-out under the toggle, and the 16:22 ET alert-day path job |
 | #543 extractor re-check on ~40 calls | SHIPPED | dated 08-19, cheap |
 | More settled live trades toward a distribution worth reading | ACCRUED | 20 closed; the 20-distinct-DAY bar on the Confirm cohort is the model for what "enough" looks like |
