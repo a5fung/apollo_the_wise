@@ -917,6 +917,64 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-15 — DID THE OVERRIDE COST MONEY? Read run, and the answer is NOT the one the question expected
+
+Probe: `scripts/probes/_grade_override_outcome_read.py` (read-only, $0). Full output:
+`docs/analysis/grade_override_outcome_2026-08-15.txt`. Window 2026-05-11 → 08-14, 503 judged
+alerts over 60 sessions. **OVERRIDDEN** = the floor held authority and fired HIGH over a `none`/
+`MODERATE` judge verdict (n=147, authority verified 100% `floor`). **AGREED** = judge said HIGH
+(n=279).
+
+⚠ **Operator's standing caveat, and it governs this whole section** (2026-08-15): *"i won't say
+it's conclusive yet until we can truly separate noise and chance from real alpha, though the data
+can still be informative."* Design accordingly: the overridden cohort is big-gap BY CONSTRUCTION,
+so every headline read is **within a gap band**; the permutation test shuffles whole **SESSIONS**
+(alerts on one morning share the tape and are not independent draws); each horizon **drops alerts
+too recent to have elapsed**; and outcome values are fractions in the DB, printed ×100.
+
+### The result, stated against the question actually asked
+
+**"Did the overridden alerts do worse?" — NO, not on the horizon we trade.** Within matched gap
+bands the difference is inside chance almost everywhere, and the ONE clearly separated number runs
+the OTHER way:
+
+| Gap band | Horizon | Overridden | Agreed | p (session-permuted) |
+|---|---|---|---|---|
+| 10–15% | everything | — | — | 0.46 → 1.00, nothing |
+| 15–20% | 5-day return | **−8.0%** (n=26, 8 sess) | **+6.6%** (n=37, 11 sess) | 0.107 |
+| ≥20% | **max high, 5-day** | **+27.5%** (n=39, 13 sess) | **+11.5%** (n=42, 14 sess) | **0.004** |
+| ≥20% | 20-day return | **−27.6%** (n=18, 8 sess) | −8.3% (n=18, 6 sess) | 0.081 |
+
+### What that pattern actually says
+
+🔴 **The overridden big-gap names move FURTHER in our favour inside five days and then collapse.**
+Max excursion is more than double the judge-agreed cohort (+27.5% vs +11.5%, the only p below
+0.01 in the whole read), while the 20-day return is three times worse. The judge's `none` verdict
+is not picking "no move" — **it is picking a move that does not hold.**
+
+▶ **Why that does NOT support switching the override off:** we are a day-one ORB entry with a +2R
+profit-take. A large 5-day excursion is the thing our machine is supposed to capture; a 20-day
+collapse costs us nothing if we are already out. **On the horizon we actually trade, the overridden
+cohort is if anything the better hunting ground.** Removing the override on this evidence would
+remove opportunity, not risk.
+
+▶ **Where it DOES bite:** the 15–20% band, where overridden names give back −8.0% over five days
+against +6.6% for judge-agreed ones — the wrong direction on a horizon we do hold. p=0.107 on
+n=26 across 8 sessions is not a finding, but it is the one place worth watching as N grows.
+
+### What this changes
+
+- **Fork option (b) — "stop the floor overriding a lower judge verdict" — is NOT supported by
+  outcomes.** It was the cheapest option to evidence, and the evidence declines it. Recorded so it
+  is not re-proposed. (Options (a), (c), (d) are untouched by this read.)
+- The judge's verdict carries **real information about durability**, which is a different axis from
+  "is this a real EP today". That is a candidate input to the HOLD question (stage 4), not a reason
+  to suppress the alert.
+- ⚠ **Not conclusive, by his own standard and mine:** per-band N is 26–42 over 8–14 sessions, one
+  regime, and the 20-day horizon loses half the sample to maturity. What would make it conclusive
+  is stated at the top of the probe file. Re-run the same probe as N grows — it is $0 and
+  deterministic (fixed seed).
+
 ## 2026-08-15 — HOW THE GRADE IS ACTUALLY DECIDED (operator: *"gap itself cannot determine a high EP… what we have right now is fundamentally wrong"*)
 
 He is right, and it is worse than a weighting problem — it is an explicit override. Read from
