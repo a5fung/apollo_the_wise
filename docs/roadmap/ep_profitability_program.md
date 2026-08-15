@@ -238,6 +238,14 @@ case looked persuasive.** "Answered by" names the thing that would actually move
     the strategy profitable" (`exit_discipline.md`). This is why the GOAL section couples Selection
     and Exit rather than treating either as sufficient alone. **Status: PARTIALLY ANSWERED — exit
     confirmed NOT sufficient alone; selection/entry share the burden, extent unmeasured.**
+15. **Are we STORING what next quarter's test needs, before the earnings flow stops?** [Program-wide,
+    capture] Measured 2026-08-15 (the dated CAPTURE AUDIT section below): the earnings-window
+    `mi_ep_alerts` rows — the richest per-alert record — delete on **2026-11-08** (90d weekly purge),
+    the week next quarter's test would start; minute bars exist for only 44% of alert ticker-days
+    (traded names only), so the intraday HOLD test / 620 timing / #559 reclaim split currently
+    depend on a vendor refetch. Answered by: the operator ordering the audit's ranked gap list
+    (1: stop purging `mi_ep_alerts`; 2: intraday-bar retention; 3: minute bars for every alert
+    ticker-day). **Status: OPEN — audit done, fixes unordered; retention clock running.**
 
 ---
 
@@ -1261,3 +1269,100 @@ floor-killed story (N = 5 stories, 5 sessions — arrivals, not a load-bearing d
   by the EP stream containing no later third member, not by any retention design.
 - **Outcomes** — whether recovered themes would have produced profitable entries; out of scope
   here, consistent with §563.
+
+---
+
+## 2026-08-15 — CAPTURE AUDIT: what next quarter's test needs vs what we are storing (collection window closing)
+
+**Why now (operator, 2026-08-15):** *"we are near end of earnings season but we should have a lot
+of data collected this time."* Measured: 7–10 HIGH alerts/day in the 08-04→08-07 window vs 1–2/day
+in late July. Anything not RECORDED now is unrecoverable for this quarter. This section audits
+CAPTURE only — fields, grain, retention — against the register's questions. **Nothing here changes
+detection, entry, exit, or any threshold (THE LINE); nothing was built; ranked gaps are the
+operator's to order.** All facts verified on prod 2026-08-15 (queries + raw captures: session
+scratchpad `capture_audit*.sql/tsv`) and in `db.py::purge_old_data` / `scheduler._weekly_cleanup`
+(Sunday 02:00 ET, confirmed running: `mi_ep_alerts` MIN alert_date = 2026-05-11 = the 08-09
+Sunday's 90-day cutoff, exactly).
+
+### THE HEADLINE — the alert rows themselves are the thing that ages out first
+
+**`mi_ep_alerts` retention is 90 days, purged weekly.** The earnings-window alert rows — the
+richest per-alert record we hold (catalyst text, `catalyst_quality` grade, `judge_tier` +
+rationale, `grounded_text` corpus, theme flags, tape tier, `setup_class`, `detected_at`) — DELETE
+on these Sundays:
+
+| Rows | Deleted on |
+|---|---|
+| 07-21..07-26 (quiet-week baseline) | **2026-10-25** |
+| 07-27..08-03 | **2026-11-01** |
+| **08-04..08-09 (the earnings window)** | **2026-11-08** |
+| 08-10..08-16 | 2026-11-15 |
+
+Next quarter's earnings season IS November — the comparison test loses its August reference set the
+week it starts. What survives the purge: `mi_ep_missed_outcomes` (durable, 3,224 rows from
+2026-02-11 — but NON-TRADED names only, and only ticker/date/score/gap/`catalyst_quality`/skip +
+daily-grain outcomes) and `mi_ep_scan_log` (durable, 27,806 rows from 2026-04-13 — thin per-tick
+funnel record, incl. the #489 `gap_pct_rt`/`gap_pct_delayed` pairs). The grade partially survives;
+the judge's reasoning, catalyst text, corpus, theme flags, and board context do not. The table is
+403 rows total — retention here is a leanness choice costing nothing to relax.
+(Mitigation NOT to lean on: nightly pg_dump backups exist; old-dump retention unverified, and
+restoring a November analysis from an October dump is a recovery operation, not a data store.)
+
+### The audit table — question → fields needed → captured? → what breaks
+
+Status: ✅ captured · ⚠ captured-but-lossy (wrong grain / subset / ages out before use) · ❌ not captured.
+
+| Register row / need | Fields needed | Status | What breaks if lost — and when |
+|---|---|---|---|
+| 1–2 real-EP / structure vs winner reference set | our alerts' full feature rows to compare against outside winners | ⚠ | rich rows die 10-25→11-15 (`mi_ep_alerts` 90d); only the thin missed-outcomes summary survives |
+| 2 "what did the gap CLEAR" (prior highs, bases) | daily OHLC deep lookback, full universe | ⚠ | `mi_daily_closes`: full 12,280-ticker universe but a **400-day rolling window** — ~13 months of prior-high context; multi-year bases/ATH tests need a Polygon refetch (recoverable — we pay for the API) |
+| 2 SMA position at the gap | SMA10/20/50 on alert day | ✅ | `mi_stock_scores` stores only ~2,444 of 12,280 names/day, BUT SMAs recompute at $0 from `mi_daily_closes` for any name in-window; scores kept 365d |
+| 2 intraday HOLD test (cleared level, held first pullback) | minute bars on alert day, ALL alerts | ⚠ | `mi_intraday_bars` covers **43 of 98 alert ticker-days since 07-28 (44%)** — traded/position names only (`track_open_position_extremes`); skips/cancels/moderates have NO stored minute path. Vendor-recoverable from Alpaca SIP later; ticker-day identity survives in durable tables |
+| 3 delayed entry: what a failed Day-1 did after (620 timing, next-day) | D0..D+N minute bars + daily follow-through per failed alert | ⚠ | daily grain durable (`mi_ep_missed_outcomes` ret_1/5/20d + max_high_5/20d; `mi_ep_scan_outcomes` fwd_5/10d, healthy, settling lag only); minute grain not stored for non-traded names (same hole as above) |
+| 4 too-loose / season conditioning | full per-day funnel incl. every scan tick + reasons | ✅ | `mi_ep_scan_log` durable, per-tick; season labels derivable from calendar |
+| 5 theme absence / strength at alert time | dated theme state joinable to alert day | ✅ | `mi_themes` 365d, dated — any past board reconstructible offline (as §2 already states) |
+| 6 win rate on the alert unit | alert-forward outcomes incl. skips | ✅ | `mi_ep_missed_outcomes` durable + never-purged trades tables |
+| 7 alert runs while bracket dies | per-trade minute path + peak/kept record | ✅/⚠ | derived record durable (`mi_sell_discipline_records`, 51 rows); RAW minute paths for this quarter's trades purge **2026-12-06** (`mi_intraday_bars` 120d) — vendor-recoverable |
+| 8/13 re-entry after stop-out (same/next/N-day) | post-stop same-day bars (recorder writes through 16:00 ✅, 120d); next-day minute bars (❌ unless re-traded, vendor-recoverable); daily ✅ | ⚠ | next-day/N-day sweeps (#545) lean on refetch or daily grain |
+| 9 gap-floor false-block split (#559) | every block + did it reclaim within ORB | ⚠ | block DECISIONS durable (`mi_live_trades` skipped rows, 7 blocks since 08-06, rt reading embedded in `skip_reason` prose); the reclaim EVIDENCE needs alert-day minute bars — not stored for blocked names (refetchable) |
+| 10 within-day ranking re-analysis | the full board's features per session | ⚠ | same as row 1–2: board reconstructions after 11-08 lose grades/judge/catalyst; probe snapshots (`scripts/probes/_533_*`, `_468_*.tsv`) hold point-in-time copies — note several are untracked/machine-local |
+| 11 delayed funnel accrual | flag lane + in-play history | ✅/⚠ | `mi_flag_candidates` durable (44k rows from 05-04); `mi_stocks_in_play` 180d — May-era rows start deleting **2026-11-22** |
+| 12 exit-stack first firing | order/trade/audit events | ✅ | all durable |
+| RT-only cohort (08-12 ruling: joins the review universe) | detected-in-rt-never-admitted names + outcomes | ⚠ | captured as `ep_rt_universe_catch` audit rows (245 since 07-27, one per ticker-day, durable) — but THIN (ticker/gap/price/tick only; no volume/ADV/score) and in NO outcome join; daily outcomes joinable at $0 |
+| Skip taxonomy (was the skip right) | reason + context per skip, durable | ✅ | three durable surfaces: `mi_live_trades.skip_reason` (machine prefix + numbers), `mi_ep_missed_outcomes.skip_category`, `mi_ep_scan_log.filter_reason` |
+| Blind spot 1 correction | intraday peaks | — | "peaks are floors" is now true only pre-07-25 and for the ALERT population; since #306 (07-25) traded-name peaks are minute-accurate from `mi_intraday_bars` |
+| Blind spot 11 (re-derive 08-06/07 grades) | raw catalyst corpus | ✅ | `mi_ep_catalyst_metrics` 180d — safe through a November test, deletes **2027-02-07** |
+
+### RANKED GAPS — cheapest first (nothing built; operator orders these)
+
+1. **Stop deleting `mi_ep_alerts` at 90d** (exempt from `purge_old_data`, or ≥365d). One line in
+   the cutoffs dict; the table is 403 rows. The ONLY surface where this quarter's data is destroyed
+   BEFORE next quarter's test can read it. Without it, every August-board question (rows 1, 2, 10)
+   is answered from thin summaries in November.
+2. **Bump `mi_intraday_bars` 120d → ≥270d** (same dict, one line) so this quarter's traded-name
+   minute paths survive past 12-06 into any Q4 comparison.
+3. **Persist day-of minute bars for EVERY live alert ticker-day** (skips, cancels, moderates, rt
+   catches included): a small EOD loop reusing the existing `get_minute_bars_range` +
+   `persist_intraday_bars` — ~10–20 names/day × 390 bars, trivial volume. Closes the 56% hole;
+   makes the HOLD test, 620 timing, and #559's reclaim split answerable from OUR tables instead of
+   betting on a vendor refetch. The one "start writing rows" build in this list.
+4. **Join the rt-catch cohort into `mi_ep_missed_outcomes` as a 4th source** (from the durable
+   audit rows) so the 08-12 "include this cohort" ruling accrues outcomes automatically. Optional
+   now — the raw events are durable, so this can be done at analysis time instead.
+5. **Notes, no build:** `mi_daily_closes` 400d caps structure lookback at ~13 months (Polygon
+   refetch covers deeper); `mi_stocks_in_play` 180d starts binding 11-22; probe `.tsv` captures
+   cited by this doc are partly untracked (machine-local) — they are point-in-time copies of data
+   that will age out.
+
+Items 1–2 are retention-of-telemetry changes; item 3 writes shadow rows; none touches any
+detection/entry/exit path. All still require the operator's go — nothing was changed in this pass.
+
+### What could NOT be measured
+
+- **Old-backup retention** (whether pre-purge pg_dumps survive to November) — unverified; treated
+  as not-a-store.
+- **Alpaca historical minute-bar availability for delisted/renamed symbols** — the refetch
+  assumption behind every "vendor-recoverable" above; untested.
+- **`mi_ep_scan_outcomes` MAX(scan_date)=08-07 on 08-15** — consistent with its designed
+  [today−15, today−5] settling window (verified in `outcome_tracker._compute_ep_scan_outcomes`),
+  not dark; flagged so nobody re-diagnoses it.
