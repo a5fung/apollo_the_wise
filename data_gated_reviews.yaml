@@ -129,6 +129,14 @@ reviews:
       surfacing informational → actionable (real-time entry alerts). The ANTICIPATION
       entry mode stays OBSERVATIONAL regardless — no realized-R edge (advisor 6/14:
       price-capture + complementarity only; the +2.9–15R were MFE ceilings, realized ≈0R).
+    # ⚠ FLAGGED 2026-08-15 (sweep: does the counted thing accrue?): count 0 with NO
+    # path to rise as-is. The #270 pipeline is ALIVE (63 anticipation_coil_buyout_pin_rejected
+    # events in 21d) but mi_anticipation_lifecycle last wrote 2026-06-16, and across all
+    # 19 rows ever, state='triggered' and realized_r have NEVER occurred (states seen:
+    # watched/armed/ready/expired). The pin rejects everything before the lifecycle
+    # table. Needs a #270 funnel look (detector-side), not a re-gate here — the right
+    # quantity depends on #270's design intent. Same finding applies to
+    # anticipation_270_calibration_revalidation below.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_anticipation_lifecycle
       WHERE state = 'triggered' AND realized_r IS NOT NULL
@@ -180,6 +188,9 @@ reviews:
       cohort, do BOTH conclusions still hold, or does the data now support tuning? This is the
       methodology-revalidation guard (memory feedback_methodology_insights_need_periodic_revalidation
       — a "proven" finding silently going stale is the exact failure mode).
+    # ⚠ FLAGGED 2026-08-15: same finding as anticipation_270_shadow_graduation above —
+    # 'triggered' + realized_r have never been produced (0 all-time); table dark since
+    # 2026-06-16 while the pipeline's pin rejects all candidates. Cannot ripen as-is.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_anticipation_lifecycle
       WHERE state = 'triggered' AND realized_r IS NOT NULL
@@ -2153,6 +2164,12 @@ reviews:
       Earliest review 2026-05-22 (matches drawdown breaker shadow window).
       Practical date range: 2026-05-22 → 2026-05-24, possibly slipping to
       early June if Gate 3 needs more closed trades to reach N=10 with +R.
+    # ⚠ FLAGGED 2026-08-15 (sweep): the predicate is STRUCTURALLY IMPOSSIBLE — it
+    # demands 14 DISTINCT snapshot days inside a 14-calendar-day window, but
+    # mi_account_equity_snapshots is trading-day-only (verified: 71 days on prod,
+    # ZERO weekend rows; max possible in any 14-day window ~10-11). It can never
+    # fire. Moot in practice: the cutover itself HAPPENED 2026-06-22. Operator
+    # call: close as done/superseded, or re-gate if some residual question remains.
     predicate_sql: |
       SELECT COUNT(*) FROM (
         SELECT 1
@@ -2529,6 +2546,11 @@ reviews:
       ticker-set evolution within one name (same name appears multiple
       times with different ticker sets — match against the snapshot
       that actually shares today's set).
+    # ⚠ FLAGGED 2026-08-15 (sweep): INERT SINCE CREATION — the counted event
+    # 'theme_canonicalize_gap_observed' has NO writer anywhere in the codebase and
+    # 0 rows all-time (the probe this entry says it needs was never built);
+    # theme_name_variant_observed itself last wrote 2026-05-28. This tripwire can
+    # never fire. Operator call: build the probe, or close as superseded.
     predicate_sql: |
       -- Track via theme_name_variant_observed events where today's
       -- ticker set matches a prior name's latest snapshot but NOT
@@ -4477,6 +4499,11 @@ reviews:
       validate it from ~30 bull-regime alerts; and discovery-blind catalyst→outcome
       data is garbage-in). Fix venue stays the theme/narrative axis (this review),
       ACCELERATED — de-gate from the 9/8 / N≥30 framing → ship advisory now.
+    # NOTE 2026-08-15 (sweep): counts 'catalyst_rubric_scored' + 'theme_context_scored'
+    # events — NO writer exists in the codebase yet and 0 rows all-time (the #329
+    # advisory composite is unbuilt). Correctly dark until #329 ships; it will sit
+    # pending 0/30 past the earliest date until then. Not a defect — a forward-
+    # registered gate; re-check the writer exists when #329 lands.
     predicate_sql: |
       -- Need 30 alerts with ALL 4 inputs scored + 5d forward returns
       -- settled. At ~1.7 HIGH/day post-filters and ≥3 weeks for
@@ -4801,6 +4828,9 @@ reviews:
       R-expectancy than current cohort, promote meta_rubric_score
       from advisory to entry-gating filter. Replaces LLM-only
       catalyst grader.
+    # NOTE 2026-08-15 (sweep): 'meta_rubric_score_advisory' has NO writer in the
+    # codebase and 0 rows all-time (Phase 5/#329 unbuilt). Correctly dark until the
+    # advisory composite ships — a forward-registered gate, not a defect.
     predicate_sql: |
       -- Need ≥20 advisory alerts settled (5d forward returns) WITH
       -- the meta_rubric_score_advisory audit event AND a measurable
@@ -4835,6 +4865,8 @@ reviews:
       coverage gaps, threshold drift candidates (with N≥30 evidence
       per feedback_sample_size_discipline). Decisions: ship tweak /
       keep / file for next quarter.
+    # NOTE 2026-08-15 (sweep): same as phase6 above — 'meta_rubric_score_advisory'
+    # has no writer yet (Phase 5/#329 unbuilt); 0 rows all-time. Correctly dark.
     predicate_sql: |
       -- Fires every 90 days starting Phase 6 ship + 90d.
       -- Initial earliest_review_date estimated; resets after each
@@ -6510,6 +6542,11 @@ reviews:
       Telemetry-only shadow phase. Forward-return analysis at N≥10
       settled, structurally-surviving cases (parent_invalidated_eod
       = FALSE).
+    # ⚠ FLAGGED 2026-08-15 (sweep): mi_flag_undercut_rally has 4 rows EVER (last
+    # ur_date 2026-06-18, all 4 parent-invalidated => qualifying count 0 all-time)
+    # while sibling detectors accrue hundreds (ma_pullbacks 360, breaks 160 in 90d).
+    # Either U&R is genuinely that rare or the detector went dark ~06-18 — needs a
+    # detector-health look (#98); the gate cannot ripen at the observed rate.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_flag_undercut_rally u
       LEFT JOIN mi_daily_closes d0
@@ -6816,6 +6853,13 @@ reviews:
       If both score similarly, the tag is drift-dominated and the
       convergence signal is noise. Don't ship anything based on
       convergence alone scoring high — the comparison is the data.
+    # ⚠ FLAGGED 2026-08-15 (sweep): 'sugar_baby_convergence_alert' has fired ZERO
+    # times ALL-TIME since the 05-22 ship (writer exists — ninem_detector.py:403 +
+    # briefing.py:2820 — and sugar_baby_convergence_check_failed is also 0, so the
+    # check runs and returns falsy every time). The estimated "0-2/week" fire rate
+    # was off by everything; either the condition is miscalibrated or ultra-rare.
+    # The rolling 90d window also FORGETS any fires that do come. Cannot ripen as-is
+    # — needs a detector-side look, not a re-gate here.
     predicate_sql: |
       -- Predicate: ≥10 distinct (ticker, alert_date) convergence fires.
       -- Counts unique ticker-day pairs to avoid per-scan-tick inflation
@@ -7071,6 +7115,13 @@ reviews:
       shipped detectors all had subtle bugs caught at first-fire).
       Design properly in a fresh session.
 
+    # ⚠ FLAGGED 2026-08-15 (sweep): the proxy population has NEVER occurred — 0 of
+    # 160 mi_flag_breaks rows all-time have parent_invalidated_eod=TRUE. The flag is
+    # set ONLY by flag_detector's EOD reconcile for SAME-DAY parent invalidation
+    # (break_date = the day the parent hit INVALIDATED), i.e. break-then-collapse
+    # intraday — apparently never observed. The gate cannot ripen as written; what
+    # should count as a "failed break" (e.g. close back below base_high, next-day
+    # failure) is detector semantics — operator/design call, not a re-gate here.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_flag_breaks
       WHERE break_date >= CURRENT_DATE - INTERVAL '90 days'
@@ -7116,15 +7167,22 @@ reviews:
     predicate_sql: |
       -- Count partial_exit_committed audit events that landed without a
       -- partial_exit_aborted/partial_exit_sell_failed/partial_exit_rollback_failed
-      -- companion event for the same trade_id, after the architectural
-      -- split commit. The commit SHA of the split goes in the WHERE
-      -- clause once it lands.
+      -- companion event for the same trade_id, after the architectural split.
+      -- ANCHOR FIXED 2026-08-15: the planned 'partial_exit_architecture_split_deployed'
+      -- marker event was NEVER logged by anything (verified 0 rows on prod), so the
+      -- old MAX() subselect returned NULL and this count was stuck at 0 FOREVER while
+      -- the real quantity accrued (22 partial_exit_committed all-time, 6 post-split).
+      -- The split is #361 (commits 59e1245/b68f872, deployed 2026-06-23, verified
+      -- live 2026-06-24 QURE 66sh) => literal anchor date below.
+      -- WHAT WRITES THE COUNTED QUANTITY: broker/order_manager's 3:45 PM ET
+      -- market-hours partials job logs 'partial_exit_committed' per completed partial
+      -- (~1-2/week at current cohort); abort/fail companions same trade_id+day mark a
+      -- cycle unclean. Value with the fixed anchor on 2026-08-15: 4 of 7, accruing.
       SELECT COUNT(*) FROM (
         SELECT (detail::jsonb)->>'trade_id' AS trade_id
         FROM mi_audit_log
         WHERE event_type = 'partial_exit_committed'
-          AND created_at >= (SELECT MAX(created_at) FROM mi_audit_log
-                              WHERE event_type = 'partial_exit_architecture_split_deployed')
+          AND created_at >= '2026-06-23'
           AND NOT EXISTS (
             SELECT 1 FROM mi_audit_log e
             WHERE e.event_type IN (
@@ -7853,6 +7911,13 @@ reviews:
       SELECT COUNT(*) FROM mi_live_trades WHERE status='closed' AND partial_taken
       AND closed_at > (SELECT COALESCE(MAX(created_at), NOW()) FROM mi_audit_log
       WHERE event_type='harvest_rule_flipped')
+    # ANCHOR CONTRACT (verified 2026-08-15): 'harvest_rule_flipped' has NO writer in
+    # code and 0 rows — BY DESIGN it is logged by the F1 flip protocol itself
+    # (ADR 0023 §A5 / scripts/_306_harvest_sweep.py). Pre-flip the COALESCE(NOW())
+    # fallback correctly reads 0 (the rule is still dark; the 13 partial_taken closes
+    # to date are the #361 3:45 PM partials, NOT the harvest rule). ⚠ If the flip
+    # ever ships WITHOUT logging the event, this gate silently never opens — the
+    # flip commit MUST write it.
     threshold: 10
     earliest_review_date: 2026-08-01
     action_when_ready: >-
@@ -8253,8 +8318,22 @@ reviews:
       outcomes. This is the evidence Stage 4 (any hard-gate / demote of LIVE
       entries) is gated on. Current cohort junk is underpowered (18 settled,
       only 2 crash events).
-    predicate_sql: null  # wires up once #498 records TQS on the alert/shadow rows;
-                         # then: SELECT count(*) FROM <tqs shadow> WHERE tier='tape_junk' AND fwd_5d_pct IS NOT NULL
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_ep_alerts
+      WHERE tape_tier = 'tape_junk'
+      AND alert_date <= CURRENT_DATE - INTERVAL '7 days'
+    # WIRED 2026-08-15 (was predicate_sql: null => would have fired 2026-08-31 on the
+    # DATE alone, regardless of evidence — the exposure_family r1 shape, and on n=0:
+    # the live annotator has emitted ZERO tape_junk in 104 annotated alerts
+    # 07-24..08-14, all clean/watch).
+    # WHAT WRITES THE COUNTED QUANTITY: tape_quality.annotate_ep_alerts_tape_quality
+    # (#498 Stage 1, the LAST post-scan block of every EP scan, live since 2026-07-24)
+    # sets mi_ep_alerts.tape_tier ('tape_clean'|'tape_watch'|'tape_junk'|'unknown');
+    # 'tape_junk' rows are this review's evidence population. SETTLED = alert_date
+    # >= 7 calendar days old, i.e. the 5-trading-day forward return is computable
+    # (the replay computes returns itself; no fwd column exists on the table).
+    # Junk is regime-dependent (choppy tape) — no calendar promise; the gate now
+    # fires only when the evidence the question demands actually exists.
     threshold: 30
     earliest_review_date: 2026-08-31
     action_when_ready: |
@@ -8795,16 +8874,33 @@ reviews:
       near-zero WITH near-zero births = over-corrected (check the duplicate tripwire
       and precision first).
     predicate_sql: >-
-      SELECT COUNT(*) FROM mi_audit_log
+      SELECT COUNT(*) FROM mi_audit_log,
+      LATERAL jsonb_each((detail)::jsonb->'outcomes') AS o(ticker, v)
       WHERE event_type = 'lane2_decision_record'
+      AND v->>'outcome' = 'seed'
+      AND created_at <= NOW() - INTERVAL '15 days'
+    # RE-GATED 2026-08-15 (operator: "i don't want to count and wait for the wrong
+    # things") — the unit is now RESOLVED SEED DECISIONS, not evaluated nights.
+    # WHAT WRITES THE COUNTED QUANTITY: theme_engine._discover_lane2_registry logs ONE
+    # 'lane2_decision_record' mi_audit_log row per night WHEN ALL of: (a) the
+    # lane2_grouping_v2 DB flag is ON (flipped live 2026-08-09 — cannot fire pre-flip),
+    # (b) >=1 qualifying alert that day (0-alert nights early-return, NO record),
+    # (c) not a backfill run (hindsight rows can never pollute), (d) the Sonnet call
+    # succeeds (truncation/exception => failed night, no record — e.g. 08-11 wrote
+    # none). Each row's detail JSON carries outcomes[ticker].outcome; 'seed' = a
+    # hold-as-seed decision — the exact decisions this review judges.
+    # WHY per-seed, not per-night: the old 20-night proxy assumed the replay-era rate
+    # (~0.75-1 seed decision/night); the live lane makes ~4.5/night (18 seed decisions
+    # in the first 4 records, 08-10..08-14). Nights under-counted the evidence ~6x and
+    # the flat night-count was misread twice (08-12 "~40 runs away", 08-14 "broken").
+    # RESOLUTION AGE: a seed converts (joins a narrative) or expires out of the prompt
+    # window within LANE2_WINDOW_TRADING_DAYS=10 trading days (get_lane2_pending_seeds);
+    # 15 calendar days = 14 (10 trading days) + 1 holiday slack, so every counted seed
+    # decision has RESOLVED — its conversion, if any, already sits in a later record.
+    # RIPENING (observed rates, 2026-08-15): the 18 existing seed decisions age in
+    # 08-25..08-29; the 20th lands ~09-01/09-02. A seed-light regime honestly delays
+    # it; a seed-heavy one ripens it faster — the gate now moves WITH the lane.
     threshold: 20
-    # RUN-COUNT gated, not date (operator ruling 2026-07-26: a future date can only
-    # DELAY a review whose evidence is already in). 20 evaluated nights ~= 4 trading
-    # weeks at the replay-era rate (27 evaluated nights / 35 weekdays), ~15-20 seed
-    # decisions — enough for a directional conversion read without waiting a quarter.
-    # Records are written ONLY when the lane2_grouping_v2 flag is ON and never on
-    # backfill runs, so this cannot fire before the live flip and cannot be polluted
-    # by hindsight rows. Date below is the registration day = non-blocking.
     earliest_review_date: 2026-07-27
     action_when_ready: >-
       SELECT summary, detail FROM mi_audit_log WHERE event_type='lane2_decision_record'
