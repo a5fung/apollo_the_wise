@@ -285,7 +285,7 @@ A leak with no number is marked UNMEASURED — that is itself the finding.
 
 | # | Stage | The question | Measured leak (date) | What would close it | Blocked on |
 |---|---|---|---|---|---|
-| **1** | **DETECT** | does a real EP become an alert, and is the grade meaningful? | `game_changer` = 59% of alerts with 0 winners on either top grade (08-11) · 5 of 9 clear co-gap stories missed, 4 killed at the 3-member floor (08-12) · **4 detectors have produced nothing for months** (08-15) | a **winner reference set from OUTSIDE our fills** — you cannot learn what a real EP looks like from 19 losers · detector-liveness alarm | **OPERATOR** (scoping the reference set) · capacity (liveness) |
+| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · 4 detectors dark for months | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)**; scoping the reference set is also his |
 | **2** | **ADMIT** | of the alerts, which do we act on — and are we right to? | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 arrived after the 09:45 window, 3 the ORB bug) and 5 were filters · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,114 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
 | **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · #562's delayed-entry shapes | **evidence-accrual** + **OPERATOR** (naming the shapes) |
 | **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** · the 08-10 exit stack has fired only once (ABCL 08-11) — a rule is not live until it fires repeatedly | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
@@ -318,6 +318,7 @@ the operator rules.
 | 2. Capture + retention (#567) | all four — the evidence for next quarter's test now survives | ✅ DONE 08-15 (verify 08-17) |
 | 3. **#533 within-day ranking readout** | p, via stage 2 — today the choice among a morning's alerts is alphabetical | ▶ NEXT, agent time |
 | 4. **Skip-reason attribution** (3,114 rows, per reason: N, distinct sessions, forward return) | p, via stage 2 — says whether a reason drops names that RAN (defect) or names that died (working) | ▶ NEXT, agent time, $0 |
+| 4b. **Floor-over-judge outcome read** — forward returns of the 57 HIGHs the gap-floor forced past a `none` judge verdict vs the 116 the judge agreed with | p, via stage 1 — says whether the override costs money | ▶ NEXT, agent time, $0 |
 | 5. **Winner reference set** — real EP winners from outside our fills | p and W, via stage 1 — the ONLY thing that can answer "what is a real EP" | 🔴 OPERATOR — scoping is his call |
 | 6. **#562 — name the delayed-entry shapes** | p, via stages 2–3 — 51% alpha capture but only 1 of 104 reached TRIGGERED | 🔴 OPERATOR — enumeration is his |
 | 7. Detector liveness alarm (folds into #543) | stage 1 — four detectors dark for months and nothing said so | agent time, small |
@@ -915,6 +916,89 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
   or a goal term, that is the deviation the operator is guarding against.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
+
+## 2026-08-15 — HOW THE GRADE IS ACTUALLY DECIDED (operator: *"gap itself cannot determine a high EP… what we have right now is fundamentally wrong"*)
+
+He is right, and it is worse than a weighting problem — it is an explicit override. Read from
+`ep_detector._score_ep` + 90 days of prod (`mi_ep_alerts`, 319 rows, 2026-08-15).
+
+### 1. The rubric lets gap + a catalyst LABEL force HIGH on its own
+
+`_score_ep` sums eight axes (gap 25 · volume 15 · catalyst 25 · float 5 · neglect 15 ·
+vol-conviction 5 · prior-momentum −25..0 · theme +10). Then a **conviction floor overrides the
+sum**:
+
+| Condition | Score forced to | Effect |
+|---|---|---|
+| gap ≥15% + `game_changer` | **≥80** | HIGH in every regime |
+| gap ≥20% + `strong` | **≥80** | HIGH in every regime |
+| gap ≥15% + `strong` | **≥70** | HIGH at the standard threshold |
+| gap ≥10% + `game_changer` | **≥60** | MODERATE floor, HIGH in Bull |
+
+The comment states the belief plainly: *"The gap itself is evidence of institutional conviction."*
+**Every other axis — neglect, prior-momentum penalty, volume conviction, float, theme — is
+discarded the moment the floor binds.** A name can carry the full −25 prior-momentum penalty (the
+Qullamaggie "has not already rallied" condition) and still be graded HIGH.
+
+### 2. The holistic judge is overridden, measurably
+
+| Authority | Judge said | Fired as | N (90d) |
+|---|---|---|---|
+| judge | HIGH | HIGH | 116 |
+| **floor** | **none** | **HIGH** | **57** |
+| floor | HIGH | HIGH | 36 |
+| judge | MODERATE | MODERATE | 34 |
+| **floor** | **MODERATE** | **HIGH** | **6** |
+| (null) | — | HIGH | 33 |
+
+🔴 **63 of 319 alerts (20%) fired HIGH against a LOWER judge verdict, 57 of them where the judge
+said the name was not an EP at all.** We built the engine that looks past the gap and then let the
+gap-floor outrank it.
+
+### 3. Even the judge anchors on gap
+
+65 alerts in 90 days were graded HIGH on a `routine` catalyst. The 7 most recent are all
+judge-authoritative with large gaps: AMRC 38.7% · MTW 33.1% · OMER 22.5% · DCTH 21.3% ·
+CRWV 19.5% · CAI 17.1% · ACHR 14.9%. So this is not only the floor — **a big enough gap reads as
+HIGH to both engines.**
+
+### 4. What the pipeline ALREADY computes and the grade does NOT use
+
+His words: *"we have a lot in pipeline beyond just gap."* Confirmed — and none of it decides:
+
+| Signal | State today | In the grade? |
+|---|---|---|
+| RS score / percentile rank (~9,700 names nightly) | live, used for briefings/themes | **NO — not an input at all** |
+| Theme membership | `+10` bonus | **decorative — verified 0 tier flips** |
+| Narrative cohort | stored on the alert | **no** |
+| Chart structure / MAs / Stage-2 | `structure_axis_shadow` | **shadow only** |
+| Setup-class classifier (#332, ADR 0028) | computed | **shadow only** |
+| Tape features (spike/held/rev/NTR) | stored on the alert | **no** |
+| Materiality tier | `fire_status_mat_shadow` | **shadow only** |
+| Float / dollar volume | float = 5 pts | marginal |
+
+⚠ **"Neglect" is encoded backwards from his methodology.** The rubric scores *price below 70% of
+the 52-week high* — distance from the high. His condition is *a neglected stock **gapping through a
+key level***, which needs the LEVEL and the clearing of it. We encode the first half crudely and
+the second half not at all (register row 2; the structure question).
+
+### 5. What this changes in the plan
+
+- Stage 1's leak is no longer "the grade doesn't separate" — it is **"the gap overrides everything
+  that could separate."** That is a stronger and more actionable statement.
+- It gives the winner reference set (§1b step 5) a second job: not only *what does a real EP look
+  like*, but *which of the signals we already compute would have separated the winners*.
+- 🔴 **FORK FOR THE OPERATOR — nothing here may be changed by an agent.** Grading is a detection
+  criterion = THE LINE + CHANGE_PROCESS + N≥10 backtest. The decision he owns, stated plainly:
+  **(a)** remove or narrow the conviction floor so gap alone cannot force HIGH; **(b)** stop the
+  floor from overriding a lower judge verdict; **(c)** promote one or more shadow signals (RS,
+  structure, setup-class) into the grade with calibrated weight; **(d)** leave it and gather more
+  evidence first. These are not exclusive, and (b) is the cheapest to evidence — the 57 overridden
+  alerts already have forward outcomes in `mi_ep_missed_outcomes`.
+- ▶ **The $0 read that would inform the fork:** compare forward returns of the 57 floor-over-judge
+  HIGHs against the 116 judge-agreed HIGHs. If the overridden ones did worse, the override is
+  costing money and (b) needs no new capture. **This is measurement, not a change** — it is added
+  to the path as step 4b.
 
 ## Week of 2026-08-11 → 08-15 — REVIEWED 2026-08-15
 
