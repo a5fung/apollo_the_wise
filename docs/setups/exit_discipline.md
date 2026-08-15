@@ -827,3 +827,36 @@ PLTR: entry $149.05, peak +5.3R, now +4.6R on 4 shares, stop at breakeven, SMA10
 below entry, so breakeven is the higher protection). ABCL: entry $8.96, +1.5R, 57 shares, stop at
 breakeven, SMA10 $6.27 — the trail will not engage for some time on a name that gapped off a low
 base. Under a half-of-peak floor PLTR would have been capped near +2.6R.
+
+---
+
+## 2026-08-15 — ⚠ ETON's +$21.89 was a LUCKY ACCIDENT, not evidence the design works
+
+**Operator, unprompted, on the same day the fix shipped:**
+
+> "we banked a profit on ETON but it was a lucky accident in this case given it would've been
+> stopped out first if not for the bug, not a concern but something to keep in mind"
+
+**He is right, and this must be recorded or it will be cited later as a win for the design.**
+
+- ETON's carved-out 1/3 (5 shares) survived to fill its $59.58 limit **only because it had NO
+  STOP.** That was the defect.
+- Under the design that shipped today, those 5 shares carry an OCO with a stop at breakeven — so
+  they would have been taken out at $55.20 alongside the other 12, and the limit would never have
+  filled.
+- **The correct fix therefore turns this specific trade from +$19.32 into roughly breakeven.**
+
+### Why this matters beyond one trade
+
+- **It is not an argument against the fix.** Being unprotected paid once; it is a coin-flip that
+  can equally take the position to zero, and the operator's own framing has been consistent —
+  positioning for positive expectancy over many trades, never optimising a single outcome.
+- ⚠ **It IS an argument against citing ETON as the +2R rule's first success.** The rule's actual
+  first success is still unproven: the mechanism fired correctly (limit at the target, stop to
+  breakeven the same second — ABCL 08-11), but the one trade that produced realised profit did so
+  through a hole, not through the design.
+- ⚠ Anyone measuring the exit stack's performance must exclude or flag this trade. It is
+  contaminated by the very defect the measurement would be testing.
+
+This is the standing rule applied to a case in our own favour: **no single trade is evidence** —
+including the ones that make money.
