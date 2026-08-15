@@ -860,3 +860,28 @@ base. Under a half-of-peak floor PLTR would have been capped near +2.6R.
 
 This is the standing rule applied to a case in our own favour: **no single trade is evidence** —
 including the ones that make money.
+
+### ⚠ And the fill itself is LIQUIDITY-DEPENDENT — we have no model of this
+
+Operator, same conversation:
+
+> "ETON in theory is a success but in trading and getting a fill it's not because of it's small
+> size / float, being more volatile, etc. If it was a 100B market cap, it would fill no problem but
+> it's 1B market cap which is harder to fill at our limit"
+
+**A resting limit is a promise about price, never about a fill.** On a ~$1B name with a thin book,
+price can print through the level on size we cannot get, or gap past it entirely. On a $100B name
+the same limit fills without thinking about it. **Today the exit stack treats every name the same.**
+
+- ETON DID fill at $59.58 — so this is not a post-mortem on a miss. It is that the fill was never
+  as certain as the design implicitly assumes, and we should not read one fill as proof it will
+  repeat on the next small-cap.
+- ⚠ **This makes the OCO MORE important on exactly these names, not less.** The no-fill branch is
+  likeliest where the float is smallest, which is precisely where an unprotected third would sit
+  longest.
+- **Unmeasured and worth measuring** (cheap, from data we already hold): fill rate of the +2R
+  resting limit, split by market cap / average dollar volume / float. If small caps systematically
+  fail to fill at the limit, the 2R take on those names needs a different instrument, not a
+  different price.
+- ⚠ Do NOT tune a threshold off this note. It records a VARIABLE the design currently ignores; what
+  to do about it is a detection/exit-criterion question = CHANGE_PROCESS + operator sign-off.
