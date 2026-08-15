@@ -8076,7 +8076,13 @@ async def purge_old_data() -> dict[str, int]:
     Delete rows older than retention limits to keep the DB lean.
 
     Retention policy:
-    - mi_ep_alerts:    90 days  (EP alert history for outcome tracking)
+    - mi_ep_alerts:    KEPT FOREVER (2026-08-15 capture audit, operator-approved) —
+      the richest per-alert record we hold (catalyst text, judge tier + rationale,
+      grounded corpus, theme flags). The old 90d purge destroyed each quarter's
+      earnings-window reference set BEFORE the next quarter's comparison test could
+      read it (08-04..08-09 rows would have deleted 2026-11-08, the week a November
+      test begins). Cost of keeping: ~15 KB/row x ~1-2.5k rows/yr ≈ 20-40 MB/yr —
+      a leanness choice, not a storage constraint (whole DB 1.2 GB, 58 GB free).
     - mi_stock_scores: 365 days (RS history — needed for historical queries + outcome tracking)
     - mi_themes:       365 days (theme lifecycle history — stage transitions over months)
     - mi_market_regime: kept forever (1 row/day, ~260 rows/year — negligible)
@@ -8097,14 +8103,23 @@ async def purge_old_data() -> dict[str, int]:
 
     async with pool.acquire() as conn:
         cutoffs = {
-            "mi_ep_alerts":    today - timedelta(days=90),
+            # mi_ep_alerts deliberately ABSENT — kept forever since 2026-08-15
+            # (capture audit item 1); see the retention policy in the docstring.
             "mi_stock_scores": today - timedelta(days=365),
             "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
             "mi_daily_closes": today - timedelta(days=400),  # 13M — feeds 12M RS lookback
             "mi_data_quality": today - timedelta(days=90),
             "mi_signal_outcomes": today - timedelta(days=365),
-            "mi_intraday_bars": today - timedelta(days=120),
+            # 120d → 5 years (2026-08-15 capture audit item 2): a real backtest needs
+            # YEARS across market conditions, and 120d killed this quarter's minute
+            # paths on 12-06. Storage math (prod-measured 2026-08-15): 571 B/row
+            # all-in (68 MB / 125,314 rows incl. indexes+toast) x ~9k rows/day once
+            # alert-day persistence (item 3) runs (~23 alert+rt-catch names + traded
+            # names, x390 bars) ≈ 2.3M rows/yr ≈ ~1.3 GB/yr — 5y ceiling ≈ 6-7 GB
+            # on a disk with 58 GB free. Bounded (not forever) so the table cannot
+            # grow without limit; the nightly db-growth check watches the rate.
+            "mi_intraday_bars": today - timedelta(days=1825),
             "mi_9m_ep_alerts":   today - timedelta(days=90),
             "mi_9m_day2_candidates": today - timedelta(days=90),
             "mi_sugar_babies_cohort": today - timedelta(days=365),
@@ -8114,7 +8129,6 @@ async def purge_old_data() -> dict[str, int]:
             "mi_judge_divergence": today - timedelta(days=180),
         }
         date_cols = {
-            "mi_ep_alerts":    "alert_date",
             "mi_stock_scores": "score_date",
             "mi_themes":       "theme_date",
             "mi_fundamental_flags": "flag_date",

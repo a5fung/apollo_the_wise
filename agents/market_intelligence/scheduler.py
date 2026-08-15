@@ -114,6 +114,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
     JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
     "position_path_eod_sweep",  # #306 — 16:10 ET path-recorder EOD completion sweep
+    "alert_day_path_persist",  # 2026-08-15 capture audit item 3 — 16:22 ET minute bars for every alert ticker-day (needs Alpaca data creds)
     "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
     "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
     "unified_allocator_shadow",
@@ -2013,6 +2014,29 @@ async def _position_path_eod_sweep_job():
         logger.error(f"position_path_eod_sweep failed: {e}")
 
 
+async def _alert_day_path_persist_job():
+    """Run once at 16:22 ET, mon-fri (2026-08-15 capture audit item 3).
+
+    Persists day-of minute bars for EVERY EP alert ticker-day (skips, cancels,
+    moderates, rt catches included), closing the 56% hole where only traded
+    names got an intraday path. DB-write only (log_audit_event on a thin day,
+    never Telegram). After the 16:10 path sweep so recorder-covered traded
+    names are already in `mi_intraday_bars` and skip without an API call.
+    Deliberately NOT gated on LIVE_TRADING_ENABLED — telemetry capture must
+    keep recording while trading is paused (that switch kills submits, not
+    data). Execution-owned: the Alpaca data creds live only there.
+    """
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            persist_alert_day_paths,
+        )
+        out = await persist_alert_day_paths()
+        logger.info(f"alert_day_path_persist: {out}")
+    except Exception as e:
+        logger.error(f"alert_day_path_persist failed: {e}")
+        await notify_job_failure("alert_day_path_persist", str(e))
+
+
 async def _evening_position_backstop_job():
     """Run at 9:00 PM ET. Backstop sync_positions catching late EXPIRED events
     or earlier remediation failures — market closed, no other jobs running, so
@@ -3185,6 +3209,23 @@ async def _post_nightly_audit_job():
     except Exception as e:
         logger.error(f"Row-count drift sweep failed: {e}", exc_info=True)
         await notify_job_failure("row_count_drift_sweep", str(e))
+
+    # DB-GROWTH check (2026-08-15 capture audit): retention was relaxed on measured storage maths
+    # (mi_ep_alerts forever, mi_intraday_bars 5y, alert-day minute bars persisted) — this keeps
+    # the maths measured. Nightly audit row of DB size + largest tables (the audit log IS the
+    # baseline store); Telegrams ONLY when pro-rated weekly growth is ~10x the planned ~30 MB/wk
+    # or total size crosses the 30 GB line — a guard that always fires is not a guard. Own
+    # try/except — a health guard that dies silently is the failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_db_growth_check
+        dg = await run_db_growth_check()
+        logger.info(
+            f"DB-growth check: {dg['db_bytes']} bytes, "
+            f"flag={dg['flag']['kind'] if dg['flag'] else None}, "
+            f"{len(dg['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"DB-growth check failed: {e}", exc_info=True)
+        await notify_job_failure("db_growth_check", str(e))
 
     # Job-liveness sweep (#370 increment 3): a scheduled job that RAN successfully but produced
     # NOTHING (theme synthesis truncating to 0 cohorts; theme-shadow 0 rows #173) — reads each output
@@ -5684,6 +5725,21 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id="position_path_eod_sweep",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Alert-day minute-path persist: once at 16:22 ET (2026-08-15 capture audit
+    # item 3). Day-of minute bars for EVERY EP alert ticker-day — skips,
+    # cancels, moderates, rt catches — not just traded names (which the 16:10
+    # sweep above already covers and this job then skips). DB-write only.
+    _scheduler.add_job(
+        audit_wrap(_alert_day_path_persist_job, "alert_day_path_persist"),
+        CronTrigger(
+            hour=16, minute=22,
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id="alert_day_path_persist",
         replace_existing=True,
         misfire_grace_time=600,
     )

@@ -1256,6 +1256,181 @@ async def _emit_row_count_drift(out: dict[str, Any]) -> None:
     except Exception as e:
         logger.warning("row_count_drift: telegram send failed: %s", e)
 
+# ── DB-GROWTH CHECK (2026-08-15 capture audit) ────────────────────────────────────────────────
+#
+# WHY. The capture audit relaxed retention (mi_ep_alerts kept forever, mi_intraday_bars 120d → 5y,
+# minute bars now persisted for every alert ticker-day) on measured storage maths: whole DB 1.2 GB,
+# planned growth ~1.3-1.7 GB/yr, 58 GB free. The operator's condition: unbounded retention must not
+# be able to SURPRISE us. This check makes the maths a standing measurement instead of a one-off.
+#
+# HOW IT DECIDES TO SPEAK (a guard that always fires is not a guard): every night it records DB
+# size + the largest tables as a `db_growth_check` audit row — the audit log IS the baseline store,
+# no new table (the inert-sweep/theme-quality idiom). It compares against its own row from ~a week
+# ago and Telegrams ONLY when the pro-rated weekly growth exceeds _DB_GROWTH_ALERT_BYTES (~10x the
+# planned ~30 MB/wk — legit spikes like a heavy earnings week ≈ 30 MB or a one-off backfill ≈
+# 100-200 MB stay under it) OR total size crosses _DB_SIZE_CEILING_BYTES (half the disk headroom —
+# the "someone should look regardless of rate" line). First week (no baseline yet) → audit row
+# only, silent. A firing that persists re-announces at most weekly (_DB_GROWTH_DEDUPE_DAYS).
+_DB_GROWTH_MIN_BASELINE_AGE_DAYS = 6      # newest own row at least this old = the comparison point
+_DB_GROWTH_MAX_BASELINE_AGE_DAYS = 45     # older than this (long downtime) → treat as no baseline
+_DB_GROWTH_ALERT_BYTES = 300 * 1024**2    # pro-rated PER-WEEK growth above this speaks
+_DB_SIZE_CEILING_BYTES = 30 * 1024**3     # absolute size above this speaks regardless of rate
+_DB_GROWTH_DEDUPE_DAYS = 6                # a persisting condition re-announces at most weekly
+_DB_GROWTH_TOP_TABLES = 8
+
+
+def _evaluate_db_growth(
+    current_bytes: int, baseline_bytes: int | None, baseline_age_days: float | None,
+) -> dict[str, Any] | None:
+    """Pure decision, isolated so it is testable mock-free (the file's idiom).
+
+    Returns a flag dict or None. Growth is pro-rated to a 7-day rate because the
+    baseline row's age floats (~6-45 days after downtime) — 300 MB over 6 weeks
+    is on-plan, 300 MB over 6 days is 10x plan.
+    """
+    if current_bytes > _DB_SIZE_CEILING_BYTES:
+        return {"kind": "ceiling", "current_bytes": current_bytes,
+                "ceiling_bytes": _DB_SIZE_CEILING_BYTES}
+    if (
+        baseline_bytes is None or baseline_age_days is None
+        or baseline_age_days < _DB_GROWTH_MIN_BASELINE_AGE_DAYS
+        or baseline_age_days > _DB_GROWTH_MAX_BASELINE_AGE_DAYS
+    ):
+        return None                      # no usable baseline yet → measure, stay silent
+    weekly_growth = (current_bytes - baseline_bytes) * 7.0 / baseline_age_days
+    if weekly_growth > _DB_GROWTH_ALERT_BYTES:
+        return {"kind": "growth", "current_bytes": current_bytes,
+                "baseline_bytes": baseline_bytes,
+                "baseline_age_days": round(baseline_age_days, 1),
+                "weekly_growth_bytes": int(weekly_growth)}
+    return None
+
+
+def _fmt_bytes(n: int | float) -> str:
+    """Plain-words sizes for the operator message (no raw byte counts)."""
+    n = float(n)
+    for unit in ("B", "KB", "MB", "GB"):
+        if abs(n) < 1024 or unit == "GB":
+            return f"{n:.1f} {unit}" if unit != "B" else f"{int(n)} B"
+        n /= 1024
+    return f"{n:.1f} GB"
+
+
+async def run_db_growth_check() -> dict[str, Any]:
+    """Nightly DB size + largest-tables recorder; speaks only when growth is out of line.
+
+    Returns {"db_bytes": n, "tables": {...}, "flag": dict|None, "spoke": bool, "errors": [...]}.
+    Never raises — a health guard that dies silently is the failure it exists to prevent.
+    """
+    out: dict[str, Any] = {"db_bytes": None, "tables": {}, "flag": None,
+                           "spoke": False, "errors": []}
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            out["db_bytes"] = int(await c.fetchval(
+                "SELECT pg_database_size(current_database())"))
+            rows = await c.fetch(
+                """
+                SELECT c.relname AS t, pg_total_relation_size(c.oid) AS b
+                FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public' AND c.relkind = 'r'
+                ORDER BY pg_total_relation_size(c.oid) DESC
+                LIMIT $1
+                """, _DB_GROWTH_TOP_TABLES)
+            out["tables"] = {r["t"]: int(r["b"]) for r in rows}
+            baseline = await c.fetchrow(
+                """
+                SELECT created_at, detail FROM mi_audit_log
+                WHERE event_type = 'db_growth_check'
+                  AND created_at <= NOW() - make_interval(days => $1)
+                ORDER BY created_at DESC LIMIT 1
+                """, _DB_GROWTH_MIN_BASELINE_AGE_DAYS)
+    except Exception as e:
+        logger.error("db_growth_check: measurement failed: %s", e, exc_info=True)
+        out["errors"].append(f"measure: {e}")
+        return out
+
+    baseline_bytes: int | None = None
+    baseline_age_days: float | None = None
+    baseline_tables: dict[str, int] = {}
+    if baseline is not None:
+        try:
+            detail = baseline["detail"]
+            payload = json.loads(detail) if isinstance(detail, str) else (detail or {})
+            baseline_bytes = int(payload["db_bytes"])
+            baseline_tables = {k: int(v) for k, v in (payload.get("tables") or {}).items()}
+            baseline_age_days = (
+                datetime.now(_ET) - baseline["created_at"].astimezone(_ET)
+            ).total_seconds() / 86400.0
+        except (KeyError, TypeError, ValueError) as e:
+            out["errors"].append(f"baseline parse: {e}")  # measure + record anyway
+
+    out["flag"] = _evaluate_db_growth(out["db_bytes"], baseline_bytes, baseline_age_days)
+
+    # Record tonight's measurement — this row IS next week's baseline, so it must
+    # be written on every run, flagged or not, before any announce decision.
+    try:
+        await log_audit_event(
+            "db_growth_check",
+            f"db {_fmt_bytes(out['db_bytes'])}"
+            + (f" · +{_fmt_bytes(out['db_bytes'] - baseline_bytes)}"
+               f"/{baseline_age_days:.0f}d" if baseline_bytes is not None
+               and baseline_age_days is not None else " · no baseline yet"),
+            json.dumps({"db_bytes": out["db_bytes"], "tables": out["tables"]}),
+        )
+    except Exception as e:
+        logger.warning("db_growth_check: audit log failed: %s", e)
+        out["errors"].append(f"audit: {e}")
+
+    if out["flag"] is None:
+        return out
+
+    # Dedupe: a condition that persists (especially the ceiling) must not become
+    # nightly wallpaper — re-announce at most weekly. Fails OPEN (a dedupe-read
+    # failure only risks a duplicate alert, never a missed one).
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            recent = await c.fetchval(
+                """
+                SELECT count(*) FROM mi_audit_log
+                WHERE event_type = 'db_growth_alert'
+                  AND created_at >= NOW() - make_interval(days => $1)
+                """, _DB_GROWTH_DEDUPE_DAYS)
+        if recent:
+            return out
+    except Exception as e:
+        logger.warning("db_growth_check: dedupe read failed (will announce): %s", e)
+
+    f = out["flag"]
+    if f["kind"] == "ceiling":
+        headline = (f"DB is {_fmt_bytes(f['current_bytes'])} — past the "
+                    f"{_fmt_bytes(f['ceiling_bytes'])} line where retention needs a re-look")
+    else:
+        headline = (f"DB grew {_fmt_bytes(f['weekly_growth_bytes'])} in a week — "
+                    f"~10x the planned rate ({_fmt_bytes(f['baseline_bytes'])} → "
+                    f"{_fmt_bytes(f['current_bytes'])} in {f['baseline_age_days']:.0f}d)")
+    grower_lines = []
+    for t, b in out["tables"].items():
+        delta = b - baseline_tables.get(t, 0)
+        if baseline_tables and delta > 0:
+            grower_lines.append((delta, f"{t}: {_fmt_bytes(b)} (+{_fmt_bytes(delta)})"))
+        else:
+            grower_lines.append((b, f"{t}: {_fmt_bytes(b)}"))
+    grower_lines.sort(reverse=True)
+    lines = ["\U0001F4BE *DB growth out of line*", headline, "```"]
+    lines += [l for _, l in grower_lines[:5]]
+    lines.append("```")
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        out["spoke"] = bool(await send_telegram_message("\n".join(lines)))
+        await log_audit_event("db_growth_alert", headline, json.dumps(f))
+    except Exception as e:
+        logger.warning("db_growth_check: announce failed: %s", e)
+        out["errors"].append(f"announce: {e}")
+    return out
+
+
 # ── #521 INERT-SWEEP CHECK (2026-08-03) ───────────────────────────────────────────────────────
 #
 # WHY. `mi_orb_extension_shadow` swept six entry-cutoff times for three months and every one of

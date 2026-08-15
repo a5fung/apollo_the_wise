@@ -1357,12 +1357,32 @@ Status: ✅ captured · ⚠ captured-but-lossy (wrong grain / subset / ages out 
 Items 1–2 are retention-of-telemetry changes; item 3 writes shadow rows; none touches any
 detection/entry/exit path. All still require the operator's go — nothing was changed in this pass.
 
+### 2026-08-15 (same day, operator-approved) — items 1-3 BUILT + backfilled
+
+- **Item 1 shipped**: `mi_ep_alerts` exempt from `purge_old_data` — kept forever (~20-40 MB/yr).
+- **Item 2 shipped**: `mi_intraday_bars` 120d → **1825d (5 years)** — the operator's frame is
+  YEARS across market conditions; ~1-1.3 GB/yr at the measured 571 B/row all-in, 5y ceiling
+  ≈ 6-7 GB vs 58 GB free. Bounded, not forever, so growth cannot run away.
+- **Item 3 shipped**: `order_manager.persist_alert_day_paths` + execution job
+  `alert_day_path_persist` (16:22 ET) — day-of minute bars for every `mi_ep_alerts` ticker-day
+  UNION the day's `ep_rt_universe_catch` tickers; covered names skip; thin days log
+  `path_coverage_gap`.
+- **Backfill DONE (additive, ON CONFLICT DO NOTHING)**: all 276 sub-300-bar alert+rt-catch
+  ticker-days since 07-28 refetched from Alpaca SIP — **0 unrecoverable**; the 98 alert
+  ticker-days now hold 98/98 intraday paths (92 full; 6 sparse-tape names whose complete day
+  is <300 prints). "Vendor-recoverable" is now empirically TRUE for this window.
+- **Guard**: `health_checks.run_db_growth_check` in the nightly audit — records DB size + top
+  tables as its own baseline (audit log IS the store); Telegrams only when pro-rated weekly
+  growth >300 MB (~10x plan) or DB >30 GB, deduped to at most weekly.
+- Items 4-5 remain unbuilt (item 4 stays analysis-time-doable; item 5 notes stand).
+
 ### What could NOT be measured
 
 - **Old-backup retention** (whether pre-purge pg_dumps survive to November) — unverified; treated
   as not-a-store.
 - **Alpaca historical minute-bar availability for delisted/renamed symbols** — the refetch
-  assumption behind every "vendor-recoverable" above; untested.
+  assumption behind every "vendor-recoverable" above; ~~untested~~ now tested for live symbols
+  07-28→08-14 (276/276 served); delisted/renamed still unexercised.
 - **`mi_ep_scan_outcomes` MAX(scan_date)=08-07 on 08-15** — consistent with its designed
   [today−15, today−5] settling window (verified in `outcome_tracker._compute_ep_scan_outcomes`),
   not dark; flagged so nobody re-diagnoses it.

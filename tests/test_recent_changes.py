@@ -243,11 +243,14 @@ class TestPurgeOldData:
             result = asyncio.run(db_module.purge_old_data())
 
         tables_deleted = {sql.split("FROM")[1].split("WHERE")[0].strip() for sql in executed_sqls if "DELETE" in sql}
-        assert "mi_ep_alerts" in tables_deleted
         assert "mi_stock_scores" in tables_deleted
         assert "mi_themes" in tables_deleted
         assert "mi_market_regime" not in tables_deleted
         assert "mi_tracked_stocks" not in tables_deleted
+        # 2026-08-15 capture audit item 1: mi_ep_alerts is EXEMPT — the 90d purge
+        # destroyed each quarter's earnings-window reference set before the next
+        # quarter's comparison test could read it. A DELETE against it is a regression.
+        assert "mi_ep_alerts" not in tables_deleted
 
     def test_purge_returns_row_counts(self):
         """Return dict should map table names to deleted row counts."""
@@ -257,8 +260,8 @@ class TestPurgeOldData:
         call_order = []
 
         async def fake_execute(sql, cutoff):
-            if "mi_ep_alerts" in sql:
-                call_order.append("ep_alerts")
+            if "mi_intraday_bars" in sql:
+                call_order.append("intraday_bars")
                 return "DELETE 12"
             elif "mi_stock_scores" in sql:
                 call_order.append("stock_scores")
@@ -279,9 +282,10 @@ class TestPurgeOldData:
         with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
             result = asyncio.run(db_module.purge_old_data())
 
-        assert result["mi_ep_alerts"] == 12
+        assert result["mi_intraday_bars"] == 12
         assert result["mi_stock_scores"] == 340
         assert result["mi_themes"] == 0
+        assert "mi_ep_alerts" not in result  # exempt since 2026-08-15 — never purged
 
     def test_purge_cutoffs_are_correct(self):
         """Verify each table uses the right retention window."""
@@ -292,8 +296,8 @@ class TestPurgeOldData:
         captured = {}
 
         async def fake_execute(sql, cutoff):
-            if "mi_ep_alerts" in sql:
-                captured["ep_alerts"] = cutoff
+            if "mi_intraday_bars" in sql:
+                captured["intraday_bars"] = cutoff
             elif "mi_stock_scores" in sql:
                 captured["stock_scores"] = cutoff
             elif "mi_themes" in sql:
@@ -318,7 +322,9 @@ class TestPurgeOldData:
         with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
             asyncio.run(db_module.purge_old_data())
 
-        assert captured["ep_alerts"] == today - timedelta(days=90)
+        # 120d → 5 years, 2026-08-15 capture audit item 2: the old window deleted
+        # this quarter's minute paths on 12-06; a backtest needs YEARS of them.
+        assert captured["intraday_bars"] == today - timedelta(days=1825)
         assert captured["stock_scores"] == today - timedelta(days=365)
         assert captured["themes"] == today - timedelta(days=365)
 

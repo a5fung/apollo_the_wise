@@ -5715,6 +5715,99 @@ async def _sweep_multi_day_coverage(pool, open_trades, today_open_et: datetime) 
                 )
 
 
+async def persist_alert_day_paths(target_date=None) -> dict:
+    """EOD: persist day-of minute bars for EVERY EP alert ticker-day, not just
+    traded names (2026-08-15 capture audit item 3; telemetry only, THE LINE
+    untouched — nothing here reads back into any detection/entry/exit path).
+
+    WHY. `mi_intraday_bars` was only written by the #306 position recorder, so
+    minute paths existed for names we took a position in — 43 of 98 alert
+    ticker-days since 07-28 (44%). Skips, cancels and moderates — the plan's own
+    outcome unit — had NO stored intraday path, so the HOLD test, 620 timing and
+    the #559 reclaim split all leaned on a vendor refetch.
+
+    POPULATION (the audit's, verbatim: "skips, cancels, moderates, rt catches
+    included"): DISTINCT tickers from `mi_ep_alerts` on `target_date` (HIGH and
+    MODERATE alike) UNION tickers from that day's `ep_rt_universe_catch` audit
+    rows (detected-in-rt-never-admitted — joined to the review universe by the
+    08-12 ruling). ~10-25 names x 390 bars/day ≈ 1-1.3 GB/yr all-in at the
+    measured 571 B/row — priced into the 5y `mi_intraday_bars` retention.
+
+    Reuses the #306 pieces unchanged: `get_minute_bars_range` (Alpaca, same feed
+    as the recorder so provenance stays uniform) + `persist_intraday_bars`
+    (ON CONFLICT DO NOTHING — idempotent, so overlap with recorder-covered
+    traded names is harmless). Names already holding >= `_PATH_MIN_DAY_BARS`
+    bars are skipped without an API call. A thin day (halted/illiquid name)
+    logs `path_coverage_gap`, same as the multi-day sweep — audit-only, never
+    Telegram (a guard that always fires is not a guard).
+
+    Runs in the EXECUTION service (the only one with Alpaca creds). NOT gated
+    on LIVE_TRADING_ENABLED: alert capture must keep recording while trading
+    is paused. Returns {"population": n, "fetched": n, "already_covered": n,
+    "thin": n, "errors": n} for the job log.
+    """
+    day = target_date or datetime.now(_ET).date()
+    out = {"population": 0, "fetched": 0, "already_covered": 0, "thin": 0, "errors": 0}
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT ticker FROM mi_ep_alerts WHERE alert_date = $1
+                UNION
+                -- detail holds the JSON payload (log_audit_event's 3rd arg). The
+                -- LIKE guard is load-bearing: ONE row with empty/non-JSON detail
+                -- would abort the WHOLE query on the cast and zero the day's
+                -- capture. ep_detector's reader guards per-row for the same reason.
+                SELECT detail::json->>'ticker' AS ticker
+                FROM mi_audit_log
+                WHERE event_type = 'ep_rt_universe_catch'
+                  AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+                  AND detail LIKE '{%'
+                """,
+                day,
+            )
+    except Exception as e:
+        logger.error(f"alert-day path persist: population query failed: {e}")
+        out["errors"] += 1
+        return out
+
+    tickers = sorted({r["ticker"] for r in rows if r["ticker"]})
+    out["population"] = len(tickers)
+    if not tickers:
+        return out
+
+    day_start = datetime.combine(day, datetime_time(9, 30), tzinfo=_ET)
+    day_end = datetime.combine(day, datetime_time(16, 0), tzinfo=_ET)
+    for ticker in tickers:
+        try:
+            async with pool.acquire() as conn:
+                n_have = await conn.fetchval(
+                    """
+                    SELECT count(*) FROM mi_intraday_bars
+                    WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
+                    """,
+                    ticker, day_start, day_end,
+                )
+            if (n_have or 0) >= _PATH_MIN_DAY_BARS:
+                out["already_covered"] += 1
+                continue
+            bars = await alpaca.get_minute_bars_range(ticker, day_start, day_end)
+            if bars:
+                await alpaca.persist_intraday_bars(ticker, bars)
+                out["fetched"] += 1
+            if len(bars) < _PATH_MIN_DAY_BARS:
+                out["thin"] += 1
+                await log_audit_event(
+                    "path_coverage_gap",
+                    f"{ticker} {day}: {len(bars)}/390 bars (alert-day persist)",
+                )
+        except Exception as e:  # one bad name must not kill the day's capture
+            logger.warning(f"alert-day path persist: {ticker} {day} failed: {e}")
+            out["errors"] += 1
+    return out
+
+
 async def scan_profit_triggers() -> list[dict]:
     """#508 — take 1/3 when the position first trades at entry + PROFIT_TRIGGER_R x risk.
 
