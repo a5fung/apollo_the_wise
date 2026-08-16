@@ -194,3 +194,59 @@ alert-day path job · the first `db_growth_check` row · EROC appearing in `mi_e
 consolidation entry days now getting minute bars.
 
 ⚠ Subagent cap hit (200/200) — set `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` before the next launch.
+
+---
+
+## 2026-08-16 (PT) — 🔴 RESUME HERE: an operator-SIGNED money change is half-built in the tree
+
+**Board 79 · everything else committed and deployed · two agents were still running when the session
+ended, and their work is UNCOMMITTED IN THE WORKING TREE.**
+
+### 🛑 FIRST THING ON RESUME — verify before you commit or deploy anything
+
+**The operator SIGNED OFF (2026-08-16, "ok let's go for it") on a live stop + sizing change:**
+
+1. Protective stop moves from the ORB low to **`entry − 2R`** where `R = entry − ORB_low`
+   (i.e. `2 × ORB_low − entry`). The ORB low still DEFINES R; it is no longer the exit.
+2. **Position size halves** so dollar risk is unchanged — ⚠ **check whether the sizing formula
+   already does this automatically** (shares = risk_budget ÷ stop distance). Halving twice would
+   QUARTER the position.
+3. 🔴 **THE PROFIT TARGET MUST NOT MOVE** — 1/3 still comes off at the ORIGINAL `entry + 2 × (entry −
+   ORB_low)` price. If `scan_profit_triggers` reads the NEW stop distance the target silently drifts
+   to +4R, which was never tested. **This is the primary correctness risk of the whole change.**
+4. Breakeven-after-partial and the SMA trail are UNCHANGED.
+
+**Evidence (do not re-derive):** matched 43 reconstructed HIGH trades at EQUAL dollar risk — live
+ORB-low stop **SUM −6.0, median −1.00**; 2R stop at half size **SUM +11.4, median +0.33**. 3R gave
++12.2 sum but a lower median and max, so 2R was chosen. Limits: one regime (April–May), reconstructed
+not lived, slippage unmodelled, no out-of-sample until the shadow accrues.
+
+▶ **It needs: SSoT updates in `magna53_ep.md` + `exit_discipline.md`, a CHANGE_PROCESS log entry with
+the reversion flag, mutation-proven tests, the full suite, and BOTH deploy scopes.** Verify all of it
+yourself — this is real money.
+
+### Also uncommitted: the alert-rank shadow
+
+A second recorder (`mi_alert_rank_shadow`) was being built to log the selection ranking beside every
+alert — BOTH the EOD version (as tested) and an as-of-09:45 version, because **the tested tightness
+feature uses the full day's range and is NOT knowable at 09:45.** Plus intraday variants:
+ORB-range÷ATR (the live `stop_too_wide` ratio, recorded even for rejects), ORB-range÷ADR,
+close-position-in-range, and bar contraction.
+
+### Shipped and deployed today
+- **`mi_exit_path_shadow`** — records every live position's daily path so any exit rule scores
+  offline later. Review gated at **20 closed positions (~early October)**, filed in
+  `data_gated_reviews.yaml` as `exit_path_shadow_first_read`.
+- **Detector-liveness alarm** (#543) — 2 tables confirmed dark (anticipation lifecycle 61d,
+  undercut-rally 59d).
+- Consolidation entry days joined the minute-path capture.
+
+### The findings that matter (full account: `ep_profitability_program.md` §0b synthesis)
+- **Ranking rule, 2.5× lift:** rank by smaller gap + tighter EP day + less extension → top quartile
+  holds **16 of the 26** tradeable ≥10R winners. ⚠ No out-of-sample exists yet.
+- **Intraday:** opening-range TIGHTNESS does not predict; **close-position-in-range does** (top 30%
+  of the ORB → 17% reach 8×ADR vs 6.8%).
+- **Expectedness axis is buildable** from stored 8-K text, no LLM: unscheduled 11.6% vs scheduled
+  3.8% reach 8×ADR. Candidate, not finding.
+- **Nulls indict our ENCODING, not the concepts** (his correction) — the catalyst explains the gap,
+  so its explanatory content is already priced in.
