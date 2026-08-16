@@ -1356,6 +1356,47 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — ETF CONTAMINATION FIXED: the miss is smaller, the ANTI-SELECTIVITY is sharper
+
+Third and final correction to this number. The tradeable-tier scan still counted **leveraged and
+thematic ETFs** — SOXL, YINN, KORU, MULL, MVLL, QCML, MUU, RVI, VCX — which we would never trade as
+EPs. My first attempted fix (`sector IS NOT NULL AND market_cap > 0`) matched NOTHING because
+`market_cap` is NULL for every row in `mi_stock_scores`, stocks included; **the `market_cap` clause
+was the bug, not the sector one.** Working discriminator: a ticker that has EVER carried a sector.
+(Cross-check: real stocks appear in ~114 daily score rows with a sector — SNOW, NSIT, GTX, UMC, VSH,
+HAE, RDW; the ETFs appear in 4–77 rows with none.)
+
+**Tier A (tradeable: ≥$10, ≥$50M dollar volume), 2026-03-01 → 07-15, split properly:**
+
+| | gap days | tail winners (≥8×ADR) | we caught | alert rate | **winner alert rate** |
+|---|---|---|---|---|---|
+| **REAL STOCKS** | 749 | **78** | **6** | 16.3% | **7.7%** |
+| ETFs / non-stocks | 826 | 71 | 2 | 4.1% | 2.8% |
+
+### 🔴 The finding SURVIVES every correction and gets sharper each time
+
+**Among real, tradeable stocks we alert on 16.3% of qualifying gap days — and on only 7.7% of the
+ones that become tail winners. We are 2.1× more likely to flag a gap that goes nowhere than one that
+runs.**
+
+The number's correction history, stated so it is clear it converged rather than collapsed:
+
+| version | claim | what was wrong |
+|---|---|---|
+| first | "we miss 298 of 311 — 96%" | counted penny stocks (**he caught it**) |
+| second | "141 of 149 tradeable" | counted leveraged ETFs (**I caught it**) |
+| **final** | **"72 of 78 real-stock tail winners"** | — |
+
+**The addressable miss shrank by ~4× across the corrections; the anti-selectivity ratio went the
+other way — 4.2% vs 6.9% → 7.7% vs 16.3%.** Every time the net got cleaner, the selection problem
+got clearer.
+
+**And the timing effect holds on the clean cohort: 19 of the 25 sub-10% missed winners (76%) crossed
+10% intraday** — still a ceiling, not a yield, for the reason already stated.
+
+⚠ Limits: `sector IS NOT NULL` may exclude real stocks outside the enriched set, so the stock count
+is a floor. 8×ADR/20d, ≥8% gap, ≥$10, ≥$50M are all my thresholds. One 4½-month window, descriptive.
+
 ## 2026-08-16 — HIS TWO CORRECTIONS APPLIED, and both change the number materially
 
 > *"some microcaps may be big runners but we forego them due to volatility, penny stocks is not what
