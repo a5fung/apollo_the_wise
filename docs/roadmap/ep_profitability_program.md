@@ -1356,6 +1356,79 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🔴 THE WINNER SET EXISTS, AND OUR EXTENSION FILTER IS CUTTING THE FAT TAIL
+
+Step 5 of the path, started inline. **Arm 1 (alerted-and-ran) is real and large: of 3,224 mature
+alert-outcome rows, 463 reached a +50% 20-day maximum favourable excursion across 90 sessions, and
+142 reached +100%.** Base rate 14.4% / 4.4%. These are winners we DETECTED and did not take.
+
+### The decline reasons, ranked by how often the names they dropped went on to run
+
+20-day MFE ≥ +50%, non-entered population, reasons with n ≥ 30 (numbers normalised out of the
+reason text so near-identical strings aggregate):
+
+| Reason we declined | n | sessions | reached +50% | reached +100% |
+|---|---|---|---|---|
+| low rel volume | 55 | ⚠ 2 | 49.1% | 11 |
+| 🔴 **already up N% in prior N days (EXTENDED)** | **159** | **70** | **34.6%** | **28** |
+| quality filter: atr_too_high | 88 | 52 | 23.9% | 10 |
+| quality filter: mcap_too_small | 193 | 70 | 15.5% | 12 |
+| (no reason recorded) | 402 | 84 | 15.2% | 8 |
+| quality filter: adv_too_low | 195 | 71 | 14.9% | 12 |
+| outside top-20 gap cap | 787 | 30 | 13.5% | 26 |
+| routine catalyst | 93 | 45 | 11.8% | 2 |
+| EP cooldown | 111 | 54 | 10.8% | 1 |
+| already scored earlier today | 151 | 46 | 9.3% | 1 |
+| window:out_of_orb | 55 | 30 | 9.1% | 1 |
+
+**Base rate for comparison: 14.4%.** (The "low rel volume" row sits on **2 sessions** — ignore it
+until it spreads.)
+
+### The extension cohort is the highest-variance population we have, and it is where the tail lives
+
+| 20-day | EXTENDED (filtered out) | everything else |
+|---|---|---|
+| median RETURN | **−38.0%** | −2.0% |
+| median MFE | 27.7% | 15.5% |
+| **P90 MFE** | **+143.2%** | +61.3% |
+| **reached +50%** | **34.6%** | 13.0% |
+| **reached +100%** | **17.6%** | 4.0% |
+
+n = 159 across **70 distinct sessions** — not one week, not one regime.
+
+🔴 **Read both columns together: these names are destroyed on average AND produce the tail.** A
+median return of −38% next to 17.6% of them doubling is the textbook fat-right-tail population —
+**precisely what he described**: *"EPs are rare and winrate is low… failures are expected… if we hit
+a real EP we gain 10X."* **Our extension filter removes that entire cohort**, and with it 28 of the
+142 hundred-percent movers in the whole dataset.
+
+⚠ **And this is the SAME cohort yesterday's skip attribution called the one filter clearly WORKING**
+(median −34.7% vs −7.49%, raw p=0.002). Both readings are correct on their own statistic. **The
+median says the filter saves us; the tail says it is cutting exactly what we are hunting.** This is
+the median-versus-tail lesson arriving on the single most consequential filter we run.
+
+### What this is NOT
+
+- ⚠ **Descriptive, not permutation-tested** — no p-values here yet; the reference-set probe was
+  cut short when the session's agent budget ran out. The counts and the session spread stand on
+  their own, the significance work does not exist yet.
+- ⚠ **NOT a case for turning the extension filter off.** A cohort whose median return is −38%
+  cannot be traded without an exit that cuts losses fast and lets the survivors run — capturing
+  this tail is as much an EXIT and SIZING problem as an admission one, and the −38% median is what
+  the filter was built to avoid.
+- ⚠ Measured on the alert baseline for names we never entered; our own entry is at the ORB high,
+  which is worse.
+- 🛑 **Extension is entry discipline = THE LINE.** Nothing is proposed. This is a FORK for the
+  operator, with the trade-off stated on both sides.
+
+### Named cases, from his own labelled winners
+
+`mi_ep_missed_outcomes` shows we detected and declined these before their runs:
+**EROC 07-30 (+84.5%, "outside top-20 gap cap") · EROC 07-31 (+57.4%, "routine catalyst") ·
+NBIS 07-30 (+61.8%, "filter:atr_too_high 15.6% > 15.0%") · NBIS 07-31 (+38.7%, "score 38 < 50").**
+Two of the names he independently labelled good EPs, detected FOUR times before their moves, each
+time dropped by a different rule.
+
 ## 2026-08-16 — RS TRAJECTORY SHAPE: moot, but NOT for the reason he guessed — and his curvature prediction is BACKWARDS
 
 Probe `scripts/probes/_rs_trajectory_shape_probe.py`, capture
