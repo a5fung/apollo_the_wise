@@ -4,6 +4,14 @@
 deployable wiring is the first post-#277-gate build. This file is the canonical definition
 the deployment references — read it + `docs/setups/CHANGE_PROCESS.md` before any change.**
 
+> ⚠ **2026-08-16 — THE LONG-WAIT VARIANT OF THIS SETUP CONVERGES INTO FAMILY A.** Measured: of the
+> names caught by a 20-day reclaim window with a ≥5R outcome, **81% were already on the Family A
+> candidate detector** — though NONE reached its tradeable entry signal. So a long-wait delayed-EP
+> re-entry is a **promotion problem inside the consolidation play**, not a separate setup. The
+> short-wait variants (3–10 days, reclaim of the EP-day low or close) remain genuinely distinct.
+> Evidence + caveats: `docs/roadmap/ep_profitability_program.md` (2026-08-16 sections);
+> Family A reference: `docs/decisions/0013-consolidation-plays-post-runup.md` §2026-08-16.
+
 One **end-to-end trade tactic**, three layers, built as one unit (memory
 `user-sip-setup-is-one-e2e-tactic`). NOT five fragments. Blueprint: the MNTS case
 (`docs/analysis/mnts_delayed_ep_case_study_2026-06-11.md`); evidence + replay:

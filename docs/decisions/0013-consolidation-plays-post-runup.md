@@ -423,3 +423,63 @@ scan-integration test that pinned dual-arm wiring) — held per the operator's "
 instruction pending his or the session's explicit apply. Once applied: verify-live = the next 17:35 ET
 `consolidation_readiness` digest shows zero `🎯 Anticipate entry fired today` lines while `✅ Confirm
 entry fired today` keeps appearing normally on nights Confirm fires.
+
+---
+
+## 2026-08-16 — FINDINGS FROM THE EP WORK THAT LAND ON THIS FAMILY
+
+Recorded here at the operator's instruction so Family A carries the reference rather than it
+living only in `docs/roadmap/ep_profitability_program.md` (which has the full evidence + caveats).
+
+### 1. Long-wait EP re-entry IS this setup — 81% overlap, measured
+
+Testing next-day/N-day re-entry after an EP (reclaim of the EP-day low / close / high, prior-day
+high, 10-day-MA reclaim) found that catch rate improves out to a 20-day wait. **Of the 27 names
+caught at that wait with a ≥5R outcome, 22 (81%) were ALREADY on `mi_flag_candidates` within 30 days
+before the reclaim.**
+
+🔴 **But the overlap is with the CANDIDATE list only — ZERO of the 27 appear in
+`mi_consolidation_entry_shadow` or `mi_htf_breakout_shadow`, the tradeable ENTRY signals.**
+
+▶ **So this is a PROMOTION problem inside Family A, not a new setup.** The detector already sees
+these names weeks before the move; its entry never fires on them. Building a parallel delayed-EP
+path would re-detect names this family already holds. (Operator's own framing: past some wait
+length *"longer waits may just converge to one of our consolidation plays or HTF"* — confirmed.)
+
+⚠ Limit: a candidate list is a wide net, so this proves redundant DETECTION, not redundant
+OPPORTUNITY. Five of the 27 were on no detector at all — the genuinely distinct delayed-EP cases,
+too few to build on.
+
+### 2. Prior EPs are a cheap candidate FEED for this family
+
+Operator, 2026-08-16: *"prior EPs can be a cheap source for our consolidation plays."* A base that
+forms after a real catalyst is not the same object as a base that forms after drift. **We detect the
+EPs anyway** — no new capture, no new detector, one join.
+
+▶ **The test, on data already held:** among Family A candidates, does *"had an EP in the prior 20
+sessions"* separate the ones whose entry works from the ones that fail? A ranking input to this
+setup, not a new setup — so it needs no new name, buy point or stop.
+
+### 3. Entry/exit tactics are SHARED between EP and this family
+
+Operator: *"entry/exit tactics maybe shareable between the two."* The 2026-08-16 tactics results are
+properties of **holding a volatile name after a catalyst**, not of what triggered the alert:
+
+- 🟢 **close-basis stops beat intraday-touch** (three independent confirmations)
+- 🟢 **2 re-entry attempts beat 3–4**
+- 🟢 **breakeven-after-partial caps the runner** (arithmetic of the rule)
+- 🟢 **a 60-day horizon matters; 20 days is too short**
+- 🔴 catch rates, total R and cohort sizes do NOT transfer — population-specific
+
+▶ **Settle the exit questions ONCE and apply them to both books** rather than re-deriving per setup.
+
+### 4. ✅ Capture gap found and FIXED the same day
+
+Audit 2026-08-16: `mi_consolidation_entry_shadow` is well instrumented for DAILY eval (entry, stop,
+target, `realized_r`, `fwd_mfe_r`, RMV, volume, RS, regime; 89% settled; on no purge) — **but 0 of
+294 entry dates had minute bars**, so none of the stop-placement / intraday-shakeout / entry-timing
+analyses above could ever run on this family. Family A entry days are now UNIONed into the
+`alert_day_path_persist` job (`order_manager.persist_alert_day_paths`, deployed 08-16).
+
+⚠ Also found, NOT fixed: `mi_htf_breakout_shadow` has **9 rows all-time** and `mi_flag_breaks` **1 in
+the last fortnight** — neither is tunable on current data.
