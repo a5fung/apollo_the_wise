@@ -33,6 +33,45 @@ logger = logging.getLogger(__name__)
 _REFRESH_WINDOW_DAYS = 30  # how far back nightly refresh recomputes returns
 _MAX_FORWARD_DAYS = 25     # SQL LATERAL needs to look ≥20 trading days ahead
 
+# mi_live_trades statuses that mean "this row never became a trade" — no fill
+# ever occurred, so the alert belongs in the DECLINED population, not the
+# traded one. Single source of truth for BOTH: (1) the `traded` CTE exclusion
+# below, and (2) the skip_reason LATERAL attribution in `high_unentered`.
+#
+#   skipped       — entry-pipeline decided not to attempt at all (block:*/
+#                    window:*/setup:*/infra:* — #199).
+#   cancelled     — an order WAS placed then cancelled before any fill: the
+#                    chase cap (order_manager._skip_chase_capped), the 10:00 ET
+#                    unfilled-ORB-window sweep, or a broker-side cancel/reject/
+#                    expire surfaced via check_fills. (2026-08-15 fix — this
+#                    status previously satisfied `status IS DISTINCT FROM
+#                    'skipped'` and was silently counted as TRADED, so these
+#                    alerts got no outcome row in EITHER population. EROC
+#                    2026-08-12, setup:chase_cap_exceeded, is the case that
+#                    surfaced it — see docs/roadmap/ep_profitability_program.md
+#                    "STOP-GEOMETRY SWEEP" 2026-08-15.)
+#   order_failed  — submission failed after the one retry (infra error) —
+#                    same "never filled" class as cancelled; the chase-cap
+#                    check on the retry branch (order_manager.py `_submit`
+#                    exception handler) sets THIS status instead of
+#                    'cancelled' for the identical chase-cap-exceeded event,
+#                    so excluding one without the other would leave half of
+#                    the chase-cap population still miscounted.
+#
+# NOTE: 'closed' is intentionally NOT here — a trade that filled (even on a
+# prior entry_attempt) and was later closed (stop-out, EOD flatten, or a
+# failed re-entry preserved via the 10:00 ET cleanup's exits-non-empty branch)
+# is a REAL trade with REAL P&L and must stay in `traded`. 'expired' (a staged
+# paper-confirmation proposal that timed out with no broker order) is also
+# NOT here — that is a distinct staged-approval flow, out of scope for this
+# fix (not one of the three trigger paths named above; no order was placed).
+#
+# Interpolated directly into the SQL below via Python tuple repr — the SAME
+# f-string idiom this file already uses for _UNTRADEABLE_CATEGORIES /
+# _SHOULDVE_ENTERED_CATEGORIES (see top_missed_winners / top_shouldve_entered_gaps
+# below). Safe: a fixed internal constant, never external/user input.
+DECLINED_NEVER_FILLED_STATUSES = ("skipped", "cancelled", "order_failed")
+
 
 # ── Skip-reason → category normalizer ────────────────────────────────────────
 
@@ -219,16 +258,18 @@ async def refresh_missed_outcomes(
         # Single SQL: build the base set from 3 sources, exclude actual trades,
         # then LEFT JOIN forward-return windows from mi_daily_closes.
         # UPSERT on (ticker, alert_date, source).
-        await conn.execute("""
+        await conn.execute(f"""
         WITH traded AS (
-            -- #199: status='skipped' rows are NOT trades. Counting them here
-            -- silently excluded the entire entry-pipeline-skipped cohort
-            -- (block:max_positions, block:circuit_breaker, window:out_of_orb,
-            -- setup:stop_too_wide) from every source via NOT EXISTS(traded) —
-            -- those HIGHs then never appeared in missed-outcomes at all.
+            -- #199 + 2026-08-15 fix: statuses in DECLINED_NEVER_FILLED_STATUSES
+            -- are NOT trades — no fill ever occurred. Originally only
+            -- 'skipped' was excluded here (status IS DISTINCT FROM 'skipped'),
+            -- which silently counted 'cancelled' (chase cap, 10:00 ET unfilled
+            -- sweep, broker cancel) and 'order_failed' (submit failed after
+            -- retry) rows as TRADED — those alerts then got no outcome row in
+            -- EITHER population. See DECLINED_NEVER_FILLED_STATUSES docstring.
             SELECT ticker, alert_date FROM mi_live_trades
             WHERE alert_date >= $1 AND alert_date <= $2
-              AND status IS DISTINCT FROM 'skipped'
+              AND status NOT IN {DECLINED_NEVER_FILLED_STATUSES}
             UNION
             SELECT ticker, alert_date FROM mi_paper_trades
             WHERE alert_date >= $1 AND alert_date <= $2
@@ -281,9 +322,25 @@ async def refresh_missed_outcomes(
                 a.ticker,
                 a.alert_date,
                 'high_unentered'::TEXT AS source,
-                -- #199: attribute WHY the HIGH wasn't entered from the
-                -- entry-pipeline skip row (block:*/window:*/setup:*). NULL
-                -- only when truly unfilled (no skipped row exists at all).
+                -- #199 + 2026-08-15 fix: attribute WHY the HIGH wasn't
+                -- entered from the entry-pipeline skip/cancel/fail row
+                -- (block:*/window:*/setup:*/infra:*). Previously only
+                -- status='skipped' rows fed skip_reason here, so a
+                -- cancelled-without-fill row's reason (e.g.
+                -- setup:chase_cap_exceeded) came back NULL even though it
+                -- WAS recorded on the row (order_manager._update_trade_status
+                -- writes skip_reason on every 'cancelled'/'order_failed'
+                -- terminal transition too). NULL now only when truly
+                -- unfilled with no matching row at all. Precedence when a
+                -- ticker+alert_date has more than one mi_live_trades row
+                -- (only possible across different account_modes — the
+                -- ticker/alert_date/account_mode UNIQUE constraint means at
+                -- most one row per mode, reused in place across re-entry
+                -- attempts, never duplicated): ORDER BY lt.id DESC LIMIT 1,
+                -- unchanged from before this fix — the most recently WRITTEN
+                -- qualifying row wins, whichever of skipped/cancelled/
+                -- order_failed it is. This doesn't privilege one kind over
+                -- another; it reflects which decision was recorded last.
                 sk.skip_reason,
                 a.ep_score,
                 a.gap_pct,
@@ -293,7 +350,7 @@ async def refresh_missed_outcomes(
             LEFT JOIN LATERAL (
                 SELECT skip_reason FROM mi_live_trades lt
                 WHERE lt.ticker = a.ticker AND lt.alert_date = a.alert_date
-                  AND lt.status = 'skipped'
+                  AND lt.status IN {DECLINED_NEVER_FILLED_STATUSES}
                 ORDER BY lt.id DESC LIMIT 1
             ) sk ON TRUE
             WHERE a.alert_date >= $1 AND a.alert_date <= $2
