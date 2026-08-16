@@ -129,7 +129,7 @@ grow into prose.**
 | **BW / FRMI** | 08-11 | Gap size ranks backwards: BW gapped 34.9% at RS 1.5 (rank 2397), FRMI 17.0% at rank 1661 — both below every MA, both dead inside 60 seconds. "A gap is a signal, not the setup" measured | plan §2 |
 | **ABCL** | 08-11 | The +2R rule's first correct live firing — limit filled AT the $10.08 target, stop to the $8.96 entry the same second | plan §5 |
 | **FIGS** | 08-07 | The two defects that opened the exit work — market sell filled +1.13R against a +2R target; "stop moves to breakeven" was a DB flag the daily pass read, hours too late | plan §5 |
-| **PLTR** | 08-04→ | **His first labelled GOOD EP (08-15, "though still early").** Our score ranked it **#1 of 11** that morning (96 vs a 50-96 field) on the NEGLECT axis, not the gap — while its RS was rank **2230/9,700**, below its 20- and 50-day MAs. So: the ranking works, the TIER throws it away, and "just add RS" would have killed it. Also the breakeven evidence — partial taken, stop to entry, still open at ~+4.6R six days on | plan §2026-08-15 · `exit_discipline.md` |
+| **PLTR** | 08-04→ | **His first labelled GOOD EP (08-15, "though still early").** Our score ranked it **#1 of 11** that morning (96 vs a 50-96 field) on the NEGLECT axis, not the gap — while its RS was rank **2230 of 2,415 scored names (bottom 8%)**, below its 20- and 50-day MAs. So: the ranking works, the TIER throws it away, and "just add RS" would have killed it. Also the breakeven evidence — partial taken, stop to entry, still open at ~+4.6R six days on | plan §2026-08-15 · `exit_discipline.md` |
 | **The 5 missed stories** | 06-15→07-31 | AUGO+HYMC · MU+SNX · HUT+IREN · EME+PWR · COHU+MPWR — 5 of the 9 clear same-day co-gap stories in 60 days; 4 were grouped the same night and discarded at the 3-member floor | plan §563 |
 
 
@@ -1036,13 +1036,39 @@ LEVEL, where the top two (LIFE rank 50, ZBRA rank 190) are not the winner.
   alert we have.
 - ⚠ **One board, n=11, one winner.** It illustrates that inflection orders the board differently
   from level; it establishes nothing. His own standing rule applies.
-- ▶ **The test that would settle it, and it is $0:** compute `rs_1m − rs_6m` (and rank trajectory
-  over the prior 5/10/20 sessions) at alert time for every alert we hold outcomes for, then measure
-  forward return by inflection bucket, session-permuted. **Restricted to the low-RS population**,
-  which is his actual claim — the hypothesis is that improvement matters *for names that do not
-  already have high RS*, not universally.
-- 📌 This supersedes the naive form of fork option (c). The candidate is **RS INFLECTION within the
-  neglected cohort**, not RS level — level would have thrown PLTR out (previous section).
+### ✅ THE TEST RAN THE SAME DAY — and it is a NULL. RS improvement does not predict.
+
+Probe `scripts/probes/_rs_inflection_read.py`, output `docs/analysis/rs_inflection_read_2026-08-15.txt`.
+Pre-registered primary test, declared before any outcome was read: within the low-RS population
+(`rs_composite < 50`), does the sign of `rs_1m − rs_6m` separate 5-day forward return?
+
+- **Improving names did WORSE, not better** — median **−1.04%** (n=431 over 78 sessions) vs
+  **−0.08%** for non-improving (n=523 over 99 sessions). Difference −0.96pp, i.e. the wrong
+  direction for the hypothesis. Session-permuted raw **p=0.569**; Bonferroni-adjusted **p=1.000**.
+- **17 tests run in total** (1 primary + 16 pre-declared exploratory). Exactly ONE cleared raw
+  p<0.05 (max_high_20d, +3.50pp, p=0.012) and it does **not** survive adjustment (0.20) — with 17
+  tests, ~0.9 false positives were expected, so that is precisely what chance looks like.
+- **No knife-edge:** the sensitivity strip across low-RS thresholds 30/40/60/70 is flat-to-negative
+  everywhere, and the same null holds in the high-RS scope and across all alerts. Every secondary
+  feature — `rs_1m − rs_3m`, rank change over 5/10/20 sessions, a flat-then-jumped flag — is null
+  and mostly negative-signed.
+- **The null is CLEAN, not confounded:** inflection is not a proxy for anything else. Spearman vs
+  gap −0.04, vs `ep_score` −0.11, vs catalyst grade −0.10, vs RS level +0.04; median gap is 11.4%
+  vs 11.6% across the two buckets.
+- ⚠ **Limit worth stating:** `mi_ep_missed_outcomes` holds NON-ENTERED names only, so PLTR itself
+  is absent from the test (~20 of ~2,960 rows are affected). And the stored score universe is
+  liquidity-filtered, so genuinely bottom-of-market neglect is out of sample.
+
+📌 **What this settles.** The 08-04 board ordering was an anecdote — exactly what his own
+NO-SINGLE-TRADE rule warns about, and it did not generalize across ~950 low-RS candidate-days and
+~100 sessions. **This N could tell, and it said no.** Fork option (c) is now narrowed further: not
+RS level (PLTR would have been thrown out) and **not RS inflection either**. A negative result that
+saves building the feature.
+
+⚠ **A number in the previous section was WRONG and is corrected here:** PLTR's RS rank was
+**2230 of 2,415**, not "of ~9,700". `mi_stock_scores` has stored a liquidity-filtered universe
+since 2026-03-24 (2,415 rows on 08-03; `rs_rank`'s denominator IS that row count). So PLTR was in
+the **bottom 8%** of the scored universe — a stronger version of the same point, not a weaker one.
 
 ## 2026-08-15 — PLTR, his first labelled GOOD EP: our score ranked it #1 of 11, and RS would have KILLED it
 

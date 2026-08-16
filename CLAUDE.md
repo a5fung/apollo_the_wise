@@ -212,7 +212,7 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 
 ### RS Scoring
 - Composite = 40% × 1M + 30% × 3M + 30% × 6M percentile rank
-- Universe ~9,700 stocks via Polygon grouped daily (adjusted=true always)
+- Universe ~9,700 stocks via Polygon grouped daily (adjusted=true always). ⚠ **`rs_rank`'s denominator = the ~2,400 rows `mi_stock_scores` keeps, NOT 9,700.**
 - Sector enrichment: only top 300 by rank get sector in `mi_stock_scores`. For theme tickers outside top 60, fetch sector from `mi_ticker_overrides` (persistent cache) via `get_sectors_batch()`.
 
 ### Theme Engine
@@ -345,7 +345,7 @@ Older entries → `CHANGELOG.md` (search any concept).
 ---
 
 ## Adding a "Changes Made" entry
-Keep new entries in **Recent** section above. After ~2 weeks, compress each entry to a single bullet (`topic — key change & lesson`) and **graduate it into `CHANGELOG.md`** — don't keep the compressed form in this file. Drop "Files Changed" lists (git tells you that), drop "Post-deploy verification" once verified, drop manual cleanup SQL once applied. **⚠ Always leave ≥1 dated `### YYYY-MM-DD` entry in Recent** — `system_audit._recent_changes_context` (the Sonnet-hypothesis input) + its smoke test (`test_system_audit_recent_changes`) require it; graduating the LAST entry empties the section and reds CI (2026-06-19). A docs-only push skips the pre-push pytest gate, so this only surfaces in CI — run the test before a CLAUDE.md graduation.
+Keep new entries in **Recent** above. After ~2 weeks compress each to ONE bullet (`topic — key change & lesson`) and **graduate it into `CHANGELOG.md`** (don't keep the compressed form here). Drop "Files Changed" (git has it), "Post-deploy verification" once verified, cleanup SQL once applied. **⚠ Always leave ≥1 dated `### YYYY-MM-DD` entry** — `system_audit._recent_changes_context` + `test_system_audit_recent_changes` require it; emptying Recent reds CI (6/19). Docs-only pushes skip the pre-push gate, so run that test before graduating.
 
 Older history: see `CHANGELOG.md` (compressed log, on-demand only — not auto-loaded). For genuinely architectural decisions where the *why* outlives the code, optionally write a short `docs/decisions/NNNN-topic.md` ADR.
 
