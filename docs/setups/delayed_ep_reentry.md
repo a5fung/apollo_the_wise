@@ -332,3 +332,41 @@ pull for the approach days — cheap, but it is a prerequisite, not a given.
 
 🛑 Buy points and stops are entry discipline = THE LINE. This records the ARCHITECTURE he specified;
 no rule is proposed or changed.
+
+---
+
+## 2026-08-16 — THE EP-DAY LOW IS AN INVALIDATION LINE (operator), and the data is emphatic
+
+> *"shallower pull back means stronger — that is why EP low is the lowest pivot. If it drops below
+> and can't reclaim, the EP failed. It may setup some other time or a different setup, but for a real
+> EP it has failed, or shown weakness and not strength after EP."*
+
+Tested directly on 99 HIGH-tier names with 60 forward sessions (60-day max excursion, ADR units):
+
+| | n | median MFE/ADR | **≥8×ADR** | **≥15×ADR** |
+|---|---|---|---|---|
+| **never breached the EP-day low** | 16 | **10.5×** | **68.8%** | **25.0%** |
+| breached, RECLAIMED within a week | 67 | 5.2× | 25.4% | 1.5% |
+| breached, NEVER reclaimed | 16 | 4.3× | 18.8% | 6.2% |
+
+### ✅ His framing holds, with ONE refinement the data insists on
+
+- **Never giving back the EP-day low is the dominant signal on the board.** 68.8% reach ≥8×ADR
+  against ~20–25% for anything that breaches, and **25% reach ≥15×ADR against 1.5% / 6.2%** — a
+  sixteen-fold difference at the far tail.
+- 🔴 **The refinement: the BREACH is the damage, not the failure to reclaim.** Breached-and-reclaimed
+  (25.4% ≥8×ADR) is only marginally better than breached-and-never-reclaimed (18.8%), and at the far
+  tail reclaiming is actually *worse* (1.5% vs 6.2%, on 67 vs 16 names). **A reclaim does not restore
+  the name to strength** — it makes it an ordinary candidate, not a strong one.
+- 📌 **So "the EP failed" is right, and it fails at the breach.** The reclaim buys a tradeable setup
+  (that is what T1 measures) but not the original thesis.
+
+### How this is usable — a MANAGEMENT signal, not an entry filter
+
+The classification is only knowable AFTER the fact, so it cannot rank alerts on the morning. **What
+it can do is grade a position you already hold:** once price breaches the EP-day low, the expected
+tail collapses by roughly two-thirds and the ≥15×ADR case all but disappears. That is a
+size/conviction input, and it is computable from daily bars with no new capture.
+
+⚠ n=16 in each of the two extreme buckets; one regime (April–May); max excursion, not realized R.
+🛑 Position sizing and management are entry/exit discipline = THE LINE. Measurement only.
