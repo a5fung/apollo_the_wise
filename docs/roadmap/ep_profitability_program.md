@@ -416,6 +416,30 @@ all" — a bounded hold — and it fell out of pricing the risk rather than from
 ⚠ **MANE shows how R-risk explodes on a tight stop:** a 0.6%-wide ORB stop put ~$3,900 of stock
 behind a $24 nominal risk. **The R figures understate dollar risk when the ORB range is thin.**
 
+### 2b. 🔴 UNIT CORRECTION (operator caught it) — the R figures are NOT like-for-like
+
+*"in this case the R is technically twice as big, so return based on R needs to be twice as big to be
+the same R-based return when compared to our current stop?"* **Yes, and it halves the headline.**
+
+Every figure above uses **R = the ORB-low distance** (entry − ORB low), because that is the live
+rule's risk unit. **The bounded-hold rule tolerates price one full R BELOW that**, so its true risk
+per trade is **2× the old unit.** Comparing them in old-R units flatters the new rule by exactly 2×.
+
+| at EQUAL RISK | live rule | bounded hold (exit at −2R) |
+|---|---|---|
+| total, matched 43 | **−6.0R** | **+16.8R** (not +33.6R) |
+| worst single name | — | **−5.6R** (not −11.13R) |
+| typical adverse excursion | — | **−1R** (not −2R) |
+
+- ✅ **The edge survives the correction** — −6.0R against +16.8R is still large.
+- 🔴 **But it is half what I reported**, and the risk figures halve with it in the same way. **Every
+  R comparison between rules with different stop distances must be normalised to a common risk unit
+  before it is quoted.** Same class of error as the raw-percentage-vs-ADR problem (C3): a unit that
+  is not held constant makes the wrong thing look better.
+- 📌 **Practical consequence:** holding to −2R either doubles dollar risk per trade at current size,
+  or requires halving position size. **The stop decision IS a sizing decision** — and position
+  sizing is on the "never examined" list in §0b.
+
 ### 3. The line he can weigh
 
 > **Reward +33.6R across 43 trades over 17 sessions, against a worst single-name loss of −11.13R, a
