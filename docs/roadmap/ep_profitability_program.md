@@ -1847,10 +1847,11 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 | **C · BUILD** — expectedness axis · structure-encoder split · D-1 floors · sizing | agent time, no trigger | ⚠ **NOT yet filed as PLAN.md tasks — see the note below** |
 | **D · FORKS** — extension filter · liquidity gates · grade gap-dependence | his ruling | §9 of this doc; surfaced at the Friday review |
 
-⚠ **Lane C is the gap: four buildable items with no PLAN.md line.** Filing them is +4 on a board at
-79, which needs an operator carryover — **so they are named here and surfaced every Friday until he
-either takes the carryover or one of them is done inside an existing task.** They are NOT dropped;
-being unfiled is recorded rather than hidden.
+✅ **Lane C is now FILED — he took the carryover 2026-08-16** (*"can they be scheduled to be built
+this week, though not tmr, if so let's carry them"*). Board ceiling 79 → 83.
+**#568 expectedness axis (Tue 08-18) · #569 structure-encoder split (Wed 08-19) · #570 the silent
+D-1 floors (Thu 08-20) · #571 position sizing (Fri 08-21).** Monday is deliberately left clear for
+the 2R-stop watch and the verify-live list.
 
 
 - **Daily** — the OPEN ritual (`check_plan.py --today`) already surfaces what is due. The
