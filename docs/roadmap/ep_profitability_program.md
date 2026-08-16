@@ -1356,6 +1356,55 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — RE-ENTRY vs NO-STOP, his fork measured: better risk SHAPE, no proven edge
+
+Probe `scripts/probes/_reentry_vs_nostop.py`. Same 75 reconstructed HIGH trades, identical entry
+trigger (ORB high), identical stop (ORB low) and identical exit — **only the retry count varies**.
+Each attempt risks a fresh 1R.
+
+| arm | mean | **max** | **worst** | SUM | ≥5R | avg attempts |
+|---|---|---|---|---|---|---|
+| **1 attempt (LIVE)** | −0.31R | +6.19R | −1.00R | −23.4R | 1% | 1.00 |
+| 🎯 **2 attempts** | **−0.12R** | **+20.26R** | **−2.00R** | **−9.1R** | 3% | 1.17 |
+| 3 attempts | −0.16R | +20.26R | −3.00R | −12.1R | 3% | 1.21 |
+| 4 attempts | −0.19R | +20.26R | −4.00R | −14.1R | 3% | 1.24 |
+| NO INTRADAY STOP | −0.48R | +20.78R | **−11.13R** | −36.3R | 5% | — |
+
+### His framing was right, and it beats mine on risk shape
+
+- **Re-entry catches essentially the same winner as removing the stop** (+20.26R vs +20.78R) while
+  **bounding the worst case at −2R instead of −11.13R.** That is the whole trade-off he described,
+  and it comes out in favour of re-entry.
+- **Two attempts, not three.** 3 and 4 are strictly worse — more paper cuts, no additional winners
+  (average attempts only rises 1.17 → 1.24, so the extra tries rarely even fire).
+- Removing the intraday stop is the worst arm on total R (−36.3R) despite the best median.
+
+### 🔴 BUT the P&L edge is ONE TRADE — and this is a trap we have already paid for
+
+| | SUM | drop the best trade | drop the best 2 |
+|---|---|---|---|
+| 1 attempt (LIVE) | −23.4R | **−29.6R** | −32.9R |
+| 2 attempts | −9.1R | **−29.4R** | −35.6R |
+
+**Without the single best name, re-entry and the live rule are identical (−29.4R vs −29.6R); drop
+two and re-entry is WORSE.** The entire −9.1R headline is one trade.
+
+⚠ **This is the same shape the plan already recorded for the 5-minute re-entry test (08-09): "net
+looked positive only because of ONE outlier (THC, +12.43R)."** His own standing rule applies —
+no single trade is evidence.
+
+### What I would actually say
+
+- ✅ **The RISK-SHAPE argument for re-entry is real and does not depend on the outlier:** bounded
+  worst case, same maximum captured, fewer permanent exits. That is a structural property, not a
+  P&L claim.
+- ❌ **The EXPECTANCY argument is not supported** on 75 reconstructed trades once one name is
+  removed.
+- ▶ **What would settle it:** more attempts-fired observations — the retry only fired on ~17% of
+  trades, so 75 trades produce ~13 actual re-entries. This is an evidence-accrual item, and the
+  honest statement is that we cannot yet tell.
+- 🛑 Entry/exit discipline = THE LINE. Nothing proposed.
+
 ## 2026-08-16 — THE SAME NINE ARMS ON THE NAMES WE ACTUALLY TRADE — and his intraday intuition holds
 
 HIGH-alert cohort, real detection timestamps (no 09:31 assumption). 161 alerts → **75
