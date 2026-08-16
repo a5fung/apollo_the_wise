@@ -181,14 +181,22 @@ CEILINGS: dict[str, OutputCeiling] = {
 
     # ── operator-facing analysis ──
     "postmortem": OutputCeiling(
-        1500, "POSTMORTEM_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
-        "2026-08-08 raise from 800: both sonnet-5 calls censored at 800; 1500 = 2.5x "
-        "the 4-6 max completed (563). No completed sonnet-5 sample yet — PROVISIONAL."),
+        4000, "POSTMORTEM_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "2026-08-16 raise from 1500: censored AGAIN (1 of 2 calls at-cap), so 1500 was "
+        "still under the real need and the 08-08 raise only moved the wall. Both prior "
+        "raises were sized as a multiple of a 4-6 sample that has now been wrong twice; "
+        "4000 is deliberately generous rather than the next incremental step — a "
+        "truncated call reads downstream as an EMPTY RESULT, not an error, so the cost "
+        "of an over-wide ceiling is a few tokens and the cost of a tight one is silent "
+        "corruption of an operator-facing analysis. STILL no completed sonnet-5 sample."),
     "system_review_weekly": OutputCeiling(
-        2800, "SYSTEM_REVIEW_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
-        "2026-08-08 raise from 1200: the only sonnet-5 run censored at 1200; 2800 = "
-        "2.5x the largest completed 4-6 run (1103-1120; 10/15 4-6 runs were themselves "
-        "at-cap). PROVISIONAL."),
+        8000, "SYSTEM_REVIEW_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "2026-08-16 raise from 2800: censored AGAIN (1/1 calls at-cap) — the third "
+        "truncation for this caller (1200 -> 2800 -> here). Every prior estimate was "
+        "sized off 4-6 runs that were THEMSELVES at-cap (10 of 15), so the sample never "
+        "measured the real need and each raise just moved the wall. 8000 breaks that "
+        "pattern deliberately: this is the WEEKLY OPERATOR REVIEW, it runs once a week, "
+        "and a censored run silently truncates the digest he actually reads."),
     "description_backfill": OutputCeiling(
         2000, "DESCRIPTION_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "35 haiku calls, max completed 724 (36% of cap)."),
