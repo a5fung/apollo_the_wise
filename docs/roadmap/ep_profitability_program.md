@@ -1356,6 +1356,48 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — THE SAME NINE ARMS ON THE NAMES WE ACTUALLY TRADE — and his intraday intuition holds
+
+HIGH-alert cohort, real detection timestamps (no 09:31 assumption). 161 alerts → **75
+reconstructed trades** (52 out-of-ORB and never submittable, 28 no-fill, 6 stop-too-wide).
+
+| arm | median | mean | **max** | SUM | ≥2R | **≥5R** | stopped |
+|---|---|---|---|---|---|---|---|
+| **A — LIVE** | −1.00R | −0.31R | +6.19R | **−23.4R** | 4.0% | 1.3% | 69.3% |
+| B — no SMA trail | −1.00R | −0.31R | +6.19R | −23.6R | 4.0% | 1.3% | 69.3% |
+| D — breakeven delayed 1d | −1.00R | −0.36R | +6.19R | −27.0R | 5.3% | 1.3% | 69.3% |
+| E — delayed 3d | −1.00R | −0.37R | +6.19R | −27.7R | 5.3% | 1.3% | 69.3% |
+| F — delayed 5d | −1.00R | −0.37R | +6.19R | −27.5R | 5.3% | 1.3% | 69.3% |
+| G — breakeven closing-basis | −1.00R | −0.34R | +6.19R | −25.7R | 4.0% | 1.3% | 69.3% |
+| H — delayed 3d + closing | −1.00R | −0.40R | +6.19R | −29.8R | 5.3% | 1.3% | 69.3% |
+| C — raw | −1.00R | −0.62R | +8.28R | −46.3R | 5.3% | 2.7% | 92.0% |
+| 🔴 **I — ALL stops closing-basis** ⚠ real risk change | **−0.46R** | −0.48R | **+20.78R** | −36.3R | **12.0%** | **5.3%** | **46.7%** |
+
+### The answer, and it is different from the parabolic cohort
+
+- **The mild forms of both his ideas barely matter here.** Delaying breakeven or making the
+  breakeven stop close-only leaves the ceiling at +6.19R and the ≥5R rate at 1.3%, costing 2–6R.
+  On this population they are noise.
+- 🔴 **The STRONG form is not noise. Holding through intraday stop breaches (arm I) cuts stop-outs
+  from 69.3% to 46.7%, triples the ≥2R rate, quadruples ≥5R, produces a +20.78R outcome — the
+  first 10X-shaped result anywhere in this work — and lifts the MEDIAN from −1.00R to −0.46R.**
+  It costs 13R in total against the live rule.
+- 📌 **His intraday-shakeout intuition is supported on the cohort where it matters.** On the
+  extension cohort arm I was catastrophic (−309.5R); here it is 13R worse than live and transforms
+  the shape of the distribution. Same rule, opposite verdict, because the underlying names differ —
+  which is itself the argument for never generalising an exit result across cohorts.
+
+### ⚠ What arm I actually means, stated plainly before anyone likes it too much
+
+It means **no intraday stop at all** — the position is held to the close regardless of how far it
+trades against us, and exits only if the CLOSE is below the line. Intraday adverse excursion becomes
+unbounded, and a name that closes below the stop is exited at that close, not at the stop. The −0.46R
+median is better than live, but the tail risk it accepts is not visible in any of these numbers.
+
+🛑 **Exit and stop discipline = THE LINE. Nothing is proposed.** Nine measured arms, on 75
+reconstructed trades, with the trade-off stated in both directions.
+⚠ Every arm is net negative — this is still our losing population, and no stop rule rescues it.
+
 ## 2026-08-16 — HIS TWO STOP IDEAS, TESTED: both LOWER the total and RAISE the ceiling
 
 Operator: *"I wonder if giving it some time before moving to breakeven stop makes sense or a
