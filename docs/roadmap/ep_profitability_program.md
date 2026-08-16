@@ -15,6 +15,10 @@ as his decision with its cost. Each surface carries at most ONE labelled recomme
 and the #562/#545 corrections that had only ever landed in PLAN.md or chat are folded in below.
 This doc, not chat or `operator_shared_notes.md`, is where an EP question's current answer lives;
 §1a is the single register of what's open, §1b is the HOLISTIC PLAN — the goal arithmetic, the four conversion stages with their measured leaks, and the one ordered path.
+📚 **One surface is delegated OUT of this doc: CHART STRUCTURE → `docs/methodology/structure_model.md`** (his supply-ladder model,
+the NBIS definition, the level-derivation rule, the 8-fixture regression gate, what is NOT encoded, and the rejected SMA proxy).
+That file is the standing context; this doc keeps the dated RESULTS and the forks. **Read the SSoT before any structure work** —
+his own words for why it matters: *"I believe price/chart structure is key ingredient to EP."*
 
 **Work-definition layer REWRITTEN 2026-08-15, correcting a failure the operator named, verbatim:**
 *"I already have examples of delay entry, is that not in the plan? what about the team trade, what
@@ -215,12 +219,12 @@ against it is fitting noise. This one fact shapes the whole program (commit `16b
 own lists. Per the GOAL section: **Status reflects whether we have a DISTRIBUTION, not whether one
 case looked persuasive.** "Answered by" names the thing that would actually move the status.
 
-1. **What makes a REAL EP, not just a gap?** [Selection] Belief: a gap is a necessary signal, not
+1. **What makes a REAL EP, not just a gap?** [Selection] 📚 **Structure SSoT: `docs/methodology/structure_model.md`** — his answer to this row is the supply-ladder: count the congestion zones the gap CLEARS, because **raw gap % has no reference frame** (BW gapped 34.9% and died; PLTR 16.0% and EROC 16.1% are his two labelled good EPs). Belief: a gap is a necessary signal, not
    sufficient — today a big-enough gap plus catalyst grade effectively passes as the EP itself, and
    the grade carries no separating information (game_changer = 59% of alerts, 0 winners on either
    top grade, §0.2). Answered by: a real-EP winner reference set (row 2), not a re-run of the same
    null. **Status: OPEN — reframed 2026-08-12.**
-2. **Is chart structure a usable filter, and how do you encode "part science, part art"?**
+2. **Is chart structure a usable filter, and how do you encode "part science, part art"?** 📚 **ANSWERED IN PART 2026-08-16 — see `docs/methodology/structure_model.md`**: encoded, and it reproduces his 8 labelled reads 8/8 (VERA included). The "part science, part art" objection is met by deriving each level's lookback from its OWN failed tests rather than a fixed window. ⚠ Still OPEN as a FILTER question — the fixtures are the calibration set, and the population sweep was null by construction (no winners in the cohort). Its real test is the winner reference set (step 5).
    [Selection] Belief: one crude binary (above all 3 SMAs, fixed-lookback high-clears) was tested
    and ruled OUT as the encoding — his objection is that lookback and MA-relevance are contextual,
    not fixed (§2). Includes the Stage-2/trend-context classifier gap (his SE condition 3).
@@ -352,7 +356,7 @@ A leak with no number is marked UNMEASURED — that is itself the finding.
 
 | # | Stage | The question | Measured leak (date) | What would close it | Blocked on |
 |---|---|---|---|---|---|
-| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · **3 detectors genuinely dark for months** (anticipation lifecycle table dark since 06-16, pin rejects every candidate · sugar-baby convergence: 0 fires since its 05-22 ship · Undercut & Rally: 4 rows ever, last 06-18) **+ 1 misdiagnosed**: the failed-break gate counts a flag 0 of 160 recorded breaks has ever carried — the breaks detector itself DOES produce, only its failed-break classification never fires (commit `25a73c2`) | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)** — but ruled on SPECIFIED text: the scoring proposals S-1..S-6 (§2) and the PROPOSED reference-set scope (§1c step-5 spec); his part is one-line rulings, not scoping from scratch |
+| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · **3 detectors genuinely dark for months** (anticipation lifecycle table dark since 06-16, pin rejects every candidate · sugar-baby convergence: 0 fires since its 05-22 ship · Undercut & Rally: 4 rows ever, last 06-18) **+ 1 misdiagnosed**: the failed-break gate counts a flag 0 of 160 recorded breaks has ever carried — the breaks detector itself DOES produce, only its failed-break classification never fires (commit `25a73c2`) | make the grade use what the pipeline ALREADY computes (RS **[dead — level and inflection both tested null]**, **structure [ENCODED 08-16, 8/8 on his fixtures — SSoT `docs/methodology/structure_model.md`, promotion = fork S-3]**, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)** — but ruled on SPECIFIED text: the scoring proposals S-1..S-6 (§2) and the PROPOSED reference-set scope (§1c step-5 spec); his part is one-line rulings, not scoping from scratch |
 | **2** | **ADMIT** | of the alerts, which do we act on — **and was each one worth the capital it consumed?** (the objective is return on capital, above — the benchmark is the best alternative we could have held, not zero) | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 detected after the 09:45 window; **3 the ORB bug, fixed 08-13 and verified clean 08-14 — so the go-forward mechanics leak is 6, not 9**), **3 were selection** (gap floor), **1 never triggered** (RIOT) · **3 more were risk geometry** (2 stop-too-wide, 1 chase-cap) — **stage 3's leak, not this stage's** (owns "is R sized to the name" — §skip-taxonomy, below) · **portfolio skips: 0 in this 08-11→14 window, but nonzero on record** — the 07-31 breaker expiry cancelled most of a day's entries (6 alerts, 0 entries) and the 08-04 cap blocked AEIS and ZBRA · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,224 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
 | **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit · **owns the 3 risk-geometry skips above** (2 stop-too-wide, 1 chase-cap — EROC is the worked case, §2 0a table) | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · **the six SPECIFIED delayed-entry setups (§4a)** | **evidence-accrual** + **OPERATOR** (a one-line ruling on §4a's specified shapes — NOT naming them; they are named, from his own material) |
 | **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** (n=17, 08-08 read, under the pre-08-10 exit stack — §5) · the 08-10 exit stack has now fired TWICE (ABCL 08-11, clean; ETON 08-14, the carved-out third that filled at the exact 2R target and exposed #566's stop-less carve) — a rule is not live until it fires repeatedly, and twice is a start, not a distribution | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
@@ -524,6 +528,12 @@ point-in-time (as-of the gap day, no lookahead):
 ---
 
 ## 2. Surface 1 — SELECTION / RANKING
+
+📚 **CHART STRUCTURE, the largest single input to this surface, has its own SSoT:
+`docs/methodology/structure_model.md`.** Everything below that touches structure — the S-3
+promotion fork, the "what is a real EP" question, the zones-cleared-vs-gap-% test — is
+governed by that file. Do not re-derive his model here, and do not re-propose the SMA proxy
+he rejected.
 
 **GOAL (operator's words):** *"does it capture the main goal of selecting best EPs in a given day
 when there's many?"* (2026-08-05) · reserve HIGH/game_changer for the absolute best (2026-08-11) ·
