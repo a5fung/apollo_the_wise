@@ -1356,6 +1356,44 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — ISOLATED, on ONE matched cohort: it is the STOP, not the horizon — and re-entry is the middle path
+
+His question: *"is this no intraday stop or reentry or we haven't looked into that yet but just
+holding it through longer?"* Fair — I had changed two things at once and compared across cohorts of
+different sizes. Re-run with **the same 43 names in every row.**
+
+| | median | mean | max | **SUM** | ≥5R |
+|---|---|---|---|---|---|
+| **HORIZON alone** — LIVE @20 days | −1.00R | −0.11R | +8.45R | −4.7R | 2.3% |
+| **HORIZON alone** — LIVE @60 days | −1.00R | −0.14R | +7.13R | **−6.0R** | 2.3% |
+| **THE STOP** — LIVE @60d (intraday stop) | −1.00R | −0.14R | +7.13R | −6.0R | 2.3% |
+| 🟢 **THE STOP** — NO intraday stop @60d | **+0.07R** | **+0.86R** | **+18.38R** | **+36.8R** | **11.6%** |
+| 🟡 **RE-ENTRY** — 2 attempts, live stop @60d | −1.00R | +0.17R | +17.81R | **+7.5R** | 4.7% |
+| RE-ENTRY — 3 attempts, live stop @60d | −1.00R | +0.15R | +17.81R | +6.5R | 4.7% |
+
+### The answer, and it corrects what I said last message
+
+- 🔴 **Holding longer does NOTHING on its own: −4.7R at 20 days, −6.0R at 60.** With our stop we are
+  already out — there is nothing left to hold. **My "the hidden variable was time" was wrong.**
+- ✅ **It is the STOP.** Same names, same 60 days: −6.0R with the intraday stop, **+36.8R without**.
+  The horizon only matters *for the arm that survives long enough to use it* — which is why the
+  truncated data hid the effect entirely.
+- 🟡 **Re-entry is the middle path and it is POSITIVE: +7.5R at 2 attempts**, max +17.81R, ≥5R 4.7%
+  — with the live stop kept and the downside bounded at −2R per name. It captures roughly a fifth of
+  the no-stop arm's edge for a fraction of its risk. **2 attempts beats 3 again.**
+
+### And his second point: multi-day re-entry IS delayed EP
+
+*"On reentry, this is where delayed EPs comes in, i.e. reentry next days and where it can get more
+complex."* Correct, and it joins the two threads: everything above is **same-day** re-entry. **Next-day
+and N-day re-entry is DE-6 (next-day continuation) and the delayed-entry family in §4a** — specified
+with buy points and stops, and **not yet tested**. The +7.5R above is therefore a FLOOR on what
+re-entry can do: it uses only the same-day attempts.
+
+⚠ Same limits as above: 43 trades, all early-period, no out-of-sample, reconstructed, and the
+no-stop arm's intraday risk is not priced in its number.
+🛑 Nothing proposed. THE LINE.
+
 ## 2026-08-16 — 🟢 FULL FORWARD HISTORY CHANGES THE ANSWER: the first POSITIVE result in this work
 
 He was right twice, and the second one was decisive: *"it takes time to reach >50% gains, real
