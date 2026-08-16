@@ -1399,6 +1399,55 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — PIVOT PROXIMITY SIZED: the LADDER is what matters, proximity adds 2 of 99
+
+Capture: `docs/analysis/pivot_proximity_2026-08-16.txt`. 99 HIGH-tier names with 60 forward
+sessions, $0 (cached bars). Every entry rule modelled before this required a TOUCH; this measures
+what "approached but never tagged" is worth.
+
+| pivot (20-session window) | touched | near-miss 0.25× / 0.5× ADR | never approached |
+|---|---|---|---|
+| **EP-day CLOSE** | **96 of 99** | 1 / 2 | 2 |
+| EP-day LOW | 71 | 3 / 5 | 25 |
+| EP-day HIGH | 97 | 0 / 2 | 2 |
+
+### ✅ His LADDER concept is strongly validated — and it is the ladder, not the proximity, that pays
+
+- **The EP-day CLOSE is the workhorse: 96 of 99 names trade back to it within 20 sessions.** A single
+  pivot at the ORB high — which is all we have today — is why we are so rarely in these trades.
+- 🔴 **Proximity adds almost nothing ON TOP of a full ladder.** Names where hard limits at low AND
+  close AND high ALL fail, but a proximity band catches one: **2 of 99** (BAND +17.6×ADR, VPG
+  +13.5×ADR) — **and only at the 0.5×ADR band. At 0.25×ADR it is ZERO.**
+- 📌 **INTC's famous 1.5% miss = 0.27×ADR** — outside the tighter band, inside the wider one. And it
+  did not need proximity at all: **every LOW-pivot near-miss (STX, INTC, PCT, NXPI) was caught by the
+  CLOSE pivot on day 1–2 anyway.** Proximity at the low improves their entry by 0.7–3.4%; it does not
+  decide whether we are in the trade.
+- ⚠ So the honest read on my own enthusiasm two sections ago: **INTC was not missed for want of a
+  proximity rule. It was missed for want of a second pivot.**
+
+### 🟢 A NEW selection signal fell out of it: the shallower the pullback, the better the name
+
+| how deep it pulled back | share reaching ≥8×ADR |
+|---|---|
+| **never came near the EP-day low** | **80%** |
+| touched the EP-day low | 38–43% |
+| only ever reached the close | 29% |
+
+**A name that refuses to give back its EP-day low is the strongest name on the board** — and it is
+knowable within days, from daily bars, with no new capture. This is the structural reason near-misses
+skew to winners (5 of 7 reached ≥8×ADR, none died), and it is a stronger finding than the proximity
+question that produced it.
+
+⚠ N=7 near-misses — no discriminator is measurable inside that group, and two of the winner names are
+sub-$10 (the class he flagged as inflating numbers), though the headline names (STX, INTC, BAND) are
+not. Patience partly substitutes for proximity: 6 of the 10 low near-misses touch by day 12–16.
+
+⚠ Max-excursion, not realized R; daily resolution cannot say whether a 620 turn fired at any
+approach; one regime, April–May, no holdout.
+
+🛑 Whether a proximity band is worth its build cost is the operator's fork — and this read argues it
+is NOT, while arguing hard for the multi-pivot ladder he specified.
+
 ## 2026-08-16 — 🔴 THE REAL DENOMINATOR IS 26, AND THE WINNER PROFILE IS THE OPPOSITE OF WHAT WE GRADE
 
 Capture: `docs/analysis/winner_r_available_2026-08-16.txt`. Of the 78 real-stock tail winners,

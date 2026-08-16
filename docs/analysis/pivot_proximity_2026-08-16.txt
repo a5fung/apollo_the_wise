@@ -1,0 +1,175 @@
+cohort: 99 names (22 distinct sessions) — HIGH-tier EP alerts with 60 forward sessions (the _delayed_reentry cohort)
+median ADR20 of the cohort: 5.25% of price
+
+====================================================================================================
+1) TOUCHED / NEAR-MISS / NEVER-APPROACHED — per pivot, window, band (N + distinct sessions on every line)
+====================================================================================================
+
+EP-day LOW     window 10d  band 0.25xADR20   touched 60 (22 sess) | near-miss 7 (5 sess) | never 32 (13 sess)
+   touched   — entry AT pivot        : med   +7.5  mean   +7.4  max  +18.1  >= 8xADR: 26/60 (43%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +7.1  mean   +7.1  max  +16.5  >= 8xADR: 2/7 (29%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +6.9  mean   +6.9  max  +16.1  >= 8xADR: 2/7 (29%)
+   never     — from pivot, NOT capturable by this pivot : med  +11.1  mean  +11.0  max  +24.9  >= 8xADR: 21/32 (66%)
+
+EP-day LOW     window 10d  band 0.50xADR20   touched 60 (22 sess) | near-miss 10 (7 sess) | never 29 (13 sess)
+   touched   — entry AT pivot        : med   +7.5  mean   +7.4  max  +18.1  >= 8xADR: 26/60 (43%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +6.2  mean   +7.3  max  +16.5  >= 8xADR: 3/10 (30%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +5.9  mean   +7.1  max  +16.1  >= 8xADR: 3/10 (30%)
+   never     — from pivot, NOT capturable by this pivot : med  +11.1  mean  +11.4  max  +24.9  >= 8xADR: 20/29 (69%)
+
+EP-day LOW     window 20d  band 0.25xADR20   touched 71 (22 sess) | near-miss 3 (2 sess) | never 25 (11 sess)
+   touched   — entry AT pivot        : med   +6.3  mean   +6.9  max  +18.1  >= 8xADR: 27/71 (38%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +9.9  mean  +11.2  max  +16.5  >= 8xADR: 2/3 (67%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +9.7  mean  +10.9  max  +16.1  >= 8xADR: 2/3 (67%)
+   never     — from pivot, NOT capturable by this pivot : med  +11.6  mean  +12.4  max  +24.9  >= 8xADR: 20/25 (80%)
+
+EP-day LOW     window 20d  band 0.50xADR20   touched 71 (22 sess) | near-miss 5 (4 sess) | never 23 (11 sess)
+   touched   — entry AT pivot        : med   +6.3  mean   +6.9  max  +18.1  >= 8xADR: 27/71 (38%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +9.9  mean  +10.8  max  +16.5  >= 8xADR: 3/5 (60%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +9.7  mean  +10.4  max  +16.1  >= 8xADR: 3/5 (60%)
+   never     — from pivot, NOT capturable by this pivot : med  +11.6  mean  +12.5  max  +24.9  >= 8xADR: 19/23 (83%)
+
+EP-day CLOSE   window 10d  band 0.25xADR20   touched 95 (22 sess) | near-miss 2 (2 sess) | never 2 (2 sess)
+   touched   — entry AT pivot        : med   +5.5  mean   +6.3  max  +19.2  >= 8xADR: 28/95 (29%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +6.4  mean   +6.4  max   +8.6  >= 8xADR: 1/2 (50%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +6.2  mean   +6.2  max   +8.3  >= 8xADR: 1/2 (50%)
+   never     — from pivot, NOT capturable by this pivot : med  +16.8  mean  +16.8  max  +18.3  >= 8xADR: 2/2 (100%)
+
+EP-day CLOSE   window 10d  band 0.50xADR20   touched 95 (22 sess) | near-miss 3 (3 sess) | never 1 (1 sess)
+   touched   — entry AT pivot        : med   +5.5  mean   +6.3  max  +19.2  >= 8xADR: 28/95 (29%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +8.6  mean  +10.4  max  +18.3  >= 8xADR: 2/3 (67%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +8.3  mean  +10.0  max  +17.6  >= 8xADR: 2/3 (67%)
+   never     — from pivot, NOT capturable by this pivot : med  +15.2  mean  +15.2  max  +15.2  >= 8xADR: 1/1 (100%)
+
+EP-day CLOSE   window 20d  band 0.25xADR20   touched 96 (22 sess) | near-miss 1 (1 sess) | never 2 (2 sess)
+   touched   — entry AT pivot        : med   +5.4  mean   +6.2  max  +19.2  >= 8xADR: 28/96 (29%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med   +8.6  mean   +8.6  max   +8.6  >= 8xADR: 1/1 (100%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med   +8.3  mean   +8.3  max   +8.3  >= 8xADR: 1/1 (100%)
+   never     — from pivot, NOT capturable by this pivot : med  +16.8  mean  +16.8  max  +18.3  >= 8xADR: 2/2 (100%)
+
+EP-day CLOSE   window 20d  band 0.50xADR20   touched 96 (22 sess) | near-miss 2 (2 sess) | never 1 (1 sess)
+   touched   — entry AT pivot        : med   +5.4  mean   +6.2  max  +19.2  >= 8xADR: 28/96 (29%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med  +13.5  mean  +13.5  max  +18.3  >= 8xADR: 2/2 (100%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med  +12.9  mean  +12.9  max  +17.6  >= 8xADR: 2/2 (100%)
+   never     — from pivot, NOT capturable by this pivot : med  +15.2  mean  +15.2  max  +15.2  >= 8xADR: 1/1 (100%)
+
+EP-day HIGH    window 10d  band 0.25xADR20   touched 97 (22 sess) | near-miss 0 (0 sess) | never 2 (2 sess)
+   touched   — entry AT pivot        : med   +4.4  mean   +4.8  max  +15.8  >= 8xADR: 17/97 (18%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): n=0
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): n=0
+   never     — from pivot, NOT capturable by this pivot : med  +16.3  mean  +16.3  max  +18.3  >= 8xADR: 2/2 (100%)
+
+EP-day HIGH    window 10d  band 0.50xADR20   touched 97 (22 sess) | near-miss 2 (2 sess) | never 0 (0 sess)
+   touched   — entry AT pivot        : med   +4.4  mean   +4.8  max  +15.8  >= 8xADR: 17/97 (18%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med  +16.3  mean  +16.3  max  +18.3  >= 8xADR: 2/2 (100%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med  +15.5  mean  +15.5  max  +17.6  >= 8xADR: 2/2 (100%)
+   never     — from pivot, NOT capturable by this pivot : n=0
+
+EP-day HIGH    window 20d  band 0.25xADR20   touched 97 (22 sess) | near-miss 0 (0 sess) | never 2 (2 sess)
+   touched   — entry AT pivot        : med   +4.4  mean   +4.8  max  +15.8  >= 8xADR: 17/97 (18%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): n=0
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): n=0
+   never     — from pivot, NOT capturable by this pivot : med  +16.3  mean  +16.3  max  +18.3  >= 8xADR: 2/2 (100%)
+
+EP-day HIGH    window 20d  band 0.50xADR20   touched 97 (22 sess) | near-miss 2 (2 sess) | never 0 (0 sess)
+   touched   — entry AT pivot        : med   +4.4  mean   +4.8  max  +15.8  >= 8xADR: 17/97 (18%)
+   near-miss — priced at PIVOT (forfeited by a hard limit): med  +16.3  mean  +16.3  max  +18.3  >= 8xADR: 2/2 (100%)
+   near-miss — priced at CLOSEST APPROACH (what proximity pays): med  +15.5  mean  +15.5  max  +17.6  >= 8xADR: 2/2 (100%)
+   never     — from pivot, NOT capturable by this pivot : n=0
+
+====================================================================================================
+2) HEADLINE — >= 8xADR winners by class (winner counts; near-miss priced at the closest approach)
+====================================================================================================
+pivot          win  band  touched>=8  near>=8 never>=8*   near-miss >=8xADR names (exc at approach)
+EP-day LOW      10  0.25          26        2        21   STX 2026-04-29 (+16.1), PCT 2026-05-07 (+9.7)
+EP-day LOW      10  0.50          26        3        20   STX 2026-04-29 (+16.1), INTC 2026-04-24 (+13.7), PCT 2026-05-07 (+9.7)
+EP-day LOW      20  0.25          27        2        20   STX 2026-04-29 (+16.1), PCT 2026-05-07 (+9.7)
+EP-day LOW      20  0.50          27        3        19   STX 2026-04-29 (+16.1), INTC 2026-04-24 (+13.7), PCT 2026-05-07 (+9.7)
+EP-day CLOSE    10  0.25          28        1         2   LIVN 2026-05-06 (+8.3)
+EP-day CLOSE    10  0.50          28        2         1   BAND 2026-04-30 (+17.6), LIVN 2026-05-06 (+8.3)
+EP-day CLOSE    20  0.25          28        1         2   LIVN 2026-05-06 (+8.3)
+EP-day CLOSE    20  0.50          28        2         1   BAND 2026-04-30 (+17.6), LIVN 2026-05-06 (+8.3)
+EP-day HIGH     10  0.25          17        0         2   
+EP-day HIGH     10  0.50          17        2         0   BAND 2026-04-30 (+17.6), VPG 2026-05-12 (+13.5)
+EP-day HIGH     20  0.25          17        0         2   
+EP-day HIGH     20  0.50          17        2         0   BAND 2026-04-30 (+17.6), VPG 2026-05-12 (+13.5)
+* never-approached >=8xADR = names that ran without ever coming near this pivot — no entry at/near it existed
+
+====================================================================================================
+3) LADDER VIEW — names where a hard limit at EVERY pivot fails, but a proximity band catches at least one pivot
+   (pivots are nested low<close<high, so 'touched none' = never touched EP-day HIGH)
+====================================================================================================
+
+window 10d band 0.25: 0 names (0 sess) fully forfeited by the whole hard-limit ladder yet inside a proximity band; of them >= 8xADR: 0
+
+window 10d band 0.50: 2 names (2 sess) fully forfeited by the whole hard-limit ladder yet inside a proximity band; of them >= 8xADR: 2
+   BAND 2026-04-30        best band pivot EP-day CLOSE  approach 0.36xADR away on day  1 ->  +17.6xADR from the approach
+   VPG 2026-05-12         best band pivot EP-day HIGH   approach 0.48xADR away on day  5 ->  +13.5xADR from the approach
+
+window 20d band 0.25: 0 names (0 sess) fully forfeited by the whole hard-limit ladder yet inside a proximity band; of them >= 8xADR: 0
+
+window 20d band 0.50: 2 names (2 sess) fully forfeited by the whole hard-limit ladder yet inside a proximity band; of them >= 8xADR: 2
+   BAND 2026-04-30        best band pivot EP-day CLOSE  approach 0.36xADR away on day  1 ->  +17.6xADR from the approach
+   VPG 2026-05-12         best band pivot EP-day HIGH   approach 0.48xADR away on day  5 ->  +13.5xADR from the approach
+
+====================================================================================================
+4) NEAR-MISS: RAN vs DIED — per-name features (window 20d, band 0.50 — the widest set; LOW and CLOSE pivots, the two he named)
+   ran = >= 8xADR from the approach; died = < 2xADR; middle shown unlabelled
+====================================================================================================
+
+EP-day LOW — 5 near-misses (4 sessions)
+   name                  label   excADR   gap%  ADR% distADR day
+   STX 2026-04-29        RAN      +16.1   17.5  4.93    0.23   1
+   INTC 2026-04-24       RAN      +13.7   27.9  5.58    0.27   2
+   PCT 2026-05-07        RAN       +9.7   22.7  6.46    0.11   1
+   NXPI 2026-04-29                 +6.9   18.3  3.14    0.19   1
+   BLMN 2026-05-06                 +5.9   33.3  5.13    0.36  20
+   RAN   n=3  med gap 22.7%  med ADR 5.58%  med dist 0.23xADR  med day 1
+
+EP-day CLOSE — 2 near-misses (2 sessions)
+   name                  label   excADR   gap%  ADR% distADR day
+   BAND 2026-04-30       RAN      +17.6   18.3  6.26    0.36   1
+   LIVN 2026-05-06       RAN       +8.3   14.4  3.34    0.24   1
+   RAN   n=2  med gap 16.4%  med ADR 4.80%  med dist 0.30xADR  med day 1
+
+====================================================================================================
+SANITY — INTC 2026-04-24 (the proof case)
+====================================================================================================
+   EP-day LOW     pivot    79.62  -> near     dist 0.27xADR appr 80.80  exc_pivot +14.1xADR  exc_appr +13.7xADR
+   EP-day CLOSE   pivot    82.54  -> touched  touch day 2  exc_pivot +13.0xADR
+   EP-day HIGH    pivot    85.22  -> touched  touch day 1  exc_pivot +12.0xADR
+   (EP low 79.62 / close 82.54 / high 85.22; ADR20 5.58% = $4.44 at the low pivot)
+
+====================================================================================================
+5a) PATIENCE vs PROXIMITY — near-misses at 10d: do they touch if you wait?
+====================================================================================================
+
+EP-day LOW band 0.25: 7 near-misses at 10d
+   GLOB 2026-05-15        dist 0.04xADR -> touches day 16 (within 20d)   exc from approach   +3.7xADR
+   NXPI 2026-04-29        dist 0.19xADR -> touches day 40 (beyond 20d)   exc from approach   +6.9xADR
+   PCT 2026-05-07         dist 0.11xADR -> touches day 24 (beyond 20d)   exc from approach   +9.7xADR
+   STX 2026-04-29         dist 0.23xADR -> NEVER touches in 60d   exc from approach  +16.1xADR
+   TTMI 2026-04-30        dist 0.09xADR -> touches day 13 (within 20d)   exc from approach   +7.7xADR
+   VIAV 2026-04-30        dist 0.16xADR -> touches day 12 (within 20d)   exc from approach   +2.5xADR
+   VSNT 2026-05-14        dist 0.02xADR -> touches day 13 (within 20d)   exc from approach   +1.9xADR
+
+EP-day LOW band 0.50: 10 near-misses at 10d
+   GLOB 2026-05-15        dist 0.04xADR -> touches day 16 (within 20d)   exc from approach   +3.7xADR
+   INTC 2026-04-24        dist 0.27xADR -> NEVER touches in 60d   exc from approach  +13.7xADR
+   NXPI 2026-04-29        dist 0.19xADR -> touches day 40 (beyond 20d)   exc from approach   +6.9xADR
+   PCT 2026-05-07         dist 0.11xADR -> touches day 24 (beyond 20d)   exc from approach   +9.7xADR
+   PI 2026-04-30          dist 0.32xADR -> touches day 12 (within 20d)   exc from approach   +3.6xADR
+   STX 2026-04-29         dist 0.23xADR -> NEVER touches in 60d   exc from approach  +16.1xADR
+   TTMI 2026-04-30        dist 0.09xADR -> touches day 13 (within 20d)   exc from approach   +7.7xADR
+   VG 2026-05-12          dist 0.27xADR -> touches day 12 (within 20d)   exc from approach   +4.9xADR
+   VIAV 2026-04-30        dist 0.16xADR -> touches day 12 (within 20d)   exc from approach   +2.5xADR
+   VSNT 2026-05-14        dist 0.02xADR -> touches day 13 (within 20d)   exc from approach   +1.9xADR
+
+====================================================================================================
+5b) DOES THE LADDER CATCH THE LOW-PIVOT NEAR-MISSES ANYWAY? (20d, band 0.50) — and what the proximity entry is worth vs the deepest TOUCHED pivot
+====================================================================================================
+   BLMN 2026-05-06        ladder fills at EP-day CLOSE     8.12 (day 1); proximity entry     7.12 is +2.74xADR better priced (+14.0%)
+   INTC 2026-04-24        ladder fills at EP-day CLOSE    82.54 (day 2); proximity entry    80.80 is +0.39xADR better priced (+2.2%)
+   NXPI 2026-04-29        ladder fills at EP-day CLOSE   289.25 (day 1); proximity entry   279.77 is +1.08xADR better priced (+3.4%)
+   PCT 2026-05-07         ladder fills at EP-day CLOSE     8.94 (day 1); proximity entry     8.72 is +0.39xADR better priced (+2.5%)
+   STX 2026-04-29         ladder fills at EP-day CLOSE   643.30 (day 1); proximity entry   639.05 is +0.14xADR better priced (+0.7%)
