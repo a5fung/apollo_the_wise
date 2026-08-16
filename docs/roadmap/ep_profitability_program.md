@@ -1356,6 +1356,53 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🔴 THE GRID CANNOT BE VALIDATED: every outlier we have is in the FIRST half
+
+Probe `scripts/probes/_545_grid.py`. 32 cells (5 binary axes — 1-min vs 5-min ORB · 1 vs 2 attempts
+· breakeven on/off · intraday vs closing-basis stops · trail on/off), scored on the pre-registered
+objective (catch-rate on ≥5R first, total R second), with the cohort split by TIME as the
+overfitting defence.
+
+### The result is not a winning combination. It is that the data cannot support the search.
+
+| half | name-days | **reached ≥5R** | reached ≥2R | best |
+|---|---|---|---|---|
+| **EARLY** (through 2026-05-26, the fit half) | 30 | **5** | 11 | **+20.78R** |
+| **LATE** (holdout) | 34 | **0** | 2 | +4.02R |
+
+**Every ≥5R outcome in the entire dataset — under ANY of the 32 rule combinations — falls in the
+first half.** The holdout contains none. So every in-sample winner scores 0.0% out of sample, and
+every cell's total is far worse in the later period (−40R to −81R against −20R to −46R).
+
+- ✅ **The overfitting defence worked exactly as intended** — it refused to let an in-sample winner
+  be reported as a finding.
+- 🔴 **And it surfaced something bigger than tuning: we have FIVE outlier events in the whole
+  dataset, all in one three-month window.** A 32-cell grid is already over-parameterised against
+  five events; the ~1,000-cell version would be pure noise-fitting. **His overfitting worry is not
+  a future risk — it is already binding at 32 cells.**
+
+### What this actually says
+
+▶ **The binding constraint is not which combination we run. It is that the outliers stopped
+arriving.** Five in the first period, zero in the second. Under the objective — catch the ≥5R move
+when one occurs — a period with no ≥5R move cannot distinguish any rule from any other, and no
+amount of parameter search changes that.
+
+▶ **Two candidate explanations, and they are separable:** (a) the market regime stopped producing
+these moves, or (b) our detection stopped surfacing them. **(b) is checkable against the winner set
+already built** — 463 alerted names reached +50% across 90 sessions, so tail moves DID keep
+occurring in the market. If they kept occurring in the alert population but stopped appearing in
+the tradeable/filled population, that is a funnel problem, not a regime one, and it points straight
+back at admission.
+
+▶ **Practical consequence: the parameter grid is PARKED, not failed.** It becomes evaluable when
+the outlier count grows — which is an evidence-accrual item, not an analysis one. Running a finer
+grid now would manufacture a winner.
+
+🛑 Nothing proposed; nothing changed. THE LINE.
+⚠ Reconstructed, not lived. n=74 (1-min) / 43 (5-min); the 5-min cohort is smaller because its
+wider range trips `stop_too_wide` more often — the two entry arms are NOT a matched comparison.
+
 ## 2026-08-16 — 🎯 THE OBJECTIVE FUNCTION, and why the next step is PERMUTATIONS not one variable at a time
 
 Operator, 2026-08-16: *"On the 5min ORB, this is where it can get tricky or complex, and is the
