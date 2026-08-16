@@ -50,42 +50,75 @@ def sma(closes, n):
     return sum(closes[-n:]) / n if len(closes) >= n else None
 
 
-def simulate(entry, hard_stop, day0_after_fill, fwd, prior_closes, *, use_partial, use_trail):
-    """Returns realized R. day0_after_fill = minute bars from the fill onward.
-    fwd = daily bars from day 1. prior_closes = daily closes BEFORE the alert day."""
+def simulate(entry, hard_stop, day0_after_fill, fwd, prior_closes, *, use_partial, use_trail,
+             be_delay_days=0, be_close_basis=False, hard_close_basis=False, trace=None):
+    """be_delay_days   — wait N trading days AFTER the +2R partial before moving to breakeven
+                         (operator 2026-08-16: "giving it some time before moving to breakeven").
+       be_close_basis  — the breakeven stop exits only on a daily CLOSE below entry, not an
+                         intraday touch ("requiring stops to be breached on closing basis…
+                         to avoid intraday moves").
+       hard_close_basis— the same, applied to the ORB-low hard stop. ⚠ That is a REAL risk
+                         change, not a bookkeeping one: it holds through an intraday breach.
+       trace           — list to append a per-bar audit to (hand-check support).
+    Returns realized R. day0_after_fill = minute bars from the fill onward;
+    fwd = daily bars from day 1; prior_closes = daily closes BEFORE the alert day."""
     risk = entry - hard_stop
     if risk <= 0:
         return None
     target = entry + PROFIT_R * risk
     held, banked, stop, be = 1.0, 0.0, hard_stop, False
+    partial_day = None            # trading-day index the partial fired (0 = day 0)
+
+    def _log(*a):
+        if trace is not None:
+            trace.append(" ".join(str(x) for x in a))
 
     # --- day 0, minute by minute: the hard stop is a BROKER stop (intraday touch) ---
     for b in day0_after_fill:
-        if b["l"] <= stop:                                  # stop hit first within the bar
+        if not hard_close_basis and b["l"] <= stop:
+            _log(f"day0 m={b['m']} low {b['l']:.2f} <= stop {stop:.2f} -> EXIT")
             return banked + held * (stop - entry) / risk
-        if use_partial and not be and b["h"] >= target:     # +2R touch -> 1/3 out, breakeven
+        if use_partial and partial_day is None and b["h"] >= target:
             banked += PARTIAL_FRAC * PROFIT_R
             held -= PARTIAL_FRAC
-            be = True
-            stop = max(stop, entry)
+            partial_day = 0
+            if be_delay_days == 0:            # live: breakeven moves the same instant
+                be = True
+                stop = max(stop, entry)
+            _log(f"day0 m={b['m']} high {b['h']:.2f} >= target {target:.2f} -> 1/3 out, banked {banked:.2f}R")
     closes = list(prior_closes) + [day0_after_fill[-1]["c"]] if day0_after_fill else list(prior_closes)
 
     # --- days 1..HORIZON, daily ---
-    for d in fwd[:HORIZON]:
+    for di, d in enumerate(fwd[:HORIZON], start=1):
+        # breakeven arms only AFTER the configured delay has elapsed
+        if use_partial and partial_day is not None and not be and be_delay_days > 0 \
+                and (di - partial_day) >= be_delay_days:
+            be = True
+            stop = max(stop, entry)
+            _log(f"day{di} breakeven ARMED at {stop:.2f}")
         eff = stop
         if use_trail:
             s10, s20 = sma(closes, 10), sma(closes, 20)
             line = max([x for x in (s10, s20) if x is not None], default=None)
             if line is not None and line > eff:
                 eff = line
-        if d["l"] <= stop:                                  # broker stop: intraday touch
+        close_only = (be and be_close_basis) or hard_close_basis
+        if not close_only and d["l"] <= stop:
+            _log(f"day{di} low {d['l']:.2f} <= stop {stop:.2f} -> EXIT")
             return banked + held * (stop - entry) / risk
-        if use_partial and not be and d["h"] >= target:
+        if close_only and d["c"] < stop:
+            _log(f"day{di} CLOSE {d['c']:.2f} < stop {stop:.2f} -> EXIT")
+            return banked + held * (d["c"] - entry) / risk
+        if use_partial and partial_day is None and d["h"] >= target:
             banked += PARTIAL_FRAC * PROFIT_R
             held -= PARTIAL_FRAC
-            be = True
-            stop = max(stop, entry)
-        if use_trail and d["c"] < eff:                      # trail: CLOSE below -> exit
+            partial_day = di
+            if be_delay_days == 0:
+                be = True
+                stop = max(stop, entry)
+            _log(f"day{di} high {d['h']:.2f} >= target -> 1/3 out, banked {banked:.2f}R")
+        if use_trail and d["c"] < eff:
+            _log(f"day{di} close {d['c']:.2f} < trail {eff:.2f} -> EXIT")
             return banked + held * (d["c"] - entry) / risk
         closes.append(d["c"])
     last = (fwd[:HORIZON][-1]["c"] if fwd[:HORIZON] else entry)
@@ -94,9 +127,17 @@ def simulate(entry, hard_stop, day0_after_fill, fwd, prior_closes, *, use_partia
 
 def main():
     rows, daily, minute = M.load_cohort(), M.load_daily(), M.load_minute()
-    arms = {"A LIVE (1/3@2R + breakeven + SMA trail)": dict(use_partial=True, use_trail=True),
-            "B NO TRAIL (1/3@2R + breakeven only)": dict(use_partial=True, use_trail=False),
-            "C RAW (no partial, hard stop, 20d)": dict(use_partial=False, use_trail=False)}
+    arms = {
+        "A  LIVE — 1/3@2R, breakeven NOW, intraday touch, SMA trail": dict(use_partial=True, use_trail=True),
+        "B  no SMA trail": dict(use_partial=True, use_trail=False),
+        "C  RAW — no partial, hard stop only": dict(use_partial=False, use_trail=False),
+        "D  breakeven DELAYED 1 day (his idea 1)": dict(use_partial=True, use_trail=True, be_delay_days=1),
+        "E  breakeven DELAYED 3 days": dict(use_partial=True, use_trail=True, be_delay_days=3),
+        "F  breakeven DELAYED 5 days": dict(use_partial=True, use_trail=True, be_delay_days=5),
+        "G  breakeven on CLOSING basis (his idea 2)": dict(use_partial=True, use_trail=True, be_close_basis=True),
+        "H  DELAYED 3d + CLOSING basis (both)": dict(use_partial=True, use_trail=True, be_delay_days=3, be_close_basis=True),
+        "I  ALL stops closing-basis ⚠ real risk change": dict(use_partial=True, use_trail=True, be_close_basis=True, hard_close_basis=True),
+    }
     res = {k: [] for k in arms}
     per_name, skipped = {}, defaultdict(int)
 
@@ -151,7 +192,7 @@ def main():
         P(f"   >=2R {sh(2):.1f}%   >=5R {sh(5):.1f}%   >=10R {sh(10):.1f}%   "
           f"stopped(<=-0.99R) {100.0*sum(1 for x in s if x <= -0.99)/len(s):.1f}%")
         P("")
-    a, b = "A LIVE (1/3@2R + breakeven + SMA trail)", "B NO TRAIL (1/3@2R + breakeven only)"
+    a, b = list(arms)[0], list(arms)[1]
     if res[a] and res[b]:
         P(f"🔴 WHAT THE SMA TRAIL COSTS: {sum(res[b]) - sum(res[a]):+.1f}R across the cohort "
           f"({sum(res[a]):+.1f}R with it, {sum(res[b]):+.1f}R without).")

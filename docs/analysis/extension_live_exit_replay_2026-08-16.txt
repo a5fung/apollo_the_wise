@@ -8,17 +8,41 @@ not simulated: outcome:no_fill=36, outcome:stop_too_wide=5, outcome:zero_range=2
 ⚠ Reconstructed, not lived. Submission assumed 09:31 ET (cohort has no detected_at).
 ⚠ Horizon 20 trading days — a bound of this replay, not of the live rule.
 
-A LIVE (1/3@2R + breakeven + SMA trail)
+A  LIVE — 1/3@2R, breakeven NOW, intraday touch, SMA trail
    n=116  median -1.00R  mean -0.31R  max +0.67R  SUM -36.3R
    >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
 
-B NO TRAIL (1/3@2R + breakeven only)
+B  no SMA trail
    n=116  median -1.00R  mean -0.31R  max +0.67R  SUM -36.0R
    >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
 
-C RAW (no partial, hard stop, 20d)
+C  RAW — no partial, hard stop only
    n=116  median -1.00R  mean -0.95R  max +3.13R  SUM -110.6R
    >=2R 0.9%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 98.3%
+
+D  breakeven DELAYED 1 day (his idea 1)
+   n=116  median -1.00R  mean -0.46R  max +0.67R  SUM -52.9R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
+
+E  breakeven DELAYED 3 days
+   n=116  median -1.00R  mean -0.50R  max +1.77R  SUM -57.6R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
+
+F  breakeven DELAYED 5 days
+   n=116  median -1.00R  mean -0.54R  max +1.77R  SUM -62.3R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
+
+G  breakeven on CLOSING basis (his idea 2)
+   n=116  median -1.00R  mean -0.47R  max +1.77R  SUM -54.6R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 61.2%
+
+H  DELAYED 3d + CLOSING basis (both)
+   n=116  median -1.00R  mean -0.62R  max +1.77R  SUM -72.1R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 59.5%
+
+I  ALL stops closing-basis ⚠ real risk change
+   n=116  median -1.92R  mean -2.67R  max +7.89R  SUM -309.5R
+   >=2R 3.4%   >=5R 2.6%   >=10R 0.0%   stopped(<=-0.99R) 68.1%
 
 🔴 WHAT THE SMA TRAIL COSTS: +0.3R across the cohort (-36.3R with it, -36.0R without).
    names the trail cut short by >0.5R: 0

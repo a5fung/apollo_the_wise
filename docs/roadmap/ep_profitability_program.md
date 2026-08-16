@@ -1356,6 +1356,52 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — HIS TWO STOP IDEAS, TESTED: both LOWER the total and RAISE the ceiling
+
+Operator: *"I wonder if giving it some time before moving to breakeven stop makes sense or a
+difference, or requiring stops to be breached on closing basis or near close of day as proxy to
+avoid intraday moves."* Nine arms, same 116 reconstructed trades, extension cohort.
+
+| arm | median | mean | **max** | **SUM** | stopped |
+|---|---|---|---|---|---|
+| **A — LIVE** (1/3@2R, breakeven NOW, intraday) | −1.00R | −0.31R | +0.67R | **−36.3R** | 58.6% |
+| B — no SMA trail | −1.00R | −0.31R | +0.67R | −36.0R | 58.6% |
+| **D — breakeven delayed 1 day** | −1.00R | −0.46R | +0.67R | −52.9R | 58.6% |
+| **E — breakeven delayed 3 days** | −1.00R | −0.50R | **+1.77R** | −57.6R | 58.6% |
+| **F — breakeven delayed 5 days** | −1.00R | −0.54R | +1.77R | −62.3R | 58.6% |
+| **G — breakeven on a CLOSING basis** | −1.00R | −0.47R | **+1.77R** | −54.6R | 61.2% |
+| H — delayed 3d + closing basis | −1.00R | −0.62R | +1.77R | −72.1R | 59.5% |
+| C — raw (no partial, hard stop only) | −1.00R | −0.95R | +3.13R | −110.6R | 98.3% |
+| **I — ALL stops closing-basis** ⚠ real risk change | −1.92R | −2.67R | **+7.89R** | **−309.5R** | 68.1% |
+
+### The answer to both ideas: directionally right, and they cost more than they return HERE
+
+- **Every variant RAISES the ceiling and LOWERS the total.** Delaying breakeven lifts the best
+  outcome from +0.67R to +1.77R and costs 17–26R across the cohort. The closing-basis breakeven
+  does the same for 18R. **Our current rule is the best of the nine on total R.**
+- 🔴 **Only ONE arm produces a genuine tail — holding through intraday breaches entirely (arm I):
+  max +7.89R and 2.6% of trades ≥ +5R, the only arm that reaches +5R at all.** It costs −309.5R.
+  So the tail he is hunting IS reachable by loosening the stop, and on THIS cohort it is nowhere
+  near worth it.
+- **The mechanism is consistent across all of them:** the stop rule sets the CEILING, the entry
+  quality sets whether the ceiling is worth reaching for.
+
+### ⚠ THE CAVEAT THAT MATTERS MOST — this is the wrong cohort for his question
+
+He asked a general question about OUR stop rule. **I answered it on the extension cohort — a
+parabolic population we deliberately do not trade**, where a −38% median return means almost
+nothing survives to benefit from a looser stop. **These results should NOT be read as "delaying
+breakeven is bad."** They say it is bad *for parabolic names*.
+
+▶ **The test that actually answers him is the same nine arms run on the population we DO trade** —
+the HIGH-alert cohort — where the stop rule's cost is a live question and the names are ones our
+own selection endorsed. That is the next run, and it needs no new data.
+
+🛑 Exit discipline = THE LINE. Nothing proposed; nine measured arms and their trade-offs.
+⚠ Reconstructed, not lived. One bug found and fixed mid-run: the first version armed breakeven a
+day late, which silently made arm A something other than the live rule and inflated its loss to
+−52.9R. Fixed; the table above is post-fix.
+
 ## 2026-08-16 — OUR ACTUAL EXIT, REPLAYED: the BREAKEVEN stop is what cuts the winners, not the trail
 
 Probe `scripts/probes/_ext_live_exit_replay.py`, capture
