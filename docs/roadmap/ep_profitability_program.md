@@ -1311,6 +1311,12 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 
 ## 2026-08-16 — STRUCTURE IS ENCODED, and it reproduces all 8 of his labelled reads
 
+📚 **SSoT for everything structure: `docs/methodology/structure_model.md`** — his supply-ladder
+model, the NBIS definition, the level-derivation rule, the 8-fixture gate, what is NOT encoded,
+and the rejected SMA proxy. **Read it before any structure work**; this section is the dated
+result, that file is the standing context.
+
+
 Probe `scripts/probes/_533_nbis_structure_encoder.py` (SHADOW — it refuses to sweep unless the
 fixture gate passes, and it is wired into nothing). Capture:
 `docs/analysis/structure_encoding_2026-08-15.txt`. This is the thing he asked for on 08-12 and

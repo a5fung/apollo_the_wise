@@ -622,6 +622,9 @@ that the feature works. That needs the distribution, with N and distinct session
 
 ---
 
+📚 **Consolidated into the structure SSoT: `docs/methodology/structure_model.md`** — read that
+first; the sections below are the dated verbatim captures it draws on.
+
 ## 2026-08-16 — THE SUPPLY-LADDER MODEL: why structure works, in his words
 
 Said after seeing the encoder pass his eight labelled reads. This is the MECHANISM behind the
