@@ -2340,7 +2340,12 @@ reviews:
       requirement for 3-tier maturation pipeline (Gate 4 dual-account
       shipped 2026-05-10 c79abd6→9bcaba6). Gate 5 added 2026-05-14
       following CRMD naked-position P0 incident.
-    status: deferred
+    status: done  # ✅ CLOSED 2026-08-15 — SUPERSEDED BY THE EVENT, and the predicate could never fire.
+                  # It demanded 14 DISTINCT snapshot days inside a 14-CALENDAR-day window, but
+                  # mi_account_equity_snapshots is trading-day-only (71 days on prod, ZERO weekend rows;
+                  # ~10-11 reachable in any 14-day window) — arithmetically unsatisfiable from the day it
+                  # was written. Moot regardless: the live cutover HAPPENED 2026-06-22. Any residual
+                  # cutover question needs a NEW entry with its predicate stated in TRADING days.
     deferred_reason: |
       Gate 3 (paper R-expectancy) is RED: cohort -$1,541 net pnl across
       4 closed methodology-attribution trades (KLAR ×2 -$1,768, ARM
@@ -2584,7 +2589,13 @@ reviews:
       Origin: 2026-05-13 session 7 — surfaced while fixing orphan_sub
       remediation. C2 review correctly closed (no fix for cross-run
       probe); this is a separate finding about the canonicalize helper.
-    status: pending
+    status: done  # ✅ CLOSED 2026-08-15 — UNMEASURABLE AS WRITTEN, not answered.
+                  # Counts `theme_canonicalize_gap_observed`: NO WRITER anywhere in the codebase, 0 rows
+                  # all-time — the probe this entry assumed was never built. It could never ripen, so it sat
+                  # in the queue LOOKING like accruing evidence. Closed rather than re-dated (operator
+                  # 2026-08-15: 'i don't want to count and wait for the wrong things').
+                  # ▶ THE QUESTION IS NOT DISMISSED — it revives the moment something WRITES that event.
+                  # (Sibling signal `theme_name_variant_observed` last wrote 2026-05-28, also stale.)
     added_on: 2026-05-13
 
   - review_id: perplexity_hallucination_keyword_leak
