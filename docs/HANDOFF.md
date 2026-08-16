@@ -155,3 +155,42 @@ registered + ran clean 17:55 ET (0 rows — today was a 0-alert market). On the 
 ---
 *Keep this file's §3 roughly current if you do a long stint on the laptop; but PLAN.md is always the
 authoritative task state. When the operator is back on the desktop, the machine-local memory resumes.*
+
+---
+
+## 2026-08-16 (PT) — RESUME POINT: the EP weekend, and what is open
+
+**Board 79 · tree clean · everything pushed · no CLOSE run.** Full detail:
+`docs/roadmap/ep_profitability_program.md` (2026-08-15/16 sections) and
+`docs/methodology/structure_model.md`.
+
+### Immediate next step — a broken filter, fix before quoting numbers
+The market-wide "winners we never alerted on" scan is **contaminated by leveraged ETFs** (SOXL,
+YINN, KORU, MULL, MVLL, QCML, MUU, RVI, VCX). The attempted fix — requiring a non-null `sector` +
+`market_cap` in `mi_stock_scores` — **does not work** (sector is stored only for the top ~300 by
+rank, so it matched nothing). Find a real discriminator and re-run; until then the "141 of 149
+addressable miss" is an ETF-contaminated upper bound.
+
+### Two operator forks, both with volatility-normalised evidence
+1. **The extension filter** — the cohort it cuts is worse at the median (1.74× vs 2.32× MFE/ADR) and
+   better in the tail (10.1% vs 3.7% reach ≥12×ADR).
+2. **The intraday stop** — over 60 days on the traded cohort: live −6.0R · no intraday stop +36.8R
+   (unbounded intraday risk) · re-entry ×2 +7.5R (worst case −2R). Holding longer alone does nothing.
+3. Added 08-16 — **re-check the gap floor later in the morning** (78% of tradeable missed winners
+   that opened <10% crossed 10% intraday — a ceiling, not a yield) and the **liquidity/volatility
+   gates** (our alerts 5.5% ADR / ~$200M; the missed winners 9.9% / $106M).
+
+### The three findings that govern all future analysis here
+- **Our score separates nothing** — 66.8 vs 65.9 on n=3,292; `game_changer` is *less* common among
+  winners.
+- **Raw-percentage outcomes are volatility in disguise** — price, gap and the structure verdict all
+  lose their effect or reverse once divided by ADR. Re-read anything measured in raw %.
+- **Extension is the one signal that survives normalising** — and our structure verdict runs
+  backwards to it.
+
+### Monday verify-live
+`profit_take_oco` is OFF (operator flips). Then the first live +2R carve-out as an OCO · the 16:22 ET
+alert-day path job · the first `db_growth_check` row · EROC appearing in `mi_ep_missed_outcomes` ·
+consolidation entry days now getting minute bars.
+
+⚠ Subagent cap hit (200/200) — set `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` before the next launch.
