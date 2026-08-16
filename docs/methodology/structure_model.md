@@ -174,6 +174,42 @@ the open is overhead worth respecting, an MA far below is already irrelevant, an
 encoder's own reference price**; if it holds 8/8 with the softer rule, his refinement ships into the
 encoder. If it costs a fixture, the hard rule stays and we know why.
 
+## 4c. 🟢 THE EXTENSION READ — his "secondary" half, built — and it SURVIVES normalisation
+
+The other half of his 2026-08-16 point: MAs far below the open are *"secondary, to gauge
+extension."* Built as the median distance, in ADR units, of the open above every MA sitting below
+it. 137 alerts support the read.
+
+| quartile | extension | median MFE | **median MFE ÷ ADR** | reach 8×ADR | **our verdict says GOOD** |
+|---|---|---|---|---|---|
+| **Q1 least extended** | 0.3 ADR | **29.7%** | **3.3×** | **11.8%** | **32%** |
+| Q2 | 0.9 ADR | 15.2% | 2.4× | 2.9% | 44% |
+| Q3 | 1.9 ADR | 14.4% | 2.6× | 5.9% | 82% |
+| **Q4 most extended** | 3.2 ADR | **7.5%** | **1.9×** | 2.9% | **86%** |
+
+### 🔴 Two findings, and the second is a defect in our own encoder
+
+1. 🟢 **Extension predicts WORSE outcomes, monotonically, and it SURVIVES ADR normalisation.** The
+   least-extended quartile reaches **3.3× ADR against 1.9×**, and hits 8×ADR four times as often
+   (11.8% vs 2.9%). **This is the first relationship found all weekend that is not erased by
+   normalising** — every other apparent effect (price, gap size, structure verdict) was volatility
+   in disguise. It is also a direct measurement of the Qullamaggie condition the plan has been
+   asserting without evidence: *don't buy what has already run.*
+2. 🔴 **Our structure verdict runs the OPPOSITE way. GOOD rises 32% → 86% across the same
+   quartiles — so the encoder calls the MOST-extended names GOOD, and those perform worst.**
+   The mechanism is plain: "cleared every overhead level and every MA" is *easiest* to satisfy when
+   price is already far above everything. **The verdict rewards extension by construction**, which
+   is why it has never separated outcomes.
+
+▶ **What this implies for the encoder (NOT applied — it is a criterion change, THE LINE):** clearing
+levels and being extended above them are being conflated into one verdict. His model treats them as
+two axes — *did it clear real overhead* AND *how far has it already run* — and the second is
+currently discarded rather than scored. **Splitting them is the next structure fork for the
+operator.**
+
+⚠ n=137, one regime, superset cohort, descriptive — no permutation or multiplicity test run. The
+monotonicity across four buckets is what makes it worth reporting, not a p-value.
+
 ## 5. WHAT IS *NOT* ENCODED — named honestly, so nobody claims coverage
 
 - **Stage analysis** (*"possibly moving to a Stage-2 uptrend after bottoming and basing"* — his SE
