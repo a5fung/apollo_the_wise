@@ -373,6 +373,66 @@ directional rather than significant.
 
 ---
 
+## 0c. ⚖ THE STOP FORK IS NOW DECIDABLE — both terms priced (2026-08-16)
+
+The synthesis said this fork could be posed but not decided: the let-winners-run mode did not exist
+and **the +36.8R had no cost term.** Both are now measured. Capture:
+`docs/analysis/let_it_run_and_risk_2026-08-16.txt`.
+
+### 1. It survives a faithful implementation — and the 20-day objection dissolves
+
+The crude arm was rebuilt against the real ladder (1/3 at +2R intraday · breakeven at the broker ·
+MAX(SMA10,SMA20) trail including today's close · close-basis exits · giveback off):
+
+| matched 43 names | crude arm | **faithful ladder** |
+|---|---|---|
+| 60-day | +36.8R | **+33.6R** (+37.2R with day 0 exempt) · 11.6% reach ≥5R |
+
+**And the 20-day objection was an artifact.** The crude arm never checked day-0's close. With it
+checked: **no-stop −21.0R vs live −23.6R at 20 days (n=75).** It does not LOSE at the short horizon —
+it ties, and wins at 60. **My "it is bad at 20 days and good at 60" framing was wrong.**
+
+⚠ **INTC corrected: +14.46R was a truncation artifact** — the daily cache ended on the peak day, so
+the sim marked an open position at the peak close. On full history the trail exits on day 15 for
+**+9.02R**. The live rule's −1.00R stands; SMCI reproduces exactly.
+
+### 2. 🔴 THE COST TERM, measured for the first time
+
+| | matched 43 (17 sessions) |
+|---|---|
+| adverse excursion while held — **median** | **−1.97R** |
+| P90 | −3.95R |
+| worst in this cohort | −6.80R (GHRS) |
+| **worst in the wider 20-day cohort** | **MANE: −19.6R excursion, −11.13R realized** |
+| dipped ≤−2R intraday, still closed above the stop | **11 of 43 — and their outcomes sum +13.9R** |
+| dipped ≤−3R | 5 of 43 — **and their outcomes sum −6.5R** |
+| dipped ≤−5R | 1 of 43 |
+| overnight gap THROUGH the stop | 7 events on 7 names, worst open −0.59R below |
+
+📌 **The sub-finding that matters: holding through −2R PAID (+13.9R across 11 names); holding through
+−3R did NOT (−6.5R across 5).** That is a third option between "hard intraday stop" and "no stop at
+all" — a bounded hold — and it fell out of pricing the risk rather than from any arm we designed.
+
+⚠ **MANE shows how R-risk explodes on a tight stop:** a 0.6%-wide ORB stop put ~$3,900 of stock
+behind a $24 nominal risk. **The R figures understate dollar risk when the ORB range is thin.**
+
+### 3. The line he can weigh
+
+> **Reward +33.6R across 43 trades over 17 sessions, against a worst single-name loss of −11.13R, a
+> typical adverse excursion of −2R, and overnight gap risk of ≤−0.6R.**
+> At the real live sizing (median $24 risk, n=20 closed): **+$806 total against −$267 on the worst
+> name and −$470 at the worst momentary drawdown.** At paper sizing, roughly 40× those figures.
+
+⚠ **Limits, stated because they bound the ruling:** no minute bars exist for any hold window beyond
+day 0 (the cohort is April–May; capture began 07-28), so days 1+ use daily lows — per-day magnitude
+is exact, sub-day sequencing is invisible · close fills assume the official close, auction slippage
+unmodelled · same-day stop-vs-target order assumed stop-first · **one regime, all early-period, no
+out-of-sample until October.**
+
+🛑 Stops are entry/exit discipline = THE LINE. **Both terms are on the table; the ruling is his.**
+
+---
+
 ## 0. The situation, in five verified facts
 
 1. **19 closed live trades in 60 days: 0 winners, 19 losers, −$416.19 total. Best trade −$2.40.**
