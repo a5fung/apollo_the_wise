@@ -1356,6 +1356,47 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🔴 WINNERS vs THE REST: our own score separates NOTHING, and the top grade is mildly ANTI-predictive
+
+The winner-reference comparison (§1b step 5), run on the alert population: **470 names reached a
++50% 20-day max excursion, 2,822 did not.** Features as known on the alert morning.
+
+| feature (alert-morning) | the 2,822 | **the 470 winners** | |
+|---|---|---|---|
+| **our `ep_score`** | 65.9 | **66.8** | 🔴 **no separation — 0.9 points** |
+| **`game_changer` share** | 17% | **13%** | 🔴 **the top grade is mildly ANTI-predictive** |
+| in an active theme | 4% | 3% | none (and both tiny) |
+| gap % | 15.1 | **19.0** | winners gap more |
+| RS composite | 53.5 | **64.6** | winners stronger |
+| above the 50-day MA | 57% | **68%** | winners better positioned |
+| **price** | **$69.6** | **$30.9** | **the largest split in the table** |
+| 20-day avg dollar volume | $3.8M | $3.9M | none |
+
+### What this says, and the one number that matters most
+
+🔴 **Our grading engine does not distinguish a name that runs 50% from one that goes nowhere.**
+`ep_score` differs by 0.9 points on n=3,292, and the `game_changer` label is *less* common among
+winners than among the rest. **That is the sharpest available answer to "what is a real EP": not
+what we currently measure.** It is consistent with §the grade mechanism read — a score that a gap
+can force to HIGH cannot separate on anything else.
+
+⚠ **The price split is almost certainly MECHANICAL, not a finding.** A +50% move is far easier on a
+$31 stock than a $70 one, and low price correlates with small cap and higher volatility. **Do not
+read "buy cheaper stocks" out of this** — it needs a volatility-normalised outcome (R or ADR
+multiples, not raw %) before it means anything.
+
+⚠ **RS reads HIGHER in winners here (64.6 vs 53.5), which sits AGAINST the earlier finding** that RS
+level is dead as a grade input and that both of his labelled good EPs were bottom-decile. Both can
+be true — this is a population average across all alerts, that was a within-low-RS test — but the
+tension is real and unresolved, and neither should be cited without the other.
+
+⚠ Descriptive only: no permutation, no multiplicity control. Catalyst and theme columns are computed
+on the subset that actually became alerts (the extension- and quality-filtered names never do). And
+the standing conditional applies — this is the superset cohort he does not believe in.
+
+▶ **Next:** re-run this comparison with the outcome in **ADR or R units instead of raw %**, which
+removes the price/volatility confound and is the only way the remaining features can be read.
+
 ## 2026-08-16 — EP → CONSOLIDATION: a cheap candidate feed, and TACTICS THAT SERVE BOTH SETUPS
 
 Operator, 2026-08-16: *"this means that prior EPs can be a cheap source for our consolidation plays,
