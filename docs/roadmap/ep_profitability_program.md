@@ -492,6 +492,46 @@ out-of-sample until October.**
 
 ---
 
+## 0e. 🟢 INTRADAY: the opening range's TIGHTNESS does not predict — where price CLOSES in it does
+
+He asked whether the EOD tightness finding can pivot to an intraday measure knowable at 09:45.
+Tested on 91 HIGH alerts with reconstructed ORB geometry and outcomes (ADR-normalised, tail first).
+
+**Intraday tightness — ORB range ÷ ATR14, the live `stop_too_wide` gate's own ratio:**
+
+| band | n | median MFE/ADR | reach ≥8×ADR |
+|---|---|---|---|
+| very tight <0.5× | 27 | 3.37× | 14.8% |
+| tight 0.5–0.8× | 13 | 3.86× | 0.0% |
+| mid 0.8–1.1× | 22 | 3.24× | 13.6% |
+| wide 1.1–1.5× | 17 | 4.97× | 11.8% |
+| **≥1.5× — the gate REJECTS these** | 12 | 3.57× | **16.7%** |
+
+🔴 **Flat. No gradient in either direction — and the band our gate rejects has the HIGHEST tail rate
+of all five.** So the EOD tightness signal does NOT survive being computed intraday. **Whatever the
+full-day range is measuring, it is not the opening range.**
+(Consistent with the 08-16 stop-geometry sweep, which found no shape either side of the 1.5× line.)
+
+### 🟢 But the intraday measure that DOES work: where price sits in the opening range
+
+| at ~09:45 | n | median MFE/ADR | reach ≥8×ADR |
+|---|---|---|---|
+| **closes in the top 30% of the ORB** | 47 | **4.74×** | **17.0%** |
+| closes lower in the ORB | 44 | 1.94× | 6.8% |
+
+**2.4× the median and 2.5× the tail rate, from a number knowable at 09:45.** And it is his own
+language made mechanical — *"gapping up above key levels, HOLDING"*: closing near the high of the
+opening range IS holding.
+
+▶ **What this changes:** the ranking rule's tightness term is an END-OF-DAY selector (usable for
+delayed-entry and consolidation decisions), and **close-position-in-range is the ORB-time analogue** —
+a different feature, not a proxy for the same one. Both go into the rank shadow so both get an
+out-of-sample.
+
+⚠ n=91, one regime, max-excursion rather than realized R, and the position is read from the bar at
+~09:45. Directional, not significant — no permutation run.
+🛑 Nothing proposed; admission and ordering are THE LINE.
+
 ## 0d. 🟢 THE FIRST SELECTION RESULT THAT WORKS — a three-line ranking rule, 2.5× lift (2026-08-16)
 
 Capture: `docs/analysis/expectedness_and_ranking_2026-08-16.txt`. Read-only, $0, no LLM.
