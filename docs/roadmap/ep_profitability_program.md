@@ -1356,6 +1356,31 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## ⚠ THE WAIT WINDOW HAS A CONCEPTUAL CEILING — it converges on setups we already own
+
+Operator, 2026-08-16: *"at some point, longer waits may just converge to one of our consolidation
+plays or HTF."*
+
+**Correct, and it caps the sweep.** The wait window is not a free parameter to push until the
+numbers stop improving — past some length the thing being traded is no longer an EP re-entry:
+
+- **Delayed EP** — the EP event is still the reason for the trade; the reclaim is the timing tool.
+- **Consolidation play (Family A, #354)** — the BASE built after the move is the reason.
+- **HTF (#356)** — a tight flag after a large advance is the reason.
+
+**The boundary is what you are trading on, not how many days elapsed** — which is exactly the
+SETUP-vs-FAMILY discipline in CLAUDE.md: each tradeable entry needs its own name, buy point and stop.
+A 20-day reclaim with a base is a consolidation entry that happens to follow an EP.
+
+▶ **The de-duplication check this implies, and it is cheap:** of the names caught at the 20-day wait,
+how many were ALREADY detected by the consolidation or HTF detectors on or before the reclaim date?
+**If the overlap is high, this is not a new setup — it is the existing one, and the right move is to
+feed the EP context INTO those detectors rather than build a third path.** If the overlap is low,
+the delayed-EP shape is genuinely distinct and needs its own name.
+
+▶ Practical effect on the sweep: **stop extending the wait window until that overlap is measured.**
+The 28%-at-20-days result may be partly the consolidation setup wearing a re-entry label.
+
 ## 2026-08-16 — RE-ENTRY v2: a real stop floor cuts the numbers in half, and WAITING LONGER catches more
 
 Probe `scripts/probes/_delayed_reentry_v2.py`. Three fixes to v1: a **minimum stop of 0.5 × ADR20**
