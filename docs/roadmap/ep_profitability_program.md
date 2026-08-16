@@ -408,6 +408,41 @@ directional rather than significant.
 
 ---
 
+## 0c-pre. ✅ THE ACTUAL PROPOSED CHANGE, SIMULATED AS A RULE (2026-08-16)
+
+⚠ **Correction first: until now the bounded rule had NEVER been simulated.** The +16.8R figure was
+the FULL no-stop arm at equal risk; *"hold through −2R, exit at −3R"* was my inference from a
+descriptive census (11 names dipped past −2R and paid +13.9R; 5 past −3R and lost −6.5R). **A
+derived rule was inheriting a measured number.** Now run as a real arm.
+
+**The change, stated exactly:**
+1. **The stop moves from the ORB low to `entry − 2R`**, where R = entry − ORB low.
+2. **Position size HALVES**, so dollar risk per trade is unchanged.
+3. 🔴 **The profit target does NOT re-scale — 1/3 still comes off at the ORIGINAL `entry + 2R`
+   price.** If R were redefined, the target would drift to +4R and that was never tested.
+4. Breakeven-after-partial and the SMA trail are unchanged.
+
+**Matched 43 names, identical in every row, all figures at EQUAL DOLLAR RISK** (R divided by the
+size multiplier):
+
+| rule | median | mean | max | **SUM** | ≥2 | ≥5 |
+|---|---|---|---|---|---|---|
+| **LIVE** — ORB-low stop, full size | −1.00 | −0.14 | +7.13 | **−6.0** | 5% | 2% |
+| 🟢 **BOUNDED — 2R stop, HALF size** | **+0.33** | +0.27 | +9.19 | **+11.4** | 7% | 2% |
+| BOUNDED — 3R stop, third size | +0.22 | +0.28 | +6.13 | +12.2 | 9% | 2% |
+
+- ✅ **The rule he described works: −6.0 → +11.4 at the same dollar risk.**
+- 📌 **The median goes POSITIVE (+0.33 from −1.00)** — the real mechanism is that a 2R-wide stop
+  simply is not hit as often, so most trades stop being full losers. That is a bigger change in the
+  shape of the book than the total suggests.
+- **3R adds nothing worth the extra width** — marginally higher sum, lower median, lower max. **2R
+  is the cleaner choice**, and my derived "exit at −3R" is unnecessary.
+- ⚠ Same standing limits: 43 reconstructed trades, one regime, April–May, no out-of-sample until the
+  shadow accrues; slippage and auction fills unmodelled.
+
+🛑 **This is a live stop and sizing change = THE LINE.** It needs his sign-off, a CHANGE_PROCESS
+entry and an SSoT update before anything moves.
+
 ## 0c. ⚖ THE STOP FORK IS NOW DECIDABLE — both terms priced (2026-08-16)
 
 The synthesis said this fork could be posed but not decided: the let-winners-run mode did not exist
