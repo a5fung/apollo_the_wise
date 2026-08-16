@@ -408,6 +408,52 @@ directional rather than significant.
 
 ---
 
+## 0b-fwd. 🗺 THE FORWARD PLAN (as of 2026-08-16, after the stop change went live)
+
+Asked for explicitly: *"not that we need to do it right now, but I want to make sure we have a clear
+plan forward."* Four lanes, and only one of them needs agent time this week.
+
+### LANE A — WATCH (live money, starts immediately, no build)
+- **Read the 2R comparison after EVERY close** — `stop_2r_running_comparison`, deliberately ungated.
+  Both arms come from the same trades; the old rule is reconstructable from `stop_ref`.
+- **Monday:** flip `profit_take_oco` when he's ready; verify the 16:22 path job, the first
+  `db_growth_check` row, EROC appearing with its chase-cap reason, and the two new shadows writing.
+- ⚠ **Watch specifically for:** the new stop losing 2× where the old cut at −1R · the profit target
+  firing at the ORIGINAL 2R price · size halving ONCE.
+
+### LANE B — ACCRUE (the shadows do the work; nothing to build)
+- **Alert-rank shadow** → the out-of-sample the ranking rule cannot otherwise have. Its features were
+  chosen on the same data they were tested on; every day recorded is a day it never saw.
+- **Exit-path shadow** → the formal review at 20 closed positions, ~early October.
+- **60-day paths complete mid-November** — which lands in next earnings season, the window he has
+  called the real test.
+
+### LANE C — BUILDABLE NOW, in value order
+1. **The expectedness axis into the rank shadow.** Deterministic, no LLM, 86% classifiable — and it
+   is the only feature that measures the half of the catalyst NOT already priced into the gap.
+2. **Split the structure encoder into two axes** — it currently conflates "cleared real overhead"
+   with "how far it has already run", and so REWARDS extension (GOOD rises 32%→86% across extension
+   quartiles) while the extension signal itself says the opposite.
+3. **The silent D-1 universe floors** — 12 names, the fattest tails in the dataset (median 21.9×ADR),
+   dropped because the floors read the PRIOR day while the opportunity is created ON the gap day.
+4. **Position sizing** — never examined, and the stop change just made it live-relevant (halving
+   size is now part of the rule).
+
+### LANE D — THE OPEN OPERATOR FORKS (evidence in hand, no measurement pending)
+- The **extension filter** (worse median, better tail — normalised).
+- The **liquidity / volatility gates** (our alerts run 5.5% ADR and ~$200M; the missed winners 9.9%
+  and $106M).
+- The **grade's gap dependence** — five confirmations, and §1b sequences #533 and the $0 expectedness
+  labelling before it.
+
+### 🔑 THE ONE RESULT THAT WOULD CHANGE THE SHAPE OF THE PLAN
+**If the ranking rule validates out-of-sample, selection becomes actionable** — and the sufficiency
+target (≈4 converted winners) stops depending entirely on conversion. **If it does not, the plan
+narrows to conversion alone**, and the honest statement becomes that we cannot pick better, only
+hold better. **The rank shadow decides which of those two plans we are on, and it needs only time.**
+
+---
+
 ## 0c-pre. ✅ THE ACTUAL PROPOSED CHANGE, SIMULATED AS A RULE (2026-08-16)
 
 ⚠ **Correction first: until now the bounded rule had NEVER been simulated.** The +16.8R figure was
