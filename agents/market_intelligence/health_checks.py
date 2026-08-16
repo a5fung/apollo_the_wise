@@ -1431,6 +1431,264 @@ async def run_db_growth_check() -> dict[str, Any]:
     return out
 
 
+# ── #543 DETECTOR-LIVENESS check (2026-08-16) ───────────────────────────────────────────────────
+#
+# WHY. The 2026-08-15 review-registry sweep found detectors that produced nothing for months —
+# `mi_anticipation_lifecycle` (last write 2026-06-16, the #270 pin rejects every candidate),
+# `mi_flag_undercut_rally` (4 rows all-time, last 2026-06-18), the sugar-baby convergence alert
+# (0 fires ever since 2026-05-22 ship) — and NOTHING TOLD ANYONE. The only thing "watching" them
+# was a data-gated review predicate gated on the same dead counter, so it never fired either.
+# Operator: "the biggest concern i have is lack of awareness when a critical part of the system
+# fails, the silent failure i keep complaining about."
+#
+# THE RULE, stated so it can be checked, not just trusted: for each watched table, pull the
+# distinct FIRE-DAYS (calendar days it wrote >=1 row) over the trailing LOOKBACK_DAYS. Bucketing
+# to days, not raw rows, matters — several of these detectors write in same-day bursts (a hot tape
+# can put a dozen mi_ep_alerts rows down in an hour), and a raw-row median gap would read as
+# minutes, making the busiest tables hair-trigger.
+#   - >= MIN_ACTIVE_DAYS distinct fire-days in the window -> the table's OWN median gap between
+#     fire-days becomes its cadence. Alarm line = CADENCE_MULTIPLIER x that median, floored at
+#     MIN_THRESHOLD_DAYS (a near-daily table can't be tripped by an ordinary quiet week) and
+#     capped at ABSOLUTE_FALLBACK_DAYS (real cadence data can only TIGHTEN the alarm, never loosen
+#     it past what a totally-unknown detector gets — see below).
+#   - < MIN_ACTIVE_DAYS fire-days -> no reliable median to derive (mi_flag_undercut_rally: 4 rows
+#     ALL-TIME). Falls back to the flat ABSOLUTE_FALLBACK_DAYS floor.
+#   - Zero rows ever (MAX(date_col) IS NULL) -> its own case, flagged outright as "never fired" —
+#     there is no cadence to be silent relative to.
+#
+# WHY THIS WON'T CRY WOLF: the threshold is DERIVED from each table's own history, not one shared
+# constant. A detector that legitimately fires twice a month has a ~15-day median fire-gap, so even
+# the flat sparse-path floor (45d, 3x that) comfortably clears a quiet fortnight (14d) — the task's
+# own example case stays silent under EITHER path. MIN_THRESHOLD_DAYS=14 exists to protect the
+# opposite end (a near-daily table with a 1-day median would otherwise get a 3-day trigger from the
+# multiplier alone) — a bare-minimum "give it two weeks" floor before this guard speaks at all.
+# That floor is deliberately generous for the CHATTIEST tables (mi_ep_alerts, mi_9m_ep_alerts)
+# because they are NOT this guard's primary job — `run_job_liveness_sweep` already watches them at
+# K=1/K=3 day-granularity via `_JOB_OUTPUT_CHECKS`, and the null-rate sweep covers their columns.
+# This guard exists for the RARE detectors nothing else watches; a slower trigger on the tables
+# that are already covered elsewhere is an acceptable trade, not a hole.
+#
+# COLD START: several watched tables are ALREADY dark by this rule on day one. All fresh flags from
+# one run batch into ONE Telegram message — day one reads as a single "these are dark" line, not a
+# stream. Re-announce is PER-TABLE (mirrors `run_inert_sweep_check`'s once-per-lane idiom, windowed
+# instead of permanent — a table's condition can resolve, a permanent dedupe would silence it
+# forever) and capped at once per DEDUPE_DAYS: these are structural defects, not daily conditions,
+# so nightly repetition of an already-known dark table is wallpaper. A per-table (not one shared
+# global) dedupe matters — a stale global count would let one already-announced table suppress a
+# DIFFERENT table going dark days later, folding a fresh finding into an old one's silence window.
+#
+# COLUMN CHOICE, why it is NOT always the business date column: `mi_anticipation_lifecycle` rows are
+# UPSERT-style (`PRIMARY KEY (ticker, gap_day)`) — a row's business dates (armed_date, coiled_date,
+# ...) get REWRITTEN by state-advancing UPDATEs on the SAME row, so they would read "fresh" even
+# when no NEW candidate has been seeded in months (exactly the #270-pin failure: nothing new is
+# ever created, existing rows just sit). `created_at` is set once at INSERT and never touched again
+# on that table, so it is the true "did a new candidate get seeded" signal — used ONLY for this one
+# table, called out explicitly in the registry below.
+#
+# `mi_ep_alerts` NEEDS A LIVE-ROWS FILTER: it carries replay/backtest rows (`source='historical_scan'`,
+# #268) sharing the table across a ~12-month span. An unfiltered read could see a REPLAY BATCH's
+# rows (a fresh `created_at`, an old `alert_date`, or vice versa depending on the batch) and read a
+# genuinely dead LIVE detector as active — the exact false-negative this guard exists to prevent.
+# `LIVE_SOURCE_SQL` (db.py) is the canonical filter; applied here via the registry's extra-WHERE slot.
+#
+# THE LINE: telemetry only. This reads output tables and writes to mi_audit_log / Telegram — it does
+# not touch any detector, gate, alert, entry, exit, or sizing path.
+#
+# KNOWN GAP, named not built: the sugar-baby convergence alert (0 fires ever, #543's own headline
+# example) is an `mi_audit_log` event (`sugar_baby_convergence_alert`), not an output TABLE — this
+# check is table-shaped and does not cover it. Left as a named follow-on, not silently dropped.
+_DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
+    # (table, label, date/timestamp column, extra WHERE clause or None)
+    ("mi_anticipation_lifecycle", "anticipation lifecycle (#270)", "created_at", None),
+    ("mi_flag_undercut_rally", "flag undercut & rally", "ur_date", None),
+    ("mi_flag_breaks", "flag breaks", "break_date", None),
+    ("mi_htf_breakout_shadow", "HTF breakout shadow", "break_date", None),
+    ("mi_consolidation_entry_shadow", "consolidation entry shadow", "entry_date", None),
+    ("mi_9m_ep_alerts", "9M EP alerts", "alert_date", None),
+    ("mi_ep_alerts", "EP alerts", "alert_date", "COALESCE(source, 'live') = 'live'"),
+)
+_DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
+_DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median
+_DETECTOR_LIVENESS_CADENCE_MULTIPLIER = 3.0
+_DETECTOR_LIVENESS_MIN_THRESHOLD_DAYS = 14        # floor — never alarm inside a plain quiet fortnight
+_DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS = 45    # sparse-history floor AND the cadence-path ceiling
+_DETECTOR_LIVENESS_DEDUPE_DAYS = 7
+
+
+def _detector_liveness_col_is_timestamp(date_col: str) -> bool:
+    """True for the ONE timestamptz column in the registry (`created_at`); every other entry is a
+    plain DATE business column. See the registry header for why `created_at` is used specifically
+    for `mi_anticipation_lifecycle`."""
+    return date_col == "created_at"
+
+
+def _evaluate_table_liveness(
+    active_days: list, last_write, today,
+) -> dict[str, Any] | None:
+    """Pure decision for ONE table's liveness, isolated + mock-free (the file's idiom).
+
+    active_days: the table's fire-days within the trailing lookback window — may contain
+      duplicates/be unordered (deduped + sorted here, so callers don't have to); may be empty.
+    last_write: the table's true most-recent fire-day, UNBOUNDED by the lookback window (None if
+      the table has never written a row at all).
+    today: the caller's current ET date.
+
+    Returns a flag dict or None (silent = healthy, or not enough signal against a "never fired"
+    table — that case is unconditional, see below).
+    """
+    if last_write is None:
+        return {"kind": "never_fired"}
+
+    silence_days = (today - last_write).days
+    days = sorted(set(active_days))
+
+    if len(days) >= _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS:
+        gaps = [(b - a).days for a, b in zip(days, days[1:])]
+        median_gap = statistics.median(gaps)
+        threshold = min(
+            max(_DETECTOR_LIVENESS_CADENCE_MULTIPLIER * median_gap,
+                _DETECTOR_LIVENESS_MIN_THRESHOLD_DAYS),
+            float(_DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS),
+        )
+        kind = "cadence"
+    else:
+        median_gap = None
+        threshold = float(_DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS)
+        kind = "sparse"
+
+    if silence_days > threshold:
+        return {
+            "kind": kind,
+            "silence_days": silence_days,
+            "threshold_days": round(threshold, 1),
+            "median_gap_days": median_gap,
+            "last_write": last_write,
+        }
+    return None
+
+
+def _format_liveness_flag(f: dict[str, Any]) -> str:
+    label = f.get("label", f["table"])
+    if f["kind"] == "never_fired":
+        return f"{label} ({f['table']}): 0 rows ever"
+    gap_note = f", normal gap ~{f['median_gap_days']:.0f}d" if f.get("median_gap_days") else ""
+    return (f"{label} ({f['table']}): silent {f['silence_days']}d, "
+            f"normally <= {f['threshold_days']:.0f}d{gap_note}")
+
+
+async def run_detector_liveness_check() -> dict[str, Any]:
+    """Nightly per-table cadence check (PLAN #543): did each watched detector output table write
+    a row recently enough for ITS OWN historical cadence? Speaks only when a table's silence
+    exceeds its own derived threshold (see the header above for the full rule + why it won't
+    cry wolf).
+
+    Returns {"tables_scanned": n, "flags": [...], "errors": [...], "spoke": bool}.
+    Never raises — a health guard that dies silently is the failure it exists to prevent.
+    """
+    out: dict[str, Any] = {"tables_scanned": 0, "flags": [], "errors": [], "spoke": False}
+    today = _now_et().date()
+    cutoff_date = today - timedelta(days=_DETECTOR_LIVENESS_LOOKBACK_DAYS)
+
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            for table, label, date_col, extra_where in _DETECTOR_LIVENESS_TABLES:
+                try:
+                    is_ts = _detector_liveness_col_is_timestamp(date_col)
+                    where_sql = f" WHERE {extra_where}" if extra_where else ""
+                    if is_ts:
+                        day_expr = f'("{date_col}" AT TIME ZONE \'America/New_York\')::date'
+                        cutoff_param = datetime(cutoff_date.year, cutoff_date.month,
+                                                 cutoff_date.day, tzinfo=_ET)
+                        last_write_raw = await c.fetchval(
+                            f'SELECT MAX("{date_col}") FROM "{table}"{where_sql}')
+                        last_write = last_write_raw.astimezone(_ET).date() if last_write_raw else None
+                    else:
+                        day_expr = f'"{date_col}"'
+                        cutoff_param = cutoff_date
+                        last_write = await c.fetchval(
+                            f'SELECT MAX("{date_col}") FROM "{table}"{where_sql}')
+
+                    cutoff_pred = f'"{date_col}" >= $1'
+                    full_where = f'{cutoff_pred} AND {extra_where}' if extra_where else cutoff_pred
+                    rows = await c.fetch(
+                        f'SELECT DISTINCT {day_expr} AS d FROM "{table}" WHERE {full_where}',
+                        cutoff_param,
+                    )
+                    active_days = [r["d"] for r in rows]
+                    out["tables_scanned"] += 1
+                    flag = _evaluate_table_liveness(active_days, last_write, today)
+                    if flag is not None:
+                        out["flags"].append({**flag, "table": table, "label": label})
+                except Exception as e:  # one bad table must not kill the sweep
+                    logger.warning("detector_liveness_check: table %s failed: %s", table, e)
+                    out["errors"].append({"table": table, "error": str(e)})
+    except Exception as e:
+        logger.error("detector_liveness_check: pool acquisition failed: %s", e, exc_info=True)
+        out["errors"].append({"pool": str(e)})
+        return out
+
+    # Record tonight's run — always, flagged or not. Unlike db_growth_check this needs no
+    # persisted baseline row: cadence is re-derived fresh each run straight from each table's own
+    # row history, so this row is a plain audit trail, not next week's comparison point.
+    try:
+        await log_audit_event(
+            "detector_liveness_check",
+            f"{out['tables_scanned']} tables, {len(out['flags'])} dark",
+            json.dumps([
+                {**f, "last_write": f["last_write"].isoformat() if f.get("last_write") else None}
+                for f in out["flags"]
+            ]),
+        )
+    except Exception as e:
+        logger.warning("detector_liveness_check: audit log failed: %s", e)
+        out["errors"].append({"audit": str(e)})
+
+    if not out["flags"]:
+        return out
+
+    # PER-TABLE dedupe (not one shared global count) — mirrors run_inert_sweep_check's
+    # once-per-lane idiom, windowed instead of permanent (a table's condition CAN resolve, so a
+    # permanent dedupe would silence it forever). mi_audit_log IS the dedupe state, no new table.
+    # Fails OPEN: a dedupe-read failure only risks one duplicate alert, never a missed one.
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            recent_rows = await c.fetch(
+                "SELECT DISTINCT split_part(summary, ':', 1) AS t FROM mi_audit_log "
+                "WHERE event_type = 'detector_liveness_alert' "
+                "AND created_at >= NOW() - make_interval(days => $1)",
+                _DETECTOR_LIVENESS_DEDUPE_DAYS,
+            )
+        recently_announced = {r["t"] for r in recent_rows}
+    except Exception as e:
+        logger.warning("detector_liveness_check: dedupe read failed (will announce): %s", e)
+        recently_announced = set()
+
+    fresh = [f for f in out["flags"] if f["table"] not in recently_announced]
+    if not fresh:
+        return out
+
+    lines = ["\U0001FA7A *Detectors gone quiet*", "```"]
+    lines.extend(_format_liveness_flag(f) for f in fresh)
+    lines.append("```")
+    lines.append("Output table(s) above have stopped writing beyond their own normal cadence — "
+                 "check the detector, not the tape (PLAN #543).")
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        out["spoke"] = bool(await send_telegram_message("\n".join(lines)))
+        for f in fresh:
+            await log_audit_event(
+                "detector_liveness_alert",
+                f"{f['table']}: " + ("never fired" if f["kind"] == "never_fired" else "silent"),
+                json.dumps({**f, "last_write": f["last_write"].isoformat() if f.get("last_write") else None}),
+            )
+    except Exception as e:
+        logger.warning("detector_liveness_check: announce failed: %s", e)
+        out["errors"].append({"announce": str(e)})
+    return out
+
+
 # ── #521 INERT-SWEEP CHECK (2026-08-03) ───────────────────────────────────────────────────────
 #
 # WHY. `mi_orb_extension_shadow` swept six entry-cutoff times for three months and every one of

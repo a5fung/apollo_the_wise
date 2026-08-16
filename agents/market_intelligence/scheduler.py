@@ -3227,6 +3227,24 @@ async def _post_nightly_audit_job():
         logger.error(f"DB-growth check failed: {e}", exc_info=True)
         await notify_job_failure("db_growth_check", str(e))
 
+    # DETECTOR-LIVENESS check (#543, 2026-08-16): the 08-15 review-registry sweep found
+    # detectors that produced nothing for months (mi_anticipation_lifecycle since 06-16, the
+    # #270 pin rejects every candidate; mi_flag_undercut_rally, 4 rows all-time) and nothing
+    # told anyone — the only watcher was a data-gated review predicate gated on the same dead
+    # counter. Per-table cadence derived from each table's own write history (see
+    # health_checks.py header for the full rule + why it won't cry wolf on a legitimately rare
+    # detector). Own try/except — a health guard that dies silently is the failure it exists
+    # to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_detector_liveness_check
+        dl = await run_detector_liveness_check()
+        logger.info(
+            f"Detector-liveness check: {dl['tables_scanned']} tables, "
+            f"{len(dl['flags'])} dark, {len(dl['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Detector-liveness check failed: {e}", exc_info=True)
+        await notify_job_failure("detector_liveness_check", str(e))
+
     # Job-liveness sweep (#370 increment 3): a scheduled job that RAN successfully but produced
     # NOTHING (theme synthesis truncating to 0 cohorts; theme-shadow 0 rows #173) — reads each output
     # table's real new-row count, NOT the lying self-report. Own try/except; internally robust.
