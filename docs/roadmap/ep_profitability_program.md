@@ -1356,6 +1356,69 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — RS TRAJECTORY SHAPE: moot, but NOT for the reason he guessed — and his curvature prediction is BACKWARDS
+
+Probe `scripts/probes/_rs_trajectory_shape_probe.py`, capture
+`docs/analysis/rs_trajectory_shape_2026-08-16.txt`. **240 tail tests · 120 too thin · 0 survive a
+global correction · 6 raw hits scattered in opposite directions — the profile of noise.**
+
+### His question was *"is this moot because the tail can't go lower?"* — the answer is moot for a different reason
+
+**Not the floor. The SHAPE BARELY EXISTS.** With a priori, un-tuned thresholds, FLAT fires on **~1%
+of low-RS alerts**, and the full three-phase composite (fell over 60 days, flat over 20) fires **5
+times in 305** — one usable row after maturity filtering. The premise is rare in the data
+regardless of any floor argument, so there is nothing to test rather than something being masked.
+
+✅ **And where shape IS measurable, the floor is NOT collapsing it** — his second-derivative
+framing populates well (71–220 alerts per regime) and slope and curvature are **uncorrelated
+(ρ ≈ −0.02)**, so curvature is genuinely independent information, not slope wearing a different
+name. His methodological worry was legitimate and it checks out clean.
+
+### 🔴 The curvature prediction runs BACKWARDS
+
+His mapping was deceleration ↔ neglect ↔ the EP precursor. Pooled across the low-RS population,
+**falling + decelerating is the WEAKEST of the four regimes**, not the strongest:
+
+| 20-day | falling + decelerating | the other three | |
+|---|---|---|---|
+| P90 excursion | +34.4% | **+43.4%** | raw p=0.075, wrong direction |
+| share ≥ +50% | 4.2% (7) | **7.1%** (27) | raw p=0.271 |
+| share ≥ +100% | 1.8% (3) | 2.4% (9) | raw p=0.746 |
+
+n=166 vs 380 over 49/56 sessions. **Within narrow RS bands — the primary test — the predicted
+regime produces ZERO raw hits in 40 tests.** Nothing is significant either way, so this is not
+"disproved"; but the sign is consistently opposite the hypothesis and there is no support for it
+anywhere in the read.
+
+### ⚠ What this does to yesterday's RS-inflection candidate: WEAKER, not dead
+
+The plain `rs_1m − rs_6m` sign was re-run **within the same narrow bands**, matched rows. In the
+deepest-neglect band (`rs_composite` 0–10) it holds up directionally with a large effect:
+
+| band 0–10, 20-day | improving | not improving |
+|---|---|---|
+| P90 excursion | **+80.1%** | +44.2% (diff +36pp, raw **p=0.053**) |
+| share ≥ +50% | **16.1%** (20) | 8.1% (14) |
+| share ≥ +100% | **5.6%** (7) | 2.3% (4) |
+| median | 18.7% | 10.4% |
+
+n=124 vs 173 over 47/64 sessions. **It neither reproduces cleanly nor dies** — same direction,
+biggest effect in the deepest-neglect band, but p=0.053 and nothing survives correction across the
+40 band tests. Yesterday's headline was measured on the pooled low-RS population; **conditioning on
+level costs it its significance**, which is either a level artifact or a power loss and this data
+cannot say which.
+
+▶ **Standing correction to how yesterday was reported:** the candidate is real enough to keep and
+too weak to build on. It stays a CANDIDATE at fork S-3, with the within-band caveat attached
+wherever it is cited.
+
+### Duration at the bottom — the feature that survives the floor — is real but null
+
+Genuinely distinct from slope (ρ = −0.15, not a restatement of it), but a median split at roughly
+one week shows no difference. **A true "months versus weeks" test needs more RS history than exists
+yet** — `mi_stock_scores` only persists the filtered universe from 2026-03-24. Re-ask when the
+history is deep enough; this is a real evidence-accrual item, not a null.
+
 ## 2026-08-16 — THE TAIL RE-READ: his 10X point was right, and it REVERSES yesterday's RS verdict
 
 Probe `scripts/probes/_tail_reread_probe.py` (+ shared `_tail_stats.py`), capture
