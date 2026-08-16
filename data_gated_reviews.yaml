@@ -9203,6 +9203,34 @@ reviews:
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
+  - review_id: stop_2r_running_comparison
+    title: "2R stop — RUNNING comparison against the old rule, read every close (not gated)"
+    question: >-
+      The 2R stop went live 2026-08-16 (operator-signed). There is NO live control arm -
+      every new trade uses the new rule - but one is not needed: `mi_exit_path_shadow`
+      records `stop_ref` (the ORB low) and `touched_minus_1r` on every trading day, so
+      the OLD rule's outcome is computable as a counterfactual on the SAME trades. If the
+      path touched the ORB low, the old rule exited there at -1R.
+      Read BOTH arms after every close: new-rule realized R vs old-rule counterfactual R,
+      at EQUAL dollar risk (the new rule risks 2x the old unit, so halve its R before
+      comparing - the 08-16 unit correction).
+      Operator 2026-08-16: "we should make frequent comparisons vs waiting for x samples
+      since it's live." So this is deliberately NOT evidence-gated - it is read every time
+      a position closes, from the first one.
+    evidence_predicate: >-
+      SELECT count(*) >= 1 FROM mi_exit_path_shadow WHERE is_exit_day = true
+    owner: operator
+    status: pending
+    notes: >-
+      NOT a sample-size gate. The first closed trade under the new rule is worth reading,
+      because this is real money and the change is reversible only by a code revert plus
+      redeploy (no dark toggle exists for a stop level - see magna53_ep.md's change entry).
+      Watch for: the new rule losing 2x on a trade the old rule would have cut at -1R;
+      the profit target firing at the ORIGINAL 2R price (a drift to 4R is the change's
+      primary correctness risk); and position size halving ONCE, not twice.
+      The separate `exit_path_shadow_first_read` review at 20 closed positions remains the
+      formal out-of-sample read - this one is the live watch that precedes it.
+
   - review_id: exit_path_shadow_first_read
     title: "Exit-path shadow — first read on LIVE data (the stop fork's out-of-sample)"
     question: >-
