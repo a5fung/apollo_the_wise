@@ -1,0 +1,32 @@
+TLRY|2026-04-23|skipped|setup:stop_too_wide: stop distance 24.8% > 15%|paper|||||||0|magna53
+WST|2026-04-23|skipped|setup:stop_too_wide: ORB range $6.33 (2.1%) > 1.5x ATR $5.41|paper|||||||0|magna53
+WKC|2026-04-24|skipped|setup:stop_too_wide: ORB range $2.70 (10.0%) > 1.5x ATR $0.43|paper|||||||0|magna53
+BAND|2026-04-30|skipped|setup:stop_too_wide: ORB range $2.22 (7.2%) > 1.5x ATR $1.30|paper|||||||0|magna53
+FCEL|2026-04-30|skipped|setup:stop_too_wide: stop distance 17.8% > 15%|paper|||||||0|9m_day2
+RDAC|2026-04-30|skipped|setup:stop_too_wide: stop distance 45.1% > 15%|paper|||||||0|9m_day2
+TTMI|2026-04-30|skipped|setup:stop_too_wide: ORB range $10.00 (5.9%) > 1.5x ATR $7.37|paper|||||||0|magna53
+ARDX|2026-05-04|skipped|setup:stop_too_wide: stop distance 18.1% > 15%|paper|||||||0|9m_day2
+SOUN|2026-05-04|skipped|setup:stop_too_wide: stop distance 17.7% > 15%|paper|||||||0|9m_day2
+EVER|2026-05-05|skipped|setup:stop_too_wide: ORB range $1.00 (5.5%) > 1.5x ATR $0.70|paper|||||||0|magna53
+STRL|2026-05-05|skipped|setup:stop_too_wide: ORB range $35.02 (5.0%) > 1.5x ATR $20.33|paper|||||||0|magna53
+POET|2026-05-06|skipped|setup:stop_too_wide: stop distance 26.5% > 15%|paper|||||||0|9m_day2
+AIP|2026-05-13|skipped|setup:stop_too_wide: ORB range $3.18 (9.8%) > 1.5x ATR $3.02|paper|||||||0|magna53
+GO|2026-05-14|skipped|setup:stop_too_wide: ORB range $0.71 (8.1%) > 1.5x ATR $0.60|paper|||||||0|magna53
+STUB|2026-05-19|skipped|setup:stop_too_wide: stop distance 16.1% > 15%|paper|||||||0|9m_day2
+PONY|2026-05-26|skipped|setup:stop_too_wide: ORB range $0.74 (7.6%) > 1.5x ATR $0.73|paper|||||||0|magna53
+BTDR|2026-05-29|skipped|setup:stop_too_wide: stop distance 19.2% > 15%|paper|||||||0|9m_day2
+GLXY|2026-06-09|skipped|setup:stop_too_wide: stop distance 17.1% > 15%|paper|||||||0|9m_day2
+TNGX|2026-06-09|skipped|setup:stop_too_wide: stop distance 20.5% > 15%|paper|||||||0|9m_day2
+PAYO|2026-06-10|skipped|setup:stop_too_wide: stop distance 21.2% > 15%|paper|||||||0|9m_day2
+VELO|2026-06-10|skipped|setup:stop_too_wide: stop distance 28.5% > 15%|paper|||||||0|9m_day2
+FRMI|2026-06-11|skipped|setup:stop_too_wide: stop distance 20.0% > 15%|paper|||||||0|9m_day2
+MU|2026-06-25|skipped|setup:price_exceeds_cap: $1235.00/share > $1000 (20% of $5000)|paper|||||||0|magna53
+CORT|2026-07-30|skipped|setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89|live|||||||0|magna53
+EME|2026-07-30|skipped|setup:size_too_small: $12 risk / $16.65 per-share < 1 share|live|||||||0|magna53
+PWR|2026-07-30|skipped|setup:size_too_small: $12 risk / $21.95 per-share < 1 share|live|||||||0|magna53
+SIMO|2026-07-30|skipped|setup:size_too_small: $12 risk / $29.11 per-share < 1 share|live|||||||0|magna53
+AEVA|2026-08-06|skipped|setup:stop_too_wide: ORB range $3.08 (13.4%) > 1.5x ATR $2.33|live|||||||0|magna53
+SITM|2026-08-06|skipped|setup:size_too_small: $48 risk / $48.88 per-share < 1 share|live|||||||0|magna53
+ATRO|2026-08-12|skipped|setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29|live|||||||0|magna53
+EROC|2026-08-12|cancelled|setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs planned $0.41/sh (cap 1.50x, ORB high $13.16)|live|13.16|12.75|1.099278571428571|13.16|12.75|47.65|0|magna53
+HTFL|2026-08-14|skipped|setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19|live|||||||0|magna53

@@ -1309,6 +1309,47 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-15 — STOP-GEOMETRY SWEEP: cannot tell yet, and the reason why is a CAPTURE HOLE
+
+Probe `scripts/probes/_stop_geometry_sweep.py`, output `docs/analysis/stop_geometry_sweep_2026-08-15.txt`.
+Question: is the 1.5× ATR stop-width rule cutting into a region that still worked? **Measurement
+only — the rule is entry discipline (THE LINE).**
+
+### The answer is "cannot tell", and the honest reason is population, not method
+
+- **Only 3 filled alerts in the whole 55-session cohort ever land at ≥1.5×** (AEVA, APPS, CORT).
+  All 6 pre-registered tests return N-too-small-for-permutation. Descriptively those 3 were full
+  stop-outs (−1.00R), but at this N medians quantize to {−1.00, −0.50, 0.00} and the profile is not
+  even monotone (the 0.0–0.5× bucket is the WORST). **There is no shape to read in either
+  direction** — this is not weak evidence for the rule, it is no evidence.
+- **The chase cap cannot be measured at all: N=1, ever.** EROC is a worked case, not a sample.
+  Its own reconstructed ratio was **0.37×** — so its rejection was chase-cap PRICE MOVEMENT, not
+  ORB width. A different mechanism entirely from the one this sweep buckets.
+- **The two prompting names cannot contribute yet** — ATRO and HTFL have not settled 5 forward
+  trading days (~08-19/08-21). Their ratios DID reconstruct and match the live rule exactly
+  (ATRO 1.63×, HTFL 1.75×), which validates the reconstruction. Re-ask when they settle.
+- ⚠ **Correction carried from the probe:** the `ORB range $5.75 > 1.5× ATR $5.29` numbers are
+  **ATRO's (08-12)**, not HTFL's. HTFL's line is `ORB range $2.55 (7.0%) > 1.5× ATR $2.19`.
+- ⚠ **The "26 stop_too_wide rows" figure is a MIXED population** — 14 are the MAGNA53 1.5×-ATR rule
+  under study, 12 are a different 9M-Day2 rule (stop distance >15% of price). Always split, never
+  pool.
+
+### 🔴 THE FINDING THAT MATTERS: a whole class of declines is invisible to our outcome surface
+
+`missed_outcomes.py` builds its population as alerts NOT in `traded`, where `traded` is any
+`mi_live_trades` row with `status IS DISTINCT FROM 'skipped'`. **`cancelled` satisfies that.** So an
+order that was PLACED and then CANCELLED — the chase cap, the 10:00 ET unfilled sweep — counts as
+TRADED for outcome purposes and gets no outcome row, while never having been a trade.
+
+- **Consequence: those names are in NEITHER population.** Not in "what we took" (no fill, no P&L),
+  not in "what we declined" (excluded as traded). The skip-attribution read hit the same wall
+  independently — **18 such rows**.
+- ▶ **This is why EROC has no outcome row**, and why the chase-cap question is not merely thin but
+  structurally unanswerable on the current surface. **Fixing the capture is a PREREQUISITE, not a
+  nice-to-have** — without it the question can never be answered no matter how long we wait.
+- ▶ Same class as the 08-15 capture audit (#567): a population we assumed was recorded and was not.
+  Telemetry only — no rule changes, no trading behaviour touched.
+
 ## 2026-08-15 — EROC, his SECOND labelled good EP: same signature as PLTR, and OUR OWN RISK RULE threw it out
 
 Operator: *"another good looking EP (so far) is eroc which I mention has good structure."*

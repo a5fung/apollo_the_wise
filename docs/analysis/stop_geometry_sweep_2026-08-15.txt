@@ -1,0 +1,340 @@
+====================================================================================================
+STOP-GEOMETRY SWEEP — does the 1.5x-ATR admission rule cut off names that would have
+worked? (capture 2026-08-15, READ-ONLY, stage 3 of The Real EP Plan — ENTER)
+====================================================================================================
+HIGH-alert cohort (mi_ep_alerts, score_tier=HIGH, source=live): 176 alerts, 55 sessions, 2026-05-11 .. 2026-08-14
+⚠ mi_ep_alerts' retention starts 2026-05-11 — 6 of the 26 stop_too_wide rejects (Part A)
+  predate this and sit outside the ratio-reconstruction cohort; their daily bars were
+  pulled separately for Part A's forward-return table ONLY (no minute bars, no ratio1).
+  ATRO and HTFL (both within the cohort window) get an independently reconstructed ratio
+  below (VALIDATION) but cannot yet contribute an R to any Part B bucket — too recent to
+  have 5 forward trading days on record (settlement, not geometry, is what they lack).
+
+FUNNEL (every HIGH alert, exactly one outcome each; ok_* rows all have a ratio1 —
+ineligible = detected outside the 9:31-9:44 submission window, unsettled = <5 forward
+trading days on record yet; only ok_eligible_settled can contribute an R to a bucket): ok_eligible_settled=114  ok_eligible_unsettled=15  ok_ineligible_settled=36  ok_ineligible_unsettled=8  zero_range=3
+  ratio reconstructable (any elig/settle state): 173/176  of which can
+  contribute an R (eligible AND settled): 114  of which the 1-min ORB
+  actually triggered+filled: 81/114 (71%)
+  of the ratio-reconstructable: 0 unknown-ATR (<15 prior trading days), 3 zero-range (excluded from _every_ bucket table below — no stop distance to measure), 0 scale-mismatch exclusions (minute-vs-daily sanity check)
+
+  RARITY CHECK (advisor-flagged): is '>=1.5x is rare' true of the WHOLE HIGH population,
+  or only of the in-window subset that could actually fire an order? Ratio needs no
+  window-eligibility or settlement, so this covers every ratio-reconstructable alert:
+    ALL ratio-known alerts (any elig/settle state): 11/173 >= 1.5x (6%)
+    in-WINDOW-eligible only (the population every bucket table below actually uses): 9/129 >= 1.5x (7%)
+    (close to each other = the in-window subset is representative; a real gap would mean
+     'only 3 above 1.5x' is an artifact of which alerts happened to arrive in time, not a
+     property of wide-ORB alerts generally.)
+
+====================================================================================================
+VALIDATION — reconstructed ratio vs the RECORDED numbers on every known stop_too_wide
+reject (run BEFORE any bucket table below is trusted, per pre-commit review)
+====================================================================================================
+  TLRY   2026-04-23  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 24.8% > 15%
+  WST    2026-04-23  recorded ratio 1.76x (range $6.33 / ATR $3.61) — not in the mi_ep_alerts HIGH cohort at all — predates its 2026-05-11 retention start, no independent reconstruction possible here
+  WKC    2026-04-24  recorded ratio 9.42x (range $2.70 / ATR $0.29) — not in the mi_ep_alerts HIGH cohort at all — predates its 2026-05-11 retention start, no independent reconstruction possible here
+  BAND   2026-04-30  recorded ratio 2.56x (range $2.22 / ATR $0.87) — not in the mi_ep_alerts HIGH cohort at all — predates its 2026-05-11 retention start, no independent reconstruction possible here
+  FCEL   2026-04-30  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 17.8% > 15%
+  RDAC   2026-04-30  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 45.1% > 15%
+  TTMI   2026-04-30  recorded ratio 2.04x (range $10.00 / ATR $4.91) — not in the mi_ep_alerts HIGH cohort at all — predates its 2026-05-11 retention start, no independent reconstruction possible here
+  ARDX   2026-05-04  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 18.1% > 15%
+  SOUN   2026-05-04  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 17.7% > 15%
+  EVER   2026-05-05  recorded ratio 2.14x (range $1.00 / ATR $0.47) — not in the mi_ep_alerts HIGH cohort at all — predates its 2026-05-11 retention start, no independent reconstruction possible here
+  STRL   2026-05-05  recorded ratio 2.58x (range $35.02 / ATR $13.55) — not in the mi_ep_alerts HIGH cohort at all — predates its 2026-05-11 retention start, no independent reconstruction possible here
+  POET   2026-05-06  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 26.5% > 15%
+  AIP    2026-05-13  recorded 1.58x (range $3.18 / ATR $2.01)  vs reconstructed 1.58x (range $3.18 / ATR $2.01)  AGREE (both >1.5x)
+  GO     2026-05-14  recorded 1.78x (range $0.71 / ATR $0.40)  vs reconstructed 1.77x (range $0.71 / ATR $0.40)  AGREE (both >1.5x)
+  STUB   2026-05-19  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 16.1% > 15%
+  PONY   2026-05-26  recorded 1.52x (range $0.74 / ATR $0.49)  vs reconstructed 1.46x (range $0.71 / ATR $0.49)  boundary flip (both within 0.1x of 1.5 — Polygon late-trade revision between the live 9:31 read and this later pull, not a formula error; the value the LIVE rule saw is the 'recorded' number)
+  BTDR   2026-05-29  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 19.2% > 15%
+  GLXY   2026-06-09  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 17.1% > 15%
+  TNGX   2026-06-09  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 20.5% > 15%
+  PAYO   2026-06-10  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 21.2% > 15%
+  VELO   2026-06-10  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 28.5% > 15%
+  FRMI   2026-06-11  [DIFFERENT rule — the 9M-Day2 'stop distance %>15%' check, NOT the 1.5x-ATR rule under test; excluded from validation and from every ratio bucket below]  raw: setup:stop_too_wide: stop distance 20.0% > 15%
+  CORT   2026-07-30  recorded 1.58x (range $7.25 / ATR $4.59)  vs reconstructed 1.58x (range $7.25 / ATR $4.59)  AGREE (both >1.5x)
+  AEVA   2026-08-06  recorded 1.98x (range $3.08 / ATR $1.55)  vs reconstructed 1.98x (range $3.08 / ATR $1.55)  AGREE (both >1.5x)
+  ATRO   2026-08-12  recorded 1.63x (range $5.75 / ATR $3.53)  vs reconstructed 1.63x (range $5.75 / ATR $3.52)  AGREE (both >1.5x)
+  HTFL   2026-08-14  recorded 1.75x (range $2.55 / ATR $1.46)  vs reconstructed 1.75x (range $2.55 / ATR $1.46)  AGREE (both >1.5x)
+
+  6 agree / 0 disagree-far-from-boundary / 6 not independently checkable (predate the mi_ep_alerts cohort, 2026-05-11) / 13 different rule (9M-style, excluded)
+  (both sides use the SAME formula — Wilder TR, prior-close basis. A far-from-boundary
+   DISAGREE would mean this probe's ratio1 mislabels the rule that actually fired — none
+   found. A near-boundary flip is expected noise from re-pulling minute bars after the
+   fact and does not call the reconstruction into question.)
+
+====================================================================================================
+PART A — what happened to the names the 4 risk-geometry skip reasons rejected
+(descriptive only — N and distinct sessions on every line; population too small for a
+ p-value on any of these except stop_too_wide, and even that split is thin)
+====================================================================================================
+
+-- stop_too_wide — N=26 rows, 18 distinct sessions --
+  [magna53 (the 1.5x-ATR rule Part B studies) — N=14, 11 sessions]
+    TLRY   2026-04-23  [paper/skipped] [⚠ signal_type=magna53 but message uses the 9M %-format — unexplained, not chased further]
+        setup:stop_too_wide: stop distance 24.8% > 15%
+        ret_0d(alert-day close) -25.4%   ret_1d -27.4%   ret_5d -32.9%   max_high (partial, 5/5 fwd days seen) +0.4%
+    WST    2026-04-23  [paper/skipped]
+        setup:stop_too_wide: ORB range $6.33 (2.1%) > 1.5x ATR $5.41
+        ret_0d(alert-day close) +0.6%   ret_1d -0.6%   ret_5d -3.4%   max_high (partial, 5/5 fwd days seen) +4.0%
+    WKC    2026-04-24  [paper/skipped]
+        setup:stop_too_wide: ORB range $2.70 (10.0%) > 1.5x ATR $0.43
+        ret_0d(alert-day close) -9.2%   ret_1d -8.7%   ret_5d -5.7%   max_high (partial, 5/5 fwd days seen) +3.7%
+    BAND   2026-04-30  [paper/skipped]
+        setup:stop_too_wide: ORB range $2.22 (7.2%) > 1.5x ATR $1.30
+        ret_0d(alert-day close) +18.9%   ret_1d +44.9%   ret_5d +56.9%   max_high (partial, 5/5 fwd days seen) +59.1%
+    TTMI   2026-04-30  [paper/skipped]
+        setup:stop_too_wide: ORB range $10.00 (5.9%) > 1.5x ATR $7.37
+        ret_0d(alert-day close) -11.5%   ret_1d -11.0%   ret_5d -14.0%   max_high (partial, 5/5 fwd days seen) +0.7%
+    EVER   2026-05-05  [paper/skipped]
+        setup:stop_too_wide: ORB range $1.00 (5.5%) > 1.5x ATR $0.70
+        ret_0d(alert-day close) +24.8%   ret_1d +7.8%   ret_5d +0.2%   max_high (partial, 5/5 fwd days seen) +25.6%
+    STRL   2026-05-05  [paper/skipped]
+        setup:stop_too_wide: ORB range $35.02 (5.0%) > 1.5x ATR $20.33
+        ret_0d(alert-day close) +10.8%   ret_1d +21.8%   ret_5d +17.0%   max_high (partial, 5/5 fwd days seen) +22.2%
+    AIP    2026-05-13  [paper/skipped]
+        setup:stop_too_wide: ORB range $3.18 (9.8%) > 1.5x ATR $3.02
+        ret_0d(alert-day close) +0.3%   ret_1d +5.4%   ret_5d -1.4%   max_high (partial, 5/5 fwd days seen) +8.6%
+    GO     2026-05-14  [paper/skipped]
+        setup:stop_too_wide: ORB range $0.71 (8.1%) > 1.5x ATR $0.60
+        ret_0d(alert-day close) -15.8%   ret_1d -18.8%   ret_5d -12.1%   max_high (partial, 5/5 fwd days seen) +3.6%
+    PONY   2026-05-26  [paper/skipped]
+        setup:stop_too_wide: ORB range $0.74 (7.6%) > 1.5x ATR $0.73
+        ret_0d(alert-day close) -9.3%   ret_1d -5.4%   ret_5d +5.1%   max_high (partial, 5/5 fwd days seen) +9.5%
+    CORT   2026-07-30  [live/skipped]
+        setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89
+        ret_0d(alert-day close) +5.6%   ret_1d +2.2%   ret_5d -3.6%   max_high (partial, 5/5 fwd days seen) +9.1%
+    AEVA   2026-08-06  [live/skipped]
+        setup:stop_too_wide: ORB range $3.08 (13.4%) > 1.5x ATR $2.33
+        ret_0d(alert-day close) -2.1%   ret_1d +3.2%   ret_5d -13.1%   max_high (partial, 5/5 fwd days seen) +10.2%
+    ATRO   2026-08-12  [live/skipped]
+        setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29
+        ret_0d(alert-day close) +4.4%   ret_1d +10.0%   ret_5d n/a (only 2 fwd day(s) on record, too new)   max_high (partial, 2/5 fwd days seen) +12.2%
+    HTFL   2026-08-14  [live/skipped] <== NAMED CASE
+        setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19
+        ret_0d(alert-day close) +7.7%   ret_1d n/a (too new)   ret_5d n/a (only 0 fwd day(s) on record, too new)   max_high (partial, 0/5 fwd days seen) +10.1%
+  [9m_day2 (a DIFFERENT rule — stop distance > 15% of price, order_manager.py:5606 — NOT under study in Part B) — N=12, 8 sessions]
+    FCEL   2026-04-30  [paper/skipped]
+        setup:stop_too_wide: stop distance 17.8% > 15%
+        ret_0d(alert-day close) -2.3%   ret_1d +0.1%   ret_5d -7.7%   max_high (partial, 5/5 fwd days seen) +7.5%
+    RDAC   2026-04-30  [paper/skipped]
+        setup:stop_too_wide: stop distance 45.1% > 15%
+        ret_0d(alert-day close) -5.7%   ret_1d -17.9%   ret_5d -32.5%   max_high (partial, 5/5 fwd days seen) +28.6%
+    ARDX   2026-05-04  [paper/skipped]
+        setup:stop_too_wide: stop distance 18.1% > 15%
+        ret_0d(alert-day close) +2.2%   ret_1d -0.1%   ret_5d -7.4%   max_high (partial, 5/5 fwd days seen) +4.1%
+    SOUN   2026-05-04  [paper/skipped]
+        setup:stop_too_wide: stop distance 17.7% > 15%
+        ret_0d(alert-day close) -0.7%   ret_1d -4.2%   ret_5d -11.4%   max_high (partial, 5/5 fwd days seen) +5.3%
+    POET   2026-05-06  [paper/skipped]
+        setup:stop_too_wide: stop distance 26.5% > 15%
+        ret_0d(alert-day close) +2.3%   ret_1d +0.8%   ret_5d +51.2%   max_high (partial, 5/5 fwd days seen) +57.5%
+    STUB   2026-05-19  [paper/skipped]
+        setup:stop_too_wide: stop distance 16.1% > 15%
+        ret_0d(alert-day close) -3.2%   ret_1d +1.4%   ret_5d -1.7%   max_high (partial, 5/5 fwd days seen) +5.7%
+    BTDR   2026-05-29  [paper/skipped]
+        setup:stop_too_wide: stop distance 19.2% > 15%
+        ret_0d(alert-day close) -3.3%   ret_1d +2.4%   ret_5d -3.4%   max_high (partial, 5/5 fwd days seen) +14.6%
+    GLXY   2026-06-09  [paper/skipped]
+        setup:stop_too_wide: stop distance 17.1% > 15%
+        ret_0d(alert-day close) +6.3%   ret_1d -2.0%   ret_5d +7.9%   max_high (partial, 5/5 fwd days seen) +15.8%
+    TNGX   2026-06-09  [paper/skipped]
+        setup:stop_too_wide: stop distance 20.5% > 15%
+        ret_0d(alert-day close) -2.1%   ret_1d -11.0%   ret_5d -0.2%   max_high (partial, 5/5 fwd days seen) +2.8%
+    PAYO   2026-06-10  [paper/skipped]
+        setup:stop_too_wide: stop distance 21.2% > 15%
+        ret_0d(alert-day close) +3.4%   ret_1d +4.7%   ret_5d +8.8%   max_high (partial, 5/5 fwd days seen) +9.3%
+    VELO   2026-06-10  [paper/skipped]
+        setup:stop_too_wide: stop distance 28.5% > 15%
+        ret_0d(alert-day close) +13.8%   ret_1d +53.5%   ret_5d +28.2%   max_high (partial, 5/5 fwd days seen) +59.3%
+    FRMI   2026-06-11  [paper/skipped]
+        setup:stop_too_wide: stop distance 20.0% > 15%
+        ret_0d(alert-day close) +3.3%   ret_1d +6.1%   ret_5d +41.2%   max_high (partial, 5/5 fwd days seen) +50.6%
+
+-- chase_cap_exceeded — N=1 rows, 1 distinct sessions --
+    EROC   2026-08-12  [live/cancelled] <== NAMED CASE
+        setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs planned $0.41/sh (cap 1.50x, ORB high $13.16)
+        ret_0d(alert-day close) +5.3%   ret_1d +19.4%   ret_5d n/a (only 2 fwd day(s) on record, too new)   max_high (partial, 2/5 fwd days seen) +29.3%
+
+-- size_too_small — N=4 rows, 2 distinct sessions --
+    EME    2026-07-30  [live/skipped]
+        setup:size_too_small: $12 risk / $16.65 per-share < 1 share
+        ret_0d(alert-day close) +4.0%   ret_1d +3.3%   ret_5d +4.8%   max_high (partial, 5/5 fwd days seen) +8.9%
+    PWR    2026-07-30  [live/skipped]
+        setup:size_too_small: $12 risk / $21.95 per-share < 1 share
+        ret_0d(alert-day close) +1.7%   ret_1d +3.1%   ret_5d +3.2%   max_high (partial, 5/5 fwd days seen) +9.4%
+    SIMO   2026-07-30  [live/skipped]
+        setup:size_too_small: $12 risk / $29.11 per-share < 1 share
+        ret_0d(alert-day close) -1.9%   ret_1d -2.5%   ret_5d +2.9%   max_high (partial, 5/5 fwd days seen) +9.6%
+    SITM   2026-08-06  [live/skipped]
+        setup:size_too_small: $48 risk / $48.88 per-share < 1 share
+        ret_0d(alert-day close) +0.4%   ret_1d +5.9%   ret_5d +0.4%   max_high (partial, 5/5 fwd days seen) +11.4%
+
+-- price_exceeds_cap — N=1 rows, 1 distinct sessions --
+    MU     2026-06-25  [paper/skipped]
+        setup:price_exceeds_cap: $1235.00/share > $1000 (20% of $5000)
+        ret_0d(alert-day close) -1.6%   ret_1d -8.2%   ret_5d -20.9%   max_high (partial, 5/5 fwd days seen) +1.8%
+
+  ⚠ chase_cap_exceeded: N=1 EVER (EROC). Cannot be measured on its own rejections —
+    stated as a finding, not tested. EROC is a worked case, not a sample.
+  ⚠ EROC's skip is NOT a stop_too_wide/ATR-ratio event — chase_cap_exceeded fires when
+    price runs away between alert and trigger, a DIFFERENT mechanism than ORB-range-vs-
+    ATR. Part B's ratio bucketing below does not and cannot measure the chase cap.
+  ⚠ chase_cap_exceeded writes mi_live_trades status='cancelled'. mi_ep_missed_outcomes'
+    own 'traded' CTE excludes only status='skipped' — so EVERY chase_cap_exceeded row is
+    invisible to the entire skip-attribution surface (missed_outcomes.py), not just to
+    this probe. That is why this probe computes Part A's returns directly from daily
+    bars rather than joining mi_ep_missed_outcomes as first drafted.
+
+  EROC's OWN reconstructed ratio1 (context, not a chase-cap measurement): 0.37x — comfortably UNDER 1.5x, confirming its rejection came from chase-cap price movement, not ORB-width-vs-ATR.
+
+====================================================================================================
+PART B — every reconstructable HIGH alert, bucketed by the ratio the rule uses
+(ORB range / ATR14). PRIMARY unit = SETTLE_RULE harvest-ladder realized-R (the house
+realized-R definition, reused verbatim from _468_moderate_realized_r.py). SECONDARY unit
+= harvest-FREE day-0/day-5 stop-only R (stop_width_replay.walk(), reused verbatim) — the
++1R/+3R ladder is not neutral to stop width (a wide stop rarely reaches +1R and rides to
+the day-5 time stop), so if the two units disagree in sign across the 1.5x line, THAT
+disagreement is itself the finding, not a contradiction to explain away.
+====================================================================================================
+
+[BASELINE — live geometry: 1-min ORB entry, ORB-low stop]  (of 114 settled alerts) filled n=81, no-fill n=33 (excluded — 
+ a name that never triggered the ORB-high buy has no fill price to build a stop from)
+
+  -- SETTLE_RULE harvest-ladder realized-R (PRIMARY unit) --
+    0.0-0.5x                   n=32   median -1.00R  mean +0.12R  win 34%  top3-share 160%  ex-top3 mean -0.08R                 24 sessions
+    0.5-1.0x                   n=34   median +0.00R  mean -0.03R  win 24%  top3-share -704%  ex-top3 mean -0.22R                22 sessions
+    1.0-1.5x                   n=12   median +0.00R  mean -0.03R  win 25%  top3-share -1135%  ex-top3 mean -0.56R                8 sessions
+    1.5-2.0x  <-- rule's own cutoff n=3    median -1.00R  mean -0.59R  win 33%  top3-share 100%  ex-top3 mean +0.00R                  3 sessions
+    >=2.0x                     n=0                                                                                               0 sessions
+
+  -- harvest-FREE day-5 stop-only R (SECONDARY unit — robustness check) --
+    0.0-0.5x                   n=32   median -1.00R  mean +0.26R  win 12%  top3-share 416%  ex-top3 mean -0.90R                 24 sessions
+    0.5-1.0x                   n=34   median -1.00R  mean -0.33R  win 18%  top3-share -129%  ex-top3 mean -0.82R                22 sessions
+    1.0-1.5x                   n=12   median -1.00R  mean -0.23R  win 25%  top3-share -225%  ex-top3 mean -1.00R                 8 sessions
+    1.5-2.0x  <-- rule's own cutoff n=3    median -1.00R  mean -0.85R  win 0%  top3-share 100%  ex-top3 mean +0.00R                   3 sessions
+    >=2.0x                     n=0                                                                                               0 sessions
+
+  -- raw ret_5d forward return, open_d0 basis (context — NOT R; flatters wide-stop
+     buckets mechanically, since R divides by a bigger denominator there) --
+    0.0-0.5x                   n=32   median -0.64%  mean +1.27%  win 47%  top3-share 258%  ex-top3 mean -2.21%                 24 sessions
+    0.5-1.0x                   n=34   median -2.34%  mean -1.56%  win 44%  top3-share -126%  ex-top3 mean -3.88%                22 sessions
+    1.0-1.5x                   n=12   median -0.53%  mean -0.65%  win 42%  top3-share -594%  ex-top3 mean -6.01%                 8 sessions
+    1.5-2.0x  <-- rule's own cutoff n=3    median -3.62%  mean -4.29%  win 33%  top3-share 100%  ex-top3 mean +0.00%                  3 sessions
+    >=2.0x                     n=0                                                                                               0 sessions
+
+  WHO is in the >=1.5x filled bucket (n=3), and does it just re-derive Part A:
+    CORT   2026-07-30  ratio1=1.58x  harvest_r=+0.22R — ALSO a real historical stop_too_wide reject (Part A)
+    APPS   2026-08-05  ratio1=1.72x  harvest_r=-1.00R — NOT in Part A's reject list (ratio cleared 1.5x here but the live system did not reject it that day)
+    AEVA   2026-08-06  ratio1=1.98x  harvest_r=-1.00R — ALSO a real historical stop_too_wide reject (Part A)
+  Of Part A's 4 in-window magna53 rejects (AIP/GO/CORT/AEVA), only 2/4
+  reach this bucket — AIP and GO never triggered a counterfactual fill at all (no-fill,
+  excluded from every R bucket), so Part B's treated side is NOT simply Part A re-derived:
+  it is smaller on one side (2 of Part A's 4 never fill) and larger on the other (APPS
+  clears 1.5x here but was never actually rejected live — its full geometry never
+  triggered the gate that day, provenance not chased further).
+
+  ⚠ READ THIS BEFORE THE BUCKET TABLE ABOVE, NOT AFTER (advisor-flagged):
+  1. DISJOINT SAMPLES. The R evidence above the 1.5x line comes from 3 OLDER filled names
+     (AEVA/APPS/CORT) — ATRO, HTFL and EROC, the cases that prompted this probe, are ALL
+     excluded here (unsettled/chase-cap). Part A shows those three moved UP: HTFL +7.7% to
+     the alert-day close, ATRO +10.0% the next day, EROC +19.4% the next day. 'the >=1.5x
+     bucket was 3/3 stop-outs' and 'the names he asked about ran' are BOTH true and
+     describe DIFFERENT alerts — re-ask once ATRO/HTFL settle (~08-19 / ~08-21).
+  2. NO SHAPE, EVEN DESCRIPTIVELY. Every median above is one of {-1.00R, -0.50R, +0.00R} —
+     the +1R/+3R ladder produces almost nothing else, so at n=3-12 per bucket the median
+     is just the middle discrete value, not an effect size. And the profile is NOT
+     monotone: 0.0-0.5x has the WORST median (-1.00R), 0.5-1.5x sits at +0.00R. That kills
+     any 'R falls off as width rises' reading in EITHER direction — there is no shape here
+     to fall off, only noise at small N.
+
+[ALTERNATE STOP 1 — day-low-so-far: min low from open through the fill bar, SAME 1-min
+ entry, SAME ratio1 buckets]
+  n with a valid day-low-so-far stop: 81/81
+    0.0-0.5x                   n=32   median -0.50R  mean +0.12R  win 31%  top3-share 150%  ex-top3 mean -0.07R                 24 sessions
+    0.5-1.0x                   n=34   median +0.00R  mean -0.01R  win 24%  top3-share -1459%  ex-top3 mean -0.21R               22 sessions
+    1.0-1.5x                   n=12   median -0.50R  mean -0.12R  win 25%  top3-share -307%  ex-top3 mean -0.67R                 8 sessions
+    1.5-2.0x  <-- rule's own cutoff n=3    median -1.00R  mean -0.59R  win 33%  top3-share 100%  ex-top3 mean +0.00R                  3 sessions
+    >=2.0x                     n=0                                                                                               0 sessions
+
+[ALTERNATE STOP 2 — entry - 1.0x ADR-20% (sell_discipline.py's own adr_20_pct
+ formula; ONE representative multiple, not a grid — scope bound), SAME 1-min entry, SAME
+ ratio1 buckets]
+  n with a valid ADR-multiple stop: 81/81
+    0.0-0.5x                   n=32   median +0.00R  mean +0.17R  win 38%  top3-share 109%  ex-top3 mean -0.02R                 24 sessions
+    0.5-1.0x                   n=34   median -0.50R  mean -0.11R  win 26%  top3-share -164%  ex-top3 mean -0.31R                22 sessions
+    1.0-1.5x                   n=12   median -0.50R  mean -0.24R  win 17%  top3-share -111%  ex-top3 mean -0.67R                 8 sessions
+    1.5-2.0x  <-- rule's own cutoff n=3    median +0.00R  mean -0.30R  win 33%  top3-share 100%  ex-top3 mean +0.00R                  3 sessions
+    >=2.0x                     n=0                                                                                               0 sessions
+
+[ALTERNATE GEOMETRY — 5-min ORB (hi/lo over 9:30-9:34 bars, arm at 9:35 — the
+ shadow_orb_tracker/_482 V-5M definition): OWN trigger, OWN stop, OWN ratio5 buckets]
+  n filled: 52/114
+    0.0-0.5x                   n=10   median -1.00R  mean -0.20R  win 20%  top3-share -200%  ex-top3 mean -0.86R                10 sessions
+    0.5-1.0x                   n=9    median +0.00R  mean -0.00R  win 33%  top3-share -16707%  ex-top3 mean -0.81R               8 sessions
+    1.0-1.5x                   n=19   median +0.00R  mean +0.39R  win 42%  top3-share 80%  ex-top3 mean +0.09R                  14 sessions
+    1.5-2.0x  <-- rule's own cutoff n=10   median -1.00R  mean -0.94R  win 10%  top3-share 19%  ex-top3 mean -1.08R                   8 sessions
+    >=2.0x                     n=4    median -1.00R  mean -0.41R  win 25%  top3-share 39%  ex-top3 mean -1.00R                   4 sessions
+
+  descriptive-only sub-split (no test run — N too small to test, reported because this
+  is literally 'is the threshold near the right place'): 1.5-2.0x  n=3    median -1.00R  mean -0.59R  win 33%  top3-share 100%  ex-top3 mean +0.00R
+                                                          >=2.0x    n=0
+
+  (note: top3-share%/ex-top3-mean can print extreme percentages on small samples whose
+   R values sum near zero — a known artifact of that ratio, not a data error; read the
+   median/mean/win% columns as primary, top3-share as a tail-concentration flag only.)
+
+====================================================================================================
+PRE-REGISTERED TEST BATTERY — 6 tests, fixed and counted (declared in the docstring
+before any bucket above was computed). Split point = 1.5x (the live gate's own cutoff).
+Session-permuted (same-morning alerts are not independent draws).
+====================================================================================================
+  1 PRIMARY  baseline SETTLE_RULE harvest-R, 1-min entry/ORB-low stop >=1.5x med -1.00R (n=3,3sess) vs <1.5x med +0.00R (n=78,38sess)  diff -1.00R  N too small for permutation
+   (adj p = Bonferroni across all 6 pre-registered tests; the PRIMARY's verdict rests on
+    the adjusted p, per the pre-registration.)
+  2 sens.    baseline, harvest-FREE day-5 stop-only R (ladder-interaction check) >=1.5x med -1.00R (n=3,3sess) vs <1.5x med -1.00R (n=78,38sess)  diff +0.00R  N too small for permutation
+  3 sens.    baseline, raw ret_5d forward return (not R — context) >=1.5x med -3.62% (n=3,3sess) vs <1.5x med -1.10% (n=78,38sess)  diff -2.52%  N too small for permutation
+  4 explor.  day-low-so-far stop, SETTLE_RULE harvest-R      >=1.5x med -1.00R (n=3,3sess) vs <1.5x med +0.00R (n=78,38sess)  diff -1.00R  N too small for permutation
+  5 explor.  entry-1.0xADR stop, SETTLE_RULE harvest-R       >=1.5x med +0.00R (n=3,3sess) vs <1.5x med +0.00R (n=78,38sess)  diff +0.00R  N too small for permutation
+  6 explor.  5-min ORB (own trigger+stop), SETTLE_RULE harvest-R, own ratio5 split >=1.5x med -1.00R (n=14,10sess) vs <1.5x med +0.00R (n=38,26sess)  diff -1.00R  N too small for permutation
+
+MULTIPLICITY LEDGER — 6 tests attempted (planned 6), 0 produced a p
+  raw p<0.05: 0 of 0
+  surviving Bonferroni x6: 0
+
+====================================================================================================
+WHAT COULD NOT BE MEASURED, AND WHY
+====================================================================================================
+  - chase_cap_exceeded: N=1 ever (EROC) — cannot be measured on its own rejections at
+    all, by any method. Stated as a finding, not worked around.
+  - 6 of the 26 stop_too_wide rejects (TLRY/WST/WKC/BAND/TTMI/EVER/STRL — 2026-04-23 to
+    05-05) predate mi_ep_alerts' retention window (starts 2026-05-11) and have no minute
+    bars — Part A reports their forward returns from daily bars only; Part B's ratio
+    reconstruction cannot include them.
+  - TLRY's stop_too_wide row uses a DIFFERENT message format ('stop distance %>15%' —
+    the 9M-Day2 rule, order_manager.py:5606) despite signal_type='magna53' in the data;
+    provenance of that mismatch was not chased down further — excluded from validation
+    and from every Part B bucket, reported in Part A only.
+  - HTFL (alert 2026-08-14) has ZERO forward daily bars as of this capture (2026-08-15,
+    one session later) — ret_1d/ret_5d are genuinely not yet knowable, not just unmature
+    by the maturity-day convention; reported as 'too new', not computed.
+  - ADR-multiple sweep used ONE representative multiple (1.0x), not a grid — scope bound,
+    stated in the docstring before any number was read.
+  - No R-multiple parity with what a real fill's SLIPPAGE would have cost (fills are
+    modelled at the stop-limit trigger/limit price with zero slippage, matching _468's
+    own stated fidelity limit).
+  - The scale-consistency guard (orb vs daily bar sanity check) found 0 mismatches (itemized above at the FUNNEL line if nonzero, never silently rescaled) —
+    pulling both series fresh from Polygon with adjusted=true avoided the DLLL/SNEX/MVLL
+    class of split mismatch stop_width_replay_2026-08-03.md found between mi_intraday_bars
+    (as-traded) and mi_daily_closes (retroactively adjusted).
+
+====================================================================================================
+HOW TO READ THIS — the permutation shuffles whole SESSIONS (alerts on one morning share
+the tape), matching every other probe in this program. The PRIMARY's verdict rests on its
+ADJUSTED p; everything else is exploratory / hypothesis-generating, counted but not acted
+on alone. THE LINE: the stop rule, the chase cap, and any ATR/ADR multiple are entry
+discipline — the operator's SOLE authority. Nothing here proposes or pre-selects a
+threshold change. If the numbers point somewhere, it is a FORK for the operator, no
+option chosen.
+====================================================================================================
