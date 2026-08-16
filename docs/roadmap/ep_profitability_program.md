@@ -1356,6 +1356,54 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🟢 FULL FORWARD HISTORY CHANGES THE ANSWER: the first POSITIVE result in this work
+
+He was right twice, and the second one was decisive: *"it takes time to reach >50% gains, real
+winners may be held for weeks to months if they continue to work."*
+
+**The defect he exposed:** the daily-bar cache extended only ~15 days past each ticker's LAST alert,
+so **only 2 of 161 names had a full 20 trading days of forward data.** Every replay today was
+therefore a few-day simulation wearing a 20-day label. Re-pulled full history (90 days before each
+ticker's first alert through 2026-08-16, 29,949 bars) and re-ran.
+
+| horizon | arm | n | median | mean | max | **SUM** | ≥5R |
+|---|---|---|---|---|---|---|---|
+| 20d | LIVE | 75 | −1.00R | −0.28R | +8.45R | −21.1R | 1.3% |
+| 20d | no intraday stop | 75 | −0.46R | −0.62R | +18.38R | −46.8R | 5.3% |
+| **60d** | LIVE | 43 | −1.00R | −0.14R | +7.13R | **−6.0R** | 2.3% |
+| 🟢 **60d** | **no intraday stop** | 43 | **+0.07R** | **+0.86R** | **+18.38R** | **+36.8R** | **11.6%** |
+
+### The horizon was the hidden variable, and it inverts the conclusion
+
+- **At 20 days, removing the intraday stop looks BAD** (−46.8R vs −21.1R). **At 60 days it is the
+  only positive configuration we have found: +36.8R, a POSITIVE median (+0.07R), mean +0.86R, and
+  11.6% of trades reaching ≥5R.**
+- Same trades, same rules, same data — **only the holding window differs.** Our 20-day view says
+  cut fast; the 60-day view says the winners need months and the intraday stop removes them before
+  they can work.
+- 📌 This is the **first positive expectancy result anywhere in this plan**, and it arrived by
+  fixing a data defect he identified from first principles, not by tuning a parameter.
+
+### ⚠ What it is NOT — and these limits are load-bearing
+
+- **43 trades, ALL in the early period.** The later names do not have 60 days of history yet (0 of
+  50), so **there is NO out-of-sample half at this horizon.** One regime, no holdout.
+- **The +36.8R comes with unbounded intraday risk** — that arm holds through any adverse move to
+  the close. The number does not price that exposure.
+- **Reconstructed, not lived**; fills at the trigger, no slippage.
+- ⚠ **The "outliers stopped arriving" claim from the grid section above is now UNRESOLVED, not
+  refuted** — the late names still show 0 of 29 reaching ≥5R at 20 days, but they cannot be
+  evaluated at 60 days until the calendar allows. **Re-ask in October.**
+
+### What this changes in the plan
+
+▶ **Horizon becomes a first-class axis, not an afterthought.** Every prior R-multiple result in this
+plan was computed on truncated forward data and must be re-read at 60 days before it is trusted.
+▶ **The exit question reframes:** it is not "which stop" but "how long are we willing to hold, and
+what stop is compatible with that hold". A tight intraday stop and a multi-month thesis are
+incompatible by construction.
+🛑 Nothing proposed. Exit and stop discipline = THE LINE.
+
 ## 2026-08-16 — 🔴 THE GRID CANNOT BE VALIDATED: every outlier we have is in the FIRST half
 
 Probe `scripts/probes/_545_grid.py`. 32 cells (5 binary axes — 1-min vs 5-min ORB · 1 vs 2 attempts
