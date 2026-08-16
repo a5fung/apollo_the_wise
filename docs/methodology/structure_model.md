@@ -139,7 +139,47 @@ with."* Two lessons, both paid for:
 
 ---
 
-## 7. THE OPEN MEASUREMENT
+## 7. ⚠ THE FIRST LADDER TEST CAME BACK BACKWARDS (2026-08-16)
+
+`scripts/probes/_533_supply_ladder_probe.py`, output `docs/analysis/structure_ladder_2026-08-16.txt`.
+Population = alerts we DECLINED (`mi_ep_missed_outcomes`), 2026-05-11 → 08-14.
+
+**His decisive test — `zones_cleared` vs raw gap % — is a draw, and NEITHER survives correction.**
+0 of 15 pre-registered tests clear multiplicity adjustment. Binary 0-vs-≥1 zones cleared:
+−1.9pp on 5-day max excursion (n=374/116, 83/62 sessions, raw p=0.25). Gap % median split:
++2.0pp, raw p=0.19. So on this evidence gap % is **not** displaced by zones-consumed — but neither
+is it vindicated.
+
+🔴 **The graded dose table runs the WRONG WAY, monotonically:** median 20-day max excursion falls
+**18.7% → 17.5% → 12.1% → 11.2%** as `zones_cleared` goes 0 → 1–2 → 3–5 → 6+. Spearman −0.11 to
+−0.14 for zones_cleared against both horizons, versus ~0 for gap %. **And the blue-sky bucket —
+his model's limiting case — is the WEAKEST, not the strongest:** n=122, median 5-day excursion
+**8.9%** against **11.3%** for names with overhead (raw p=0.14).
+
+### Three readings, and the third is the one worth acting on
+
+1. **Nothing is significant.** 0 of 15 survive adjustment; formally there is no finding here, and
+   that has to be said before any story is told about the gradient.
+2. **ADR is a real confound and it is only partly excluded.** Zones are measured in ADR units, so a
+   LOW-volatility name has many closely-spaced zones and clears several on a modest move, while a
+   high-volatility name has few. Measured: rho −0.35 zones-vs-ADR, +0.36/+0.38 ADR-vs-excursion.
+   The backwards gradient survives inside the low-ADR half and goes flat in the high-ADR half
+   (cells as thin as n=23) — so it is not purely a volatility artifact, and not uniform either.
+3. 📌 **We may be measuring from the wrong origin, and this is consistent with HIS model rather
+   than against it.** Excursion is measured **from the alert-day open** — i.e. AFTER the gap has
+   already consumed the structure. A name that has cleared six supply zones has spent that travel;
+   what remains is by definition the *rest* of the move. His ladder describes **potential from
+   where the move STARTS**, not from where our alert fires. On that reading a negative gradient is
+   what you would expect, and the test that matches his model would measure remaining overhead
+   from the ENTRY, and travel to the NEXT zone — not zones already behind it.
+
+⚠ **This population is alerts we DECLINED, never entered** — it says nothing directly about our own
+trades. And per §6, an all-losing cohort is the wrong place to learn what good structure is worth.
+
+▶ **Not a refutation of the model. It is a refutation of THIS operationalisation of it** — and the
+open question below is re-pointed accordingly.
+
+## 8. THE OPEN MEASUREMENT
 
 **`zones_cleared` head-to-head against raw gap %, at comparable gap size**, against
 excursion SIZE (max favourable move) as well as direction — because his model says structure
