@@ -1399,6 +1399,43 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — INTC AND SMCI, REPLAYED: one is the sharpest case for the stop fork, the other corrects my own metric
+
+The only two tail winners we both DETECTED and TRADED — and lost on. Replayed through the exit arms
+at a 60-day horizon.
+
+| | entry | stop | risk | **R available (60d peak)** | LIVE rule | breakeven-on-close | **no intraday stop** | 2× re-entry |
+|---|---|---|---|---|---|---|---|---|
+| **INTC 04-24** | $84.00 | $82.02 | $1.98 | **peak $130.57 = 23.5R** | **−1.00R** | −1.00R | 🟢 **+14.46R** | −1.00R |
+| **SMCI 05-06** | $32.50 | $31.26 | $1.24 | peak $36.37 = **3.1R** | −1.00R | −1.00R | +0.40R | −0.33R |
+
+### 🔴 INTC is the single clearest case for the intraday-stop fork in the whole dataset
+
+- **23.5R was available. We took −1.00R** — stopped at the ORB low at 11:47 on day 0, and the stock
+  went to $130.57.
+- **Holding through that intraday breach returns +14.46R** on the identical entry and the identical
+  20%-of-a-position rules.
+- ⚠ **Re-entry did NOT save it** — only one attempt ever fired, because the trigger never came back.
+  **For INTC, removing the intraday stop is the ONLY arm that works.** That is a real distinction
+  between the two forks: re-entry helps where the name re-triggers; it cannot help where the name
+  simply leaves.
+- 📌 **One case, and it is an illustration, not evidence** (his standing rule). Its value is that it
+  makes the fork concrete: this is what −1R instead of +14R looks like on a name we actually held.
+
+### ⚠ SMCI corrects a metric of MINE — the "78 tail winners" overstates the tradeable opportunity
+
+**SMCI qualified as a tail winner under my scan's definition (≥8×ADR measured from the DAY'S CLOSE),
+but from OUR ORB-high entry only 3.1R was ever available.** The 8×ADR-from-close test and
+R-from-our-entry are not the same quantity, and the gap can be large.
+
+▶ **So the 78 is an upper bound on opportunity, not a count of 23.5R-class trades.** Some fraction
+are SMCI-shaped: real moves on the day, thin by the time our entry and stop are applied. **The
+sufficiency target (≈4 converted winners) should be read against the INTC-shaped subset, not all
+78** — and that subset has not been sized. **That is the next measurement, and it is the honest
+follow-on to the sufficiency math rather than another fork.**
+
+🛑 Nothing proposed. Reconstructed; two names; exit discipline = THE LINE.
+
 ## 2026-08-16 — WHY THE 78 WERE MISSED: nothing is invisible, one fork DIES, and the two we traded LOST
 
 Per-name attribution of every missed tail winner. Capture:
