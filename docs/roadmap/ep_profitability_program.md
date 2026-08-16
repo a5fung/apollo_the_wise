@@ -328,6 +328,41 @@ HPE/QURE were replay rows, INTC/SMCI were caught AND traded) · **"0 of the 26 w
 (FALSE — INTC is in the 26 and was traded; the purge caveat was dropped in transit) · v1 re-entry
 totals junked by the stop floor (+244.8R → +110–122R) · PLTR "rank 2230 of ~9,700" → of 2,415.
 
+### 2c. 🔴 HOW TO READ THE NULLS — they indict OUR IMPLEMENTATION, not the concepts (operator, 2026-08-16)
+
+*"I disagree that score, catalyst, theme etc don't matter, but it could be we're not doing a good
+enough job on those. For one, catalyst is everything for an EP — that is exactly why it gapped. But
+much of it may already have happened, or been taken into account with the gap."*
+
+**He is right and this correction governs the whole NULL list.** A feature that fails to separate is
+evidence about the ENCODING, not about the concept. And his second clause names the mechanism:
+
+🔴 **THE PRICED-IN PROBLEM. The catalyst is WHY the stock gapped — so its explanatory content is
+already in the gap. Measuring "how good is the catalyst" alongside "how big is the gap" measures the
+same information twice.** The catalyst's marginal value is not what it explains about this morning;
+it is **what it implies about the next several weeks.** Our rubric grades the former.
+
+**That is exactly his 2026-08-16 framing arriving from the other direction** — *"the catalyst needs
+to be a game changer, not an expected event that explains the gap"* — and today's null on
+`catalyst_quality` (13% of winners vs 17% of the rest) is **evidence FOR it**, not against catalysts:
+
+| feature | the null | what it actually indicts |
+|---|---|---|
+| `catalyst_quality` | winners 13% vs rest 17% | the rubric grades **explanatory** strength (already priced into the gap), not **forward-changing** strength. The expectedness axis — scheduled vs unscheduled, backward vs forward-looking — is specified and unbuilt |
+| `ep_score` | 66.8 vs 65.9 | it is mostly gap + catalyst, i.e. the priced information **counted twice**, with a conviction floor that lets the gap override everything else |
+| theme membership | 4% vs 3% | our theme COVERAGE is independently poor (SE, his own example, sat in no theme at all) — a coverage failure reads identically to a signal failure |
+| structure verdict | null on outcome | a construction defect we have already found: it **rewards extension**, running backwards to the one extension signal that survives normalising |
+| RS level | dead within low-RS | unresolved against the population read (winners 64.6 vs 53.5); cited one-sided before |
+
+▶ **Rule from here: never report "X does not predict" as a property of X.** Report it as *"our
+current encoding of X does not predict, and here is the specific defect."* Every row above has a
+named defect; none of them licenses dropping the concept.
+
+▶ **And it re-prioritises the selection work.** The expectedness axis stops being a parked item and
+becomes **the highest-value unbuilt selection feature** — it is the only way to measure the half of
+the catalyst that is NOT already in the gap, and it needs no new capture (8-K item numbers plus the
+earnings calendar, both stored).
+
 ### 3. WHAT HAS NOT BEEN CONSIDERED
 
 - **Position sizing** — never examined; every result here is in R, which is sizing-agnostic.
