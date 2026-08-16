@@ -147,6 +147,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
     "sell_discipline_recorder",  # #508 WS1 — reached-vs-kept record per closed trade; pure compute + DB/audit, no broker calls, no rule
     "exit_path_shadow",  # 2026-08-16 — per-trading-day path record on every LIVE fill; pure compute + DB/audit, no broker calls, no rule
+    "alert_rank_shadow",  # 2026-08-16 — EOD + as-of-09:45 selection-rank record on every EP alert; pure compute + DB/audit, no broker calls, no grading/ordering change
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
@@ -4262,6 +4263,28 @@ async def _exit_path_shadow_job():
         await notify_job_failure("exit_path_shadow", str(e))
 
 
+async def _alert_rank_shadow_job():
+    """Run at 17:53 ET (after the 17:00 nightly close pull refreshes mi_daily_closes and
+    the 17:50 exit-path shadow — same family, +3 min spacing convention).
+
+    2026-08-16 — docs/roadmap/ep_profitability_program.md §0d found a three-feature
+    ranking rule with a 2.5x lift on tradeable >=10R winners, but the features were chosen
+    ON the tested data and a true time holdout is impossible today. Writes one
+    mi_alert_rank_shadow row per mi_ep_alerts row (every alert, HIGH or not, filled or
+    not), scoring it both EOD (exactly as tested) and as-of-09:45 (only what an ORB
+    decision could have known) — the gap between the two is the deliverable. RECORD ONLY —
+    no grading/entry/sizing/ordering change, no broker calls (THE LINE; see
+    alert_rank_shadow.py module docstring)."""
+    try:
+        from agents.market_intelligence.alert_rank_shadow import record_alert_rank_shadow
+        from agents.market_intelligence.collector import et_today
+        n = await record_alert_rank_shadow(et_today())
+        logger.info(f"alert-rank shadow: wrote/updated {n} row(s)")
+    except Exception as e:
+        logger.error(f"alert-rank shadow job failed: {e}", exc_info=True)
+        await notify_job_failure("alert_rank_shadow", str(e))
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -5319,6 +5342,17 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_exit_path_shadow_job, "exit_path_shadow"),
         CronTrigger(hour=17, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
         id="exit_path_shadow",
+        replace_existing=True,
+    )
+
+    # 2026-08-16 ALERT-RANK SHADOW — 17:53 ET mon-fri, after the 17:50 exit-path shadow
+    # (same family, +3 min spacing) and after mi_daily_closes is fresh for today. One
+    # EOD + as-of-09:45 selection-rank record per EP alert; pure compute + DB/audit, no
+    # broker calls, no grading/ordering rule (THE LINE).
+    _scheduler.add_job(
+        audit_wrap(_alert_rank_shadow_job, "alert_rank_shadow"),
+        CronTrigger(hour=17, minute=53, day_of_week="mon-fri", timezone="America/New_York"),
+        id="alert_rank_shadow",
         replace_existing=True,
     )
 

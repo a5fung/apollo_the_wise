@@ -2465,6 +2465,91 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_exit_path_shadow_trading_day
                 ON mi_exit_path_shadow(trading_day);
 
+            -- 2026-08-16 — ALERT-RANK SHADOW (alert_rank_shadow.py). docs/roadmap/
+            -- ep_profitability_program.md §0d found a three-feature ranking rule (smaller
+            -- gap · tighter EP day · less MA-distance extension, percentile-averaged) that
+            -- puts 16 of 26 tradeable >=10R winners in its top quartile (2.5x lift) — but the
+            -- features were chosen ON the tested data and a true time holdout is impossible
+            -- today. Fix: record the rank beside EVERY alert (HIGH or not, filled or not),
+            -- both EOD (exactly as tested — needs the full day's range, so it isn't knowable
+            -- until the close) and AS-OF-09:45 (the same three features from only what a
+            -- 09:45 ORB decision could have known) — the comparison between them is the
+            -- deliverable. THE LINE: record + display only; nothing reads this table from any
+            -- grading/entry/sizing/ordering path (verified — see alert_rank_shadow.py module
+            -- docstring). RETENTION: deliberately ABSENT from purge_old_data (kept forever) —
+            -- same class as mi_ep_alerts/mi_exit_path_shadow (2026-08-15 capture audit: this
+            -- is the exact evidence class the old purge deleted before it could be used, and
+            -- it is the out-of-sample record this ranking rule cannot be validated without).
+            CREATE TABLE IF NOT EXISTS mi_alert_rank_shadow (
+                alert_id                    INT PRIMARY KEY,  -- mi_ep_alerts.id — ties every row back to the source alert for the outcomes join
+                ticker                      TEXT NOT NULL,
+                alert_date                  DATE NOT NULL,
+                score_tier                  TEXT,             -- mi_ep_alerts.score_tier as recorded (post-judge) — the grade the alert actually carried
+                alerted_high                BOOLEAN NOT NULL, -- score_tier = 'HIGH' — so the rank can be read against what actually fired a live alert
+                trade_exists                BOOLEAN NOT NULL, -- a mi_live_trades row was ever prepared for this (ticker, alert_date)
+                trade_filled                BOOLEAN NOT NULL, -- and whether it actually filled — the rank vs what we actually did
+                account_mode                TEXT,             -- which account_mode the matched trade used, when trade_exists (context for the above two; named bare 'account_mode' to match the existing paper-vs-live-ROUTING-not-a-sweep convention other shadow tables use — see health_checks._NOT_SWEEP_PARAMS)
+                prior_trading_day           DATE,             -- the trading day the SMA/ADR/ATR/prior_close below are all anchored to (D-1)
+                prior_close                 DOUBLE PRECISION, -- D-1 close — the gap denominator for both EOD and as-of-09:45 versions
+                prior_bars_count            INT NOT NULL,     -- daily CLOSES found before alert_date (H/L not required — matches the probe's own >=50 gate exactly, closes-only) — the ranking-pool gate made visible, not just enforced; adr20_frac/atr14_prior can still be NULL even when this clears 50, if high_price/low_price are sparser than close on this ticker
+                sma10                       DOUBLE PRECISION,
+                sma20                       DOUBLE PRECISION,
+                sma50                       DOUBLE PRECISION, -- SMA10/20/50 through D-1 — the MA-extension feature's own inputs, shared by both versions (the open is the only thing that differs between them)
+                adr20_frac                  DOUBLE PRECISION, -- mean((h-l)/c) over the 20 sessions ending D-1 (house ADR20) — the extension feature's normaliser
+                atr14_prior                 DOUBLE PRECISION, -- Wilder ATR14 through D-1 ONLY (duplicated formula — never today's gap TR) — the live entry gate's own stop-width denominator, for orb_range_over_atr14
+                day_open                    DOUBLE PRECISION,
+                day_high                    DOUBLE PRECISION,
+                day_low                     DOUBLE PRECISION,
+                day_close                   DOUBLE PRECISION, -- full EOD OHLC — the exactly-as-tested inputs
+                day_bar_source              TEXT,             -- 'daily' | 'polygon_fallback' | NULL (unavailable) — coverage honesty, never implies precision the data lacks
+                gap_pct_eod                 DOUBLE PRECISION, -- (day_open - prior_close)/prior_close x100 — feature 1, EOD version (the tested version)
+                tightness_pct_eod           DOUBLE PRECISION, -- (day_high-day_low)/day_high x100 — feature 2, EOD version — THE SUBTLETY: not knowable until the close
+                ext_xadr_eod                DOUBLE PRECISION, -- feature 3, EOD version (open sourced from the final daily bar) — NULL when no SMA sits below the open (genuinely undefined, never zero)
+                ext_no_ma_below_eod         BOOLEAN,          -- true when ext_xadr_eod is NULL because no MA sits below the open (vs NULL because prior_bars_count < 50) — disambiguates the two None-reasons
+                qualifies_for_rank_eod      BOOLEAN NOT NULL, -- gap/tightness known AND prior_bars_count >= 50 — matches the probe's cohort_features gate; false rows are excluded from ranking, not zero-filled
+                rank_gap_eod                DOUBLE PRECISION, -- ascending percentile within THAT DAY's qualifying pool (the rule is a within-day ranking)
+                rank_tightness_eod          DOUBLE PRECISION,
+                rank_ext_eod                DOUBLE PRECISION, -- (None ext -> 0.0 for ranking only, the probe's PRIMARY "zero" convention; the raw ext_xadr_eod above keeps the true NULL)
+                composite_rank_eod          DOUBLE PRECISION, -- mean of the three ranks — LOWER = higher on the buy list, matching the tested rule exactly
+                pool_size_eod               INT,              -- qualifying alerts that day — small pools (the common case) make individual ranks noisy; this is the denominator
+                minute_bars_available       BOOLEAN NOT NULL, -- mi_intraday_bars had >=1 bar in [09:30,09:45) ET for this ticker/day — gates every as-of-09:45 column below
+                minute_bar_count            INT NOT NULL,     -- how many 1-minute bars were found (0 when unavailable) — the coverage number the RETURN report cites
+                orb_open_0945               DOUBLE PRECISION, -- first bar's open in [09:30,09:45) — the as-of-09:45 gap/extension basis, sourced from the LIVE minute feed, never the EOD daily bar
+                orb_high_0945               DOUBLE PRECISION,
+                orb_low_0945                DOUBLE PRECISION, -- ORB high/low from the SAME window the live entry gate uses for its own stop-width check
+                orb_close_0945              DOUBLE PRECISION, -- last available bar's close at/before 09:45 — the "last" in open_range_position
+                gap_pct_asof0945            DOUBLE PRECISION, -- feature 1, as-of-09:45 version
+                tightness_pct_asof0945      DOUBLE PRECISION, -- feature 2, as-of-09:45 version — THE deliverable: this is the version an ORB decision could actually use
+                ext_xadr_asof0945           DOUBLE PRECISION, -- feature 3, as-of-09:45 version (same SMA/ADR base, open sourced from the minute feed instead of the EOD bar)
+                ext_no_ma_below_asof0945    BOOLEAN,
+                qualifies_for_rank_asof0945 BOOLEAN NOT NULL,
+                rank_gap_asof0945           DOUBLE PRECISION,
+                rank_tightness_asof0945     DOUBLE PRECISION,
+                rank_ext_asof0945           DOUBLE PRECISION,
+                composite_rank_asof0945     DOUBLE PRECISION, -- comparing this to composite_rank_eod, over enough days, answers whether the rule survives being made real-time
+                pool_size_asof0945          INT,              -- can be smaller than pool_size_eod when some of the day's alerts lack minute-bar coverage
+                -- 2026-08-16 mid-task addition (operator, via coordinator): the live entry gate
+                -- (backtester/filters.py::validate_orb_entry) already computes an intraday
+                -- tightness ratio (ORB range / 1.5xATR14) but only to REJECT wide stops, never
+                -- to rank. These four columns are recorded for EVERY alert (including ones the
+                -- gate would reject) as STANDALONE telemetry — never folded into the composite
+                -- above, which must stay exactly the tested rule.
+                orb_range_over_atr14        DOUBLE PRECISION, -- duplicates the live gate's own ratio (orb_range/atr14_prior) — the gate's 1.5x threshold read against this column is the direct rejects-vs-ranks comparison
+                orb_range_over_adr20        DOUBLE PRECISION, -- the same ratio in ADR20-dollar units, comparable to every other normalised figure in this program
+                open_range_position         DOUBLE PRECISION, -- (orb_close_0945 - orb_low_0945)/(orb_high_0945-orb_low_0945) — closing near the top of a TIGHT range is the strength signature; NULL on a zero-range window
+                bar_contraction             DOUBLE PRECISION, -- mean true range of the LAST 5 one-minute bars over the FIRST 5 in the window — OUR OWN definition (no house primitive computes this), <1 = narrowing; see alert_rank_shadow.py compute_bar_contraction docstring
+                bar_contraction_bar_count   INT NOT NULL,     -- bars actually used (needs >=10; this is always populated so a NULL contraction is legible as "N short", never hidden)
+                expct_scheduled             TEXT,             -- 'scheduled'|'unscheduled'|'unknown' — Part 1 of the same analysis, same deterministic derivation (no LLM), accrues for free alongside the rank
+                expct_scheduled_src         TEXT,             -- 'filing'|'keyword'|'none' — how expct_scheduled was derived
+                expct_looking               TEXT,             -- 'forward'|'backward'|'mixed_fwd'|'analyst_only'|'unknown'
+                expct_beat                  BOOLEAN,          -- beat-vs-consensus language present
+                expct_growth_yoy_pct        DOUBLE PRECISION, -- revenue YoY% (stored metric, regex fallback)
+                expct_growth_src            TEXT,             -- 'stored'|'regex'|'none'
+                computed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_alert_rank_shadow_alert_date
+                ON mi_alert_rank_shadow(alert_date);
+
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
             -- with WHEN, and the daily-close peak a close-driven rule could have seen), what
@@ -8153,6 +8238,10 @@ async def purge_old_data() -> dict[str, int]:
       change decision (docs/roadmap/ep_profitability_program.md §0c) is weighed against.
       Volume is trivial: one row per LIVE trade per trading day open, capped at 60
       rows/trade.
+    - mi_alert_rank_shadow: KEPT FOREVER (2026-08-16, alert_rank_shadow.py) — same class:
+      this is the out-of-sample record for the §0d ranking rule (2.5x lift, features
+      chosen ON the tested data) — it does not exist without months of undeleted rows to
+      re-read later. Volume is trivial: one row per mi_ep_alerts row.
     - mi_stock_scores: 365 days (RS history — needed for historical queries + outcome tracking)
     - mi_themes:       365 days (theme lifecycle history — stage transitions over months)
     - mi_market_regime: kept forever (1 row/day, ~260 rows/year — negligible)
@@ -8175,6 +8264,8 @@ async def purge_old_data() -> dict[str, int]:
         cutoffs = {
             # mi_ep_alerts deliberately ABSENT — kept forever since 2026-08-15
             # (capture audit item 1); see the retention policy in the docstring.
+            # mi_exit_path_shadow / mi_alert_rank_shadow deliberately ABSENT — kept
+            # forever since 2026-08-16, same reason; see the retention policy above.
             "mi_stock_scores": today - timedelta(days=365),
             "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
