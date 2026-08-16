@@ -1356,6 +1356,41 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — RECONCILED: extension is WORSE at the median and BETTER in the tail, even normalised
+
+Two findings looked contradictory: the extension filter *"cuts the fat tail"* (08-16, raw %), and the
+MA-extension quartiles say *more extended → worse* (08-16, ADR-normalised). Re-ran the filter cohort
+in ADR units. **Both are true, and they are not in conflict.**
+
+| | n | ADR | median MFE | **median MFE÷ADR** | **P90 MFE÷ADR** | doubles (raw) | **≥12×ADR** |
+|---|---|---|---|---|---|---|---|
+| not extended | 2,662 | 6.8% | 15.5% | **2.32×** | 7.34× | 4.0% | 3.7% |
+| **EXTENDED (filtered out)** | **159** | **15.9%** | 27.7% | **1.74×** | **12.00×** | **17.6%** | **10.1%** |
+
+### The reconciliation
+
+- **At the MEDIAN, extended is WORSE even normalised** — 1.74× vs 2.32× ADR. The typical extended
+  name under-delivers for its volatility. That is the MA-quartile finding, confirmed.
+- 🟢 **In the TAIL, extended is much BETTER and it SURVIVES normalisation** — P90 of 12.00× vs 7.34×
+  ADR, and **10.1% vs 3.7% reach ≥12×ADR**. The raw-percentage doubling gap (17.6% vs 4.0%) is NOT
+  merely volatility: the normalised version says the same thing.
+- 📌 **So yesterday's headline stands, but for a better reason than it was given.** The extension
+  cohort is worse on average and disproportionately produces the outliers — the exact fat-tail shape
+  the operator described. **Under his objective (catch the 10×; medians are not the goal) the tail
+  statistic is the one that counts.**
+
+⚠ **Do not merge the two extension measures.** The filter is *up ≥50% in 5 days* (parabolic — median
+name up 137%); the MA quartiles measure *distance above the moving averages* across the ordinary
+population. They agree directionally at the median; only the FILTER cohort has been shown to carry a
+normalised tail advantage.
+
+▶ **What this changes:** the plan's advice on the extension filter is unchanged in substance — it
+remains an operator fork — but the evidence behind it is now volatility-normalised rather than raw,
+which was the weakness I flagged when first reporting it. **The correction I feared was needed did
+not materialise; the finding got stronger.**
+
+⚠ Descriptive; no permutation. Superset cohort, one regime, non-entered names, alert-baseline pricing.
+
 ## 2026-08-16 — STRUCTURE JOINED TO OUTCOMES, AND NORMALISED: every apparent effect is VOLATILITY
 
 His ask — bring yesterday's structure encoder into the winners analysis. Joined the encoder's
