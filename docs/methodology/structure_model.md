@@ -179,6 +179,20 @@ trades. And per §6, an all-losing cohort is the wrong place to learn what good 
 ▶ **Not a refutation of the model. It is a refutation of THIS operationalisation of it** — and the
 open question below is re-pointed accordingly.
 
+## 7b. 🎯 AND THE TAIL POINT CHANGES HOW SECTION 7 SHOULD BE READ (operator, 2026-08-16)
+
+> "EPs are rare and winrate is low, we're not looking for a sure thing, so failures are expected —
+> however, we are looking for high risk/reward. If we hit a real EP we gain 10X."
+
+**The ladder test above compared MEDIAN excursion. If the payoff is a rare 10×, a median cannot see
+it.** A structure feature that genuinely identifies real EPs would leave the median flat — possibly
+even negative, since it would be selecting names that mostly fail — and move only the top few
+percent. **That is indistinguishable from the result we got.**
+
+▶ So §7's backwards gradient is NOT evidence against his model. Before it is treated as anything,
+the same probe must be re-run on **P90/P95 excursion and the share of names reaching +50%/+100%**.
+Both re-runs are free and deterministic; the data is cached.
+
 ## 8. THE OPEN MEASUREMENT
 
 **`zones_cleared` head-to-head against raw gap %, at comparable gap size**, against

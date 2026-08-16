@@ -59,6 +59,43 @@ have done to PLTR — is mathematically fatal, since 4R is break-even (`docs/set
 2026-08-11). It also reframes §0's headline number: 0-of-19 is not only a bad win rate — the cohort
 on average REACHES +1.54R and KEEPS −0.91R (§5) — both terms of the equation are failing at once.
 
+### 🎯 WE ARE HUNTING THE TAIL, NOT THE AVERAGE (operator, 2026-08-16) — and it invalidates the STATISTIC we have been using
+
+Verbatim: *"we need to remember EPs are rare and winrate is low, we're not looking for a sure
+thing, so failures are expected — however, we are looking for high risk/reward. If we hit a real EP
+we gain 10X, that's the distinction here."*
+
+**This is not a restatement of the 20%-win-rate marker. It is sharper and it changes the METHOD.**
+A real EP is not a name that does modestly better on average — it is a name that can go **10×**.
+Failures are the expected cost of hunting that, not evidence against the criteria.
+
+🔴 **The methodological consequence, and it is uncomfortable: every measurement in this plan so far
+has used MEDIANS, and a median is blind to a tail by construction.** The 2026-08-15/16 reads —
+the override comparison, the regret read, RS inflection, skip attribution, the structure sweep, the
+supply ladder — all compared **median** forward return or **median** excursion with session-permuted
+median differences. If the payoff lives in a rare 10× and everything else fails as expected, then a
+feature that genuinely finds real EPs **would produce exactly the nulls we got**: it would leave the
+median untouched and move only the top few percent.
+
+**So the nulls to date are weaker evidence than they look.** They rule out features that shift the
+CENTRE. They do not rule out features that fatten the RIGHT TAIL — which is the only thing we
+actually want.
+
+▶ **What changes, starting the next session:**
+- **Tail statistics become the primary read**, medians the secondary: P90/P95 of forward excursion ·
+  the SHARE of names reaching +50% / +100% / a 5R and 10R equivalent · expectancy-weighted outcome.
+- **Re-run the existing reads on tail statistics before accepting any of their nulls** — the probes
+  are deterministic and free to re-run, and the data is already cached.
+- **Permutation on a tail quantile, not a median difference**, so the significance test matches the
+  statistic that matters.
+- ⚠ **The N problem gets HARDER, not easier** — a tail statistic needs far more observations than a
+  median, which raises the value of the capture work shipped 08-15 and of the winner reference set.
+  Say plainly when N cannot support a tail read rather than reporting a median as a substitute.
+
+⚠ This does NOT license loosening admission. Hunting a fat tail is an argument about which FEATURES
+we measure and how, not about taking more trades — the return-on-capital constraint below is
+unchanged and slots stay scarce.
+
 ### ⚖ THE OBJECTIVE IS RETURN ON CAPITAL, NOT EXPECTANCY PER TRADE (operator, 2026-08-15)
 
 Verbatim: *"opportunity cost of taking a sub optimal stock, even if we pick a winning one it can a
