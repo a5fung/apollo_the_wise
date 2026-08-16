@@ -1356,6 +1356,58 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — EP → CONSOLIDATION: a cheap candidate feed, and TACTICS THAT SERVE BOTH SETUPS
+
+Operator, 2026-08-16: *"this means that prior EPs can be a cheap source for our consolidation plays,
+and entry/exit tactics maybe shareable between the two."*
+
+Both follow directly from the 81% overlap, and both are worth more than the delayed-EP path they
+replace.
+
+### 1. EP as a candidate FEED for Family A
+
+The consolidation detector already surfaces these names — the gap is that its ENTRY never fires. An
+EP in the prior N days is a **free, already-computed context flag** on a Family A candidate:
+a base that formed after a real catalyst is not the same object as a base that formed after drift.
+**Cheap because we detect the EPs anyway** — no new capture, no new detector, one join.
+
+▶ Concrete test, on data we hold: among Family A candidates, does *"had an EP in the prior 20
+sessions"* separate the ones whose entry works from the ones that fail? That is a ranking input to
+an existing setup, not a new setup.
+
+### 2. 🔴 Today's tactics work is NOT EP-only — it serves both books
+
+Every stop/re-entry/horizon result from 2026-08-16 is a property of **how we hold a volatile name
+after a catalyst**, not of what triggered the alert. So they transfer:
+
+| finding | transfers to consolidation? |
+|---|---|
+| close-basis stops beat intraday-touch (3 confirmations) | 🟢 yes — same intraday-noise mechanism |
+| 2 re-entry attempts beat 3–4 | 🟢 yes |
+| breakeven-after-partial caps the runner | 🟢 yes — arithmetic of the rule |
+| the 60-day horizon matters, 20 days is too short | 🟢 yes — the runner needs time either way |
+| catch rates, total R, cohort sizes | 🔴 no — population-specific (see the standing conditional) |
+
+📌 **That materially raises the value of the exit work**: it is tactics for the whole book, and it
+means the exit questions should be settled ONCE and applied to both setups rather than re-derived
+per setup.
+
+### Where consolidation actually stands (PLAN.md, for the record)
+
+- **#327** (in_progress, ETA 08-30) — consolidation entry-watch + shadow-settle. Phase A (the
+  directional replay) done 06-18. **This is the critical path**: it produces the settlements
+  everything else waits on.
+- **#353** (blocked, 08-20) — shadow → PAPER graduation. **Gated: graduate only if #327's
+  settlements show a real edge; no edge → stay observe-only.** Correctly blocked, not stalled.
+- **#354** (in_progress, 09-15) — merge flag_continuation INTO Family A (operator-directed 06-22:
+  they are the same play), reconciling stale/stricter params to the signed model.
+
+▶ **Next step for consolidation is #327's settlements — a calendar item, not an analysis one.** The
+two things above (the EP feed, the shared tactics) are what this weekend's EP work adds to it, and
+both are testable without waiting.
+
+🛑 Nothing proposed. THE LINE.
+
 ## 2026-08-16 — OVERLAP MEASURED: he was right — at a 20-day wait this IS the consolidation play
 
 Of the **27 long-wait catches (≥5R at the 20-day window)**, **22 were ALREADY on the flag /
