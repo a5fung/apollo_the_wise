@@ -1356,6 +1356,59 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — EXTENSION COHORT REPLAYED UNDER OUR MECHANICS: net +17.4R, and the 10X question is STILL unanswered
+
+Probe `scripts/probes/_ext_cohort_replay.py` (reuses `_468_moderate_realized_r.py` unchanged for
+the simulation), capture `docs/analysis/extension_cohort_replay_2026-08-16.txt`. Read-only; bars
+from Polygon, nothing written to prod.
+
+### What ran
+
+159 extension-filtered names → **116 reconstructed trades** (36 never filled, 5 stop-too-wide,
+2 zero-range), entered stop-limit at the ORB high with the ORB low as the stop, under the live
+validation gates.
+
+| under the harvest rule the simulator ships with | |
+|---|---|
+| median | **+0.00R** |
+| mean | +0.15R |
+| full stop-outs | **42.2%** |
+| reached the rule's ceiling | 32.8% |
+| **SUM across 116 trades** | **+17.4R** |
+
+📌 **The honest positive: even with every winner cut at +2R, the cohort is net POSITIVE under our
+own entry geometry** — +17.4R over 116 trades, a cohort whose median 20-day return is −38%. The
+entry mechanics survive it; the −38% median does NOT automatically eat the tail.
+
+### 🔴 But the 10X question is NOT answered, and the reason is my own test design
+
+The simulator's rule is `partials=[(1.0, 0.5), (3.0, 0.5)]` — half out at +1R, half at +3R.
+**Maximum achievable is exactly +2.00R**, which is why the max realized R is +2.00R and why
+"0% reached +5R" appears. **That zero is an ARTIFACT OF THE CAP, not a fact about the cohort.**
+Reporting it as a finding would have been the median-versus-tail error again, in a new costume:
+a capped-exit simulation cannot answer a fat-tail question.
+
+⚠ **And the uncapped variants I tried are BROKEN, not negative** — a single 1/3 partial with the
+remainder riding the original stop returns max +0.02R, and no-partial returns 100% stopped out.
+Both are impossible against a cohort where 17.6% of names doubled. The simulator has no
+let-winners-run mode: it does not move the stop to breakeven after the partial, so anything that
+dips is stopped. **Those two rows are discarded, not reported.**
+
+### Where that leaves it
+
+- ▶ **What we know:** the extension cohort fills 73% of the time and is net positive at +17.4R even
+  with winners capped at +2R.
+- ▶ **What we do NOT know, and cannot yet:** what it does under OUR live exit — 1/3 at +2R, stop to
+  breakeven, remainder running with no giveback floor. **That needs a let-winners-run mode in the
+  replay harness (a breakeven stop-move after the partial), which does not exist.** That build is
+  the prerequisite for any conversation about this filter.
+- 🛑 Extension is entry discipline = THE LINE. Nothing proposed.
+- ⚠ Load-bearing assumption, stated because the cohort has NO recorded detection time: **submission
+  assumed at 09:31 ET.** The extension filter fires BEFORE a name becomes an alert — only 3 of 159
+  have a `mi_ep_alerts` row at all — so there is no detected_at to use. Names actually detected
+  intraday would have submitted later or been out-of-ORB, making this assumption GENEROUS to the
+  cohort.
+
 ## 2026-08-16 — 🔴 THE WINNER SET EXISTS, AND OUR EXTENSION FILTER IS CUTTING THE FAT TAIL
 
 Step 5 of the path, started inline. **Arm 1 (alerted-and-ran) is real and large: of 3,224 mature
