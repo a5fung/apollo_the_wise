@@ -6774,7 +6774,10 @@ class MarketIntelligenceAgent(BaseAgent):
                 for pr in pending_rows:
                     shares = pr.get("entry_shares") or 0
                     buy_at = pr.get("orb_high")
-                    stop_at = pr.get("orb_low") or pr.get("stop_price")
+                    # stop_price FIRST: since the 2026-08-16 2R-stop change the
+                    # placed stop is entry − 2R, NOT the ORB low — orb_low is
+                    # only a fallback for legacy rows missing stop_price.
+                    stop_at = pr.get("stop_price") or pr.get("orb_low")
                     buy_str = f"${buy_at:.2f}" if buy_at else "?"
                     stop_str = f"${stop_at:.2f}" if stop_at else "?"
                     state_icon = "⏳" if pr["status"] == "order_placed" else "📝"

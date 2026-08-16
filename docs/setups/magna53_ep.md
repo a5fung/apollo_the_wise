@@ -6,7 +6,17 @@
 
 ## Definition
 
-A liquid stock gaps significantly on a real catalyst (earnings, FDA, M&A, major news), with confirming volume and structural fitness (not extended, not in cooldown). The gap signals new information has changed the stock's fair value; entry on opening-range breakout (ORB) the same morning, with stop at ORB low.
+A liquid stock gaps significantly on a real catalyst (earnings, FDA, M&A, major news), with confirming volume and structural fitness (not extended, not in cooldown). The gap signals new information has changed the stock's fair value; entry on opening-range breakout (ORB) the same morning.
+
+**Stop and sizing (operator-signed 2026-08-16 — see change log):** the protective stop sits at
+**`entry − 2R`, where `R = entry − ORB low`** (equivalently `2·ORB_low − ORB_high`). The ORB low
+still **defines R**; it is no longer the exit. Position size **halves by the sizing formula itself**
+(`shares = risk_dollars / stop_distance` — the distance doubled), so **dollar risk per trade is
+unchanged**. 🔴 The +2R partial target does **not** move: 1/3 still comes off at the ORIGINAL
+`entry + 2·(entry − ORB_low)` price (`order_manager.profit_target_r_per_share` pins the frame).
+Pre-2026-08-16 the stop was the ORB low itself.
+⚠ **Built, NOT yet deployed** — the running image still places the ORB-low stop until the next
+market-agent + execution deploy; delete this line at verify-live.
 
 This is the canonical Apollo entry strategy — the highest-volume, highest-conviction setup type.
 
@@ -98,6 +108,94 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-16 — Protective stop moves to entry − 2R at half size; the +2R target does NOT move (OPERATOR-SIGNED, THE LINE)
+
+**Trigger**: the EP profitability program's stop-fork analysis
+(`docs/roadmap/ep_profitability_program.md` §0c/§0c-pre, 2026-08-16). The live cohort's shape —
+0 winners in 17, 10 of 12 losses at ≈ full −1R, median adverse excursion while held **−1.97R** —
+says the ORB-low stop sits INSIDE the normal noise path of a working EP. The operator described the
+bounded rule; §0c-pre simulated it as an actual arm (correcting the earlier error of quoting the
+no-stop arm's number for it) and he signed it 2026-08-16.
+
+**The change, exactly as signed:**
+1. **Stop**: ORB low → **`entry − 2R`**, `R = entry − ORB_low` (so `new_stop = 2·ORB_low − ORB_high`).
+   The ORB low still DEFINES R; it is no longer the exit.
+2. **Size halves — via the existing formula, NOT a second multiplier.**
+   `prepare_orb_order` already computes `shares = risk_dollars / (entry − stop)`; doubling the stop
+   distance halves the share count by itself, leaving **dollar risk per trade unchanged**
+   (`risk_dollars` still = equity × risk_pct = the dollar loss if the stop fills). An explicit
+   halving on top would QUARTER the position — checked for and absent, pinned by
+   `test_size_halves_via_the_formula_no_second_halving`.
+3. 🔴 **The profit target does NOT move.** 1/3 still comes off at the ORIGINAL
+   `entry + 2·(entry − ORB_low)` price. `scan_profit_triggers` previously framed the target off
+   `entry − hard_stop` — with the new stop that silently becomes **+4R**, never tested, never
+   approved. The frame is now `order_manager.profit_target_r_per_share`: ORB-based
+   (`entry − orb_low`) for magna53, `entry − stop` for every other strategy (9M Day 2's
+   prior-day-low stop IS its R — leaking the ORB frame there would rewrite ANOTHER strategy's
+   target, the #490 latent-defect class). A magna53 row with no usable `orb_low` SKIPS the trigger
+   loudly rather than fire at a fabricated level (ADR 0014). Pre-change open rows have
+   `stop == orb_low`, so both frames agree — in-flight trades see a byte-identical target at flip.
+4. **Breakeven-after-partial, the SMA trail, and `update_stop`'s raise-only broker floor are
+   UNTOUCHED** (no diff in `exit_logic.py`, `live_tracker.py` daily pass, `update_stop`,
+   `execute_partial_exit` breakeven = `max(stop, entry)` — which equals `entry` under either stop).
+
+**Evidence** (r1 — N≥10; cited from §0c-pre, not re-derived): **matched 43 reconstructed HIGH
+trades, identical rows, equal dollar risk** — live ORB-low stop **SUM −6.0R, median −1.00** vs
+**2R stop at half size SUM +11.4R, median +0.33**. 3R at a third size: +12.2 sum but lower median
+and max → **2R chosen**. The median going positive is the mechanism: a 2R-wide stop simply is not
+hit as often, so most trades stop being full losers. **Limits, verbatim from the analysis:** one
+regime (April–May 2026), reconstructed not lived, slippage and auction fills unmodelled, **no
+out-of-sample until `mi_exit_path_shadow` accrues (review gated at 20 closed positions, ~early
+October)** — that shadow frames R off `orb_low` FIRST (`stop_ref`), so its record stays in ORB-R
+units across this change.
+
+**Anticipated effect**: the median live trade stops printing an automatic −1.00R; stop-out
+frequency falls; share counts halve; dollar risk per trade, alert volume, and admission are
+unchanged. The +2R partial fires at the same prices as before.
+
+**What was verified UNCHANGED** (each read in code, not assumed): entry trigger (stop-limit buy at
+ORB high) + `stop_limit_buy_price` formula · `stop_too_wide` (`validate_orb_entry`, ORB range vs
+1.5×ATR — judges ORB geometry, which did not move) · chase cap (`CHASE_RISK_INFLATION_CAP` —
+formula untouched; its planned-risk denominator is now the 2R distance, so the DOLLAR risk it
+admits at the cap, planned $risk × 1.5, is identical to before) · gap floor `check_rt_gap_floor` ·
+ORB window/cleanup · OCO carve-out #566 + partial accounting #567 (consume `limit_price`/stop from
+the row — upstream pin covers them) · all safeguards (max positions, daily loss, drawdown breaker,
+circuit breaker, PDT) · 9M Day 2 builder (`prepare_prior_day_low_orb_order`) untouched.
+
+**Downstream stop==ORB-low assumptions found and handled:** (a) `scan_profit_triggers` — THE
+dangerous one, fixed above; (b) `/positions` pending-entry render (`agent.py`) displayed
+`orb_low` as the stop — now prefers `stop_price` (orb_low kept as legacy-row fallback);
+(c) telemetry R units: `mi_sell_discipline_records` / `pivot_stop_shadow` / `giveback_shadow`
+define R = `entry − hard_stop` (actual placed risk) → their R for NEW trades is in 2R-stop units
+(≈ half the old numeric R for the same move) — deliberate, their stated definition is "actual
+initial stop"; `kill_scale_bands` (R = pnl/risk_dollars) and `mgmt_judge` (already
+`entry − orb_low` by design) are unit-stable; `describe_stop_move`'s "x.xR beyond breakeven"
+Telegram line now reads in placed-stop units (display only). (d) The 5-min shadow ORB variant
+(`shadow_orb_tracker`) imports `prepare_orb_order` and inherits the change — correct, it is
+defined as apples-to-apples with live. (e) The offline EOD sim (`backtester/tracker.py`,
+`mi_paper_trades`) keeps its own old-rule stop — offline lane, out of the signed scope, flagged
+here so its divergence is known.
+
+**Reversion-flag**: **REVERSAL** of the founding ORB-low stop rule (operator's own
+`EP_TRADING_RULES.md` §B, 2026-03-27; this SSoT's definition since birth 2026-05-07). Per
+CHANGE_PROCESS r4, the prior reasoning was WRONG for this cohort, not merely incomplete: it treated
+a touch of the ORB low as the setup's invalidation, but the measured excursion distribution says
+otherwise — the median trade goes −1.97R against while held, and the 11 of 43 names that dipped
+past −2R still summed +13.9R in outcomes. At −1R nothing is yet decided; the old stop was
+exiting inside noise. Hard revert = restore `stop_loss_price = orb_low` in `prepare_orb_order`
+(the `risk_per_share` line then restores full size by the same formula) + drop the
+`profit_target_r_per_share` frame in `scan_profit_triggers` (back to `entry − stop`) + redeploy
+market-agent + execution. No toggle — a stop level cannot ship dark; the reversion is a code
+revert, which is why the SSoT + tests pin every half of it.
+
+**Status**: **built 2026-08-16 (operator-signed), NOT deployed** — left in-tree per instruction;
+deploy + verify-live are the operator's call. Verify-live when deployed: (1) first entry's
+`orb_order_placed` audit + broker stop at `2·ORB_low − ORB_high`, shares ≈ half the old-formula
+count, `risk_dollars` unchanged; (2) first +2R fire's `profit_trigger_fired` payload target =
+`entry + 2·(entry − orb_low)` — NOT +4R; (3) breakeven/trail rows byte-identical in shape.
+Tests: `tests/test_2r_stop_change.py` (14, behavioural), 7 mutations each reddening their named
+test (recorded per docstring); full suite green.
 
 ### 2026-08-08 — #516: a keyword match may no longer overrule a contrary classification (OPERATOR-SIGNED)
 

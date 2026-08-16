@@ -39,6 +39,20 @@ future caller inherits it; callers may still DECIDE against `mi_live_trades.stop
 deliberately allowed to UNDERSTATE protection (#548 uncertain branch). Defect story: change log
 2026-08-10. Tests: `tests/test_update_stop_raise_only_floor.py`.
 
+### 0. Initial protective stop — `entry − 2R` (MAGNA53, operator-signed 2026-08-16)
+
+**`R = entry − ORB_low` and the ORB low still DEFINES R, but the placed stop is `entry − 2R`
+(= `2·ORB_low − ORB_high`) at HALF size** — the sizing formula (`shares = risk_dollars /
+stop_distance`) halves the count by itself when the distance doubles, so dollar risk per trade is
+unchanged. 🔴 **The +2R partial target did NOT move**: it still fires at the ORIGINAL
+`entry + 2·(entry − ORB_low)` price — `order_manager.profit_target_r_per_share` frames the target
+off `entry − orb_low` for magna53, never off the placed stop (which would silently make it +4R).
+The hard stop consumed by `exit_logic` / the trail floor / re-protect paths is this 2R stop.
+Full entry: change log 2026-08-16 below + `magna53_ep.md`. 9M Day 2's stop (prior day low) is
+untouched. Pre-2026-08-16, the placed stop was the ORB low itself.
+⚠ **Built, NOT yet deployed** — the running image still places the ORB-low stop until the next
+market-agent + execution deploy; delete this line at verify-live.
+
 ### 1. Partial profit — day 3-5
 ```python
 if hold_days >= 3 and not partial_taken and entry_price:
@@ -216,6 +230,54 @@ Full evidence, all figures independently recomputed twice:
 ---
 
 ## Change log (newest first)
+
+### 2026-08-16 — MAGNA53 protective stop → entry − 2R at half size; +2R target pinned to the ORB R (OPERATOR-SIGNED, THE LINE)
+
+**Trigger**: `docs/roadmap/ep_profitability_program.md` §0c/§0c-pre (2026-08-16) — the live cohort
+keeps −0.91R of a reached +1.54R, 10 of 12 losses print ≈ −1.00R, and the median adverse excursion
+while held is −1.97R: the ORB-low stop exits inside the normal noise path of a working EP. The
+operator described the bounded rule; §0c-pre ran it as a real arm; he signed it 2026-08-16.
+
+**Change** (implementation in `order_manager.prepare_orb_order` + `scan_profit_triggers`; the
+authoritative full-field entry lives in `magna53_ep.md` change log 2026-08-16 — one home, this
+entry cross-references because this file owns the exit ladder the stop anchors):
+1. Placed stop = `entry − 2R`, `R = entry − ORB_low` (`2·ORB_low − ORB_high`). ORB low still
+   defines R; it is no longer the exit.
+2. Size halves **by the sizing formula** (distance doubled ⇒ shares halve) — dollar risk per
+   trade unchanged; NO second multiplier (that would quarter the position — test-pinned).
+3. 🔴 Target unmoved: 1/3 off at the ORIGINAL `entry + 2·(entry − ORB_low)`.
+   `profit_target_r_per_share` owns the frame (ORB-based for magna53; `entry − stop` for every
+   other strategy; unframeable magna53 row ⇒ loud skip, never a fabricated level). Legacy open
+   rows have stop == orb_low, so their target is byte-identical at flip.
+4. **This file's ladder is untouched**: partial fraction/trigger cadence, breakeven
+   (`max(stop, entry)` = entry under either stop), SMA10/20 trail, `update_stop`'s raise-only
+   broker floor, OCO carve-out #566, partial accounting #567 — no diff in any of them.
+
+**Evidence** (cited from §0c-pre): matched 43 reconstructed HIGH trades at equal dollar risk —
+live ORB-low stop **SUM −6.0R, median −1.00** vs **2R stop at half size SUM +11.4R, median
++0.33**; 3R at a third size +12.2 but lower median/max → 2R chosen. Limits: one regime
+(April–May 2026), reconstructed not lived, slippage/auction fills unmodelled, **out-of-sample
+gated on `mi_exit_path_shadow` ≥ 20 closed positions (~early October)** — that shadow's
+`stop_ref` prefers `orb_low`, so its R record stays unit-consistent across the change.
+
+**R-unit note for every reader of this file's measurements**: `mi_sell_discipline_records`,
+`pivot_stop_shadow`, `giveback_shadow` define R = `entry − hard_stop` (actual placed risk) — for
+NEW trades that unit is the 2R stop distance, so the same price move reads as ≈ half the old
+numeric R there. `kill_scale_bands` (pnl/risk_dollars) and `mgmt_judge` (`entry − orb_low` by
+design) are unit-stable. Do not mix the two frames in one table without normalising.
+
+**Reversion-flag**: REVERSAL of the founding ORB-low stop (operator's `EP_TRADING_RULES.md` §B,
+2026-03-27). Prior reasoning wrong, not incomplete: it read a touch of the ORB low as
+invalidation; measured, the typical trade goes ~2R against and the names that dipped past −2R
+still summed +13.9R — at −1R nothing is decided. Hard revert = restore `stop_loss_price =
+orb_low` in `prepare_orb_order` + drop the target frame in `scan_profit_triggers` + redeploy
+(market-agent + execution). No dark toggle exists for a stop level.
+
+**Status**: built 2026-08-16 (operator-signed), NOT deployed — left in-tree per instruction.
+Tests `tests/test_2r_stop_change.py` (14 behavioural; 7 mutations each reddening the named
+test). Verify-live on deploy: first entry's broker stop at `2·ORB_low − ORB_high` with ≈ half
+the shares and unchanged risk_dollars; first `profit_trigger_fired` payload target =
+`entry + 2·(entry − orb_low)`, not +4R.
 
 ### 2026-08-15 — BUILT (#566): OCO on the freed 1/3 at +2R + the accounting fix — SHIPPED DARK, default OFF
 

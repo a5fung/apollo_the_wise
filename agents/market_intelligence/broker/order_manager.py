@@ -413,7 +413,38 @@ async def prepare_orb_order(
     )
 
     risk_dollars = equity * risk_pct
-    risk_per_share = orb_high - orb_low
+
+    # ── 2026-08-16 (OPERATOR-SIGNED, THE LINE): protective stop = entry − 2R ──
+    # R is DEFINED by the ORB and does not move: R = orb_high − orb_low. The ORB
+    # low still defines R but is no longer the exit — the placed stop sits one
+    # further R below it:
+    #     stop = entry − 2R = 2·orb_low − orb_high
+    # ⚠ Sizing is NOT separately halved. `shares = risk_dollars / risk_per_share`
+    # below already divides by the stop DISTANCE, so doubling that distance
+    # halves the share count by itself — dollar risk per trade is unchanged.
+    # Adding an explicit halving here would QUARTER the position.
+    # 🔴 The +2R profit target does NOT move with the stop: `scan_profit_triggers`
+    # frames its target off entry − orb_low (the ORB R, via
+    # `profit_target_r_per_share`), never off entry − stop — otherwise the target
+    # silently drifts to +4R, which was never tested or approved.
+    # Evidence (docs/roadmap/ep_profitability_program.md §0c-pre, matched 43
+    # reconstructed HIGH trades at equal dollar risk): live ORB-low stop
+    # SUM −6.0R median −1.00 vs 2R stop at half size SUM +11.4R median +0.33.
+    # SSoT: docs/setups/magna53_ep.md + docs/setups/exit_discipline.md 2026-08-16.
+    stop_loss_price = 2 * orb_low - orb_high
+    if stop_loss_price <= 0:
+        # Defensive: a 2R stop at/below $0 cannot be placed (needs ORB range
+        # ≥ orb_low, i.e. a ~100% opening range — stop_too_wide (>1.5×ATR)
+        # rejects long before this in practice).
+        logger.warning(
+            f"{ticker}: 2R stop ${stop_loss_price:.2f} <= 0 "
+            f"(ORB H=${orb_high:.2f} L=${orb_low:.2f}) — skipping"
+        )
+        return None, (
+            f"{SETUP_STOP_TOO_WIDE}: 2R stop ${stop_loss_price:.2f} <= $0 "
+            f"(ORB H=${orb_high:.2f} L=${orb_low:.2f})"
+        )
+    risk_per_share = orb_high - stop_loss_price
     shares = math.floor(risk_dollars / risk_per_share)
 
     if shares <= 0:
@@ -442,7 +473,7 @@ async def prepare_orb_order(
         "ticker": ticker,
         "entry_price": orb_high,
         "limit_price": limit_price,
-        "stop_loss_price": orb_low,
+        "stop_loss_price": stop_loss_price,
         "shares": shares,
         "risk_dollars": round(risk_dollars, 2),
         "risk_per_share": round(risk_per_share, 2),
@@ -457,7 +488,8 @@ async def prepare_orb_order(
         "regime": regime_record.get("regime") if regime_record else None,
     }
     logger.info(
-        f"Order spec: {ticker} entry=${orb_high:.2f} stop=${orb_low:.2f} "
+        f"Order spec: {ticker} entry=${orb_high:.2f} stop=${stop_loss_price:.2f} "
+        f"(2R below; ORB L=${orb_low:.2f}) "
         f"shares={shares} risk=${risk_dollars:.2f} position=${position_size:.2f} "
         f"risk_pct={risk_pct:.2%} equity=${equity:.0f}"
     )
@@ -5817,6 +5849,42 @@ async def persist_alert_day_paths(target_date=None) -> dict:
     return out
 
 
+# ── Profit-target R frame (2026-08-16, operator-signed 2R-stop change) ──────
+# Signal types whose R frame is DEFINED by the ORB (R = entry − orb_low),
+# independent of where the protective stop sits. MAGNA53's stop moved to
+# entry − 2R at half size on 2026-08-16, but its +2R partial still comes off at
+# the ORIGINAL entry + 2·(entry − orb_low) price — framing the target off the
+# placed stop would silently drift it to +4R, which was never tested or
+# approved. Strategies NOT listed here (9M Day 2: stop = prior day low) keep
+# entry − stop, which IS their R — listing them would rewrite THEIR target
+# (the #490 latent-defect class: one strategy's rule leaking into shared code).
+_ORB_R_FRAME_SIGNAL_TYPES = frozenset({"magna53"})
+
+
+def profit_target_r_per_share(
+    signal_type: str | None,
+    entry: float | None,
+    stop: float | None,
+    orb_low: float | None,
+) -> float | None:
+    """Per-share R used to price the +N·R profit target. Returns None when no
+    valid frame exists — the caller must SKIP that trade, never fabricate a
+    number (the ADR 0014 no-valid-R-frame rule).
+
+    ORB-framed strategies (`_ORB_R_FRAME_SIGNAL_TYPES`): R = entry − orb_low.
+    Everything else: R = entry − stop (their stop distance IS their R).
+    """
+    if entry is None or entry <= 0:
+        return None
+    if (signal_type or "") in _ORB_R_FRAME_SIGNAL_TYPES:
+        if orb_low is None or orb_low >= entry:
+            return None
+        return entry - orb_low
+    if stop is None or stop >= entry:
+        return None
+    return entry - stop
+
+
 async def scan_profit_triggers() -> list[dict]:
     """#508 — take 1/3 when the position first trades at entry + PROFIT_TRIGGER_R x risk.
 
@@ -5855,7 +5923,8 @@ async def scan_profit_triggers() -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, ticker, entry_price, hard_stop, stop_price, remaining_shares,
+            SELECT id, ticker, entry_price, hard_stop, stop_price, orb_low,
+                   signal_type, remaining_shares,
                    partial_taken, filled_at, account_mode
             FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0
@@ -5871,7 +5940,21 @@ async def scan_profit_triggers() -> list[dict]:
         stop = _num(t["hard_stop"]) or _num(t["stop_price"])
         if not entry or not stop or stop >= entry:
             continue
-        target = entry + PROFIT_TRIGGER_R * (entry - stop)
+        # 🔴 2026-08-16 (operator-signed 2R-stop change): the target's R frame is
+        # the ORB-based R (entry − orb_low) for MAGNA53 — NOT the placed stop
+        # distance, which is now 2R wide. `entry + N·(entry − stop)` on a 2R stop
+        # would silently move the target to +4R. profit_target_r_per_share owns
+        # the frame per strategy; None = unframeable → skip loudly, never guess.
+        r_per_share = profit_target_r_per_share(
+            t["signal_type"], entry, stop, _num(t["orb_low"]))
+        if r_per_share is None:
+            logger.warning(
+                f"profit trigger: {t['ticker']} trade {t['id']} has no valid R "
+                f"frame (signal_type={t['signal_type']} entry={entry} "
+                f"orb_low={t['orb_low']} stop={stop}) — trigger skipped"
+            )
+            continue
+        target = entry + PROFIT_TRIGGER_R * r_per_share
         async with pool.acquire() as conn:
             hi = await conn.fetchval(
                 """

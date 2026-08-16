@@ -317,10 +317,13 @@ CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "tru
 MAX_CONCURRENT_LIVE_POSITIONS = 5
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
 # ── Intraday profit trigger (#508, operator-signed 2026-08-01) ───────────────
-# Take a partial when the position first trades at entry + N x risk_per_share,
-# then move the stop to breakeven. REPLACES the day-3/day-5 time gate, which fired
-# once in 12 live trades because live holds average 1.50 days (docs/setups/
-# exit_discipline.md).
+# Take a partial when the position first trades at entry + N x R, then move the
+# stop to breakeven. REPLACES the day-3/day-5 time gate, which fired once in 12
+# live trades because live holds average 1.50 days (docs/setups/exit_discipline.md).
+# ⚠ R here is the STRATEGY's R frame, not the placed stop distance: for MAGNA53,
+# R = entry − orb_low (the ORB-defined R) — since the 2026-08-16 2R-stop change
+# the placed stop sits at entry − 2R, and framing the target off it would drift
+# the target to +4R. See order_manager.profit_target_r_per_share.
 #
 # None/0 = OFF, and OFF is the shipped default until the operator flips it: the
 # reversion path for this change is this constant, not a code revert.
