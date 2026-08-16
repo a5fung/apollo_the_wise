@@ -1356,6 +1356,61 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🎯 THE OBJECTIVE FUNCTION, and why the next step is PERMUTATIONS not one variable at a time
+
+Operator, 2026-08-16: *"On the 5min ORB, this is where it can get tricky or complex, and is the
+reason i asked for permutations in the real EP plan. We are currently looking at one variable at a
+time which is fine, but at some point we need to manage more and more variables to see what is the
+winning combination without overfitting."*
+
+### First — the objective function, written down, because everything so far optimised the wrong one
+
+**The strategy's return comes from outliers. Therefore the thing to maximise is NOT mean R and NOT
+median R.** Every read in this plan up to 2026-08-16 ranked arms by total or mean R, which
+systematically prefers rules that clip winners to avoid paper cuts — the exact opposite of the
+goal. State it properly:
+
+> **Maximise: P(catch a ≥5R / ≥10R move | one occurred) × its realised size
+>  Subject to: bounded, known cost per attempt — and it is FINE to lose on moderate winners.**
+
+This is why the same table can read two ways: re-entry's mean-R edge vanishes without one trade,
+but its **catch rate on the only outcome that matters went from 0 to 1**. Under the objective above
+that is a win; under mean-R it looked like noise. **Every future arm must be scored on catch-rate
+first and total-R second.**
+
+### Second — the permutation grid, and the overfitting discipline it needs
+
+He asked for this and the plan has been running one variable at a time. The axes now have measured
+single-variable results to anchor them:
+
+| axis | values to sweep | what we already know |
+|---|---|---|
+| entry trigger | 1-min ORB high · **5-min ORB high** · next-day · N-day delayed | 5-min lane currently WORSE alone (0/14, #482) |
+| stop basis | ORB low · ADR multiple · structure/level · closing-basis | closing-basis: fewer stop-outs, unbounded intraday risk |
+| re-entry | 1 / 2 / 3 attempts | **2 catches the outlier; 3–4 add cuts, no catches** |
+| profit-take | none · 1/3 @2R · other fractions/levels | 1/3 @2R banks 0.67R and caps the runner |
+| breakeven | immediate · delayed 1/3/5d · never | immediate is best on mean-R, worst on ceiling |
+| trail | SMA10/20 · EMA10/20 · pivot-swing · character-MA · none | costs ~0 on both cohorts tested |
+
+⚠ **The overfitting problem is REAL and the grid multiplies it.** 6 axes × ~4 values ≈ **1,000+
+cells against 75 reconstructed trades** — a cell can win by chance alone many times over. The
+discipline this needs, and it is not optional:
+
+1. **Score on the pre-registered objective above**, not on whatever metric flatters a cell.
+2. **Hold out time.** Fit on one period, verify on a later one — the only honest defence when cells
+   outnumber observations.
+3. **Report the multiplicity count** with every result, as every probe since 08-15 has.
+4. **Prefer a coarse grid with N per cell over a fine grid with 3 names in it** — say plainly when a
+   cell is too thin rather than ranking it.
+5. **A winning COMBINATION must beat its own single-axis parts**, or it is fitting noise.
+
+▶ **This is #545 (the ENTRY/EXIT TACTICS PROGRAM), already re-laned to agent-time on 08-15** — the
+harnesses exist (`_468_moderate_realized_r.py`, `_ext_live_exit_replay.py`, `_reentry_vs_nostop.py`,
+all written this weekend) and the minute-bar coverage shipped 08-15. It is the next build, and it is
+the first thing in this plan that needs a real out-of-sample design rather than another single read.
+
+🛑 Nothing here changes a live rule. Entry/exit discipline = THE LINE.
+
 ## 2026-08-16 — RE-ENTRY vs NO-STOP, his fork measured: better risk SHAPE, no proven edge
 
 Probe `scripts/probes/_reentry_vs_nostop.py`. Same 75 reconstructed HIGH trades, identical entry
@@ -1389,17 +1444,42 @@ Each attempt risks a fresh 1R.
 **Without the single best name, re-entry and the live rule are identical (−29.4R vs −29.6R); drop
 two and re-entry is WORSE.** The entire −9.1R headline is one trade.
 
-⚠ **This is the same shape the plan already recorded for the 5-minute re-entry test (08-09): "net
-looked positive only because of ONE outlier (THC, +12.43R)."** His own standing rule applies —
-no single trade is evidence.
+⚠ This is the same shape the plan recorded for the 5-minute re-entry test (08-09): *"net looked
+positive only because of ONE outlier (THC, +12.43R)."*
+
+### 🔴 CORRECTED SAME DAY — the outlier-removal test is the WRONG test for this objective
+
+Operator, 2026-08-16: *"true EPs (maybe defined after the fact) are the outliers. This strategy's
+potential to win is to find and catch the outliers — without them it'll fail. How do we catch with
+limited downside is the key. It's ok to miss or be stopped on moderate winners, but missing real
+EPs will render this whole thing a failure."*
+
+**He is right and my caveat was methodologically backwards.** Dropping the best trade is a standard
+robustness check — and it is invalid HERE, because **the best trade is the objective, not a
+contaminant.** A strategy whose entire return comes from outliers is not fragile; it is *working as
+designed*. The honest question is not "does it survive without the winner" but:
+
+> **Does it reliably CATCH a winner when one occurs, and at what bounded cost?**
+
+Re-read against that question, the result is the opposite of what I wrote:
+
+- **1 attempt MISSED the +20.26R name entirely** (it topped out at +6.19R). **2 attempts CAUGHT
+  it.** That is the finding.
+- The cost of catching it is bounded and known: **−2R worst case per name**, and the retry only
+  fires on ~17% of trades, so the drag is small and capped by construction.
+- ✅ **What survives: re-entry converts a miss into a catch on the one class of outcome the whole
+  strategy depends on, for a capped cost.** That is a real argument, and it does not need the
+  expectancy claim I retracted.
+- ⚠ Still true: **N is thin** — ~13 actual re-entries across 75 trades. This is an evidence-accrual
+  item. But "thin" is the honest limit, not "one outlier so it doesn't count".
 
 ### What I would actually say
 
 - ✅ **The RISK-SHAPE argument for re-entry is real and does not depend on the outlier:** bounded
   worst case, same maximum captured, fewer permanent exits. That is a structural property, not a
   P&L claim.
-- ❌ **The EXPECTANCY argument is not supported** on 75 reconstructed trades once one name is
-  removed.
+- ⚠ **The EXPECTANCY argument on mean-R is thin** (75 reconstructed trades, ~13 retries fired) —
+  but per the correction above, mean-R is NOT the objective function for an outlier strategy.
 - ▶ **What would settle it:** more attempts-fired observations — the retry only fired on ~17% of
   trades, so 75 trades produce ~13 actual re-entries. This is an evidence-accrual item, and the
   honest statement is that we cannot yet tell.
