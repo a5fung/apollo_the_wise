@@ -144,7 +144,31 @@ in ADR units (negative = already below the open):
   session open for the encoder's own reference price, so it was not the rule I meant to test. That
   number must not be cited; the refinement is untested, not refuted.
 
-▶ **What the honest version needs:** replace the hard AND with a *contextual* term — an MA far above
+### ✅ ADOPTED 2026-08-16 — his interaction rule, and it holds the gate
+
+> *"if gaps hit or goes near a key moving avg does it a) passes it and hold, b) touches but is
+> resisted, or c) never reaches it… we may only consider the moving avgs if and when it does
+> something… if it never gets near a moving avg, or it's sufficiently far away either above or
+> below, then we don't look at it; we consider those as secondary, to gauge extension."*
+
+**The rule, as encoded:** an MA counts ONLY if the gap interacted with it — the day's high reached
+it, or the gap opened above it. An MA the day never reached is **not evidence against the setup, it
+is simply absent.** Only *passed-and-held* and *touched-and-resisted* carry information.
+
+| | fixtures | population effect |
+|---|---|---|
+| hard AND (old) | 8/8 | — |
+| **interaction rule (new)** | **8/8** | **5 of 277 flip POOR → GOOD** |
+
+- ✅ **Adopted** — it holds the gate at 8/8 and it is the truer statement of his model.
+- ⚠ **It did NOT improve separation.** GOOD vs POOR stays 2.4× vs 2.6× MFE/ADR either way. The five
+  flipped names (ESLT, IDCC, KTOS, LRCX, TATT) had modest outcomes, 4–24% MFE. **Adopted for
+  correctness, not for performance** — and the structure verdict still predicts nothing about
+  outcome magnitude on this cohort.
+- 📌 His "secondary, to gauge extension" half is NOT yet built: MAs far below the open are currently
+  just ignored rather than recorded as an extension read. That is the next piece of his model.
+
+▶ **Superseded — what the earlier honest version needed:** replace the hard AND with a *contextual* term — an MA far above
 the open is overhead worth respecting, an MA far below is already irrelevant, and the near-miss case
 (FRMI at −0.0×) is what the rule must still catch. **Re-run against the 8 fixtures using the
 encoder's own reference price**; if it holds 8/8 with the softer rule, his refinement ships into the

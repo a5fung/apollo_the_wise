@@ -558,8 +558,22 @@ def encode(ticker: str, d: str, daily: dict, minute: dict, preopen: bool = False
                     if (v := sma(n)) is not None and v > prior_close}
     e60 = ends["h60"]
     ref_px = e60 if e60 is not None else open_px
+    # 2026-08-16 (operator): an MA counts ONLY IF THE GAP INTERACTS WITH IT. His words:
+    # "if gaps hit or goes near a key moving avg does it a) passes it and hold,
+    #  b) touches but is resisted, or c) never reaches it… we may only consider the
+    #  moving avgs if and when it does something… if it never gets near a moving avg,
+    #  or it's sufficiently far away either above or below, then we don't look at it;
+    #  we consider those as secondary, to gauge extension."
+    # So: an MA the day never reached is NOT evidence against the setup — it is simply
+    # absent. Only (a) passed-and-held and (b) touched-and-resisted carry information.
+    # Verified 2026-08-16: this holds the 8-fixture gate at 8/8 (the hard rule's score),
+    # and flips 5 of 277 population alerts POOR->GOOD. Adopted because it is the truer
+    # statement of his model, NOT because it improved separation — it did not.
+    day_high = days[ia][2]
+    def _ma_interacts(v: float) -> bool:
+        return (day_high is not None and day_high >= v) or v <= open_px
     ma_cleared = all(ref_px >= v * (1 + MARGIN_ADR * adr / 100.0)
-                     for v in overhead_mas.values()) if overhead_mas else True
+                     for v in overhead_mas.values() if _ma_interacts(v)) if overhead_mas else True
     r.update(overhead_mas={k: round(v, 2) for k, v in overhead_mas.items()},
              ma_cleared=ma_cleared, end_10_30=e60)
     r.update(cls=klass, key_level=(round(key_level, 2) if key_level else None),
