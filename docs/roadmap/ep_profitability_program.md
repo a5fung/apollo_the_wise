@@ -1356,6 +1356,59 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — RE-ENTRY v2: a real stop floor cuts the numbers in half, and WAITING LONGER catches more
+
+Probe `scripts/probes/_delayed_reentry_v2.py`. Three fixes to v1: a **minimum stop of 0.5 × ADR20**
+(a too-tight natural stop is WIDENED to it), the wait window **swept 3/5/10/20 days**, and the
+cohort-subset robustness check he asked for.
+
+### 1. The stop floor confirms v1's numbers were junk — and the shapes survive it
+
+| | v1 (no floor) | v2 (0.5 ADR floor) |
+|---|---|---|
+| best total R | +244.8R | **+110–122R** |
+| single best outcome | **+156.0R** | **+21.9R** |
+
+**A +156R outcome was a 0.6%-wide stop, exactly as flagged.** With a realistic floor the totals
+roughly halve and the maximum becomes believable. **The conclusion survives the correction** — every
+shape is still clearly positive — but only the v2 numbers may be quoted.
+
+### 2. 🔴 The wait window matters MORE than the trigger choice — and longer is better
+
+| wait | best arm | catch of the 40 real EPs | total R |
+|---|---|---|---|
+| 3 days | T2 reclaim EP close | 7 / 40 — **18%** | +91.9R |
+| 5 days | T2 reclaim EP close | 7 / 40 — 18% | +95.2R |
+| 10 days | T1 reclaim EP low | 9 / 40 — 22% | +106.2R |
+| **20 days** | **T5 reclaim the 10-day MA** | **11 / 40 — 28%** | +110.2R |
+| 20 days | T2 reclaim EP close | 10 / 40 — 25% | **+122.3R** |
+
+**My 10-day default was too short.** Catching real EPs improves monotonically out to 20 days —
+**28% versus 18% at three days** — and total R rises with it. A name that takes three weeks to
+reclaim is still worth taking. ⚠ 20 days is the edge of what I swept; the curve has not turned over,
+so the true optimum may be longer still.
+
+### 3. ⚠ The subset robustness check DID NOT ACTUALLY RUN — his cohort worry stays untested
+
+- **"NOT parabolic" returned numbers IDENTICAL to ALL** — because the extension filter already
+  removes those names *before* they become alerts, so the HIGH cohort contains none. The split was
+  vacuous, not confirmatory.
+- **"judge held authority" produced no rows at all** — `grade_engine_authority` is blank for most of
+  this early-period cohort.
+- ▶ **So the ranking-stability question he raised is still open.** The subsets that would test it —
+  structure-GOOD only (the encoder exists), catalyst-tier splits — need to be built against a cohort
+  where those fields are populated. **Do not cite "the ranking is stable"; it was not measured.**
+
+### Where it stands
+
+- ✅ Both of his triggers work; a third (10-day MA reclaim) is best at the longest wait.
+- ✅ Close-basis stops beat intraday-touch at every wait and every trigger — now three independent
+  confirmations.
+- ⚠ **Still missing 72% of the real EPs even at the best setting.** The miss list by name is the
+  next piece of work, not another parameter.
+- ⚠ 99 names, all early-period, no out-of-sample, daily-bar resolution, reconstructed.
+🛑 Nothing proposed. THE LINE.
+
 ## ⚠ STANDING CONDITIONAL — every exit/re-entry conclusion is measured on a COHORT WE DO NOT BELIEVE IN
 
 Operator, 2026-08-16: *"we're assuming all our alerts are potential EPs… gap up itself is not
