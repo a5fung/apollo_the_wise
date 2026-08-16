@@ -43,6 +43,47 @@ have done to PLTR — is mathematically fatal, since 4R is break-even (`docs/set
 2026-08-11). It also reframes §0's headline number: 0-of-19 is not only a bad win rate — the cohort
 on average REACHES +1.54R and KEEPS −0.91R (§5) — both terms of the equation are failing at once.
 
+### ⚖ THE OBJECTIVE IS RETURN ON CAPITAL, NOT EXPECTANCY PER TRADE (operator, 2026-08-15)
+
+Verbatim: *"opportunity cost of taking a sub optimal stock, even if we pick a winning one it can a
+marginal win vs true EP. think higher level, not just rules — as a portfolio manager, you only
+invest in limited opportunities and you have to do what's needed to try to pick the best
+opportunities."*
+
+**This governs the equation above rather than replacing it.** `p·W − (1−p)·L` is a PER-TRADE
+statistic. It is the right objective only when trades do not compete for anything. Ours compete for
+a finite account and a finite number of slots, so the quantity that actually matters is
+**return on the capital deployed, per unit of time** — expectancy × how often capital turns over,
+minus what that capital could have earned elsewhere.
+
+**Three things change once the objective is stated that way:**
+
+1. **The benchmark for every trade stops being zero.** A position is scored against the BEST
+   ALTERNATIVE we could have held over the same window — not against "did it make money". A +0.5R
+   winner that occupied a slot while a +6R name alerted and was declined is a **loss** in this
+   frame, and our current accounting cannot see it.
+2. **Time-in-position becomes a cost, not a neutral fact.** A marginal name held eight days is
+   more expensive than a fast stop-out that frees the capital the same morning. ⚠ Note the
+   direction this cuts: our losers die fast (day-one stop-outs), so the opportunity cost is
+   concentrated in the **marginal WINNERS we hold**, which is the least intuitive place to look
+   and the place nobody has looked.
+3. **Selectivity pays without needing a better win rate.** Raising the bar is not only a bet that
+   the survivors win more often — it keeps capital free for the names that deserve it. That is why
+   "are we too loose" is not answerable by win rate alone, and why the multi-alert-day framing
+   (#533) is a SPECIAL CASE of this, not the general problem.
+
+**What makes it measurable, and it is measurable today ($0):** every alert already carries forward
+returns (`mi_ep_missed_outcomes`), so for any session we can compute what the BEST available
+alerted name did over the same horizon and compare it to what we actually held. That is a **regret**
+measure, and it is the honest form of "are we too loose" — it PRICES looseness instead of asserting
+it. ⚠ Two limits to state with any such number: we cannot know we would have been FILLED on the
+alternative (the ETON liquidity lesson — a resting limit is a promise about price, not a fill), and
+the alternative must be restricted to names that were actually admissible at decision time, not
+chosen with hindsight.
+
+⚠ This changes what we MEASURE and how we judge. It does not license any change to sizing, the slot
+count, or admission rules — those are THE LINE.
+
 **⚠ NO SINGLE TRADE IS EVIDENCE (operator, 2026-08-12) — this governs how every finding below may be
 read.** Verbatim: *"some that look exactly like a EP may end up being a loser, that happens and
 expected, we cant expect perfection and guarantees... The opposite is also true, we may miss trades
@@ -293,7 +334,7 @@ A leak with no number is marked UNMEASURED — that is itself the finding.
 | # | Stage | The question | Measured leak (date) | What would close it | Blocked on |
 |---|---|---|---|---|---|
 | **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · **3 detectors genuinely dark for months** (anticipation lifecycle table dark since 06-16, pin rejects every candidate · sugar-baby convergence: 0 fires since its 05-22 ship · Undercut & Rally: 4 rows ever, last 06-18) **+ 1 misdiagnosed**: the failed-break gate counts a flag 0 of 160 recorded breaks has ever carried — the breaks detector itself DOES produce, only its failed-break classification never fires (commit `25a73c2`) | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)**; scoping the reference set is also his |
-| **2** | **ADMIT** | of the alerts, which do we act on — and are we right to? | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 detected after the 09:45 window; **3 the ORB bug, fixed 08-13 and verified clean 08-14 — so the go-forward mechanics leak is 6, not 9**), **3 were selection** (gap floor), **1 never triggered** (RIOT) · **3 more were risk geometry** (2 stop-too-wide, 1 chase-cap) — **stage 3's leak, not this stage's** (owns "is R sized to the name" — §skip-taxonomy, below) · **portfolio skips: 0 in this 08-11→14 window, but nonzero on record** — the 07-31 breaker expiry cancelled most of a day's entries (6 alerts, 0 entries) and the 08-04 cap blocked AEIS and ZBRA · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,224 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
+| **2** | **ADMIT** | of the alerts, which do we act on — **and was each one worth the capital it consumed?** (the objective is return on capital, above — the benchmark is the best alternative we could have held, not zero) | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 detected after the 09:45 window; **3 the ORB bug, fixed 08-13 and verified clean 08-14 — so the go-forward mechanics leak is 6, not 9**), **3 were selection** (gap floor), **1 never triggered** (RIOT) · **3 more were risk geometry** (2 stop-too-wide, 1 chase-cap) — **stage 3's leak, not this stage's** (owns "is R sized to the name" — §skip-taxonomy, below) · **portfolio skips: 0 in this 08-11→14 window, but nonzero on record** — the 07-31 breaker expiry cancelled most of a day's entries (6 alerts, 0 entries) and the 08-04 cap blocked AEIS and ZBRA · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,224 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
 | **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit · **owns the 3 risk-geometry skips above** (2 stop-too-wide, 1 chase-cap — EROC is the worked case, §2 0a table) | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · #562's delayed-entry shapes | **evidence-accrual** + **OPERATOR** (naming the shapes) |
 | **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** (n=17, 08-08 read, under the pre-08-10 exit stack — §5) · the 08-10 exit stack has now fired TWICE (ABCL 08-11, clean; ETON 08-14, the carved-out third that filled at the exact 2R target and exposed #566's stop-less carve) — a rule is not live until it fires repeatedly, and twice is a start, not a distribution | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
 
@@ -336,7 +377,7 @@ the operator rules.
 | 0. Outcome unit = the ALERT, not the fill | all four — it is the only cohort with variance | ✅ DONE |
 | 1. #563 theme-coverage read | p, via stage 1 (unblocks theme-strength as a ranking input) | ✅ DONE 08-12, closed 08-15 |
 | 2. Capture + retention (#567) | all four — the evidence for next quarter's test now survives | deployed 08-15 — verify-live 08-17 |
-| 3. **#533 within-day ranking readout** | p, via stage 2 — today the choice among a morning's alerts is alphabetical | ▶ NEXT, agent time |
+| 3. **#533 within-day ranking readout — WIDENED 08-15 to the regret question**: not only "did we pick the best of a morning" but "did what we HELD beat what we could have held over the same window", including single-alert days | return on capital, via stage 2 — the multi-alert day is a special case of the general opportunity-cost problem, not the problem itself | ▶ NEXT, agent time |
 | 4. **Skip-reason attribution** (3,224 rows, per reason: N, distinct sessions, forward return) | p, via stage 2 — says whether a reason drops names that RAN (defect) or names that died (working). ⚠ the rt-catch cohort (245 rows) is in NO outcome join, so this read does not cover the real-time-only population | ▶ NEXT, agent time, $0 |
 | 4b. **Floor-over-judge outcome read** — forward returns of the 57 HIGHs the gap-floor forced past a `none` judge verdict vs the 116 the judge agreed with | p, via stage 1 — says whether the override costs money | ▶ NEXT, agent time, $0 |
 | 5. **Winner reference set** — real EP winners from outside our fills (folds in §7 gap 1, the Stage-2 trend-context classifier — the doc's own "biggest single capability gap") | p and W, via stage 1 — the ONLY thing that can answer "what is a real EP" | 🔴 OPERATOR — scoping is his call |
