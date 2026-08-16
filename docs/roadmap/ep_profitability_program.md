@@ -1356,6 +1356,77 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — THE TAIL RE-READ: his 10X point was right, and it REVERSES yesterday's RS verdict
+
+Probe `scripts/probes/_tail_reread_probe.py` (+ shared `_tail_stats.py`), capture
+`docs/analysis/tail_reread_2026-08-16.txt`. Five prior reads re-run with the ONLY change being the
+statistic: P90/P95 and the share reaching +50%/+100%, permuting a tail QUANTILE instead of a median
+difference. **200 tail tests; 90 came back N-too-thin and every thin cell is listed individually
+rather than folded into "null".**
+
+### 🔴 FINDING 1 — RS INFLECTION HAS A TAIL EFFECT. I called it dead yesterday; that was wrong.
+
+Low-RS names whose RS was IMPROVING (rs_1m − rs_6m > 0), measured on **20-day maximum favourable
+excursion** — four statistics, all pointing the same way:
+
+| | improving | not improving | diff | raw p |
+|---|---|---|---|---|
+| P90 excursion | **+60.6%** | +40.4% | +20.3pp | 0.013 |
+| P95 excursion | **+101.4%** | +57.1% | +44.3pp | 0.007 |
+| **share reaching +50%** | **13.7%** (51) | 5.7% (23) | **+8.0pp** | **0.0019** |
+| **share reaching +100%** | **5.4%** (20) | 1.7% (7) | +3.7pp | 0.0063 |
+
+n = 373 vs 401, across 65 / 84 distinct sessions. **Median: −1.04% vs −0.08%** — flat and if
+anything backwards, which is exactly why yesterday's median read returned p=0.57 and I reported it
+as a clean null at N-that-could-tell. **The centre is dead and the tail is alive.** That is the
+shape his 10X point predicted, in the data, on the first feature we re-read.
+
+- ✅ **Not a confound:** Spearman |ρ| < 0.04 against gap %, +0.037 against RS level. It is not gap
+  size or RS level wearing a different name.
+- ✅ Survives Bonferroni within its own probe (×12).
+- ⚠ **It would NOT survive a global correction over all 200 tests run today** (0.0019 × 200 = 0.38).
+  Within-probe correction is the defensible convention and the coherence across four related
+  statistics is stronger evidence than any single p — but this is a **CANDIDATE, not a settled
+  finding**, and it must be said that way.
+- ⚠ The effect is at **20 days only**; 5-day share is directionally the same (5.6% vs 2.3%,
+  p=0.028) but P90/P95 at 5 days are flat. A feature about how far a move can eventually travel
+  behaving this way is coherent, but the horizon dependence is real and unexplained.
+
+### 🔴 FINDING 2 — NONE OF OUR OWN TRADES HAS EVER REACHED A +50% MOVE. A plain count, no test needed.
+
+Across all **22 trades we actually took**, at EVERY horizon: **0 reached +50% maximum favourable
+excursion, 0 reached +100%.** (0/21 at 1d · 0/15 at 5d · 0/5 at 20d · 0/15 max-high-5d · 0/5
+max-high-20d.) Meanwhile the date-matched SELECTION-kind skips reach **+50% at 14.9% and +100% at
+11.5% over 20 days** (n=87, 8 sessions).
+
+📌 **This is about SELECTION, not exits** — the figure is the stock's own maximum favourable move,
+not our realized result. **The names we chose never ran, full stop.** Under "if we hit a real EP we
+gain 10X", we have not once been in position for it.
+⚠ Taken-side N is tiny (5 names at the 20-day horizon), so this is a descriptive census and cannot
+be permutation-tested. It is reported as a count because a count is what it is.
+
+### The other three re-reads, and the ladder
+
+- **Structure GOOD/POOR:** still null on tails (0 of 12 survive).
+- **Grade override (floor vs judge):** sharper raw (pooled P90 +18pp) but 0 of 32 survive.
+- **Skip attribution:** untestable — 0 of 48 tests produced a p at all. Finding 2 above came out of
+  its descriptive census instead.
+- **Ladder, re-measured from REMAINING overhead above the open** (the "wrong origin" theory in
+  `structure_model.md` §7): yesterday's backwards gradient **flattens to null** — 0 of 40 survive.
+  It does NOT reverse into his predicted direction. So the wrong-origin theory is not confirmed as
+  the explanation; measuring correctly simply removes a spurious backwards signal.
+- ⚠ One zones-cleared cell survives correction but is **not a finding**: 34 names, half IFFY and
+  half blue-sky, driven by a single +481% mover through a top-3 order statistic.
+
+### What this changes
+
+▶ **Tail statistics are now the default read for this plan, not an alternative one.** Every null
+recorded before 2026-08-16 was measured on a statistic that cannot see the outcome we are hunting.
+▶ RS inflection moves from DEAD to CANDIDATE — fork S-3 territory, same promotion gate as
+everything else. **Nothing is proposed for the grade; that is his ruling** (THE LINE).
+▶ Finding 2 reframes the whole selection surface: the question is no longer only "do our filters
+drop winners" but **"has anything we have ever taken been capable of the move we need?"**
+
 ## 2026-08-16 — STRUCTURE IS ENCODED, and it reproduces all 8 of his labelled reads
 
 📚 **SSoT for everything structure: `docs/methodology/structure_model.md`** — his supply-ladder
