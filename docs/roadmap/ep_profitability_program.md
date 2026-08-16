@@ -284,12 +284,26 @@ headlines before he saw them.
 | The sufficiency target | ~4 converted winners; real denominator **26**, not 78 | **[M]** |
 | 📌 **The silent D-1 universe floors carry the fattest tails** | 12 names, median **21.9×ADR** vs 11.3× overall — the floors read the PRIOR day while the opportunity is created ON the gap day | **[M]** |
 
-**🔴 PULLED FROM CONFIRMED — the anti-selectivity claim (I gave him this twice).** "We alert on 16.3%
-of gap days but 7.7% of winners" **is not proven.** My own later attribution read corrected the
-winner-side count from 6 to **15 of 78 = 19.2%**, which is *above* the 16.3% overall rate — and the
-denominator is built on the same purge-eaten alert surface, never recounted, with the winners
-clustering in exactly the purged early period. **Do not cite 16.3% vs 7.7%.** A purge-corrected
-recount is required before any claim in either direction.
+**🔴 BURIED — the anti-selectivity claim is DEAD (I gave him this twice; the recount kills it).**
+Recounted 2026-08-16 on the window where alert data actually survives (`mi_ep_alerts` starts
+**2026-05-11** — everything earlier was eaten by the old 90-day purge), real tradeable stocks:
+
+| purge-corrected, 05-11 → 07-15 | |
+|---|---|
+| qualifying gap days | 330 |
+| **we alerted on** | **122 = 37.0%** |
+| tail winners (≥8×ADR) | 18 |
+| **we alerted on** | **6 = 33.3%** |
+
+**37.0% overall against 33.3% on winners — there is no anti-selectivity.** The original claim
+("16.3% vs 7.7%") compared a purge-eaten alert surface against a full market scan, and the winners
+clustered in exactly the period the purge had removed. **Our true alert rate is 37%, not 16.3%.**
+
+- ⚠ **n=18 winners in the clean window**, so "no anti-selectivity" is itself weakly evidenced — the
+  honest statement is *no evidence of it either way at this N.*
+- 📌 **And it strengthens C2:** we alert on a THIRD of the tail winners. **Detection is not the
+  bottleneck — conversion is.** That is the same conclusion the sufficiency math and the INTC case
+  reached, now from the detection side.
 
 **⚪ NULL — measured, no effect:** RS trajectory and curvature · the structure GOOD/POOR verdict
 against outcome (⚠ see the encoder-defect row above for *why*) · zones-cleared / the supply ladder ·
