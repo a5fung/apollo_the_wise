@@ -1,0 +1,222 @@
+================================================================================================
+#533 WIDENED — DID WHAT WE HELD BEAT WHAT WE COULD HAVE HELD?  (capture 2026-08-15, bars to 2026-08-14)
+================================================================================================
+cohort: 22 filled LIVE positions (20 closed + 2 OPEN) over 15 distinct entry sessions (2026-07-06 .. 2026-08-14)
+alert universe: 94 HIGH ticker-days over 26 sessions (2026-07-01..08-14); 0 lack an alert-day bar and are excluded from every alternative set (they are also unpriceable as trades)
+admissibility classes across the universe: CAPBLOCK=3, CHOICE=16, MECH=51, PICK=22, UNCLASSIFIED=2
+  UNCLASSIFIED (kept in SET A only, named for honesty): FTK 2026-08-03 (high_unentered), LIND 2026-08-03 (high_unentered)
+
+STANDING CAVEATS ON EVERY NUMBER BELOW
+  - No alternative fill is proven: alt returns assume a fill at the alert-day OPEN print
+    (ETON lesson — a resting order is a promise about price, not a fill).
+  - Our actual entries were at the ORB HIGH, usually above the open on a gap day — the
+    CAPITAL basis therefore flatters the alternatives by that spread; the SELECTION
+    basis uses the open convention on both sides and is free of it.
+  - SET A = everything that alerted (upper bound; includes names detected after the ORB
+    window, infra failures, never-triggered orders). SET B = only names we CHOSE to skip
+    (selection / risk-geometry) = the honest counterfactual. Never blended.
+  - CAPITAL basis = our realized P&L (exit machinery included). SELECTION basis = our
+    ticker open->close over the same window (isolates the pick from the bracket).
+  - Regret vs BEST is max-biased (winner's curse); regret vs the MEDIAN alt is alongside.
+  - hold_days column is unreliable (0 on known multi-day holds) — hold time re-derived
+    from filled_at/closed_at ET dates; that derivation succeeded for every position.
+  - OPEN positions marked *: window ends at the data max; realized includes the mark.
+  - ETON is asterisked green: its profit existed only because a bug left shares unstopped.
+
+------------------------------------------------------------------------------------------------
+FRAME S — SAME-SESSION DECISION POINT (matched window = the days the position occupied)
+------------------------------------------------------------------------------------------------
+pos   entry       hold  realzd  selbas |  A:n  rk0A   bestA    rgrA |  B:n  rk0B   bestB    rgrB  best-B name
+WULF  2026-07-06     1   -3.3%   -8.0% |    0    --      --      -- |    0    --      --      --  (no choice-skip that session)
+CRCL  2026-07-10     1   -1.9%   -6.4% |    0    --      --      -- |    0    --      --      --  (no choice-skip that session)
+WDFC  2026-07-10     1   -3.2%   -9.3% |    0    --      --      -- |    0    --      --      --  (no choice-skip that session)
+TSEM  2026-07-14     1   -2.8%   -5.9% |    1   1/2   -8.4%   -5.6% |    0    --      --      --  (no choice-skip that session)
+MANE  2026-07-15     2   -0.3%  -10.9% |    1   1/2  -14.2%  -14.0% |    0    --      --      --  (no choice-skip that session)
+HUT   2026-07-20     1   -2.1%   -0.6% |    1   2/2  +10.5%  +12.6% |    0    --      --      --  (no choice-skip that session)
+SMCI  2026-07-22     4   -2.3%   +3.2% |    1   1/2   +0.1%   +2.4% |    0    --      --      --  (no choice-skip that session)
+NVCR  2026-07-23     2   -6.0%   -1.9% |    0    --      --      -- |    0    --      --      --  (no choice-skip that session)
+THC   2026-07-24     1   -3.4%   -0.8% |    0    --      --      -- |    0    --      --      --  (no choice-skip that session)
+WKC   2026-07-24     1   -3.0%   -4.6% |    0    --      --      -- |    0    --      --      --  (no choice-skip that session)
+QBTS  2026-07-27     2   -2.3%   -1.3% |    1   1/2   -3.3%   -0.9% |    0    --      --      --  (no choice-skip that session)
+FTNT  2026-07-30     1   -4.0%   -5.9% |    6   5/7   +5.6%   +9.6% |    4   5/5   +5.6%   +9.6%  CORT
+BLZE  2026-08-04     1   -8.0%   -1.8% |    7   6/8  +24.4%  +32.5% |    0    --      --      --  (no choice-skip that session)
+BTDR  2026-08-04     1   -3.0%  -11.0% |    7   7/8  +24.4%  +27.4% |    0    --      --      --  (no choice-skip that session)
+PLTR* 2026-08-04     9  +14.9%  +19.9% |    7   2/8  +26.4%  +11.6% |    0    --      --      --  (no choice-skip that session)
+FIGS  2026-08-07     1   -0.7%   -6.2% |    6   5/7   +9.7%  +10.5% |    1   1/2   -9.5%   -8.7%  ACMR
+NET   2026-08-07     1   -1.6%   -5.6% |    6   5/7   +9.7%  +11.4% |    1   1/2   -9.5%   -7.8%  ACMR
+TEAM  2026-08-07     1   -2.7%   +2.7% |    6   4/7   +9.7%  +12.5% |    1   1/2   -9.5%   -6.7%  ACMR
+ABCL* 2026-08-10     5  +22.2%  +29.9% |    3   2/4  +13.5%   -8.8% |    1   1/2  +12.3%   -9.9%  TH
+BW    2026-08-11     1   -5.1%  -22.5% |    2   3/3   +2.8%   +8.0% |    1   2/2   +2.8%   +8.0%  SE
+FRMI  2026-08-11     1   -3.2%   +0.7% |    2   2/3   +2.8%   +6.1% |    1   2/2   +2.8%   +6.1%  SE
+ETON  2026-08-14     1   +2.1%   +7.2% |    3   3/4   +9.9%   +7.8% |    2   2/3   +7.7%   +5.7%  HTFL
+  (rk0 = our day0 open->close rank in pick+alternatives pool, 1=best; rgr = best-alt
+   minus OUR REALIZED, capital basis; * = still open, marked to 2026-08-14)
+  6 of 22 positions had NO same-session alternative at all (WULF, CRCL, WDFC, NVCR, THC, WKC) — on those sessions we took every HIGH
+  that fired; no same-session choice existed. Their opportunity cost, if any, lives
+  in the hold-window frame below (empty for a fast stop-out — nothing was forgone).
+
+FRAME S AGGREGATES — SET A (upper bound — everything that alerted)
+  positions with >=1 admissible same-session alternative: 16 of 22 (11 distinct sessions)
+  regret vs BEST alt, capital (realized)      : median   +8.8%  IQR [  +2.4%, +12.5%]  positive (alt beat us) 12/16
+  regret vs BEST alt, selection (open->close) : median   +6.8%  IQR [  -2.0%, +15.9%]  positive (alt beat us) 11/16
+  regret vs MEDIAN alt, capital basis        : median   +2.9%  IQR [  -1.0%,  +5.4%]  positive 9/16
+  our pick's percentile in the pool, day0 open->close : mean 52 (n=16 picks, 11 sessions; 50 = indistinguishable from the pool, higher = we picked better)
+  our pick's percentile in the pool, fixed 5-session  : mean 36 (n=12 picks, 8 sessions; 50 = indistinguishable from the pool, higher = we picked better)
+
+FRAME S AGGREGATES — SET B (honest counterfactual — only names we CHOSE to skip)
+  positions with >=1 admissible same-session alternative: 8 of 22 (5 distinct sessions)
+  regret vs BEST alt, capital (realized)      : median   -0.5%  IQR [  -7.8%,  +8.0%]  positive (alt beat us) 4/8
+  regret vs BEST alt, selection (open->close) : median   -1.3%  IQR [  -3.9%, +11.6%]  positive (alt beat us) 4/8
+  regret vs MEDIAN alt, capital basis        : median   -2.2%  IQR [  -7.8%,  +6.8%]  positive 4/8
+  our pick's percentile in the pool, day0 open->close : mean 56 (n=8 picks, 5 sessions; 50 = indistinguishable from the pool, higher = we picked better)
+  our pick's percentile in the pool, fixed 5-session  : mean 81 (n=4 picks, 2 sessions; 50 = indistinguishable from the pool, higher = we picked better)
+
+------------------------------------------------------------------------------------------------
+WOULD A DART-THROWING ALLOCATOR HAVE DONE AS WELL?  (session-level randomization, seed 20260815, 10000 draws)
+------------------------------------------------------------------------------------------------
+null: each entry session, pick the same NUMBER of names uniformly from the admissible
+pool (our picks + that set's alternatives); statistic = mean same-basis return of the
+picks. Sessions where the pool offers no choice contribute nothing and are counted.
+  SET A day0: our mean pick return   -0.7% over 11 choice-sessions (16 picks) — 70% of random allocations return AT LEAST as much (≈50% = indistinguishable)
+  SET A   5d: our mean pick return   -2.0% over 8 choice-sessions (12 picks) — 91% of random allocations return AT LEAST as much (≈50% = indistinguishable)
+  SET B day0: our mean pick return   -2.9% over 5 choice-sessions (8 picks) — 66% of random allocations return AT LEAST as much (≈50% = indistinguishable)
+  SET B   5d: only 2 sessions with a genuine choice — N too small for a null, not run
+
+------------------------------------------------------------------------------------------------
+FRAME H — WHAT FIRED WHILE CAPITAL WAS TIED (positions held past entry day only)
+------------------------------------------------------------------------------------------------
+like-for-like: alt's alert-day open -> our window-end close, vs OUR ticker over the
+IDENTICAL dates. Positive edge = the alternative beat continuing to hold ours.
+⚠ a fast stop-out has an empty H-frame BY CONSTRUCTION — occupancy cost concentrates
+in the names we held longest, which is exactly the operator's point.
+positions with a nonempty hold window: 4 of 22
+
+  SMCI held 2026-07-22..2026-07-27 (4 sessions), realized   -2.3%, same-window own open->close   +3.2%
+    alerts during hold: SET A n=1 (1 sessions) · SET B n=0
+      [A] NNE    alerted 2026-07-27 (MECH        ) alt   +1.1% vs ours-same-dates   -2.6% edge   +3.7%
+      [B] (no choice-skip alerted during this hold)
+    hold-window regret set A: best-alt edge   +3.7%, median-alt edge   +3.7%
+
+  QBTS held 2026-07-27..2026-07-28 (2 sessions), realized   -2.3%, same-window own open->close   -1.3%
+    alerts during hold: SET A n=1 (1 sessions) · SET B n=0
+      [A] CORZ   alerted 2026-07-28 (MECH        ) alt   -1.0% vs ours-same-dates   -5.4% edge   +4.5%
+      [B] (no choice-skip alerted during this hold)
+    hold-window regret set A: best-alt edge   +4.5%, median-alt edge   +4.5%
+
+  PLTR* held 2026-08-04..2026-08-14 (9 sessions), realized  +14.9%, same-window own open->close  +19.9%
+    alerts during hold: SET A n=40 (8 sessions) · SET B n=12
+      [A] EROC   alerted 2026-08-12 (CHOICE      ) alt  +27.4% vs ours-same-dates   -0.0% edge  +27.5%
+      [A] U      alerted 2026-08-06 (CHOICE      ) alt  +28.4% vs ours-same-dates  +11.7% edge  +16.8%
+      [A] MRX    alerted 2026-08-12 (MECH        ) alt  +13.5% vs ours-same-dates   -0.0% edge  +13.5%
+      [A] ... and 37 more
+      [B] EROC   alerted 2026-08-12 (CHOICE      ) alt  +27.4% vs ours-same-dates   -0.0% edge  +27.5%
+      [B] U      alerted 2026-08-06 (CHOICE      ) alt  +28.4% vs ours-same-dates  +11.7% edge  +16.8%
+      [B] ATRO   alerted 2026-08-12 (CHOICE      ) alt  +11.0% vs ours-same-dates   -0.0% edge  +11.0%
+    hold-window regret set A: best-alt edge  +27.5%, median-alt edge   -1.5%
+    hold-window regret set B: best-alt edge  +27.5%, median-alt edge   +3.7%
+
+  ABCL* held 2026-08-10..2026-08-14 (5 sessions), realized  +22.2%, same-window own open->close  +29.9%
+    alerts during hold: SET A n=16 (4 sessions) · SET B n=6
+      [A] NMAX   alerted 2026-08-14 (MECH        ) alt   +9.9% vs ours-same-dates   +5.0% edge   +4.9%
+      [A] EROC   alerted 2026-08-12 (CHOICE      ) alt  +27.4% vs ours-same-dates  +23.4% edge   +4.0%
+      [A] HTFL   alerted 2026-08-14 (CHOICE      ) alt   +7.7% vs ours-same-dates   +5.0% edge   +2.8%
+      [A] ... and 13 more
+      [B] EROC   alerted 2026-08-12 (CHOICE      ) alt  +27.4% vs ours-same-dates  +23.4% edge   +4.0%
+      [B] HTFL   alerted 2026-08-14 (CHOICE      ) alt   +7.7% vs ours-same-dates   +5.0% edge   +2.8%
+      [B] VERA   alerted 2026-08-14 (CHOICE      ) alt   +1.1% vs ours-same-dates   +5.0% edge   -3.9%
+    hold-window regret set A: best-alt edge   +4.9%, median-alt edge  -12.3%
+    hold-window regret set B: best-alt edge   +4.0%, median-alt edge   -8.2%
+
+  (no significance test is defined for frame H — the hold windows are not an
+   exchangeable unit; descriptive only)
+
+------------------------------------------------------------------------------------------------
+THE ONLY ALTERNATIVES MECHANICALLY BLOCKED BY OUR HOLDINGS (block:max_positions)
+------------------------------------------------------------------------------------------------
+  AEIS   2026-08-04  day0 open->close   +1.2%   fixed-5d   -2.9%
+  TWLO   2026-08-07  day0 open->close   +2.6%   fixed-5d   +1.3%
+  ZBRA   2026-08-04  day0 open->close  +11.7%   fixed-5d  +16.0%
+  (slot was full because of what we already held — the purest occupancy cost; still
+   subject to the no-proven-fill caveat)
+
+================================================================================================
+THE SPLIT THE OPERATOR CARES ABOUT — WINNERS vs LOSERS (his claim lives in the winners)
+================================================================================================
+winners (realized > 0): 3 — every one individually below (N too small for any aggregate)
+
+  PLTR  entered 2026-08-04, held 9 sessions [OPEN, marked] realized  +14.9% ($+133.21 on $894)
+    same-session set A: best alt VOYG  +26.4% over our window -> regret (capital)  +11.6%
+    same-session set B: no admissible alternative (no choice-skip that session)
+    hold-window set A: best alt EROC (alerted 2026-08-12, CHOICE) edge  +27.5% over holding us; median-alt edge   -1.5%
+    hold-window set B: best alt EROC (alerted 2026-08-12, CHOICE) edge  +27.5% over holding us; median-alt edge   +3.7%
+
+  ABCL  entered 2026-08-10, held 5 sessions [OPEN, marked] realized  +22.2% ($+169.30 on $762)
+    same-session set A: best alt NESR  +13.5% over our window -> regret (capital)   -8.8%
+    same-session set B: best alt TH  +12.3% over our window -> regret (capital)   -9.9%
+    hold-window set A: best alt NMAX (alerted 2026-08-14, MECH) edge   +4.9% over holding us; median-alt edge  -12.3%
+    hold-window set B: best alt EROC (alerted 2026-08-12, CHOICE) edge   +4.0% over holding us; median-alt edge   -8.2%
+
+  ETON  entered 2026-08-14, held 1 sessions [CLOSED — ASTERISKED: green only because a bug left shares unstopped] realized   +2.1% ($+19.32 on $938)
+    same-session set A: best alt NMAX   +9.9% over our window -> regret (capital)   +7.8%
+    same-session set B: best alt HTFL   +7.7% over our window -> regret (capital)   +5.7%
+    hold-window set A: empty
+    hold-window set B: empty
+
+losers (realized <= 0): 19 over 13 sessions
+  set A: 13 losers had a same-session alternative; regret vs best, capital basis: median   +9.6% IQR [  +2.4%, +12.5%], alt beat us 10/13
+  set B: 6 losers had a same-session alternative; regret vs best, capital basis: median   -0.3% IQR [  -7.8%,  +8.0%], alt beat us 3/6
+
+------------------------------------------------------------------------------------------------
+CAPITAL-TIME — regret weighted by sessions held (timestamps-derived; hold_days column unused)
+------------------------------------------------------------------------------------------------
+  set A (same-session regret, capital basis): unweighted mean   +7.7% -> hold-weighted mean   +5.2%  (n=16, total position-sessions 33)
+  set B (same-session regret, capital basis): unweighted mean   -0.5% -> hold-weighted mean   -3.6%  (n=8, total position-sessions 12)
+  weighting is by SESSIONS not dollars-at-risk; positions are near-equal risk-sized,
+  so sessions is the honest available proxy for capital-time.
+
+================================================================================================
+VERDICT — in plain words
+================================================================================================
+
+1. ON THE HONEST COUNTERFACTUAL (SET B — only names we CHOSE to skip): a NULL.
+   Median regret vs the best choice-skip is   -0.5% (n=8 positions,
+   5 sessions), the best alternative beat us in only
+   4 of 8, and the dart-thrower test cannot separate our picking from
+   chance. What we held did NOT measurably lose to what we could have held.
+   ⚠ but SET B barely exists before August — the choice-gates (gap floor, stop-width,
+   chase cap) only started skipping names ~07-30, so the honest counterfactual has
+   5 sessions of life. This null is thin, not strong.
+
+2. AGAINST EVERYTHING THAT ALERTED (SET A — upper bound, includes unreachable names):
+   we look BELOW PAR. Median regret   +8.8% (n=16), the best alert of the morning
+   beat our realized result in 12 of 16, and at the fixed 5-day horizon ~9 in 10
+   random allocations from the same pools would have returned at least as much as ours
+   (one-sided p ~ 0.09 — suggestive, NOT past conventional thresholds, and most of set A
+   was mechanically unreachable, so this is a ceiling on the problem, not the problem).
+
+3. THE WINNERS (the operator's claim: a winning pick can still be a bad allocation):
+   n=3, read individually, no aggregate is honest. ETON supports the claim — its
+   asterisked green was third-best of its own morning; HTFL, a stop-width CHOICE
+   skip, returned +7.7% against our +2.1%. ABCL is the counterexample — it beat
+   every admissible alternative in both frames. PLTR is mixed: no reachable name
+   was declined its own session (set B empty), but EROC (a chase-cap CHOICE skip)
+   out-ran holding it by ~27 points over its final 3 days.
+   One supports, one refutes, one splits — THIS N CANNOT CARRY THE CLAIM EITHER WAY.
+4. CAPITAL-TIME sharpens nothing yet: hold-weighting moves set-B regret DOWN (the two
+   long holds were the two best picks) — on this sample the feared 'marginal winner
+   hogging capital' pattern is not visible. The pattern the sample DOES show: losers
+   die fast (15 of 19 closed in a single session) and forgo nothing measurable; the
+   occupancy question lives entirely in the few multi-day winners, exactly as the plan
+   predicts — there just aren't enough of them yet to measure.
+
+BOTTOM LINE: on the only admissible comparison (set B), what we held was
+indistinguishable from what we could have held — a real null on a thin, August-only
+sample. The below-par signal against set A is real but bounded above the truth.
+Collecting more choice-skip sessions is what turns this read decisive; nothing here
+licenses touching any rule (THE LINE).
+================================================================================================
+HOW TO READ THIS — every regret assumes the alternative would have FILLED at its open
+print, which is unprovable (ETON). SET B is the honest counterfactual; SET A the upper
+bound. Regret-vs-best is max-biased; the median-alt lines correct for that. Nothing
+here licenses a change to admission, sizing, slots, grading, or exits — THE LINE.
+================================================================================================

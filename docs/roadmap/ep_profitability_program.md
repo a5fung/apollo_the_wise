@@ -999,6 +999,51 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-15 — RS IMPROVEMENT, not RS level (operator's refinement) — and what PLTR actually shows
+
+Operator: *"on RS, RS improvement may be a factor for ones that don't have high RS, that can be
+similar to neglect that's coming back up."* Tested against the one labelled case and its board.
+
+### PLTR's own RS trajectory does NOT show pre-gap improvement
+
+`mi_stock_scores`, PLTR, the seven sessions before the gap — rank went 2225 → 2129 → 2195 → 2121 →
+2230. **Flat and low the whole time.** The RS jump happened ON the gap day (08-04: rs_1m 24.8 → 95.9,
+composite 7.7 → 76.4, rank 2230 → 574). So "neglect coming back up" did not precede the event here —
+**the event WAS the coming-back-up.**
+
+### But a same-day version of his idea does separate the board
+
+Read `rs_1m − rs_6m` (short-window percentile above long-window = the shortest horizon is the
+strongest) on the 08-04 board, using the 08-03 scores, i.e. known BEFORE the open:
+
+| Positive inflection | | Negative inflection | |
+|---|---|---|---|
+| INSP | +19.7 | LIFE | −1.1 |
+| **AEIS** | +11.8 | ZBRA | −2.1 |
+| **PLTR** ← the winner | **+11.3** | VOYG | −50.4 |
+| AMRC | +7.1 | CAT | −55.4 |
+| | | BTDR | −67.5 |
+| | | BLZE | −76.8 |
+
+**4 names carried positive inflection and the winner is one of them**; the six deeply negative ones
+include every name whose RS was collapsing into the gap. Note this is the OPPOSITE ordering from RS
+LEVEL, where the top two (LIFE rank 50, ZBRA rank 190) are not the winner.
+
+### What this is and is not
+
+- ✅ **The feature is free and already computed** — `rs_1m`, `rs_3m`, `rs_6m` are written nightly
+  for ~9,700 names, so an RS-inflection term needs NO new capture and can be backtested over every
+  alert we have.
+- ⚠ **One board, n=11, one winner.** It illustrates that inflection orders the board differently
+  from level; it establishes nothing. His own standing rule applies.
+- ▶ **The test that would settle it, and it is $0:** compute `rs_1m − rs_6m` (and rank trajectory
+  over the prior 5/10/20 sessions) at alert time for every alert we hold outcomes for, then measure
+  forward return by inflection bucket, session-permuted. **Restricted to the low-RS population**,
+  which is his actual claim — the hypothesis is that improvement matters *for names that do not
+  already have high RS*, not universally.
+- 📌 This supersedes the naive form of fork option (c). The candidate is **RS INFLECTION within the
+  neglected cohort**, not RS level — level would have thrown PLTR out (previous section).
+
 ## 2026-08-15 — PLTR, his first labelled GOOD EP: our score ranked it #1 of 11, and RS would have KILLED it
 
 Operator, 2026-08-15: *"for recent examples, though still early, pltr is a good EP."* His first
