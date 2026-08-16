@@ -625,6 +625,61 @@ that the feature works. That needs the distribution, with N and distinct session
 📚 **Consolidated into the structure SSoT: `docs/methodology/structure_model.md`** — read that
 first; the sections below are the dated verbatim captures it draws on.
 
+## 2026-08-16 — WHY THE TAIL, AND THE RS TRAJECTORY SHAPE (his reading of the tail result)
+
+On being shown that RS improvement predicts the TAIL (+50%/+100% excursion) while leaving the
+median flat:
+
+> "this makes sense to me, the tail is where i'd expect neglect to form and the middle has already
+> risen at some point and for whatever reason didn't continue to the top (yet). One more nuance to
+> consider, i'd expect RS to drop then stabilize and stay at certain level before the rise, or maybe
+> this is moot because the tail can't go lower?"
+
+### Claim 1 — WHY low RS is the fertile ground, and the middle is not
+
+**The bottom is where NEGLECT forms. The middle is the STALLED cohort** — names that already rose
+at some point and, for whatever reason, did not continue. That is a mechanism, not a correlation,
+and it explains the result rather than merely restating it: a mid-RS name has already spent part of
+its move, so there is less left; a bottom-RS name has spent nothing.
+
+▶ It also explains why RS LEVEL failed as a grade input while RS IMPROVEMENT worked in the tail —
+his two labelled good EPs, PLTR (rank 2230/2415) and EROC (2373/2415), both sat in the bottom
+decile.
+
+### Claim 2 — the TRAJECTORY SHAPE: drop → stabilise → hold → rise
+
+He expects a **three-phase** signature, not a two-point slope: RS falls, then **stabilises and sits
+at a level for a while**, and only then rises. That is the base-building shape stated in RS terms,
+and it is richer than the `rs_1m − rs_6m` sign we tested (a 2-point difference cannot tell
+*still-falling* from *flat*).
+
+📌 **PLTR's own trace fits it** — rank 2225 → 2129 → 2195 → 2121 → 2230 across the week into the
+gap: FLAT, not still-falling. (`plan §2026-08-15 RS IMPROVEMENT` section.)
+
+### Claim 3 — his own methodological objection, and it is the right one to raise
+
+> *"or maybe this is moot because the tail can't go lower?"*
+
+**Partly, and it must be tested rather than assumed.** RS percentile is bounded at 0, so variance
+compresses near the floor and "stabilisation" could be mechanically guaranteed for anything already
+at rank ~2300 of 2415 — in which case the flat trace carries no information.
+
+**But level is not the only observable, and two things stay measurable at the floor:**
+- **DURATION** — a name that fell to the bottom decile last week is not the same as one that has sat
+  there for three months. Time-in-the-bottom is the "basing" length in RS terms.
+- **SHAPE** — still-falling vs flat is distinguishable even inside the bottom decile, via the slope
+  over the prior 20/60 sessions and the dispersion of RS around its own recent level.
+
+▶ **The test that settles the moot-ness question directly: condition on RS LEVEL.** Compare
+trajectory shapes **within narrow RS bands**, so "cannot go lower" is held constant across the
+comparison. If shape still separates the tail inside a band, it is not a floor artifact.
+
+▶ Feeds: the RS-inflection candidate (plan §2026-08-16 tail re-read, fork S-3), and the "decent
+looking base" condition from his SE list — this is the same idea measured in RS space rather than
+price space.
+
+---
+
 ## 2026-08-16 — THE SUPPLY-LADDER MODEL: why structure works, in his words
 
 Said after seeing the encoder pass his eight labelled reads. This is the MECHANISM behind the
