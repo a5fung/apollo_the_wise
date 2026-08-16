@@ -622,6 +622,55 @@ that the feature works. That needs the distribution, with N and distinct session
 
 ---
 
+## 2026-08-16 — THE SUPPLY-LADDER MODEL: why structure works, in his words
+
+Said after seeing the encoder pass his eight labelled reads. This is the MECHANISM behind the
+definition he gave on NBIS — capture it verbatim, because it changes what we should be measuring.
+
+> "At the end of the day, structure shows historical prices, and congestion of prices is where
+> potential supply is (in theory, that's where lots of buy/sell happened, and where ppl may be
+> holding stock at that price and maybe will be willing to sell it there to breakeven or whatever
+> reason), and each supply point / pivot it passes, the stock has chance to move to the next supply
+> zone until it's all clear and where the stock has blue sky potential. Of course, there's lots of
+> nuance, like how far back to look etc. and this is where concepts like basing, etc. comes in.
+> Anyways, I believe price/chart structure is key ingredient to EP."
+
+### What is NEW here, versus the definition we already encoded
+
+The NBIS definition told us how to judge ONE level: did the gap clear it, did it hold. **This tells
+us what the levels ARE and why passing them matters** — and it implies a different measurement:
+
+1. **Congestion = potential supply, and the reason is holders.** Volume traded at a price means
+   people own stock there; many will sell at breakeven. That is why a level rejects price, and it
+   is a supply argument, not a chart-pattern argument.
+2. 🔴 **It is a LADDER, not a single gate.** Each pivot cleared buys the stock a run **to the next
+   supply zone**. So the quantity that predicts how far a move can go is **how much supply remains
+   overhead and how far away the next zone sits** — not a binary good/poor verdict.
+3. **Blue sky is the limiting case** — the ladder is empty, nothing overhead, and the stock is
+   free to run. Our encoder already has this as its own class (ETON 08-14).
+4. **"How far back to look" is the acknowledged nuance** — and the encoder already answers it the
+   way he does: each level reaches back exactly as far as its own failed tests, no fixed window.
+5. **Basing belongs to this model** — a base IS a congestion zone the stock has already absorbed;
+   it is why "a decent looking base" was one of his four SE conditions.
+
+### ▶ What it changes in the measurement — this is actionable, not philosophy
+
+**We tested the wrong dependent variable.** The 08-15 sweep asked whether a GOOD/POOR verdict
+predicts forward RETURN, and got a null on an all-losing cohort. His model says the structure
+signal is about **how far a move can travel before it meets sellers** — so the right test is
+**room-to-next-supply vs the SIZE of the excursion** (max favourable move), which is measurable
+even in names that ended up losers.
+
+That matters for the GOAL arithmetic directly: we need average winners above 4R, and "how much
+clear air is above the entry" is a structural prior on how big a winner can get. It is the first
+feature we have that speaks to the W term rather than to the p term.
+
+▶ Feeds: the structure encoder (`_533_nbis_structure_encoder.py` already computes remaining
+overhead — SE's January $129 shelf at 0.28 ADR, exactly where it stalled), plan §2 fork S-3, and
+the winner reference set (§1b step 5).
+
+---
+
 ## 2026-08-14 PRE-OPEN — a LABELLED PREDICTION on three live alerts (HTFL, ETON, VERA)
 
 ⚠ **Recorded BEFORE the open, before any outcome is known.** That is what makes it evidence rather
