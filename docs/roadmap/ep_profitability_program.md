@@ -1399,6 +1399,24 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — ENTRY ARCHITECTURE: a pivot ladder + an intraday trigger (his spec)
+
+📚 **Full spec: `docs/setups/delayed_ep_reentry.md` §2026-08-16.** Buy points are defined AHEAD of
+time as a ladder of named pivots (EP-day low · EP-day close · EP-day high/ORB high · prior-day high ·
+reclaim levels · the 10-day MA), each with its own stop, and **any one may trigger**. 🔴 The part we
+did not have: **PROXIMITY, not touch** — when price approaches a pivot we go to the intraday chart
+(the 620) and take a turn NEAR it; the pivot need not be tagged.
+
+**INTC is the proof case:** a limit at the EP-day low ($79.62) never filled — the stock bottomed
+$80.80, **1.5% above it** — and ran to $130.57. The EP-day CLOSE pivot ($82.54) DID fill and
+returned +9.18R. **A hard limit missed a +14R name by a percent and a half; more pivots and a
+proximity trigger are how you are in the trade at all.**
+
+▶ **Next measurement, and nothing we have run can answer it:** how often does price come within
+~0.25–0.5×ADR of a pivot WITHOUT tagging it, and what do those names do? That sizes the proximity
+model against a hard limit. ⚠ Needs a targeted minute pull for approach days (we persist intraday
+bars for alert ticker-days only).
+
 ## 2026-08-16 — INTC AND SMCI, REPLAYED: one is the sharpest case for the stop fork, the other corrects my own metric
 
 The only two tail winners we both DETECTED and TRADED — and lost on. Replayed through the exit arms

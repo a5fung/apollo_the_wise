@@ -285,3 +285,50 @@ data + the exit layer (the #168 actionability gate).
   CHANGE_PROCESS + sign-off). `replay()` stays frozen (golden test intact). Shadow; gate-free.
   TODO: slot the operator's exact "bar % range" formula (from the 6/15 tweet) into the recorder
   alongside `atr14_pct`/`fresh_2bar_tr_pct` (pluggable placeholder until confirmed).
+
+---
+
+## 2026-08-16 — THE ENTRY ARCHITECTURE (operator) — a PIVOT LADDER plus an intraday trigger
+
+> *"we need proper buy points and we need to define it ahead of time. EP day low and EP close are two
+> that i'm familiar with. We can have multiple entry pivots as long as we clearly know how we enter
+> and exit and any one of them can trigger and work. This also couples with finer grain entries like
+> looking at the 620 chart intraday when it's near one of those pivots — for example, when it is
+> closing in on the EP day low we switch to looking at intraday chart for an entry even if it doesn't
+> touch the EP low, there may be a 620 turn near it. The main thing is there's no rigid hard rule
+> here, but we have tactics and tools to help us get into EP with proper risk management."*
+
+**This is the entry model for the whole delayed-EP family. Three parts, and the third is the one we
+did not have:**
+
+1. **A PIVOT LADDER, defined in advance.** Named price levels fixed at the EP event, not chosen
+   later: **EP-day LOW · EP-day CLOSE · EP-day HIGH / ORB high · prior-day high · the reclaim levels
+   · the 10-day MA.** Multiple pivots are fine and expected — **any one may trigger.**
+2. **Each pivot carries its OWN entry and stop, stated up front** (CLAUDE.md SETUP vs FAMILY: no buy
+   point + no stop = not a setup). A pivot without a stop is not on the ladder.
+3. 🔴 **PROXIMITY, NOT TOUCH — the part that was missing.** When price *approaches* a pivot, we
+   switch to the intraday chart (the **620**, his 08-07 share) and take a turn **near** it. **The
+   pivot does not have to be touched.** A hard limit at the pivot is the wrong instrument: it is a
+   rigid rule where he explicitly wants a zone plus a trigger.
+
+**⚠ The INTC 2026-04-24 case shows exactly why this matters** (plan §2026-08-16): a limit at the
+EP-day low of **$79.62 NEVER FILLED** — the stock bottomed at **$80.80**, about **1.5% above the
+pivot**, and then ran to $130.57. A limit missed a +14R name by a percent and a half. **Under the
+proximity model, $80.80 is an approach to the pivot and the 620 turn is the entry.** The EP-day
+CLOSE pivot at $82.54 DID fill (04-28) and returned **+9.18R** — which is the same lesson from the
+other side: more pivots on the ladder = more ways to be in the trade.
+
+### What this makes measurable, and it is the next step
+
+**"Approached but never touched" is currently invisible to every test we have run**, because every
+entry rule modelled so far requires a touch. **Size it:** over the delayed-EP cohort, how often does
+price come within a defined band of a pivot (say 0.25–0.5×ADR) WITHOUT tagging it, and what did
+those names go on to do? **That number is the value of the proximity model over a hard limit** — and
+it cannot be recovered from any existing result.
+
+⚠ **The 620 trigger itself needs the intraday bars**, which we now persist for alert ticker-days
+(#567, 08-15) but NOT for arbitrary later dates. A proximity+620 backtest needs a targeted minute
+pull for the approach days — cheap, but it is a prerequisite, not a given.
+
+🛑 Buy points and stops are entry discipline = THE LINE. This records the ARCHITECTURE he specified;
+no rule is proposed or changed.
