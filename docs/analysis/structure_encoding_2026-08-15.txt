@@ -1,0 +1,273 @@
+================================================================================================
+NBIS STRUCTURE ENCODER — FIXTURE GATE (8 operator-labelled reads; the encoder
+must reproduce them BEFORE any population sweep — else STOP, per the plan)
+================================================================================================
+Definition encoded: docs/roadmap/ep_profitability_program.md §2 THE NBIS ENCODING.
+Level lookback is DERIVED from each level's own failed-test dates (no fixed window).
+Params (all from his shared sources): merge 0.3% (RMVP) · test proximity 0.5xADR20 · episode separation 1.0xADR20 rejection · congestion band 1.5xADR20 (RMVP multiplier) · hold window 60 min primary.
+The three fixture-calibrated numbers (disclosed): breach window = opening drive through 09:59 · deep-in-downtrend veto at >= 70.0% of last-60d closes above the open · through-not-onto margin 0.25xADR20 (hold end-state and overhead-MA clearance). Hold = END-STATE of the window (dip-and-reclaim is a hold).
+
+ NBIS 2026-08-12  his: GOOD  encoder: GOOD  AGREE
+      class=CLEARED_HELD  key_level=226.81  gap_open=17.0%  open=226.0  ADR20=11.01%  history=277d
+      levels: qualified_overhead=8 cleared=3 uncleared=5  held60/120/morn=True/True/True  end_10:30=233.1701
+      MA check: overhead_mas={'sma10': 193.96, 'sma20': 193.63, 'sma50': 221.93}  ma_cleared=True
+      congestion: band_top=263.33  in-band closes 60d=13 (full=13)  %60d-closes-above-open=33.3%  remaining-overhead-in-band=3  ADR-to-next-level=0.14  deep-in-downtrend-veto=False
+        level    221.93 [sma50] episodes=2 tests 2026-08-05..2026-08-06 cleared=True held=True
+        level    226.81 [pivot] episodes=10 tests 2026-07-02..2026-08-06 cleared=True held=True
+        level     229.5 [pivot] episodes=9 tests 2026-07-01..2026-08-05 cleared=True held=False
+        level     230.3 [pivot] episodes=9 tests 2026-07-01..2026-08-05 cleared=False held=None
+        level    233.73 [pivot] episodes=9 tests 2026-07-01..2026-08-05 cleared=False held=None
+        level    278.84 [pivot] episodes=3 tests 2026-06-23..2026-06-30 cleared=False held=None
+        level     290.6 [pivot] episodes=8 tests 2026-06-01..2026-06-30 cleared=False held=None
+        level    299.86 [pivot] episodes=4 tests 2026-06-17..2026-06-30 cleared=False held=None
+      his words: gapped through the 50d + prior highs ~$227, held
+
+ HTFL 2026-08-14  his: GOOD  encoder: GOOD  AGREE
+      class=CLEARED_HELD  key_level=39.24  gap_open=26.0%  open=39.06  ADR20=5.2%  history=255d
+      levels: qualified_overhead=11 cleared=10 uncleared=1  held60/120/morn=True/True/True  end_10:30=41.29
+      MA check: overhead_mas={}  ma_cleared=True
+      congestion: band_top=42.1  in-band closes 60d=0 (full=2)  %60d-closes-above-open=0.0%  remaining-overhead-in-band=1  ADR-to-next-level=1.07  deep-in-downtrend-veto=False
+        level     31.95 [pivot] episodes=2 tests 2026-06-30..2026-08-13 cleared=True held=True
+        level     32.17 [pivot] episodes=2 tests 2026-06-30..2026-08-13 cleared=True held=True
+        level     32.42 [pivot] episodes=2 tests 2026-06-30..2026-08-13 cleared=True held=True
+        level     35.48 [pivot] episodes=2 tests 2026-06-29..2026-06-30 cleared=True held=True
+        level     35.88 [pivot] episodes=8 tests 2026-01-20..2026-06-30 cleared=True held=True
+        level     36.27 [pivot] episodes=8 tests 2026-01-20..2026-06-30 cleared=True held=True
+        level     36.53 [pivot] episodes=7 tests 2026-01-20..2026-06-30 cleared=True held=True
+        level     36.68 [pivot] episodes=6 tests 2026-01-20..2026-06-29 cleared=True held=True
+        level     37.24 [pivot] episodes=6 tests 2025-10-30..2026-06-26 cleared=True held=True
+        level     39.24 [pivot] episodes=5 tests 2025-10-24..2025-10-30 cleared=True held=True
+        level     41.22 [pivot] episodes=4 tests 2025-10-23..2025-10-28 cleared=False held=None
+      his words: clearing key levels near or above ATH
+
+ ETON 2026-08-14  his: GOOD  encoder: GOOD  AGREE
+      class=BLUE_SKY_HELD  key_level=50.18  gap_open=34.6%  open=54.93  ADR20=6.02%  history=279d
+      levels: qualified_overhead=3 cleared=3 uncleared=0  held60/120/morn=True/True/True  end_10:30=55.775
+      MA check: overhead_mas={'sma10': 44.22, 'sma20': 44.26}  ma_cleared=True
+      congestion: band_top=59.89  in-band closes 60d=0 (full=0)  %60d-closes-above-open=0.0%  remaining-overhead-in-band=0  ADR-to-next-level=None  deep-in-downtrend-veto=False
+        level     44.91 [pivot] episodes=2 tests 2026-08-07..2026-08-11 cleared=True held=True
+        level     48.39 [pivot] episodes=3 tests 2026-07-31..2026-08-06 cleared=True held=True
+        level     50.18 [pivot] episodes=3 tests 2026-07-29..2026-07-31 cleared=True held=True
+      his words: clearing key levels near or above ATH
+
+ EROC 2026-08-12  his: GOOD  encoder: GOOD  AGREE
+      class=CLEARED_HELD  key_level=11.88  gap_open=16.6%  open=13.12  ADR20=10.54%  history=43d
+      levels: qualified_overhead=5 cleared=1 uncleared=4  held60/120/morn=True/True/True  end_10:30=13.94
+      MA check: overhead_mas={}  ma_cleared=True
+      congestion: band_top=15.2  in-band closes 60d=9 (full=9)  %60d-closes-above-open=48.8%  remaining-overhead-in-band=2  ADR-to-next-level=0.56  deep-in-downtrend-veto=False
+        level     11.88 [pivot] episodes=6 tests 2026-07-24..2026-08-11 cleared=True held=True
+        level      13.9 [pivot] episodes=4 tests 2026-07-07..2026-07-22 cleared=False held=None
+        level     14.29 [pivot] episodes=5 tests 2026-07-06..2026-07-22 cleared=False held=None
+        level     16.17 [pivot] episodes=4 tests 2026-06-24..2026-07-06 cleared=False held=None
+        level     17.98 [pivot] episodes=6 tests 2026-06-11..2026-06-24 cleared=False held=None
+      his words: good structure (08-15 label; thin 44d history)
+
+   SE 2026-08-11  his: GOOD  encoder: GOOD  AGREE
+      class=CLEARED_HELD  key_level=118.09  gap_open=11.4%  open=127.87  ADR20=3.42%  history=276d
+      levels: qualified_overhead=20 cleared=5 uncleared=15  held60/120/morn=True/True/True  end_10:30=127.98
+      MA check: overhead_mas={}  ma_cleared=True
+      congestion: band_top=134.43  in-band closes 60d=0 (full=13)  %60d-closes-above-open=0.0%  remaining-overhead-in-band=2  ADR-to-next-level=0.28  deep-in-downtrend-veto=False
+        level    114.95 [pivot] episodes=13 tests 2026-02-02..2026-08-10 cleared=True held=True
+        level    115.72 [pivot] episodes=11 tests 2026-02-02..2026-08-10 cleared=True held=True
+        level    117.46 [pivot] episodes=9 tests 2026-01-30..2026-08-10 cleared=True held=True
+        level    118.09 [pivot] episodes=5 tests 2026-01-30..2026-02-20 cleared=True held=True
+        level     129.1 [pivot] episodes=5 tests 2026-01-14..2026-01-29 cleared=True held=False
+        level    130.19 [pivot] episodes=4 tests 2026-01-13..2026-01-29 cleared=False held=None
+        level    148.26 [pivot] episodes=4 tests 2025-11-11..2026-01-06 cleared=False held=None
+        level    154.93 [pivot] episodes=3 tests 2025-11-06..2025-11-11 cleared=False held=None
+        level    159.13 [pivot] episodes=7 tests 2025-10-29..2025-11-11 cleared=False held=None
+        level     159.8 [pivot] episodes=6 tests 2025-10-28..2025-11-11 cleared=False held=None
+        level    162.22 [pivot] episodes=5 tests 2025-10-22..2025-11-06 cleared=False held=None
+        level    164.03 [pivot] episodes=3 tests 2025-10-22..2025-10-28 cleared=False held=None
+        level     170.0 [pivot] episodes=4 tests 2025-10-15..2025-10-21 cleared=False held=None
+        level    171.09 [pivot] episodes=3 tests 2025-10-15..2025-10-21 cleared=False held=None
+        level    181.76 [pivot] episodes=2 tests 2025-10-14..2025-10-15 cleared=False held=None
+        level    184.96 [pivot] episodes=3 tests 2025-10-10..2025-10-15 cleared=False held=None
+        level    190.75 [pivot] episodes=2 tests 2025-10-09..2025-10-10 cleared=False held=None
+        level    193.48 [pivot] episodes=6 tests 2025-09-15..2025-10-09 cleared=False held=None
+        level    195.48 [pivot] episodes=4 tests 2025-09-15..2025-10-08 cleared=False held=None
+        level     199.3 [pivot] episodes=2 tests 2025-09-11..2025-09-15 cleared=False held=None
+      his words: gapped through while above all MAs, decent base
+
+ VERA 2026-08-14  his: POOR  encoder: POOR  AGREE
+      class=CLEARED_LOST  key_level=31.8  gap_open=8.3%  open=31.29  ADR20=5.13%  history=279d
+      levels: qualified_overhead=17 cleared=1 uncleared=16  held60/120/morn=False/False/False  end_10:30=30.4983
+      MA check: overhead_mas={'sma10': 31.03, 'sma20': 33.24, 'sma50': 36.16}  ma_cleared=False
+      congestion: band_top=33.7  in-band closes 60d=16 (full=18)  %60d-closes-above-open=88.3%  remaining-overhead-in-band=3  ADR-to-next-level=0.32  deep-in-downtrend-veto=True
+        level      31.8 [pivot] episodes=3 tests 2026-08-10..2026-08-12 cleared=True held=False
+        level     32.22 [pivot] episodes=2 tests 2026-08-10..2026-08-11 cleared=False held=None
+        level     33.09 [pivot] episodes=6 tests 2026-07-29..2026-08-10 cleared=False held=None
+        level     36.16 [sma50] episodes=3 tests 2026-07-22..2026-07-27 cleared=False held=None
+        level     37.29 [pivot] episodes=3 tests 2026-07-20..2026-07-24 cleared=False held=None
+        level     39.89 [pivot] episodes=3 tests 2026-07-16..2026-07-20 cleared=False held=None
+        level     42.85 [pivot] episodes=2 tests 2026-07-15..2026-07-16 cleared=False held=None
+        level     43.19 [pivot] episodes=11 tests 2026-04-16..2026-07-16 cleared=False held=None
+        level     44.26 [pivot] episodes=12 tests 2026-04-15..2026-07-15 cleared=False held=None
+        level     44.66 [pivot] episodes=6 tests 2026-04-13..2026-07-08 cleared=False held=None
+        level     44.96 [pivot] episodes=6 tests 2026-04-13..2026-07-07 cleared=False held=None
+        level     45.51 [pivot] episodes=15 tests 2026-01-28..2026-07-07 cleared=False held=None
+        level      47.1 [pivot] episodes=3 tests 2026-01-27..2026-04-10 cleared=False held=None
+        level     49.33 [pivot] episodes=10 tests 2026-01-02..2026-01-23 cleared=False held=None
+        level     49.75 [pivot] episodes=9 tests 2026-01-02..2026-01-23 cleared=False held=None
+        level     50.79 [pivot] episodes=4 tests 2025-12-31..2026-01-14 cleared=False held=None
+        level     51.19 [pivot] episodes=3 tests 2025-12-30..2026-01-07 cleared=False held=None
+      his words: chopping above a few days' range, deep in downtrend
+
+   BW 2026-08-11  his: POOR  encoder: POOR  AGREE
+      class=CLEARED_LOST  key_level=11.57  gap_open=33.6%  open=11.86  ADR20=8.15%  history=276d
+      levels: qualified_overhead=13 cleared=4 uncleared=9  held60/120/morn=False/False/False  end_10:30=9.7122
+      MA check: overhead_mas={'sma10': 9.24, 'sma20': 9.81, 'sma50': 12.9}  ma_cleared=False
+      congestion: band_top=13.31  in-band closes 60d=1 (full=5)  %60d-closes-above-open=55.0%  remaining-overhead-in-band=5  ADR-to-next-level=-1.53  deep-in-downtrend-veto=False
+        level     10.38 [pivot] episodes=3 tests 2026-07-24..2026-08-05 cleared=True held=False
+        level     10.48 [pivot] episodes=3 tests 2026-07-24..2026-08-05 cleared=True held=False
+        level     11.11 [pivot] episodes=4 tests 2026-07-13..2026-07-24 cleared=True held=False
+        level     11.57 [pivot] episodes=3 tests 2026-07-13..2026-07-23 cleared=True held=False
+        level     12.39 [pivot] episodes=3 tests 2026-07-02..2026-07-13 cleared=False held=None
+        level      14.9 [pivot] episodes=3 tests 2026-06-24..2026-06-30 cleared=False held=None
+        level      16.0 [pivot] episodes=2 tests 2026-06-23..2026-06-24 cleared=False held=None
+        level     16.24 [pivot] episodes=2 tests 2026-06-23..2026-06-24 cleared=False held=None
+        level     18.12 [pivot] episodes=3 tests 2026-06-05..2026-06-22 cleared=False held=None
+        level     18.39 [pivot] episodes=4 tests 2026-06-05..2026-06-22 cleared=False held=None
+        level      18.8 [pivot] episodes=8 tests 2026-05-29..2026-06-18 cleared=False held=None
+        level     20.33 [pivot] episodes=4 tests 2026-05-22..2026-05-28 cleared=False held=None
+        level     22.03 [pivot] episodes=3 tests 2026-05-14..2026-05-18 cleared=False held=None
+      his words: below every MA; dead inside 60 seconds
+
+ FRMI 2026-08-11  his: POOR  encoder: POOR  AGREE
+      class=CLEARED_HELD  key_level=6.86  gap_open=20.2%  open=7.07  ADR20=9.14%  history=215d
+      levels: qualified_overhead=20 cleared=4 uncleared=16  held60/120/morn=True/True/True  end_10:30=7.14
+      MA check: overhead_mas={'sma10': 6.13, 'sma20': 6.33, 'sma50': 7.06}  ma_cleared=False
+      congestion: band_top=8.04  in-band closes 60d=10 (full=25)  %60d-closes-above-open=35.0%  remaining-overhead-in-band=5  ADR-to-next-level=-0.11  deep-in-downtrend-veto=False
+        level      6.86 [pivot] episodes=3 tests 2026-07-28..2026-07-31 cleared=True held=True
+        level       7.0 [pivot] episodes=2 tests 2026-07-28..2026-07-30 cleared=True held=False
+        level      7.05 [pivot] episodes=2 tests 2026-07-28..2026-07-30 cleared=True held=False
+        level      7.06 [sma50] episodes=2 tests 2026-07-28..2026-07-30 cleared=True held=False
+        level      7.54 [pivot] episodes=3 tests 2026-07-07..2026-07-27 cleared=False held=None
+        level      7.74 [pivot] episodes=3 tests 2026-07-07..2026-07-27 cleared=False held=None
+        level      8.79 [pivot] episodes=3 tests 2026-07-01..2026-07-06 cleared=False held=None
+        level      9.72 [pivot] episodes=5 tests 2026-03-03..2026-06-30 cleared=False held=None
+        level     10.04 [pivot] episodes=5 tests 2026-03-03..2026-06-29 cleared=False held=None
+        level     10.15 [pivot] episodes=3 tests 2026-03-03..2026-06-29 cleared=False held=None
+        level     10.45 [pivot] episodes=3 tests 2026-02-27..2026-06-29 cleared=False held=None
+        level     10.59 [pivot] episodes=2 tests 2026-02-27..2026-06-18 cleared=False held=None
+        level     12.05 [pivot] episodes=2 tests 2026-02-25..2026-02-26 cleared=False held=None
+        level     16.66 [pivot] episodes=9 tests 2025-11-20..2025-12-10 cleared=False held=None
+        level     16.89 [pivot] episodes=6 tests 2025-11-20..2025-12-09 cleared=False held=None
+        level     19.22 [pivot] episodes=5 tests 2025-11-13..2025-11-19 cleared=False held=None
+        level     30.02 [pivot] episodes=12 tests 2025-10-02..2025-11-05 cleared=False held=None
+        level      30.9 [pivot] episodes=10 tests 2025-10-02..2025-10-31 cleared=False held=None
+        level     31.47 [pivot] episodes=7 tests 2025-10-02..2025-10-28 cleared=False held=None
+        level     32.39 [pivot] episodes=5 tests 2025-10-02..2025-10-16 cleared=False held=None
+      his words: below every MA; dead inside 60 seconds
+
+------------------------------------------------------------------------------------------------
+FIXTURE GATE: 8/8 agree -> PASS
+(gate result -> _533n_gate.json)
+================================================================================================
+POPULATION SWEEP — every mi_ep_alerts row, encoded; forward outcomes from the
+alert-day OPEN, computed locally from mi_daily_closes (through 2026-08-14).
+Gate passed upstream: 8/8 fixtures agree.
+================================================================================================
+
+FUNNEL: alerts_total=357 · encoded=357 · tierA_full=273 · tierB_daily_only=84
+
+CLASS DISTRIBUTION (all encoded alerts):
+  CLEARED_HELD           n=152  sessions=43  verdict-GOOD=126
+  BLUE_SKY_HELD          n= 61  sessions=29  verdict-GOOD=61
+  NEVER_BREACHED         n= 57  sessions=34  verdict-GOOD=0
+  CLEARED_DECISIVE_NOHOLDDATA n= 33  sessions=22  verdict-GOOD=25
+  CLEARED_LOST           n= 31  sessions=20  verdict-GOOD=0
+  BLUE_SKY_NOHOLDDATA    n= 10  sessions= 8  verdict-GOOD=0
+  BLUE_SKY_LOST          n=  6  sessions= 5  verdict-GOOD=0
+  CLEARED_MARGINAL_NOHOLDDATA n=  4  sessions= 4  verdict-GOOD=0
+  NO_LEVEL               n=  1  sessions= 1  verdict-GOOD=0
+  NEAR_ATH_HELD          n=  1  sessions= 1  verdict-GOOD=1
+  NEAR_ATH_LOST          n=  1  sessions= 1  verdict-GOOD=0
+
+VERDICT: GOOD=213 (48 sessions) · POOR=144 (55 sessions)
+
+------------------------------------------------------------------------------------------------
+PRIMARY (pre-registered): GOOD vs POOR on ret_5d from alert-day open, settled
+alerts only, permutation on SESSIONS. Secondaries are descriptive (Bonferroni x4).
+
+  [PRIMARY] ret_5d
+    GOOD  n=189 med=-0.34% mean=+0.88% p25=-7.95% p75=+8.07% up=48%  sessions=43
+    POOR  n=135 med=-0.88% mean=+2.05% p25=-12.38% p75=+9.72% up=46%  sessions=51
+    session-permutation p=0.7367
+
+  [secondary] mfe_5d
+    GOOD  n=189 med=+11.74% mean=+17.22% p25=+5.81% p75=+23.74% up=99%  sessions=43
+    POOR  n=135 med=+11.37% mean=+19.33% p25=+3.47% p75=+22.76% up=98%  sessions=51
+    session-permutation p=0.7040
+
+  [secondary] ret_1d
+    GOOD  n=207 med=+2.30% mean=+3.48% p25=-5.43% p75=+10.96% up=56%  sessions=47
+    POOR  n=143 med=-0.82% mean=+2.57% p25=-8.25% p75=+7.50% up=47%  sessions=54
+    session-permutation p=0.0721
+
+  [control] gap size by verdict (is GOOD just small-gap?):
+    GOOD: median gap 15.6%  (n=213)
+    POOR: median gap 13.8%  (n=144)
+
+  [secondary] Tier-A full-encoding subset (minutes present, scale-ok):
+    GOOD: n=164 med=-0.35% mean=+0.23% p25=-8.33% p75=+8.07% up=48%  sessions=38
+    POOR: n=76 med=-6.32% mean=-2.96% p25=-14.19% p75=+5.84% up=37%  sessions=36
+
+------------------------------------------------------------------------------------------------
+PRE-OPEN-ONLY VERDICT (POST-HOC, declared after the primary was read; not part
+of the pre-registered battery). No intraday information at all: open-margin
+clear + overhead-MA margin at the open + the downtrend veto. This removes the
+hold leg's mechanical contamination of open-basis forward returns.
+  split: GOOD=233 (49 sessions) · POOR=124 (56 sessions)
+
+  ret_5d
+    GOOD  n=214 med=-1.05% mean=-0.28% p25=-8.74% p75=+5.29% up=44%  sessions=44
+    POOR  n=110 med=+2.30% mean=+4.58% p25=-12.38% p75=+14.00% up=54%  sessions=51
+    session-permutation p=0.1110
+
+  mfe_5d
+    GOOD  n=214 med=+10.51% mean=+15.62% p25=+4.62% p75=+19.92% up=99%  sessions=44
+    POOR  n=110 med=+12.76% mean=+22.93% p25=+6.20% p75=+30.30% up=98%  sessions=51
+    session-permutation p=0.1612
+
+  ret_1d
+    GOOD  n=229 med=-0.21% mean=+2.05% p25=-6.90% p75=+9.67% up=49%  sessions=48
+    POOR  n=121 med=+1.83% mean=+5.11% p25=-5.98% p75=+11.81% up=58%  sessions=55
+    session-permutation p=0.3368
+
+HOW TO READ: the permutation p shuffles SESSIONS (same-morning alerts share the
+tape). p above ~0.1 at these N means chance covers the difference. The full
+verdict's short-horizon reads are partly mechanical (see contamination note);
+the pre-open split is the honest selection read. Nothing here changes any grade,
+gate, or entry — promotion is fork S-3 (THE LINE).
+
+================================================================================================
+VERIFICATION + INTERPRETATION FOOTER (appended after the runs above)
+================================================================================================
+- SMA cross-check vs mi_stock_scores (independent prod computation): NBIS sma50 221.93 vs
+  221.934 · FRMI 7.06 vs 7.0592 · VERA 36.16 vs 36.1629 · BW 12.9 vs 12.8966 — match to the
+  cent. SE shows above all MAs (prior close 114.8 > sma10 110.5 > sma20 107.9 > sma50 99.5),
+  matching his stated read verbatim.
+- FIXTURE GATE PASSED 8/8, each for his stated reason: NBIS key level derived at $226.81
+  (his "$227 price point") + 50-day 221.93 cleared with margin; SE anchored on its base top
+  118.09 (not the January 129 poke, which appears as remaining-overhead 0.28 ADR where SE in
+  fact stalled); VERA fails three independent ways (lost the poked level, 88.3% of last-60
+  closes above the open, below sma20/50); FRMI fails on landing ON its 50-day (end-state
+  0.12 ADR over 7.06 — "below every moving average"); BW lost every cleared level and never
+  gapped over its 50-day; HTFL/ETON near/above ATH with zero recent overhead; EROC cleared
+  its 6-test base top (43d history — thin, flagged).
+- POPULATION: the pre-registered PRIMARY is a NULL (ret_5d GOOD vs POOR p=0.74). The
+  pre-open-only split (post-hoc, uncontaminated) is also a null and leans the WRONG way
+  (POOR med +2.30% vs GOOD -1.05% over 5d, p=0.11 — inside chance). The full verdict's
+  short-horizon spreads (Tier-A POOR med -6.32%) are partly MECHANICAL: the hold leg
+  conditions on the morning, so open-basis returns restate it.
+- WHAT THIS MEANS (and does not): the encoding now reproduces his eye on his own labelled
+  cases — that was the deliverable, and it is what the 08-12 crude proxy could not do. It
+  does NOT show alert-population forward returns separating by structure, which is the
+  operator's own standing expectation ("I don't claim that structure will reveal itself in
+  a few trades... the better way is to have a few winners to compare it with"). The designed
+  next use is path 5b: score every alert against the WINNER REFERENCE SET once ruled — plus
+  the delayed-entry surface, where the hold leg is a 10:30-knowable signal (SE/NBIS shape).
+- Everything here is SHADOW/read-only: nothing gates, scores, or touches any live path.
+  Promotion of any part of this into the grade is fork S-3 (CHANGE_PROCESS + operator
+  sign-off — THE LINE).

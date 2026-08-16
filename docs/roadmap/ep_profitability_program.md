@@ -1309,6 +1309,80 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — STRUCTURE IS ENCODED, and it reproduces all 8 of his labelled reads
+
+Probe `scripts/probes/_533_nbis_structure_encoder.py` (SHADOW — it refuses to sweep unless the
+fixture gate passes, and it is wired into nothing). Capture:
+`docs/analysis/structure_encoding_2026-08-15.txt`. This is the thing he asked for on 08-12 and
+that had never been built; the crude "above all three SMAs" proxy I tested and reported a null on
+is superseded and should not be cited again.
+
+### The fixture gate: 8 of 8, each for HIS stated reason
+
+| Name | He said | Encoder | Why the encoder says it |
+|---|---|---|---|
+| NBIS 08-12 | GOOD | GOOD ✓ | cleared and held a level derived at **$226.81** — his own "~$227" — with the 50-day at 221.93 cleared by 0.46 ADR |
+| HTFL 08-14 | GOOD | GOOD ✓ | cleared and held 39.24, the old all-time-high region, with zero recent supply overhead |
+| ETON 08-14 | GOOD | GOOD ✓ | blue sky — opened above every prior high, and held |
+| EROC 08-12 | GOOD | GOOD ✓ | cleared and held its 6-test base top at 11.88 ⚠ only 43 days of daily history (starts 06-10) |
+| SE 08-11 | GOOD | GOOD ✓ | cleared and held base top 118.09, above all MAs; the January 129 shelf shows as 0.28 ADR of remaining overhead — **exactly where it stalled** |
+| VERA 08-14 | POOR | POOR ✓ | fails three independent ways: poked 31.8 and lost it · 88.3% of the last 60 closes sit above the open (deep-in-downtrend veto) · below the 20- and 50-day |
+| BW 08-11 | POOR | POOR ✓ | cleared then lost everything; never even gapped over its 50-day (12.90 vs an 11.86 open) |
+| FRMI 08-11 | POOR | POOR ✓ | held a minor shelf but landed ON its 50-day (7.07 open vs 7.06) — his "below every moving average" |
+
+📌 **VERA was the case that mattered** — a gap that looks fine and is structurally weak. An encoder
+that called VERA good would have been measuring "it went up".
+
+### The level-derivation rule — and why it answers his "part science, part art" objection
+
+1. Levels are daily pivot highs merged within **0.3%** (his own RMV-developer parameter), qualified
+   only by **≥2 failed test EPISODES** — a test approaches within 0.5×ADR20 and fails to close
+   above; two tests count separately only if a ≥1×ADR20 rejection sits between them, so chop
+   hugging a line is ONE test, not many. A daily close above the level kills it.
+2. 🔴 **The lookback is each level's own test dates.** Levels reach back exactly as far as their
+   failed tests do — NBIS's to July, SE's base to February, HTFL's ATH pair to last October.
+   **There is no window parameter to tune.** This is his objection to fixed lookbacks made
+   mechanical, and it is the part the SMA proxy could never express.
+3. The 50-day counts only when it has ≥2 failed episodes in the current below-SMA regime; the
+   52-week/ATH "nothing overhead" case is its own class; a single untested all-time-high print is
+   never treated as congestion.
+
+### ⚠ The honesty that has to travel with the 8/8
+
+**Three thresholds were calibrated ON these fixtures** and are disclosed in the probe header: the
+opening-drive breach window (through 09:59), the 0.25×ADR through-not-onto margin, and the 70%
+deep-in-downtrend veto. **So the fixtures are the CALIBRATION set, not a test of it.** 8/8 says the
+definition is expressible and self-consistent — it does NOT say the encoder generalises. The
+out-of-sample read is the sweep below. (Two earlier mistranslations of his words are recorded in
+the probe docstring; v1 failed NBIS on his own worked example.)
+
+### The population sweep: null, and the reason is the one he predicted
+
+357 alerts (05-11 → 08-14), 273 with full minute encoding. GOOD 213 / POOR 144.
+Pre-registered primary — 5-day return from the open, session-permuted: **null, p=0.74** (GOOD median
+−0.34% vs POOR −0.88%, across 43/51 sessions). The 1-day p=0.072 dies under correction AND is
+partly mechanical (the hold leg conditions on the morning). The clean pre-open-only split is also
+null and leans the wrong way.
+
+- ✅ **Not a gap proxy:** GOOD median gap 15.6% vs POOR 13.8% — the verdict is not gap size wearing
+  a different name. That was the obvious failure mode and it is ruled out.
+- 📌 **This is exactly what he said would happen.** You cannot learn what good structure is worth
+  inside a cohort with no winners — the whole population lost. **The encoder's real test is the
+  winner reference set (§1b step 5), not this cohort**, and that comparison is now the blocking
+  item for the entire selection surface.
+
+### What could not be encoded, and it is named honestly
+
+- **Stage analysis** ("possibly moving to a Stage-2 uptrend") and **group/theme strength** — both
+  named by him on SE, both outside a price-level definition. Theme coverage is #563's territory;
+  the Stage-2 classifier remains the largest unbuilt piece of his SE conditions.
+- 84 alerts before 07-28 have no minute bars, so no hold leg — they run in a degraded open-only
+  tier and are labelled as such.
+- EROC's blue-sky claim cannot be verified before 2026-06-10 (data start).
+
+🛑 Shadow only. Nothing touches `_score_ep`, the judge, or any live path. Promotion is fork S-3 —
+CHANGE_PROCESS plus his sign-off.
+
 ## 2026-08-15 — STOP-GEOMETRY SWEEP: cannot tell yet, and the reason why is a CAPTURE HOLE
 
 Probe `scripts/probes/_stop_geometry_sweep.py`, output `docs/analysis/stop_geometry_sweep_2026-08-15.txt`.
