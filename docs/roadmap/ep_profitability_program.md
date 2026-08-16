@@ -1356,6 +1356,51 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — HIS TWO CORRECTIONS APPLIED, and both change the number materially
+
+> *"some microcaps may be big runners but we forego them due to volatility, penny stocks is not what
+> we want regardless of return. Another thing, the 10% floor is based on our timeframe, until 9:45AM
+> morning; some of these under 10% may actually rise above 10% during the day."*
+
+Re-ran the market-wide scan split by tradability, and testing the intraday-crossing hypothesis.
+
+| tier | gap days | tail winners | we caught | alert rate | **winner alert rate** | **sub-10% winners that crossed 10% INTRADAY** |
+|---|---|---|---|---|---|---|
+| **A — tradeable (≥$10, ≥$50M)** | 1,575 | **149** | 8 | 9.9% | **5.4%** | **78%** |
+| B — mid (≥$5, ≥$25M) | 726 | 81 | 4 | 6.9% | 4.9% | 95% |
+| C — small / illiquid | 11,289 | **1,517** | 1 | 0.1% | 0.1% | 42% |
+
+### 1. ✅ The microcap point is right, and my earlier number was inflated by it
+
+**1,517 of the 1,747 tail winners sit in the small/illiquid tier** — names we deliberately do not
+want regardless of return. **The honest addressable miss is 141 of 149 in the tradeable tier**, not
+298 of 311. My "96% missed" headline counted penny stocks; corrected.
+
+⚠ **But the anti-selectivity SURVIVES the correction, which is the part that matters:** in tier A we
+alert on **9.9%** of qualifying gap days and only **5.4%** of the ones that become tail winners.
+Restricted to names we actually want, we are still nearly twice as likely to flag a gap that goes
+nowhere as one that runs.
+
+### 2. 🔴 The 10% floor point is right, and it is bigger than the floor itself
+
+**78% of the tradeable missed winners that gapped under 10% AT THE OPEN went on to cross 10% during
+the day** (95% in tier B). **They were not excluded on merit — they were excluded by WHEN we
+measure.** Our floor is evaluated in the 09:31–09:45 window; a name that builds to 10% after that is
+structurally invisible no matter how good it is.
+
+📌 **This is SE's mechanism generalised.** SE (2026-08-11) was skipped at 9.2% against the 10% floor
+and reclaimed to +10.5% four minutes later — his own worked example, now shown to be a pattern
+covering roughly four-fifths of that miss class.
+
+⚠ **Upper bound, stated:** daily bars cannot tell me whether the crossing happened by 09:45 or at
+15:30. **78% is the ceiling on what a later re-check could recover, not the yield.** Establishing the
+real figure needs the minute bars — which, as of the 08-15 capture work, we now persist for alert
+ticker-days but NOT for names we never alerted on. That is the gap this measurement just exposed.
+
+▶ **Two forks for the operator, both now evidenced rather than asserted:** (a) re-check the gap floor
+later in the morning rather than only at first evaluation; (b) the tradeable-tier liquidity/volatility
+gates that push us away from the tail. Both are entry discipline = THE LINE.
+
 ## 2026-08-16 — 🔴 THE OUTSIDE-OUR-FILLS WINNER SET: we alert on 4% of the market's EP-shaped tail winners
 
 Step 5, Arm 2 — the one thing never built. Market-wide scan of `mi_daily_closes` (14,615 tickers,
