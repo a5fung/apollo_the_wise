@@ -1356,6 +1356,53 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — NEXT-DAY RE-ENTRY: every shape is positive, and the R numbers are INFLATED by tight stops
+
+Probe `scripts/probes/_delayed_reentry.py`. 99 HIGH names with a full 60 trading days of forward
+history. **40 of the 99 produced a ≥5R opportunity from the EP close** — that is the outlier set the
+strategy exists to catch, and it is far larger than anything the same-day work suggested.
+
+His two triggers, plus three discovered, each crossed with two stop placements and both stop
+semantics:
+
+| arm | fired | caught ≥5R | catch % | total R | max |
+|---|---|---|---|---|---|
+| **T1 reclaim the EP-day LOW** · trigger-day-low stop · close-basis | 50 | **9 / 40** | **22%** | +176.4R | +81.6R |
+| **T2 reclaim the EP-day CLOSE** · trigger-day-low stop · close-basis | 71 | 8 / 40 | 20% | **+244.8R** | +156.0R |
+| T2 · EP-day-low stop · close-basis | 71 | 8 / 40 | 20% | +78.4R | +19.0R |
+| T4 close above the prior day's high · trigger-day low · close | 84 | 7 / 40 | 18% | +126.7R | +52.0R |
+| T5 reclaim the 10-day MA · trigger-day low · close | 49 | 6 / 40 | 15% | +91.5R | +92.2R |
+| (the same arms on INTRADAY-touch stops) | — | 4–5 / 40 | 10–12% | — | — |
+
+### What holds up
+
+- ✅ **Both of his named triggers work, and T1 (reclaim the EP-day low) is the best on catch rate.**
+- ✅ **His stop caveat is confirmed a second time: close-basis beats intraday-touch on catch rate for
+  every single trigger** — 18–22% versus 10–12%. Intraday stops keep removing us before the move.
+- ✅ **Every one of the five shapes is positive**, against −6.0R for the same-day live rule.
+- ⚠ **Even the best arm MISSES 31 of the 40 real EPs.** The miss list is printed by name in the
+  capture — that list, not the total R, is the thing to work on next.
+
+### 🔴 THE CAVEAT THAT GOVERNS ALL OF IT — do not quote these R totals
+
+**R is inflated by very tight stops.** The trigger-day-low stop can sit a fraction of a percent below
+the entry, and R is defined as (move ÷ that distance). A **+156R** single outcome does not mean a
+156-fold return — it means the stop was ~0.6% away. Three consequences:
+
+1. **A stop that tight would be noise-stopped constantly in reality**, and the daily-bar resolution
+   here cannot see that.
+2. **Spread and slippage would dominate a stop that close** and are not modelled at all.
+3. **It explains why the trigger-day-low stop "beats" the EP-day-low stop by 3× on total R** —
+   the EP-day-low arm (+78.4R, max +19.0R) is the more believable number.
+
+▶ **The next run adds a MINIMUM STOP DISTANCE (e.g. ≥0.5 ADR, and a position-size cap) before any of
+these totals mean anything.** Until then: treat the CATCH RATES as the signal and the R totals as
+uninterpretable.
+
+⚠ Daily-bar resolution: a same-day undercut-and-reclaim that also stopped us out intraday is not
+separable here. All early-period, no out-of-sample, reconstructed.
+🛑 Nothing proposed. THE LINE.
+
 ## 2026-08-16 — ISOLATED, on ONE matched cohort: it is the STOP, not the horizon — and re-entry is the middle path
 
 His question: *"is this no intraday stop or reentry or we haven't looked into that yet but just
