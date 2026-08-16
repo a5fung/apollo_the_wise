@@ -9203,3 +9203,32 @@ reviews:
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
+  - review_id: exit_path_shadow_first_read
+    title: "Exit-path shadow — first read on LIVE data (the stop fork's out-of-sample)"
+    question: >-
+      The stop fork (hold through -2R vs exit at the ORB low) is currently decided on
+      43 RECONSTRUCTED trades from one regime, April-May 2026, with no out-of-sample.
+      `mi_exit_path_shadow` (shipped 2026-08-16) records each live position's actual
+      path - the R unit, daily adverse/favourable excursion, the -1/-2/-3/-5R touches,
+      whether it closed back above the stop, overnight gap-through events, the trail
+      level, and the realized exit. Score the SAME rules offline on live data and
+      compare: does the bounded hold (through -2R, out at -3R) still beat the live
+      ORB-low stop, at EQUAL RISK (see the 08-16 unit correction - the bounded rule
+      risks 2x the old unit, so its R must be halved before comparison)?
+      Also read: how often does day-0 minute coverage actually fire (the bar_source
+      column IS the coverage measurement), and does the -2R-pays / -3R-does-not split
+      reproduce live?
+    evidence_predicate: >-
+      SELECT count(DISTINCT (ticker, alert_date)) >= 20 FROM mi_exit_path_shadow
+      WHERE is_exit_day = true
+    owner: operator
+    status: pending
+    notes: >-
+      Cadence: ~3 live fills/week, so ~20 closed positions is roughly 7 weeks -> first
+      read early October 2026. A FULL 60-day path on the earliest recorded fill is not
+      complete until mid-November, which coincides with next earnings season - the
+      window the operator has said is the real test. Do NOT read this before the
+      predicate fires: the whole point is out-of-sample evidence, and reading early
+      re-introduces the in-sample problem the shadow exists to escape.
+      THE LINE: this review produces evidence for HIS ruling on the stop; it proposes
+      nothing.
