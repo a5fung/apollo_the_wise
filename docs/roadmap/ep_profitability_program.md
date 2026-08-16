@@ -59,6 +59,49 @@ have done to PLTR — is mathematically fatal, since 4R is break-even (`docs/set
 2026-08-11). It also reframes §0's headline number: 0-of-19 is not only a bad win rate — the cohort
 on average REACHES +1.54R and KEEPS −0.91R (§5) — both terms of the equation are failing at once.
 
+### 🎯 HOW MANY IS "ENOUGH"? — the sufficiency target (operator, 2026-08-16)
+
+Verbatim: *"it's inevitable there's randomness and things that can't be foreseen. We are not looking
+to capture every single winner, but make sure our system catches a sufficient amount of big winners
+while protecting downside. If we're missing too many winners, we're not trying to make it perfect
+but capture just enough that makes sense to have good positive return."*
+
+**This converts every "we missed 63 of 78" line in this doc from a lament into a TARGET.** The
+question is not the miss rate; it is whether the catch rate clears the bar. Computed from the
+weekend's own measurements:
+
+| input | measured | source |
+|---|---|---|
+| our reconstructed book, live rule | **−23.4R over 75 fills** (mean −0.31R, 69.3% stopped) | the 9-arm replay |
+| tail winners available, tradeable stocks, 4½ months | **78** | the outside-winner scan |
+| we surfaced live, any form | 15 of 78 · **traded: 2** | the attribution read |
+| what a caught winner converts at, live rule | **+6.19R** (the best observed) | same replay |
+
+### ▶ The target: roughly ONE converted tail winner per month
+
+To turn −23.4R into positive we need about **+24R of winners** across 4½ months. At the best
+conversion our own exit has produced (+6.19R), that is **≈4 more caught-and-converted tail winners
+— call it one a month.** Not 78, not 63. **Four.**
+
+**Which reframes the whole weekend:**
+
+- 🟢 **The miss rate is NOT the crisis it reads as.** We do not need to fix 63 misses; we need ~4.
+  A 5% catch rate on 78 available winners would clear the bar **if each one converted.**
+- 🔴 **Conversion, not detection, is the binding half — and we have direct proof.** The two tail
+  winners we DID trade (INTC, SMCI) both **lost money** (−$477, −$639) while the stock ran ≥8×ADR.
+  **Catching more of them changes nothing until that stops happening.**
+- 📌 **And the exit work sizes exactly that gap:** under the live rule the ceiling on a runner was
+  **+0.67R** in the extension cohort (the breakeven stop takes the rest); without the intraday stop
+  the same names reached **+18–20R**. **The difference between +0.67R and +6R per caught winner IS
+  the difference between the target being unreachable and needing only four names.**
+
+⚠ The +6.19R conversion assumes the runner is allowed to run. It is the OBSERVED best, not a
+planning assumption — under the current breakeven rule the realistic figure is far lower, which is
+why the target math is a fork on exits before it is a fork on detection.
+
+⚠ Arithmetic on reconstructed trades over one 4½-month window; it sizes the target, it does not
+promise it.
+
 ### 🎯 WE ARE HUNTING THE TAIL, NOT THE AVERAGE (operator, 2026-08-16) — and it invalidates the STATISTIC we have been using
 
 Verbatim: *"we need to remember EPs are rare and winrate is low, we're not looking for a sure
