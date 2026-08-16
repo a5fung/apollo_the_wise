@@ -96,7 +96,13 @@ grow into prose.**
 
 1. **19 closed live trades in 60 days: 0 winners, 19 losers, −$416.19 total. Best trade −$2.40.**
    (`mi_live_trades WHERE account_mode='live' AND status='closed' AND alert_date >= CURRENT_DATE-60`,
-   prod 2026-08-11.) The honest statement is "nothing has been TAKEN as a win", not "nothing works":
+   prod 2026-08-11 — this is the correct statement of THAT 60-day-window query, unchanged.) ⚠
+   **Superseded going forward by the current convention** (Week of 08-11→08-15 review, below):
+   **20 closed / 1 green / −$396.86** — the green is ETON, asterisked (its profit existed only
+   because a bug left shares unstopped). The two totals are not on a reconciled cutoff (both FRMI
+   and BW closed inside the same 08-11→14 week as ETON, ahead of when this 19-trade query ran) —
+   read them as two dated snapshots, not additive; **use 20 / 1 / −$396.86 going forward.** The
+   honest statement is "nothing has been TAKEN as a win", not "nothing works":
    the only positive results are the two OPEN positions — PLTR (entered 08-04 @ $149.05, 4 of 6
    shares remaining after a partial that banked +$33.27; ~$175 on 08-11) and ABCL (85 sh @ $8.96,
    entered 08-10; ~$9.69 on 08-11). **His numbers, stated once (2026-08-12): target win rate ~20%
@@ -221,8 +227,9 @@ case looked persuasive.** "Answered by" names the thing that would actually move
     is measured on a broken input; clean accrual starts 08-11. Answered by: ~2–3 weeks of clean
     accrual, then re-cut. **Status: OPEN — evidence-accrual (calendar).**
 12. **Does the new exit stack (resting-limit + broker-breakeven) actually bank the excursion?**
-    [Exit] Belief: unknown — zero `profit_trigger_*`/`partial_exit_*` events since ship 08-10; a
-    rule is not live until it fires once. (Separately, the "+2R" unit itself may not be consistent:
+    [Exit] Belief: two firings since ship 08-10 (ABCL 08-11, ETON 08-14) — a rule is not live until
+    it has fired once, and now has; whether it BANKS the excursion is still open (§5). (Separately,
+    the "+2R" unit itself may not be consistent:
     entry-to-stop spans 0.15–1.17 ADR, a 7.7× range — unresolved on current data.) Answered by: its
     first live firings, plus the pre-committed watch triggers (partial fires → remainder scratched
     → runs ≥+4R same session: once = review, twice = revert). **Status: OPEN — evidence-accrual
@@ -264,7 +271,7 @@ while damaging the other is a net loss.
 
 **Where we actually are:** p = 1 green in 20 closed live trades, and that one is asterisked (ETON —
 profit existed only because a bug left shares unstopped). The cohort **reaches +1.54R and keeps
-−0.91R** (§5). Both terms are failing at once.
+−0.91R** (n=17, 08-08 read, under the pre-08-10 exit stack — §5). Both terms are failing at once.
 
 ### The one fact the whole plan turns on
 
@@ -285,21 +292,34 @@ A leak with no number is marked UNMEASURED — that is itself the finding.
 
 | # | Stage | The question | Measured leak (date) | What would close it | Blocked on |
 |---|---|---|---|---|---|
-| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · 4 detectors dark for months | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)**; scoping the reference set is also his |
-| **2** | **ADMIT** | of the alerts, which do we act on — and are we right to? | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 arrived after the 09:45 window, 3 the ORB bug) and 5 were filters · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,114 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
-| **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · #562's delayed-entry shapes | **evidence-accrual** + **OPERATOR** (naming the shapes) |
-| **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** · the 08-10 exit stack has fired only once (ABCL 08-11) — a rule is not live until it fires repeatedly | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
+| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · **3 detectors genuinely dark for months** (anticipation lifecycle table dark since 06-16, pin rejects every candidate · sugar-baby convergence: 0 fires since its 05-22 ship · Undercut & Rally: 4 rows ever, last 06-18) **+ 1 misdiagnosed**: the failed-break gate counts a flag 0 of 160 recorded breaks has ever carried — the breaks detector itself DOES produce, only its failed-break classification never fires (commit `25a73c2`) | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)**; scoping the reference set is also his |
+| **2** | **ADMIT** | of the alerts, which do we act on — and are we right to? | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 detected after the 09:45 window; **3 the ORB bug, fixed 08-13 and verified clean 08-14 — so the go-forward mechanics leak is 6, not 9**), **3 were selection** (gap floor), **1 never triggered** (RIOT) · **3 more were risk geometry** (2 stop-too-wide, 1 chase-cap) — **stage 3's leak, not this stage's** (owns "is R sized to the name" — §skip-taxonomy, below) · **portfolio skips: 0 in this 08-11→14 window, but nonzero on record** — the 07-31 breaker expiry cancelled most of a day's entries (6 alerts, 0 entries) and the 08-04 cap blocked AEIS and ZBRA · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,224 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
+| **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit · **owns the 3 risk-geometry skips above** (2 stop-too-wide, 1 chase-cap — EROC is the worked case, §2 0a table) | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · #562's delayed-entry shapes | **evidence-accrual** + **OPERATOR** (naming the shapes) |
+| **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** (n=17, 08-08 read, under the pre-08-10 exit stack — §5) · the 08-10 exit stack has now fired TWICE (ABCL 08-11, clean; ETON 08-14, the carved-out third that filled at the exact 2R target and exposed #566's stop-less carve) — a rule is not live until it fires repeatedly, and twice is a start, not a distribution | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
 
 ### The ordering rule that falls out of the arithmetic
 
-🔴 **Widening stage 2 before stages 3 and 4 work would lose money FASTER.** More entries into a
-machine that converts +1.54R of excursion into −0.91R of realized result makes expectancy worse,
-not better. So the funnel finding above is a **measurement priority, not a fix-it-now priority** —
-we learn from the skips before we take more of them.
+🔴 **Widening stage 2 before stages 3 and 4 work would lose money FASTER.** Expectancy PER TRADE is
+unchanged by widening; more entries into a machine that converts +1.54R of excursion into −0.91R of
+realized result **multiplies exposure to a negative expectancy**. So the funnel finding above is a
+**measurement priority, not a fix-it-now priority** — we learn from the skips before we take more
+of them.
+
+- **The assumption this rests on, stated plainly:** mechanics-recovered fills would convert like
+  past fills, since they passed every filter and were lost to latency rather than judgement.
+- **What resolves the tension with the operator's own position that entry mechanics are where his
+  edge leaks:** **bugs get fixed immediately** (the ORB bug was, correctly, on 08-13); **mechanics
+  that are his signed rules** (the 09:45 window, the real-time flip) are dated forks, his to open;
+  **only filter-WIDENING is what this arithmetic defers.**
+- **Authority for the ordering:** his own 2026-08-12 ruling that tightening criteria is the
+  prerequisite to the real-time flip (below, "the delayed feed is doing a filter's job") — #559's
+  flip question is subordinate to admission, not parallel to it.
 
 That gives three lanes running at different speeds, and they are not interchangeable:
 
-- **AGENT TIME (now):** stage 1 and 2 MEASUREMENT — #533, skip attribution, detector liveness.
+- **AGENT TIME (now):** stage 1 and 2 MEASUREMENT — #533, skip attribution, detector liveness ·
+  **#545's design/replay grid** (stage 3, runnable now on already-captured minute-bar data — step
+  8b below, not calendar-gated).
 - **OPERATOR TIME (blocking):** the winner reference set (stage 1) and the delayed-entry shapes
   (#562, stage 3). Neither can be invented by an agent, and both gate real work.
 - **CALENDAR (accrual):** stages 3 and 4 need firings and settled trades, not analysis. Re-cutting
@@ -315,28 +335,45 @@ the operator rules.
 |---|---|---|
 | 0. Outcome unit = the ALERT, not the fill | all four — it is the only cohort with variance | ✅ DONE |
 | 1. #563 theme-coverage read | p, via stage 1 (unblocks theme-strength as a ranking input) | ✅ DONE 08-12, closed 08-15 |
-| 2. Capture + retention (#567) | all four — the evidence for next quarter's test now survives | ✅ DONE 08-15 (verify 08-17) |
+| 2. Capture + retention (#567) | all four — the evidence for next quarter's test now survives | deployed 08-15 — verify-live 08-17 |
 | 3. **#533 within-day ranking readout** | p, via stage 2 — today the choice among a morning's alerts is alphabetical | ▶ NEXT, agent time |
-| 4. **Skip-reason attribution** (3,114 rows, per reason: N, distinct sessions, forward return) | p, via stage 2 — says whether a reason drops names that RAN (defect) or names that died (working) | ▶ NEXT, agent time, $0 |
+| 4. **Skip-reason attribution** (3,224 rows, per reason: N, distinct sessions, forward return) | p, via stage 2 — says whether a reason drops names that RAN (defect) or names that died (working). ⚠ the rt-catch cohort (245 rows) is in NO outcome join, so this read does not cover the real-time-only population | ▶ NEXT, agent time, $0 |
 | 4b. **Floor-over-judge outcome read** — forward returns of the 57 HIGHs the gap-floor forced past a `none` judge verdict vs the 116 the judge agreed with | p, via stage 1 — says whether the override costs money | ▶ NEXT, agent time, $0 |
-| 5. **Winner reference set** — real EP winners from outside our fills | p and W, via stage 1 — the ONLY thing that can answer "what is a real EP" | 🔴 OPERATOR — scoping is his call |
+| 5. **Winner reference set** — real EP winners from outside our fills (folds in §7 gap 1, the Stage-2 trend-context classifier — the doc's own "biggest single capability gap") | p and W, via stage 1 — the ONLY thing that can answer "what is a real EP" | 🔴 OPERATOR — scoping is his call |
 | 6. **#562 — name the delayed-entry shapes** | p, via stages 2–3 — 51% alpha capture but only 1 of 104 reached TRIGGERED | 🔴 OPERATOR — enumeration is his |
-| 7. Detector liveness alarm (folds into #543) | stage 1 — four detectors dark for months and nothing said so | agent time, small |
-| 8. #482 geometry · #545 grid · #559 admission re-cut (08-31) | W and L, via stage 3 | ⏳ accrual |
+| 6b. **Name the delayed-EP setup(s)** (buy point + stop) + stand up its shadow lane (§7 gap 3) | p, via stage 3 — turns the family into a tradeable | 🔴 OPERATOR fork (§9 fork 5) — waits on step 6's enumeration + evidence on each shape |
+| 7. Detector liveness alarm (folds into #543) | stage 1 — of the four flagged (commit `25a73c2`): anticipation lifecycle dark since 06-16, sugar-baby convergence 0 fires since 05-22, Undercut & Rally 4 rows ever (last 06-18) — three genuinely dark and nothing said so; the fourth (failed-break) is a live detector whose classification flag 0 of 160 breaks has ever carried | agent time, small |
+| 8. #482 geometry (N≥30, currently at 14) · #545's capture-needing cells · #559 admission re-cut (08-31) | W and L, via stage 3 | ⏳ accrual |
+| 8b. **#545's design/replay grid** — answerable NOW on already-captured data (3 existing harnesses: `_306_intraday_partial_sim.py`, `_508_exit_rule_replay.py`, `_stop_floor_forward_replay.py`; the 08-15 minute-path backfill makes next-day/N-day sweeps runnable) | W and L, via stage 3 | ▶ NEXT, agent time |
+| 8c. Carryforward funnel re-cut on clean post-08-11 data (§1a row 11) | p, via stage 3 | ⏳ calendar, ~08-25 |
 | 9. The exit stack's live firings · n=20/40/60 cohort clocks | W, via stage 4 | ⏳ accrual (occurrence) |
 | 10. The recalibration forks (§9) — grade reservation, ranked slots, gap-floor re-look | p | ⏳ each waits on its evidence step, then is an OPERATOR ruling |
 
+**Registered, unowned, no step in this path yet:** earnings-season-conditioned selection (§1a
+row 4 / §7 gap 7) — belongs to stage 1/2 (selection); no task owns building the measurement. Named
+here so it is not silently dropped.
+
 ### What would make us CHANGE this plan (stated in advance, so it is falsifiable)
 
-- **If skip attribution shows the filters mostly drop names that DIED** → stage 2 is not the leak;
-  agent time moves to stages 1 and 3, and "we are too loose" is not supported on behaviour.
-- **If the winner reference set shows our alerts already look like real EPs** → selection is not
-  the leak, and the whole weight falls on entry geometry and exits.
-- **If the exit stack fires repeatedly and the cohort still keeps −0.91R** → the excursion is not
-  capturable at this geometry, and the honest move is a different entry unit, not a better trail.
-- **If a full quarter of clean accrual still shows no distribution worth reading** → the sample
-  rate, not the analysis, is the binding constraint, and the question becomes how to observe more
-  EPs without trading more of them.
+- **If skip-reason attribution shows the filters mostly drop names that DIED** (read per reason —
+  each needs its own N and distinct-session count before it counts; the 20-distinct-day bar used
+  for the Confirm cohort, week-of-08-17 target row, is the model for what "enough" looks like) →
+  **the FILTERS** are not the leak; mechanics remain stage 2's larger measured share either way, so
+  this verdict is scoped to filters, not the whole stage. Agent time moves to stages 1 and 3, and
+  "we are too loose" is not supported on behaviour.
+- **If the winner reference set shows our alerts already look like real EPs** — falsifiable only
+  once the reference set is scoped (step 5; scoping it, and judging "looks like," is the operator's
+  call, per his own "part science part art" framing, §2) → selection is not the leak, and the whole
+  weight falls on entry geometry and exits.
+- **If the exit stack fires REPEATEDLY** (pinned to the existing `exit_tune_cohort_review` n=20/40/60
+  clocks, not a vibe) **and the cohort still keeps −0.91R** → the excursion is not capturable at
+  this geometry — though the ETON firing already qualifies what a firing proves: a resting limit is
+  a promise about price, never about a fill, so a "firing" can be liquidity-dependent rather than
+  proof the geometry banks the excursion. "The honest move is a different entry unit" is a FORK the
+  evidence would open, not a pre-decided answer.
+- **If a full quarter of clean accrual (from 08-11, the clean-carryforward start date) still shows
+  no distribution worth reading** → the sample rate, not the analysis, is the binding constraint,
+  and the question becomes how to observe more EPs without trading more of them.
 
 ⚠ **The cadence section below is what keeps this honest** — a week with nothing SHIPPED and nothing
 ACCRUED is the failure this structure exists to catch, and it is reviewed on Fridays against the
@@ -501,9 +538,9 @@ is the big challenge."* Entry discipline itself (trigger level, stop basis, floo
   measurement's own window, so the two cuts are comparable).
 
 **OPEN QUESTIONS for this surface → the consolidated register, §1a (rows 7, 9, 10).** The
-trigger-offset question is fork 6 in §9 (#541, blocked on him); the cooldown/ADV-floor cost
-questions are #557/#556 in the task inventory §7 — both already scoped tasks with measurement-first
-DoDs, not open definitional questions.
+trigger-offset question (#541) is **CLOSED 08-13** — fork 6 in §9 is resolved, not an open
+question; the cooldown/ADV-floor cost questions are #557/#556 in the task inventory §7 — both
+already scoped tasks with measurement-first DoDs, not open definitional questions.
 
 **Labelled recommendation (one, entry):** change nothing before 08-31; the #559 re-cut plus the
 false-block split is already the right next measurement, and any threshold moved now would
@@ -611,9 +648,10 @@ closed.
   of our holding period — it can act from day 1 instead of being structurally dead on ≤2-day holds.
 - Day-3/5 time partial superseded by `PROFIT_TRIGGER_R = 2.0` (08-01, operator-signed). Giveback
   peak-lock: built dark, no live caller (#306).
-- ⚠ **The 08-10 stack is UNFIRED: zero `profit_trigger_*` / `partial_exit_*` audit events since
-  08-10** (prod). Per the standing lesson, a rule is not live until it has fired once — deployed
-  + green is not evidence it can act.
+- ⚠ **The 08-10 stack has fired TWICE: `profit_trigger_*` / `partial_exit_*` audit events on
+  08-11 (ABCL, clean) and 08-14 (ETON — the carved-out third filled at $59.58, the exact 2R
+  target, exposing #566's stop-less carve)** (prod). Per the standing lesson, a rule is not live
+  until it has fired once — it has now, twice, but two firings is a start, not a distribution.
 
 **WHAT IS MEASURED**
 - Replay evidence behind the +2R rule: 36 closed trades, 34 candidate rules, +0.43R vs actual
@@ -719,7 +757,7 @@ reverse pointer back to this doc + their surface (`[ep_profitability_program.md 
 navigable both directions. Board count unaffected (link-only edits).
 
 **Selection / ranking:**
-- #533 (within-day ranking + does the grade mean anything — in_progress, due 08-12, top priority)
+- #533 (within-day ranking + does the grade mean anything — in_progress, due 08-18, top priority)
 - #448 (B6 rubric backtest, pooled — pending, due 09-15)
 - #368 (theme-axis weighting + operator labeling — in_progress, due 08-12; the live block is
   the operator's labeling pass, not the task status)
@@ -744,7 +782,9 @@ navigable both directions. Board count unaffected (link-only edits).
 
 **Entry:**
 - #559 (admission re-cut 08-31 + NEW false-block split — pending, due 08-31)
-- #541 (trigger-at-ORB-high — blocked, operator fork, due 08-13)
+- #541 (trigger-at-ORB-high) — **CLOSED 2026-08-13** (commit `c54118f`): `entry_ask_aware` shipped
+  08-07, operator-signed; 14 live entries since 08-07, zero broker rejections. Kept here as
+  historical context only; it is not open work and carries no PLAN.md line.
 - #482 (bracket-geometry lab — pending, due 08-16)
 - #556 (ADV floor vs actual size — pending, due 08-13)
 - #557 (cooldown cost — pending, due 08-14)
@@ -760,7 +800,7 @@ navigable both directions. Board count unaffected (link-only edits).
 **Delayed entry:**
 - #562 (delayed-entry FAMILY — step 1 is HIS enumeration of candidate follow-up shapes, not further
   diagnosis; corrected 08-11 off two earlier framings [HTF/flag-stage machine, then "620 alone"] —
-  pending, due 08-11, overdue, blocked on the operator)
+  pending, due 08-18, blocked on the operator)
 - #545 (delayed/re-entry variants + the TEAM worked case — see Entry above for status)
 - #270 spec (`delayed_ep_reentry.md`, wiring gated — no open PLAN.md line; PLAN.md line 31 marks
   it close-pending/done, doc-only reference now)
@@ -788,7 +828,7 @@ navigable both directions. Board count unaffected (link-only edits).
 - `exit_tune_bull_regime_read` (fires at 8 bull closes; 0 today)
 
 **Cross-surface / measurement:** #563 (theme coverage of EP gaps — PREREQUISITE for ranking's
-theme feature — pending, due 08-15) · `mi_ep_missed_outcomes` + #468 probes +
+theme feature — **CLOSED 08-15**) · `mi_ep_missed_outcomes` + #468 probes +
 `ep_delayed_capture_audit.py` (the alert-level outcome machinery, already built).
 
 ⚠ **Deliberately NOT added above** — the ADR-0032 theme-hierarchy program (#538, #529, #530,
@@ -832,9 +872,9 @@ thesis-identity) the operator has not named as ranking work; only #563 (coverage
    trades lived 0.8–11.7 minutes, so their recorded MFEs understate truth (CRCL's real peak was
    +1.62R against a recorded 0.00). Minute-bar reconstruction is possible per-name but is not
    what the tables hold (`exit_discipline.md` limitation 2).
-2. **The new exit stack has never fired.** Zero trigger/partial events since 08-10 — its effect
-   is unmeasurable until first fire, and the #559 clock runs on trading days, not firings (a
-   zero-firing window is itself a defined answer: HOLD stands).
+2. **The new exit stack has fired twice.** Two trigger/partial events since 08-10 (ABCL 08-11,
+   ETON 08-14) — its effect is still unmeasurable from two firings, and the #559 clock runs on
+   trading days, not firings.
 3. **Open-position censoring.** The only positive outcomes (PLTR, ABCL) are open and excluded
    from every realized statistic by construction. Any "0 winners" headline must carry this.
 4. **The gap floor's historical false-block rate** — blocks were logged, reclaims were not
@@ -870,8 +910,9 @@ thesis-identity) the operator has not named as ranking work; only #563 (coverage
 | 3 | Gap floor: keep single-sample vs add a re-look | #559's false-block split (08-31) | keep: SE-class misses; add: re-admits genuine faders (WKC/QBTS class) |
 | 4 | RT admission flip (universe + gap authority) | #559 re-cut post-exit-stack | flip early: re-measures old exits; hold: the NVVE/TRAX-class residual stays uncaught |
 | 5 | Name the delayed-EP setup(s) (buy point + stop) | his enumeration of candidate follow-up shapes (#562 step 1, corrected 08-11) + evidence on each | until named, delayed EP stays a family, not a tradeable |
-| 6 | Trigger at vs above the ORB high | #541 (blocked on him) | at: venue kills on fast gappers (mitigated by ask-aware); above: pays up on every entry |
+| 6 | ~~Trigger at vs above the ORB high~~ — **CLOSED 08-13, not open** | `entry_ask_aware` shipped 08-07, operator-signed | 14 live entries since 08-07, zero broker rejections (#541) |
 | 7 | Bracket geometry (1-min ORB vs alternatives) | #482 shadow accrual | keep: the shaken-out-winner pattern persists; change: money-path geometry change, N≥10 + sign-off |
+| 8 | **Throttling fills also throttles the evidence clocks.** Stages 3 and 4 are declared blocked on OCCURRENCES (the n=20/40/60 cohort clocks, repeated exit-stack firings), and the fills we decline are the occurrences those clocks need | none named — this is the tuition-for-evidence question itself | take more fills sooner: real money spent as tuition, faster evidence; wait: cleaner discipline, slower clocks — real-money trade-off = THE LINE, no option pre-chosen |
 
 ---
 
@@ -952,11 +993,32 @@ Max excursion is more than double the judge-agreed cohort (+27.5% vs +11.5%, the
 0.01 in the whole read), while the 20-day return is three times worse. The judge's `none` verdict
 is not picking "no move" — **it is picking a move that does not hold.**
 
-▶ **Why that does NOT support switching the override off:** we are a day-one ORB entry with a +2R
-profit-take. A large 5-day excursion is the thing our machine is supposed to capture; a 20-day
-collapse costs us nothing if we are already out. **On the horizon we actually trade, the overridden
-cohort is if anything the better hunting ground.** Removing the override on this evidence would
-remove opportunity, not risk.
+▶ **What this looked like at first:** we are a day-one ORB entry with a +2R profit-take, so a
+large 5-day excursion is the thing our machine is supposed to capture and a 20-day collapse costs
+nothing if we are already out — on the horizon we trade, the overridden cohort looked like the
+better hunting ground.
+
+🔴 **RETRACTED SAME DAY — the operator's correction, and he is right.** Verbatim (2026-08-15):
+*"don't agree here, funds are limited, with lose selection criteria we inevitably leave to random
+rules to enter vs decline, eg 5 position cap."* **The read compared the overridden names against
+NOTHING.** Capital and slots are finite, so a marginal admit does not add a trade — it DISPLACES
+one. The right comparison is against the name it pushed out, and this probe never made it.
+
+**What the displacement mechanism actually is, measured (prod, 2026-05-11 → 08-14):**
+
+- `block:max_positions` has fired **3 times across 2 sessions** — the 5-slot cap itself is almost
+  never the binding constraint, so the cap is not the mechanism.
+- The real one is worse: **2026-08-04 produced 10 HIGH alerts and 3 fills; 08-07 produced 9 and 3.**
+  Which ones got in is decided by **ticker alphabetical order and ORB trigger timing** (#533) —
+  not by quality.
+- So loose criteria do not merely admit marginal names. **They hand the selection to an arbitrary
+  rule**, which is the operator's point and a stronger form of it than the cap version.
+- ⚠ For completeness: `block:circuit_breaker` fired 12 times across 4 sessions in the same window —
+  a larger arbitrary declining force than the position cap, and it declines by CLOCK, not by name.
+
+▶ **The test this actually needs — displacement, not level:** on multi-alert days, did the names we
+TOOK outperform the names we DECLINED? That is exactly #533 (§1b step 3), and it is why step 3
+comes before any grading fork is decided.
 
 ▶ **Where it DOES bite:** the 15–20% band, where overridden names give back −8.0% over five days
 against +6.6% for judge-agreed ones — the wrong direction on a horizon we do hold. p=0.107 on
@@ -964,9 +1026,10 @@ n=26 across 8 sessions is not a finding, but it is the one place worth watching 
 
 ### What this changes
 
-- **Fork option (b) — "stop the floor overriding a lower judge verdict" — is NOT supported by
-  outcomes.** It was the cheapest option to evidence, and the evidence declines it. Recorded so it
-  is not re-proposed. (Options (a), (c), (d) are untouched by this read.)
+- **Fork option (b) — "stop the floor overriding a lower judge verdict" — is NOT settled by this
+  read in either direction.** The level comparison declines it; the displacement comparison it
+  should have run has not been made. ⚠ Do NOT cite this section as evidence for keeping the
+  override — that was the error, corrected above. (Options (a), (c), (d) are untouched.)
 - The judge's verdict carries **real information about durability**, which is a different axis from
   "is this a real EP today". That is a candidate input to the HOLD question (stage 4), not a reason
   to suppress the alert.
@@ -1128,7 +1191,7 @@ PLAN.md line of its own, so it is named here.
 
 | Target | Type | Why then |
 |---|---|---|
-| **Skip-reason attribution (§1b step 4)** — per reason: N, distinct sessions, and what the name DID afterwards | SHIPPED | the lead target. This week says 9 of 16 losses are mechanics; attribution says whether a reason drops names that RAN (candidate defect) or names that died (working). $0 — **`mi_ep_missed_outcomes` already carries `skip_reason` alongside ret_1d/5d/20d and max_high_5d/20d across 3,114 rows since February**, so this is a read, not a new capture. ⚠ Report N and distinct sessions per reason; a single skipped name that ran proves nothing (standing evidence rule) |
+| **Skip-reason attribution (§1b step 4)** — per reason: N, distinct sessions, and what the name DID afterwards | SHIPPED | the lead target. This week says 9 of 16 losses are mechanics; attribution says whether a reason drops names that RAN (candidate defect) or names that died (working). $0 — **`mi_ep_missed_outcomes` already carries `skip_reason` alongside ret_1d/5d/20d and max_high_5d/20d across 3,224 rows since February**, so this is a read, not a new capture. ⚠ Report N and distinct sessions per reason; a single skipped name that ran proves nothing (standing evidence rule) |
 | **Scope the WINNER REFERENCE SET (§1b step 5)** | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. **Scoping is HIS call.** ⚠ This REPLACES the previously-listed binary structure probe, which he rejected: *"chart structure is part science part art… the better way is to have a few winners to compare it with"* — re-running it would re-ship a null he already pushed back on |
 | **#533 within-day ranking readout (§1b step 3)** | SHIPPED | the other agent-time step — today the choice among a morning's alerts is decided ALPHABETICALLY |
 | #566 and #567 verify-live | SHIPPED | Monday: the first live +2R carve-out under the toggle, and the 16:22 ET alert-day path job |
@@ -1360,6 +1423,10 @@ lumping them hides which lever is which:
 | **Risk geometry** | `stop too wide` (1.5×ATR) | it IS an EP; the trade we would construct is too expensive |
 | **Timing / mechanism** | `window:out_of_orb` (post-09:45), unfilled at the ORB high, `zero_range` | it IS an EP; our entry mechanism could not take it |
 | **Portfolio** | position cap, cooldown, breaker | nothing about this name at all |
+
+⚠ **Stage ownership (§1b), so no skip is double-counted:** Selection, Timing/mechanism, and
+Portfolio kinds are stage 2's (ADMIT) leak; **Risk geometry is stage 3's (ENTER) leak** — it owns
+"is R sized to the name?" — not stage 2's, even though the skip fires at admission time.
 
 **EROC this morning is the worked case**: skipped on stop-too-wide, correct by the 1.5×ATR rule,
 and the operator's read is that it was a good EP. The rule did its job and we still did not own a
