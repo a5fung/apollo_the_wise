@@ -146,6 +146,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "giveback_shadow",  # ADR 0023 F1 — peak-lock counterfactual on the live book; pure compute + DB, no broker calls
     "pivot_stop_shadow",  # ADR 0031 — pivot/character-stop counterfactuals on closed trades; pure compute + DB, no broker calls
     "sell_discipline_recorder",  # #508 WS1 — reached-vs-kept record per closed trade; pure compute + DB/audit, no broker calls, no rule
+    "exit_path_shadow",  # 2026-08-16 — per-trading-day path record on every LIVE fill; pure compute + DB/audit, no broker calls, no rule
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
@@ -4238,6 +4239,29 @@ async def _sell_discipline_recorder_job():
         await notify_job_failure("sell_discipline_recorder", str(e))
 
 
+async def _exit_path_shadow_job():
+    """Run at 17:50 ET (EOD, after the 17:00 nightly close pull refreshes mi_daily_closes
+    AND the 17:38/17:42/17:46 shadow family — same slot logic as sell_discipline: this
+    table's day_close/trail must match the OFFICIAL daily close the live trail sees, not
+    a minute-bar proxy, so it cannot run before mi_daily_closes has today's row).
+
+    2026-08-16 — RECORD THE PATH, NOT THE RULES (operator: "shouldn't we just expand the
+    shadow to all our combination of variables since it doesn't cost real money?"). Writes
+    one mi_exit_path_shadow row per LIVE trade per trading day open (fill through close or
+    60 calendar days), full per-trade backfill on first sight, idempotent UPSERT after —
+    so ANY exit rule (the -2R-hold fork in ep_profitability_program.md §0c, or any future
+    candidate) can be scored offline with no new capture. RECORD ONLY — no exit rule, no
+    broker calls, no live-trade mutation (THE LINE; see exit_path_shadow.py docstring)."""
+    try:
+        from agents.market_intelligence.exit_path_shadow import record_exit_path_shadow
+        from agents.market_intelligence.collector import et_today
+        n = await record_exit_path_shadow(et_today())
+        logger.info(f"exit-path shadow: wrote/updated {n} row(s)")
+    except Exception as e:
+        logger.error(f"exit-path shadow job failed: {e}", exc_info=True)
+        await notify_job_failure("exit_path_shadow", str(e))
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -5284,6 +5308,17 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_sell_discipline_recorder_job, "sell_discipline_recorder"),
         CronTrigger(hour=17, minute=46, day_of_week="mon-fri", timezone="America/New_York"),
         id="sell_discipline_recorder",
+        replace_existing=True,
+    )
+
+    # 2026-08-16 EXIT-PATH SHADOW — 17:50 ET mon-fri, after the 17:46 sell-discipline
+    # recorder (same family, +4 min spacing convention) and after mi_daily_closes is
+    # fresh for today. Per-trading-day path record on every LIVE fill (open + closed);
+    # pure compute + DB/audit, no broker calls, no exit rule (THE LINE).
+    _scheduler.add_job(
+        audit_wrap(_exit_path_shadow_job, "exit_path_shadow"),
+        CronTrigger(hour=17, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
+        id="exit_path_shadow",
         replace_existing=True,
     )
 

@@ -1733,6 +1733,9 @@ _NOT_SWEEP_PARAMS: dict[str, str] = {
                     "accounts, not variants of one experiment, so identical results are expected.",
     "score_tier":   "the alert's own HIGH/MODERATE grade — a classification of the subject, not a "
                     "parameter we vary over it.",
+    "breakeven_armed": "mi_exit_path_shadow's observed state (was breakeven armed on the LIVE "
+                    "position that day) — matched on the substring 'arm', not a swept parameter; "
+                    "there is only one live rule, nothing is varied over it.",
 }
 
 

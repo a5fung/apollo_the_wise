@@ -2401,6 +2401,70 @@ async def initialize_schema() -> None:
                 computed_at          TIMESTAMPTZ DEFAULT NOW()
             );
 
+            -- 2026-08-16 — EXIT-PATH SHADOW (exit_path_shadow.py). Operator: "shouldn't we just
+            -- expand the shadow to all our combination of variables since it doesn't cost real
+            -- money?" — the answer is RECORD THE PATH, NOT THE RULES. One row per LIVE trade per
+            -- TRADING DAY it was open (fill through close or 60 calendar days, whichever first),
+            -- at enough resolution that ANY exit rule (the -2R-hold fork in
+            -- docs/roadmap/ep_profitability_program.md §0c, or any future candidate) can be
+            -- scored OFFLINE against real recorded prices — never a pre-chosen arm, so it can't
+            -- suffer the 545-parameter-grid overfitting the plan already found dead. THE LINE:
+            -- record + display only. No exit rule lives here; nothing reads this table from any
+            -- live decision path (verified — see exit_path_shadow.py module docstring).
+            -- RETENTION: deliberately ABSENT from purge_old_data (kept forever) — same class as
+            -- mi_ep_alerts (2026-08-15 capture audit: the evidence this exact decision needs was
+            -- the thing an old purge deleted before it could be used). Volume is tiny (one row
+            -- per live trade per trading day open, capped at 60 rows/trade) so "forever" costs
+            -- nothing on a DB with 58 GB free.
+            CREATE TABLE IF NOT EXISTS mi_exit_path_shadow (
+                trade_id                    INT NOT NULL,
+                ticker                      TEXT NOT NULL,
+                account_mode                TEXT NOT NULL,
+                signal_type                 TEXT,
+                alert_date                  DATE NOT NULL,
+                fill_day                    DATE NOT NULL,
+                trading_day                 DATE NOT NULL,
+                trading_day_index           INT NOT NULL,   -- 0 = fill day; position in the trading-day CALENDAR since fill (not a count of rows actually written — a rare missing-bar day leaves a hole, use trading_day itself to order/join, this only orders within one trade)
+                hold_days                   INT NOT NULL,   -- calendar days since alert_date (exit_logic's own counter — aligns with the day-3/5 rule's own clock)
+                entry_price                 DOUBLE PRECISION NOT NULL,
+                stop_ref                    DOUBLE PRECISION NOT NULL,  -- the ORB-low stop (hard_stop fallback) FIXED at entry — the R-unit anchor, independent of any later trail/breakeven move
+                risk_per_share              DOUBLE PRECISION NOT NULL,  -- entry_price - stop_ref = R in dollars; the denominator every *_r column below divides by
+                entry_shares                DOUBLE PRECISION,
+                day_open                    DOUBLE PRECISION,
+                day_high                    DOUBLE PRECISION,
+                day_low                     DOUBLE PRECISION,
+                day_close                   DOUBLE PRECISION,
+                bar_source                  TEXT NOT NULL,  -- 'daily' | 'daily+minute_hl' (day 0, high/low restricted to the in-hold minute window) | 'polygon_fallback[+minute_hl]' — coverage honesty, never implies precision the data lacks
+                prior_close                 DOUBLE PRECISION,  -- prior TRADING day's close (populated from day 0 onward — day 0's is the stock's own pre-entry close, the EP gap)
+                gap_r                       DOUBLE PRECISION,  -- overnight gap vs prior close, in R; NULL on day 0 (no overnight gap into a same-day entry)
+                gap_through_stop_ref        BOOLEAN,            -- today's open printed BELOW stop_ref — a gap that would have jumped clean past a resting stop; NULL on day 0
+                adverse_excursion_r         DOUBLE PRECISION NOT NULL,  -- (entry - day_low)/R reached TODAY
+                worst_adverse_excursion_r   DOUBLE PRECISION NOT NULL,  -- running worst (max) adverse excursion through today
+                favourable_excursion_r      DOUBLE PRECISION NOT NULL,  -- (day_high - entry)/R reached TODAY
+                best_favourable_excursion_r DOUBLE PRECISION NOT NULL,  -- running best (max) favourable excursion through today
+                close_r                     DOUBLE PRECISION NOT NULL,  -- (day_close - entry)/R — what a close-based rule would see today
+                touched_minus_1r            BOOLEAN NOT NULL,
+                touched_minus_2r            BOOLEAN NOT NULL,
+                touched_minus_3r            BOOLEAN NOT NULL,
+                touched_minus_5r            BOOLEAN NOT NULL,
+                closed_above_stop_ref       BOOLEAN NOT NULL,  -- day_close > stop_ref — true even on a day that touched -2R/-3R intraday (the §0c "dipped but closed above" sub-finding)
+                touched_plus_2r             BOOLEAN NOT NULL,  -- day_high reached the +2R profit-trigger level actually used live
+                breakeven_armed             BOOLEAN NOT NULL,  -- a partial had fired by this day (breakeven arms on the partial, not independently — docs/setups/exit_discipline.md)
+                trail_sma10                 DOUBLE PRECISION,
+                trail_sma20                 DOUBLE PRECISION,
+                trail_price                 DOUBLE PRECISION,  -- MAX(SMA10, SMA20) per broker/exit_logic.py's default trail
+                close_below_trail           BOOLEAN,            -- NULL until the trail exists (<10 closes)
+                is_exit_day                 BOOLEAN NOT NULL DEFAULT FALSE,
+                exit_price                  DOUBLE PRECISION,
+                exit_reason                 TEXT,
+                realized_r                  DOUBLE PRECISION,   -- whole-trade R multiple (total_pnl / (R x entry_shares)); only set on is_exit_day
+                pnl_attribution             TEXT,   -- non-NULL = this trade's P&L was bug-distorted (the ETON class) — cohort reads must filter it, mirrors mi_sell_discipline_records
+                computed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (trade_id, trading_day)
+            );
+            CREATE INDEX IF NOT EXISTS idx_exit_path_shadow_trading_day
+                ON mi_exit_path_shadow(trading_day);
+
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
             -- with WHEN, and the daily-close peak a close-driven rule could have seen), what
@@ -8083,6 +8147,12 @@ async def purge_old_data() -> dict[str, int]:
       read it (08-04..08-09 rows would have deleted 2026-11-08, the week a November
       test begins). Cost of keeping: ~15 KB/row x ~1-2.5k rows/yr ≈ 20-40 MB/yr —
       a leanness choice, not a storage constraint (whole DB 1.2 GB, 58 GB free).
+    - mi_exit_path_shadow: KEPT FOREVER (2026-08-16, exit_path_shadow.py) — same class
+      as mi_ep_alerts: this is exactly the evidence class the 08-15 capture audit found
+      being deleted before it could be used, and it is the record the operator's stop-
+      change decision (docs/roadmap/ep_profitability_program.md §0c) is weighed against.
+      Volume is trivial: one row per LIVE trade per trading day open, capped at 60
+      rows/trade.
     - mi_stock_scores: 365 days (RS history — needed for historical queries + outcome tracking)
     - mi_themes:       365 days (theme lifecycle history — stage transitions over months)
     - mi_market_regime: kept forever (1 row/day, ~260 rows/year — negligible)
