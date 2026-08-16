@@ -1356,6 +1356,45 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — STRUCTURE JOINED TO OUTCOMES, AND NORMALISED: every apparent effect is VOLATILITY
+
+His ask — bring yesterday's structure encoder into the winners analysis. Joined the encoder's
+per-alert verdict (the one that reproduces his 8 labelled reads 8/8) to 20-day max excursion for
+**277 alerts**, reported both raw and **divided by the name's own ADR20**.
+
+| cohort | n | median MFE | **median MFE ÷ ADR** | reach +50% | **reach 8×ADR** | avg ADR |
+|---|---|---|---|---|---|---|
+| structure **GOOD** | 168 | 15.0% | **2.4×** | 10.7% | **6.5%** | 6.9% |
+| structure **POOR** | 109 | 16.1% | **2.6×** | **19.3%** | **7.3%** | 8.4% |
+| gap ≥ 15% | 139 | 15.5% | **2.1×** | 18.0% | 7.2% | 8.3% |
+| gap < 15% | 138 | 15.0% | **2.7×** | 10.1% | 6.5% | 6.6% |
+
+### 🔴 The finding is methodological, and it invalidates most of today's raw-percent reads
+
+- **POOR-structure names reach +50% nearly TWICE as often as GOOD ones (19.3% vs 10.7%)** — the
+  opposite of the hypothesis. **But their ADR is 8.4% against 6.9%: they are simply more volatile.**
+- **Normalise and the effect vanishes**: 2.6× vs 2.4× ADR, and 7.3% vs 6.5% reaching 8×ADR. There is
+  no structure edge in either direction once volatility is removed.
+- **The same happens to gap size**: big gaps reach +50% 18.0% vs 10.1% — but in ADR units the SMALL
+  gap group is *better* (2.7× vs 2.1×). **The gap advantage is entirely a volatility artifact, and
+  it reverses when priced properly.**
+
+▶ **So the "winners are $31 stocks vs $70 stocks" split from the previous section is almost certainly
+the same artifact** — cheap, small, volatile names clear a fixed +50% bar more easily. **Any
+conclusion in this plan drawn from a raw-percentage outcome must be re-read in ADR or R units.**
+
+### What it means for structure specifically
+
+- The encoder reproduces his judgement on named charts perfectly (8/8) **and predicts nothing about
+  outcome magnitude on this cohort** — consistent with the 08-15 sweep null (p=0.74), now confirmed
+  on a volatility-normalised basis rather than dismissed as a cohort artifact.
+- ⚠ That is NOT "structure doesn't matter". Per §6 and his own 08-12 correction, the comparison that
+  would test it is against a **winner reference set from outside our fills** — not inside a cohort
+  where the whole population is mediocre. This result narrows what we can claim, it does not settle
+  the question.
+
+⚠ n=277, one regime, superset cohort, descriptive only — no permutation or multiplicity control here.
+
 ## 2026-08-16 — 🔴 WINNERS vs THE REST: our own score separates NOTHING, and the top grade is mildly ANTI-predictive
 
 The winner-reference comparison (§1b step 5), run on the alert population: **470 names reached a
