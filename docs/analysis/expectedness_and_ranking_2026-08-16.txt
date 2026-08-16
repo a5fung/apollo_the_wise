@@ -1,0 +1,314 @@
+EXPECTEDNESS AXIS + CANDIDATE RANKING — 2026-08-16
+read-only · $0 (two cached prod SELECTs, no LLM) · nothing proposed (THE LINE)
+probe: scripts/probes/_expectedness_and_ranking.py · caches: _expct_alerts.tsv,
+_expct_cohort_daily.tsv, _533n_daily.tsv, _552_cohort.psv
+
+==================================================================================================
+PART 1 — THE EXPECTEDNESS AXIS: derivation, coverage, and whether it separates outcomes
+==================================================================================================
+corpus: 357 distinct (ticker, alert_date) rows in mi_ep_alerts, 2026-05-11..2026-08-14 (everything before 2026-05-11 was purge-eaten)
+  live-source rows: 239 · replay/other-source rows: 118 (excluded from outcome tests)
+  grounded_text carries a parseable [SEC form/items] header: 170 of 357 (48%) — the filing-evidence path
+  q_revenue_yoy_pct present (stored numeric): 74 of 357
+
+HOW EACH CLASS WAS DERIVED (deterministic; no LLM):
+  scheduled   <- 10-Q/10-K, or 8-K/6-K with item 2.02 (earnings release); keyword fallback
+                 for earnings-shaped text when no filing grounded the grade
+  unscheduled <- 8-K WITHOUT 2.02 (1.01/2.01/5.02/7.01/8.01), 425/S-4; keyword fallback
+  forward     <- approval/clearance · pivotal endpoint · valued contract/lease/order ·
+                 backlog · guidance RAISE · M&A · index add · commercial launch
+  backward    <- closed-period actuals: reported revenue/EPS, record quarter, beat, YoY%
+  both        -> mixed_fwd (spec: strongest forward element wins + mixed flag)
+  analyst_only-> initiations/PT/upgrades with NO company fact (not in the spec's classes;
+                 refused to force them into one)
+
+  AXIS 1 (scheduled vs unscheduled): scheduled=182 (51%) · unscheduled=88 (25%) · unknown=87 (24%)
+    evidence source: scheduled/filing=113 · scheduled/keyword=69 · unknown/none=87 · unscheduled/filing=33 · unscheduled/keyword=55
+  AXIS 2 (backward vs forward): unknown=128 (36%) · forward=92 (26%) · mixed_fwd=71 (20%) · backward=37 (10%) · analyst_only=29 (8%)
+  AXIS 3: beat-language flag on 74 of 357 · growth number recovered on 94 of 357 (74 stored + 20 regex)
+  CLASSIFIABLE FRACTION (all rows): axis1 270/357 = 76% · axis2 229/357 = 64% (honest unknowns kept, never guessed)
+  ⚠ coverage split that matters: 118 rows carry NO catalyst corpus at all ('Historical scan: ...' backfill) — ALL 118 are non-live replay rows.
+  ON THE LIVE CORPUS (n=239): axis1 206/239 = 86% · axis2 180/239 = 75%
+
+  fixture spot-checks (the audit's own worked cases, where in-window):
+    VERA 2026-08-14: sched=scheduled(filing) looking=forward beat=False growth=None [8-K items 2.02,9.01] quality=game_changer
+    ETON 2026-08-14: sched=scheduled(filing) looking=mixed_fwd beat=False growth=99.0 [8-K items 2.02,9.01] quality=game_changer
+    HTFL 2026-08-14: sched=scheduled(filing) looking=mixed_fwd beat=False growth=48.0 [8-K items 2.02,9.01] quality=game_changer
+    RIOT 2026-08-11: sched=scheduled(filing) looking=forward beat=False growth=None [8-K items 2.02,8.01,9.01] quality=game_changer
+    EROC 2026-08-12: sched=scheduled(filing) looking=forward beat=False growth=None [8-K items 2.02,9.01] quality=game_changer
+    GLBE 2026-08-12: sched=scheduled(keyword) looking=mixed_fwd beat=True growth=None [ items ] quality=game_changer
+    RDDT 2026-08-14: sched=unscheduled(filing) looking=forward beat=False growth=61.0 [8-K items 5.02,9.01] quality=strong
+    NMAX 2026-08-14: sched=scheduled(filing) looking=mixed_fwd beat=False growth=16.5 [8-K items 2.02,7.01,9.01] quality=strong
+
+OUTCOME POPULATION: live alerts with >=20 prior bars and >=5 fwd sessions: n=205; full 20-session windows: n=128 (primary — later alerts are truncated)
+outcome unit: (max high D+1..D+20 - close) / close / ADR20 — the house tailx
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[1] SCHEDULED vs UNSCHEDULED (axis 1, known-schedule only) — PRIMARY
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  -- full-window population --
+  SCHEDULED                          n= 53 (26s)  reach>=8xADR  2 = 3.8%  P90= +5.26x  med=2.72x
+  UNSCHEDULED                        n= 43 (26s)  reach>=8xADR  5 = 11.6%  P90= +8.65x  med=1.76x
+    perm p (session-shuffled): share>=8xADR p=0.2010 · P90 p=0.1290
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[2] FORWARD-CHANGING vs BACKWARD-LOOKING (axis 2) — PRIMARY
+    forward = forward + mixed_fwd (spec: strongest forward element wins)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  -- full-window population --
+  FORWARD(+mixed)                    n= 46 (28s)  reach>=8xADR  5 = 10.9%  P90= +5.68x  med=1.54x
+  BACKWARD                           n= 14 (10s)  reach>=8xADR  0 = 0.0%  P90=   N<20  med=3.0x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+    (pure forward only)              n= 36 (22s)  reach>=8xADR  5 = 13.9%  P90=+10.38x  med=1.53x
+    (mixed_fwd only)                 n= 10 (10s)  reach>=8xADR  0 = 0.0%  P90=   N<20  med=2.65x
+    (analyst_only)                   n= 16 (13s)  reach>=8xADR  1 = 6.2%  P90=   N<20  med=2.54x
+    (unknown)                        n= 52 (24s)  reach>=8xADR  3 = 5.8%  P90= +5.63x  med=2.39x
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[3] GAP-CONTROLLED — the same two comparisons inside gap terciles
+    (the point of the axis is the part of the catalyst NOT already in the gap)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  tercile bounds on the tested population: gap < 13.0% / 13.0-17.5% / > 17.5%
+  -- gap-LOW: scheduled vs unscheduled --
+  SCHEDULED                          n= 18 (15s)  reach>=8xADR  0 = 0.0%  P90=   N<20  med=2.73x
+  UNSCHEDULED                        n= 16 (12s)  reach>=8xADR  2 = 12.5%  P90=   N<20  med=1.45x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- gap-LOW: forward vs backward --
+  FORWARD(+mixed)                    n= 15 (13s)  reach>=8xADR  2 = 13.3%  P90=   N<20  med=1.37x
+  BACKWARD                           n=  6 ( 6s)  reach>=8xADR  0 = N<10  P90=   N<20  med=2.06x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- gap-MID: scheduled vs unscheduled --
+  SCHEDULED                          n= 15 (10s)  reach>=8xADR  1 = 6.7%  P90=   N<20  med=2.85x
+  UNSCHEDULED                        n= 15 (14s)  reach>=8xADR  2 = 13.3%  P90=   N<20  med=1.82x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- gap-MID: forward vs backward --
+  FORWARD(+mixed)                    n= 16 (15s)  reach>=8xADR  2 = 12.5%  P90=   N<20  med=1.79x
+  BACKWARD                           n=  2 ( 2s)  reach>=8xADR  0 = N<10  P90=   N<20  med=4.66x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- gap-HIGH: scheduled vs unscheduled --
+  SCHEDULED                          n= 20 (14s)  reach>=8xADR  1 = 5.0%  P90= +4.95x  med=2.05x
+  UNSCHEDULED                        n= 12 (12s)  reach>=8xADR  1 = 8.3%  P90=   N<20  med=1.56x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- gap-HIGH: forward vs backward --
+  FORWARD(+mixed)                    n= 15 (13s)  reach>=8xADR  1 = 6.7%  P90=   N<20  med=1.86x
+  BACKWARD                           n=  6 ( 5s)  reach>=8xADR  0 = N<10  P90=   N<20  med=2.52x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[4] HIS ORIGINAL FRAMING — does expectedness rescue catalyst_quality? (secondary)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  -- game_changer split by axis 2 --
+  GC + forward                       n= 15 (11s)  reach>=8xADR  1 = 6.7%  P90=   N<20  med=1.29x
+  GC + backward                      n=  2 ( 2s)  reach>=8xADR  0 = N<10  P90=   N<20  med=1.74x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- game_changer split by axis 1 --
+  GC + unscheduled                   n= 11 ( 9s)  reach>=8xADR  1 = 9.1%  P90=   N<20  med=1.26x
+  GC + scheduled                     n= 11 (10s)  reach>=8xADR  0 = 0.0%  P90=   N<20  med=1.29x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[5] AXIS 3 — beat-vs-estimate distinct from growth-vs-history (secondary)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  -- beat-language vs none (full pop) --
+  BEAT language                      n= 27 (22s)  reach>=8xADR  1 = 3.7%  P90= +4.68x  med=2.09x
+  no beat language                   n=101 (37s)  reach>=8xADR  8 = 7.9%  P90= +6.26x  med=1.88x
+    perm p (session-shuffled): share>=8xADR p=0.7196 · P90 p=0.3601
+
+  -- growth >=39% (the Pradeep bar) vs <39%, where growth known --
+  growth >=39% YoY                   n=  9 ( 9s)  reach>=8xADR  0 = N<10  P90=   N<20  med=2.09x
+  growth <39% YoY                    n= 11 ( 9s)  reach>=8xADR  0 = 0.0%  P90=   N<20  med=2.85x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- the NBIS/GLBE cell: beat WITHOUT big growth vs growth WITHOUT beat --
+  beat, growth<39                    n=  6 ( 5s)  reach>=8xADR  0 = N<10  P90=   N<20  med=3.06x
+  no-beat, growth>=39                n=  4 ( 4s)  reach>=8xADR  0 = N<10  P90=   N<20  med=2.34x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+
+==================================================================================================
+PART 2 — THE CANDIDATE RANKING, from the three signals that survived ADR-normalisation
+==================================================================================================
+THE RULE (three lines, readable):
+  Rank every qualifying gap day by the average of three percentiles:
+    (1) smaller gap  (2) tighter EP day: (high-low)/high  (3) less extension: median
+    distance of the open above each MA below it (SMA 10/20/50, closes through D-1), in ADR units.
+  No thresholds, no weights — three ascending percentile ranks, averaged. Top of list = buy list.
+
+integrity: cohort rows 749 · rows without 50 prior bars or missing EP-day bar: 17 (excluded, listed at foot) · published-26 present in cohort: 26
+  >=10R-from-entry reproduction from fresh bars: 26 names; overlap with the published 26: 26 (differences from bar truncation at 08-14 vs the original pull)
+  scoreable subset of the 26 (has features): 26
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[A] PRIMARY: catch-rate of the 26 tradeable >=10R winners, 749-row tier-A cohort
+    (the 26 are NOT in the surviving alert table — the purge ate March/April alerts —
+     so the morning candidate pool, not the alert list, is the population a ranker faces)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  [PRIMARY: 3-feature percentile average, below-all-MAs ext=0] scored n=732 of 749 rows · targets in scored pop: 26
+    top decile   ( 73 rows): catches  7 of 26 = 27% of targets · 9.6% hit-rate vs base 3.6% · lift x2.7 (chance would catch 2.6)
+    top quartile (183 rows): catches 16 of 26 = 62% of targets · 8.7% hit-rate vs base 3.6% · lift x2.5 (chance would catch 6.5)
+    top half     (366 rows): catches 24 of 26 = 92% of targets · 6.6% hit-rate vs base 3.6% · lift x1.8 (chance would catch 13.0)
+    median percentile of targets in the ranking: 20% (50% = no signal; smaller = better)
+    the target names, score components (gap% / day-range% / ext xADR -> percentile):
+      STRL  2026-04-08  rank   1/732 ( 0.1%)  gap   8.2%  range   3.6%  ext  0.13xADR
+      USAR  2026-04-08  rank  41/732 ( 5.6%)  gap   9.4%  range   6.0%  ext  0.43xADR
+      MU    2026-04-08  rank  43/732 ( 5.9%)  gap   9.9%  range   4.1%  ext  0.75xADR
+      IREN  2026-04-08  rank  45/732 ( 6.1%)  gap   8.3%  range   7.8%  ext  0.95xADR
+      ASX   2026-04-08  rank  51/732 ( 7.0%)  gap   8.2%  range   2.8%  ext  2.66xADR
+      AMKR  2026-04-08  rank  57/732 ( 7.8%)  gap   9.0%  range   4.1%  ext  1.78xADR
+      SNOW  2026-05-07  rank  67/732 ( 9.2%)  gap   9.8%  range   4.3%  ext  1.35xADR
+      NBIS  2026-04-08  rank  77/732 (10.5%)  gap   8.1%  range   6.6%  ext  2.21xADR
+      SMTC  2026-03-30  rank  88/732 (12.0%)  gap   8.1%  range  11.9%  ext  0.11xADR
+      BE    2026-04-08  rank 109/732 (14.9%)  gap   9.9%  range   7.8%  ext  0.66xADR
+      MRVL  2026-03-31  rank 118/732 (16.1%)  gap   9.8%  range   6.5%  ext  1.44xADR
+      ALGM  2026-04-08  rank 120/732 (16.4%)  gap   9.2%  range   4.2%  ext  2.52xADR
+      QCOM  2026-04-24  rank 149/732 (20.4%)  gap   8.7%  range   5.3%  ext  3.38xADR
+      QBTS  2026-04-08  rank 150/732 (20.5%)  gap  11.0%  range   8.1%  ext  0.85xADR
+      SNDK  2026-04-08  rank 151/732 (20.6%)  gap  10.3%  range   6.2%  ext  1.98xADR
+      HUT   2026-04-08  rank 162/732 (22.1%)  gap   8.4%  range  10.5%  ext  1.79xADR
+      APLD  2026-04-08  rank 203/732 (27.7%)  gap  13.0%  range   6.9%  ext  1.46xADR
+      AEHR  2026-03-31  rank 219/732 (29.9%)  gap  11.3%  range  12.0%  ext  0.06xADR
+      QURE  2026-05-29  rank 256/732 (35.0%)  gap  15.7%  range   6.4%  ext  1.68xADR
+      UMC   2026-05-06  rank 292/732 (39.9%)  gap   9.1%  range   4.9%  ext  7.58xADR
+      FLY   2026-03-12  rank 310/732 (42.3%)  gap  15.1%  range   9.0%  ext  1.53xADR
+      AMD   2026-04-24  rank 336/732 (45.9%)  gap  10.3%  range   5.2%  ext  6.33xADR
+      ARM   2026-05-06  rank 345/732 (47.1%)  gap  11.1%  range   8.1%  ext  3.46xADR
+      UMC   2026-04-17  rank 363/732 (49.6%)  gap  11.6%  range   3.8%  ext  7.90xADR
+      INTC  2026-04-24  rank 521/732 (71.2%)  gap  23.1%  range   6.6%  ext  5.36xADR
+      TDIC  2026-05-12  rank 628/732 (85.8%)  gap  73.6%  range  50.9%  ext  1.74xADR
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[A2] THE WITHIN-SESSION VIEW — the decision the ranker actually faces each morning
+     (ranks are recomputed inside each session; immune to the 04-08 session-mass problem)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  policy 'take the top-1 ranked name(s) each session': 92 picks over 92 sessions -> catches 5 of 26 (random within-day top-1 expects 1.8) · catches 8 of the 78 (random expects 7.3)
+  policy 'take the top-3 ranked name(s) each session': 254 picks over 92 sessions -> catches 7 of 26 (random within-day top-3 expects 5.3) · catches 19 of the 78 (random expects 22.0)
+  the 26 within their own session: median rank percentile 39% (50% = no signal) · 7 of 26 rank in their day's top 3
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[B] SENSITIVITY + SINGLE FEATURES (the honest ledger — every variant tried)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  [variant: below-all-MAs rows EXCLUDED] scored n=708 of 749 rows · targets in scored pop: 26
+    top decile   ( 71 rows): catches  7 of 26 = 27% of targets · 9.9% hit-rate vs base 3.7% · lift x2.7 (chance would catch 2.6)
+    top quartile (177 rows): catches 16 of 26 = 62% of targets · 9.0% hit-rate vs base 3.7% · lift x2.5 (chance would catch 6.5)
+    top half     (354 rows): catches 24 of 26 = 92% of targets · 6.8% hit-rate vs base 3.7% · lift x1.8 (chance would catch 13.0)
+    median percentile of targets in the ranking: 19% (50% = no signal; smaller = better)
+  [gap only       ] top decile 5/26 · top quartile 10/26 · median target percentile 32%
+  [range only     ] top decile 7/26 · top quartile 16/26 · median target percentile 22%
+  [extension only ] top decile 4/26 · top quartile 9/26 · median target percentile 32%
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[C] SESSION CONCENTRATION + TIME STABILITY (not a holdout — see the accounting)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  the 26 sit on 10 distinct sessions; 2026-04-08 alone carries 13
+  EARLY window (03-01..04-30): 309 rows, 21 of the 26
+  [3-feature average within EARLY window (03-01..04-30)] scored n=296 of 309 rows · targets in scored pop: 21
+    top decile   ( 30 rows): catches  6 of 21 = 29% of targets · 20.0% hit-rate vs base 7.1% · lift x2.8 (chance would catch 2.1)
+    top quartile ( 74 rows): catches 12 of 21 = 57% of targets · 16.2% hit-rate vs base 7.1% · lift x2.3 (chance would catch 5.2)
+    top half     (148 rows): catches 18 of 21 = 86% of targets · 12.2% hit-rate vs base 7.1% · lift x1.7 (chance would catch 10.5)
+    median percentile of targets in the ranking: 21% (50% = no signal; smaller = better)
+  LATE window (05-01..07-15): 440 rows, 5 of the 26
+  [3-feature average within LATE window (05-01..07-15)] scored n=436 of 440 rows · targets in scored pop: 5
+    top decile   ( 44 rows): catches  1 of 5 = 20% of targets · 2.3% hit-rate vs base 1.1% · lift x2.0 (chance would catch 0.5)
+    top quartile (109 rows): catches  1 of 5 = 20% of targets · 0.9% hit-rate vs base 1.1% · lift x0.8 (chance would catch 1.2)
+    top half     (218 rows): catches  4 of 5 = 80% of targets · 1.8% hit-rate vs base 1.1% · lift x1.6 (chance would catch 2.5)
+    median percentile of targets in the ranking: 39% (50% = no signal; smaller = better)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[D] SECONDARY: same rule against the 78 (all >=8xADR tail winners) — is the rule
+    winner-shaped or only 26-shaped?
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  [3-feature average, target = all 78 tail winners] scored n=732 of 749 rows · targets in scored pop: 77
+    top decile   ( 73 rows): catches 10 of 77 = 13% of targets · 13.7% hit-rate vs base 10.5% · lift x1.3 (chance would catch 7.7)
+    top quartile (183 rows): catches 22 of 77 = 29% of targets · 12.0% hit-rate vs base 10.5% · lift x1.1 (chance would catch 19.2)
+    top half     (366 rows): catches 35 of 77 = 45% of targets · 9.6% hit-rate vs base 10.5% · lift x0.9 (chance would catch 38.5)
+    median percentile of targets in the ranking: 54% (50% = no signal; smaller = better)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+[E] THE ALERT POPULATION, same rule + the expectedness axis on top
+    (expectedness exists ONLY here — the corpus for the 26's dates was purged; this is
+     the only population where Part 1 can join Part 2, and its winners are 8xADR names,
+     not the 26)
+──────────────────────────────────────────────────────────────────────────────────────────────────
+  alert population scored: n=204 · >=8xADR winners among them: 12
+  [3-feature rule                    ] top decile 0/12 (chance 1.2) · top quartile 3/12 (chance 3.0) · median winner percentile 45%
+  [+ expectedness as a 4th equal term] top decile 1/12 (chance 1.2) · top quartile 4/12 (chance 3.0) · median winner percentile 38%
+
+  foot: cohort rows excluded for missing features (no EP-day bar or <50 prior bars): 17
+    ALOY 2026-03-04, OLOX 2026-03-09, PAYP 2026-03-13, SWMR 2026-03-18, YSS 2026-03-20, XNDU 2026-04-15, XNDU 2026-04-16, XNDU 2026-04-17, AVEX 2026-04-20, AVEX 2026-04-21, XNDU 2026-04-22, XNDU 2026-04-24, XE 2026-04-27, BRUN 2026-05-14, BRUN 2026-05-29, ELMT 2026-06-01, PBLS 2026-06-17
+
+==================================================================================================
+OVERFITTING ACCOUNTING — stated in full, per the task
+==================================================================================================
+  FEATURES: the three score features (gap, EP-day tightness, MA extension) were selected
+  BECAUSE they survived ADR-normalisation on this same data this weekend. That selection
+  step is unrecoverable — no split of this window is a true holdout for the feature CHOICE.
+  The early/late split in [C] tests only whether the percentile ranking is stable in time.
+  13 of the 26 targets sit on one session (2026-04-08): every catch number is dominated by
+  whether that session's names score well, and session-level correlation means the
+  effective N is nearer 10 (distinct sessions) than 26.
+
+  Scoring-rule variants actually computed (this run, complete list):
+    1. PRIMARY: 3-feature percentile average, below-all-MAs ext=0
+    2. within-session ranking (top-1/top-3 per day policy read)
+    3. variant: below-all-MAs rows EXCLUDED
+    4. single-feature: gap only
+    5. single-feature: range only
+    6. single-feature: extension only
+    7. early/late window split (stability check, not a holdout)
+    8. 3-feature average, target = all 78 tail winners
+    9. alert-population ranking: 3-feature rule
+    10. alert-population ranking: + expectedness as a 4th equal term
+  Thresholds fitted: NONE in the score (percentile ranks are parameter-free). Pre-existing
+  thresholds reused, not fit here: >=8xADR (house tail bar) · >=10R (the 26's definition) ·
+  >=39% growth (Pradeep bar from operator notes 06-16) · SMA 10/20/50 (the encoder's MAs).
+  Part 1 comparisons attempted: 13 (each listed inline); primaries were
+  declared in the docstring BEFORE outcomes were read: [1] scheduled-vs-unscheduled and
+  [2] forward-vs-backward, on share>=8xADR + P90, gap-controlled in [3].
+  Classifier revisions: r1 (initial patterns, written before any outcome was read), then
+  ONE r2 recall pass widening patterns from UNKNOWN-class TEXT only (ALOY MOU, CRCL 'approval
+  from', EOSE joint development agreement, DELL 'earnings surprise') — outcomes were never
+  consulted while widening. No further passes.
+
+==================================================================================================
+SUMMARY — what the two parts say, and the fork (nothing pre-decided; grading is his)
+==================================================================================================
+PART 1 · The expectedness axis is DERIVABLE from what we already store (live corpus: 86%
+  on scheduled/unscheduled, 75% on backward/forward, deterministic, $0) and every
+  measurable comparison runs in the operator's predicted direction:
+  - unscheduled 11.6% reach >=8xADR vs scheduled 3.8% (P90 8.7x vs 5.3x; p=0.20/0.13)
+  - pure forward-changing 13.9% + P90 10.4x vs backward 0 of 14
+  - gap-controlled: the unscheduled/forward side leads in ALL SIX tercile cells (6-of-6
+    sign consistency; every cell individually below the house N floors)
+  - the MEDIANS run the other way (scheduled 2.7x vs unscheduled 1.8x): the unexpected
+    catalyst under-delivers typically and over-delivers in the tail — the exact fat-tail
+    signature this program is hunting, and the same shape as the extension-filter cohort.
+  VERDICT: a CANDIDATE, not a finding — 96 classifiable full-window alerts hold ~7 tail
+  winners; no cell can clear the permutation floors at this N. NOT a null: direction is
+  uniform. It accrues for free as alerts settle (and would have been testable at 3x the N
+  had the purge not eaten March/April).
+PART 2 · The three-line rule (small gap + tight EP day + low MA extension, percentile-
+  averaged) ranks the 26 tradeable >=10R winners far above the candidate pool:
+  - top decile catches 7 of 26 (27%) at 2.7x lift; top quartile 16 of 26 (62%) at 2.5x;
+    median winner percentile 20th of 732
+  - take-the-day's-top-1 catches a >=10R winner on 5 of the 10 winner sessions
+    (FLY 03-12, SMTC 03-30, MRVL 03-31, STRL 04-08, QCOM 04-24) vs 1.8 expected
+  - EP-day TIGHTNESS does most of the work (range-only nearly matches the full rule);
+    extension-only and gap-only are weaker alone
+  - the rule is 26-shaped, NOT mover-shaped: against the 78 raw >=8xADR names lift is
+    ~1.1-1.3 — it ranks TRADEABLE winners, and correctly down-ranks untradeable movers
+  - the misses are informative: INTC (gap 23%) and TDIC (artifact) rank low; extension
+    hurts already-running re-gappers (UMC 04-17, AMD, ARM)
+  ⚠ features chosen on this same data; late-window check is thin (5 winners) and weak at
+  the quartile; effective N nearer 10 sessions than 26 names. See the accounting block.
+FORK (one line each, operator's call — measurement only here):
+  F-1 keep accruing the expectedness axis passively (it is $0 and computed offline)
+  F-2 the ranking rule is testable live-shadow as a DAILY ORDERING (no admission change):
+      log the rank next to each alert and re-read at N>=10 winner-sessions
+  F-3 nothing changes in grading/admission without CHANGE_PROCESS + sign-off (THE LINE)

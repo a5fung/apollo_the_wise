@@ -492,6 +492,66 @@ out-of-sample until October.**
 
 ---
 
+## 0d. 🟢 THE FIRST SELECTION RESULT THAT WORKS — a three-line ranking rule, 2.5× lift (2026-08-16)
+
+Capture: `docs/analysis/expectedness_and_ranking_2026-08-16.txt`. Read-only, $0, no LLM.
+
+### The rule, readable in three lines
+
+> **Rank every qualifying gap day by the average of three percentiles:**
+> **(1) smaller gap · (2) tighter EP day, (high−low)/high · (3) less extension** (median distance of
+> the open above each MA sitting below it, SMA 10/20/50, in ADR units).
+> **No thresholds. No weights.** Built only from the three things that survived ADR-normalisation.
+
+| against the 26 tradeable ≥10R winners, 749-row pool | catch | lift |
+|---|---|---|
+| **top quartile** | **16 of 26 = 62%** | **2.5×** |
+| top decile | 7 of 26 = 27% | 2.7× |
+| within-day top-1 policy | a ≥10R winner on **5 of 10** winner sessions | vs 1.8 expected |
+
+- **EP-day TIGHTNESS does most of the work alone.**
+- 📌 **It is 26-shaped, not mover-shaped**: against the raw 78 movers the lift collapses to 1.1–1.3×.
+  **It ranks TRADEABLE winners and down-ranks untradeable ones** — which is the job.
+- ⚠ Informative miss: **INTC ranks low** (23% gap). The rule would not have found the weekend's
+  best worked example.
+
+### The expectedness axis is buildable, and points where he said it would
+
+**86% of the live corpus classifies scheduled/unscheduled and 75% forward/backward — deterministically,
+from stored 8-K item numbers and text. No new capture, no LLM.**
+
+| | reach ≥8×ADR | P90 |
+|---|---|---|
+| **unscheduled** | **11.6%** | 8.7× |
+| scheduled | 3.8% | 5.3× |
+| **pure forward-changing** | **13.9%** | 10.4× |
+| backward-looking | **0 of 14** | — |
+
+- ✅ **Leads in all six gap-tercile cells** — so it is not gap size wearing a catalyst label.
+- 📌 **The medians run the OTHER way** (scheduled 2.7× vs unscheduled 1.8×): the unexpected catalyst
+  under-delivers typically and over-delivers in the tail — **his fat-tail signature exactly.**
+- 📌 **A forward fact delivered INSIDE a scheduled release behaves like a scheduled one** (n=10).
+  **That is his priced-in mechanism confirmed**: the surprise, not the content, is the part that pays.
+- ⚠ **Candidate, not finding**: p=0.13–0.20, ~96 classifiable full-window alerts holding ~7 tail
+  winners. **It would have been testable at 3× the N had the old purge not eaten March–April.**
+
+### ⚠ The honest limit on both — no out-of-sample exists
+
+**A true time holdout is impossible.** The three features were chosen on this same data this weekend;
+13 of the 26 targets sit on ONE session (effective N ≈ 10 sessions); the late-window check is
+positive at the decile and chance-level at the quartile. 9 scoring variants and 13 comparisons were
+tried, all listed — **zero fitted thresholds** (percentile ranks only, and the 8×ADR / 10R / SMA
+choices all pre-date this work), but that does not substitute for a holdout.
+
+▶ **The fix is free and it is the recommendation: SHADOW-LOG the daily rank beside each alert.**
+Ordering only — no admission change, no rule change, no money. It generates the out-of-sample data
+that cannot exist today, and in a month the rule is either validated on data it never saw or it is
+not. **Same instinct as the path-recording exit shadow: record, decide later.**
+
+🛑 Grading and admission are THE LINE. Nothing proposed beyond measurement.
+
+---
+
 ## 0. The situation, in five verified facts
 
 1. **19 closed live trades in 60 days: 0 winners, 19 losers, −$416.19 total. Best trade −$2.40.**
