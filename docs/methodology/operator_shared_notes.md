@@ -507,6 +507,10 @@ That naming is exactly what **#562** owes.
 **#563** (theme coverage of EP gap names), **#559** (the gap-floor block that kept us out of SE
 in the first place).
 
+▶ **2026-08-15 — SPECIFIED:** the four conditions are now the delayed-entry family's eligibility
+gate E1–E4 (each encoded, Stage-2 build spec included), and the same-day re-look is setup **DE-1**
+— `docs/roadmap/ep_profitability_program.md` §4a.
+
 ---
 
 ## 2026-08-12 — "What is a REAL EP" — the operator reframes the ranking question
@@ -607,6 +611,11 @@ This is a different and better question in three ways:
 ▶ This is the candidate feature the structure work should test next — NOT "above all three SMAs".
 Three checks: was there a level that had previously rejected price; did the gap CLEAR it; did price
 HOLD above it after the first pullback.
+
+▶ **2026-08-15 — ENCODED:** the three checks + the congestion metric are specified in
+`docs/roadmap/ep_profitability_program.md` §2 (THE NBIS ENCODING); this section's positive and
+failure labels are its validation fixtures, and the grading complaint above is scoring proposal
+S-4 there.
 
 ⚠ Standing rule applies: NBIS is ONE name and illustrates the definition; it does not establish
 that the feature works. That needs the distribution, with N and distinct sessions.

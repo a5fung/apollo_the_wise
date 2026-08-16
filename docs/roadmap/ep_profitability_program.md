@@ -16,6 +16,18 @@ and the #562/#545 corrections that had only ever landed in PLAN.md or chat are f
 This doc, not chat or `operator_shared_notes.md`, is where an EP question's current answer lives;
 §1a is the single register of what's open, §1b is the HOLISTIC PLAN — the goal arithmetic, the four conversion stages with their measured leaks, and the one ordered path.
 
+**Work-definition layer REWRITTEN 2026-08-15, correcting a failure the operator named, verbatim:**
+*"I already have examples of delay entry, is that not in the plan? what about the team trade, what
+about 620, why always ask me to do the work when I already asked for the exhaustive plan. there's
+so much I asked for, what about the scoring, what about the chat structure, etc. I asked for a
+holistic real EP plan and you just do a few simple checks and say you're done??? this is not
+acceptable."* He is right — the plan filed work as "blocked on operator enumeration" that he had
+already enumerated, in detail, on the record. The fix: **§1c** inventories everything he has given
+and what each item now drives; **§4a** specifies delayed entry as six candidate setups with a
+proposed buy and stop each; **§2** gains the NBIS structure encoding and five concrete scoring
+proposals; **§1b's path** now carries an honest owner per line — and every HIM line is a RULING on
+a specified proposal, never a request to supply material he already supplied.
+
 ---
 
 ## GOAL — and the rule that governs every finding below
@@ -211,21 +223,28 @@ case looked persuasive.** "Answered by" names the thing that would actually move
 2. **Is chart structure a usable filter, and how do you encode "part science, part art"?**
    [Selection] Belief: one crude binary (above all 3 SMAs, fixed-lookback high-clears) was tested
    and ruled OUT as the encoding — his objection is that lookback and MA-relevance are contextual,
-   not fixed (§2). Includes the Stage-2/trend-context classifier gap (his SE condition 3) — does
-   not exist. Answered by: a reference set of real EP winners from OUTSIDE our fills (unowned,
-   §7 gap 8) — not another feature swept against our own zero-winner cohort. **Status: OPEN — one
-   bad proxy ruled out, the concept itself untested.**
+   not fixed (§2). Includes the Stage-2/trend-context classifier gap (his SE condition 3).
+   Answered by: the NBIS ENCODING (§2, added 08-15 — level-that-rejected · cleared · held, with
+   the lookback derived from where the failed tests are) validated on his labelled fixtures, then
+   compared against the winner reference set (§1c step-5 spec, his one-line ruling); the Stage-2
+   classifier build is specified in §4a. **Status: OPEN — now SPECIFIED and owned (§2 + §4a); no
+   longer unowned.**
 3. **What is "delayed entry," and what are its shapes?** [Delayed entry] Belief: it is a FAMILY,
    open horizon (same day / next day / next week) — NOT the flag-stage watch machine and NOT only
    the 620 timing tool; both were explicitly ruled out by him as THE definition, same day (§4).
-   Buy point + stop remain unnamed; candidates in evidence (FIRST5-break, base-then-turn/TEAM,
-   reclaimed-floor/SE) await his ruling once shapes are enumerated. Answered by: HIM naming the
-   shapes he actually trades — step 1, not ours to infer (#562). **Status: OPEN — blocked on his
-   enumeration.**
+   Answered by: the six shapes he had ALREADY given, now specified with a proposed buy and stop
+   each (§4a: DE-1 reclaimed-floor · DE-2 base-then-turn · DE-3 620 cross · DE-4
+   consolidation-then-break · DE-5 FIRST5-break · DE-6 next-day continuation), plus the E1–E4
+   eligibility encodings; his part is the one-line completeness ruling (path 6b), then replay
+   evidence per shape (path 6d). **Status: OPEN — SPECIFIED 08-15. The previous status here
+   ("blocked on his enumeration") was the mis-filing §1c corrects: he had enumerated (SE's four
+   conditions, TEAM, 620, the three horizons).**
 4. **Are we too loose, and therefore overtrading?** [Selection] Belief: his concern, evidenced by
    alert cadence tracking the earnings calendar (1–2/day quiet weeks, 7–10/day earnings weeks) and
    grade inflating on the same days (§0.2–3). Answered by: an earnings-season-conditioned selection
-   measurement — no task owns it (§7 gap 7). **Status: OPEN — unowned.**
+   measurement — owned by path step 10 as of 08-15, plus the expectedness labelling (§2), which
+   separates "a diarised earnings gap" from "a new fact" directly. **Status: OPEN — owned, build
+   pending.**
 5. **Does theme membership belong in selection?** [Selection] Belief: cannot be used until absence
    is unambiguous — SE (coverage miss, his SE condition 4) and FRMI/BW (true negatives) carry the
    same "no theme" value with opposite meanings (§2). Answered by: #563's judged read of the
@@ -333,9 +352,9 @@ A leak with no number is marked UNMEASURED — that is itself the finding.
 
 | # | Stage | The question | Measured leak (date) | What would close it | Blocked on |
 |---|---|---|---|---|---|
-| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · **3 detectors genuinely dark for months** (anticipation lifecycle table dark since 06-16, pin rejects every candidate · sugar-baby convergence: 0 fires since its 05-22 ship · Undercut & Rally: 4 rows ever, last 06-18) **+ 1 misdiagnosed**: the failed-break gate counts a flag 0 of 160 recorded breaks has ever carried — the breaks detector itself DOES produce, only its failed-break classification never fires (commit `25a73c2`) | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)**; scoping the reference set is also his |
+| **1** | **DETECT / GRADE** | does a real EP become an alert, and is the grade meaningful? | 🔴 **THE GAP DECIDES — mechanism read 2026-08-15, below.** `_score_ep`'s `conviction_floor` FORCES a HIGH-range score on gap+catalyst alone ("the gap itself is evidence of institutional conviction", in the code), and **57 alerts in 90 days fired HIGH while the holistic judge graded them `none`** · `game_changer` = 59% of alerts with 0 winners on either top grade · 5 of 9 co-gap stories missed · **3 detectors genuinely dark for months** (anticipation lifecycle table dark since 06-16, pin rejects every candidate · sugar-baby convergence: 0 fires since its 05-22 ship · Undercut & Rally: 4 rows ever, last 06-18) **+ 1 misdiagnosed**: the failed-break gate counts a flag 0 of 160 recorded breaks has ever carried — the breaks detector itself DOES produce, only its failed-break classification never fires (commit `25a73c2`) | make the grade use what the pipeline ALREADY computes (RS, structure, theme, tape, setup-class — all shadow or decorative today) + a **winner reference set from OUTSIDE our fills** · detector-liveness alarm | 🔴 **OPERATOR — grading is a detection criterion (THE LINE + CHANGE_PROCESS)** — but ruled on SPECIFIED text: the scoring proposals S-1..S-6 (§2) and the PROPOSED reference-set scope (§1c step-5 spec); his part is one-line rulings, not scoping from scratch |
 | **2** | **ADMIT** | of the alerts, which do we act on — **and was each one worth the capital it consumed?** (the objective is return on capital, above — the benchmark is the best alternative we could have held, not zero) | **19 HIGH alerts → 19 rows → 3 fills** in 4 sessions (08-11→14); of the 16 not taken, **9 were mechanics** (6 detected after the 09:45 window; **3 the ORB bug, fixed 08-13 and verified clean 08-14 — so the go-forward mechanics leak is 6, not 9**), **3 were selection** (gap floor), **1 never triggered** (RIOT) · **3 more were risk geometry** (2 stop-too-wide, 1 chase-cap) — **stage 3's leak, not this stage's** (owns "is R sized to the name" — §skip-taxonomy, below) · **portfolio skips: 0 in this 08-11→14 window, but nonzero on record** — the 07-31 breaker expiry cancelled most of a day's entries (6 alerts, 0 entries) and the 08-04 cap blocked AEIS and ZBRA · entry slots are picked **ALPHABETICALLY** (#533) | #533's within-day ranking readout · **skip-reason attribution** over the 3,224 alert-outcome rows that already carry `skip_reason` + forward returns | **capacity** — both runnable now, $0 |
-| **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit · **owns the 3 risk-geometry skips above** (2 stop-too-wide, 1 chase-cap — EROC is the worked case, §2 0a table) | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · #562's delayed-entry shapes | **evidence-accrual** + **OPERATOR** (naming the shapes) |
+| **3** | **ENTER** | where do we get in, and is R sized to the name? | the 1-min ORB stop sits inside the noise — 20 of 21 stopped names rose over 5 days · entry-to-stop spans **0.15–1.17 ADR, a 7.7× range**, so "+2R" is not one unit · **owns the 3 risk-geometry skips above** (2 stop-too-wide, 1 chase-cap — EROC is the worked case, §2 0a table) | #482 geometry accrual (5-min lane currently WORSE, 0/14) · the #545 parameter grid · **the six SPECIFIED delayed-entry setups (§4a)** | **evidence-accrual** + **OPERATOR** (a one-line ruling on §4a's specified shapes — NOT naming them; they are named, from his own material) |
 | **4** | **HOLD / EXIT** | do we keep what a winner gives? | reaches **+1.54R**, keeps **−0.91R** (n=17, 08-08 read, under the pre-08-10 exit stack — §5) · the 08-10 exit stack has now fired TWICE (ABCL 08-11, clean; ETON 08-14, the carved-out third that filled at the exact 2R target and exposed #566's stop-less carve) — a rule is not live until it fires repeatedly, and twice is a start, not a distribution | the stack's own firings + the pre-committed revert triggers · #306 STEP-2 · the n=20/40/60 cohort clocks | **evidence-accrual (occurrence)** |
 
 ### The ordering rule that falls out of the arithmetic
@@ -359,10 +378,14 @@ of them.
 That gives three lanes running at different speeds, and they are not interchangeable:
 
 - **AGENT TIME (now):** stage 1 and 2 MEASUREMENT — #533, skip attribution, detector liveness ·
-  **#545's design/replay grid** (stage 3, runnable now on already-captured minute-bar data — step
-  8b below, not calendar-gated).
-- **OPERATOR TIME (blocking):** the winner reference set (stage 1) and the delayed-entry shapes
-  (#562, stage 3). Neither can be invented by an agent, and both gate real work.
+  **the §4a delayed-entry replay grid** (stage 3, runnable now on already-captured minute-bar data)
+  · the builds this rewrite specifies (Stage-2 classifier, base-quality features, theme-strength
+  join, the NBIS structure encoding, the expectedness labelling, the reference-set assembly).
+- **OPERATOR TIME (rulings, small and quotable):** one-line rulings on proposals SPECIFIED in this
+  doc — the reference-set scope (§1c), the §4a shape map, the scoring/catalyst forks (§2). ⚠ The
+  previous version of this line said the reference set and the delayed-entry shapes "cannot be
+  invented by an agent" and were blocking — that was the 08-15 mis-filing: the material was already
+  his, on the record; specifying it was OUR work and is now done.
 - **CALENDAR (accrual):** stages 3 and 4 need firings and settled trades, not analysis. Re-cutting
   them sooner just re-measures the old exits (#559 is pinned to 08-31 for exactly this reason).
 
@@ -370,29 +393,37 @@ That gives three lanes running at different speeds, and they are not interchange
 geometry are entry discipline = THE LINE + CHANGE_PROCESS. This plan produces evidence and forks;
 the operator rules.
 
-### The path, in dependency order, with what each MOVES in the equation
+### The path, in dependency order, with what each MOVES — and an HONEST OWNER per line
 
-| Step | Moves | State |
-|---|---|---|
-| 0. Outcome unit = the ALERT, not the fill | all four — it is the only cohort with variance | ✅ DONE |
-| 1. #563 theme-coverage read | p, via stage 1 (unblocks theme-strength as a ranking input) | ✅ DONE 08-12, closed 08-15 |
-| 2. Capture + retention (#567) | all four — the evidence for next quarter's test now survives | deployed 08-15 — verify-live 08-17 |
-| 3. **#533 within-day ranking readout — WIDENED 08-15 to the regret question**: not only "did we pick the best of a morning" but "did what we HELD beat what we could have held over the same window", including single-alert days | return on capital, via stage 2 — the multi-alert day is a special case of the general opportunity-cost problem, not the problem itself | ▶ NEXT, agent time |
-| 4. **Skip-reason attribution** (3,224 rows, per reason: N, distinct sessions, forward return) | p, via stage 2 — says whether a reason drops names that RAN (defect) or names that died (working). ⚠ the rt-catch cohort (245 rows) is in NO outcome join, so this read does not cover the real-time-only population | ▶ NEXT, agent time, $0 |
-| 4b. **Floor-over-judge outcome read** — forward returns of the 57 HIGHs the gap-floor forced past a `none` judge verdict vs the 116 the judge agreed with | p, via stage 1 — says whether the override costs money | ▶ NEXT, agent time, $0 |
-| 5. **Winner reference set** — real EP winners from outside our fills (folds in §7 gap 1, the Stage-2 trend-context classifier — the doc's own "biggest single capability gap") | p and W, via stage 1 — the ONLY thing that can answer "what is a real EP" | 🔴 OPERATOR — scoping is his call |
-| 6. **#562 — name the delayed-entry shapes** | p, via stages 2–3 — 51% alpha capture but only 1 of 104 reached TRIGGERED | 🔴 OPERATOR — enumeration is his |
-| 6b. **Name the delayed-EP setup(s)** (buy point + stop) + stand up its shadow lane (§7 gap 3) | p, via stage 3 — turns the family into a tradeable | 🔴 OPERATOR fork (§9 fork 5) — waits on step 6's enumeration + evidence on each shape |
-| 7. Detector liveness alarm (folds into #543) | stage 1 — of the four flagged (commit `25a73c2`): anticipation lifecycle dark since 06-16, sugar-baby convergence 0 fires since 05-22, Undercut & Rally 4 rows ever (last 06-18) — three genuinely dark and nothing said so; the fourth (failed-break) is a live detector whose classification flag 0 of 160 breaks has ever carried | agent time, small |
-| 8. #482 geometry (N≥30, currently at 14) · #545's capture-needing cells · #559 admission re-cut (08-31) | W and L, via stage 3 | ⏳ accrual |
-| 8b. **#545's design/replay grid** — answerable NOW on already-captured data (3 existing harnesses: `_306_intraday_partial_sim.py`, `_508_exit_rule_replay.py`, `_stop_floor_forward_replay.py`; the 08-15 minute-path backfill makes next-day/N-day sweeps runnable) | W and L, via stage 3 | ▶ NEXT, agent time |
-| 8c. Carryforward funnel re-cut on clean post-08-11 data (§1a row 11) | p, via stage 3 | ⏳ calendar, ~08-25 |
-| 9. The exit stack's live firings · n=20/40/60 cohort clocks | W, via stage 4 | ⏳ accrual (occurrence) |
-| 10. The recalibration forks (§9) — grade reservation, ranked slots, gap-floor re-look | p | ⏳ each waits on its evidence step, then is an OPERATOR ruling |
+Rewritten 2026-08-15. Owner semantics: **ME** = agent time (specify, build, measure — nothing live
+changes, no ruling needed); **HIM** = a RULING on text already written in this doc, quoted so he
+can answer in one line; **CALENDAR** = evidence accrual with its target N. A HIM line that asks him
+to invent, enumerate, or scope anything is a defect — the material is inventoried in §1c.
 
-**Registered, unowned, no step in this path yet:** earnings-season-conditioned selection (§1a
-row 4 / §7 gap 7) — belongs to stage 1/2 (selection); no task owns building the measurement. Named
-here so it is not silently dropped.
+| Step | Owner | Moves | State |
+|---|---|---|---|
+| 0. Outcome unit = the ALERT, not the fill | — | all four — the only cohort with variance | ✅ DONE |
+| 1. #563 theme-coverage read | — | p, via stage 1 | ✅ DONE 08-12, closed 08-15 |
+| 2. Capture + retention (#567) | ME | all four | deployed 08-15 — verify-live 08-17 |
+| 3. **#533 ranking readout — WIDENED to the regret/displacement question** (did what we HELD beat what we could have held, single-alert days included) | ME | return on capital, via stage 2 | ▶ NEXT |
+| 4. **Skip-reason attribution** (3,224 rows; N + distinct sessions per reason) | ME | p, via stage 2 — ⚠ rt-catch cohort (245 rows) still outside the outcome join | ▶ NEXT, $0 |
+| 4b. Floor-over-judge outcome read | ME | p, via stage 1 | ✅ RAN 08-15 — level read done; the displacement half it lacked folds into step 3 |
+| 5. **Winner reference set — BUILD the proposed three-arm set** (§1c step-5 spec: his labelled cases · detected-not-converted winners · outside-detection gappers) | ME | p and W, via stage 1 — the only thing that can answer "what is a real EP" | ▶ NEXT |
+| 5b. Reference-set ruling — *"§1c's three-arm reference set: accept, or name edits?"* | **HIM** | — | one line, after 5 |
+| 6. **Delayed entry SPECIFIED — six candidate setups, proposed buy/stop each (§4a)** | ME | p, via stages 2–3 | ✅ DONE 08-15 (this rewrite) |
+| 6b. Shape-map ruling — *"§4a's six shapes: anything missing, and start deep on DE-2+DE-3 as proposed?"* | **HIM** | — | one line |
+| 6c. **Eligibility encodings** — Stage-2 classifier (build spec in §4a) · base-quality/flatness features · theme-strength joined at alert time | ME | p, via stages 1–3 — closes §7 gaps 1 and 6 | ▶ build, $0 |
+| 6d. **Delayed-entry replay grid on captured data** — daily-grain DE-4/DE-6 now; minute-grain DE-2/DE-3/DE-5 on the covered window; DE-1 joins #559's cut. Reuse `_270_*` / `_306_intraday_partial_sim.py` / `_508_exit_rule_replay.py` — no new harness | ME | W and L, via stage 3 — absorbs the old step 8b / #545 grid | ▶ NEXT |
+| 7. **Structure encoding built** (§2, the NBIS three checks) — validate on his four labelled fixtures FIRST, then score every alert | ME | p, via stage 1 | ▶ build, $0 |
+| 8. **Scoring + catalyst evidence pack** — the $0 expectedness labelling of all 96 `game_changer` alerts (120d) with forward outcomes, plus the S-1..S-6 evidence assembled after step 3 reports | ME | p, via stages 1–2 | ⏳ after step 3 |
+| 8b. Scoring/catalyst fork ruling — *"§2's S-1..S-6 and C-1..C-4: which, if any, proceed to CHANGE_PROCESS?"* | **HIM** | — | one line per option, after 8 |
+| 9. Detector liveness alarm (folds into #543) — three dark detectors + one dead classification flag (commit `25a73c2`) | ME | stage 1 | small |
+| 10. **Earnings-season-conditioned selection measurement** (§1a row 4 — previously unowned, now this step) | ME | p, via stages 1–2 | ▶ build, $0 |
+| 11. #482 geometry (N≥30, at 14) · #559 admission re-cut + false-block split + DE-1 (08-31) · carryforward re-cut (~08-25, §1a row 11) · #545's capture-needing cells · exit-stack firings · n=20/40/60 clocks | CALENDAR | W and L, via stages 3–4 | ⏳ accrual |
+| 12. The recalibration forks (§9) — each after its named evidence step | **HIM** | p | ⏳ rulings on written text, never requests |
+
+**HIM appears four times (5b, 6b, 8b, 12) and every one is a one-line ruling on a proposal written
+out in this doc.** Nothing in this path waits on him to supply material.
 
 ### What would make us CHANGE this plan (stated in advance, so it is falsifiable)
 
@@ -402,9 +433,9 @@ here so it is not silently dropped.
   **the FILTERS** are not the leak; mechanics remain stage 2's larger measured share either way, so
   this verdict is scoped to filters, not the whole stage. Agent time moves to stages 1 and 3, and
   "we are too loose" is not supported on behaviour.
-- **If the winner reference set shows our alerts already look like real EPs** — falsifiable only
-  once the reference set is scoped (step 5; scoping it, and judging "looks like," is the operator's
-  call, per his own "part science part art" framing, §2) → selection is not the leak, and the whole
+- **If the winner reference set shows our alerts already look like real EPs** — falsifiable once
+  the proposed set (§1c step-5 spec) clears his one-line ruling; judging "looks like" remains his,
+  per his own "part science part art" framing (§2) → selection is not the leak, and the whole
   weight falls on entry geometry and exits.
 - **If the exit stack fires REPEATEDLY** (pinned to the existing `exit_tune_cohort_review` n=20/40/60
   clocks, not a vibe) **and the cohort still keeps −0.91R** → the excursion is not capturable at
@@ -419,6 +450,76 @@ here so it is not silently dropped.
 ⚠ **The cadence section below is what keeps this honest** — a week with nothing SHIPPED and nothing
 ACCRUED is the failure this structure exists to catch, and it is reviewed on Fridays against the
 table there, not re-dated quietly.
+
+---
+
+## 1c. THE GIVEN-MATERIAL INVENTORY — everything he has supplied, and what the plan does with each
+
+**Added 2026-08-15 as part of the work-definition rewrite (his complaint, quoted in the preamble,
+is the requirement).** One row per item he has given, sourced to its dated capture. A 🔴 row is a
+MIS-FILING — the plan was waiting on him for something he had already supplied — and its fix is
+named in the last column. Grep `operator_shared_notes.md` (= "notes" below) before ever asking him
+to re-explain anything on this list.
+
+| # | What he gave (date) | Captured at | What the plan did with it | What it IS now |
+|---|---|---|---|---|
+| 1 | The 620-chart — Gil Morales' 5-min MACD(6,20) timing tool, with his TEAM constraint ("620 is used to fine-tune entry, not stock selection") | `620_chart.md` + notes 08-07 | called "one timing tool"; the #545 test marked NEVER-RUN, unscheduled | setup **DE-3** (§4a), buy/stop proposed; replay in path 6d |
+| 2 🔴 | The TEAM trade — base-then-turn re-entry at $144.39, stop = low-of-day-so-far, on the stock we were stopped out of | PLAN #545 + the computed table in `620_chart.md` (08-07) | "no hard rule so hard to copy," left awaiting his enumeration | setup **DE-2** (§4a) with a swept proxy family; his fill supplied the stop basis and the fixture tape |
+| 3 🔴 | SE's four delayed-EP conditions (above all MAs · decent base · possible Stage-2 turn · strong group it belongs to) | notes 08-11 | called "the closest labelled example" while §1b step 6 stayed "blocked on his enumeration" | the family **ELIGIBILITY GATE E1–E4** (§4a), each encoded or its build specified; Stage-2 is the one real build |
+| 4 🔴 | The family definition — *"delay entry is just saying we wait for a followup setup after EP, it can be same day, next day or next week"* | PLAN #562 (08-11) | treated as a definition still awaiting HIS shape list | the horizons ARE the shape list: same-day (DE-1/DE-2/DE-3) · next-day (DE-6) · multi-day (DE-4/DE-5) — all specified §4a |
+| 5 | FIRST5-break + GDL-reclaim mechanics — the #270 spec built off his MNTS direction | `delayed_ep_reentry.md` (06-14) | dismissed as "a different population… not confirmed as his concept" | the MECHANICS are population-independent: **DE-5** re-validates FIRST5 on the EP cohort; harnesses reusable |
+| 6 | EROC — *"correct on 1.5x ATR but looks like a good EP to me, so even if we filter it correctly there may be alternate delay entry here"* | this doc, skip-taxonomy section (08-12) | taxonomy only; no join to any lane | the risk-geometry skip set (EROC/ATRO/HTFL class) is a named POPULATION for DE-2/DE-3/DE-6 (§4a) |
+| 7 🔴 | NBIS — the first FALSIFIABLE structure definition, failure case included | notes 08-12 | register row 2 left "OPEN — answered by a reference set"; no encoding attempted | **ENCODED** (§2: the three checks + the congestion metric); fixtures named; $0 to score |
+| 8 | *"some of the trades we make it just gaps into congestion, resistance areas and had no strength to break through"* | notes 08-12 (the real-EP reframe) | named in §2's reframe; untested beyond the rejected SMA proxy | the SAME encoding's negative side — the untested-overhead-level congestion metric (§2) |
+| 9 | HTFL · ETON · VERA — labelled PRE-OPEN, with the structural reason per name | notes 08-14 | "score this when it settles" (§0a) | ALSO the structure encoding's validation fixtures (§2): reproduce his three labels before any sweep |
+| 10 | PLTR — his first labelled GOOD EP | this doc, 08-15 section | reference-set seed #1 | reference-set arm (i) (step-5 spec below) |
+| 11 | The "what is a REAL EP" reframe — a gap is the signal, not the setup | notes 08-12 | governs §2 | unchanged — governs |
+| 12 🔴 | The winner-reference-set fix — *"the better way to see this is probably to have a few winners to compare it with"* | notes 08-12 | filed as "scoping is his call," owned by nothing | the SCOPE IS PROPOSED (step-5 spec below); his part is one line |
+| 13 🔴 | Beat-vs-growth complaint — NBIS graded moderate on a marginal beat while revenue grew >400% | notes 08-12 | a §0a row plus "check the rubric"; owned by nothing | scoring proposal **S-4** (§2): SURPRISE and GROWTH measured separately |
+| 14 | Pradeep's catalyst-quality bar — 2 quarters of 39%+ sales growth AND 39%+ projected | notes 06-16 | absent from this plan | the growth-axis threshold precedent for S-4 — from his own shared material, not invented |
+| 15 | Pradeep's anticipation playbook — series of tight days, ±0.4% close, 3–5-day hold, time stop | notes 06-16 | Family-A material only | DE-4/DE-6 tight-day mechanics + the hold rules to sweep (§4a) |
+| 16 | Bonde's four-dimension consolidation blueprint — depth/duration/range/volume, NR-day trigger, stop below the NR low | notes 06-22 | the #270 bug map | the "decent base" (E2) encoding + DE-4's trigger and stop (§4a) |
+| 17 | GH/HNGE coil positives — FLATNESS · absolute tightness · flat-top pivot | notes 06-27 | grounds #354 | E2's base-quality features (§4a) |
+| 18 | RMV developer's settings — ADR(20)×1.5 · merge-within 0.3% · pivot logic | notes 06-30 | #54 reference | the level-finder parameters for the structure encoding (§2) — operator-supplied, not guessed |
+| 19 | The HTF blueprint (with its Minervini Stage-2 prerequisite) | notes 06-22 | #356 background; ruled NOT his delayed entry | stays ruled OUT of the family; its Stage-2 sourcing + the existing HTF 200MA/52w gate seed the Stage-2 classifier spec (§4a) |
+| 20 | RS-improvement idea ("similar to neglect that's coming back up") | this doc, 08-15 | tested the same day | CLOSED — clean null; the feature is not built |
+| 21 | The return-on-capital objective — *"think higher level… as a portfolio manager"* | GOAL section (08-15) | governs #533's regret framing | unchanged — governs |
+| 22 | The rt-cohort inclusion + the every-detected-EP scope rule | this doc (08-12) | standing rules | unchanged; capture item 4 (rt-cohort outcome join) still pending |
+| 23 | Win-rate marker ~20%, fear ≤10% + the no-single-trade rule | GOAL section (08-12) | governs | unchanged |
+| 24 | *"reserve HIGH/gamechanger to absolute best"* | §0 fact 2 (08-11) | fork 2, waiting on #533 | concrete options now exist: S-1/S-2 + the catalyst forks C-1..C-4 (§2) |
+| 25 | The grade-mechanism verdict — *"gap itself cannot determine a high EP… fundamentally wrong"* | this doc, 08-15 mechanism read | fork (a)–(d) stated | extended to S-1..S-6 with the tier finding and the expectedness axis folded in (§2) |
+| 26 | *"the catalyst needs to be game changer, not expected that explains the gap"* | `docs/analysis/catalyst_quality_audit_2026-08-15.md` | fork list in that file only | the **EXPECTEDNESS AXIS specified to buildable detail** (§2) + forks C-1..C-4 + the $0 labelling run (path step 8) |
+| 27 | *"don't forget that themes are important and part of it as well to the ranking"* | §2 (08-11) | theme-STRENGTH join listed as §7 gap 6, unowned | owned: eligibility E4 + path 6c's alert-time strength join |
+| 28 | SE reclaimed the floor in 4 minutes — the same-day re-look case | §3 + notes 08-11 | fork §9.3, waiting on #559 | setup **DE-1** (§4a) makes the re-look concrete; joins #559's 08-31 cut |
+
+**The count: 28 items given · 13 the plan was actually using · 6 mis-filed as blocked-on-him (🔴)
+· 9 captured but wired to no work item.** Every 🔴 and every unwired row now has a named owner in
+this doc. The test for any future "blocked on operator" line: grep this table first.
+
+### The step-5 spec — the winner reference set, PROPOSED (so his part is one line)
+
+His fix, verbatim (08-12): *"The better way to see this is probably to have a few winners to
+compare it with."* Proposed scope — three arms, ~30–50 names total, every feature computed
+point-in-time (as-of the gap day, no lookahead):
+
+- **Arm (i) — his labelled cases (n≈6):** PLTR (labelled good, still open) · NBIS (structure
+  positive) · HTFL + ETON (pre-open strong — settle first) · TEAM (his own fill) · SE (ran without
+  us). The labels are HIS and already on record; nothing to re-ask.
+- **Arm (ii) — detected-but-not-converted winners (n≈20–30):** from `mi_ep_missed_outcomes`
+  (3,224 alert rows since 02-11, skips included): alerts whose forward path was a real winner —
+  proposed bar: **max_high_20d ≥ +30% AND ret_20d ≥ +15%** (both, so a spike-and-collapse does not
+  qualify; the bar is a proposal, and a ±10pp sensitivity strip ships with the read). Real EPs our
+  own detector SAW and our fills never captured — outside the fills, per his words, without
+  leaving our data.
+- **Arm (iii) — outside detection entirely (n≈10–20):** per quarter, top gap-day names from
+  Polygon grouped-daily (gap ≥10%, a dollar-volume floor) with arm-(ii)-grade follow-through that
+  we NEVER alerted — the blind-spot arm: catches what the detector itself misses.
+- **What the set is FOR (both jobs, per the grade-mechanism read):** what real winners look like on
+  the features we already compute plus the new encodings (structure class · base quality E2 ·
+  stage E3 · theme strength E4 · RS · gap · surprise-vs-growth) — and how many of OUR alerts look
+  like that. Distributions with N and distinct sessions, never single cases.
+- **HIM (one line, path 5b):** *"§1c's three-arm reference set: accept, or name edits?"* Arms and
+  thresholds are his to bend; assembling and measuring is not his job.
 
 ---
 
@@ -528,6 +629,122 @@ structured alerts beat our unstructured ones." **No task owns building that refe
 
 **Action: none.** No admission change is supported by either the readout or the correction — nothing
 tightened, nothing proposed as decided (THE LINE).
+
+### THE NBIS ENCODING (added 2026-08-15) — chart structure, specified from his own falsifiable definition
+
+His NBIS read (notes 08-12) states the positive AND the failure case, which is what makes it
+encodable — and his objection to the rejected proxy (a fixed lookback cannot represent a contextual
+judgment) is answered by DERIVING the lookback from where the failed tests are, instead of fixing
+it. Three checks per alert, all point-in-time:
+
+1. **THE LEVEL — "a level that previously rejected price."** Candidate levels for name N at alert
+   date D: **(a)** merged pivot highs from daily bars — local maxima merged within 0.3% (the merge
+   parameter from the RMV developer's settings he shared 06-30), kept only if TESTED ≥2 times
+   (price approached within 0.5×ADR20 and failed to close above); **(b)** the 50-day SMA, counted
+   ONLY when it acted as resistance by the same ≥2-failed-approach test — the 50-day mattered on
+   NBIS *because* it was resistance, not because it is an MA; **(c)** the 52-week / all-time high —
+   the HTFL/ETON "nothing overhead" case. **The lookback is contextual by construction** (his
+   "sometimes you go further back because we see multiple tests… sometimes you don't"): walk back
+   until a ≥2-test level exists or data ends (`mi_daily_closes`, 400-day window; deeper = Polygon
+   refetch).
+2. **CLEARED — did the gap clear it?** Alert-day open AND first 5-min close above the nearest
+   tested overhead level.
+3. **HELD — "pulled back and held up in the early morning."** On minute bars (`mi_intraday_bars` —
+   every alert ticker-day since 07-28, #567): after the first pullback toward the level, no 5-min
+   close back below it within the first 60 minutes (sweep 60/120/rest-of-morning). His failure
+   cases, verbatim, are the other two classes: *"drop and held below those points"* =
+   **cleared-then-lost**; *"gap and not breach those points"* = **never-breached**.
+
+**Output per alert: a three-way class** {cleared+held · cleared-then-lost · never-breached} **plus
+a congestion metric** — the nearest overhead tested level NOT cleared, within 1.5×ADR20 of the
+open = "gapped into congestion, resistance areas and had no strength to break through," the other
+half of the same axis. **Validation ORDER (hard):** the encoding must FIRST reproduce his labelled
+fixtures — NBIS (cleared+held) · VERA (never-breached, deep in a downtrend) · HTFL/ETON (nothing
+overhead) — before it is swept over anything; a sweep run off an encoding he would reject re-runs
+the 08-12 mistake. Then score EVERY alert (rich rows now kept forever, #567) against forward
+outcomes AND against the reference set once ruled (path 5b). Standing rules: N + distinct
+sessions; the winners-vs-ours comparison is the design he asked for, not another separation hunt
+inside an all-losing cohort. ⚠ Measurement only — no grade or gate consumes this without
+CHANGE_PROCESS + his sign-off (S-3 below is that fork).
+
+### THE EXPECTEDNESS AXIS (added 2026-08-15) — the catalyst half of scoring, specified to buildable detail
+
+His words (2026-08-15): *"the catalyst needs to be game changer, not expected that explains the
+gap, we have so many EPs that have avg catalyst, there's so much you're not looking into."* The
+audit (`docs/analysis/catalyst_quality_audit_2026-08-15.md`, prod-read) shows the label mixing NEW
+FACTS with GOOD QUARTERS: an FDA accelerated approval (VERA), a pivotal Phase-3 endpoint met
+(CGEM), a ~$9.1B 20-year lease (RIOT), a 10× YoY backlog surge (EROC) — graded `game_changer`
+alongside GLBE, which earned the SAME top grade for a **$16M revenue beat against estimate plus a
+guidance raise**, and ATRO for "record sales +27% YoY". All score the same 25 catalyst points and
+all can trip the conviction floor into HIGH. **There is no expectedness axis anywhere in the
+pipeline, and `catalyst_type` is NULL on 224 of 403 alerts (120d) — 25 of those NULLs still graded
+`game_changer`.** Three sub-axes, each derivable from what we ALREADY store — no new capture:
+
+1. **SCHEDULED vs UNSCHEDULED.** An earnings release is a diarised event; an 8-K disclosing an
+   approval or a contract is not. Derivation: **scheduled** iff the alert falls within 1 trading
+   day of the name's diarised earnings date (the earnings calendar we already fetch) OR the
+   sourcing filing is an 8-K **Item 2.02** / EX-99.1 earnings release (the item number is already
+   read by the grounding pass; corpus stored on the alert row + `mi_ep_catalyst_metrics`, 180d).
+   **Unscheduled** iff sourced to a non-2.02 8-K (Item 1.01 material agreement, 8.01 other events)
+   or a PR with no diarised date. **Unknown-schedule** is a first-class value, not a silent
+   default — 56% NULL `catalyst_type` says the fallback will be exercised.
+2. **BACKWARD-LOOKING vs FORWARD-CHANGING.** "Q2 revenue was X" reports a CLOSED period; a
+   20-year lease, an approval, a pivotal endpoint, a 10× backlog changes FUTURE revenue.
+   Classification rule (an extension of the existing `catalyst_metrics_extractor` labels over the
+   stored corpus, not a new fetch): the catalyst's primary fact is **backward** if it concerns a
+   completed reporting period (revenue/EPS actuals, "record quarter", a beat), **forward** if it
+   is a future commitment or capability (named contract/lease with term and value · regulatory
+   approval/clearance · pivotal trial result · new product with revenue attached). A scheduled
+   release CONTAINING a forward fact (a guidance raise, a contract disclosed in the call) takes
+   the strongest forward element and a `mixed` flag — GLBE's guidance raise is forward-lite;
+   RIOT's lease is forward regardless of when it was filed.
+3. **BEAT-vs-ESTIMATE distinct from GROWTH-vs-HISTORY.** Two separate numbers, never one grade:
+   **surprise** = (actual − consensus) / |consensus| (consensus from the fundamentals feed we
+   already pay for); **growth** = YoY revenue change from actuals. This is his NBIS complaint
+   verbatim (notes 08-12): moderate on a marginal BEAT while revenue grew **>400%** — and GLBE is
+   the mirror image, top grade on a beat with no such growth. His own shared Pradeep bar (2
+   quarters of 39%+ sales growth and 39%+ projected, notes 06-16) is the growth-axis threshold
+   precedent.
+
+▶ **The $0 evidence run that ranks the forks below (path step 8):** label all 96 `game_changer`
+alerts of the last 120 days scheduled/unscheduled + backward/forward from the stored 8-K items and
+the earnings calendar, then compare forward outcomes (`mi_ep_missed_outcomes` join) by class — N
+and distinct sessions per cell. (Denominator note, stated because it was once mis-quoted: 96 is
+`game_changer` among ALL 403 alerts over 120 days; the doc's earlier "59%" was `game_changer`
+among HIGH ticker-days over 60 days. Different denominators — never compare them.)
+
+### SCORING, SPECIFIED (added 2026-08-15) — the proposals, each a fork with its evidence and its test
+
+The evidence already in this doc: the conviction floor forces HIGH on gap+catalyst alone (57
+floor-over-judge HIGHs in 90d); the composite score HAS resolution (PLTR 96 vs AMRC 50, and the
+biggest gap scored lowest) but the TIER collapses ~9 of 11 into HIGH and the entry path reads the
+tier; RS level would have killed PLTR; RS inflection is a clean null; the expectedness axis above.
+Nothing below is pre-decided; each is HIS ruling after its named evidence step (grading and
+entry-path selection are THE LINE + CHANGE_PROCESS + N≥10).
+
+| # | Proposal | Evidence for it today | The test that settles it | Change class |
+|---|---|---|---|---|
+| **S-1** | **Entry consumes the RANK, not the tier** — slots go by score order instead of alphabetical survival | 96-vs-50 resolution exists and the tier throws it away; slot selection measured alphabetical (#533) | step 3's displacement/regret readout + a ranked-vs-alphabetical replay over every multi-alert day, $0 | entry-path selection — CHANGE_PROCESS + sign-off |
+| **S-2** | **Narrow the conviction floor / stop floor-over-judge** (the 08-15 mechanism read's forks (a)+(b)) | 57 forced HIGHs; the 15–20% gap band gives back −8.0% vs +6.6% over 5d (n=26/37, p=0.107 — watch, not finding) | re-tier the 90d alerts with the floor narrowed; forward returns by band; MUST follow step 3 — the level-only read was retracted for ignoring displacement | detection criterion — CHANGE_PROCESS |
+| **S-3** | **Promote the STRUCTURE class (NBIS encoding above) into the grade** — explicitly NOT RS level (kills PLTR) and NOT RS inflection (null) | his repeated structure claims + an encoding that now exists to test | fixtures reproduce his labels → separates on the reference set → only then the promotion fork | detection criterion — CHANGE_PROCESS |
+| **S-4** | **Score SURPRISE and GROWTH separately** (expectedness sub-axis 3) | NBIS moderate at >400% growth; GLBE top-graded on a $16M beat | re-grade the settled cohort with both measures; does growth separate where surprise does not | judge/rubric — CHANGE_PROCESS |
+| **S-5** | **The catalyst-label forks C-1..C-4** (below) | the audit's new-fact vs good-quarter split; 25 NULL-typed `game_changer`s | the $0 expectedness labelling run above | detection criterion — CHANGE_PROCESS |
+| **S-6** | **Change nothing yet; keep accruing** | the standing no-single-trade rule; most tests above are $0 and fast, so waiting costs little | — | none |
+
+**The catalyst-label forks, written out so each is a one-line ruling (path 8b):**
+- **C-1** — require expectedness for the top label: `game_changer` only when the catalyst is
+  forward-changing OR unscheduled, so a good quarter cannot earn the same label as a new fact.
+- **C-2** — split the label instead of re-weighting it: `game_changer` reserved for
+  forward-changing unscheduled facts; a separate grade (e.g. `strong_quarter`) for strong
+  scheduled results.
+- **C-3** — require a non-NULL `catalyst_type` before any top grade (today 25 `game_changer`s
+  carry none).
+- **C-4** — leave the label as-is and stop it driving the conviction floor (this is S-2 by
+  another door; ruling one rules on the other).
+
+**Sequencing proposal (not a decision):** S-1's evidence arrives first (step 3) and uses only what
+already exists; the expectedness labelling run is $0 and independent; S-3/S-4 wait on their
+builds; S-2/C-4 must not be ruled before the displacement read.
 
 **OPEN QUESTIONS for this surface → the consolidated register, §1a (rows 1, 2, 4, 5, 6, 10).**
 
@@ -652,16 +869,101 @@ population — the p74 review's stated target is 60–70% capture vs 51% measure
   exists, the biggest gap; (4) the GROUP is strong and the name belongs to it — failed on OUR
   side the same minute (SE in zero themes; #563).
 
+### §4a — THE FAMILY, SPECIFIED (2026-08-15): eligibility + six candidate setups, each with a PROPOSED buy and stop
+
+**Why this exists — the correction.** This surface used to end at "await his ruling once he has
+enumerated the shapes." He had already enumerated them: SE's four conditions (notes 08-11), the
+TEAM trade with its stop basis (08-07), the 620 (08-07), the FIRST5/GDL mechanics from the #270
+work he directed (06-14), and the three horizons inside his own definition (*"same day, next day
+or next week"*). What was missing was OUR half — writing each as a candidate SETUP with a proposed
+buy point and stop (CLAUDE.md: no buy+stop → not a setup). Done below. **Every buy/stop is a
+PROPOSAL for him to rule on; nothing here goes shadow, paper, or live without his sign-off +
+CHANGE_PROCESS (THE LINE). Replaying them on recorded data is agent time and needs no ruling.**
+
+**ELIGIBILITY (the family gate) — his four SE conditions, encoded.** Context that makes a name
+eligible for ANY delayed entry — measurable FEATURES, never live gates:
+
+| # | His condition (08-11, verbatim fragments) | Encoding | State today |
+|---|---|---|---|
+| E1 | *"gapped through while above all Moving averages"* | alert-day prior close > SMA10/20/50 | ✅ computable — `mi_stock_scores` sma columns (~2,444 names/day) + $0 recompute from `mi_daily_closes` for the rest |
+| E2 | *"a decent looking base"* | base FLATNESS (near-zero close-slope over the base window) + ABSOLUTE tightness (NTR-3d cap, beta-adjusted) + duration ≥6–7d + a flat-top pivot — the GH/HNGE features (notes 06-27) + Bonde's four dimensions (notes 06-22); RMV as the timing input, never alone | ◐ partial — rmv_5d/15d live; FLATNESS is not computed (small build, path 6c) |
+| E3 | *"may be moving to a stage 2 uptrend after bottoming and basing"* | the Stage classifier — BUILD SPEC below | ❌ the one real build |
+| E4 | *"retail group is strong where this belongs"* | theme membership + STRENGTH (rs_avg · stage · member count · acceleration streak) joined to the alert row AT ALERT TIME | ◐ membership stamped, strength never joined (path 6c); the absence-ambiguity prerequisite was answered by #563 |
+
+**The Stage-2 classifier — build spec (his condition 3, the "biggest gap of the four"; §7 gap 1,
+now owned).** Not from scratch: the HTF detector already carries a crude binary Stage-2 gate
+(200MA / 52-week-high, #356), and the blueprint he shared sources the concept (Minervini's Stage-2
+prerequisite). What SE needs that neither has is the TRANSITION — *"moving TO stage 2 after
+bottoming and basing for a while."* Spec, per name-day from `mi_daily_closes` (400-day window,
+12,280 tickers): long-MA level (150d; 200d where history allows) + its 20-session slope · price
+position vs it · 52-week position · higher-high/higher-low structure over the trailing quarter ·
+a "based" flag (≥6-week flat range around a flattening long MA). Output: **stage 1/2/3/4 plus a
+1→2 TRANSITION flag** (price crossing a flattening-to-rising long MA out of a base). Pure
+computation, backfillable over every alert at $0. Validation fixtures: SE (his live read), PLTR,
+then the reference-set winners. Limit: the 400-day window caps 200d-MA history ~200 sessions back;
+deeper = Polygon refetch. Estimated 1–2 agent-days (path 6c).
+
+**THE SIX CANDIDATE SETUPS.** Populations come straight from the skip taxonomy — his EROC point:
+a CORRECT skip can still be a delayed candidate. Day-1 stop-outs · risk-geometry skips
+(stop-too-wide / chase-cap) · gap-floor blocks · window-missed alerts · un-entered HIGHs.
+
+| Setup | PROPOSED buy | PROPOSED stop |
+|---|---|---|
+| **DE-1 — reclaimed-floor, same day** (the SE class) | rt gap re-clears the 10% floor before 09:44 → buy stop at the re-clearing minute's high (sweep: the standing ORB high) | ORB low (sweep: day-low-so-far) |
+| **DE-2 — base-then-turn, intraday** (the TEAM shape) | after a ≥30-min base on 5-min bars (base range ≤ ~35% of the day's range so far — one proxy of several, all swept), buy the first 5-min close above the base high | session low-so-far at entry (his TEAM basis) |
+| **DE-3 — 620 timing cross** | MACD(6,20) on 5-min bars stretched below its session floor → hooks up → bullish cross; buy the cross close (sweep periods (6,20)/(8,24)/(12,26) — the author's own sensitivity note) | low-of-day-so-far |
+| **DE-4 — multi-day consolidation-then-break** (the Bonde shape) | ≥3 valid tight days near the post-EP high (his 06-22 four dimensions: retrace ≤20–30% of the move · ≤1 daily ≥4% breakdown · contracting ranges into an NR day · drying volume), buy stop above the NR-day high | NR-day low (sweep: the 3-day tight-block low) |
+| **DE-5 — FIRST5-break on the re-trigger day** (from the #270 spec) | break above the trigger day's first-5-minute high | the first-5-minute low |
+| **DE-6 — next-day continuation** | day-2 buy stop above the day-1 high (sweep: above the day-2 opening range) | day-1 low — the already-signed 9M Day-2 stop basis (sweep: day-2 ORB low) |
+
+Per-setup population · data · the test that settles it:
+
+- **DE-1** · population: every `setup:gap_below_floor` block (7 since 08-06 + the earlier record —
+  small N, accrues) · data: the block rows embed the rt read in `skip_reason`; minute bars per
+  alert-day (#567) · test: reclaimed-within-ORB subset vs blocked-and-stayed-below — this IS
+  #559's false-block split given a tradeable shape; joins the 08-31 cut. Fork §9.3 made concrete.
+- **DE-2** · population: Day-1 stop-outs (17) + the risk-geometry skips (EROC/ATRO/HTFL class) ·
+  data: `mi_intraday_bars` (98/98 alert-day coverage since 07-28) · test: replay vs doing nothing
+  AND vs the already-swept bare 5-min re-entry (net negative ex-THC: the other 8 fires −4.67R) —
+  **the BASE requirement is the differentiator under test.** Sweep several turn-proxies (N higher
+  lows · rising 5-min closes · base-high break); claim none of them IS him (§8 blind spot 10).
+- **DE-3** · population: same as DE-2, already-qualified names ONLY — his constraint: *"620 is
+  used to fine-tune entry, not stock selection"* — never a screen · data: resampled minute bars;
+  fixture = the computed TEAM table in `620_chart.md` · test: #545's narrow honest question — does
+  the post-stop 620 cross mark a re-entry that beats doing nothing on the stop-out set?
+- **DE-4** · population: failed-Day-1 HIGHs — the 64.4% that make a ≥+5% high within 21 days are
+  this family's reason to exist — plus un-entered alerts · data: daily grain, durable
+  (`mi_daily_closes` + `mi_ep_missed_outcomes`, 3,224 rows back to February) · test: point-in-time
+  walk over every failed alert since February, $0; reuse the anticipation/`_270_*` machinery — no
+  fifth harness.
+- **DE-5** · population: any carried name on its re-trigger day (DE-4's break day, or a reclaim
+  day) · data: minute bars on the covered window · test: re-validate FIRST5's realized numbers
+  (median +1R all-out / +2R scale — measured on the sub-$500M #270 cohort, a DIFFERENT population)
+  on the EP-family cohort; `_270_entry_replay.py` reusable as-is.
+- **DE-6** · population: all HIGH alerts not entered day-1, plus stop-outs · data: daily grain now,
+  minute refinement where covered · test: the never-run cell — register row 8's own words:
+  next-day / N-day re-entry "never tested." Daily-grain replay first, $0.
+
+**Eligibility × setup is the actual experiment:** every DE replay reports its results SPLIT by the
+E1–E4 features (all four hold / some / none) — that is how his four conditions get measured as
+SELECTORS without ever being live gates. ⚠ Standing rules apply per cell: N + distinct sessions;
+no conclusion off an outlier (the THC lesson); regime recorded on every row.
+
+**HIS RULING (one line, path 6b):** *"§4a's six shapes: is the map complete, and start deep on
+DE-2 + DE-3 (same population, one replay run) as proposed?"* A missing shape ADDS a row; it does
+not restart this specification.
+
 **OPEN QUESTIONS for this surface → the consolidated register, §1a (row 3, row 11).** The
 flag-stage funnel mechanics (what TRIGGERED requires, where the 104 names died) are now a fact
 about a mechanism confirmed to be the WRONG lane — kept as background, not pursued as the path to
-naming his setup. The buy-point/stop candidates already in evidence (FIRST5-break from #270,
-base-then-turn from TEAM, a reclaimed-floor re-look for the SE class) await his ruling once he has
-enumerated the shapes.
+naming his setup. The buy-point/stop candidates formerly listed here as "awaiting his ruling once
+he has enumerated the shapes" are SPECIFIED in §4a above — the enumeration existed all along
+(§1c rows 2–5, 28).
 
-**Labelled recommendation (one, delayed):** #562's step 1 is HIM naming the candidate follow-up
-shapes he actually trades — not more code-reading on the flag-stage machine, which is now confirmed
-to be the wrong lane. This is blocked on the operator, not on evidence or capacity (§1b step 6).
+**Labelled recommendation (one, delayed):** run §4a's replay grid (path 6d) starting with
+DE-2 + DE-3 on the Day-1 stop-out set — agent time, $0, blocked on nothing. The prior
+recommendation in this slot ("step 1 is HIM naming the shapes") was the 08-15 mis-filing this
+rewrite corrects: he had named them; his part now is the one-line 6b ruling.
 
 ---
 
@@ -905,6 +1207,14 @@ thesis-identity) the operator has not named as ranking work; only #563 (coverage
    *"the better way to see this is probably to have a few winners to compare it with."* No task
    owns building it; scoping (source, sample size, selection method) is his call (§1b step 5).
 
+**08-15 UPDATE — every gap above now has an owner; an unowned row reappearing here is the
+regression signal.** 1 → the Stage-2 build spec (§4a, path 6c) · 2 → the S-2/S-5 forks (§2) own
+the decision path once step 3 reports · 3 → §4a (specified) + the 6b ruling · 4 → S-1 (§2) · 5 →
+DE-1 (§4a, joins #559's 08-31 cut) · 6 → path 6c's alert-time theme-strength join · 7 → path
+step 10 · 8 → the §1c step-5 proposed reference set (build ME, ruling HIM, one line). Gap 8's
+"scoping is his call" stands only in the ruling sense — the proposal is written; he edits it, he
+does not draft it.
+
 ---
 
 ## 8. WHAT WE CANNOT MEASURE TODAY — known blind spots, stated as findings
@@ -948,9 +1258,9 @@ thesis-identity) the operator has not named as ranking work; only #563 (coverage
 |---|---|---|---|
 | 1 | Ranked vs first-come slot allocation | #533 readout (08-12) | keep: slots stay alphabetical; change: entry-path selection change (CHANGE_PROCESS) |
 | 2 | Reserve game_changer / recalibrate the grade | same cohort readout | keep: modal top grade carries no signal; change: judge-surface recalibration, needs a task (§7.2) |
-| 3 | Gap floor: keep single-sample vs add a re-look | #559's false-block split (08-31) | keep: SE-class misses; add: re-admits genuine faders (WKC/QBTS class) |
+| 3 | Gap floor: keep single-sample vs add a re-look | #559's false-block split (08-31) — now shaped as setup **DE-1** (§4a), so the ruling is on a written buy/stop, not an abstract "re-look" | keep: SE-class misses; add: re-admits genuine faders (WKC/QBTS class) |
 | 4 | RT admission flip (universe + gap authority) | #559 re-cut post-exit-stack | flip early: re-measures old exits; hold: the NVVE/TRAX-class residual stays uncaught |
-| 5 | Name the delayed-EP setup(s) (buy point + stop) | his enumeration of candidate follow-up shapes (#562 step 1, corrected 08-11) + evidence on each | until named, delayed EP stays a family, not a tradeable |
+| 5 | Name the delayed-EP setup(s) (buy point + stop) — **superseded 08-15: the setups ARE named and specified (§4a, DE-1..DE-6)** | his one-line completeness ruling (path 6b) + replay evidence per shape (path 6d) | until a shape clears evidence + his sign-off, delayed EP stays measured-only, never traded |
 | 6 | ~~Trigger at vs above the ORB high~~ — **CLOSED 08-13, not open** | `entry_ask_aware` shipped 08-07, operator-signed | 14 live entries since 08-07, zero broker rejections (#541) |
 | 7 | Bracket geometry (1-min ORB vs alternatives) | #482 shadow accrual | keep: the shaken-out-winner pattern persists; change: money-path geometry change, N≥10 + sign-off |
 | 8 | **Throttling fills also throttles the evidence clocks.** Stages 3 and 4 are declared blocked on OCCURRENCES (the n=20/40/60 cohort clocks, repeated exit-stack firings), and the fills we decline are the occurrences those clocks need | none named — this is the tuition-for-evidence question itself | take more fills sooner: real money spent as tuition, faster evidence; wait: cleaner discipline, slower clocks — real-money trade-off = THE LINE, no option pre-chosen |
@@ -998,6 +1308,46 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
   or a goal term, that is the deviation the operator is guarding against.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
+
+## 2026-08-15 — EROC, his SECOND labelled good EP: same signature as PLTR, and OUR OWN RISK RULE threw it out
+
+Operator: *"another good looking EP (so far) is eroc which I mention has good structure."*
+Reference-set seed #2 (§1b step 5). Prod read, alert date 2026-08-12.
+
+### It is PLTR's signature, repeated
+
+| | PLTR (08-04) | **EROC (08-12)** |
+|---|---|---|
+| our `ep_score` | 96.0 — top of an 11-name board | **96.0 — top of its board** |
+| tier / judge | HIGH, judge agreed | **HIGH, judge agreed, judge held authority** |
+| catalyst | game_changer | **game_changer — 10× YoY backlog surge to ~$1.7B (>50% of market cap) + a new 470 MW Anthropic order** |
+| gap | 16.0% | **16.1%** |
+| RS the prior session | composite 7.7, rank 2230 / 2415 (bottom 8%) | **composite 2.6, rank 2373 / 2415 — bottom 2%** |
+| price vs MAs | above the 10-day only | above the 10- and 20-day |
+
+🔴 **Two labelled good EPs, both scored 96, both in the bottom decile of relative strength.** The
+neglect axis is doing the work in both, and RS level would have discarded both. That is now TWO
+independent confirmations of the same thing — no longer a single anecdote — and it is the sharpest
+available statement of *"neglected stock gapping through key levels"* actually being detected.
+
+### And we did not take it — the block was RISK GEOMETRY, not selection
+
+`setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs planned $0.41/sh (cap 1.50x, ORB high
+$13.16)` — cancelled 08-12. **Our selection ranked it top of the day; our risk sizing then refused
+the entry** because by trigger time the distance to the stop had widened past the chase cap.
+
+- ▶ This is the SAME failure family as HTFL (`setup:stop_too_wide`, 08-14) — both were names the
+  operator liked, both killed by geometry rather than by any judgement about the setup.
+- ▶ It lands squarely in **stage 3 (ENTER — "is R sized to the name?")**, which already owns the
+  0.15–1.17 ADR spread. EROC is now its worked case, and it is the second-largest skip family in
+  the 08-11→14 week (3 of 16).
+- ⚠ The honest counter, and it must stay attached: the chase cap exists because paying up widens
+  the stop and shrinks R. Whether it is mis-calibrated or correctly refusing a bad entry is
+  exactly what the geometry sweep measures. **No case is made here for changing it** —
+  entry discipline is THE LINE.
+- ⚠ `setup_class` on this alert is `unclassified`, so the structure he SAW is invisible to us —
+  which is precisely what §2's structure encoding is for. EROC joins NBIS/VERA/HTFL/ETON as a
+  required fixture: the encoding must reproduce his read on this name before any sweep runs.
 
 ## 2026-08-15 — RS IMPROVEMENT, not RS level (operator's refinement) — and what PLTR actually shows
 
@@ -1355,8 +1705,11 @@ PLAN.md line of its own, so it is named here.
 | Target | Type | Why then |
 |---|---|---|
 | **Skip-reason attribution (§1b step 4)** — per reason: N, distinct sessions, and what the name DID afterwards | SHIPPED | the lead target. This week says 9 of 16 losses are mechanics; attribution says whether a reason drops names that RAN (candidate defect) or names that died (working). $0 — **`mi_ep_missed_outcomes` already carries `skip_reason` alongside ret_1d/5d/20d and max_high_5d/20d across 3,224 rows since February**, so this is a read, not a new capture. ⚠ Report N and distinct sessions per reason; a single skipped name that ran proves nothing (standing evidence rule) |
-| **Scope the WINNER REFERENCE SET (§1b step 5)** | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. **Scoping is HIS call.** ⚠ This REPLACES the previously-listed binary structure probe, which he rejected: *"chart structure is part science part art… the better way is to have a few winners to compare it with"* — re-running it would re-ship a null he already pushed back on |
+| **Build the WINNER REFERENCE SET as proposed (§1c step-5 spec)** | SHIPPED | the operator's own fix — you cannot learn what a winner looks like from 19 losers. Arms (ii)/(iii) assembled point-in-time by ME; his part is the one-line 5b ruling on the written scope. ⚠ This REPLACES the previously-listed binary structure probe, which he rejected: *"chart structure is part science part art… the better way is to have a few winners to compare it with"* — re-running it would re-ship a null he already pushed back on |
 | **#533 within-day ranking readout (§1b step 3)** | SHIPPED | the other agent-time step — today the choice among a morning's alerts is decided ALPHABETICALLY |
+| **Structure-encoding fixtures (§2, the NBIS three checks)** | SHIPPED | build the encoding and make it reproduce his four labelled fixtures (NBIS · VERA · HTFL/ETON) — the validation gate that must pass BEFORE any sweep |
+| **§4a replay grid, first cut — DE-2 + DE-3 on the Day-1 stop-out set** | SHIPPED | $0, minute bars already captured; the differentiator under test is the BASE requirement the bare 5-min re-entry lacked |
+| **Expectedness labelling of the 96 `game_changer` alerts (§2)** | SHIPPED | $0, from stored 8-K items + the earnings calendar; ranks the C-1..C-4 catalyst forks with outcomes instead of taste |
 | #566 and #567 verify-live | SHIPPED | Monday: the first live +2R carve-out under the toggle, and the 16:22 ET alert-day path job |
 | #543 extractor re-check on ~40 calls | SHIPPED | dated 08-19, cheap |
 | More settled live trades toward a distribution worth reading | ACCRUED | 20 closed; the 20-distinct-DAY bar on the Confirm cohort is the model for what "enough" looks like |
