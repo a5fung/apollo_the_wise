@@ -1356,6 +1356,41 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — OVERLAP MEASURED: he was right — at a 20-day wait this IS the consolidation play
+
+Of the **27 long-wait catches (≥5R at the 20-day window)**, **22 were ALREADY on the flag /
+consolidation candidate detector within 30 days before the reclaim date — 81%.**
+
+Only 5 were on no detector at all (STX 04-30 · TVTX 05-01 · WKC 04-27 and two others).
+
+### 🔴 So do NOT build a third path — but the reason is sharper than "it's a duplicate"
+
+**Every one of the 22 overlaps is with `mi_flag_candidates` — the CANDIDATE list. Zero overlap with
+`mi_consolidation_entry_shadow` or `mi_htf_breakout_shadow`, the tradeable ENTRY signals.**
+
+That distinction is the whole finding:
+
+- **The consolidation detector already SEES these names.** They are on its radar weeks before the
+  move.
+- **Its entry signal never fires on them.** Not one of the 27 appears in the consolidation or HTF
+  entry shadow.
+- ▶ **So the opportunity is not a new setup — it is a PROMOTION problem inside an existing one.**
+  The right move is to feed EP context into the consolidation entry decision ("this base follows a
+  recent EP") rather than stand up a parallel delayed-EP path that would re-detect names Family A
+  already holds.
+
+⚠ **Caveat that limits the claim:** appearing in a CANDIDATE table is a wide net — it means the name
+was on the radar, not that we would have traded it. The overlap therefore proves *redundant
+detection*, not *redundant opportunity*. The 5 non-overlapping names are the genuinely distinct
+delayed-EP cases and are too few to build on.
+
+▶ **Practical consequence, and it changes the next step:** stop tuning the wait window, and take
+the question to Family A (#354) / the consolidation entry — *does an EP in the prior N days improve
+that setup's entry decision?* That is a ranking input to an existing setup, testable on data we
+already hold, and it does not create a new SETUP that would need its own name, buy point and stop.
+
+🛑 Nothing proposed. THE LINE.
+
 ## ⚠ THE WAIT WINDOW HAS A CONCEPTUAL CEILING — it converges on setups we already own
 
 Operator, 2026-08-16: *"at some point, longer waits may just converge to one of our consolidation
