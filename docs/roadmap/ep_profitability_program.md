@@ -129,7 +129,7 @@ grow into prose.**
 | **BW / FRMI** | 08-11 | Gap size ranks backwards: BW gapped 34.9% at RS 1.5 (rank 2397), FRMI 17.0% at rank 1661 — both below every MA, both dead inside 60 seconds. "A gap is a signal, not the setup" measured | plan §2 |
 | **ABCL** | 08-11 | The +2R rule's first correct live firing — limit filled AT the $10.08 target, stop to the $8.96 entry the same second | plan §5 |
 | **FIGS** | 08-07 | The two defects that opened the exit work — market sell filled +1.13R against a +2R target; "stop moves to breakeven" was a DB flag the daily pass read, hours too late | plan §5 |
-| **PLTR** | 08-05→ | Breakeven did NOT cap the runner — partial taken, stop to entry, still open at ~+4.6R six days later. The evidence behind "we let winners run" | `docs/setups/exit_discipline.md` |
+| **PLTR** | 08-04→ | **His first labelled GOOD EP (08-15, "though still early").** Our score ranked it **#1 of 11** that morning (96 vs a 50-96 field) on the NEGLECT axis, not the gap — while its RS was rank **2230/9,700**, below its 20- and 50-day MAs. So: the ranking works, the TIER throws it away, and "just add RS" would have killed it. Also the breakeven evidence — partial taken, stop to entry, still open at ~+4.6R six days on | plan §2026-08-15 · `exit_discipline.md` |
 | **The 5 missed stories** | 06-15→07-31 | AUGO+HYMC · MU+SNX · HUT+IREN · EME+PWR · COHU+MPWR — 5 of the 9 clear same-day co-gap stories in 60 days; 4 were grouped the same night and discarded at the 3-member floor | plan §563 |
 
 
@@ -998,6 +998,57 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
   or a goal term, that is the deviation the operator is guarding against.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
+
+## 2026-08-15 — PLTR, his first labelled GOOD EP: our score ranked it #1 of 11, and RS would have KILLED it
+
+Operator, 2026-08-15: *"for recent examples, though still early, pltr is a good EP."* His first
+explicit positive label, so it seeds the winner reference set (§1b step 5). Read of what our own
+pipeline knew on the morning of 2026-08-04 (prod).
+
+### The board that morning, as our system scored it
+
+| Ticker | our ep_score | gap | catalyst | RS composite (08-03) | RS rank | above 10/20/50-day MA |
+|---|---|---|---|---|---|---|
+| **PLTR** | **96.0** ← top | 16.0% | game_changer | **7.7** | **2230** | 1/0/0 |
+| AEIS | 84.0 | 15.4% | strong | 24.5 | 1823 | 1/1/0 |
+| BTDR | 80.0 | 24.1% | game_changer | 24.0 | 1835 | 1/0/0 |
+| VOYG | 80.0 | 17.0% | game_changer | 18.5 | 1969 | 1/1/0 |
+| BLZE | 80.0 | 19.1% | game_changer | 79.0 | 508 | 1/1/1 |
+| LIFE | 80.0 | 16.3% | game_changer | **98.0** | **50** | 1/1/1 |
+| ZBRA | 60.0 | 10.8% | game_changer | 92.2 | 190 | 1/1/1 |
+| CAT | 60.0 | 10.0% | game_changer | 21.3 | 1900 | 0/0/0 |
+| TSAT | 60.0 | 14.5% | game_changer | — | — | — |
+| INSP | 55.0 | 22.3% | routine | 62.1 | 916 | 1/1/1 |
+| AMRC | 50.0 | **38.7%** ← biggest gap | routine | 6.3 | 2262 | 1/0/0 |
+
+### Three things this changes, and the third is the important one
+
+1. ✅ **The composite score DID rank the winner first.** PLTR scored 96, clear of the field. The
+   ranking signal we already compute had information that morning — this is the first evidence
+   that it does.
+2. ✅ **And it is NOT gap-driven at the score level.** The biggest gap of the day (AMRC, 38.7%)
+   scored LOWEST at 50. The `neglect` axis is what lifted PLTR — the Qullamaggie condition doing
+   its job. **The gap problem is in the TIER, not the score:** 9 of the 11 collapsed to HIGH, and
+   the entry path reads the tier, not the score, so a 96 and a 50 enter as equals and the actual
+   choice falls to trigger timing and alphabetical order.
+3. 🔴 **Adding RS or MA structure to the grade would have DOWNGRADED his best example.** PLTR came
+   in at **RS composite 7.7, rank 2230 of ~9,700, below both its 20- and 50-day averages.** The
+   strongest names on the board by RS were LIFE (98.0, rank 50, above everything) and ZBRA (92.2) —
+   neither is the winner. For an EP, prior weakness is the SETUP, not a defect: a neglected stock
+   gapping through a level is the thing. **This is a direct counter-example to fork option (c) as
+   naively stated ("promote RS/structure into the grade") — recorded before anyone builds it.**
+
+### What follows
+
+- ▶ **The cheapest real improvement on this evidence is not a new signal — it is to stop throwing
+  away the ranking we already produce.** Score has resolution (96 → 50); tier destroys it; entry
+  uses tier. That is #533's territory and it now has a worked case.
+- ⚠ **ONE case, and his own standing rule applies** — it illustrates a mechanism and settles
+  nothing. Its legitimate use is asymmetric: it CANNOT establish that the composite ranks well in
+  general, but it IS enough to stop "just add RS" from being treated as obviously right.
+- 📌 PLTR is now reference-set seed #1 (§1b step 5). ⚠ Still an OPEN position — "still early", his
+  words — so it is a labelled candidate, not a settled winner, and it sits outside the 20-trade
+  closed record entirely.
 
 ## 2026-08-15 — DID THE OVERRIDE COST MONEY? Read run, and the answer is NOT the one the question expected
 
