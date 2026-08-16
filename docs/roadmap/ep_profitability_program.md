@@ -1356,6 +1356,45 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## ⚠ STANDING CONDITIONAL — every exit/re-entry conclusion is measured on a COHORT WE DO NOT BELIEVE IN
+
+Operator, 2026-08-16: *"we're assuming all our alerts are potential EPs… gap up itself is not
+sufficient. If we later go back to update EP definition and what to alert on, some of these
+conclusions here may change… as of right now, i don't fully believe that we have the absolute right
+EP cohort but likely a SUPERSET."*
+
+**This governs every result in the exit, stop and re-entry sections above.** They are all computed
+on the current HIGH-alert population, which the plan's own §DETECT/GRADE section shows is decided
+largely by gap size and a catalyst label. If the EP definition tightens, the cohort shrinks and the
+numbers move.
+
+**But not everything moves equally — classify before re-running anything:**
+
+| finding | cohort-dependent? | why |
+|---|---|---|
+| "close-basis beats intraday-touch on catch rate" | 🟢 **likely INVARIANT** | a mechanical property of stop semantics vs intraday noise; it should hold on any cohort of volatile gappers |
+| "2 re-entry attempts beat 3–4" | 🟢 likely invariant | diminishing-returns shape, not a population property |
+| "the breakeven move caps the runner" | 🟢 likely invariant | arithmetic of the rule itself |
+| **catch RATES (22%, 20%…)** | 🔴 **DEPENDENT** | the denominator IS the cohort — tighten the definition and both the numerator and denominator change |
+| **total R, expectancy, "positive/negative"** | 🔴 **DEPENDENT** | dominated by which names are in the set |
+| "40 of 99 produced a ≥5R opportunity" | 🔴 DEPENDENT | this is a property OF the superset |
+| "the extension filter cuts the fat tail" | 🔴 DEPENDENT | defined entirely by a filter on this cohort |
+
+▶ **Practical rule from here: report mechanism claims as findings, and population claims as
+conditional on the current definition.** Any number with a denominator gets the tag
+*"on the current alert population"*.
+
+▶ **Cheap robustness check, folded into the next run rather than deferred:** re-score the best
+re-entry arms on TIGHTER subsets of the same cohort — judge-agreed HIGHs only · structure-GOOD only
+(the encoder exists) · excluding the parabolic/extended names — and report whether the RANKING of
+arms survives. **If the ranking is stable across subsets, the mechanism conclusions are safe even
+though the levels are not.** That is the honest way to de-risk the definition dependency without
+waiting for the definition.
+
+⚠ And his own counter-point, kept: *"we may stumble upon something that is independent of what i
+think would be real EPs"* — a mechanism that works across every subset is evidence in its own right,
+not merely a placeholder until the definition lands.
+
 ## 2026-08-16 — NEXT-DAY RE-ENTRY: every shape is positive, and the R numbers are INFLATED by tight stops
 
 Probe `scripts/probes/_delayed_reentry.py`. 99 HIGH names with a full 60 trading days of forward
