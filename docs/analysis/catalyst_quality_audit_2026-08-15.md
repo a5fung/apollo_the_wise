@@ -8,8 +8,17 @@ Read of `mi_ep_alerts`, prod 2026-08-15. **Measurement only — grading is a det
 
 ## 1. The label is not the problem people assume; the AXIS is missing
 
-Over the last 120 days: `game_changer` = **96 of 403 alerts (24%)**. (The often-quoted 59% is the
-60-day earnings-window figure — the label inflates seasonally, it is not permanently at 59%.)
+⚠ **Corrected 2026-08-15 — my first version of this line compared two different denominators.**
+Stated properly, on the SAME denominator, and both effects are real:
+
+| Cohort | last 60 days | last 120 days |
+|---|---|---|
+| `game_changer` among **HIGH** alerts | **67 of 111 = 60%** | 96 of 329 = **29%** |
+| `game_changer` among **ALL** alerts | 67 of 148 = 45% | 96 of 403 = 24% |
+
+So the doc's "59%" is the **60-day, HIGH-only** figure and it reproduces exactly (60%). And the
+label genuinely **does inflate in earnings season** — among HIGH alerts it roughly doubles, 29% →
+60%. Both statements are true; the error was quoting one denominator against the other.
 
 The rationales behind recent `game_changer` grades are genuinely substantive:
 
