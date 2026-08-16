@@ -5764,6 +5764,15 @@ async def persist_alert_day_paths(target_date=None) -> dict:
                 WHERE event_type = 'ep_rt_universe_catch'
                   AND (created_at AT TIME ZONE 'America/New_York')::date = $1
                   AND detail LIKE '{%'
+                UNION
+                -- 2026-08-16: consolidation (Family A) entry days. Audited that day:
+                -- `mi_consolidation_entry_shadow` is well instrumented for DAILY eval
+                -- (realized_r, fwd_mfe_r, rmv, regime) but **0 of 294 entry dates had
+                -- minute bars**, so no stop-placement / intraday-shakeout / entry-timing
+                -- study could run on it — the three analyses that produced the most
+                -- useful EP results. The tactics transfer between the two setups, so the
+                -- capture has to as well. Same additive path, no new job.
+                SELECT ticker FROM mi_consolidation_entry_shadow WHERE entry_date = $1
                 """,
                 day,
             )

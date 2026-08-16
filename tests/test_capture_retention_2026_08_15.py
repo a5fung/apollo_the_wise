@@ -293,3 +293,27 @@ def test_nightly_audit_wires_the_growth_check():
     import inspect
     src = inspect.getsource(sched._post_nightly_audit_job)
     assert "run_db_growth_check" in src
+
+
+def test_alert_day_path_population_includes_consolidation_entries():
+    """2026-08-16: the minute-path job must also cover Family A entry days.
+
+    Audited 08-16: `mi_consolidation_entry_shadow` carries realized_r/fwd_mfe_r and is
+    fine for DAILY eval, but 0 of 294 entry dates had minute bars — so no
+    stop-placement, intraday-shakeout or entry-timing study could run on consolidation,
+    which are exactly the analyses that produced the weekend's EP findings. The tactics
+    transfer between setups, so the capture must too.
+
+    MUTATION-PROVEN: drop the UNION and this fails.
+    """
+    import inspect
+    from agents.market_intelligence.broker import order_manager
+
+    src = inspect.getsource(order_manager.persist_alert_day_paths)
+    # ⚠ assert on the SQL STATEMENT, not on any mention of the table — the explanatory
+    # comment above the line also contains the table name, so a name-only assertion
+    # passes with the query removed. (Caught by mutation: the first version of this
+    # test passed both ways, which makes it not a test.)
+    assert "FROM mi_consolidation_entry_shadow WHERE entry_date" in src, (
+        "consolidation entry days dropped from the alert-day minute-path population")
+    assert src.count("UNION") >= 2, "consolidation must be UNIONed into the population query"
