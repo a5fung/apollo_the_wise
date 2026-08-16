@@ -229,97 +229,133 @@ grow into prose.**
 | **The 5 missed stories** | 06-15→07-31 | AUGO+HYMC · MU+SNX · HUT+IREN · EME+PWR · COHU+MPWR — 5 of the 9 clear same-day co-gap stories in 60 days; 4 were grouped the same night and discarded at the 3-member floor | plan §563 |
 
 
-## 0b. 🔭 THE WEEKEND SYNTHESIS (2026-08-15/16) — every thread, scored, and what they say TOGETHER
+## 0b. 🔭 THE WEEKEND SYNTHESIS (2026-08-15/16) — REVISED after adversarial review
 
-Written at his instruction: *"we're chasing after different threads incrementally as the data comes
-in; it makes sense to take time to consider it holistically, review and plan out next steps."*
-**This section supersedes reading the dated sections one by one** — they remain the evidence, this is
-the verdict.
+Written at his instruction to consider the threads holistically rather than one at a time.
+**Revised 2026-08-16 after an adversarial review found ten defects, including one headline I had
+given him twice.** The dated sections remain the evidence; this is the verdict.
 
-### 1. THE FOUR CONVERGENCES — most of the weekend is four findings, not twenty
+### 1. THREE CONVERGENCES (not four — the review was right)
 
-**C1 · GAP SIZE IS THE WRONG UNIT, AND OUR GRADE IS BUILT ON IT.** Five independent confirmations:
-- `_score_ep`'s conviction floor forces HIGH on gap+catalyst alone ("the gap itself is evidence of
-  institutional conviction", in the code), and **57 alerts in 90d fired HIGH over a `none` judge**.
-- **BW gapped 34.9% and died in 60 seconds; PLTR 16.0% and EROC 16.1% are his two labelled good EPs.**
+**C1 · GAP SIZE IS THE WRONG UNIT, AND OUR GRADE IS BUILT ON IT.**
+- `_score_ep`'s conviction floor forces HIGH on gap+catalyst alone, and **57 alerts in 90d fired HIGH
+  over a `none` judge verdict**.
 - **The ≥10R winners gap 9.9%; the thin ones gap 23.4%.** The names that pay gap *less*.
-- Normalise by ADR and the gap advantage **reverses** (small gaps 2.7× vs big gaps 2.1×).
-- `ep_score` for winners vs everyone else: **66.8 vs 65.9** on n=3,292 — no separation at all.
-🔴 **This is the single most-confirmed finding of the weekend and it indicts the grade, not the ranking.**
+- Normalised by ADR the gap advantage **reverses** (small 2.7× vs big 2.1×).
+- `ep_score`, winners vs the rest: **66.8 vs 65.9** on n=3,292 — no separation.
+- ⚠ **Honest accounting: that is three cohort measurements plus one code-mechanism fact.** BW/PLTR/
+  EROC is an n=3 illustration, not a fifth confirmation (the plan's own no-single-trade rule). And the
+  same table that gives 66.8-vs-65.9 shows winners gapping MORE in raw % (19.0 vs 15.1) — explained by
+  C3, but it must be said rather than cropped.
 
-**C2 · WE ARE BUILT FOR A TRADE THAT RESOLVES IN HOURS; THE TRADE TAKES WEEKS.**
-- **≥10R winners take a median 46 days to peak** (the thin ones, 14).
-- The exit comparison **inverts** between a 20-day and a 60-day horizon (−21R → +36.8R).
-- Long-wait re-entry stops being an EP re-entry and **becomes the consolidation play** (81% overlap).
-- Our ORB window, day-1 stop and 5-day settle all resolve same-day-to-a-week.
-
-**C3 · THE STOP IS THE BINDING CONSTRAINT ON CONVERSION — not detection.**
-- Same names, same 60 days: live rule **−6.0R**, no intraday stop **+36.8R**.
+**C2 · THE MECHANICS ASSUME DAY-0 RESOLUTION. THE STOP BINDS; THE HORIZON IS CONSEQUENT.**
+🔴 **Merged from two — the doc's own isolation experiment forbids treating them as co-equal:**
+*"holding longer does NOTHING on its own (−4.7R at 20d, −6.0R at 60d)… it is the STOP… the horizon
+only matters for the arm that survives long enough to use it."*
+- Same 43 names, 60 days: live rule **−6.0R**, no intraday stop **+36.8R**. At 20 days the no-stop arm
+  looks *worse* (−46.8R vs −21.1R, n=75) — **which arm wins flips with the horizon.**
 - **INTC: 23.5R available, we took −1.00R**; holding through the breach = +14.46R.
 - The breakeven move caps every runner at **+0.67R** in the extension cohort.
 - **11 of the 26 tradeable big winners breached the EP-day-low stop before their peak.**
-- **The two tail winners we actually traded, we LOST on** (−$477, −$639).
+- The two tail winners we traded, we lost on — **−$477 and −$639, both PAPER**.
+- **≥10R winners take a median 46 days to peak** — the opportunity-side statement of the same thing.
 
-**C4 · RAW-PERCENTAGE OUTCOMES ARE VOLATILITY IN DISGUISE.** Price ($31 vs $70), gap size, and the
-structure verdict all lost their effect or reversed once divided by ADR. **Every conclusion in this
-plan measured in raw % must be re-read in ADR or R units** — this one is methodological and it
-invalidated three of my own headlines before he saw them.
+**C3 · RAW-PERCENTAGE OUTCOMES ARE VOLATILITY IN DISGUISE.** Price, gap size and the structure
+verdict all lost their effect or reversed once divided by ADR. **Every raw-% conclusion in this plan
+must be re-read in ADR or R units.** This one is methodological and it invalidated three of my own
+headlines before he saw them.
 
-### 2. THE SCOREBOARD — what actually holds
+📌 **Distinct, and previously buried inside C2 — long-wait EP re-entry IS the consolidation play**
+(81% candidate overlap, 0% entry overlap). A taxonomy finding, not a horizon finding.
 
-**🟢 CONFIRMED (survives normalisation and has a stated N):**
-| finding | evidence |
-|---|---|
-| The EP-day low is an invalidation line | never breached → **68.8% reach ≥8×ADR**; breached → 19–25% |
-| Shallower pullback = stronger name | 80% / 38–43% / 29% by pullback depth |
-| Extension: worse median, better tail | 1.74× vs 2.32× ADR median; **10.1% vs 3.7% reach ≥12×ADR** |
-| The EP-day CLOSE is the workhorse pivot | **96 of 99** names trade back to it within 20 sessions |
-| We select slightly AGAINST winners | alert on 16.3% of gap days, 7.7% of winners |
-| The sufficiency target | ~4 converted winners; real denominator **26**, not 78 |
+### 2. THE SCOREBOARD
 
-**⚪ NULL (measured, no effect — do not re-run without a new reason):** RS level · RS trajectory and
-curvature · the structure GOOD/POOR verdict against outcome · zones-cleared / the supply ladder ·
-skip-reason attribution (0 of 54) · opportunity-cost regret · pivot proximity on top of a full ladder
+**🟢 CONFIRMED** — *cohort tag: **[S]** = the current alert superset he does not fully believe in;
+**[M]** = market-wide, outside our fills.*
+
+| finding | evidence | cohort |
+|---|---|---|
+| The EP-day low is an invalidation line | never breached **68.8%** reach ≥8×ADR vs 19–25% · **n=16 never-breached**, one regime | **[S]** |
+| Shallower pullback = stronger name | 80% / 38–43% / 29% by depth (n=99) | **[S]** |
+| The **parabolic-extension FILTER** cohort: worse median, better tail | 1.74× vs 2.32× ADR · **10.1% vs 3.7% reach ≥12×ADR** ⚠ **the MA-distance extension measure runs the OPPOSITE way** — do not merge them | **[S]** |
+| 🟢 **MA-distance extension predicts outcome, monotonically, and survives normalising** | least-extended **3.3× ADR vs 1.9×**, 11.8% vs 2.9% reach 8×ADR (n=137) — **the only selection signal all weekend that normalising does not erase** | **[S]** |
+| 🔴 **Our structure encoder runs BACKWARDS to it** | GOOD rises **32% → 86%** across extension quartiles — "cleared everything" is easiest when price is already far above everything | **[S]** |
+| The EP-day CLOSE is the workhorse pivot | **96 of 99** trade back to it within 20 sessions | **[S]** |
+| The sufficiency target | ~4 converted winners; real denominator **26**, not 78 | **[M]** |
+| 📌 **The silent D-1 universe floors carry the fattest tails** | 12 names, median **21.9×ADR** vs 11.3× overall — the floors read the PRIOR day while the opportunity is created ON the gap day | **[M]** |
+
+**🔴 PULLED FROM CONFIRMED — the anti-selectivity claim (I gave him this twice).** "We alert on 16.3%
+of gap days but 7.7% of winners" **is not proven.** My own later attribution read corrected the
+winner-side count from 6 to **15 of 78 = 19.2%**, which is *above* the 16.3% overall rate — and the
+denominator is built on the same purge-eaten alert surface, never recounted, with the winners
+clustering in exactly the purged early period. **Do not cite 16.3% vs 7.7%.** A purge-corrected
+recount is required before any claim in either direction.
+
+**⚪ NULL — measured, no effect:** RS trajectory and curvature · the structure GOOD/POOR verdict
+against outcome (⚠ see the encoder-defect row above for *why*) · zones-cleared / the supply ladder ·
+skip-reason attribution (0 of 54 survive correction) · pivot proximity on top of a full ladder
 (2 of 99) · the 545 parameter grid (unevaluable — no outliers in the holdout).
-⚠ **RS inflection is the one live candidate**: a real 20-day tail effect (13.7% vs 5.7%) that does
-NOT survive conditioning on RS level. Keep, do not build on.
+- ⚠ **RS level is NOT a clean null:** dead within the low-RS tests, but population-average winners
+  read HIGHER (64.6 vs 53.5). **Unresolved — cite both sides or neither.**
+- ⚠ **RS inflection:** a real 20-day tail effect (13.7% vs 5.7%) that **loses significance when
+  conditioned on RS level — artifact or power loss is undecidable at this N.** Keep; do not build on.
+- ⚠ **Opportunity-cost regret is NOT a settled null** — n=8 positions over 5 sessions, August-only,
+  and it is the one read never re-run on tail statistics. It re-runs as choice-skips accrue.
 
-**🔴 RETRACTED (mine, this weekend):** "re-check the 10% floor later" (82% of non-winners crossed too)
-· "removing the intraday stop is the only arm that works on INTC" (my simulation only scanned day 0)
-· "holding longer is the hidden variable" (it is the stop) · "we miss 96% of winners" (penny stocks,
-then ETFs → 72) · "proximity is the fix" (a second pivot is) · my winner screen does not rank
-tradeable R at all (ρ = −0.013).
+**🔴 RETRACTED (mine, this weekend) — the full list:**
+"re-check the 10% floor later" (82% of non-winners crossed too) · "removing the intraday stop is the
+only arm that works on INTC" (my simulation only scanned day 0) · "holding longer is the hidden
+variable" (it is the stop) · "we miss 96% of winners" (penny stocks, then ETFs → 72) · "proximity is
+the fix" (a second pivot is) · my winner screen does not rank tradeable R (ρ = −0.013) · **"RS
+inflection is dead"** (reversed the next day — it is a tail effect) · **"the overridden cohort is the
+better hunting ground"** (retracted on his displacement correction) · **"the re-entry edge is one
+trade"** (drop-the-best is backwards for an outlier objective) · **"we caught 6 of 78"** (15 surfaced;
+HPE/QURE were replay rows, INTC/SMCI were caught AND traded) · **"0 of the 26 were live-alerted"**
+(FALSE — INTC is in the 26 and was traded; the purge caveat was dropped in transit) · v1 re-entry
+totals junked by the stop floor (+244.8R → +110–122R) · PLTR "rank 2230 of ~9,700" → of 2,415.
 
-### 3. WHAT WE HAVE NOT CONSIDERED AT ALL
+### 3. WHAT HAS NOT BEEN CONSIDERED
 
-Named so the gaps are visible rather than assumed covered:
-- **Position sizing** — never examined. Every result above is in R, which is sizing-agnostic by
-  construction, so nothing here says how much to bet.
-- **Portfolio construction** — concurrent positions, correlation between EP names on the same day,
-  and what the 5-slot cap costs when the day is good.
-- **Catalyst CONTENT** — the expectedness axis (scheduled vs unscheduled, backward vs forward) is
-  specified and unbuilt; his *"a game changer, not an expected event that explains the gap."*
-- **Regime** — everything this weekend is one regime (April–August 2026). No conditioning, no holdout.
-- **Group / theme strength** as an entry precondition (his SE condition 4) — still unbuilt.
-- **Stage-2 classification** (his SE condition 3) — still unbuilt, and named as the biggest of the four.
+- **Position sizing** — never examined; every result here is in R, which is sizing-agnostic.
+- **Slippage, spread and fill quality** — flagged as unmodelled in every replay, and it biases every
+  R total quoted above.
+- **Earnings inside the hold window** — a 46-day hold traverses the next print. Named nowhere.
+- **Capital lockup** — multi-week holds against 5 slots and what that turnover costs.
+- **Regime** — one regime throughout (April–August 2026), no holdout.
+- ⚠ *Considered but UNBUILT (not the same as unconsidered):* catalyst content / the expectedness axis
+  (measured 08-15, $0 build specified) · portfolio construction (touched by the regret read, the
+  displacement mechanics and §9 fork 8) · group/theme strength (measured: 4% vs 3%; unbuilt as a
+  precondition) · Stage-2 classification.
 
-### 4. THE RANKING — what to pursue, by expected value against the goal
+### 4. THE RANKING — and what it is honest to say about "ready to decide"
 
-1. 🔴 **The stop fork (C3).** The largest measured lever in the entire plan, on the half that the
-   sufficiency math says is binding. **His ruling; no further measurement needed to decide it.**
-2. 🔴 **The grade's gap dependence (C1).** Five independent confirmations. Also his ruling.
-3. 🟢 **The invalidation line as a MANAGEMENT signal.** New, cheap, daily-bar computable, and
-   nobody had it. Not an entry filter — a conviction/size input once a position is open.
-4. 🟢 **The pivot ladder.** 96-of-99 says one pivot is why we are rarely in these trades. Building
-   the ladder is specification work, not a measurement.
-5. ⏳ **Everything else is measurement that has returned null.** The honest statement is that the
-   selection surface is measured out on this cohort, and the remaining questions need either his
-   rulings or a different regime.
+1. 🔴 **The stop fork.** The largest measured lever in the plan, on the half the sufficiency math says
+   binds. ⚠ **It can be POSED now but it is not evidence-complete:** the let-winners-run replay mode
+   does not exist, the no-stop arm's intraday adverse excursion is **unpriced**, close-basis noise-stop
+   rates need minute resolution, and the 60-day out-of-sample cannot exist until October. **Ruling now
+   means ruling on 43 early-period reconstructed trades with the risk side unmeasured.**
+2. 🔴 **The grade's gap dependence.** Four confirmations. ⚠ Same caveat: §1b sequences #533 and the
+   $0 expectedness labelling BEFORE this fork; ruling now reverses the doc's own order.
+3. 🟢 **The invalidation line as a MANAGEMENT signal.** ⚠ **One-way only:** the breach is a
+   downgrade trigger computable daily; the 68.8% "never breached" class is an end-of-window label and
+   is NOT knowable in flight.
+4. 🟢 **The pivot ladder.** 96-of-99 says one pivot is why we are rarely in these trades.
+   Specification work, not measurement.
+5. 🟢 **The liquidity / D-1 universe floors.** Not null — the 12 names they silently drop carry the
+   fattest tails in the dataset, and the mechanism (measuring the day BEFORE the event that creates
+   the opportunity) is named and cheap to re-measure.
+6. 🟢 **Split the structure encoder into two axes** — clearing overhead and how far it has already run
+   are currently one verdict pulling against itself.
 
-⚠ **Standing caveats on all of it:** one regime with no holdout · reconstructed, not lived · the
-superset-cohort conditional (he does not believe the current alert population is the right one) ·
-and tail statistics need far more N than medians, which is why several results are directional
-rather than significant.
+⚠ **A tension he must see before ruling: items 1 and 3 act on the SAME EVENT in OPPOSITE directions.**
+Item 1 says hold through the EP-day-low breach (11 of 26 big winners breached before peaking). Item 3
+says the breach collapses the tail (≥15×ADR: 25% → 1.5–6.2%) and argues to size down. Different
+cohorts — 99 alerts vs 78 market winners — same event. **They may both be right (hold the position,
+cut the size) but he should not rule on them separately without knowing they collide.**
+
+⚠ **Standing caveats:** one regime, no holdout · reconstructed, not lived · the superset conditional
+(cohort tags above) · tail statistics need far more N than medians, so several results are
+directional rather than significant.
 
 ---
 
