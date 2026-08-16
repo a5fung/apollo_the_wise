@@ -1356,6 +1356,53 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🔴 THE OUTSIDE-OUR-FILLS WINNER SET: we alert on 4% of the market's EP-shaped tail winners
+
+Step 5, Arm 2 — the one thing never built. Market-wide scan of `mi_daily_closes` (14,615 tickers,
+2026-03-01 → 07-15): every day with a **gap ≥ 8%**, price ≥ $3 and ≥ $10M dollar volume, scored on
+whether the next 20 days produced a **max excursion ≥ 8× the name's own ADR** (a volatility-normalised
+tail winner, not a raw-percent one).
+
+**3,146 qualifying gap days · 311 tail winners · we alerted on 13 of them. 298 missed — 96%.**
+
+| | n | median gap | gap ≥10% | median price | **median ADR** | median $ volume |
+|---|---|---|---|---|---|---|
+| **tail winners we MISSED** | **298** | 12.4% | **65%** | $18.4 | **9.9%** | $106M |
+| tail winners we alerted on | 13 | 13.4% | 92% | $15.6 | **5.5%** | $199M |
+| non-winners we missed | 2,631 | 12.0% | 67% | $23.1 | 11.0% | $87M |
+| non-winners we alerted on | 203 | 14.0% | 87% | $29.1 | 6.8% | $216M |
+
+### 🔴 The number that matters: our alerting is ANTI-selective for the outcome we want
+
+**We alert on 216 of 3,146 qualifying gap days = 6.9%. But only 13 of 311 tail winners = 4.2%.**
+Within the same net, **we are LESS likely to alert on a gap that becomes a tail winner than on one
+that does not.** Not merely missing opportunity — mildly selecting against it.
+
+**Two mechanisms visible in the table:**
+
+1. **The 10% gap floor accounts for a third of the miss** — 35% of the missed winners gapped BELOW
+   10% and are excluded by construction. (Compare: 92% of the winners we DID alert on cleared 10%.)
+2. 🔴 **We skew to big, calm names; the winners are smaller and more volatile.** Alerted names carry
+   ADR 5.5–6.8% and ~$200M dollar volume; the missed winners carry **ADR 9.9%** and $106M. Every
+   liquidity/size/ATR gate we run pushes in the same direction, and the tail lives on the other side.
+
+▶ **This is the answer to "what is a real EP" that the inside-cohort work could not reach.** Every
+selection null this weekend was measured inside a population our own filters had already shaped. The
+outside view says the filters, not the ranking, are where the opportunity is lost.
+
+### ⚠ What this does NOT say
+
+- **My net has no catalyst requirement.** Our detector demands one; many of the 298 are catalyst-free
+  gaps we would rightly decline. **So "96% missed" overstates the ADDRESSABLE miss** — the honest
+  claim is the anti-selectivity (6.9% vs 4.2%), which is an internal comparison within one net.
+- 8×ADR/20d is my threshold for "tail winner"; ≥8% gap, ≥$3, ≥$10M are my net's floors. All stated
+  so they can be argued with.
+- Descriptive; one 4½-month window; no permutation.
+
+▶ **Next, and it is now well-posed:** take the 298 and ask what fraction had a real catalyst on the
+day. That splits the miss into *"we filtered it out"* versus *"we never had a reason to look"* — and
+only the first is a criterion question for the operator.
+
 ## 2026-08-16 — RECONCILED: extension is WORSE at the median and BETTER in the tail, even normalised
 
 Two findings looked contradictory: the extension filter *"cuts the fat tail"* (08-16, raw %), and the
