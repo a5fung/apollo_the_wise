@@ -653,6 +653,37 @@ us what the levels ARE and why passing them matters** — and it implies a diffe
 5. **Basing belongs to this model** — a base IS a congestion zone the stock has already absorbed;
    it is why "a decent looking base" was one of his four SE conditions.
 
+### 2026-08-16 (same session, his refinement) — COUNT the zones cleared; raw gap % has no reference
+
+> "an added point, EPs that clear congestion zones the more it clears the stronger all else equal.
+> If the gap up just meets the first congestion or fails even to go above it is iffy, the same
+> concept of moving averages, it's just any proxy or gauge to see how strong the gap up is aside
+> from raw % which has no reference. Gapping up above key levels, holding, even pulling back to not
+> failing is sign of strength."
+
+🔴 **This is the sharpest statement anyone has made about the gap problem.** A gap percentage is a
+number with **no reference frame** — 20% means nothing on its own. *How much overhead structure the
+gap consumed* is the gauge that does have one. It explains the plan's own contradiction directly:
+BW gapped **34.9%** into the bottom of the RS field and died inside 60 seconds, while PLTR and EROC
+both gapped ~**16%** and are his two labelled good EPs. Same signal, opposite meaning — because
+percent was never the measurement.
+
+Four things it specifies, each measurable:
+
+1. **`zones_cleared` — a COUNT, and more is stronger** (all else equal). Not a binary cleared/not.
+2. **The IFFY case, named by him:** the gap lands at, or fails to get above, the FIRST congestion.
+   That is its own bucket, not a low value on a continuous scale.
+3. **Moving averages are the same concept** — his words: "just another proxy or gauge". So an
+   MAs-cleared count is a legitimate cheap parallel gauge, and we already store sma_10/20/40/50.
+4. **HELD, not touched** — "gapping above key levels, holding, even pulling back to not failing is
+   sign of strength." The strength measure is zones cleared AND still held after the first pullback.
+
+▶ **The decisive test this sets up:** run `zones_cleared` head-to-head against RAW GAP % on the same
+cohort, at comparable gap size. His hypothesis is that percent is close to noise and
+structure-consumed carries the information. If that holds, it is the replacement for gap in the
+selection surface — and gap's dominance of the grade (§the grade mechanism read) is not just
+over-weighted but **measured in the wrong unit**.
+
 ### ▶ What it changes in the measurement — this is actionable, not philosophy
 
 **We tested the wrong dependent variable.** The 08-15 sweep asked whether a GOOD/POOR verdict
