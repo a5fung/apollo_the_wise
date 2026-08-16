@@ -1356,6 +1356,56 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — OUR ACTUAL EXIT, REPLAYED: the BREAKEVEN stop is what cuts the winners, not the trail
+
+Probe `scripts/probes/_ext_live_exit_replay.py`, capture
+`docs/analysis/extension_live_exit_replay_2026-08-16.txt`. Rules read from
+`broker/exit_logic.py` + `order_manager.scan_profit_triggers` rather than inherited:
+hard stop = ORB low (broker stop, intraday TOUCH) · 1/3 at +2R then breakeven ·
+`effective_stop = MAX(hard_stop, active_sma, entry)` with the giveback floor OFF ·
+trail = MAX(SMA10, SMA20) exiting on a daily **CLOSE below** · 20-day horizon.
+
+116 reconstructed trades from the 159-name extension cohort.
+
+| arm | median | mean | **max** | SUM | stopped |
+|---|---|---|---|---|---|
+| **A — LIVE** (1/3 @2R + breakeven + SMA trail) | −1.00R | −0.31R | **+0.67R** | −36.3R | 58.6% |
+| **B — no trail** (1/3 @2R + breakeven only) | −1.00R | −0.31R | **+0.67R** | −36.0R | 58.6% |
+| **C — raw** (no partial, hard stop only) | −1.00R | −0.95R | **+3.13R** | −110.6R | 98.3% |
+
+### 🔴 Two findings, and the first one answers his question directly
+
+1. **The SMA trail costs essentially NOTHING here: +0.3R across the whole cohort, and it cut
+   ZERO names by more than 0.5R.** A and B are the same to within rounding. The trail is not the
+   thing cutting winners.
+2. 🔴 **The BREAKEVEN stop is.** Arm A's maximum outcome across all 116 trades is **+0.67R** —
+   exactly the banked 1/3 × 2R and nothing more. **Every single runner had its remaining 2/3
+   stopped at entry.** The same cohort in arm C, with no partial and no breakeven, produces a
+   +3.13R maximum: the upside exists, and the breakeven move is what removes it.
+
+**Mechanism:** after +2R the stop moves to entry as a BROKER stop, so an intraday touch of the
+entry price closes the remainder at 0R. In a parabolic cohort a pullback to the entry within 20
+days is near-universal — so the rule reliably banks 0.67R and reliably surrenders the tail.
+
+⚠ **And it is not free:** breakeven also turns arm C's −110.6R into −36.3R. It is doing exactly
+what it was designed to do on the 58.6% that fail. **The trade-off is real in both directions and
+it is the operator's to weigh** — this is exit discipline = THE LINE, nothing proposed.
+
+### 📌 A separate insight that reframes the earlier MFE numbers
+
+**Maximum excursion from the ALERT baseline is not excursion from OUR ENTRY.** We enter at the ORB
+high of a name already up 137% in five days — the worst cost basis in the day's range. A name that
+"doubled" from the prior close can still spend the next 20 days below our fill. That gap between
++17.6% doubling and a +0.67R maximum is mostly cost basis, not exit rules.
+
+### ⚠ Verification status — do NOT treat this as settled
+
+Reconstructed, not lived: fills assumed at the trigger, no slippage, and these are names we never
+entered. **The +0.67R ceiling across 116 trades is a strong claim and deserves a challenge** — arm
+C reaching +3.13R shows the simulator CAN print above +2R, so the mechanism is working, but a
+single hand-checked name against real bars should confirm the breakeven-touch logic before this is
+cited as fact. Horizon is 20 trading days, a bound of the replay and not of the live rule.
+
 ## 2026-08-16 — EXTENSION COHORT REPLAYED UNDER OUR MECHANICS: net +17.4R, and the 10X question is STILL unanswered
 
 Probe `scripts/probes/_ext_cohort_replay.py` (reuses `_468_moderate_realized_r.py` unchanged for

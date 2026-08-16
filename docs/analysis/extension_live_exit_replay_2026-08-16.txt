@@ -1,0 +1,24 @@
+================================================================================================
+EXTENSION COHORT — OUR ACTUAL EXIT, AND WHAT THE SMA TRAIL COSTS
+================================================================================================
+cohort=159  simulated=116
+not simulated: outcome:no_fill=36, outcome:stop_too_wide=5, outcome:zero_range=2
+
+⚠ THE LINE: extension and the stop are entry/exit discipline. Measurement only.
+⚠ Reconstructed, not lived. Submission assumed 09:31 ET (cohort has no detected_at).
+⚠ Horizon 20 trading days — a bound of this replay, not of the live rule.
+
+A LIVE (1/3@2R + breakeven + SMA trail)
+   n=116  median -1.00R  mean -0.31R  max +0.67R  SUM -36.3R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
+
+B NO TRAIL (1/3@2R + breakeven only)
+   n=116  median -1.00R  mean -0.31R  max +0.67R  SUM -36.0R
+   >=2R 0.0%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 58.6%
+
+C RAW (no partial, hard stop, 20d)
+   n=116  median -1.00R  mean -0.95R  max +3.13R  SUM -110.6R
+   >=2R 0.9%   >=5R 0.0%   >=10R 0.0%   stopped(<=-0.99R) 98.3%
+
+🔴 WHAT THE SMA TRAIL COSTS: +0.3R across the cohort (-36.3R with it, -36.0R without).
+   names the trail cut short by >0.5R: 0
