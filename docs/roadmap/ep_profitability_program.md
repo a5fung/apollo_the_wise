@@ -1399,6 +1399,62 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — 🔴 THE REAL DENOMINATOR IS 26, AND THE WINNER PROFILE IS THE OPPOSITE OF WHAT WE GRADE
+
+Capture: `docs/analysis/winner_r_available_2026-08-16.txt`. Of the 78 real-stock tail winners,
+**how many were actually worth a large R from a TRADEABLE entry** (EP-day high in, EP-day low as the
+stop — daily-resolution, so conservative)?
+
+| R available | ≥20R | 10–20R | 5–10R | 2–5R | <2R | never exceeded entry |
+|---|---|---|---|---|---|---|
+| count | **9** | **17** | 25 | 19 | 8 | 0 |
+
+**26 of 78 offered ≥10R. That is the sufficiency denominator — not 78.** Needing ~4 converted
+winners means converting **1 in 6** of the INTC-shaped subset. Median across all 78 is 7.2R, so even
+the thin half mostly offered something.
+
+### 🔴 The winner profile inverts our grading logic
+
+Medians at EP-day time, the 26 big ones vs the 27 thin ones:
+
+| | ≥10R names (26) | thin names (27) |
+|---|---|---|
+| **gap %** | **9.9%** | **23.4%** |
+| EP-day range (% of entry) | **6.5%** | 20.0% |
+| price | $60 | $23 |
+| **days to peak** | **46** | **14** |
+
+**The big winner is a MODEST gap on a TIGHT day that then grinds for six to nine weeks. The thin one
+gaps hugely, spends its whole move on day one, and is done.**
+
+- 🔴 **Our conviction floor forces HIGH on gaps ≥15–20%. The names that actually pay gap ~10%.**
+  This is the "gap is the wrong unit" thread arriving from a third independent direction (after the
+  BW/PLTR contradiction and the ADR-normalisation work).
+- 🔴 **46 days to peak.** Our whole apparatus — the ORB window, the day-1 stop, the 5-day settle —
+  resolves in hours. **The trade we need takes a month and a half.** That is the same conclusion the
+  60-day-horizon replay reached, now from the opportunity side rather than the exit side.
+- ⚠ Partly mechanical (the day's range is the R denominator) but it **survives a fixed-ADR stop**:
+  gap-vs-R = −0.23, gap-vs-days-to-peak = −0.52. Close-position-in-range and ADR separate nothing.
+
+### ⚠ And my own winner screen does not rank tradeable R at all
+
+**Spearman(8×ADR-from-close, R-from-entry) = −0.013** at 60 days. **The scan finds names that MOVED,
+not names that would have PAID from our entry.** Every "78 winners" statement in this doc inherits
+that — the count is sound, the implied value ranking is not.
+
+### Caveats that govern the reading
+
+- **13 of the 26 sit on ONE session** (04-08, the top-20-cap mass-gap day); 10 distinct sessions in all.
+- **0 of the 26 were live-alerted.** Not one of the genuinely tradeable big winners was caught.
+- **11 of the 26 breached the EP-day-low stop before their peak** — they need the no-intraday-stop or
+  re-entry fork to convert at all.
+- TDIC's 18.6R is a pump-collapse print artifact; 9 of the 27 thin names have truncated windows, so
+  the thin count is an upper bound.
+- INTC reads 10.2R here vs 23.5R in the replay — the daily-resolution stop is wider than the real ORB
+  stop, so **these figures are conservative**.
+
+🛑 Nothing proposed. THE LINE.
+
 ## 2026-08-16 — ENTRY ARCHITECTURE: a pivot ladder + an intraday trigger (his spec)
 
 📚 **Full spec: `docs/setups/delayed_ep_reentry.md` §2026-08-16.** Buy points are defined AHEAD of

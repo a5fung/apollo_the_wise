@@ -1,0 +1,200 @@
+WINNER R-AVAILABLE FROM A TRADEABLE ENTRY -- 2026-08-16
+==============================================================================
+Cohort: the 78 real-stock tier-A tail winners (>=8xADR from close, 20d fwd),
+2026-03-01..07-15, from scripts/probes/_552_cohort.psv (ETF-clean rebuild).
+Bars: scripts/probes/_winner_r_bars.tsv (mi_daily_closes, pulled 2026-08-16,
+read-only). Entry = EP-day HIGH (daily ORB-high analogue -- worst tradeable
+fill of the day, conservative vs a real 09:31-09:45 ORB high). Stop1 = EP-day
+LOW. Stop2 = 0.5xADR below entry. R = (max high next 60 sessions - entry)/risk.
+N = 78 measured; 0 unmeasurable: none
+
+GEOMETRY 1: stop = EP-day low (risk = the day's range)
+------------------------------------------------------
+  >=20R                  n= 9  MU 04-08, UMC 04-17, STRL 04-08, MRVL 03-31, ASX 04-08, SNDK 04-08, SNOW 05-07, ALGM 04-08, NBIS 04-08
+  10-20R                 n=17  AMKR 04-08, AEHR 03-31, TDIC 05-12, UMC 05-06, FLY 03-12, BE 04-08, USAR 04-08, QCOM 04-24, QBTS 04-08, AMD 04-24, HUT 04-08, QURE 05-29, ARM 05-06, SMTC 03-30, IREN 04-08, APLD 04-08, INTC 04-24
+  5-10R                  n=25  MRAM 04-30, AUGO 03-25, FCEL 04-29, OKLO 04-08, OUST 05-04, SDOT 06-17, NOK 04-23, SDOT 06-08, NSIT 05-07, MSTR 04-08, FTNT 05-07, UMC 05-26, VPG 05-12, BAND 04-30, GLXY 04-08, FLY 03-20, STX 04-29, MXL 04-24, BRKR 05-06, HPE 05-29, ELPW 04-22, VSH 05-13, ALMU 04-13, LGN 03-27, ELPW 04-24
+  2-5R                   n=19  ABVX 06-03, DDOG 05-07, SMCI 05-06, ELPW 04-08, HAE 05-07, YSS 03-20, RDW 05-18, CCXI 06-24, ASTC 05-27, AKAN 04-29, NRIX 06-08, QCOM 04-30, NPT 03-03, SGML 03-30, FLY 05-05, AIXI 04-06, GTX 04-30, FLNC 05-07, HIMX 05-07
+  <2R                    n= 8  ASTC 05-28, CCXI 06-29, HCAI 04-07, SPCX 06-12, WOK 05-11, HLIT 05-12, VEEE 07-13, STI 06-04
+  never exceeded entry   n= 0  
+  >=10R: 26 of 78  |  >=5R: 51 of 78  |  median R: 7.17
+
+GEOMETRY 2: stop = 0.5xADR below entry
+--------------------------------------
+  >=20R                  n=57  UMC 04-17, CCXI 06-24, MRVL 03-31, TDIC 05-12, ASTC 05-27, MU 04-08, QCOM 04-24, UMC 05-06, ASX 04-08, MRAM 04-30, SNDK 04-08, NPT 03-03, STRL 04-08, AEHR 03-31, FCEL 04-29, ALGM 04-08, NBIS 04-08, SMTC 03-30, SNOW 05-07, NSIT 05-07, BAND 04-30, SPCX 06-12, ELPW 04-22, HUT 04-08, FLY 03-12, QBTS 04-08, FTNT 05-07, SDOT 06-08, OUST 05-04, GTX 04-30, VSH 05-13, FLY 03-20, MXL 04-24, ARM 05-06, AMD 04-24, ELPW 04-08, VPG 05-12, NOK 04-23, BE 04-08, LGN 03-27, AMKR 04-08, HAE 05-07, STX 04-29, QCOM 04-30, YSS 03-20, WOK 05-11, INTC 04-24, ABVX 06-03, USAR 04-08, IREN 04-08, HPE 05-29, BRKR 05-06, GLXY 04-08, ALMU 04-13, AIXI 04-06, NRIX 06-08, APLD 04-08
+  10-20R                 n=17  SMCI 05-06, MSTR 04-08, SDOT 06-17, DDOG 05-07, AUGO 03-25, ELPW 04-24, QURE 05-29, OKLO 04-08, SGML 03-30, ASTC 05-28, UMC 05-26, CCXI 06-29, RDW 05-18, FLNC 05-07, HIMX 05-07, AKAN 04-29, FLY 05-05
+  5-10R                  n= 3  HCAI 04-07, VEEE 07-13, HLIT 05-12
+  2-5R                   n= 1  STI 06-04
+  <2R                    n= 0  
+  never exceeded entry   n= 0  
+  >=10R: 74 of 78  |  >=5R: 77 of 78  |  median R: 27.54
+
+INTEGRITY FLAGS
+---------------
+  Truncated forward windows (<60 sessions available; late-cohort names): n=14
+    VEEE 2026-07-13: 24 sessions (r1=0.7)
+    CCXI 2026-06-29: 33 sessions (r1=1.6)
+    CCXI 2026-06-24: 36 sessions (r1=3.7)
+    SDOT 2026-06-17: 40 sessions (r1=8.9)
+    SPCX 2026-06-12: 43 sessions (r1=1.2)
+    NRIX 2026-06-08: 47 sessions (r1=3.2)
+    SDOT 2026-06-08: 47 sessions (r1=8.6)
+    STI 2026-06-04: 49 sessions (r1=0.4)
+    ABVX 2026-06-03: 50 sessions (r1=4.9)
+    HPE 2026-05-29: 53 sessions (r1=6.4)
+    QURE 2026-05-29: 53 sessions (r1=11.1)
+    ASTC 2026-05-28: 54 sessions (r1=1.7)
+    ASTC 2026-05-27: 55 sessions (r1=3.6)
+    UMC 2026-05-26: 56 sessions (r1=7.3)
+  Tight-range inflation risk (EP-day range <2% of entry -> geometry-1 R arithmetically inflated): n=0
+  Stop-1 (EP-day low) breached at daily resolution BEFORE the peak session: n=31 of the 78 that exceeded entry; 11 of the >=10R names: FLY 03-12, APLD 04-08, IREN 04-08, MU 04-08, QBTS 04-08, USAR 04-08, AMD 04-24, ARM 05-06, UMC 05-06, SNOW 05-07, QURE 05-29
+  (R-available deliberately ignores the breach -- it prices the move, not a
+   hold rule -- but a breached name needs the no-intraday-stop / re-entry fork
+   to be captured. Same caveat as INTC in the roadmap doc.)
+
+  Named data anomaly: TDIC 2026-05-12 -- next-day high $750 (close $576) then a
+  full round-trip to $20 the following session. A halt-prone squeeze where the
+  peak print was almost certainly not capturable; its 18.6R (geo-1) should be
+  read as an artifact of the definition, not a tradeable opportunity.
+
+CONCENTRATION AND ALERT OVERLAP OF THE >=10R (GEOMETRY-1) SUBSET
+----------------------------------------------------------------
+  n=26 across 10 distinct sessions; largest single session: 2026-04-08 carries 13
+    2026-04-08: 13
+    2026-04-24: 3
+    2026-03-31: 2
+    2026-05-06: 2
+    2026-03-12: 1
+  Live-alerted among the >=10R subset: 0
+  Live-alerted among all 78: 4 (cohort psv counts live mi_ep_alerts rows only; the purge-era caveat from
+   missed_winners_why applies -- INTC/SMCI alert rows were purged, so 0 here)
+  Truncation bias in the <5R group: 9 of 27 have <60 forward sessions -- their R can still grow; the SMCI-shaped count is partly an upper bound.
+
+DOES THE 8xADR-FROM-CLOSE SCREEN TRACK R-FROM-ENTRY?
+----------------------------------------------------
+  Spearman(tailx, R geometry-1, 60d): -0.013   (n=78)
+  Spearman(tailx, R geometry-2, 60d): +0.541
+  Spearman(tailx, R geometry-1, matched 20d window): +0.109
+
+INTC-SHAPED (>=10R geo-1) vs SMCI-SHAPED (<5R geo-1) AT EP-DAY TIME
+-------------------------------------------------------------------
+  feature                                       >=10R (n=26)    5-10R (n=25)    <5R (n=27)
+  gap %                                                 9.87           14.64         23.44
+  ADR %                                                 6.28            6.07          6.49
+  close position in day range (1=at high)               0.58            0.54          0.56
+  dollar volume $M                                    561.25          235.10        396.80
+  close $                                              60.22           42.30         22.71
+  EP-day range % of entry                               6.47           11.90         20.03
+  tailx (screen score)                                 10.91           11.45         11.74
+  sessions to fwd peak                                 46.00           28.00         14.00
+  Mechanics check (the gap/range separation is PARTLY the geo-1 denominator --
+  a wide day-1 range mechanically deflates R1). With the range removed from the
+  denominator it survives, weakened:
+    Spearman(gap %,   R geo-2 60d)  = -0.226
+    Spearman(range %, R geo-2 60d)  = -0.291
+    Spearman(gap %,   days-to-peak) = -0.524
+  So: bigger day-1 gaps yield somewhat less R even at a fixed ADR stop, and
+  they peak much sooner -- the INTC-shaped winner is a modest gap that grinds
+  for weeks; the SMCI-shaped one spends its move on day 1.
+
+TOP 10 BY R AVAILABLE (geometry 1)
+----------------------------------
+  ticker EP day         entry    stop  risk%     peak  d2pk  R geo1  R geo2   gap%  alerted
+  MU     2026-04-08    416.00  398.88   4.1%  1255.00    54    49.0    67.0    9.9       no
+  UMC    2026-04-17     11.86   11.41   3.8%    28.96    47    38.4   116.4   11.6       no
+  STRL   2026-04-08    425.00  409.52   3.6%  1005.68    40    37.5    46.7    8.2       no
+  MRVL   2026-03-31     99.56   93.05   6.5%   329.88    55    35.4    87.5    9.8       no
+  ASX    2026-04-08     24.16   23.48   2.8%    45.52    59    31.6    53.6    8.2       no
+  SNDK   2026-04-08    807.99  758.19   6.2%  2354.39    51    31.1    49.5   10.3       no
+  SNOW   2026-05-07    157.00  150.30   4.3%   321.31    60    24.5    36.8    9.8       no
+  ALGM   2026-04-08     36.75   35.22   4.2%    71.77    57    22.9    38.7    9.2       no
+  NBIS   2026-04-08    127.75  119.35   6.6%   299.86    51    20.5    38.6    8.1       no
+  AMKR   2026-04-08     53.29   51.12   4.1%    96.68    48    20.0    27.2    9.0       no
+
+FULL PER-NAME TABLE (sorted by R geometry-1 desc)
+-------------------------------------------------
+  ticker EP day         entry   stop1  risk1%     peak  nfwd  d2pk     Rg1     Rg2   R20g1   gap%  ADR% clsRng   $volM  tailx stop1st alert
+  MU     2026-04-08    416.00  398.88    4.1%  1255.00    60    54    49.0    67.0    14.7    9.9   6.0   0.46   19809   10.7       y     n
+  UMC    2026-04-17     11.86   11.41    3.8%    28.96    60    47    38.4   116.4    12.5   11.6   2.5   0.56     244   20.0       n     n
+  STRL   2026-04-08    425.00  409.52    3.6%  1005.68    60    40    37.5    46.7    30.0    8.2   5.8   0.89     232   18.8       n     n
+  MRVL   2026-03-31     99.56   93.05    6.5%   329.88    60    55    35.4    87.5    10.9    9.8   5.3   0.92    5034   13.7       n     n
+  ASX    2026-04-08     24.16   23.48    2.8%    45.52    60    59    31.6    53.6    14.9    8.2   3.3   0.97     210   12.7       n     n
+  SNDK   2026-04-08    807.99  758.19    6.2%  2354.39    60    51    31.1    49.5    12.7   10.3   7.7   0.46   13038   10.9       n     n
+  SNOW   2026-05-07    157.00  150.30    4.3%   321.31    60    60    24.5    36.8    19.1    9.8   5.7   0.51    2097   15.0       y     n
+  ALGM   2026-04-08     36.75   35.22    4.2%    71.77    60    57    22.9    38.7     9.6    9.2   4.9   0.44     104    8.8       n     n
+  NBIS   2026-04-08    127.75  119.35    6.6%   299.86    60    51    20.5    38.6     8.1    8.1   7.0   0.67    2338    8.1       n     n
+  AMKR   2026-04-08     53.29   51.12    4.1%    96.68    60    48    20.0    27.2    12.0    9.0   6.0   0.60     166    8.5       n     n
+  AEHR   2026-03-31     37.52   33.00   12.0%   126.62    60    52    19.7    41.8    14.4   11.3  11.4   0.90     122   15.5       n     n
+  TDIC   2026-05-12     71.75   35.25   50.9%   750.00    60     1    18.6    76.5    18.6   73.6  24.7   0.65     287   47.4       n     n
+  UMC    2026-05-06     15.45   14.70    4.9%    28.96    60    34    18.0    54.5    11.0    9.1   3.2   0.71     442   17.3       y     n
+  FLY    2026-03-12     25.17   22.91    9.0%    62.17    60    51    16.4    32.9     7.2   15.1   8.9   0.14     330    8.8       y     n
+  BE     2026-04-08    156.79  144.54    7.8%   351.28    60    54    15.9    27.8    11.9    9.9   8.9   0.18    1566   11.9       n     n
+  USAR   2026-04-08     16.98   15.96    6.0%    32.80    60    39    15.5    23.4    11.5    9.4   8.0   0.80     256    8.9       y     n
+  QCOM   2026-04-24    151.54  143.58    5.3%   259.92    60    24    13.6    60.1    12.1    8.7   2.4   0.66    4366   27.9       n     n
+  QBTS   2026-04-08     15.35   14.10    8.1%    31.55    60    32    13.0    32.3     7.0   11.0   6.5   0.38     317    9.9       y     n
+  AMD    2026-04-24    352.99  334.54    5.2%   584.73    60    45    12.6    30.0     7.0   10.3   4.4   0.72   28178    8.8       y     n
+  HUT    2026-04-08     63.66   56.98   10.5%   140.80    60    38    11.5    33.7     7.1    8.4   7.2   0.67     680   11.3       n     n
+  QURE   2026-05-29     29.48   27.59    6.4%    50.47    53    18    11.1    17.1    11.1   15.7   8.3   0.50     101    9.2       y     n
+  ARM    2026-05-06    239.50  220.10    8.1%   452.70    60    30    11.0    30.1     9.7   11.1   5.9   0.89    5036   13.6       y     n
+  SMTC   2026-03-30     78.50   69.16   11.9%   177.35    60    53    10.6    38.4     3.7    8.1   6.6   0.15     355    9.2       n     n
+  IREN   2026-04-08     38.90   35.87    7.8%    70.71    60    39    10.5    23.0     7.5    8.3   7.1   0.32    1297    9.4       y     n
+  APLD   2026-04-08     29.39   27.35    6.9%    50.73    60    35    10.5    20.0     7.3   13.0   7.2   0.22     980    8.2       y     n
+  INTC   2026-04-24     85.22   79.62    6.6%   142.35    60    45    10.2    24.0     8.5   23.1   5.6   0.52   23089   10.9       n     n
+  MRAM   2026-04-30     19.71   16.50   16.3%    51.50    60     9     9.9    53.1     9.9   36.9   6.1   0.55     260   30.0       n     n
+  AUGO   2026-03-25     73.00   69.06    5.4%   110.32    60    16     9.5    17.4     9.5    8.1   5.9   0.62      91    9.3       y     n
+  FCEL   2026-04-29     13.66   10.99   19.5%    37.88    60    42     9.1    39.0     5.3   14.6   9.1   0.99     245   11.3       n     n
+  OKLO   2026-04-08     51.38   48.00    6.6%    81.50    60    12     8.9    16.9     8.9    8.4   7.0   0.65     427    9.0       y     n
+  OUST   2026-05-04     30.40   26.65   12.3%    63.79    60    39     8.9    31.3     5.1   13.1   7.0   0.40     165   10.8       y     n
+  SDOT   2026-06-17     20.60   11.00   46.6%   106.00    40    10     8.9    18.3     8.9   26.9  45.2   0.64      52   11.4       y     n
+  NOK    2026-04-23     10.86   10.10    7.0%    17.45    60    28     8.7    28.3     5.7    9.3   4.3   0.30    1826   11.0       n     n
+  SDOT   2026-06-08     23.89   14.30   40.1%   106.00    47    17     8.6    31.5     8.6   17.8  21.8   0.65      93   19.1       y     n
+  NSIT   2026-05-07     77.70   69.35   10.8%   141.00    60    60     7.6    36.6     5.4    8.3   4.5   0.12      87   16.9       n     n
+  MSTR   2026-04-08    134.50  126.13    6.2%   197.00    60    23     7.5    18.8     6.7    8.0   5.0   0.26    2182    9.8       y     n
+  FTNT   2026-05-07    112.39  104.51    7.0%   170.35    60    46     7.4    31.5     4.8   17.0   3.3   0.44    1954   11.9       n     n
+  UMC    2026-05-26     21.52   20.50    4.7%    28.96    56    21     7.3    16.1     7.0   15.4   4.3   0.57     563    8.3       y     n
+  VPG    2026-05-12     87.88   79.15    9.9%   151.78    60    33     7.3    28.6     5.5   26.0   5.1   0.74      94   11.6       n     y
+  BAND   2026-04-30     36.88   30.88   16.3%    79.08    60    47     7.0    36.6     4.7   27.9   6.3   0.99     152   12.3       n     n
+  GLXY   2026-04-08     20.80   18.62   10.5%    36.10    60    51     7.0    22.5     4.9    9.1   6.5   0.17     101   10.1       n     n
+  FLY    2026-03-20     27.17   22.12   18.6%    62.17    60    45     6.9    30.4     3.8   11.3   8.5   0.22     371   11.7       y     n
+  STX    2026-04-29    697.00  632.00    9.3%  1145.00    60    35     6.9    26.1     3.2   15.4   4.9   0.17    6960    8.3       n     n
+  MXL    2026-04-24     63.52   53.70   15.5%   128.30    60    45     6.6    30.2     4.1   57.7   6.8   0.67    1737   10.8       y     n
+  BRKR   2026-05-06     43.34   40.01    7.7%    65.30    60    59     6.6    22.6     6.4   10.2   4.5   0.69     133   11.7       n     n
+  HPE    2026-05-29     44.58   41.52    6.9%    64.25    53     2     6.4    22.6     6.4   12.0   3.9   0.50    3687   12.6       n     n
+  ELPW   2026-04-22    140.40   90.00   35.9%   459.00    60     8     6.3    34.1     6.3   29.3  13.3   0.53     223   22.1       n     n
+  VSH    2026-05-13     40.07   35.30   11.9%    69.47    60    25     6.2    30.6     5.6    8.2   4.8   0.67     457   15.3       y     n
+  ALMU   2026-04-13     16.56   13.95   15.8%    31.79    60    22     5.8    21.8     5.2   30.4   8.4   0.54     204   11.4       y     n
+  LGN    2026-03-27     60.50   52.14   13.8%   107.24    60    33     5.6    27.3     2.6   11.4   5.7   0.31     146    9.0       y     n
+  ELPW   2026-04-24    196.65  144.45   26.5%   459.00    60     6     5.0    17.2     5.0   46.4  15.5   0.35     235   11.7       n     n
+  ABVX   2026-06-03     92.14   80.77   12.3%   147.98    50    21     4.9    23.4     4.8   12.1   5.2   0.82     644   12.1       y     y
+  DDOG   2026-05-07    198.60  179.47    9.6%   289.90    60    60     4.8    17.7     4.2   30.8   5.2   0.48    4892    9.2       n     n
+  SMCI   2026-05-06     34.71   31.12   10.3%    51.40    60    18     4.6    19.0     4.6   13.0   5.1   0.99    4377    9.5       y     n
+  ELPW   2026-04-08    135.90   62.10   54.3%   459.00    60    18     4.4    29.2     4.4   75.0  16.3   0.53      67   21.7       n     n
+  HAE    2026-05-07     60.14   53.63   10.8%    88.58    60    59     4.4    26.8     1.8    8.4   3.5   0.11      99    9.0       y     n
+  YSS    2026-03-20     23.75   18.27   23.1%    44.54    60    22     3.8    24.7     3.0   12.5   7.1   0.51     183   12.7       n     n
+  RDW    2026-05-18     15.82   12.97   18.0%    26.64    60     7     3.8    13.4     3.8    9.5  10.2   0.35    1147    8.9       y     n
+  CCXI   2026-06-24     13.49   11.83   12.3%    19.69    36     7     3.7   116.4     3.7   21.3   0.8   0.10     162   81.0       n     n
+  ASTC   2026-05-27     19.75    6.17   68.8%    68.85    55     2     3.6    73.3     3.6  200.4   6.8   0.56    2002   58.8       n     n
+  AKAN   2026-04-29     31.70   18.37   42.1%    78.90    60     2     3.5    12.3     3.5   11.3  24.2   0.57     320    8.4       n     n
+  NRIX   2026-06-08     18.20   15.36   15.6%    27.35    47    46     3.2    20.2     2.4   14.2   5.0   0.10     328   11.9       y     y
+  QCOM   2026-04-30    186.89  163.56   12.5%   259.92    60    20     3.1    25.6     3.1   10.3   3.0   0.69   10954   14.6       n     n
+  NPT    2026-03-03     10.50    6.52   37.9%    22.38    60     2     3.0    47.4     3.0   25.8   4.8   0.94     158   24.7       n     n
+  SGML   2026-03-30     14.78   11.51   22.1%    24.48    60    27     3.0    16.6     2.3   23.9   7.9   0.13     243   11.0       y     n
+  FLY    2026-05-05     39.14   31.30   20.0%    62.17    60    14     2.9    11.9     2.9   15.9   9.9   0.03     266    9.8       n     n
+  AIXI   2026-04-06     17.25    4.60   73.3%    54.20    60     1     2.9    21.5     2.9  106.7  19.9   0.91    1006   11.9       n     n
+  GTX    2026-04-30     25.77   21.93   14.9%    36.25    60    41     2.7    30.7     2.2    8.1   2.6   0.96     186   12.9       n     n
+  FLNC   2026-05-07     20.29   16.31   19.6%    29.97    60    17     2.4    13.2     2.4   41.6   7.2   0.67     866    8.0       n     n
+  HIMX   2026-05-07     17.95   14.89   17.0%    25.09    60    17     2.3    12.5     2.3   25.1   6.4   0.37     397    8.9       n     n
+  ASTC   2026-05-28     35.80   16.68   53.4%    68.85    54     1     1.7    16.2     1.7   57.1  11.4   0.67    1331   11.7       n     n
+  CCXI   2026-06-29     16.80   15.01   10.7%    19.69    33     4     1.6    15.3     1.6   10.1   2.2   0.78     137    8.9       n     n
+  HCAI   2026-04-07     16.32    9.91   39.3%    25.99    60    19     1.5     9.1     1.5  204.9  13.0   0.12     175   11.0       y     n
+  SPCX   2026-06-12    176.52  135.00   23.5%   225.64    43     2     1.2    36.1     1.2  580.6   1.5   0.62   82579   26.0       n     n
+  WOK    2026-05-11    409.00   19.20   95.3%   733.00    60     1     0.8    24.4     0.8   23.4   6.5   0.96     598   13.4       n     n
+  HLIT   2026-05-12     15.39   12.54   18.5%    17.68    60    11     0.8     7.9     0.8   13.4   3.8   0.14     100    9.7       y     y
+  VEEE   2026-07-13     36.07   10.06   72.1%    55.49    24     4     0.7     8.9     0.7  153.9  12.1   0.57    1830   10.2       n     n
+  STI    2026-06-04     38.15   18.87   50.5%    46.00    49     1     0.4     4.9     0.4  391.5   8.4   0.20    2317   12.2       n     n
+
+Simplifications, restated: entry is the DAY high, not the 09:31-09:45 ORB high
+(true ORB entry is lower -> more R than shown on names that ran all day; less
+on names that faded after the open -- direction of bias is name-dependent).
+Daily bars cannot order same-day high vs low; the stop-first flag is daily-
+resolution. 60-session horizon truncated for late-cohort names as flagged.
+Read-only; nothing proposed (THE LINE).
