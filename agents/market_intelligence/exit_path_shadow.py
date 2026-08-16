@@ -27,8 +27,10 @@ THE LINE — read this before touching anything here. This module is a passive O
     pinned against the live formula by a byte-parity test rather than sharing a call
     path with it (see `_sma_trail`'s docstring for why). Nothing in the live entry/exit
     path imports THIS module either (grep `exit_path_shadow` — the only hits outside
-    this file + its tests are the `mi_exit_path_shadow` CREATE TABLE in db.py and the
-    one scheduler registration).
+    this file + its tests are the `mi_exit_path_shadow` CREATE TABLE in db.py, the one
+    scheduler registration, and (since 2026-08-16) a read-only row in
+    `health_checks._DETECTOR_LIVENESS_TABLES` — telemetry watching telemetry, no write
+    path back into this module).
   - It runs as an INTELLIGENCE-owned job (see scheduler.py) precisely because it makes
     zero broker calls — same class as giveback_shadow.py / pivot_stop_shadow.py /
     sell_discipline.py, which it follows in file shape.
@@ -54,9 +56,19 @@ against.
 SCOPE. Every LIVE fill (`account_mode = 'live'`, `filled_at IS NOT NULL`) — both setups
 this system trades, not just MAGNA53. From the fill through close, or 60 calendar days,
 whichever comes first (per-trade cap; older still-open positions simply stop growing new
-rows past day 60, the already-recorded days are untouched). Idempotent, self-healing
-UPSERT keyed on (trade_id, trading_day) — safe to re-run, and a trade already recorded
-through its window's end is skipped without any query (cheap as history accumulates).
+rows past day 60, the already-recorded days are untouched). Idempotent UPSERT keyed on
+(trade_id, trading_day) — safe to re-run — and, since 2026-08-16 (finding 4 of the
+four-angle cleanup review), INCREMENTAL: a trade already recorded through `max_recorded_day`
+seeds its running worst/best/trail state from the LAST STORED row and processes only the
+NEW trading days beyond it, instead of replaying the whole trade from day 0 every night
+(was O(D^2) DB round trips over a trade's life; now O(D)). ⚠ This is no longer
+"self-healing" in the sense of retrying a day forever: a day whose bar was missing on its
+FIRST processing attempt (neither `mi_daily_closes` nor the Polygon fallback had it) is
+not automatically retried once `max_recorded_day` advances past it — a genuine, accepted
+trade-off for the efficiency win (see `_record_one_trade`'s docstring for why this is safe
+in the dominant case: the 16:22 ET `_alert_day_path_persist_job` — which back-fills the
+minute bars day 0's own restriction reads — always runs BEFORE this job's 17:50 ET slot on
+the same trading day, so day 0 has what it needs on its one-and-only pass).
 """
 from __future__ import annotations
 
@@ -67,7 +79,7 @@ from typing import Any, Optional
 
 from shared.dates import _ET
 
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import _f, get_daily_bar_with_fallback, get_pool, log_audit_event
 
 # NOTE (THE LINE): this module does NOT import broker/exit_logic.py or anything else
 # from broker/. `_sma_trail` below duplicates exit_logic's SMA10/20-max formula rather
@@ -94,20 +106,8 @@ _PROFIT_TRIGGER_R = 2.0
 _R_TOUCH_THRESHOLDS = (1.0, 2.0, 3.0, 5.0)
 
 
-def _f(v) -> Optional[float]:
-    """None-safe float (asyncpg NUMERIC arrives as Decimal)."""
-    try:
-        return float(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
 def _et_1600(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, 16, 0, tzinfo=_ET)
-
-
-def _et_0930(d: date) -> datetime:
-    return datetime(d.year, d.month, d.day, 9, 30, tzinfo=_ET)
 
 
 # ── Pure compute (fixture-testable, no IO) ─────────────────────────────────────────────
@@ -229,15 +229,31 @@ _ELIGIBLE_TRADES_SQL = """
     GROUP BY t.id
 """
 
-_DAILY_BAR_SQL = """
-    SELECT open_price, high_price, low_price, close FROM mi_daily_closes
-    WHERE ticker = $1 AND trade_date = $2
-"""
-
 _PRIOR_CLOSES_SQL = """
     SELECT close FROM mi_daily_closes
     WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
     ORDER BY trade_date
+"""
+
+# Fix 4 (2026-08-16 cleanup review): ONE ranged query replaces a per-day
+# get_daily_bar_with_fallback round trip for the NEW days a run needs — narrowed to
+# `[start_day, last_day]` where `start_day` is the day AFTER the trade's
+# `max_recorded_day` (or `fill_day` on a trade's first-ever pass). Same shape as
+# `_PRIOR_CLOSES_SQL` above, just open/high/low too.
+_RANGED_DAILY_BARS_SQL = """
+    SELECT trade_date, open_price, high_price, low_price, close FROM mi_daily_closes
+    WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
+    ORDER BY trade_date
+"""
+
+# Seeds the running worst/best/prior_close/trail state from what's ALREADY stored,
+# instead of replaying every prior day's compute_day_row every night (finding 4).
+# Ordered ascending so `[-1]` below is always the latest recorded day.
+_SEED_STATE_SQL = """
+    SELECT trading_day, day_close, worst_adverse_excursion_r, best_favourable_excursion_r
+    FROM mi_exit_path_shadow
+    WHERE trade_id = $1 AND trading_day <= $2
+    ORDER BY trading_day
 """
 
 _MINUTE_HL_SQL = """
@@ -245,43 +261,21 @@ _MINUTE_HL_SQL = """
     WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
 """
 
-_UPSERT_SQL = """
-    INSERT INTO mi_exit_path_shadow (
-        trade_id, ticker, account_mode, signal_type, alert_date, fill_day,
-        trading_day, trading_day_index, hold_days, entry_price, stop_ref, risk_per_share,
-        entry_shares, day_open, day_high, day_low, day_close, bar_source,
-        prior_close, gap_r, gap_through_stop_ref,
-        adverse_excursion_r, worst_adverse_excursion_r,
-        favourable_excursion_r, best_favourable_excursion_r, close_r,
-        touched_minus_1r, touched_minus_2r, touched_minus_3r, touched_minus_5r,
-        closed_above_stop_ref, touched_plus_2r, breakeven_armed,
-        trail_sma10, trail_sma20, trail_price, close_below_trail,
-        is_exit_day, exit_price, exit_reason, realized_r, pnl_attribution
-    ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,
-        $22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41
-    )
-    ON CONFLICT (trade_id, trading_day) DO UPDATE SET
-        day_open = EXCLUDED.day_open, day_high = EXCLUDED.day_high,
-        day_low = EXCLUDED.day_low, day_close = EXCLUDED.day_close,
-        bar_source = EXCLUDED.bar_source, prior_close = EXCLUDED.prior_close,
-        gap_r = EXCLUDED.gap_r, gap_through_stop_ref = EXCLUDED.gap_through_stop_ref,
-        adverse_excursion_r = EXCLUDED.adverse_excursion_r,
-        worst_adverse_excursion_r = EXCLUDED.worst_adverse_excursion_r,
-        favourable_excursion_r = EXCLUDED.favourable_excursion_r,
-        best_favourable_excursion_r = EXCLUDED.best_favourable_excursion_r,
-        close_r = EXCLUDED.close_r,
-        touched_minus_1r = EXCLUDED.touched_minus_1r, touched_minus_2r = EXCLUDED.touched_minus_2r,
-        touched_minus_3r = EXCLUDED.touched_minus_3r, touched_minus_5r = EXCLUDED.touched_minus_5r,
-        closed_above_stop_ref = EXCLUDED.closed_above_stop_ref,
-        touched_plus_2r = EXCLUDED.touched_plus_2r, breakeven_armed = EXCLUDED.breakeven_armed,
-        trail_sma10 = EXCLUDED.trail_sma10, trail_sma20 = EXCLUDED.trail_sma20,
-        trail_price = EXCLUDED.trail_price, close_below_trail = EXCLUDED.close_below_trail,
-        is_exit_day = EXCLUDED.is_exit_day, exit_price = EXCLUDED.exit_price,
-        exit_reason = EXCLUDED.exit_reason, realized_r = EXCLUDED.realized_r,
-        pnl_attribution = EXCLUDED.pnl_attribution, computed_at = NOW()
-"""
-
+# 1b (2026-08-16 cleanup review): the INSERT column list, $-placeholders, and
+# `DO UPDATE SET` clause are ALL DERIVED from this one tuple (mirrors the sibling
+# shadow-recorder module's _UPSERT_COLS / _INSERT_COLS_SQL / _UPDATE_SET_SQL pattern) —
+# a hand-written 41-column INSERT + a separately hand-written ~29-column UPDATE SET
+# had already drifted: `entry_price`/`stop_ref`/`risk_per_share`/`entry_shares` were
+# excluded from the UPDATE, so a re-run that re-read a CHANGED `stop_ref` (hard_stop
+# can move; see the module docstring) would write fresh R-derived columns
+# (adverse_excursion_r etc.) against a risk_per_share the row itself no longer
+# displayed — an internally inconsistent row in the exact table the stop-fork
+# decision reads. DECISION: refresh every column on conflict except the two conflict
+# keys (trade_id, trading_day) — mirrors alert_rank's `if c != "alert_id"` — so the
+# identity/R-frame columns and the R-derived columns can never disagree, and a
+# transposed pair of same-typed columns (day_open/day_high/..., the four
+# touched_minus_* booleans) can no longer happen since there is only ONE ordered list
+# to get right instead of three that must agree by position.
 _UPSERT_COLS = (
     "trade_id", "ticker", "account_mode", "signal_type", "alert_date", "fill_day",
     "trading_day", "trading_day_index", "hold_days", "entry_price", "stop_ref",
@@ -294,29 +288,15 @@ _UPSERT_COLS = (
     "trail_sma10", "trail_sma20", "trail_price", "close_below_trail",
     "is_exit_day", "exit_price", "exit_reason", "realized_r", "pnl_attribution",
 )
-
-
-async def _fetch_daily_bar(
-    conn, ticker: str, trading_day: date,
-) -> Optional[tuple[Optional[float], Optional[float], Optional[float], float, str]]:
-    """(open, high, low, close, bar_source) for one trading day. `mi_daily_closes`
-    primary; Polygon `get_index_history` fallback (today's row may not be ingested yet
-    on a rerun, or a genuine gap). None only when NEITHER source has the day."""
-    row = await conn.fetchrow(_DAILY_BAR_SQL, ticker, trading_day)
-    if row is not None and row["close"] is not None:
-        return _f(row["open_price"]), _f(row["high_price"]), _f(row["low_price"]), float(row["close"]), "daily"
-
-    from agents.market_intelligence.collector import get_index_history
-    d_str = trading_day.strftime("%Y-%m-%d")
-    try:
-        bars = await get_index_history(ticker, d_str, d_str)
-    except Exception as e:  # loud-ok: caller logs the None outcome
-        logger.warning(f"exit_path_shadow: Polygon fallback failed for {ticker} {trading_day}: {e}")
-        bars = []
-    if not bars or bars[0].get("c") is None:
-        return None
-    b = bars[0]
-    return b.get("o"), b.get("h"), b.get("l"), float(b["c"]), "polygon_fallback"
+_INSERT_COLS_SQL = ", ".join(_UPSERT_COLS)
+_INSERT_PLACEHOLDERS_SQL = ", ".join(f"${i + 1}" for i in range(len(_UPSERT_COLS)))
+_CONFLICT_KEY_COLS = frozenset({"trade_id", "trading_day"})
+_UPDATE_SET_SQL = ", ".join(f"{c} = EXCLUDED.{c}" for c in _UPSERT_COLS if c not in _CONFLICT_KEY_COLS)
+_UPSERT_SQL = f"""
+    INSERT INTO mi_exit_path_shadow ({_INSERT_COLS_SQL})
+    VALUES ({_INSERT_PLACEHOLDERS_SQL})
+    ON CONFLICT (trade_id, trading_day) DO UPDATE SET {_UPDATE_SET_SQL}, computed_at = NOW()
+"""
 
 
 async def _restrict_day_zero_hl(
@@ -414,16 +394,56 @@ async def _record_one_trade(conn, trade: dict, today: date) -> int:
     trading_days = _trading_days(fill_day, last_day)
     prior_closes = await _fetch_prior_closes(conn, ticker, alert_date)
 
+    # Fix 4 (2026-08-16 cleanup review): seed running state from what's ALREADY
+    # stored instead of replaying every prior day's compute_day_row every night —
+    # was O(D) work every single night of a trade's life (O(D^2) cumulative; see
+    # module docstring). worst/best/prior_close come from the LATEST recorded row:
+    # its running value already reflects every earlier day BY CONSTRUCTION
+    # (compute_day_row always folds in `max(prior, today)`, and a day that found no
+    # bar `continue`s before touching worst/best — see below — so a gap inside the
+    # already-recorded span never breaks this chain). running_closes (the trail's
+    # only input) is the full ordered list of already-recorded closes — exact, not
+    # an approximation, because the trail is close-only and a close is never day-0
+    # minute-clamped (only day 0's high/low are, via _restrict_day_zero_hl below).
     running_closes: list[float] = []
     prior_close_val: Optional[float] = prior_closes[-1] if prior_closes else None
     worst = 0.0
     best = 0.0
-    written = 0
+    if max_recorded is not None:
+        seed_rows = await conn.fetch(_SEED_STATE_SQL, trade["id"], max_recorded)
+        running_closes = [_f(sr["day_close"]) for sr in seed_rows if sr["day_close"] is not None]
+        if seed_rows:
+            last_seed = seed_rows[-1]
+            v = _f(last_seed["worst_adverse_excursion_r"])
+            worst = v if v is not None else 0.0
+            v = _f(last_seed["best_favourable_excursion_r"])
+            best = v if v is not None else 0.0
+            prior_close_val = _f(last_seed["day_close"])
 
+    # ONE ranged query covers every day this run might newly need a bar for —
+    # replaces a per-day get_daily_bar_with_fallback round trip (was 1-2 round trips
+    # x every day x every night; now one query scoped to just the days beyond
+    # max_recorded_day, the _PRIOR_CLOSES_SQL pattern already used above).
+    start_day = (max_recorded + timedelta(days=1)) if max_recorded is not None else fill_day
+    daily_rows = await conn.fetch(_RANGED_DAILY_BARS_SQL, ticker, start_day, last_day)
+    bars_by_day: dict[date, tuple] = {
+        dr["trade_date"]: (
+            _f(dr["open_price"]), _f(dr["high_price"]), _f(dr["low_price"]), float(dr["close"]), "daily",
+        )
+        for dr in daily_rows if dr["close"] is not None
+    }
+
+    written = 0
     for idx, trading_day in enumerate(trading_days):
         is_day_zero = idx == 0
-        bar = await _fetch_daily_bar(conn, ticker, trading_day)
+        if max_recorded is not None and trading_day <= max_recorded:
+            continue  # already recorded this trading day; state already seeded above
+
+        bar = bars_by_day.get(trading_day)
         if bar is None:
+            bar = await get_daily_bar_with_fallback(conn, ticker, trading_day)
+        day_open, day_high, day_low, day_close, bar_source = bar
+        if day_close is None:
             logger.warning(f"exit_path_shadow: no bar for {ticker} {trading_day} — skipping day")
             # A skipped day breaks the "prior_close is YESTERDAY's close" invariant for
             # whichever day gets recorded next — without this reset, that next row's
@@ -432,7 +452,6 @@ async def _record_one_trade(conn, trade: dict, today: date) -> int:
             # the stop-fork decision reads is not.
             prior_close_val = None
             continue
-        day_open, day_high, day_low, day_close, bar_source = bar
 
         if is_day_zero:
             hl = await _restrict_day_zero_hl(conn, ticker, filled_at, trading_day, closed_at)
@@ -485,24 +504,39 @@ async def _record_one_trade(conn, trade: dict, today: date) -> int:
     return written
 
 
-async def record_exit_path_shadow(today: Optional[date] = None) -> int:
+async def record_exit_path_shadow(today: Optional[date] = None) -> dict[str, int]:
     """Write/refresh one `mi_exit_path_shadow` row per (LIVE trade, trading day) — full
-    per-trade backfill on first sight, idempotent UPSERT thereafter. Pure DB read/compute/
-    write; no broker calls, no live-trade mutation (THE LINE — see module docstring).
-    Returns rows written/updated."""
+    per-trade backfill on first sight, incremental thereafter (see module docstring —
+    Fix 4). Pure DB read/compute/write; no broker calls, no live-trade mutation (THE
+    LINE — see module docstring).
+
+    Returns {"population": eligible LIVE trades seen, "written": rows written/updated,
+    "errors": trades whose processing raised} — mirrors
+    `broker/order_manager.py::persist_alert_day_paths`'s
+    {"population", "fetched", ...} job-summary shape.
+
+    2026-08-16 fix (finding 1 of the four-angle cleanup review): this used to return a
+    bare int and only emit its `exit_path_shadow_recorded` summary audit event
+    `if written:` — a night where the population query returned rows but every one
+    failed to write came out byte-identical (0, one INFO log line, no audit row) to a
+    night with nothing eligible at all. The summary now fires UNCONDITIONALLY and
+    always states the population, so "0 of 14" is distinguishable from "0 of 0".
+    """
     if today is None:
         from agents.market_intelligence.collector import et_today
         today = et_today()
 
     pool = await get_pool()
-    written = 0
+    out = {"population": 0, "written": 0, "errors": 0}
     async with pool.acquire() as conn:
         rows = await conn.fetch(_ELIGIBLE_TRADES_SQL)
+        out["population"] = len(rows)
         for r in rows:
             trade = dict(r)
             try:
-                written += await _record_one_trade(conn, trade, today)
+                out["written"] += await _record_one_trade(conn, trade, today)
             except Exception as e:
+                out["errors"] += 1
                 logger.error(f"exit_path_shadow: trade {trade.get('id')} ({trade.get('ticker')}) failed: {e}")
                 try:
                     await log_audit_event(
@@ -511,11 +545,12 @@ async def record_exit_path_shadow(today: Optional[date] = None) -> int:
                     )
                 except Exception:  # loud-ok: log_audit_event self-catches; logger.error above already fired
                     pass
-    if written:
-        try:
-            await log_audit_event(
-                "exit_path_shadow_recorded", f"recorded/updated {written} exit-path row(s) for {today}",
-            )
-        except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
-            logger.warning(f"exit_path_shadow audit emit failed (non-fatal): {_e}")
-    return written
+    try:
+        await log_audit_event(
+            "exit_path_shadow_recorded",
+            f"{out['written']} row(s) written/updated across {out['population']} eligible "
+            f"live trade(s) for {today} ({out['errors']} error(s))",
+        )
+    except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
+        logger.warning(f"exit_path_shadow audit emit failed (non-fatal): {_e}")
+    return out

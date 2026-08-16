@@ -99,6 +99,19 @@ def _coerce_date(v):
     return date.fromisoformat(v) if isinstance(v, str) else v
 
 
+def _f(v) -> "float | None":
+    """None-safe float coercion (asyncpg NUMERIC arrives as Decimal). A DB-decoding
+    concern, same class as `_coerce_date` above — consolidated here 2026-08-16 after
+    being independently duplicated in sell_discipline.py, exit_path_shadow.py, and
+    alert_rank_shadow.py (all three imported it as a bare `_f` local; callers there
+    now do `from agents.market_intelligence.db import _f`, unchanged at every call
+    site)."""
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
@@ -9811,6 +9824,51 @@ async def get_daily_moves(conn: Any, trade_date: Any, tickers: "list[str]") -> d
             continue
         moves[r["ticker"]] = (cl - op) / op * 100.0
     return moves
+
+
+_DAILY_BAR_WITH_FALLBACK_SQL = """
+    SELECT open_price, high_price, low_price, close FROM mi_daily_closes
+    WHERE ticker = $1 AND trade_date = $2
+"""
+
+
+async def get_daily_bar_with_fallback(
+    conn: Any, ticker: str, trading_day: date,
+) -> "tuple[float | None, float | None, float | None, float | None, str | None]":
+    """(open, high, low, close, bar_source) for ONE trading day: `mi_daily_closes`
+    primary, Polygon `get_index_history` fallback (today's row may not be ingested yet
+    on a rerun, or a genuine gap). ALWAYS returns a 5-tuple — all-None (close included)
+    when NEITHER source has the day. Callers test `close is None` for "no bar", never
+    bare identity against None.
+
+    2026-08-16 consolidation: `exit_path_shadow.py` and `alert_rank_shadow.py` each
+    carried their own copy of this and had ALREADY diverged on this exact contract —
+    one returned a bare `None` on a total miss, the other a 5-tuple of Nones (found in
+    review; the SSoT rule in CLAUDE.md, "db.py is the single source of truth for every
+    DB query", is why it lands here). This is the 5-tuple-always shape; both callers now
+    agree on it.
+
+    Takes a live conn (callers already hold one in a hot loop — mirrors
+    get_theme_heat_asof / get_daily_moves / get_daily_bars_asof above).
+    """
+    row = await conn.fetchrow(_DAILY_BAR_WITH_FALLBACK_SQL, ticker, trading_day)
+    if row is not None and row["close"] is not None:
+        return _f(row["open_price"]), _f(row["high_price"]), _f(row["low_price"]), float(row["close"]), "daily"
+
+    # Lazy import (circular-import avoidance): collector.py imports from db.py, so a
+    # module-level import here would cycle — same reason db.py already lazy-imports
+    # collector.et_today in 8 places (a different name from the same module, same cause).
+    from agents.market_intelligence.collector import get_index_history
+    d_str = trading_day.strftime("%Y-%m-%d")
+    try:
+        bars = await get_index_history(ticker, d_str, d_str)
+    except Exception as e:  # loud-ok: caller records the None outcome
+        logger.warning(f"get_daily_bar_with_fallback: Polygon fallback failed for {ticker} {trading_day}: {e}")
+        bars = []
+    if not bars or bars[0].get("c") is None:
+        return None, None, None, None, None
+    b = bars[0]
+    return b.get("o"), b.get("h"), b.get("l"), float(b["c"]), "polygon_fallback"
 
 
 async def get_daily_bars_asof(

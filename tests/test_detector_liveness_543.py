@@ -159,13 +159,29 @@ def test_day_bucketing_ignores_same_day_bursts():
     assert flag["median_gap_days"] == 10
 
 
-def test_module_constant_covers_the_seven_required_tables():
+def test_module_constant_covers_the_required_tables():
+    """2026-08-16 cleanup review finding 1 Fix B added mi_exit_path_shadow /
+    mi_alert_rank_shadow — the two shadow recorders that can fail 100% silently were
+    themselves excluded from the registry that exists to catch exactly that."""
     covered = {t for t, *_ in hc._DETECTOR_LIVENESS_TABLES}
     assert covered == {
         "mi_anticipation_lifecycle", "mi_flag_undercut_rally", "mi_flag_breaks",
         "mi_htf_breakout_shadow", "mi_consolidation_entry_shadow",
         "mi_9m_ep_alerts", "mi_ep_alerts",
+        "mi_exit_path_shadow", "mi_alert_rank_shadow",
     }
+
+
+def test_new_tables_key_off_a_date_column_not_a_timestamp():
+    """MUTATION TARGET: registering the two new tables against `computed_at` instead of
+    their own business-date column. `_detector_liveness_col_is_timestamp` is NAME-based
+    (`== "created_at"`) — a timestamptz column under any other name silently mis-keys as
+    a plain DATE, `MAX(computed_at)` returns a datetime, and `(today - last_write).days`
+    raises inside the per-table try/except: the table would just never get checked, the
+    exact failure class this registry exists to prevent (2026-08-16 cleanup review)."""
+    by_table = {t: date_col for t, _label, date_col, _where in hc._DETECTOR_LIVENESS_TABLES}
+    assert by_table["mi_exit_path_shadow"] == "trading_day"
+    assert by_table["mi_alert_rank_shadow"] == "alert_date"
 
 
 # ── run_detector_liveness_check: orchestration + wiring ───────────────────────
@@ -245,6 +261,8 @@ _HEALTHY_TABLES = {
     "mi_ep_alerts": (date(2026, 8, 16), [{"d": d} for d in _days_ending(date(2026, 8, 16), 8, 2)], None),
     "mi_anticipation_lifecycle": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
     "mi_flag_undercut_rally": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
+    "mi_exit_path_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 1)], None),
+    "mi_alert_rank_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 1)], None),
 }
 
 
@@ -257,7 +275,7 @@ def test_clean_run_is_silent_audit_only(monkeypatch):
     out = asyncio.run(hc.run_detector_liveness_check())
     assert out["flags"] == [] and sent == []
     assert [e for e, _, _ in logged] == ["detector_liveness_check"]
-    assert out["tables_scanned"] == 7
+    assert out["tables_scanned"] == 9
 
 
 # These orchestration-level "dark" fixtures deliberately use >= MIN_ACTIVE_DAYS active
@@ -327,7 +345,7 @@ def test_one_bad_table_does_not_kill_the_sweep(monkeypatch):
     tables["mi_flag_undercut_rally"] = _DARK_UNDERCUT_RALLY
     _conn, logged, sent = _wire(monkeypatch, per_table=tables)
     out = asyncio.run(hc.run_detector_liveness_check())
-    assert out["tables_scanned"] == 6  # 7 tables minus the one that raised
+    assert out["tables_scanned"] == 8  # 9 tables minus the one that raised
     assert any(e.get("table") == "mi_anticipation_lifecycle" for e in out["errors"])
     assert any(f["table"] == "mi_flag_undercut_rally" for f in out["flags"])
 

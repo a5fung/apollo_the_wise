@@ -36,7 +36,7 @@ from typing import Any, Iterable, Optional
 
 from shared.dates import _ET
 
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import _f, get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +56,6 @@ _PEAK_MATCH_TOL = 0.005
 _MIN_BARS_FOR_WHEN = 3
 
 _VERDICT_ABBR = {"HOLD": "H", "PARTIAL_TAKE": "PT", "TRAIL_TIGHTEN": "TT", "FORCE_EXIT": "FX"}
-
-
-def _f(v) -> Optional[float]:
-    """None-safe float (asyncpg NUMERIC arrives as Decimal)."""
-    try:
-        return float(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
 
 
 def trade_risk_per_share(trade: dict) -> Optional[float]:

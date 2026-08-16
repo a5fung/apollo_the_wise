@@ -65,7 +65,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.db import (
-    get_pool, log_audit_event,
+    get_pool, log_audit_event, LIVE_SOURCE_SQL,
     get_latest_two_theme_dates, get_theme_retired_candidate_names,
     get_theme_history_window, get_theme_member_departures,
     get_theme_quality_alerted_targets, get_recent_rs_batch, get_rs_on_date,
@@ -1497,6 +1497,18 @@ async def run_db_growth_check() -> dict[str, Any]:
 # KNOWN GAP, named not built: the sugar-baby convergence alert (0 fires ever, #543's own headline
 # example) is an `mi_audit_log` event (`sugar_baby_convergence_alert`), not an output TABLE — this
 # check is table-shaped and does not cover it. Left as a named follow-on, not silently dropped.
+#
+# 2026-08-16 cleanup review, finding 1 Fix B: the two shadow recorders that can fail
+# 100% SILENTLY (exit_path_shadow.py / alert_rank_shadow.py — see their own headers)
+# were the exact failure class this registry exists to catch, and were themselves
+# excluded from it. Both DATE columns below are the modules' own business-date
+# columns (`trading_day` / `alert_date`), NOT `computed_at` — `_detector_liveness_col_is_timestamp`
+# is name-based (`== "created_at"`), so a timestamptz column here would silently mis-key
+# as a plain DATE, crash the per-table try/except, and the table would just never get
+# checked (the failure class this whole registry exists to prevent). ⚠ Both tables are
+# EMPTY as of this commit — they read as `never_fired` until their first scheduled run
+# (17:50 / 17:53 ET respectively); that is expected and self-resolving on first fire, not
+# a bug to chase.
 _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # (table, label, date/timestamp column, extra WHERE clause or None)
     ("mi_anticipation_lifecycle", "anticipation lifecycle (#270)", "created_at", None),
@@ -1505,7 +1517,9 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     ("mi_htf_breakout_shadow", "HTF breakout shadow", "break_date", None),
     ("mi_consolidation_entry_shadow", "consolidation entry shadow", "entry_date", None),
     ("mi_9m_ep_alerts", "9M EP alerts", "alert_date", None),
-    ("mi_ep_alerts", "EP alerts", "alert_date", "COALESCE(source, 'live') = 'live'"),
+    ("mi_ep_alerts", "EP alerts", "alert_date", LIVE_SOURCE_SQL),
+    ("mi_exit_path_shadow", "exit-path shadow", "trading_day", None),
+    ("mi_alert_rank_shadow", "alert-rank shadow", "alert_date", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

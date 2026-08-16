@@ -442,6 +442,111 @@ def test_classify_growth_regex_fallback_when_not_stored():
     assert cls["growth_src"] == "regex"
 
 
+# ── classify_expectedness — regex byte-parity against the probe (finding 3) ───────────
+#
+# 2026-08-16 cleanup review finding 3: classify_expectedness is a VERBATIM port of
+# scripts/probes/_expectedness_and_ranking.py::classify(), shipped with no parity test —
+# and the probe's own regex bodies carry in-place revision markers ("# r2 blind recall
+# pass" at lines 156/175/189/201 as of this review), so they demonstrably get revised
+# without anyone touching this file. The behavioural tests above catch control-flow
+# drift (SEC-form parsing, mixed_fwd/analyst_only precedence, growth stored-vs-regex);
+# they do NOT catch a regex body being WIDENED or NARROWED, since a handful of
+# hand-picked fixtures can't span what an arbitrary future regex edit might add or
+# drop. Regex .pattern string equality is the true byte-parity analogue of the other
+# two intentional-duplicate guards in this codebase (_sma_trail / compute_atr14_prior).
+#
+# The probe module is NOT imported directly (unlike backtester/filters.py in the ATR14
+# parity test below) — its own docstring says it reads several MULTI-MB TSV caches and
+# scores the full alert population at IMPORT TIME ("capture-once caches", fine for a
+# one-shot analysis run, wrong to pay on every test run — the exact cost this module's
+# own docstring says is wrong to pull into every scheduler tick, restated here for a
+# test). Instead this pulls out ONLY the regex assignments + classify()'s own source via
+# AST, so the parity check exercises the REAL classify() body without the multi-MB load.
+
+_PROBE_REGEX_NAMES = ("SEC_RE", "EARN_KW", "FWD_KW", "BWD_KW", "ANALYST_KW", "BEAT_KW", "YOY_RE")
+
+
+def _load_real_probe_classify():
+    import ast
+    src_path = REPO / "scripts/probes/_expectedness_and_ranking.py"
+    src = src_path.read_text()
+    tree = ast.parse(src)
+
+    found_regex: dict[str, ast.Assign] = {}
+    found_classify: "ast.FunctionDef | None" = None
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+            if name in _PROBE_REGEX_NAMES:
+                found_regex[name] = node
+        elif isinstance(node, ast.FunctionDef) and node.name == "classify":
+            found_classify = node
+
+    missing = [n for n in _PROBE_REGEX_NAMES if n not in found_regex]
+    assert not missing, f"probe file structure changed — missing regex(es): {missing}"
+    assert found_classify is not None, "probe file structure changed — classify() not found"
+
+    segments = [ast.get_source_segment(src, found_regex[n]) for n in _PROBE_REGEX_NAMES]
+    segments.append(ast.get_source_segment(src, found_classify))
+    ns: dict = {"re": __import__("re")}
+    exec(compile("import re\n" + "\n\n".join(segments), "<probe classify extract>", "exec"), ns)
+    return ns
+
+
+def test_probe_regexes_are_byte_identical_to_this_modules_copies():
+    """The true byte-parity check (finding 3): the probe's regex .pattern strings must
+    match this module's private copies EXACTLY. MUTATION TARGET: widening/narrowing
+    either copy's regex body without mirroring the change in the other — a handful of
+    behavioural fixtures cannot span an arbitrary future keyword addition, this can."""
+    probe_ns = _load_real_probe_classify()
+    mine = {
+        "SEC_RE": ars._SEC_RE, "EARN_KW": ars._EARN_KW, "FWD_KW": ars._FWD_KW,
+        "BWD_KW": ars._BWD_KW, "ANALYST_KW": ars._ANALYST_KW, "BEAT_KW": ars._BEAT_KW,
+        "YOY_RE": ars._YOY_RE,
+    }
+    for name in _PROBE_REGEX_NAMES:
+        assert mine[name].pattern == probe_ns[name].pattern, f"{name} pattern drifted from the probe"
+
+
+def test_classify_expectedness_matches_the_real_probe_classify():
+    """Behavioural parity on top of the pattern check above: feeds the SAME fixtures to
+    the REAL probe classify() (extracted via AST, not hand-copied) and to this module's
+    port, spanning every branch the earlier hand-written tests exercise individually."""
+    probe_ns = _load_real_probe_classify()
+    real_classify = probe_ns["classify"]
+
+    cases = [
+        dict(catalyst="quarterly filing", ctype_rat="", judge_rat="",
+             grounded="[SEC 10-Q filed 2026-08-01, items ]", yoy=None),
+        dict(catalyst="earnings release", ctype_rat="", judge_rat="",
+             grounded="[SEC 8-K filed 2026-08-01, items 2.02]", yoy=None),
+        dict(catalyst="material agreement announced", ctype_rat="", judge_rat="",
+             grounded="[SEC 8-K filed 2026-08-01, items 1.01]", yoy=None),
+        dict(catalyst="Company reported record third-quarter revenue of $50M, beat consensus estimate.",
+             ctype_rat="", judge_rat="", grounded="", yoy=None),
+        dict(catalyst="FDA granted accelerated approval for the company's lead drug candidate.",
+             ctype_rat="", judge_rat="", grounded="", yoy=None),
+        dict(catalyst="Company reported revenue of $80M, beat consensus estimate for the quarter.",
+             ctype_rat="", judge_rat="", grounded="", yoy=None),
+        dict(catalyst="Company reported record revenue and also announced FDA accelerated approval.",
+             ctype_rat="", judge_rat="", grounded="", yoy=None),
+        dict(catalyst="Analyst initiated coverage with an outperform rating and price target.",
+             ctype_rat="", judge_rat="", grounded="", yoy=None),
+        dict(catalyst="", ctype_rat="", judge_rat="", grounded="", yoy=None),
+        dict(catalyst="revenue up 45% yoy", ctype_rat="", judge_rat="", grounded="", yoy=60.0),
+        dict(catalyst="revenue up 45% yoy", ctype_rat="", judge_rat="", grounded="", yoy=None),
+    ]
+    for c in cases:
+        expected = real_classify(dict(
+            catalyst=c["catalyst"], ctype_rat=c["ctype_rat"], judge_rat=c["judge_rat"],
+            grounded=c["grounded"], yoy=c["yoy"],
+        ))
+        mine = ars.classify_expectedness(
+            c["catalyst"], c["ctype_rat"], c["judge_rat"], c["grounded"], c["yoy"],
+        )
+        assert mine == expected, f"drift for case {c!r}: mine={mine} probe={expected}"
+
+
 # ── the write half: mocked pool, two-alert day (proves within-day ranking) ────────────
 
 
@@ -682,12 +787,70 @@ async def test_record_alert_rank_shadow_scans_only_unrecorded_dates(monkeypatch)
         return 3
     monkeypatch.setattr(ars, "_process_alert_date", _fake_process)
 
-    n = await ars.record_alert_rank_shadow(date(2026, 8, 10))
-    assert n == 3
+    out = await ars.record_alert_rank_shadow(date(2026, 8, 10))
+    assert out == {"population": 1, "written": 3, "errors": 0}
     assert calls == [d1]
     sql_used = conn.fetch.call_args_list[0][0][0]
     assert "LEFT JOIN mi_alert_rank_shadow" in sql_used
     assert "s.alert_id IS NULL" in sql_used
+
+
+@pytest.mark.asyncio
+async def test_summary_audit_fires_even_when_every_date_errors(monkeypatch):
+    """2026-08-16 cleanup review finding 1: a night where the population query returns
+    dates but every one fails to process used to come out byte-identical (0, no audit
+    row) to a night with nothing to do at all — the summary event was gated `if written`.
+    MUTATION TARGET: restoring that gate. Population > 0 with 0 written must still emit
+    exactly one `alert_rank_shadow_recorded` row stating BOTH numbers, so "0 of 2" reads
+    as distinguishable from "0 of 0" in the audit trail."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    d1, d2 = date(2026, 8, 5), date(2026, 8, 6)
+    conn.fetch = AsyncMock(side_effect=[[{"alert_date": d1}, {"alert_date": d2}]])
+    monkeypatch.setattr(ars, "get_pool", AsyncMock(return_value=pool))
+    audited = []
+
+    async def _audit(event_type, summary, detail=""):
+        audited.append((event_type, summary))
+    monkeypatch.setattr(ars, "log_audit_event", _audit)
+
+    async def _fake_process(conn_, alert_date_):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(ars, "_process_alert_date", _fake_process)
+
+    out = await ars.record_alert_rank_shadow(date(2026, 8, 10))
+    assert out == {"population": 2, "written": 0, "errors": 2}
+    recorded = [s for e, s in audited if e == "alert_rank_shadow_recorded"]
+    assert len(recorded) == 1
+    # Checks the POPULATION phrase specifically, not just "2" anywhere in the string
+    # (a bare substring check would also match an unrelated date fragment — the exact
+    # "assertion matched a comment, not behaviour" trap this file's own header warns of).
+    assert "0 row(s) written/updated across 2 date(s) needing processing" in recorded[0]
+    assert "(2 error(s))" in recorded[0]
+    assert sum(1 for e, _ in audited if e == "alert_rank_shadow_error") == 2
+
+
+@pytest.mark.asyncio
+async def test_summary_audit_fires_on_a_genuinely_empty_night_too(monkeypatch):
+    """The unconditional-emission fix must not accidentally start firing TWICE, or stop
+    firing on the legitimate 0-of-0 night (nothing new since the last run) — both are
+    real, distinguishable states this test pins independently of the error-path test
+    above."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[]])
+    monkeypatch.setattr(ars, "get_pool", AsyncMock(return_value=pool))
+    audited = []
+
+    async def _audit(event_type, summary, detail=""):
+        audited.append((event_type, summary))
+    monkeypatch.setattr(ars, "log_audit_event", _audit)
+
+    out = await ars.record_alert_rank_shadow(date(2026, 8, 10))
+    assert out == {"population": 0, "written": 0, "errors": 0}
+    recorded = [s for e, s in audited if e == "alert_rank_shadow_recorded"]
+    assert len(recorded) == 1
+    assert "0 row(s) written/updated across 0 date(s) needing processing" in recorded[0]
 
 
 # ── retention ───────────────────────────────────────────────────────────────────────────
@@ -735,7 +898,12 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         str(REPO / "agents/market_intelligence/alert_rank_shadow.py"),
         str(REPO / "agents/market_intelligence/scheduler.py"),
         str(REPO / "agents/market_intelligence/db.py"),
+        # 2026-08-16 cleanup review finding 1 Fix B: a READ-ONLY liveness row (telemetry
+        # watching telemetry, no write path back into alert_rank_shadow) — see that
+        # module's own docstring for why this is not THE LINE breach this test guards.
+        str(REPO / "agents/market_intelligence/health_checks.py"),
         str(REPO / "tests/test_alert_rank_shadow.py"),
+        str(REPO / "tests/test_detector_liveness_543.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"

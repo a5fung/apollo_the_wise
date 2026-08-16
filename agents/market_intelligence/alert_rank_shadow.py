@@ -65,7 +65,9 @@ THE LINE — read this before touching anything here. This module is a passive O
     scheduler tick.
   - Nothing in `broker/`, `ep_detector.py`, or any judge/grading module imports THIS module
     (grep `alert_rank_shadow` — the only hits outside this file + its tests are the
-    `mi_alert_rank_shadow` CREATE TABLE in db.py and the one scheduler registration).
+    `mi_alert_rank_shadow` CREATE TABLE in db.py, the one scheduler registration, and
+    (since 2026-08-16) a read-only row in `health_checks._DETECTOR_LIVENESS_TABLES` —
+    telemetry watching telemetry, no write path back into this module).
   - It runs as an INTELLIGENCE-owned job (see scheduler.py) — same class as
     `exit_path_shadow.py` / `giveback_shadow.py` / `pivot_stop_shadow.py`, which it follows
     in file shape and EOD-timing reasoning (see below).
@@ -97,7 +99,7 @@ from typing import Any, Optional
 
 from shared.dates import _ET
 
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import _f, get_daily_bar_with_fallback, get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -111,14 +113,6 @@ _MIN_PRIOR_BARS = 50
 _ADR20_WINDOW = 20
 _ATR14_LOOKBACK_DAYS = 35  # matches backtester/filters.py::compute_atr_14's own lookback
 _BAR_CONTRACTION_MIN_BARS = 10
-
-
-def _f(v) -> Optional[float]:
-    """None-safe float (asyncpg NUMERIC arrives as Decimal)."""
-    try:
-        return float(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
 
 
 def _et_0930(d: date) -> datetime:
@@ -493,11 +487,6 @@ _DAY_ALERTS_SQL = """
     ORDER BY a.id
 """
 
-_TODAY_DAILY_BAR_SQL = """
-    SELECT open_price, high_price, low_price, close FROM mi_daily_closes
-    WHERE ticker = $1 AND trade_date = $2
-"""
-
 _PRIOR_DAILY_ROWS_SQL = """
     SELECT trade_date, close, high_price, low_price FROM mi_daily_closes
     WHERE ticker = $1 AND trade_date < $2 AND trade_date >= $2::date - 100
@@ -544,28 +533,6 @@ _UPSERT_SQL = f"""
     VALUES ({_INSERT_PLACEHOLDERS_SQL})
     ON CONFLICT (alert_id) DO UPDATE SET {_UPDATE_SET_SQL}, computed_at = NOW()
 """
-
-
-async def _fetch_daily_bar(
-    conn, ticker: str, trading_day: date,
-) -> tuple[Optional[float], Optional[float], Optional[float], Optional[float], Optional[str]]:
-    """(open, high, low, close, bar_source) for one trading day. `mi_daily_closes` primary;
-    Polygon `get_index_history` fallback. All-None when neither source has the day —
-    mirrors exit_path_shadow._fetch_daily_bar."""
-    row = await conn.fetchrow(_TODAY_DAILY_BAR_SQL, ticker, trading_day)
-    if row is not None and row["close"] is not None:
-        return _f(row["open_price"]), _f(row["high_price"]), _f(row["low_price"]), float(row["close"]), "daily"
-    from agents.market_intelligence.collector import get_index_history
-    d_str = trading_day.strftime("%Y-%m-%d")
-    try:
-        bars = await get_index_history(ticker, d_str, d_str)
-    except Exception as e:  # loud-ok: caller records the None outcome
-        logger.warning(f"alert_rank_shadow: Polygon fallback failed for {ticker} {trading_day}: {e}")
-        bars = []
-    if not bars or bars[0].get("c") is None:
-        return None, None, None, None, None
-    b = bars[0]
-    return b.get("o"), b.get("h"), b.get("l"), float(b["c"]), "polygon_fallback"
 
 
 async def _process_alert_date(conn, alert_date: date) -> int:
@@ -616,7 +583,7 @@ async def _process_alert_date(conn, alert_date: date) -> int:
         atr_hlc = [(h, l, c) for (d, h, l, c) in prior_hlc_rows if d >= atr_cutoff]
         atr14_prior = compute_atr14_prior(atr_hlc)
 
-        day_open, day_high, day_low, day_close, day_bar_source = await _fetch_daily_bar(
+        day_open, day_high, day_low, day_close, day_bar_source = await get_daily_bar_with_fallback(
             conn, ticker, alert_date,
         )
         gap_eod = compute_gap_pct(day_open, prior_close)
@@ -696,19 +663,20 @@ async def _process_alert_date(conn, alert_date: date) -> int:
         items, "gap_pct_asof0945", "tightness_pct_asof0945", "ext_xadr_asof0945",
         "prior_bars_count", "asof",
     )
-    for it in items:
-        it["qualifies_for_rank_eod"] = it.pop("eod_qualifies")
-        it["rank_gap_eod"] = it.pop("eod_rank_gap")
-        it["rank_tightness_eod"] = it.pop("eod_rank_tight")
-        it["rank_ext_eod"] = it.pop("eod_rank_ext")
-        it["composite_rank_eod"] = it.pop("eod_composite")
-        it["pool_size_eod"] = pool_size_eod
-        it["qualifies_for_rank_asof0945"] = it.pop("asof_qualifies")
-        it["rank_gap_asof0945"] = it.pop("asof_rank_gap")
-        it["rank_tightness_asof0945"] = it.pop("asof_rank_tight")
-        it["rank_ext_asof0945"] = it.pop("asof_rank_ext")
-        it["composite_rank_asof0945"] = it.pop("asof_composite")
-        it["pool_size_asof0945"] = pool_size_asof
+    # 5b (2026-08-16 cleanup review): rank_day_pool's out_prefix ("eod"/"asof") doesn't
+    # match the stored column suffix ("eod"/"asof0945") — paired explicitly here rather
+    # than hand-unrolled twice, so a new ranked field can't be added to one branch and
+    # forgotten in the other.
+    for out_prefix, col_suffix, pool_size in (
+        ("eod", "eod", pool_size_eod), ("asof", "asof0945", pool_size_asof),
+    ):
+        for it in items:
+            it[f"qualifies_for_rank_{col_suffix}"] = it.pop(f"{out_prefix}_qualifies")
+            it[f"rank_gap_{col_suffix}"] = it.pop(f"{out_prefix}_rank_gap")
+            it[f"rank_tightness_{col_suffix}"] = it.pop(f"{out_prefix}_rank_tight")
+            it[f"rank_ext_{col_suffix}"] = it.pop(f"{out_prefix}_rank_ext")
+            it[f"composite_rank_{col_suffix}"] = it.pop(f"{out_prefix}_composite")
+            it[f"pool_size_{col_suffix}"] = pool_size
 
     written = 0
     for it in items:
@@ -717,25 +685,41 @@ async def _process_alert_date(conn, alert_date: date) -> int:
     return written
 
 
-async def record_alert_rank_shadow(today: Optional[date] = None) -> int:
+async def record_alert_rank_shadow(today: Optional[date] = None) -> dict[str, int]:
     """Write/refresh one `mi_alert_rank_shadow` row per `mi_ep_alerts` row (source='live'),
     grouping catch-up work by alert_date so within-day percentile ranks stay consistent.
     Pure DB read/compute/write; no broker calls, no grading/trade mutation (THE LINE — see
-    module docstring). Returns rows written/updated."""
+    module docstring).
+
+    Returns {"population": alert_dates needing processing, "written": rows written/
+    updated, "errors": dates whose processing raised} — mirrors
+    `broker/order_manager.py::persist_alert_day_paths`'s {"population", "fetched", ...}
+    job-summary shape. NOTE the population unit here is DATES, not alerts (a date can
+    carry many alerts) — unlike exit_path_shadow's population, which counts trades.
+
+    2026-08-16 fix (finding 1 of the four-angle cleanup review): this used to return a
+    bare int and only emit its `alert_rank_shadow_recorded` summary audit event
+    `if written:` — a night where the catch-up scan found dates to process but every one
+    failed came out byte-identical (0, one INFO log line, no audit row) to a night with
+    nothing to do at all. The summary now fires UNCONDITIONALLY and always states the
+    population, so "0 of 3 dates" is distinguishable from "0 of 0".
+    """
     if today is None:
         from agents.market_intelligence.collector import et_today
         today = et_today()
 
     pool = await get_pool()
-    written = 0
+    out = {"population": 0, "written": 0, "errors": 0}
     dates: list[date] = []
     async with pool.acquire() as conn:
         date_rows = await conn.fetch(_DATES_NEEDING_PROCESSING_SQL, today)
         dates = [r["alert_date"] for r in date_rows]
+        out["population"] = len(dates)
         for d in dates:
             try:
-                written += await _process_alert_date(conn, d)
+                out["written"] += await _process_alert_date(conn, d)
             except Exception as e:
+                out["errors"] += 1
                 logger.error(f"alert_rank_shadow: alert_date {d} failed: {e}")
                 try:
                     await log_audit_event(
@@ -743,12 +727,12 @@ async def record_alert_rank_shadow(today: Optional[date] = None) -> int:
                     )
                 except Exception:  # loud-ok: log_audit_event self-catches; logger.error above already fired
                     pass
-    if written:
-        try:
-            await log_audit_event(
-                "alert_rank_shadow_recorded",
-                f"recorded/updated {written} row(s) across {len(dates)} date(s)",
-            )
-        except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
-            logger.warning(f"alert_rank_shadow audit emit failed (non-fatal): {_e}")
-    return written
+    try:
+        await log_audit_event(
+            "alert_rank_shadow_recorded",
+            f"{out['written']} row(s) written/updated across {out['population']} "
+            f"date(s) needing processing ({out['errors']} error(s))",
+        )
+    except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
+        logger.warning(f"alert_rank_shadow audit emit failed (non-fatal): {_e}")
+    return out

@@ -4256,8 +4256,11 @@ async def _exit_path_shadow_job():
     try:
         from agents.market_intelligence.exit_path_shadow import record_exit_path_shadow
         from agents.market_intelligence.collector import et_today
-        n = await record_exit_path_shadow(et_today())
-        logger.info(f"exit-path shadow: wrote/updated {n} row(s)")
+        out = await record_exit_path_shadow(et_today())
+        logger.info(
+            f"exit-path shadow: wrote/updated {out['written']} row(s) across "
+            f"{out['population']} eligible trade(s), {out['errors']} error(s)"
+        )
     except Exception as e:
         logger.error(f"exit-path shadow job failed: {e}", exc_info=True)
         await notify_job_failure("exit_path_shadow", str(e))
@@ -4278,8 +4281,11 @@ async def _alert_rank_shadow_job():
     try:
         from agents.market_intelligence.alert_rank_shadow import record_alert_rank_shadow
         from agents.market_intelligence.collector import et_today
-        n = await record_alert_rank_shadow(et_today())
-        logger.info(f"alert-rank shadow: wrote/updated {n} row(s)")
+        out = await record_alert_rank_shadow(et_today())
+        logger.info(
+            f"alert-rank shadow: wrote/updated {out['written']} row(s) across "
+            f"{out['population']} date(s), {out['errors']} error(s)"
+        )
     except Exception as e:
         logger.error(f"alert-rank shadow job failed: {e}", exc_info=True)
         await notify_job_failure("alert_rank_shadow", str(e))

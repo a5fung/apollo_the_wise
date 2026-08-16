@@ -277,7 +277,14 @@ def _mk_trade(**overrides):
 
 
 def _daily_row(o, h, l, c):
+    """Row shape for a single-day fetchrow (get_daily_bar_with_fallback's own query)."""
     return {"open_price": o, "high_price": h, "low_price": l, "close": c}
+
+
+def _ranged_row(d, o, h, l, c):
+    """Row shape for the Fix-4 batched _RANGED_DAILY_BARS_SQL fetch — carries trade_date
+    (the single-day fetchrow row above does not, since its caller already knows the day)."""
+    return {"trade_date": d, "open_price": o, "high_price": h, "low_price": l, "close": c}
 
 
 @pytest.mark.asyncio
@@ -291,9 +298,9 @@ async def test_record_writes_one_row_per_trading_day_and_only_to_the_shadow_tabl
     conn.fetch = AsyncMock(side_effect=[
         [_mk_trade()],   # eligible-trades scan
         [],              # prior_closes (none before an entirely fresh fixture)
+        [_ranged_row(date(2026, 8, 10), 8.96, 9.20, 8.70, 9.00)],   # Fix 4 ranged daily bars
     ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.20, 8.70, 9.00),   # day 0 daily bar
         {"lo": 8.75, "hi": 9.15, "n": 200},   # day 0 minute HL restriction
     ])
     executed = []
@@ -309,8 +316,8 @@ async def test_record_writes_one_row_per_trading_day_and_only_to_the_shadow_tabl
         audited.append(event_type)
     monkeypatch.setattr(eps, "log_audit_event", _audit)
 
-    n = await eps.record_exit_path_shadow(date(2026, 8, 10))
-    assert n == 1
+    out = await eps.record_exit_path_shadow(date(2026, 8, 10))
+    assert out == {"population": 1, "written": 1, "errors": 0}
     assert len(executed) == 1
     sql, args = executed[0]
     assert "INSERT INTO mi_exit_path_shadow" in sql
@@ -332,9 +339,11 @@ async def test_stop_ref_prefers_orb_low_over_hard_stop(monkeypatch):
     from tests.conftest import make_mock_pool
     pool, conn = make_mock_pool()
     trade = _mk_trade(orb_low=8.20, hard_stop=8.60)  # raised by a trail, orb_low untouched
-    conn.fetch = AsyncMock(side_effect=[[trade], []])
+    conn.fetch = AsyncMock(side_effect=[
+        [trade], [],
+        [_ranged_row(date(2026, 8, 10), 8.96, 9.20, 8.70, 9.00)],
+    ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.20, 8.70, 9.00),
         {"lo": 8.75, "hi": 9.15, "n": 200},
     ])
     executed = []
@@ -358,9 +367,11 @@ async def test_day_zero_falls_back_to_full_daily_high_low_when_no_minute_bars(mo
     bar's high/low (less precise, never silently wrong) — bar_source says so."""
     from tests.conftest import make_mock_pool
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(side_effect=[[_mk_trade()], []])
+    conn.fetch = AsyncMock(side_effect=[
+        [_mk_trade()], [],
+        [_ranged_row(date(2026, 8, 10), 8.96, 9.20, 8.70, 9.00)],
+    ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.20, 8.70, 9.00),
         {"lo": None, "hi": None, "n": 0},   # no minute bars
     ])
     executed = []
@@ -382,30 +393,32 @@ async def test_day_zero_falls_back_to_full_daily_high_low_when_no_minute_bars(mo
 @pytest.mark.asyncio
 async def test_already_recorded_through_window_end_is_skipped(monkeypatch):
     """A closed trade already backfilled through its own close day costs nothing on a
-    re-run — no fetch, no write.
+    re-run — no fetch beyond the eligible-trades scan, no fetchrow, no write.
 
     ⚠ The mocks below are wired so that if the guard were REMOVED the walk would
-    actually complete and call fetchrow/execute (prior_closes + one full day-0 bar
-    are queued) — a starved mock (StopIteration masked by the per-trade try/except)
-    would make this test pass whether or not the guard exists, which is exactly the
-    "passes both ways" trap. Mutation-proven: removing the guard flips n to 1 and
-    both assert_not_called()s fail (see task report)."""
+    actually complete and call fetch/fetchrow/execute (prior_closes + ranged bars +
+    minute HL are all queued) — a starved mock (StopIteration masked by the per-trade
+    try/except) would make this test pass whether or not the guard exists, which is
+    exactly the "passes both ways" trap this comment exists to prevent."""
     from tests.conftest import make_mock_pool
     pool, conn = make_mock_pool()
     trade = _mk_trade(
         closed_at=_et(2026, 8, 10, 15, 0), max_recorded_day=date(2026, 8, 10),
     )
-    conn.fetch = AsyncMock(side_effect=[[trade], []])
+    conn.fetch = AsyncMock(side_effect=[
+        [trade], [],
+        [_ranged_row(date(2026, 8, 10), 8.96, 9.20, 8.70, 9.00)],
+    ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.20, 8.70, 9.00),
         {"lo": 8.75, "hi": 9.15, "n": 200},
     ])
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     monkeypatch.setattr(eps, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(eps, "log_audit_event", AsyncMock())
 
-    n = await eps.record_exit_path_shadow(date(2026, 8, 11))
-    assert n == 0
+    out = await eps.record_exit_path_shadow(date(2026, 8, 11))
+    assert out == {"population": 1, "written": 0, "errors": 0}
+    assert conn.fetch.call_count == 1  # only the eligible-trades scan
     conn.fetchrow.assert_not_called()
     conn.execute.assert_not_called()
 
@@ -427,8 +440,8 @@ async def test_no_valid_r_frame_is_skipped_and_logged(monkeypatch):
         audited.append((event_type, summary))
     monkeypatch.setattr(eps, "log_audit_event", _audit)
 
-    n = await eps.record_exit_path_shadow(date(2026, 8, 10))
-    assert n == 0
+    out = await eps.record_exit_path_shadow(date(2026, 8, 10))
+    assert out == {"population": 1, "written": 0, "errors": 0}
     conn.execute.assert_not_called()
     assert any(e == "exit_path_shadow_skipped" for e, _ in audited)
 
@@ -443,9 +456,11 @@ async def test_exit_day_row_carries_price_reason_and_realized_r(monkeypatch):
                 "reason": "stop_hit", "shares": 57, "pnl": -31.92}],
         total_pnl=-31.92,
     )
-    conn.fetch = AsyncMock(side_effect=[[trade], []])
+    conn.fetch = AsyncMock(side_effect=[
+        [trade], [],
+        [_ranged_row(date(2026, 8, 10), 8.96, 9.05, 8.35, 8.40)],
+    ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.05, 8.35, 8.40),
         {"lo": 8.35, "hi": 9.00, "n": 40},
     ])
     executed = []
@@ -479,14 +494,20 @@ async def test_breakeven_armed_flips_true_on_the_day_a_partial_fired(monkeypatch
                 "reason": "stop_hit", "shares": 38, "pnl": 22.42}],
         total_pnl=34.58,
     )
-    conn.fetch = AsyncMock(side_effect=[[trade], []])
-    # 3 trading days: 8/5, 8/6, 8/7 is a Fri, 8/8 is a Sat -> not a trading day; 8/10 Mon.
-    # Use a window that lands cleanly on weekdays: 8/5(Wed) 8/6(Thu) 8/7(Fri).
+    # 3 trading days: 8/5(Wed) 8/6(Thu) 8/7(Fri); 8/8 is a Sat -> not a trading day.
+    # Fix 4: ALL THREE days' bars now arrive in ONE ranged-query batch (was 3 separate
+    # fetchrow round trips) — only day 0's minute-HL restriction still needs its own
+    # fetchrow.
+    conn.fetch = AsyncMock(side_effect=[
+        [trade], [],
+        [
+            _ranged_row(date(2026, 8, 5), 8.96, 9.10, 8.80, 9.00),
+            _ranged_row(date(2026, 8, 6), 9.00, 9.30, 8.95, 9.20),
+            _ranged_row(date(2026, 8, 7), 9.20, 9.70, 9.10, 9.60),  # partial fires here (exits[0])
+        ],
+    ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.10, 8.80, 9.00),   # 8/5 day 0
         {"lo": 8.85, "hi": 9.05, "n": 50},
-        _daily_row(9.00, 9.30, 8.95, 9.20),   # 8/6 day 1
-        _daily_row(9.20, 9.70, 9.10, 9.60),   # 8/7 day 2 — partial fires here (per exits[0])
     ])
     executed = []
 
@@ -498,6 +519,7 @@ async def test_breakeven_armed_flips_true_on_the_day_a_partial_fired(monkeypatch
     monkeypatch.setattr(eps, "log_audit_event", AsyncMock())
 
     await eps.record_exit_path_shadow(date(2026, 8, 7))
+    assert len(executed) == 3
     be_idx = eps._UPSERT_COLS.index("breakeven_armed")
     day_idx = eps._UPSERT_COLS.index("trading_day")
     by_day = {a[day_idx]: a[be_idx] for a in executed}
@@ -512,19 +534,29 @@ async def test_a_missing_day_nulls_the_next_days_gap_instead_of_mislabelling_it(
     unset in this test env, so the fallback fails naturally) is skipped. The FOLLOWING
     recorded day's gap must come out NULL, never a two-day gap silently reported as
     overnight (found in review — the exact column the -2R-hold stop-fork decision reads).
-    """
+
+    Fix 4: the missing 8/6 day simply has no row in the ranged-bars batch (mirrors a
+    real `mi_daily_closes` gap); it then falls through to the single-day
+    get_daily_bar_with_fallback path exactly as before, and that path's own fetchrow
+    (mocked to `None` here) plus its Polygon fallback (unreachable, no API key) is what
+    proves the gap-handling logic still fires from inside the batched path."""
     from tests.conftest import make_mock_pool
     pool, conn = make_mock_pool()
     trade = _mk_trade(
         alert_date=date(2026, 8, 5), filled_at=_et(2026, 8, 5, 9, 31), closed_at=None,
     )
-    conn.fetch = AsyncMock(side_effect=[[trade], []])
-    # 8/5 Wed (day 0, recorded) -> 8/6 Thu (no bar anywhere, skipped) -> 8/7 Fri (recorded).
+    conn.fetch = AsyncMock(side_effect=[
+        [trade], [],
+        # 8/6 absent from the batch entirely — a real ranged SELECT simply has no row
+        # for a day mi_daily_closes never got.
+        [
+            _ranged_row(date(2026, 8, 5), 8.96, 9.10, 8.80, 9.00),
+            _ranged_row(date(2026, 8, 7), 9.20, 9.70, 9.10, 9.60),
+        ],
+    ])
     conn.fetchrow = AsyncMock(side_effect=[
-        _daily_row(8.96, 9.10, 8.80, 9.00),   # 8/5 daily bar
         {"lo": 8.85, "hi": 9.05, "n": 50},    # 8/5 minute HL
-        None,                                  # 8/6 mi_daily_closes: no row -> Polygon fallback (fails, no key)
-        _daily_row(9.20, 9.70, 9.10, 9.60),   # 8/7 daily bar
+        None,                                  # 8/6 single-day fallback query: no row either
     ])
     executed = []
 
@@ -542,6 +574,235 @@ async def test_a_missing_day_nulls_the_next_days_gap_instead_of_mislabelling_it(
     pc_idx = eps._UPSERT_COLS.index("prior_close")
     by_day = {a[day_idx]: (a[gap_idx], a[pc_idx]) for a in executed}
     assert by_day[date(2026, 8, 7)] == (None, None)  # NOT a mislabelled 2-day gap
+
+
+# ── finding 1: unconditional "N of M" summary audit ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_summary_audit_fires_even_when_every_trade_errors(monkeypatch):
+    """2026-08-16 cleanup review finding 1: a night where the population query returns
+    trades but every one fails to process used to come out byte-identical (0, one INFO
+    log line, no audit row) to a night with nothing eligible at all — the summary event
+    was gated `if written:`. MUTATION TARGET: restoring that gate. Population > 0 with 0
+    written must still emit exactly one `exit_path_shadow_recorded` row stating BOTH
+    numbers, so "0 of 2" reads as distinguishable from "0 of 0" in the audit trail."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[_mk_trade(id=1), _mk_trade(id=2)]])
+    monkeypatch.setattr(eps, "get_pool", AsyncMock(return_value=pool))
+    audited = []
+
+    async def _audit(event_type, summary, detail=""):
+        audited.append((event_type, summary))
+    monkeypatch.setattr(eps, "log_audit_event", _audit)
+
+    async def _boom(conn_, trade_, today_):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(eps, "_record_one_trade", _boom)
+
+    out = await eps.record_exit_path_shadow(date(2026, 8, 10))
+    assert out == {"population": 2, "written": 0, "errors": 2}
+    recorded = [s for e, s in audited if e == "exit_path_shadow_recorded"]
+    assert len(recorded) == 1
+    # Checks the POPULATION phrase specifically, not just "2" anywhere in the string
+    # (which would also match the unrelated "for 2026-08-10" date substring — a weak
+    # assertion that passes for the wrong reason, the exact trap this file's own header
+    # warns against).
+    assert "0 row(s) written/updated across 2 eligible live trade(s)" in recorded[0]
+    assert "(2 error(s))" in recorded[0]
+    assert sum(1 for e, _ in audited if e == "exit_path_shadow_error") == 2
+
+
+@pytest.mark.asyncio
+async def test_summary_audit_fires_on_a_genuinely_empty_night_too(monkeypatch):
+    """The unconditional-emission fix must not accidentally start firing TWICE, or stop
+    firing on the legitimate 0-of-0 night (nothing eligible) — both are real,
+    distinguishable states this test pins independently of the error-path test above."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(side_effect=[[]])
+    monkeypatch.setattr(eps, "get_pool", AsyncMock(return_value=pool))
+    audited = []
+
+    async def _audit(event_type, summary, detail=""):
+        audited.append((event_type, summary))
+    monkeypatch.setattr(eps, "log_audit_event", _audit)
+
+    out = await eps.record_exit_path_shadow(date(2026, 8, 10))
+    assert out == {"population": 0, "written": 0, "errors": 0}
+    recorded = [s for e, s in audited if e == "exit_path_shadow_recorded"]
+    assert len(recorded) == 1
+    assert "0 row(s) written/updated across 0 eligible live trade(s)" in recorded[0]
+
+
+# ── finding 1b: the derived UPSERT SQL refreshes every non-key column ─────────────────
+
+
+def test_upsert_do_update_set_refreshes_every_non_key_column():
+    """1b (2026-08-16 cleanup review): the hand-written DO UPDATE SET had already
+    drifted — entry_price/stop_ref/risk_per_share/entry_shares were excluded, so a
+    re-run that re-read a CHANGED stop_ref (hard_stop can move) would write fresh
+    R-derived columns against a risk_per_share the row itself no longer displayed.
+    MUTATION TARGET: dropping any column other than the two conflict keys from the
+    derived _UPDATE_SET_SQL string — this asserts the DERIVATION (not a hand-typed
+    duplicate list), so the two can never independently drift again."""
+    expected = set(eps._UPSERT_COLS) - eps._CONFLICT_KEY_COLS
+    updated = {clause.split(" = ")[0].strip() for clause in eps._UPDATE_SET_SQL.split(", ")}
+    assert updated == expected
+    for col in ("entry_price", "stop_ref", "risk_per_share", "entry_shares"):
+        assert f"{col} = EXCLUDED.{col}" in eps._UPSERT_SQL
+
+
+# ── finding 4: incremental recording produces IDENTICAL rows to a full replay ─────────
+
+
+class _FakeExitPathConn:
+    """A minimal in-memory fake of the ONE conn this module talks to, built specifically
+    to prove finding 4's claim: 'the stored values must be identical to what a full
+    replay produces.' Deliberately NOT a side_effect list — the advisor's own warning
+    (hand-typing the second run's seed row makes the comparison a tautology) is why this
+    reads the seed back out of whatever a PRIOR call to this same fake actually wrote,
+    exactly like the real mi_exit_path_shadow table would.
+    """
+
+    def __init__(self, trade: dict, daily_bars: dict, minute_hl: dict, prior_closes: list):
+        self.trade = trade
+        self.daily_bars = daily_bars          # {date: (o, h, l, c)}
+        self.minute_hl = minute_hl            # {date: (lo, hi, n)}
+        self.prior_closes = prior_closes      # closes BEFORE alert_date, oldest-first
+        self.shadow_rows: dict[tuple, dict] = {}   # {(trade_id, trading_day): {col: val}}
+
+    def _max_recorded_day(self):
+        days = [d for (_tid, d) in self.shadow_rows]
+        return max(days) if days else None
+
+    async def fetch(self, sql, *args):
+        if "FROM mi_live_trades" in sql:
+            t = dict(self.trade)
+            t["max_recorded_day"] = self._max_recorded_day()
+            return [t]
+        if "FROM mi_exit_path_shadow" in sql and "trading_day <= " in sql:
+            _trade_id, cutoff = args
+            rows = [
+                {"trading_day": d, **v} for (_tid, d), v in sorted(self.shadow_rows.items())
+                if d <= cutoff
+            ]
+            return rows
+        if "FROM mi_daily_closes" in sql and "open_price" in sql:
+            _ticker, start, end = args
+            return [
+                _ranged_row(d, *self.daily_bars[d])
+                for d in sorted(self.daily_bars) if start <= d <= end
+            ]
+        if "FROM mi_daily_closes" in sql:  # _PRIOR_CLOSES_SQL
+            return [{"close": c} for c in self.prior_closes]
+        raise AssertionError(f"unexpected fetch SQL: {sql}")
+
+    async def fetchrow(self, sql, *args):
+        if "FROM mi_daily_closes" in sql:
+            _ticker, d = args
+            bar = self.daily_bars.get(d)
+            return _daily_row(*bar) if bar else None
+        if "FROM mi_intraday_bars" in sql:
+            _ticker, _start, _end = args
+            lo, hi, n = self.minute_hl[self.trade["filled_at"].date()]
+            return {"lo": lo, "hi": hi, "n": n}
+        raise AssertionError(f"unexpected fetchrow SQL: {sql}")
+
+    async def execute(self, sql, *args):
+        assert "INSERT INTO mi_exit_path_shadow" in sql
+        row = dict(zip(eps._UPSERT_COLS, args))
+        self.shadow_rows[(row["trade_id"], row["trading_day"])] = row
+        return "INSERT 0 1"
+
+
+class _AcquireCM:
+    """Minimal `pool.acquire()` context manager wrapping a fixed conn — make_mock_pool's
+    own acquire_cm is fine when the SAME conn serves the whole test, but this test needs
+    two INDEPENDENT fake conns (one per run), so it wires the context manager directly."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *a):
+        return False
+
+
+def _make_five_day_fixture():
+    trade = _mk_trade(
+        id=901, alert_date=date(2026, 8, 3), filled_at=_et(2026, 8, 3, 9, 31), closed_at=None,
+    )
+    daily_bars = {
+        date(2026, 8, 3): (8.96, 9.10, 8.80, 9.00),
+        date(2026, 8, 4): (9.00, 9.30, 8.95, 9.20),
+        date(2026, 8, 5): (9.20, 9.50, 9.10, 9.40),
+        date(2026, 8, 6): (9.40, 9.60, 9.30, 9.50),
+        date(2026, 8, 7): (9.50, 9.80, 9.40, 9.70),
+    }
+    minute_hl = {date(2026, 8, 3): (8.85, 9.05, 100)}
+    # 22 varied prior closes (>= 20, so SMA10 AND SMA20 are both real numbers on every
+    # trading day, not None — without this the trail columns are vacuously None on both
+    # runs and the seed-from-stored-day_close design goes completely unexercised).
+    prior_closes = [round(8.20 + 0.03 * i + (0.02 if i % 3 == 0 else 0.0), 2) for i in range(22)]
+    return trade, daily_bars, minute_hl, prior_closes
+
+
+@pytest.mark.asyncio
+async def test_incremental_recording_matches_a_single_full_replay(monkeypatch):
+    """Finding 4's own bar: 'The stored values must be identical to what a full replay
+    produces.' Run A processes all 5 trading days in one pass; Run B processes the same
+    5 days across TWO passes (3 then 2 more) against a separate fake store seeded from
+    the SAME underlying daily bars. Every stored column for every (trade_id, trading_day)
+    must come out byte-identical between the two — proving the seed-from-last-row design
+    (worst/best/prior_close from the latest stored row, running_closes from the stored
+    day_close column) reproduces a from-scratch replay exactly, not approximately.
+    Prior closes are real (22 varied values, not an empty list) so trail_sma10/sma20/
+    trail_price are non-None on every row — without that, the trail seed would be
+    unexercised (a broken running_closes seed and an always-empty one would both pass)."""
+    trade, daily_bars, minute_hl, prior_closes = _make_five_day_fixture()
+    from tests.conftest import make_mock_pool
+    monkeypatch.setattr(eps, "log_audit_event", AsyncMock())
+
+    pool_full, _dummy = make_mock_pool()
+    conn_full = _FakeExitPathConn(trade, daily_bars, minute_hl, prior_closes)
+    pool_full.acquire = lambda: _AcquireCM(conn_full)
+    monkeypatch.setattr(eps, "get_pool", AsyncMock(return_value=pool_full))
+
+    out_full = await eps.record_exit_path_shadow(date(2026, 8, 7))
+    assert out_full["written"] == 5
+    assert len(conn_full.shadow_rows) == 5
+    # Sanity: the trail actually computed real numbers (not vacuously None) — this is
+    # what makes the running_closes-seed comparison below meaningful.
+    trail_idx_row = conn_full.shadow_rows[(901, date(2026, 8, 7))]
+    assert trail_idx_row["trail_sma10"] is not None
+    assert trail_idx_row["trail_sma20"] is not None
+
+    pool_inc, _dummy2 = make_mock_pool()
+    conn_inc = _FakeExitPathConn(trade, daily_bars, minute_hl, prior_closes)
+    pool_inc.acquire = lambda: _AcquireCM(conn_inc)
+    monkeypatch.setattr(eps, "get_pool", AsyncMock(return_value=pool_inc))
+
+    out_b1 = await eps.record_exit_path_shadow(date(2026, 8, 5))   # first 3 days
+    assert out_b1["written"] == 3
+    out_b2 = await eps.record_exit_path_shadow(date(2026, 8, 7))   # remaining 2 days
+    assert out_b2["written"] == 2
+    assert len(conn_inc.shadow_rows) == 5
+
+    assert set(conn_full.shadow_rows.keys()) == set(conn_inc.shadow_rows.keys())
+    for key in conn_full.shadow_rows:
+        row_full = conn_full.shadow_rows[key]
+        row_inc = conn_inc.shadow_rows[key]
+        assert set(row_full) == set(row_inc)
+        for col in row_full:
+            va, vb = row_full[col], row_inc[col]
+            if isinstance(va, float) or isinstance(vb, float):
+                assert va == pytest.approx(vb), f"{key} {col}: full={va!r} incremental={vb!r}"
+            else:
+                assert va == vb, f"{key} {col}: full={va!r} incremental={vb!r}"
 
 
 # ── retention ───────────────────────────────────────────────────────────────────────────
