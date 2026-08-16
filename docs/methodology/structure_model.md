@@ -111,6 +111,45 @@ calls VERA good is measuring "it went up", not structure.
 
 ---
 
+## 4b. ⚠ THE MA CONDITION IS TOO RIGID — his refinement, 2026-08-16
+
+> *"on the structure, i think moving avg is the least rigid, by that i mean clearing 10/20/50/200
+> SMA is good, but not necessarily if they are too far or all of them, it depends."*
+
+**Today the MA check is a HARD AND**: `verdict = GOOD if (good_class AND not deep_in_downtrend AND
+ma_cleared)`, where `ma_cleared` requires clearing EVERY overhead MA with margin. So a name gapping
+from far below its 200-day is POOR on that alone, regardless of what it cleared.
+
+**His point is supported by the spread in the fixtures** — how far each overhead MA actually sits,
+in ADR units (negative = already below the open):
+
+| name | his call | ADR | MA distances |
+|---|---|---|---|
+| NBIS | GOOD | 11.0% | sma10 −1.3× · sma20 −1.3× · sma50 −0.2× |
+| ETON | GOOD | 6.0% | sma10 −3.2× · sma20 −3.2× |
+| HTFL / EROC / SE | GOOD | 3–10% | none overhead |
+| VERA | POOR | 5.1% | sma10 −0.2× · **sma20 +1.2× · sma50 +3.0×** |
+| BW | POOR | 8.2% | sma10 −2.7× · sma20 −2.1× · **sma50 +1.1×** |
+| FRMI | POOR | 9.1% | sma10 −1.5× · sma20 −1.1× · **sma50 −0.0×** (landed exactly ON it) |
+
+**A single hard AND treats ETON's −3.2× and VERA's +3.0× as the same kind of fact.** They are not.
+
+### First test result — the MA check cannot simply be DROPPED
+
+- **MA rule OFF entirely → 7/8: FRMI flips to GOOD.** FRMI is his negative that *"landed ON its
+  50-day"* (−0.0× — within a rounding of it), and with no MA condition it passes on class alone.
+  **So the MA check is doing real work on at least one of his own examples.**
+- **MA rule HARD (today) → 8/8.**
+- ⚠ **My distance-based CONTEXTUAL variant scored 7/8 but the test was INVALID** — I substituted the
+  session open for the encoder's own reference price, so it was not the rule I meant to test. That
+  number must not be cited; the refinement is untested, not refuted.
+
+▶ **What the honest version needs:** replace the hard AND with a *contextual* term — an MA far above
+the open is overhead worth respecting, an MA far below is already irrelevant, and the near-miss case
+(FRMI at −0.0×) is what the rule must still catch. **Re-run against the 8 fixtures using the
+encoder's own reference price**; if it holds 8/8 with the softer rule, his refinement ships into the
+encoder. If it costs a fixture, the hard rule stays and we know why.
+
 ## 5. WHAT IS *NOT* ENCODED — named honestly, so nobody claims coverage
 
 - **Stage analysis** (*"possibly moving to a Stage-2 uptrend after bottoming and basing"* — his SE
