@@ -1415,10 +1415,25 @@ at a 60-day horizon.
   went to $130.57.
 - **Holding through that intraday breach returns +14.46R** on the identical entry and the identical
   20%-of-a-position rules.
-- ⚠ **Re-entry did NOT save it** — only one attempt ever fired, because the trigger never came back.
-  **For INTC, removing the intraday stop is the ONLY arm that works.** That is a real distinction
-  between the two forks: re-entry helps where the name re-triggers; it cannot help where the name
-  simply leaves.
+- 🔴 **CORRECTED SAME SESSION — "re-entry did not save it" was MY MODEL'S LIMIT, not a fact about
+  INTC** (operator caught it: *"how does reentry not work if it got stopped out for INTC?"*). My
+  re-entry simulation only scans DAY 0 inside the 10:00 ET unfilled-cancel window, so an 11:47
+  stop-out has no same-day retry left by construction. **Next-day re-entry was never tested.**
+
+  **INTC re-crossed the $84 trigger the very NEXT session and every session after** (04-27 high
+  $87.10 · 04-29 close $94.75 · 05-08 high $130.57):
+
+  | arm | result |
+  |---|---|
+  | LIVE rule | −1.00R |
+  | same-day re-entry (model-bounded — not a real test) | −1.00R |
+  | 🟢 **NEXT-DAY re-entry** at the same $84 trigger, stop = min(that day's low, EP-day low) = $79.62 | **+6.89R** |
+  | no intraday stop | +14.46R |
+
+  ▶ **So BOTH forks work on INTC.** Removing the intraday stop captures more (+14.46R) at unbounded
+  intraday risk; next-day re-entry captures about half (+6.89R) with a known, bounded cost — one −1R
+  attempt, then a wider stop ($4.38 of risk against $1.98, which is why it yields fewer R on a bigger
+  move). **That is the trade-off between the two forks, priced on a real name.**
 - 📌 **One case, and it is an illustration, not evidence** (his standing rule). Its value is that it
   makes the fork concrete: this is what −1R instead of +14R looks like on a name we actually held.
 
