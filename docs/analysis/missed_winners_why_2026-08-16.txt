@@ -1,0 +1,193 @@
+MISSED TAIL WINNERS - WHY EACH NEVER BECAME AN ALERT  (2026-08-16, read-only probe)
+===============================================================================================
+
+COHORT: real stocks (ever-sectored in mi_stock_scores), close>=$10, $vol>=$50M, open gap>=8%,
+2026-03-01..2026-07-15, tail winner = 20d max excursion >= 8x own ADR20. Rebuilt exactly per
+docs/roadmap/ep_profitability_program.md 2026-08-16; reproduces 749 gap days / 78 winners / 671 non-winners.
+Raw rows: scripts/probes/_552_cohort.psv (cohort+joins), _552_diagnostics.psv (floors/ranks/trades),
+query: scripts/probes/_552_missed_why_cohort.sql. All prod reads via psql, no writes.
+
+EVIDENCE SURFACES + ERA BOUNDARIES (this determines what is knowable):
+  mi_ep_alerts        live rows only survive from 2026-05-11 (old 90d purge; kept-forever only since 08-15)
+  mi_ep_scan_log      exists from 2026-04-13 (created by commit 28e89d2, 04-10) - per-tick filter reasons
+  mi_ep_missed_outcomes  frozen 30d rolling snapshots; high_unentered/moderate rows recover purged alerts
+  mi_live_trades/mi_paper_trades  kept forever - prove alerted+traded / alerted+entry-blocked
+  silent (never logged anywhere): universe floors prev_close<$5, prev_day_volume<50k shares,
+  security-type/unclassified skip, and the gap floor measured on the DELAYED snapshot price
+
+===============================================================================================
+HEADLINE: the '6 caught / 72 missed' arithmetic is wrong in BOTH directions
+  - HPE 05-29 and QURE 05-29 were NOT caught: their only mi_ep_alerts rows are source='historical_scan'
+    REPLAY rows; the live scanner scored HPE 0/-14/-7 <50 and QURE M&A-filtered + <50 that morning.
+    (Their high_unentered rows in mi_ep_missed_outcomes predate the #268 live-only filter, 06-11.)
+  - INTC 04-24 and SMCI 05-06 WERE caught - live HIGH alerts that FILLED and CLOSED as real trades
+    (mi_live_trades status=closed); they look missed only because the purge ate their alert rows.
+  - 9 more 'missed' winners were live HIGH/MODERATE alerts whose rows were purged (bucket C below).
+  Honest surfaced-live count: 15 of 78 winners surfaced (4 with surviving alert rows + 2 traded +
+  9 purged-record alerts), 63 of 78 are TRUE detection misses.
+
+A/B/C SPLIT over the 74 live-definition misses (= the deliverable's 72 + HPE + QURE):
+  A  scanned, dropped by a NAMED logged rule ............ 29  (19 sessions)  [27 of the '72']
+  B  never entered the funnel (no row anywhere) ......... 34  (16 sessions)
+     B1 verified silent universe floors ................. 12  (12 sessions)  named rule, just unlogged
+        prev_day_volume < 50k shares .................... 8
+        prev_close < $5 ................................. 4
+     B2 pre-instrumentation, top-20 cap reconstructed ... 17  (2 sessions: 16 on 04-08 alone + AUGO 03-25)
+     B3 pre-instrumentation, cause unknowable ........... 5   (3 sessions, all 03-27..03-31)
+  C  WAS live-alerted at the time; record purged/mislabeled 11  (7 sessions)
+     traded+closed (real catches) ....................... 2   INTC 04-24, SMCI 05-06
+     HIGH alert, entry blocked/skipped .................. 7   (max_positions x2, circuit breaker x1,
+                                                              stop_too_wide x1, faded_from_orb x1(QCOM),
+                                                              3 with no pipeline row, March)
+     MODERATE briefing tier ............................. 2   GTX, QCOM 04-30 (QCOM counted once above)
+
+  So: FILTERED by a NAMED rule (A + B1) = 41 | UNKNOWABLE ERA (B2+B3) = 22 | NOT ACTUAL MISSES (C) = 11.
+  True never-seen-for-no-nameable-reason in the LOGGED era: ZERO - every logged-era absence traced to a
+  specific universe floor. 'Never seen' is NOT a scan-coverage bug; it is two unlogged universe floors
+  plus a pre-April-13 instrumentation hole.
+
+===============================================================================================
+BUCKET A - EXACT SKIP-REASON DISTRIBUTION (29 rows, canonical = the decisive rule that day):
+  score_below_50       n=7  sessions=6
+  outside_top20        n=6  sessions=2
+  extension_gate       n=4  sessions=4
+  mcap_low             n=2  sessions=2
+  session_rvol_low     n=2  sessions=2
+  routine_catalyst     n=2  sessions=2
+  cooldown             n=2  sessions=2
+  adv_low              n=2  sessions=2
+  ma_filter            n=1  sessions=1
+  pm_rvol_low          n=1  sessions=1
+
+  NAMED-RULE RANKING across the whole miss set (A + B1 + B2 attributions):
+  1. outside top-20 gap cap    6 logged + 17 reconstructed = 23 (31% of 74) - but 16 of 23 are ONE session (04-08)
+  2. catalyst score < 50       7 over 6 sessions - the steadiest per-session leak (incl DDOG at 48)
+  3. silent universe floors    12 verified (8 prev-day-volume, 4 prev-close) - and the FATTEST tails:
+     median tailx 21.9 vs 11.3 for all missed; median ADR 12.6%. These are D-1-illiquid names that became
+     tier-A tradeable ONLY on the gap day itself - the floors read the PRIOR day, the cohort reads D0.
+  4. extension gate            4 (all names already up 59-506% in 5 days)
+  5. session/pm rvol           3 | mcap_low 2 | routine catalyst 2 | cooldown 2 | adv_low 2 | M&A 1
+
+===============================================================================================
+74-vs-4-vs-671 COMPARISON (medians; caught = the 4 with surviving live alert rows):
+  missed winners                 n=74 sessions=36 | median gap 11.8% price $36.35 ADR 6.51% $vol 363M tailx 11.3
+  caught winners (live rows)     n=4 sessions=3 | median gap 13.8% price $50.60 ADR 5.03% $vol 214M tailx 11.8
+  non-winner gap days            n=671 sessions=92 | median gap 12.1% price $40.36 ADR 6.19% $vol 340M tailx 1.9
+  bucket A                       n=29 sessions=19 | median gap 12.0% price $28.15 ADR 5.91% $vol 397M tailx 11.4
+  bucket B all                   n=34 sessions=16 | median gap 10.6% price $53.59 ADR 6.87% $vol 302M tailx 11.0
+  bucket B1 silent floors        n=12 sessions=12 | median gap 74.3% price $41.93 ADR 12.55% $vol 261M tailx 21.9
+  bucket C                       n=11 sessions=7 | median gap 15.1% price $34.66 ADR 5.58% $vol 866M tailx 11.7
+
+  Read: missed vs non-winner medians are nearly identical on gap/price/ADR/$vol - at alert time the missed
+  winners look like everything else (consistent with the 08-16 'our score separates nothing' finding).
+  The one real signature sits in B1: high-ADR, D-1-illiquid names carrying the fattest tails.
+
+===============================================================================================
+SUB-10% ANALYSIS (the 're-check the floor later in the morning' fork) - RESULT: the 76% ceiling is real
+but DISCRIMINATION IS NULL, and the floor was rarely the decisive rule anyway:
+  sub-10% cohort gap days: 252 | 25 winners | 19 of 25 sub-10% MISSED winners crossed 10% intraday (76%)
+  BUT 187 of 227 sub-10% NON-winners also crossed (82%). Crossing is the NORM, not a signal.
+  winner rate: crossers 19/206 = 9.2% | non-crossers 6/46 = 13.0% (thin) | gap>=10-at-open days 53/497 = 10.7%
+  -> admitting sub-10% names on an intraday re-check yields winner density (9.2%) at or BELOW the existing
+     >=10% population (10.7%). Nothing measurable distinguishes crossers that won from crossers that did not:
+  crossers, winners            n=19 sessions=9 | median gap 9.1% price $52.42 ADR 5.69% $vol 442M tailx 11.3
+  crossers, non-winners        n=187 sessions=64 | median gap 8.9% price $50.19 ADR 6.12% $vol 318M tailx 2.0
+  non-crossers, winners        n=6 sessions=3 | median gap 8.1% price $71.03 ADR 6.21% $vol 826M tailx 9.3
+  non-crossers, non-winners    n=40 sessions=20 | median gap 8.7% price $55.80 ADR 5.46% $vol 233M tailx 2.0
+  Bucket membership of the 19 crossing missed winners: {'B3': 1, 'B2': 9, 'A': 8, 'C': 1}
+    - most were ALSO excluded by the top-20 cap (04-08 block) or score/catalyst rules; a later floor
+    re-check alone would have admitted almost none. Daily bars cannot say WHEN the crossing happened
+    (by 09:45 vs afternoon) - unchanged caveat from the 08-16 read.
+
+===============================================================================================
+PER-ROW ATTRIBUTION (74 rows):
+  date       ticker    gap%  tailx  bucket  reason
+  2026-03-03 NPT      25.80   24.7  B1     prev_day_volume<50k (22,206 sh)
+  2026-03-12 FLY      15.05    8.8  C      HIGH alert (high_unentered; no pipeline row, March era)
+  2026-03-20 FLY      11.28   11.7  C      HIGH alert (high_unentered; no pipeline row, March era)
+  2026-03-20 YSS      12.50   12.7  C      HIGH alert (high_unentered; no pipeline row, March era)
+  2026-03-25 AUGO      8.08    9.3  B2     gap rank 32 of 35 (cap=20) - pre-scan-log era
+  2026-03-27 LGN      11.38    9.0  B3     passed floors, gap rank 8/13 (inside cap) - dropped deeper in unlogged funnel
+  2026-03-30 SGML     23.90   11.0  B3     passed floors, gap rank 2/15 (inside cap) - dropped deeper in unlogged funnel
+  2026-03-30 SMTC      8.12    9.2  B3     passed floors, gap rank 15/15 (inside cap) - dropped deeper in unlogged funnel
+  2026-03-31 AEHR     11.27   15.5  B3     passed floors, gap rank 13/32 (inside cap) - dropped deeper in unlogged funnel
+  2026-03-31 MRVL      9.78   13.7  B3     passed floors, gap rank 19/32 (inside cap) - dropped deeper in unlogged funnel
+  2026-04-06 AIXI    106.66   11.9  B1     prev_close<$5 ($2.61)
+  2026-04-07 HCAI    204.91   11.0  B1     prev_close<$5 ($4.40)
+  2026-04-08 ALGM      9.16    8.8  B2     gap rank 243 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 AMKR      9.03    8.5  B2     gap rank 250 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 APLD     12.97    8.2  B2     gap rank 97 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 ASX       8.16   12.7  B2     gap rank 334 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 BE        9.93   11.9  B2     gap rank 196 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 ELPW     75.00   21.7  B1     prev_day_volume<50k (3,266 sh)
+  2026-04-08 GLXY      9.13   10.1  B2     gap rank 246 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 HUT       8.40   11.3  B2     gap rank 316 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 IREN      8.28    9.4  B2     gap rank 322 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 MSTR      8.04    9.8  B2     gap rank 347 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 MU        9.94   10.7  B2     gap rank 193 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 NBIS      8.07    8.1  B2     gap rank 342 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 OKLO      8.44    9.0  B2     gap rank 314 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 QBTS     10.99    9.9  B2     gap rank 144 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 SNDK     10.30   10.9  B2     gap rank 173 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 STRL      8.20   18.8  B2     gap rank 329 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-08 USAR      9.36    8.9  B2     gap rank 232 market-wide (cap=20) - the 04-08 mass-gap day, pre-scan-log era
+  2026-04-13 ALMU     30.45   11.4  A      mcap_low -- quality filter: Market cap too low ($194M)
+  2026-04-17 UMC      11.58   20.0  A      session_rvol_low -- low volume rel_vol 0.1x < 2.0x (post-open)
+  2026-04-22 ELPW     29.30   22.1  B1     prev_day_volume<50k (34,500 sh)
+  2026-04-23 NOK       9.28   11.0  A      score_below_50 -- score 32 < 50 (catalyst=strong)
+  2026-04-24 AMD      10.29    8.8  A      score_below_50 -- score 32 < 50 (catalyst=routine)
+  2026-04-24 ELPW     46.44   11.7  B1     prev_day_volume<50k (36,993 sh)
+  2026-04-24 INTC     23.09   10.9  C      TRADED live (mi_live_trades closed)
+  2026-04-24 MXL      57.66   10.8  A      extension_gate -- already up 59% in prior 5 days
+  2026-04-24 QCOM      8.70   27.9  A      score_below_50 -- score 32 < 50 (catalyst=routine)
+  2026-04-29 AKAN     11.26    8.4  A      extension_gate -- already up 438% in prior 5 days
+  2026-04-29 FCEL     14.64   11.3  A      session_rvol_low -- low volume rel_vol 0.2x < 2.0x (post-open)
+  2026-04-29 STX      15.36    8.3  C      HIGH alert; entry blocked: circuit breaker (3 consecutive losses)
+  2026-04-30 BAND     27.91   12.3  C      HIGH alert; entry skipped: setup:stop_too_wide (ORB)
+  2026-04-30 GTX       8.05   12.9  C      MODERATE alert (briefing tier, live)
+  2026-04-30 MRAM     36.92   30.0  A      mcap_low -- filter:mcap_too_small: $307M < $500M
+  2026-04-30 QCOM     10.29   14.6  C      surfaced live: MODERATE row + entry attempt skipped setup:faded_from_orb
+  2026-05-04 OUST     13.12   10.8  A      routine_catalyst -- routine catalyst, gap 8.1-11.0% (7 ticks)
+  2026-05-05 FLY      15.94    9.8  A      cooldown -- EP cooldown - alerted within last 60 days (the 03-12/03-20 FLY alerts)
+  2026-05-06 ARM      11.09   13.6  A      outside_top20 -- outside top-20 gap cap 5 ticks (also score -12 routine once)
+  2026-05-06 BRKR     10.16   11.7  A      outside_top20 -- outside top-20 gap cap (gap 8.1%)
+  2026-05-06 SMCI     12.97    9.5  C      TRADED live (mi_live_trades closed)
+  2026-05-06 UMC       9.14   17.3  A      outside_top20 -- outside top-20 gap cap 5 ticks (also score 22 strong once)
+  2026-05-07 DDOG     30.81    9.2  A      score_below_50 -- score 24/30/48 < 50 (catalyst=routine) - closest miss: 48
+  2026-05-07 FLNC     41.63    8.0  C      HIGH alert; entry blocked: block:max_positions 5/5
+  2026-05-07 FTNT     17.02   11.9  C      HIGH alert; entry blocked: block:max_positions 5/5
+  2026-05-07 HAE       8.37    9.0  A      outside_top20 -- outside top-20 gap cap (3 ticks)
+  2026-05-07 HIMX     25.14    8.9  A      cooldown -- EP cooldown - alerted within last 60 days
+  2026-05-07 NSIT      8.27   16.9  A      outside_top20 -- outside top-20 gap cap (gap 8.7%)
+  2026-05-07 SNOW      9.80   15.0  A      outside_top20 -- outside top-20 gap cap (11 ticks, gap 8.2-10.5%)
+  2026-05-11 WOK      23.44   13.4  B1     prev_day_volume<50k (170 sh)
+  2026-05-12 TDIC     73.56   47.4  B1     prev_day_volume<50k (35,573 sh)
+  2026-05-13 VSH       8.21   15.3  A      routine_catalyst -- routine catalyst, gap 9.3%
+  2026-05-18 RDW       9.46    8.9  A      score_below_50 -- score 19/36 < 50 (catalyst=strong)
+  2026-05-26 UMC      15.42    8.3  A      score_below_50 -- score 0-18 < 50 (catalyst=routine)
+  2026-05-27 ASTC    200.40   58.8  B1     prev_close<$5 ($2.47)
+  2026-05-28 ASTC     57.06   11.7  A      extension_gate -- already up 506% in prior 5 days (the 05-27 +200% day)
+  2026-05-29 HPE      11.96   12.6  A      score_below_50 -- score 0/-14/-7 < 50 (catalyst=routine)
+  2026-05-29 QURE     15.69    9.2  A      ma_filter -- M&A/buyout catalyst - no momentum trade (also score 14-32 < 50)
+  2026-06-04 STI     391.47   12.2  A      adv_low -- filter:adv_too_low: $258,256
+  2026-06-08 SDOT     17.79   19.1  A      extension_gate -- already up 345% in prior 5 days
+  2026-06-12 SPCX    580.61   26.0  B1     prev_day_volume<50k (6,504 sh)
+  2026-06-17 SDOT     26.87   11.4  A      pm_rvol_low -- pm_rvol 0.29-0.50x < 1.0x (31 ticks; atr_too_high 104%>15% behind it)
+  2026-06-24 CCXI     21.31   81.0  B1     prev_day_volume<50k (11,190 sh)
+  2026-06-29 CCXI     10.10    8.9  A      adv_low -- filter:adv_too_low: $43,565
+  2026-07-13 VEEE    153.94   10.2  B1     prev_close<$5 ($4.82)
+
+===============================================================================================
+WHAT COULD NOT BE DETERMINED, AND WHY:
+  - B3 (5 rows, LGN/SGML/SMTC/AEHR/MRVL, 03-27..03-31): passed universe floors, inside the top-20 by
+    reconstructed rank - the decisive rule (score/catalyst/rvol/quality) predates all logging. Unknowable.
+  - B2 (17 rows): top-20-cap attribution is RECONSTRUCTED from daily open gaps; the live scanner ranked by
+    delayed snapshot gap per tick, so individual ranks are approximate (97-347 on 04-08 leaves no doubt for
+    that day; AUGO at 32/35 is closer to the line).
+  - Whether any sub-10% crossing happened inside the 09:31-09:45 window - minute bars are not persisted for
+    never-alerted names before the 08-15 capture work.
+  - FLY 03-12/03-20 + YSS 03-20 HIGH alerts: why no entry - no pipeline rows exist that early.
+  - Scanner tick coverage on pre-04-13 days cannot be audited (no scan log); March attributions lean on
+    mi_ep_missed_outcomes frozen snapshots + mi_live/paper_trades only.
+  CAVEATS: 8xADR/20d, >=8% gap, >=$10, >=$50M remain my thresholds; one 4.5-month window; descriptive;
+  'ever-sectored' stock discriminator makes the stock count a floor (market_cap is NULL everywhere - do not use).

@@ -1356,6 +1356,57 @@ above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 - **Weekly (Friday)** — against the table below: what shipped, what accrued, what slipped and
   WHY. A miss gets a reason on the line, never a silent re-date.
 
+## 2026-08-16 — WHY THE 78 WERE MISSED: nothing is invisible, one fork DIES, and the two we traded LOST
+
+Per-name attribution of every missed tail winner. Capture:
+`docs/analysis/missed_winners_why_2026-08-16.txt`.
+
+| bucket | n | what it is |
+|---|---|---|
+| **A — filtered by a LOGGED rule** | **29** | the scan log names the rule |
+| **B — no row anywhere** | 34 | splits three ways ↓ |
+| — B1 **silent universe floors** (verified) | 12 | prior-day volume <50k shares (8) or prior close <$5 (4) — **real rules that are never logged** |
+| — B2 pre-instrumentation top-20 cap | 17 | **16 of them on ONE day** (04-08 mass-gap, gap ranks 97–347 against a cap of 20) |
+| — B3 unknowable | 5 | decisive rule predates all logging (the scan log was born 04-13) |
+| **C — actually alerted; the record was purged** | 11 | incl. 2 that were TRADED |
+
+🟢 **In the logged era, "never seen with no nameable cause" is ZERO.** Every absence traces to a
+specific rule or floor. **B is not a scan-coverage bug** — it is two unlogged floors plus a
+pre-April-13 instrumentation hole. That was the open question and it is answered.
+
+### 🔴 Three corrections, and the third stings
+
+1. **"We caught 6" was wrong in both directions.** HPE and QURE were never live-caught — their only
+   rows are `historical_scan` REPLAY rows (verified). Meanwhile **INTC 04-24 and SMCI 05-06 WERE
+   live-alerted and traded** — the old 90-day purge ate their alert rows (the exact hole #567 fixed).
+   Honest count: **15 of 78 surfaced live in some form; 63 are true detection misses.**
+2. 🔴 **The two tail winners we actually traded, we LOST on** — INTC **−$477.34**, SMCI **−$639.34**
+   (both paper, both closed). The stock ran ≥8×ADR in each case. **Detection was not the failure
+   there; conversion was.**
+3. ❌ **The "re-check the 10% gap floor later in the morning" fork is DEAD.** Yes, 19 of the 25
+   sub-10% missed winners crossed 10% intraday — **but so did 82% of the sub-10% NON-winners
+   (187/227).** Winner density among crossers is **9.2% vs 10.7%** for the existing ≥10%
+   population: **a later re-check would enrich nothing.** And of the 19 crossers, 9 were on 04-08
+   (top-20-capped anyway) and 8 were dropped by other rules — the floor alone was decisive for
+   ≈0 names. **Retracted; do not re-propose.**
+
+### The rules that actually cost the most
+
+- **Top-20 gap cap — 23 of 74 (31%)**, the single largest. ⚠ But 16 are one session, so it is a
+  mass-gap-day artifact more than a steady leak.
+- **Catalyst score < 50 — 7 across 6 sessions**: the steadiest per-session leak (DDOG missed at 48).
+- 📌 **The silent universe floors — 12 names, and they carry the FATTEST tails** (median 21.9×ADR
+  against 11.3× for the whole missed set). **Mechanism: the floors read the PRIOR day's volume and
+  price, while the opportunity is created ON the gap day.** A name that was illiquid on D-1 and
+  became tier-A tradeable on D0 is excluded by a measurement taken before the event that makes it
+  tradeable. **This is the most interesting of the three and nobody had named it.**
+
+⚠ **And the missed winners are statistically indistinguishable from the non-winners at alert time**
+(gap 11.8% vs 12.1% · $36 vs $40 · ADR 6.5% vs 6.2% · $363M vs $340M) — consistent with the
+"our score separates nothing" read. Whatever separates them is not in what we currently measure.
+
+🛑 All three rules are entry discipline = THE LINE. Nothing proposed.
+
 ## 2026-08-16 — ETF CONTAMINATION FIXED: the miss is smaller, the ANTI-SELECTIVITY is sharper
 
 Third and final correction to this number. The tradeable-tier scan still counted **leveraged and
