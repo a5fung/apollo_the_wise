@@ -1835,7 +1835,23 @@ week, and a week full of activity is not automatically a good one.
 catch.** Say so plainly at review rather than re-dating quietly. ⚠ And per the standing rule
 above: a week's accrual is measured in DISTINCT SESSIONS, not rows.
 
-## Review
+## Review — and it is the UMBRELLA for the four lanes (§0b-fwd), each with its trigger
+
+**Every lane reports into the Friday review. Nothing here is tracked in chat.**
+
+| lane | trigger | where it is tracked |
+|---|---|---|
+| **A · WATCH** — the 2R stop vs the old rule | **every close**, from the first one | `data_gated_reviews.yaml` → `stop_2r_running_comparison` (deliberately UNGATED — live money) |
+| **B · ACCRUE** — exit-path shadow | 20 closed positions (~early Oct) | → `exit_path_shadow_first_read` |
+| **B · ACCRUE** — alert-rank shadow | 25 recorded sessions after 08-16 (~late Sept, honest read mid-late Oct) | → `alert_rank_shadow_out_of_sample` |
+| **C · BUILD** — expectedness axis · structure-encoder split · D-1 floors · sizing | agent time, no trigger | ⚠ **NOT yet filed as PLAN.md tasks — see the note below** |
+| **D · FORKS** — extension filter · liquidity gates · grade gap-dependence | his ruling | §9 of this doc; surfaced at the Friday review |
+
+⚠ **Lane C is the gap: four buildable items with no PLAN.md line.** Filing them is +4 on a board at
+79, which needs an operator carryover — **so they are named here and surfaced every Friday until he
+either takes the carryover or one of them is done inside an existing task.** They are NOT dropped;
+being unfiled is recorded rather than hidden.
+
 
 - **Daily** — the OPEN ritual (`check_plan.py --today`) already surfaces what is due. The
   sequence above says what the day should MOVE; if a day's work does not map to a sequence step

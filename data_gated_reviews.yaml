@@ -9203,6 +9203,35 @@ reviews:
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
+  - review_id: alert_rank_shadow_out_of_sample
+    title: "Ranking rule — the FIRST out-of-sample read (the only thing that can validate it)"
+    question: >-
+      The three-feature ranking rule (smaller gap + tighter EP day + less extension) put
+      16 of the 26 tradeable >=10R winners in its top quartile, a 2.5x lift - but its
+      features were chosen on the SAME data it was tested on, 13 of the 26 targets sit on
+      ONE session, and no time holdout is possible on that cohort. `mi_alert_rank_shadow`
+      (live 2026-08-16) records the rank beside every alert from that date forward, so
+      every day recorded is a day the rule never saw.
+      Read: does the top quartile still hold a disproportionate share of the tail winners
+      on alerts recorded AFTER 2026-08-16 only? Score catch-rate on the tail first,
+      medians second. And read the EOD version against the as-of-09:45 version - the
+      tested tightness feature uses the FULL day's range and is NOT knowable at 09:45, so
+      the two answer different questions (an end-of-day selector vs an ORB-time one).
+    evidence_predicate: >-
+      SELECT count(DISTINCT alert_date) >= 25 FROM mi_alert_rank_shadow
+      WHERE alert_date > DATE '2026-08-16'
+    owner: operator
+    status: pending
+    notes: >-
+      ~25 recorded sessions is roughly five trading weeks -> late September 2026, and the
+      names need their own forward window on top, so the first HONEST read is mid-to-late
+      October. Do NOT read it early: the whole purpose is data the features never saw, and
+      an early peek re-creates the in-sample problem this shadow exists to escape.
+      THE ONE RESULT THAT CHANGES THE PLAN'S SHAPE (plan section 0b-fwd): if this
+      validates, selection becomes actionable and the sufficiency target stops depending
+      entirely on conversion. If it does not, the plan narrows to conversion alone - we
+      cannot pick better, only hold better.
+
   - review_id: stop_2r_running_comparison
     title: "2R stop — RUNNING comparison against the old rule, read every close (not gated)"
     question: >-
