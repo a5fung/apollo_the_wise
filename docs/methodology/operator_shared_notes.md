@@ -656,6 +656,36 @@ and it is richer than the `rs_1m − rs_6m` sign we tested (a 2-point difference
 📌 **PLTR's own trace fits it** — rank 2225 → 2129 → 2195 → 2121 → 2230 across the week into the
 gap: FLAT, not still-falling. (`plan §2026-08-15 RS IMPROVEMENT` section.)
 
+### Claim 2b — the SECOND DERIVATIVE, his own cleaner encoding of claim 2
+
+> "or another way to think about it is the 2nd derivative, RS deceleration/acceleration down or up,
+> I'd expect deceleration associated with neglect and acceleration associated with attention in
+> either direction"
+
+**The three-phase shape IS a curvature statement**, and this says it in one number instead of a
+hand-drawn classification. It also carries a semantic mapping we did not have before:
+
+- **DECELERATION ↔ NEGLECT** — the selling is exhausting; nobody is trading it any more.
+- **ACCELERATION ↔ ATTENTION, in EITHER direction** — someone is acting on it, up or down.
+
+**The two derivatives together give four regimes**, and his hypothesis names which one is the EP
+precursor:
+
+| 1st deriv | 2nd deriv | Regime | His reading |
+|---|---|---|---|
+| falling | accelerating down | still being actively sold | attention, negative |
+| falling | **decelerating** | 🎯 **neglect settling in, sellers exhausting** | **the EP precursor** |
+| rising | accelerating | attention, positive | likely his *"middle that already rose"* |
+| rising | decelerating | fading | — |
+
+⚠ **It does NOT dissolve his floor objection** (claim 3 below) — curvature compresses near the
+bottom just as slope does, so the within-RS-band test governs this encoding too. And **duration in
+the bottom decile stays the feature least affected by the floor.**
+
+⚠ Three encodings of one idea — the `rs_1m − rs_6m` sign, slope+dispersion, and curvature — are
+**related tests, not three independent findings.** The multiplicity accounting must treat them as
+such, or the same effect gets counted three times.
+
 ### Claim 3 — his own methodological objection, and it is the right one to raise
 
 > *"or maybe this is moot because the tail can't go lower?"*
