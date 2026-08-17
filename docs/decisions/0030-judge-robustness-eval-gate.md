@@ -117,6 +117,43 @@ what the process is actually running against this pass record's `judge_model` an
 (Telegram + audit, never a deploy block) on drift. This gate's own contract — deterministic,
 host-side, blocks on a committed-pin mismatch — is UNCHANGED.
 
+**Addendum (#547, 2026-08-17) — the CALL ENVELOPE is a second, non-blocking signal.**
+The gate above fingerprints WHAT we ask the judge (rubric text, model id, corpus) and nothing
+about HOW we ask it. On 2026-08-07 it printed *"grade surface unchanged"* on the very deploy
+that raised `ep_grade_judge`'s `max_tokens` 500→1500 and added a truncated-verdict fail-open —
+two changes that demonstrably moved live grades (7 of 49 verdicts were being built from
+truncated responses; two of them promotions to HIGH). `max_tokens`, `timeout`, `tool_choice`
+and the transport's fail-open rules all change what grades come out, and none were hashed.
+
+**The fork, and how the operator ruled it (2026-08-13):** folding the envelope into the rerun
+fingerprint would force a paid eval on every ceiling tweak. Measured: the judge robustness eval
+costs **$3.49/run**, and 08-07 alone — the day three ceilings were raised — would have forced up
+to three reruns for changes that never touched the rubric. That spends one paid run per EDIT
+where the 2026-08-03 cost rule is one per QUESTION, and the predictable outcome is people
+avoiding ceiling fixes to dodge the eval, which is exactly how a caller sat truncating for days.
+Operator, verbatim: *"these type of fixes shouldn't cause a rerun"* → **SEPARATE SIGNAL.**
+
+**What ships, therefore:**
+- `extract_envelope_keys()` / `check_envelope()` in the same preflight, wholly separate from
+  `extract_live_keys()` / `check()`. The **rerun trigger still reads exactly three inputs**
+  (rubric version/hash, judge model, corpus sha1) — unchanged, and pinned by a test that proves
+  the two are independent in both directions.
+- An envelope change **FLAGS LOUDLY and never blocks**: the warning prints FIRST (a skim must
+  land on it), names the value and its previous value (`max_tokens: 500 -> 1500`), and the
+  final line reads `OK (no eval rerun required) · ENVELOPE CHANGED (see above)` — so
+  "unchanged" and "changed but not blocking" can no longer render as the same output. Exit
+  code is untouched: `0 if ok else 1`, computed before the envelope is even read.
+- deploy.sh `[5m/7]` makes a second cheap `--envelope-audit-json` call and relays the payload
+  into `mi_audit_log` via `scripts/log_judge_envelope_change.py` (`|| true` on both — an audit
+  row must never fail a deploy).
+- Scope is exactly four items: `max_tokens`, `timeout`, `tool_choice`, and a structural hash of
+  the transport's truncation/fail-open block. Tool *schema*, `include_axis_reads` and non-live
+  timeouts are deliberately OUT.
+- ⚠ **Carry-forward risk:** the record's `envelope` sub-key is hand-seeded from static source
+  reads (not eval-derived), and nothing in the repo writes the pass record, so a regeneration
+  can drop it. It degrades LOUDLY to `UNVERIFIED` — never to a false "unchanged" — but that
+  degrade is documented, not gated.
+
 ## 5. What feeds #335 / the 7/18 M1 sitting
 
 The first Arm-1 run produces the **robustness map** (per-class failure rates) — the missing

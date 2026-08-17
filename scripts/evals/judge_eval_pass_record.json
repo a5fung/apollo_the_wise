@@ -33,5 +33,13 @@
  "overall": 1.0,
  "positive_control_rate": 1.0,
  "hard_failures": [],
- "pass": true
+ "pass": true,
+ "envelope": {
+  "_note": "#547 / ADR 0030 — max_tokens/timeout/tool_choice/fail-open baseline. Cost-free static ast reads, NOT eval output, so (unlike the keys above) this section is meant to be hand-seeded/updated after a reviewed envelope change; it never feeds the eval-rerun trigger and is checked wholly separately (see preflight_judge_eval_gate.py).",
+  "seeded_at": "2026-08-17T05:04:00-07:00",
+  "max_tokens": 1500,
+  "timeout": 25,
+  "tool_choice_type": "tool",
+  "fail_open_hash": "6f8b9d48b49b"
+ }
 }

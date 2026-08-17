@@ -429,6 +429,17 @@ if [[ "$SERVICES" == *market-agent* ]]; then
     echo "pass record from its RESULTS_JSON, and re-deploy. Do NOT hand-edit the record (ADR 0030)."
     exit 17
   fi
+  # #547 — separate ENVELOPE signal (max_tokens/timeout/tool_choice/fail-open rules). Never
+  # blocks the deploy and never touches the eval-rerun trigger above (operator-ruled
+  # 2026-08-13: "these type of fixes shouldn't cause a rerun"). This second, cheap (<1s, no
+  # network) invocation only PRINTS a JSON line when the envelope moved; the container is
+  # already up at this point (post [4/5] boot wait), so relay that line into mi_audit_log via
+  # the in-container companion script — `|| true` on both because an audit-row write must
+  # never fail a deploy, matching log_audit_event()'s own never-raises contract.
+  ENVELOPE_AUDIT=$(python3 scripts/preflight_judge_eval_gate.py --envelope-audit-json || true)
+  if [[ -n "$ENVELOPE_AUDIT" ]]; then
+    docker exec "$PREFLIGHT_CONTAINER" python -m scripts.log_judge_envelope_change "$ENVELOPE_AUDIT" || true
+  fi
 fi
 
 echo ""
