@@ -50,8 +50,10 @@ reads it as UNVERIFIED, never as a false "unchanged"), but loses detection until
 """
 import ast
 import hashlib
+import io
 import json
 import sys
+import tokenize
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -264,21 +266,69 @@ def _extract_tool_choice_type(transport_src: Path = TRANSPORT_SRC) -> str:
     raise RuntimeError(f"could not ast-extract tool_choice['type'] from {transport_src}")
 
 
+# Token types whose exact text is dropped from the hash input — only their PRESENCE (and, for
+# INDENT/DEDENT, their position in the stream) matters. NEWLINE's string varies ('\n' vs '' at
+# EOF) for reasons that have nothing to do with the code; INDENT/DEDENT's string is the literal
+# whitespace of that line, and hashing it would make the hash sensitive to spaces-vs-tabs style
+# even though the block's *nesting* (what actually changes behavior) is unchanged. Recording
+# only the token TYPE for these keeps block structure — moving a statement in or out of the
+# `if`/`except` — hash-sensitive, while indentation *style* stays hash-insensitive.
+_FAIL_OPEN_STRUCTURAL_ONLY = {tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT}
+# Token types dropped entirely: comments, blank-line markers, the tokenizer's own bookkeeping.
+_FAIL_OPEN_SKIP = {tokenize.COMMENT, tokenize.NL, tokenize.ENCODING, tokenize.ENDMARKER}
+
+
+def _normalize_source_tokens(source_segment: str) -> str:
+    """Canonical, reformat-insensitive text of a source snippet, built via the stdlib `tokenize`
+    module (never a regex) so a `#` or blank line *inside a string literal* is never mistaken
+    for an actual comment or blank line. Comments, blank lines, and trailing whitespace never
+    reach the token stream in the first place (tokenize consumes them without emitting a
+    meaningful token), so they fall out for free; INDENT/DEDENT/NEWLINE tokens are kept for
+    their type only (see `_FAIL_OPEN_STRUCTURAL_ONLY` above)."""
+    out = []
+    for tok in tokenize.generate_tokens(io.StringIO(source_segment).readline):
+        if tok.type in _FAIL_OPEN_SKIP:
+            continue
+        if tok.type in _FAIL_OPEN_STRUCTURAL_ONLY:
+            out.append(tokenize.tok_name[tok.type])
+        else:
+            out.append(f"{tokenize.tok_name[tok.type]}:{tok.string}")
+    return "\n".join(out)
+
+
 def _extract_fail_open_hash(transport_src: Path = TRANSPORT_SRC) -> str:
     """Structural hash of `invoke_forced_tool`'s top-level try/except — the truncation check
     (`is_truncated(resp)` -> discard -> None, #543) and the exception handler (#273
-    credit-exhaustion alert -> None). `ast.dump(..., include_attributes=False)` carries no
-    line/col info, so a comment or whitespace edit does not move this hash (hashing raw source
-    text would cry wolf on every one of the many comments in that block); any real change to
-    the control flow or a literal inside it does move it. NOT guaranteed byte-stable across
-    Python versions — a lone flip right after a host Python upgrade should be read as that,
-    not a code edit, which is exactly why this is a flag, never a block."""
+    credit-exhaustion alert -> None).
+
+    Hashes the block's NORMALISED SOURCE TEXT (`_normalize_source_tokens`, via `tokenize`), not
+    `ast.dump()`. AST is still used to LOCATE the block (`_invoke_forced_tool_def` above) —
+    that part was always fine. But `ast.dump()`'s *string representation* of a parsed tree is
+    not a stable, version-independent format: on the first real deploy of this gate (#547), the
+    exact same commit (byte-identical `judge_transport.py`, md5-verified) hashed to two
+    different values purely because the seeding machine ran Python 3.14 and the deploy server
+    ran Python 3.12 — no code changed. `tokenize`'s token stream for unchanged code is stable
+    across those versions (unlike `ast.dump`'s repr), which is why this hash is computed from
+    it instead. A comment or whitespace edit does not move this hash (hashing raw source text
+    verbatim would cry wolf on every one of the many comments in this block); any real change to
+    the control flow, a literal, or a name inside it does move it — see
+    `tests/test_preflight_judge_eval_gate.py`'s reformat/logic-change/cross-version-stability
+    tests for the pinned proof."""
     outer = _invoke_forced_tool_def(transport_src)
     try_node = next((n for n in outer.body if isinstance(n, ast.Try)), None)
     if try_node is None:
         raise RuntimeError(f"invoke_forced_tool in {transport_src} has no top-level try/except")
-    dumped = ast.dump(try_node, include_attributes=False)
-    return hashlib.sha1(dumped.encode("utf-8")).hexdigest()[:12]
+    source = transport_src.read_text()
+    # padded=True keeps the block's original column offsets so tokenize's INDENT/DEDENT
+    # bookkeeping (which tracks absolute indentation) doesn't desync partway through — without
+    # it, the first line ("try:") loses its leading whitespace while the rest of the block keeps
+    # its original indentation, and the `except` line's dedent no longer matches any indent
+    # level tokenize saw, raising IndentationError.
+    segment = ast.get_source_segment(source, try_node, padded=True)
+    if segment is None:
+        raise RuntimeError(f"could not extract source segment for the try/except in {transport_src}")
+    normalized = _normalize_source_tokens(segment)
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:12]
 
 
 def extract_envelope_keys(

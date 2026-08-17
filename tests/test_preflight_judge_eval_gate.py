@@ -239,6 +239,90 @@ def test_fail_open_hash_stable_under_reformatting_but_sensitive_to_real_change(t
     assert hash_a != hash_c       # a real fail-open behavior change does
 
 
+# ── cross-version stability (#547 second bug: ast.dump()'s string repr is not stable across
+# Python versions — the exact same commit, byte-identical judge_transport.py, hashed differently
+# on a 3.14 dev machine vs a 3.12 deploy server). We can't run two interpreters in this test
+# process, so these pin the PROPERTY that makes the hash version-stable instead: it must come
+# from normalised source text (tokenize), never from ast.dump's representation.
+
+_GOLDEN_TRANSPORT_SRC = (
+    "async def invoke_forced_tool(client, prompt, **kw):\n"
+    "    async def _call():\n"
+    "        return None\n"
+    "    try:\n"
+    "        # a comment\n"
+    "        if is_truncated(resp):\n"
+    "            return None\n"
+    "    except Exception as e:\n"
+    "        return None\n"
+)
+
+
+def test_fail_open_hash_golden_value_pins_a_known_block(tmp_path):
+    """A fixed source block must always hash to this exact, pre-computed value. If the
+    normalisation algorithm's representation ever changes (e.g. a future edit swaps back to
+    ast.dump, or changes which token fields feed the hash), this fails loudly instead of a new
+    'correct' value silently getting picked up from whatever a live run happens to produce."""
+    src = tmp_path / "transport.py"
+    src.write_text(_GOLDEN_TRANSPORT_SRC)
+    assert gate._extract_fail_open_hash(src) == "1435e794ff56"
+
+
+def test_fail_open_hash_is_not_computed_via_ast_dump(tmp_path, monkeypatch):
+    """Behavioural (not just textual) proof that the hash never routes through ast.dump()'s
+    string representation — the exact thing that is not stable across Python versions. If
+    _extract_fail_open_hash called ast.dump anywhere, this monkeypatch would raise and the
+    extraction would blow up instead of returning the golden value."""
+    src = tmp_path / "transport.py"
+    src.write_text(_GOLDEN_TRANSPORT_SRC)
+
+    def _boom(*a, **kw):
+        raise AssertionError("ast.dump must not be called by _extract_fail_open_hash")
+
+    monkeypatch.setattr(gate.ast, "dump", _boom)
+    assert gate._extract_fail_open_hash(src) == "1435e794ff56"
+
+
+def test_fail_open_hash_insensitive_to_blank_lines_and_trailing_whitespace(tmp_path):
+    """Extends the reformat-insensitivity test above to the other two reformats named in #547's
+    fix requirement (blank line, trailing whitespace) — not just the comment case already
+    covered."""
+    base = _GOLDEN_TRANSPORT_SRC
+    with_blank_line = base.replace(
+        "    try:\n", "    try:\n\n")  # blank line inserted right after `try:`
+    with_trailing_ws = base.replace(
+        "            return None\n    except",
+        "            return None   \n    except")  # trailing spaces on a body line
+
+    src_base = tmp_path / "base.py"
+    src_blank = tmp_path / "blank.py"
+    src_trail = tmp_path / "trail.py"
+    src_base.write_text(base)
+    src_blank.write_text(with_blank_line)
+    src_trail.write_text(with_trailing_ws)
+
+    h_base = gate._extract_fail_open_hash(src_base)
+    assert gate._extract_fail_open_hash(src_blank) == h_base
+    assert gate._extract_fail_open_hash(src_trail) == h_base
+
+
+def test_fail_open_hash_sensitive_to_a_statement_moving_out_of_the_if_block(tmp_path):
+    """A real logic change that a token-type-only (rather than raw-text) comparison could in
+    principle miss: dedenting `return None` so it runs unconditionally instead of only inside
+    `if is_truncated(resp):`. Block NESTING must still move the hash even though the exact
+    indentation *characters* don't (see the reformat-insensitivity tests above)."""
+    base = _GOLDEN_TRANSPORT_SRC
+    dedented = base.replace(
+        "        if is_truncated(resp):\n            return None\n",
+        "        if is_truncated(resp):\n            pass\n        return None\n",
+    )
+    src_base = tmp_path / "base.py"
+    src_dedented = tmp_path / "dedented.py"
+    src_base.write_text(base)
+    src_dedented.write_text(dedented)
+    assert gate._extract_fail_open_hash(src_base) != gate._extract_fail_open_hash(src_dedented)
+
+
 def test_main_survives_a_broken_envelope_extractor_without_touching_the_verdict(
         tmp_path, monkeypatch, capsys):
     """A refactor that breaks static envelope extraction must NOT crash main() into a non-zero

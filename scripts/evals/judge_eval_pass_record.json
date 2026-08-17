@@ -35,11 +35,11 @@
  "hard_failures": [],
  "pass": true,
  "envelope": {
-  "_note": "#547 / ADR 0030 — max_tokens/timeout/tool_choice/fail-open baseline. Cost-free static ast reads, NOT eval output, so (unlike the keys above) this section is meant to be hand-seeded/updated after a reviewed envelope change; it never feeds the eval-rerun trigger and is checked wholly separately (see preflight_judge_eval_gate.py).",
+  "_note": "#547 / ADR 0030 — max_tokens/timeout/tool_choice/fail-open baseline. Cost-free static ast reads, NOT eval output, so (unlike the keys above) this section is meant to be hand-seeded/updated after a reviewed envelope change; it never feeds the eval-rerun trigger and is checked wholly separately (see preflight_judge_eval_gate.py). fail_open_hash re-seeded 2026-08-17: the prior value (6f8b9d48b49b) was computed from ast.dump(), whose string representation is not stable across Python versions -- it flipped to 430252c7e1ed on the very first deploy from a 3.14 dev machine to a 3.12 server with the file byte-identical (md5 63e26fbd8055f0955c347bf31af3000a, commit 812e1f27). fail_open_hash is now computed from tokenize-normalised source text (see _extract_fail_open_hash), which is stable across Python versions; this is the same judge_transport.py content as before, so this reseed is a hashing-method fix, not a code or envelope change.",
   "seeded_at": "2026-08-17T05:04:00-07:00",
   "max_tokens": 1500,
   "timeout": 25,
   "tool_choice_type": "tool",
-  "fail_open_hash": "6f8b9d48b49b"
+  "fail_open_hash": "9751046f3d42"
  }
 }
