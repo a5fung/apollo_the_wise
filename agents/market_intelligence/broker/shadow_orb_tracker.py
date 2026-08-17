@@ -15,6 +15,7 @@ Two cron entry points:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import date, datetime, time, timedelta
 from typing import Any
@@ -287,6 +288,21 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
     return counts
 
 
+def _coerce_jsonb_list(value: Any) -> list:
+    """Normalize a jsonb array column value to a list.
+
+    Defensive READ tolerance for the #216 double-encoding bug: a legacy row
+    written before the write-path fix stores the array as a JSON STRING
+    (e.g. '[101.0, 102.0]') instead of a native array — decode it instead of
+    raising. Matches the established `trade["exits"] if isinstance(...,
+    list) else json.loads(...)` read-tolerance idiom already used for this
+    exact exits/running_closes bug class at 8+ call sites (order_manager.py
+    x4, live_tracker.py, trade_stream.py, backtester/tracker.py,
+    exit_path_shadow.py, giveback_shadow.py) — not a new convention.
+    """
+    return value if isinstance(value, list) else json.loads(value or "[]")
+
+
 def _row_to_state(row: dict) -> dict[str, Any]:
     return {
         "alert_date": row["alert_date"],
@@ -295,8 +311,8 @@ def _row_to_state(row: dict) -> dict[str, Any]:
         "hard_stop": float(row["hard_stop"]) if row.get("hard_stop") else None,
         "partial_taken": bool(row.get("partial_taken", False)),
         "breakeven_active": bool(row.get("breakeven_active", False)),
-        "exits": list(row.get("exits") or []),
-        "running_closes": [float(x) for x in (row.get("running_closes") or [])],
+        "exits": _coerce_jsonb_list(row.get("exits")),
+        "running_closes": [float(x) for x in _coerce_jsonb_list(row.get("running_closes"))],
     }
 
 

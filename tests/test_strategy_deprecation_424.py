@@ -20,7 +20,6 @@ Three things this pins:
 from __future__ import annotations
 
 import asyncio
-import json
 
 import pytest
 
@@ -90,7 +89,11 @@ def test_wick_fill_review_required_blocks_auto_ready():
     conn = _run_seed()
     _, seed_rows = conn.executemany_calls[0]
     by_id = {row[0]: row for row in seed_rows}
-    thresholds = json.loads(by_id["wick_fill"][7])  # row[7] = promotion_thresholds json
+    # row[7] = promotion_thresholds — a plain dict (#216: the jsonb codec encodes it
+    # exactly once; json.loads()-ing it here would double-encode on write and is no
+    # longer how the seed binds this param).
+    thresholds = by_id["wick_fill"][7]
+    assert isinstance(thresholds, dict)
     assert thresholds["shadow_to_paper"]["review_required"] is True
 
 

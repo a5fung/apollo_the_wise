@@ -3003,3 +3003,184 @@ async def run_grading_health_check(conn=None, today=None) -> dict[str, Any]:
     pool = await _gp()
     async with pool.acquire() as acquired:
         return await _run(acquired)
+
+
+# ── PLAN #216 JSONB DOUBLE-ENCODING regression guard (2026-08-17) ──────────────────────
+#
+# WHY. `db.py`'s jsonb codec auto-json.dumps()es every jsonb bind param; several write-path
+# call sites ALSO json.dumps()ed the value themselves before binding `$N::jsonb`, so the
+# already-serialised text got encoded a SECOND time — the column ends up holding a JSON
+# STRING containing JSON text (`jsonb_typeof(col) = 'string'`) instead of a real object or
+# array. Measured on prod 2026-08-17: ~4,300 rows across 9 tables (mi_signal_outcomes.detail
+# alone 2440/2441). `scripts/_216_jsonb_repair.py` is the one-time cleanup for the rows
+# already written wrong; THIS is the nightly tripwire that keeps the bug from silently
+# coming back after a future write-path regression (a new call site re-adding a stray
+# json.dumps() before an `::jsonb` bind).
+#
+# THE SIGNAL: per (table, jsonb column) discovered from information_schema — not the
+# 9-table list, which is today's measurement, not a spec — COUNT(*) WHERE
+# jsonb_typeof(col)='string'. Tonight's counts ARE the baseline for tomorrow's comparison
+# (mirrors run_db_growth_check's audit-log-row-is-the-baseline idiom); no min-baseline-age
+# gate is needed here, unlike db-growth, because there is no organic growth RATE to
+# pro-rate against — the expected trajectory for a healthy column is flat. A column whose
+# count is HIGHER than last night's recorded count is flagged.
+#
+# KNOWN LIMITATION, named not hidden: this counts ALL string-typed jsonb rows, not only the
+# ones that would actually decode to a repairable object/array — a jsonb column that
+# legitimately stores a plain string would also register here, and ordinary growth of THAT
+# column would look identical to a regression. Accepted because (a) measured on prod
+# 2026-08-17, every affected column's string-typed rows were ~100% the double-encoding bug —
+# a genuinely string-typed jsonb column is the exception in this codebase, not the norm, and
+# (b) discovery is column-wide, so a brand-new legitimately-stringy jsonb column gets one
+# cold-start cycle to establish its own baseline, the same shape every other check in this
+# file uses. The alternative — decoding every string-typed row nightly the way the repair
+# script does, just to tell "did this regress" apart from "did this repair-eligible count
+# specifically move" — was rejected as unnecessary weight for a guard whose only job is
+# noticing regression, not classifying it; the repair script already owns that precision.
+#
+# THE LINE: telemetry only — reads jsonb_typeof() on existing columns and writes to
+# mi_audit_log / Telegram. Never mutates a row (that is the separate, operator-run repair
+# script) and never touches a detector, gate, alert, entry, exit, or sizing path.
+_JSONB_ENCODING_DEDUPE_DAYS = 3
+
+
+async def _jsonb_columns(conn) -> list[tuple[str, str]]:
+    """All (table, column) pairs in the public schema whose type is jsonb — discovered, not
+    hardcoded, so a new jsonb column is covered automatically (PLAN #216).
+
+    Restricted to BASE TABLEs (excludes VIEWs — `information_schema.columns` returns view
+    columns too, and a `jsonb_typeof` COUNT(*) over a view runs its whole underlying query
+    for nothing). Mirrors `run_db_growth_check`'s `relkind = 'r'` filter.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT c.table_name, c.column_name
+        FROM information_schema.columns c
+        JOIN information_schema.tables t
+          ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+        WHERE c.table_schema = 'public' AND c.data_type = 'jsonb'
+          AND t.table_type = 'BASE TABLE'
+        ORDER BY c.table_name, c.column_name
+        """
+    )
+    return [(r["table_name"], r["column_name"]) for r in rows]
+
+
+def _evaluate_jsonb_growth(
+    current: dict[str, int], baseline: dict[str, int] | None,
+) -> list[dict[str, Any]]:
+    """Pure decision, isolated so it is testable mock-free (the file's idiom).
+
+    Returns a list of per-column flags where the current count exceeds the baseline count.
+    Empty list (not an error) when there is no prior baseline yet — measure and stay
+    silent, same first-run behavior as run_db_growth_check / run_null_rate_sweep.
+    """
+    if baseline is None:
+        return []
+    flags = []
+    for key, count in current.items():
+        before = baseline.get(key, 0)
+        if count > before:
+            flags.append({"key": key, "before": before, "after": count, "delta": count - before})
+    return flags
+
+
+async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
+    """Nightly count of double/multi-encoded jsonb rows per column (PLAN #216); speaks only
+    when a column's count of jsonb_typeof='string' rows GROWS beyond last night's recording.
+
+    Returns {"counts": {"table.column": n}, "flags": [...], "errors": [...], "spoke": bool}.
+    Never raises — a health guard that dies silently is the failure it exists to prevent.
+    """
+    from agents.market_intelligence.db import get_pool as _gp, log_audit_event as _log
+
+    async def _run(c) -> dict[str, Any]:
+        out: dict[str, Any] = {"counts": {}, "flags": [], "errors": [], "spoke": False}
+
+        for table, column in await _jsonb_columns(c):
+            key = f"{table}.{column}"
+            try:
+                n = await c.fetchval(
+                    f'SELECT COUNT(*) FROM "{table}" WHERE jsonb_typeof("{column}") = \'string\''
+                )
+                out["counts"][key] = int(n)
+            except Exception as e:  # one bad column must not kill the sweep
+                logger.warning("jsonb_encoding_check: %s failed: %s", key, e)
+                out["errors"].append({"column": key, "error": str(e)})
+
+        # Baseline = the most recent PRIOR run's counts (no min-age gate — see header).
+        baseline: dict[str, int] | None = None
+        try:
+            row = await c.fetchrow(
+                "SELECT detail FROM mi_audit_log WHERE event_type = 'jsonb_encoding_check' "
+                "ORDER BY created_at DESC LIMIT 1"
+            )
+            if row is not None:
+                detail = row["detail"]
+                payload = json.loads(detail) if isinstance(detail, str) else (detail or {})
+                baseline = {k: int(v) for k, v in (payload.get("counts") or {}).items()}
+        except Exception as e:
+            logger.warning("jsonb_encoding_check: baseline read failed: %s", e)
+            out["errors"].append({"baseline": str(e)})
+
+        out["flags"] = _evaluate_jsonb_growth(out["counts"], baseline)
+
+        # Record tonight's measurement — this row IS next run's baseline, so it must be
+        # written on every run, flagged or not, before any announce decision.
+        total = sum(out["counts"].values())
+        try:
+            await _log(
+                "jsonb_encoding_check",
+                f"{total} string-typed jsonb row(s) across {len(out['counts'])} column(s)",
+                json.dumps({"counts": out["counts"]}),
+            )
+        except Exception as e:
+            logger.warning("jsonb_encoding_check: audit log failed: %s", e)
+            out["errors"].append({"audit": str(e)})
+
+        if not out["flags"]:
+            return out
+
+        # PER-COLUMN dedupe (mirrors detector-liveness / inert-sweep idiom) — a persisting
+        # regression must not become nightly wallpaper, and a per-column dedupe means one
+        # already-announced column can't mask a DIFFERENT column regressing days later.
+        # Fails OPEN: a dedupe-read failure only risks a duplicate alert, never a missed one.
+        try:
+            recent_rows = await c.fetch(
+                "SELECT DISTINCT split_part(summary, ':', 1) AS k FROM mi_audit_log "
+                "WHERE event_type = 'jsonb_encoding_alert' "
+                "AND created_at >= NOW() - make_interval(days => $1)",
+                _JSONB_ENCODING_DEDUPE_DAYS,
+            )
+            recently_announced = {r["k"] for r in recent_rows}
+        except Exception as e:
+            logger.warning("jsonb_encoding_check: dedupe read failed (will announce): %s", e)
+            recently_announced = set()
+
+        fresh = [f for f in out["flags"] if f["key"] not in recently_announced]
+        if not fresh:
+            return out
+
+        lines = ["\U0001F9EA *JSONB double-encoding regression*",
+                 "A column that should hold objects/arrays is holding JSON-as-a-string "
+                 "again (PLAN #216) — check the write path for a stray json.dumps() before "
+                 "an `::jsonb` bind:", "```"]
+        for f in fresh[:5]:
+            lines.append(f"{f['key']}: {f['before']} -> {f['after']} string-typed rows")
+        lines.append("```")
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            out["spoke"] = bool(await send_telegram_message("\n".join(lines)))
+            for f in fresh:
+                await _log("jsonb_encoding_alert", f"{f['key']}: {f['before']} -> {f['after']}",
+                           json.dumps(f))
+        except Exception as e:
+            logger.warning("jsonb_encoding_check: announce failed: %s", e)
+            out["errors"].append({"announce": str(e)})
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await _gp()
+    async with pool.acquire() as acquired:
+        return await _run(acquired)

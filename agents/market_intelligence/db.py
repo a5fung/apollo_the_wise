@@ -87,6 +87,23 @@ def _jsonb_param(value):
     return json.loads(json.dumps(value or {}, default=str))
 
 
+def _jsonb_list_param(value):
+    """Prepare a list for a jsonb column written through the registered jsonb codec.
+
+    Same hazard as `_jsonb_param` above (#216: seven db.py writers pre-json.dumps()ed
+    a list before binding it to a `$N::jsonb` param, so the codec's own json.dumps()
+    encoded the already-serialised string a second time — confirmed on prod as e.g.
+    mi_weekly_watchlists.sources holding the literal text '["EP_HIGH"]'). Can't reuse
+    `_jsonb_param` here — its `value or {}` default would coerce an empty list `[]`
+    into a dict `{}` (wrong shape for an array column); this is the list-shaped sibling,
+    matching the `suggestions_param` convention already shipped in insert_system_review
+    (#412, 2026-07-06). Round-trips through json.dumps(default=str)+loads so any
+    embedded date/datetime is stringified before the codec encodes EXACTLY ONCE.
+    """
+    import json
+    return json.loads(json.dumps(value or [], default=str))
+
+
 def _coerce_date(v):
     """Wire-boundary str->date coercion: dates arrive as ISO strings when a value crosses
     the intelligence->execution HTTP boundary (JSON has no date type), but asyncpg's
@@ -147,8 +164,6 @@ async def _seed_strategies_registry(conn) -> None:
     strategy's phase or thresholds after seed, edit `mi_strategies` directly
     or via `/strategy <id> {enable|disable|promote|demote}`.
     """
-    import json as _json
-
     seeds = [
         {
             "strategy_id": "magna53",
@@ -310,7 +325,7 @@ async def _seed_strategies_registry(conn) -> None:
         [
             (s["strategy_id"], s["name"], s["family"], s["phase"],
              s["signal_type"], s["outcomes_table"], s["promotion_model"],
-             _json.dumps(s["promotion_thresholds"]))
+             _jsonb_param(s["promotion_thresholds"]))  # #216: codec single-encodes; do NOT pre-dumps
             for s in seeds
         ],
     )
@@ -5429,7 +5444,7 @@ async def enqueue_pending_allocation(
                 raw_dimensions  = EXCLUDED.raw_dimensions,
                 created_at      = NOW()
         """, ticker, alert_date, strategy, composite_score,
-             json.dumps(raw_dimensions))
+             _jsonb_param(raw_dimensions))  # #216: codec single-encodes; do NOT pre-dumps
 
 
 async def get_deprecated_strategy_signal_types() -> set[str]:
@@ -6036,10 +6051,9 @@ async def list_parabolic_exclusions() -> list[dict[str, Any]]:
 
 
 async def upsert_regime(record: dict[str, Any]) -> None:
-    import json
     pool = await get_pool()
     bm = record.get("breadth_monitor")
-    bm_json = json.dumps(bm) if bm else None
+    bm_json = _jsonb_param(bm) if bm else None  # #216: codec single-encodes; do NOT pre-dumps
     async with pool.acquire() as conn:
         # Ensure QQQ EMA columns exist (idempotent)
         for col, typ in [("qqq_ema_10", "FLOAT"), ("qqq_ema_20", "FLOAT"), ("qqq_ema_bullish", "BOOLEAN")]:
@@ -9229,8 +9243,8 @@ async def upsert_htf_management_shadow(shadow_id: int, ticker: str, break_date, 
                                   ELSE mi_htf_management_shadow.settled_at END
         """, shadow_id, ticker, _coerce_date(break_date), entry_price, initial_stop,
              initial_shares, scale_fraction, trail_mode, status, remaining_shares, partial_taken,
-             breakeven_active, json.dumps(events), realized_r,
-             _coerce_date(last_bar_date) if last_bar_date else None)
+             breakeven_active, _jsonb_list_param(events),  # #216: codec single-encodes; do NOT pre-dumps
+             realized_r, _coerce_date(last_bar_date) if last_bar_date else None)
 
 
 async def get_htf_management_shadow_summary() -> dict:
@@ -9537,14 +9551,14 @@ async def settle_anticipation_3b(ticker: str, gap_day: date, *, realized_r, fwd_
                                day0_fills) -> None:
     """Persist the fill-sim result for a first5/gdl entry: realized_r + fwd_mfe + the day-0
     scale-out fill record (JSONB), settled=TRUE."""
-    import json
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
             UPDATE mi_anticipation_lifecycle
             SET realized_r=$3, fwd_mfe_pct=$4, day0_fills=$5::jsonb, settled=TRUE, updated_at=NOW()
             WHERE ticker=$1 AND gap_day=$2
-        """, ticker, gap_day, realized_r, fwd_mfe_pct, json.dumps(day0_fills))
+        """, ticker, gap_day, realized_r, fwd_mfe_pct,
+            _jsonb_list_param(day0_fills))  # #216: codec single-encodes; do NOT pre-dumps
 
 
 # ── Data-gated-review escalation state (#54 Prong B) ──────────────────────────
@@ -10290,10 +10304,9 @@ async def get_data_quality_issues(run_date: date) -> list[dict[str, Any]]:
 
 async def upsert_signal_outcome(record: dict[str, Any]) -> None:
     """Insert or update a signal outcome tracking row."""
-    import json
     pool = await get_pool()
     detail = record.get("detail")
-    detail_json = json.dumps(detail) if detail else None
+    detail_json = _jsonb_param(detail) if detail else None  # #216: codec single-encodes; do NOT pre-dumps
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_signal_outcomes
@@ -10533,7 +10546,10 @@ async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
             continue
         if key in ("exits", "running_closes"):
             set_clauses.append(f"{key} = ${i}::jsonb")
-            values.append(json.dumps(val) if not isinstance(val, str) else val)
+            # #216: codec single-encodes; do NOT pre-dumps (was double-encoding — the
+            # prior `json.dumps(val) if not isinstance(val, str) else val` always hit
+            # the dumps branch since callers pass plain lists, never pre-serialised str)
+            values.append(_jsonb_list_param(val))
         else:
             set_clauses.append(f"{key} = ${i}")
             values.append(val)
@@ -11402,9 +11418,8 @@ async def add_journal_entry(
     theme_context: str | None,
 ) -> int:
     """Insert a journal entry with auto-enriched context. Returns new row id."""
-    import json as _json
     pool = await get_pool()
-    ep_json = _json.dumps(ep_context) if ep_context else None
+    ep_json = _jsonb_list_param(ep_context) if ep_context else None  # #216: codec single-encodes; do NOT pre-dumps
     async with pool.acquire() as conn:
         row_id = await conn.fetchval("""
             INSERT INTO mi_journal_entries (entry_text, regime, ep_context, theme_context)
@@ -11556,7 +11571,6 @@ async def insert_weekly_watchlist(week_ending: "date", rows: list[dict]) -> int:
     """
     if not rows:
         return 0
-    import json
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -11572,7 +11586,7 @@ async def insert_weekly_watchlist(week_ending: "date", rows: list[dict]) -> int:
                 (
                     _to_date(week_ending),
                     r["ticker"],
-                    json.dumps(r["sources"]),
+                    _jsonb_list_param(r["sources"]),  # #216: codec single-encodes; do NOT pre-dumps
                     int(r["composite_priority"]),
                     r["reason_chip"],
                 )

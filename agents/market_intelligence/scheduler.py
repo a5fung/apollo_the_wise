@@ -3350,6 +3350,27 @@ async def _post_nightly_audit_job():
         logger.error(f"Job-liveness sweep failed: {e}", exc_info=True)
         await notify_job_failure("job_liveness_sweep", str(e))
 
+    # JSONB DOUBLE-ENCODING regression guard (PLAN #216, 2026-08-17): db.py's jsonb codec
+    # auto-json.dumps()es every jsonb bind param; several write-path call sites ALSO
+    # json.dumps()ed before binding `$N::jsonb`, so the column held a JSON STRING containing
+    # JSON text instead of a real object/array — ~4,300 rows across 9 tables, measured on
+    # prod 2026-08-17. `scripts/_216_jsonb_repair.py` is the one-time cleanup; this is the
+    # nightly tripwire so a future write-path regression (a stray json.dumps() re-added
+    # before an ::jsonb bind) can't silently come back. Baseline/dedupe/announce all live
+    # inside run_jsonb_encoding_check (mi_audit_log IS the state, fails OPEN — same idiom as
+    # run_db_growth_check). Own try/except — a health guard that dies silently is the
+    # failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_jsonb_encoding_check
+        je = await run_jsonb_encoding_check()
+        logger.info(
+            f"JSONB encoding check: {sum(je['counts'].values())} string-typed row(s) across "
+            f"{len(je['counts'])} column(s), {len(je['flags'])} flag(s), "
+            f"{len(je['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"JSONB encoding check failed: {e}", exc_info=True)
+        await notify_job_failure("jsonb_encoding_check", str(e))
+
     # Data-gated-review escalation (#54 RMV-miss mitigation, Prong B). A review that's been
     # READY — or whose predicate has been ERRORING (a silently-broken locked query, the exact
     # #54 class) — beyond the grace window gets its OWN deterministic Telegram instead of rotting
