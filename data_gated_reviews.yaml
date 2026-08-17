@@ -8426,7 +8426,75 @@ reviews:
          AND g.regime = 'Bull'
     threshold: 4
     earliest_review_date: 2026-08-04
-    status: pending
+    status: done
+    closed_on: 2026-08-17
+    outcome: >-
+      RUN 2026-08-17. The confound this watched IS broken — both live cells clear the
+      floor inside the live cohort, no paper mixed in: live-Bull n=9, live-Correcting
+      n=7, live-Choppy n=4 (counts verified directly against prod, 1:1 regime join,
+      20 live magna53 records total).
+
+      THE ANSWER RUNS AGAINST THE HYPOTHESIS. Operator 2026-08-01: "runners probably
+      happen more often in bull markets". On peak reached — which is how far price
+      actually ran — Bull is the WEAKEST of the three: best peak +2.90R and average
+      +1.08R, against Correcting +3.74R / +1.51R and Choppy +7.92R / +1.98R. Trades
+      reaching at least +1.5R: 3 of 9 in Bull, 3 of 7 in Correcting, 1 of 4 in Choppy.
+
+      WHY THIS READ IS CLEANER THAN THE FIRST PASS SAID. The obvious objection is an
+      exit-era confound: every non-Bull trade predates the +2R partial (Bull 6 of 9
+      entered on/after 2026-08-05 when it first fired on PLTR; Correcting 0 of 7;
+      Choppy 0 of 4). That confound is REAL for what we KEEP — but it does not touch
+      what we REACHED, because a profit-taking rule cannot change how far the price
+      went. The R unit is also constant across the whole set: the 2R stop change went
+      live 2026-08-16 and the last entry here is 08-14. So the reached comparison
+      stands on its own; the kept comparison does not and was not used.
+
+      WHAT THIS DOES NOT SAY. n of 9/7/4 is thin and one trade moves any of these
+      means. Choppy's +7.92R is a single name (MANE). This does NOT establish that
+      Correcting markets are better to trade — it says the specific idea of loosening
+      exits in Bull because runners cluster there is not supported by our own live
+      record, and the burden now sits on the hypothesis. No exit change is proposed;
+      any change remains CHANGE_PROCESS + backtest + operator sign-off.
+
+      ⚠ The first pass reported live-Bull n=6 and per-regime P90s I could not
+      reproduce against prod; all 9 Bull records carry peak data. The numbers above
+      are mine, re-derived from prod, and supersede that pass.
+      Doc: docs/analysis/exit_regime_separability_2026-08-17.md
+
+      ▶ OPERATOR READ 2026-08-17, and the data supports it on the half it can test.
+      His hypothesis, verbatim: "a true EP winner in non-bull market is one that is
+      exceptionally strong to resist the pull of market downward, so they end up
+      running further. However, maybe on avg, it's harder to find a winner in
+      non-bull phase."
+
+      CONDITIONAL ON WORKING, NON-BULL WINNERS DO RUN FURTHER. Among trades that
+      reached at least +1.5R: Bull 3 winners averaging +2.22R (best +2.90R),
+      Correcting 3 winners averaging +2.98R (best +3.74R), Choppy 1 winner at
+      +7.92R. The non-winners are indistinguishable across regimes (+0.51R / +0.40R
+      / 0.00R), so the whole difference sits in the tail — which is exactly the
+      shape his reading predicts.
+
+      THE "RARER" HALF IS NOT SUPPORTED BY THIS DATA, AND THIS DATA CANNOT TEST IT.
+      Hit rate among trades we actually TOOK is 33% Bull (3 of 9), 43% Correcting
+      (3 of 7), 25% Choppy (1 of 4) — no scarcity signal, but scarcity would show up
+      at the ALERT-to-ENTRY conversion stage, not among taken trades. Testing it
+      needs the alert population per regime, not the fill population.
+
+      🔴 THIS INVERTS THE ACTION THE REVIEW WAS OPENED TO CONSIDER. The original idea
+      was to take profits FASTER outside Bull. If non-bull winners are the ones that
+      run further, faster profit-taking would cut precisely the trades that pay.
+
+      ⚖ AND IT CREATES A TENSION WITH LIVE SIZING — operator's call, not a proposal.
+      REGIME_SIZING_ENABLED is TRUE in prod today with multipliers Bull 1.00 /
+      Choppy 0.75 / Correcting 0.50 / Crisis 0.25 (verified on the execution host).
+      R is risk-normalised so the multiplier does not touch any number above — but in
+      DOLLARS it halves exactly the cohort that shows the biggest runs. That is real
+      downside protection doing its job; it is also, on this evidence, a haircut
+      applied to the best tail. Both are true. Sizing is THE LINE: no change proposed.
+
+      ⚠ n = 3 / 3 / 1 winners. One trade moves any of these. Operator: "I think we
+      need more samples" — agreed, and this stays a directional read until the
+      recurring exit_tune_cohort_review fires at a larger n.
     action_when_ready: |
       Re-run the replay's PER-REGIME section and state plainly which regimes have
       become separable and which have not. Then either (a) report that the
