@@ -2973,6 +2973,21 @@ class MarketIntelligenceAgent(BaseAgent):
                 title = (r.get("title") or "")[:80]
                 if title:
                     lines.append(f"      {_esc(title)}")
+                # #517 2026-08-17 — readiness sanity check: a ready item can still be unanswerable
+                # (date-only predicate, or a table read without filtering a column that separates
+                # different questions). Surface both in the SAME place a ready item already
+                # renders, rather than a separate board nobody checks.
+                flags = r.get("evidence_flags") or {}
+                if flags.get("date_fire"):
+                    lines.append("      ⚠️ date-only predicate — not evidence-gated")
+                for col_tag in (flags.get("population_mismatch") or []):
+                    rows = (r.get("population_breakdown") or {}).get(col_tag)
+                    detail = (" (" + ", ".join(f"{_esc(str(v))}={n}" for v, n in rows) + ")"
+                              if rows else "")
+                    lines.append(f"      ⚠️ `{_esc(col_tag)}` not filtered{detail}")
+                if r.get("last_run_inconclusive_on"):
+                    lines.append(f"      ↻ already ran {r['last_run_inconclusive_on']}, "
+                                  f"inconclusive — not a fresh look")
         if errored:
             lines.append("")
             lines.append(f"🛑 *PREDICATE ERRORING ({len(errored)})* — broken locked query (#54 class):")

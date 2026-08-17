@@ -1615,11 +1615,22 @@ def _format_pending_reviews_section(pending: dict) -> str:
         k = (r.get("kind") or "accrual").strip().lower()
         return k if k in ("accrual", "tripwire", "cadence") else "accrual"
 
+    # #517 2026-08-17 — a date-fire predicate is not real accrual either (same reasoning as
+    # tripwire/cadence below): its "age" is just how long ago the calendar floor passed, not how
+    # long real evidence has sat unread. Without this, a date-fire item still trips the ≥30d
+    # stale banner even though its own tag correctly says "not evidence-gated" — visibly
+    # inconsistent with the thing #517 exists to fix.
+    def _is_date_fire(r):
+        return bool((r.get("evidence_flags") or {}).get("date_fire"))
+
+    def _counts_as_accrual(r):
+        return _kind(r) == "accrual" and not _is_date_fire(r)
+
     # Only ACCRUAL age counts as staleness — a quiet tripwire is the system working.
-    scored = sorted(ready, key=lambda r: -((_age(r) or 0) if _kind(r) == "accrual" else -1))
+    scored = sorted(ready, key=lambda r: -((_age(r) or 0) if _counts_as_accrual(r) else -1))
     shown, overflow = scored[:_REVIEWS_RENDER_CAP], scored[_REVIEWS_RENDER_CAP:]
     n_stale = sum(1 for r in scored
-                  if _kind(r) == "accrual" and (_age(r) or 0) >= _REVIEWS_STALE_DAYS)
+                  if _counts_as_accrual(r) and (_age(r) or 0) >= _REVIEWS_STALE_DAYS)
 
     head = f"📅 *Reviews ready* ({len(scored)}) — data-gated thresholds flipped; action needed:"
     if n_stale:
@@ -1630,7 +1641,14 @@ def _format_pending_reviews_section(pending: dict) -> str:
         action = (r.get("action_when_ready") or "").strip()
         first = action.split(". ")[0].rstrip(".") if action else ""
         age, kind = _age(r), _kind(r)
-        if kind == "tripwire":
+        flags = r.get("evidence_flags") or {}
+        if flags.get("date_fire"):
+            # #517 2026-08-17 — a predicate with no FROM clause is a function of the calendar
+            # only, never real accrued evidence, even though it is written as SQL and looks like
+            # a threshold (exposure_family_cap_promotion was exactly this shape). Rendering it as
+            # "ripe Nd" claims evidence that was never gathered — say what it actually is.
+            tag = " _[date-only — not evidence-gated]_"
+        elif kind == "tripwire":
             fired = (r.get("current_count") or 0) >= (r.get("threshold") or 1)
             tag = (" _[FIRED]_" if fired
                    else f" _[no recurrence in {age}d]_" if age else " _[armed]_")
@@ -1638,7 +1656,28 @@ def _format_pending_reviews_section(pending: dict) -> str:
             tag = " _[periodic — due]_"
         else:
             tag = f" _[ripe {age}d]_" if age else ""
-        lines.append(f"• *{title}*{tag}" + (f" — {first}." if first else ""))
+        line = f"• *{title}*{tag}" + (f" — {first}." if first else "")
+        # #517 2026-08-17 — an entry that already fired once and came back inconclusive (mis-
+        # scoped cohort, too thin after a fix, etc.) is not a fresh look; a bare re-surface reads
+        # as untouched. `stop_too_wide_outcome_cohort` is the worked example this was built for.
+        if r.get("last_run_inconclusive_on"):
+            lines_note = (f"already ran {r['last_run_inconclusive_on']}, inconclusive — "
+                          f"not a fresh look")
+            line += f"\n    ↻ _{lines_note}._"
+        # Population-mismatch: the predicate reads a table with a column that separates
+        # different questions (which setup, which entry mode, which account) and never filters
+        # on it. Show what it actually counted, broken down by that column, so a real mismatch
+        # (two populations sharing the count) is visible at a glance instead of after a full
+        # review runs on the wrong cohort (stop_too_wide_outcome_cohort, #517).
+        mismatch = flags.get("population_mismatch") or []
+        if mismatch:
+            breakdown = r.get("population_breakdown") or {}
+            for col_tag in mismatch:
+                rows = breakdown.get(col_tag)
+                detail = (" `(" + ", ".join(f"{v}={n}" for v, n in rows) + ")`") if rows else ""
+                line += (f"\n    ⚠ _pop-check:_ `{col_tag}` not filtered{detail} — "
+                         f"confirm this cohort matches the question.")
+        lines.append(line)
     if overflow:
         lines.append(f"_…and {len(overflow)} more ripe, oldest-first above. "
                      f"Full list: `/reviews`._")

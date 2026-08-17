@@ -14,6 +14,7 @@ the weekly digest.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,102 @@ from agents.market_intelligence.db import get_pool
 logger = logging.getLogger(__name__)
 
 _REGISTRY_PATH = Path(__file__).resolve().parents[2] / "data_gated_reviews.yaml"
+
+
+# ── readiness sanity check (#517, 2026-08-17) ──────────────────────────────────────────────────
+# Two real failure classes measured this week, both surfacing a review as READY when it cannot
+# actually be answered:
+#   (1) DATE-FIRE — the "predicate" is calendar-only (no table read at all), dressed up as SQL.
+#       `exposure_family_cap_promotion` was exactly this: `SELECT CASE WHEN CURRENT_DATE >= ...`.
+#       It is not wrong to have a date-only gate — `predicate_sql: null` is the documented, HONEST
+#       way to say that — but a fake predicate reads as an evidence gate when it is not one.
+#   (2) POPULATION MISMATCH — the predicate counts a table that has a column separating genuinely
+#       different questions (which SETUP, which ENTRY VARIANT, which ACCOUNT) and does not filter
+#       on it. `stop_too_wide_outcome_cohort` fired ready on 13+ rows that blended MAGNA53's stop-
+#       too-wide rejections with 9M Day 2's — a different setup sharing the same skip_reason prefix
+#       — while the cohort the review is actually about stood at 9, below its own bar.
+#
+# Both checks are STATIC (regex over predicate_sql text, no DB needed) and deliberately narrow:
+# they do not know whether blending a population is a bug or an intentional whole-book question
+# (`kill_scale_bands_quarterly_review` is legitimately about the whole live book, not one setup —
+# flagging it is still useful, but it must not be silently auto-"fixed" or hidden). The check's
+# job is to make the mismatch VISIBLE (with a real breakdown of what the predicate counted), not
+# to decide it — same posture as the status-vocabulary lint in preflight_yaml_dupe_keys.py.
+
+# table -> categorical columns whose values represent DIFFERENT QUESTIONS, not just different
+# rows of the same one (verified against prod information_schema.columns 2026-08-17). Excludes
+# columns that are effectively unique keys (e.g. mi_strategies.strategy_id) — those don't define
+# a population split, they just identify the row.
+DISCRIMINATING_COLUMNS: dict[str, list[str]] = {
+    "mi_account_equity_snapshots": ["account_mode"],
+    "mi_alert_rank_shadow": ["account_mode"],
+    "mi_consolidation_entry_shadow": ["entry_mode"],
+    "mi_exit_path_shadow": ["account_mode", "signal_type"],
+    "mi_giveback_shadow": ["account_mode"],
+    "mi_live_trades": ["signal_type", "account_mode"],
+    "mi_orb_shadow_trades": ["signal_type"],
+    "mi_pending_allocations": ["strategy"],
+    "mi_pivot_stop_shadow": ["account_mode"],
+    "mi_position_mgmt_decisions": ["account_mode"],
+    "mi_safeguard_state": ["account_mode"],
+    "mi_sell_discipline_records": ["signal_type", "account_mode"],
+    "mi_signal_outcomes": ["signal_type"],
+    "mi_strategies": ["signal_type"],
+    "mi_theme_birth_candidates": ["mode"],
+}
+
+
+def is_date_fire_predicate(predicate_sql: str | None) -> bool:
+    """True when `predicate_sql` is SQL text with no FROM clause at all — it can only ever be a
+    function of the calendar/constants, never real accrued evidence, even though it LOOKS like an
+    evidence-gated predicate. `predicate_sql: null` (the documented, honest date-only gate) is NOT
+    this class — it never claimed to read data. This catches the dressed-up version."""
+    if not predicate_sql or not predicate_sql.strip():
+        return False
+    return re.search(r"\bFROM\b", predicate_sql, re.IGNORECASE) is None
+
+
+def find_population_mismatch(predicate_sql: str | None) -> list[str]:
+    """Return ["table.column", ...] for every FROM-referenced table with a known discriminating
+    column that the predicate text never mentions. `COUNT(DISTINCT ...)` predicates are exempted
+    — deduping on a non-discriminating column (e.g. a date) already collapses across whatever
+    category would otherwise fan the count out, so an unfiltered category there does not inflate
+    anything (verified 2026-08-17: `drawdown_breaker_promotion` / `live_cutover_decision` /
+    `rt_admission_recut_post_2r_exits` all read this way and are not bugs)."""
+    if not predicate_sql or not predicate_sql.strip():
+        return []
+    if re.search(r"COUNT\(\s*DISTINCT\b", predicate_sql, re.IGNORECASE):
+        return []
+    tables = {m.group(1).lower() for m in re.finditer(
+        r"\bFROM\s+([a-zA-Z_][a-zA-Z0-9_]*)", predicate_sql, re.IGNORECASE)}
+    out: list[str] = []
+    for table in sorted(tables):
+        for col in DISCRIMINATING_COLUMNS.get(table, []):
+            if not re.search(r"\b" + re.escape(col) + r"\b", predicate_sql, re.IGNORECASE):
+                out.append(f"{table}.{col}")
+    return out
+
+
+def _strip_sql_comments(sql: str) -> str:
+    """Blank out `-- ...` line comments. Best-effort — good enough for this registry's
+    single-statement predicates; no `--` has been observed inside a string literal here."""
+    return "\n".join(re.sub(r"--.*$", "", line) for line in sql.split("\n"))
+
+
+def build_population_breakdown_sql(predicate_sql: str, column: str) -> str | None:
+    """Best-effort rewrite of a `SELECT COUNT(*) FROM T WHERE ...` predicate into
+    `SELECT <column>, COUNT(*) FROM T WHERE ... GROUP BY <column>` so the ready-review payload
+    can show what the predicate actually counted, split by the column it should have filtered on.
+    Returns None for any shape that isn't a plain top-level `SELECT COUNT(*)` (CASE-wrapped,
+    LEAST()-wrapped, nested-subquery-as-the-whole-query, etc.) — those fall back to "flagged, no
+    breakdown available" rather than risk emitting broken SQL against prod."""
+    stripped = _strip_sql_comments(predicate_sql).strip()
+    m = re.match(r"^SELECT\s+COUNT\(\s*\*\s*\)\s*(?:::\w+)?\s*(FROM\s.+)$",
+                 stripped, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return None
+    rest = m.group(1).split(";", 1)[0].rstrip()
+    return f"SELECT {column}, COUNT(*) AS n {rest}\nGROUP BY {column}\nORDER BY n DESC"
 
 
 def _load_registry() -> list[dict[str, Any]]:
@@ -47,6 +144,16 @@ async def _evaluate_predicate(sql: str) -> int | None:
         return 0
     val = next(iter(row.values()), None)
     return int(val) if val is not None else 0
+
+
+async def _evaluate_breakdown(sql: str) -> list[tuple[Any, int]] | None:
+    """Run a breakdown query built by `build_population_breakdown_sql`; returns
+    [(category_value, count), ...]. Best-effort like the predicate itself — a broken breakdown
+    must never break the digest, so any failure here is logged and swallowed by the caller."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(sql)
+    return [(r[0], int(r[1])) for r in rows]
 
 
 async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
@@ -96,6 +203,13 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
                 continue
 
         is_ready = (predicate_sql is None) or (count is not None and count >= threshold)
+        # #517 2026-08-17 — readiness sanity check. See the module docstring block above for the
+        # two failure classes these catch (date-fire, population mismatch) and why they're static.
+        last_run_inconclusive_on = e.get("last_run_inconclusive_on")
+        evidence_flags = {
+            "date_fire": is_date_fire_predicate(predicate_sql),
+            "population_mismatch": find_population_mismatch(predicate_sql),
+        }
         entry_summary = {
             "review_id": review_id,
             "title": e.get("title"),
@@ -112,7 +226,33 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
             "earliest_review_date": earliest.isoformat() if hasattr(earliest, "isoformat") else earliest,
             # `kind` drives HOW age is read — see the vocabulary in data_gated_reviews.yaml.
             "kind": (e.get("kind") or "accrual"),
+            # #517 2026-08-17. Must be in the payload or the renderer that reads them is inert —
+            # exactly the 8/03 bug above, so pinned by the same producer-supplies-it test.
+            "evidence_flags": evidence_flags,
+            "last_run_inconclusive_on": (last_run_inconclusive_on.isoformat()
+                                          if hasattr(last_run_inconclusive_on, "isoformat")
+                                          else last_run_inconclusive_on),
+            "last_run_note": e.get("last_run_note"),
         }
+        # Only worth the extra DB round-trip for entries actually surfacing ready — a mismatch on
+        # a still-accumulating entry isn't actionable yet. Best-effort: a broken breakdown must
+        # never take the digest down with it (same posture as the predicate itself, above).
+        if is_ready and predicate_sql and evidence_flags["population_mismatch"]:
+            breakdown: dict[str, list] = {}
+            for tag in evidence_flags["population_mismatch"]:
+                col = tag.split(".", 1)[1]
+                bsql = build_population_breakdown_sql(predicate_sql, col)
+                if not bsql:
+                    continue
+                try:
+                    rows = await _evaluate_breakdown(bsql)
+                except Exception as exc:
+                    logger.warning(f"population breakdown failed for {review_id}.{tag}: {exc}")
+                    continue
+                if rows:
+                    breakdown[tag] = rows
+            if breakdown:
+                entry_summary["population_breakdown"] = breakdown
         if is_ready:
             ready.append(entry_summary)
         else:

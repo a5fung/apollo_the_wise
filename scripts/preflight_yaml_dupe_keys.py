@@ -110,6 +110,42 @@ def find_status_problems(src: str) -> list:
     return out
 
 
+# ── readiness sanity check, informational only (#517, 2026-08-17) ────────────────────────────
+# Reuses the pure (no-DB) detectors from data_gated_reviews.py so the definition lives in exactly
+# one place. Deliberately NOT wired into the hard-fail exit code below: 17 of the 132 entries
+# already registered flag on the population-mismatch rule (verified 2026-08-17 against prod
+# information_schema.columns), and turning this into a hard gate today would block every commit
+# on a backlog this task explicitly did not sign up to clear — see PLAN #517. Printed so a NEW
+# entry with either shape is visible at `git commit` time, same posture as the fanout check
+# above before it had a clean baseline to hard-fail from.
+def find_readiness_sanity_flags(src: str) -> list[tuple[str, str]]:
+    """(review_id, reason) for pending/deferred entries whose predicate is date-only or reads a
+    table without filtering a column that separates different questions. Info-only — printed,
+    never fails the commit."""
+    import yaml as _yaml
+    try:
+        doc = _yaml.safe_load(src)
+    except Exception:
+        return []
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    from agents.market_intelligence.data_gated_reviews import (
+        is_date_fire_predicate, find_population_mismatch,
+    )
+    out = []
+    for entry in (doc or {}).get("reviews") or []:
+        if not isinstance(entry, dict) or entry.get("status") not in ("pending", "deferred"):
+            continue
+        rid = entry.get("review_id", "<no id>")
+        sql = entry.get("predicate_sql")
+        if is_date_fire_predicate(sql):
+            out.append((rid, "predicate has no FROM clause — calendar-only, not evidence-gated"))
+        for tag in find_population_mismatch(sql):
+            out.append((rid, f"reads {tag.split('.')[0]} without filtering {tag.split('.')[1]}"))
+    return out
+
+
 def main() -> int:
     if not REGISTRY.exists():
         print(f"YAML lint: registry not found at {REGISTRY}", file=sys.stderr)
@@ -117,6 +153,13 @@ def main() -> int:
     src = REGISTRY.read_text(encoding="utf-8")
     issues = find_duplicate_keys(src)
     status_issues = find_status_problems(src) + find_fanout_predicates(src)
+    sanity_flags = find_readiness_sanity_flags(src)
+    if sanity_flags:
+        print(f"YAML lint INFO: {len(sanity_flags)} readiness-sanity flag(s) — not a commit "
+              f"blocker, see #517 in PLAN.md:")
+        for rid, reason in sanity_flags:
+            print(f"  {rid}: {reason}")
+        print()
     if status_issues:
         print(f"YAML lint FAILED: {len(status_issues)} entry(ies) with a missing/off-schema status.")
         print("The renderer surfaces ONLY status in (pending, deferred) — anything else is skipped")

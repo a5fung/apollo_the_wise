@@ -86,12 +86,25 @@ def test_the_ready_payload_carries_the_fields_the_renderer_keys_off():
     in production while these tests passed on fabricated dicts that DID have the field.
 
     Same class as /audit and /crypto shipping with working handlers and no registration: correct
-    code, wrong payload, nothing failing."""
+    code, wrong payload, nothing failing.
+
+    ⚠ 2026-08-17 (#517): bound to the actual closing brace, not a fixed-size slice. A hardcoded
+    `src[i:i+1600]` window is the SAME bug shape one level up — three fields (`evidence_flags`,
+    `last_run_inconclusive_on`, `last_run_note`) were added to this dict and one of them
+    (`last_run_note`) landed just past the old 1600-char cutoff, so this test would have kept
+    passing while silently no longer checking the field it was supposedly pinning."""
     src = open("agents/market_intelligence/data_gated_reviews.py").read()
     i = src.index("entry_summary = {")
-    block = src[i:i + 1600]
+    j = src.index("\n        }", i)          # the dict's own closing brace, not a guess at size
+    block = src[i:j]
     assert '"earliest_review_date"' in block, "renderer reads it; payload must supply it"
     assert '"kind"' in block
+    # #517 2026-08-17 — the readiness sanity check + mark-it-answered path. Same failure mode as
+    # the two fields above: correct detector code, but the renderer reads a key the producer
+    # never puts in the payload.
+    assert '"evidence_flags"' in block
+    assert '"last_run_inconclusive_on"' in block
+    assert '"last_run_note"' in block
 
 
 def test_a_quiet_tripwire_reports_SILENCE_not_staleness():

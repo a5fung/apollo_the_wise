@@ -902,6 +902,13 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         # watching telemetry, no write path back into alert_rank_shadow) — see that
         # module's own docstring for why this is not THE LINE breach this test guards.
         str(REPO / "agents/market_intelligence/health_checks.py"),
+        # 2026-08-17 (#517): the readiness-sanity population-mismatch check's static table->
+        # discriminating-column map includes `mi_alert_rank_shadow` (it has `account_mode`,
+        # per prod information_schema.columns) purely as a STRING KEY for regex analysis of
+        # OTHER entries' predicate_sql text — it never imports the module, queries the table,
+        # or touches any decision path. Same non-decision, read-only-adjacent shape as the
+        # health_checks.py exemption directly above.
+        str(REPO / "agents/market_intelligence/data_gated_reviews.py"),
         str(REPO / "tests/test_alert_rank_shadow.py"),
         str(REPO / "tests/test_detector_liveness_543.py"),
     }
