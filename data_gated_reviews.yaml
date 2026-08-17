@@ -2388,8 +2388,15 @@ reviews:
       -- Count distinct mi_live_trades rows with skip_reason starting
       -- `setup:stop_too_wide`. Each represents one rejection where the
       -- missed-EP outcomes pipeline will populate 5d/20d forward returns.
+      -- ⚠ FIXED 2026-08-17: this counted EVERY strategy's stop_too_wide skip, not
+      -- MAGNA53's. Verified on prod the same day: 9 magna53 + 8 9m_day2 share the
+      -- prefix, so the gate read 13+ and fired while the cohort this review is ABOUT
+      -- stood at 9 — below its own N>=10 bar. Same defect class as
+      -- exposure_family_cap_promotion (#517): an entry that marks itself READY on a
+      -- question it cannot answer.
       SELECT COUNT(*) FROM mi_live_trades
       WHERE skip_reason LIKE 'setup:stop_too_wide%'
+        AND signal_type = 'magna53'
         AND alert_date >= '2026-05-05'
         AND alert_date <= CURRENT_DATE - INTERVAL '25 days';
         -- 25-day lag = 20d forward outcome settled + buffer
@@ -8311,6 +8318,34 @@ reviews:
     threshold: 700
     earliest_review_date: 2026-08-25
     status: pending
+    last_run_inconclusive_on: 2026-08-17
+    last_run_note: >-
+      RAN 2026-08-17 and returned to PENDING — it fired early on the mis-scoped
+      predicate above. Real MAGNA53 cohort is 9 (5 settled and fill-plausible), so the
+      N>=10-settled bar was never met. Findings kept because they are real:
+
+      AIP — one of the two seed cases that motivated this review — does NOT survive
+      contact with our actual mechanics. Run through the real bracket, AIP nets -1.14
+      ADR (a genuine loser) while STRL nets +1.31 ADR (a genuine winner, near the
+      baseline's own top decile). Half the original worry was an artifact of judging on
+      raw forward return instead of what our bracket would have kept.
+
+      The properly-scoped comparison is a WASH: the 5 settled fill-plausible rejects
+      (STRL, EVER, AIP, CORT, AEVA) sit at -0.31 ADR median against a baseline of -0.35
+      ADR. Two more (GO, PONY) were excluded as near-certain non-fills — a call
+      validated against 77 real fill outcomes, where near-zero headroom predicts
+      non-fill 95% of the time.
+
+      🔑 ONE MECHANICAL FINDING WORTH CARRYING regardless of this filter: the profit
+      target is fixed in DOLLAR terms, so a wide-opening-range name must travel roughly
+      2.5x more of its OWN daily range to reach it. That is a structural headwind on
+      wide-range names under the current bracket, independent of stock quality. It bears
+      on both (a) widen the multiple and (b) change the anchor without resolving either.
+
+      VERDICT: no change, and explicitly NOT a finding that the filter is correctly
+      tuned — there is not enough signal either way at this N. Re-fires at a true
+      MAGNA53 N>=10 under the corrected predicate.
+      Doc: docs/analysis/stop_too_wide_outcome_cohort_2026-08-17.md
     action_when_ready: |
       Re-run (both READ-ONLY, in apollo-market):
         docker exec apollo-market python scripts/probes/_331_gap_alignment_evidence.py
