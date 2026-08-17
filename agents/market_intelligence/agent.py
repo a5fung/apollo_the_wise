@@ -137,6 +137,37 @@ def _normalize_slash_cmd(token: str) -> str:
     return "/" + re.sub(r"[^a-z0-9_]+", "", (token or "").split("@")[0].lower())
 
 
+def _render_promote_result(res: dict, query_label: str) -> str:
+    """Status -> Telegram-text rendering for a `theme_engine.promote_candidate_by_name`
+    result — shared by the typed `/promotetheme <name>` command AND the one-tap button
+    (`/promotetheme_id <hash>`, operator 2026-08-17) so the two surfaces can never render
+    the SAME status differently. `query_label` is what the operator sees echoed back in
+    the not_found/ambiguous edge messages — the typed text for the command path, the
+    already-resolved candidate name for the button path (that branch shouldn't fire on
+    the button path in practice, since the button always resolves an EXACT name that was
+    just read from the same table, but it must still render sanely if it ever does)."""
+    st = res["status"]
+    if st == "not_found":
+        avail = res.get("available") or []
+        more = ("\n\nAvailable candidates (last 7d):\n" + "\n".join(f"  • {n}" for n in avail)
+                if avail else "\n\n(No emerging-theme candidates in the last 7 days.)")
+        return f"No candidate matches `{query_label}`.{more}"
+    if st == "ambiguous":
+        ms = "\n".join(f"  • {n}" for n in res["matches"])
+        return (f"`{query_label}` is ambiguous — {len(res['matches'])} matches:\n{ms}\n\n"
+                f"Use the full name.")
+    if st == "too_few":
+        return f"*{res['name']}* has only {res['n_members']} member(s) — need ≥3. Not promoted."
+    if st == "noop":
+        return f"*{res['name']}* is already a live theme — left intact (nothing to do)."
+    tk = " ".join(res["tickers"])
+    rename = (f"\n(canonicalized from \"{res['orig_name']}\" — its ticker-set already matched a "
+              f"live theme's name)" if res.get("canonicalized") else "")
+    return (f"✅ Promoted *{res['name']}* to a live theme ({res['n_members']} members).\n`{tk}`{rename}\n\n"
+            f"It now flows through the normal theme lifecycle — re-discovered daily while the cohort "
+            f"co-moves, ages out if it dissolves.")
+
+
 # ── Operator ground-truth command parsing (#254) ────────────────────────────────
 # Pure, DB-free parsers so the arg-handling is unit-testable in isolation. Both share
 # the leading "TICKER [YYYY-MM-DD]" shape; positional after that.
@@ -4893,29 +4924,64 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as e:
             logger.exception(f"promotetheme failed: {e}")
             return self._error(request, f"Promote failed: {e}")
-        st = res["status"]
-        if st == "not_found":
-            avail = res.get("available") or []
-            more = ("\n\nAvailable candidates (last 7d):\n" + "\n".join(f"  • {n}" for n in avail)
-                    if avail else "\n\n(No emerging-theme candidates in the last 7 days.)")
-            return self._ok(request, result=f"No candidate matches `{body}`.{more}")
-        if st == "ambiguous":
-            ms = "\n".join(f"  • {n}" for n in res["matches"])
+        return self._ok(request, result=_render_promote_result(res, body))
+
+    async def _handle_promotetheme_id(self, request: AgentRequest) -> AgentResponse:
+        """One-tap button target for the 🔭 Emerging-theme synthesis alert (operator ask
+        2026-08-17: "is it possible make this even easier like with one-click" — typing the
+        long theme name by hand). Internal-only dispatch key — never a user-typed/registered
+        command (like /eps_detail, /trades_detail, /themes_detail); only the Telegram callback
+        button (channels/telegram.py `tpromo:` prefix) ever sends it.
+
+        Telegram's callback_data is capped at 64 BYTES — far too small for a name like
+        "Resilient PNT: GPS-Alternative Timing & Navigation Infrastructure" — so the button
+        carries a short deterministic hash of the name instead (`theme_synthesis.
+        theme_candidate_short_id`, computed identically at alert-build time and here). This
+        resolves the hash back to a name against the SAME `get_shadow_theme_candidates(days=7,
+        include_probe=True)` window `promote_candidate_by_name` itself re-reads, then calls
+        THAT function — zero promotion-logic duplication, byte-identical outcome to typing
+        `/promotetheme <name>`.
+
+        Stale taps: if the hash matches no candidate in the current 7-day window (aged out,
+        or the row's name changed under a re-run), we refuse with a clear message rather than
+        guess — never silently promote a different candidate. If the hash DOES resolve, the
+        cohort's ticker set may have drifted since the alert was sent (the shadow lane
+        upserts in place); that's identical to the typed command's own behavior — it promotes
+        current membership, not a snapshot — and `_render_promote_result` echoes the actual
+        tickers that landed, so the operator sees exactly what happened rather than assuming
+        the alert's original list.
+
+        Double taps: no dedup here — a second tap re-resolves the same hash to the same name
+        and re-calls `promote_candidate_by_name`, which is itself idempotent (re-upserts the
+        same row; `noop` fires once the row is a native live theme). Not this function's
+        concern to alter (THE LINE: promotion behavior itself is off-limits)."""
+        import re as _re
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.db import get_shadow_theme_candidates
+        from agents.market_intelligence.theme_engine import promote_candidate_by_name
+        from agents.market_intelligence.theme_synthesis import theme_candidate_short_id
+
+        short_id = _re.sub(r'^\s*/?promotetheme_id\b\s*', '', request.task or '', count=1,
+                            flags=_re.IGNORECASE).strip()
+        if not short_id:
+            return self._ok(request, result="Missing candidate id.")
+        try:
+            cands = await get_shadow_theme_candidates(days=7, include_probe=True)
+        except Exception as e:
+            logger.exception(f"promotetheme_id candidate lookup failed: {e}")
+            return self._error(request, f"Promote failed: {e}")
+        matches = [c for c in cands if theme_candidate_short_id(c.get("name") or "") == short_id]
+        if not matches:
             return self._ok(request, result=(
-                f"`{body}` is ambiguous — {len(res['matches'])} matches:\n{ms}\n\nUse the full name."))
-        if st == "too_few":
-            return self._ok(request, result=(
-                f"*{res['name']}* has only {res['n_members']} member(s) — need ≥3. Not promoted."))
-        if st == "noop":
-            return self._ok(request, result=(
-                f"*{res['name']}* is already a live theme — left intact (nothing to do)."))
-        tk = " ".join(res["tickers"])
-        rename = (f"\n(canonicalized from \"{res['orig_name']}\" — its ticker-set already matched a "
-                  f"live theme's name)" if res.get("canonicalized") else "")
-        return self._ok(request, result=(
-            f"✅ Promoted *{res['name']}* to a live theme ({res['n_members']} members).\n`{tk}`{rename}\n\n"
-            f"It now flows through the normal theme lifecycle — re-discovered daily while the cohort "
-            f"co-moves, ages out if it dissolves."))
+                "🔭 This candidate is no longer in the 7-day shadow window — it aged out, was "
+                "renamed, or was already handled. `/themes` for current candidates."))
+        name = matches[0]["name"]
+        try:
+            res = await promote_candidate_by_name(name, et_today())
+        except Exception as e:
+            logger.exception(f"promotetheme_id failed: {e}")
+            return self._error(request, f"Promote failed: {e}")
+        return self._ok(request, result=_render_promote_result(res, name))
 
     async def _handle_theme_lookup(self, request: AgentRequest) -> AgentResponse:
         """Two-way theme lookup. `/themes TICKER` → the themes it's in; `/themes <name>` → the
@@ -5451,6 +5517,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/9m":             self._handle_9m_ep_query,
             "/themes":         self._handle_theme_query,
             "/promotetheme":   self._handle_promotetheme,
+            "/promotetheme_id": self._handle_promotetheme_id,
             "/clusters":       self._handle_correlation_clusters,
             "/regime":         self._handle_regime_query,
             "/positions":      self._handle_watchlist,

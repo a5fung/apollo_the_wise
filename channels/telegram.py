@@ -1423,6 +1423,9 @@ class TelegramChannel:
         elif callback_data.startswith("ideas:"):
             await self._handle_ideas_drill_down(query, callback_data)
 
+        elif callback_data.startswith("tpromo:"):
+            await self._handle_theme_promote_callback(query, callback_data)
+
         else:
             pass  # query already answered above
 
@@ -1599,6 +1602,34 @@ class TelegramChannel:
                 await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
             except Exception:
                 await query.message.reply_text(result, reply_markup=markup)
+
+    async def _handle_theme_promote_callback(self, query, callback_data: str) -> None:
+        """tpromo: one-tap promote — the 🔭 Emerging-theme synthesis alert's button (operator
+        2026-08-17: "is it possible make this even easier like with one-click"). Forwards the
+        short id to the market agent's /promotetheme_id, which resolves it back to the
+        candidate name and promotes through the SAME promote_candidate_by_name the typed
+        /promotetheme command calls (agent.py) — no promotion logic duplicated here, this is
+        delivery-mechanism only. Authorization is the shared gate in _handle_callback_query
+        above (this method is only ever reached after that check passes).
+
+        Replies with a NEW message (mirrors _handle_hud_drill_down) rather than editing the
+        alert — the alert can carry several candidate buttons (one per cohort) and an edit
+        would blow away the OTHER candidates' buttons along with this one's, so a still-open
+        candidate must stay tappable after a sibling is promoted."""
+        short_id = callback_data.split(":", 1)[1]
+        user_id = query.from_user.id if query.from_user else 0
+        try:
+            result = await self._post_market_task(f"/promotetheme_id {short_id}", user_id)
+        except Exception as e:
+            logger.error(f"Theme-promote callback failed: {e}")
+            result = f"Error: {e}"
+        if result is None:
+            result = "Market agent not available."
+        try:
+            await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
+        except Exception as e:
+            logger.warning(f"Theme-promote reply markdown failed, retrying plain: {e}")
+            await query.message.reply_text(result)
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 

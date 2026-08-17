@@ -25,6 +25,7 @@ was proposed; silent runs are audit-only (feedback_alert_vs_audit).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import date
@@ -32,6 +33,10 @@ from datetime import date
 from shared.output_ceilings import max_tokens_for
 
 logger = logging.getLogger(__name__)
+
+# One-tap promote button callback prefix (operator 2026-08-17: "is it possible make this
+# even easier like with one-click"). Resolved server-side in agent.py._handle_promotetheme_id.
+PROMOTE_CALLBACK_PREFIX = "tpromo:"
 
 # Mechanical validation bounds (the grounded part — never LLM-judged).
 _MIN_MEMBERS = 3
@@ -149,6 +154,42 @@ def validate_cohorts(
     return kept, dropped
 
 
+def theme_candidate_short_id(name: str) -> str:
+    """Deterministic short id for a shadow theme-candidate NAME — the one-tap promote
+    button's callback_data (operator 2026-08-17). Telegram caps callback_data at 64
+    BYTES, far too small for a name like "Resilient PNT: GPS-Alternative Timing &
+    Navigation Infrastructure" (already over 64 bytes on its own). NOT a stored id —
+    recomputed from the name text both when the alert's buttons are built (this module,
+    at send time) and when a tap resolves it back (agent.py._handle_promotetheme_id,
+    matched against the SAME get_shadow_theme_candidates(days=7, include_probe=True)
+    window promote_candidate_by_name itself re-reads). No schema change, no id column,
+    no mapping that can go stale independently of the candidate row itself."""
+    return hashlib.sha1(name.strip().encode("utf-8")).hexdigest()[:12]
+
+
+def _button_label(name: str, max_len: int = 40) -> str:
+    """Button text is NOT parsed as Markdown/HTML by Telegram — use the raw name
+    (unescaped), just length-capped so a long theme name doesn't wrap awkwardly."""
+    name = name.strip()
+    return name if len(name) <= max_len else name[: max_len - 1].rstrip() + "…"
+
+
+def build_synthesis_keyboard(kept: list[dict]) -> dict:
+    """Inline keyboard for the synthesis alert — one 'Promote' button per kept cohort,
+    the tappable alternative to typing `/promotetheme <name>` (operator 2026-08-17).
+    One row per cohort so each is independently tappable; the alert can carry several
+    candidates and tapping one must never disturb the others' buttons."""
+    return {
+        "inline_keyboard": [
+            [{
+                "text": f"✅ Promote: {_button_label(c['name'])}",
+                "callback_data": f"{PROMOTE_CALLBACK_PREFIX}{theme_candidate_short_id(c['name'])}",
+            }]
+            for c in kept
+        ]
+    }
+
+
 def _candidate_line(signal: str, r: dict, desc: str | None) -> str:
     rs_now = r.get("rs_now") if r.get("rs_now") is not None else r.get("rs_composite")
     path = "→".join(
@@ -177,8 +218,9 @@ def format_synthesis_digest(kept: list[dict]) -> str:
         "\n<i>RS-slope cohorts, cross-sector. Already feeds the judge's narrative axis (advisory).</i>"
     )
     lines.append(
-        "▶ To promote one to a live theme (your judgment): <code>/promotetheme &lt;name&gt;</code> "
-        "— it then behaves like any other theme (re-discovered while the cohort co-moves)."
+        "▶ Tap a button below to promote one to a live theme (your judgment) — or type "
+        "<code>/promotetheme &lt;name&gt;</code>. It then behaves like any other theme "
+        "(re-discovered while the cohort co-moves)."
     )
     return "\n".join(lines)
 
@@ -295,7 +337,10 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
 
     if kept:
         from agents.market_intelligence.briefing import send_telegram_message
-        await send_telegram_message(format_synthesis_digest(kept), parse_mode="HTML")
+        await send_telegram_message(
+            format_synthesis_digest(kept), parse_mode="HTML",
+            reply_markup=build_synthesis_keyboard(kept),
+        )
 
     return {"n_candidates": len(by_ticker), "n_proposed": len(proposed),
             "n_kept": len(kept), "dropped": dropped, "written": n_written}

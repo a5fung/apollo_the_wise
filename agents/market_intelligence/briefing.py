@@ -2460,7 +2460,8 @@ def _strip_markdown_markers(text: str) -> str:
 
 
 async def send_telegram_message(
-    text: str, chat_id: int | None = None, parse_mode: str = "Markdown"
+    text: str, chat_id: int | None = None, parse_mode: str = "Markdown",
+    reply_markup: dict | None = None,
 ) -> bool:
     """Send a message directly via Telegram Bot API. Splits if over 4000 chars.
 
@@ -2468,7 +2469,20 @@ async def send_telegram_message(
     parse_mode="HTML" for surfaces migrated to the shared HTML layer
     (shared/telegram_format, #121) — HTML has a total escape so dynamic values
     can't break the parse. On a 400 the message still lands as plain text (markup
-    stripped for the active mode)."""
+    stripped for the active mode).
+
+    reply_markup (added for the 🔭 theme-synthesis one-tap-promote buttons, operator
+    2026-08-17: "is it possible make this even easier like with one-click") — a plain
+    JSON-serializable dict, e.g. {"inline_keyboard": [[{"text": ..., "callback_data":
+    ...}]]}. This function talks to the raw Bot HTTP API (not the python-telegram-bot
+    Application), so it takes the dict shape directly and JSON-serializes it into the
+    payload itself — reply_markup is documented as a JSON-serialized object string,
+    the one form the Bot API accepts under every request encoding (a bare nested dict
+    only works for a pure application/json body). Default None -> no 'reply_markup'
+    key at all, so every pre-existing caller's payload is byte-identical to before
+    this param existed. Attached to exactly ONE chunk — the LAST — when a long
+    message splits; earlier chunks never carry it (never duplicated)."""
+    import json as _json
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not chat_id:
         allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
@@ -2511,7 +2525,8 @@ async def send_telegram_message(
             return _html.unescape(_re.sub(r"<[^>]+>", "", chunk))
         return _strip_markdown_markers(chunk)
 
-    async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool) -> httpx.Response:
+    async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool,
+                     markup: dict | None) -> httpx.Response:
         payload: dict[str, Any] = {
             "chat_id": chat_id,
             "text": chunk if formatted else _to_plain(chunk),
@@ -2519,14 +2534,19 @@ async def send_telegram_message(
         }
         if formatted:
             payload["parse_mode"] = parse_mode
+        if markup:
+            payload["reply_markup"] = _json.dumps(markup)
         return await client.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
         )
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            for chunk in chunks:
-                r = await _post(client, chunk, formatted=True)
+            last_idx = len(chunks) - 1
+            for idx, chunk in enumerate(chunks):
+                # Only the LAST chunk carries the markup — never duplicated across a split.
+                chunk_markup = reply_markup if idx == last_idx else None
+                r = await _post(client, chunk, formatted=True, markup=chunk_markup)
                 if r.status_code == 400:
                     # Likely malformed markup — retry as plain text so the alert
                     # still lands. Parse failures otherwise vanish silently.
@@ -2555,7 +2575,7 @@ async def send_telegram_message(
                         f"Telegram 400 with {parse_mode} — retrying plain text. "
                         f"body={body} offset_snippet={snippet!r}"
                     )
-                    r2 = await _post(client, chunk, formatted=False)
+                    r2 = await _post(client, chunk, formatted=False, markup=chunk_markup)
                     if r2.status_code >= 400:
                         await log_audit_event(
                             "telegram_send_failed",
