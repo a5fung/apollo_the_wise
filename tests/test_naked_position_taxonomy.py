@@ -167,6 +167,24 @@ def test_formatter_db_drift_only():
     assert "sync_positions" in text  # recovery guidance
 
 
+def test_formatter_drill_sql_is_fenced_and_row_labels_escaped():
+    """2026-08-16 sibling fix: this formatter had the SAME bare-interpolation bug as
+    `_format_l1_alert` — `alert_date=`/`filled_at=` row labels and the drill SQL
+    (containing `mi_live_trades`, `stop_order_id`) were bare, so Telegram Markdown
+    would consume their underscores as italics delimiters exactly like the L1
+    incident. MUTATION TARGET: reverting the backtick wrap on the row line or the
+    ``` fence on drill_sql back to bare interpolation."""
+    from agents.market_intelligence.system_audit import _format_naked_position_alert
+    drill = "SELECT ticker, stop_order_id FROM mi_live_trades WHERE status='filled';"
+    text = _format_naked_position_alert({
+        "real_naked": [{"ticker": "AAPL", "alert_date": "2026-05-28", "filled_at": None}],
+        "db_drift": [],
+        "drill_sql": drill,
+    })
+    assert "`AAPL alert_date=2026-05-28 filled_at=None`" in text
+    assert f"```\n{drill}\n```" in text
+
+
 def test_formatter_renders_both_sections():
     """Mixed cohort: render both sections with divider."""
     from agents.market_intelligence.system_audit import _format_naked_position_alert

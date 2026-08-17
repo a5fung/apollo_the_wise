@@ -21,6 +21,7 @@ mutation results reported alongside the change).
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -194,8 +195,11 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
 # or silently changing outcomes in the other orchestration tests — keeping each
 # mutation isolated to its one dedicated test.
 
-def _wire(monkeypatch, *, per_table, dedupe_rows=None):
-    """per_table: dict table -> (last_write: date|None, active_day_rows: list[dict d=date]], raises: Exception|None)."""
+def _wire(monkeypatch, *, per_table, dedupe_rows=None, history_rows=None):
+    """per_table: dict table -> (last_write: date|None, active_day_rows: list[dict d=date]], raises: Exception|None).
+    history_rows: rows the #543-follow-up history read (prior calendar days' own
+    detector_liveness_check audit rows) should return — default [] (no prior sighting
+    of any table, i.e. every table's never_fired state, if any, is brand new today)."""
     pool, conn = make_mock_pool()
 
     async def _fetchval(sql, *a):
@@ -213,6 +217,8 @@ def _wire(monkeypatch, *, per_table, dedupe_rows=None):
     conn.fetchval = _fetchval
 
     async def _fetch(sql, *a):
+        if "event_type = 'detector_liveness_check'" in sql:
+            return history_rows or []
         for table, (_last_write, rows, raises) in per_table.items():
             if f'"{table}"' in sql and "DISTINCT" in sql:
                 if raises:
@@ -333,6 +339,131 @@ def test_per_table_dedupe_does_not_suppress_a_different_fresh_table(monkeypatch)
     assert len(sent) == 1
     assert "mi_flag_undercut_rally" in sent[0]
     assert "mi_anticipation_lifecycle" not in sent[0]  # suppressed by its own recent alert
+
+
+def _history_row(d: date, table: str) -> dict:
+    """One prior-night detector_liveness_check audit row showing `table` as never_fired
+    on calendar day `d` — the shape `_wire`'s history_rows mock returns."""
+    return {"d": d, "detail": json.dumps([{
+        "kind": "never_fired", "table": table, "label": "exit-path shadow",
+    }])}
+
+
+def test_never_fired_table_not_reported_on_first_sighting(monkeypatch):
+    """2026-08-16 incident: this whole check runs at 17:30 ET inside
+    post_nightly_audit, TWENTY MINUTES BEFORE mi_exit_path_shadow's own writer job
+    (17:50 ET) and mi_alert_rank_shadow's (17:53 ET) — both fired 🩺 "0 rows ever"
+    on deploy night despite being perfectly healthy, because neither had been given
+    its first chance to write by the time the check ran. A same-day clock/cron
+    comparison can't fix this (the checker precedes the writer EVERY evening,
+    forever); the fix instead derives from this check's OWN run history: a table
+    is silenced from Telegram while inside its 45-day first-sighting grace window
+    (the SAME tolerance the sparse-cadence path already grants a table with too
+    little history — see test_cadence_ceiling_caps_a_high_variance_median).
+    MUTATION TARGET: reverting the in_grace suppression (i.e. a never_fired flag
+    always speaks, as before the fix). Then `sent` is non-empty and names
+    mi_exit_path_shadow — reproducing tonight's false alarm deterministically."""
+    tables = dict(_HEALTHY_TABLES)
+    tables["mi_exit_path_shadow"] = (None, [], None)  # zero rows, ever
+    _conn, logged, sent = _wire(monkeypatch, per_table=tables)  # history_rows=None -> no prior sighting
+    out = asyncio.run(hc.run_detector_liveness_check())
+
+    flagged = next(f for f in out["flags"] if f["table"] == "mi_exit_path_shadow")
+    assert flagged["kind"] == "never_fired"
+    assert flagged["in_grace"] is True
+    assert flagged["first_seen_date"] == _TODAY.isoformat()
+    assert sent == []  # nothing else is dark in this fixture -> no Telegram at all
+
+    # Still PERSISTED (unconditionally, flagged or not) so a later night's history
+    # read can find it — in_grace suppresses speaking, not recording.
+    check_details = [d for e, _, d in logged if e == "detector_liveness_check"]
+    assert any(
+        '"table": "mi_exit_path_shadow"' in d and '"kind": "never_fired"' in d
+        for d in check_details
+    )
+
+
+def test_never_fired_table_stays_silent_deep_inside_the_grace_window(monkeypatch):
+    """mi_exit_path_shadow writes one row per LIVE trade per day — with zero
+    eligible live trades on a given day it correctly writes NOTHING (see
+    record_exit_path_shadow's population/written counters), and that is NORMAL,
+    not broken. So a table seen never_fired on just ONE prior day (a single quiet
+    day, not 45 of them) must NOT alarm yet — the exact "day 2" cry-wolf a bare
+    one-night grace would still produce.
+    MUTATION TARGET: shrinking or dropping the grace window (e.g. any history at
+    all ends the grace, as an earlier draft of this fix did). Then this table
+    would speak after just one prior sighting."""
+    tables = dict(_HEALTHY_TABLES)
+    tables["mi_exit_path_shadow"] = (None, [], None)  # still zero rows, ever
+    history_rows = [_history_row(_TODAY - timedelta(days=1), "mi_exit_path_shadow")]
+    _conn, logged, sent = _wire(monkeypatch, per_table=tables, history_rows=history_rows)
+    out = asyncio.run(hc.run_detector_liveness_check())
+
+    flagged = next(f for f in out["flags"] if f["table"] == "mi_exit_path_shadow")
+    assert flagged["in_grace"] is True
+    assert flagged["first_seen_date"] == (_TODAY - timedelta(days=1)).isoformat()
+    assert sent == []
+
+
+def test_never_fired_table_alarms_once_the_grace_window_elapses(monkeypatch):
+    """Same table, still zero rows — but this check's own history shows its
+    EARLIEST never_fired sighting was 45+ days ago (matching
+    `_DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS`, the same flat floor the
+    sparse-cadence path already uses). A detector with zero output for that long
+    is genuinely dark and must alarm, exactly like mi_anticipation_lifecycle
+    (silent 62 days) and mi_flag_undercut_rally (silent 60 days) still do in the
+    cold-start test above.
+    MUTATION TARGET: suppressing in_grace flags FOREVER instead of only within
+    the window (e.g. always treating a table as in_grace, or letting TODAY's own
+    row count as the earliest sighting instead of the true history minimum).
+    Either mutation leaves this table silent forever — the exact months-long
+    blind spot #543 was built to close."""
+    tables = dict(_HEALTHY_TABLES)
+    tables["mi_exit_path_shadow"] = (None, [], None)  # still zero rows, ever
+    history_rows = [
+        _history_row(_TODAY - timedelta(days=45), "mi_exit_path_shadow"),
+        _history_row(_TODAY - timedelta(days=1), "mi_exit_path_shadow"),
+    ]
+    _conn, logged, sent = _wire(monkeypatch, per_table=tables, history_rows=history_rows)
+    out = asyncio.run(hc.run_detector_liveness_check())
+
+    flagged = next(f for f in out["flags"] if f["table"] == "mi_exit_path_shadow")
+    assert "in_grace" not in flagged  # anchored to the EARLIEST sighting (45d ago), not the latest (1d ago)
+    assert len(sent) == 1
+    assert "mi_exit_path_shadow" in sent[0]
+
+
+def test_history_read_failure_fails_open_toward_silence_not_alarm(monkeypatch):
+    """The #543-follow-up history read can itself fail (DB hiccup). It must fail
+    OPEN toward treating every table as newly-first-seen (grace restarts, one
+    extra silent stretch for a genuinely-dead table) — never toward fabricating a
+    false alarm out of a lost read, mirroring the announce-dedupe fail-open a few
+    lines below it.
+    MUTATION TARGET: letting the history-read exception propagate uncaught (would
+    abort the whole run — `out["errors"]` would carry a `pool` failure and NO
+    table would get scanned) instead of being swallowed locally."""
+    tables = dict(_HEALTHY_TABLES)
+    tables["mi_exit_path_shadow"] = (None, [], None)
+    _conn, logged, sent = _wire(monkeypatch, per_table=tables)
+
+    async def _boom(sql, *a):
+        if "event_type = 'detector_liveness_check'" in sql:
+            raise RuntimeError("db hiccup")
+        raise AssertionError(f"unexpected fetch SQL: {sql}")
+    # Patch just the history query; delegate everything else to the normal mock.
+    orig_fetch = _conn.fetch
+
+    async def _fetch_with_history_failure(sql, *a):
+        if "event_type = 'detector_liveness_check'" in sql:
+            return await _boom(sql, *a)
+        return await orig_fetch(sql, *a)
+    _conn.fetch = _fetch_with_history_failure
+
+    out = asyncio.run(hc.run_detector_liveness_check())
+    assert out["tables_scanned"] == 9  # sweep proceeded despite the failed history read
+    flagged = next(f for f in out["flags"] if f["table"] == "mi_exit_path_shadow")
+    assert flagged["in_grace"] is True  # failed open -> treated as newly first-seen -> silent
+    assert sent == []
 
 
 def test_one_bad_table_does_not_kill_the_sweep(monkeypatch):

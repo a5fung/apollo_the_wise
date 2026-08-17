@@ -60,7 +60,7 @@ from __future__ import annotations
 import json
 import logging
 import statistics
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -1507,8 +1507,20 @@ async def run_db_growth_check() -> dict[str, Any]:
 # as a plain DATE, crash the per-table try/except, and the table would just never get
 # checked (the failure class this whole registry exists to prevent). ⚠ Both tables are
 # EMPTY as of this commit — they read as `never_fired` until their first scheduled run
-# (17:50 / 17:53 ET respectively); that is expected and self-resolving on first fire, not
-# a bug to chase.
+# (17:50 / 17:53 ET respectively).
+#
+# 2026-08-17 follow-up: the line above was aspirational, not implemented — this whole
+# check runs inside post_nightly_audit at 17:30 ET, TWENTY MINUTES BEFORE either writer's
+# own cron slot, so on deploy night both tables alarmed immediately ("Detectors gone
+# quiet ... 0 rows ever") despite being perfectly healthy; a table simply cannot have
+# written yet when the check that judges it runs first. A same-day clock comparison can't
+# fix this: the checker precedes the writer EVERY evening, forever, so "hasn't fired yet
+# today" is true on night 1 AND on night 1000 of a genuinely broken detector — it would
+# suppress permanently, not just once. Fixed instead via `_evaluate_table_liveness`'s own
+# run history (see `run_detector_liveness_check`): a `never_fired` table is only silenced
+# the FIRST calendar day it is ever seen never_fired; if it is still never_fired on any
+# later day, that means a full day-night cycle already passed with its writer given every
+# chance, and it alarms for real. Self-resolving on first fire is genuinely true now.
 _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # (table, label, date/timestamp column, extra WHERE clause or None)
     ("mi_anticipation_lifecycle", "anticipation lifecycle (#270)", "created_at", None),
@@ -1606,6 +1618,57 @@ async def run_detector_liveness_check() -> dict[str, Any]:
     try:
         pool = await get_pool()
         async with pool.acquire() as c:
+            # #543 follow-up (2026-08-17): don't judge a table whose writer hasn't had its
+            # FIRST chance to run yet as "gone quiet" — see the registry header above for why
+            # this can't be a same-day clock/cron comparison (checker always runs before the
+            # writer, every night, forever — that comparison would suppress a genuinely-dead
+            # detector permanently, not just once). A single-night grace isn't enough either:
+            # mi_exit_path_shadow writes one row per LIVE trade per day — with zero eligible
+            # live trades on a given day it correctly writes NOTHING, and that is normal, not
+            # broken (see record_exit_path_shadow's population/written counters). A quiet
+            # 2-live-trade stretch would otherwise alarm on day 2 exactly like tonight, one
+            # day later. So a never_fired table gets the SAME patience an established table
+            # with too little history already gets in the cadence branch below
+            # (_DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS, the sparse-path flat floor) — no new
+            # policy, just applying the existing "not enough signal yet" tolerance to the
+            # zero-signal case too. Anchor date = the EARLIEST calendar day this exact table
+            # was ever flagged never_fired in this check's own run history (unconditional
+            # every night it's dark — see _evaluate_table_liveness's never_fired branch — so
+            # the earliest row is a reliable "since when have we been watching this table"
+            # marker, immune to a cron-time reshuffle). mi_audit_log.detail is TEXT, parsed
+            # Python-side, malformed rows skipped (mirrors get_judge_grade_decisions_for_date's
+            # established pattern in db.py).
+            first_never_fired_date: dict[str, date] = {}
+            try:
+                hist_rows = await c.fetch(
+                    "SELECT (created_at AT TIME ZONE 'America/New_York')::date AS d, detail "
+                    "FROM mi_audit_log "
+                    "WHERE event_type = 'detector_liveness_check' "
+                    "AND (created_at AT TIME ZONE 'America/New_York')::date < $1::date "
+                    "ORDER BY (created_at AT TIME ZONE 'America/New_York')::date ASC",
+                    today,
+                )
+                for r in hist_rows:
+                    try:
+                        row_date = r["d"]
+                        for entry in json.loads(r["detail"] or "[]"):
+                            table_name = entry.get("table")
+                            if entry.get("kind") == "never_fired" and table_name:
+                                # ASC order -> first write wins -> earliest sighting kept.
+                                first_never_fired_date.setdefault(table_name, row_date)
+                    # Narrow, matching db.py::get_judge_grade_decisions_for_date's established
+                    # pattern for this exact table (mi_audit_log.detail is TEXT and can hold
+                    # malformed rows) — one bad history row must not lose the rest.
+                    except (ValueError, TypeError, AttributeError, KeyError):
+                        continue
+            except Exception as e:
+                # Fail open toward SUPPRESSING, not alarming — mirrors the announce-dedupe
+                # fail-open below. Worst case a genuinely-dead table stays silent one extra
+                # night; a lost history read can never manufacture a false alarm from this.
+                logger.warning(
+                    "detector_liveness_check: history read failed "
+                    "(treating all tables as first-seen this run): %s", e)
+
             for table, label, date_col, extra_where in _DETECTOR_LIVENESS_TABLES:
                 try:
                     is_ts = _detector_liveness_col_is_timestamp(date_col)
@@ -1633,6 +1696,19 @@ async def run_detector_liveness_check() -> dict[str, Any]:
                     out["tables_scanned"] += 1
                     flag = _evaluate_table_liveness(active_days, last_write, today)
                     if flag is not None:
+                        # never_fired within its grace window -> tag in_grace so it still gets
+                        # PERSISTED (tomorrow's history read needs the earliest-sighting date)
+                        # but does not speak tonight. Once the grace window elapses with the
+                        # table STILL never_fired, it goes untagged and speaks normally —
+                        # cadence/sparse flags (tables with SOME history) are untouched.
+                        if flag["kind"] == "never_fired":
+                            first_seen = first_never_fired_date.get(table, today)
+                            days_in_grace = (today - first_seen).days
+                            if days_in_grace < _DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS:
+                                flag = {
+                                    **flag, "in_grace": True,
+                                    "first_seen_date": first_seen.isoformat(),
+                                }
                         out["flags"].append({**flag, "table": table, "label": label})
                 except Exception as e:  # one bad table must not kill the sweep
                     logger.warning("detector_liveness_check: table %s failed: %s", table, e)
@@ -1679,7 +1755,13 @@ async def run_detector_liveness_check() -> dict[str, Any]:
         logger.warning("detector_liveness_check: dedupe read failed (will announce): %s", e)
         recently_announced = set()
 
-    fresh = [f for f in out["flags"] if f["table"] not in recently_announced]
+    # in_grace (a never_fired table still inside its 45-day first-sighting window,
+    # #543 follow-up above) never speaks — it exists in out["flags"] only so a later
+    # night's history read can find the earliest-sighting date and keep counting from it.
+    fresh = [
+        f for f in out["flags"]
+        if f["table"] not in recently_announced and not f.get("in_grace")
+    ]
     if not fresh:
         return out
 

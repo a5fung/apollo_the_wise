@@ -1336,9 +1336,11 @@ def _format_naked_position_alert(body: dict) -> str:
         sections.append("")
         sections.append("These positions have real $ exposure with no broker-side stop:")
         for r in real_naked[:6]:
+            # Backtick the row — alert_date=/filled_at= are underscore identifiers, same
+            # Markdown-italics break class as _format_l1_alert (2026-08-17 fix).
             sections.append(
-                f"  • {r.get('ticker')} alert_date={r.get('alert_date')} "
-                f"filled_at={r.get('filled_at')}"
+                f"  • `{r.get('ticker')} alert_date={r.get('alert_date')} "
+                f"filled_at={r.get('filled_at')}`"
             )
         sections.append("")
         # #507 (2026-07-28): the ask must match what the operator can actually
@@ -1374,7 +1376,7 @@ def _format_naked_position_alert(body: dict) -> str:
         sections.append("These positions are broker-protected; only Apollo's DB is wrong:")
         for r in db_drift[:6]:
             sections.append(
-                f"  • {r.get('ticker')} alert_date={r.get('alert_date')}"
+                f"  • `{r.get('ticker')} alert_date={r.get('alert_date')}`"
             )
         sections.append("")
         sections.append(
@@ -1385,33 +1387,48 @@ def _format_naked_position_alert(body: dict) -> str:
     if drill:
         sections.append("")
         sections.append("Drill-down:")
-        sections.append(drill)
+        # Fence the SQL — same rationale as _format_l1_alert/_format_l2_alert: table/column
+        # names here (mi_live_trades, stop_order_id, filled_at) are underscore identifiers.
+        sections.append(f"```\n{drill}\n```")
     return "\n".join(sections)
 
 
 def _format_l1_alert(name: str, body: dict) -> str:
+    """Render L1 Telegram alert.
+
+    All identifier-bearing content is backtick/fenced (2026-08-17 fix): every field here
+    can carry underscore identifiers (invariant name, `'*_error'`-style summaries,
+    `event_type: n` offending rows, table/column names in drill SQL, `module.py::func`
+    code pointers) and Telegram Markdown treats a bare `_` as an italics delimiter. With
+    plain interpolation, underscores across the WHOLE message pair up arbitrarily and get
+    consumed as formatting — `silent_audit_error_window` rendered as `silentauditerrorwindow`
+    and the drill SQL came through with every underscore stripped, unpasteable into psql.
+    Same fix class as `_format_l2_alert` (metric name backticked, drill SQL fenced,
+    #121) — L1 predates that fix and was never brought in line with it.
+    """
     summary = body.get("summary", "")
     offending = body.get("offending") or []
     drill = body.get("drill_sql", "")
     pointers = body.get("code_pointers") or []
     lines = [
-        f"🚨 INVARIANT BREACH [L1] · {name}",
+        f"🚨 INVARIANT BREACH [L1] · `{name}`",
         "",
-        summary,
+        f"`{summary}`" if summary else summary,
     ]
     if offending:
         lines.append("")
         for s in offending[:6]:
-            lines.append(f"  • {s}")
+            lines.append(f"  • `{s}`")
     if drill:
         lines.append("")
         lines.append("Drill-down:")
-        lines.append(drill)
+        # Fence the SQL — identical rationale to _format_l2_alert: makes `*` and `_` literal.
+        lines.append(f"```\n{drill}\n```")
     if pointers:
         lines.append("")
         lines.append("Code pointers:")
         for p in pointers:
-            lines.append(f"  {p}")
+            lines.append(f"  `{p}`")
     return "\n".join(lines)
 
 
