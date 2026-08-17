@@ -55,8 +55,6 @@ _PEAK_MATCH_TOL = 0.005
 # masquerade as bar-level precision.
 _MIN_BARS_FOR_WHEN = 3
 
-_VERDICT_ABBR = {"HOLD": "H", "PARTIAL_TAKE": "PT", "TRAIL_TIGHTEN": "TT", "FORCE_EXIT": "FX"}
-
 
 def trade_risk_per_share(trade: dict) -> Optional[float]:
     """Original entry risk per share: entry − hard_stop, falling back to entry − orb_low.
@@ -453,6 +451,42 @@ def _r(v, digits: int = 1) -> str:
     return f"{v:+.{digits}f}R" if v is not None else "R?"
 
 
+def _plural(n: int, word: str) -> str:
+    """'1 trade' / '3 trades' — every count in the renderer carries a unit word."""
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
+# Human strategy names, mirroring mi_strategies rows (db.py ~170/198: "MAGNA53 EP",
+# "9M Day 2 ORB") — a lookup for DISPLAY only, no new data source. Unknown signal_types
+# (a future strategy) fall back to a title-cased version of the code rather than the raw
+# underscored id, so a new strategy can't reintroduce the same lingo this cleanup removes.
+_SIGNAL_DISPLAY = {"magna53": "MAGNA53 EP", "9m_day2": "9M Day 2"}
+
+# entry_mode values on mi_consolidation_entry_shadow — display words only.
+_CONSOL_MODE_DISPLAY = {"anticipate": "early entry", "confirm": "confirmed entry"}
+
+# The extremes-poll peak marker's meaning, inlined at every occurrence (never a bottom
+# footnote the reader has to jump to and decode) — same wording everywhere, so a record
+# reads identically whether or not a CLOSED-today block happens to sit above it.
+_APPROX_NOTE = "peak may be understated — 5-min estimate"
+
+
+def _signal_display(signal_type: Optional[str]) -> str:
+    if not signal_type:
+        return "?"
+    return _SIGNAL_DISPLAY.get(signal_type, signal_type.replace("_", " ").title())
+
+
+def _mode_tag(account_mode: Optional[str]) -> str:
+    """Account mode as words, e.g. '(paper trading)'. Live is the default and unmarked."""
+    mode = account_mode or "live"
+    if mode == "live":
+        return ""
+    if mode == "paper":
+        return " (paper trading)"
+    return f" ({mode})"
+
+
 def _fmt_open_line(pos: dict, current_price: Optional[float]) -> Optional[str]:
     """One reach-vs-now line per OPEN position. None when the position has no R frame."""
     risk = trade_risk_per_share(pos)
@@ -464,73 +498,92 @@ def _fmt_open_line(pos: dict, current_price: Optional[float]) -> Optional[str]:
     now_r = (current_price - entry) / risk if current_price is not None else None
     stop = _f(pos.get("stop_price"))
     stop_r = (stop - entry) / risk if stop is not None else None
-    flags = ""
+    flags = []
     if stop is not None and stop > entry:
-        flags += " BE+"
+        flags.append("stop above entry")
     if pos.get("partial_taken"):
-        flags += " part"
-    return (f" {pos.get('ticker', ''):<5} d{pos.get('hold_days', 0)}  "
-            f"peak {_r(peak_r)} → now {_r(now_r)}  stop {_r(stop_r)}{flags}")
+        flags.append("partial taken")
+    flag_s = f"  ({', '.join(flags)})" if flags else ""
+    held = _plural(pos.get("hold_days", 0), "day")
+    return (f" {pos.get('ticker', ''):<5} held {held:<8} "
+            f"peak {_r(peak_r)} → now {_r(now_r)}  stop {_r(stop_r)}{flag_s}")
 
 
 def _fmt_recorded_line(rec: dict) -> str:
     """One recorded round trip: when it closed, what it reached (and when), what it kept,
-    plus the judge's last shadow verdict if one exists. `~` marks an extremes-sourced peak
-    (5-min poll floor — blind under ~10 min, window from 09:30)."""
-    approx = "~" if str(rec.get("peak_source") or "").startswith("extremes") else ""
-    when = ""
+    plus the judge's last shadow verdict if one exists. An extremes-sourced peak carries
+    the estimate note inline (see `_APPROX_NOTE`)."""
+    detail_parts = []
     if rec.get("peak_hold_day"):
-        when = f" d{rec['peak_hold_day']}"
+        day_part = f"day {rec['peak_hold_day']}"
         if rec.get("peak_time"):
-            when += f" {rec['peak_time'].astimezone(_ET).strftime('%H:%M')}"
+            day_part += f" {rec['peak_time'].astimezone(_ET).strftime('%H:%M')}"
+        detail_parts.append(day_part)
+    if str(rec.get("peak_source") or "").startswith("extremes"):
+        detail_parts.append(_APPROX_NOTE)
+    detail = f" ({', '.join(detail_parts)})" if detail_parts else ""
     judge = ""
     if rec.get("judge_last_verdict"):
-        judge = (f"  {_VERDICT_ABBR.get(rec['judge_last_verdict'], rec['judge_last_verdict'])}"
-                 f"@{_r(rec.get('judge_last_verdict_r'))}")
+        verdict_words = rec["judge_last_verdict"].replace("_", " ").lower()
+        judge = f" — judge: {verdict_words} at {_r(rec.get('judge_last_verdict_r'))}"
     close_day = rec.get("close_day")
     close_s = close_day.strftime("%m-%d") if close_day else "?"
-    mode = "" if (rec.get("account_mode") or "live") == "live" else f" ({rec['account_mode']})"
-    return (f" {close_s} {rec.get('ticker', ''):<5} {approx}{_r(rec.get('peak_r'))}{when}"
-            f" → {_r(rec.get('realized_r'))}{judge}{mode}")
+    mode = _mode_tag(rec.get("account_mode"))
+    return (f" {close_s} {rec.get('ticker', ''):<5} reached {_r(rec.get('peak_r'))}{detail}"
+            f" → kept {_r(rec.get('realized_r'))}{judge}{mode}")
 
 
 def format_sell_discipline_section(data: dict) -> str:
-    """Pure renderer. Monospace code block, no pipe tables, one idea per line.
+    """Pure renderer. Monospace code block, no pipe tables, one idea per line, plain words
+    (no d10/n=/p1-p2/@-tag shorthand — operator 2026-08-16: "really hard to read"). Blocks
+    are separated by a single-space line, never a bare blank line — `send_telegram_message`
+    splits long messages at the first "\\n\\n" it finds, and a bare blank line here would
+    give it a split point INSIDE this fence, leaving an unterminated ``` on a long day.
     `data` keys (all optional): open_lines [str], provisional [dict], recorded [dict],
     live_cohort {n,wins,reached_avg,kept_avg,partials,stop_above,regimes:[(name,n,kept)]},
     cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf, wick, giveback_n, pivot_cf}.
     Returns "" when there is nothing at all to show."""
-    body: list[str] = []
+    sections: list[list[str]] = []
 
-    if data.get("open_lines"):
-        body.append("OPEN")
-        body.extend(data["open_lines"])
-
-    if data.get("provisional"):
-        body.append("CLOSED today (provisional — recorded tonight)")
-        for p in data["provisional"]:
-            body.append(f" {p.get('ticker', ''):<5} reached ~{_r(p.get('peak_r'))}"
-                        f" → kept {_r(p.get('realized_r'))}")
-
-    if data.get("recorded"):
-        body.append("RECORDED round trips (7d) · reached → kept")
-        body.extend(_fmt_recorded_line(rec) for rec in data["recorded"])
-
+    # Lead with the live-money headline right under the header (operator: "the most
+    # important number is buried in the middle") — this block renders FIRST, before OPEN.
     lc = data.get("live_cohort")
     if lc and lc.get("n"):
-        body.append(f"LIVE $ cohort n={lc['n']} · {lc.get('wins', 0)} wins")
-        body.append(f" reached avg {_r(lc.get('reached_avg'))}"
-                    f" → kept avg {_r(lc.get('kept_avg'))}")
-        body.append(f" partials {lc.get('partials', 0)}"
-                    f" · stop ever above entry {lc.get('stop_above', 0)}")
+        n, wins = lc["n"], lc.get("wins", 0)
+        live = [
+            f"LIVE MONEY — {_plural(n, 'closed trade')}: "
+            f"reached {_r(lc.get('reached_avg'))} on average, kept {_r(lc.get('kept_avg'))}",
+            f" {_plural(wins, 'winner')} out of {n}",
+            f" partial profit taken on {lc.get('partials', 0)}"
+            f" · stop moved to breakeven or better on {lc.get('stop_above', 0)}",
+        ]
         if lc.get("regimes"):
-            body.append(" regime@entry: " + " · ".join(
-                f"{name} {n} ({_r(kept)})" for name, n, kept in lc["regimes"]))
+            live.append(" market condition when entered: " + " · ".join(
+                f"{name} {_plural(cnt, 'trade')} kept {_r(kept)}"
+                for name, cnt, kept in lc["regimes"]))
+        sections.append(live)
+
+    if data.get("open_lines"):
+        sections.append(["OPEN NOW"] + data["open_lines"])
+
+    if data.get("provisional"):
+        prov = ["CLOSED TODAY (not yet finalized — recorded tonight)"]
+        for p in data["provisional"]:
+            prov.append(f" {p.get('ticker', ''):<5} reached {_r(p.get('peak_r'))}"
+                        f" ({_APPROX_NOTE}) → kept {_r(p.get('realized_r'))}")
+        sections.append(prov)
+
+    if data.get("recorded"):
+        rec_lines = ["RECORDED ROUND TRIPS, LAST 7 DAYS — reached vs kept"]
+        rec_lines.extend(_fmt_recorded_line(rec) for rec in data["recorded"])
+        sections.append(rec_lines)
 
     if data.get("cohorts"):
-        body.append("OTHER RECORDED COHORTS · avg reached → kept")
-        for c in data["cohorts"]:
-            label = f"{c.get('signal_type') or '?'}/{c.get('account_mode') or '?'}"
+        coh = ["OTHER SETUPS, NOT LIVE MONEY — average reached vs kept"]
+        labels = [_signal_display(c.get("signal_type")) + _mode_tag(c.get("account_mode"))
+                  for c in data["cohorts"]]
+        label_w = max((len(l) for l in labels), default=0)
+        for c, label in zip(data["cohorts"], labels):
             # Mark DEPRECATED strategies (operator 2026-07-30: "sell discipline still
             # tracks 9m day2 but it's deprecated"). KEPT rather than removed, on
             # purpose: 9m_day2 is the ONLY cohort with a positive kept (+0.2R) and it
@@ -542,44 +595,65 @@ def format_sell_discipline_section(data: dict) -> str:
             # phase changes.
             phase = (data.get("phases") or {}).get(c.get("signal_type"))
             tag = "  (deprecated — cannot trade)" if phase == "deprecated" else ""
-            body.append(f" {label:<14} n={c['n']:<3} {_r(c.get('reached_avg'))}"
-                        f" → {_r(c.get('kept_avg'))}{tag}")
+            coh.append(f" {label:<{label_w}}  {_plural(c['n'], 'trade'):<10}"
+                       f" {_r(c.get('reached_avg'))} → {_r(c.get('kept_avg'))}{tag}")
+        sections.append(coh)
 
     sh = data.get("shadow") or {}
-    shadow_lines = []
+    shadow_rows = []  # (label, n, reached_str, kept_str)
     for mode, n, reached, kept in sh.get("consol", []):
-        shadow_lines.append(f" consol-{mode:<11} n={n:<3} {_r(reached)} → {_r(kept)}")
+        shadow_rows.append((f"consolidation, {_CONSOL_MODE_DISPLAY.get(mode, mode)}",
+                            n, _r(reached), _r(kept)))
     if sh.get("htf"):
         n, reached, kept = sh["htf"]
-        shadow_lines.append(f" htf-breakout      n={n:<3} {_r(reached)} → {_r(kept)}")
+        shadow_rows.append(("higher-timeframe breakout", n, _r(reached), _r(kept)))
     if sh.get("wick"):
         n, reached, kept = sh["wick"]
         reached_s = f"{reached:+.1f}%" if reached is not None else "?"
         kept_s = f"{kept:+.1f}%" if kept is not None else "?"
-        shadow_lines.append(f" wick (pct frame)  n={n:<3} {reached_s} → {kept_s}")
-    if shadow_lines:
-        body.append("SHADOW SETUPS (no live $) · median reached → kept")
-        body.extend(shadow_lines)
+        shadow_rows.append(("wick fade setup (percent moves, not R)", n, reached_s, kept_s))
+    if shadow_rows:
+        label_w = max(len(label) for label, *_ in shadow_rows)
+        shadow_lines = [
+            f" {label:<{label_w}}  {_plural(n, 'trade'):<10} {reached_s} → {kept_s}"
+            for label, n, reached_s, kept_s in shadow_rows
+        ]
+        sections.append(
+            ["SIMULATION ONLY, CANNOT TRADE — typical (median) reached vs kept"] + shadow_lines)
+
     cf = sh.get("pivot_cf") or {}
     if cf.get("n"):
-        body.append("CANDIDATE RULE · would it have kept more? (live $, replay)")
-        body.append(f" pivot-stop  n={cf['n']} ({cf.get('abstained', 0)} abstained)"
-                    f"  reached {_r(cf.get('reached'))}")
-        # The DIFF count is the load-bearing number, not the average: an average can move
-        # simply because a profile is NULL on some trades. "changed 0" means the candidate
-        # would have done nothing at all, which is the finding.
-        body.append(f"  actual {_r(cf.get('actual'))}"
-                    f" · p1 {_r(cf.get('p1'))} (changed {cf.get('p1_diff', 0)})"
-                    f" · p2 {_r(cf.get('p2'))} (changed {cf.get('p2_diff', 0)})")
-    if sh.get("giveback_n") is not None:
-        body.append(f"giveback store: n={sh.get('giveback_n', 0)}")
+        abstained = cf.get("abstained", 0)
+        # The CHANGED count is the load-bearing number, not the average: an average can
+        # move simply because a profile is NULL on some trades. "changed 0 trades" means
+        # the candidate would have done nothing at all, which is the finding. p1 (the
+        # swing-stop rule) always has a value; p2 (the character-based rule) needs a
+        # trading-history profile the stock may not have — that's what "no history for"
+        # reports, attributed to the rule it actually applies to (pivot_stop_shadow.py:
+        # `abstained` is set exactly when the character profile is None, i.e. only p2 is
+        # unavailable — a labelling fix, not a number moved; exit_discipline.md 2026-08-08
+        # corroborates "p2 changed 0 of the 5 it was populated on").
+        candidate = [
+            "WOULD A DIFFERENT STOP HAVE KEPT MORE? (replayed on real trades)",
+            f" {_plural(cf['n'], 'trade')} tested, reached {_r(cf.get('reached'))} on average",
+            f" kept, actual: {_r(cf.get('actual'))}",
+            f" swing-stop rule: {_r(cf.get('p1'))}"
+            f" (would have changed {_plural(cf.get('p1_diff', 0), 'trade')})",
+            f" character-based rule: {_r(cf.get('p2'))}"
+            f" (would have changed {_plural(cf.get('p2_diff', 0), 'trade')}"
+            + (f", no history for {_plural(abstained, 'trade')}" if abstained else "") + ")",
+        ]
+        sections.append(candidate)
 
-    if not body:
+    # giveback store row deliberately DROPPED (operator 2026-08-16): n=1 is not actionable
+    # and the raw row count explained nothing. The underlying query/data is untouched —
+    # this is display scope only.
+
+    if not sections:
         return ""
-    if any("~" in ln for ln in body):
-        body.append("~ = extremes-poll peak (5-min floor, blind <10min, from 09:30)")
+    body = "\n \n".join("\n".join(s) for s in sections)  # " " keeps this out of "\n\n" splits
     return ("📼 *Sell discipline — reached vs kept* (recorder only, no rule)\n"
-            "```\n" + "\n".join(body) + "\n```")
+            "```\n" + body + "\n```")
 
 
 async def build_sell_discipline_section(

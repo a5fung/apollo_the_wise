@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.market_intelligence import sell_discipline as sd
 from agents.market_intelligence.sell_discipline import (
-    compute_sell_record, format_sell_discipline_section, trade_risk_per_share)
+    _fmt_open_line, _fmt_recorded_line, compute_sell_record, format_sell_discipline_section,
+    trade_risk_per_share)
 
 _ET = ZoneInfo("America/New_York")
 
@@ -224,11 +225,15 @@ def test_stop_above_entry_folds_trade_row_and_judge_rows():
     assert rec2["stop_above_entry_ever"] is True
 
 
-# ── renderer: monospace block, no pipe tables, honesty marker ────────────────────────────
+# ── renderer: monospace block, no pipe tables, plain words (operator 2026-08-16: "sell
+# discipline section needs to be cleaned up on format, really hard to read") ─────────────
 
 def _render_data():
+    ftnt = {"ticker": "FTNT", "entry_price": 100.0, "hard_stop": 90.0,
+            "highest_price_seen": 101.0, "hold_days": 0, "stop_price": 90.0,
+            "partial_taken": False}
     return {
-        "open_lines": [" FTNT  d0  peak +0.1R → now +0.1R  stop -1.0R"],
+        "open_lines": [_fmt_open_line(ftnt, 101.0)],
         "provisional": [{"ticker": "WKC", "peak_r": 0.9, "realized_r": -1.02}],
         "recorded": [
             {"ticker": "QBTS", "close_day": date(2026, 7, 28), "peak_r": 3.74,
@@ -266,18 +271,42 @@ def test_renderer_full_surface():
     assert "no rule" in out                                              # the scope disclaimer renders
     assert out.count("```") == 2                                         # ONE monospace block
     assert "|" not in out                                                # Telegram can't render pipes
-    assert "QBTS" in out and "+3.7R d1 16:00" in out and "TT@+2.7R" in out
-    assert "~+3.2R d2" in out                                            # extremes peak carries ~
-    assert "extremes-poll peak" in out                                   # …and the footnote explains it
-    assert "Correcting 6" in out and "regime@entry" in out               # reconstructed, not stored
-    assert "consol-anticipate" in out and "wick (pct frame)" in out
-    assert "giveback store: n=1" in out
-    # leg 3 of the DoD: a candidate rule's would-have-kept, replayable not argued
-    assert "CANDIDATE RULE" in out
-    assert "pivot-stop  n=8 (5 abstained)" in out
-    assert "changed 0" in out, (
+
+    # the most important number leads, right under the header — not buried mid-message
+    fence_body = out.split("```\n", 1)[1]
+    first_line = fence_body.splitlines()[0]
+    assert "+1.8R" in first_line and "-0.9R" in first_line, (
+        "the live reached/kept average must be the first line inside the block, not "
+        f"buried further down: {first_line!r}")
+
+    assert "QBTS" in out and "day 1 16:00" in out                        # plain when, not "d1"
+    assert "trail tighten at +2.7R" in out                               # judge verdict, spelled out
+    assert "peak may be understated" in out                              # inline, where the ~ used to be
+    assert "market condition when entered" in out and "Correcting 6" in out
+    assert "consolidation, early entry" in out and "118 trades" in out
+    assert "wick fade setup (percent moves, not R)" in out               # odd unit called out in words
+    assert "MAGNA53 EP (paper trading)" in out and "26 trades" in out
+    assert "WOULD A DIFFERENT STOP HAVE KEPT MORE" in out
+    assert "swing-stop rule" in out and "character-based rule" in out
+    assert "no history for 5 trades" in out                              # was "(5 abstained)"
+    assert "changed 0 trades" in out, (
         "the surface no longer reports how many trades a candidate rule would have "
         "CHANGED — without that, an inert candidate reads as a working one")
+
+    # giveback store dropped entirely (n=1 isn't actionable, operator 2026-08-16)
+    assert "giveback" not in out
+
+    # no bare block ever splits mid-fence: block separators are a single space, never "\n\n"
+    assert "\n\n" not in fence_body
+
+    # every abbreviation the operator called out is gone
+    import re
+    assert re.search(r"\bd\d+\b", out) is None, "a bare d<N> day-abbreviation leaked in"
+    for token in ("BE+", "n=", "regime@entry", "consol-", "9m_day2", "magna53",
+                  "wick (pct", "abstained", "giveback store", "p1", "p2", "@+2.7R",
+                  "TT@", "extremes-poll peak", "~"):
+        assert token not in out, f"lingo/symbol leaked into the render: {token!r}"
+
     assert len(out) < 2500                                               # rides the 4096-char digest
 
 
@@ -286,13 +315,67 @@ def test_renderer_empty_returns_empty():
     assert format_sell_discipline_section({"open_lines": [], "recorded": []}) == ""
 
 
-def test_renderer_no_footnote_without_approx_lines():
+def test_renderer_giveback_alone_renders_nothing():
+    """n=1 on the giveback store used to render a bare, unactionable line even with
+    nothing else to show. Dropped entirely (operator 2026-08-16) — an empty section
+    stays empty."""
+    assert format_sell_discipline_section({"shadow": {"giveback_n": 1}}) == ""
+
+
+def test_renderer_approx_note_inline_not_a_footnote():
+    """The `~` peak marker is gone; its meaning renders inline at the point of use,
+    every time — not as a symbol needing a separate decoder line at the bottom."""
+    data = {"recorded": [{"ticker": "QBTS", "close_day": date(2026, 7, 28), "peak_r": 3.74,
+                          "peak_hold_day": 1, "peak_time": _et(2026, 7, 27, 16, 0),
+                          "realized_r": -1.0, "peak_source": "extremes",
+                          "account_mode": "live", "judge_last_verdict": None}]}
+    out = format_sell_discipline_section(data)
+    assert "peak may be understated" in out
+    assert "~" not in out
+    assert "extremes-poll peak" not in out
+
+
+def test_renderer_no_approx_note_without_approx_lines():
     data = {"recorded": [{"ticker": "QBTS", "close_day": date(2026, 7, 28), "peak_r": 3.74,
                           "peak_hold_day": 1, "peak_time": _et(2026, 7, 27, 16, 0),
                           "realized_r": -1.0, "peak_source": "minute_bars",
                           "account_mode": "live", "judge_last_verdict": None}]}
     out = format_sell_discipline_section(data)
+    assert "peak may be understated" not in out
     assert "extremes-poll peak" not in out
+
+
+def test_renderer_worst_case_length_stays_under_telegram_limit():
+    """shared/output_ceilings.py is the LLM max_tokens registry and has no entry for this
+    path — it never calls a model. The real ceiling is Telegram's message limit:
+    send_telegram_message splits at 4000 chars (hard cap 4096). Build a maximal realistic
+    surface (8 recorded rows — the query's LIMIT 8 — 5 open, 5 provisional, both consol
+    modes + htf + wick, a populated candidate replay) and confirm it stays well clear."""
+    open_lines = [_fmt_open_line(
+        {"ticker": t, "entry_price": 100.0, "hard_stop": 90.0,
+         "highest_price_seen": 100.0 + i * 10, "hold_days": i, "stop_price": 90.0 + i,
+         "partial_taken": bool(i % 2)}, 105.0)
+        for i, t in enumerate(["AAAA", "BBBB", "CCCC", "DDDD", "EEEE"], start=1)]
+    provisional = [{"ticker": t, "peak_r": 0.9 + i * 0.1, "realized_r": -1.0 - i * 0.1}
+                   for i, t in enumerate(["FFFFF", "GGGGG", "HHHHH", "IIIII", "JJJJJ"])]
+    recorded = [
+        {"ticker": t, "close_day": date(2026, 8, 10 + i % 5), "peak_r": 2.1 + i * 0.3,
+         "peak_hold_day": (i % 3) + 1,
+         "peak_time": _et(2026, 8, 10, 9, 32) if i % 2 == 0 else None,
+         "realized_r": -0.5 - i * 0.1,
+         "peak_source": "extremes" if i % 2 else "minute_bars",
+         "account_mode": "paper" if i == 3 else "live",
+         "judge_last_verdict": "TRAIL_TIGHTEN" if i == 0 else None,
+         "judge_last_verdict_r": 2.7 if i == 0 else None}
+        for i, t in enumerate(["KKKKK", "LLLLL", "MMMMM", "NNNNN", "OOOOO", "PPPPP",
+                                "QQQQQ", "RRRRR"])
+    ]
+    data = dict(_render_data())
+    data["open_lines"] = open_lines
+    data["provisional"] = provisional
+    data["recorded"] = recorded
+    out = format_sell_discipline_section(data)
+    assert len(out) < 3500, f"worst-case render is {len(out)} chars — closing on the 4000 split"
 
 
 # ── write half: mocked pool (the #173 0-rows lesson — pin the INSERT wiring) ─────────────
@@ -486,11 +569,11 @@ def test_deprecated_cohorts_are_labelled_not_hidden():
              "reached_avg": 2.3, "kept_avg": -0.8},
         ],
     })
-    dep = [l for l in txt.splitlines() if "9m_day2" in l][0]
-    live = [l for l in txt.splitlines() if "magna53" in l][0]
+    dep = [l for l in txt.splitlines() if "9M Day 2" in l][0]
+    live = [l for l in txt.splitlines() if "MAGNA53 EP" in l][0]
     assert "deprecated" in dep and "cannot trade" in dep
     assert "deprecated" not in live          # a live strategy is never mislabelled
-    assert "n=7" in dep                      # and the data is still shown
+    assert "7 trades" in dep                 # and the data is still shown, in plain words
 
 
 def test_missing_phase_map_tags_nothing_rather_than_wrongly():

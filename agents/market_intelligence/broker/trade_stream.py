@@ -1514,30 +1514,44 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 # too). Do NOT merge the text — SUPPRESS this one when it is pure
                 # confirmation of a fact the operator already has.
                 #
-                # AGREEMENT TEST is TWO-PART, and both parts are load-bearing:
-                #   1. DB match — mi_live_trades' CURRENT stop_order_id/stop_price
-                #      (re-read fresh, NOT `stop_trade` captured before the recheck)
-                #      is this exact broker order.
-                #   2. DUPLICATE EVIDENCE — a `stop_update_retry_succeeded` audit
-                #      row exists for this exact trade_id + this exact new_stop_id.
-                #      That event type is written ONLY on order_manager's
-                #      retry-recovered branch, immediately before it sends "Stop
-                #      confirmed" — so its presence is direct proof a Telegram for
-                #      THIS order already went out (or is about to, same code path,
-                #      no gap between the two).
-                # Part 1 ALONE is not enough: on the ORDINARY happy path (attempt-1
-                # succeeds — the common case, no "brief broker hiccup") order_manager
-                # commits the SAME DB write but sends NO Telegram at all. If this WS
-                # event beats that commit (the clean-race timing), this handler is
-                # the operator's ONLY message for the move — matching DB state alone
-                # would silence it and the operator would hear NOTHING (caught in
-                # review: a version of this fix that checked only DB agreement did
-                # exactly that). Requiring part 2 means we only suppress when a
-                # second message would otherwise be genuinely redundant.
-                # POSITIVE-ONLY, mirrors the #433 fail-safe above: DB not caught up,
-                # a different price/order id, no matching retry-succeeded row, or
-                # the re-read itself failing — ALL count as disagreement and still
-                # speak. Silence is never the default.
+                # AGREEMENT TEST, and the floor below is load-bearing:
+                #   1. DUPLICATE EVIDENCE (the required floor) — a
+                #      `stop_update_retry_succeeded` audit row exists for this
+                #      exact trade_id + this exact new_stop_id. That event type
+                #      is written ONLY on order_manager's retry-recovered branch,
+                #      immediately before it sends "Stop confirmed" — so its
+                #      presence is direct proof a Telegram for THIS order already
+                #      went out (or is about to, same code path, no gap between
+                #      the two).
+                #   2. PRICE CONFIRMATION (either one suffices) — the SAME audit
+                #      row also carries the price order_manager set
+                #      (new_stop_price, written atomically with trade_id/
+                #      new_stop_id in one json.dumps() call), OR mi_live_trades'
+                #      CURRENT stop_order_id/stop_price (re-read fresh, NOT
+                #      `stop_trade` captured before the recheck) matches this
+                #      exact broker order. #561 (2026-08-17, PLTR): the DB half
+                #      used to be required — but on a sub-second race
+                #      order_manager's own DB write can land AFTER this re-read,
+                #      leaving stop_order_id NULL even though the retry already
+                #      succeeded and the audit row (with a matching price)
+                #      already proves the Telegram fired. The audit row's own
+                #      price is now an independent way to satisfy this leg so
+                #      that race no longer produces a duplicate.
+                # Duplicate evidence ALONE (no price confirmation either way) is
+                # never enough, and DB agreement ALONE (no matching audit row at
+                # all) is never enough: on the ORDINARY happy path (attempt-1
+                # succeeds — the common case, no "brief broker hiccup")
+                # order_manager commits the SAME DB write but sends NO Telegram at
+                # all. If this WS event beats that commit (the clean-race
+                # timing), this handler is the operator's ONLY message for the
+                # move — matching DB state alone would silence it and the
+                # operator would hear NOTHING (caught in review: a version of
+                # this fix that checked only DB agreement did exactly that).
+                # POSITIVE-ONLY, mirrors the #433 fail-safe above: a different
+                # trade/order id, no matching retry-succeeded row, a price that
+                # matches neither the audit row nor the DB, or the re-read itself
+                # failing — ALL count as disagreement and still speak. Silence is
+                # never the default.
                 _agrees = False
                 try:
                     async with pool.acquire() as _conn2:
@@ -1554,41 +1568,75 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                         and _new_stop is not None
                         and abs(float(_current["stop_price"]) - float(_new_stop)) < 0.01
                     )
-                    if _db_matches:
-                        # Match in PYTHON, not SQL: `mi_audit_log.detail` is a bare
-                        # TEXT column (`DEFAULT ''`) and ~130 call sites across the
-                        # codebase write it via log_audit_event's 2-arg form, which
-                        # leaves '' — casting `detail::jsonb` in the WHERE clause
-                        # risks Postgres evaluating that cast on an unrelated ''
-                        # row before the event_type filter narrows the scan (SQL
-                        # AND has no guaranteed evaluation order), raising and
-                        # falling into the except below on ANY unrelated row from
-                        # the same 5-minute window — the suppression would then
-                        # never fire in production while looking green in tests.
-                        # Filter to event_type + a bounded window in SQL (both
-                        # plain, non-throwing comparisons), pull the handful of
-                        # candidate `detail` strings, and json.loads + match each
-                        # in Python where a bad row can just be skipped.
-                        async with pool.acquire() as _conn3:
-                            _candidates = await _conn3.fetch(
-                                """
-                                SELECT detail FROM mi_audit_log
-                                WHERE event_type = 'stop_update_retry_succeeded'
-                                  AND created_at > NOW() - INTERVAL '5 minutes'
-                                ORDER BY created_at DESC
-                                """
+                    # #561 (2026-08-17, PLTR): _db_matches used to GATE whether the
+                    # dup-evidence audit row was even looked at. On a sub-second
+                    # race, order_manager's own `stop_updated` DB write can land
+                    # AFTER this recheck reads mi_live_trades (stop_order_id is
+                    # still NULL, nulled by the #433 cancel handling above the
+                    # instant the old leg was canceled) even though the retry had
+                    # already succeeded and order_manager had already sent its own
+                    # "Stop confirmed" Telegram for this exact order. Gating on
+                    # _db_matches first made that conclusive evidence unreachable
+                    # and produced today's duplicate. Fix: always look at the
+                    # audit row (not nested under `if _db_matches`), and let a
+                    # match on all three fields order_manager writes atomically —
+                    # trade_id, new_stop_id, new_stop_price (order_manager.py:
+                    # 1650-1654, one json.dumps() call) — suppress ON ITS OWN,
+                    # since that is direct, self-contained proof this exact
+                    # replacement was already Telegrammed, independent of
+                    # mi_live_trades' current state. `_db_matches` remains a
+                    # second, independent way to satisfy the price leg — if the
+                    # audit row's own price ever came in stale but the (now
+                    # caught-up) DB confirms the price instead, that still
+                    # agrees. Trade id + order id match is the hard floor either
+                    # way (#433 invariant, unchanged): a row for a different
+                    # trade or a different order id never suppresses, and DB
+                    # agreement ALONE — no matching row at all — still never
+                    # suppresses (the ordinary happy path commits the same DB
+                    # write but order_manager sends no Telegram, so that case
+                    # must still speak).
+                    #
+                    # Match in PYTHON, not SQL: `mi_audit_log.detail` is a bare
+                    # TEXT column (`DEFAULT ''`) and ~130 call sites across the
+                    # codebase write it via log_audit_event's 2-arg form, which
+                    # leaves '' — casting `detail::jsonb` in the WHERE clause
+                    # risks Postgres evaluating that cast on an unrelated ''
+                    # row before the event_type filter narrows the scan (SQL
+                    # AND has no guaranteed evaluation order), raising and
+                    # falling into the except below on ANY unrelated row from
+                    # the same 5-minute window — the suppression would then
+                    # never fire in production while looking green in tests.
+                    # Filter to event_type + a bounded window in SQL (both
+                    # plain, non-throwing comparisons), pull the handful of
+                    # candidate `detail` strings, and json.loads + match each
+                    # in Python where a bad row can just be skipped.
+                    async with pool.acquire() as _conn3:
+                        _candidates = await _conn3.fetch(
+                            """
+                            SELECT detail FROM mi_audit_log
+                            WHERE event_type = 'stop_update_retry_succeeded'
+                              AND created_at > NOW() - INTERVAL '5 minutes'
+                            ORDER BY created_at DESC
+                            """
+                        )
+                    _dup_evidence = False
+                    _dup_price_matches = False
+                    for _cand in (_candidates or []):
+                        try:
+                            _cand_detail = json.loads(_cand["detail"])
+                        except Exception:  # loud-ok: a candidate row is skipped, not the check — real stop_update_retry_succeeded rows are always written with json.dumps() detail (order_manager.py:1591-1599), so this only guards a theoretical malformed row; the outer try/except around the whole agreement test still fail-safes to "speak" on any genuine read failure.
+                            continue
+                        if (str(_cand_detail.get("trade_id")) == str(stop_trade["id"])
+                                and str(_cand_detail.get("new_stop_id")) == str(replacement["id"])):
+                            _dup_evidence = True
+                            _cand_price = _cand_detail.get("new_stop_price")
+                            _dup_price_matches = bool(
+                                _cand_price is not None
+                                and _new_stop is not None
+                                and abs(float(_cand_price) - float(_new_stop)) < 0.01
                             )
-                        _dup_evidence = False
-                        for _cand in (_candidates or []):
-                            try:
-                                _cand_detail = json.loads(_cand["detail"])
-                            except Exception:  # loud-ok: a candidate row is skipped, not the check — real stop_update_retry_succeeded rows are always written with json.dumps() detail (order_manager.py:1591-1599), so this only guards a theoretical malformed row; the outer try/except around the whole agreement test still fail-safes to "speak" on any genuine read failure.
-                                continue
-                            if (str(_cand_detail.get("trade_id")) == str(stop_trade["id"])
-                                    and str(_cand_detail.get("new_stop_id")) == str(replacement["id"])):
-                                _dup_evidence = True
-                                break
-                        _agrees = _dup_evidence
+                            break
+                    _agrees = _dup_evidence and (_dup_price_matches or _db_matches)
                 except Exception as _e:
                     logger.warning(
                         f"WS [{account_mode}]: post-replacement agreement re-check "
@@ -1598,10 +1646,22 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     _agrees = False
 
                 if _agrees:
+                    # #561: describe WHICH leg actually agreed — on the race path
+                    # the DB re-read has NOT caught up (_db_matches is False) and
+                    # only the audit row's own price confirms; a message claiming
+                    # "matches DB" unconditionally would leave a false trail for
+                    # the next investigation (this exact trail is how the
+                    # 2026-08-17 race was diagnosed). Record both legs plainly.
+                    _agree_via = (
+                        "db+audit" if (_db_matches and _dup_price_matches) else
+                        "db_only" if _db_matches else
+                        "audit_price_only"
+                    )
                     await log_audit_event(
                         "stop_replacement_confirmed_silent",
-                        f"{symbol}: WS safety-net matches the trade's recorded stop "
-                        f"(${float(_new_stop):.2f}, {replacement['id']}) — Telegram "
+                        f"{symbol}: WS safety-net agrees with order_manager's own "
+                        f"retry-succeeded record (${float(_new_stop):.2f}, "
+                        f"{replacement['id']}) via {_agree_via} — Telegram "
                         f"suppressed, operator already notified via order_manager",
                         json.dumps({
                             "trade_id": stop_trade["id"],
@@ -1611,13 +1671,16 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                             "replacement_stop_price": float(_new_stop),
                             "event_norm": event_norm,
                             "rechecked": rechecked,
+                            "db_matched": _db_matches,
+                            "audit_price_matched": _dup_price_matches,
                         }),
                     )
                     logger.info(
                         f"WS [{account_mode}]: stop-leg {event_norm} but replacement live"
                         f"{_settle_note} ({replacement['id']}): {symbol} "
-                        f"trade_id={stop_trade['id']} — matches DB + confirmed retry-"
-                        f"succeeded audit row, Telegram suppressed"
+                        f"trade_id={stop_trade['id']} — agrees via {_agree_via} "
+                        f"(db_matched={_db_matches}, audit_price_matched="
+                        f"{_dup_price_matches}), Telegram suppressed"
                     )
                 else:
                     # brief=True: when this DOES fire alongside live_tracker's own

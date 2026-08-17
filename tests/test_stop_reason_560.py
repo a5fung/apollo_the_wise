@@ -687,3 +687,186 @@ async def test_stop_replaced_telegram_speaks_when_retry_evidence_is_for_a_differ
     )
     assert not any(c.args[0] == "stop_replacement_confirmed_silent"
                    for c in audit.await_args_list)
+
+
+# ── 7. #561 (2026-08-17, PLTR) — the sub-second-race dedup fix ───────────────
+#
+# Production trade_id 307, 2026-08-17: order_manager's retry succeeded and
+# wrote the stop_update_retry_succeeded audit row (conclusive proof its own
+# "Stop confirmed" Telegram fired) BEFORE its `stop_updated` mi_live_trades
+# commit landed. This WS recheck's fresh DB read beat that commit by ~400ms
+# and still saw stop_order_id NULL (nulled by the #433 cancel handling the
+# instant the old leg was canceled) — so the OLD code, which required
+# _db_matches before even looking at the audit row, disagreed and sent a
+# second, duplicate "Stop replaced" Telegram. The fix lets a conclusive
+# audit-row match (trade id + order id + the row's OWN recorded price) speak
+# for itself.
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_silenced_on_the_exact_prod_race_db_still_null(monkeypatch):
+    """Replays trade_id 307, 2026-08-17 exactly: DB re-read still shows the
+    stop leg NULLED (order_manager's own commit hasn't landed yet) but the
+    stop_update_retry_succeeded audit row is already there, naming this exact
+    trade, this exact new order id, and this exact price. Must SUPPRESS.
+    Without the #561 fix (audit-row match gated behind _db_matches), this
+    assertion fails — the WS handler would speak a second time, reproducing
+    the operator's complaint."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "9ad8688c-1b5b-4a1e-a0f6-444164d8ecfb",
+                   "stop_price": PLTR_NEW_STOP}
+    # stop_order_id NULL: exactly what the fresh DB read saw at 20:45:03.4,
+    # ~400ms before order_manager's own `stop_updated` write landed.
+    db_still_null = {"stop_order_id": None, "stop_price": PLTR_OLD_STOP}
+    dup_rows = [{"detail": json.dumps({
+        "trade_id": 307, "ticker": "PLTR",
+        "new_stop_price": PLTR_NEW_STOP, "new_stop_id": replacement["id"],
+    })}]
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, db_still_null, replacement, dup_rows=dup_rows)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert sent == [], (
+        f"a conclusive audit-row match must suppress even though the DB "
+        f"re-read hasn't caught up yet (the exact 2026-08-17 PLTR race): {sent}"
+    )
+    silent_events = [c for c in audit.await_args_list
+                      if c.args[0] == "stop_replacement_confirmed_silent"]
+    assert len(silent_events) == 1, f"must log exactly one silent-confirm audit row: {audit.await_args_list}"
+    detail = json.loads(silent_events[0].args[2])
+    # Pin WHICH leg actually agreed — the DB re-read did NOT catch up (it's
+    # still the reason this handler fired at all), only the audit row's own
+    # price confirms. An audit trail claiming db_matched=True here would be
+    # false and would mislead the next investigation of this exact race.
+    assert detail["db_matched"] is False, (
+        "the DB genuinely had not caught up in this race — the silent-confirm "
+        "row must not claim it agreed"
+    )
+    assert detail["audit_price_matched"] is True
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_no_audit_row_and_db_disagrees(monkeypatch):
+    """No audit row at all AND the DB re-read still shows the old leg — the
+    weakest case, unambiguously must speak."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    not_yet_updated = {"stop_order_id": "old_leg_id", "stop_price": PLTR_OLD_STOP}
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, not_yet_updated, replacement, dup_rows=[])
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), (
+        f"no audit row and a disagreeing DB must speak: {sent}"
+    )
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_audit_row_price_differs_and_db_also_disagrees(monkeypatch):
+    """Isolates the audit row's OWN price field: trade id and order id match,
+    but the row's recorded new_stop_price does not match what the broker just
+    confirmed, and the DB re-read doesn't corroborate either. Must speak —
+    a price mismatch inside the audit row itself is not conclusive evidence."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    db_still_null = {"stop_order_id": None, "stop_price": PLTR_OLD_STOP}
+    dup_rows = [{"detail": json.dumps({
+        "trade_id": 307, "ticker": "PLTR",
+        "new_stop_price": PLTR_NEW_STOP - 0.30,  # same trade+order, wrong price
+        "new_stop_id": replacement["id"],
+    })}]
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, db_still_null, replacement, dup_rows=dup_rows)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), (
+        f"an audit row whose OWN price disagrees, uncorroborated by the DB, "
+        f"must still speak: {sent}"
+    )
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_stop_replaced_telegram_speaks_when_audit_detail_malformed_and_db_disagrees(monkeypatch):
+    """Only malformed/unrelated audit rows in the window (no real match at
+    all) AND the DB re-read disagrees too — must speak, never silently
+    swallowed just because *something* was sitting in the audit log."""
+    stop_row = {
+        "id": 307, "ticker": "PLTR", "remaining_shares": 4.0,
+        "stop_price": PLTR_OLD_STOP,
+        "entry_price": PLTR_ENTRY, "hard_stop": PLTR_HARD_STOP,
+    }
+    replacement = {"id": "dd9ed021-a657-473a-abec-0aeec464fa80",
+                   "stop_price": PLTR_NEW_STOP}
+    not_yet_updated = {"stop_order_id": "old_leg_id", "stop_price": PLTR_OLD_STOP}
+    dup_rows = [
+        {"detail": ""},
+        {"detail": "not json at all"},
+        {"detail": json.dumps({"trade_id": 999, "new_stop_id": "unrelated"})},
+    ]
+    pool, conn, audit, sent, capture = _make_ws_pool(
+        stop_row, not_yet_updated, replacement, dup_rows=dup_rows)
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+
+    import agents.market_intelligence.broker.order_manager as om
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    confirm = AsyncMock(side_effect=[replacement])
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop", confirm)
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    await ts._handle_cancel_or_reject(_ws_data(), "canceled", "live")
+
+    assert any("Stop replaced" in m for m in sent), (
+        f"only malformed/unrelated audit rows, DB disagreeing, must still speak: {sent}"
+    )
+    assert not any(c.args[0] == "stop_replacement_confirmed_silent"
+                   for c in audit.await_args_list)
