@@ -1310,6 +1310,12 @@ async def _aggregate_shadow_orb_outcomes(window_days: int) -> dict:
 
     Slice caveat: `shape_tag` is populated only on `signal_type='9m_day2'`
     rows. MAGNA53 rows store NULL — by-shape deltas are 9M-cohort only.
+
+    Excludes `quarantined` rows (#482, 2026-08-17) — resumed-from-freeze
+    rows whose total_pnl/status is fabricated (#216) — from both the
+    `entered` count and the paired-R evidence. This is the #482 N>=30
+    evidence path; a quarantined row here would let a real bracket-geometry
+    decision get made on fabricated numbers.
     """
     from agents.market_intelligence.db import get_pool
     pool = await get_pool()
@@ -1330,6 +1336,7 @@ async def _aggregate_shadow_orb_outcomes(window_days: int) -> dict:
                 FROM mi_orb_shadow_trades
                 WHERE bar_size_minutes = 5
                   AND alert_date >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
+                  AND NOT quarantined
                 """,
                 window_days,
             )
@@ -1354,6 +1361,7 @@ async def _aggregate_shadow_orb_outcomes(window_days: int) -> dict:
                     AND live.status   = 'closed'
                     AND shadow.risk_dollars > 0
                     AND live.risk_dollars > 0
+                    AND NOT shadow.quarantined
                 )
                 SELECT
                   signal_type,

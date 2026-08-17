@@ -124,10 +124,14 @@ LEFT JOIN LATERAL (
     -- ticker can have both magna53 and 9m_day2 5-min shadow rows the
     -- same day. Pick the higher-conviction one (status='closed' >
     -- 'cancelled' > 'no_entry') then any.
+    -- #482 (2026-08-17): excludes `quarantined` rows — this CSV is read by
+    -- a human as evidence; a resumed-from-freeze row's total_pnl (#216) is
+    -- fabricated and would show up as a clean shadow_5m_pnl otherwise.
     SELECT status, entry_price, total_pnl, skip_reason
     FROM mi_orb_shadow_trades
     WHERE ticker = a.ticker AND alert_date = a.alert_date
       AND bar_size_minutes = 5
+      AND NOT quarantined
     ORDER BY
         CASE status WHEN 'closed' THEN 0 WHEN 'cancelled' THEN 1 ELSE 2 END,
         id DESC
@@ -337,7 +341,8 @@ async def side_checks(window_days: int) -> None:
         )
         n_shadow = await conn.fetchval(
             "SELECT COUNT(*) FROM mi_orb_shadow_trades "
-            "WHERE alert_date >= CURRENT_DATE - $1::int AND bar_size_minutes = 5",
+            "WHERE alert_date >= CURRENT_DATE - $1::int AND bar_size_minutes = 5 "
+            "AND NOT quarantined",
             window_days,
         )
         fixture_history = await conn.fetch(

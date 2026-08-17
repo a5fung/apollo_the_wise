@@ -91,6 +91,12 @@ async def _adapter_live_trades(window_days: int, *, signal_type: str) -> list[Ou
 
 
 async def _adapter_shadow_orb_5m(window_days: int) -> list[OutcomeRow]:
+    """#482 (2026-08-17): excludes `quarantined` rows. A resumed-from-freeze
+    row (#216) has a fabricated status/total_pnl — one exit step spanning a
+    months-long frozen gap — and this adapter feeds promotion.py's
+    min_closed / min_paired_closed >=30 gate directly, so a quarantined row
+    reaching here would let a graduation decision get made on fabricated
+    evidence."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -101,6 +107,7 @@ async def _adapter_shadow_orb_5m(window_days: int) -> list[OutcomeRow]:
             FROM mi_orb_shadow_trades
             WHERE bar_size_minutes = 5
               AND alert_date >= CURRENT_DATE - $1::int
+              AND NOT quarantined
             """,
             window_days,
         )

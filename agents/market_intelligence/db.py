@@ -972,6 +972,14 @@ async def initialize_schema() -> None:
                 total_pnl        NUMERIC,
                 hold_days        INT,
 
+                -- #482 evidence-quarantine (2026-08-17) — see the ALTER TABLE
+                -- block below (right after the indexes) for the full comment.
+                quarantined      BOOLEAN NOT NULL DEFAULT FALSE,
+                quarantine_reason TEXT,
+                quarantined_at   TIMESTAMPTZ,
+                pre_replay_snapshot JSONB,
+                replayed_at      TIMESTAMPTZ,
+
                 created_at       TIMESTAMPTZ DEFAULT NOW(),
                 closed_at        TIMESTAMPTZ,
                 UNIQUE (ticker, alert_date, bar_size_minutes)
@@ -980,6 +988,32 @@ async def initialize_schema() -> None:
                 ON mi_orb_shadow_trades(status);
             CREATE INDEX IF NOT EXISTS idx_shadow_alert_date
                 ON mi_orb_shadow_trades(alert_date);
+
+            -- #482 evidence-quarantine (2026-08-17): the #216 jsonb double-encoding
+            -- bug froze rows for months; the fix's first exit pass resumed them with
+            -- ONE step spanning the whole frozen gap, fabricating an outcome (a
+            -- 100-day price jump evaluated as if it were one day). `quarantined` is
+            -- an explicit, additive marker — never overwrite/erase the original
+            -- recorded values (running_closes/exits/total_pnl/status stay exactly
+            -- as recorded); every evidence-aggregating reader must add
+            -- `AND NOT quarantined`. `pre_replay_snapshot`/`replayed_at` are for the
+            -- SEPARATE faithful-re-replay path (open rows only, #482 remediation
+            -- script): when a row's exit-ladder fields get overwritten with a
+            -- corrected day-by-day replay, the pre-replay (corrupted) row is dumped
+            -- into `pre_replay_snapshot` first — evidence of what was there is kept
+            -- alongside, never deleted.
+            ALTER TABLE mi_orb_shadow_trades
+                ADD COLUMN IF NOT EXISTS quarantined BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE mi_orb_shadow_trades
+                ADD COLUMN IF NOT EXISTS quarantine_reason TEXT;
+            ALTER TABLE mi_orb_shadow_trades
+                ADD COLUMN IF NOT EXISTS quarantined_at TIMESTAMPTZ;
+            ALTER TABLE mi_orb_shadow_trades
+                ADD COLUMN IF NOT EXISTS pre_replay_snapshot JSONB;
+            ALTER TABLE mi_orb_shadow_trades
+                ADD COLUMN IF NOT EXISTS replayed_at TIMESTAMPTZ;
+            CREATE INDEX IF NOT EXISTS idx_shadow_quarantined
+                ON mi_orb_shadow_trades(quarantined) WHERE quarantined;
 
             -- Daily account-equity history (per account_mode) for the
             -- drawdown-based circuit breaker (#39, shadow shipped 2026-05-08).
@@ -10512,19 +10546,28 @@ async def insert_shadow_trade(row: dict[str, Any]) -> int | None:
 
 async def get_open_shadow_trades(bar_size_minutes: int | None = None
                                 ) -> list[dict[str, Any]]:
-    """Open shadow trades, optionally filtered by bar size."""
+    """Open shadow trades, optionally filtered by bar size.
+
+    Excludes `quarantined` rows (#482, 2026-08-17) — a quarantined row is a
+    resumed-from-freeze row whose recorded path is already known-fabricated;
+    it must never be picked up for another daily exit step (that would just
+    compound the fabrication). update_shadow_positions is the sole caller of
+    the open-row path, so this filter IS the "stop further stepping" control.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         if bar_size_minutes is None:
             rows = await conn.fetch("""
                 SELECT * FROM mi_orb_shadow_trades
                 WHERE status = 'open' AND remaining_shares > 0
+                  AND NOT quarantined
                 ORDER BY alert_date ASC
             """)
         else:
             rows = await conn.fetch("""
                 SELECT * FROM mi_orb_shadow_trades
                 WHERE status = 'open' AND remaining_shares > 0
+                  AND NOT quarantined
                   AND bar_size_minutes = $1
                 ORDER BY alert_date ASC
             """, bar_size_minutes)
@@ -10539,6 +10582,9 @@ async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
         "status", "exits", "remaining_shares", "stop_price", "total_pnl",
         "hold_days", "partial_taken", "breakeven_active", "running_closes",
         "closed_at", "skip_reason",
+        # #482 evidence-quarantine / faithful-replay marker columns.
+        "quarantined", "quarantine_reason", "quarantined_at",
+        "pre_replay_snapshot", "replayed_at",
     }
     set_clauses, values = [], []
     for i, (key, val) in enumerate(fields.items(), start=2):
@@ -10550,6 +10596,11 @@ async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
             # prior `json.dumps(val) if not isinstance(val, str) else val` always hit
             # the dumps branch since callers pass plain lists, never pre-serialised str)
             values.append(_jsonb_list_param(val))
+        elif key == "pre_replay_snapshot":
+            # dict-shaped (the whole pre-replay row) — _jsonb_param, not the
+            # list-shaped sibling above (#216 shape distinction).
+            set_clauses.append(f"{key} = ${i}::jsonb")
+            values.append(_jsonb_param(val))
         else:
             set_clauses.append(f"{key} = ${i}")
             values.append(val)
@@ -10568,6 +10619,10 @@ async def get_shadow_outcomes_window(window_days: int = 30,
 
     Returns rows for downstream weekly-review aggregation. R is computed
     inline as total_pnl / NULLIF(risk_dollars, 0); neither side stores it.
+
+    Excludes `quarantined` shadow rows (#482, 2026-08-17) — a resumed-from-
+    freeze row's total_pnl/status is fabricated (one step spanning a months-
+    long frozen gap), so it must not enter any win/loss/R evidence average.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -10588,6 +10643,7 @@ async def get_shadow_outcomes_window(window_days: int = 30,
             WHERE shadow.bar_size_minutes = $1
               AND shadow.alert_date >= CURRENT_DATE - ($2 || ' days')::interval
               AND shadow.status IN ('closed', 'no_entry', 'gate_blocked')
+              AND NOT shadow.quarantined
             ORDER BY shadow.alert_date DESC
         """, bar_size_minutes, str(window_days))
     return [dict(r) for r in rows]

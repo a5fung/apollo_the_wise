@@ -249,6 +249,94 @@ async def _insert_row(
     return trade_id is not None
 
 
+# ── #482 evidence-quarantine: resumed-from-freeze detection (2026-08-17) ───
+# The #216 jsonb double-encoding bug froze `update_shadow_trade` writes for
+# months; the day the fix landed, the exit pass resumed every frozen row
+# with ONE step spanning the whole gap — fabricating an outcome (a ~100-day
+# price jump evaluated as if it were the very next trading day). Two
+# related but DIFFERENT checks:
+#
+#   `detect_path_gap`       — classifies rows that ALREADY took the bad
+#                              step (offline, one-time #482 remediation).
+#   `detect_stale_for_step` — the LIVE guard: fires BEFORE a step, inside
+#                              `update_shadow_positions`, so the bad step
+#                              can never happen again (any cause — #216 or
+#                              a future bug of the same shape).
+#
+# Both count WEEKDAYS only (no holiday calendar) — matches the existing
+# `collector.prev_trading_days` / `shared.dates.last_trading_day`
+# convention; thresholds carry slack for the 1-2 NYSE holidays a
+# multi-month span can contain. Validated against every prod row on
+# 2026-08-17: genuinely continuous rows cluster at gap/missed 0-1; every
+# freeze-affected row starts at gap>=3 (min observed 3, max 75).
+
+PATH_GAP_THRESHOLD_DAYS = 3
+STALE_MISSED_SESSIONS_THRESHOLD = 2
+
+
+def _count_weekday_sessions(after: date, through: date) -> int:
+    """Weekdays (Mon-Fri) strictly after `after`, up to and including
+    `through`. Weekend-only approximation (no holiday calendar)."""
+    n = 0
+    d = after + timedelta(days=1)
+    while d <= through:
+        if d.weekday() < 5:
+            n += 1
+        d += timedelta(days=1)
+    return n
+
+
+def detect_path_gap(
+    alert_date: date, hold_days: int | None, running_closes: list,
+) -> tuple[bool, str | None]:
+    """Classify whether a row's RECORDED PATH already shows the
+    resumed-from-freeze signature: far fewer recorded closes than the
+    weekday sessions between `alert_date` and the day of the last recorded
+    step (`alert_date + hold_days` calendar days). For the one-time #482
+    remediation pass over EXISTING rows — not called from the live loop.
+    """
+    if hold_days is None:
+        return False, None
+    n_closes = len(running_closes or [])
+    last_step_day = alert_date + timedelta(days=int(hold_days))
+    expected = _count_weekday_sessions(alert_date, last_step_day)
+    gap = expected - n_closes
+    if gap >= PATH_GAP_THRESHOLD_DAYS:
+        return True, (
+            f"resumed-from-freeze (#216/#482): {n_closes} recorded close(s) "
+            f"over {hold_days} calendar days (~{expected} trading sessions "
+            f"expected, gap={gap})"
+        )
+    return False, None
+
+
+def detect_stale_for_step(
+    alert_date: date, hold_days: int | None, as_of: date,
+) -> tuple[bool, str | None]:
+    """LIVE guard: would stepping this row on `as_of` jump over more than
+    one genuinely-missed trading session since its last recorded step?
+    `apply_daily_exit_step` has no memory of what happened on skipped days,
+    so stepping across a real gap fabricates an outcome exactly like the
+    #216 resume did — this is what stops that from happening again.
+
+    `hold_days is None` (never stepped) treats `alert_date` as the last
+    step day — a brand-new row's very first step is always safe.
+    """
+    last_step_day = (
+        alert_date + timedelta(days=int(hold_days))
+        if hold_days is not None else alert_date
+    )
+    missed = _count_weekday_sessions(last_step_day, as_of) - 1
+    if missed >= STALE_MISSED_SESSIONS_THRESHOLD:
+        return True, (
+            f"stale resume guard (#216/#482): last recorded step "
+            f"{last_step_day.isoformat()}, stepping {as_of.isoformat()} "
+            f"would skip {missed} trading session(s) — quarantined instead "
+            f"of stepped"
+        )
+    return False, None
+
+
 # ── Daily exit pass (16:30 ET) ──────────────────────────────────────────────
 
 
@@ -258,17 +346,42 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
     Uses the same exit_logic as backtester + live tracker (SSOT). Shadow
     is pure telemetry — no Alpaca calls, no Telegram. Fractional partial
     sizing (integer_partial_shares=False) matches backtester semantics.
+
+    #482 (2026-08-17): before stepping, each row passes `detect_stale_for_step`
+    — a row whose last recorded step is many sessions stale gets quarantined
+    (marked, not stepped) instead of silently fabricating a jump. See the
+    detection block above.
     """
     open_rows = await get_open_shadow_trades(bar_size_minutes=BAR_SIZE_MINUTES)
     if not open_rows:
         logger.info("Shadow ORB exit pass: no open rows")
-        return {"closed": 0, "updated": 0, "no_data": 0, "error": 0}
+        return {"closed": 0, "updated": 0, "no_data": 0, "error": 0,
+                "quarantined_stale": 0}
 
-    counts = {"closed": 0, "updated": 0, "no_data": 0, "error": 0}
+    from agents.market_intelligence.db import log_audit_event
+
+    counts = {"closed": 0, "updated": 0, "no_data": 0, "error": 0,
+              "quarantined_stale": 0}
     today_str = today.isoformat()
 
     for row in open_rows:
         try:
+            is_stale, stale_reason = detect_stale_for_step(
+                row["alert_date"], row.get("hold_days"), today,
+            )
+            if is_stale:
+                await update_shadow_trade(row["id"], {
+                    "quarantined": True,
+                    "quarantine_reason": stale_reason,
+                    "quarantined_at": datetime.now(ET),
+                })
+                await log_audit_event(
+                    "shadow_orb_stale_quarantine",
+                    f"{row['ticker']} {row['alert_date']}: {stale_reason}",
+                )
+                counts["quarantined_stale"] += 1
+                continue
+
             bars = await get_index_history(row["ticker"], today_str, today_str)
             daily_bar = bars[0] if bars else None
             state = _row_to_state(row)
@@ -378,3 +491,116 @@ async def _fetch_latest_regime(today: date) -> dict | None:
             today,
         )
     return dict(row) if row else None
+
+
+# ── #482 offline remediation: faithful re-replay for resumed-from-freeze
+#    OPEN rows (2026-08-17) ───────────────────────────────────────────────
+# NOT called from the live daily loop (`update_shadow_positions` — that path
+# is fully covered by `detect_stale_for_step` above, which quarantines
+# instead of stepping). This is the ONE-TIME #482 remediation path for the
+# rows that already carry a `detect_path_gap` gap: instead of leaving them
+# quarantined forever, replay every missed daily bar honestly.
+
+
+async def replay_stale_open_row(row: dict[str, Any], as_of: date) -> dict[str, Any]:
+    """Faithful day-by-day re-replay of a resumed-from-freeze OPEN row.
+
+    Re-seeds the exit ladder from the row's ORIGINAL entry parameters
+    (alert_date, entry_price, hard_stop, entry_shares — set once at INSERT
+    by `_insert_row`, never touched by the #216 freeze bug) and replays
+    every REAL trading session from alert_date+1 through `as_of` using
+    `collector.get_index_history`'s actual daily OHLC — the same 'l'/'c'
+    shape `apply_daily_exit_step` already reads for the live single-day
+    call in `update_shadow_positions`. Drives the replay through the SAME
+    canonical driver (`exit_logic.iter_exit_ladder`) with the SAME kwargs
+    the live path uses — `integer_partial_shares=False`, no `prior_closes`,
+    no trail_mode/scale_fraction/giveback opt-ins. This is a DATA REPAIR
+    (THE LINE): it reproduces exactly what the daily cron would have
+    written had it never frozen — nothing about the exit rule changes.
+
+    Returns a dict of corrected `update_shadow_trade` fields, including
+    `pre_replay_snapshot` (the row's CURRENT — corrupted — recorded values,
+    preserved alongside per the no-erase constraint) and `replayed_at`.
+
+    Returns `{"_replay_unavailable": "<reason>"}` (that key only) when no
+    historical bars are available for the range — caller falls back to
+    quarantining the row instead.
+    """
+    from agents.market_intelligence.broker.exit_logic import (
+        iter_exit_ladder,
+        seed_exit_state,
+    )
+
+    alert_date = row["alert_date"]
+    entry_price = float(row["entry_price"]) if row.get("entry_price") else None
+    hard_stop = float(row["hard_stop"]) if row.get("hard_stop") else None
+    entry_shares = float(row.get("entry_shares") or 0)
+
+    bars = await get_index_history(
+        row["ticker"],
+        (alert_date + timedelta(days=1)).isoformat(),
+        as_of.isoformat(),
+    )
+    if not bars:
+        return {"_replay_unavailable": (
+            f"get_index_history returned 0 daily bars for {row['ticker']} "
+            f"{alert_date.isoformat()}..{as_of.isoformat()}"
+        )}
+
+    day_bars: list[tuple[date, dict]] = []
+    for b in bars:
+        ts = b.get("t")
+        if ts is None:
+            continue
+        day = datetime.fromtimestamp(ts / 1000, tz=ET).date()
+        day_bars.append((day, b))
+    day_bars.sort(key=lambda x: x[0])
+
+    state = seed_exit_state(
+        alert_date=alert_date,
+        entry_price=entry_price,
+        hard_stop=hard_stop,
+        remaining_shares=entry_shares,
+    )
+    last_step = None
+    for _i, _day, step in iter_exit_ladder(
+        state, day_bars, integer_partial_shares=False,
+    ):
+        last_step = step
+
+    if last_step is None:
+        return {"_replay_unavailable": (
+            f"no fetched bar produced an evaluable step for {row['ticker']} "
+            f"({alert_date.isoformat()}..{as_of.isoformat()})"
+        )}
+
+    total_pnl = sum(e.get("pnl", 0) for e in state["exits"])
+    pre_replay_snapshot = {
+        "running_closes": row.get("running_closes"),
+        "exits": row.get("exits"),
+        "remaining_shares": row.get("remaining_shares"),
+        "partial_taken": row.get("partial_taken"),
+        "breakeven_active": row.get("breakeven_active"),
+        "total_pnl": row.get("total_pnl"),
+        "hold_days": row.get("hold_days"),
+        "status": row.get("status"),
+        "stop_price": row.get("stop_price"),
+        "closed_at": row["closed_at"].isoformat() if row.get("closed_at") else None,
+    }
+
+    fields: dict[str, Any] = {
+        "running_closes": state["running_closes"],
+        "exits": state["exits"],
+        "remaining_shares": state["remaining_shares"],
+        "partial_taken": state["partial_taken"],
+        "breakeven_active": state["breakeven_active"],
+        "total_pnl": total_pnl,
+        "hold_days": last_step.hold_days,
+        "stop_price": last_step.effective_stop,
+        "pre_replay_snapshot": pre_replay_snapshot,
+        "replayed_at": datetime.now(ET),
+    }
+    if last_step.closed:
+        fields["status"] = "closed"
+        fields["closed_at"] = datetime.now(ET)
+    return fields

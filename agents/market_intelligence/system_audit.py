@@ -554,6 +554,10 @@ async def _shadow_vs_live_r_delta_30d(conn) -> float:
           WHERE shadow.bar_size_minutes = 5
             AND shadow.alert_date >= CURRENT_DATE - INTERVAL '30 days'
             AND shadow.status = 'closed'
+            -- #482/#216: rows whose path was fabricated by the 2026-08-17
+            -- freeze-resume (one daily step across ~75 missed sessions) are
+            -- marked, not deleted. They must never enter an evidence read.
+            AND NOT shadow.quarantined
             AND live.status   = 'closed'
             AND shadow.risk_dollars > 0
             AND live.risk_dollars > 0
@@ -592,7 +596,8 @@ _SHADOW_ORB_METRICS: list[MetricSpec] = [
         "    AND live.alert_date=shadow.alert_date "
         "  WHERE shadow.bar_size_minutes=5 "
         "    AND shadow.alert_date >= CURRENT_DATE - INTERVAL '30 days' "
-        "    AND shadow.status='closed' AND live.status='closed') "
+        "    AND shadow.status='closed' AND live.status='closed' "
+        "    AND NOT shadow.quarantined) "
         "SELECT * FROM paired ORDER BY alert_date DESC;",
         ["agents/market_intelligence/broker/exit_logic.py::apply_daily_exit_step"],
     ),
