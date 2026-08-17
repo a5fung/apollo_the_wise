@@ -8506,6 +8506,66 @@ reviews:
     added_on: 2026-08-01
     cross_refs: ["task #503", "task #508", "docs/analysis/508_exit_discipline_STATE_2026-08-01.md"]
 
+  - review_id: regime_sizing_vs_tail_recheck
+    title: "Regime sizing vs where the tail actually is — RECURRING as regime cells fill (#571/#508)"
+    question: |
+      Operator 2026-08-17, after the exit_regime_separability read: "we should keep
+      monitoring this / review across more regimes to see if we need to adjust the
+      position sizing."
+
+      WHAT THE FIRST READ FOUND (n=3/3/1 winners — directional only, not a result).
+      Conditional on working, non-bull winners ran FURTHER: among live magna53 trades
+      reaching at least +1.5R, Bull averaged +2.22R, Correcting +2.98R, Choppy +7.92R,
+      while the non-winners were indistinguishable across regimes (+0.51 / +0.40 /
+      0.00). The whole difference sat in the tail. His reading: a true EP winner in a
+      non-bull tape is one strong enough to resist the market's pull, so it runs
+      further — though winners may be rarer there.
+
+      THE TENSION THIS REVIEW EXISTS TO RE-TEST. REGIME_SIZING_ENABLED is live with
+      Bull 1.00 / Choppy 0.75 / Correcting 0.50 / Crisis 0.25. R is risk-normalised,
+      so the multiplier changes no R number — but in DOLLARS it halves exactly the
+      cohort that showed the biggest runs. That is real downside protection doing its
+      job AND a haircut on the best tail. Both are true, and at n=3/3/1 neither side
+      is established.
+
+      ⚠ THE HALF WE STILL CANNOT TEST: whether winners are genuinely RARER outside
+      Bull. Hit rate among trades we TOOK was 33% Bull / 43% Correcting / 25% Choppy,
+      which shows no scarcity — but scarcity would appear at the ALERT-to-ENTRY
+      conversion stage, not among fills. Each run must measure conversion per regime
+      from the alert population, not the fill population, or it answers the wrong
+      question.
+
+      ⚠ CONFOUND TO CARRY FORWARD: exit-era. Pre-2026-08-05 trades ran without the
+      +2R partial and pre-2026-08-16 trades ran on the ORB-low stop (a different R
+      unit). Peak REACHED is immune to the partial but NOT to the stop change, since
+      that redefines R. Segment by era or the comparison silently breaks.
+    predicate_sql: |
+      -- Live magna53 records reaching +1.5R, per regime. Fires when a SECOND regime
+      -- cell reaches 5 such trades, i.e. when any pair is comparable on more than the
+      -- 3-vs-3 the first read had. Counts winners, not trades: the finding lives
+      -- entirely in the tail, so tail count is what makes it readable.
+      SELECT COALESCE(MIN(w), 0) FROM (
+        SELECT COUNT(*) FILTER (WHERE r.peak_r >= 1.5) AS w
+        FROM mi_sell_discipline_records r
+        JOIN mi_market_regime g ON g.regime_date = r.alert_date
+        WHERE r.account_mode = 'live' AND r.signal_type = 'magna53'
+        GROUP BY g.regime
+        ORDER BY 1 DESC LIMIT 2
+      ) top2
+    threshold: 5
+    earliest_review_date: 2026-09-15
+    status: pending
+    action_when_ready: |
+      Re-run the per-regime tail comparison on the larger cohort, SEGMENTED BY EXIT
+      ERA, and additionally measure alert-to-entry conversion per regime so the
+      "winners are rarer outside Bull" half finally gets tested. Then state plainly
+      whether the tail really is bigger outside Bull, and whether the current
+      multipliers are cutting it. ⚖ Sizing is THE LINE — report the finding and the
+      fork; propose no multiplier. Any change is CHANGE_PROCESS + backtest + his
+      sign-off. Record as a dated doc so the series stays comparable.
+    added_on: 2026-08-17
+    cross_refs: ["task #571", "task #508", "task #306", "review exit_regime_separability", "docs/analysis/exit_regime_separability_2026-08-17.md"]
+
   - review_id: exit_tune_cohort_review
     title: "Exit-rule cohort review — RECURRING at n=20/40/60/80/100 closed live trades (#503/#306)"
     question: |
