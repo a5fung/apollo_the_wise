@@ -230,6 +230,42 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 
 ## Change log
 
+### 2026-08-18 — discovery batch cap tightened 37→22 (headroom, not a re-raise)
+
+- **Trigger**: the #543 live truncation alarm fired for `theme_discovery` — 1 of 22 calls
+  at-cap on 08-18, after 7 clean days on the 08-10 batching fix (max output 5.6K-6.7K,
+  well under the 8000 cap on every prior day). Call volume was ~2x the typical 4-11/day.
+  Ceiling was NOT raised — `shared/output_ceilings.py` still forbids it for this class.
+- **Diagnosis**: the 08-10 derivation sized the batch cap (37) to sit at ~88% of the
+  8000 ceiling in the worst case it could measure at the time. The 08-18 truncation is a
+  CENSORED sample — true output ≥ 8000, i.e. ≥ 216 tok/stock at N=37 — above every one of
+  the 5 clean-day observations (152-182 tok/stock) and above the 190 tok/stock the 08-10
+  fix designed for. More calls in a day means more draws from the same per-batch output
+  distribution, and 08-18 drew further into its tail than any clean day had reached.
+- **Fix**: `_DISCOVERY_LLM_BATCH_STOCKS` 37 → 22 (full arithmetic + the 6-day data table
+  at the constant's definition in `theme_engine.py`). Re-derived the same way as 08-10:
+  censored floor (8000/37) × the same 1.5x tail-allowance ratio ÷ 0.90 near-ceiling target.
+- **Cost**: batches per night rise ~1.7x (37/22) for the same candidate pool — more calls,
+  more repeated existing-themes-block input tokens; total OUTPUT tokens stay ≈ flat (set
+  mainly by the pool size, not the chunking — mirrors how the 08-10 entry hedged this same
+  claim for its own batching change; per-call fixed overhead now amortizes over fewer
+  stocks, so the true number is a shade above flat, inside the 1.5x tail-allowance slack).
+  Input is priced well below output on sonnet-5, so this is a small dollar cost against the
+  truncation it prevents.
+- **Residual risk raised by this change**: the 08-10 entry already flagged that a
+  CROSS-sector catalyst cohort can straddle a batch boundary and fail to form (sector-sort +
+  cluster atoms minimize but do not eliminate it). Smaller batches mean ~1.7x more boundaries
+  per run, so that residual risk rises by roughly the same factor. Narrower than a
+  truncation (costs one cohort, not the whole call) but worth having stated, not just cost
+  and headroom.
+- **theme_assignment**: checked against the same question same day. Could not query prod
+  `api_usage` this session (no DB access available) — left UNCHANGED for lack of data, not
+  because it's known to be fine. Needs a PLAN.md line + fresh data before the next time
+  this class of alert fires for it (operator call — not filed here).
+- **Tests**: `tests/test_theme_batching.py` — new pure-partition coverage (bound / full
+  coverage / order-preservation on `_partition_discovery_pools`) plus the existing
+  batch-count and derivation-gate tests updated for cap 22; mutation-proven.
+
 ### 2026-08-10 — output-bounded batching: the four theme LLM callers can no longer out-write their ceilings
 
 - **Trigger**: the #543 ceilings (raised 4000→8000 on 08-07) pegged AGAIN — 08-10 live:

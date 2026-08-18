@@ -3398,7 +3398,46 @@ _ASSIGN_LLM_BATCH_SIZE = 18
 #     freeform growth ≈ 90-120 tok/stock — brackets the 117 measured, and 190
 #     sits above the band.
 #   * N ≤ NEAR_CEILING_FRACTION × 8000 / 190 = 7200 / 190 = 37.9 → N = 37.
-_DISCOVERY_LLM_BATCH_STOCKS = 37
+#
+# 2026-08-18 TIGHTEN — the 08-10 batching fix held for 7 clean days, then one
+# batch tipped over at N=37 (api_usage, caller theme_discovery, daily max
+# output vs the 8000 cap):
+#   08-11   4 calls  0 truncated  max_out 5792
+#   08-12  11 calls  0 truncated  max_out 6726
+#   08-13   8 calls  0 truncated  max_out 6550
+#   08-14   7 calls  0 truncated  max_out 5638
+#   08-17  10 calls  0 truncated  max_out 6597
+#   08-18  22 calls  1 truncated  max_out 8000   <- 2x the usual call volume
+#   * The 5 clean days imply 152-182 tok/stock (max_out / 37): 5792/37=156.5,
+#     6726/37=181.8, 6550/37=177.0, 5638/37=152.4, 6597/37=178.3 — bracketing
+#     the 190 design value above. 08-18 is CENSORED (true output ≥ 8000, i.e.
+#     ≥ 216.2 tok/stock at N=37) — above every clean day AND above the 190
+#     design cost that was meant to cover the tail. At ~2x the typical call
+#     count, one batch sampled further into the per-batch output distribution
+#     than any clean day had reached; the old 1.5x tail allowance (applied to
+#     the 127 tok/stock censored floor measured on 08-10) did not cover it.
+#   * Re-derive the SAME way, off the new censored floor: 8000/37 = 216.2
+#     tok/stock (floor) × 1.5 (same tail-allowance ratio as above — still the
+#     best available cross-caller estimate of single-batch skew) ≈ 324.3
+#     design tok/stock.
+#   * N ≤ NEAR_CEILING_FRACTION × 8000 / 324.3 = 7200 / 324.3 = 22.2 → N = 22.
+#   COST TRADE-OFF: smaller batches mean more calls for the same candidate
+#   pool — ratio 37/22 ≈ 1.7x, so a day that ran 22 calls at N=37 runs roughly
+#   37 calls at N=22 (11 calls -> ~18-19, 7 calls -> ~12). Each extra call
+#   resends the full existing-themes block + prompt overhead as INPUT tokens.
+#   Total OUTPUT stays ≈ FLAT, not exactly flat (mirrors the 08-10 hedge on
+#   this same claim): it is set mainly by the candidate pool size, but each
+#   call also pays fixed per-call overhead (scratchpad framing, tool
+#   boilerplate) now amortized over fewer stocks — a shade more total output,
+#   absorbed by the 1.5x tail-allowance slack above, not a re-opening of the
+#   ceiling risk this fixes. Roughly +70% more discovery calls/night and +70%
+#   more repeated theme-list input tokens; input is billed far below
+#   output-price on sonnet-5, so the dollar cost of this trade is small
+#   relative to the truncation it prevents. Smaller batches also raise the
+#   cross-sector-cohort-straddles-a-boundary residual risk already flagged at
+#   _partition_discovery_pools by roughly the same 1.7x (more boundaries per
+#   run) — narrower than a truncation (costs one cohort, not the whole call).
+_DISCOVERY_LLM_BATCH_STOCKS = 22
 
 
 def _chunk_list(items: list, size: int) -> list[list]:

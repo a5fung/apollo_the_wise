@@ -343,7 +343,7 @@ def test_discovery_small_pool_stays_one_call(monkeypatch):
 
 
 def test_discovery_large_pool_batches_and_bounds_each_call(monkeypatch):
-    """80 uncovered stocks → 3 calls (cap 37); each call's rendered population
+    """80 uncovered stocks → 4 calls (cap 22); each call's rendered population
     is bounded; the existing-themes context block rides in every call."""
     _quiet_infra(monkeypatch)
     stocks = _mk_stocks(80, monkeypatch)
@@ -355,7 +355,7 @@ def test_discovery_large_pool_batches_and_bounds_each_call(monkeypatch):
 
     asyncio.run(te._discover_new_themes(stocks, existing, sbt))
 
-    assert len(calls) == 3, "80 stocks at cap 37 must produce 3 calls"
+    assert len(calls) == 4, "80 stocks at cap 22 must produce 4 calls"
     seen = []
     for c in calls:
         prompt = c["messages"][0]["content"]
@@ -368,11 +368,14 @@ def test_discovery_large_pool_batches_and_bounds_each_call(monkeypatch):
 
 
 def test_discovery_batch_size_satisfies_measured_demand_bound():
-    """Derivation gate: cap × the designed per-stock output cost (127 tok/stock
-    censored floor × 1.5 measured tail ratio = 190) must stay under the
-    registry's pre-failure threshold."""
+    """Derivation gate: cap × the designed per-stock output cost must stay under
+    the registry's pre-failure threshold. 2026-08-18 re-derivation: the 08-18
+    censored floor (8000 tokens / the OLD cap of 37) × the same 1.5 measured
+    tail ratio used on 08-10 ≈ 324 design tok/stock. Fails if
+    _DISCOVERY_LLM_BATCH_STOCKS is bumped without re-deriving from fresh data."""
     from shared.output_ceilings import max_tokens_for, NEAR_CEILING_FRACTION
-    assert 190 * te._DISCOVERY_LLM_BATCH_STOCKS \
+    design_tok_per_stock = (8000 / 37) * 1.5
+    assert design_tok_per_stock * te._DISCOVERY_LLM_BATCH_STOCKS \
         <= NEAR_CEILING_FRACTION * max_tokens_for("theme_discovery"), \
         "discovery batch cap exceeds what the measured per-stock cost supports"
 
@@ -437,6 +440,67 @@ def test_partition_is_exact_and_keeps_clusters_together():
         "the cluster block must travel with its members' batch"
     assert all(sum(len(b[k]) for k in ("uncovered", "velocity", "turner", "elite"))
                <= 12 for b in batches)
+
+
+# ── partition: bound / coverage / order at the LIVE production cap ───────────
+# (2026-08-18 tighten, _DISCOVERY_LLM_BATCH_STOCKS 37 -> 22. These run against
+# the real constant so a future bump is exercised here too, not just at the
+# derivation-gate test.)
+
+def test_partition_never_exceeds_the_discovery_batch_cap():
+    """No single batch may exceed the cap regardless of pool mix — uncovered +
+    velocity + turner + elite all contribute to one call's rendered population."""
+    unc = [{"ticker": f"U{i:03d}", "rs_composite": 90, "sector": "SectorA"} for i in range(60)]
+    vel = [{"ticker": f"V{i:03d}", "rs_composite": 80, "sector": "SectorB"} for i in range(20)]
+    turner = [{"ticker": f"N{i:03d}", "rs_composite": 70, "sector": "SectorC"} for i in range(15)]
+    elite = [{"ticker": f"E{i:03d}", "rs_composite": 95, "sector": "SectorD"} for i in range(10)]
+
+    batches = te._partition_discovery_pools(
+        {"uncovered": unc, "velocity": vel, "turner": turner, "elite": elite},
+        [], batch_cap=te._DISCOVERY_LLM_BATCH_STOCKS)
+
+    assert len(batches) > 1, "test pool must actually require multiple batches"
+    for b in batches:
+        total = sum(len(b[k]) for k in ("uncovered", "velocity", "turner", "elite"))
+        assert total <= te._DISCOVERY_LLM_BATCH_STOCKS, \
+            f"a batch rendered {total} stocks — exceeds the derived cap"
+
+
+def test_partition_covers_every_candidate_none_dropped():
+    """A candidate list bigger than one batch must be FULLY covered — every
+    stock lands in exactly one batch, nothing silently dropped or duplicated."""
+    unc = [{"ticker": f"U{i:03d}", "rs_composite": 90, "sector": "SectorA"} for i in range(90)]
+
+    batches = te._partition_discovery_pools(
+        {"uncovered": unc, "velocity": [], "turner": [], "elite": []},
+        [], batch_cap=te._DISCOVERY_LLM_BATCH_STOCKS)
+
+    assert len(batches) > 1, "test pool must actually require multiple batches"
+    out_tickers = [s["ticker"] for b in batches for s in b["uncovered"]]
+    assert len(out_tickers) == len(unc), "candidate count changed across the partition"
+    assert sorted(out_tickers) == sorted(s["ticker"] for s in unc), \
+        "partition dropped or duplicated a candidate stock"
+
+
+def test_partition_preserves_original_order_within_each_batch():
+    """Batch BOUNDARIES are chosen by sector (so thematic cohorts stay
+    together), but each batch's own list must come back out in original pool
+    (RS-ranked) order, never sector-scrambled — interleave two sectors so a
+    skipped restoration step would show up as a reordering."""
+    unc = [{"ticker": f"U{i:03d}", "rs_composite": 90,
+            "sector": "SectorA" if i % 2 == 0 else "SectorB"} for i in range(50)]
+
+    batches = te._partition_discovery_pools(
+        {"uncovered": unc, "velocity": [], "turner": [], "elite": []},
+        [], batch_cap=te._DISCOVERY_LLM_BATCH_STOCKS)
+
+    assert len(batches) > 1, "test pool must actually require multiple batches"
+    for b in batches:
+        batch_tickers = [s["ticker"] for s in b["uncovered"]]
+        member_set = set(batch_tickers)
+        expected_order = [s["ticker"] for s in unc if s["ticker"] in member_set]
+        assert batch_tickers == expected_order, \
+            "a batch's stock order drifted from original (RS-ranked) pool order"
 
 
 def test_discovery_truncated_report_is_never_accepted(monkeypatch):

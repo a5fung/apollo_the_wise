@@ -138,6 +138,13 @@ CEILINGS: dict[str, OutputCeiling] = {
     # _LANE2_NARRATIVE_TOOL, and docs/architecture/theme_engine.md 2026-08-10.
     # Do NOT raise theme_assignment / theme_discovery / theme_split /
     # narrative_theme_discovery again for at-cap pressure — fix the demand.
+    # 2026-08-18: theme_discovery truncated once more (1 call at-cap on a
+    # 2x-call-volume day, 7 clean days prior) — NOT a re-raise, the batch cap
+    # itself was tightened 37->22 for more headroom (derivation at
+    # _DISCOVERY_LLM_BATCH_STOCKS). theme_assignment was asked the same
+    # question same day but prod api_usage was not queried (no DB access
+    # available that session) — NO CHANGE made for lack of data, not
+    # because the answer is known to be "no". Re-check when queryable.
     "narrative_theme_discovery": OutputCeiling(
         1500, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "WATCH: sonnet-5 max completed 1249 (83% of cap) vs 355 on 4-6 — 3.5x model "
@@ -154,7 +161,11 @@ CEILINGS: dict[str, OutputCeiling] = {
     "theme_assignment": OutputCeiling(
         8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise after 10 days dead at 4000 (#543 — every call censored). "
-        "Demand >= 4000 on sonnet-5; no post-raise sample yet."),
+        "POST-RAISE SAMPLE NOW IN, measured 2026-08-18 over 8 days: 152 calls, ZERO "
+        "truncations, max completed 2968 (37% of cap), mean 1374. The 08-10 input "
+        "batching (_ASSIGN_LLM_BATCH_SIZE=18) is what fixed it — ample headroom, no "
+        "action needed here, and NOTHING to raise. Contrast theme_discovery, which was "
+        "at 83% of cap on its clean days and tripped on a heavy one."),
     "theme_discovery": OutputCeiling(
         8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise from 4000: 8/8 sonnet-5 calls censored at 4000; "
