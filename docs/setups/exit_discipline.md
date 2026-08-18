@@ -765,13 +765,34 @@ for bracket legs where replace-qty is impossible. Replace remains the rule for s
 Tests: `tests/test_partial_exit_leg_safe_508.py` (7 of 8 fail against the pre-fix code; the 8th pins
 today's toggle-OFF fail-safe).
 
-**Known limitation (same bug class, latent)**: `_ensure_stop_coverage`'s under-covered branch uses a
-qty-only replace and would hit 42210000 if the surviving stop were ever a LEG under-covering a grown
-position. A full-size bracket leg is never *under*-covered, so reaching that branch needs the position
-to grow past the leg or the leg to partly die — argued rare, but UNMEASURED; the count of
-`stop_coverage_repair_failed` audit rows is the number, and reading it is step 1 of #523. It fails LOUD
-(`stop_coverage_repair_failed` audit + Telegram, retried next cycle). Not changed here to keep this
-diff verifiable; fold into the leg-safe helper after the partial-exit path is verified live.
+**#523 BUILT (2026-08-18, in the working tree — not yet broker-confirmed, not deployed, not CLOSED)**:
+the known bracket-leg coverage-repair gap is fixed. `stop_coverage_repair_failed` was checked in prod before starting — ZERO
+rows to date, so this had never actually fired live; the fix is preventive, not a live-cost remediation.
+`_ensure_stop_coverage`'s under-covered branch now detects an advanced-order (OTO/bracket) LEG via the
+already-fetched `order_class` and, under the SAME `partial_exit_leg_safe` toggle, widens it through the
+SAME verified-cancel → release-gate → new-stop mechanism #508 built — extracted into a shared
+`_replace_stop_leg_via_cancel_new` helper so `_reduce_stop_via_cancel_new` (unchanged behavior, pure
+delegation) and the new `_widen_stop_via_cancel_new` share one implementation. Toggle OFF, or a simple
+(non-leg) stop, take the byte-identical atomic-replace path from before this fix.
+
+Widening is NOT the mirror image of reducing: a reduce's new qty is always `<=` what cancelling the old
+stop itself frees; a widen's new qty is LARGER than the leg's own qty by construction, so nothing
+guarantees the release gate clears. `_ensure_stop_coverage` therefore reads the broker position BEFORE
+ever cancelling the leg and refuses to cancel unless there is confirmed headroom for `target` — making
+the "cancelled but can't replace" failure mode unreachable rather than something to recover from. In the
+rare case it still occurs (a fill races in, or a transient broker error strikes after a confirmed
+cancel), the function does NOT place a stop sized off the (possibly stale) `target` qty — it tells the
+operator coverage may be ZERO and defers to the next reconciler pass, which re-reads broker truth from
+scratch. `live_qty` can itself be unreadable (malformed broker qty field) — that case is barred from the
+leg-safe branch entirely (falls back to the atomic replace, same as toggle-off) rather than doing
+arithmetic on a `None`. Tests: `tests/test_never_naked_invariant.py` (`test_523_*`, 6 new — one proven to
+fail against the pre-fix code; the toggle-off/leg path proven byte-identical to today; the pre-flight
+guard, the "never claim the old stop is still live after a confirmed cancel" messaging, the
+leg's-own-price (never `db_stop_price`) invariant, and the unreadable-`live_qty` guard are each
+mutation-tested; the success and naked-outcome tests also assert the audit row's `mechanism`/
+`widen_outcome` fields, the same verify-live contract #508 shipped). Remaining before this can graduate
+to "verified live": a paper-broker probe confirming an actual leg widen completes, then deploy + one real
+firing. SSoT also updated: `docs/architecture/entry_pipeline.md`.
 
 
 ### 2026-08-01 — Intraday profit trigger BUILT (shipped OFF; operator-signed)

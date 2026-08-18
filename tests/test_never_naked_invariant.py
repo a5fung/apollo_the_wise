@@ -16,6 +16,7 @@ These call `_ensure_stop_coverage` directly (the extracted helper) — same
 pattern as `_try_adopt_existing_stop` — so the qty arithmetic + branch
 selection are tested without threading through the two prior sync loops.
 """
+import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -38,16 +39,21 @@ def _fake_try_lock(acquired: bool):
     return _cm
 
 
-def _live_stop(order_id, qty, stop_price=95.0, status="new"):
-    """An open sell-stop order dict as get_open_orders / _order_to_dict returns it."""
+def _live_stop(order_id, qty, stop_price=95.0, status="new", order_class=None):
+    """An open sell-stop order dict as get_open_orders / _order_to_dict returns it.
+
+    order_class defaults to None (a "simple" stop, as every pre-#523 test in
+    this file assumes) — pass "oto"/"oco"/"otoco"/"bracket" for the #523
+    leg-widen tests."""
     return {
         "id": order_id, "side": "OrderSide.SELL", "type": "OrderType.STOP",
         "qty": qty, "filled_qty": 0, "stop_price": stop_price,
-        "status": status, "client_order_id": None,
+        "status": status, "client_order_id": None, "order_class": order_class,
     }
 
 
-def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquired=True):
+def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquired=True,
+             leg_safe=False, cancel_order=None, get_order=None, get_position=None):
     """Patch the broker + DB surface _ensure_stop_coverage touches.
 
     open_orders: list returned by alpaca.get_open_orders (broker truth for the
@@ -55,15 +61,28 @@ def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquire
                  idempotency — invoked per call).
     pending_qty: value returned by get_pending_exit_qty.
     replace / place: AsyncMock side-effects/returns for the two submit paths.
+    leg_safe: value get_runtime_toggle("partial_exit_leg_safe", ...) returns —
+              default False (today's ship state; every pre-#523 test relies on
+              this so it never touches the leg-widen path or a real DB read).
+    cancel_order / get_order / get_position: AsyncMock overrides for the
+              leg-safe cancel→release-gate→new mechanism (#523 widen tests
+              only — irrelevant, and never called, when leg_safe=False or the
+              live stop's order_class isn't advanced).
     Returns (context-managers-applied-via-ExitStack-less) — we just return the
     individual patch objects in a dict so the test asserts on them.
     """
     from agents.market_intelligence.broker import order_manager as om
 
     audited = []
+    audit_details = []  # (evt, summary, parsed-detail-dict-or-None) — full record
 
     async def _audit(evt, summary=None, detail=None):
         audited.append(evt)
+        try:
+            parsed = json.loads(detail) if detail else None
+        except (TypeError, ValueError):
+            parsed = None
+        audit_details.append((evt, summary, parsed))
 
     if callable(open_orders):
         get_open = AsyncMock(side_effect=lambda *a, **k: open_orders())
@@ -76,6 +95,11 @@ def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquire
     place_mock = place if place is not None else AsyncMock(
         return_value={"id": "placed_stop_id"}
     )
+    cancel_mock = cancel_order if cancel_order is not None else AsyncMock(return_value=True)
+    get_order_mock = get_order if get_order is not None else AsyncMock(
+        return_value={"status": "canceled", "order_class": "oto", "filled_qty": 0})
+    get_position_mock = get_position if get_position is not None else AsyncMock(
+        return_value={"qty_available": 10**6, "qty": 10**6})
 
     coid_calls = []
 
@@ -93,15 +117,28 @@ def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquire
         patch.object(om, "log_audit_event", _audit),
         patch.object(om, "get_pending_exit_qty", AsyncMock(return_value=pending_qty)),
         patch.object(om, "set_stop_order_id", set_stop_mock),
+        # #523: leg-widen toggle + broker surface. Defaults keep every existing
+        # (pre-#523) test byte-identical — order_class=None on _live_stop means
+        # stop_is_leg is False regardless of what this toggle reads, and no
+        # real DB read ever happens because get_runtime_toggle is mocked here.
+        patch.object(om, "get_runtime_toggle", AsyncMock(return_value=leg_safe), create=True),
         patch.object(om.alpaca, "get_open_orders", get_open),
         patch.object(om.alpaca, "replace_order", replace_mock),
         patch.object(om.alpaca, "place_stop_order", place_mock),
+        patch.object(om.alpaca, "cancel_order", cancel_mock),
+        patch.object(om.alpaca, "get_order", get_order_mock),
+        patch.object(om.alpaca, "get_position", get_position_mock),
         patch.object(om.alpaca, "make_client_order_id", _make_coid),
+        # fast polls if a test does exercise the leg-safe path
+        patch.object(om, "_LEG_SAFE_POLL_S", 0.0, create=True),
+        patch.object(om, "_LEG_SAFE_CANCEL_CONFIRM_BUDGET_S", 0.3, create=True),
+        patch.object(om, "_LEG_SAFE_RELEASE_BUDGET_S", 0.3, create=True),
     ]
     return {
-        "ctx": ctx, "audited": audited, "replace": replace_mock,
-        "place": place_mock, "set_stop": set_stop_mock, "coid_calls": coid_calls,
-        "get_open": get_open,
+        "ctx": ctx, "audited": audited, "audit_details": audit_details,
+        "replace": replace_mock, "place": place_mock, "set_stop": set_stop_mock,
+        "coid_calls": coid_calls, "get_open": get_open, "cancel": cancel_mock,
+        "get_position": get_position_mock,
     }
 
 
@@ -534,3 +571,243 @@ async def test_f16_sibling_adopt_read_failure_defers_no_placement():
         await om._sync_positions_for_mode("live")
 
     place_spy.assert_not_called()
+
+
+# ── #523: leg-safe WIDEN of an under-covering bracket-LEG stop ───────────────
+#
+# `_ensure_stop_coverage`'s under-covered branch used to do a qty-only
+# `replace_order` unconditionally. Alpaca REJECTS every qty change on an
+# advanced-order (OTO/bracket) LEG (42210000 — the same rejection #508 fixed
+# on the partial-exit REDUCE side), so whenever the surviving stop was a leg,
+# this branch could never repair it. The fix routes the leg case through the
+# SAME verified-cancel → reservation-release-gate → new-stop mechanism
+# (`_widen_stop_via_cancel_new`, sharing `_replace_stop_leg_via_cancel_new`
+# with the #508 reduce side), gated by the same `partial_exit_leg_safe`
+# toggle, with a pre-flight broker-headroom check before the leg is ever
+# cancelled (widening's new qty is NOT bounded by what the cancel itself
+# frees, unlike reducing — see `_replace_stop_leg_via_cancel_new`'s docstring).
+
+
+PLTR_LEG_REJECTION_527 = Exception(
+    '{"code":42210000,"message":"qty cannot be changed for advanced orders"}'
+)
+
+
+@pytest.mark.asyncio
+async def test_523_leg_widen_via_cancel_new_when_toggle_on():
+    """THE bracket-leg coverage-repair case. Broker position 150, live LEG
+    stop 100 (order_class=oto), pending-exit 0 → target=150, under-covered by
+    50. Toggle ON must widen via cancel→release-gate→new — NEVER via the qty
+    replace Alpaca structurally rejects on a leg.
+
+    FAILS AGAINST TODAY'S CODE: pre-#523, this branch calls replace_order
+    unconditionally; against a real leg that raises the 42210000 rejection
+    below, and the function returns 'failed to widen' having never cancelled
+    or placed anything — the opposite of every assertion here."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    calls: list = []
+
+    async def _cancel(order_id, account_mode=None):
+        calls.append(("cancel", order_id))
+        return True
+
+    async def _get_order(order_id, account_mode=None):
+        # STATEFUL on the leg: 'new' until cancel_order has been called,
+        # 'canceled' after — proves cancel-confirmed-before-new-stop ordering.
+        if any(c[0] == "cancel" for c in calls):
+            calls.append(("get_order", "canceled"))
+            return {"id": order_id, "status": "canceled", "order_class": "oto", "filled_qty": 0}
+        calls.append(("get_order", "new"))
+        return {"id": order_id, "status": "new", "order_class": "oto", "filled_qty": 0}
+
+    async def _get_position(ticker, account_mode=None):
+        calls.append(("get_position", ticker))
+        return {"qty_available": 150.0, "qty": 150.0}
+
+    async def _place_stop(ticker, qty, stop_price, account_mode=None, client_order_id=None):
+        calls.append(("place_stop", qty, stop_price))
+        return {"id": "widened_stop_id", "status": "accepted"}
+
+    # If the (pre-fix) code ever calls replace_order on this leg, it must be
+    # rejected exactly as Alpaca rejects it for real — proving the test fails
+    # for the RIGHT reason against unfixed code, not by accident.
+    replace_mock = AsyncMock(side_effect=PLTR_LEG_REJECTION_527)
+
+    h = _patches(
+        # live stop's OWN broker-confirmed price is 95.0; db_stop_price below
+        # is deliberately DIFFERENT (93.50, a stale/drifted DB value) so the
+        # test can prove the widen uses the leg's own price, never db's.
+        [_live_stop("leg_id", 100, stop_price=95.0, order_class="oto")],
+        pending_qty=0, leg_safe=True, replace=replace_mock,
+        cancel_order=_cancel, get_order=_get_order, get_position=_get_position,
+        place=AsyncMock(side_effect=_place_stop),
+    )
+    result = await _run(h, broker_qty=150, stop_price=93.50)
+
+    assert result is not None and "repaired" in result.lower(), f"got: {result!r}"
+    assert not h["replace"].called, (
+        "qty replace on an advanced-order leg is structurally rejected — must not be attempted")
+    # NEVER-NAKED ORDERING: cancel confirmed → release gate → new stop placed.
+    idx_cancel = calls.index(("cancel", "leg_id"))
+    idx_confirm = next(i for i, c in enumerate(calls) if c == ("get_order", "canceled"))
+    idx_pos = next(i for i, c in enumerate(calls[idx_confirm:]) if c[0] == "get_position") + idx_confirm
+    idx_place = next(i for i, c in enumerate(calls) if c[0] == "place_stop")
+    assert idx_cancel < idx_confirm < idx_pos < idx_place
+    # Widened to the FULL target, at the leg's OWN unchanged price (THE LINE:
+    # mechanism only — level untouched, and never the stale db_stop_price).
+    assert ("place_stop", 150, 95.0) in calls
+    assert not any(c[0] == "place_stop" and c[2] == 93.50 for c in calls), (
+        "widen must use the leg's own already-accepted price, never db_stop_price")
+    h["set_stop"].assert_called_once_with(
+        221, "widened_stop_id", reason="sync_coverage_repair", account_mode="paper")
+    assert "stop_coverage_repaired" in h["audited"]
+    # The audit row is the verify-live evidence (same contract #508 shipped for
+    # partial_exit_stop_replaced): mechanism tag + measured cancel/release/accept
+    # timings, so a live firing is distinguishable from a plain replace.
+    repaired = next(d for evt, _, d in h["audit_details"] if evt == "stop_coverage_repaired")
+    assert repaired["mechanism"] == "leg_safe_cancel_new"
+    assert "timings_ms" in repaired and repaired["timings_ms"], (
+        "leg-safe widen must carry measured timings, same as the #508 reduce side")
+
+
+@pytest.mark.asyncio
+async def test_523_toggle_off_keeps_atomic_replace_and_fails_safe_on_a_leg():
+    """Toggle OFF (ship state): a bracket-LEG stop still takes the atomic
+    replace path, eats 42210000 exactly as before #523, and fails CLEANLY —
+    the old leg stays live, untouched, and the operator is told. No cancel,
+    no new stop. This is the byte-identical-behind-the-toggle pin."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    replace_mock = AsyncMock(side_effect=PLTR_LEG_REJECTION_527)
+    h = _patches(
+        [_live_stop("leg_id", 100, stop_price=95.0, order_class="oto")],
+        pending_qty=0, leg_safe=False, replace=replace_mock,
+    )
+    result = await _run(h, broker_qty=150, stop_price=95.0)
+
+    assert result is not None and "failed to widen" in result.lower(), f"got: {result!r}"
+    h["replace"].assert_called_once()
+    assert h["replace"].call_args.args[0] == "leg_id"
+    assert h["replace"].call_args.kwargs["qty"] == 150
+    h["cancel"].assert_not_called()
+    h["place"].assert_not_called()
+    h["set_stop"].assert_not_called()
+    assert "stop_coverage_repair_failed" in h["audited"]
+
+
+@pytest.mark.asyncio
+async def test_523_naked_after_confirmed_cancel_says_coverage_may_be_zero():
+    """Cancel confirmed (the old leg is verifiably GONE) but the new stop
+    can't be placed (non-lag broker error): the fallback must NOT reuse the
+    'failed to widen X→Y' phrasing (that implies the old stop is still live —
+    false here) and must NOT place a stop off the now-stale target (a fill
+    could have preceded this). Alert plainly, change nothing else, and let
+    the next reconciler pass re-protect off fresh broker truth."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    async def _cancel(order_id, account_mode=None):
+        return True
+
+    async def _get_order(order_id, account_mode=None):
+        return {"id": order_id, "status": "canceled", "order_class": "oto", "filled_qty": 0}
+
+    async def _get_position(ticker, account_mode=None):
+        return {"qty_available": 150.0, "qty": 150.0}
+
+    async def _place_stop_boom(*a, **k):
+        raise RuntimeError("boom")  # non-lag → no retry loop
+
+    h = _patches(
+        [_live_stop("leg_id", 100, stop_price=95.0, order_class="oto")],
+        pending_qty=0, leg_safe=True,
+        cancel_order=_cancel, get_order=_get_order, get_position=_get_position,
+        place=AsyncMock(side_effect=_place_stop_boom),
+    )
+    result = await _run(h, broker_qty=150, stop_price=95.0)
+
+    assert result is not None
+    assert "zero" in result.lower(), f"must say coverage may be zero, got: {result!r}"
+    assert "failed to widen" not in result.lower(), (
+        "must not reuse the phrasing that implies the old stop is still live")
+    h["set_stop"].assert_not_called(), "no order to persist — nothing was placed"
+    assert "stop_coverage_repair_failed" in h["audited"]
+    failed = next(d for evt, _, d in h["audit_details"] if evt == "stop_coverage_repair_failed")
+    assert failed["widen_outcome"] == "naked", (
+        "the audit row must distinguish naked from a plain replace failure")
+
+
+@pytest.mark.asyncio
+async def test_523_preflight_blocks_the_cancel_when_headroom_is_insufficient():
+    """A widen's new qty is LARGER than the leg's own qty by construction —
+    unlike reducing, the release gate is not guaranteed to clear on qty
+    alone. If broker truth shows insufficient headroom, the leg must NEVER
+    be cancelled — the failure must happen BEFORE the irreversible step, not
+    be recovered from after it. Coverage stays exactly at today's safe
+    under-covered state (old leg untouched)."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    async def _get_position(ticker, account_mode=None):
+        # Some other reservation this function doesn't know about holds
+        # everything: 0 available, even though the leg itself holds 100.
+        return {"qty_available": 0.0, "qty": 150.0}
+
+    cancel_mock = AsyncMock(return_value=True)
+    h = _patches(
+        [_live_stop("leg_id", 100, stop_price=95.0, order_class="oto")],
+        pending_qty=0, leg_safe=True,
+        cancel_order=cancel_mock, get_position=_get_position,
+    )
+    result = await _run(h, broker_qty=150, stop_price=95.0)
+
+    assert result is not None and "failed to widen" in result.lower()
+    cancel_mock.assert_not_called(), "must never cancel a leg it can't safely replace"
+    h["replace"].assert_not_called()
+    h["place"].assert_not_called()
+    # A preflight refusal never reached the widen mechanism, so the audit
+    # payload must stay byte-identical to today's toggle-off shape — no
+    # "mechanism" key pinned onto a repair that never actually widened.
+    refused = next(d for evt, _, d in h["audit_details"] if evt == "stop_coverage_repair_failed")
+    assert "mechanism" not in refused
+    h["set_stop"].assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_523_toggle_on_simple_stop_still_uses_atomic_replace():
+    """Toggle ON alone must not force cancel+new — only a genuine advanced-
+    order LEG does. A simple stop (order_class=None) under toggle ON must
+    take the SAME atomic-replace path as toggle OFF."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    h = _patches([_live_stop("stop_134", 134)], pending_qty=0, leg_safe=True)
+    result = await _run(h, broker_qty=200)
+
+    assert result is not None and "repaired" in result.lower()
+    h["replace"].assert_called_once()
+    assert h["replace"].call_args.args[0] == "stop_134"
+    assert h["replace"].call_args.kwargs["qty"] == 200
+    h["cancel"].assert_not_called()
+    h["place"].assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_523_unreadable_live_qty_on_a_leg_falls_back_to_atomic_replace_not_a_crash():
+    """A live stop whose `qty` field is missing/unparseable (live_qty=None,
+    pre-existing possibility — see the `qty` parse above) must NOT reach the
+    leg-safe pre-flight arithmetic (`_avail + live_qty` on a None crashes).
+    Even on an advanced-order leg with the toggle ON, this must fall back to
+    the atomic replace — exactly the pre-#523 behavior for this edge case —
+    not raise."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    h = _patches(
+        [_live_stop("leg_id", None, order_class="oto")],  # qty missing
+        pending_qty=0, leg_safe=True,
+    )
+    result = await _run(h, broker_qty=200)  # must not raise
+
+    assert result is not None and "repaired" in result.lower(), f"got: {result!r}"
+    h["replace"].assert_called_once()
+    assert h["replace"].call_args.kwargs["qty"] == 200
+    h["cancel"].assert_not_called()
+    h["place"].assert_not_called()

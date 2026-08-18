@@ -1979,31 +1979,49 @@ def _is_advanced_qty_rejection(err: Exception) -> bool:
     )
 
 
-async def _reduce_stop_via_cancel_new(
+async def _replace_stop_leg_via_cancel_new(
     trade_id: int,
     ticker: str,
     old_stop_id: str,
-    new_remaining: int,
+    new_qty: int,
     stop_price: float,
     signal_type: str,
     account_mode: str,
 ) -> tuple[dict | None, dict]:
-    """#508 — reduce a BRACKET-LEG stop to `new_remaining` shares via
-    verified-cancel → reservation-release gate → new stop. See the block
-    comment above for why replace cannot work on a leg and why gating on
-    qty_available closes the IBM 2026-05-27 cancel+new race.
+    """#508 / #523 — resize a BRACKET-LEG stop to `new_qty` shares via
+    verified-cancel → reservation-release gate → new stop. See the
+    "#508 leg-safe stop reduction" block comment further above (the
+    `_ADVANCED_ORDER_CLASSES` / probe-table one) for why replace cannot work
+    on a leg and why gating on qty_available closes the IBM 2026-05-27
+    cancel+new race.
+
+    THE SHARED MECHANISM behind two thin, direction-named callers:
+      * `_reduce_stop_via_cancel_new` (#508, partial-exit) — new_qty is
+        always <= the leg's current qty (shares are being sold off), so the
+        release gate can only ever find MORE than enough available.
+      * `_widen_stop_via_cancel_new` (#523, coverage repair) — new_qty is
+        LARGER than the leg's current qty by construction (the leg is
+        under-covering). The release gate is therefore NOT guaranteed to
+        clear on qty alone — the widen caller must verify broker truth has
+        enough headroom BEFORE calling this (cancelling is irreversible;
+        this function does not re-check availability against any qty except
+        what the broker's own release signal reports).
+    Neither direction is special-cased below — cancel/confirm/release/place
+    do not know or care which way the qty moved.
 
     Returns (new_stop_order, outcome); outcome["kind"] ∈:
-      "ok"          — reduced stop accepted; timings_ms attached.
+      "ok"          — resized stop accepted; timings_ms attached.
       "protected"   — the cancel REQUEST failed and the old leg verified still
                       live: the position never stopped being protected.
       "stop_filled" — the old stop FILLED (full qty) during the cancel: the
-                      position is exiting via the stop; nothing to partial,
-                      nothing left to protect.
-      "naked"       — the old stop is (or may be) gone and no reduced stop
-                      could be placed: caller must route to the abort
-                      machinery (old-stop probe → null → post-lock
-                      _ensure_stop_coverage re-protect to broker truth).
+                      position is exiting via the stop; nothing to protect,
+                      nothing to resize — CALLER MUST NOT place a new stop off
+                      a pre-fill qty snapshot (it is now stale).
+      "naked"       — the old stop is (or may be) gone and no resized stop
+                      could be placed: broker_qty snapshots taken before this
+                      call may now be stale (a partial fill can precede this
+                      outcome) — callers must re-protect off FRESH broker
+                      truth, never off the qty they came in with.
     Never raises — every failure is an outcome. Broker-only: no DB writes here
     (the caller owns persistence + audit under the advisory lock).
     """
@@ -2091,12 +2109,12 @@ async def _reduce_stop_via_cancel_new(
     while time.monotonic() < release_deadline:
         pos = await alpaca.get_position(ticker, account_mode=account_mode)
         avail = pos.get("qty_available") if pos else None
-        if avail is not None and float(avail) >= new_remaining:
+        if avail is not None and float(avail) >= new_qty:
             timings["avail_release_ms"] = _ms()
             break
         await asyncio.sleep(_LEG_SAFE_POLL_S)
 
-    # 4) Place the reduced stop. Probe T4: a stop can NEVER be accepted while
+    # 4) Place the resized stop. Probe T4: a stop can NEVER be accepted while
     #    another stop still holds the shares (40310000), so an accept here is
     #    broker-side proof there is no surviving duplicate.
     last_err: Exception | None = None
@@ -2104,7 +2122,7 @@ async def _reduce_stop_via_cancel_new(
         try:
             coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
             new_stop = await alpaca.place_stop_order(
-                ticker, new_remaining, float(stop_price),
+                ticker, new_qty, float(stop_price),
                 account_mode=account_mode, client_order_id=coid,
             )
             timings["stop_accept_ms"] = _ms()
@@ -2115,7 +2133,7 @@ async def _reduce_stop_via_cancel_new(
             last_err = e
             if _is_share_reservation_lag(e) and attempt < _LEG_SAFE_STOP_ATTEMPTS:
                 logger.warning(
-                    f"leg-safe reduce {ticker}: reduced-stop attempt {attempt}"
+                    f"leg-safe resize {ticker}: resized-stop attempt {attempt}"
                     f"/{_LEG_SAFE_STOP_ATTEMPTS} hit reservation lag: {e} — retrying"
                 )
                 await asyncio.sleep(0.3)
@@ -2123,10 +2141,56 @@ async def _reduce_stop_via_cancel_new(
             break
     return None, {
         "kind": "naked", "timings": timings, "cancel_confirmed": True,
-        "detail": (f"reduced stop placement failed after cancel "
+        "detail": (f"resized stop placement failed after cancel "
                    f"({type(last_err).__name__ if last_err else 'unknown'}: "
                    f"{last_err})"),
     }
+
+
+async def _reduce_stop_via_cancel_new(
+    trade_id: int,
+    ticker: str,
+    old_stop_id: str,
+    new_remaining: int,
+    stop_price: float,
+    signal_type: str,
+    account_mode: str,
+) -> tuple[dict | None, dict]:
+    """#508 — thin direction-named wrapper over `_replace_stop_leg_via_cancel_new`
+    for the partial-exit REDUCE case (new_remaining < the leg's current qty).
+    Kept as its own name/signature — `execute_partial_exit` (and its tests)
+    call it by this name — but it now delegates 100% of the mechanism to the
+    shared helper; no logic lives here. See `_widen_stop_via_cancel_new` for
+    the #523 opposite-direction sibling."""
+    return await _replace_stop_leg_via_cancel_new(
+        trade_id, ticker, old_stop_id, new_remaining, stop_price,
+        signal_type, account_mode,
+    )
+
+
+async def _widen_stop_via_cancel_new(
+    trade_id: int,
+    ticker: str,
+    old_stop_id: str,
+    target_qty: int,
+    stop_price: float,
+    signal_type: str,
+    account_mode: str,
+) -> tuple[dict | None, dict]:
+    """#523 — thin direction-named wrapper over `_replace_stop_leg_via_cancel_new`
+    for the coverage-repair WIDEN case (target_qty > the leg's current qty).
+
+    `stop_price` MUST be the leg's own already-accepted broker price (never a
+    newly-computed one) — this can only ever change quantity, never the stop
+    level (THE LINE). The caller owns verifying, BEFORE calling this, that the
+    broker will actually have `target_qty` shares available once the leg is
+    cancelled (see `_ensure_stop_coverage`'s pre-flight gate) — unlike the
+    reduce direction, a widen's new qty is not bounded above by what the
+    cancel itself frees, so that check cannot be deferred to this helper."""
+    return await _replace_stop_leg_via_cancel_new(
+        trade_id, ticker, old_stop_id, target_qty, stop_price,
+        signal_type, account_mode,
+    )
 
 
 # ── #151 cross-PROCESS trade-state lock (advisory, DB-global) ─────────────────
@@ -4858,9 +4922,16 @@ async def _ensure_stop_coverage(
             dedup/down-size deferred — never our job to shrink coverage here)
       * >1 live sell-stop                                    → ambiguous, no-op
             (a duplicate has no cleanup path; Phase 2b dedup deferred)
-      * under-covered, exactly ONE live stop                → atomic qty-only
+      * under-covered, exactly ONE live stop, SIMPLE order   → atomic qty-only
             `replace_order` to `target` (keeps the accepted stop_price → can't
             breach); SINGLE stop, never an additive 2nd order.
+      * under-covered, exactly ONE live stop, ADVANCED-ORDER  → #523: `replace_order`
+            LEG (toggle `partial_exit_leg_safe` ON)            would be rejected
+            (42210000, same as #508) — widen via the SAME verified-cancel →
+            release-gate → new-stop mechanism instead (`_widen_stop_via_cancel_new`),
+            after a pre-flight broker read confirms enough shares will be available
+            post-cancel. Toggle OFF → falls through to the atomic replace above,
+            which fails exactly as it does today (safe: old leg stays live).
       * under-covered, NO live stop                          → `place_stop_order`
             at `db_stop_price` (the place branch is the only one that can breach).
 
@@ -4948,17 +5019,92 @@ async def _ensure_stop_coverage(
         coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
 
         if live_stop is not None:
-            # Atomic qty-only replace — keeps the already-accepted stop_price (so it
-            # cannot breach) and never opens a share-release window. New order id
-            # must be persisted.
-            try:
-                new_order = await alpaca.replace_order(
-                    live_stop["id"],
-                    qty=int(target),
-                    account_mode=account_mode,
-                    client_order_id=coid,
-                )
-            except Exception as e:
+            # #523: if the live stop is an advanced-order (OTO/bracket) LEG,
+            # Alpaca rejects EVERY qty replace on it (42210000 — the same
+            # rejection #508 hit on the partial-exit path; every MAGNA53 entry's
+            # stop is a leg on its entry day). Route through the SAME
+            # verified-cancel → reservation-release-gate → new-stop mechanism
+            # `_reduce_stop_via_cancel_new` uses for partial-exit reductions —
+            # widen instead of reduce — gated behind the SAME toggle so one
+            # switch governs both sites. `order_class` is already on the
+            # fetched order dict (unlike the partial-exit site, no extra
+            # broker read is needed to learn it).
+            leg_safe_on = await get_runtime_toggle(
+                "partial_exit_leg_safe", "PARTIAL_EXIT_LEG_SAFE", default=False)
+            # live_qty is None when the fetched order dict's qty is missing/
+            # unparseable (pre-existing possibility — see its computation
+            # above). The leg-safe branch below does arithmetic on live_qty
+            # (the pre-flight headroom check); never route there without a
+            # real number. Falls through to the atomic replace, exactly the
+            # pre-#523 behavior for this edge case regardless of order_class.
+            stop_is_leg = leg_safe_on and live_qty is not None and (
+                str(live_stop.get("order_class") or "").lower()
+                in _ADVANCED_ORDER_CLASSES
+            )
+
+            new_order = None
+            last_err: Exception | None = None
+            widen_outcome: dict | None = None
+
+            if not stop_is_leg:
+                # Atomic qty-only replace — keeps the already-accepted stop_price (so it
+                # cannot breach) and never opens a share-release window. New order id
+                # must be persisted. UNCHANGED from before #523 — this is the only
+                # path reached when the toggle is off or the stop is a simple order.
+                try:
+                    new_order = await alpaca.replace_order(
+                        live_stop["id"],
+                        qty=int(target),
+                        account_mode=account_mode,
+                        client_order_id=coid,
+                    )
+                except Exception as e:  # loud-ok: not swallowed — the unified
+                    # `if new_order is None:` block just below logs, audits
+                    # (stop_coverage_repair_failed), and returns the operator
+                    # message for BOTH this branch and the leg-safe one.
+                    last_err = e
+            else:
+                # Leg-safe widen. stop_price MUST be the leg's OWN already-accepted
+                # broker price (never db_stop_price, never recomputed) — the atomic
+                # replace above changes qty only for the same reason; cancel+new must
+                # be told a price explicitly, so it has to be told the price that is
+                # already live. THE LINE: quantity only, never level.
+                _widen_price = live_stop.get("stop_price")
+                if _widen_price is None:
+                    last_err = RuntimeError(
+                        f"leg-safe widen: live stop {live_stop['id']} has no "
+                        f"readable stop_price — cannot safely place a new one")
+                else:
+                    # Pre-flight, BEFORE cancelling anything: verify the broker will
+                    # actually have `target` shares available once the leg is
+                    # cancelled. Unlike the REDUCE direction (new qty is always <=
+                    # what the cancel itself frees, so the release gate can only
+                    # ever find enough), a WIDEN's new qty is LARGER than the leg's
+                    # own qty by construction — if some other reservation this
+                    # function doesn't account for is holding shares, the release
+                    # gate would time out only AFTER the leg is already cancelled,
+                    # turning today's guaranteed-safe failure (under-covered, old
+                    # stop live) into a genuinely naked one. Checking first makes
+                    # that failure mode unreachable instead of recovered from.
+                    _pos = await alpaca.get_position(ticker, account_mode=account_mode)
+                    _avail = (float(_pos["qty_available"])
+                              if _pos and _pos.get("qty_available") is not None else None)
+                    if _avail is None or (_avail + live_qty) < target - 0.5:
+                        last_err = RuntimeError(
+                            f"leg-safe widen: only {_avail if _avail is not None else '?'} "
+                            f"available + {live_qty:.0f} on the leg — not enough to reach "
+                            f"target {target:.0f} after cancel; refusing to cancel a leg "
+                            f"we can't safely replace")
+                    else:
+                        new_order, widen_outcome = await _widen_stop_via_cancel_new(
+                            trade_id, ticker, live_stop["id"], int(target),
+                            float(_widen_price), signal_type, account_mode,
+                        )
+                        if widen_outcome["kind"] != "ok":
+                            last_err = RuntimeError(widen_outcome["detail"])
+
+            if new_order is None:
+                e = last_err if last_err else RuntimeError("replace_order unreached")
                 logger.error(
                     f"_ensure_stop_coverage: replace under-covering stop failed for "
                     f"{ticker} ({live_qty}→{target:.0f}): {e}"
@@ -4971,8 +5117,29 @@ async def _ensure_stop_coverage(
                         "account_mode": account_mode,
                         "live_stop_qty": live_qty, "target_qty": target,
                         "error": str(e),
+                        **({"mechanism": "leg_safe_cancel_new",
+                            "widen_outcome": widen_outcome["kind"],
+                            "timings_ms": widen_outcome["timings"]}
+                           if widen_outcome else {}),
                     }),
                 )
+                if widen_outcome and widen_outcome["kind"] in ("naked", "stop_filled"):
+                    # The old (under-covering) leg is CONFIRMED gone (cancelled or
+                    # filled) and no replacement was placed — this is NOT the safe
+                    # "under-covered, old stop still live" state the toggle-off path
+                    # guarantees; coverage may be ZERO. Say so plainly rather than
+                    # reusing the "failed to widen X→Y" phrasing below, which would
+                    # falsely imply the old stop is still there. Do NOT place a stop
+                    # here: broker_qty may now be stale (a fill can precede this
+                    # outcome) — sizing off it risks an oversized order. The next
+                    # reconciler pass re-reads broker truth from scratch and repairs
+                    # (place branch below, no live stop found).
+                    return (
+                        f"🚨 {ticker}: leg-safe widen left the old stop "
+                        f"{widen_outcome['kind']} with no confirmed replacement — "
+                        f"coverage may be ZERO, not just under {live_qty}→{target:.0f}. "
+                        f"Next reconciler pass re-protects."
+                    )
                 return f"⚠️ {ticker}: failed to widen stop coverage {live_qty}→{target:.0f}: {e}"
             await set_stop_order_id(
                 trade_id, new_order["id"],
@@ -4988,10 +5155,17 @@ async def _ensure_stop_coverage(
                     "account_mode": account_mode,
                     "old_stop_id": live_stop["id"], "new_stop_id": new_order["id"],
                     "live_stop_qty": live_qty, "target_qty": target,
+                    **({"mechanism": "leg_safe_cancel_new",
+                        "timings_ms": widen_outcome["timings"]}
+                       if widen_outcome else {}),
                 }),
             )
+            # Pre-existing latent bug, surfaced by #523's live_qty=None test: `:.0f` on a
+            # None crashes. live_qty prints plain elsewhere in this function for exactly
+            # this reason (e.g. the audit summary two lines up) — match that here too.
+            _live_qty_disp = f"{live_qty:.0f}" if live_qty is not None else str(live_qty)
             return (
-                f"🛡 Coverage repaired {ticker}: stop {live_qty:.0f}→{target:.0f} "
+                f"🛡 Coverage repaired {ticker}: stop {_live_qty_disp}→{target:.0f} "
                 f"(under-covering after partial-exit failure)"
             )
 
