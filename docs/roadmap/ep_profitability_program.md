@@ -59,6 +59,62 @@ have done to PLTR — is mathematically fatal, since 4R is break-even (`docs/set
 2026-08-11). It also reframes §0's headline number: 0-of-19 is not only a bad win rate — the cohort
 on average REACHES +1.54R and KEEPS −0.91R (§5) — both terms of the equation are failing at once.
 
+### 🎯 SELECTION IS BROADER THAN "DO WE FIND THEM" (operator, 2026-08-18) — correcting the synthesis
+
+The 08-18 synthesis concluded detection is third-order because we already surface ~2 tail winners a
+month against a need of ~1 converted. **He rejected the framing, and he is right:**
+
+> *"that may be the case but my goal on EP selection is finer than that, this only looks at what we
+> find and not what we miss. Imagine if selection is better (something we need to aspire to), we may
+> 1) better filter out losers so we won't potentially trade them and 2) find more potential winners
+> so we have a chance to trade them -> this leads to a better universe and increases our odds of
+> trading a winner."*
+
+**Why the synthesis's measure was the wrong one.** "We surface enough winners" counts the NUMERATOR
+only. Selection has two jobs and that statistic sees neither properly:
+1. **Fewer losers admitted.** Capital and slots are finite — the 5-position cap means every loser we
+   take occupies a slot a winner could have had. That is his 2026-08-16 point: *"funds are limited,
+   with lose selection criteria we inevitably leave to random rules to enter vs decline, eg 5
+   position cap"* and *"opportunity cost of taking a sub optimal stock, even if we pick a winning one
+   it can a marginal win vs true EP."* A cleaner universe raises the odds that the slot goes to a
+   winner **without surfacing a single additional name.**
+2. **More candidates we never see at all.** The 08-18 reads only measured names our current selector
+   already produced or explicitly rejected. Names outside that lens were never in any denominator.
+
+**So the correct selection metric is not "how many winners do we surface" — it is the WINNER DENSITY
+of the pool we act on**, i.e. of the names that actually compete for the 5 slots. Any future
+selection read must report BOTH directions: winners admitted AND losers excluded. A change that
+surfaces the same winners while admitting fewer losers is a real gain and the old statistic scores it
+as zero.
+
+⚠ This does not overturn the conversion finding — surfaced-winner→fill is still a measured leak. It
+means "detection is third-order" was an artifact of a numerator-only measure and must not be quoted
+as settled.
+
+### ⚡ BIAS FOR ACTION — the standing tie-breaker on EVIDENCE decisions (operator, 2026-08-18)
+
+> *"Though we may want to collect and analyze in Oct as you stated, but what's the trade off? That is
+> the same question we asked on the 2R stop, you suggested waiting while I pushed for swapping, this
+> is because we can't assume we have the right system now, we're still seeking it, so unless there's
+> no reason to take action or risk is too high, we should bias for action."*
+
+`CLAUDE.md` already says default to DOING rather than filing. **This extends it to EVIDENCE and
+TIMING decisions, which is where I keep defaulting to wait:** proposing a gated read in October, an
+n≥30 threshold, "let it accrue." **The 2R stop is the worked example and it went his way** — I argued
+for more evidence, he ruled to swap, and on its FIRST live fill (AMLX 2026-08-18) the stock traded to
+28.58, exactly the old stop, within eight minutes. Waiting would have bought one more full loss and
+no information.
+
+**The test to apply before proposing any wait:** state the COST of acting now, the COST of waiting,
+and what the wait actually buys. If the answer is "a cleaner number on a system we already suspect is
+wrong", act. **We are not tuning a working system; we are still looking for one.** Reserve waiting
+for cases where acting risks real money beyond the operator's stated tolerance, or where the action
+is irreversible.
+
+▶ **Immediate consequence, applied:** a gated one-shot read (the rank shadow's 25-session gate,
+earliest 2026-10-15) should become a RUNNING read in the shape of `stop_2r_running_comparison` —
+reported from the first sample with its confidence stated, never a single verdict on a distant date.
+
 ### 🧭 TWO RULES FOR HOW THIS WORK IS RUN (operator, 2026-08-18)
 
 > *"we're not trying to catch everything or have the avg perform at specific range, what we want is
