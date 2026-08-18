@@ -4815,7 +4815,28 @@ reviews:
       DISCIPLINE: design this week; build still gated on advisor + SSoT/CHANGE_PROCESS +
       validate against BOTH cohorts (no single-case overfit) + grounding/validation so
       higher sensitivity does NOT flood the brief with noise. Decoupled from the 6/22 cutover.
-    status: pending
+    status: done
+    closed_on: 2026-08-18
+    outcome: >-
+      MARKED ANSWERED 2026-08-18 — it had surfaced READY for 21 days asking for work that
+      SHIPPED on 2026-08-09. This is exactly the defect #517 was built to stop (a review
+      re-presenting a question already closed) and it is the FIFTH recorded case; the
+      mark-it-answered path shipped the same day and this is its first real use.
+
+      WHAT ANSWERS IT: the narrative discovery lane (Lane 2) is LIVE and runs nightly —
+      `narrative_theme_discovery_ran` fired 08-13, 08-14, 08-17 and twice on 08-18 (twice
+      only because a deploy re-triggered the engine). It reads narrative from TEXT instead
+      of clustering on RS-by-sector, which is precisely the structural fix this entry
+      demanded: the root cause recorded above is that "RS-by-sector clustering structurally
+      CANNOT group a cross-name narrative rotation with no shared sector label", and a
+      text-driven lane does not carry that limitation.
+
+      ⚠ WHAT IS NOT CLAIMED: this is NOT a measurement that the drone or software-re-rating
+      cohorts would now be caught. The mechanism the entry asked for exists and runs;
+      whether it CATCHES those specific cohorts is a separate question belonging to the
+      theme work, not to a review that has been asking for a build that already happened.
+      Closing on "the mechanism shipped" rather than "the cohorts are caught" is deliberate
+      and stated so nobody later reads this as a validated capability.
     added_on: 2026-05-30
 
   - review_id: theme_as_ep_signal
