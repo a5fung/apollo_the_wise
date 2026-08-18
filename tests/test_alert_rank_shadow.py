@@ -1062,6 +1062,13 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         str(REPO / "agents/market_intelligence/data_gated_reviews.py"),
         str(REPO / "tests/test_alert_rank_shadow.py"),
         str(REPO / "tests/test_detector_liveness_543.py"),
+        # 2026-08-18: PART 2 of the six-item-list build (running-read conversion of
+        # `alert_rank_shadow_out_of_sample`). Tests the registry entry's YAML text and
+        # the pure, DB-free scorer/renderer in `scripts/alert_rank_shadow_running_read.py`
+        # (which is itself outside agents/ and tests/, so this grep never sees it directly)
+        # — read-only reporting/plumbing, same non-decision shape as the two exemptions
+        # above; no import of the live module, no DB access, nothing on a decision path.
+        str(REPO / "tests/test_alert_rank_shadow_running_read.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"

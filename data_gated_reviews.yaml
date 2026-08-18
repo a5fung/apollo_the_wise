@@ -9413,7 +9413,7 @@ reviews:
     added_on: 2026-08-10
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
   - review_id: alert_rank_shadow_out_of_sample
-    title: "Ranking rule — the FIRST out-of-sample read (the only thing that can validate it)"
+    title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
     question: >-
       The three-feature ranking rule (smaller gap + tighter EP day + less extension) put
       16 of the 26 tradeable >=10R winners in its top quartile, a 2.5x lift - but its
@@ -9426,6 +9426,10 @@ reviews:
       medians second. And read the EOD version against the as-of-09:45 version - the
       tested tightness feature uses the FULL day's range and is NOT knowable at 09:45, so
       the two answer different questions (an end-of-day selector vs an ORB-time one).
+      ALSO (SELECTION rule, GOAL section, 2026-08-18): report BOTH winners admitted AND
+      losers excluded per quartile, never a winner count alone — a change that surfaces the
+      same winners while admitting fewer losers is a real gain and a numerator-only read
+      would score it as zero.
     # ⚠ FIXED 2026-08-17 (#517): this was `evidence_predicate:`, an off-schema field name.
     # `check_pending_reviews` reads `predicate_sql` only; a missing key returns None, and None is
     # the code for "predicate-less, date-only" — so with no `earliest_review_date` either, this
@@ -9434,26 +9438,47 @@ reviews:
     # `>= 25`, which happened to still work against a default threshold of 0, for the wrong
     # reason) + threshold + earliest_review_date now carry the gate the notes below always
     # intended.
+    # 🔴 CONVERTED TO RUNNING 2026-08-18 (operator BIAS-FOR-ACTION rule, GOAL section):
+    # a gated read that stays silent until October, on a ranking rule already suspected of
+    # not surviving out-of-sample, buys a cleaner number on a system we already doubt and
+    # leaves us blind until it fires. Modelled on `stop_2r_running_comparison`'s shape:
+    # threshold dropped 25 -> 1 (fires from the FIRST out-of-sample session) and
+    # `earliest_review_date` (was 2026-10-15) REMOVED — a date floor is exactly what kept
+    # this silent for two months. 25 sessions is preserved below as the DECISION-GRADE
+    # mark, never the surfacing gate. Scorer/renderer: `scripts/alert_rank_shadow_running_read.py`
+    # (pure, DB-free — confidence_label + score_both_directions + render_running_read).
+    # REHEARSED 2026-08-18 on the 255 rows already recorded (in-sample dates, NOT this
+    # review's own out-of-sample population — a mechanism proof only, never cited as a
+    # read): the mi_alert_rank_shadow -> forward-outcome join EXECUTES (253 of 255 rows
+    # produced an R1 number; 2 have zero forward sessions yet) and both-directions scoring
+    # works (winners admitted + losers-admitted rate, both directions). 0 of 253
+    # >=10R winners is the EXPECTED result (the doc's own 26 tradeable >=10R winners were
+    # never live-alerted, so this population structurally cannot contain them), NOT a dead-
+    # rule signal. No broken join found. Current live population is thin as intended: n=1
+    # out-of-sample session (2026-08-17, 2 alerts, 0 in the top quartile) — reported, not
+    # read as a verdict.
     predicate_sql: >-
       SELECT count(DISTINCT alert_date) FROM mi_alert_rank_shadow
       WHERE alert_date > DATE '2026-08-16'
-    threshold: 25
-    earliest_review_date: 2026-10-15
+    threshold: 1
     owner: operator
     status: pending
     action_when_ready: >-
-      Score catch-rate first: does the ranking rule's top quartile still hold a
-      disproportionate share of the tail (>=10R) winners on alerts recorded strictly
-      AFTER 2026-08-16 (the shadow's live date — genuinely out-of-sample)? Medians second.
-      Read the EOD version against the as-of-09:45 version separately — they answer
-      different questions (full-day tightness vs ORB-time-only). Validates -> selection is
+      RUNNING READ — fires again every session a new out-of-sample alert_date lands, from
+      the first one. Every run: state n (COUNT(DISTINCT alert_date) WHERE alert_date >
+      2026-08-16) and its confidence label via
+      `scripts/alert_rank_shadow_running_read.confidence_label` — n<25 is THIN/directional,
+      NEVER presented as a verdict; n>=25 is DECISION-GRADE. Score catch-rate on the tail
+      first (>=10R), medians second. Read the EOD version against the as-of-09:45 version
+      separately (full-day tightness vs ORB-time-only — different questions). Report BOTH
+      directions per quartile (winners admitted, losers admitted/excluded — see
+      `score_both_directions`), never a winner count alone. Validates -> selection is
       actionable and the plan's sufficiency target stops depending entirely on conversion;
       does not -> the plan narrows to conversion alone.
     notes: >-
-      ~25 recorded sessions is roughly five trading weeks -> late September 2026, and the
-      names need their own forward window on top, so the first HONEST read is mid-to-late
-      October. Do NOT read it early: the whole purpose is data the features never saw, and
-      an early peek re-creates the in-sample problem this shadow exists to escape.
+      25 sessions (~5 trading weeks -> late September, with names needing their own
+      forward window on top -> decision-grade in mid-to-late October) is now a MATURITY
+      LABEL on the running read, not a silence gate: report at every n, always labelled.
       THE ONE RESULT THAT CHANGES THE PLAN'S SHAPE (plan section 0b-fwd): if this
       validates, selection becomes actionable and the sufficiency target stops depending
       entirely on conversion. If it does not, the plan narrows to conversion alone - we
@@ -9487,6 +9512,37 @@ reviews:
       primary correctness risk); and position size halving ONCE, not twice.
       The separate `exit_path_shadow_first_read` review at 20 closed positions remains the
       formal out-of-sample read - this one is the live watch that precedes it.
+      🔴 REHEARSED 2026-08-18 (proving the machinery, not reading a verdict — see
+      alert_rank_shadow_out_of_sample's matching rehearsal note for the sibling read).
+      Query: for every closed exit_path_shadow trade, old-rule counterfactual R =
+      -1.00 if the trade EVER touched -1R (its `touched_minus_1r` history), else the
+      trade's own `realized_r`. Ran clean against the 20 currently-closed positions
+      (all pre-2026-08-16, old rule = live rule for every one — a self-consistency
+      check, since the NEW-rule population is empty: 0 rows in `mi_exit_path_shadow`
+      with fill_day >= 2026-08-16; AMLX (first new-rule fill, 2026-08-18) has not
+      reached an EOD write yet). No broken join. MECHANISM FINDING, carry forward
+      when this fires for real: the flat "-1.00 if ever touched" counterfactual
+      OVERSTATES the old rule's loss on any trade with an earlier partial exit — MANE
+      (-0.23R), SMCI (-0.70R), FIGS (-0.37R) and FRMI (-0.98R) all show
+      `ever_touched_minus_1r=true` with `exit_reason='stop_hit'` yet a REALIZED loss
+      smaller than -1R, because a fraction of the position had already been sold
+      above -1R before the final stop-out — a partial the OLD rule would have taken
+      too (profit-take mechanics don't depend on which stop rule is live), so its own
+      counterfactual should blend the banked partial with a -1R exit on the
+      remainder, not assume the whole position rides to -1R. `mi_exit_path_shadow`
+      already stores the column that makes this computable — `breakeven_armed`
+      (true once a partial has fired) — so the refined counterfactual is buildable
+      without new capture; not built here, this is a rehearsal, not the real read.
+      Separately: the "halve its R" unit note above is verified NOT to apply to this
+      table's own `realized_r`/`touched_minus_1r` columns — `exit_path_shadow.py`
+      always computes `risk_per_share` from `orb_low` (never the trade's actual live
+      stop) and shares cancel out of the R-multiple algebraically, so `realized_r` is
+      ALREADY old-R-denominated for every trade regardless of era; applying "halve"
+      to it here would UNDERSTATE the new rule's result by 2x. The note plausibly
+      targets a DIFFERENT source (the live pipeline's own natively-reported R, which
+      genuinely does use the new, 2x-wider stop as its denominator) — flagged as a
+      trap for whoever runs the real comparison, not fixed here (live-money exit
+      territory, THE LINE).
 
   - review_id: exit_path_shadow_first_read
     title: "Exit-path shadow — first read on LIVE data (the stop fork's out-of-sample)"
@@ -9517,3 +9573,259 @@ reviews:
       re-introduces the in-sample problem the shadow exists to escape.
       THE LINE: this review produces evidence for HIS ruling on the stop; it proposes
       nothing.
+
+  # ═══════════════════════════════════════════════════════════════════════════════════
+  # PARKED THREADS (2026-08-18) — operator: "I want to keep collecting and also don't
+  # want these threads to be erased so we can pick them right back up when needed, also
+  # with an easy way to review which one we should pick back up and when."
+  #
+  # PARKED MEANS: stop spending attention on this thread NOW. It does NOT mean stop
+  # collecting — every table each entry below depends on keeps writing regardless of
+  # this file (mi_orb_shadow_trades, mi_intraday_bars, mi_alert_rank_shadow,
+  # mi_ep_missed_outcomes, mi_live_trades, mi_sell_discipline_records — verified
+  # writing 2026-08-18). Every re-run below is $0 (offline replay / read-only SQL
+  # against tables that are already being written). This board (the Sunday digest +
+  # `/datareviews`) is the one place to see which thread re-opens when — nothing here
+  # is deleted or silently reclassified; parking preserves.
+  # ═══════════════════════════════════════════════════════════════════════════════════
+
+  - review_id: bracket_geometry_variants_parked
+    title: "PARKED — bracket/geometry variants (5-min basis, ATR ladder, established-low entry, mechanical re-entry): none earned a live arm on era A/B"
+    question: >-
+      Three reads this week (bracket_geometry_read_482_2026-08-18.md,
+      geometry_sweep_572_2026-08-18.md) found: the 5-min ORB bar is not a better
+      bracket (ties in R on 17 matched name-days, LOSES in ADR on 12 of 17, and
+      destroys the +2R partial on 4 of 17 by lifting the target out of reach); no
+      offline-swept variant (ATR ladder, established-low entry, mechanical re-entry)
+      earned a live arm; re-entry nets +1.73R off ONE row (INTC) — not evidence.
+      Everything decision-grade in both reads is ERA A (pre-2R-stop, pre-partial) or
+      ERA B (partial live, ORB-low stop) — ERA C, the bracket actually live TODAY
+      (2R stop, half-size, since 2026-08-17), has ZERO closed trades in any lane.
+      PARKED, not closed: collection continues via `mi_orb_shadow_trades` (5-min
+      shadow lane) and `mi_live_trades` (era C fills) regardless of this entry's
+      status. Re-run is $0 — `scripts/probes/bracket_geometry_read_482.py` and
+      `scripts/probes/geometry_sweep_572.py` are both re-runnable against a fresh
+      pull.
+      RE-OPENS WHEN: era C reaches ~20 closed live trades AND the read disappoints
+      (predicate below gates the count; the read itself judges "disappoints" — see
+      notes), OR any material selection change (not predicate-gated — a manual
+      trigger, see action_when_ready).
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE account_mode = 'live' AND signal_type = 'magna53'
+        AND status = 'closed' AND alert_date >= DATE '2026-08-17'
+    threshold: 20
+    status: pending
+    kind: accrual
+    action_when_ready: >-
+      Re-run `bracket_geometry_read_482.py` and `geometry_sweep_572.py` against the
+      now-populated era C cohort (era boundaries: A < 2026-08-05, B 2026-08-05..
+      2026-08-16, C >= 2026-08-17 — matches `bracket_geometry_read_482.py`'s own
+      `ERA_B_START`/`ERA_C_START` constants) and re-decide whether any geometry
+      variant now earns a live arm. ⚠ SEPARATE MANUAL TRIGGER this predicate cannot
+      see: re-open immediately on ANY material selection change (the 2026-08-18 GOAL
+      section rule — every downstream geometry read is conditional on the CURRENT
+      selector's population) — check for that at the top of any session touching
+      selection, do not wait for era C to reach 20.
+    notes: >-
+      Collection continues regardless of parked status (see header block above).
+      "reaches ~20 closes and disappoints" from the operator's own framing is two
+      conditions: this predicate gates the FIRST (count), the read itself judges the
+      SECOND (disappoints) — a predicate cannot pre-judge an outcome it hasn't seen.
+    added_on: 2026-08-18
+    cross_refs: ["docs/analysis/bracket_geometry_read_482_2026-08-18.md",
+                 "docs/analysis/geometry_sweep_572_2026-08-18.md",
+                 "docs/roadmap/ep_profitability_program.md §0f"]
+
+  - review_id: floor_timing_never_alerted_crossers_parked
+    title: "PARKED — floor timing on never-alerted crossers: not a floor-timing loss so far, but every window is censored"
+    question: >-
+      Two 2026-08-18 reads on the never-alerted-crosser population:
+      `490_delayed_screen_cost_2026-08-18.md` (216 never-alerted RT crossers -> 49
+      still >=10% at the open -> 32 pass gates -> 0 reached >=8xADR, vs the alerted
+      book's 2 of 100) and `490b_faded_crossed_timing_2026-08-18.md` (88% cross
+      inside 09:30-09:45; relaxing the floor DILUTES — 64 gate-clean names / 1.6%
+      winners vs the alerted book's 2.0%; the three known winners in this class each
+      died on a DIFFERENT gate — the 60-day cooldown (ALOY), the $500M market-cap
+      floor (BCAR), and the 09:45 ORB cutoff (AMRC) — not floor timing itself;
+      separability at 09:45 is chance, AUC 0.47-0.52). Both reads are SEVERELY
+      right-censored: every forward window is incomplete (median 8 of 20 sessions),
+      so every share reported is a FLOOR, not a ceiling. PARKED, not closed:
+      `mi_ep_missed_outcomes` keeps writing daily regardless of this entry's status;
+      re-run is $0 (`scripts/probes/_490_delayed_cost_funnel.py` and the 490b probe
+      are both re-runnable read-only).
+      RE-OPENS WHEN: the shared 2026-09-15 forward-window matures (predicate below),
+      OR any change to the 60-day cooldown / $500M market-cap floor / top-20 cap /
+      catalyst gate (not predicate-gated — a manual trigger, see action_when_ready).
+    # Trading-day counter, not a calendar clock — same idiom as
+    # rt_admission_recut_post_2r_exits: this measures the SAME maturation event
+    # 490_delayed_screen_cost_2026-08-18.md computed by hand (last cohort day 08-17
+    # + 20 forward trading sessions ~= 2026-09-15) as real accrued market data
+    # instead of a bare date guess, so a holiday/gap week doesn't silently mis-time it.
+    predicate_sql: >-
+      SELECT COUNT(DISTINCT trade_date)::int FROM mi_daily_closes
+      WHERE trade_date > DATE '2026-08-17'
+    threshold: 20
+    status: pending
+    kind: accrual
+    action_when_ready: >-
+      Re-run both probes on the now-complete 60-day forward windows and report the
+      UNCENSORED >=8xADR share for both cohorts against the alerted book's 2 of 100 —
+      state plainly whether the "0 reached the tail" / "1.6% winners" findings hold
+      once the floors clear. ⚠ SEPARATE MANUAL TRIGGER this predicate cannot see:
+      re-open immediately on ANY change to the 60-day cooldown, the $500M market-cap
+      floor, the top-20 daily cap, or the catalyst gate — those are exactly the three
+      gates the known winners died on, so a change to any of them invalidates this
+      read's premise regardless of the calendar.
+    notes: >-
+      Collection continues regardless of parked status (see header block above).
+      This is the "2026-09-15 re-read" trigger named in the task — expressed as a
+      trading-day count rather than a bare date so the detector reads it as real
+      evidence, not a date-fire.
+    added_on: 2026-08-18
+    cross_refs: ["docs/analysis/490_delayed_screen_cost_2026-08-18.md",
+                 "docs/analysis/490b_faded_crossed_timing_2026-08-18.md",
+                 "task #559", "review rt_admission_recut_post_2r_exits (different question — exit-cost, not capture)"]
+
+  - review_id: rt_cutover_ep_capture_argument_parked
+    title: "PARKED — real-time (SIP) cutover argued as EP CAPTURE: not supported so far — the delayed feed is doing a filter's job"
+    question: >-
+      2026-08-12 finding: "the delayed feed is doing a filter's job" — real-time data
+      can only REMOVE candidates today (ep_rt_gap_down_authoritative /
+      ep_rt_entry_gap_recheck), never ADD them; the Pass-0/shadow overlay is
+      SHADOW-only (`ep_rt_universe_authoritative` off). 2026-08-18's
+      `490_delayed_screen_cost_2026-08-18.md` measured the CAPTURE claim directly:
+      zero additional >=8xADR tail winners from the shadow watchdog in 16 trading
+      days vs the alerted book's 2 over the same dates — right-censored, a floor not
+      a ceiling. THIS ENTRY IS SCOPED NARROWLY to the "cutover captures EPs we are
+      missing" argument only — it does NOT cover an ops/latency argument for cutover
+      (fill-quality, slippage, feed-cost), which needs no evidence gate and remains
+      open to the operator to raise at any time, separately from this entry. PARKED,
+      not closed: `mi_ep_missed_outcomes` and the RT shadow watchdog both keep
+      writing regardless of this entry's status.
+      RE-OPENS WHEN: the shared 2026-09-15 forward-window matures (predicate below),
+      OR the operator raises the ops/latency case, which is not gated at all.
+    # Shares the SAME maturation event as floor_timing_never_alerted_crossers_parked
+    # (both read the 490_delayed_screen_cost cohort's forward window) — one real
+    # predicate, not a second date guess.
+    predicate_sql: >-
+      SELECT COUNT(DISTINCT trade_date)::int FROM mi_daily_closes
+      WHERE trade_date > DATE '2026-08-17'
+    threshold: 20
+    status: pending
+    kind: accrual
+    action_when_ready: >-
+      Re-run `490_delayed_screen_cost_2026-08-18.md`'s funnel on the now-complete
+      forward windows. If the uncensored tail-winner count for the delayed-feed
+      watchdog's shadow catches is still ~0 against the alerted book's real total,
+      the CAPTURE argument for cutover stays unsupported and this entry closes as
+      such (a separate ops/latency case remains available to the operator regardless
+      — not gated by this entry).
+    notes: >-
+      Collection continues regardless of parked status (see header block above). Do
+      NOT conflate with `rt_admission_recut_post_2r_exits` — that review asks whether
+      the -0.60R EXIT-cost baseline improves post-#548, a different question about
+      trades we DID take, not about EPs we are missing.
+    added_on: 2026-08-18
+    cross_refs: ["docs/roadmap/ep_profitability_program.md §2026-08-12 (\"the delayed feed is doing a filter's job\")",
+                 "docs/analysis/490_delayed_screen_cost_2026-08-18.md", "task #559"]
+
+  - review_id: regime_conditional_exit_grid_parked
+    title: "PARKED — regime-conditional exit grids: Bull is weakest on peak reached so far, all three cells still thin"
+    question: >-
+      `exit_regime_separability` (closed 2026-08-17) broke the paper/live confound
+      and found the operator's own hypothesis INVERTED on what it could test: Bull is
+      the WEAKEST regime on peak R reached (not the strongest), and — per his own
+      2026-08-17 reframing — conditional on a trade working, NON-BULL winners run
+      FURTHER (Bull 3 winners avg +2.22R, Correcting 3 avg +2.98R, Choppy 1 at
+      +7.92R). Two siblings already track narrower cuts of this:
+      `regime_sizing_vs_tail_recheck` (winner-only cells, n=5) and
+      `exit_tune_bull_regime_read` (Bull-only, n=8). THIS entry is the ALL-THREE-CELLS
+      version at a cleaner bar (n=~10 trades in EACH of Bull/Correcting/Choppy, not
+      just winners) — current live counts (verified 2026-08-18): Bull 9, Correcting
+      7, Choppy 4. PARKED, not closed: `mi_sell_discipline_records` keeps writing on
+      every live close regardless of this entry's status; re-run is $0
+      (`scripts/probes/_508_exit_rule_replay.py`'s per-regime table).
+      RE-OPENS WHEN: all three comparable live cells (Bull/Correcting/Choppy) each
+      reach ~10 closed trades (predicate below).
+    predicate_sql: >-
+      SELECT COALESCE(MIN(w), 0) FROM (
+        SELECT COUNT(*) AS w
+        FROM mi_sell_discipline_records r
+        JOIN mi_market_regime g ON g.regime_date = r.alert_date
+        WHERE r.account_mode = 'live' AND r.signal_type = 'magna53'
+        GROUP BY g.regime
+        ORDER BY 1 DESC LIMIT 3
+      ) top3
+    threshold: 10
+    status: pending
+    kind: accrual
+    action_when_ready: >-
+      Re-run the per-regime replay on all three comparable cells (Bull/Correcting/
+      Choppy — Crisis stays out-of-scope for this bar, same as the top-2/top-3 idiom
+      the sibling reviews use), SEGMENTED BY EXIT ERA (pre-08-05 no-partial,
+      08-05..08-16 partial+ORB-stop, >=08-17 partial+2R-stop — a stop-unit change
+      makes an unsegmented pool incomparable). Report whether the peak-reached
+      inversion holds at this cleaner n. ⚖ Sizing/exit are THE LINE: report the
+      finding and the fork; propose no rule or multiplier change.
+    notes: >-
+      Collection continues regardless of parked status (see header block above). Not
+      a duplicate of the two siblings: `regime_sizing_vs_tail_recheck` scores only
+      trades that reached >=1.5R (the sizing question), `exit_tune_bull_regime_read`
+      scores Bull alone (the "has this cell ever existed" question) — this entry is
+      the full three-way comparison neither sibling runs.
+    added_on: 2026-08-18
+    cross_refs: ["review exit_regime_separability (closed, the first read)",
+                 "review regime_sizing_vs_tail_recheck", "review exit_tune_bull_regime_read",
+                 "review exit_tune_cohort_review", "task #503", "task #508", "task #571"]
+
+  - review_id: minute_pull_620_trigger_parked
+    title: "PARKED — the 620 / targeted minute-pull question: untested, and the declined pool available today would dilute any read"
+    question: >-
+      His actual named trigger (the 620 intraday chart, "take a turn NEAR a pivot,
+      proximity not touch") has never been tested — it needs a $0 targeted minute
+      pull for approach days, and we only persist intraday bars for alert-ticker-days
+      today. `pivot_ladder_delayed_entry_562_2026-08-18.md` measured proximity for
+      the first time on the pool available NOW (55 declined names, 79 of 249 windows
+      right-censored): 10.0% approach-without-touch, but that class's outcomes are
+      ORDINARY — and `490b_faded_crossed_timing_2026-08-18.md` independently found
+      that relaxing gates on this same never-alerted population DILUTES (1.6% vs the
+      alerted book's 2.0%). Testing the 620 trigger on TODAY's declined pool would
+      inherit that same dilution every read this program has run has measured — it
+      needs a genuinely SELECTIVE pool, not the raw declined set, and which filter
+      defines "selective" is a scoping decision not yet made (not something this
+      predicate can compute without inventing a selection criterion unilaterally —
+      THE LINE). PARKED, not closed: `mi_intraday_bars` keeps persisting
+      alert-ticker-day bars regardless of this entry's status.
+      RE-OPENS WHEN: the 2026-09-15 check-in (below) finds a selective pool worth
+      testing the trigger on — see notes for why this is a date, honestly labelled.
+    # HONEST DATE-FIRE (#517 `is_date_fire_predicate`, the documented form):
+    # predicate_sql is genuinely null, not dressed up as fake SQL. The true trigger
+    # -- "a selective pool worth testing his trigger on exists" -- cannot be reduced
+    # to a data threshold today because the selection criterion it needs has not been
+    # specified. earliest_review_date below is a CHECK-IN date, not a verdict date:
+    # on that date, look at whatever declined-name pool exists and judge (a human
+    # judgement, not a predicate) whether a non-dilutive subset is now testable.
+    # Reuses the same 2026-09-15 checkpoint as the two floor-timing siblings above so
+    # the board carries one extra date, not three.
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-09-15
+    status: pending
+    kind: cadence
+    action_when_ready: >-
+      This is a CHECK-IN, not an auto-verdict: look at the declined-name pool as it
+      stands, and judge whether a genuinely selective subset (not the raw declined
+      set every prior read used) now exists to test the 620 proximity trigger on. If
+      yes, scope the targeted minute pull ($0, 574 ticker-days was the 2026-08-18
+      estimate) and run it. If no, say so plainly and re-set this check-in — do not
+      let a "not yet" read as "never."
+    notes: >-
+      Collection continues regardless of parked status (see header block above). The
+      one HONEST date-fire among the five parked threads — flagged here plainly
+      rather than dressed up as an evidence gate, per the operator's instruction not
+      to ship five fake ones.
+    added_on: 2026-08-18
+    cross_refs: ["docs/analysis/pivot_ladder_delayed_entry_562_2026-08-18.md",
+                 "docs/analysis/490b_faded_crossed_timing_2026-08-18.md",
+                 "docs/roadmap/ep_profitability_program.md §0f"]
