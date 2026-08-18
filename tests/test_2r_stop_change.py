@@ -254,7 +254,10 @@ async def test_target_fires_at_the_ORIGINAL_2r_price_not_4r(monkeypatch):
     MUTATION: `target = entry + PROFIT_TRIGGER_R * (entry - stop)` (the drift)
     → fails (execute_partial_exit never awaited)."""
     fake_exec, results = await _run_scan(monkeypatch, [_trade_row()], hi=110.0)
-    fake_exec.assert_awaited_once_with(7, 10, limit_price=110.0)
+    # trigger=None: `_profit_trigger_already_announced` is mocked True above, so
+    # #567's merge context is never built — matches every call site's shape
+    # unrelated to this file's ORB-vs-2R-stop framing question.
+    fake_exec.assert_awaited_once_with(7, 10, limit_price=110.0, trigger=None)
     assert results == [{"ticker": "TSTX", "action": "partial_submitted", "shares": 10}]
 
 
@@ -276,7 +279,7 @@ async def test_non_magna53_target_still_frames_off_its_own_stop(monkeypatch):
     row = _trade_row(id=8, ticker="NINE", signal_type="9m_day2",
                      hard_stop=97.0, stop_price=97.0)
     fake_exec, _ = await _run_scan(monkeypatch, [row], hi=106.0)
-    fake_exec.assert_awaited_once_with(8, 10, limit_price=106.0)
+    fake_exec.assert_awaited_once_with(8, 10, limit_price=106.0, trigger=None)
 
 
 @pytest.mark.asyncio

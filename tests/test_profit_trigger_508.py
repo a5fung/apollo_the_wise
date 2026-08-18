@@ -71,11 +71,31 @@ def test_detection_uses_the_bar_HIGH_not_a_spot_price():
 
 
 def test_notify_failure_cannot_abort_the_sell():
+    """#567 (2026-08-18, operator "these 3 msgs can be merged into one?"): the trigger
+    fact is now delivered by execute_partial_exit's OWN merged Telegram (Step 3) when
+    it can reach that point, with this call site sending a standalone fallback only
+    when it can't — so there is no longer an unconditional send strictly before the
+    sell. What must still hold, unchanged: building the trigger context can raise and
+    the sell still happens, unconditionally, right after."""
     src = ast.get_source_segment(SRC, _fn("scan_profit_triggers"))
-    notify = src.index("send_telegram_message")
-    sell = src.index("await execute_partial_exit(")
-    assert notify < sell, "operator is told before the money moves"
-    assert "except Exception" in src[notify:sell], "a notify failure must not abort the sell"
+    ctx_init = src.index("_trigger_ctx")
+    sell = src.index("ok = await execute_partial_exit(")
+    assert ctx_init < sell, "trigger-context build happens before the sell call"
+    between = src[ctx_init:sell]
+    assert "except Exception" in between, (
+        "a trigger-context-build failure must not abort the sell")
+    assert "_trigger_ctx = None" in between, (
+        "the exception path must fall back to trigger=None, not block the sell")
+    # The sell call must be UNCONDITIONAL: at the same indentation as the trigger-
+    # context build, not nested inside its try/except or the announce-gate `if`.
+    ctx_line = next(l for l in src.splitlines() if l.strip().startswith("_trigger_ctx:"))
+    sell_line = next(l for l in src.splitlines() if "ok = await execute_partial_exit(" in l)
+    ctx_indent = len(ctx_line) - len(ctx_line.lstrip())
+    sell_indent = len(sell_line) - len(sell_line.lstrip())
+    assert ctx_indent == sell_indent, (
+        "the sell call must sit at the same level as the context build, not nested "
+        "inside the try/except or the announce-gate — a notify-prep failure or an "
+        "already-announced trade must never skip the sell")
 
 
 def test_it_never_fires_twice_on_one_trade():

@@ -1518,13 +1518,18 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 #
                 # AGREEMENT TEST, and the floor below is load-bearing:
                 #   1. DUPLICATE EVIDENCE (the required floor) — a
-                #      `stop_update_retry_succeeded` audit row exists for this
-                #      exact trade_id + this exact new_stop_id. That event type
-                #      is written ONLY on order_manager's retry-recovered branch,
-                #      immediately before it sends "Stop confirmed" — so its
-                #      presence is direct proof a Telegram for THIS order already
-                #      went out (or is about to, same code path, no gap between
-                #      the two).
+                #      `stop_update_retry_succeeded` OR (#567, 2026-08-18)
+                #      `partial_exit_stop_telegram_pending` audit row exists for
+                #      this exact trade_id + this exact new_stop_id. The first
+                #      is written ONLY on order_manager's retry-recovered
+                #      branch, immediately before it sends "Stop confirmed"; the
+                #      second is written ONLY by execute_partial_exit's
+                #      breakeven-stop confirmation, immediately before its Step
+                #      3 folds the SAME replacement into a merged trigger+sale+
+                #      protection Telegram (the operator's "these 3 msgs can be
+                #      merged into one?" fix) — either one's presence is direct
+                #      proof a Telegram for THIS order already went out (or is
+                #      about to, same code path, no gap between the two).
                 #   2. PRICE CONFIRMATION (either one suffices) — the SAME audit
                 #      row also carries the price order_manager set
                 #      (new_stop_price, written atomically with trade_id/
@@ -1612,11 +1617,25 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     # plain, non-throwing comparisons), pull the handful of
                     # candidate `detail` strings, and json.loads + match each
                     # in Python where a bad row can just be skipped.
+                    # #567 (2026-08-18, operator "these 3 msgs can be merged into
+                    # one?"): a SECOND event type joins the evidence pool —
+                    # `partial_exit_stop_telegram_pending`, written by
+                    # execute_partial_exit's OWN breakeven-stop confirmation
+                    # (order_manager.py, right before its Step 3 folds the same
+                    # replacement into the merged trigger+sale+protection
+                    # Telegram). Same shape (trade_id/new_stop_id/new_stop_price),
+                    # written the same way — immediately before the send it
+                    # proves, never after — so the Python match below needs no
+                    # change, only a second name in the filter. This extends the
+                    # #561 idiom to execute_partial_exit's breakeven move rather
+                    # than competing with it; the retry-recovered event type is
+                    # untouched.
                     async with pool.acquire() as _conn3:
                         _candidates = await _conn3.fetch(
                             """
                             SELECT detail FROM mi_audit_log
-                            WHERE event_type = 'stop_update_retry_succeeded'
+                            WHERE event_type IN ('stop_update_retry_succeeded',
+                                                  'partial_exit_stop_telegram_pending')
                               AND created_at > NOW() - INTERVAL '5 minutes'
                             ORDER BY created_at DESC
                             """
@@ -1626,7 +1645,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     for _cand in (_candidates or []):
                         try:
                             _cand_detail = json.loads(_cand["detail"])
-                        except Exception:  # loud-ok: a candidate row is skipped, not the check — real stop_update_retry_succeeded rows are always written with json.dumps() detail (order_manager.py:1591-1599), so this only guards a theoretical malformed row; the outer try/except around the whole agreement test still fail-safes to "speak" on any genuine read failure.
+                        except Exception:  # loud-ok: a candidate row is skipped, not the check — real evidence rows (either event type) are always written with json.dumps() detail, so this only guards a theoretical malformed row; the outer try/except around the whole agreement test still fail-safes to "speak" on any genuine read failure.
                             continue
                         if (str(_cand_detail.get("trade_id")) == str(stop_trade["id"])
                                 and str(_cand_detail.get("new_stop_id")) == str(replacement["id"])):
@@ -1662,7 +1681,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     await log_audit_event(
                         "stop_replacement_confirmed_silent",
                         f"{symbol}: WS safety-net agrees with order_manager's own "
-                        f"retry-succeeded record (${float(_new_stop):.2f}, "
+                        f"recorded evidence (${float(_new_stop):.2f}, "
                         f"{replacement['id']}) via {_agree_via} — Telegram "
                         f"suppressed, operator already notified via order_manager",
                         json.dumps({

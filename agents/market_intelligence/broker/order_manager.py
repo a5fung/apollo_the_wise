@@ -2268,6 +2268,7 @@ async def _profit_trigger_already_announced(trade_id: int) -> bool:
 async def execute_partial_exit(
     trade_id: int, shares: int, *, force: bool = False,
     limit_price: float | None = None,
+    trigger: dict | None = None,
 ) -> bool:
     """
     Partial exit (1/3 sell). Replaces stop for remaining 2/3 first so the
@@ -2288,6 +2289,15 @@ async def execute_partial_exit(
     the toggle is OFF (or limit_price is None — the day-3/5 ladder and
     /partialnow paths), behaviour is unchanged: market sell, breakeven folded
     into the stop re-creation.
+
+    trigger (operator 2026-08-18, message-merge only — no order/sell-logic
+    effect): optional {"delivered": bool, "high", "target", "entry",
+    "r_multiple"} from scan_profit_triggers' own detection. When given, Step 3
+    below folds these facts into ITS OWN Telegram (making that one message the
+    whole story: trigger + sale + protection) and sets trigger["delivered"] =
+    True right before sending — the caller uses that flag to decide whether
+    IT still needs to speak. None (agent.py /partialnow, live_tracker.py) —
+    every text branch below renders byte-identical to before this change.
     """
     # ── HARD PAUSE (#151, 2026-06-22) — disabled until the pending_replace-race
     # fix is verified-live. Take NO partial (no stop touch): the position keeps its
@@ -3226,6 +3236,14 @@ async def execute_partial_exit(
         # max() — breakeven can only ever RAISE the stop (same guard as the
         # market-mode fold-in above). Gated on the same `breakeven_at_broker`
         # toggle so the operator's one switch governs breakeven in both modes.
+        #
+        # (be_stop_id, breakeven_price) once the broker POSITIVELY confirms the
+        # remaining shares' breakeven stop is live — None on every other path
+        # (not attempted, rejected, or unconfirmed). Step 3 below only claims
+        # "your remaining shares' stop is now at breakeven" when this is set;
+        # a rejected/uncertain outcome already sends its OWN dedicated message
+        # above and Step 3 must not also assert a fact that isn't true yet.
+        _be_confirmed_live: tuple | None = None
         if (resting_mode and not abort_reprotect and new_stop_id and stop_price
                 and _entry and await _breakeven_at_broker_enabled(account_mode)):
             _be = max(float(stop_price), float(_entry))
@@ -3436,6 +3454,36 @@ async def execute_partial_exit(
                                 "mechanism": "price_only_replace",
                             }),
                         )
+                        _be_confirmed_live = (be_stop_id, _be)
+                        if trigger is not None:
+                            # Operator 2026-08-18 merge: Step 3 below is ABOUT to
+                            # describe this exact breakeven stop in the same
+                            # Telegram as the trigger + the sale. Write the proof
+                            # BEFORE that send (same convention as d2a8eb6's
+                            # `stop_update_retry_succeeded`: "already went out or
+                            # is about to, same code path, no gap between the
+                            # two") so the WS safety-net handler in trade_stream.py
+                            # can recognize this replacement as already covered
+                            # and suppress its own "Stop replaced" — extending the
+                            # #561 idiom to execute_partial_exit's breakeven move,
+                            # not competing with it. Gated on `trigger is not
+                            # None` on purpose: agent.py's /partialnow and
+                            # live_tracker.py's partials do NOT get this line in
+                            # Step 3 (see the docstring), so they must NOT write
+                            # this evidence either — the WS safety net stays the
+                            # ONLY notice for their breakeven moves, exactly as
+                            # today.
+                            await log_audit_event(
+                                "partial_exit_stop_telegram_pending",
+                                f"{ticker}: breakeven stop {be_stop_id[:8]} will be "
+                                f"described in the upcoming merged partial-exit "
+                                f"Telegram — WS safety-net dup-suppression evidence",
+                                json.dumps({
+                                    "trade_id": trade_id,
+                                    "new_stop_id": be_stop_id,
+                                    "new_stop_price": _be,
+                                }),
+                            )
                     elif _be_outcome == "dead":
                         # The replace consumed the old stop and its successor died —
                         # the 2/3 is unprotected. NULL the pointer, re-protect
@@ -3493,28 +3541,87 @@ async def execute_partial_exit(
         # Skipped on the abort path (no sell placed) — that path re-protects + alerts
         # AFTER the advisory lock releases, below.
         if not abort_reprotect:
+            # Operator 2026-08-18 ("these 3 msgs can be merged into one?"): when
+            # `trigger` is set, THIS message becomes the one and only story of
+            # the event — trigger fact, sale fact, protection fact, and (when
+            # confirmed) the remaining shares' breakeven-stop fact — instead of
+            # a separate trigger message racing this one. `trigger is None`
+            # (agent.py /partialnow, live_tracker.py) renders every branch
+            # below byte-identical to before this change.
+            _remaining_stop_line = ""
+            if trigger is not None:
+                trigger["delivered"] = True
+                if _be_confirmed_live is not None:
+                    _, _be_price = _be_confirmed_live
+                    _be_reason = describe_stop_move(
+                        entry_price=float(_entry) if _entry is not None else None,
+                        hard_stop=(float(trade["hard_stop"])
+                                   if trade.get("hard_stop") is not None else None),
+                        old_stop_price=float(stop_price) if stop_price else None,
+                        new_stop_price=float(_be_price),
+                        stop_source="breakeven",
+                        brief=True,
+                    )
+                    _remaining_stop_line = f"\nRemaining {new_remaining} sh: {_be_reason}"
             if oco_mode:
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}📋 *Profit-take resting (OCO):* {ticker}\n"
-                    f"Limit sell {shares} sh @ ${float(limit_price):.2f} resting at the "
-                    f"target, with a stop @ ${float(oco_stop_price):.2f} on the same "
-                    f"shares (Order {order['id'][:8]})\n"
-                    f"_Whichever side fills cancels the other — the {shares} sh are "
-                    f"never without a stop. Confirms with real P&L on fill._"
-                )
+                if trigger is not None:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}\U0001F4B0 *Profit target hit: {ticker}*\n"
+                        f"traded ${trigger['high']:.2f} >= ${trigger['target']:.2f} "
+                        f"({trigger['r_multiple']:g}R above ${trigger['entry']:.2f})\n"
+                        f"Limit sell {shares} of {full_remaining} sh @ "
+                        f"${float(limit_price):.2f} resting at the target, with a "
+                        f"stop @ ${float(oco_stop_price):.2f} on the same shares "
+                        f"(Order {order['id'][:8]})\n"
+                        f"Whichever side fills cancels the other — the {shares} sh "
+                        f"are never without a stop."
+                        f"{_remaining_stop_line}\n"
+                        f"_Confirms with real P&L on fill._"
+                    )
+                else:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}📋 *Profit-take resting (OCO):* {ticker}\n"
+                        f"Limit sell {shares} sh @ ${float(limit_price):.2f} resting at the "
+                        f"target, with a stop @ ${float(oco_stop_price):.2f} on the same "
+                        f"shares (Order {order['id'][:8]})\n"
+                        f"_Whichever side fills cancels the other — the {shares} sh are "
+                        f"never without a stop. Confirms with real P&L on fill._"
+                    )
             elif resting_mode:
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}📋 *Profit-take resting:* {ticker}\n"
-                    f"Limit sell {shares} sh @ ${float(limit_price):.2f} — resting at "
-                    f"the target (Order {order['id'][:8]})\n"
-                    f"_Fills at the price or better; confirms with real P&L on fill._"
-                )
+                if trigger is not None:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}\U0001F4B0 *Profit target hit: {ticker}*\n"
+                        f"traded ${trigger['high']:.2f} >= ${trigger['target']:.2f} "
+                        f"({trigger['r_multiple']:g}R above ${trigger['entry']:.2f})\n"
+                        f"Limit sell {shares} of {full_remaining} sh @ "
+                        f"${float(limit_price):.2f} — resting at the target "
+                        f"(Order {order['id'][:8]})"
+                        f"{_remaining_stop_line}\n"
+                        f"_Fills at the price or better; confirms with real P&L on fill._"
+                    )
+                else:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}📋 *Profit-take resting:* {ticker}\n"
+                        f"Limit sell {shares} sh @ ${float(limit_price):.2f} — resting at "
+                        f"the target (Order {order['id'][:8]})\n"
+                        f"_Fills at the price or better; confirms with real P&L on fill._"
+                    )
             else:
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
-                    f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
-                    f"_Confirms with real P&L on fill._"
-                )
+                if trigger is not None:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}\U0001F4B0 *Profit target hit: {ticker}*\n"
+                        f"traded ${trigger['high']:.2f} >= ${trigger['target']:.2f} "
+                        f"({trigger['r_multiple']:g}R above ${trigger['entry']:.2f})\n"
+                        f"Market sell {shares} of {full_remaining} sh — pending fill "
+                        f"(Order {order['id'][:8]})\n"
+                        f"_Confirms with real P&L on fill._"
+                    )
+                else:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
+                        f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
+                        f"_Confirms with real P&L on fill._"
+                    )
         # F14 (7/2 review): the former _*_out relay copies were a pure renaming
         # layer — Python `with` blocks don't create a scope, so the originals
         # (ticker/account_mode/signal_type/stop_price/abort_*) remain bound on
@@ -5979,12 +6086,44 @@ async def scan_profit_triggers() -> list[dict]:
         # poll notices — the FIGS 0.87R gap). The toggle is read here only for the
         # announcement text; execute_partial_exit re-reads it as the gate.
         _resting = await _profit_take_resting_limit_enabled(t["account_mode"])
+        # Operator 2026-08-18 ("these 3 msgs can be merged into one?"): AMLX got
+        # three separate Telegrams for one partial exit — this trigger notice,
+        # execute_partial_exit's own "Profit-take resting" line, and the WS
+        # safety-net "Stop replaced" confirming the remaining shares' breakeven
+        # stop. Rather than send this trigger message here and race a SECOND
+        # message out of execute_partial_exit, hand the trigger facts DOWN as
+        # `trigger` — execute_partial_exit's Step 3 folds them into its own
+        # (later, richer) message and flips `trigger["delivered"]` right before
+        # it sends. AUTHOR = execute_partial_exit's Step 3 (it alone knows the
+        # order actually went out); this call site only SPEAKS on its own when
+        # `delivered` is still False afterward — paused/circuit-broken/aborted
+        # calls that never reach Step 3, or the announce-gate below is already
+        # satisfied. Never silently drops the trigger fact.
+        #
+        # ⚠ ANNOUNCE ONCE PER TRADE, not once per 5-minute cycle (2026-08-04). Both selection
+        # conditions are sticky while the partial keeps failing, so this re-fired every pass
+        # for hours — half of the "bombarded with these msg non stop" pair. See
+        # `_profit_trigger_already_announced`. The audit rows below still fire every cycle.
+        _trigger_ctx: dict | None = None
         try:
-            # ⚠ ANNOUNCE ONCE PER TRADE, not once per 5-minute cycle (2026-08-04). Both selection
-            # conditions are sticky while the partial keeps failing, so this re-fired every pass
-            # for hours — half of the "bombarded with these msg non stop" pair. See
-            # `_profit_trigger_already_announced`. The audit rows below still fire every cycle.
             if not await _profit_trigger_already_announced(t["id"]):
+                _trigger_ctx = {
+                    "delivered": False,
+                    "high": float(hi), "target": float(target), "entry": float(entry),
+                    "r_multiple": PROFIT_TRIGGER_R,
+                }
+        except Exception:  # loud-ok: notification must never abort the money action below
+            logger.warning(f"profit-trigger context build failed for {t['ticker']}", exc_info=True)
+            _trigger_ctx = None
+        ok = await execute_partial_exit(
+            t["id"], shares, limit_price=round(target, 2), trigger=_trigger_ctx,
+        )
+        if _trigger_ctx is not None and not _trigger_ctx.get("delivered"):
+            # Speak when in doubt: execute_partial_exit never reached the point
+            # where it could carry this fact (paused / circuit-breaker-open /
+            # an early abort before Step 3) — tell the operator the target was
+            # hit on its own, same text as before this merge shipped.
+            try:
                 _action_line = (
                     f"Resting a limit to sell {shares} of "
                     f"{int(float(t['remaining_shares']))} sh at ${target:.2f}; "
@@ -5999,9 +6138,8 @@ async def scan_profit_triggers() -> list[dict]:
                     f"({PROFIT_TRIGGER_R:g}R above ${entry:.2f})\n"
                     f"{_action_line}"
                 )
-        except Exception:  # loud-ok: notification must never abort the money action below
-            logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
-        ok = await execute_partial_exit(t["id"], shares, limit_price=round(target, 2))
+            except Exception:  # loud-ok: notification must never abort the money action below
+                logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
         await log_audit_event(
             "profit_trigger_fired" if ok else "profit_trigger_failed",
             f"{t['ticker']}: high ${float(hi):.2f} >= {PROFIT_TRIGGER_R:g}R target ${target:.2f}",
