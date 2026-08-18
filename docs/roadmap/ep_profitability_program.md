@@ -59,6 +59,42 @@ have done to PLTR — is mathematically fatal, since 4R is break-even (`docs/set
 2026-08-11). It also reframes §0's headline number: 0-of-19 is not only a bad win rate — the cohort
 on average REACHES +1.54R and KEEPS −0.91R (§5) — both terms of the equation are failing at once.
 
+### 🧭 TWO RULES FOR HOW THIS WORK IS RUN (operator, 2026-08-18)
+
+> *"we're not trying to catch everything or have the avg perform at specific range, what we want is
+> to catch the big winners that pays for the whole system. Similar to the idea of stock moving near a
+> pivot but not necessarily touching it, our criteria needs to be flexible where it makes sense, so
+> rigid 10% floor may not make sense (some floor may, at end of day there needs to be some gap).
+> Something to keep in mind because I feel we go down on path and find nothing, go down another and
+> find nothing, and end up with a dozen path with nothing; after each we need to reassess how it fits
+> to the broader picture."*
+
+**RULE 1 — CRITERIA SHOULD BE ZONES WITH TRIGGERS, NOT HARD LINES, WHERE THAT MAKES SENSE.**
+This is the same shape as PROXIMITY-NOT-TOUCH in the entry architecture (`delayed_ep_reentry.md`
+§2026-08-16): a hard limit at a pivot is the wrong instrument when what he wants is a zone plus a
+trigger. It generalises to the FILTERS. A rigid 10% gap floor decided on one 09:31 print is the same
+error one level up — ARGX 2026-08-17 alerted at 10.5%, re-read 9.5%, was rejected, and closed +16.04%
+at an all-time high. ⚠ **This is NOT "remove the floors."** His own words: *some floor may* make
+sense, and *at the end of the day there needs to be some gap.* The measured evidence agrees —
+admitting more names below the floor DILUTES (see §0f). The design question is the SHAPE of the
+criterion, not its existence: a band plus a confirming trigger, versus a point-read on a noisy number.
+
+**RULE 2 — REASSESS AGAINST THE WHOLE PICTURE AFTER EVERY PATH, INCLUDING (ESPECIALLY) THE DEAD ONES.**
+The failure mode he named, and it describes 2026-08-18 exactly: four studies ran, all came back
+negative, and each one proposed the next path without stepping back. A dozen dead paths is not
+progress even when each individual read is sound. **After each finding, the question is not "what is
+the next test" but "what does this change about the picture, and where does the remaining
+probability mass now sit."**
+
+**AND THE OBJECTIVE THAT DECIDES TIES:** we are not tuning an average into a range and not trying to
+catch everything. **We need the few big winners that pay for the whole system** — ~4 converted tail
+winners over 4½ months (§ sufficiency target). Any criterion, filter or rule is judged on whether it
+makes those MORE likely to be caught and converted, never on whether it improves a median.
+
+⚠ **Next step he named:** fold the findings back into this plan, then **evaluate how they INTERACT**
+— they have only ever been read one at a time, and each stock behaves differently. **Consult Fable
+with the full findings set.**
+
 ### 🔴 EVERY CONCLUSION IN THIS DOC IS PROVISIONAL — and it is CONDITIONAL ON SELECTION (operator, 2026-08-18)
 
 His words, calling a regroup after three consecutive geometry reads came back negative:
@@ -450,6 +486,9 @@ if selection moves. Full detail lives in the dated docs; this is the index.
 | Offline geometry sweep (`geometry_sweep_572_2026-08-18.md`) | No variant earned a live arm; re-entry nets +1.73R off ONE row (INTC); "wait for the low" is a fade-day FILTER, not an entry | 30 day-0 sessions, trades we TOOK, era C n=0 |
 | Pivot ladder + proximity (`pivot_ladder_delayed_entry_562_2026-08-18.md`) | Ladder does not beat doing nothing once one $5.51 name (+10R) and simulator optimism are removed; **proximity measured for the first time: 10.0% approach-without-touch, but that class's outcomes are ordinary** | 55 declined names, 79 of 249 windows right-censored |
 | Exit by regime (`exit_regime_separability_2026-08-17.md`) | "Runners cluster in Bull" NOT supported — Bull is weakest on peak reached. Operator's inversion IS supported: conditional on working, non-bull winners run further | n = 3/3/1 winners |
+| Delayed-screen cost (`490_delayed_screen_cost_2026-08-18.md`) | **NO — the delayed feed is not costing us EPs.** 216 never-alerted RT crossers → only 49 still ≥10% at the open → 32 pass gates → **0 reached ≥8×ADR** vs the alerted book's 2 of 100. Pure never-seen class = 5 names in 3 weeks | 3 weeks, **100% right-censored**, re-read after 2026-09-15 |
+| Faded-then-crossed (`490b_faded_crossed_timing_2026-08-18.md`) | **Not a floor-timing loss.** 88% cross inside 09:30-09:45. Relaxing DILUTES: 64 gate-clean names / 1 winner (1.6%) vs the alerted book's 2.0%. **All three winners died on DIFFERENT gates — cooldown, $500M mcap, and the 09:45 ORB cutoff.** Separability at 09:45 is chance (AUC 0.47-0.52) | never-alerted names only; the ARGX alerted-then-blocked class is a DIFFERENT population (#559) |
+| Pivot ladder + proximity (`pivot_ladder_delayed_entry_562_2026-08-18.md`) | Ladder does not beat doing nothing ex one $5.51 name; **proximity measured at 10.0% approach-without-touch but those outcomes are ordinary** | 55 declined names, 79 of 249 windows censored |
 | Stop-too-wide cohort | A wash (−0.31 vs −0.35 ADR); AIP was a false alarm. **Kept: the profit target is fixed in DOLLARS, so a wide-range name must travel ~2.5× more of its own daily range to reach it** | N never actually met — gate counted another strategy's rows |
 
 🔑 **THE ONE STRUCTURAL FINDING THAT SURVIVES REGARDLESS OF SELECTION** (it is arithmetic, not a
