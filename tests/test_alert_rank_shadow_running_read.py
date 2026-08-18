@@ -236,7 +236,12 @@ def test_same_winners_fewer_losers_scores_as_a_gain():
     baseline = CohortRead(n=100, winners_admitted=4, losers_admitted=40)    # 40% loser rate
     verdict = score_both_directions(candidate, baseline)
     assert verdict.startswith("GAIN"), verdict
-    assert "held or improved" in verdict
+    # Wording changed 2026-08-18 (simplify): the cascade became an explicit 3x3 so
+    # the both-unchanged cell stopped being mislabelled "moved in opposite
+    # directions". Assert on the BEHAVIOUR this test exists for — same winners
+    # plus fewer losers must score as a GAIN — not on the old phrasing.
+    assert "FEWER losers" in verdict
+    assert "wash" in verdict  # the SELECTION rule this cell exists to enforce
 
 
 def test_fewer_winners_and_more_losers_scores_as_a_loss():

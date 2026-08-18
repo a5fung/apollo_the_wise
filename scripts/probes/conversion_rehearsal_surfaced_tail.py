@@ -207,11 +207,6 @@ def min5_close(daily, t, ad):
     return min(closes) if closes else None
 
 
-def adr20(daily, t, ad):
-    rows = prev_rows(daily, t, ad, 20)
-    vals = [(r[2] - r[3]) / r[4] for r in rows if r[2] and r[3] and r[4]]
-    return sum(vals) / len(vals) if len(vals) >= 10 else None
-
 
 def atr14(daily, t, ad):
     rows = prev_rows(daily, t, ad, 15)

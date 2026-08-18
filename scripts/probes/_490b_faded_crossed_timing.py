@@ -124,16 +124,11 @@ def is_win(c):
     return tx is not None and tx >= 8
 
 def tail(rows, label):
-    xs = [c["ctx"]["tailx"] for c in rows if c["ctx"]["tailx"] is not None]
-    n = len(xs)
-    if not n:
-        print(f"  {label:<52} n=0")
-        return
-    win = sum(1 for x in xs if x >= 8)
-    p90 = st.quantiles(xs, n=10)[-1] if n >= 10 else max(xs)
-    fwd = [c["ctx"]["fwd_n"] for c in rows if c["ctx"]["tailx"] is not None]
-    print(f"  {label:<52} n={n:>3}  >=8xADR {win}/{n} ({100*win/n:.1f}%)  "
-          f"P90 {p90:.2f}x  med {st.median(xs):.2f}x  fwd_n med {st.median(fwd):.0f}")
+    """Delegates to the funnel's own tail_stats (simplify 2026-08-18) — this file
+    already holds a live handle on that module, so a second copy of the same
+    n/>=8xADR/P90/median maths was pure duplication. The funnel version also
+    reports the censored count, which this one silently dropped."""
+    return funnel.tail_stats([c["ctx"] for c in rows], label)
 
 P = print
 P("=" * 104)

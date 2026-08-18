@@ -79,18 +79,27 @@ def score_both_directions(candidate: CohortRead, baseline: CohortRead) -> str:
     cand_loser_rate = candidate.losers_admitted / candidate.n
     base_loser_rate = baseline.losers_admitted / baseline.n
     winners_delta = candidate.winners_admitted - baseline.winners_admitted
-    fewer_losers = cand_loser_rate < base_loser_rate
-    more_losers = cand_loser_rate > base_loser_rate
-    if winners_delta >= 0 and fewer_losers:
-        return "GAIN -- winners held or improved AND losers admitted at a lower rate"
-    if winners_delta > 0 and not more_losers:
-        return "GAIN -- more winners admitted, losers admitted at the same or lower rate"
-    if winners_delta < 0 and more_losers:
-        return "LOSS -- fewer winners AND more losers admitted"
-    return (
-        "MIXED -- winners and losers moved in opposite directions; report both "
-        "numbers, do not net them into one verdict"
-    )
+    # Explicit 3x3 over (winners direction, loser-RATE direction) — every cell named.
+    # The cascade this replaces (simplify review 2026-08-18) left the both-unchanged
+    # cell falling into a MIXED branch whose text claimed "winners and losers moved in
+    # opposite directions" when in fact NOTHING had moved. A running read that speaks
+    # from n=1 must never mislabel "no change" as a directional finding.
+    w = (winners_delta > 0) - (winners_delta < 0)          # +1 / 0 / -1
+    l = (cand_loser_rate > base_loser_rate) - (cand_loser_rate < base_loser_rate)
+    return {
+        (+1, -1): "GAIN -- more winners AND losers admitted at a lower rate",
+        (+1, 0): "GAIN -- more winners, losers admitted at the same rate",
+        (+1, +1): "MIXED -- more winners but also more losers; report both numbers, "
+                  "do not net them into one verdict",
+        (0, -1): "GAIN -- same winners, FEWER losers admitted. This is a real gain and "
+                 "a winners-only comparison would score it as a wash (SELECTION rule)",
+        (0, 0): "NO CHANGE -- winners and loser rate both unchanged",
+        (0, +1): "LOSS -- same winners but MORE losers admitted",
+        (-1, -1): "MIXED -- fewer winners but fewer losers too; report both numbers, "
+                  "do not net them into one verdict",
+        (-1, 0): "LOSS -- fewer winners, losers admitted at the same rate",
+        (-1, +1): "LOSS -- fewer winners AND more losers admitted",
+    }[(w, l)]
 
 
 def render_running_read(
