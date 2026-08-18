@@ -59,6 +59,37 @@ have done to PLTR — is mathematically fatal, since 4R is break-even (`docs/set
 2026-08-11). It also reframes §0's headline number: 0-of-19 is not only a bad win rate — the cohort
 on average REACHES +1.54R and KEEPS −0.91R (§5) — both terms of the equation are failing at once.
 
+### 🔴 EVERY CONCLUSION IN THIS DOC IS PROVISIONAL — and it is CONDITIONAL ON SELECTION (operator, 2026-08-18)
+
+His words, calling a regroup after three consecutive geometry reads came back negative:
+
+> *"We are trying to identify real EPs and trade them with a overall postive return. There's a lot of
+> details and nuance here, though your analysis may be correct, but it's going to be affected by say
+> our selective process which still need work. E.g. if we are better at selecting potential EPs,
+> maybe some of these geometry will work better, etc. That is why i don't want to go too deep now and
+> then conclude something and never come back to it. All this is good analysis but needs to be
+> revisted when things change upstream of it. Conclusions are provisional."*
+
+**THE RULE THIS SETS, and it governs every result below.** Every entry, exit and geometry finding in
+this document was measured on the population OUR CURRENT SELECTOR PRODUCED. Selection sits UPSTREAM
+of all of them. So a negative result on a downstream surface is **conditional**, not settled: it says
+"this does not work on the names we currently pick", never "this does not work". If selection
+changes materially, the downstream reads must be re-run before they are cited again.
+
+**Three consequences, all mechanical:**
+1. **A negative verdict must name its own scope AND what remains untested.** "None of the three we
+   swept" is not "geometry is dead". See [[answer-the-ask-not-a-narrower-measurable-one]] — the same
+   day this rule was set, a geometry verdict had to be retracted for exactly this over-reach.
+2. **Findings are FOLDED IN as provisional data, never used to close an avenue.** Nothing here gets
+   deleted or marked settled because one read came back flat.
+3. **Any material selection change RE-OPENS the downstream reads.** When the ranking rule, the
+   expectedness axis or the universe floors move, the geometry and delayed-entry sweeps are re-run —
+   they are cheap ($0, offline, against captured bars) and their conclusions expire.
+
+⚠ **The practical trap this exists to prevent:** going deep on one workstream, concluding it is not
+useful, and never coming back to it. Depth on a downstream surface, before the upstream one works,
+buys a confident answer to the wrong question.
+
 ### 🎯 HOW MANY IS "ENOUGH"? — the sufficiency target (operator, 2026-08-16)
 
 Verbatim: *"it's inevitable there's randomness and things that can't be foreseen. We are not looking
@@ -407,6 +438,30 @@ cut the size) but he should not rule on them separately without knowing they col
 directional rather than significant.
 
 ---
+
+## 0f. 📌 2026-08-17/18 RESULTS — FOLDED IN AS PROVISIONAL (they close nothing)
+
+Filed under the rule above. All of it was measured on the CURRENT selector's population and expires
+if selection moves. Full detail lives in the dated docs; this is the index.
+
+| Read | What it says | Scope it is conditional on |
+|---|---|---|
+| Bracket geometry, 5-min vs 1-min (`bracket_geometry_read_482_2026-08-18.md`) | Wider bar is not a better bracket — tie in R on 17 matched name-days, LOSES in ADR on 12 of 17, stop-outs 76% vs 73%, and it destroys the +2R partial on 4 of 17 by lifting the target out of reach | 29 in-lane samples, era A/B only, simulation not fills |
+| Offline geometry sweep (`geometry_sweep_572_2026-08-18.md`) | No variant earned a live arm; re-entry nets +1.73R off ONE row (INTC); "wait for the low" is a fade-day FILTER, not an entry | 30 day-0 sessions, trades we TOOK, era C n=0 |
+| Pivot ladder + proximity (`pivot_ladder_delayed_entry_562_2026-08-18.md`) | Ladder does not beat doing nothing once one $5.51 name (+10R) and simulator optimism are removed; **proximity measured for the first time: 10.0% approach-without-touch, but that class's outcomes are ordinary** | 55 declined names, 79 of 249 windows right-censored |
+| Exit by regime (`exit_regime_separability_2026-08-17.md`) | "Runners cluster in Bull" NOT supported — Bull is weakest on peak reached. Operator's inversion IS supported: conditional on working, non-bull winners run further | n = 3/3/1 winners |
+| Stop-too-wide cohort | A wash (−0.31 vs −0.35 ADR); AIP was a false alarm. **Kept: the profit target is fixed in DOLLARS, so a wide-range name must travel ~2.5× more of its own daily range to reach it** | N never actually met — gate counted another strategy's rows |
+
+🔑 **THE ONE STRUCTURAL FINDING THAT SURVIVES REGARDLESS OF SELECTION** (it is arithmetic, not a
+cohort result): **a fixed-dollar profit target means any widening of the stop pushes the target
+further out of reach.** Measured on a ladder: the partial fires on 9 of 30 at a 2.5% stop and 1 of 30
+at 19.5%. This is why widening loses on both ends — same stop-out rate, bigger loss each time, and
+the winners' harvest stops firing. It constrains any future stop proposal and does not expire.
+
+⚠ **WHAT IS UNTESTED AND MUST NOT BE READ AS TESTED:** the 620 intraday turn (his actual named
+trigger — needs a $0 targeted minute pull on 574 ticker-days); era C, the bracket live today, which
+has ZERO closed trades in any lane; and the censored third of the delayed-entry cohort, free to
+re-run ~mid-September.
 
 ## 0b-fwd. 🗺 THE FORWARD PLAN (as of 2026-08-16, after the stop change went live)
 
