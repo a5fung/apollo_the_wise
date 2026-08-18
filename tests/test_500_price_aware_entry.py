@@ -413,7 +413,13 @@ async def test_ws_cancel_writes_diagnosis_and_terminal_snapshot(monkeypatch):
     orders_upd = [c for c in execs if "mi_live_orders" in c.args[0]]
     assert len(orders_upd) == 1
     assert orders_upd[0].args[1] == "ord-arwr-1"
-    snapshot = json.loads(orders_upd[0].args[3])
+    # #216 (2026-08-18): get_pool's jsonb codec already encodes this param — the
+    # snapshot must be bound as a plain dict, NOT a pre-dumped JSON string (that
+    # double-encodes and lands as jsonb_typeof='string' nested under 'terminal').
+    snapshot = orders_upd[0].args[3]
+    assert isinstance(snapshot, dict), (
+        f"terminal snapshot param must be a plain dict — got {type(snapshot)}"
+    )
     assert snapshot["status"] == "canceled"
     assert snapshot["limit_price"] == "88.36"
 

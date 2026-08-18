@@ -46,6 +46,7 @@ from agents.market_intelligence.db import (
     log_audit_event,
     get_manual_halt_state,
     get_runtime_toggle,
+    _jsonb_param,
 )
 from agents.market_intelligence.audit_events import SIZING_REGIME_FALLBACK
 
@@ -738,7 +739,7 @@ async def submit_entry(trade_id: int) -> dict | None:
             fallback_limit if entry_type == "limit"
             else stop_limit_buy_price(float(trade["orb_high"])),
             order["status"],
-            json.dumps(order),
+            _jsonb_param(order),  # #216: codec single-encodes; do NOT pre-dumps
             entry_type,
         )
 
@@ -757,7 +758,7 @@ async def submit_entry(trade_id: int) -> dict | None:
                 trade_id, stop_order_id, ticker,
                 float(trade["entry_shares"]),
                 float(trade["orb_low"]),
-                json.dumps({"parent_entry_order": entry_order_id}),
+                _jsonb_param({"parent_entry_order": entry_order_id}),  # #216: codec single-encodes; do NOT pre-dumps
             )
 
     logger.info(f"Entry order submitted: {ticker} order_id={entry_order_id}")
@@ -1163,7 +1164,7 @@ async def attempt_day1_reentry(
             float(orb_high),
             stop_limit_buy_price(float(orb_high)),
             new_order["status"],
-            json.dumps(new_order),
+            _jsonb_param(new_order),  # #216: codec single-encodes; do NOT pre-dumps
         )
 
     entry_desc = (
@@ -1743,7 +1744,7 @@ async def update_stop(
             trade_id, new_stop_id, ticker,
             float(effective_qty),
             new_stop_price, new_order["status"],
-            json.dumps(new_order),
+            _jsonb_param(new_order),  # #216: codec single-encodes; do NOT pre-dumps
         )
 
     logger.info(
@@ -2709,7 +2710,8 @@ async def execute_partial_exit(
                                 'stop_loss', 'stop_hit')
                         ON CONFLICT (alpaca_order_id) DO NOTHING
                     """, trade_id, new_stop_id, ticker, float(new_remaining),
-                        float(stop_price), new_stop_order["status"], json.dumps(new_stop_order))
+                        float(stop_price), new_stop_order["status"],
+                        _jsonb_param(new_stop_order))  # #216: codec single-encodes; do NOT pre-dumps
                 logger.info(
                     f"Partial exit {ticker}: replacement stop placed for {new_remaining} shares "
                     f"@${stop_price:.2f} (order {new_stop_id})"
@@ -3116,7 +3118,8 @@ async def execute_partial_exit(
                                 'partial_exit', 'partial_profit', $6::jsonb)
                         ON CONFLICT (alpaca_order_id) DO NOTHING
                     """, trade_id, order["id"], ticker, float(shares),
-                        order.get("status", "new"), json.dumps(order),
+                        order.get("status", "new"),
+                        _jsonb_param(order),  # #216: codec single-encodes; do NOT pre-dumps
                         "limit" if resting_mode else "market",
                         float(limit_price) if resting_mode else None)
                 # #566: record the OCO's sibling STOP leg under purpose='stop_loss'
@@ -3143,7 +3146,7 @@ async def execute_partial_exit(
                             """, trade_id, _oco_leg_id, ticker, float(shares),
                                 float(oco_stop_price),
                                 (_oco_leg or {}).get("status", "held"),
-                                json.dumps(_oco_leg or {}))
+                                _jsonb_param(_oco_leg or {}))  # #216: codec single-encodes; do NOT pre-dumps
                 if oco_mode:
                     _sell_desc = (f"OCO resting for {shares}: limit "
                                   f"@ ${float(limit_price):.2f} / stop "
@@ -3418,7 +3421,8 @@ async def execute_partial_exit(
                                         'stop_loss', 'stop_hit')
                                 ON CONFLICT (alpaca_order_id) DO NOTHING
                             """, trade_id, be_stop_id, ticker, float(new_remaining),
-                                _be, be_order.get("status", "new"), json.dumps(be_order))
+                                _be, be_order.get("status", "new"),
+                                _jsonb_param(be_order))  # #216: codec single-encodes; do NOT pre-dumps
                         await log_audit_event(
                             "partial_exit_breakeven_armed",
                             f"{ticker}: stop moves to breakeven ${_be:.2f} (was "
@@ -3837,7 +3841,8 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
                     'full_exit', $6, $7::jsonb)
             ON CONFLICT (alpaca_order_id) DO NOTHING
         """, trade_id, order["id"], ticker, float(remaining),
-            order.get("status", "new"), reason, json.dumps(order))
+            order.get("status", "new"), reason,
+            _jsonb_param(order))  # #216: codec single-encodes; do NOT pre-dumps
 
     # Pending fill — finalize_full_exit() runs from the WS fill handler with
     # the real fill price. Submitting close_position after-hours queues a

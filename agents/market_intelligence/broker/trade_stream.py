@@ -36,7 +36,7 @@ from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import humanize
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import mode_prefix
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import get_pool, log_audit_event, _jsonb_param
 
 logger = logging.getLogger(__name__)
 
@@ -791,7 +791,8 @@ async def _process_entry_fill(
                         ON CONFLICT (alpaca_order_id) DO NOTHING
                     """, trade["id"], stop_order_id, ticker_name,
                         float(filled_qty), stop_target,
-                        new_stop.get("status", "new"), json.dumps(new_stop))
+                        new_stop.get("status", "new"),
+                        _jsonb_param(new_stop))  # #216: codec single-encodes; do NOT pre-dumps
                 logger.warning(
                     f"Fill-path stop remediation [{account_mode}]: {ticker_name} "
                     f"qty={filled_qty} stop=${stop_target:.2f} order_id={stop_order_id}"
@@ -1310,7 +1311,8 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                         raw_response = COALESCE(raw_response, '{}'::jsonb)
                             || jsonb_build_object('terminal', $3::jsonb)
                     WHERE alpaca_order_id = $1
-                """, order_id, event_norm, json.dumps(_terminal_order_snapshot(order)))
+                """, order_id, event_norm,
+                    _jsonb_param(_terminal_order_snapshot(order)))  # #216: codec single-encodes; do NOT pre-dumps
             except Exception as snap_err:
                 # Observability only — never block the status update / Telegram.
                 logger.warning(
@@ -1813,7 +1815,8 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     """, trade_row["id"], restored["id"], trade_row["ticker"],
                         float(trade_row["remaining_shares"]),
                         float(trade_row["stop_price"]),
-                        restored.get("status", "new"), json.dumps(restored))
+                        restored.get("status", "new"),
+                        _jsonb_param(restored))  # #216: codec single-encodes; do NOT pre-dumps
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
                     f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "

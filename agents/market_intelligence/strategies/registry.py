@@ -23,7 +23,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import get_pool, _jsonb_param
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,10 @@ async def update_strategy(
         args.append(live_real_enabled)
         sets.append(f"live_real_enabled = ${len(args)}")
     if promotion_thresholds is not None:
-        args.append(json.dumps(promotion_thresholds))
+        # #216: get_pool's jsonb codec already encodes this param — pre-dumping
+        # here double-encodes it into a JSON string. _jsonb_param matches the
+        # db.py write-path fix (do NOT json.dumps before binding).
+        args.append(_jsonb_param(promotion_thresholds))
         sets.append(f"promotion_thresholds = ${len(args)}::jsonb")
     if not sets:
         raise ValueError("update_strategy requires at least one field to mutate")

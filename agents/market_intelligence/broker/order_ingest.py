@@ -29,7 +29,7 @@ from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import mode_prefix
-from agents.market_intelligence.db import get_pool, get_safeguard_state, log_audit_event
+from agents.market_intelligence.db import get_pool, get_safeguard_state, log_audit_event, _jsonb_param
 
 logger = logging.getLogger(__name__)
 _ET = ZoneInfo("America/New_York")
@@ -210,7 +210,11 @@ async def _upsert_stop_order(conn, trade_id: int, order: dict) -> None:
         trade_id, order["id"], order["symbol"], (order.get("side") or "sell"),
         (order.get("type") or "stop"), float(order.get("qty") or 0),
         (float(order["stop_price"]) if order.get("stop_price") else None),
-        (order.get("status") or "new"), json.dumps(order, default=str))
+        # $9 has no explicit ::jsonb cast, but resolves to the column's jsonb type from
+        # the INSERT target list, so the codec still applies — #216: codec single-encodes;
+        # do NOT pre-dumps.
+        (order.get("status") or "new"),
+        _jsonb_param(order))
 
 
 # ─────────────────────────── R2 / R3i — dry-run proposals only ────────────────────────

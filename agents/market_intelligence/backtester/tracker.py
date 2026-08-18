@@ -19,7 +19,7 @@ from agents.market_intelligence.backtester.models import BacktestTrade, TradeEnt
 from agents.market_intelligence.backtester.engine import _simulate_day1, _bar_date
 from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
 from agents.market_intelligence.collector import et_today, get_index_history
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import get_pool, _jsonb_list_param
 from shared.dates import et_hhmm
 
 from agents.market_intelligence.constants import ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT
@@ -320,8 +320,11 @@ async def _insert_paper_trade(trade: dict) -> None:
             trade["ticker"], trade["alert_date"], trade["ep_score"],
             trade.get("catalyst_quality"), trade.get("gap_pct"), trade.get("regime"),
             trade["status"],
-            json.dumps(trade.get("entries", [])),
-            json.dumps(trade.get("exits", [])),
+            # #216: get_pool's jsonb codec already encodes these params — pre-dumping
+            # here double-encodes them into JSON strings. _jsonb_list_param matches
+            # the db.py write-path fix (do NOT json.dumps before binding).
+            _jsonb_list_param(trade.get("entries", [])),
+            _jsonb_list_param(trade.get("exits", [])),
             trade.get("remaining_shares", 0),
             trade.get("stop_price"),
             trade.get("last_entry_price"),
@@ -334,7 +337,7 @@ async def _insert_paper_trade(trade: dict) -> None:
             trade.get("day1_low"),
             trade.get("partial_taken", False),
             trade.get("breakeven_active", False),
-            json.dumps(trade.get("running_closes", [])),
+            _jsonb_list_param(trade.get("running_closes", [])),
         )
 
 
@@ -350,7 +353,7 @@ async def _update_paper_trade_extras(
                 breakeven_active = $3,
                 running_closes = $4::jsonb
             WHERE id = $1
-        """, trade_id, partial_taken, breakeven_active, json.dumps(running_closes))
+        """, trade_id, partial_taken, breakeven_active, _jsonb_list_param(running_closes))
 
 
 async def _update_paper_trade(trade_id: int, updates: dict) -> None:
@@ -370,7 +373,7 @@ async def _update_paper_trade(trade_id: int, updates: dict) -> None:
         """,
             trade_id,
             updates["status"],
-            json.dumps(updates["exits"]),
+            _jsonb_list_param(updates["exits"]),
             updates["remaining_shares"],
             updates.get("stop_price"),
             updates["total_pnl"],
