@@ -115,6 +115,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
     "position_path_eod_sweep",  # #306 — 16:10 ET path-recorder EOD completion sweep
     "alert_day_path_persist",  # 2026-08-15 capture audit item 3 — 16:22 ET minute bars for every alert ticker-day (needs Alpaca data creds)
+    "forward_alert_path_persist",  # 2026-08-18 §0g conversion rehearsal — 16:24 ET forward-window minute bars for stopped-out alert ticker-days (needs Alpaca data creds)
     "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
     "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
     "unified_allocator_shadow",
@@ -2037,6 +2038,30 @@ async def _alert_day_path_persist_job():
     except Exception as e:
         logger.error(f"alert_day_path_persist failed: {e}")
         await notify_job_failure("alert_day_path_persist", str(e))
+
+
+async def _forward_alert_path_persist_job():
+    """Run once at 16:24 ET, mon-fri (2026-08-18, ep_profitability_program.md
+    §0g — the conversion rehearsal). For an EP name that was alerted and then
+    STOPPED OUT of a live position, keeps persisting minute bars for
+    `order_manager.FORWARD_CAPTURE_WINDOW_SESSIONS` trading sessions AFTER the
+    alert day (day 0 stays owned by `_alert_day_path_persist_job` above — this
+    job explicitly skips it). Closes the gap that made the 620 trigger and any
+    delayed-entry read untestable without a fresh vendor pull every time.
+    DB-write only (log_audit_event on a thin day, never Telegram). Scheduled 2
+    minutes after the day-0 job so it never overlaps. Deliberately NOT gated on
+    LIVE_TRADING_ENABLED — telemetry capture must keep recording while trading
+    is paused. Execution-owned: the Alpaca data creds live only there.
+    """
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            persist_forward_alert_paths,
+        )
+        out = await persist_forward_alert_paths()
+        logger.info(f"forward_alert_path_persist: {out}")
+    except Exception as e:
+        logger.error(f"forward_alert_path_persist failed: {e}")
+        await notify_job_failure("forward_alert_path_persist", str(e))
 
 
 async def _evening_position_backstop_job():
@@ -5854,6 +5879,22 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id="alert_day_path_persist",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Forward alert-day minute-path persist: once at 16:24 ET (2026-08-18, §0g
+    # conversion rehearsal). Extends the day-0 job above FORWARD in time for EP
+    # names that were alerted and then stopped out — bounded to
+    # FORWARD_CAPTURE_WINDOW_SESSIONS trading sessions past the alert day.
+    # DB-write only. 2 minutes after the day-0 job so the two never overlap.
+    _scheduler.add_job(
+        audit_wrap(_forward_alert_path_persist_job, "forward_alert_path_persist"),
+        CronTrigger(
+            hour=16, minute=24,
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id="forward_alert_path_persist",
         replace_existing=True,
         misfire_grace_time=600,
     )

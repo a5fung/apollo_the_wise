@@ -5961,6 +5961,165 @@ async def persist_alert_day_paths(target_date=None) -> dict:
     return out
 
 
+# ── Forward alert-day path capture (2026-08-18, ep_profitability_program.md §0g) ──
+#
+# WHY. The conversion rehearsal (§0g) found the winners we already surface are
+# real, but their run does not start on the EP day — peaks land 7-21 sessions
+# out, and in 3 of 5 cases the base the run started from formed DAYS LATER and
+# BELOW the EP-day low (HLIT bottomed session +4 at 11.97 vs an EP-day low of
+# 12.68; NRIX bottomed +1, peaked +21). No stop width survives that; it is a
+# TIMING problem, and delayed re-entry is the only surface aimed at it. We only
+# persist minute bars for the ALERT DAY itself (`persist_alert_day_paths`
+# above), so a delayed-entry read on a name we were actually stopped out of
+# needs a fresh vendor pull every single time we want to look — exactly why the
+# 620 trigger could not be tested and why any delayed-entry read today needs a
+# 574-ticker-day backfill. This closes that gap GOING FORWARD (no backfill —
+# see the module docstring above): capture only, so evidence accrues on its own
+# from here on instead of waiting until we next have the capacity to look.
+#
+# THE LINE: capture only. No detection, no signal, no entry logic, nothing on
+# this path is read by any grading/entry/sizing/ordering code — mirrors
+# `persist_alert_day_paths`'s own contract exactly, just extended in TIME.
+
+FORWARD_CAPTURE_WINDOW_SESSIONS = 25
+"""Trading sessions AFTER the alert day (day 0) to keep persisting minute bars
+for a stopped-out EP name. The rehearsal's 5 measured peaks landed at sessions
++7, +10, +11, +17 and +21 — 25 sessions (~5 weeks) covers that full observed
+range with margin. Also matches the 25-session "decision-grade" maturity mark a
+sibling running-read review elsewhere in this codebase uses for the same kind
+of forward-looking window — reusing an established number, not inventing a new
+one. A named constant, not a magic number, because it is the one knob that
+bounds this job's growth (see `window_closed` below)."""
+
+
+def trading_sessions_elapsed(alert_date: date, as_of: date) -> int:
+    """Approximate count of trading SESSIONS from `alert_date` (session 0)
+    through `as_of`, inclusive of `as_of`, skipping weekends only — the same
+    "good enough, no holiday calendar" approximation `collector.prev_trading_days`
+    already uses for date-window math in this codebase. Returns 0 when
+    `as_of <= alert_date` (day 0 itself, or malformed input — never negative).
+    Pure, no DB/network — the bound check `persist_forward_alert_paths` uses to
+    decide whether a ticker-day is still inside its capture window.
+    """
+    if as_of <= alert_date:
+        return 0
+    n = 0
+    d = alert_date
+    while d < as_of:
+        d += timedelta(days=1)
+        if d.weekday() < 5:  # Mon-Fri
+            n += 1
+    return n
+
+
+async def persist_forward_alert_paths(target_date=None) -> dict:
+    """EOD: for an EP name that was alerted and then STOPPED OUT of a live
+    position, keep persisting minute bars for `FORWARD_CAPTURE_WINDOW_SESSIONS`
+    trading sessions AFTER the alert day — not just day 0 (`persist_alert_day_
+    paths` already owns day 0; this job explicitly skips it, see
+    `sessions_elapsed == 0` below).
+
+    POPULATION: (ticker, alert_date) pairs from `mi_exit_path_shadow` where the
+    LIVE trade's exit was a stop (`is_exit_day=true AND exit_reason='stop_hit'`)
+    — the exact class §0g's finding is about ("names we surfaced, entered, and
+    were stopped out of"). Deliberately scoped to this population, not every EP
+    alert: the broader population (~17.5 alert ticker-days/trading day, per the
+    2026-08-18 cost read) would run ~25x the storage/API cost of the stopped-out
+    class alone (~0.63 stop-outs/trading day) for evidence the §0g finding did
+    not ask for — narrow now, widen later if the narrow read earns it.
+
+    Runs once per weekday; each run fetches ONLY *today's* bars for every
+    ticker-day still inside its window — the window fills in incrementally
+    across subsequent daily runs, exactly like `persist_alert_day_paths` fills
+    in day 0. `window_closed` counts ticker-days whose window has already
+    elapsed as of `target_date` (skipped without an API call) — the mechanism
+    that BOUNDS this job so it does not grow forever. ⚠ A trade only ENTERS
+    this population on its exit day (the population query reads `is_exit_day`),
+    so a multi-day hold that stops out on session 4 gets sessions 5+ captured
+    forward from here but NOT sessions 1-3 (already gone by the time this job
+    first sees the trade) — fine for §0g's question (the base forms AFTER the
+    stop), a gap for anyone who later wants the full pre-stop path too.
+
+    Idempotent (`alpaca.persist_intraday_bars`'s `ON CONFLICT DO NOTHING`) and
+    fail-soft (one bad ticker/day is logged and skipped, never raised) — same
+    contract as `persist_alert_day_paths`, same fetch/write path reused
+    unchanged (`alpaca.get_minute_bars_range` + `alpaca.persist_intraday_bars`;
+    no second capture path built).
+
+    Runs in the EXECUTION service (Alpaca data creds). NOT gated on
+    LIVE_TRADING_ENABLED — telemetry capture must keep recording while trading
+    is paused.
+
+    Returns {"population": n, "fetched": n, "already_covered": n, "thin": n,
+    "errors": n, "window_closed": n} for the job log.
+    """
+    day = target_date or datetime.now(_ET).date()
+    out = {"population": 0, "fetched": 0, "already_covered": 0, "thin": 0,
+           "errors": 0, "window_closed": 0}
+    pool = await get_pool()
+    # Generous calendar-day floor (2x the session window covers weekends +
+    # margin for holidays) — the precise per-row session check below is what
+    # actually enforces the bound; this floor only keeps the population query
+    # from scanning the entire table's history every run.
+    lookback_floor = day - timedelta(days=FORWARD_CAPTURE_WINDOW_SESSIONS * 2)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ticker, alert_date FROM mi_exit_path_shadow
+                WHERE is_exit_day = true AND exit_reason = 'stop_hit'
+                  AND alert_date >= $1 AND alert_date <= $2
+                """,
+                lookback_floor, day,
+            )
+    except Exception as e:
+        logger.error(f"forward alert path persist: population query failed: {e}")
+        out["errors"] += 1
+        return out
+
+    candidates = sorted(
+        {(r["ticker"], r["alert_date"]) for r in rows if r["ticker"] and r["alert_date"]}
+    )
+    day_start = datetime.combine(day, datetime_time(9, 30), tzinfo=_ET)
+    day_end = datetime.combine(day, datetime_time(16, 0), tzinfo=_ET)
+    for ticker, alert_date in candidates:
+        sessions_elapsed = trading_sessions_elapsed(alert_date, day)
+        if sessions_elapsed == 0:
+            continue  # day 0 is persist_alert_day_paths' job, not this one's
+        if sessions_elapsed > FORWARD_CAPTURE_WINDOW_SESSIONS:
+            out["window_closed"] += 1
+            continue
+        out["population"] += 1
+        try:
+            async with pool.acquire() as conn:
+                n_have = await conn.fetchval(
+                    """
+                    SELECT count(*) FROM mi_intraday_bars
+                    WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
+                    """,
+                    ticker, day_start, day_end,
+                )
+            if (n_have or 0) >= _PATH_MIN_DAY_BARS:
+                out["already_covered"] += 1
+                continue
+            bars = await alpaca.get_minute_bars_range(ticker, day_start, day_end)
+            if bars:
+                await alpaca.persist_intraday_bars(ticker, bars)
+                out["fetched"] += 1
+            if len(bars) < _PATH_MIN_DAY_BARS:
+                out["thin"] += 1
+                await log_audit_event(
+                    "path_coverage_gap",
+                    f"{ticker} {day}: {len(bars)}/390 bars (forward alert-day "
+                    f"persist, session {sessions_elapsed} of "
+                    f"{FORWARD_CAPTURE_WINDOW_SESSIONS})",
+                )
+        except Exception as e:  # one bad name must not kill the day's capture
+            logger.warning(f"forward alert-day path persist: {ticker} {day} failed: {e}")
+            out["errors"] += 1
+    return out
+
+
 # ── Profit-target R frame (2026-08-16, operator-signed 2R-stop change) ──────
 # Signal types whose R frame is DEFINED by the ORB (R = entry − orb_low),
 # independent of where the protective stop sits. MAGNA53's stop moved to

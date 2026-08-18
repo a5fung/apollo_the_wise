@@ -9522,17 +9522,59 @@ reviews:
       with fill_day >= 2026-08-16; AMLX (first new-rule fill, 2026-08-18) has not
       reached an EOD write yet). No broken join. MECHANISM FINDING, carry forward
       when this fires for real: the flat "-1.00 if ever touched" counterfactual
-      OVERSTATES the old rule's loss on any trade with an earlier partial exit — MANE
-      (-0.23R), SMCI (-0.70R), FIGS (-0.37R) and FRMI (-0.98R) all show
-      `ever_touched_minus_1r=true` with `exit_reason='stop_hit'` yet a REALIZED loss
-      smaller than -1R, because a fraction of the position had already been sold
-      above -1R before the final stop-out — a partial the OLD rule would have taken
-      too (profit-take mechanics don't depend on which stop rule is live), so its own
-      counterfactual should blend the banked partial with a -1R exit on the
-      remainder, not assume the whole position rides to -1R. `mi_exit_path_shadow`
-      already stores the column that makes this computable — `breakeven_armed`
-      (true once a partial has fired) — so the refined counterfactual is buildable
-      without new capture; not built here, this is a rehearsal, not the real read.
+      OVERSTATES the old rule's loss on any trade with a partial banked BEFORE the
+      old stop was touched — a partial the OLD rule would have taken too
+      (profit-take mechanics don't depend on which stop rule is live), so its
+      counterfactual should credit that partial instead of assuming the whole
+      position rides to -1R.
+      🟢 FIXED + VERIFIED AGAINST PROD 2026-08-18 (read-only; `THE LINE` untouched
+      — analysis-counterfactual only): of the 20 closed trades, exactly ONE has a
+      partial before its old-stop touch — FIGS (2026-08-07, trade_id 332;
+      `partial_profit` 20sh @ 13:35 ET then `stop_hit` on the remaining 41sh @
+      13:51 ET, same day). Its corrected old-rule counterfactual is its own
+      `realized_r`, -0.3674369298831882R, not the naive flat -1.00R — a bias of
+      0.6326R on that one trade (20-trade sum: naive -18.4813R -> corrected
+      -17.8487R, same 0.6326R gap since FIGS is the only trade that moves).
+      ⚠ CORRECTS AN EARLIER WRONG CLAIM in a prior pass over this data: MANE
+      (-0.23R) and FRMI (-0.98R) were also flagged as partial-before-touch cases —
+      re-checked and both are `partial_taken=false`; their sub-1R realized losses
+      are ordinary stop-fill slippage, not a partial, and the flat -1.00R
+      counterfactual is CORRECT for both, unchanged. SMCI was likewise flagged
+      with a specific claim (2026-05-06, $639.34 lost on $995.26 risk, -0.64R) —
+      that trade is real but is NOT in this review's population: it's a
+      *different*, PAPER-account SMCI position (`mi_live_trades` id 82), outside
+      `mi_exit_path_shadow`'s live-only scope, with a bug-distorted `exits`
+      history (a phantom full-position stop_hit on 05-06 followed six days later
+      by a real partial+stop-out on 05-12). The ACTUAL live SMCI trade in THIS
+      population (trade_id 271, 2026-07-22) has `partial_taken=false` — no
+      partial at all; its realized_r of -0.70R vs a flat -1.00R is ordinary
+      stop-fill slippage (exit printed 28.79 against an ORB low of 28.5), which
+      this fix correctly leaves untouched. Fix + all four numbers (SMCI, FIGS,
+      MANE, FRMI) verified with fresh prod queries, not taken on report — see
+      `scripts/probes/_rehearsal_stop_2r_running_corrected_2026-08-18.sql` +
+      `..._out_2026-08-18.psv`. Reusable scorer for the real read:
+      `scripts/stop_2r_counterfactual.old_rule_counterfactual_r` /
+      `.summarize` (pure, DB-free; behavioral tests in
+      `tests/test_stop_2r_counterfactual.py`) — reads `touched_minus_1r` /
+      `breakeven_armed` per trading_day (not just the exit row) so a FUTURE
+      trade that touches -1R on one day and only takes a partial on a LATER day
+      still scores flat, correctly (no such case exists yet in the live 20).
+      🛑 GUARD (advisor-caught before ship, 2026-08-18): crediting `realized_r`
+      in the touched+partial branch is only valid when the OLD rule was
+      actually live for that trade (`fill_day` < 2026-08-16) — `exit_path_
+      shadow.py` anchors `touched_minus_1r`/`breakeven_armed` to the ORB low
+      for EVERY trade regardless of era, so on a trade filled UNDER THE NEW 2R
+      RULE, `realized_r` reflects the wider stop's own outcome past that point,
+      not the old rule's. The scorer now REQUIRES `fill_day` and returns `None`
+      (never a fabricated number — ADR 0014's own "no valid frame -> SKIP"
+      convention) for a post-cutover touched+partial trade — a case that
+      doesn't exist in the current 20 (all pre-cutover) but WILL as soon as a
+      new-rule trade like AMLX closes with a pre-touch partial. `summarize()`
+      excludes any such trade from every sum and reports it in `unscoreable`
+      instead of silently folding it in. Mutation-tested (see the module's own
+      test file) — reverting the guard makes 3 tests fail. The reference SQL
+      above carries the same guard (its `old_rule_counterfactual_r_corrected`
+      column goes NULL on that branch) for whoever runs the real read by hand.
       Separately: the "halve its R" unit note above is verified NOT to apply to this
       table's own `realized_r`/`touched_minus_1r` columns — `exit_path_shadow.py`
       always computes `risk_per_share` from `orb_low` (never the trade's actual live
