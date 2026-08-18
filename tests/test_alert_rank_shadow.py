@@ -442,6 +442,88 @@ def test_classify_growth_regex_fallback_when_not_stored():
     assert cls["growth_src"] == "regex"
 
 
+# ── #568 — combined_expectedness_class / compute_classifiable_frac ────────────────────
+# Real item numbers throughout (from the evidence doc's own worked fixtures: VERA 8-K
+# items 2.02/9.01, RDDT 8-K items 5.02/9.01 — docs/analysis/expectedness_and_ranking_
+# 2026-08-16.txt lines 34-41), not fabricated ones.
+
+
+def test_combined_class_forward_includes_pure_forward():
+    """VERA-shaped: 8-K with 2.02 -> scheduled; forward keyword text -> forward. The
+    combined class must read 'forward' straight from looking='forward'."""
+    cls = ars.classify_expectedness(
+        "FDA granted accelerated approval for the company's lead drug candidate.",
+        "", "", "[SEC 8-K filed 2026-08-14, items 2.02,9.01]", None,
+    )
+    assert cls["sched"] == "scheduled" and cls["looking"] == "forward"
+    assert ars.combined_expectedness_class(cls["looking"]) == "forward"
+
+
+def test_combined_class_forward_includes_mixed_fwd():
+    """The doc's own collapse rule (line 56): 'forward = forward + mixed_fwd'. A mixed
+    alert (both forward and backward language present) must land in 'forward', not get
+    its own bucket and not fall to 'unclassified' — this is THE line the doc actually
+    tested on, distinct from the raw 5-value `looking` field."""
+    cls = ars.classify_expectedness(
+        "Company reported record revenue and also announced FDA accelerated approval.",
+        "", "", "", None,
+    )
+    assert cls["looking"] == "mixed_fwd"
+    assert ars.combined_expectedness_class(cls["looking"]) == "forward"
+
+
+def test_combined_class_backward():
+    """RDDT-shaped item numbers (5.02/9.01, no 2.02) -> unscheduled by filing; pure
+    backward-looking text -> backward. The combined class must read 'backward' straight
+    through, independent of the (unrelated) scheduled/unscheduled axis."""
+    cls = ars.classify_expectedness(
+        "Company reported revenue of $80M, beat consensus estimate for the quarter.",
+        "", "", "[SEC 8-K filed 2026-08-14, items 5.02,9.01]", None,
+    )
+    assert cls["sched"] == "unscheduled" and cls["looking"] == "backward"
+    assert ars.combined_expectedness_class(cls["looking"]) == "backward"
+
+
+def test_combined_class_unclassified_for_analyst_only():
+    """analyst_only is explicitly EXCLUDED from the doc's spec classes (lines 22-23:
+    'not in the spec's classes; refused to force them into one') — it must NOT be
+    silently folded into 'forward' or 'backward' just because it counts as classified
+    on the (looser) axis-2 count. This is the row-level guard against manufacturing
+    signal that the DoD calls out by name."""
+    cls = ars.classify_expectedness(
+        "Analyst initiated coverage with an outperform rating and price target.",
+        "", "", "", None,
+    )
+    assert cls["looking"] == "analyst_only"
+    assert ars.combined_expectedness_class(cls["looking"]) == "unclassified"
+
+
+def test_combined_class_unclassified_when_nothing_matches():
+    cls = ars.classify_expectedness("", "", "", "", None)
+    assert cls["looking"] == "unknown"
+    assert ars.combined_expectedness_class(cls["looking"]) == "unclassified"
+
+
+def test_classifiable_frac_all_three_known():
+    assert ars.compute_classifiable_frac("scheduled", "forward", "forward") == pytest.approx(1.0)
+
+
+def test_classifiable_frac_none_known():
+    assert ars.compute_classifiable_frac("unknown", "unknown", "unclassified") == pytest.approx(0.0)
+
+
+def test_classifiable_frac_partial_analyst_only_case():
+    """The nuance a naive 'not unknown' count across all three fields would miss:
+    analyst_only counts as classified on axis 2 (looking != 'unknown') but the combined
+    class is 'unclassified' for that same row — so this row is 2 of 3, not 3 of 3 or
+    0 of 3. Pins the exact fraction, not just a truthy/falsy read."""
+    assert ars.compute_classifiable_frac("unscheduled", "analyst_only", "unclassified") == pytest.approx(2 / 3)
+
+
+def test_classifiable_frac_only_axis1_known():
+    assert ars.compute_classifiable_frac("scheduled", "unknown", "unclassified") == pytest.approx(1 / 3)
+
+
 # ── classify_expectedness — regex byte-parity against the probe (finding 3) ───────────
 #
 # 2026-08-16 cleanup review finding 3: classify_expectedness is a VERBATIM port of
@@ -633,6 +715,56 @@ async def test_process_alert_date_ranks_two_alerts_against_each_other(monkeypatc
     assert row_a[idx["minute_bars_available"]] is False
     assert row_a[idx["qualifies_for_rank_asof0945"]] is False
     assert row_a[idx["composite_rank_asof0945"]] is None
+    # #568: both fixture rows carry no catalyst text at all -> every axis is genuinely
+    # unclassifiable. Must land as the visible 'unknown'/'unclassified' sentinels and a
+    # 0.0 fraction, never a silently-defaulted class.
+    assert row_a[idx["expct_scheduled"]] == "unknown"
+    assert row_a[idx["expct_looking"]] == "unknown"
+    assert row_a[idx["expct_combined_class"]] == "unclassified"
+    assert row_a[idx["expct_classifiable_frac"]] == pytest.approx(0.0)
+
+
+@pytest.mark.asyncio
+async def test_process_alert_date_writes_the_combined_expectedness_class(monkeypatch):
+    """#568 end-to-end wiring check (not just the pure functions above): a real 8-K item
+    header + forward-changing catalyst text flows all the way through
+    `_process_alert_date` into the upserted `expct_combined_class` /
+    `expct_classifiable_frac` columns — proves the DB-write path, not just the pure
+    classifier, computes and stores them."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    d = date(2026, 8, 10)
+
+    row = _alert_row(1, "VERA", d)
+    row["catalyst"] = "FDA granted accelerated approval for the company's lead drug candidate."
+    row["grounded_text"] = "[SEC 8-K filed 2026-08-10, items 2.02,9.01]"
+
+    conn.fetch = AsyncMock(side_effect=[
+        [row],
+        _prior_rows_fixture(d),
+        [],
+    ])
+    conn.fetchrow = AsyncMock(side_effect=[
+        _daily_bar_row(101.0, 101.5, 100.8, 101.2),
+        _trade_status(),
+    ])
+    executed = []
+
+    async def _execute(sql, *args):
+        executed.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(ars, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ars, "log_audit_event", AsyncMock())
+
+    written = await ars._process_alert_date(conn, d)
+    assert written == 1
+    idx = {c: i for i, c in enumerate(ars._UPSERT_COLS)}
+    stored = executed[0][1]
+    assert stored[idx["expct_scheduled"]] == "scheduled"
+    assert stored[idx["expct_looking"]] == "forward"
+    assert stored[idx["expct_combined_class"]] == "forward"
+    assert stored[idx["expct_classifiable_frac"]] == pytest.approx(1.0)
 
 
 @pytest.mark.asyncio
@@ -793,6 +925,25 @@ async def test_record_alert_rank_shadow_scans_only_unrecorded_dates(monkeypatch)
     sql_used = conn.fetch.call_args_list[0][0][0]
     assert "LEFT JOIN mi_alert_rank_shadow" in sql_used
     assert "s.alert_id IS NULL" in sql_used
+
+
+def test_dates_needing_processing_sql_also_catches_pre_568_stale_rows():
+    """#568 migration coverage — this is a string assertion on a SQL CONSTANT, not a
+    label/comment (the usual reason this file avoids string assertions, per its own
+    header comment: "every assertion checks a computed VALUE, never a comment/label
+    string"). It is an exception, and a deliberate one: a mocked pool cannot evaluate a
+    real WHERE clause against real rows, so the predicate ITSELF is the thing under
+    test, and this is the only way to pin it. The advisor caught a real bug this guards:
+    the ORIGINAL predicate (`s.alert_id IS NULL` alone) only reprocesses alert_dates
+    with a genuinely MISSING shadow row — it would never revisit the 255 rows that
+    already existed before `expct_combined_class` was added, silently leaving them NULL
+    forever. The `OR s.expct_combined_class IS NULL` clause is what makes the one-time
+    backfill actually run. Read-only prod check (2026-08-18): the OLD predicate alone
+    matched 1 of 62 distinct live alert_dates; see `_DATES_NEEDING_PROCESSING_SQL`'s own
+    comment for the full reasoning (the column doesn't exist in prod yet, so the NEW
+    predicate can't be run there today — the guarantee is a Postgres one: ADD COLUMN
+    with no DEFAULT sets every existing row's new column to NULL)."""
+    assert "s.alert_id IS NULL OR s.expct_combined_class IS NULL" in ars._DATES_NEEDING_PROCESSING_SQL
 
 
 @pytest.mark.asyncio

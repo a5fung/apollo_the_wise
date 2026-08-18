@@ -2607,10 +2607,35 @@ async def initialize_schema() -> None:
                 expct_beat                  BOOLEAN,          -- beat-vs-consensus language present
                 expct_growth_yoy_pct        DOUBLE PRECISION, -- revenue YoY% (stored metric, regex fallback)
                 expct_growth_src            TEXT,             -- 'stored'|'regex'|'none'
+                -- 2026-08-18 (#568) — the operator's "much of the catalyst may already be in
+                -- the gap" framing: expct_scheduled/expct_looking grade EACH axis separately;
+                -- neither says whether the catalyst as a WHOLE was the doc's own combined
+                -- signal. expct_combined_class is the doc's own collapse rule for its axis-2
+                -- PRIMARY test (docs/analysis/expectedness_and_ranking_2026-08-16.txt line 56:
+                -- "forward = forward + mixed_fwd (spec: strongest forward element wins)"),
+                -- restated as a stored class: 'forward' (expct_looking in forward/mixed_fwd),
+                -- 'backward' (expct_looking = backward), else 'unclassified' — analyst_only and
+                -- unknown both fall out (doc lines 22-23: analyst_only "not in the spec's
+                -- classes; refused to force them into one"). Never NULL — 'unclassified' is a
+                -- real, visible value, matching the expct_scheduled/expct_looking 'unknown'
+                -- convention (never silently defaulted into a class).
+                expct_combined_class        TEXT,             -- 'forward'|'backward'|'unclassified'
+                -- classifiable fraction PER ROW (not an aggregate) — mean of three booleans:
+                -- expct_scheduled != 'unknown', expct_looking != 'unknown',
+                -- expct_combined_class != 'unclassified'. 0.0/0.333.../0.667.../1.0. Lets the
+                -- doc's own aggregate coverage stat (86% axis1 / 75% axis2 on the live corpus)
+                -- be recomputed from stored rows rather than assumed each time. Nullable ON
+                -- PURPOSE (never NOT NULL DEFAULT 0): this table already had 255 live rows
+                -- before this column existed, and a NOT-NULL-0 default would silently paint
+                -- every one of them as "nothing classifiable" — the exact manufactured-signal
+                -- DoD 3 forbids — instead of visibly "not yet recomputed under the new code".
+                expct_classifiable_frac     DOUBLE PRECISION,
                 computed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
             CREATE INDEX IF NOT EXISTS idx_alert_rank_shadow_alert_date
                 ON mi_alert_rank_shadow(alert_date);
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS expct_combined_class TEXT;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS expct_classifiable_frac DOUBLE PRECISION;
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak

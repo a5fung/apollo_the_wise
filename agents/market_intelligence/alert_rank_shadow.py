@@ -41,6 +41,24 @@ These four are recorded as STANDALONE columns, never folded into the ranked comp
 composite must stay gap/tightness/extension exactly, or the shadow stops testing the
 published rule.
 
+#568 (2026-08-18) — THE CATALYST EXPECTEDNESS AXIS. Operator, verbatim: "catalyst is
+everything for an EP, that is exactly why it gapped, but much of it may already have
+happened or been taken into account with the gap." `classify_expectedness` (below) already
+computed `expct_scheduled` (axis 1: scheduled vs unscheduled, from stored 8-K item numbers)
+and `expct_looking` (axis 2: forward-changing vs backward-looking) as part of the 2026-08-16
+build. This addition is the THIRD class the evidence doc's own PRIMARY test actually used —
+`expct_combined_class` — a collapsed version of axis 2 (`combined_expectedness_class`:
+'forward' = looking in {forward, mixed_fwd}, 'backward' = looking == backward,
+'unclassified' otherwise), matching docs/analysis/expectedness_and_ranking_2026-08-16.txt
+line 56 exactly ("forward = forward + mixed_fwd (spec: strongest forward element wins)") —
+NOT an axis1×axis2 cross (no such joint class is defined anywhere in that doc; inventing one
+here would violate the "don't invent your own taxonomy" instruction this was built under).
+`expct_classifiable_frac` (`compute_classifiable_frac`) is the PER-ROW coverage companion:
+the fraction of the three classes above that were actually classifiable for THIS alert, so
+the doc's own aggregate coverage stat (86%/75% on the live corpus) can be recomputed from
+stored rows instead of assumed. Deterministic, $0, no LLM — both functions are pure
+transforms of `classify_expectedness`'s own output, never a second classifier.
+
 THE LINE — read this before touching anything here. This module is a passive OBSERVER:
   - It has EXACTLY ONE write target: `mi_alert_rank_shadow` (plus `mi_audit_log` via the
     shared `log_audit_event` telemetry helper — never a trade-state or grading table).
@@ -76,14 +94,19 @@ WHY EOD, AND WHY THE CATCH-UP SCAN. The EOD columns need today's `mi_daily_close
 which the 17:00 ET `nightly_data_pull` job writes — so this runs at 17:53 ET, after that pull
 and the 17:xx shadow family (same reasoning as `exit_path_shadow`'s 17:50 slot: `mi_daily_closes`
 has no row for today before then). Rather than a per-day walk, this scans for any
-`mi_ep_alerts` row (source='live') NOT YET in `mi_alert_rank_shadow`, groups the misses by
-`alert_date`, and — for EVERY alert on an affected date, not just the missing ones —
+`mi_ep_alerts` row (source='live') whose shadow row is either MISSING or (2026-08-18, #568)
+STALE — written before a since-added column existed (`s.expct_combined_class IS NULL`; see
+`_DATES_NEEDING_PROCESSING_SQL`'s own comment for why, and why this self-extinguishes back to
+missing-only once every row has run once under current code) — groups the hits by
+`alert_date`, and — for EVERY alert on an affected date, not just the missing/stale ones —
 RECOMPUTES and UPSERTs the whole day, because the percentile ranks are a WITHIN-DAY
 computation: a late-arriving or previously-unwritten alert changes every other alert's rank
 that day. Idempotent (ON CONFLICT alert_id DO UPDATE), safe to re-run. On first deploy this
 backfills every live `mi_ep_alerts` row back to the 2026-05-11 purge boundary — immediate N
 on the same population `docs/analysis/expectedness_and_ranking_2026-08-16.txt` section [E]
-scored, no new capture needed.
+scored, no new capture needed. (The #568 column addition landed AFTER that first backfill —
+the stale-row clause above is what re-covers the 255 rows the original backfill already
+wrote, without a second special-cased migration path.)
 
 RETENTION: kept forever, explicitly absent from `purge_old_data` (db.py) — the exact evidence
 class the 2026-08-15 capture audit found being deleted before it could be used, and the
@@ -466,15 +489,76 @@ def classify_expectedness(
                 growth=growth, growth_src=growth_src, sec_form=form, sec_items=items)
 
 
+# ── #568 (2026-08-18) — the combined expectedness class + per-row coverage. Kept as
+# SEPARATE small pure functions rather than folded into `classify_expectedness` above,
+# so that verbatim-port function stays a byte-for-byte match to the probe's `classify()`
+# (see its own comment block + the byte-parity test) — these two are OUR OWN small
+# derivations on TOP of its output, not part of the port. ─────────────────────────────
+
+
+def combined_expectedness_class(looking: str) -> str:
+    """The operator's framing ("much of the catalyst may already be in the gap") needs
+    the doc's own COMBINED axis-2 grouping, not the raw 5-value `looking` field: Part 1
+    section [2] of docs/analysis/expectedness_and_ranking_2026-08-16.txt states
+    "forward = forward + mixed_fwd (spec: strongest forward element wins)" (line 56) and
+    tests its PRIMARY comparison on that collapsed pair (FORWARD(+mixed) n=46 vs
+    BACKWARD n=14). `analyst_only` is explicitly EXCLUDED from the spec's classes (doc
+    lines 22-23: "not in the spec's classes; refused to force them into one") — it is
+    NOT folded into either bucket here, unlike axis 2's own classifiable count (which
+    counts it as classified). Never invents a category the doc doesn't name.
+
+    Returns 'forward' | 'backward' | 'unclassified' — never None, matching the
+    expct_scheduled/expct_looking 'unknown' convention: an uncategorizable row is a
+    real, visible value, never silently defaulted into forward or backward."""
+    if looking in ("forward", "mixed_fwd"):
+        return "forward"
+    if looking == "backward":
+        return "backward"
+    return "unclassified"
+
+
+def compute_classifiable_frac(sched: str, looking: str, combined: str) -> float:
+    """PER-ROW coverage, not an aggregate: the fraction of the three classes above that
+    were actually classifiable for THIS alert. `sched`/`looking`/`combined` classifiable
+    ⇔ not their own "we couldn't tell" sentinel ('unknown' for the first two,
+    'unclassified' for the combined class — deliberately NOT the same string, since
+    `analyst_only` counts as classified on axis 2 but not on the combined class; see
+    `combined_expectedness_class`'s docstring). Averaging the two axis-1/2 fractions
+    across a corpus reproduces the doc's own aggregate coverage numbers (live corpus:
+    86% axis1, 75% axis2) without re-deriving them by hand each time — that's the point
+    of storing this per row rather than only stating it in prose."""
+    flags = (sched != "unknown", looking != "unknown", combined != "unclassified")
+    return sum(flags) / len(flags)
+
+
 # ═════════════════════════════ DB orchestration ═══════════════════════════════════════
 
 _DATES_NEEDING_PROCESSING_SQL = """
     SELECT DISTINCT a.alert_date
     FROM mi_ep_alerts a
     LEFT JOIN mi_alert_rank_shadow s ON s.alert_id = a.id
-    WHERE a.source = 'live' AND s.alert_id IS NULL AND a.alert_date <= $1
+    WHERE a.source = 'live' AND a.alert_date <= $1
+      AND (s.alert_id IS NULL OR s.expct_combined_class IS NULL)
     ORDER BY a.alert_date
 """
+# #568 migration note: `s.expct_combined_class IS NULL` catches every row written BEFORE
+# this column existed (255 live rows as of 2026-08-18 — the table predates this build, see
+# module docstring) so the one-time backfill still runs even though `s.alert_id IS NULL`
+# alone would now match almost nothing. `combined_expectedness_class` never returns None
+# (see its own docstring), so a non-NULL value here is proof a row already ran under this
+# code — the predicate self-extinguishes back to `alert_id IS NULL`-only behaviour once
+# every existing row has been recomputed once.
+#
+# Read-only prod check (2026-08-18, before this code is deployed): the OLD predicate
+# (`s.alert_id IS NULL` alone) matched 1 of 62 distinct live alert_dates — the migration
+# gap the advisor caught. `expct_combined_class` does not exist as a prod column yet (no
+# deploy has run), so the NEW predicate can't be run against prod today; the guarantee is
+# instead a Postgres one, not an observed query: `ALTER TABLE ... ADD COLUMN` with no
+# DEFAULT sets every EXISTING row's new column to NULL (never a computed value), so on the
+# first nightly run after this ships, `expct_combined_class IS NULL` is true for all 255
+# pre-existing shadow rows — the OR clause therefore covers all 62 distinct live
+# alert_dates (confirmed by a plain read-only COUNT(DISTINCT alert_date) against
+# mi_ep_alerts WHERE source='live'), not the 1 the old predicate would have picked up.
 
 _DAY_ALERTS_SQL = """
     SELECT a.id, a.ticker, a.alert_date, a.score_tier, a.catalyst,
@@ -524,6 +608,7 @@ _UPSERT_COLS = (
     "bar_contraction", "bar_contraction_bar_count",
     "expct_scheduled", "expct_scheduled_src", "expct_looking",
     "expct_beat", "expct_growth_yoy_pct", "expct_growth_src",
+    "expct_combined_class", "expct_classifiable_frac",
 )
 _INSERT_COLS_SQL = ", ".join(_UPSERT_COLS)
 _INSERT_PLACEHOLDERS_SQL = ", ".join(f"${i + 1}" for i in range(len(_UPSERT_COLS)))
@@ -620,6 +705,8 @@ async def _process_alert_date(conn, alert_date: date) -> int:
             alert.get("catalyst"), alert.get("catalyst_type_rationale"),
             alert.get("judge_rationale"), alert.get("grounded_text"), _f(alert.get("yoy")),
         )
+        expct_combined = combined_expectedness_class(cls["looking"])
+        expct_classifiable_frac = compute_classifiable_frac(cls["sched"], cls["looking"], expct_combined)
 
         tstat = await conn.fetchrow(_TRADE_STATUS_SQL, ticker, alert_date)
         trade_exists = bool(tstat["n"]) if tstat else False
@@ -654,6 +741,8 @@ async def _process_alert_date(conn, alert_date: date) -> int:
             "expct_scheduled": cls["sched"], "expct_scheduled_src": cls["sched_src"],
             "expct_looking": cls["looking"], "expct_beat": cls["beat"],
             "expct_growth_yoy_pct": cls["growth"], "expct_growth_src": cls["growth_src"],
+            "expct_combined_class": expct_combined,
+            "expct_classifiable_frac": expct_classifiable_frac,
         })
 
     pool_size_eod = rank_day_pool(
