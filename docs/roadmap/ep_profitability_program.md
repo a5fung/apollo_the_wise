@@ -531,6 +531,53 @@ directional rather than significant.
 
 ---
 
+## 0g. 🔴 THE CONVERSION REHEARSAL (2026-08-18) — the winners are real, and their run does not start on the EP day
+
+`docs/analysis/conversion_rehearsal_2026-08-18.md`, $0, read-only. Operator-approved rec #3. This is
+the first read that replays the tail winners we ALREADY SURFACED through TODAY'S full stack, era C
+included, and asks: **would we convert them now?**
+
+**THE COUNT, corrected:** 15 surfaced tail winners → **3 became trades, not 2** (NRIX 06-08 also
+filled, `mi_live_trades` id 201, −$378 in 10 minutes). **All three lost while the stock ran ≥8×ADR.**
+
+**REPLAYED THROUGH TODAY'S STACK: 5 fill, and they net −2.0R.** Best conversion is **+0.51R** (SMCI)
+against the **≈+6R the target arithmetic needs per caught winner**. Three of the five — INTC, HLIT,
+NRIX — hit HARD STOPS, i.e. their EP day collapsed below even the era-C 2R stop.
+Per month that is **≈+0.2R kept, about 4% of the ~5.3R/month the target requires.**
+
+🔑 **AND HERE IS THE MECHANISM, VERIFIED BY ME AGAINST RAW BARS, NOT TAKEN ON REPORT:**
+
+| name | EP day | peak lands | base the run started from |
+|---|---|---|---|
+| INTC | 2026-04-24 | session **+11**, +60.8% (9.5×ADR) | day-0 low 79.62 — where we stopped out |
+| HLIT | 2026-05-13 | session **+10**, +32.4% (6.2×ADR) | **session +4** at 11.97 — *below* the EP-day low of 12.68 |
+| NRIX | 2026-06-08 | session **+21**, +60.4% (5.2×ADR) | **session +1** at 14.67 — *below* the EP-day low of 15.36 |
+| SMCI | 2026-07-21 | session **+17**, +65.9% (8.6×ADR) | day-0 low 24.33 |
+| VPG  | 2026-06-18 | session +7 | **session +5** at 122.83 — far below the EP close |
+
+**In three of five the base that launched the run formed DAYS LATER and BELOW the EP-day low.** No
+realistic stop width survives that — which is precisely why every geometry read this week came back
+negative. **It was never a stop-width problem. It is a TIMING problem: our day-0/day-1 bracket is
+structurally incapable of being in these trades when they actually move.**
+
+▶ **This is the strongest evidence yet for the operator's own delayed-entry thesis** (the pivot
+ladder, undercut-and-reclaim, the 620 trigger) — and it lands on a population none of this week's
+reads used. The 08-18 pivot-ladder sweep measured DECLINED names and found nothing; this says the
+opportunity is on names we **surfaced, entered, and were stopped out of**. ⚠ That sweep did test
+entered names, but at n=9 fires for +0.35R on era A/B — thin, and not this subset.
+
+**GATES THAT KILL WINNERS WITHOUT KILLING LOSERS** (flags, not verdicts): the **5-position slot cap**
+— 33% of its kills are tail winners (n=6) — and the **60-day cooldown** (1 winner / 0 losers, but its
+loser column is structurally censored). Everything else kills both sides.
+
+**LOSER SIDE, per his SELECTION-IS-BROADER rule:** 163 surfaced non-winners through the same stack —
+the gap floor kills 25, tier 25, **no-fill-by-10:00 kills 20 and zero winners**; 41 fill for −3.4R.
+Filled-pool winner density **11% vs 8.4% baseline**.
+
+⚠ Lived vs reconstructed: INTC/SMCI/NRIX entries are REAL (exits simulated); HLIT/VPG fills are
+simulated from bars; 3 winners and 30 losers are censored, so every share is a floor. NRIX's day-0
+survival margin was **4 cents**.
+
 ## 0f. 📌 2026-08-17/18 RESULTS — FOLDED IN AS PROVISIONAL (they close nothing)
 
 Filed under the rule above. All of it was measured on the CURRENT selector's population and expires
