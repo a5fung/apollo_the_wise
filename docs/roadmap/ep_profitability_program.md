@@ -332,7 +332,37 @@ Nothing is estimated; unmeasured things say "unmeasured".
 
 ## 0a. WORKED EXAMPLES — the operator's own cases, kept HERE so they are not buried
 
-### 🟢 MRNA 2026-08-19 — HIS REFERENCE TEXTBOOK EP, and the system picked it correctly
+### 🟢 MRNA 2026-08-19 — THE REFERENCE EP  ▶ **FULL WRITE-UP: `docs/methodology/ep_reference_mrna_2026-08-19.md`**
+
+**📌 That doc is the canonical worked example of what a real EP looks like** — his charts, both
+traders' framing, every number, and the two collisions with our own filters. Read it before any
+selection change. The summary below is the index; the doc is the source.
+
+**THE MECHANISM HE GAVE US (2026-08-19), and it is the load-bearing part:**
+- **PEG = Power Earnings Gap — a gap after earnings. *"EPs are more powerful and rare."*** The
+  separator is the CATALYST, not the gap. **We already measure this line**: `expct_scheduled` (#568)
+  marks 2.02/10-Q/10-K as scheduled, and a PEG is exactly a scheduled-catalyst gap — unscheduled
+  reach ≥8×ADR **11.6% vs 3.8%**.
+- 🔑 **THE BIG BASE IS A PROXY FOR NEGLECT.** *"with a large base there's indication of neglect (at
+  least there's no major movements up or down) so the news moving it significantly is truly
+  unexpected and/or gamechanging."* **The base does not predict the move — it CERTIFIES THE
+  SURPRISE.** A neglected stock travelling ~19×ATR is by construction reacting to something unpriced.
+- **That unifies three surfaces we had been reading separately:** the expectedness axis reads
+  surprise from the CATALYST's form; the base reads the SAME surprise from PRICE alone, with no news
+  parsing; and his 08-16 *"the tail is where i'd expect neglect to form"* is the same idea one level
+  up. The weekend finding that winners were **quieter and less extended** is its measured shadow.
+- ⚠ **Measure duration × QUIETNESS, not duration × depth.** I first transcribed it as tightness; he
+  corrected it. Absence of large UP moves counts as much as down. **A tight base and a neglected
+  base are different objects.**
+
+**TWO TESTABLE TERMS THIS PRODUCES** (both n=1, both must be tested on the corpus):
+1. **PRE-GAP extension** — MRNA sat ~19×ATR and +124% above its MA on the day he calls perfect. Our
+   filter would call that maximally extended; it passes only because the gap CREATED the extension.
+   **On the gap day extension IS the event, not a defect.** → #569.
+2. **duration × quietness** as the structure encoder's second axis → #569.
+
+#### The day itself, kept here for the ranking point
+
 
 > *"we caught MRNA today which is great. For future reference when we make updates, MRNA is a
 > textbook EP (i also see other traders mention it as such today), the news is truly gamechanging,
