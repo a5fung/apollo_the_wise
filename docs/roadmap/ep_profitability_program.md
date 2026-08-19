@@ -332,6 +332,46 @@ Nothing is estimated; unmeasured things say "unmeasured".
 
 ## 0a. WORKED EXAMPLES — the operator's own cases, kept HERE so they are not buried
 
+### 🟢 MRNA 2026-08-19 — HIS REFERENCE TEXTBOOK EP, and the system picked it correctly
+
+> *"we caught MRNA today which is great. For future reference when we make updates, MRNA is a
+> textbook EP (i also see other traders mention it as such today), the news is truly gamechanging,
+> the move, etc. is textbook. We are near full position today and had two stocks, if we traded MRVL
+> instead of MRNA that would've been a failure."*
+
+**Keep this as the reference case.** He rarely names one outright, and a labelled positive is scarcer
+in this program than any negative — every worked example below it is a failure or a near-miss.
+
+**What the system did, and it got the ORDER right:** both alerted HIGH the same morning and both
+were entered.
+
+| | ep_score | catalyst | gap | outcome |
+|---|---|---|---|---|
+| **MRNA** | **115.2** | strong | +33.1% | entered 09:31:09 @120.75, **+2R partial banked same day, +$17.71**, 3 sh held at breakeven |
+| MRVL | 69.1 | strong | +11.4% | entered 09:31:01 @241.50, **stopped same day, −$43.28 (−0.87R)** |
+
+**THE POINT HE IS MAKING, and it is the sharper half:** *"if we traded MRVL instead of MRNA that
+would've been a failure."* With slots finite — the book was at 5 of 5 — **ranking is not cosmetic,
+it is the whole game.** Both cleared the HIGH bar; only the ORDER separated a winner from a loser.
+That is the opportunity-cost argument he made on 08-16 (*"funds are limited… eg 5 position cap"*)
+now demonstrated on the same morning with two live fills.
+
+**AND IT CORROBORATES THE SELECTION-IS-BROADER RULE:** the right measure is not "did we surface a
+winner" — we surfaced both — it is the **winner density of the pool that competes for the slots.**
+A 46-point ep_score gap separated them and the score ordered them correctly.
+
+⚠ **HONEST LIMITS, so this is not over-read:** n=1 morning, both trades are one day old, MRNA's 3
+remaining shares are unresolved, and MRVL's −0.87R is a normal loss rather than a disaster. **The
+gap is the obvious confound** — 33.1% vs 11.4% — and the weekend ranking rule says SMALLER gaps rank
+better, so this case runs AGAINST that rule's direction and must not be quoted as support for it.
+What it does support is that the composite score, on this day, ordered two same-tier names correctly.
+
+▶ **USE IT AS:** a labelled reference for what he considers textbook (game-changing news, the move,
+the structure), and a live demonstration that ranking within HIGH decides the outcome when slots are
+full. **Any future selection change should be checked against it — would this still rank MRNA above
+MRVL?**
+
+
 ⚠ **This table is deliberately at the TOP and deliberately SHORT.** Operator, 2026-08-12: *"make
 sure all these are durably captured, we'll keep collecting evidence but don't want these important
 context and examples being lost in bigger doc as we move forward."* Every row is a real named case
