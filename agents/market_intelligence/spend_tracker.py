@@ -75,36 +75,97 @@ _ET = ZoneInfo("America/New_York")
 _TRUNCATION_TELEGRAMMED: dict[str, str] = {}
 
 
+async def _measured_history(caller: str) -> tuple[float | None, int | None]:
+    """(mean, typical/clean-call max) of `caller`'s COMPLETED — i.e. non-truncated
+    — output tokens, all-time. This is the evidence `diagnose_truncation` needs to
+    tell "no headroom" from "one outlier" apart, read fresh at alert time rather
+    than guessed.
+
+    Swallows every failure and returns (None, None): the live alarm this feeds
+    must still fire (caller/model/cap) even when this read fails — a
+    diagnosis-only query must never be able to take the whole alert down with it.
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT avg(output_tokens) AS mean_completed,
+                       max(output_tokens) AS max_completed
+                  FROM api_usage
+                 WHERE caller = $1
+                   AND stop_reason IS NOT NULL
+                   AND stop_reason <> 'max_tokens'
+                """,
+                caller,
+            )
+    except Exception as e:
+        logger.warning(f"truncation diagnosis history read failed for {caller}: {e}")
+        return None, None
+    if row is None or row["mean_completed"] is None:
+        return None, None
+    return float(row["mean_completed"]), int(row["max_completed"])
+
+
 async def _maybe_alert_truncation(*, caller: str, model: str, output_tokens: int) -> None:
-    """LIVE truncation alarm (2026-08-09, follow-up to #543).
+    """LIVE truncation alarm (2026-08-09, follow-up to #543; diagnosis added
+    2026-08-19).
 
     The nightly cost_board check detects a bound ceiling NEXT-nightly; this fires
     the moment a truncated response flows through the spend tracker — the one
     chokepoint every instrumented call already passes (#543 contract), so every
     call site gets a live alarm with zero per-site changes. Audit row per event;
     Telegram deduped per (caller, ET day). NEVER raises into the logging path.
+
+    2026-08-19: the old advice here — "raise the ceiling" — was wrong for both
+    real cases it fired on the same week: theme_discovery is on the do-not-raise
+    list (a straight raise had already re-pegged it within days), and
+    theme_validation truncated with ~1000 tokens of headroom over a 31-token mean
+    (one oversized-input call, not a tight cap). `diagnose_truncation` reads the
+    caller's own measured history from shared/output_ceilings.py and says which
+    of three situations this actually is, instead of prescribing one fix for
+    every caller.
     """
     try:
         from shared.output_ceilings import TRUNCATION_BY_DESIGN
         if caller in TRUNCATION_BY_DESIGN:
             return
+        from shared.output_ceilings import diagnose_truncation, max_tokens_for
+        try:
+            cap = max_tokens_for(caller)
+        except KeyError:
+            cap = None
+        if cap is None:
+            diagnosis = (
+                f"{caller} is not registered in shared/output_ceilings.py — cannot "
+                "judge headroom.")
+        else:
+            mean_completed, typical_max = await _measured_history(caller)
+            diagnosis = diagnose_truncation(
+                caller, cap=cap, this_call_tokens=output_tokens,
+                mean_completed=mean_completed, typical_max_completed=typical_max)
+
         from agents.market_intelligence.db import log_audit_event
         await log_audit_event(
             "llm_truncation_live",
             f"{caller} response TRUNCATED at {output_tokens} output tokens (model {model})",
-            "raise the ceiling in shared/output_ceilings.py — a cut-off response reads "
-            "downstream as an empty result, not an error",
+            diagnosis,
         )
         today = datetime.now(_ET).date().isoformat()
         if _TRUNCATION_TELEGRAMMED.get(caller) == today:
             return
         _TRUNCATION_TELEGRAMMED[caller] = today
+        cap_text = f"/{cap}" if cap is not None else ""
         from agents.market_intelligence.briefing import send_telegram_message
+        # Caller names and the diagnosis text both carry snake_case / underscored paths
+        # (e.g. shared/output_ceilings.py) — #477 parity: EVERYTHING with a bare
+        # underscore must sit inside the SAME code fence, or Telegram Markdown V1 reads
+        # the underscores as italic markers and mangles the message.
         await send_telegram_message(
             "🔴 *TRUNCATED (live)* — a response was just cut off by its output ceiling:\n"
-            f"```\n{caller}  at {output_tokens} tokens  ({model})\n```\n"
-            "Downstream it reads as an empty result, not an error. Raise the ceiling in "
-            "`shared/output_ceilings.py`. The nightly check repeats until fixed.")
+            f"```\n{caller}  at {output_tokens}{cap_text} tokens  ({model})\n\n"
+            f"{diagnosis}\n```\n"
+            "The nightly check repeats until fixed.")
     except Exception as e:  # loud-ok: the alarm must never break the spend-logging path
         logger.warning(f"live truncation alarm failed for {caller}: {e}")
 

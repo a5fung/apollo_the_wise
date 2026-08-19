@@ -82,6 +82,27 @@ TRUNCATION_BY_DESIGN = frozenset({
     "perplexity_health",  # collector Perplexity liveness ping: max_tokens=5, text unused
 })
 
+# Callers where "raise the ceiling" is the WRONG fix even when truncating (2026-08-10,
+# reconfirmed 2026-08-19 after both truncation alerts prescribed exactly this and got it
+# wrong): the ── theme engine ── block below shows raising re-pegged within days for the
+# first four — the fix is bounding the output BY CONSTRUCTION (input batching /
+# forced-tool transport), never a bigger number. The three theme_advisor_* entries carry
+# the identical verdict on _ADVISOR above ("DO NOT raise again for at-cap pressure —
+# freeform-prose caller that fills ANY cap"), remedied the same way (a brevity contract
+# in theme_engine._call_advisor's system prompt) rather than a bigger cap. Single source
+# for BOTH alerting call sites (spend_tracker's live alarm, cost_board's nightly check —
+# both via diagnose_truncation() below) so the do-not-raise judgment can never drift into
+# a second, silently-stale copy.
+DO_NOT_RAISE_FOR_AT_CAP_PRESSURE = frozenset({
+    "theme_assignment",
+    "theme_discovery",
+    "theme_split",
+    "narrative_theme_discovery",
+    "theme_advisor_discovery",
+    "theme_advisor_split",
+    "theme_advisor_assignment",
+})
+
 
 _ADVISOR = OutputCeiling(
     1500, "THEME_ADVISOR_MODEL", "claude-opus-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
@@ -245,3 +266,54 @@ def callers_for_role(role: str) -> tuple[str, ...]:
     """Callers whose ceiling was sized against the model of `role` — the set the
     boot recorder flags when that role's resolved model changes."""
     return tuple(sorted(c for c, e in CEILINGS.items() if e.role == role))
+
+
+def diagnose_truncation(
+    caller: str,
+    *,
+    cap: int,
+    this_call_tokens: int,
+    mean_completed: float | None,
+    typical_max_completed: int | None,
+) -> str:
+    """Caller-specific diagnosis for a truncated call (2026-08-19) — replaces the
+    blanket "raise the ceiling" instruction the live/nightly alerts used to give,
+    which was wrong for BOTH real cases the same week: theme_discovery is on the
+    do-not-raise list below (a straight raise had already re-pegged it within
+    days), and theme_validation truncated with 1000 tokens of headroom over a
+    31-token mean (one oversized-input call, not a tight cap). Reads the caller's
+    OWN measured history instead of prescribing one fix for every caller. Three
+    outcomes, tried in order:
+
+      1. DO-NOT-RAISE — caller is in DO_NOT_RAISE_FOR_AT_CAP_PRESSURE: raising is
+         forbidden regardless of headroom; name the real remedy instead.
+      2. NO HEADROOM — the caller's typical (clean, non-truncated) peak already
+         sits at or above NEAR_CEILING_FRACTION of the cap: the cap may
+         genuinely be the constraint.
+      3. AMPLE HEADROOM, ONE OUTLIER — mean and peak sit well below the cap:
+         this reads as an input anomaly on THIS call, not a ceiling problem.
+
+    Numbers are always in the returned line — "which situation is this" is only
+    credible with the evidence attached (operator ask, 2026-08-19).
+
+    Kept DELIBERATELY SHORT: this renders inside a Telegram code block, which
+    does NOT wrap on a phone (#477 parity fix, 2026-08-19 — the first version of
+    this function produced a ~250-character unwrapped line). The "why" (input
+    batching / forced-tool transport as the construction-side fix, the re-pegging
+    history) stays in this registry's own comments above, not in the alert text.
+    """
+    if caller in DO_NOT_RAISE_FOR_AT_CAP_PRESSURE:
+        if mean_completed is not None and typical_max_completed is not None:
+            pct = round(100.0 * typical_max_completed / cap)
+            return (f"do-not-raise — bound input, don't raise "
+                     f"(peak {typical_max_completed}/{cap} {pct}%)")
+        return f"do-not-raise — bound input, don't raise (cap {cap})"
+    if mean_completed is None or typical_max_completed is None or mean_completed <= 0:
+        return f"no completed-call history (cap {cap}, this call {this_call_tokens})"
+    pct = round(100.0 * typical_max_completed / cap)
+    if typical_max_completed >= NEAR_CEILING_FRACTION * cap:
+        return (f"NO HEADROOM — peak {typical_max_completed}/{cap} {pct}%, "
+                "cap may be the constraint")
+    ratio = this_call_tokens / mean_completed
+    return (f"AMPLE HEADROOM — mean {mean_completed:.0f}, peak "
+            f"{typical_max_completed}/{cap} {pct}%, {ratio:.0f}x mean, check input")

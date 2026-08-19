@@ -31,7 +31,10 @@ from agents.market_intelligence.system_audit import (
     _trimmed_median_mad as _sa_trimmed_median_mad,
 )
 from shared.llm_models import PRICING_PER_MTOK, SONNET
-from shared.output_ceilings import CEILINGS, NEAR_CEILING_FRACTION, TRUNCATION_BY_DESIGN
+from shared.output_ceilings import (
+    CEILINGS, DO_NOT_RAISE_FOR_AT_CAP_PRESSURE, NEAR_CEILING_FRACTION,
+    TRUNCATION_BY_DESIGN, diagnose_truncation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -807,6 +810,43 @@ async def compute_truncation_check(lookback_hours: int = 24) -> dict:
 
     tight = _near_ceiling(rows, already={x["caller"] for x in truncating})
 
+    # Per-caller diagnosis (2026-08-19): the old footer told every truncating caller to
+    # "raise the ceiling" — wrong for theme_discovery (do-not-raise list; a raise had
+    # already re-pegged it) and would have been wrong for theme_validation too (ample
+    # headroom, one oversized-input call). Read each truncating caller's OWN all-time
+    # completed-call history (excluding truncated calls themselves, so a caller's prior
+    # cut-off can't inflate its own "typical" size) and let diagnose_truncation say
+    # which of the three situations this actually is.
+    if truncating:
+        async with pool.acquire() as conn:
+            hist_rows = await conn.fetch(
+                """
+                SELECT caller,
+                       avg(output_tokens) AS mean_completed,
+                       max(output_tokens) AS max_completed
+                  FROM api_usage
+                 WHERE caller = ANY($1)
+                   AND stop_reason IS NOT NULL
+                   AND stop_reason <> 'max_tokens'
+                 GROUP BY 1
+                """,
+                [x["caller"] for x in truncating],
+            )
+        history = {
+            r["caller"]: (
+                float(r["mean_completed"]) if r["mean_completed"] is not None else None,
+                int(r["max_completed"]) if r["max_completed"] is not None else None,
+            )
+            for r in hist_rows
+        }
+        for x in truncating:
+            mean_completed, typical_max = history.get(x["caller"], (None, None))
+            entry = CEILINGS.get(x["caller"])
+            cap = entry.max_tokens if entry is not None else x["cap"]
+            x["diagnosis"] = diagnose_truncation(
+                x["caller"], cap=cap, this_call_tokens=x["cap"],
+                mean_completed=mean_completed, typical_max_completed=typical_max)
+
     truncating.sort(key=lambda x: (-x["pct"], -x["truncated"]))
     return {"window_hours": lookback_hours, "truncating": truncating,
             "unreported": unreported, "tight": tight, "since": floor.isoformat()}
@@ -857,8 +897,19 @@ async def run_truncation_check() -> dict | None:
         for x in truncating[:6]:
             lines.append(f"{x['caller']:<28} {x['truncated']}/{x['calls']} calls "
                          f"({x['pct']}%) at {x['cap']} tokens")
-        lines += ["```", "Raise the ceiling on these callers - a cut-off tool call "
-                  "reads downstream as an empty result, not an error."]
+        # Per-caller diagnosis, not a blanket "raise the ceiling" — that advice was wrong
+        # for both real cases this fired on this week (see diagnose_truncation()). Stays
+        # INSIDE the same fence as the table above: the diagnosis text carries caller
+        # names and paths like shared/output_ceilings.py, and a bare underscore on the
+        # line after a ``` fence breaks Telegram Markdown V1 italics (#477 parity). Caller
+        # name and diagnosis get their OWN lines — a code block does not wrap on a phone,
+        # and some caller names (narrative_theme_discovery) are long enough on their own
+        # to push a combined line well past what a phone screen shows without scrolling.
+        lines.append("")
+        for x in truncating[:6]:
+            lines.append(f"{x['caller']}:")
+            lines.append(f"  {x.get('diagnosis', 'diagnosis unavailable')}")
+        lines.append("```")
     if tight:
         if lines:
             lines.append("")
@@ -866,8 +917,27 @@ async def run_truncation_check() -> dict | None:
         for x in tight[:6]:
             lines.append(f"{x['caller']:<28} {x['max_completed']} of {x['cap']} tokens "
                          f"({x['pct_of_cap']}%)")
-        lines += ["```", "Raise these in `shared/output_ceilings.py` BEFORE they start "
-                  "cutting responses."]
+        # Same split as the TRUNCATED section: a do-not-raise caller can hit the
+        # near-ceiling arm too (narrative_theme_discovery's own registry entry says
+        # this arm is "expected to fire here first") — never tell the operator to raise
+        # a cap the codebase forbids raising. One caller per line (not comma-joined):
+        # a joined list grows with caller count and produces exactly the unwrapped
+        # fenced line the TRUNCATED section was just fixed for.
+        do_not_raise = [x["caller"] for x in tight[:6]
+                        if x["caller"] in DO_NOT_RAISE_FOR_AT_CAP_PRESSURE]
+        raisable = [x["caller"] for x in tight[:6]
+                   if x["caller"] not in DO_NOT_RAISE_FOR_AT_CAP_PRESSURE]
+        if do_not_raise:
+            lines.append("")
+            lines.append("do-not-raise (bound input, don't raise):")
+            for caller in do_not_raise:
+                lines.append(f"  {caller}")
+        if raisable:
+            lines.append("")
+            lines.append("raise before they cut:")
+            for caller in raisable:
+                lines.append(f"  {caller}")
+        lines.append("```")
     if unreported:
         if lines:
             lines.append("")
