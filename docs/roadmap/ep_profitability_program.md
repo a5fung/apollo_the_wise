@@ -43,7 +43,7 @@ fragmented or missed."*
 
 **These are HIS rules, in his words, with dates.** They are listed in PRECEDENCE ORDER: when two
 conflict, the lower number wins. Each is expanded in its own section below; this is the index and
-the contract. **Cite them by name** (P1, P2…) in cards, commits and reports.
+the contract. **Cite them by name** (P1, P2…; P1-P11) in cards, commits and reports.
 
 ---
 
@@ -133,10 +133,33 @@ downstream read says *"this does not work on the names we currently pick"* — n
 work"*. **Findings fold in as provisional data; they never close an avenue.** A material selection
 change RE-OPENS the downstream reads, which are cheap ($0, offline) to re-run.
 
-### P9 — PRIORITY: MAKE EXISTING EP PROFITABLE BEFORE NEW SETUPS
+### P9 — TIGHT DOWNSTREAM SELECTIVITY IS WHAT BUYS LOOSE UPSTREAM ADMISSION *(2026-08-19)*
+> *"why selectivity is important and why i continue to ask us to refine it. If we have really tight
+> (and positive) selectivity filters downstream, we will be less afraid of over admitting upstream
+> knowing we'll filter for the good EPs. Without tight selectivity, we're being more careful of
+> admitting too much."*
+
+**This is the architecture behind P1, and it dissolves the recall-vs-precision tension.** They are not
+a trade-off here — **downstream selectivity is the ENABLER of upstream recall.** With a ranker that
+reliably surfaces the good ones, over-admitting is nearly free: the extra names lose to better ones
+and never reach a slot. Without it, every extra admission is a live risk, so the only defence is a
+tight upstream gate — which is exactly what has been costing us EPs (15 ≥10R winners excluded by one
+line drawn on eight losing trades).
+
+**So the order of work is: earn loose admission by making the ranker good, don't just take it.**
+Every upstream loosening should be paid for by downstream selectivity that can absorb it — and
+conversely, **selectivity work is not a precision nicety, it is what unlocks recall.** That is why he
+keeps returning to it.
+
+⚠ **The corollary that keeps this honest:** loosening upstream BEFORE the downstream filter is
+demonstrably selective just moves the problem — more candidates competing for the same 5 slots on a
+ranker we have not yet validated out-of-sample. The 2026-08-19 floor change to 9.0% is deliberately
+the SMALLER of the two priced options for exactly this reason.
+
+### P10 — PRIORITY: MAKE EXISTING EP PROFITABLE BEFORE NEW SETUPS
 Consolidation / HTF / wick are important-not-urgent and must not graduate to LIVE until EP works.
 
-### P10 — SETUP vs FAMILY IS A DEFINITION, NOT A PREFERENCE
+### P11 — SETUP vs FAMILY IS A DEFINITION, NOT A PREFERENCE
 A **SETUP** has a defined BUY POINT and STOP. A **FAMILY** is a chart condition hosting several
 setups. Continuation is a FAMILY. Never call a family, a detector, or a stage-board a setup.
 (Full text: `CLAUDE.md`.)
