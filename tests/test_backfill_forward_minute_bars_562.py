@@ -61,8 +61,8 @@ def _wire(monkeypatch, *, population_rows=None, live_only_population_rows=None,
         raise AssertionError(f"unexpected fetch SQL: {sql}")
     conn.fetch = AsyncMock(side_effect=_fetch)
 
-    async def _fetchval(sql, ticker, day):
-        return bar_counts.get((ticker, day), 0)
+    async def _fetchval(sql, ticker, day_start, day_end):
+        return bar_counts.get((ticker, day_start.date()), 0)
     conn.fetchval = AsyncMock(side_effect=_fetchval)
 
     async def _pool():
@@ -169,6 +169,27 @@ def test_window_capped_at_25_sessions(monkeypatch):
     out = asyncio.run(bfm.run_backfill())
     assert out["ticker_days_targeted"] == 25
     assert len(range_calls) == 25
+
+
+# ── coverage-check timezone hygiene ─────────────────────────────────────────
+
+
+def test_coverage_check_binds_tz_aware_boundaries_not_inline_date_arithmetic(monkeypatch):
+    """Caught live 2026-08-19 in prod: the coverage query used
+    `$day::date + interval` inside SQL, which Postgres resolves against the DB
+    SESSION's timezone (UTC on this DB) instead of America/New_York — silently
+    checking 05:30-12:00 ET instead of 09:30-16:00 ET, so a fully-persisted day
+    never read as covered and every re-run re-fetched it. Pin: `session_bounds`
+    must return tz-AWARE datetimes (ZoneInfo, not naive), and the SQL text must
+    bind them as parameters rather than building the window inline."""
+    day = date(2026, 4, 20)
+    start, end = bfm.session_bounds(day)
+    assert start.tzinfo is not None and end.tzinfo is not None
+    assert start.hour == 9 and start.minute == 30
+    assert end.hour == 16 and end.minute == 0
+    assert str(start.tzinfo) == "America/New_York" or start.utcoffset() is not None
+    assert "::date + interval" not in bfm._COVERAGE_SQL
+    assert "$2" in bfm._COVERAGE_SQL and "$3" in bfm._COVERAGE_SQL
 
 
 # ── idempotency / resume ────────────────────────────────────────────────────
