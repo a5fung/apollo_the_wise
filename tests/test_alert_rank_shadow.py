@@ -1086,3 +1086,213 @@ def test_mi_alert_rank_shadow_table_is_never_read_by_the_grading_or_entry_path()
     )
     hits = [line.strip() for line in out.stdout.splitlines() if line.strip()]
     assert hits == []
+
+
+# ═══════════════════ #569 — pre-gap extension + base duration x quietness ═════════════
+# Every free parameter these functions use was pre-registered in
+# scripts/probes/_569_pregap_base_axes.py BEFORE any outcome was joined; these tests pin
+# the definitions as registered. All are behavioural: each was mutation-checked during
+# authoring (reference price swapped to the open · band made down-moves-only · censoring
+# forced False · ceiling widened · legacy-window split dropped · stale clause removed)
+# and each targeted test failed under its mutation; mutations reverted, not left in.
+
+
+def test_pregap_extension_reads_the_prior_close_not_the_gap_day_open():
+    """THE MRNA PROPERTY: a flat-basing stock that gaps hugely is maximally extended on
+    the gap-day open (the existing EOD read) and barely extended pre-gap. Exact values
+    both ways, so a mutation that re-anchors pregap to the open cannot pass."""
+    closes = [99.0] * 45 + [100.0] * 10  # 55 sessions, drifting 1% — a quiet base
+    adr = 0.02
+    ext_pregap, no_ma_pregap = ars.compute_pregap_extension(closes, adr)
+    # SMAs through D-1: sma10=100.0 (not strictly below), sma20=99.5, sma50=99.2
+    assert no_ma_pregap is False
+    assert ext_pregap == pytest.approx(
+        st_median([(100.0 - 99.5) / 100.0 / adr, (100.0 - 99.2) / 100.0 / adr])
+    )
+    assert ext_pregap == pytest.approx(0.325)
+    # the SAME stock gapping to 200 at the open: the gap-day read calls it ~25x ADR
+    ext_eod, _ = ars.compute_ma_distance_extension(200.0, closes, adr)
+    assert ext_eod == pytest.approx((200.0 - 99.5) / 200.0 / adr)  # median of the three
+    assert ext_pregap < 1.0 < ext_eod  # extension created BY the gap, invisible pre-gap
+
+
+def test_pregap_extension_no_ma_below_when_price_sits_at_or_below_its_mas():
+    closes = [100.0] * 45 + [99.0] * 10  # drifted DOWN — every SMA at/above the close
+    ext, no_ma_below = ars.compute_pregap_extension(closes, 0.02)
+    assert ext is None
+    assert no_ma_below is True
+
+
+def test_pregap_extension_unclassifiable_below_the_prior_bars_gate():
+    ext, flag = ars.compute_pregap_extension([100.0] * 40, 0.02)  # < 50 closes
+    assert (ext, flag) == (None, None)
+    assert ars.compute_pregap_extension([], 0.02) == (None, None)
+
+
+def test_base_duration_an_up_move_breaks_the_base_exactly_like_a_down_move():
+    """The operator's 2026-08-19 correction, as behaviour: quietness means no major move
+    in EITHER direction. A spike ABOVE the current price 50 sessions back (h=180, faded)
+    and a flush BELOW it (l=55, recovered) must yield the SAME base_days = 49 — the
+    up-spike is the case a drawdown-only band definition silently passes (it sits
+    entirely above every later price), and this test fails such a mutant."""
+    pre = [(101.0, 99.0, 100.0)] * 50
+    post = [(101.0, 99.0, 100.0)] * 49
+    up_spike = ars.compute_base_duration(pre + [(180.0, 99.0, 100.0)] + post, 0.02)
+    down_flush = ars.compute_base_duration(pre + [(101.0, 55.0, 100.0)] + post, 0.02)
+    assert up_spike["base_days_raw40"] == 49    # (180-99)/180 = 45% > 40% stops the walk
+    assert down_flush["base_days_raw40"] == 49  # (101-55)/101 = 45.5% > 40% likewise
+    assert up_spike["base_days_raw40"] == down_flush["base_days_raw40"]
+    assert up_spike["base_censored_raw40"] is False  # the base ENDED — not a history edge
+    assert up_spike["base_depth_raw40"] == pytest.approx((101.0 - 99.0) / 101.0)
+
+
+def test_base_duration_censored_at_the_history_edge_but_not_at_the_252_cap():
+    quiet = (101.0, 99.0, 100.0)
+    short = ars.compute_base_duration([quiet] * 30, 0.02)
+    assert short["base_days_raw40"] == 30
+    assert short["base_censored_raw40"] is True   # quiet to the edge -> a lower bound
+    assert short["base_lookback_bars"] == 30
+    long = ars.compute_base_duration([quiet] * 260, 0.02)
+    assert long["base_days_raw40"] == 252          # the registered one-year cap
+    assert long["base_censored_raw40"] is False    # cap reached is NOT censoring
+
+
+def test_base_duration_unclassifiable_below_min_lookback_never_defaulted():
+    out = ars.compute_base_duration([(101.0, 99.0, 100.0)] * 19, 0.02)
+    assert out["base_lookback_bars"] == 19         # coverage ALWAYS populated
+    for k, v in out.items():
+        if k != "base_lookback_bars":
+            assert v is None, f"{k} must be NULL (visible), got {v}"
+
+
+def test_base_duration_adr6_ceiling_binds_tighter_on_a_low_adr_name():
+    """raw40 vs the ADR-normalised twin diverge exactly where they should: a 17% step
+    sits inside the raw 40% band but outside 6 x a 2% ADR (= 12%)."""
+    older = [(86.0, 84.0, 85.0)] * 30
+    recent = [(101.0, 99.0, 100.0)] * 30
+    out = ars.compute_base_duration(older + recent, 0.02)
+    # full 60-session band: (101-84)/101 = 16.8% <= 40% -> raw40 spans everything
+    assert out["base_days_raw40"] == 60
+    assert out["base_censored_raw40"] is True
+    # 6xADR ceiling = 12%: the walk stops when the older block enters the band
+    assert out["base_days_adr6"] == 30
+    assert out["base_censored_adr6"] is False
+    assert out["base_depth_adr6"] == pytest.approx((101.0 - 99.0) / 101.0)
+
+
+def test_base_net_displacement_reads_drift_over_the_base_in_adr_units():
+    rows = [(100.0 + 0.5 * i + 1.0, 100.0 + 0.5 * i - 1.0, 100.0 + 0.5 * i) for i in range(25)]
+    out = ars.compute_base_duration(rows, 0.05)
+    assert out["base_days_raw40"] == 25            # band (113-99)/113 = 12.4% <= 40%
+    assert out["base_depth_raw40"] == pytest.approx((113.0 - 99.0) / 113.0)
+    # |112 - 100| / 100 / 0.05 = 2.4 x ADR of net drift, base start close -> D-1 close
+    assert out["base_net_disp_xadr"] == pytest.approx(2.4)
+
+
+def test_base_duration_without_adr20_still_computes_raw40_and_marks_adr6_null():
+    out = ars.compute_base_duration([(101.0, 99.0, 100.0)] * 30, None)
+    assert out["base_days_raw40"] == 30
+    assert out["base_days_adr6"] is None           # variant needs ADR20; NULL, visible
+    assert out["base_net_disp_xadr"] is None
+
+
+@pytest.mark.asyncio
+async def test_process_alert_date_writes_the_pregap_and_base_axes(monkeypatch):
+    """#569 end-to-end wiring (the #568 pattern): the axes flow through
+    `_process_alert_date` into the upserted columns — including the two visible-NULL
+    conventions (no-MA-below pregap ext; base coverage column always populated). A
+    mutation wiring ext_xadr_pregap to the EOD extension fails here: the fixture's EOD
+    ext is a number (open 101 > SMA 100) while the pregap ext is genuinely NULL+flag."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    d = date(2026, 8, 10)
+    conn.fetch = AsyncMock(side_effect=[
+        [_alert_row(1, "MRNA", d)],
+        _prior_rows_fixture(d),   # 55 flat sessions: h=101, l=99, c=100
+        [],
+    ])
+    conn.fetchrow = AsyncMock(side_effect=[
+        _daily_bar_row(101.0, 101.5, 100.8, 101.2),
+        _trade_status(),
+    ])
+    executed = []
+
+    async def _execute(sql, *args):
+        executed.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(ars, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ars, "log_audit_event", AsyncMock())
+
+    written = await ars._process_alert_date(conn, d)
+    assert written == 1
+    idx = {c: i for i, c in enumerate(ars._UPSERT_COLS)}
+    stored = executed[0][1]
+    # flat closes: every SMA == prior close -> genuinely undefined, never zero-filled
+    assert stored[idx["ext_xadr_pregap"]] is None
+    assert stored[idx["ext_no_ma_below_pregap"]] is True
+    # while the EOD read (open 101 above SMA 100) IS a number — the two must differ
+    assert stored[idx["ext_xadr_eod"]] == pytest.approx((101.0 - 100.0) / 101.0 / 0.02)
+    # 55 quiet sessions, all within both bands, running to the history edge
+    assert stored[idx["base_days_raw40"]] == 55
+    assert stored[idx["base_censored_raw40"]] is True
+    assert stored[idx["base_depth_raw40"]] == pytest.approx((101.0 - 99.0) / 101.0)
+    assert stored[idx["base_days_adr6"]] == 55
+    assert stored[idx["base_net_disp_xadr"]] == pytest.approx(0.0)
+    assert stored[idx["base_lookback_bars"]] == 55
+
+
+@pytest.mark.asyncio
+async def test_legacy_100_day_window_is_preserved_when_the_pull_spans_400_days(monkeypatch):
+    """#569 widened the daily pull to 400 days for the base axis; every pre-#569 column
+    must keep computing from the ORIGINAL 100-day series. Rows older than 100 days (at a
+    2x different price) must be INVISIBLE to prior_bars_count/SMA/gap — and VISIBLE to
+    the base axis, which correctly ends the base at that older price regime."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    d = date(2026, 8, 10)
+    old_rows = [
+        {"trade_date": d - timedelta(days=300 - i), "high_price": 201.0, "low_price": 199.0, "close": 200.0}
+        for i in range(30)
+    ]
+    conn.fetch = AsyncMock(side_effect=[
+        [_alert_row(1, "AAAA", d)],
+        old_rows + _prior_rows_fixture(d),   # 30 old @200 + 55 recent @100, ascending
+        [],
+    ])
+    conn.fetchrow = AsyncMock(side_effect=[
+        _daily_bar_row(101.0, 101.5, 100.8, 101.2),
+        _trade_status(),
+    ])
+    executed = []
+
+    async def _execute(sql, *args):
+        executed.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(ars, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ars, "log_audit_event", AsyncMock())
+
+    await ars._process_alert_date(conn, d)
+    idx = {c: i for i, c in enumerate(ars._UPSERT_COLS)}
+    stored = executed[0][1]
+    assert stored[idx["prior_bars_count"]] == 55       # NOT 85 — legacy window intact
+    assert stored[idx["sma50"]] == pytest.approx(100.0)  # unpolluted by the 200s
+    assert stored[idx["base_lookback_bars"]] == 85      # base axis sees the full pull
+    # the base walk stops where the 200-price regime begins: not a history-edge read
+    assert stored[idx["base_days_raw40"]] == 55
+    assert stored[idx["base_censored_raw40"]] is False
+
+
+def test_dates_needing_processing_sql_also_catches_pre_569_stale_rows():
+    """Same exception, same reason as the #568 predicate test above (a SQL CONSTANT can
+    only be pinned as text): `base_lookback_bars` is ALWAYS populated by
+    `compute_base_duration` under #569 code (0 is a real value), so NULL uniquely means
+    "written before #569" — the OR clause is what makes the one-time recompute of every
+    pre-existing row actually run, then self-extinguishes."""
+    assert "OR s.base_lookback_bars IS NULL" in ars._DATES_NEEDING_PROCESSING_SQL
+
+
+def st_median(vals):
+    import statistics
+    return statistics.median(vals)

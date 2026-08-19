@@ -160,6 +160,34 @@ direction and must not be cited as support for it.**
 
 ---
 
+## 4b. ⚠ THE CORPUS DID NOT CONFIRM EITHER TERM THIS CASE SUGGESTED (2026-08-19, same day)
+
+Both testable terms this reference produced were built, pre-registered and measured on the
+**749 tier-A gap days holding 78 tail winners** — `docs/analysis/pregap_base_axes_2026-08-19.txt`,
+task #569. **Neither separates winners.**
+
+| term | result |
+|---|---|
+| **pre-gap extension** | **NULL** — less vs more extended reach ≥8×ADR **11.7% vs 9.3%**, permutation p=0.55, quartiles non-monotone (Q4 highest at 13.2%) |
+| **duration × quietness** | **RUNS BACKWARDS, not significantly** — long base ≥74d reaches ≥8×ADR **8.3% vs 12.0%** for shorter, p=0.36; quartiles fall monotonically 12.6% → 7.9% |
+
+🔑 **The sharpest reading, and it reframes the extension idea specifically:** §4c's surviving
+extension signal is a property of the **GAP-DAY state**. Re-anchoring it to the pre-gap close
+**erases** it. "Measure extension pre-gap" sounded obviously right when derived from this chart —
+the corpus says otherwise.
+
+⚠ **Confound stated on the base term:** Spearman(base_days, ADR20) = **−0.81** — long bases are
+low-ADR names. Inside ADR halves it is still null; a 6×ADR ceiling variant is null too.
+
+**WHAT THIS DOES NOT SAY.** It does not say the neglect model is wrong. It says **these
+operationalisations of it do not separate tail winners on this corpus**, at definitions written
+before any outcome was looked at. Both axes now RECORD into the rank shadow, so the out-of-sample
+record accrues regardless — and per the programme's standing rule, every such read is **conditional
+on the current selector** and expires if selection changes.
+
+**This is exactly why the doc says n=1.** MRNA is a reference for what he considers textbook. It is
+not evidence, and the first two things it suggested did not survive contact with 749 gap days.
+
 ## 5. HOW TO USE THIS
 
 - **A labelled positive** for what he considers textbook: game-changing news, the move, the structure.

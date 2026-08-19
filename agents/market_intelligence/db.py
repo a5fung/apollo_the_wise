@@ -2630,12 +2630,38 @@ async def initialize_schema() -> None:
                 -- every one of them as "nothing classifiable" — the exact manufactured-signal
                 -- DoD 3 forbids — instead of visibly "not yet recomputed under the new code".
                 expct_classifiable_frac     DOUBLE PRECISION,
+                -- 2026-08-19 (#569) — the two-axis structure split, recorded per row (the
+                -- MRNA reference EP, docs/methodology/ep_reference_mrna_2026-08-19.md; every
+                -- free parameter pre-registered in scripts/probes/_569_pregap_base_axes.py
+                -- BEFORE any outcome was joined). RECORDED ONLY — never folded into the
+                -- ranked composite above, never read by any grading/entry/sizing/ordering
+                -- path (THE LINE; promotion is fork S-3, operator sign-off).
+                ext_xadr_pregap             DOUBLE PRECISION, -- axis 1: the §4c MA-distance extension measured on the D-1 CLOSE (the pre-gap state) — on the gap day extension IS the event, so ext_xadr_eod/asof measure the event; this measures the state before it
+                ext_no_ma_below_pregap      BOOLEAN,          -- same disambiguator convention as ext_no_ma_below_eod: True = full history but every SMA sits at/above the prior close (genuinely undefined, never zero); NULL+NULL = insufficient history
+                base_days_raw40             INT,              -- axis 2 PRIMARY: largest trailing k <= 252 H/L sessions whose total (maxH-minL)/maxH band stays <= 40% — duration x QUIETNESS (an up-move breaks the band as much as a down-move; operator 2026-08-19: neglect certifies the surprise)
+                base_depth_raw40            DOUBLE PRECISION, -- the depth that base actually reached (his annotation's second number; NULL when base_days = 0)
+                base_censored_raw40         BOOLEAN,          -- True = containment ran to the edge of available history < 252, so base_days is a LOWER bound (the 252 cap itself is not censoring)
+                base_days_adr6              INT,              -- axis 2 secondary variant: same walk with a 6xADR20 ceiling (the ADR-normalised twin; NULL when ADR20 unavailable)
+                base_depth_adr6             DOUBLE PRECISION,
+                base_censored_adr6          BOOLEAN,
+                base_net_disp_xadr          DOUBLE PRECISION, -- |D-1 close - the raw40 base's first close| / first close / ADR20 — the "went nowhere" reading, descriptive companion
+                base_lookback_bars          INT,              -- H/L-complete prior sessions found in the 400-day pull — ALWAYS populated under #569 code (0 is real; NULL = pre-#569 row), which makes it the stale-predicate anchor exactly as expct_combined_class was for #568
                 computed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
             CREATE INDEX IF NOT EXISTS idx_alert_rank_shadow_alert_date
                 ON mi_alert_rank_shadow(alert_date);
             ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS expct_combined_class TEXT;
             ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS expct_classifiable_frac DOUBLE PRECISION;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS ext_xadr_pregap DOUBLE PRECISION;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS ext_no_ma_below_pregap BOOLEAN;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_days_raw40 INT;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_depth_raw40 DOUBLE PRECISION;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_censored_raw40 BOOLEAN;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_days_adr6 INT;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_depth_adr6 DOUBLE PRECISION;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_censored_adr6 BOOLEAN;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_net_disp_xadr DOUBLE PRECISION;
+            ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_lookback_bars INT;
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak

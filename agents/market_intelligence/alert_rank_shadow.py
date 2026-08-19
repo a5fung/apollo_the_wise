@@ -59,6 +59,36 @@ the doc's own aggregate coverage stat (86%/75% on the live corpus) can be recomp
 stored rows instead of assumed. Deterministic, $0, no LLM — both functions are pure
 transforms of `classify_expectedness`'s own output, never a second classifier.
 
+#569 (2026-08-19) — THE TWO-AXIS STRUCTURE SPLIT, recorded per row. The reference EP
+(docs/methodology/ep_reference_mrna_2026-08-19.md) proved the existing extension read
+conflates two different facts, so two new deterministic, $0 axes are stored alongside it
+(same pattern as #568: coverage per row, unclassifiable rows visibly NULL, never
+defaulted, NEVER folded into the ranked composite — that must stay exactly the tested
+rule):
+  axis 1 `ext_xadr_pregap` — the §4c MA-distance extension with ONE change: the reference
+      price is the D-1 CLOSE (the pre-gap state), never the gap-day open. On the gap day
+      extension IS the event (MRNA sat ~19x ATR above its MA on the day the operator
+      calls perfect, created BY the gap — its pre-gap close was consolidating); the
+      existing ext_xadr_eod/asof columns measure that event and score it as a defect.
+      `compute_pregap_extension` reuses `compute_ma_distance_extension` verbatim with the
+      prior close as reference — no new parameters.
+  axis 2 `base_days_raw40`/`base_days_adr6` — base DURATION x QUIETNESS (operator
+      correction 2026-08-19: quietness, NOT depth/tightness — "no major movements up or
+      down" = neglect; the base doesn't predict the move, it certifies the surprise).
+      `compute_base_duration`: the largest trailing k <= 252 H/L-complete sessions whose
+      total high-to-low band stays within a ceiling — an up-move widens the band exactly
+      as much as a down-move, so quietness is the containment criterion itself. Ceilings
+      pre-registered in scripts/probes/_569_pregap_base_axes.py BEFORE any outcome was
+      joined: 40% raw (PRIMARY — admits every base he annotated on MRNA, max 37%) and
+      6xADR20 (secondary ADR-normalised twin). Companions: depth reached, censored flag
+      (history edge — base_days is then a lower bound), net displacement over the base in
+      ADR units, and `base_lookback_bars` (always populated under this code — the
+      coverage column AND the stale-row predicate's anchor, exactly the #568
+      expct_combined_class pattern). The base needs deeper history than the ranking
+      features, so `_PRIOR_DAILY_ROWS_SQL` now pulls 400 calendar days and the legacy
+      100-day series is re-derived in Python — byte-identical rows to the old query, so
+      every pre-#569 column recomputes to exactly the value it already stored.
+
 THE LINE — read this before touching anything here. This module is a passive OBSERVER:
   - It has EXACTLY ONE write target: `mi_alert_rank_shadow` (plus `mi_audit_log` via the
     shared `log_audit_event` telemetry helper — never a trade-state or grading table).
@@ -136,6 +166,15 @@ _MIN_PRIOR_BARS = 50
 _ADR20_WINDOW = 20
 _ATR14_LOOKBACK_DAYS = 35  # matches backtester/filters.py::compute_atr_14's own lookback
 _BAR_CONTRACTION_MIN_BARS = 10
+
+# #569 base duration x quietness — every parameter pre-registered in
+# scripts/probes/_569_pregap_base_axes.py's docstring BEFORE any outcome was joined;
+# derivations live there, values are only restated here.
+_BASE_MAX_DAYS = 252            # one trading year — 2x his longest annotated base (26w)
+_BASE_RAW_DEPTH_CEILING = 0.40  # PRIMARY: admits every MRNA base he annotated (max 37%)
+_BASE_ADR_DEPTH_CEILING_X = 6.0  # secondary variant: 37% / 6.92% ADR ~= 5.3x, rounded up
+_BASE_MIN_LOOKBACK = 20         # below this the axis is unclassifiable (NULL, visible)
+_LEGACY_PRIOR_WINDOW_DAYS = 100  # the pre-#569 prior-series window, re-derived in Python
 
 
 def _et_0930(d: date) -> datetime:
@@ -241,6 +280,87 @@ def compute_ma_distance_extension(
         return None, True
     ext = median((open_price - m) / open_price / adr20_frac for m in below)
     return ext, False
+
+
+def compute_pregap_extension(
+    prior_closes: list[float], adr20_frac: Optional[float],
+) -> tuple[Optional[float], Optional[bool]]:
+    """#569 axis 1 — the §4c MA-distance extension measured on the PRE-GAP state: the
+    reference price is the D-1 CLOSE (`prior_closes[-1]`), never the gap-day open. Same
+    SMAs (10/20/50 on closes through D-1, which include the reference close itself — the
+    standard close-vs-its-own-MAs read), same ADR20 normaliser, same >=50-close gate,
+    same (None, None) / (None, True) / (value, False) contract as
+    `compute_ma_distance_extension` — which this calls verbatim rather than duplicating.
+    Rationale (docs/methodology/ep_reference_mrna_2026-08-19.md §3): on the gap day
+    extension IS the event, not a defect; only the pre-gap reading measures the state
+    the operator's model actually scores."""
+    if not prior_closes:
+        return None, None
+    return compute_ma_distance_extension(prior_closes[-1], prior_closes, adr20_frac)
+
+
+def compute_base_duration(
+    prior_hl: list[tuple[float, float, float]], adr20_frac: Optional[float],
+) -> dict[str, Any]:
+    """#569 axis 2 — base DURATION x QUIETNESS. `prior_hl`: (high, low, close) for
+    H/L-complete PRIOR sessions only, oldest-first (alert day excluded by the caller).
+
+    base_days = the largest k <= _BASE_MAX_DAYS such that the total band
+    (max(high) - min(low)) / max(high) over the LAST k sessions stays <= the ceiling.
+    Quietness is the containment criterion itself, per the operator's 2026-08-19
+    correction ("no major movements up or down" = neglect): an UP-move widens the band
+    exactly as much as a down-move, so a stock in a major move in either direction
+    breaks containment quickly and scores a short base. Two pre-registered ceilings:
+    raw 40% (`raw40`, PRIMARY) and 6xADR20 (`adr6`, secondary ADR-normalised twin —
+    NULL when ADR20 itself is unavailable).
+
+    Returns a dict with, per ceiling: `base_days_*` (int), `base_depth_*` (the depth the
+    accepted window actually reached; None when base_days == 0), `base_censored_*`
+    (True = containment ran to the edge of AVAILABLE history < the 252 cap, so base_days
+    is a LOWER bound; reaching the 252 cap itself is not censoring — a year of quiet is
+    recorded as 252). Plus `base_net_disp_xadr` (|D-1 close - the raw40 base's first
+    close| / first close / ADR20 — the "went nowhere" reading, descriptive) and
+    `base_lookback_bars` (ALWAYS populated — the coverage column and the stale-predicate
+    anchor; every other field is NULL below _BASE_MIN_LOOKBACK sessions, visibly
+    unclassifiable rather than defaulted)."""
+    out: dict[str, Any] = dict(
+        base_days_raw40=None, base_depth_raw40=None, base_censored_raw40=None,
+        base_days_adr6=None, base_depth_adr6=None, base_censored_adr6=None,
+        base_net_disp_xadr=None, base_lookback_bars=len(prior_hl),
+    )
+    n = len(prior_hl)
+    if n < _BASE_MIN_LOOKBACK:
+        return out
+    ceilings: dict[str, float] = {"raw40": _BASE_RAW_DEPTH_CEILING}
+    if adr20_frac is not None and adr20_frac > 0:
+        ceilings["adr6"] = _BASE_ADR_DEPTH_CEILING_X * adr20_frac
+    limit = min(n, _BASE_MAX_DAYS)
+    for name, ceiling in ceilings.items():
+        max_h, min_l = 0.0, float("inf")
+        k = 0
+        depth_accepted: Optional[float] = None
+        for h, low, _c in reversed(prior_hl):  # walk back from D-1
+            if k >= limit:
+                break
+            cand_h, cand_l = max(max_h, h), min(min_l, low)
+            if cand_h <= 0:
+                break
+            depth = (cand_h - cand_l) / cand_h
+            if depth > ceiling:
+                break
+            max_h, min_l = cand_h, cand_l
+            k += 1
+            depth_accepted = depth
+        out[f"base_days_{name}"] = k
+        out[f"base_depth_{name}"] = depth_accepted
+        out[f"base_censored_{name}"] = (k == limit and n < _BASE_MAX_DAYS)
+    k_raw = out["base_days_raw40"]
+    if k_raw and adr20_frac is not None and adr20_frac > 0:
+        start_close = prior_hl[n - k_raw][2]  # the base's first (oldest) in-window close
+        end_close = prior_hl[-1][2]
+        if start_close > 0:
+            out["base_net_disp_xadr"] = abs(end_close - start_close) / start_close / adr20_frac
+    return out
 
 
 def summarize_orb_window(
@@ -538,7 +658,8 @@ _DATES_NEEDING_PROCESSING_SQL = """
     FROM mi_ep_alerts a
     LEFT JOIN mi_alert_rank_shadow s ON s.alert_id = a.id
     WHERE a.source = 'live' AND a.alert_date <= $1
-      AND (s.alert_id IS NULL OR s.expct_combined_class IS NULL)
+      AND (s.alert_id IS NULL OR s.expct_combined_class IS NULL
+           OR s.base_lookback_bars IS NULL)
     ORDER BY a.alert_date
 """
 # #568 migration note: `s.expct_combined_class IS NULL` catches every row written BEFORE
@@ -548,6 +669,12 @@ _DATES_NEEDING_PROCESSING_SQL = """
 # (see its own docstring), so a non-NULL value here is proof a row already ran under this
 # code — the predicate self-extinguishes back to `alert_id IS NULL`-only behaviour once
 # every existing row has been recomputed once.
+#
+# #569 migration note (2026-08-19), same mechanism one column later: `base_lookback_bars`
+# is ALWAYS populated by `compute_base_duration` under this code (0 is a real value — "no
+# H/L-complete prior sessions found"; NULL can only mean "written before #569 existed"),
+# so `s.base_lookback_bars IS NULL` re-covers every row the #568-era code already wrote,
+# then self-extinguishes exactly as the clause above does.
 #
 # Read-only prod check (2026-08-18, before this code is deployed): the OLD predicate
 # (`s.alert_id IS NULL` alone) matched 1 of 62 distinct live alert_dates — the migration
@@ -573,9 +700,13 @@ _DAY_ALERTS_SQL = """
 
 _PRIOR_DAILY_ROWS_SQL = """
     SELECT trade_date, close, high_price, low_price FROM mi_daily_closes
-    WHERE ticker = $1 AND trade_date < $2 AND trade_date >= $2::date - 100
+    WHERE ticker = $1 AND trade_date < $2 AND trade_date >= $2::date - 400
     ORDER BY trade_date ASC
 """
+# #569: widened 100 -> 400 calendar days (~276 trading sessions) because the base axis
+# must see past the 252-session cap; the ORIGINAL 100-day series every pre-#569 column is
+# computed from is re-derived in Python (`trade_date >= alert_date - 100 days`, the same
+# arithmetic `$2::date - 100` did) so those columns recompute byte-identically.
 
 _ORB_WINDOW_BARS_SQL = """
     SELECT open, high, low, close FROM mi_intraday_bars
@@ -609,6 +740,10 @@ _UPSERT_COLS = (
     "expct_scheduled", "expct_scheduled_src", "expct_looking",
     "expct_beat", "expct_growth_yoy_pct", "expct_growth_src",
     "expct_combined_class", "expct_classifiable_frac",
+    "ext_xadr_pregap", "ext_no_ma_below_pregap",
+    "base_days_raw40", "base_depth_raw40", "base_censored_raw40",
+    "base_days_adr6", "base_depth_adr6", "base_censored_adr6",
+    "base_net_disp_xadr", "base_lookback_bars",
 )
 _INSERT_COLS_SQL = ", ".join(_UPSERT_COLS)
 _INSERT_PLACEHOLDERS_SQL = ", ".join(f"${i + 1}" for i in range(len(_UPSERT_COLS)))
@@ -632,7 +767,13 @@ async def _process_alert_date(conn, alert_date: date) -> int:
         alert = dict(r)
         ticker = alert["ticker"]
 
-        prior_raw = await conn.fetch(_PRIOR_DAILY_ROWS_SQL, ticker, alert_date)
+        history_raw = await conn.fetch(_PRIOR_DAILY_ROWS_SQL, ticker, alert_date)
+        # #569: the query now spans 400 days for the base axis; every pre-#569 column
+        # keeps computing from the ORIGINAL 100-day window, re-derived here with the
+        # same date arithmetic the old SQL used — byte-identical rows, so recomputes
+        # reproduce exactly the values already stored.
+        legacy_cutoff = alert_date - timedelta(days=_LEGACY_PRIOR_WINDOW_DAYS)
+        prior_raw = [pr for pr in history_raw if pr["trade_date"] >= legacy_cutoff]
         # Closes-only series — matches the probe's own >=50 gate EXACTLY
         # (`prior = [bb[4] for bb in seq[:idx]]`, gated on `len(prior) < 50` — closes only,
         # no H/L requirement). Keeping this separate from the H/L series below means a
@@ -701,6 +842,17 @@ async def _process_alert_date(conn, alert_date: date) -> int:
             orb["high"] if orb else None, orb["low"] if orb else None, orb["close"] if orb else None,
         )
 
+        # #569 — both structure axes, from PRE-GAP data only. The pre-gap extension uses
+        # the same 100-day close series (and >=50 gate) as the existing ext columns; the
+        # base axis uses the full 400-day H/L-complete series.
+        ext_pregap, ext_no_ma_pregap = compute_pregap_extension(prior_closes, adr20_frac)
+        base_hl = [
+            (_f(pr["high_price"]), _f(pr["low_price"]), _f(pr["close"]))
+            for pr in history_raw
+            if pr["close"] is not None and pr["high_price"] is not None and pr["low_price"] is not None
+        ]
+        base = compute_base_duration(base_hl, adr20_frac)
+
         cls = classify_expectedness(
             alert.get("catalyst"), alert.get("catalyst_type_rationale"),
             alert.get("judge_rationale"), alert.get("grounded_text"), _f(alert.get("yoy")),
@@ -743,6 +895,8 @@ async def _process_alert_date(conn, alert_date: date) -> int:
             "expct_growth_yoy_pct": cls["growth"], "expct_growth_src": cls["growth_src"],
             "expct_combined_class": expct_combined,
             "expct_classifiable_frac": expct_classifiable_frac,
+            "ext_xadr_pregap": ext_pregap, "ext_no_ma_below_pregap": ext_no_ma_pregap,
+            **base,
         })
 
     pool_size_eod = rank_day_pool(
