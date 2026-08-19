@@ -201,3 +201,52 @@ new ingest, no spot feed. 279 clears the composite RS window (~126 bars for the 
 
 PLAN.md project "Market Strength Map — holistic multi-asset leadership"; ADR-0032 (theme ecosystems);
 `briefing.py::_format_crypto_pulse_section`, `db.py::get_crypto_vs_market_pulse`.
+
+---
+
+## 🎯 2026-08-19 — THE OPERATOR'S OWN WORKED EXAMPLE OF THE OUTPUT HE WANTS
+
+He shared a tweet and said: *"remember our relative strength work for different assets and their
+equity? someone tweeted this, gold miners RS vs gold the past month, **this is exactly the type of
+info I'd love Apollo to tell me whenever it happens**, see this. save this for future reference."*
+
+![NEM vs GLD — the equity proxy outrunning its underlying](images/nem_vs_gld_rs_2026-08-19.jpg)
+
+**The chart (Tracey Ryniec, 2026-08-19, 30-min, one month):** *"Gold miners outperforming gold over
+the last month. $NEM"* — **NEM +38.58% against GLD +11.70%**, a **3.3× spread** over ~30 days. The
+miner's line steps up in discrete jumps (07-05, 08-05, 08-07, 08-13) while gold grinds; the gap
+widens rather than tracks.
+
+### 🔑 WHY THIS IS THE DESIGN TARGET AND NOT JUST A NICE CHART
+
+**It is the asset↔equity question made concrete** — the one this doc resolved on 08-08 as GROUP THEM
+(the hybrid complex). This is that resolution's payoff case: **an equity proxy outrunning its
+underlying asset is a different and stronger signal than either leg alone.**
+
+- Gold up 11.7% alone = an asset move.
+- NEM up 38.6% alone = an equity move.
+- **NEM outrunning GLD by 3.3× = operational leverage being repriced** — the miners' margin expands
+  faster than the metal, and the market noticing that is a distinct, tradeable regime statement.
+  **Neither single-asset RS lane can see it. Only the pairing can.**
+
+### WHAT THIS SPECIFIES FOR THE BUILD
+
+▶ **The output is a NOTIFICATION, not a dashboard panel.** *"tell me whenever it happens"* — he wants
+to be told, unprompted, when a complex's equity leg decisively diverges from its asset leg. That is a
+detector with a surfacing rule, not a view he has to open.
+
+▶ **The unit is the SPREAD, sustained.** The alertable object is not "NEM is strong" or "gold is
+strong" — it is *the equity leg is outrunning the asset leg, and has been for weeks*. Any threshold
+must be about the spread's size AND persistence, since a one-day divergence is noise.
+
+▶ **The named complex here is gold: GLD ↔ NEM / GDX / miners.** Same shape applies to the other
+complexes this doc already lists — the pairing is the reusable primitive.
+
+⚠ **AND P2 APPLIES (`ep_profitability_program.md` § THE PRINCIPLES):** *"3.3× over a month"* is a
+chartist's read of a widening gap, not a threshold he stated. **Do not codify the first number that
+reproduces this one case.** Price the options the way the gap floor was priced on 08-19 — what a
+given spread/persistence rule would have fired on historically, and how many of those were noise.
+
+⚠ Provenance: a third-party tweet he endorsed as the *shape* of what he wants. It is a specification
+of the OUTPUT, not evidence that the signal is profitable. Those are separate questions and the
+second one is unmeasured.
