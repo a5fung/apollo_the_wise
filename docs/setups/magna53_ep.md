@@ -38,7 +38,7 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 ### Filters (any failure → skip)
 
 **Pre-grade** (candidate scan, before catalyst classification runs):
-1. **Gap floor**: `gap_pct ≥ MIN_GAP_PCT` (10.0% hard floor, env `EP_MIN_GAP_PCT`) — applied building the candidate list itself (ep_detector.py ~1567)
+1. **Gap floor**: `gap_pct ≥ MIN_GAP_PCT` (9.0% hard floor, env `EP_MIN_GAP_PCT`; was 10.0% — see 2026-08-19 change log entry) — applied building the candidate list itself (ep_detector.py ~1567). No regime-dependent variant exists in code — ADR 0003's Phase-1 recommendation of "10% (or 12% in elevated regimes)" only ever shipped as a flat number; that regime branch was never built.
 2. **Pre-market volume**: relative gate — `pm_rvol ≥ MIN_PM_RVOL` (1.0× session-anchored RVOL@T)
 3. **EP cooldown**: skip if alerted within last 60 days, UNLESS `gap_pct ≥ 15% AND is_earnings_day` (fresh earnings catalyst bypasses cooldown)
 4. **Extension cap**: `(prev_close − min5) / min5 ≥ 50%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=50.0`, ep_detector.py:1858-1866). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
@@ -111,6 +111,71 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-19 — `MIN_GAP_PCT`: 10.0% → 9.0% (OPERATOR-SIGNED, REVERSAL of 2026-05-17 R2)
+
+**Trigger**: `tests/fixtures/must_not_miss_eps.py` (#577) found 15 of 25 evidence-sourced tradeable
+≥10R winners (`docs/analysis/winner_r_available_2026-08-16.txt`, GEOMETRY 1) are excluded TODAY by
+the 10.0% floor — a false EXCLUSION, the error P1 (`docs/roadmap/ep_profitability_program.md` §
+THE PRINCIPLES) says must never happen silently. Operator: *"loosen to what though?"* Priced in
+`docs/analysis/gap_floor_decision_table_2026-08-19.md` (749 tier-A gap days, $0, all pre-existing
+captures or one-shot read-only prod pulls). Operator, on being shown the table: *"ok, let's take 9
+for now."*
+
+**Evidence** (N≥10 met — 749 gap-days, 15 winners in the excluded band): 9.0% recovers 8 of the 15
+excluded ≥10R winners (MU 49R, MRVL 35R, SNOW 25R, BE 16R, ALGM 23R, AMKR 20R, UMC 18R, USAR 16R)
+for +6-8 candidates/day (≈+25% of daily volume); pool ≥10R density improves 2.0% → 3.0%. 8.0% would
+recover all 15 at +18-23/day (density 3.3%) — he chose the smaller option deliberately. 8.5% was
+rejected: 56 extra gap-days over 9.0 buy exactly 1 more winner (the band's middle is hollow; winners
+cluster at 8.0-8.4% and 9.5-9.9%, not evenly). ⚠ Honest margin: AMKR clears by 0.03pp (9.03% vs the
+9.0% floor, on the fixture's session-open psv basis) — one of the 8 is basis-marginal, not a clean
+clear like the other 7.
+
+**Why the prior reasoning (2026-05-17 R2, ADR 0003 §3) was WRONG, not merely incomplete**: R2 lifted
+8.0→10.0 on a **win-rate read of 8 trades** — the 8-10% gap bucket showed 0/8 (0%) win rate over a
+60d cohort. That read predates P3 (`ep_profitability_program.md`, operator 2026-08-16: *"we need to
+remember EPs are rare and winrate is low… if we hit a real EP we gain 10X, that's the distinction
+here"* — "a median cannot see a 10x"). A 0%-win-rate read is structurally blind to the tail: on this
+exact excluded 8-10% band, **337R of R-available sits below the 10% line, against 174R in today's
+entire ≥10% pool** — two-thirds of the programme's own ≥10R tail was sitting under a line drawn on
+eight losers, because win-rate arithmetic cannot see that a bucket can lose 8 small bets and still
+carry the biggest winners. The bucket wasn't mis-measured in 2026-05-17; the measure itself (win
+rate, pre-P3) was the wrong instrument for a rare/fat-tailed setup.
+
+**Regime interaction — explicitly checked, NOT changed**: ADR 0003 §3's Phase-1 recommendation read
+"lift floor to 10% (or 12% in elevated regimes)". That regime-dependent variant was **never built**
+— grepped `ep_detector.py` + `regime.py`: `MIN_GAP_PCT` has always been one flat module-level
+constant with no regime branch (confirmed 2026-08-19). The only elevated-regime-flavored number in
+the file is `ep_threshold` (the HIGH-tier SCORE cutoff, `regime.py`: Bull=65 / Choppy=70 /
+Correcting=75 / Crisis=80) — a completely separate gate, untouched by this change. Nothing to
+preserve or migrate; there was no regime behavior on the gap floor to begin with.
+
+**What did NOT change (THE LINE — operator ruled the value, nothing else)**: the R6 pm-shares
+carve-out (`gap_pct ≥ 10% AND catalyst_quality == "strong"`, 2026-05-17 P2.1b) — a separately-signed
+criterion that coincidentally shares the old 10% number; the "routine + low gap" post-grade filter
+(`catalyst_quality == "routine" AND gap_pct < 12%`); the earnings-day MODERATE→HIGH override
+(`gap_pct ≥ 10% AND is_earnings_day`); and the `_score_ep` gap-magnitude scoring tiers (8/10/15/20%
+point bands). All four independently hardcode a number near the old floor but are distinct,
+previously-signed gates — left untouched per the operator's exact instruction.
+
+**Anticipated effect**: universe admission recovers 8 of the 15 named winners (gains a scan row/
+trace — not a guaranteed alert; the top-20 gap cap and score<50 gate still stand downstream, per the
+decision table §4). Live candidate volume: +6-8 names/day (≈+25%). The RT Pass-2 superset/floor
+re-application (`_pass1_gap_floor`, `_apply_realtime_pass2`) and the entry-time re-check
+(`entry_pipeline.check_rt_gap_floor`, wired via `live_tracker._MAGNA53_MIN_GAP_PCT`) both read the
+same `MIN_GAP_PCT` constant, so they move to 9.0% automatically — no separate wiring change needed
+or made.
+
+**Reversion-flag**: REVERSAL of 2026-05-17 R2 (8.0→10.0). Env override for fast rollback:
+`EP_MIN_GAP_PCT=10.0` (or any value) — no redeploy for an emergency revert to the constant; a true
+revert of this decision also means re-adding the 8 tickers above to
+`tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT`.
+
+**Status**: shipped 2026-08-19 (operator-signed), code + SSoT + fixture in the same commit. NOT
+deployed — left in-tree per instruction (CLAUDE.md: agent commits, operator deploys). Verify-live at
+deploy: first day's `mi_ep_scan_log` gap-candidate count should read ~6-8 higher; `/audit` or a
+direct query for any of the 8 named tickers on a future analogous gap should show a scan row instead
+of no trace.
 
 ### 2026-08-16 — Protective stop moves to entry − 2R at half size; the +2R target does NOT move (OPERATOR-SIGNED, THE LINE)
 

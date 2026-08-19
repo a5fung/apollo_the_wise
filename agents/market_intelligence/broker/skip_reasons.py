@@ -30,8 +30,8 @@ SETUP_FADED_FROM_ORB       = "setup:faded_from_orb"
 SETUP_CHASE_CAP_EXCEEDED   = "setup:chase_cap_exceeded"  # #500 bounded-chase gate
 # #490 2026-08-01: the alert row is written on the scan tick that scored it (often hours before the
 # open); nothing re-checked the gap at submission, so a name that retreated below MIN_GAP_PCT before
-# 09:31 was still entered. Operator ruled that a BUG, not a new filter — the 10% floor is an existing
-# signed criterion and the entry path simply was not enforcing it.
+# 09:31 was still entered. Operator ruled that a BUG, not a new filter — the floor (10% at the time,
+# 9% since 2026-08-19) is an existing signed criterion and the entry path simply was not enforcing it.
 SETUP_GAP_BELOW_FLOOR      = "setup:gap_below_floor"
 
 # ── block: safeguards (circuit breakers, position limits, strategy gate) ──

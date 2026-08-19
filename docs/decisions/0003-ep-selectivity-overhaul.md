@@ -115,6 +115,11 @@ watchlist-only.
 loose; the 10% floor on score promotion looks healthier. Lift floor
 to 10% (or 12% in elevated regimes), 8-10% to watchlist only.
 
+**⚠ SUPERSEDED 2026-08-19 on the floor value specifically** — see the dated addendum at the end of
+this file (§ "2026-08-19 — R2's gap floor reversed"). The 12%-in-elevated-regimes half of this
+recommendation was never built (confirmed by code search); only the flat 10% shipped. The win-rate
+read above (N=8) is the reasoning that addendum documents as wrong, not merely incomplete.
+
 ### Pre-market RVOL@T (A2)
 
 | Bucket | N | Win rate |
@@ -669,3 +674,35 @@ but a one-name weight tweak is the overfit the discipline forbids. **Watch for a
 shape (hypergrowth revenue + negative EPS + no milestone, operator game_changer, rubric weak) → at N≥2,
 open a rubric-weight recalibration via CHANGE_PROCESS. Secondary note: a4=None (missing consensus) capped
 max_available at 34/39 — a data-completeness gap that independently depresses the score.
+
+---
+
+## 2026-08-19 — R2's gap floor reversed: `MIN_GAP_PCT` 10.0% → 9.0% (full entry: `docs/setups/magna53_ep.md`)
+
+**This section supersedes §3's gap-size recommendation and §8's R2 ("Lift gap floor to 10%") on the
+FLOOR VALUE only.** Nothing else in this ADR is revised; R1/R3/R4/R5 and the rest of the Phase 1
+diagnostic stand as originally written.
+
+**What R2 got right**: the 8-10% bucket genuinely underperformed on a raw win-rate basis (0/8 in the
+60d cohort available at the time) — that measurement was not wrong.
+
+**What R2 got wrong**: treating a **0%-win-rate read on 8 trades** as sufficient grounds to raise a
+selectivity floor, full stop. That is a pre-P3 standard (`docs/roadmap/ep_profitability_program.md`
+§ THE PRINCIPLES, P3, added 2026-08-16: *"we need to remember EPs are rare and winrate is low… if we
+hit a real EP we gain 10X, that's the distinction here"* — median/win-rate reads are banned as the
+primary read for exactly this reason, they cannot see a 10x). Applied retroactively to the same
+8-10% band with the tail-first lens P3 demands: **337R of R-available (`docs/analysis/
+winner_r_available_2026-08-16.txt`) sits in that excluded band, against 174R in the entire pool
+admitted today** — the band R2 called a loser by win rate holds two-thirds of the programme's own
+≥10R tail. Zero wins on 8 small bets and the majority of the tail sitting in the same band are not in
+tension; a win-rate statistic simply cannot distinguish them. That is the specific way the prior
+reasoning was wrong, not merely thin on data — more N of the same statistic would not have fixed it.
+
+**Resolution (operator-ruled 2026-08-19, priced in `docs/analysis/gap_floor_decision_table_2026-08-19.md`,
+749 tier-A gap days)**: floor moves to 9.0%, recovering 8 of the 15 ≥10R winners this exact band was
+found to exclude (`tests/fixtures/must_not_miss_eps.py` #577), for +6-8 candidates/day. 8.0% (full
+recall) and 8.5% (priced, rejected — 56 extra gap-days buy 1 winner) were both on the table; 9.0% was
+the operator's deliberate choice of the smaller option. Full reasoning + regime-floor disposition (the
+"12% in elevated regimes" half of this section's own recommendation was never built) in
+`docs/setups/magna53_ep.md`'s 2026-08-19 change-log entry, the live SSoT for this constant going
+forward.

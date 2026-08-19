@@ -15,7 +15,8 @@ import pytest
 
 from agents.market_intelligence import ep_detector as ep
 
-PC = 100.0          # prev close — a close of 110.0 is exactly the 10% floor
+PC = 100.0          # prev close — a close of 109.0 is exactly the 9% floor (MIN_GAP_PCT,
+                    # 9.0% since 2026-08-19, was 10.0%)
 
 
 def _series(*closes):
@@ -44,12 +45,12 @@ def test_only_the_LAST_n_bars_count():
 
 
 def test_exactly_at_the_floor_counts_as_holding():
-    ok, _ = ep._sustain_ok(_series(110.0, 110.0, 110.0), PC, 3)
+    ok, _ = ep._sustain_ok(_series(109.0, 109.0, 109.0), PC, 3)
     assert ok is True
 
 
 def test_a_hair_under_the_floor_does_not():
-    ok, _ = ep._sustain_ok(_series(110.0, 109.99, 110.0), PC, 3)
+    ok, _ = ep._sustain_ok(_series(109.0, 108.99, 109.0), PC, 3)
     assert ok is False
 
 

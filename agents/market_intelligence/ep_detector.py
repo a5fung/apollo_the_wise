@@ -91,21 +91,25 @@ _tinycap_seen: set = set()
 CATALYST_GRADE_PROMPT_VERSION = "v3-2026-06-12-catalyst-freshness"
 
 # Hard filters
-# MIN_GAP_PCT: 2026-05-17 R2 ship — lifted 8.0 → 10.0. The 8-10% gap
-# bucket had 0/8 WR over the 60d cohort (ADR 0003 §3). Env override
-# available via EP_MIN_GAP_PCT for fast rollback without redeploy.
-_MIN_GAP_PCT_DEFAULT = 10.0
+# MIN_GAP_PCT: 2026-05-17 R2 ship — lifted 8.0 → 10.0 on a 0/8 WIN-RATE read of the 8-10% bucket
+# (ADR 0003 §3, N=8). REVERSED 2026-08-19 (operator-ruled): 10.0 → 9.0 — that win-rate read
+# predates P3 (docs/roadmap/ep_profitability_program.md, "hunt the tail, not the average") and
+# cannot see the tail; on the same excluded band, 337R of R-available sits below the line vs 174R
+# in today's entire pool. See docs/setups/magna53_ep.md change log, 2026-08-19 entry, and
+# docs/decisions/0003-ep-selectivity-overhaul.md's superseded-note. Env override available via
+# EP_MIN_GAP_PCT for fast rollback without redeploy.
+_MIN_GAP_PCT_DEFAULT = 9.0
 MIN_GAP_PCT = float(os.environ.get("EP_MIN_GAP_PCT", _MIN_GAP_PCT_DEFAULT))
 
 # #489 hybrid real-time detection (Alpaca SIP Pass-2). Master flag: when ON, Pass-1 admits at the
-# (lower) superset so fast movers whose ~15-min-DELAYED Polygon gap is still <10% survive to the
-# real-time Alpaca confirm, then the REAL 10% MIN_GAP_PCT floor is re-applied on the rt gap. The
+# (lower) superset so fast movers whose ~15-min-DELAYED Polygon gap is still <9% survive to the
+# real-time Alpaca confirm, then the REAL 9% MIN_GAP_PCT floor is re-applied on the rt gap. The
 # gap_pct AUTHORITY is the separate `ep_rt_gap_authoritative` runtime toggle (default off = shadow:
 # rt logged alongside, delayed still decides). All OFF (default) = byte-identical to today.
 EP_RT_PASS2_ENABLED = os.environ.get("EP_RT_PASS2_ENABLED", "false").lower() == "true"
 EP_PASS1_SUPERSET_GAP_PCT = float(os.environ.get("EP_PASS1_SUPERSET_GAP_PCT", 5.0))
 # #489 real-time MISS watchdog (observability, ALERT-ONLY — never changes what we enter): each in-window
-# tick it checks the full RT universe live and LOUD-Telegrams any 10% crosser the ~15-min-delayed screen
+# tick it checks the full RT universe live and LOUD-Telegrams any 9% crosser the ~15-min-delayed screen
 # missed. It is the #490 Pass-0 fetch in observe mode (doubles as the full-cutover shadow). Default on
 # when the RT infra (EP_RT_PASS2_ENABLED) is on; own kill switch.
 EP_RT_MISS_WATCHDOG_ENABLED = os.environ.get("EP_RT_MISS_WATCHDOG_ENABLED", "true").lower() == "true"
@@ -142,7 +146,7 @@ EP_RT_HALT_TRADE_AGE_S = float(os.environ.get("EP_RT_HALT_TRADE_AGE_S", "90"))  
 
 def _pass1_gap_floor() -> float:
     """The Pass-1 (delayed universe screen) gap floor: the lower superset when the hybrid is on,
-    else the real MIN_GAP_PCT. The superset only WIDENS Pass-1; the authoritative 10% floor is
+    else the real MIN_GAP_PCT. The superset only WIDENS Pass-1; the authoritative 9% floor is
     always re-applied to the decided gap in Pass 2 (`_apply_realtime_pass2`), so it can never leak."""
     return EP_PASS1_SUPERSET_GAP_PCT if EP_RT_PASS2_ENABLED else MIN_GAP_PCT
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
@@ -2077,7 +2081,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
     gap the decided `gap_pct`. Then RE-APPLY the real MIN_GAP_PCT floor. In shadow (toggle off) the
     decided gap stays delayed, so every superset-only admit is dropped here -> the live cohort is
     byte-identical to today; the rt reading rides along for scan-log shadow columns + floor-flip
-    events. NEVER raises; every failure degrades to exactly the delayed 10%-floor path.
+    events. NEVER raises; every failure degrades to exactly the delayed 9%-floor path.
 
     #490 RT-1: `prev_trade_date` arms the §2.1 DATE-KEYED prev_close cross-check (ships as a BUG
     FIX regardless of the cutover — pre-open Alpaca's previous_daily_bar deterministically holds
@@ -2100,7 +2104,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
         adate = now_et.date()
 
         def _floor(cs):
-            # Re-apply the REAL floor to the decided gap. A superset-only admit (delayed<10%) whose
+            # Re-apply the REAL floor to the decided gap. A superset-only admit (delayed<9%) whose
             # rt read is MISSING under authority is DROPPED — a fetch miss must never loosen detection.
             # #490: `_rt_admit_block` extends the same never-loosen rule — an unverified-prev_close
             # flip-up without Q3 bar corroboration (§2.1) or a halt_suspect (§4) is likewise DROPPED.
@@ -2215,7 +2219,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
             _fd_pre_entry = now_et.hour == 9 and 15 <= now_et.minute <= 35
             _fd_key = f"ep_rt_floor_flip_down@{now_et:%H:%M}" if _fd_pre_entry else "ep_rt_floor_flip_down"
             if rt_gap >= MIN_GAP_PCT > dl and _audit_dedupe_check(c["ticker"], adate, "ep_rt_floor_flip_up"):
-                _flip_msg = (f"{c['ticker']} rt {rt_gap:.1f}% ≥10 > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
+                _flip_msg = (f"{c['ticker']} rt {rt_gap:.1f}% ≥{MIN_GAP_PCT:.0f} > delayed {dl:.1f}% @ {now_et:%H:%M} ET"
                              + ("" if authoritative else " (SHADOW — would have caught)"))
                 await log_audit_event("ep_rt_floor_flip_up", _flip_msg,
                     json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
@@ -2229,7 +2233,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 # is actually running.
                 _acted = authoritative or down_authoritative
                 await log_audit_event("ep_rt_floor_flip_down",
-                    f"{c['ticker']} delayed {dl:.1f}% >=10 > rt {rt_gap:.1f}% (stale false-admit "
+                    f"{c['ticker']} delayed {dl:.1f}% >={MIN_GAP_PCT:.0f} > rt {rt_gap:.1f}% (stale false-admit "
                     + ("REMOVED)" if _acted else "cleaned — SHADOW, still admitted)"),
                     json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2), "delayed_gap": round(dl, 2),
                                 "acted": _acted, "pre_entry": _fd_pre_entry,
@@ -2253,7 +2257,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 # An unanswerable verify leg is worse than a failing one: it reads as a pass.
                 await log_audit_event(
                     "ep_rt_admit",
-                    f"{c['ticker']} rt {rt_gap:.1f}% and delayed {dl:.1f}% BOTH >=10 "
+                    f"{c['ticker']} rt {rt_gap:.1f}% and delayed {dl:.1f}% BOTH >={MIN_GAP_PCT:.0f} "
                     f"@ {now_et:%H:%M} ET — real-time AGREES with the admit",
                     json.dumps({"ticker": c["ticker"], "rt_gap": round(rt_gap, 2),
                                 "delayed_gap": round(dl, 2),
@@ -2261,7 +2265,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                                 "authoritative": authoritative}))
         return _floor(candidates)
     except Exception as e:
-        logger.warning(f"Pass-2 failed, degrading to delayed 10% floor: {e}")
+        logger.warning(f"Pass-2 failed, degrading to delayed {MIN_GAP_PCT:.0f}% floor: {e}")
         return [c for c in candidates if c.get("gap_pct", 0) >= MIN_GAP_PCT]
 
 
@@ -2275,7 +2279,7 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
     """#489 real-time MISS detector — ALERT-ONLY (records; a morning digest sends the summary). The
     hybrid structurally can't catch the residual (flat-premarket-then-explode) class in real time, but
     this CAN surface it: each in-window tick, fetch REAL-TIME Alpaca SIP prices for the full RT universe
-    (every ticker that cleared the non-gap filters) and record any that has crossed the 10% floor
+    (every ticker that cleared the non-gap filters) and record any that has crossed the 9% floor
     real-time, PASSES the scan's mechanical EP gates (extension / mcap / ADV$ / ATR), but is NOT in
     `caught` (the PRE-Pass-2 5% superset — so the hybrid-catchable class is excluded and only the TRUE
     residual, delayed <5%, is flagged; no double-fire w/ the floor-flip). Audit-only (operator 7/21 —
@@ -2295,7 +2299,7 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
         if snaps is None:
             snaps = await collector.get_alpaca_snapshots_batch(list(pc_map.keys()))
         adate = now_et.date()
-        # Missed crossers = real-time ≥10% but NOT a scan candidate (the delay couldn't see them).
+        # Missed crossers = real-time ≥9% but NOT a scan candidate (the delay couldn't see them).
         missed = []
         for tkr, sn in snaps.items():
             if tkr in caught:
@@ -2308,7 +2312,7 @@ async def _rt_miss_watchdog(rt_universe: list, caught: set, now_et: datetime,
                 missed.append((tkr, pc, rt_gap))
         if not missed:
             return
-        # #489 (A): mechanical EP gates — alert only on a REAL EP-shaped miss, not every 10% spike.
+        # #489 (A): mechanical EP gates — alert only on a REAL EP-shaped miss, not every 9% spike.
         # Apply the same NON-LLM gates the live scan uses: already-extended (≥50% up over ~5d), then
         # check_filters (market-cap ≥$500M / ADV$ / ATR). Drops micro-cap pumps, illiquid, choppy, and
         # extended names. The full catalyst + HIGH-grade confirmation is B (the #490 shadow scoring).

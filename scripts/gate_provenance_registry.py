@@ -335,12 +335,15 @@ GATE_REGISTRY: list[dict] = [
         "file": "agents/market_intelligence/ep_detector.py",
         "kind": "const",
         "name": "_MIN_GAP_PCT_DEFAULT",
-        "value": 10.0,
+        "value": 9.0,
         "citation": {
-            "file": "docs/decisions/0003-ep-selectivity-overhaul.md",
-            "text": "gap bucket has **0% WR (n=8)**",
+            "file": "docs/setups/magna53_ep.md",
+            "text": "9.0% hard floor, env `EP_MIN_GAP_PCT`",
         },
-        "note": "ADR 0003 §3 backtest evidence — 8-10% gap bucket had 0% WR, floor lifted 8.0->10.0.",
+        "note": "2026-08-19 operator-signed REVERSAL of the 2026-05-17 R2 8.0->10.0 raise "
+                "(ADR 0003 §3's win-rate N=8 read predates P3/tail-first evidence discipline — "
+                "see magna53_ep.md 2026-08-19 change log + ADR 0003's superseded addendum). "
+                "Priced in docs/analysis/gap_floor_decision_table_2026-08-19.md.",
     },
     {
         "id": "ep_detector.MAX_EXTENSION_PCT",

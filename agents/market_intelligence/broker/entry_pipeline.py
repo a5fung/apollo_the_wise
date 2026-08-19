@@ -197,7 +197,8 @@ async def check_rt_gap_floor(
 
     **This is a bug fix, not a new filter** (operator ruling 2026-08-01: *"the blocking live path is
     in fact correct given the price retreated from the 10% gap, so in a way the current path is a
-    bug"*). `MIN_GAP_PCT = 10.0` is an existing, signed detection criterion. The alert row is written
+    bug"*). `MIN_GAP_PCT` is an existing, signed detection criterion (10.0 at the time of this fix;
+    9.0 since 2026-08-19, see docs/setups/magna53_ep.md). The alert row is written
     on whichever scan tick first scored it HIGH — often hours before the open — and
     `live_tracker.process_new_alerts_live` then selects that ROW at 09:31 without re-reading price.
     So a name that retreated below the floor in between was entered anyway, in violation of the
@@ -344,9 +345,10 @@ async def submit_trade_entry(
     fade_midpoint_ratio: float | None = FADE_MIDPOINT_RATIO,
     # #490 — the real-time gap floor to re-check at submission, per STRATEGY.
     # None = skip (the DEFAULT, deliberately): `submit_trade_entry` is the shared funnel for
-    # MAGNA53 *and* 9M Day 2, and MIN_GAP_PCT is MAGNA53's 10% criterion. 9M Day 2's own bar is
-    # 3% gap OR 4% intraday gain (`ninem_detector._MIN_GAP_PCT`), so enforcing 10% there would
-    # silently rewrite ANOTHER strategy's entry discipline. Same idiom as fade_midpoint_ratio.
+    # MAGNA53 *and* 9M Day 2, and MIN_GAP_PCT is MAGNA53's own criterion (9.0% since 2026-08-19,
+    # was 10.0%). 9M Day 2's own bar is 3% gap OR 4% intraday gain (`ninem_detector._MIN_GAP_PCT`),
+    # so enforcing MAGNA53's floor there would silently rewrite ANOTHER strategy's entry
+    # discipline. Same idiom as fade_midpoint_ratio.
     rt_gap_floor_pct: float | None = None,
     aggregate_skips: bool = False,
 ) -> dict:

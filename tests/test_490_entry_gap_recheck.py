@@ -1,8 +1,9 @@
 """#490 — real-time gap re-check at SUBMISSION (`entry_pipeline.check_rt_gap_floor`).
 
 Operator ruling 2026-08-01: *"the blocking live path is in fact correct given the price retreated
-from the 10% gap, so in a way the current path is a bug."* `MIN_GAP_PCT = 10.0` is an existing
-signed criterion; the entry path selects an alert ROW written hours earlier and never re-reads
+from the 10% gap, so in a way the current path is a bug."* (`MIN_GAP_PCT` was 10.0 at the time of
+this ruling; 9.0 since 2026-08-19, see docs/setups/magna53_ep.md — an existing, signed criterion
+either way). The entry path selects an alert ROW written hours earlier and never re-reads
 price, so a name that retreated below the floor before 09:31 was entered in violation of the
 system's own rule.
 
@@ -46,13 +47,17 @@ def _wire(monkeypatch, *, enabled=True, price=None, prev_close=_PREV_CLOSE,
     monkeypatch.setattr(entry_pipeline.alpaca, "get_latest_trade", _latest)
 
 
-_MAGNA53_FLOOR = 10.0
+_MAGNA53_FLOOR = 10.0  # representative test value for this generic mechanism — NOT read from
+# ep_detector.MIN_GAP_PCT (live value 9.0 since 2026-08-19). check_rt_gap_floor takes `floor` as a
+# PARAMETER, not a baked-in constant, so this file's boundary tests are valid at any floor value;
+# live wiring is separately pinned by test_magna53_call_site_actually_opts_in below.
 
 
 def _run(alert=None, floor=_MAGNA53_FLOOR):
-    """`floor` is MAGNA53's 10% criterion. It is a PARAMETER, not a constant baked into the
-    guard: `submit_trade_entry` is the shared funnel for MAGNA53 and 9M Day 2, and 9M's bar is
-    3% / 4% intraday. See test_does_not_impose_one_strategys_floor_on_another."""
+    """`floor` here is a representative test value, not MAGNA53's live criterion. It is a
+    PARAMETER, not a constant baked into the guard: `submit_trade_entry` is the shared funnel for
+    MAGNA53 and 9M Day 2, and 9M's bar is 3% / 4% intraday. See
+    test_does_not_impose_one_strategys_floor_on_another."""
     return asyncio.run(entry_pipeline.check_rt_gap_floor(
         "FTNT", alert if alert is not None else {"alert_date": _DATE, "gap_pct": 10.79}, floor))
 
@@ -163,7 +168,7 @@ def test_does_not_impose_one_strategys_floor_on_another(monkeypatch):
     Same price, same alert: blocked at MAGNA53's floor, allowed at 9M's.
     """
     _wire(monkeypatch, price=105.0)           # +5% vs prev close
-    assert _run(floor=10.0)[0] is False, "must block below MAGNA53's 10%"
+    assert _run(floor=10.0)[0] is False, "must block below a 10% test floor"
     assert _run(floor=3.0) == (True, None), "must NOT block above 9M's 3%"
 
 

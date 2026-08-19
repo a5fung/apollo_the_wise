@@ -1,7 +1,8 @@
 """#489 hybrid real-time Pass-2 — shadow-safety invariants.
 
 The load-bearing guarantee: with the hybrid OFF (EP_RT_PASS2_ENABLED=false, the deploy default),
-detection is byte-identical to today — Pass 1 uses the real 10% floor and Pass 2 is a pure no-op.
+detection is byte-identical to today — Pass 1 uses the real MIN_GAP_PCT floor (9.0% since
+2026-08-19, was 10.0%) and Pass 2 is a pure no-op.
 """
 import asyncio
 from datetime import datetime
