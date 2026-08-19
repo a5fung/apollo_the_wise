@@ -830,3 +830,78 @@ Record what each of the three actually did (forward return / MFE / MAE at 1, 3, 
 alert) and whether our system traded, skipped, or graded them differently from his read. **Add the
 result to §0a of The Real EP Plan when it settles.** If his call separates and our score does not,
 that is a direct measurement of the gap this whole plan exists to close.
+
+---
+
+## 2026-08-19 — MRNA: THE TEXTBOOK EP, transcribed from his two shared charts + two tweets
+
+**Captured the same turn he shared them** — images do not survive compaction and the 620 chart was
+lost exactly this way ([[capture-operator-shared-notes]]). Everything below is READ OFF THE CHARTS,
+not inferred.
+
+> *"$MRNA MEMORIZE these daily, weekly and 5 min charts FOR EPs. THIS IS PERFECT *SO FAR*..."*
+> *"For anyone wondering, $MRNA is an absolutely perfect and textbook EP. To not be confused with a PEG"*
+
+His own framing the same morning: *"MRNA is a textbook EP (i also see other traders mention it as such
+today), the news is truly gamechanging, the move, etc. is textbook."*
+
+### 🔑 THE STRUCTURAL POINT: three timeframes, and the base is MEASURED, not eyeballed
+
+The author's instruction is to memorise **daily, weekly AND 5-minute** together. The bases are
+annotated as **duration × depth** on both higher timeframes — this is exactly the tightness/structure
+axis our encoder is supposed to capture, expressed as a pair of numbers:
+
+| timeframe | annotated bases |
+|---|---|
+| **Daily** | **74 days · 27%** · **101 days · 34%** |
+| **Weekly** | **17 weeks · 27%** · **23 weeks · 34%** · **26 weeks · 37%** |
+
+Read: a long, SHALLOW consolidation. Roughly a quarter to a third of depth over 3–6 months. The
+weekly and daily agree because they are the same base at two resolutions.
+
+### THE GAP DAY, by the numbers (both charts)
+
+| metric | value |
+|---|---|
+| open / high / low / close | 116.02–116.25 · 140.00–142.04 · 114.46 · 139.44–142.04 |
+| change | **+79.08, +125.61%** (chart 2) · +76.48, +121.48% (chart 1, earlier snapshot) |
+| volume | **41.4M vs 8.0M average — +5,595%**, RVOL **42.03×**, projected 226M |
+| dollar volume | $6.6B day-1 · avg $V 1.137B |
+| **ADR%** | **6.92%** (ATR% 6.36%) |
+| **ATR multiple from MA** | **18.93 → 19.59** |
+| **% gain from MA** | **120.60% → 124.53%** |
+| Off 52-week high | **0.0% — it is AT its 52-week high** |
+| U/D volume ratio | 2.03–2.1 (daily), 3.0 (weekly) |
+| prior day close / high | PDC 62.97 · PDH 64.37 → the gap roughly DOUBLED the stock |
+
+### 🔴 WHAT THIS SAYS ABOUT OUR OWN FILTERS — two direct collisions worth carrying
+
+1. **EXTENSION: this name is ~19× ATR from its moving average and 124% above it, and he calls it
+   PERFECT.** Our extension filter skips when the prior close sits ≥50% above the 5-day low
+   (`ep_detector.MAX_EXTENSION_PCT`). MRNA passes only because the extension is created BY the gap —
+   the *prior* close was consolidating. **The lesson is that post-gap extension is not a defect in an
+   EP, it is the event.** Any extension rule must be measured on the PRE-gap state, never the gap day.
+2. **THE BASE IS THE QUALIFIER, AND WE DO NOT MEASURE IT THIS WAY.** He is reading duration × depth
+   (74d·27%, 26w·37%). Our structure work counts congestion zones cleared; his annotation is the
+   containing base's *tightness over time*. **These are complementary, not the same number** — file
+   against #569 (the structure-encoder split).
+
+### THE 5-MINUTE CHART — the intraday half, and it is the 620 shape
+
+The 5-min panel shows the gap open, a brief first-bar range, then a **staircase riding a rising
+short moving average** with the pullbacks holding it. That is the same intraday structure as the
+620 chart he shared on 08-07 (5-min, 6/20 EMA + MACD) — the trigger we have costed but never tested
+(#562, the 574-ticker-day minute pull). **CDO marked at 116.25** (the day's open) acts as the
+reference line; price never revisits it.
+
+### ⚠ THE DISTINCTION HE DREW AND I CANNOT RESOLVE FROM THE IMAGES
+
+*"To not be confused with a **PEG**."* He is separating EP from something abbreviated PEG. Our SSoT
+does not define PEG anywhere. **ASK HIM** — this is a definitional line (SETUP vs FAMILY discipline,
+CLAUDE.md) and guessing at it is exactly what that rule forbids. Recorded as an open question, not
+answered.
+
+### WHAT WE DID ON THE DAY
+Scored **115.2 HIGH**, entered 09:31:09 at 120.75, banked the +2R partial the same day (+$17.71),
+3 shares held at breakeven. MRVL scored 69.1 the same morning, was also entered, and stopped for
+−0.87R — with the book at 5/5, **the ranking decided the outcome.** Full record: `ep_profitability_program.md` §0a.
