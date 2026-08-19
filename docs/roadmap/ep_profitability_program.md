@@ -43,7 +43,7 @@ fragmented or missed."*
 
 **These are HIS rules, in his words, with dates.** They are listed in PRECEDENCE ORDER: when two
 conflict, the lower number wins. Each is expanded in its own section below; this is the index and
-the contract. **Cite them by name** (P1, P2…; P1-P11) in cards, commits and reports.
+the contract. **Cite them by name** (P1, P2…; P1-P12) in cards, commits and reports.
 
 ---
 
@@ -165,6 +165,38 @@ setups. Continuation is a FAMILY. Never call a family, a detector, or a stage-bo
 (Full text: `CLAUDE.md`.)
 
 ---
+
+### P12 — APOLLO SHOULD DISCOVER AND TELL HIM, NOT WAIT FOR A SCHEDULE *(2026-08-19)*
+> *"what I really love is not preset you know reviews and notification, but ad hoc thinks things that
+> I discover Apollo can discover and send me ad hoc whenever it deems it's relevant and the timing is
+> right. it could be anytime in any."*
+
+**This is a rule about the SHAPE of every output, not one feature.** A preset review answers a
+question on a calendar. He wants Apollo to notice something is worth saying and say it then.
+
+**The case that proves it, same day:** the strength map ALREADY computes *"are the miners outrunning
+the metal?"* and read **precious-metals stocks leading the metal by 15.3pts over 1M** — but it
+surfaces only inside the WEEKLY briefing. **He found it on Twitter before his own system told him.**
+The computation was never the gap; the cadence was.
+
+**THE TEST for any new surface: would it have told him on the day it became true, or on Sunday?**
+- ❌ Wrong shape: a digest section, a weekly review item, a dashboard panel he must open.
+- ✅ Right shape: a detector that watches a measure against **its own history** and speaks when the
+  reading is unusual — opening, widening, or reversing.
+
+**The primitive already exists and is proven** — the crypto lane measures its own typical 30-day move
+(*"typical 30d move 0.59pts — measured"*) and stays silent inside it, speaking only on a real tilt.
+**Generalise that, do not invent it.** Every recurring number we compute is a candidate: the
+equity-vs-asset spreads, theme stage transitions, the running comparisons.
+
+⚠ **THE FAILURE MODE THIS MUST NOT BECOME: more noise.** He has spent this week telling us the
+opposite — the duplicate stop messages, the false naked-position alert, the false skip, the
+detector-liveness crying wolf. **A guard that always fires is not a guard, and neither is a
+discovery feed that always has something to say.** The bar is *unusual against its own history*,
+measured, not a threshold picked to make something fire.
+
+⚠ **AND P2 GOVERNS THE THRESHOLD:** what counts as "worth telling him" is a judgement. **Measure the
+distribution before choosing a number**, exactly as the gap floor was priced rather than guessed.
 
 ⚖ **AND ABOVE ALL OF THEM: THE LINE.** Strategy, entry/sell discipline, sizing, targets, safeguards
 and live trade state are the operator's SOLE authority. These principles guide ANALYSIS; none of them
