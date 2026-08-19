@@ -19,17 +19,23 @@ findable without scrolling a 60k-char log.
 
 ---
 
-## 🖼 THE IMAGES — SLOT RESERVED, NOT YET FILLED
+## 🖼 THE CHARTS
 
-He shared **two chart images** on 2026-08-19. They arrived as conversation attachments and are NOT
-on disk; I could not save them myself, and conversation attachments do not survive compaction
-([[capture-operator-shared-notes]] — the 620 chart was lost exactly this way).
+![MRNA 4-panel — daily · weekly · 5-min · quarterly fundamentals](images/mrna_2026-08-19_four_panel.jpg)
+*The 4-panel he shared. Top-left daily with the quarterly EPS/sales table; bottom-left the longer
+daily with the base annotations (74 days · 27%, 101 days · 34%); top-right the weekly with 17/23/26-week
+bases; bottom-right the 5-minute showing the gap and the staircase along the rising short MA.*
 
-**▶ ACTION FOR THE OPERATOR (one drag-and-drop):** save them as
-- `docs/methodology/images/mrna_2026-08-19_four_panel.png` — the 4-panel layout (daily · weekly · 5-min · fundamentals)
-- `docs/methodology/images/mrna_2026-08-19_tradingview_daily.png` — the TradingView daily with the ADR/neglect panel
+![MRNA TradingView daily — ADR, neglect and volume](images/mrna_2026-08-19_tradingview_daily.jpg)
+*The TradingView daily. Carries the numbers that matter for the neglect reading: ADR% 6.92,
+Off 52W High 0.0%, ATR% Multiple From MA 19.59, % Gain From MA 124.53%, volume 41.388M / +5595%
+against an 8.001M average. The bottom panel's green bands mark the quiet stretches through Jul-Aug —
+the neglect, visible.*
 
-Everything below is transcribed from them in enough detail to stand alone if they are never added.
+✅ **Recovered from the session transcript on 2026-08-19** — the images were stored inline as base64
+and extracted rather than lost. **That is the durable path for any future shared chart**, and it
+means [[capture-operator-shared-notes]] should be read as *transcribe AND extract*, not transcribe
+because extraction is impossible. My first attempt claimed they could not be saved; that was wrong.
 
 ---
 
