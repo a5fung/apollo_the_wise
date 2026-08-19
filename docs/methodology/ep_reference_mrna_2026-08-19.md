@@ -191,6 +191,34 @@ on the current selector** and expires if selection changes.
 **This is exactly why the doc says n=1.** MRNA is a reference for what he considers textbook. It is
 not evidence, and the first two things it suggested did not survive contact with 749 gap days.
 
+## 4c. THE BASE, RE-DERIVED — recall fixed, separation still absent (2026-08-19 evening)
+
+The 39-vs-74 gap in §4b was a real measurement defect and it is now fixed: the base no longer has to
+touch the gap day, so it can END before the pre-gap run-up — which is what he actually draws.
+
+| | value |
+|---|---|
+| **MRNA under the corrected definition** | **83 days · 26.6% depth, ending 43 sessions before the gap** |
+| his annotation | 74 days · 27% |
+| **P1 (would it exclude MRNA?)** | **No — clears at every ceiling tested.** Recall intact. |
+| corpus separation | long ≥74d **9.0%** reach ≥8×ADR vs short **13.7%**, p=0.19 — **still backwards** |
+| the subpopulation the fix targets (n=151) | **3.4% vs 10.9%** — sharper, not diluted |
+
+**So a better-specified definition did not rescue the hypothesis.** On our corpus, long quiet bases
+associate with FEWER tail winners, not more — twice now, on two definitions, the second of which
+lands where he draws.
+
+🎨 **AND THE MOST INTERESTING RESULT IS THE ONE THAT FAILED QUIETLY: the weekly nesting does not
+reproduce.** His chart shows ONE base at two resolutions — daily 74d·27%, weekly 17w·27% / 23w·34% /
+26w·37%. Our definition, applied at weekly resolution, lands on an unrelated 2025 stretch. **A fixed
+percentage does not transfer across timeframes**, which means it is the wrong instrument even for the
+tie-break, never mind the base itself. **That is P2 measured rather than argued**, and it is the
+strongest evidence yet that this belongs in the vision lane (#519) rather than in a third parameter.
+
+⚠ **P8:** conditional on the current selector. This does not say the neglect model is wrong — it says
+no closed-form window we have tried captures it, and one of the two things it predicted (nesting
+across resolutions) demonstrably does not hold for our definition.
+
 ## 5. HOW TO USE THIS
 
 - **A labelled positive** for what he considers textbook: game-changing news, the move, the structure.

@@ -1,0 +1,144 @@
+#569 FOLLOW-UP — BASE RE-DERIVED (unanchored + recency tie-break); corpus measurement
+binary line = 74 sessions · ceiling raw 40% (unchanged) ·
+NEW: anchor released (base may end before D-1) + 90% recency tie-break ·
+outcome = house tailx, tail-first: share >=8xADR + P90, median secondary.
+
+==================================================================================================
+§MRNA-CALIBRATION — n=1, REFERENCE ONLY, NOT EVIDENCE. Excluded from every corpus
+statistic above/below. Pulled fresh read-only over ssh, mi_daily_closes, 277
+sessions 2025-07-14..2026-08-18.
+==================================================================================================
+  prior sessions available: 277 (2025-07-14..2026-08-18)
+
+  -- PRIMARY definition (ceiling=40% raw, RECENCY_TOL=0.90) --
+    base_days_unanchored = 106  depth = 38.4%  window = [2026-01-14 .. 2026-06-16]  gap-to-D-1 = 43d  censored=False
+    HIS ANNOTATION: 74 days · 27% (daily); 101 days · 34% (daily)
+    >> lands in the right STRUCTURAL neighborhood (a ~3.5-4mo base ending well
+       before the pre-gap run-up) but is NOT an exact numeric match — stated
+       plainly, not tuned to close the gap further.
+
+  -- sensitivity: same window at his literal 27% ceiling --
+    ceiling=27%: base_days= 83d  depth=26.6%  window=[2026-02-18..2026-06-16]  gap-to-D-1=43d
+    ceiling=34%: base_days= 86d  depth=33.9%  window=[2026-02-13..2026-06-17]  gap-to-D-1=42d
+    ceiling=37%: base_days= 90d  depth=37.0%  window=[2026-02-18..2026-06-26]  gap-to-D-1=36d
+    HIS: 74d/27%, 101d/34%, (37% not separately annotated on daily)
+
+  -- RECENCY_TOL sweep at 27% ceiling (derivation of the 10% tie-break, done
+     BEFORE the corpus test below — same window at every value 80-95%) --
+    tol=0.80: base_days= 83d  window=[2026-02-18..2026-06-16]
+    tol=0.85: base_days= 83d  window=[2026-02-18..2026-06-16]
+    tol=0.90: base_days= 83d  window=[2026-02-18..2026-06-16]
+    tol=0.95: base_days= 83d  window=[2026-02-18..2026-06-16]
+    tol=1.00 (NO tie-break, pure global max): base_days= 85d  window=[2025-08-18..2025-12-16]  <- picks the WRONG (unrelated, 2025) region
+    without the tie-break — the near-tie is only 2 sessions (85 vs 83), which a
+    chart-reader would obviously break toward recency. The tie-break's necessity was
+    DISCOVERED by looking at MRNA — stated plainly, not hidden; its 10% VALUE was
+    then swept (above) rather than picked to fit.
+
+  -- WEEKLY NESTING CHECK: does his 17w/23w/26w read as the SAME base at coarser
+     resolution, the way the daily 83/86/90d above does? --
+    ceiling=27% (his 17w): base_weeks= 19w  window=[2025-W32..2025-W50]  gap-to-D-1=36w
+    ceiling=34% (his 23w): base_weeks= 19w  window=[2025-W32..2025-W50]  gap-to-D-1=36w
+    ceiling=37% (his 26w): base_weeks= 21w  window=[2025-W31..2025-W51]  gap-to-D-1=35w
+    HONEST RESULT: this does NOT reproduce the daily window's Feb-Jun-2026 region —
+    at 27% it lands back in the same OLDER 2025 region the daily read needed the
+    tie-break to escape (the recent weekly candidate is ~16w vs a ~19w weekly global
+    max = 84%, just under the 90% tie-break line derived from DAILY data). The SAME
+    tie-break constant does not transfer across resolutions — direct evidence for P2
+    (chart reading is part art; a fixed percentage is the wrong instrument even for
+    the tie-break, not just for the base ceiling itself). Not smoothed over.
+
+  -- P1 CHECK: does the new definition exclude MRNA at ANY threshold he'd consider? --
+    at HIS OWN 27% ceiling (the tight, closest-to-his-annotation reading):
+      base_days_unanchored = 83 >= 74 -> PASSES, clears by 9 sessions
+    at the corpus PRIMARY 40% ceiling (unchanged from original registration):
+      base_days_unanchored = 106 >= 74 -> PASSES, clears by 32 sessions
+    -> MRNA is INCLUDED at every ceiling tested. The 27% number is the one to trust
+       (closest to his own annotation); 40% is not cherry-picked for a bigger margin.
+
+==================================================================================================
+POPULATION: PRIMARY — 749 tier-A gap days (_552_cohort.psv) — n=749 rows, 92 sessions
+==================================================================================================
+  COVERAGE (base duration, unanchored): 735/749 have >=20 H/L prior sessions (293 censored at the history edge)
+
+  binary decidability: 680/735 decidable at the 74d line (55 censored-below-74 excluded, never defaulted)
+  -- base_days_unanchored >= 74d vs shorter --   << PRIMARY (pre-registered)
+  LONG base (>=74d, unanchored)            n=389 (82s)  reach>=8xADR 35 = 9.0%  P90=+7.50x  med=+2.31x  winners=35
+  shorter (<74d)                           n=291 (75s)  reach>=8xADR 40 = 13.7%  P90=+9.77x  med=+2.20x  winners=40
+    perm p (session-shuffled): share>=8xADR p=0.1933 · P90 p=0.1843
+
+  quartiles of base_days_unanchored (descriptive) (cuts at 54.00 / 77.00 / 98.00):
+    Q1 (lowest)                            n=186 (73s)  reach>=8xADR 27 = 14.5%  P90=+9.77x  med=+1.96x  winners=27
+    Q2                                     n=190 (60s)  reach>=8xADR 19 = 10.0%  P90=+7.96x  med=+2.43x  winners=19
+    Q3                                     n=178 (63s)  reach>=8xADR 16 = 9.0%  P90=+7.50x  med=+2.36x  winners=16
+    Q4 (highest)                           n=181 (56s)  reach>=8xADR 16 = 8.8%  P90=+6.89x  med=+2.44x  winners=16
+
+  CONFOUND: Spearman(base_days_unanchored, ADR20) = -0.703 on n=735
+  -- binary repeated inside the low-ADR half --
+  LONG base (low-ADR half)                 n=288 (75s)  reach>=8xADR 30 = 10.4%  P90=+8.35x  med=+2.46x  winners=30
+  shorter (low-ADR half)                   n= 57 (25s)  reach>=8xADR  6 = 10.5%  P90=+6.78x  med=+2.80x  winners=6
+    perm p (session-shuffled): share>=8xADR p=0.9950 · P90 p=0.6451
+
+  -- binary repeated inside the high-ADR half --
+  LONG base (high-ADR half)                n=101 (51s)  reach>=8xADR  5 = 5.0%  P90=+6.24x  med=+1.79x  winners=5
+  shorter (high-ADR half)                  n=234 (72s)  reach>=8xADR 34 = 14.5%  P90=+10.20x  med=+2.00x  winners=34
+    perm p (session-shuffled): share>=8xADR p=0.0813 · P90 p=0.0802
+
+  descriptive: base_gap_days (excluded launch-leg length), median 5d (p25 0 / p75 28)
+  325/735 (44%) of selected bases still END at D-1 (gap=0) — the anchor-release only matters for the rest
+
+  POST-HOC (not pre-registered): rows where the anchor-release MOVED the base materially — base_gap_days > 28d (top quartile, n=183) —
+  i.e. the MRNA-shaped subpopulation this fix targets:
+  -- base_days_unanchored >= 74d vs shorter, gap-moved subpop only --
+  LONG base (gap-moved)                    n= 59 (30s)  reach>=8xADR  2 = 3.4%  P90=+4.74x  med=+1.80x  winners=2
+  shorter (gap-moved)                      n= 92 (46s)  reach>=8xADR 10 = 10.9%  P90=+9.94x  med=+1.12x  winners=10
+    perm p (session-shuffled): share>=8xADR p=0.1626 · P90 p=0.0552
+
+
+==================================================================================================
+POPULATION: SECONDARY — live alert corpus with outcomes — n=205 rows, 55 sessions
+==================================================================================================
+  COVERAGE (base duration, unanchored): 205/205 have >=20 H/L prior sessions (31 censored at the history edge)
+
+  binary decidability: 203/205 decidable at the 74d line (2 censored-below-74 excluded, never defaulted)
+  -- base_days_unanchored >= 74d vs shorter --   << PRIMARY (pre-registered)
+  LONG base (>=74d, unanchored)            n=162 (54s)  reach>=8xADR  8 = 4.9%  P90=+5.47x  med=+1.84x
+  shorter (<74d)                           n= 41 (25s)  reach>=8xADR  3 = 7.3%  P90=+5.26x  med=+1.92x
+    perm p (session-shuffled): share>=8xADR p=0.7741 · P90 p=0.8654
+
+  quartiles of base_days_unanchored (descriptive) (cuts at 76.00 / 110.00 / 147.00):
+    Q1 (lowest)                            n= 52 (28s)  reach>=8xADR  4 = 7.7%  P90=+5.26x  med=+1.97x
+    Q2                                     n= 51 (31s)  reach>=8xADR  1 = 2.0%  P90=+5.63x  med=+2.07x
+    Q3                                     n= 51 (26s)  reach>=8xADR  5 = 9.8%  P90=+6.63x  med=+1.78x
+    Q4 (highest)                           n= 51 (33s)  reach>=8xADR  2 = 3.9%  P90=+4.54x  med=+1.82x
+
+  CONFOUND: Spearman(base_days_unanchored, ADR20) = -0.729 on n=205
+  -- binary repeated inside the low-ADR half --
+  LONG base (low-ADR half)                 n= 99 (40s)  reach>=8xADR  5 = 5.1%  P90=+5.23x  med=+1.93x
+  shorter (low-ADR half)                   n=  3 ( 2s)  reach>=8xADR  0 = N<10  P90=  N<20  med=+0.45x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+  -- binary repeated inside the high-ADR half --
+  LONG base (high-ADR half)                n= 63 (37s)  reach>=8xADR  3 = 4.8%  P90=+5.68x  med=+1.76x
+  shorter (high-ADR half)                  n= 38 (25s)  reach>=8xADR  3 = 7.9%  P90=+5.00x  med=+1.94x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 p=0.6389
+
+  descriptive: base_gap_days (excluded launch-leg length), median 47d (p25 0 / p75 78)
+  56/205 (27%) of selected bases still END at D-1 (gap=0) — the anchor-release only matters for the rest
+
+  POST-HOC (not pre-registered): rows where the anchor-release MOVED the base materially — base_gap_days > 78d (top quartile, n=51) —
+  i.e. the MRNA-shaped subpopulation this fix targets:
+  -- base_days_unanchored >= 74d vs shorter, gap-moved subpop only --
+  LONG base (gap-moved)                    n= 42 (22s)  reach>=8xADR  2 = 4.8%  P90=+5.47x  med=+1.65x
+  shorter (gap-moved)                      n=  8 ( 7s)  reach>=8xADR  0 = N<10  P90=  N<20  med=+1.85x
+    perm p (session-shuffled): share>=8xADR N too thin · P90 N too thin
+
+
+==================================================================================================
+NOTE ON THE RECORDER: this pass MEASURES ONLY. `alert_rank_shadow.py` is UNCHANGED —
+`compute_base_duration`'s `base_days_raw40`/`base_days_adr6` (D-1-anchored) still
+record every row exactly as #569 shipped. This file's `compute_base_duration_unanchored`
+is NOT imported or called anywhere outside this probe. Promotion (replacing or
+supplementing the recorded axis) needs its own #568-pattern shadow-column change +
+behavioural tests + mutation proof, deferred pending this corpus read + operator call.
+==================================================================================================
