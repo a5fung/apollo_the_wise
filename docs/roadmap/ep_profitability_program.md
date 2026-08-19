@@ -158,6 +158,60 @@ was the only question I asked. **The question Rule 0 demands was not asked: woul
 EXCLUDED MRNA?** Neither is wired into the composite, so nothing was at risk — but that check is now
 mandatory before any axis is promoted, and it must be run on those two.
 
+### 🎨 RULE 0b — CHART READING IS PART ART. A RIGID THRESHOLD IS THE WRONG INSTRUMENT. (operator, 2026-08-19)
+
+> *"the meta-point here is that its not a perfect science, there's art in looking at charts and
+> patterns, so we can't be 100% rigid which is hard to codify and where potentially LLM can better
+> mimic what a human may see and the number can't tell. The basing prior to the EP can be of many
+> ranges, can be odd shaped, can be anything but we see a basing structure nonetheless. This is
+> similar the the undercut and rally, SMA touch, where it may not actually touch an SMA or actually
+> undercut, there's discretion in it where one can judge it's close enough for this case, etc."*
+
+**He said this immediately after Rule 0's first check found that our long-base axis measures MRNA at
+39 sessions while he annotates 74 — and it explains that gap, and several others, as ONE failure.**
+
+**THE PATTERN, and it is everywhere in this programme:**
+
+| what a human does | what we coded | how it failed |
+|---|---|---|
+| sees a basing structure, any shape, any length | largest trailing window with band ≤40%, anchored at the gap day | **39 vs 74 sessions on his own reference EP** |
+| "it undercut and reclaimed" — or came close enough | `low < EP-day low AND close > it` | the near-miss class is invisible to a touch test |
+| "it touched the 10-day" | price ≤ SMA10 | a turn 1.5% above never registers |
+| "it's near the pivot" | limit AT the pivot | **INTC bottomed 1.5% above a $79.62 limit, never filled, then ran to $130.57** |
+| "that's a real gap" | `gap ≥ 10%` at one 09:31 print | **ARGX read 9.5%, was skipped, closed +16% at an all-time high** |
+
+**Every row is the same error: a continuous, contextual judgement forced into a binary test.** He
+had already named the entry-side half on 08-16 (PROXIMITY, NOT TOUCH — `delayed_ep_reentry.md`) and
+the filter-side half on 08-18 (zones with triggers, not hard lines). **This is the general statement:
+it applies to STRUCTURE too, and structure is where we have been most confident that a number would
+do.**
+
+**🔑 WHAT HE IS POINTING AT AS THE INSTRUMENT: an LLM/vision read may capture what the number cannot.**
+Not because a model is smarter, but because *"basing structure"* is a family of shapes with no
+closed-form definition — and pattern recognition over a rendered chart is a better fit for that than
+a threshold over a window. **This is exactly #519's premise** (chart-vision: prove it OFFLINE on the
+full cohort, then earn its way back in), which is currently parked awaiting an operator-endorsed
+scorer. **His statement here is the strongest argument yet for un-parking it**, and it also supplies
+the scoring frame the task was missing: the test is not "does the model agree with a threshold", it
+is **"does it see what he sees"** — with his labelled set (RULE 0's fixture, #577) as ground truth.
+
+**HOW THIS CHANGES WHAT WE BUILD, concretely:**
+1. **Stop trying to find the right threshold for a shape.** If a criterion needs a number to stand
+   in for a judgement, that is a signal the instrument is wrong, not that the number needs tuning.
+2. **Where a number IS the right instrument, admit a BAND plus a trigger** rather than a line — the
+   pivot ladder's shape, generalised.
+3. **A discretionary criterion needs a discretionary reader.** That means the vision lane, judged
+   against operator labels, not a hand-tuned constant.
+4. ⚠ **And it does NOT mean "remove the filters"** — his 08-18 words stand: *some floor may* make
+   sense, *at the end of the day there needs to be some gap*, and the measured evidence says
+   admitting more names below the floor DILUTES. **The question is the SHAPE of the criterion, never
+   its existence.**
+
+⚠ **THE HONEST TENSION, stated so it is not lost:** discretion is unfalsifiable if we let it be.
+Rule 0's labelled set is what keeps this from becoming "the model said so" — a discretionary reader
+still has to clear the must-not-miss fixture and then earn its keep on the corpus. **Art in the
+instrument, rigour in the evaluation.**
+
 ### 🧭 TWO RULES FOR HOW THIS WORK IS RUN (operator, 2026-08-18)
 
 > *"we're not trying to catch everything or have the avg perform at specific range, what we want is
