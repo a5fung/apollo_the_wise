@@ -115,6 +115,49 @@ is irreversible.
 earliest 2026-10-15) should become a RUNNING read in the shape of `stop_2r_running_comparison` —
 reported from the first sample with its confidence stated, never a single verdict on a distant date.
 
+### 🔴 RULE 0 — A REAL EP MUST NEVER BE MISSED. THAT IS THE TEST. (operator, 2026-08-19)
+
+> *"regardless of conclusions, EPs like MRNA cannot be missed, that's the first thing; it may not
+> work every time, that's the low winrate / rarity, but it should not miss a real EP which is the
+> true test."*
+
+**This OUTRANKS every statistical result in this document, including the nulls.** It is a
+constraint, not a preference, and it inverts the criterion I have been optimising against.
+
+**THE ASYMMETRY, stated plainly:**
+- **A real EP that our system does not surface is a FAILURE.** Full stop. It is unrecoverable —
+  a name we never see cannot be ranked, entered, or exited.
+- **A real EP we surface and trade that then loses is NOT a failure.** That is the low win rate and
+  the rarity, and it is priced into the plan's own arithmetic (~20% win rate, ~4R average winner to
+  break even).
+
+**WHAT THIS CHANGES ABOUT HOW WE EVALUATE A SELECTION CHANGE.** Aggregate separation — "does this
+axis raise the share reaching ≥8×ADR" — has been my primary test. It is now the SECOND test. The
+first is: **would this criterion have missed a known real EP?** A change that improves aggregate
+statistics while excluding a real EP **FAILS**, however good the p-value.
+
+**Mechanically, every future selection change is checked in this order:**
+1. **RECALL against the labelled must-not-miss set** — would every known real EP still be surfaced?
+   A single exclusion is a blocking objection, not a trade-off to weigh.
+2. **THEN** aggregate separation, tail-first, on the corpus.
+3. **THEN** the winner-density-of-the-slot-pool measure (the SELECTION-IS-BROADER rule below).
+
+**Why this is not just conservatism:** the sufficiency target needs ~4 converted tail winners over
+4½ months. At that count, **one missed EP is a material fraction of the whole objective.** Filters
+are cheap to tighten and expensive to be wrong about, because the cost of a false EXCLUSION is
+invisible — it leaves no row, no skip reason, no trace — while the cost of a false inclusion is a
+−1R loss we can see and measure. **The measurable error is the harmless one.** That asymmetry is
+exactly why recall has to be the primary gate rather than an afterthought.
+
+▶ **THE LABELLED SET STARTS WITH MRNA 2026-08-19** (`docs/methodology/ep_reference_mrna_2026-08-19.md`),
+which he named himself. It needs to become a real regression fixture rather than a doc reference —
+filed as a task.
+
+⚠ **AND IT REFRAMES TODAY'S NULLS (#569).** Both axes came back null on aggregate separation, which
+was the only question I asked. **The question Rule 0 demands was not asked: would either axis have
+EXCLUDED MRNA?** Neither is wired into the composite, so nothing was at risk — but that check is now
+mandatory before any axis is promoted, and it must be run on those two.
+
 ### 🧭 TWO RULES FOR HOW THIS WORK IS RUN (operator, 2026-08-18)
 
 > *"we're not trying to catch everything or have the avg perform at specific range, what we want is
