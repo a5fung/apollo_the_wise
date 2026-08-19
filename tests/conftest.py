@@ -143,3 +143,34 @@ def fake_httpx_client(status_code=200, json_body=None, raise_on_status=False):
 
     return _FakeAsyncClient
 
+
+# ─── #577 must-not-miss debt summary — always printed, no -v needed ────────────────────────────
+# P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES, operator 2026-08-19): "a real EP
+# must never be missed." tests/fixtures/must_not_miss_eps.py pins today's KNOWN exclusions as a
+# recorded debt (BASELINE_DEBT) so tests/test_577_must_not_miss_eps.py can be green without hiding
+# them — but a debt that only shows up under -v is functionally hidden. pytest_terminal_summary
+# runs unconditionally at the end of every session regardless of verbosity flags, so this is the
+# one place a "print" is guaranteed visible in normal `pytest` output. Deliberately defensive:
+# a broken import here must never take down an unrelated test run's summary.
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    try:
+        from tests.fixtures import must_not_miss_eps as _mnm
+    except Exception:
+        return
+    debt_members = [
+        m for m in _mnm.MUST_NOT_MISS
+        if not m.excluded and (m.ticker, m.alert_date) in _mnm.BASELINE_DEBT
+    ]
+    if not debt_members:
+        return
+    total = sum(1 for m in _mnm.MUST_NOT_MISS if not m.excluded)
+    gates = sorted({g for m in debt_members for g in _mnm.BASELINE_DEBT[(m.ticker, m.alert_date)]})
+    terminalreporter.write_line("")
+    terminalreporter.write_line(
+        f"[#577 must-not-miss] {len(debt_members)} of {total} labelled real EPs are currently "
+        f"EXCLUDED by the live selection stack (all {', '.join(gates)}) — recorded debt against "
+        f"P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES), recorded "
+        f"{_mnm.BASELINE_RECORDED_DATE}. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.",
+        yellow=True,
+    )
+
