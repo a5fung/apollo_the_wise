@@ -696,7 +696,32 @@ async def submit_trade_entry(
                 _CAP_LOCK_NAMESPACE, account_mode,
             )
             open_count = await count_open_positions(conn, account_mode)
-            if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
+            # #576 (2026-08-19, MRNA): a same-ticker/alert_date/account_mode
+            # racer can commit its row in the gap between STEP 1's dedup
+            # check (run OUTSIDE this lock — the exact TOCTOU window #461
+            # fixed for the CAP count) and this recheck. When that racer is
+            # THIS candidate's own sibling (the dual bar_stream/cron ORB
+            # trigger, #475), the row that pushed open_count to/past the cap
+            # can be this ticker's OWN just-filled entry — the operator then
+            # reads "max positions reached" on a name already in the book,
+            # which looks like a missed trade on a stock we hold. A same-
+            # ticket race that lands BEFORE the cap is full already resolves
+            # correctly via the INSERT's own `ON CONFLICT DO NOTHING` below
+            # (silent WINDOW_DUPLICATE — proven by
+            # test_same_ticker_conflict_still_window_duplicate_no_lock_leak);
+            # the ONLY gap is when the cap check fires FIRST and never lets
+            # that ON CONFLICT branch run. Checking for a same-key row before
+            # the cap short-circuit closes that gap without loosening the cap
+            # for anyone else's genuinely-new candidacy — a real cap block
+            # for a DIFFERENT ticker is completely unaffected.
+            _self_row_exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM mi_live_trades "
+                "WHERE ticker=$1 AND alert_date=$2 AND account_mode=$3)",
+                ticker, today, account_mode,
+            )
+            if _self_row_exists:
+                pass  # let the INSERT below hit ON CONFLICT DO NOTHING -> WINDOW_DUPLICATE
+            elif open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
                 # Byte-identical reason format to the STEP-2 gate — the
                 # ledger's 'cap_blocked' mapping + the #197 CAP+1 alert both
                 # match on it.

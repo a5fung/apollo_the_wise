@@ -1731,15 +1731,131 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                         f"trade_id={stop_trade['id']}"
                     )
             else:
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
-                    f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
-                    f"Remediation runs at 4:05 PM ET — monitor."
-                )
-                logger.warning(
-                    f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
-                    f"trade_id={stop_trade['id']}"
-                )
+                # #576 (2026-08-19, MRNA): #566 recorded at ship time that
+                # `get_open_orders` HIDES a held OCO stop leg — so
+                # `_broker_confirm_replacement_stop` can structurally miss a
+                # real, live replacement even after both the immediate check
+                # AND the #475 3-second recheck. The MRNA partial-exit
+                # sequence (cancel old stop -> place reduced stop -> place the
+                # OCO sell -> arm the breakeven stop, entirely inside ~330ms)
+                # is exactly that shape: the broker-listing check never found
+                # the leg, and the operator got "Position unprotected" (even
+                # showing the stale PRE-partial share count) for a position
+                # that was never naked.
+                #
+                # Extend the #561/#567 `_agrees` idiom here too — but there is
+                # NO broker-confirmed `replacement` object on this branch
+                # (that is why we're here). A first version of this fix
+                # corroborated against a live re-read of mi_live_trades — but
+                # THIS SAME HANDLER unconditionally NULLS that trade's
+                # stop_order_id a few lines above (`cancel_or_reject_null`,
+                # no compare-and-set), the instant the cancel event arrives.
+                # If that null-write lands AFTER order_manager's own DB write
+                # (a plain WS-delivery timing question, not guaranteed
+                # either way), it clobbers the good pointer and nothing
+                # rewrites it before this branch reads it — silently making
+                # the suppression inert on the very race it exists for.
+                #
+                # Fix: corroborate between TWO INDEPENDENTLY-WRITTEN,
+                # IMMUTABLE mi_audit_log rows instead of a live, mutable DB
+                # column this handler itself can clobber —
+                # `partial_exit_breakeven_armed` (order_manager.py ~3508,
+                # written ONLY after the broker POSITIVELY CONFIRMED the new
+                # stop is live via its own polling loop — stronger evidence
+                # than a broker-listing read, since #566 already proved that
+                # listing can miss a live OCO leg) and
+                # `partial_exit_stop_telegram_pending` (~3541, written right
+                # before the Telegram that already covers this replacement).
+                # Both come from the SAME execute_partial_exit call and name
+                # the SAME be_stop_id/price — requiring them to agree with
+                # EACH OTHER (not with anything this handler can mutate)
+                # means nothing in this code path can ever falsify the match.
+                #
+                # POSITIVE-EVIDENCE ONLY, mirrors #433: either row missing,
+                # a row for a different trade, the two rows' new_stop_id not
+                # matching, a price mismatch, or the lookup itself failing —
+                # ALL count as disagreement and still alarm. Silence is never
+                # the default.
+                _naked_agrees = False
+                _pending_new_stop_id = None
+                _pending_new_stop_price = None
+                _armed_new_stop_id = None
+                _armed_stop_price = None
+                try:
+                    async with pool.acquire() as _conn4:
+                        _evidence_rows = await _conn4.fetch(
+                            """
+                            SELECT event_type, detail FROM mi_audit_log
+                            WHERE event_type IN ('partial_exit_stop_telegram_pending',
+                                                  'partial_exit_breakeven_armed')
+                              AND created_at > NOW() - INTERVAL '5 minutes'
+                            ORDER BY created_at DESC
+                            """
+                        )
+                    for _row in (_evidence_rows or []):
+                        try:
+                            _detail = json.loads(_row["detail"])
+                        except Exception:  # loud-ok: a candidate row is skipped, not the check — mirrors the sibling branch's own malformed-row handling
+                            continue
+                        if str(_detail.get("trade_id")) != str(stop_trade["id"]):
+                            continue
+                        _etype = _row["event_type"]
+                        if _etype == "partial_exit_stop_telegram_pending" and _pending_new_stop_id is None:
+                            _pending_new_stop_id = _detail.get("new_stop_id")
+                            _pending_new_stop_price = _detail.get("new_stop_price")
+                        elif _etype == "partial_exit_breakeven_armed" and _armed_new_stop_id is None:
+                            _armed_new_stop_id = _detail.get("new_stop_id")
+                            _armed_stop_price = _detail.get("stop_price")
+                    _naked_agrees = bool(
+                        _pending_new_stop_id
+                        and _armed_new_stop_id
+                        and _pending_new_stop_price is not None
+                        and _armed_stop_price is not None
+                        and str(_pending_new_stop_id) == str(_armed_new_stop_id)
+                        and abs(float(_pending_new_stop_price) - float(_armed_stop_price)) < 0.01
+                    )
+                except Exception as _e:
+                    logger.warning(
+                        f"WS [{account_mode}]: naked-alarm evidence re-check failed for "
+                        f"{symbol} ({_e}) — treating as disagreement (fail-safe: still alarm)"
+                    )
+                    _naked_agrees = False
+
+                if _naked_agrees:
+                    await log_audit_event(
+                        "naked_alarm_suppressed_silent",
+                        f"{symbol}: WS naked-position check agrees with order_manager's "
+                        f"own recorded evidence (stop {_pending_new_stop_id}, "
+                        f"${float(_pending_new_stop_price):.2f}) for trade_id="
+                        f"{stop_trade['id']} — Telegram suppressed; the broker-listing "
+                        f"miss is the known #566 OCO-leg-hidden gap",
+                        json.dumps({
+                            "trade_id": stop_trade["id"],
+                            "ticker": symbol,
+                            "account_mode": account_mode,
+                            "cancelled_order_id": order_id,
+                            "pending_new_stop_id": _pending_new_stop_id,
+                            "pending_new_stop_price": _pending_new_stop_price,
+                            "armed_new_stop_id": _armed_new_stop_id,
+                            "armed_stop_price": _armed_stop_price,
+                            "event_norm": event_norm,
+                        }),
+                    )
+                    logger.info(
+                        f"WS [{account_mode}]: stop-leg {event_norm} but order_manager's "
+                        f"own evidence + DB agree a replacement is live for {symbol} "
+                        f"trade_id={stop_trade['id']} — naked Telegram suppressed"
+                    )
+                else:
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
+                        f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
+                        f"Remediation runs at 4:05 PM ET — monitor."
+                    )
+                    logger.warning(
+                        f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
+                        f"trade_id={stop_trade['id']}"
+                    )
         return
 
     # 3. Pending managed exit (partial/full) cancelled or rejected before fill.
