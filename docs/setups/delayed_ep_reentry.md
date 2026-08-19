@@ -1,5 +1,8 @@
 # Setup SSoT — Delayed-EP Re-entry (tiny-cap fast-runner) · #270
 
+> 📜 **THE PRINCIPLES (P1-P10) + THE GOAL live in `docs/roadmap/ep_profitability_program.md` § THE PRINCIPLES.** Read them before any analysis, card or proposal here — they are the operator's own rules, in precedence order, and they govern this document. Cite by name (P1, P2…). ⚖ THE LINE sits above all of them.
+
+
 **Status: PRE-DEPLOY SPEC (shadow-first). Analysis + tuning COMPLETE 2026-06-14 (gate-free);
 deployable wiring is the first post-#277-gate build. This file is the canonical definition
 the deployment references — read it + `docs/setups/CHANGE_PROCESS.md` before any change.**

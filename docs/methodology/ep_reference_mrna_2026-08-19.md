@@ -1,5 +1,8 @@
 # THE REFERENCE EP — MRNA, 2026-08-19
 
+> 📜 **THE PRINCIPLES (P1-P10) + THE GOAL live in `docs/roadmap/ep_profitability_program.md` § THE PRINCIPLES.** Read them before any analysis, card or proposal here — they are the operator's own rules, in precedence order, and they govern this document. Cite by name (P1, P2…). ⚖ THE LINE sits above all of them.
+
+
 **This is the canonical worked example of what a real EP looks like.** The operator named it
 himself and asked that it be durably captured and easy to find:
 

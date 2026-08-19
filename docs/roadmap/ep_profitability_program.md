@@ -34,6 +34,125 @@ a specified proposal, never a request to supply material he already supplied.
 
 ---
 
+## 📜 THE PRINCIPLES — read this before any analysis, any card, any proposal
+
+**Consolidated 2026-08-19 at the operator's instruction:** *"There's now several top-level rules
+we've set… let's capture all of them together into a top-level section… so anytime we do new
+analysis, we're grounded with the same principles and goals. I don't want these to be lost,
+fragmented or missed."*
+
+**These are HIS rules, in his words, with dates.** They are listed in PRECEDENCE ORDER: when two
+conflict, the lower number wins. Each is expanded in its own section below; this is the index and
+the contract. **Cite them by name** (P1, P2…) in cards, commits and reports.
+
+---
+
+### THE GOAL (everything below serves this)
+> **Make EPs profitable: filter the universe on all the factors that matter, not just a gap, so a
+> small win rate is carried by winners large enough to give positive expectancy.**
+
+**The number:** ~**4 converted tail winners over 4½ months — roughly one a month.** Not 78, not 63.
+Four. At a ~20% win rate with 1R losers the average winner must exceed **4R just to break even**.
+**Win rate and reward are ONE target, never two.**
+
+---
+
+### P1 — A REAL EP MUST NEVER BE MISSED *(2026-08-19)*
+> *"EPs like MRNA cannot be missed, that's the first thing; it may not work every time, that's the
+> low winrate / rarity, but it should not miss a real EP which is the true test."*
+
+**Recall outranks every statistic in this document.** A real EP we never surface is a failure and
+is unrecoverable. A real EP we surface and trade that loses is NOT a failure — that is the win rate,
+already priced in. **A false EXCLUSION leaves no row, no skip reason, no trace; a false inclusion is
+a −1R loss we can see. The measurable error is the harmless one.**
+▶ **Every selection change is tested in this order: (1) would it miss a known real EP — a single
+exclusion is a blocking objection; (2) aggregate separation, tail-first; (3) winner density of the
+slot pool.** Fixture: #577, MRNA member one.
+
+### P2 — CHART READING IS PART ART; A RIGID THRESHOLD IS THE WRONG INSTRUMENT *(2026-08-19)*
+> *"its not a perfect science, there's art in looking at charts and patterns, so we can't be 100%
+> rigid… The basing prior to the EP can be of many ranges, can be odd shaped, can be anything but we
+> see a basing structure nonetheless… similar the the undercut and rally, SMA touch, where it may not
+> actually touch an SMA or actually undercut, there's discretion in it."*
+
+**If a criterion needs a number to stand in for a judgement, the INSTRUMENT is wrong — not the
+number untuned.** Where a number IS right, use a **band plus a trigger**, never a line
+(PROXIMITY, NOT TOUCH). A discretionary criterion needs a discretionary reader (#519 vision lane),
+scored against his labelled set — *"does it see what he sees"*, not *"does it match a threshold"*.
+⚠ **NOT "remove the filters"**: *some floor may* make sense, *there needs to be some gap*, and
+loosening measurably DILUTES. **The question is the SHAPE of the criterion, never its existence.**
+⚠ Discretion is unfalsifiable if we let it be. **Art in the instrument, rigour in the evaluation.**
+
+### P3 — HUNT THE TAIL, NOT THE AVERAGE *(2026-08-16)*
+> *"we need to remember EPs are rare and winrate is low… if we hit a real EP we gain 10X, that's the
+> distinction here."*
+
+**A median cannot see a 10x.** Report P90 and the share reaching a threshold, plus the SUM.
+Median-first statistics are banned as the primary read.
+
+### P4 — RETURN ON CAPITAL, NOT EXPECTANCY PER TRADE *(2026-08-15)*
+> *"funds are limited… eg 5 position cap"* · *"opportunity cost of taking a sub optimal stock, even
+> if we pick a winning one it can a marginal win vs true EP."*
+
+**Slots are finite.** Every loser taken occupies a slot a winner could have had. **MRNA vs MRVL,
+2026-08-19: both HIGH, both entered, book at 5/5 — only the ORDER separated a winner from a loser.**
+
+### P5 — SELECTION IS BROADER THAN "DO WE FIND THEM" *(2026-08-18)*
+> *"this only looks at what we find and not what we miss… 1) better filter out losers so we won't
+> potentially trade them and 2) find more potential winners."*
+
+The metric is the **winner DENSITY of the pool competing for the slots**, not the winner count.
+**Every selection read must report BOTH directions** — winners admitted AND losers excluded. A
+change that surfaces the same winners while admitting fewer losers is a real gain.
+
+### P6 — BIAS FOR ACTION on evidence and timing decisions *(2026-08-18)*
+> *"we can't assume we have the right system now, we're still seeking it, so unless there's no reason
+> to take action or risk is too high, we should bias for action."*
+
+Before proposing ANY wait: state the cost of acting, the cost of waiting, and what the wait buys.
+*"A cleaner number on a system we already suspect is wrong"* is not a reason to wait. Prefer a
+**running read reported from n=1 with its confidence stated** over a gated one-shot on a distant date.
+**Worked example: the 2R stop — I argued for more evidence, he ruled to swap, and AMLX proved him
+right in eight minutes.**
+
+### P7 — REASSESS AGAINST THE WHOLE PICTURE AFTER EVERY PATH *(2026-08-18)*
+> *"I feel we go down on path and find nothing, go down another and find nothing, and end up with a
+> dozen path with nothing; after each we need to reassess how it fits to the broader picture."*
+
+After each finding the question is **not** "what is the next test" but **"what does this change about
+the picture, and where does the remaining probability mass now sit."** A negative verdict must name
+its own SCOPE and what remains UNTESTED.
+
+### P8 — CONCLUSIONS ARE PROVISIONAL, AND CONDITIONAL ON SELECTION *(2026-08-18)*
+> *"your analysis may be correct, but it's going to be affected by say our selective process which
+> still need work… I don't want to go too deep now and then conclude something and never come back
+> to it."*
+
+Every downstream result was measured on the population **our current selector produced**. A negative
+downstream read says *"this does not work on the names we currently pick"* — never *"this does not
+work"*. **Findings fold in as provisional data; they never close an avenue.** A material selection
+change RE-OPENS the downstream reads, which are cheap ($0, offline) to re-run.
+
+### P9 — PRIORITY: MAKE EXISTING EP PROFITABLE BEFORE NEW SETUPS
+Consolidation / HTF / wick are important-not-urgent and must not graduate to LIVE until EP works.
+
+### P10 — SETUP vs FAMILY IS A DEFINITION, NOT A PREFERENCE
+A **SETUP** has a defined BUY POINT and STOP. A **FAMILY** is a chart condition hosting several
+setups. Continuation is a FAMILY. Never call a family, a detector, or a stage-board a setup.
+(Full text: `CLAUDE.md`.)
+
+---
+
+⚖ **AND ABOVE ALL OF THEM: THE LINE.** Strategy, entry/sell discipline, sizing, targets, safeguards
+and live trade state are the operator's SOLE authority. These principles guide ANALYSIS; none of them
+authorises a change. (`CLAUDE.md`.)
+
+**Referenced from:** `PLAN.md` (project header) · `docs/methodology/ep_reference_mrna_2026-08-19.md` ·
+`docs/methodology/operator_shared_notes.md` · `docs/methodology/structure_model.md` ·
+`docs/setups/delayed_ep_reentry.md` · `docs/setups/magna53_ep.md`.
+
+---
+
 ## GOAL — and the rule that governs every finding below
 
 **GOAL — make EPs PROFITABLE: filter the universe on all the factors that matter, not just a gap,

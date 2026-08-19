@@ -1,5 +1,8 @@
 # MAGNA53 EP — Episodic Pivot
 
+> 📜 **THE PRINCIPLES (P1-P10) + THE GOAL live in `docs/roadmap/ep_profitability_program.md` § THE PRINCIPLES.** Read them before any analysis, card or proposal here — they are the operator's own rules, in precedence order, and they govern this document. Cite by name (P1, P2…). ⚖ THE LINE sits above all of them.
+
+
 **Phase**: Live (paper). Production-active.
 **Origin**: Pradeep Bonde Episodic Pivot methodology + Marios Stamatoudis adaptation.
 **Code**: `agents/market_intelligence/ep_detector.py`, scheduler 7:00–10:00 ET cron every 5 min.

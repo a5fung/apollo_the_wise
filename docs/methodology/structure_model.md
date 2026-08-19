@@ -1,5 +1,8 @@
 # CHART STRUCTURE — the operator's model, and what is encoded
 
+> 📜 **THE PRINCIPLES (P1-P10) + THE GOAL live in `docs/roadmap/ep_profitability_program.md` § THE PRINCIPLES.** Read them before any analysis, card or proposal here — they are the operator's own rules, in precedence order, and they govern this document. Cite by name (P1, P2…). ⚖ THE LINE sits above all of them.
+
+
 **SSoT for structure. Read this before touching anything structure-related** — the encoder, the
 grade, a "does structure predict X" question, or any proposal to add a structure feature.
 Created 2026-08-16 at his instruction: *"make sure to capture this conversation as context going
