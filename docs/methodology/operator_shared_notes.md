@@ -905,3 +905,54 @@ answered.
 Scored **115.2 HIGH**, entered 09:31:09 at 120.75, banked the +2R partial the same day (+$17.71),
 3 shares held at breakeven. MRVL scored 69.1 the same morning, was also entered, and stopped for
 −0.87R — with the book at 5/5, **the ranking decided the outcome.** Full record: `ep_profitability_program.md` §0a.
+
+### 2026-08-19 (same day, his answers to the two questions above)
+
+**1. PEG = POWER EARNINGS GAP — and it is a DIFFERENT, WEAKER thing than an EP.**
+
+> *"PEG is power earnings gap, a gap up after earnings. EPs are more powerful and rare."*
+
+So the trader's *"not to be confused with a PEG"* is a **quality distinction, not a pedantic one**:
+a gap after earnings is the common case; an EP is the rare, more powerful case. **The separator is
+the CATALYST, not the gap** — an earnings beat is scheduled and expected-in-kind; an EP's catalyst is
+something the market had no way to price.
+▶ **This is the same axis as the expectedness work (#568)**: `expct_scheduled` marks 2.02/10-Q/10-K
+as SCHEDULED, and a PEG is precisely a scheduled-catalyst gap. **The axis we shipped 08-18 is
+therefore measuring the EP-vs-PEG line directly** — unscheduled reached ≥8×ADR 11.6% vs 3.8%.
+⚠ Do NOT restate this as "EPs exclude earnings gaps" — he did not say that. He said EPs are more
+powerful and rarer. Earnings can presumably still produce one; it is the bar that differs.
+
+**2. THE BIG BASE IS A PROXY FOR NEGLECT — that is the mechanism, and I had it wrong.**
+
+> *"i feel the point here is that there's a large base, so stock had time to build price structure
+> and have a base to launch from if it so do so. Also, with a large base there's indication of
+> neglect (at least there's no major movements up or down) so the news moving it significantly is
+> truly unexpected and/or gamechanging."*
+
+I transcribed the base as **tightness** (duration × depth). **He is making a different and better
+point, and it has two halves:**
+
+- **(a) A LAUNCHING PLATFORM.** Time spent basing = price structure built = something to launch
+  FROM. Mechanical, and it is what the supply-ladder model already describes.
+- **(b) 🔑 NEGLECT — and this is the half that matters.** A long base with **no major move in EITHER
+  direction** is evidence nobody was paying attention. **So when news moves it hard, the size of the
+  reaction proves the news was genuinely unexpected.** The base does not predict the move; it
+  CERTIFIES the surprise.
+
+**Why (b) reframes the whole selection surface:** it links three separate findings into one
+mechanism we can state plainly.
+- The expectedness axis (#568) tries to read surprise from the CATALYST's own text/form.
+- **The base reads the SAME surprise from the PRICE — independently, and without needing to parse
+  any news.** A neglected stock that suddenly moves 19×ATR is, by construction, reacting to
+  something unpriced.
+- His 08-16 RS-trajectory comment — *"the tail is where i'd expect neglect to form"* — is this same
+  idea one level up, and the weekend read that winners were *quieter and less extended* is its
+  measurable shadow.
+
+▶ **WHAT TO MEASURE, and it is not what I first wrote:** not just duration × depth, but
+**duration × QUIETNESS** — how long, and how little the stock moved in EITHER direction, before the
+event. Absence of large up moves matters as much as absence of large down moves. **A tight base and
+a neglected base are not the same object**, and the neglect reading is the one that carries a causal
+story about why the reaction was large.
+⚠ Still one case. MRNA is a reference example, not evidence — the test is whether a
+duration×quietness term separates winners on the corpus.
