@@ -250,3 +250,37 @@ given spread/persistence rule would have fired on historically, and how many of 
 ⚠ Provenance: a third-party tweet he endorsed as the *shape* of what he wants. It is a specification
 of the OUTPUT, not evidence that the signal is profitable. Those are separate questions and the
 second one is unmeasured.
+
+### ✅ ALREADY BUILT AND FIRING — verified 2026-08-19, same day he asked
+
+He asked how this fits the weekly asset-class summary. **It already IS that summary's first axis.**
+`strength_map.py`'s DIRECTION read is literally *"anchor vs its equity expression — are the miners
+outrunning the metal?"*, and running it live on 2026-08-19 returns:
+
+```
+                -- 1M --        -- 3M --
+                asset   stks    asset   stks
+Precious metals +10.5  +25.8    -11.3   +1.0
+                 stocks lead by 15.3pts
+```
+
+**That is his NEM/GLD tweet, computed.** +10.5 asset vs +25.8 stocks over 1M — the same divergence,
+on the basket rather than the single name (the tweet's NEM +38.6 / GLD +11.7 is one constituent's
+sharper version). Energy shows the same shape at +8.3pts. **So the capability is not a gap.**
+
+▶ **THE REAL GAP IS DELIVERY, not computation.** It surfaces inside the WEEKLY briefing — a preset
+cadence — which is exactly what he said he does NOT want:
+
+> *"what I really love is not preset you know reviews and notification, but ad hoc thinks things that
+> I discover Apollo can discover and send me ad hoc whenever it deems it's relevant and the timing is
+> right. it could be anytime in any."*
+
+**A 15.3-point divergence does not become interesting on a schedule — it becomes interesting when it
+opens, widens, or reverses.** Waiting for Sunday to mention a month-long move is the failure mode; he
+found this on Twitter before his own system told him.
+
+▶ **What that implies for this doc:** the strength map's numbers are done. What it needs is a
+**surfacing rule** — fire when a spread crosses into unusual territory or changes direction, sized
+against its own history (the crypto lane already does exactly this: *"typical 30d move 0.59pts —
+measured"*, so the primitive exists and just needs applying to the equity-vs-asset spreads).
+⚠ P2: what counts as "unusual" is a judgement — measure the distribution first, do not pick a number.
