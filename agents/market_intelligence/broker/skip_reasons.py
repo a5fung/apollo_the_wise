@@ -95,7 +95,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_PRICE_EXCEEDS_CAP:    "Price exceeds per-share cap",
     SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
-    SETUP_GAP_BELOW_FLOOR:      "Gap retreated below the 10% floor before entry",
+    SETUP_GAP_BELOW_FLOOR:      "Gap retreated below the entry floor before entry",
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
