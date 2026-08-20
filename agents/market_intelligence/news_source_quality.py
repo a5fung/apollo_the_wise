@@ -151,6 +151,16 @@ async def collect_source_stats(
 _DRIFT_DELTA_PP = 40
 _MIN_BASELINE_N = 10
 _MIN_CURRENT_N = 15
+# An attribution swing is only a SOURCE problem if the source stopped DELIVERING.
+# 2026-08-20: Benzinga attribution read 87% -> 44% and alerted, but the feed was
+# healthy — 4.6 articles per extraction against a baseline of 4.5. What changed
+# was the WEEK: off earnings season there is no earnings press release carrying a
+# revenue figure, so the extractor cites FMP/Perplexity instead. Attribution
+# measures which source the revenue number came from; it is confounded by the
+# cohort. Delivery is not. So an attribution drift whose delivery is intact is
+# audit-only. A significance test would NOT have caught this (z=-4.6, the shift
+# is statistically real) — the alert was confounded, not noisy.
+_DELIVERY_DENSITY_FLOOR = 0.6   # fraction of baseline items-per-extraction
 
 
 async def detect_drift() -> dict[str, Any]:
@@ -186,7 +196,19 @@ async def detect_drift() -> dict[str, Any]:
             "baseline_n": (baseline.get(next(iter(baseline), ""), {}).get("n_extractions", 0) if baseline else 0),
         }
 
+    def _delivery_intact(cur: dict, base: dict) -> bool:
+        """True when the source is still delivering normally — coverage has not
+        itself drifted and article density holds. See _DELIVERY_DENSITY_FLOOR."""
+        if (base.get("coverage_pct", 0) - cur.get("coverage_pct", 0)) >= _DRIFT_DELTA_PP:
+            return False
+        base_d = base.get("density_median", 0) or 0
+        cur_d = cur.get("density_median", 0) or 0
+        if base_d <= 0:
+            return True
+        return (cur_d / base_d) >= _DELIVERY_DENSITY_FLOOR
+
     low_n_events = []
+    suppressed_events = []
     for source in current:
         cur = current[source]
         base = baseline.get(source, {})
@@ -213,12 +235,20 @@ async def detect_drift() -> dict[str, Any]:
                 # degradation — the 6/9 'Benzinga 68%→20%' false alarm. Below
                 # the floor the event is audit-only (low_n_events), no Telegram.
                 if cur["n_extractions"] < _MIN_CURRENT_N:
+                    event["suppressed_reason"] = "low_n"
                     low_n_events.append(event)
+                elif metric == "attribution_pct" and _delivery_intact(cur, base):
+                    # Confounded by cohort composition, not a source failure.
+                    event["suppressed_reason"] = "delivery_intact"
+                    event["current_density"] = cur.get("density_median", 0)
+                    event["baseline_density"] = base.get("density_median", 0)
+                    suppressed_events.append(event)
                 else:
                     drift_events.append(event)
     return {
         "drift_events": drift_events,
         "low_n_events": low_n_events,
+        "suppressed_events": suppressed_events,
         "current_window": f"{current_start}..{current_end}",
         "baseline_window": f"{baseline_start}..{baseline_end}",
         "current_stats": current,
@@ -306,6 +336,7 @@ async def run_quality_check() -> dict:
     drift_report = await detect_drift()
     drift_alert = format_drift_alert(drift_report)
     low_n = drift_report.get("low_n_events") or []
+    suppressed = drift_report.get("suppressed_events") or []
     if drift_alert:
         try:
             from agents.market_intelligence.db import log_audit_event
@@ -320,7 +351,11 @@ async def run_quality_check() -> dict:
                 contribute("NEWS", drift_alert)
         except Exception as e:
             logger.warning(f"drift alert handling failed: {e}")
-    elif low_n:
+    # Both audit-only buckets write UNCONDITIONALLY — not in an elif behind the
+    # drift branch. A suppressed event is still evidence and must stay findable
+    # even on a day that also produced a real drift; the old `elif` silently
+    # dropped it whenever anything else fired.
+    if low_n:
         # #264: drift shape present but the current window is too thin to
         # distinguish source degradation from cohort composition — durable
         # audit row only, NO Telegram (the 6/9 false-alarm class).
@@ -334,6 +369,21 @@ async def run_quality_check() -> dict:
             )
         except Exception as e:
             logger.warning(f"low-n drift audit failed: {e}")
+    if suppressed:
+        # Attribution moved but the source kept delivering — cohort composition,
+        # not degradation (2026-08-20 Benzinga 87%->44% at 4.6 vs 4.5 articles
+        # per extraction). Durable audit row, NO Telegram.
+        try:
+            import json as _json
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "news_source_quality_drift_delivery_intact",
+                f"{len(suppressed)} attribution drift(s) suppressed — the source is still "
+                f"delivering, so the swing is cohort composition, not degradation",
+                _json.dumps(suppressed),
+            )
+        except Exception as e:
+            logger.warning(f"delivery-intact drift audit failed: {e}")
     return drift_report
 
 
