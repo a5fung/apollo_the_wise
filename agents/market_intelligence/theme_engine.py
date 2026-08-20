@@ -5149,7 +5149,26 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 else:
                     logger.info(f"Theme discovery: Sonnet used advisor {advisor_state['calls']}x before reporting")
                 raw_themes = report_block.input.get("themes", [])
-                valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+                # The tool schema says themes is a list of objects, but the model
+                # occasionally emits a list of bare NAME STRINGS instead. That used
+                # to raise AttributeError: 'str' object has no attribute 'get' out
+                # of the comprehension below, which the caller turned into a
+                # discovery_error and DROPPED THE WHOLE RUN — one malformed entry
+                # cost every theme discovered that night (2026-08-19). Drop the
+                # malformed entries, keep the well-formed ones, and say so.
+                if not isinstance(raw_themes, list):
+                    logger.warning(
+                        f"Theme discovery: 'themes' was {type(raw_themes).__name__}, not a list — "
+                        f"treating as empty")
+                    raw_themes = []
+                malformed = [t for t in raw_themes if not isinstance(t, dict)]
+                if malformed:
+                    logger.warning(
+                        f"Theme discovery: dropped {len(malformed)} malformed theme entr"
+                        f"{'y' if len(malformed) == 1 else 'ies'} (not objects): {malformed[:3]} — "
+                        f"kept the {len(raw_themes) - len(malformed)} well-formed one(s)")
+                    raw_themes = [t for t in raw_themes if isinstance(t, dict)]
+                valid = [t for t in raw_themes if len(t.get("tickers", []) or []) >= NEW_THEME_MIN_STOCKS]
                 result_themes = []
                 for t in valid:
                     t = _strip_sector_outliers(t, stocks_by_ticker)
