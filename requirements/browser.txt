@@ -1,5 +1,5 @@
 # Browser Agent dependencies
-anthropic>=0.40.0
+anthropic>=1.0.0,<2  # pinned to the 1.x line 2026-08-20: an unbounded >=0.40.0 let an image rebuild jump to 1.0, which REMOVED messages.create(temperature=) and silently killed the theme merge arm. Local ran 0.117 so nothing caught it. Guarded by tests/test_anthropic_call_kwargs_compat.py
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 httpx>=0.28.0

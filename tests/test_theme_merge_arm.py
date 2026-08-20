@@ -198,7 +198,7 @@ class _FakeClient:
         self.messages = _Messages()
 
 
-def test_adjudicate_happy_path_pins_temp0_and_tool_choice():
+def test_adjudicate_happy_path_pins_tool_choice_and_passes_no_temperature():
     client = _FakeClient([_Resp([_ToolBlock({
         "analysis_scratchpad": "same driver", "verdict": "MERGE",
         "driver_a": "x", "driver_b": "x", "reason": "same trade",
@@ -209,7 +209,13 @@ def test_adjudicate_happy_path_pins_temp0_and_tool_choice():
     assert v["verdict"] == "MERGE"
     assert v["merged_name"] == "Unified Theme"
     kw = client.calls[0]
-    assert kw["temperature"] == 0.0                                   # C4 determinize caveat
+    # 2026-08-20: `temperature` was the C4 caveat's determinism leg, but the
+    # anthropic 1.0 SDK REMOVED it from messages.create and carries no **kwargs,
+    # so passing it raised TypeError on every call and the arm returned
+    # verdict=ERROR for 100% of pairs. Asserting its ABSENCE is what keeps a
+    # well-meaning revert from killing the arm again.
+    assert "temperature" not in kw, "anthropic 1.0 rejects temperature — see arm docstring"
+    # The remaining two hardening legs now carry the C4 load alone; pin them hard.
     assert kw["tool_choice"] == {"type": "tool", "name": "adjudicate_theme_merge"}
     assert kw["tools"] == [arm.MERGE_ADJUDICATION_TOOL]
 

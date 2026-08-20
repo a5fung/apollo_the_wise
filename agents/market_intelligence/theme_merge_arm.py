@@ -13,7 +13,7 @@ are THE logic the 2026-07-11 replay validated (operator sign-off artifact:
 
 Stage A is a PURE function (no I/O): callers supply themes, the merge_distinct
 cooldown pair-set and (optionally) a ticker→sector map. Stage B is the Haiku
-adjudicator hardened per the C4 caveat: temperature=0, forced tool_choice, the
+adjudicator hardened per the C4 caveat: forced tool_choice, the
 scratchpad-first tool schema, retry-once on parse failure, validation-style 429
 backoff. The mechanical merge executor lives in theme_engine._run_thesis_merge_pass
 (it needs the engine's validator + audit plumbing).
@@ -275,6 +275,18 @@ def build_adjudication_prompt(
     )
 
 
+# ⚠ 2026-08-20 — `temperature` was REMOVED from this call, not tuned away.
+# The Anthropic SDK went 1.0 and `AsyncMessages.create()` dropped the parameter
+# entirely (no **kwargs either), so every adjudication raised
+# `TypeError: unexpected keyword argument 'temperature'` and Stage B returned
+# verdict=ERROR for 100% of pairs. Last successful adjudication: 2026-08-19
+# 17:17 ET; 8 hard failures on 08-20 and zero before.
+# WHAT THIS COSTS: the C4 caveat wanted determinism before any merge flip, and
+# temperature=0 was one of its three legs. The API no longer offers it, so the
+# remaining hardening (forced tool_choice + the scratchpad-first tool schema +
+# retry-once on parse failure) now carries that load alone. Adjudication is
+# non-deterministic where it used to be pinned — a real reduction, accepted
+# because the alternative is an arm that cannot run at all.
 async def _create_with_backoff(client, prompt: str, model: str, semaphore) -> "anthropic.types.Message":
     """messages.create with the validation-style 429 backoff (3 attempts)."""
     backoffs = [(30, 15), (60, 30)]
@@ -284,7 +296,6 @@ async def _create_with_backoff(client, prompt: str, model: str, semaphore) -> "a
                 return await client.messages.create(
                     model=model,
                     max_tokens=max_tokens_for("theme_merge_adjudication"),
-                    temperature=0.0,  # C4 caveat: determinize before any flip
                     tools=[MERGE_ADJUDICATION_TOOL],
                     tool_choice={"type": "tool", "name": MERGE_ADJUDICATION_TOOL["name"]},
                     messages=[{"role": "user", "content": prompt}],
@@ -314,7 +325,7 @@ async def adjudicate_merge_pair(
 ) -> dict:
     """Stage B — one adjudication call per pair (ADR 0025 §2 Arm B).
 
-    Hardened per the C4 caveat: temperature=0, forced tool_choice, retry ONCE on a
+    Hardened per the C4 caveat: forced tool_choice, retry ONCE on a
     missing/invalid tool result (a VALID verdict is never re-rolled), validation-style
     429 backoff inside _create_with_backoff. Never raises for a bad verdict — returns
     {"verdict": "ERROR", "reason": ...} so the nightly pass fail-opens per pair.
