@@ -38,6 +38,46 @@ SCOPE="$1"
 if [ "$SCOPE" = "staging" ]; then
   exec bash scripts/deploy_staging.sh "${@:2}"
 fi
+
+# ── DEPLOY WINDOWS (operator 2026-08-21, HARD) ───────────────────────────────
+# "we ran into too many deploy issues... set a daily deploy window, one during
+# market hours and one after hours and we only deploy in those windows going
+# forward unless I override."
+#
+# Derived from a full census of all 66 scheduled jobs in scheduler.py (ET):
+#   12:00-13:00  MARKET  — the ONLY hour of the session with zero cron jobs.
+#                          09:00-10:05 is the ORB/money block, 15:45 is the
+#                          partial-exit scan, 16:00-16:55 holds NINETEEN jobs.
+#                          Continuous per-minute position watchdogs still run
+#                          here and cannot be moved (they guard open money) —
+#                          a ~90s restart costs 1-2 of their cycles, which is
+#                          the irreducible price of any market-hours deploy.
+#   21:15-22:15  AFTER   — clear of evening_position_backstop (21:00), of the
+#                          17:30-18:30 shadow/theme block (17 jobs), and of the
+#                          02:00 cleanup pair.
+# NOTHING was rescheduled to create these windows; they were already empty.
+# Two deploys inside these windows on 2026-08-19 and 2026-08-20 each cancelled
+# nightly_data_pull mid-run — both landed at ~17:02 ET, which is why this gate
+# exists as code rather than as a note someone remembers.
+#
+# OVERRIDE (operator only): APOLLO_DEPLOY_ANYTIME=1 bash scripts/deploy.sh <scope>
+if [ "${APOLLO_DEPLOY_ANYTIME:-0}" != "1" ]; then
+  _now_et=$(TZ=America/New_York date +%H%M)
+  _dow=$(TZ=America/New_York date +%u)   # 1=Mon .. 7=Sun
+  _ok=0
+  # Market window 12:00-13:00, weekdays only (no session at the weekend).
+  if [ "$_dow" -le 5 ] && [ "$_now_et" -ge 1200 ] && [ "$_now_et" -lt 1300 ]; then _ok=1; fi
+  # After-hours window 21:15-22:15, every day.
+  if { [ "$_now_et" -ge 2115 ] && [ "$_now_et" -lt 2215 ]; }; then _ok=1; fi
+  if [ "$_ok" -ne 1 ]; then
+    echo "DEPLOY REFUSED — outside the operator's deploy windows (now $(TZ=America/New_York date '+%a %H:%M') ET)."
+    echo "  MARKET window:  12:00-13:00 ET, Mon-Fri"
+    echo "  AFTER-HOURS:    21:15-22:15 ET, daily"
+    echo "Set by the operator 2026-08-21 after repeated deploys clipped scheduled jobs."
+    echo "Operator override:  APOLLO_DEPLOY_ANYTIME=1 bash scripts/deploy.sh $SCOPE"
+    exit 12
+  fi
+fi
 COMPOSE_FILE="docker/docker-compose.prod.yml"
 # Which container the boot-wait + trade preflights exec against, and any extra
 # compose `--profile` args (#256 W2). Default = apollo-market so every existing

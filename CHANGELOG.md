@@ -1,3 +1,6 @@
+### 2026-08-11 — account-mode literal gate [5o/7]
+- SQL mode/phase literals need `mode-ok:`; nightly sweep replays them on any phase change / dormant pinned book, once ever. SSoT `dual_account.md`.
+
 # Apollo the Wise — Change Log
 
 Compressed historical change log. **Live operational reference + recent prose entries (~2 weeks) live in `CLAUDE.md`.** Entries graduate here once they age out of the recent window.

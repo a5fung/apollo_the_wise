@@ -288,6 +288,17 @@ Currently enforces:
 Pre-commit gates are vanilla shell + fast (<1s); the pre-push test gate is ~30s (Python pushes only). Bypass with `--no-verify` only if you really know what you're doing.
 
 ## Production Deploy
+🚦 **DEPLOY WINDOWS — only two per day (operator 2026-08-21, HARD, GATED).**
+| Window | ET | Days |
+|---|---|---|
+| **MARKET** | **12:00–13:00** | Mon–Fri |
+| **AFTER-HOURS** | **21:15–22:15** | daily |
+
+`scripts/deploy.sh` **exits 12** outside them. Override is **OPERATOR-ONLY** — never
+self-authorize: `APOLLO_DEPLOY_ANYTIME=1 bash scripts/deploy.sh <scope>`.
+No job was moved — both windows were already empty. Supersedes the old blackout guidance.
+Why + the 66-job census: memory `deploy-timing-avoid-market-windows`.
+
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 - **Disaster recovery**: if the host dies, follow `docs/ops/disaster_recovery.md` (operator runbook + `infra/restore.sh` driver). RTO ~95 min. Nightly cron writes pg_dump + GPG-encrypted secrets bundle to gdrive; `_backup_health_check_job` (04:33 ET) Telegrams if either blob is stale >36h. OAuth recovery (gdrive upload failing): `docs/ops/gdrive_backup_recovery.md`.
@@ -300,9 +311,9 @@ bash scripts/deploy.sh both            # both services
 ```
 Ownership map for the scope-drift guard: `channels/ core/ main.py` → orchestrator; `agents/market_intelligence/ scripts/` → market-agent; anything else (`shared/`, `docker/`, `requirements/`) → both. (New Telegram slash commands touch `channels/telegram.py`, orchestrator-owned — need `orchestrator`/`both`, not the market-agent default that silently dropped `/partialnow` on 2026-05-28.)
 
-The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Treats `setup:*` / `infra:*` as failures; only `block:*` reasons count as pass-through. Failure here = deploy is not green.
+The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact path that fires on real ORB entries. `setup:*`/`infra:*` = failure; only `block:*` passes through.
 
-**Why this matters**: a raw `docker compose` deploy (skipping preflight) caused the 2026-05-13 outage — `phase='live'` strategy under `ENABLE_LIVE_MODE=false` raised `KeyError: 'ALPACA_LIVE_API_KEY'`, uncaught by the old boot smoke (`verify_dual_account_clients` only checks clients whose credentials happen to be present). This preflight exercises the strategy-driven path instead — the one that actually fires on a real ORB entry. Full incident detail: `CHANGELOG.md` 2026-05-13 entry.
+**Why**: a raw `docker compose` deploy skipped preflight and caused the 2026-05-13 outage. Detail: `CHANGELOG.md` 2026-05-13.
 
 ## Required Env Vars
 ```
@@ -335,10 +346,10 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-11 — account-mode literal gate [5o/7] + graduation sweep
+### 2026-08-21 — deploy windows gated
 
-- SQL mode/phase literals need `mode-ok:`; the nightly sweep replays them on any phase
-  change / dormant pinned book, once ever. SSoT: `dual_account.md`.
+- Two windows only (12:00-13:00 · 21:15-22:15 ET); `deploy.sh` exits 12 outside them.
+  Operator-only override. Repeated ~17:02 deploys had been clipping nightly jobs.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
