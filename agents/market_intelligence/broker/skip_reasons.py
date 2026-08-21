@@ -99,7 +99,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
-    BLOCK_CIRCUIT_BREAKER:         "5-loss circuit breaker tripped",
+    BLOCK_CIRCUIT_BREAKER:         "Consecutive-loss circuit breaker tripped",
     BLOCK_STRATEGY_DISABLED:       "Strategy disabled in registry",
     BLOCK_STRATEGY_IN_SHADOW:      "Strategy in shadow phase (no live entries)",
     BLOCK_STRATEGY_DEPRECATED:     "Strategy deprecated — retired, no new entries",
