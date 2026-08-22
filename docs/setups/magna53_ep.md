@@ -75,7 +75,7 @@ Multi-factor: gap_pct + pm_rvol + catalyst_quality component + regime + RS + pri
 - `strong`: +15
 - `routine` (or anything else): +0
 
-`_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `liquidity` (20-day ADV$ tiers — REPLACED `rel_volume` 2026-08-22, operator-signed; see change log), `catalyst` (quality tier), `float` (low-float bonus), `neglect` (52w-high distance), `vol_conviction` (pre-market volume percentile), `prior_momentum` (the extension PENALTY above), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
+`_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `liquidity` (20-day ADV$ tiers — REPLACED `rel_volume` 2026-08-22, operator-signed; see change log), `catalyst` (quality tier), `float` (low-float bonus), `vol_conviction` (pre-market volume percentile), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
 
 Score thresholds:
 - `< 50` → skip (below MODERATE)
@@ -809,6 +809,39 @@ classifier's OWN `upgrades_30d` (the `episodic_neglect` low-coverage cut) is UNA
 entry — it now sources independently from `collector.get_recent_upgrade_events` (yfinance
 `Ticker.upgrades_downgrades`, dated events), a repair tracked in
 `docs/decisions/0028-setup-class-conviction-profiles.md` §2, not this rubric.
+
+### 2026-08-22 — Two backwards-running score components DELETED [#533]
+
+**Trigger**: the same selection study and priced proposal as the liquidity change below. The
+operator signed off on continuing: *"do all in order."*
+
+**Evidence**: `docs/analysis/score_redesign_proposal_533_2026-08-22.md`, 26 labelled real EPs vs
+1,074 ordinary gap days.
+  - **`neglect` (DELETED, NOT replaced)** — scored *"is this stock ≥30% below its 52-week high"*,
+    a **beaten-down** detector. The operator's thesis is a long **QUIET** base wherever it sits.
+    **MRNA — his own canonical textbook EP — is `Off 52W High 0.0%` and scored ZERO on the
+    component named after his own thesis.** 65% of labelled real EPs scored zero. It paid JUNK
+    more than real EPs: 48% of controls got points vs 35% of members. **In-package: +0.09 AUC.**
+  - **`prior_momentum` (DELETED)** — fired on real EPs and ordinary gap days at the **same rate
+    (31% vs 32%)**, subtracting up to 25 points while separating nothing. It drove **ARM to −12,
+    dead last on its board**, on a real EP that had already beaten the admission cap at rank 18.
+    **In-package: +0.04 AUC.**
+
+**Anticipated effect**: scores rise slightly across the board (two subtractive/zero-heavy
+components removed); ranking improves. No change to throughput beyond the bar effect.
+
+**Reversion-flag**: NEW for both — neither component had been changed since inception.
+
+**Status**: shipped, awaiting field validation.
+
+⚠ **WHY `neglect` GOT NO REPLACEMENT — the important part.** The pre-registered quietness
+measure WAS built and calibrated to his own MRNA annotations (it finds his 106-day base exactly)
+and scored **AUC 0.42 — real EPs have SHORTER quiet bases than their board rivals.** That is the
+**third null/backwards read across three definitions and two labels.** The base thesis stays in
+the VISION lane and the rank shadow until something measures it that does not run backwards.
+Deleting a broken proxy is not the same as abandoning the idea.
+
+⚠ `prior_3m_change` is still computed and still logged — it is simply no longer SCORED.
 
 ### 2026-08-22 — Score ranks on LIQUIDITY, not relative volume [#533]
 

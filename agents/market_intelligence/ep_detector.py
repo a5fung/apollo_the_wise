@@ -1267,20 +1267,21 @@ def _score_ep(
     # cap proxy — TXN/QCOM/ROKU class), the opposite of this rubric's neglect thesis
     # (`breakdown["neglect"]` below already scores that axis directly).
 
-    # Neglect period — approximate from 52-week range
-    # If price < 70% of 52-week high before the gap, it was neglected
-    price = profile.get("price", 0) or 0
-    high_52w = profile.get("52WeekHigh", price) or price
-    if high_52w > 0 and price > 0:
-        pct_of_high = price / high_52w
-        if pct_of_high < 0.5:
-            breakdown["neglect"] = 15  # 6mo+ base
-        elif pct_of_high < 0.7:
-            breakdown["neglect"] = 8   # 3mo base
-        else:
-            breakdown["neglect"] = 0
-    else:
-        breakdown["neglect"] = 0
+    # NEGLECT COMPONENT DELETED 2026-08-22, operator-signed. NOT replaced — deliberately.
+    # It scored "is this stock >=30% below its 52-week high", i.e. a BEATEN-DOWN detector,
+    # while the operator's neglect thesis is a long QUIET base wherever it sits: "with a
+    # large base there's indication of neglect (at least there's no major movements up or
+    # down) so the news moving it significantly is truly unexpected." MRNA — his own
+    # canonical textbook EP — sits Off 52W High 0.0% and scored ZERO on the component named
+    # after his own thesis; 65% of labelled real EPs scored zero. It also paid JUNK more than
+    # real EPs (48% of controls got points vs 35% of members). Deleting it is worth +0.09 AUC
+    # in-package.
+    # ⚠ WHY NO REPLACEMENT: the pre-registered quietness measure WAS built and calibrated to
+    # his MRNA annotations (it finds his 106-day base exactly) and scored AUC 0.42 — real EPs
+    # have SHORTER quiet bases than their board rivals. That is the third null/backwards read
+    # across three definitions and two labels. The base thesis stays in the VISION lane and the
+    # rank shadow, not in this score, until something measures it that does not run backwards.
+    # Evidence: docs/analysis/score_redesign_proposal_533_2026-08-22.md. SSoT: magna53_ep.md.
 
     # Volume conviction: pre-market volume vs stock's own historical ADV distribution (max 5)
     if vol_percentile >= 90:
@@ -1290,16 +1291,14 @@ def _score_ep(
     else:
         breakdown["vol_conviction"] = 0
 
-    # Prior momentum penalty — Qullamaggie: "best if stock has not rallied past 3-6 months"
-    if prior_3m_change is not None:
-        if prior_3m_change >= 50:
-            breakdown["prior_momentum"] = -25
-        elif prior_3m_change >= 30:
-            breakdown["prior_momentum"] = -15
-        else:
-            breakdown["prior_momentum"] = 0
-    else:
-        breakdown["prior_momentum"] = 0
+    # PRIOR-MOMENTUM PENALTY DELETED 2026-08-22, operator-signed. It was sourced from
+    # Qullamaggie ("best if stock has not rallied past 3-6 months") but measured as NOISE on
+    # our own data: it fires on labelled real EPs and on ordinary gap days at the SAME rate
+    # (31% vs 32%), so it subtracts up to 25 points without separating anything. It is what
+    # drove ARM to a score of -12 — dead last on its board — on a name that was a real EP and
+    # had already beaten the admission cap at rank 18. `prior_3m_change` is still computed and
+    # still logged; it is simply no longer SCORED.
+    # Evidence: docs/analysis/score_redesign_proposal_533_2026-08-22.md. SSoT: magna53_ep.md.
 
     # R4 in-theme bonus (2026-05-17 ship). +10 when ticker is in an
     # Accelerating or Mainstream theme on alert_date. Env-flagged.

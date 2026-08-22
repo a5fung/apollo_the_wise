@@ -52,3 +52,35 @@ def test_the_stale_rel_volume_key_is_gone():
 
 def test_projected_multiple_still_used_in_the_fallback_path():
     assert _bd(rel_volume=1.0, projected_vol_multiple=6.0, adv_dollar=None)["liquidity"] == 12
+
+
+# ── The two backwards-running components, deleted 2026-08-22 (operator-signed) ──
+
+def test_the_neglect_component_is_gone():
+    """It scored 'beaten down 30%+ from the 52w high' — MRNA, the operator's own textbook
+    EP, sits AT its high and scored ZERO on the component named after his thesis."""
+    bd = _bd(rel_volume=1.8, adv_dollar=600_000_000,
+             profile={"price": 100.0, "52WeekHigh": 100.0})
+    assert "neglect" not in bd
+
+
+def test_a_stock_at_its_52w_high_is_no_longer_penalised_versus_a_beaten_down_one():
+    at_high = _score_ep(**{**_BASE, "rel_volume": 1.8, "adv_dollar": 600_000_000,
+                           "profile": {"price": 100.0, "52WeekHigh": 100.0}})[0]
+    beaten = _score_ep(**{**_BASE, "rel_volume": 1.8, "adv_dollar": 600_000_000,
+                          "profile": {"price": 40.0, "52WeekHigh": 100.0}})[0]
+    assert at_high == beaten, "the beaten-down bonus must no longer separate these"
+
+
+def test_the_prior_momentum_penalty_is_gone():
+    """It fired on real EPs and junk at the same rate (31% vs 32%) and drove ARM to -12."""
+    bd = _bd(rel_volume=1.8, adv_dollar=600_000_000, prior_3m_change=80.0)
+    assert "prior_momentum" not in bd
+
+
+def test_a_stock_up_80pct_in_3_months_scores_the_same_as_a_flat_one():
+    ran = _score_ep(**{**_BASE, "rel_volume": 1.8, "adv_dollar": 600_000_000,
+                       "prior_3m_change": 80.0})[0]
+    flat = _score_ep(**{**_BASE, "rel_volume": 1.8, "adv_dollar": 600_000_000,
+                        "prior_3m_change": 2.0})[0]
+    assert ran == flat, "a 25-point penalty that separates nothing must not survive"
