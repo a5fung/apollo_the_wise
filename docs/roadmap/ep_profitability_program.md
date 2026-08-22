@@ -36,6 +36,37 @@ a specified proposal, never a request to supply material he already supplied.
 
 ## 📜 THE PRINCIPLES — read this before any analysis, any card, any proposal
 
+### P13 — THE ALPHA IS THE UNPRICED RESIDUAL (operator 2026-08-22)
+
+> *"all variables are related, news → reaction → stock price, but **how much is priced in the
+> moment market opens is the question and alpha**. This is also what drives delayed entries,
+> priced in on the first day, some time to digest, EP continues upward."*
+
+News, reaction and price are entangled — that is not the problem. The problem is picking the
+right question out of the tangle. It is **not** "how big was the news" and **not** "how big was
+the gap". It is the **RESIDUAL between them**:
+
+- A **huge gap on modest news** is priced OUT — nothing left to capture.
+- A **modest gap on genuinely repricing news** is priced IN only partially — that gap between
+  what the news is worth and what price has already moved is the opportunity.
+
+**This unifies two workstreams that were being run separately:**
+1. **Catalyst grading** — the tier should estimate unpriced residual, not sort news into buckets.
+2. **Delayed entry** — if day 1 fully prices the news there is nothing to re-enter into; if the
+   market needs days to digest, the EP keeps going. That is exactly where the measured tail
+   winners' runs live: **sessions 7-21**.
+
+⚠ **The trap this principle must not collapse into:** if "surprise" or "residual" ends up
+inferred from the price reaction itself, we have rebuilt gap-size scoring under a new name — and
+gap size is measured to run BACKWARDS on real EPs (AUC 0.34). Any implementation must say which
+side of that line it sits on.
+
+⚠ **And the calendar is not the content** (same conversation): `expct_scheduled` says the DATE was
+known, never that the INFORMATION was. A **PEG — power earnings gap — is by definition a scheduled
+event with unexpected content**, and it is the operator's most-named EP class. A tier that treats
+"scheduled" as disqualifying demotes the entire PEG family.
+
+
 **Consolidated 2026-08-19 at the operator's instruction:** *"There's now several top-level rules
 we've set… let's capture all of them together into a top-level section… so anytime we do new
 analysis, we're grounded with the same principles and goals. I don't want these to be lost,
