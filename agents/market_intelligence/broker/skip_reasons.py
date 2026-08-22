@@ -19,6 +19,12 @@ FILTER_ATR_TOO_HIGH          = "filter:atr_too_high"
 FILTER_MCAP_TOO_SMALL        = "filter:mcap_too_small"
 FILTER_PM_RVOL_TOO_LOW       = "filter:pm_rvol_too_low"
 FILTER_SESSION_RVOL_TOO_LOW  = "filter:session_rvol_too_low"
+# #570 (2026-08-22): the two D-1 universe floors in ep_detector.py's snapshot loop — the ONLY
+# exclusions in the whole EP pipeline that previously left no row anywhere (no skip_reason, no
+# scan_log line, invisible to the #489 miss watchdog). Values ($5 close / 50k shares) are entry
+# discipline = THE LINE, unchanged by this card; this only makes the rejection visible.
+FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW = "filter:universe_prev_close_too_low"
+FILTER_UNIVERSE_PREV_DAY_ILLIQUID  = "filter:universe_prev_day_illiquid"
 
 # ── setup: order-prep rejections (prepare_orb_order / prepare_prior_day_low_orb_order) ─
 SETUP_STOP_TOO_WIDE        = "setup:stop_too_wide"
@@ -89,6 +95,8 @@ _HUMAN_LABELS: dict[str, str] = {
     FILTER_MCAP_TOO_SMALL:       "Market cap too small",
     FILTER_PM_RVOL_TOO_LOW:      "Pre-market pace below normal",
     FILTER_SESSION_RVOL_TOO_LOW: "Session pace below normal",
+    FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW: "Prior close below the $5 universe floor",
+    FILTER_UNIVERSE_PREV_DAY_ILLIQUID:  "Prior-day volume below the 50k-share universe floor",
     SETUP_STOP_TOO_WIDE:        "Stop too wide for risk budget",
     SETUP_ZERO_RANGE:           "Zero opening range",
     SETUP_SIZE_TOO_SMALL:       "Position size too small",

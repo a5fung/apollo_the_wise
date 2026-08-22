@@ -371,7 +371,19 @@ def _format_ep_section(
     section_num: int = 1,
     scan_log: list[dict] | None = None,
 ) -> str:
-    filtered = [r for r in (scan_log or []) if r.get("filter_reason")]
+    # #570 (2026-08-22): the two D-1 universe floors now log a filter_reason (previously
+    # silent), but they are NOT real scan candidates — they never cleared MIN_PREV_CLOSE /
+    # MIN_PREV_DAY_VOLUME to begin with, and they outnumber the real candidate pool 2:1
+    # (docs/analysis/silent_universe_floors_570_2026-08-22.md). Counting them here would
+    # inflate "gap candidates scanned" and crowd the 5-slot near-miss line with a
+    # known-deliberate D-1 floor instead of genuine borderline EPs. Excluded from this
+    # operator-facing surface the same way top-20-cap rows are excluded from near-misses
+    # below; still fully visible via /setup TICKER, EP scan history, and mi_ep_missed_outcomes.
+    filtered = [
+        r for r in (scan_log or [])
+        if r.get("filter_reason")
+        and not (r.get("filter_reason") or "").startswith("filter:universe_")
+    ]
     total_scanned = len(ep_alerts) + len(filtered)
     # Also count candidates beyond the top-20 cap
     beyond_cap = [r for r in filtered if "top-20" in (r.get("filter_reason") or "")]

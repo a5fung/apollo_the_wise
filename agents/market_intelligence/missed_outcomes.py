@@ -17,8 +17,19 @@ day-2 chaser would've paid) to close[d+N] and max(high[d0..dN]). Stored:
   - ret_1d / ret_5d / ret_20d  (close return)
   - max_high_5d / max_high_20d (max favorable excursion)
 
-Refresh: nightly, sliding 30-day window. Old rows freeze in place once the
-20d return is settled.
+Refresh: nightly, sliding 30-day window (`refresh_missed_outcomes`) handles
+new alerts and maturing forward returns. #583: that window ONLY ever writes
+rows whose alert_date falls inside it — a row that ages out, or that a later
+WHERE-clause fix (e.g. #268's `source='live'` filter) newly excludes, was
+never re-touched and sat with its original classification forever (279/298
+`high_unentered` rows and 19/57 `window_missed` rows were exactly this —
+orphaned rows from a 2026-06-11 `historical_scan` replay batch #268 excluded
+going forward but never pruned retroactively). `reconcile_missed_outcomes_categories`
+is the guard: a full-history diff against the CURRENT categorisation/
+inclusion logic that prunes rows the logic no longer produces, corrects rows
+whose category drifted, and backfills rows a since-shipped fix should have
+captured but couldn't because they'd already aged out of the window when it
+shipped (the 2026-08-15 cancelled/order_failed fix's own capture hole).
 """
 from __future__ import annotations
 
@@ -104,6 +115,12 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
     # scan_filter — parse the free-form filter_reason
     if not raw:
         return "filter_other"
+    # #570 (2026-08-22): the two silent D-1 universe floors — checked early, ahead of the
+    # generic substring chain below, so this class stays its OWN isolable category (what
+    # #584's same-day liquidity re-check iterates over) instead of falling through to
+    # filter_other and getting mixed with unrelated filters.
+    if s.startswith("filter:universe_prev_close_too_low") or s.startswith("filter:universe_prev_day_illiquid"):
+        return "d1_universe_floor"
     if "cooldown" in s:
         return "cooldown"
     if "m&a" in s or "buyout" in s or "merger" in s:
@@ -129,6 +146,74 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
     if "extension" in s or "extended" in s:
         return "extension_gate"
     return "filter_other"
+
+
+# #583: the single SQL-side skip_category mapping — mirrors
+# _categorize_skip_reason above (kept DB-side for simplicity per the
+# original design; NOT auto-synced with the Python function, so the two can
+# drift — see the d1_universe_floor branch above, which #570 added to
+# _categorize_skip_reason without a matching WHEN clause here yet, because
+# the log calls that would ever produce that skip_reason haven't shipped —
+# #570 territory, not touched here). Used by BOTH refresh_missed_outcomes's
+# write path and reconcile_missed_outcomes_categories's diff/backfill below,
+# so the two can never classify the same skip_reason differently — the
+# EXACT drift class that let #583's bug hide (a WHERE-clause fix landed in
+# one place, #268's `source='live'` filter, but old rows categorized before
+# it never got re-checked against it).
+_SKIP_CATEGORY_CASE_SQL = """
+            CASE
+                WHEN source = 'moderate_alert' THEN 'moderate_tier'
+                -- #199: entry-pipeline skip attribution. Specific prefixes
+                -- first (they apply to attributed high_unentered rows); the
+                -- bare 'high_unentered' fallthrough is now only for truly
+                -- unfilled HIGHs with no skip row (skip_reason IS NULL).
+                WHEN skip_reason ILIKE 'block:max_positions%' THEN 'cap_blocked'
+                WHEN skip_reason ILIKE 'block:circuit_breaker%' THEN 'breaker_blocked'
+                WHEN skip_reason ILIKE 'block:%' THEN 'block_other'
+                WHEN skip_reason ILIKE 'window:%' THEN 'window_missed'
+                WHEN skip_reason ILIKE 'setup:stop_too_wide%' THEN 'stop_too_wide'
+                WHEN skip_reason ILIKE 'setup:faded%' THEN 'faded_from_orb'
+                WHEN skip_reason ILIKE 'setup:account_fetch%'
+                  OR skip_reason ILIKE 'infra:%' THEN 'infra_skip'
+                WHEN skip_reason ILIKE 'setup:%' THEN 'setup_other'
+                WHEN source = 'high_unentered' THEN 'high_unentered'
+                WHEN skip_reason IS NULL THEN 'filter_other'
+                WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
+                WHEN skip_reason ILIKE '%m&a%'
+                  OR skip_reason ILIKE '%buyout%'
+                  OR skip_reason ILIKE '%merger%' THEN 'ma_filter'
+                WHEN skip_reason ILIKE '%already scored%'
+                  OR skip_reason ILIKE '%duplicate%' THEN 'duplicate_scan'
+                WHEN skip_reason ILIKE '%outside top-20%'
+                  OR skip_reason ILIKE '%top-20 gap cap%' THEN 'outside_top20'
+                WHEN skip_reason ILIKE '%score%' AND skip_reason ILIKE '%< 50%' THEN 'score_below_50'
+                -- Volume gates: cover both legacy free-form ("low rel volume
+                -- 0.4x < 2.0x") and the new RVOL@T bounded prefixes. The
+                -- legacy strings are dominant in scan_log before the 2026-05-06
+                -- unification — bucket them together as session_rvol_low since
+                -- 2.0x is the session-anchor threshold.
+                WHEN skip_reason ILIKE '%pm_rvol%'
+                  OR skip_reason ILIKE '%pre-market rvol%'
+                  OR skip_reason ILIKE '%pre-mkt volume%'
+                  OR skip_reason ILIKE '%pm volume%' THEN 'pm_rvol_low'
+                WHEN skip_reason ILIKE '%session_rvol%'
+                  OR skip_reason ILIKE '%session rvol%'
+                  OR skip_reason ILIKE '%rel volume%'
+                  OR skip_reason ILIKE '%rel_vol%'
+                  OR skip_reason ILIKE '%low volume%'
+                  OR skip_reason ILIKE '%projected%' THEN 'session_rvol_low'
+                WHEN skip_reason ILIKE '%adv%' THEN 'adv_low'
+                WHEN skip_reason ILIKE '%atr%' THEN 'atr_high'
+                WHEN skip_reason ILIKE '%mcap%'
+                  OR skip_reason ILIKE '%market cap%' THEN 'mcap_low'
+                WHEN skip_reason ILIKE '%catalyst%'
+                  AND (skip_reason ILIKE '%downgrade%'
+                       OR skip_reason ILIKE '%routine%') THEN 'catalyst_downgrade'
+                WHEN skip_reason ILIKE '%extension%'
+                  OR skip_reason ILIKE '%extended%' THEN 'extension_gate'
+                ELSE 'filter_other'
+            END
+"""
 
 
 # ── Schema init ──────────────────────────────────────────────────────────────
@@ -422,59 +507,11 @@ async def refresh_missed_outcomes(
         SELECT
             ticker, alert_date, source, skip_reason,
             -- skip_category derived in Python? No — keep DB-side for simplicity.
-            -- Mirror _categorize_skip_reason mappings in SQL CASE.
-            CASE
-                WHEN source = 'moderate_alert' THEN 'moderate_tier'
-                -- #199: entry-pipeline skip attribution. Specific prefixes
-                -- first (they apply to attributed high_unentered rows); the
-                -- bare 'high_unentered' fallthrough is now only for truly
-                -- unfilled HIGHs with no skip row (skip_reason IS NULL).
-                WHEN skip_reason ILIKE 'block:max_positions%' THEN 'cap_blocked'
-                WHEN skip_reason ILIKE 'block:circuit_breaker%' THEN 'breaker_blocked'
-                WHEN skip_reason ILIKE 'block:%' THEN 'block_other'
-                WHEN skip_reason ILIKE 'window:%' THEN 'window_missed'
-                WHEN skip_reason ILIKE 'setup:stop_too_wide%' THEN 'stop_too_wide'
-                WHEN skip_reason ILIKE 'setup:faded%' THEN 'faded_from_orb'
-                WHEN skip_reason ILIKE 'setup:account_fetch%'
-                  OR skip_reason ILIKE 'infra:%' THEN 'infra_skip'
-                WHEN skip_reason ILIKE 'setup:%' THEN 'setup_other'
-                WHEN source = 'high_unentered' THEN 'high_unentered'
-                WHEN skip_reason IS NULL THEN 'filter_other'
-                WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
-                WHEN skip_reason ILIKE '%m&a%'
-                  OR skip_reason ILIKE '%buyout%'
-                  OR skip_reason ILIKE '%merger%' THEN 'ma_filter'
-                WHEN skip_reason ILIKE '%already scored%'
-                  OR skip_reason ILIKE '%duplicate%' THEN 'duplicate_scan'
-                WHEN skip_reason ILIKE '%outside top-20%'
-                  OR skip_reason ILIKE '%top-20 gap cap%' THEN 'outside_top20'
-                WHEN skip_reason ILIKE '%score%' AND skip_reason ILIKE '%< 50%' THEN 'score_below_50'
-                -- Volume gates: cover both legacy free-form ("low rel volume
-                -- 0.4x < 2.0x") and the new RVOL@T bounded prefixes. The
-                -- legacy strings are dominant in scan_log before the 2026-05-06
-                -- unification — bucket them together as session_rvol_low since
-                -- 2.0x is the session-anchor threshold.
-                WHEN skip_reason ILIKE '%pm_rvol%'
-                  OR skip_reason ILIKE '%pre-market rvol%'
-                  OR skip_reason ILIKE '%pre-mkt volume%'
-                  OR skip_reason ILIKE '%pm volume%' THEN 'pm_rvol_low'
-                WHEN skip_reason ILIKE '%session_rvol%'
-                  OR skip_reason ILIKE '%session rvol%'
-                  OR skip_reason ILIKE '%rel volume%'
-                  OR skip_reason ILIKE '%rel_vol%'
-                  OR skip_reason ILIKE '%low volume%'
-                  OR skip_reason ILIKE '%projected%' THEN 'session_rvol_low'
-                WHEN skip_reason ILIKE '%adv%' THEN 'adv_low'
-                WHEN skip_reason ILIKE '%atr%' THEN 'atr_high'
-                WHEN skip_reason ILIKE '%mcap%'
-                  OR skip_reason ILIKE '%market cap%' THEN 'mcap_low'
-                WHEN skip_reason ILIKE '%catalyst%'
-                  AND (skip_reason ILIKE '%downgrade%'
-                       OR skip_reason ILIKE '%routine%') THEN 'catalyst_downgrade'
-                WHEN skip_reason ILIKE '%extension%'
-                  OR skip_reason ILIKE '%extended%' THEN 'extension_gate'
-                ELSE 'filter_other'
-            END AS skip_category,
+            -- #583: this CASE now lives ONCE, in _SKIP_CATEGORY_CASE_SQL,
+            -- shared with reconcile_missed_outcomes_categories below — a
+            -- second copy is exactly how this file's categorisation logic
+            -- could silently drift out of sync with itself.
+            {_SKIP_CATEGORY_CASE_SQL} AS skip_category,
             ep_score, gap_pct, rel_volume, catalyst_quality,
             open_d0, close_d0,
             -- Return basis: open_d0 (gap day open) — what a day-2 chaser pays.
@@ -530,11 +567,14 @@ async def refresh_missed_outcomes(
 # opportunity, they did their job. Hidden from /missed by default; visible
 # via `/missed all`.
 _UNTRADEABLE_CATEGORIES = (
-    "mcap_low",        # market cap below floor
-    "adv_low",         # avg dollar volume below floor
-    "ma_filter",       # M&A target / deal-pinned shell
-    "atr_high",        # volatility above tradeable threshold
-    "extension_gate",  # price already extended (parabolic-shape rejection)
+    "mcap_low",          # market cap below floor
+    "adv_low",           # avg dollar volume below floor
+    "ma_filter",         # M&A target / deal-pinned shell
+    "atr_high",          # volatility above tradeable threshold
+    "extension_gate",    # price already extended (parabolic-shape rejection)
+    "d1_universe_floor", # #570: prior-day close<$5 / volume<50k — correctly filtered
+                         # by design, not a should've-entered miss; same treatment as
+                         # the other structural universe floors above
 )
 
 # The 'should've-entered' cohort (#219): categories where the system SCORED the
@@ -573,6 +613,7 @@ _CATEGORY_KIND: dict[str, str] = {
     "ma_filter":           "structural",
     "atr_high":            "structural",
     "extension_gate":      "structural",
+    "d1_universe_floor":   "structural",  # #570
     # Operational — budget / housekeeping; would've been evaluated otherwise
     "outside_top20":       "operational",
     "cooldown":            "operational",

@@ -65,6 +65,8 @@ from agents.market_intelligence.broker.skip_reasons import (
     FILTER_MCAP_TOO_SMALL,
     FILTER_PM_RVOL_TOO_LOW,
     FILTER_SESSION_RVOL_TOO_LOW,
+    FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW,
+    FILTER_UNIVERSE_PREV_DAY_ILLIQUID,
 )
 from agents.market_intelligence.ma_filter import is_likely_ma
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
@@ -153,6 +155,50 @@ MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
 MIN_PREV_DAY_VOLUME = 50_000   # Skip illiquid stocks — stale quotes create phantom gaps
+
+
+def _universe_floor_skip(
+    ticker: str, prev_close: float, prev_volume: float, current_price: float | None,
+) -> dict | None:
+    """#570 (2026-08-22): visibility for the two silent D-1 universe floors (MIN_PREV_CLOSE,
+    MIN_PREV_DAY_VOLUME) inside run_ep_scan's snapshot loop — previously the ONLY exclusions
+    in the whole EP pipeline that left no row anywhere (docs/analysis/silent_universe_floors_570_
+    2026-08-22.md). VALUES UNCHANGED — this only makes the rejection visible (P1: a false
+    exclusion is invisible while a false inclusion is a visible loss).
+
+    Returns a scan_log-ready dict {ticker, gap_pct, prev_close, filter_reason} if `ticker` fails
+    one of the two floors AND its live gap clears today's Pass-1 gap floor — i.e. it was a real
+    would-be candidate, not universe noise. Logging unconditionally would flood scan_log with the
+    entire sub-$5/illiquid market every 5-minute tick regardless of whether it ever gapped — the
+    same reasoning the P2.0b unclassified fail-safe above already applies (aggregate-count only,
+    no per-ticker row). Gating on the SAME `_pass1_gap_floor()` real candidates are admitted
+    through keeps this row's meaning exact: "the only thing standing between this ticker and a
+    real scan candidate was a D-1 universe floor."
+
+    Returns None when neither floor is failed, or when the gap can't be assessed (no current
+    price — data availability, not policy) or doesn't clear the floor. Pure / no I/O — callable
+    in isolation for tests.
+    """
+    gap_pct = (
+        (current_price - prev_close) / prev_close * 100
+        if current_price and prev_close else None
+    )
+    if gap_pct is None or gap_pct < _pass1_gap_floor():
+        return None
+    if not prev_close or prev_close < MIN_PREV_CLOSE:
+        reason = (
+            f"{FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW}: prior close ${prev_close:.2f} "
+            f"< ${MIN_PREV_CLOSE:.2f} floor"
+        )
+    elif prev_volume < MIN_PREV_DAY_VOLUME:
+        reason = (
+            f"{FILTER_UNIVERSE_PREV_DAY_ILLIQUID}: prior-day volume "
+            f"{prev_volume:,.0f} < {MIN_PREV_DAY_VOLUME:,.0f} shares floor"
+        )
+    else:
+        return None
+    return {"ticker": ticker, "gap_pct": gap_pct, "prev_close": prev_close, "filter_reason": reason}
+
 
 # Auto-disqualifiers (hard filters — applied before scoring)
 MAX_EXTENSION_PCT = 75.0   # Skip if already up 75%+ in last 5 trading days before the gap
@@ -2574,6 +2620,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     candidates = []
     _unclassified_skipped = 0  # P2.0b counter
     _rt_universe = []   # #489 miss watchdog: every ticker that clears all NON-gap filters
+    _universe_floor_skips: list[dict] = []  # #570: visibility rows for the two silent D-1 floors
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
@@ -2593,24 +2640,35 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 continue
 
             prev_close = snap.get("prevDay", {}).get("c", 0)
-            if not prev_close or prev_close < MIN_PREV_CLOSE:
-                continue
-
-            # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
             prev_volume = snap.get("prevDay", {}).get("v", 0) or 0
-            if prev_volume < MIN_PREV_DAY_VOLUME:
-                continue
-
-            _rt_universe.append((ticker, prev_close))   # #489 watchdog: this ticker cleared all non-gap filters
-
             # Current price: min.c (latest minute bar, includes pre/post-market)
             # → day.o (regular session open) → lastTrade.p (fallback)
             # Pre-market: min.c is the only field that updates before 9:30 open
+            # Hoisted above the two D-1 floors below (#570) — a pure read off the
+            # already-fetched `snap` dict (no extra I/O), so a floor-fail ticker's gap can
+            # still be assessed for the visibility log without touching the floors' own
+            # admit/reject logic (unchanged below — same comparisons, same order).
             current_price = (
                 snap.get("min", {}).get("c")
                 or snap.get("day", {}).get("o")
                 or snap.get("lastTrade", {}).get("p", 0)
             )
+
+            if not prev_close or prev_close < MIN_PREV_CLOSE:
+                _fs = _universe_floor_skip(ticker, prev_close, prev_volume, current_price)
+                if _fs:
+                    _universe_floor_skips.append(_fs)
+                continue
+
+            # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
+            if prev_volume < MIN_PREV_DAY_VOLUME:
+                _fs = _universe_floor_skip(ticker, prev_close, prev_volume, current_price)
+                if _fs:
+                    _universe_floor_skips.append(_fs)
+                continue
+
+            _rt_universe.append((ticker, prev_close))   # #489 watchdog: this ticker cleared all non-gap filters
+
             if not current_price:
                 continue
 
@@ -2624,6 +2682,29 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 ticker, snap, prev_close, current_price, gap_pct, adv_map, _minutes_since_open))
         except Exception:
             continue
+
+    # #570: flush the D-1-floor visibility rows NOW, unconditionally — `if not candidates:
+    # return []` a few lines below would otherwise silently drop them on a tick with zero
+    # real candidates (the exact invisibility this card exists to end). Awaited directly
+    # (not asyncio.create_task like the end-of-scan flush) — this write is small (bounded to
+    # this tick's floor-fail count) and happens long before the ORB-critical scoring/entry
+    # path below, so there is no fire-and-forget GC hazard to manage for it.
+    if _universe_floor_skips:
+        try:
+            await log_ep_scan_candidates([
+                {
+                    "scan_date": today,
+                    "ticker": r["ticker"],
+                    "gap_pct": r["gap_pct"],
+                    "prev_close": r["prev_close"],
+                    "filter_reason": r["filter_reason"],
+                    "scan_time_et": now_et,
+                    "minutes_since_open": _minutes_since_open,
+                }
+                for r in _universe_floor_skips
+            ])
+        except Exception as e:
+            logger.warning(f"#570 universe-floor scan_log write failed: {e}")
 
     # #489 Pass 2 — real-time Alpaca SIP confirm on the (superset) candidates BEFORE ranking/scoring,
     # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the
