@@ -2663,19 +2663,26 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_net_disp_xadr DOUBLE PRECISION;
             ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_lookback_bars INT;
 
-            -- #533 Change 6 (2026-08-22) — catalyst-tier SHADOW verdicts. SHADOW ONLY
-            -- (THE LINE): one row per (scan_date, ticker) graded by the live catalyst
-            -- grader, recording what the surprise-anchored re-tiering
-            -- (catalyst_tier_shadow.shadow_retier) would have said, alongside EVERY
-            -- input it read — the #568 expectedness axes, the rule-4 demotion-marker /
-            -- concrete-event reads, the sector-follow-through raw counts (⚠ beta-
-            -- confounded on sector-flood days — see the module docstring), and the
-            -- priced-in-residual raw inputs (gap first/last, ADV$, rel_volume,
-            -- projected multiple; recorded NOT scored — operator frame 2026-08-22).
-            -- Inputs are stored so rule variants stay replayable at $0 without waiting
-            -- for new data. first_*/last_* + regrade_count make intraday grade drift
-            -- observable (the MRNA 07:05 pinned-grade failure). NEVER read by any
-            -- grading / entry / sizing / ordering / safeguard path.
+            -- #533 Change 6 (2026-08-22) — catalyst-tier verdicts, BOTH SIDES. One row
+            -- per (scan_date, ticker) graded by the catalyst grader, recording the raw
+            -- LLM grade (live_quality_*) AND the lattice verdict (shadow_tier_*,
+            -- catalyst_tier_shadow.shadow_retier) alongside EVERY input read — the
+            -- #568 expectedness axes, the rule-4 demotion-marker / concrete-event
+            -- reads, the sector-follow-through raw counts (⚠ beta-confounded on
+            -- sector-flood days — see the module docstring), and the priced-in-
+            -- residual raw inputs (gap first/last, ADV$, rel_volume, projected
+            -- multiple; recorded NOT scored — operator frame 2026-08-22).
+            -- ⚖ FLIPPED LIVE 2026-08-22 (operator-signed, magna53_ep.md change log):
+            -- the lattice verdict now ACTS in run_ep_scan; `live_side` stamps which
+            -- grader acted per row ('llm' before the flip / flag off, 'lattice' when
+            -- the flip acts) so the live-vs-counterfactual comparison never infers the
+            -- acting side from the date. Column semantics are CONSTANT across the
+            -- flip: live_quality_* is ALWAYS the raw LLM grade, shadow_tier_* is
+            -- ALWAYS the lattice verdict. Inputs are stored so rule variants stay
+            -- replayable at $0. first_*/last_* + regrade_count make intraday grade
+            -- drift observable (the MRNA 07:05 pinned-grade failure). Read by NO
+            -- grading / entry / sizing / ordering / safeguard path — the only reader
+            -- is the read-only flip monitor (health_checks.run_catalyst_lattice_monitor).
             CREATE TABLE IF NOT EXISTS mi_catalyst_tier_shadow (
                 id                  SERIAL PRIMARY KEY,
                 scan_date           DATE NOT NULL,
@@ -2710,11 +2717,15 @@ async def initialize_schema() -> None:
                 live_ep_score       DOUBLE PRECISION,  -- pre-override score at the recording tick
                 live_tier           TEXT,              -- HIGH|MODERATE|NULL (<50 skip) at that tick
                 grounded_len        INT,               -- corpus size the verdict read (0 = graded blind)
+                live_side           TEXT DEFAULT 'llm',-- which grader ACTED on this row's latest tick: 'llm' (raw LLM grade live — pre-flip / flag off) | 'lattice' (the corrected lattice live). Explicit BY DESIGN: a reader must never infer the acting side from the date.
                 created_at          TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (scan_date, ticker)
             );
             CREATE INDEX IF NOT EXISTS idx_catalyst_tier_shadow_date
                 ON mi_catalyst_tier_shadow(scan_date DESC);
+            -- #533 flip migration (2026-08-22): DEFAULT 'llm' stamps every pre-flip row
+            -- with the side that WAS live when it was written — the LLM grade.
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS live_side TEXT DEFAULT 'llm';
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak

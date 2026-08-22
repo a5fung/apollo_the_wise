@@ -2869,9 +2869,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Score each candidate (rate-limited FMP calls)
     results = []
     scan_log: list[dict] = []  # accumulated for batch DB write at end
-    # #533 Change 6 — catalyst-tier SHADOW inputs, accumulated per graded candidate and
-    # batch-written fire-and-forget after the loop (same contract as scan_log). SHADOW
-    # ONLY: nothing below ever reads these; see catalyst_tier_shadow.py (THE LINE).
+    # #533 Change 6 — catalyst-tier record inputs (raw LLM grade + the lattice verdict
+    # that ACTED + live_side), accumulated per graded candidate and batch-written
+    # fire-and-forget after the loop (same contract as scan_log). The table is read by
+    # nothing in the scan; its only reader is the read-only flip monitor
+    # (health_checks.run_catalyst_lattice_monitor). See catalyst_tier_shadow.py.
     _tier_shadow_inputs: list[dict] = []
 
     def _scan_row(c: dict, *, reason: str | None, ep_score: float | None,
@@ -2939,6 +2941,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         except Exception as _ve:  # loud-ok: rt volume degrades to the delayed read — today's behavior
             logger.warning(f"#490 rt volume fetch failed (delayed volume keeps deciding): {_ve}")
             _rt_vol_map = {}
+
+    # ── #533 Change 6 — CATALYST TIER FLIP (2026-08-22, OPERATOR-SIGNED) ──────────────
+    # The corrected lattice (catalyst_tier_shadow) is the LIVE catalyst tier: its verdict
+    # replaces the raw LLM grade at the single scoring point below. ONE revert flag —
+    # `catalyst_tier_lattice` runtime toggle / CATALYST_TIER_LATTICE_ENABLED env, default
+    # ON; OFF = raw LLM grade acts, byte-identical pre-flip behaviour. Evidence + operator
+    # quote: docs/setups/magna53_ep.md change log 2026-08-22. Fail direction on ANY error
+    # here: the raw grade acts (pre-flip behaviour), loudly — never a dead scan.
+    _lattice_live = True
+    _board_sectors: dict[str, Optional[str]] = {}
+    try:
+        from agents.market_intelligence.catalyst_tier_shadow import (
+            compute_shadow_verdict, fetch_board_sectors, resolve_live_tier)
+        _lattice_live = await get_runtime_toggle(
+            "catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED", default=True)
+        if candidates:
+            _board_sectors = await fetch_board_sectors([c["ticker"] for c in candidates])
+    except Exception as _lce:  # loud-ok: flip degrades to the raw-grade (pre-flip) path
+        logger.warning(f"catalyst lattice setup failed — LLM grade acts this tick: {_lce}")
+        _lattice_live = False
 
     for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
         ticker = c["ticker"]
@@ -4134,6 +4156,35 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"catalyst_downgrade_telegram_failed: {ticker}: {e}"
                     )
 
+        # ── #533 Change 6 FLIP: the lattice verdict becomes the acting tier ──────────
+        # Runs AFTER every raw-grade mutation (earnings boost, #72 prose downgrade) and
+        # BEFORE _score_ep — everything downstream (score + conviction floors, tier,
+        # alert row, allocator, judge inputs) sees the lattice tier. Deliberately NOT
+        # applied to _post_grade_filters above (M&A / routine-gap<12 / pm-shares): the
+        # shadow evaluation measured the counterfactual only within the post-filter
+        # pool; extending the flip into admission would LOOSEN unevaluated (SSoT change
+        # log). The cache keeps the RAW grade — the lattice recomputes every tick, which
+        # is the intraday-regrade design (the MRNA 07:05 grade-pinning fix).
+        llm_catalyst_quality = catalyst_quality  # raw LLM grade — the lattice input
+        _lattice_verdict = None
+        _live_side = "llm"
+        try:
+            _lattice_verdict = compute_shadow_verdict(
+                ticker=ticker,
+                live_quality=llm_catalyst_quality,
+                claude_analysis=claude_analysis,
+                grounded_text=grounded_text,
+                news_summary=news_summary,
+                sector_by_ticker=_board_sectors,
+            )
+            catalyst_quality, _live_side = resolve_live_tier(
+                llm_catalyst_quality, _lattice_verdict, _lattice_live)
+        except Exception as _lte:  # loud-ok: fail direction = the raw grade acts
+            logger.warning(
+                f"{ticker}: catalyst lattice failed — LLM grade acts this tick: {_lte}")
+            _lattice_verdict = None
+            catalyst_quality, _live_side = llm_catalyst_quality, "llm"
+
         # Compute prior 3-month change %
         prior_3m_change = None
         close_3m_ago = prior_3m_map.get(ticker)
@@ -4154,15 +4205,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             in_active_theme=(ticker in _in_active_theme_set),
         )
 
-        # #533 Change 6 — catalyst-tier SHADOW input capture. Records EVERY graded
-        # candidate (including the score<50 skips below — the ARM/QCOM/AMD class died
-        # exactly there with no recorded text). Read-only capture of locals; the live
-        # tier here is the PRE-override read (earnings override / judge may still move
-        # it). Never raises, never alters any live value (THE LINE).
+        # #533 Change 6 — catalyst-tier record capture. Records EVERY graded candidate
+        # (including the score<50 skips below — the ARM/QCOM/AMD class died exactly
+        # there with no recorded text). live_quality = ALWAYS the raw LLM grade and
+        # "verdict" = the lattice verdict that acted at the flip point above (recorded
+        # verbatim — no recompute drift); "live_side" stamps which one ACTED. The tier
+        # here is the PRE-override read (earnings override / judge may still move it).
+        # Never raises, never alters any live value.
         try:
             _tier_shadow_inputs.append({
                 "ticker": ticker,
-                "live_quality": catalyst_quality,
+                "live_quality": llm_catalyst_quality,
+                "verdict": _lattice_verdict,
+                "live_side": _live_side,
                 "claude_analysis": claude_analysis,
                 "grounded_text": grounded_text,
                 "news_summary": news_summary,
@@ -4484,9 +4539,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Batch-write scan log (fire and forget — never block results)
     asyncio.create_task(log_ep_scan_candidates(scan_log))
 
-    # #533 Change 6 — catalyst-tier SHADOW batch write (fire and forget, fail-open;
-    # sector fetch + expectedness + lattice all live in catalyst_tier_shadow.py).
-    # SHADOW ONLY — writes mi_catalyst_tier_shadow, read by nothing live (THE LINE).
+    # #533 Change 6 — catalyst-tier record batch write (fire and forget, fail-open).
+    # Writes BOTH sides (raw LLM grade + the acting lattice verdict + live_side) to
+    # mi_catalyst_tier_shadow so the live-vs-old comparison continues uninterrupted
+    # across the 2026-08-22 flip; read only by the flip monitor, never by the scan.
     if _tier_shadow_inputs:
         try:
             from agents.market_intelligence.catalyst_tier_shadow import (

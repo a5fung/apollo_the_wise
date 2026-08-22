@@ -271,8 +271,11 @@ async def test_sector_fetch_failure_degrades_to_no_confirm_not_a_crash(monkeypat
 
 
 def test_no_live_path_reads_the_shadow_table():
-    """mi_catalyst_tier_shadow may be WRITTEN by catalyst_tier_shadow.py only; no other
-    module may SELECT from it (grep the live packages; docs/tests excluded)."""
+    """mi_catalyst_tier_shadow may be WRITTEN by catalyst_tier_shadow.py only. Since the
+    2026-08-22 flip its ONE permitted reader is health_checks.py — the read-only flip
+    monitor (run_catalyst_lattice_monitor), an alerting surface that feeds Telegram/audit
+    rows and never a grading / entry / sizing / safeguard path. No other module may
+    SELECT from it (grep the live packages; docs/tests excluded)."""
     import subprocess
     repo = Path(__file__).resolve().parent.parent
     out = subprocess.run(
@@ -280,19 +283,101 @@ def test_no_live_path_reads_the_shadow_table():
          str(repo / "agents"), str(repo / "core"), str(repo / "channels"),
          str(repo / "shared"), str(repo / "broker")],
         capture_output=True, text=True).stdout.strip().splitlines()
-    # ep_detector.py names the table in its dispatch-site COMMENT only (writer dispatch,
-    # never a read) — verified by the companion assertion below.
+    # ep_detector.py names the table in COMMENTS only (writer dispatch, never a read);
+    # scheduler.py wires the monitor by function name, not the table.
     allowed = {str(repo / "agents/market_intelligence/catalyst_tier_shadow.py"),
                str(repo / "agents/market_intelligence/db.py"),
                str(repo / "agents/market_intelligence/ep_detector.py"),
-               # names the table only inside _NOT_SWEEP_PARAMS reason STRINGS (the
-               # sweep-registry classification the discovery gate requires) — no query
+               # the flip monitor (read-only SELECT) + _NOT_SWEEP_PARAMS reason strings
                str(repo / "agents/market_intelligence/health_checks.py")}
     assert set(out) <= allowed, f"unexpected readers of the shadow table: {set(out) - allowed}"
-    # and no live module SELECTs from it anywhere
+    # and the ONLY live SELECT against it is the flip monitor's, in health_checks.py
     sel = subprocess.run(
-        ["grep", "-rn", "--include=*.py", "-i", r"select.*mi_catalyst_tier_shadow",
+        ["grep", "-rln", "--include=*.py", "-i", r"select.*mi_catalyst_tier_shadow",
          str(repo / "agents"), str(repo / "core"), str(repo / "channels"),
          str(repo / "shared"), str(repo / "broker")],
-        capture_output=True, text=True).stdout.strip()
-    assert sel == "", f"live SELECT against the shadow table: {sel}"
+        capture_output=True, text=True).stdout.strip().splitlines()
+    assert set(sel) <= {str(repo / "agents/market_intelligence/health_checks.py")}, (
+        f"live SELECT against the shadow table outside the flip monitor: {sel}")
+
+
+# ── #533 Change 6 FLIP (2026-08-22, operator-signed): resolve_live_tier + live_side ───
+
+
+def test_revert_flag_off_restores_the_raw_llm_grade_for_every_verdict():
+    """THE REVERT PIN: with the `catalyst_tier_lattice` flag OFF, the acting grade is the
+    raw LLM grade — byte-identical pre-flip behaviour — no matter what the lattice said."""
+    for llm in ("game_changer", "strong", "routine", "mna"):
+        for shadow in ("game_changer", "strong", "routine", "mna"):
+            verdict = {"shadow_tier": shadow, "rule": "any"}
+            assert cts.resolve_live_tier(llm, verdict, False) == (llm, "llm")
+
+
+def test_flag_on_makes_the_lattice_verdict_the_acting_grade():
+    verdict = {"shadow_tier": "game_changer", "rule": "strong_promoted_group_repricing"}
+    assert cts.resolve_live_tier("strong", verdict, True) == ("game_changer", "lattice")
+
+
+def test_lattice_failure_fails_open_to_the_raw_grade():
+    """Fail direction: a missing/failed verdict degrades to the LLM grade (pre-flip
+    behaviour), stamped 'llm' — a lattice failure delays the corrected tier, never
+    darkens the scan or mislabels the acting side."""
+    assert cts.resolve_live_tier("strong", None, True) == ("strong", "llm")
+    assert cts.resolve_live_tier("strong", {}, True) == ("strong", "llm")
+    assert cts.resolve_live_tier("strong", {"shadow_tier": None}, True) == ("strong", "llm")
+
+
+@pytest.mark.asyncio
+async def test_recorder_writes_the_precomputed_acting_verdict_and_live_side(monkeypatch):
+    """Post-flip contract: an item carrying the verdict that ACTED is recorded VERBATIM
+    (no recompute drift — get_sectors_batch must not even be called), and live_side lands
+    as the LAST positional arg."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    captured = []
+
+    async def _execute(sql, *args):
+        captured.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(cts, "get_pool", AsyncMock(return_value=pool))
+    sector_fetch = AsyncMock(return_value={"MRNA": "Healthcare"})
+    monkeypatch.setattr(cts, "get_sectors_batch", sector_fetch)
+    verdict = cts.compute_shadow_verdict(
+        ticker="MRNA", live_quality="strong",
+        claude_analysis="unscheduled label expansion", grounded_text="[SEC 8-K] guidance",
+        news_summary="raises full-year guidance",
+        sector_by_ticker={"MRNA": "Healthcare", "A": "Healthcare", "B": "Healthcare",
+                          "C": "Healthcare", "D": "Healthcare", "E": "Tech"})
+    n = await cts.record_catalyst_tier_shadow(
+        [{"ticker": "MRNA", "live_quality": "strong", "verdict": verdict,
+          "live_side": "lattice", "ep_score": 72.0, "live_tier": "HIGH"}],
+        ["MRNA"], date(2026, 8, 19), datetime(2026, 8, 19, 7, 5))
+    assert n == 1
+    sql, args = captured[0]
+    assert "live_side" in sql and "$27" in sql
+    assert args[4] == verdict["shadow_tier"]   # $5 shadow_tier = the ACTING verdict, verbatim
+    assert args[5] == verdict["rule"]          # $6 rule
+    assert args[-1] == "lattice"               # $27 live_side
+    sector_fetch.assert_not_called()           # verdict given -> no recompute, no refetch
+
+
+@pytest.mark.asyncio
+async def test_recorder_legacy_items_recompute_and_stamp_llm(monkeypatch):
+    """Items WITHOUT a precomputed verdict (flag off / inline lattice failure) keep the
+    original recompute path and default live_side='llm' — pre-flip rows stay honest."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    captured = []
+
+    async def _execute(sql, *args):
+        captured.append(args)
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(cts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(cts, "get_sectors_batch", AsyncMock(return_value={}))
+    n = await cts.record_catalyst_tier_shadow(
+        [{"ticker": "X", "live_quality": "routine"}], ["X"],
+        date(2026, 8, 19), datetime(2026, 8, 19, 7, 5))
+    assert n == 1
+    assert captured[0][-1] == "llm"

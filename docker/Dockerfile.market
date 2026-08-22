@@ -32,6 +32,12 @@ RUN test -f integrations.yaml && test -f data_gated_reviews.yaml && test -f them
 # so the #426 blocking-count reflects the LIVE file (a COPY snapshot went stale on
 # PLAN-only sessions that didn't rebuild the image).
 COPY scripts/ scripts/
+# #533 flip monitor (2026-08-22): the must-not-miss fixture is READ AT RUNTIME by
+# health_checks.run_catalyst_lattice_monitor (revert trigger (a): a labelled real EP graded
+# routine). Importable as tests.fixtures.must_not_miss_eps via PYTHONPATH=/app namespace
+# packages; stdlib-only imports. deploy.sh carries a matching case arm so a member edit
+# rebuilds this image instead of going stale under the generic tests/* deploy-irrelevant arm.
+COPY tests/fixtures/must_not_miss_eps.py tests/fixtures/must_not_miss_eps.py
 
 RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app
 USER apollo

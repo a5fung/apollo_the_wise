@@ -56,6 +56,30 @@ classification so they can condition on `catalyst_quality`; moved here #405,
 
 LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or None.
 
+**⚖ Catalyst-tier LATTICE — LIVE since 2026-08-22 (operator-signed; see change log).** The raw
+LLM grade is no longer the acting tier: after every raw-grade mutation (earnings boost, #72
+prose downgrade) and before `_score_ep`, the deterministic surprise-anchored lattice
+(`catalyst_tier_shadow.shadow_retier`, $0 — no LLM call) moves the grade at most ONE step on
+mechanical evidence (#568 expectedness axes, rule-4 demotion markers + concrete-event regex,
+sector follow-through):
+- `game_changer` KEPT only with content-surprise evidence — scheduled: beat AND
+  forward-changing content (the PEG signature); unscheduled: a concrete forward event;
+  unknown calendar: kept (fail-open). Else demoted one step to `strong` (floors intact — a
+  10-point haircut, not a skip).
+- `strong` → `game_changer` only on unscheduled + forward + sector-confirm (the MRNA class:
+  own concrete unscheduled forward event AND the group repriced with it). Never demoted.
+- `routine` → `strong` when the live analysis carries rule-4 sector/sympathy markers AND a
+  concrete company event (the prompt's auto-demotion reversed). Never straight to the top.
+- `mna` passthrough — the M&A hard filter is untouched.
+Recomputed every scan tick (the MRNA 07:05 grade-pinning fix). **Scope line:**
+`_post_grade_filters` (M&A / routine-gap<12 / R6 pm-shares carve-out) still reads the RAW LLM
+grade — the shadow evaluation covered only the post-filter pool, so the flip does not reach
+admission. **ONE revert flag:** `catalyst_tier_lattice` runtime toggle /
+`CATALYST_TIER_LATTICE_ENABLED` env, default ON — OFF restores the raw-grade behaviour with no
+other edit (exact revert SQL in the change log). Both sides + a `live_side` acting-marker are
+recorded per (scan_date, ticker) in `mi_catalyst_tier_shadow`; the nightly flip monitor
+(`health_checks.run_catalyst_lattice_monitor`) owns the three revert triggers.
+
 **Grounded grade (2026-06-04, #187/#190 — catalyst-axis Track A+B; deployed live).** The grade now reasons on a GROUNDED, UNTRUNCATED summary — the authoritative **SEC 8-K body** (`collector.get_sec_recent_filings`, near-real-time `data.sec.gov/submissions` endpoint, error-wrapped) + the Perplexity web synthesis — NOT raw 200-char yfinance headlines. Model upgraded **Haiku → `claude-sonnet-4-6`**. New prompt rule: broad sector-momentum / short-squeeze / non-company-specific technical moves grade `routine` (a gap-up alone is not a catalyst).
 - **WHY**: RUM 2026-06-04 traded −1.07R as a false `strong` — the real catalyst (a $270M NVIDIA-Blackwell GPU-cloud **8-K filed 5:04am ET**) reached neither LLM (no EDGAR ingestion existed), so Haiku confabulated `strong` from headlines while the grade truncated the synthesis to 200 chars.
 - **EVIDENCE**: 30-case bake-off — grounded summary flips the false-`strong` junk (RUM/PGY/CRSR/DY, short-squeeze/sector-rotation/ticker-mismatch) → `routine`, and Haiku≈Sonnet≈Opus on identical input (so the **input** is the lever, not the model); RUM grounded+8-K → `strong` with the correct $270M rationale; B0 confirmed EDGAR is near-real-time and the 8-K was retrievable ~4.5h pre-scan.
@@ -69,6 +93,9 @@ LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or No
 **Hedge-phrase downgrade**: if Perplexity answer contains hedge phrases ("no specific information", "couldn't find", etc.) AND catalyst is `game_changer`/`strong`, downgrade one notch. Audit event: `catalyst_pplx_hedge_downgrade`.
 
 ### Score computation (`_score_ep`)
+
+`catalyst_quality` entering `_score_ep` (component AND conviction floors) is the LATTICE
+tier since 2026-08-22 (see Catalyst grading above), not the raw LLM grade.
 
 Multi-factor: gap_pct + pm_rvol + catalyst_quality component + regime + RS + prior_momentum (a 3-month extension PENALTY: −25 at ≥+50% / −15 at ≥+30%, Qullamaggie-sourced — not a positive factor; corrected 2026-07-18 from the imprecise "extension"). Catalyst is an ADDITIVE component (not a multiplier) of the `breakdown` (ep_detector.py ~1140-1146):
 - `game_changer`: +25
@@ -111,6 +138,70 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-22 — Catalyst tier FLIPPED to the corrected lattice (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE) [#533 Change 6]
+
+**Trigger**: MRNA 2026-08-19 — the operator's canonical textbook EP — graded `strong` at 07:05
+and was KILLED at score 21.6 on its 10% gap read; only a freak 33% gap print rescued it. The
+clear was luck, not detection — a defect, not an experiment. Meanwhile the live top tier went to
+42-44% of ordinary last-60d alerts (near-modal) while at most 1-2 of the 7 graded labelled real
+EPs got it. Operator, rejecting the wait-for-October option: *"why wait so long? The premise is
+that we got into MRNA by chance, so this is a bug we're fixing, can we do a negative test
+instead i.e. flip now and revert when wrong, observe/compare with existing, and have a condition
+to test if we're right or not and monitor."* Then, to the flip plan: **"go."**
+
+**Evidence**: `docs/analysis/catalyst_tier_shadow_533_2026-08-22.md` — the shipped lattice
+itself replayed (never a reimplementation) over all 264 stored live alerts + the 26-member #577
+fixture, one read-only prod capture, $0: (a) MRNA re-tiers strong → game_changer on the
+operator's own evidence (unscheduled + forward + 7 other Healthcare names on the day's board)
+and clears HIGH at the REAL 07:05 read (72.0 ≥ 65) instead of surviving on the freak print;
+(b) ordinary-alert `game_changer` rate 43% → 18% (last 60d; 42% → 19% within HIGHs) — the flip
+TIGHTENS, so the risk is missed alerts, not bad ones; (c) the PEG class survives (17 of 52
+scheduled GCs keep the top tier on beat+forward; strongs are never demoted); (d) alert volume
+≈ neutral on replay (HIGH 187 → 185; +6 MOD→HIGH, −8 HIGH→MOD, −2 MOD→none over ~4 months).
+⚠ **HONEST LIMIT: 4 of the 7 graded labelled real EPs (ARM / QCOM / AMD / UMC) are
+UNDETERMINED offline** — they died below score 50, so no catalyst text was ever stored and the
+routine-corrective cannot be evaluated on them at $0. We genuinely cannot predict the flip's
+effect on that class; the monitor below IS the test for it (the negative-test design the
+operator chose). Known instrument limits, disclosed not smoothed: the #568 keyword axes missed
+INTC 04-24's beat on its truncated surviving text (demoted to strong, still HIGH via the
+gap≥20 floor), and sector follow-through is beta-confounded on flood days (raw counts recorded
+per row so the lane stays re-cuttable).
+
+**Anticipated effect**: top-tier rate on ordinary alerts drops to ~14-19% (near the 11.6%
+graded-candidate base rate — rare again instead of near-modal); scheduled recaps without
+beat+forward lose 10 catalyst points (floors intact); MRNA-class strongs promote intraday as
+the group repricing fills in (the shadow regrades every tick — the live grade changed intraday
+on only 15 of 700 graded ticker-days); net alert volume roughly unchanged. Not fully
+predictable: promotions among graded scan-only rows that never alerted (no stored text
+offline) — bounded small, measured exactly by the recorder from day one.
+
+**Reversion-flag**: NEW (first live change to tier ASSIGNMENT; the LLM tier definitions,
+`_score_ep` weights, thresholds, floors and every filter are untouched underneath — the lattice
+is a new one-step re-tier layer on top). **Revert = ONE flag, default ON**
+(`catalyst_tier_lattice` runtime toggle / `CATALYST_TIER_LATTICE_ENABLED` env):
+- Instant (≤60s, no redeploy): `INSERT INTO mi_safeguard_state (safeguard, account_mode,
+  state, last_transition_at, updated_at) VALUES ('catalyst_tier_lattice', 'global', 'off',
+  NOW(), NOW()) ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state,
+  updated_at = NOW();`
+- Permanent: `CATALYST_TIER_LATTICE_ENABLED=false` in prod .env + redeploy market-agent.
+Scope lines, deliberate: `_post_grade_filters` still reads the RAW grade (the evaluation
+covered only the post-filter pool — extending the flip into admission would LOOSEN
+unevaluated); the catalyst cache keeps the raw grade (the lattice recomputes every tick).
+Fail direction in code: any lattice error → the raw LLM grade acts that tick, logged loudly.
+`mi_catalyst_tier_shadow` keeps recording BOTH sides with CONSTANT column semantics
+(`live_quality_*` = raw LLM grade always, `shadow_tier_*` = lattice always) + a `live_side`
+column ('llm'/'lattice', pre-flip rows backfilled 'llm') stamping which side ACTED — the
+live-vs-old comparison continues uninterrupted and no reader infers the acting side from dates.
+
+**Status**: shipped, awaiting field validation — under the NIGHTLY flip monitor
+(`health_checks.run_catalyst_lattice_monitor`, wired into `_post_nightly_audit_job` 17:30 ET,
+no new cron; stands down if the flag is reverted). Three revert triggers, any hit → Telegram
+naming the trigger + the numbers + the exact revert SQL, plus an audit row: (a) **P1** — a
+`tests/fixtures/must_not_miss_eps.py` member graded `routine` by the acting side (announced
+once per member; the fixture now ships in the market image so this trigger cannot be silently
+dark); (b) HIGH alerts over the last 7 days fall >50% vs the prior 30 days (per-trading-day
+averages); (c) two consecutive trading days with zero EP alerts.
 
 ### 2026-08-19 — `MIN_GAP_PCT`: 10.0% → 9.0% (OPERATOR-SIGNED, REVERSAL of 2026-05-17 R2)
 

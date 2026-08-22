@@ -3281,3 +3281,254 @@ async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
     pool = await _gp()
     async with pool.acquire() as acquired:
         return await _run(acquired)
+
+
+# ── #533 Change 6 — CATALYST TIER FLIP MONITOR (2026-08-22, operator-signed) ──────────────────
+#
+# WHY. The catalyst tier flipped live 2026-08-22: the corrected lattice
+# (catalyst_tier_shadow.py) now re-tiers the LLM grade before _score_ep. The operator chose a
+# NEGATIVE TEST over waiting for October labels: *"flip now and revert when wrong, observe/
+# compare with existing, and have a condition to test if we're right or not and monitor."* The
+# flip TIGHTENS (game_changer false positives 43% -> 18%), so the failure mode to watch is
+# MISSED ALERTS — and 4 of the 7 graded labelled real EPs were undetermined offline (they died
+# below score 50 with no stored catalyst text), so this monitor IS the test for that class.
+#
+# THE THREE REVERT TRIGGERS (any one -> Telegram naming the trigger + the numbers + the exact
+# revert command, plus an audit row):
+#   (a) P1 — a member of tests/fixtures/must_not_miss_eps.py is graded `routine` by the ACTING
+#       side. A real EP must never be missed; announced once per member ever.
+#   (b) HIGH alerts over the last 7 days fall MORE THAN 50% vs the prior 30 days (both averaged
+#       over TRADING days).
+#   (c) Two consecutive trading days with ZERO EP alerts (any tier).
+#
+# Wired into _post_nightly_audit_job (17:30 ET, scheduler.py) — the existing audit surface, no
+# new cron. Stands down when the `catalyst_tier_lattice` toggle is OFF (reverted = nothing to
+# guard). Read-only: SELECTs mi_catalyst_tier_shadow / mi_ep_alerts, writes only audit rows and
+# Telegram — never a grade, entry, sizing or safeguard path.
+
+_LATTICE_TOGGLE = ("catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED")
+_LATTICE_REVERT_SQL = (
+    "INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at) "
+    "VALUES ('catalyst_tier_lattice', 'global', 'off', NOW(), NOW()) "
+    "ON CONFLICT (safeguard, account_mode) DO UPDATE "
+    "SET state = EXCLUDED.state, updated_at = NOW();"
+)
+_LATTICE_HIGH_DROP_FRACTION = 0.5   # trigger (b): recent daily avg < 50% of prior daily avg
+_LATTICE_RECENT_DAYS = 7            # trigger (b): recent window, calendar days
+_LATTICE_PRIOR_DAYS = 30            # trigger (b): prior window, calendar days
+_LATTICE_ZERO_ALERT_DAYS = 2        # trigger (c): consecutive zero-alert trading days
+_LATTICE_FIXTURE_WARN_DEDUPE_DAYS = 3
+
+
+def _load_must_not_miss_members() -> "list[tuple[str, str]] | None":
+    """(ticker, iso-date) pairs from the #577 fixture, excluded members skipped.
+
+    The fixture ships in the market image (docker/Dockerfile.market COPY) precisely so
+    trigger (a) is alive in prod. Returns None — never [] — on import failure so the
+    caller can tell 'fixture unreachable' (alert-worthy: the P1 trigger is dark) from
+    'no members'."""
+    try:
+        from tests.fixtures.must_not_miss_eps import MUST_NOT_MISS
+        return [(m.ticker, m.alert_date) for m in MUST_NOT_MISS if not m.excluded]
+    except Exception as e:
+        logger.warning("catalyst_lattice_monitor: must_not_miss fixture unreachable: %s", e)
+        return None
+
+
+def _lattice_acting_tier(live_side: "str | None", live_quality_last: "str | None",
+                         shadow_tier_last: "str | None") -> "str | None":
+    """The tier the LIVE system ACTED on for a row — decided by the row's own live_side
+    stamp, never by its date ('llm' rows predate the flip or ran with the flag off)."""
+    if live_side == "lattice":
+        return shadow_tier_last
+    return live_quality_last
+
+
+def _evaluate_lattice_high_drop(recent_avg: float, prior_avg: float) -> "dict[str, Any] | None":
+    """Trigger (b), pure: fire when the recent per-trading-day HIGH average has fallen
+    MORE than 50% vs the prior average. prior_avg == 0 never fires (nothing to fall from —
+    a cold lane is trigger (c)'s job)."""
+    if prior_avg > 0 and recent_avg < _LATTICE_HIGH_DROP_FRACTION * prior_avg:
+        return {"recent_avg": round(recent_avg, 3), "prior_avg": round(prior_avg, 3),
+                "drop_pct": round(100.0 * (1 - recent_avg / prior_avg), 1)}
+    return None
+
+
+def _lattice_trading_days(end_day: date, n_calendar: int) -> "list[date]":
+    """The trading days inside the n_calendar-day window ENDING at end_day (inclusive)."""
+    return [end_day - timedelta(days=i) for i in range(n_calendar)
+            if _is_trading_day(end_day - timedelta(days=i))]
+
+
+async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]":
+    """#533 flip monitor — see the block comment above. Returns {"enabled", "today",
+    "triggers", "errors", "spoke"}; never raises (each trigger isolated). Silent when
+    healthy; stands down entirely when the revert flag is OFF."""
+    from agents.market_intelligence.db import get_pool as _gp, get_runtime_toggle, \
+        log_audit_event as _log
+
+    out: "dict[str, Any]" = {"enabled": True, "today": None, "triggers": [], "errors": [],
+                             "spoke": False}
+    try:
+        out["enabled"] = bool(await get_runtime_toggle(*_LATTICE_TOGGLE, default=True))
+    except Exception as e:  # toggle read is internally fail-open; belt and braces
+        logger.warning("catalyst_lattice_monitor: toggle read failed: %s", e)
+        out["errors"].append({"toggle": str(e)})
+    if not out["enabled"]:
+        return out
+
+    async def _run(c) -> "dict[str, Any]":
+        day = today or et_today()
+        out["today"] = day.isoformat()
+
+        # ── trigger (a): P1 — a must-not-miss member graded routine by the acting side ──
+        members = _load_must_not_miss_members()
+        if members is None:
+            # The P1 trigger is DARK — itself alert-worthy, never silent. Deduped 3 days.
+            out["errors"].append({"fixture": "unreachable"})
+            try:
+                already = await c.fetchrow(
+                    "SELECT 1 FROM mi_audit_log WHERE event_type = 'catalyst_lattice_monitor_error' "
+                    "AND created_at > NOW() - make_interval(days => $1) LIMIT 1",
+                    _LATTICE_FIXTURE_WARN_DEDUPE_DAYS)
+                await _log("catalyst_lattice_monitor_error",
+                           "must_not_miss fixture unreachable — P1 trigger (a) is DARK",
+                           json.dumps({"today": day.isoformat()}))
+                if not already:
+                    from agents.market_intelligence.briefing import send_telegram_message
+                    await send_telegram_message(
+                        "🟠 *CATALYST TIER MONITOR* — the must-not-miss fixture cannot be "
+                        "loaded, so revert trigger (a) — a real EP graded routine — is "
+                        "DARK. Check the market image ships "
+                        "`tests/fixtures/must_not_miss_eps.py` (docker/Dockerfile.market).")
+            except Exception as e:
+                logger.warning("catalyst_lattice_monitor: fixture-dark warning failed: %s", e)
+                out["errors"].append({"fixture_warn": str(e)})
+        else:
+            try:
+                pairs = {(t, d) for t, d in members}
+                rows = await c.fetch(
+                    "SELECT scan_date, ticker, live_quality_last, shadow_tier_last, live_side "
+                    "FROM mi_catalyst_tier_shadow WHERE ticker = ANY($1::text[])",
+                    sorted({t for t, _ in pairs}))
+                for r in rows:
+                    key = (r["ticker"], r["scan_date"].isoformat())
+                    if key not in pairs:
+                        continue
+                    acting = _lattice_acting_tier(
+                        r["live_side"], r["live_quality_last"], r["shadow_tier_last"])
+                    if acting != "routine":
+                        continue
+                    # announce once per member EVER (the dead-column idiom)
+                    summary_key = f"{key[0]} {key[1]}"
+                    already = await c.fetchrow(
+                        "SELECT 1 FROM mi_audit_log WHERE event_type = 'catalyst_lattice_p1_miss' "
+                        "AND summary LIKE $1 LIMIT 1", summary_key + "%")
+                    if already:
+                        continue
+                    out["triggers"].append({
+                        "kind": "p1_member_routine", "ticker": key[0], "date": key[1],
+                        "live_side": r["live_side"],
+                        "llm_grade": r["live_quality_last"],
+                        "lattice_tier": r["shadow_tier_last"]})
+            except Exception as e:
+                logger.warning("catalyst_lattice_monitor: P1 member check failed: %s", e)
+                out["errors"].append({"p1": str(e)})
+
+        # ── per-date alert counts feed triggers (b) and (c) — one query ──────────────
+        by_date: "dict[date, tuple[int, int]]" = {}
+        try:
+            span_start = day - timedelta(days=_LATTICE_RECENT_DAYS + _LATTICE_PRIOR_DAYS - 1)
+            arows = await c.fetch(
+                f"SELECT alert_date, COUNT(*) AS n, "
+                f"COUNT(*) FILTER (WHERE score_tier = 'HIGH') AS high_n "
+                f"FROM mi_ep_alerts WHERE alert_date >= $1 AND alert_date <= $2 "
+                f"AND {LIVE_SOURCE_SQL} GROUP BY alert_date",
+                span_start, day)
+            by_date = {r["alert_date"]: (int(r["n"]), int(r["high_n"])) for r in arows}
+
+            # trigger (b): 7d HIGH daily average vs the prior 30d, trading days only
+            recent_td = _lattice_trading_days(day, _LATTICE_RECENT_DAYS)
+            prior_td = [d for d in _lattice_trading_days(day, _LATTICE_RECENT_DAYS
+                                                         + _LATTICE_PRIOR_DAYS)
+                        if d not in set(recent_td)]
+            if recent_td and prior_td:
+                recent_avg = sum(by_date.get(d, (0, 0))[1] for d in recent_td) / len(recent_td)
+                prior_avg = sum(by_date.get(d, (0, 0))[1] for d in prior_td) / len(prior_td)
+                drop = _evaluate_lattice_high_drop(recent_avg, prior_avg)
+                if drop:
+                    out["triggers"].append({
+                        "kind": "high_volume_drop", **drop,
+                        "recent_days": len(recent_td), "prior_days": len(prior_td),
+                        "recent_high_n": sum(by_date.get(d, (0, 0))[1] for d in recent_td),
+                        "prior_high_n": sum(by_date.get(d, (0, 0))[1] for d in prior_td)})
+
+            # trigger (c): the two most recent trading days both produced ZERO alerts
+            last_tds: "list[date]" = []
+            d = day
+            while len(last_tds) < _LATTICE_ZERO_ALERT_DAYS and (day - d).days < 10:
+                if _is_trading_day(d):
+                    last_tds.append(d)
+                d -= timedelta(days=1)
+            if (len(last_tds) == _LATTICE_ZERO_ALERT_DAYS
+                    and all(by_date.get(d, (0, 0))[0] == 0 for d in last_tds)):
+                out["triggers"].append({
+                    "kind": "zero_alert_days",
+                    "days": [d.isoformat() for d in last_tds]})
+        except Exception as e:
+            logger.warning("catalyst_lattice_monitor: alert-volume triggers failed: %s", e)
+            out["errors"].append({"volume": str(e)})
+
+        if not out["triggers"]:
+            return out
+
+        # ── announce: WHICH trigger, the numbers, the exact revert command ───────────
+        lines = ["🔴 *CATALYST TIER MONITOR — revert trigger hit* (#533 flip, 2026-08-22)"]
+        for t in out["triggers"]:
+            if t["kind"] == "p1_member_routine":
+                lines.append(
+                    f"• P1 MISS: `{t['ticker']}` {t['date']} — a labelled real EP was graded "
+                    f"routine by the acting tier (LLM grade {t['llm_grade']}, lattice "
+                    f"{t['lattice_tier']}, acting side {t['live_side']}). A real EP must "
+                    f"never be missed — this is the trigger that matters most.")
+            elif t["kind"] == "high_volume_drop":
+                lines.append(
+                    f"• HIGH-ALERT COLLAPSE: last {t['recent_days']} trading days averaged "
+                    f"{t['recent_avg']} HIGH alerts/day ({t['recent_high_n']} total) vs "
+                    f"{t['prior_avg']}/day ({t['prior_high_n']} total) over the prior "
+                    f"{t['prior_days']} trading days — a {t['drop_pct']}% drop (threshold 50%).")
+            elif t["kind"] == "zero_alert_days":
+                lines.append(
+                    f"• ZERO-ALERT DAYS: no EP alerts at all on {' and '.join(t['days'])} "
+                    f"— two consecutive trading days.")
+        lines.append("")
+        lines.append("Revert the flip (ONE flag; takes effect within ~60s, no redeploy):")
+        lines.append("```")
+        lines.append(_LATTICE_REVERT_SQL)
+        lines.append("```")
+        lines.append("_Permanent form: set `CATALYST_TIER_LATTICE_ENABLED=false` in prod .env "
+                     "and redeploy market-agent. Evidence + change log: "
+                     "docs/setups/magna53_ep.md 2026-08-22._")
+
+        headline = ("catalyst lattice revert trigger: "
+                    + ", ".join(t["kind"] for t in out["triggers"]))
+        try:
+            await _log("catalyst_lattice_monitor_alert", headline,
+                       json.dumps({"today": day.isoformat(), "triggers": out["triggers"]}))
+            for t in out["triggers"]:
+                if t["kind"] == "p1_member_routine":
+                    await _log("catalyst_lattice_p1_miss",
+                               f"{t['ticker']} {t['date']} graded routine by the acting tier",
+                               json.dumps(t))
+            from agents.market_intelligence.briefing import send_telegram_message
+            out["spoke"] = bool(await send_telegram_message("\n".join(lines)))
+        except Exception as e:
+            logger.warning("catalyst_lattice_monitor: announce failed: %s", e)
+            out["errors"].append({"announce": str(e)})
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await _gp()
+    async with pool.acquire() as acquired:
+        return await _run(acquired)

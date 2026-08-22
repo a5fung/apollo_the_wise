@@ -1,11 +1,32 @@
-"""#533 Change 6 — catalyst-tier SHADOW grader (2026-08-22). SHADOW ONLY — THE LINE.
+"""#533 Change 6 — the catalyst-tier LATTICE (2026-08-22). LIVE since the same-day
+operator-signed flip; revertible by ONE flag.
 
-The live catalyst grade (`catalyst_quality`), the tier definitions, `_score_ep`, every
-threshold and every floor are UNTOUCHED. This module OBSERVES the live grade after it is
-computed and records, per (scan_date, ticker), what a surprise-anchored re-tiering would
-have said — into `mi_catalyst_tier_shadow`. Nothing here is read by any grading / entry /
-sizing / ordering / safeguard path. Promotion to live is a criterion change: CHANGE_PROCESS
-+ operator sign-off.
+⚖ FLIPPED LIVE 2026-08-22 (OPERATOR-SIGNED — see docs/setups/magna53_ep.md change log for
+the quoted sign-off). The lattice below, built and evaluated as a shadow
+(docs/analysis/catalyst_tier_shadow_533_2026-08-22.md), now RE-TIERS the live LLM catalyst
+grade before `_score_ep` consumes it: MRNA-class real EPs stop dying on grade pinning
+(21.6 at the 10% gap read) and the near-modal `game_changer` rate drops 43% → 18%. The
+flip TIGHTENS — the risk is missed alerts, which is what the flip monitor
+(`health_checks.run_catalyst_lattice_monitor`, nightly audit job) watches.
+
+🔁 THE REVERT FLAG — `catalyst_tier_lattice` runtime toggle / `CATALYST_TIER_LATTICE_ENABLED`
+env var, default ON. OFF = the raw LLM grade acts, byte-identical pre-flip behaviour, and
+the lattice goes back to shadow-recording only. Instant no-redeploy revert (≤60s):
+    INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+    VALUES ('catalyst_tier_lattice', 'global', 'off', NOW(), NOW())
+    ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+Every recorded row stamps `live_side` ('lattice' | 'llm') = which grader ACTED that tick —
+a reader never infers the acting side from the date.
+
+The tier definitions the LLM emits, `_score_ep`, every threshold and every floor stay
+UNTOUCHED — the lattice moves the GRADE at most one step; `_post_grade_filters` (M&A /
+routine-gap<12 / pm-shares) still reads the RAW LLM grade (the evaluated counterfactual
+covered post-filter behaviour only; extending the flip into admission would LOOSEN
+unevaluated — see the SSoT change-log entry). `mi_catalyst_tier_shadow` keeps recording
+BOTH sides per (scan_date, ticker) so the live-vs-old comparison runs uninterrupted:
+`live_quality_*` = ALWAYS the raw LLM grade, `shadow_tier_*` = ALWAYS the lattice verdict,
+`live_side` = which one acted. Any further criterion change: CHANGE_PROCESS + operator
+sign-off.
 
 $0 AT RUNTIME — deterministic, no LLM call anywhere in this module. The only news-magnitude
 estimate it consumes is the live grade itself; every other input is a mechanical derivation
@@ -71,8 +92,11 @@ updating the cached grade, a corpus change, or the board's sector composition sh
 flow through); the row upsert keeps first/last verdicts and counts changes
 (`regrade_count`) — the MRNA 07:05 grade-pinning failure made observable.
 
-Fail-open: every entry point swallows its own errors (log only) — telemetry must never
-jeopardize the scan (same contract as tape_quality / vol_profile annotators).
+Fail direction of the LIVE path: `resolve_live_tier` degrades to the raw LLM grade
+(pre-flip behaviour) whenever the lattice verdict is unavailable — a lattice failure can
+DELAY the corrected tier, never kill the scan. The recorder stays fail-open (log only) —
+telemetry must never jeopardize the scan (same contract as tape_quality / vol_profile
+annotators).
 """
 from __future__ import annotations
 
@@ -155,6 +179,42 @@ def sector_follow_through(
     }
 
 
+def resolve_live_tier(
+    llm_quality: str,
+    verdict: Optional[dict[str, Any]],
+    lattice_enabled: bool,
+) -> tuple[str, str]:
+    """THE FLIP (2026-08-22, operator-signed): which grader ACTS this tick.
+
+    Returns (effective_quality, live_side). `live_side` is 'lattice' when the corrected
+    lattice's verdict is the acting grade, 'llm' when the raw LLM grade acts.
+
+    THE ONE REVERT FLAG: `lattice_enabled` is the `catalyst_tier_lattice` runtime toggle
+    (env `CATALYST_TIER_LATTICE_ENABLED`, default ON). OFF -> the raw LLM grade acts,
+    byte-identical pre-flip behaviour, no other edit needed.
+
+    Fail direction: a missing/failed verdict (None, or no shadow_tier) degrades to the
+    raw LLM grade — a lattice failure can delay the corrected tier, never dark the scan."""
+    if lattice_enabled and verdict and verdict.get("shadow_tier"):
+        return verdict["shadow_tier"], "lattice"
+    return llm_quality, "llm"
+
+
+async def fetch_board_sectors(board_tickers: list[str]) -> dict[str, Optional[str]]:
+    """One batch sector read for the day's crossed board (mi_ticker_overrides persistent
+    cache via get_sectors_batch — a pure DB read, $0). Fail-open: on any failure every
+    ticker maps to None, so `sector_follow_through` reads confirm=False rather than
+    crashing the caller (the scan loop pre-fetches this once per tick)."""
+    out: dict[str, Optional[str]] = {t: None for t in board_tickers}
+    if not board_tickers:
+        return out
+    try:
+        out.update(await get_sectors_batch(board_tickers) or {})
+    except Exception as e:  # sector coverage is best-effort — confirm just reads False
+        logger.debug(f"tier lattice: sector batch fetch failed — {e}")
+    return out
+
+
 def shadow_retier(
     live_quality: str,
     sched: str,
@@ -235,23 +295,26 @@ async def record_catalyst_tier_shadow(
     now_et: datetime,
 ) -> int:
     """Batch writer — called fire-and-forget after the scan loop (next to the scan-log
-    batch write, same contract: never raises, never blocks the scan). One sector fetch
-    for the whole board (mi_ticker_overrides persistent cache via get_sectors_batch),
-    then one upsert per graded candidate. Returns rows written (0 on any failure)."""
+    batch write, same contract: never raises, never blocks the scan). Returns rows
+    written (0 on any failure).
+
+    Post-flip (2026-08-22): items normally carry the PRECOMPUTED `verdict` (the exact
+    dict that ACTED at the flip point — recorded verbatim so the acting verdict and the
+    recorded one can never drift) plus `live_side` ('lattice'|'llm'). Items without a
+    verdict (legacy callers, or an inline lattice failure) fall back to the original
+    recompute path — one sector fetch for the whole board, then compute per item."""
     if not inputs:
         return 0
     try:
-        sector_by_ticker: dict[str, Optional[str]] = {t: None for t in board_tickers}
-        try:
-            sector_by_ticker.update(await get_sectors_batch(board_tickers) or {})
-        except Exception as e:  # sector coverage is best-effort — confirm just reads False
-            logger.debug(f"tier shadow: sector batch fetch failed — {e}")
+        sector_by_ticker: dict[str, Optional[str]] = {}
+        if any(not item.get("verdict") for item in inputs):
+            sector_by_ticker = await fetch_board_sectors(board_tickers)
         pool = await get_pool()
         written = 0
         async with pool.acquire() as conn:
             for item in inputs:
                 try:
-                    v = compute_shadow_verdict(
+                    v = item.get("verdict") or compute_shadow_verdict(
                         ticker=item["ticker"],
                         live_quality=item["live_quality"],
                         claude_analysis=item.get("claude_analysis"),
@@ -272,6 +335,7 @@ async def record_catalyst_tier_shadow(
                         item.get("rel_volume"), item.get("projected_vol_multiple"),
                         item.get("ep_score"), item.get("live_tier"),
                         len(item.get("grounded_text") or ""),
+                        item.get("live_side") or "llm",
                     )
                     written += 1
                 except Exception as e:
@@ -284,7 +348,8 @@ async def record_catalyst_tier_shadow(
 
 # first_* columns are written once (INSERT); last_* refresh every tick; regrade_count
 # increments only when the shadow tier actually changes — the grade-pinning failure
-# (MRNA 07:05) made countable.
+# (MRNA 07:05) made countable. live_side ($27, appended last so pre-flip positional
+# reads stay valid) stamps WHICH grader acted on this row's latest tick.
 _UPSERT_SQL = """
     INSERT INTO mi_catalyst_tier_shadow (
         scan_date, ticker, first_seen_et, last_seen_et,
@@ -294,12 +359,12 @@ _UPSERT_SQL = """
         expct_beat, expct_growth_yoy, demotion_marker, concrete_event,
         sector, sector_n, board_n, sector_share, sector_confirm,
         gap_pct_first, gap_pct_last, adv_dollar, rel_volume,
-        projected_vol_multiple, live_ep_score, live_tier, grounded_len
+        projected_vol_multiple, live_ep_score, live_tier, grounded_len, live_side
     ) VALUES (
         $1,$2,$3,$3, $4,$4, $5,$5,$6,$6, 0,
         $7,$8,$9,$10, $11,$12,$13,$14,
         $15,$16,$17,$18,$19,
-        $20,$20,$21,$22,$23,$24,$25,$26
+        $20,$20,$21,$22,$23,$24,$25,$26,$27
     )
     ON CONFLICT (scan_date, ticker) DO UPDATE SET
         last_seen_et       = EXCLUDED.last_seen_et,
@@ -329,5 +394,6 @@ _UPSERT_SQL = """
         projected_vol_multiple = EXCLUDED.projected_vol_multiple,
         live_ep_score      = EXCLUDED.live_ep_score,
         live_tier          = EXCLUDED.live_tier,
-        grounded_len       = EXCLUDED.grounded_len
+        grounded_len       = EXCLUDED.grounded_len,
+        live_side          = EXCLUDED.live_side
 """

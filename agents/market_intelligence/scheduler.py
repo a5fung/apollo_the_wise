@@ -3289,6 +3289,23 @@ async def _post_nightly_audit_job():
         logger.error(f"Detector-liveness check failed: {e}", exc_info=True)
         await notify_job_failure("detector_liveness_check", str(e))
 
+    # CATALYST-TIER FLIP MONITOR (#533 Change 6, 2026-08-22, operator-signed): the lattice
+    # flip's three revert triggers — (a) a must-not-miss member graded routine by the acting
+    # side, (b) 7-day HIGH average down >50% vs the prior 30 trading days, (c) two consecutive
+    # zero-alert trading days. Any hit -> Telegram naming the trigger + the numbers + the exact
+    # revert SQL, plus an audit row. Stands down when the `catalyst_tier_lattice` toggle is OFF
+    # (reverted = nothing to guard). Own try/except — a health guard that dies silently is the
+    # failure it exists to prevent.
+    try:
+        from agents.market_intelligence.health_checks import run_catalyst_lattice_monitor
+        lm = await run_catalyst_lattice_monitor()
+        logger.info(
+            f"Catalyst-lattice monitor: enabled={lm['enabled']}, "
+            f"{len(lm['triggers'])} trigger(s), {len(lm['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Catalyst-lattice monitor failed: {e}", exc_info=True)
+        await notify_job_failure("catalyst_lattice_monitor", str(e))
+
     # Job-liveness sweep (#370 increment 3): a scheduled job that RAN successfully but produced
     # NOTHING (theme synthesis truncating to 0 cohorts; theme-shadow 0 rows #173) — reads each output
     # table's real new-row count, NOT the lying self-report. Own try/except; internally robust.
