@@ -350,12 +350,19 @@ GATE_REGISTRY: list[dict] = [
         "file": "agents/market_intelligence/ep_detector.py",
         "kind": "const",
         "name": "MAX_EXTENSION_PCT",
-        "value": 50.0,
+        "value": 75.0,
         "citation": {
             "file": "docs/setups/magna53_ep.md",
-            "text": "MAX_EXTENSION_PCT=50.0",
+            "text": "MAX_EXTENSION_PCT=75.0",
         },
-        "note": "Operator-ruled 2026-07-18 (#481): the live 50%/5-day-MIN rule IS the intended "
+        "note": "LOOSENED 50.0 -> 75.0 on 2026-08-22, OPERATOR-SIGNED (\"ok, signed off on the "
+                "change to 75%\"), first change to this constant since inception. Evidence: "
+                "docs/analysis/gates_extension_top20_577_2026-08-22.md — the gate is 91% redundant "
+                "with ADV/ATR/mcap; its 50-75 band held 5 names that ran >=50% (2 doublers) vs 1 "
+                "loser, while 75-100 is the dead zone holding the disasters it genuinely prevents "
+                "(CAR -80%, SPCE -60%) — which is why the cap moved to 75 and NOT 100. Change log: "
+                "magna53_ep.md 2026-08-22. "
+                "PRIOR CONTEXT — operator-ruled 2026-07-18 (#481): the 50%/5-day-MIN rule WAS the intended "
                 "criterion (authoritative since 2026-05-07); the SSoT's prior 'prev_close <= 1.50x "
                 "SMA-10' was a birth transcription error (never in code), corrected same-day "
                 "(magna53_ep.md lines 19/30/53 + change log). Live criterion unchanged.",

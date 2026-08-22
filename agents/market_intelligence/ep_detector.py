@@ -155,7 +155,12 @@ MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
 MIN_PREV_DAY_VOLUME = 50_000   # Skip illiquid stocks — stale quotes create phantom gaps
 
 # Auto-disqualifiers (hard filters — applied before scoring)
-MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ in last 5 trading days before the gap
+MAX_EXTENSION_PCT = 75.0   # Skip if already up 75%+ in last 5 trading days before the gap
+# 2026-08-22: 50.0 -> 75.0, OPERATOR-SIGNED. The 50-75 band held 5 names that ran >=50%
+# (2 doublers: FCEL, MRAM) against 1 loser; the 75-100 band is the dead zone holding the
+# disasters this gate genuinely prevents (CAR -80%, SPCE -60%) — which is why it stops at 75
+# and not 100. Evidence + banding: docs/analysis/gates_extension_top20_577_2026-08-22.md.
+# SSoT + change log: docs/setups/magna53_ep.md.
 EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP alert in last 60 days
 # #170 shadow (2026-06-01): a cooldown-suppressed candidate that gapped hard
 # >= this many days after its prior alert is likely a RE-SETUP (the prior EP has

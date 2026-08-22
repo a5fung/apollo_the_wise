@@ -248,7 +248,7 @@ def test_thresholds_loaded_are_the_real_ones_not_the_stub():
     assert THRESHOLDS["MAX_ATR_PCT"] == 15.0
     assert THRESHOLDS["MIN_ADV_DOLLAR_VOLUME"] == 1_000_000
     assert THRESHOLDS["MIN_GAP_PCT"] >= 1.0  # env-overridable; sanity floor, not the exact value
-    assert THRESHOLDS["MAX_EXTENSION_PCT"] == 50.0
+    assert THRESHOLDS["MAX_EXTENSION_PCT"] == 75.0   # 2026-08-22 operator-signed loosening (#577A)
 
 
 def test_loading_real_filters_does_not_contaminate_sys_modules():

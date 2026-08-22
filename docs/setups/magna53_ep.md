@@ -29,7 +29,7 @@ This is the canonical Apollo entry strategy — the highest-volume, highest-conv
 - **Liquidity**: pre-market dollar volume sufficient (relative + absolute floor — see PM volume gate)
 - **Universe**: ~9,700 stocks via Polygon grouped daily
 - **Cooldown**: 60-day cooldown after any prior EP alert, with carve-out for fresh earnings (see below)
-- **Extension**: skip if prev_close is ≥ 50% above the MIN(close) of the last ~5 trading days (already extended pre-gap → chase risk). `MAX_EXTENSION_PCT=50.0` (ep_detector.py:99); MIN, not a single 5-days-ago point. [Corrected 2026-07-18 — was mis-transcribed at doc creation as "≤ 1.50× SMA-10", a rule that has never existed in code (see #481 + change log); the live criterion is unchanged.]
+- **Extension**: skip if prev_close is ≥ 75% above the MIN(close) of the last ~5 trading days (already extended pre-gap → chase risk). `MAX_EXTENSION_PCT=75.0` (ep_detector.py:158; was 50.0 until the operator-signed 2026-08-22 change below); MIN, not a single 5-days-ago point. [Corrected 2026-07-18 — was mis-transcribed at doc creation as "≤ 1.50× SMA-10", a rule that has never existed in code (see #481 + change log); the live criterion is unchanged.]
 
 ## Detection criteria (current)
 
@@ -41,7 +41,7 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 1. **Gap floor**: `gap_pct ≥ MIN_GAP_PCT` (9.0% hard floor, env `EP_MIN_GAP_PCT`; was 10.0% — see 2026-08-19 change log entry) — applied building the candidate list itself (ep_detector.py ~1567). No regime-dependent variant exists in code — ADR 0003's Phase-1 recommendation of "10% (or 12% in elevated regimes)" only ever shipped as a flat number; that regime branch was never built.
 2. **Pre-market volume**: relative gate — `pm_rvol ≥ MIN_PM_RVOL` (1.0× session-anchored RVOL@T)
 3. **EP cooldown**: skip if alerted within last 60 days, UNLESS `gap_pct ≥ 15% AND is_earnings_day` (fresh earnings catalyst bypasses cooldown)
-4. **Extension cap**: `(prev_close − min5) / min5 ≥ 50%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=50.0`, ep_detector.py:1858-1866). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
+4. **Extension cap**: `(prev_close − min5) / min5 ≥ 75%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=75.0`, ep_detector.py:158/2337; was 50.0 until 2026-08-22). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
 5. **Already scored today**: dedup within scan day
 6. **Session RVOL@T** (post-9:30): same primitive as pre-market, but session-anchored. Threshold `MIN_SESSION_RVOL = 1.0`
 
@@ -809,6 +809,37 @@ classifier's OWN `upgrades_30d` (the `episodic_neglect` low-coverage cut) is UNA
 entry — it now sources independently from `collector.get_recent_upgrade_events` (yfinance
 `Ticker.upgrades_downgrades`, dated events), a repair tracked in
 `docs/decisions/0028-setup-class-conviction-profiles.md` §2, not this rubric.
+
+### 2026-08-22 — Extension cap loosened 50% → 75% [#577A]
+
+**Trigger**: the #577 gate-pricing sweep. The extension gate ranked first of eleven gates by how
+many of its excluded names later reached a ≥100% 20-day peak (29). The operator then signed off
+on the loosening after reviewing the banded evidence: *"ok, signed off on the change to 75%."*
+
+**Evidence**: `docs/analysis/gates_extension_top20_577_2026-08-22.md`, 170 blocked rows over four
+months. The gate as configured is **91% redundant** — that share of its kills would have died at
+ADV / ATR% / market-cap anyway; its UNIQUE kills are 15 rows. Banded:
+  - **50-75%**: 5 names ran ≥50%, including 2 doublers (FCEL, MRAM), against 1 loser. This is the
+    slice being recovered.
+  - **75-100%**: the dead zone, and it holds the disasters the gate genuinely prevents —
+    CAR −80%, SPCE −60%. **This is why the new cap is 75 and not 100.**
+  - Whole-gate population median 20-day close is −44%, with 63% falling ≥30% — the gate as a
+    whole is sound; only its bottom band was mispriced.
+
+**Anticipated effect**: ~2 extra HIGH alerts per 4 months (~0.5/month). Expected converted
+doublers per loosening ≈ 0.4-0.6 after the remaining catalyst/score funnel (~24% pass). This is a
+SMALL, bounded loosening — not a throughput change.
+
+**Reversion-flag**: NEW — first change ever to `MAX_EXTENSION_PCT`, which has been 50.0 since
+inception.
+
+**Status**: shipped, awaiting field validation.
+
+⚠ **Two limits stated, not buried.** (1) All five recoverable names sit in ONE April macro
+regime; the next flood day is the out-of-sample test. (2) The only recoverable winner with minute
+bars (MXL 04-24) fills at **−1R under the stop rules in force and ≈+3.5R under the current 2R
+stop** — so whether a recovered winner actually pays is decided by CONVERSION (#562), not by this
+admission change. Loosening the door does not by itself make money.
 
 ### 2026-07-18 — Extension-rule wording corrected (transcription fix, NOT a criterion change) [#481]
 
