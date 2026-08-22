@@ -110,7 +110,15 @@ _ADVISOR = OutputCeiling(
     "pressure — freeform-prose caller that fills ANY cap (api_usage: p50 = exactly "
     "600 at the old 600 cap; the only opus-5 call pegged 1500). Demand bounded "
     "instead: brevity contract in theme_engine._call_advisor's system prompt "
-    "(verdict first line, <=6 sentences); a residual cut clips tail reasoning only.",
+    "(verdict first line, <=6 sentences); a residual cut clips tail reasoning only. "
+    "#575 2026-08-21: tripped the live truncation alarm 2026-08-12. thinking is left "
+    "ON the model default here (genuinely freeform judgment call, not a fixed "
+    "schema) — this number is STILL a shared thinking+text budget. Made recoverable "
+    "differently than the theme-engine tool callers: _call_advisor now checks "
+    "is_truncated()/empty-text and returns the explicit 'use your best judgment' "
+    "fallback instead of a silent empty string (no retry — a second Opus call per "
+    "truncated advisor consult was judged not worth the cost for a call already "
+    "capped at 3/run).",
 )
 
 # One shared judge-transport ceiling: ep_grade_judge.grade_holistic passes it, and
@@ -166,10 +174,27 @@ CEILINGS: dict[str, OutputCeiling] = {
     # question same day but prod api_usage was not queried (no DB access
     # available that session) — NO CHANGE made for lack of data, not
     # because the answer is known to be "no". Re-check when queryable.
+    # 2026-08-20/21 (#575) — ROOT CAUSE: every number below was derived as a TEXT
+    # budget, but on sonnet-5 the extended-thinking block SHARES max_tokens with
+    # the text/tool output (unset = adaptive thinking on by default). That is why
+    # three straight raises above all re-pegged within days — the ceiling was never
+    # the constraint, an invisible second consumer was. Fix: `thinking=` is now set
+    # EXPLICITLY per caller (see shared/llm_thinking.py) instead of inherited.
+    # theme_validation / theme_assignment / theme_split / narrative_theme_discovery
+    # / theme_synthesis now pass thinking=DISABLED (forced-tool or schema-only
+    # output, analysis_scratchpad already IS the reasoning surface) — for THOSE
+    # five, the number below is now a genuine text-only budget again.
+    # theme_discovery stays on the model default for its first (tool_choice=auto)
+    # attempt — deliberately, it's a genuinely open-ended advisor-or-report
+    # decision — and only disables thinking on the forced retry that already
+    # existed for truncation recovery; the number below is STILL a shared
+    # thinking+text budget on a clean first-attempt run.
     "narrative_theme_discovery": OutputCeiling(
         1500, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "WATCH: sonnet-5 max completed 1249 (83% of cap) vs 355 on 4-6 — 3.5x model "
-        "growth; the near-ceiling arm is expected to fire here first."),
+        "growth; the near-ceiling arm is expected to fire here first. #575 2026-08-21: "
+        "thinking=DISABLED at both call sites (forced tool from turn 1, no advisor "
+        "branch) — this number is a text-only budget again."),
     "theme_descriptions": OutputCeiling(
         500, "DESCRIPTION_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "136 haiku calls, max completed 308 (62% of cap)."),
@@ -178,7 +203,10 @@ CEILINGS: dict[str, OutputCeiling] = {
         "RAISED 2026-08-13 from 400 (#479): near-ceiling fired at 385/400. Verified in "
         "api_usage: 508 sonnet-5 calls, ZERO truncations, max completed 385 (96% of "
         "cap), p50 just 9 — schema-bounded JSON ({\"remove\": [...]} <= input tickers), "
-        "~1.0x model growth, so a straight raise is right: 2.5x the 385 max ~ 1000."),
+        "~1.0x model growth, so a straight raise is right: 2.5x the 385 max ~ 1000. "
+        "#575 2026-08-21: this WAS the decisive truncation row (1000/1000 tokens, "
+        "ZERO text, blocks=['thinking']) — thinking=DISABLED now (no scratchpad at "
+        "all, plain JSON), this number is a text-only budget again."),
     "theme_assignment": OutputCeiling(
         8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise after 10 days dead at 4000 (#543 — every call censored). "
@@ -186,18 +214,34 @@ CEILINGS: dict[str, OutputCeiling] = {
         "truncations, max completed 2968 (37% of cap), mean 1374. The 08-10 input "
         "batching (_ASSIGN_LLM_BATCH_SIZE=18) is what fixed it — ample headroom, no "
         "action needed here, and NOTHING to raise. Contrast theme_discovery, which was "
-        "at 83% of cap on its clean days and tripped on a heavy one."),
+        "at 83% of cap on its clean days and tripped on a heavy one. #575 2026-08-21: "
+        "thinking=DISABLED (tool_choice=any forces assign_stocks_to_themes or "
+        "consult_advisor every turn; analysis_scratchpad already IS the reasoning "
+        "surface) — this number is a text-only budget again."),
     "theme_discovery": OutputCeiling(
         8000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise from 4000: 8/8 sonnet-5 calls censored at 4000; "
-        "no post-raise sample yet."),
+        "no post-raise sample yet. #575 2026-08-21: thinking is left ON the model "
+        "default for the first (tool_choice=auto) attempt — a genuinely open-ended "
+        "advisor-or-report decision, not a fixed schema — so this number is STILL a "
+        "SHARED thinking+text budget on a clean run. Once the existing force_report "
+        "retry fires (truncation OR no tool call), thinking=DISABLED is added to that "
+        "retry call, doubling as the truncation-recovery mechanism."),
     "theme_synthesis": OutputCeiling(
         8000, "SYNTHESIS_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
-        "2026-08-07 raise from 4000: 22/29 sonnet-4-6 calls censored at 4000."),
+        "2026-08-07 raise from 4000: 22/29 sonnet-4-6 calls censored at 4000. "
+        "#575 2026-08-21: the task text guessed this caller was freeform like "
+        "theme_discovery — it is NOT: tool_choice is forced to "
+        "propose_emerging_cohorts from turn 1, single-shot, no advisor branch. "
+        "thinking=DISABLED, this number is a text-only budget again. NOTE: unlike "
+        "its siblings this caller still has no is_truncated() guard at the call "
+        "site (out of #575 scope — flagged for a follow-up, not fixed here)."),
     "theme_split": OutputCeiling(
         1750, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "RAISED 2026-08-09 from 800: the only sonnet-5 call censored at exactly 800; "
-        "2.5x the 4-6 max completed (691) ~ 1750. PROVISIONAL."),
+        "2.5x the 4-6 max completed (691) ~ 1750. PROVISIONAL. #575 2026-08-21: "
+        "thinking=DISABLED (forced tool_choice=any, analysis_scratchpad already IS "
+        "the reasoning surface) — this number is a text-only budget again."),
     "theme_merge_adjudication": OutputCeiling(
         700, None, "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "107 haiku calls, max completed 457 (65% of cap). Model passed per-call "
@@ -228,7 +272,12 @@ CEILINGS: dict[str, OutputCeiling] = {
         "sized off 4-6 runs that were THEMSELVES at-cap (10 of 15), so the sample never "
         "measured the real need and each raise just moved the wall. 8000 breaks that "
         "pattern deliberately: this is the WEEKLY OPERATOR REVIEW, it runs once a week, "
-        "and a censored run silently truncates the digest he actually reads."),
+        "and a censored run silently truncates the digest he actually reads. #575 "
+        "2026-08-21: thinking is left ON the model default for the first attempt "
+        "(freeform digest prose, not a fixed schema) — this number is STILL a shared "
+        "thinking+text budget on a clean run. NEW: one retry with thinking=DISABLED "
+        "if the first attempt truncates (this caller had zero truncation handling "
+        "before #575 despite 3 prior truncations)."),
     "description_backfill": OutputCeiling(
         2000, "DESCRIPTION_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "35 haiku calls, max completed 724 (36% of cap)."),

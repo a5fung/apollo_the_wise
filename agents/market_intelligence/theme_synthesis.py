@@ -31,6 +31,7 @@ import logging
 from datetime import date
 
 from shared.output_ceilings import max_tokens_for
+from shared import llm_thinking
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +292,12 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
             # from a genuine "no cohorts". Discovery proposed 0 for 3 days straight (6/22-24)
             # with no way to tell which; that silent ambiguity is the bug.
             max_tokens=max_tokens_for("theme_synthesis"),
+            # thinking disabled (#575). #575's task text guessed this caller was
+            # freeform like theme_discovery — it is NOT: tool_choice is forced to
+            # propose_emerging_cohorts from turn 1, single-shot, no advisor branch,
+            # and analysis_scratchpad already carries the reasoning. Same shape as
+            # narrative_theme_discovery. See shared/llm_thinking.py.
+            thinking=llm_thinking.DISABLED,
             tools=[_SYNTHESIS_TOOL],
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],

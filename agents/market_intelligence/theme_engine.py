@@ -78,8 +78,9 @@ from agents.market_intelligence.theme_merge_arm import (
     family_of,
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
-from shared.llm_response import content_block_types, first_text, is_truncated
+from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
+from shared import llm_thinking
 
 # Global ticker ban — fires when a ticker has been validation-removed from
 # ≥ N distinct themes in the last D days. Closes the per-(theme, ticker)
@@ -896,6 +897,10 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
         # UNCHANGED (byte-pinned by test_flag_off_is_byte_identical_v1).
         msg = await client.messages.create(
             model=THEME_MODEL, max_tokens=max_tokens_for("narrative_theme_discovery"),
+            # thinking disabled (#575): forced tool from turn 1, no advisor branch —
+            # nothing but the tool call can ever land, so thinking only risks eating
+            # the shared ceiling. See shared/llm_thinking.py.
+            thinking=llm_thinking.DISABLED,
             tools=[_LANE2_NARRATIVE_TOOL],
             tool_choice={"type": "tool", "name": "report_narrative_themes"},
             messages=[{"role": "user", "content": prompt}],
@@ -1022,6 +1027,9 @@ async def _discover_lane2_registry(
     # _LANE2_NARRATIVE_TOOL for the measured diagnosis. Prompt text unchanged.
     msg = await client.messages.create(
         model=THEME_MODEL, max_tokens=max_tokens_for("narrative_theme_discovery"),
+        # thinking disabled (#575): forced tool from turn 1, no advisor branch —
+        # same reasoning as the Lane-1 call site above.
+        thinking=llm_thinking.DISABLED,
         tools=[_LANE2_NARRATIVE_TOOL],
         tool_choice={"type": "tool", "name": "report_narrative_themes"},
         messages=[{"role": "user", "content": prompt}],
@@ -2713,6 +2721,10 @@ async def _validate_theme_membership(
                     resp = await client.messages.create(
                         model=THEME_MODEL,
                         max_tokens=max_tokens_for("theme_validation"),
+                        # thinking disabled (#575): schema is {"remove": [...]}, no
+                        # scratchpad — thinking has nowhere useful to go and can eat
+                        # the whole (shared) ceiling. See shared/llm_thinking.py.
+                        thinking=llm_thinking.DISABLED,
                         system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
                         messages=[{"role": "user", "content": prompt}],
                     )
@@ -3593,6 +3605,11 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             # TELEMETRY line, not an error — detection is #543's live
             # truncation alarm plus the is_truncated() gate below.
             max_tokens=max_tokens_for("theme_assignment"),
+            # thinking disabled (#575): tool_choice=any forces assign_stocks_to_themes
+            # or consult_advisor every turn, and assign_stocks_to_themes already carries
+            # analysis_scratchpad — thinking would be a second hidden copy of that same
+            # reasoning, sharing (and able to exhaust) the same ceiling. See llm_thinking.py.
+            thinking=llm_thinking.DISABLED,
             tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
             tool_choice={"type": "any"},
             messages=messages,
@@ -4126,6 +4143,21 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             messages=[{"role": "user", "content": f"{question}\n\nContext:\n{context}"}],
         )
         verdict = first_text(resp)  # #544: never content[0]
+        # Truncation honesty (#575): thinking is left ON for this call deliberately —
+        # it's a genuinely freeform judgment call, not a fixed schema (see
+        # shared/llm_thinking.py) — which means it can still consume the whole
+        # (shared) ceiling and come back with verdict="" (blocks=['thinking'], zero
+        # text — the exact shape that hit theme_validation 2026-08-19; this caller
+        # itself tripped the live truncation alarm on 2026-08-12). Previously an
+        # empty verdict fell through silently and a caller could read "" as "no
+        # objection" rather than "the advisor never actually answered." Route it
+        # through the SAME explicit fallback the except-path below already uses.
+        if is_truncated(resp) or not verdict.strip():
+            logger.warning(
+                f"Advisor call for [{caller}] truncated or empty "
+                f"(stop_reason={stop_reason(resp)}, blocks={content_block_types(resp)})"
+                " — falling back to 'use your best judgment'")
+            verdict = "Advisor unavailable — use your best judgment."
         await log_audit_event(
             "advisor_call",
             summary=f"[{caller}] {question[:120]}",
@@ -4266,6 +4298,9 @@ Do NOT write any free-text analysis before your tool call. All reasoning belongs
             response = await client.messages.create(
                 model=THEME_MODEL,
                 max_tokens=max_tokens_for("theme_split"),
+                # thinking disabled (#575): same shape as theme_assignment — forced
+                # tool_choice, analysis_scratchpad already IS the reasoning surface.
+                thinking=llm_thinking.DISABLED,
                 tools=[_SPLIT_TOOL, _ADVISOR_TOOL],
                 # `any` (2026-08-10, was `auto`): the assignment path's proven
                 # recipe — the model MUST call propose_split or consult_advisor,
@@ -5065,6 +5100,14 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 max_tokens=_DISCOVERY_MAX_TOKENS,
                 tools=[_THEME_DISCOVERY_TOOL, _ADVISOR_TOOL],
                 tool_choice=({"type": "tool", "name": "report_themes"} if force_report else {"type": "auto"}),
+                # thinking (#575): left on the model default while tool_choice=auto —
+                # deciding whether to consult the advisor is genuinely open-ended
+                # judgment, not a fixed schema, so thinking may be earning its keep.
+                # Once force_report has fired (reachable only after a truncation or a
+                # no-tool-call stop, below), the call is schema-bounded exactly like
+                # theme_assignment/theme_split, so thinking is disabled on the retry —
+                # this doubles as the truncation-recovery path, reusing the existing loop.
+                **({"thinking": llm_thinking.DISABLED} if force_report else {}),
                 messages=messages,
             )
 

@@ -55,6 +55,8 @@ _WINDOW_DAYS = 7
 # system prompt below), not a further raise.
 from shared.llm_models import SYSTEM_REVIEW_MODEL as _MODEL
 from shared.output_ceilings import max_tokens_for
+from shared.llm_response import is_truncated
+from shared import llm_thinking
 _MAX_TOKENS = max_tokens_for("system_review_weekly")
 
 _SYSTEM_PROMPT = """You are Apollo's weekly self-auditor. You review metrics from \
@@ -1987,15 +1989,39 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
         f"{json.dumps(metrics, default=str, indent=2)}"
         f"{prior_block}"
     )
-    resp = await client.messages.create(
-        model=_MODEL,
-        max_tokens=_MAX_TOKENS,
-        system=_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
     # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
     from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
-    await log_anthropic_call_safe(model=_MODEL, caller="system_review_weekly", response=resp)
+
+    # thinking (#575): left on the model default for the first attempt — this is a
+    # genuinely freeform weekly digest (the operator's actual weekly read), not a
+    # fixed schema, so thinking may be earning its keep and there is no measurement
+    # either way. But this caller has truncated THREE times (1200->2800->8000, each
+    # raise re-pegged within days) with zero truncation handling at the call site,
+    # and the 2026-08-19 theme_validation row proved thinking can consume the WHOLE
+    # (shared) ceiling and return zero text. So: make it recoverable instead of
+    # disabling outright — one retry with thinking explicitly OFF if the first
+    # attempt gets cut.
+    resp = None
+    for attempt in range(2):
+        thinking_kwarg = {"thinking": llm_thinking.DISABLED} if attempt == 1 else {}
+        resp = await client.messages.create(
+            model=_MODEL,
+            max_tokens=_MAX_TOKENS,
+            system=_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+            **thinking_kwarg,
+        )
+        await log_anthropic_call_safe(model=_MODEL, caller="system_review_weekly", response=resp)
+        if not is_truncated(resp):
+            break
+        if attempt == 0:
+            logger.warning(
+                "system_review_weekly: response TRUNCATED at max_tokens on the first "
+                "attempt — retrying once with thinking disabled")
+        else:
+            logger.warning(
+                "system_review_weekly: retry with thinking disabled ALSO truncated — "
+                "returning whatever text came back, not blocking the digest")
     return "".join(block.text for block in resp.content if hasattr(block, "text")).strip()
 
 
