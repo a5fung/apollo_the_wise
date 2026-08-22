@@ -705,7 +705,9 @@ async def _nightly_data_pull():
     # 7b. Missed-EP opportunity-cost telemetry — rebuild the 30-day rolling
     # window of filtered / MODERATE / HIGH-unentered alerts with forward
     # returns from mi_daily_closes. Slots after outcome tracker so all
-    # daily closes are settled. Failure non-fatal: stale rows freeze.
+    # daily closes are settled. Failure non-fatal: this window's rows just
+    # don't refresh tonight; reconcile_missed_outcomes_categories below is
+    # what stops a row that's PAST the window from freezing forever (#583).
     try:
         from agents.market_intelligence.missed_outcomes import refresh_missed_outcomes
         missed_summary = await refresh_missed_outcomes(window_days=30)
@@ -720,6 +722,21 @@ async def _nightly_data_pull():
         total = sum(v for k, v in missed_summary.items() if isinstance(v, int))
         if total:
             summary_parts.append(f"{total} missed-EP rows")
+        # #583 — full-history reconcile against the CURRENT categorisation/
+        # inclusion logic: prunes rows the logic no longer produces, fixes
+        # any whose category drifted, backfills rows a since-shipped fix
+        # should have captured but couldn't (they'd already aged past the
+        # 30-day window). Every action is counted here so a spike (e.g.
+        # mi_ep_alerts unexpectedly losing rows) is visible, not silent.
+        from agents.market_intelligence.missed_outcomes import reconcile_missed_outcomes_categories
+        reconcile_summary = await reconcile_missed_outcomes_categories()
+        await log_audit_event(
+            "missed_outcomes_reconciled",
+            f"pruned={reconcile_summary['orphaned_pruned']}, "
+            f"recategorized={reconcile_summary['miscategorized_fixed']}, "
+            f"backfilled={reconcile_summary['missing_backfilled']}",
+            detail=str(reconcile_summary)[:500],
+        )
         # #197 cap+1 shadow ledger — persist every cap_blocked decision durably
         # (the missed-outcomes window rolls; the ledger must not). Telemetry-only.
         from agents.market_intelligence.missed_outcomes import record_cap_plus_one_shadow

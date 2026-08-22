@@ -559,6 +559,379 @@ async def refresh_missed_outcomes(
     return summary
 
 
+# ── #583 guard: full-history reconcile against CURRENT categorisation ───────
+#
+# Lightweight "current truth" query — the SAME three source lineages as
+# refresh_missed_outcomes's base CTE and the SAME categorisation
+# (_SKIP_CATEGORY_CASE_SQL), but unbounded (only an upper date bound, no
+# rolling lower bound — that lower bound IS the #583 bug) and WITHOUT the
+# mi_daily_closes forward-return LATERAL joins. That omission is what keeps
+# this cheap at any table size: the expensive fanout only ever runs (in
+# refresh_missed_outcomes) over the last `window_days`, or (in the backfill
+# statement below) over the handful of rows this query finds missing — never
+# over full history.
+_MISSED_OUTCOMES_TRUTH_SQL = f"""
+    WITH traded AS (
+        SELECT ticker, alert_date FROM mi_live_trades
+        WHERE status NOT IN {DECLINED_NEVER_FILLED_STATUSES}
+        UNION
+        SELECT ticker, alert_date FROM mi_paper_trades
+    ),
+    scan_filtered AS (
+        SELECT DISTINCT ON (s.ticker, s.scan_date)
+            s.ticker,
+            s.scan_date AS alert_date,
+            'scan_filter'::TEXT AS source,
+            s.filter_reason AS skip_reason
+        FROM mi_ep_scan_log s
+        WHERE s.scan_date <= $1
+          AND s.filter_reason IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM traded t
+              WHERE t.ticker = s.ticker AND t.alert_date = s.scan_date
+          )
+        ORDER BY s.ticker, s.scan_date, s.created_at DESC
+    ),
+    moderate AS (
+        SELECT DISTINCT ON (a.ticker, a.alert_date)
+            a.ticker,
+            a.alert_date,
+            'moderate_alert'::TEXT AS source,
+            NULL::TEXT AS skip_reason
+        FROM mi_ep_alerts a
+        WHERE a.alert_date <= $1
+          AND a.score_tier = 'MODERATE'
+          AND COALESCE(a.source, 'live') = 'live'  -- #268
+          AND NOT EXISTS (
+              SELECT 1 FROM traded t
+              WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+          )
+        ORDER BY a.ticker, a.alert_date, a.created_at DESC
+    ),
+    high_unentered AS (
+        SELECT DISTINCT ON (a.ticker, a.alert_date)
+            a.ticker,
+            a.alert_date,
+            'high_unentered'::TEXT AS source,
+            sk.skip_reason
+        FROM mi_ep_alerts a
+        LEFT JOIN LATERAL (
+            SELECT skip_reason FROM mi_live_trades lt
+            WHERE lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+              AND lt.status IN {DECLINED_NEVER_FILLED_STATUSES}
+            ORDER BY lt.id DESC LIMIT 1
+        ) sk ON TRUE
+        WHERE a.alert_date <= $1
+          AND a.score_tier = 'HIGH'
+          AND COALESCE(a.source, 'live') = 'live'  -- #268
+          AND NOT EXISTS (
+              SELECT 1 FROM traded t
+              WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+          )
+        ORDER BY a.ticker, a.alert_date, a.created_at DESC
+    ),
+    truth AS (
+        SELECT * FROM scan_filtered
+        UNION ALL SELECT * FROM moderate
+        UNION ALL SELECT * FROM high_unentered
+    )
+    SELECT ticker, alert_date, source, skip_reason,
+        {_SKIP_CATEGORY_CASE_SQL} AS skip_category
+    FROM truth
+"""
+
+# Backfill INSERT for rows the truth query finds but the table doesn't have
+# yet. Mirrors refresh_missed_outcomes's base/with_returns/INSERT shape
+# exactly (same source lineages, same categorisation, same return basis) but
+# unbounded AND gated by NOT EXISTS(already stored) in every lineage CTE —
+# that gate runs BEFORE the mi_daily_closes LATERAL fanout, so the fanout
+# only ever touches genuinely-missing rows (a handful), never full history.
+_MISSED_OUTCOMES_BACKFILL_SQL = f"""
+    WITH traded AS (
+        SELECT ticker, alert_date FROM mi_live_trades
+        WHERE status NOT IN {DECLINED_NEVER_FILLED_STATUSES}
+        UNION
+        SELECT ticker, alert_date FROM mi_paper_trades
+    ),
+    scan_filtered AS (
+        SELECT DISTINCT ON (s.ticker, s.scan_date)
+            s.ticker, s.scan_date AS alert_date,
+            'scan_filter'::TEXT AS source, s.filter_reason AS skip_reason,
+            s.ep_score, s.gap_pct, s.rel_volume, s.catalyst_quality
+        FROM mi_ep_scan_log s
+        WHERE s.scan_date <= $1
+          AND s.filter_reason IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM traded t WHERE t.ticker = s.ticker AND t.alert_date = s.scan_date
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM mi_ep_missed_outcomes existing
+              WHERE existing.ticker = s.ticker AND existing.alert_date = s.scan_date
+                AND existing.source = 'scan_filter'
+          )
+        ORDER BY s.ticker, s.scan_date, s.created_at DESC
+    ),
+    moderate AS (
+        SELECT DISTINCT ON (a.ticker, a.alert_date)
+            a.ticker, a.alert_date,
+            'moderate_alert'::TEXT AS source, NULL::TEXT AS skip_reason,
+            a.ep_score, a.gap_pct, NULL::FLOAT AS rel_volume, a.catalyst_quality
+        FROM mi_ep_alerts a
+        WHERE a.alert_date <= $1
+          AND a.score_tier = 'MODERATE'
+          AND COALESCE(a.source, 'live') = 'live'
+          AND NOT EXISTS (
+              SELECT 1 FROM traded t WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM mi_ep_missed_outcomes existing
+              WHERE existing.ticker = a.ticker AND existing.alert_date = a.alert_date
+                AND existing.source = 'moderate_alert'
+          )
+        ORDER BY a.ticker, a.alert_date, a.created_at DESC
+    ),
+    high_unentered AS (
+        SELECT DISTINCT ON (a.ticker, a.alert_date)
+            a.ticker, a.alert_date,
+            'high_unentered'::TEXT AS source, sk.skip_reason,
+            a.ep_score, a.gap_pct, NULL::FLOAT AS rel_volume, a.catalyst_quality
+        FROM mi_ep_alerts a
+        LEFT JOIN LATERAL (
+            SELECT skip_reason FROM mi_live_trades lt
+            WHERE lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+              AND lt.status IN {DECLINED_NEVER_FILLED_STATUSES}
+            ORDER BY lt.id DESC LIMIT 1
+        ) sk ON TRUE
+        WHERE a.alert_date <= $1
+          AND a.score_tier = 'HIGH'
+          AND COALESCE(a.source, 'live') = 'live'
+          AND NOT EXISTS (
+              SELECT 1 FROM traded t WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM mi_ep_missed_outcomes existing
+              WHERE existing.ticker = a.ticker AND existing.alert_date = a.alert_date
+                AND existing.source = 'high_unentered'
+          )
+        ORDER BY a.ticker, a.alert_date, a.created_at DESC
+    ),
+    base AS (
+        SELECT * FROM scan_filtered
+        UNION ALL SELECT * FROM moderate
+        UNION ALL SELECT * FROM high_unentered
+    ),
+    with_returns AS (
+        SELECT
+            b.*,
+            d0.open_price AS open_d0,
+            d0.close AS close_d0,
+            d1.close AS close_d1,
+            d5.close AS close_d5,
+            d20.close AS close_d20,
+            h5.h AS max_high_5d,
+            h20.h AS max_high_20d
+        FROM base b
+        LEFT JOIN LATERAL (
+            SELECT open_price, close FROM mi_daily_closes
+            WHERE ticker = b.ticker AND trade_date = b.alert_date
+        ) d0 ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT close FROM mi_daily_closes
+            WHERE ticker = b.ticker AND trade_date > b.alert_date
+            ORDER BY trade_date ASC LIMIT 1
+        ) d1 ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT close FROM mi_daily_closes
+            WHERE ticker = b.ticker AND trade_date > b.alert_date
+            ORDER BY trade_date ASC OFFSET 4 LIMIT 1
+        ) d5 ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT close FROM mi_daily_closes
+            WHERE ticker = b.ticker AND trade_date > b.alert_date
+            ORDER BY trade_date ASC OFFSET 19 LIMIT 1
+        ) d20 ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT MAX(high_price) AS h FROM (
+                SELECT high_price FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date >= b.alert_date
+                ORDER BY trade_date ASC LIMIT 6
+            ) x
+        ) h5 ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT MAX(high_price) AS h FROM (
+                SELECT high_price FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date >= b.alert_date
+                ORDER BY trade_date ASC LIMIT 21
+            ) x
+        ) h20 ON TRUE
+    )
+    INSERT INTO mi_ep_missed_outcomes (
+        ticker, alert_date, source, skip_reason, skip_category,
+        ep_score, gap_pct, rel_volume, catalyst_quality,
+        open_d0, close_d0,
+        ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d,
+        last_refreshed_at
+    )
+    SELECT
+        ticker, alert_date, source, skip_reason,
+        {_SKIP_CATEGORY_CASE_SQL} AS skip_category,
+        ep_score, gap_pct, rel_volume, catalyst_quality,
+        open_d0, close_d0,
+        CASE WHEN open_d0 > 0 AND close_d1 IS NOT NULL
+             THEN (close_d1 - open_d0) / open_d0 ELSE NULL END AS ret_1d,
+        CASE WHEN open_d0 > 0 AND close_d5 IS NOT NULL
+             THEN (close_d5 - open_d0) / open_d0 ELSE NULL END AS ret_5d,
+        CASE WHEN open_d0 > 0 AND close_d20 IS NOT NULL
+             THEN (close_d20 - open_d0) / open_d0 ELSE NULL END AS ret_20d,
+        CASE WHEN open_d0 > 0 AND max_high_5d IS NOT NULL
+             THEN (max_high_5d - open_d0) / open_d0 ELSE NULL END AS max_high_5d,
+        CASE WHEN open_d0 > 0 AND max_high_20d IS NOT NULL
+             THEN (max_high_20d - open_d0) / open_d0 ELSE NULL END AS max_high_20d,
+        NOW() AS last_refreshed_at
+    FROM with_returns
+    ON CONFLICT (ticker, alert_date, source) DO NOTHING
+"""
+
+
+async def reconcile_missed_outcomes_categories(as_of: Optional[date] = None) -> dict:
+    """#583 guard: heal every row refresh_missed_outcomes's rolling window
+    can't reach.
+
+    Three things the windowed UPSERT structurally cannot do, because it only
+    ever looks at `alert_date` inside `[end - window_days, end]`:
+
+      1. PRUNE an "orphan" — a stored row whose (ticker, alert_date, source)
+         the CURRENT logic no longer produces at all (its mi_ep_alerts /
+         mi_ep_scan_log source row aged out of retention, or a since-shipped
+         WHERE-clause fix — #268's `source='live'` — now excludes it). Left
+         alone, an orphan sits with its ORIGINAL classification forever and
+         gets silently counted by anything that reads this table (the
+         2026-08-21 gate-ranking table's "5 doublers" in both
+         `high_unentered` and `window_missed` were entirely this — the true
+         count for both was zero).
+      2. CORRECT a "miscategorized" row — still reproducible, but the
+         CURRENT categorisation logic now buckets it differently than what's
+         stored (e.g. a future _SKIP_CATEGORY_CASE_SQL edit). Empirically
+         zero of these exist today (verified against prod 2026-08-22 — every
+         still-derivable row's stored skip_category already matches a fresh
+         recompute) but the mechanism must exist for the NEXT categorisation
+         fix, which is the whole point of #583.
+      3. BACKFILL a "missing" row — the current logic says a row should
+         exist but the table has none, because it aged out of the window
+         before a fix that would have captured it ever shipped (all 27 of
+         the `high_unentered` backfill rows found 2026-08-22 are exactly
+         this: `status='cancelled'` HIGHs dated 2026-05-11 to 2026-07-15,
+         silently miscounted as TRADED until the 2026-08-15 cancelled/
+         order_failed fix — by then they were 30+ days old and the windowed
+         UPSERT could never reach them).
+
+    Every action is counted and logged (and returned, so a caller can put it
+    in an audit event) — a prune must be OBSERVABLE, never a silent mass
+    delete: if mi_ep_alerts or mi_ep_scan_log ever lost rows it shouldn't
+    have, the very next run of this function would show a spike in
+    `orphaned_pruned` rather than quietly erasing history.
+
+    Cheap by construction regardless of source-table growth: the truth/diff
+    query never joins mi_daily_closes, and the backfill INSERT's own
+    NOT EXISTS(already stored) guard runs BEFORE that join — see
+    `_MISSED_OUTCOMES_TRUTH_SQL` / `_MISSED_OUTCOMES_BACKFILL_SQL` docstrings.
+
+    Idempotent — safe to run every night immediately after
+    refresh_missed_outcomes, or ad hoc.
+    """
+    await ensure_missed_outcomes_schema()
+
+    if as_of is None:
+        from agents.market_intelligence.collector import et_today
+        end = et_today()
+    else:
+        end = as_of
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        truth_rows = await conn.fetch(_MISSED_OUTCOMES_TRUTH_SQL, end)
+        stored_rows = await conn.fetch(
+            """
+            SELECT id, ticker, alert_date, source, skip_reason, skip_category
+            FROM mi_ep_missed_outcomes
+            WHERE alert_date <= $1
+            """,
+            end,
+        )
+
+        truth_by_key = {
+            (r["ticker"], r["alert_date"], r["source"]): r for r in truth_rows
+        }
+        stored_by_key = {
+            (r["ticker"], r["alert_date"], r["source"]): r for r in stored_rows
+        }
+
+        orphan_ids = [
+            r["id"] for r in stored_rows
+            if (r["ticker"], r["alert_date"], r["source"]) not in truth_by_key
+        ]
+        miscategorized = [
+            (r["id"], truth_by_key[key]["skip_category"], truth_by_key[key]["skip_reason"])
+            for r in stored_rows
+            if (key := (r["ticker"], r["alert_date"], r["source"])) in truth_by_key
+            and (
+                r["skip_category"] != truth_by_key[key]["skip_category"]
+                or r["skip_reason"] != truth_by_key[key]["skip_reason"]
+            )
+        ]
+        missing_expected = sum(1 for k in truth_by_key if k not in stored_by_key)
+
+        if orphan_ids:
+            await conn.execute(
+                "DELETE FROM mi_ep_missed_outcomes WHERE id = ANY($1::int[])",
+                orphan_ids,
+            )
+
+        if miscategorized:
+            ids = [m[0] for m in miscategorized]
+            cats = [m[1] for m in miscategorized]
+            reasons = [m[2] for m in miscategorized]
+            await conn.execute(
+                """
+                UPDATE mi_ep_missed_outcomes m
+                SET skip_category = v.skip_category,
+                    skip_reason = v.skip_reason,
+                    last_refreshed_at = NOW()
+                FROM (
+                    SELECT UNNEST($1::int[]) AS id,
+                           UNNEST($2::text[]) AS skip_category,
+                           UNNEST($3::text[]) AS skip_reason
+                ) v
+                WHERE m.id = v.id
+                """,
+                ids, cats, reasons,
+            )
+
+        # #583 review note: ON CONFLICT DO NOTHING means "expected" and
+        # "actually inserted" can differ (e.g. a row landed between the
+        # fetches above and this INSERT) — parse the real asyncpg "INSERT 0
+        # N" result so the returned/audited count is what actually happened,
+        # not just what we predicted.
+        missing_backfilled = 0
+        if missing_expected:
+            insert_result = await conn.execute(_MISSED_OUTCOMES_BACKFILL_SQL, end)
+            if isinstance(insert_result, str) and insert_result:
+                try:
+                    missing_backfilled = int(insert_result.split()[-1])
+                except ValueError:
+                    missing_backfilled = missing_expected  # mocked/non-numeric result
+
+    result = {
+        "orphaned_pruned": len(orphan_ids),
+        "miscategorized_fixed": len(miscategorized),
+        "missing_backfilled": missing_backfilled,
+        "missing_expected": missing_expected,
+        "as_of": end.isoformat(),
+    }
+    logger.info(f"reconcile_missed_outcomes_categories: {result}")
+    return result
+
+
 # ── Query helpers (Telegram + weekly review) ────────────────────────────────
 
 # Skip categories that represent CORRECTLY filtered names (size / illiquidity
