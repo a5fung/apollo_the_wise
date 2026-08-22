@@ -1069,6 +1069,16 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         # — read-only reporting/plumbing, same non-decision shape as the two exemptions
         # above; no import of the live module, no DB access, nothing on a decision path.
         str(REPO / "tests/test_alert_rank_shadow_running_read.py"),
+        # 2026-08-22 (#533 Change 6): catalyst_tier_shadow.py imports ONLY the pure,
+        # DB-free expectedness classifiers (classify_expectedness /
+        # combined_expectedness_class) to compute its OWN shadow verdicts, written
+        # solely to mi_catalyst_tier_shadow — telemetry consuming telemetry's pure
+        # functions. It never writes mi_alert_rank_shadow, never reads its table, and
+        # its verdicts are read by nothing on a grading/entry/sizing path (pinned by
+        # tests/test_catalyst_tier_shadow.py::test_no_live_path_reads_the_shadow_table).
+        # Same non-decision shape as the health_checks.py exemption above.
+        str(REPO / "agents/market_intelligence/catalyst_tier_shadow.py"),
+        str(REPO / "tests/test_catalyst_tier_shadow.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"

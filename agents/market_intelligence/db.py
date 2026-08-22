@@ -2663,6 +2663,59 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_net_disp_xadr DOUBLE PRECISION;
             ALTER TABLE mi_alert_rank_shadow ADD COLUMN IF NOT EXISTS base_lookback_bars INT;
 
+            -- #533 Change 6 (2026-08-22) — catalyst-tier SHADOW verdicts. SHADOW ONLY
+            -- (THE LINE): one row per (scan_date, ticker) graded by the live catalyst
+            -- grader, recording what the surprise-anchored re-tiering
+            -- (catalyst_tier_shadow.shadow_retier) would have said, alongside EVERY
+            -- input it read — the #568 expectedness axes, the rule-4 demotion-marker /
+            -- concrete-event reads, the sector-follow-through raw counts (⚠ beta-
+            -- confounded on sector-flood days — see the module docstring), and the
+            -- priced-in-residual raw inputs (gap first/last, ADV$, rel_volume,
+            -- projected multiple; recorded NOT scored — operator frame 2026-08-22).
+            -- Inputs are stored so rule variants stay replayable at $0 without waiting
+            -- for new data. first_*/last_* + regrade_count make intraday grade drift
+            -- observable (the MRNA 07:05 pinned-grade failure). NEVER read by any
+            -- grading / entry / sizing / ordering / safeguard path.
+            CREATE TABLE IF NOT EXISTS mi_catalyst_tier_shadow (
+                id                  SERIAL PRIMARY KEY,
+                scan_date           DATE NOT NULL,
+                ticker              TEXT NOT NULL,
+                first_seen_et       TIMESTAMPTZ,
+                last_seen_et        TIMESTAMPTZ,
+                live_quality_first  TEXT,     -- the live LLM grade at the first shadow-computed tick
+                live_quality_last   TEXT,     -- ... and at the latest tick (#347 re-poll flips show here)
+                shadow_tier_first   TEXT,     -- the lattice's verdict at the first tick
+                shadow_tier_last    TEXT,
+                rule_first          TEXT,     -- which lattice rule decided it (see shadow_retier)
+                rule_last           TEXT,
+                regrade_count       INT NOT NULL DEFAULT 0,  -- times shadow_tier_last CHANGED intraday
+                expct_sched         TEXT,     -- #568 axes, recomputed at scan time (scheduled|unscheduled|unknown)
+                expct_sched_src     TEXT,
+                expct_looking       TEXT,
+                expct_combined      TEXT,     -- forward|backward|unclassified
+                expct_beat          BOOLEAN,  -- beat-vs-consensus language (content-delta evidence, PEG lane)
+                expct_growth_yoy    DOUBLE PRECISION,
+                demotion_marker     BOOLEAN,  -- rule-4 sector/sympathy vocabulary present in the live analysis
+                concrete_event      BOOLEAN,  -- concrete company event visible in analysis/corpus
+                sector              TEXT,     -- from mi_ticker_overrides (77% board coverage measured)
+                sector_n            INT,      -- OTHER same-sector names on the day's crossed board
+                board_n             INT,      -- board size (floor-crossers) at this tick
+                sector_share        DOUBLE PRECISION,
+                sector_confirm      BOOLEAN,  -- n>=4 AND share>=0.30 (declared, unfitted)
+                gap_pct_first       DOUBLE PRECISION,  -- residual raw inputs: recorded, never used by the lattice
+                gap_pct_last        DOUBLE PRECISION,
+                adv_dollar          DOUBLE PRECISION,
+                rel_volume          DOUBLE PRECISION,
+                projected_vol_multiple DOUBLE PRECISION,
+                live_ep_score       DOUBLE PRECISION,  -- pre-override score at the recording tick
+                live_tier           TEXT,              -- HIGH|MODERATE|NULL (<50 skip) at that tick
+                grounded_len        INT,               -- corpus size the verdict read (0 = graded blind)
+                created_at          TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (scan_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_catalyst_tier_shadow_date
+                ON mi_catalyst_tier_shadow(scan_date DESC);
+
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
             -- with WHEN, and the daily-close peak a close-driven rule could have seen), what

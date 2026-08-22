@@ -1832,6 +1832,21 @@ _NOT_SWEEP_PARAMS: dict[str, str] = {
     "breakeven_armed": "mi_exit_path_shadow's observed state (was breakeven armed on the LIVE "
                     "position that day) — matched on the substring 'arm', not a swept parameter; "
                     "there is only one live rule, nothing is varied over it.",
+    # #533 Change 6 (2026-08-22) — mi_catalyst_tier_shadow: OUTPUT columns, not swept settings.
+    # There is exactly ONE lattice (catalyst_tier_shadow.shadow_retier); nothing varies per row.
+    "shadow_tier_first": "mi_catalyst_tier_shadow's VERDICT at the first scan tick — the shadow "
+                    "grader's output, a classification of the subject, not a parameter varied "
+                    "over it (same shape as score_tier above).",
+    "shadow_tier_last": "mi_catalyst_tier_shadow's VERDICT at the latest scan tick — output, not "
+                    "a swept parameter; first/last exist to make intraday grade drift countable.",
+    "rule_first":   "mi_catalyst_tier_shadow: WHICH single-lattice rule produced the first "
+                    "verdict — provenance of an output, not an experimental arm; every row runs "
+                    "the same one lattice.",
+    "rule_last":    "mi_catalyst_tier_shadow: rule provenance of the latest verdict — same as "
+                    "rule_first; recorded so tier changes are attributable, nothing is varied.",
+    "live_tier":    "mi_catalyst_tier_shadow's copy of the LIVE alert tier (HIGH/MODERATE/NULL) "
+                    "at the recording tick — the subject's own live classification, mirrored for "
+                    "the counterfactual join; same not-a-parameter shape as score_tier above.",
 }
 
 

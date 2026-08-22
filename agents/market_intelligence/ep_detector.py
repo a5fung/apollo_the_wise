@@ -2869,6 +2869,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Score each candidate (rate-limited FMP calls)
     results = []
     scan_log: list[dict] = []  # accumulated for batch DB write at end
+    # #533 Change 6 — catalyst-tier SHADOW inputs, accumulated per graded candidate and
+    # batch-written fire-and-forget after the loop (same contract as scan_log). SHADOW
+    # ONLY: nothing below ever reads these; see catalyst_tier_shadow.py (THE LINE).
+    _tier_shadow_inputs: list[dict] = []
 
     def _scan_row(c: dict, *, reason: str | None, ep_score: float | None,
                   tier: str | None, catalyst_quality: str | None) -> dict:
@@ -4150,6 +4154,29 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             in_active_theme=(ticker in _in_active_theme_set),
         )
 
+        # #533 Change 6 — catalyst-tier SHADOW input capture. Records EVERY graded
+        # candidate (including the score<50 skips below — the ARM/QCOM/AMD class died
+        # exactly there with no recorded text). Read-only capture of locals; the live
+        # tier here is the PRE-override read (earnings override / judge may still move
+        # it). Never raises, never alters any live value (THE LINE).
+        try:
+            _tier_shadow_inputs.append({
+                "ticker": ticker,
+                "live_quality": catalyst_quality,
+                "claude_analysis": claude_analysis,
+                "grounded_text": grounded_text,
+                "news_summary": news_summary,
+                "gap_pct": c.get("gap_pct"),
+                "adv_dollar": ((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
+                "rel_volume": rel_volume,
+                "projected_vol_multiple": c.get("projected_vol_multiple"),
+                "ep_score": ep_score,
+                "live_tier": ("HIGH" if ep_score >= ep_threshold
+                              else "MODERATE" if ep_score >= 50 else None),
+            })
+        except Exception as _tse:
+            logger.debug(f"{ticker}: tier-shadow input capture failed — {_tse}")
+
         if ep_score < 50:
             reason = f"score {ep_score:.0f} < 50 (catalyst={catalyst_quality})"
             logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}% breakdown={breakdown})")
@@ -4456,6 +4483,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # Batch-write scan log (fire and forget — never block results)
     asyncio.create_task(log_ep_scan_candidates(scan_log))
+
+    # #533 Change 6 — catalyst-tier SHADOW batch write (fire and forget, fail-open;
+    # sector fetch + expectedness + lattice all live in catalyst_tier_shadow.py).
+    # SHADOW ONLY — writes mi_catalyst_tier_shadow, read by nothing live (THE LINE).
+    if _tier_shadow_inputs:
+        try:
+            from agents.market_intelligence.catalyst_tier_shadow import (
+                record_catalyst_tier_shadow)
+            asyncio.create_task(record_catalyst_tier_shadow(
+                _tier_shadow_inputs, [c["ticker"] for c in candidates], today, now_et))
+        except Exception as _tse:
+            logger.warning(f"tier-shadow batch dispatch failed — {_tse}")
 
     # Summary log — always visible, even when no alerts fire. Helps verify the scan ran
     # and diagnose why candidates were filtered out.
