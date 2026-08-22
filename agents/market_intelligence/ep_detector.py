@@ -1164,6 +1164,7 @@ def _score_ep(
     prior_3m_change: float | None = None,
     projected_vol_multiple: float | None = None,
     in_active_theme: bool = False,
+    adv_dollar: float | None = None,
 ) -> tuple[float, dict]:
     """
     Calculate MAGNA53 EP score (0-100 before multiplier).
@@ -1200,21 +1201,43 @@ def _score_ep(
     else:
         breakdown["gap"] = 0
 
-    # Volume intensity (max 15)
-    # Post-open: use projected daily multiple (pace-normalised) — 10x projected at 9:35
-    # is Godzilla volume, very different from 10x raw at 2pm.
-    # Pre-market: use raw RVOL — no intraday projection possible.
-    vol_signal = projected_vol_multiple if projected_vol_multiple is not None else rel_volume
-    if vol_signal >= 10:
-        breakdown["rel_volume"] = 15
-    elif vol_signal >= 5:
-        breakdown["rel_volume"] = 12
-    elif vol_signal >= 3:
-        breakdown["rel_volume"] = 10
-    elif vol_signal >= 2:
-        breakdown["rel_volume"] = 7
+    # LIQUIDITY (max 15) — operator-signed 2026-08-22, replaces the RVOL tiers.
+    # WHY: the old tiers scored "how unusual is today's volume vs this stock's own
+    # normal". Real EPs do not look like that — the labelled cohort's MEDIAN is
+    # 1.8x, which earned ZERO under the old ladder, while a sleepy micro-cap at 3x
+    # scored 10. Measured on 26 labelled real EPs vs 1,074 ordinary gap days:
+    # ex-ante 20-day ADV$ separates at AUC 0.72 vs day-RVOL's 0.31 (0.5 = a coin
+    # flip; the old component ran BACKWARDS). It also needs no intraday projection
+    # and is already computed per scan row. Evidence + tier derivation:
+    # docs/analysis/score_redesign_proposal_533_2026-08-22.md. SSoT: magna53_ep.md.
+    # ⚠ The separate 2.0x session-RVOL GATE is untouched — this changes RANKING only.
+    if adv_dollar is not None and adv_dollar > 0:
+        if adv_dollar >= 500_000_000:
+            breakdown["liquidity"] = 15
+        elif adv_dollar >= 250_000_000:
+            breakdown["liquidity"] = 12
+        elif adv_dollar >= 100_000_000:
+            breakdown["liquidity"] = 10
+        elif adv_dollar >= 50_000_000:
+            breakdown["liquidity"] = 7
+        else:
+            breakdown["liquidity"] = 0
     else:
-        breakdown["rel_volume"] = 0
+        # ADV unknown (new listing, thin history). Fall back to the OLD RVOL ladder
+        # rather than award 0 — a data gap must never silently sink a candidate (P1:
+        # a false exclusion is invisible). Mirrors _check_adv_dollar_volume, which
+        # also lets an unknown-ADV name through rather than dropping it.
+        vol_signal = projected_vol_multiple if projected_vol_multiple is not None else rel_volume
+        if vol_signal >= 10:
+            breakdown["liquidity"] = 15
+        elif vol_signal >= 5:
+            breakdown["liquidity"] = 12
+        elif vol_signal >= 3:
+            breakdown["liquidity"] = 10
+        elif vol_signal >= 2:
+            breakdown["liquidity"] = 7
+        else:
+            breakdown["liquidity"] = 0
 
     # Catalyst quality (max 25) — the single most important EP signal
     # "mna" should never reach scoring (hard-filtered above), but treat as 0 if it does
@@ -4041,6 +4064,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             profile=profile,
             regime_multiplier=regime_multiplier * confidence_multiplier,
             projected_vol_multiple=c.get("projected_vol_multiple"),
+            adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
             vol_percentile=vol_pct,
             prior_3m_change=prior_3m_change,
             in_active_theme=(ticker in _in_active_theme_set),
@@ -4196,6 +4220,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     profile=profile,
                     regime_multiplier=regime_multiplier,  # boost OFF (×1.0)
                     projected_vol_multiple=c.get("projected_vol_multiple"),
+                    adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
                     vol_percentile=vol_pct,
                     prior_3m_change=prior_3m_change,
                     in_active_theme=(ticker in _in_active_theme_set),

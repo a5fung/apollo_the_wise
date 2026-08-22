@@ -75,7 +75,7 @@ Multi-factor: gap_pct + pm_rvol + catalyst_quality component + regime + RS + pri
 - `strong`: +15
 - `routine` (or anything else): +0
 
-`_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `rel_volume` (RVOL / projected open-intensity), `catalyst` (quality tier), `float` (low-float bonus), `neglect` (52w-high distance), `vol_conviction` (pre-market volume percentile), `prior_momentum` (the extension PENALTY above), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
+`_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `liquidity` (20-day ADV$ tiers — REPLACED `rel_volume` 2026-08-22, operator-signed; see change log), `catalyst` (quality tier), `float` (low-float bonus), `neglect` (52w-high distance), `vol_conviction` (pre-market volume percentile), `prior_momentum` (the extension PENALTY above), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
 
 Score thresholds:
 - `< 50` → skip (below MODERATE)
@@ -809,6 +809,47 @@ classifier's OWN `upgrades_30d` (the `episodic_neglect` low-coverage cut) is UNA
 entry — it now sources independently from `collector.get_recent_upgrade_events` (yfinance
 `Ticker.upgrades_downgrades`, dated events), a repair tracked in
 `docs/decisions/0028-setup-class-conviction-profiles.md` §2, not this rubric.
+
+### 2026-08-22 — Score ranks on LIQUIDITY, not relative volume [#533]
+
+**Trigger**: the selection study (`docs/analysis/selection_layer_533_2026-08-22.md`) found the
+composite score **anti-selective** — AUC 0.37-0.41 against 26 labelled real EPs, where 0.5 is a
+coin flip. Of 26 real EPs the funnel kept ZERO. The operator signed off after reviewing the
+priced proposal: *"sign off on the liquidity change."*
+
+**Evidence**: `docs/analysis/score_redesign_proposal_533_2026-08-22.md`, measured on 26 labelled
+real EPs vs 1,074 ordinary gap days.
+  - Old `rel_volume` ladder scored *"how unusual is today's volume for this stock"* — **AUC 0.31,
+    i.e. it ran BACKWARDS.** The labelled cohort's MEDIAN is **1.8× — which earned ZERO** — while
+    a sleepy micro-cap at 3× scored 10.
+  - **Ex-ante 20-day ADV$ separates at AUC 0.72**, better than same-day dollar volume (0.65),
+    needs no intraday projection, and is already computed per scan row (`adv`).
+  - **It is the load-bearing change**: the full proposed package scores 0.33 WITHOUT it and
+    0.63-0.70 with it.
+  - Within-day slot ordering (the MRNA-vs-MRVL problem): a real EP's median board percentile
+    goes from **28th (worse than random) to 75th**.
+
+**Anticipated effect**: alert volume roughly flat-to-down — the full package is 2.07/day vs
+today's 2.46. This change alone moves ranking, not throughput. Tiers: ≥$500M→15, ≥$250M→12,
+≥$100M→10, ≥$50M→7, else 0. A second tier set (1B/500/250/100) gives the same package AUC, so
+nothing hinges on the exact cuts.
+
+**Reversion-flag**: NEW — first change to this component since inception.
+
+**Status**: shipped, awaiting field validation.
+
+⚠ **Four limits stated, not buried.** (1) **In-sample**: the liquidity axis was DISCOVERED on
+these same 26 names; true out-of-sample is the post-07-16 label window (~mid-October) plus the
+rank shadow. (2) The label is outcome-conditioned and its R-geometry favours liquid names, so
+**part of this separation may be the label itself**. (3) It selects mega-caps on beta days — the
+catalyst grader downstream must still separate real news from sector sympathy, and that grader is
+currently the wall (a `routine` grade still kills a real EP under every variant tested).
+(4) **The separate 2.0× session-RVOL GATE is untouched** — this changes RANKING only; whether
+that gate should stay is not priced here.
+
+⚠ **Unknown ADV falls back to the OLD RVOL ladder rather than scoring 0** — a data gap must never
+silently sink a candidate (P1: a false exclusion leaves no trace). Mirrors
+`_check_adv_dollar_volume`, which also passes an unknown-ADV name rather than dropping it.
 
 ### 2026-08-22 — Extension cap loosened 50% → 75% [#577A]
 
