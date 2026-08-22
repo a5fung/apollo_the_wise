@@ -8755,9 +8755,19 @@ reviews:
       The n=9 baseline could NOT populate (c): ~2-3 trades per character bucket.
       Populating the segmentation is the main reason this recurs.
     predicate_sql: |
+      -- ⚠ ERA-SCOPED 2026-08-22 (operator: "fix the trigger, stop wasting my time").
+      -- BEFORE: this counted EVERY closed live trade ever, so the n=20 run on 2026-08-22
+      -- fired on a 22-trade record in which 21 trades ran under exit rules that had
+      -- ALREADY been replaced — it re-measured a stop the operator had widened on 08-16
+      -- and told him the old one was too tight. Redundant by construction.
+      -- NOW: count only trades ENTERED under the exit rules being tested. Bump
+      -- _EXIT_ERA_START in the SAME commit as any future exit-rule change, or this
+      -- review will once again grade a mixture dominated by superseded rules.
+      -- _EXIT_ERA_START = 2026-08-16 (the operator-signed 2R stop).
       SELECT LEAST(
         (SELECT COUNT(*) FROM mi_live_trades
-          WHERE account_mode = 'live' AND status = 'closed'),
+          WHERE account_mode = 'live' AND status = 'closed'
+            AND created_at >= DATE '2026-08-16'),
         -- ── RUNNER GATE (2026-07-30, REPLACED a winner gate the operator broke) ──
         -- My first version required 2 live WINNERS. The operator caught the catch-22:
         -- "if our sell rules need improvement, current 3-day profit take may not yield
@@ -8794,7 +8804,8 @@ reviews:
         -- 12 closed live trades vs threshold 20. The runner term simply stops being the
         -- artificial blocker, so cohort size - the honest constraint - governs again.
         (SELECT 10 * COUNT(*) FROM mi_sell_discipline_records
-          WHERE account_mode = 'live' AND peak_adr >= 1.5)
+          WHERE account_mode = 'live' AND peak_adr >= 1.5
+            AND created_at >= DATE '2026-08-16')
       );
     # RUN 2026-08-22 at n=22 -> docs/analysis/exit_tune_cohort_review_2026-08-22.md
     # VERDICT: the stop this record was compiled under was TOO TIGHT — median stop
@@ -8807,8 +8818,10 @@ reviews:
     # Regime hypothesis NOT settled: the confound MOVED, it did not die — every Bull
     # trade ran under the new exit stack and every non-Bull under the old, so realized-R
     # by regime compares exit stacks, not tapes. Non-Bull era-C closes settle it.
-    # Threshold advances 20 -> 40 per the RECURRING schedule (n=20/40/60/80/100).
-    threshold: 40
+    # Threshold RESET to 20 — the counter now starts from zero on the current exit era,
+    # so the n=20/40/60/80/100 ladder restarts against the rules actually under test.
+    # At 2026-08-22 the era-C count is 1, so this correctly will not fire again for a while.
+    threshold: 20
     earliest_review_date: 2026-08-01
     status: pending
     action_when_ready: |
