@@ -36,6 +36,35 @@ a specified proposal, never a request to supply material he already supplied.
 
 ## 📜 THE PRINCIPLES — read this before any analysis, any card, any proposal
 
+### P14 — SELECTION IS THE CRITICAL GATE, AND IT FAILS IN BOTH DIRECTIONS (operator 2026-08-22)
+
+> *"selection is the most critical gate, admit too much we'll be overwhelmed and lose efficiency,
+> don't admit real EPs our whole trading edge falls apart."*
+
+**Every selection change must be judged on BOTH failure modes, not one.** A change that improves
+one side while quietly worsening the other is a net loss, and the two are not symmetric in how
+they show up:
+
+- **Admit too much →** we are overwhelmed. Grading budget, five position slots, and his attention
+  are all finite. This failure is VISIBLE — more alerts, more noise, more losing trades.
+- **Admit too little →** the edge is gone. With 1-3 real EPs a quarter, one missed name is a
+  material fraction of the whole objective. This failure is INVISIBLE (P1) — no row, no
+  skip_reason, no trace.
+
+⚠ **The asymmetry is the trap.** Because over-admission is visible and under-admission is not,
+every instinct and every metric pulls toward tightening. That is why P1 makes recall a mechanical
+gate (`tests/fixtures/must_not_miss_eps.py`, which fails the build by name on any new exclusion
+and forbids an operator-named EP from ever being tolerated) rather than a judgement call.
+
+**So the standing requirement on any selection change, upstream or downstream:**
+1. **Measure it against the labelled real EPs** — does it still catch the ones we know are real?
+2. **Measure the volume cost** — alerts per day, grading slots consumed, briefing rows added.
+3. **State BOTH numbers before it ships.** One without the other is not evidence.
+
+This is why the separation framing matters more than any single threshold: **raising real EPs and
+lowering ordinary gappers is the only move that improves both sides at once.** Moving a bar alone
+always trades one failure for the other.
+
 ### P13 — THE ALPHA IS THE UNPRICED RESIDUAL (operator 2026-08-22)
 
 > *"all variables are related, news → reaction → stock price, but **how much is priced in the
