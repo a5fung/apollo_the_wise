@@ -61,8 +61,11 @@ NOT included here (out of scope for this refactor):
   ("do not touch anything outside `_score_ep`'s body"), that literal is left
   where it is. `_score_ep` itself does nothing but `raw_score *
   regime_multiplier` — there is no inline literal there to extract.
-- `SHORTLIST_WEIGHTS` (the pre-grading cheap-score table) — Stage 1/3, a
-  different card. Do not add it here.
+SINCE 2026-08-22 (the SHORTLIST PRE-SCORE flip, operator-directed) this file
+ALSO carries `SHORTLIST_WEIGHTS` — the second table the plan promised: the
+shortlist answers "who is worth paying to grade", the score answers "how good
+is it". Both tables live in this one file so they cannot drift into two
+conventions. See the SHORTLIST section at the bottom of the module.
 """
 from __future__ import annotations
 
@@ -383,3 +386,129 @@ def resolve_moderate_cutline(separation_enabled: bool) -> int | None:
     (no MODERATE band — the legacy 50 was dead letter below-the-bar anyway) or
     the historical 50 on the revert side. The ONLY cutline switch point."""
     return None if separation_enabled else LEGACY_MODERATE_CUTLINE
+
+
+# ═══ SHORTLIST PRE-SCORE — who is worth paying to GRADE (2026-08-22, operator-directed) ═══
+#
+# WHY: `run_ep_scan` grades only the top `SHORTLIST_SIZE` candidates each tick (the
+# LLM/FMP budget), and until 2026-08-22 that shortlist was ordered by GAP SIZE — the
+# exact measure the same-day separation change deleted from the score for running
+# BACKWARDS on real EPs (AUC 0.34). Operator, on finding gap still deciding who gets
+# looked at: "how are we still using it after all this work… that's like saying this
+# is completely wrong for weeks and fixing it for weeks and then say we still use it."
+# The pre-score replaces gap as the shortlist sort key (`ep_shortlist_prescore`
+# runtime toggle in run_ep_scan, default ON — OFF restores gap ordering exactly).
+#
+# HONEST SCOPE (Stage 0, docs/analysis/shortlist_survival_stage0_2026-08-22.md):
+# re-ranking recovers AT MOST ONE of the 16 cap-attributed real EPs to a possible
+# entry (SNOW 05-07, conditional on an ungraded catalyst) — the wall behind the cap
+# is the score bar, not the cap. The justification is COHERENCE (a measure proven
+# backwards must not decide who is looked at) and FUTURE-PROOFING (#584-class
+# admission widening pushes more names into the same slots), NOT retention recovery.
+# What it demonstrably improves: the liquidity axis ranks all five of the killed
+# set's biggest R-winners (MU/SNDK/BE/ARM/SNOW) inside the top 20, where gap ranked
+# them 20th to 100th+.
+#
+# ONLY THREE TERMS, deliberately. `extension`, `prior_3m`, `adv_trend` and
+# `cooldown_proximity` stay OUT: the prior-momentum penalty was DELETED the same day
+# for firing on real EPs and junk at identical rates (31% vs 32%), extension's
+# unique kills are 15 rows in four months and 91% redundant with ADV/ATR/mcap, and
+# the other two are wholly unmeasured. Adding them would re-import noise. A term
+# enters this table only with a measured direction against the real-EP set.
+# Excluded because they cost money per name: float, market cap, pm_rvol, catalyst.
+
+SHORTLIST_WEIGHTS = {
+    # component:   (max_points, weight)
+    "liquidity":   (15, 3),   # 45 of 65 — deliberately dominant; ex-ante 20d ADV$ AUC 0.72
+    "gap":         (10, 1),   # 10 of 65 — FLAT: presence, not magnitude (gap size AUC 0.34)
+    "theme_bonus": (10, 1),   # 10 of 65 — mirrors the live score's R4 in-theme bonus
+}
+# Max points mirror the live score's values so the two tables stay legible side by
+# side; the WEIGHTS are what encode the measured separation. A defensible starting
+# point, NOT a fitted one — the Stage-5 sweep harness exists to tune them.
+SHORTLIST_MAX_COMPOSITE = sum(mx * w for mx, w in SHORTLIST_WEIGHTS.values())
+assert SHORTLIST_MAX_COMPOSITE == 65, "the shortlist table's documented scale"
+
+# The ADV$ ladder for the liquidity axis. Values mirror the live score's
+# SCORE_WEIGHTS["liquidity"]["adv_tiers"] as of 2026-08-22 (AUC 0.72 evidence:
+# docs/analysis/score_redesign_proposal_533_2026-08-22.md) — deliberately its OWN
+# constant, NOT a reference to that dict, so a future sweep can tune the shortlist
+# without silently moving the score, and vice versa.
+SHORTLIST_LIQUIDITY_TIERS: list[tuple[float, int]] = [
+    (500_000_000, 15),
+    (250_000_000, 12),
+    (100_000_000, 10),
+    (50_000_000, 7),
+]
+
+# How many candidates get GRADED each tick (the LLM/FMP budget) — the shortlist
+# cap `run_ep_scan` applies after the sort. Cohort-shaping: registered in
+# scripts/gate_provenance_registry.py (the MIN_PREV_CLOSE / EP_COOLDOWN_DAYS /
+# MAX_EXTENSION_PCT class). Named 2026-08-22, replacing three bare `20` literals.
+SHORTLIST_SIZE = 20
+
+
+def shortlist_prescore(
+    *,
+    adv_dollar: "float | None",
+    gap_pct: "float | None",
+    in_active_theme: bool,
+) -> dict:
+    """The cheap pre-grading composite for ONE candidate — free inputs only.
+
+    Missing-input handling reuses `catalyst_rubric.composite_with_scaling`'s
+    shape (weighted sum of the AVAILABLE axes, rescaled to the full
+    MAX_COMPOSITE by the available maximum): an unknown input must never
+    silently sink a candidate (P1 — a false exclusion is invisible), the same
+    contract as the score's liquidity fallback and `_check_adv_dollar_volume`.
+
+    - `adv_dollar` = 20-day ADV shares × prev_close, or None when no REAL ADV
+      exists at sort time (`adv_source == "pending"` — the prevDay.v placeholder
+      must NOT be scored as liquidity evidence). None → the liquidity axis is
+      missing and the composite rescales from gap + theme.
+    - `gap_pct` — FLAT: any qualifying gap earns full points (every candidate at
+      the sort has already passed the acting gap floor). Presence, not
+      magnitude. None → axis missing (defensive; cannot happen live).
+    - `in_active_theme` is always decidable (in the Accelerating/Mainstream set
+      or not), so the theme axis is never "missing" — 0 is a real reading.
+
+    Returns {"composite", "raw", "max_available"} — composite on the 0..65
+    scale. Pure, no I/O.
+    """
+    raw: dict[str, "int | None"] = {
+        "liquidity": (None if adv_dollar is None
+                      else tier_points(adv_dollar, SHORTLIST_LIQUIDITY_TIERS)),
+        "gap": None if gap_pct is None else SHORTLIST_WEIGHTS["gap"][0],
+        "theme_bonus": SHORTLIST_WEIGHTS["theme_bonus"][0] if in_active_theme else 0,
+    }
+    available = [k for k, v in raw.items() if v is not None]
+    if not available:
+        return {"composite": 0.0, "raw": raw, "max_available": 0}
+    weighted = sum(raw[k] * SHORTLIST_WEIGHTS[k][1] for k in available)
+    max_available = sum(
+        SHORTLIST_WEIGHTS[k][0] * SHORTLIST_WEIGHTS[k][1] for k in available)
+    composite = weighted * SHORTLIST_MAX_COMPOSITE / max(1, max_available)
+    return {"composite": round(composite, 2), "raw": raw,
+            "max_available": max_available}
+
+
+def shortlist_sort_key(
+    ticker: str, composite: float, adv_dollar: "float | None",
+) -> tuple:
+    """The TOTAL ORDER the shortlist ranks by — composite desc, then the
+    TIE-BREAK. Stage 0 measured a 9-way tie at the rank-20 cut on the 04-08
+    flood board (the bucketed composite is coarse), so the boundary would be
+    an arbitrary lottery without one. Policy, in order:
+
+    1. composite DESC — the three-term pre-score.
+    2. continuous ADV$ DESC — the SAME measured axis (AUC 0.72) at full
+       resolution, not a new term: within a tie, the more liquid name gets the
+       grading slot. Chosen over gap (would re-import the proven-backwards
+       key exactly at the margin) and over any unmeasured term. Tick-stable —
+       ADV$ is fixed the night before, so the boundary cannot churn between
+       ticks. Unknown-ADV names (None → 0 here) lose ties to names whose
+       liquidity is verified — within a tie, evidence beats absence.
+    3. ticker ASC — final determinism guarantee: identical runs produce
+       identical ranks, replays reproduce the live order exactly.
+    """
+    return (-composite, -(adv_dollar or 0.0), ticker)

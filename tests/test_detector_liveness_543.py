@@ -170,6 +170,10 @@ def test_module_constant_covers_the_required_tables():
         "mi_htf_breakout_shadow", "mi_consolidation_entry_shadow",
         "mi_9m_ep_alerts", "mi_ep_alerts",
         "mi_exit_path_shadow", "mi_alert_rank_shadow",
+        # 2026-08-22: the shortlist pre-score counterfactual recorder — same
+        # can-fail-100%-silently class (fire-and-forget writer, read by nothing
+        # on the scan path).
+        "mi_ep_shortlist_shadow",
     }
 
 

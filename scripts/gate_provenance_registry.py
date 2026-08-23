@@ -346,6 +346,25 @@ GATE_REGISTRY: list[dict] = [
                 "Priced in docs/analysis/gap_floor_decision_table_2026-08-19.md.",
     },
     {
+        "id": "ep_rubric.SHORTLIST_SIZE",
+        "file": "agents/market_intelligence/ep_rubric.py",
+        "kind": "const",
+        "name": "SHORTLIST_SIZE",
+        "value": 20,
+        "citation": {
+            "file": "docs/setups/magna53_ep.md",
+            "text": "top `SHORTLIST_SIZE` (20) by the shortlist pre-score",
+        },
+        "note": "The graded-cohort cap (the LLM/FMP budget) — named 2026-08-22, replacing three "
+                "bare `20` literals in run_ep_scan. Cohort-shaping: only the top SHORTLIST_SIZE "
+                "candidates per tick are ever graded, so this constant decides who gets looked at. "
+                "The VALUE is unchanged since inception; what changed 2026-08-22 (operator-directed) "
+                "is the ORDERING — the shortlist ranks by ep_rubric.SHORTLIST_WEIGHTS (liquidity-"
+                "dominant pre-score), not gap size (AUC 0.34, runs backwards on real EPs). "
+                "ADV_BACKFILL_LIMIT (ep_detector.py) is deliberately NOT registered — it shapes "
+                "telemetry breadth only, not the traded cohort (see its comment).",
+    },
+    {
         "id": "ep_detector.MAX_EXTENSION_PCT",
         "file": "agents/market_intelligence/ep_detector.py",
         "kind": "const",

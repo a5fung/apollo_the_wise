@@ -83,8 +83,9 @@ from shared.output_ceilings import max_tokens_for
 from agents.market_intelligence.ep_grade_judge import MODEL as _JUDGE_MODEL_ACTUAL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
 from agents.market_intelligence.ep_rubric import (
-    SCORE_WEIGHTS, SEPARATION_BAR, apply_output_scale, resolve_conviction_floor,
-    resolve_ep_bar, resolve_moderate_cutline, resolve_score_weights, tier_points)
+    SCORE_WEIGHTS, SEPARATION_BAR, SHORTLIST_SIZE, apply_output_scale,
+    resolve_conviction_floor, resolve_ep_bar, resolve_moderate_cutline,
+    resolve_score_weights, tier_points)
 from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,14 @@ MAX_EXTENSION_PCT = 75.0   # Skip if already up 75%+ in last 5 trading days befo
 # disasters this gate genuinely prevents (CAR -80%, SPCE -60%) — which is why it stops at 75
 # and not 100. Evidence + banding: docs/analysis/gates_extension_top20_577_2026-08-22.md.
 # SSoT + change log: docs/setups/magna53_ep.md.
+# How many candidates get ADV backfilled + rank-21..50 probe telemetry after the
+# shortlist sort — a wider, cheaper slice than the graded cohort. Shapes TELEMETRY
+# BREADTH only, not the traded cohort (the graded cap is ep_rubric.SHORTLIST_SIZE,
+# which IS cohort-shaping and is registered in scripts/gate_provenance_registry.py;
+# this one deliberately is not — that asymmetry is intentional, not an omission).
+# Named 2026-08-22, replacing the bare `50` at the backfill slice.
+ADV_BACKFILL_LIMIT = 50
+
 EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP alert in last 60 days
 # #170 shadow (2026-06-01): a cooldown-suppressed candidate that gapped hard
 # >= this many days after its prior alert is likely a RE-SETUP (the prior EP has
@@ -2757,9 +2766,59 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     _WATCHDOG_BG_TASKS.add(_wt)
     _wt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
 
-    # Sort by gap size descending — score the biggest movers first
+    # Sort by gap size descending. Since the SHORTLIST PRE-SCORE flip below this is
+    # no longer the acting order (unless the flag is OFF) — it stays first so
+    # rank_by_gap is always the true gap-counterfactual, and so the flag-OFF revert
+    # restores gap ordering EXACTLY (stable sort, untouched).
     candidates.sort(key=lambda c: c["gap_pct"], reverse=True)
     rank_by_gap = {c["ticker"]: i + 1 for i, c in enumerate(candidates)}
+
+    # ── SHORTLIST PRE-SCORE FLIP (2026-08-22, OPERATOR-DIRECTED) ──────────────────
+    # The graded shortlist (top SHORTLIST_SIZE below) is ranked by the three-term
+    # pre-score (ep_rubric.SHORTLIST_WEIGHTS: liquidity 15×3 / flat gap 10×1 /
+    # theme 10×1), NOT by gap size — the same-day separation change deleted gap
+    # size from the SCORE for running backwards on real EPs (AUC 0.34), and the
+    # operator caught it still deciding who gets looked at: "how are we still
+    # using it after all this work". ONE revert flag — `ep_shortlist_prescore`
+    # runtime toggle / EP_SHORTLIST_PRESCORE_ENABLED env, default ON; OFF → gap
+    # ordering acts, byte-identical pre-change behaviour, no redeploy (~60s
+    # toggle cache). Fail direction on ANY error here: gap ordering acts, loudly.
+    # Both orderings are recorded per candidate per tick in mi_ep_shortlist_shadow
+    # (raw inputs only — see ep_shortlist_shadow.py). Evidence + honest scope
+    # (recovery is at most ONE name; this is coherence + future-proofing):
+    # docs/setups/magna53_ep.md change log 2026-08-22 +
+    # docs/analysis/shortlist_survival_stage0_2026-08-22.md.
+    _prescore_live = True
+    try:
+        _prescore_live = await get_runtime_toggle(
+            "ep_shortlist_prescore", "EP_SHORTLIST_PRESCORE_ENABLED", default=True)
+    except Exception as _pse:  # loud-ok: get_runtime_toggle fails open internally; belt+braces
+        logger.warning(f"ep_shortlist_prescore toggle read failed — prescore stays ON: {_pse}")
+    rank_by_prescore: dict[str, int] = {}
+    _shortlist_shadow_rows: list[dict] = []
+    if candidates:
+        try:
+            from agents.market_intelligence.ep_shortlist_shadow import (
+                build_shortlist_shadow_rows, compute_shortlist_ranking)
+            _sl_entries, rank_by_prescore = compute_shortlist_ranking(
+                candidates, _in_active_theme_set)
+            # Sorted COPY first, assign second — any exception lands BEFORE the
+            # list mutates, so the fail direction (gap ordering) is airtight.
+            _pre_order = sorted(candidates, key=lambda c: rank_by_prescore[c["ticker"]])
+            if _prescore_live:
+                candidates[:] = _pre_order
+            _shortlist_shadow_rows = build_shortlist_shadow_rows(
+                _sl_entries, rank_by_prescore, rank_by_gap,
+                acting_key="prescore" if _prescore_live else "gap",
+                minutes_since_open=_minutes_since_open)
+        except Exception as _sre:  # loud-ok: fail direction = gap ordering (pre-change behaviour)
+            logger.warning(f"shortlist pre-score failed — gap ordering acts this tick: {_sre}")
+            rank_by_prescore = {}
+            _shortlist_shadow_rows = []
+    # The rank the ACTING order produced — the graded cohort is candidates[:SHORTLIST_SIZE]
+    # under this order (used by the ADV-probe boundary below).
+    _rank_acting = (rank_by_prescore if (_prescore_live and rank_by_prescore)
+                    else rank_by_gap)
     logger.info(f"Gap candidates ≥{MIN_GAP_PCT}%: {len(candidates)}"
                 + (f" (top: {candidates[0]['ticker']} {candidates[0]['gap_pct']:.1f}%)" if candidates else ""))
     # P2.0b 2026-05-17: log aggregate count of unclassified-skip — surfaces
@@ -2796,14 +2855,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"Failed to fetch 3-month closes for prior momentum: {e}")
 
     # Compute proper 20-day ADV for non-universe candidates.
-    # Top 20 are the scored cohort. Ranks 21-50 are a telemetry-only probe
-    # (Option 2): synthesize ADV → rel_volume so we can detect "did rank
-    # 21-50 candidates with high rel_volume turn into winners?" Without
-    # ADV those rows hit mi_ep_scan_log with placeholder prevDay.v which
+    # Top SHORTLIST_SIZE are the scored cohort (under the ACTING order — prescore
+    # since 2026-08-22, gap on revert). The next ranks up to ADV_BACKFILL_LIMIT are
+    # a telemetry-only probe (Option 2): synthesize ADV → rel_volume so we can
+    # detect "did rank 21-50 candidates with high rel_volume turn into winners?"
+    # Without ADV those rows hit mi_ep_scan_log with placeholder prevDay.v which
     # is useless for outcome analysis. Probe-stage results emit an
     # `ep_adv_probe_synthesized` audit event — `data_gated_reviews.yaml`
     # entry `adv_probe_retirement` triggers a manual review at 30 days.
-    non_universe = [c for c in candidates[:50] if c["adv_source"] == "pending"]
+    non_universe = [c for c in candidates[:ADV_BACKFILL_LIMIT] if c["adv_source"] == "pending"]
     if non_universe:
         logger.info(f"Fetching 20-day ADV for {len(non_universe)} non-universe candidates (incl. rank 21-50 probe)...")
         adv_tasks = [_compute_adv_from_polygon(c["ticker"], today) for c in non_universe]
@@ -2816,17 +2876,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if c["rel_volume"] and _minutes_since_open and _minutes_since_open >= 15:
                     c["projected_vol_multiple"] = round(c["rel_volume"] * (_SESSION_MINUTES / _minutes_since_open), 1)
                 logger.info(f"  {c['ticker']}: ADV={computed_adv:,.0f} → rel_vol={c.get('rel_volume')}x")
-                # Probe-only event for ranks 21-50. The top-20 cohort is the
+                # Probe-only event for the backfilled-but-ungraded ranks (the
+                # slice past SHORTLIST_SIZE under the ACTING order — prescore
+                # since 2026-08-22). The top-SHORTLIST_SIZE cohort is the
                 # canonical scored set and doesn't need a separate event.
                 gap_rank = rank_by_gap.get(c["ticker"])
-                if gap_rank and gap_rank > 20:
+                _acting_rank = _rank_acting.get(c["ticker"])
+                if _acting_rank and _acting_rank > SHORTLIST_SIZE:
                     await log_audit_event(
                         "ep_adv_probe_synthesized",
-                        f"{c['ticker']} rank={gap_rank} gap={c['gap_pct']:.1f}% rel_vol={c['rel_volume']}x",
+                        f"{c['ticker']} rank={_acting_rank} gap={c['gap_pct']:.1f}% rel_vol={c['rel_volume']}x",
                         json.dumps({
                             "ticker": c["ticker"],
                             "scan_date": today.isoformat(),
                             "rank_by_gap": gap_rank,
+                            "rank_by_prescore": rank_by_prescore.get(c["ticker"]),
                             "gap_pct": round(c["gap_pct"], 2),
                             "adv_polygon_20d": int(computed_adv),
                             "rel_volume": c.get("rel_volume"),
@@ -2936,9 +3000,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             c, reason=reason, ep_score=None, tier=None, catalyst_quality=None,
         ))
 
-    # Log candidates beyond top-20 cap
-    for c in candidates[20:]:
-        _log_filtered(c, f"outside top-20 gap cap (gap {c['gap_pct']:.1f}%)")
+    # Log candidates beyond the graded-shortlist cap. Both reason forms keep the
+    # "outside top-20" substring the downstream classifiers key on
+    # (missed_outcomes / ep_selectivity_breakdowns / ep_latency_audit); the
+    # flag-OFF form is byte-identical to the pre-2026-08-22 string.
+    for c in candidates[SHORTLIST_SIZE:]:
+        if _prescore_live and rank_by_prescore:
+            _log_filtered(c, (
+                f"outside top-{SHORTLIST_SIZE} shortlist "
+                f"(prescore rank {rank_by_prescore.get(c['ticker'])}, "
+                f"gap {c['gap_pct']:.1f}%)"))
+        else:
+            _log_filtered(c, f"outside top-{SHORTLIST_SIZE} gap cap (gap {c['gap_pct']:.1f}%)")
 
     # #444 mode-label sweep: the catalyst-downgrade Telegram below (prose-mismatch
     # branch) is MAGNA53-bound. Resolve the owning strategy's account_mode lazily
@@ -2964,7 +3037,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 "ep_rt_volume_authoritative", "EP_RT_VOLUME_AUTHORITATIVE", default=False)
             from agents.market_intelligence.collector import get_alpaca_minute_cum_volumes
             _rt_vol_map = await get_alpaca_minute_cum_volumes(
-                [c["ticker"] for c in candidates[:20]], now_et)
+                [c["ticker"] for c in candidates[:SHORTLIST_SIZE]], now_et)
         except Exception as _ve:  # loud-ok: rt volume degrades to the delayed read — today's behavior
             logger.warning(f"#490 rt volume fetch failed (delayed volume keeps deciding): {_ve}")
             _rt_vol_map = {}
@@ -2989,7 +3062,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"catalyst lattice setup failed — LLM grade acts this tick: {_lce}")
         _lattice_live = False
 
-    for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
+    for c in candidates[:SHORTLIST_SIZE]:  # graded cap — the LLM/FMP call budget
         ticker = c["ticker"]
         rel_volume = c.get("rel_volume") or 0
 
@@ -4656,6 +4729,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             asyncio.create_task(record_ep_score_shadow(_score_shadow_inputs, today, now_et))
         except Exception as _sse:
             logger.warning(f"score-shadow batch dispatch failed — {_sse}")
+
+    # Shortlist pre-score counterfactual batch write (fire and forget, fail-open;
+    # mi_ep_shortlist_shadow is read by NO grading / entry / sizing / ordering /
+    # safeguard path — raw inputs + both orderings per candidate per tick, see
+    # ep_shortlist_shadow.py). Rows were snapshotted AT THE SORT (pre ADV
+    # backfill / rt-volume mutation) so the record is what the ordering ACTED on.
+    if _shortlist_shadow_rows:
+        try:
+            from agents.market_intelligence.ep_shortlist_shadow import (
+                record_ep_shortlist_shadow)
+            asyncio.create_task(record_ep_shortlist_shadow(
+                _shortlist_shadow_rows, today, now_et))
+        except Exception as _sle2:
+            logger.warning(f"shortlist-shadow batch dispatch failed — {_sle2}")
 
     # Summary log — always visible, even when no alerts fire. Helps verify the scan ran
     # and diagnose why candidates were filtered out.

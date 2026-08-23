@@ -2763,6 +2763,42 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ep_score_shadow_date
                 ON mi_ep_score_shadow(scan_date DESC);
 
+            -- SHORTLIST PRE-SCORE counterfactual (2026-08-22, operator-directed):
+            -- one row per (scan tick, candidate) for EVERY candidate on the board —
+            -- which names each ordering key (gap vs the three-term pre-score) would
+            -- put in the graded top-SHORTLIST_SIZE, and which key ACTED
+            -- (`acting_key`, stamped explicitly — never inferred from dates).
+            -- ⚠ RAW INPUTS ONLY, never computed points/composites: points are a
+            -- function of the weight table and go stale the moment a weight is
+            -- swept (the #583 stale-derived-value class) — any variant table can be
+            -- replayed against these rows at $0. Ranks/flags are the acting
+            -- DECISION record, not derived values. Append-only BY DESIGN (no
+            -- upsert): board membership and gap move intraday, and the per-tick
+            -- history is the point. Read by NO grading / entry / sizing / ordering /
+            -- safeguard path — comparison telemetry only
+            -- (writer: ep_shortlist_shadow.py).
+            CREATE TABLE IF NOT EXISTS mi_ep_shortlist_shadow (
+                id                      SERIAL PRIMARY KEY,
+                scan_date               DATE NOT NULL,
+                ticker                  TEXT NOT NULL,
+                scan_time_et            TIMESTAMPTZ,
+                minutes_since_open      INT,
+                gap_pct                 DOUBLE PRECISION,  -- raw input (flat credit; size never scored)
+                prev_close              DOUBLE PRECISION,  -- raw input (ADV$ = adv × prev_close)
+                adv                     DOUBLE PRECISION,  -- raw input: 20d ADV shares (or placeholder — see adv_source)
+                adv_source              TEXT,              -- rs_universe|polygon_20d = real; pending = placeholder, liquidity axis MISSING
+                in_active_theme         BOOLEAN,           -- raw input: Accelerating/Mainstream membership at this tick
+                rank_by_prescore        INT,
+                rank_by_gap             INT,
+                shortlisted_by_prescore BOOLEAN,
+                shortlisted_by_gap      BOOLEAN,
+                acting_key              TEXT,              -- 'prescore' | 'gap' — which ordering ACTED this tick
+                board_n                 INT,               -- board size at this tick
+                created_at              TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_shortlist_shadow_date
+                ON mi_ep_shortlist_shadow(scan_date DESC);
+
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak

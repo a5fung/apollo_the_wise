@@ -52,6 +52,39 @@ classification so they can condition on `catalyst_quality`; moved here #405,
 8. **Routine + low gap**: `catalyst_quality == "routine" AND gap_pct < 12%` → skip
 9. **Pre-market shares absolute floor** (with carve-out): `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` OR (R6 carve-out) `gap_pct ≥ 10% AND catalyst_quality == "strong"` — relative anomaly / high-conviction trumps absolute count for low-float names
 
+### Grading shortlist — who gets graded at all (pre-score ranked since 2026-08-22)
+
+Each tick, only the top `SHORTLIST_SIZE` (20) by the shortlist pre-score are graded (the
+LLM/FMP call budget); every candidate past the cap is logged
+(`outside top-20 shortlist (prescore rank N, gap X%)`) but never graded. **Sort key since
+2026-08-22 (operator-directed): the three-term pre-score `ep_rubric.SHORTLIST_WEIGHTS`, NOT
+gap size** — gap size runs backwards on real EPs (AUC 0.34) and was deleted from the score the
+same day; the operator caught it still deciding who gets looked at ("how are we still using it
+after all this work").
+
+- **Pre-score** (0–65, free inputs only, computed for EVERY candidate at the sort):
+  `liquidity` (max 15, **weight 3** — 20-day ADV$ tiers 15/12/10/7 at $500M/$250M/$100M/$50M;
+  45 of 65 by construction, AUC 0.72) + `gap` (max 10, weight 1 — **FLAT**: any qualifying gap
+  earns full points; presence, not magnitude) + `theme_bonus` (max 10, weight 1 — in an
+  Accelerating/Mainstream theme). Missing-input rescaling per
+  `catalyst_rubric.composite_with_scaling`'s shape: unknown ADV (`adv_source='pending'`) ⇒ the
+  liquidity axis is missing and the composite rescales from gap + theme — a data gap never
+  silently sinks a candidate (P1). Deliberately NOT scored: `extension` / `prior_3m` /
+  `adv_trend` / `cooldown_proximity` (unmeasured or measured-noise — see change log) and
+  everything that costs money per name (float, mcap, pm_rvol, catalyst).
+- **Tie-break** (required — Stage 0 measured a 9-way tie at the rank-20 cut on the 04-08 flood
+  board): composite desc → **continuous ADV$ desc** (the same measured axis at full
+  resolution, tick-stable, never gap) → ticker asc (total-order determinism).
+  `ep_rubric.shortlist_sort_key`.
+- **Revert flag**: `ep_shortlist_prescore` runtime toggle / `EP_SHORTLIST_PRESCORE_ENABLED`
+  env, default ON — OFF restores gap-descending ordering **exactly** (~60s, no redeploy;
+  pinned by `tests/test_ep_shortlist_prescore.py`).
+- **Counterfactual record**: `mi_ep_shortlist_shadow` — every candidate, every tick: raw
+  inputs only (never computed points — the #583 stale-derived-value class), both ranks, both
+  would-be-shortlisted flags, and `acting_key` stamping which ordering acted.
+- The next ranks up to `ADV_BACKFILL_LIMIT` (50) get ADV backfilled for telemetry only
+  (unchanged behaviour, constant named the same day).
+
 ### Catalyst grading (Claude + Perplexity + SEC EDGAR)
 
 LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or None.
@@ -198,6 +231,56 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-22 — Grading shortlist ranks by the three-term PRE-SCORE, not gap size (OPERATOR-DIRECTED, ONE-FLAG REVERTIBLE)
+
+**Trigger**: the same-day #533 separation change deleted gap size from the SCORE for running
+backwards on real EPs (AUC 0.34, flat gap points, conviction floors 1–3 deleted — all
+operator-signed), yet `run_ep_scan` still SORTED the morning's candidates by `gap_pct` and
+graded only the first twenty — the proven-wrong measure kept deciding which names get looked
+at at all. Operator, on finding it still live: *"how are we still using it after all this
+work… that's like saying this is completely wrong for weeks and fixing it for weeks and then
+say we still use it."* Second, forward-looking reason: admitting more candidates via
+real-time prices (#584-class widening, separately dated) would push more names into the same
+20 slots, still ordered by the wrong key — the shortlist had to be fixed before admission
+widens.
+
+**Evidence**: Stage 0 replay of all 16 cap-attributed labelled real EPs
+(`docs/analysis/shortlist_survival_stage0_2026-08-22.md`) + the pre-score replay of every
+logged scan day (`docs/analysis/shortlist_prescore_replay_2026-08-22.md`). **Stated plainly:
+Stage 0 measured the recovery at "at most one name"** (SNOW 05-07, conditional on an ungraded
+catalyst; demonstrably recoverable end-to-end: zero — the wall behind the cap is the score
+bar, not the cap). **So the justification is COHERENCE (a measure proven backwards must not
+decide who is looked at) and FUTURE-PROOFING, not retention recovery.** What the re-ranking
+demonstrably improves: the liquidity axis ranks all five of the killed set's biggest
+R-winners (MU/SNDK/BE/ARM/SNOW) inside the top 20, where gap ranked them 20th–100+.
+Weight-table basis: liquidity (15, weight 3 — ex-ante 20d ADV$ AUC 0.72, the best measured
+signal), gap (10, weight 1, FLAT — operator signed "stop paying for gap size"), theme (10,
+weight 1 — mirrors the live R4 bonus). `extension` / `prior_3m` / `adv_trend` /
+`cooldown_proximity` deliberately EXCLUDED: the prior-momentum penalty was deleted the same
+day for firing on real EPs and junk at identical rates (31% vs 32%); the others are
+unmeasured — a term enters only with a measured direction. A starting table, not a fitted
+one. Tie-break policy (required — Stage 0 found a 9-way tie at the rank-20 cut): continuous
+ADV$ desc, then ticker asc; never gap.
+
+**Anticipated effect**: the graded 20 change on flood mornings — liquid moderate-gap names
+(the real-EP profile) enter the shortlist; thin max-gap names drop past rank 20 (logged, not
+graded). On thin boards (<20 candidates) behaviour is identical — everyone was graded before
+and still is. Alert VOLUME should not move materially (the score bar is unchanged); alert
+COMPOSITION shifts toward liquid names. Watch: a labelled real EP falling out of the
+shortlist · HIGH alerts halving vs the prior 30-day average · two consecutive silent days.
+Every candidate + both orderings recorded per tick in `mi_ep_shortlist_shadow` (raw inputs
+only), so the counterfactual stays measurable at $0.
+
+**Reversion-flag**: NEW (the ordering had never changed since inception; the cap VALUE 20 is
+unchanged, now named `ep_rubric.SHORTLIST_SIZE` + registered in
+`scripts/gate_provenance_registry.py`). One revert flag: `ep_shortlist_prescore` runtime
+toggle / `EP_SHORTLIST_PRESCORE_ENABLED` env, default ON — OFF restores gap ordering exactly
+(~60s, no redeploy), pinned by `tests/test_ep_shortlist_prescore.py`.
+
+**Status**: built, awaiting deploy (working tree; deploy windows per CLAUDE.md), then
+shipped, awaiting field validation — verify-live = `mi_ep_shortlist_shadow` writes rows for
+EVERY candidate (not just twenty) on the next trading morning with `acting_key='prescore'`.
 
 ### 2026-08-22 — Near-miss band [50, 65) restored in the morning briefing, VISIBILITY ONLY (operator-directed) [#533 follow-on]
 

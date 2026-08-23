@@ -1532,6 +1532,10 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     ("mi_ep_alerts", "EP alerts", "alert_date", LIVE_SOURCE_SQL),
     ("mi_exit_path_shadow", "exit-path shadow", "trading_day", None),
     ("mi_alert_rank_shadow", "alert-rank shadow", "alert_date", None),
+    # Shortlist pre-score counterfactual (2026-08-22): written every scan tick with
+    # >=1 candidate — a silent writer here means the gap-vs-prescore record has
+    # stopped accruing (the 100%-silent recorder class this registry exists for).
+    ("mi_ep_shortlist_shadow", "EP shortlist pre-score shadow", "scan_date", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median
