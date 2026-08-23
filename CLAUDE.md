@@ -292,18 +292,23 @@ Pre-commit gates are vanilla shell + fast (<1s); the pre-push test gate is ~30s 
 | Window | ET | Days |
 |---|---|---|
 | **MARKET** | **12:00–13:00** | Mon–Fri |
-| **AFTER-HOURS** | **21:15–22:15** | daily |
+| **AFTER-HOURS** | **21:15–22:15** | Mon–Fri |
+| **WEEKENDS** | **unrestricted** | Sat–Sun |
+
+⚠ **Weekends NOT gated** (operator 2026-08-23: *"those windows are mainly for market days,
+not weekends"*). Weekend jobs still run (Sun 02:00/08:00/08:45/19:00/19:30 ET, daily
+04:33/06:00/17:52/18:00) — check the clock yourself; the gate no longer will.
 
 `scripts/deploy.sh` **exits 12** outside them. Override is **OPERATOR-ONLY** — never
 self-authorize: `APOLLO_DEPLOY_ANYTIME=1 bash scripts/deploy.sh <scope>`.
-No job was moved — both windows were already empty. Supersedes the old blackout guidance.
-Why + the 66-job census: memory `deploy-timing-avoid-market-windows`.
+No job was moved — both windows were already empty. Why + the 66-job census: memory
+`deploy-timing-avoid-market-windows`.
 
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 - **Disaster recovery**: if the host dies, follow `docs/ops/disaster_recovery.md` (operator runbook + `infra/restore.sh` driver). RTO ~95 min. Nightly cron writes pg_dump + GPG-encrypted secrets bundle to gdrive; `_backup_health_check_job` (04:33 ET) Telegrams if either blob is stale >36h. OAuth recovery (gdrive upload failing): `docs/ops/gdrive_backup_recovery.md`.
 
-**Canonical deploy command — use the script, not raw `docker compose` commands.** It chains git pull → build → up → wait-for-boot → preflight (`set -euo pipefail`; any step failing exits non-zero with a specific code per failure mode). Scope is REQUIRED (no default, #154 tier-1) — deploy.sh also aborts (exit 11, #154 tier-2) if the pull brought changes to files owned by a service outside your chosen scope.
+**Use the script, never raw `docker compose`.** It chains git pull → build → up → wait-for-boot → preflight, failing non-zero at any step. Scope is REQUIRED (#154 tier-1); it also aborts (exit 11) if the pull touched files owned by a service outside your scope.
 ```bash
 bash scripts/deploy.sh market-agent    # market agent only
 bash scripts/deploy.sh orchestrator    # orchestrator only
@@ -311,7 +316,7 @@ bash scripts/deploy.sh both            # both services
 ```
 Ownership map for the scope-drift guard: `channels/ core/ main.py` → orchestrator; `agents/market_intelligence/ scripts/` → market-agent; anything else (`shared/`, `docker/`, `requirements/`) → both. (New Telegram slash commands touch `channels/telegram.py`, orchestrator-owned — need `orchestrator`/`both`, not the market-agent default that silently dropped `/partialnow` on 2026-05-28.)
 
-The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact path that fires on real ORB entries. `setup:*`/`infra:*` = failure; only `block:*` passes through.
+The preflight walks every enabled non-shadow strategy through `_check_safeguards` — the path that fires on real ORB entries. `setup:*`/`infra:*` = failure; only `block:*` passes.
 
 **Why**: a raw `docker compose` deploy skipped preflight and caused the 2026-05-13 outage. Detail: `CHANGELOG.md` 2026-05-13.
 
@@ -346,10 +351,9 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-22 — one catalyst grade everywhere
+### 2026-08-23 — weekend deploys ungated
 
-- Filters read the corrected news grade, same one the score reads. The fork
-  (corrected score, raw filters) was binning real EPs before the fix could act.
+- Windows are for market days; Sat/Sun unrestricted. Weekend jobs still run — check the clock.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

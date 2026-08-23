@@ -65,14 +65,22 @@ if [ "${APOLLO_DEPLOY_ANYTIME:-0}" != "1" ]; then
   _now_et=$(TZ=America/New_York date +%H%M)
   _dow=$(TZ=America/New_York date +%u)   # 1=Mon .. 7=Sun
   _ok=0
+  # WEEKENDS ARE UNRESTRICTED (operator 2026-08-23: "those windows are mainly for
+  # market days, not weekends"). The windows exist to protect the trading session
+  # and the dense weekday evening job blocks; Saturday and Sunday have neither, so
+  # gating them was over-reach on my part, not his rule. Weekend jobs still run
+  # (Sun 02:00/08:00/08:45/19:00/19:30 ET and the daily 04:33/06:00/17:52/18:00) —
+  # a restart can still clip one, so check the clock against those before deploying.
+  if [ "$_dow" -ge 6 ]; then _ok=1; fi
   # Market window 12:00-13:00, weekdays only (no session at the weekend).
   if [ "$_dow" -le 5 ] && [ "$_now_et" -ge 1200 ] && [ "$_now_et" -lt 1300 ]; then _ok=1; fi
-  # After-hours window 21:15-22:15, every day.
+  # After-hours window 21:15-22:15, weekdays (weekends already cleared above).
   if { [ "$_now_et" -ge 2115 ] && [ "$_now_et" -lt 2215 ]; }; then _ok=1; fi
   if [ "$_ok" -ne 1 ]; then
     echo "DEPLOY REFUSED — outside the operator's deploy windows (now $(TZ=America/New_York date '+%a %H:%M') ET)."
     echo "  MARKET window:  12:00-13:00 ET, Mon-Fri"
-    echo "  AFTER-HOURS:    21:15-22:15 ET, daily"
+    echo "  AFTER-HOURS:    21:15-22:15 ET, Mon-Fri"
+    echo "  WEEKENDS:       unrestricted (operator 2026-08-23)"
     echo "Set by the operator 2026-08-21 after repeated deploys clipped scheduled jobs."
     echo "Operator override:  APOLLO_DEPLOY_ANYTIME=1 bash scripts/deploy.sh $SCOPE"
     exit 12

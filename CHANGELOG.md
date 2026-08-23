@@ -278,6 +278,8 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 **2026-08-21 — deploy windows gated** — two windows only (12:00-13:00 · 21:15-22:15 ET); `deploy.sh` exits 12 outside them, operator-only override. Repeated ~17:02 deploys had been clipping nightly jobs.
 
+**2026-08-22 — one catalyst grade everywhere** — the admission filters read the corrected news grade, the same one the score reads. The fork (corrected score, raw filters) was binning real EPs before the fix could act.
+
 ## 2026-08-01 → 08-03 — money-path filters live · chart-vision paused · four rules made mechanical
 
 - **3 entry filters live** (+2R profit trigger, stale-gap cleanup, submission-time gap re-check).
