@@ -2727,6 +2727,41 @@ async def initialize_schema() -> None:
             -- with the side that WAS live when it was written — the LLM grade.
             ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS live_side TEXT DEFAULT 'llm';
 
+            -- #533 separation change (2026-08-22, operator-signed): BOTH rubric sides
+            -- per scored candidate per day — the operator's "keep tracking existing"
+            -- condition. sep_* is ALWAYS the separation side (flat gap credit +
+            -- branch-4-only floor, bar 40); legacy_* is ALWAYS the pre-change rubric
+            -- at the per-regime bar; live_side ('separation'|'legacy') stamps which
+            -- side ACTED — never inferred from dates. Tiers are the PRE-override
+            -- read. Read by NO grading / entry / sizing / safeguard path —
+            -- comparison telemetry only (writer: ep_score_shadow.py).
+            CREATE TABLE IF NOT EXISTS mi_ep_score_shadow (
+                id                    SERIAL PRIMARY KEY,
+                scan_date             DATE NOT NULL,
+                ticker                TEXT NOT NULL,
+                first_seen_et         TIMESTAMPTZ,
+                last_seen_et          TIMESTAMPTZ,
+                sep_score_first       DOUBLE PRECISION,  -- separation-side score at the first tick
+                sep_score_last        DOUBLE PRECISION,
+                sep_tier_first        TEXT,              -- HIGH|MODERATE|NULL vs the uniform bar 40
+                sep_tier_last         TEXT,
+                legacy_score_first    DOUBLE PRECISION,  -- old-rubric score at the first tick
+                legacy_score_last     DOUBLE PRECISION,
+                legacy_tier_first     TEXT,              -- HIGH|MODERATE|NULL vs the per-regime bar
+                legacy_tier_last      TEXT,
+                sep_bar               INT,               -- 40 (recorded, not assumed)
+                legacy_bar            INT,               -- the day's per-regime bar (65/70/75/80)
+                live_side             TEXT DEFAULT 'separation',  -- which side ACTED on the latest tick
+                gap_pct_first         DOUBLE PRECISION,
+                gap_pct_last          DOUBLE PRECISION,
+                catalyst_quality_last TEXT,              -- the grade both sides scored with (lattice tier)
+                created_at            TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (scan_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_score_shadow_date
+                ON mi_ep_score_shadow(scan_date DESC);
+
+
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
             -- with WHEN, and the daily-close peak a close-driven rule could have seen), what

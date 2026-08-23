@@ -78,7 +78,9 @@ from shared.output_ceilings import max_tokens_for
 # only the committed pin the deploy gate checks, and can lag the live value.
 from agents.market_intelligence.ep_grade_judge import MODEL as _JUDGE_MODEL_ACTUAL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
-from agents.market_intelligence.ep_rubric import SCORE_WEIGHTS, resolve_conviction_floor, tier_points
+from agents.market_intelligence.ep_rubric import (
+    SCORE_WEIGHTS, SEPARATION_BAR, resolve_conviction_floor, resolve_ep_bar,
+    resolve_score_weights, tier_points)
 from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
@@ -1212,14 +1214,19 @@ def _score_ep(
     projected_vol_multiple: float | None = None,
     in_active_theme: bool = False,
     adv_dollar: float | None = None,
+    weights: dict = SCORE_WEIGHTS,
 ) -> tuple[float, dict]:
     """
     Calculate MAGNA53 EP score (raw score before regime multiplier; uncapped
     — the prior 0-100 cap was removed by #42, 2026-05-09, see below).
     Returns: (final_score, score_breakdown)
 
-    Weights emphasize the two strongest EP signals: gap size + catalyst quality.
-    A 20%+ game-changer gap should score ≥70 on its own before bonuses.
+    `weights` selects WHICH rubric table acts (#533 separation change,
+    2026-08-22, operator-signed): `SCORE_WEIGHTS` (default — flat gap credit,
+    single branch-4 conviction floor) or `SCORE_WEIGHTS_LEGACY` (the revert
+    side: the old gap-size ladder + all four floors, under which a 20%+
+    game-changer gap scored ≥70 on its own). `run_ep_scan` passes the table
+    chosen by the `ep_score_separation` runtime toggle.
 
     projected_vol_multiple: open intensity — raw_rvol * (390 / min_since_open).
     Measures how many times above the normal rate-for-this-time the stock is trading.
@@ -1245,13 +1252,13 @@ def _score_ep(
 
     # Gap magnitude — see ep_rubric.SCORE_WEIGHTS["gap"].
     breakdown["gap"] = tier_points(
-        gap_pct, SCORE_WEIGHTS["gap"]["tiers"], SCORE_WEIGHTS["gap"]["default"]
+        gap_pct, weights["gap"]["tiers"], weights["gap"]["default"]
     )
 
     # Liquidity — operator-signed 2026-08-22; full evidence + the unknown-ADV
     # RVOL fallback rationale live in ep_rubric.SCORE_WEIGHTS["liquidity"].
     # ⚠ The separate 2.0x session-RVOL GATE is untouched — this changes RANKING only.
-    _liq = SCORE_WEIGHTS["liquidity"]
+    _liq = weights["liquidity"]
     if adv_dollar is not None and adv_dollar > 0:
         breakdown["liquidity"] = tier_points(adv_dollar, _liq["adv_tiers"], _liq["adv_default"])
     else:
@@ -1262,13 +1269,13 @@ def _score_ep(
     # Catalyst quality — see ep_rubric.SCORE_WEIGHTS["catalyst"].
     # "mna" should never reach scoring (hard-filtered above), but treat as 0 if it does
     # — any unrecognized label falls to the default, same as before.
-    breakdown["catalyst"] = SCORE_WEIGHTS["catalyst"]["points"].get(
-        catalyst_quality, SCORE_WEIGHTS["catalyst"]["default"]
+    breakdown["catalyst"] = weights["catalyst"]["points"].get(
+        catalyst_quality, weights["catalyst"]["default"]
     )
 
     # Low float bonus — see ep_rubric.SCORE_WEIGHTS["float"].
     float_shares = profile.get("floatShares", 0) or 0
-    _float = SCORE_WEIGHTS["float"]
+    _float = weights["float"]
     if float_shares > 0 and float_shares < _float["max_shares"]:
         breakdown["float"] = _float["points"]
     else:
@@ -1306,8 +1313,8 @@ def _score_ep(
     # distribution — see ep_rubric.SCORE_WEIGHTS["vol_conviction"].
     breakdown["vol_conviction"] = tier_points(
         vol_percentile,
-        SCORE_WEIGHTS["vol_conviction"]["tiers"],
-        SCORE_WEIGHTS["vol_conviction"]["default"],
+        weights["vol_conviction"]["tiers"],
+        weights["vol_conviction"]["default"],
     )
 
     # PRIOR-MOMENTUM PENALTY DELETED 2026-08-22, operator-signed. It was sourced from
@@ -1323,7 +1330,7 @@ def _score_ep(
     # that's control flow, stays here. Point value + full evidence live in
     # ep_rubric.SCORE_WEIGHTS["theme_bonus"].
     _R4_ENABLED = os.environ.get("R4_THEME_BONUS_ENABLED", "true").lower() == "true"
-    _theme = SCORE_WEIGHTS["theme_bonus"]
+    _theme = weights["theme_bonus"]
     if _R4_ENABLED and in_active_theme:
         breakdown["theme_bonus"] = _theme["points"]
     else:
@@ -1337,7 +1344,7 @@ def _score_ep(
     # first matching rule wins, and no match leaves "conviction_floor" out of
     # the breakdown entirely (same as before).
     _floor = resolve_conviction_floor(
-        gap_pct, catalyst_quality, SCORE_WEIGHTS["conviction_floor"]["rules"]
+        gap_pct, catalyst_quality, weights["conviction_floor"]["rules"]
     )
     if _floor is not None:
         raw_score = max(raw_score, _floor)
@@ -2477,7 +2484,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Get regime for threshold adjustment
     regime = await get_latest_regime()
     regime_label = regime.get("regime", "Unknown") if regime else "Unknown"
-    ep_threshold = regime.get("ep_threshold", 70) if regime else 70
+    _regime_bar = regime.get("ep_threshold", 70) if regime else 70
+
+    # ── #533 SEPARATION FLIP (2026-08-22, OPERATOR-SIGNED) ─────────────────────
+    # Flat gap credit + conviction floor trimmed to branch 4 (ep_rubric
+    # SCORE_WEIGHTS) + uniform HIGH bar 40 (SEPARATION_BAR) — three coupled
+    # parts, ONE revert flag: `ep_score_separation` runtime toggle /
+    # EP_SCORE_SEPARATION_ENABLED env, default ON. OFF -> SCORE_WEIGHTS_LEGACY
+    # + the per-regime bar (65/70/75/80) act, byte-identical pre-change
+    # behaviour, no redeploy (~60s toggle cache). Operator quote + evidence:
+    # docs/setups/magna53_ep.md change log 2026-08-22. Fail direction on a
+    # toggle-read error: separation stays ON (the shipped default), loudly.
+    # The score<50 MODERATE cutline below is separate and was NOT ruled on.
+    _sep_live = True
+    try:
+        _sep_live = await get_runtime_toggle(
+            "ep_score_separation", "EP_SCORE_SEPARATION_ENABLED", default=True)
+    except Exception as _spe:  # loud-ok: get_runtime_toggle fails open internally; belt+braces
+        logger.warning(f"ep_score_separation toggle read failed — separation stays ON: {_spe}")
+    _act_weights = resolve_score_weights(_sep_live)
+    _cf_weights = resolve_score_weights(not _sep_live)
+    ep_threshold = resolve_ep_bar(_sep_live, _regime_bar)
+    _cf_bar = resolve_ep_bar(not _sep_live, _regime_bar)
+    # "keep tracking existing" (operator condition on the sign-off): BOTH sides
+    # are scored for every graded candidate and batch-written to
+    # mi_ep_score_shadow after the loop (fire-and-forget, read by no live path).
+    _score_shadow_inputs: list[dict] = []
+
     regime_multiplier = 1.2 if regime_label == "Bull" else 1.0
 
     # Get stored ADV map (from last RS run)
@@ -2516,7 +2549,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     except Exception as e:
         logger.warning(f"EP scan: could not load security_types ({e}) — relying on SKIP_TICKERS only")
 
-    logger.info(f"EP scan: regime={regime_label}, threshold={ep_threshold}")
+    logger.info(
+        f"EP scan: regime={regime_label}, threshold={ep_threshold} "
+        f"(separation={'ON' if _sep_live else 'OFF — legacy rubric + per-regime bar'})")
 
     # R4 (2026-05-17 ship): cache the set of tickers currently in an
     # active (Accelerating/Mainstream) theme. Built once per scan tick
@@ -4156,7 +4191,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if close_3m_ago and close_3m_ago > 0 and c["prev_close"]:
             prior_3m_change = (c["prev_close"] - close_3m_ago) / close_3m_ago * 100
 
-        # Score
+        # Score (weights = the side the ep_score_separation flag chose above)
         ep_score, breakdown = _score_ep(
             gap_pct=c["gap_pct"],
             rel_volume=rel_volume,
@@ -4168,7 +4203,51 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             vol_percentile=vol_pct,
             prior_3m_change=prior_3m_change,
             in_active_theme=(ticker in _in_active_theme_set),
+            weights=_act_weights,
         )
+
+        # #533 separation — "keep tracking existing": the OTHER side's score,
+        # from the SAME scorer with the other weight table, tiered against the
+        # other side's bar. Column semantics are CONSTANT (sep_* = ALWAYS the
+        # separation side, legacy_* = ALWAYS the old rubric at the old
+        # per-regime bar) and live_side stamps which side ACTED — a reader
+        # never infers the acting side from dates (the mi_catalyst_tier_shadow
+        # contract). Tiers are the PRE-override read (earnings override /
+        # judge may still move the acting tier), same caveat as the
+        # catalyst-tier record. Never raises, never alters any live value.
+        try:
+            _cf_score, _ = _score_ep(
+                gap_pct=c["gap_pct"],
+                rel_volume=rel_volume,
+                catalyst_quality=catalyst_quality,
+                profile=profile,
+                regime_multiplier=regime_multiplier * confidence_multiplier,
+                projected_vol_multiple=c.get("projected_vol_multiple"),
+                adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
+                vol_percentile=vol_pct,
+                prior_3m_change=prior_3m_change,
+                in_active_theme=(ticker in _in_active_theme_set),
+                weights=_cf_weights,
+            )
+            _act_t = ("HIGH" if ep_score >= ep_threshold
+                      else "MODERATE" if ep_score >= 50 else None)
+            _cf_t = ("HIGH" if _cf_score >= _cf_bar
+                     else "MODERATE" if _cf_score >= 50 else None)
+            if _sep_live:
+                _sep_sc, _sep_t, _leg_sc, _leg_t = ep_score, _act_t, _cf_score, _cf_t
+            else:
+                _sep_sc, _sep_t, _leg_sc, _leg_t = _cf_score, _cf_t, ep_score, _act_t
+            _score_shadow_inputs.append({
+                "ticker": ticker,
+                "sep_score": _sep_sc, "sep_tier": _sep_t,
+                "legacy_score": _leg_sc, "legacy_tier": _leg_t,
+                "sep_bar": SEPARATION_BAR, "legacy_bar": _regime_bar,
+                "live_side": "separation" if _sep_live else "legacy",
+                "gap_pct": c.get("gap_pct"),
+                "catalyst_quality": catalyst_quality,
+            })
+        except Exception as _sse:
+            logger.debug(f"{ticker}: score-shadow capture failed — {_sse}")
 
         # #533 Change 6 — catalyst-tier record capture. Records EVERY graded candidate
         # (including the score<50 skips below — the ARM/QCOM/AMD class died exactly
@@ -4197,7 +4276,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         except Exception as _tse:
             logger.debug(f"{ticker}: tier-shadow input capture failed — {_tse}")
 
-        if ep_score < 50:
+        # #533 separation: the HIGH decision outranks the cutline. With the
+        # uniform bar 40 sitting BELOW the 50 cutline, a bar-clearing 40-49
+        # score must ALERT — that is the semantics the priced table priced
+        # (bar 40 = 1.78 HIGH/day; cutline-first would silently ship the
+        # bar-50 row, -77% alerts). The cutline itself is UNCHANGED (value 50,
+        # not ruled on): a non-HIGH score < 50 is still a silent skip, and
+        # 50 <= score < bar is still MODERATE — that band is simply EMPTY
+        # while the separation bar (40) is below 50, and reappears intact on
+        # revert (bar 65-80, where `< bar and < 50` == `< 50`, byte-identical
+        # legacy behaviour).
+        if ep_score < 50 and ep_score < ep_threshold:
             reason = f"score {ep_score:.0f} < 50 (catalyst={catalyst_quality})"
             logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}% breakdown={breakdown})")
             scan_log.append(_scan_row(
@@ -4351,6 +4440,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     vol_percentile=vol_pct,
                     prior_3m_change=prior_3m_change,
                     in_active_theme=(ticker in _in_active_theme_set),
+                    weights=_act_weights,  # #533: boost-off compare stays on the acting side
                 )
                 await log_audit_event(
                     "perplexity_boost_shadow",
@@ -4516,6 +4606,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _tier_shadow_inputs, [c["ticker"] for c in candidates], today, now_et))
         except Exception as _tse:
             logger.warning(f"tier-shadow batch dispatch failed — {_tse}")
+
+    # #533 separation — both-sides score record batch write (fire and forget,
+    # fail-open; mi_ep_score_shadow is read by NO grading / entry / sizing /
+    # safeguard path — comparison telemetry only, the operator's "keep
+    # tracking existing" condition).
+    if _score_shadow_inputs:
+        try:
+            from agents.market_intelligence.ep_score_shadow import record_ep_score_shadow
+            asyncio.create_task(record_ep_score_shadow(_score_shadow_inputs, today, now_et))
+        except Exception as _sse:
+            logger.warning(f"score-shadow batch dispatch failed — {_sse}")
 
     # Summary log — always visible, even when no alerts fire. Helps verify the scan ran
     # and diagnose why candidates were filtered out.

@@ -97,17 +97,45 @@ recorded per (scan_date, ticker) in `mi_catalyst_tier_shadow`; the nightly flip 
 `catalyst_quality` entering `_score_ep` (component AND conviction floors) is the LATTICE
 tier since 2026-08-22 (see Catalyst grading above), not the raw LLM grade.
 
-Multi-factor: gap_pct + pm_rvol + catalyst_quality component + regime + RS + prior_momentum (a 3-month extension PENALTY: −25 at ≥+50% / −15 at ≥+30%, Qullamaggie-sourced — not a positive factor; corrected 2026-07-18 from the imprecise "extension"). Catalyst is an ADDITIVE component (not a multiplier) of the `breakdown` (ep_detector.py ~1140-1146):
-- `game_changer`: +25
-- `strong`: +15
-- `routine` (or anything else): +0
+Multi-factor, table-driven (`ep_rubric.SCORE_WEIGHTS`; the `ep_score_separation` runtime flag
+picks the acting table — see the 2026-08-22 SEPARATION change-log entry). Components:
+- **Gap: FLAT +10 for every qualifying gap ≥8%** (#533 separation change, 2026-08-22,
+  operator-signed). Gap SIZE is no longer paid — the old 25/20/15/10-by-size ladder ran
+  BACKWARDS on real EPs (AUC 0.34; real EPs' median gap 9.9% vs ordinary gappers' 12%+). The
+  8% qualifying cut is unchanged: WHAT qualifies did not move, what a bigger gap PAYS did.
+- Catalyst — ADDITIVE component (not a multiplier): `game_changer` +25 / `strong` +15 /
+  `routine` (or anything else) +0.
+- Liquidity (20-day ADV$ tiers 15/12/10/7), float bonus (+5 under 50M), vol_conviction (5/3),
+  theme_bonus (+10) — unchanged by the separation change, shared by both flag sides.
+- (`prior_momentum` and `neglect` were DELETED 2026-08-22 — see that change-log entry. Doc-sync
+  note: this paragraph previously still described the prior-momentum penalty.)
+
+**Conviction floor — SINGLE branch since 2026-08-22**: gap ≥10% + `game_changer` → floor 60
+(the 2026-04-14 dead-zone fix FOR a real EP (BE); it is what fires MRNA HIGH at its 10% read —
+kept BY DESIGN, pinned by `tests/test_533_separation_flip.py`). Branches 1-3 (15%+gc→80,
+20%+strong→80, 15%+strong→70) DELETED — the back door that kept paying gap size after the
+ladder flattened. Flag OFF restores all four (`SCORE_WEIGHTS_LEGACY`).
 
 `_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `liquidity` (20-day ADV$ tiers — REPLACED `rel_volume` 2026-08-22, operator-signed; see change log), `catalyst` (quality tier), `float` (low-float bonus), `vol_conviction` (pre-market volume percentile), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
 
-Score thresholds:
-- `< 50` → skip (below MODERATE)
-- `50 ≤ score < ep_threshold` → MODERATE (briefing only)
-- `≥ ep_threshold` (regime-dependent, `regime.py`: Bull=65, Choppy=70, Correcting=75, Crisis=80 — range 65-80) → HIGH (immediate Telegram + ORB submission window)
+Score thresholds (since 2026-08-22 the HIGH decision OUTRANKS the cutline — a bar-clearing
+score never dies on it; with the legacy bars 65-80 that is byte-identical to the old order):
+- `< 50` AND `< ep_threshold` → skip (below MODERATE). The cutline VALUE (50) and its MODERATE
+  role were NOT ruled on by the separation change — unchanged on both flag sides.
+- `50 ≤ score < ep_threshold` → MODERATE (briefing only). ⚠ While the separation bar (40) sits
+  below the cutline this band is EMPTY (everything ≥40 is HIGH, everything below is skipped);
+  it reappears intact on revert.
+- `≥ ep_threshold` → HIGH (immediate Telegram + ORB submission window). **Since 2026-08-22 the
+  acting HIGH bar is UNIFORM 40** (`ep_rubric.SEPARATION_BAR`, applied in `run_ep_scan` while
+  the `ep_score_separation` flag is ON — ships WITH the flat gap credit + trimmed floor as ONE
+  change; 40 is the volume-neutral choice and the ONE number to move for fewer alerts). Flag
+  OFF (revert) → the per-regime bar from the stored regime row acts as before (`regime.py`:
+  Bull=65, Choppy=70, Correcting=75, Crisis=80). ⚠ Known seam: surfaces that DISPLAY the stored
+  regime row's `ep_threshold` (briefing regime line, agent.py why-no-alert prose, the
+  allocator's advisory `legacy_eligible` label) still show the per-regime number, not 40 —
+  `regime.py` and the stored rows are deliberately untouched so the revert side survives
+  intact. Display-only; the alerting decision uses the flag-gated bar. See the change-log
+  entry's Status field.
 
 **Holistic Grade Judge overwrite**: when `holistic_judge_enabled` is ON (toggle,
 ADR 0011/W2c — SHIPPED DORMANT, see 2026-06-08 change-log entry below), the
@@ -138,6 +166,87 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-22 — SEPARATION: flat gap credit + floors trimmed to branch 4 + uniform HIGH bar 40 (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE) [#533]
+
+**Trigger**: the operator's own frame, which produced the card: *"there's two parts to this
+coin, real EP to score higher and non real EP to score lower, the combo will make lowering
+the bar, or setting the bar anywhere more meaningful in terms of filtering properly."* The
+separation study then measured where an ordinary gapper's HIGH score actually comes from:
+**71% of it is payment for gap size** (30 raw points from the 25/20/15/10 ladder + 41 from
+the conviction floors, both keyed on gap), and **93% of ordinary HIGHs needed a floor to
+clear their bar**. On the priced result the operator signed: **"ok, let's go, similar to
+before, we have fixing EPs so bias for action but keep tracking existing if we make
+changes."**
+
+**Evidence**: `docs/analysis/score_separation_533_2026-08-22.md` (+ the bar pricing in
+`ep_threshold_rederivation_2026-08-22.md`) — 26-member #577 fixture vs the 1,100-row tier-A
+gap corpus, all from existing captures, $0:
+- Floor branches 1-3 bind on 28% of ordinary admissible gappers vs 8% of real EPs (mean lift
+  +9.9 vs +2.1 pts) — only 3 of 25 members gap ≥15%, so those branches are structurally
+  reserved for ordinary gappers. Gap ladder: AUC 0.34 on real EPs (runs backwards).
+- The package (flat 10 + delete branches 1-3 + keep branch 4): within-day AUC 0.537 → 0.649;
+  ordinary gappers scoring above the median real EP 62% → 38%. Each half alone buys ~+0.04;
+  together +0.11 — points and floors are BOTH gap payment, one axis.
+- **Bar 40 = the volume-neutral choice**: 1.78 modeled HIGH/day vs 1.81 today (about one
+  FEWER alert a month) with **all 18 floor-alive real EPs reachable** at a top catalyst grade
+  (vs 6 today). It is the ONLY setting that holds today's alert volume — and ONE number to
+  change if the operator wants fewer alerts (45 cuts alerts ~55%, 50 cuts ~77%).
+- ⚠ Caveats, stated honestly: the label is IN-SAMPLE (discovered on this data), 13 of 26
+  members fall on one session, **only 7 of 26 were ever graded**; the reachable-@game_changer
+  columns are CONTINGENT on the new catalyst lattice awarding the top grade (the bar buys the
+  option, the grader exercises it); **the grade wall still holds QCOM and AMD at any score
+  shape or bar** (routine-graded; no score change fixes the grader); and bar 40's ABSOLUTE
+  volume rests on the relative anchor (the corpus omits $5-10 and sub-$50M-day names). Honest
+  out-of-sample judge: the post-07-16 label window (~mid-October) + the live record below.
+
+**Anticipated effect**: HIGH volume roughly unchanged (~-1 alert/month); the HIGH stream's
+ordinary share drops ~97% → ~90%; real EPs stop being arithmetically excluded in non-Bull
+regimes (today's Correcting bar 75 sits 10 points ABOVE a perfectly-graded real EP's ceiling);
+MRNA-class (gap ≥10 + game_changer) keeps firing via the kept branch 4 (60 ×1.2 = 72). The
+score<50 MODERATE cutline keeps its value and its MODERATE role (NOT ruled on) — but the HIGH
+decision now runs FIRST, because the priced bar-40 policy counts 40-49 scores as HIGHs
+(cutline-first would have silently shipped the bar-50 row, −77% alerts); with the legacy bars
+(65-80) the ordering is byte-identical to the old code, so the revert is exact. While the flag
+is ON the MODERATE briefing band is empty. Measured from day one by `mi_ep_score_shadow`
+(below), not inferred.
+
+**Reversion-flag**: NEW for the flat gap credit and the uniform bar; **REVERSAL of the
+2026-03-20 conviction-floor design** (`77179405`/`63eda07a`: "a 20%+ game-changer gap should
+score ≥70 on its own", 20%+strong→80) for branches 1-3. Why the prior reasoning was WRONG,
+not just incomplete: it took the gap itself as evidence of institutional conviction — bigger
+gap, more conviction, floor it above the bar. Measured against the labelled real-EP cohort
+five months later, gap size points the OTHER way (real EPs are liquid names at moderate gaps;
+the ≥15% region is 3 of 25 members vs 43% of ordinary admissible gappers) — the floors were
+calibrated on the big gapper by design and manufactured an ordinary-only tail above every
+bar. Branch 4 (10%+gc→60, `ed3e514e` 2026-04-14) is NOT part of that reversal: it was built
+as the dead-zone fix FOR a real EP (BE) and is deliberately KEPT (deleting it gains 0.008 AUC
+and re-kills MRNA at its 10% read — pinned by `tests/test_533_separation_flip.py`).
+**Revert = ONE flag, default ON** (`ep_score_separation` runtime toggle /
+`EP_SCORE_SEPARATION_ENABLED` env) — reverts ALL THREE parts together (ladder, floors, bar):
+- Instant (≤60s, no redeploy): `INSERT INTO mi_safeguard_state (safeguard, account_mode,
+  state, last_transition_at, updated_at) VALUES ('ep_score_separation', 'global', 'off',
+  NOW(), NOW()) ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state,
+  updated_at = NOW();`
+- Permanent: `EP_SCORE_SEPARATION_ENABLED=false` in prod .env + redeploy market-agent.
+Flag OFF → `ep_rubric.SCORE_WEIGHTS_LEGACY` (old ladder + all four floors) + the per-regime
+bar act — byte-identical old behaviour, proven by the 69-case pre-change boundary sweep
+(`tests/test_ep_score_stage2_refactor.py`, fixture captured from the true pre-change code)
++ the end-to-end pins in `tests/test_533_separation_flip.py`.
+**"Keep tracking existing" (the operator's condition)**: every scored candidate writes BOTH
+sides to `mi_ep_score_shadow` (`ep_score_shadow.py`, catalyst-tier-record pattern) — sep_*
+= ALWAYS the separation side at bar 40, legacy_* = ALWAYS the old rubric at the per-regime
+bar, and an explicit **`live_side`** column ('separation'/'legacy') stamps which side ACTED,
+never inferred from dates. Both sides run through the same `_score_ep`, never a
+reimplementation.
+
+**Status**: built + tests green (working tree 2026-08-22), NOT yet committed/deployed —
+awaiting deploy window, then field validation against the shadow record. Known seam,
+deliberate: display surfaces reading the STORED regime row's `ep_threshold` (briefing regime
+line, agent.py why-no-alert prose, allocator's advisory `legacy_eligible` label) still show
+the per-regime bar while the flag is ON — `regime.py` and stored rows untouched so the
+revert side survives; alerting uses the flag-gated bar. Follow-up if the flag sticks: point
+those displays at the acting bar.
 
 ### 2026-08-22 — Catalyst tier FLIPPED to the corrected lattice (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE) [#533 Change 6]
 

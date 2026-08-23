@@ -1847,6 +1847,19 @@ _NOT_SWEEP_PARAMS: dict[str, str] = {
     "live_tier":    "mi_catalyst_tier_shadow's copy of the LIVE alert tier (HIGH/MODERATE/NULL) "
                     "at the recording tick — the subject's own live classification, mirrored for "
                     "the counterfactual join; same not-a-parameter shape as score_tier above.",
+    # #533 separation change (2026-08-22) — mi_ep_score_shadow: OUTPUT columns, not swept
+    # settings. Both sides are computed on EVERY row by the same _score_ep (the whole point
+    # is the per-row comparison); nothing is varied across rows.
+    "sep_tier_first": "mi_ep_score_shadow: the separation side's tier at the first scan tick — "
+                    "an output classification of the subject (same shape as score_tier above), "
+                    "not a parameter varied over it.",
+    "sep_tier_last": "mi_ep_score_shadow: the separation side's tier at the latest tick — "
+                    "output, not a swept parameter; first/last make intraday drift countable.",
+    "legacy_tier_first": "mi_ep_score_shadow: what the pre-2026-08-22 rubric would have tiered "
+                    "this name at the first tick — the recorded counterfactual output, computed "
+                    "on every row; not an experimental arm assignment.",
+    "legacy_tier_last": "mi_ep_score_shadow: the counterfactual tier at the latest tick — same "
+                    "as legacy_tier_first; a comparison record, nothing is varied per row.",
 }
 
 

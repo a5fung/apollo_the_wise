@@ -6,11 +6,30 @@ editing scoring logic, and nothing could be swept. `SCORE_WEIGHTS` below is
 the SAME values, named and centralized so a future weight sweep (Stage 5 of
 the plan) can vary them without touching control flow.
 
-⚠ THIS FILE CHANGES NO BEHAVIOUR. Every tier cut and point value here is
-byte-identical to what `_score_ep` computed before this refactor — proven by
-`tests/test_ep_score_stage2_refactor.py`, which pins `_score_ep`'s outputs
-across a boundary sweep captured from the pre-refactor code and re-asserts
-them against this table.
+⚠ SINCE THE #533 SEPARATION CHANGE (2026-08-22, OPERATOR-SIGNED) THIS FILE
+CARRIES TWO TABLES, AND WHICH ONE ACTS IS ONE RUNTIME FLAG:
+
+- `SCORE_WEIGHTS` (LIVE side, flag ON): the gap ladder is FLAT (every
+  qualifying gap = 10 pts) and the conviction floor is trimmed to the single
+  gap>=10 + game_changer -> 60 rescue (branch 4). Ships WITH the uniform
+  HIGH bar `SEPARATION_BAR` (40) — three coupled parts, one change.
+- `SCORE_WEIGHTS_LEGACY` (revert side, flag OFF): the pre-change table,
+  byte-identical to what `_score_ep` computed before 2026-08-22 — proven by
+  `tests/test_ep_score_stage2_refactor.py`, which pins `_score_ep`'s outputs
+  across a boundary sweep captured from the pre-refactor code and re-asserts
+  them against the LEGACY table (the revert flag restores exactly the old
+  scoring).
+
+THE ONE REVERT FLAG: `ep_score_separation` runtime toggle /
+`EP_SCORE_SEPARATION_ENABLED` env, default ON — read once per scan tick in
+`run_ep_scan` via `db.get_runtime_toggle` (the catalyst_tier_lattice
+pattern; instant no-redeploy revert, ~60s cache lag). OFF -> the LEGACY
+table + the per-regime bar (65/70/75/80, regime.py) act — all three parts
+revert together. `resolve_score_weights` / `resolve_ep_bar` below are the
+ONLY switch points. Operator sign-off + evidence:
+docs/setups/magna53_ep.md change log 2026-08-22 +
+docs/analysis/score_separation_533_2026-08-22.md. Any further criterion
+change: CHANGE_PROCESS + operator sign-off (THE LINE).
 
 Shape follows the house precedent, `catalyst_rubric.py:66-68`
 (`AXIS_MAX`/`AXIS_WEIGHT`/`MAX_COMPOSITE`): tunable values live in a plain
@@ -70,21 +89,22 @@ def resolve_conviction_floor(
 
 
 SCORE_WEIGHTS = {
-    # Gap magnitude — scaled: bigger gaps = stronger signal.
-    # (Comment previously read "max 15" while awarding 25 — docstring/code
-    # mismatch, fixed in the same commit as this extraction; the point
-    # values themselves are unchanged.)
+    # Gap magnitude — FLAT since #533 (2026-08-22, operator-signed): a
+    # qualifying gap is ADMISSION EVIDENCE, not ranking points. The old
+    # 25/20/15/10 ladder paid gap SIZE, and gap size runs BACKWARDS on real
+    # EPs (AUC 0.34; real EPs' median gap is 9.9% vs ordinary gappers' 12%+)
+    # — 30 of an ordinary HIGH's raw points came from this ladder. Flat 10 =
+    # the modal real EP's gap credit. The 8% cut matches the old lowest tier:
+    # WHAT qualifies is unchanged, what a bigger gap PAYS is.
+    # Evidence: docs/analysis/score_separation_533_2026-08-22.md Result 3.
     "gap": {
         "tiers": [
-            (20, 25),
-            (15, 20),
-            (10, 15),
             (8, 10),
         ],
         "default": 0,
-        "source": "these tier cuts date to commit 77179405, 2026-03-20 "
-                   "('rebalance MAGNA53 scoring'); unchanged since "
-                   "(git log -S verified)",
+        "source": "flat-10, #533 separation change, operator-signed "
+                   "2026-08-22 (score_separation_533_2026-08-22.md); the "
+                   "old 25/20/15/10 ladder lives in SCORE_WEIGHTS_LEGACY",
     },
 
     # LIQUIDITY — operator-signed 2026-08-22, replaces the RVOL tiers.
@@ -176,13 +196,59 @@ SCORE_WEIGHTS = {
         "source": "R4 ship 2026-05-17 — +27pp WR lift, in-theme vs uncovered",
     },
 
-    # Conviction floor: massive gap + quality catalyst = high-conviction
-    # regardless of secondary factors. The gap itself is evidence of
-    # institutional conviction. Rules are evaluated IN ORDER, first match
-    # wins (mirrors the original if/elif/elif/elif — order is precedence).
-    # 20%+ strong = same floor as 15%+ game_changer (market voted with its feet).
-    # 10-15% game_changer: floor 60 -> MODERATE at minimum; fires HIGH in
-    # Bull w/ Gemini agreement.
+    # Conviction floor — TRIMMED to the single branch-4 rescue by #533
+    # (2026-08-22, operator-signed). Branches 1-3 (15%+gc->80, 20%+strong->80,
+    # 15%+strong->70) were built 2026-03-20 (77179405/63eda07a) explicitly so
+    # a 20% gapper scores >=70 on its own — the back door that kept paying gap
+    # size after the ladder flattened: they bound on 28% of ordinary
+    # admissible gappers vs 8% of real EPs (mean lift +9.9 vs +2.1 pts), and
+    # 93% of ordinary HIGHs needed a floor to clear their bar. DELETED.
+    # ⚠ Branch 4 (gap>=10 + game_changer -> 60) SURVIVES BY DESIGN: added
+    # 2026-04-14 (ed3e514e) as the scoring-dead-zone fix FOR a real EP (BE),
+    # and it is what fires MRNA HIGH at its operational 10% gap read
+    # (floor 60 x1.2 Bull = 72). Deleting it too gains 0.008 AUC and re-kills
+    # the reference EP — pinned by tests/test_533_separation_flip.py.
+    # Evidence: docs/analysis/score_separation_533_2026-08-22.md Results 2+6.
+    "conviction_floor": {
+        "rules": [
+            {"min_gap": 10, "catalyst": "game_changer", "floor": 60},
+        ],
+        "source": "branches 1-3 deleted, #533 separation change, operator-"
+                   "signed 2026-08-22; branch 4 kept (ed3e514e 2026-04-14, "
+                   "the dead-zone fix for a real EP — the MRNA guard case); "
+                   "the full old chain lives in SCORE_WEIGHTS_LEGACY",
+    },
+}
+
+
+# ─── #533 SEPARATION — the revert side + the only switch points (2026-08-22) ───
+#
+# SCORE_WEIGHTS_LEGACY is the flag-OFF side: byte-identical to the pre-change
+# rubric (pinned by the stage-2 boundary-sweep baseline —
+# tests/test_ep_score_stage2_refactor.py re-asserts all 69 captured cases
+# against it). Only the two components the operator-signed separation change
+# touched differ; every other component is the SAME dict object as the live
+# table (read-only at runtime — sharing keeps the two sides from drifting on
+# components the change never ruled on).
+
+SCORE_WEIGHTS_LEGACY = {
+    **SCORE_WEIGHTS,
+    # Pre-2026-08-22 gap ladder: paid gap size 25/20/15/10 at 20/15/10/8%
+    # (tier cuts from commit 77179405, 2026-03-20).
+    "gap": {
+        "tiers": [
+            (20, 25),
+            (15, 20),
+            (10, 15),
+            (8, 10),
+        ],
+        "default": 0,
+        "source": "pre-#533 ladder (77179405, 2026-03-20) — the "
+                   "ep_score_separation revert side",
+    },
+    # Pre-2026-08-22 floor chain: all four rules, first match wins (order is
+    # precedence). Rules 1-3: 77179405 + 63eda07a (2026-03-20). Rule 4:
+    # ed3e514e (2026-04-14, the BE dead-zone fix).
     "conviction_floor": {
         "rules": [
             {"min_gap": 15, "catalyst": "game_changer", "floor": 80},
@@ -190,9 +256,34 @@ SCORE_WEIGHTS = {
             {"min_gap": 15, "catalyst": "strong", "floor": 70},
             {"min_gap": 10, "catalyst": "game_changer", "floor": 60},
         ],
-        "source": "introduced commit 77179405, 2026-03-20; the 20%+ strong "
-                   "-> 80 rule (rule 2) added same day, commit 63eda07a "
-                   "('Raise conviction floor: 20%+ strong gap = 80 raw'); "
-                   "unchanged since (git log -S verified)",
+        "source": "pre-#533 chain (77179405 + 63eda07a 2026-03-20; ed3e514e "
+                   "2026-04-14) — the ep_score_separation revert side",
     },
 }
+
+# The uniform HIGH bar that ships WITH the flat ladder + trimmed floor — the
+# three parts are ONE change and revert together on the one flag. 40 was
+# picked because it is the ONLY setting that holds today's alert volume
+# (1.78 modeled HIGH/day vs 1.81 today; about one FEWER alert a month) while
+# making all 18 floor-alive real EPs reachable at a top catalyst grade — and
+# it is ONE number to change if the operator wants fewer alerts (45 cuts
+# alerts ~55%, 50 cuts ~77%: the priced table,
+# docs/analysis/score_separation_533_2026-08-22.md Result 5). While the flag
+# is ON this replaces the per-regime 65/70/75/80 (regime.py — untouched, the
+# revert side). The separate score<50 MODERATE cutline was NOT ruled on and
+# is unchanged on both sides.
+SEPARATION_BAR = 40
+
+
+def resolve_score_weights(separation_enabled: bool) -> dict:
+    """Which weight table ACTS this scan tick: the separation table (flag ON)
+    or the legacy pre-2026-08-22 revert side. The ONLY weight switch point."""
+    return SCORE_WEIGHTS if separation_enabled else SCORE_WEIGHTS_LEGACY
+
+
+def resolve_ep_bar(separation_enabled: bool, regime_ep_threshold: int) -> int:
+    """Which HIGH bar ACTS this scan tick: the uniform SEPARATION_BAR (flag
+    ON) or the per-regime bar from the regime row (flag OFF: 65/70/75/80).
+    The ONLY bar switch point. The score<50 MODERATE cutline is separate and
+    unchanged on both sides."""
+    return SEPARATION_BAR if separation_enabled else regime_ep_threshold
