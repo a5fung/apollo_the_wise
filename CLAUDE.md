@@ -44,7 +44,7 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
-2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`). **On a fresh machine where the local `memory/` (pickup) is absent — e.g. a laptop — read `docs/HANDOFF.md` instead** (git-synced; the memory dir is machine-local).
+2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. **Then `python scripts/live_rules.py --drift-only`** — the acting-rules check (docs-vs-code/prod drift; read-only, works offline). Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`). **On a fresh machine where the local `memory/` (pickup) is absent — e.g. a laptop — read `docs/HANDOFF.md` instead** (git-synced; the memory dir is machine-local).
 3. STATE the day's plan + **WHO does each piece** (Fable/Sonnet/me), then **PIN it: `delegation_report.py --route "#N:fable"`**. The declaration is the ONLY decidable delegation check — a counting gate was measured on 37 session-days and does not exist (best precision 33%). (operator 2026-08-03: *"use them wisely"*; a CHECKPOINT not a gate — why it can't be gated is in commit `f578a54`).
 
 **CLOSE** (when the operator wraps, or before ending):
@@ -339,12 +339,8 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 # Methodology calibration overrides
 REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR PIN
-                             # (code default $5M, conservative-block). Loosens to
-                             # admit pre-revenue names pending backward-check
-                             # evidence: 2026-05-20/21 N=2 ratchet rolled back;
-                             # N=7 clean cohort still below ship threshold.
-                             # Re-eval at #55 on 2026-06-20; quarterly sweep
-                             # auto-runs Feb/May/Aug/Nov 1st.
+                             # (code default $5M). History + re-eval cadence:
+                             # CHANGELOG + #55 (quarterly sweep Feb/May/Aug/Nov 1st).
 ```
 
 ---
