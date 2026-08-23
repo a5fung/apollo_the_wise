@@ -58,11 +58,55 @@ def test_lattice_failure_fails_open_to_the_raw_grade_loudly():
 def test_record_carries_raw_grade_acting_verdict_and_live_side():
     """The both-sides record: live_quality stays the RAW LLM grade (constant column
     semantics across the flip), the ACTING verdict rides along verbatim, live_side says
-    which side acted — the live-vs-old comparison never infers the side from dates."""
+    which side acted — the live-vs-old comparison never infers the side from dates.
+
+    DELIBERATELY updated 2026-08-2x (Finding 3 cleanup): the post-score capture used to
+    hand-write these three keys as a dict literal inline in run_ep_scan, duplicating the
+    filter-killed kill-row's identical 11 shared fields — the two-places-to-sync fork the
+    2026-08-22 grade-consistency commit was itself fixing for the grade. Both call sites
+    now spread `_tier_shadow_base(...)`, so the key literals live there, not in
+    run_ep_scan's own source; run_ep_scan just calls the builder positionally."""
+    base_src = inspect.getsource(ep_detector._tier_shadow_base)
+    assert '"live_quality": llm_quality,' in base_src
+    assert '"verdict": verdict,' in base_src
+    assert '"live_side": live_side,' in base_src
     src = _scan_src()
-    assert '"live_quality": llm_catalyst_quality,' in src
-    assert '"verdict": _lattice_verdict,' in src
-    assert '"live_side": _live_side,' in src
+    # run_ep_scan calls _tier_shadow_base directly once (the post-score capture) and
+    # _tier_kill_row twice (the two filter-kill sites) — _tier_kill_row itself spreads
+    # _tier_shadow_base internally, so all THREE tier-shadow rows build on the one
+    # shared shape even though only one call to the builder is textually in this
+    # function's own source.
+    assert src.count("_tier_shadow_base(") == 1
+    assert src.count("_tier_kill_row(") == 2
+
+
+def test_prose_downgrade_telegram_sends_after_the_final_resolve():
+    """Finding 5 (2026-08-2x, coordinator-verified): the #72 downgrade fires on prose
+    markers ("no specific catalyst" / "no specific news") that are themselves literal
+    substrings of the lattice corrective's own rule-4-demotion-marker regex — so if a
+    concrete company event is ALSO present in the same text, the FINAL resolve can
+    promote the name straight back out of routine. A message sent from inside the
+    downgrade branch (before that resolve runs) can assert "will not promote to HIGH"
+    on a name the lattice is about to un-downgrade. The send must therefore sit AFTER
+    the last (final) resolve call and report whichever grade actually acted."""
+    src = _scan_src()
+    # The 5th/last _resolve_acting_catalyst_quality( call is the unconditional FINAL
+    # resolve (cached settle, fresh settle, earnings boost, revenue gate, final = 5;
+    # pinned by test_every_resolve_site_is_present in test_lattice_admission_consistency.py).
+    i_final_resolve = src.rindex("_resolve_acting_catalyst_quality(")
+    i_send = src.index('📰 *Catalyst downgrade:*')
+    i_score = src.index("ep_score, breakdown = _score_ep(")
+    assert i_final_resolve < i_send < i_score, (
+        "the downgrade Telegram must sit AFTER the FINAL resolve and BEFORE the score "
+        "call — it can only report a grade that has already been fully resolved")
+    # Exactly one send site, and both possible outcomes are named in plain words — the
+    # message never asserts an outcome before the resolve has confirmed it.
+    assert src.count('📰 *Catalyst downgrade:*') == 1
+    assert "This alert will not promote to HIGH." in src, (
+        "unreversed case: still routine after the final resolve")
+    assert "reversed it" in src and "Acting grade now:" in src, (
+        "reversed case: the corrective promoted it back out of routine — must say so, "
+        "not stay silent or repeat the stale 'will not promote' line")
 
 
 def test_post_grade_filters_read_the_acting_grade():

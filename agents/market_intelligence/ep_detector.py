@@ -1410,7 +1410,12 @@ async def _post_grade_filters(
     today_volume: int,
     pm_rvol: float | None,
     today: "date",
-    lattice_acting: bool = False,
+    *,
+    # Required, no default (Finding 2, 2026-08-2x cleanup): a defaulted `False` let a
+    # forgetful third call site silently score with raw-side semantics while reading
+    # the corrected grade. Keyword-only + no default makes an omitted call fail loudly
+    # instead of quietly forking.
+    lattice_acting: bool,
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
@@ -1595,6 +1600,40 @@ def _resolve_acting_catalyst_quality(
         return llm_quality, None, "llm"
 
 
+def _tier_shadow_base(
+    ticker: str,
+    llm_quality: "str | None",
+    verdict: "dict | None",
+    live_side: str,
+    claude_analysis: "str | None",
+    grounded_text: "str | None",
+    news_summary: "str | None",
+    c: dict,
+    rel_volume: float,
+) -> dict:
+    """The 11 fields every `mi_catalyst_tier_shadow` row shares — a filter-killed
+    graded candidate (`_tier_kill_row`) and a scored survivor (the post-score capture
+    in `run_ep_scan`) both spread this, then add their own `ep_score`/`live_tier`
+    (None for a kill, computed for a survivor). Factored out (Finding 3, 2026-08-2x
+    cleanup): the two call sites used to hand-write the same 13-key dict literal —
+    the exact two-places-to-sync fork the 2026-08-22 grade-consistency commit was
+    itself fixing for the grade. Key NAMES must not change —
+    `catalyst_tier_shadow.record_catalyst_tier_shadow` reads every key by name."""
+    return {
+        "ticker": ticker,
+        "live_quality": llm_quality,
+        "verdict": verdict,
+        "live_side": live_side,
+        "claude_analysis": claude_analysis,
+        "grounded_text": grounded_text,
+        "news_summary": news_summary,
+        "gap_pct": c.get("gap_pct"),
+        "adv_dollar": ((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
+        "rel_volume": rel_volume,
+        "projected_vol_multiple": c.get("projected_vol_multiple"),
+    }
+
+
 def _tier_kill_row(
     ticker: str,
     llm_quality: "str | None",
@@ -1614,17 +1653,9 @@ def _tier_kill_row(
     capture must never jeopardize the scan."""
     try:
         return {
-            "ticker": ticker,
-            "live_quality": llm_quality,
-            "verdict": verdict,
-            "live_side": live_side,
-            "claude_analysis": claude_analysis,
-            "grounded_text": grounded_text,
-            "news_summary": news_summary,
-            "gap_pct": c.get("gap_pct"),
-            "adv_dollar": ((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
-            "rel_volume": rel_volume,
-            "projected_vol_multiple": c.get("projected_vol_multiple"),
+            **_tier_shadow_base(
+                ticker, llm_quality, verdict, live_side, claude_analysis,
+                grounded_text, news_summary, c, rel_volume),
             "ep_score": None,
             "live_tier": None,
         }
@@ -4354,6 +4385,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # 'routine' so the score-50 threshold filters them out. Must run
         # AFTER the earnings boost so legitimate earnings-day strongs are
         # preserved (MNDY 5/11 same prose, but earnings = real catalyst).
+        # Reset unconditionally EVERY candidate (Finding 5, 2026-08-2x): Python has no
+        # block scope, so if these stayed None-initialized only inside the `if` below,
+        # a candidate that never enters it would read the PREVIOUS candidate's stale
+        # values downstream — a Telegram about a downgrade that never happened here.
+        _prose_downgrade_marker: Optional[str] = None
+        _prose_downgrade_source: Optional[str] = None
         if catalyst_quality == "strong" and not earnings_today_match:
             matched_marker: Optional[str] = None
             matched_source: Optional[str] = None
@@ -4396,35 +4433,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     catalyst_quality=llm_catalyst_quality,
                     confidence_multiplier=confidence_multiplier,
                 )
-                # Visibility surface (advisor 2026-05-11): user needs to see
-                # the new behavior in action, not discover it by missing
-                # alerts. Telegram once per (ticker, date) — already gated
-                # by _catalyst_cache (one decision per ticker per day).
-                try:
-                    from agents.market_intelligence.briefing import send_telegram_message
-                    from agents.market_intelligence.constants import mode_prefix
-                    if not _magna53_mode_fetched:
-                        # Shared fail-open resolver (review 7/17 dedup): loud
-                        # via strategy_mode_resolve_error on failure, never
-                        # raises; mode_prefix(None) falls back to the legacy
-                        # global default.
-                        from agents.market_intelligence.constants import (
-                            resolve_strategy_mode_nonfatal,
-                        )
-                        _magna53_account_mode = await resolve_strategy_mode_nonfatal("magna53")
-                        _magna53_mode_fetched = True
-                    await send_telegram_message(
-                        f"{mode_prefix(_magna53_account_mode)}📰 *Catalyst downgrade:* `{ticker}` "
-                        f"gap +{c['gap_pct']:.1f}%\n"
-                        f"Grade strong → routine — prose marker "
-                        f"\"{matched_marker}\" in {matched_source}\n"
-                        f"_Late-stage / no-fresh-news filter (#72). "
-                        f"This alert will not promote to HIGH._"
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"catalyst_downgrade_telegram_failed: {ticker}: {e}"
-                    )
+                # Visibility surface (advisor 2026-05-11) — the SEND itself moved to
+                # AFTER the FINAL RESOLVE below (Finding 5, 2026-08-2x): this downgrade's
+                # own prose can satisfy the lattice corrective's own rule-4-demotion-
+                # marker condition ("no specific catalyst"/"no specific news" are literal
+                # substrings of its regex) — if a concrete company event is ALSO present,
+                # the final resolve promotes the name straight back out of routine, after
+                # a message sent HERE would already have told the operator it would not
+                # promote. Only capture the fact that the downgrade fired; the message
+                # itself reports whatever actually acted.
+                _prose_downgrade_marker = matched_marker
+                _prose_downgrade_source = matched_source
 
         # ── #533 Change 6 FLIP, FINAL RESOLVE (one grade everywhere, 2026-08-22) ──────
         # The acting grade was first resolved at grade-settle (so the admission filters
@@ -4441,6 +4460,64 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
             ticker, llm_catalyst_quality, claude_analysis, grounded_text,
             news_summary, _board_sectors, _lattice_live)
+
+        # #72 downgrade visibility surface (advisor 2026-05-11; moved here Finding 5,
+        # 2026-08-2x). Sent AFTER the final resolve above, not from inside the downgrade
+        # branch, so the message reports what actually acted — not what the downgrade
+        # alone decided before the lattice corrective got a chance to run on the SAME
+        # prose. `_prose_downgrade_marker` is reset to None every candidate and only set
+        # inside the downgrade branch above, unchanged from the pre-Finding-5 gating.
+        # UNREVERSED case: the cache holds the downgraded RAW "routine" grade, so
+        # `catalyst_quality == "strong"` (the downgrade's own gate) is false on every
+        # later tick — one send per (ticker, date), same as before this fix. REVERSED
+        # case (known, pre-existing, NOT introduced by this fix): the lattice re-derives
+        # "strong" from that same cached raw grade + prose on the settle-resolve, so the
+        # gate re-opens and this can re-fire every tick the reversal holds — the SAME
+        # re-fire the pre-Finding-5 send would already have hit (it ran on the same
+        # per-tick condition); moving the send did not change this cadence, only its
+        # accuracy.
+        if _prose_downgrade_marker:
+            try:
+                from agents.market_intelligence.briefing import send_telegram_message
+                from agents.market_intelligence.constants import mode_prefix
+                if not _magna53_mode_fetched:
+                    # Shared fail-open resolver (review 7/17 dedup): loud
+                    # via strategy_mode_resolve_error on failure, never
+                    # raises; mode_prefix(None) falls back to the legacy
+                    # global default.
+                    from agents.market_intelligence.constants import (
+                        resolve_strategy_mode_nonfatal,
+                    )
+                    _magna53_account_mode = await resolve_strategy_mode_nonfatal("magna53")
+                    _magna53_mode_fetched = True
+                if catalyst_quality == "routine":
+                    _downgrade_outcome = (
+                        f"Grade strong → routine — prose marker "
+                        f"\"{_prose_downgrade_marker}\" in {_prose_downgrade_source}\n"
+                        f"_Late-stage / no-fresh-news filter (#72). "
+                        f"This alert will not promote to HIGH._"
+                    )
+                else:
+                    # The lattice corrective read the SAME prose that fired the #72
+                    # downgrade, found a concrete company event alongside the demotion
+                    # marker, and promoted the name back out of routine — say so plainly
+                    # rather than leave the operator with the wrong "will not promote"
+                    # message.
+                    _downgrade_outcome = (
+                        f"Grade strong → routine — prose marker "
+                        f"\"{_prose_downgrade_marker}\" in {_prose_downgrade_source}\n"
+                        f"_#72 filter fired, but the catalyst-tier corrective found a "
+                        f"concrete company event in the same text and reversed it. "
+                        f"Acting grade now: {catalyst_quality}._"
+                    )
+                await send_telegram_message(
+                    f"{mode_prefix(_magna53_account_mode)}📰 *Catalyst downgrade:* `{ticker}` "
+                    f"gap +{c['gap_pct']:.1f}%\n" + _downgrade_outcome
+                )
+            except Exception as e:
+                logger.warning(
+                    f"catalyst_downgrade_telegram_failed: {ticker}: {e}"
+                )
 
         # Compute prior 3-month change %
         prior_3m_change = None
@@ -4517,17 +4594,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Never raises, never alters any live value.
         try:
             _tier_shadow_inputs.append({
-                "ticker": ticker,
-                "live_quality": llm_catalyst_quality,
-                "verdict": _lattice_verdict,
-                "live_side": _live_side,
-                "claude_analysis": claude_analysis,
-                "grounded_text": grounded_text,
-                "news_summary": news_summary,
-                "gap_pct": c.get("gap_pct"),
-                "adv_dollar": ((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
-                "rel_volume": rel_volume,
-                "projected_vol_multiple": c.get("projected_vol_multiple"),
+                **_tier_shadow_base(
+                    ticker, llm_catalyst_quality, _lattice_verdict, _live_side,
+                    claude_analysis, grounded_text, news_summary, c, rel_volume),
                 "ep_score": ep_score,
                 "live_tier": ("HIGH" if ep_score >= ep_threshold
                               else "MODERATE" if _mod_cut is not None

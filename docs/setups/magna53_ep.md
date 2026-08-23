@@ -302,6 +302,14 @@ routine on an earnings day now enters the revenue gate (≤ ~1 extraction/week, 
 per ticker-day), and a lattice-DEMOTED game_changer with no-fresh-news prose is now eligible
 for the #72 prose downgrade (tightening only on the demoted-recap × no-news intersection).
 
+**#72 downgrade Telegram now reports what actually happened, not what the downgrade alone
+decided** (Finding 5 fix, 2026-08-2x): two of the #72 downgrade's own prose markers ("no
+specific catalyst" / "no specific news") are also rule-4 demotion-marker text, so if the
+same prose also names a concrete company event, the lattice can promote the name straight
+back out of routine — the message now sends AFTER that final resolve and names whichever
+grade actually acted, instead of asserting "will not promote to HIGH" before the corrective
+has had a chance to run.
+
 **Reversion-flag**: REVERSAL of the 2026-08-22 "Catalyst tier FLIPPED" entry's scope line
 ("the flip's re-tiering deliberately does NOT extend into `_post_grade_filters` — the shadow
 counterfactual was evaluated within the post-filter pool; extending admission would loosen

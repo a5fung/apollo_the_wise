@@ -140,6 +140,7 @@ async def test_post_grade_filters(mna, ticker, quality, gap_pct, today_volume, p
     with (_yes_mna() if mna else _no_mna()), _quiet_audit():
         reason = await ep_detector._post_grade_filters(
             ticker, quality, "analysis", "news", gap_pct, today_volume, pm_rvol, _TODAY,
+            lattice_acting=False,  # this file pins the frozen raw-side semantics
         )
     assert reason == expected
 
@@ -162,6 +163,7 @@ async def _tick(ticker, gap_pct, today_volume, pm_rvol, grade_calls, *,
             skip_reason = await ep_detector._post_grade_filters(
                 ticker, cached.catalyst_quality, cached.claude_analysis,
                 cached.news_summary, gap_pct, today_volume, pm_rvol, _TODAY,
+                lattice_acting=False,  # this file pins the frozen raw-side semantics
             )
             if skip_reason:
                 return ("SKIP", skip_reason)
@@ -172,6 +174,7 @@ async def _tick(ticker, gap_pct, today_volume, pm_rvol, grade_calls, *,
     cq, ca, ns, pq = grade_quality, "analysis text", "news text", None
     skip_reason = await ep_detector._post_grade_filters(
         ticker, cq, ca, ns, gap_pct, today_volume, pm_rvol, _TODAY,
+        lattice_acting=False,  # this file pins the frozen raw-side semantics
     )
     ep_detector._catalyst_cache[ticker] = ep_detector.CachedGrade(
         cq, 1.0, ns, ca, pq, skip_reason is None,
