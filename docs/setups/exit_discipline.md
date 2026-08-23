@@ -14,17 +14,24 @@ file **entirely** before changing any exit behaviour, per `CHANGE_PROCESS.md`.
 
 ---
 
-## Current deployed behaviour (as of 2026-08-01)
+## Current deployed behaviour
 
-**Decision cadence: DAILY. This is the single most misunderstood fact about the exit path.**
-`exit_logic.py` is *"pure daily-exit-step decision logic"*; `apply_daily_exit_step(state, daily_bar, …)`
-consumes **one daily bar**; `live_tracker.py:549` fetches `get_index_history(ticker, today, today)`.
-Nothing in the exit path sees intraday price. A rule expressed as "when the trade reaches X" is
-therefore evaluated **once, against the close**, not on the touch.
+**Two cadences, one owner each (corrected 2026-08-23 — this section previously said "nothing in
+the exit path sees intraday price", which stopped being true on 2026-08-01):**
+- **The PARTIAL is INTRADAY**: `order_manager.scan_profit_triggers` polls every 5 minutes
+  (9:30–16:00 ET) and fires on the in-hold minute HIGH — live since `PROFIT_TRIGGER_R = 2.0`
+  (2026-08-01). The day-3/5 time gate below stands down while it is on (§1).
+- **The TRAIL is DAILY**: `exit_logic.py` is *"pure daily-exit-step decision logic"*;
+  `apply_daily_exit_step(state, daily_bar, …)` consumes **one daily bar** — the SMA-trail /
+  stop-update decisions are evaluated once, against the close, not on the touch.
 
-**Jobs:** `run_partial_exits` 3:45 PM ET (partial only, market-hours so the stop-replace settles
-same-day — #361) and `update_open_positions_live` 4:45 PM ET (SMA trail + stop update + summary;
+**Jobs:** `track_position_extremes` every 5 min (bars + the #508 profit trigger);
+`run_partial_exits` 3:45 PM ET (the time-gated partial — standing down while the intraday
+trigger is on); `update_open_positions_live` 4:45 PM ET (SMA trail + stop update + summary;
 passes `skip_partial_decision=True` so the partial cannot double-fire).
+
+For the always-current view generated from code + prod state, run `python scripts/live_rules.py`
+(built 2026-08-23 after this file's own §0 carried a week-stale deploy caveat).
 
 **Stop-move invariant (2026-08-10): a protective stop is RAISE-ONLY, enforced against the BROKER,
 in `update_stop` itself.** Before cancelling anything, `order_manager.update_stop` reads the live
@@ -50,8 +57,9 @@ off `entry − orb_low` for magna53, never off the placed stop (which would sile
 The hard stop consumed by `exit_logic` / the trail floor / re-protect paths is this 2R stop.
 Full entry: change log 2026-08-16 below + `magna53_ep.md`. 9M Day 2's stop (prior day low) is
 untouched. Pre-2026-08-16, the placed stop was the ORB low itself.
-⚠ **Built, NOT yet deployed** — the running image still places the ORB-low stop until the next
-market-agent + execution deploy; delete this line at verify-live.
+✅ **LIVE.** Confirmed in production 2026-08-23 (`magna53_ep.md` records the same verify: AMLX's
+placed stop equals `2·ORB_low − ORB_high` in prod trade data from 2026-08-18). This line said
+"Built, NOT yet deployed" for a week after it was live — caught by `scripts/live_rules.py`.
 
 ### 1. Partial profit — day 3-5
 ```python
@@ -230,6 +238,47 @@ Full evidence, all figures independently recomputed twice:
 ---
 
 ## Change log (newest first)
+
+### 2026-08-23 — RECORD OF OBSERVED STATE: four exit runtime toggles are ON in prod; the flips were never logged here (NO behaviour change in this entry)
+
+**Found by `scripts/live_rules.py` (drift rule: a toggle ON in `mi_safeguard_state` whose every
+doc mention still reads "shipped dark / default OFF").** This entry records what prod says, so the
+newest-first reader stops concluding these mechanisms are dark:
+
+| toggle | mi_safeguard_state | since (DB `last_transition_at`) |
+|---|---|---|
+| `partial_exit_leg_safe` | global = **on** | 2026-08-04 22:52 UTC |
+| `entry_ask_aware` | live = **on** | 2026-08-07 (already recorded in `magna53_ep.md`) |
+| `profit_take_resting_limit` | live = **on** | 2026-08-10 21:15 UTC |
+| `profit_take_oco` | live = **on** | 2026-08-17 15:03 UTC |
+| `breakeven_at_broker` | live = **on** | (row carries no transition date) |
+
+So the ACTING partial today is: intraday +2R trigger → resting GTC limit AT the target →
+freed 1/3 protected by an OCO (limit at target + stop at breakeven) → remaining shares' stop to
+breakeven at the broker, with leg-safe stop handling on bracket orders. The earlier "SHIPPED
+DARK / default OFF" entries below were true when written; the flips themselves were made via the
+operator-only flip SQL those entries document. This entry changes NOTHING — it is the missing
+record. Discipline going forward: **a toggle flip gets its own dated line here in the same day.**
+
+### 2026-08-23 — #585: the weekly setup review now reports only current-rule-era cohorts (REPORTING ONLY, no exit rule/stop/size changed)
+
+**The bug**: the 2026-08-23 weekly review's setup-review section said *"5 trades reached ≥+2R and
+still closed red — winners converting to losers"* as a live open question. Ground truth: of the 7
+live trades that ever reached ≥+2R (MANE, PLTR, QBTS, SMCI, FIGS, ETON, NVCR), 4 predate
+`PROFIT_TRIGGER_R` going live 2026-08-01, and **none** were entered on/after the 2026-08-16 stop
+change — the date "R" itself is measured under (see the R-unit note above: `peak_r`/`realized_r`
+use `entry − hard_stop`, which widened on 08-16). The operator caught it; the system should have.
+
+**The fix** (`agents/market_intelligence/system_review.py::_setup_performance_section`): every
+"Questions for you" ask in the setup review is now re-checked against only the trades entered
+under the CURRENT rule — `_PROFIT_TRIGGER_ERA_START` (2026-08-01) for the exit-reason-concentration
+ask, `_STOP_GEOMETRY_ERA_START` (2026-08-16) for the winners-converting-to-losers and stop/ADR
+asks, since those two read `peak_r`/`realized_r`/`stop_per_adr`. When the current-era sample is too
+thin to carry the ask, the review says so ("N trade(s) under the current rules — not enough to
+ask") instead of asking the blended question or going silent. Same era-scoping principle already
+applied to `data_gated_reviews.yaml`'s `exit_tune_cohort_review` predicate (commit `8fbce666`,
+2026-08-22) — bump both boundary constants in the SAME commit as any future exit-rule change.
+Zero-authority, reporting-only (THE LINE): no threshold, stop, or entry rule changed.
 
 ### 2026-08-16 — MAGNA53 protective stop → entry − 2R at half size; +2R target pinned to the ORB R (OPERATOR-SIGNED, THE LINE)
 

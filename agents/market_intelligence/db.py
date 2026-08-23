@@ -8590,6 +8590,35 @@ async def purge_old_data() -> dict[str, int]:
     return deleted
 
 
+async def get_setup_era_trades(lookback_days: int = 90) -> list[dict[str, Any]]:
+    """Per-trade rows backing the era-scoped ASK logic in `system_review._setup_performance_section`
+    (#585, 2026-08-23). Row-level rather than aggregated, so an era split can be computed in Python
+    against either rule boundary and unit-tested against a fixture of real named trades.
+
+    Mirrors `get_setup_performance_review`'s WHERE/JOIN exactly so the two stay comparable — same
+    table, same status filter, same join. Lives HERE, not inlined in the caller: db.py is the single
+    source of truth for every query (CLAUDE.md). It was briefly inlined in system_review.py the day
+    it was written because this file was held by a concurrent card; consolidated the same day.
+
+    Read-only, zero-authority (THE LINE) — feeds a Telegram appendix, never a grade, entry, stop or
+    size."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT t.signal_type, t.account_mode, t.alert_date,
+                   t.exits->0->>'reason' AS exit_reason,
+                   r.peak_r, r.realized_r, r.stop_per_adr
+            FROM mi_live_trades t
+            LEFT JOIN mi_sell_discipline_records r ON r.trade_id = t.id
+            WHERE t.status = 'closed'
+              AND t.alert_date >= CURRENT_DATE - $1::int
+            """,
+            lookback_days,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_setup_performance_review(lookback_days: int = 90) -> list[dict[str, Any]]:
     """STANDING per-setup entry/stop/outcome geometry — the review that runs whether we are
     winning or losing (operator 2026-08-02).
