@@ -12,20 +12,27 @@ COLUMN SEMANTICS ARE CONSTANT ACROSS THE FLIP (the catalyst-tier shadow
 record's contract — see catalyst_tier_shadow.py):
   sep_score_* / sep_tier_*       = ALWAYS the separation side (flat gap credit +
                                    branch-4-only conviction floor, tiered at the
-                                   uniform bar 40 — ep_rubric.SCORE_WEIGHTS /
-                                   SEPARATION_BAR)
+                                   uniform bar — ep_rubric.SCORE_WEIGHTS /
+                                   SEPARATION_BAR). Since the #533 RESCALE
+                                   (2026-08-22) these are on the PRESENTED
+                                   scale (1.25 x raw + 15, bar 65); the row's
+                                   own sep_bar column stamps which scale a row
+                                   used (40 = pre-rescale raw, 65 = presented).
   legacy_score_* / legacy_tier_* = ALWAYS the pre-2026-08-22 rubric
                                    (SCORE_WEIGHTS_LEGACY), tiered at the
-                                   per-regime bar (65/70/75/80)
+                                   per-regime bar (65/70/75/80) — old raw
+                                   scale, untouched by the rescale.
   live_side                      = 'separation' | 'legacy' — which side ACTED on
                                    this row's latest tick. Explicit BY DESIGN:
                                    a reader must never infer the acting side
                                    from a date (that is how this data becomes
                                    useless later).
 
-Tiers are the PRE-override read (HIGH >= that side's bar / MODERATE >= 50 /
-NULL below the cutline) — the earnings override and the holistic judge can
-still move the ACTING tier downstream, same caveat as the catalyst-tier record.
+Tiers are the PRE-override read (HIGH >= that side's bar; MODERATE >= that
+side's cutline — legacy 50; the separation side has NO cutline since the #533
+rescale, so its non-HIGHs are NULL) — the earnings override and the holistic
+judge can still move the ACTING tier downstream, same caveat as the
+catalyst-tier record.
 
 $0 AT RUNTIME — pure arithmetic on numbers the scan already computed; no LLM,
 no API call. Fail direction: the recorder is fail-open (log only, returns 0) —

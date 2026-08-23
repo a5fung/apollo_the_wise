@@ -4,7 +4,12 @@ Three coupled parts, ONE revert flag (`ep_score_separation` / EP_SCORE_SEPARATIO
 default ON): (1) the gap ladder is FLAT — every qualifying gap pays 10; (2) conviction-floor
 branches 1-3 are DELETED, branch 4 (gap>=10 + game_changer -> 60) SURVIVES BY DESIGN — it is
 the 2026-04-14 dead-zone fix for a real EP (BE) and what fires MRNA HIGH at its 10% gap read;
-(3) the HIGH bar is uniform 40 instead of the per-regime 65/70/75/80.
+(3) the HIGH bar is uniform (raw 40) instead of the per-regime 65/70/75/80.
+
+Since the #533 RESCALE (2026-08-22) the separation side PRESENTS scores through
+`output_scale` (1.25 x raw + 15) and the bar is expressed as 65 (= raw 40 through the same
+map); the alerting set is proven identical in tests/test_533_rescale_invariant.py. The
+presented-scale numbers pinned below are exactly the old raw pins mapped through 1.25x+15.
 
 The revert side (flag OFF) is pinned byte-for-byte by the 69-case boundary sweep in
 tests/test_ep_score_stage2_refactor.py (which now scores with SCORE_WEIGHTS_LEGACY — the
@@ -79,21 +84,24 @@ def test_branch_4_is_the_only_surviving_floor_rule_exactly():
 
 def test_MRNA_guard_case_still_clears_at_its_10pct_read():
     """THE reference real EP: MRNA @ 10.04% gap, game_changer under the live
-    lattice, liquid. Floor 60 x1.2 Bull = 72 — HIGH at the uniform bar 40 (and
-    it would clear even the old Bull 65). This input shape must NEVER stop
-    alerting under the live table."""
+    lattice, liquid. Floor 60 x1.2 Bull = raw 72, presented 1.25x72+15 = 105 —
+    HIGH at the uniform bar (raw 40 / presented 65; and raw 72 would clear
+    even the old Bull 65). This input shape must NEVER stop alerting under
+    the live table."""
     score, bd = _score(gap_pct=10.04, catalyst_quality="game_changer",
                        regime_multiplier=1.2)
     assert "conviction_floor" in bd, "branch 4 must bind on the MRNA shape"
-    assert score == 72.0
+    assert score == 105.0  # presented; raw 72 = (105 - 15) / 1.25
     assert score >= SEPARATION_BAR
-    assert score >= 65  # even the old Bull bar — the guard case is not bar-dependent
+    assert (score - 15) / 1.25 >= 65  # raw 72 clears even the old Bull bar —
+    # the guard case is not bar-dependent (raw-scale comparison, old bar is raw)
 
 
 def test_MRNA_guard_case_clears_outside_bull_too():
-    """No multiplier (non-Bull): floor 60 >= bar 40 — the class alerts in every regime."""
+    """No multiplier (non-Bull): floor 60 raw -> presented 90 >= bar 65 —
+    the class alerts in every regime."""
     score, bd = _score(gap_pct=10.04, catalyst_quality="game_changer")
-    assert "conviction_floor" in bd and score == 60.0 and score >= SEPARATION_BAR
+    assert "conviction_floor" in bd and score == 90.0 and score >= SEPARATION_BAR
 
 
 def test_deleted_branches_no_longer_lift_ordinary_big_gappers():
@@ -107,22 +115,30 @@ def test_deleted_branches_no_longer_lift_ordinary_big_gappers():
     score_15gc, bd_15gc = _score(gap_pct=15.5, catalyst_quality="game_changer")
     assert bd_15gc.get("conviction_floor", 0) + sum(
         v for k, v in bd_15gc.items() if k != "conviction_floor") == 60
-    assert score_15gc == 60.0, "a 15% game_changer floors at 60 (branch 4), not 80"
+    assert score_15gc == 90.0, ("a 15% game_changer floors at raw 60 (branch 4), "
+                                "not 80 — presented 1.25x60+15 = 90")
 
 
 # ── Part 3: the uniform bar ───────────────────────────────────────────────────────────
 
 
-def test_separation_bar_is_uniform_40_across_all_regimes():
+def test_separation_bar_is_uniform_across_all_regimes():
     for regime_bar in (65, 70, 75, 80):
-        assert resolve_ep_bar(True, regime_bar) == 40
+        assert resolve_ep_bar(True, regime_bar) == 65
 
 
-def test_bar_40_was_the_volume_neutral_choice():
-    """40 is the ONLY setting that holds today's alert volume (1.78/day modeled
-    vs 1.81; -1 alert/month) while all 18 floor-alive real EPs stay reachable —
-    and it is ONE number to change if the operator wants fewer alerts."""
-    assert SEPARATION_BAR == 40
+def test_bar_is_raw_40_presented_as_65():
+    """Raw 40 is the ONLY setting that holds today's alert volume (1.78/day
+    modeled vs 1.81; -1 alert/month) while all 18 floor-alive real EPs stay
+    reachable. The #533 rescale expresses it as 65 = 1.25 x 40 + 15 — the SAME
+    raw policy through the same output transform the scores go through, so the
+    numeral changed and the alerting set did not (test_533_rescale_invariant)."""
+    from agents.market_intelligence.ep_rubric import (
+        SEPARATION_BAR_RAW, apply_output_scale)
+    assert SEPARATION_BAR_RAW == 40
+    assert SEPARATION_BAR == 65
+    assert SEPARATION_BAR == apply_output_scale(
+        float(SEPARATION_BAR_RAW), SCORE_WEIGHTS["output_scale"])
 
 
 # ── The revert flag restores ALL THREE parts together ─────────────────────────────────
@@ -207,32 +223,44 @@ def test_boost_shadow_compare_stays_on_the_acting_side():
     assert "weights=_act_weights,  # #533: boost-off compare stays on the acting side" in src
 
 
-def test_high_decision_outranks_the_cutline_and_the_cutline_value_is_untouched():
-    """The priced bar-40 policy counts 40-49 scores as HIGHs (1.78/day); a
-    cutline-first skip would silently ship the bar-50 row (-77% alerts). So the
-    HIGH decision runs first, while the cutline keeps its value (50) and its
-    MODERATE role — with the legacy bars (65-80) `< bar and < 50` is
-    byte-identical to the old `< 50`, so revert restores the old skip exactly."""
+def test_high_decision_outranks_the_cutline_and_legacy_cutline_is_untouched():
+    """The HIGH decision runs first (a bar-clearing score must never die on a
+    cutline), and each side gets its own cutline via resolve_moderate_cutline:
+    None on the separation side (no MODERATE band — the old 50 sat above the
+    raw bar 40 and was already dead letter every day), 50 on the legacy side —
+    with the legacy bars (65-80) `< bar and < 50` is byte-identical to the old
+    `< 50`, so revert restores the old skip exactly."""
+    from agents.market_intelligence.ep_rubric import (
+        LEGACY_MODERATE_CUTLINE, resolve_moderate_cutline)
     src = _scan_src()
-    assert "if ep_score < 50 and ep_score < ep_threshold:" in src, (
-        "a bar-clearing score must never die on the (unruled) 50 cutline")
-    # legacy equivalence, stated as arithmetic: for every legacy bar the new
-    # condition degenerates to the old one.
+    assert ("if ep_score < ep_threshold and "
+            "(_mod_cut is None or ep_score < _mod_cut):") in src, (
+        "skip must be bar-first with the per-side cutline")
+    assert "resolve_moderate_cutline(_sep_live)" in src, (
+        "the cutline must derive from the SAME flag read as weights and bar")
+    assert resolve_moderate_cutline(True) is None
+    assert resolve_moderate_cutline(False) == LEGACY_MODERATE_CUTLINE == 50
+    # legacy equivalence, stated as arithmetic: for every legacy bar the
+    # bar-first condition degenerates to the old `< 50`.
     for bar in (65, 70, 75, 80):
         for score in (0, 39.9, 40, 45, 49.9, 50, 60, bar, 96):
-            assert (score < 50 and score < bar) == (score < 50)
+            assert (score < bar and score < 50) == (score < 50)
 
 
-def test_bar_40_semantics_a_45_score_is_HIGH_not_skipped():
-    """The tier expressions recorded per side implement the same semantics: HIGH
-    is checked before the cutline. 45 @ bar 40 -> HIGH; 45 @ legacy bar 65 ->
-    below the cutline -> no tier (skipped); 60 @ bar 65 -> MODERATE."""
-    def tier(score, bar):
-        return "HIGH" if score >= bar else "MODERATE" if score >= 50 else None
-    assert tier(45.0, 40) == "HIGH"
-    assert tier(39.9, 40) is None
-    assert tier(45.0, 65) is None
-    assert tier(60.0, 65) == "MODERATE"
+def test_bar_semantics_presented_65_to_105_is_HIGH_below_is_skip():
+    """The tier expressions recorded per side implement the same semantics:
+    HIGH first, then the side's own cutline (None = no MODERATE). Presented
+    64.9 -> skip, 65 -> HIGH (was raw 39.9 / 40); legacy 45 @ bar 65 -> below
+    the 50 cutline -> no tier; legacy 60 @ bar 65 -> MODERATE, unchanged."""
+    def tier(score, bar, cut):
+        return ("HIGH" if score >= bar
+                else "MODERATE" if cut is not None and score >= cut else None)
+    assert tier(65.0, 65, None) == "HIGH"      # raw 40 through the transform
+    assert tier(70.0, 65, None) == "HIGH"      # raw 44 — the old bar-40 HIGH class
+    assert tier(64.9, 65, None) is None        # raw 39.9 — skipped, no MODERATE
+    assert tier(55.0, 65, None) is None        # sep side has NO 50 band
+    assert tier(45.0, 65, 50) is None          # legacy: below cutline, skipped
+    assert tier(60.0, 65, 50) == "MODERATE"    # legacy band intact on revert
 
 
 def test_score_shadow_table_is_declared_with_both_sides_and_live_side():
@@ -245,9 +273,9 @@ def test_score_shadow_table_is_declared_with_both_sides_and_live_side():
 
 # ── the recorder: fail-open, shadow-table-only (THE LINE) ─────────────────────────────
 
-_ROW = {"ticker": "MRNA", "sep_score": 72.0, "sep_tier": "HIGH",
+_ROW = {"ticker": "MRNA", "sep_score": 105.0, "sep_tier": "HIGH",
         "legacy_score": 56.4, "legacy_tier": "MODERATE",
-        "sep_bar": 40, "legacy_bar": 65, "live_side": "separation",
+        "sep_bar": 65, "legacy_bar": 65, "live_side": "separation",
         "gap_pct": 10.04, "catalyst_quality": "game_changer"}
 
 

@@ -4512,7 +4512,11 @@ class MarketIntelligenceAgent(BaseAgent):
                 tier = scan_entry.get("score_tier") or "below threshold"
                 lines.append(f"✅ Passed all filters — scored {score:.0f} ({tier})")
                 if tier not in ("HIGH", "MODERATE"):
-                    root_cause = f"score {score:.0f} was below the MODERATE threshold (50)"
+                    # Side-agnostic since the #533 rescale: separation side has
+                    # no MODERATE cutline (skip = below the presented bar 65);
+                    # legacy side's cutline is 50. The skip row's filter_reason
+                    # (handled above) carries the exact acting number.
+                    root_cause = f"score {score:.0f} was below the alert bar"
             lines.append("")
 
         # ── Reconstruct from current data if no scan log entry ───────────────

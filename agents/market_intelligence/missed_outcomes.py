@@ -129,7 +129,10 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
         return "duplicate_scan"
     if "outside top-20" in s or "top-20 gap cap" in s:
         return "outside_top20"
-    if "score" in s and "< 50" in s:
+    # Bucket name kept stable across the #533 rescale (2026-08-22): "< 50" is
+    # the legacy-side form, "< bar" the separation side's presented-scale form
+    # ("score 55 < bar 65 (...)") — same class: scored but below the cutline/bar.
+    if "score" in s and ("< 50" in s or "< bar" in s):
         return "score_below_50"
     if "pm_rvol" in s or "pre-market rvol" in s or "pre-mkt volume" in s:
         return "pm_rvol_low"
@@ -186,7 +189,8 @@ _SKIP_CATEGORY_CASE_SQL = """
                   OR skip_reason ILIKE '%duplicate%' THEN 'duplicate_scan'
                 WHEN skip_reason ILIKE '%outside top-20%'
                   OR skip_reason ILIKE '%top-20 gap cap%' THEN 'outside_top20'
-                WHEN skip_reason ILIKE '%score%' AND skip_reason ILIKE '%< 50%' THEN 'score_below_50'
+                WHEN skip_reason ILIKE '%score%' AND (skip_reason ILIKE '%< 50%'
+                  OR skip_reason ILIKE '%< bar%') THEN 'score_below_50'
                 -- Volume gates: cover both legacy free-form ("low rel volume
                 -- 0.4x < 2.0x") and the new RVOL@T bounded prefixes. The
                 -- legacy strings are dominant in scan_log before the 2026-05-06

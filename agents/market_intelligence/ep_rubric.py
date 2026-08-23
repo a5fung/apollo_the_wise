@@ -12,7 +12,12 @@ CARRIES TWO TABLES, AND WHICH ONE ACTS IS ONE RUNTIME FLAG:
 - `SCORE_WEIGHTS` (LIVE side, flag ON): the gap ladder is FLAT (every
   qualifying gap = 10 pts) and the conviction floor is trimmed to the single
   gap>=10 + game_changer -> 60 rescue (branch 4). Ships WITH the uniform
-  HIGH bar `SEPARATION_BAR` (40) — three coupled parts, one change.
+  HIGH bar `SEPARATION_BAR` — three coupled parts, one change. Since the
+  #533 RESCALE (2026-08-22) the live side also carries `output_scale`
+  (presented = 1.25 x raw + 15) and the bar is expressed on that presented
+  scale (65 = the old raw 40 mapped through the same function) — a
+  presentation change with a proven-identical alerting set, see
+  `apply_output_scale` below.
 - `SCORE_WEIGHTS_LEGACY` (revert side, flag OFF): the pre-change table,
   byte-identical to what `_score_ep` computed before 2026-08-22 — proven by
   `tests/test_ep_score_stage2_refactor.py`, which pins `_score_ep`'s outputs
@@ -86,6 +91,44 @@ def resolve_conviction_floor(
         if gap_pct >= rule["min_gap"] and catalyst_quality == rule["catalyst"]:
             return rule["floor"]
     return None
+
+
+def apply_output_scale(final_score: float, scale: dict | None) -> float:
+    """#533 RESCALE (2026-08-22) — the ONE presentation transform.
+
+    presented = round(mult x final + offset, 1), applied to the ALREADY-ROUNDED
+    final score (raw x regime multiplier, 1 decimal) as the LAST step of
+    `_score_ep`. `scale` is `weights["output_scale"]` — a dict on the
+    separation table, None on the legacy table (no-op).
+
+    WHY THIS CANNOT CHANGE WHAT ALERTS (the order-of-operations proof):
+    - It sits AFTER the conviction floor (which forces a raw value BEFORE the
+      regime multiplier) and AFTER the multiplier — so it acts on the single
+      final number, whatever branch produced it. An affine map with mult > 0
+      is strictly increasing: s1 >= s2 <-> T(s1) >= T(s2), floor-forced or not.
+    - The bar goes through the SAME function (SEPARATION_BAR = T(40) = 65), so
+      `score >= bar` is decided identically on either scale.
+    - Rounding cannot flip the boundary: the input is already rounded to one
+      decimal, so with mult=1.25 (exactly 5/4 in binary) the largest sub-bar
+      input 39.9 maps to 64.875 -> rounds to 64.9 < 65, while 40.0 maps to
+      exactly 65.0. Pinned exhaustively by tests/test_533_rescale_invariant.py.
+
+    WHY: the separation change made the score's ORDERING right but left the
+    NUMBERS unreadable — every score fell, the bar dropped to 40 (below the
+    legacy 50 cutline), and the bands went incoherent. Operator: "the proper
+    fix ... is to increase score of EPs, lower score of non EPs and keep bar
+    at reasonable level". This transform does exactly that without touching a
+    single weight: on the measured #533 corpus, graded real EPs present
+    ~67-105 (the four alerting @known members: 67.5 / 67.5 / 90 / 105),
+    routine-graded ordinary gappers present ~30-52 (median 40.5), the
+    observable scale floor (a qualifying gap and nothing else) is 27.5, and
+    the bar returns to a round 65. Weights, tier cuts, and the raw bar (40)
+    are untouched in raw terms — ordering and the alerting set are preserved
+    by construction and proven by test.
+    """
+    if not scale:
+        return final_score
+    return round(final_score * scale["mult"] + scale["offset"], 1)
 
 
 SCORE_WEIGHTS = {
@@ -218,6 +261,25 @@ SCORE_WEIGHTS = {
                    "the dead-zone fix for a real EP — the MRNA guard case); "
                    "the full old chain lives in SCORE_WEIGHTS_LEGACY",
     },
+
+    # Output scale — #533 RESCALE (2026-08-22): PRESENTATION ONLY, applied by
+    # `apply_output_scale` as the last step of `_score_ep`. NOT a component:
+    # it adds no points and re-weights nothing — a single strictly-increasing
+    # affine map on the final score, with the bar (SEPARATION_BAR) expressed
+    # through the same function, so the alerting set is unchanged by
+    # construction (proof + measured distributions: apply_output_scale
+    # docstring; identical-alert-set test: test_533_rescale_invariant.py).
+    # mult=1.25 is exactly 5/4 (binary-exact — the rounding proof depends on
+    # it); offset=15. Chosen on the measured #533 corpus so real EPs present
+    # ~67-105, routine ordinary gappers ~30-52, bar = a round 65.
+    "output_scale": {
+        "mult": 1.25,
+        "offset": 15,
+        "source": "#533 rescale 2026-08-22 — presentation transform, "
+                   "alerting set proven identical "
+                   "(tests/test_533_rescale_invariant.py); legacy side is "
+                   "None (old raw scale, byte-identical revert)",
+    },
 }
 
 
@@ -259,20 +321,47 @@ SCORE_WEIGHTS_LEGACY = {
         "source": "pre-#533 chain (77179405 + 63eda07a 2026-03-20; ed3e514e "
                    "2026-04-14) — the ep_score_separation revert side",
     },
+    # No output transform on the revert side — flag OFF must present the OLD
+    # RAW SCALE byte-identically (the 69-case stage-2 baseline pins it).
+    # Explicit None: without this override the {**SCORE_WEIGHTS} spread would
+    # silently inherit the live side's transform.
+    "output_scale": None,
 }
 
 # The uniform HIGH bar that ships WITH the flat ladder + trimmed floor — the
-# three parts are ONE change and revert together on the one flag. 40 was
-# picked because it is the ONLY setting that holds today's alert volume
-# (1.78 modeled HIGH/day vs 1.81 today; about one FEWER alert a month) while
-# making all 18 floor-alive real EPs reachable at a top catalyst grade — and
-# it is ONE number to change if the operator wants fewer alerts (45 cuts
-# alerts ~55%, 50 cuts ~77%: the priced table,
-# docs/analysis/score_separation_533_2026-08-22.md Result 5). While the flag
-# is ON this replaces the per-regime 65/70/75/80 (regime.py — untouched, the
-# revert side). The separate score<50 MODERATE cutline was NOT ruled on and
-# is unchanged on both sides.
-SEPARATION_BAR = 40
+# three parts are ONE change and revert together on the one flag. The bar is
+# RAW 40, picked because it is the ONLY setting that holds today's alert
+# volume (1.78 modeled HIGH/day vs 1.81 today; about one FEWER alert a month)
+# while making all 18 floor-alive real EPs reachable at a top catalyst grade
+# (45 cuts alerts ~55%, 50 cuts ~77%: the priced table,
+# docs/analysis/score_separation_533_2026-08-22.md Result 5). Since the #533
+# RESCALE (2026-08-22) the bar is EXPRESSED on the presented scale — 65 is
+# exactly the raw 40 mapped through the live table's output_scale
+# (1.25 x 40 + 15); the raw policy did NOT move, only its numeric expression
+# (the constant below and the raw anchor are cross-pinned by
+# tests/test_533_rescale_invariant.py). If the operator wants fewer alerts
+# the raw 45/50 rows present as 71.25/77.5 — set the bar via
+# SEPARATION_BAR_RAW and this derives. While the flag is ON this replaces the
+# per-regime 65/70/75/80 (regime.py — untouched, the revert side; the
+# numeric coincidence with Bull's 65 is just that — different scales).
+SEPARATION_BAR_RAW = 40
+SEPARATION_BAR = 65  # int (mi_ep_score_shadow.sep_bar is INT); derivation pinned:
+assert SEPARATION_BAR == apply_output_scale(
+    float(SEPARATION_BAR_RAW), SCORE_WEIGHTS["output_scale"]
+), "SEPARATION_BAR must be exactly the raw bar through the live output_scale"
+
+# The MODERATE cutline, per side (#533 rescale, 2026-08-22). Legacy (flag
+# OFF): the historical score>=50 briefing band under the per-regime bars —
+# byte-identical revert. Separation (flag ON): None — NO MODERATE band. The
+# old 50 was left over from the old scale and sat ABOVE the bar (40), so the
+# band was already EMPTY every day; None states that honestly instead of
+# keeping a dead number ("it goes" rather than presenting as 77.5 — behaviour
+# is identical either way, proven in test_533_rescale_invariant.py).
+# ⚠ Re-arming a MODERATE band on the presented scale (e.g. [50, 65)) is NOT a
+# presentation change: it would create a new briefing population AND re-arm
+# the earnings-day MODERATE->HIGH override on names that today skip silently
+# (~2.3/day on the #533 corpus) — a detection-criteria change, operator-only.
+LEGACY_MODERATE_CUTLINE = 50
 
 
 def resolve_score_weights(separation_enabled: bool) -> dict:
@@ -281,9 +370,16 @@ def resolve_score_weights(separation_enabled: bool) -> dict:
     return SCORE_WEIGHTS if separation_enabled else SCORE_WEIGHTS_LEGACY
 
 
-def resolve_ep_bar(separation_enabled: bool, regime_ep_threshold: int) -> int:
+def resolve_ep_bar(separation_enabled: bool, regime_ep_threshold: int) -> float | int:
     """Which HIGH bar ACTS this scan tick: the uniform SEPARATION_BAR (flag
-    ON) or the per-regime bar from the regime row (flag OFF: 65/70/75/80).
-    The ONLY bar switch point. The score<50 MODERATE cutline is separate and
-    unchanged on both sides."""
+    ON, presented scale) or the per-regime bar from the regime row (flag OFF:
+    65/70/75/80 on the old raw scale). The ONLY bar switch point. Each bar is
+    on the same scale as the scores the matching weight table produces."""
     return SEPARATION_BAR if separation_enabled else regime_ep_threshold
+
+
+def resolve_moderate_cutline(separation_enabled: bool) -> int | None:
+    """Which MODERATE cutline ACTS this scan tick: None while separation is ON
+    (no MODERATE band — the legacy 50 was dead letter below-the-bar anyway) or
+    the historical 50 on the revert side. The ONLY cutline switch point."""
+    return None if separation_enabled else LEGACY_MODERATE_CUTLINE

@@ -118,24 +118,42 @@ ladder flattened. Flag OFF restores all four (`SCORE_WEIGHTS_LEGACY`).
 
 `_score_ep`'s full `breakdown` component list (current, 2026-07-18): `gap` (magnitude), `liquidity` (20-day ADV$ tiers — REPLACED `rel_volume` 2026-08-22, operator-signed; see change log), `catalyst` (quality tier), `float` (low-float bonus), `vol_conviction` (pre-market volume percentile), `theme_bonus` (R4 in-theme, 2026-05-17), `conviction_floor` (gap+quality floor overrides). **`analyst` (analyst-upgrades bonus) REMOVED 2026-07-18** — see change log below; it is no longer a scored factor.
 
-Score thresholds (since 2026-08-22 the HIGH decision OUTRANKS the cutline — a bar-clearing
-score never dies on it; with the legacy bars 65-80 that is byte-identical to the old order):
-- `< 50` AND `< ep_threshold` → skip (below MODERATE). The cutline VALUE (50) and its MODERATE
-  role were NOT ruled on by the separation change — unchanged on both flag sides.
-- `50 ≤ score < ep_threshold` → MODERATE (briefing only). ⚠ While the separation bar (40) sits
-  below the cutline this band is EMPTY (everything ≥40 is HIGH, everything below is skipped);
-  it reappears intact on revert.
-- `≥ ep_threshold` → HIGH (immediate Telegram + ORB submission window). **Since 2026-08-22 the
-  acting HIGH bar is UNIFORM 40** (`ep_rubric.SEPARATION_BAR`, applied in `run_ep_scan` while
-  the `ep_score_separation` flag is ON — ships WITH the flat gap credit + trimmed floor as ONE
-  change; 40 is the volume-neutral choice and the ONE number to move for fewer alerts). Flag
-  OFF (revert) → the per-regime bar from the stored regime row acts as before (`regime.py`:
-  Bull=65, Choppy=70, Correcting=75, Crisis=80). ⚠ Known seam: surfaces that DISPLAY the stored
-  regime row's `ep_threshold` (briefing regime line, agent.py why-no-alert prose, the
-  allocator's advisory `legacy_eligible` label) still show the per-regime number, not 40 —
-  `regime.py` and the stored rows are deliberately untouched so the revert side survives
-  intact. Display-only; the alerting decision uses the flag-gated bar. See the change-log
-  entry's Status field.
+**Score scale (#533 RESCALE, 2026-08-22 — presentation only, alerting set proven identical):**
+while the `ep_score_separation` flag is ON, `_score_ep` presents its final score through ONE
+strictly-increasing transform — `presented = 1.25 × raw + 15` (`ep_rubric.apply_output_scale`,
+`SCORE_WEIGHTS["output_scale"]`), applied LAST, after the conviction floor and the regime
+multiplier. The bar is expressed through the same function (65 = raw 40), so `score ≥ bar` is
+decided identically on either scale — no name, day, or tier can flip (proof:
+`tests/test_533_rescale_invariant.py`, three cohorts + an exhaustive boundary sweep). On the
+measured #533 corpus the presented scale reads: real EPs at their known grades ≈ 67-105 (the
+four alerting members: 67.5 / 67.5 / 90 / 105; MRNA 105 Bull / 90 non-Bull), routine-graded
+ordinary gappers ≈ 30-52 (median 40.5), scale floor (a qualifying gap and nothing else) 27.5.
+Score `breakdown` stays RAW components (the component diagnosis; it already excluded the
+regime multiplier). Flag OFF → no transform: the legacy side presents the old raw scale
+byte-identically.
+
+Score thresholds (the HIGH decision outranks any cutline — a bar-clearing score never dies on
+one; with the legacy bars 65-80 that is byte-identical to the old order):
+- **Flag ON (separation, default): `≥ 65` presented → HIGH** (immediate Telegram + ORB
+  submission window), **below 65 → skip. There is NO MODERATE band** — the old `50` cutline was
+  leftover from the old scale and sat ABOVE the raw bar 40, so the band was already empty every
+  day; the rescale REMOVES it on this side rather than carry a dead number
+  (`ep_rubric.resolve_moderate_cutline` → None). The bar is `ep_rubric.SEPARATION_BAR` (65 =
+  raw `SEPARATION_BAR_RAW` 40 through the transform — raw-40 remains the volume-neutral
+  operator-signed policy; the raw 45/50 fewer-alert rows present as 71.25/77.5).
+  ⚠ Re-arming a MODERATE band on the presented scale (e.g. `[50, 65)`) would be a CRITERIA
+  change, not presentation: a new briefing population (~2.3 names/day on the #533 corpus) AND
+  it re-arms the earnings-day MODERATE→HIGH override on names that today skip silently —
+  operator-only decision.
+- **Flag OFF (revert): unchanged** — `< 50` → skip; `50 ≤ score < ep_threshold` → MODERATE
+  (briefing only); `≥ ep_threshold` → HIGH at the per-regime bar from the stored regime row
+  (`regime.py`: Bull=65, Choppy=70, Correcting=75, Crisis=80), all on the old raw scale.
+- ⚠ Known seam (unchanged from the separation entry): surfaces that DISPLAY the stored regime
+  row's `ep_threshold` (briefing regime line, agent.py why-no-alert prose, the allocator's
+  advisory `legacy_eligible` label) still show the per-regime raw number — under Bull it now
+  coincidentally reads 65 like the presented bar, but they are different scales. `regime.py`
+  and stored rows deliberately untouched so the revert side survives intact; the alerting
+  decision uses the flag-gated bar.
 
 **Holistic Grade Judge overwrite**: when `holistic_judge_enabled` is ON (toggle,
 ADR 0011/W2c — SHIPPED DORMANT, see 2026-06-08 change-log entry below), the
@@ -166,6 +184,62 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-22 — RESCALE: the separation score presents as 1.25×raw+15, bar expressed as 65, dead 50 cutline removed (PRESENTATION ONLY — ALERTING SET PROVEN IDENTICAL) [#533]
+
+**Trigger**: the separation change (below) fixed the ORDERING but broke the READABILITY: every
+score fell, the bar had to drop to 40 — BELOW the legacy 50 cutline — leaving the bands
+incoherent and the MODERATE band empty. Operator: *"the proper fix to make this make sense is
+to increase score of EPs, lower score of non EPs and keep bar at reasonable level... maybe
+that's just cosmetics, but it is easier to read and understand."* He reads these numbers on
+his phone to judge alerts — a score whose bands mean nothing is a worse instrument even when
+the filtering is right.
+
+**Evidence**: this is a presentation change — the evidence burden is the PROOF THE ALERTING
+SET CANNOT CHANGE, not new outcome data. (a) By construction: one strictly-increasing affine
+transform (`presented = 1.25 × raw + 15`) applied to the FINAL score — after the conviction
+floor (which forces raw pre-multiplier) and after the regime multiplier — with the bar mapped
+through the same function (65 = T(40)); `s ≥ bar ⟺ T(s) ≥ T(bar)` for any strictly-increasing
+T, floor-forced scores included. (b) By test (`tests/test_533_rescale_invariant.py`): decision
+identical before/after on the 69-case boundary fixture, the 26 labelled real EPs × 3 grades ×
+3 multipliers × 2 liquidity scenarios, a 2,700-shape input grid, and an exhaustive 0.1-step
+sweep of the raw axis through the bar (1.25 = 5/4 is binary-exact: raw 39.9 → 64.9 skip,
+40.0 → exactly 65.0 HIGH — no rounding flip). (c) Placement on the measured #533 corpus
+(existing captures, $0): real EPs at known grades present ≈ 67-105 (alerting members 67.5 /
+67.5 / 90 / 105), routine ordinary gappers ≈ 30-52 (median 40.5), scale floor 27.5. The
+targeted "ordinary gappers in the 30s" holds for the routine-graded modal gapper; the
+strong-graded half of the control mix presents in the 50s-low-60s BELOW the bar — that overlap
+is the rubric's real resolution (within-day AUC 0.649), not a scale artifact, and no
+order-preserving map can shrink it. The `50` cutline: mapped (T(50)=77.5, above the bar) and
+removed are behaviourally IDENTICAL (band empty either way); removed is chosen because a
+cutline above the bar is a dead number that misleads. Alert-volume consequence of removal:
+ZERO — the band has been empty since the separation flip.
+
+**Anticipated effect**: zero change to what alerts — same tickers, same days, same tiers
+(HIGH volume, ordinary share, reachability all exactly as the separation entry priced). What
+changes is every operator-facing number on the separation side: HIGH alerts read 65-115ish
+instead of 40-72 (MRNA 105 Bull / 90 non-Bull), junk reads ~30s-40s, the bar is a round 65,
+and skip reasons read `score N < bar 65` (the reason-string consumers in `missed_outcomes.py`,
+`briefing.py`, `ep_selectivity_breakdowns.py`, `ep_latency_audit.py` were taught the new form;
+bucket name `score_below_50` kept stable). `mi_ep_score_shadow.sep_score_*` is on the
+presented scale from this change on — the row's own `sep_bar` column stamps the scale (40 =
+pre-rescale raw rows, 65 = presented). `mi_ep_alerts.ep_score` likewise moves to the presented
+scale on the separation side (scale changes at the deploy boundary, as it already did at the
+separation flip). MODERATE band: none while the flag is ON (was already empty); reappears
+intact on revert.
+
+**Reversion-flag**: REFINEMENT of the 2026-08-22 separation change (numeric expression only —
+no weight, tier cut, or raw threshold moved; `SEPARATION_BAR_RAW` stays 40). Rides the SAME
+one revert flag: `ep_score_separation` OFF → `SCORE_WEIGHTS_LEGACY` has `output_scale: None`
+(explicit override — the `{**SCORE_WEIGHTS}` spread would otherwise inherit the transform), so
+flag OFF presents the old raw scale + 50 cutline + per-regime bars byte-identically — still
+pinned by the 69-case stage-2 baseline (`tests/test_ep_score_stage2_refactor.py`, green).
+
+**Status**: built + tests green (working tree 2026-08-22, suite 6009 passed / 7 skipped
+including 103 new rescale-invariant tests), NOT committed / NOT deployed — presentation change
+with a proven-identical alerting set, no new operator sign-off sought on WHAT alerts (nothing
+about that moved); the scale choice itself implements his quoted ask. Verify-live after
+deploy: first separation-side HIGH presents ≥65 with `sep_bar=65` in `mi_ep_score_shadow`.
 
 ### 2026-08-22 — SEPARATION: flat gap credit + floors trimmed to branch 4 + uniform HIGH bar 40 (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE) [#533]
 

@@ -2749,7 +2749,9 @@ async def initialize_schema() -> None:
                 legacy_score_last     DOUBLE PRECISION,
                 legacy_tier_first     TEXT,              -- HIGH|MODERATE|NULL vs the per-regime bar
                 legacy_tier_last      TEXT,
-                sep_bar               INT,               -- 40 (recorded, not assumed)
+                sep_bar               INT,               -- recorded, not assumed; ALSO the
+                                                        -- scale stamp: 40 = pre-rescale raw
+                                                        -- rows, 65 = presented (#533 rescale)
                 legacy_bar            INT,               -- the day's per-regime bar (65/70/75/80)
                 live_side             TEXT DEFAULT 'separation',  -- which side ACTED on the latest tick
                 gap_pct_first         DOUBLE PRECISION,

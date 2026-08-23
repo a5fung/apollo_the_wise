@@ -245,8 +245,8 @@ def b_filter_reason(r):
         return "extension_gate"
     if "low rel volume" in fr or "low volume" in fr or "rel_vol" in fr:
         return "rel_vol_low"
-    if "score " in fr and "< 50" in fr:
-        return "score_below_50"
+    if "score " in fr and ("< 50" in fr or "< bar" in fr):
+        return "score_below_50"  # "< bar" = separation side since the #533 rescale
     if "ep cooldown" in fr or "cooldown" in fr:
         return "cooldown"
     if "routine catalyst" in fr:

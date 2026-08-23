@@ -431,8 +431,10 @@ def _format_ep_section(
                 short = "low rel vol"
             elif reason.startswith("score ") and "catalyst=" in reason:
                 # "score 48 < 50 (catalyst=speculative)" → "s48 cat=spec"
+                # (legacy form); "score 55 < bar 65 (catalyst=routine)" →
+                # "s55 cat=rout" (separation side since the #533 rescale)
                 import re as _re
-                m = _re.match(r"score (\d+) < 50 \(catalyst=(\w+)\)", reason)
+                m = _re.match(r"score (\d+) < (?:bar )?\d+ \(catalyst=(\w+)\)", reason)
                 short = f"s{m.group(1)} cat={m.group(2)[:4]}" if m else reason
             else:
                 short = reason

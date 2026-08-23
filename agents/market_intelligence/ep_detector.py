@@ -25,7 +25,11 @@ MAGNA53 scoring (0-100):
 - Market multiplier: Bull regime = 1.2x, Perplexity agreement = 1.2x (stack)
 
 Max raw: 95. A 20%+ game-changer gap scores ≥70 before bonuses.
-Thresholds: ≥ ep_threshold (regime-dependent) = HIGH, 50-69 = MODERATE, <50 = skip
+(⚠ The component list above is the ORIGINAL 2026-03 rubric kept for history —
+the acting weights live in `ep_rubric.SCORE_WEIGHTS`, flag-switched per #533.)
+Thresholds: separation ON (default) = presented scale (1.25x+15), score ≥ 65
+bar = HIGH, below = skip, no MODERATE band; flag OFF = legacy raw scale,
+≥ ep_threshold (regime 65-80) = HIGH, 50-to-bar = MODERATE, <50 = skip.
 """
 from __future__ import annotations
 
@@ -79,8 +83,8 @@ from shared.output_ceilings import max_tokens_for
 from agents.market_intelligence.ep_grade_judge import MODEL as _JUDGE_MODEL_ACTUAL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
 from agents.market_intelligence.ep_rubric import (
-    SCORE_WEIGHTS, SEPARATION_BAR, resolve_conviction_floor, resolve_ep_bar,
-    resolve_score_weights, tier_points)
+    SCORE_WEIGHTS, SEPARATION_BAR, apply_output_scale, resolve_conviction_floor,
+    resolve_ep_bar, resolve_moderate_cutline, resolve_score_weights, tier_points)
 from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
@@ -1361,8 +1365,20 @@ def _score_ep(
     # regime) unchanged — uncap never promotes a candidate that wasn't
     # already capped, and conviction floors apply to raw_score pre-multiplier
     # so they aren't affected.
-    final_score = raw_score * regime_multiplier
-    return round(final_score, 1), breakdown
+    final_score = round(raw_score * regime_multiplier, 1)
+
+    # #533 RESCALE (2026-08-22): presentation-only output transform — LAST,
+    # after the conviction floor AND the regime multiplier, so it acts on the
+    # one final number whatever branch produced it. Strictly increasing +
+    # the bar goes through the same function (SEPARATION_BAR = T(40)), so
+    # the alerting set cannot change (full proof: apply_output_scale
+    # docstring; pinned by tests/test_533_rescale_invariant.py). No-op on
+    # the legacy table (output_scale=None) — flag OFF presents the old raw
+    # scale byte-identically. `breakdown` stays RAW components deliberately:
+    # it is the component diagnosis, and it already didn't sum to the final
+    # score (the regime multiplier sat outside it too).
+    final_score = apply_output_scale(final_score, weights.get("output_scale"))
+    return final_score, breakdown
 
 
 # _yoy_shadow_decision (#149) removed 2026-07-02 (#400b): the #321 LIVE YoY
@@ -2488,14 +2504,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # ── #533 SEPARATION FLIP (2026-08-22, OPERATOR-SIGNED) ─────────────────────
     # Flat gap credit + conviction floor trimmed to branch 4 (ep_rubric
-    # SCORE_WEIGHTS) + uniform HIGH bar 40 (SEPARATION_BAR) — three coupled
-    # parts, ONE revert flag: `ep_score_separation` runtime toggle /
+    # SCORE_WEIGHTS) + uniform HIGH bar (SEPARATION_BAR) — coupled parts, ONE
+    # revert flag: `ep_score_separation` runtime toggle /
     # EP_SCORE_SEPARATION_ENABLED env, default ON. OFF -> SCORE_WEIGHTS_LEGACY
     # + the per-regime bar (65/70/75/80) act, byte-identical pre-change
     # behaviour, no redeploy (~60s toggle cache). Operator quote + evidence:
     # docs/setups/magna53_ep.md change log 2026-08-22. Fail direction on a
     # toggle-read error: separation stays ON (the shipped default), loudly.
-    # The score<50 MODERATE cutline below is separate and was NOT ruled on.
+    # Since the #533 RESCALE (2026-08-22) the separation side presents scores
+    # on the readable scale (1.25 x raw + 15) with bar 65 (= the raw 40
+    # policy through the same map — alerting set proven identical) and NO
+    # MODERATE cutline; the legacy side keeps the old raw scale + 50 cutline.
     _sep_live = True
     try:
         _sep_live = await get_runtime_toggle(
@@ -2506,6 +2525,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     _cf_weights = resolve_score_weights(not _sep_live)
     ep_threshold = resolve_ep_bar(_sep_live, _regime_bar)
     _cf_bar = resolve_ep_bar(not _sep_live, _regime_bar)
+    # #533 rescale: MODERATE cutline per side — 50 on the legacy side (the
+    # historical briefing band), None on the separation side (no MODERATE
+    # band; the old 50 sat above the raw bar 40 so the band was already empty
+    # every day — resolve_moderate_cutline states that instead of keeping a
+    # dead number). Scores/bars per side are on that side's own scale
+    # (separation = presented 1.25x+15, legacy = old raw).
+    _mod_cut = resolve_moderate_cutline(_sep_live)
+    _cf_cut = resolve_moderate_cutline(not _sep_live)
     # "keep tracking existing" (operator condition on the sign-off): BOTH sides
     # are scored for every graded candidate and batch-written to
     # mi_ep_score_shadow after the loop (fire-and-forget, read by no live path).
@@ -4230,9 +4257,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 weights=_cf_weights,
             )
             _act_t = ("HIGH" if ep_score >= ep_threshold
-                      else "MODERATE" if ep_score >= 50 else None)
+                      else "MODERATE" if _mod_cut is not None
+                      and ep_score >= _mod_cut else None)
             _cf_t = ("HIGH" if _cf_score >= _cf_bar
-                     else "MODERATE" if _cf_score >= 50 else None)
+                     else "MODERATE" if _cf_cut is not None
+                     and _cf_score >= _cf_cut else None)
             if _sep_live:
                 _sep_sc, _sep_t, _leg_sc, _leg_t = ep_score, _act_t, _cf_score, _cf_t
             else:
@@ -4271,23 +4300,28 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 "projected_vol_multiple": c.get("projected_vol_multiple"),
                 "ep_score": ep_score,
                 "live_tier": ("HIGH" if ep_score >= ep_threshold
-                              else "MODERATE" if ep_score >= 50 else None),
+                              else "MODERATE" if _mod_cut is not None
+                              and ep_score >= _mod_cut else None),
             })
         except Exception as _tse:
             logger.debug(f"{ticker}: tier-shadow input capture failed — {_tse}")
 
-        # #533 separation: the HIGH decision outranks the cutline. With the
-        # uniform bar 40 sitting BELOW the 50 cutline, a bar-clearing 40-49
-        # score must ALERT — that is the semantics the priced table priced
-        # (bar 40 = 1.78 HIGH/day; cutline-first would silently ship the
-        # bar-50 row, -77% alerts). The cutline itself is UNCHANGED (value 50,
-        # not ruled on): a non-HIGH score < 50 is still a silent skip, and
-        # 50 <= score < bar is still MODERATE — that band is simply EMPTY
-        # while the separation bar (40) is below 50, and reappears intact on
-        # revert (bar 65-80, where `< bar and < 50` == `< 50`, byte-identical
-        # legacy behaviour).
-        if ep_score < 50 and ep_score < ep_threshold:
-            reason = f"score {ep_score:.0f} < 50 (catalyst={catalyst_quality})"
+        # #533 separation + rescale: the HIGH decision outranks the cutline —
+        # a bar-clearing score never dies on it (the priced bar-40-raw policy;
+        # cutline-first would silently have shipped the bar-50 row, -77%
+        # alerts). Since the rescale the separation side has NO MODERATE
+        # cutline (_mod_cut=None: skip is simply score < bar 65 presented,
+        # which is the SAME candidates as the old raw `< 50 and < 40` == <40 —
+        # proven in test_533_rescale_invariant.py); the legacy side keeps the
+        # historical `< 50 and < bar` == `< 50` byte-identically (bars 65-80),
+        # and its MODERATE band reappears intact on revert.
+        if ep_score < ep_threshold and (_mod_cut is None or ep_score < _mod_cut):
+            reason = (
+                f"score {ep_score:.0f} < bar {ep_threshold:.0f} "
+                f"(catalyst={catalyst_quality})"
+                if _mod_cut is None
+                else f"score {ep_score:.0f} < 50 (catalyst={catalyst_quality})"
+            )
             logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}% breakdown={breakdown})")
             scan_log.append(_scan_row(
                 c, reason=reason, ep_score=ep_score, tier=None,
@@ -4562,6 +4596,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Telemetry for `conviction_floor_extension` review (data_gated_reviews.yaml).
         # Cell under evaluation: gap∈[10,15) + catalyst='strong'. Logs whether the
         # candidate would have been promoted to HIGH at floors 55/58/60.
+        # ⚠ Scale note (#533 rescale): on the separation side `ep_score` /
+        # `ep_threshold` here are on the PRESENTED scale (1.25x+15, bar 65) and the
+        # three booleans degenerate to tier==HIGH — as they already did at raw bar
+        # 40 (55 > any sub-bar gap). They stay meaningful on the legacy side
+        # (bars 65-80, raw scale), which is the side the 08-03 review evaluated.
         if catalyst_quality == "strong" and 10 <= c["gap_pct"] < 15:
             await log_audit_event(
                 "conviction_floor_eligible",

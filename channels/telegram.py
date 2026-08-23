@@ -524,7 +524,7 @@ class TelegramChannel:
             '🔔 `show watchlist` · 📌 `track bitcoin with 5%` · ❌ `drop oil`\n'
             "\n"
             "*EP Trading Rules (Qullamaggie v2)*\n"
-            "• Filters: score >= 70 (HIGH) · ADV >= $1M · ATR% <= 15% · MCap >= $500M\n"
+            "• Filters: score >= 65 bar = HIGH (presented scale) · ADV >= $1M · ATR% <= 15% · MCap >= $500M\n"
             "• Entry: 1-min ORB at 9:31 ET · Stop = ORB low · bracket auto-submitted\n"
             "• Skip if ORB range > 1.5x ATR-14 or ORB high never broken\n"
             "• Day 1: hold full · Day 2+: trail 10/20-SMA · stop floor = Day 1 low\n"
