@@ -32,6 +32,7 @@ agents/market_intelligence/broker/order_ingest.py
 agents/market_intelligence/broker/order_manager.py
 agents/market_intelligence/broker/shadow_orb_tracker.py
 agents/market_intelligence/broker/skip_reasons.py
+agents/market_intelligence/broker/stream_models.py
 agents/market_intelligence/broker/telegram_confirm.py
 agents/market_intelligence/broker/trade_stream.py
 agents/market_intelligence/catalyst_materiality.py
@@ -43,6 +44,7 @@ agents/market_intelligence/db.py
 agents/market_intelligence/earnings_calendar.py
 agents/market_intelligence/ep_detector.py
 agents/market_intelligence/ep_grade_judge.py
+agents/market_intelligence/ep_rubric.py
 agents/market_intelligence/execution_client.py
 agents/market_intelligence/execution_routes.py
 agents/market_intelligence/fundamentals.py
