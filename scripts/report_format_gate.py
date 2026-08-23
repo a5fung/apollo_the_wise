@@ -175,8 +175,30 @@ def _tail_lines(transcript_path: str) -> list[str]:
         return []
 
 
+def _is_operator_turn(entry: dict) -> bool:
+    """A user entry the OPERATOR actually typed — not a tool_result, which the transcript also
+    records as type "user". This is the turn boundary the search below stops at."""
+    if entry.get("type") != "user":
+        return False
+    content = (entry.get("message") or {}).get("content")
+    if isinstance(content, str):
+        return True
+    if isinstance(content, list):
+        # A tool_result-only entry is the harness echoing a tool call back, not the operator.
+        return any(isinstance(c, dict) and c.get("type") != "tool_result" for c in content)
+    return False
+
+
 def last_assistant_text(transcript_path: str) -> str:
-    """The final assistant message in the transcript — the thing the operator is about to read.
+    """The final assistant message OF THE CURRENT TURN — the thing the operator is about to read.
+
+    ⚠ Bounded at the last operator message on purpose (2026-08-23). Without the bound this walked
+    back until it found ANY assistant text, so when the current turn's reply was not yet flushed to
+    the transcript it judged a message from an EARLIER turn — one already delivered and already
+    rewritten. Observed the day the bullet cap dropped 6 -> 5: a one-line reply was blocked as
+    "6 bullets", the count of a report two turns back. A stale judgement is unfixable by the
+    author, so the gate would fire on every subsequent turn — the wedge its own design forbids.
+    Finding nothing after the boundary now returns "" and PASSES, matching the fail-open contract.
 
     Tolerant by construction: an unreadable or unfamiliar transcript returns "", which lets the
     turn through. A formatting gate must never be able to wedge a session."""
@@ -185,6 +207,8 @@ def last_assistant_text(transcript_path: str) -> str:
             entry = json.loads(raw)
         except (json.JSONDecodeError, ValueError):
             continue
+        if _is_operator_turn(entry):
+            return ""  # reached the turn boundary without finding this turn's reply — pass
         if entry.get("type") != "assistant":
             continue
         content = (entry.get("message") or {}).get("content")

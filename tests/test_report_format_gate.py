@@ -361,3 +361,66 @@ def test_claude_md_points_at_the_gate(doc):
     """The rule and its enforcement must be findable from each other, or the next reader
     re-litigates it — which is how it got asked six times."""
     assert "report_format_gate" in (_ROOT / doc).read_text()
+
+
+# --- turn boundary (2026-08-23) -------------------------------------------------------------
+# The gate judged a message from an EARLIER turn when the current turn's reply had not yet been
+# flushed to the transcript: a one-line reply was blocked as "6 bullets", the count of a report
+# two turns back. A stale judgement cannot be fixed by rewriting, so it fires again every turn --
+# the wedge this gate's own design forbids. last_assistant_text() now stops at the last operator
+# message and returns "" (pass) if this turn produced no text yet.
+
+def _multi_turn(tmp_path, *entries) -> str:
+    """entries: ("user", text) | ("assistant", text) | ("tool_result", text), in order."""
+    p = tmp_path / "multi.jsonl"
+    lines = []
+    for kind, text in entries:
+        if kind == "user":
+            lines.append({"type": "user", "message": {"content": text}})
+        elif kind == "tool_result":
+            lines.append({"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "x", "content": text}]}})
+        else:
+            lines.append({"type": "assistant",
+                          "message": {"content": [{"type": "text", "text": text}]}})
+    p.write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+    return str(p)
+
+
+def test_a_prior_turns_over_cap_reply_is_not_judged_again(tmp_path):
+    """THE OBSERVED BUG. An over-cap reply, then the operator speaks, then this turn has produced
+    no text yet. The gate must PASS -- judging the old message would block a turn whose author
+    cannot fix it."""
+    from report_format_gate import last_assistant_text
+    t = _multi_turn(tmp_path, ("user", "start"), ("assistant", _ANCHOR_31384), ("user", "ok next"))
+    assert last_assistant_text(t) == ""
+    r = _run({"transcript_path": t})
+    assert r.returncode == 0, r.stderr
+
+
+def test_this_turns_reply_is_still_judged_after_the_boundary(tmp_path):
+    """The bound must not blind the gate: text written AFTER the operator's message is this
+    turn's reply and is judged exactly as before."""
+    t = _multi_turn(tmp_path, ("assistant", "old and clean"), ("user", "go"),
+                    ("assistant", _ANCHOR_31384))
+    r = _run({"transcript_path": t})
+    assert r.returncode == 2
+    assert "7 bullets" in r.stderr
+
+
+def test_a_tool_result_is_not_a_turn_boundary(tmp_path):
+    """Tool results are recorded as type "user". Treating one as the boundary would blind the
+    gate on every turn that ends with a tool call -- which is most of them."""
+    t = _multi_turn(tmp_path, ("user", "go"), ("tool_result", "ok"),
+                    ("assistant", _ANCHOR_31384))
+    r = _run({"transcript_path": t})
+    assert r.returncode == 2
+
+
+def test_the_boundary_returns_the_latest_reply_when_several_exist(tmp_path):
+    """Mid-turn text before a tool call is superseded by the final reply -- unchanged behaviour,
+    pinned so the boundary edit cannot quietly change which message is judged."""
+    from report_format_gate import last_assistant_text
+    t = _multi_turn(tmp_path, ("user", "go"), ("assistant", "first pass"),
+                    ("tool_result", "ok"), ("assistant", "final answer"))
+    assert last_assistant_text(t) == "final answer"
