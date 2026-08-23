@@ -63,6 +63,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agents.market_intelligence.collector import get_minute_bars
 from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.kill_scale_bands import risk_placed
 from scripts.replay_would_have_filled import replay_one  # #180 per-row SIP replay
 
 _ET = ZoneInfo("America/New_York")
@@ -125,9 +126,6 @@ def _fmt_stats(label: str, st: dict) -> str:
     )
 
 
-from agents.market_intelligence.kill_scale_bands import _risk_placed
-
-
 async def _real_cohort(conn, days: int | None, signal_type: str) -> list[dict]:
     """Actually-filled, closed trades. Carries BOTH the real realized R
     (total_pnl / the risk actually PLACED — live exit logic: partials/breakeven/trailing)
@@ -152,9 +150,9 @@ async def _real_cohort(conn, days: int | None, signal_type: str) -> list[dict]:
         d = dict(r)
         # ONE definition of R everywhere (#586, 2026-08-23). `risk_dollars` is the
         # PRE-cap intended budget and does NOT match the #268b calibration, which divides
-        # by the risk actually placed. `kill_scale_bands._risk_placed` is that single
+        # by the risk actually placed. `kill_scale_bands.risk_placed` is that single
         # derivation — reused, never re-expressed here (P15: no second definition).
-        risk = _risk_placed(d)
+        risk = risk_placed(d)
         if not risk:
             continue
         d["r"] = float(r["total_pnl"] or 0) / risk  # real R, on risk actually placed

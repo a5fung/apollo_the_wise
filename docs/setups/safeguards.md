@@ -459,9 +459,9 @@ a separate card).
 **Reversion-flag**: NEW — no prior change to this module's R-denominator; this is the first time it
 diverged from its own calibration's definition being caught and corrected.
 
-**Status**: shipped to the working tree, not yet deployed. Needs `bash scripts/deploy.sh
-market-agent` (see "Deploy scope" above) to reach production; verify-live = the next Sunday digest
-or 16:13 ET daily eval printing the corrected trailing-20/cumulative numbers.
+**Status**: deployed 2026-08-23 — `deploy.sh market-agent` + `execution` both green, containers
+confirmed running `8bcf6ff0`. Verify-live still pending = the next Sunday digest or 16:13 ET
+daily eval printing the corrected trailing-20/cumulative numbers.
 
 ### 2026-08-23 — The 20% notional cap's truncations are now recorded (#571, telemetry only)
 

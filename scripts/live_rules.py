@@ -30,8 +30,10 @@ CLI:
   python scripts/live_rules.py                # full view (ENTRY / EXIT / SIZING / DRIFT / REPLACED)
   python scripts/live_rules.py --drift-only   # terse session-open check: DRIFT section only
   python scripts/live_rules.py --no-prod      # skip the SSH read (offline mode)
-  python scripts/live_rules.py --selftest     # replay the three 2026-08-23 failures from git
-                                              # history and prove each drift rule catches them
+  python scripts/live_rules.py --selftest     # replay the two doc-borne 2026-08-23 failures
+                                              # from real git history (the third failure —
+                                              # partial-path misread — is pinned by
+                                              # tests/test_live_rules.py, synthetic fixtures)
 
 HONEST LIMITS (do not oversell):
   - The stale-claim scan (drift rule 1) is lexical: a deployment claim written in words the
@@ -66,12 +68,18 @@ PROD_REPO_DIR = "/home/apollo/apollo_the_wise"
 _SECRET_TOKENS = ("KEY", "SECRET", "TOKEN", "PASSWORD", "PASSWD", "DSN", "CREDENTIAL")
 
 # The modules whose module-level constants ARE the rule surface.
+# order_manager.py holds the stop formula, the 20% cap and scan_profit_triggers (the +2R
+# partial) — the module whose rules were misread on 2026-08-23; flag_detector.py holds the
+# continuation-flag rule constants. Listed LAST deliberately: on a name collision the first
+# module wins (constants.py stays authoritative for shared names).
 RULE_MODULES = (
     "agents/market_intelligence/constants.py",
     "agents/market_intelligence/ep_detector.py",
     "agents/market_intelligence/ep_rubric.py",
     "agents/market_intelligence/ninem_detector.py",
     "agents/market_intelligence/broker/entry_pipeline.py",
+    "agents/market_intelligence/broker/order_manager.py",
+    "agents/market_intelligence/flag_detector.py",
 )
 
 SETUP_DOCS_GLOB = "docs/setups/*.md"
@@ -225,17 +233,32 @@ _RT_TOGGLE_RE = re.compile(
     r'(?:\s*,\s*default\s*=\s*(True|False))?', re.S)
 _SG_TOGGLE_RE = re.compile(r'get_safeguard_state\(\s*["\']([a-z0-9_]+)["\']')
 
+# One walk+read of agents/market_intelligence/**/*.py per repo per process —
+# discover_runtime_toggles and scan_live_comments both consume it (each used to walk
+# and read the whole tree separately).
+_AGENT_SRC_CACHE: dict[Path, list[tuple[str, str]]] = {}
+
+
+def _agent_sources(repo: Path = REPO) -> list[tuple[str, str]]:
+    """[(rel_path, text)] for every non-__pycache__ .py under agents/market_intelligence."""
+    cached = _AGENT_SRC_CACHE.get(repo)
+    if cached is not None:
+        return cached
+    out: list[tuple[str, str]] = []
+    root = repo / "agents" / "market_intelligence"
+    for p in sorted(root.rglob("*.py")):
+        if "__pycache__" in p.parts:
+            continue
+        out.append((str(p.relative_to(repo)), p.read_text()))
+    _AGENT_SRC_CACHE[repo] = out
+    return out
+
 
 def discover_runtime_toggles(repo: Path = REPO) -> dict[str, ToggleFact]:
     """Scan agents/market_intelligence for every runtime-toggle registration. Generated,
     not hand-listed: a new toggle in code appears here on the next run."""
     out: dict[str, ToggleFact] = {}
-    root = repo / "agents" / "market_intelligence"
-    for p in sorted(root.rglob("*.py")):
-        if "__pycache__" in p.parts:
-            continue
-        text = p.read_text()
-        rel = str(p.relative_to(repo))
+    for rel, text in _agent_sources(repo):
         for m in _RT_TOGGLE_RE.finditer(text):
             name, env_var, default = m.group(1), m.group(2), m.group(3)
             line = text.count("\n", 0, m.start()) + 1
@@ -273,7 +296,12 @@ class ProdState:
 def _prod_script(env_vars: list[str]) -> str:
     """One read-only server-side script: targeted printenv (never a full env dump — that
     would capture secrets), two SELECTs, the deployed commit, and the server checkout's
-    constants.py for deployed-code cross-check."""
+    constants.py for deployed-code cross-check.
+
+    ONE `docker exec` per container — the per-var loop runs INSIDE the container's shell
+    (was one exec per var: 2 containers x ~39 vars = 78 sequential execs, ~5s of every
+    session open). Still var-by-var `printenv "$v"` against the caller's already
+    secret-filtered list — the never-dump-full-env property is unchanged."""
     vars_str = " ".join(env_vars)
     q_toggles = ("SELECT safeguard, account_mode, state, last_transition_at "
                  "FROM mi_safeguard_state ORDER BY safeguard, account_mode")
@@ -283,9 +311,9 @@ def _prod_script(env_vars: list[str]) -> str:
 VARS="{vars_str}"
 for c in {' '.join(PROD_CONTAINERS)}; do
   echo "===ENV:$c==="
-  for v in $VARS; do
-    val=$(docker exec "$c" printenv "$v" 2>/dev/null) && echo "$v=$val" || echo "$v(unset)"
-  done
+  docker exec "$c" sh -c 'for v in '"$VARS"'; do
+    val=$(printenv "$v" 2>/dev/null) && echo "$v=$val" || echo "$v(unset)"
+  done'
 done
 echo "===TOGGLES==="
 docker exec apollo-postgres psql -U apollo -d apollo -t -A -F"|" -c "{q_toggles}" 2>&1
@@ -457,7 +485,8 @@ class DocFile:
     path: Path
     lines: list[str]
     fence_mask: list[bool]          # True = inside a fenced code block
-    historical_mask: list[bool]     # True = change-log region or a dated section (history, not current claims)
+    historical_mask: list[bool]     # True = change-log region or a dated section (candidate history)
+    line_date: list[str | None]     # governing dated-heading date per line (None outside dated regions)
     changelog_entries: list[tuple[str, str, int]]  # (date, title, lineno)
 
 
@@ -492,6 +521,22 @@ def load_doc(path: Path) -> DocFile:
                 continue
         i += 1
 
+    # Per-line governing date: the dated heading whose region a line sits under (mirrors the
+    # mask walk's nesting rules). Feeds the superseded check — a masked claim is history only
+    # when a LATER dated entry re-states its subject.
+    line_date: list[str | None] = [None] * len(lines)
+    cur_date: str | None = None
+    cur_level = 0
+    for i, ln in enumerate(lines):
+        m = _HEADING_RE.match(ln)
+        if m and not fence_mask[i]:
+            dm = _DATE_HEADING_RE.match(ln)
+            if dm:
+                cur_date, cur_level = dm.group(2), len(m.group(1))
+            elif cur_date is not None and len(m.group(1)) <= cur_level:
+                cur_date = None
+        line_date[i] = cur_date
+
     # Change-log entries are collected over the WHOLE file (dated headings nest INSIDE the
     # change-log region, which the region walk above deliberately skips over).
     entries: list[tuple[str, str, int]] = []
@@ -500,7 +545,7 @@ def load_doc(path: Path) -> DocFile:
         if dm and not fence_mask[i]:
             entries.append((dm.group(2), dm.group(3).strip() or "(untitled)", i + 1))
     return DocFile(path=path, lines=lines, fence_mask=fence_mask,
-                   historical_mask=historical, changelog_entries=entries)
+                   historical_mask=historical, line_date=line_date, changelog_entries=entries)
 
 
 def load_setup_docs(repo: Path = REPO) -> list[DocFile]:
@@ -522,15 +567,21 @@ class DriftRow:
 
 # Claims that assert something is NOT acting. Two tiers:
 _STRONG_DEPLOY_RE = re.compile(
-    r"not\s+yet\s+deployed|NOT\s+SHIPPED|awaiting\s+deploy|until\s+the\s+next[^.\n]{0,40}deploy"
+    r"not\s+(?:yet\s+)?deployed|NOT\s+SHIPPED|awaiting\s+deploy|until\s+the\s+next[^.\n]{0,40}deploy"
     r"|still\s+places\s+the", re.I)
 _FLAG_OFF_RE = re.compile(
     r"flag\s+OFF|default\s+OFF|default-off|OFF\s+by\s+default|shipp?e?d?s?\s+dark|built\s+OFF"
     r"|shipped\s+OFF|shadow[- ]only|no\s+live\s+caller", re.I)
 # NOT stale claims: (a) descriptions of the revert path ("Flag OFF restores…", "OFF → old
 # behaviour"); (b) lines that themselves assert the LIVE state (✅ / "Confirmed in production" —
-# often while quoting the old stale wording, e.g. the corrected 2026-08-23 lines).
-_REVERT_DESC_RE = re.compile(r"revert|restore|when\s+off|if\s+off|OFF\s*[→=:]|OFF\s*\(", re.I)
+# often while quoting the old stale wording, e.g. the corrected 2026-08-23 lines); (c) recorded
+# DECISIONS not to ship ("not shipped — operator forks, decided", "tested and NOT shipped") —
+# a permanent ruling is not a pending status and would otherwise fire forever.
+_REVERT_DESC_RE = re.compile(
+    r"revert|restore|when\s+off|if\s+off|OFF\s*[→=:]|OFF\s*\("
+    r"|OFF\s+(?:presents|keeps|preserves|leaves|yields|means|falls\s+back)", re.I)
+_DECIDED_NO_SHIP_RE = re.compile(
+    r"\b(?:decided|ruled\s+out|not\s+worth|tested\s+and\s+not\s+shipped)\b", re.I)
 _LIVE_ASSERT_RE = re.compile(r"✅|Confirmed in production|\bLIVE\b\s*\.")
 # The docs' own convention for naming a section's governing flag: "**Flag**: `NAME`".
 _SECTION_FLAG_RE = re.compile(r"\*\*Flag\*\*:\s*`([A-Za-z_][A-Za-z0-9_]+)`")
@@ -592,24 +643,57 @@ def _identifier_states(text: str, res: Resolver) -> list[tuple[str, bool | None,
     return out
 
 
+def _superseded_later(doc: DocFile, idx: int, names: list[str]) -> bool:
+    """True when a LATER dated entry in the same doc mentions any of `names` — the masked
+    claim at `idx` is then genuinely historical (a later entry re-addressed its subject).
+    Strictly later DATE, so sibling same-day entries never supersede each other; fenced
+    mentions count (a later entry quoting the identifier is re-stating the subject)."""
+    claim_date = doc.line_date[idx]
+    if claim_date is None:
+        return False  # undatable masked region — supersession unprovable
+    for j, d in enumerate(doc.line_date):
+        if d is not None and d > claim_date and any(nm in doc.lines[j] for nm in names):
+            return True
+    return False
+
+
 def scan_stale_claims(doc: DocFile, res: Resolver) -> list[DriftRow]:
     """Drift rule 1 — a doc claim 'not yet deployed / flag OFF / shadow only' for something
-    that IS acting. Historical regions (change log, dated sections) are exempt for the
-    flag-OFF tier; the STRONG deploy tier is scanned only in current-claims regions too."""
+    that IS acting.
+
+    Historical regions (change log, dated sections) are NOT blanket-exempt (that exemption hid
+    76% of the status-shaped corpus and re-created the exact 2026-08-23 failure inside the tool
+    built to prevent it): a masked status claim is historical ONLY IF a LATER dated entry in
+    the same doc mentions the same subject (the identifiers the claim names). The most recent
+    statement about a subject is a CURRENT claim wherever it sits, and is scanned like prose.
+    A masked STRONG (deployment-status) line naming NO resolvable identifier is reported
+    UNVERIFIED (historical, unsuperseded) — never dropped silently. The weaker flag-OFF tier
+    with no identifier stays silent in masked regions exactly as it does in unmasked prose
+    (measured 2026-08-23: 16 such lines, 15 genuine narrative/history — reporting them is
+    flood, and the one real rot-shape among them is caught by the strong tier instead).
+    Dated-entry heading lines themselves are exempt: a title is self-dated history ('what
+    happened that day'), not a status claim."""
     rows: list[DriftRow] = []
     rel = _relpath(doc.path)
     for i, line in enumerate(doc.lines):
-        if doc.fence_mask[i] or doc.historical_mask[i]:
+        if doc.fence_mask[i]:
+            continue
+        masked = doc.historical_mask[i]
+        if masked and _HEADING_RE.match(line):
             continue
         strong = _STRONG_DEPLOY_RE.search(line)
         flagoff = _FLAG_OFF_RE.search(line)
         if not (strong or flagoff):
             continue
         plo0, phi0 = _paragraph_bounds(doc.lines, i)
-        if _LIVE_ASSERT_RE.search("\n".join(doc.lines[plo0:phi0 + 1])):
-            continue  # the paragraph asserts LIVE (often while quoting the old stale wording)
+        para0 = "\n".join(doc.lines[plo0:phi0 + 1])
+        if _LIVE_ASSERT_RE.search(para0) or _ON_EVIDENCE_RE.search(para0):
+            continue  # the paragraph asserts LIVE / records the flip ("shipped OFF, then flipped")
+                      # — often while quoting the old stale wording
         if not strong and _REVERT_DESC_RE.search(line):
             continue  # a description of the revert path, not a status claim
+        if _DECIDED_NO_SHIP_RE.search(line):
+            continue  # a recorded decision NOT to ship — a permanent ruling, not a pending status
         plo, phi = _paragraph_bounds(doc.lines, i)
         para = "\n".join(doc.lines[plo:phi + 1])
         ids = _identifier_states(para, res)
@@ -623,9 +707,26 @@ def scan_stale_claims(doc: DocFile, res: Resolver) -> list[DriftRow]:
                 fm = _SECTION_FLAG_RE.search(section_text)
                 if fm:
                     ids = _identifier_states(f"{fm.group(1)} `{fm.group(1)}`", res)
+        claim = line.strip()[:160]
+        if masked:
+            subjects = [name for name, _, _ in ids]
+            if subjects and _superseded_later(doc, i, subjects):
+                continue  # a later dated entry re-states this subject — genuinely historical
+            if not subjects:
+                if strong:
+                    rows.append(DriftRow(
+                        rule="stale-claim", severity="UNVERIFIED", where=f"{rel}:{i + 1}",
+                        claim=claim,
+                        actual="historical entry, unsuperseded — no later dated entry re-states "
+                               "this subject, and no checkable flag is named",
+                        words="A status claim in a dated entry that is still the doc's most recent "
+                              "word on its subject, and nothing can verify it — the exact shape "
+                              "that rotted on 2026-08-23. Re-check by hand; tie it to a flag or "
+                              "add a superseding entry."))
+                continue
+            # else: the most recent statement about this subject — scan exactly like prose.
         on_ids = [x for x in ids if x[1] is True]
         unknown_ids = [x for x in ids if x[1] is None]
-        claim = line.strip()[:160]
         if on_ids:
             ident, _, ev = on_ids[0]
             rows.append(DriftRow(
@@ -685,18 +786,30 @@ _DOC_VALUE_RE = re.compile(r"\b([A-Z][A-Z0-9_]{3,})`?\s*=\s*(-?\d[\d_]*(?:\.\d+)
 
 def scan_value_mismatches(docs: list[DocFile], res: Resolver) -> list[DriftRow]:
     """Drift rule 3a — a doc naming a NUMERIC value different from the acting constant.
-    Historical regions are exempt (old values are legitimately quoted there)."""
+    Historical regions are exempt ONLY when a later dated entry mentions the same constant
+    (an old value legitimately quoted in superseded history); the most recent dated entry
+    naming a constant is a current claim and is checked like prose (same superseded rule as
+    scan_stale_claims — the blanket mask hid current claims). Dated-entry headings exempt."""
     rows: list[DriftRow] = []
     for doc in docs:
         rel = _relpath(doc.path)
         for i, line in enumerate(doc.lines):
-            if doc.fence_mask[i] or doc.historical_mask[i]:
+            if doc.fence_mask[i]:
+                continue
+            if doc.historical_mask[i] and _HEADING_RE.match(line):
                 continue
             for m in _DOC_VALUE_RE.finditer(line):
                 name, sval = m.group(1), m.group(2)
                 r = res.const(name)
                 if r is None or not r.known or not isinstance(r.value, (int, float)) or isinstance(r.value, bool):
                     continue
+                if doc.historical_mask[i] and _superseded_later(doc, i, [name]):
+                    continue  # an old value quoted in genuinely superseded history
+                # Transition notation ("NAME = 60 → 10"): the doc's claimed CURRENT value is
+                # the one AFTER the arrow — check that, not the recorded old value.
+                arrow = re.match(r"\s*(?:→|->)\s*(-?\d[\d_]*(?:\.\d+)?)", line[m.end():])
+                if arrow:
+                    sval = arrow.group(1)
                 try:
                     doc_val = float(sval.replace("_", ""))
                 except ValueError:
@@ -745,17 +858,12 @@ def scan_live_comments(docs: list[DocFile], repo: Path = REPO,
     if changelog_dates is None:
         changelog_dates = {d for doc in docs for d, _, _ in doc.changelog_entries}
     rows: list[DriftRow] = []
-    root = repo / "agents" / "market_intelligence"
-    for p in sorted(root.rglob("*.py")):
-        if "__pycache__" in p.parts:
-            continue
-        text = p.read_text()
+    for rel, text in _agent_sources(repo):
         for m in _LIVE_COMMENT_RE.finditer(text):
             date = m.group(1)
             if date in changelog_dates:
                 continue
             line = text.count("\n", 0, m.start()) + 1
-            rel = p.relative_to(repo)
             rows.append(DriftRow(
                 rule="live-comment-no-changelog", severity="DRIFT", where=f"{rel}:{line}",
                 claim=f"code comment says LIVE {date}",
@@ -1025,9 +1133,14 @@ def _git_show(rev_path: str) -> str | None:
         return None
 
 
-def run_selftest(res: Resolver, docs: list[DocFile]) -> int:
-    """Replay the three 2026-08-23 failures through the live drift rules. PASS = the rule
-    catches the historical text; FAIL = a regression in the detector."""
+def run_selftest(res: Resolver) -> int:
+    """Replay the two DOC-BORNE 2026-08-23 failures through the live drift rules, against the
+    real pre-fix text from git history (which pytest fixtures can't carry). PASS = the rule
+    catches the historical text; FAIL = a regression in the detector.
+
+    The third failure (the partial-path misread) and the LIVE-comment rule are pinned by
+    tests/test_live_rules.py (test_exit_section_names_both_partial_paths_and_the_acting_one,
+    test_live_comment_without_changelog_entry_is_reported) — not duplicated here."""
     import tempfile
     results: list[tuple[str, str, str]] = []
 
@@ -1071,21 +1184,8 @@ def run_selftest(res: Resolver, docs: list[DocFile]) -> int:
                         "PASS" if hits else "FAIL",
                         hits[0].actual[:100] if hits else "the stale flag claim was NOT resolved against prod env"))
 
-    # Case 3 — PROFIT_TRIGGER_R: (a) the LIVE-comment rule fires when the change-log entry is
-    # missing; (b) the EXIT section names BOTH partial paths and which one acts.
-    rows = scan_live_comments(docs, changelog_dates=set())  # simulate: no SSoT recorded ANY date
-    hit_a = any(r.where.startswith("agents/market_intelligence/constants.py") for r in rows)
-    exit_text = "\n".join(build_exit_section(res))
-    hit_b = ("scan_profit_triggers" in exit_text and "run_partial_exits" in exit_text
-             and ("STANDING DOWN" in exit_text or "ACTING" in exit_text))
-    results.append(("case 3a (# LIVE date with no change-log entry → flagged)",
-                    "PASS" if hit_a else "FAIL",
-                    rows[0].where if rows else "no LIVE-comment drift produced under a missing-entry simulation"))
-    results.append(("case 3b (EXIT names BOTH partial paths + which acts)",
-                    "PASS" if hit_b else "FAIL",
-                    "both paths present with acting/stand-down labels" if hit_b else "a partial path is missing"))
-
-    print("SELFTEST — replaying the three 2026-08-23 failures through the live drift rules")
+    print("SELFTEST — replaying the two doc-borne 2026-08-23 failures through the live drift rules")
+    print("(the partial-path misread + LIVE-comment rules are pinned by tests/test_live_rules.py)")
     failed = False
     for name, verdict, detail in results:
         print(f"  [{verdict}] {name}")
@@ -1101,7 +1201,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--drift-only", action="store_true", help="terse mode: DRIFT section only")
     ap.add_argument("--no-prod", action="store_true", help="skip the read-only SSH prod read")
     ap.add_argument("--selftest", action="store_true",
-                    help="replay the three 2026-08-23 failures from git history")
+                    help="replay the two doc-borne 2026-08-23 failures from git history "
+                         "(the rest of the coverage lives in tests/test_live_rules.py)")
     args = ap.parse_args(argv)
 
     code = collect_code_facts()
@@ -1113,7 +1214,7 @@ def main(argv: list[str] | None = None) -> int:
     docs = load_setup_docs()
 
     if args.selftest:
-        return run_selftest(res, docs)
+        return run_selftest(res)
 
     drift = detect_drift(docs, res)
     print(build_report(res, docs, drift, drift_only=args.drift_only))

@@ -322,17 +322,18 @@ still summed +13.9R — at −1R nothing is decided. Hard revert = restore `stop
 orb_low` in `prepare_orb_order` + drop the target frame in `scan_profit_triggers` + redeploy
 (market-agent + execution). No dark toggle exists for a stop level.
 
-**Status**: built 2026-08-16 (operator-signed), NOT deployed — left in-tree per instruction.
-Tests `tests/test_2r_stop_change.py` (14 behavioural; 7 mutations each reddening the named
-test). Verify-live on deploy: first entry's broker stop at `2·ORB_low − ORB_high` with ≈ half
-the shares and unchanged risk_dollars; first `profit_trigger_fired` payload target =
-`entry + 2·(entry − orb_low)`, not +4R.
+**Status**: **LIVE — deployed and verified 2026-08-16** (commit `561a8c6f`; full field entry +
+prod verification against real trades is in `magna53_ep.md`'s 2026-08-16 change-log entry —
+this entry cross-references, see there). Tests `tests/test_2r_stop_change.py` (14 behavioural;
+7 mutations each reddening the named test).
 
 ### 2026-08-15 — BUILT (#566): OCO on the freed 1/3 at +2R + the accounting fix — SHIPPED DARK, default OFF
 
-**Status: BUILT, NOT DEPLOYED, toggle DEFAULT OFF.** Implements the 2026-08-14 operator-signed
-proposal below (design unchanged — do not re-litigate it there). Both defects in ONE change, as
-directed: the protection hole (defect 1) and the accounting hole (defect 2).
+**Status: BUILT, NOT DEPLOYED, toggle (`profit_take_oco`) DEFAULT OFF** — true when written; see
+the 2026-08-23 "RECORD OF OBSERVED STATE" entry above for the current flip. Implements the
+2026-08-14 operator-signed proposal below (design unchanged — do not re-litigate it there). Both
+defects in ONE change, as directed: the protection hole (defect 1) and the accounting hole
+(defect 2).
 
 **Protection half — the order shape (new runtime toggle `profit_take_oco`, default OFF):**
 - At +2R, steps 1 (reduce stop to 2/3, cancel-then-new leg-safe) and 2b (price-only replace of

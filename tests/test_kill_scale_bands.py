@@ -322,7 +322,7 @@ def _closed_trade_rows(n_trades, n_days):
     still reads as realistic dated rows for the mock pool.
 
     #586: `risk_dollars_actual` is None and entry_shares=1 / entry_price=101 / hard_stop=1
-    on every row — an UNCAPPED trade, so `_risk_placed` derives 1*(101-1)=100, identical to
+    on every row — an UNCAPPED trade, so `risk_placed` derives 1*(101-1)=100, identical to
     the pre-#586 `risk_dollars=100` these R values (-1.0, +5.0) were built against. Proves
     an uncapped row's band verdict is unchanged by the #586 denominator fix."""
     base = dt.date(2026, 1, 5)
@@ -375,7 +375,7 @@ def test_open_positions_never_move_the_verdict(monkeypatch):
 
 import pytest  # noqa: E402
 
-_risk_placed = ksb._risk_placed
+risk_placed = ksb.risk_placed
 
 
 def test_risk_placed_prefers_risk_dollars_actual_when_present():
@@ -383,7 +383,7 @@ def test_risk_placed_prefers_risk_dollars_actual_when_present():
     # calibration formula computes directly -- use it, no need to re-derive.
     row = {"risk_dollars_actual": 45.60, "entry_shares": 80.0,
            "entry_price": 12.07, "hard_stop": 11.5}
-    assert _risk_placed(row) == 45.60
+    assert risk_placed(row) == 45.60
 
 
 def test_risk_placed_falls_back_to_derived_expression_for_pre_571_rows():
@@ -392,7 +392,7 @@ def test_risk_placed_falls_back_to_derived_expression_for_pre_571_rows():
     # to compute risk_dollars_actual for new rows -- real NET 2026-08-07 numbers.
     row = {"risk_dollars_actual": None, "entry_shares": 3.0,
            "entry_price": 316.13, "hard_stop": 311.0}
-    assert _risk_placed(row) == pytest.approx(15.39, abs=0.01)
+    assert risk_placed(row) == pytest.approx(15.39, abs=0.01)
 
 
 def test_risk_placed_agrees_with_derived_when_both_present(caplog):
@@ -402,7 +402,7 @@ def test_risk_placed_agrees_with_derived_when_both_present(caplog):
     agreeing = {"risk_dollars_actual": 22.80, "entry_shares": 40.0,
                 "entry_price": 12.07, "hard_stop": 11.5}   # 40*(12.07-11.5) = 22.80
     with caplog.at_level("WARNING", logger="agents.market_intelligence.kill_scale_bands"):
-        assert _risk_placed(agreeing) == 22.80
+        assert risk_placed(agreeing) == 22.80
     assert not any("disagrees" in rec.message for rec in caplog.records)
 
     # A DISAGREEING row (should never happen by construction, but must not be silent if it
@@ -411,7 +411,7 @@ def test_risk_placed_agrees_with_derived_when_both_present(caplog):
     disagreeing = {"risk_dollars_actual": 45.60, "entry_shares": 40.0,
                    "entry_price": 12.07, "hard_stop": 11.5}   # derived = 22.80, not 45.60
     with caplog.at_level("WARNING", logger="agents.market_intelligence.kill_scale_bands"):
-        assert _risk_placed(disagreeing) == 45.60
+        assert risk_placed(disagreeing) == 45.60
     assert any("disagrees" in rec.message for rec in caplog.records)
 
 

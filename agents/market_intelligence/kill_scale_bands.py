@@ -173,7 +173,7 @@ def is_transition(prev_band: str | None, new_band: str) -> bool:
 _BAND_EMOJI = {"SCALE": "🟢", "HOLD": "⚪", "REDUCE": "🟠", "KILL": "🔴"}
 
 
-def _risk_placed(t) -> float | None:
+def risk_placed(t) -> float | None:
     """#586 fix: the dollar risk ACTUALLY placed for one closed live trade — matches the
     #268b calibration's own definition (`scripts/selection_replay_268.py:292-306`: R =
     total_pnl / Σ shares×(entry−stop), i.e. risk AT the placed stop, after the 20% notional
@@ -220,13 +220,11 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
     empty cohort → the evaluator HOLDs below the sample floor.
 
     realized R = `total_pnl / risk_placed` over `status='closed'` methodology trades
-    (`pnl_attribution IS NULL`), chronological, where `risk_placed` is the corrected
-    denominator from `_risk_placed` (#586 — see its docstring; matches the #268b
-    calibration's own definition). ⚠ `scripts/sip_replay_r_cohort.py` (the #291 GATE-3
-    cohort) still divides by the OLD `risk_dollars` budget and is now OUT of lockstep with
-    this module — that script is a separate research/replay tool, not a live-money
-    safeguard input, and was left unchanged (out of #586's scope); re-derive it under its
-    own change if/when it needs to match.
+    (`pnl_attribution IS NULL`), chronological, where the denominator is the
+    `risk_placed()` function below (#586 — see its docstring; matches the #268b
+    calibration's own definition). `scripts/sip_replay_r_cohort.py` (the #291 GATE-3
+    cohort) now imports and calls this same `risk_placed` helper rather than
+    re-expressing the formula — ONE definition of R, in lockstep with this module.
 
     Also gathers `open_positions` (REPORT ONLY — docs/analysis/
     kill_scale_band_closed_trade_bias_2026-08-09.md; never folded into `realized_rs`, so it
@@ -270,7 +268,7 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
 
     rs = []
     for t in trades:
-        risk = _risk_placed(t)
+        risk = risk_placed(t)
         if risk is None or risk <= 0:      # degenerate guard: NULL, zero, or negative
             continue
         rs.append(float(t["total_pnl"]) / risk)

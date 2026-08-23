@@ -3,12 +3,15 @@
 The tool exists because three failures in one day asserted prose over ground truth:
 a doc said "not yet deployed" for a live 2R stop, a doc said "flag OFF" for a four-weeks-live
 env flag, and the day-3/5 partial path was read while the ACTING intraday path was not.
-These tests pin the four behaviours that prevent each recurrence:
+These tests pin the five behaviours that prevent each recurrence:
 
   1. a doc claiming "not yet deployed / flag OFF" while the thing IS acting → drift IS reported;
   2. an env var set in prod OVERRIDES the code default (and unset ≠ off);
   3. the EXIT section names BOTH partial paths and which one acts;
-  4. prod unreachable → graceful degradation: rows labelled unknown, never guessed, exit clean.
+  4. prod unreachable → graceful degradation: rows labelled unknown, never guessed, exit clean;
+  5. a dated change-log entry is historical ONLY when a LATER entry re-states its subject —
+     the doc's most recent word on a subject is scanned like current prose, and a masked
+     status claim naming no checkable flag surfaces UNVERIFIED, never silently dropped.
 
 Synthetic fixtures only — no SSH, no live repo docs are asserted on (those change legitimately).
 """
@@ -114,15 +117,68 @@ def test_flag_off_claim_with_flag_actually_off_is_not_drift(tmp_path):
     assert not [r for r in rows if r.severity == "DRIFT"], rows
 
 
-def test_change_log_entries_are_historical_not_stale_claims(tmp_path):
-    """'BUILT OFF' inside a dated change-log entry was true when written — never a drift row."""
+def test_superseded_change_log_entry_is_historical_not_a_stale_claim(tmp_path):
+    """'Built OFF' in a dated entry whose subject a LATER dated entry re-states is genuine
+    history — never a drift row (the old blanket mask, now earned by supersession)."""
+    doc = _doc(tmp_path, (
+        "# Synthetic setup\n\n"
+        "## Change log (newest first)\n\n"
+        "### 2026-08-05 — regime sizing set true in prod (operator-signed)\n\n"
+        "`REGIME_SIZING_ENABLED=true` set in both containers.\n\n"
+        "### 2026-08-01 — thing BUILT (shipped OFF; operator-signed)\n\n"
+        "**Flag**: `REGIME_SIZING_ENABLED`. Built OFF, awaiting sign-off.\n"
+    ))
+    assert scan_stale_claims(doc, _resolver(prod=PROD_ON)) == []
+
+
+def test_unsuperseded_change_log_claim_is_scanned_like_current_prose(tmp_path):
+    """The 2026-08-23 regression shape REBORN INSIDE THE MASK: a dated entry is the doc's most
+    recent word on its subject ('Built OFF') while the flag IS acting → a hard DRIFT row.
+    The blanket historical exemption hid 45 of 59 status-shaped lines from the scanner."""
     doc = _doc(tmp_path, (
         "# Synthetic setup\n\n"
         "## Change log (newest first)\n\n"
         "### 2026-08-01 — thing BUILT (shipped OFF; operator-signed)\n\n"
         "**Flag**: `REGIME_SIZING_ENABLED`. Built OFF, awaiting sign-off.\n"
     ))
-    assert scan_stale_claims(doc, _resolver(prod=PROD_ON)) == []
+    rows = scan_stale_claims(doc, _resolver(prod=PROD_ON))
+    drift = [r for r in rows if r.severity == "DRIFT"]
+    assert drift, rows
+    assert "REGIME_SIZING_ENABLED" in drift[0].actual
+
+
+def test_masked_status_claim_without_identifier_is_reported_unverified(tmp_path):
+    """A deployment-status claim in a dated entry naming NO checkable flag, with no later entry
+    superseding it, must surface as UNVERIFIED (historical, unsuperseded) — never silently
+    dropped. This is the exact shape of safeguards.md:462 (2026-08-23), stale within hours."""
+    doc = _doc(tmp_path, (
+        "# Synthetic setup\n\n"
+        "## Change log (newest first)\n\n"
+        "### 2026-08-10 — widget rework\n\n"
+        "**Status**: shipped to the working tree, not yet deployed — needs the next deploy window.\n"
+    ))
+    rows = scan_stale_claims(doc, _resolver(prod=PROD_ON))
+    assert any(r.severity == "UNVERIFIED" and "unsuperseded" in r.actual for r in rows), rows
+
+
+def test_value_transition_arrow_is_checked_against_the_post_arrow_value(tmp_path):
+    """`NAME = 60 → 10` in an unsuperseded dated entry claims the CURRENT value is 10 — the scan
+    must compare the post-arrow value, not flag the recorded old one."""
+    from scripts.live_rules import scan_value_mismatches
+    text = (
+        "# Synthetic setup\n\n"
+        "## Change log (newest first)\n\n"
+        "### 2026-05-04 — retry delay dropped\n\n"
+        "`BAR_RETRY_DELAY_SEC = 60 → 10`.\n"
+    )
+    matching = {"BAR_RETRY_DELAY_SEC": ConstFact(
+        name="BAR_RETRY_DELAY_SEC", module="m.py", kind="literal", value=10)}
+    doc = _doc(tmp_path, text)
+    assert scan_value_mismatches([doc], _resolver(extra_code=matching)) == []
+    drifted = {"BAR_RETRY_DELAY_SEC": ConstFact(
+        name="BAR_RETRY_DELAY_SEC", module="m.py", kind="literal", value=12)}
+    rows = scan_value_mismatches([doc], _resolver(extra_code=drifted))
+    assert rows and rows[0].claim == "BAR_RETRY_DELAY_SEC=10", rows
 
 
 def test_unrecorded_toggle_flip_is_reported(tmp_path):

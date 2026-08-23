@@ -379,9 +379,11 @@ unchanged, now named `ep_rubric.SHORTLIST_SIZE` + registered in
 toggle / `EP_SHORTLIST_PRESCORE_ENABLED` env, default ON — OFF restores gap ordering exactly
 (~60s, no redeploy), pinned by `tests/test_ep_shortlist_prescore.py`.
 
-**Status**: built, awaiting deploy (working tree; deploy windows per CLAUDE.md), then
-shipped, awaiting field validation — verify-live = `mi_ep_shortlist_shadow` writes rows for
-EVERY candidate (not just twenty) on the next trading morning with `acting_key='prescore'`.
+**Status**: shipped — `ep_shortlist_prescore` / `EP_SHORTLIST_PRESCORE_ENABLED` confirmed ON
+(code default, no DB override, env unset in both containers — prod read 2026-08-23). Field
+validation still pending: `mi_ep_shortlist_shadow` holds 0 rows (no trading day has run since
+this deployed — today is Sunday). Verify-live = rows for EVERY candidate (not just twenty) on
+the next trading morning with `acting_key='prescore'`.
 
 ### 2026-08-22 — Near-miss band [50, 65) restored in the morning briefing, VISIBILITY ONLY (operator-directed) [#533 follow-on]
 
@@ -465,10 +467,12 @@ side (`ep_score_separation` OFF) the band is always empty by construction: a leg
 path (a REAL alert, shown in the main EP ALERTS list, untouched by this change) rather than a
 scan_log skip row, so the two surfaces can never collide.
 
-**Status**: built + tests green (working tree 2026-08-22, 13 new tests, suite 6022 passed / 7
-skipped), NOT committed / NOT deployed. Prod read-only, $0. Verify-live after deploy: first
-morning briefing with a sub-65 candidate shows the near-miss block; `mi_ep_alerts` gets zero
-new `score_tier='MODERATE'` rows on the separation side (unchanged from today).
+**Status**: shipped (commit `7218aadc`, an ancestor of the running prod checkout `8bcf6ff0` —
+verified 2026-08-23). No toggle — display-only read, reversion-flag is "none needed" (above).
+Field validation still pending: no trading day has run since deploy (today is Sunday).
+Verify-live: first morning briefing with a sub-65 candidate shows the near-miss block;
+`mi_ep_alerts` gets zero new `score_tier='MODERATE'` rows on the separation side (unchanged
+from today).
 
 ### 2026-08-22 — RESCALE: the separation score presents as 1.25×raw+15, bar expressed as 65, dead 50 cutline removed (PRESENTATION ONLY — ALERTING SET PROVEN IDENTICAL) [#533]
 
@@ -520,11 +524,14 @@ one revert flag: `ep_score_separation` OFF → `SCORE_WEIGHTS_LEGACY` has `outpu
 flag OFF presents the old raw scale + 50 cutline + per-regime bars byte-identically — still
 pinned by the 69-case stage-2 baseline (`tests/test_ep_score_stage2_refactor.py`, green).
 
-**Status**: built + tests green (working tree 2026-08-22, suite 6009 passed / 7 skipped
-including 103 new rescale-invariant tests), NOT committed / NOT deployed — presentation change
-with a proven-identical alerting set, no new operator sign-off sought on WHAT alerts (nothing
-about that moved); the scale choice itself implements his quoted ask. Verify-live after
-deploy: first separation-side HIGH presents ≥65 with `sep_bar=65` in `mi_ep_score_shadow`.
+**Status**: shipped (commit `ba664767`, an ancestor of the running prod checkout `8bcf6ff0` —
+verified 2026-08-23), acting via the same `ep_score_separation` flag as the separation change
+below (confirmed ON, code default, no override, env unset in both containers). Presentation
+change with a proven-identical alerting set, no new operator sign-off sought on WHAT alerts
+(nothing about that moved); the scale choice itself implements his quoted ask. Field
+validation still pending: `mi_ep_score_shadow` holds 0 rows (no trading day has run since
+deploy). Verify-live: first separation-side HIGH presents ≥65 with `sep_bar=65` in
+`mi_ep_score_shadow`.
 
 ### 2026-08-22 — SEPARATION: flat gap credit + floors trimmed to branch 4 + uniform HIGH bar 40 (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE) [#533]
 
@@ -599,8 +606,11 @@ bar, and an explicit **`live_side`** column ('separation'/'legacy') stamps which
 never inferred from dates. Both sides run through the same `_score_ep`, never a
 reimplementation.
 
-**Status**: built + tests green (working tree 2026-08-22), NOT yet committed/deployed —
-awaiting deploy window, then field validation against the shadow record. Known seam,
+**Status**: shipped (commit `51d5200c`, an ancestor of the running prod checkout `8bcf6ff0` —
+verified 2026-08-23) — `ep_score_separation` / `EP_SCORE_SEPARATION_ENABLED` confirmed ON
+(code default, no DB override, env unset in both containers). Field validation against the
+shadow record still pending: `mi_ep_score_shadow` holds 0 rows (no trading day has run since
+deploy — today is Sunday). Known seam,
 deliberate: display surfaces reading the STORED regime row's `ep_threshold` (briefing regime
 line, agent.py why-no-alert prose, allocator's advisory `legacy_eligible` label) still show
 the per-regime bar while the flag is ON — `regime.py` and stored rows untouched so the
@@ -816,13 +826,22 @@ exiting inside noise. Hard revert = restore `stop_loss_price = orb_low` in `prep
 market-agent + execution. No toggle — a stop level cannot ship dark; the reversion is a code
 revert, which is why the SSoT + tests pin every half of it.
 
-**Status**: **built 2026-08-16 (operator-signed), NOT deployed** — left in-tree per instruction;
-deploy + verify-live are the operator's call. Verify-live when deployed: (1) first entry's
-`orb_order_placed` audit + broker stop at `2·ORB_low − ORB_high`, shares ≈ half the old-formula
-count, `risk_dollars` unchanged; (2) first +2R fire's `profit_trigger_fired` payload target =
-`entry + 2·(entry − orb_low)` — NOT +4R; (3) breakeven/trail rows byte-identical in shape.
-Tests: `tests/test_2r_stop_change.py` (14, behavioural), 7 mutations each reddening their named
-test (recorded per docstring); full suite green.
+**Status**: **LIVE — deployed and verified 2026-08-16** (operator-signed; commit `561a8c6f`,
+"the stop change went live"; no toggle exists for a stop level, so deploy IS the flip). Two of
+the three verify-live layers confirmed on real trades (prod read 2026-08-23), the third
+partially: (1) placed stop — AMLX 2026-08-18 (ORB H=30.07 L=28.58 → 2R stop 27.09,
+`hard_stop`=27.09), MRNA 2026-08-19 (H=120.15 L=115 → 2R stop 109.85, `hard_stop`=109.85), MRVL
+2026-08-19 (H=241.53 L=235.84 → 2R stop 230.15, `hard_stop`=230.15) — all three match
+`2·ORB_low − ORB_high` exactly; (2) the +2R target frame — the two real `profit_trigger_fired`
+fires since 08-16 (`mi_audit_log`) both match `entry + 2·(entry − orb_low)` exactly (AMLX
+target $33.473657 = 30.211219 + 2·(30.211219−28.58); MRNA target $132.25 = 120.75 +
+2·(120.75−115)) — **not** the +4R a stop-anchored frame would silently produce; (3) breakeven
+CONFIRMED, trail NOT YET exercised — both AMLX and MRNA show `breakeven_active=true` with
+`stop_price == entry_price` exactly, matching `max(stop, entry) = entry`, but both are still
+`status=filled` (open), so the SMA10/20 trail has not engaged on any post-08-16 trade yet —
+that piece of (3) stays outstanding until one closes. Tests: `tests/test_2r_stop_change.py` (14,
+behavioural), 7 mutations each reddening their named test (recorded per docstring); full suite
+green.
 
 ### 2026-08-08 — #516: a keyword match may no longer overrule a contrary classification (OPERATOR-SIGNED)
 
@@ -1228,10 +1247,12 @@ overlay").
 shadow architecture). Rollback: R1-R5 (§8) — every rung instant + independent, landing on
 byte-identical prior behavior.
 
-**Status**: built 2026-07-25 (dark), NOT deployed. Next: operator deploys
-(`deploy.sh market-agent`) → operator sets `EP_RT_UNIVERSE_ENABLED=true` for RT-2 shadow
-(gates: ≥10 trading days AND ≥5 residual-catch days, 8 measurable gates, 3 operator-reviewed
-named lists) → RT-3 operator flip.
+**Status**: deployed, RT-2 shadow ACTIVE — `EP_RT_UNIVERSE_ENABLED='true'` confirmed in both
+containers (prod read 2026-08-23). RT-3 (`ep_rt_universe_authoritative` /
+`ep_rt_gap_authoritative` on) has NOT happened — neither has an override row in
+`mi_safeguard_state`, so both still default **False** (verified same read); a universe catch
+is still SHADOW, never admitted. Next: RT-2 gates (≥10 trading days AND ≥5 residual-catch
+days, 8 measurable gates, 3 operator-reviewed named lists) → RT-3 operator flip.
 
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 
@@ -1294,12 +1315,12 @@ survive any revert — it fixes a latent naked-order bug independently of #500.
 
 **Status**: operator-SIGNED 2026-07-23 (decisions §7 of the analysis doc: branch + 1.5× cap +
 CADL drop-list + reason capture approved; option B cancel-triggered retry DEFERRED,
-data-gated on post-fix residual `broker:entry_cancelled` rows). Built 2026-07-23
-(`tests/test_500_price_aware_entry.py`), NOT yet deployed. Pre-deploy: paper smoke of the OTO
-limit-buy order shape (operator-run). Verify-live layers: (L1) deploy-day below-orbH entries
-byte-identical brackets; (L2) first engaged fallback — log line + OTO stop leg + honest
-mi_live_orders row; (L3) next broker cancel carries a `broker:*` reason, never a bare
-"cancelled".
+data-gated on post-fix residual `broker:entry_cancelled` rows). Deployed (commit `85947a86`,
+an ancestor of the running prod checkout `8bcf6ff0` — `_pick_entry` / `CHASE_RISK_INFLATION_CAP`
+confirmed present in the prod checkout 2026-08-23; no toggle, code is the flip). Verify-live
+layers: (L1) deploy-day below-orbH entries byte-identical brackets; (L2) first engaged fallback
+— log line + OTO stop leg + honest mi_live_orders row; (L3) next broker cancel carries a
+`broker:*` reason, never a bare "cancelled".
 
 ### 2026-07-19 — Large-cap rel_volume floor SHADOW observer added (audit-only, no criteria change)
 
@@ -1649,9 +1670,10 @@ handling for the keywords that fix left direction-blind). Hard revert = drop the
 **Status**: OPERATOR-SIGNED 2026-06-14 (filter list reviewed; object-form KEEP after the
 safety correction above). Committed `28c4e59` + `/simplify` cleanup (cross-call name memo,
 trading-day audit dedup, precompiled object-form regex, honest docstring). Backtest 14/14,
-16 unit tests. NOT yet deployed — deploy AFTER the Monday split go-live (intelligence-side
-detection; no reason to add a variable to the 6/15 ORB-via-http window), then field-validate
-the live wiring (first `mna_acquirer_title_skipped` rows) + the monthly accuracy review.
+16 unit tests. **Deployed and field-validated**: `title_implies_acquirer` /
+`mna_acquirer_title_skipped` confirmed wired in the running prod checkout (verified
+2026-08-23); the live wiring has fired for real, 4 times, 2026-06-24 through 2026-07-07
+(`mi_audit_log`, prod read-only). Monthly accuracy review continues as a standing check.
 
 ### 2026-06-12 — Rubric v3: catalyst FRESHNESS clause (judge + fallback grader)
 

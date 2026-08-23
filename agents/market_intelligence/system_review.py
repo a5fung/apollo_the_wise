@@ -1729,10 +1729,13 @@ async def _early_window_drift_section() -> str:
     (`kill_scale_bands.py`) are silent below `_SAMPLE_FLOOR` (20 closed live trades, ~3
     months at the live rate) — only the equity guards bind before then (premortem R3,
     docs/analysis/premortem_450_2026-07-11.md). This prints the ROLLING live expectancy
-    (mean realized R = total_pnl/risk_dollars over closed `account_mode='live'` trades — the
-    SAME cohort definition the bands read, via `assemble_band_inputs`) against the #268b
-    calibration envelope from closed-trade 5 onward, so a bad early cohort isn't fully
-    invisible pre-floor.
+    (mean realized R = total_pnl/risk_placed over closed `account_mode='live'` trades, where
+    risk_placed is the risk ACTUALLY placed at the stop — prefers `risk_dollars_actual`,
+    falls back to `entry_shares * (entry_price - hard_stop)`; #586 — not the pre-cap
+    `risk_dollars` budget. This reads `inputs["realized_rs"]` straight from
+    `assemble_band_inputs`, so it is BY CONSTRUCTION the SAME cohort + denominator the bands
+    themselves gate on) against the #268b calibration envelope from closed-trade 5 onward,
+    so a bad early cohort isn't fully invisible pre-floor.
 
     INFORMATIONAL ONLY — mirrors replay_regression.py's no-verdict posture. Changes NOTHING
     about the bands; the operator reads the number, the bands still gate at n=20.
@@ -1955,18 +1958,26 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
         # Era-scoped counterparts of this row, for the ASK gates below only — the reported
         # numbers above (exits/peak-real/stop-ADR bits) stay the full blended window; only a
         # QUESTION must be scoped or explained (#585, 2026-08-23).
-        pt = sg = None
-        if era_trades is not None:
-            pt = _era_split_stats(era_trades, r["signal_type"], r["account_mode"], _PROFIT_TRIGGER_ERA_START)
-            sg = _era_split_stats(era_trades, r["signal_type"], r["account_mode"], _STOP_GEOMETRY_ERA_START)
+        #
+        # #585 fails CLOSED: if the era fetch broke this run, `era_trades` is None and no
+        # era-sensitive ask below has anything to check against. ONE guard here — the three
+        # ask blocks used to each re-check `pt is None` / `sg is None` separately, a condition
+        # this single check already settles for the rest of the row, and each left its own
+        # empty `pass` stub. Do NOT fill those stubs with a blended-cohort fallback if
+        # tempted to — that is the exact rule-mixing bug #585 fixed (commit f04173f0): a
+        # question built from a cohort spanning a rule change answers something the rule
+        # already settled, and saying nothing is the correct, honest output when the era
+        # split can't be trusted.
+        if era_trades is None:
+            continue
+        pt = _era_split_stats(era_trades, r["signal_type"], r["account_mode"], _PROFIT_TRIGGER_ERA_START)
+        sg = _era_split_stats(era_trades, r["signal_type"], r["account_mode"], _STOP_GEOMETRY_ERA_START)
 
         # ── ask 1: exit-reason concentration — gated on the PROFIT-TRIGGER era (2026-08-01).
         # Before that date nothing but stop_hit / manual COULD exit a trade, so a blended
         # concentration finding is partly just "the alternative didn't exist yet".
         if r["n_stop_hit"] == n:
-            if pt is None:
-                pass  # era fetch failed — do not ask on unscoped data
-            elif pt["n"] < _SETUP_REVIEW_ERA_MIN_N:
+            if pt["n"] < _SETUP_REVIEW_ERA_MIN_N:
                 L.append(f"   ({pt['n']} trade(s) under the current rules since "
                          f"{_PROFIT_TRIGGER_ERA_START} — not enough to ask about exit concentration)")
             elif pt["n_stop_hit"] == pt["n"]:
@@ -1990,9 +2001,7 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
         # on that date, so "reached ≥+2R" is a different price move before vs. after it — a
         # blended count here isn't just mixed trades, it's mixed units (see boundary comment).
         if (r["ran_then_lost"] or 0) >= 2:
-            if sg is None:
-                pass
-            elif sg["reached_2r"] < _SETUP_REVIEW_ERA_MIN_N:
+            if sg["reached_2r"] < _SETUP_REVIEW_ERA_MIN_N:
                 L.append(f"   ({sg['reached_2r']} trade(s) reached ≥+2R under the current stop "
                          f"rules since {_STOP_GEOMETRY_ERA_START} — not enough to ask; the "
                          f"{r['ran_then_lost']} such trades across the full {lookback_days}d "
@@ -2008,10 +2017,8 @@ async def _setup_performance_section(lookback_days: int = 90) -> str:
         # ── ask 3: stop tighter than the instrument's own range — gated on the STOP-GEOMETRY
         # era (2026-08-16), the date the placed stop distance itself changed.
         if r["med_stop_per_adr"] is not None and float(r["med_stop_per_adr"]) < 0.6:
-            if sg is None:
-                pass
-            elif sg["n"] < _SETUP_REVIEW_ERA_MIN_N or sg["med_stop_per_adr"] is None:
-                L.append(f"   ({sg['n'] if sg else 0} trade(s) under the current stop since "
+            if sg["n"] < _SETUP_REVIEW_ERA_MIN_N or sg["med_stop_per_adr"] is None:
+                L.append(f"   ({sg['n']} trade(s) under the current stop since "
                          f"{_STOP_GEOMETRY_ERA_START} — not enough to ask about stop geometry)")
             elif sg["med_stop_per_adr"] < 0.6:
                 asks.append(f"{label}: median stop under the current rules (since "

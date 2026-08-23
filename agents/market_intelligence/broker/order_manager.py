@@ -290,7 +290,7 @@ async def _log_notional_cap_truncation(
     entry_price: float,
     shares_before_cap: int,
     shares_after_cap: int,
-    risk_per_share: float,
+    risk_dollars_actual: float,
     risk_dollars_intended: float,
 ) -> None:
     """#571 (2026-08-23): the 20%-of-equity notional cap (`MAX_POSITION_PCT`)
@@ -306,12 +306,12 @@ async def _log_notional_cap_truncation(
     the cap stays as-is — "this will be solved with a large account eventually."
 
     `risk_dollars_intended` is the pre-cap sizing BUDGET (`equity * risk_pct`,
-    read BEFORE the cap ever touches `shares` — see the caller). The realized
-    ("actual") dollar risk at the moment the cap bites is
-    `shares_after_cap * risk_per_share`, computed here rather than passed in
-    so the one formula lives in one place.
+    read BEFORE the cap ever touches `shares` — see the caller). `risk_dollars_actual`
+    is the realized dollar risk at the moment the cap bites (`shares_after_cap *
+    risk_per_share`) — computed ONCE by the caller (it also persists to
+    `mi_live_trades.risk_dollars_actual`) and passed in here rather than
+    re-derived, so the one formula lives in one place.
     """
-    risk_dollars_actual = round(shares_after_cap * risk_per_share, 2)
     fraction = (
         risk_dollars_actual / risk_dollars_intended
         if risk_dollars_intended else None
@@ -536,6 +536,16 @@ async def prepare_orb_order(
             f"${max_position:.0f} (20% of ${equity:.0f})"
         )
 
+    # #571: the dollar risk ACTUALLY placed, using the FINAL (possibly
+    # cap-truncated) share count — distinct from `risk_dollars` above, which
+    # is the pre-cap BUDGET (`equity * risk_pct`) and is never reassigned by
+    # the cap. Equal to `risk_dollars` when the cap doesn't bind (modulo the
+    # floor() in `shares = math.floor(risk_dollars / risk_per_share)`). `shares`
+    # is final at this point (past both floor()s above) — computed ONCE here and
+    # reused below for both the truncation-audit message and the persisted
+    # `mi_live_trades.risk_dollars_actual` column, rather than re-derived twice.
+    risk_dollars_actual = round(shares * risk_per_share, 2)
+
     if shares != shares_before_cap and emit_cap_telemetry:
         await _log_notional_cap_truncation(
             ticker=ticker,
@@ -546,17 +556,11 @@ async def prepare_orb_order(
             entry_price=orb_high,
             shares_before_cap=shares_before_cap,
             shares_after_cap=shares,
-            risk_per_share=risk_per_share,
+            risk_dollars_actual=risk_dollars_actual,
             risk_dollars_intended=risk_dollars,
         )
 
     position_size = shares * orb_high
-    # #571: the dollar risk ACTUALLY placed, using the FINAL (possibly
-    # cap-truncated) share count — distinct from `risk_dollars` above, which
-    # is the pre-cap BUDGET (`equity * risk_pct`) and is never reassigned by
-    # the cap. Equal to `risk_dollars` when the cap doesn't bind (modulo the
-    # floor() in `shares = math.floor(risk_dollars / risk_per_share)`).
-    risk_dollars_actual = round(shares * risk_per_share, 2)
     limit_price = stop_limit_buy_price(orb_high)
 
     spec = {
