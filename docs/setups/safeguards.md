@@ -198,6 +198,43 @@ ORDER BY s.snapshot_date DESC;
 3. ~~Remove the count-based block from `_check_safeguards` after 30 days of clean drawdown-active operation.~~ **CANCELLED, same ruling.** The two breakers now run TOGETHER: count-based (hard block on a 10-loss streak) + tiered drawdown (sizes down, then blocks on equity drawdown). Removing either needs a fresh operator sign-off.
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
+🔴 **MEASUREMENT MISMATCH FOUND 2026-08-23 — awaiting operator sign-off (#586). The bands are
+comparing two different things.** Thresholds are NOT in question; the INPUT is.
+
+**What the benchmark measured.** `scripts/selection_replay_268.py:292-306` — the n=399 calibration
+that produced every threshold below computes each trade's R as
+`total_pnl ÷ Σ shares × (entry − stop)` — i.e. **the money actually at risk at the placed stop**,
+after the 20% notional cap has already reduced the share count.
+
+**What the live side measures.** `kill_scale_bands.py:194` reads `mi_live_trades.risk_dollars`,
+which is set at `order_manager.py` as `equity × risk_pct` **before** the cap and is never
+reassigned when the cap truncates shares (#571, 2026-08-23). It is the INTENDED budget, not the
+risk taken. On the 11 of 22 closed trades where the cap bound, the two differ by up to 3×.
+
+**Size of the error, measured on the live book (2026-08-23, n=22 closed):**
+
+| | as the bands measure it | on the calibration's own definition |
+|---|---|---|
+| cumulative | −11.26R | **−14.61R** |
+| per trade | −0.512R | **−0.664R** |
+| trailing-20 | −0.488R | **−0.630R** |
+
+Direction: the live number is compressed toward zero, so **the live book reads better than the
+benchmark scale would say**. The REDUCE trigger is −0.70 trailing-20: as measured we sit 0.21
+above it, on the calibration's definition 0.07 — roughly three bad trades away rather than ten.
+**The verdict is HOLD on both, so nothing is mis-firing today.**
+
+**Recommended fix (operator's call — this is a live-money safeguard):** point the live evaluator at
+the risk actually placed, so it matches the definition the signed thresholds were calibrated
+against. **Change no threshold.** `risk_dollars_actual` now exists on `mi_live_trades` (#571) for
+new rows; history is recoverable as `(entry_price − hard_stop) × entry_shares`. Classified as a BUG
+FIX — aligning a measurement with its own stated definition — not a criteria change.
+
+⚠ **Known opposing bias, deliberately NOT addressed:** the bands read CLOSED trades only, and the
+methodology cuts losers fast while letting winners run, so open winners are invisible and the
+closed cohort skews pessimistic. That pushes the opposite way from the bug above. Same flaw is
+already noted on the count-based circuit breaker. Left alone.
+
 ## Kill / scale criteria — live-money evaluation bands (✅ SIGNED by operator 2026-06-12 — #268b)
 
 **Purpose**: pre-committed, evidence-derived bands that decide when live trading is
