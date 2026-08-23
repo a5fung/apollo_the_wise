@@ -66,6 +66,11 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     "proposed_at":        {"entry_pipeline._skip"},
     "regime":             {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
     "risk_dollars":       {"entry_pipeline._skip"},
+    # #571 (2026-08-23): the risk actually PLACED, after the 20% notional cap truncates
+    # shares. Distinct from `risk_dollars` above, which is the PRE-cap intended budget and
+    # is never reassigned when the cap binds. Same single writer as its sibling — written at
+    # the same INSERT so the pair can never disagree about one trade.
+    "risk_dollars_actual": {"entry_pipeline._skip"},
     "signal_type":        {"entry_pipeline._skip", "live_tracker._insert_skipped_trade", "db.initialize_schema"},
     "ticker":             {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
 
