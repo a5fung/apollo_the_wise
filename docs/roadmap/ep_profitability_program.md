@@ -36,6 +36,36 @@ a specified proposal, never a request to supply material he already supplied.
 
 ## 📜 THE PRINCIPLES — read this before any analysis, any card, any proposal
 
+### P15 — NO HIDDEN RULES, AND NO FORKS (operator 2026-08-22)
+
+> *"we need to stop with all these random hidden rules, keep everything up front, make criteria
+> and selection and trades clear with simple to follow rules that can be easily explained."*
+>
+> *"why you think it's ok that we change grading that it's ok to have places to use old grading,
+> if we change something we change it everywhere, consistency at all times, no forks."*
+
+**Two halves of one rule.**
+
+**A. Every rule that kills or admits a name must be statable in one plain sentence.** If it cannot
+be explained to a trader in a line, it is not a criterion — it is a buried behaviour. The case
+that produced this: `routine + gap < 12% → discard` (`ep_detector.py:1487`) appeared in no
+operator-facing description of how selection works, and it silently kills the typical real EP,
+which gaps about 10%. Nobody chose that; it accumulated.
+▶ **Practical test:** if a rule is not written in `docs/setups/magna53_ep.md` in plain words, it
+should not be deciding anything. Adding a criterion means adding the sentence, in the same commit.
+
+**B. One change means one change EVERYWHERE. A partial rollout is a fork, and a fork is a bug.**
+The case: we corrected the catalyst grade and made it live for SCORING, while `_post_grade_filters`
+kept reading the raw, uncorrected grade. So a real EP wrongly graded `routine` was discarded before
+the correction could reach it — the fix existed and could not act.
+▶ **Practical test:** when a value changes meaning, find every consumer of it and move them
+together. If one genuinely must differ, that is a finding to surface with its reason, never a
+silent exception. Pin the invariant with a test that fails if a second path reappears.
+
+⚠ **Why this needs to be a principle and not a habit:** both halves are invisible failures. A
+buried rule looks like normal behaviour, and a fork looks like a working change. Neither shows up
+in a green test suite — which is exactly the class P1 and P14 exist to catch on the recall side.
+
 ### P14 — SELECTION IS THE CRITICAL GATE, AND IT FAILS IN BOTH DIRECTIONS (operator 2026-08-22)
 
 > *"selection is the most critical gate, admit too much we'll be overwhelmed and lose efficiency,
