@@ -19,6 +19,28 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
 6. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **KEPT — operator-ruled 2026-07-31 ("we should keep the circuit breaker"). NO LONGER DEPRECATED; the removal pre-committed below is CANCELLED.** Threshold bumped 5→10 on 2026-05-08. ⚠ Two structural properties are ACCEPTED, not fixed (constants.py:319): it is **self-perpetuating** — a loss closing DURING cooldown advances `latest_loss_at` and re-arms for another 24h — and **methodology-blind**, since a closed-trade streak over-weights losers when the methodology holds winners to a trailing stop. Both were observed live on 2026-07-31: FTNT closed −$6.63 at 09:37:50 on 07-30, which alone re-armed the cooldown to 09:37:50 on 07-31 and blocked FLNC/COHU/NWL/FET (all alerted 09:31:00) plus MPWR (09:35:42) — six live alerts, zero entries. See change log 2026-07-31.
 7. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. **EFFECTIVENESS REVIEWED 2026-07-30 — VERDICT: UNPROVEN ON LIVE MONEY (review stays OPEN).** ⚠ My first pass concluded 'net-helped' off the PAPER account and the operator corrected it: *"why looking at paper? we've switched to real money a month ago."* The review's own predicate names paper because it was written PRE-CUTOVER. **On LIVE the breaker has NEVER acted**: state WATCH, peak $5,000 (07-03), drawdown −4.36%, 28 snapshots, evaluated 07-29 — and WATCH is multiplier 1.0×, a warning that sizes nothing down. REDUCE needs −7%, BLOCK −12%; neither has fired live, and zero entries carry `block:drawdown_breaker` lifetime. **So: tracking correctly, protecting nothing yet.** The first real test is a live drawdown reaching −7%. One REDUCE trip in the whole active phase (2026-06-05 → 07-06, 31 days); BLOCK has never fired and zero entries carry `block:drawdown_breaker` lifetime. PRE-CUTOVER PAPER CONTEXT ONLY (not the verdict): one REDUCE trip 06-05→07-06 (31d) where enforcement was real — REDUCE-window n=6 avg risk $297 / notional $7,311 vs $917 / $18,504 outside, ~1/3 of normal (the 0.5× compounding with regime sizing). ⚠ But that paper 'saving' rests on ONE trade: SYRE is −$1,483 of the −$2,493 total (60%), the other five average ~−$200, and the comparison group outside the window is a SINGLE trade. Directional at best. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
 
+⚖ **OPERATOR RULING 2026-08-23 — the 20% position cap STAYS. Do not re-open it.**
+*"let's leave it for now, this will be solved with a large account eventually."*
+
+**What was asked:** #571 found the cap silently truncated 11 of 22 closed live trades, cutting
+intended risk from ~$48 to as little as $15 — we traded the name, just smaller. Only 4 names were
+missed outright (share count rounded to zero). He asked whether to raise the cap.
+
+**Why it stays, in plain words:** the cap is not a second risk rule, it is arithmetic —
+`MAX_CONCURRENT_LIVE_POSITIONS = 5` × 20% = 100% of the account, so 20% is exactly what lets a
+full book be held without margin. Raising it does not add risk-per-trade (the risk budget is
+unchanged either way); it trades **breadth for concentration** — at 33% you hold 3 names, not 5.
+On a bigger account the cap stops binding on its own, because the share count needed for a
+$50-risk trade is a smaller fraction of equity.
+
+**The gap-down worry, measured:** 17 of 22 closed trades never saw an overnight; of the 5 that
+did, the worst lost $24.13 against a $22.55 budget (1.07×). Nothing has gapped badly through a
+stop. A larger position would scale that overage proportionally, not disproportionately.
+
+**Still shipping:** the cap's truncations are being made VISIBLE (audit row + the intended-vs-placed
+figure). The value is unchanged; only the silence is. Evidence:
+`docs/analysis/position_sizing_571_2026-08-23.md`.
+
 ## Position sizing — regime-keyed risk multiplier (#456, operator-ruled 2026-07-26)
 
 **Phase**: ✅ **LIVE.** `REGIME_SIZING_ENABLED=true` verified in BOTH `apollo-market` and `apollo-execution` on 2026-08-23; the regime multipliers below have been the acting sizing rule since 2026-07-26, and the VIX-scaled + `qqq_ema_bullish`-halve behaviour they replaced applies only to trades placed BEFORE that date. ⚠ This paragraph read "flag OFF by default, production behaviour unchanged" for four weeks after the flip — found 2026-08-23 by #571's sizing measurement, which had to establish from prod data what this file should have stated. A safeguard doc that describes the wrong rule is worse than none: it gets cited authoritatively (CHANGE_PROCESS), and it is the hidden-rule failure P15 names. The default in code remains `false`; what is stated here is what is ACTING. This section documents the risk_pct COMPUTATION at the spec-builder step (upstream of the safeguards list above); the drawdown-tier + per-strategy composition below (`final_shares = ...`) is unchanged and multiplies on top of whatever risk_pct this section produces.
