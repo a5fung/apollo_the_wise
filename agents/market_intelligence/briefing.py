@@ -49,6 +49,10 @@ from agents.market_intelligence.db import (
 )
 from agents.market_intelligence.data_quality import get_quality_warnings
 from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI, TIER_RANK
+from agents.market_intelligence.ep_rubric import (
+    SEPARATION_BAR as _NEAR_MISS_HI,
+    LEGACY_MODERATE_CUTLINE as _NEAR_MISS_LO,
+)
 from agents.market_intelligence.theme_engine import get_today_themes
 from agents.market_intelligence.audit_events import EVENING_BRIEF_SENT, EVENING_BRIEF_SEND_FAILED
 
@@ -391,14 +395,46 @@ def _format_ep_section(
 
     scan_count_str = f"  ({total_scanned} gap candidates scanned)" if total_scanned > 0 else ""
 
+    # #533 follow-on (2026-08-22) — near-miss band, VISIBILITY ONLY. The separation-side
+    # rescale (2026-08-22) removed the MODERATE band (`ep_rubric.resolve_moderate_cutline`
+    # returns None while the flag is ON), so a candidate scoring presented [50, 65) — close
+    # but not a HIGH — used to be recorded nowhere the operator reads. Operator: "we don't
+    # need separate alerts but we have a section for close but misses, or moderates, can we
+    # put them there? I want them recorded in case we miss real EPs there."
+    #
+    # These rows are PURE READS of mi_ep_scan_log skip rows `ep_detector.py` already writes
+    # (score_tier stays NULL — see `_scan_row`/the score-skip `continue` in `run_ep_scan`).
+    # That `continue` fires BEFORE the earnings-day MODERATE→HIGH override and BEFORE the
+    # cross-strategy allocator enqueue ever run, so nothing sourced here can reach either —
+    # this section is display-only and can never promote a near-miss into a trade. Pinned by
+    # tests/test_ep_near_miss_band.py. On the legacy revert side (`ep_score_separation` OFF)
+    # this band is always empty here BY CONSTRUCTION: a legacy score in [50, 65) already
+    # becomes a real MODERATE tier (mi_ep_alerts, `ep_alerts` above) via the existing
+    # cutline-50/per-regime-bar path, never a scan_log skip row — so the two surfaces can't
+    # double-count. See docs/setups/magna53_ep.md #533 follow-on change-log entry.
+    near_miss_band = [
+        r for r in (scan_log or [])
+        if r.get("score_tier") is None
+        and r.get("ep_score") is not None
+        and _NEAR_MISS_LO <= r["ep_score"] < _NEAR_MISS_HI
+    ]
+    near_miss_tickers = {r["ticker"] for r in near_miss_band}
+    near_miss_str = f"  {len(near_miss_band)} near-miss" if near_miss_band else ""
+
     if not ep_alerts:
-        header = f"*{section_num}. EP ALERTS* — None this morning{scan_count_str}"
+        header = f"*{section_num}. EP ALERTS* — None this morning{near_miss_str}{scan_count_str}"
     else:
         high = [e for e in ep_alerts if e.get("score_tier") == "HIGH"]
         moderate = [e for e in ep_alerts if e.get("score_tier") == "MODERATE"]
+        # MODERATE reads as a dead "0" while the #533 separation flag is live (the tier is
+        # structurally never assigned — resolve_moderate_cutline returns None) — a live 0
+        # sitting next to the new near-miss count is misleading on a phone (the exact
+        # "dead number that misleads" reasoning that dropped the old 50 cutline). Only show
+        # it when there's something to show, on either side.
+        moderate_str = f"  {len(moderate)} MODERATE" if moderate else ""
         header = (
             f"*{section_num}. EP ALERTS* — "
-            f"{len(high)} HIGH  {len(moderate)} MODERATE{scan_count_str}"
+            f"{len(high)} HIGH{moderate_str}{near_miss_str}{scan_count_str}"
         )
 
     lines = [header]
@@ -407,10 +443,27 @@ def _format_ep_section(
         # Shared per-ticker formatter (lead="  " preserves this section's nesting).
         lines.extend(_format_ep_ticker_block(ep, lead="  "))
 
-    # Near-miss line — compact, one per line max 5, skip top-20-cap noise
+    if near_miss_band:
+        nm_lines = [
+            f"  👀 *Near-miss ({_NEAR_MISS_LO}-{_NEAR_MISS_HI}, recorded only — not tradeable)*"
+        ]
+        for r in near_miss_band[:12]:
+            cat = (r.get("catalyst_quality") or "?").replace("_", " ")
+            gap = r.get("gap_pct")
+            gap_str = f"{gap:.1f}%" if gap is not None else "?"
+            nm_lines.append(
+                f"    `{r['ticker']}` score {r['ep_score']:.0f}  gap {gap_str}  {cat}"
+            )
+        if len(near_miss_band) > 12:
+            nm_lines.append(f"    …{len(near_miss_band) - 12} more")
+        lines.append("\n".join(nm_lines))
+
+    # Near-miss line — compact, one per line max 5, skip top-20-cap noise. Excludes the
+    # dedicated near-miss band above (own labeled block) so a ticker never renders twice.
     near_misses = [
         r for r in filtered
         if "top-20" not in (r.get("filter_reason") or "")
+        and r.get("ticker") not in near_miss_tickers
     ][:5]
     if near_misses:
         parts = []

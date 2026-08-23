@@ -135,16 +135,30 @@ byte-identically.
 Score thresholds (the HIGH decision outranks any cutline — a bar-clearing score never dies on
 one; with the legacy bars 65-80 that is byte-identical to the old order):
 - **Flag ON (separation, default): `≥ 65` presented → HIGH** (immediate Telegram + ORB
-  submission window), **below 65 → skip. There is NO MODERATE band** — the old `50` cutline was
-  leftover from the old scale and sat ABOVE the raw bar 40, so the band was already empty every
-  day; the rescale REMOVES it on this side rather than carry a dead number
-  (`ep_rubric.resolve_moderate_cutline` → None). The bar is `ep_rubric.SEPARATION_BAR` (65 =
-  raw `SEPARATION_BAR_RAW` 40 through the transform — raw-40 remains the volume-neutral
+  submission window), **below 65 → skip.** The bar is `ep_rubric.SEPARATION_BAR` (65 = raw
+  `SEPARATION_BAR_RAW` 40 through the transform — raw-40 remains the volume-neutral
   operator-signed policy; the raw 45/50 fewer-alert rows present as 71.25/77.5).
-  ⚠ Re-arming a MODERATE band on the presented scale (e.g. `[50, 65)`) would be a CRITERIA
-  change, not presentation: a new briefing population (~2.3 names/day on the #533 corpus) AND
-  it re-arms the earnings-day MODERATE→HIGH override on names that today skip silently —
-  operator-only decision.
+  `ep_rubric.resolve_moderate_cutline` still returns **None** on this side — **there is no
+  MODERATE *tier*.** A score in `[50, 65)` never gets `score_tier="MODERATE"`, never reaches
+  the earnings-day MODERATE→HIGH override, never reaches the cross-strategy allocator enqueue,
+  and never reaches the entry pipeline — that decision is untouched by the change below.
+  **#533 follow-on (2026-08-22, operator-directed — visibility only, not a criteria change):**
+  a `[50, 65)` **near-miss band is now RECORDED in the morning briefing** ("EP ALERTS" section,
+  `👀 Near-miss (50-65, recorded only — not tradeable)`), operator's own words: *"we don't need
+  separate alerts but we have a section for close but misses, or moderates, can we put them
+  there? I want them recorded in case we miss real EPs there."* This is a pure READ of the
+  `mi_ep_scan_log` skip rows the scorer already writes (`score_tier` stays NULL on them) — no
+  new storage, no new Telegram surface, no scoring/tiering change. See
+  `agents/market_intelligence/briefing.py::_format_ep_section` (`near_miss_band`),
+  `tests/test_ep_near_miss_band.py` (the promotion-proof: a near-miss score with a
+  gap≥10%/earnings-day shape structurally cannot reach `tier == "MODERATE"`, so the
+  earnings-override guard is unreachable for it). Re-arming the actual MODERATE **tier**
+  (i.e. making these names entry/allocator-eligible, which WOULD also re-arm the earnings
+  override) remains a criteria change and stays operator-only — nothing here does that.
+  Measured volume: attempted, inconclusive rather than a correction — see the change-log
+  entry below for the full readout, including a harness-faithfulness check that failed
+  (median −6 pts vs stored historical scores) and why that keeps the ~2.3/day figure standing
+  as "order 1–3/day, not shown wrong" rather than replaced by a lower number.
 - **Flag OFF (revert): unchanged** — `< 50` → skip; `50 ≤ score < ep_threshold` → MODERATE
   (briefing only); `≥ ep_threshold` → HIGH at the per-regime bar from the stored regime row
   (`regime.py`: Bull=65, Choppy=70, Correcting=75, Crisis=80), all on the old raw scale.
@@ -184,6 +198,93 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-22 — Near-miss band [50, 65) restored in the morning briefing, VISIBILITY ONLY (operator-directed) [#533 follow-on]
+
+**Trigger**: the rescale below (same day) correctly removed the MODERATE *tier* and, as a side
+effect, left `[50, 65)` completely silent — no row, no reason, no trace anywhere the operator
+looks. Operator: *"we don't need separate alerts but we have a section for close but misses,
+or moderates, can we put them there? I want them recorded in case we miss real EPs there."*
+This is P1 in his own words elsewhere: a false exclusion that leaves no trace is invisible and
+therefore uncatchable.
+
+**Build**: the morning briefing's existing EP ALERTS section (`_format_ep_section`,
+`agents/market_intelligence/briefing.py`) now renders a `👀 Near-miss (50-65, recorded only —
+not tradeable)` block sourced from `mi_ep_scan_log` rows where `score_tier IS NULL` and
+`50 ≤ ep_score < 65` (presented scale) — rows `ep_detector.py` already writes on every
+score-based skip (`_scan_row`, the `continue` at the `ep_score < ep_threshold` check). No new
+column, no new table, no new Telegram surface — a pure read of what was already being
+recorded. Ticker/score/gap/catalyst per name, capped at 12/day with an overflow count; the
+header gains an `N near-miss` count. The pre-existing generic 5-slot "Near misses:" catch-all
+line is untouched except that it now excludes tickers already shown in the dedicated block
+(no double-count).
+
+**⚠ The trap this build does NOT fall into** (named in the rescale entry below): re-arming
+`ep_rubric.resolve_moderate_cutline` to return `50` on the separation side would give these
+candidates `score_tier="MODERATE"`, which would (a) re-arm the earnings-day MODERATE→HIGH
+override — turning some near-misses into real HIGH alerts / ORB entries, a criteria change the
+operator did not ask for — and (b) make them cross-strategy-allocator slot contenders. Neither
+happened: `resolve_moderate_cutline(True)` is still `None`, unchanged. The near-miss band is
+sourced entirely from rows where the tier decision is ALREADY TERMINAL (`score_tier IS NULL`,
+written after the `continue`, before the override or the allocator ever run) — displaying them
+cannot retroactively change that decision. Pinned by `tests/test_ep_near_miss_band.py`:
+source-inspection pins on `run_ep_scan`'s ordering (skip-continue → tier assignment →
+earnings-override, in that order, must not reorder), a boundary sweep of the real
+`resolve_moderate_cutline`/skip-condition over the whole `[50, 65)` band proving `continue`
+always fires, an end-to-end check through the real `_score_ep` with a gap≥10%/game_changer-
+adjacent shape (the override's own trigger condition) landing in-band and still resolving to
+`tier=None`, and briefing-level tests that the band never double-counts a real MODERATE/HIGH
+row or a legacy-side alert.
+
+**Volume — attempted a $0 measurement, result is INCONCLUSIVE, the 2.3/day figure stands.**
+The rescale entry below cites "~2.3 names/day on the #533 corpus" with no saved derivation
+(grepped `docs/analysis/` — nothing). First pass (`scripts/probes/_nearmiss_533followon_replay.py`):
+pulled every candidate that reached `_score_ep` under the OLD/currently-live rubric in the
+trailing 90 days (`mi_ep_scan_log`, last-seen row per ticker/day, 463 candidates over 61
+trading days) and re-scored each through the REAL, currently-committed `_score_ep` +
+`SCORE_WEIGHTS` (imported, never reimplemented), defaulting `float`/`vol_conviction`/
+`theme_bonus`/`confidence_multiplier` to zero/1.0 (none of those inputs are in
+`mi_ep_scan_log`): **≈1.4 near-miss names/day** (85/61). Initially read as a correction
+(2.02/day HIGH replay landed near the rescale study's modeled 1.81/day, suggesting the
+harness was sound) — **advisor review caught that this cross-check doesn't establish
+faithfulness**: the omitted inputs are worth up to +25 presented points (theme +12.5, float
++6.25, vol_conviction +6.25, plus the ×1.2 agreement multiplier), against a band only 15
+presented points wide, so a coincidental match on HIGH volume says nothing about the
+near-miss band specifically.
+
+**The actual faithfulness check** (`scripts/probes/_nearmiss_harness_faithfulness_check.py`):
+replayed the same 463 candidates through `SCORE_WEIGHTS_LEGACY` + the per-regime bar (the
+rubric that ACTUALLY produced each row's stored historical `ep_score`) and compared
+row-by-row against that stored value. Result: **median diff −6.0, mean −5.0, only 27% within
+±5 points, 51% under-scored by more than 5** — the harness systematically UNDER-scores
+because the omitted inputs matter as much as the advisor flagged. That makes the missing-input
+bias larger than the 1.4-vs-2.3 gap itself, in a non-monotone direction (missing points both
+keep candidates out of `[50, 65)` from below AND keep them from crossing 65 into HIGH), so
+**1.4/day is not reported as a correction of 2.3** — the honest read is "near-miss volume is
+probably order 1–3/day, consistent with the cited ~2.3, not shown wrong." The 2.3/day figure
+stands uncorrected; this paragraph exists so the next person doesn't re-trust the first-pass
+1.4 number without re-running the faithfulness check.
+
+**Does the band have data by 9:00 AM ET send time? Checked, yes.** The EP scan job runs every
+5 minutes 7:00–10:00 AM ET (`scheduler.py::_ep_scan_job`); the morning briefing sends at a
+fixed 9:00 AM ET (`CronTrigger(hour=9, minute=0, ...)`, `JOB_MORNING_BRIEFING`). Prod check
+(trailing 15 trading days, read-only): scored rows (`ep_score IS NOT NULL`) start landing at
+7:00–7:20 AM ET on 14 of 15 days, with 5–247 scored rows already recorded before 9:00 AM ET
+on every one of those days; the one exception (2026-08-21) was a scan outage (2 scored rows
+all day, first at 9:55 AM) unrelated to this change. The near-miss block will have real
+candidates to show on ordinary trading days, not render empty by default.
+
+**Reversion-flag**: none needed — this is a display-only read, not a scoring/tiering change,
+so it carries no criteria risk and nothing to revert on `ep_score_separation`. On the legacy
+side (`ep_score_separation` OFF) the band is always empty by construction: a legacy score in
+`[50, 65)` already gets `score_tier="MODERATE"` via the pre-existing cutline-50/per-regime-bar
+path (a REAL alert, shown in the main EP ALERTS list, untouched by this change) rather than a
+scan_log skip row, so the two surfaces can never collide.
+
+**Status**: built + tests green (working tree 2026-08-22, 13 new tests, suite 6022 passed / 7
+skipped), NOT committed / NOT deployed. Prod read-only, $0. Verify-live after deploy: first
+morning briefing with a sub-65 candidate shows the near-miss block; `mi_ep_alerts` gets zero
+new `score_tier='MODERATE'` rows on the separation side (unchanged from today).
 
 ### 2026-08-22 — RESCALE: the separation score presents as 1.25×raw+15, bar expressed as 65, dead 50 cutline removed (PRESENTATION ONLY — ALERTING SET PROVEN IDENTICAL) [#533]
 
