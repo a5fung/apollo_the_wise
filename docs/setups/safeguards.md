@@ -37,9 +37,14 @@ $50-risk trade is a smaller fraction of equity.
 did, the worst lost $24.13 against a $22.55 budget (1.07×). Nothing has gapped badly through a
 stop. A larger position would scale that overage proportionally, not disproportionately.
 
-**Still shipping:** the cap's truncations are being made VISIBLE (audit row + the intended-vs-placed
-figure). The value is unchanged; only the silence is. Evidence:
-`docs/analysis/position_sizing_571_2026-08-23.md`.
+**Shipped 2026-08-23:** every cap truncation now writes an audit row — a trader can repeat back:
+*"when the 20% cap shrinks a trade, it's recorded, not silent."* Event
+`sizing_notional_cap_truncated` (`agents/market_intelligence/audit_events.py`) fires from
+`prepare_orb_order` (`broker/order_manager.py`) whenever the cap actually binds, carrying ticker,
+equity, shares before/after, and the dollar risk intended vs. actually placed. `mi_live_trades`
+gained a new nullable column, `risk_dollars_actual`, so the same intended-vs-placed comparison is a
+plain SQL query on every row, not a one-off reconstruction. The cap VALUE is unchanged — this is
+the visibility half of #571; evidence: `docs/analysis/position_sizing_571_2026-08-23.md`.
 
 ## Position sizing — regime-keyed risk multiplier (#456, operator-ruled 2026-07-26)
 
@@ -333,6 +338,26 @@ overridden again. Pre-commitment is preserved by making overrides visible,
 not impossible.
 
 ## Change log (newest first)
+
+### 2026-08-23 — The 20% notional cap's truncations are now recorded (#571, telemetry only)
+
+**What changed:** whenever the cap actually binds, `prepare_orb_order` now writes a
+`sizing_notional_cap_truncated` audit event (shares before/after, dollar risk intended vs.
+placed, and the fraction between them), and `mi_live_trades` gained a nullable
+`risk_dollars_actual` column carrying the placed number.
+
+**Correction found while building this:** the existing `risk_dollars` column is NOT the
+post-cap number — it is the pre-cap intended BUDGET, never reassigned when the cap shrinks
+`shares`. Any past reading of `risk_dollars` as "risk taken" overstated it on every cap-bound
+row (11 of 22 closed trades).
+
+**What did not change (THE LINE):** the cap value (20%), `RISK_PCT`, the regime multipliers,
+the `floor()` rounding, and the zero-share reject are byte-identical — pinned by
+`tests/test_571_notional_cap_visibility.py`.
+
+Evidence: `docs/analysis/position_sizing_571_2026-08-23.md`. Operator ruling on the cap value
+itself: see above (2026-08-23, "the cap stays").
+
 
 ### 2026-08-08 — Partial-exit circuit breaker is now PER ACCOUNT MODE (#525, operator-signed)
 

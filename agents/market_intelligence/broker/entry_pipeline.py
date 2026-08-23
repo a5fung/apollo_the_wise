@@ -648,6 +648,14 @@ async def submit_trade_entry(
         order_spec["shares"] = new_shares
         order_spec["position_size"] = round(new_shares * entry_price, 2)
         order_spec["risk_dollars"] = round(new_shares * risk_per_share, 2)
+        # #571: keep risk_dollars_actual (the dollar risk actually placed) in
+        # lockstep with this further reduction — same formula as risk_dollars
+        # just above, so the pair stays consistent (both now reflect the
+        # 20%-cap AND the composite multiplier). This step's own reduction is
+        # already separately audited (sizing_multiplier_clamped /
+        # per_strategy_sizing_applied below); this line only prevents
+        # risk_dollars_actual from going stale relative to the final shares.
+        order_spec["risk_dollars_actual"] = order_spec["risk_dollars"]
         try:
             await log_audit_event(
                 "per_strategy_sizing_applied",
@@ -752,9 +760,10 @@ async def submit_trade_entry(
                         (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
                          status, orb_high, orb_low, atr_14,
                          entry_price, entry_shares, stop_price, hard_stop,
-                         position_size, risk_dollars, signal_type, account_mode, proposed_at)
+                         position_size, risk_dollars, signal_type, account_mode,
+                         risk_dollars_actual, proposed_at)
                     VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
-                            $10,$11,$12,$12,$13,$14,$15,$16,NOW())
+                            $10,$11,$12,$12,$13,$14,$15,$16,$17,NOW())
                     ON CONFLICT (ticker, alert_date, account_mode) DO NOTHING
                     RETURNING id
                     """,
@@ -768,6 +777,11 @@ async def submit_trade_entry(
                     order_spec["stop_loss_price"],
                     order_spec["position_size"], order_spec["risk_dollars"],
                     signal_type, account_mode,
+                    # #571: nullable — the pre-cap `risk_dollars` budget above is
+                    # unaffected; this is the dollar risk actually placed by the
+                    # final (possibly cap-truncated) share count. .get() because
+                    # this key postdates some historical spec_builder shapes.
+                    order_spec.get("risk_dollars_actual"),
                 )
                 if trade_id and auto_enter:
                     # Auto-enter confirm flip INSIDE the same transaction: the

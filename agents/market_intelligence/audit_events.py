@@ -85,6 +85,23 @@ ENTRY_ORDER_REJECTED = "entry_order_rejected"
 # is off (today's VIX-scaled + qqq_ema_bullish-halve formula never emits this).
 SIZING_REGIME_FALLBACK = "sizing_regime_fallback"
 
+# ── Notional (20%-of-equity) cap truncation (#571, 2026-08-23) ──────────────
+# `prepare_orb_order`'s `max_position = equity * MAX_POSITION_PCT` step (the
+# LIVE MAGNA53 sizing path) silently shrank shares when a tight stop produced
+# a share count worth more than 20% of equity — the trade still fired, just
+# smaller, and nothing recorded it (only the shares==0 case a few lines below
+# logged anything). Measured over the 22 closed live trades as of 2026-08-23
+# (docs/analysis/position_sizing_571_2026-08-23.md): bound 11 of 22, cutting
+# intended risk from ~$48 to as little as $15. OPERATOR RULING 2026-08-23: the
+# cap VALUE stays ("this will be solved with a large account eventually",
+# docs/setups/safeguards.md) — this event is telemetry only, the #570
+# universe-floor precedent applied to sizing instead of selection. Fires from
+# the LIVE call path only (`emit_cap_telemetry=True`, the default); the #482
+# shadow lane (shadow_orb_tracker.py) calls with `emit_cap_telemetry=False`
+# since it places no real order and would otherwise pollute this signal with
+# non-money candidates.
+SIZING_NOTIONAL_CAP_TRUNCATED = "sizing_notional_cap_truncated"
+
 # ── Trade-state / broker hygiene ────────────────────────────────────────────
 NAKED_POSITION_DETECTED = "naked_position_detected"
 NAKED_POSITION_REMEDIATION_FAILED = "naked_position_remediation_failed"

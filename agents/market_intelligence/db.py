@@ -885,6 +885,20 @@ async def initialize_schema() -> None:
                 hard_stop FLOAT,
                 position_size FLOAT,
                 risk_dollars FLOAT,
+                -- #571 (2026-08-23): `risk_dollars` above is the PRE-CAP sizing budget
+                -- (equity * risk_pct at spec-build time) — it is never reassigned when the
+                -- 20%-of-equity notional cap truncates `entry_shares`, so it silently reads
+                -- "intended", not "placed". `risk_dollars_actual` = the final (possibly
+                -- capped) shares * risk_per_share — the dollar risk actually placed. NULL on
+                -- rows written before this column existed. ⚠ Blind spot: if a later
+                -- per-strategy/drawdown sizing multiplier ALSO reduces shares
+                -- (entry_pipeline.py's composite-multiplier step), both this column and
+                -- `risk_dollars` get overwritten to match — on those rows the fraction
+                -- risk_dollars_actual / risk_dollars reads ~1.00 even though the ORIGINAL
+                -- 1%-risk budget was cut twice; that second cut has its own audit trail
+                -- (`sizing_multiplier_clamped` / `per_strategy_sizing_applied`), it is not
+                -- lost, just not visible from this pair of columns alone.
+                risk_dollars_actual FLOAT,
                 entry_order_id TEXT,
                 stop_order_id TEXT,
                 exits JSONB DEFAULT '[]',
@@ -3284,6 +3298,10 @@ async def initialize_schema() -> None:
             -- 'incident_2026_05_14_naked_position' on CRMD #137.
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS pnl_attribution TEXT;
+            -- #571 (2026-08-23): see the CREATE TABLE comment above (mi_live_trades block) —
+            -- the pre-cap `risk_dollars` budget vs the post-cap dollar risk actually placed.
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS risk_dollars_actual FLOAT;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

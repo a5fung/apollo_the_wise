@@ -40,6 +40,7 @@ from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
     RISK_PCT,
     REGIME_SIZING_FALLBACK_MULTIPLIER,
+    MAX_POSITION_PCT,
 )
 from agents.market_intelligence.db import (
     get_pool,
@@ -48,7 +49,10 @@ from agents.market_intelligence.db import (
     get_runtime_toggle,
     _jsonb_param,
 )
-from agents.market_intelligence.audit_events import SIZING_REGIME_FALLBACK
+from agents.market_intelligence.audit_events import (
+    SIZING_REGIME_FALLBACK,
+    SIZING_NOTIONAL_CAP_TRUNCATED,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -276,6 +280,54 @@ async def _alert_regime_sizing_fallback_once(
     )
 
 
+async def _log_notional_cap_truncation(
+    *,
+    ticker: str,
+    alert_date: date,
+    account_mode: str,
+    equity: float,
+    max_position: float,
+    entry_price: float,
+    shares_before_cap: int,
+    shares_after_cap: int,
+    risk_per_share: float,
+    risk_dollars_intended: float,
+) -> None:
+    """#571 (2026-08-23): the 20%-of-equity notional cap (`MAX_POSITION_PCT`)
+    truncates shares SILENTLY today — the trade still fires, just smaller, and
+    nothing records it except the shares==0 reject a few lines below. Measured
+    over the 22 closed live trades (docs/analysis/position_sizing_571_2026-08-23.md):
+    bound 11 of 22, cutting intended risk from ~$48 to as little as $15.
+
+    Telemetry only — mirrors #570 (silent D-1 universe floors made visible).
+    The cap VALUE, `MAX_POSITION_PCT`, the floor/rounding, and the zero-share
+    reject are ALL untouched by this call; it only makes an already-happening
+    truncation observable. OPERATOR RULING 2026-08-23 (docs/setups/safeguards.md):
+    the cap stays as-is — "this will be solved with a large account eventually."
+
+    `risk_dollars_intended` is the pre-cap sizing BUDGET (`equity * risk_pct`,
+    read BEFORE the cap ever touches `shares` — see the caller). The realized
+    ("actual") dollar risk at the moment the cap bites is
+    `shares_after_cap * risk_per_share`, computed here rather than passed in
+    so the one formula lives in one place.
+    """
+    risk_dollars_actual = round(shares_after_cap * risk_per_share, 2)
+    fraction = (
+        risk_dollars_actual / risk_dollars_intended
+        if risk_dollars_intended else None
+    )
+    frac_str = f"{fraction:.0%}" if fraction is not None else "n/a"
+    date_str = alert_date.isoformat() if alert_date else "unknown"
+    summary = (
+        f"{ticker} {date_str} account_mode={account_mode}: 20% notional "
+        f"cap truncated {shares_before_cap}->{shares_after_cap} shares (entry=${entry_price:.2f} "
+        f"equity=${equity:.0f} max_position=${max_position:.0f}) — risk "
+        f"${risk_dollars_intended:.2f} intended -> ${risk_dollars_actual:.2f} actual "
+        f"({frac_str} of intended)"
+    )
+    await log_audit_event(SIZING_NOTIONAL_CAP_TRUNCATED, summary)
+
+
 async def _resolve_regime_risk_pct(
     regime_record: dict | None,
     today: date,
@@ -363,6 +415,7 @@ async def prepare_orb_order(
     regime_record: dict | None,
     account_mode: str | None = None,
     today: date | None = None,
+    emit_cap_telemetry: bool = True,
 ) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares/risk from ORB bar and account equity.
@@ -377,6 +430,15 @@ async def prepare_orb_order(
     `EXECUTION_MODE=http` (cross-container) or a slow bar-fetch retry
     spanning a midnight ET boundary. Defaults to `et_today()` only for
     callers that don't have one on hand (e.g. tests, or the HTF path).
+
+    `emit_cap_telemetry` (#571, default True): whether a 20%-notional-cap
+    truncation writes the `SIZING_NOTIONAL_CAP_TRUNCATED` audit event. The
+    real caller (`live_tracker.py`, real money) leaves this at the default.
+    The #482 shadow lane (`shadow_orb_tracker.py`) calls this same function
+    with `account_mode=None` (its equity read is a display convenience, not a
+    real order) and passes `emit_cap_telemetry=False` — without it, shadow
+    candidates would silently pollute a signal meant to measure only real
+    truncated trades.
     """
     orb_high = orb_bar["high"]
     orb_low = orb_bar["low"]
@@ -455,8 +517,15 @@ async def prepare_orb_order(
             f"${risk_per_share:.2f} per-share < 1 share"
         )
 
-    # Max 20% of account in one position
-    max_position = equity * 0.20
+    # Max 20% of account in one position. #571 (2026-08-23): this silently
+    # truncates shares — the trade still fires, just smaller — with nothing
+    # recording it besides the shares==0 reject below. `shares_before_cap` +
+    # the telemetry call a few lines down make that visible; the cap VALUE
+    # (MAX_POSITION_PCT), this formula, and the zero-share reject are all
+    # UNCHANGED (THE LINE) — see _log_notional_cap_truncation's docstring and
+    # the operator ruling in docs/setups/safeguards.md.
+    max_position = equity * MAX_POSITION_PCT
+    shares_before_cap = shares
     if shares * orb_high > max_position:
         shares = math.floor(max_position / orb_high)
 
@@ -467,7 +536,27 @@ async def prepare_orb_order(
             f"${max_position:.0f} (20% of ${equity:.0f})"
         )
 
+    if shares != shares_before_cap and emit_cap_telemetry:
+        await _log_notional_cap_truncation(
+            ticker=ticker,
+            alert_date=today,
+            account_mode=account_mode or current_account_mode(),
+            equity=equity,
+            max_position=max_position,
+            entry_price=orb_high,
+            shares_before_cap=shares_before_cap,
+            shares_after_cap=shares,
+            risk_per_share=risk_per_share,
+            risk_dollars_intended=risk_dollars,
+        )
+
     position_size = shares * orb_high
+    # #571: the dollar risk ACTUALLY placed, using the FINAL (possibly
+    # cap-truncated) share count — distinct from `risk_dollars` above, which
+    # is the pre-cap BUDGET (`equity * risk_pct`) and is never reassigned by
+    # the cap. Equal to `risk_dollars` when the cap doesn't bind (modulo the
+    # floor() in `shares = math.floor(risk_dollars / risk_per_share)`).
+    risk_dollars_actual = round(shares * risk_per_share, 2)
     limit_price = stop_limit_buy_price(orb_high)
 
     spec = {
@@ -477,6 +566,7 @@ async def prepare_orb_order(
         "stop_loss_price": stop_loss_price,
         "shares": shares,
         "risk_dollars": round(risk_dollars, 2),
+        "risk_dollars_actual": risk_dollars_actual,
         "risk_per_share": round(risk_per_share, 2),
         "position_size": round(position_size, 2),
         "equity": equity,
@@ -5943,7 +6033,14 @@ async def prepare_prior_day_low_orb_order(
     risk_dollars = equity * risk_pct
     shares = math.floor(risk_dollars / risk_per_share)
 
-    max_position = equity * 0.20
+    # #571 (2026-08-23): points at the shared constant instead of a second
+    # hardcoded 0.20 literal (values verified identical; see
+    # test_571_notional_cap_visibility.py's no-op pin). No #571 audit
+    # telemetry here — this path has had NO live caller since #515 removed
+    # `submit_9m_day2_trade`; it now serves ONLY the #482 shadow lane
+    # (`shadow_orb_tracker.py`, no Alpaca submits), so a truncation here is
+    # not a real-money event.
+    max_position = equity * MAX_POSITION_PCT
     if shares * orb_high > max_position:
         shares = math.floor(max_position / orb_high)
 

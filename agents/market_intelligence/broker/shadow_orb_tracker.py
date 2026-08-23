@@ -173,6 +173,11 @@ async def _process_candidate(
         atr_14, _ = await compute_atr_14(ticker, today)
         spec, reject = await prepare_orb_order(
             alert_ctx, synthetic_orb_bar, atr_14 or 0, regime_record,
+            # #571: this lane places no real order (module docstring: "No
+            # Alpaca submits") — suppress the 20%-cap truncation audit event
+            # so shadow candidates don't pollute a signal meant to measure
+            # only real truncated trades.
+            emit_cap_telemetry=False,
         )
     else:
         spec, reject = await prepare_prior_day_low_orb_order(
