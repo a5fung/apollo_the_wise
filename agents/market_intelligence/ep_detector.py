@@ -1410,13 +1410,32 @@ async def _post_grade_filters(
     today_volume: int,
     pm_rvol: float | None,
     today: "date",
+    lattice_acting: bool = False,
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
     fresh-grade tick AND a later tick re-checking a cached-but-not-yet-cleared
     grade can run them without any LLM call. ORDER + reason strings + thresholds
-    are byte-identical to the pre-#405 inline checks (FROZEN — this function
-    moves control flow, it does not tune criteria).
+    were frozen byte-identical to the pre-#405 inline checks until 2026-08-22.
+
+    ⚖ ONE GRADE EVERYWHERE (operator 2026-08-22: "if we change something we change it
+    everywhere, consistency at all times, no forks" — CHANGE_PROCESS entry in
+    docs/setups/magna53_ep.md): `catalyst_quality` here is the ACTING grade — the
+    lattice-corrected tier when the `catalyst_tier_lattice` toggle is ON (the caller
+    resolves it via `_resolve_acting_catalyst_quality` and passes
+    `lattice_acting=True`), the raw LLM grade when it is OFF (`lattice_acting=False`,
+    byte-identical pre-flip behaviour). A filter and the score must never disagree
+    about what the same news is worth. Plain-words rules these filters implement:
+      1) A takeover/buyout target is never a momentum trade — skip.
+      2) A routine-news name gapping under 12% is skipped — but "routine" now means
+         the CORRECTED grade, so a real EP the LLM mis-graded routine is no longer
+         binned before the correction (and the score) can see it.
+      3) Under 25K pre-market shares is skipped, unless volume is exploding (5x pm
+         RVOL) or the gap is 10%+ with a strong-or-better catalyst (`lattice_acting`
+         extends the R6 carve-out to game_changer — without that, a lattice PROMOTION
+         to the top tier would strip a name of a bypass its old grade earned, i.e. a
+         better grade would admit less; raw side keeps the historical strong-only
+         carve-out exactly).
 
     All three inputs besides `catalyst_quality`/`claude_analysis`/`news_summary`
     (the settled grade fields) are per-tick/time-sensitive — gap_pct, today_volume,
@@ -1510,10 +1529,15 @@ async def _post_grade_filters(
         elif (
             _R6_ENABLED
             and gap_pct >= 10.0
-            and catalyst_quality == "strong"
+            # Acting-grade side: strong OR game_changer (a lattice promotion must never
+            # cost a name the bypass its previous grade earned). Raw side: the
+            # historical strong-only condition, byte-identical.
+            and catalyst_quality in (
+                ("strong", "game_changer") if lattice_acting else ("strong",)
+            )
         ):
             bypass_reason = (
-                f"R6 carve-out: gap={gap_pct:.1f}% + catalyst=strong"
+                f"R6 carve-out: gap={gap_pct:.1f}% + catalyst={catalyst_quality}"
             )
         if bypass_reason is None:
             reason = (
@@ -1527,6 +1551,86 @@ async def _post_grade_filters(
         )
 
     return None
+
+
+def _resolve_acting_catalyst_quality(
+    ticker: str,
+    llm_quality: "str | None",
+    claude_analysis: "str | None",
+    grounded_text: "str | None",
+    news_summary: "str | None",
+    board_sectors: dict,
+    lattice_live: bool,
+) -> "tuple[str | None, dict | None, str]":
+    """ONE GRADE EVERYWHERE (operator 2026-08-22: "if we change something we change it
+    everywhere, consistency at all times, no forks"). The acting catalyst grade at EVERY
+    decision point — the admission filters, the earnings boost, the revenue gate, the
+    #72 prose downgrade, the score, the tier — is the lattice verdict over the CURRENT
+    raw LLM grade when the `catalyst_tier_lattice` toggle is ON, and the raw grade
+    itself when it is OFF (byte-identical pre-flip behaviour, the one revert flag).
+    This helper is the single derivation; `run_ep_scan` calls it at grade-settle and
+    again after every raw-grade mutation, so no consumer ever reads a stale side and
+    no code path can read the raw grade while another reads the corrected one
+    (pinned by tests/test_lattice_admission_consistency.py).
+
+    Returns (acting_quality, verdict, live_side). Fail direction: any error degrades
+    to the raw LLM grade, loudly — a lattice failure can delay the corrected tier,
+    never dark the scan (same contract as the pre-consistency flip point)."""
+    try:
+        from agents.market_intelligence.catalyst_tier_shadow import (
+            compute_shadow_verdict, resolve_live_tier)
+        verdict = compute_shadow_verdict(
+            ticker=ticker,
+            live_quality=llm_quality,
+            claude_analysis=claude_analysis,
+            grounded_text=grounded_text,
+            news_summary=news_summary,
+            sector_by_ticker=board_sectors,
+        )
+        acting, side = resolve_live_tier(llm_quality, verdict, lattice_live)
+        return acting, verdict, side
+    except Exception as e:  # loud-ok: fail direction = the raw LLM grade acts this tick
+        logger.warning(
+            f"{ticker}: catalyst lattice failed — LLM grade acts this tick: {e}")
+        return llm_quality, None, "llm"
+
+
+def _tier_kill_row(
+    ticker: str,
+    llm_quality: "str | None",
+    verdict: "dict | None",
+    live_side: str,
+    claude_analysis: "str | None",
+    grounded_text: "str | None",
+    news_summary: "str | None",
+    c: dict,
+    rel_volume: float,
+) -> "dict | None":
+    """Catalyst-tier record row for a GRADED candidate killed by a post-grade filter
+    (no score, no tier — ep_score/live_tier stay None). Closes the ARM-class evidence
+    hole: filter-killed graded names previously left no recorded analysis text
+    anywhere, which is exactly why 4 of the 7 routine-graded labelled real EPs were
+    'undetermined offline' in the #533 shadow eval. Returns None on any error —
+    capture must never jeopardize the scan."""
+    try:
+        return {
+            "ticker": ticker,
+            "live_quality": llm_quality,
+            "verdict": verdict,
+            "live_side": live_side,
+            "claude_analysis": claude_analysis,
+            "grounded_text": grounded_text,
+            "news_summary": news_summary,
+            "gap_pct": c.get("gap_pct"),
+            "adv_dollar": ((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
+            "rel_volume": rel_volume,
+            "projected_vol_multiple": c.get("projected_vol_multiple"),
+            "ep_score": None,
+            "live_tier": None,
+        }
+    except Exception as e:  # loud-ok path: telemetry capture must never kill the scan
+        logger.debug(f"{ticker}: tier-shadow kill-row capture failed — {e}")
+        return None
 
 
 # ── Large-cap rel_volume floor SHADOW (data_gated_reviews.yaml
@@ -3044,16 +3148,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # ── #533 Change 6 — CATALYST TIER FLIP (2026-08-22, OPERATOR-SIGNED) ──────────────
     # The corrected lattice (catalyst_tier_shadow) is the LIVE catalyst tier: its verdict
-    # replaces the raw LLM grade at the single scoring point below. ONE revert flag —
+    # replaces the raw LLM grade at EVERY decision point — grade-settle (so the admission
+    # filters read it), after each raw-grade mutation, and the final resolve before
+    # _score_ep (ONE GRADE EVERYWHERE, 2026-08-22 consistency fix — the resolves all go
+    # through _resolve_acting_catalyst_quality). ONE revert flag —
     # `catalyst_tier_lattice` runtime toggle / CATALYST_TIER_LATTICE_ENABLED env, default
-    # ON; OFF = raw LLM grade acts, byte-identical pre-flip behaviour. Evidence + operator
-    # quote: docs/setups/magna53_ep.md change log 2026-08-22. Fail direction on ANY error
-    # here: the raw grade acts (pre-flip behaviour), loudly — never a dead scan.
+    # ON; OFF = raw LLM grade acts everywhere, byte-identical pre-flip behaviour.
+    # Evidence + operator quote: docs/setups/magna53_ep.md change log 2026-08-22. Fail
+    # direction on ANY error here: the raw grade acts (pre-flip behaviour), loudly —
+    # never a dead scan.
     _lattice_live = True
     _board_sectors: dict[str, Optional[str]] = {}
     try:
-        from agents.market_intelligence.catalyst_tier_shadow import (
-            compute_shadow_verdict, fetch_board_sectors, resolve_live_tier)
+        from agents.market_intelligence.catalyst_tier_shadow import fetch_board_sectors
         _lattice_live = await get_runtime_toggle(
             "catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED", default=True)
         if candidates:
@@ -3335,16 +3442,37 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
             _has_direct_source = cached.has_direct_source  # #405 Part-1: preserve the display flag on the cached path
 
+            # ── ONE GRADE EVERYWHERE (2026-08-22 consistency fix, operator-directed) ──
+            # Resolve the acting grade the moment the raw grade is in hand. The cache
+            # keeps the RAW LLM grade (llm_catalyst_quality — the lattice input, re-
+            # resolved every tick: the intraday-regrade design); catalyst_quality from
+            # here on is the ONE acting grade every consumer reads — admission filters
+            # included. Pre-fix, the filters read the raw grade while the score read
+            # the lattice verdict: a real EP mis-graded routine at a sub-12% gap was
+            # binned before the correction (and the score) could see it.
+            llm_catalyst_quality = catalyst_quality
+            catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
+                ticker, llm_catalyst_quality, claude_analysis, grounded_text,
+                news_summary, _board_sectors, _lattice_live)
+
             if not filters_cleared:
                 skip_reason = await _post_grade_filters(
                     ticker, catalyst_quality, claude_analysis, news_summary,
                     c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
+                    lattice_acting=(_live_side == "lattice"),
                 )
                 if skip_reason:
                     logger.debug(
                         f"{ticker}: cached grade ({catalyst_quality}) still filtered — {skip_reason}"
                     )
                     _log_filtered(c, skip_reason)
+                    # Filter-killed GRADED candidates get a tier record too (the
+                    # ARM-class evidence hole — see _tier_kill_row).
+                    _kill_row = _tier_kill_row(
+                        ticker, llm_catalyst_quality, _lattice_verdict, _live_side,
+                        claude_analysis, grounded_text, news_summary, c, rel_volume)
+                    if _kill_row:
+                        _tier_shadow_inputs.append(_kill_row)
                     continue
                 # A time-sensitive filter input cleared since the grade tick
                 # (pm-volume grew, M&A stopped matching, gap moved) — flip the
@@ -3407,7 +3535,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         _repoll_live = await get_runtime_toggle(
                             "live_enriched_corpus", "LIVE_ENRICHED_CORPUS")
                         _valid_change = (
-                            _rq != catalyst_quality
+                            # vs the RAW cached grade — the re-poll rewrites the raw
+                            # cache; the lattice re-resolves it next tick (one-grade rule)
+                            _rq != llm_catalyst_quality
                             and _CLASSIFY_FAIL_SENTINEL not in (_ran or "")
                         )
                         if _repoll_live and _valid_change:
@@ -3671,28 +3801,38 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 catalyst_quality = downgraded
                 confidence_multiplier = 1.0  # cancel any agreement boost
 
+            # ── ONE GRADE EVERYWHERE (2026-08-22 consistency fix, operator-directed) ──
+            # The raw LLM grade is SETTLED here (Claude + Perplexity + hedge-downgrade).
+            # Resolve the acting grade before anything decides on it: the admission
+            # filters below and every later consumer read catalyst_quality (the ONE
+            # acting grade); llm_catalyst_quality carries the raw grade for the cache
+            # and the both-sides record. Pre-fix, the filters read the raw grade while
+            # the score read the lattice verdict — the fork the operator forbade.
+            llm_catalyst_quality = catalyst_quality
+            catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
+                ticker, llm_catalyst_quality, claude_analysis, grounded_text,
+                news_summary, _board_sectors, _lattice_live)
+
             # Post-grade filters — S6/#405 (2026-07-03): M&A / routine-catalyst /
             # pm-shares-floor, extracted to _post_grade_filters so the IDENTICAL
             # check can re-run on a later tick against a cached-but-not-yet-
             # cleared grade with no LLM call. Order + reason strings unchanged;
-            # they now read the SETTLED (post-downgrade) catalyst_quality since
-            # grading (Claude + Perplexity + hedge-downgrade) completes before
-            # filtering — pre-#405 the filters ran ahead of the Perplexity
-            # await/downgrade block and saw the pre-downgrade value. This is a
-            # narrow, MORE-conservative-only corollary (a ticker that hedge-
-            # downgrades to routine+low-gap now correctly gets caught by the
-            # routine filter instead of slipping through) — see commit message.
+            # they read the ACTING (lattice-resolved) grade since 2026-08-22 —
+            # toggle OFF passes the raw settled grade, byte-identical pre-flip.
             skip_reason = await _post_grade_filters(
                 ticker, catalyst_quality, claude_analysis, news_summary,
                 c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
+                lattice_acting=(_live_side == "lattice"),
             )
 
             # Store in cache AT GRADE COMPLETION regardless of filter outcome
             # (S6/#405) — filters_cleared True/False per today's check. This is
             # what makes the ticker reusable (no re-grade) on every later tick
-            # this trading day, whether it cleared or not.
+            # this trading day, whether it cleared or not. ⚠ The cache stores the
+            # RAW grade (llm_catalyst_quality), never the acting one — the lattice
+            # re-resolves it every tick; caching the verdict would double-apply it.
             _catalyst_cache[ticker] = CachedGrade(
-                catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
+                llm_catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
                 pplx_quality, skip_reason is None,
                 grounded_text=grounded_text,
                 has_direct_source=_has_direct_source,  # #405 Part-1: cache the display flag
@@ -3700,6 +3840,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             if skip_reason:
                 _log_filtered(c, skip_reason)
+                # Filter-killed GRADED candidates get a tier record too (the
+                # ARM-class evidence hole — see _tier_kill_row).
+                _kill_row = _tier_kill_row(
+                    ticker, llm_catalyst_quality, _lattice_verdict, _live_side,
+                    claude_analysis, grounded_text, news_summary, c, rel_volume)
+                if _kill_row:
+                    _tier_shadow_inputs.append(_kill_row)
                 continue
 
         # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
@@ -3745,6 +3892,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         )
         if _boost_earnings_signal and revenue_stage and catalyst_quality in ("routine", None):
             original_quality = catalyst_quality
+            # The boost corrects the RAW grade (structural earnings-day evidence) —
+            # both sides move, then the acting grade re-resolves below (one-grade rule).
+            llm_catalyst_quality = "strong"
             catalyst_quality = "strong"
             # Per-trading-day-per-ticker dedup. Without this, 3 container
             # restarts today wiped _catalyst_cache 3x; each restart's first
@@ -3767,9 +3917,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
             # Also update cache so subsequent scan ticks see the boosted grade.
             # filters_cleared stays True — only reachable post-filter (S6/#405).
+            # The cache stores the RAW grade (one-grade rule: the lattice re-resolves
+            # it every tick, so caching the verdict would double-apply it).
             _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
-                catalyst_quality=catalyst_quality,
+                catalyst_quality=llm_catalyst_quality,
             )
+            # Raw grade changed → re-resolve the acting grade so every consumer
+            # between here and the score reads the same one (no forks).
+            catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
+                ticker, llm_catalyst_quality, claude_analysis, grounded_text,
+                news_summary, _board_sectors, _lattice_live)
         elif earnings_today_match and not revenue_stage and catalyst_quality in ("routine", None):
             # Pre-revenue company on earnings day — log the skip so operator
             # can see WHY the boost didn't fire. Catalyst grade stays at
@@ -4127,6 +4284,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality
+                # The gate corrects the RAW grade — both sides move, then the acting
+                # grade re-resolves below (one-grade rule).
+                llm_catalyst_quality = "routine"
                 catalyst_quality = "routine"
                 confidence_multiplier = 1.0  # #320: reset the stale agreement boost on downgrade (mirrors the pplx-hedge reset ~line 2016)
                 _qr_block = _extracted.get("q_revenue_usd") or {}
@@ -4171,9 +4331,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         }),
                     )
                 _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
-                    catalyst_quality=catalyst_quality,
+                    catalyst_quality=llm_catalyst_quality,
                     confidence_multiplier=confidence_multiplier,
                 )
+                # Raw grade changed → re-resolve the acting grade (one-grade rule).
+                # NB the routine corrective can re-promote a name whose analysis
+                # carries rule-4 markers + a concrete event — identical to the
+                # pre-fix flip point, which also ran after this downgrade.
+                catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
+                    ticker, llm_catalyst_quality, claude_analysis, grounded_text,
+                    news_summary, _board_sectors, _lattice_live)
                 # Per-ticker Telegram suppressed (was 5-10 noise alerts per
                 # morning). Audit event above is the source of truth — the
                 # 10:10 ET _catalyst_downgrade_digest_job reads mi_audit_log
@@ -4206,6 +4373,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     break
             if matched_marker:
                 original_quality = catalyst_quality
+                # The #72 downgrade corrects the RAW grade — both sides move; the
+                # final resolve directly below re-derives the acting grade.
+                llm_catalyst_quality = "routine"
                 catalyst_quality = "routine"
                 confidence_multiplier = 1.0  # #320: reset the stale agreement boost on downgrade (mirrors the pplx-hedge reset ~line 2016)
                 await log_audit_event(
@@ -4223,7 +4393,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     }),
                 )
                 _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
-                    catalyst_quality=catalyst_quality,
+                    catalyst_quality=llm_catalyst_quality,
                     confidence_multiplier=confidence_multiplier,
                 )
                 # Visibility surface (advisor 2026-05-11): user needs to see
@@ -4256,34 +4426,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"catalyst_downgrade_telegram_failed: {ticker}: {e}"
                     )
 
-        # ── #533 Change 6 FLIP: the lattice verdict becomes the acting tier ──────────
-        # Runs AFTER every raw-grade mutation (earnings boost, #72 prose downgrade) and
-        # BEFORE _score_ep — everything downstream (score + conviction floors, tier,
-        # alert row, allocator, judge inputs) sees the lattice tier. Deliberately NOT
-        # applied to _post_grade_filters above (M&A / routine-gap<12 / pm-shares): the
-        # shadow evaluation measured the counterfactual only within the post-filter
-        # pool; extending the flip into admission would LOOSEN unevaluated (SSoT change
-        # log). The cache keeps the RAW grade — the lattice recomputes every tick, which
-        # is the intraday-regrade design (the MRNA 07:05 grade-pinning fix).
-        llm_catalyst_quality = catalyst_quality  # raw LLM grade — the lattice input
-        _lattice_verdict = None
-        _live_side = "llm"
-        try:
-            _lattice_verdict = compute_shadow_verdict(
-                ticker=ticker,
-                live_quality=llm_catalyst_quality,
-                claude_analysis=claude_analysis,
-                grounded_text=grounded_text,
-                news_summary=news_summary,
-                sector_by_ticker=_board_sectors,
-            )
-            catalyst_quality, _live_side = resolve_live_tier(
-                llm_catalyst_quality, _lattice_verdict, _lattice_live)
-        except Exception as _lte:  # loud-ok: fail direction = the raw grade acts
-            logger.warning(
-                f"{ticker}: catalyst lattice failed — LLM grade acts this tick: {_lte}")
-            _lattice_verdict = None
-            catalyst_quality, _live_side = llm_catalyst_quality, "llm"
+        # ── #533 Change 6 FLIP, FINAL RESOLVE (one grade everywhere, 2026-08-22) ──────
+        # The acting grade was first resolved at grade-settle (so the admission filters
+        # — M&A / routine-gap<12 / pm-shares — read the SAME grade the score reads; the
+        # 2026-08-22 consistency fix, operator-directed: "consistency at all times, no
+        # forks") and re-resolved after every raw-grade mutation (earnings boost,
+        # revenue gate, #72 prose downgrade). This last, unconditional resolve runs
+        # BEFORE _score_ep so score + conviction floors, tier, alert row, allocator and
+        # judge inputs always read the verdict over the FINAL raw grade — identical
+        # inputs give the identical verdict when nothing mutated. llm_catalyst_quality
+        # = the raw LLM grade (the lattice input, kept for the cache + the both-sides
+        # record). The cache keeps the RAW grade — the lattice recomputes every tick,
+        # which is the intraday-regrade design (the MRNA 07:05 grade-pinning fix).
+        catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
+            ticker, llm_catalyst_quality, claude_analysis, grounded_text,
+            news_summary, _board_sectors, _lattice_live)
 
         # Compute prior 3-month change %
         prior_3m_change = None

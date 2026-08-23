@@ -19,10 +19,18 @@ Every recorded row stamps `live_side` ('lattice' | 'llm') = which grader ACTED t
 a reader never infers the acting side from the date.
 
 The tier definitions the LLM emits, `_score_ep`, every threshold and every floor stay
-UNTOUCHED — the lattice moves the GRADE at most one step; `_post_grade_filters` (M&A /
-routine-gap<12 / pm-shares) still reads the RAW LLM grade (the evaluated counterfactual
-covered post-filter behaviour only; extending the flip into admission would LOOSEN
-unevaluated — see the SSoT change-log entry). `mi_catalyst_tier_shadow` keeps recording
+UNTOUCHED — the lattice moves the GRADE at most one step. ⚖ ONE GRADE EVERYWHERE
+(2026-08-22 consistency fix, same day as the flip, operator-directed: "if we change
+something we change it everywhere, consistency at all times, no forks"):
+`_post_grade_filters` (M&A / routine-gap<12 / pm-shares) reads the SAME acting grade
+the score reads — the original flip deliberately left the filters on the raw grade,
+which re-killed the exact class the flip was signed to save (a real EP mis-graded
+routine at a sub-12% gap was binned before the correction could act). The resolve is
+`ep_detector._resolve_acting_catalyst_quality`, applied at grade-settle, after every
+raw-grade mutation, and finally before `_score_ep`; toggle OFF returns the raw grade
+at every one of those points (byte-identical pre-flip behaviour). Filter-killed graded
+candidates are ALSO recorded here since the fix (ep_score/live_tier NULL — the
+ARM-class evidence hole closed). `mi_catalyst_tier_shadow` keeps recording
 BOTH sides per (scan_date, ticker) so the live-vs-old comparison runs uninterrupted:
 `live_quality_*` = ALWAYS the raw LLM grade, `shadow_tier_*` = ALWAYS the lattice verdict,
 `live_side` = which one acted. Any further criterion change: CHANGE_PROCESS + operator

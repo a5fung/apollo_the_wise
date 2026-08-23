@@ -28,24 +28,31 @@ def test_flip_is_gated_by_the_one_revert_flag():
     assert 'get_runtime_toggle(' in src
     assert '"catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED", default=True)' in src, (
         "the #400a instant-revert toggle IS the whole safety story — one flag, default ON")
-    assert "resolve_live_tier(" in src
+    # Since the 2026-08-22 consistency fix the resolve is centralized: run_ep_scan calls
+    # _resolve_acting_catalyst_quality (grade-settle, post-mutation, final), and THAT
+    # helper is where resolve_live_tier gates on the one flag.
+    assert "_resolve_acting_catalyst_quality(" in src
+    helper = inspect.getsource(ep_detector._resolve_acting_catalyst_quality)
+    assert "resolve_live_tier(" in helper
 
 
 def test_flip_sits_after_prose_downgrade_and_before_score_ep():
-    """Order is the criterion: the lattice re-tiers the FINAL raw grade (post-#72
+    """Order is the criterion: the FINAL resolve re-tiers the FINAL raw grade (post-#72
     downgrade, post-earnings-boost) and everything from _score_ep on sees its verdict."""
     src = _scan_src()
     i_prose = src.index("Prose-mismatch downgrade (#72")
-    i_flip = src.index("llm_catalyst_quality = catalyst_quality")
+    i_flip = src.index("FINAL RESOLVE")
     i_score = src.index("ep_score, breakdown = _score_ep(")
     assert i_prose < i_flip < i_score
 
 
 def test_lattice_failure_fails_open_to_the_raw_grade_loudly():
     src = _scan_src()
-    assert src.count("LLM grade acts this tick") >= 2, (
-        "both the setup and the per-candidate lattice paths must degrade to the raw "
-        "grade AND say so in the log — degraded-loud, never dark")
+    assert "LLM grade acts this tick" in src, (
+        "the setup path must degrade to the raw grade AND say so in the log")
+    helper = inspect.getsource(ep_detector._resolve_acting_catalyst_quality)
+    assert "LLM grade acts this tick" in helper, (
+        "the per-candidate resolve must degrade to the raw grade loudly — never dark")
 
 
 def test_record_carries_raw_grade_acting_verdict_and_live_side():
@@ -58,13 +65,24 @@ def test_record_carries_raw_grade_acting_verdict_and_live_side():
     assert '"live_side": _live_side,' in src
 
 
-def test_post_grade_filters_still_read_the_raw_grade():
-    """Deliberate scope line (SSoT change log): the shadow evaluation covered only the
-    post-filter pool, so the flip must NOT reach _post_grade_filters — the lattice
-    re-assignment happens strictly AFTER both filter call sites."""
+def test_post_grade_filters_read_the_acting_grade():
+    """⚖ REVERSAL of the flip-day scope line (2026-08-22, operator-directed — "if we
+    change something we change it everywhere, consistency at all times, no forks").
+    The prior rule ("the filters keep reading the RAW grade because the shadow eval
+    only covered the post-filter pool") was WRONG, not just incomplete: it re-killed
+    the exact class the flip was signed to save — a real EP mis-graded routine at a
+    sub-12% gap died at the admission filter before the correction could act, and a
+    filter and a score disagreed about what the same news was worth. Now every filter
+    call site sits AFTER an acting-grade resolve and passes the acting grade +
+    lattice_acting. Full rationale + numbers: docs/setups/magna53_ep.md change log
+    2026-08-22 (consistency fix)."""
     src = _scan_src()
-    i_flip = src.index("llm_catalyst_quality = catalyst_quality")
-    assert src.rindex("_post_grade_filters(") < i_flip
+    i_first_resolve = src.index("_resolve_acting_catalyst_quality(")
+    i_first_filter = src.index("_post_grade_filters(")
+    assert i_first_resolve < i_first_filter, (
+        "an acting-grade resolve must precede the first filter call site")
+    # BOTH call sites must thread the acting-side marker — no raw-grade filter path.
+    assert src.count("lattice_acting=(_live_side == \"lattice\")") == 2
 
 
 def test_monitor_is_wired_into_the_existing_nightly_audit_job():

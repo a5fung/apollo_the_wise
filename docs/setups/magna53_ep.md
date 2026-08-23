@@ -46,11 +46,15 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 6. **Session RVOL@T** (post-9:30): same primitive as pre-market, but session-anchored. Threshold `MIN_SESSION_RVOL = 1.0`
 
 **Post-grade** (`_post_grade_filters`, ep_detector.py ~1260 — run AFTER catalyst
-classification so they can condition on `catalyst_quality`; moved here #405,
-2026-07-03, "so we can use catalyst_quality in the carve-out condition"):
-7. **M&A filter** (`ma_filter.is_likely_ma`): catalyst='mna' OR keyword scan OR Polygon news headlines — skip
-8. **Routine + low gap**: `catalyst_quality == "routine" AND gap_pct < 12%` → skip
-9. **Pre-market shares absolute floor** (with carve-out): `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` OR (R6 carve-out) `gap_pct ≥ 10% AND catalyst_quality == "strong"` — relative anomaly / high-conviction trumps absolute count for low-float names
+classification so they can condition on the catalyst grade; moved here #405,
+2026-07-03, "so we can use catalyst_quality in the carve-out condition").
+⚖ **Since 2026-08-22 these filters read the ACTING grade** — the lattice-corrected tier,
+the same one the score reads (one grade everywhere; `catalyst_tier_lattice` toggle OFF =
+raw LLM grade everywhere, byte-identical pre-flip). Plain words: **a filter and the score
+never disagree about what the same news is worth.**
+7. **M&A filter** (`ma_filter.is_likely_ma`): catalyst='mna' OR keyword scan OR Polygon news headlines — skip. (Grade-invariant under the lattice: `mna` is passthrough-only, so acting == raw here by construction.)
+8. **Routine + low gap** — plain words: *a routine-news name gapping under 12% is skipped, where "routine" is the CORRECTED grade.* Code: acting `catalyst_quality == "routine" AND gap_pct < 12%` → skip. A real EP the LLM mis-grades routine (4 of the 7 graded labelled real EPs — ARM class) is no longer binned before the correction can act; the lattice never demotes a non-routine grade to routine, so this filter can only admit MORE than the raw read, never less.
+9. **Pre-market shares absolute floor** (with carve-out) — plain words: *under 25,000 pre-market shares is skipped, unless volume is exploding (5× pm RVOL) or the gap is 10%+ with a strong-or-better catalyst.* Code: `today_volume ≥ MIN_PREMARKET_SHARES` (25,000) UNLESS `pm_rvol ≥ 5×` OR (R6 carve-out) `gap_pct ≥ 10% AND` acting grade in {`strong`, `game_changer`}. The `game_changer` arm exists on the acting side only (2026-08-22): a lattice PROMOTION must never strip a name of the bypass its old grade earned; with the toggle OFF the historical strong-only carve-out applies exactly.
 
 ### Grading shortlist — who gets graded at all (pre-score ranked since 2026-08-22)
 
@@ -104,10 +108,15 @@ sector follow-through):
 - `routine` → `strong` when the live analysis carries rule-4 sector/sympathy markers AND a
   concrete company event (the prompt's auto-demotion reversed). Never straight to the top.
 - `mna` passthrough — the M&A hard filter is untouched.
-Recomputed every scan tick (the MRNA 07:05 grade-pinning fix). **Scope line:**
-`_post_grade_filters` (M&A / routine-gap<12 / R6 pm-shares carve-out) still reads the RAW LLM
-grade — the shadow evaluation covered only the post-filter pool, so the flip does not reach
-admission. **ONE revert flag:** `catalyst_tier_lattice` runtime toggle /
+Recomputed every scan tick (the MRNA 07:05 grade-pinning fix). **⚖ ONE GRADE EVERYWHERE
+(2026-08-22 consistency fix, same day, operator-directed — REVERSES the flip-day scope
+line):** `_post_grade_filters` (M&A / routine-gap<12 / R6 pm-shares carve-out), the earnings
+boost, the revenue gate, the #72 prose downgrade, the score, the tier — EVERY consumer reads
+the acting (lattice-resolved) grade, resolved at grade-settle and re-resolved after each
+raw-grade mutation (`ep_detector._resolve_acting_catalyst_quality`). The raw LLM grade
+survives only as the lattice's input, the cache contents, and the record's `live_quality`
+column (pinned by `tests/test_lattice_admission_consistency.py`). **ONE revert flag:**
+`catalyst_tier_lattice` runtime toggle /
 `CATALYST_TIER_LATTICE_ENABLED` env, default ON — OFF restores the raw-grade behaviour with no
 other edit (exact revert SQL in the change log). Both sides + a `live_side` acting-marker are
 recorded per (scan_date, ticker) in `mi_catalyst_tier_shadow`; the nightly flip monitor
@@ -231,6 +240,87 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-22 — ONE GRADE EVERYWHERE: the admission filters read the corrected (lattice) grade (OPERATOR-DIRECTED, REVERSAL of the same-day flip's scope line)
+
+**The rule, in plain words a trader can repeat back:** *every decision about a candidate —
+filter, score, tier — uses ONE catalyst grade: the corrected one. A routine-news name gapping
+under 12% is skipped, but "routine" means the corrected grade, so a real EP the news grader
+mis-labels routine is no longer thrown away before the correction can save it. Under 25,000
+pre-market shares is skipped unless volume is exploding (5× pm RVOL) or the gap is 10%+ with a
+strong-or-better catalyst.*
+
+**Trigger**: Operator, mid-review of the flip (verbatim): *"why you think it's ok that we
+change grading that it's ok to have places to use old grading, if we change something we
+change it everywhere, consistency at all times, no forks"* and *"stop justifying bugs because
+it's the way it is, either things are right or not."* The flip-day scope line had deliberately
+left `_post_grade_filters` reading the RAW LLM grade while `_score_ep` read the lattice
+verdict — so a real EP wrongly graded routine at a sub-12% gap (the typical labelled real EP
+gaps ~10%; 4 of the 7 ever-graded labelled real EPs came out routine) was binned at admission
+before the correction built the same day to save it could act. MRNA 2026-08-19 scored at its
+gap-10.0 tick graded `strong` — one grade notch from dying in that filter.
+
+**Evidence** (read-only prod capture `scripts/probes/_lattice_admission_capture_out.txt` +
+the #533 shadow eval `docs/analysis/catalyst_tier_shadow_533_2026-08-22.md`):
+- *Real EPs killed by the routine-gap<12 filter, BEFORE:* **0 of the 26 labelled real EPs on
+  their recorded prod ticks** (Q4 — their routine verdicts arrived AFTER admission via the
+  revenue-gate/prose downgrades, or they died on other gates: RVOL, top-20 cap, score<50,
+  M&A). The kill is a standing structural exposure, not a recorded event: 19 of 26 labelled
+  real EPs gap under 12% at the open, and the grader hands routine to real EPs — any future
+  member whose routine verdict lands AT GRADE TIME dies in this filter with no score, no
+  alert row, no recorded text. *AFTER:* still 0 recorded (nothing regresses — the lattice
+  never demotes a non-routine grade to routine, so the acting-grade filter is monotonic in
+  the ADMIT direction, pinned by `test_lattice_never_demotes_any_grade_to_routine`); the
+  routine-graded-real-EP class now reaches the corrective and the scorer instead of the bin.
+- *Ordinary gappers stopped by the routine filter, BEFORE:* 75 graded ticker-days per 60d
+  (42 scan days) ≈ **1.8 killed per scan day**, 68 of them terminal (never alerted that day)
+  ≈ 1.6/day. These produce zero alerts today. *AFTER:* a killed name is admitted only when
+  the corrective promotes it (fired on 6 of 45 routine live alerts ≈ 13%) and it then still
+  faces the score bar: with flat gap credit 10 + strong 15, only ADV$ ≥ $500M reaches raw 40
+  (the bar at regime ×1.0) on those terms alone — 12 of the 75 killed ticker-days qualify.
+  Expected new HIGH alerts ≈ 75 × 0.13 × 0.16 ≈ **1.6 per 60d ≈ +0.04/day**; upper bound
+  ≈ +0.1/day if the $250-500M-ADV rows cross via float/theme bonuses or a Bull ×1.2 regime.
+  Baseline: 111 HIGHs / 38 alert days ≈ 2.9/day → **≈ +1-3% alert volume.**
+- *R6 pm-shares carve-out (`game_changer` arm, acting side only):* 40 pm-shares-killed
+  ticker-days per 60d (all gap ≥ 10), 18 terminal; their grades were never recorded, so the
+  delta is a bound, not a measurement: at the graded-pool top-tier rate (43%) × the lattice
+  keep-rate (~40%), ≈ 3 per 60d ≈ **+0.07/day** newly bypass the share floor and still face
+  the RVOL gate + score. Corrective-rate caveat: the 13% is measured on routine ALERTS
+  (gap ≥ 12) — the killed pool (gap 9-12) may differ; the new filter-kill tier records
+  (below) measure both channels exactly from day one.
+- *Total priced admission delta:* **≲ +0.1-0.15 HIGH alerts/day against 2.9/day** — the
+  "materially more noise" alternative (a different gap threshold on the corrected grade) is
+  not warranted at this cost; no threshold was touched.
+
+**Anticipated effect**: (1) the routine-gap<12 filter and R6 carve-out condition on the
+acting grade — no candidate is filtered on a grade the score disagrees with; (2) ≈ +0.04 to
++0.15 HIGH alerts/day (both channels, bounds above); (3) filter-killed GRADED candidates now
+write `mi_catalyst_tier_shadow` rows (ep_score/live_tier NULL) — closing the ARM-class
+evidence hole that made 4 of 7 routine-graded members "undetermined offline"; (4) two rare
+consumers change behaviour with the one-grade rule, stated not hidden: a corrective-promoted
+routine on an earnings day now enters the revenue gate (≤ ~1 extraction/week, cached
+per ticker-day), and a lattice-DEMOTED game_changer with no-fresh-news prose is now eligible
+for the #72 prose downgrade (tightening only on the demoted-recap × no-news intersection).
+
+**Reversion-flag**: REVERSAL of the 2026-08-22 "Catalyst tier FLIPPED" entry's scope line
+("the flip's re-tiering deliberately does NOT extend into `_post_grade_filters` — the shadow
+counterfactual was evaluated within the post-filter pool; extending admission would loosen
+unevaluated"). That reasoning was WRONG, not incomplete: it preserved a fork in which
+admission killed candidates on the exact grade the flip was signed as too broken to act on —
+re-creating the measured failure (a backwards grader deciding life-or-death) INSIDE
+admission, where a false exclusion leaves no row and no trace (P1/P14); and the loosening it
+feared is measurable and small (priced above). Consistency of the acting grade outranks
+counterfactual purity of the evaluation pool. Also extends R6 to `game_changer` on the
+acting side only — REFINEMENT of 2026-05-17 P2.1b (without it, a lattice promotion would
+strip a name of a bypass its old grade earned: a better grade admitting less).
+
+**Status**: built + suite-verified (6061 passed / 7 skipped; 16 new tests in
+`tests/test_lattice_admission_consistency.py` pin behaviour, direction, and the
+no-second-grade-path source invariant). COMMITTED 2026-08-23; deploys in the next
+window (12:00-13:00 ET Mon 08-24, scope `both`) — live on the first market day it can act.
+Same ONE revert flag as the flip: `catalyst_tier_lattice` OFF = the raw LLM grade acts at
+every point, byte-identical pre-flip behaviour (the flip-day mixed state — lattice score,
+raw filters — is deliberately no longer reachable: it IS the fork the operator forbade).
 
 ### 2026-08-22 — Grading shortlist ranks by the three-term PRE-SCORE, not gap size (OPERATOR-DIRECTED, ONE-FLAG REVERTIBLE)
 
