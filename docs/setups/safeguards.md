@@ -198,42 +198,96 @@ ORDER BY s.snapshot_date DESC;
 3. ~~Remove the count-based block from `_check_safeguards` after 30 days of clean drawdown-active operation.~~ **CANCELLED, same ruling.** The two breakers now run TOGETHER: count-based (hard block on a 10-loss streak) + tiered drawdown (sizes down, then blocks on equity drawdown). Removing either needs a fresh operator sign-off.
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
-🔴 **MEASUREMENT MISMATCH FOUND 2026-08-23 — awaiting operator sign-off (#586). The bands are
-comparing two different things.** Thresholds are NOT in question; the INPUT is.
+✅ **MEASUREMENT MISMATCH FOUND 2026-08-23, FIXED 2026-08-23 — operator-signed (#586).** The bands
+were comparing two different things. Thresholds were never in question; the INPUT was.
 
 **What the benchmark measured.** `scripts/selection_replay_268.py:292-306` — the n=399 calibration
 that produced every threshold below computes each trade's R as
 `total_pnl ÷ Σ shares × (entry − stop)` — i.e. **the money actually at risk at the placed stop**,
 after the 20% notional cap has already reduced the share count.
 
-**What the live side measures.** `kill_scale_bands.py:194` reads `mi_live_trades.risk_dollars`,
-which is set at `order_manager.py` as `equity × risk_pct` **before** the cap and is never
-reassigned when the cap truncates shares (#571, 2026-08-23). It is the INTENDED budget, not the
-risk taken. On the 11 of 22 closed trades where the cap bound, the two differ by up to 3×.
+**What the live side measured (before this fix).** `kill_scale_bands.py` read
+`mi_live_trades.risk_dollars`, which is set at `order_manager.py` as `equity × risk_pct` **before**
+the cap and is never reassigned when the cap truncates shares (#571, 2026-08-23). It is the
+INTENDED budget, not the risk taken. On the 11 of 22 closed trades where the cap bound, the two
+differed by up to 3×.
 
 **Size of the error, measured on the live book (2026-08-23, n=22 closed):**
 
-| | as the bands measure it | on the calibration's own definition |
+| | as the bands measured it (before) | on the calibration's own definition (after) |
 |---|---|---|
 | cumulative | −11.26R | **−14.61R** |
 | per trade | −0.512R | **−0.664R** |
 | trailing-20 | −0.488R | **−0.630R** |
 
-Direction: the live number is compressed toward zero, so **the live book reads better than the
-benchmark scale would say**. The REDUCE trigger is −0.70 trailing-20: as measured we sit 0.21
-above it, on the calibration's definition 0.07 — roughly three bad trades away rather than ten.
-**The verdict is HOLD on both, so nothing is mis-firing today.**
+Direction: the pre-fix number was compressed toward zero, so **the live book was reading better
+than the benchmark scale would say**. The REDUCE trigger is −0.70 trailing-20: as measured (before)
+we sat 0.21 above it; on the calibration's definition (after, and now what the bands read) it is
+0.07 — roughly three bad trades away rather than ten. **The verdict is HOLD on both — nothing was
+mis-firing, and nothing changed action-wise today.**
 
-**Recommended fix (operator's call — this is a live-money safeguard):** point the live evaluator at
-the risk actually placed, so it matches the definition the signed thresholds were calibrated
-against. **Change no threshold.** `risk_dollars_actual` now exists on `mi_live_trades` (#571) for
-new rows; history is recoverable as `(entry_price − hard_stop) × entry_shares`. Classified as a BUG
-FIX — aligning a measurement with its own stated definition — not a criteria change.
+**What changed.** `kill_scale_bands.assemble_band_inputs` now divides realized R by the dollar risk
+ACTUALLY PLACED at the stop, not the pre-cap budget: `risk_dollars_actual` (#571) when a row has
+it, else the derived equivalent `entry_shares × (entry_price − hard_stop)` for older rows —
+`hard_stop` is the ORIGINAL placed stop (write-once at entry, unlike the trailing `stop_price`) and
+`entry_shares` is the share count at placement (write-once, unlike `remaining_shares`). Verified
+against the live book: `hard_stop` never changes after entry for any row (no code path updates it);
+`entry_shares` likewise. Two concrete rows prove why `hard_stop` (not `stop_price`) and
+`entry_shares` (not `remaining_shares`) are the right columns: ABCL (open) has trailed
+`stop_price` 10.66 against a still-original `hard_stop` 8.40 — using `stop_price` would shrink the
+denominator as the winner runs; ETON (closed, +$19.32) shows `stop_price` trailed all the way to
+`entry_price` (55.2012, breakeven) while `hard_stop` stayed 53.01 — using `stop_price` there gives
+a **zero denominator**, which would silently drop a real winner from the cohort under the
+degenerate-row guard. **No threshold, band, or trading behavior changed** — `_KILL_T20`,
+`_REDUCE_T20`, `_REDUCE_STREAK`, `_SCALE_T40`, `_SAMPLE_FLOOR`, and `CALIBRATION_ENVELOPE` are
+byte-identical. Degenerate rows (denominator NULL, zero, or negative) are excluded, same as the
+prior SQL filter's exclusion class — on the current 22-row live book this excludes 0 rows, same as
+before.
 
-⚠ **Known opposing bias, deliberately NOT addressed:** the bands read CLOSED trades only, and the
-methodology cuts losers fast while letting winners run, so open winners are invisible and the
+**Independent sanity check.** Verified against `mi_live_trades.exits`: of the 20 closed rows whose
+`stop_price` never moved off `hard_stop` (i.e. never trailed), 19 are a single `stop_hit` leg
+(FIGS is the exception — a `partial_profit` leg then a `stop_hit`). Of those 19, the ones whose
+ACTUAL Alpaca fill landed within about a cent of the theoretical `hard_stop` (near-zero stop-order
+slippage) read almost exactly **−1.000R** under the corrected denominator — WULF, QBTS, NET
+exactly −1.000; TSEM −1.001; NVCR −0.999 — a trade stopped out with essentially no slippage cannot
+lose more or less than 1R by definition. The remaining 14 deviate from −1.000R in proportion to
+their real fill price's distance from the theoretical stop (both directions — e.g. MANE's stop
+filled $1.02 above `hard_stop`, reading −0.227; WDFC's filled $0.34 below, reading −1.037): real
+execution slippage, not a formula artifact. Under the OLD `risk_dollars` denominator, three of the
+five near-zero-slippage exits read as losing LESS than a full R despite closing essentially at the
+stop — WULF −0.696, QBTS −0.920, NET −0.321 — a definitional impossibility (TSEM −1.047 and NVCR
+−1.070 happened to already read near −1 under the old denominator too, since the cap barely bound
+on those two). The fix removes that impossibility.
+
+**Corrected band verdict (2026-08-23, n=22 closed, live account), via the shipped evaluator
+itself** (`evaluate_kill_scale_bands`, not a re-implementation): **HOLD** — trailing-20 **−0.630R**
+(REDUCE fires at ≤ −0.70R), cumulative **−14.61R** (KILL fires at ≤ −30R), losing streak **1**
+(REDUCE fires at ≥ 16), reason `"within bands"`. Feeding the OLD (pre-fix) series through the same
+evaluator also returns HOLD — so the first post-deploy evaluation is HOLD→HOLD and fires no
+spurious transition alert.
+
+**Deploy scope:** `kill_scale_bands.py` is NOT in `scripts/exec_loaded_modules.txt` — it runs on the
+market-agent's Sunday weekly digest (`system_review.py`) and the daily 16:13 ET
+`kill_scale_band_eval` job, both market-agent-owned. `bash scripts/deploy.sh market-agent` ships this
+fix; it does not touch the execution container. `risk_dollars_actual`'s `ADD COLUMN IF NOT EXISTS`
+(#571) lives inside `db.py::initialize_schema()`, which runs at market-agent startup
+(`agent.py`'s FastAPI `startup` event) before any cron job or digest section can call
+`assemble_band_inputs` — so the column exists before the first evaluation runs; ordering is safe.
+Prod is currently ~53 commits behind `main` (unrelated backlog, not from this change), so that
+deploy will promote more than just this fix — read the delta before running it.
+
+⚠ **Known opposing bias, deliberately NOT addressed here:** the bands read CLOSED trades only, and
+the methodology cuts losers fast while letting winners run, so open winners are invisible and the
 closed cohort skews pessimistic. That pushes the opposite way from the bug above. Same flaw is
-already noted on the count-based circuit breaker. Left alone.
+already noted on the count-based circuit breaker. Left alone by operator instruction.
+
+⚠ **Left out of scope, flagged for a future card:** `scripts/sip_replay_r_cohort.py` (the #291
+GATE-3 cohort) still divides by the old pre-cap `risk_dollars` and is now out of lockstep with this
+module's corrected definition — it's a separate research/replay tool, not a live-money safeguard
+input, so it was left unchanged. `system_review.py::_early_window_drift_section`'s docstring still
+says "mean realized R = total_pnl/risk_dollars" — stale prose only (the code calls
+`assemble_band_inputs` and inherits the fix automatically); `system_review.py` is owned by a
+concurrent card and was not edited here.
 
 ## Kill / scale criteria — live-money evaluation bands (✅ SIGNED by operator 2026-06-12 — #268b)
 
@@ -375,6 +429,39 @@ overridden again. Pre-commitment is preserved by making overrides visible,
 not impossible.
 
 ## Change log (newest first)
+
+### 2026-08-23 — Kill/scale bands now divide by risk actually placed, not the pre-cap budget (#586, operator-signed)
+
+**Trigger**: while building #571's cap-truncation telemetry, the dollar risk actually placed at
+the stop was found to differ from `mi_live_trades.risk_dollars` by up to 3× on capped trades.
+Checking whether the #268b calibration used the same denominator (flagged, not yet checked, in
+#571's own change-log entry above) turned up a real mismatch — see the "MEASUREMENT MISMATCH
+FOUND" section above this change log for the full write-up and numbers.
+
+**Evidence**: `scripts/selection_replay_268.py:292-306` (the n=399 calibration source) computes R
+as `total_pnl ÷ Σ shares×(entry−stop)` — risk at the placed stop, post-cap.
+`kill_scale_bands.assemble_band_inputs` was dividing by `mi_live_trades.risk_dollars`, the pre-cap
+`equity×risk_pct` budget, never reassigned when the cap truncates shares. Measured on the full live
+closed book (n=22, 2026-08-23): cumulative −11.26R (as read) vs −14.61R (calibration definition);
+per-trade −0.512R vs −0.664R; trailing-20 −0.488R vs −0.630R. `hard_stop` and `entry_shares`
+confirmed write-once at entry (no code path reassigns either) across the live book, including two
+open positions (ABCL, AMLX) whose `stop_price` has since trailed away from `hard_stop`.
+
+**Anticipated effect**: no change to the digest verdict today (HOLD on both the old and corrected
+number). The corrected trailing-20 (−0.630R) sits closer to the REDUCE threshold (−0.70R) than the
+old reading (−0.488R) did, so a REDUCE trigger will fire slightly sooner on a losing stretch going
+forward than it would have under the old (miscalibrated-against-its-own-benchmark) denominator —
+this is the fix working as intended, not a new risk. `replay_regression.py` and
+`system_review.py::_early_window_drift_section` both consume `assemble_band_inputs` and inherit the
+corrected number automatically; `scripts/sip_replay_r_cohort.py` does not (flagged above, left for
+a separate card).
+
+**Reversion-flag**: NEW — no prior change to this module's R-denominator; this is the first time it
+diverged from its own calibration's definition being caught and corrected.
+
+**Status**: shipped to the working tree, not yet deployed. Needs `bash scripts/deploy.sh
+market-agent` (see "Deploy scope" above) to reach production; verify-live = the next Sunday digest
+or 16:13 ET daily eval printing the corrected trailing-20/cumulative numbers.
 
 ### 2026-08-23 — The 20% notional cap's truncations are now recorded (#571, telemetry only)
 

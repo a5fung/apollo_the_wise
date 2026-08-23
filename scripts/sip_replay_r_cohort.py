@@ -125,30 +125,39 @@ def _fmt_stats(label: str, st: dict) -> str:
     )
 
 
+from agents.market_intelligence.kill_scale_bands import _risk_placed
+
+
 async def _real_cohort(conn, days: int | None, signal_type: str) -> list[dict]:
     """Actually-filled, closed trades. Carries BOTH the real realized R
-    (total_pnl / risk_dollars — live exit logic: partials/breakeven/trailing)
+    (total_pnl / the risk actually PLACED — live exit logic: partials/breakeven/trailing)
     AND the entry params, so the SAME-EXIT cross-check can re-score these
     entries under the identical replay_one floor proxy used for the cancelled
     cohort (isolates IEX selection from exit-model — advisor 2026-06-06).
     pnl_attribution IS NULL = methodology-evaluation filter (db.py)."""
     where_days = f"AND alert_date >= CURRENT_DATE - INTERVAL '{int(days)} days'" if days else ""
     rows = await conn.fetch(f"""
-        SELECT ticker, alert_date, total_pnl, risk_dollars, hold_days,
-               orb_high, orb_low, entry_price, stop_price, entry_shares
+        SELECT ticker, alert_date, total_pnl, risk_dollars, risk_dollars_actual, hold_days,
+               orb_high, orb_low, entry_price, stop_price, hard_stop, entry_shares
         FROM mi_live_trades
         WHERE status = 'closed'
           AND account_mode = 'paper'
           AND signal_type = $1
           AND pnl_attribution IS NULL
-          AND risk_dollars IS NOT NULL AND risk_dollars <> 0
           {where_days}
         ORDER BY alert_date ASC
     """, signal_type)
     out = []
     for r in rows:
         d = dict(r)
-        d["r"] = float(r["total_pnl"] or 0) / float(r["risk_dollars"])  # real R
+        # ONE definition of R everywhere (#586, 2026-08-23). `risk_dollars` is the
+        # PRE-cap intended budget and does NOT match the #268b calibration, which divides
+        # by the risk actually placed. `kill_scale_bands._risk_placed` is that single
+        # derivation — reused, never re-expressed here (P15: no second definition).
+        risk = _risk_placed(d)
+        if not risk:
+            continue
+        d["r"] = float(r["total_pnl"] or 0) / risk  # real R, on risk actually placed
         d["date"] = r["alert_date"]
         out.append(d)
     return out
@@ -349,7 +358,7 @@ async def main(days: int | None, signal_type: str):
     # ── 2. THE THREE LINES ──────────────────────────────────────────────────
     # (real_st / aug_st computed up-top)
     print(f"\n{'-'*72}")
-    print("R-MULTIPLE COHORT (R = pnl / risk_dollars):")
+    print("R-MULTIPLE COHORT (R = pnl / risk actually placed — #586):")
     print(f"{'-'*72}")
     print(_fmt_stats("1. REAL-only", real_st))
     print("     ^ actually-filled closed trades. REAL evidence, biased LOW")

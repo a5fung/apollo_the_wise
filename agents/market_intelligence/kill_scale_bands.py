@@ -173,14 +173,60 @@ def is_transition(prev_band: str | None, new_band: str) -> bool:
 _BAND_EMOJI = {"SCALE": "🟢", "HOLD": "⚪", "REDUCE": "🟠", "KILL": "🔴"}
 
 
+def _risk_placed(t) -> float | None:
+    """#586 fix: the dollar risk ACTUALLY placed for one closed live trade — matches the
+    #268b calibration's own definition (`scripts/selection_replay_268.py:292-306`: R =
+    total_pnl / Σ shares×(entry−stop), i.e. risk AT the placed stop, after the 20% notional
+    cap has already truncated the share count). Previously this module divided by
+    `mi_live_trades.risk_dollars`, which is `equity × risk_pct` fixed BEFORE the cap and
+    never reassigned when the cap truncates shares — the intended BUDGET, not the risk taken
+    (diverges on 11 of 22 closed live trades, up to ~3x — docs/setups/safeguards.md #586).
+
+    Prefers `risk_dollars_actual` (#571; the final, possibly cap-truncated, share count ×
+    risk-per-share, written at the same site as `risk_dollars`) and falls back to the
+    derived expression for rows written before that column existed:
+    `entry_shares × (entry_price − hard_stop)`. `hard_stop` is the ORIGINAL placed stop
+    (write-once at entry — never reassigned by a later trail/breakeven move, unlike
+    `stop_price`); `entry_shares` is the share count AT PLACEMENT (write-once — never
+    reduced by a later partial exit), matching `total_pnl` which already sums every exit
+    leg. `entry_price` is the PLANNED entry (`orb_high` at spec-build time,
+    `order_manager.py:564`), never overwritten with the actual Alpaca fill — the SAME value
+    `risk_dollars_actual` is computed from, so by construction (`order_manager.py:559`) the
+    two expressions are identical when both are available; if a row ever disagrees this
+    logs a warning rather than silently picking one.
+
+    Returns None when the needed inputs are missing — caller excludes the row (None or a
+    non-positive result), same degenerate-guard behavior as the previous
+    `risk_dollars IS NOT NULL AND risk_dollars <> 0` SQL filter, now evaluated per-row
+    against the corrected denominator."""
+    actual = t.get("risk_dollars_actual")
+    shares, entry, stop = t.get("entry_shares"), t.get("entry_price"), t.get("hard_stop")
+    derived = (float(shares) * (float(entry) - float(stop))
+               if shares is not None and entry is not None and stop is not None else None)
+    if actual is not None:
+        actual = float(actual)
+        if derived is not None and abs(actual - derived) > 0.01:
+            logger.warning(
+                "kill_scale_bands: risk_dollars_actual (%.2f) disagrees with the derived "
+                "entry_shares*(entry_price-hard_stop) expression (%.2f) on a closed trade — "
+                "using risk_dollars_actual; investigate the divergence.", actual, derived)
+        return actual
+    return derived
+
+
 async def assemble_band_inputs(account_mode: str = "live") -> dict:
     """Gather the live closed-trade cohort + equity/drawdown inputs for the band evaluator.
     DB-sourced only (no Alpaca call) so it runs anywhere, anytime — pre-launch it returns an
     empty cohort → the evaluator HOLDs below the sample floor.
 
-    realized R = `total_pnl / risk_dollars` over `status='closed'` methodology trades
-    (`pnl_attribution IS NULL`), chronological — the SAME definition as the #291 GATE-3
-    cohort (`scripts/sip_replay_r_cohort.py`); keep them in lockstep if either changes.
+    realized R = `total_pnl / risk_placed` over `status='closed'` methodology trades
+    (`pnl_attribution IS NULL`), chronological, where `risk_placed` is the corrected
+    denominator from `_risk_placed` (#586 — see its docstring; matches the #268b
+    calibration's own definition). ⚠ `scripts/sip_replay_r_cohort.py` (the #291 GATE-3
+    cohort) still divides by the OLD `risk_dollars` budget and is now OUT of lockstep with
+    this module — that script is a separate research/replay tool, not a live-money
+    safeguard input, and was left unchanged (out of #586's scope); re-derive it under its
+    own change if/when it needs to match.
 
     Also gathers `open_positions` (REPORT ONLY — docs/analysis/
     kill_scale_band_closed_trade_bias_2026-08-09.md; never folded into `realized_rs`, so it
@@ -191,11 +237,10 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
     async with pool.acquire() as c:
         trades = await c.fetch(
             """
-            SELECT total_pnl, risk_dollars
+            SELECT total_pnl, risk_dollars_actual, entry_shares, entry_price, hard_stop
             FROM mi_live_trades
             WHERE status = 'closed' AND account_mode = $1
               AND pnl_attribution IS NULL
-              AND risk_dollars IS NOT NULL AND risk_dollars <> 0
             ORDER BY alert_date ASC, id ASC
             """, account_mode)
         # Persisted drawdown tier (NOT a live Alpaca call — the recompute cron owns it).
@@ -223,7 +268,12 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
             ORDER BY alert_date ASC
             """, list(OPEN_POSITION_STATUSES), account_mode)
 
-    rs = [float(t["total_pnl"]) / float(t["risk_dollars"]) for t in trades]
+    rs = []
+    for t in trades:
+        risk = _risk_placed(t)
+        if risk is None or risk <= 0:      # degenerate guard: NULL, zero, or negative
+            continue
+        rs.append(float(t["total_pnl"]) / risk)
     open_positions = [{"ticker": r["ticker"], "hold_days": int(r["hold_days"])}
                       for r in open_rows]
     # Map the persisted breaker state to a band tier; legacy TRIPPED → REDUCE (safeguards.md).

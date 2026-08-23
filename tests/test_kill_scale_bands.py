@@ -319,12 +319,21 @@ def _closed_trade_rows(n_trades, n_days):
     (t20 = -0.70 -> REDUCE), spread over `n_days` distinct alert_dates. `n_days` no longer
     gates anything (the entry-day independence floor was proposed, measured, and REMOVED —
     docs/analysis/kill_scale_band_closed_trade_bias_2026-08-09.md); kept only so the fixture
-    still reads as realistic dated rows for the mock pool."""
+    still reads as realistic dated rows for the mock pool.
+
+    #586: `risk_dollars_actual` is None and entry_shares=1 / entry_price=101 / hard_stop=1
+    on every row — an UNCAPPED trade, so `_risk_placed` derives 1*(101-1)=100, identical to
+    the pre-#586 `risk_dollars=100` these R values (-1.0, +5.0) were built against. Proves
+    an uncapped row's band verdict is unchanged by the #586 denominator fix."""
     base = dt.date(2026, 1, 5)
-    rows = [{"total_pnl": -100.0, "risk_dollars": 100.0,
-            "alert_date": base + dt.timedelta(days=i % n_days)} for i in range(n_trades - 1)]
-    rows.append({"total_pnl": 500.0, "risk_dollars": 100.0,
-                "alert_date": base + dt.timedelta(days=(n_trades - 1) % n_days)})
+
+    def _row(total_pnl, i):
+        return {"total_pnl": total_pnl, "risk_dollars_actual": None,
+                "entry_shares": 1.0, "entry_price": 101.0, "hard_stop": 1.0,
+                "alert_date": base + dt.timedelta(days=i % n_days)}
+
+    rows = [_row(-100.0, i) for i in range(n_trades - 1)]
+    rows.append(_row(500.0, n_trades - 1))
     return rows
 
 
@@ -359,3 +368,135 @@ def test_open_positions_never_move_the_verdict(monkeypatch):
     assert inputs_flat["open_positions"] == []
     assert inputs_open["open_positions"] == [
         {"ticker": "PLTR", "hold_days": 21}, {"ticker": "NVDA", "hold_days": 15}]
+
+
+# ── #586: realized R divides by the risk ACTUALLY placed, not the pre-cap budget ──
+# (docs/setups/safeguards.md #586 change-log entry has the full evidence + verdict.)
+
+import pytest  # noqa: E402
+
+_risk_placed = ksb._risk_placed
+
+
+def test_risk_placed_prefers_risk_dollars_actual_when_present():
+    # A CAPPED trade: risk_dollars_actual (#571, post-cap) is exactly what the #268b
+    # calibration formula computes directly -- use it, no need to re-derive.
+    row = {"risk_dollars_actual": 45.60, "entry_shares": 80.0,
+           "entry_price": 12.07, "hard_stop": 11.5}
+    assert _risk_placed(row) == 45.60
+
+
+def test_risk_placed_falls_back_to_derived_expression_for_pre_571_rows():
+    # No risk_dollars_actual (row written before #571 shipped) -> derive
+    # entry_shares*(entry_price-hard_stop), the SAME expression order_manager.py:559 uses
+    # to compute risk_dollars_actual for new rows -- real NET 2026-08-07 numbers.
+    row = {"risk_dollars_actual": None, "entry_shares": 3.0,
+           "entry_price": 316.13, "hard_stop": 311.0}
+    assert _risk_placed(row) == pytest.approx(15.39, abs=0.01)
+
+
+def test_risk_placed_agrees_with_derived_when_both_present(caplog):
+    # #586 required check: on a row carrying BOTH columns in agreement (the normal case --
+    # they're the same expression by construction, order_manager.py:559), no warning fires
+    # and the value returned is risk_dollars_actual.
+    agreeing = {"risk_dollars_actual": 22.80, "entry_shares": 40.0,
+                "entry_price": 12.07, "hard_stop": 11.5}   # 40*(12.07-11.5) = 22.80
+    with caplog.at_level("WARNING", logger="agents.market_intelligence.kill_scale_bands"):
+        assert _risk_placed(agreeing) == 22.80
+    assert not any("disagrees" in rec.message for rec in caplog.records)
+
+    # A DISAGREEING row (should never happen by construction, but must not be silent if it
+    # does) -- risk_dollars_actual still wins, and a warning is logged for investigation.
+    caplog.clear()
+    disagreeing = {"risk_dollars_actual": 45.60, "entry_shares": 40.0,
+                   "entry_price": 12.07, "hard_stop": 11.5}   # derived = 22.80, not 45.60
+    with caplog.at_level("WARNING", logger="agents.market_intelligence.kill_scale_bands"):
+        assert _risk_placed(disagreeing) == 45.60
+    assert any("disagrees" in rec.message for rec in caplog.records)
+
+
+def test_degenerate_denominators_are_excluded_from_the_cohort(monkeypatch):
+    """NULL entry_shares/entry_price/hard_stop with no risk_dollars_actual (missing
+    inputs), a zero denominator, and a negative denominator (hard_stop above entry) are all
+    excluded -- same exclusion CLASS as the old `risk_dollars IS NOT NULL AND risk_dollars
+    <> 0` SQL filter, now evaluated per-row against the corrected denominator. Only the one
+    valid row survives."""
+    pool, conn = make_mock_pool()
+    rows = [
+        {"total_pnl": -50.0, "risk_dollars_actual": None,
+         "entry_shares": None, "entry_price": None, "hard_stop": None},   # missing inputs
+        {"total_pnl": -50.0, "risk_dollars_actual": None,
+         "entry_shares": 10.0, "entry_price": 10.0, "hard_stop": 10.0},   # zero denominator
+        {"total_pnl": -50.0, "risk_dollars_actual": None,
+         "entry_shares": 10.0, "entry_price": 10.0, "hard_stop": 11.0},   # negative denominator
+        {"total_pnl": -50.0, "risk_dollars_actual": 100.0,
+         "entry_shares": 10.0, "entry_price": 10.0, "hard_stop": 5.0},    # the one keeper
+    ]
+    conn.fetch = AsyncMock(side_effect=[rows, []])
+    conn.fetchval = AsyncMock(return_value="OK")
+    conn.fetchrow = AsyncMock(return_value={"first_eq": 1.0, "last_eq": 1.0})
+    monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
+    inputs = asyncio.run(ksb.assemble_band_inputs("live"))
+    assert inputs["realized_rs"] == [-0.5]
+
+
+def test_586_denominator_reproduces_measured_net_mane_spread(monkeypatch):
+    """Real closed live rows (2026-08-23 prod capture; docs/setups/safeguards.md #586).
+    NET's risk actually placed was 0.32 of its intended risk_dollars budget; MANE's was
+    0.47 -- proves the corrected denominator moves realized R MORE NEGATIVE for both (a
+    smaller denominator makes the same dollar loss read as a bigger R loss), the direction
+    the #586 measurement found -- not an artifact of this test's own arithmetic."""
+    pool, conn = make_mock_pool()
+    rows = [
+        # NET 2026-08-07: entry 316.13 x 3sh, hard_stop 311.00, pnl -15.39, risk_dollars 47.94
+        {"total_pnl": -15.39, "risk_dollars_actual": None,
+         "entry_shares": 3.0, "entry_price": 316.13, "hard_stop": 311.0},
+        # MANE 2026-07-15: entry 119.34 x 8sh, hard_stop 118.02, pnl -2.40, risk_dollars 22.69
+        {"total_pnl": -2.3999999999999773, "risk_dollars_actual": None,
+         "entry_shares": 8.0, "entry_price": 119.34, "hard_stop": 118.02},
+    ]
+    conn.fetch = AsyncMock(side_effect=[rows, []])
+    conn.fetchval = AsyncMock(return_value="OK")
+    conn.fetchrow = AsyncMock(return_value={"first_eq": 1.0, "last_eq": 1.0})
+    monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
+    inputs = asyncio.run(ksb.assemble_band_inputs("live"))
+    net_r, mane_r = inputs["realized_rs"]
+
+    old_net_r, old_mane_r = -15.39 / 47.94, -2.40 / 22.69
+    assert net_r == pytest.approx(-1.000, abs=0.001)
+    assert mane_r == pytest.approx(-0.227, abs=0.001)
+    assert net_r < old_net_r
+    assert mane_r < old_mane_r
+    assert 15.39 / 47.94 == pytest.approx(0.32, abs=0.01)
+    assert (8.0 * (119.34 - 118.02)) / 22.69 == pytest.approx(0.47, abs=0.01)
+
+
+def test_586_corrected_live_book_verdict_via_the_shipped_evaluator():
+    """The FULL 22-trade closed live book (2026-08-23 prod capture; docs/setups/
+    safeguards.md #586), R values computed with the corrected denominator, run through the
+    REAL `evaluate_kill_scale_bands` (not a re-implementation) -- pins the reported verdict:
+    HOLD, trailing-20 -0.630R, cumulative -14.61R, streak 1. Also confirms the OLD
+    (pre-fix, risk_dollars-denominated) series evaluates to the SAME band, so the first
+    post-deploy evaluation is HOLD->HOLD and fires no spurious transition alert."""
+    # chronological order (WULF...MRVL), R = total_pnl / (entry_shares*(entry_price-hard_stop))
+    rs_corrected = [
+        -1.000000, -1.007353, -1.037057, -1.001305, -0.227273, -1.068019, -0.701031,
+        -0.999304, -1.006180, -1.025862, -1.000000, -1.025522, -1.023363, -1.027027,
+        3.423154, -1.000000, -0.367437, -1.017857, -0.979167, -1.087719, 0.518749, -0.953304,
+    ]
+    v = evaluate_kill_scale_bands(rs_corrected, equity_above_start=False, drawdown_tier="OK")
+    assert v.band == "HOLD"
+    assert v.reasons == ["within bands"]
+    assert round(v.trailing_20, 3) == -0.630
+    assert round(v.cum_r, 2) == -14.61
+    assert v.streak == 1
+    assert v.n_trades == 22
+
+    # same R = total_pnl / risk_dollars (the pre-fix denominator) -- same 22 rows.
+    rs_old = [
+        -0.696, -0.806, -0.800, -1.047, -0.106, -0.981, -0.682, -1.070, -0.808, -1.181,
+        -0.920, -0.554, -1.027, -0.784, 3.307, -0.321, -0.143, -0.499, -0.649, -1.021,
+        0.395, -0.865,
+    ]
+    v_old = evaluate_kill_scale_bands(rs_old, equity_above_start=False, drawdown_tier="OK")
+    assert v_old.band == v.band == "HOLD"   # deploy causes no band transition, no spurious alert
