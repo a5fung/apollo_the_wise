@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stop-hook gate on the REPORT FORMAT rule in CLAUDE.md (operator, asked 6x across many days).
+"""Stop-hook gate on the REPORT FORMAT rule in CLAUDE.md (operator, asked many times across many days).
 
 WHY THIS IS A SCRIPT AND NOT A REMINDER
 The rule already lives in the two places that were supposed to hold it — a memory
@@ -96,10 +96,13 @@ _BULLET = re.compile(r"^\s*(?:[-*+•]|\d+[.)]|>)\s")
 _HEADING = re.compile(r"^\s*#{1,6}\s")
 _TABLE = re.compile(r"^\s*\|")
 
-# CLAUDE.md rule 7, verbatim: "HARD BUDGET: ~6 bullets, ~1 screen, hard". The operator's own
+# CLAUDE.md rule 7: 5 bullets is the CEILING, not the target (operator 2026-08-23: "5 bullet
+# is max, but that means max when you have a lot to say to, typically one bullet is sufficient,
+# sometimes 2-3, but rarely 5 is needed"). Lowered from 6 that day — the cap was being written
+# TO. A gate can only catch the ceiling; typical-is-one stays a judgement call. The operator's own
 # number -- measured against his transcripts (see module docstring), not re-derived here. Do NOT
 # raise this to chase a lower firing rate; that is re-legislating a cap he wrote himself.
-_BULLET_CAP = 6
+_BULLET_CAP = 5
 
 
 def prose_blocks(text: str) -> list[str]:
@@ -200,8 +203,10 @@ def complaint(blocks: list[str]) -> str:
     return (
         "REPORT FORMAT GATE — the message has "
         f"{len(blocks)} prose paragraph(s) outside a bullet:\n{shown}\n\n"
-        "CLAUDE.md, asked by the operator 6x: bullets, titled blocks, ONE LINE PER BULLET. "
+        "CLAUDE.md report format: bullets, titled blocks, ONE LINE PER BULLET. "
         "A bolded lead-in followed by 2-3 sentences IS a paragraph — that is the exact drift.\n"
+        "This is NOT an instruction to produce more bullets: typically ONE is enough, "
+        "sometimes 2-3. Rewriting a paragraph into five bullets misses the point.\n"
         "Rewrite: every idea becomes its own bullet; reasoning and caveats go to the commit, "
         "PLAN.md or the SSoT, not the message; state the action explicitly, including \"none\"."
     )
@@ -209,7 +214,9 @@ def complaint(blocks: list[str]) -> str:
 
 def length_complaint(n: int) -> str:
     return (
-        f"REPORT FORMAT GATE — {n} bullets — the cap is ~6; a one-line ask gets one line.\n\n"
+        f"REPORT FORMAT GATE — {n} bullets. The CEILING is 5, and 5 is rare.\n\n"
+        "TYPICALLY ONE BULLET IS THE WHOLE ANSWER; sometimes 2-3 (operator 2026-08-23). "
+        "The cap is a ceiling you are writing TO — that is the drift this arm now catches.\n"
         "CLAUDE.md rule 7 (operator 2026-08-08/09): bullets are still a wall of text if there are "
         "too many of them — the paragraph check only catches prose, and the drift moved here.\n"
         "Rewrite: first line = the answer, he can stop there and be right. Mechanism, root cause, "

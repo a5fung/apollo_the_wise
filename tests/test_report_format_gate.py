@@ -239,38 +239,42 @@ _ANCHOR_31384 = """**Agreed, and this one is genuinely gateable — unlike yeste
 **Action: none.** I'll verify it catches today's case before it goes in.
 """
 
-# Six bullets, comfortably over _MIN_MESSAGE_CHARS — must pass. The cap is "over 6", not "6".
-_SIX_BULLETS_OK = """**Cost attribution fixed and live — spend is now readable per lane.**
+# Five bullets, comfortably over _MIN_MESSAGE_CHARS — must pass. The cap is "over 5", not "5".
+# ⚠ Five is the CEILING and is RARE (operator 2026-08-23) — a legal message, not a model one.
+_FIVE_BULLETS_OK = """**Cost attribution fixed and live — spend is now readable per lane.**
 
 - Root cause: a grading call let a lane skip naming who pays, so it billed the live lane.
 - Scope was 8 lanes, not 1 — every offline test and replay was billing live grading too.
 - Fix: the payer is now required at the call site, not inferred afterward.
 - Verified: a day of replay traffic bills its own lane, live traffic is unaffected.
-- No threshold change, no SSoT update needed — this was a bug, not a criteria change.
 - Action: none. Closed and verified live.
 """
 
 
 def test_the_bullet_cap_is_the_operators_own_written_number():
-    """CLAUDE.md rule 7: 'HARD BUDGET: ~6 bullets, ~1 screen, hard'. This is not re-derived from
-    the transcript search — softening it to chase a lower firing rate would be re-legislating a
-    cap the operator wrote himself."""
+    """CLAUDE.md rule 7. LOWERED 6 -> 5 on 2026-08-23, operator-directed: "5 bullet is max, but
+    that means max when you have a lot to say to, typically one bullet is sufficient, sometimes
+    2-3, but rarely 5 is needed... you always write way too much". This test exists to stop a
+    quiet LOOSENING; a tightening the operator asked for by name is the one legitimate edit, and
+    it carries his words. ⚠ The gate polices the ceiling only — "typically one bullet" is not
+    machine-decidable and never will be."""
     import report_format_gate as g
-    assert g._BULLET_CAP == 6
+    assert g._BULLET_CAP == 5
 
 
 def test_anchor_30606_thirteen_bullets_is_over_cap():
     assert bullet_count(_ANCHOR_30606) == 13
 
 
-def test_anchor_31384_seven_bullets_is_the_floor_of_the_cap():
-    """7 is the minimum bullet count found across every genuine length complaint in the corpus —
-    the threshold cannot be raised even one notch without losing this anchor entirely."""
+def test_anchor_31384_seven_bullets_is_over_the_cap():
+    """7 was the minimum bullet count across every genuine length complaint in the 2026-08-09
+    corpus, and set the original cap of 6. The cap is 5 since 2026-08-23, so this anchor now
+    clears it by two — the threshold can still never be RAISED past 6 without losing it."""
     assert bullet_count(_ANCHOR_31384) == 7
 
 
-def test_six_bullets_passes():
-    assert bullet_count(_SIX_BULLETS_OK) <= 6
+def test_five_bullets_passes():
+    assert bullet_count(_FIVE_BULLETS_OK) <= 5
 
 
 def test_code_fenced_bullet_like_lines_are_not_counted():
@@ -301,7 +305,7 @@ def test_blocks_on_the_exact_anchor_31384_via_the_hook(tmp_path):
     """The floor case, run through the actual Stop hook subprocess — not just the pure function."""
     r = _run({"transcript_path": _transcript(tmp_path, _ANCHOR_31384)})
     assert r.returncode == 2
-    assert "7 bullets" in r.stderr and "cap is ~6" in r.stderr
+    assert "7 bullets" in r.stderr and "CEILING is 5" in r.stderr
 
 
 def test_blocks_on_the_exact_anchor_30606_via_the_hook(tmp_path):
@@ -310,15 +314,18 @@ def test_blocks_on_the_exact_anchor_30606_via_the_hook(tmp_path):
     assert "13 bullets" in r.stderr
 
 
-def test_allows_six_bullets_via_the_hook(tmp_path):
-    r = _run({"transcript_path": _transcript(tmp_path, _SIX_BULLETS_OK)})
+def test_allows_five_bullets_via_the_hook(tmp_path):
+    r = _run({"transcript_path": _transcript(tmp_path, _FIVE_BULLETS_OK)})
     assert r.returncode == 0, r.stderr
 
 
 def test_length_block_message_states_actual_count_and_the_cap():
     from report_format_gate import length_complaint
     msg = length_complaint(17)
-    assert "17 bullets" in msg and "cap is ~6" in msg
+    assert "17 bullets" in msg and "CEILING is 5" in msg
+    assert "TYPICALLY ONE BULLET" in msg, (
+        "the message must say what the target IS, not only what the ceiling is — the operator's\n"
+        "2026-08-23 correction was that a cap alone gets written TO")
 
 
 def test_a_re_entry_after_a_length_block_never_blocks_again(tmp_path):
