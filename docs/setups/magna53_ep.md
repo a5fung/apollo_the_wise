@@ -324,8 +324,10 @@ strip a name of a bypass its old grade earned: a better grade admitting less).
 
 **Status**: built + suite-verified (6061 passed / 7 skipped; 16 new tests in
 `tests/test_lattice_admission_consistency.py` pin behaviour, direction, and the
-no-second-grade-path source invariant). COMMITTED 2026-08-23; deploys in the next
-window (12:00-13:00 ET Mon 08-24, scope `both`) — live on the first market day it can act.
+no-second-grade-path source invariant). COMMITTED 2026-08-23; deploys in the
+SUNDAY 08-23 after-hours window (21:15-22:15 ET, scope `both`) so it is live for Monday's
+07:00-10:00 ET scan — a Monday-noon deploy would land AFTER the morning scan and push the
+first live test to Tuesday.
 Same ONE revert flag as the flip: `catalyst_tier_lattice` OFF = the raw LLM grade acts at
 every point, byte-identical pre-flip behaviour (the flip-day mixed state — lattice score,
 raw filters — is deliberately no longer reachable: it IS the fork the operator forbade).
