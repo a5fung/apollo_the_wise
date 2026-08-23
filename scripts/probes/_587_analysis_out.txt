@@ -1,0 +1,160 @@
+=== out-of-orb rows in window (>= 2026-06-24): 25 (25 tickers); all-time: 57
+
+=== the 25, named (outcome basis: d0 open, missed_outcomes definitions)
+ticker date       det   gap%  score cat          ret5d   mh5d   mh20d  ret20d  refreshed
+PENG   2026-07-08 09:55  10.5  72.0 game_changer   +7.4  +32.4  +32.4  -17.9  2026-08-07
+IREN   2026-07-20 09:51  13.2  72.0 game_changer   -0.3  +20.1  +35.2  +23.4  2026-08-19
+HAS    2026-07-21 09:50  10.6  72.0 game_changer  +14.0  +14.1  +16.0  +11.2  2026-08-20
+NNE    2026-07-27 09:56  10.4  57.0 strong         +5.9   +6.2  +27.3    n/a  2026-08-21
+TEVA   2026-07-29 09:51  11.4  50.4 strong         +3.1   +6.5  +12.4    n/a  2026-08-21
+LRCX   2026-07-30 09:51  18.9  84.0 strong         -3.9   +1.7   +8.5    n/a  2026-08-21
+BLZE   2026-07-31 09:56  13.1  72.0 game_changer  +39.7  +78.1  +78.1    n/a  2026-08-21
+AMRC   2026-08-04 09:45  38.7  50.0 routine       -18.9   +0.0   +0.0    n/a  2026-08-21
+TSAT   2026-08-04 09:56  14.5  60.0 game_changer  +35.2  +38.1  +39.9    n/a  2026-08-21
+ECG    2026-08-05 09:51  11.0  72.0 game_changer   -4.9   +6.0   +6.0    n/a  2026-08-21
+HGTY   2026-08-05 09:55  11.7  60.5 strong         +0.7  +10.3  +10.3    n/a  2026-08-21
+CAI    2026-08-06 09:53  17.1  50.4 routine       +16.7  +24.5  +40.0    n/a  2026-08-21
+DCTH   2026-08-06 09:56  21.3  54.0 routine       +23.7  +24.2  +24.2    n/a  2026-08-21
+MTW    2026-08-07 09:52  33.1  50.4 routine       +20.7  +24.5  +24.5    n/a  2026-08-21
+ONTO   2026-08-07 09:52  15.3  96.0 game_changer  +10.6  +15.6  +17.9    n/a  2026-08-21
+ACHR   2026-08-10 09:45  14.8  54.0 routine        -0.3  +13.7  +13.7    n/a  2026-08-21
+NESR   2026-08-10 09:45  12.0  53.3 strong        +11.8  +15.4  +15.4    n/a  2026-08-21
+BE     2026-08-12 09:50  15.2  84.0 strong        -12.7   +7.0   +7.0    n/a  2026-08-21
+CRWV   2026-08-12 09:50  19.5  51.6 routine       -16.4   +8.1   +8.1    n/a  2026-08-21
+MRX    2026-08-12 09:55  12.4  53.3 strong        +12.1  +20.4  +20.4    n/a  2026-08-21
+KURA   2026-08-13 09:51  13.4  60.5 strong        +10.4  +21.6  +21.6    n/a  2026-08-21
+OMER   2026-08-13 09:45  22.5  60.0 routine       +11.9  +13.5  +17.6    n/a  2026-08-21
+NMAX   2026-08-14 09:50  16.8 100.8 strong         +8.6  +19.1  +19.1    n/a  2026-08-21
+TWST   2026-08-19 09:55  16.7  84.0 strong          n/a  +14.0  +14.0    n/a  2026-08-21
+UUUU   2026-08-21 09:55   9.3  51.6 strong          n/a   +6.3   +6.3    n/a  2026-08-21
+
+=== cross-check: mi_ep_missed_outcomes vs fresh compute from daily bars
+  all stored values match recomputation within 0.5pp (or are jointly n/a)
+
+=== entered MAGNA53 trades in window: 25 (modes: ['live'])
+ticker date       det   status   pnl$    R      ret5d   mh5d   mh20d
+WULF   2026-07-06 08:20 closed     -32.80 -0.70  -13.5   +4.1   +4.1
+CRCL   2026-07-10 07:05 closed     -19.18 -0.81  -14.4   +3.1   +3.1
+WDFC   2026-07-10 07:40 closed     -19.03 -0.80  -15.5   +2.3   +2.3
+TSEM   2026-07-14 07:00 closed     -23.01 -1.05   -7.6   +0.9   +0.9
+MANE   2026-07-15 09:00 closed      -2.40 -0.11   -7.5   +9.3   +9.3
+HUT    2026-07-20 07:05 closed     -19.53 -0.98   +3.0  +18.6  +18.6
+SMCI   2026-07-22 07:00 closed     -14.96 -0.68  -11.0  +12.8  +46.5
+NVCR   2026-07-23 09:05 closed     -24.13 -1.07  -15.4  +19.2  +19.2
+THC    2026-07-24 07:05 closed     -16.28 -0.81   +8.4  +11.8  +19.5
+WKC    2026-07-24 08:15 closed     -23.80 -1.18   -0.3   +3.0   +3.0
+QBTS   2026-07-27 07:20 closed     -22.26 -0.92  +11.9  +12.7  +23.2
+FTNT   2026-07-30 07:00 closed      -6.63 -0.55   -2.4   +4.9   +4.9
+BLZE   2026-08-04 07:00 closed     -36.79 -1.03   -7.2  +19.0  +19.0
+BTDR   2026-08-04 08:20 closed     -28.12 -0.78  -32.0   +1.1   +1.1
+PLTR   2026-08-04 07:00 closed    +118.60 +3.31  +20.5  +23.7  +25.7
+FIGS   2026-08-07 08:50 closed      -6.84 -0.14   -3.4   +7.8   +7.8
+NET    2026-08-07 08:50 closed     -15.39 -0.32   -0.7   +4.5   +4.5
+TEAM   2026-08-07 08:50 closed     -23.94 -0.50  +11.8  +15.6  +22.6
+ABCL   2026-08-10 07:20 filled     +31.36 +0.65  +27.9  +32.9  +38.7
+BW     2026-08-11 07:00 closed     -49.60 -1.02  -22.9   +1.9   +1.9
+FRMI   2026-08-11 07:00 closed     -31.49 -0.65  -18.8   +8.6   +8.6
+ETON   2026-08-14 07:20 closed     +19.32 +0.40  +15.5  +16.5  +16.5
+AMLX   2026-08-18 07:20 filled     +16.29 +0.33    n/a  +37.5  +37.5
+MRNA   2026-08-19 07:10 filled     +17.71 +0.35    n/a  +52.3  +52.3
+MRVL   2026-08-19 08:50 closed     -43.28 -0.87    n/a   +5.2   +5.2
+
+--- REJECTED 25 (window_missed): n=25 (ret5 settled n=23)
+  ret_5d: median +8.6%  mean +7.6%  positive 16/23
+  max_high_5d: median +14.1%  >=10%: 17/25  >=20%: 9/25  >=30%: 3/25
+  max_high_20d: median +17.6%  >=20%: 10/25  >=50%: 1/25
+  top max_high_20d: +78%, +40%, +40%, +35%, +32%
+
+--- ENTERED (all, same window): n=25 (ret5 settled n=22)
+  ret_5d: median -5.3%  mean -3.3%  positive 7/22
+  max_high_5d: median +9.3%  >=10%: 12/25  >=20%: 4/25  >=30%: 3/25
+  max_high_20d: median +9.3%  >=20%: 7/25  >=50%: 1/25
+  top max_high_20d: +52%, +46%, +39%, +38%, +26%
+
+--- ENTERED subset detected 09:31-09:44 (closest analog): n=0 (ret5 settled n=0)
+
+--- ENTERED subset detected pre-9:31: n=25 (ret5 settled n=22)
+  ret_5d: median -5.3%  mean -3.3%  positive 7/22
+  max_high_5d: median +9.3%  >=10%: 12/25  >=20%: 4/25  >=30%: 3/25
+  max_high_20d: median +9.3%  >=20%: 7/25  >=50%: 1/25
+  top max_high_20d: +52%, +46%, +39%, +38%, +26%
+
+  entered detection split: pre-open 25, 09:31-09:44 0, unknown 0
+  entered realized (closed n=22): sum -11.3R, median -0.79R, winners>0: 2
+
+=== era split (2R stop live from 2026-08-18; selection rebuild deploys 08-23 → ALL rows are old-selection era)
+  rejected 25: pre-2R 23, 2R-era 2 (TWST, UUUU)
+  entered: pre-2R 22, 2R-era 3 (AMLX, MRNA, MRVL)
+
+--- REJECTED pre-2R: n=23 (ret5 settled n=23)
+  ret_5d: median +8.6%  mean +7.6%  positive 16/23
+  max_high_5d: median +15.4%  >=10%: 16/23  >=20%: 9/23  >=30%: 3/23
+  max_high_20d: median +17.9%  >=20%: 10/23  >=50%: 1/23
+  top max_high_20d: +78%, +40%, +40%, +35%, +32%
+
+--- ENTERED pre-2R: n=22 (ret5 settled n=22)
+  ret_5d: median -5.3%  mean -3.3%  positive 7/22
+  max_high_5d: median +8.9%  >=10%: 10/22  >=20%: 2/22  >=30%: 1/22
+  max_high_20d: median +8.9%  >=20%: 5/22  >=50%: 0/22
+  top max_high_20d: +46%, +39%, +26%, +23%, +23%
+
+=== tradability at detection (minute bars; ORB = 09:30 bar)
+ticker date       det   orb_high  det_close  vs_orbH%  chase_preR2 chase_2R  retest<=H*1.005 after det?
+PENG   2026-07-08 09:55  NO MINUTE BARS
+IREN   2026-07-20 09:51  NO MINUTE BARS
+HAS    2026-07-21 09:50  NO MINUTE BARS
+NNE    2026-07-27 09:56  NO MINUTE BARS
+TEVA   2026-07-29 09:51     34.00      34.37     +1.1  CAPPED     CAPPED    10:02
+LRCX   2026-07-30 09:51    319.50     306.79     -4.0  pass       pass      09:52
+BLZE   2026-07-31 09:56     13.60      14.03     +3.2  CAPPED     CAPPED    10:08
+AMRC   2026-08-04 09:45     31.93      29.23     -8.4  pass       pass      09:46
+TSAT   2026-08-04 09:56     44.16      45.87     +3.9  CAPPED     CAPPED    no (by close)
+ECG    2026-08-05 09:51    150.78     154.04     +2.2  CAPPED     pass      10:03
+HGTY   2026-08-05 09:55  NO MINUTE BARS
+CAI    2026-08-06 09:53     19.00      19.38     +2.0  pass       pass      10:32
+DCTH   2026-08-06 09:56     14.35      15.18     +5.8  CAPPED     CAPPED    no (by close)
+MTW    2026-08-07 09:52     17.14      18.71     +9.2  CAPPED     CAPPED    no (by close)
+ONTO   2026-08-07 09:52    307.89     310.61     +0.9  pass       pass      09:54
+ACHR   2026-08-10 09:45      6.50       6.57     +1.0  pass       pass      10:47
+NESR   2026-08-10 09:45     32.73      33.00     +0.8  pass       pass      no (by close)
+BE     2026-08-12 09:50    239.90     240.25     +0.1  pass       pass      09:51
+CRWV   2026-08-12 09:50    110.33     106.41     -3.6  pass       pass      09:51
+MRX    2026-08-12 09:55     64.27      68.45     +6.5  CAPPED     CAPPED    no (by close)
+KURA   2026-08-13 09:51     10.74      11.20     +4.3  CAPPED     CAPPED    10:55
+OMER   2026-08-13 09:45     17.26      17.13     -0.8  pass       pass      09:46
+NMAX   2026-08-14 09:50     10.25      11.26     +9.8  CAPPED     CAPPED    no (by close)
+TWST   2026-08-19 09:55    132.00     137.31     +4.0  CAPPED     CAPPED    no (by close)
+UUUU   2026-08-21 09:55     14.79      15.41     +4.2  CAPPED     CAPPED    10:14
+
+  coverage 20/25; above ORB high at detection: 16/20; median vs ORB high +2.1%
+  chase-cap pass (pre-2R stop): 9/20; (2R stop): 10/20
+  ORB-high retest (stop-limit would fill on pullback) same day: 13/20
+
+=== counterfactual sim — entry at detection close ×1.002, 2R stop (stop=2L−H), stop checked BEFORE target within a bar/day (pessimistic).
+    Exit rule simplified to: −1R if stop touched; else mark at close_d5. Reached +2R before stop also reported (the live partial target).
+ticker date       entry    stop    R/sh   outcome        reached+2R  maxR(5d)
+TEVA   2026-07-29    34.44   33.34   1.10  hold5d +0.3R   no         +1.3
+LRCX   2026-07-30   307.40  283.96  23.44  stopped -1.0R  no         +0.5
+BLZE   2026-07-31    14.06   13.22   0.84  hold5d +5.7R   YES        +11.9
+AMRC   2026-08-04  degenerate geometry (E<=S), skipped
+TSAT   2026-08-04    45.96   42.08   3.88  hold5d +3.5R   YES        +3.8
+ECG    2026-08-05   154.35  143.00  11.35  stopped -1.0R  no         +0.0
+CAI    2026-08-06    19.42   16.89   2.53  hold5d +1.1R   no         +1.7
+DCTH   2026-08-06    15.21   13.65   1.56  hold5d +1.4R   no         +1.4
+MTW    2026-08-07    18.75   17.14   1.61  hold5d +1.2R   no         +1.6
+ONTO   2026-08-07   311.23  282.11  29.12  hold5d +0.7R   no         +1.2
+ACHR   2026-08-10     6.58    6.02   0.56  stopped -1.0R  no         +0.5
+NESR   2026-08-10    33.07   30.99   2.08  hold5d +1.3R   no         +1.9
+BE     2026-08-12   240.73  230.52  10.21  stopped -1.0R  no         +1.2
+CRWV   2026-08-12   106.62  105.77   0.85  stopped -1.0R  YES        +3.9
+MRX    2026-08-12    68.59   60.93   7.65  hold5d +0.2R   no         +0.9
+KURA   2026-08-13    11.22   10.06   1.16  stopped -1.0R  no         +0.1
+OMER   2026-08-13    17.16   15.82   1.34  hold5d +1.1R   no         +1.3
+NMAX   2026-08-14    11.28    9.54   1.74  hold5d -0.3R   no         +0.3
+TWST   2026-08-19   137.59  123.50  14.09  hold5d +0.6R   no         +0.6
+UUUU   2026-08-21    15.44   14.37   1.07  hold5d -0.3R   no         +0.1
+
+  sim n=19: stopped 6, sum +10.4R, reached +2R first 3, median maxR +1.2
+
+=== detection minutes of the 25: 09:45, 09:45, 09:45, 09:45, 09:50, 09:50, 09:50, 09:50, 09:51, 09:51, 09:51, 09:51, 09:51, 09:52, 09:52, 09:53, 09:55, 09:55, 09:55, 09:55, 09:55, 09:56, 09:56, 09:56, 09:56
+    (scan cron = every 5 min; last in-window tick ≈ 9:40 + latency; a name first qualifying 9:41-9:45 lands on the 9:45 tick)

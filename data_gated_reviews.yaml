@@ -332,6 +332,39 @@ reviews:
     # "n<20, cannot evaluate" answer.
     reviewed_on: 2026-08-06
 
+  - review_id: extension_cap_75_recheck
+    status: pending
+    title: "Did raising the extension cap 50% -> 75% actually admit the names it was raised for?"
+    question: |
+      The weekly review of 2026-08-23 showed 11 names skipped as "already
+      extended" over 7 days with an average peak of +58%, one of them +427%.
+      The cap was raised 50% -> 75% (operator-signed) and went live 2026-08-23.
+      So: of the names still skipped as extended under the 75% cap, what did
+      they go on to do — and did the raise catch the big ones, or are the
+      movers still sitting above 75%?
+      Answer with the forward outcome distribution of names skipped as extended
+      SINCE the raise, versus the ones the raise newly admitted. If the movers
+      are still above 75%, the raise did not reach them and that is a finding.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT ticker) FROM mi_ep_scan_log
+      WHERE filter_reason ILIKE '%(extended)%'
+        AND scan_date >= DATE '2026-08-23'
+        AND scan_date < CURRENT_DATE - 5
+    threshold: 15
+    # 5-day lag in the predicate so every counted name has settled forward
+    # outcomes to read. Date floor is the deploy day of the 75% cap: counting a
+    # name skipped under the OLD 50% cap would measure the rule we replaced —
+    # the era-scoping mistake the 2026-08-23 weekly review already made once.
+    earliest_review_date: 2026-09-15
+    action_when_ready: |
+      Read the forward outcomes (mi_ep_missed_outcomes, filtered on
+      last_refreshed_at — the #583 stale-row class) for names skipped as
+      extended since 2026-08-23, and for the band between 50% and 75% that the
+      raise newly admitted. Report: did the admitted band produce winners, and
+      do the names still being skipped carry the +58%-average tail the 08-23
+      review showed? ⚖ The cap is entry discipline — THE LINE. This review
+      REPORTS; any further change needs CHANGE_PROCESS + operator sign-off.
+
   - review_id: conviction_floor_extension
     title: "Conviction floor extension to gap[10,15)+strong band"
     question: |
