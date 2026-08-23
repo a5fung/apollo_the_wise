@@ -78,6 +78,7 @@ from shared.output_ceilings import max_tokens_for
 # only the committed pin the deploy gate checks, and can lag the live value.
 from agents.market_intelligence.ep_grade_judge import MODEL as _JUDGE_MODEL_ACTUAL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
+from agents.market_intelligence.ep_rubric import SCORE_WEIGHTS, resolve_conviction_floor, tier_points
 from shared.llm_response import is_truncated
 
 logger = logging.getLogger(__name__)
@@ -1213,7 +1214,8 @@ def _score_ep(
     adv_dollar: float | None = None,
 ) -> tuple[float, dict]:
     """
-    Calculate MAGNA53 EP score (0-100 before multiplier).
+    Calculate MAGNA53 EP score (raw score before regime multiplier; uncapped
+    — the prior 0-100 cap was removed by #42, 2026-05-09, see below).
     Returns: (final_score, score_breakdown)
 
     Weights emphasize the two strongest EP signals: gap size + catalyst quality.
@@ -1232,74 +1234,45 @@ def _score_ep(
     with +10). Shipped for telemetry/visibility — future Phase 5 meta-
     rubric will use theme_context as a composite input with its own
     weight calibration. Env-flagged for fast rollback.
+
+    All tier cuts and point values below live in `ep_rubric.SCORE_WEIGHTS`
+    (Stage 2 of the score-tunability plan, 2026-08-22) — that module carries
+    the full evidence/provenance for each component; this function just reads
+    the table. Pure refactor, no behaviour change: see
+    `tests/test_ep_score_stage2_refactor.py`.
     """
     breakdown = {}
 
-    # Gap magnitude (max 15) — scaled: bigger gaps = stronger signal
-    if gap_pct >= 20:
-        breakdown["gap"] = 25
-    elif gap_pct >= 15:
-        breakdown["gap"] = 20
-    elif gap_pct >= 10:
-        breakdown["gap"] = 15
-    elif gap_pct >= 8:
-        breakdown["gap"] = 10
-    else:
-        breakdown["gap"] = 0
+    # Gap magnitude — see ep_rubric.SCORE_WEIGHTS["gap"].
+    breakdown["gap"] = tier_points(
+        gap_pct, SCORE_WEIGHTS["gap"]["tiers"], SCORE_WEIGHTS["gap"]["default"]
+    )
 
-    # LIQUIDITY (max 15) — operator-signed 2026-08-22, replaces the RVOL tiers.
-    # WHY: the old tiers scored "how unusual is today's volume vs this stock's own
-    # normal". Real EPs do not look like that — the labelled cohort's MEDIAN is
-    # 1.8x, which earned ZERO under the old ladder, while a sleepy micro-cap at 3x
-    # scored 10. Measured on 26 labelled real EPs vs 1,074 ordinary gap days:
-    # ex-ante 20-day ADV$ separates at AUC 0.72 vs day-RVOL's 0.31 (0.5 = a coin
-    # flip; the old component ran BACKWARDS). It also needs no intraday projection
-    # and is already computed per scan row. Evidence + tier derivation:
-    # docs/analysis/score_redesign_proposal_533_2026-08-22.md. SSoT: magna53_ep.md.
+    # Liquidity — operator-signed 2026-08-22; full evidence + the unknown-ADV
+    # RVOL fallback rationale live in ep_rubric.SCORE_WEIGHTS["liquidity"].
     # ⚠ The separate 2.0x session-RVOL GATE is untouched — this changes RANKING only.
+    _liq = SCORE_WEIGHTS["liquidity"]
     if adv_dollar is not None and adv_dollar > 0:
-        if adv_dollar >= 500_000_000:
-            breakdown["liquidity"] = 15
-        elif adv_dollar >= 250_000_000:
-            breakdown["liquidity"] = 12
-        elif adv_dollar >= 100_000_000:
-            breakdown["liquidity"] = 10
-        elif adv_dollar >= 50_000_000:
-            breakdown["liquidity"] = 7
-        else:
-            breakdown["liquidity"] = 0
+        breakdown["liquidity"] = tier_points(adv_dollar, _liq["adv_tiers"], _liq["adv_default"])
     else:
-        # ADV unknown (new listing, thin history). Fall back to the OLD RVOL ladder
-        # rather than award 0 — a data gap must never silently sink a candidate (P1:
-        # a false exclusion is invisible). Mirrors _check_adv_dollar_volume, which
-        # also lets an unknown-ADV name through rather than dropping it.
+        # ADV unknown (new listing, thin history) — P1: a false exclusion is invisible.
         vol_signal = projected_vol_multiple if projected_vol_multiple is not None else rel_volume
-        if vol_signal >= 10:
-            breakdown["liquidity"] = 15
-        elif vol_signal >= 5:
-            breakdown["liquidity"] = 12
-        elif vol_signal >= 3:
-            breakdown["liquidity"] = 10
-        elif vol_signal >= 2:
-            breakdown["liquidity"] = 7
-        else:
-            breakdown["liquidity"] = 0
+        breakdown["liquidity"] = tier_points(vol_signal, _liq["fallback_tiers"], _liq["fallback_default"])
 
-    # Catalyst quality (max 25) — the single most important EP signal
+    # Catalyst quality — see ep_rubric.SCORE_WEIGHTS["catalyst"].
     # "mna" should never reach scoring (hard-filtered above), but treat as 0 if it does
-    if catalyst_quality == "game_changer":
-        breakdown["catalyst"] = 25
-    elif catalyst_quality == "strong":
-        breakdown["catalyst"] = 15
-    else:
-        breakdown["catalyst"] = 0
+    # — any unrecognized label falls to the default, same as before.
+    breakdown["catalyst"] = SCORE_WEIGHTS["catalyst"]["points"].get(
+        catalyst_quality, SCORE_WEIGHTS["catalyst"]["default"]
+    )
 
-    # Low float bonus (max 5)
+    # Low float bonus — see ep_rubric.SCORE_WEIGHTS["float"].
     float_shares = profile.get("floatShares", 0) or 0
-    if float_shares > 0 and float_shares < 50_000_000:
-        breakdown["float"] = 5
+    _float = SCORE_WEIGHTS["float"]
+    if float_shares > 0 and float_shares < _float["max_shares"]:
+        breakdown["float"] = _float["points"]
     else:
-        breakdown["float"] = 0
+        breakdown["float"] = _float["default"]
 
     # Analyst upgrades bonus REMOVED (#332, 2026-07-18, operator-signed — CHANGE_PROCESS +
     # docs/analysis/332_analyst_bonus_backtest_2026-07-18.md). The feed (get_fmp_analyst_ratings,
@@ -1329,13 +1302,13 @@ def _score_ep(
     # rank shadow, not in this score, until something measures it that does not run backwards.
     # Evidence: docs/analysis/score_redesign_proposal_533_2026-08-22.md. SSoT: magna53_ep.md.
 
-    # Volume conviction: pre-market volume vs stock's own historical ADV distribution (max 5)
-    if vol_percentile >= 90:
-        breakdown["vol_conviction"] = 5
-    elif vol_percentile >= 70:
-        breakdown["vol_conviction"] = 3
-    else:
-        breakdown["vol_conviction"] = 0
+    # Volume conviction: pre-market volume vs stock's own historical ADV
+    # distribution — see ep_rubric.SCORE_WEIGHTS["vol_conviction"].
+    breakdown["vol_conviction"] = tier_points(
+        vol_percentile,
+        SCORE_WEIGHTS["vol_conviction"]["tiers"],
+        SCORE_WEIGHTS["vol_conviction"]["default"],
+    )
 
     # PRIOR-MOMENTUM PENALTY DELETED 2026-08-22, operator-signed. It was sourced from
     # Qullamaggie ("best if stock has not rallied past 3-6 months") but measured as NOISE on
@@ -1346,39 +1319,31 @@ def _score_ep(
     # still logged; it is simply no longer SCORED.
     # Evidence: docs/analysis/score_redesign_proposal_533_2026-08-22.md. SSoT: magna53_ep.md.
 
-    # R4 in-theme bonus (2026-05-17 ship). +10 when ticker is in an
-    # Accelerating or Mainstream theme on alert_date. Env-flagged.
-    # Under current ep_threshold=70 this is decorative — verified via
-    # pre-ship SQL (0 MODERATE-in-theme alerts in 60d would cross HIGH
-    # with +10). Shipped for telemetry/visibility: score breakdown
-    # surfaces the theme context, and Phase 5 meta-rubric will compose
-    # theme_context as a separate scoring input with its own calibrated
-    # weights. The +10 contributes to ep_score regardless of HIGH/MOD
-    # outcome — useful as a paired-data signal for Phase 5 regression.
+    # R4 in-theme bonus (2026-05-17 ship). Env-flagged for fast rollback —
+    # that's control flow, stays here. Point value + full evidence live in
+    # ep_rubric.SCORE_WEIGHTS["theme_bonus"].
     _R4_ENABLED = os.environ.get("R4_THEME_BONUS_ENABLED", "true").lower() == "true"
+    _theme = SCORE_WEIGHTS["theme_bonus"]
     if _R4_ENABLED and in_active_theme:
-        breakdown["theme_bonus"] = 10
+        breakdown["theme_bonus"] = _theme["points"]
     else:
-        breakdown["theme_bonus"] = 0
+        breakdown["theme_bonus"] = _theme["default"]
 
     raw_score = sum(breakdown.values())
 
-    # Conviction floor: massive gap + quality catalyst = high-conviction regardless
-    # of secondary factors. The gap itself is evidence of institutional conviction.
-    # 20%+ strong = same floor as 15%+ game_changer (market voted with its feet)
-    # 10-15% game_changer: floor 60 → MODERATE at minimum; fires HIGH in Bull w/ Gemini
-    if gap_pct >= 15 and catalyst_quality == "game_changer":
-        raw_score = max(raw_score, 80)
-        breakdown["conviction_floor"] = max(0, 80 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
-    elif gap_pct >= 20 and catalyst_quality == "strong":
-        raw_score = max(raw_score, 80)
-        breakdown["conviction_floor"] = max(0, 80 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
-    elif gap_pct >= 15 and catalyst_quality == "strong":
-        raw_score = max(raw_score, 70)
-        breakdown["conviction_floor"] = max(0, 70 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
-    elif gap_pct >= 10 and catalyst_quality == "game_changer":
-        raw_score = max(raw_score, 60)
-        breakdown["conviction_floor"] = max(0, 60 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
+    # Conviction floor: massive gap + quality catalyst = high-conviction
+    # regardless of secondary factors — see ep_rubric.SCORE_WEIGHTS["conviction_floor"].
+    # `resolve_conviction_floor` mirrors the original if/elif/elif/elif exactly:
+    # first matching rule wins, and no match leaves "conviction_floor" out of
+    # the breakdown entirely (same as before).
+    _floor = resolve_conviction_floor(
+        gap_pct, catalyst_quality, SCORE_WEIGHTS["conviction_floor"]["rules"]
+    )
+    if _floor is not None:
+        raw_score = max(raw_score, _floor)
+        breakdown["conviction_floor"] = max(
+            0, _floor - sum(v for k, v in breakdown.items() if k != "conviction_floor")
+        )
 
     # Removed prior `min(..., 100)` cap (#42, 2026-05-09). The cap squashed
     # multiple high-conviction setups to identical 100s — 5/8 spike showed

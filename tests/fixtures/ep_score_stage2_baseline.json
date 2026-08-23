@@ -1,0 +1,1614 @@
+{
+  "catalyst_game_changer": {
+    "breakdown": {
+      "catalyst": 25,
+      "conviction_floor": 20,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 60.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "catalyst_routine": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "catalyst_strong": {
+    "breakdown": {
+      "catalyst": 15,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 30.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "strong",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "catalyst_unexpected_mna": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "mna",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "combo_high_conviction_bull": {
+    "breakdown": {
+      "catalyst": 25,
+      "conviction_floor": 0,
+      "float": 5,
+      "gap": 25,
+      "liquidity": 15,
+      "theme_bonus": 10,
+      "vol_conviction": 5
+    },
+    "final_score": 102.0,
+    "kwargs": {
+      "adv_dollar": 600000000,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 22.0,
+      "in_active_theme": true,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": 20000000
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.2,
+      "rel_volume": 2.0,
+      "vol_percentile": 95.0
+    }
+  },
+  "combo_moderate_unknown_adv_premarket": {
+    "breakdown": {
+      "catalyst": 15,
+      "float": 0,
+      "gap": 10,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 3
+    },
+    "final_score": 38.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "strong",
+      "gap_pct": 9.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": 80000000
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 4.0,
+      "vol_percentile": 72.0
+    }
+  },
+  "combo_thin_liquidity_no_catalyst": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 10,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 10.0,
+    "kwargs": {
+      "adv_dollar": 5000000,
+      "catalyst_quality": "routine",
+      "gap_pct": 8.5,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 1.5,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.2,
+      "vol_percentile": 40.0
+    }
+  },
+  "float_above_50m": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": 100000000
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "float_absent_key": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "float_at_50m_boundary": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": 50000000
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "float_below_50m": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 5,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 20.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": 10000000
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "float_negative": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": -1
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "float_none_value": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": null
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "float_zero": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {
+        "floatShares": 0
+      },
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_none_high_gap_routine": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 25,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 25.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_none_high_gap_weak": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 25,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "weak",
+      "gap_pct": 25.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r1_ge15_gamechanger_at15": {
+    "breakdown": {
+      "catalyst": 25,
+      "conviction_floor": 35,
+      "float": 0,
+      "gap": 20,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 80.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 15.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r1_ge15_gamechanger_high": {
+    "breakdown": {
+      "catalyst": 25,
+      "conviction_floor": 30,
+      "float": 0,
+      "gap": 25,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 80.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 25.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r1_to_r4_boundary_14_9_gamechanger": {
+    "breakdown": {
+      "catalyst": 25,
+      "conviction_floor": 20,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 60.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 14.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r2_ge20_strong_at20": {
+    "breakdown": {
+      "catalyst": 15,
+      "conviction_floor": 40,
+      "float": 0,
+      "gap": 25,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 80.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "strong",
+      "gap_pct": 20.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r2_to_r3_boundary_19_9_strong": {
+    "breakdown": {
+      "catalyst": 15,
+      "conviction_floor": 35,
+      "float": 0,
+      "gap": 20,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 70.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "strong",
+      "gap_pct": 19.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r3_ge15_strong_at15": {
+    "breakdown": {
+      "catalyst": 15,
+      "conviction_floor": 35,
+      "float": 0,
+      "gap": 20,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 70.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "strong",
+      "gap_pct": 15.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r3_to_none_boundary_14_9_strong": {
+    "breakdown": {
+      "catalyst": 15,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 30.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "strong",
+      "gap_pct": 14.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r4_ge10_gamechanger_at10": {
+    "breakdown": {
+      "catalyst": 25,
+      "conviction_floor": 20,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 60.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 10.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "floor_r4_to_none_boundary_9_9_gamechanger": {
+    "breakdown": {
+      "catalyst": 25,
+      "float": 0,
+      "gap": 10,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 35.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "game_changer",
+      "gap_pct": 9.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_10": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 10.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_14_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 14.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_15": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 20,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 20.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 15.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_19_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 20,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 20.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 19.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_7_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 0,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 0.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 7.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_8": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 10,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 10.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 8.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_9_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 10,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 10.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 9.9,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "gap_ge20": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 25,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 20.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_0": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": 0,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_100m": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": 100000000,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_249_999_999": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": 249999999,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_250m": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": 250000000,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_499_999_999": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": 499999999,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_49_999_999": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": 49999999,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_500m": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 15,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 30.0,
+    "kwargs": {
+      "adv_dollar": 500000000,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_50m": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 7,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 22.0,
+    "kwargs": {
+      "adv_dollar": 50000000,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_99_999_999": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 7,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 22.0,
+    "kwargs": {
+      "adv_dollar": 99999999,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_adv_negative": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": -5.0,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_premarket_none_proj": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 6.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_10": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 15,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 30.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 10.0,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_1_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 1.9,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_2": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 7,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 22.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 2.0,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_2_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 7,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 22.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 2.9,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_3": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 3.0,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_4_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 4.9,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_5": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 5.0,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_proj_9_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": 9.9,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_10": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 15,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 30.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 10.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_1_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.9,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_2": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 7,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 22.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 2.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_2_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 7,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 22.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 2.9,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_3": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 3.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_4_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 10,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 4.9,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_5": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 5.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "liq_fallback_rvol_9_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 12,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 27.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 9.9,
+      "vol_percentile": 50.0
+    }
+  },
+  "regime_1_0": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "regime_1_2_bull": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 18.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.2,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "theme_false": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "theme_true": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 10,
+      "vol_conviction": 0
+    },
+    "final_score": 25.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": true,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  },
+  "vol_conv_69_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 69.9
+    }
+  },
+  "vol_conv_70": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 3
+    },
+    "final_score": 18.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 70.0
+    }
+  },
+  "vol_conv_89_9": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 3
+    },
+    "final_score": 18.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 89.9
+    }
+  },
+  "vol_conv_90": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 5
+    },
+    "final_score": 20.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 90.0
+    }
+  },
+  "vol_conv_default_50": {
+    "breakdown": {
+      "catalyst": 0,
+      "float": 0,
+      "gap": 15,
+      "liquidity": 0,
+      "theme_bonus": 0,
+      "vol_conviction": 0
+    },
+    "final_score": 15.0,
+    "kwargs": {
+      "adv_dollar": null,
+      "catalyst_quality": "routine",
+      "gap_pct": 12.0,
+      "in_active_theme": false,
+      "prior_3m_change": null,
+      "profile": {},
+      "projected_vol_multiple": null,
+      "regime_multiplier": 1.0,
+      "rel_volume": 1.0,
+      "vol_percentile": 50.0
+    }
+  }
+}
