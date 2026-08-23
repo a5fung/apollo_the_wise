@@ -18,8 +18,9 @@ still **defines R**; it is no longer the exit. Position size **halves by the siz
 unchanged**. 🔴 The +2R partial target does **not** move: 1/3 still comes off at the ORIGINAL
 `entry + 2·(entry − ORB_low)` price (`order_manager.profit_target_r_per_share` pins the frame).
 Pre-2026-08-16 the stop was the ORB low itself.
-⚠ **Built, NOT yet deployed** — the running image still places the ORB-low stop until the next
-market-agent + execution deploy; delete this line at verify-live.
+✅ **LIVE.** Confirmed in production 2026-08-23 (the line above said "not yet deployed" for a
+week after it already was — a stale caveat is a hidden rule, P15). Live behaviour observed from
+2026-08-18: AMLX's placed stop equals `2·ORB_low − ORB_high` in prod trade data.
 
 This is the canonical Apollo entry strategy — the highest-volume, highest-conviction setup type.
 
