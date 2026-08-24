@@ -1961,6 +1961,13 @@ The earnings-boost MODERATE→HIGH promotion path (line 1276) is preserved as me
 
 **Implementation**: env-flagged early gate in `attempt_day1_reentry()` (broker/order_manager.py:430). When R3 active (default): record stop_hit exit, close trade with `skip_reason='block:r3_reentry_disabled'`, emit `r3_day1_reentry_blocked` audit event.
 
+> ⚠ **Amended 2026-08-24 (#591, operator-signed).** That close now runs only when the
+> stop fill leaves NOTHING outstanding. If shares remain — a +2R carve-out limit still
+> resting at the broker, ETON 2026-08-14 — the row stays OPEN at those shares and no
+> re-entry is attempted; whatever exit owns them closes the trade. Re-entry is a
+> full-stop-out concept, so the R3 decision itself is unchanged. SSoT:
+> `docs/setups/exit_discipline.md` change log, 2026-08-24 (#591).
+
 **⚠ Known alpha-slip risk window** (per Block D audit):
 - 112 MAGNA53 HIGH alerts failed Day 1 in 60d (97.4%)
 - 76 of those (69%) made +5% within 21d

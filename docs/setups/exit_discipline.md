@@ -239,7 +239,107 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-24 — BUG FIX (#591): the day-1 stop-out closed the row while a profit-take was still resting at the broker (TRADE STATE — operator-signed; no exit rule, stop, target or size changed)
+
+**Trigger**: #588's audit (entry below) surfaced it and deliberately left it open as
+state, not recording. **ETON 2026-08-14, live money**: 17 entered; 09:35 the +2R
+carve-out placed a resting limit for 5 and armed a stop on 12; 09:45:11 the 12-share
+stop filled and `attempt_day1_reentry` closed the row at `remaining_shares = 0` while
+five real shares sat live at the broker. The limit did not fill until 15:58:02, for
+**+$21.89**. For six hours the books said flat. Prod pins it: audit rows
+`r3_day1_reentry_blocked ETON 09:45:11` and `position_unprotected: live stop qty 12 <
+17 shares held` at 09:45:00; `mi_live_orders` id 295 (qty 5, `purpose='partial_exit'`,
+`filled_at` 19:58 UTC) — the order carried its purpose label, so
+`get_pending_exit_qty(367)` would have returned 5 at 09:45 and this fix would have
+fired on the incident it is named after.
+
+**Operator sign-off (2026-08-24).** Put to him as a fork — when the day-1 stop fills
+and a +2R limit is still resting, keep the trade open or cancel the resting order? His
+ruling: *"if profit take is pending then why close it?"* The fork was false; cancelling
+a resting, profitable order was never a real option. **It is a bug, not a design
+choice.** That ruling is the authority for this change and for nothing wider.
+
+**The fix.** `attempt_day1_reentry` computes `new_remaining = remaining_shares −
+shares-the-stop-actually-sold` and, when that is above zero, writes `status='filled',
+remaining_shares=<new>, stop_order_id=NULL` and RETURNS — no close, no `closed_at`, no
+re-entry. Whatever exit owns the outstanding shares closes the trade on the real final
+state (`_finalize_partial_exit_locked` closes at zero, #566). Nulling the pointer is
+what keeps `_check_day1_reentry` from re-processing the row (its scan requires a
+non-null `stop_order_id`), so no duplicate stop leg can be appended.
+
+**Deliberately the same trigger as the websocket path.** `_process_stop_fill` has
+branched on `new_remaining > 0` since #566. Path divergence between the two stop-fill
+handlers is the root cause of this entire bug family (#566 fixed websocket; #588 found
+polling still broken), so they must branch identically. ⚠ That makes this a
+**superset** of the literal ruling: it also holds the row open when shares remain and
+*no* exit order is working — the state #566 already produces on the websocket path.
+Stated plainly rather than smuggled; narrow it on request.
+
+**Stale-mirror corner.** `get_pending_exit_qty > 0` while `new_remaining == 0` means
+the broker's confirmed stop fill consumed shares our `mi_live_orders` mirror still
+reserves — the broker cannot fill shares held for another order, so the MIRROR is
+wrong. Per ADR 0008 the confirmed broker event wins: the row closes, and
+`pending_exit_mirror_stale` is logged. `remaining_shares` is never inflated to match a
+mirror already known wrong.
+
+**Also shipped — the cancelled-spelling correction (money-path behaviour).**
+`get_pending_exit_qty` listed only the double-l `cancelled` as terminal, so an exit
+order Alpaca spelled `canceled` counted as still working forever. That UNDERSTATES
+coverage: every caller sizing a stop against it (`update_stop`,
+`_ensure_stop_coverage`) placed a stop too SMALL. **Enumerated across the live and
+paper book before shipping — it changes the pending-exit quantity on ZERO trades**
+(`scripts/probes/_591_state_capture.sql` Q2/Q2B: every `partial_exit`/`full_exit` order
+in the book is `filled`).
+
+**Guard adjusted.** The `exit_share_sum_mismatch` L1 invariant (#588) excluded trades
+with an exit still working at the broker, *because* the row used to close early. That
+state can no longer occur — the check only looks at CLOSED rows and the row now stays
+open — so the exclusion would MASK any other path that closes a row early instead of
+suppressing noise. **Removed**; cutoff `2026-08-24` unchanged. Verified against prod
+first: unbounded it returns the same two known-bad legacy rows (ETON 08-14, FPS 06-01)
+it already returned with the exclusion in place, and **0 rows** at the cutoff.
+
+**Anticipated effect**: on a partial-qty day-1 stop fill the row stays open at the
+outstanding shares instead of closing at zero; booked P&L and every downstream
+`mi_sell_discipline_records` figure reflect the real final state. Zero change to the
+common case (full stop-out, nothing resting) and zero change on today's book from the
+spelling correction.
+
+⚠ **Consequence to expect, not a regression.** A held-open row is `status='filled'`
+with `stop_order_id=NULL`, so `check_naked_position` can flag it and the broker
+classifier will call it REAL NAKED when only a limit (not a stop) covers the remainder.
+That alarm is TRUE — those shares have no stop. The old bug hid them by closing the
+row. `_ensure_stop_coverage` sizes from broker truth minus pending exits and so places
+nothing while the limit reserves them. Identical state to what #566 already produces on
+the websocket path; no safeguard was touched.
+
+**Evidence**: 1 live incident (ETON) — single-case, flagged as such; plus the
+book-wide prod enumeration above for the spelling correction (N=0 affected) and for the
+invariant exclusion removal (N=0 at cutoff, 2 unbounded legacy). Both fixes
+mutation-proven: reverting the guard reddens 4 tests and restores the close-at-zero;
+reverting the spelling reddens 2.
+
+**Reversion-flag**: REFINEMENT of the 2026-08-24 #588 entry below — it fixed the
+RECORDING and explicitly deferred the state question to the operator. He has now ruled.
+
+**Status**: shipped, awaiting field validation (next partial-qty day-1 stop fill).
+
+**Tests**: `tests/test_day1_stop_leaves_row_open_591.py` (13);
+`tests/test_exit_share_double_count_588.py` retargeted —
+`test_r3_close_state_is_byte_identical` became
+`test_r3_close_state_is_unchanged_when_nothing_is_resting` at held=0, because held=5
+is exactly the case the ruling changed.
+
+---
+
 ### 2026-08-24 — BUG FIX (#588): the day-1 stop leg recorded the whole tracked position, double-counting a resting partial (RECORDING ONLY — no exit rule, stop, target or size changed)
+
+> ⚠ **SUPERSEDED IN PART by the #591 entry above (2026-08-24).** The two items this
+> entry flagged as the operator's call — the row closing at zero with a carve-out
+> resting, and the single-l `canceled` spelling — have both been ruled on and shipped.
+> The invariant's "no exit order still working" exclusion described below has been
+> REMOVED. Read this entry for the recording fix and the ETON forensics; read #591 for
+> the current state behaviour.
 
 **The defect.** `order_manager.attempt_day1_reentry` booked the stop-out exit leg at
 `mi_live_trades.remaining_shares` — the tracked position — instead of the shares the stop actually

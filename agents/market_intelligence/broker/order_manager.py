@@ -1054,9 +1054,10 @@ async def attempt_day1_reentry(
     # figure inheriting it. PLTR escaped on both counts — day 14 (a different write
     # path) AND its partial had committed two weeks earlier.
     # Netting `get_pending_exit_qty` is the SAME subtraction `update_stop` already
-    # applies for exactly this reason. RECORDING ONLY: `shares` feeds the exit leg,
-    # its P&L and the Telegram text — never remaining_shares, status or the R3 gate.
-    # With no resting exit order this is byte-identical to the old behaviour.
+    # applies for exactly this reason. `shares` feeds the exit leg, its P&L and the
+    # Telegram text. With no resting exit order this is byte-identical to the old
+    # behaviour. (#591 then made the SAME subtraction decide whether the row closes
+    # at all — see the stay-open guard below.)
     tracked_remaining = int(trade["remaining_shares"] or 0)
     held = await get_pending_exit_qty(trade_id)
     # A 0 / missing quantity is UNKNOWN, not "sold nothing" — the WS payload falls
@@ -1094,6 +1095,95 @@ async def attempt_day1_reentry(
         "attempt": trade["entry_attempt"],
         "source": source,
     })
+
+    # ── #591 (operator ruling 2026-08-24) — do NOT close a row while shares remain ──
+    # ETON 2026-08-14 (live money): the 12-share stop filled at 09:45 and this
+    # function closed the row at `remaining_shares = 0` while a +2R carve-out limit
+    # for the other 5 was still RESTING at the broker. It did not fill until 15:58,
+    # so for six hours the books said flat while five real shares sat live; they
+    # filled for +$21.89 and the accounting only re-converged by luck. Put to the
+    # operator as a fork (keep it open vs cancel the resting order) he answered
+    # "if profit take is pending then why close it?" — it is a BUG, not a design
+    # choice. His ruling is the authority for this branch and nothing wider.
+    #
+    # The row now stays OPEN at the shares still outstanding; whatever exit resolves
+    # them closes it on the real final state (`_finalize_partial_exit_locked` closes
+    # at zero, #566). Deliberately the SAME trigger `_process_stop_fill` has used
+    # since #566 — `new_remaining > 0`, not `held > 0`. Path divergence between the
+    # websocket and polling stop-fill handlers is the root cause of this whole bug
+    # family (#566 fixed the WS path; #588 found polling still broken), so the two
+    # must branch identically. That makes this a SUPERSET of the literal ruling: it
+    # also holds the row open when shares remain and no exit order is working, which
+    # is the state #566 already produces on the WS path.
+    #
+    # `held > 0` while `new_remaining == 0` means the broker's stop consumed shares
+    # our `mi_live_orders` mirror still has reserved — the mirror is stale, and per
+    # ADR 0008 a confirmed broker event beats the mirror. Close, and say so loudly
+    # rather than inflating remaining_shares to paper over it.
+    #
+    # This branch returns BEFORE the re-entry logic on purpose: re-entry is a
+    # full-stop-out concept, and buying on top of shares still held would double the
+    # position — the identical gate `_process_stop_fill` applies via `full_stop_out`.
+    new_remaining = max(tracked_remaining - shares, 0)
+    if held > 0 and new_remaining == 0:
+        await log_audit_event(
+            "pending_exit_mirror_stale",
+            f"{ticker}: stop fill of {shares} sh consumed the whole tracked "
+            f"{tracked_remaining} while {held} sh were still reserved by a pending "
+            f"exit order — closing on the broker event (ADR 0008), mirror is stale",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode,
+                "tracked_remaining": tracked_remaining,
+                "pending_exit_qty": held, "recorded_shares": shares,
+                "source": source,
+            }),
+        )
+    if new_remaining > 0:
+        total_pnl_so_far = sum(ex.get("pnl", 0) for ex in exits)
+        async with pool.acquire() as conn:
+            # broker-confirmed: the stop_order_id NULL records a stop the CALLER
+            # already confirmed filled at the broker (_check_day1_reentry proceeds
+            # only on get_order status=='filled'; the WS path IS the fill event) —
+            # that leg is consumed and its pointer is dead. status stays 'filled':
+            # this is the opposite of a demotion, the row stays OPEN.
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'filled', exits = $2::jsonb,
+                    remaining_shares = $3, total_pnl = $4,
+                    stop_order_id = NULL
+                WHERE id = $1
+            """, trade["id"], exits, new_remaining, total_pnl_so_far)
+        await log_audit_event(
+            "stop_fill_position_stays_open",
+            f"{ticker}: stop sold {shares} of {tracked_remaining} sh — trade stays "
+            f"OPEN at {new_remaining} sh ({held} sh held by a working exit order); "
+            f"no close, no re-entry",
+            json.dumps({
+                "trade_id": trade["id"], "ticker": ticker,
+                "account_mode": account_mode,
+                "stop_fill_price": float(stop_fill_price),
+                "recorded_shares": shares,
+                "tracked_remaining": tracked_remaining,
+                "new_remaining": new_remaining,
+                "pending_exit_qty": held,
+                "att1_pnl": float(pnl),
+                "source": source,
+            }),
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"P&L: ${pnl:+,.2f} | stop hit — {shares} of {tracked_remaining} sh\n"
+            f"{new_remaining} sh remain — position stays open (resting exit still working)"
+        )
+        logger.info(
+            f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, "
+            f"{shares} of {tracked_remaining} sold — trade stays OPEN at {new_remaining} sh"
+        )
+        return {
+            "ticker": ticker, "action": "stays_open",
+            "remaining_shares": new_remaining, "pending_exit_qty": held,
+        }
 
     attempt = trade["entry_attempt"] + 1
 
@@ -1371,6 +1461,17 @@ async def get_pending_exit_qty(trade_id: int) -> int:
     stop-placement request collides with held_for_orders. FTRE 2026-05-09
     was the trigger; sync_positions Path C orphan remediation has the same
     structural exposure.
+
+    #591 (2026-08-24): BOTH Alpaca spellings of cancel are terminal — the broker
+    emits `canceled` AND `cancelled`, and this list carried only the double-l one,
+    so a single-l cancelled exit order counted as "still working" forever. That
+    understates coverage: the shares stay reserved in our arithmetic and every
+    caller that sizes a stop against it (`update_stop`, `_ensure_stop_coverage`)
+    places a SMALLER stop than the position needs. Money-path behaviour, not a
+    typo — enumerated against the live and paper book before shipping and it moves
+    the pending quantity on ZERO trades (`scripts/probes/_591_state_capture.sql`
+    Q2: every purpose-labelled exit order in the book is `filled`). The same
+    both-spellings list is already in `audit_invariants.check_exit_share_sum`.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1378,7 +1479,8 @@ async def get_pending_exit_qty(trade_id: int) -> int:
             SELECT COALESCE(SUM(qty)::int, 0) FROM mi_live_orders
             WHERE trade_id = $1
               AND purpose IN ('partial_exit', 'full_exit')
-              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+              AND status NOT IN ('filled', 'cancelled', 'canceled',
+                                 'rejected', 'expired')
         """, trade_id)
     return int(held or 0)
 

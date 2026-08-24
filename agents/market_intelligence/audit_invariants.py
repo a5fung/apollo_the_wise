@@ -615,16 +615,20 @@ async def check_exit_share_sum(conn, *, since: date | None = None) -> tuple[bool
       - single-attempt only (a re-entered trade buys `entry_shares` again, so its
         legs legitimately sum to a MULTIPLE of it — 5 such paper rows exist);
       - every leg must carry `shares` (one 2026-04 legacy repair leg uses `qty`);
-      - NO exit order still working at the broker. A +2R carve-out rests as a GTC
-        limit, and the day-1 stop path closes the row at zero while it rests — so
-        between the stop fill and the limit fill a CORRECTLY recorded trade reads
-        12 of 17 and would alarm every sweep. ETON's limit rested six hours and
-        filled at 15:58, seventeen minutes before the 16:15 sweep. The guard must
-        tolerate that state gap (closing at zero with shares resting is an open
-        operator question, not something this check can fix); the moment the order
-        goes terminal the row is checked for real. Both Alpaca spellings of
-        cancel are listed — the broker emits `canceled` AND `cancelled`.
       - float tolerance, never `!=` (legs are written as both 17 and 17.0).
+
+    #591 (2026-08-24) REMOVED the "no exit order still working" exclusion. It was
+    added because the day-1 stop path closed the row at zero while a +2R carve-out
+    limit rested, so a CORRECTLY recorded trade read 12 of 17 for the six hours
+    between the two fills and would have alarmed every sweep. The operator ruled
+    that closing there is a bug — `attempt_day1_reentry` now keeps the row OPEN
+    until the working exit resolves, and this check only ever looks at CLOSED rows,
+    so the state gap it tolerated can no longer exist. Keeping the exclusion would
+    now MASK the very defect it was written around: any other path that closes a
+    row while an exit is still working leaves under-summing legs and would be
+    silently skipped. Verified against prod before removal — unbounded it returns
+    the same two known-bad legacy rows (ETON 08-14, FPS 06-01) it already returned
+    with the exclusion in place, and zero rows at the cutoff.
     """
     cutoff = since or EXIT_SHARE_SUM_SINCE
     rows = await conn.fetch(
@@ -640,13 +644,6 @@ async def check_exit_share_sum(conn, *, since: date | None = None) -> tuple[bool
           AND jsonb_array_length(COALESCE(t.exits, '[]'::jsonb)) > 0
           AND NOT EXISTS (
                 SELECT 1 FROM jsonb_array_elements(t.exits) x WHERE NOT (x ? 'shares')
-          )
-          AND NOT EXISTS (
-                SELECT 1 FROM mi_live_orders o
-                WHERE o.trade_id = t.id
-                  AND o.purpose IN ('partial_exit', 'full_exit')
-                  AND o.status NOT IN ('filled', 'cancelled', 'canceled',
-                                       'rejected', 'expired')
           )
           AND ABS(COALESCE((SELECT SUM((x->>'shares')::numeric)
                               FROM jsonb_array_elements(t.exits) x), 0)
