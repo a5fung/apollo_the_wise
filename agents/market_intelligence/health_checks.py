@@ -3336,6 +3336,27 @@ _LATTICE_PRIOR_DAYS = 30            # trigger (b): prior window, calendar days
 _LATTICE_ZERO_ALERT_DAYS = 2        # trigger (c): consecutive zero-alert trading days
 _LATTICE_FIXTURE_WARN_DEDUPE_DAYS = 3
 
+# ── trigger (b) era-scope fix (2026-08-24) ────────────────────────────────────────────────
+# Trigger (b) fired 2026-08-24 on a real collapse that started 2026-08-17 — five trading days
+# BEFORE the flip (2026-08-22) — and named the flip as cause, printing revert SQL for a change
+# measured to CUT bad grades 43% -> 18%. The blended before/after average cannot tell "the
+# flip broke this" from "this was already broken and the flip happened to land nearby"; only
+# an ERA-SCOPED comparison can, the same principle system_review.py applied to the exit-rule
+# asks (commit f04173f0, 2026-08-23: era boundary constant + per-ask re-check against only
+# trades under the current rule + "not enough to ask" floor instead of a blended finding).
+# THE LINE: this changes which trading days trigger (b) COMPARES, never the 50% threshold,
+# never the flip itself, never any grading rule.
+_LATTICE_FLIP_DATE_FALLBACK = date(2026, 8, 22)   # operator-signed flip date (catalyst_tier_
+    # shadow.py header + docs/setups/magna53_ep.md 2026-08-22 change log). HARDCODED FALLBACK
+    # ONLY — see _lattice_flip_date docstring; used only when both DB-recorded signals below
+    # are unavailable (fresh DB, migration gap, or a transient query error on both).
+_LATTICE_MIN_POST_FLIP_TRADING_DAYS = 5   # trigger (b) floor: fewer post-flip trading days
+    # than this cannot support a halving judgement. 5 is not arbitrary — it is exactly the
+    # trading-day count a full _LATTICE_RECENT_DAYS(7 calendar)-day window normally yields
+    # (Mon-Fri, no holiday) — i.e. the SAME sample size the pre-fix "recent" window always
+    # compared on. Below it, trigger (b) is suppressed (silent, like a healthy day) rather
+    # than firing on a partial week.
+
 
 def _load_must_not_miss_members() -> "list[tuple[str, str]] | None":
     """(ticker, iso-date) pairs from the #577 fixture, excluded members skipped.
@@ -3375,6 +3396,98 @@ def _lattice_trading_days(end_day: date, n_calendar: int) -> "list[date]":
     """The trading days inside the n_calendar-day window ENDING at end_day (inclusive)."""
     return [end_day - timedelta(days=i) for i in range(n_calendar)
             if _is_trading_day(end_day - timedelta(days=i))]
+
+
+async def _lattice_flip_date(c) -> "tuple[date, str]":
+    """The date the catalyst-tier lattice began ACTING — for era-scoping trigger (b), never a
+    hardcoded constant when a DB-recorded signal is available. Returns (date, source); source
+    is carried into the trigger payload / audit row so a misfire stays debuggable. Tried in
+    order, each wrapped so a query failure falls through rather than raising:
+
+    1. `mi_safeguard_state.last_transition_at` for ('catalyst_tier_lattice', 'global',
+       state='on') — the administrative record of the toggle's own transition, when one was
+       ever explicitly written (converted to an ET date, per the codebase AT TIME ZONE rule).
+       In prod as shipped the flip went live via the `default=True` code default
+       (ep_detector.py ~3196), not an explicit toggle write, so this row commonly does not
+       exist — that is an EXPECTED miss, not an error, and falls through to source 2 rather
+       than logging. ⚠ Caller-visible consequence: `set_safeguard_state` bumps
+       `last_transition_at` on EVERY write, so a future revert-then-restore cycle (the exact
+       mechanism this monitor's own alert offers) moves this date FORWARD to the restore, not
+       the original flip — the era boundary becomes "the restore", the `_LATTICE_MIN_POST_
+       FLIP_TRADING_DAYS` floor re-arms for a week, and trigger (b) goes quiet again for that
+       week. Correct if the restore is treated as a fresh era (thin new data, same as after
+       the original flip); worth a human glance if it lands during exactly that week.
+    2. `MIN(scan_date)` from `mi_catalyst_tier_shadow` where `live_side = 'lattice'` — the
+       earliest date the lattice is RECORDED as the acting side: the acting record itself,
+       the same per-row stamp `_lattice_acting_tier` already trusts over any date guess
+       ("never by its date" — this reuses that exact instinct for the era boundary too).
+    3. `_LATTICE_FLIP_DATE_FALLBACK` — hardcoded, documented, last resort only (both DB
+       signals unavailable)."""
+    try:
+        row = await c.fetchrow(
+            "SELECT (last_transition_at AT TIME ZONE 'America/New_York')::date AS flip_date "
+            "FROM mi_safeguard_state WHERE safeguard = 'catalyst_tier_lattice' "
+            "AND account_mode = 'global' AND state = 'on'")
+        if row is not None and row["flip_date"] is not None:
+            return (row["flip_date"], "safeguard_state")
+    except Exception as e:
+        logger.warning("catalyst_lattice_monitor: flip-date safeguard_state read failed: %s", e)
+
+    try:
+        row = await c.fetchrow(
+            "SELECT MIN(scan_date) AS flip_date FROM mi_catalyst_tier_shadow "
+            "WHERE live_side = 'lattice'")
+        if row is not None and row["flip_date"] is not None:
+            return (row["flip_date"], "shadow_acting_record")
+    except Exception as e:
+        logger.warning("catalyst_lattice_monitor: flip-date shadow-table read failed: %s", e)
+
+    return (_LATTICE_FLIP_DATE_FALLBACK, "hardcoded_fallback")
+
+
+def _lattice_era_windows(day: date, flip_date: date) -> "tuple[list[date], list[date], bool]":
+    """Trigger (b)'s two comparison windows, ERA-SCOPED to `flip_date` (2026-08-24 fix). Same
+    two calendar-day buckets as before the fix (the last `_LATTICE_RECENT_DAYS` days = the
+    'recent' bucket, the following `_LATTICE_PRIOR_DAYS` days back = the 'prior' bucket).
+    Returns `(recent, prior, scoped)` — `scoped` tells the caller whether era-filtering
+    actually applied, so it (and ONLY it) knows whether the post-flip minimum-days floor is
+    relevant; the floor exists to stop a partial post-flip week from being judged and has no
+    business constraining a steady-state rolling comparison (see below).
+
+    SELF-HEALING, EXPLICIT: if `flip_date` is AT OR BEFORE the start of the whole
+    `_LATTICE_RECENT_DAYS + _LATTICE_PRIOR_DAYS`-day lookback span, every day in both buckets
+    is already post-flip and there is nothing to scope — return them UNFILTERED
+    (`scoped=False`), byte-identical to the pre-fix windows. This is a real branch, not a
+    filter that happens to degrade into one: a naive 'keep recent >= flip, keep prior < flip'
+    filter looks like it self-heals but does NOT — once the flip ages past the whole span,
+    EVERY prior-bucket day is >= flip_date (chronologically after a now-old flip), so a plain
+    `< flip_date` filter empties the prior bucket and PERMANENTLY silences trigger (b) after
+    that point. Caught by test_era_windows_self_heal_once_flip_is_outside_the_lookback_span
+    before shipping. `scoped=False` ALSO matters for the floor: without it, a normal NYSE
+    holiday week (`_lattice_trading_days(day, 7)` returns 4, not 5, ~9-10x/yr) would trip the
+    post-flip floor forever, long after the flip stopped being relevant — the floor must only
+    gate an ACTUAL partial post-flip window, never a routine short trading week.
+
+    Otherwise (`scoped=True` — the flip is inside the lookback span, the only case that
+    actually needs scoping) 'recent' keeps only trading days ON OR AFTER the flip and 'prior'
+    keeps only trading days STRICTLY BEFORE it; a day on the wrong side of the flip for its
+    ORIGINAL bucket is DROPPED, not moved to the other bucket. During the weeks the flip sits
+    inside the window this can leave a handful of days counted in neither average — a narrow,
+    temporary gap, never a full window. Whether dropping them makes trigger (b) MORE or LESS
+    likely to fire depends on whether those specific days sat above or below the prior mean
+    (in the incident this fixes they were collapsed/low, so excluding them from `prior` raises
+    `prior_avg` and makes the drop easier to detect — but a dropped HIGH day would cut the
+    other way); what it can never do, either direction, is compare a day against the wrong
+    era, which is the actual bug this fixes."""
+    recent_all = _lattice_trading_days(day, _LATTICE_RECENT_DAYS)
+    prior_all = [d for d in _lattice_trading_days(day, _LATTICE_RECENT_DAYS + _LATTICE_PRIOR_DAYS)
+                 if d not in set(recent_all)]
+    window_start = day - timedelta(days=_LATTICE_RECENT_DAYS + _LATTICE_PRIOR_DAYS - 1)
+    if flip_date <= window_start:
+        return recent_all, prior_all, False
+    recent = [d for d in recent_all if d >= flip_date]
+    prior = [d for d in prior_all if d < flip_date]
+    return recent, prior, True
 
 
 async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]":
@@ -3464,21 +3577,34 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 span_start, day)
             by_date = {r["alert_date"]: (int(r["n"]), int(r["high_n"])) for r in arows}
 
-            # trigger (b): 7d HIGH daily average vs the prior 30d, trading days only
-            recent_td = _lattice_trading_days(day, _LATTICE_RECENT_DAYS)
-            prior_td = [d for d in _lattice_trading_days(day, _LATTICE_RECENT_DAYS
-                                                         + _LATTICE_PRIOR_DAYS)
-                        if d not in set(recent_td)]
+            # trigger (b): 7d HIGH daily average vs the prior 30d, trading days only, ERA-SCOPED
+            # to the flip (2026-08-24 fix — see _lattice_era_windows docstring). A drop that
+            # falls entirely on the pre-flip side of the boundary must never reach here as a
+            # "recent vs prior" comparison the flip could plausibly explain.
+            flip_date, flip_source = await _lattice_flip_date(c)
+            recent_td, prior_td, scoped = _lattice_era_windows(day, flip_date)
             if recent_td and prior_td:
-                recent_avg = sum(by_date.get(d, (0, 0))[1] for d in recent_td) / len(recent_td)
-                prior_avg = sum(by_date.get(d, (0, 0))[1] for d in prior_td) / len(prior_td)
-                drop = _evaluate_lattice_high_drop(recent_avg, prior_avg)
-                if drop:
-                    out["triggers"].append({
-                        "kind": "high_volume_drop", **drop,
-                        "recent_days": len(recent_td), "prior_days": len(prior_td),
-                        "recent_high_n": sum(by_date.get(d, (0, 0))[1] for d in recent_td),
-                        "prior_high_n": sum(by_date.get(d, (0, 0))[1] for d in prior_td)})
+                if scoped and len(recent_td) < _LATTICE_MIN_POST_FLIP_TRADING_DAYS:
+                    # the floor gates only an ACTUAL partial post-flip window (scoped=True) —
+                    # a routine short trading week (holiday) once the flip is old must never
+                    # trip it; see _lattice_era_windows docstring.
+                    logger.info(
+                        "catalyst_lattice_monitor: trigger (b) suppressed — only %d trading "
+                        "day(s) since the flip (%s, source=%s), need >= %d to judge a halving",
+                        len(recent_td), flip_date, flip_source,
+                        _LATTICE_MIN_POST_FLIP_TRADING_DAYS)
+                else:
+                    recent_avg = sum(by_date.get(d, (0, 0))[1] for d in recent_td) / len(recent_td)
+                    prior_avg = sum(by_date.get(d, (0, 0))[1] for d in prior_td) / len(prior_td)
+                    drop = _evaluate_lattice_high_drop(recent_avg, prior_avg)
+                    if drop:
+                        out["triggers"].append({
+                            "kind": "high_volume_drop", **drop,
+                            "recent_days": len(recent_td), "prior_days": len(prior_td),
+                            "recent_high_n": sum(by_date.get(d, (0, 0))[1] for d in recent_td),
+                            "prior_high_n": sum(by_date.get(d, (0, 0))[1] for d in prior_td),
+                            "flip_date": flip_date.isoformat(),
+                            "flip_date_source": flip_source})
 
             # trigger (c): the two most recent trading days both produced ZERO alerts
             last_tds: "list[date]" = []
@@ -3510,10 +3636,12 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"never be missed — this is the trigger that matters most.")
             elif t["kind"] == "high_volume_drop":
                 lines.append(
-                    f"• HIGH-ALERT COLLAPSE: last {t['recent_days']} trading days averaged "
+                    f"• HIGH-ALERT COLLAPSE: since the catalyst-tier flip ({t['flip_date']}), "
+                    f"the {t['recent_days']} trading day(s) on/after it averaged "
                     f"{t['recent_avg']} HIGH alerts/day ({t['recent_high_n']} total) vs "
-                    f"{t['prior_avg']}/day ({t['prior_high_n']} total) over the prior "
-                    f"{t['prior_days']} trading days — a {t['drop_pct']}% drop (threshold 50%).")
+                    f"{t['prior_avg']}/day ({t['prior_high_n']} total) over the "
+                    f"{t['prior_days']} trading days before it — a {t['drop_pct']}% drop "
+                    f"(threshold 50%).")
             elif t["kind"] == "zero_alert_days":
                 lines.append(
                     f"• ZERO-ALERT DAYS: no EP alerts at all on {' and '.join(t['days'])} "

@@ -8529,7 +8529,25 @@ reviews:
          AND realized_r > 0
     threshold: 1
     earliest_review_date: 2026-08-04
-    status: pending
+    # >> ANSWERED 2026-08-24 (Opus): docs/analysis/first_live_winner_2026-08-24.md.
+    #    The cost side is read off real money for the first time: a +2R partial cost $9.40 on
+    #    PLTR (0.27R, 7% of the trade); exiting the WHOLE position at +2R would have cost
+    #    $58.70 - 46% of the one trade that worked. So the candidate that ranks first across a
+    #    cohort of losers ranks WORST on the winner, which is the first real evidence on state
+    #    doc 3.3 (partial vs full). Full exit still leads by 4.2R over the 15 old-era trades;
+    #    about 4 more PLTR-shaped winners flips it.
+    #    Era note, and it is the opposite of "halve everything": the live +2R target is
+    #    ORB-anchored, so its TRIGGER PRICE did not move at the 08-16 stop change and every
+    #    price-based figure transfers. Only the "R" LABEL rescales (PLTR's peak +5.39R ->
+    #    +2.80R). A replay candidate named `R2` is no longer the live rule post-08-16.
+    #    Minute-bar reconstruction confirmed both recorded peaks exactly - the review's stated
+    #    worry about blind sub-10-minute peaks did not materialise.
+    #    ETON could NOT price a profit-take (its ORB-low stop was never touched, so there is no
+    #    do-nothing baseline) and its records were separately defective - see #588, fixed.
+    #    N=2 and the sign still disagrees across the three live firings ($9.40 cost, $13.60
+    #    saved, $21.89 banked). NOT a verdict; the unit question (3.2) was left alone per this
+    #    entry's own instruction.
+    status: done
     action_when_ready: |
       Pull the full price path for that trade (minute bars, not the recorded peak -
       the peak instrumentation is blind under ~10 minutes). Then re-run
