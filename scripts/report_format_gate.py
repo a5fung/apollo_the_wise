@@ -105,6 +105,65 @@ _TABLE = re.compile(r"^\s*\|")
 _BULLET_CAP = 5
 
 
+# ── FILLER ARM (2026-08-24) ────────────────────────────────────────────────────────────────────
+# Operator, angry, on a 4-bullet reply that cleared the cap: *"I don't know why you need 4 bullets
+# to state what you need to say, so much useless info, like no shit deferring won't move it... yet
+# you wrote 4 bullets that gave no solution whatsoever, this needs to stop once and for all."*
+#
+# The cap arm could not catch it: 4 bullets is legal. The drift moved BELOW the ceiling — bullets
+# that are well-formed and carry nothing. CLAUDE.md rule 7 already states the test ("would he act
+# differently without it? No -> cut"), and that test is not machine-decidable in general.
+#
+# What IS decidable: a bullet that names no NUMBER, no file/path, no #task, no command and no
+# decision verb is almost never something he can act on. It is restatement. Measured against the
+# 2026-08-24 message that triggered this: 2 of its 4 bullets carry no concrete token, and both are
+# the ones he called out by name. Deliberately narrow — one filler bullet in a message is normal
+# (a lead-in, an "action: none"); a message that is MOSTLY filler is the failure.
+_CONCRETE = re.compile(
+    r"\d"                                   # any number — counts, prices, R, dates, percentages
+    r"|#\d+"                                # a task id
+    r"|[\w./-]+\.(?:py|md|ya?ml|json|sql|txt|sh)"   # a file
+    r"|`[^`]+`"                             # code/command/identifier he can run or grep
+    r"|\b(?:none|yes|no|deploy|deployed|closed|fixed|shipped|blocked|waiting|verify|verified)\b",
+    re.I,
+)
+_FILLER_MIN_BULLETS = 3     # below this, a filler line is a lead-in, not a pattern
+_FILLER_RATIO = 0.5         # MOST of the message must be filler before it blocks
+
+
+def filler_bullets(text: str) -> list[str]:
+    """Bullets carrying no number, file, task id, code span or decision word — nothing he can act
+    on. Returns them only when they are the MAJORITY of a >=3-bullet message; otherwise []."""
+    bullets = []
+    in_fence = False
+    for raw in text.split("\n"):
+        line = raw.rstrip()
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or not line.strip():
+            continue
+        if _BULLET.match(line) and not line.lstrip().startswith(">"):
+            bullets.append(line)
+    if len(bullets) < _FILLER_MIN_BULLETS:
+        return []
+    empty = [b for b in bullets if not _CONCRETE.search(b)]
+    return empty if len(empty) / len(bullets) > _FILLER_RATIO else []
+
+
+def filler_complaint(blocks: list[str], total: int) -> str:
+    shown = "\n".join(f"    {b[:110]}{'...' if len(b) > 110 else ''}" for b in blocks[:3])
+    return (
+        f"REPORT FORMAT GATE — {len(blocks)} of {total} bullets carry nothing he can act on:\n"
+        f"{shown}\n\n"
+        "No number, no file, no task id, no command, no decision. That is restatement, and it is "
+        "what he means by \"useless info\" (operator 2026-08-24, angry: a 4-bullet reply that "
+        "cleared the cap and still \"gave no solution whatsoever\").\n"
+        "Rewrite: keep the bullets that carry a number, a name, or a decision. DELETE the rest — "
+        "do not reword them. If that leaves one bullet, the answer was one bullet."
+    )
+
+
 def prose_blocks(text: str) -> list[str]:
     """Unbulleted blocks carrying >= _MIN_SENTENCES sentences and >= _MIN_CHARS characters."""
     out, in_fence = [], False
@@ -269,6 +328,12 @@ def main() -> int:
     n = bullet_count(text)
     if n > _BULLET_CAP:
         print(length_complaint(n), file=sys.stderr)
+        return 2
+    # Runs LAST, and only on messages that already cleared the cap — this arm exists precisely
+    # because the drift moved BELOW the ceiling (operator 2026-08-24, on a legal 4-bullet reply).
+    empty = filler_bullets(text)
+    if empty:
+        print(filler_complaint(empty, n), file=sys.stderr)
         return 2
     return 0
 

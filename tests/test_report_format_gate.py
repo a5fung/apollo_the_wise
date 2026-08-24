@@ -424,3 +424,60 @@ def test_the_boundary_returns_the_latest_reply_when_several_exist(tmp_path):
     t = _multi_turn(tmp_path, ("user", "go"), ("assistant", "first pass"),
                     ("tool_result", "ok"), ("assistant", "final answer"))
     assert last_assistant_text(t) == "final answer"
+
+
+# --- filler arm (2026-08-24) -----------------------------------------------------------------
+# Operator, on a 4-bullet reply that CLEARED the 5-bullet cap: "I don't know why you need 4
+# bullets to state what you need to say, so much useless info... yet you wrote 4 bullets that
+# gave no solution whatsoever, this needs to stop once and for all." The cap could not catch it;
+# the drift moved below the ceiling into well-formed bullets carrying nothing actionable.
+
+_THE_FILLER_MESSAGE = """You're right, and it has been flat for a while:
+
+- **The gate only stops growth — it was never an engine.** We close two and find two, every session.
+- **Deferring will not move it either.** Pushing dates out is honest scheduling but the count stays.
+- **The only thing that reduces it is deciding some will never be done.** That is the real lever.
+- **That is your call, not mine.** I cannot close real work as won't-do on my own authority.
+"""
+
+_ACTIONABLE_MESSAGE = """Deployed and verified.
+
+- **Closed #585 and #517** — the rebuild verify and the reviews pile.
+- **`scripts/deploy.sh execution` still owed** for the broker change.
+- **Action: none.** Next signal is tomorrow's open.
+"""
+
+
+def test_the_filler_message_is_blocked():
+    """THE ANCHOR. Four legal bullets, none carrying a number, file, task id or decision."""
+    from report_format_gate import filler_bullets
+    assert len(filler_bullets(_THE_FILLER_MESSAGE)) >= 3
+
+
+def test_a_message_whose_bullets_carry_facts_passes(tmp_path):
+    from report_format_gate import filler_bullets
+    assert filler_bullets(_ACTIONABLE_MESSAGE) == []
+    r = _run({"transcript_path": _transcript(tmp_path, _ACTIONABLE_MESSAGE)})
+    assert r.returncode == 0, r.stderr
+
+
+def test_one_or_two_bullets_are_never_filler_blocked():
+    """A short answer is the GOAL. This arm must never punish it — that would invert the rule."""
+    from report_format_gate import filler_bullets
+    assert filler_bullets("- It cannot be done that way.\n- I would not recommend it.\n") == []
+
+
+def test_a_single_filler_bullet_among_facts_passes():
+    """Narrow by design: one lead-in among real content is normal, not the failure."""
+    from report_format_gate import filler_bullets
+    text = ("- **This is the part I would change.**\n"
+            "- Closed #585 and #517 today.\n"
+            "- `deploy.sh execution` still owed.\n")
+    assert filler_bullets(text) == []
+
+
+def test_the_filler_block_names_the_offending_lines(tmp_path):
+    r = _run({"transcript_path": _transcript(tmp_path, _THE_FILLER_MESSAGE)})
+    assert r.returncode == 2
+    assert "carry nothing he can act on" in r.stderr
+    assert "DELETE the rest" in r.stderr
