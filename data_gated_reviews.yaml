@@ -1061,7 +1061,7 @@ reviews:
     # (#213/#214) and must NOT be rushed in. Until R3, promotion options are: hand-add
     # an EPHEMERAL (~7d) mi_themes row, stated as such; or design R3 properly post-Monday.
     # LOAD-BEARING EP/trade impact stays the SEPARATE ~Q4 North Star bar (#200/#201).
-    earliest_review_date: 2026-06-09
+    earliest_review_date: 2026-10-01
     action_when_ready: |
       Evaluate the accrued narrative_cogap proposals on precision/recall/
       actionability (via the eval-harness if built, else manual): precision =
@@ -1083,7 +1083,10 @@ reviews:
       (scored vs TODAY's themes = anachronistic on backfill). PRECISION/canonize
       decision = forward population.
       Origin: 2026-06-02 #167 narrative-discovery ship.
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Narrative theme discovery is advisory-only and never gates a trade, while EP selection and exit discipline own the bench. It is also unactionable as written - the canonization mechanism (the deferred R3 mi_themes merge) is still unbuilt. PULLS FORWARD when R3 ships, or when the operator asks for the shadow->canonize ruling."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     added_on: 2026-06-02
 
   - review_id: dead_zone_telemetry_smoke
@@ -4951,7 +4954,7 @@ reviews:
       WHERE a.catalyst_type IS NOT NULL AND o.fwd_5d_pct IS NOT NULL
         AND a.alert_date >= '2026-06-02';
     threshold: 30
-    earliest_review_date: 2026-08-15
+    earliest_review_date: 2026-10-01
     # >> GATE MET 2026-07-13 (Opus): 53>=30 settled C1 data + past the 6/22 cutover → the
     #    SEQUENCING gate is CLEAR to build. But the action is a BIG-ROCK (a new C2/C3 multi-turn
     #    investigator+advisor LLM subsystem per ADR 0006 §7) → needs its own scoping/build session,
@@ -4964,7 +4967,10 @@ reviews:
       reproduce the drones + software-AI cohorts read-only (ADR 0006 §6) — that IS the proof
       of capability the operator asked for. Advisor + go-live sequencing review BEFORE any
       code. Cross-ref ADR 0006, theme_engine_narrative_blindness, theme_as_ep_signal.
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). The sequencing gate is clear, but the action is a big-rock build of a new multi-turn LLM subsystem with its own ongoing spend - it needs a dedicated scoping session, which the EP profitability push does not leave room for. PULLS FORWARD when the operator schedules an ADR 0006 build session."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     added_on: 2026-05-30
 
   - review_id: phase6_meta_rubric_gating
@@ -6094,7 +6100,7 @@ reviews:
         AND summary LIKE 'L2%'
         AND created_at >= NOW() - INTERVAL '90 days'
     threshold: 6
-    earliest_review_date: 2026-08-20
+    earliest_review_date: 2026-10-01
     action_when_ready: |
       With ≥6 L2 events in last 90d, categorize each:
         - FP (false positive, metric in transition): supports change
@@ -6114,7 +6120,10 @@ reviews:
 
       Cross-reference: silent_failure_taxonomy_audit (this is the
       observability-class case: alarm fires but signal is noise).
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). This is self-audit alert tuning - a false-positive L2 costs a Telegram, not a trade, and changes nothing about EP selection, entry, exit or sizing. Evidence keeps accruing while deferred (63 events against a bar of 6). PULLS FORWARD if a false-positive L2 is ever found to have masked a real anomaly, or when the operator finds the alert noise costly."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     added_on: 2026-05-20
 
   - review_id: ninem_day2_mechanical_vs_methodology_alignment
@@ -6379,7 +6388,7 @@ reviews:
       ) d10 ON TRUE
       WHERE d0.close > 0 AND d10.close IS NOT NULL;
     threshold: 30
-    earliest_review_date: 2026-08-15
+    earliest_review_date: 2026-10-01
     action_when_ready: |
       RE-FRAMED 2026-05-23 PM: this review's structural conclusion
       DOES NOT change with more N. EOD TRIGGERED classification is
@@ -6420,7 +6429,10 @@ reviews:
         classification, not entry-aware P&L)
       - feedback_methodology_insights_need_periodic_revalidation.md
         (this entry IS the periodic re-evaluation)
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24) - and this is exactly the decision branch this entry already scripts: the intraday flag-break detector (#94 / ADR 0005) did NOT ship by 2026-08-15, so its urgency is re-evaluated against other priorities, and EP profitability wins. The structural no-go conclusion does not change with more N, so nothing is lost by waiting. PULLS FORWARD when #94 ships - at that point close this entry and open the intraday-entry cohort review that supersedes it."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     added_on: 2026-05-23
 
   - review_id: time_stop_9m_day2_effectiveness_n10
@@ -9146,13 +9158,16 @@ reviews:
     # Date deliberately NON-BLOCKING (set to registration day): firing is AND, so a
     # future date could only DELAY a review whose evidence is already in — the exact
     # calendar-block pattern the operator ruled against on 2026-07-26.
-    earliest_review_date: 2026-07-27
+    earliest_review_date: 2026-10-01
     action_when_ready: >-
       Pull the no-story days accumulated since 2026-06-07. For each, check whether its
       alert tickers later shared a theme (any lane) or co-moved market-adjusted. Report
       genuine-miss count vs correctly-declined, split from any LLM opinion. Then the
       operator rules: leave / widen / retire. Rulings land on #167's PLAN line.
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Grouping quality is a theme-lane question with no effect on EP selection, entry, exit or sizing. Run count keeps accruing while deferred, so the evidence only gets stronger. PULLS FORWARD if Lane-2 proposals start naming stocks EP is actually trading, or when the operator wants the leave/widen/retire ruling."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     added_on: 2026-07-27
     cross_refs: ["task #167", "task #240"]
 
@@ -9253,7 +9268,7 @@ reviews:
     # fire before the observe deploy; mode-'on' rows deliberately do not count
     # (the review gates observe->on, so only observe evidence qualifies).
     # Date below is the registration day = non-blocking.
-    earliest_review_date: 2026-07-27
+    earliest_review_date: 2026-10-01
     # ⚠ ATTACHED 2026-08-11 — WEIGH THIS WHEN RULING, it is measured and it cuts against
     # flipping. The gate at 'on' makes a FIRST-SIGHTING cohort wait for a second sighting,
     # i.e. a later day. Measured consequence on the 2026-08-04 co-gap (see
@@ -9289,7 +9304,10 @@ reviews:
       gates after signing: fresh ADR-0030 judge-robustness eval (the
       preflight_judge_eval_gate WILL fire on the grade-surface drift — by
       design, never suppress), then set_theme_birth_gate_mode('on').
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Theme birth timing does not touch EP selection, entry, exit or sizing, and observe mode keeps recording forward verdicts while deferred - the evidence base grows, nothing is lost. PULLS FORWARD when the operator wants the observe->on flip decided, or if board churn becomes a visible problem."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     added_on: 2026-07-27
     cross_refs: ["task #505", "task #506"]
 
@@ -9475,7 +9493,7 @@ reviews:
     threshold: 5
     # 5 = one full trading week. Fewer cannot separate a decaying backlog from a noisy night;
     # more delays a spend decision the operator has explicitly asked to revisit.
-    earliest_review_date: 2026-08-18
+    earliest_review_date: 2026-10-01
     action_when_ready: >-
       Report cost/night and uncovered-pool size/night AS A PAIR (cost alone is uninterpretable —
       it is ~73 output tokens per unassigned stock, so it must be read against the pool), plus
@@ -9487,7 +9505,10 @@ reviews:
       (c) membership does NOT rise => the spend bought nothing, pull it. ALSO: if
       `theme_assignment` still shows stop_reason='max_tokens' rows, batch=18 was modelled too
       high (no untruncated sonnet-5 sample existed to measure it) — halve it.
-    status: pending
+    status: deferred
+    deferred_reason: "OFF the EP critical path (operator triage 2026-08-24), deferred on PRIORITY not on merit - it is the only deferred item still spending money, roughly 1.90 dollars a night that was approved as a TEMPORARY backlog cost. PULLS FORWARD ON ITS OWN, no calendar needed, if either envelope breaks: cost per night runs above the modelled 1.90 dollars, or theme_assignment rows show stop_reason max_tokens again (which would mean batch=18 was modelled too high). Either one means the approved cost envelope no longer holds and the spend decision cannot wait for October."
+    deferred_on: 2026-08-24
+    deferred_until: 2026-10-01
     kind: accrual
     added_on: 2026-08-10
     cross_refs: ["task #560", "task #543", "task #538", "commit 6f0217d"]
