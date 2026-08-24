@@ -20,23 +20,11 @@
   "status": "in_progress"
  },
  {
-  "id": 207,
-  "status": "pending"
- },
- {
   "id": 210,
   "status": "in_progress"
  },
  {
-  "id": 212,
-  "status": "in_progress"
- },
- {
   "id": 215,
-  "status": "pending"
- },
- {
-  "id": 230,
   "status": "pending"
  },
  {
@@ -113,10 +101,6 @@
  },
  {
   "id": 333,
-  "status": "pending"
- },
- {
-  "id": 334,
   "status": "pending"
  },
  {
@@ -272,10 +256,6 @@
   "status": "pending"
  },
  {
-  "id": 565,
-  "status": "pending"
- },
- {
   "id": 570,
   "status": "deployed"
  },
@@ -314,10 +294,6 @@
  {
   "id": 584,
   "status": "pending"
- },
- {
-  "id": 586,
-  "status": "blocked"
  },
  {
   "id": 588,
