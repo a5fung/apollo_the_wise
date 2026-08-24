@@ -5582,6 +5582,9 @@ class MarketIntelligenceAgent(BaseAgent):
             "/resume":         self._handle_pause_command,
             "/watchlist":      self._handle_friday_watchlist,
             "/missed":         self._handle_missed_query,
+            # /scanned (2026-08-24) — rejection-visibility funnel: what got
+            # cut and why (counts), what got graded (names, outcome-ranked).
+            "/scanned":        self._handle_scanned_query,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
@@ -6627,6 +6630,39 @@ class MarketIntelligenceAgent(BaseAgent):
         lines += format_ecosystem_board(scored_themes, fading, theme_rs_data, eco_map)
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_scanned_query(self, request: AgentRequest) -> AgentResponse:
+        """`/scanned [YYYY-MM-DD]` — the rejection-visibility surface.
+
+        One screen, two halves (operator-agreed 2026-08-24, after "how do I
+        see what's rejected?" had no answer): the funnel as counts-only lines
+        in scan order (zero stages still print), then the graded names ranked
+        by what they did afterwards. READ-ONLY — reports what already
+        happened, changes no rule (THE LINE). Also reachable via the /trades
+        [Scanned] button (routes here through /trades_detail scanned).
+        """
+        import re as _re
+        from datetime import date as _date
+        from agents.market_intelligence.collector import last_trading_day
+        from agents.market_intelligence.db import get_ep_scanned_day
+        from agents.market_intelligence.scanned_report import render_scanned_day
+
+        m = _re.search(r"(\d{4}-\d{2}-\d{2})", request.task)
+        if m:
+            try:
+                query_date = _date.fromisoformat(m.group(1))
+            except ValueError:
+                return self._ok(
+                    request,
+                    result="Usage: `/scanned` (today) or `/scanned YYYY-MM-DD`",
+                )
+        else:
+            # Default = the current trading day (today on a market day; the
+            # last one on weekends/holidays, when no scan ran).
+            query_date = last_trading_day()
+
+        data = await get_ep_scanned_day(query_date)
+        return self._ok(request, result=render_scanned_day(query_date, data))
+
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
         import json as _json
@@ -6635,6 +6671,12 @@ class MarketIntelligenceAgent(BaseAgent):
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
         date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
+
+        # /trades [Scanned] button → the /scanned screen. Checked before the
+        # pool acquire — this view has its own data path (_handle_scanned_query
+        # picks the date out of request.task).
+        if view == "scanned":
+            return await self._handle_scanned_query(request)
 
         pool = await get_pool()
 

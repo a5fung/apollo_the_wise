@@ -7949,6 +7949,80 @@ async def get_ep_scan_log_for_ticker(ticker: str, limit: int = 6) -> list[dict[s
     return [dict(r) for r in rows]
 
 
+async def get_ep_scanned_day(d: "str | date") -> dict[str, list[dict[str, Any]]]:
+    """ONE read for the /scanned rejection-visibility surface — everything the
+    EP funnel decided on a given day, across its five source tables.
+
+    READ-ONLY by contract (THE LINE): reports what already happened, changes
+    no rule. Rendering lives in scanned_report.render_scanned_day().
+
+      scan     — mi_ep_scan_log, deduped to the LAST state per ticker (rows
+                 repeat per scan tick; DISTINCT ON is the canonical collapse).
+      graded   — mi_catalyst_tier_shadow rows = every name that reached
+                 grading; NULL live_ep_score/live_tier = graded then
+                 filter-cut before scoring (capture shipped 08-23).
+      alerts   — mi_ep_alerts (live source only), last row per ticker.
+      trades   — mi_live_trades for the day. Deliberately NOT pinned to one
+                 account_mode: this is cross-mode read-only visibility (no
+                 P&L aggregation across modes, no mutation); rows carry
+                 account_mode and the renderer labels anything non-live.
+      outcomes — mi_ep_missed_outcomes per ticker, freshest row. Carries
+                 last_refreshed_at so the caller can apply the #583 staleness
+                 guard before ranking on the numbers.
+    """
+    dd = _to_date(d)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        scan = await conn.fetch(
+            """SELECT DISTINCT ON (ticker)
+                      ticker, gap_pct, prev_close, rel_volume, filter_reason,
+                      ep_score, score_tier, catalyst_quality, adv, pm_rvol,
+                      rank_by_gap
+               FROM mi_ep_scan_log
+               WHERE scan_date = $1
+               ORDER BY ticker, scan_time_et DESC NULLS LAST, id DESC""",
+            dd,
+        )
+        graded = await conn.fetch(
+            """SELECT ticker, live_tier, live_ep_score, live_quality_last,
+                      gap_pct_last, adv_dollar, live_side
+               FROM mi_catalyst_tier_shadow
+               WHERE scan_date = $1
+               ORDER BY ticker""",
+            dd,
+        )
+        alerts = await conn.fetch(
+            """SELECT DISTINCT ON (ticker)
+                      ticker, ep_score, score_tier, gap_pct, catalyst_quality
+               FROM mi_ep_alerts
+               WHERE alert_date = $1 AND COALESCE(source, 'live') = 'live'
+               ORDER BY ticker, created_at DESC""",
+            dd,
+        )
+        trades = await conn.fetch(
+            """SELECT ticker, status, skip_reason, total_pnl, account_mode
+               FROM mi_live_trades
+               WHERE alert_date = $1
+               ORDER BY ticker, id""",
+            dd,
+        )
+        outcomes = await conn.fetch(
+            """SELECT DISTINCT ON (ticker)
+                      ticker, ret_1d, ret_5d, max_high_5d, last_refreshed_at
+               FROM mi_ep_missed_outcomes
+               WHERE alert_date = $1
+               ORDER BY ticker, last_refreshed_at DESC NULLS LAST""",
+            dd,
+        )
+    return {
+        "scan": [dict(r) for r in scan],
+        "graded": [dict(r) for r in graded],
+        "alerts": [dict(r) for r in alerts],
+        "trades": [dict(r) for r in trades],
+        "outcomes": [dict(r) for r in outcomes],
+    }
+
+
 async def upsert_minute_volume_curves(records: list[dict]) -> int:
     """Batch-upsert per-minute cumulative-volume baselines.
 

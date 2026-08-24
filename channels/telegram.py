@@ -1047,7 +1047,10 @@ class TelegramChannel:
                 InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
             ],
             [
-                InlineKeyboardButton("Paper (legacy)", callback_data="trades:paper"),
+                # Paper (legacy) button removed 2026-08-24 (1 paper trade in
+                # 45 days) — the trades:paper view itself is retained so old
+                # pinned messages still answer.
+                InlineKeyboardButton("Scanned (what was cut)", callback_data=f"trades:scanned:{today_str}"),
             ],
         ])
         # Any unmatched `_` or `*` in dynamic content (e.g. exit reasons like `stop_hit`)
@@ -1480,7 +1483,8 @@ class TelegramChannel:
                     InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
                 ],
                 [
-                    InlineKeyboardButton("Paper (legacy)", callback_data="trades:paper"),
+                    # Paper (legacy) button removed 2026-08-24 — view retained.
+                    InlineKeyboardButton("Scanned (what was cut)", callback_data=f"trades:scanned:{today_str}"),
                 ],
                 [InlineKeyboardButton("← Summary", callback_data="trades:summary")],
             ])
@@ -1811,6 +1815,8 @@ class TelegramChannel:
                      "cost",
                      # 2026-06-16 #270 anticipation play board (SHADOW, Pradeep)
                      "anticipation",
+                     # 2026-08-24 rejection-visibility funnel (/scanned)
+                     "scanned",
                      # 2026-06-29 operator one-tap theme promotion (decision-alerts carry the action)
                      "promotetheme",
                      # 2026-06-19 #345 one-command real-money trading halt
@@ -1852,6 +1858,7 @@ class TelegramChannel:
             BotCommand("hud",          "Snapshot: regime, EPs, 9M, themes — the one front door, drill-down buttons"),
             BotCommand("ep",           "EP alerts (MAGNA53 + 9M) — tap to drill down"),
             BotCommand("trades",       "Positions + P&L — tap to drill down"),
+            BotCommand("scanned",      "What got rejected today — the funnel, plus who got graded"),
             BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("timestop",     "/timestop TICKER — confirm time-stop exit of 9M Day 2 meanderer"),
             BotCommand("partialnow",   "/partialnow TICKER — operator-confirm immediate partial exit (1/3 sell)"),
