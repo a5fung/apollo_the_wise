@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -304,6 +305,170 @@ def _collapse_flag_runs(events: list[dict]) -> list[dict]:
                         f"({len(run)} states: {'/'.join(seen)})"),
         })
     return out
+
+
+# Corpus source stamps, as `build_grounded_text` writes them into the grade corpus
+# (primary-first: SEC filing → Benzinga wires → web synthesis). Reading them back gives
+# the operator "what news we read" in one line without dumping the corpus at him.
+_CORPUS_SRC_RE = re.compile(
+    r"\[(SEC [0-9A-Za-z\-]+)[^\]]*\]|\[(Benzinga) (\d{4}-\d{2}-\d{2})\]|\[(Web summary)\]")
+
+
+def _corpus_sources(grounded_head: "str | None") -> list[str]:
+    """Human list of the source classes present in the stored corpus prefix, e.g.
+    ['SEC 8-K', 'Benzinga x2 (2026-08-21)', 'web summary']. Empty when there is no
+    corpus — which is itself the answer ('graded with no news corpus')."""
+    if not grounded_head:
+        return []
+    sec: list[str] = []
+    benz_dates: list[str] = []
+    web = False
+    for m in _CORPUS_SRC_RE.finditer(grounded_head):
+        if m.group(1):
+            if m.group(1) not in sec:
+                sec.append(m.group(1))
+        elif m.group(2):
+            benz_dates.append(m.group(3))
+        elif m.group(4):
+            web = True
+    out = list(sec)
+    if benz_dates:
+        newest = max(benz_dates)
+        out.append(f"Benzinga x{len(benz_dates)} ({newest})" if len(benz_dates) > 1
+                   else f"Benzinga ({newest})")
+    if web:
+        out.append("web summary")
+    return out
+
+
+# The catalyst STRENGTH ladder, strongest first. The LLM grader emits the first three;
+# the deterministic methodology rubric emits all four (`weak` is one step below routine —
+# a level the grader has no word for, but the same ordinal axis). `mna` is the one label
+# NOT on this ladder: it is a deal CLASS, not a strength, so no agree/disagree verdict is
+# claimable against it and both labels are shown side by side instead.
+_GRADE_LADDER = ("game_changer", "strong", "routine", "weak")
+
+# Legacy label aliases seen on old rows (catalyst_rubric_runtime._LABEL_EMOJI carries
+# `routine_correct` for pre-2026-05-20 raw_json). Normalised before comparing so an old
+# cached extraction reads as a real agreement rather than falling into the
+# not-comparable branch.
+_GRADE_LABEL_ALIASES = {"routine_correct": "routine"}
+
+
+def _grade_agreement(rubric_label: str, grader_label: str) -> str:
+    """One plain-words line: does the deterministic methodology rubric BACK the grade the
+    system acted on? DISPLAY ONLY — states the comparison, changes neither side."""
+    _rl = _GRADE_LABEL_ALIASES.get(rubric_label, rubric_label)
+    _gl = _GRADE_LABEL_ALIASES.get(grader_label, grader_label)
+    if _rl not in _GRADE_LADDER or _gl not in _GRADE_LADDER:
+        # `mna` is the expected case (a deal CLASS, not a strength); name whichever label
+        # actually fell off the ladder so a future unknown label never prints a wrong reason.
+        _odd = _rl if _rl not in _GRADE_LADDER else _gl
+        return (f"⚖️ Rubric says {rubric_label}, the grader said {grader_label} — not "
+                f"comparable ('{_odd}' is not a strength level on the same ladder)")
+    rubric_label, grader_label = _rl, _gl
+    if rubric_label == grader_label:
+        return f"⚖️ Rubric says {rubric_label} too — it AGREES with the grade"
+    _steps = abs(_GRADE_LADDER.index(rubric_label) - _GRADE_LADDER.index(grader_label))
+    _dir = ("weaker" if _GRADE_LADDER.index(rubric_label)
+            > _GRADE_LADDER.index(grader_label) else "stronger")
+    return (f"⚖️ Rubric says {rubric_label}, the grader said {grader_label} — it "
+            f"DISAGREES, reading the catalyst {_steps} step{'s' if _steps > 1 else ''} "
+            f"{_dir}")
+
+
+def _format_catalyst_grade_block(grade: dict, analysis_cap: int = 400) -> list[str]:
+    """#593 — the '/why' CATALYST GRADE section: what the system graded this name, which
+    grader ACTED, why (the grader's own rationale), and what news it read.
+
+    DISPLAY ONLY. Renders a telemetry row; changes no grade, threshold or rule. Plain
+    text (no Markdown) — `/why` sends with no parse_mode because dynamic prose routinely
+    unbalances Telegram markup. Returns [] for an empty/None row so the caller can
+    unconditionally extend."""
+    if not grade:
+        return []
+    llm = grade.get("live_quality_last") or grade.get("live_quality_first") or "n/a"
+    lat = grade.get("shadow_tier_last") or grade.get("shadow_tier_first")
+    side = (grade.get("live_side") or "llm").strip()
+    acting = lat if side == "lattice" and lat else llm
+    lines: list[str] = ["", f"🧠 CATALYST GRADE — {acting}"]
+
+    # Which grader produced the acting grade, and what the other one said. Both sides are
+    # always recorded, so the operator never has to infer which one acted from the date.
+    # Plain words: 'llm' is the news grader, 'lattice' is the tier correction.
+    _who = "the tier correction" if side == "lattice" else "the news grader"
+    _rule = grade.get("rule_last") or "n/a"
+    if side == "lattice":
+        _second = (f"the news grader said {llm}" if lat != llm
+                   else f"the news grader also said {llm}")
+        lines.append(f"   set by {_who} (rule {_rule}) · {_second}")
+    else:
+        _second = (f"the tier correction would have said {lat}" if lat and lat != llm
+                   else "the tier correction agreed")
+        lines.append(f"   set by {_who} · {_second}")
+
+    # When it was graded + whether the grade moved intraday (the pinned-grade failure).
+    _t0, _t1 = grade.get("first_seen_et"), grade.get("last_seen_et")
+    _bits: list[str] = []
+    if _t0 is not None and _t1 is not None:
+        try:
+            from agents.market_intelligence.collector import _ET as _et_tz
+            _s, _e = _t0.astimezone(_et_tz), _t1.astimezone(_et_tz)
+            _bits.append(f"graded {_s.strftime('%H:%M')}"
+                         + (f"–{_e.strftime('%H:%M')} ET" if _e != _s else " ET"))
+        except Exception as _tze:
+            # Display-only: a clock quirk drops the timestamp, never the section — but
+            # it is logged, because a tz error here would be a real bug upstream.
+            logger.debug(f"/why catalyst-grade timestamp render failed: {_tze}")
+    _rc = grade.get("regrade_count") or 0
+    _bits.append("grade held all day" if not _rc else f"grade changed {_rc}x intraday")
+    if grade.get("live_ep_score") is not None:
+        _tier = grade.get("live_tier")
+        _bits.append(f"score {float(grade['live_ep_score']):.0f} "
+                     + (f"({_tier} — alerted)" if _tier == "HIGH"
+                        else f"({_tier} — briefing only)" if _tier
+                        else "(under the alert bar — no alert)"))
+    else:
+        _bits.append("never scored — killed by a post-grade filter")
+    lines.append("   " + " · ".join(_bits))
+
+    # THE ANSWER TO 'WHY' — the grader's own words.
+    _an = (grade.get("claude_analysis") or "").strip()
+    if _an:
+        lines.append(f"   \"{_cap_summary(_an, analysis_cap)}\"")
+    else:
+        lines.append("   (no rationale recorded — graded before this was captured)")
+
+    # WHAT IT READ.
+    _srcs = _corpus_sources(grade.get("grounded_head"))
+    _glen = grade.get("grounded_len")
+    if _srcs:
+        _tail = f" — {int(_glen):,} chars" if _glen else ""
+        lines.append(f"   read: {' · '.join(_srcs)}{_tail}")
+    elif _glen:
+        lines.append(f"   read: news corpus, {int(_glen):,} chars (no source stamps)")
+    else:
+        lines.append("   read: NO news corpus — graded on headlines only")
+    _ns = (grade.get("news_summary") or "").strip()
+    if _ns:
+        lines.append(f"   news: {_cap_summary(_ns, 240)}")
+
+    # The expectedness read the grade was judged against (plain words, not axis names).
+    _sched = grade.get("expct_sched") or "unknown"
+    _sched_txt = {"scheduled": "on the earnings calendar",
+                  "unscheduled": "not on the calendar"}.get(_sched, "calendar unknown")
+    _ev = []
+    _ev.append("beat language found" if grade.get("expct_beat") else "no beat language")
+    _comb = grade.get("expct_combined")
+    _ev.append({"forward": "forward-looking content (guidance / outlook)",
+                "backward": "backward-looking content only",
+                }.get(_comb, "content direction unclassified"))
+    if grade.get("sector_confirm"):
+        _ev.append(f"sector confirmed ({grade.get('sector_n')} peers on the board)")
+    else:
+        _ev.append("no sector confirmation")
+    lines.append(f"   news was {_sched_txt} · " + " · ".join(_ev))
+    return lines
 
 
 def _strip_lifecycle_summary(summary: str, ticker: str) -> str:
@@ -5608,7 +5773,10 @@ class MarketIntelligenceAgent(BaseAgent):
 
         Joins mi_ep_alerts (detection) + mi_live_trades (execution) +
         mi_audit_log (lifecycle events, bounded to the trading-day window in
-        America/New_York to avoid pulling unrelated prior-setup events).
+        America/New_York to avoid pulling unrelated prior-setup events), plus the
+        CATALYST GRADE record (#593) — the grader's own rationale and the news it read,
+        which is the only place that survives for a name that was graded and never
+        alerted (no mi_ep_alerts row exists for that cohort at all).
 
         Render style mirrors `/setup`: plain text + emoji tags + TV chart
         button. Markdown asterisks/underscores break on dynamic content
@@ -5617,7 +5785,10 @@ class MarketIntelligenceAgent(BaseAgent):
         import re as _re
         from datetime import date as _date
         from agents.market_intelligence.collector import et_today, _ET
-        from agents.market_intelligence.db import get_pool, get_security_exchange_map
+        from agents.market_intelligence.db import (
+            get_catalyst_grade_record, get_latest_catalyst_grade_date,
+            get_pool, get_security_exchange_map,
+        )
         from agents.market_intelligence.friday_watchlist import (
             _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
         )
@@ -5658,7 +5829,20 @@ class MarketIntelligenceAgent(BaseAgent):
                           FROM mi_audit_log WHERE summary ILIKE '%' || $1 || '%'
                     ) u
                 """, ticker)
-            target_date = (latest["d"] if latest else None) or et_today()
+            _resolved = latest["d"] if latest else None
+            # #593 — a name that was GRADED but never ALERTED has no alert row, no trade
+            # row and (often) no audit row, so the union above returns nothing and the
+            # bare command lands on today with "nothing found". That cohort is exactly
+            # the one the CATALYST GRADE section exists to answer for (NSSC 2026-08-24),
+            # so the last day we graded the name counts as activity too.
+            try:
+                _graded_day = await get_latest_catalyst_grade_date(ticker)
+            except Exception as _gde:   # telemetry gap must never break /why
+                logger.debug(f"/why {ticker}: graded-day lookup failed: {_gde}")
+                _graded_day = None
+            if _graded_day and (_resolved is None or _graded_day > _resolved):
+                _resolved = _graded_day
+            target_date = _resolved or et_today()
         async with pool.acquire() as conn:
             alert = await conn.fetchrow("""
                 SELECT ticker, alert_date, score_tier, ep_score, gap_pct,
@@ -5696,7 +5880,17 @@ class MarketIntelligenceAgent(BaseAgent):
                 LIMIT 1
             """, ticker, target_date)
 
-        if not alert and not trade and not events and not scan:
+        # #593 — the catalyst-grade record, fetched outside the connection block above
+        # because it is DISPLAY-ONLY telemetry: it must be able to fail without touching
+        # the diagnosis. It is the only surviving record of the grader's reasoning for a
+        # graded name that never alerted.
+        try:
+            grade = await get_catalyst_grade_record(ticker, target_date)
+        except Exception as _ge:
+            logger.debug(f"/why {ticker}: catalyst-grade record lookup failed: {_ge}")
+            grade = None
+
+        if not alert and not trade and not events and not scan and not grade:
             return self._ok(
                 request,
                 result=f"🔍 {ticker} — no alert / trade / audit events on {target_date}.",
@@ -5770,6 +5964,14 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("   " + ", ".join(scan_bits))
             else:
                 lines.append("🎯 DETECTED — no mi_ep_alerts row (not a recognised EP)")
+
+        # 🧠 Catalyst grade (#593) — what the grader decided, in its own words, and the
+        # news it read. Rendered for EVERY graded name, alerting or not; the section
+        # simply doesn't appear when the name was never graded that day.
+        try:
+            lines.extend(_format_catalyst_grade_block(grade))
+        except Exception as _gfe:   # display-only — never break the diagnosis
+            logger.debug(f"/why {ticker}: catalyst-grade render failed: {_gfe}")
 
         # 💰 Outcome
         lines.append("")
@@ -5984,6 +6186,27 @@ class MarketIntelligenceAgent(BaseAgent):
                 if _ru_text:
                     lines.append("")
                     lines.append(_ru_text)
+                    # #593 — the operator's question is whether the deterministic
+                    # methodology rubric BACKS the grade the system acted on. Both
+                    # labels were already computed; only the comparison was missing.
+                    # DISPLAY ONLY — states agreement, changes neither side.
+                    try:
+                        from agents.market_intelligence.catalyst_rubric_runtime import (
+                            score_ep_with_rubric,
+                        )
+                        _rr = score_ep_with_rubric(ticker, _ru_extracted, target_date)
+                        _rl = (_rr or {}).get("label")
+                        _gl = None
+                        if grade:
+                            _gl = ((grade.get("shadow_tier_last")
+                                    or grade.get("live_quality_last"))
+                                   if (grade.get("live_side") or "llm") == "lattice"
+                                   else grade.get("live_quality_last"))
+                        _gl = _gl or (alert.get("catalyst_quality") if alert else None)
+                        if _rl and _gl:
+                            lines.append(_grade_agreement(_rl, _gl))
+                    except Exception as _cmp_e:
+                        logger.debug(f"/why rubric-vs-grade line failed for {ticker}: {_cmp_e}")
                     lines.append(f"_Full breakdown: `/rubric {ticker}`_")
             # Theme line — independent of rubric
             try:

@@ -2730,8 +2730,11 @@ async def initialize_schema() -> None:
                 projected_vol_multiple DOUBLE PRECISION,
                 live_ep_score       DOUBLE PRECISION,  -- pre-override score at the recording tick
                 live_tier           TEXT,              -- HIGH|MODERATE|NULL (<50 skip) at that tick
-                grounded_len        INT,               -- corpus size the verdict read (0 = graded blind)
+                grounded_len        INT,               -- FULL corpus size the verdict read (0 = graded blind); > length(grounded_head) means the stored prefix is truncated
                 live_side           TEXT DEFAULT 'llm',-- which grader ACTED on this row's latest tick: 'llm' (raw LLM grade live — pre-flip / flag off) | 'lattice' (the corrected lattice live). Explicit BY DESIGN: a reader must never infer the acting side from the date.
+                claude_analysis     TEXT,              -- #593: the grader's OWN rationale (classify_catalyst's `analysis`) — the "why" for names that never alert
+                news_summary        TEXT,              -- #593: the discovery narrative the scan held (perplexity/headline summary, already <=600 chars at source)
+                grounded_head       TEXT,              -- #593: bounded prefix of the grounded corpus at the lean grader's own 6000-char window (primary sources first)
                 created_at          TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (scan_date, ticker)
             );
@@ -2740,6 +2743,34 @@ async def initialize_schema() -> None:
             -- #533 flip migration (2026-08-22): DEFAULT 'llm' stamps every pre-flip row
             -- with the side that WAS live when it was written — the LLM grade.
             ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS live_side TEXT DEFAULT 'llm';
+            -- #593 (2026-08-24, operator-directed): the grader's REASONING and the
+            -- evidence it read, persisted for EVERY graded name — not just the ones
+            -- that alert. Before this, `analysis` (the classify_catalyst tool's own
+            -- "2-3 sentences on the specific catalyst and classification rationale")
+            -- and the news corpus were computed, handed to this writer, and dropped on
+            -- the floor: only `grounded_len` (a LENGTH) survived. An alerting name kept
+            -- its rationale in mi_ep_alerts.claude_analysis; a graded-but-not-alerted
+            -- name (score < bar, or filter-killed) kept NOTHING, so "what did the system
+            -- see and why did it decide that" was unanswerable for exactly the cohort
+            -- the operator asks about (NSSC 2026-08-24: graded `strong` on a scheduled
+            -- earnings release, no record of the beat-vs-beat+guidance reasoning).
+            -- SIZE: written by the same single upsert, one row per (scan_date, ticker),
+            -- so this is ~20-40 names/day, not per-tick. claude_analysis and
+            -- news_summary are already short at source (2-3 sentences; the perplexity
+            -- narrative is capped at 500-600 chars in ep_detector) and are stored whole
+            -- under a defensive cap. grounded_head is a BOUNDED PREFIX of the corpus at
+            -- exactly the lean grader's own window (_classify_catalyst_claude's
+            -- max_chars=6000) — build_grounded_text is ordered primary-first
+            -- (SEC filing -> Benzinga wires -> web summary), so the prefix keeps the
+            -- direct sources and drops only the web tail. `grounded_len` stays the FULL
+            -- corpus length, so truncation is always detectable (grounded_len >
+            -- length(grounded_head)).
+            -- Read by NO grading / entry / sizing / ordering / safeguard path — the
+            -- readers are the read-only flip monitor and the operator display surface
+            -- (`get_catalyst_grade_record`, rendered by /why).
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS claude_analysis TEXT;
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS news_summary TEXT;
+            ALTER TABLE mi_catalyst_tier_shadow ADD COLUMN IF NOT EXISTS grounded_head TEXT;
 
             -- #533 separation change (2026-08-22, operator-signed): BOTH rubric sides
             -- per scored candidate per day — the operator's "keep tracking existing"
@@ -4244,6 +4275,57 @@ async def get_prev_close(ticker: str, before_date) -> "float | None":
 # update_ep_alert_grade_override merged into update_ep_alert_judge_result
 # (#247, 2026-06-10) — the judge_*-write + score_tier override are one atomic
 # UPDATE now; the two-statement window is gone.
+
+
+async def get_catalyst_grade_record(ticker: str, scan_date: "date") -> "dict | None":
+    """#593 — one graded name's catalyst-grade record for one day, for the OPERATOR
+    DISPLAY surface (`/why TICKER [DATE]`). Returns the grade both sides gave, which one
+    ACTED, the lattice rule, the grader's own rationale, the news it read, and the
+    expectedness axes — or None if the name was never graded that day.
+
+    WHY THIS EXISTS: an alerting name keeps its rationale in mi_ep_alerts.claude_analysis;
+    a graded name that never alerts (score under the bar, or killed by a post-grade
+    filter) has no mi_ep_alerts row at all, so the reasoning was unrecoverable. This is
+    the only place it lives for that cohort.
+
+    ⚠ READ-ONLY, DISPLAY-ONLY, THE LINE: this row is telemetry. It is not read by any
+    grading / entry / sizing / ordering / safeguard path, and adding a caller on one of
+    those paths would breach the pin in
+    tests/test_catalyst_tier_shadow.py::test_no_live_path_reads_the_shadow_table. The
+    only permitted caller is the /why handler in agent.py (pinned by
+    test_catalyst_grade_record_reader_is_display_only). Callers wrap fail-open so a
+    telemetry gap never breaks /why."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchrow("""
+            SELECT scan_date, ticker, first_seen_et, last_seen_et,
+                   live_quality_first, live_quality_last,
+                   shadow_tier_first, shadow_tier_last, rule_last, regrade_count,
+                   live_side, live_ep_score, live_tier,
+                   expct_sched, expct_sched_src, expct_looking, expct_combined,
+                   expct_beat, demotion_marker, concrete_event,
+                   sector, sector_n, board_n, sector_confirm,
+                   gap_pct_last, claude_analysis, news_summary,
+                   grounded_head, grounded_len
+            FROM mi_catalyst_tier_shadow
+            WHERE ticker = $1 AND scan_date = $2
+        """, ticker, scan_date)
+
+
+async def get_latest_catalyst_grade_date(ticker: str) -> "date | None":
+    """#593 — the most recent day this ticker was GRADED (whether or not it alerted).
+
+    `/why TICKER` with no date resolves the day from alerts / trades / audit rows; a name
+    that was graded and then died under the score bar appears in NONE of those, so the
+    bare command resolved to today and rendered 'nothing found' — the exact failure this
+    build fixes. Folded into that resolution so `/why NSSC` works with no date typed.
+    Read-only, display-only — same contract as get_catalyst_grade_record above."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT MAX(scan_date) AS d FROM mi_catalyst_tier_shadow WHERE ticker = $1
+        """, ticker)
+    return row["d"] if row else None
 
 
 async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":

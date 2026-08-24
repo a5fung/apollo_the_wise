@@ -123,6 +123,33 @@ other edit (exact revert SQL in the change log). Both sides + a `live_side` acti
 recorded per (scan_date, ticker) in `mi_catalyst_tier_shadow`; the nightly flip monitor
 (`health_checks.run_catalyst_lattice_monitor`) owns the three revert triggers.
 
+**WHAT THE GRADER SAW AND WHY, PERSISTED (#593, 2026-08-24 — capture + display only; NO
+grading rule, prompt, threshold or score changed).** The grader returns `analysis` — its own
+"2-3 sentences on the specific catalyst and classification rationale" — and reasons over a news
+corpus; `ep_detector._tier_shadow_base` already handed BOTH to the tier recorder, which bound
+neither: it stored `grounded_len`, a LENGTH. So for every graded name that did NOT alert, the
+reasoning was computed and thrown away. An ALERTING name kept it in `mi_ep_alerts.claude_analysis`;
+a name that died under the score bar or on a post-grade filter has no `mi_ep_alerts` row at all,
+which is why "what did the system see and why did it decide that" was unanswerable for exactly
+the cohort the operator asks about (NSSC 2026-08-24: graded `strong` on a scheduled earnings
+release with an 11% revenue increase, no record of whether "beat + guidance raise" or just "beat"
+was being applied). Three nullable columns now persist it at the SAME single write site:
+`claude_analysis`, `news_summary`, and `grounded_head` — a BOUNDED prefix of the corpus at the
+LEAN grader's own window (`_classify_catalyst_claude`'s default `max_chars=6000`), defensible
+because `build_grounded_text` is ordered primary-first (SEC filing → Benzinga wires → web
+summary), so the prefix keeps the direct sources and drops the web/context tail. ⚠ It is NOT
+always the whole graded text: the #344 ENRICHED-corpus path grades with
+`_GRADE_ENRICH_MAX_CHARS` (12000), so an enriched grade can have read past the stored prefix.
+`grounded_len` still records the FULL length, so that truncation is always detectable rather
+than silent. Rows stay one per
+(scan_date, ticker), so this is ~20-40 names/day, not per tick. Surfaced by **`/why TICKER
+[DATE]`** (and therefore `/setup TICKER DATE`) as a CATALYST GRADE section — grade, which
+grader acted, the rationale verbatim, the news sources read, the expectedness read, plus an
+explicit agree/disagree line against the deterministic methodology rubric. `/why` with no date
+now also resolves to the last day the name was GRADED, since a graded-not-alerted name appears
+in no alert/trade/audit row. Read by NO grading / entry / sizing / safeguard path; pinned by
+`tests/test_catalyst_tier_shadow.py::test_catalyst_grade_record_reader_is_display_only`.
+
 **Grounded grade (2026-06-04, #187/#190 — catalyst-axis Track A+B; deployed live).** The grade now reasons on a GROUNDED, UNTRUNCATED summary — the authoritative **SEC 8-K body** (`collector.get_sec_recent_filings`, near-real-time `data.sec.gov/submissions` endpoint, error-wrapped) + the Perplexity web synthesis — NOT raw 200-char yfinance headlines. Model upgraded **Haiku → `claude-sonnet-4-6`**. New prompt rule: broad sector-momentum / short-squeeze / non-company-specific technical moves grade `routine` (a gap-up alone is not a catalyst).
 - **WHY**: RUM 2026-06-04 traded −1.07R as a false `strong` — the real catalyst (a $270M NVIDIA-Blackwell GPU-cloud **8-K filed 5:04am ET**) reached neither LLM (no EDGAR ingestion existed), so Haiku confabulated `strong` from headlines while the grade truncated the synthesis to 200 chars.
 - **EVIDENCE**: 30-case bake-off — grounded summary flips the false-`strong` junk (RUM/PGY/CRSR/DY, short-squeeze/sector-rotation/ticker-mismatch) → `routine`, and Haiku≈Sonnet≈Opus on identical input (so the **input** is the lever, not the model); RUM grounded+8-K → `strong` with the correct $270M rationale; B0 confirmed EDGAR is near-real-time and the 8-K was retrievable ~4.5h pre-scan.

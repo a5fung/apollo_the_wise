@@ -297,8 +297,32 @@ def test_no_live_path_reads_the_shadow_table():
          str(repo / "agents"), str(repo / "core"), str(repo / "channels"),
          str(repo / "shared"), str(repo / "broker")],
         capture_output=True, text=True).stdout.strip().splitlines()
-    assert set(sel) <= {str(repo / "agents/market_intelligence/health_checks.py")}, (
+    # #593 (2026-08-24): db.py joins the flip monitor as a permitted SELECT site — the
+    # read-only OPERATOR DISPLAY readers (get_catalyst_grade_record /
+    # get_latest_catalyst_grade_date, rendered by /why). Same non-decision shape as the
+    # monitor: no grading / entry / sizing / ordering / safeguard path reads them, pinned
+    # by test_catalyst_grade_record_reader_is_display_only below.
+    assert set(sel) <= {str(repo / "agents/market_intelligence/health_checks.py"),
+                        str(repo / "agents/market_intelligence/db.py")}, (
         f"live SELECT against the shadow table outside the flip monitor: {sel}")
+
+
+def test_catalyst_grade_record_reader_is_display_only():
+    """#593 — the two db.py readers of the shadow table exist for `/why` ONLY. No
+    detector, broker or scheduler module may call them: that would put the shadow row on
+    a decision path, which is what test_no_live_path_reads_the_shadow_table forbids and
+    what widening its SELECT allow-list to db.py must not quietly permit."""
+    import subprocess
+    repo = Path(__file__).resolve().parent.parent
+    for fn in ("get_catalyst_grade_record", "get_latest_catalyst_grade_date"):
+        out = subprocess.run(
+            ["grep", "-rl", "--include=*.py", fn,
+             str(repo / "agents"), str(repo / "core"), str(repo / "channels"),
+             str(repo / "shared"), str(repo / "broker")],
+            capture_output=True, text=True).stdout.strip().splitlines()
+        assert set(out) <= {str(repo / "agents/market_intelligence/db.py"),
+                            str(repo / "agents/market_intelligence/agent.py")}, (
+            f"{fn} called outside the /why display surface: {out}")
 
 
 # ── #533 Change 6 FLIP (2026-08-22, operator-signed): resolve_live_tier + live_side ───
@@ -358,7 +382,7 @@ async def test_recorder_writes_the_precomputed_acting_verdict_and_live_side(monk
     assert "live_side" in sql and "$27" in sql
     assert args[4] == verdict["shadow_tier"]   # $5 shadow_tier = the ACTING verdict, verbatim
     assert args[5] == verdict["rule"]          # $6 rule
-    assert args[-1] == "lattice"               # $27 live_side
+    assert args[26] == "lattice"               # $27 live_side (#593 appended $28-$30 after it)
     sector_fetch.assert_not_called()           # verdict given -> no recompute, no refetch
 
 
@@ -380,4 +404,116 @@ async def test_recorder_legacy_items_recompute_and_stamp_llm(monkeypatch):
         [{"ticker": "X", "live_quality": "routine"}], ["X"],
         date(2026, 8, 19), datetime(2026, 8, 19, 7, 5))
     assert n == 1
-    assert captured[0][-1] == "llm"
+    assert captured[0][26] == "llm"
+
+
+# ── #593 (2026-08-24) — the grader's REASONING and the news it read are persisted ─────
+
+
+@pytest.mark.asyncio
+async def test_recorder_persists_the_grader_rationale_and_the_corpus_it_read(monkeypatch):
+    """THE #593 GAP: `analysis` (the grader's own rationale) + the news corpus were
+    handed to this writer and dropped — only a LENGTH survived, so a graded name that
+    never alerted left no record of what the system saw or why it decided. They land in
+    $28-$30 now, appended AFTER live_side so every prior positional read stays valid."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    captured = []
+
+    async def _execute(sql, *args):
+        captured.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(cts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(cts, "get_sectors_batch", AsyncMock(return_value={}))
+
+    corpus = "[SEC 8-K filed 2026-08-24, items 2.02] Revenue up 11% year over year."
+    n = await cts.record_catalyst_tier_shadow(
+        [{"ticker": "NSSC", "live_quality": "strong",
+          "claude_analysis": "Scheduled Q3 earnings; revenue +11% YoY, no guidance change.",
+          "news_summary": "NSSC reported Q3 results.",
+          "grounded_text": corpus,
+          "ep_score": 41.0, "live_tier": None}],
+        ["NSSC"], date(2026, 8, 24), datetime(2026, 8, 24, 9, 40))
+    assert n == 1
+    sql, args = captured[0]
+    assert "claude_analysis" in sql and "news_summary" in sql and "grounded_head" in sql
+    assert "$30" in sql
+    assert args[25] == len(corpus)          # $26 grounded_len = the FULL corpus length
+    assert args[26] == "llm"                # $27 live_side unmoved
+    assert args[27] == "Scheduled Q3 earnings; revenue +11% YoY, no guidance change."
+    assert args[28] == "NSSC reported Q3 results."
+    assert args[29] == corpus
+
+
+@pytest.mark.asyncio
+async def test_corpus_is_stored_as_a_bounded_prefix_and_truncation_stays_detectable(monkeypatch):
+    """SIZE BOUND: the corpus can reach the 12k enriched window, so only a prefix at the
+    lean grader's own 6000-char window is stored. `grounded_len` keeps the FULL length,
+    which is what makes truncation visible rather than silent."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    captured = []
+
+    async def _execute(sql, *args):
+        captured.append(args)
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(cts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(cts, "get_sectors_batch", AsyncMock(return_value={}))
+
+    huge = "x" * 12000
+    await cts.record_catalyst_tier_shadow(
+        [{"ticker": "Y", "live_quality": "routine",
+          "claude_analysis": "a" * 9000, "news_summary": "b" * 5000,
+          "grounded_text": huge}],
+        ["Y"], date(2026, 8, 24), datetime(2026, 8, 24, 9, 40))
+    args = captured[0]
+    assert args[25] == 12000                                  # full length recorded
+    assert len(args[29]) == cts._GROUNDED_HEAD_MAX_CHARS      # prefix only
+    assert args[25] > len(args[29])                           # truncation is detectable
+    assert len(args[27]) == cts._ANALYSIS_MAX_CHARS
+    assert len(args[28]) == cts._NEWS_MAX_CHARS
+
+
+@pytest.mark.asyncio
+async def test_empty_text_is_stored_as_null_so_the_upsert_cannot_erase_a_good_value(monkeypatch):
+    """The grade is day-cached and re-recorded on every tick. An empty later tick must
+    not blank the rationale an earlier tick captured — the writer sends NULL (not ''),
+    and the ON CONFLICT clause COALESCEs, so the recorded reasoning is write-once-good."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    captured = []
+
+    async def _execute(sql, *args):
+        captured.append((sql, args))
+        return "INSERT 0 1"
+    conn.execute = _execute
+    monkeypatch.setattr(cts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(cts, "get_sectors_batch", AsyncMock(return_value={}))
+    await cts.record_catalyst_tier_shadow(
+        [{"ticker": "Z", "live_quality": "routine", "claude_analysis": "",
+          "news_summary": None, "grounded_text": ""}],
+        ["Z"], date(2026, 8, 24), datetime(2026, 8, 24, 9, 40))
+    sql, args = captured[0]
+    assert args[27] is None and args[28] is None and args[29] is None
+    for col in ("claude_analysis", "news_summary", "grounded_head"):
+        assert f"COALESCE(EXCLUDED.{col}" in sql
+
+
+def test_the_stored_corpus_window_matches_the_lean_graders_own_window():
+    """The bound is not a round number: it is the LEAN grader's own window
+    (`_classify_catalyst_claude`'s default `max_chars`). If that default ever moves, this
+    fails rather than silently storing a prefix that no longer corresponds to the text
+    the ordinary grade read.
+
+    ⚠ It is deliberately NOT a claim that the prefix is the whole graded text — the #344
+    ENRICHED-corpus path grades at `_GRADE_ENRICH_MAX_CHARS` (larger), so an enriched
+    grade can have read past the stored prefix. `grounded_len` records the FULL length so
+    that case is visible rather than silent, which is what the assertion below pins."""
+    import inspect as _inspect
+    from agents.market_intelligence import ep_detector as _ep
+    sig = _inspect.signature(_ep._classify_catalyst_claude)
+    assert sig.parameters["max_chars"].default == cts._GROUNDED_HEAD_MAX_CHARS
+    # the enriched path reads MORE than we store — the doc must not claim equality
+    assert _ep._GRADE_ENRICH_MAX_CHARS > cts._GROUNDED_HEAD_MAX_CHARS
