@@ -293,6 +293,10 @@ async def test_reentry_above_orb_high_uses_limit_buy(monkeypatch):
     pool, conn = make_mock_pool()
     conn.fetchrow = AsyncMock(return_value=dict(_TRADE))
     conn.execute = AsyncMock()
+    # #588: attempt_day1_reentry now nets `get_pending_exit_qty` off the recorded
+    # stop-leg shares. 0 = nothing resting, which is this test's case — the
+    # re-entry branch it asserts on is unaffected either way.
+    conn.fetchval = AsyncMock(return_value=0)
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(om, "log_audit_event", AsyncMock())
     monkeypatch.setattr(om, "send_telegram_message", AsyncMock(return_value=True))

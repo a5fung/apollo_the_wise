@@ -239,6 +239,81 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-08-24 — BUG FIX (#588): the day-1 stop leg recorded the whole tracked position, double-counting a resting partial (RECORDING ONLY — no exit rule, stop, target or size changed)
+
+**The defect.** `order_manager.attempt_day1_reentry` booked the stop-out exit leg at
+`mi_live_trades.remaining_shares` — the tracked position — instead of the shares the stop actually
+sold. When a +2R carve-out has been PLACED but has not FILLED, `remaining_shares` is still at its
+pre-partial value (the deferred-commit pattern), so the stop leg absorbs the carve-out's shares and
+they are counted a second time when the limit later fills.
+
+**ETON 2026-08-14, live money.** 17 entered. 09:35 the carve-out placed a resting limit for 5 and
+armed a breakeven stop on 12. 09:45:11 the 12-share stop filled and the leg was written as **17**
+(prod audit: `r3_day1_reentry_blocked` at 09:45:11; `position_unprotected: live stop qty 12 < 17
+shares held` at 09:45:00; `mi_live_orders` shows that stop `filled_qty=12`). 15:58:02 the limit
+filled 5. `sum(exits[].shares) = 22` on a 17-share trade; booked **$19.3236 / +0.5187R** against a
+true **$20.0796 / +0.5390R** — a winner under-stated by $0.76.
+
+**Why PLTR (2026-08-04) escaped — two independent reasons, both needed stating:**
+1. Different write path: PLTR stopped on day 14 → `trade_stream._process_stop_fill`, which since
+   #566 books the ACTUAL fill quantity. ETON stopped on day 1 → `attempt_day1_reentry`, which #566
+   gated ENTRY into (`full_stop_out`) but never fixed inside.
+2. Different partial state: PLTR's partial had filled and COMMITTED two weeks earlier (6 → 4), so
+   `remaining_shares` was already net. ETON's rested unfilled for six hours and filled AFTER the stop.
+
+**The fix.** `attempt_day1_reentry` takes the stop order's `filled_qty`; with no quantity available
+it falls back to `remaining_shares − get_pending_exit_qty()` — the same subtraction `update_stop`
+already applies for exactly this reason — and emits `stop_leg_shares_netted` when the correction
+bites. Both callers now hand over the quantity they already hold: `_check_day1_reentry` (which
+fetched the filled stop order and dropped its `filled_qty` — the live hole) and
+`_process_stop_fill`. With no resting exit order the recorded leg is byte-identical to before.
+
+⚖ **THE LINE.** The share count feeds only the exit leg, its P&L and the Telegram text. The R3
+gate, the re-entry decision, `remaining_shares` and `status` are untouched, and the R3-disabled
+close still writes `status='closed', remaining_shares=0, skip_reason='block:r3_reentry_disabled'`.
+
+⚠ **The state gap this deliberately does NOT close — operator's call.** Unlike the two writers
+#566 fixed, `attempt_day1_reentry` has no partial-qty branch: it still closes the row at
+`remaining_shares = 0` even when a carve-out is resting at the broker (ETON: 5 real shares sat
+outside the books for six hours). That is state, not recording, so it is surfaced rather than
+changed. Reachability today: the websocket path is gated by `full_stop_out` (#566); the polling
+path `_check_day1_reentry` is not.
+
+**Guard.** New L1 invariant `exit_share_sum_mismatch` (`audit_invariants.py`) — a CLOSED,
+single-attempt trade whose exit legs do not sum to `entry_shares`. Narrowed so a breach means a
+real write-path defect: closed only; `entry_attempt = 1` (a re-entered trade legitimately exits a
+multiple of `entry_shares`); every leg must carry `shares`; float tolerance; **and no exit order
+still working at the broker** — while a +2R carve-out rests, a CORRECTLY recorded ETON reads 12 of
+17 (the row is already closed at zero) and an unguarded check would alarm on the very shape this
+fixes; ETON's limit rested six hours and filled 17 minutes before the 16:15 sweep. Bounded to rows
+closing on/after 2026-08-24, so the pre-fix rows below do not alarm nightly while the operator
+decides on a backfill. Verified against prod: **0 rows** at that cutoff, exactly 2 unbounded
+(ETON, and FPS below) — the exclusion clause suppresses neither.
+
+⚠ **Latent, NOT fixed — operator's call because it moves money-path behaviour.**
+`get_pending_exit_qty` filters `status NOT IN ('filled','cancelled',…)` but Alpaca emits BOTH
+spellings (prod today: 29 `canceled` vs 55 `cancelled` on stop legs). A carve-out cancelled with
+the single-l spelling would read as still-resting, and `update_stop` subtracts that helper when it
+sizes a protective stop — so correcting it would make a live stop cover MORE shares. Provably a
+no-op on the current book (every `partial_exit`/`full_exit` order ever written is `filled`), so it
+is filed rather than shipped. The new invariant lists both spellings on its own copy of the clause,
+which is read-only and changes nothing.
+
+**Existing rows — NOT corrected; backfilling is the operator's call.** Across the whole live+paper
+book (59 trades carry exit legs) 9 have `sum(exits[].shares) ≠ entry_shares`; 7 are legitimate or older
+classes (5 re-entered trades whose legs correctly sum to 2× entry; one 2026-04 legacy repair leg
+keyed `qty`; one backfilled leg 2 shares light). **This defect: ETON only, P&L delta +$0.76.**
+Separately, **FPS (paper, 2026-06-01)** records one 28-share leg against 163 entered — a different
+defect (an 81-share fill on a CANCELLED stop plus a 54-share reduction never committed to `exits`),
+under-stating it by at least $273.40. Capture: `scripts/probes/_588_exit_share_audit.sql`.
+
+⚠ **The reported "exits array out of chronological order" does NOT exist.** Checked book-wide:
+**0** trades have an `exits` array whose `time` values descend. ETON's array is `[stop_hit
+13:45:11Z, partial_profit 19:58:02Z]` — ascending, and the fill order it records is correct; what
+happened first was the partial's *trigger* (09:35), which is not what the array stores. Once the
+stop leg reads 12 the array reconstructs correctly. No sort-on-write was added. (One 2026-04-23
+legacy repair leg carries `at` instead of `time` and is skipped by the ordering check.)
+
 ### 2026-08-23 — RECORD OF OBSERVED STATE: four exit runtime toggles are ON in prod; the flips were never logged here (NO behaviour change in this entry)
 
 **Found by `scripts/live_rules.py` (drift rule: a toggle ON in `mi_safeguard_state` whose every

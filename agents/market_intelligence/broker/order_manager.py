@@ -980,6 +980,7 @@ async def attempt_day1_reentry(
     trade_id: int,
     stop_fill_price: float,
     source: str = "polling",
+    filled_qty: float | None = None,
 ) -> dict:
     """
     Attempt re-entry for a Day 1 trade that was stopped out.
@@ -987,6 +988,10 @@ async def attempt_day1_reentry(
 
     Uses price-aware logic: if current price > ORB high, places a limit buy
     instead of a stop-limit (which would never trigger).
+
+    `filled_qty` (#588, 2026-08-24): the stop order's ACTUAL filled quantity,
+    used ONLY to record the exit leg. RECORDING, not control flow — it never
+    touches the R3 gate, the re-entry decision, remaining_shares or status.
 
     Returns {"ticker": ..., "action": "reentry"|"reentry_failed"|"closed", ...}
     """
@@ -1034,10 +1039,48 @@ async def attempt_day1_reentry(
             return {"ticker": ticker, "action": "reentry_blocked_halt"}
 
     entry_price = trade["entry_price"]
-    shares = trade["remaining_shares"]
     orb_high = trade["orb_high"]
     orb_low = trade["orb_low"]
     stop_loss_price = trade["stop_price"]
+
+    # #588 (2026-08-24) — the stop leg must record the shares that ACTUALLY sold.
+    # This booked `remaining_shares` blind. ETON 2026-08-14: the +2R carve-out had
+    # placed a RESTING limit for 5 of 17 at 09:35 and it did not fill until 15:58,
+    # so at 09:45 `remaining_shares` was still 17 (the deferred-commit pattern —
+    # remaining only drops when the partial COMMITS). The 12-share stop fill was
+    # therefore written as 17, and when the limit finally filled its 5 were counted
+    # a second time: sum(exits.shares) = 22 on a 17-share trade, the booked P&L
+    # $0.76 light on a winner, and every downstream `mi_sell_discipline_records`
+    # figure inheriting it. PLTR escaped on both counts — day 14 (a different write
+    # path) AND its partial had committed two weeks earlier.
+    # Netting `get_pending_exit_qty` is the SAME subtraction `update_stop` already
+    # applies for exactly this reason. RECORDING ONLY: `shares` feeds the exit leg,
+    # its P&L and the Telegram text — never remaining_shares, status or the R3 gate.
+    # With no resting exit order this is byte-identical to the old behaviour.
+    tracked_remaining = int(trade["remaining_shares"] or 0)
+    held = await get_pending_exit_qty(trade_id)
+    # A 0 / missing quantity is UNKNOWN, not "sold nothing" — the WS payload falls
+    # back to 0 when the broker sends no filled_qty, and recording a 0-share stop
+    # leg would lose the trade's whole loss.
+    if filled_qty is not None and int(filled_qty) > 0:
+        shares = int(filled_qty)
+    else:
+        shares = max(tracked_remaining - held, 0)
+    if shares != tracked_remaining:
+        await log_audit_event(
+            "stop_leg_shares_netted",
+            f"{ticker}: stop leg recorded {shares} sh, not the tracked "
+            f"{tracked_remaining} ({held} sh held by a resting exit order)",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode,
+                "tracked_remaining": tracked_remaining,
+                "pending_exit_qty": held,
+                "filled_qty": None if filled_qty is None else int(filled_qty),
+                "recorded_shares": shares,
+                "source": source,
+            }),
+        )
 
     # Record the stop-out exit
     pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
@@ -1304,7 +1347,12 @@ async def _check_day1_reentry() -> list[dict]:
             continue
 
         stop_fill_price = stop_order.get("filled_avg_price") or trade["stop_price"]
-        result = await attempt_day1_reentry(trade["id"], stop_fill_price, source="polling")
+        # #588: the fetched order already carries the filled quantity — dropping it
+        # was the live hole that let the ETON shape recur on this path.
+        result = await attempt_day1_reentry(
+            trade["id"], stop_fill_price, source="polling",
+            filled_qty=stop_order.get("filled_qty") or None,
+        )
         results.append(result)
 
     return results

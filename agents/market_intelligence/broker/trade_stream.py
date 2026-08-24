@@ -1018,7 +1018,12 @@ async def _process_stop_fill(
                 "UPDATE mi_live_trades SET status = 'filled' WHERE id = $1",
                 trade["id"],
             )
-        result = await attempt_day1_reentry(trade["id"], stop_fill_price, source="websocket")
+        # #588: pass the WS event's own filled quantity so the stop leg records what
+        # actually sold. Recording only — the re-entry decision above is unchanged.
+        result = await attempt_day1_reentry(
+            trade["id"], stop_fill_price, source="websocket",
+            filled_qty=filled_qty,
+        )
         logger.info(f"WS re-entry result [{account_mode}] for {ticker}: {result}")
     else:
         # Close trade — Day 2+ or max attempts reached.

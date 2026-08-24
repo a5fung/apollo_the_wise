@@ -41,6 +41,7 @@ INV_STALE_ORDER_PLACED = "stale_order_placed"
 INV_COOLDOWN_SURGE = "cooldown_surge"
 INV_HIGH_NO_TERMINAL = "high_ep_no_terminal_state"
 INV_JOB_NO_SHOW = "job_no_show"
+INV_EXIT_SHARE_SUM = "exit_share_sum_mismatch"
 
 # ── Existing 6 (from readiness_check.py) ───────────────────────────────────
 
@@ -591,6 +592,99 @@ async def check_job_no_show(conn, *, now_et: datetime | None = None) -> tuple[bo
     })
 
 
+# ── #588 exit-share accounting (2026-08-24) ────────────────────────────────
+
+# Rows that closed BEFORE the fix are known-bad and stay out of the alert: ETON
+# 2026-08-14 plus 8 older paper rows. Backfilling them is the operator's call, so
+# an unbounded check would L1-Telegram the same eight rows every sweep forever —
+# a guard that always fires is not a guard.
+EXIT_SHARE_SUM_SINCE = date(2026, 8, 24)
+
+
+async def check_exit_share_sum(conn, *, since: date | None = None) -> tuple[bool, dict]:
+    """A closed trade's exit legs must sum to the shares it entered (#588).
+
+    ETON 2026-08-14: a 17-share position recorded a 17-share stop leg (the stop
+    actually filled 12) plus the 5-share partial that was still resting when the
+    stop fired — 22 shares booked against 17 entered, and the P&L $0.76 light.
+    `mi_sell_discipline_records` reads straight off these legs, so the error lands
+    in the evidence every exit-rule replay is tuned on.
+
+    Deliberately narrow, so a breach means a real write-path defect:
+      - closed rows only (an open trade legitimately has legs summing to less);
+      - single-attempt only (a re-entered trade buys `entry_shares` again, so its
+        legs legitimately sum to a MULTIPLE of it — 5 such paper rows exist);
+      - every leg must carry `shares` (one 2026-04 legacy repair leg uses `qty`);
+      - NO exit order still working at the broker. A +2R carve-out rests as a GTC
+        limit, and the day-1 stop path closes the row at zero while it rests — so
+        between the stop fill and the limit fill a CORRECTLY recorded trade reads
+        12 of 17 and would alarm every sweep. ETON's limit rested six hours and
+        filled at 15:58, seventeen minutes before the 16:15 sweep. The guard must
+        tolerate that state gap (closing at zero with shares resting is an open
+        operator question, not something this check can fix); the moment the order
+        goes terminal the row is checked for real. Both Alpaca spellings of
+        cancel are listed — the broker emits `canceled` AND `cancelled`.
+      - float tolerance, never `!=` (legs are written as both 17 and 17.0).
+    """
+    cutoff = since or EXIT_SHARE_SUM_SINCE
+    rows = await conn.fetch(
+        """
+        SELECT t.id, t.ticker, t.account_mode, t.alert_date, t.entry_shares,
+               COALESCE((SELECT SUM((x->>'shares')::numeric)
+                           FROM jsonb_array_elements(t.exits) x), 0) AS exit_shares
+        FROM mi_live_trades t
+        WHERE t.status = 'closed'
+          AND COALESCE(t.entry_attempt, 1) = 1
+          AND t.closed_at IS NOT NULL
+          AND (t.closed_at AT TIME ZONE 'America/New_York')::date >= $1
+          AND jsonb_array_length(COALESCE(t.exits, '[]'::jsonb)) > 0
+          AND NOT EXISTS (
+                SELECT 1 FROM jsonb_array_elements(t.exits) x WHERE NOT (x ? 'shares')
+          )
+          AND NOT EXISTS (
+                SELECT 1 FROM mi_live_orders o
+                WHERE o.trade_id = t.id
+                  AND o.purpose IN ('partial_exit', 'full_exit')
+                  AND o.status NOT IN ('filled', 'cancelled', 'canceled',
+                                       'rejected', 'expired')
+          )
+          AND ABS(COALESCE((SELECT SUM((x->>'shares')::numeric)
+                              FROM jsonb_array_elements(t.exits) x), 0)
+                  - t.entry_shares) > 0.001
+        ORDER BY t.closed_at DESC
+        """,
+        cutoff,
+    )
+    return (len(rows) == 0, {
+        "name": INV_EXIT_SHARE_SUM,
+        "count": len(rows),
+        "summary": (
+            f"{len(rows)} closed trade(s) whose exit legs do not sum to the shares "
+            f"entered — booked P&L is wrong on each"
+        ),
+        "offending": [
+            f"{r['ticker']} {r['alert_date']} [{r['account_mode']}]: "
+            f"entered {float(r['entry_shares']):g}, exits sum "
+            f"{float(r['exit_shares']):g}"
+            for r in rows[:10]
+        ],
+        "drill_sql": (
+            "SELECT id, ticker, account_mode, entry_shares, exits\n"
+            "FROM mi_live_trades\n"
+            "WHERE status='closed' AND COALESCE(entry_attempt,1)=1\n"
+            "  AND ABS(COALESCE((SELECT SUM((x->>'shares')::numeric)\n"
+            "                      FROM jsonb_array_elements(exits) x),0)\n"
+            "          - entry_shares) > 0.001;"
+        ),
+        "code_pointers": [
+            "agents/market_intelligence/broker/order_manager.py::attempt_day1_reentry",
+            "agents/market_intelligence/broker/trade_stream.py::_process_stop_fill",
+            "agents/market_intelligence/broker/order_manager.py::_finalize_stop_fill_locked",
+            "agents/market_intelligence/broker/order_manager.py::finalize_partial_exit",
+        ],
+    })
+
+
 # ── Registry: ordered list of (key, callable, kwargs-builder) ──────────────
 
 
@@ -612,4 +706,5 @@ def all_invariants(*, since: date, since_dt: datetime, now_et: datetime | None =
         (INV_COOLDOWN_SURGE, check_cooldown_surge, {}),
         (INV_HIGH_NO_TERMINAL, check_high_no_terminal, {}),
         (INV_JOB_NO_SHOW, check_job_no_show, {"now_et": now_et}),
+        (INV_EXIT_SHARE_SUM, check_exit_share_sum, {}),
     ]
