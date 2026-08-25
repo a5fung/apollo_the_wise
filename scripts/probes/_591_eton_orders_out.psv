@@ -1,0 +1,150 @@
+SET
+===Q0_COLUMNS===
+column_name|id
+data_type|integer
+
+column_name|trade_id
+data_type|integer
+
+column_name|alpaca_order_id
+data_type|text
+
+column_name|ticker
+data_type|text
+
+column_name|side
+data_type|text
+
+column_name|order_type
+data_type|text
+
+column_name|qty
+data_type|double precision
+
+column_name|stop_price
+data_type|double precision
+
+column_name|limit_price
+data_type|double precision
+
+column_name|status
+data_type|text
+
+column_name|filled_qty
+data_type|double precision
+
+column_name|filled_avg_price
+data_type|double precision
+
+column_name|submitted_at
+data_type|timestamp with time zone
+
+column_name|filled_at
+data_type|timestamp with time zone
+
+column_name|cancelled_at
+data_type|timestamp with time zone
+
+column_name|raw_response
+data_type|jsonb
+
+column_name|purpose
+data_type|text
+
+column_name|exit_reason
+data_type|text
+===Q1_ETON_367_ORDERS===
+id|292
+trade_id|367
+alpaca_order_id|48822275-f8db-4853-9d51-154d8ed68816
+ticker|ETON
+side|buy
+order_type|limit
+qty|17
+stop_price|
+limit_price|55.56
+status|filled
+filled_qty|17
+filled_avg_price|55.2012
+submitted_at|2026-08-14 13:31:02.506885+00
+filled_at|2026-08-14 13:32:00.024529+00
+cancelled_at|
+raw_response|{"id": "48822275-f8db-4853-9d51-154d8ed68816", "qty": 17.0, "legs": [{"id": "e2413213-ba23-4464-a209-51ee3d5579cd", "qty": 17.0, "legs": [], "side": "sell", "type": "stop", "status": "held", "symbol": "ETON", "filled_at": null, "created_at": "2026-08-14T13:31:02.408115+00:00", "filled_qty": 0.0, "stop_price": 53.01, "limit_price": null, "order_class": "oto", "client_order_id": "1effc06c-a8ce-4f19-9b39-85166155ddf3", "filled_avg_price": null}], "side": "buy", "type": "limit", "status": "pending_new", "symbol": "ETON", "filled_at": null, "created_at": "2026-08-14T13:31:02.408115+00:00", "filled_qty": 0.0, "stop_price": null, "limit_price": 55.56, "order_class": "oto", "client_order_id": "apollo_live_magna53_ETON_1786714262398", "filled_avg_price": null}
+purpose|
+exit_reason|
+
+id|293
+trade_id|367
+alpaca_order_id|e2413213-ba23-4464-a209-51ee3d5579cd
+ticker|ETON
+side|sell
+order_type|stop
+qty|17
+stop_price|53.01
+limit_price|
+status|canceled
+filled_qty|0
+filled_avg_price|
+submitted_at|2026-08-14 13:31:02.509244+00
+filled_at|
+cancelled_at|2026-08-14 13:36:00.042672+00
+raw_response|{"parent_entry_order": "48822275-f8db-4853-9d51-154d8ed68816"}
+purpose|stop_loss
+exit_reason|stop_hit
+
+id|294
+trade_id|367
+alpaca_order_id|414bffe6-3031-4ace-887b-2ccfc28186f3
+ticker|ETON
+side|sell
+order_type|stop
+qty|12
+stop_price|53.01
+limit_price|
+status|replaced
+filled_qty|0
+filled_avg_price|
+submitted_at|2026-08-14 13:35:00.808871+00
+filled_at|
+cancelled_at|
+raw_response|{"id": "414bffe6-3031-4ace-887b-2ccfc28186f3", "qty": 12.0, "legs": [], "side": "sell", "type": "stop", "status": "pending_new", "symbol": "ETON", "filled_at": null, "created_at": "2026-08-14T13:35:00.791314+00:00", "filled_qty": 0.0, "stop_price": 53.01, "limit_price": null, "order_class": "simple", "client_order_id": "apollo_live_magna53_ETON_1786714500776", "filled_avg_price": null}
+purpose|stop_loss
+exit_reason|stop_hit
+
+id|295
+trade_id|367
+alpaca_order_id|ee925e6b-43eb-4db1-b040-7eae9568fb49
+ticker|ETON
+side|sell
+order_type|limit
+qty|5
+stop_price|
+limit_price|59.58
+status|filled
+filled_qty|5
+filled_avg_price|59.58
+submitted_at|2026-08-14 13:35:01.135412+00
+filled_at|2026-08-14 19:58:02.35852+00
+cancelled_at|
+raw_response|{"id": "ee925e6b-43eb-4db1-b040-7eae9568fb49", "qty": 5.0, "legs": [], "side": "sell", "type": "limit", "status": "pending_new", "symbol": "ETON", "filled_at": null, "created_at": "2026-08-14T13:35:01.107219+00:00", "filled_qty": 0.0, "stop_price": null, "limit_price": 59.58, "order_class": "simple", "client_order_id": "apollo_live_magna53_ETON_1786714501099", "filled_avg_price": null}
+purpose|partial_exit
+exit_reason|partial_profit
+
+id|296
+trade_id|367
+alpaca_order_id|11b25e11-5b14-4b60-afd5-2a48db9ea783
+ticker|ETON
+side|sell
+order_type|stop
+qty|12
+stop_price|55.2012
+limit_price|
+status|filled
+filled_qty|12
+filled_avg_price|55.05
+submitted_at|2026-08-14 13:35:01.16402+00
+filled_at|2026-08-14 14:00:00.11923+00
+cancelled_at|
+raw_response|{"id": "11b25e11-5b14-4b60-afd5-2a48db9ea783", "qty": 12.0, "legs": [], "side": "sell", "type": "stop", "status": "new", "symbol": "ETON", "filled_at": null, "created_at": "2026-08-14T13:35:01.145772+00:00", "filled_qty": 0.0, "stop_price": 55.2, "limit_price": null, "order_class": "simple", "client_order_id": "apollo_live_magna53_ETON_1786714501138", "filled_avg_price": null}
+purpose|stop_loss
+exit_reason|stop_hit
