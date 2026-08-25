@@ -1,0 +1,256 @@
+==============================================================================
+#559 — rt-universe authority flip: what it would actually add
+==============================================================================
+
+FULL shadow record : 290 ticker-days over 22 trading days (2026-07-27 .. 2026-08-25)
+HONEST window      : 194 ticker-days over 17 trading days (2026-08-03 .. 2026-08-25) — post-sustain-rule, coverage-verified
+  raw catch rate   : 11.41 per trading day
+
+==============================================================================
+STAGE A — what the flip is actually buying
+==============================================================================
+   25  ALREADY ALERTED the same day  (1.47/day)
+        → the delayed feed caught them later and they alerted anyway.
+        → flipping moves the alert EARLIER. ZERO extra alerts from this class.
+  107  SEEN by the delayed scan, not alerted  (6.29/day)
+        → they became delayed candidates the same day and died on the merits.
+   62  RT-ONLY — never a delayed candidate at all  (3.65/day)
+        → THE ONLY CLASS THE FLIP ADDS.
+
+  what killed the 'seen, not alerted' class (furthest stage per name):
+        23  scored below the bar
+        21  dollar volume < $1M
+        14  outside the graded shortlist   ← a timing-sensitive gate the flip COULD move
+        12  market cap < $500M
+         9  volume pace below normal   ← a timing-sensitive gate the flip COULD move
+         7  already extended
+         7  merger/acquisition
+         4  60-day cooldown
+         2  ATR > 15%
+         2  routine catalyst, gap 10.2%   ← a timing-sensitive gate the flip COULD move
+         1  pre-mkt volume 100 < 25,000 shares   ← a timing-sensitive gate the flip COULD move
+         1  routine catalyst, gap 11.5%   ← a timing-sensitive gate the flip COULD move
+         1  no ADV data
+         1  routine catalyst, gap 11.3%   ← a timing-sensitive gate the flip COULD move
+         1  pre-mkt volume 3,037 < 25,000 shares   ← a timing-sensitive gate the flip COULD move
+         1  pre-mkt volume 622 < 25,000 shares   ← a timing-sensitive gate the flip COULD move
+
+==============================================================================
+STAGE B — the 62 rt-only names through the CURRENT gate stack
+==============================================================================
+        11  trades under $1M a day
+        11  market cap under $500M
+         5  alerted within the last 60 days (cooldown)
+         4  already up 75%+ in the prior 5 days
+         4  too volatile (ATR over 15%)
+        27  SURVIVE to catalyst grading  (1.59/day)
+
+==============================================================================
+STAGE C — the CURRENT rubric (bar 65) on those 27 survivors
+==============================================================================
+  None of them carries a catalyst grade — they were never candidates, so nothing
+  graded them. The grade is the single biggest term (25 / 15 / 0 points), so the
+  answer is a BAND, not a point. Three reads:
+    if graded game_changer :  26 clear the bar on the strict read,  27 on the most generous read
+    if graded strong       :   2 clear the bar on the strict read,  19 on the most generous read
+    if graded routine      :   0 clear the bar on the strict read,   1 on the most generous read
+
+  Weighting by the MEASURED grade mix of everything the scan graded in this window
+  (game changer 17%, strong 28%, routine 55%; n=192 ticker-days):
+    expected extra alerts over 17 trading days: 5.0 to 10.5
+    ⇒ EXTRA ALERTS PER TRADING DAY: 0.30 to 0.62
+    ⇒ ABSOLUTE CEILING (every survivor a game changer, every bonus granted): 1.59/day
+
+  The survivors that clear the bar even as a 'strong' catalyst (the realistic top):
+      2026-08-14 AAOI   rt  11.1% @09:50  score 75-90  $1,121M/day  open +0.2%
+      2026-08-14 AVEX   rt  11.1% @09:35  score 68-82  $25M/day  open +6.4%
+      2026-08-07 BAND   rt  12.2% @09:45  score 63-78  $67M/day  open +2.9%
+      2026-08-20 MARA   rt   9.7% @09:50  score 61-74  $437M/day  open +5.8%
+      2026-08-03 WSM    rt  11.1% @09:15  score 59-71  $184M/day  open +2.1%
+      2026-08-04 PICS   rt  13.1% @08:30  score 52-68  $2M/day  open +3.4%
+      2026-08-05 RIGL   rt  10.0% @09:31  score 52-68  $13M/day  open +9.8%
+      2026-08-05 BVS    rt  11.6% @09:45  score 52-68  $8M/day  open -5.4%
+      2026-08-06 RCUS   rt  15.5% @09:25  score 52-68  $29M/day  open +6.1%
+      2026-08-06 ADMA   rt  11.2% @09:40  score 52-68  $21M/day  open +4.8%
+      2026-08-06 SBGI   rt  11.8% @09:45  score 52-68  $7M/day  open +4.3%
+      2026-08-06 PKOH   rt  11.1% @09:45  score 52-68  $3M/day  open +3.9%
+      2026-08-07 CON    rt  12.2% @09:31  score 52-68  $24M/day  open +12.2%
+      2026-08-07 ZD     rt  10.3% @09:40  score 52-68  $26M/day  open +11.8%
+      2026-08-07 ALOY   rt  11.8% @09:40  score 52-68  $23M/day  open +2.9%
+
+==============================================================================
+STAGE D — the rebuild made this population EASIER to alert, not harder
+==============================================================================
+    as game_changer :  19 would have cleared the OLD rubric+bar,  27 clear the NEW one
+    as strong       :   4 would have cleared the OLD rubric+bar,  19 clear the NEW one
+
+==============================================================================
+STAGE E — the benefit side: did the rt-only names become real EPs?
+==============================================================================
+  'tail' = how far the stock ran in the next 20 sessions, measured in its own
+  average daily range. 8x or more is the programme's mark for a tail winner.
+  EVERY window here is still incomplete, so every count is a FLOOR.
+    rt-only, survived every mechanical gate      n=  22  8x+:  0  median 1.2x  (median 11/20 sessions run)
+          top: RIGL 2026-08-05 3.9x (13/20)
+          top: PKOH 2026-08-06 3.7x (12/20)
+          top: WSM 2026-08-03 2.3x (15/20)
+    rt-only, all of them                         n=  55  8x+:  1  median 1.2x  (median 11/20 sessions run)
+          top: SDOT 2026-08-21 11.4x (1/20)
+          top: RIGL 2026-08-05 3.9x (13/20)
+          top: PKOH 2026-08-06 3.7x (12/20)
+    caught AND alerted anyway (the timing class) n=  25  8x+:  0  median 1.1x  (median 10/20 sessions run)
+          top: LFST 2026-08-06 6.1x (12/20)
+          top: U 2026-08-06 3.4x (12/20)
+          top: MTW 2026-08-07 3.4x (11/20)
+    every catch in the window                    n= 181  8x+:  1  median 1.2x  (median 10/20 sessions run)
+          top: SDOT 2026-08-21 11.4x (1/20)
+          top: ARCT 2026-08-19 7.1x (3/20)
+          top: LFST 2026-08-06 6.1x (12/20)
+
+  live HIGH alerts over the same 17 days: 69 (4.06/day) — the population this would add to
+
+  POWER: 27 gate-surviving rt-only names in 17 trading days produced
+  0 tail winner(s).
+  At this sample size the smallest real rate this window could reliably
+  distinguish from zero is roughly 1 winner per 17 days — anything rarer
+  than about 1.3 a month is INVISIBLE here. 'Zero measured' is not 'zero'.
+
+==============================================================================
+STAGE F — is there room in the 20-name graded shortlist?
+==============================================================================
+    date         seen   graded   catches   rt-only
+    2026-08-03      14        4         6         3
+    2026-08-04      51       27        18         5
+    2026-08-05      40       23        18         3
+    2026-08-06      51       21        21         6
+    2026-08-07      64       21        26        11
+    2026-08-10      17        6        12         2
+    2026-08-11      20       10         9         4
+    2026-08-12      25       14        11         3
+    2026-08-13      26       13        10         2
+    2026-08-14      25       11         9         3
+    2026-08-17      14        3        10         4
+    2026-08-18      10        2         6         1
+    2026-08-19      17       11        10         2
+    2026-08-20      19        5         7         4
+    2026-08-21      18        2         8         2
+    2026-08-24     222        2         4         3
+    2026-08-25     212        1         9         4
+
+    (`seen` on 08-24/25 is inflated by the #570 universe-floor visibility rows,
+     which log every name that failed a price/volume floor — not real candidates.)
+    The 20-name graded cap DID bind: 25 of the catches that the delayed scan
+    saw were logged 'outside the graded shortlist'. So extra admissions do compete
+    for grading slots — but the wall in front of them is the score bar, not the cap.
+
+==============================================================================
+STAGE I — the nine catches he quoted from 2026-08-25, through the same gates
+==============================================================================
+    9 catches   |   0 alerted anyway   5 the delayed scan saw   4 rt-only
+      APMD   rt   9.2% @07:05  delayed scan saw it  n/a
+      SPAI   rt  10.4% @07:25  delayed scan saw it  n/a
+      MEI    rt  10.3% @08:05  delayed scan saw it  n/a
+      HMN    rt  17.2% @08:20  rt-only              survives every gate
+      NBBK   rt  24.4% @08:40  delayed scan saw it  n/a
+      OESX   rt  13.8% @09:45  delayed scan saw it  n/a
+      ABCL   rt   9.6% @09:45  rt-only              alerted within the last 60 days (cooldown)
+      PSQH   rt   9.9% @09:45  rt-only              trades under $1M a day
+      CRML   rt  12.1% @09:45  rt-only              survives every gate
+
+==============================================================================
+STAGE G — the rt-only names that actually ran, and what stopped them
+==============================================================================
+    2026-08-21 SDOT    11.4x (1/20 sessions)  open   -2.4%   too volatile (ATR over 15%)
+    2026-08-05 RIGL     3.9x (13/20 sessions)  open   +9.8%   PASSED every mechanical gate
+    2026-08-06 PKOH     3.7x (12/20 sessions)  open   +3.9%   PASSED every mechanical gate
+    2026-08-05 AXTI     3.1x (13/20 sessions)  open   -2.7%   already up 75%+ in the prior 5 days
+    2026-08-07 ACET     3.1x (11/20 sessions)  open   +2.4%   trades under $1M a day
+    2026-08-04 REPL     3.0x (14/20 sessions)  open   +6.4%   already up 75%+ in the prior 5 days
+    2026-08-07 MAKO     2.9x (11/20 sessions)  open   +3.7%   trades under $1M a day
+    2026-08-06 OESX     2.7x (12/20 sessions)  open   +3.2%   trades under $1M a day
+
+==============================================================================
+STAGE H — an alert is not a trade: how many would have been ENTERABLE?
+==============================================================================
+  The entry-time real-time gap re-check (`ep_rt_entry_gap_recheck`, ON since 08-02)
+  blocks any entry whose gap has fallen back under 9% at 09:31.
+    of the 27 rt-only gate survivors, 3 still had a 9%+ gap at the actual open
+        2026-08-05 RIGL   rt  10.0% @09:31  open +9.8%
+        2026-08-07 CON    rt  12.2% @09:31  open +12.2%
+        2026-08-07 ZD     rt  10.3% @09:40  open +11.8%
+    11 of the 27 were caught at 09:45 or later — outside the
+    09:31-09:45 order-submission window, so they could not have been entered that day
+
+==============================================================================
+STAGE J — alerts that currently arrive too late to place an order
+==============================================================================
+  The ORB order window is 09:31-09:44 ET. A HIGH alert detected at 09:45 or later
+  logs `window:out_of_orb` and NO order is placed. Those alerts cost attention and
+  buy nothing. If the real-time layer had already seen the name earlier, the flip
+  would have put the same alert inside the window.
+    19 out-of-window HIGH alerts in 17 trading days (1.12/day)
+      2026-08-03 LIND   alert detected 09:55 ET  ← the real-time layer had it at 09:40, INSIDE the window
+      2026-08-04 AMRC   alert detected 09:45 ET
+      2026-08-04 TSAT   alert detected 09:56 ET  ← the real-time layer had it at 07:45, INSIDE the window
+      2026-08-05 ECG    alert detected 09:51 ET
+      2026-08-05 HGTY   alert detected 09:55 ET  ← the real-time layer had it at 09:40, INSIDE the window
+      2026-08-06 CAI    alert detected 09:53 ET
+      2026-08-06 DCTH   alert detected 09:56 ET
+      2026-08-07 ONTO   alert detected 09:52 ET
+      2026-08-07 MTW    alert detected 09:52 ET  ← the real-time layer had it at 08:35, INSIDE the window
+      2026-08-10 ACHR   alert detected 09:45 ET  ← the real-time layer had it at 08:05, INSIDE the window
+      2026-08-10 NESR   alert detected 09:45 ET
+      2026-08-12 BE     alert detected 09:50 ET
+      2026-08-12 CRWV   alert detected 09:50 ET
+      2026-08-12 MRX    alert detected 09:55 ET
+      2026-08-13 OMER   alert detected 09:45 ET
+      2026-08-13 KURA   alert detected 09:51 ET
+      2026-08-14 NMAX   alert detected 09:50 ET  ← the real-time layer had it at 09:35, INSIDE the window
+      2026-08-19 TWST   alert detected 09:55 ET
+      2026-08-21 UUUU   alert detected 09:55 ET
+    6 of 19 had already crossed on the real-time feed inside the
+    submission window — 0.35 per trading day. Whether each
+    would still have SCORED high at that earlier tick is NOT established here: the
+    catalyst grade and the volume pace both move through the morning.
+
+==============================================================================
+STAGE K — those alert rows are OLD-rubric; what are they under today's?
+==============================================================================
+  the 25 caught-and-alerted-anyway names, re-scored on today's rubric:
+    2026-08-03 LIND   was HIGH      @    70 catalyst=strong        -> today 46-59  BELOW 65 NOW
+    2026-08-04 BTDR   was HIGH      @    80 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-04 INSP   was MODERATE  @    55 catalyst=routine       -> today 45-60  BELOW 65 NOW
+    2026-08-04 TSAT   was HIGH      @    60 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-05 HGTY   was HIGH      @  60.5 catalyst=strong        -> today 52-68  STILL CLEARS 65
+    2026-08-05 KMT    was HIGH      @    72 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-05 ROCK   was MODERATE  @  60.5 catalyst=strong        -> today 52-68  STILL CLEARS 65
+    2026-08-06 INSM   was HIGH      @    96 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-06 LFST   was HIGH      @    96 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-06 TRUP   was MODERATE  @    60 catalyst=routine       -> today 30-45  BELOW 65 NOW
+    2026-08-06 U      was HIGH      @    96 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-07 MTW    was HIGH      @  50.4 catalyst=routine       -> today 30-45  BELOW 65 NOW
+    2026-08-10 ACHR   was HIGH      @    54 catalyst=routine       -> today 45-60  BELOW 65 NOW
+    2026-08-10 SLN    was MODERATE  @    84 catalyst=strong        -> today 52-68  STILL CLEARS 65
+    2026-08-10 TH     was HIGH      @  50.4 catalyst=strong        -> today 52-68  STILL CLEARS 65
+    2026-08-11 RPD    was none      @    84 catalyst=strong        -> today 68-82  STILL CLEARS 65
+    2026-08-12 ATRO   was HIGH      @    72 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-12 WYFI   was MODERATE  @    84 catalyst=strong        -> today 63-78  STILL CLEARS 65
+    2026-08-13 BLSH   was MODERATE  @    54 catalyst=routine       -> today 30-45  BELOW 65 NOW
+    2026-08-14 NMAX   was HIGH      @ 100.8 catalyst=strong        -> today 52-68  STILL CLEARS 65
+    2026-08-14 STDN   was MODERATE  @  53.3 catalyst=strong        -> today 52-68  STILL CLEARS 65
+    2026-08-17 ARGX   was HIGH      @  86.4 catalyst=game_changer  -> today 105-105  STILL CLEARS 65
+    2026-08-17 CBRS   was none      @    60 catalyst=strong        -> today 75-90  STILL CLEARS 65
+    2026-08-19 MRNA   was HIGH      @ 115.2 catalyst=strong        -> today 70-86  STILL CLEARS 65
+    2026-08-19 MRVL   was HIGH      @  69.1 catalyst=strong        -> today 90-105  STILL CLEARS 65
+    19 of 25 would still be an alert today.
+
+  the out-of-window rescue candidates, re-scored on today's rubric:
+    2026-08-03 LIND   caught 09:40 alerted 09:55 ET catalyst=strong        $21M/day -> today 46-59  not a HIGH today
+    2026-08-04 TSAT   caught 07:45 alerted 09:56 ET catalyst=game_changer  $7M/day -> today 105-105  RESCUABLE
+    2026-08-05 HGTY   caught 09:40 alerted 09:55 ET catalyst=strong        $1M/day -> today 52-68  RESCUABLE
+    2026-08-07 MTW    caught 08:35 alerted 09:52 ET catalyst=routine       $3M/day -> today 30-45  not a HIGH today
+    2026-08-10 ACHR   caught 08:05 alerted 09:45 ET catalyst=routine       $148M/day -> today 45-60  not a HIGH today
+    2026-08-14 NMAX   caught 09:35 alerted 09:50 ET catalyst=strong        $5M/day -> today 52-68  RESCUABLE
+
+  ⇒ ON TODAY'S RUBRIC: 3 of 19 out-of-window alerts had already
+    crossed on the live feed inside the order window = 0.18 per trading day.

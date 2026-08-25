@@ -151,18 +151,26 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
     return "filter_other"
 
 
-# #583: the single SQL-side skip_category mapping — mirrors
-# _categorize_skip_reason above (kept DB-side for simplicity per the
-# original design; NOT auto-synced with the Python function, so the two can
-# drift — see the d1_universe_floor branch above, which #570 added to
-# _categorize_skip_reason without a matching WHEN clause here yet, because
-# the log calls that would ever produce that skip_reason haven't shipped —
-# #570 territory, not touched here). Used by BOTH refresh_missed_outcomes's
-# write path and reconcile_missed_outcomes_categories's diff/backfill below,
-# so the two can never classify the same skip_reason differently — the
-# EXACT drift class that let #583's bug hide (a WHERE-clause fix landed in
-# one place, #268's `source='live'` filter, but old rows categorized before
-# it never got re-checked against it).
+# #583 / #570-followup (2026-08-25): the single SQL-side skip_category mapping —
+# mirrors _categorize_skip_reason above (kept DB-side for simplicity per the
+# original design; NOT auto-synced with the Python function, so the two CAN
+# drift — #570 shipped the d1_universe_floor branch in _categorize_skip_reason
+# but never added the matching WHEN clause here, so every floor row landed in
+# 'filter_other' in prod for three days (213/222 rows on 08-24) instead of the
+# structural bucket that keeps it out of default /missed. Fixed here. Because a
+# generated single source of truth would have to resolve pre-existing SQL-only
+# substrings (pm volume / rel volume / rel_vol / low volume / projected — see
+# session_rvol_low / pm_rvol_low below) that Python's version doesn't match,
+# and neither narrowing SQL nor widening Python is in scope for this fix, the
+# two implementations stay hand-mirrored and agreement is pinned by
+# tests/test_missed_outcomes_categorizer_agreement.py instead — it fails if a
+# WHEN clause is added to one side and not the other, across a named
+# vocabulary (see that file for the documented exceptions). Used by BOTH
+# refresh_missed_outcomes's write path and reconcile_missed_outcomes_categories's
+# diff/backfill below, so the two can never classify the same skip_reason
+# differently at RUNTIME — the EXACT drift class that let #583's bug hide (a
+# WHERE-clause fix landed in one place, #268's `source='live'` filter, but old
+# rows categorized before it never got re-checked against it).
 _SKIP_CATEGORY_CASE_SQL = """
             CASE
                 WHEN source = 'moderate_alert' THEN 'moderate_tier'
@@ -181,6 +189,13 @@ _SKIP_CATEGORY_CASE_SQL = """
                 WHEN skip_reason ILIKE 'setup:%' THEN 'setup_other'
                 WHEN source = 'high_unentered' THEN 'high_unentered'
                 WHEN skip_reason IS NULL THEN 'filter_other'
+                -- #570 follow-up (2026-08-25): the two silent D-1 universe floors —
+                -- mirrors _categorize_skip_reason's d1_universe_floor branch above at
+                -- the SAME ordinal (checked early, ahead of the generic substring
+                -- chain) so this class stays its own isolable category instead of
+                -- falling through to filter_other and swamping it (~200 rows/day).
+                WHEN skip_reason ILIKE 'filter:universe_prev_close_too_low%'
+                  OR skip_reason ILIKE 'filter:universe_prev_day_illiquid%' THEN 'd1_universe_floor'
                 WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
                 WHEN skip_reason ILIKE '%m&a%'
                   OR skip_reason ILIKE '%buyout%'
@@ -1234,6 +1249,7 @@ _CATEGORY_LABELS: dict[str, str] = {
     "outside_top20":      "Outside top-20 gap rank",
     "duplicate_scan":     "Already scored today",
     "filter_other":       "Other filter",
+    "d1_universe_floor":  "D-1 price/volume floor",  # #570 follow-up
     "moderate_tier":      "MODERATE — not entered",
     "high_unentered":     "HIGH — no fill",
     # #199 entry-pipeline blocks (should've-entered cohort)

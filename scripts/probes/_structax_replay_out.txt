@@ -1,0 +1,319 @@
+================================================================================================
+STEP 0 — FIDELITY CHECK: does this harness reproduce the LIVE mi_structure_axis_shadow rows?
+================================================================================================
+rows replayed: 116
+  prior_close      exact matches 116/116
+  stage2           exact matches 116/116
+  sma_200          exact matches 116/116
+  trailing_high    exact matches 116/116
+  rmv_15           exact matches 116/116
+  rmv_tight        exact matches 116/116
+  extension_ratio  exact matches 116/116
+  sma_10           exact matches 116/116
+  credit_steps     exact matches 116/116
+  marker           exact matches 116/116
+
+================================================================================================
+STEP 1 — POPULATIONS
+================================================================================================
+real EPs (tests/fixtures/must_not_miss_eps.py, excluded members dropped): 26 name-days
+rejects that cleared the $5 / 50k universe floors on 08-24 + 08-25:      27 name-days
+
+================================================================================================
+STEP 2 — COVERAGE (a None is the axis saying 'I cannot compute this')
+================================================================================================
+field                real EPs computable    rejects computable
+sma_200                       5/26                 20/27      
+stage2                        5/26                 20/27      
+rmv_15                       26/26                 27/27      
+rmv_tight                    26/26                 27/27      
+extension_ratio              26/26                 27/27      
+trailing_high                26/26                 27/27      
+
+bar counts inside the 380-day accessor window (200 needed for the 200-day SMA):
+  real EPs   min  149  median  180  max  262   under 200 bars: 21/26
+  rejects    min   17  median  260  max  261   under 200 bars: 7/27
+
+================================================================================================
+STEP 3 — WHAT THE AXIS ACTUALLY SAYS (marker + credit_steps)
+================================================================================================
+  real EPs   no_stage2=3  stage2_only_near_miss=2  unknown=21   |  credited (+1): 0/26
+  rejects    no_stage2=15  stage2_only_near_miss=4  stage2_tight=1  unknown=7   |  credited (+1): 1/27
+
+  same tally restricted to name-days where stage2 was COMPUTABLE (>=200 bars):
+  real EPs   n=5   no_stage2=3  stage2_only_near_miss=2   |  credited (+1): 0
+  rejects    n=20  no_stage2=15  stage2_only_near_miss=4  stage2_tight=1   |  credited (+1): 1
+
+================================================================================================
+STEP 4 — SEPARATION (AUC, direction PRE-REGISTERED, ties credited 0.5)
+================================================================================================
+field                 AUC            95% CI   nEP  nRej       medEP    medRej
+extension_ratio     0.390  [0.238, 0.542]    26    27       1.010     0.959
+rmv_15              0.692  [0.549, 0.835]    26    27      48.579    74.910
+near_high_frac      0.662  [0.515, 0.809]    26    27       0.778     0.586
+stage2_num          0.575  [0.282, 0.868]     5    20       0.000     0.000
+credit_steps        0.481  [0.325, 0.638]    26    27       0.000     0.000
+
+  direction for extension_ratio: less extended above the 10-day = more like a real EP (structure_model §4c)
+  direction for rmv_15: tighter base (lower RMV-15) = more like a real EP (axis component b)
+  direction for near_high_frac: closer to the trailing high = more like a real EP (axis component a's own term)
+  direction for stage2_num: Stage-2 present = more like a real EP (axis component a)
+  direction for credit_steps: the axis's own boost = more like a real EP (the whole point)
+
+2x2 contingency for the binary fields (the honest form for a 0/1 predictor):
+  stage2:
+    real EPs   True=2    False=3    not-computable=21
+    rejects    True=5    False=15   not-computable=7
+  rmv_tight:
+    real EPs   True=2    False=24   not-computable=0
+    rejects    True=5    False=22   not-computable=0
+
+================================================================================================
+STEP 5 — CAPR, THE WORKED EXAMPLE
+================================================================================================
+  CAPR 2026-08-24: bars=259  prior_close=6.29  sma_200=23.2  trailing_high=40.37
+    stage2=False  rmv_15=54.2 (tight<= 30 -> False)  extension_ratio=1.076  sma_10=5.85
+    marker=no_stage2  credit_steps=0
+  CAPR 2026-08-25: bars=260  prior_close=6.8  sma_200=23.2  trailing_high=40.37
+    stage2=False  rmv_15=76.3 (tight<= 30 -> False)  extension_ratio=1.107  sma_10=6.14
+    marker=no_stage2  credit_steps=0
+
+  CAPR daily bars around the operator's July 27 reference (the supply he is pointing at):
+    2026-07-22  O   19.72  H   19.92  L   18.77  C   18.91  V    1,542,360
+    2026-07-23  O   18.51  H   20.54  L   18.49  C   19.83  V    2,006,252
+    2026-07-24  O   19.77  H   20.18  L   18.30  C   19.70  V    2,458,578
+    2026-07-27  O    5.87  H    7.85  L    5.82  C    7.00  V   29,963,473
+    2026-07-28  O    6.78  H    7.22  L    5.67  C    6.57  V   16,331,108
+    2026-07-30  O    3.07  H    4.21  L    2.96  C    4.19  V   28,744,218
+    2026-07-31  O    4.04  H    4.66  L    3.80  C    3.85  V    7,257,641
+    2026-08-03  O    3.77  H    4.20  L    3.66  C    4.20  V    5,135,255
+    2026-08-04  O    4.13  H    4.42  L    4.09  C    4.17  V    4,205,551
+    2026-08-05  O    4.16  H    4.31  L    3.85  C    3.93  V    3,661,929
+    2026-08-06  O    3.88  H    4.21  L    3.87  C    4.18  V    3,190,455
+    2026-08-07  O    4.16  H    4.70  L    4.05  C    4.09  V    3,584,491
+    2026-08-10  O    4.04  H    4.11  L    3.81  C    3.85  V    3,073,302
+    2026-08-11  O    3.85  H    4.00  L    3.73  C    3.93  V    3,341,224
+    2026-08-12  O    3.95  H    4.30  L    3.90  C    4.19  V    2,785,545
+    2026-08-13  O    4.18  H    4.42  L    4.14  C    4.21  V    3,317,067
+    2026-08-14  O    7.66  H    8.15  L    6.04  C    6.65  V   65,754,533
+    2026-08-17  O    6.87  H    7.59  L    6.59  C    7.45  V   19,100,593
+    2026-08-18  O    7.50  H    8.29  L    6.76  C    7.08  V    8,483,320
+    2026-08-19  O    7.19  H    7.99  L    7.14  C    7.98  V    8,400,387
+    2026-08-20  O    7.66  H    7.82  L    6.83  C    6.83  V    8,011,967
+    2026-08-21  O    6.81  H    7.08  L    6.01  C    6.29  V    8,166,321
+    2026-08-24  O    8.03  H    8.03  L    6.34  C    6.80  V   20,021,309
+
+================================================================================================
+STEP 6 — EVERY NAME, EVERY AXIS OUTPUT
+================================================================================================
+-- REAL EPs (labelled) -------------------------------------------------------------------------
+ticker  date         bars  stage2   rmv15  tight     ext  p/high  marker
+FLY     2026-03-12    149    None    53.8  False   1.006   0.279  unknown
+SMTC    2026-03-30    174    None    47.8  False   0.932   0.748  unknown
+AEHR    2026-03-31    175    None    68.1  False   0.841   0.641  unknown
+MRVL    2026-03-31    175    None    89.7  False   0.957   0.854  unknown
+ALGM    2026-04-08    180    None    33.7  False   1.046   0.759  unknown
+AMKR    2026-04-08    180    None    37.1  False   1.027   0.834  unknown
+APLD    2026-04-08    180    None    39.1  False   1.014   0.596  unknown
+ASX     2026-04-08    180    None    35.9  False   1.014   0.878  unknown
+BE      2026-04-08    180    None    32.2  False   1.002   0.751  unknown
+HUT     2026-04-08    180    None    52.5  False   1.066   0.797  unknown
+IREN    2026-04-08    180    None    49.4  False   0.991   0.465  unknown
+MU      2026-04-08    180    None    33.5  False   1.038   0.801  unknown
+NBIS    2026-04-08    180    None    51.4  False   1.094   0.832  unknown
+QBTS    2026-04-08    180    None    54.3  False   0.954   0.294  unknown
+SNDK    2026-04-08    180    None    36.4  False   1.071   0.914  unknown
+STRL    2026-04-08    180    None    60.8  False   0.923   0.801  unknown
+USAR    2026-04-08    180    None    68.6  False   0.947   0.333  unknown
+UMC     2026-04-17    187    None    66.6  False   1.115   0.838  unknown
+AMD     2026-04-24    192    None    58.9  False   1.119   0.984  unknown
+INTC    2026-04-24    192    None    35.4  False   1.016   0.950  unknown
+QCOM    2026-04-24    192    None    56.5  False   1.000   0.650  unknown
+ARM     2026-05-06    200    True    39.3  False   1.001   0.879  stage2_only_near_miss
+UMC     2026-05-06    200    True    34.6  False   1.110   0.986  stage2_only_near_miss
+SNOW    2026-05-07    201   False    51.6  False   0.986   0.498  no_stage2
+QURE    2026-05-29    216   False    16.8   True   0.982   0.348  no_stage2
+MRNA    2026-08-19    262   False    24.0   True   1.036   0.736  no_stage2
+
+-- REJECTS (08-24 / 08-25) ---------------------------------------------------------------------
+ticker  date         bars  stage2   rmv15  tight     ext  p/high  marker
+AERO    2026-08-24    198    None    87.6  False   0.912   0.595  unknown
+BBCQ    2026-08-24    141    None   100.0  False   0.959   0.862  unknown
+CAPR    2026-08-24    259   False    54.2  False   1.076   0.156  no_stage2
+HVII    2026-08-24    234   False   100.0  False   0.647   0.581  no_stage2
+JLHL    2026-08-24    260   False     0.0   True   0.882   0.114  no_stage2
+NSSC    2026-08-24    260   False    34.6  False   0.990   0.792  no_stage2
+SCTX    2026-08-24     21    None   100.0  False   1.319   0.862  unknown
+SDOT    2026-08-24    260   False   100.0  False   1.196   0.051  no_stage2
+SUPX    2026-08-24    260   False   100.0  False   1.215   0.111  no_stage2
+AMIX    2026-08-25    261   False    11.9   True   0.829   0.165  no_stage2
+APMD    2026-08-25     17    None    37.0  False   0.882   0.726  unknown
+CAPR    2026-08-25    260   False    76.3  False   1.107   0.168  no_stage2
+DFNS    2026-08-25    136    None   100.0  False   0.390   0.033  unknown
+DTIL    2026-08-25    261    True    70.8  False   1.059   0.878  stage2_only_near_miss
+FLNC    2026-08-25    261   False    38.4  False   0.885   0.324  no_stage2
+GRML    2026-08-25    114    None   100.0  False   0.875   0.311  unknown
+HVII    2026-08-25    235   False   100.0  False   0.732   0.634  no_stage2
+IMTX    2026-08-25    261   False    92.2  False   0.942   0.700  no_stage2
+KURA    2026-08-25    261    True    74.9  False   1.098   0.961  stage2_only_near_miss
+MAIR    2026-08-25     90    None    56.9  False   0.864   0.561  unknown
+MEI     2026-08-25    261   False    28.2   True   0.884   0.688  no_stage2
+NBBK    2026-08-25    261    True    79.0  False   0.998   0.959  stage2_only_near_miss
+OESX    2026-08-25    261    True    15.7   True   1.072   0.990  stage2_tight
+PMI     2026-08-25    240   False   100.0  False   1.445   0.025  no_stage2
+REAX    2026-08-25    261   False    68.7  False   0.957   0.444  no_stage2
+SPAI    2026-08-25    261   False    16.6   True   1.021   0.586  no_stage2
+WAFD    2026-08-25    261    True    45.3  False   0.973   0.919  stage2_only_near_miss
+
+================================================================================================
+STEP 7 — MULTIPLICITY (5 pre-registered comparisons) AND DATE CLUSTERING
+================================================================================================
+  extension_ratio    AUC 0.390  z  1.41  raw p 0.1576
+  rmv_15             AUC 0.692  z  2.64  raw p 0.0083
+  near_high_frac     AUC 0.662  z  2.16  raw p 0.0304
+  stage2_num         AUC 0.575  z  0.50  raw p 0.6156
+  credit_steps       AUC 0.481  z  0.23  raw p 0.8169
+  Holm step 1: rmv_15             p 0.0083 vs 0.0100 -> PASS
+  Holm step 2: near_high_frac     p 0.0304 vs 0.0125 -> fail
+  survive Holm-Bonferroni at family alpha 0.05: ['rmv_15']
+
+DATE CLUSTERING — these are not 26 vs 27 independent observations:
+  real EPs: 26 name-days on 10 distinct market days
+     2026-03-12  n=1   ['FLY']
+     2026-03-30  n=1   ['SMTC']
+     2026-03-31  n=2   ['MRVL', 'AEHR']
+     2026-04-08  n=13  ['MU', 'STRL', 'ASX', 'SNDK', 'ALGM', 'NBIS', 'AMKR', 'BE', 'USAR', 'QBTS', 'HUT', 'IREN', 'APLD']
+     2026-04-17  n=1   ['UMC']
+     2026-04-24  n=3   ['QCOM', 'AMD', 'INTC']
+     2026-05-06  n=2   ['UMC', 'ARM']
+     2026-05-07  n=1   ['SNOW']
+     2026-05-29  n=1   ['QURE']
+     2026-08-19  n=1   ['MRNA']
+  rejects:  27 name-days on 2 distinct market days
+     2026-08-24  n=9
+     2026-08-25  n=18
+
+SENSITIVITY on the one field whose CI cleared 0.5 (rmv_15, lower = tighter):
+  drop the 13 members that all share 2026-04-08: AUC 0.672 [0.486, 0.859]  nEP 13  nRej 27
+  one observation per market day (10 EP days vs 2 reject days): AUC 0.950  [0.818, 1.000]  -- 2 days on one side is not a test
+  per-day median RMV-15, real EP days: ['2026-03-12:54', '2026-03-30:48', '2026-03-31:79', '2026-04-08:39', '2026-04-17:67', '2026-04-24:56', '2026-05-06:37', '2026-05-07:52', '2026-05-29:17', '2026-08-19:24']
+  per-day median RMV-15, reject days:  ['2026-08-24:100', '2026-08-25:70']
+
+RMV-15 saturation (a ceiling value, not a measurement of tightness):
+  real EPs   rmv_15 == 100.0 (clamped ceiling): 0/26   rmv_15 == 0.0 (clamped floor): 0/26
+  rejects    rmv_15 == 100.0 (clamped ceiling): 9/27   rmv_15 == 0.0 (clamped floor): 1/27
+
+HOW THE AXIS TREATS CAPR vs THE OPERATOR'S OWN TEXTBOOK EP:
+  CAPR 2026-08-25: marker=no_stage2                credit_steps=0  stage2=False  rmv_tight=False
+  MRNA 2026-08-19: marker=no_stage2                credit_steps=0  stage2=False  rmv_tight=True
+  SNOW 2026-05-07: marker=no_stage2                credit_steps=0  stage2=False  rmv_tight=False
+================================================================================================
+STEP 8 — THE LIQUIDITY CONFOUND (the two arms are not matched on anything)
+================================================================================================
+  real EPs   20-day median dollar volume: min $     38.9M  median $    304.9M  max $ 19,053.5M
+  rejects    20-day median dollar volume: min $      0.4M  median $      3.6M  max $     79.5M
+  Spearman rho, rmv_15 vs 20-day dollar volume, pooled n=53: -0.316   (negative = thinner names read as 'less tight')
+  Spearman rho, near_high_frac vs dollar volume: 0.326
+  rejects inside the labelled real-EP liquidity band (>= $38.9M/day): ['CAPR 2026-08-25', 'FLNC 2026-08-25', 'MAIR 2026-08-25']
+  rmv_15 AUC against ONLY those liquidity-comparable rejects: 0.705 [0.428, 0.983]  nEP 26  nRej 3  -- n=3 on one side, descriptive only
+     their rmv_15: [('CAPR', 76.3), ('FLNC', 38.4), ('MAIR', 56.9)]
+
+================================================================================================
+STEP 9 — SUPPLEMENTARY: same axis, history restored past the 400-day purge
+================================================================================================
+  source agreement on overlapping dates: 10312/10711 closes within 1% of mi_daily_closes
+
+  coverage now:
+    sma_200          real EPs 25/26    rejects 20/27
+    stage2           real EPs 25/26    rejects 20/27
+    rmv_15           real EPs 26/26    rejects 27/27
+    still not computable on the EP side: [('FLY', '2026-03-12', 149)]
+    still not computable on the reject side: [('AERO', '2026-08-24', 198), ('BBCQ', '2026-08-24', 141), ('SCTX', '2026-08-24', 21), ('APMD', '2026-08-25', 17), ('DFNS', '2026-08-25', 136), ('GRML', '2026-08-25', 114), ('MAIR', '2026-08-25', 90)]
+
+  what the axis says now:
+    real EPs   no_stage2=10  stage2_only_near_miss=15  unknown=1   |  credited (+1): 0/26
+    rejects    no_stage2=15  stage2_only_near_miss=4  stage2_tight=1  unknown=7   |  credited (+1): 1/27
+
+  separation, same PRE-REGISTERED directions:
+    field                 AUC            95% CI   nEP  nRej     medEP    medRej
+    extension_ratio     0.390  [0.238, 0.542]    26    27     1.010     0.959
+    rmv_15              0.692  [0.549, 0.835]    26    27    48.579    74.910
+    near_high_frac      0.662  [0.515, 0.809]    26    27     0.778     0.586
+    stage2_num          0.675  [0.518, 0.832]    25    20     1.000     0.000
+    credit_steps        0.481  [0.325, 0.638]    26    27     0.000     0.000
+
+  survive Holm-Bonferroni at family alpha 0.05: ['rmv_15']
+  raw p-values: extension_ratio=0.1576  rmv_15=0.0083  near_high_frac=0.0304  stage2_num=0.0285  credit_steps=0.8169
+
+  2x2 for stage2 with history restored:
+    real EPs   True=15  False=10  not-computable=1
+    rejects    True=5   False=15  not-computable=7
+
+  per-name (restored history):
+  -- REAL EPs
+    FLY    2026-03-12  bars=149  stage2=None  rmv15=53.8   ext=1.006   p/high=0.279   unknown
+    SMTC   2026-03-30  bars=260  stage2=False rmv15=47.8   ext=0.932   p/high=0.748   no_stage2
+    AEHR   2026-03-31  bars=261  stage2=False rmv15=68.1   ext=0.841   p/high=0.641   no_stage2
+    MRVL   2026-03-31  bars=261  stage2=True  rmv15=89.7   ext=0.957   p/high=0.854   stage2_only_near_miss
+    ALGM   2026-04-08  bars=261  stage2=True  rmv15=33.7   ext=1.046   p/high=0.759   stage2_only_near_miss
+    AMKR   2026-04-08  bars=261  stage2=True  rmv15=37.1   ext=1.027   p/high=0.834   stage2_only_near_miss
+    APLD   2026-04-08  bars=261  stage2=False rmv15=39.1   ext=1.014   p/high=0.596   no_stage2
+    ASX    2026-04-08  bars=261  stage2=True  rmv15=35.9   ext=1.014   p/high=0.878   stage2_only_near_miss
+    BE     2026-04-08  bars=261  stage2=True  rmv15=32.2   ext=1.002   p/high=0.751   stage2_only_near_miss
+    HUT    2026-04-08  bars=261  stage2=True  rmv15=52.5   ext=1.066   p/high=0.797   stage2_only_near_miss
+    IREN   2026-04-08  bars=261  stage2=False rmv15=49.4   ext=0.991   p/high=0.465   no_stage2
+    MU     2026-04-08  bars=261  stage2=True  rmv15=33.5   ext=1.037   p/high=0.801   stage2_only_near_miss
+    NBIS   2026-04-08  bars=261  stage2=True  rmv15=51.4   ext=1.094   p/high=0.832   stage2_only_near_miss
+    QBTS   2026-04-08  bars=261  stage2=False rmv15=54.3   ext=0.954   p/high=0.294   no_stage2
+    SNDK   2026-04-08  bars=261  stage2=True  rmv15=36.4   ext=1.071   p/high=0.914   stage2_only_near_miss
+    STRL   2026-04-08  bars=261  stage2=True  rmv15=60.8   ext=0.924   p/high=0.801   stage2_only_near_miss
+    USAR   2026-04-08  bars=261  stage2=False rmv15=68.6   ext=0.947   p/high=0.333   no_stage2
+    UMC    2026-04-17  bars=261  stage2=True  rmv15=66.6   ext=1.115   p/high=0.838   stage2_only_near_miss
+    AMD    2026-04-24  bars=261  stage2=True  rmv15=58.9   ext=1.118   p/high=0.984   stage2_only_near_miss
+    INTC   2026-04-24  bars=261  stage2=True  rmv15=35.4   ext=1.016   p/high=0.950   stage2_only_near_miss
+    QCOM   2026-04-24  bars=261  stage2=False rmv15=56.5   ext=1.000   p/high=0.650   no_stage2
+    ARM    2026-05-06  bars=262  stage2=True  rmv15=39.3   ext=1.001   p/high=0.879   stage2_only_near_miss
+    UMC    2026-05-06  bars=262  stage2=True  rmv15=34.6   ext=1.110   p/high=0.986   stage2_only_near_miss
+    SNOW   2026-05-07  bars=262  stage2=False rmv15=51.6   ext=0.986   p/high=0.498   no_stage2
+    QURE   2026-05-29  bars=261  stage2=False rmv15=16.8   ext=0.982   p/high=0.348   no_stage2
+    MRNA   2026-08-19  bars=262  stage2=False rmv15=24.0   ext=1.036   p/high=0.736   no_stage2
+  -- REJECTS
+    AERO   2026-08-24  bars=198  stage2=None  rmv15=87.6   ext=0.912   p/high=0.595   unknown
+    BBCQ   2026-08-24  bars=141  stage2=None  rmv15=100.0  ext=0.959   p/high=0.862   unknown
+    CAPR   2026-08-24  bars=259  stage2=False rmv15=54.2   ext=1.076   p/high=0.156   no_stage2
+    HVII   2026-08-24  bars=234  stage2=False rmv15=100.0  ext=0.647   p/high=0.581   no_stage2
+    JLHL   2026-08-24  bars=260  stage2=False rmv15=0.0    ext=0.882   p/high=0.114   no_stage2
+    NSSC   2026-08-24  bars=260  stage2=False rmv15=34.6   ext=0.990   p/high=0.792   no_stage2
+    SCTX   2026-08-24  bars=21   stage2=None  rmv15=100.0  ext=1.319   p/high=0.862   unknown
+    SDOT   2026-08-24  bars=260  stage2=False rmv15=100.0  ext=1.196   p/high=0.051   no_stage2
+    SUPX   2026-08-24  bars=260  stage2=False rmv15=100.0  ext=1.215   p/high=0.111   no_stage2
+    AMIX   2026-08-25  bars=261  stage2=False rmv15=11.9   ext=0.829   p/high=0.165   no_stage2
+    APMD   2026-08-25  bars=17   stage2=None  rmv15=37.0   ext=0.882   p/high=0.726   unknown
+    CAPR   2026-08-25  bars=260  stage2=False rmv15=76.3   ext=1.107   p/high=0.168   no_stage2
+    DFNS   2026-08-25  bars=136  stage2=None  rmv15=100.0  ext=0.390   p/high=0.033   unknown
+    DTIL   2026-08-25  bars=261  stage2=True  rmv15=70.8   ext=1.059   p/high=0.878   stage2_only_near_miss
+    FLNC   2026-08-25  bars=261  stage2=False rmv15=38.4   ext=0.885   p/high=0.324   no_stage2
+    GRML   2026-08-25  bars=114  stage2=None  rmv15=100.0  ext=0.875   p/high=0.311   unknown
+    HVII   2026-08-25  bars=235  stage2=False rmv15=100.0  ext=0.732   p/high=0.634   no_stage2
+    IMTX   2026-08-25  bars=261  stage2=False rmv15=92.2   ext=0.942   p/high=0.700   no_stage2
+    KURA   2026-08-25  bars=261  stage2=True  rmv15=74.9   ext=1.098   p/high=0.961   stage2_only_near_miss
+    MAIR   2026-08-25  bars=90   stage2=None  rmv15=56.9   ext=0.864   p/high=0.561   unknown
+    MEI    2026-08-25  bars=261  stage2=False rmv15=28.2   ext=0.884   p/high=0.688   no_stage2
+    NBBK   2026-08-25  bars=261  stage2=True  rmv15=79.0   ext=0.998   p/high=0.959   stage2_only_near_miss
+    OESX   2026-08-25  bars=261  stage2=True  rmv15=15.7   ext=1.072   p/high=0.990   stage2_tight
+    PMI    2026-08-25  bars=240  stage2=False rmv15=100.0  ext=1.445   p/high=0.007   no_stage2
+    REAX   2026-08-25  bars=261  stage2=False rmv15=68.7   ext=0.957   p/high=0.444   no_stage2
+    SPAI   2026-08-25  bars=261  stage2=False rmv15=16.6   ext=1.021   p/high=0.586   no_stage2
+    WAFD   2026-08-25  bars=261  stage2=True  rmv15=45.3   ext=0.973   p/high=0.919   stage2_only_near_miss
+
+  CAPR with restored history:
+    CAPR 2026-08-24: bars=259 stage2=False sma_200=23.2 trailing_high=40.37 rmv_15=54.2 ext=1.076 marker=no_stage2 credit=0
+    CAPR 2026-08-25: bars=260 stage2=False sma_200=23.2 trailing_high=40.37 rmv_15=76.3 ext=1.107 marker=no_stage2 credit=0
+================================================================================================
+STEP 10 — RMV-15 SATURATION SENSITIVITY (the one field that survived Holm)
+================================================================================================
+  rejects pinned at the clamped 100 ceiling: 9/27  ['BBCQ', 'HVII', 'SCTX', 'SDOT', 'SUPX', 'DFNS', 'GRML', 'HVII', 'PMI']
+  highest RMV-15 among the 26 real EPs: 89.7 -- so every ceiling-pinned reject loses to EVERY real EP by construction
+  those pairs are 234 of the 702 comparisons the AUC is built from
+  rmv_15 AUC with the ceiling-pinned rejects dropped: 0.538 [0.364, 0.712]  nEP 26  nRej 18  raw p 0.665
+  -> the separation is saturation, not a tightness gradient.
