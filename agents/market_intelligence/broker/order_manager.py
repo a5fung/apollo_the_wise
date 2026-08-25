@@ -1451,6 +1451,31 @@ async def _check_day1_reentry() -> list[dict]:
 # ── Stop Management ──────────────────────────────────────────────────────────
 
 
+# ── #591 pending-exit vocabulary — SSoT, do not hand-copy (money-path) ──────
+# Alpaca's raw SDK enum value for a cancelled order is 'canceled' (single-L —
+# confirmed via alpaca.trading.enums.OrderStatus.CANCELED.value). Two writers
+# put status into mi_live_orders and they disagree on spelling:
+# `reconcile_order_states` (below) writes `_canonical_order_status(alpaca_order
+# ["status"])` straight through — that helper only lowercases, it never
+# respells — so it CAN write the raw single-L 'canceled'. `_handle_cancel_or_reject`
+# (trade_stream.py) normalizes its own writes to the double-L 'cancelled' first.
+# Both spellings can therefore be sitting in the same column depending which
+# path wrote a row last, so every "is this exit order still holding shares"
+# check must exclude both — miss one and a single-l cancelled exit order
+# counts as pending FOREVER, and every future partial/full exit on that trade
+# silently no-ops (`partial_exit_aborted`, `stage=dedup_pending_exit`) with no
+# operator-visible alarm.
+#
+# The first fix (`get_pending_exit_qty`) shipped 2026-08-24 as one of three
+# hand-copies of this exact tuple; `execute_partial_exit`'s and
+# `execute_full_exit`'s dedup checks were still single-l-blind. Query through
+# this constant — never hand-copy the literal tuple again; enforcement is
+# `tests/test_pending_exit_terminal_statuses_ssot.py`.
+PENDING_EXIT_TERMINAL_STATUSES = frozenset({
+    "filled", "cancelled", "canceled", "rejected", "expired",
+})
+
+
 async def get_pending_exit_qty(trade_id: int) -> int:
     """Sum of qty across non-terminal partial/full-exit orders for `trade_id`.
 
@@ -1462,16 +1487,12 @@ async def get_pending_exit_qty(trade_id: int) -> int:
     was the trigger; sync_positions Path C orphan remediation has the same
     structural exposure.
 
-    #591 (2026-08-24): BOTH Alpaca spellings of cancel are terminal — the broker
-    emits `canceled` AND `cancelled`, and this list carried only the double-l one,
-    so a single-l cancelled exit order counted as "still working" forever. That
-    understates coverage: the shares stay reserved in our arithmetic and every
-    caller that sizes a stop against it (`update_stop`, `_ensure_stop_coverage`)
-    places a SMALLER stop than the position needs. Money-path behaviour, not a
-    typo — enumerated against the live and paper book before shipping and it moves
-    the pending quantity on ZERO trades (`scripts/probes/_591_state_capture.sql`
-    Q2: every purpose-labelled exit order in the book is `filled`). The same
-    both-spellings list is already in `audit_invariants.check_exit_share_sum`.
+    Terminal-status set is `PENDING_EXIT_TERMINAL_STATUSES` (see its comment,
+    directly above, for why both cancel spellings matter — money-path, not a
+    typo). Enumerated against the live and paper book before the 2026-08-24
+    fix shipped: it moved the pending quantity on ZERO trades
+    (`scripts/probes/_591_state_capture.sql` Q2: every purpose-labelled exit
+    order in the book is `filled`).
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1479,9 +1500,8 @@ async def get_pending_exit_qty(trade_id: int) -> int:
             SELECT COALESCE(SUM(qty)::int, 0) FROM mi_live_orders
             WHERE trade_id = $1
               AND purpose IN ('partial_exit', 'full_exit')
-              AND status NOT IN ('filled', 'cancelled', 'canceled',
-                                 'rejected', 'expired')
-        """, trade_id)
+              AND status != ALL($2::text[])
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
     return int(held or 0)
 
 
@@ -2736,14 +2756,16 @@ async def execute_partial_exit(
         # Dedup against an already-pending exit order for this trade — without this,
         # if a sell placed by yesterday's cron is still queued (e.g. after-hours
         # market sell awaiting next open), today's cron would stack a duplicate.
+        # Terminal-status set: PENDING_EXIT_TERMINAL_STATUSES — same SSoT
+        # get_pending_exit_qty uses; do not hand-copy the tuple (#591 review).
         async with pool.acquire() as conn:
             pending = await conn.fetchrow("""
                 SELECT alpaca_order_id, qty, purpose FROM mi_live_orders
                 WHERE trade_id = $1
                   AND purpose IN ('partial_exit', 'full_exit')
-                  AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+                  AND status != ALL($2::text[])
                 LIMIT 1
-            """, trade_id)
+            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
         if pending:
             logger.info(
                 f"execute_partial_exit: trade {trade_id} {trade['ticker']} already has "
@@ -4213,14 +4235,15 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         return False
 
     # Dedup against pending exit orders — see execute_partial_exit comment.
+    # Terminal-status set: PENDING_EXIT_TERMINAL_STATUSES (SSoT, #591 review).
     async with pool.acquire() as conn:
         pending = await conn.fetchrow("""
             SELECT alpaca_order_id, purpose FROM mi_live_orders
             WHERE trade_id = $1
               AND purpose IN ('partial_exit', 'full_exit')
-              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+              AND status != ALL($2::text[])
             LIMIT 1
-        """, trade_id)
+        """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
     if pending:
         logger.info(
             f"execute_full_exit: trade {trade_id} {trade['ticker']} already has "

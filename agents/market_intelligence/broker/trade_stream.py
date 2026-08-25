@@ -49,6 +49,26 @@ _last_event_time: dict[str, datetime | None] = {}
 _reconnect_count: dict[str, int] = {}
 _MAX_OUTER_RETRIES = 3
 
+# ── #591 review (2026-08-2x) — CONSIDERED, NOT APPLIED here ─────────────────
+# The three claim-before-update WHERE clauses below (`_handle_partial_fill`,
+# `_handle_fill`, `_handle_cancel_or_reject`) each read `status NOT IN
+# ('filled', 'cancelled')` — missing Alpaca's raw single-L 'canceled' spelling,
+# the same gap #591 fixed in `order_manager.PENDING_EXIT_TERMINAL_STATUSES`.
+# Closing it here was tried and reverted: unlike the order_manager dedup
+# READS (where treating 'canceled' as terminal only unblocks a future exit —
+# the sanctioned direction), these are WRITE claims that gate a COMMIT.
+# `reconcile_order_states` can write the raw 'canceled' spelling into a row
+# BEFORE its WS event is processed (that race is the reconcile job's whole
+# purpose — #123: it exists to catch orders whose WS events were missed, and
+# it explicitly does NOT commit trade state itself). If the claim here also
+# excluded 'canceled', a late WS event for a row reconcile already touched
+# would be silently skipped — dropping the partial-fill commit and stop
+# restore that ONLY this WS path performs (see the per-site comments below).
+# That is a genuine divergence, not an oversight (P15-B) — left as literal
+# tuples pending an operator ruling on the race; pinned as a named exception
+# in tests/test_pending_exit_terminal_statuses_ssot.py so a DIFFERENT
+# hand-copy still fails there.
+
 
 def _resolve_modes() -> list[str]:
     """Return the list of account_modes to subscribe streams for.
@@ -553,6 +573,24 @@ async def _handle_partial_fill(data, account_mode: str) -> None:
     )
     if is_terminal_partial:
         async with pool.acquire() as conn:
+            # ⚠ #591-review finding (2026-08-2x, NOT applied — money-path risk,
+            # needs operator sign-off): this claim-guard's "already resolved"
+            # check deliberately does NOT exclude the single-l 'canceled'
+            # spelling, unlike order_manager.PENDING_EXIT_TERMINAL_STATUSES.
+            # `reconcile_order_states` (order_manager.py) can write raw
+            # single-L 'canceled' into this row BEFORE this WS event is
+            # processed (that race is the reconcile job's whole purpose — it
+            # exists to catch orders whose WS events were missed or delayed).
+            # reconcile only touches mi_live_orders (#123: "does not derive
+            # trade close-out") — it never calls finalize_*, so THIS claim is
+            # the only path that commits a late partial-fill into
+            # mi_live_trades. Excluding 'canceled' here would make the claim
+            # MISS a row reconcile already touched, silently dropping that
+            # commit — the opposite failure direction from the dedup-read
+            # fix above (P15-B: a genuine divergence, stated, not silently
+            # unified). Left as literal `NOT IN ('filled', 'cancelled')`
+            # pending an operator ruling; pinned as a named exception in
+            # tests/test_pending_exit_terminal_statuses_ssot.py.
             exit_order = await conn.fetchrow("""
                 UPDATE mi_live_orders SET
                     status = 'partially_filled',
@@ -664,6 +702,10 @@ async def _handle_fill(data, account_mode: str) -> None:
     # routes to the right finalizer. Submit-time path no longer commits to
     # mi_live_trades (after-hours queued sells were printing fake P&L=$0
     # against entry_price); fill-time finalize uses the real Alpaca fill price.
+    # ⚠ #591-review finding — single-l 'canceled' deliberately NOT excluded
+    # here; see the identical note in _handle_partial_fill above (same
+    # money-path risk: reconcile_order_states can mark this row 'canceled'
+    # before this fill event lands, and only this claim commits it).
     async with pool.acquire() as conn:
         exit_order = await conn.fetchrow("""
             UPDATE mi_live_orders SET
@@ -1869,6 +1911,11 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     # the original stop and placed a smaller one sized for new_remaining.
     # If the partial sell never fills, those leftover shares end up unprotected
     # — restore the stop to full remaining_shares to close the gap.
+    # ⚠ #591-review finding — single-l 'canceled' deliberately NOT excluded
+    # here; see the identical note in _handle_partial_fill above. This claim
+    # is the ONLY path that commits a cancelled order's partial fill (below)
+    # and restores the stop; excluding 'canceled' would make it miss a row
+    # reconcile_order_states already touched, silently dropping both.
     async with pool.acquire() as conn:
         pending_exit = await conn.fetchrow("""
             UPDATE mi_live_orders SET

@@ -255,36 +255,40 @@ async def test_a_stale_pending_exit_mirror_still_closes_on_the_broker_event(monk
 async def test_pending_exit_qty_treats_both_cancel_spellings_as_terminal(monkeypatch):
     """Alpaca emits `canceled` AND `cancelled`. Only the double-l one was listed, so
     a single-l cancelled exit order counted as still working forever — every caller
-    that sizes a stop against this number placed a stop that was too SMALL."""
+    that sizes a stop against this number placed a stop that was too SMALL.
+
+    #591-review refactor: the terminal set moved from an inline SQL literal to
+    `PENDING_EXIT_TERMINAL_STATUSES` (SSoT), bound as `status != ALL($2::text[])`
+    — so assert the BOUND PARAMETER carries both spellings; there is no longer a
+    literal in the SQL text to grep for."""
     pool, conn = make_mock_pool()
     conn.fetchval = AsyncMock(return_value=0)
     monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=pool))
 
     await om.get_pending_exit_qty(367)
 
-    sql = conn.fetchval.await_args.args[0]
-    assert "'canceled'" in sql, "the single-l spelling was the gap"
-    assert "'cancelled'" in sql, "the double-l spelling must stay"
+    sql, _trade_id, statuses = conn.fetchval.await_args.args
+    assert "canceled" in statuses, "the single-l spelling was the gap"
+    assert "cancelled" in statuses, "the double-l spelling must stay"
+    assert set(statuses) == om.PENDING_EXIT_TERMINAL_STATUSES
     assert "purpose IN ('partial_exit', 'full_exit')" in sql
 
 
 @pytest.mark.asyncio
 async def test_a_single_l_cancelled_exit_order_no_longer_reserves_shares(monkeypatch):
     """Behaviour, not spelling: the corrected filter must EXCLUDE such a row. Driven
-    through a fake that applies the SQL's own status list, so reverting the one word
-    reddens this. Zero trades in the live or paper book move
+    through a fake that applies the query's own bound status-list parameter, so
+    reverting `PENDING_EXIT_TERMINAL_STATUSES` to the double-l-only spelling reddens
+    this. Zero trades in the live or paper book move
     (`scripts/probes/_591_state_capture.sql` Q2B) — the fix is a no-op today."""
-    import re
-
     orders = [
         {"qty": 5, "status": "canceled"},    # must NOT count — the bug
         {"qty": 7, "status": "cancelled"},   # already did not count
         {"qty": 3, "status": "new"},         # genuinely working
     ]
 
-    async def _fetchval(sql, _trade_id):
-        listed = set(re.findall(r"'(\w+)'", sql.split("status NOT IN")[1]))
-        return sum(o["qty"] for o in orders if o["status"] not in listed)
+    async def _fetchval(_sql, _trade_id, statuses):
+        return sum(o["qty"] for o in orders if o["status"] not in statuses)
 
     pool, conn = make_mock_pool()
     conn.fetchval = _fetchval
