@@ -1,0 +1,272 @@
+===S1_LATTICE_ALERT===
+et|~|event_type|~|summary|~|left
+2026-08-24 17:30|~|catalyst_lattice_monitor_alert|~|catalyst lattice revert trigger: high_volume_drop|~|{"today": "2026-08-24", "triggers": [{"kind": "high_volume_drop", "recent_avg": 1.4, "prior_avg": 4.19, "drop_pct": 66.6, "recent_days": 5, "prior_days": 21, "recent_high_n": 7, "prior_high_n": 88}]}
+(1 row)
+===S2_BOOTS===
+et|~|event_type|~|left
+2026-08-04 20:02|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-04 21:31|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-04 21:38|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-04 22:50|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-05 09:41|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-05 09:55|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-05 10:37|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-05 11:06|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-05 11:52|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-05 19:17|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-06 09:33|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-06 10:05|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-06 10:49|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 10:54|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 11:06|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 11:18|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 13:48|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 19:08|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 20:59|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 21:12|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 21:27|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 21:34|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 22:01|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 22:11|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-07 22:40|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 09:41|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 10:05|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 10:39|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 11:25|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 12:23|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 13:10|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 14:08|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 15:38|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 16:07|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 16:52|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-08 17:51|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-09 14:54|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-09 19:55|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-10 08:54|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-10 17:08|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-10 18:23|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-10 19:33|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-11 18:05|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-11 18:59|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-12 20:23|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-13 10:34|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-13 20:00|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-15 09:23|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-15 10:18|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-16 10:01|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-16 12:27|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-16 15:00|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-16 17:34|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-16 19:21|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-16 19:52|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-17 10:45|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-18 00:56|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-18 11:27|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-18 15:17|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-18 17:05|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-18 19:08|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-19 13:35|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-19 17:04|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-20 00:00|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-20 12:02|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-20 16:23|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-20 21:16|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-21 11:44|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-23 10:26|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-23 12:42|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-23 16:49|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+2026-08-24 12:05|~|dual_account_boot_verified|~|Alpaca clients verified for modes=['paper', 'live']
+(72 rows)
+===S3_TOGGLE_LIKE===
+et|~|event_type|~|left
+2026-08-05 17:01|~|theme_stage_flip_held|~|Copper Mining & Production: Fading→Accelerating held; y_Δ=-9.8
+2026-08-05 17:01|~|theme_stage_flip_held|~|Global Steel & Metal Producers Recovery: Fading→Accelerating held; y_Δ=-28.1
+2026-08-05 17:01|~|theme_stage_flip_held|~|Industrial Equipment Rental & Material Handling: Nascent→Fading held; y_Δ=+0.0
+2026-08-05 17:02|~|theme_stage_flip_held|~|Specialty Insurance Underwriting & Brokerage: Fading→Accelerating held; y_Δ=-34.4
+2026-08-05 17:02|~|theme_stage_flip_held|~|U.S. Petroleum Refining & Downstream Processing: Mainstream→Fading held; y_Δ=-5.1
+2026-08-06 17:00|~|theme_stage_flip_held|~|Office REIT Recovery & Re-Rating: Mainstream→Fading held; y_Δ=-6.9
+2026-08-06 17:00|~|theme_stage_flip_held|~|Defense ISR & Unmanned Systems Intelligence: Fading→Accelerating held; y_Δ=-6.9
+2026-08-06 17:01|~|theme_stage_flip_held|~|Government & Defense IT Services Providers: Fading→Accelerating held; y_Δ=-7.3
+2026-08-06 17:01|~|theme_stage_flip_held|~|Gold & Precious Metals Miners Rotation: Fading→Accelerating held; y_Δ=-10.8
+2026-08-10 17:01|~|theme_stage_flip_held|~|Cloud Observability & AIOps Monitoring Platforms: Fading→Accelerating held; y_Δ=-8.9
+2026-08-10 17:07|~|theme_stage_flip_held|~|Cloud Observability & AIOps Monitoring Platforms: Fading→Accelerating held; y_Δ=-8.9
+2026-08-10 17:10|~|theme_stage_flip_held|~|Cloud Observability & AIOps Monitoring Platforms: Fading→Accelerating held; y_Δ=-8.9
+2026-08-11 17:00|~|theme_stage_flip_held|~|AI Chip Enablement: Test, Substrate & Photonic/Timing Component Suppliers: Nascent→Fading held; y_Δ=+0.0
+2026-08-11 17:00|~|theme_stage_flip_held|~|Cyber Exposure Management & Vulnerability Assessment: Mainstream→Accelerating held; y_Δ=+4.8
+2026-08-11 17:00|~|theme_stage_flip_held|~|Precious Metals Miners Velocity Breakout: Nascent→Fading held; y_Δ=+0.0
+2026-08-12 17:01|~|theme_stage_flip_held|~|Cloud Observability & AIOps Monitoring Platforms: Fading→Accelerating held; y_Δ=-2.8
+2026-08-12 17:01|~|theme_stage_flip_held|~|Consumer Fintech & Digital Credit Platforms: Fading→Accelerating held; y_Δ=-23.2
+2026-08-12 17:01|~|theme_stage_flip_held|~|Digital Payments Processing & Merchant Acquiring Networks: Fading→Accelerating held; y_Δ=-29.0
+2026-08-12 17:02|~|theme_stage_flip_held|~|Insurance Brokerage & Distribution Services: Fading→Accelerating held; y_Δ=-26.4
+2026-08-12 17:02|~|theme_stage_flip_held|~|Software Development & DevOps Collaboration Platforms: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-12 17:03|~|theme_stage_flip_held|~|AI GPU Compute Infrastructure & Cloud Services: Fading→Accelerating held; y_Δ=-20.4
+2026-08-12 17:03|~|theme_stage_flip_held|~|U.S. Apparel & Fashion Recovery: Fading→Accelerating held; y_Δ=-23.8
+2026-08-12 17:03|~|theme_stage_flip_held|~|Oilfield Services & Drilling Rigs: Nascent→Fading held; y_Δ=-0.5
+2026-08-13 17:00|~|theme_stage_flip_held|~|Industrial Equipment Rental & Material Handling: Accelerating→Fading held; y_Δ=-2.0
+2026-08-13 17:00|~|theme_stage_flip_held|~|B2B Digital Financial Infrastructure & Payment Rails Modernization: Fading→Accelerating held; y_Δ=-28.7
+2026-08-14 17:01|~|theme_stage_flip_held|~|Containerboard & Corrugated Packaging Producers: Mainstream→Fading held; y_Δ=-2.4
+2026-08-14 17:01|~|theme_stage_flip_held|~|Independent Oil Refiners: Nascent→Fading held; y_Δ=+0.0
+2026-08-14 17:25|~|flag_stage_flip_held|~|GSHD TIGHTENING→held@COILED
+2026-08-17 11:03|~|profit_take_oco_flipped|~|profit_take_oco -> ON (live) on operator instruction 2026-08-17 (#566)
+2026-08-17 17:01|~|theme_stage_flip_held|~|Electronics Manufacturing & Semiconductor Packaging Supply Chain: Fading→Accelerating held; y_Δ=-8.5
+2026-08-17 17:01|~|theme_stage_flip_held|~|Emerging Defense & Aerospace Hardware Suppliers: Nascent→Fading held; y_Δ=+0.0
+2026-08-17 17:03|~|theme_stage_flip_held|~|Rare disease/specialty pharma earnings beats: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-17 17:25|~|flag_stage_flip_held|~|NWL TIGHTENING→held@COILED
+2026-08-18 17:00|~|theme_stage_flip_held|~|Emerging Defense & Aerospace Hardware Suppliers: Nascent→Fading held; y_Δ=-6.0
+2026-08-18 17:00|~|theme_stage_flip_held|~|Natural Gas Midstream & LNG Infrastructure: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-18 17:00|~|theme_stage_flip_held|~|Emerging Memory & Storage Semiconductor Makers: Nascent→Fading held; y_Δ=+0.0
+2026-08-18 17:05|~|theme_stage_flip_held|~|Emerging Defense & Aerospace Hardware Suppliers: Nascent→Fading held; y_Δ=-6.0
+2026-08-18 17:05|~|theme_stage_flip_held|~|Natural Gas Midstream & LNG Infrastructure: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-18 17:05|~|theme_stage_flip_held|~|Emerging Memory & Storage Semiconductor Makers: Nascent→Fading held; y_Δ=+0.0
+2026-08-18 17:25|~|flag_stage_flip_held|~|CHYM TIGHTENING→held@COILED
+2026-08-18 17:25|~|flag_stage_flip_held|~|NWL TIGHTENING→held@COILED
+2026-08-19 17:02|~|theme_stage_flip_held|~|Global Steel & Metal Producers Recovery: Fading→Accelerating held; y_Δ=-29.2
+2026-08-19 17:04|~|theme_stage_flip_held|~|Global Steel & Metal Producers Recovery: Fading→Accelerating held; y_Δ=-29.2
+2026-08-19 17:04|~|theme_stage_flip_held|~|Independent Oil Refiners: Nascent→Fading held; y_Δ=-1.7
+2026-08-19 17:05|~|theme_stage_flip_held|~|Latin American Silver & Gold Mining Operators: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-19 17:05|~|theme_stage_flip_held|~|Resilient PNT: GPS-Alternative Timing & Navigation Infrastructure: Nascent→Fading held; y_Δ=-3.4
+2026-08-19 17:06|~|theme_stage_flip_held|~|Global Steel & Metal Producers Recovery: Fading→Accelerating held; y_Δ=-29.2
+2026-08-19 17:07|~|theme_stage_flip_held|~|Independent Oil Refiners: Nascent→Fading held; y_Δ=-1.7
+2026-08-19 17:07|~|theme_stage_flip_held|~|Latin American Silver & Gold Mining Operators: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-19 17:08|~|theme_stage_flip_held|~|Resilient PNT: GPS-Alternative Timing & Navigation Infrastructure: Nascent→Fading held; y_Δ=-3.4
+2026-08-20 17:00|~|theme_stage_flip_held|~|Defense Intelligence & Cybersecurity IT Contractors: Nascent→Fading held; y_Δ=+0.0
+2026-08-20 17:00|~|theme_stage_flip_held|~|Office REIT Recovery & Re-Rating: Fading→Accelerating held; y_Δ=-25.1
+2026-08-20 17:00|~|theme_stage_flip_held|~|Cloud Application Software Rotation (Oversold Turning Up): Nascent→Fading held; y_Δ=+0.0
+2026-08-20 17:04|~|theme_stage_flip_held|~|Cloud Application Software Rotation (Oversold Turning Up): Nascent→Fading held; y_Δ=+0.0
+2026-08-20 17:04|~|theme_stage_flip_held|~|Defense Intelligence & Cybersecurity IT Contractors: Nascent→Fading held; y_Δ=+0.0
+2026-08-20 17:04|~|theme_stage_flip_held|~|Office REIT Recovery & Re-Rating: Fading→Accelerating held; y_Δ=-25.1
+2026-08-20 17:25|~|flag_stage_flip_held|~|CDNA WATCH→held@TIGHTENING
+2026-08-20 17:25|~|flag_stage_flip_held|~|CHYM TIGHTENING→held@TRIGGERED
+2026-08-20 17:25|~|flag_stage_flip_held|~|PBF TIGHTENING→held@COILED
+2026-08-21 17:00|~|theme_stage_flip_held|~|AI-Native Diagnostics & Computational Medicine Re-Rating: Nascent→Fading held; y_Δ=+0.0
+2026-08-21 17:00|~|theme_stage_flip_held|~|Building Products & Home Improvement Suppliers: Fading→Accelerating held; y_Δ=-6.1
+2026-08-21 17:00|~|theme_stage_flip_held|~|Business Development Companies & Specialty Direct Lending: Nascent→Fading held; y_Δ=+0.0
+2026-08-21 17:00|~|theme_stage_flip_held|~|Cardiac & Diagnostic Imaging Recovery: Nascent→Fading held; y_Δ=+0.0
+2026-08-21 17:01|~|theme_stage_flip_held|~|Diabetes Management & Continuous Glucose Monitoring Devices: Nascent→Fading held; y_Δ=+0.0
+2026-08-21 17:02|~|theme_stage_flip_held|~|Rare Earth & Critical Minerals Mining: Fading→Accelerating held; y_Δ=-5.4
+2026-08-21 17:03|~|theme_stage_flip_held|~|Semiconductor Wafer Fab Capital Equipment: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-21 17:03|~|theme_stage_flip_held|~|Natural Gas Midstream & LNG Export Infrastructure: Nascent→Accelerating held; y_Δ=+0.0
+2026-08-21 17:25|~|flag_stage_flip_held|~|CHYM TIGHTENING→held@TRIGGERED
+2026-08-21 17:25|~|flag_stage_flip_held|~|CDNA WATCH→held@TIGHTENING
+2026-08-21 17:25|~|flag_stage_flip_held|~|PBF TIGHTENING→held@COILED
+2026-08-24 17:00|~|theme_stage_flip_held|~|Bioprocessing & Cell Culture Technology: Nascent→Fading held; y_Δ=+0.0
+2026-08-24 17:01|~|theme_stage_flip_held|~|Core Banking & Credit Union Software Platforms: Nascent→Fading held; y_Δ=+0.0
+2026-08-24 17:01|~|theme_stage_flip_held|~|Defensive Consumer Staples Rotation: Fading→Accelerating held; y_Δ=-2.7
+2026-08-24 17:01|~|theme_stage_flip_held|~|Gateway & Coastal Office REIT Stress Reversal: Fading→Accelerating held; y_Δ=-7.1
+2026-08-24 17:01|~|theme_stage_flip_held|~|Liquid Biopsy & Early Cancer Detection Diagnostics: Nascent→Fading held; y_Δ=+0.0
+2026-08-24 17:25|~|flag_stage_flip_held|~|CHYM TIGHTENING→held@TRIGGERED
+2026-08-24 17:25|~|flag_stage_flip_held|~|PBF TIGHTENING→held@COILED
+2026-08-24 17:25|~|flag_stage_flip_held|~|CDNA WATCH→held@TIGHTENING
+(78 rows)
+===S4_SCANFAIL===
+et|~|event_type|~|left
+2026-08-05 09:30|~|profit_trigger_failed|~|PLTR: high $164.52 >= 2R target $160.60
+2026-08-05 09:35|~|profit_trigger_failed|~|PLTR: high $165.92 >= 2R target $160.60
+2026-08-05 09:40|~|profit_trigger_failed|~|PLTR: high $165.92 >= 2R target $160.60
+2026-08-05 16:45|~|stop_update_failed|~|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-06 07:02|~|live_enriched_grade_failed|~|AEVA: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-06 17:06|~|narrative_theme_discovery_failed|~|2026-08-06: 'ThinkingBlock' object has no attribute 'text'
+2026-08-07 07:00|~|live_enriched_grade_failed|~|DOCS: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:02|~|live_enriched_grade_failed|~|TEAM: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:03|~|live_enriched_grade_failed|~|QNST: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:04|~|live_enriched_grade_failed|~|FROG: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:04|~|live_enriched_grade_failed|~|CRSR: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:05|~|live_enriched_grade_failed|~|TWLO: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:06|~|live_enriched_grade_failed|~|WLDN: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:07|~|live_enriched_grade_failed|~|INOD: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 07:08|~|live_enriched_grade_failed|~|AKAM: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:50|~|catalyst_extraction_failed_grade_kept|~|PUBM: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:50|~|live_enriched_grade_failed|~|TEAM: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:50|~|catalyst_extraction_failed_grade_kept|~|TEAM: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:50|~|live_enriched_grade_failed|~|QNST: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:51|~|catalyst_extraction_failed_grade_kept|~|QNST: extraction FAILED (extraction_call_failed) — catalyst KEPT at game_changer, not downgraded to routine
+2026-08-07 08:51|~|catalyst_extraction_failed_grade_kept|~|FIGS: extraction FAILED (extraction_call_failed) — catalyst KEPT at game_changer, not downgraded to routine
+2026-08-07 08:51|~|live_enriched_grade_failed|~|TWLO: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:51|~|catalyst_extraction_failed_grade_kept|~|TWLO: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:51|~|live_enriched_grade_failed|~|FROG: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:51|~|catalyst_extraction_failed_grade_kept|~|FROG: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:52|~|live_enriched_grade_failed|~|CRSR: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:52|~|catalyst_extraction_failed_grade_kept|~|CRSR: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:52|~|catalyst_extraction_failed_grade_kept|~|NET: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:52|~|catalyst_extraction_failed_grade_kept|~|ACMR: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:53|~|live_enriched_grade_failed|~|INOD: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:53|~|catalyst_extraction_failed_grade_kept|~|INOD: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:53|~|live_enriched_grade_failed|~|WLDN: RuntimeError: enriched classify returned the fail-routine sentinel
+2026-08-07 08:53|~|catalyst_extraction_failed_grade_kept|~|WLDN: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:53|~|catalyst_extraction_failed_grade_kept|~|CART: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:55|~|catalyst_extraction_failed_grade_kept|~|ACMR: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 08:55|~|catalyst_extraction_failed_grade_kept|~|CART: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 09:00|~|catalyst_extraction_failed_grade_kept|~|ACMR: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 09:00|~|catalyst_extraction_failed_grade_kept|~|ACMR: extraction FAILED (extraction_call_failed) — catalyst KEPT at strong, not downgraded to routine
+2026-08-07 17:02|~|validation_error|~|Validation parse error for 'Inflammatory Disease & Immunology Biologics' — tickers unchanged
+2026-08-07 17:02|~|validation_error|~|Validation parse error for 'Mobile App Platform & Advertising Monetization' — tickers unchanged
+2026-08-07 17:03|~|validation_error|~|Validation parse error for 'U.S. Government/Defense Contract Surge' — tickers unchanged
+2026-08-07 17:08|~|narrative_theme_discovery_failed|~|2026-08-07: 'ThinkingBlock' object has no attribute 'text'
+2026-08-08 17:52|~|llm_truncation_check|~|0 caller(s) truncating, 1 not reporting stop_reason
+2026-08-08 18:01|~|job_cancelled_error|~|crypto_nightly_ingest: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-09 17:52|~|llm_truncation_check|~|2 caller(s) truncating, 0 not reporting stop_reason
+2026-08-09 18:18|~|job_cancelled_error|~|crypto_nightly_ingest: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-09 19:48|~|job_cancelled_error|~|crypto_category_refresh: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-10 17:05|~|llm_truncation_live|~|theme_assignment response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:06|~|job_cancelled_error|~|nightly_data_pull: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-10 17:12|~|llm_truncation_live|~|theme_assignment response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:13|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:13|~|llm_truncation_live|~|theme_split response TRUNCATED at 1750 output tokens (model claude-sonnet-5)
+2026-08-10 17:14|~|llm_truncation_live|~|theme_assignment response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:15|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:16|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:16|~|llm_truncation_live|~|theme_split response TRUNCATED at 1750 output tokens (model claude-sonnet-5)
+2026-08-10 17:17|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:18|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-10 17:20|~|llm_truncation_live|~|narrative_theme_discovery response TRUNCATED at 1500 output tokens (model claude-sonnet-5)
+2026-08-10 17:20|~|narrative_theme_discovery_failed|~|2026-08-10: Unterminated string starting at: line 1 column 536 (char 535)
+2026-08-10 17:52|~|llm_truncation_check|~|4 caller(s) truncating, 0 not reporting stop_reason, 0 within 10% of their ceiling
+2026-08-10 18:20|~|job_cancelled_error|~|crypto_nightly_ingest: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-10 19:12|~|assignment_error|~|Theme assignment error at batch 1/1 — remaining batches skipped
+2026-08-11 17:10|~|api_failure_perplexity|~|PERPLEXITY API FAILURE class=http_4xx HTTP 429 tg=1 — news search
+2026-08-11 17:10|~|api_failure_perplexity|~|PERPLEXITY API FAILURE class=http_4xx HTTP 429 tg=0 — news search
+2026-08-11 17:10|~|api_failure_perplexity|~|PERPLEXITY API FAILURE class=http_4xx HTTP 429 tg=0 — news search
+2026-08-11 17:13|~|narrative_theme_discovery_failed|~|2026-08-11: 'str' object has no attribute 'get'
+2026-08-11 18:03|~|job_cancelled_error|~|crypto_nightly_ingest: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-12 09:31|~|orb_order_failed|~|ORB EROC — submit_entry returned None (trade_id=351)
+2026-08-12 16:45|~|stop_update_failed|~|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-12 17:12|~|api_failure_perplexity|~|PERPLEXITY API FAILURE class=http_4xx HTTP 429 tg=1 — news search
+2026-08-12 17:12|~|api_failure_perplexity|~|PERPLEXITY API FAILURE class=http_4xx HTTP 429 tg=0 — news search
+2026-08-12 17:16|~|llm_truncation_live|~|theme_advisor_discovery response TRUNCATED at 1500 output tokens (model claude-opus-5)
+2026-08-12 17:52|~|llm_truncation_check|~|1 caller(s) truncating, 0 not reporting stop_reason, 1 within 10% of their ceiling
+2026-08-13 16:45|~|stop_update_failed|~|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-14 09:40|~|profit_trigger_failed|~|ETON: high $59.79 >= 2R target $59.58
+2026-08-14 09:45|~|profit_trigger_failed|~|ETON: high $59.79 >= 2R target $59.58
+2026-08-14 16:45|~|stop_update_failed|~|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-16 08:00|~|llm_truncation_live|~|postmortem response TRUNCATED at 1500 output tokens (model claude-sonnet-5)
+2026-08-16 08:01|~|llm_truncation_live|~|system_review_weekly response TRUNCATED at 2800 output tokens (model claude-sonnet-5)
+2026-08-16 17:52|~|llm_truncation_check|~|2 caller(s) truncating, 0 not reporting stop_reason, 0 within 10% of their ceiling
+2026-08-16 19:18|~|job_cancelled_error|~|crypto_category_refresh: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-17 16:45|~|stop_update_failed|~|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-18 16:45|~|stop_update_failed|~|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-18 16:45|~|stop_update_failed|~|ABCL: place_stop_order raised on first attempt — APIError
+2026-08-18 17:11|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-19 16:45|~|stop_update_failed|~|ABCL: place_stop_order raised on first attempt — APIError
+2026-08-19 17:02|~|job_cancelled_error|~|nightly_data_pull: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-19 17:04|~|llm_truncation_live|~|theme_validation response TRUNCATED at 1000 output tokens (model claude-sonnet-5)
+2026-08-19 17:04|~|validation_error|~|Validation parse error for 'Independent Oil Refiners' — tickers unchanged
+2026-08-19 17:11|~|discovery_error|~|Theme discovery error — no new themes discovered this run
+2026-08-19 17:52|~|llm_truncation_check|~|0 caller(s) truncating, 0 not reporting stop_reason, 1 within 10% of their ceiling
+2026-08-20 16:45|~|stop_update_failed|~|ABCL: place_stop_order raised on first attempt — APIError
+2026-08-20 17:03|~|job_cancelled_error|~|nightly_data_pull: cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Defense Intelligence & Cybersecurity IT Contractors' × 'Emerging Defense & Aerospace Hardware Suppliers'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Drone & Advanced Aerial Defense Platforms' × 'Emerging Defense & Aerospace Hardware Suppliers'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Gateway & Coastal Office REIT Stress Reversal' × 'Office REIT Recovery & Re-Rating'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Rare Earth & Critical Minerals Mining' × 'Gold & Precious Metals Miners Rotation'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'For-Profit Postsecondary & Vocational Education' × 'Defensive Consumer Staples Rotation'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Corporate Digital Asset Treasury Vehicles' × 'Private Equity & Alternative Asset Management Platforms'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Advanced Nuclear Fuel & Reactor Design Manufacturers' × 'Industrial Equipment & Flow Control – Capex Cycle Recovery'
+2026-08-20 17:11|~|theme_merge_adjudication_error|~|Arm B: adjudication failed for 'Industrial Lifting, Material Handling & Equipment Rental' × 'Industrial Equipment & Flow Control – Capex Cycle Recovery'
+2026-08-20 17:15|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-21 16:45|~|stop_update_failed|~|ABCL: place_stop_order raised on first attempt — APIError
+2026-08-21 17:03|~|llm_truncation_live|~|theme_validation response TRUNCATED at 1000 output tokens (model claude-sonnet-5)
+2026-08-21 17:03|~|validation_error|~|Validation parse error for 'U.S. Oil & Gas E&P Rotation' — tickers unchanged
+2026-08-21 17:10|~|llm_truncation_live|~|theme_discovery response TRUNCATED at 8000 output tokens (model claude-sonnet-5)
+2026-08-21 17:52|~|llm_truncation_check|~|0 caller(s) truncating, 0 not reporting stop_reason, 1 within 10% of their ceiling
+2026-08-23 17:52|~|llm_truncation_check|~|0 caller(s) truncating, 0 not reporting stop_reason, 1 within 10% of their ceiling
+(109 rows)

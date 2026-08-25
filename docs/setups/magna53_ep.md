@@ -1033,6 +1033,19 @@ would-be catches and can never admit one. There is no path by which it loosens d
 **Watch for** (pre-committed): first 30 live catches vs the replay's prediction — materially worse
 means the replay was fitted, revert; a rejected name running ≥+20% once is a review, twice a revert.
 
+⚠ **READ 2026-08-24 — the ≥+20% arm is LITERALLY MET (20 names) AND THE READING IS AN ARTIFACT.
+Do NOT revert on it. Operator ruling pending (#593).** The condition never named a BASELINE, so it
+was measured from the day's OPEN — and a name that faded pre-market opens depressed, so the fade
+manufactures the +20% it is then charged with. 17 of the 20 breaches are that artifact; only 3 names
+held the gap floor and ran, and all 3 were caught or killed elsewhere (DCTH alerted via the delayed
+path; AVAH and MATV died on the score floor and the top-20 cap). Measured cost of this rule over 16
+trading days: **zero names**. 88% of what it declined had already faded below the gap floor by the
+opening bell — pre-market prints, not levels, which is exactly what the rule exists to catch.
+▶ **The correction, pending his sign-off: measure the run from the PRE-MARKET LEVEL THE RULE
+DECLINED, not from the open** — that is where we would have been positioned, and a name that fades
+and recovers to it made us nothing. ⚖ Tightening a revert condition makes a safety net LESS likely
+to fire, so it is his call and not a doc tidy-up. Evidence: `docs/analysis/sustain_rule_cost_2026-08-24.md`.
+
 
 ### 2026-08-01 — #490: MIN_GAP_PCT now enforced at SUBMISSION, not only at the scan tick (BUG FIX; built OFF)
 
