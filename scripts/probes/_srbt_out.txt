@@ -1,0 +1,340 @@
+============================================================================================================
+SUPPLY-LADDER READ vs MONTHS OF SCAN HISTORY — does it survive holding liquidity constant?
+READ-ONLY · $0 · MEASUREMENT ONLY · nothing wired, no rule changed, nothing tuned.
+============================================================================================================
+
+STEP 1 — THE COHORT AS IT ACTUALLY IS (the real N, not an estimate)
+------------------------------------------------------------------------------------------------------------
+  mi_ep_scan_log, deduped to one row per (scan_date, ticker), last tick of the day:
+    3343 name-days · 1925 tickers · 93 scan days · 2026-04-13 to 2026-08-25
+    median names per scan day: 26   (NOT ~200/day — that rate only appears on 08-24/08-25)
+  computable reads: 3079/3343
+    not computable — no_alert_day_open        212
+    not computable — history_too_thin         51
+    not computable — no_prior_bars            1
+    ⚠ every 08-25 name-day is dropped: mi_daily_closes ends 2026-08-24, so there is no
+      alert-day OPEN for them. That is 212 of the 264 uncomputable rows.
+
+  what killed each name-day (last tick's reason), and how many are computable:
+    00_passed_all_gates                 78 name-days   computable    78
+    01_universe_floor                  407 name-days   computable   212
+    02_bookkeeping_already_scored      231 name-days   computable   231
+    02_bookkeeping_cooldown            116 name-days   computable   114
+    03_rank_cap                        791 name-days   computable   783
+    04_score_below_threshold           309 name-days   computable   308
+    05_quality_filter                  566 name-days   computable   532
+    06_extended                        171 name-days   computable   167
+    07_volume                          320 name-days   computable   304
+    08_routine_catalyst                102 name-days   computable   101
+    09_mna                              72 name-days   computable    71
+    10_other_filter                    180 name-days   computable   178
+
+  ⚠ REGIME BREAK, named because it changes what the pool is: `filter:universe_*` rows exist
+    ONLY on 2026-08-24/25 (the scanner began logging universe-floor rejects then). Every
+    stratified test below therefore EXCLUDES them, so the population is uniform across the
+    whole date range — this is the same exclusion the 08-25 study's reject arm used.
+
+  → the analysis pool: 2867 computable name-days, 1564 tickers, 92 scan days, 2026-04-13 to 2026-08-24
+
+============================================================================================================
+T0 — BAR-SOURCE FIDELITY: the read recomputed off mi_daily_closes vs the 08-25 study's
+     Polygon capture, NAME BY NAME. A miss here invalidates every number below.
+------------------------------------------------------------------------------------------------------------
+  name-days readable on BOTH sources: 35  (26 labelled real EPs, 9 of the 27 original rejects)
+  ⚠ only 9 of the 27 rejects: 18 of them are 2026-08-25 name-days and mi_daily_closes has
+    no 08-25 bar, so the full 26-vs-27 cannot be re-run on this source. The fidelity check
+    is therefore done AT THE MEASURE LEVEL, name by name, which is the stronger form.
+
+    overhead_vol_frac            Spearman(prod, polygon)  0.988   median |diff|  0.0063   max |diff|  0.2647
+    overhead_vol_frac_60d        Spearman(prod, polygon)  1.000   median |diff|  0.0001   max |diff|  0.0101
+    zones_cleared                Spearman(prod, polygon)  0.989   median |diff|  0.0000   max |diff|  2.0000
+    gap_open_pct                 Spearman(prod, polygon)  1.000   median |diff|  0.0000   max |diff|  0.0000
+
+    the 6 largest disagreements on the primary (all are history-depth, not error):
+      QBTS   2026-04-08 fixture  prod 0.959 (180d) vs polygon 0.694 (271d)   60d variant: 0.912 vs 0.910
+      APLD   2026-04-08 fixture  prod 0.445 (180d) vs polygon 0.252 (271d)   60d variant: 0.705 vs 0.703
+      IREN   2026-04-08 fixture  prod 0.732 (180d) vs polygon 0.584 (271d)   60d variant: 0.866 vs 0.864
+      SMTC   2026-03-30 fixture  prod 0.260 (174d) vs polygon 0.147 (271d)   60d variant: 0.656 vs 0.656
+      USAR   2026-04-08 fixture  prod 0.786 (180d) vs polygon 0.727 (267d)   60d variant: 0.928 vs 0.927
+      STRL   2026-04-08 fixture  prod 0.137 (180d) vs polygon 0.084 (271d)   60d variant: 0.455 vs 0.455
+
+    26 real EPs vs the 9 readable rejects, overhead_vol_frac on mi_daily_closes : AUC 0.731
+    26 real EPs vs the 9 readable rejects, overhead_vol_frac on polygon capture : AUC 0.786
+    (the published figure is 0.728 on 26 vs 27; this 26-vs-9 subset is shown only to
+     confirm the two bar sources rank the same way, not as a replication of that number.)
+
+============================================================================================================
+STEP 2 — THE LIQUIDITY CONTROL: ADV$ deciles (median close x volume, prior 20 sessions)
+------------------------------------------------------------------------------------------------------------
+  decile  ADV$ range                             n     median ADV$
+  0       $      0.01M - $      0.50M         286          0.20M
+  1       $      0.50M - $      1.33M         287          0.86M
+  2       $      1.35M - $      3.75M         287          2.28M
+  3       $      3.79M - $      7.54M         286          5.43M
+  4       $      7.55M - $     15.06M         287         10.55M
+  5       $     15.07M - $     30.76M         287         22.38M
+  6       $     30.91M - $     56.51M         286         39.91M
+  7       $     56.62M - $    125.95M         287         79.26M
+  8       $    126.82M - $    334.63M         287        198.65M
+  9       $    334.94M - $  52029.90M         287        855.49M
+  the pool spans $0.01M to $52030M of daily dollar volume — a 4,548,943x range,
+  which is exactly why an unstratified number cannot tell structure from liquidity class.
+  pooled Spearman(overhead_vol_frac, ADV$) over the 2867 name-days: -0.188
+  (the 08-25 study measured -0.403 across its 53 rows and named it the unresolved caveat.)
+
+============================================================================================================
+STEP 3 — FORWARD OUTCOMES: the join, the #583 staleness guard, and an independent recompute
+------------------------------------------------------------------------------------------------------------
+  pool 2867 name-days
+    have a mi_ep_missed_outcomes row            2773
+    row PASSES the #583 freshness guard         2773  (guard: refreshed within 2 days, OR after the 5-session outcome settled)
+    ...and carries a settled ret_5d             2696
+    STALE (excluded, never silently kept)          0
+    NO outcome row at all                         94  — reported, not dropped silently
+    fresh row but ret_5d still PENDING            77  (alert dates 2026-04-24 onward — the 5th
+                                                     session has not printed yet)
+
+  INDEPENDENT RECOMPUTE from mi_daily_closes (same arithmetic as missed_outcomes.py:
+  open_d0 = the alert-day open; close_d5 = 5th session after; max over sessions 0-5):
+    comparable rows 2696   Spearman 1.0000   rows differing by >0.5pp: 0
+    ⚠ FINDING: 0 of 2773 rows are stale — the #583 class is ABSENT from
+      this cohort (the nightly rebuild has kept every row current). The guard is applied
+      anyway, as instructed; on this data it is a no-op rather than a filter.
+
+  → the outcome sample: 2787 name-days with a settled 5-session outcome (2696 from the table, 91 recomputed where the table had no row).
+    base rate — 48.3% closed the 5th session above the gap-day open; median ret_5d -0.4%
+
+============================================================================================================
+TB — 🎯 THE DECISIVE TEST: does the supply read predict the forward outcome WITHIN a
+     dollar-volume band? (no arm contrast — every comparison is same-population)
+============================================================================================================
+  AUC = the chance a randomly picked winner (ret_5d > 0) has a LOWER overhead reading than
+  a randomly picked loser. 0.500 is a coin. Stratified = comparisons restricted to pairs
+  inside the same stratum, pooled by pair count.
+
+  measure                          pooled   by ADV$  ADV$ x DATE  pairs(band)  pairs(b x d)
+  ------------------------------------------------------------------------------------------------
+  PRIMARY overhead_vol_frac         0.505     0.496        0.481      192,071         3,315
+  robustness  ..._60d window        0.497     0.492        0.459      192,071         3,315
+  secondary   zones_cleared         0.492     0.482        0.426      192,071         3,315
+  secondary   base_range_adr        0.531     0.522        0.503      192,071         3,315
+  [ref] near_high_frac              0.541     0.528        0.487      192,071         3,315
+  [ref] raw gap % at the open       0.459     0.455        0.440      192,071         3,315
+  [ref] ADV$ itself                 0.540     0.497        0.512      192,071         3,315
+
+  95% confidence, CLUSTER BOOTSTRAP over whole scan days (400 resamples) — the clustered
+  test the 08-25 study could not run with ten days against two:
+    PRIMARY overhead_vol_frac      by ADV$ band 0.496 [0.454, 0.536]      pooled 0.505 [0.461, 0.546]
+    robustness  ..._60d window     by ADV$ band 0.492 [0.454, 0.531]      pooled 0.497 [0.461, 0.534]
+    secondary   zones_cleared      by ADV$ band 0.482 [0.454, 0.510]      pooled 0.492 [0.469, 0.517]
+    secondary   base_range_adr     by ADV$ band 0.522 [0.501, 0.549]      pooled 0.531 [0.511, 0.555]
+
+  THRESHOLD-FREE TWIN — no binary label at all: over pairs inside a stratum whose 5-session
+  returns differ, the share where the lower overhead reading had the better return.
+    ret_5d                         PRIMARY overhead_vol_frac    pooled 0.497   by ADV$ 0.488   ADV$ x date 0.484
+    ret_5d                         robustness  ..._60d window   pooled 0.496   by ADV$ 0.489   ADV$ x date 0.465
+    max_high_5d (what it OFFERED)  PRIMARY overhead_vol_frac    pooled 0.471   by ADV$ 0.482   ADV$ x date 0.475
+    max_high_5d (what it OFFERED)  robustness  ..._60d window   pooled 0.464   by ADV$ 0.472   ADV$ x date 0.458
+
+  EVERY ADV$ DECILE SEPARATELY (the primary), so no band can hide inside the pooled figure:
+    decile     median ADV$     n  win rate     AUC   
+    0                0.2M   275       36%   0.504
+    1                0.9M   274       48%   0.494
+    2                2.3M   270       49%   0.500
+    3                5.4M   278       46%   0.471
+    4               10.5M   279       46%   0.504
+    5               22.4M   286       51%   0.503
+    6               40.1M   278       51%   0.540
+    7               79.6M   282       48%   0.510
+    8              199.0M   282       57%   0.467
+    9              844.1M   283       50%   0.466
+
+  BY MONTH (the primary, stratified by ADV$ decile within each month):
+    2026-04   n= 650   by-ADV$ AUC 0.510
+    2026-05   n= 866   by-ADV$ AUC 0.483
+    2026-06   n= 506   by-ADV$ AUC 0.496
+    2026-07   n= 421   by-ADV$ AUC 0.409
+    2026-08   n= 344   by-ADV$ AUC 0.498
+
+============================================================================================================
+TA — THE ORIGINAL ARM CONTRAST, WITH LIQUIDITY HELD CONSTANT (gated on overlap)
+------------------------------------------------------------------------------------------------------------
+  labelled real EPs (must_not_miss fixture, read off mi_daily_closes): 26
+  rejects — never alerted AND killed by a substantive gate (bookkeeping reasons excluded): 2418
+  real-EP ADV$ band: $38.9M to $19,054M   (median $305M)
+  reject-pool median ADV$: $10.0M
+  🔎 THE OVERLAP GATE — rejects inside the real-EP liquidity band: 756
+     (the 08-25 study had FOUR. That was the caveat this run exists to settle.)
+
+  PRIMARY overhead_vol_frac      pooled  0.579   by ADV$ decile  0.511   inside the real-EP band only  0.521 (n=26v756)
+  robustness  ..._60d window     pooled  0.493   by ADV$ decile  0.451   inside the real-EP band only  0.454 (n=26v756)
+  secondary   zones_cleared      pooled  0.631   by ADV$ decile  0.585   inside the real-EP band only  0.557 (n=26v756)
+  secondary   base_range_adr     pooled  0.471   by ADV$ decile  0.479   inside the real-EP band only  0.467 (n=26v756)
+  [ref] ADV$ itself              pooled  0.888   by ADV$ decile  0.620   inside the real-EP band only  0.646 (n=26v756)
+
+
+  🔎 WHERE THE PUBLISHED 0.728 GOES — the SAME 26 real EPs, the SAME measure, the SAME bar
+     source (mi_daily_closes). Only the REJECT ARM changes:
+     reject arm                                         n   median ADV$     AUC  ADV$ alone
+     the 08-25 study's arm, 9 of 27 readable here       9         2.0M   0.731       1.000
+     every historical reject (substantive gate kills)  2418        10.0M   0.579       0.888
+     ...restricted to the real-EP liquidity band      756       148.6M   0.521       0.646
+     ...and with ADV$ held constant (decile-stratified)  2418        10.0M   0.511           —
+     'ADV$ alone' = dollar volume used as the discriminator by itself, no chart read at all.
+     ⚠ The 1.000 on the 9-name arm is ARITHMETICALLY FORCED, not a measurement: those 9 sit
+       entirely below the real-EP band's floor, so two disjoint ranges separate perfectly by
+       construction. It restates the caveat rather than testing it. THE NUMBER THAT CARRIES
+       THE ARGUMENT IS 0.888 on 2,418 rejects — a real sample with overlapping liquidity
+       ranges, where a quantity that never looked at a chart still beats the read's 0.579.
+
+  ⚠ HOW TO READ TA, declared in the pre-registration: banding cannot repair an arm contrast,
+    it can only shrink it. 13 of the 26 real EPs are still ONE date (2026-04-08) and the two
+    arms are still different populations. TA is a CONSISTENCY CHECK on TB, not the test.
+
+============================================================================================================
+TC — DOES THE READ PREDICT THE 5-DAY OUTCOME AMONG THE NAMES WE ALERTED?
+     (selection quality, on the money path — the sample that actually matters)
+------------------------------------------------------------------------------------------------------------
+  mi_ep_alerts holds 261 live alert name-days; 257 of them are computable in this pool and 248 have a settled 5-session outcome.
+  HIGH      n= 173   52% closed day 5 above the open   median ret_5d +0.5%   median max_high_5d +10.2%
+      PRIMARY overhead_vol_frac      AUC(ret_5d>0)  0.468 [0.389, 0.543]   by ADV$  0.472   concordance ret_5d 0.492 / max_high_5d 0.509
+      robustness  ..._60d window     AUC(ret_5d>0)  0.444 [0.362, 0.514]   by ADV$  0.413   concordance ret_5d 0.492 / max_high_5d 0.505
+      secondary   zones_cleared      AUC(ret_5d>0)  0.451 [0.364, 0.551]   by ADV$  0.419   concordance ret_5d 0.473 / max_high_5d 0.459
+      secondary   base_range_adr     AUC(ret_5d>0)  0.536 [0.453, 0.639]   by ADV$  0.506   concordance ret_5d 0.540 / max_high_5d 0.544
+
+  MODERATE  n=  66   52% closed day 5 above the open   median ret_5d +0.5%   median max_high_5d +10.5%
+      PRIMARY overhead_vol_frac      AUC(ret_5d>0)  0.460 [0.296, 0.625]   by ADV$  0.461   concordance ret_5d 0.454 / max_high_5d 0.516
+      robustness  ..._60d window     AUC(ret_5d>0)  0.554 [0.423, 0.702]   by ADV$  0.546   concordance ret_5d 0.511 / max_high_5d 0.513
+      secondary   zones_cleared      AUC(ret_5d>0)  0.528 [0.410, 0.663]   by ADV$  0.536   concordance ret_5d 0.508 / max_high_5d 0.457
+      secondary   base_range_adr     AUC(ret_5d>0)  0.478 [0.366, 0.589]   by ADV$  0.450   concordance ret_5d 0.485 / max_high_5d 0.524
+
+  ALL TIERS n= 248   51% closed day 5 above the open   median ret_5d +0.4%   median max_high_5d +10.3%
+      PRIMARY overhead_vol_frac      AUC(ret_5d>0)  0.480 [0.416, 0.538]   by ADV$  0.462   concordance ret_5d 0.492 / max_high_5d 0.501
+      robustness  ..._60d window     AUC(ret_5d>0)  0.482 [0.415, 0.540]   by ADV$  0.450   concordance ret_5d 0.497 / max_high_5d 0.502
+      secondary   zones_cleared      AUC(ret_5d>0)  0.482 [0.411, 0.551]   by ADV$  0.462   concordance ret_5d 0.487 / max_high_5d 0.456
+      secondary   base_range_adr     AUC(ret_5d>0)  0.519 [0.461, 0.585]   by ADV$  0.491   concordance ret_5d 0.527 / max_high_5d 0.532
+
+============================================================================================================
+RS — REVIEW SAMPLE: what to put in front of the operator so his chart labels teach the most
+------------------------------------------------------------------------------------------------------------
+  Threshold-free buckets: the read's TOP and BOTTOM decile of overhead_vol_frac, crossed
+  with the sign of the 5-session outcome. The DISAGREEMENTS (confident-and-wrong) are the
+  two buckets a label actually corrects. Drawn WITHIN ADV$ band and spread across months so
+  he is not handed twenty microcaps from one week. This is a LIST, not a surface — no
+  Telegram command is built here.
+
+  bottom-decile cut: overhead_vol_frac <= 0.000 (the read says CLEAR)
+  top-decile cut:    overhead_vol_frac >= 0.837 (the read says BURIED)
+
+  A. CLEAR and it RAN — confident right (confirm the read)   (213 candidates, 10 drawn)
+    ticker date             ADV$  overhead  zoneslabel                  gap%   ret_5d  ranhigh  why we saw it
+    ASTC   2026-05-28      0.1M     0.000      0  CLEAR_AIR           57.1%    77.3%   217.4%  already up 506% in prior 5 days (extended)
+    CPSH   2026-05-26      2.0M     0.000      2  CLEAR_AIR           17.8%    30.7%   103.5%  quality filter: filter:mcap_too_small: $108M
+    MXL    2026-04-21     18.1M     0.000      0  CLEAR_AIR            5.6%    55.2%    89.5%  score 18 < 50 (catalyst=routine)
+    TRT    2026-04-23      0.4M     0.000      0  CLEAR_AIR           33.2%    27.9%    73.6%  quality filter: filter:adv_too_low: $380,435
+    MF     2026-08-14      1.4M     0.000      1  CLEAR_AIR           30.4%    25.6%    50.5%  quality filter: filter:atr_too_high: 15.1% >
+    OCC    2026-06-08      4.2M     0.000      2  CLEAR_AIR           59.4%     5.7%    42.7%  quality filter: filter:mcap_too_small: $109M
+    ABCL   2026-08-10     26.7M     0.000      1  CLEAR_AIR           26.4%    27.9%    32.9%  already scored earlier today
+    AMPG   2026-06-09     32.0M     0.000      0  CLEAR_AIR            8.1%    23.7%    31.0%  quality filter: filter:mcap_too_small: $166M
+    QUAD   2026-07-29      1.1M     0.000      3  CLEAR_AIR            6.3%    14.8%    24.7%  outside top-20 gap cap (gap 10.0%)
+    ANIK   2026-07-29      0.9M     0.000      8  CLEAR_AIR           13.7%    11.4%    22.5%  quality filter: filter:adv_too_low: $858,542
+
+  B. 🔴 CLEAR and it FELL — confident WRONG (what supply did the read not see?)   (198 candidates, 10 drawn)
+    ticker date             ADV$  overhead  zoneslabel                  gap%   ret_5d  ranhigh  why we saw it
+    GDC    2026-05-06      0.1M     0.000      0  CLEAR_AIR           25.2%   -97.9%     9.1%  already up 77% in prior 5 days (extended)
+    CAR    2026-04-22   1293.5M     0.000      0  CLEAR_AIR            8.5%   -76.6%     9.4%  already up 92% in prior 5 days (extended)
+    CAR    2026-04-21    880.9M     0.000      0  CLEAR_AIR            2.5%   -70.8%    35.8%  low volume rel_vol 0.1x < 2.0x (post-open)
+    ADVB   2026-07-24      0.1M     0.000      0  CLEAR_AIR           37.6%   -65.4%     4.9%  already up 242% in prior 5 days (extended)
+    JLHL   2026-06-08      0.8M     0.000      0  CLEAR_AIR           24.0%   -61.8%     4.3%  already up 137% in prior 5 days (extended)
+    QH     2026-06-18      0.8M     0.000      1  CLEAR_AIR            5.1%   -50.2%    15.8%  already up 224% in prior 5 days (extended)
+    MRAM   2026-05-13     15.5M     0.000      0  CLEAR_AIR           14.1%   -42.4%     2.6%  EP cooldown — alerted within last 60 days
+    YOU    2026-08-05     56.4M     0.000      7  CLEAR_AIR           16.2%   -28.7%     6.6%  score 36 < 50 (catalyst=strong)
+    AEHR   2026-08-14    211.4M     0.000      0  CLEAR_AIR            8.4%   -23.9%    10.3%  EP cooldown — alerted within last 60 days
+    QTTB   2026-07-13      4.6M     0.000      3  CLEAR_AIR           63.3%   -17.9%    28.7%  quality filter: filter:mcap_too_small: $190M
+
+  C. 🔴 BURIED and it RAN — confident WRONG (overhead that did not stop it)   (140 candidates, 10 drawn)
+    ticker date             ADV$  overhead  zoneslabel                  gap%   ret_5d  ranhigh  why we saw it
+    VEEE   2026-07-08      0.2M     0.923      0  INTO_SUPPLY          4.1%   353.8%   732.6%  quality filter: filter:adv_too_low: $182,622
+    IONL   2026-04-14      4.8M     0.904      1  LADDER_CLIMBING     13.5%    98.4%   119.9%  low rel volume 0.9x < 2.0x
+    IONX   2026-04-14     30.6M     0.903      1  LADDER_CLIMBING     14.0%    98.0%   118.8%  low rel volume 0.7x < 2.0x
+    ARQQ   2026-06-15      8.1M     0.892      2  IFFY_AT_FIRST_ZONE   5.7%   102.1%   108.0%  quality filter: filter:mcap_too_small: $304M
+    HCAI   2026-05-18      0.9M     0.906      3  INTO_SUPPLY         63.2%     7.1%    87.6%  quality filter: filter:adv_too_low: $929,069
+    FJET   2026-05-22      5.0M     0.924      0  INTO_SUPPLY          1.6%    81.6%    86.4%  quality filter: filter:mcap_too_small: $253M
+    OTLY   2026-07-22      0.6M     0.844      0  INTO_SUPPLY          8.5%    55.4%    60.6%  quality filter: filter:adv_too_low: $545,992
+    ARQQ   2026-06-09      7.6M     0.964      0  INTO_SUPPLY          3.0%    51.1%    55.5%  quality filter: filter:mcap_too_small: $223M
+    BLSH   2026-08-13     27.5M     0.926      1  IFFY_AT_FIRST_ZONE   1.5%    13.8%    17.5%  passed every gate
+    RNA    2026-08-10      1.4M     0.995      0  INTO_SUPPLY         -0.7%     5.8%     8.9%  quality filter: filter:mcap_too_small: $211M
+
+  D. BURIED and it FELL — confident right (confirm the read)   (139 candidates, 10 drawn)
+    ticker date             ADV$  overhead  zoneslabel                  gap%   ret_5d  ranhigh  why we saw it
+    SMX    2026-05-11      6.2M     0.979      0  CLEARED_NOTHING      3.6%   -71.0%     0.0%  outside top-20 gap cap (gap 8.1%)
+    IPCX   2026-07-29      0.5M     0.996      0  CLEAR_AIR           10.3%   -53.1%    10.8%  quality filter: filter:adv_too_low: $522,205
+    GLND   2026-04-23      9.8M     0.851      0  CLEARED_NOTHING     -1.0%   -51.0%    28.0%  outside top-20 gap cap (gap 9.0%)
+    RGC    2026-06-22      2.1M     0.988      0  CLEARED_NOTHING      0.8%   -48.9%    21.1%  quality filter: filter:atr_too_high: 18.1% >
+    APUS   2026-07-29      0.1M     0.970      0  IFFY_AT_FIRST_ZONE   1.2%   -42.6%     2.2%  quality filter: filter:adv_too_low: $67,473
+    BIRD   2026-06-18      1.3M     0.838      2  IFFY_AT_FIRST_ZONE  17.3%   -31.4%    20.5%  quality filter: filter:mcap_too_small: $48M 
+    LCID   2026-04-14     53.6M     0.939      0  INTO_SUPPLY          4.8%   -26.5%     4.2%  outside top-20 gap cap (gap 8.8%)
+    NAKA   2026-05-29      1.0M     0.987      0  CLEARED_NOTHING      2.7%   -25.0%    20.5%  quality filter: filter:atr_too_high: 15.6% >
+    LENZ   2026-08-12      4.2M     0.869      1  INTO_SUPPLY         13.8%   -17.0%    13.7%  quality filter: filter:mcap_too_small: $163M
+    AHCO   2026-08-04     10.3M     1.000      0  CLEARED_NOTHING    -38.4%   -15.4%     5.3%  M&A/buyout catalyst — no momentum trade
+
+  → written to scripts/probes/_srbt_review_sample.psv (40 name-days)
+
+============================================================================================================
+INTEGRITY CHECKS — run because a wrong-row join across ~2,900 rows is the live risk here
+------------------------------------------------------------------------------------------------------------
+  1. OPEN-vs-SCAN-LOG cross-check: the replayed open gap vs the gap the scanner logged.
+     comparable 2867   median |diff| 4.52pp   differing by >5pp: 1324 (46.2%)
+     SIGNED: the scan log reads HIGHER than the session open on 83% of rows, median +4.04pp; Spearman(open gap, logged gap) = 0.503.
+     That is the expected basis difference — the scanner logs an INTRADAY gap at whatever
+     tick it fired, the read uses the SESSION OPEN — one-directional and rank-correlated,
+     which is what a basis difference looks like and what a wrong-row join does not.
+
+  1b. END-TO-END SPOT CHECK against the published v2 worked examples (doc §6), recomputed
+      here from mi_daily_closes rather than the study's own capture:
+      CAPR 2026-08-24   overhead 0.444 (doc 0.440)   zones overhead 17 (doc 17)   cleared 0 (doc 0)   unfilled air 17.95 ADR (doc 17.95)   [274 prior sessions]
+      MRNA 2026-08-19   overhead 0.000 (doc 0.000)   zones overhead 0 (doc 0)   cleared 0 (doc 0)   unfilled air 0.00 ADR (doc 0.00)   [272 prior sessions]
+      SNOW 2026-05-07   overhead 0.829 (doc 0.826)   zones overhead 20   cleared 2 (doc 4)   unfilled air 2.81 ADR   [201 prior sessions]
+      CAPR and MRNA reproduce the published values exactly. SNOW clears 2 zones here against
+      the doc's 4 — mi_daily_closes gives it 201 prior sessions where the study's Polygon
+      capture gave 271, so two older levels do not exist in this history. That is the same
+      history-depth effect T0 measured, and the 60-day variant is the control for it.
+
+  2. IS THE MEASURE DEGENERATE ON THIS COHORT? exactly 0.000 (blue sky): 420 of 2867 (15%);  >=0.999 (fully buried): 7 (0%)
+     quartiles of overhead_vol_frac: 0.028, 0.255, 0.602
+     Ties count half in every AUC above, so a large blue-sky mass drags a real effect
+     TOWARD 0.500 — the null below is therefore partly a ceiling on how much this measure
+     CAN say on a cohort where a fifth of the names have nothing overhead at all.
+
+  3. history depth by month (the all-history volume profile grows across the range;
+     the 60d variant is the control for it):
+     2026-04   median prior sessions 188
+     2026-05   median prior sessions 202
+     2026-06   median prior sessions 224
+     2026-07   median prior sessions 251
+     2026-08   median prior sessions 264
+
+============================================================================================================
+TB-SUB — THE SAME TEST RESTRICTED TO EP-SHAPED NAME-DAYS (open gap >= 8.1%)
+------------------------------------------------------------------------------------------------------------
+  8.1% is the labelled real-EP arm's own minimum open gap, taken unchanged from the 08-25
+  study's gap-matched control. It is NOT a threshold chosen here — reusing it is the point.
+  n = 1315 name-days over 87 scan days   45% closed day 5 above the open
+  PRIMARY overhead_vol_frac      pooled  0.508   by ADV$  0.495 [0.442, 0.550]   ADV$ x date  0.404   max_high concordance 0.473
+  robustness  ..._60d window     pooled  0.496   by ADV$  0.494 [0.430, 0.559]   ADV$ x date  0.398   max_high concordance 0.456
+  secondary   zones_cleared      pooled  0.506   by ADV$  0.499 [0.459, 0.541]   ADV$ x date  0.459   max_high concordance 0.447
+  secondary   base_range_adr     pooled  0.519   by ADV$  0.505 [0.466, 0.541]   ADV$ x date  0.447   max_high concordance 0.477
+  [ref] raw gap % at the open    pooled  0.468   by ADV$  0.478 [0.442, 0.517]   ADV$ x date  0.458   max_high concordance 0.492
+
+============================================================================================================
+DESCRIPTIVE — what each of the read's own labels was worth, on the names we ALERTED
+------------------------------------------------------------------------------------------------------------
+  v2 label                  n  win rate  med ret_5d  med max_high_5d
+  CLEARED_NOTHING          23       61%        5.9%            13.3%
+  CLEAR_AIR                47       47%       -0.7%             9.1%
+  IFFY_AT_FIRST_ZONE       57       54%        1.2%            11.8%
+  INTO_SUPPLY              85       49%        0.0%             9.4%
+  LADDER_CLIMBING          36       47%       -0.6%             8.6%
+  (descriptive only — the label depends on MARGIN_ADR = 0.25, which the v2 module discloses
+   as fixture-calibrated. Nothing tested above depends on it.)
+
