@@ -705,8 +705,64 @@ no new cron; stands down if the flag is reverted). Three revert triggers, any hi
 naming the trigger + the numbers + the exact revert SQL, plus an audit row: (a) **P1** — a
 `tests/fixtures/must_not_miss_eps.py` member graded `routine` by the acting side (announced
 once per member; the fixture now ships in the market image so this trigger cannot be silently
-dark); (b) HIGH alerts over the last 7 days fall >50% vs the prior 30 days (per-trading-day
-averages); (c) two consecutive trading days with zero EP alerts.
+dark); (b) HIGH alerts **per stock that gapped** over the last 7 days fall >50% vs the prior 30
+days (pooled over trading days, era-scoped to the flip); (c) two consecutive trading days with
+zero EP alerts.
+
+**Trigger (b) is measured against GAP SUPPLY, not against a flat baseline (2026-08-26).** It
+false-fired twice in two days — 08-24 (`high_volume_drop`) blaming the flip for a fall that
+began a week before it, and 08-25 (`zero_alert_days`). Operator: *"we are at the tail end of
+earnings season, so gap-ups (and downs) shrink naturally"*, with the constraint that governs
+the whole design: *"i don't want to make the assumption that more real EPs happen during
+earnings season, just more gap ups (and downs) in general due to earnings, let's not conflate
+the two, I don't have any data to say if there's similar effect on real EPs."* So the
+denominator is the number of stocks whose OPEN gapped ≥10% above the prior close inside the
+D-1 universe floors (prior close ≥ $5, prior-day volume ≥ 50k shares), counted per trading day
+from `mi_daily_closes` — a fact we record. **Nothing encodes an expected EP rate, a seasonal
+scale factor or a per-month threshold**; the trigger now asks only whether our CONVERSION of
+available supply halved. The trigger kind is `high_conversion_drop` (renamed from
+`high_volume_drop`, so an audit query cannot silently mix the two statistics).
+- **Why that denominator survives the 2026-08-22 boundary**: the obvious one — candidates in
+  `mi_ep_scan_log` — is not comparable across 08-22, because #570 made the two silent D-1
+  universe floors log a row and the distinct-ticker count jumps ~18/day to ~222/day for that
+  reason alone (213 of 222 rows on 08-24 are `filter:universe_prev_close_too_low`).
+  `mi_daily_closes` is a different table written by a different job (nightly_data_pull 17:00
+  ET), untouched by #570, complete on both sides. It is also OUTSIDE the funnel, so a break in
+  the #489/#490 real-time admission layer cannot shrink numerator and denominator together and
+  hide itself.
+- **Backtest, 2026-07-30 → 2026-08-25** (real production series, era scoping switched off so
+  every day is actually judged): the per-trading-day form fires 3× — 08-21, 08-24, 08-25 — and
+  all three are false, the tape. The supply-normalised form fires **0×**. It is not a mute:
+  on 08-24 it misses the bar by **one HIGH alert** (it fires at ≤6 in the recent week; we had
+  7), and the same thin 08-18→08-24 tape with our alerts removed fires at a 100% conversion
+  fall. Same answer for a 9% and a liquidity-filtered denominator, so the choice of yardstick
+  is not load-bearing.
+- **What it now misses**: any real break whose timing coincides with a supply fall of similar
+  size — halve our conversion in a week the tape also halves and it stays silent. It is also
+  silent whenever `mi_daily_closes` is too thin to measure (< 2,000 rows carrying an open
+  price), rather than falling back to raw counts.
+- **⚠ The 30-day prior window is still spike-inflated — on the CONVERSION axis now.**
+  Supply-normalising removes the supply half of the early-August burst; the conversion half
+  stays in the baseline (the burst weeks were elevated on both — collapse analysis Result 4).
+  July converted 6.1 HIGH alerts per 100 gapping stocks; the prior window entering 08-28
+  converts 11.6. **A return to exactly July-normal conversion clears the 50% bar by 2.6 points**
+  — which is why 08-24 and 08-25 land one alert short. Consequence: on **2026-08-28**, the first
+  day era-scoping lets trigger (b) speak (5 post-flip trading days), it fires unless roughly 6
+  HIGH alerts arrive across 08-26→08-28, and the honest first reading of such a fire is
+  spike-inflation, not a lattice break. The window shape (7 vs 30) is part of the signed trigger
+  and was NOT touched — changing it is the operator's call.
+- **What it structurally cannot answer**: whether the tape holds fewer real EPs or we got worse
+  at finding them. That needs the EP rate per gapping stock, which the operator explicitly said
+  we do not have. Conversion also moves on ANY funnel change — a signed change elsewhere (the
+  extension cap 50%→75%, 08-22, sits inside the current prior window) would trip it while the
+  message prints lattice revert SQL. And the two sides use different price bases: the
+  denominator is open-vs-prior-close, the numerator is decided pre-market off live prices
+  (07:00–09:55 ticks), so a systematic shift in pre-market-to-open fade — itself plausibly
+  seasonal on a thin tape — moves conversion with no funnel change at all.
+- **Trigger (c) is deliberately NOT supply-normalised.** Two silent days on a live money path
+  is worth a look even when the cause turns out to be the tape. Its firing logic is unchanged;
+  the message now carries each day's gap count and the trailing conversion rate as CONTEXT (not
+  a forecast) so it can be dismissed at a glance.
 
 ### 2026-08-19 — `MIN_GAP_PCT`: 10.0% → 9.0% (OPERATOR-SIGNED, REVERSAL of 2026-05-17 R2)
 

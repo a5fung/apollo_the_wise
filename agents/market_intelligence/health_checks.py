@@ -3314,14 +3314,15 @@ async def run_jsonb_encoding_check(conn=None) -> dict[str, Any]:
 # revert command, plus an audit row):
 #   (a) P1 — a member of tests/fixtures/must_not_miss_eps.py is graded `routine` by the ACTING
 #       side. A real EP must never be missed; announced once per member ever.
-#   (b) HIGH alerts over the last 7 days fall MORE THAN 50% vs the prior 30 days (both averaged
-#       over TRADING days).
+#   (b) HIGH alerts PER STOCK THAT GAPPED over the last 7 days fall MORE THAN 50% vs the prior
+#       30 days (both pooled over TRADING days). Supply-normalised 2026-08-26 — see the block
+#       above _LATTICE_SUPPLY_GAP_PCT.
 #   (c) Two consecutive trading days with ZERO EP alerts (any tier).
 #
 # Wired into _post_nightly_audit_job (17:30 ET, scheduler.py) — the existing audit surface, no
 # new cron. Stands down when the `catalyst_tier_lattice` toggle is OFF (reverted = nothing to
-# guard). Read-only: SELECTs mi_catalyst_tier_shadow / mi_ep_alerts, writes only audit rows and
-# Telegram — never a grade, entry, sizing or safeguard path.
+# guard). Read-only: SELECTs mi_catalyst_tier_shadow / mi_ep_alerts / mi_daily_closes, writes
+# only audit rows and Telegram — never a grade, entry, sizing or safeguard path.
 
 _LATTICE_TOGGLE = ("catalyst_tier_lattice", "CATALYST_TIER_LATTICE_ENABLED")
 _LATTICE_REVERT_SQL = (
@@ -3330,7 +3331,9 @@ _LATTICE_REVERT_SQL = (
     "ON CONFLICT (safeguard, account_mode) DO UPDATE "
     "SET state = EXCLUDED.state, updated_at = NOW();"
 )
-_LATTICE_HIGH_DROP_FRACTION = 0.5   # trigger (b): recent daily avg < 50% of prior daily avg
+_LATTICE_HIGH_DROP_FRACTION = 0.5   # trigger (b): recent rate < 50% of prior rate. OPERATOR-
+                                    # SIGNED 2026-08-22 and UNCHANGED by the 2026-08-26
+                                    # supply-normalisation — only the denominator moved.
 _LATTICE_RECENT_DAYS = 7            # trigger (b): recent window, calendar days
 _LATTICE_PRIOR_DAYS = 30            # trigger (b): prior window, calendar days
 _LATTICE_ZERO_ALERT_DAYS = 2        # trigger (c): consecutive zero-alert trading days
@@ -3356,6 +3359,59 @@ _LATTICE_MIN_POST_FLIP_TRADING_DAYS = 5   # trigger (b) floor: fewer post-flip t
     # (Mon-Fri, no holiday) — i.e. the SAME sample size the pre-fix "recent" window always
     # compared on. Below it, trigger (b) is suppressed (silent, like a healthy day) rather
     # than firing on a partial week.
+
+# ── trigger (b) SUPPLY NORMALISATION (2026-08-26) ─────────────────────────────────────────
+# WHY. Trigger (b) counted OUR ALERTS against a trailing average of our alerts, i.e. it
+# assumed a flat baseline of opportunity. Alert count is a function of SUPPLY, and supply is
+# seasonal: the operator, on the second false fire in two days — *"we are at the tail end of
+# earnings season, so gap-ups (and downs) shrink naturally"*. A flat-baseline trigger
+# therefore false-fires at every earnings trough. Measured over 2026-07-30 -> 2026-08-25 the
+# per-trading-day form fires 3x (08-21, 08-24, 08-25) and all three are the tape
+# (docs/analysis/alert_volume_collapse_2026-08-24.md: every conversion stage inside the funnel
+# was at or above its July level while the number of gapping stocks fell ~50/day -> ~20/day).
+#
+# THE OPERATOR'S CONSTRAINT, which is the whole design: *"i don't want to make the assumption
+# that more real EPs happen during earnings season, just more gap ups (and downs) in general
+# due to earnings, let's not conflate the two, I don't have any data to say if there's similar
+# effect on real EPs."* So the denominator is GAP SUPPLY, which we measure, and NOTHING here
+# encodes an expected EP rate, a seasonal scale factor or a per-month threshold. The trigger
+# now asks "did our CONVERSION of available supply halve?" — a thin tape produces few alerts
+# without tripping it, and a broken funnel still trips it on a thin tape.
+#
+# THE SUPPLY MEASURE: stocks whose OPEN gapped >= _LATTICE_SUPPLY_GAP_PCT above the prior
+# close, restricted to the D-1 universe floors (prior close >= $5, prior-day volume >= 50k
+# shares), counted per trading day from `mi_daily_closes`.
+#
+# WHY IT SURVIVES THE 2026-08-22 LOGGING BOUNDARY. The obvious denominator — candidates in
+# `mi_ep_scan_log` — is NOT comparable across 2026-08-22: #570 made the two silent D-1
+# universe floors log a row, so the scan log's distinct-ticker count jumps ~18/day to ~222/day
+# (213 of the 222 rows on 2026-08-24 are `filter:universe_prev_close_too_low`, median prior
+# close $1.78) purely from the logging change. `mi_daily_closes` is a different table written
+# by a different job (nightly_data_pull 17:00 ET), untouched by #570, complete on both sides of
+# the boundary (12.2-12.4k rows/day with an open price every day since 2026-07-06) — the
+# boundary cannot reach it. It is also OUTSIDE our funnel entirely, which is the second reason
+# to prefer it: a scan-log denominator moves with the #489/#490 real-time admission layer, so a
+# break THERE would shrink numerator and denominator together and hide itself.
+#
+# THE FLOORS ARE A YARDSTICK, NOT A RULE — hardcoded here on purpose rather than imported from
+# ep_detector, so a signed admission change (MIN_GAP_PCT 10.0 -> 9.0 on 2026-08-19) shows up as
+# a CONVERSION MOVE instead of being silently absorbed by a denominator that moved with it. A
+# yardstick that moves is not a yardstick. Nothing in this block admits, grades or sizes
+# anything.
+# THE LINE: this changes trigger (b)'s DENOMINATOR only. _LATTICE_HIGH_DROP_FRACTION (the
+# operator-signed 50%), the flip, the revert flag and every grading/entry rule are untouched.
+_LATTICE_SUPPLY_GAP_PCT = 10.0            # open vs prior close, in percent
+_LATTICE_SUPPLY_MIN_PREV_CLOSE = 5.0      # mirrors ep_detector.MIN_PREV_CLOSE as of 2026-08-26
+_LATTICE_SUPPLY_MIN_PREV_VOLUME = 50_000  # mirrors ep_detector.MIN_PREV_DAY_VOLUME, same date
+_LATTICE_SUPPLY_LAG_WARMUP_DAYS = 10      # extra calendar days read before the span so the
+    # first day in the span has a prior-close/prior-volume row to LAG onto (covers a long
+    # weekend plus a holiday). Warm-up rows are read, then filtered out of the result.
+_LATTICE_SUPPLY_MIN_UNIVERSE_ROWS = 2000  # a trading day counts as MEASURED only if it has at
+    # least this many rows WITH an open price. Sits below the 2,200-row liveness floor
+    # nightly_data_pull is already audited against (scheduler.py expected_min_rows), so a
+    # partial or open-less ingest can never masquerade as a quiet tape. Guarding on rows WITH
+    # AN OPEN specifically matters: closes-without-opens would score every day as zero supply,
+    # which inflates the PRIOR rate and manufactures a false fire.
 
 
 def _load_must_not_miss_members() -> "list[tuple[str, str]] | None":
@@ -3490,6 +3546,66 @@ def _lattice_era_windows(day: date, flip_date: date) -> "tuple[list[date], list[
     return recent, prior, True
 
 
+async def _lattice_supply_by_date(c, span_start: date, span_end: date) -> "dict[date, int]":
+    """Trigger (b)'s DENOMINATOR: per trading day, how many stocks actually gapped past the
+    D-1 universe floors — the tape's offer, measured, never assumed (see the block above
+    `_LATTICE_SUPPLY_GAP_PCT` for why this measure and why it survives the 2026-08-22 scan-log
+    logging boundary).
+
+    Returns {trade_date: supply}, containing ONLY days whose `mi_daily_closes` ingest is
+    complete enough to trust (>= `_LATTICE_SUPPLY_MIN_UNIVERSE_ROWS` rows carrying an open
+    price). A day that is ABSENT is 'not measured' — the caller MUST drop it from both the
+    numerator and the denominator, never read it as zero supply. `{}` on any query failure:
+    trigger (b) then has no denominator and stays silent, which is the correct failure
+    direction for a monitor that would otherwise print revert SQL for a trading change.
+
+    Read-only, one query, ~47 calendar days x ~12.3k rows; `mi_daily_closes` is keyed
+    PRIMARY KEY (trade_date, ticker) so the span is an index range scan.
+
+    Inline SQL on the caller's connection, not a `db.py` helper, deliberately: it matches the
+    rest of this monitor (`_lattice_flip_date`, the alert-count query) and keeps the whole
+    unit testable through one fake connection."""
+    try:
+        rows = await c.fetch(
+            """
+            WITH b AS (
+                SELECT trade_date, open_price,
+                       lag(close)  OVER (PARTITION BY ticker ORDER BY trade_date) AS prev_close,
+                       lag(volume) OVER (PARTITION BY ticker ORDER BY trade_date) AS prev_volume
+                FROM mi_daily_closes
+                WHERE trade_date >= $1 AND trade_date <= $2
+            )
+            SELECT trade_date,
+                   count(*) FILTER (WHERE open_price IS NOT NULL) AS rows_with_open,
+                   count(*) FILTER (
+                       WHERE open_price IS NOT NULL
+                         AND prev_close >= $4
+                         AND prev_volume >= $5
+                         -- NULLIF, not a `prev_close > 0` companion clause: Postgres may
+                         -- evaluate AND arms in any order, so a zero prior close (a bad
+                         -- tick) could reach the division and raise. NULL simply fails the
+                         -- comparison, which is the behaviour we want.
+                         AND (open_price - prev_close) / NULLIF(prev_close, 0) * 100.0 >= $6
+                   ) AS supply
+            FROM b
+            WHERE trade_date >= $3
+            GROUP BY trade_date
+            """,
+            span_start - timedelta(days=_LATTICE_SUPPLY_LAG_WARMUP_DAYS), span_end, span_start,
+            _LATTICE_SUPPLY_MIN_PREV_CLOSE, _LATTICE_SUPPLY_MIN_PREV_VOLUME,
+            _LATTICE_SUPPLY_GAP_PCT)
+    except Exception as e:
+        logger.warning("catalyst_lattice_monitor: supply read failed: %s", e)
+        return {}
+    return {r["trade_date"]: int(r["supply"]) for r in rows
+            if int(r["rows_with_open"] or 0) >= _LATTICE_SUPPLY_MIN_UNIVERSE_ROWS}
+
+
+def _lattice_per_100(alerts: int, supply: int) -> float:
+    """HIGH alerts per 100 gapping stocks — the rate in a unit a human can hold."""
+    return round(100.0 * alerts / supply, 1) if supply else 0.0
+
+
 async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]":
     """#533 flip monitor — see the block comment above. Returns {"enabled", "today",
     "triggers", "errors", "spoke"}; never raises (each trigger isolated). Silent when
@@ -3577,10 +3693,17 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 span_start, day)
             by_date = {r["alert_date"]: (int(r["n"]), int(r["high_n"])) for r in arows}
 
-            # trigger (b): 7d HIGH daily average vs the prior 30d, trading days only, ERA-SCOPED
-            # to the flip (2026-08-24 fix — see _lattice_era_windows docstring). A drop that
-            # falls entirely on the pre-flip side of the boundary must never reach here as a
-            # "recent vs prior" comparison the flip could plausibly explain.
+            # the tape's offer per trading day — trigger (b)'s denominator, and the context
+            # trigger (c) prints. Measured, never assumed; {} when unmeasurable.
+            supply_by_date = await _lattice_supply_by_date(c, span_start, day)
+
+            # trigger (b): HIGH alerts PER GAPPING STOCK over the last 7 days vs the prior 30,
+            # trading days only, ERA-SCOPED to the flip (2026-08-24 fix — see
+            # _lattice_era_windows docstring) and SUPPLY-NORMALISED (2026-08-26 fix — see the
+            # block above _LATTICE_SUPPLY_GAP_PCT). A drop that falls entirely on the pre-flip
+            # side of the boundary must never reach here as a "recent vs prior" comparison the
+            # flip could plausibly explain; a drop that is just a thinner tape must not reach
+            # the 50% test at all, because the 50% test is now about CONVERSION.
             flip_date, flip_source = await _lattice_flip_date(c)
             recent_td, prior_td, scoped = _lattice_era_windows(day, flip_date)
             if recent_td and prior_td:
@@ -3594,19 +3717,52 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                         len(recent_td), flip_date, flip_source,
                         _LATTICE_MIN_POST_FLIP_TRADING_DAYS)
                 else:
-                    recent_avg = sum(by_date.get(d, (0, 0))[1] for d in recent_td) / len(recent_td)
-                    prior_avg = sum(by_date.get(d, (0, 0))[1] for d in prior_td) / len(prior_td)
-                    drop = _evaluate_lattice_high_drop(recent_avg, prior_avg)
-                    if drop:
-                        out["triggers"].append({
-                            "kind": "high_volume_drop", **drop,
-                            "recent_days": len(recent_td), "prior_days": len(prior_td),
-                            "recent_high_n": sum(by_date.get(d, (0, 0))[1] for d in recent_td),
-                            "prior_high_n": sum(by_date.get(d, (0, 0))[1] for d in prior_td),
-                            "flip_date": flip_date.isoformat(),
-                            "flip_date_source": flip_source})
+                    # a day whose supply is unmeasured leaves BOTH sides of the ratio — never
+                    # counted as zero supply (that would inflate the other window's rate).
+                    recent_m = [d for d in recent_td if d in supply_by_date]
+                    prior_m = [d for d in prior_td if d in supply_by_date]
+                    recent_supply = sum(supply_by_date[d] for d in recent_m)
+                    prior_supply = sum(supply_by_date[d] for d in prior_m)
+                    if not recent_m or not prior_m or not recent_supply or not prior_supply:
+                        logger.info(
+                            "catalyst_lattice_monitor: trigger (b) suppressed — gap supply "
+                            "unmeasurable (recent %d/%d day(s)=%d stocks, prior %d/%d "
+                            "day(s)=%d stocks); conversion cannot be judged without a "
+                            "denominator", len(recent_m), len(recent_td), recent_supply,
+                            len(prior_m), len(prior_td), prior_supply)
+                        out["errors"].append({"supply": "unmeasurable"})
+                    else:
+                        recent_high = sum(by_date.get(d, (0, 0))[1] for d in recent_m)
+                        prior_high = sum(by_date.get(d, (0, 0))[1] for d in prior_m)
+                        # POOLED totals, not a mean of per-day ratios: a 5-name day would
+                        # otherwise carry the same weight as a 130-name day.
+                        recent_rate = recent_high / recent_supply
+                        prior_rate = prior_high / prior_supply
+                        drop = _evaluate_lattice_high_drop(recent_rate, prior_rate)
+                        if drop:
+                            out["triggers"].append({
+                                "kind": "high_conversion_drop",
+                                "recent_rate": round(recent_rate, 5),
+                                "prior_rate": round(prior_rate, 5),
+                                "drop_pct": drop["drop_pct"],
+                                "recent_days": len(recent_m), "prior_days": len(prior_m),
+                                "recent_high_n": recent_high, "prior_high_n": prior_high,
+                                "recent_supply": recent_supply, "prior_supply": prior_supply,
+                                "recent_per_100": _lattice_per_100(recent_high, recent_supply),
+                                "prior_per_100": _lattice_per_100(prior_high, prior_supply),
+                                "recent_avg": round(recent_high / len(recent_m), 3),
+                                "prior_avg": round(prior_high / len(prior_m), 3),
+                                "supply_gap_pct": _LATTICE_SUPPLY_GAP_PCT,
+                                "flip_date": flip_date.isoformat(),
+                                "flip_date_source": flip_source})
 
-            # trigger (c): the two most recent trading days both produced ZERO alerts
+            # trigger (c): the two most recent trading days both produced ZERO alerts.
+            # DELIBERATELY NOT supply-normalised (2026-08-26): two silent days on a live money
+            # path is worth a look even when the cause turns out to be the tape, and a monitor
+            # that can never speak is worse than one that occasionally says something you
+            # dismiss. What changed is the MESSAGE — it now carries each day's gap supply and
+            # the trailing conversion rate, so the operator can dismiss it in one glance
+            # instead of opening an investigation.
             last_tds: "list[date]" = []
             d = day
             while len(last_tds) < _LATTICE_ZERO_ALERT_DAYS and (day - d).days < 10:
@@ -3615,9 +3771,19 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                 d -= timedelta(days=1)
             if (len(last_tds) == _LATTICE_ZERO_ALERT_DAYS
                     and all(by_date.get(d, (0, 0))[0] == 0 for d in last_tds)):
+                ctx_days = [d for d in prior_td if d in supply_by_date]
+                ctx_supply = sum(supply_by_date[d] for d in ctx_days)
+                # ALL tiers, matching this trigger's own "no EP alerts at all" definition —
+                # not the HIGH-only count trigger (b) uses.
+                ctx_alerts = sum(by_date.get(d, (0, 0))[0] for d in ctx_days)
                 out["triggers"].append({
                     "kind": "zero_alert_days",
-                    "days": [d.isoformat() for d in last_tds]})
+                    "days": [d.isoformat() for d in last_tds],
+                    "supply": [supply_by_date.get(d) for d in last_tds],
+                    "supply_gap_pct": _LATTICE_SUPPLY_GAP_PCT,
+                    "trailing_per_100": (_lattice_per_100(ctx_alerts, ctx_supply)
+                                         if ctx_supply else None),
+                    "trailing_days": len(ctx_days)})
         except Exception as e:
             logger.warning("catalyst_lattice_monitor: alert-volume triggers failed: %s", e)
             out["errors"].append({"volume": str(e)})
@@ -3634,18 +3800,31 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"routine by the acting tier (LLM grade {t['llm_grade']}, lattice "
                     f"{t['lattice_tier']}, acting side {t['live_side']}). A real EP must "
                     f"never be missed — this is the trigger that matters most.")
-            elif t["kind"] == "high_volume_drop":
+            elif t["kind"] == "high_conversion_drop":
                 lines.append(
-                    f"• HIGH-ALERT COLLAPSE: since the catalyst-tier flip ({t['flip_date']}), "
-                    f"the {t['recent_days']} trading day(s) on/after it averaged "
-                    f"{t['recent_avg']} HIGH alerts/day ({t['recent_high_n']} total) vs "
-                    f"{t['prior_avg']}/day ({t['prior_high_n']} total) over the "
-                    f"{t['prior_days']} trading days before it — a {t['drop_pct']}% drop "
-                    f"(threshold 50%).")
+                    f"• WE ARE CONVERTING LESS OF WHAT THE TAPE OFFERS: since the "
+                    f"catalyst-tier flip ({t['flip_date']}), the {t['recent_days']} trading "
+                    f"day(s) on/after it produced {t['recent_high_n']} HIGH alerts out of "
+                    f"{t['recent_supply']} stocks that gapped {t['supply_gap_pct']:.0f}%+ past "
+                    f"the universe floors — {t['recent_per_100']} per 100 — against "
+                    f"{t['prior_high_n']} out of {t['prior_supply']} "
+                    f"({t['prior_per_100']} per 100) over the {t['prior_days']} trading days "
+                    f"before it. That is a {t['drop_pct']}% fall in the share we convert "
+                    f"(threshold 50%). Raw volume, for reference only: {t['recent_avg']} "
+                    f"alerts/day vs {t['prior_avg']} — a thinner tape alone does NOT trip "
+                    f"this trigger.")
             elif t["kind"] == "zero_alert_days":
+                sup = ["?" if s is None else str(s) for s in t.get("supply", [])]
+                ctx = (f" The tape offered {' and '.join(sup)} stocks gapping "
+                       f"{t['supply_gap_pct']:.0f}%+ past the universe floors on those days"
+                       if sup else "")
+                rate = t.get("trailing_per_100")
+                ctx += (f", against {rate} alerts per 100 such stocks over the prior "
+                        f"{t['trailing_days']} trading days." if rate is not None else ".")
                 lines.append(
                     f"• ZERO-ALERT DAYS: no EP alerts at all on {' and '.join(t['days'])} "
-                    f"— two consecutive trading days.")
+                    f"— two consecutive trading days.{ctx} (Supply is CONTEXT, not a verdict "
+                    f"— this trigger is deliberately not supply-normalised.)")
         lines.append("")
         lines.append("Revert the flip (ONE flag; takes effect within ~60s, no redeploy):")
         lines.append("```")

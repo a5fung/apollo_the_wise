@@ -161,14 +161,37 @@ class _FakeConn:
     hardcoded fallback, exactly like a fresh/never-toggled DB."""
 
     def __init__(self, shadow_rows=None, alert_rows=None, dedupe_hit=False,
-                 flip_date=None, safeguard_transition=None):
+                 flip_date=None, safeguard_transition=None, supply=None):
         self.shadow_rows = shadow_rows or []
         self.alert_rows = alert_rows or []
         self.dedupe_hit = dedupe_hit
         self.flip_date = flip_date
         self.safeguard_transition = safeguard_transition
+        # `supply` (trigger (b)'s denominator, 2026-08-26): None -> a FLAT tape, which makes
+        # the supply-normalised statistic mathematically identical to the old per-trading-day
+        # one (constant supply cancels), so every pre-existing trigger-(b) assertion keeps
+        # measuring what it was written to measure. Pass a {date: gapping-stock-count} dict to
+        # vary the tape; a date ABSENT from that dict is 'not measured' (no row at all), which
+        # is NOT the same as a zero-supply day.
+        self.supply = supply
+        self.saw_sql = []
+
+    _FLAT_SUPPLY = 20
 
     async def fetch(self, sql, *args):
+        self.saw_sql.append(sql)
+        if "mi_daily_closes" in sql:
+            span_start, span_end = args[2], args[1]
+            if self.supply is None:
+                days, d = [], span_start
+                while d <= span_end:
+                    days.append((d, self._FLAT_SUPPLY))
+                    d += timedelta(days=1)
+            else:
+                days = [(d, n) for d, n in sorted(self.supply.items())
+                        if span_start <= d <= span_end]
+            return [{"trade_date": d, "rows_with_open": 12_300, "supply": n}
+                    for d, n in days]
         if "mi_catalyst_tier_shadow" in sql:
             return self.shadow_rows
         if "mi_ep_alerts" in sql:
@@ -284,12 +307,16 @@ async def test_trigger_b_high_collapse_names_the_numbers(monkeypatch):
     conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
                       flip_date=date(2026, 1, 1))
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
-    assert [t["kind"] for t in out["triggers"]] == ["high_volume_drop"]
+    assert [t["kind"] for t in out["triggers"]] == ["high_conversion_drop"]
     t = out["triggers"][0]
+    # a FLAT tape makes the supply-normalised statistic identical to the old per-day one —
+    # the halving is still a halving, and the raw per-day figures are still reported.
     assert t["recent_avg"] == 1.0 and t["prior_avg"] == 4.0 and t["drop_pct"] == 75.0
+    assert t["recent_supply"] > 0 and t["prior_supply"] > 0
     assert t["flip_date"] == "2026-01-01" and t["flip_date_source"] == "shadow_acting_record"
     msg = tg.call_args[0][0]
-    assert "HIGH-ALERT COLLAPSE" in msg and "75.0%" in msg and "2026-01-01" in msg
+    assert "CONVERTING LESS OF WHAT THE TAPE OFFERS" in msg
+    assert "75.0%" in msg and "2026-01-01" in msg
     assert hc._LATTICE_REVERT_SQL in msg
 
 
@@ -328,10 +355,10 @@ async def test_trigger_b_does_not_fire_on_the_real_pre_flip_collapse(monkeypatch
     flip = date(2026, 8, 22)
     conn = _FakeConn(alert_rows=_REAL_INCIDENT_ROWS, flip_date=flip)
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=today)
-    assert all(t["kind"] != "high_volume_drop" for t in out["triggers"])
+    assert all(t["kind"] != "high_conversion_drop" for t in out["triggers"])
     assert all(t["kind"] != "zero_alert_days" for t in out["triggers"])   # only 1 silent day
     tg_calls = [c.args[0] for c in tg.call_args_list]
-    assert not any("HIGH-ALERT COLLAPSE" in m for m in tg_calls)
+    assert not any("CONVERTING LESS OF WHAT THE TAPE OFFERS" in m for m in tg_calls)
 
     # the OLD, unscoped math on these exact numbers WOULD have fired -- this is what tonight's
     # alert said before the fix (the transcript's "66.6% drop"), confirming the fix changed a
@@ -362,7 +389,7 @@ async def test_trigger_b_suppressed_when_too_few_post_flip_trading_days(monkeypa
         i += 1
     conn = _FakeConn(alert_rows=rows, flip_date=flip)
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=today)
-    assert all(t["kind"] != "high_volume_drop" for t in out["triggers"])
+    assert all(t["kind"] != "high_conversion_drop" for t in out["triggers"])
 
 
 @pytest.mark.asyncio
@@ -385,7 +412,7 @@ async def test_trigger_b_not_blocked_by_a_holiday_week_once_the_flip_is_old(monk
     conn = _FakeConn(alert_rows=_alert_rows(today, recent_high=1, prior_high=4),
                       flip_date=flip)
     out = await hc.run_catalyst_lattice_monitor(conn=conn, today=today)
-    assert [t["kind"] for t in out["triggers"]] == ["high_volume_drop"]
+    assert [t["kind"] for t in out["triggers"]] == ["high_conversion_drop"]
     assert out["triggers"][0]["recent_days"] == 4
 
 
@@ -446,3 +473,224 @@ def test_revert_sql_targets_the_one_flag():
     assert "'catalyst_tier_lattice'" in hc._LATTICE_REVERT_SQL
     assert "'global'" in hc._LATTICE_REVERT_SQL and "'off'" in hc._LATTICE_REVERT_SQL
     assert "ON CONFLICT (safeguard, account_mode)" in hc._LATTICE_REVERT_SQL
+
+
+# ── trigger (b) SUPPLY NORMALISATION (2026-08-26) ──────────────────────────────────────
+#
+# Alert volume is a function of SUPPLY, and supply is seasonal (operator, after the second
+# false fire in two days: "we are at the tail end of earnings season, so gap-ups (and downs)
+# shrink naturally"). These tests pin the redefinition: the trigger fires on a fall in the
+# share of available gap supply we CONVERT, never on a fall in raw alert count. Nothing here
+# encodes an expected EP rate — the operator explicitly forbade assuming one.
+#
+# Real production series, 2026-07-06 -> 2026-08-24, captured once and read many
+# (scripts/probes/_alertdrop_capture_out.psv, Q10 alert counts + Q5 tape breadth; the study is
+# docs/analysis/alert_volume_collapse_2026-08-24.md). HIGH alerts, live source only, and the
+# number of stocks whose open gapped >=10% past the D-1 universe floors that day.
+_REAL_HIGH = {
+    (7, 6): 1, (7, 7): 1, (7, 8): 1, (7, 9): 0, (7, 10): 2,
+    (7, 13): 0, (7, 14): 2, (7, 15): 3, (7, 16): 0, (7, 17): 0,
+    (7, 20): 2, (7, 21): 1, (7, 22): 2, (7, 23): 1, (7, 24): 2,
+    (7, 27): 2, (7, 28): 1, (7, 29): 2, (7, 30): 7, (7, 31): 6,
+    (8, 3): 2, (8, 4): 10, (8, 5): 8, (8, 6): 8, (8, 7): 10,
+    (8, 10): 4, (8, 11): 4, (8, 12): 6, (8, 13): 5, (8, 14): 4,
+    (8, 17): 1, (8, 18): 1, (8, 19): 3, (8, 20): 2, (8, 21): 1,
+    (8, 24): 0,
+}
+_REAL_SUPPLY = {
+    (7, 6): 27, (7, 7): 10, (7, 8): 5, (7, 9): 47, (7, 10): 16,
+    (7, 13): 5, (7, 14): 49, (7, 15): 10, (7, 16): 14, (7, 17): 11,
+    (7, 20): 17, (7, 21): 56, (7, 22): 8, (7, 23): 12, (7, 24): 9,
+    (7, 27): 19, (7, 28): 14, (7, 29): 17, (7, 30): 133, (7, 31): 82,
+    (8, 3): 8, (8, 4): 79, (8, 5): 38, (8, 6): 46, (8, 7): 60,
+    (8, 10): 10, (8, 11): 17, (8, 12): 82, (8, 13): 19, (8, 14): 24,
+    (8, 17): 11, (8, 18): 16, (8, 19): 21, (8, 20): 36, (8, 21): 25,
+    (8, 24): 19,
+}
+_REAL_HIGH_D = {date(2026, m, d): n for (m, d), n in _REAL_HIGH.items()}
+_REAL_SUPPLY_D = {date(2026, m, d): n for (m, d), n in _REAL_SUPPLY.items()}
+_REAL_ROWS = [{"alert_date": d, "n": n, "high_n": n} for d, n in _REAL_HIGH_D.items()]
+_OLD_FLIP = date(2026, 1, 1)   # flip far outside the lookback -> era scoping self-heals off,
+                               # so the STATISTIC itself is what these tests judge
+
+
+@pytest.mark.asyncio
+async def test_trigger_b_stays_quiet_on_the_real_earnings_trough(monkeypatch):
+    """THE FALSE FIRE THIS CHANGE EXISTS FOR. On the real 2026-08-24 series the raw
+    per-trading-day form fires (1.4 alerts/day vs 4.19 — the alert that actually went out),
+    but the tape had thinned from ~36 to ~23 gapping stocks a day and our conversion of it
+    barely moved. The supply-normalised form must NOT fire — and the old math on the SAME
+    numbers must, or this test proves nothing."""
+    audit, tg = _patch_common(monkeypatch)
+    today = date(2026, 8, 24)
+    conn = _FakeConn(alert_rows=_REAL_ROWS, flip_date=_OLD_FLIP, supply=_REAL_SUPPLY_D)
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=today)
+    assert all(t["kind"] != "high_conversion_drop" for t in out["triggers"])
+    assert out["errors"] == []          # quiet because it MEASURED, not because it stalled
+
+    recent = hc._lattice_trading_days(today, hc._LATTICE_RECENT_DAYS)
+    prior = [d for d in hc._lattice_trading_days(
+        today, hc._LATTICE_RECENT_DAYS + hc._LATTICE_PRIOR_DAYS) if d not in set(recent)]
+    # the OLD statistic on these exact numbers WOULD have fired
+    assert hc._evaluate_lattice_high_drop(
+        sum(_REAL_HIGH_D.get(d, 0) for d in recent) / len(recent),
+        sum(_REAL_HIGH_D.get(d, 0) for d in prior) / len(prior)) is not None
+    # ...and the new one does not, by 1 HIGH alert — it is NOT a mute
+    r_sup = sum(_REAL_SUPPLY_D[d] for d in recent)
+    p_rate = (sum(_REAL_HIGH_D.get(d, 0) for d in prior)
+              / sum(_REAL_SUPPLY_D[d] for d in prior))
+    assert sum(_REAL_HIGH_D.get(d, 0) for d in recent) == 7
+    assert int(hc._LATTICE_HIGH_DROP_FRACTION * p_rate * r_sup) == 6   # 7 would have to be <=6
+
+
+@pytest.mark.asyncio
+async def test_trigger_b_fires_when_conversion_breaks_on_the_same_thin_tape(monkeypatch):
+    """The property that matters: a genuinely broken funnel still trips it on a THIN tape.
+    Identical supply to the test above (the real, thinned 2026-08 tape) — only our alerts are
+    gone. Must fire, or the change is a mute dressed as a fix."""
+    audit, tg = _patch_common(monkeypatch)
+    today = date(2026, 8, 24)
+    broken = dict(_REAL_HIGH_D)
+    for d in (date(2026, 8, 18), date(2026, 8, 19), date(2026, 8, 20), date(2026, 8, 21)):
+        broken[d] = 0
+    rows = [{"alert_date": d, "n": n, "high_n": n} for d, n in broken.items()]
+    conn = _FakeConn(alert_rows=rows, flip_date=_OLD_FLIP, supply=_REAL_SUPPLY_D)
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=today)
+    t = [x for x in out["triggers"] if x["kind"] == "high_conversion_drop"]
+    assert t, "a conversion collapse on a thin tape MUST fire"
+    assert t[0]["recent_high_n"] == 0 and t[0]["recent_supply"] == 117
+    assert t[0]["prior_high_n"] == 88 and t[0]["prior_supply"] == 761
+    assert t[0]["drop_pct"] == 100.0
+    msg = tg.call_args[0][0]
+    assert "CONVERTING LESS OF WHAT THE TAPE OFFERS" in msg
+    assert "117" in msg and "761" in msg          # the tape is named, not hidden
+    assert hc._LATTICE_REVERT_SQL in msg
+
+
+@pytest.mark.asyncio
+async def test_a_supply_only_collapse_does_not_fire_but_a_conversion_one_does(monkeypatch):
+    """The clean A/B, and the whole point of the change. The ALERT series is identical in
+    both halves — 4 HIGH/day falling to 1 HIGH/day, a 75% raw collapse that the old form
+    fires on either way. Only the tape differs. Tape falls 75% too -> conversion is flat ->
+    silent. Tape unchanged -> conversion falls 75% -> fires."""
+    audit, tg = _patch_common(monkeypatch)
+    span = hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS + hc._LATTICE_PRIOR_DAYS)
+    recent = set(hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS))
+
+    thin = {d: (10 if d in recent else 40) for d in span}
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+                      flip_date=_OLD_FLIP, supply=thin)
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert all(t["kind"] != "high_conversion_drop" for t in out["triggers"])
+
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+                      flip_date=_OLD_FLIP, supply={d: 40 for d in span})
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert [t["kind"] for t in out["triggers"]] == ["high_conversion_drop"]
+    assert out["triggers"][0]["drop_pct"] == 75.0
+
+
+@pytest.mark.asyncio
+async def test_the_2026_08_22_scan_log_logging_boundary_cannot_create_a_signal(monkeypatch):
+    """#570 made the two silent D-1 universe floors log a row from 2026-08-22, so
+    `mi_ep_scan_log`'s distinct-ticker count jumps ~18/day to ~222/day across that date for
+    logging reasons alone. The denominator must be immune: the monitor never reads the scan
+    log at all, and the supply query it does run applies the $5 / 50k-share universe floors
+    inside SQL, so the sub-$5 names that class consists of are excluded identically on BOTH
+    sides of the boundary."""
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=3, prior_high=3),
+                      flip_date=_OLD_FLIP)
+    await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert not any("mi_ep_scan_log" in s for s in conn.saw_sql)
+    supply_sql = [s for s in conn.saw_sql if "mi_daily_closes" in s]
+    assert len(supply_sql) == 1
+    assert "prev_close >= $4" in supply_sql[0] and "prev_volume >= $5" in supply_sql[0]
+    assert hc._LATTICE_SUPPLY_MIN_PREV_CLOSE == 5.0
+    assert hc._LATTICE_SUPPLY_MIN_PREV_VOLUME == 50_000
+
+
+@pytest.mark.asyncio
+async def test_trigger_b_suppressed_when_the_tape_cannot_be_measured(monkeypatch):
+    """No denominator -> no conversion judgement. Silent (and recorded as an error) rather
+    than falling back to raw counts: falling back is the false fire this change removes."""
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=1, prior_high=4),
+                      flip_date=_OLD_FLIP, supply={})
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert out["triggers"] == []
+    assert {"supply": "unmeasurable"} in out["errors"]
+    tg.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_day_with_no_supply_row_is_dropped_from_BOTH_windows(monkeypatch):
+    """An unmeasured day must never be read as zero supply — that would inflate the other
+    window's rate and manufacture a fire. Here the whole RECENT window is unmeasured while
+    the alerts on it collapse; with 'absent == 0 supply' this would fire."""
+    audit, tg = _patch_common(monkeypatch)
+    span = hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS + hc._LATTICE_PRIOR_DAYS)
+    recent = set(hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS))
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=0, prior_high=4),
+                      flip_date=_OLD_FLIP,
+                      supply={d: 30 for d in span if d not in recent})
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert all(t["kind"] != "high_conversion_drop" for t in out["triggers"])
+    assert {"supply": "unmeasurable"} in out["errors"]
+
+
+@pytest.mark.asyncio
+async def test_a_partial_close_ingest_is_not_a_measured_day():
+    """A day whose mi_daily_closes rows are missing their open price would score as zero
+    supply and inflate the other window's rate. It must be dropped as UNMEASURED instead."""
+    class _Conn:
+        async def fetch(self, sql, *args):
+            return [{"trade_date": date(2026, 8, 20), "rows_with_open": 12_300, "supply": 36},
+                    {"trade_date": date(2026, 8, 21), "rows_with_open": 12, "supply": 0}]
+
+    got = await hc._lattice_supply_by_date(_Conn(), date(2026, 8, 1), date(2026, 8, 21))
+    assert got == {date(2026, 8, 20): 36}
+
+
+@pytest.mark.asyncio
+async def test_supply_read_failure_is_empty_not_an_exception():
+    class _Conn:
+        async def fetch(self, sql, *args):
+            raise RuntimeError("boom")
+
+    assert await hc._lattice_supply_by_date(_Conn(), date(2026, 8, 1), date(2026, 8, 21)) == {}
+
+
+@pytest.mark.asyncio
+async def test_trigger_c_message_carries_the_tape_context_but_still_fires(monkeypatch):
+    """Trigger (c) is deliberately NOT supply-normalised — two silent days on a live money
+    path is worth a look even when the tape is the cause. What changed is that the message now
+    carries each day's gap supply and the trailing conversion rate, so it can be dismissed at
+    a glance. It must still fire, and it must not print a forecast."""
+    audit, tg = _patch_common(monkeypatch)
+    span = hc._lattice_trading_days(_FRI, hc._LATTICE_RECENT_DAYS + hc._LATTICE_PRIOR_DAYS)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=4, prior_high=4, zero_last_n=2),
+                      flip_date=_OLD_FLIP, supply={d: 30 for d in span})
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    t = [x for x in out["triggers"] if x["kind"] == "zero_alert_days"]
+    assert t and t[0]["days"] == ["2026-08-21", "2026-08-20"]
+    assert t[0]["supply"] == [30, 30]
+    assert t[0]["trailing_per_100"] is not None
+    msg = tg.call_args[0][0]
+    assert "ZERO-ALERT DAYS" in msg and "gapping" in msg.lower()
+    assert "per 100" in msg and "not a verdict" in msg
+    assert hc._LATTICE_REVERT_SQL in msg
+
+
+@pytest.mark.asyncio
+async def test_trigger_c_still_fires_when_the_tape_is_unmeasurable(monkeypatch):
+    """The one thing trigger (c) must never do is go quiet. No supply data -> it still fires,
+    with the context marked unknown rather than omitted."""
+    audit, tg = _patch_common(monkeypatch)
+    conn = _FakeConn(alert_rows=_alert_rows(_FRI, recent_high=4, prior_high=4, zero_last_n=2),
+                      flip_date=_OLD_FLIP, supply={})
+    out = await hc.run_catalyst_lattice_monitor(conn=conn, today=_FRI)
+    assert [t["kind"] for t in out["triggers"]] == ["zero_alert_days"]
+    assert out["triggers"][0]["supply"] == [None, None]
+    assert "?" in tg.call_args[0][0]
