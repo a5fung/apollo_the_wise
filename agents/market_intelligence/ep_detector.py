@@ -2560,9 +2560,16 @@ async def send_rt_miss_digest(run_date=None) -> int:
     instead of a per-ticker blast. No-money observability; safe no-op if none. Returns the count.
 
     #490 RT-1 (operator fork 4 — shadow surfacing DIGEST-ONLY): the same digest carries the day's
-    `ep_rt_universe_catch` shadow events (Pass-0 would-have-caught, incl. pre-open — a window the
+    `ep_rt_universe_catch` events (Pass-0 would-have-caught, incl. pre-open — a window the
     watchdog never covers). Zero catch events (universe flag off, today's prod) → the message is
-    byte-identical to before."""
+    byte-identical to before.
+
+    Display-text fix (2026-08-26, #578-class — the operator read a "shadow catches" line the
+    morning AFTER `ep_rt_universe_authoritative` flipped on, because the word was hand-written
+    rather than derived): the catch line's ADMITTED-vs-shadow wording is now read from the SAME
+    `ep_rt_universe_authoritative` toggle the admission path (`_apply_rt_universe_overlay`) reads,
+    via `get_runtime_toggle`, so the next flip can't leave it stale again. A toggle-read error
+    omits the claim rather than guessing."""
     d = run_date or et_today()
     try:
         pool = await get_pool()
@@ -2601,15 +2608,32 @@ async def send_rt_miss_digest(run_date=None) -> int:
     ]
     if not items and not catch_items:
         return 0
+
+    # #578-class fix (2026-08-26, display-text only — no admission/behaviour change): derive
+    # ADMITTED-vs-shadow wording from the SAME toggle the admission path reads, so the label
+    # can never drift from what actually happened again. Only read it when there is a catch
+    # line to render. Fail direction: a toggle-read error asserts NOTHING about admit status
+    # (omits the claim) rather than guessing — get_runtime_toggle already fails open internally
+    # to the env default, so this outer guard is belt+braces for an unexpected error here.
+    _catch_label = None
+    if catch_items:
+        try:
+            _catch_authoritative = await get_runtime_toggle(
+                "ep_rt_universe_authoritative", "EP_RT_UNIVERSE_AUTHORITATIVE", default=False)
+            _catch_label = ("ADMITTED as candidates" if _catch_authoritative
+                             else "shadow-observed only, NOT admitted")
+        except Exception as _te:
+            logger.warning(f"send_rt_miss_digest toggle read failed (non-fatal): {_te}")
+
     parts = []
     if items:
         parts.append(
             f"🚨 Real-time EP misses today ({len(items)} residual — the delay-missed class the hybrid can't "
-            f"catch): " + " · ".join(items) + ". No entry (observability); grade/catalyst unconfirmed = "
-            f"Part B / #490 shadow.")
+            f"catch): " + " · ".join(items) + ". No entry (observability); grade/catalyst unconfirmed.")
     if catch_items:
+        _label_suffix = f", {_catch_label}" if _catch_label else ""
         parts.append(
-            f"👁 #490 rt-universe shadow catches ({len(catch_items)} more, guard-passing): "
+            f"👁 #490 rt-universe catches ({len(catch_items)} more, guard-passing{_label_suffix}): "
             + " · ".join(catch_items) + ".")
     try:
         from agents.market_intelligence.briefing import send_telegram_message

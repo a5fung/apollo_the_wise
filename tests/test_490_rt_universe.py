@@ -346,6 +346,17 @@ def _digest_pool(monkeypatch, miss_rows, catch_rows):
     monkeypatch.setattr(ep_detector, "get_pool", _pool)
 
 
+def _digest_toggle(monkeypatch, authoritative=None):
+    """#578-class fix (2026-08-26): the digest's catch-line wording is now DERIVED from
+    `ep_rt_universe_authoritative` via `get_runtime_toggle`, not hand-written. `authoritative=None`
+    simulates a toggle-read failure (raises) so the fail-direction (omit the claim) is testable."""
+    async def _toggle(name, env, default=False):
+        if authoritative is None:
+            raise RuntimeError("simulated toggle-read failure")
+        return authoritative
+    monkeypatch.setattr(ep_detector, "get_runtime_toggle", _toggle)
+
+
 def test_digest_appends_universe_catches_dedup_vs_misses(monkeypatch):
     from agents.market_intelligence import briefing
     _digest_pool(
@@ -353,6 +364,7 @@ def test_digest_appends_universe_catches_dedup_vs_misses(monkeypatch):
         [{"ticker": "AEHR", "rt_gap": 12.5, "tick_et": "09:31"}],
         [{"ticker": "AEHR", "rt_gap": 12.5, "tick_et": "09:31"},     # overlap → deduped
          {"ticker": "NVVE", "rt_gap": 31.8, "tick_et": "07:35"}])    # pre-open — watchdog-blind
+    _digest_toggle(monkeypatch, authoritative=False)   # shadow — matches this toggle's real default
     sent = []
 
     async def _tg(msg):
@@ -361,12 +373,15 @@ def test_digest_appends_universe_catches_dedup_vs_misses(monkeypatch):
     monkeypatch.setattr(briefing, "send_telegram_message", _tg)
     n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
     assert n == 2 and len(sent) == 1
-    assert "NVVE" in sent[0] and "shadow catches (1" in sent[0]
+    assert "NVVE" in sent[0] and "catches (1" in sent[0]
+    assert "shadow-observed only, NOT admitted" in sent[0]
+    assert "ADMITTED" not in sent[0]
 
 
 def test_digest_catches_only_still_sends(monkeypatch):
     from agents.market_intelligence import briefing
     _digest_pool(monkeypatch, [], [{"ticker": "NVVE", "rt_gap": 31.8, "tick_et": "07:35"}])
+    _digest_toggle(monkeypatch, authoritative=False)
     sent = []
 
     async def _tg(msg):
@@ -376,6 +391,67 @@ def test_digest_catches_only_still_sends(monkeypatch):
     n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
     assert n == 1 and len(sent) == 1 and "NVVE" in sent[0]
     assert "Real-time EP misses" not in sent[0]
+    assert "shadow-observed only, NOT admitted" in sent[0]
+
+
+def test_digest_catch_line_says_admitted_when_toggle_on(monkeypatch):
+    """The exact defect this fixes: the operator flipped `ep_rt_universe_authoritative` ON and
+    still saw a "shadow catches" line, because the word was hand-written rather than derived.
+    With the toggle reading True, the line must say ADMITTED and must NOT say shadow."""
+    from agents.market_intelligence import briefing
+    _digest_pool(monkeypatch, [], [{"ticker": "PLAB", "rt_gap": 10.61, "tick_et": "07:05"}])
+    _digest_toggle(monkeypatch, authoritative=True)
+    sent = []
+
+    async def _tg(msg):
+        sent.append(msg)
+        return True
+    monkeypatch.setattr(briefing, "send_telegram_message", _tg)
+    n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
+    assert n == 1 and len(sent) == 1
+    assert "ADMITTED as candidates" in sent[0]
+    assert "shadow" not in sent[0].lower()
+
+
+def test_digest_catch_line_omits_claim_on_toggle_failure(monkeypatch):
+    """Fail direction: a toggle-read error must not GUESS admitted vs shadow — the line should
+    assert neither, which is true regardless of the actual mode."""
+    from agents.market_intelligence import briefing
+    _digest_pool(monkeypatch, [], [{"ticker": "PLAB", "rt_gap": 10.61, "tick_et": "07:05"}])
+    _digest_toggle(monkeypatch, authoritative=None)   # raises
+    sent = []
+
+    async def _tg(msg):
+        sent.append(msg)
+        return True
+    monkeypatch.setattr(briefing, "send_telegram_message", _tg)
+    n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
+    assert n == 1 and len(sent) == 1
+    assert "ADMITTED" not in sent[0]
+    assert "shadow" not in sent[0].lower()
+    assert "PLAB" in sent[0]   # the catch itself still surfaces — only the mode claim is dropped
+
+
+def test_digest_residual_miss_line_is_mode_invariant(monkeypatch):
+    """The sibling residual-miss line (#489 ep_rt_live_miss) must not claim "#490 shadow" — that
+    tag went stale the same way the catch line did once #490 went authoritative. Fix stays MINIMAL
+    (advisor review, 2026-08-26): drop the stale tag only, keep the original weaker predicate —
+    a stronger "never reached the candidate list" claim can be FALSE for a ticker whose early-tick
+    miss row predates a later-tick admit the same morning (the digest aggregates the whole day;
+    the dedup is per-ticker-per-day, not per-tick), the exact TWST (#559) shape."""
+    from agents.market_intelligence import briefing
+    _digest_pool(monkeypatch, [{"ticker": "AEHR", "rt_gap": 12.5, "tick_et": "09:31"}], [])
+    sent = []
+
+    async def _tg(msg):
+        sent.append(msg)
+        return True
+    monkeypatch.setattr(briefing, "send_telegram_message", _tg)
+    n = asyncio.run(ep_detector.send_rt_miss_digest(run_date=date(2026, 7, 24)))
+    assert n == 1 and len(sent) == 1
+    assert "shadow" not in sent[0].lower()
+    assert "Part B" not in sent[0]
+    assert "grade/catalyst unconfirmed" in sent[0]
 
 
 # ── #490 gate-1 diagnostic: the three previously-SILENT drop paths ───────────────────────────
