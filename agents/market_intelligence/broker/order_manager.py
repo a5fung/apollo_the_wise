@@ -5065,6 +5065,35 @@ def _live_sell_stops(open_orders: list) -> list:
     return live_stops
 
 
+def _leg_unfilled_qty(order: dict, order_qty: float) -> float | None:
+    """#596 — the shares cancelling this order would actually RELEASE: its
+    order quantity MINUS what it has already filled.
+
+    `partially_filled` is a live-stop status, so a stop that has already sold
+    part of itself still reads as protection. Its ORDER qty is then a lie about
+    what it holds: the filled shares are gone from the position and from the
+    broker's reservation. Any decision about what a cancel frees must use this,
+    never `qty` (the #596 naked hazard: a partly-filled leg passed the widen
+    pre-flight on its order qty, got cancelled, and could not be replaced).
+
+    Returns None when `filled_qty` is missing or unparseable — the CALLER must
+    treat that as "refuse", never as zero. A real broker dict always carries
+    the field (`alpaca_client._order_to_dict` defaults it to 0), so None means
+    a malformed row, and defaulting it to 0 would silently restore the exact
+    over-statement this exists to remove. PURE: no broker or DB access.
+    """
+    raw = order.get("filled_qty")
+    if raw is None:
+        return None
+    try:
+        filled = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if filled < 0:
+        return None
+    return max(float(order_qty) - filled, 0.0)
+
+
 # Distinct "couldn't read the broker" outcome for the adopt/place decision —
 # must never be conflated with "no adoptable stop" (F16-sibling, 7/3).
 _BROKER_UNREADABLE = object()
@@ -5197,7 +5226,9 @@ async def _ensure_stop_coverage(
             (42210000, same as #508) — widen via the SAME verified-cancel →
             release-gate → new-stop mechanism instead (`_widen_stop_via_cancel_new`),
             after a pre-flight broker read confirms enough shares will be available
-            post-cancel. Toggle OFF → falls through to the atomic replace above,
+            post-cancel — sized on the leg's UNFILLED REMAINDER (#596), never its
+            order qty, since a partly-filled leg releases only what it still
+            holds. Toggle OFF → falls through to the atomic replace above,
             which fails exactly as it does today (safe: old leg stays live).
       * under-covered, NO live stop                          → `place_stop_order`
             at `db_stop_price` (the place branch is the only one that can breach).
@@ -5337,10 +5368,29 @@ async def _ensure_stop_coverage(
                 # be told a price explicitly, so it has to be told the price that is
                 # already live. THE LINE: quantity only, never level.
                 _widen_price = live_stop.get("stop_price")
+                # #596: what a cancel actually RELEASES is the leg's UNFILLED
+                # remainder, not its order quantity. `partially_filled` is a
+                # live-stop status (`_STOP_CONFIRMED_LIVE_STATUSES`), so a leg
+                # that has already sold part of itself reaches this branch with
+                # `live_qty` = the ORDER qty — shares it no longer holds. Sizing
+                # the pre-flight on that over-states headroom by exactly
+                # `filled_qty`, so a cancel that cannot be replaced passes the
+                # one gate built to make that unreachable. Unreadable → REFUSE
+                # (same idiom as the missing stop_price above): if we cannot
+                # compute what the cancel frees, we must not cancel. A real
+                # broker dict always carries filled_qty (`_order_to_dict`
+                # defaults it to 0), so this can only fire on a malformed row.
+                _leg_unfilled = _leg_unfilled_qty(live_stop, live_qty)
                 if _widen_price is None:
                     last_err = RuntimeError(
                         f"leg-safe widen: live stop {live_stop['id']} has no "
                         f"readable stop_price — cannot safely place a new one")
+                elif _leg_unfilled is None:
+                    last_err = RuntimeError(
+                        f"leg-safe widen: live stop {live_stop['id']} has an "
+                        f"unreadable filled_qty — cannot size what the cancel "
+                        f"would release; refusing to cancel a leg we can't "
+                        f"safely replace")
                 else:
                     # Pre-flight, BEFORE cancelling anything: verify the broker will
                     # actually have `target` shares available once the leg is
@@ -5356,10 +5406,11 @@ async def _ensure_stop_coverage(
                     _pos = await alpaca.get_position(ticker, account_mode=account_mode)
                     _avail = (float(_pos["qty_available"])
                               if _pos and _pos.get("qty_available") is not None else None)
-                    if _avail is None or (_avail + live_qty) < target - 0.5:
+                    if _avail is None or (_avail + _leg_unfilled) < target - 0.5:
                         last_err = RuntimeError(
                             f"leg-safe widen: only {_avail if _avail is not None else '?'} "
-                            f"available + {live_qty:.0f} on the leg — not enough to reach "
+                            f"available + {_leg_unfilled:.0f} still unfilled on the leg "
+                            f"(order qty {live_qty:.0f}) — not enough to reach "
                             f"target {target:.0f} after cancel; refusing to cancel a leg "
                             f"we can't safely replace")
                     else:
@@ -5516,6 +5567,225 @@ async def _ensure_stop_coverage(
             f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
             f"(no live stop, under-covered)"
         )
+
+
+# #596 — how many times one trade's failed coverage repair may be re-driven in
+# a single ET session. A repair that has failed six times in a row is not a
+# transient broker hiccup; it is something only the operator can resolve, and
+# an unbounded retry would hammer the broker and the breaker's failure counter.
+_COVERAGE_RETRY_MAX_ATTEMPTS = 6
+
+# Audit event types the retry state machine reads. `stop_coverage_breach` is
+# read only to STOP retrying: a stop that would sit above market is structurally
+# un-retryable (`_is_stop_above_market`), `_ensure_stop_coverage` converges on it
+# by design — ONE alert, operator's call — and the breach-exit decision is the
+# operator's, not the reconciler's. A breach never STARTS a retry, and a breach
+# recorded after a failure ENDS it, so this can never resurrect the loop that
+# convergence exists to prevent.
+_COVERAGE_RETRY_FAIL_EVENT = "stop_coverage_repair_failed"
+_COVERAGE_RETRY_OK_EVENT = "stop_coverage_repaired"
+_COVERAGE_RETRY_ATTEMPT_EVENT = "stop_coverage_retry_attempted"
+_COVERAGE_RETRY_BREACH_EVENT = "stop_coverage_breach"
+
+
+async def retry_failed_coverage_repairs() -> dict:
+    """#596 — re-drive `_ensure_stop_coverage` for trades whose repair FAILED.
+
+    THE HOLE THIS FILLS. When a coverage repair fails, the position can be left
+    genuinely unprotected (the leg-safe widen's `naked`/`stop_filled` outcomes
+    confirm the old stop is gone with no replacement). Until now that produced
+    ONE 🚨 Telegram and nothing else: the 15-minute `check_position_coverage`
+    job only DETECTS, and the next scheduled REPAIR is `sync_positions` inside
+    `eod_cleanup` at 16:05 ET. A failure at 09:31 therefore sat unrepaired for
+    the whole session unless an event-driven caller happened to fire.
+
+    NOT A NEW MECHANISM — the same signed repair (#523/#151), driven again.
+    This function decides only WHEN to re-run it; every order decision stays
+    inside `_ensure_stop_coverage`, which re-reads BROKER TRUTH from scratch
+    (position qty + open orders) rather than trusting anything captured here.
+    It changes no stop price, no target, no size: quantity coverage only.
+
+    Selection (audit log IS the state, same idiom as
+    `_coverage_gap_already_alerted_today`): a trade is retried when, within
+    TODAY's ET day, its most recent `stop_coverage_repair_failed` is not
+    followed by a `stop_coverage_repaired`, and it has had fewer than
+    `_COVERAGE_RETRY_MAX_ATTEMPTS` retries. On the last permitted attempt the
+    operator is told retries are exhausted — the alert stops being once-only
+    without becoming a bombardment.
+
+    Both account modes (`active_account_modes()`), deliberately: this drives the
+    SAME function `sync_positions` drives, and sync_positions runs per-mode. The
+    live-only scoping of `check_position_coverage` is a DETECTOR choice (no
+    dollars at risk on paper) and does not apply to a repairer whose paper-side
+    no-op is free.
+
+    Idempotent and safe to run on a healthy book: a trade with no failure row
+    is never touched, and `_ensure_stop_coverage` no-ops when coverage already
+    meets target. Returns {"examined", "retried", "resolved", "exhausted"}.
+    """
+    from agents.market_intelligence.collector import et_today
+
+    today = et_today()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT event_type, detail, created_at
+            FROM mi_audit_log
+            WHERE event_type = ANY($1::text[])
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $2
+            ORDER BY created_at ASC
+            """,
+            [_COVERAGE_RETRY_FAIL_EVENT, _COVERAGE_RETRY_OK_EVENT,
+             _COVERAGE_RETRY_ATTEMPT_EVENT, _COVERAGE_RETRY_BREACH_EVENT],
+            today,
+        )
+
+    # Fold the day's rows into per-trade state. Python, not SQL: `detail` is
+    # TEXT (not jsonb) so a malformed row must be SKIPPED rather than fail the
+    # whole scan — the same reason trade_stream parses its evidence rows here.
+    state: dict[int, dict] = {}
+    for r in rows:
+        try:
+            d = json.loads(r["detail"]) if r["detail"] else None
+        except (TypeError, ValueError):  # loud-ok below: one bad row must not blind the scan
+            logger.warning(
+                f"retry_failed_coverage_repairs: unparseable detail on a "
+                f"{r['event_type']} row — skipped"
+            )
+            continue
+        if not isinstance(d, dict) or d.get("trade_id") is None:
+            continue
+        try:
+            tid = int(d["trade_id"])
+        except (TypeError, ValueError):
+            continue
+        s = state.setdefault(
+            tid, {"failed_at": None, "repaired_at": None, "breached_at": None,
+                  "attempts": 0, "ticker": None, "account_mode": None},
+        )
+        s["ticker"] = d.get("ticker") or s["ticker"]
+        s["account_mode"] = d.get("account_mode") or s["account_mode"]
+        if r["event_type"] == _COVERAGE_RETRY_FAIL_EVENT:
+            s["failed_at"] = r["created_at"]
+        elif r["event_type"] == _COVERAGE_RETRY_OK_EVENT:
+            s["repaired_at"] = r["created_at"]
+        elif r["event_type"] == _COVERAGE_RETRY_BREACH_EVENT:
+            s["breached_at"] = r["created_at"]
+        else:
+            s["attempts"] += 1
+
+    modes = set(active_account_modes())
+    examined = 0
+    retried = 0
+    resolved = 0
+    exhausted = 0
+
+    for trade_id, s in state.items():
+        if s["failed_at"] is None:
+            continue
+        if s["repaired_at"] is not None and s["repaired_at"] > s["failed_at"]:
+            continue  # a later repair already succeeded — nothing outstanding
+        if s["breached_at"] is not None and s["breached_at"] >= s["failed_at"]:
+            # The position is THROUGH its stop. `_ensure_stop_coverage` already
+            # converged and told the operator; re-driving would re-submit a
+            # structurally invalid stop and re-decide a call that is his.
+            continue
+        examined += 1
+        if s["attempts"] >= _COVERAGE_RETRY_MAX_ATTEMPTS:
+            exhausted += 1
+            continue
+
+        async with pool.acquire() as conn:
+            trade = await conn.fetchrow(
+                """
+                SELECT id, ticker, remaining_shares, stop_price, orb_low,
+                       signal_type, account_mode
+                FROM mi_live_trades
+                WHERE id = $1 AND status = 'filled' AND remaining_shares > 0
+                """,
+                trade_id,
+            )
+        if trade is None:
+            continue  # closed / flat since the failure — nothing left to protect
+        account_mode = trade["account_mode"] or s["account_mode"]
+        if account_mode not in modes:
+            continue
+        ticker = trade["ticker"]
+
+        # BROKER TRUTH for sizing, re-read now — never the qty the failed
+        # attempt came in with (a fill can have landed since; that staleness is
+        # exactly why the widen's `naked` outcome refuses to place a stop
+        # itself and defers to a fresh pass like this one).
+        try:
+            pos = await alpaca.get_position(ticker, account_mode=account_mode)
+        except Exception as e:
+            logger.warning(
+                f"retry_failed_coverage_repairs: get_position failed for "
+                f"{ticker} [{account_mode}]: {e} — deferring to next run"
+            )
+            continue
+        broker_qty = float(pos["qty"]) if pos and pos.get("qty") is not None else 0.0
+        if broker_qty <= 0:
+            continue  # flat at the broker — nothing to cover
+
+        retried += 1
+        attempt_no = s["attempts"] + 1
+        try:
+            msg = await _ensure_stop_coverage(
+                trade_id, ticker, broker_qty,
+                trade["stop_price"] or trade["orb_low"],
+                trade["signal_type"] or "unknown",
+                account_mode,
+            )
+        except Exception as e:
+            logger.error(
+                f"retry_failed_coverage_repairs: _ensure_stop_coverage raised "
+                f"for {ticker}: {e}", exc_info=True,
+            )
+            msg = f"⚠️ {ticker}: coverage retry errored: {e}"
+
+        # `None` = the invariant found nothing to do, which on THIS path is the
+        # good outcome: coverage now meets target (either the retry's own
+        # repair landed via its `stop_coverage_repaired` row, or something else
+        # healed it). Record it so the next cycle stops re-driving this trade.
+        healed = msg is None or msg.startswith("🛡")
+        if healed:
+            resolved += 1
+        await log_audit_event(
+            _COVERAGE_RETRY_ATTEMPT_EVENT,
+            f"{ticker}: coverage repair retry {attempt_no}/"
+            f"{_COVERAGE_RETRY_MAX_ATTEMPTS} — "
+            f"{'coverage now meets target' if healed else 'still not covered'}",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode,
+                "attempt": attempt_no,
+                "broker_qty": broker_qty,
+                "outcome": msg,
+                "healed": healed,
+            }),
+        )
+
+        if healed and msg is not None:
+            # Only the ACTED-ON case speaks; a silent no-op needs no Telegram
+            # (a guard that always fires is not a guard). The original failure
+            # already alerted, so the operator is owed the resolution.
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}🛡 *Coverage retry succeeded: {ticker}*\n"
+                f"{msg}\n"
+                f"_Attempt {attempt_no} after the earlier repair failure._"
+            )
+        elif not healed and attempt_no >= _COVERAGE_RETRY_MAX_ATTEMPTS:
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}🚨 *Coverage still broken: {ticker}*\n"
+                f"{msg}\n"
+                f"Retried {attempt_no} times this session — giving up until the "
+                f"16:05 ET position sync. Check the broker."
+            )
+
+    return {"examined": examined, "retried": retried,
+            "resolved": resolved, "exhausted": exhausted}
 
 
 async def _coverage_gap_already_alerted_today(trade_id: int, today) -> bool:

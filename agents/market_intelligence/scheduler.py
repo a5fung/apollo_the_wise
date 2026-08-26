@@ -109,6 +109,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     # lifecycle / reconcile / safeguards
     "paper_trade_tracker", "morning_stop_refresh", "post_close_stop_refresh",
     "position_coverage_check",  # #527 — market-hours broker-truth coverage detector
+    "stop_coverage_repair_retry",  # #596 — re-drives a FAILED coverage repair (touches the broker)
     "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
     "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
@@ -1337,6 +1338,50 @@ async def _position_coverage_check_job():
     except Exception as e:
         logger.error(f"Position coverage check failed: {e}")
         await notify_job_failure("position_coverage_check", str(e))
+
+
+async def _stop_coverage_repair_retry_job():
+    """Run every 5 min, 09:31-15:55 ET (#596). Re-drives `_ensure_stop_coverage`
+    for trades whose coverage repair FAILED earlier today.
+
+    WHY IT EXISTS: a failed repair used to produce ONE 🚨 Telegram and nothing
+    else. `position_coverage_check` (above) only DETECTS by design, and the next
+    scheduled REPAIR is `sync_positions` inside `eod_cleanup` at 16:05 ET — so a
+    09:31 failure could leave a position unprotected for the whole session.
+    This is the SAME signed repair (#523/#151) driven again, not a second
+    order-emission mechanism: every order decision stays inside
+    `_ensure_stop_coverage`, which re-reads broker truth each pass.
+
+    Bounded by `_COVERAGE_RETRY_MAX_ATTEMPTS` per trade per ET day, and silent
+    on a healthy book (no failure row today → nothing selected). The window
+    guard is enforced HERE rather than left to the cron slot, for the same
+    reason `_position_coverage_check_job` does it: the hour="9-15" registration
+    idiom fires wider than the intended window.
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    now_et = datetime.now(_ET)
+    if not (
+        (now_et.hour == 9 and now_et.minute >= 31)
+        or (10 <= now_et.hour <= 14)
+        or (now_et.hour == 15 and now_et.minute <= 55)
+    ):
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            retry_failed_coverage_repairs,
+        )
+        result = await retry_failed_coverage_repairs()
+        if result["retried"] or result["exhausted"]:
+            logger.warning(
+                f"stop_coverage_repair_retry: examined {result['examined']}, "
+                f"retried {result['retried']}, resolved {result['resolved']}, "
+                f"exhausted {result['exhausted']}"
+            )
+    except Exception as e:
+        logger.error(f"Stop coverage repair retry failed: {e}")
+        await notify_job_failure("stop_coverage_repair_retry", str(e))
 
 
 async def _premarket_gap_risk_job():
@@ -5747,6 +5792,19 @@ def start_scheduler() -> AsyncIOScheduler:
         id="position_coverage_check",
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # Stop-coverage repair RETRY: every 5 min, 09:31-15:55 ET (#596). The
+    # detector above never repairs and `sync_positions` (the repair driver) does
+    # not run again until 16:05 ET, so a failed repair had no retry at all —
+    # a 09:31 failure could sit unprotected all session. Same window guard,
+    # enforced inside the job for the same reason.
+    _scheduler.add_job(
+        audit_wrap(_stop_coverage_repair_retry_job, "stop_coverage_repair_retry"),
+        CronTrigger(hour="9-15", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
+        id="stop_coverage_repair_retry",
+        replace_existing=True,
+        misfire_grace_time=120,
     )
 
     # Post-close stop refresh: 4:20 PM ET — place the next session's GTC stop the

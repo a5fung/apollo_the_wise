@@ -407,6 +407,39 @@ Separately, **FPS (paper, 2026-06-01)** records one 28-share leg against 163 ent
 defect (an 81-share fill on a CANCELLED stop plus a 54-share reduction never committed to `exits`),
 under-stating it by at least $273.40. Capture: `scripts/probes/_588_exit_share_audit.sql`.
 
+**FIXED AT THE WRITE SITE 2026-08-26 (#590) — the cancelled-stop half.** `_handle_cancel_or_reject`
+section 2 (the stop-leg cancel path) nulled `stop_order_id`, decided whether to alarm and returned,
+**never reading `order.filled_qty`** — so a stop that partly filled and was then cancelled dropped
+those shares. #566 had added exactly this commit for a cancelled PARTIAL-EXIT order (section 3) and
+not for the stop leg, which is the primary cancel path for every live trade. The handler now commits
+the fill through `finalize_stop_fill` (idempotent per `order_id`; decrements rather than closing per
+#566) BEFORE anything else, then re-reads the row — the "Position unprotected (N sh)" alarm would
+otherwise quote a share count the fill had just made stale, and must not fire at all when the fill
+closed the position. **The LIVE book can hit this**: nothing about the path is paper-specific, and
+our own machinery cancels live stops routinely (the #508 leg-safe reduce, the #523 widen, the
+breakeven replace, EOD cleanup). Tests: `tests/test_590_cancelled_stop_partial_fill.py`.
+
+⚠ **The 54-share half is NOT closed, and cannot be attributed from the rows in this repo.** Two
+paths could have dropped it and only a prod read distinguishes them: (a) a limit/OCO partial-exit
+order that partly filled and was then cancelled — **already fixed**, by #566 on 2026-08-14, which is
+after the 2026-06-04 event; (b) the WS fill event for the partial-exit sell arriving BEFORE
+`execute_partial_exit`'s `mi_live_orders` INSERT commits, so `_handle_fill` resolves no tracked
+order and falls to its branch 4 "Untracked fill" — Telegram only, **no DB write, shares dropped**.
+Path (b) is still open and the live book can hit it. Neither `reconcile_order_states` nor anything
+else re-derives an exit leg from a terminal `mi_live_orders` row (#123: reconcile "does not derive
+trade close-out"), so a missed WS fill has no backstop at all — that gap is #597's territory, not
+fixed here. The settling query: `mi_live_orders` for `trade_id = 183` with `purpose, status,
+filled_qty, filled_at, cancelled_at, submitted_at` (#588's Q3 errored on a non-existent
+`o.created_at` — use `submitted_at`).
+
+**Correcting FPS's stored row is the operator's call and was NOT done.** It needs a committed
+backfill script (never an ad-hoc `docker exec`, per #287), operator-signed, applying two exit legs
+reconstructed from `mi_live_orders` — the 81-share stop fill and the 54-share sale — with their real
+fill prices and times, then recomputing `total_pnl` and the matching `mi_sell_discipline_records`
+row (`realized_pnl`/`realized_r`, which every exit-rule replay reads). The `exit_share_sum_mismatch`
+L1 invariant is bounded to rows closing on/after 2026-08-24, so FPS does not alarm nightly either
+way.
+
 ⚠ **The reported "exits array out of chronological order" does NOT exist.** Checked book-wide:
 **0** trades have an `exits` array whose `time` values descend. ETON's array is `[stop_hit
 13:45:11Z, partial_profit 19:58:02Z]` — ascending, and the fill order it records is correct; what

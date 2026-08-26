@@ -247,19 +247,29 @@ async def test_preflight_passes_when_headroom_exactly_meets_the_target():
 
 @pytest.mark.asyncio
 async def test_a_leg_that_partly_filled_is_cancelled_and_left_with_no_stop():
-    """KNOWN RESIDUAL — reported, not fixed here (verify task; a money-path edit
-    is the operator's call).
+    """RESIDUAL AFTER #596 — the pre-flight is no longer what lets this through.
 
     `partially_filled` is a live-stop status, so a leg whose stop has partly filled
-    reaches this branch. The pre-flight sizes headroom off the leg's ORDER qty (12),
-    not its unfilled remainder (8), so it passes; the shared mechanism then detects
-    the fill only AFTER the cancel and returns `naked` rather than placing a stop off
-    a now-stale qty. Net: the leg is gone and no replacement exists. The event-driven
-    callers (partial-exit abort, the #566 OCO-cancel handler) re-protect immediately if
-    one of them fires; the SCHEDULED path does not — `sync_positions` runs at 16:05 and
-    21:00 ET only, and the 15-minute `check_position_coverage` job merely DETECTS. The
-    message says so plainly (it must not reuse 'failed to widen', which would imply the
-    old stop is alive)."""
+    reaches this branch. Here the headroom genuinely IS sufficient — 5 available plus
+    the 8 still unfilled on the leg is exactly the 13 held — so the #596 pre-flight
+    correctly PASSES and the cancel proceeds. What then produces `naked` is a
+    DIFFERENT, deliberate guard inside the shared mechanism: it sees `filled_qty > 0`
+    after the cancel confirms and refuses to place a stop off a now-stale qty
+    snapshot. Net: the leg is gone and no replacement exists, and that is the
+    conservative choice, not an oversight.
+
+    What #596 changed is what happens NEXT. The event-driven callers (partial-exit
+    abort, the #566 OCO-cancel handler) re-protect immediately if one of them fires;
+    the scheduled path used to have nothing at all until `sync_positions` at 16:05 ET
+    (the 15-minute `check_position_coverage` job merely DETECTS). The
+    `stop_coverage_repair_retry` job now re-drives `_ensure_stop_coverage` off fresh
+    broker truth every 5 minutes, which is exactly what the message below promises.
+    ⚠ Note WHICH branch that retry lands in: with the leg gone there is no live stop,
+    so it takes the PLACE branch, at `mi_live_trades.stop_price` — which can be BELOW
+    the leg's own price (ETON: 53.01 vs 55.2012). That is pre-existing place-branch
+    behaviour, unchanged; the retry only makes it reachable on a 5-minute cadence
+    instead of at 16:05. The message must still not reuse 'failed to widen', which
+    would imply the old stop is alive."""
     from unittest.mock import AsyncMock
 
     partly_filled_leg = _live_stop(ETON_LEG_ID, ETON_STOP_QTY,
@@ -291,3 +301,128 @@ async def test_a_leg_that_partly_filled_is_cancelled_and_left_with_no_stop():
     failed = next(d for evt, _, d in h["audit_details"]
                   if evt == "stop_coverage_repair_failed")
     assert failed["widen_outcome"] == "naked"
+
+
+# ── #596 — the pre-flight must size on what a cancel actually RELEASES ────────
+#
+# The #523 pre-flight exists to make one failure mode unreachable: cancelling a
+# leg we then cannot replace. It sized headroom on the leg's ORDER quantity, so
+# a leg that had already sold part of itself was credited with shares it no
+# longer held. A partial fill alone does not trip it (the position shrinks by
+# the same amount), but a partial fill PLUS any other share reservation the
+# target does not account for does — and that is precisely the situation the
+# pre-flight was built for. Below: 13 held, 8 still unfilled on the 12-share
+# leg, and 4 shares reserved elsewhere, so only 1 is free. Cancelling releases
+# 8 → 9 available against a target of 13. The order-qty read (1 + 12 = 13) says
+# GO; the truth (1 + 8 = 9) says STOP.
+
+
+@pytest.mark.asyncio
+async def test_596_preflight_sizes_on_the_unfilled_remainder_not_the_order_qty():
+    """The #596 hazard, in the smallest faithful shape: a partly-filled leg plus
+    an unaccounted reservation. Sized on the ORDER qty the pre-flight passes and
+    the leg is cancelled irreversibly; sized on the UNFILLED remainder it refuses
+    and the position keeps the (under-covering) stop it has — the safe state.
+
+    MUTATION PROOF: put `live_qty` back in the `_avail + _leg_unfilled` comparison
+    in `_ensure_stop_coverage` and this test goes red on `cancel_mock`."""
+    from unittest.mock import AsyncMock
+
+    partly_filled_leg = _live_stop(ETON_LEG_ID, ETON_STOP_QTY,
+                                   stop_price=ETON_LIVE_STOP_PX, order_class="oto",
+                                   status="partially_filled")
+    partly_filled_leg["filled_qty"] = 4      # 12 ordered, 4 sold, 8 still resting
+
+    async def _get_position(ticker, account_mode=None):
+        # 13 held; the leg reserves its unfilled 8 and something else reserves 4,
+        # leaving 1 free. Cancelling the leg can only ever free those 8.
+        return {"qty": 13.0, "qty_available": 1.0}
+
+    cancel_mock = AsyncMock(return_value=True)
+    place_mock = AsyncMock(return_value={"id": "should_never_be_placed"})
+    h = _patches(
+        [partly_filled_leg], pending_qty=0, leg_safe=True,
+        cancel_order=cancel_mock, get_position=_get_position, place=place_mock,
+    )
+    result = await _eton(h, broker_qty=13)
+
+    cancel_mock.assert_not_called()   # THE POINT: the leg is never touched
+    place_mock.assert_not_called()
+    h["set_stop"].assert_not_called()
+
+    # The safe wording: the old stop IS still live, so this must read as a failed
+    # widen, never as the "coverage may be ZERO" message.
+    assert result is not None and "failed to widen" in result.lower(), (
+        f"a refusal leaves the old stop alive and must say so: {result!r}")
+    assert "zero" not in result.lower()
+
+    failed = next(d for evt, _, d in h["audit_details"]
+                  if evt == "stop_coverage_repair_failed")
+    assert "widen_outcome" not in failed, (
+        "a pre-flight refusal never reached the widen mechanism")
+    assert "still unfilled" in failed["error"], (
+        f"the refusal must name the remainder it sized on: {failed['error']!r}")
+
+
+@pytest.mark.asyncio
+async def test_596_headroom_that_is_sufficient_on_the_remainder_still_widens():
+    """The other side of the same gate: when the unfilled remainder genuinely
+    covers the target, a partly-filled leg is still widened. #596 must not turn
+    into a blanket refusal on every partial fill — that would silently retire
+    #523's repair."""
+    from unittest.mock import AsyncMock
+
+    partly_filled_leg = _live_stop(ETON_LEG_ID, ETON_STOP_QTY,
+                                   stop_price=ETON_LIVE_STOP_PX, order_class="oto",
+                                   status="partially_filled")
+    partly_filled_leg["filled_qty"] = 4
+
+    async def _get_order(order_id, account_mode=None):
+        # Cancel confirmed with NOTHING further filled during the cancel, so the
+        # mechanism's own stale-snapshot guard does not fire.
+        return {"id": order_id, "status": "canceled", "order_class": "oto",
+                "filled_qty": 0}
+
+    async def _get_position(ticker, account_mode=None):
+        # 13 held, 8 reserved by the leg, nothing else → 5 free. 5 + 8 = 13.
+        return {"qty": 13.0, "qty_available": 5.0}
+
+    cancel_mock = AsyncMock(return_value=True)
+    h = _patches(
+        [partly_filled_leg], pending_qty=0, leg_safe=True,
+        cancel_order=cancel_mock, get_order=_get_order, get_position=_get_position,
+        place=AsyncMock(return_value={"id": "widened_stop_id"}),
+    )
+    result = await _eton(h, broker_qty=13)
+
+    cancel_mock.assert_called_once()
+    assert result is not None and "repaired" in result.lower(), f"got: {result!r}"
+
+
+@pytest.mark.asyncio
+async def test_596_unreadable_filled_qty_refuses_rather_than_assuming_zero():
+    """An order dict with no readable `filled_qty` means we cannot compute what
+    the cancel would release. Defaulting it to 0 restores the over-statement on
+    exactly the case that matters, so the function refuses instead — the same
+    idiom it already uses for a missing `stop_price`. A real broker dict always
+    carries the field (`_order_to_dict` defaults it to 0), so this can only fire
+    on a malformed row."""
+    from unittest.mock import AsyncMock
+
+    bad_leg = _live_stop(ETON_LEG_ID, ETON_STOP_QTY, stop_price=ETON_LIVE_STOP_PX,
+                         order_class="oto", status="partially_filled")
+    bad_leg["filled_qty"] = "not-a-number"
+
+    cancel_mock = AsyncMock(return_value=True)
+    h = _patches(
+        [bad_leg], pending_qty=0, leg_safe=True, cancel_order=cancel_mock,
+        place=AsyncMock(return_value={"id": "should_never_be_placed"}),
+    )
+    result = await _eton(h, broker_qty=ETON_HELD)
+
+    cancel_mock.assert_not_called()
+    h["place"].assert_not_called()
+    h["set_stop"].assert_not_called()
+    failed = next(d for evt, _, d in h["audit_details"]
+                  if evt == "stop_coverage_repair_failed")
+    assert "unreadable filled_qty" in failed["error"], failed["error"]

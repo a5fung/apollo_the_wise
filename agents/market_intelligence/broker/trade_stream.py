@@ -1484,6 +1484,68 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             describe_stop_move,
             set_stop_order_id,
         )
+
+        # ── #590: commit any PARTIAL FILL the cancelled STOP LEG carried, FIRST.
+        # A stop can partly fill and then be cancelled — by our own leg-safe
+        # reduce/widen, by the breakeven replace, by EOD cleanup, or by hand.
+        # `partially_filled` is a LIVE status, so this is an ordinary shape, not
+        # an exotic one. Those shares SOLD. Until now this branch dropped them:
+        # it nulls the pointer, decides whether to alarm, and returns — never
+        # looking at `filled_qty`. #566 added exactly this commit for a cancelled
+        # PARTIAL-EXIT order (branch 3 below) but not for the stop leg, which is
+        # the primary cancel path for every live trade. FPS (paper, 2026-06-01)
+        # lost 81 shares here: 163 entered, one 28-share leg recorded.
+        # finalize_stop_fill is idempotent per order_id, so a racing fill event
+        # cannot double-commit, and it decrements remaining_shares rather than
+        # closing (the #566 accounting fix) unless the fill exhausts the position.
+        _cancel_filled = float(getattr(order, "filled_qty", 0) or 0)
+        _cancel_avg = float(getattr(order, "filled_avg_price", 0) or 0)
+        if _cancel_filled > 0 and _cancel_avg > 0:
+            from agents.market_intelligence.broker.order_manager import finalize_stop_fill
+            await finalize_stop_fill(
+                stop_trade["id"], int(_cancel_filled), _cancel_avg, order_id,
+            )
+            # Everything below reasons about how many shares are still exposed —
+            # `remaining_shares` was captured BEFORE that commit and is now
+            # stale. Re-read. If the fill closed or emptied the row there is
+            # nothing left to protect, and the "Position unprotected (N sh)"
+            # alarm below would name shares that no longer exist.
+            async with pool.acquire() as conn:
+                _after = await conn.fetchrow("""
+                    SELECT id, ticker, remaining_shares, stop_price, entry_price,
+                           hard_stop, status
+                    FROM mi_live_trades WHERE id = $1
+                """, stop_trade["id"])
+            if (_after is None or _after["status"] != "filled"
+                    or (_after["remaining_shares"] or 0) <= 0):
+                await log_audit_event(
+                    "stop_cancel_partial_fill_committed",
+                    f"{symbol} [{account_mode}]: cancelled stop {order_id[:8]} had "
+                    f"{_cancel_filled:g} sh filled @ ${_cancel_avg:.2f} — committed; "
+                    f"position is now flat, no coverage alarm needed",
+                    json.dumps({
+                        "trade_id": stop_trade["id"], "ticker": symbol,
+                        "account_mode": account_mode, "order_id": order_id,
+                        "filled_qty": _cancel_filled, "filled_avg_price": _cancel_avg,
+                        "event_norm": event_norm,
+                    }),
+                )
+                return
+            await log_audit_event(
+                "stop_cancel_partial_fill_committed",
+                f"{symbol} [{account_mode}]: cancelled stop {order_id[:8]} had "
+                f"{_cancel_filled:g} sh filled @ ${_cancel_avg:.2f} — committed; "
+                f"{_after['remaining_shares']:.0f} sh still held",
+                json.dumps({
+                    "trade_id": stop_trade["id"], "ticker": symbol,
+                    "account_mode": account_mode, "order_id": order_id,
+                    "filled_qty": _cancel_filled, "filled_avg_price": _cancel_avg,
+                    "remaining_shares": float(_after["remaining_shares"]),
+                    "event_norm": event_norm,
+                }),
+            )
+            stop_trade = dict(_after)
+
         await set_stop_order_id(
             stop_trade["id"], None,
             reason="cancel_or_reject_null",
