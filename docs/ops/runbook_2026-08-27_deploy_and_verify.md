@@ -1,5 +1,12 @@
 # Runbook — the 2026-08-27 deploy, and exactly what to check on 08-28
 
+RUNBOOK_PIN: TONIGHT'S FIRST DEPLOY IS EXPECTED TO FAIL AT GATE [5m/7] EXIT 17.
+RUNBOOK_PIN: That is correct — the rubric moved to v4 (d65ac7f3) and the gate refuses an
+RUNBOOK_PIN: ungraded grade surface. Run the robustness eval (~$1.50, ONE run, capture to
+RUNBOOK_PIN: a file), regenerate judge_eval_pass_record.json CARRYING ITS envelope SECTION
+RUNBOOK_PIN: FORWARD, then redeploy market-agent AND execution. On FAIL: do not hand-edit
+RUNBOOK_PIN: the record, do not waiver — revert by redeploying the prior commit.
+
 Written 2026-08-27 PT so tonight and tomorrow are mechanical. Four changes are committed and
 pushed but **running nowhere**; one (#559) is already live via a runtime toggle.
 

@@ -1,0 +1,14 @@
+LIVE_TRADING_ENABLED=true
+ALPACA_DATA_FEED=sip
+DRAWDOWN_BREAKER_PHASE=active
+REGIME_SIZING_ENABLED=true
+---GIT---
+94a27d9a #557 answered: both cooldowns are earning their keep, and the digest's four "missed winners" were peak illusions
+ed0da3b2 #397 correction: I over-escalated — there is no operator decision pending
+---CONTAINERS---
+apollo-execution | 46 hours ago
+apollo-market | 46 hours ago
+apollo-orchestrator | 2 days ago
+apollo-redis | 6 weeks ago
+apollo-postgres | 6 weeks ago
+apollo-uptime | 5 months ago

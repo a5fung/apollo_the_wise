@@ -1,0 +1,221 @@
+evaluation days (07-30 .. last day with known alert counts): ['2026-07-30', '2026-07-31', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07', '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-24', '2026-08-25']
+2026-08-26 is NOT evaluated — alert count unknown, prod ssh unavailable.
+
+##############################################################################
+# A. COUNTERFACTUAL REPLAY — era scoping OFF, so every day is actually judged.
+#    This is the test of the STATISTIC. (In prod, era scoping + the 5-post-flip-day
+#    floor keep trigger (b) suppressed until 2026-08-28 whichever statistic it uses.)
+##############################################################################
+
+=== CURRENT — alerts per trading day ===
+2026-07-30  ----  recent 14/5=2.8000/td  prior 16/14=1.1429/td  drop -145%  (fires at <= 2 alerts; had 14 — 12 away)  td 5/14
+2026-07-31  ----  recent 18/5=3.6000/td  prior 18/15=1.2000/td  drop -200%  (fires at <= 2 alerts; had 18 — 16 away)  td 5/15
+2026-08-03  ----  recent 18/5=3.6000/td  prior 20/16=1.2500/td  drop -188%  (fires at <= 3 alerts; had 18 — 15 away)  td 5/16
+2026-08-04  ----  recent 27/5=5.4000/td  prior 21/17=1.2353/td  drop -337%  (fires at <= 3 alerts; had 27 — 24 away)  td 5/17
+2026-08-05  ----  recent 33/5=6.6000/td  prior 23/18=1.2778/td  drop -417%  (fires at <= 3 alerts; had 33 — 30 away)  td 5/18
+2026-08-06  ----  recent 34/5=6.8000/td  prior 30/19=1.5789/td  drop -331%  (fires at <= 3 alerts; had 34 — 31 away)  td 5/19
+2026-08-07  ----  recent 38/5=7.6000/td  prior 36/20=1.8000/td  drop -322%  (fires at <= 4 alerts; had 38 — 34 away)  td 5/20
+2026-08-10  ----  recent 40/5=8.0000/td  prior 38/21=1.8095/td  drop -342%  (fires at <= 4 alerts; had 40 — 36 away)  td 5/21
+2026-08-11  ----  recent 34/5=6.8000/td  prior 48/22=2.1818/td  drop -212%  (fires at <= 5 alerts; had 34 — 29 away)  td 5/22
+2026-08-12  ----  recent 32/5=6.4000/td  prior 55/22=2.5000/td  drop -156%  (fires at <= 6 alerts; had 32 — 26 away)  td 5/22
+2026-08-13  ----  recent 29/5=5.8000/td  prior 62/22=2.8182/td  drop -106%  (fires at <= 7 alerts; had 29 — 22 away)  td 5/22
+2026-08-14  ----  recent 23/5=4.6000/td  prior 71/22=3.2273/td  drop -43%  (fires at <= 8 alerts; had 23 — 15 away)  td 5/22
+2026-08-17  ----  recent 20/5=4.0000/td  prior 73/21=3.4762/td  drop -15%  (fires at <= 8 alerts; had 20 — 12 away)  td 5/21
+2026-08-18  ----  recent 17/5=3.4000/td  prior 77/22=3.5000/td  drop 3%  (fires at <= 8 alerts; had 17 — 9 away)  td 5/22
+2026-08-19  ----  recent 14/5=2.8000/td  prior 83/22=3.7727/td  drop 26%  (fires at <= 9 alerts; had 14 — 5 away)  td 5/22
+2026-08-20  ----  recent 11/5=2.2000/td  prior 86/22=3.9091/td  drop 44%  (fires at <= 9 alerts; had 11 — 2 away)  td 5/22
+2026-08-21  FIRE  recent 8/5=1.6000/td  prior 87/22=3.9545/td  drop 60%  (fires at <= 9 alerts; had 8 — -1 away)  td 5/22
+2026-08-24  FIRE  recent 7/5=1.4000/td  prior 88/21=4.1905/td  drop 67%  (fires at <= 10 alerts; had 7 — -3 away)  td 5/21
+2026-08-25  FIRE  recent 6/5=1.2000/td  prior 89/22=4.0455/td  drop 70%  (fires at <= 10 alerts; had 6 — -4 away)  td 5/22
+  -> fired 3 day(s): ['2026-08-21', '2026-08-24', '2026-08-25']
+
+=== CONVERSION — alerts per stock gapping (gap10) ===
+2026-07-30  ----  recent 14/192=0.0729/gap  prior 16/287=0.0557/gap  drop -31%  (fires at <= 5 alerts; had 14 — 9 away)  td 5/14
+2026-07-31  ----  recent 18/265=0.0679/gap  prior 18/296=0.0608/gap  drop -12%  (fires at <= 8 alerts; had 18 — 10 away)  td 5/15
+2026-08-03  ----  recent 18/254=0.0709/gap  prior 20/315=0.0635/gap  drop -12%  (fires at <= 8 alerts; had 18 — 10 away)  td 5/16
+2026-08-04  ----  recent 27/319=0.0846/gap  prior 21/329=0.0638/gap  drop -33%  (fires at <= 10 alerts; had 27 — 17 away)  td 5/17
+2026-08-05  ----  recent 33/340=0.0971/gap  prior 23/346=0.0665/gap  drop -46%  (fires at <= 11 alerts; had 33 — 22 away)  td 5/18
+2026-08-06  ----  recent 34/253=0.1344/gap  prior 30/479=0.0626/gap  drop -115%  (fires at <= 7 alerts; had 34 — 27 away)  td 5/19
+2026-08-07  ----  recent 38/231=0.1645/gap  prior 36/561=0.0642/gap  drop -156%  (fires at <= 7 alerts; had 38 — 31 away)  td 5/20
+2026-08-10  ----  recent 40/233=0.1717/gap  prior 38/569=0.0668/gap  drop -157%  (fires at <= 7 alerts; had 40 — 33 away)  td 5/21
+2026-08-11  ----  recent 34/171=0.1988/gap  prior 48/648=0.0741/gap  drop -168%  (fires at <= 6 alerts; had 34 — 28 away)  td 5/22
+2026-08-12  ----  recent 32/215=0.1488/gap  prior 55/659=0.0835/gap  drop -78%  (fires at <= 8 alerts; had 32 — 24 away)  td 5/22
+2026-08-13  ----  recent 29/188=0.1543/gap  prior 62/695=0.0892/gap  drop -73%  (fires at <= 8 alerts; had 29 — 21 away)  td 5/22
+2026-08-14  ----  recent 23/152=0.1513/gap  prior 71/750=0.0947/gap  drop -60%  (fires at <= 7 alerts; had 23 — 16 away)  td 5/22
+2026-08-17  ----  recent 20/153=0.1307/gap  prior 73/697=0.1047/gap  drop -25%  (fires at <= 8 alerts; had 20 — 12 away)  td 5/21
+2026-08-18  ----  recent 17/152=0.1118/gap  prior 77/714=0.1078/gap  drop -4%  (fires at <= 8 alerts; had 17 — 9 away)  td 5/22
+2026-08-19  ----  recent 14/91=0.1538/gap  prior 83/791=0.1049/gap  drop -47%  (fires at <= 4 alerts; had 14 — 10 away)  td 5/22
+2026-08-20  ----  recent 11/108=0.1019/gap  prior 86/761=0.1130/gap  drop 10%  (fires at <= 6 alerts; had 11 — 5 away)  td 5/22
+2026-08-21  ----  recent 8/109=0.0734/gap  prior 87/775=0.1123/gap  drop 35%  (fires at <= 6 alerts; had 8 — 2 away)  td 5/22
+2026-08-24  ----  recent 7/117=0.0598/gap  prior 88/761=0.1156/gap  drop 48%  (fires at <= 6 alerts; had 7 — 1 away)  td 5/21
+2026-08-25  ----  recent 6/101=0.0594/gap  prior 89/777=0.1145/gap  drop 48%  (fires at <= 5 alerts; had 6 — 1 away)  td 4/22
+  -> fired 0 day(s): []
+
+=== CONVERSION — alerts per stock gapping (gap9) ===
+2026-07-30  ----  recent 14/232=0.0603/gap  prior 16/343=0.0466/gap  drop -29%  (fires at <= 5 alerts; had 14 — 9 away)  td 5/14
+2026-07-31  ----  recent 18/321=0.0561/gap  prior 18/352=0.0511/gap  drop -10%  (fires at <= 8 alerts; had 18 — 10 away)  td 5/15
+2026-08-03  ----  recent 18/304=0.0592/gap  prior 20/378=0.0529/gap  drop -12%  (fires at <= 8 alerts; had 18 — 10 away)  td 5/16
+2026-08-04  ----  recent 27/389=0.0694/gap  prior 21/393=0.0534/gap  drop -30%  (fires at <= 10 alerts; had 27 — 17 away)  td 5/17
+2026-08-05  ----  recent 33/410=0.0805/gap  prior 23/413=0.0557/gap  drop -45%  (fires at <= 11 alerts; had 33 — 22 away)  td 5/18
+2026-08-06  ----  recent 34/300=0.1133/gap  prior 30/575=0.0522/gap  drop -117%  (fires at <= 7 alerts; had 34 — 27 away)  td 5/19
+2026-08-07  ----  recent 38/283=0.1343/gap  prior 36/673=0.0535/gap  drop -151%  (fires at <= 7 alerts; had 38 — 31 away)  td 5/20
+2026-08-10  ----  recent 40/288=0.1389/gap  prior 38/682=0.0557/gap  drop -149%  (fires at <= 8 alerts; had 40 — 32 away)  td 5/21
+2026-08-11  ----  recent 34/206=0.1650/gap  prior 48/782=0.0614/gap  drop -169%  (fires at <= 6 alerts; had 34 — 28 away)  td 5/22
+2026-08-12  ----  recent 32/259=0.1236/gap  prior 55/793=0.0694/gap  drop -78%  (fires at <= 8 alerts; had 32 — 24 away)  td 5/22
+2026-08-13  ----  recent 29/230=0.1261/gap  prior 62/835=0.0743/gap  drop -70%  (fires at <= 8 alerts; had 29 — 21 away)  td 5/22
+2026-08-14  ----  recent 23/175=0.1314/gap  prior 71/909=0.0781/gap  drop -68%  (fires at <= 6 alerts; had 23 — 17 away)  td 5/22
+2026-08-17  ----  recent 20/174=0.1149/gap  prior 73/845=0.0864/gap  drop -33%  (fires at <= 7 alerts; had 20 — 13 away)  td 5/21
+2026-08-18  ----  recent 17/172=0.0988/gap  prior 77/863=0.0892/gap  drop -11%  (fires at <= 7 alerts; had 17 — 10 away)  td 5/22
+2026-08-19  ----  recent 14/109=0.1284/gap  prior 83/952=0.0872/gap  drop -47%  (fires at <= 4 alerts; had 14 — 10 away)  td 5/22
+2026-08-20  ----  recent 11/125=0.0880/gap  prior 86/917=0.0938/gap  drop 6%  (fires at <= 5 alerts; had 11 — 6 away)  td 5/22
+2026-08-21  ----  recent 8/130=0.0615/gap  prior 87/932=0.0933/gap  drop 34%  (fires at <= 6 alerts; had 8 — 2 away)  td 5/22
+2026-08-24  ----  recent 7/137=0.0511/gap  prior 88/917=0.0960/gap  drop 47%  (fires at <= 6 alerts; had 7 — 1 away)  td 5/21
+2026-08-25  ----  recent 6/121=0.0496/gap  prior 89/933=0.0954/gap  drop 48%  (fires at <= 5 alerts; had 6 — 1 away)  td 4/22
+  -> fired 0 day(s): []
+
+=== CONVERSION — alerts per stock gapping (gap9_liquid) ===
+2026-07-30  ----  recent 14/133=0.1053/gap  prior 16/167=0.0958/gap  drop -10%  (fires at <= 6 alerts; had 14 — 8 away)  td 5/14
+2026-07-31  ----  recent 18/180=0.1000/gap  prior 18/171=0.1053/gap  drop 5%  (fires at <= 9 alerts; had 18 — 9 away)  td 5/15
+2026-08-03  ----  recent 18/179=0.1006/gap  prior 20/178=0.1124/gap  drop 11%  (fires at <= 10 alerts; had 18 — 8 away)  td 5/16
+2026-08-04  ----  recent 27/215=0.1256/gap  prior 21/187=0.1123/gap  drop -12%  (fires at <= 12 alerts; had 27 — 15 away)  td 5/17
+2026-08-05  ----  recent 33/228=0.1447/gap  prior 23/199=0.1156/gap  drop -25%  (fires at <= 13 alerts; had 33 — 20 away)  td 5/18
+2026-08-06  ----  recent 34/155=0.2194/gap  prior 30/300=0.1000/gap  drop -119%  (fires at <= 7 alerts; had 34 — 27 away)  td 5/19
+2026-08-07  ----  recent 38/144=0.2639/gap  prior 36/351=0.1026/gap  drop -157%  (fires at <= 7 alerts; had 38 — 31 away)  td 5/20
+2026-08-10  ----  recent 40/142=0.2817/gap  prior 38/357=0.1064/gap  drop -165%  (fires at <= 7 alerts; had 40 — 33 away)  td 5/21
+2026-08-11  ----  recent 34/105=0.3238/gap  prior 48/402=0.1194/gap  drop -171%  (fires at <= 6 alerts; had 34 — 28 away)  td 5/22
+2026-08-12  ----  recent 32/127=0.2520/gap  prior 55/412=0.1335/gap  drop -89%  (fires at <= 8 alerts; had 32 — 24 away)  td 5/22
+2026-08-13  ----  recent 29/111=0.2613/gap  prior 62/432=0.1435/gap  drop -82%  (fires at <= 7 alerts; had 29 — 22 away)  td 5/22
+2026-08-14  ----  recent 23/86=0.2674/gap  prior 71/471=0.1507/gap  drop -77%  (fires at <= 6 alerts; had 23 — 17 away)  td 5/22
+2026-08-17  ----  recent 20/86=0.2326/gap  prior 73/432=0.1690/gap  drop -38%  (fires at <= 7 alerts; had 20 — 13 away)  td 5/21
+2026-08-18  ----  recent 17/89=0.1910/gap  prior 77/440=0.1750/gap  drop -9%  (fires at <= 7 alerts; had 17 — 10 away)  td 5/22
+2026-08-19  ----  recent 14/60=0.2333/gap  prior 83/483=0.1718/gap  drop -36%  (fires at <= 5 alerts; had 14 — 9 away)  td 5/22
+2026-08-20  ----  recent 11/63=0.1746/gap  prior 86/466=0.1845/gap  drop 5%  (fires at <= 5 alerts; had 11 — 6 away)  td 5/22
+2026-08-21  ----  recent 8/63=0.1270/gap  prior 87/476=0.1828/gap  drop 31%  (fires at <= 5 alerts; had 8 — 3 away)  td 5/22
+2026-08-24  ----  recent 7/67=0.1045/gap  prior 88/468=0.1880/gap  drop 44%  (fires at <= 6 alerts; had 7 — 1 away)  td 5/21
+2026-08-25  ----  recent 6/56=0.1071/gap  prior 89/479=0.1858/gap  drop 42%  (fires at <= 5 alerts; had 6 — 1 away)  td 4/22
+  -> fired 0 day(s): []
+
+##############################################################################
+# B. AS DEPLOYED — era-scoped (both statistics), for completeness.
+##############################################################################
+
+=== CURRENT — era-scoped ===
+2026-07-30  supp  suppressed: partial post-flip window
+2026-07-31  supp  suppressed: partial post-flip window
+2026-08-03  supp  suppressed: partial post-flip window
+2026-08-04  supp  suppressed: partial post-flip window
+2026-08-05  supp  suppressed: partial post-flip window
+2026-08-06  supp  suppressed: partial post-flip window
+2026-08-07  supp  suppressed: partial post-flip window
+2026-08-10  supp  suppressed: partial post-flip window
+2026-08-11  supp  suppressed: partial post-flip window
+2026-08-12  supp  suppressed: partial post-flip window
+2026-08-13  supp  suppressed: partial post-flip window
+2026-08-14  supp  suppressed: partial post-flip window
+2026-08-17  supp  suppressed: partial post-flip window
+2026-08-18  supp  suppressed: partial post-flip window
+2026-08-19  supp  suppressed: partial post-flip window
+2026-08-20  supp  suppressed: partial post-flip window
+2026-08-21  supp  suppressed: partial post-flip window
+2026-08-24  supp  suppressed: partial post-flip window
+2026-08-25  supp  suppressed: partial post-flip window
+  -> fired 0 day(s): []
+
+=== CONVERSION gap10 — era-scoped ===
+2026-07-30  supp  suppressed: partial post-flip window
+2026-07-31  supp  suppressed: partial post-flip window
+2026-08-03  supp  suppressed: partial post-flip window
+2026-08-04  supp  suppressed: partial post-flip window
+2026-08-05  supp  suppressed: partial post-flip window
+2026-08-06  supp  suppressed: partial post-flip window
+2026-08-07  supp  suppressed: partial post-flip window
+2026-08-10  supp  suppressed: partial post-flip window
+2026-08-11  supp  suppressed: partial post-flip window
+2026-08-12  supp  suppressed: partial post-flip window
+2026-08-13  supp  suppressed: partial post-flip window
+2026-08-14  supp  suppressed: partial post-flip window
+2026-08-17  supp  suppressed: partial post-flip window
+2026-08-18  supp  suppressed: partial post-flip window
+2026-08-19  supp  suppressed: partial post-flip window
+2026-08-20  supp  suppressed: partial post-flip window
+2026-08-21  supp  suppressed: partial post-flip window
+2026-08-24  supp  suppressed: partial post-flip window
+2026-08-25  supp  suppressed: partial post-flip window
+  -> fired 0 day(s): []
+
+##############################################################################
+# C. POSITIVE CONTROL — the REAL thin tape of 08-18..08-24, but our funnel breaks.
+#    Same supply, HIGH alerts cut to a third. Must FIRE, or the change is a mute.
+##############################################################################
+  gap10: fired=True  recent 0/117  prior 88/761  drop 100%
+  gap9: fired=True  recent 0/137  prior 88/917  drop 100%
+  gap9_liquid: fired=True  recent 0/67  prior 88/468  drop 100%
+  CURRENT: fired=True  drop 100%  (fires too — but it also fires on the untouched real series, which is the problem)
+
+##############################################################################
+# D. 08-24 SENSITIVITY — how close the conversion form came to firing.
+##############################################################################
+  gap10: ratio 0.517 vs the 0.500 bar; fires at <= 6 HIGH alerts in the recent week, actual 7
+  gap9: ratio 0.532 vs the 0.500 bar; fires at <= 6 HIGH alerts in the recent week, actual 7
+  gap9_liquid: ratio 0.556 vs the 0.500 bar; fires at <= 6 HIGH alerts in the recent week, actual 7
+
+=== daily series (HIGH alerts | all-tier alerts | supply measures) ===
+2026-07-06  high= 1 all= 1 gap10=  27 gap9=  30 gap9liq=  15
+2026-07-07  high= 1 all= 1 gap10=  10 gap9=  10 gap9liq=   8
+2026-07-08  high= 1 all= 2 gap10=   5 gap9=   7 gap9liq=   1
+2026-07-09  high= 0 all= 0 gap10=  47 gap9=  58 gap9liq=  32
+2026-07-10  high= 2 all= 2 gap10=  16 gap9=  20 gap9liq=  11
+2026-07-13  high= 0 all= 0 gap10=   5 gap9=   5 gap9liq=   4
+2026-07-14  high= 2 all= 2 gap10=  49 gap9=  58 gap9liq=  29
+2026-07-15  high= 3 all= 4 gap10=  10 gap9=  11 gap9liq=   5
+2026-07-16  high= 0 all= 0 gap10=  14 gap9=  15 gap9liq=   8
+2026-07-17  high= 0 all= 1 gap10=  11 gap9=  13 gap9liq=   4
+2026-07-20  high= 2 all= 2 gap10=  17 gap9=  29 gap9liq=  12
+2026-07-21  high= 1 all= 1 gap10=  56 gap9=  61 gap9liq=  22
+2026-07-22  high= 2 all= 3 gap10=   8 gap9=  12 gap9liq=   6
+2026-07-23  high= 1 all= 2 gap10=  12 gap9=  14 gap9liq=  10
+2026-07-24  high= 2 all= 2 gap10=   9 gap9=   9 gap9liq=   4
+2026-07-27  high= 2 all= 2 gap10=  19 gap9=  26 gap9liq=   7
+2026-07-28  high= 1 all= 1 gap10=  14 gap9=  15 gap9liq=   9
+2026-07-29  high= 2 all= 2 gap10=  17 gap9=  20 gap9liq=  12
+2026-07-30  high= 7 all= 7 gap10= 133 gap9= 162 gap9liq= 101
+2026-07-31  high= 6 all= 6 gap10=  82 gap9=  98 gap9liq=  51
+2026-08-03  high= 2 all= 2 gap10=   8 gap9=   9 gap9liq=   6
+2026-08-04  high=10 all=11 gap10=  79 gap9= 100 gap9liq=  45
+2026-08-05  high= 8 all=10 gap10=  38 gap9=  41 gap9liq=  25
+2026-08-06  high= 8 all=11 gap10=  46 gap9=  52 gap9liq=  28
+2026-08-07  high=10 all=17 gap10=  60 gap9=  81 gap9liq=  40
+2026-08-10  high= 4 all= 5 gap10=  10 gap9=  14 gap9liq=   4
+2026-08-11  high= 4 all= 5 gap10=  17 gap9=  18 gap9liq=   8
+2026-08-12  high= 6 all=10 gap10=  82 gap9=  94 gap9liq=  47
+2026-08-13  high= 5 all= 6 gap10=  19 gap9=  23 gap9liq=  12
+2026-08-14  high= 4 all= 7 gap10=  24 gap9=  26 gap9liq=  15
+2026-08-17  high= 1 all= 2 gap10=  11 gap9=  13 gap9liq=   4
+2026-08-18  high= 1 all= 1 gap10=  16 gap9=  16 gap9liq=  11
+2026-08-19  high= 3 all= 4 gap10=  21 gap9=  31 gap9liq=  18
+2026-08-20  high= 2 all= 3 gap10=  36 gap9=  39 gap9liq=  15
+2026-08-21  high= 1 all= 1 gap10=  25 gap9=  31 gap9liq=  15
+2026-08-24  high= 0 all= 0 gap10=  19 gap9=  20 gap9liq=   8
+2026-08-25  high= 0 all= 0 gap10=   ? gap9=   ? gap9liq=   ?   [alerts established, not captured]
+
+##############################################################################
+# E. FORWARD LOOK — 2026-08-28 is the first day the DEPLOYED (era-scoped) trigger (b)
+#    can speak at all: 5 post-flip trading days. What would it need to stay silent?
+##############################################################################
+  prior window 2026-07-23..2026-08-21: 90 HIGH alerts / 778 gapping stocks = 11.6 per 100
+  recent window (post-flip): ['2026-08-28', '2026-08-27', '2026-08-26', '2026-08-25', '2026-08-24']
+  08-24 = 0 alerts (captured), 08-25 = 0 alerts (established). 08-26/27/28 unknown.
+    if the tape offers ~15 gapping stocks/day (75 over the 5 days): it FIRES unless we produce at least 5 HIGH alerts across 08-26..08-28
+    if the tape offers ~20 gapping stocks/day (100 over the 5 days): it FIRES unless we produce at least 6 HIGH alerts across 08-26..08-28
+    if the tape offers ~25 gapping stocks/day (125 over the 5 days): it FIRES unless we produce at least 8 HIGH alerts across 08-26..08-28
+    if the tape offers ~30 gapping stocks/day (150 over the 5 days): it FIRES unless we produce at least 9 HIGH alerts across 08-26..08-28
+
+##############################################################################
+# F. THE PRIOR WINDOW IS STILL SPIKE-INFLATED — on the CONVERSION axis this time.
+#    Supply-normalising removes the supply half of the early-August spike; the
+#    conversion half stays inside the 30-day baseline (collapse analysis Result 4:
+#    the burst weeks were elevated on BOTH supply and conversion).
+##############################################################################
+  July baseline 07-06..07-24 : 18 HIGH / 296 gapping = 6.1 per 100
+  prior window for 08-28     : 90 HIGH / 778 gapping = 11.6 per 100
+  ratio july/prior = 0.526 against the 0.500 bar -> a return to EXACTLY July-normal conversion clears it by only 2.6 points

@@ -1,0 +1,8 @@
+ticker|~|alert_date|~|score_tier|~|ep_score|~|gap_pct|~|catalyst_quality|~|src|~|days_ago
+FLNC|~|2026-06-01|~|HIGH|~|54|~|24.04661016949154|~|routine|~|historical_scan|~|85
+FLNC|~|2026-07-31|~|HIGH|~|60|~|10.02|~|game_changer|~|live|~|25
+GEMI|~|2026-05-15|~|HIGH|~|96|~|22.24|~|strong|~|live|~|102
+GEMI|~|2026-05-15|~|HIGH|~|96|~|28.231939163498105|~|strong|~|historical_scan|~|102
+KURA|~|2026-08-13|~|HIGH|~|60.5|~|13.43|~|strong|~|live|~|12
+QNTM|~|2026-05-26|~|HIGH|~|54|~|13.74458874458874|~|routine|~|historical_scan|~|91
+(6 rows)

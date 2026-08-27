@@ -790,6 +790,36 @@ def _rebump_gate(tasks, errors) -> None:
                 f"is UNBLOCK + SHIP, not bump (operator 2026-06-28).")
 
 
+def _print_pinned_runbooks() -> None:
+    """Surface any pinned runbook at OPEN (operator 2026-08-27: "make sure the runbook is
+    accessible when i start day or when we deploy tonight so it's not missed").
+
+    Reads `RUNBOOK_PIN:` lines out of docs/ops/runbook_*.md — the SAME marker deploy.sh's
+    banner reads, so one file feeds both surfaces and they cannot drift. Delete the runbook
+    (or its pin lines) once it is spent.
+
+    ⚠ Wholly wrapped: this function runs inside a COMMIT GATE. A missing directory, an
+    unreadable file or a decoding error must never turn into a failed commit, so every error
+    is swallowed and it degrades to printing nothing.
+    """
+    try:
+        import glob
+        for path in sorted(glob.glob("docs/ops/runbook_*.md")):
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    pins = [l.split("RUNBOOK_PIN:", 1)[1].strip()
+                            for l in fh if l.startswith("RUNBOOK_PIN:")]
+            except OSError:
+                continue
+            if not pins:
+                continue
+            print(f"\n📕 PINNED RUNBOOK — {path}")
+            for line in pins:
+                print(f"   {line}")
+    except Exception:
+        pass
+
+
 def main(argv: list[str]) -> int:
     if not PLAN.exists():
         print(f"[plan] ERROR: {PLAN} not found — it is the single source of truth.")
@@ -881,6 +911,7 @@ def main(argv: list[str]) -> int:
         print(f"\n-- GROWTH GATE — day started at {base['baseline_count']} open tasks. This session must "
               f"END <= {ceiling} (HARD, operator 2026-07-12: no session ends bigger than it began).")
         print("   Take a HARD LOOK for real closes; open a new task only if you close a real one first.")
+        _print_pinned_runbooks()
         return 0
 
     if "--carryover" in argv:

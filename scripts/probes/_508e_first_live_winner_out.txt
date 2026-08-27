@@ -1,0 +1,132 @@
+================================================================================================
+first_live_winner — what a profit-take rule COST on the two live green closes (2026-08-24)
+================================================================================================
+================================================================================================
+1. TRUE HIGH-WATER MARK — reconstructed minute by minute (not the recorded peak)
+------------------------------------------------------------------------------------------------
+  PLTR (id 307)  entry $149.0545  ORB-R $5.7745  shares 6  hold 2026-08-04 09:31 -> 2026-08-19 10:03 ET
+     minute bars in hold : 4334   (recorder used 4333)
+     TRUE in-hold HWM    : $180.1800 at 2026-08-14 09:32 ET  = +5.3902 ORB-R
+     recorded peak_price : $180.1800  (+5.3902 R)   -> MATCHES
+     unrealised $ at HWM : $+186.75   booked $+118.60   give-back $+68.15
+
+  ETON (id 367)  entry $55.2012  ORB-R $2.1912  shares 17  hold 2026-08-14 09:31 -> 2026-08-14 09:45 ET
+     minute bars in hold : 15   (recorder used 14)
+     TRUE in-hold HWM    : $59.7900 at 2026-08-14 09:32 ET  = +2.0942 ORB-R
+     recorded peak_price : $59.7900  (+2.0942 R)   -> MATCHES
+     unrealised $ at HWM : $+78.01   booked $+19.32   give-back $+58.69
+
+================================================================================================
+2. WHAT THE DEPLOYED +2R PARTIAL ACTUALLY DID (observed legs — no model)
+------------------------------------------------------------------------------------------------
+  PLTR: ORB H $148.63 L $143.28   +2R target (ORB-anchored) = $160.6035  = +2.00 ORB-R
+     08-05 09:45 ET  partial_profit     2 sh @ $ 165.6895  = +2.881 R/sh
+     08-19 10:03 ET  stop_hit           4 sh @ $ 170.3875  = +3.694 R/sh
+
+  ETON: ORB H $55.4427 L $53.01   +2R target (ORB-anchored) = $59.5836  = +2.00 ORB-R
+     08-14 09:45 ET  stop_hit          17 sh @ $  55.0500  = -0.069 R/sh
+     08-14 15:58 ET  partial_profit     5 sh @ $  59.5800  = +1.998 R/sh
+
+================================================================================================
+3. PLTR — the ONE clean observed price for a profit-take rule
+------------------------------------------------------------------------------------------------
+  1R on the whole position = $34.647   (ORB-R $5.7745/sh x 6 sh)
+  do-nothing ride: all 6 sh exit on the trail stop @ $170.3875  = $+128.00 = +3.694 R
+     (the ORB-low stop $143.28 was never touched after the fill — post-fill low $152.70;
+      the trail is price-driven, so its ladder is identical at 6 sh or 4 sh)
+  as-run       : 2 sh @ $165.6895 + 4 sh @ $170.3875 = $+118.60 = +3.4232 R
+  OBSERVED COST of the partial   = 2 sh x ($170.3875 - $165.6895) = $9.40  = 0.271 R
+  cost had it filled AT the $160.6035 target on 08-04 (3 aborted API attempts, 12:15/12:20/12:25 ET)
+                                 = 2 sh x ($170.3875 - $160.6035) = $19.57  = 0.565 R
+  the 1-day execution delay was WORTH  $+10.17  (filled $+5.0860/sh above target)
+================================================================================================
+4. PER-CANDIDATE COST ON PLTR — R and dollars given up vs riding to the trail stop
+------------------------------------------------------------------------------------------------
+  baseline 'do nothing' = +3.694 R = $+128.00
+
+  candidate rule                     fires?   kept R    kept $   cost R    cost $
+  ADR1_exit_all                         yes   +1.181    +40.92   +2.513    +87.07
+  R1.5_exit_all                         yes   +1.500    +51.97   +2.194    +76.03
+  ADR1.5_exit_all                       yes   +1.772    +61.39   +1.923    +66.61
+  rgm_none/2R/2R_exit_all               yes   +2.000    +69.29   +1.694    +58.70
+  R2_exit_all                           yes   +2.000    +69.29   +1.694    +58.70
+  ADR0.5_part1/3+BE                     yes   +2.660    +92.15   +1.035    +35.85
+  R1_part1/3+BE_POLL5                   yes   +2.777    +96.21   +0.917    +31.78
+  R1_part1/3+BE                         yes   +2.796    +96.88   +0.898    +31.12
+  rgm_none/1R/1R_part1/3+BE             yes   +2.796    +96.88   +0.898    +31.12
+  R2_part1/2+BE                         yes   +2.847    +98.65   +0.847    +29.35
+  day2close_part1/3_next-open           yes   +2.856    +98.96   +0.838    +29.03
+  ADR1_part1/3+BE                       yes   +2.857    +98.97   +0.838    +29.02
+  ADR1_part1/3+BE_POLL5                 yes   +2.886    +99.99   +0.808    +28.00
+  R1.5_part1/3+BE                       yes   +2.963   +102.66   +0.731    +25.34
+  rgm_none/3R/2R_exit_all               yes   +3.000   +103.94   +0.694    +24.06
+  R3_exit_all                           yes   +3.000   +103.94   +0.694    +24.06
+  ADR1.5_part1/3+BE                     yes   +3.053   +105.79   +0.641    +22.20
+  sq_replay(d3+,1/3,next-open)          yes   +3.099   +107.36   +0.596    +20.63
+  R2_part1/3+BE                         yes   +3.130   +108.43   +0.565    +19.57
+  rgm_none/2R/2R_part1/3+BE             yes   +3.130   +108.43   +0.565    +19.57
+  rgm_4R/2R/1R_part1/3+BE               yes   +3.130   +108.43   +0.565    +19.57
+  rgm_3R/2R/2R_part1/3+BE               yes   +3.130   +108.43   +0.565    +19.57
+  R2_part1/3+BE_POLL5                   yes   +3.135   +108.61   +0.560    +19.38
+  closeR1_part1/3_next-open             yes   +3.210   +111.22   +0.484    +16.77
+  closeR2_part1/3_next-open             yes   +3.210   +111.22   +0.484    +16.77
+  day1close_part1/3_next-open           yes   +3.210   +111.22   +0.484    +16.77
+  closeR1_part1/3_MOC                   yes   +3.248   +112.54   +0.446    +15.45
+  closeR2_part1/3_MOC                   yes   +3.248   +112.54   +0.446    +15.45
+  day1close_part1/3_MOC                 yes   +3.248   +112.54   +0.446    +15.45
+  ADR2_part1/3+BE                       yes   +3.250   +112.62   +0.444    +15.38
+  R3_part1/3+BE                         yes   +3.463   +119.98   +0.231     +8.02
+  rgm_4R/3R/2R_part1/3+BE               yes   +3.463   +119.98   +0.231     +8.02
+  rgm_6R/3R/2R_part1/3+BE               yes   +3.463   +119.98   +0.231     +8.02
+  R3_part1/3+BE_POLL5                   yes   +3.505   +121.45   +0.189     +6.54
+  R1_BE_only                            yes   +3.694   +128.00   +0.000     +0.00
+  R2_BE_only                            yes   +3.694   +128.00   +0.000     +0.00
+
+  as-run (deployed +2R partial, late fill)        +3.423   +118.60   +0.271     +9.39
+================================================================================================
+5. ETON — the baseline does not exist, and the accounting is off by $0.76
+------------------------------------------------------------------------------------------------
+  1R on the whole position = $37.250
+  BOOKED  : exits[] says stop_hit 17 sh @ $55.05 + partial 5 sh @ $59.58 = 22 sh on a 17-sh entry
+  ORDERS  : the stop order filled 12 sh @ $55.05 (id 296); the limit filled 5 @ $59.58 (id 295)
+  booked P&L $+19.3236 (+0.5187 R)   TRUE P&L $+20.0796 (+0.5390 R)   over-counted loss $-0.7560
+
+  the ORB-low stop $53.01 was NEVER touched after the fill (post-fill low $53.88).
+  what ejected the other 12 shares was the BREAKEVEN stop the partial ARMED ($55.2012, 09:35:01 ET), hit at 09:45:11 ET.
+  => there is no do-nothing terminal exit to price against: without the rule the position was still open.
+
+  forward path of the same 17 shares (daily closes, ORB-R units off $55.2012):
+     2026-08-14  H $  59.79  C $  58.86  = +1.67 R  mark-to-market on 17 sh $  +62.20
+     2026-08-17  H $  62.87  C $  61.73  = +2.98 R  mark-to-market on 17 sh $ +110.99
+     2026-08-18  H $  63.56  C $  63.43  = +3.76 R  mark-to-market on 17 sh $ +139.89
+     2026-08-19  H $  63.83  C $  61.48  = +2.87 R  mark-to-market on 17 sh $ +106.74
+     2026-08-20  H $  62.58  C $  59.91  = +2.15 R  mark-to-market on 17 sh $  +80.05
+     2026-08-21  H $  64.00  C $  63.47  = +3.77 R  mark-to-market on 17 sh $ +140.57
+
+  what the rule's breakeven leg gave up, marked at the last close: 12 sh x ($63.47 - $55.05) = $+101.04  (UNREALISED, a model, not an observation)
+================================================================================================
+6. ERA — what carries over to the 2R-stop world and what does not
+------------------------------------------------------------------------------------------------
+  PLTR: placed stop $143.2800 == ORB low $143.28 -> R was the ORB-R
+     under the 2026-08-16 rule the stop would be 2*143.28-148.63 = $137.9300,  R = $11.1245 = 1.926x the old R
+     the +2R TARGET PRICE is unchanged (ORB-anchored): $160.6035
+     the same peak relabels: +5.39 ORB-R  ->  +2.80 placed-stop-R
+
+  ETON: placed stop $53.0100 == ORB low $53.01 -> R was the ORB-R
+     under the 2026-08-16 rule the stop would be 2*53.01-55.4427 = $50.5773,  R = $4.6239 = 2.110x the old R
+     the +2R TARGET PRICE is unchanged (ORB-anchored): $59.5836
+     the same peak relabels: +2.09 ORB-R  ->  +0.99 placed-stop-R
+
+Done. THE LINE: nothing above changes any rule, threshold, or trade state.
+================================================================================================
+7. HOW MUCH ONE WINNER MOVES THE PARTIAL-vs-FULL COMPARISON (state doc 3.3)
+------------------------------------------------------------------------------------------------
+  R2_exit_all            era-A n=15  sum kept   -0.22 R   of which PLTR  +2.00 R   other 14   -2.22 R
+  R2_part1/3+BE          era-A n=15  sum kept   -4.43 R   of which PLTR  +3.13 R   other 14   -7.56 R
+  R3_exit_all            era-A n=15  sum kept   +0.78 R   of which PLTR  +3.00 R   other 14   -2.22 R
+  R3_part1/3+BE          era-A n=15  sum kept   -4.76 R   of which PLTR  +3.46 R   other 14   -8.22 R
+  nothing                era-A n=15  sum kept   -9.45 R   of which PLTR  +3.69 R   other 14  -13.15 R
+
+  full-exit-at-2R beats partial-at-2R by +4.20 R over these 15 trades.
+  on PLTR alone the partial beats the full exit by +1.13 R.
+  => it takes about 3.7 more PLTR-shaped winners to flip that ranking.

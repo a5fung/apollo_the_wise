@@ -1,0 +1,56 @@
+======================================================================
+A. FALSE-POSITIVE RATE ON ORDINARY ALERTS (live alerts, stored expct)
+======================================================================
+
+all live (n=264)  n=264
+  live:   {'game_changer': '78 (30%)', 'routine': '45 (17%)', 'strong': '141 (53%)'}
+  shadow: {'game_changer': '38 (14%)', 'routine': '39 (15%)', 'strong': '187 (71%)'}
+
+last 60d  n=149
+  live:   {'game_changer': '64 (43%)', 'routine': '21 (14%)', 'strong': '64 (43%)'}
+  shadow: {'game_changer': '27 (18%)', 'routine': '18 (12%)', 'strong': '104 (70%)'}
+
+HIGH only  n=187
+  live:   {'game_changer': '78 (42%)', 'routine': '13 (7%)', 'strong': '96 (51%)'}
+  shadow: {'game_changer': '36 (19%)', 'routine': '12 (6%)', 'strong': '139 (74%)'}
+
+Transitions (all live):
+   ('game_changer', 'strong') 42
+   ('routine', 'strong') 6
+   ('strong', 'game_changer') 4
+Promotions strong->gc: [('AEHR', '2026-06-17'), ('CAMT', '2026-06-02'), ('MRNA', '2026-08-19'), ('TWST', '2026-08-19')]
+Corrective routine->strong: [('ASTI', '2026-05-27'), ('CHTR', '2026-06-29'), ('HYMC', '2026-06-15'), ('QFIN', '2026-05-27'), ('SG', '2026-07-17'), ('WEN', '2026-06-24')]
+
+Rule counts: {'gc_demoted_scheduled_no_content_delta': 35, 'gc_demoted_unscheduled_no_forward': 9, 'gc_kept_scheduled_content_delta': 17, 'gc_kept_unknown_failopen': 3, 'gc_kept_unscheduled_forward': 14, 'routine_promoted_demotion_corrective': 6, 'routine_unchanged': 39, 'strong_promoted_group_repricing': 4, 'strong_unchanged': 137}
+
+Consistency run (module-derived expct on captured text) vs stored-expct run:
+  divergent shadow tiers: 12/264
+
+======================================================================
+B. ALERT-VOLUME CHANGE (within the already-alerted pool; counterfactual score)
+======================================================================
+tier moves: {('MODERATE', 'HIGH'): 6, ('HIGH', 'MODERATE'): 8, ('MODERATE', 'none'): 2}
+   ('ASTI', '2026-05-27', 'routine', 'strong', 61.9, 83.5, 'MODERATE', 'HIGH')
+   ('CAMT', '2026-06-02', 'strong', 'game_changer', 50.4, 86.4, 'MODERATE', 'HIGH')
+   ('HYMC', '2026-06-15', 'routine', 'strong', 53.3, 74.9, 'MODERATE', 'HIGH')
+   ('UUUU', '2026-06-18', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('WEN', '2026-06-24', 'routine', 'strong', 54.0, 80.0, 'MODERATE', 'HIGH')
+   ('SNX', '2026-06-25', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('CHTR', '2026-06-29', 'routine', 'strong', 55.0, 96.0, 'MODERATE', 'HIGH')
+   ('MANE', '2026-07-15', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('MANE', '2026-07-15', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('SG', '2026-07-17', 'routine', 'strong', 56.4, 84.0, 'MODERATE', 'HIGH')
+   ('CAT', '2026-08-04', 'game_changer', 'strong', 60.0, 48.0, 'MODERATE', 'none')
+   ('ZBRA', '2026-08-04', 'game_changer', 'strong', 60.0, 48.0, 'MODERATE', 'none')
+   ('KMT', '2026-08-05', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('KMT', '2026-08-05', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('ECG', '2026-08-05', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+   ('CGEM', '2026-08-13', 'game_changer', 'strong', 72.0, 60.0, 'HIGH', 'MODERATE')
+
+======================================================================
+C. THE GRADED REAL EPs
+======================================================================
+MRNA alert row: live=strong -> shadow=game_changer (strong_promoted_group_repricing)
+  regime Bull mult=1.2 thr=65
+  07:05 tick (gap read 10.04, score 21.6): shadow raw=60 -> score 72.0  -> HIGH  (live died: 'score 22 < 50')
+INTC 04-24 (audit-text replay): sched=scheduled combined=unclassified beat=False -> shadow=strong (gc_demoted_scheduled_no_content_delta)

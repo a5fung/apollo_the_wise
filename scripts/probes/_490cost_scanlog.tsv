@@ -1,0 +1,253 @@
+ticker	d	scan_n	reasons	max_score
+AGPU	2026-07-27	13	quality filter: filter:mcap_too_small: $78M < $500M	""
+ARQQ	2026-07-27	1	filter:session_rvol_too_low: session_rvol=0.31x (today 46,908 / baseline 150,141 n=21) < 1.0x	""
+ASAN	2026-07-27	0	""	""
+BNAI	2026-07-27	5	filter:pm_rvol_too_low: pm_rvol=0.09x (today 8,791 / baseline 101,837 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.27x (today 27,603 / baseline 102,554 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.36x (today 36,949 / baseline 103,711 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.38x (today 39,477 / baseline 104,481 n=20) < 1.0x ;; quality filter: filter:mcap_too_small: $85M < $500M	""
+BUUU	2026-07-27	0	""	""
+EAF	2026-07-27	0	""	""
+FTH	2026-07-27	0	""	""
+GENI	2026-07-27	1	score -2 < 50 (catalyst=routine)	-2
+HQ	2026-07-27	1	filter:session_rvol_too_low: session_rvol=0.21x (today 27,088 / baseline 128,876 n=21) < 1.0x	""
+IMMR	2026-07-27	2	quality filter: filter:mcap_too_small: $238M < $500M	""
+INFQ	2026-07-27	0	""	""
+IONQ	2026-07-27	1	routine catalyst, gap 11.3%	""
+JACK	2026-07-27	2	quality filter: filter:mcap_too_small: $312M < $500M	""
+JLHL	2026-07-27	1	quality filter: filter:atr_too_high: 56.5% > 15.0%	""
+NIPG	2026-07-27	1	already up 228% in prior 5 days (extended)	""
+NNE	2026-07-27	1	<none>	57
+PLRZ	2026-07-27	19	quality filter: filter:adv_too_low: $341,872	""
+PNW	2026-07-27	8	filter:session_rvol_too_low: session_rvol=0.39x (today 11,374 / baseline 29,271 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.49x (today 11,374 / baseline 23,187 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.72x (today 11,374 / baseline 15,787 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.91x (today 11,374 / baseline 12,446 n=22) < 1.0x ;; routine catalyst, gap 10.6%	""
+PRE	2026-07-27	0	""	""
+QBTS	2026-07-27	4	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.90x (today 2,069,276 / baseline 2,302,283 n=22) < 1.0x ;; <none>	54
+SDOT	2026-07-27	21	filter:pm_rvol_too_low: pm_rvol=0.06x (today 30,185 / baseline 473,595 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.06x (today 30,185 / baseline 484,810 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.06x (today 31,508 / baseline 494,262 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.06x (today 31,508 / baseline 503,648 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.06x (today 31,508 / baseline 512,530 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.06x (today 33,082 / baseline 518,899 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.07x (today 28,265 / baseline 388,448 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.07x (today 28,871 / baseline 407,977 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.07x (today 29,817 / baseline 436,631 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.07x (today 30,185 / baseline 455,989 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.07x (today 34,324 / baseline 527,728 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.08x (today 27,560 / baseline 330,340 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.08x (today 28,265 / baseline 356,962 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.09x (today 26,438 / baseline 291,414 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.09x (today 27,382 / baseline 313,196 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.10x (today 25,746 / baseline 250,998 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.11x (today 25,126 / baseline 232,384 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.12x (today 25,126 / baseline 204,450 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.13x (today 23,353 / baseline 177,266 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.14x (today 23,353 / baseline 170,370 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.08x (today 63,126 / baseline 771,689 n=22) < 1.0x	""
+AWI	2026-07-28	1	score 30 < 50 (catalyst=routine)	30
+CORZ	2026-07-28	1	<none>	72
+KNSA	2026-07-28	8	score 20 < 50 (catalyst=routine) ;; score 35 < 50 (catalyst=routine) ;; score 42 < 50 (catalyst=routine)	42
+QMLS	2026-07-28	1	quality filter: filter:adv_no_data	""
+RGEN	2026-07-28	1	filter:session_rvol_too_low: session_rvol=0.90x (today 101,150 / baseline 111,843 n=20) < 1.0x	""
+SLDB	2026-07-28	0	""	""
+TRU	2026-07-28	0	""	""
+AIAI	2026-07-29	1	quality filter: filter:atr_too_high: 21.3% > 15.0%	""
+ALOY	2026-07-29	1	EP cooldown — alerted within last 60 days	""
+ANIK	2026-07-29	27	quality filter: filter:adv_too_low: $858,542	""
+APUS	2026-07-29	7	quality filter: filter:adv_too_low: $67,473	""
+AXGN	2026-07-29	0	""	""
+BCAR	2026-07-29	0	""	""
+CBZ	2026-07-29	19	score 10 < 50 (catalyst=routine) ;; score 18 < 50 (catalyst=routine) ;; score 25 < 50 (catalyst=routine)	25
+CLW	2026-07-29	2	quality filter: filter:mcap_too_small: $316M < $500M	""
+GRMN	2026-07-29	1	score 22 < 50 (catalyst=routine)	22
+HQ	2026-07-29	0	""	""
+HURN	2026-07-29	2	filter:session_rvol_too_low: session_rvol=0.78x (today 18,516 / baseline 23,742 n=20) < 1.0x ;; score 37 < 50 (catalyst=routine)	37
+INVX	2026-07-29	7	filter:session_rvol_too_low: session_rvol=0.02x (today 180 / baseline 11,301 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.02x (today 180 / baseline 8,124 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.02x (today 180 / baseline 9,588 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.03x (today 180 / baseline 6,449 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.03x (today 180 / baseline 6,778 n=20) < 1.0x ;; pre-mkt volume 180 < 25,000 shares	""
+IPCX	2026-07-29	3	quality filter: filter:adv_too_low: $522,205	""
+MASS	2026-07-29	0	""	""
+MBIN	2026-07-29	1	score 27 < 50 (catalyst=routine)	27
+MPLT	2026-07-29	1	quality filter: filter:atr_too_high: 35.4% > 15.0%	""
+QUAD	2026-07-29	2	outside top-20 gap cap (gap 10.0%) ;; quality filter: filter:mcap_too_small: $487M < $500M	""
+SILC	2026-07-29	18	quality filter: filter:mcap_too_small: $219M < $500M	""
+WATT	2026-07-29	1	filter:pm_rvol_too_low: pm_rvol=0.44x (today 998 / baseline 2,253 n=16) < 1.0x	""
+ABTC	2026-07-30	0	""	""
+AIP	2026-07-30	0	""	""
+AMRC	2026-07-30	0	""	""
+ANIK	2026-07-30	0	""	""
+ASBP	2026-07-30	1	outside top-20 gap cap (gap 11.4%)	""
+AVY	2026-07-30	9	outside top-20 gap cap (gap 10.1%) ;; outside top-20 gap cap (gap 11.3%) ;; outside top-20 gap cap (gap 11.8%) ;; score 15 < 50 (catalyst=routine)	15
+BAX	2026-07-30	31	outside top-20 gap cap (gap 16.0%) ;; score 0 < 50 (catalyst=routine) ;; score 12 < 50 (catalyst=routine) ;; score 17 < 50 (catalyst=routine) ;; score 5 < 50 (catalyst=routine)	17
+BDC	2026-07-30	6	outside top-20 gap cap (gap 10.5%) ;; score 28 < 50 (catalyst=routine)	28
+BIYA	2026-07-30	4	filter:pm_rvol_too_low: pm_rvol=0.12x (today 326,169 / baseline 2,607,444 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.13x (today 342,073 / baseline 2,654,359 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.13x (today 355,769 / baseline 2,694,775 n=20) < 1.0x ;; outside top-20 gap cap (gap 10.1%)	""
+CBRS	2026-07-30	0	""	""
+CHRN	2026-07-30	0	""	""
+COHU	2026-07-30	0	""	""
+CVI	2026-07-30	1	outside top-20 gap cap (gap 10.4%)	""
+DBGI	2026-07-30	0	""	""
+ECG	2026-07-30	2	outside top-20 gap cap (gap 10.2%) ;; outside top-20 gap cap (gap 11.2%)	""
+EME	2026-07-30	27	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.34x (today 4,319 / baseline 12,801 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.35x (today 5,570 / baseline 15,839 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.47x (today 4,319 / baseline 9,152 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.71x (today 4,319 / baseline 6,057 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.78x (today 4,319 / baseline 5,541 n=21) < 1.0x ;; <none> ;; outside top-20 gap cap (gap 16.9%)	60
+EROC	2026-07-30	1	outside top-20 gap cap (gap 11.1%)	""
+FLS	2026-07-30	2	outside top-20 gap cap (gap 10.0%) ;; outside top-20 gap cap (gap 12.2%)	""
+FMC	2026-07-30	0	""	""
+FRMI	2026-07-30	0	""	""
+FRVO	2026-07-30	2	outside top-20 gap cap (gap 13.5%) ;; outside top-20 gap cap (gap 14.5%)	""
+HII	2026-07-30	29	outside top-20 gap cap (gap 11.3%) ;; outside top-20 gap cap (gap 12.7%) ;; score 28 < 50 (catalyst=routine)	28
+HIPO	2026-07-30	1	outside top-20 gap cap (gap 11.2%)	""
+IESC	2026-07-30	0	""	""
+MKTX	2026-07-30	22	score 30 < 50 (catalyst=routine) ;; score 38 < 50 (catalyst=routine) ;; score 45 < 50 (catalyst=routine)	45
+NPKI	2026-07-30	7	score 15 < 50 (catalyst=routine)	15
+PBF	2026-07-30	2	outside top-20 gap cap (gap 10.2%) ;; outside top-20 gap cap (gap 11.5%)	""
+PGY	2026-07-30	28	EP cooldown — alerted within last 60 days ;; outside top-20 gap cap (gap 10.1%) ;; outside top-20 gap cap (gap 10.2%) ;; outside top-20 gap cap (gap 10.7%) ;; outside top-20 gap cap (gap 11.1%) ;; outside top-20 gap cap (gap 11.4%)	""
+PLPC	2026-07-30	3	filter:session_rvol_too_low: session_rvol=0.32x (today 1,663 / baseline 5,199 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.36x (today 2,775 / baseline 7,805 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.63x (today 6,519 / baseline 10,384 n=21) < 1.0x	""
+PN	2026-07-30	24	already up 166% in prior 5 days (extended)	""
+PWR	2026-07-30	35	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.94x (today 50,117 / baseline 53,136 n=21) < 1.0x ;; <none> ;; outside top-20 gap cap (gap 11.4%) ;; outside top-20 gap cap (gap 14.7%) ;; pre-mkt volume 3,467 < 25,000 shares	60
+QMCO	2026-07-30	11	outside top-20 gap cap (gap 10.1%) ;; quality filter: filter:mcap_too_small: $411M < $500M	""
+RACC	2026-07-30	0	""	""
+SPRC	2026-07-30	2	already up 93% in prior 5 days (extended) ;; outside top-20 gap cap (gap 13.2%)	""
+ST	2026-07-30	0	""	""
+STGW	2026-07-30	14	outside top-20 gap cap (gap 10.2%) ;; outside top-20 gap cap (gap 11.1%) ;; score 15 < 50 (catalyst=routine)	15
+UMAC	2026-07-30	0	""	""
+WOLF	2026-07-30	0	""	""
+AEIS	2026-07-31	1	outside top-20 gap cap (gap 10.8%)	""
+AMCX	2026-07-31	1	quality filter: filter:mcap_too_small: $477M < $500M	""
+BELFB	2026-07-31	1	outside top-20 gap cap (gap 10.7%)	""
+BGDE	2026-07-31	26	quality filter: filter:adv_too_low: $529,814	""
+BLZE	2026-07-31	2	filter:session_rvol_too_low: session_rvol=0.95x (today 279,352 / baseline 293,426 n=22) < 1.0x ;; <none>	72
+CSTL	2026-07-31	1	score 40 < 50 (catalyst=routine)	40
+EROC	2026-07-31	27	outside top-20 gap cap (gap 10.6%) ;; routine catalyst, gap 11.3% ;; routine catalyst, gap 11.4% ;; routine catalyst, gap 11.5% ;; routine catalyst, gap 11.7%	""
+FET	2026-07-31	11	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.04x (today 184 / baseline 4,260 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.05x (today 184 / baseline 3,588 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.08x (today 184 / baseline 2,202 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.09x (today 184 / baseline 2,153 n=20) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.15x (today 820 / baseline 5,300 n=20) < 1.0x ;; <none>	84
+FORR	2026-07-31	1	outside top-20 gap cap (gap 10.1%)	""
+IESC	2026-07-31	24	filter:session_rvol_too_low: session_rvol=0.26x (today 2,617 / baseline 10,212 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.41x (today 2,617 / baseline 6,378 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.43x (today 5,449 / baseline 12,748 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.83x (today 12,498 / baseline 14,984 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.86x (today 2,617 / baseline 3,058 n=22) < 1.0x ;; pre-mkt volume 1,389 < 25,000 shares ;; pre-mkt volume 1,756 < 25,000 shares ;; pre-mkt volume 1,940 < 25,000 shares ;; pre-mkt volume 19,837 < 25,000 shares ;; pre-mkt volume 2,505 < 25,000 shares ;; pre-mkt volume 2,617 < 25,000 shares ;; pre-mkt volume 682 < 25,000 shares ;; pre-mkt volume 794 < 25,000 shares	""
+STI	2026-07-31	0	""	""
+ALGT	2026-08-03	7	filter:pm_rvol_too_low: pm_rvol=0.43x (today 429 / baseline 1,002 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.44x (today 429 / baseline 966 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.63x (today 693 / baseline 1,098 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.64x (today 693 / baseline 1,084 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.65x (today 693 / baseline 1,073 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.68x (today 693 / baseline 1,022 n=21) < 1.0x	""
+DFNS	2026-08-03	25	already up 536% in prior 5 days (extended) ;; filter:pm_rvol_too_low: pm_rvol=0.19x (today 216,102 / baseline 1,134,858 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.21x (today 255,096 / baseline 1,226,525 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.25x (today 310,907 / baseline 1,253,436 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.34x (today 440,432 / baseline 1,291,801 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.40x (today 523,664 / baseline 1,313,145 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.41x (today 554,185 / baseline 1,352,259 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.43x (today 584,997 / baseline 1,369,938 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.45x (today 627,924 / baseline 1,394,115 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.47x (today 664,417 / baseline 1,409,911 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.49x (today 694,998 / baseline 1,426,326 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.54x (today 772,822 / baseline 1,437,065 n=21) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.57x (today 843,324 / baseline 1,470,682 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.58x (today 798,658 / baseline 1,385,541 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.58x (today 813,562 / baseline 1,404,474 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.58x (today 828,339 / baseline 1,434,174 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.59x (today 885,318 / baseline 1,494,683 n=22) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.60x (today 917,254 / baseline 1,520,075 n=22) < 1.0x	""
+LIND	2026-08-03	2	<none> ;; score 20 < 50 (catalyst=strong)	70
+MRDN	2026-08-03	0	""	""
+NCDL	2026-08-03	0	""	""
+WSM	2026-08-03	0	""	""
+ACLS	2026-08-04	3	M&A/buyout catalyst — no momentum trade	""
+ARVN	2026-08-04	2	score 35 < 50 (catalyst=routine)	35
+BTDR	2026-08-04	10	already scored earlier today ;; <none> ;; outside top-20 gap cap (gap 11.3%) ;; outside top-20 gap cap (gap 12.0%) ;; outside top-20 gap cap (gap 12.1%) ;; outside top-20 gap cap (gap 12.8%)	80
+EWTX	2026-08-04	2	outside top-20 gap cap (gap 11.4%) ;; score 27 < 50 (catalyst=routine)	27
+FCUV	2026-08-04	0	""	""
+HLMN	2026-08-04	2	M&A/buyout catalyst — no momentum trade ;; outside top-20 gap cap (gap 11.8%)	""
+INSP	2026-08-04	33	already scored earlier today ;; filter:pm_rvol_too_low: pm_rvol=0.33x (today 716 / baseline 2,189 n=13) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.36x (today 716 / baseline 1,980 n=13) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.62x (today 1,387 / baseline 2,222 n=13) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.63x (today 1,387 / baseline 2,189 n=13) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.67x (today 10,600 / baseline 15,735 n=20) < 1.0x ;; <none> ;; pre-mkt volume 10,053 < 25,000 shares ;; pre-mkt volume 23,719 < 25,000 shares ;; pre-mkt volume 5,473 < 25,000 shares ;; pre-mkt volume 6,039 < 25,000 shares ;; pre-mkt volume 7,353 < 25,000 shares ;; pre-mkt volume 7,572 < 25,000 shares	55
+MED	2026-08-04	17	pre-mkt volume 13,939 < 25,000 shares ;; pre-mkt volume 24,349 < 25,000 shares ;; pre-mkt volume 3,381 < 25,000 shares ;; pre-mkt volume 3,997 < 25,000 shares ;; pre-mkt volume 4,898 < 25,000 shares ;; pre-mkt volume 531 < 25,000 shares ;; score 42 < 50 (catalyst=routine)	42
+MRAM	2026-08-04	33	outside top-20 gap cap (gap 11.6%) ;; quality filter: filter:mcap_too_small: $362M < $500M	""
+NUCL	2026-08-04	0	""	""
+PAY	2026-08-04	3	filter:session_rvol_too_low: session_rvol=0.41x (today 10,151 / baseline 24,694 n=22) < 1.0x ;; score 40 < 50 (catalyst=routine) ;; score 45 < 50 (catalyst=routine)	45
+PICS	2026-08-04	0	""	""
+PSIX	2026-08-04	1	outside top-20 gap cap (gap 13.6%)	""
+REPL	2026-08-04	0	""	""
+RFIL	2026-08-04	16	filter:pm_rvol_too_low: pm_rvol=0.53x (today 851 / baseline 1,612 n=14) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.58x (today 851 / baseline 1,456 n=13) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.59x (today 851 / baseline 1,430 n=11) < 1.0x ;; outside top-20 gap cap (gap 10.5%)	""
+TSAT	2026-08-04	4	<none> ;; pre-mkt volume 1,205 < 25,000 shares ;; pre-mkt volume 1,625 < 25,000 shares	60
+W	2026-08-04	17	score 25 < 50 (catalyst=routine) ;; score 5 < 50 (catalyst=routine)	25
+WATT	2026-08-04	0	""	""
+AMWL	2026-08-05	2	quality filter: filter:mcap_too_small: $200M < $500M	""
+AXTI	2026-08-05	0	""	""
+BVS	2026-08-05	0	""	""
+FTK	2026-08-05	32	EP cooldown — alerted within last 60 days ;; filter:session_rvol_too_low: session_rvol=0.98x (today 8,476 / baseline 8,655 n=20) < 1.0x ;; outside top-20 gap cap (gap 10.1%)	""
+HGTY	2026-08-05	1	<none>	60.5
+IMC	2026-08-05	1	already up 62% in prior 5 days (extended)	""
+INTA	2026-08-05	18	filter:session_rvol_too_low: session_rvol=0.08x (today 2,465 / baseline 31,770 n=21) < 1.0x ;; outside top-20 gap cap (gap 10.3%) ;; outside top-20 gap cap (gap 10.8%) ;; score 22 < 50 (catalyst=routine)	21.6
+KMT	2026-08-05	28	already scored earlier today ;; <none> ;; pre-mkt volume 1,770 < 25,000 shares ;; pre-mkt volume 2,123 < 25,000 shares ;; pre-mkt volume 2,848 < 25,000 shares ;; pre-mkt volume 3,450 < 25,000 shares ;; pre-mkt volume 3,814 < 25,000 shares ;; pre-mkt volume 5,252 < 25,000 shares ;; pre-mkt volume 5,785 < 25,000 shares ;; pre-mkt volume 5,902 < 25,000 shares	72
+NGL	2026-08-05	6	pre-mkt volume 100 < 25,000 shares	""
+OSPN	2026-08-05	25	filter:pm_rvol_too_low: pm_rvol=0.37x (today 1,002 / baseline 2,718 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.38x (today 1,002 / baseline 2,626 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.39x (today 1,002 / baseline 2,589 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.40x (today 1,002 / baseline 2,508 n=10) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.42x (today 1,002 / baseline 2,366 n=11) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.42x (today 1,002 / baseline 2,393 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.42x (today 1,002 / baseline 2,394 n=11) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.43x (today 1,002 / baseline 2,351 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.44x (today 1,002 / baseline 2,269 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.51x (today 1,002 / baseline 1,955 n=10) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.06x (today 1,002 / baseline 17,427 n=20) < 1.0x ;; outside top-20 gap cap (gap 11.1%) ;; routine catalyst, gap 11.0% ;; routine catalyst, gap 11.1%	""
+QLYS	2026-08-05	26	filter:session_rvol_too_low: session_rvol=0.20x (today 4,089 / baseline 20,513 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.26x (today 4,089 / baseline 15,684 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.30x (today 8,299 / baseline 27,359 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.38x (today 4,089 / baseline 10,803 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.42x (today 4,089 / baseline 9,830 n=21) < 1.0x ;; score 14 < 50 (catalyst=routine) ;; score -6 < 50 (catalyst=routine) ;; score 8 < 50 (catalyst=routine)	14.4
+RIGL	2026-08-05	0	""	""
+ROCK	2026-08-05	2	already scored earlier today ;; <none>	60.5
+SHOP	2026-08-05	34	score 30 < 50 (catalyst=routine) ;; score 34 < 50 (catalyst=routine) ;; score 40 < 50 (catalyst=routine) ;; score 42 < 50 (catalyst=routine) ;; score 48 < 50 (catalyst=routine)	48
+TBI	2026-08-05	27	score 24 < 50 (catalyst=routine) ;; score 30 < 50 (catalyst=routine) ;; score 36 < 50 (catalyst=routine) ;; score 44 < 50 (catalyst=routine)	44.4
+TVTX	2026-08-05	30	filter:pm_rvol_too_low: pm_rvol=0.17x (today 1,282 / baseline 7,351 n=18) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.22x (today 1,678 / baseline 7,502 n=18) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.25x (today 1,282 / baseline 5,094 n=18) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.28x (today 2,072 / baseline 7,445 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.29x (today 1,282 / baseline 4,479 n=16) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.29x (today 2,072 / baseline 7,165 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.29x (today 2,072 / baseline 7,176 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.29x (today 2,072 / baseline 7,210 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.36x (today 2,914 / baseline 8,007 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.37x (today 2,914 / baseline 7,823 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.38x (today 2,914 / baseline 7,762 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.39x (today 1,282 / baseline 3,314 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.48x (today 4,012 / baseline 8,338 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.49x (today 4,012 / baseline 8,134 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.49x (today 4,012 / baseline 8,235 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.55x (today 5,140 / baseline 9,405 n=19) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.58x (today 5,037 / baseline 8,611 n=19) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.23x (today 7,159 / baseline 31,631 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.27x (today 5,140 / baseline 19,292 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.40x (today 17,362 / baseline 42,944 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.67x (today 36,525 / baseline 54,340 n=21) < 1.0x ;; score 22 < 50 (catalyst=strong) ;; score 36 < 50 (catalyst=strong) ;; score 39 < 50 (catalyst=strong)	38.9
+WYNN	2026-08-05	1	outside top-20 gap cap (gap 10.4%)	""
+ZETA	2026-08-05	1	outside top-20 gap cap (gap 10.5%)	""
+ADMA	2026-08-06	0	""	""
+ALNT	2026-08-06	2	filter:session_rvol_too_low: session_rvol=0.39x (today 10,890 / baseline 27,798 n=22) < 1.0x ;; outside top-20 gap cap (gap 14.9%)	""
+AMIX	2026-08-06	5	already up 340% in prior 5 days (extended)	""
+ATNI	2026-08-06	3	quality filter: filter:mcap_too_small: $440M < $500M	""
+AVNT	2026-08-06	2	outside top-20 gap cap (gap 10.8%) ;; outside top-20 gap cap (gap 13.6%)	""
+CDRE	2026-08-06	2	score 30 < 50 (catalyst=routine) ;; score 42 < 50 (catalyst=routine)	42
+FET	2026-08-06	15	EP cooldown — alerted within last 60 days	""
+INSM	2026-08-06	32	already scored earlier today ;; <none>	96
+LFST	2026-08-06	8	already scored earlier today ;; filter:pm_rvol_too_low: pm_rvol=0.61x (today 1,179 / baseline 1,946 n=10) < 1.0x ;; <none> ;; pre-mkt volume 3,572 < 25,000 shares ;; pre-mkt volume 5,852 < 25,000 shares ;; pre-mkt volume 5,952 < 25,000 shares	96
+OEC	2026-08-06	0	""	""
+OESX	2026-08-06	0	""	""
+PKOH	2026-08-06	0	""	""
+PN	2026-08-06	8	quality filter: filter:adv_too_low: $556,166	""
+RCUS	2026-08-06	0	""	""
+SBGI	2026-08-06	0	""	""
+SDGR	2026-08-06	1	outside top-20 gap cap (gap 10.9%)	""
+SGHT	2026-08-06	2	quality filter: filter:adv_too_low: $708,148	""
+TRUP	2026-08-06	3	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.28x (today 3,866 / baseline 13,786 n=19) < 1.0x ;; <none>	60
+U	2026-08-06	25	already scored earlier today ;; <none>	96
+WPP	2026-08-06	34	score 30 < 50 (catalyst=routine) ;; score 48 < 50 (catalyst=routine)	48
+ZVRA	2026-08-06	2	outside top-20 gap cap (gap 12.6%) ;; outside top-20 gap cap (gap 12.8%)	""
+ACET	2026-08-07	0	""	""
+AIRJ	2026-08-07	0	""	""
+ALOY	2026-08-07	0	""	""
+BAND	2026-08-07	0	""	""
+CARS	2026-08-07	0	""	""
+CENX	2026-08-07	2	outside top-20 gap cap (gap 11.5%) ;; outside top-20 gap cap (gap 11.9%)	""
+CON	2026-08-07	0	""	""
+FRD	2026-08-07	24	outside top-20 gap cap (gap 14.0%) ;; quality filter: filter:mcap_too_small: $272M < $500M	""
+GRDN	2026-08-07	1	outside top-20 gap cap (gap 12.7%)	""
+HALO	2026-08-07	1	outside top-20 gap cap (gap 11.5%)	""
+HBB	2026-08-07	2	outside top-20 gap cap (gap 14.0%) ;; quality filter: filter:adv_too_low: $631,709	""
+ICUI	2026-08-07	2	outside top-20 gap cap (gap 10.1%) ;; outside top-20 gap cap (gap 12.8%)	""
+KRT	2026-08-07	2	outside top-20 gap cap (gap 12.3%) ;; outside top-20 gap cap (gap 15.1%)	""
+MAKO	2026-08-07	0	""	""
+MITK	2026-08-07	12	filter:pm_rvol_too_low: pm_rvol=0.14x (today 210 / baseline 1,455 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.15x (today 210 / baseline 1,419 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.31x (today 476 / baseline 1,526 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.41x (today 684 / baseline 1,681 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.44x (today 684 / baseline 1,543 n=20) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.67x (today 1,111 / baseline 1,658 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.11x (today 1,902 / baseline 17,067 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.11x (today 2,522 / baseline 22,817 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.14x (today 1,902 / baseline 13,138 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.15x (today 1,902 / baseline 12,334 n=22) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.35x (today 11,041 / baseline 31,086 n=22) < 1.0x	""
+MTW	2026-08-07	16	already scored earlier today ;; <none> ;; pre-mkt volume 1,445 < 25,000 shares ;; pre-mkt volume 1,554 < 25,000 shares ;; pre-mkt volume 1,707 < 25,000 shares	50.4
+NTRA	2026-08-07	32	filter:session_rvol_too_low: session_rvol=0.29x (today 12,390 / baseline 43,357 n=23) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.32x (today 18,575 / baseline 57,371 n=23) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.39x (today 12,390 / baseline 31,435 n=23) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.52x (today 10,536 / baseline 20,119 n=23) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.64x (today 10,536 / baseline 16,516 n=23) < 1.0x ;; pre-mkt volume 1,394 < 25,000 shares ;; pre-mkt volume 2,431 < 25,000 shares ;; pre-mkt volume 2,786 < 25,000 shares ;; pre-mkt volume 4,038 < 25,000 shares ;; score 18 < 50 (catalyst=routine) ;; score 6 < 50 (catalyst=routine)	18
+PDFS	2026-08-07	0	""	""
+RDW	2026-08-07	1	outside top-20 gap cap (gap 10.9%)	""
+SEI	2026-08-07	2	outside top-20 gap cap (gap 11.2%)	""
+SRZN	2026-08-07	0	""	""
+TILE	2026-08-07	1	outside top-20 gap cap (gap 10.5%)	""
+TSEM	2026-08-07	0	""	""
+ULBI	2026-08-07	30	outside top-20 gap cap (gap 11.1%) ;; outside top-20 gap cap (gap 11.8%) ;; outside top-20 gap cap (gap 11.9%) ;; outside top-20 gap cap (gap 12.2%) ;; outside top-20 gap cap (gap 12.4%) ;; outside top-20 gap cap (gap 12.8%) ;; quality filter: filter:adv_too_low: $162,418	""
+YELP	2026-08-07	1	filter:session_rvol_too_low: session_rvol=0.69x (today 29,523 / baseline 42,455 n=23) < 1.0x	""
+ZD	2026-08-07	0	""	""
+ACHR	2026-08-10	22	already scored earlier today ;; <none> ;; score 36 < 50 (catalyst=routine) ;; score 42 < 50 (catalyst=routine) ;; score 48 < 50 (catalyst=routine)	54
+BWMN	2026-08-10	22	quality filter: filter:mcap_too_small: $477M < $500M	""
+CLRO	2026-08-10	1	already up 176% in prior 5 days (extended)	""
+FCUV	2026-08-10	2	quality filter: filter:adv_too_low: $57,040	""
+HZO	2026-08-10	33	M&A/buyout catalyst — no momentum trade	""
+LFST	2026-08-10	0	""	""
+RNA	2026-08-10	12	quality filter: filter:mcap_too_small: $211M < $500M	""
+SLN	2026-08-10	33	already scored earlier today ;; <none>	84
+STDN	2026-08-10	1	filter:session_rvol_too_low: session_rvol=1.00x (today 198,985 / baseline 199,771 n=13) < 1.0x	""
+TH	2026-08-10	12	already scored earlier today ;; filter:pm_rvol_too_low: pm_rvol=0.69x (today 1,713 / baseline 2,466 n=12) < 1.0x ;; filter:pm_rvol_too_low: pm_rvol=0.79x (today 1,713 / baseline 2,178 n=12) < 1.0x ;; <none>	50.4
+TNXP	2026-08-10	0	""	""
+VREX	2026-08-10	35	M&A/buyout catalyst — no momentum trade	""
+ACVA	2026-08-11	26	score 28 < 50 (catalyst=routine) ;; score 34 < 50 (catalyst=routine)	33.6
+ALMR	2026-08-11	0	""	""
+ELOX	2026-08-11	2	quality filter: filter:adv_too_low: $656,860	""
+HPK	2026-08-11	0	""	""
+QMLS	2026-08-11	0	""	""
+RNW	2026-08-11	8	M&A/buyout catalyst — no momentum trade	""
+RPD	2026-08-11	3	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.25x (today 30,158 / baseline 122,288 n=21) < 1.0x ;; <none>	84
+VATE	2026-08-11	2	quality filter: filter:adv_too_low: $723,095	""
+WSHP	2026-08-11	0	""	""
+ANTX	2026-08-12	2	quality filter: filter:adv_too_low: $795,234	""
+ATRO	2026-08-12	25	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.59x (today 10,259 / baseline 17,362 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.66x (today 14,797 / baseline 22,549 n=21) < 1.0x ;; filter:session_rvol_too_low: session_rvol=0.84x (today 10,259 / baseline 12,139 n=21) < 1.0x ;; <none> ;; pre-mkt volume 1,097 < 25,000 shares ;; pre-mkt volume 1,479 < 25,000 shares ;; pre-mkt volume 2,525 < 25,000 shares	72
+BUUU	2026-08-12	0	""	""
+CEPL	2026-08-12	0	""	""
+DBGI	2026-08-12	6	quality filter: filter:atr_too_high: 33.2% > 15.0%	""
+DFTX	2026-08-12	23	EP cooldown — alerted within last 60 days	""
+KRNT	2026-08-12	5	score 42 < 50 (catalyst=strong)	42
+PRPL	2026-08-12	0	""	""
+SMWB	2026-08-12	30	score 0 < 50 (catalyst=routine) ;; score 10 < 50 (catalyst=routine) ;; score 12 < 50 (catalyst=routine) ;; score 18 < 50 (catalyst=routine) ;; score 4 < 50 (catalyst=routine) ;; score -6 < 50 (catalyst=routine)	18
+WYFI	2026-08-12	34	already scored earlier today ;; <none>	84
+ZTG	2026-08-12	1	already up 87% in prior 5 days (extended)	""
+AMBP	2026-08-13	6	M&A/buyout catalyst — no momentum trade	""
+BLSH	2026-08-13	1	<none>	54
+COLL	2026-08-13	1	routine catalyst, gap 11.5%	""
+EROC	2026-08-13	0	""	""
+KGEI	2026-08-13	1	quality filter: filter:adv_too_low: $600,466	""
+LNSR	2026-08-13	31	quality filter: filter:adv_too_low: $208,597	""
+RRGB	2026-08-13	2	quality filter: filter:mcap_too_small: $167M < $500M	""
+STEM	2026-08-13	2	quality filter: filter:adv_too_low: $705,625	""
+WYFI	2026-08-13	0	""	""
+XE	2026-08-13	3	EP cooldown — alerted within last 60 days	""
+AAOI	2026-08-14	0	""	""
+ABX	2026-08-14	1	routine catalyst, gap 10.2%	""
+AVEX	2026-08-14	0	""	""
+BANL	2026-08-14	0	""	""
+CPS	2026-08-14	18	quality filter: filter:mcap_too_small: $484M < $500M	""
+MF	2026-08-14	6	quality filter: filter:atr_too_high: 15.1% > 15.0%	""
+NMAX	2026-08-14	2	already scored earlier today ;; <none>	100.8
+OBX	2026-08-14	11	quality filter: filter:adv_no_data	""
+STDN	2026-08-14	2	filter:session_rvol_too_low: session_rvol=0.71x (today 105,831 / baseline 148,894 n=19) < 1.0x ;; <none>	53.3
+AGPU	2026-08-17	0	""	""
+ARGX	2026-08-17	30	already scored earlier today ;; filter:session_rvol_too_low: session_rvol=0.78x (today 14,299 / baseline 18,256 n=23) < 1.0x ;; <none>	86.4
+CAPR	2026-08-17	0	""	""
+CBRS	2026-08-17	1	<none>	60
+DUOT	2026-08-17	14	quality filter: filter:mcap_too_small: $286M < $500M	""
+FVR	2026-08-17	21	routine catalyst, gap 11.3%	""
+JAB	2026-08-17	0	""	""
+OCUL	2026-08-17	21	routine catalyst, gap 11.4% ;; score 28 < 50 (catalyst=routine) ;; score 34 < 50 (catalyst=routine)	33.6
+RCMT	2026-08-17	0	""	""
+XHLD	2026-08-17	1	already up 191% in prior 5 days (extended)	""
+AARD	2026-08-18	1	quality filter: filter:adv_too_low: $927,111	""
+AIRG	2026-08-18	5	quality filter: filter:adv_too_low: $388,341	""
+BANL	2026-08-18	8	already up 169% in prior 5 days (extended)	""
+FLXS	2026-08-18	2	quality filter: filter:mcap_too_small: $334M < $500M	""
+JLHL	2026-08-18	0	""	""
+WEAV	2026-08-18	7	M&A/buyout catalyst — no momentum trade	""

@@ -1,0 +1,21 @@
+Loaded 463 scored candidates across 61 trading days (trailing 90d, last-seen state per ticker/day, ep_score NOT NULL under the OLD/currently-live rubric).
+
+Under the LIVE (separation+rescale) rubric, replayed over the same candidate pool:
+  HIGH:      123 (2.02/day)
+  NEAR_MISS [50,65): 85 (1.39/day)
+  SKIP (<50): 255 (4.18/day)
+  trading days: 61
+
+Day distribution of near-miss count: {'4+': 6, '1-3': 32, '0': 23}
+
+Sample near-miss rows (first 10):
+  2026-05-26 ASPI   gap=10.6% cat=strong       presented=52.5  (old ep_score=54.0 old_tier=MODERATE)
+  2026-05-26 CLFD   gap=10.6% cat=strong       presented=52.5  (old ep_score=24.0 old_tier=)
+  2026-05-26 PONY   gap=12.7% cat=strong       presented=52.5  (old ep_score=64.8 old_tier=HIGH)
+  2026-05-26 POWI   gap=17.5% cat=strong       presented=63.0  (old ep_score=84.0 old_tier=HIGH)
+  2026-05-26 SPIR   gap=11.1% cat=strong       presented=52.5  (old ep_score=28.8 old_tier=)
+  2026-05-27 AOSL   gap=10.5% cat=strong       presented=63.0  (old ep_score=28.8 old_tier=)
+  2026-05-27 CRSR   gap=15.3% cat=strong       presented=52.5  (old ep_score=100.8 old_tier=HIGH)
+  2026-05-27 OOMA   gap=13.3% cat=strong       presented=52.5  (old ep_score=26.4 old_tier=)
+  2026-05-28 SNOW   gap=35.2% cat=routine      presented=52.5  (old ep_score=53.3 old_tier=MODERATE)
+  2026-05-29 BHVN   gap=11.5% cat=strong       presented=52.5  (old ep_score=64.8 old_tier=MODERATE)

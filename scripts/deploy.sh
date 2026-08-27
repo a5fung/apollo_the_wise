@@ -138,6 +138,21 @@ if [ "${AVAIL_GB:-0}" -lt 8 ]; then
   exit 20
 fi
 
+# ── Pinned runbook banner (operator 2026-08-27: "make sure the runbook is accessible when
+# i start day or when we deploy tonight so it's not missed"). Read-only and fully guarded:
+# if the file is absent this prints nothing and changes no exit code, so it can never be the
+# reason a deploy fails. Delete the file (or its RUNBOOK_PIN line) once the runbook is spent.
+for _rb in docs/ops/runbook_*.md; do
+  [ -f "$_rb" ] || continue
+  grep -q "RUNBOOK_PIN" "$_rb" 2>/dev/null || continue
+  echo ""
+  echo "📕 ================= PINNED RUNBOOK — READ BEFORE DEPLOYING ================="
+  echo "   $_rb"
+  sed -n 's/^RUNBOOK_PIN: //p' "$_rb" | sed 's/^/   /'
+  echo "📕 =========================================================================="
+  echo ""
+done
+
 echo "=== [1/5] git pull origin main ==="
 BEFORE_PULL=$(git rev-parse HEAD)
 git pull origin main

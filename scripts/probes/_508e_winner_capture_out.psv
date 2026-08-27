@@ -1,0 +1,384 @@
+===Q1_WINNER_TRADES===
+id|ticker|alert_date|regime|status|orb_high|orb_low|atr_14|entry_price|entry_shares|stop_price|hard_stop|position_size|risk_dollars|risk_dollars_actual|remaining_shares|total_pnl|partial_taken|breakeven_active|hold_days|lowest_price_seen|highest_price_seen|pnl_attribution|filled_et|closed_et
+367|ETON|2026-08-14|Bull|closed|55.4427|53.01|2.6960642857142862|55.2012|17|55.2012|53.01|942.53|48.92||0|19.323599999999942|t|t|0|54.7999999999999971578290569595992565155029296875|59.78999999999999914734871708787977695465087890625||2026-08-14 09:31:02|2026-08-14 09:45:11
+307|PLTR|2026-08-04|Choppy|closed|148.63|143.28|5.9199785714285715|149.0545|6|170.47|143.28|891.78|35.86||0|118.60200000000003|t|t|14|145.58990000000000009094947017729282379150390625|180.18000000000000682121026329696178436279296875||2026-08-04 09:31:11|2026-08-19 10:03:18
+(2 rows)
+===Q2_EXIT_LEGS===
+id|ticker|jsonb_pretty
+367|ETON|[
+    {
+        "pnl": -2.570400000000049,
+        "time": "2026-08-14T13:45:11.150854+00:00",
+        "price": 55.05,
+        "reason": "stop_hit",
+        "shares": 17.0,
+        "source": "websocket",
+        "attempt": 1
+    },
+    {
+        "pnl": 21.89399999999999,
+        "time": "2026-08-14T19:58:02.361900+00:00",
+        "price": 59.58,
+        "reason": "partial_profit",
+        "shares": 5,
+        "order_id": "ee925e6b-43eb-4db1-b040-7eae9568fb49"
+    }
+]
+307|PLTR|[
+    {
+        "pnl": 33.27000000000004,
+        "time": "2026-08-05T13:45:00.592881+00:00",
+        "price": 165.6895,
+        "reason": "partial_profit",
+        "shares": 2,
+        "order_id": "7e38d875-6438-4787-a1d6-fa5d75874e8b"
+    },
+    {
+        "pnl": 85.332,
+        "time": "2026-08-19T14:03:18.965657+00:00",
+        "price": 170.3875,
+        "reason": "stop_hit",
+        "shares": 4,
+        "source": "websocket",
+        "attempt": 1
+    }
+]
+(2 rows)
+===Q3_RUNNING_CLOSES===
+id|ticker|jsonb_pretty
+367|ETON|[
+]
+307|PLTR|[
+    158.43,
+    155.92,
+    172.01,
+    175.23,
+    174.94,
+    171.04,
+    179.01,
+    174.04,
+    172.55,
+    171.54
+]
+(2 rows)
+===Q4_ORDERS===
+===Q5_SELL_RECORDS_ALL===
+trade_id|ticker|signal_type|account_mode|alert_date|fill_day|close_day|filled_at|closed_at|entry_price|risk_per_share|entry_shares|realized_pnl|realized_r|peak_price|peak_r|peak_time|peak_day|peak_hold_day|peak_source|peak_bars_n|peak_close|peak_close_r|peak_close_day|giveback_r|capture_pct|hold_trading_days|stop_above_entry_ever|partial_taken|judge_verdicts_n|judge_last_verdict|judge_last_verdict_date|judge_last_verdict_r|judge_first_warn_verdict|judge_first_warn_date|judge_first_warn_r|pnl_attribution|created_at|stop_pct|stop_per_adr|peak_adr|realized_adr|adr_20_pct
+6|KURA|magna53|paper|2026-04-17|2026-04-17|2026-04-21|2026-04-17 15:35:44.545492+00|2026-04-21 16:32:41.872291+00|9.57|0.075|2092|20.919999999999554|0.1333|9.87|4|2026-04-17 19:39:00+00|2026-04-17|1|minute_bars|262|9.78|2.8|2026-04-20|3.8667|0.0333|3|f|f|0||||||||2026-07-30 16:25:19.789863+00|0.7837|0.1656|0.6625|0.0221|4.7318
+17|BSX|magna53|paper|2026-04-23|2026-04-23|2026-04-23|2026-04-23 13:37:23.787949+00|2026-04-23 15:49:04+00|66.744726|1.174726|201|-252.2|-1.0681||||||none|0||||||1|f|f|0||||||||2026-07-30 16:25:19.747668+00|1.76|0.5914||-0.6317|2.9759
+26|INTC|magna53|paper|2026-04-24|2026-04-24|2026-04-24|2026-04-24 13:35:36.352928+00|2026-04-24 15:47:44.184025+00|84.036076|2.014076|237|-477.34|-1|84.91|0.4339|2026-04-24 13:39:00+00|2026-04-24|1|minute_bars|132||||1.4339|-2.3047|1|f|f|0||||||||2026-07-30 16:25:19.751876+00|2.3967|0.4316|0.1873|-0.4316|5.5532
+34|OMCL|magna53|paper|2026-04-28|2026-04-28|2026-04-28|2026-04-28 13:53:49.655179+00|2026-04-28 14:13:09.36006+00|46|1|432|-1506.6302400000022|-3.4876|46.38|0.38|2026-04-28 13:54:00+00|2026-04-28|1|minute_bars|20||||3.8676|-9.1779|1|f|f|0||||||||2026-07-30 16:25:19.791488+00|2.1739|0.5291|0.201|-1.8451|4.109
+56|GOOGL|9m_day2|paper|2026-05-01|2026-05-01|2026-05-19|2026-05-01 13:34:21.575631+00|2026-05-19 13:30:15.667414+00|382.61|3.18|51|618.9699999999984|3.8166|408.61|8.1761||2026-05-18|12|daily_high+extremes|0|402.62|6.2925|2026-05-13|4.3595|0.4668|13|t|t|0||||||||2026-07-30 16:25:19.777761+00|0.8311|0.3455|2.8247|1.3186|2.4057
+57|TEAM|magna53|paper|2026-05-01|2026-05-01|2026-05-06|2026-05-01 15:31:45.135497+00|2026-05-06 20:05:00.033702+00|85.19|2.4|229|-269.019909999998|-0.4895|96.3179|4.6366||2026-05-04|2|daily_high|268|93.16|3.3208|2026-05-04|5.1261|-0.1056|4|t|t|0||||||||2026-07-30 16:25:19.759313+00|2.8172|0.4573|2.1204|-0.2239|6.1604
+72|FTRE|magna53|paper|2026-05-05|2026-05-05|2026-05-12|2026-05-05 13:48:57.657426+00|2026-05-12 13:41:55.999822+00|14.31|0.35|1384|138.23999999999953|0.2854|16.2|5.4||2026-05-07|3|daily_high|0|15.64|3.8|2026-05-06|5.1146|0.0529|6|t|t|0||||||||2026-07-30 16:25:19.865884+00|2.4458|0.3625|1.9575|0.1035|6.7473
+81|AMD|magna53|paper|2026-05-06|2026-05-06|2026-05-07|2026-05-06 14:53:45.203749+00|2026-05-07 16:07:41.86522+00|413.309375|7.679375|48|-831.4799040000025|-2.2557||||||none|0|421.39|1.0523|2026-05-06|||2|f|f|0||||||||2026-07-30 16:25:19.787334+00|1.858|0.4226||-0.9532|4.397
+82|SMCI|magna53|paper|2026-05-06|2026-05-06|2026-05-12|2026-05-06 13:38:36.254991+00|2026-05-12 13:56:55.847281+00|32.567614|1.307614|612|-639.339263999999|-0.7989|36.37|2.9079||2026-05-11|4|daily_high+extremes|381|35.37|2.1431|2026-05-08|3.7068|-0.2747|5|t|t|0||||||||2026-07-30 16:25:19.86417+00|4.0151|0.7899|2.2969|-0.631|5.0831
+119|BW|magna53|paper|2026-05-11|2026-05-11|2026-05-27|2026-05-11 13:53:45.29259+00|2026-05-27 13:37:08.289257+00|17.05|0.56|1163|2492.4803570000004|3.827|22.74|10.1607||||extremes|365|21.85|8.5714|2026-05-15|6.3337|0.3766|12|t|t|0||||||||2026-07-30 16:25:19.861896+00|3.2845|0.4009|4.0738|1.5344|8.192
+120|MRAM|magna53|paper|2026-05-11|2026-05-11|2026-05-11|2026-05-11 13:50:17.02788+00|2026-05-11 13:59:15.309283+00|36.5|2.43|419|-2199.709776|-2.1605|36.475|-0.0103|2026-05-11 13:51:00+00|2026-05-11|1|minute_bars|9||||2.1502||1|f|f|0||||||||2026-07-30 16:25:19.794702+00|6.6575|0.6714|-0.0069|-1.4506|9.9159
+136|KLAR|magna53|paper|2026-05-14|2026-05-14|2026-05-14|2026-05-14 13:35:29.134169+00|2026-05-14 13:43:04.161373+00|15.92|0.74|1203|-914.2799999999997|-1.027|16.02|0.1351|2026-05-14 13:37:00+00|2026-05-14|1|minute_bars|8||||1.1621|-7.6018|1|f|f|0||||||||2026-07-30 16:25:19.811631+00|4.6482|1.0319|0.1394|-1.0597|4.5047
+138|CSCO|magna53|paper|2026-05-14|2026-05-14|2026-05-14|2026-05-14 13:39:09.767616+00|2026-05-14 13:58:53.190149+00|117.55|2.52|162|-406.499958|-0.9957|117.55|0||2026-05-14|1|extremes|0||||0.9957||1|f|f|0||||||||2026-07-30 16:25:19.813444+00|2.1438|0.8921|0|-0.8883|2.403
+149|KLAR|9m_day2|paper|2026-05-15|2026-05-15|2026-05-15|2026-05-15 13:35:39.702685+00|2026-05-15 15:43:36.107674+00|16.109307|1.149307|721|-854.3201100000002|-1.031|16.109307|0||2026-05-15|1|extremes|0||||1.031||1|f|f|0||||||||2026-07-30 16:25:19.779465+00|7.1344|1.5019|0|-1.5485|4.7503
+161|PURR|9m_day2|paper|2026-05-20|2026-05-20|2026-05-28|2026-05-20 13:38:55.783235+00|2026-05-28 13:31:42.455372+00|8.05|0.85|948|3.2898759999992535|0.0041|9.13|1.2706||2026-05-26|4|daily_high+extremes|0|8.48|0.5059|2026-05-21|1.2665|0.0032|6|t|t|0||||||||2026-07-30 16:25:19.846675+00|10.559|1.4204|1.8047|0.0058|7.434
+163|ROIV|9m_day2|paper|2026-05-21|2026-05-21|2026-05-26|2026-05-21 13:33:49.956839+00|2026-05-26 19:08:00.492854+00|32.34|2.99|286|-862.090086000001|-1.0081|32.71|0.1237||2026-05-21|1|extremes+daily|0|30.88|-0.4883|2026-05-21|1.1318|-8.1496|3|f|f|0||||||||2026-07-30 16:25:19.784745+00|9.2455|2.6608|0.3291|-2.6824|3.4747
+164|RLAY|magna53|paper|2026-05-21|2026-05-21|2026-05-21|2026-05-21 13:35:34.386398+00|2026-05-21 13:40:57.233588+00|15.298413|0.498413|1216|-642.5502080000006|-1.0602|15.298413|0||2026-05-21|1|extremes|0||||1.0602||1|f|f|0||||||||2026-07-30 16:25:19.796224+00|3.2579|0.4459|0|-0.4728|7.306
+167|IBM|9m_day2|paper|2026-05-22|2026-05-22|2026-06-10|2026-05-22 13:34:18.551165+00|2026-06-10 13:33:41.050825+00|263.168462|32.228462|26|396.3399860000003|0.473|341|2.415||||extremes|0|329.23|2.0498|2026-06-02|1.942|0.1959|13|t|t|0||||||||2026-07-30 16:25:19.854088+00|12.2463|4.2053|10.1559|1.9891|2.9121
+171|DY|magna53|paper|2026-05-27|2026-05-27|2026-05-27|2026-05-27 13:41:58.990087+00|2026-05-27 15:33:49.537591+00|546.46|10.96|33|-438.24000000000285|-1.2117|556.3|0.8978||2026-05-27|1|extremes|0||||2.1095|-1.3496|1|f|f|0||||||||2026-07-30 16:25:19.781135+00|2.0056|0.4732|0.4248|-0.5734|4.2384
+172|CRSR|magna53|paper|2026-05-27|2026-05-27|2026-06-08|2026-05-27 13:39:53.344864+00|2026-06-08 19:22:50.746763+00|8.772422|0.372422|2073|1390.7991939999974|1.8015|13.3769|12.3636||||extremes|390|12.14|9.0424|2026-05-29|10.5621|0.1457|9|t|t|0||||||||2026-07-30 16:25:19.849377+00|4.2454|0.7746|9.5767|1.3954|5.4808
+177|RCAT|magna53|paper|2026-05-28|2026-05-28|2026-06-05|2026-05-28 13:33:52.067047+00|2026-06-05 16:42:53.983457+00|12.57|0.615|1529|1165.5900000000004|1.2395|15.79|5.2358||2026-06-01|3|daily_high+extremes|0|14.95|3.8699|2026-06-02|3.9963|0.2367|7|t|t|0||||||||2026-07-30 16:25:19.855788+00|4.8926|0.7571|3.9638|0.9384|6.4627
+180|DELL|magna53|paper|2026-05-29|2026-05-29|2026-05-29|2026-05-29 13:39:35.863577+00|2026-05-29 13:46:14.41856+00|421.112609|4.132609|46|-271.92003000000125|-1.4304|421.112609|0||2026-05-29|1|extremes|0||||1.4304||1|f|f|0||||||||2026-07-30 16:25:19.782771+00|0.9814|0.1829|0|-0.2617|5.3646
+183|FPS|9m_day2|paper|2026-06-01|2026-06-01|2026-06-25|2026-06-01 13:41:08.078634+00|2026-06-25 13:43:28.150139+00|53.793681|6.143681|163|159.77693200000002|0.1596|66.89|2.1317||||extremes|0|64.59|1.7573|2026-06-04|1.9721|0.0749|18|t|t|4|HOLD|2026-06-24|5.01|||||2026-07-30 16:25:19.851048+00|11.4208|1.4407|3.071|0.2299|7.9275
+191|NVTS|magna53|paper|2026-06-03|2026-06-03|2026-06-03|2026-06-03 13:42:30.615345+00|2026-06-03 13:49:07.660866+00|31.79|1.24|632|-830.1402160000002|-1.0593|31.79|0||2026-06-03|1|extremes|0||||1.0593||1|f|f|0||||||||2026-07-30 16:25:19.798977+00|3.9006|0.3068|0|-0.325|12.7153
+193|RUM|magna53|paper|2026-06-04|2026-06-04|2026-06-04|2026-06-04 13:44:14.381004+00|2026-06-04 13:49:09.037289+00|9.935633|0.535633|1871|-983.4593429999984|-0.9813|9.935633|0||2026-06-04|1|extremes|0||||0.9813||1|f|f|0||||||||2026-07-30 16:25:19.80036+00|5.391|0.6389|0|-0.6269|8.4383
+201|NRIX|magna53|paper|2026-06-08|2026-06-08|2026-06-08|2026-06-08 13:45:45.421028+00|2026-06-08 13:55:03.263012+00|16.956238|0.856238|404|-378.2401519999998|-1.0934|16.956238|0||2026-06-08|1|extremes|0||||1.0934||1|f|f|0||||||||2026-07-30 16:25:19.801778+00|5.0497|0.9888|0|-1.0812|5.1068
+207|GLXY|9m_day2|paper|2026-06-10|2026-06-10|2026-06-11|2026-06-10 13:44:13.706601+00|2026-06-11 13:41:30.709747+00|32.362774|2.592774|137|-363.43003800000014|-1.0231|33.78|0.5466||2026-06-10|1|extremes+daily|0|30.15|-0.8534|2026-06-10|1.5697|-1.8718|2|f|f|0||||||||2026-07-30 16:25:19.804106+00|8.0116|1.0406|0.5688|-1.0646|7.6991
+208|NAVN|magna53|paper|2026-06-11|2026-06-11|2026-06-11|2026-06-11 13:44:17.84133+00|2026-06-11 14:01:39.954252+00|24.399071|1.369071|226|-319.46998400000007|-1.0325|24.41|0.008||2026-06-11|1|extremes|0||||1.0405|-129.0625|1|f|f|0||||||||2026-07-30 16:25:19.807069+00|5.6112|0.9092|0.0073|-0.9388|6.1715
+221|QURE|magna53|paper|2026-06-17|2026-06-17|2026-07-02|2026-06-17 13:36:14.457573+00|2026-07-02 13:31:21.294445+00|44.69|2.19|200|215.6200000000007|0.4923|51|2.8813||||extremes|0|49.1|2.0137|2026-06-25|2.389|0.1709|11|t|t|9|HOLD|2026-07-01|0.38|TRAIL_TIGHTEN|2026-06-23|1.84||2026-07-30 16:25:19.859451+00|4.9004|0.7594|2.188|0.3738|6.4531
+223|JBL|magna53|paper|2026-06-17|2026-06-17|2026-06-17|2026-06-17 13:40:23.54728+00|2026-06-17 14:02:10.034212+00|413.835454|6.435454|22|-164.11997800000086|-1.1592|416.99|0.4902||2026-06-17|1|extremes|0||||1.6494|-2.3647|1|f|f|0||||||||2026-07-30 16:25:19.805696+00|1.5551|0.3766|0.1846|-0.4365|4.1295
+228|SYRE|magna53|paper|2026-06-22|2026-06-22|2026-06-24|2026-06-22 13:52:47.532342+00|2026-06-24 13:32:58.217781+00|98.49|3.49|93|-1483.349999999999|-4.5702|102.06|1.0229||2026-06-23|2|daily_high+extremes|0|100.32|0.5244|2026-06-22|5.5931|-4.4679|3|f|f|2|HOLD|2026-06-23|-0.79|||||2026-07-30 16:25:19.857479+00|3.5435|0.6227|0.637|-2.8459|5.6904
+245|WULF|magna53|live|2026-07-06|2026-07-06|2026-07-06|2026-07-06 13:33:00.613734+00|2026-07-06 13:57:29.842241+00|24.62|0.82|40|-32.80000000000001|-1|25.01|0.4756||2026-07-06|1|extremes|0||||1.4756|-2.1026|1|f|f|0||||||||2026-07-30 16:25:19.808236+00|3.3306|0.3923|0.1866|-0.3923|8.4893
+250|CRCL|magna53|live|2026-07-10|2026-07-10|2026-07-10|2026-07-10 13:31:05.873424+00|2026-07-10 13:40:34.350753+00|70.65|1.36|14|-19.180000000000064|-1.0074|70.65|0||2026-07-10|1|extremes|0||||1.0074||1|f|f|0||||||||2026-07-30 16:25:19.793238+00|1.925|0.2676|0|-0.2695|7.1948
+251|WDFC|magna53|live|2026-07-10|2026-07-10|2026-07-10|2026-07-10 13:31:19.680275+00|2026-07-10 13:40:35.912242+00|296.235|9.175|2|-19.029999999999973|-1.0371|296.235|0||2026-07-10|1|extremes|0||||1.0371||1|f|f|0||||||||2026-07-30 16:25:19.852427+00|3.0972|1.1151|0|-1.1565|2.7775
+258|TSEM|magna53|live|2026-07-14|2026-07-14|2026-07-14|2026-07-14 13:32:52.439996+00|2026-07-14 13:44:34.431088+00|274|7.66|3|-23.010000000000048|-1.0013|274|0||2026-07-14|1|extremes|0||||1.0013||1|f|f|0||||||||2026-07-30 16:25:19.810139+00|2.7956|0.4044|0|-0.405|6.9125
+261|MANE|magna53|live|2026-07-15|2026-07-15|2026-07-16|2026-07-15 13:33:02.531345+00|2026-07-16 13:30:06.279318+00|119.34|1.32|8|-2.3999999999999773|-0.2273|129.8|7.9242||2026-07-15|1|extremes+daily|0|123.7|3.303|2026-07-15|8.1515|-0.0287|2|f|f|1|HOLD|2026-07-15|2.81|||||2026-07-30 16:25:19.755519+00|1.1061|0.1525|1.2087|-0.0347|7.2515
+266|HUT|magna53|live|2026-07-20|2026-07-20|2026-07-20|2026-07-20 13:31:06.601111+00|2026-07-20 13:31:57.29657+00|103.48|2.0318|9|-19.530000000000015|-1.068|103.48|0||2026-07-20|1|extremes|0||||1.068||1|f|f|0||||||||2026-07-30 16:25:19.761849+00|1.9635|0.1981|0|-0.2116|9.911
+271|SMCI|magna53|live|2026-07-22|2026-07-22|2026-07-27|2026-07-22 13:33:30.889226+00|2026-07-27 14:37:45.699612+00|29.47|0.97|22|-14.959999999999994|-0.701|32.585|3.2113||2026-07-23|2|daily_high+extremes|68|31.2|1.7835|2026-07-23|3.9123|-0.2183|4|f|f|3|HOLD|2026-07-24|0.77|||||2026-07-30 16:25:19.775535+00|3.2915|0.5224|1.6776|-0.3662|6.3005
+273|NVCR|magna53|live|2026-07-23|2026-07-23|2026-07-24|2026-07-23 13:32:30.201565+00|2026-07-24 19:36:57.558497+00|19.15|1.15|21|-24.133199999999935|-0.9993|21.4506|2.0005||2026-07-24|2|extremes+daily|0|19.99|0.7304|2026-07-23|2.9998|-0.4995|2|f|f|1|HOLD|2026-07-23|0.56|||||2026-07-30 16:25:19.768338+00|6.0052|1.1742|2.3489|-1.1733|5.1145
+275|THC|magna53|live|2026-07-24|2026-07-24|2026-07-24|2026-07-24 13:31:22.148201+00|2026-07-24 16:43:37.73624+00|241.67|8.09|2|-16.279999999999973|-1.0062|246.815|0.636||2026-07-24|1|extremes|0||||1.6422|-1.5821|1|f|f|0||||||||2026-07-30 16:25:19.765677+00|3.3475|0.945|0.601|-0.9509|3.5422
+276|WKC|magna53|live|2026-07-24|2026-07-24|2026-07-24|2026-07-24 13:33:18.540694+00|2026-07-24 16:02:39.726184+00|40.16|1.16|20|-23.799999999999955|-1.0259|41.2|0.8966||2026-07-24|1|extremes|0||||1.9225|-1.1442|1|f|f|0||||||||2026-07-30 16:25:19.763854+00|2.8884|1.1207|1.0048|-1.1497|2.5773
+279|QBTS|magna53|live|2026-07-27|2026-07-27|2026-07-28|2026-07-27 13:31:31.944506+00|2026-07-28 13:36:25.188082+00|18.17|0.42|53|-22.26000000000009|-1|19.74|3.7381|2026-07-27 20:00:00+00|2026-07-27|1|minute_bars|396|19.51|3.1905|2026-07-27|4.7381|-0.2675|2|f|f|1|TRAIL_TIGHTEN|2026-07-27|2.73|TRAIL_TIGHTEN|2026-07-27|2.73||2026-07-30 16:25:19.771733+00|2.3115|0.3529|1.3191|-0.3529|6.5506
+291|FTNT|magna53|live|2026-07-30|2026-07-30|2026-07-30|2026-07-30 13:32:08.510614+00|2026-07-30 13:37:50.539792+00|166.65|6.465|1|-6.6299999999999955|-1.0255|167.11|0.0712|2026-07-30 13:33:00+00|2026-07-30|1|minute_bars|5||||1.0967|-14.4031|1|f|f|0||||||||2026-07-30 16:25:19.797463+00|3.8794|0.9264|0.066|-0.9501|4.1874
+303|BLZE|magna53|live|2026-08-04|2026-08-04|2026-08-04|2026-08-04 13:31:01.724141+00|2026-08-04 19:50:00.523877+00|21.8121|1.7121|21|-36.79410000000004|-1.0234|23.99|1.2721|2026-08-04 13:32:00+00|2026-08-04|1|minute_bars|379||||2.2955|-0.8045|1|f|f|0||||||||2026-08-04 21:46:00.071629+00|7.8493|0.8727|1.1102|-0.8931|8.9943
+304|BTDR|magna53|live|2026-08-04|2026-08-04|2026-08-04|2026-08-04 13:34:50.844069+00|2026-08-04 13:46:20.105029+00|12.85|0.37|74|-28.119999999999926|-1.027|12.93|0.2162|2026-08-04 13:35:00+00|2026-08-04|1|minute_bars|12||||1.2432|-4.7502|1|f|f|0||||||||2026-08-04 21:46:00.066585+00|2.8794|0.2852|0.0617|-0.2929|10.0973
+307|PLTR|magna53|live|2026-08-04|2026-08-04|2026-08-19|2026-08-04 13:31:11.297642+00|2026-08-19 14:03:18.965774+00|149.0545|5.7745|6|118.60200000000003|3.4232|180.18|5.3902|2026-08-14 13:32:00+00|2026-08-14|9|minute_bars|4333|179.01|5.1875|2026-08-13|1.967|0.6351|12|t|t|11|HOLD|2026-08-18|3.85|PARTIAL_TAKE|2026-08-04|2.41||2026-08-19 21:46:00.068185+00|3.8741|0.8466|4.5632|2.898|4.5762
+328|NET|magna53|live|2026-08-07|2026-08-07|2026-08-07|2026-08-07 13:33:20.132317+00|2026-08-07 14:32:01.073202+00|316.13|5.13|3|-15.389999999999986|-1|324.73|1.6764|2026-08-07 14:00:00+00|2026-08-07|1|minute_bars|59||||2.6764|-0.5965|1|f|f|0||||||||2026-08-07 21:46:00.097084+00|1.6228|0.3073|0.5152|-0.3073|5.2804
+332|FIGS|magna53|live|2026-08-07|2026-08-07|2026-08-07|2026-08-07 13:32:31.83824+00|2026-08-07 13:51:02.672915+00|15.495082|0.305082|61|-6.838002000000003|-0.3674|16.38|2.9006|2026-08-07 13:33:00+00|2026-08-07|1|minute_bars|19||||3.268|-0.1267|1|t|t|0||||||||2026-08-07 21:46:00.088287+00|1.9689|0.4044|1.1731|-0.1486|4.8684
+333|TEAM|magna53|live|2026-08-07|2026-08-07|2026-08-07|2026-08-07 13:31:22.079081+00|2026-08-07 13:43:54.13041+00|147.13|3.92|6|-23.940000000000055|-1.0179|151.37|1.0816|2026-08-07 13:34:00+00|2026-08-07|1|minute_bars|12||||2.0995|-0.9411|1|f|f|0||||||||2026-08-07 21:46:00.093952+00|2.6643|0.4155|0.4494|-0.4229|6.4127
+342|FRMI|magna53|live|2026-08-11|2026-08-11|2026-08-11|2026-08-11 13:31:05.801705+00|2026-08-11 13:31:40.487398+00|7.29|0.24|134|-31.490000000000045|-0.9792|7.29|0||2026-08-11|1|extremes|0||||0.9792||1|f|f|0||||||||2026-08-11 21:46:00.042084+00|3.2922|0.3555|0|-0.3481|9.26
+345|BW|magna53|live|2026-08-11|2026-08-11|2026-08-11|2026-08-11 13:31:49.609+00|2026-08-11 13:31:56.783978+00|12.07|0.57|80|-49.60000000000008|-1.0877|12.07|0||2026-08-11|1|extremes|0||||1.0877||1|f|f|0||||||||2026-08-11 21:46:00.047045+00|4.7225|0.5605|0|-0.6097|8.4254
+367|ETON|magna53|live|2026-08-14|2026-08-14|2026-08-14|2026-08-14 13:31:02.570624+00|2026-08-14 13:45:11.151019+00|55.2012|2.1912|17|19.323599999999942|0.5187|59.79|2.0942|2026-08-14 13:32:00+00|2026-08-14|1|minute_bars|14||||1.5755|0.2477|1|t|t|0||||||||2026-08-14 21:46:00.025121+00|3.9695|0.6602|1.3827|0.3425|6.0122
+373|MRVL|magna53|live|2026-08-19|2026-08-19|2026-08-19|2026-08-19 13:32:06.145346+00|2026-08-19 14:03:04.536415+00|241.5|11.35|4|-43.27999999999997|-0.9533|245.489|0.3515|2026-08-19 13:33:00+00|2026-08-19|1|minute_bars|31||||1.3048|-2.7121|1|f|f|0||||||||2026-08-19 21:46:00.051334+00|4.6998|0.7202|0.2531|-0.6865|6.5259
+(53 rows)
+===Q6_LIVE_BOOK_2R_ERA===
+id|ticker|alert_date|status|orb_high|orb_low|entry_price|entry_shares|hard_stop|risk_per_share_at_stop|orb_range|risk_dollars|total_pnl|partial_taken|filled_et
+245|WULF|2026-07-06|closed|24.61|23.8|24.62|40|23.8|0.8200000000000003|0.8099999999999987|47.13|-32.80000000000001|f|2026-07-06 09:33
+250|CRCL|2026-07-10|closed|70.66|69.29|70.65|14|69.29|1.3599999999999994|1.3699999999999903|23.79|-19.180000000000064|f|2026-07-10 09:31
+251|WDFC|2026-07-10|closed|295|287.06|296.235|2|287.06|9.175000000000011|7.939999999999998|23.79|-19.029999999999973|f|2026-07-10 09:31
+258|TSEM|2026-07-14|closed|273.25|266.34|274|3|266.34|7.660000000000025|6.910000000000025|21.98|-23.010000000000048|f|2026-07-14 09:32
+261|MANE|2026-07-15|closed|118.75|118.02|119.34|8|118.02|1.3200000000000074|0.730000000000004|22.69|-2.3999999999999773|f|2026-07-15 09:33
+266|HUT|2026-07-20|closed|103.48|101.4482|103.48|9|101.4482|2.031800000000004|2.031800000000004|19.9|-19.530000000000015|f|2026-07-20 09:31
+271|SMCI|2026-07-22|closed|29.48|28.5|29.47|22|28.5|0.9699999999999989|0.9800000000000004|21.92|-14.959999999999994|f|2026-07-22 09:33
+273|NVCR|2026-07-23|closed|19.05|18|19.15|21|18|1.1499999999999986|1.0500000000000007|22.55|-24.133199999999935|f|2026-07-23 09:32
+275|THC|2026-07-24|closed|240.47|233.58|241.67|2|233.58|8.089999999999975|6.889999999999986|20.16|-16.279999999999973|f|2026-07-24 09:31
+276|WKC|2026-07-24|closed|39.995|39|40.16|20|39|1.1599999999999966|0.9949999999999974|20.16|-23.799999999999955|f|2026-07-24 09:33
+279|QBTS|2026-07-27|closed|18.17|17.75|18.17|53|17.75|0.4200000000000017|0.4200000000000017|24.2|-22.26000000000009|f|2026-07-27 09:31
+291|FTNT|2026-07-30|closed|166.65|160.185|166.65|1|160.185|6.465000000000003|6.465000000000003|11.96|-6.6299999999999955|f|2026-07-30 09:32
+303|BLZE|2026-08-04|closed|21.7499|20.1|21.8121|21|20.1|1.7120999999999995|1.6498999999999988|35.82|-36.79410000000004|f|2026-08-04 09:31
+307|PLTR|2026-08-04|closed|148.63|143.28|149.0545|6|143.28|5.774499999999989|5.349999999999994|35.86|118.60200000000003|t|2026-08-04 09:31
+304|BTDR|2026-08-04|closed|12.85|12.48|12.85|74|12.48|0.3699999999999992|0.3699999999999992|35.87|-28.119999999999926|f|2026-08-04 09:34
+333|TEAM|2026-08-07|closed|146.8|143.21|147.13|6|143.21|3.9199999999999875|3.5900000000000034|47.95|-23.940000000000055|f|2026-08-07 09:31
+332|FIGS|2026-08-07|closed|15.5|15.19|15.495082|61|15.19|0.3050820000000005|0.3100000000000005|47.94|-6.838002000000003|t|2026-08-07 09:32
+328|NET|2026-08-07|closed|318|311|316.13|3|311|5.1299999999999955|7|47.94|-15.389999999999986|f|2026-08-07 09:33
+337|ABCL|2026-08-10|closed|8.96|8.4|8.96|85|8.4|0.5600000000000005|0.5600000000000005|47.98|127.76979999999998|t|2026-08-10 09:34
+342|FRMI|2026-08-11|closed|7.24|7.05|7.29|134|7.05|0.2400000000000002|0.1900000000000004|48.51|-31.490000000000045|f|2026-08-11 09:31
+345|BW|2026-08-11|closed|12.08|11.5|12.07|80|11.5|0.5700000000000003|0.5800000000000001|48.59|-49.60000000000008|f|2026-08-11 09:31
+367|ETON|2026-08-14|closed|55.4427|53.01|55.2012|17|53.01|2.191200000000002|2.432700000000004|48.92|19.323599999999942|t|2026-08-14 09:31
+372|AMLX|2026-08-18|filled|30.07|28.58|30.211219|16|27.089999999999996|3.1212190000000035|1.490000000000002|48.72|16.293904999999995|t|2026-08-18 09:32
+373|MRVL|2026-08-19|closed|241.53|235.84|241.5|4|230.15|11.349999999999994|5.689999999999998|50.02|-43.27999999999997|f|2026-08-19 09:32
+374|MRNA|2026-08-19|filled|120.15|115|120.75|4|109.85|10.900000000000006|5.150000000000006|50.02|17.710000000000008|t|2026-08-19 09:33
+(25 rows)
+===Q7_AUDIT_PARTIALS===
+et|event_type|summary
+2026-08-04 07:00:02|ep_rt_admit|PLTR rt 16.6% and delayed 16.0% BOTH >=10 @ 07:00 ET — real-time AGREES with the admit
+2026-08-04 07:01:38|ep_rt_volume_shadow|PLTR pm_rvol delayed=9.34x rt=9.88x
+2026-08-04 07:01:52|ep_catalyst_provenance|PLTR game_changer direct=True
+2026-08-04 07:02:05|perplexity_boost_shadow|PLTR HIGH boost=1.2 direct=True
+2026-08-04 07:04:33|judge_theme_gap_candidate_written|Judge: Technology 2026-08-04: PLTR — judge fire_axes=['catalyst', 'theme', 'narrative'], neither lane tracked (surface-only; source='judge_inferred'; visible now via /themes; needs 3+ merged members before /promotetheme will accept it)
+2026-08-04 07:04:33|ep_grade_decision|PLTR floor=HIGH judge=HIGH dir=hold outcome=verdict
+2026-08-04 07:04:33|filter:large_cap_relvol_floor_shadow|PLTR HIGH rel_vol=0.06x adv$=5,049,514,435 @ 07:00 ET (SHADOW — alert NOT skipped)
+2026-08-04 07:04:33|theme_axis_shadow_adjusted|PLTR 2026-08-04: strong -> strong (blind_spot, +0 step)
+2026-08-04 07:04:39|ep_catalyst_suppressed|PLTR catalyst discovery line suppressed (grounded direct-source grade)
+2026-08-04 07:04:39|ep_alert|HIGH EP: PLTR gap=16.0% score=96
+2026-08-04 09:30:24|ep_rt_rvol_gate_flip|PLTR session_rvol delayed=8.62x rt=0.00x — GATE WOULD FLIP (SHADOW)
+2026-08-04 09:31:00|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:01|orb_bar_miss|ORB PLTR attempt 1/3 — bar not available, retry 10s
+2026-08-04 09:31:11|orb_bar_fetched|ORB PLTR O=144.96 H=148.63 L=143.28 range=5.35
+2026-08-04 09:31:11|orb_order_placed|ORB PLTR entry=$148.63 stop=$143.28 shares=6 risk=$36 trade_id=307
+2026-08-04 09:31:11|trade_lifecycle_telegram_attempted|fill PLTR @$149.05 x6
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:12|orb_triggered|[bar_stream] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:31:19|orb_triggered|[cron_9_31] 8 alerts: ['AEIS', 'BLZE', 'BTDR', 'CAT', 'LIFE', 'PLTR', 'VOYG', 'ZBRA']
+2026-08-04 09:32:00|order_status_reconciled|PLTR order=1a132235: pending_new -> filled (live)
+2026-08-04 12:15:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-04 12:15:02|partial_exit_aborted|PLTR: replacement stop rejected (APIError); original stop 512610fc-bee2-40d1-a129-ece67558d9ee still LIVE — position protected, no action
+2026-08-04 12:15:02|profit_trigger_failed|PLTR: high $160.68 >= 2R target $160.60
+2026-08-04 12:20:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-04 12:20:02|partial_exit_aborted|PLTR: replacement stop rejected (APIError); original stop 512610fc-bee2-40d1-a129-ece67558d9ee still LIVE — position protected, no action
+2026-08-04 12:20:02|profit_trigger_failed|PLTR: high $160.79 >= 2R target $160.60
+2026-08-04 12:20:21|9m_ep_detected|PLTR vol=95.5M price=$159.31 gap=15.5%
+2026-08-04 12:25:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-04 12:25:02|partial_exit_aborted|PLTR: replacement stop rejected (APIError); original stop 512610fc-bee2-40d1-a129-ece67558d9ee still LIVE — position protected, no action
+2026-08-04 12:25:02|profit_trigger_failed|PLTR: high $161.37 >= 2R target $160.60
+2026-08-04 12:30:01|profit_trigger_failed|PLTR: high $161.37 >= 2R target $160.60
+2026-08-04 12:35:01|profit_trigger_failed|PLTR: high $161.37 >= 2R target $160.60
+2026-08-04 12:40:01|profit_trigger_failed|PLTR: high $161.74 >= 2R target $160.60
+2026-08-04 12:45:01|profit_trigger_failed|PLTR: high $162.30 >= 2R target $160.60
+2026-08-04 12:50:01|profit_trigger_failed|PLTR: high $162.65 >= 2R target $160.60
+2026-08-04 12:55:01|profit_trigger_failed|PLTR: high $162.77 >= 2R target $160.60
+2026-08-04 13:00:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:05:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:10:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:15:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:20:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:25:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:30:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:35:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:40:01|profit_trigger_failed|PLTR: high $162.83 >= 2R target $160.60
+2026-08-04 13:45:01|profit_trigger_failed|PLTR: high $162.96 >= 2R target $160.60
+2026-08-04 13:50:01|profit_trigger_failed|PLTR: high $164.35 >= 2R target $160.60
+2026-08-04 13:55:01|profit_trigger_failed|PLTR: high $164.35 >= 2R target $160.60
+2026-08-04 14:00:01|profit_trigger_failed|PLTR: high $164.35 >= 2R target $160.60
+2026-08-04 14:05:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:10:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:15:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:20:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:25:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:30:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:35:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:40:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:45:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:50:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 14:55:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:00:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:05:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:10:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:15:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:20:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:25:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:30:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:35:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:40:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:45:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:50:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 15:55:01|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-04 16:15:00|order_status_reconciled|PLTR order=512610fc: new -> expired (live)
+2026-08-04 18:55:55|stop_update_started|PLTR: $143.28 → $143.28 (6 of 6 after 0 held)
+2026-08-04 18:55:56|stop_updated|PLTR: stop now $143.28 (10e3e974-b8a7-4d7b-a665-ea91b1ea6b5e) for 6 sh
+2026-08-05 09:00:00|order_status_reconciled|PLTR order=10e3e974: accepted -> new (live)
+2026-08-05 09:30:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-05 09:30:00|partial_exit_stop_replaced|PLTR: stop reissued for 4 sh @$143.28 (596c134e-9dfc-4f08-aaa4-57ee0a665a26)
+2026-08-05 09:30:03|partial_exit_aborted|PLTR: shares not free (qty_available=0.0 < 2) — sell skipped, position over-covered (safe), retry next window
+2026-08-05 09:30:04|profit_trigger_failed|PLTR: high $164.52 >= 2R target $160.60
+2026-08-05 09:31:00|order_status_reconciled|PLTR order=10e3e974: new -> replaced (live)
+2026-08-05 09:35:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-05 09:35:01|partial_exit_aborted|PLTR: replacement stop rejected (APIError); original stop 596c134e-9dfc-4f08-aaa4-57ee0a665a26 still LIVE — position protected, no action
+2026-08-05 09:35:02|profit_trigger_failed|PLTR: high $165.92 >= 2R target $160.60
+2026-08-05 09:40:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-05 09:40:01|partial_exit_aborted|PLTR: replacement stop rejected (APIError); original stop 596c134e-9dfc-4f08-aaa4-57ee0a665a26 still LIVE — position protected, no action
+2026-08-05 09:40:02|profit_trigger_failed|PLTR: high $165.92 >= 2R target $160.60
+2026-08-05 09:45:00|partial_exit_started|PLTR: sell 2 of 6 (new_remaining=4)
+2026-08-05 09:45:00|partial_exit_stop_replaced|PLTR: stop reissued for 4 sh @$143.28 (596c134e-9dfc-4f08-aaa4-57ee0a665a26)
+2026-08-05 09:45:00|partial_exit_sell_placed|PLTR: market sell 2 placed (7e38d875-6438-4787-a1d6-fa5d75874e8b, status=pending_new)
+2026-08-05 09:45:00|coverage_drift_detected|D2_untracked_order_high PLTR order=7e38d875 (live)
+2026-08-05 09:45:00|profit_trigger_fired|PLTR: high $166.08 >= 2R target $160.60
+2026-08-05 09:45:00|partial_exit_committed|PLTR: DB committed on WS fill — sold 2 @$165.69, pnl $+33.27, remaining 4
+2026-08-05 09:45:00|coverage_drift_alerted|live|D2_untracked_order_high|PLTR|7e38d875-6438-4787-a1d6-fa5d75874e8b
+2026-08-05 16:45:00|stop_update_started|PLTR: $143.28 → $149.05 (4 of 4 after 0 held)
+2026-08-05 16:45:00|stop_update_failed|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-05 16:45:03|stop_update_retry_succeeded|PLTR: retry placed stop @$149.05
+2026-08-05 16:45:03|stop_updated|PLTR: stop now $149.05 (4d7002ba-5e45-4b76-a3ad-a702794f1191) for 4 sh
+2026-08-05 17:30:02|ecosystem_reactivation|E-DEF: reactivating — 4 EP tickers in 5 sessions (AMRC, PLTR, TSAT, VOYG), baseline 0, all themes Fading
+2026-08-06 09:00:00|order_status_reconciled|PLTR order=4d7002ba: accepted -> new (live)
+2026-08-06 09:00:00|order_status_reconciled|PLTR order=596c134e: new -> canceled (live)
+2026-08-12 16:45:00|stop_update_started|PLTR: $149.05 → $150.15 (4 of 4 after 0 held)
+2026-08-12 16:45:00|stop_update_failed|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-12 16:45:03|stop_update_retry_succeeded|PLTR: retry placed stop @$150.15
+2026-08-12 16:45:03|stop_updated|PLTR: stop now $150.15 (dd9ed021-a657-473a-abec-0aeec464fa80) for 4 sh
+2026-08-13 09:00:00|order_status_reconciled|PLTR order=dd9ed021: accepted -> new (live)
+2026-08-13 09:00:00|order_status_reconciled|PLTR order=4d7002ba: new -> canceled (live)
+2026-08-13 16:45:00|stop_update_started|PLTR: $150.15 → $155.75 (4 of 4 after 0 held)
+2026-08-13 16:45:00|stop_update_failed|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-13 16:45:03|stop_update_retry_succeeded|PLTR: retry placed stop @$155.75
+2026-08-13 16:45:03|stop_updated|PLTR: stop now $155.75 (b6bd0ce9-05c5-43c7-b974-46b299fd55a1) for 4 sh
+2026-08-13 17:13:01|rs_deterioration|RS deterioration (per-name, on-demand): NUVB 96→60 (-35) · FBRX 100→0 (-100) · ERAS 70→40 (-30) · AMAT 53→34 (-18) · TNGX 60→22 (-38) · RLAY 75→0 (-75) · ETON 99→62 (-36) · EVC 77→29 (-48) · OSCR 92→77 (-15) · ATEX 75→57 (-17) · MRVI 97→50 (-46) · GEO 90→57 (-32) · GRPN 96→63 (-32) · ATLC 94→65 (-29) · DAVE 74→55 (-18) · LQDA 97→36 (-60) · SEZL 68→37 (-30) · TGTX 71→32 (-38) · VSXY 98→80 (-18) · ALKS 69→51 (-17) · BBY 83→64 (-18) · NVEC 98→38 (-59) · ACHC 65→42 (-22) · PGNY 88→36 (-52) · BJRI 97
+2026-08-14 07:00:02|ep_rt_admit|ETON rt 25.0% and delayed 25.0% BOTH >=10 @ 07:00 ET — real-time AGREES with the admit
+2026-08-14 07:00:38|ep_rt_volume_shadow|ETON pm_rvol delayed=4.64x rt=3.57x
+2026-08-14 07:00:48|ep_catalyst_provenance|ETON game_changer direct=True
+2026-08-14 07:20:28|ep_grade_decision|ETON floor=HIGH judge=HIGH dir=hold outcome=verdict
+2026-08-14 07:20:28|ep_catalyst_suppressed|ETON catalyst discovery line suppressed (grounded direct-source grade)
+2026-08-14 07:20:29|ep_alert|HIGH EP: ETON gap=23.3% score=96
+2026-08-14 09:00:00|order_status_reconciled|PLTR order=b6bd0ce9: accepted -> new (live)
+2026-08-14 09:00:00|order_status_reconciled|PLTR order=dd9ed021: new -> canceled (live)
+2026-08-14 09:30:13|ep_rt_rvol_gate_flip|ETON session_rvol delayed=5.46x rt=0.00x — GATE WOULD FLIP (SHADOW)
+2026-08-14 09:31:00|orb_triggered|[bar_stream] 3 alerts: ['ETON', 'HTFL', 'VERA']
+2026-08-14 09:31:02|orb_bar_fetched|ORB ETON O=54.93 H=55.44 L=53.01 range=2.43
+2026-08-14 09:31:02|entry_ask_above_trigger|ETON [live]: ask $55.45 > ORB high $55.44 — limit fallback (a stop there is cancelled by the venue)
+2026-08-14 09:31:02|orb_order_placed|ORB ETON entry=$55.44 stop=$53.01 shares=17 risk=$49 trade_id=367
+2026-08-14 09:31:02|trade_lifecycle_telegram_attempted|fill ETON @$55.20 x17
+2026-08-14 09:31:10|orb_triggered|[cron_9_31] 3 alerts: ['ETON', 'HTFL', 'VERA']
+2026-08-14 09:31:11|orb_triggered|[bar_stream] 3 alerts: ['ETON', 'HTFL', 'VERA']
+2026-08-14 09:31:11|orb_triggered|[bar_stream] 3 alerts: ['ETON', 'HTFL', 'VERA']
+2026-08-14 09:32:00|order_status_reconciled|ETON order=48822275: pending_new -> filled (live)
+2026-08-14 09:35:00|unified_allocation_decided|slots=2 winners=['HTFL', 'ETON'] n=5 (3 lower-ranked)
+2026-08-14 09:35:00|partial_exit_started|ETON: sell 5 of 17 (new_remaining=12)
+2026-08-14 09:35:00|partial_exit_stop_replaced|ETON: stop reissued for 12 sh @$53.01 (414bffe6-3031-4ace-887b-2ccfc28186f3)
+2026-08-14 09:35:01|partial_exit_sell_placed|ETON: limit sell 5 @ $59.58 resting (ee925e6b-43eb-4db1-b040-7eae9568fb49, status=pending_new)
+2026-08-14 09:35:01|partial_exit_breakeven_armed|ETON: stop moves to breakeven $55.20 (was $53.01, entry $55.20) via price-only replace on the reduced 12-share stop (414bffe6→11b25e11)
+2026-08-14 09:35:01|profit_trigger_fired|ETON: high $59.79 >= 2R target $59.58
+2026-08-14 09:36:00|order_status_reconciled|ETON order=ee925e6b: pending_new -> new (live)
+2026-08-14 09:36:00|order_status_reconciled|ETON order=414bffe6: pending_new -> replaced (live)
+2026-08-14 09:36:00|order_status_reconciled|ETON order=e2413213: new -> canceled (live)
+2026-08-14 09:40:00|partial_exit_aborted|ETON: pending partial_exit order already open (ee925e6b-43eb-4db1-b040-7eae9568fb49)
+2026-08-14 09:40:00|profit_trigger_failed|ETON: high $59.79 >= 2R target $59.58
+2026-08-14 09:45:00|position_unprotected|ETON: live stop qty 12 < 17 shares held — GAP
+2026-08-14 09:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 09:45:00|partial_exit_aborted|ETON: pending partial_exit order already open (ee925e6b-43eb-4db1-b040-7eae9568fb49)
+2026-08-14 09:45:00|profit_trigger_failed|ETON: high $59.79 >= 2R target $59.58
+2026-08-14 09:45:00|coverage_drift_alerted|live|D2_untracked_order_high|ETON|ee925e6b-43eb-4db1-b040-7eae9568fb49
+2026-08-14 09:45:11|r3_day1_reentry_blocked|ETON: Day-1 re-entry disabled by R3 ship
+2026-08-14 10:00:00|order_status_reconciled|ETON order=11b25e11: new -> filled (live)
+2026-08-14 10:00:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 10:00:00|coverage_drift_alerted|live|D1_untracked_position|ETON|
+2026-08-14 10:00:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 10:15:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 10:15:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 10:30:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 10:30:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 10:30:00|ingest_proposed|ingest|live|r3|ETON|
+2026-08-14 10:45:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 10:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 11:00:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 11:00:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 11:15:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 11:15:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 11:30:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 11:30:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 11:45:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 11:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 12:00:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 12:00:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 12:15:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 12:15:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 12:30:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 12:30:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 12:45:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 12:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 13:00:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 13:00:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 13:15:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 13:15:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 13:30:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 13:30:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 13:45:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 13:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 14:00:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 14:00:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 14:15:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 14:15:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 14:30:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 14:30:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 14:45:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 14:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 15:00:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 15:00:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 15:15:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 15:15:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 15:30:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 15:30:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 15:45:00|coverage_drift_detected|D1 untracked position ETON (live)
+2026-08-14 15:45:00|coverage_drift_detected|D2_untracked_order_high ETON order=ee925e6b (live)
+2026-08-14 15:58:02|partial_exit_committed|ETON: DB committed on WS fill — sold 5 @$59.58, pnl $+21.89, remaining -5
+2026-08-14 16:45:00|stop_update_started|PLTR: $155.75 → $160.93 (4 of 4 after 0 held)
+2026-08-14 16:45:00|stop_update_failed|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-14 16:45:03|stop_update_retry_succeeded|PLTR: retry placed stop @$160.93
+2026-08-14 16:45:03|stop_updated|PLTR: stop now $160.93 (3be9382f-e57e-4b3d-8fcb-d2e8d1bf5b19) for 4 sh
+2026-08-14 17:11:25|theme_constituent_churn|5 high-churn (theme,ticker) pair(s) in last 10d — sample: CMCO↔Industrial Equipment(2), HRI↔Industrial Equipment(2), SUNB↔Industrial Equipment(2), PLTR↔U.S. Government/Defe(2), TSAT↔U.S. Government/Defe(2)
+2026-08-14 17:14:57|theme_composition_churn|Composition churn (on-demand): Digital Insurance Distribution & InsurTech Platforms: +NP · B2B Digital Financial Infrastructure & Payment Rails Modernization: +QTWO · AI-Powered Enterprise Analytics & Intelligent Workflow SaaS: +BRZE +DOCU +FRSH +HUBS +PLTR · Network Security & Zero-Trust Edge: +GEN · Restaurant Chain Recovery: +WEN · Medical Device Mean-Reversion & Rotation Recovery: +AORT +BDX +ZBH · Specialty Pharmaceutical Commercialization & Rare Disease Drugs: +TVTX · Defense Electronics &
+2026-08-14 17:42:00|pivot_stop_shadow_skipped|insufficient_forward_bars: ETON trade 367
+2026-08-17 09:00:00|order_status_reconciled|PLTR order=3be9382f: accepted -> new (live)
+2026-08-17 09:00:00|order_status_reconciled|PLTR order=b6bd0ce9: new -> canceled (live)
+2026-08-17 16:45:00|stop_update_started|PLTR: $160.93 → $165.88 (4 of 4 after 0 held)
+2026-08-17 16:45:00|stop_update_failed|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-17 16:45:03|stop_update_retry_succeeded|PLTR: retry placed stop @$165.88
+2026-08-17 16:45:03|stop_updated|PLTR: stop now $165.88 (9ad8688c-1b5b-4a1e-a0f6-444164d8ecfb) for 4 sh
+2026-08-17 17:42:00|pivot_stop_shadow_skipped|insufficient_forward_bars: ETON trade 367
+2026-08-18 09:00:00|order_status_reconciled|PLTR order=9ad8688c: accepted -> new (live)
+2026-08-18 09:00:00|order_status_reconciled|PLTR order=3be9382f: new -> canceled (live)
+2026-08-18 16:45:00|stop_update_started|PLTR: $165.88 → $170.47 (4 of 4 after 0 held)
+2026-08-18 16:45:00|stop_update_failed|PLTR: place_stop_order raised on first attempt — APIError
+2026-08-18 16:45:03|stop_update_retry_succeeded|PLTR: retry placed stop @$170.47
+2026-08-18 16:45:03|stop_replacement_confirmed_silent|PLTR: WS safety-net agrees with order_manager's own recorded evidence ($170.47, 383b52e5-2cdd-4cbd-a069-a045b25ccd2d) via audit_price_only — Telegram suppressed, operator already notified via order_manager
+2026-08-18 16:45:03|stop_updated|PLTR: stop now $170.47 (383b52e5-2cdd-4cbd-a069-a045b25ccd2d) for 4 sh
+2026-08-18 17:42:00|pivot_stop_shadow_skipped|insufficient_forward_bars: ETON trade 367
+2026-08-19 09:00:00|order_status_reconciled|PLTR order=383b52e5: accepted -> new (live)
+2026-08-19 09:00:00|order_status_reconciled|PLTR order=9ad8688c: new -> canceled (live)
+2026-08-19 10:03:18|entry_partial_fill|[live] PLTR partial_fill 1/4 (cum 1) @ $170.38 side=sell
+2026-08-19 10:03:18|trade_lifecycle_telegram_attempted|stop_out PLTR @$170.39 pnl=$+85.33
+2026-08-19 10:15:00|order_status_reconciled|PLTR order=383b52e5: new -> filled (live)
+2026-08-19 17:42:00|pivot_stop_shadow_skipped|insufficient_forward_bars: ETON trade 367
+2026-08-20 17:42:00|pivot_stop_shadow_skipped|insufficient_forward_bars: ETON trade 367
+(233 rows)

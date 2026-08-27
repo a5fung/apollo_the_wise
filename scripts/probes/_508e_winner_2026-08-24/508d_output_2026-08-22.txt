@@ -1,0 +1,174 @@
+====================================================================================================
+exit_tune_cohort_review run 1 — n=22 closed live magna53, snapshot 2026-08-22
+====================================================================================================
+
+snapshot rows total 53  live/magna53 22  paper/magna53 24  other 7
+
+--- (era) EXIT-STACK ERAS — n per era, never averaged across -------------
+  A  ORB-low stop, no partial n=15  sumR   -9.73  meanR   -0.65  wins 1/15  day0-exit 10/15
+                             peakR mean   +1.72 max   +7.92  >=2R 5/15  peakADR med   +0.60  stop/ADR med   +0.52  hold med 1d
+                             WULF-1.00 CRCL-1.01 WDFC-1.04 TSEM-1.00 MANE-0.23 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00 FTNT-1.03 BLZE-1.02 BTDR-1.03 PLTR+3.42
+  B  ORB-low stop + 2R partial n=6   sumR   -3.93  meanR   -0.66  wins 1/6  day0-exit 6/6
+                             peakR mean   +1.29 max   +2.90  >=2R 2/6  peakADR med   +0.48  stop/ADR med   +0.41  hold med 1.0d
+                             NET-1.00 FIGS-0.37 TEAM-1.02 FRMI-0.98 BW-1.09 ETON+0.52
+  C  2R stop half size       n=1   sumR   -0.95  meanR   -0.95  wins 0/1  day0-exit 1/1
+                             peakR mean   +0.35 max   +0.35  >=2R 0/1  peakADR med   +0.25  stop/ADR med   +0.72  hold med 1d
+                             MRVL-0.95
+  ⚠ PLTR filled 08-04 (era A) but lived 12 sessions into era B: its partial FIRED and its stop TRAILED under era-B mechanics. Era A excl. PLTR:
+  A' era A excl PLTR         n=14  sumR  -13.15  meanR   -0.94  wins 0/14  day0-exit 10/14
+                             peakR mean   +1.46 max   +7.92  >=2R 4/14  peakADR med   +0.39  stop/ADR med   +0.46  hold med 1.0d
+                             WULF-1.00 CRCL-1.01 WDFC-1.04 TSEM-1.00 MANE-0.23 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00 FTNT-1.03 BLZE-1.02 BTDR-1.03
+
+--- (d) HOLDING PERIOD, live --------------------------------------------
+  hold_trading_days: 1d×17 2d×3 4d×1 12d×1
+  closed on entry day: 17/22   max hold 12d   nothing has reached 20 sessions
+
+--- (c0) REGIME, LIVE-ONLY, ENTRY-STAMPED — with the NEW confound said ---
+  Bull                       n=7   sumR   -4.89  meanR   -0.70  wins 1/7  day0-exit 7/7
+                             peakR mean   +1.16 max   +2.90  >=2R 2/7  peakADR med   +0.45  stop/ADR med   +0.42  hold med 1d
+                             NET-1.00 FIGS-0.37 TEAM-1.02 FRMI-0.98 BW-1.09 ETON+0.52 MRVL-0.95
+                             eras: {'B': 6, 'C': 1}
+  Choppy                     n=7   sumR   -1.90  meanR   -0.27  wins 1/7  day0-exit 5/7
+                             peakR mean   +2.18 max   +7.92  >=2R 2/7  peakADR med   +0.19  stop/ADR med   +0.39  hold med 1d
+                             WULF-1.00 CRCL-1.01 WDFC-1.04 MANE-0.23 BLZE-1.02 BTDR-1.03 PLTR+3.42
+                             eras: {'A': 7}
+  Correcting                 n=7   sumR   -6.80  meanR   -0.97  wins 0/7  day0-exit 4/7
+                             peakR mean   +1.50 max   +3.74  >=2R 3/7  peakADR med   +1.00  stop/ADR med   +0.52  hold med 1d
+                             TSEM-1.00 HUT-1.07 SMCI-0.70 NVCR-1.00 THC-1.01 WKC-1.03 QBTS-1.00
+                             eras: {'A': 7}
+  Crisis                     n=1   sumR   -1.03  meanR   -1.03  wins 0/1  day0-exit 1/1
+                             peakR mean   +0.07 max   +0.07  >=2R 0/1  peakADR med   +0.07  stop/ADR med   +0.93  hold med 1d
+                             FTNT-1.03
+                             eras: {'A': 1}
+
+  ⚠ REGIME IS NOW CONFOUNDED WITH ERA inside the live cohort: every live-Bull
+    trade is era B/C (post-partial / post-2R-stop) and every non-Bull trade is
+    era A (no partial; PLTR the spanner). A realized-R regime comparison is a
+    comparison of exit stacks as much as of tapes. Peak-based columns are less
+    era-sensitive but BE-scratches truncate holds, so even peaks are not clean.
+
+--- (c) CHARACTER — ADR20 tiers (ADR20% = stop_pct / stop_per_adr) -------
+  slow  <3.5%                n=2   sumR   -2.06  meanR   -1.03  wins 0/2  day0-exit 2/2
+                             peakR mean   +0.45 max   +0.90  >=2R 0/2  peakADR med   +0.50  stop/ADR med   +1.12  hold med 1.0d
+                             WDFC-1.04 WKC-1.03
+  mid 3.5-6.5%               n=9   sumR   -2.18  meanR   -0.24  wins 2/9  day0-exit 6/9
+                             peakR mean   +2.12 max   +5.39  >=2R 5/9  peakADR med   +1.17  stop/ADR med   +0.66  hold med 1d
+                             SMCI-0.70 NVCR-1.00 THC-1.01 FTNT-1.03 PLTR+3.42 NET-1.00 FIGS-0.37 TEAM-1.02 ETON+0.52
+  fast  >6.5%                n=11  sumR  -10.37  meanR   -0.94  wins 0/11  day0-exit 9/11
+                             peakR mean   +1.27 max   +7.92  >=2R 2/11  peakADR med   +0.06  stop/ADR med   +0.36  hold med 1d
+                             WULF-1.00 CRCL-1.01 TSEM-1.00 MANE-0.23 HUT-1.07 QBTS-1.00 BLZE-1.02 BTDR-1.03 FRMI-0.98 BW-1.09 MRVL-0.95
+
+--- (e) STOP GEOMETRY — width vs the stock's own daily range -------------
+  ORB-low-stop trades (eras A+B, n=21): stop width / ADR20
+    min 0.15  P25 0.35  median 0.42  P75 0.87  max 1.17   (<1.0 ADR: 18/21)
+  era-C 2R-stop trade: MRVL stop/ADR 0.72 (ORB-low width would have been ~0.36)
+  trades whose peak ran >= 1.0 ADR: PLTR 4.56 NVCR 2.35 SMCI 1.68 ETON 1.38 QBTS 1.32 MANE 1.21 FIGS 1.17 BLZE 1.11 WKC 1.00
+
+--- RUNNERS >= +2R — what each era's stack kept of them ------------------
+  tkr   era   peakR   keptR  capture   note
+  MANE  A      7.92   -0.23      -3%   no partial existed — gave it all back
+  PLTR  A      5.39    3.42     +64%   era-A entry, era-B management: partial fired, stop trailed
+  QBTS  A      3.74   -1.00     -27%   no partial existed — gave it all back
+  SMCI  A      3.21   -0.70     -22%   no partial existed — gave it all back
+  FIGS  B      2.90   -0.37     -13%   partial fired, remainder lost more than the bank
+  ETON  B      2.09    0.52     +25%   partial fired same day, BE held -> banked
+  NVCR  A      2.00   -1.00     -50%   no partial existed — gave it all back
+
+--- (b) CANDIDATE GRID, ERA A ONLY n=15 — the only era where candidates cleanly REPLACE the deployed rule (mean kept R per trade; engine unchanged) ---
+  ADR1_exit_all                     +0.48  (n=15)
+  rgm_none/3R/2R_exit_all           +0.12  (n=15)
+  R3_exit_all                       +0.05  (n=15)
+  R1.5_exit_all                     -0.01  (n=15)
+  rgm_none/2R/2R_exit_all           -0.01  (n=15)
+  R2_exit_all                       -0.01  (n=15)
+  ADR1_part1/3+BE                   -0.04  (n=15)
+  ADR0.5_part1/3+BE                 -0.13  (n=15)
+  R2_part1/2+BE                     -0.22  (n=15)
+  rgm_none/1R/1R_part1/3+BE         -0.23  (n=15)
+  R1_part1/3+BE                     -0.23  (n=15)
+  ADR1_part1/3+BE_POLL5             -0.24  (n=14)
+  R1.5_part1/3+BE                   -0.25  (n=15)
+  rgm_6R/3R/2R_part1/3+BE           -0.25  (n=15)
+  rgm_4R/3R/2R_part1/3+BE           -0.25  (n=15)
+  day1close_part1/3_MOC             -0.28  (n=15)
+  rgm_none/2R/2R_part1/3+BE         -0.30  (n=15)
+  rgm_3R/2R/2R_part1/3+BE           -0.30  (n=15)
+  R2_part1/3+BE                     -0.30  (n=15)
+  R1_part1/3+BE_POLL5               -0.30  (n=14)
+  R1_BE_only                        -0.30  (n=15)
+  R3_part1/3+BE                     -0.32  (n=15)
+  rgm_4R/2R/1R_part1/3+BE           -0.36  (n=15)
+  closeR1_part1/3_MOC               -0.36  (n=15)
+  R2_part1/3+BE_POLL5               -0.37  (n=14)
+  ADR1.5_exit_all                   -0.37  (n=15)
+  R3_part1/3+BE_POLL5               -0.41  (n=14)
+  day1close_part1/3_next-open       -0.41  (n=15)
+  closeR2_part1/3_MOC               -0.43  (n=15)
+  R2_BE_only                        -0.44  (n=15)
+  ADR1.5_part1/3+BE                 -0.47  (n=15)
+  closeR1_part1/3_next-open         -0.50  (n=15)
+  ADR2_part1/3+BE                   -0.56  (n=15)
+  closeR2_part1/3_next-open         -0.57  (n=15)
+  sq_replay(d3+,1/3,next-open)      -0.60  (n=15)
+  day2close_part1/3_next-open       -0.61  (n=15)
+  nothing                           -0.63  (n=15)
+  actual                            -0.65  (n=15)
+
+  ⚠ era-B/C trades already ran WITH a live partial/BE — a candidate replay on top
+    of them replaces a rule that already acted, so the full-cohort grid mixes eras;
+    shown for continuity with the 07-30/08-17 runs, read era A for the clean read.
+
+--- (b) CANDIDATE GRID, FULL LIVE COHORT n=22 (era-mixed — continuity only) (mean kept R per trade; engine unchanged) ---
+  ADR1_exit_all                     +0.12  (n=22)
+  R1.5_exit_all                     +0.01  (n=22)
+  R2_exit_all                       -0.06  (n=22)
+  rgm_none/3R/2R_exit_all           -0.11  (n=22)
+  R3_exit_all                       -0.15  (n=22)
+  rgm_none/2R/2R_exit_all           -0.20  (n=22)
+  ADR0.5_part1/3+BE                 -0.22  (n=22)
+  R1_part1/3+BE                     -0.23  (n=22)
+  R2_part1/2+BE                     -0.25  (n=22)
+  R1_part1/3+BE_POLL5               -0.28  (n=21)
+  ADR1_part1/3+BE                   -0.28  (n=22)
+  R1.5_part1/3+BE                   -0.29  (n=22)
+  R2_part1/3+BE                     -0.31  (n=22)
+  R1_BE_only                        -0.34  (n=22)
+  rgm_none/1R/1R_part1/3+BE         -0.34  (n=22)
+  rgm_6R/3R/2R_part1/3+BE           -0.36  (n=22)
+  rgm_4R/3R/2R_part1/3+BE           -0.36  (n=22)
+  R2_part1/3+BE_POLL5               -0.37  (n=21)
+  day1close_part1/3_MOC             -0.38  (n=22)
+  rgm_none/2R/2R_part1/3+BE         -0.39  (n=22)
+  rgm_3R/2R/2R_part1/3+BE           -0.39  (n=22)
+  R3_part1/3+BE                     -0.40  (n=22)
+  rgm_4R/2R/1R_part1/3+BE           -0.43  (n=22)
+  R2_BE_only                        -0.43  (n=22)
+  closeR1_part1/3_MOC               -0.44  (n=22)
+  ADR1.5_exit_all                   -0.44  (n=22)
+  ADR1_part1/3+BE_POLL5             -0.44  (n=21)
+  day1close_part1/3_next-open       -0.47  (n=22)
+  R3_part1/3+BE_POLL5               -0.47  (n=21)
+  closeR2_part1/3_MOC               -0.48  (n=22)
+  ADR1.5_part1/3+BE                 -0.51  (n=22)
+  closeR1_part1/3_next-open         -0.53  (n=22)
+  ADR2_part1/3+BE                   -0.57  (n=22)
+  closeR2_part1/3_next-open         -0.58  (n=22)
+  sq_replay(d3+,1/3,next-open)      -0.60  (n=22)
+  day2close_part1/3_next-open       -0.61  (n=22)
+  nothing                           -0.62  (n=22)
+  actual                            -0.66  (n=22)
+
+--- (c0) REGIME-CONDITIONAL ARMS (rgm_*), LIVE cells — era caveat applies ---
+  rgm_none/2R/2R_part1/3+BE     Bull=-0.59(n7)  Chop=-0.19(n7)  Corr=-0.30(n7)
+  rgm_none/1R/1R_part1/3+BE     Bull=-0.59(n7)  Chop=+0.10(n7)  Corr=-0.44(n7)
+  rgm_4R/2R/1R_part1/3+BE       Bull=-0.59(n7)  Chop=-0.19(n7)  Corr=-0.44(n7)
+  rgm_4R/3R/2R_part1/3+BE       Bull=-0.59(n7)  Chop=-0.09(n7)  Corr=-0.30(n7)
+  rgm_3R/2R/2R_part1/3+BE       Bull=-0.59(n7)  Chop=-0.19(n7)  Corr=-0.30(n7)
+  rgm_6R/3R/2R_part1/3+BE       Bull=-0.59(n7)  Chop=-0.09(n7)  Corr=-0.30(n7)
+  rgm_none/2R/2R_exit_all       Bull=-0.59(n7)  Chop=-0.16(n7)  Corr=+0.27(n7)
+  rgm_none/3R/2R_exit_all       Bull=-0.59(n7)  Chop=+0.13(n7)  Corr=+0.27(n7)
+
+--- PAPER magna53 (separate, NEVER blended: old entry mechanics + regime confound) ---
+  n=24  sumR  -19.10  wins 6/24
+
+Done. THE LINE: nothing above changes any rule.

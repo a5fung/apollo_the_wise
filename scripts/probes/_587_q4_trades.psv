@@ -1,0 +1,153 @@
+ticker|alert_date|account_mode|signal_type|status|skip_reason|ep_score|catalyst_quality|gap_pct|regime|orb_high|orb_low|entry_price|entry_shares|stop_price|hard_stop|risk_dollars|total_pnl|entry_attempt|proposed_et|filled_et|closed_et
+ALOY|2026-06-01|paper|magna53|skipped|window:out_of_orb: detected 09:56 ET|86.4|strong|14.25|||||||||0|1|||
+FPS|2026-06-01|paper|9m_day2|closed||0|9m_volume||Bull|53.5699|52.67|53.793681|163|59.69|47.65|964.94|159.77693200000002|1|2026-06-01 09:31:01|2026-06-01 09:41:08|2026-06-25 09:43:28
+ZS|2026-06-01|paper|9m_day2|cancelled|ORB window unfilled|0|9m_volume||Bull|145.5|143.75|145.5|64|130.37|130.37|968.64|0|1|2026-06-01 09:31:01||
+GRRR|2026-06-02|paper|magna53|cancelled|ORB window unfilled|100.8|strong|17.64|Bull|23.49|22.4|23.49|860|22.4|22.4|957.15|0|1|2026-06-02 09:31:10||
+HPE|2026-06-02|paper|magna53|cancelled|ORB window unfilled|115.2|strong|25.28|Bull|63.95|61.7206|63.95|315|61.7206|61.7206|957.15|0|1|2026-06-02 09:31:10||
+MRVL|2026-06-02|paper|magna53|cancelled|cancelled|115.2|strong|24.87|Bull|259.8|252.43|259.8|77|252.43|252.43|957.15|0|1|2026-06-02 09:31:10||
+NVTS|2026-06-03|paper|magna53|closed|block:r3_reentry_disabled|84|strong|15.39|Bull|31.63|30.55|31.79|632|30.55|30.55|962.51|-830.1402160000002|1|2026-06-03 09:31:10|2026-06-03 09:42:30|2026-06-03 09:49:07
+PGY|2026-06-04|paper|magna53|skipped|window:out_of_orb: detected 09:56 ET|66|strong|10.21|||||||||0|1|||
+RUM|2026-06-04|paper|magna53|closed|block:r3_reentry_disabled|84|strong|15.49|Bull|9.89|9.4|9.935633|1871|9.4|9.4|917.25|-983.4593429999984|1|2026-06-04 09:40:11|2026-06-04 09:44:14|2026-06-04 09:49:09
+AGX|2026-06-05|paper|magna53|skipped|block:max_positions: 5/5 (mode=paper)|86.4|game_changer|10.96|Bull||||||||0|1|||
+TTAN|2026-06-05|paper|magna53|cancelled|ORB window unfilled|100.8|strong|16.28|Bull|84.0775|82.76|84.0775|227|82.76|82.76|937.75|0|1|2026-06-05 09:31:00||
+NRIX|2026-06-08|paper|magna53|closed|block:r3_reentry_disabled|75.6|game_changer|11.5|Choppy|16.88|16.1|16.956238|404|16.1|16.1|315.12|-378.2401519999998|1|2026-06-08 09:31:07|2026-06-08 09:45:45|2026-06-08 09:55:03
+GLXY|2026-06-09|paper|9m_day2|skipped|setup:stop_too_wide: stop distance 17.1% > 15%|0|9m_volume||Bull||||||||0|1|||
+TNGX|2026-06-09|paper|9m_day2|skipped|setup:stop_too_wide: stop distance 20.5% > 15%|0|9m_volume||Bull||||||||0|1|||
+GLXY|2026-06-10|paper|9m_day2|closed||0|9m_volume||Bull|32.3|31.84|32.362774|137|29.77|29.77|346.61|-363.43003800000014|1|2026-06-10 09:31:10|2026-06-10 09:44:13|2026-06-11 09:41:30
+PAYO|2026-06-10|paper|9m_day2|skipped|setup:stop_too_wide: stop distance 21.2% > 15%|0|9m_volume||Bull||||||||0|1|||
+VELO|2026-06-10|paper|9m_day2|skipped|setup:stop_too_wide: stop distance 28.5% > 15%|0|9m_volume||Bull||||||||0|1|||
+ELVN|2026-06-11|paper|magna53|cancelled|ORB window unfilled|84|strong|18.33|Choppy|45.5171|43.02|45.5171|116|43.02|43.02|290|0|1|2026-06-11 09:31:10||
+FRMI|2026-06-11|paper|9m_day2|skipped|setup:stop_too_wide: stop distance 20.0% > 15%|0|9m_volume||Choppy||||||||0|1|||
+IDCC|2026-06-11|paper|magna53|skipped|window:out_of_orb: detected 09:51 ET|84|strong|15.2|||||||||0|1|||
+NAVN|2026-06-11|paper|magna53|closed|block:r3_reentry_disabled|80|game_changer|17.87|Choppy|24.32|23.03|24.399071|226|23.03|23.03|291.54|-319.46998400000007|1|2026-06-11 09:31:10|2026-06-11 09:44:17|2026-06-11 10:01:39
+AKTS|2026-06-12|paper|magna53|skipped|window:out_of_orb: detected 09:55 ET|54|strong|11.92|||||||||0|1|||
+CPNG|2026-06-12|paper|9m_day2|skipped|setup:faded_from_orb: last $16.81 < threshold $16.88 (ratio=0.25, ORB H=$17.10 L=$16.80, faded 1.7%)|0|9m_volume||Bull||||||||0|1|||
+LYG|2026-06-12|paper|9m_day2|cancelled|ORB window unfilled|0|9m_volume||Bull|5.46|5.445|5.46|1316|5.19|5.19|355.32|0|1|2026-06-12 09:31:12||
+SHAZ|2026-06-12|paper|magna53|cancelled|ORB window unfilled|86.4|game_changer|11.87|Bull|74.77|67.29|74.77|47|67.29|67.29|351.56|0|1|2026-06-12 09:31:10||
+SMCI|2026-06-12|paper|9m_day2|skipped|setup:faded_from_orb: last $30.09 < threshold $30.31 (ratio=0.25, ORB H=$31.08 L=$30.06, faded 3.2%)|0|9m_volume||Bull||||||||0|1|||
+ROKU|2026-06-15|paper|9m_day2|skipped|setup:faded_from_orb: last $143.41 < threshold $143.71 (ratio=0.25, ORB H=$145.88 L=$142.99, faded 1.7%)|0|9m_volume||Bull||||||||0|1|||
+NTLA|2026-06-16|paper|9m_day2|cancelled|ORB window unfilled|0|9m_volume||Bull|14.92|14.5401|14.92|199|12.76|12.76|429.84|0|1|2026-06-16 09:31:10||
+RXT|2026-06-16|paper|magna53|cancelled|ORB window unfilled|84|strong|17.5|Bull|7.16|6.61|7.16|781|6.61|6.61|429.55|0|1|2026-06-16 09:31:10||
+JBL|2026-06-17|paper|magna53|closed|block:r3_reentry_disabled|60|game_changer|10.77|Choppy|412.36|407.4|413.835454|22|407.4|407.4|109.12|-164.11997800000086|1|2026-06-17 09:36:00|2026-06-17 09:40:23|2026-06-17 10:02:10
+LION|2026-06-17|paper|9m_day2|cancelled|cancelled|0|9m_volume||Choppy|15.61|15.29|15.61|324|14.3|14.3|424.44|0|1|2026-06-17 09:31:10||
+QURE|2026-06-17|paper|magna53|closed||80|game_changer|75.2|Choppy|44.62|42.5|44.69|200|44.69|42.5|424|215.6200000000007|1|2026-06-17 09:31:01|2026-06-17 09:36:14|2026-07-02 09:31:21
+QURE|2026-06-18|paper|9m_day2|skipped|block:ticker_open_position: open since 2026-06-17|0|9m_volume||Choppy||||||||0|1|||
+SWBI|2026-06-18|paper|magna53|cancelled|ORB window unfilled|70|strong|15.59|Choppy|16.09|15.63|16.09|576|15.63|15.63|264.96|0|1|2026-06-18 09:31:00||
+UUUU|2026-06-18|paper|magna53|cancelled|ORB window unfilled|72|game_changer|12.36|Choppy|18.06|17.31|18.06|512|17.31|17.31|384|0|1|2026-06-18 09:31:11||
+DFTX|2026-06-22|paper|magna53|cancelled|ORB window unfilled|60|game_changer|14.38|Choppy|39.16|37.22|39.16|220|37.22|37.22|426.8|0|1|2026-06-22 09:31:00||
+MLTX|2026-06-22|paper|magna53|cancelled|ORB window unfilled|96|game_changer|19.1|Choppy|20.025|19.75|20.025|459|19.75|19.75|123.93|0|1|2026-06-22 09:31:00||
+SYRE|2026-06-22|paper|magna53|closed||60|game_changer|12.35|Choppy|98.18|95|98.49|93|95|95|295.74|-1483.349999999999|1|2026-06-22 09:31:00|2026-06-22 09:52:47|2026-06-24 09:32:58
+ABSI|2026-06-24|live|magna53|cancelled||100.8|strong|16.33|Bull|9.66|9.3|9.66|103|9.3|9.3|38.78|0|1|2026-06-24 09:31:13||2026-07-06 10:35:45
+FCEL|2026-06-24|live|magna53|cancelled||84|strong|17.51|Bull|25.199|23.68|25.199|25|23.68|23.68|38.78|0|1|2026-06-24 09:31:24||2026-07-06 10:35:45
+MU|2026-06-25|paper|magna53|skipped|setup:price_exceeds_cap: $1235.00/share > $1000 (20% of $5000)|96|game_changer|17.71|Choppy||||||||0|1|||
+SNX|2026-06-25|live|magna53|cancelled||72|game_changer|11.22|Choppy|295.19|282.16|295.19|3|282.16|282.16|40.92|0|1|2026-06-25 09:31:00||2026-07-06 10:35:45
+ACAD|2026-06-26|live|magna53|cancelled||84|strong|15.34|Choppy|26.49|25.88|26.49|37|25.88|25.88|40.27|0|1|2026-06-26 09:31:11||2026-07-06 10:35:45
+ABBV|2026-06-29|paper|9m_day2|skipped|block:strategy_in_shadow|0|9m_volume||Correcting||||||||0|1|||
+ATAI|2026-06-29|paper|9m_day2|skipped|block:strategy_in_shadow|0|9m_volume||Correcting||||||||0|1|||
+SNOW|2026-06-29|paper|9m_day2|skipped|block:strategy_in_shadow|0|9m_volume||Correcting||||||||0|1|||
+STUB|2026-06-29|paper|9m_day2|skipped|block:strategy_in_shadow|0|9m_volume||Correcting||||||||0|1|||
+AVAV|2026-06-30|live|magna53|cancelled|ORB window unfilled|54|routine|25.3|Bull|178.5|170.02|178.5|5|170.02|170.02|43.38|0|1|2026-06-30 09:31:01||
+DLO|2026-07-02|paper|9m_day2|skipped|block:strategy_in_shadow|0|9m_volume||Bull||||||||0|1|||
+NKE|2026-07-02|paper|9m_day2|skipped|block:strategy_in_shadow|0|9m_volume||Bull||||||||0|1|||
+WULF|2026-07-06|live|magna53|closed|block:r3_reentry_disabled|96|game_changer|19.92|Choppy|24.61|23.8|24.62|40|23.8|23.8|47.13|-32.80000000000001|1|2026-07-06 09:31:01|2026-07-06 09:33:00|2026-07-06 09:57:29
+DOCN|2026-07-07|live|magna53|cancelled|ORB window unfilled|115.2|game_changer|15.62|Bull|146.57|143.63|146.57|6|143.63|143.63|48.26|0|1|2026-07-07 09:31:02||
+PENG|2026-07-08|paper|magna53|skipped|window:out_of_orb: detected 09:55 ET|72|game_changer|10.52|||||||||0|1|||
+PENG|2026-07-09|paper|9m_day2|skipped|block:strategy_deprecated|0|9m_volume||Correcting||||||||0|1|||
+CRCL|2026-07-10|live|magna53|closed|block:r3_reentry_disabled|60|game_changer|10.76|Choppy|70.66|69.29|70.65|14|69.29|69.29|23.79|-19.180000000000064|1|2026-07-10 09:31:04|2026-07-10 09:31:05|2026-07-10 09:40:34
+WDFC|2026-07-10|live|magna53|closed|block:r3_reentry_disabled|72|game_changer|14.23|Choppy|295|287.06|296.235|2|287.06|287.06|23.79|-19.029999999999973|1|2026-07-10 09:31:04|2026-07-10 09:31:19|2026-07-10 09:40:35
+CLSK|2026-07-14|live|magna53|cancelled|ORB window unfilled|96|game_changer|17.15|Correcting|15.1|14.61|15.1|44|14.61|14.61|21.98|0|1|2026-07-14 09:31:04||
+QTTB|2026-07-14|paper|9m_day2|skipped|block:strategy_deprecated|0|9m_volume||Correcting||||||||0|1|||
+TSEM|2026-07-14|live|magna53|closed|block:r3_reentry_disabled|80|game_changer|18.57|Correcting|273.25|266.34|274|3|266.34|266.34|21.98|-23.010000000000048|1|2026-07-14 09:31:11|2026-07-14 09:32:52|2026-07-14 09:44:34
+AEHR|2026-07-15|live|magna53|cancelled|rejected|96|game_changer|29.5|Choppy|102.46|95|102.46|3|95|95|22.69|0|1|2026-07-15 09:31:02||
+MANE|2026-07-15|live|magna53|closed||72|game_changer|10.66|Choppy|118.75|118.02|119.34|8|118.02|118.02|22.69|-2.3999999999999773|1|2026-07-15 09:31:03|2026-07-15 09:33:02|2026-07-16 09:30:06
+HUT|2026-07-20|live|magna53|closed|block:r3_reentry_disabled|72|game_changer|11.54|Correcting|103.48|101.4482|103.48|9|101.4482|101.4482|19.9|-19.530000000000015|1|2026-07-20 09:31:01|2026-07-20 09:31:06|2026-07-20 09:31:57
+IREN|2026-07-20|live|magna53|skipped|window:out_of_orb: detected 09:51 ET|72|game_changer|13.15|||||||||0|1|||
+HAS|2026-07-21|live|magna53|skipped|window:out_of_orb: detected 09:50 ET|72|game_changer|10.61|||||||||0|1|||
+ARWR|2026-07-22|live|magna53|cancelled|cancelled|80|game_changer|19.57|Correcting|87.92|84.34|87.92|6|84.34|84.34|21.92|0|1|2026-07-22 09:31:00||
+SMCI|2026-07-22|live|magna53|closed||70|strong|15.88|Correcting|29.48|28.5|29.47|22|28.5|28.5|21.92|-14.959999999999994|1|2026-07-22 09:31:02|2026-07-22 09:33:30|2026-07-27 10:37:45
+NVCR|2026-07-23|live|magna53|closed||84|strong|15.54|Correcting|19.05|18|19.15|21|18|18|22.55|-24.133199999999935|1|2026-07-23 09:31:10|2026-07-23 09:32:30|2026-07-24 15:36:57
+THC|2026-07-24|live|magna53|closed|block:r3_reentry_disabled|60|game_changer|14.31|Correcting|240.47|233.58|241.67|2|233.58|233.58|20.16|-16.279999999999973|1|2026-07-24 09:31:03|2026-07-24 09:31:22|2026-07-24 12:43:37
+WKC|2026-07-24|live|magna53|closed|block:r3_reentry_disabled|60|game_changer|11.63|Correcting|39.995|39|40.16|20|39|39|20.16|-23.799999999999955|1|2026-07-24 09:31:10|2026-07-24 09:33:18|2026-07-24 12:02:39
+NNE|2026-07-27|live|magna53|skipped|window:out_of_orb: detected 09:56 ET|57|strong|10.38|||||||||0|1|||
+QBTS|2026-07-27|live|magna53|closed||54|strong|11.29|Correcting|18.17|17.75|18.17|53|17.75|17.75|24.2|-22.26000000000009|1|2026-07-27 09:31:05|2026-07-27 09:31:31|2026-07-28 09:36:25
+CORZ|2026-07-28|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-28T14:37:45.699612+00:00|72|game_changer|11.28|Correcting||||||||0|1|||
+TER|2026-07-29|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-29T13:36:25.188082+00:00|60|game_changer|10.4|Correcting||||||||0|1|||
+TEVA|2026-07-29|live|magna53|skipped|window:out_of_orb: detected 09:51 ET|50.4|strong|11.4|||||||||0|1|||
+ARM|2026-07-30|live|magna53|cancelled|ORB window unfilled|60|game_changer|10.77|Crisis|268.48|257.33|268.48|1|257.33|257.33|11.96|0|1|2026-07-30 09:31:20||
+CORT|2026-07-30|live|magna53|skipped|setup:stop_too_wide: ORB range $7.25 (6.9%) > 1.5x ATR $6.89|96|strong|24.21|Crisis||||||||0|1|||
+EME|2026-07-30|live|magna53|skipped|setup:size_too_small: $12 risk / $16.65 per-share < 1 share|60|game_changer|10.56|Crisis||||||||0|1|||
+FTNT|2026-07-30|live|magna53|closed|block:r3_reentry_disabled|60|game_changer|10.1|Crisis|166.65|160.185|166.65|1|160.185|160.185|11.96|-6.6299999999999955|1|2026-07-30 09:31:25|2026-07-30 09:32:08|2026-07-30 09:37:50
+LRCX|2026-07-30|live|magna53|skipped|window:out_of_orb: detected 09:51 ET|84|strong|18.95|||||||||0|1|||
+PWR|2026-07-30|live|magna53|skipped|setup:size_too_small: $12 risk / $21.95 per-share < 1 share|60|game_changer|12.09|Crisis||||||||0|1|||
+SIMO|2026-07-30|live|magna53|skipped|setup:size_too_small: $12 risk / $29.11 per-share < 1 share|80|game_changer|19.18|Crisis||||||||0|1|||
+BLZE|2026-07-31|live|magna53|skipped|window:out_of_orb: detected 09:56 ET|72|game_changer|13.06|||||||||0|1|||
+COHU|2026-07-31|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00|80|game_changer|22.71|Correcting||||||||0|1|||
+FET|2026-07-31|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00|84|strong|16.04|Correcting||||||||0|1|||
+FLNC|2026-07-31|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00|60|game_changer|10.02|Correcting||||||||0|1|||
+MPWR|2026-07-31|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00|60|game_changer|13.96|Correcting||||||||0|1|||
+NWL|2026-07-31|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-07-31T13:37:50.539792+00:00|60|game_changer|13.42|Correcting||||||||0|1|||
+AEIS|2026-08-04|live|magna53|skipped|block:max_positions: 5/5 (mode=live)|84|strong|15.39|Choppy||||||||0|1|||
+AMRC|2026-08-04|live|magna53|skipped|window:out_of_orb: detected 09:45 ET|50|routine|38.72|||||||||0|1|||
+BLZE|2026-08-04|live|magna53|closed|block:r3_reentry_disabled|80|game_changer|19.14|Choppy|21.7499|20.1|21.8121|21|20.1|20.1|35.82|-36.79410000000004|1|2026-08-04 09:31:00|2026-08-04 09:31:01|2026-08-04 15:50:00
+BTDR|2026-08-04|live|magna53|closed|block:r3_reentry_disabled|80|game_changer|24.1|Choppy|12.85|12.48|12.85|74|12.48|12.48|35.87|-28.119999999999926|1|2026-08-04 09:31:10|2026-08-04 09:34:50|2026-08-04 09:46:20
+CAT|2026-08-04|live|magna53|cancelled|ORB window unfilled|60|game_changer|10|Choppy|934.9994|920|934.9994|1|920|920|35.87|0|1|2026-08-04 09:31:10||
+LIFE|2026-08-04|live|magna53|cancelled|ORB window unfilled|80|game_changer|16.29|Choppy|28.79|27.33|28.79|24|27.33|27.33|35.86|0|1|2026-08-04 09:31:11||
+PLTR|2026-08-04|live|magna53|closed||96|game_changer|15.96|Choppy|148.63|143.28|149.0545|6|170.47|143.28|35.86|118.60200000000003|1|2026-08-04 09:31:11|2026-08-04 09:31:11|2026-08-19 10:03:18
+TSAT|2026-08-04|live|magna53|skipped|window:out_of_orb: detected 09:56 ET|60|game_changer|14.46|||||||||0|1|||
+VOYG|2026-08-04|live|magna53|skipped|setup:zero_range: open=high=low=$33.99|80|game_changer|16.96|Choppy||||||||0|1|||
+ZBRA|2026-08-04|live|magna53|skipped|block:max_positions: 5/5 (mode=live)|60|game_changer|10.75|Choppy||||||||0|1|||
+APPS|2026-08-05|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00|115.2|strong|28.29|Bull||||||||0|1|||
+ECG|2026-08-05|live|magna53|skipped|window:out_of_orb: detected 09:51 ET|72|game_changer|10.96|||||||||0|1|||
+HGTY|2026-08-05|live|magna53|skipped|window:out_of_orb: detected 09:55 ET|60.5|strong|11.69|||||||||0|1|||
+KMT|2026-08-05|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00|72|game_changer|14.39|Bull||||||||0|1|||
+KODK|2026-08-05|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00|54.7|strong|10.86|Bull||||||||0|1|||
+KTOS|2026-08-05|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00|64.8|strong|11.26|Bull||||||||0|1|||
+TATT|2026-08-05|live|magna53|skipped|block:circuit_breaker: cooldown until 2026-08-05T19:50:00.523877+00:00|61.9|strong|11.79|Bull||||||||0|1|||
+AEVA|2026-08-06|live|magna53|skipped|setup:stop_too_wide: ORB range $3.08 (13.4%) > 1.5x ATR $2.33|96|strong|22.28|Bull||||||||0|1|||
+CAI|2026-08-06|live|magna53|skipped|window:out_of_orb: detected 09:53 ET|50.4|routine|17.11|||||||||0|1|||
+DCTH|2026-08-06|live|magna53|skipped|window:out_of_orb: detected 09:56 ET|54|routine|21.3|||||||||0|1|||
+INSM|2026-08-06|live|magna53|cancelled|broker:entry_rejected: last $128.96 at/below trigger $129.41 at event|96|game_changer|16.14|Bull|129.41|126.15|129.41|7|126.15|126.15|47.7|0|1|2026-08-06 09:31:11||
+LFST|2026-08-06|live|magna53|skipped|setup:gap_below_floor: rt -2.0% < 10% floor (alert said 18.8%, last $10.16 vs prev close $10.37)|96|game_changer|18.8|Bull||||||||0|1|||
+RDW|2026-08-06|live|magna53|cancelled|ORB window unfilled|64.8|strong|12.46|Bull|12.75|12.23|12.75|74|12.23|12.23|47.69|0|1|2026-08-06 09:31:10||
+SITM|2026-08-06|live|magna53|skipped|setup:size_too_small: $48 risk / $48.88 per-share < 1 share|96|game_changer|28.88|Bull||||||||0|1|||
+U|2026-08-06|live|magna53|skipped|setup:gap_below_floor: rt 1.0% < 10% floor (alert said 18.4%, last $35.83 vs prev close $35.47)|96|game_changer|18.41|Bull||||||||0|1|||
+ACMR|2026-08-07|live|magna53|skipped|setup:gap_below_floor: rt 6.6% < 10% floor (alert said 15.1%, last $84.19 vs prev close $78.98)|100.8|strong|15.09|Bull||||||||0|1|||
+FIGS|2026-08-07|live|magna53|closed|block:r3_reentry_disabled|96|game_changer|26.69|Bull|15.5|15.19|15.495082|61|15.19|15.19|47.94|-6.838002000000003|1|2026-08-07 09:31:10|2026-08-07 09:32:31|2026-08-07 09:51:02
+FROG|2026-08-07|live|magna53|cancelled|ORB window unfilled|100.8|strong|17.51|Bull|96.255|90.12|96.255|7|90.12|90.12|47.94|0|1|2026-08-07 09:31:10||
+MTW|2026-08-07|live|magna53|skipped|window:out_of_orb: detected 09:52 ET|50.4|routine|33.08|||||||||0|1|||
+NET|2026-08-07|live|magna53|closed|block:r3_reentry_disabled|100.8|strong|15.67|Bull|318|311|316.13|3|311|311|47.94|-15.389999999999986|1|2026-08-07 09:31:10|2026-08-07 09:33:20|2026-08-07 10:32:01
+ONTO|2026-08-07|live|magna53|skipped|window:out_of_orb: detected 09:52 ET|96|game_changer|15.31|||||||||0|1|||
+QNST|2026-08-07|live|magna53|cancelled|broker:entry_cancelled: last $19.59 at/below trigger $19.80 at event|96|game_changer|27.92|Bull|19.8|19.21|19.8|48|19.21|19.21|47.94|0|1|2026-08-07 09:31:10||
+TEAM|2026-08-07|live|magna53|closed|block:r3_reentry_disabled|115.2|strong|31.66|Bull|146.8|143.21|147.13|6|143.21|143.21|47.95|-23.940000000000055|1|2026-08-07 09:31:11|2026-08-07 09:31:22|2026-08-07 09:43:54
+TWLO|2026-08-07|live|magna53|skipped|block:max_positions: 5/5 (mode=live)|84|strong|17.97|Bull||||||||0|1|||
+ABCL|2026-08-10|live|magna53|filled||96|game_changer|17.6|Bull|8.96|8.4|8.96|85|10.66|8.4|47.98|31.359999999999978|1|2026-08-10 09:31:06|2026-08-10 09:34:33|
+ACHR|2026-08-10|live|magna53|skipped|window:out_of_orb: detected 09:45 ET|54|routine|14.85|||||||||0|1|||
+NESR|2026-08-10|live|magna53|skipped|window:out_of_orb: detected 09:45 ET|53.3|strong|11.99|||||||||0|1|||
+TH|2026-08-10|live|magna53|skipped|setup:gap_below_floor: rt -5.0% < 10% floor (alert said 12.2%, last $15.68 vs prev close $16.51)|50.4|strong|12.17|Bull||||||||0|1|||
+BW|2026-08-11|live|magna53|closed|block:r3_reentry_disabled|96|game_changer|34.91|Bull|12.08|11.5|12.07|80|11.5|11.5|48.59|-49.60000000000008|1|2026-08-11 09:31:10|2026-08-11 09:31:49|2026-08-11 09:31:56
+FRMI|2026-08-11|live|magna53|closed|block:r3_reentry_disabled|96|game_changer|17.01|Bull|7.24|7.05|7.29|134|7.05|7.05|48.51|-31.490000000000045|1|2026-08-11 09:31:05|2026-08-11 09:31:05|2026-08-11 09:31:40
+RIOT|2026-08-11|live|magna53|cancelled|ORB window unfilled|115.2|game_changer|17.92|Bull|23.66|22.86|23.66|41|22.86|22.86|48.51|0|1|2026-08-11 09:31:05||
+SE|2026-08-11|live|magna53|skipped|setup:gap_below_floor: rt 9.2% < 10% floor (alert said 10.6%, last $125.36 vs prev close $114.80)|54.7|strong|10.58|Bull||||||||0|1|||
+ATRO|2026-08-12|live|magna53|skipped|setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29|72|game_changer|11.29|Bull||||||||0|1|||
+BE|2026-08-12|live|magna53|skipped|window:out_of_orb: detected 09:50 ET|84|strong|15.16|||||||||0|1|||
+CRWV|2026-08-12|live|magna53|skipped|window:out_of_orb: detected 09:50 ET|51.6|routine|19.51|||||||||0|1|||
+EROC|2026-08-12|live|magna53|cancelled|setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs planned $0.41/sh (cap 1.50x, ORB high $13.16)|96|game_changer|16.09|Bull|13.16|12.75|13.16|72|12.75|12.75|47.65|0|1|2026-08-12 09:31:10||
+GLBE|2026-08-12|live|magna53|skipped|setup:gap_below_floor: rt 4.8% < 10% floor (alert said 10.7%, last $42.81 vs prev close $40.86)|72|game_changer|10.67|Bull||||||||0|1|||
+MRX|2026-08-12|live|magna53|skipped|window:out_of_orb: detected 09:55 ET|53.3|strong|12.45|||||||||0|1|||
+CGEM|2026-08-13|live|magna53|skipped|infra:no_bar: 3 retries exhausted|72|game_changer|12.24|Bull||||||||0|1|||
+CRMD|2026-08-13|live|magna53|skipped|infra:no_bar: 3 retries exhausted|64.8|strong|10|Bull||||||||0|1|||
+HLIT|2026-08-13|live|magna53|skipped|infra:no_bar: 3 retries exhausted|96|game_changer|23.79|Bull||||||||0|1|||
+KURA|2026-08-13|live|magna53|skipped|window:out_of_orb: detected 09:51 ET|60.5|strong|13.43|||||||||0|1|||
+OMER|2026-08-13|live|magna53|skipped|window:out_of_orb: detected 09:45 ET|60|routine|22.54|||||||||0|1|||
+ETON|2026-08-14|live|magna53|closed|block:r3_reentry_disabled|96|game_changer|23.28|Bull|55.4427|53.01|55.2012|17|55.2012|53.01|48.92|19.323599999999942|1|2026-08-14 09:31:02|2026-08-14 09:31:02|2026-08-14 09:45:11
+HTFL|2026-08-14|live|magna53|skipped|setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19|96|game_changer|25.12|Bull||||||||0|1|||
+NMAX|2026-08-14|live|magna53|skipped|window:out_of_orb: detected 09:50 ET|100.8|strong|16.75|||||||||0|1|||
+VERA|2026-08-14|live|magna53|skipped|setup:gap_below_floor: rt 5.6% < 10% floor (alert said 14.2%, last $30.50 vs prev close $28.89)|86.4|game_changer|14.23|Bull||||||||0|1|||
+ARGX|2026-08-17|live|magna53|skipped|setup:gap_below_floor: rt 9.5% < 10% floor (alert said 10.5%, last $931.98 vs prev close $851.29)|86.4|game_changer|10.53|Bull||||||||0|1|||
+AMLX|2026-08-18|live|magna53|filled||96|game_changer|21.33|Bull|30.07|28.58|30.211219|16|30.211219|27.089999999999996|48.72|16.293904999999995|1|2026-08-18 09:31:00|2026-08-18 09:32:03|
+MRNA|2026-08-19|live|magna53|filled||115.2|strong|33.1|Bull|120.15|115|120.75|4|120.75|109.85|50.02|17.710000000000008|1|2026-08-19 09:31:08|2026-08-19 09:33:11|
+MRVL|2026-08-19|live|magna53|closed|block:r3_reentry_disabled|69.1|strong|11.38|Bull|241.53|235.84|241.5|4|230.15|230.15|50.02|-43.27999999999997|1|2026-08-19 09:31:00|2026-08-19 09:32:06|2026-08-19 10:03:04
+TWST|2026-08-19|live|magna53|skipped|window:out_of_orb: detected 09:55 ET|84|strong|16.7|||||||||0|1|||
+BULL|2026-08-20|live|magna53|skipped|setup:stop_too_wide: ORB range $0.54 (5.7%) > 1.5x ATR $0.52|100.8|strong|15.16|Bull||||||||0|1|||
+RARE|2026-08-20|live|magna53|skipped|infra:no_bar: 3 retries exhausted|72|game_changer|11.39|Bull||||||||0|1|||
+UUUU|2026-08-21|live|magna53|skipped|window:out_of_orb: detected 09:55 ET|51.6|strong|9.28|||||||||0|1|||

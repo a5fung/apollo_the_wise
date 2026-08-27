@@ -1,0 +1,31 @@
+SET
+===Q1_ETON_367_ORDERS===
+===Q2_SPELLING_DELTA_ENUMERATION===
+trade_id|ticker|account_mode|alert_date|trade_status|old_held|new_held
+(0 rows)
+===Q2B_SPELLING_DELTA_COUNT===
+trades_affected
+0
+(1 row)
+===Q2C_EXIT_PURPOSE_ROWS_WITH_CANCELED_SPELLING===
+purpose|status|n|total_qty
+full_exit|filled|2|794
+partial_exit|filled|16|2796
+(2 rows)
+===Q3_INVARIANT_WITHOUT_EXCLUSION_UNBOUNDED===
+id|ticker|account_mode|alert_date|closed_at|entry_shares|exit_shares
+367|ETON|live|2026-08-14|2026-08-14 13:45:11.151019+00|17|22.0
+183|FPS|paper|2026-06-01|2026-06-25 13:43:28.150139+00|163|28.0
+(2 rows)
+===Q3B_INVARIANT_WITHOUT_EXCLUSION_SINCE_CUTOFF===
+n_since_cutoff
+0
+(1 row)
+===Q4_CLOSED_ROWS_WITH_A_WORKING_EXIT_ORDER===
+id|ticker|account_mode|status|closed_at|order_id|purpose|qty|order_status
+(0 rows)
+===Q5_OPEN_ROWS_NOW===
+id|ticker|account_mode|status|entry_shares|remaining_shares|stop_order_id|alert_date
+374|MRNA|live|filled|4|3|b09cf0c5-8ef0-4968-9b35-4ce26ef0d060|2026-08-19
+372|AMLX|live|filled|16|11|9e8588cc-bc5b-425a-80f0-a125cf3cf59a|2026-08-18
+(2 rows)

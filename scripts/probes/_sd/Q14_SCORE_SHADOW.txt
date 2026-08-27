@@ -1,0 +1,5 @@
+id|~|scan_date|~|ticker|~|first_seen_et|~|last_seen_et|~|sep_score_first|~|sep_score_last|~|sep_tier_first|~|sep_tier_last|~|legacy_score_first|~|legacy_score_last|~|legacy_tier_first|~|legacy_tier_last|~|sep_bar|~|legacy_bar|~|live_side|~|gap_pct_first|~|gap_pct_last|~|catalyst_quality_last|~|created_at
+6|~|2026-08-24|~|NSSC|~|2026-08-24 11:25:00.023042+00|~|2026-08-24 13:50:00.062143+00|~|60|~|52.5|~||~||~|36|~|80|~||~|HIGH|~|65|~|70|~|separation|~|9.45|~|34.22|~|strong|~|2026-08-24 11:25:27.912045+00
+1|~|2026-08-24|~|SCTX|~|2026-08-24 11:00:00.106847+00|~|2026-08-24 11:25:00.023042+00|~|60|~|60|~||~||~|42|~|42|~||~||~|65|~|70|~|separation|~|13.3|~|13.3|~|strong|~|2026-08-24 11:00:14.069248+00
+39|~|2026-08-25|~|NBBK|~|2026-08-25 12:55:00.024732+00|~|2026-08-25 13:25:00.042959+00|~|60|~|60|~||~||~|96|~|96|~|HIGH|~|HIGH|~|65|~|70|~|separation|~|24.39|~|24.39|~|strong|~|2026-08-25 12:55:14.708467+00
+(3 rows)
