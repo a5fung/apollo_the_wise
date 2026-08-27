@@ -262,7 +262,28 @@ reviews:
       SELECT COUNT(*) FROM mi_live_trades
       WHERE status = 'closed' AND account_mode = 'live' AND total_pnl IS NOT NULL
     threshold: 20
-    earliest_review_date: 2026-08-01
+    earliest_review_date: 2026-11-26
+    # >> RAN 2026-08-26 (Opus): docs/analysis/kill_scale_quarterly_2026-08-26.md.
+    #    Verdict HOLD from the shipped evaluator against prod (module md5 matched): n=23,
+    #    trailing-20 -0.44R, cumulative -11.93R, streak 1, drawdown tier OK, no override.
+    #    FIRST review clearing the 20-trade floor, so the strategy-health arms could actually
+    #    evaluate rather than abstain.
+    #    Distance to REDUCE: 12 straight full stop-outs — but the driver is NOT the losses.
+    #    PLTR's +3.4R rolls out of the trailing-20 window at exactly trade 12; losses 1-11 move
+    #    the number only -0.444 -> -0.489. One more winner pushes both arms out. KILL is 19 away.
+    #    Pop-check clean (magna53=23, no contamination). Zero rows dropped by the degenerate
+    #    guard; risk_dollars_actual is NULL on all 23 so the fallback carries every row and the
+    #    actual-branch is dead code on live data.
+    #    ERA: 22 of 23 are pre-2R; only MRVL closed under the 2R stop. The #268b calibration was
+    #    itself simulated on stop-model=orb_low, so both sides are pre-2R TODAY and consistent —
+    #    increasingly not, as 2R closes accrue. Operator's fork, not pre-decided.
+    #    Two measurement defects found, neither touched: the SCALE arm's equity_above_start
+    #    compares to a $0 bootstrap snapshot so it can essentially never read False (inert, but
+    #    not what its name says); and the YAML predicate and evaluator use different filters,
+    #    agreeing at 23 only because the book is clean.
+    #    TRAP: the weekly replay-regression series through 08-23 used the OLD pre-#586
+    #    denominator, so it is NOT comparable to today's corrected figure. 08-30 is the first
+    #    comparable snapshot.
     status: pending
     action_when_ready: |
       Part of the operator's QUARTERLY RULE REVIEW (rides the same 8/1 session

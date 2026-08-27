@@ -1,0 +1,256 @@
+=== Q0 MODULE IDENTITY ===
+file: /app/agents/market_intelligence/kill_scale_bands.py
+thresholds: {'KILL_T20': -1.05, 'KILL_CUM_R': -30.0, 'REDUCE_T20': -0.7, 'REDUCE_STREAK': 16, 'SCALE_MIN_TRADES': 40, 'SCALE_T40': 0.5, 'SAMPLE_FLOOR': 20}
+envelope: {'source': '#268b Phase B, n=399', 'n': 399, 'expectancy_r': 0.95, 'win_rate': 0.3, 'max_dd_r': -24.1, 'worst_streak': 15, 'trailing20_p5_r': -0.63, 'trailing20_min_r': -1.03}
+
+=== Q1 REAL EVALUATOR (assemble_band_inputs + evaluate_kill_scale_bands) ===
+drawdown_tier: OK | equity_above_start: True
+open_positions: [{'ticker': 'AMLX', 'hold_days': 8}, {'ticker': 'MRNA', 'hold_days': 7}]
+override: None
+BAND LINE:
+⚪ Kill/scale band: HOLD — No change
+  n=23 · t20=-0.44R · t40=n/a · streak=1 · cum=-11.9R
+  within bands
+  📖 open book (NOT in the verdict above): 2 position(s) — AMLX 8d, MRNA 7d
+VERDICT DICT: {"band": "HOLD", "action": "No change", "reasons": ["within bands"], "n_trades": 23, "trailing_20": -0.4442114457686538, "trailing_40": null, "streak": 1, "cum_r": -11.928639077257994}
+REALIZED_RS (chronological): [-1.0, -1.007353, -1.037057, -1.001305, -0.227273, -1.068019, -0.701031, -0.999304, -1.00618, -1.025862, -1.0, -1.025522, -1.023363, -1.027027, 3.423154, -1.0, -0.367437, -1.017857, 2.684239, -0.979167, -1.087719, 0.518749, -0.953304]
+
+=== Q2 COHORT LADDER ===
+yaml predicate (closed/live/total_pnl NOT NULL): 23
+all closed live rows: 23
+assemble_band_inputs SQL rows (adds pnl_attribution IS NULL, NO total_pnl guard): 23
+kept after python degenerate guard (len(realized_rs)): 23
+closed live rows WITH pnl_attribution (excluded from bands, IN yaml count): []
+closed live rows with total_pnl NULL (would raise in assemble): []
+
+=== Q3 SIGNAL_TYPE / STRATEGY BREAKDOWN ===
+-- yaml predicate cohort:
+    {'signal_type': 'magna53', 'count': 23}
+-- band cohort:
+    {'signal_type': 'magna53', 'count': 23}
+-- whole mi_live_trades table:
+    {'signal_type': '9m_day2', 'status': 'cancelled', 'account_mode': 'paper', 'count': 8}
+    {'signal_type': '9m_day2', 'status': 'closed', 'account_mode': 'paper', 'count': 8}
+    {'signal_type': '9m_day2', 'status': 'skipped', 'account_mode': 'paper', 'count': 54}
+    {'signal_type': 'magna53', 'status': 'cancelled', 'account_mode': 'live', 'count': 18}
+    {'signal_type': 'magna53', 'status': 'cancelled', 'account_mode': 'paper', 'count': 28}
+    {'signal_type': 'magna53', 'status': 'closed', 'account_mode': 'live', 'count': 23}
+    {'signal_type': 'magna53', 'status': 'closed', 'account_mode': 'paper', 'count': 26}
+    {'signal_type': 'magna53', 'status': 'filled', 'account_mode': 'live', 'count': 2}
+    {'signal_type': 'magna53', 'status': 'skipped', 'account_mode': 'live', 'count': 61}
+    {'signal_type': 'magna53', 'status': 'skipped', 'account_mode': 'paper', 'count': 95}
+-- entry_mode / strategy columns present?
+    ['id', 'ticker', 'alert_date', 'ep_score', 'catalyst_quality', 'gap_pct', 'regime', 'status', 'orb_high', 'orb_low', 'atr_14', 'entry_price', 'entry_shares', 'stop_price', 'hard_stop', 'position_size', 'risk_dollars', 'entry_order_id', 'stop_order_id', 'exits', 'remaining_shares', 'total_pnl', 'hold_days', 'partial_taken', 'breakeven_active', 'running_closes', 'proposed_at', 'confirmed_at', 'skip_reason', 'created_at', 'filled_at', 'closed_at', 'entry_attempt', 'signal_type', 'account_mode', 'lowest_price_seen', 'highest_price_seen', 'pnl_attribution', 'risk_dollars_actual']
+
+=== Q4 PER-ROW (band cohort, chronological — the exact SELECT) ===
+hdr: seq|id|ticker|alert_date|filled_et|closed_et|regime|signal_type|total_pnl|risk_dollars|risk_dollars_actual|entry_shares|entry_price|hard_stop|risk_placed|branch|R|kept
+row: 1|245|WULF|2026-07-06|2026-07-06 09:33|2026-07-06 09:57|Choppy|magna53|-32.80000000000001|47.13|None|40.0|24.62|23.8|32.80000000000001|derived|-1.0|True
+row: 2|250|CRCL|2026-07-10|2026-07-10 09:31|2026-07-10 09:40|Choppy|magna53|-19.180000000000064|23.79|None|14.0|70.65|69.29|19.039999999999992|derived|-1.007353|True
+row: 3|251|WDFC|2026-07-10|2026-07-10 09:31|2026-07-10 09:40|Choppy|magna53|-19.029999999999973|23.79|None|2.0|296.235|287.06|18.350000000000023|derived|-1.037057|True
+row: 4|258|TSEM|2026-07-14|2026-07-14 09:32|2026-07-14 09:44|Correcting|magna53|-23.010000000000048|21.98|None|3.0|274.0|266.34|22.980000000000075|derived|-1.001305|True
+row: 5|261|MANE|2026-07-15|2026-07-15 09:33|2026-07-16 09:30|Choppy|magna53|-2.3999999999999773|22.69|None|8.0|119.34|118.02|10.56000000000006|derived|-0.227273|True
+row: 6|266|HUT|2026-07-20|2026-07-20 09:31|2026-07-20 09:31|Correcting|magna53|-19.530000000000015|19.9|None|9.0|103.48|101.4482|18.286200000000036|derived|-1.068019|True
+row: 7|271|SMCI|2026-07-22|2026-07-22 09:33|2026-07-27 10:37|Correcting|magna53|-14.959999999999994|21.92|None|22.0|29.47|28.5|21.339999999999975|derived|-0.701031|True
+row: 8|273|NVCR|2026-07-23|2026-07-23 09:32|2026-07-24 15:36|Correcting|magna53|-24.133199999999935|22.55|None|21.0|19.15|18.0|24.14999999999997|derived|-0.999304|True
+row: 9|275|THC|2026-07-24|2026-07-24 09:31|2026-07-24 12:43|Correcting|magna53|-16.279999999999973|20.16|None|2.0|241.67|233.58|16.17999999999995|derived|-1.00618|True
+row: 10|276|WKC|2026-07-24|2026-07-24 09:33|2026-07-24 12:02|Correcting|magna53|-23.799999999999955|20.16|None|20.0|40.16|39.0|23.199999999999932|derived|-1.025862|True
+row: 11|279|QBTS|2026-07-27|2026-07-27 09:31|2026-07-28 09:36|Correcting|magna53|-22.26000000000009|24.2|None|53.0|18.17|17.75|22.26000000000009|derived|-1.0|True
+row: 12|291|FTNT|2026-07-30|2026-07-30 09:32|2026-07-30 09:37|Crisis|magna53|-6.6299999999999955|11.96|None|1.0|166.65|160.185|6.465000000000003|derived|-1.025522|True
+row: 13|303|BLZE|2026-08-04|2026-08-04 09:31|2026-08-04 15:50|Choppy|magna53|-36.79410000000004|35.82|None|21.0|21.8121|20.1|35.95409999999999|derived|-1.023363|True
+row: 14|304|BTDR|2026-08-04|2026-08-04 09:34|2026-08-04 09:46|Choppy|magna53|-28.119999999999926|35.87|None|74.0|12.85|12.48|27.379999999999942|derived|-1.027027|True
+row: 15|307|PLTR|2026-08-04|2026-08-04 09:31|2026-08-19 10:03|Choppy|magna53|118.60200000000003|35.86|None|6.0|149.0545|143.28|34.646999999999935|derived|3.423154|True
+row: 16|328|NET|2026-08-07|2026-08-07 09:33|2026-08-07 10:32|Bull|magna53|-15.389999999999986|47.94|None|3.0|316.13|311.0|15.389999999999986|derived|-1.0|True
+row: 17|332|FIGS|2026-08-07|2026-08-07 09:32|2026-08-07 09:51|Bull|magna53|-6.838002000000003|47.94|None|61.0|15.495082|15.19|18.61000200000003|derived|-0.367437|True
+row: 18|333|TEAM|2026-08-07|2026-08-07 09:31|2026-08-07 09:43|Bull|magna53|-23.940000000000055|47.95|None|6.0|147.13|143.21|23.519999999999925|derived|-1.017857|True
+row: 19|337|ABCL|2026-08-10|2026-08-10 09:34|2026-08-24 09:32|Bull|magna53|127.76979999999998|47.98|None|85.0|8.96|8.4|47.600000000000044|derived|2.684239|True
+row: 20|342|FRMI|2026-08-11|2026-08-11 09:31|2026-08-11 09:31|Bull|magna53|-31.490000000000045|48.51|None|134.0|7.29|7.05|32.160000000000025|derived|-0.979167|True
+row: 21|345|BW|2026-08-11|2026-08-11 09:31|2026-08-11 09:31|Bull|magna53|-49.60000000000008|48.59|None|80.0|12.07|11.5|45.60000000000002|derived|-1.087719|True
+row: 22|367|ETON|2026-08-14|2026-08-14 09:31|2026-08-14 09:45|Bull|magna53|19.323599999999942|48.92|None|17.0|55.2012|53.01|37.250400000000035|derived|0.518749|True
+row: 23|373|MRVL|2026-08-19|2026-08-19 09:32|2026-08-19 10:03|Bull|magna53|-43.27999999999997|50.02|None|4.0|241.5|230.15|45.39999999999998|derived|-0.953304|True
+
+=== Q5 RECOMPUTE PARITY CHECK ===
+element-wise identical to inputs['realized_rs']: True
+len(evaluator)= 23  len(recomputed)= 23
+
+=== Q6 DISTANCE TO TRIGGERS (real evaluator, synthetic -1.0R appends) ===
+k= 0 n= 23 band=HOLD   t20=-0.4442 t40=n/a streak=  1 cum=-11.929 reasons=['within bands']
+k= 1 n= 24 band=HOLD   t20=-0.4441 t40=n/a streak=  2 cum=-12.929 reasons=['within bands']
+k= 2 n= 25 band=HOLD   t20=-0.4828 t40=n/a streak=  3 cum=-13.929 reasons=['within bands']
+k= 3 n= 26 band=HOLD   t20=-0.4794 t40=n/a streak=  4 cum=-14.929 reasons=['within bands']
+k= 4 n= 27 band=HOLD   t20=-0.4943 t40=n/a streak=  5 cum=-15.929 reasons=['within bands']
+k= 5 n= 28 band=HOLD   t20=-0.4944 t40=n/a streak=  6 cum=-16.929 reasons=['within bands']
+k= 6 n= 29 band=HOLD   t20=-0.4941 t40=n/a streak=  7 cum=-17.929 reasons=['within bands']
+k= 7 n= 30 band=HOLD   t20=-0.4928 t40=n/a streak=  8 cum=-18.929 reasons=['within bands']
+k= 8 n= 31 band=HOLD   t20=-0.4928 t40=n/a streak=  9 cum=-19.929 reasons=['within bands']
+k= 9 n= 32 band=HOLD   t20=-0.4915 t40=n/a streak= 10 cum=-20.929 reasons=['within bands']
+k=10 n= 33 band=HOLD   t20=-0.4903 t40=n/a streak= 11 cum=-21.929 reasons=['within bands']
+k=11 n= 34 band=HOLD   t20=-0.489 t40=n/a streak= 12 cum=-22.929 reasons=['within bands']
+k=12 n= 35 band=REDUCE t20=-0.7101 t40=n/a streak= 13 cum=-23.929 reasons=['trailing-20 -0.71R ≤ -0.70R']
+k=13 n= 36 band=REDUCE t20=-0.7101 t40=n/a streak= 14 cum=-24.929 reasons=['trailing-20 -0.71R ≤ -0.70R']
+k=14 n= 37 band=REDUCE t20=-0.7418 t40=n/a streak= 15 cum=-25.929 reasons=['trailing-20 -0.74R ≤ -0.70R']
+k=15 n= 38 band=REDUCE t20=-0.7409 t40=n/a streak= 16 cum=-26.929 reasons=['trailing-20 -0.74R ≤ -0.70R', 'losing streak 16 ≥ 16']
+k=16 n= 39 band=REDUCE t20=-0.9251 t40=n/a streak= 17 cum=-27.929 reasons=['trailing-20 -0.93R ≤ -0.70R', 'losing streak 17 ≥ 16']
+k=17 n= 40 band=REDUCE t20=-0.9261 t40=-0.7232 streak= 18 cum=-28.929 reasons=['trailing-20 -0.93R ≤ -0.70R', 'losing streak 18 ≥ 16']
+k=18 n= 41 band=REDUCE t20=-0.9217 t40=-0.7232 streak= 19 cum=-29.929 reasons=['trailing-20 -0.92R ≤ -0.70R', 'losing streak 19 ≥ 16']
+k=19 n= 42 band=KILL   t20=-0.9977 t40=-0.723 streak= 20 cum=-30.929 reasons=['cumulative -30.9R ≤ -30R']
+k=20 n= 43 band=KILL   t20=-1.0 t40=-0.7221 streak= 21 cum=-31.929 reasons=['cumulative -31.9R ≤ -30R']
+k=21 n= 44 band=KILL   t20=-1.0 t40=-0.7221 streak= 22 cum=-32.929 reasons=['cumulative -32.9R ≤ -30R']
+k=22 n= 45 band=KILL   t20=-1.0 t40=-0.7414 streak= 23 cum=-33.929 reasons=['cumulative -33.9R ≤ -30R']
+k=23 n= 46 band=KILL   t20=-1.0 t40=-0.7397 streak= 24 cum=-34.929 reasons=['cumulative -34.9R ≤ -30R']
+k=24 n= 47 band=KILL   t20=-1.0 t40=-0.7472 streak= 25 cum=-35.929 reasons=['cumulative -35.9R ≤ -30R']
+-- and with synthetic BREAKEVEN (0.0R) appends (streak arm counts r<=0):
+k= 0 band=HOLD   t20=-0.4442 streak=  1 cum=-11.929 reasons=['within bands']
+k= 1 band=HOLD   t20=-0.3941 streak=  2 cum=-11.929 reasons=['within bands']
+k= 2 band=HOLD   t20=-0.3828 streak=  3 cum=-11.929 reasons=['within bands']
+k= 3 band=HOLD   t20=-0.3294 streak=  4 cum=-11.929 reasons=['within bands']
+k= 4 band=HOLD   t20=-0.2943 streak=  5 cum=-11.929 reasons=['within bands']
+k= 5 band=HOLD   t20=-0.2444 streak=  6 cum=-11.929 reasons=['within bands']
+k= 6 band=HOLD   t20=-0.1941 streak=  7 cum=-11.929 reasons=['within bands']
+k= 7 band=HOLD   t20=-0.1428 streak=  8 cum=-11.929 reasons=['within bands']
+k= 8 band=HOLD   t20=-0.0928 streak=  9 cum=-11.929 reasons=['within bands']
+k= 9 band=HOLD   t20=-0.0415 streak= 10 cum=-11.929 reasons=['within bands']
+k=10 band=HOLD   t20=0.0097 streak= 11 cum=-11.929 reasons=['within bands']
+k=11 band=HOLD   t20=0.061 streak= 12 cum=-11.929 reasons=['within bands']
+k=12 band=HOLD   t20=-0.1101 streak= 13 cum=-11.929 reasons=['within bands']
+k=13 band=HOLD   t20=-0.0601 streak= 14 cum=-11.929 reasons=['within bands']
+k=14 band=HOLD   t20=-0.0418 streak= 15 cum=-11.929 reasons=['within bands']
+k=15 band=REDUCE t20=0.0091 streak= 16 cum=-11.929 reasons=['losing streak 16 ≥ 16']
+k=16 band=REDUCE t20=-0.1251 streak= 17 cum=-11.929 reasons=['losing streak 17 ≥ 16']
+k=17 band=REDUCE t20=-0.0761 streak= 18 cum=-11.929 reasons=['losing streak 18 ≥ 16']
+k=18 band=REDUCE t20=-0.0217 streak= 19 cum=-11.929 reasons=['losing streak 19 ≥ 16']
+k=19 band=REDUCE t20=-0.0477 streak= 20 cum=-11.929 reasons=['losing streak 20 ≥ 16']
+-- roll-off drift: what leaves the trailing-20 window next
+   idx=0 R=-1.0 in_current_t20=False
+   idx=1 R=-1.0074 in_current_t20=False
+   idx=2 R=-1.0371 in_current_t20=False
+   idx=3 R=-1.0013 in_current_t20=True
+   idx=4 R=-0.2273 in_current_t20=True
+   idx=5 R=-1.068 in_current_t20=True
+   idx=6 R=-0.701 in_current_t20=True
+   idx=7 R=-0.9993 in_current_t20=True
+   idx=8 R=-1.0062 in_current_t20=True
+   idx=9 R=-1.0259 in_current_t20=True
+   idx=10 R=-1.0 in_current_t20=True
+   idx=11 R=-1.0255 in_current_t20=True
+   idx=12 R=-1.0234 in_current_t20=True
+   idx=13 R=-1.027 in_current_t20=True
+   idx=14 R=3.4232 in_current_t20=True
+   idx=15 R=-1.0 in_current_t20=True
+   idx=16 R=-0.3674 in_current_t20=True
+   idx=17 R=-1.0179 in_current_t20=True
+   idx=18 R=2.6842 in_current_t20=True
+   idx=19 R=-0.9792 in_current_t20=True
+   idx=20 R=-1.0877 in_current_t20=True
+   idx=21 R=0.5187 in_current_t20=True
+   idx=22 R=-0.9533 in_current_t20=True
+
+=== Q7 EQUITY / SAFEGUARD STATE ===
+    {'safeguard': 'breakeven_at_broker', 'account_mode': 'live', 'state': 'on', 'last_transition_at': None, 'updated_at': datetime.datetime(2026, 8, 10, 12, 22, 26, 209152, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'broker_order_ingest', 'account_mode': 'global', 'state': 'live_r1', 'last_transition_at': datetime.datetime(2026, 7, 17, 19, 19, 42, 281428, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 7, 17, 19, 19, 42, 281428, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'drawdown_breaker', 'account_mode': 'live', 'state': 'OK', 'last_transition_at': datetime.datetime(2026, 8, 10, 20, 12, 0, 83154, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 26, 20, 12, 0, 68874, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'drawdown_breaker', 'account_mode': 'paper', 'state': 'OK', 'last_transition_at': datetime.datetime(2026, 7, 20, 20, 12, 0, 67533, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 26, 20, 12, 0, 35278, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'entry_ask_aware', 'account_mode': 'live', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 7, 14, 55, 32, 320813, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 7, 14, 55, 32, 320813, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'ep_rt_entry_gap_recheck', 'account_mode': 'global', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 2, 0, 34, 2, 839426, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 2, 0, 34, 2, 839426, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'ep_rt_gap_down_authoritative', 'account_mode': 'global', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 2, 0, 0, 51, 642252, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 2, 0, 0, 51, 642252, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'ep_rt_sustain_enabled', 'account_mode': 'global', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 2, 13, 53, 22, 665283, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 2, 13, 53, 22, 665283, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'ep_rt_universe_authoritative', 'account_mode': 'global', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 25, 15, 2, 51, 489368, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 25, 15, 2, 51, 489368, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'holistic_judge_enabled', 'account_mode': 'paper', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 6, 10, 14, 43, 3, 242215, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 6, 10, 14, 43, 3, 242215, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'kill_scale_band', 'account_mode': 'live', 'state': 'HOLD', 'last_transition_at': datetime.datetime(2026, 6, 19, 21, 40, 0, 248851, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 6, 19, 21, 40, 0, 248851, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'lane2_grouping_v2', 'account_mode': 'paper', 'state': 'on', 'last_transition_at': None, 'updated_at': datetime.datetime(2026, 8, 9, 14, 4, 29, 905221, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'manual_trading_halt', 'account_mode': 'live', 'state': 'off', 'last_transition_at': datetime.datetime(2026, 6, 29, 1, 54, 14, 214935, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 6, 29, 1, 54, 14, 214935, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'partial_exit_leg_safe', 'account_mode': 'global', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 4, 22, 52, 16, 225706, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 4, 22, 52, 16, 225706, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'profit_take_oco', 'account_mode': 'live', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 17, 15, 3, 32, 692265, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 17, 15, 3, 32, 692265, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'profit_take_resting_limit', 'account_mode': 'live', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 8, 10, 21, 15, 16, 430312, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 8, 10, 21, 15, 16, 430312, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'theme_birth_gate', 'account_mode': 'paper', 'state': 'observe', 'last_transition_at': datetime.datetime(2026, 7, 30, 2, 29, 56, 508670, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 7, 30, 2, 29, 56, 508670, tzinfo=datetime.timezone.utc)}
+    {'safeguard': 'theme_subtheme_arm', 'account_mode': 'paper', 'state': 'on', 'last_transition_at': datetime.datetime(2026, 7, 16, 21, 15, 36, 460811, tzinfo=datetime.timezone.utc), 'updated_at': datetime.datetime(2026, 7, 16, 21, 15, 36, 460811, tzinfo=datetime.timezone.utc)}
+   eq: {'snapshot_date': datetime.date(2026, 6, 22), 'equity': Decimal('0')}
+   eq: {'snapshot_date': datetime.date(2026, 6, 23), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 6, 24), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 6, 25), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 6, 26), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 6, 29), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 6, 30), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 1), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 2), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 3), 'equity': Decimal('5000')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 6), 'equity': Decimal('4967.15999999999985448084771633148193359375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 7), 'equity': Decimal('4967.15999999999985448084771633148193359375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 8), 'equity': Decimal('4967.15999999999985448084771633148193359375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 9), 'equity': Decimal('4967.15999999999985448084771633148193359375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 10), 'equity': Decimal('4928.8900000000003274180926382541656494140625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 13), 'equity': Decimal('4928.8900000000003274180926382541656494140625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 14), 'equity': Decimal('4905.84000000000014551915228366851806640625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 15), 'equity': Decimal('4939.100000000000363797880709171295166015625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 16), 'equity': Decimal('4903.3900000000003274180926382541656494140625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 17), 'equity': Decimal('4903.3900000000003274180926382541656494140625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 20), 'equity': Decimal('4883.8199999999997089616954326629638671875')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 21), 'equity': Decimal('4883.8199999999997089616954326629638671875')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 22), 'equity': Decimal('4907.350000000000363797880709171295166015625')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 23), 'equity': Decimal('4947.8800000000001091393642127513885498046875')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 24), 'equity': Decimal('4835.149999999999636202119290828704833984375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 27), 'equity': Decimal('4877.670000000000072759576141834259033203125')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 28), 'equity': Decimal('4782.2200000000002546585164964199066162109375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 29), 'equity': Decimal('4782.2200000000002546585164964199066162109375')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 30), 'equity': Decimal('4775.5600000000004001776687800884246826171875')}
+   eq: {'snapshot_date': datetime.date(2026, 7, 31), 'equity': Decimal('4775.5600000000004001776687800884246826171875')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 3), 'equity': Decimal('4775.5600000000004001776687800884246826171875')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 4), 'equity': Decimal('4782.02000000000043655745685100555419921875')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 5), 'equity': Decimal('4781.7200000000002546585164964199066162109375')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 6), 'equity': Decimal('4773.1300000000001091393642127513885498046875')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 7), 'equity': Decimal('4788.850000000000363797880709171295166015625')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 10), 'equity': Decimal('4832.399999999999636202119290828704833984375')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 11), 'equity': Decimal('4771.3900000000003274180926382541656494140625')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 12), 'equity': Decimal('4814.72999999999956344254314899444580078125')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 13), 'equity': Decimal('4877.97999999999956344254314899444580078125')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 14), 'equity': Decimal('4909.2100000000000363797880709171295166015625')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 17), 'equity': Decimal('4890.5299999999997453414835035800933837890625')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 18), 'equity': Decimal('4952.1899999999995998223312199115753173828125')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 19), 'equity': Decimal('5163.75')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 20), 'equity': Decimal('5035.3599999999996725819073617458343505859375')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 21), 'equity': Decimal('5033')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 24), 'equity': Decimal('4981.5500000000001818989403545856475830078125')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 25), 'equity': Decimal('5032.90999999999985448084771633148193359375')}
+   eq: {'snapshot_date': datetime.date(2026, 8, 26), 'equity': Decimal('5001.4700000000002546585164964199066162109375')}
+
+=== Q8 BAND AUDIT HISTORY ===
+    {'event_type': 'kill_scale_band_transition', 'et': '2026-06-19 17:40', 'summary': 'live ∅ → HOLD', 'detail': '{"account_mode": "live", "prev_band": null, "band": "HOLD", "n_trades": 0, "trailing_20": null, "cum_r": 0, "reasons": ["0 closed trades < 20 sample floor \\u2014 only equity guards bind"]}'}
+-- band eval errors:
+-- replay_regression snapshots (input (b)):
+    {'et': '2026-08-23', 'summary': 'live live R-dist n=22 exp=-0.51R', 'detail': '{"account_mode": "live", "n": 22, "expectancy_r": -0.5117264326459471, "win_rate": 0.09090909090909091, "avg_win_r": 1.8511830257488124, "avg_loss_r": -0.748017378485423, "max_dd_r": -11.462229968301827, "worst_streak": 14, "cur_streak": 1, "calibration_source": "#268b Phase B, n=399"}'}
+    {'et': '2026-08-16', 'summary': 'live live R-dist n=20 exp=-0.69R', 'detail': '{"account_mode": "live", "n": 20, "expectancy_r": -0.6850044791480199, "win_rate": 0.05, "avg_win_r": 0.39500408830743955, "avg_loss_r": -0.7418470353298862, "max_dd_r": -14.095093671267836, "worst_streak": 19, "cur_streak": 0, "calibration_source": "#268b Phase B, n=399"}'}
+    {'et': '2026-08-09', 'summary': 'live live R-dist n=17 exp=-0.73R', 'detail': '{"account_mode": "live", "n": 17, "expectancy_r": -0.7308919408815673, "win_rate": 0.0, "avg_win_r": 0.0, "avg_loss_r": -0.7308919408815673, "max_dd_r": -12.425162994986644, "worst_streak": 17, "cur_streak": 17, "calibration_source": "#268b Phase B, n=399"}'}
+    {'et': '2026-08-02', 'summary': 'live live R-dist n=12 exp=-0.80R', 'detail': '{"account_mode": "live", "n": 12, "expectancy_r": -0.8042578042183434, "win_rate": 0.0, "avg_win_r": 0.0, "avg_loss_r": -0.8042578042183434, "max_dd_r": -9.651093650620119, "worst_streak": 12, "cur_streak": 12, "calibration_source": "#268b Phase B, n=399"}'}
+    {'et': '2026-07-26', 'summary': 'live live R-dist n=9 exp=-0.83R', 'detail': '{"account_mode": "live", "n": 9, "expectancy_r": -0.8327143735516158, "win_rate": 0.0, "avg_win_r": 0.0, "avg_loss_r": -0.8327143735516158, "max_dd_r": -7.494429361964542, "worst_streak": 9, "cur_streak": 9, "calibration_source": "#268b Phase B, n=399"}'}
+    {'et': '2026-07-19', 'summary': 'live live R-dist n=5 exp=-0.69R', 'detail': '{"account_mode": "live", "n": 5, "expectancy_r": -0.6909437325945619, "win_rate": 0.0, "avg_win_r": 0.0, "avg_loss_r": -0.6909437325945619, "max_dd_r": -3.4547186629728097, "worst_streak": 5, "cur_streak": 5, "calibration_source": "#268b Phase B, n=399"}'}
+    {'et': '2026-07-12', 'summary': 'live live R-dist n=3 exp=-0.77R', 'detail': '{"account_mode": "live", "n": 3, "expectancy_r": -0.7673614706516383, "win_rate": 0.0, "avg_win_r": 0.0, "avg_loss_r": -0.7673614706516383, "max_dd_r": -2.3020844119549153, "worst_streak": 3, "cur_streak": 3, "calibration_source": "#268b Phase B, n=399"}'}
+
+=== Q9 OPEN BOOK ===
+Traceback (most recent call last):
+  File "<stdin>", line 231, in <module>
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "<stdin>", line 201, in main
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 2013, in _do_execute
+    stmt = await self._get_statement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 443, in _get_statement
+    statement = await self._protocol.prepare(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 165, in prepare
+asyncpg.exceptions.UndefinedColumnError: column "realized_pnl" does not exist

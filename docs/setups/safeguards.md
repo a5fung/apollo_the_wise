@@ -289,6 +289,44 @@ says "mean realized R = total_pnl/risk_dollars" — stale prose only (the code c
 `assemble_band_inputs` and inherits the fix automatically); `system_review.py` is owned by a
 concurrent card and was not edited here.
 
+### 2026-08-26 — QUARTERLY REVIEW #1 (operator sign-off condition #1): **HOLD**, and the driver is a winner ageing out, not losses
+
+**Run from the shipped evaluator against prod (module md5 matched — not a hand calculation).**
+n=23 · trailing-20 **−0.44R** · trailing-40 n/a · streak 1 · cumulative **−11.93R** · drawdown tier
+OK · no operator override active. **The first review to clear the 20-trade sample floor**, so the
+strategy-health arms could actually evaluate rather than abstain.
+
+**Distance to REDUCE: 12 straight full stop-outs** (≈15 at the book's average loss, and then via
+the streak arm rather than expectancy). **But losses are not what moves it.** PLTR's +3.4R rolls
+out of the trailing-20 window at exactly trade 12; losses 1 through 11 shift the number only
+−0.444 → −0.489. **One more winner pushes both arms out.** KILL is 19 losses away on the
+cumulative arm.
+
+**Cohort integrity**: pop-check clean — magna53 = 23, no other strategy present (every `9m_day2`
+row is paper-mode). **Zero rows dropped** by the degenerate-denominator guard, and it has never
+had anything it could drop: `risk_dollars_actual` is NULL on all 23, so every row uses the
+`entry_shares × (entry_price − hard_stop)` fallback and the actual-branch plus its mismatch
+warning are dead code on live data today.
+
+**Era**: 22 of 23 closed pre-2R; only MRVL closed under the 2R stop, and the trailing-20 is 19
+pre-2R + 1 post. The #268b calibration was itself simulated on `stop-model=orb_low`, so **both
+sides of the comparison are pre-2R today and therefore consistent** — increasingly not, as 2R
+closes accrue. ⚖ Whether the bands need re-calibrating for the 2R era is the operator's fork; not
+pre-decided here.
+
+⚠ **Two measurement defects found, neither touched**: (a) the SCALE arm's `equity_above_start`
+compares against a **$0 bootstrap snapshot** from 06-22, so it can essentially never read False —
+inert and cannot produce a wrong verdict, but it does not do what its name says; (b) the YAML
+predicate and the evaluator use different filters and agree at 23 only because the book is clean.
+
+⚠ **Trap, recorded so nobody compares the wrong numbers**: the weekly replay-regression series
+through 08-23 was computed on the **OLD pre-#586 denominator** (its −0.512 matches the pre-fix
+figure exactly), so it is NOT comparable to today's corrected −0.519. **2026-08-30 is the first
+comparable Sunday snapshot.**
+
+**Caveat that outranks all of the above**: n=23 against a calibration of n=399. Next review
+2026-11-26. Evidence: `docs/analysis/kill_scale_quarterly_2026-08-26.md`.
+
 ## Kill / scale criteria — live-money evaluation bands (✅ SIGNED by operator 2026-06-12 — #268b)
 
 **Purpose**: pre-committed, evidence-derived bands that decide when live trading is
