@@ -269,6 +269,61 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-27 — #559: the real-time gap decides the 9% floor in BOTH directions — `ep_rt_gap_authoritative` ON (OPERATOR-SIGNED, LIVE, one-flag revertible)
+
+**Trigger**: operator, on being told the delayed price still decides the floor for names
+already on the morning list — *"justify using a delayed data, i don't get it"*, then
+*"bugs need to be fixed, if there's other consequences of the fix, then fix those too."*
+The held reason was never data quality; it was grading cost. So the cost got measured.
+
+**Evidence** (`docs/analysis/rt_gap_up_authority_559_2026-08-27.md`): the 2026-08-01 entry
+below priced the up-half at **+25.0 candidates/day** and held it on the LLM-latency budget
+before the 09:45 cutoff. That counted `ep_rt_floor_flip_up` EVENTS — undeduped across
+5-minute ticks, including ticks after 09:45, and without checking whether the name was
+already in the funnel. Deduped to ticker-days, in-window only, 40 days to 08-27:
+
+| what the flip-up actually was | ticker-days | per day |
+|---|---|---|
+| already evaluated, died downstream anyway | 301 | 10.8 |
+| alerted anyway (delayed caught up in time) | 49 | 1.8 |
+| **never evaluated — the true new admits** | **70** | **2.5** |
+
+**The new grading load is 2.5 names/day, not 25 — the objection was wrong by 10×.** Nine in
+ten flip-ups are names already looked at; for those the switch changes WHEN they are seen,
+not WHETHER. What the 2.5/day are worth (`mi_daily_closes`, 61 scoreable): hold-to-day-5 is
+−0.9%, 28 up / 33 down — a coin flip; but 26 of 61 (43%) traded ≥10% above the day-0 close
+within five days (BRUN +26.0, ENTG +21.8, CECO +19.6, TTMI +18.0, BCRX +16.8, PI +16.6).
+⚠ Baseline is the day-0 CLOSE, not the ORB entry, and carries no stop — an upper bound on
+what the switch can add, NOT a forecast, and the 70 were never graded so an unknown share
+would die at the catalyst/score/ADV gates anyway.
+
+**Anticipated effect**: ~2.5 additional graded candidates per day, and earlier evaluation
+for ~10.8/day that are currently seen only once the delayed feed catches up — the TWST
+2026-08-19 failure mode (admitted 09:45:11, eleven seconds after the ORB window shut). No
+threshold moved: `MIN_GAP_PCT` stays 9.0%, scoring, safeguards, sizing and the ORB window
+are untouched. Polygon `prevDay.c` remains the sole gap denominator.
+
+📌 **OPERATOR'S STANDING RULE FOR WHAT TO DO IF VOLUME BECOMES A PROBLEM (2026-08-27,
+verbatim)**: *"If and when the volume becomes an issue, it means either 1) we need stricter
+filters because we're admitting garbage or 2) they aren't garbage and we have genuinely good
+potential winners (not that they must win), and that is a good thing but may mean we need to
+adjust our holding cap, etc."* — i.e. rising volume is a signal to diagnose WHICH of those
+two it is, never a reason to revert the switch. Reverting on volume alone would restore
+deciding on a price we know is stale.
+
+**Reversion-flag**: NEW for the flip-UP half. The REMOVE half went live 2026-08-01 (entry
+below); this completes the toggle it was split out of. Reversion = set
+`ep_rt_gap_authoritative` back off in `mi_safeguard_state` — ~60s, no code change, no deploy.
+
+**Status**: **LIVE — operator signed off 2026-08-27 ("flip it"), flipped 13:55 ET.** Toggle
+set in `mi_safeguard_state` (`ep_rt_gap_authoritative` / `global` / `on`); both containers
+confirmed reading `full=True down=True universe=True` (apollo-market and apollo-execution).
+Awaiting field validation. **Watch, both already instrumented**: (1) latency against the
+09:45 cutoff (`ep_rt_admit` + scan-tick timings) — 2.5 extra candidates at 27s median is
+well inside budget, but this is the number that would invalidate the decision; (2) whether
+the extra 2.5 dilute the 5 entry slots on a ranker not validated out-of-sample — the P9
+concern raised 2026-08-19, which the pricing analysis does NOT answer.
+
 ### 2026-08-27 — #602: the judge's two decisions get two separate vocabularies, and each states its own one-line reason (OPERATOR-SIGNED, rubric v3 → v4)
 
 **Trigger**: an operator triage of the OKTA 2026-08-27 alert, which said *"demoted from
