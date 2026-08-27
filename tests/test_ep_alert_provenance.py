@@ -63,15 +63,16 @@ def test_headline_falls_back_to_the_catalyst_grade_when_not_judge():
     assert resolve_headline_grade(scored)[1] == "Strong catalyst"
 
 
-# ── format_grade_provenance — Claude · Perplexity · judge, no stale 'agree' ───
-def test_provenance_shows_all_three_legs():
+# ── format_grade_provenance — the Perplexity cross-check ONLY, no stale 'agree' ───
+# 2026-08-27: the catalyst-grade and judge legs moved OUT of this line. Both ratings and their
+# setters are stated once by format_grade_outcome_lines directly above it; the duplicate legs
+# were the bulk the operator objected to, and two independently-worded copies of "who sets
+# what" is how the retracted "advisory" claim survived in three places.
+def test_provenance_carries_only_the_perplexity_cross_check():
     p = format_grade_provenance(LZB)
-    assert "Catalyst grade: routine (set by the Claude grader)" in p
-    assert "Perplexity: strong (✗differs)" in p          # routine != strong → differs, NOT agree
-    assert "second opinion, sets nothing" in p           # Perplexity is recorded, never a setter
-    # The judge leg states WHAT its authority covers — it sets the tier, not the catalyst grade.
-    assert "Judge: alert tier MODERATE→HIGH (promoted)" in p
-    assert "sets the tier, not the catalyst grade" in p
+    assert "Perplexity read the catalyst *strong* (✗differs" in p  # routine != strong → differs
+    assert "second opinion, sets nothing" in p       # Perplexity is recorded, never a setter
+    assert "Claude grader" not in p and "Judge" not in p
 
 
 def test_provenance_no_false_agree_on_lzb_stale_case():
@@ -83,13 +84,13 @@ def test_provenance_no_false_agree_on_lzb_stale_case():
 def test_provenance_marks_real_agreement():
     agree = {"catalyst_quality": "strong", "gemini_validation": "strong",
              "score_tier": "HIGH", "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
-    assert "Perplexity: strong (✓agree)" in format_grade_provenance(agree)
+    assert "(✓agree with the label)" in format_grade_provenance(agree)
 
 
-def test_provenance_omits_perplexity_when_absent_and_judge_when_our_score_acts():
-    p = format_grade_provenance({"catalyst_quality": "routine", "grade_engine_authority": "floor"})
-    assert "Catalyst grade: routine (set by the Claude grader)" in p
-    assert "Perplexity" not in p and "Judge" not in p
+def test_provenance_is_empty_when_there_is_no_second_opinion():
+    # Nothing unique left to say → emit nothing rather than a line restating the ⚖️ block.
+    assert format_grade_provenance(
+        {"catalyst_quality": "routine", "grade_engine_authority": "floor"}) == ""
 
 
 # ── #329-trace: resolve_why_text — lead the italic with the JUDGE rationale ───

@@ -5,10 +5,24 @@ catalyst + materiality + theme + narrative + technical structure + gap) and move
 grade BIDIRECTIONALLY — promote an under-rated outlier, demote an immaterial big-grade —
 superseding the conviction floor's gap+enum authority.
 
-STATUS — Wave 1 SHADOW: this module is wired into run_ep_scan but writes only the
-advisory `judge_tier`/direction/rationale columns and **drives nothing**; the live grade
-stays the conviction floor (fed by `_classify_catalyst_claude`, retained as the fallback
-grader per ADR 0011). The Wave-2 flip makes the judge load-bearing on the PAPER path.
+STATUS — LOAD-BEARING (Wave 2 flipped; `holistic_judge_enabled` ON). The tier this
+module returns OVERWRITES `score_tier`, the field the alert and the ORB entry read:
+'none' suppresses the alert outright, MODERATE→HIGH promotes a name into entry. Measured
+2026-08-27 over 60 days: `grade_engine_authority='judge'` on 145 of 147 alerts, and the
+judge's tier differed from our score's on 43 of them (24 MODERATE→HIGH, 12 HIGH→MODERATE,
+7 →none). SCSC 2026-08-20 is the shape: our score said 96/HIGH, the judge read the 8-K,
+found a single director's retirement, and set 'none'.
+
+⚠ This docstring said "drives nothing" until 2026-08-27 — stale from the Wave-2 flip
+onward, and the origin of a long operator argument about what the judge actually does.
+See `docs/analysis/judge_authority_2026-08-27.md`.
+
+WHAT THE JUDGE DOES AND DOES NOT SET. It sets the ALERT TIER — final say, per above. It
+does NOT write `catalyst_quality`, the stored catalyst-grade label (the Claude grader owns
+that). Its own read of the catalyst (`judge_grade`) is NOT advisory: it is the primary
+input to the tier it sets. OMER 2026-08-13 proves the direction — the stored label was
+`routine`, the judge read the catalyst as materially better, and set HIGH. So the judge's
+catalyst view ACTS, via the tier; it just never relabels the grade.
 
 Pure-ish + testable: `grade_holistic(client, payload)` takes the Anthropic client (a fake
 in tests) and FAILS OPEN — returns None on any error/timeout, so the caller falls back to
@@ -307,9 +321,18 @@ Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {
 
 def format_tier_transition(base_tier, judge_tier) -> str:
     """#253 presentation contract, ONE copy (digest + replay + delta review all use it):
-    `direction_vs_floor` is the judge's qualitative call and can disagree with the tier
-    outcome — a `promote` with the tier held is a read on the CATALYST GRADE, NOT a tier
-    upgrade, and must never render as one.
+    `direction_vs_floor` and the tier can disagree, and this renderer shows only the TIER.
+
+    2026-08-27 correction: this docstring used to explain the disagreement as "a `promote`
+    with the tier held is a read on the CATALYST GRADE". That was the display layer
+    reverse-engineering intent, and the prompt does not support it — `_RUBRIC`'s closing
+    line specifies "direction_vs_floor compares your tier to the floor tier given", i.e.
+    TIER vs TIER. So a direction that disagrees with the tier outcome is the model
+    contradicting itself in one field, not a second axis. (Likely cause: rubric rule 2
+    teaches PROMOTES/DEMOTES as verbs about the GRADE, then the closing line redefines the
+    field as a tier comparison — OKTA 2026-08-27 wrote `demote` while holding HIGH and
+    argued the grade in its prose. Separating the two fields is a prompt change =
+    RUBRIC_VERSION bump on a load-bearing judge = operator sign-off; filed, not taken.)
 
     `base_tier` is what our own EP score produced (column `baseline_floor_tier`). Both ends
     of the arrow are ALWAYS alert tiers — a catalyst grade can never be one end of it.

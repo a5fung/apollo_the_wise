@@ -5316,6 +5316,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             judge_direction=v.get("direction_vs_floor"),
                             judge_rationale=v.get("rationale"),
                             judge_materiality_tier=v.get("materiality_tier"),
+                            # The judge's own catalyst read. It never overwrites
+                            # catalyst_quality — but it is what the judge weighed to reach
+                            # the tier it set, so it is an ACTING input, not a discarded
+                            # opinion. Persisted 2026-08-27 so /why can render it.
+                            judge_grade=v.get("grade"),
                             fire_axes=v.get("fire_axes"),
                             score_tier=new_tier if do_override else None,
                             grade_engine_authority=authority if do_override else None,

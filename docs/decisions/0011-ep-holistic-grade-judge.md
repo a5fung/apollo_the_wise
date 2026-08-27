@@ -233,12 +233,22 @@ dir=demote`.
 | `dir=` on `ep_grade_decision` (`judge_direction`, `direction_vs_floor`) | The judge's **self-reported** direction. Raw model output — `_normalize_verdict` validates ENUM MEMBERSHIP ONLY, never agreement with `tier` vs `floor_tier`. The rubric asks for a tier comparison; the model may answer on the catalyst-grade axis instead (OKTA did). **Not** "the judge's recommendation before overrides" — nothing overrode it. |
 | `(hold)` in the alert header | **DERIVED** by `briefing._judge_direction` from `TIER_RANK` (`score_tier` vs `baseline_floor_tier`). Factual; it is what acted. The header was never the bug. |
 
-**Two axes, never one ladder.** `game_changer` is a CATALYST grade (floor-owned). `HIGH` is the
-top of the ALERT TIER scale (judge-owned when authoritative). The judge's own `grade` output is
-**never written to the alert row** (`update_ep_alert_judge_result` writes tier / direction /
-rationale / materiality / fire_axes only), so it is advisory by construction. "Demoted from
-gamechanger to HIGH" is a category error. On **the surfaces listed below** every formatter now
+**Two axes, never one ladder.** `game_changer` is a CATALYST grade (owned by the Claude
+grader). `HIGH` is the top of the ALERT TIER scale (judge-owned when authoritative). "Demoted
+from gamechanger to HIGH" is a category error. On **the surfaces listed below** every formatter
 names its axis, and a transition arrow is only ever drawn TIER→TIER.
+
+⚠ **2026-08-27 CORRECTION — "advisory by construction" was WRONG.** This section previously
+argued that because `update_ep_alert_judge_result` did not write the judge's `grade`, the
+judge's view of the catalyst was advisory. That conflates *not being recorded* with *not
+acting*. The judge weighs the catalyst to reach the tier it sets, and the tier is load-bearing —
+so its catalyst view acts, through the tier. **OMER 2026-08-13 is the proof: stored
+`catalyst_quality` was `routine`, our score said MODERATE, the judge read the catalyst as
+materially better and set HIGH.** The correct statement is: *the judge has the final say on the
+alert tier and weighs the catalyst to get there; it never relabels `catalyst_quality`.* The
+`judge_grade` column (added 2026-08-27) now records the read, so the surfaces can show the
+catalyst read, the decision, and the reason together. Full account:
+`docs/analysis/judge_authority_2026-08-27.md`.
 
 **What the carve-out actually overrode.** `catalyst_downgrade_carveout_applied` fires inside the
 FLOOR grader (`_classify_catalyst_claude`), ~7 s before the judge runs, and overrides the
@@ -249,8 +259,8 @@ FLOOR grader (`_classify_catalyst_claude`), ~7 s before the judge runs, and over
   set it, plus the acting catalyst grade) printed **above** the italic rationale, and an
   `↩️ Recorded, did NOT act` block naming each inert item and why it was inert.
 - `format_tier_verdict` / `resolve_headline_grade` / `format_grade_provenance` — axis-named on
-  every leg; the judge leg states the limit of its authority ("sets the tier, not the catalyst
-  grade").
+  every leg; the judge leg states the limit of its authority ("final say on the tier; weighs the
+  catalyst but never relabels it" — reworded 2026-08-27, see the correction above).
 - `resolve_why_attribution` — the judge's rationale is labelled `Judge's reasoning:`. Model
   prose cannot be controlled and will keep saying "demoted"; the derived `⚖️ Acted` line above
   it plus the attribution are what keep the outcome unambiguous regardless of wording.

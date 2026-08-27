@@ -467,6 +467,12 @@ async def initialize_schema() -> None:
                 judge_direction TEXT,
                 judge_rationale TEXT,
                 judge_materiality_tier TEXT,
+                -- The judge's OWN read of the catalyst. It does NOT overwrite
+                -- catalyst_quality (the Claude grader owns that label) — but it is an
+                -- INPUT to the tier the judge sets, so it is not advisory. Persisted
+                -- 2026-08-27; before that it lived only on the in-memory alert dict and
+                -- vanished before /why could render it.
+                judge_grade TEXT,
                 grade_engine_authority TEXT,
                 rubric_version TEXT,
                 setup_class TEXT,
@@ -3606,6 +3612,7 @@ async def _ensure_ep_alert_columns(conn) -> None:
             "judge_direction TEXT",
             "judge_rationale TEXT",
             "judge_materiality_tier TEXT",
+            "judge_grade TEXT",
             "grade_engine_authority TEXT",
             "rubric_version TEXT",
             "setup_class TEXT",
@@ -3865,7 +3872,8 @@ EP_ALERT_JUDGE_RESULT_UPDATE_SQL = """
         fire_axes = COALESCE($7, fire_axes),
         score_tier = COALESCE($8, score_tier),
         grade_engine_authority = COALESCE($9, grade_engine_authority),
-        rubric_version = COALESCE($10, rubric_version)
+        rubric_version = COALESCE($10, rubric_version),
+        judge_grade = COALESCE($11, judge_grade)
     WHERE ticker = $1 AND alert_date = $2
 """
 
@@ -3878,6 +3886,7 @@ async def update_ep_alert_judge_result(
     score_tier: str | None = None,
     grade_engine_authority: str | None = None,
     rubric_version: str | None = None,
+    judge_grade: str | None = None,
 ) -> None:
     """ONE atomic post-scan patch with the Holistic Grade Judge result (#240 /
     ADR 0011; merged from update_ep_alert_judge_shadow + the separate
@@ -3890,14 +3899,19 @@ async def update_ep_alert_judge_result(
     call is the sole writer of the judge_* columns for a given alert, so
     COALESCE == SET in practice; fire_axes is judge-owned since #249.
     score_tier here is the LOAD-BEARING override (the field alert/entry/
-    briefing read) — pass it ONLY from _resolve_grade_authority."""
+    briefing read) — pass it ONLY from _resolve_grade_authority.
+
+    `judge_grade` (2026-08-27) is the judge's OWN read of the catalyst. It is deliberately
+    NOT written to `catalyst_quality` — the Claude grader owns that label — but it is not
+    advisory either: it is the input the judge weighed to reach the tier it set. Recording
+    it is what lets /why show the catalyst read, the decision, and the reason together."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
             ticker, alert_date, judge_tier, judge_direction, judge_rationale,
             judge_materiality_tier, fire_axes, score_tier, grade_engine_authority,
-            rubric_version)
+            rubric_version, judge_grade)
 
 
 async def get_safeguard_state(safeguard: str, account_mode: str) -> "Any | None":
@@ -4340,7 +4354,7 @@ async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
         return await conn.fetchrow("""
             SELECT alert_date, score_tier, baseline_floor_tier, grade_engine_authority,
                    judge_tier, judge_direction, judge_materiality_tier, judge_rationale,
-                   catalyst_quality
+                   judge_grade, catalyst_quality
             FROM mi_ep_alerts
             WHERE ticker = $1 AND judge_tier IS NOT NULL
               AND COALESCE(source, 'live') = 'live'  -- #268: never present a replay verdict as the judge's last word

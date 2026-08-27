@@ -2907,10 +2907,28 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
     This is also the structural answer to prose we do not control: the judge's rationale is
     model text and will keep saying "demoted" whenever it reasons that way. Line 1 is printed
     ABOVE that rationale in every alert, so the operator reads the outcome before the argument,
-    and line 2 names the disagreement when the model's own direction contradicts the tier."""
+    and line 2 names the disagreement when the model's own direction contradicts the tier.
+
+    2026-08-27 correction (operator): the judge's catalyst read used to print in the inert
+    block as "advisory only". That was WRONG — the judge weighs the catalyst to reach the tier
+    it sets, so its read ACTS through the tier; the only thing it never does is relabel
+    `catalyst_quality`. It now prints as an acted line stating the read, the decision, and (via
+    the rationale printed below) the reason. See `docs/analysis/judge_authority_2026-08-27.md`."""
     cq = format_catalyst_grade(ep.get("catalyst_quality"), default="n/a")
-    lines = [f"⚖️ Acted: {format_alert_tier_clause(ep)} · "
-             f"catalyst grade *{cq}* (set by the Claude grader)"]
+
+    # ONE line per rating, each naming who set it. The judge's own catalyst read rides the
+    # CATALYST line (it is a read of that axis) rather than taking a sentence of its own —
+    # operator 2026-08-27: "crystal clear on all this without adding overall bulk".
+    jg = format_catalyst_grade(ep.get("judge_grade")) if _judge_authoritative(ep) else None
+    if jg and jg != cq:
+        # The judge disagreed with the label and could not change it — say so, and say that
+        # its read is what it set the tier on. This is the OKTA/OMER case.
+        cat_line = (f"⚖️ Catalyst *{cq}* (Claude grader's label) — the judge read it *{jg}* "
+                    f"and set the tier on that; it cannot change the label")
+    else:
+        cat_line = f"⚖️ Catalyst *{cq}* (set by the Claude grader)"
+    _tier_clause = format_alert_tier_clause(ep)
+    lines = [f"⚖️ {_tier_clause[:1].upper()}{_tier_clause[1:]}", cat_line]
 
     inert: list[str] = []
 
@@ -2940,25 +2958,20 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
         )
 
     if _judge_authoritative(ep):
-        # (b) The judge's SELF-REPORTED direction vs what its tier verdict actually did.
-        derived = _judge_direction(ep.get("score_tier"), ep.get("baseline_floor_tier"))
+        # The judge's SELF-REPORTED direction vs what its tier verdict actually did.
+        # `direction_vs_floor` is specified TIER vs TIER (`_RUBRIC`'s closing line), so a
+        # disagreement is the model contradicting itself in one field — NOT a second axis.
+        # Suppressed when the catalyst line above already prints a differing judge read,
+        # which explains the wording without a second note (OKTA: `demote` + tier held).
+        tier = ep.get("score_tier")
+        derived = _judge_direction(tier, ep.get("baseline_floor_tier"))
         claimed = (ep.get("judge_direction") or "").strip().lower() or None
-        if claimed in _TIER_MOVE_VERB and derived and claimed != derived:
-            tier = ep.get("score_tier")
+        if not (jg and jg != cq) and claimed in _TIER_MOVE_VERB and derived and claimed != derived:
             moved = (f"held at {tier}" if derived == "hold"
                      else f"{_TIER_MOVE_VERB[derived]} the tier to {tier}")
             inert.append(
-                f'the judge\'s note argues a *{claimed}* — but the tier it set {moved}, '
-                f"so the alert tier did not move that way"
-            )
-
-        # (c) The judge's own catalyst-grade read. Advisory by construction: it is never
-        # written to the alert row, so it cannot move the floor grade however it is worded.
-        jg = format_catalyst_grade(ep.get("judge_grade"))
-        if jg and jg != cq:
-            inert.append(
-                f"the judge read the catalyst as *{jg}* against the grader's *{cq}* — advisory "
-                f"only; the judge sets the alert tier, never the catalyst grade"
+                f"the judge's own direction field says *{claimed}* while the tier it set "
+                f"{moved} — that field compares tiers, so the two disagree; the tier is what acted"
             )
 
     if inert:
@@ -2968,27 +2981,22 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
 
 
 def format_grade_provenance(ep: dict) -> str:
-    """ONE coherent line showing HOW each rating was reached — the operator-requested clarity on
-    where Perplexity comes in. Catalyst grade (the Claude grader) · Perplexity's independent
-    second-opinion grade (agree/differs — a recorded cross-check that SETS NOTHING, and not a
-    judge input) · the judge's authoritative tier verdict when load-bearing. Replaces the old confidence-multiplier
-    'Claude + Perplexity agree' line, which went STALE when a catalyst was downgraded AFTER the
-    agreement boost was set (LZB 6/17: printed 'agree' on routine-vs-strong).
+    """Perplexity's independent second-opinion catalyst read — a recorded cross-check that SETS
+    NOTHING and is not a judge input. Replaces the old confidence-multiplier 'Claude + Perplexity
+    agree' line, which went STALE when a catalyst was downgraded AFTER the agreement boost was set
+    (LZB 6/17: printed 'agree' on routine-vs-strong). Returns "" when there is no second opinion.
 
-    2026-08-27: each leg is axis-labelled and the judge leg says what its authority COVERS.
-    The old form ('Floor: game changer (Claude) … Judge: HIGH hold ← authoritative') put a
-    catalyst grade and a tier side by side with no scale on either, which read as a ladder —
-    and called the grade a "floor", the same word the pre-judge TIER wore."""
-    cq = format_catalyst_grade(ep.get("catalyst_quality"))
-    parts = [f"Catalyst grade: {cq or 'n/a'} (set by the Claude grader)"]
+    2026-08-27 (operator: "crystal clear … without adding overall bulk"): the catalyst-grade and
+    judge legs were REMOVED from this line. Both ratings, and who sets each, are stated once by
+    `format_grade_outcome_lines` directly above; repeating them here was the bulk, and two
+    independently-worded copies of "who sets what" is how the wrong claim survived in three
+    places the first time. Perplexity is the only leg this line uniquely carries."""
     pplx = format_catalyst_grade(ep.get("gemini_validation"))
-    if pplx:
-        agree = "✓agree" if ep.get("gemini_validation") == ep.get("catalyst_quality") else "✗differs"
-        parts.append(f"Perplexity: {pplx} ({agree}) — second opinion, sets nothing")
-    if _judge_authoritative(ep):
-        parts.append(f"*Judge: alert tier {format_tier_verdict(ep)}* ← sets the tier, "
-                     f"not the catalyst grade")
-    return "🔎 " + " · ".join(parts)
+    if not pplx:
+        return ""
+    agree = "✓agree" if ep.get("gemini_validation") == ep.get("catalyst_quality") else "✗differs"
+    return (f"🔎 Perplexity read the catalyst *{pplx}* ({agree} with the label) — "
+            f"second opinion, sets nothing")
 
 
 def resolve_why_text(ep: dict) -> str:
