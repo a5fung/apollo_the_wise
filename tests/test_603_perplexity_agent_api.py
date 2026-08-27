@@ -178,3 +178,68 @@ def test_a_perplexity_outage_can_only_stop_the_theme_engine_never_a_trade():
         except FileNotFoundError:
             continue
         assert "perplexity" not in src.lower(), f"{path} must not depend on Perplexity"
+
+
+# ── THE BLIND SPOT: a spurious grade from a SUCCESSFUL call ──────────────────────────────
+# Operator 2026-08-27: "when perplexity returned routine (instead of unavailable) the judge
+# can still tell it didn't actually evaluate anything given no other input text, is that
+# right? I just want to see how robust our judge is in case we have blind spots."
+#
+# It could not. The disagreement block hands the judge a GRADE WITH NO PROVENANCE — it says
+# another model graded this routine, and nothing about what that model was given. The judge
+# has no way to know it was handed an empty string. So the fix cannot live in the judge; it
+# has to live where the emptiness is known.
+@pytest.mark.asyncio
+@pytest.mark.parametrize("summary", [
+    "", "   ", "\n\t ",
+    "I couldn't find any recent news for this ticker.",
+    "Search results don't contain information about this company.",
+    "No recent news available.",
+])
+async def test_nothing_to_validate_returns_unavailable_without_paying_for_a_call(
+        summary, monkeypatch):
+    """A model asked to pick one of three words about nothing comes back ROUTINE — a
+    SUCCESSFUL call returning a spurious grade, which the unrecognised-text guard cannot
+    catch. It must not reach the wire at all."""
+    import httpx
+
+    from agents.market_intelligence import ep_detector
+
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "test-key")
+
+    called = []
+
+    class _NoCalls:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **k):
+            called.append(1)
+            raise AssertionError("a call went out for an empty catalyst summary")
+
+    monkeypatch.setattr(httpx, "AsyncClient", _NoCalls)
+    assert await ep_detector._validate_catalyst_perplexity("AAA", summary) is None
+    assert not called
+
+
+def test_the_hedge_phrases_have_exactly_one_definition():
+    """Two readers — the hedge-downgrade and the nothing-to-validate guard. Two copies would
+    drift on what "no news" looks like."""
+    assert _DET_SRC.count("_PPLX_HEDGE_PHRASES = (") == 1
+
+
+def test_the_judge_is_told_the_second_opinion_is_not_independent():
+    """The residual robustness question: even with real input, the block must not read as a
+    corroborating vote — the judge already has that model's text in its evidence."""
+    from agents.market_intelligence.ep_grade_judge import _RUBRIC, _build_judge_prompt
+    out = _build_judge_prompt({"ticker": "T", "gap_pct": 10.0, "second_opinion": "routine",
+                               "floor_catalyst_quality": "game_changer", "analysis": "a"})
+    assert "NOT independent corroboration" in out
+    assert "re-read the EVIDENCE" in out
+    assert "never as a vote" in _RUBRIC

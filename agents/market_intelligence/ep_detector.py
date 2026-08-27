@@ -1151,6 +1151,23 @@ catalyst, say so explicitly."""
         return "routine", f"{_CLASSIFY_FAIL_SENTINEL} — treating as routine."
 
 
+# Phrases a search model emits when it found NOTHING. Two readers, ONE definition
+# (hoisted from inside run_ep_scan 2026-08-27): the hedge-DOWNGRADE below, and the
+# nothing-to-validate guard in _validate_catalyst_perplexity. They must agree on what
+# "no news" looks like — two copies would drift.
+_PPLX_HEDGE_PHRASES = (
+    "no specific information",
+    "couldn't find",
+    "could not find",
+    "search results don't contain",
+    "search results do not contain",
+    "no recent news",
+    "unable to find",
+    "i don't have",
+    "i do not have",
+)
+
+
 async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optional[str]:
     """
     Use Perplexity Sonar to cross-validate catalyst quality.
@@ -1162,6 +1179,33 @@ async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optio
 
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
+        return None
+
+    # ⚠ NOTHING TO VALIDATE → UNAVAILABLE, and DON'T PAY FOR THE CALL (2026-08-27, operator:
+    # "curious when perplexity returned routine (instead of unavailable) the judge can still
+    # tell it didn't actually evaluate anything... I just want to see how robust our judge is
+    # in case we have blind spots").
+    #
+    # `news_summary` is "" whenever there was no Perplexity synthesis AND no FMP headline.
+    # We were still calling out and asking a model to pick one of three words about nothing —
+    # which reliably comes back ROUTINE. That is a SUCCESSFUL call returning a spurious grade,
+    # so the unrecognised-text guard below cannot catch it.
+    #
+    # It matters more since #233: a spurious `routine` against a strong/game_changer label
+    # counts as a DISAGREEMENT and renders the second-opinion block to the judge — and the
+    # block carries a grade with no provenance, so THE JUDGE CANNOT TELL the second model was
+    # handed nothing. Closing it here is the only place that knows.
+    _summary = (news_summary or "").strip()
+    if not _summary:
+        logger.info(f"{ticker}: no catalyst text to cross-validate — Perplexity grade "
+                    f"UNAVAILABLE (call skipped)")
+        return None
+    # Same for a summary that says there IS no news: there is nothing to cross-validate, and
+    # the hedge-downgrade path already handles that case on its own terms.
+    _low = _summary.lower()
+    if any(_p in _low for _p in _PPLX_HEDGE_PHRASES):
+        logger.info(f"{ticker}: catalyst text reports no news — Perplexity grade UNAVAILABLE "
+                    f"(call skipped)")
         return None
 
     prompt = f"""For stock {ticker}, classify this catalyst as GAME_CHANGER, STRONG, or ROUTINE:
@@ -3943,17 +3987,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # case: Q1 earnings beat 4/30 AH was the real catalyst, but Perplexity
             # returned hedged synthesis → Claude classified an Evercore initiation
             # blurb as "strong". Downgrade by one notch and cancel agreement boost.
-            _PPLX_HEDGE_PHRASES = (
-                "no specific information",
-                "couldn't find",
-                "could not find",
-                "search results don't contain",
-                "search results do not contain",
-                "no recent news",
-                "unable to find",
-                "i don't have",
-                "i do not have",
-            )
             pplx_low = (perplexity_answer or "").lower()
             hedged = any(p in pplx_low for p in _PPLX_HEDGE_PHRASES)
             if hedged and catalyst_quality in ("game_changer", "strong"):
