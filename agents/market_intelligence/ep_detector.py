@@ -1226,9 +1226,13 @@ Respond with ONLY the classification word."""
                     "instructions": "You classify stock catalysts. Respond with exactly one "
                                     "word: GAME_CHANGER, STRONG, or ROUTINE.",
                     "input": prompt,
-                    # No web_search tool: this grades text we ALREADY hold. Attaching one
-                    # would buy a search per candidate and let a fresh web result contradict
-                    # the summary being graded.
+                    # ⚠ MEASURED, NOT ASSUMED (2026-08-27): omitting `tools` — and even
+                    # sending `"tools": []` — does NOT suppress search. Both probes came
+                    # back with a `search_results` item and a tool-call charge ($0.0025).
+                    # Under a preset the Agent API searches regardless, so this path can see
+                    # fresh web results alongside the summary it is grading. That matches the
+                    # old behaviour (the retired `sonar` model was itself a search model), so
+                    # it is parity, not a regression — but do not write "no search here".
                 },
             )
             r.raise_for_status()

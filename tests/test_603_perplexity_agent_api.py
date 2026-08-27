@@ -106,9 +106,9 @@ def test_the_health_probe_does_not_buy_a_search():
     probe = _COLLECTOR_SRC.split("async def check_perplexity_health", 1)[1]
     probe = probe.split("async def search_news_perplexity", 1)[0]
     assert '"preset"' in probe and '"input": "ping"' in probe
-    # No tools block at all on the ping — attaching web_search would add a per-search fee
-    # to every liveness probe. (Assert on the request BODY, not the whole function: the
-    # comment above it names the tool it deliberately omits.)
+    # No tools block on the ping. ⚠ Measured 2026-08-27: this does NOT make it free — a
+    # preset request searches anyway. The assertion is about not CONFIGURING a search, which
+    # is all we control. (Assert on the request BODY: the comment above names the tool.)
     body = probe.split("json={", 1)[1].split("},", 1)[0]
     body = "\n".join(l for l in body.splitlines() if not l.strip().startswith("#"))
     assert '"tools"' not in body and "web_search" not in body
@@ -147,7 +147,8 @@ def test_the_third_call_site_was_migrated_too():
     body = fn.split("json={", 1)[1].split("},", 1)[0]
     body = "\n".join(l for l in body.splitlines() if not l.strip().startswith("#"))
     assert '"tools"' not in body and "web_search" not in body, \
-        "this path grades text we already hold — it must not buy a search per candidate"
+        "no search tool is configured on this path (note: measured 2026-08-27, that does " \
+        "NOT suppress search — the Agent API searches under a preset regardless)"
 
 
 def test_every_consumer_treats_an_absent_second_opinion_as_a_no_op():

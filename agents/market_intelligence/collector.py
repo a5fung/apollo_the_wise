@@ -1322,8 +1322,10 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
                 json={
                     "preset": _PPLX_HEALTH_PRESET,
                     "input": "ping",
-                    # No web_search tool on the liveness ping — it must prove the
-                    # endpoint and the key, not buy a search.
+                    # ⚠ No web_search tool CONFIGURED — but that does not mean no search:
+                    # measured 2026-08-27, a preset request searches anyway (~$0.0025 of
+                    # tool cost) whether `tools` is omitted or sent empty. The ping still
+                    # does its job (endpoint + key + 401/402 detection); it just is not free.
                     # registry: truncation BY DESIGN on this liveness ping
                     "max_output_tokens": _ceiling_max_tokens("perplexity_health"),
                 },
