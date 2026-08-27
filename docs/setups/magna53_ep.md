@@ -269,6 +269,51 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-27 — #602: the judge's two decisions get two separate vocabularies, and each states its own one-line reason (OPERATOR-SIGNED, rubric v3 → v4)
+
+**Trigger**: an operator triage of the OKTA 2026-08-27 alert, which said *"demoted from
+gamechanger to high"* while nothing had been demoted. Tracing it exposed a naming collision in
+the judge's own instructions AND a claim we had been making in five places that was simply
+wrong ("the judge's view of the catalyst is advisory"). His words after the fourth confusing
+answer: *"every question you answer contradicts itself."* Full account:
+`docs/analysis/judge_authority_2026-08-27.md`.
+
+**Evidence**: source-level, not statistical — this is a BUG FIX in a prompt, not a criteria
+change, so no N≥10 threshold backtest applies (the classification rule: enforcing a spec the
+prompt already states needs no new evidence).
+  - `_RUBRIC` rule 2 taught PROMOTES / DEMOTES as verbs about the **grade** ("a catalyst that
+    is immaterial for a large company DEMOTES it"), while its closing line specified
+    `direction_vs_floor` as *"compares your tier to the floor tier given"* — a **tier** field.
+    One vocabulary, two axes.
+  - OKTA 2026-08-27 is the reproduction: `judge_tier=HIGH`, `baseline_floor_tier=HIGH` (so the
+    tier held), `judge_direction=demote`, and a rationale arguing the **grade** down. The model
+    answered the tier field on the grade axis, exactly as taught.
+  - Prod, 60 days to 2026-08-27: `grade_engine_authority='judge'` on **145 of 147** alerts, and
+    the judge's tier differed from our score's on **43**. This field is on a load-bearing path,
+    which is why the fix is sign-off gated rather than a wording tidy.
+  - Separately measured while tracing: the judge's own catalyst read differs from the stored
+    label on **37 of 145** alerts — that disagreement had never been visible on any surface.
+
+**Anticipated effect**: **no change to any grade or tier by construction** — nothing in the
+scoring, the thresholds or the tier logic is touched. Two changes only. (1) `direction_vs_floor`
+should now agree with the tier movement instead of sometimes reporting the grade axis; the
+display-side note that flags the contradiction should stop firing (it fired on OKTA today).
+(2) Two new REQUIRED output fields, `grade_reason` and `tier_reason`, render as a one-line
+*why* on the alert's `⚖️ Judge:` and `✅ Decision:` lines. Both are display; a model omission
+degrades to the previous rendering and never fails a verdict. Watch for: any drift in the
+distribution of `grade`/`tier` after the flip, which would mean the reword moved the judge and
+not just its reporting — the robustness eval below is the gate for exactly that.
+
+**Reversion-flag**: NEW. No prior change has touched `direction_vs_floor`'s specification. The
+2026-08-27 display-side pass earlier the same day is a separate, already-shipped change that
+made the alert say what acted; this one fixes the cause rather than the symptom.
+
+**Status**: shipped, awaiting field validation. Gated on a passing
+`scripts/evals/run_judge_robustness_eval.py` run against rubric v4 (~36 calls, ~$1.50) —
+deploy gate `[5m/7]` hard-fails until the pass record is regenerated, so no rubric edit can
+ship ungraded. Verify-live = the next EP alert carries a `⚖️ Judge:` line with its own reason
+and a `direction` that agrees with its tier.
+
 ### 2026-08-27 — #490 §6.1: the real-time volume read can no longer reject a name on data that does not exist yet (BUG FIX, DARK — no criteria change, toggle NOT flipped)
 
 **The rule, in plain words:** *a volume bucket that contains zero minute BARS has not been

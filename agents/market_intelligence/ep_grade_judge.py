@@ -75,11 +75,19 @@ _JUDGE_TOOL = {
             },
             "rationale": {"type": "string"},
             "confidence": {"type": "number"},
+            # #602 (operator-signed 2026-08-27) — the WHY behind each of the judge's two
+            # calls, short enough to render inline on the alert. The full `rationale` stays
+            # as the long form; these are what the operator reads first.
+            "grade_reason": {"type": "string",
+                             "description": "<=1 short line: why you graded the catalyst as you did."},
+            "tier_reason": {"type": "string",
+                            "description": "<=1 short line: why the alert tier is what you set."},
         },
         # fire_axes REQUIRED (#249): it is THE fire signal — a model omission
         # must not masquerade as "judge saw no fire" (empty list). Omission →
         # None in _normalize_verdict → fire_axes column stays NULL (not adjudicated).
-        "required": ["grade", "tier", "direction_vs_floor", "fire_axes", "rationale"],
+        "required": ["grade", "tier", "direction_vs_floor", "fire_axes", "rationale",
+                     "grade_reason", "tier_reason"],
     },
 }
 
@@ -133,7 +141,13 @@ def _judge_tool(include_axis_reads: bool = False) -> dict:
 # v3 = catalyst-freshness clause (operator-signed 2026-06-12; the AKTS case —
 # judge promoted MODERATE→HIGH on a May-2024 Lilly partnership surfaced undated
 # by a web-only corpus; materiality without freshness must never clear HIGH).
-RUBRIC_VERSION = "v3-2026-06-12-catalyst-freshness"
+# v4 = axis split + per-call reasons (#602, operator-signed 2026-08-27). Rule 2 taught
+# PROMOTES/DEMOTES as GRADE verbs while `direction_vs_floor` is a TIER field, so the model
+# answered it on the grade axis — OKTA 2026-08-27 wrote `demote` while holding HIGH and the
+# word reached the operator's alert. Rule 2 now says raises/lowers the GRADE, and an OUTPUT
+# FIELDS block states each field's axis literally. Same change adds `grade_reason` /
+# `tier_reason` so the alert can show WHY on each call instead of only the long rationale.
+RUBRIC_VERSION = "v4-2026-08-27-axis-split"
 
 _RUBRIC = """You are the EP (Episodic Pivot) grade judge for a momentum trading system
 (Qullamaggie / Pradeep Bonde methodology). You decide the grade HOLISTICALLY — you may move
@@ -151,10 +165,12 @@ RUBRIC (in priority order):
    materiality-driven promotion is the highest-risk pattern: apply explicit skepticism and
    prefer the floor tier unless freshness is established.
 2. MATERIALITY is bidirectional and judged RELATIVE TO COMPANY SIZE (market cap below):
-   - a catalyst that is transformative relative to a small company PROMOTES the grade (a
+   - a catalyst that is transformative relative to a small company RAISES the GRADE (a
      $30M deal for a $100M micro-cap is huge), even if the magnitude grader under-rated it;
-   - a catalyst that is immaterial for a large company DEMOTES it (a $270M contract for a
-     $600B mega-cap is a rounding error) however positively worded.
+   - a catalyst that is immaterial for a large company LOWERS the GRADE (a $270M contract
+     for a $600B mega-cap is a rounding error) however positively worded.
+   ⚠ "raises/lowers the GRADE" here is about `grade` ONLY. Do NOT report it in
+   `direction_vs_floor`, which is a TIER field — see the OUTPUT FIELDS block below.
 3. Pradeep catalyst hierarchy (strongest first): theme > government policy > supply shortage
    > sales acceleration / new product / management change.
 4. EARNINGS catalysts on GROWTH names: REVENUE growth/acceleration (Q/Q + Y/Y, ideally with
@@ -171,7 +187,18 @@ RUBRIC (in priority order):
 
 Be skeptical: vague/numberless "earnings", boilerplate PR, broad sector drift, or a
 short-squeeze with no concrete company event = routine. State the load-bearing reason in the
-rationale (<= 3 sentences). direction_vs_floor compares your tier to the floor tier given."""
+rationale (<= 3 sentences).
+
+OUTPUT FIELDS — two SEPARATE decisions. Never describe one in the other's field:
+- `grade` = the CATALYST GRADE (game_changer / strong / routine / mna). How big the news is.
+  `grade_reason` = ONE short line saying why, naming the number that decided it
+  (e.g. "a 1.4% revenue beat on a $23B company is material but not transformative").
+- `tier` = the ALERT TIER (HIGH / MODERATE / none). Whether this is worth alerting on.
+  `tier_reason` = ONE short line saying why THIS TIER (e.g. "a fresh, primary-sourced
+  beat-and-raise clears HIGH; it does not need to be transformative").
+- `direction_vs_floor` describes the TIER AND NOTHING ELSE: "promote" if your `tier` is
+  ABOVE the tier given below, "demote" if BELOW, "hold" if the SAME. Compare the two tier
+  values literally. If you lowered the GRADE but kept the TIER, that is "hold"."""
 
 # Auto-derived from the text — changes whenever ANY character of the rubric does.
 RUBRIC_HASH = hashlib.sha1(_RUBRIC.encode("utf-8")).hexdigest()[:8]
@@ -371,6 +398,11 @@ def _normalize_verdict(raw: dict) -> dict | None:
             "rationale": (raw.get("rationale") or "")[:1000],
             "confidence": raw.get("confidence"),
             "axis_reads": axis_reads,
+            # #602 — schema-REQUIRED, but absence must never kill an otherwise valid verdict
+            # (that would fail-open a real EP over a display field). Missing -> None -> the
+            # alert simply renders the line without its why, exactly as it did before.
+            "grade_reason": (raw.get("grade_reason") or "").strip()[:200] or None,
+            "tier_reason": (raw.get("tier_reason") or "").strip()[:200] or None,
         }
     except (AttributeError, TypeError):
         return None

@@ -2892,6 +2892,20 @@ def format_alert_tier_clause(ep: dict, *, bold: bool = True) -> str:
     return f"alert tier {t} (our score — the judge did not review it)"
 
 
+def _reason_clause(reason: "str | None") -> str:
+    """#602 — render the judge's one-line why as a trailing clause, or nothing.
+
+    Model text: escaped for Markdown (an unescaped `_` or `*` breaks Telegram italics and
+    returns a 400 — the `game_changer` class at :331) and clipped so one verbose verdict
+    cannot push the alert past Telegram's limit. Empty/missing → "", so every pre-#602 row
+    and every fail-open verdict renders exactly as it did before."""
+    r = (reason or "").strip()
+    if not r:
+        return ""
+    r = _md_escape(r.rstrip(".")[:160])
+    return f" — {r}"
+
+
 def format_grade_outcome_lines(ep: dict) -> list[str]:
     """The alert's ACTED / DID-NOT-ACT block — the fix for the OKTA 2026-08-27 alert, whose
     header said 'hold', whose prose said 'Demoted from gamechanger', and whose footer said the
@@ -2919,16 +2933,28 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
     # ONE line per rating, each naming who set it. The judge's own catalyst read rides the
     # CATALYST line (it is a read of that axis) rather than taking a sentence of its own —
     # operator 2026-08-27: "crystal clear on all this without adding overall bulk".
+    # ONE VOICE PER LINE (operator 2026-08-27: "I want clarity, clear separation and not
+    # confusion"). Every party that read this catalyst gets its own labelled line saying what
+    # IT said, and the decision gets the last line. Nothing is repeated between lines, and no
+    # line mixes two voices — the previous form packed grader + judge + limit-of-authority
+    # into one sentence, which is what read as confusion.
+    lines = [f"📊 Grader: *{cq}*"]
+
+    pplx_line = format_grade_provenance(ep)
+    if pplx_line:
+        lines.append(pplx_line)
+
     jg = format_catalyst_grade(ep.get("judge_grade")) if _judge_authoritative(ep) else None
-    if jg and jg != cq:
-        # The judge disagreed with the label and could not change it — say so, and say that
-        # its read is what it set the tier on. This is the OKTA/OMER case.
-        cat_line = (f"⚖️ Catalyst *{cq}* (Claude grader's label) — the judge read it *{jg}* "
-                    f"and set the tier on that; it cannot change the label")
-    else:
-        cat_line = f"⚖️ Catalyst *{cq}* (set by the Claude grader)"
+    if jg:
+        # #602 — the judge's own ONE-LINE why, when it gave one. Model text, so it is escaped
+        # and clipped; absence just drops the clause (pre-#602 alerts have no reason stored).
+        jnote = "disagrees with the grader" if jg != cq else "agrees with the grader"
+        lines.append(f"⚖️ Judge: *{jg}* ({jnote})"
+                     f"{_reason_clause(ep.get('judge_grade_reason'))}")
+
     _tier_clause = format_alert_tier_clause(ep)
-    lines = [f"⚖️ {_tier_clause[:1].upper()}{_tier_clause[1:]}", cat_line]
+    lines.append(f"✅ Decision: {_tier_clause}"
+                 f"{_reason_clause(ep.get('judge_tier_reason')) if _judge_authoritative(ep) else ''}")
 
     inert: list[str] = []
 
@@ -2981,8 +3007,21 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
 
 
 def format_grade_provenance(ep: dict) -> str:
-    """Perplexity's independent second-opinion catalyst read — a recorded cross-check that SETS
-    NOTHING and is not a judge input. Replaces the old confidence-multiplier 'Claude + Perplexity
+    """Perplexity's independent second-opinion catalyst read, and WHAT IT DID.
+
+    ⚠ NAME IS HISTORICAL. This was the alert's provenance FOOTER (catalyst grade · Perplexity ·
+    judge legs). Since 2026-08-27 it renders exactly one thing — the `🔎 Perplexity:` voice line
+    — and it is called from `format_grade_outcome_lines`, NOT appended to the alert body. There
+    is no provenance footer any more; do not go looking for one.
+
+    ⚠ 2026-08-27: this line said "second opinion, sets nothing". That was wrong in exactly the
+    way the judge's "advisory only" was wrong, one line above it — Perplexity has TWO live
+    effects. (1) When its grade MATCHES the Claude grader's, `confidence_multiplier` becomes
+    1.2 and multiplies straight into the EP score (`ep_detector._score_ep`'s regime_multiplier
+    argument) — 61 of 147 alerts carried that boost in the 60 days to 2026-08-27. (2) When its
+    ANSWER TEXT hedges ("couldn't find", "no recent news"), the catalyst grade is cut a notch
+    and the boost cancelled — 10 times since 2026-05-05, most recently NESR 2026-08-10. It is
+    not a judge input, but "sets nothing" was never true. Replaces the old confidence-multiplier 'Claude + Perplexity
     agree' line, which went STALE when a catalyst was downgraded AFTER the agreement boost was set
     (LZB 6/17: printed 'agree' on routine-vs-strong). Returns "" when there is no second opinion.
 
@@ -2994,9 +3033,13 @@ def format_grade_provenance(ep: dict) -> str:
     pplx = format_catalyst_grade(ep.get("gemini_validation"))
     if not pplx:
         return ""
-    agree = "✓agree" if ep.get("gemini_validation") == ep.get("catalyst_quality") else "✗differs"
-    return (f"🔎 Perplexity read the catalyst *{pplx}* ({agree} with the label) — "
-            f"second opinion, sets nothing")
+    boost = ep.get("confidence_multiplier") or 1.0
+    if ep.get("gemini_validation") == ep.get("catalyst_quality"):
+        note = (f"agrees, score ×*{boost:g}*" if boost > 1.0
+                else "agrees, but boost cancelled — its own text found no news")
+    else:
+        note = "differs, no score boost"
+    return f"🔎 Perplexity: *{pplx}* — {note}"
 
 
 def resolve_why_text(ep: dict) -> str:
@@ -3185,9 +3228,6 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         # claude_analysis above already carries the grounded catalyst; the discovery line is
         # suppressed to avoid the contradiction/redundancy).
         + catalyst_block
-        # Provenance — catalyst grade (Claude grader) · Perplexity cross-check · judge tier
-        # verdict. Always shown so both ratings carry their own name and their own setter.
-        + format_grade_provenance(ep)
     )
 
     # Rubric snapshot (2026-05-19 Phase 5): if we have a structured-metrics

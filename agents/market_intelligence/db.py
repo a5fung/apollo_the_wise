@@ -473,6 +473,10 @@ async def initialize_schema() -> None:
                 -- 2026-08-27; before that it lived only on the in-memory alert dict and
                 -- vanished before /why could render it.
                 judge_grade TEXT,
+                -- #602 — the judge's ONE-LINE why on each of its two calls, rendered inline
+                -- on the alert. The long `judge_rationale` stays as the full argument.
+                judge_grade_reason TEXT,
+                judge_tier_reason TEXT,
                 grade_engine_authority TEXT,
                 rubric_version TEXT,
                 setup_class TEXT,
@@ -3613,6 +3617,8 @@ async def _ensure_ep_alert_columns(conn) -> None:
             "judge_rationale TEXT",
             "judge_materiality_tier TEXT",
             "judge_grade TEXT",
+            "judge_grade_reason TEXT",
+            "judge_tier_reason TEXT",
             "grade_engine_authority TEXT",
             "rubric_version TEXT",
             "setup_class TEXT",
@@ -3873,7 +3879,9 @@ EP_ALERT_JUDGE_RESULT_UPDATE_SQL = """
         score_tier = COALESCE($8, score_tier),
         grade_engine_authority = COALESCE($9, grade_engine_authority),
         rubric_version = COALESCE($10, rubric_version),
-        judge_grade = COALESCE($11, judge_grade)
+        judge_grade = COALESCE($11, judge_grade),
+        judge_grade_reason = COALESCE($12, judge_grade_reason),
+        judge_tier_reason = COALESCE($13, judge_tier_reason)
     WHERE ticker = $1 AND alert_date = $2
 """
 
@@ -3887,6 +3895,8 @@ async def update_ep_alert_judge_result(
     grade_engine_authority: str | None = None,
     rubric_version: str | None = None,
     judge_grade: str | None = None,
+    judge_grade_reason: str | None = None,
+    judge_tier_reason: str | None = None,
 ) -> None:
     """ONE atomic post-scan patch with the Holistic Grade Judge result (#240 /
     ADR 0011; merged from update_ep_alert_judge_shadow + the separate
@@ -3911,7 +3921,7 @@ async def update_ep_alert_judge_result(
             EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
             ticker, alert_date, judge_tier, judge_direction, judge_rationale,
             judge_materiality_tier, fire_axes, score_tier, grade_engine_authority,
-            rubric_version, judge_grade)
+            rubric_version, judge_grade, judge_grade_reason, judge_tier_reason)
 
 
 async def get_safeguard_state(safeguard: str, account_mode: str) -> "Any | None":
@@ -4354,7 +4364,7 @@ async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
         return await conn.fetchrow("""
             SELECT alert_date, score_tier, baseline_floor_tier, grade_engine_authority,
                    judge_tier, judge_direction, judge_materiality_tier, judge_rationale,
-                   judge_grade, catalyst_quality
+                   judge_grade, judge_grade_reason, judge_tier_reason, catalyst_quality
             FROM mi_ep_alerts
             WHERE ticker = $1 AND judge_tier IS NOT NULL
               AND COALESCE(source, 'live') = 'live'  -- #268: never present a replay verdict as the judge's last word

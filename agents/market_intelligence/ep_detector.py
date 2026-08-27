@@ -516,6 +516,8 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
             "floor_tier": floor_tier,
             "floor_catalyst_quality": r.get("catalyst_quality"),
             "judge_grade": v.get("grade"),
+            "judge_grade_reason": v.get("grade_reason"),
+            "judge_tier_reason": v.get("tier_reason"),
             "judge_tier": v.get("tier"),
             "judge_direction": v.get("direction_vs_floor"),
             "judge_materiality_tier": v.get("materiality_tier"),
@@ -5321,6 +5323,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # the tier it set, so it is an ACTING input, not a discarded
                             # opinion. Persisted 2026-08-27 so /why can render it.
                             judge_grade=v.get("grade"),
+                            judge_grade_reason=v.get("grade_reason"),
+                            judge_tier_reason=v.get("tier_reason"),
                             fire_axes=v.get("fire_axes"),
                             score_tier=new_tier if do_override else None,
                             grade_engine_authority=authority if do_override else None,
@@ -5370,6 +5374,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # game_changer). Nothing downstream reads either key.
                             r["judge_direction"] = v.get("direction_vs_floor")
                             r["judge_grade"] = v.get("grade")
+                            r["judge_grade_reason"] = v.get("grade_reason")
+                            r["judge_tier_reason"] = v.get("tier_reason")
                             # ── #322 judge → narrative-radar feed ──────────────────
                             # The judge lit fire_axes theme/narrative on a ticker
                             # NEITHER lane tracks (the JBL AI-infra class) — write a

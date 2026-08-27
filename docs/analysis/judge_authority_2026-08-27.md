@@ -82,6 +82,11 @@ cap.
 
 ---
 
+**And it disagrees with the stored catalyst label about a quarter of the time.** After
+backfilling `judge_grade` from the audit payloads: on **37 of 145** judged alerts in 60 days
+the judge's own read of the catalyst differs from the label the alert prints. Until today that
+disagreement was invisible on every surface.
+
 ## What the judge does not do
 
 It does not write `catalyst_quality`. That label is set by the Claude grader
@@ -135,6 +140,52 @@ them wrong on its own.
 4. **All five stale claims corrected** at source, each with a dated note saying what was wrong.
 5. **`format_tier_transition`'s invented explanation removed** and replaced with what the prompt
    actually specifies.
+
+### The alert layout: one voice per line
+
+Operator, after the first pass: *"I want clarity, clear separation and not confusion."* Every
+party that read the catalyst now gets its own labelled line saying what **it** said, and the
+decision takes the last line. No line mixes two voices, and nothing is repeated between them.
+
+```
+📊 Grader:     game-changing
+🔎 Perplexity: strong — differs, no score boost
+⚖️ Judge:      strong — disagrees with the grader
+✅ Decision:   alert tier HIGH (our score said HIGH; the judge held it)
+```
+
+The judge's full reasoning still prints directly below, labelled `Judge's reasoning:` — that is
+where the *why* lives today. Getting a one-line why onto the `⚖️ Judge:` and `✅ Decision:` lines
+themselves needs the judge to emit them as short fields, which rides #602's sign-off.
+
+### Perplexity was carrying the same wrong claim, one line down
+
+The footer said Perplexity was a *"second opinion, sets nothing."* It has two live effects:
+
+- **Agreement multiplies the score.** When its grade matches the Claude grader's,
+  `confidence_multiplier` becomes 1.2 and multiplies into the EP score. **61 of 147 alerts**
+  carried that boost in the 60 days to 2026-08-27.
+- **Its hedge text cuts the grade.** When its answer says it could not find the news, the
+  catalyst grade drops a notch and the boost is cancelled — **10 times since 2026-05-05**, most
+  recently NESR on 2026-08-10.
+
+Whether the 1.2x boost should exist at all is a scoring question, already filed under **#233**.
+
+**Verified live** (2026-08-27, rendered from the real prod rows after deploy + backfill):
+
+```
+-- OKTA
+⚖️ Alert tier *HIGH* (our score said HIGH; the judge held it)
+⚖️ Catalyst *game-changing* (Claude grader's label) — the judge read it *strong* and set
+   the tier on that; it cannot change the label
+
+-- OMER
+⚖️ Alert tier *HIGH* (our score said MODERATE; the judge promoted it)
+⚖️ Catalyst *routine* (Claude grader's label) — the judge read it *strong* and set the
+   tier on that; it cannot change the label
+```
+
+Backfill: 175 alerts populated from `ep_grade_decision` audit payloads.
 
 ---
 

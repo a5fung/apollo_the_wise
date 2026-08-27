@@ -70,21 +70,37 @@ def test_headline_falls_back_to_the_catalyst_grade_when_not_judge():
 # what" is how the retracted "advisory" claim survived in three places.
 def test_provenance_carries_only_the_perplexity_cross_check():
     p = format_grade_provenance(LZB)
-    assert "Perplexity read the catalyst *strong* (✗differs" in p  # routine != strong → differs
-    assert "second opinion, sets nothing" in p       # Perplexity is recorded, never a setter
+    assert p == "🔎 Perplexity: *strong* — differs, no score boost"
     assert "Claude grader" not in p and "Judge" not in p
 
 
 def test_provenance_no_false_agree_on_lzb_stale_case():
     # The exact bug: LZB printed 'Claude + Perplexity agree' after strong→routine downgrade left
     # the multiplier stale. The provenance line compares FINAL grades → must say differs.
-    assert "agree" not in format_grade_provenance(LZB)
+    assert "agrees" not in format_grade_provenance(LZB)
+    assert "differs, no score boost" in format_grade_provenance(LZB)
 
 
-def test_provenance_marks_real_agreement():
+def test_provenance_states_what_the_agreement_actually_did():
+    """2026-08-27: "second opinion, sets nothing" was wrong. Agreement sets
+    confidence_multiplier=1.2, which multiplies into the EP score — 61 of 147 alerts carried it
+    in the 60 days to 2026-08-27. The line must state the effect, not deny it."""
     agree = {"catalyst_quality": "strong", "gemini_validation": "strong",
-             "score_tier": "HIGH", "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
-    assert "(✓agree with the label)" in format_grade_provenance(agree)
+             "confidence_multiplier": 1.2, "score_tier": "HIGH",
+             "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
+    assert format_grade_provenance(agree) == "🔎 Perplexity: *strong* — agrees, score ×*1.2*"
+    # …and when the hedge-downgrade cancelled the boost, say THAT rather than claiming 1.2x.
+    cancelled = dict(agree, confidence_multiplier=1.0)
+    assert "agrees, but boost cancelled" in format_grade_provenance(cancelled)
+
+
+def test_provenance_never_claims_perplexity_sets_nothing():
+    """The retracted claim. Perplexity's grade multiplies the score on agreement and its hedge
+    text cuts the catalyst grade a notch — both live."""
+    for ep in ({"catalyst_quality": "strong", "gemini_validation": "strong",
+                "confidence_multiplier": 1.2},
+               {"catalyst_quality": "routine", "gemini_validation": "strong"}):
+        assert "sets nothing" not in format_grade_provenance(ep)
 
 
 def test_provenance_is_empty_when_there_is_no_second_opinion():

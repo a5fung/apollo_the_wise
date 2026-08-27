@@ -93,14 +93,16 @@ def test_okta_header_reports_the_tier_that_acted():
 
 def test_okta_states_what_acted_before_any_model_prose():
     out = _render(OKTA)
-    assert out.index("⚖️ Alert tier") < out.index(_RATIONALE), \
+    assert out.index("📊 Grader:") < out.index(_RATIONALE), \
         "the derived outcome must precede the judge's prose"
-    tier_line, cat_line = out.splitlines()[1], out.splitlines()[2]
-    assert tier_line == "⚖️ Alert tier *HIGH* (our score said HIGH; the judge held it)"
-    # ONE line per rating, each naming its setter — and the judge's own read of the catalyst
-    # stated as what it set the tier on, NOT as an advisory aside.
-    assert cat_line == ("⚖️ Catalyst *game-changing* (Claude grader's label) — the judge read "
-                        "it *strong* and set the tier on that; it cannot change the label")
+    # ONE VOICE PER LINE (operator 2026-08-27: "clarity, clear separation and not confusion").
+    # Each party that read the catalyst says what IT said; the decision takes the last line.
+    assert out.splitlines()[1:5] == [
+        "📊 Grader: *game-changing*",
+        "🔎 Perplexity: *strong* — differs, no score boost",
+        "⚖️ Judge: *strong* (disagrees with the grader)",
+        "✅ Decision: alert tier *HIGH* (our score said HIGH; the judge held it)",
+    ]
 
 
 def test_okta_names_the_carveout_and_its_reason_as_what_overruled_the_floor():
@@ -137,7 +139,7 @@ def test_keep_event_never_credited_with_a_grade_it_did_not_set():
     assert ("the earnings carve-out left the catalyst grade at *game-changing*, which the "
             "catalyst-tier corrective then re-resolved to *strong*") in out
     # …and the CATALYST line still reports the grade that is actually acting.
-    assert "⚖️ Catalyst *strong* (Claude grader's label)" in out
+    assert "📊 Grader: *strong*" in out
 
 
 def test_the_judges_catalyst_read_is_shown_as_acting_never_as_advisory():
@@ -145,11 +147,10 @@ def test_the_judges_catalyst_read_is_shown_as_acting_never_as_advisory():
     sets, so it may never be rendered as inert. `advisory` and `never the catalyst grade` are
     the two phrasings that were wrong; both are banned from the block."""
     out = _render(OKTA)
-    assert "the judge read it *strong* and set the tier on that" in out
-    assert "it cannot change the label" in out, "the one real limit must still be stated"
+    assert "⚖️ Judge: *strong* (disagrees with the grader)" in out
     # The read must NOT sit in the did-not-act block.
-    assert "the judge read it *strong*" not in out.split("↩️")[-1] or "↩️" not in out
-    for banned in ("advisory", "never the catalyst grade",
+    assert "⚖️ Judge:" not in out.split("↩️")[-1] or "↩️" not in out
+    for banned in ("advisory", "never the catalyst grade", "sets nothing",
                    "the judge's note argues a *demote*"):
         assert banned not in out, f"retracted claim still rendered: {banned}"
 
@@ -177,7 +178,8 @@ def test_okta_prose_is_attributed_as_reasoning_not_outcome():
 # ── a demote that CARRIES must read differently from one that is overruled ───────────────
 def test_carried_demote_renders_the_real_tier_transition():
     assert resolve_headline_grade(CARRIED)[1] == "Judge: alert tier HIGH→MODERATE (demoted)"
-    assert "⚖️ Alert tier *MODERATE* (our score said HIGH; the judge demoted it)" in _render(CARRIED)
+    assert ("✅ Decision: alert tier *MODERATE* (our score said HIGH; the judge demoted it)"
+            in _render(CARRIED))
 
 
 def test_carried_demote_has_no_did_not_move_claim():
@@ -219,15 +221,20 @@ def test_tier_verdict_only_ever_speaks_tiers():
     assert format_tier_verdict({"score_tier": "HIGH"}) == "HIGH"
 
 
-def test_every_axis_is_named_wherever_a_value_is_shown():
-    out = _render(OKTA)
-    assert "Alert tier" in out and "Catalyst" in out
-    # The footer carries ONLY the Perplexity cross-check now — both ratings and their setters
-    # are stated once, above. Two independently-worded copies of "who sets what" is how the
-    # retracted claim survived in three places the first time.
-    pv = format_grade_provenance(OKTA)
-    assert "Perplexity" in pv and "sets nothing" in pv
-    assert "Claude grader" not in pv and "Judge" not in pv
+def test_every_line_names_exactly_one_voice():
+    """The separation contract. A line may carry the Grader OR Perplexity OR the Judge OR the
+    Decision — never two. Packing grader + judge + limit-of-authority into one sentence is
+    what read as confusion (operator 2026-08-27)."""
+    _VOICES = ("📊 Grader:", "🔎 Perplexity:", "⚖️ Judge:", "✅ Decision:")
+    for ep in (OKTA, CARRIED, dict(OKTA, grade_engine_authority="floor")):
+        for line in format_grade_outcome_lines(ep):
+            if line.startswith("↩️") or line.startswith("   •"):
+                continue
+            hits = [v for v in _VOICES if line.startswith(v)]
+            assert len(hits) == 1, f"line owns no single voice: {line}"
+            for other in _VOICES:
+                if other != hits[0]:
+                    assert other not in line, f"two voices on one line: {line}"
 
 
 # ── markdown safety: underscored grades must never reach Telegram raw ────────────────────
@@ -248,9 +255,8 @@ def test_clean_alert_has_no_did_not_act_block():
              "baseline_floor_tier": "MODERATE", "grade_engine_authority": "judge",
              "judge_direction": "promote", "judge_grade": "strong", "floor_grade_kept": None}
     lines = format_grade_outcome_lines(clean)
-    assert len(lines) == 2, "one line per rating, and no did-not-act block"
-    assert lines[0].startswith("⚖️ Alert tier") and lines[1].startswith("⚖️ Catalyst")
-    assert "↩️" not in "".join(lines)
+    assert [l.split(":")[0] for l in lines] == ["📊 Grader", "⚖️ Judge", "✅ Decision"]
+    assert "↩️" not in "".join(lines)   # no Perplexity read on this fixture → no line for it
 
 
 def test_score_authority_alert_still_states_what_acted():
@@ -258,13 +264,14 @@ def test_score_authority_alert_still_states_what_acted():
     scored = {"ticker": "BBB", "catalyst_quality": "strong", "score_tier": "HIGH",
               "baseline_floor_tier": "HIGH", "grade_engine_authority": "floor"}
     assert format_grade_outcome_lines(scored) == [
-        "⚖️ Alert tier *HIGH* (our score — the judge did not review it)",
-        "⚖️ Catalyst *strong* (set by the Claude grader)"]
+        "📊 Grader: *strong*",
+        "✅ Decision: alert tier *HIGH* (our score — the judge did not review it)"]
 
 
 def test_fallback_authority_names_the_judge_failure():
     fb = dict(OKTA, grade_engine_authority="fallback", floor_grade_kept=None)
-    assert "(our score — the judge returned no verdict)" in format_grade_outcome_lines(fb)[0]
+    assert "(our score — the judge returned no verdict)" in "\n".join(
+        format_grade_outcome_lines(fb))
 
 
 # ── the labels are DERIVED, not hardcoded (source-level pins) ─────────────────────────────
@@ -368,27 +375,35 @@ def test_no_raw_enum_reaches_any_operator_facing_string():
 def test_both_ratings_appear_with_their_own_name_and_setter():
     for ep in (OKTA, CARRIED, dict(OKTA, grade_engine_authority="floor"),
                dict(OKTA, grade_engine_authority="fallback")):
-        tier_line, cat_line = format_grade_outcome_lines(ep)[:2]
-        # the TIER: named, and the thing that set it is named
-        assert "Alert tier" in tier_line
-        assert ("the judge" in tier_line or "our score" in tier_line)
-        # the GRADE: named, and the Claude grader named as the owner of the LABEL
-        assert "Catalyst" in cat_line and "Claude grader" in cat_line
+        block = "\n".join(format_grade_outcome_lines(ep))
+        # the TIER: named on the Decision line, and the thing that set it is named
+        assert "✅ Decision: alert tier" in block
+        assert ("the judge" in block or "our score" in block)
+        # the GRADE: on its own line, owned by the grader
+        assert "📊 Grader: *" in block
 
 
 def test_the_judge_is_never_shown_as_relabelling_the_catalyst_grade():
     """The narrow, TRUE limit on the judge — it cannot rewrite `catalyst_quality`. The old
-    version of this test asserted the broader claim ("never the catalyst grade"), which read
-    as "its catalyst view does not matter" and was wrong: that view sets the tier."""
+    version asserted the broader claim ("never the catalyst grade"), which read as "its
+    catalyst view does not matter" and was wrong: that view sets the tier. With one voice per
+    line the limit is shown structurally — the Grader line keeps its own value whatever the
+    judge read."""
     out = _render(OKTA)
-    assert "it cannot change the label" in out
-    assert "Claude grader's label" in out
-    # and the grade the alert acts on is still the grader's, not the judge's read
-    assert "⚖️ Catalyst *game-changing*" in out
+    assert "📊 Grader: *game-changing*" in out      # unchanged by the judge's *strong* read
+    assert "⚖️ Judge: *strong*" in out
 
 
-def test_perplexity_is_labelled_as_setting_nothing():
-    assert "second opinion, sets nothing" in format_grade_provenance(OKTA)
+def test_perplexity_line_states_its_real_effect_not_that_it_sets_nothing():
+    """2026-08-27: "second opinion, sets nothing" was wrong in the same way the judge's
+    "advisory only" was. Agreement sets confidence_multiplier=1.2, which multiplies into the
+    EP score — 61 of 147 alerts carried it in the 60d to 2026-08-27; and Perplexity's hedge
+    text cuts the catalyst grade a notch (10 times since 2026-05-05)."""
+    # OKTA: Perplexity read `strong` against the label `game_changer` → no boost earned.
+    assert "🔎 Perplexity: *strong* — differs, no score boost" in _render(OKTA)
+    assert "sets nothing" not in _render(OKTA)
+    boosted = dict(OKTA, gemini_validation="game_changer", confidence_multiplier=1.2)
+    assert "🔎 Perplexity: *game-changing* — agrees, score ×*1.2*" in _render(boosted)
 
 
 def test_the_tier_clause_names_who_set_the_tier_in_all_three_authorities():
@@ -480,7 +495,8 @@ def test_the_judges_catalyst_read_is_persisted_not_just_held_in_memory():
     assert re.search(r'judge_grade=v\.get\("grade"\)', _EP_SRC), \
         "the detector must pass the judge's own grade to the writer"
     # …and the row read that feeds the operator surfaces must select it.
-    assert re.search(r"judge_rationale,\s*\n\s*judge_grade, catalyst_quality", _DB_SRC)
+    assert re.search(r"judge_grade, judge_grade_reason, judge_tier_reason, catalyst_quality",
+                     _DB_SRC)
 
 
 def test_no_surface_calls_the_judges_catalyst_read_advisory():
@@ -493,3 +509,73 @@ def test_no_surface_calls_the_judges_catalyst_read_advisory():
             if "advisory" in low and "judge" in low and "grade" in low:
                 assert "2026-08-27" in line or "retracted" in low, \
                     f"{name}: judge grade read called advisory again — {line.strip()[:90]}"
+
+
+def test_the_judges_read_comes_before_its_decision():
+    """Operator 2026-08-27: "the judge needs to share its own judgement… then it needs to share
+    its final judgement." The read always precedes the decision, whether it agrees or not."""
+    for ep in (OKTA, dict(OKTA, judge_grade="game_changer", floor_grade_kept=None)):
+        lines = format_grade_outcome_lines(ep)
+        judge_at = next(i for i, l in enumerate(lines) if l.startswith("⚖️ Judge:"))
+        decide_at = next(i for i, l in enumerate(lines) if l.startswith("✅ Decision:"))
+        assert judge_at < decide_at
+    # …and the judge's line says which way it went against the grader.
+    assert "disagrees with the grader" in "\n".join(format_grade_outcome_lines(OKTA))
+    assert "agrees with the grader" in "\n".join(format_grade_outcome_lines(
+        dict(OKTA, judge_grade="game_changer")))
+
+
+# ── #602: the judge's one-line WHY on each of its two calls ──────────────────────────────
+_WHY = {"judge_grade_reason": "a 1.4% revenue beat on a $23B company is material but not "
+                              "transformative",
+        "judge_tier_reason": "a fresh, primary-sourced beat-and-raise clears HIGH"}
+
+
+def test_each_judge_call_carries_its_own_one_line_why():
+    """Operator 2026-08-27, signed: the judge states its read AND why it disagrees, then its
+    final call AND why. Both whys come from the judge (`grade_reason` / `tier_reason`) — the
+    renderer never composes one."""
+    lines = format_grade_outcome_lines(dict(OKTA, **_WHY))
+    judge = next(l for l in lines if l.startswith("⚖️ Judge:"))
+    decide = next(l for l in lines if l.startswith("✅ Decision:"))
+    assert judge.endswith("material but not transformative")
+    assert decide.endswith("beat-and-raise clears HIGH")
+
+
+def test_a_missing_why_drops_the_clause_and_never_invents_one():
+    """Pre-#602 rows and fail-open verdicts have no reason stored. The line must render
+    exactly as before rather than the renderer supplying a plausible sentence."""
+    lines = format_grade_outcome_lines(OKTA)   # no *_reason keys
+    assert "⚖️ Judge: *strong* (disagrees with the grader)" in lines
+    assert not any(" — a " in l for l in lines if l.startswith(("⚖️ Judge:", "✅ Decision:")))
+
+
+def test_the_why_is_escaped_and_clipped_before_telegram():
+    """Model text on a Markdown surface: an unescaped underscore breaks italics -> 400."""
+    nasty = dict(OKTA, judge_grade_reason="beat was game_changer *huge* " + "x" * 400)
+    line = next(l for l in format_grade_outcome_lines(nasty) if l.startswith("⚖️ Judge:"))
+    assert "game_changer" not in line
+    assert line.count("*") % 2 == 0
+    assert len(line) < 260
+
+
+def test_the_rubric_states_each_output_fields_axis():
+    """The root cause: rule 2 taught PROMOTES/DEMOTES as GRADE verbs while
+    `direction_vs_floor` is a TIER field, so the model answered it on the grade axis (OKTA
+    wrote `demote` while holding HIGH). v4 says raises/lowers the GRADE and spells out the
+    tier field literally."""
+    from agents.market_intelligence.ep_grade_judge import _RUBRIC, RUBRIC_VERSION
+    assert RUBRIC_VERSION.startswith("v4-")
+    assert "PROMOTES the grade" not in _RUBRIC and "DEMOTES it" not in _RUBRIC
+    assert "RAISES the GRADE" in _RUBRIC and "LOWERS the GRADE" in _RUBRIC
+    assert "describes the TIER AND NOTHING ELSE" in _RUBRIC
+    assert "If you lowered the GRADE but kept the TIER, that is \"hold\"" in _RUBRIC
+
+
+def test_a_missing_reason_never_kills_an_otherwise_valid_verdict():
+    """`grade_reason`/`tier_reason` are schema-REQUIRED so the model fills them, but a model
+    omission must not fail-open a real EP over a display field."""
+    from agents.market_intelligence.ep_grade_judge import _normalize_verdict
+    v = _normalize_verdict({"grade": "strong", "tier": "HIGH", "direction_vs_floor": "hold",
+                            "fire_axes": ["catalyst"], "rationale": "r"})
+    assert v is not None and v["grade_reason"] is None and v["tier_reason"] is None
