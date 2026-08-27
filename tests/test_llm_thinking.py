@@ -54,24 +54,29 @@ def test_every_disabled_caller_is_a_registered_ceiling():
             "shared/output_ceilings.py — thinking config must track a real caller")
 
 
-def test_expected_five_schema_bounded_callers():
+def test_expected_schema_bounded_callers():
     """Pin the classification itself, not just its shape — a caller silently
-    added or removed here is a criterion change to the fix, worth a red test."""
+    added or removed here is a criterion change to the fix, worth a red test.
+
+    theme_rename joined 2026-08-26 (#214 rename-instead-of-strip): it is a forced
+    report_themes tool call over ONE cohort with a terse analysis_scratchpad — the
+    same schema-bounded shape as theme_split, which is already on this list."""
     assert llm_thinking.THINKING_DISABLED == {
         "theme_validation", "theme_assignment", "theme_split",
-        "narrative_theme_discovery", "theme_synthesis",
+        "narrative_theme_discovery", "theme_synthesis", "theme_rename",
     }
 
 
 # ── 2. call-site pins (source scan — catches a silent revert) ───────────────
 
-def test_five_always_disabled_call_sites_pinned_in_theme_engine():
+def test_always_disabled_call_sites_pinned_in_theme_engine():
     src = _TE.read_text(encoding="utf-8")
-    # theme_validation, theme_assignment, theme_split, narrative_theme_discovery x2
-    assert src.count("thinking=llm_thinking.DISABLED") == 5, (
-        "expected exactly 5 unconditional thinking=llm_thinking.DISABLED call sites "
+    # theme_validation, theme_assignment, theme_split, narrative_theme_discovery x2,
+    # theme_rename (#214, 2026-08-26)
+    assert src.count("thinking=llm_thinking.DISABLED") == 6, (
+        "expected exactly 6 unconditional thinking=llm_thinking.DISABLED call sites "
         "in theme_engine.py (theme_validation, theme_assignment, theme_split, "
-        "narrative_theme_discovery x2 lane1/lane2)")
+        "narrative_theme_discovery x2 lane1/lane2, theme_rename)")
 
 
 def test_theme_synthesis_call_site_pinned():

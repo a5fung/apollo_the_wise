@@ -68,6 +68,12 @@ def test_mirrored_rs_rising_matches_the_real_engine_across_samples():
         [20.4, 25.8, 35.7, 42.3, 55.0, 45.7],  # GD — falling from a high point
         [5.0, 4.0, 3.0],                        # too few points — fails closed
         [],
+        # 2026-08-26: BLDR's real 08-25 history — the collapse that the endpoint-only
+        # test called "rising" (10.0 > 5.9) and this very check false-alarmed on. Both
+        # sides must now agree it is NOT rising, or the check drifts from the engine.
+        [10.0, 13.8, 25.7, 29.4, 29.2, 5.9],
+        [12.2, 70.7, 71.6, 66.4, 36.6, 5.3],    # BRUN 08-20, same shape, prod-recorded
+        [22.1, 23.9, 24.4, 11.9, 19.9, 15.9],   # SO — genuinely up over the window
     ]
     for hist in samples:
         assert _rs_rising_mirror(hist) == real_rs_rising(hist), hist

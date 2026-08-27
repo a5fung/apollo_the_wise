@@ -10,13 +10,23 @@
 - Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
 - **Engine-drop themes skip Fading**: Pass1 cap_drop / Pass1.5 absorption removals get a synthetic Retired row (`theme_auto_retired` audit; `parent_theme=successor` recovered from the pass audit events) — the 5-day Fading→Retired path can't complete under the 7d recency cap. Stub until canonicalization (R3).
 - **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429. **Thesis-aware since #368 (2026-08-04)**: all three callers (rescore, #266 birth validation, Arm-B post-merge) pass the theme's own description; the prompt shows it and instructs judging against the THESIS, not the name alone — a member whose CURRENT driver matches the thesis stays even when its legacy industry label differs (the 7/27 WULF/CORZ eviction class). `_is_garbage` theses are omitted.
-- **Member pruning (#368, 2026-08-04 — rising-recovery hold)**: hard prune (RS<25, 1 day) and soft prune (RS<35, 3 consecutive days) both SKIP a member whose RS is RISING over the last `PRUNE_HOLD_WINDOW_SESSIONS` (6) sessions — the test is `len(hist) >= PRUNE_HOLD_MIN_POINTS and hist[0] > hist[-1]`, i.e. **at least 4 DATA POINTS of history and ANY rise at all**, NOT a rise of 4 RS points (RS 1.8 → 3.1 qualifies; the constant's name is ambiguous and was misread once on 2026-08-04). Short history ⇒ no hold, prune as before. Mirrors the birth gate's derived level-OR-rising cell on the retention surface; changelog type `ticker_prune_held_rising`. Backtest: 77% of rising-held names recovered to RS≥50 in 10 sessions vs 31% of the falling control (N=13 scored / 25 held, `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md`).
+- **Member pruning (#368, 2026-08-04 — rising-recovery hold; rising test repaired 2026-08-26)**: hard prune (RS<25, 1 day) and soft prune (RS<35, 3 consecutive days) both SKIP a member whose RS is RISING over the last `PRUNE_HOLD_WINDOW_SESSIONS` (6) sessions. `_rs_rising` requires **at least `PRUNE_HOLD_MIN_POINTS` (4) DATA POINTS of history** — NOT a rise of 4 RS points (RS 1.8 → 3.1 qualifies; the constant's name is ambiguous and was misread once on 2026-08-04) — and now **TWO** conditions: (1) `hist[0] > hist[-1]` (newest above oldest, the original test) **AND** (2) `hist[0] >= min(hist[1:-1])` — today is not below EVERY intermediate reading. **Why (2) exists**: (1) alone compares two ENDPOINTS and is blind to everything between, so a collapse whose oldest reading happens to be a one-day trough scored as rising — BLDR on 2026-08-25 read `[10.0, 13.8, 25.7, 29.4, 29.2, 5.9]`, a 29 → 10 collapse, held/flagged as rising purely because `10.0 > 5.9`. The oldest point is the value being compared AGAINST, so it is excluded from the floor (`hist[1:-1]`, never `hist[1:]`, which would make the clause vacuous). Short history ⇒ no hold, prune as before. Mirrors the birth gate's derived level-OR-rising cell on the retention surface; changelog type `ticker_prune_held_rising`. Backtest: 77% of rising-held names recovered to RS≥50 in 10 sessions vs 31% of the falling control (N=13 scored / 25 held, `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md`).
 - **Retire streak counts WEAK-Fading rows only (#368, 2026-08-04)**: `_count_consecutive_fading` counts Fading rows with `rs_avg IS NULL` (the weak branch's); a Fading row WITH rs_avg (score-delta fade / hysteresis-held recovery — the strong floor passed that day) BREAKS the 5-day retire streak. Evidence: the crypto-miner lineage re-qualified healthy 8/03 (elite pair, rs_avg 84.9) yet retired 8/04 off the held row; 14 retirements in Jun–Aug carried a healthy-held row in their terminal streak ('AI Memory & Storage': six of its last eight days).
 - **Nightly THEME QUALITY check (#531, 2026-08-04, `health_checks.run_theme_quality_check`, wired into `_post_nightly_audit_job`)**: the regression guard that keeps F2/F3 above working — a theme retiring while its last-known state was healthy (Fading, `rs_avg` populated, then a silent vanish — no explicit `mi_themes` row) or a member pruned while its RS was rising over the F3 hold window. Measured against 97 real trading days before shipping: 6/165 retirement incidents and 25/164 prune-shaped exits, both hand-verified real (79% of rising-held exits recovered to RS≥50 in 10 sessions vs 36% falling control). Deliberately does NOT fire on the ADR-0025 Arm-A 2-member dissolve shape or a Pass1/1.5 engine-drop retirement (different mechanisms, F2 doesn't touch them — the latter is a named, measured gap: 4 occurrences in the window, e.g. 'AI Memory & Storage' 07-13, filed as a future candidate). Fragmentation and churn signatures were ALSO measured (251 firings/122 pairs; 42/301 short-lived names) and DROPPED as too noisy / needing neighbourhood-clustering work not yet built — full measurement + both-ways proof in `docs/analysis/531_theme_quality_measurement_2026-08-04.md`. Dedupe (audit-log-based, permanent per finding, fails open) mirrors `run_inert_sweep_check`'s idiom.
 - **⛔ Arm-B Stage-A family `compute_infra` (#368) — BUILT, GATED, NOT SHIPPED (2026-08-04)**: the crypto-mining and AI-datacenter framings of one physical asset base never share a stem family, and the majority-sector fallback cannot form for converting miners (FMP splits them Financial Services / Technology / blank) — so **ZERO crypto pairs have EVER been proposed for adjudication** (verified: 0 of 99 merge events mention crypto or bitcoin, while insurance and fintech pairs ran nightly). The family that fixes that was written and then HELD, because its own pre-deploy gate ran the two frozen historical pairs through the REAL Stage-B judge and neither consolidates: **P1 (07-21) → DISTINCT** (the gate's stated hold condition) and **P2 (08-04) → PARENT_CHILD**, which on this file's own operator-signed terms is not a consolidation — the v2 prompt ruling (7/12, rulings-pack R3) exists precisely because v1 *"answered PARENT_CHILD to pure slices, which keeps both themes and leaves the fragmentation (#274's whole purpose) unfixed"*. There is also no persistence path for a PARENT_CHILD verdict today: `parent_theme` + `sub_theme_parents` are ADR 0032 Phase 2 = **#471, not built**. So the change is correct and premature. Gated on #471 Phase 2, tracked as #529. The adjudicator's real behaviour here is itself the finding: it consolidates only when the theme's THESIS TEXT names the conversion (P2's thesis said *"not bitcoin price"*; P1's read as a crypto theme with one lease headline) — which makes thesis quality, not stem families, the live lever.
 - **Nightly ECOSYSTEM REACTIVATION detector (#534 D3(b), 2026-08-05, `health_checks.run_ecosystem_reactivation_check`, wired into `_post_nightly_audit_job` at 17:30 ET — after the 17:00 engine so tonight's board + ecosystem mappings exist)**: deterministic, $0, no LLM. Fires when a DORMANT ecosystem (no live mapped theme, or all-Fading, judged at the alert window's START session against the strictly-prior board, 7d liveness horizon mirroring `get_active_themes`) collects **≥3 distinct HIGH EP tickers within 5 sessions** against a **quiet 15-session trailing baseline (≤1 mapped ticker)**. Ticker→ecosystem mapping = any non-Retired `mi_themes` membership row (INCLUDING tonight's board — the engine's same-night reactive births are how new wake-up names reach the dormant lineage's e_code; the dead themes never held them) whose name is in `mi_theme_ecosystems`, else taxonomy exemplars; a SECTOR fallback was measured and rejected (it admitted two sector-label pseudo-clusters). Thresholds DERIVED from a 66-session prod replay: one incident total (E-DEF 08-04, {AMRC PLTR TSAT VOYG}, baseline 0) and the ARM+LRCX+SIMO semis earnings night correctly suppressed by the quiet-baseline precondition — the §5 "an earnings surge is not a theme" proof; derivation + hand-checks in `health_checks.py`'s #534 header. Output: operator Telegram line (`E-DEF (Defense & space) reactivating: 4 EPs/1d, no live theme`) + a discovery seed in `mi_theme_candidates_shadow` (source=`ecosystem_reactivation`, cohort in `tickers`, dormant lineage named in the thesis). **NEVER an auto-promote**: the source is excluded from `AUTO_PROMOTE_THEME_SOURCES` (#469 allowlist, by construction) and from the judge's `active_narratives` feed — visible only via operator surfaces (`include_probe=True` → /themes, /promotetheme); the birth gate owns whether a reactivation cohort becomes a theme (pinned by `tests/test_ecosystem_reactivation.py`). Dedupe is audit-log-based but RECENCY-bounded (10d — one announcement per incident; an incident self-terminates in ~5 sessions as its own alerts walk into the baseline, and the same ecosystem may legitimately wake again months later), fails open.
 - **#491 M2 — SEEDED ASSIGNMENT-POOL EXEMPTION (2026-08-05, operator-approved D1)**: a ticker named in an ACTIVE Lane-2 narrative row (`narrative_cogap`) or an ecosystem-reactivation seed (`ecosystem_reactivation`, #534/#536), ≤ `LANE2_WINDOW_TRADING_DAYS` (10) trading days old and PRIOR sessions only (tonight's lane rows are written after the assignment pass — scheduler 5c), is admitted to the ASSIGNMENT pool regardless of RS floor and fetch rank, its score row fetched explicitly via `get_rs_for_tickers` (no score row ⇒ skip). Why: RS is a 1/3/6-month lookback, so a business-model pivot is under the floor by construction (B2 — every one of the ten ex-miner names under RS 70 on 08-04 while the correct live AI theme sat 3 members wide). **Fork F-D (operator-ruled): the admission scope is ONLY those two seeded sources — NEVER a raw RS band** (`db.SEEDED_ASSIGN_SOURCES`; scope + the RS-free admission signature pinned by `tests/test_seeded_pool_exemption.py`). Never admitted: covered names any stage incl. Fading (covered-exclusivity/B1 stays M-CORE's territory), just-revalidated-out names, names already in the pool. Downstream walls unchanged (assignment LLM decides fit; global bans, pair cooldowns, post-assignment F4 validation, exclusions all apply — admitted names enter the standard pool); DISCOVERY untouched at top-40. Bounded ~15/night by construction (replay over 06-26→08-05: 45 admissions/28 nights, peak 10); >15 logs a loud warning — never a silent cap. Observability: one `seeded_pool_admission` audit row per run with per-ticker trigger pointers; fetch failure fails OPEN (one night without the exemption, never the run). Known accepted gap: seeded admissions can, like any pool name, be offered [Fading]-tagged themes — §4.4's "never migrate INTO Fading" predicate belongs to the custody verb (M-CORE, not built).
 - **#530 (2026-08-09) — the shadow-promote re-mint no longer clobbers an unchanged thesis**: `promote_shadow_themes` / `promote_candidate_by_name` used to write `description = tonight's candidate thesis` UNCONDITIONALLY every time a cohort still qualified (`_upsert_promoted_theme`'s `ON CONFLICT ... DO UPDATE SET description = EXCLUDED.description`, no comparison to what was already on the board). shadow_v2's correlation-lane LLM call re-runs fresh every night regardless of whether the cohort changed, and its thesis is frequently a generic price-correlation blurb ("pure-play Bitcoin miners... corr 0.84") — on a night the LIVE lane doesn't independently re-mint that name, this silently replaced a more specific, catalyst-grounded description already on the board. That mattered beyond tidiness: F4 (#368, line above) judges membership against the theme's own THESIS, so an overwritten thesis actively evicts correct members — the root cause of the WULF/CORZ eviction traced in #491. **Fix** (`theme_engine._resolve_promoted_theme_description`, the ONE decision point both promote paths now share): if tonight's ticker SET is EXACTLY unchanged from the last known `mi_themes` row for that name, the EXISTING description is preserved; a ticker-set CHANGE (any add/remove) is real membership evidence, so the fresh thesis is always allowed through. Mirrors the existing `_canonicalize_theme_names` (#59, 2026-05-11) precedent, which solved the identical churn problem for the theme NAME the same way — freeze on exact ticker-set match, no specificity scoring, no numeric threshold. Pinned by `tests/test_promotetheme.py` (`test_530_*`, 3 tests: unchanged cohort preserves the specific thesis, changed cohort refreshes it, no-prior-row is unaffected).
+- **#214 RENAME-INSTEAD-OF-STRIP (2026-08-26, `theme_engine._apply_mass_flag_rename`)**: when membership validation flags the **mass-eviction signature** — `_is_mass_eviction(n_flagged, n_members)` = **>=3 flagged AND >=50% of the membership**, byte-identical to `health_checks._is_mass_eviction` — the theme is **RENAMED to describe the cluster it actually holds**; the members are NOT removed and **no validation cooldown is written**. Prior behaviour deleted the members so they would fit the name, which is backwards: the removals are CORRECT given the name, so the NAME is the defect (that is what the `validation_mass_removal_name_suspect` tripwire has been saying since 2026-06-09). Evidence it recurs: the same energy block tripped the signature **three times in ten days under three different names** — Oilfield Equipment 9/16 (08-17), Independent Oil Refiners **42/42** (08-19, swallowed by the min-survivor guard), Oil Refining & Marketing 17/24 (08-26, 17 regulated utilities + midstream deleted, cooldowns to 09-09), after which the theme refilled to 46 upstream names and re-armed (`docs/analysis/theme_mass_eviction_2026-08-26.md`).
+  - **Naming REUSES the existing path** — `_THEME_DISCOVERY_TOOL` (`report_themes`), same `THEME_MODEL`, same #214 breadth contract on its `name` field; only the prompt differs (one existing cohort to name, not a pool to cluster). One forced tool call (`tool_choice=any`, thinking DISABLED), no advisor branch, no retry: ~1 bounded Sonnet call per firing (~3 per 10 days observed). Ceiling `theme_rename` (1750, sized by analogy to `theme_split` — same output shape).
+  - **Scoped to the RESCORE caller only** (`mass_flag_out` out-param). The other three `_validate_theme_membership` callers keep stripping, deliberately: **birth validation** (#266 — no lineage to preserve, min-survivor guard already covers born-bad themes), **post-assignment** (the strip is rejecting a bad ASSIGNMENT, not judging the theme's name), **Arm-B post-merge** (that name is the merge pass's own product). Passing no out-dict is byte-identical to pre-2026-08-26.
+  - **Ordering inside the validator**: AFTER the operator-protection shield (a set that only reaches >=50% by counting operator-shielded names is not a mass eviction) and BEFORE the min-survivor guard (whose "would drop below 2 survivors -> skip removals" escape silently swallowed the 42/42 flag on 08-19 — the loudest possible name-is-wrong signal must reach the rename).
+  - **LOOP CAP — a theme minted by one of these renames is not renamed again for `RENAME_LOOP_CAP_DAYS` (14)**, keyed on the NEW name (`theme_renamed_on_mass_flag` audit rows) so it bounds a CHAIN A->B->C, not just a per-name rate. Fails **CLOSED** (DB error => no rename), asymmetric with the #214 inheritance guard's fail-open on purpose: failing open here costs an unbounded rename loop. On cap exhaustion the theme is **NEITHER renamed NOR stripped** — falling back to a strip would reintroduce the defect — and a `theme_rename_cap_reached` row asks the operator to look. 14 days is the window `_canonicalize_theme_names` (#59) already uses for the analogous name-stability call, and the same 14 days as the cooldown a strip would have written.
+  - **IDENTITY — a rename preserves the lineage, it does not mint a new theme.** `mi_themes` is keyed `(theme_date, name)`, so continuity is carried explicitly: (a) `days_active` / `consecutive_accelerating` — `_save_themes` also fetches the OLD name and falls back to it via `renamed_from`, because a reset to Nascent would cost every member the R4 +10 in-theme bonus, i.e. it WOULD change EP scores; (b) stage/age/history — `_get_theme_history` + `_count_consecutive_fading` already fall back to ticker-overlap (Jaccard >= 0.4) and a rename leaves the ticker set untouched, so they resolve at 1.0; (c) the OLD name gets an explicit **Retired tombstone with `parent_theme` = the new name** from the engine-drop pass, so `get_active_themes` stops counting it instead of holding the same cohort under two names for the rest of its 7-day window; (d) `sub_theme_parents` is re-keyed across the rename before `_restore_sub_theme_links`, which matches on names and would otherwise clear the link as a genuine orphan (#471's failure mode); (e) it is reported as a rename, never as a retirement. `mi_theme_exclusions` matches names fuzzily so operator bans survive, and **nothing is ever written to that table here**; `mi_theme_ecosystems` re-maps on the next save.
+  - ⚠ **`_canonicalize_theme_names` is CARVED OUT, and this is the load-bearing part.** That function renames today's theme back to a prior 14d name on an **exact ticker-set match** — and a #214 rename keeps the ticker set unchanged, which is precisely its trigger. Without the carve-out it reverts every rename the same night and logs it as ordinary `theme_renamed_for_continuity` churn: the fix would pass every test and no-op in production. Two guards: the in-memory `renamed_from` flag (protects today) and `_name_recently_mass_evicted(prior_name)` on the donor (protects every later run, since the old name's rows sit inside the 14d window for two more weeks) — the same rule and the same helper the #214 name-INHERITANCE guard already applies. Consequence worth knowing: **the `validation_mass_removal_name_suspect` tripwire emit is now load-bearing, not decorative** — the rename path writes no `ticker_revalidated_out` rows, so the tripwire is the only pattern `_name_recently_mass_evicted` can still match for that theme. It was deliberately kept ALONGSIDE the rename, never replaced by it.
+  - **Refusal paths** (all keep the old name and never strip): target name already live (`_name_is_live` — a collision on `(theme_date, name)` would collapse two themes into one row), target name itself recently mass-evicted, model returned the same/unusable name, naming call failed or truncated. A fresh thesis is adopted only if it passes the #125 description-quality check — a failing thesis could cap an Accelerating/Mainstream theme to Nascent and cost every member the +10 bonus.
+  - **What this does NOT fix, stated**: the ten-day loop's upstream cause — merge/retire passes killing whichever theme hosts the energy cluster, so its members go uncovered and pour into whatever narrow-named energy theme still exists. That is explicitly undetermined in the 08-26 analysis (§6) and untouched here. FIX 1 stops the eviction, not the churn that keeps re-creating the mismatch.
+  - Tests: `tests/test_theme_rename_on_mass_flag.py` (31), each mutation-proven.
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — a bad-description removal once permanently banned TSEM from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
@@ -229,6 +239,135 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 → `set_theme_birth_gate_mode('on')`.
 
 ## Change log
+
+### 2026-08-26 — a too-narrow theme NAME is renamed, not paid for by evicting the members (three fixes)
+
+Operator: *"fix it"* on all three findings in `docs/analysis/theme_mass_eviction_2026-08-26.md`.
+Themes touch no money, so these ship full rather than shadow-first. **No EP threshold, score
+weight or admission rule was touched** — `ep_rubric.SCORE_WEIGHTS` / `SHORTLIST_WEIGHTS` and
+`ep_detector` are byte-unchanged.
+
+**FIX 1 — rename on the mass-eviction signature (`#214`).** Full behaviour spec in the bullet
+at the top of this file (naming-path reuse, caller scoping, ordering, loop cap, identity,
+refusal paths). The short version: 17 of 24 removals on 08-26 were ONE theme whose name had
+gone narrower than its cluster, we deleted the members to fit the name, and the same energy
+block had already done this twice in the preceding ten days under two other names.
+
+- **Reversion-flag**: NEW (first mechanism that renames a live theme on a validation signal).
+  Revert = stop passing `mass_flag_out` from `_rescore_existing_theme`; the helpers
+  (`_apply_mass_flag_rename`, `_rename_theme_to_fit_cluster`, `_recently_renamed_on_mass_flag`,
+  `_name_is_live`) go inert and the strip returns exactly as before. The
+  `_canonicalize_theme_names` carve-out and the `_save_themes` counter fallback are both
+  no-ops when nothing carries `renamed_from`.
+- **Cost**: one bounded Sonnet call per firing (~3 per 10 days at the observed rate), against
+  a ~$4-6/day stack. It REPLACES no existing call — the validation call still happens.
+- **Direction / risk**: strictly member-PRESERVING. It can only keep members that today would
+  be evicted, never remove one. Consequence to know: a member kept in an Accelerating or
+  Mainstream theme keeps the R4 +10 in-theme bonus it would otherwise have lost, so the fix
+  can raise a future EP score relative to today's behaviour. That is the mechanism working as
+  designed (membership is the input; the weight is untouched), not a scoring change. Tonight's
+  actual case is inert on that axis — `Oil Refining & Marketing` is Nascent, and the bonus set
+  only reads Accelerating/Mainstream. The accepted cost is the opposite one: a theme that was
+  genuinely holding wrong members now gets a broader name instead of a cleanup, bounded by the
+  breadth rule in the naming prompt and by the loop cap.
+- **Verify-live** (next Mon/Wed/Fri engine run, 17:00 ET): the mismatch is already re-armed on
+  the 46-member cohort for **Fri 2026-08-28**. Expect a `theme_renamed_on_mass_flag` audit row
+  instead of a burst of `ticker_revalidated_out` + `validation_cooldown_triggered` rows; ZERO
+  new `mi_validation_cooldowns` rows for that theme; an explicit `stage='Retired'` tombstone
+  for the old name carrying `parent_theme` = the new name; the new name's `mi_themes` row
+  carrying the OLD name's `days_active` (NOT 1); and — the one that proves the carve-out held —
+  the new name still present the FOLLOWING run, with no `theme_renamed_for_continuity` row
+  moving it back.
+  ⚠ **A non-firing on Friday is NOT a failed fix.** The cohort is now 46 members and majority
+  UPSTREAM producers, so the signature needs **>=23 of 46** flagged. If validation instead flags
+  the 7 remaining refiners (7/46), `_is_mass_eviction` correctly does NOT fire, those 7 strip and
+  get cooldowns exactly as before, and nothing renames — the signature working as scoped, not the
+  mechanism failing. Read the `validation_mass_removal_name_suspect` row (or its absence) first.
+
+**FIX 2 — `theme_count_active` counted NAMES, not themes.** The metric was
+`COUNT(DISTINCT name)` over a 7-day window: it never took the latest row per name, so renamed,
+merged-away and retired themes kept counting for 7 more days. It now mirrors
+`db.get_active_themes` exactly (latest row per name FIRST, then drop Retired) — the same fix
+`get_active_themes` made for itself on 2026-06-09 (#214 RETIRED-GAP) and this metric never got.
+
+- **Measured on prod, read-only, before → after**: **2026-08-26: 166 → 104.** Also 08-25
+  163 → 106, 08-24 160 → 104, 08-21 159 → 114, 08-19 141 → 113, 08-17 130 → 94, 08-06 124 → 92.
+  The old metric read as CLIMBING through the week (159 → 166) while the real theme count FELL
+  114 → 104. It fired L2 on four of the last six nights on that artifact. The corrected metric
+  is also anchor-stable: across the 08-27 UTC rollover the old query moved 166 → 152 while the
+  corrected one stayed 104 both sides.
+- **The `CURRENT_DATE` (UTC) anchor is deliberately NOT changed.** `get_active_themes` uses the
+  same bare `CURRENT_DATE`; ET-anchoring only the metric would put it on a different day from
+  the reader it reports on. The 08-26 analysis noted the ET/UTC discrepancy — it is real, and it
+  belongs to `get_active_themes`, not here.
+- **Expect ONE L2 fire on the step down** (166 → 104 is a material level shift). The existing
+  machinery covers the persistence: `_persistent_l2_downgrade` + `_recent_window_stable`
+  (#352 fix-2) exist for exactly this class and downgrade a settled shift to L3 after the
+  transition night, so it does not become a nightly nag while the 30d baseline catches up.
+- The **drill query** was fixed the same way — the old one (`GROUP BY name, stage` over every
+  row) reproduced the metric's own bug, so an operator drilling into the alarm was handed the
+  artifact rather than the set.
+- **Reversion-flag**: REFINEMENT of an existing metric definition. Revert = restore the
+  `COUNT(DISTINCT name)` query.
+
+**FIX 3 — "rising" now looks at the shape, not just the two endpoints.** `_rs_rising` was
+`hist[0] > hist[-1]`. Second clause added: `hist[0] >= min(hist[1:-1])`. Behaviour spec in the
+member-pruning bullet above; `health_checks._rs_rising_mirror` moved in lockstep (byte-parity
+pinned).
+
+- **Evidence, $0** — read-only prod capture (one pass), `mi_themes` 2026-03-19..2026-08-26
+  (5,878 rows / 113 board-days) + `rs_composite` for every themed ticker;
+  replay `scripts/probes/_rs_rising_shape_replay_2026-08-26.py`, output
+  `_rs_rising_shape_replay_out.txt`. Scored the #368/#531 way: peak RS >= 50 within 10 sessions.
+- **BOTH DIRECTIONS, on 645 de-duplicated prune-candidate episodes** (one row per contiguous
+  candidate run, so one episode is not counted on every day it persists):
+  | | held | held recovery | stops holding | those recover at | newly holds |
+  |---|---|---|---|---|---|
+  | current (endpoint) | 238 | 52% | — | — | — |
+  | **shipped (interior floor)** | **226** | **53%** | **12** | **17%** | **0** |
+  The true-hold is intact (52% → 53%) and the names it stops holding are the collapse class
+  (17% recovery, vs the 52% base rate). **IREN + APLD 2026-07-22 — the verified ignitions this
+  hold was built for — are still held.** BLDR, BRUN (`[12.2, 70.7, 71.6, 66.4, 36.6, 5.3]`) and
+  MPWR are correctly rejected.
+- ⚠ **FOUR BROADER SHAPE TESTS WERE MEASURED AND REJECTED, and this is the finding worth
+  keeping**: OLS slope over the window, slope + above-median, recent-half vs older-half mean,
+  and today-vs-median-of-earlier. Every one of them BROKE the true-hold — the names each
+  stopped holding recovered at **41-58%**, at or above the held population's own base rate,
+  while the extra names they admitted recovered at **29-35%**, well below it. The obvious
+  "measure the trajectory properly" fix (OLS slope) is **net-harmful on this data**. Only a
+  clause that can *narrow* the hold and nothing else survives — which is why the shipped test is
+  a conjunction on top of the old one and provably admits nothing new.
+- **Honest scope**: five of the six utilities in the 08-26 analysis (SO, EXC, AEP, ATO, FE) are
+  genuinely higher than they were over a 6-session window and **still read rising** after this
+  fix. The analysis's own gloss on them — "DOWN over the last 3 sessions" — is a shorter,
+  different question. This fix targets the collapse class the analysis proved (BLDR); it does
+  not, and should not, reject chop that is really up.
+- **EP exposure, counted not estimated**: a stricter hold prunes more, and a pruned member of an
+  Accelerating/Mainstream theme loses the +10 bonus. Over 1,191 candidate-day evaluations across
+  113 board-days, exactly **2** newly-pruned members sat in an Accelerating or Mainstream theme
+  (JOBY 2026-03-20, Accelerating — went on to die; MPWR 2026-08-20, Mainstream, no forward
+  window yet). Bounded and tiny; stated so the operator can rule on it rather than discover it.
+- **Classification**: BUG FIX inside an already-signed criterion, not a criterion change — the
+  SSoT states the intent as "a member whose RS is RISING over the window", and `hist[0] >
+  hist[-1]` is a defective implementation of that sentence (the same constant was already
+  misread once, on 2026-08-04). The N>=10 both-directions backtest is attached anyway because it
+  was free.
+- **Reversion-flag**: REFINEMENT of #368's F3 rising-recovery hold. Revert = drop the second
+  clause in `_rs_rising` AND in `_rs_rising_mirror` (the parity test forces both).
+
+**Deploy scope: `both`.** `shared/output_ceilings.py` + `shared/llm_thinking.py` gained the
+`theme_rename` caller, and `shared/` is owned by both services per the CLAUDE.md ownership map —
+a `market-agent`-only deploy would ship the theme_engine call site without its ceiling entry and
+`max_tokens_for` raises `KeyError` by design on an unregistered caller.
+
+**Tests**: `tests/test_theme_rename_on_mass_flag.py` (31), `tests/test_rs_rising_shape.py` (9),
+`tests/test_theme_count_active_metric.py` (8), plus the BLDR/BRUN/SO samples added to
+`tests/test_theme_quality_check.py`'s mirror-parity pin and the `theme_rename` caller added to
+`tests/test_llm_thinking.py`'s two classification pins. Each fix mutation-proven separately
+(FIX 1 in six places: validator branch, canonicalize carve-out, loop cap, counter carry-forward,
+tombstone successor, and the `renamed_from` key on a rescore return branch — the #471 lesson,
+since pinning the fallback line does not prove the key REACHES it; verified by trace that the
+only rebuilding transform on the rescore->save path, `_strip_sector_outliers`, spreads). Suite: 6394 passed / 7 skipped (baseline 6346).
 
 ### 2026-08-18 — discovery batch cap tightened 37→22 (headroom, not a re-raise)
 

@@ -231,11 +231,52 @@ async def _today_high_entry_rate(conn) -> float | None:
 
 
 async def _today_active_themes(conn) -> float:
+    """How many themes are ACTIVE — mirrors `db.get_active_themes(stale_after_days=7)`,
+    the reader the theme engine and the EP scan actually use.
+
+    ⚠ 2026-08-26 — this counted NAMES, not themes. The old query was
+    `COUNT(DISTINCT name) ... WHERE stage != 'Retired' AND theme_date >= CURRENT_DATE - 7`,
+    which counts every distinct name seen ANYWHERE in the window: it never takes the
+    latest row per name, so a theme that was renamed, merged away or retired keeps being
+    counted for 7 more days off its older non-Retired rows. That is the exact bug
+    `get_active_themes` fixed for itself on 2026-06-09 (the #214 RETIRED-GAP fix — see its
+    docstring); this metric never got the same fix, so it drifted apart from the thing it
+    claims to measure and the L2 alarm fired on name CHURN.
+
+    Measured on prod, read-only (2026-08-26): the metric read **166** while the live
+    active set was **104** — a 62-name gap that is exactly the merge/retire churn (20
+    themes auto-retired 08-20, 13 on 08-21, 19 on 08-24, 7 on 08-25, 8 on 08-26). The
+    metric had also been reported as CLIMBING (159 → 166 over the week) while the real
+    theme count FELL 114 → 104. `theme_count_active` fired L2 on four of the last six
+    nights on that artifact. The gap gets structurally worse once deliberate renames exist
+    (the #214 rename-instead-of-strip response shipped the same day), because each rename
+    adds a name without adding a theme.
+
+    Now: latest row per name inside the window FIRST, then drop names whose latest row is
+    Retired — byte-for-byte the `get_active_themes` shape.
+
+    The `CURRENT_DATE` anchor is deliberately left as-is (UTC, per the container).
+    `get_active_themes` uses the same bare `CURRENT_DATE`, and this metric's job is to
+    report what that reader sees; ET-anchoring only this one query would put the metric
+    and the engine on different days. Worth knowing: the corrected metric is far more
+    anchor-stable anyway — across the 2026-08-27 UTC rollover the OLD query moved 166 → 152
+    while the corrected one stayed at 104 both sides.
+
+    ⚠ Expect ONE L2 fire on the step down (166 → 104 is a material level shift). The
+    existing machinery handles the persistence: `_persistent_l2_downgrade` +
+    `_recent_window_stable` (#352 fix-2) exist for exactly this class and downgrade a
+    settled level shift to L3 after the transition night, so this does not become a nightly
+    nag while the 30d baseline catches up.
+    """
     row = await conn.fetchrow(
         """
-        SELECT COUNT(DISTINCT name) AS n FROM mi_themes
-        WHERE stage != 'Retired'
-          AND theme_date >= CURRENT_DATE - INTERVAL '7 days'
+        SELECT COUNT(*) AS n FROM (
+            SELECT DISTINCT ON (name) name, stage
+            FROM mi_themes
+            WHERE theme_date >= CURRENT_DATE - INTERVAL '7 days'
+            ORDER BY name, theme_date DESC
+        ) latest
+        WHERE latest.stage != 'Retired'
         """
     )
     return float(row["n"] or 0)
@@ -619,8 +660,16 @@ _NIGHTLY_METRICS: list[MetricSpec] = [
     ),
     MetricSpec(
         "theme_count_active", _today_active_themes,
-        "SELECT name, MAX(theme_date), stage FROM mi_themes "
-        "WHERE stage != 'Retired' GROUP BY name, stage ORDER BY MAX(theme_date) DESC;",
+        # Same shape as the metric + get_active_themes: latest row per name inside the
+        # 7d window FIRST, then drop the Retired ones. The old drill (GROUP BY name,
+        # stage over every row) listed a theme once per stage it ever wore and showed
+        # retired themes as live — it reproduced the metric's own bug, so an operator
+        # drilling into a theme_count_active alarm was handed the artifact, not the set.
+        "SELECT name, theme_date, stage, cardinality(tickers) AS n FROM ("
+        "  SELECT DISTINCT ON (name) name, theme_date, stage, tickers FROM mi_themes "
+        "  WHERE theme_date >= CURRENT_DATE - INTERVAL '7 days' "
+        "  ORDER BY name, theme_date DESC) latest "
+        "WHERE stage != 'Retired' ORDER BY theme_date DESC, name;",
         ["agents/market_intelligence/db.py::get_active_themes"],
     ),
     MetricSpec(

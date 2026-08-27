@@ -1854,17 +1854,27 @@ def _mass_evicted_patterns(theme_name: str) -> tuple[str, str]:
     return tripwire, removal
 
 
-async def _name_recently_mass_evicted(theme_name: str, days: int = 30) -> bool:
-    """#214 inheritance guard: True when this theme name carries a recent mass-eviction
-    signature — either the validation_mass_removal_name_suspect tripwire (forward, shipped
-    2026-06-09) or >=3 ticker_revalidated_out rows on a single day (pre-tripwire history,
-    e.g. the 12-major Pure-Play eviction 2026-06-08). Fail-open: errors return False so a
-    DB hiccup never blocks inheritance."""
+async def _name_recently_mass_evicted(theme_name: str, days: int = 30, conn=None) -> bool:
+    """#214 guard: True when this theme name carries a recent mass-eviction signature —
+    either the validation_mass_removal_name_suspect tripwire (forward, shipped 2026-06-09)
+    or >=3 ticker_revalidated_out rows on a single day (pre-tripwire history, e.g. the
+    12-major Pure-Play eviction 2026-06-08). Fail-open: errors return False so a DB hiccup
+    never blocks inheritance.
+
+    ⚠ Note for the 2026-08-26 rename path: under rename-instead-of-strip NO
+    `ticker_revalidated_out` rows are written for that theme, so the SECOND pattern stops
+    appearing. The tripwire emit in `_validate_theme_membership` is therefore load-bearing
+    for this guard and must keep firing on the signature — it was deliberately left in
+    place alongside the rename, not replaced by it.
+
+    Two call sites: name INHERITANCE (never adopt a mass-evicted name for a new theme) and
+    `_canonicalize_theme_names` (never canonicalize a live theme BACK onto one). `conn` lets
+    the latter reuse the connection it already holds rather than nesting a pool acquire.
+    """
     tripwire_pat, removal_pat = _mass_evicted_patterns(theme_name)
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
+
+    async def _query(c):
+        return await c.fetchrow(
                 """
                 SELECT 1 WHERE EXISTS (
                     SELECT 1 FROM mi_audit_log
@@ -1881,10 +1891,16 @@ async def _name_recently_mass_evicted(theme_name: str, days: int = 30) -> bool:
                 )
                 """,
                 tripwire_pat, removal_pat, str(days),
-            )
-            return row is not None
+        )
+
+    try:
+        if conn is not None:
+            return await _query(conn) is not None
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            return await _query(c) is not None
     except Exception as e:
-        logger.warning(f"#214 inheritance guard lookup failed for '{theme_name}' — failing open: {e}")
+        logger.warning(f"#214 mass-eviction guard lookup failed for '{theme_name}' — failing open: {e}")
         return False
 
 
@@ -1907,6 +1923,20 @@ async def _canonicalize_theme_names(
     - If multiple prior matches, use the EARLIEST (canonical original).
     - Skip if prior name already exists in today's pending save list
       (Sonnet split today; not a rename case).
+    - ⚠ Skip a theme this run DELIBERATELY renamed off the #214 mass-eviction
+      signature, and skip any donor name that carries that signature
+      (2026-08-26). Without this carve-out the two mechanisms fight and
+      canonicalize always wins: a #214 rename keeps the ticker set UNCHANGED
+      (that is the whole point — the members are not the defect), and an
+      unchanged ticker set is precisely this function's trigger, so it would
+      rename the theme straight back to the too-narrow name the same night and
+      log it as ordinary `theme_renamed_for_continuity` churn. Two guards,
+      because one run is not enough: the in-memory `renamed_from` flag protects
+      TODAY, and `_name_recently_mass_evicted` on the donor protects every
+      later run (the old name's rows sit in this function's 14d window for two
+      more weeks). The durable guard is the same rule, and the same helper, the
+      #214 name-INHERITANCE guard already applies for the same reason — a name
+      that was mass-evicted must not be re-adopted.
 
     Returns count of themes renamed. Emits one audit event with the
     full rename map for traceability.
@@ -1956,6 +1986,9 @@ async def _canonicalize_theme_names(
     renames: list[tuple[str, str, str]] = []  # (old_today_name, new_canonical_name, prior_date)
     for tk, idx in today_sets.items():
         current_name = themes[idx]["name"]
+        if themes[idx].get("renamed_from"):
+            # #214: renamed deliberately this run — never canonicalize it back.
+            continue
         priors = by_set.get(tk)
         if not priors:
             # Look for ticker-set-evolution gap: did any prior name's latest
@@ -1983,6 +2016,21 @@ async def _canonicalize_theme_names(
             continue  # same name already, no rename
         if prior_name in today_names:
             continue  # already a theme today with that name; don't collide
+        if await _name_recently_mass_evicted(prior_name, conn=conn):
+            # #214: the donor name carries the mass-eviction signature — adopting it
+            # resurrects the name-narrower-than-cluster defect (and would undo a
+            # deliberate rename from an earlier run, whose old rows are still inside
+            # this function's 14d window).
+            logger.info(
+                f"[canonicalize] BLOCKED '{current_name}' <- '{prior_name}': donor name "
+                f"was recently mass-evicted (#214) — keeping the current name")
+            await log_audit_event(
+                "theme_canonicalize_blocked_mass_evicted",
+                summary=(f"Kept '{current_name}' — canonicalization to mass-evicted "
+                         f"'{prior_name}' blocked (#214 name-narrower-than-cluster)"),
+                detail=f"tickers={sorted(tk)} prior_date={prior_date}",
+            )
+            continue
         renames.append((current_name, prior_name, prior_date))
         themes[idx]["name"] = prior_name
         today_names.discard(current_name)
@@ -2025,13 +2073,21 @@ async def _save_themes(themes: list[dict]) -> None:
         await _canonicalize_theme_names(conn, themes, today)
 
         # Fetch prior conviction counters for the (possibly renamed) theme names.
+        # #214 (2026-08-26): a theme deliberately renamed this run has NO prior row under
+        # its new name, so its old name is fetched too and used as the fallback below —
+        # otherwise every mass-flag rename would restart the theme at days_active=1 /
+        # consecutive_accelerating=0, which is not cosmetic: `consecutive_accelerating`
+        # and `days_active` feed the stage machinery, and a theme knocked back to Nascent
+        # loses the R4 in-theme bonus for every one of its members.
+        _counter_names = {t["name"] for t in themes}
+        _counter_names |= {t["renamed_from"] for t in themes if t.get("renamed_from")}
         prior_rows = await conn.fetch("""
             SELECT DISTINCT ON (name)
                 name, days_active, consecutive_accelerating, stage
             FROM mi_themes
             WHERE name = ANY($1) AND theme_date < $2
             ORDER BY name, theme_date DESC
-        """, [t["name"] for t in themes], today)
+        """, sorted(_counter_names), today)
         prior_map = {r["name"]: dict(r) for r in prior_rows}
 
         # Safety net: themes with identical ticker sets are by definition the
@@ -2077,6 +2133,8 @@ async def _save_themes(themes: list[dict]) -> None:
         # Upsert each theme
         for t in themes:
             prior = prior_map.get(t["name"])
+            if prior is None and t.get("renamed_from"):
+                prior = prior_map.get(t["renamed_from"])   # #214 rename — carry the lineage
             if prior is None:
                 days_active = 1
                 consec_acc = 1 if t["stage"] == "Accelerating" else 0
@@ -2625,6 +2683,7 @@ async def _validate_theme_membership(
     protected: set[tuple[str, str]] | None = None,
     dissolve_flagged_pair: bool = False,
     thesis: str | None = None,
+    mass_flag_out: dict | None = None,
 ) -> list[str]:
     """
     Ask Claude (THEME_MODEL = Sonnet) whether each stock's description is consistent
@@ -2640,6 +2699,26 @@ async def _validate_theme_membership(
     "Bitcoin-miner-to-AI infrastructure" — dissolving the theme and fencing both
     names out for 14d. Garbage theses (_is_garbage) are omitted so a bad
     Perplexity/Haiku description can never shield bad members.
+
+    mass_flag_out (#214 rename-instead-of-strip, 2026-08-26): an out-parameter. When a dict
+    is passed AND the flagged set hits `_is_mass_eviction` (>=3 flagged AND >=50% of the
+    membership), the removals are SKIPPED — no member is dropped, no 14-day cooldown is
+    written — and the dict is populated with {"flagged": [...], "member_count": N}. The
+    CALLER then renames the theme. This function deliberately does not rename: it is a
+    validator, and the rename needs the caller's run context (loop cap, the theme dict whose
+    lineage must be carried, the changelog the engine reads back). Only
+    `_rescore_existing_theme` passes it — see the four-caller note below. Passing None (the
+    default) is byte-identical to the pre-2026-08-26 behavior.
+
+    ⚠ Scoped to the RESCORE caller on purpose. The other three callers keep stripping:
+      * `_validate_new_themes_at_birth` (#266) — a theme being born has no lineage to
+        preserve and its members are a proposal, not a cohort with history; the validator's
+        own min-survivor guard already keeps small/born-bad themes intact.
+      * post-assignment validation — the strip is rejecting stocks the assignment LLM just
+        added. The assignment was wrong, not the theme's name; renaming a stable theme
+        because one bad assignment was rejected would be backwards.
+      * the Arm-B post-merge call — that name is the merge machinery's own product;
+        renaming it there fights the pass that just chose it.
 
     dissolve_flagged_pair (ADR 0025 Arm A, #274 — callers pass merge_arm_enabled()):
     when True and the theme has exactly 2 members, a flagged removal PROCEEDS past the
@@ -2811,6 +2890,23 @@ async def _validate_theme_membership(
                     )
             except Exception as e:
                 logger.warning(f"Operator-protection shield lookup failed for '{theme_name}': {e}")
+
+        # ── #214 RENAME INSTEAD OF STRIP (2026-08-26) ───────────────────────
+        # Judged AFTER the operator-protection shield on purpose: the shield is the
+        # operator ruling that those members DO belong, so a set that only reaches the
+        # signature by counting shielded names is not a mass eviction.
+        # Ordered BEFORE the min-survivor guard on purpose too: the guard's own escape
+        # ("would drop below 2 survivors -> skip the removals") is what silently swallowed
+        # the 42/42 flag on 'Independent Oil Refiners' 08-19 — zero cooldown rows written,
+        # theme retired the next day anyway, nothing renamed and nothing learned. That
+        # shape is the loudest possible name-is-wrong signal and must reach the rename.
+        if mass_flag_out is not None and _is_mass_eviction(len(to_remove), len(tickers)):
+            mass_flag_out["flagged"] = sorted(to_remove)
+            mass_flag_out["member_count"] = len(tickers)
+            logger.info(
+                f"Theme '{theme_name}': {len(to_remove)}/{len(tickers)} flagged — "
+                f"#214 mass-eviction signature; removals SKIPPED, caller renames instead")
+            return tickers
 
         # Never remove so many that the theme drops below minimum — EXCEPT the
         # ADR 0025 Arm A flagged-pair case (dissolve_flagged_pair=True + exactly
@@ -2984,15 +3080,387 @@ def _check_description_quality(
     return True, ""
 
 
+# ── #214 — a too-narrow NAME is renamed, not paid for by evicting the members ──
+#
+# 2026-08-26. The tripwire below has been correctly identifying this failure since
+# 2026-06-09 and we kept responding to it the wrong way round: on the mass-eviction
+# signature we DELETED the members so they would fit the name. The name is the defect —
+# the removals are correct GIVEN the name — so the response is to rename the theme to
+# describe the cluster it actually holds.
+#
+# Evidence it recurs and that stripping does not end it (docs/analysis/
+# theme_mass_eviction_2026-08-26.md): the SAME energy block tripped this signature three
+# times in ten days under three different theme names — 'Oilfield Equipment & Contract
+# Drilling Services' 9/16 on 08-17, 'Independent Oil Refiners' 42/42 on 08-19,
+# 'Oil Refining & Marketing' 17/24 on 08-26 (17 regulated utilities and midstream
+# operators, none of which refines or markets petroleum). After the 08-26 strip the theme
+# REFILLED to 46 members, mostly upstream producers, i.e. re-armed to strip again.
+MASS_EVICTION_MIN_LEAVERS = 3
+
+# LOOP CAP. A theme minted by one of these renames may NOT be renamed again for this many
+# days — rename -> still mismatched -> rename again is the loop this guard exists to stop.
+# 14 days is not a new number: it is the window `_canonicalize_theme_names` (#59) already
+# uses for the analogous name-stability decision, and the same 14 days as the validation
+# cooldown a strip would have written. Judgement call, stated: on cap exhaustion the theme
+# is NEITHER renamed NOR stripped — stripping is the documented-wrong response, so falling
+# back to it on the cap would reintroduce exactly the defect. The members stay, the tripwire
+# still fires, and a `theme_rename_cap_reached` row asks the operator to look.
+RENAME_LOOP_CAP_DAYS = 14
+
+_RENAME_SUMMARY_FMT = (
+    "'{old}' renamed to '{new}' — validation flagged {n_flagged}/{n_members} members, "
+    "name was narrower than the cluster (#214)"
+)
+
+
+def _is_mass_eviction(n_flagged: int, member_count: int) -> bool:
+    """The #214 mass-eviction signature: >=3 flagged AND >=50% of the membership.
+
+    Byte-identical to `health_checks._is_mass_eviction` (pinned by
+    tests/test_theme_rename_on_mass_flag.py) — that check EXCLUDES this class from the
+    prune-quality signature for the same reason this module now renames on it: it is a
+    validation strip driven by a name defect, not a per-member RS decision.
+
+    Deliberately NOT the same predicate as the audit tripwire below it, which fires on
+    `>= max(3, len(tickers) // 2)`. Floor division makes the tripwire slightly LOOSER on
+    odd membership counts (3 of 7 trips it; 3*2 >= 7 is false). The tripwire is audit-only
+    and stays exactly as it was — a rename mutates a live theme, so it takes the strict
+    >=50% reading of the signature, never the looser one.
+    """
+    return n_flagged >= MASS_EVICTION_MIN_LEAVERS and n_flagged * 2 >= member_count
+
+
+def _rename_summary_pattern(new_name: str) -> str:
+    """LIKE pattern matching a rename INTO `new_name`, built from the shared summary
+    format so producer and matcher cannot drift (the `_mass_evicted_patterns` idiom)."""
+    return _RENAME_SUMMARY_FMT.format(
+        old="%", new=new_name, n_flagged="%", n_members="%")
+
+
+async def _recently_renamed_on_mass_flag(
+    theme_name: str, days: int = RENAME_LOOP_CAP_DAYS, conn=None
+) -> bool:
+    """LOOP CAP: True when `theme_name` is itself the PRODUCT of a mass-flag rename inside
+    the window — i.e. renaming it again would be the second hop of a rename loop.
+
+    Keyed on the NEW name, which is what makes this a chain check rather than a per-name
+    rate limit: A -> B on day 0 means B cannot become C until day 14, no matter how the
+    cluster drifts underneath it. Fails CLOSED (returns True, no rename) on a DB error —
+    unlike the #214 inheritance guard, which fails open. The asymmetry is deliberate: an
+    inheritance guard failing open costs a bad name, this failing open costs an unbounded
+    rename loop, and a skipped rename is recoverable on the next run.
+    """
+    pattern = _rename_summary_pattern(theme_name)
+    try:
+        async def _run(c):
+            return await c.fetchrow(
+                """
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'theme_renamed_on_mass_flag'
+                  AND summary LIKE $1
+                  AND created_at > NOW() - ($2 || ' days')::interval
+                LIMIT 1
+                """,
+                pattern, str(days),
+            )
+        if conn is not None:
+            return await _run(conn) is not None
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            return await _run(c) is not None
+    except Exception as e:
+        logger.warning(
+            f"#214 rename loop-cap lookup failed for '{theme_name}' — failing CLOSED "
+            f"(no rename this run): {e}")
+        return True
+
+
+async def _rename_theme_to_fit_cluster(
+    theme_name: str,
+    tickers: list[str],
+    thesis: str | None,
+    flagged: list[str],
+) -> tuple[str, str] | None:
+    """Name the cluster this theme ACTUALLY holds. Returns (new_name, new_thesis) or None.
+
+    REUSES THE EXISTING NAMING PATH — `_THEME_DISCOVERY_TOOL` (`report_themes`), the same
+    schema, the same THEME_MODEL and the same #214 breadth contract on its `name` field
+    ("every listed ticker must individually fit this name — if a specific label excludes
+    some members, broaden the name or drop those members"). That contract is the whole
+    fix, so it must be the SAME string discovery uses, not a second copy that can drift.
+    Only the prompt around it is new: one existing cohort to name instead of a pool to
+    cluster.
+
+    Single forced tool call (`tool_choice=any`, thinking DISABLED) — no advisor branch and
+    no retry loop, so the cost is exactly one bounded Sonnet call per firing (~3 firings in
+    the 10 days this fix was written for). Any failure returns None and the caller leaves
+    the theme untouched — never a fallback to stripping.
+    """
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    stock_lines = "\n".join(
+        f"  {tk}: {(TICKER_DESC.get(tk) or '(use your knowledge of this ticker)')[:120]}"
+        for tk in sorted(tickers)
+    )
+    thesis_line = ""
+    if thesis and not _is_garbage(thesis):
+        thesis_line = f"Its stored thesis: {thesis[:300]}\n"
+
+    prompt = f"""A live theme's NAME has become narrower than the group of stocks it holds.
+Membership validation just judged {len(flagged)} of its {len(tickers)} members as not
+belonging — and validation is RIGHT given the name. The members are not the defect. The
+NAME is. Your job is to rename the theme so it describes the cluster it actually holds.
+
+Current (too narrow) name: {theme_name}
+{thesis_line}Members validation flagged as not fitting that name: {', '.join(sorted(flagged))}
+
+ALL current members:
+{stock_lines}
+
+RULES:
+- Report EXACTLY ONE theme, containing EVERY ticker listed above. Do not drop members and
+  do not split the group — dropping members to fit a label is the mistake being corrected.
+- The new name must fit every one of those tickers individually. If the group genuinely
+  spans several sub-industries, name the shared driver at the level that covers them all
+  (e.g. a group of refiners, regulated utilities and midstream operators is an ENERGY
+  INFRASTRUCTURE group, not a refining group).
+- Do NOT go so broad that the name becomes a sector label ("Energy", "Technology"). Name
+  the specific thing these companies have in common.
+- The thesis must describe what actually drives THIS group.
+
+Do NOT write any free text before the tool call — all reasoning goes in
+`analysis_scratchpad`, kept to one terse line."""
+
+    try:
+        client = _get_anthropic_client()
+        async with _VALIDATION_SEMAPHORE:
+            resp = await client.messages.create(
+                model=THEME_MODEL,
+                max_tokens=max_tokens_for("theme_rename"),
+                thinking=llm_thinking.DISABLED,
+                tools=[_THEME_DISCOVERY_TOOL],
+                tool_choice={"type": "any"},
+                messages=[{"role": "user", "content": prompt}],
+            )
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_rename", response=resp)
+
+        if is_truncated(resp):
+            logger.warning(
+                f"[#214 rename] '{theme_name}': response TRUNCATED — no rename this run "
+                f"({_TRUNCATION_ALARM_NOTE})")
+            return None
+
+        blocks = [b for b in resp.content if b.type == "tool_use" and b.name == "report_themes"]
+        if not blocks:
+            logger.warning(f"[#214 rename] '{theme_name}': no report_themes tool call")
+            return None
+        proposed = blocks[0].input.get("themes") or []
+        if not proposed:
+            logger.info(f"[#214 rename] '{theme_name}': model proposed no name")
+            return None
+
+        new_name = (proposed[0].get("name") or "").strip()
+        new_thesis = (proposed[0].get("thesis") or "").strip()
+        if not new_name or len(new_name) > 120:
+            logger.warning(f"[#214 rename] '{theme_name}': unusable name {new_name!r}")
+            return None
+        return new_name, new_thesis
+    except Exception as e:
+        logger.warning(f"[#214 rename] '{theme_name}': naming call failed — {e}")
+        return None
+
+
+async def _name_is_live(theme_name: str, days: int = 7) -> bool:
+    """True when a non-Retired `mi_themes` row already carries this name inside the
+    `get_active_themes` liveness horizon. A rename must never land on a name that is
+    already a live theme — `mi_themes` is keyed (theme_date, name), so two themes wearing
+    one name on the same day collapse into a single upserted row and one of them silently
+    loses its members. Fails CLOSED (True = don't take the name)."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT 1 FROM (
+                    SELECT DISTINCT ON (name) name, stage FROM mi_themes
+                    WHERE name = $1 AND theme_date >= CURRENT_DATE - ($2 || ' days')::INTERVAL
+                    ORDER BY name, theme_date DESC
+                ) latest WHERE stage != 'Retired'
+                """,
+                theme_name, str(days),
+            )
+            return row is not None
+    except Exception as e:
+        logger.warning(f"[#214 rename] live-name check failed for '{theme_name}' — "
+                       f"failing CLOSED (name not taken): {e}")
+        return True
+
+
+async def _apply_mass_flag_rename(
+    name: str,
+    tickers: list[str],
+    theme: dict,
+    mass_flag: dict,
+    changelog: list[dict],
+) -> str:
+    """The #214 response: rename the theme to fit its cluster. Returns the name to use.
+
+    Returns `name` UNCHANGED on every failure path — the members are already kept (the
+    validator skipped the removals before calling here), so "no rename" degrades to "a
+    theme with a stale name and all its members", never to a strip.
+
+    IDENTITY — what a rename does and does not move (this is the part that makes a rename
+    safe rather than a new theme):
+      * `mi_themes` is keyed (theme_date, name), so today's row is written under the NEW
+        name. Yesterday's rows stay under the old one. Continuity is therefore carried
+        explicitly rather than assumed:
+        - `days_active` / `consecutive_accelerating` — `_save_themes` looks these up by
+          name and would reset them, so the returned theme dict carries `renamed_from` and
+          the save path reads the OLD name's counters. Stage carry-forward matters beyond
+          tidiness: a rename that reset an Accelerating/Mainstream theme to Nascent would
+          drop every member's R4 in-theme bonus, which IS a change to what gets alerted.
+        - stage / age / history — `_get_theme_history` and `_count_consecutive_fading`
+          already fall back to ticker-overlap (Jaccard >= 0.4) when a name is not found,
+          and a rename leaves the ticker set untouched, so they resolve at Jaccard 1.0.
+        - the old name gets an explicit Retired tombstone from the engine-drop pass in
+          `run_theme_engine`, with `parent_theme` = the new name, so `get_active_themes`
+          stops counting it instead of letting it linger for 7 more days as a duplicate of
+          the same cohort under two names.
+        - `_canonicalize_theme_names` is carved out — see its own docstring; without that
+          carve-out it would rename the theme straight back (unchanged ticker set is
+          precisely its trigger) and the fix would no-op in prod while passing tests.
+        - `mi_theme_exclusions` matches theme names fuzzily (`_themes_are_related`), so
+          operator bans survive the rename. Nothing is ever written to that table here.
+        - `mi_theme_ecosystems` re-maps on the next save (`_map_ecosystems_nonfatal` fills
+          any theme lacking a row).
+      * `mi_validation_cooldowns` rows are keyed (ticker, theme-name). None are written on
+        this path — that is the whole point — so no member is fenced out of the renamed
+        theme. Old cooldowns under the old name simply expire.
+    """
+    flagged = mass_flag.get("flagged") or []
+    n_members = mass_flag.get("member_count") or len(tickers)
+
+    # LOOP CAP first — before spending the naming call.
+    if await _recently_renamed_on_mass_flag(name):
+        logger.info(f"[#214 rename] '{name}': loop cap — renamed within "
+                    f"{RENAME_LOOP_CAP_DAYS}d already; not renaming, not stripping")
+        await log_audit_event(
+            "theme_rename_cap_reached",
+            summary=(f"'{name}': flagged {len(flagged)}/{n_members} again but renamed "
+                     f"within {RENAME_LOOP_CAP_DAYS}d — members kept, no rename"),
+            detail=(f"Flagged: {', '.join(flagged)}\n"
+                    f"Loop cap: a theme minted by a #214 rename is not renamed again for "
+                    f"{RENAME_LOOP_CAP_DAYS} days. Neither renamed nor stripped — the "
+                    f"cluster underneath this name needs an operator look."),
+        )
+        changelog.append({"type": "theme_rename_cap_reached", "theme": name,
+                          "flagged": flagged})
+        return name
+
+    proposal = await _rename_theme_to_fit_cluster(
+        name, tickers, theme.get("description"), flagged)
+    if not proposal:
+        return name
+    new_name, new_thesis = proposal
+
+    if new_name == name:
+        logger.info(f"[#214 rename] '{name}': model returned the same name — no rename")
+        return name
+    if await _name_is_live(new_name):
+        logger.warning(f"[#214 rename] '{name}' -> '{new_name}' REFUSED: that name is "
+                       f"already a live theme (would collide on (theme_date, name))")
+        return name
+    if await _name_recently_mass_evicted(new_name):
+        # The #214 inheritance guard's own rule, second call site: never move a cohort
+        # ONTO a name that itself carries the mass-eviction signature.
+        logger.warning(f"[#214 rename] '{name}' -> '{new_name}' REFUSED: target name was "
+                       f"itself recently mass-evicted (#214)")
+        return name
+
+    # Adopt the fresh thesis ONLY if it would pass the description-quality check
+    # (#125). That check caps an Accelerating/Mainstream theme to Nascent when the
+    # description names no member — and a stage cap costs every member the R4 +10
+    # in-theme bonus, i.e. it WOULD change EP scores. In the normal path this thesis is
+    # never the one that ships (validation runs Mon/Wed/Fri, which is also a description
+    # refresh day, so `_news_check` regenerates it under the new name); this guard covers
+    # the degraded path where Perplexity errors and `existing_desc` is used instead.
+    # Failing the check keeps the prior description for one run — cosmetic and
+    # self-healing on the next refresh — rather than risking a stage downgrade.
+    if new_thesis:
+        _ok, _why = _check_description_quality(new_name, list(tickers), new_thesis)
+        if _ok:
+            theme["description"] = new_thesis
+        else:
+            logger.info(f"[#214 rename] '{new_name}': fresh thesis not adopted "
+                        f"({_why}) — keeping prior description until the next refresh")
+    changelog.append({
+        "type": "theme_renamed_on_mass_flag",
+        "theme": new_name, "old_name": name, "new_name": new_name,
+        "flagged": flagged, "n_members": n_members,
+    })
+    await log_audit_event(
+        "theme_renamed_on_mass_flag",
+        summary=_RENAME_SUMMARY_FMT.format(
+            old=name, new=new_name, n_flagged=len(flagged), n_members=n_members),
+        detail=(f"Flagged (KEPT, not removed): {', '.join(flagged)}\n"
+                f"Members: {', '.join(sorted(tickers))}\n"
+                f"New thesis: {new_thesis}"),
+    )
+    logger.info(f"[#214 rename] '{name}' -> '{new_name}' "
+                f"({len(flagged)}/{n_members} flagged, 0 removed, 0 cooldowns)")
+    return new_name
+
+
 def _rs_rising(hist: list[float]) -> bool:
-    """True when a member's recent RS trajectory is RISING (newest > oldest).
+    """True when a member's recent RS trajectory is RISING.
 
     `hist` is newest-first (get_recent_rs_batch ordering). Requires
     PRUNE_HOLD_MIN_POINTS points — short history fails closed (not rising), so
     pruning behaves exactly as before for data-poor names. Strict `>`: a flat
     sub-floor name is not an ignition and still prunes on any down-wobble.
+
+    TWO conditions, both required (2026-08-26 — the second one is new):
+
+    1. `hist[0] > hist[-1]` — newest above oldest, the original test.
+    2. `hist[0] >= min(hist[1:-1])` — today is not below EVERY intermediate
+       reading. Condition 1 alone compares two ENDPOINTS and is blind to
+       everything between them, so a collapse whose OLDEST reading happens to
+       be a one-day trough scores as "rising": BLDR on 2026-08-25 read
+       `[10.0, 13.8, 25.7, 29.4, 29.2, 5.9]` — a 29 → 10 collapse — and was
+       held/flagged as rising purely because 10.0 > 5.9. When today sits below
+       every reading except the single oldest one, the entire "rise" rests on
+       that one anchor point and is an artifact of where the window happened to
+       start. The oldest point is the thing being compared AGAINST, so it is
+       deliberately excluded from the floor (`hist[1:-1]`, never `hist[1:]`) —
+       including it would make the clause vacuous.
+
+    ⚠ NARROW BY CONSTRUCTION, and that is the evidenced choice — condition 2 can
+    only ever REMOVE a hold, never add one, so it cannot admit a name the old
+    test pruned. Four broader "shape" tests (OLS slope over the window, slope +
+    above-median, recent-half vs older-half mean, today vs the median of earlier
+    readings) were measured on the SAME data and every one of them BROKE the
+    true-hold: the names each stopped holding recovered at 41-58%, i.e. at or
+    above the held population's own base rate, while the extra names they
+    admitted recovered at 29-35%, well below it. Only this clause separates
+    cleanly. Evidence (prod read-only capture, $0, 2026-03-19..2026-08-26; 645
+    de-duplicated prune-candidate episodes):
+      * held population's 10-session recovery (peak RS >= 50): 52% before,
+        53% after — the hold is not weakened.
+      * the 12 episodes it stops holding recover at 17% — the collapse class.
+      * 0 episodes newly held.
+      * IREN + APLD 2026-07-22, the verified ignition pair this hold was built
+        for (#368), are STILL held; BLDR above is correctly rejected.
+    Replay: `scripts/probes/_rs_rising_shape_replay_2026-08-26.py`.
+
+    ⚠ `health_checks._rs_rising_mirror` mirrors this function and is pinned to it
+    by a byte-parity test — change both together or the nightly quality check
+    starts flagging prunes the engine never made.
     """
-    return len(hist) >= PRUNE_HOLD_MIN_POINTS and hist[0] > hist[-1]
+    if len(hist) < PRUNE_HOLD_MIN_POINTS or hist[0] <= hist[-1]:
+        return False
+    interior = hist[1:-1]
+    return not interior or hist[0] >= min(interior)
 
 
 async def _rescore_existing_theme(
@@ -3010,6 +3478,10 @@ async def _rescore_existing_theme(
     name = theme["name"]
     tickers = list(theme.get("tickers") or [])
     changelog: list[dict] = []
+    # #214 (2026-08-26): set when the mass-eviction signature renames this theme mid-run.
+    # Carried onto the returned dict so `_save_themes` reads the OLD name's continuity
+    # counters instead of restarting the theme at days_active=1.
+    renamed_from: str | None = None
 
     # --- Enforce persistent exclusions FIRST — before any pruning or validation ---
     # Uses fuzzy name matching so exclusions survive theme renames by Claude.
@@ -3129,10 +3601,20 @@ async def _rescore_existing_theme(
     if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
         _dissolve_arm = merge_arm_enabled()  # ADR 0025 Arm A (#274); False = legacy path
         _pre_validation = list(tickers)
+        _mass_flag: dict = {}
         tickers = await _validate_theme_membership(
             name, tickers, changelog, protected=protected,
             dissolve_flagged_pair=_dissolve_arm,
-            thesis=theme.get("description"))
+            thesis=theme.get("description"),
+            mass_flag_out=_mass_flag)
+
+        # ── #214: the NAME was too narrow — rename, don't evict (2026-08-26) ──
+        if _mass_flag:
+            _old_name = name
+            name = await _apply_mass_flag_rename(
+                name, tickers, theme, _mass_flag, changelog)
+            if name != _old_name:
+                renamed_from = _old_name
         if _dissolve_arm and len(_pre_validation) == 2 and len(tickers) < PRUNE_MIN_TICKERS:
             # ADR 0025 Arm A: validation flagged a member of a 2-member theme →
             # the theme DISSOLVES (evidence-triggered, never a bare count). The
@@ -3197,6 +3679,7 @@ async def _rescore_existing_theme(
             # belt-and-suspenders so intermediate stages (e.g. the
             # "never split a sub-theme further" guard below) see it too.
             "parent_theme": theme.get("parent_theme"),
+            "renamed_from": renamed_from,   # #214 — see _apply_mass_flag_rename
         }, changelog
 
     # Momentum score (50%): trimmed mean RS composite of strong constituents
@@ -3350,6 +3833,7 @@ async def _rescore_existing_theme(
         "pct_above_20sma": pct_breadth,
         # #471: see the Fading-branch return above — same carry-forward.
         "parent_theme": theme.get("parent_theme"),
+        "renamed_from": renamed_from,   # #214 — see _apply_mass_flag_rename
     }, changelog
 
 
@@ -6680,10 +7164,22 @@ async def run_theme_engine(
             # in the same run. Fading tickers shouldn't attract new assignment either.
             covered_tickers.update(theme_result.get("tickers") or [])
 
+    # #214 (2026-08-26): themes the rescore pass deliberately RENAMED. Their old names
+    # drop out of `updated_names` and would otherwise read as retirements everywhere
+    # downstream — a false "theme retired" line in the operator's nightly state message,
+    # and an engine-drop tombstone with no successor pointer. Map old -> new once here and
+    # use it for both.
+    renamed_map: dict[str, str] = {
+        e["old_name"]: e["new_name"] for e in changelog
+        if e.get("type") == "theme_renamed_on_mass_flag"
+    }
+
     # Log retirements
     existing_names = {t["name"] for t in existing}
     updated_names = {t["name"] for t in updated_themes}
     for name in existing_names - updated_names:
+        if name in renamed_map:
+            continue   # #214 — renamed, not retired
         orig = next((t for t in existing if t["name"] == name), None)
         if orig:
             changelog.append({
@@ -7263,7 +7759,12 @@ async def run_theme_engine(
         # row carries parent_theme. theme_pass1_5_absorption summary format:
         # "Pass1.5: '<lost>' -> '<successor>'". theme_pass1_protect_strip
         # detail format: "i='<protector>' ... j='<lost>' ...".
-        successor_by_lost: dict[str, str] = {}
+        # #214 (2026-08-26): a deliberately renamed theme's OLD name is "lost" by design.
+        # Seeding it here is what makes the tombstone a lineage record rather than an
+        # unexplained death: the Retired row carries parent_theme = the new name, and
+        # `get_active_themes` stops counting the old name instead of keeping the same
+        # cohort alive under two names for the rest of its 7-day recency window.
+        successor_by_lost: dict[str, str] = dict(renamed_map)
         pool = await get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch("""
@@ -7290,7 +7791,9 @@ async def run_theme_engine(
             successor = successor_by_lost.get(t["name"])
             note = (
                 f"Auto-retired {today_str}: "
-                + (f"absorbed/superseded by '{successor}'" if successor
+                + (f"renamed to '{successor}' — name was narrower than the cluster (#214)"
+                   if t["name"] in renamed_map else
+                   f"absorbed/superseded by '{successor}'" if successor
                    else f"dropped during merge/absorption (no successor found)")
                 + f" (prior stage {t.get('stage', 'Unknown')}, "
                 + f"{len(t.get('tickers') or [])} tickers)."
@@ -7322,6 +7825,14 @@ async def run_theme_engine(
     # save — see _restore_sub_theme_links docstring. Must run after the
     # auto-retire block above (retire_rows can drop a parent from `all_themes`
     # too) and after _run_thesis_merge_pass, so it's the last mutation.
+    # #214: re-key the parent map across any deliberate rename, so a renamed PARENT keeps
+    # its children and a renamed CHILD keeps its parent. `_restore_sub_theme_links` matches
+    # on names and would otherwise read both sides as genuine orphans and clear the link.
+    if renamed_map:
+        prior_sub_parents = {
+            renamed_map.get(child, child): renamed_map.get(parent, parent)
+            for child, parent in prior_sub_parents.items()
+        }
     _restore_sub_theme_links(all_themes, prior_sub_parents)
 
     if all_themes:

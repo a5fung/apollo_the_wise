@@ -242,6 +242,18 @@ CEILINGS: dict[str, OutputCeiling] = {
         "2.5x the 4-6 max completed (691) ~ 1750. PROVISIONAL. #575 2026-08-21: "
         "thinking=DISABLED (forced tool_choice=any, analysis_scratchpad already IS "
         "the reasoning surface) — this number is a text-only budget again."),
+    "theme_rename": OutputCeiling(
+        1750, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "NEW caller 2026-08-26 (#214 rename-instead-of-strip). No sample of its own yet — "
+        "sized by ANALOGY to theme_split, whose output shape is identical: ONE forced tool "
+        "call emitting a terse analysis_scratchpad plus a single theme object (name + "
+        "thesis + ticker echo), thinking=DISABLED, no advisor branch. theme_split's "
+        "measured envelope on that shape: max completed 691 of 1750 on sonnet-4-6, and one "
+        "sonnet-5 call censored at the pre-raise 800. The only part that can run larger "
+        "here is the ticker echo (up to ~46 symbols, ~120 tokens, vs split's <=8), which "
+        "fits inside that headroom. It REUSES the report_themes schema, so it is bounded "
+        "by construction — one theme, not a pool. PROVISIONAL: re-derive from api_usage "
+        "after the first real firings (expect ~3 per 10 days at the observed rate)."),
     "theme_merge_adjudication": OutputCeiling(
         700, None, "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "107 haiku calls, max completed 457 (65% of cap). Model passed per-call "

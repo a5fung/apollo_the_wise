@@ -1,0 +1,169 @@
+============================================================================================
+FIX 3 — `_rs_rising`: endpoint test vs shape tests, both directions
+frozen prod export 2026-06-01..2026-08-04 · 316 prune-shaped member exits
+============================================================================================
+
+1. RECORDED CASES (fixtures from the 08-26 analysis; newest-first)
+  case                                           current    anchor     slopeslope+pos(OLS>0    halves       med   and-med   and-max
+  BLDR (08-25 false prune-while-rising flag)        HOLD     prune     prune     prune     prune     prune     prune     prune   slope=-0.84
+  SO                                                HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD     prune   slope=+1.59
+  EXC                                               HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD     prune   slope=+1.54
+  AEP                                               HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD     prune   slope=+0.44
+  CMS                                               HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD   slope=+1.60
+  ATO                                               HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD   slope=+2.26
+  FE                                                HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD      HOLD   slope=+2.11
+
+2. HOLD POPULATION + FORWARD RECOVERY (peak RS>=50 within 10 sessions)
+  test                              held  scored  recovered%  control N  control%
+  current  (newest>oldest)            39      31         71%        167       36%
+  anchor   (not a lone-oldest rise)    34      31         71%        167       36%
+  slope    (OLS > 0)                  49      38         71%        160       34%
+  slope+pos(OLS>0 & now>=median)      31      30         73%        168       36%
+  halves   (recent mean>older)        56      45         64%        153       35%
+  med      (now>median of earlier)    43      37         62%        161       37%
+  and-med  (current AND now>median)    30      29         72%        169       36%
+  and-max  (current AND now>=peak)    15      15         73%        183       39%
+
+3. BOTH DIRECTIONS vs the current test
+
+  --- anchor   (not a lone-oldest rise)
+    STILL HELD   34 of 39  (scored 31: 71% recovered  {'recovered': 22, 'limbo': 6, 'dead': 3})
+    NO LONGER     5          (scored 0: 0% recovered  {})
+    newly held    0
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 0 over 113 board-days
+
+  --- slope    (OLS > 0)
+    STILL HELD   37 of 39  (scored 30: 73% recovered  {'recovered': 22, 'dead': 3, 'limbo': 5})
+    NO LONGER     2          (scored 1: 0% recovered  {'limbo': 1})
+    newly held   12
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 0 over 113 board-days
+
+  --- slope+pos(OLS>0 & now>=median)
+    STILL HELD   30 of 39  (scored 29: 72% recovered  {'recovered': 21, 'dead': 3, 'limbo': 5})
+    NO LONGER     9          (scored 2: 50% recovered  {'limbo': 1, 'recovered': 1})
+    newly held    1
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 0 over 113 board-days
+
+  --- halves   (recent mean>older)
+    STILL HELD   36 of 39  (scored 29: 76% recovered  {'recovered': 22, 'dead': 2, 'limbo': 5})
+    NO LONGER     3          (scored 2: 0% recovered  {'limbo': 1, 'dead': 1})
+    newly held   20
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 1 over 113 board-days  [('JOBY', '2026-03-23')]
+
+  --- med      (now>median of earlier)
+    STILL HELD   30 of 39  (scored 29: 72% recovered  {'recovered': 21, 'dead': 3, 'limbo': 5})
+    NO LONGER     9          (scored 2: 50% recovered  {'limbo': 1, 'recovered': 1})
+    newly held   13
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 0 over 113 board-days
+
+  --- and-med  (current AND now>median)
+    STILL HELD   30 of 39  (scored 29: 72% recovered  {'recovered': 21, 'dead': 3, 'limbo': 5})
+    NO LONGER     9          (scored 2: 50% recovered  {'limbo': 1, 'recovered': 1})
+    newly held    0
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 0 over 113 board-days
+
+  --- and-max  (current AND now>=peak)
+    STILL HELD   15 of 39  (scored 15: 73% recovered  {'recovered': 11, 'dead': 2, 'limbo': 2})
+    NO LONGER    24          (scored 16: 69% recovered  {'limbo': 4, 'dead': 1, 'recovered': 11})
+    newly held    0
+    DoD IREN 2026-07-22: current=HOLD  new=HOLD   hist=[10.7, 7.4, 6.0, 1.5, 1.7, 2.4]
+    DoD APLD 2026-07-22: current=HOLD  new=HOLD   hist=[10.3, 8.9, 5.5, 3.1, 3.3, 4.5]
+    EP EXPOSURE newly-pruned from an Accelerating/Mainstream theme: 3 over 113 board-days  [('JOBY', '2026-03-23'), ('PAYP', '2026-04-06'), ('AMRC', '2026-08-05')]
+
+4. THE NO-LONGER-HELD NAMES (current test's false holds), slope-test view
+    2026-03-23  TSLA   RS 23.1  slope= -1.29  hist=[23.1, 13.4, 23.4, 43.7, 25.9, 20.6]  -> limbo
+    2026-08-25  BLDR   RS 10.0  slope= -0.84  hist=[10.0, 13.8, 25.7, 29.4, 29.2, 5.9]  -> unscored
+
+5. EVERY PRUNE-CANDIDATE EVALUATION (the population the hold acts on)
+  prune-candidate evaluations: 1191  (266 distinct tickers, 113 board-days)
+    current  (newest>oldest)         holds  487 / 1191  (scored 305: 50% recovered)
+    anchor   (not a lone-oldest rise) holds  462 / 1191  (scored 290: 51% recovered)
+    slope    (OLS > 0)               holds  473 / 1191  (scored 304: 48% recovered)
+    slope+pos(OLS>0 & now>=median)   holds  390 / 1191  (scored 249: 49% recovered)
+    halves   (recent mean>older)     holds  456 / 1191  (scored 291: 49% recovered)
+    med      (now>median of earlier) holds  494 / 1191  (scored 321: 49% recovered)
+    and-med  (current AND now>median) holds  415 / 1191  (scored 260: 50% recovered)
+    and-max  (current AND now>=peak) holds  234 / 1191  (scored 148: 47% recovered)
+
+  --- anchor   (not a lone-oldest rise)
+    STOPS HOLDING (current=HOLD, new=prune):   25  scored 15: 40% recovered  {'recovered': 6, 'limbo': 7, 'dead': 2}
+    NEWLY HOLDS   (current=prune, new=HOLD):    0  scored 0: 0% recovered  {}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 2
+      2026-03-20  RIOT   RS  8.8 [Fadi] hist=[8.8, 15.0, 11.1, 7.7] -> recovered
+      2026-03-20  MARA   RS 14.6 [Fadi] hist=[14.6, 41.9, 38.6, 1.7] -> limbo
+      2026-03-20  CLSK   RS 19.9 [Fadi] hist=[19.9, 20.4, 20.5, 3.4] -> limbo
+      2026-03-20  TSLA   RS 23.4 [Fadi] hist=[23.4, 43.7, 25.9, 20.6] -> limbo
+      2026-03-20  JOBY   RS  7.0 [Acce] hist=[7.0, 9.6, 11.0, 4.0] -> dead <-- EP EXPOSURE
+      2026-03-21  RIOT   RS  7.9 [Fadi] hist=[7.9, 8.8, 15.0, 11.1, 7.7] -> recovered
+      2026-03-21  MARA   RS 14.0 [Fadi] hist=[14.0, 14.6, 41.9, 38.6, 1.7] -> limbo
+      2026-03-21  CLSK   RS 15.2 [Fadi] hist=[15.2, 19.9, 20.4, 20.5, 3.4] -> limbo
+      2026-05-18  BMM    RS 22.8 [Fadi] hist=[22.8, 24.8, 41.3, 37.3, 31.3, 22.4] -> recovered
+      2026-06-08  MLEC   RS 20.4 [Fadi] hist=[20.4, 36.9, 56.3, 69.1, 31.3, 18.2] -> recovered
+      2026-06-16  CF     RS 20.0 [Fadi] hist=[20.0, 20.1, 23.1, 21.1, 22.6, 18.3] -> limbo
+      2026-07-02  INFQ   RS 19.9 [Fadi] hist=[19.9, 30.5, 43.4, 35.7, 30.2, 11.6] -> dead
+      2026-07-28  FNV    RS 20.2 [Fadi] hist=[20.2, 27.1, 24.0, 24.2, 28.8, 15.2] -> recovered
+      2026-07-28  RGLD   RS 15.8 [Fadi] hist=[15.8, 19.4, 20.0, 18.2, 20.2, 8.9] -> recovered
+      2026-08-05  BTDR   RS 11.3 [Nasc] hist=[11.3, 16.9, 24.0, 14.3, 14.9, 7.4] -> limbo
+      2026-08-13  GFS    RS 10.7 [Nasc] hist=[10.7, 12.2, 11.0, 10.8, 17.1, 9.1] -> unscored
+      2026-08-13  CRK    RS 18.0 [Nasc] hist=[18.0, 19.5, 51.9, 52.3, 19.4, 16.9] -> unscored
+      2026-08-14  PLD    RS 14.7 [Fadi] hist=[14.7, 19.2, 19.7, 14.9, 15.4, 13.2] -> unscored
+      2026-08-20  MPWR   RS 17.7 [Main] hist=[17.7, 26.9, 32.6, 36.3, 30.7, 14.7] -> unscored <-- EP EXPOSURE
+      2026-08-20  BRUN   RS 12.2 [Fadi] hist=[12.2, 70.7, 71.6, 66.4, 36.6, 5.3] -> unscored
+      2026-08-21  AEP    RS 10.8 [Nasc] hist=[10.8, 22.8, 16.4, 16.0, 13.6, 9.6] -> unscored
+      2026-08-21  EVRG   RS 22.6 [Nasc] hist=[22.6, 37.6, 30.2, 27.9, 26.2, 19.0] -> unscored
+      2026-08-21  FE     RS 14.3 [Nasc] hist=[14.3, 21.7, 17.3, 17.1, 17.2, 13.7] -> unscored
+      2026-08-21  XEL    RS 20.3 [Nasc] hist=[20.3, 36.8, 34.2, 29.7, 22.5, 16.7] -> unscored
+      2026-08-21  BRX    RS 11.3 [Fadi] hist=[11.3, 13.1, 11.9, 13.8, 11.4, 10.1] -> unscored
+
+  --- slope    (OLS > 0)
+    STOPS HOLDING (current=HOLD, new=prune):   49  scored 26: 58% recovered  {'recovered': 15, 'dead': 6, 'limbo': 5}
+    NEWLY HOLDS   (current=prune, new=HOLD):   35  scored 25: 32% recovered  {'dead': 13, 'recovered': 8, 'limbo': 4}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 3
+
+  --- slope+pos(OLS>0 & now>=median)
+    STOPS HOLDING (current=HOLD, new=prune):  105  scored 63: 49% recovered  {'recovered': 31, 'limbo': 20, 'dead': 12}
+    NEWLY HOLDS   (current=prune, new=HOLD):    8  scored 7: 14% recovered  {'dead': 6, 'recovered': 1}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 5
+
+  --- halves   (recent mean>older)
+    STOPS HOLDING (current=HOLD, new=prune):   77  scored 44: 48% recovered  {'recovered': 21, 'limbo': 12, 'dead': 11}
+    NEWLY HOLDS   (current=prune, new=HOLD):   46  scored 30: 33% recovered  {'dead': 13, 'recovered': 10, 'limbo': 7}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 4
+
+  --- med      (now>median of earlier)
+    STOPS HOLDING (current=HOLD, new=prune):   72  scored 45: 49% recovered  {'recovered': 22, 'limbo': 16, 'dead': 7}
+    NEWLY HOLDS   (current=prune, new=HOLD):   79  scored 61: 41% recovered  {'dead': 27, 'recovered': 25, 'limbo': 9}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 5
+
+  --- and-med  (current AND now>median)
+    STOPS HOLDING (current=HOLD, new=prune):   72  scored 45: 49% recovered  {'recovered': 22, 'limbo': 16, 'dead': 7}
+    NEWLY HOLDS   (current=prune, new=HOLD):    0  scored 0: 0% recovered  {}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 5
+
+  --- and-max  (current AND now>=peak)
+    STOPS HOLDING (current=HOLD, new=prune):  253  scored 157: 54% recovered  {'recovered': 84, 'limbo': 43, 'dead': 30}
+    NEWLY HOLDS   (current=prune, new=HOLD):    0  scored 0: 0% recovered  {}
+    EP EXPOSURE — of the stops, members of an Accelerating/Mainstream theme: 10
+
+6. EPISODE VIEW (one row per contiguous candidate run — no double-counting)
+  episodes: 645
+    current  (newest>oldest)         holds 238 (scored 176:  52% rec) | stops   0 (scored  0:   0% rec) | adds   0 (scored  0:   0% rec)
+    anchor   (not a lone-oldest rise) holds 226 (scored 170:  53% rec) | stops  12 (scored  6:  17% rec) | adds   0 (scored  0:   0% rec)
+    slope    (OLS > 0)               holds 239 (scored 176:  51% rec) | stops  24 (scored 17:  41% rec) | adds  25 (scored 17:  29% rec)
+    slope+pos(OLS>0 & now>=median)   holds 184 (scored 142:  51% rec) | stops  59 (scored 39:  46% rec) | adds   5 (scored  5:   0% rec)
+    halves   (recent mean>older)     holds 238 (scored 172:  51% rec) | stops  34 (scored 24:  42% rec) | adds  34 (scored 20:  35% rec)
+    med      (now>median of earlier) holds 245 (scored 188:  48% rec) | stops  39 (scored 25:  48% rec) | adds  46 (scored 37:  30% rec)
+    and-med  (current AND now>median) holds 199 (scored 151:  52% rec) | stops  39 (scored 25:  48% rec) | adds   0 (scored  0:   0% rec)
+    and-max  (current AND now>=peak) holds 110 (scored  86:  45% rec) | stops 128 (scored 90:  58% rec) | adds   0 (scored  0:   0% rec)

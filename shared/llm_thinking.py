@@ -47,6 +47,7 @@ DISABLED = {"type": "disabled"}
 # pinned by tests/test_llm_thinking.py.
 THINKING_DISABLED = frozenset({
     "theme_validation",           # plain JSON {"remove": [...]}, no scratchpad at all
+    "theme_rename",                # forced report_themes for ONE cohort; terse scratchpad
     "theme_assignment",           # forced tool (tool_choice=any) + analysis_scratchpad
     "theme_split",                 # forced tool (tool_choice=any) + analysis_scratchpad
     "narrative_theme_discovery",   # forced tool from turn 1 (report_narrative_themes), no advisor branch

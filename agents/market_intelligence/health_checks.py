@@ -2027,9 +2027,21 @@ _PRUNE_HOLD_MIN_POINTS_MIRROR = 4
 
 
 def _rs_rising_mirror(hist: list[float]) -> bool:
-    """Mirrors theme_engine._rs_rising exactly: newest-first `hist`, rising iff
-    >=4 points AND hist[0] (newest) > hist[-1] (oldest, up to 6 sessions back)."""
-    return len(hist) >= _PRUNE_HOLD_MIN_POINTS_MIRROR and hist[0] > hist[-1]
+    """Mirrors theme_engine._rs_rising exactly (byte-parity pinned by
+    tests/test_theme_quality_check.py): newest-first `hist`, rising iff >=4 points
+    AND hist[0] (newest) > hist[-1] (oldest, up to 6 sessions back) AND hist[0] is
+    not below EVERY intermediate reading.
+
+    The second clause was added 2026-08-26. The endpoint-only test compares two
+    points and is blind to everything between, so a collapse whose oldest reading
+    is a one-day trough scored as rising — this check's OWN 2026-08-25 flag on
+    BLDR (`[10.0, 13.8, 25.7, 29.4, 29.2, 5.9]`, a 29 → 10 collapse) was a false
+    alarm produced exactly that way. Full derivation + the four rejected broader
+    shape tests: theme_engine._rs_rising's docstring."""
+    if len(hist) < _PRUNE_HOLD_MIN_POINTS_MIRROR or hist[0] <= hist[-1]:
+        return False
+    interior = hist[1:-1]
+    return not interior or hist[0] >= min(interior)
 
 
 _RETIREMENT_LOOKBACK_DAYS = 7  # mirrors get_active_themes(stale_after_days=7) — the engine's
