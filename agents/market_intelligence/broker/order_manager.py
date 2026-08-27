@@ -14,6 +14,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time as datetime_time, timedelta, timezone
+from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.backtester.filters import validate_orb_entry
@@ -5181,14 +5182,51 @@ def _is_stop_above_market(exc: Exception) -> bool:
     return any(sig in msg for sig in _STOP_ABOVE_MARKET_SIGNATURES)
 
 
-async def _ensure_stop_coverage(
+# ── #599: THREE outcomes, not one nullable string ───────────────────────────
+# `_ensure_stop_coverage` returned `str | None`, and `None` meant THREE
+# different things: (a) coverage was CHECKED and meets target, (b) a partial
+# held the per-trade advisory lock so NOTHING was checked, (c) the broker
+# orders-read failed so NOTHING was checked. `retry_failed_coverage_repairs`
+# (#596) read that `None` as "healed", audited it as "coverage now meets
+# target", and SPENT one of its six attempts on a pass that verified nothing —
+# so recurring lock contention or broker flakiness could burn the whole budget
+# on non-checks, drop the trade out of the retry set, and the exhaustion 🚨
+# would never fire because every attempt looked healthy.
+#
+# The STATUS below is the control signal. `message` is unchanged — it is the
+# operator-facing Telegram text, emoji prefix and all; the bug was never the
+# emoji, it was using the emoji as a control signal.
+COVERAGE_COVERED = "covered"        # CHECKED — coverage meets target, nothing to do
+COVERAGE_UNVERIFIED = "unverified"  # NOT CHECKED — lock held / broker unreadable → defer
+COVERAGE_REPAIRED = "repaired"      # CHECKED — acted, coverage now meets target
+COVERAGE_FLAGGED = "flagged"        # CHECKED — could not (or must not) fix; operator told
+
+# The two statuses that mean "this pass verified the position's coverage".
+_COVERAGE_VERIFIED_OK = (COVERAGE_COVERED, COVERAGE_REPAIRED)
+
+
+class CoverageOutcome(NamedTuple):
+    """One `_ensure_stop_coverage` pass, told apart at the SOURCE (#599).
+
+    `message` is EXACTLY the human string the function has always returned
+    (None when it had nothing to say). `_ensure_stop_coverage` is a thin
+    wrapper handing back this field, so every pre-#599 caller is byte-identical.
+    `status` is what a caller must branch on; `reason` is the machine tag that
+    rides along into the audit row.
+    """
+    status: str
+    message: str | None
+    reason: str
+
+
+async def _ensure_stop_coverage_outcome(
     trade_id: int,
     ticker: str,
     broker_qty: float,
     db_stop_price: float | None,
     signal_type: str,
     account_mode: str,
-) -> str | None:
+) -> CoverageOutcome:
     """#151 never-naked coverage invariant.
 
     Guarantee EXACTLY ONE live sell-stop covering `target = broker_qty −
@@ -5239,8 +5277,13 @@ async def _ensure_stop_coverage(
     line + audit and CONVERGE — no retry, no auto-market-exit, no stop_order_id
     write (the breach-exit is the operator's call).
 
-    Returns a human discrepancy string when it acted/flagged (for the batched
-    Telegram), else None.
+    Returns a `CoverageOutcome` (#599). `.message` is the human discrepancy
+    string when it acted/flagged (for the batched Telegram), else None — the
+    exact pre-#599 return, which `_ensure_stop_coverage` still hands back
+    unchanged. `.status` says WHICH kind of pass this was: a `COVERAGE_COVERED`
+    no-op (checked, fine) is a completely different fact from a
+    `COVERAGE_UNVERIFIED` no-op (lock held or broker unreadable — nothing was
+    checked), and the two used to be the same `None`.
     """
     # ── #151 cross-PROCESS lock: defer to an IN-FLIGHT partial. ──────────────
     # execute_partial_exit holds the BLOCKING advisory lock on this trade_id
@@ -5256,14 +5299,18 @@ async def _ensure_stop_coverage(
                 f"_ensure_stop_coverage: coverage skipped — partial in-flight "
                 f"(advisory lock held) for trade {trade_id} {ticker}"
             )
-            return None
+            # #599: NOT a coverage check. The partial owns coverage right now and
+            # its own abort path re-protects; the CALLER must be able to tell this
+            # from "checked and fine" so it can try again rather than bank it.
+            return CoverageOutcome(COVERAGE_UNVERIFIED, None, "partial_in_flight")
         target = float(broker_qty) - float(await get_pending_exit_qty(trade_id))
         if target <= 0.5:
             # Pending exits account for the whole (or all-but-noise) position —
             # nothing to protect beyond what's already in flight. The orphan loop's
             # own "fully covered by pending exits" guard handles the no-stop variant;
             # here we just decline to place/replace.
-            return None
+            return CoverageOutcome(
+                COVERAGE_COVERED, None, "pending_exits_cover_position")
 
         # Discover the live sell-stop(s) from broker truth. raise_on_error=True
         # (F16, 7/3): get_open_orders' default [] fallback made this except
@@ -5277,7 +5324,12 @@ async def _ensure_stop_coverage(
             logger.warning(
                 f"_ensure_stop_coverage: get_open_orders failed for {ticker}: {e}"
             )
-            return None  # ambiguous (couldn't read broker) — defer to next run
+            # #599: ambiguous (couldn't read the broker) — defer to the next run.
+            # This is a NON-CHECK, not a clean bill of health. `get_open_orders`
+            # has already fired the deduped alpaca API alert (#370) before
+            # re-raising, so the operator hears about the read failure itself.
+            return CoverageOutcome(
+                COVERAGE_UNVERIFIED, None, "open_orders_read_failed")
 
         live_stops = _live_sell_stops(open_orders)
 
@@ -5296,9 +5348,11 @@ async def _ensure_stop_coverage(
                     "target_qty": target,
                 }),
             )
-            return (
+            return CoverageOutcome(
+                COVERAGE_FLAGGED,
                 f"⚠️ {ticker}: {len(live_stops)} live stops (target {target:.0f}) "
-                f"— ambiguous, left for review"
+                f"— ambiguous, left for review",
+                "multiple_live_stops",
             )
 
         live_stop = live_stops[0] if live_stops else None
@@ -5309,9 +5363,11 @@ async def _ensure_stop_coverage(
             except (TypeError, ValueError):
                 live_qty = None
 
-        # Fully covered (within tolerance) or over-covered → no-op.
+        # Fully covered (within tolerance) or over-covered → no-op. THE one
+        # `None` that genuinely means "checked, and coverage meets target" (#599).
         if live_qty is not None and live_qty >= target - 0.5:
-            return None
+            return CoverageOutcome(
+                COVERAGE_COVERED, None, "live_stop_meets_target")
 
         # Under-covered (or no live stop): re-protect to `target` as a SINGLE stop.
         coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
@@ -5452,13 +5508,20 @@ async def _ensure_stop_coverage(
                     # outcome) — sizing off it risks an oversized order. The next
                     # reconciler pass re-reads broker truth from scratch and repairs
                     # (place branch below, no live stop found).
-                    return (
+                    return CoverageOutcome(
+                        COVERAGE_FLAGGED,
                         f"🚨 {ticker}: leg-safe widen left the old stop "
                         f"{widen_outcome['kind']} with no confirmed replacement — "
                         f"coverage may be ZERO, not just under {live_qty}→{target:.0f}. "
-                        f"Next reconciler pass re-protects."
+                        f"Next reconciler pass re-protects.",
+                        f"widen_left_stop_{widen_outcome['kind']}",
                     )
-                return f"⚠️ {ticker}: failed to widen stop coverage {live_qty}→{target:.0f}: {e}"
+                return CoverageOutcome(
+                    COVERAGE_FLAGGED,
+                    f"⚠️ {ticker}: failed to widen stop coverage "
+                    f"{live_qty}→{target:.0f}: {e}",
+                    "replace_under_covering_stop_failed",
+                )
             await set_stop_order_id(
                 trade_id, new_order["id"],
                 reason="sync_coverage_repair",
@@ -5482,9 +5545,11 @@ async def _ensure_stop_coverage(
             # None crashes. live_qty prints plain elsewhere in this function for exactly
             # this reason (e.g. the audit summary two lines up) — match that here too.
             _live_qty_disp = f"{live_qty:.0f}" if live_qty is not None else str(live_qty)
-            return (
+            return CoverageOutcome(
+                COVERAGE_REPAIRED,
                 f"🛡 Coverage repaired {ticker}: stop {_live_qty_disp}→{target:.0f} "
-                f"(under-covering after partial-exit failure)"
+                f"(under-covering after partial-exit failure)",
+                "replaced_under_covering_stop",
             )
 
         # No live stop at all → place one at the DB stop price. This is the ONLY
@@ -5499,9 +5564,11 @@ async def _ensure_stop_coverage(
                     "account_mode": account_mode, "target_qty": target,
                 }),
             )
-            return (
+            return CoverageOutcome(
+                COVERAGE_FLAGGED,
                 f"⚠️ {ticker}: no stop & no stop_price (target {target:.0f}) "
-                f"— manual intervention needed"
+                f"— manual intervention needed",
+                "no_stop_and_no_stop_price",
             )
         try:
             new_order = await alpaca.place_stop_order(
@@ -5528,9 +5595,12 @@ async def _ensure_stop_coverage(
                     f"_ensure_stop_coverage: BREACH for {ticker} — stop "
                     f"${db_stop_price:.2f} above market; converging (no retry, no auto-exit)"
                 )
-                return (
+                return CoverageOutcome(
+                    COVERAGE_FLAGGED,
                     f"🚨 {ticker}: stop ${db_stop_price:.2f} is ABOVE market — "
-                    f"position breached the stop. Operator decision needed (no auto-exit)."
+                    f"position breached the stop. Operator decision needed "
+                    f"(no auto-exit).",
+                    "stop_above_market_breach",
                 )
             # Any other placement error: surface it, no retry inside the invariant
             # (the reconciler runs again on its cadence).
@@ -5546,7 +5616,11 @@ async def _ensure_stop_coverage(
                     "error": str(e),
                 }),
             )
-            return f"⚠️ {ticker}: failed to place coverage stop (target {target:.0f}): {e}"
+            return CoverageOutcome(
+                COVERAGE_FLAGGED,
+                f"⚠️ {ticker}: failed to place coverage stop (target {target:.0f}): {e}",
+                "place_coverage_stop_failed",
+            )
         await set_stop_order_id(
             trade_id, new_order["id"],
             reason="sync_coverage_repair",
@@ -5563,10 +5637,38 @@ async def _ensure_stop_coverage(
                 "stop_price": float(db_stop_price),
             }),
         )
-        return (
+        return CoverageOutcome(
+            COVERAGE_REPAIRED,
             f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
-            f"(no live stop, under-covered)"
+            f"(no live stop, under-covered)",
+            "placed_coverage_stop",
         )
+
+
+async def _ensure_stop_coverage(
+    trade_id: int,
+    ticker: str,
+    broker_qty: float,
+    db_stop_price: float | None,
+    signal_type: str,
+    account_mode: str,
+) -> str | None:
+    """The pre-#599 face of the coverage invariant: the human discrepancy string
+    when it acted/flagged, else None.
+
+    UNCHANGED CONTRACT, deliberately. `_sync_positions_for_mode`,
+    `execute_partial_exit`'s abort and breakeven re-protect paths, and
+    `trade_stream`'s OCO-cancel re-protect all batch this string into a Telegram
+    and treat None as "nothing to say" — which is correct for them, because the
+    next reconciler pass covers them either way. Only
+    `retry_failed_coverage_repairs` needs to tell a checked no-op from an
+    unchecked one (it BUDGETS attempts), so only it calls
+    `_ensure_stop_coverage_outcome` directly.
+    """
+    outcome = await _ensure_stop_coverage_outcome(
+        trade_id, ticker, broker_qty, db_stop_price, signal_type, account_mode,
+    )
+    return outcome.message
 
 
 # #596 — how many times one trade's failed coverage repair may be re-driven in
@@ -5586,6 +5688,13 @@ _COVERAGE_RETRY_FAIL_EVENT = "stop_coverage_repair_failed"
 _COVERAGE_RETRY_OK_EVENT = "stop_coverage_repaired"
 _COVERAGE_RETRY_ATTEMPT_EVENT = "stop_coverage_retry_attempted"
 _COVERAGE_RETRY_BREACH_EVENT = "stop_coverage_breach"
+# #599 — a pass that could NOT CHECK coverage (a partial held the per-trade
+# advisory lock, or the broker orders-read failed). Durable record, deliberately
+# a DIFFERENT event type from `_COVERAGE_RETRY_ATTEMPT_EVENT`: only attempt rows
+# spend the budget, so a non-check leaves the trade in the retry set for the next
+# 5-minute cycle instead of banking it as healed. Before #599 both were the same
+# `None` return and a non-check both audited as healed AND spent an attempt.
+_COVERAGE_RETRY_DEFER_EVENT = "stop_coverage_retry_deferred"
 
 
 async def retry_failed_coverage_repairs() -> dict:
@@ -5613,6 +5722,18 @@ async def retry_failed_coverage_repairs() -> dict:
     operator is told retries are exhausted — the alert stops being once-only
     without becoming a bombardment.
 
+    #599 — ONLY A VERIFIED PASS SPENDS THE BUDGET. `_ensure_stop_coverage`
+    returns `COVERAGE_UNVERIFIED` when it could not check at all (a partial holds
+    the per-trade advisory lock, or the broker orders-read failed). Such a pass
+    records `stop_coverage_retry_deferred`, does NOT count as an attempt and does
+    NOT report healed, so the trade stays in the retry set for the next 5-minute
+    cycle — which is the entire point of having a retry. Previously both cases
+    came back as a bare `None`, were audited "coverage now meets target", and each
+    burned one of the six attempts: on recurring contention or broker flakiness a
+    trade could exhaust the budget on passes that verified nothing and drop out
+    silently, with the exhaustion 🚨 never firing because every attempt looked
+    healthy.
+
     Both account modes (`active_account_modes()`), deliberately: this drives the
     SAME function `sync_positions` drives, and sync_positions runs per-mode. The
     live-only scoping of `check_position_coverage` is a DETECTOR choice (no
@@ -5637,7 +5758,8 @@ async def retry_failed_coverage_repairs() -> dict:
             ORDER BY created_at ASC
             """,
             [_COVERAGE_RETRY_FAIL_EVENT, _COVERAGE_RETRY_OK_EVENT,
-             _COVERAGE_RETRY_ATTEMPT_EVENT, _COVERAGE_RETRY_BREACH_EVENT],
+             _COVERAGE_RETRY_ATTEMPT_EVENT, _COVERAGE_RETRY_BREACH_EVENT,
+             _COVERAGE_RETRY_DEFER_EVENT],
             today,
         )
 
@@ -5662,7 +5784,8 @@ async def retry_failed_coverage_repairs() -> dict:
             continue
         s = state.setdefault(
             tid, {"failed_at": None, "repaired_at": None, "breached_at": None,
-                  "attempts": 0, "ticker": None, "account_mode": None},
+                  "attempts": 0, "deferrals": 0, "ticker": None,
+                  "account_mode": None},
         )
         s["ticker"] = d.get("ticker") or s["ticker"]
         s["account_mode"] = d.get("account_mode") or s["account_mode"]
@@ -5672,14 +5795,23 @@ async def retry_failed_coverage_repairs() -> dict:
             s["repaired_at"] = r["created_at"]
         elif r["event_type"] == _COVERAGE_RETRY_BREACH_EVENT:
             s["breached_at"] = r["created_at"]
-        else:
+        elif r["event_type"] == _COVERAGE_RETRY_ATTEMPT_EVENT:
             s["attempts"] += 1
+        elif r["event_type"] == _COVERAGE_RETRY_DEFER_EVENT:
+            # #599: a pass that could not CHECK. Counted for telemetry only —
+            # never against the attempt budget. ⚠ This used to be an `else:
+            # s["attempts"] += 1` catch-all; folding a new event type into it
+            # would silently re-create the exact bug #599 fixes, so every event
+            # type this scan fetches now has its OWN branch and the final else
+            # does nothing.
+            s["deferrals"] += 1
 
     modes = set(active_account_modes())
     examined = 0
     retried = 0
     resolved = 0
     exhausted = 0
+    deferred = 0
 
     for trade_id, s in state.items():
         if s["failed_at"] is None:
@@ -5729,10 +5861,12 @@ async def retry_failed_coverage_repairs() -> dict:
         if broker_qty <= 0:
             continue  # flat at the broker — nothing to cover
 
-        retried += 1
         attempt_no = s["attempts"] + 1
+        # #599: the STRUCTURED result. The retry is the one caller that must tell
+        # "checked, and covered" from "could not check" — it budgets attempts, and
+        # banking a non-check as an attempt is what silenced the exhaustion alert.
         try:
-            msg = await _ensure_stop_coverage(
+            outcome = await _ensure_stop_coverage_outcome(
                 trade_id, ticker, broker_qty,
                 trade["stop_price"] or trade["orb_low"],
                 trade["signal_type"] or "unknown",
@@ -5743,13 +5877,55 @@ async def retry_failed_coverage_repairs() -> dict:
                 f"retry_failed_coverage_repairs: _ensure_stop_coverage raised "
                 f"for {ticker}: {e}", exc_info=True,
             )
-            msg = f"⚠️ {ticker}: coverage retry errored: {e}"
+            # Deliberately FLAGGED, not UNVERIFIED (#599): an exception out of the
+            # invariant is arguably "couldn't check" too, but it already counts and
+            # already reaches the exhaustion alert today. Relabelling it unverified
+            # would create a NEW silent-forever path — the opposite of this fix.
+            outcome = CoverageOutcome(
+                COVERAGE_FLAGGED,
+                f"⚠️ {ticker}: coverage retry errored: {e}",
+                "invariant_raised",
+            )
+        msg = outcome.message
 
-        # `None` = the invariant found nothing to do, which on THIS path is the
-        # good outcome: coverage now meets target (either the retry's own
-        # repair landed via its `stop_coverage_repaired` row, or something else
-        # healed it). Record it so the next cycle stops re-driving this trade.
-        healed = msg is None or msg.startswith("🛡")
+        if outcome.status == COVERAGE_UNVERIFIED:
+            # NOTHING WAS CHECKED — a partial holds the advisory lock, or the
+            # broker orders-read failed (which fires its own deduped alpaca alert
+            # before re-raising). Leave the trade in the retry set: no attempt row,
+            # so no budget spent and the next 5-minute cycle tries again. Durable
+            # record only; no Telegram, because the position's true state is
+            # unknown rather than newly bad, and the original repair failure has
+            # already alerted.
+            deferred += 1
+            logger.info(
+                f"retry_failed_coverage_repairs: coverage NOT VERIFIED for "
+                f"{ticker} [{account_mode}] ({outcome.reason}) — deferring to the "
+                f"next cycle; attempt budget untouched "
+                f"({s['attempts']}/{_COVERAGE_RETRY_MAX_ATTEMPTS} used)"
+            )
+            await log_audit_event(
+                _COVERAGE_RETRY_DEFER_EVENT,
+                f"{ticker}: coverage retry could NOT check coverage "
+                f"({outcome.reason}) — not counted against the "
+                f"{_COVERAGE_RETRY_MAX_ATTEMPTS}-attempt budget; retrying next cycle",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode,
+                    "attempts_used": s["attempts"],
+                    "deferrals_today": s["deferrals"] + 1,
+                    "broker_qty": broker_qty,
+                    "status": outcome.status,
+                    "reason": outcome.reason,
+                }),
+            )
+            continue
+
+        retried += 1
+        # A pass that actually CHECKED: covered (nothing to do) or repaired (acted)
+        # both mean the position is protected to target right now. Byte-equivalent
+        # to the pre-#599 `msg is None or msg.startswith("🛡")` for every VERIFIED
+        # case — the difference is only that a non-check no longer reaches here.
+        healed = outcome.status in _COVERAGE_VERIFIED_OK
         if healed:
             resolved += 1
         await log_audit_event(
@@ -5764,10 +5940,12 @@ async def retry_failed_coverage_repairs() -> dict:
                 "broker_qty": broker_qty,
                 "outcome": msg,
                 "healed": healed,
+                "status": outcome.status,
+                "reason": outcome.reason,
             }),
         )
 
-        if healed and msg is not None:
+        if outcome.status == COVERAGE_REPAIRED:
             # Only the ACTED-ON case speaks; a silent no-op needs no Telegram
             # (a guard that always fires is not a guard). The original failure
             # already alerted, so the operator is owed the resolution.
@@ -5785,7 +5963,8 @@ async def retry_failed_coverage_repairs() -> dict:
             )
 
     return {"examined": examined, "retried": retried,
-            "resolved": resolved, "exhausted": exhausted}
+            "resolved": resolved, "exhausted": exhausted,
+            "deferred": deferred}
 
 
 async def _coverage_gap_already_alerted_today(trade_id: int, today) -> bool:

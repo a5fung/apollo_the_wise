@@ -24,6 +24,12 @@ WHAT THESE TESTS PIN:
     it is giving up rather than going quiet;
   * a trade that closed or went flat since the failure is skipped.
 
+⚠ #599 moved the retry onto `_ensure_stop_coverage_outcome` (the structured
+result) so it can tell "checked, and covered" from "could not check". These
+tests patch THAT function; the outcome-distinction tests themselves live in
+`tests/test_599_coverage_outcome_distinction.py`, which reuses `_wire` / `_run`
+from here.
+
 Mocking mirrors `tests/test_position_coverage_check_527.py`.
 """
 from __future__ import annotations
@@ -49,19 +55,48 @@ def _audit_row(event_type, trade_id, *, at=_T0, ticker="IBM", account_mode="live
     return {"event_type": event_type, "detail": json.dumps(body), "created_at": at}
 
 
+def _covered():
+    """#599: the invariant CHECKED and coverage meets target — the good no-op."""
+    from agents.market_intelligence.broker import order_manager as om
+    return om.CoverageOutcome(om.COVERAGE_COVERED, None, "live_stop_meets_target")
+
+
+def _repaired(message):
+    """It acted and coverage now meets target (the 🛡 messages)."""
+    from agents.market_intelligence.broker import order_manager as om
+    return om.CoverageOutcome(om.COVERAGE_REPAIRED, message,
+                              "replaced_under_covering_stop")
+
+
+def _flagged(message):
+    """It checked and could not fix it (the ⚠️ / 🚨 messages)."""
+    from agents.market_intelligence.broker import order_manager as om
+    return om.CoverageOutcome(om.COVERAGE_FLAGGED, message, "repair_failed")
+
+
+def _unverified(reason="partial_in_flight"):
+    """#599: NOTHING was checked — a partial holds the advisory lock, or the
+    broker orders-read failed. Pre-#599 this was the same bare `None` as
+    `_covered()`, which is the whole bug."""
+    from agents.market_intelligence.broker import order_manager as om
+    return om.CoverageOutcome(om.COVERAGE_UNVERIFIED, None, reason)
+
+
 def _trade_row(trade_id=221, ticker="IBM", remaining=100.0, account_mode="live"):
     return {"id": trade_id, "ticker": ticker, "remaining_shares": remaining,
             "stop_price": 95.0, "orb_low": 94.0, "signal_type": "magna53",
             "account_mode": account_mode}
 
 
-def _wire(audit_rows, trade_row, *, position=None, coverage_result=None,
+def _wire(audit_rows, trade_row, *, position=None, coverage_outcome=None,
           coverage_side_effect=None, modes=("paper", "live")):
     """Patch order_manager's DB + broker surface for retry_failed_coverage_repairs.
 
-    `_ensure_stop_coverage` itself is patched out — this function's job is
-    SELECTION and BOUNDING, and the repair logic has its own tests
+    `_ensure_stop_coverage_outcome` itself is patched out — this function's job
+    is SELECTION and BOUNDING, and the repair logic has its own tests
     (`test_never_naked_invariant.py`, `test_523_eton_leg_widen_replay.py`).
+    `coverage_outcome` defaults to a VERIFIED-covered pass (#599); pass
+    `_unverified()` for a pass that could not check at all.
     """
     from agents.market_intelligence.broker import order_manager as om
 
@@ -74,8 +109,9 @@ def _wire(audit_rows, trade_row, *, position=None, coverage_result=None,
     async def _audit(evt, summary=None, detail=None):
         audited.append((evt, summary, detail))
 
-    ensure_mock = AsyncMock(return_value=coverage_result,
-                            side_effect=coverage_side_effect)
+    ensure_mock = AsyncMock(
+        return_value=coverage_outcome if coverage_outcome is not None else _covered(),
+        side_effect=coverage_side_effect)
     telegram_mock = AsyncMock()
     get_position_mock = AsyncMock(
         return_value=position if position is not None else {"qty": 100.0,
@@ -84,7 +120,7 @@ def _wire(audit_rows, trade_row, *, position=None, coverage_result=None,
     ctx = [
         patch.object(om, "get_pool", AsyncMock(return_value=pool)),
         patch.object(om, "log_audit_event", _audit),
-        patch.object(om, "_ensure_stop_coverage", ensure_mock),
+        patch.object(om, "_ensure_stop_coverage_outcome", ensure_mock),
         patch.object(om, "send_telegram_message", telegram_mock),
         patch.object(om, "active_account_modes", lambda: list(modes)),
         patch.object(om.alpaca, "get_position", get_position_mock),
@@ -113,7 +149,7 @@ async def test_an_outstanding_failure_is_retried_off_fresh_broker_truth():
     attempt was holding when it gave up."""
     h = _wire([_audit_row("stop_coverage_repair_failed", 221)], _trade_row(),
               position={"qty": 82.0, "qty_available": 0.0},
-              coverage_result="🛡 Coverage repaired IBM: stop 19→82")
+              coverage_outcome=_repaired("🛡 Coverage repaired IBM: stop 19→82"))
     result = await _run(h)
 
     assert result["retried"] == 1 and result["resolved"] == 1
@@ -138,7 +174,8 @@ async def test_a_failure_already_followed_by_a_repair_is_left_alone():
     )
     result = await _run(h)
 
-    assert result == {"examined": 0, "retried": 0, "resolved": 0, "exhausted": 0}
+    assert result == {"examined": 0, "retried": 0, "resolved": 0, "exhausted": 0,
+                      "deferred": 0}
     h["ensure"].assert_not_awaited()
     h["telegram"].assert_not_awaited()
 
@@ -151,7 +188,7 @@ async def test_a_repair_that_predates_the_failure_does_not_count_as_resolved():
     h = _wire(
         [_audit_row("stop_coverage_repaired", 221, at=_T0),
          _audit_row("stop_coverage_repair_failed", 221, at=_T0 + timedelta(minutes=5))],
-        _trade_row(), coverage_result=None,
+        _trade_row(), coverage_outcome=_covered(),
     )
     result = await _run(h)
 
@@ -168,7 +205,8 @@ async def test_a_stop_above_market_breach_is_never_retried():
     h = _wire([_audit_row("stop_coverage_breach", 221)], _trade_row())
     result = await _run(h)
 
-    assert result == {"examined": 0, "retried": 0, "resolved": 0, "exhausted": 0}
+    assert result == {"examined": 0, "retried": 0, "resolved": 0, "exhausted": 0,
+                      "deferred": 0}
     h["ensure"].assert_not_awaited()
     h["telegram"].assert_not_awaited()
 
@@ -202,7 +240,8 @@ async def test_retries_are_bounded_and_the_last_one_says_it_is_giving_up():
     rows += [_audit_row("stop_coverage_retry_attempted", 221,
                         at=_T0 + timedelta(minutes=i)) for i in range(1, 6)]
     h = _wire(rows, _trade_row(),
-              coverage_result="⚠️ IBM: failed to widen stop coverage 19→82: nope")
+              coverage_outcome=_flagged(
+                  "⚠️ IBM: failed to widen stop coverage 19→82: nope"))
     result = await _run(h)
 
     assert result["retried"] == 1 and result["resolved"] == 0
@@ -265,7 +304,7 @@ async def test_a_malformed_audit_row_does_not_blind_the_scan():
     bad = {"event_type": "stop_coverage_repair_failed", "detail": "{not json",
            "created_at": _T0}
     h = _wire([bad, _audit_row("stop_coverage_repair_failed", 221)], _trade_row(),
-              coverage_result=None)
+              coverage_outcome=_covered())
     result = await _run(h)
 
     assert result["retried"] == 1
@@ -302,7 +341,7 @@ async def test_job_no_ops_outside_the_market_window():
     from agents.market_intelligence import scheduler as sched
 
     called = AsyncMock(return_value={"examined": 0, "retried": 0, "resolved": 0,
-                                     "exhausted": 0})
+                                     "exhausted": 0, "deferred": 0})
     with patch("agents.market_intelligence.broker.order_manager"
                ".retry_failed_coverage_repairs", called), \
          patch("agents.market_intelligence.constants.LIVE_TRADING_ENABLED", True), \
