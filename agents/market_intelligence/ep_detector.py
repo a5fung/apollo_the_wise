@@ -1158,6 +1158,8 @@ async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optio
     """
     import httpx
 
+    from agents.market_intelligence import collector
+
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
         return None
@@ -1170,34 +1172,51 @@ Respond with ONLY the classification word."""
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.post(
-                "https://api.perplexity.ai/chat/completions",
+                # #603 — Agent API. The old /chat/completions is sunset 2026-09-27, and this
+                # was the THIRD call site (the two in collector.py were migrated first). No
+                # model string: the preset routes to whatever currently serves it.
+                collector._PPLX_AGENT_URL,
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "sonar",
-                    "messages": [
-                        {"role": "system", "content": "You classify stock catalysts. Respond with exactly one word: GAME_CHANGER, STRONG, or ROUTINE."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "return_citations": False,
+                    "preset": collector._PPLX_PRESET,
+                    "instructions": "You classify stock catalysts. Respond with exactly one "
+                                    "word: GAME_CHANGER, STRONG, or ROUTINE.",
+                    "input": prompt,
+                    # No web_search tool: this grades text we ALREADY hold. Attaching one
+                    # would buy a search per candidate and let a fresh web result contradict
+                    # the summary being graded.
                 },
             )
             r.raise_for_status()
             _data = r.json()
-            try:  # #377 cost meter — additive; this path uses the cheaper "sonar"
-                  # model (not sonar-pro). Never alters the validation result.
+            try:  # #377 cost meter — additive. Never alters the validation result.
                 from agents.market_intelligence.spend_tracker import log_perplexity_call
                 await log_perplexity_call(
-                    caller="perplexity_catalyst_validate", model="sonar", response=_data,
+                    caller="perplexity_catalyst_validate", response=_data,
                 )
             except Exception:
                 pass
-            text = _data["choices"][0]["message"]["content"].strip().upper()
+            text = collector._pplx_answer_text(_data).strip().upper()
+        # ⚠ SAFETY (operator 2026-08-27): "make sure any issue with perplexity doesn't affect
+        # live trades, just render as no-op or unavailable input."
+        #
+        # This used to `else: return "routine"` — so an EMPTY or unparseable answer became a
+        # real grade. That is a FAILURE rendered as a JUDGEMENT, and "routine" is the lowest
+        # one: it counted as a disagreement against a strong/game_changer label, which now
+        # renders the second-opinion block to the judge (#233). A degraded provider could
+        # therefore argue every catalyst down. Unrecognised text is now UNAVAILABLE (None),
+        # which is a no-op on every consumer.
         if "GAME_CHANGER" in text or "GAME CHANGER" in text:
             return "game_changer"
-        elif "STRONG" in text:
+        if "STRONG" in text:
             return "strong"
-        else:
+        if "ROUTINE" in text:
             return "routine"
+        if text:
+            logger.warning(
+                f"Perplexity validation for {ticker} returned an unrecognised classification "
+                f"({text[:60]!r}) — treating as unavailable, not as 'routine'")
+        return None
     except Exception as e:
         # #376: a 401/402 here is Perplexity credit exhaustion — alert (deduped).
         from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted

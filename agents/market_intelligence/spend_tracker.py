@@ -327,7 +327,7 @@ async def log_perplexity_call(
     *,
     caller: str,
     response: Any,
-    model: str = "sonar-pro",
+    model: str | None = None,
 ) -> float:
     """Log a Perplexity (#377 cost meter) call to api_usage. Separate shape from
     Anthropic because Perplexity (a) names its usage fields OpenAI-style
@@ -344,10 +344,29 @@ async def log_perplexity_call(
     validation path). Returns the computed cost in USD. Raises on DB failure —
     callers wrap in try/except for fail-soft (mirrors log_anthropic_call).
     """
-    usage = _pplx_usage_tokens(response)
-    input_tokens = usage["prompt_tokens"]
-    output_tokens = usage["completion_tokens"]
-    reason = _pplx_finish_reason(response)
+    # #603 (2026-08-27) — Agent API shape, with the legacy Sonar shape still handled so
+    # historical replays and any straggler caller keep working.
+    _u = (response or {}).get("usage") if isinstance(response, dict) else None
+    _agent = isinstance(_u, dict) and ("input_tokens" in _u or "cost" in _u)
+    if _agent:
+        # 🔒 NO MODEL NAME IS PASSED BY CALLERS ANY MORE. The Agent API picks the model from
+        # the PRESET and REPORTS which one it used, so the row records what actually ran
+        # instead of a literal we would have to hand-maintain (2026-08-27 probe: the "fast"
+        # preset came back on `openai/gpt-5.6-luna`). Fallback string only if it is absent.
+        model = model or (response.get("model") if isinstance(response, dict) else None) \
+            or "perplexity-agent"
+        input_tokens = int(_u.get("input_tokens") or 0)
+        output_tokens = int(_u.get("output_tokens") or 0)
+        # `status`/`incomplete_details` replace finish_reason. Never NULL (#543).
+        _inc = (response.get("incomplete_details") or {}) if isinstance(response, dict) else {}
+        reason = (_inc.get("reason") if isinstance(_inc, dict) and _inc.get("reason")
+                  else response.get("status") if isinstance(response, dict) else None)
+    else:
+        model = model or "sonar-pro"
+        usage = _pplx_usage_tokens(response)
+        input_tokens = usage["prompt_tokens"]
+        output_tokens = usage["completion_tokens"]
+        reason = _pplx_finish_reason(response)
     # Perplexity names it finish_reason and says 'length' for truncation. Normalised
     # to Anthropic's vocabulary so ONE health check covers both providers. Never NULL:
     # NULL is reserved to mean "a call site forgot to report" (#543).
@@ -356,13 +375,29 @@ async def log_perplexity_call(
         else (str(reason) if reason is not None else "n/a")
     )
 
-    prices = _pricing_for(model)
-    request_fee = _PPLX_FEE.get(model, _DEFAULT_PPLX_FEE)
-    token_cost = (
-        (input_tokens / 1_000_000) * prices["input"]
-        + (output_tokens / 1_000_000) * prices["output"]
-    )
-    cost = round(token_cost + request_fee, 6)
+    # 💰 THE AGENT API REPORTS ITS OWN ACTUAL COST — use it rather than recomputing from a
+    # rate table we would have to keep in step with their pricing page (the same
+    # hand-maintenance the model pin had). `usage.cost.total_cost` already folds tokens,
+    # cache creation and the per-search tool fee into one USD figure (2026-08-27 probe:
+    # $0.01119 = 0.00003 input + 0.00063 output + 0.00553 cache + 0.005 search).
+    _reported = None
+    if _agent and isinstance(_u.get("cost"), dict):
+        try:
+            _reported = float(_u["cost"]["total_cost"])
+        except (KeyError, TypeError, ValueError):
+            _reported = None
+    if _reported is not None:
+        cost = round(_reported, 6)
+    else:
+        # Legacy Sonar rows, and the fail-safe if they ever stop reporting cost: the old
+        # estimate. Never leaves a call uncosted.
+        prices = _pricing_for(model)
+        request_fee = _PPLX_FEE.get(model, _DEFAULT_PPLX_FEE)
+        token_cost = (
+            (input_tokens / 1_000_000) * prices["input"]
+            + (output_tokens / 1_000_000) * prices["output"]
+        )
+        cost = round(token_cost + request_fee, 6)
 
     await _ensure_schema()
     pool = await get_pool()

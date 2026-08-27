@@ -1265,6 +1265,42 @@ _PERPLEXITY_SYSTEM_DEFAULT = (
 )
 
 
+# ── Perplexity Agent API (#603, operator-directed 2026-08-27) ────────────────────────────
+# The old /chat/completions endpoint is sunset on 2026-09-27 ("Sonar Chat Completions is now
+# Agent API. Sonar will be supported until September 27, 2026"). It fails OPEN here, so the
+# lapse would have been SILENT — the catalyst second opinion and the brief's overnight section
+# would just stop appearing.
+#
+# 🔒 NO MODEL STRING ANYWHERE, BY DESIGN (operator: "make sure when we migrate we make it
+# future proof, auto updates without needing to manual update or hardcode anywhere"). The Agent
+# API takes a PRESET — a capability tier — and routes to whatever model is currently best for
+# it; the probe on 2026-08-27 came back on `openai/gpt-5.6-luna` without us naming anything.
+# The old code pinned "sonar-pro" as a raw literal at four sites, invisible to
+# preflight_model_registry, which is exactly the rot the 2026-07-30 model-pinning ruling
+# forbids. A preset is a stable tier name, so there is nothing left to hand-update.
+_PPLX_AGENT_URL = "https://api.perplexity.ai/v1/agent"
+_PPLX_PRESET = "fast"          # capability tier, NOT a model — see above
+_PPLX_HEALTH_PRESET = "fast"
+
+
+def _pplx_answer_text(data: "dict | None") -> str:
+    """Pull the answer out of an Agent API response. Returns "" on any shape surprise.
+
+    ⚠ FIND THE MESSAGE BY TYPE, NEVER BY INDEX. `output` holds one item per search round
+    followed by the message — the 2026-08-27 probes returned it at index 1 on one call and
+    index 2 on the next, so an index would be a latent, intermittent blanking bug.
+    """
+    try:
+        for item in (data or {}).get("output") or []:
+            if item.get("type") == "message":
+                for part in item.get("content") or []:
+                    if part.get("text"):
+                        return part["text"]
+    except (AttributeError, TypeError):
+        pass
+    return ""
+
+
 async def check_perplexity_health() -> tuple[bool, int, str]:
     """
     Probe Perplexity with a minimal call to verify the API key and credit balance.
@@ -1281,13 +1317,15 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(
-                "https://api.perplexity.ai/chat/completions",
+                _PPLX_AGENT_URL,
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "sonar-pro",
-                    "messages": [{"role": "user", "content": "ping"}],
+                    "preset": _PPLX_HEALTH_PRESET,
+                    "input": "ping",
+                    # No web_search tool on the liveness ping — it must prove the
+                    # endpoint and the key, not buy a search.
                     # registry: truncation BY DESIGN on this liveness ping
-                    "max_tokens": _ceiling_max_tokens("perplexity_health"),
+                    "max_output_tokens": _ceiling_max_tokens("perplexity_health"),
                 },
             )
             if r.status_code in (401, 402):
@@ -1299,9 +1337,7 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
                     _j = r.json() or {}
                 except Exception as e:
                     logger.debug(f"Perplexity health usage parse failed: {e}")
-                await log_perplexity_call(
-                    caller="perplexity_health", model="sonar-pro", response=_j,
-                )
+                await log_perplexity_call(caller="perplexity_health", response=_j)
             except Exception as e:
                 logger.debug(f"Perplexity health cost-meter log failed: {e}")
             return True, r.status_code, ""
@@ -1460,19 +1496,19 @@ async def search_news_perplexity(
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 r = await client.post(
-                    "https://api.perplexity.ai/chat/completions",
+                    _PPLX_AGENT_URL,
                     headers={"Authorization": f"Bearer {api_key}"},
                     json={
-                        "model": "sonar-pro",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": system_prompt or _PERPLEXITY_SYSTEM_DEFAULT,
-                            },
-                            {"role": "user", "content": query},
-                        ],
-                        "search_recency_filter": recency,
-                        "return_citations": False,
+                        "preset": _PPLX_PRESET,
+                        # `instructions` is the Agent API's system-prompt field; the
+                        # question is the bare `input`.
+                        "instructions": system_prompt or _PERPLEXITY_SYSTEM_DEFAULT,
+                        "input": query,
+                        # Recency moved INTO the web_search tool config — same
+                        # "day"/"week"/"month" vocabulary the callers already pass, so no
+                        # call site changes.
+                        "tools": [{"type": "web_search",
+                                   "search_recency_filter": recency}],
                     },
                 )
                 r.raise_for_status()
@@ -1481,12 +1517,15 @@ async def search_news_perplexity(
                     # Covers #186A + the ~11 indirect callers of this choke point.
                     from agents.market_intelligence.spend_tracker import log_perplexity_call
                     await log_perplexity_call(
-                        caller="perplexity_news_search", model="sonar-pro", response=_data,
+                        caller="perplexity_news_search", response=_data,
                     )
                 except Exception as e:
                     logger.debug(f"Perplexity news search cost-meter log failed: {e}")
-                _answer = _data["choices"][0]["message"]["content"]
-                _pplx_cache_put(_ck, _answer)
+                _answer = _pplx_answer_text(_data)
+                # An empty answer is the pre-existing fail-open value, but it must not be
+                # CACHED as if it were a result — that would serve the blank for 15 minutes.
+                if _answer:
+                    _pplx_cache_put(_ck, _answer)
                 return _answer
         except Exception as e:
             # Duck-typed timeout check (matches classify_api_failure): every

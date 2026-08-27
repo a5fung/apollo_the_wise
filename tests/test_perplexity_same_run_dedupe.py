@@ -44,9 +44,16 @@ class _Resp:
         pass
 
     def json(self):
-        return {"choices": [{"message": {"content": self._text},
-                             "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 20}}
+        # #603 (2026-08-27) — Agent API shape. The answer is an `output` item of
+        # type 'message'; there is no `choices`. Two search_results items sit
+        # BEFORE it deliberately, so an index-based parser would fail here.
+        return {"status": "completed", "model": "openai/gpt-5.6-luna",
+                "output": [{"type": "search_results", "results": []},
+                           {"type": "search_results", "results": []},
+                           {"type": "message",
+                            "content": [{"type": "output_text", "text": self._text}]}],
+                "usage": {"input_tokens": 10, "output_tokens": 20,
+                          "cost": {"total_cost": 0.0112}}}
 
 
 def _patch_transport(monkeypatch, answers):

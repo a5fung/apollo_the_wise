@@ -46,7 +46,11 @@ class _OKResp:
 
     def json(self):
         return {
-            "choices": [{"message": {"content": "Contract win drove the move."}}],
+            # #603 — Agent API shape (answer in `output`, found by type not index).
+            "status": "completed",
+            "output": [{"type": "search_results", "results": []},
+                       {"type": "message",
+                        "content": [{"type": "output_text", "text": "Contract win drove the move."}]}],
             "usage": {},
         }
 
