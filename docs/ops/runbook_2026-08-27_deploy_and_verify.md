@@ -34,9 +34,11 @@ ssh apollo@87.99.134.162 'cd /home/apollo/apollo_the_wise && bash scripts/deploy
 
 # 2. re-run the robustness eval against v4 — ~36 Opus calls, ~$1.50, ONE run.
 #    CAPTURE IT TO A FILE. Do not re-run to re-read (2026-08-03 cost rule).
+# ⚠ CONCRETE PATH — no glob. A `*` in a redirect target does NOT expand, so the capture
+#   would silently go nowhere and the $1.50 would have to be spent a second time.
 ssh apollo@87.99.134.162 'docker exec -i apollo-market python -m scripts.evals.run_judge_robustness_eval' \
-  > ~/.claude/jobs/*/tmp/judge_eval_v4.txt 2>&1
-tail -40 ~/.claude/jobs/*/tmp/judge_eval_v4.txt      # read the GATE line
+  > /tmp/judge_eval_v4.txt 2>&1
+tail -40 /tmp/judge_eval_v4.txt        # read the GATE line
 ```
 
 **Read the `GATE:` line.**
@@ -55,8 +57,21 @@ tail -40 ~/.claude/jobs/*/tmp/judge_eval_v4.txt      # read the GATE line
 - **`✗ FAIL`** → **do not hand-edit the record and do not waiver.** A v4 failure means the
   reword moved the judge, which is the thing the gate exists to catch. Read the per-class map
   for which cases broke, report to the operator, and leave the box on v3 code with the old
-  record — the deployed image is already v4, so **revert by redeploying the prior commit**
-  (`fbf30288~1`… whichever precedes the rubric change) rather than by editing anything.
+  record — the deployed image is already v4, so **revert by redeploying an EXACT commit**
+  rather than by editing anything. **`380bc0f9` is the last commit before rubric v4** —
+  verified: `git show 380bc0f9:agents/market_intelligence/ep_grade_judge.py | grep
+  RUBRIC_VERSION` reads v3.
+
+  ```bash
+  ssh apollo@87.99.134.162 'cd /home/apollo/apollo_the_wise && git checkout 380bc0f9 && \
+      bash scripts/deploy.sh market-agent && bash scripts/deploy.sh execution'
+  ```
+
+  ⚠ **Say what that costs before doing it.** Rubric v4 carries BOTH #602's axis split and
+  #233's rule 7, so reverting the rubric reverts both — and going back to `380bc0f9` also
+  drops #603's Perplexity migration. That last one is acceptable: their old endpoint keeps
+  working until 2026-09-27, so there is a month to re-land it. Tell the operator all three,
+  rather than reverting quietly.
 
 ⚠ Weekend deploys are ungated, but Thu 08-27 is a market day — the 21:15–22:15 ET window is
 enforced (`deploy.sh` exits 12 outside it). The override is operator-only.
