@@ -341,7 +341,20 @@ async def get_alpaca_minute_cum_volumes(tickers: list[str], now_et: datetime,
     pm (04:00–09:29 ET cumulative) + session (09:30 ET–now cumulative). Feeds
     `compute_rvol_at_time` under the `ep_rt_volume_authoritative` runtime toggle; in shadow
     (toggle off) it powers the (vol_delayed, vol_rt, would_rvol_gate_flip) telemetry.
-    Returns {ticker: {"pm_vol": int, "session_vol": int}} — missing symbols omitted.
+
+    Returns {ticker: {"pm_vol": int, "session_vol": int, "pm_bars": int, "session_bars": int}}
+    — symbols Alpaca returned nothing for are omitted entirely.
+
+    ⚠ The `*_bars` COUNTS are what separate "not yet available" from "measured zero", and the
+    caller MUST read them (`ep_detector._rt_anchor_measured`). A bucket that summed ZERO BARS is
+    NOT a measurement of zero volume: the EP scan's 09:30 tick fires 5–25 s after the bell, and
+    no minute bar timestamped ≥ 09:30 has been published yet (the 09:30 bar only closes at
+    09:31:00), so `session_vol` is 0 while `pm_vol` from this SAME successful call is full and
+    correct. Root-caused 2026-08-27 off 678 recorded shadow rows: 155/155 of the rt=0.00×
+    readings sit at the 09:30 tick with `session_vol == 0` and a large `pm_vol`; not one of the
+    523 rows at any other tick (07:00→09:55, including 09:31) has a zero acting bucket.
+    Bars that are PRESENT but all carry volume 0 is a real measurement and keeps `*_bars > 0`.
+
     NEVER raises; {} on any failure (caller keeps the delayed volume — today's behavior)."""
     if not tickers:
         return {}
@@ -377,18 +390,26 @@ async def get_alpaca_minute_cum_volumes(tickers: list[str], now_et: datetime,
     data = getattr(bars, "data", None) or {}
     for sym, blist in data.items():
         pm_vol = session_vol = 0
+        pm_bars = session_bars = 0
         try:
             for b in blist or []:
                 ts = getattr(b, "timestamp", None)
                 vol = int(getattr(b, "volume", 0) or 0)
                 if ts is None:
-                    continue
+                    continue  # untimestamped bar measures NEITHER bucket — not counted
                 bt = ts.astimezone(_ET)
                 if bt.hour * 60 + bt.minute < session_start_min:
                     pm_vol += vol
+                    pm_bars += 1
                 else:
                     session_vol += vol
-            out[sym] = {"pm_vol": pm_vol, "session_vol": session_vol}
+                    session_bars += 1
+            # Symbols whose bar list came back EMPTY are kept with explicit 0 counts rather
+            # than dropped: an absent key means "Alpaca returned nothing for this symbol",
+            # a present key with 0 bars means "returned, nothing in this bucket yet". Both
+            # route to the delayed read, but the caller can tell them apart in telemetry.
+            out[sym] = {"pm_vol": pm_vol, "session_vol": session_vol,
+                        "pm_bars": pm_bars, "session_bars": session_bars}
         except Exception:  # loud-ok: one malformed symbol skipped — that ticker keeps the delayed volume
             continue
     return out

@@ -116,7 +116,11 @@ def test_minute_cum_volumes_split_at_930(monkeypatch):
     _env(monkeypatch)
     with patch("alpaca.data.historical.StockHistoricalDataClient", _FakeBarsClient):
         out = asyncio.run(collector.get_alpaca_minute_cum_volumes(["AAA"], _NOW))
-    assert out == {"AAA": {"pm_vol": 1_000, "session_vol": 5_000}}
+    # #490 §6.1 no-data fallback: the per-bucket BAR COUNTS ride alongside the volumes so the
+    # caller can tell "no bars published yet" from "measured zero".
+    # See tests/test_490_rt_volume_nodata_fallback.py.
+    assert out == {"AAA": {"pm_vol": 1_000, "session_vol": 5_000,
+                           "pm_bars": 1, "session_bars": 2}}
 
 
 def test_minute_cum_volumes_failure_is_empty(monkeypatch):

@@ -64,6 +64,7 @@ from agents.market_intelligence.minute_volume import (
     MIN_PM_RVOL,
     MIN_SESSION_RVOL,
     MIN_BASELINE_N_FOR_GATE,
+    SESSION_START_MIN,
 )
 from agents.market_intelligence.broker.skip_reasons import (
     FILTER_MCAP_TOO_SMALL,
@@ -1199,6 +1200,67 @@ Respond with ONLY the classification word."""
                                            provider="perplexity")
         logger.warning(f"Perplexity validation failed for {ticker}: {e}")
         return None
+
+
+def _rt_anchor_measured(rt_vols: "dict | None", now_et: datetime) -> bool:
+    """#490 §6.1 — did the real-time minute-bar read actually MEASURE the bucket the RVOL@T
+    gate is about to use? NOT-YET-AVAILABLE must never be read as "no volume, reject".
+
+    A zero summed from ZERO BARS is not a measurement. The EP scan's 09:30 tick fires 5–25 s
+    after the bell and no minute bar timestamped ≥ 09:30 exists yet (the 09:30 bar only closes
+    at 09:31:00), so `session_vol` comes back 0 while `pm_vol` from the SAME successful call is
+    full — which the gate would read as a 0.00× session pace and reject on. Bars that ARE
+    present and all carry volume 0 is a genuine measurement and stays authoritative; that is the
+    whole distinction this function exists to draw.
+
+    Evidence (2026-08-27, 678 recorded `ep_rt_volume_shadow`/`ep_rt_rvol_gate_flip` rows,
+    2026-07-27→08-27): 155/155 rt=0.00× readings are at the 09:30 tick with `session_vol == 0`
+    and a large `pm_vol`; 0/523 rows at every other tick (07:00→09:55, incl. 09:31) have a zero
+    acting bucket; 0/678 have BOTH buckets zero. Not a failed call — a failed batch returns `{}`
+    and the symbol is simply absent from the map.
+
+    Anchor rule is single-sourced with `compute_rvol_at_time` (< SESSION_START_MIN → pm anchor,
+    else session anchor) so the two can never disagree about which bucket acts.
+
+    Fail direction: False (fall back to the delayed read = today's behaviour) on a missing map
+    entry, a missing count key, or an unparseable count. Never reject on absence.
+    """
+    if not rt_vols:
+        return False
+    key = "pm_bars" if (now_et.hour * 60 + now_et.minute) < SESSION_START_MIN else "session_bars"
+    if key not in rt_vols:
+        return False  # pre-fallback map shape — treat as unmeasured, never as zero volume
+    try:
+        return int(rt_vols[key] or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _apply_rt_volume(c: dict, rt_vols: "dict | None", now_et: datetime,
+                     minutes_since_open: "int | None") -> "tuple[int, int] | None":
+    """#490 §6.1/§6.2 AUTHORITATIVE substitution (RT-5, operator-flipped). Returns the
+    (premkt_vol, session_vol) anchor inputs from the real-time read and refreshes every
+    today_volume-derived figure on `c`, or **None when the rt read must NOT act** — the caller
+    then keeps the delayed values untouched, byte-identical to pre-#490 behaviour.
+
+    ⚠ The §6.2 cascade is ALL-OR-NOTHING on `_rt_anchor_measured`: `today_volume`,
+    `rel_volume`, `projected_vol_multiple`, `volume_source` and the two anchors either all move
+    to the rt read or none of them do. Half-enabling it is the 09:30 trap in a new costume — in
+    that shape the rt sum is premarket-only, so `rel_volume` and the open-intensity projection
+    would silently undercount. Do not re-enable part of this block on an unmeasured anchor.
+    """
+    if not _rt_anchor_measured(rt_vols, now_et):
+        return None
+    premkt_vol, session_vol = int(rt_vols["pm_vol"]), int(rt_vols["session_vol"])
+    c["vol_delayed"] = c["today_volume"]
+    c["today_volume"] = premkt_vol + session_vol
+    c["volume_source"] = "alpaca_sip_minute"
+    if c.get("adv") and c["adv"] > 0:
+        c["rel_volume"] = round(c["today_volume"] / c["adv"], 2)
+        if minutes_since_open and minutes_since_open >= 15 and c["today_volume"] > 0:
+            c["projected_vol_multiple"] = round(
+                c["rel_volume"] * (_SESSION_MINUTES / minutes_since_open), 1)
+    return premkt_vol, session_vol
 
 
 def _volume_percentile(today_volume: float, adv_history: list[float]) -> float:
@@ -3188,6 +3250,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # (default off; RT-5, operator-flipped ≥3 market days after the gap flip). Toggle off →
     # shadow telemetry only (ep_rt_volume_shadow / ep_rt_rvol_gate_flip — the named flip list).
     # Master flag off → no fetch, byte-identical.
+    # ⚠ The rt read is only ever consulted for a bucket it actually MEASURED — see
+    # `_rt_anchor_measured` / `_apply_rt_volume`. An anchor with zero published bars (the
+    # 09:30-tick shape) falls back to the delayed number and NEVER rejects on the absence.
     _rt_vol_map: dict = {}
     _rt_vol_authoritative = False
     if EP_RT_UNIVERSE_ENABLED and EP_RT_PASS2_ENABLED and candidates:
@@ -3247,21 +3312,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             else:
                 premkt_vol, session_vol = 0, c["today_volume"]
             _rt_vols = _rt_vol_map.get(ticker)
-            if _rt_vols is not None and _rt_vol_authoritative:
+            if _rt_vol_authoritative:
                 # #490 §6.1 AUTHORITATIVE (RT-5, operator-flipped): the rt cumulatives replace
                 # the delayed single-bucket split as the RVOL@T anchor inputs, and the
                 # candidate's today-volume-derived figures follow (§6.2 — rel_volume /
                 # today's $-vol / open-intensity projection all derive from today_volume).
-                premkt_vol, session_vol = _rt_vols["pm_vol"], _rt_vols["session_vol"]
-                c["vol_delayed"] = c["today_volume"]
-                c["today_volume"] = premkt_vol + session_vol
-                c["volume_source"] = "alpaca_sip_minute"
-                if c.get("adv") and c["adv"] > 0:
-                    c["rel_volume"] = round(c["today_volume"] / c["adv"], 2)
-                    rel_volume = c["rel_volume"] or 0
-                    if _minutes_since_open and _minutes_since_open >= 15 and c["today_volume"] > 0:
-                        c["projected_vol_multiple"] = round(
-                            c["rel_volume"] * (_SESSION_MINUTES / _minutes_since_open), 1)
+                # `_apply_rt_volume` returns None when the ACTING anchor's bucket was never
+                # measured (no bars yet — the 09:30-tick shape) or the symbol is absent: the
+                # whole §6.2 cascade then stays off and the delayed values decide, exactly as
+                # they do today. NOT-YET-AVAILABLE is never a zero. See `_rt_anchor_measured`.
+                _rt_applied = _apply_rt_volume(c, _rt_vols, now_et, _minutes_since_open)
+                if _rt_applied is not None:
+                    premkt_vol, session_vol = _rt_applied
+                    rel_volume = c.get("rel_volume") or 0
             rvol_info = await compute_rvol_at_time(
                 ticker=ticker,
                 now_et=now_et,
@@ -3301,6 +3364,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             _rt_rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
                             and _rt_rvol_info["rvol_at_time"] < threshold)
                         _would_flip = _gate_fail_delayed != _gate_fail_rt
+                        # #490 §6.1 no-data fallback — ADDITIVE ONLY. `_would_flip`, the event
+                        # type and the message stay byte-identical: reclassifying a recorded
+                        # flip is the OPERATOR's call (CHANGE_PROCESS rule 3, never
+                        # self-classified). What the row gains is the second reading —
+                        # `rt_vol_state` says whether the ACTING anchor was measured at all, and
+                        # `would_rvol_gate_flip_measured` is the verdict once the fallback is
+                        # honoured (an unmeasured anchor cannot act, so it cannot flip). Both
+                        # readings now sit in the same row; the operator picks which one counts.
+                        _rt_measured = _rt_anchor_measured(_rt_vols, now_et)
+                        _would_flip_measured = _would_flip and _rt_measured
                         _vol_ev = "ep_rt_rvol_gate_flip" if _would_flip else "ep_rt_volume_shadow"
                         if _audit_dedupe_check(ticker, today, _vol_ev):
                             await log_audit_event(
@@ -3317,6 +3390,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                     "rvol_delayed": rvol_info["rvol_at_time"],
                                     "rvol_rt": _rt_rvol_info["rvol_at_time"],
                                     "would_rvol_gate_flip": _would_flip,
+                                    "rt_vol_state": (
+                                        "measured" if _rt_measured else "no_bars_for_anchor"),
+                                    "would_rvol_gate_flip_measured": _would_flip_measured,
                                     "tick_et": now_et.strftime("%H:%M"),
                                 }),
                             )

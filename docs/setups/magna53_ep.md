@@ -269,6 +269,93 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-27 — #490 §6.1: the real-time volume read can no longer reject a name on data that does not exist yet (BUG FIX, DARK — no criteria change, toggle NOT flipped)
+
+**The rule, in plain words:** *a volume bucket that contains zero minute BARS has not been
+measured; it is not a reading of zero volume. When the bucket the pace gate is about to use has
+no bars in it yet, the real-time number is set aside and the old delayed number decides —
+exactly as it does today. Bars that are present and happen to carry zero volume are a real
+measurement and keep counting.*
+
+**Trigger**: VEEV gapped 10.7% on 2026-08-27 and was rejected `session_rvol_too_low`
+(0.27×) while actually trading ~5× its normal pace. The remedy (`ep_rt_volume_authoritative`,
+RT-5) was about to be considered — and would have introduced a NEW false-reject in the other
+direction on its first tick of every session.
+
+**Root cause (established from data, not assumed)**: the EP scan's 09:30 tick fires 5–25 s
+after the bell. Alpaca has published no minute bar timestamped ≥ 09:30 yet (the 09:30 bar only
+closes at 09:31:00), so `get_alpaca_minute_cum_volumes` sums **zero bars** into the session
+bucket → 0, while the pm bucket from the SAME successful call is full and correct.
+`compute_rvol_at_time` then divides 0 by a healthy baseline → 0.00×.
+Evidence, 678 recorded `ep_rt_volume_shadow` / `ep_rt_rvol_gate_flip` rows (2026-07-27→08-27):
+- 155/155 rt=0.00× rows are at the 09:30 tick, session anchor, `session_vol == 0`, `pm_vol` large.
+- 0/523 rows at every other tick (07:00→09:55, **including 09:31**) have a zero acting bucket.
+- 0/678 rows have BOTH buckets zero.
+Rivals ruled out: a failed batch returns `{}` and the symbol is then absent from the map, so no
+shadow row would exist at all (all 155 exist, carrying real pm volume) — not a call failure, not
+a feed gap (prod runs `ALPACA_DATA_FEED=sip`). Not an off-by-one on the bar window: the request
+passes **no `end`**, the split constant maps a 09:30 bar to the session bucket, and the 09:31
+tick never reads zero — dropping the newest bar would make it. Not a timezone error: `tick_et`
+(rendered from `now_et`) spans 07:00–09:55 ET and sits 0–9 min before each row's `created_at`
+in ET; a UTC `now_et` would render 11:00–13:55.
+
+**Shipped** (`collector.get_alpaca_minute_cum_volumes`, `ep_detector._rt_anchor_measured` /
+`_apply_rt_volume`): the collector now returns `pm_bars` / `session_bars` alongside the volumes.
+The authoritative substitution is ALL-OR-NOTHING on the acting anchor having ≥1 bar — anchors,
+`today_volume`, `rel_volume`, `projected_vol_multiple` and `volume_source` all move together or
+none do (half-enabling it would leave a premarket-only sum silently undercounting `rel_volume`
+and the open-intensity projection). Absent symbol, empty bar list, missing count key, or an
+unparseable count all fail to the delayed read — never a reject.
+
+**Shadow telemetry is ADDITIVE ONLY**: `would_rvol_gate_flip`, the event type and the message
+are byte-identical. Two new fields ride alongside — `rt_vol_state`
+(`measured` / `no_bars_for_anchor`) and `would_rvol_gate_flip_measured` (the verdict once the
+fallback is honoured). Reclassifying the recorded flip list is the operator's call
+(CHANGE_PROCESS rule 3), so the code records both readings and decides neither.
+
+**Measured on the recorded flip list** (247 flips): the real-time read would ADMIT **87** rows /
+83 ticker-days that the delayed read rejected (VEEV, MBUU, OOMA, CHRN, …), and would REJECT
+**160** that the delayed read admitted — of which **153 are the 09:30 artefact this fix
+removes**. (153, not 155: all 155 rt=0.00× readings sit at that tick, but on 2 of them — ECG
+08-05, EHC 08-06 — the delayed read failed the gate too, so nothing flipped.)
+The 7 genuine under-admissions are CDNA 07-31, PAYC · CAI 08-06, PSIX 08-07, ATRO
+08-12 (all pm anchor, 100–13k premarket shares, delayed 1.06–3.41× vs rt 0.31–0.99× against a
+1.0× bar) and FTK 08-05 09:31 · WPP 08-06 09:35 (session anchor).
+
+**⚠ Separate finding, NOT fixed — admission criteria, operator's call.** The *delayed* side of
+the 09:30 flip is also a non-measurement. `c["today_volume"]` is `snap["day"]["v"]`, the
+full-day cumulative INCLUDING premarket, and `ep_detector` charges 100% of it to the **session**
+bucket once the clock passes 09:30. At the 09:30 tick that number IS the premarket total
+(median 0.86× the real-time premarket sum, n=155), so OKTA's "15.14× session pace" is premarket
+volume divided by a session baseline. FTK and WPP above are the same inflation one and five
+minutes later — there the real-time read is the correct one. Reading the real-time volume at
+09:31 instead of 09:30 would also remove the artefact, but that changes WHEN the scan measures
+and is likewise the operator's call; the fallback is the correct dark-ship fix.
+
+**NOT changed**: `ep_rt_volume_authoritative` stays OFF (no override row; env unset). No
+threshold moved — `MIN_SESSION_RVOL` / `MIN_PM_RVOL` are still 1.0×, `MIN_BASELINE_N_FOR_GATE`
+still 10. With the toggle OFF the live gate is byte-identical, freeze-tested by AST (the sole
+call to `_apply_rt_volume` is nested inside `if _rt_vol_authoritative:`).
+
+**RT-5 precondition**: the design says flip RT-5 ≥3 market days after the gap flip.
+`ep_rt_universe_authoritative` went on **2026-08-25 11:02 ET** (mid-session, so 08-25 is not a
+full market day under it). Market days after: 08-26, 08-27, **08-28** → the earliest date the
+precondition is met is **Friday 2026-08-28**. Today (08-27) is the 2nd.
+
+**Reversion-flag**: none — this is a bug fix to a dark mechanism, not a reversal. Rollback =
+revert the two functions; the toggle was never on.
+
+**Evidence**: `scripts/probes/_490rt_shadow_rows.psv` (all 678 rows, captured once, read many).
+14 unit tests in `tests/test_490_rt_volume_nodata_fallback.py` including the load-bearing case —
+bars present carrying zero volume MUST keep acting, which is what separates this fix from a
+blanket "fall back whenever the volume is zero".
+
+**Deploy scope**: both `collector.py` and `ep_detector.py` are in
+`scripts/exec_loaded_modules.txt` → `deploy.sh market-agent` (or `both`) **then**
+`deploy.sh execution`, two-step, or the running execution container stays stale.
+
+**Status**: in the working tree, uncommitted, undeployed. Toggle NOT flipped.
+
 ### 2026-08-22 — ONE GRADE EVERYWHERE: the admission filters read the corrected (lattice) grade (OPERATOR-DIRECTED, REVERSAL of the same-day flip's scope line)
 
 **The rule, in plain words a trader can repeat back:** *every decision about a candidate —
