@@ -84,3 +84,56 @@ recency source — unchanged by this finding.
 - **Whether retiring the boost changes the alert set** is not measured here — that needs a
   re-score of the same cohort at 1.0 against the current bar, which the rescale makes a separate
   piece of work.
+
+---
+
+# Addendum — the better question: can a second model catch ERRORS?
+
+Operator, same day: *"i'm not too concerned about boost giving us better winrate, where i see
+potential value is perplexity or any 2nd model giving us validation vs catching potential
+errors, can it do that?"*
+
+That is testable now, because `judge_grade` was backfilled today — so three independent reads
+of the same catalyst exist on one row: the **Claude grader's label**, **Perplexity's grade**,
+and the **judge's own read**.
+
+**Test:** treat the judge's disagreement with the label as the thing worth catching. Does
+Perplexity's disagreement predict it? n = 174 alerts carrying all three.
+
+| | judge agrees with the label | judge disagrees |
+|---|---|---|
+| **Perplexity agrees** | 71 | 16 |
+| **Perplexity disagrees** | 58 | **29** |
+
+- **Base rate:** the judge disagrees on 45 of 174 = **26%**.
+- **When Perplexity disagrees:** 29 of 87 = **33%**.
+- **When Perplexity agrees:** 16 of 87 = **18%**.
+- **Recall:** Perplexity flags **29 of the 45** the judge flags = **64%**.
+- **Precision:** of the 87 it flags, 29 are also judge-flagged = **33%**.
+
+**And when both flag the same alert, they agree on WHICH WAY 25 times out of 29 — 86%.**
+
+Direction is consistent too: both critics lean toward the label being too generous.
+Perplexity says lower on 62 and higher on 25; the judge says lower on 35 and higher on 10.
+Perplexity simply flags about twice as often.
+
+## What that means
+
+**Yes — but as an early warning, not a verdict.** Perplexity disagreeing roughly doubles the
+odds that a second, better model also disagrees (33% vs 18%), and when both do they nearly
+always point the same direction. It is far too noisy to act on alone: it flags half of all
+alerts and two thirds of those flags are not corroborated.
+
+That is exactly the shape #233 part (a) already proposes — feed the Claude-vs-Perplexity
+**disagreement** into the judge as a labelled signal, rather than paying a blind 20% score
+increase for agreement. **The boost and the error-check are two different uses of the same
+comparison, and only one of them has evidence behind it.**
+
+## ⚠ The confound that limits this
+
+**The judge is not ground truth** — it is another model, and a check of one model against
+another is not a check against reality. Worse for independence: the judge already reads
+Perplexity's `[Web summary]` TEXT (this is exactly what #233 part (a) notes it does *not* read
+the grade). So some of the 64% overlap may be shared input rather than independent
+corroboration, which would inflate every number above. Sizing that would need the judge re-run
+with Perplexity's text withheld — a paid eval, not a free join, and not run here.
