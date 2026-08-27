@@ -26,6 +26,8 @@ _SQL = """
 SELECT a.ticker, a.alert_date, a.score_tier, a.baseline_floor_tier,
        a.judge_tier, a.judge_direction, a.judge_materiality_tier, a.fire_axes,
        a.grounded_text,
+       -- #233 second-opinion telemetry: the three reads of one catalyst.
+       a.catalyst_quality, a.gemini_validation, a.judge_grade,
        o.fwd_5d_pct,
        t.realized_pnl, t.traded
 FROM mi_ep_alerts a
@@ -46,6 +48,17 @@ ORDER BY a.alert_date DESC, a.ticker
 
 # A demote that ran up at least this much in 5d = a winner the judge demoted (ADR 0011 guard).
 _UNJUSTIFIED_DEMOTE_5D = 5.0
+
+# #233 (operator-signed 2026-08-27). The date the second-opinion block began being RENDERED to
+# the judge — rubric rule 7. Everything before it is the natural-agreement baseline; everything
+# after is the judge having been TOLD about the disagreement.
+#
+# ⚠ THIS IS THE DOUBLE-COUNTING TEST the operator asked for by name. The judge already reads
+# Perplexity's [Web summary] text, so its grade is not an independent witness; rule 7 tells the
+# judge to re-read the evidence rather than treat the disagreement as a vote. If that instruction
+# holds, `sided_with_second_opinion` should be roughly FLAT across this boundary. A jump means
+# the judge is voting with the second model instead of re-reading — one source counted twice.
+_SECOND_OPINION_LIVE_FROM = "2026-08-27"
 
 
 def recompute_has_direct_source(grounded_text):
@@ -84,7 +97,20 @@ def aggregate_judge_review(rows):
     direct_present = 0
     traded_n = 0
     traded_pnl = 0.0
+    # #233 — cohorts split on whether the judge was TOLD about the disagreement.
+    so = {"before": {"n": 0, "sided": 0}, "after": {"n": 0, "sided": 0}}
     for r in rows:
+        # Only alerts where the second model DISAGREED with the label are in scope: agreement
+        # renders nothing, so it cannot double-count. `judge_grade` is NULL on rows written
+        # before it was persisted (2026-08-27) — those are simply not measurable, not "no".
+        _lab, _so_g, _jg = (r.get("catalyst_quality"), r.get("gemini_validation"),
+                            r.get("judge_grade"))
+        if _lab and _so_g and _jg and _so_g != _lab:
+            era = ("after" if str(r.get("alert_date")) >= _SECOND_OPINION_LIVE_FROM
+                   else "before")
+            so[era]["n"] += 1
+            if _jg == _so_g:
+                so[era]["sided"] += 1
         has_direct, has_markers = recompute_has_direct_source(r.get("grounded_text"))
         if has_markers:
             direct_assessable += 1
@@ -113,6 +139,7 @@ def aggregate_judge_review(rows):
         "unjustified_demotes": unjustified_demotes,
         "direct_assessable": direct_assessable, "direct_present": direct_present,
         "traded_n": traded_n, "traded_pnl": traded_pnl,
+        "second_opinion": so,
     }
 
 
@@ -140,6 +167,23 @@ def format_judge_review(agg, days):
         if tier in agg["by_tier"]:
             L.append(f"   {tier:9s} {_stat_line(agg['by_tier'][tier])}")
     L.append("")
+    # #233 — the double-counting watch the operator asked for by name (2026-08-27).
+    so = agg.get("second_opinion") or {}
+    b, a = so.get("before") or {"n": 0, "sided": 0}, so.get("after") or {"n": 0, "sided": 0}
+    if b["n"] or a["n"]:
+        L.append("🔁 SECOND OPINION — when another model graded the catalyst differently, how "
+                 "often did the judge land on ITS grade?")
+
+        def _pct(c):
+            return f"{c['sided']}/{c['n']} = {100*c['sided']/c['n']:.0f}%" if c["n"] else "n/a"
+        L.append(f"   before it was told (natural agreement): {_pct(b)}")
+        L.append(f"   after  it was told (rule 7 live):       {_pct(a)}")
+        L.append("   Flat across the two = the judge is re-reading the evidence, as instructed.")
+        L.append("   A jump = it is voting with the second model, which counts one source twice")
+        L.append("   (that model's web summary is already in the judge's evidence).")
+        if b["n"] < 20 or a["n"] < 20:
+            L.append("   ⚠ under 20 in a cohort — not yet readable, do not act on it.")
+        L.append("")
     ud = agg["unjustified_demotes"]
     # Renamed 2026-08-02 (operator ruling). "UNJUSTIFIED" ASSERTED an error the data cannot show:
     # he reviewed both flagged names — CLF (net loss behind a tripled EBITDA) and WKC (profit surge

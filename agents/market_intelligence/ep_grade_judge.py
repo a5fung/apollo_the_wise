@@ -147,7 +147,11 @@ def _judge_tool(include_axis_reads: bool = False) -> dict:
 # word reached the operator's alert. Rule 2 now says raises/lowers the GRADE, and an OUTPUT
 # FIELDS block states each field's axis literally. Same change adds `grade_reason` /
 # `tier_reason` so the alert can show WHY on each call instead of only the long rationale.
-RUBRIC_VERSION = "v4-2026-08-27-axis-split"
+# v4 also carries rule 7 (#233, same operator sign-off, same day): a differing second-model
+# grade is rendered to the judge as a re-read prompt, never as a vote — the anti-double-count
+# instruction, since that model's text is already in the judge's evidence. Both changes ride
+# ONE robustness-eval rerun rather than two (batch-judge-regrades discipline).
+RUBRIC_VERSION = "v4-2026-08-27-axis-split-second-opinion"
 
 _RUBRIC = """You are the EP (Episodic Pivot) grade judge for a momentum trading system
 (Qullamaggie / Pradeep Bonde methodology). You decide the grade HOLISTICALLY — you may move
@@ -184,6 +188,11 @@ RUBRIC (in priority order):
    name can be lifted to game_changer by a hot theme + clean structure).
 6. M&A: if the company is being acquired (buyout/merger/tender/going-private), grade "mna" —
    but this is advisory; a separate M&A filter is authoritative.
+7. SECOND OPINION: when a block below reports that another model graded this catalyst
+   differently, treat it as a PROMPT TO RE-READ THE EVIDENCE on the axis they differ on —
+   never as a vote. That model's web summary is already part of your evidence, so counting
+   its grade separately would count one source twice. If the evidence does not move you,
+   keep your own read and say so in grade_reason.
 
 Be skeptical: vague/numberless "earnings", boilerplate PR, broad sector drift, or a
 short-squeeze with no concrete company event = routine. State the load-bearing reason in the
@@ -218,6 +227,7 @@ def assemble_judge_inputs(
     theme_stage: str | None = None,
     theme_score: float | None = None,
     setup_class: str | None = None,
+    second_opinion: str | None = None,
 ) -> dict:
     """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
     payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
@@ -257,6 +267,13 @@ def assemble_judge_inputs(
         "analysis": (r.get("claude_analysis") or "")[:1500],
         "has_direct_source": has_direct_source,
         "materiality_tier": materiality_tier,
+        # #233 (operator-signed 2026-08-27) — Perplexity's INDEPENDENT catalyst grade, passed
+        # as a labelled second opinion. Rendered ONLY when it DISAGREES with the grader's
+        # label (see _build_judge_prompt): agreement carries no measured information
+        # (docs/analysis/pplx_agreement_boost_233_2026-08-27.md), disagreement roughly doubles
+        # the odds this judge also disagrees (33% vs an 18% base) and the two point the same
+        # way 25 times in 29. None/equal → prompt byte-identical to the pre-change form.
+        "second_opinion": second_opinion,
         "in_active_theme": bool(r.get("in_active_theme")),
         "in_narrative_cohort": bool(r.get("in_narrative_cohort")),
         # Theme HEAT (#329 Path A) — stage/score from get_theme_membership. Today the judge gets
@@ -317,6 +334,25 @@ def _build_judge_prompt(p: dict) -> str:
 --- ACTIVE NARRATIVE COHORTS (Lane 2 — groups that recently gapped together on a SHARED story; discovered EOD on prior days) ---
 {lines}
 Match the CATALYST against these narratives: a catalyst that JOINS an active narrative (same story, new name — e.g. a drone-defense contract while a drone-defense cohort is active) lights the theme/narrative axis EVEN IF this ticker is not listed as a cohort member. A name merely sharing a sector with a cohort, without the story, does not."""
+    # Second-opinion block (#233, operator-signed 2026-08-27). Rendered ONLY when a second
+    # model's grade DISAGREES with the grader's label — agreement is not rendered at all, so
+    # the prompt stays byte-identical on the ~half of alerts where the two concur.
+    # ⚠ DOUBLE-COUNTING RISK, deliberately addressed in the wording below: this judge already
+    # reads Perplexity's [Web summary] TEXT, so the grade is NOT an independent witness. The
+    # block therefore says so and tells the judge to weigh the underlying evidence rather than
+    # the vote — otherwise the same source is counted twice. Whether that instruction holds is
+    # what the going-forward telemetry measures (mi_ep_alerts.pplx_disagreed).
+    second_op = ""
+    _so, _fl = p.get("second_opinion"), p.get("floor_catalyst_quality")
+    if _so and _fl and _so != _fl:
+        second_op = f"""
+
+--- SECOND OPINION (a different model graded the same catalyst) ---
+It graded this catalyst {_so}; the grader's label is {_fl}. They disagree.
+⚠ This is NOT independent corroboration — that model's web summary is part of the evidence you
+were given above, so treating its grade as a separate vote would count one source twice. Use the
+disagreement only as a prompt to re-read the EVIDENCE for the axis they differ on, and state in
+grade_reason what you found. If the evidence does not move you, keep your own read and say so."""
     # Tape-feature block (v2.0-P2 / #299). Rendered ONLY when the scan passes a tape dict —
     # absent/None keeps the prompt byte-identical to the pre-change form, so the structure
     # ships behavior-neutral (the wire-in is eval-gated; the judge is load-bearing).
@@ -343,7 +379,7 @@ Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {
 {p.get('grounded_text') or 'No grounded corpus.'}
 
 --- ANALYST NOTE ---
-{p.get('analysis') or '(none)'}{tape_block}"""
+{p.get('analysis') or '(none)'}{second_op}{tape_block}"""
 
 
 def format_tier_transition(base_tier, judge_tier) -> str:

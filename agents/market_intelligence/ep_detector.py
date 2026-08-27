@@ -3900,13 +3900,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             pplx_quality = await pplx_task
 
-            # Agreement logic
+            # #233 (operator-signed 2026-08-27) — THE AGREEMENT BOOST IS RETIRED. It set
+            # confidence_multiplier=1.2 whenever Perplexity's grade matched the grader's,
+            # which multiplied straight into the EP score: a 20% increase for two models
+            # concurring. Measured over 419 alerts
+            # (docs/analysis/pplx_agreement_boost_233_2026-08-27.md): boosted names ran a
+            # SMALLER 5-day max move (9.17% vs 11.20%), and once score band is held constant
+            # the effect is a null — worse in two bands, level in one, better in one. What it
+            # was actually doing is visible in the gap column: boosted names gap 15.5% vs
+            # 18.8%, i.e. the boost lifted smaller movers over the bar.
+            # The comparison itself is NOT discarded — the DISAGREEMENT now goes to the judge
+            # as a labelled re-read prompt (rubric rule 7), which is the half of it that has
+            # evidence. The column stays (history + the never-1.2-again test) and is pinned
+            # at 1.0.
             confidence_multiplier = 1.0
-            if pplx_quality and pplx_quality == catalyst_quality:
-                confidence_multiplier = 1.2
-                logger.info(f"{ticker}: Claude+Perplexity agree on {catalyst_quality} → 1.2x confidence")
-            elif pplx_quality and pplx_quality != catalyst_quality:
-                logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → disagreement, no boost")
+            _pplx_disagreed = bool(pplx_quality and pplx_quality != catalyst_quality)
+            if _pplx_disagreed:
+                logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → "
+                            f"disagreement, passed to the judge as a second opinion")
 
             # Hedge-phrase downgrade: when Perplexity self-acknowledges null search
             # results, both classifiers are grading a hollow news_summary. RDDT 5/1
@@ -3945,7 +3956,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     }),
                 )
                 catalyst_quality = downgraded
-                confidence_multiplier = 1.0  # cancel any agreement boost
+                # #233: the agreement boost is retired, so there is nothing left to cancel —
+                # but the downgrade CHANGES catalyst_quality, so the disagreement flag has to
+                # be recomputed against the new label or the telemetry records a stale answer.
+                _pplx_disagreed = bool(pplx_quality and pplx_quality != catalyst_quality)
 
             # ── ONE GRADE EVERYWHERE (2026-08-22 consistency fix, operator-directed) ──
             # The raw LLM grade is SETTLED here (Claude + Perplexity + hedge-downgrade).
@@ -5220,6 +5234,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     materiality_tier=_rule_mat,
                     active_narratives=_narrative_cohorts,
                     setup_class=_setup_class,
+                    # #233 (operator-signed 2026-08-27) — Perplexity's independent grade.
+                    # Rendered to the judge ONLY when it disagrees with the grader's label;
+                    # agreement carries no measured information.
+                    second_opinion=r.get("gemini_validation"),
                 )
                 verdict = await grade_holistic(
                     _get_claude(), payload,

@@ -269,6 +269,60 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-27 — #233: the Perplexity agreement boost is RETIRED; the DISAGREEMENT goes to the judge instead (OPERATOR-SIGNED, rubric rule 7)
+
+**Trigger**: operator reframed the question — *"i'm not too concerned about boost giving us
+better winrate, where i see potential value is perplexity or any 2nd model giving us
+validation vs catching potential errors, can it do that?"* — then *"let's do both and capture
+the results going forward, especially the double counting by judge potential."*
+
+**Evidence** (`docs/analysis/pplx_agreement_boost_233_2026-08-27.md`, two measurements):
+
+*The boost, over 419 alerts with the field populated (373 with a forward window).* Boosted
+alerts ran a **smaller** 5-day max move than unboosted — **9.17% vs 11.20%**; HIGH-only 9.70 vs
+11.14; agreement alone 8.97 vs 11.53. ⚠ Most of that is a **confound**: the boosted group gaps
+15.5% against 18.8%, and the metric scales with gap. Controlling for it (same score band):
+6.3 vs 9.8 · 10.1 vs 12.4 · 11.4 vs 11.6 · 12.7 vs 10.5 — worse in two, level in one, better
+in one. **Within band there is no signal.** So the boost was a 20% score increase whose only
+visible effect was lifting smaller movers over the bar.
+
+*The disagreement, n=174 alerts carrying all three reads of one catalyst* (possible only
+because `judge_grade` was persisted and backfilled the same day). The judge disagrees with the
+grader's label on 45 of 174 = **26% base rate**. Given Perplexity also disagrees: **33%**.
+Given it agrees: **18%**. Recall 29/45 = **64%**, precision 29/87 = **33%**. **When both flag
+the same alert they agree on direction 25 times out of 29 (86%)**, and both lean the same way —
+label too generous.
+
+⚠ **N-honesty**: 174 alerts, and the judge is **not ground truth** — this is model-vs-model.
+No claim is made that either critic is right, only that they co-occur.
+
+**Anticipated effect**: (1) every alert's `confidence_multiplier` is now 1.0, so scores fall
+~17% for the ~40% of alerts that were being boosted — expect fewer of those to clear the bar,
+which is the intended correction, not a regression. (2) On alerts where the second model
+disagrees (about half), the judge sees one extra block. Agreement renders **nothing**, so those
+prompts are byte-identical to before. `MIN_GAP_PCT`, the tier logic, safeguards, sizing and the
+ORB window are untouched.
+
+🔁 **THE DOUBLE-COUNTING WATCH — the operator asked for this by name.** The judge already reads
+Perplexity's `[Web summary]` TEXT, so its grade is **not** an independent witness; treating it
+as a vote counts one source twice. Two defences shipped: **rubric rule 7** tells the judge to
+use a disagreement as a prompt to re-read the evidence and to keep its own read if unmoved; and
+the **monthly judge review now reports `sided_with_second_opinion` split on the ship date** —
+how often the judge landed on the second model's grade before it was told, versus after. Flat
+across that boundary = the instruction is holding. A jump = the judge is voting, and rule 7
+needs revisiting. Cohorts under 20 print as "not yet readable".
+
+**Reversion-flag**: NEW for the second-opinion block. **REVERSAL** of the agreement boost, live
+since the Perplexity integration — it was shipped on the assumption that two models concurring
+is evidence about the catalyst. That was never measured, and the measurement above does not
+support it. Reversion = restore `confidence_multiplier = 1.2` on the agreement branch; it is a
+code change, not a toggle.
+
+**Status**: shipped, awaiting field validation. Rides the SAME `RUBRIC_VERSION` bump and the
+SAME robustness-eval rerun as the #602 axis split rather than paying for a second one
+(batch-judge-regrades discipline). Verify-live = the next alert where Perplexity disagrees
+shows the block in the judge's prompt, and the monthly review prints both cohorts.
+
 ### 2026-08-27 — #559: the real-time gap decides the 9% floor in BOTH directions — `ep_rt_gap_authoritative` ON (OPERATOR-SIGNED, LIVE, one-flag revertible)
 
 **Trigger**: operator, on being told the delayed price still decides the floor for names
