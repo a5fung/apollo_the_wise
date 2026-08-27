@@ -36,27 +36,35 @@ def test_direction_none_on_unknown_tier():
 def test_headline_leads_with_judge_when_load_bearing():
     # LZB: floor 'routine' but judge promoted to HIGH → headline must be the judge verdict,
     # NEVER 'Routine' (the contradiction the operator flagged).
+    # 2026-08-27: the label now NAMES its axis and draws the arrow tier→tier, so a catalyst
+    # grade can never be read as one end of the transition (the OKTA category error).
     _, label = resolve_headline_grade(LZB)
-    assert label == "Judge: HIGH (promote)"
+    assert label == "Judge: alert tier MODERATE→HIGH (promoted)"
     assert "routine" not in label.lower() and "Routine" not in label
 
 
 def test_headline_hold_when_judge_agrees_floor():
-    assert resolve_headline_grade(QURE)[1] == "Judge: HIGH (hold)"
-    assert resolve_headline_grade(JBL)[1] == "Judge: HIGH (hold)"
+    # No arrow when nothing moved — "held", past tense, on the named axis.
+    assert resolve_headline_grade(QURE)[1] == "Judge: alert tier HIGH (held)"
+    assert resolve_headline_grade(JBL)[1] == "Judge: alert tier HIGH (held)"
+    assert "→" not in resolve_headline_grade(QURE)[1]
 
 
 def test_headline_falls_back_to_floor_grade_when_not_judge():
+    # The floor branch names its axis too — the slot used to hold a bare tier on one alert
+    # and a bare catalyst grade on the next, which is what let the two scales blur.
     floor = {"catalyst_quality": "strong", "grade_engine_authority": "floor"}
-    assert resolve_headline_grade(floor)[1] == "Strong"
+    assert resolve_headline_grade(floor)[1] == "Strong catalyst"
 
 
 # ── format_grade_provenance — Claude · Perplexity · judge, no stale 'agree' ───
 def test_provenance_shows_all_three_legs():
     p = format_grade_provenance(LZB)
-    assert "Floor: routine (Claude)" in p
+    assert "Catalyst grade: routine (Claude floor)" in p
     assert "Perplexity: strong (✗differs)" in p          # routine != strong → differs, NOT agree
-    assert "Judge: HIGH promote" in p and "authoritative" in p
+    # The judge leg states WHAT its authority covers — it sets the tier, not the catalyst grade.
+    assert "Judge: alert tier MODERATE→HIGH (promoted)" in p
+    assert "sets the tier, not the catalyst grade" in p
 
 
 def test_provenance_no_false_agree_on_lzb_stale_case():
@@ -73,7 +81,7 @@ def test_provenance_marks_real_agreement():
 
 def test_provenance_omits_perplexity_when_absent_and_judge_when_floor():
     p = format_grade_provenance({"catalyst_quality": "routine", "grade_engine_authority": "floor"})
-    assert "Floor: routine (Claude)" in p
+    assert "Catalyst grade: routine (Claude floor)" in p
     assert "Perplexity" not in p and "Judge" not in p
 
 

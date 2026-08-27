@@ -218,6 +218,60 @@ The alert now **resolves to the judge** and shows the provenance:
 - **10:10 catalyst-downgrade digest** annotates names the judge promoted ("↑ judge promoted to
   HIGH — authoritative") so it no longer contradicts the HIGH alert 20 min earlier.
 
+### Coherence fix shipped 2026-08-27 (display-only — no grade-math, no schema, no carve-out change)
+
+**Trigger — OKTA 2026-08-27.** One live alert said three inconsistent things: header
+`Judge: HIGH (hold)`, judge prose *"Demoted from gamechanger…"*, footer `Floor: game changer
+… Judge: HIGH hold ← authoritative`. `mi_audit_log` recorded `floor=HIGH judge=HIGH
+dir=demote`.
+
+**Two values that were being read as one — the definitions, now enforced in code comments:**
+
+| Surface | What it actually is |
+|---|---|
+| `dir=` on `ep_grade_decision` (`judge_direction`, `direction_vs_floor`) | The judge's **self-reported** direction. Raw model output — `_normalize_verdict` validates ENUM MEMBERSHIP ONLY, never agreement with `tier` vs `floor_tier`. The rubric asks for a tier comparison; the model may answer on the catalyst-grade axis instead (OKTA did). **Not** "the judge's recommendation before overrides" — nothing overrode it. |
+| `(hold)` in the alert header | **DERIVED** by `briefing._judge_direction` from `TIER_RANK` (`score_tier` vs `baseline_floor_tier`). Factual; it is what acted. The header was never the bug. |
+
+**Two axes, never one ladder.** `game_changer` is a CATALYST grade (floor-owned). `HIGH` is the
+top of the ALERT TIER scale (judge-owned when authoritative). The judge's own `grade` output is
+**never written to the alert row** (`update_ep_alert_judge_result` writes tier / direction /
+rationale / materiality / fire_axes only), so it is advisory by construction. "Demoted from
+gamechanger to HIGH" is a category error. On **the surfaces listed below** every formatter now
+names its axis, and a transition arrow is only ever drawn TIER→TIER.
+
+**What the carve-out actually overrode.** `catalyst_downgrade_carveout_applied` fires inside the
+FLOOR grader (`_classify_catalyst_claude`), ~7 s before the judge runs, and overrides the
+**floor's own missing-YoY revenue safety net** — not the judge. The alert says exactly that.
+
+**Shipped:**
+- `format_grade_outcome_lines` — an `⚖️ Acted` line (per axis: which tier acted and which engine
+  set it, plus the acting catalyst grade) printed **above** the italic rationale, and an
+  `↩️ Recorded, did NOT act` block naming each inert item and why it was inert.
+- `format_tier_verdict` / `resolve_headline_grade` / `format_grade_provenance` — axis-named on
+  every leg; the judge leg states the limit of its authority ("sets the tier, not the catalyst
+  grade").
+- `resolve_why_attribution` — the judge's rationale is labelled `Judge's reasoning:`. Model
+  prose cannot be controlled and will keep saying "demoted"; the derived `⚖️ Acted` line above
+  it plus the attribution are what keep the outcome unambiguous regardless of wording.
+- `ep_detector` threads a display-only `floor_grade_kept` record (which of the three keep-events
+  — earnings carve-out / live prior-year YoY recovery / extraction-failure fail-open — preserved
+  the floor grade, and why), set from the **decision branch** (idempotent, every 5-min tick), not
+  the per-day-deduped audit emit, and cleared if a downgrade ultimately did fire. Plus
+  display-only `judge_direction` / `judge_grade` on the in-memory alert dict.
+- `/setup` and `/why` derive their judge arrow/direction from the tiers too, and report the
+  judge's own `direction` word separately when it disagrees.
+
+**KNOWN REMAINING SURFACE — the EOD judge-delta digest** (`_build_judge_delta_message`,
+briefing.py). It still counts `▲N ▼M` and picks its arrow from the raw `judge_direction`, so an
+OKTA-shaped row renders `▼ OKTA HIGH (tier held — quality read)` — a demote arrow beside "tier
+held". Deliberately NOT changed here: the digest's row **selection** is a SQL predicate
+(`scheduler.py`, `WHERE judge_direction = 'demote'`), not display, so deriving the arrow while
+selection stays raw produces "=" rows in a message titled "deltas" — a half-state that reads
+worse than the current one. Fixing it means changing what the digest selects, which is a
+separately scoped change.
+
+Pinned by `tests/test_ep_alert_two_axes.py`.
+
 ### Deferred (grade-AFFECTING → CHANGE_PROCESS + backtest, NOT shipped 6/17)
 - **Stale `confidence_multiplier` after a floor downgrade** (`ep_detector.py` revenue-weak path
   keeps the 1.2 the hedge path resets). Resetting it lowers `ep_score` → can flip `floor_tier` AND

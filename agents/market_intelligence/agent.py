@@ -3618,13 +3618,20 @@ class MarketIntelligenceAgent(BaseAgent):
             from agents.market_intelligence.db import get_latest_ep_alert_judge
             jr = await get_latest_ep_alert_judge(ticker)
             if jr:
+                # 2026-08-27: derive the arrow from the TIERS, not from the judge's
+                # self-reported judge_direction — that field is raw model output and can
+                # contradict the very tiers printed beside it (OKTA: dir=demote while
+                # floor HIGH → judge HIGH). See briefing._judge_direction.
+                from agents.market_intelligence.briefing import (
+                    _judge_direction as _derive_tier_dir,
+                )
                 arrow = {"promote": "▲", "demote": "▼", "hold": "="}.get(
-                    jr.get("judge_direction"), "·")
+                    _derive_tier_dir(jr.get("judge_tier"), jr.get("baseline_floor_tier")), "·")
                 auth = jr.get("grade_engine_authority") or "floor"
                 lines.append("")
                 lines.append(f"🧠 Grade judge ({jr['alert_date']}):")
                 lines.append(
-                    f"  {arrow} floor {jr.get('baseline_floor_tier')} → "
+                    f"  {arrow} alert tier: floor {jr.get('baseline_floor_tier')} → "
                     f"judge {jr.get('judge_tier')}  [{auth}]")
                 if jr.get("judge_materiality_tier"):
                     lines.append(f"  materiality: {jr['judge_materiality_tier']}")
@@ -5924,14 +5931,27 @@ class MarketIntelligenceAgent(BaseAgent):
             if _judge_auth:
                 lines.append("")
                 _jt = alert.get("judge_tier") or alert.get("score_tier")
-                _dir = alert.get("judge_direction")
                 _floor = alert.get("baseline_floor_tier") or "n/a"
-                _hdr = f"⚖️ JUDGE — {_jt}"
+                # 2026-08-27: the direction is DERIVED from the two tiers. It used to print
+                # alert["judge_direction"] — the judge's own unvalidated word — which can
+                # contradict the tiers on the same line (OKTA: dir=demote, floor HIGH,
+                # judge HIGH). The judge's word is reported below, labelled as its note.
+                from agents.market_intelligence.briefing import (
+                    _judge_direction as _derive_tier_dir, _TIER_MOVE_VERB,
+                )
+                _dir = _derive_tier_dir(_jt, _floor)
+                _hdr = f"⚖️ JUDGE — alert tier {_jt}"
                 if _dir == "hold":
                     _hdr += f" (held at floor {_floor})"
                 elif _dir:
-                    _hdr += f" ({_dir} vs floor {_floor})"
+                    _hdr += f" ({_TIER_MOVE_VERB[_dir]} from floor {_floor})"
                 lines.append(_hdr)
+                _claimed = (alert.get("judge_direction") or "").strip().lower()
+                if _claimed in _TIER_MOVE_VERB and _dir and _claimed != _dir:
+                    lines.append(
+                        f"   note: the judge's own direction field reads \"{_claimed}\" — the "
+                        f"alert tier above is what acted. The catalyst grade is a separate "
+                        f"scale the judge does not set.")
                 _fa = alert.get("fire_axes")
                 _fa_txt = ", ".join(_fa) if isinstance(_fa, (list, tuple)) and _fa else "—"
                 _bits = []

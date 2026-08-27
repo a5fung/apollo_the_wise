@@ -3481,6 +3481,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         _has_direct_source = None  # Wave C shadow (#233): set on the uncached grade tick
         grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
+        # DISPLAY-ONLY (2026-08-27, OKTA alert-coherence fix). Which keep-event — if any —
+        # preserved the FLOOR catalyst grade against the floor's OWN revenue safety net, so
+        # the alert can NAME the mechanism that acted instead of a hardcoded word. Three
+        # different events can do it (earnings carve-out / live prior-year YoY recovery /
+        # extraction-failure fail-open) and they must not be reported as each other.
+        # Reset per candidate. Set from the DECISION branches (idempotent, re-run every
+        # 5-min tick) and NEVER from the audit emits, which are deduped per-ticker-per-day
+        # and would blank the label on every tick after the first. Cleared again if a
+        # downgrade ultimately DID fire — "kept" must never survive an applied downgrade.
+        _floor_grade_kept: "dict | None" = None
         cached = _catalyst_cache.get(ticker)
         if cached:
             # filters_cleared: True = this grade already passed the M&A/routine/
@@ -4230,6 +4240,25 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 qr = _extracted.get("q_revenue_usd") or {}
                 gc = _extracted.get("guidance_change") or {}
                 _downgrade_reason = None
+                _beat = qr.get("beat_vs_est_pct")
+                _floor_grade_kept = {
+                    "gate": "revenue safety net (no prior-year comparable extracted)",
+                    # What the gate WOULD have done, recorded by the branch that knows —
+                    # never inferred by the renderer, because it differs per event (the
+                    # extraction-failure branch never reached a verdict at all).
+                    "effect": "would have cut the catalyst grade to routine",
+                    "by": "the earnings carve-out",
+                    "why": (
+                        f"beat estimate by {_beat:.1f}%, guidance "
+                        f"{gc.get('direction')}, {gc.get('confidence')} confidence"
+                        if isinstance(_beat, (int, float)) else None
+                    ),
+                    # The grade AS PRESERVED HERE. The unconditional #533 final resolve
+                    # below re-derives the acting grade, so this can legitimately differ
+                    # from the alert's catalyst_quality — the renderer says so rather than
+                    # crediting this mechanism with a value it did not set.
+                    "grade": catalyst_quality,
+                }
                 # Per-ticker-per-day dedup on the AUDIT EMIT only — the carve-out
                 # DECISION above (_downgrade_reason = None) is idempotent and MUST
                 # run every scan. Without this guard the event re-fires on every
@@ -4288,6 +4317,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _ryoy = _rec["yoy_pct"]
                     if _ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY:
                         _downgrade_reason = None   # real growth recovered — NOT a weak/missing-comparable name
+                        _floor_grade_kept = {
+                            "gate": "revenue safety net (no prior-year comparable extracted)",
+                            "effect": "would have cut the catalyst grade to routine",
+                            "by": "the live prior-year revenue lookup",
+                            "why": f"recovered year-over-year revenue {_ryoy:+.1f}%",
+                            "grade": catalyst_quality,
+                        }
                         # Per-ticker-per-day dedup on the AUDIT EMIT only — the recovery
                         # DECISION above (_downgrade_reason = None) is idempotent and MUST
                         # run every scan. Without this guard the event re-fires on every
@@ -4317,6 +4353,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # healthy extraction, which is how the 08-06/08-07 outage went unnoticed for
             # a full session. Per-ticker-per-day dedup, same idiom as the carve-out above.
             if _extraction_failed_no_downgrade:
+                _floor_grade_kept = {
+                    "gate": "revenue safety net",
+                    # NOT "would have cut it to routine" — the gate never reached a verdict
+                    # here, so claiming one would assert something the record does not say.
+                    "effect": "could not run",
+                    "by": "the extraction-failure fail-open",
+                    "why": "the revenue metrics extraction failed",
+                    "grade": catalyst_quality,
+                }
                 try:
                     # ⚠ arg order is (event_type, ticker) — this call had them SWAPPED until
                     # 2026-08-11, so the dedup query matched nothing, failed open, and re-logged
@@ -4338,6 +4383,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     logger.warning(f"{ticker}: could not log extraction-failed-grade-kept: {_e}")
 
             if _downgrade_reason:
+                # The downgrade ACTED — no keep-event claim can stand alongside it.
+                _floor_grade_kept = None
                 _original_quality = catalyst_quality
                 # The gate corrects the RAW grade — both sides move, then the acting
                 # grade re-resolves below (one-grade rule).
@@ -4856,6 +4903,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # W2a (#243): floor drove this alert's tier (holistic_judge_enabled OFF —
             # W1/W2-dormant). The W2 flip overwrites this with 'judge'/'fallback'.
             "grade_engine_authority": "floor",
+            # DISPLAY-ONLY: read solely by briefing.format_grade_outcome_lines. Not
+            # persisted (the alert is sent from THIS dict — scheduler.py::_ep_scan_job
+            # iterates run_ep_scan's return value), and nothing scores/gates on it.
+            "floor_grade_kept": _floor_grade_kept,
         }
         results.append(result)
 
@@ -5221,6 +5272,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # coherence gap as #319).
                             r["judge_rationale"] = v.get("rationale")
                             r["judge_materiality_tier"] = v.get("materiality_tier")
+                            # DISPLAY-ONLY (2026-08-27, OKTA alert-coherence fix), same
+                            # DB-first discipline as the two lines above. NEITHER value is
+                            # authoritative: `direction_vs_floor` is raw model output that
+                            # _normalize_verdict checks for ENUM MEMBERSHIP ONLY — never for
+                            # agreement with tier-vs-floor_tier — and `grade` is the judge's
+                            # catalyst-grade opinion, which is not written to the alert row
+                            # by update_ep_alert_judge_result and therefore never acts. They
+                            # are surfaced so the alert can LABEL them as the view that did
+                            # not carry, instead of letting the judge's prose read as the
+                            # outcome (OKTA 2026-08-27: prose said "demoted from gamechanger"
+                            # while the tier held at HIGH and the floor grade stayed
+                            # game_changer). Nothing downstream reads either key.
+                            r["judge_direction"] = v.get("direction_vs_floor")
+                            r["judge_grade"] = v.get("grade")
                             # ── #322 judge → narrative-radar feed ──────────────────
                             # The judge lit fire_axes theme/narrative on a ticker
                             # NEITHER lane tracks (the JBL AI-infra class) — write a
