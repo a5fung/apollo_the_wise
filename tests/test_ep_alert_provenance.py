@@ -1,7 +1,11 @@
 """EP alert grade-coherence (6/17 operator triage). Since the judge is load-bearing (#249), the
-alert must resolve to the JUDGE verdict and show HOW the grade was reached (where Perplexity fits)
-— not headline the contradicted floor grade (LZB: floor 'routine' under a judge-promoted HIGH) nor
-print a stale 'Claude + Perplexity agree' line after a post-agreement downgrade.
+alert must resolve to the JUDGE verdict and show HOW each rating was reached (where Perplexity
+fits) — not headline a contradicted catalyst grade (LZB: grade 'routine' under a judge-promoted
+HIGH) nor print a stale 'Claude + Perplexity agree' line after a post-agreement downgrade.
+
+2026-08-27: the word "floor" is gone from every rendered string (it named BOTH the pre-judge
+alert tier and the catalyst grade's owner). The pre-judge tier is "our score"; the grade is set
+by "the Claude grader". The `baseline_floor_tier` fixtures keep the COLUMN name.
 
 Pins the pure formatters: _judge_direction, resolve_headline_grade, format_grade_provenance.
 """
@@ -34,7 +38,8 @@ def test_direction_none_on_unknown_tier():
 
 # ── resolve_headline_grade — resolves to the judge when load-bearing ──────────
 def test_headline_leads_with_judge_when_load_bearing():
-    # LZB: floor 'routine' but judge promoted to HIGH → headline must be the judge verdict,
+    # LZB: catalyst grade 'routine' but judge promoted the tier to HIGH → headline must be the
+    # judge's tier verdict,
     # NEVER 'Routine' (the contradiction the operator flagged).
     # 2026-08-27: the label now NAMES its axis and draws the arrow tier→tier, so a catalyst
     # grade can never be read as one end of the transition (the OKTA category error).
@@ -43,25 +48,27 @@ def test_headline_leads_with_judge_when_load_bearing():
     assert "routine" not in label.lower() and "Routine" not in label
 
 
-def test_headline_hold_when_judge_agrees_floor():
+def test_headline_hold_when_judge_agrees_with_our_score():
     # No arrow when nothing moved — "held", past tense, on the named axis.
     assert resolve_headline_grade(QURE)[1] == "Judge: alert tier HIGH (held)"
     assert resolve_headline_grade(JBL)[1] == "Judge: alert tier HIGH (held)"
     assert "→" not in resolve_headline_grade(QURE)[1]
 
 
-def test_headline_falls_back_to_floor_grade_when_not_judge():
-    # The floor branch names its axis too — the slot used to hold a bare tier on one alert
+def test_headline_falls_back_to_the_catalyst_grade_when_not_judge():
+    # The our-score branch names its axis too — the slot used to hold a bare tier on one alert
     # and a bare catalyst grade on the next, which is what let the two scales blur.
-    floor = {"catalyst_quality": "strong", "grade_engine_authority": "floor"}
-    assert resolve_headline_grade(floor)[1] == "Strong catalyst"
+    # (grade_engine_authority is STORED as 'floor'; the enum is untouched, only the words changed.)
+    scored = {"catalyst_quality": "strong", "grade_engine_authority": "floor"}
+    assert resolve_headline_grade(scored)[1] == "Strong catalyst"
 
 
 # ── format_grade_provenance — Claude · Perplexity · judge, no stale 'agree' ───
 def test_provenance_shows_all_three_legs():
     p = format_grade_provenance(LZB)
-    assert "Catalyst grade: routine (Claude floor)" in p
+    assert "Catalyst grade: routine (set by the Claude grader)" in p
     assert "Perplexity: strong (✗differs)" in p          # routine != strong → differs, NOT agree
+    assert "second opinion, sets nothing" in p           # Perplexity is recorded, never a setter
     # The judge leg states WHAT its authority covers — it sets the tier, not the catalyst grade.
     assert "Judge: alert tier MODERATE→HIGH (promoted)" in p
     assert "sets the tier, not the catalyst grade" in p
@@ -79,29 +86,29 @@ def test_provenance_marks_real_agreement():
     assert "Perplexity: strong (✓agree)" in format_grade_provenance(agree)
 
 
-def test_provenance_omits_perplexity_when_absent_and_judge_when_floor():
+def test_provenance_omits_perplexity_when_absent_and_judge_when_our_score_acts():
     p = format_grade_provenance({"catalyst_quality": "routine", "grade_engine_authority": "floor"})
-    assert "Catalyst grade: routine (Claude floor)" in p
+    assert "Catalyst grade: routine (set by the Claude grader)" in p
     assert "Perplexity" not in p and "Judge" not in p
 
 
 # ── #329-trace: resolve_why_text — lead the italic with the JUDGE rationale ───
 def test_why_leads_with_judge_rationale_when_authoritative():
     ep = dict(LZB, judge_rationale="Transformative deal vs a $120M micro-cap; theme hot.",
-              claude_analysis="floor's weaker take")
+              claude_analysis="the grader's weaker take")
     assert resolve_why_text(ep) == "Transformative deal vs a $120M micro-cap; theme hot."
 
 
-def test_why_falls_back_to_floor_analysis_when_not_judge():
-    ep = {"grade_engine_authority": "floor", "claude_analysis": "floor analysis",
+def test_why_falls_back_to_the_grader_analysis_when_not_judge():
+    ep = {"grade_engine_authority": "floor", "claude_analysis": "grader analysis",
           "judge_rationale": "should be ignored"}
-    assert resolve_why_text(ep) == "floor analysis"
+    assert resolve_why_text(ep) == "grader analysis"
 
 
 def test_why_falls_back_when_judge_has_no_rationale():
-    # Authoritative judge but empty rationale → don't blank the alert; show floor analysis.
-    ep = dict(LZB, judge_rationale="  ", claude_analysis="floor analysis")
-    assert resolve_why_text(ep) == "floor analysis"
+    # Authoritative judge but empty rationale → don't blank the alert; show the grader's analysis.
+    ep = dict(LZB, judge_rationale="  ", claude_analysis="grader analysis")
+    assert resolve_why_text(ep) == "grader analysis"
     assert resolve_why_text({"grade_engine_authority": "judge"}) == ""  # nothing at all → empty
 
 

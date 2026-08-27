@@ -6,7 +6,7 @@ never self-certifies the demotion list). Complements the Unjustified Demotion Sw
 (scripts/unjustified_demotion_sweep.py, which flags only the demotes that then RAN ≥+18%):
 this shows the FULL bidirectional delta with context, the sweep is the winner-killing alarm.
 
-Each row carries floor→judge tier, materiality, the judge's load-bearing rationale, and the
+Each row carries our-score→judge alert tier, materiality, the judge's rationale, and the
 5d MFE (did the name actually run, from mi_daily_closes) so a promotion's payoff / a
 demotion's avoided-or-missed move is visible at a glance.
 
@@ -48,7 +48,7 @@ def _fmt(rows, kind: str) -> None:
         tier_part = format_tier_transition(r["baseline_floor_tier"], r["judge_tier"])
         print(f"  {r['ticker']:<6} {r['alert_date']}  {tier_part:<22} "
               f"MFE {mfe:<6} mat={r['judge_materiality_tier']} gap={r['gap_pct']}% "
-              f"floor_cat={r['catalyst_quality']}")
+              f"catalyst grade={r['catalyst_quality']}")
         if r["judge_rationale"]:
             print(f"         {r['judge_rationale'][:170]}")
 
@@ -61,8 +61,8 @@ async def main(window_days: int) -> None:
         demotions = await conn.fetch(_DELTA_SQL, cutoff, "demote")
 
     print(f"=== Judge delta review — last {window_days}d (since {cutoff}) ===\n")
-    print(f"▲ PROMOTIONS ({len(promotions)}) — floor under-rated, judge lifted "
-          f"(fat-tail outlier capture; high MFE = the win the floor would have missed):")
+    print(f"▲ PROMOTIONS ({len(promotions)}) — our score under-rated it, judge lifted the tier "
+          f"(fat-tail outlier capture; high MFE = the win our score would have missed):")
     _fmt(promotions, "promotion")
     print(f"\n▼ DEMOTIONS ({len(demotions)}) — judge cut a gap-only / immaterial HIGH "
           f"(HIGH MFE here = a POSSIBLE WRONG demotion — cross-check the sweep):")

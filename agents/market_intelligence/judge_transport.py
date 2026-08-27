@@ -103,7 +103,8 @@ async def invoke_forced_tool(
                 await log_audit_event(
                     "judge_verdict_truncated",
                     subject or label,
-                    f"{label} hit max_tokens={max_tokens}; verdict discarded, floor kept",
+                    f"{label} hit max_tokens={max_tokens}; verdict discarded, "
+                    f"our score's alert tier kept",
                 )
             except Exception as _te:
                 # Telemetry must never change the fail-open outcome, but it must not vanish

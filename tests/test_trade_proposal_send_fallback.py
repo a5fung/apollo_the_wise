@@ -86,7 +86,7 @@ async def test_catalyst_underscore_sanitized(monkeypatch):
 
     _install_mocks(monkeypatch, _post)
     await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)
-    assert "game changer" in sent["text"]      # sanitized form present
+    assert "Catalyst grade: game-changing" in sent["text"]   # plain words, axis named
     assert "game_changer" not in sent["text"]  # the raw underscore that 400'd is gone
 
 

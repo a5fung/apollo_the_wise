@@ -1,8 +1,10 @@
 """Regression tests for the EP Judge delta digest formatter (#240 / W3, 2026-06-09).
 
 The PUSH complement to the pull-only judge_delta_review.py — once a day the names
-the holistic judge moved up/down vs the floor go to Telegram. These pin the message
-formatting (arrows, floor→judge tier, materiality, the shadow-vs-load-bearing subtitle).
+the holistic judge moved up/down vs OUR SCORE's tier go to Telegram. These pin the message
+formatting (arrows, our-score→judge tier, materiality, the shadow-vs-load-bearing subtitle).
+2026-08-27: the arrow is DERIVED FROM THE TIERS, never from the judge's own word, and the
+digest names its axis — it reports the ALERT TIER, which is not the catalyst grade.
 The job's DB-query + Telegram-send shell is exercised by the prod scan; the pure
 formatter is what bugs (markdown/escaping, count, cap) live in.
 """
@@ -13,6 +15,7 @@ from agents.market_intelligence.briefing import _build_judge_delta_message
 
 def _row(ticker, direction, floor="MODERATE", judge="HIGH", mat="material", gap=12.0,
          rationale="reason"):
+    # `floor` here is the COLUMN name (baseline_floor_tier) = the tier OUR SCORE produced.
     return {"ticker": ticker, "judge_direction": direction, "baseline_floor_tier": floor,
             "judge_tier": judge, "judge_materiality_tier": mat, "gap_pct": gap,
             "judge_rationale": rationale}
@@ -22,7 +25,8 @@ def test_header_counts_promotes_and_demotes():
     rows = [_row("AAA", "promote"), _row("BBB", "demote", floor="HIGH", judge="none"),
             _row("CCC", "demote", floor="HIGH", judge="none")]
     msg = _build_judge_delta_message(rows, authority_on=False, date_str="Jun 09")
-    assert "▲1 ▼2" in msg.splitlines()[0]
+    # Counted off the TIERS (all three rows really moved), and each count says what it means.
+    assert "▲1 raised ▼2 cut =0 held" in msg.splitlines()[0]
     assert "Jun 09" in msg
 
 
@@ -31,7 +35,9 @@ def test_shadow_vs_loadbearing_subtitle():
     shadow = _build_judge_delta_message(rows, authority_on=False, date_str="Jun 09")
     live = _build_judge_delta_message(rows, authority_on=True, date_str="Jun 09")
     assert "drives nothing" in shadow
-    assert "DROVE the paper grade" in live
+    assert "DROVE the paper tier" in live
+    # Both name the axis — this digest is the alert tier, never the catalyst grade.
+    assert "ALERT TIER only" in shadow and "ALERT TIER only" in live
 
 
 def test_row_shows_arrow_tiers_and_materiality():
@@ -50,13 +56,17 @@ def test_demote_uses_down_arrow():
     assert "▼ `BIGCO` HIGH→none" in msg
 
 
-def test_promote_with_tier_held_renders_quality_read():
+def test_promote_with_tier_held_is_not_drawn_as_a_tier_move():
     # #253: judge_direction can disagree with the tier outcome (ASAN/SAIC/PHR class —
     # direction=promote but tier stayed MODERATE). Must NOT render as a tier upgrade.
+    # 2026-08-27: the ARROW is derived from the tiers too, so a claimed promote against a
+    # held tier no longer wears a ▲; the judge's word is still printed, labelled as its note.
     msg = _build_judge_delta_message([_row("ASAN", "promote", floor="MODERATE",
                                            judge="MODERATE")],
                                      authority_on=False, date_str="Jun 09")
-    assert "▲ `ASAN` MODERATE (tier held — quality read)" in msg
+    assert "= `ASAN` MODERATE (alert tier held)" in msg
+    assert "▲ `ASAN`" not in msg
+    assert "judge's note: promote" in msg
     assert "MODERATE→MODERATE" not in msg
 
 

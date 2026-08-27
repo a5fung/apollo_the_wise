@@ -305,14 +305,19 @@ Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {
 {p.get('analysis') or '(none)'}{tape_block}"""
 
 
-def format_tier_transition(floor_tier, judge_tier) -> str:
+def format_tier_transition(base_tier, judge_tier) -> str:
     """#253 presentation contract, ONE copy (digest + replay + delta review all use it):
-    direction_vs_floor is the judge's qualitative call and can disagree with the tier
-    outcome — a `promote` with the tier held is a quality read, NOT a tier upgrade, and
-    must never render as one."""
-    if judge_tier != floor_tier:
-        return f"{floor_tier}→{judge_tier}"
-    return f"{floor_tier} (tier held — quality read)"
+    `direction_vs_floor` is the judge's qualitative call and can disagree with the tier
+    outcome — a `promote` with the tier held is a read on the CATALYST GRADE, NOT a tier
+    upgrade, and must never render as one.
+
+    `base_tier` is what our own EP score produced (column `baseline_floor_tier`). Both ends
+    of the arrow are ALWAYS alert tiers — a catalyst grade can never be one end of it.
+    2026-08-27: the held branch says which axis held and drops "quality read", which named
+    the other axis without naming it (operator: two ratings, one word)."""
+    if judge_tier != base_tier:
+        return f"{base_tier}→{judge_tier}"
+    return f"{base_tier} (alert tier held)"
 
 
 def _normalize_verdict(raw: dict) -> dict | None:

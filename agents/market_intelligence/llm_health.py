@@ -204,7 +204,8 @@ async def alert_credit_exhausted(context: str, exc: BaseException,
             f"⚠️ {b(f'{label.upper()} LLM CREDITS / AUTH FAILURE')} — detected in "
             f"{esc(context)}.\n"
             f"LLM grading / synthesis / validation is silently degrading "
-            f"(catalyst grades → 'routine', judge → floor, Perplexity → empty) "
+            f"(catalyst grades → 'routine', the judge stops reviewing so our own score's "
+            f"alert tier stands, Perplexity → empty) "
             f"until the {esc(label)} balance is refilled / key is fixed.\n"
             f"Check billing + the API key, then verify the next scan's grade rows.",
             parse_mode="HTML",

@@ -9,9 +9,9 @@ DESIGN (advisor-reviewed 2026-06-08): the guard joins the demote cohort to MAX F
 EXCURSION computed DIRECTLY from mi_daily_closes (the LATERAL pattern from missed_outcomes.py
 :341), NOT to mi_ep_missed_outcomes. Reasons:
   - REGIME-INDEPENDENT: "did this ticker run after alert_date" is pure price data — identical
-    whether the name was entered (W1 shadow: floor still enters) or suppressed (W2: judge
+    whether the name was entered (W1 shadow: our score still enters it) or suppressed (W2: judge
     demote blocks entry). missed_outcomes EXCLUDES traded names, so it can't see a
-    floor-entered judge-demote in shadow; raw prices can.
+    score-entered judge-demote in shadow; raw prices can.
   - ONE uniform threshold (missed_outcomes stores MFE-as-fraction-from-open; the trades table
     stores realized R off the actual entry/stop — a UNION of the two can't share a threshold).
   - MFE is the better "did it run" signal than realized R for a review tool — no stop/exit noise.
@@ -90,18 +90,18 @@ async def main(window_days: int, mfe_threshold: float) -> None:
         for r in flagged:
             mfe = r["mfe_5d"]
             print(f"  {r['ticker']:<6} {r['alert_date']}  MFE +{mfe:.0%}  "
-                  f"floor={r['baseline_floor_tier']}→judge={r['judge_tier']} "
+                  f"alert tier: our score {r['baseline_floor_tier']}→judge {r['judge_tier']} "
                   f"mat={r['judge_materiality_tier']} gap={r['gap_pct']}% "
-                  f"floor_cat={r['catalyst_quality']}")
+                  f"catalyst grade={r['catalyst_quality']}")
             if r["judge_rationale"]:
                 print(f"         rationale: {r['judge_rationale'][:160]}")
 
-    print(f"\n=== judge_tier × baseline_floor_tier (last {window_days}d) ===")
+    print(f"\n=== judge alert tier × our score's alert tier (last {window_days}d) ===")
     if not crosstab:
         print("  (no judged rows yet)")
     else:
         for r in crosstab:
-            print(f"  floor={r['floor_tier']:<9} judge={r['judge_tier']:<9} "
+            print(f"  our score={r['floor_tier']:<9} judge={r['judge_tier']:<9} "
                   f"{r['direction']:<8} n={r['n']}")
 
 

@@ -2248,10 +2248,14 @@ async def _eod_ep_recap_job():
         )
 
         # Judge demotes (operator request 2026-06-10, judge load-bearing same
-        # day): "No HIGH EPs" is ambiguous — none detected, or floor-HIGHs
-        # demoted away? Count floor-HIGH demotes explicitly (always shown, so
+        # day): "No HIGH EPs" is ambiguous — none detected, or did the judge cut
+        # the ones our score rated HIGH? Count them explicitly (always shown, so
         # 0 is an answer, not silence). Per-delta detail stays in the 16:25
         # judge digest; this is the headline count.
+        # ⚠ The PREDICATE is judge_direction — the judge's OWN word, which can say
+        # "demote" while the tier it set never moved (OKTA 2026-08-27). So the line
+        # reports the note as a note and prints the tier that ACTED per name; it must
+        # not say "demoted N" when N of those tiers are still sitting at HIGH.
         pool = await get_pool()
         async with pool.acquire() as conn:
             _demoted = await conn.fetch("""
@@ -2262,10 +2266,11 @@ async def _eod_ep_recap_job():
             """, today)
         if _demoted:
             _dt = ", ".join(
-                f"`{r['ticker']}`→{r['score_tier'] or '?'}" for r in _demoted[:6])
-            judge_line = f"⚖️ Judge demoted {len(_demoted)} floor-HIGH: {_dt}"
+                f"`{r['ticker']}` {r['score_tier'] or '?'}" for r in _demoted[:6])
+            judge_line = (f"⚖️ Judge argued a demote on {len(_demoted)} name(s) our score "
+                          f"rated HIGH — alert tier that acted: {_dt}")
         else:
-            judge_line = "⚖️ Judge demoted 0 floor-HIGHs"
+            judge_line = "⚖️ Judge argued no demotes on the names our score rated HIGH"
 
         # Vol-profile Slice 1 (V4, docs/analysis/volume_profile_alert_context_2026-07-27.md):
         # alert-day volume landmark, EOD truth — rendered HERE and not on the alert because
@@ -2912,7 +2917,7 @@ async def _judge_delta_digest_job():
     """EOD push of the EP Holistic Grade Judge's bidirectional deltas (#240 / W3,
     2026-06-09). The judge_delta_review.py / unjustified_demotion_sweep.py surfaces
     are PULL (operator runs them); this is the PUSH complement — once a day, the names
-    the judge moved UP or DOWN vs the conviction floor land in Telegram so the
+    the judge moved UP or DOWN vs our own score's tier land in Telegram so the
     judgment-correctness review doesn't depend on remembering to run a script.
 
     DB-sourced (feedback_scheduler_aggregators_db_sourced): reads today's judged rows
@@ -4513,7 +4518,7 @@ async def _run_chart_axis_shadow(today):
                 # summary = ticker|alert_date so dedup keys on the COHORT, not write wall-clock.
                 await log_audit_event(
                     "chart_axis_shadow_graded", f"{ticker}|{alert_date.isoformat()}",
-                    f"floor={row['floor_tier']} B={bc['b_tiers']} C={bc['c_tiers']} "
+                    f"our-score={row['floor_tier']} B={bc['b_tiers']} C={bc['c_tiers']} "
                     f"stable={bc['both_stable']}")
                 graded += 1
 
@@ -4631,7 +4636,7 @@ async def _chart_axis_shadow_weekly_digest_job():
             except (ValueError, TypeError):
                 d = {}
             caption = (f"{d.get('ticker','?')} {d.get('alert_date','')}  "
-                       f"floor={d.get('floor_tier')}\n"
+                       f"our score's alert tier: {d.get('floor_tier')}\n"
                        f"no-chart={d.get('b_modal')} → +chart={d.get('c_modal')} "
                        f"({d.get('direction')})\n"
                        f"why(+chart): {(d.get('c_rationale') or '')[:300]}")
@@ -6276,7 +6281,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # EP Judge delta digest: 16:25 ET (#240 / W3, 2026-06-09). PUSH complement to the
     # pull-only judge_delta_review.py / unjustified_demotion_sweep.py — once a day, the
-    # names the holistic judge moved UP or DOWN vs the floor land in Telegram for the
+    # names the holistic judge moved UP or DOWN vs our own score's tier land in Telegram
     # judgment-correctness review. Staggered after the 16:20 9m_pace digest (the 16:xx
     # family is spaced). Empty day → no Telegram (shadow until the W2 flip).
     _scheduler.add_job(

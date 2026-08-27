@@ -3611,28 +3611,41 @@ class MarketIntelligenceAgent(BaseAgent):
                 else:
                     lines.append(f"  {sds} · evaluated")
 
-        # Holistic Grade Judge trace (#243 / ADR 0011 logging clause) — the bidirectional
-        # verdict (floor → judge tier) + which engine drove the grade + the load-bearing
-        # rationale. Fail-open: a fetch error never breaks /setup.
+        # Holistic Grade Judge trace (#243 / ADR 0011 logging clause) — the ALERT TIER that
+        # acted, who set it, and the load-bearing rationale. Fail-open: a fetch error never
+        # breaks /setup.
         try:
             from agents.market_intelligence.db import get_latest_ep_alert_judge
             jr = await get_latest_ep_alert_judge(ticker)
             if jr:
-                # 2026-08-27: derive the arrow from the TIERS, not from the judge's
-                # self-reported judge_direction — that field is raw model output and can
-                # contradict the very tiers printed beside it (OKTA: dir=demote while
-                # floor HIGH → judge HIGH). See briefing._judge_direction.
+                # 2026-08-27: ONE renderer for the tier axis (briefing.format_alert_tier_clause),
+                # shared with /why and the EP alert. It derives the move from the TIERS, never
+                # from the judge's self-reported judge_direction — that field is raw model output
+                # and can contradict the very tiers printed beside it (OKTA: dir=demote while our
+                # score said HIGH and the judge said HIGH). The old line also dumped the raw
+                # `grade_engine_authority` enum in brackets; the clause says it in words.
                 from agents.market_intelligence.briefing import (
-                    _judge_direction as _derive_tier_dir,
+                    format_alert_tier_clause, format_catalyst_grade,
                 )
-                arrow = {"promote": "▲", "demote": "▼", "hold": "="}.get(
-                    _derive_tier_dir(jr.get("judge_tier"), jr.get("baseline_floor_tier")), "·")
-                auth = jr.get("grade_engine_authority") or "floor"
+                _auth = jr.get("grade_engine_authority") or "floor"
                 lines.append("")
                 lines.append(f"🧠 Grade judge ({jr['alert_date']}):")
-                lines.append(
-                    f"  {arrow} alert tier: floor {jr.get('baseline_floor_tier')} → "
-                    f"judge {jr.get('judge_tier')}  [{auth}]")
+                lines.append("  " + format_alert_tier_clause({
+                    "score_tier": jr.get("score_tier"),
+                    "baseline_floor_tier": jr.get("baseline_floor_tier"),
+                    "grade_engine_authority": _auth,
+                }, bold=False))
+                # The judge's own tier read when it did NOT act — recorded, advisory, and
+                # labelled as such rather than printed as though it had set the tier.
+                if _auth != "judge" and jr.get("judge_tier"):
+                    lines.append(
+                        f"  the judge read the alert tier as {jr['judge_tier']} — "
+                        f"advisory, it did not act")
+                if jr.get("catalyst_quality"):
+                    lines.append(
+                        "  catalyst grade: "
+                        f"{format_catalyst_grade(jr['catalyst_quality'])} "
+                        "(set by the Claude grader — the judge does not set it)")
                 if jr.get("judge_materiality_tier"):
                     lines.append(f"  materiality: {jr['judge_materiality_tier']}")
                 if jr.get("judge_rationale"):
@@ -5911,12 +5924,18 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("")
         if alert:
             _judge_auth = bool(alert.get("grade_engine_authority"))
+            from agents.market_intelligence.briefing import format_catalyst_grade
+            # TWO ratings, each named for what it is and who sets it (2026-08-27). The tier
+            # line used to be a bare "HIGH" and the grade a raw `game_changer` enum, which is
+            # both an underscore in a Markdown surface and the fusion the operator hit.
             lines.append(
-                f"🎯 DETECTED — {alert['score_tier']} · score {int(alert['ep_score'] or 0)}"
+                f"🎯 DETECTED — alert tier {alert['score_tier']} · "
+                f"score {int(alert['ep_score'] or 0)}"
             )
             lines.append(
-                f"   gap {float(alert.get('gap_pct') or 0):+.1f}% · "
-                f"catalyst {alert.get('catalyst_quality') or 'n/a'}"
+                f"   gap {float(alert.get('gap_pct') or 0):+.1f}% · catalyst grade "
+                f"{format_catalyst_grade(alert.get('catalyst_quality'), default='n/a')} "
+                f"(set by the Claude grader)"
             )
             # Discovery-catalyst blurb: show ONLY when the judge is not authoritative. When it
             # is, the judge's grounded rationale (its own section below) is the real "why" and
@@ -5926,32 +5945,32 @@ class MarketIntelligenceAgent(BaseAgent):
                 cat = cat_full if len(cat_full) <= 140 else cat_full[:140].rsplit(" ", 1)[0] + "…"
                 lines.append(f"   {cat}")
             # ⚖️ JUDGE — the load-bearing decision gets its OWN section (not crammed under
-            # Detected). Shows HOW the authoritative tier was reached so the grade is
-            # reconstructable: tier + direction vs floor, materiality, axes, rationale (#329/#336).
+            # Detected). Shows HOW the authoritative ALERT TIER was reached so it is
+            # reconstructable: tier + who set it, materiality, axes, rationale (#329/#336).
             if _judge_auth:
                 lines.append("")
                 _jt = alert.get("judge_tier") or alert.get("score_tier")
-                _floor = alert.get("baseline_floor_tier") or "n/a"
-                # 2026-08-27: the direction is DERIVED from the two tiers. It used to print
-                # alert["judge_direction"] — the judge's own unvalidated word — which can
-                # contradict the tiers on the same line (OKTA: dir=demote, floor HIGH,
+                _base = alert.get("baseline_floor_tier") or "n/a"
+                # 2026-08-27: ONE renderer (briefing.format_alert_tier_clause), shared with
+                # /setup and the EP alert. The move is DERIVED from the two tiers; it used to
+                # print alert["judge_direction"] — the judge's own unvalidated word — which can
+                # contradict the tiers on the same line (OKTA: dir=demote, our score HIGH,
                 # judge HIGH). The judge's word is reported below, labelled as its note.
                 from agents.market_intelligence.briefing import (
                     _judge_direction as _derive_tier_dir, _TIER_MOVE_VERB,
+                    format_alert_tier_clause,
                 )
-                _dir = _derive_tier_dir(_jt, _floor)
-                _hdr = f"⚖️ JUDGE — alert tier {_jt}"
-                if _dir == "hold":
-                    _hdr += f" (held at floor {_floor})"
-                elif _dir:
-                    _hdr += f" ({_TIER_MOVE_VERB[_dir]} from floor {_floor})"
-                lines.append(_hdr)
+                _dir = _derive_tier_dir(_jt, _base)
+                lines.append("⚖️ JUDGE — " + format_alert_tier_clause({
+                    "score_tier": _jt, "baseline_floor_tier": _base,
+                    "grade_engine_authority": "judge",
+                }, bold=False))
                 _claimed = (alert.get("judge_direction") or "").strip().lower()
                 if _claimed in _TIER_MOVE_VERB and _dir and _claimed != _dir:
                     lines.append(
                         f"   note: the judge's own direction field reads \"{_claimed}\" — the "
-                        f"alert tier above is what acted. The catalyst grade is a separate "
-                        f"scale the judge does not set.")
+                        f"alert tier above is what acted. The catalyst grade is the OTHER "
+                        f"rating, on its own scale, and the judge does not set it.")
                 _fa = alert.get("fire_axes")
                 _fa_txt = ", ".join(_fa) if isinstance(_fa, (list, tuple)) and _fa else "—"
                 _bits = []

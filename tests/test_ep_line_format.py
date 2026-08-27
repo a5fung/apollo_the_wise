@@ -18,7 +18,7 @@ def _line(**kw):
 def test_tier_word_and_catalyst_label_present():
     line = _line()
     assert "HIGH" in line                     # the tier WORD, not just the emoji
-    assert "game changer catalyst" in line    # grade labeled + underscore sanitized
+    assert "game-changing catalyst" in line   # plain words + underscore sanitized
     assert "game_changer" not in line         # the raw underscore (Markdown italic) is gone
 
 

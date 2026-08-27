@@ -54,9 +54,13 @@ async def send_trade_proposal(
     risk = order_spec["risk_dollars"]
     shares = order_spec["shares"]
     score = order_spec.get("ep_score", 0)
-    # Sanitize the rubric grade: "game_changer" etc. carry "_" which Markdown reads as italic →
-    # an unclosed entity → Telegram 400 (the parse-fragility class; SNX 6/25 trade #234).
-    catalyst = (alert.get("catalyst_quality") or "N/A").replace("_", " ")
+    # The CATALYST GRADE, through the ONE shared plain-words map (2026-08-27) so this proposal
+    # cannot word the same grade differently from the alert that produced it. It also sanitizes
+    # "game_changer": the "_" is read as italic by Markdown → an unclosed entity → Telegram 400
+    # (the parse-fragility class; SNX 6/25 trade #234). Imported locally — briefing is heavy and
+    # this module is on the execution path.
+    from agents.market_intelligence.briefing import format_catalyst_grade
+    catalyst = format_catalyst_grade(alert.get("catalyst_quality"), default="N/A")
     gap = alert.get("gap_pct", 0)
     regime = order_spec.get("regime", "Unknown")
     # Show risk as % only — don't leak account equity
@@ -87,7 +91,7 @@ async def send_trade_proposal(
         f"Stop: ${stop:.2f} (ORB low)\n"
         f"Risk: ${risk:.0f} ({risk_pct:.1f}% of account)\n"
         f"Shares: {shares}\n"
-        f"Score: {score:.0f} | Catalyst: {catalyst}\n"
+        f"Score: {score:.0f} | Catalyst grade: {catalyst}\n"
         f"Gap: {gap:.1f}% | Regime: {regime}"
         f"{theme_line}"
     )

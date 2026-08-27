@@ -540,8 +540,11 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
             # run yet (never gates/affects anything on this row).
             "setup_class": r.get("setup_class"),
         }
-        detail = (f"{r.get('ticker')} floor={floor_tier} judge={v.get('tier')} "
-                  f"dir={direction} outcome={outcome}")
+        # This string is the audit-row SUMMARY, which /audit renders to the operator — so it
+        # names each axis in words and never says "floor" (2026-08-27). The JSON payload below
+        # keeps every raw key; nothing parses this line.
+        detail = (f"{r.get('ticker')} our score {floor_tier} · judge {v.get('tier')} · "
+                  f"judge note {direction} · outcome {outcome}")
         await log_audit_event("ep_grade_decision", detail, json.dumps(payload, default=str))
     except Exception as _e:  # noqa: BLE001 — observability must never break the scan
         logger.debug(f"ep_grade_decision emit skipped for {r.get('ticker')}: {_e}")

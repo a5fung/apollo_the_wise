@@ -7,7 +7,8 @@ READ-ONLY. Distinct from /why (per-ticker, #336): this is the AGGREGATE view ove
 
 DRAWN FROM what we already run:
   • the alerts⋈outcomes join verified in eval_catalyst_materiality (o.scan_date = a.alert_date),
-  • the promote/hold/demote framing of the judge_delta_digest,
+  • the promote/hold/demote framing of the judge_delta_digest (the ALERT-TIER axis; the
+    judge never sets the catalyst grade),
   • the SURFACES-NEVER-PRESCRIBES discipline of the weekly system review
     (feedback_weekly_review_surface_not_prescribe): this report states facts; it proposes NO code.
 
@@ -121,14 +122,20 @@ def format_judge_review(agg, days):
          f"judge-driven grades: {agg['n']}  ·  with settled 5d outcome: {agg['settled']}",
          ""]
     dc = agg["dir_counts"]
-    L.append(f"Direction vs floor:  promote {dc.get('promote',0)} · hold {dc.get('hold',0)} · "
-             f"demote {dc.get('demote',0)}   (judge==floor tier {agg['agreement_rate']:.0f}%)")
+    # TWO different things, deliberately on TWO lines (2026-08-27): dir_counts is the judge's
+    # OWN note (raw model output, often answered on the catalyst-grade axis), while
+    # agreement_rate is the FACT of whether the tier moved. One line held both and read as
+    # a single verdict.
+    L.append(f"Judge's own note:  promote {dc.get('promote',0)} · hold {dc.get('hold',0)} · "
+             f"demote {dc.get('demote',0)}")
+    L.append(f"Alert tier vs our score:  the judge kept our score's tier on "
+             f"{agg['agreement_rate']:.0f}% of them")
     L.append("")
-    L.append("By direction (fwd 5d — directional only, win% is drift-saturated):")
+    L.append("By the judge's own note (fwd 5d — directional only, win% is drift-saturated):")
     for d in ("promote", "hold", "demote"):
         L.append(f"   {d:8s} {_stat_line(agg['by_dir'][d])}")
     L.append("")
-    L.append("By judge tier (fwd 5d):")
+    L.append("By the alert tier the judge set (fwd 5d):")
     for tier in ("HIGH", "MODERATE", "none"):
         if tier in agg["by_tier"]:
             L.append(f"   {tier:9s} {_stat_line(agg['by_tier'][tier])}")

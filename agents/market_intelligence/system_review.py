@@ -1480,13 +1480,13 @@ def _format_judge_section(data: dict) -> str:
     judged = data.get("judged") or 0
     holds = max(judged - (data.get("promotes") or 0) - (data.get("demotes") or 0), 0)
     lines = [
-        "⚖️ *Holistic judge (#240 — load-bearing since 6/10)*",
+        "⚖️ *Holistic judge (#240 — load-bearing since 6/10) — sets the ALERT TIER only*",
         "```",
         f"Graded {judged}/{total} alerts   "
         f"▲{data.get('promotes', 0)} ▼{data.get('demotes', 0)} ={holds}",
-        f"Fail-open to floor: {total - judged}   "
-        f"(authority judge:{data.get('judge_driven', 0)} "
-        f"fallback:{data.get('fallbacks', 0)})",
+        f"Fail-open to our score: {total - judged}   "
+        f"(tier set by judge:{data.get('judge_driven', 0)} "
+        f"by our score:{data.get('fallbacks', 0)})",
         f"Fire axes: seen {data.get('fire_seen', 0)} · none {data.get('no_fire', 0)}",
         "```",
         "_Per-delta review: `judge_delta_review.py` + the 16:25 digest._",

@@ -15,6 +15,16 @@ The two values that were being read as one:
 
 `game_changer` is a CATALYST grade; `HIGH` is the top of the ALERT TIER scale. "Demoted from
 gamechanger to HIGH" is a category error, so no formatter may put them on one ladder.
+
+2026-08-27 second pass — THE WORD ITSELF. The first pass left "Claude floor" and "the floor's
+HIGH" in the wording, so one word still did both jobs:
+  • `baseline_floor_tier` = the ALERT TIER our score produced before the judge reviewed it,
+  • "Floor: game changer (Claude)" = the CATALYST GRADE from the Claude grader.
+He read them as one ladder, which is our naming defect and not his misreading. "floor" is now
+BANNED from every operator-facing string (the identifiers and the DB column keep it). The
+pre-judge tier is "our score"; the grade's owner is "the Claude grader". Both ratings appear
+on every alert, each with its own name and its own setter, and an arrow never joins one of
+each. Swept mechanically by test_no_operator_facing_string_says_floor below.
 """
 import io
 import re
@@ -76,8 +86,8 @@ def test_okta_states_what_acted_before_any_model_prose():
     acted = out.index("⚖️ Acted:")
     assert acted < out.index(_RATIONALE), "the derived outcome must precede the judge's prose"
     line = out.splitlines()[1]
-    assert "alert tier *HIGH* (judge held the floor's HIGH)" in line
-    assert "catalyst grade *game changer* (Claude floor)" in line
+    assert "alert tier *HIGH* (our score said HIGH; the judge held it)" in line
+    assert "catalyst grade *game-changing* (set by the Claude grader)" in line
 
 
 def test_okta_names_the_carveout_and_its_reason_as_what_overruled_the_floor():
@@ -85,10 +95,10 @@ def test_okta_names_the_carveout_and_its_reason_as_what_overruled_the_floor():
     assert "↩️ Recorded, did NOT act:" in out
     assert "the earnings carve-out left the catalyst grade unchanged" in out
     assert "beat estimate by 1.2%, guidance raised, high confidence" in out
-    # …and it is attributed to the floor's OWN safety net, which is what the carve-out
-    # actually overrode. It ran inside the floor grader, BEFORE the judge — it never
+    # …and it is attributed to the GRADER's OWN safety net, which is what the carve-out
+    # actually overrode. It ran inside the catalyst grader, BEFORE the judge — it never
     # overrode the judge, and the alert must not claim it did.
-    assert "the floor's revenue safety net" in out
+    assert "the catalyst grader's revenue safety net" in out
     assert "carve-out" not in out.split("↩️")[0], "no carve-out claim on the ACTED line"
 
 
@@ -100,7 +110,7 @@ def test_keep_event_counterfactual_comes_from_the_event_not_the_formatter():
         "by": "the extraction-failure fail-open",
         "why": "the revenue metrics extraction failed", "grade": "game_changer"})
     out = _render(ext)
-    assert "the floor's revenue safety net could not run" in out
+    assert "the catalyst grader's revenue safety net could not run" in out
     assert "would have cut" not in out
     assert "the extraction-failure fail-open left the catalyst grade unchanged" in out
 
@@ -111,16 +121,16 @@ def test_keep_event_never_credited_with_a_grade_it_did_not_set():
     # value to the keep-event would repeat the very time-skew this fix is about.
     moved = dict(OKTA, catalyst_quality="strong", judge_grade="routine")
     out = _render(moved)
-    assert ("the earnings carve-out left the catalyst grade at *game changer*, which the "
+    assert ("the earnings carve-out left the catalyst grade at *game-changing*, which the "
             "catalyst-tier corrective then re-resolved to *strong*") in out
     # …and the ACTED line still reports the grade that is actually acting.
-    assert "catalyst grade *strong* (Claude floor)" in out
+    assert "catalyst grade *strong* (set by the Claude grader)" in out
 
 
 def test_okta_labels_the_judges_demote_as_the_view_that_did_not_carry():
     out = _render(OKTA)
     assert "the judge's note argues a *demote* — but the tier it set held at HIGH" in out
-    assert "the judge read the catalyst as *strong* against the floor's *game changer*" in out
+    assert "the judge read the catalyst as *strong* against the grader's *game-changing*" in out
     assert "the judge sets the alert tier, never the catalyst grade" in out
 
 
@@ -134,7 +144,7 @@ def test_okta_prose_is_attributed_as_reasoning_not_outcome():
 # ── a demote that CARRIES must read differently from one that is overruled ───────────────
 def test_carried_demote_renders_the_real_tier_transition():
     assert resolve_headline_grade(CARRIED)[1] == "Judge: alert tier HIGH→MODERATE (demoted)"
-    assert "alert tier *MODERATE* (judge demoted it from the floor's HIGH)" in _render(CARRIED)
+    assert "alert tier *MODERATE* (our score said HIGH; the judge demoted it)" in _render(CARRIED)
 
 
 def test_carried_demote_has_no_did_not_move_claim():
@@ -151,7 +161,8 @@ def test_carried_and_overruled_demotes_are_distinguishable():
 
 
 # ── the two scales may never be printed as one ladder ────────────────────────────────────
-_GRADES = ("game_changer", "game changer", "strong", "routine", "mna")
+_GRADES = ("game_changer", "game changer", "game-changing", "strong", "routine", "mna",
+           "merger/acquisition")
 _TIERS = ("HIGH", "MODERATE", "none")
 
 
@@ -203,16 +214,18 @@ def test_clean_alert_has_no_did_not_act_block():
     assert len(lines) == 1 and lines[0].startswith("⚖️ Acted:")
 
 
-def test_floor_authority_alert_still_states_what_acted():
-    floor = {"ticker": "BBB", "catalyst_quality": "strong", "score_tier": "HIGH",
-             "baseline_floor_tier": "HIGH", "grade_engine_authority": "floor"}
-    assert format_grade_outcome_lines(floor)[0] == (
-        "⚖️ Acted: alert tier *HIGH* (floor) · catalyst grade *strong* (Claude floor)")
+def test_score_authority_alert_still_states_what_acted():
+    # grade_engine_authority is STORED as 'floor' — the enum is untouched. Only the words change.
+    scored = {"ticker": "BBB", "catalyst_quality": "strong", "score_tier": "HIGH",
+              "baseline_floor_tier": "HIGH", "grade_engine_authority": "floor"}
+    assert format_grade_outcome_lines(scored)[0] == (
+        "⚖️ Acted: alert tier *HIGH* (our score — the judge did not review it) · "
+        "catalyst grade *strong* (set by the Claude grader)")
 
 
 def test_fallback_authority_names_the_judge_failure():
     fb = dict(OKTA, grade_engine_authority="fallback", floor_grade_kept=None)
-    assert "(floor — the judge returned no verdict)" in format_grade_outcome_lines(fb)[0]
+    assert "(our score — the judge returned no verdict)" in format_grade_outcome_lines(fb)[0]
 
 
 # ── the labels are DERIVED, not hardcoded (source-level pins) ─────────────────────────────
@@ -253,3 +266,157 @@ def test_alert_dict_carries_the_display_fields():
 def test_outcome_block_is_emitted_above_the_italic_rationale():
     body = _BRIEF_SRC[_BRIEF_SRC.index("async def send_ep_alert"):]
     assert body.index("_outcome_block") < body.index("_why_label}{_why_text}")
+
+
+# ── THE WORD: "floor" is banned from everything he reads ──────────────────────────────────
+#
+# Operator, verbatim: "why is it called floor, what floor? Then it says 'floor: game changer'
+# yet you say it rates it high, moderate, or nothing, then how is there gamechanger?" — one
+# word was naming the pre-judge ALERT TIER and the CATALYST GRADE's owner. Identifiers and the
+# `baseline_floor_tier` column keep the name; nothing rendered may.
+_JUDGE_ROW = {"ticker": "OKTA", "judge_direction": "demote", "baseline_floor_tier": "HIGH",
+              "judge_tier": "HIGH", "judge_materiality_tier": "material", "gap_pct": 12.0,
+              "judge_rationale": "Demoted from gamechanger; material but not transformative."}
+
+
+def _every_rendered_surface() -> dict:
+    """Every operator-facing string this defect touches, keyed by the surface he sees it on."""
+    from agents.market_intelligence.briefing import (
+        _build_judge_delta_message, format_alert_tier_clause, format_catalyst_grade,
+    )
+    from agents.market_intelligence.ep_grade_judge import format_tier_transition
+    from agents.market_intelligence.judge_review import aggregate_judge_review, format_judge_review
+
+    review_rows = [dict(_JUDGE_ROW, alert_date="2026-08-27", score_tier="HIGH",
+                        fwd_5d_pct=9.0, grounded_text="", realized_pnl=None, traded=None)]
+    out = {
+        "ep alert (OKTA)": _render(OKTA),
+        "ep alert (carried demote)": _render(CARRIED),
+        "ep alert (our score kept authority)": _render(dict(OKTA, grade_engine_authority="floor")),
+        "ep alert (judge returned nothing)": _render(dict(OKTA, grade_engine_authority="fallback")),
+        "judge delta digest (shadow)": _build_judge_delta_message(
+            [_JUDGE_ROW], authority_on=False, date_str="Aug 27"),
+        "judge delta digest (load-bearing)": _build_judge_delta_message(
+            [dict(_JUDGE_ROW, judge_tier="MODERATE")], authority_on=True, date_str="Aug 27"),
+        "monthly judge review": format_judge_review(aggregate_judge_review(review_rows), 30),
+        "tier transition (moved)": format_tier_transition("MODERATE", "HIGH"),
+        "tier transition (held)": format_tier_transition("HIGH", "HIGH"),
+        "catalyst grade words": " ".join(
+            format_catalyst_grade(g) for g in ("game_changer", "strong", "routine", "mna")),
+    }
+    # /why and /setup print the SAME clause (they call this one renderer — pinned below).
+    for auth in ("judge", "floor", "fallback"):
+        out[f"/why + /setup tier clause ({auth})"] = format_alert_tier_clause(
+            {"score_tier": "HIGH", "baseline_floor_tier": "MODERATE",
+             "grade_engine_authority": auth}, bold=False)
+    return out
+
+
+def test_no_operator_facing_string_says_floor():
+    for surface, text in _every_rendered_surface().items():
+        assert "floor" not in text.lower(), f"the banned word survives on: {surface}\n{text}"
+
+
+def test_no_raw_enum_reaches_any_operator_facing_string():
+    # The same rule that keeps 'game_changer' out also keeps 'grade_engine_authority' values
+    # ('floor'/'fallback') and the underscored grade out of every surface.
+    for surface, text in _every_rendered_surface().items():
+        assert "game_changer" not in text, surface
+        assert "grade_engine_authority" not in text, surface
+
+
+# ── BOTH ratings, each with its own name and its own setter ───────────────────────────────
+def test_both_ratings_appear_with_their_own_name_and_setter():
+    for ep in (OKTA, CARRIED, dict(OKTA, grade_engine_authority="floor"),
+               dict(OKTA, grade_engine_authority="fallback")):
+        acted = format_grade_outcome_lines(ep)[0]
+        # the TIER: named, and the thing that set it is named
+        assert "alert tier" in acted
+        assert ("the judge" in acted or "our score" in acted)
+        # the GRADE: named, and its setter is named — and it is NEVER the judge
+        assert "catalyst grade" in acted and "set by the Claude grader" in acted
+
+
+def test_the_judge_is_never_shown_as_setting_the_catalyst_grade():
+    out = _render(OKTA)
+    assert "the judge sets the alert tier, never the catalyst grade" in out
+    assert "sets the tier, not the catalyst grade" in format_grade_provenance(OKTA)
+
+
+def test_perplexity_is_labelled_as_setting_nothing():
+    assert "second opinion, sets nothing" in format_grade_provenance(OKTA)
+
+
+def test_the_tier_clause_names_who_set_the_tier_in_all_three_authorities():
+    from agents.market_intelligence.briefing import format_alert_tier_clause
+    base = {"score_tier": "HIGH", "baseline_floor_tier": "MODERATE"}
+    assert format_alert_tier_clause(dict(base, grade_engine_authority="judge"), bold=False) == (
+        "alert tier HIGH (our score said MODERATE; the judge promoted it)")
+    assert format_alert_tier_clause(dict(base, grade_engine_authority="floor"), bold=False) == (
+        "alert tier HIGH (our score — the judge did not review it)")
+    assert format_alert_tier_clause(dict(base, grade_engine_authority="fallback"), bold=False) == (
+        "alert tier HIGH (our score — the judge returned no verdict)")
+
+
+# ── plain words: a label he cannot act on is noise ────────────────────────────────────────
+def test_catalyst_grade_renders_in_plain_words_everywhere():
+    from agents.market_intelligence.briefing import format_catalyst_grade
+    assert format_catalyst_grade("game_changer") == "game-changing"
+    assert format_catalyst_grade("strong") == "strong"
+    assert format_catalyst_grade("routine") == "routine"
+    # NOT "M&A": llm_health sends parse_mode="HTML", where a bare & is invalid markup.
+    assert format_catalyst_grade("mna") == "merger/acquisition"
+    assert format_catalyst_grade(None, default="?") == "?"
+    # An unknown value still never leaks an underscore.
+    assert "_" not in format_catalyst_grade("some_new_grade")
+
+
+def test_headline_catalyst_branch_uses_the_plain_words():
+    hg = resolve_headline_grade({"catalyst_quality": "game_changer",
+                                 "grade_engine_authority": "floor"})[1]
+    assert hg == "Game-changing catalyst"
+
+
+# ── the two scales may never be printed as one ladder — now across EVERY surface ──────────
+def test_no_transition_arrow_anywhere_mixes_a_grade_with_a_tier():
+    for surface, text in _every_rendered_surface().items():
+        for arrow in re.findall(r"([^\s·*]+)\s*→\s*([^\s·*]+)", text):
+            assert all(side in _TIERS for side in arrow), f"mixed-axis transition {arrow} on {surface}"
+            assert not any(side in _GRADES for side in arrow), f"grade in a transition on {surface}"
+
+
+def test_judge_delta_digest_draws_its_arrow_from_the_tiers_not_the_judges_word():
+    from agents.market_intelligence.briefing import _build_judge_delta_message
+    # The OKTA row: the judge's own word says demote, the tier it set held at HIGH.
+    held = _build_judge_delta_message([_JUDGE_ROW], authority_on=False, date_str="Aug 27")
+    assert "= `OKTA` HIGH (alert tier held)" in held
+    assert "▼ `OKTA`" not in held, "the judge's word must not be drawn as a tier move"
+    assert "judge's note: demote" in held, "…but it must still be reported, labelled"
+    # A demote that really carried keeps its ▼ and states the transition tier→tier.
+    moved = _build_judge_delta_message([dict(_JUDGE_ROW, judge_tier="MODERATE")],
+                                       authority_on=False, date_str="Aug 27")
+    assert "▼ `OKTA` HIGH→MODERATE" in moved
+    assert "judge's note" not in moved, "no note when the word and the tier agree"
+
+
+def test_judge_delta_digest_names_its_axis():
+    from agents.market_intelligence.briefing import _build_judge_delta_message
+    msg = _build_judge_delta_message([_JUDGE_ROW], authority_on=False, date_str="Aug 27")
+    assert "ALERT TIER only — the judge does not set the catalyst grade" in msg
+
+
+# ── /why and /setup must go through the ONE renderer, not re-derive it ────────────────────
+_AGENT_SRC = io.open("agents/market_intelligence/agent.py", encoding="utf-8").read()
+
+
+def test_why_and_setup_call_the_shared_tier_renderer():
+    # Both surfaces built their own transition string, which is how the banned word survived
+    # in three places after the first pass. One renderer or the drift comes back.
+    assert _AGENT_SRC.count("format_alert_tier_clause({") == 2   # the /why + /setup call sites
+    for dead in ("alert tier: floor", "held at floor", "from floor "):
+        assert dead not in _AGENT_SRC
+
+
+def test_why_and_setup_show_the_catalyst_grade_with_its_own_setter():
+    assert "set by the Claude grader" in _AGENT_SRC
+    assert "the judge does not set it" in _AGENT_SRC

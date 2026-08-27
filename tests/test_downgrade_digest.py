@@ -80,7 +80,7 @@ async def test_digest_job_renders_compact_per_ticker_lines():
     assert "FOO" in msg
     assert "BAR" in msg
     # Reason rendered as human prose (#148, 2026-05-28):
-    assert "rubric 14/39 below 22 floor (weak)" in msg
+    assert "rubric 14/39, below the 22 bar (weak)" in msg
     assert "Q-rev YoY missing (no prior-year comparable)" in msg
     # Drilldown footer present
     assert "/rubric" in msg
@@ -180,17 +180,22 @@ async def test_digest_dedupes_rescued_rows_by_ticker():
 
 
 def test_humanize_rubric_composite_reason():
-    """`rubric_composite_X_below_22_label_Y` → `rubric X/39 below 22 floor (Y)`."""
+    """`rubric_composite_X_below_22_label_Y` → `rubric X/39, below the 22 bar (Y)`.
+
+    2026-08-27: "floor" was the word that fused the alert tier and the catalyst grade in the
+    operator's reading, and this line renders in the CATALYST-downgrade digest. The number is
+    a rubric BAR, not a rating — say so.
+    """
     from agents.market_intelligence.briefing import _humanize_downgrade_reason
     assert _humanize_downgrade_reason(
         "rubric_composite_11.0_below_22_label_weak"
-    ) == "rubric 11/39 below 22 floor (weak)"
+    ) == "rubric 11/39, below the 22 bar (weak)"
     assert _humanize_downgrade_reason(
         "rubric_composite_12.3_below_22_label_weak"
-    ) == "rubric 12.3/39 below 22 floor (weak)"
+    ) == "rubric 12.3/39, below the 22 bar (weak)"
     assert _humanize_downgrade_reason(
         "rubric_composite_17.0_below_22_label_routine"
-    ) == "rubric 17/39 below 22 floor (routine)"
+    ) == "rubric 17/39, below the 22 bar (routine)"
 
 
 def test_humanize_static_reason_map():

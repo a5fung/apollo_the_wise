@@ -208,7 +208,8 @@ The alert now **resolves to the judge** and shows the provenance:
   (`resolve_headline_grade`) — a judge-promoted HIGH no longer headlines the contradicted floor
   grade (LZB floor `routine` under a judge HIGH).
 - **Grade-provenance line** (`format_grade_provenance`): `Floor: <Claude> · Perplexity: <pplx>
-  (agree/differs) · Judge: <tier> <direction> ← authoritative`. Replaces the old
+  (agree/differs) · Judge: <tier> <direction> ← authoritative` — **superseded 2026-08-27, see
+  below**; the word "Floor" here is exactly what fused the two ratings. Replaces the old
   `confidence_multiplier > 1.0` "Claude + Perplexity agree" line, which went STALE when a catalyst
   was downgraded AFTER the agreement boost (LZB 6/17 printed "agree" on routine-vs-strong).
 - **Theme line**: when `fire_axes` lit theme/narrative but the ticker is in no tracked cluster
@@ -261,16 +262,64 @@ FLOOR grader (`_classify_catalyst_claude`), ~7 s before the judge runs, and over
 - `/setup` and `/why` derive their judge arrow/direction from the tiers too, and report the
   judge's own `direction` word separately when it disagrees.
 
-**KNOWN REMAINING SURFACE — the EOD judge-delta digest** (`_build_judge_delta_message`,
-briefing.py). It still counts `▲N ▼M` and picks its arrow from the raw `judge_direction`, so an
-OKTA-shaped row renders `▼ OKTA HIGH (tier held — quality read)` — a demote arrow beside "tier
-held". Deliberately NOT changed here: the digest's row **selection** is a SQL predicate
-(`scheduler.py`, `WHERE judge_direction = 'demote'`), not display, so deriving the arrow while
-selection stays raw produces "=" rows in a message titled "deltas" — a half-state that reads
-worse than the current one. Fixing it means changing what the digest selects, which is a
-separately scoped change.
-
 Pinned by `tests/test_ep_alert_two_axes.py`.
+
+### Naming fix shipped 2026-08-27 — "floor" deleted as an operator-facing word (display-only)
+
+**Trigger — the same OKTA thread, one round later.** Operator, verbatim: *"why is it called
+floor, what floor? Then it says 'floor: game changer' yet you say it rates it high, moderate,
+or nothing, then how is there gamechanger? where does game changer come from?"* and then *"are
+you now saying there's two separate ratings here that we combined by accident?"* — **yes.**
+The first pass (above) fixed the LOGIC and left the WORD, so one word still did two jobs:
+
+| The word "floor" meant | Which rating |
+|---|---|
+| `baseline_floor_tier` | the **ALERT TIER** our own score produced before the judge reviewed it |
+| "Floor: game changer (Claude)" | the **CATALYST GRADE** from the Claude grader |
+
+That is our naming defect, not his misreading. **"floor" is now banned from every
+operator-facing string.** Identifiers, the `baseline_floor_tier` column and the stored
+`grade_engine_authority='floor'` enum are UNCHANGED — the ban is on what he reads.
+
+**The vocabulary, one word per thing:**
+- the pre-judge alert tier → **"our score"** (`alert tier HIGH (our score said HIGH; the judge
+  held it)`);
+- the catalyst grade's owner → **"the Claude grader"** / "the catalyst grader" (`catalyst grade
+  *game-changing* (set by the Claude grader)`);
+- the judge **sets the tier, never the grade**; Perplexity is a recorded second opinion
+  labelled **"sets nothing"**.
+
+**Shipped (every surface he reads):** the EP alert (`format_grade_outcome_lines`,
+`format_grade_provenance`, `resolve_headline_grade`), `/why`, `/setup`, the EOD recap judge
+line, the 16:25 judge-delta digest (= the 16:55 close digest, same render), the monthly judge
+review, the weekly system review, the chart-axis shadow digest, the LLM-credits alert, the
+trade proposal, and the `ep_grade_decision` audit summary that `/audit` renders.
+
+**Structural, not just wording:** `briefing.format_alert_tier_clause` is now the ONE renderer of
+"what the alert tier is and who set it" — the EP alert, `/why` and `/setup` all call it. Those
+three each derived it inline, which is precisely how the banned word survived in three places
+after the first pass. Catalyst grades render through ONE map (`briefing.format_catalyst_grade`:
+`game_changer` → **"game-changing"**, `mna` → "merger/acquisition" — never "M&A", because
+`llm_health` sends `parse_mode="HTML"` where a bare `&` is invalid).
+
+**REVERSAL — the judge-delta digest arrow.** The section above deferred it, arguing that
+deriving the arrow while the SQL selection stays raw "produces '=' rows in a message titled
+'deltas' — a half-state that reads worse". **That reasoning was wrong, not merely incomplete.**
+It weighed a cosmetic oddity (a "=" row under the word "deltas") above a factual contradiction
+the operator reads daily — a ▼ printed beside "tier held" is the OKTA defect itself, in a second
+surface. So: the arrow is **derived from the two tiers**, the judge's own word is printed as
+`judge's note: demote` when it disagrees, and the SQL predicate is **untouched** (selection is
+data, not display).
+
+⚠ **The half-state is OUTWEIGHED, not solved.** On a day where every flagged row held, the
+digest really does render `EP Judge deltas … (▲0 raised ▼0 cut =1 held)` — a "deltas" title
+over a message where no tier moved. The header now says what it counted and the subtitle names
+the axis, which makes that legible rather than contradictory, but the title is still loose. The
+clean fix is to widen the SQL selection (all judged rows, not just claimed movers) and retitle
+it — a separately scoped change, because selection is data.
+
+Pinned by `tests/test_ep_alert_two_axes.py` (which now sweeps EVERY rendered surface for the
+banned word) + `tests/test_judge_delta_digest.py`.
 
 ### Deferred (grade-AFFECTING → CHANGE_PROCESS + backtest, NOT shipped 6/17)
 - **Stale `confidence_multiplier` after a floor downgrade** (`ep_detector.py` revenue-weak path

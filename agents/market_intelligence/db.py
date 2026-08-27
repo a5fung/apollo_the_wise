@@ -4330,14 +4330,17 @@ async def get_latest_catalyst_grade_date(ticker: str) -> "date | None":
 
 async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
     """Latest holistic-judge decision trace for a ticker (W2a/c #243 / ADR 0011 logging
-    clause — the /setup + /why per-ticker surface). Returns floor vs judge tier, the engine
-    that drove the grade, materiality, and the load-bearing rationale, or None if no graded
-    alert / no judge row. Read-only; callers wrap fail-open so it never breaks /setup."""
+    clause — the /setup + /why per-ticker surface). Returns BOTH ratings and their setters:
+    the alert tier our score produced (`baseline_floor_tier`) vs the judge's, the engine that
+    drove it, the catalyst grade (which the judge never sets), materiality, and the
+    load-bearing rationale. None if no graded alert / no judge row. Read-only; callers wrap
+    fail-open so it never breaks /setup."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         return await conn.fetchrow("""
             SELECT alert_date, score_tier, baseline_floor_tier, grade_engine_authority,
-                   judge_tier, judge_direction, judge_materiality_tier, judge_rationale
+                   judge_tier, judge_direction, judge_materiality_tier, judge_rationale,
+                   catalyst_quality
             FROM mi_ep_alerts
             WHERE ticker = $1 AND judge_tier IS NOT NULL
               AND COALESCE(source, 'live') = 'live'  -- #268: never present a replay verdict as the judge's last word

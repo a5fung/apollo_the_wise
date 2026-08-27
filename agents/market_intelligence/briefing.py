@@ -162,6 +162,32 @@ CATALYST_EMOJI = {
     "routine": "📋",
 }
 
+# The CATALYST GRADE in plain words — ONE map, every operator-facing surface (2026-08-27).
+# `game_changer` is a raw enum: the underscore breaks Telegram Markdown italics → 400 (see
+# _format_ep_ticker_block below), and "game changer" is not how anyone says it. Routing every
+# surface through one map is also what stops the alert, the morning brief and the trade
+# proposal from wording the same grade three different ways on the same morning.
+# "merger/acquisition" NOT "M&A": llm_health sends parse_mode="HTML", where a bare & is invalid.
+_CATALYST_GRADE_WORDS = {
+    "game_changer": "game-changing",
+    "strong": "strong",
+    "routine": "routine",
+    "mna": "merger/acquisition",
+}
+
+
+def format_catalyst_grade(quality, default: str = "") -> str:
+    """Operator-facing words for a catalyst grade ('game_changer' → 'game-changing').
+
+    The catalyst grade is ONE of the two ratings on an EP alert (the other is the alert
+    tier). It is set by the Claude catalyst grader plus the correctives/carve-outs — never
+    by the judge, never by Perplexity. Unknown value → underscores spaced, never a raw enum.
+    """
+    q = (quality or "").strip()
+    if not q:
+        return default
+    return _CATALYST_GRADE_WORDS.get(q, q.replace("_", " "))
+
 STAGE_EMOJI = {
     "Nascent": "🌱",
     "Accelerating": "⚡",
@@ -327,10 +353,11 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     tier = ep.get("score_tier", "")
     tier_e = TIER_EMOJI.get(tier, "")
     cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
-    # Rubric grade (the catalyst_quality the operator wants visible). Sanitize
-    # the underscore so 'game_changer' can't break Markdown italics → 400 →
-    # plaintext fallback (the parse-fragility class). cat_e keeps a quick visual.
-    quality = (ep.get("catalyst_quality") or "?").replace("_", " ")
+    # The CATALYST GRADE (one of the two ratings; the tier word beside it is the other).
+    # format_catalyst_grade is the shared map — it also sanitizes the underscore so
+    # 'game_changer' can't break Markdown italics → 400 → plaintext fallback (the
+    # parse-fragility class). cat_e keeps a quick visual.
+    quality = format_catalyst_grade(ep.get("catalyst_quality"), default="?")
     # gemini_validation is a MISNOMER — it holds the Perplexity cross-check (#186A).
     gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
     conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
@@ -448,7 +475,7 @@ def _format_ep_section(
             f"  👀 *Near-miss ({_NEAR_MISS_LO}-{_NEAR_MISS_HI}, recorded only — not tradeable)*"
         ]
         for r in near_miss_band[:12]:
-            cat = (r.get("catalyst_quality") or "?").replace("_", " ")
+            cat = format_catalyst_grade(r.get("catalyst_quality"), default="?")
             gap = r.get("gap_pct")
             gap_str = f"{gap:.1f}%" if gap is not None else "?"
             nm_lines.append(
@@ -2445,7 +2472,7 @@ def _humanize_downgrade_reason(reason: str) -> str:
     """Convert machine reason code to operator-facing prose.
 
     Examples:
-    - `rubric_composite_11.0_below_22_label_weak` → `rubric 11/39 below 22 floor (weak)`
+    - `rubric_composite_11.0_below_22_label_weak` → `rubric 11/39, below the 22 bar (weak)`
     - `q_rev_yoy_missing_no_prior_year_comparable` → `Q-rev YoY missing (no prior-year comparable)`
     - unrecognized → reason verbatim with underscores spaced
 
@@ -2458,7 +2485,7 @@ def _humanize_downgrade_reason(reason: str) -> str:
     m = _DOWNGRADE_REASON_RUBRIC_RE.match(reason)
     if m:
         score = m.group("score").rstrip("0").rstrip(".") or m.group("score")
-        return f"rubric {score}/39 below {m.group('thresh')} floor ({m.group('label')})"
+        return f"rubric {score}/39, below the {m.group('thresh')} bar ({m.group('label')})"
     # Fallback: replace underscores with spaces so the raw reason is at
     # least readable, even if we don't have a templated translation.
     return reason.replace("_", " ")
@@ -2467,27 +2494,41 @@ def _humanize_downgrade_reason(reason: str) -> str:
 def _build_judge_delta_message(rows, authority_on: bool, date_str: str) -> str:
     """Pure formatter for the judge-delta digest (testable without a DB). `rows`
     are mi_ep_alerts rows (promote/demote, judge_tier non-null) already ordered
-    promotes-first. The subtitle reflects whether the deltas were load-bearing.
+    promotes-first. The subtitle reflects whether the deltas were load-bearing AND names the
+    axis: this digest is the ALERT TIER only — the judge never sets the catalyst grade.
 
     Re-homed off scheduler.py (#121, 2026-06-23); behavior unchanged.
     """
-    n_promote = sum(1 for r in rows if r["judge_direction"] == "promote")
-    n_demote = len(rows) - n_promote
-    subtitle = ("_Load-bearing: these DROVE the paper grade/entry._" if authority_on
-                else "_Shadow: judge vs floor grade · drives nothing while toggle OFF._")
+    from agents.market_intelligence.ep_grade_judge import format_tier_transition
+    # The ARROW IS DERIVED FROM THE TWO TIERS, never from judge_direction (2026-08-27). The
+    # rows are SELECTED on judge_direction — the judge's own word — but that word is raw model
+    # output and routinely answers on the CATALYST-GRADE axis instead, so a ▲ next to a tier
+    # that never moved is the OKTA confusion in a second surface. When the two disagree the
+    # judge's word is still printed, labelled as its note.
+    moves = [_judge_direction(r["judge_tier"], r["baseline_floor_tier"]) for r in rows]
+    n_promote = sum(1 for m in moves if m == "promote")
+    n_demote = sum(1 for m in moves if m == "demote")
+    n_held = sum(1 for m in moves if m == "hold")
+    subtitle = ("_ALERT TIER only — the judge does not set the catalyst grade. "
+                "Load-bearing: these DROVE the paper tier + entry._" if authority_on
+                else "_ALERT TIER only — the judge does not set the catalyst grade. "
+                     "Shadow: drives nothing while the toggle is OFF._")
     parts = [
-        f"🧑‍⚖️ *EP Judge deltas — EOD {date_str} (▲{n_promote} ▼{n_demote})*",
+        f"🧑‍⚖️ *EP Judge deltas — EOD {date_str} "
+        f"(▲{n_promote} raised ▼{n_demote} cut ={n_held} held)*",
         subtitle,
     ]
-    from agents.market_intelligence.ep_grade_judge import format_tier_transition
     # Row cap 12 × ~330 chars stays under Telegram's 4096 even on a heavy day.
-    for r in rows[:12]:
-        arrow = "▲" if r["judge_direction"] == "promote" else "▼"
+    for r, move in zip(rows[:12], moves[:12]):
+        arrow = {"promote": "▲", "demote": "▼", "hold": "="}.get(move, "·")
         mat = r["judge_materiality_tier"] or "n/a"
         tier_part = format_tier_transition(r["baseline_floor_tier"], r["judge_tier"])
+        claimed = (r["judge_direction"] or "").strip().lower()
+        note = (f"  ·  judge's note: {claimed}"
+                if claimed in _TIER_MOVE_VERB and move and claimed != move else "")
         parts.append(
             f"{arrow} `{r['ticker']}` {tier_part}  "
-            f"materiality={mat}  +{(r['gap_pct'] or 0):.1f}%"
+            f"materiality={mat}  +{(r['gap_pct'] or 0):.1f}%{note}"
         )
         if r["judge_rationale"]:
             # Free-text judge rationale → escape Markdown actives (#148 class) so a
@@ -2740,21 +2781,31 @@ _TIER_RANK = TIER_RANK  # SSoT: constants.TIER_RANK (ADR 0024 §3 lattice)
 
 # ── TWO AXES, NEVER ONE LADDER (2026-08-27, OKTA alert-coherence fix) ─────────────
 # An EP grade lives on two INDEPENDENT scales and the alert used to blur them:
-#   • CATALYST GRADE — game_changer / strong / routine / mna. Owned by the FLOOR
-#     grader (_classify_catalyst_claude). The judge emits its own `grade` on this
-#     scale but it is NEVER written to the alert row (update_ep_alert_judge_result
-#     writes tier/direction/rationale/materiality/fire_axes only), so it never acts.
-#   • ALERT TIER — HIGH / MODERATE / none. What actually fires the alert and the ORB
-#     entry. HIGH is already the TOP of this scale.
+#   • CATALYST GRADE — game_changer / strong / routine / mna. Set by the CLAUDE
+#     CATALYST GRADER (_classify_catalyst_claude) plus the correctives/carve-outs. The
+#     judge emits its own `grade` on this scale but it is NEVER written to the alert row
+#     (update_ep_alert_judge_result writes tier/direction/rationale/materiality/fire_axes
+#     only), so it never acts. Perplexity is a recorded second opinion and sets nothing.
+#   • ALERT TIER — HIGH / MODERATE / none. Produced by OUR EP SCORE, then reviewed by the
+#     judge, which can raise or lower it. What fires the alert and the ORB entry. HIGH is
+#     already the TOP of this scale.
 # "Demoted from game_changer to HIGH" is a category error, not a demotion. Every
-# formatter below therefore states its axis by name, and a floor→judge arrow is only
+# formatter below therefore states its axis by name, and a score→judge arrow is only
 # ever drawn TIER→TIER. Nothing here changes a grade, a tier, a threshold or a
 # carve-out — display only.
+#
+# ⚠ THE WORD "FLOOR" IS BANNED FROM EVERY OPERATOR-FACING STRING (operator 2026-08-27:
+# "are you now saying there's two separate ratings here that we combined by accident?").
+# It named BOTH the pre-judge alert tier AND the catalyst-grade setter, which is what
+# fused two scales into one in his reading. The COLUMN stays `baseline_floor_tier` — the
+# ban is on what he reads, not on the identifiers. Say "our score" for the pre-judge tier
+# and "the Claude grader" / "the catalyst grader" for the grade's owner.
+# tests/test_ep_alert_two_axes.py sweeps every rendered surface for the word.
 _TIER_MOVE_VERB = {"promote": "promoted", "hold": "held", "demote": "demoted"}
 
 
-def _judge_direction(score_tier, floor_tier) -> "str | None":
-    """DERIVED tier movement — promote / hold / demote of the authoritative tier vs the floor
+def _judge_direction(score_tier, base_tier) -> "str | None":
+    """DERIVED tier movement — promote / hold / demote of the authoritative tier vs OUR SCORE's
     tier (None if either is unknown), computed from TIER_RANK. This is the FACTUAL axis move.
 
     ⚠ NOT the same thing as the judge's OWN `direction_vs_floor` (`ep["judge_direction"]`, the
@@ -2765,7 +2816,7 @@ def _judge_direction(score_tier, floor_tier) -> "str | None":
     ep_grade_judge.format_tier_transition's docstring records the same contract. When the two
     disagree, THIS function is what acted and the judge's own word is the opinion —
     format_grade_outcome_lines renders that disagreement explicitly."""
-    a, b = _TIER_RANK.get(score_tier), _TIER_RANK.get(floor_tier)
+    a, b = _TIER_RANK.get(score_tier), _TIER_RANK.get(base_tier)
     if a is None or b is None:
         return None
     return "promote" if a > b else ("demote" if a < b else "hold")
@@ -2784,20 +2835,20 @@ def format_tier_verdict(ep: dict) -> str:
     sides of it are always tiers — so a catalyst grade can never be rendered as one end of a
     tier transition. Past tense on purpose: it reports what happened, not a recommendation."""
     tier = ep.get("score_tier") or "n/a"
-    floor = ep.get("baseline_floor_tier")
-    d = _judge_direction(tier, floor)
+    base = ep.get("baseline_floor_tier")   # column name; NEVER the operator-facing word
+    d = _judge_direction(tier, base)
     if d is None:
         return str(tier)
     if d == "hold":
         return f"{tier} (held)"
-    return f"{floor}→{tier} ({_TIER_MOVE_VERB[d]})"
+    return f"{base}→{tier} ({_TIER_MOVE_VERB[d]})"
 
 
 def resolve_headline_grade(ep: dict) -> tuple:
     """(emoji, label) for the alert's ticker line. RESOLVES TO THE JUDGE when the judge is
-    load-bearing (grade_engine_authority='judge') — so a judge-promoted HIGH never headlines the
-    contradicted floor grade (LZB: floor 'routine' under a judge HIGH). Floor/fallback authority →
-    the Claude catalyst grade, as before.
+    load-bearing (grade_engine_authority='judge') — so a judge-promoted HIGH never headlines a
+    contradicted catalyst grade (LZB: grade 'routine' under a judge HIGH). When our score keeps
+    authority (or the judge returned no verdict) → the Claude catalyst grade, as before.
 
     2026-08-27: BOTH branches now NAME their axis ('alert tier HIGH (held)' / 'Strong catalyst').
     The slot used to hold a bare 'HIGH' on one alert and a bare 'Game Changer' on the next —
@@ -2806,26 +2857,39 @@ def resolve_headline_grade(ep: dict) -> tuple:
     if _judge_authoritative(ep):
         return (TIER_EMOJI.get(ep.get("score_tier", ""), ""),
                 f"Judge: alert tier {format_tier_verdict(ep)}")
-    cq = (ep.get("catalyst_quality") or "").replace("_", " ").title()
-    return CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), ""), (f"{cq} catalyst" if cq else "")
+    cq = format_catalyst_grade(ep.get("catalyst_quality"))
+    label = f"{cq[0].upper()}{cq[1:]} catalyst" if cq else ""
+    return CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), ""), label
 
 
-def _tier_acted_clause(ep: dict) -> str:
-    """'alert tier *HIGH* (judge held the floor's HIGH)' — the tier that ACTED plus the engine
-    that set it, derived from grade_engine_authority + the TIER_RANK move."""
+def format_alert_tier_clause(ep: dict, *, bold: bool = True) -> str:
+    """THE single renderer for the ALERT-TIER axis + WHO SET IT — shared by the EP alert,
+    /why and /setup (2026-08-27).
+
+    'alert tier HIGH (our score said HIGH; the judge held it)'.
+
+    Those three surfaces each derived this inline and worded it their own way, which is
+    exactly how the banned word survived in three places after the first pass. One renderer
+    is also what makes "an arrow never joins a tier to a grade" an invariant rather than
+    three places that happen to agree today.
+
+    The tier is ONE of the two ratings: HIGH / MODERATE / none, produced by our EP score and
+    then reviewed by the judge, which can raise or lower it. The catalyst grade is the OTHER
+    rating and NEVER appears in this clause. `bold=False` for the plain-text /why and /setup
+    bodies. Reads `grade_engine_authority` — the stored enum still says 'floor'; only the
+    words change here (display only)."""
     tier = ep.get("score_tier") or "n/a"
-    auth = ep.get("grade_engine_authority") or "floor"
+    auth = ep.get("grade_engine_authority") or "floor"   # stored enum, never rendered raw
+    t = f"*{tier}*" if bold else str(tier)
     if auth == "judge":
-        floor = ep.get("baseline_floor_tier")
-        d = _judge_direction(tier, floor)
-        if d == "hold":
-            return f"alert tier *{tier}* (judge held the floor's {floor})"
-        if d in ("promote", "demote"):
-            return f"alert tier *{tier}* (judge {_TIER_MOVE_VERB[d]} it from the floor's {floor})"
-        return f"alert tier *{tier}* (judge)"
+        base = ep.get("baseline_floor_tier")
+        d = _judge_direction(tier, base)
+        if d:
+            return f"alert tier {t} (our score said {base}; the judge {_TIER_MOVE_VERB[d]} it)"
+        return f"alert tier {t} (set by the judge)"
     if auth == "fallback":
-        return f"alert tier *{tier}* (floor — the judge returned no verdict)"
-    return f"alert tier *{tier}* (floor)"
+        return f"alert tier {t} (our score — the judge returned no verdict)"
+    return f"alert tier {t} (our score — the judge did not review it)"
 
 
 def format_grade_outcome_lines(ep: dict) -> list[str]:
@@ -2844,12 +2908,13 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
     model text and will keep saying "demoted" whenever it reasons that way. Line 1 is printed
     ABOVE that rationale in every alert, so the operator reads the outcome before the argument,
     and line 2 names the disagreement when the model's own direction contradicts the tier."""
-    cq = (ep.get("catalyst_quality") or "n/a").replace("_", " ")
-    lines = [f"⚖️ Acted: {_tier_acted_clause(ep)} · catalyst grade *{cq}* (Claude floor)"]
+    cq = format_catalyst_grade(ep.get("catalyst_quality"), default="n/a")
+    lines = [f"⚖️ Acted: {format_alert_tier_clause(ep)} · "
+             f"catalyst grade *{cq}* (set by the Claude grader)"]
 
     inert: list[str] = []
 
-    # (a) The floor's own safety net did not apply — name the mechanism responsible and its
+    # (a) The catalyst grader's own safety net did not apply — name the mechanism and its
     # reason. EVERY clause is read off the record the detector's decision branch wrote, so the
     # label can only appear when that branch actually ran, only ONE of the three keep-events can
     # be named, and the counterfactual (`effect`) is whatever THAT branch knew: the carve-out and
@@ -2863,12 +2928,12 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
         # would attribute a value it never set — the same subject/object time-skew as the bug
         # being fixed. When they differ, say both; when they agree, name no value at all (the
         # ⚖️ Acted line one row above already carries the acting grade).
-        at_keep = (kept.get("grade") or "").replace("_", " ")
+        at_keep = format_catalyst_grade(kept.get("grade"))
         outcome = ("left the catalyst grade unchanged" if not at_keep or at_keep == cq else
                    f"left the catalyst grade at *{at_keep}*, which the catalyst-tier corrective "
                    f"then re-resolved to *{cq}*")
         inert.append(
-            f"the floor's {_md_escape(str(kept.get('gate') or 'safety net'))} "
+            f"the catalyst grader's {_md_escape(str(kept.get('gate') or 'safety net'))} "
             f"{_md_escape(str(kept.get('effect') or 'did not apply'))} — "
             f"{_md_escape(str(kept['by']))} {outcome}"
             + (f" ({_md_escape(why)})" if why else "")
@@ -2889,10 +2954,10 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
 
         # (c) The judge's own catalyst-grade read. Advisory by construction: it is never
         # written to the alert row, so it cannot move the floor grade however it is worded.
-        jg = (ep.get("judge_grade") or "").replace("_", " ")
+        jg = format_catalyst_grade(ep.get("judge_grade"))
         if jg and jg != cq:
             inert.append(
-                f"the judge read the catalyst as *{jg}* against the floor's *{cq}* — advisory "
+                f"the judge read the catalyst as *{jg}* against the grader's *{cq}* — advisory "
                 f"only; the judge sets the alert tier, never the catalyst grade"
             )
 
@@ -2903,22 +2968,23 @@ def format_grade_outcome_lines(ep: dict) -> list[str]:
 
 
 def format_grade_provenance(ep: dict) -> str:
-    """ONE coherent line showing HOW the grade was reached — the operator-requested clarity on
-    where Perplexity comes in. Floor catalyst grade (Claude) · Perplexity's independent
-    second-opinion grade (agree/differs — a cross-check on the floor, NOT a judge input) · the
-    judge's authoritative tier verdict when load-bearing. Replaces the old confidence-multiplier
+    """ONE coherent line showing HOW each rating was reached — the operator-requested clarity on
+    where Perplexity comes in. Catalyst grade (the Claude grader) · Perplexity's independent
+    second-opinion grade (agree/differs — a recorded cross-check that SETS NOTHING, and not a
+    judge input) · the judge's authoritative tier verdict when load-bearing. Replaces the old confidence-multiplier
     'Claude + Perplexity agree' line, which went STALE when a catalyst was downgraded AFTER the
     agreement boost was set (LZB 6/17: printed 'agree' on routine-vs-strong).
 
     2026-08-27: each leg is axis-labelled and the judge leg says what its authority COVERS.
     The old form ('Floor: game changer (Claude) … Judge: HIGH hold ← authoritative') put a
-    catalyst grade and a tier side by side with no scale on either, which read as a ladder."""
-    cq = (ep.get("catalyst_quality") or "").replace("_", " ")
-    parts = [f"Catalyst grade: {cq or 'n/a'} (Claude floor)"]
-    pplx = (ep.get("gemini_validation") or "").replace("_", " ")
+    catalyst grade and a tier side by side with no scale on either, which read as a ladder —
+    and called the grade a "floor", the same word the pre-judge TIER wore."""
+    cq = format_catalyst_grade(ep.get("catalyst_quality"))
+    parts = [f"Catalyst grade: {cq or 'n/a'} (set by the Claude grader)"]
+    pplx = format_catalyst_grade(ep.get("gemini_validation"))
     if pplx:
         agree = "✓agree" if ep.get("gemini_validation") == ep.get("catalyst_quality") else "✗differs"
-        parts.append(f"Perplexity: {pplx} ({agree})")
+        parts.append(f"Perplexity: {pplx} ({agree}) — second opinion, sets nothing")
     if _judge_authoritative(ep):
         parts.append(f"*Judge: alert tier {format_tier_verdict(ep)}* ← sets the tier, "
                      f"not the catalyst grade")
@@ -2927,9 +2993,9 @@ def format_grade_provenance(ep: dict) -> str:
 
 def resolve_why_text(ep: dict) -> str:
     """#329-trace: the alert's italic "why" leads with the JUDGE's OWN rationale when the judge is
-    authoritative — it was showing the FLOOR's analysis (claude_analysis) under an authoritative
-    judge, the same coherence gap #319 fixed for the headline. Floor/fallback authority (or a judge
-    that rendered no rationale) → the floor analysis, as before."""
+    authoritative — it was showing the GRADER's analysis (claude_analysis) under an authoritative
+    judge, the same coherence gap #319 fixed for the headline. When our score keeps authority (or
+    the judge rendered no rationale) → the grader's analysis, as before."""
     if _judge_authoritative(ep):
         jr = (ep.get("judge_rationale") or "").strip()
         if jr:
@@ -2942,7 +3008,7 @@ def resolve_why_attribution(ep: dict) -> str:
 
     2026-08-27: the italic used to be unattributed prose. When it is the JUDGE's rationale it
     is an ARGUMENT, not the outcome (OKTA: "Demoted from gamechanger…" under a tier that held
-    at HIGH and a floor grade that stayed game_changer). We cannot control model wording, so
+    at HIGH and a catalyst grade that stayed game_changer). We cannot control model wording, so
     the label plus the ⚖️ Acted line printed above it are what keep the outcome unambiguous:
     the reader is told this is reasoning, and has already been told what acted."""
     if _judge_authoritative(ep) and (ep.get("judge_rationale") or "").strip():
@@ -3111,8 +3177,8 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         # claude_analysis above already carries the grounded catalyst; the discovery line is
         # suppressed to avoid the contradiction/redundancy).
         + catalyst_block
-        # Grade provenance — floor (Claude) · Perplexity cross-check · judge verdict. Always
-        # shown so the operator sees how the final tier was reached + where Perplexity fits.
+        # Provenance — catalyst grade (Claude grader) · Perplexity cross-check · judge tier
+        # verdict. Always shown so both ratings carry their own name and their own setter.
         + format_grade_provenance(ep)
     )
 
