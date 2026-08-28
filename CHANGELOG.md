@@ -279,6 +279,33 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 **2026-08-21 — deploy windows gated** — two windows only (12:00-13:00 · 21:15-22:15 ET); `deploy.sh` exits 12 outside them, operator-only override. Repeated ~17:02 deploys had been clipping nightly jobs.
 
 **2026-08-22 — one catalyst grade everywhere** — the admission filters read the corrected news grade, the same one the score reads. The fork (corrected score, raw filters) was binning real EPs before the fix could act.
+## 2026-08-27 — judge rubric v4, Perplexity changes hands, the real-time gap goes live
+
+Graduated straight from CLAUDE.md the same day: the Recent section had no room left (see the
+ceiling note below), so the detail lives here from the start.
+
+- **Rubric v4** (`v4-2026-08-27-axis-split-second-opinion`). One word no longer means both
+  "lower the grade" and "lower the tier" — rule 2 says raises/lowers the GRADE and an OUTPUT
+  FIELDS block names each field's axis literally. The judge now returns `grade_reason` and
+  `tier_reason`, one line each, rendered on the alert. Robustness eval 36/36, overall 1.0.
+- **Perplexity's agreement boost retired.** It multiplied the EP score by 1.2 whenever two
+  models concurred; measured over 419 alerts, boosted names ran a *smaller* 5-day move and the
+  effect is a null once score band is held constant. Its **disagreement** now reaches the judge
+  as a re-read prompt (rule 7), with double-count telemetry in the monthly judge review.
+- **Perplexity moved to the Agent API** — their `/chat/completions` sunsets 2026-09-27. No model
+  string anywhere (a preset routes it) and cost is the figure the API reports, so both
+  hand-maintained values are gone. A failed or empty second opinion is now *unavailable*, never
+  a grade; it used to return "routine", so a degraded provider could argue every catalyst down.
+- **`ep_rt_gap_authoritative` ON** — the real-time gap decides the 9% floor in both directions.
+  The held reason was cost, priced at "+25 candidates/day"; deduped and in-window it is 2.5.
+- ⚠ **CLAUDE.md hit its 40,000-BYTE ceiling this day.** The gate counts bytes, not characters,
+  and the file is dense with em-dashes and emoji — it reads ~550 bytes lighter than it is.
+  Graduating the 2026-08-23 entry was not enough; today's entry is a stub. The next entry will
+  fail the commit until real operating sections are graduated.
+
+## 2026-08-23 — weekend deploys ungated
+
+Deploy windows are for market days; Sat/Sun unrestricted. Weekend jobs still run — check the clock yourself, the gate no longer will. (Graduated from CLAUDE.md 2026-08-27; the live rule stays in CLAUDE.md's Deploy Windows table, which is where it was being duplicated from.)
 
 ## 2026-08-01 → 08-03 — money-path filters live · chart-vision paused · four rules made mechanical
 

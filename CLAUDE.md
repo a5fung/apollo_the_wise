@@ -347,9 +347,9 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-23 — weekend deploys ungated
+### 2026-08-27 — judge rubric v4 · Perplexity on the Agent API · real-time gap live
 
-- Windows are for market days; Sat/Sun unrestricted. Weekend jobs still run — check the clock.
+- Detail in `CHANGELOG.md` + `docs/setups/magna53_ep.md`.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
