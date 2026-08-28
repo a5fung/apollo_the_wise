@@ -269,6 +269,66 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-28 — #593: the sustain rule's revert condition is re-stated as a RATE on TRADEABLE misses (OPERATOR-SIGNED)
+
+**Trigger**: the 2026-08-02 pre-registration — *"a rejected name running ≥+20% once is a review,
+twice a revert"* — was literally met at 20 names while the reading was an artifact. The operator
+ruled the fix and then twice sharpened it, in his own words:
+- *"yes, it's more accurate"* — measure the run from **the level the rule declined**, not the open.
+- *"those stocks that we turned away has to be theoretically traded before we count them vs just
+  admitted in that stage."*
+- *"2nd eval check is ratio, if it's 1 of 100 then it's small vs 1 of 5."* → **X = 10%**, and
+  *"aligned with your conditions"* on the two guards below.
+
+**Evidence** (`docs/analysis/sustain_revert_rebased_2026-08-28.md`): 128 `ep_rt_sustain_reject`
+ticker-days, 2026-08-03→08-28, 19 trading days, 65 scoreable.
+
+| measured how | breaches |
+|---|---|
+| ≥+20% from the day's OPEN (the original, unnamed baseline) | 39 |
+| ≥+20% from the DECLINED LEVEL (`prev_close × (1+rt_gap/100)`) | 13 |
+| …that still held the 9% gap floor at the d0 close | 13 |
+| …**and** cleared the $50M dollar-volume floor | **2** |
+| …**and** traded above the declined level on d0, so an entry was reachable | **2** |
+
+**Eleven of the thirteen were too illiquid to trade** — never a cost whatever the rule did.
+**2 of 65 = a 3% tradeable-miss rate.**
+
+**THE AMENDED CONDITION** (supersedes the ≥+20% arm of the 2026-08-02 pre-registration; the
+"first 30 live catches vs the replay" arm is unchanged):
+
+> **REVIEW** when *tradeable misses* exceed **10%** of *scoreable declined names* over a rolling
+> **30 trading days**, evaluated only when that window holds **≥30 scoreable declined names**.
+> A review raises it to the operator. **It never reverts on its own.**
+>
+> - *tradeable miss* = a declined name that (a) traded ≥+20% above the price the rule declined
+>   (`prev_close × (1+rt_gap/100)`, recorded on every `ep_rt_sustain_reject`), (b) still held the
+>   9% gap floor at the d0 close, (c) cleared the $50M dollar-volume floor, and (d) traded above
+>   the declined level on d0 so an entry was reachable.
+> - *scoreable declined name* = a rejection with a `prev_close` and forward bars. **This is the
+>   denominator and it is stated deliberately** — "all rejections" would drift silently as data
+>   coverage changes.
+
+**Why each guard exists.** (1) **A rate, not a count**: "twice a revert" across 128 rejections is
+not a threshold but a certainty — any gate that declines anything accumulates two counter-examples
+eventually, so as written it could only ever fire and never clear. (2) **≥30 minimum**: in a quiet
+week with 3 declines a single miss reads 33%; the news-source-quality check has 11 `low_n` firings
+of 14 for exactly this reason. (3) **Review, never auto-revert**: this governs a live admission
+gate — mechanically reverting trade discipline on a metric is precisely what THE LINE forbids.
+
+**Anticipated effect**: no behaviour change today. The rate reads **3%** against a 10% trigger, so
+the condition does not fire; the rule stands on honest evidence rather than a bad yardstick. It
+now takes a ~3× worsening — about one tradeable miss every three days against one every ten — to
+raise a review.
+
+**Reversion-flag**: **REFINEMENT** of the 2026-08-02 pre-registration. The prior form was not
+wrong in intent; it was unfalsifiable in practice because it named no baseline, no denominator and
+no window. Nothing about the rule itself changed.
+
+**Status**: condition amended, operator-signed 2026-08-28. Not yet automated — the read is
+reproducible from `docs/analysis/sustain_revert_rebased_2026-08-28.md`. Wiring it as a standing
+predicate is filed under #593.
+
 ### 2026-08-28 — STATUS RECORD: two real-time toggles went live and the SSoT never said so
 
 **Trigger**: `live_rules.py --drift-only` at OPEN, 2026-08-28. It flagged that every mention of
@@ -1359,7 +1419,7 @@ would-be catches and can never admit one. There is no path by which it loosens d
 15 tests. **Reversion**: `ep_rt_sustain_enabled` off, ~60s, no deploy.
 
 **Watch for** (pre-committed): first 30 live catches vs the replay's prediction — materially worse
-means the replay was fitted, revert; a rejected name running ≥+20% once is a review, twice a revert.
+means the replay was fitted, revert; a rejected name running ≥+20% once is a review, twice a revert. ⚠ **THE ≥+20% ARM WAS SUPERSEDED 2026-08-28 (operator-signed) — see the change-log entry at the top of this file. It named no baseline, no denominator and no window, which made it unfalsifiable; it is now a 10% rate on TRADEABLE misses over 30 trading days with a ≥30 minimum, and it raises a REVIEW rather than reverting. Do not cite the form below as live.**
 
 ⚠ **READ 2026-08-24 — the ≥+20% arm is LITERALLY MET (20 names) AND THE READING IS AN ARTIFACT.
 Do NOT revert on it. Operator ruling pending (#593).** The condition never named a BASELINE, so it
