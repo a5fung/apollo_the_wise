@@ -3033,12 +3033,18 @@ def format_grade_provenance(ep: dict) -> str:
     pplx = format_catalyst_grade(ep.get("gemini_validation"))
     if not pplx:
         return ""
-    boost = ep.get("confidence_multiplier") or 1.0
+    # ⚠ 2026-08-28, caught by verify-live on the SOLS alert. This used to read the boost:
+    # >1.2 meant "agreeing lifted the score", and 1.0 under agreement could only mean the
+    # hedge-downgrade had cancelled it — so it printed "boost cancelled — its own text found
+    # no news". #233 retired the boost the day before, which pinned confidence_multiplier at
+    # 1.0 for EVERY row, and that branch then asserted a hedge on every agreement. SOLS
+    # printed "its own text found no news" about a read that had found the news and graded it
+    # strong. A dead distinction cannot be allowed to keep speaking: with no boost left there
+    # is nothing to report but the read itself.
     if ep.get("gemini_validation") == ep.get("catalyst_quality"):
-        note = (f"agrees, score ×*{boost:g}*" if boost > 1.0
-                else "agrees, but boost cancelled — its own text found no news")
+        note = "agrees with the grader"
     else:
-        note = "differs, no score boost"
+        note = "differs from the grader"
     return f"🔎 Perplexity: *{pplx}* — {note}"
 
 

@@ -99,7 +99,7 @@ def test_okta_states_what_acted_before_any_model_prose():
     # Each party that read the catalyst says what IT said; the decision takes the last line.
     assert out.splitlines()[1:5] == [
         "📊 Grader: *game-changing*",
-        "🔎 Perplexity: *strong* — differs, no score boost",
+        "🔎 Perplexity: *strong* — differs from the grader",
         "⚖️ Judge: *strong* (disagrees with the grader)",
         "✅ Decision: alert tier *HIGH* (our score said HIGH; the judge held it)",
     ]
@@ -400,10 +400,10 @@ def test_perplexity_line_states_its_real_effect_not_that_it_sets_nothing():
     EP score — 61 of 147 alerts carried it in the 60d to 2026-08-27; and Perplexity's hedge
     text cuts the catalyst grade a notch (10 times since 2026-05-05)."""
     # OKTA: Perplexity read `strong` against the label `game_changer` → no boost earned.
-    assert "🔎 Perplexity: *strong* — differs, no score boost" in _render(OKTA)
+    assert "🔎 Perplexity: *strong* — differs from the grader" in _render(OKTA)
     assert "sets nothing" not in _render(OKTA)
-    boosted = dict(OKTA, gemini_validation="game_changer", confidence_multiplier=1.2)
-    assert "🔎 Perplexity: *game-changing* — agrees, score ×*1.2*" in _render(boosted)
+    agreeing = dict(OKTA, gemini_validation="game_changer")
+    assert "🔎 Perplexity: *game-changing* — agrees with the grader" in _render(agreeing)
 
 
 def test_the_tier_clause_names_who_set_the_tier_in_all_three_authorities():

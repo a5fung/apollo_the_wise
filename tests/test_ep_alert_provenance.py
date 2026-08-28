@@ -70,7 +70,7 @@ def test_headline_falls_back_to_the_catalyst_grade_when_not_judge():
 # what" is how the retracted "advisory" claim survived in three places.
 def test_provenance_carries_only_the_perplexity_cross_check():
     p = format_grade_provenance(LZB)
-    assert p == "🔎 Perplexity: *strong* — differs, no score boost"
+    assert p == "🔎 Perplexity: *strong* — differs from the grader"
     assert "Claude grader" not in p and "Judge" not in p
 
 
@@ -78,7 +78,7 @@ def test_provenance_no_false_agree_on_lzb_stale_case():
     # The exact bug: LZB printed 'Claude + Perplexity agree' after strong→routine downgrade left
     # the multiplier stale. The provenance line compares FINAL grades → must say differs.
     assert "agrees" not in format_grade_provenance(LZB)
-    assert "differs, no score boost" in format_grade_provenance(LZB)
+    assert "differs from the grader" in format_grade_provenance(LZB)
 
 
 def test_provenance_states_what_the_agreement_actually_did():
@@ -88,10 +88,14 @@ def test_provenance_states_what_the_agreement_actually_did():
     agree = {"catalyst_quality": "strong", "gemini_validation": "strong",
              "confidence_multiplier": 1.2, "score_tier": "HIGH",
              "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
-    assert format_grade_provenance(agree) == "🔎 Perplexity: *strong* — agrees, score ×*1.2*"
-    # …and when the hedge-downgrade cancelled the boost, say THAT rather than claiming 1.2x.
-    cancelled = dict(agree, confidence_multiplier=1.0)
-    assert "agrees, but boost cancelled" in format_grade_provenance(cancelled)
+    # 2026-08-28, caught by verify-live on SOLS: #233 retired the boost the day before, which
+    # pinned confidence_multiplier at 1.0 for EVERY row — so the old 1.0-under-agreement branch
+    # asserted a hedge on every agreement, and SOLS printed "its own text found no news" about a
+    # read that HAD found the news and graded it strong. A dead distinction may not keep
+    # speaking: with no boost left there is nothing to report but the read.
+    assert format_grade_provenance(agree) == "🔎 Perplexity: *strong* — agrees with the grader"
+    for banned in ("boost", "score ×", "found no news"):
+        assert banned not in format_grade_provenance(agree), f"dead boost language: {banned}"
 
 
 def test_provenance_never_claims_perplexity_sets_nothing():

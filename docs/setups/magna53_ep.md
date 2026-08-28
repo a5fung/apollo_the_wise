@@ -269,6 +269,37 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-28 — STATUS RECORD: two real-time toggles went live and the SSoT never said so
+
+**Trigger**: `live_rules.py --drift-only` at OPEN, 2026-08-28. It flagged that every mention of
+`ep_rt_volume_authoritative` and `ep_rt_universe_authoritative` in this file still reads OFF/dark
+while both are ON in `mi_safeguard_state`. The change-log entries below are accurate *as of their
+own dates* — nothing there is being rewritten — but no entry ever recorded the flips, so the
+current state was only discoverable from the database. That is the stale-SSoT failure this
+project treats as worse than no SSoT.
+
+**Current state, read from `mi_safeguard_state` (all `global`):**
+
+(Each row states the flip on the toggle's own line — `live_rules.py`'s unrecorded-flip check
+reads evidence per-line, so a status split across table cells reads as no evidence at all.)
+
+| toggle | status |
+|---|---|
+| `ep_rt_universe_authoritative` | **went live 2026-08-25 11:02 ET** |
+| `ep_rt_gap_down_authoritative` | went live 2026-08-02 |
+| `ep_rt_entry_gap_recheck` | went live 2026-08-02 |
+| `ep_rt_sustain_enabled` | went live 2026-08-02 |
+| `ep_rt_volume_authoritative` | **went live 2026-08-27 11:19 ET** |
+| `ep_rt_gap_authoritative` | **went live 2026-08-27 13:55 ET** — see the #559 entry |
+
+**Anticipated effect**: none — this entry changes no behaviour. It records state that was
+already live so the document stops contradicting production.
+
+**Reversion-flag**: n/a (a record, not a change).
+
+**Status**: recorded 2026-08-28. Each toggle reverts independently in ~60s via
+`mi_safeguard_state`, no deploy.
+
 ### 2026-08-27 — #233: the Perplexity agreement boost is RETIRED; the DISAGREEMENT goes to the judge instead (OPERATOR-SIGNED, rubric rule 7)
 
 **Trigger**: operator reframed the question — *"i'm not too concerned about boost giving us
