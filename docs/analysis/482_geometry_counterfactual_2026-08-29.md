@@ -22,18 +22,40 @@ what stops the widest stop from looking best by construction.
 Walked minute-by-minute in sequence, first touch decides, +2R half-off applied (live since
 2026-08-16), held to the 5th session's close with the stop still live.
 
+## 🔴 CORRECTION — the first pass did not include the live stop at all
+
+The operator: *"but we didn't compare this with 2R stop which is live now, so you're saying 2R
+we have now is best?"*
+
+**No — I had not tested it.** Since **2026-08-16** (operator-signed) the protective stop is
+`entry − 2R` at half size, where `R = entry − orb_low`. The ORB low still *defines* R; it stopped
+being the exit. My first table labelled `orb_low` as "live_1min (the control)" — a geometry
+retired two weeks before this analysis ran. Every variant was therefore measured against the
+wrong baseline.
+
+Re-run with the real live stop included:
+
 ## The result
 
-| variant | n | expectancy | median | win% | total |
-|---|---|---|---|---|---|
-| **live_1min** (the control) | 58 | **−0.34R** | −1.00R | 21% | −20.0R |
-| orb_5min | 59 | −0.36R | −1.00R | 20% | −21.0R |
-| low_of_day | 59 | −0.39R | −1.00R | 19% | −23.0R |
-| atr_100 (entry − 1.0×ATR) | 57 | −0.41R | −1.00R | 21% | −23.5R |
-| atr_50 (entry − 0.5×ATR) | 57 | −0.42R | −1.00R | 23% | −23.9R |
+| variant | n | expectancy | win% | total |
+|---|---|---|---|---|
+| **LIVE — `entry − 2R`, half size** | 57 | **−0.13R** | **35%** | **−7.2R** |
+| `orb_low` (the pre-08-16 stop) | 58 | −0.34R | 21% | −20.0R |
+| orb_5min | 59 | −0.36R | 20% | −21.0R |
+| low_of_day | 59 | −0.39R | 19% | −23.0R |
+| atr_100 (entry − 1.0×ATR) | 57 | −0.41R | 21% | −23.5R |
+| atr_50 (entry − 0.5×ATR) | 57 | −0.42R | 23% | −23.9R |
 
-**Every variant is negative, all five sit within 0.08R of each other, and the geometry we
-already run is the best of them.**
+**The live 2R stop is the best of the six by a wide margin — and it is not a small margin.** It
+roughly **halves the loss rate** (−0.13R against −0.34R), lifts the win rate from 21% to 35%, and
+cuts the total from −20.0R to −7.2R across the same trades.
+
+**So the answer to his question is yes, and the first version of this document was wrong about
+what "live" meant.** The five alternatives cluster within 0.08R of each other *below* the pre-08-16
+stop; the 08-16 change is the only geometry move in the set that did anything, and it is already
+shipped.
+
+**Still negative, though.** −0.13R is a smaller loss, not a profit.
 
 ### The model is calibrated against reality
 
