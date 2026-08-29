@@ -210,11 +210,29 @@ def _universe_floor_skip(
 
 
 # Auto-disqualifiers (hard filters — applied before scoring)
-MAX_EXTENSION_PCT = 75.0   # Skip if already up 75%+ in last 5 trading days before the gap
-# 2026-08-22: 50.0 -> 75.0, OPERATOR-SIGNED. The 50-75 band held 5 names that ran >=50%
-# (2 doublers: FCEL, MRAM) against 1 loser; the 75-100 band is the dead zone holding the
-# disasters this gate genuinely prevents (CAR -80%, SPCE -60%) — which is why it stops at 75
-# and not 100. Evidence + banding: docs/analysis/gates_extension_top20_577_2026-08-22.md.
+MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ in last 5 trading days before the gap
+# 2026-08-29: 75.0 -> 50.0, OPERATOR-SIGNED — REVERTING the 08-22 loosening, whose evidence was
+# corrupt. That change rested on "5 names that ran >=50% (2 doublers) against 1 loser" drawn from
+# mi_ep_missed_outcomes, which #595 showed was crediting names whose PRE-MARKET spike faded before
+# the open — days that were never tradeable setups at all.
+#
+# Re-run on corrected data (docs/analysis/577_extension_cap_recheck_2026-08-29.md): the band's
+# claimed winners fall 21 -> 12, and only 3 of those 12 are even inside 50-75 (the other nine had
+# run 128%-2,264% and are still blocked at 75). Replayed through the LIVE bracket on minute bars
+# fetched from Alpaca — entry = stop-buy at the 9:30 bar's high, stop = that bar's low, walked in
+# sequence — the band returned -1.00R on 15 of 15. Zero winners.
+#
+# ⚠ THE CAP IS NOT THE BINDING CONSTRAINT — THE STOP IS. Five names in that band ran 2.9R to
+# 15.2R (AKTX +15.2R) and every one still paid -1R, because the 9:30 bar's low was taken out
+# first. Reverting stops us paying -1R to discover that; it does not make the cohort tradeable.
+# The lever is bracket geometry (#482), not admission. Do not re-litigate this constant as if it
+# were the problem.
+#
+# 🔭 RE-OPEN THIS on either trigger (operator 2026-08-29: "we'll review this again in future when
+# we have more samples; also if/when we miss a real strong EP because of this"):
+#   (a) the 50-75 band accrues materially more than 15 scoreable names, or
+#   (b) ANY single name blocked by this gate turns out to be a real strong EP we wanted.
+# Both are watched by health_checks._extension_cap_revisit_watch, which surfaces (b) per-name.
 # SSoT + change log: docs/setups/magna53_ep.md.
 # How many candidates get ADV backfilled + rank-21..50 probe telemetry after the
 # shortlist sort — a wider, cheaper slice than the graded cohort. Shapes TELEMETRY

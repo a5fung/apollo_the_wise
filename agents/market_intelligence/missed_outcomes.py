@@ -365,6 +365,65 @@ async def record_cap_plus_one_shadow() -> dict:
 
 # ── Refresh / backfill ───────────────────────────────────────────────────────
 
+# ── #577 extension-cap revisit watch (operator 2026-08-29) ─────────────────────────────────────
+# On reverting the cap 75 -> 50 he named the two conditions for re-opening it: *"we'll review this
+# again in future when we have more samples; also if/when we miss a real strong EP because of
+# this."* The first is a counter. The SECOND is the one that must not be lost in a table nobody
+# reads — a single real strong EP blocked by this gate is his stated trigger, and it has to reach
+# him as it happens rather than at some future review.
+#
+# ⚠ WHY THE BAR IS SET WHERE IT IS. Any gate blocks names that later rise; that is not the signal.
+# The trigger is a name that (a) was a genuine setup at the bell — the #595 correction, without
+# which this watch would fire on pre-market fades — AND (b) ran hard enough afterwards to be worth
+# a look. The threshold is deliberately HIGH (a doubling) so the watch stays rare and keeps
+# meaning something; a chatty watch is one he learns to ignore, which is the failure this is
+# guarding against.
+_EXT_WATCH_MFE = 1.00          # +100% best move within 5 sessions
+_EXT_WATCH_SAMPLE_TARGET = 40  # "more samples" — the 08-29 read had 15 scoreable
+
+
+async def check_extension_cap_revisit() -> dict:
+    """Surface the two operator-named triggers for revisiting MAX_EXTENSION_PCT.
+
+    Returns {"names": [...], "band_n": int, "sample_ready": bool}. Read-only; never raises —
+    the caller runs it inside the nightly job and a telemetry failure must not break the chain.
+    """
+    out: dict = {"names": [], "band_n": 0, "sample_ready": False, "error": None}
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT ticker, alert_date, open_gap_pct, ret_5d, max_high_5d, skip_reason
+                FROM mi_ep_missed_outcomes
+                WHERE skip_category = 'extension_gate'
+                  AND setup_at_open IS TRUE          -- #595: a real setup at the bell, not a fade
+                  AND max_high_5d >= $1
+                  AND alert_date >= CURRENT_DATE - 7  -- only NEW ones; this runs nightly
+                ORDER BY max_high_5d DESC
+                """, _EXT_WATCH_MFE)
+            out["names"] = [dict(r) for r in rows]
+            # (a) the sample counter — how much scoreable evidence the 50-75 band now holds
+            out["band_n"] = int(await conn.fetchval(
+                """
+                SELECT count(*) FROM mi_ep_missed_outcomes
+                WHERE skip_category = 'extension_gate' AND setup_at_open IS TRUE
+                  AND ret_5d IS NOT NULL
+                """) or 0)
+            out["sample_ready"] = out["band_n"] >= _EXT_WATCH_SAMPLE_TARGET
+    except Exception as e:                      # never break the nightly chain
+        # COUNTED, not swallowed (#381): a watch that fails silently is a watch that is off, and
+        # this one carries an operator-named trigger. The caller still gets its dict.
+        out["error"] = f"{type(e).__name__}: {e}"[:200]
+        logger.warning("extension-cap revisit watch failed: %s", out["error"])
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event("extension_cap_watch_failed", out["error"][:200])
+        except Exception:  # loud-ok: the caller already logged and stored the real failure;
+            pass               # this inner handler only guards the audit write from masking it
+    return out
+
+
 async def refresh_missed_outcomes(
     window_days: int = _REFRESH_WINDOW_DAYS,
     *,

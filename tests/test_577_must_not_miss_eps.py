@@ -248,7 +248,10 @@ def test_thresholds_loaded_are_the_real_ones_not_the_stub():
     assert THRESHOLDS["MAX_ATR_PCT"] == 15.0
     assert THRESHOLDS["MIN_ADV_DOLLAR_VOLUME"] == 1_000_000
     assert THRESHOLDS["MIN_GAP_PCT"] >= 1.0  # env-overridable; sanity floor, not the exact value
-    assert THRESHOLDS["MAX_EXTENSION_PCT"] == 75.0   # 2026-08-22 operator-signed loosening (#577A)
+    # 2026-08-29 operator-signed REVERT of the 08-22 loosening — its evidence was corrupt
+    # (#595: the missed-outcomes table credited pre-market fades as missed winners), and on
+    # corrected data the 50-75 band returned -1.00R on 15 of 15 real-bar replays.
+    assert THRESHOLDS["MAX_EXTENSION_PCT"] == 50.0
 
 
 def test_loading_real_filters_does_not_contaminate_sys_modules():

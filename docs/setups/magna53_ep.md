@@ -269,6 +269,51 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-08-29 — MAX_EXTENSION_PCT REVERTED 75% → 50% (OPERATOR-SIGNED; the 08-22 loosening rested on corrupt evidence)
+
+**Trigger**: #595 found `mi_ep_missed_outcomes` was crediting names whose PRE-MARKET spike faded
+before the open — days that were never tradeable setups — as "winners this gate cost us". The
+2026-08-22 loosening was built on exactly that table. Operator, on the corrected read: *"go with
+rec, and we'll review this again in future when we have more samples; also if/when we miss a real
+strong EP because of this."*
+
+**Evidence** (`docs/analysis/577_extension_cap_recheck_2026-08-29.md`):
+
+| | 08-22 claim | corrected |
+|---|---|---|
+| winners the gate cost us | 21 | **12** |
+| of those, inside the 50–75% band the change admits | (not asked) | **3** |
+| the other nine | — | had run **128%–2,264%**, still blocked at 75 |
+
+Replayed the band through the LIVE bracket on minute bars fetched from Alpaca (entry = stop-buy
+at the 9:30 bar's high, stop = that bar's low, walked in sequence):
+
+| replay | n | winners | expectancy |
+|---|---|---|---|
+| **the bracket as it was** | 15 | **0** | **−1.00R** |
+| with the +2R half-off rule applied retrospectively | 15 | 3 (constructed) | −0.60R |
+
+⚠ **THE CAP IS NOT THE BINDING CONSTRAINT — THE STOP IS.** Five band names ran **2.9R to 15.2R**
+(AKTX +15.2R, HCAI +5.3R, WYHG +3.4R, ERNA +3.3R, BRUNW +2.9R) and every one still paid −1R,
+because the 9:30 bar's low was taken out first. Reverting stops us paying −1R to discover that;
+it does not make the cohort tradeable. **The lever is bracket geometry (#482), not admission.**
+
+**Anticipated effect**: ~18 names blocked over 5 months that 75% admitted — 3 of which reached
++20% on paper and all of which stopped out. No other criterion changes.
+
+**Reversion-flag**: **REVERSAL** of the 2026-08-22 loosening. Why the prior reasoning was wrong,
+not merely incomplete: it counted missed winners off a table that scored pre-market fades as
+setups, so its "5 names that ran ≥50% against 1 loser" was not measuring the band's tradeable
+population at all.
+
+🔭 **RE-OPEN ON EITHER OPERATOR-NAMED TRIGGER** — (a) the band accrues materially more than 15
+scoreable names, or (b) **any single real strong EP is blocked by this gate**. Both are watched
+nightly by `missed_outcomes.check_extension_cap_revisit`; (b) Telegrams per-name, because a
+review he has to remember to call is one that does not happen.
+
+**Status**: shipped, awaiting field validation. Verify-live = the next scan logs
+`already up X% in prior 5 days` for a name in the 50–75% range.
+
 ### 2026-08-28 — #593: the sustain rule's revert condition is re-stated as a RATE on TRADEABLE misses (OPERATOR-SIGNED)
 
 **Trigger**: the 2026-08-02 pre-registration — *"a rejected name running ≥+20% once is a review,

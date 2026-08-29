@@ -729,6 +729,39 @@ async def _nightly_data_pull():
         # should have captured but couldn't (they'd already aged past the
         # 30-day window). Every action is counted here so a spike (e.g.
         # mi_ep_alerts unexpectedly losing rows) is visible, not silent.
+        # #577 (operator 2026-08-29, on reverting the extension cap to 50%): "we'll review this
+        # again in future when we have more samples; also if/when we miss a real strong EP because
+        # of this." Runs here because the refresh above has just settled today's outcomes. The
+        # per-name arm TELEGRAMS — a real strong EP the cap blocked is his named trigger and must
+        # reach him as it happens, not wait for a review he has to remember to call.
+        try:
+            from agents.market_intelligence.missed_outcomes import check_extension_cap_revisit
+            _ext = await check_extension_cap_revisit()
+            if _ext.get("names"):
+                _lines = "\n".join(
+                    f"• {n['ticker']} {n['alert_date']} — opened "
+                    f"{(n['open_gap_pct'] or 0) * 100:+.0f}%, ran {(n['max_high_5d'] or 0) * 100:+.0f}% "
+                    f"in 5 sessions ({(n['skip_reason'] or '')[:60]})"
+                    for n in _ext["names"])
+                await log_audit_event(
+                    "extension_cap_revisit_trigger",
+                    f"{len(_ext['names'])} strong EP(s) blocked by the extension cap",
+                    detail=str(_ext["names"])[:900])
+                from agents.market_intelligence.briefing import send_telegram_message
+                await send_telegram_message(
+                    "🔭 *Extension cap — the trigger you named*\n\n"
+                    "A real setup the 50% cap blocked then doubled:\n"
+                    f"{_lines}\n\n"
+                    "You asked to revisit the cap if this happened. Evidence: "
+                    "docs/analysis/577_extension_cap_recheck_2026-08-29.md")
+            elif _ext.get("sample_ready"):
+                await log_audit_event(
+                    "extension_cap_sample_ready",
+                    f"the 50-75% band now holds {_ext['band_n']} scoreable names "
+                    f"(was 15 at the 2026-08-29 revert) — enough to re-read")
+        except Exception as _ee:
+            logger.warning(f"extension-cap revisit watch failed (non-fatal): {_ee}")
+
         from agents.market_intelligence.missed_outcomes import reconcile_missed_outcomes_categories
         reconcile_summary = await reconcile_missed_outcomes_categories()
         await log_audit_event(

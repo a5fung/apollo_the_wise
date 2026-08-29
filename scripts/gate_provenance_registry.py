@@ -369,13 +369,25 @@ GATE_REGISTRY: list[dict] = [
         "file": "agents/market_intelligence/ep_detector.py",
         "kind": "const",
         "name": "MAX_EXTENSION_PCT",
-        "value": 75.0,
+        "value": 50.0,
         "citation": {
             "file": "docs/setups/magna53_ep.md",
-            "text": "MAX_EXTENSION_PCT=75.0",
+            "text": "MAX_EXTENSION_PCT=50.0",
         },
-        "note": "LOOSENED 50.0 -> 75.0 on 2026-08-22, OPERATOR-SIGNED (\"ok, signed off on the "
-                "change to 75%\"), first change to this constant since inception. Evidence: "
+        "note": "REVERTED 75.0 -> 50.0 on 2026-08-29, OPERATOR-SIGNED (\"go with rec\"). The "
+                "08-22 loosening rested on corrupt evidence: its \"5 names that ran >=50% (2 "
+                "doublers) vs 1 loser\" came from mi_ep_missed_outcomes, which #595 showed was "
+                "crediting names whose PRE-MARKET spike faded before the open — days that were "
+                "never tradeable setups. Corrected "
+                "(docs/analysis/577_extension_cap_recheck_2026-08-29.md): claimed winners 21 -> "
+                "12, only 3 of those inside 50-75, and replaying the band through the LIVE "
+                "bracket on Alpaca minute bars returned -1.00R on 15 of 15 — zero winners. "
+                "⚠ The cap is NOT the binding constraint: five band names ran 2.9R-15.2R and "
+                "still paid -1R because the 9:30 bar's low went first. That is geometry (#482), "
+                "not admission. RE-OPEN on either operator-named trigger — the band accruing "
+                "materially more than 15 scoreable names, or ANY single real strong EP blocked by "
+                "it; both watched by missed_outcomes.check_extension_cap_revisit. "
+                "PRIOR: LOOSENED 50.0 -> 75.0 on 2026-08-22, operator-signed. Evidence: "
                 "docs/analysis/gates_extension_top20_577_2026-08-22.md — the gate is 91% redundant "
                 "with ADV/ATR/mcap; its 50-75 band held 5 names that ran >=50% (2 doublers) vs 1 "
                 "loser, while 75-100 is the dead zone holding the disasters it genuinely prevents "
