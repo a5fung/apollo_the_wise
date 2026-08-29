@@ -11,9 +11,10 @@ Fix under test (`_resolve_position_gone`, called from the gone branch of
   1. GRACE  — stop confirmed filled at the broker but recently → leave the row
               to the websocket finaliser (no DB write).
   2. RECORD — stop fill older than the grace window → book the exit from
-              BROKER TRUTH (the stop order's filled_avg_price/filled_qty) and
-              close the row with exits + total_pnl in ONE statement.
-              Idempotent on exits[].order_id.
+              BROKER TRUTH (the stop order's filled_avg_price/filled_qty) by
+              delegating the commit to _finalize_stop_fill_locked, the
+              canonical writer (deploy gate audit_column_writes) — exits +
+              total_pnl in one statement, idempotent on exits[].order_id.
   3. REFUSE — no broker-confirmed fill → leave the row OPEN and loud (audit +
               Telegram + discrepancy), never invent a price.
 
@@ -244,8 +245,9 @@ async def test_gone_recent_fill_defers_to_finaliser():
 
 @pytest.mark.asyncio
 async def test_gone_idempotent_no_double_leg():
-    """Leg for this stop order already in exits[] (finaliser half-won): the
-    resolution must NOT append a second leg or double-count P&L."""
+    """Leg for this stop order already in exits[]: the canonical writer's
+    idempotency guard (delegated to, not duplicated) must make the whole
+    resolution a no-op — no second leg, no double-counted P&L, no write."""
     from agents.market_intelligence.broker.order_manager import (
         _sync_positions_for_mode,
     )
@@ -264,13 +266,9 @@ async def test_gone_idempotent_no_double_leg():
     with p1, p2, p3, p4, p5, p6:
         await _sync_positions_for_mode("paper")
 
-    closes = _close_executes(conn)
-    assert len(closes) == 1
-    exits_arg, total_pnl_arg = closes[0].args[2], closes[0].args[3]
-    assert len(exits_arg) == 1, "must not append a duplicate exit leg"
-    assert total_pnl_arg == pytest.approx(-50.0), (
-        "total_pnl must not double-count the same fill (-100 would mean the "
-        "idempotency guard is dead)"
+    assert conn.execute.call_args_list == [], (
+        "an already-recorded fill must be a complete no-op — any write here "
+        "means a duplicate leg or double-counted P&L"
     )
 
 

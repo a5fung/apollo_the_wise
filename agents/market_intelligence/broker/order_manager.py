@@ -6195,13 +6195,17 @@ async def _resolve_position_gone(trade: dict, account_mode: str) -> str | None:
          deferring one sweep costs nothing.
       2. RECORD — stop fill older than the grace window: the finaliser missed
          it. Book the exit from BROKER TRUTH only (the stop order's own
-         filled_avg_price / filled_qty / filled_at — never a synthesised
-         price) and close the row, updating exits + total_pnl +
-         remaining_shares in ONE statement (invariant at the day-1 re-entry
-         path: total_pnl = sum(exits[].pnl), both columns together).
-         Idempotent on exits[].order_id — the same guard the finalisers use,
-         and both sides serialize on the same advisory lock, so a double leg
-         cannot be written even if the WS event arrives later.
+         filled_avg_price / filled_qty — never a synthesised price) by
+         DELEGATING the commit to _finalize_stop_fill_locked, the CANONICAL
+         writer for exits/total_pnl/remaining_shares/status/closed_at
+         (deploy gate audit_column_writes; T1.3 2026-05-18 removed the last
+         duplicate close writer for exactly this reason). It keeps the
+         exits+total_pnl-in-one-statement invariant, is idempotent on
+         exits[].order_id (ONE guard — none duplicated here), nulls
+         stop_order_id on a full close, and only closes when the fill
+         exhausts remaining_shares. Both writers serialize on the same
+         per-trade advisory lock, so a double leg cannot be written even if
+         the WS event arrives later.
       3. REFUSE — anything else (no stop_order_id, order unreadable, order
          not filled: e.g. an OCO limit took the shares, or a manual
          liquidation): no real exit price can be established. Leave the row
@@ -6277,42 +6281,32 @@ async def _resolve_position_gone(trade: dict, account_mode: str) -> str | None:
                         f"filled {fill_age_s:.0f}s ago; leaving the row to the "
                         f"fill finaliser (grace {_SYNC_GONE_GRACE_S}s)")
 
-            exits = (row["exits"] if isinstance(row["exits"], list)
-                     else json.loads(row["exits"] or "[]"))
-            already = any(e.get("order_id") == stop_order_id for e in exits)
+            # Commit via the CANONICAL writer (deploy gate audit_column_writes:
+            # _finalize_stop_fill_locked owns this close shape — adding a sixth
+            # writer would undo the T1.3 2026-05-18 consolidation). It re-reads
+            # the row itself, is idempotent on exits[].order_id (so no second
+            # guard here), books pnl off the REAL fill, closes + nulls
+            # stop_order_id only when the fill exhausts remaining_shares, and
+            # emits its own audit row + "Closed" Telegram.
+            #
+            # LOCK CONTRACT: we HOLD the #151 per-trade try-lock, so we must
+            # call the _locked variant, NOT the public finalize_stop_fill —
+            # the public wrapper acquires pg_advisory_lock on a DIFFERENT
+            # pooled connection, and advisory locks are per-connection, so it
+            # would block forever against our own held lock (live-money hang).
+            await _finalize_stop_fill_locked(
+                trade_id, int(filled_qty), float(filled_price), stop_order_id,
+            )
             entry_price = float(row["entry_price"] or 0)
             shares = int(filled_qty)
             pnl = (float(filled_price) - entry_price) * shares if entry_price else 0
-            if not already:
-                exits.append({
-                    "time": (str(filled_at_raw) if filled_at_raw
-                             else datetime.now(timezone.utc).isoformat()),
-                    "price": float(filled_price),
-                    "reason": "stop_hit",
-                    "shares": shares,
-                    "pnl": pnl,
-                    "order_id": stop_order_id,
-                    # Same economic event the WS finaliser records ("websocket");
-                    # this marks the late recorder for forensics.
-                    "source": "sync_reconcile",
-                })
-            # Invariant: total_pnl = sum(exits[].pnl) — both columns in ONE
-            # statement (MNDY 2026-05-11 class).
-            total_pnl = sum(e.get("pnl", 0) for e in exits)
-            async with pool.acquire() as conn:
-                await conn.execute("""
-                    UPDATE mi_live_trades SET
-                        status = 'closed', exits = $2::jsonb,
-                        remaining_shares = 0, total_pnl = $3,
-                        stop_order_id = NULL, closed_at = NOW()
-                    WHERE id = $1
-                """, trade_id, exits, total_pnl)
+            # Our own audit row records that SYNC (not the websocket) drove the
+            # commit — the canonical writer's leg says source=websocket.
             await log_audit_event(
                 "sync_gone_stop_fill_recorded",
                 f"{ticker}: position gone from Alpaca; missed stop fill booked "
-                f"from broker truth — {shares} sh @${float(filled_price):.2f}, "
-                f"pnl ${pnl:+,.2f}, total ${total_pnl:+,.2f}"
-                + (" (leg already present; closed only)" if already else ""),
+                f"via finalize_stop_fill from broker truth — {shares} sh "
+                f"@${float(filled_price):.2f}, pnl ${pnl:+,.2f}",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker,
                     "account_mode": account_mode,
@@ -6320,21 +6314,13 @@ async def _resolve_position_gone(trade: dict, account_mode: str) -> str | None:
                     "filled_qty": shares,
                     "filled_avg_price": float(filled_price),
                     "db_remaining_before": float(row["remaining_shares"] or 0),
-                    "pnl": float(pnl), "total_pnl": float(total_pnl),
-                    "leg_appended": not already,
+                    "pnl": float(pnl),
                     "fill_age_s": fill_age_s,
                 }),
             )
-            emoji = "✅" if total_pnl > 0 else "❌"
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}{emoji} *Closed:* {ticker} — stop_hit\n"
-                f"Exit @${float(filled_price):.2f} × {shares} shares\n"
-                f"Total P&L: ${total_pnl:+,.2f}\n"
-                f"_[sync reconcile — the websocket fill event was missed]_"
-            )
             return (f"{prefix} Position gone from Alpaca: {ticker} — missed stop "
                     f"fill booked from broker truth ({shares} sh "
-                    f"@${float(filled_price):.2f}, total ${total_pnl:+,.2f})")
+                    f"@${float(filled_price):.2f})")
 
         # ── Case 3: no broker-confirmed exit fill — leave open + loud ────────
         await log_audit_event(
