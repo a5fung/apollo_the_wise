@@ -8142,7 +8142,9 @@ async def get_ep_scanned_day(d: "str | date") -> dict[str, list[dict[str, Any]]]
         )
         outcomes = await conn.fetch(
             """SELECT DISTINCT ON (ticker)
-                      ticker, ret_1d, ret_5d, max_high_5d, last_refreshed_at
+                      ticker, ret_1d, ret_5d, max_high_5d, last_refreshed_at,
+                      -- #595: the ranking gate reads these (scanned_report._outcome_text)
+                      open_gap_pct, setup_at_open
                FROM mi_ep_missed_outcomes
                WHERE alert_date = $1
                ORDER BY ticker, last_refreshed_at DESC NULLS LAST""",

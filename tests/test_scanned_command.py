@@ -309,3 +309,77 @@ def test_no_pipe_tables():
         scan=[_scan_row("ABCD", "filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor")],
     ), now=_NOW)
     assert "|" not in out
+
+
+# ─── #595: a day with no setup at the open may not rank as a missed winner ───────────────
+# `gap_pct` is what the SCAN saw, often a pre-market print that never survived to the bell.
+# VEEE 2026-07-08 scanned at 16-20%, OPENED at +4.1% (below our own 9% floor) and closed -21%;
+# the forward window then credited it +354%, which belongs to an unrelated move three sessions
+# later. The operator caught it by eye: "i don't see gap on 7/8". Measured across the table:
+# 2,654 of 4,022 rows never gapped at the open, and 203 of the 331 ranked "big winners" (61%)
+# sat on days with no setup at all.
+
+def _fresh_outcome(**kw):
+    from datetime import datetime, timezone
+    base = {"max_high_5d": 7.33, "ret_5d": 3.54,
+            "last_refreshed_at": datetime.now(timezone.utc)}
+    base.update(kw)
+    return base
+
+
+def _text_for(outcome):
+    from datetime import date, datetime, timezone
+    from agents.market_intelligence.scanned_report import _outcome_text
+    return _outcome_text({"outcome_row": outcome}, date(2026, 7, 8),
+                         datetime.now(timezone.utc))
+
+
+def test_the_veee_case_no_longer_ranks():
+    """The exact row he flagged: +354% credited to a day that opened +4.1%."""
+    text, key = _text_for(_fresh_outcome(setup_at_open=False, open_gap_pct=0.041))
+    assert key is None, "a non-setup day must not rank as a missed winner"
+    assert "no setup at the open" in text and "+4%" in text
+
+
+def test_it_is_a_rank_gate_not_a_display_gate():
+    """The line still reports what the name did. The pre-market print is real telemetry about
+    our own scan — hiding it would be the same mistake pointing the other way."""
+    text, _ = _text_for(_fresh_outcome(setup_at_open=False, open_gap_pct=0.041))
+    assert "ran +733% high" in text and "settled +354%" in text
+
+
+def test_a_real_setup_still_ranks():
+    text, key = _text_for(_fresh_outcome(setup_at_open=True, open_gap_pct=0.16))
+    assert key == 7.33
+    assert "no setup" not in text
+
+
+def test_a_row_written_before_the_fix_is_unaffected():
+    """NULL means NOT COMPUTED — every row predating #595, and any with no prior bar. Those
+    must keep ranking exactly as before rather than being silently demoted by a missing value,
+    which would quietly empty the rankings the moment this shipped."""
+    text, key = _text_for(_fresh_outcome())          # no setup_at_open key at all
+    assert key == 7.33
+    assert "no setup" not in text
+    text, key = _text_for(_fresh_outcome(setup_at_open=None, open_gap_pct=None))
+    assert key == 7.33
+
+
+def test_a_missing_open_gap_still_says_why_it_was_dropped():
+    """setup_at_open=False with no gap figure: name the reason, just without the number."""
+    text, key = _text_for(_fresh_outcome(setup_at_open=False, open_gap_pct=None))
+    assert key is None and "no setup at the open" in text and "opened" not in text
+
+
+def test_the_write_site_derives_the_flag_from_the_live_floor():
+    """The threshold is imported from ep_detector, not restated — it moved 10.0 -> 9.0 on
+    2026-08-19, and a second copy would answer 'was this a setup' by an obsolete rule."""
+    import io
+    from agents.market_intelligence.missed_outcomes import _MIN_GAP_FRACTION
+    from agents.market_intelligence.ep_detector import MIN_GAP_PCT
+    assert _MIN_GAP_FRACTION == MIN_GAP_PCT / 100.0
+    src = io.open("agents/market_intelligence/missed_outcomes.py", encoding="utf-8").read()
+    assert "ADD COLUMN IF NOT EXISTS setup_at_open" in src, \
+        "CREATE TABLE IF NOT EXISTS does nothing to an existing table — prod needs the ALTER"
+    assert "trade_date < b.alert_date" in src, \
+        "the prior close must be STRICTLY earlier than the alert date — no lookahead"

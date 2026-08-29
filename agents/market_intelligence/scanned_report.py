@@ -226,7 +226,20 @@ def _outcome_is_fresh(o: Optional[dict], alert_d: date, now: datetime) -> bool:
 
 def _outcome_text(s: dict, alert_d: date, now: datetime) -> tuple[str, Optional[float]]:
     """→ (display text, rank key or None). Rank key = 5-session max high vs
-    the gap-day open — 'what the name DID afterwards'."""
+    the gap-day open — 'what the name DID afterwards'.
+
+    #595 (2026-08-29): a row also has to have been a SETUP AT THE BELL to rank. `gap_pct` is
+    what the SCAN saw, often a pre-market print that never survived to the open — VEEE
+    2026-07-08 scanned at 16-20%, OPENED at +4.1% and closed -21%, and the forward window then
+    credited it +354% that actually belongs to an unrelated move three sessions later. The
+    operator caught it by eye: *"i don't see gap on 7/8"*. Measured across the table: 2,654 of
+    4,022 rows never gapped at the open, and 203 of the 331 ranked "big winners" (61%) were on
+    days with no setup at all.
+
+    It is a RANK gate, not a display gate — the line still prints what the name did, because
+    the pre-market print is real telemetry about our own scan and hiding it would be the same
+    mistake in the other direction. It simply stops being called a missed winner.
+    """
     o = s.get("outcome_row")
     if o is None:
         return "outcome pending", None
@@ -240,7 +253,14 @@ def _outcome_text(s: dict, alert_d: date, now: datetime) -> tuple[str, Optional[
         parts.append(f"ran {mh * 100:+.0f}% high")
     if r5 is not None:
         parts.append(f"settled {r5 * 100:+.0f}%")
-    return ", ".join(parts) + " in 5 sessions", mh
+    text = ", ".join(parts) + " in 5 sessions"
+    # NULL = not computed (every row written before #595, or no prior bar) — those keep
+    # ranking exactly as before rather than being silently demoted by a missing value.
+    if o.get("setup_at_open") is False:
+        og = o.get("open_gap_pct")
+        og_txt = f" (opened {og * 100:+.0f}%)" if og is not None else ""
+        return text + f" — but no setup at the open{og_txt}, not ranked", None
+    return text, mh
 
 
 # ── HALF 2 per-name lines ───────────────────────────────────────────────────

@@ -39,6 +39,13 @@ from typing import Optional
 
 from agents.market_intelligence.db import get_pool
 
+# #595 — the SAME floor the live scan admits on, imported rather than restated. A second copy
+# would drift the moment the operator moves the floor (it went 10.0 -> 9.0 on 2026-08-19), and
+# this column's whole job is to answer "would this have been a setup by OUR OWN rule".
+from agents.market_intelligence.ep_detector import MIN_GAP_PCT as _MIN_GAP_PCT
+
+_MIN_GAP_FRACTION = _MIN_GAP_PCT / 100.0
+
 logger = logging.getLogger(__name__)
 
 _REFRESH_WINDOW_DAYS = 30  # how far back nightly refresh recomputes returns
@@ -254,6 +261,21 @@ async def ensure_missed_outcomes_schema() -> None:
                 catalyst_quality TEXT,
                 open_d0 FLOAT,
                 close_d0 FLOAT,
+                -- #595 (2026-08-29). `gap_pct` above is what the SCAN saw, which is often a
+                -- PRE-MARKET print that never survived to the bell — VEEE 2026-07-08 scanned at
+                -- 16-20% and OPENED at +4.1%, then closed -21%. The forward window still ran from
+                -- that open and credited it +354%, which actually belongs to an unrelated move
+                -- three sessions later (07-13, open 12.24 against a 4.82 close). The operator
+                -- caught it by eye: *"i don't see gap on 7/8"*.
+                --
+                -- open_gap_pct is the SAME question asked at the open: (open - prior close) /
+                -- prior close. It is RECORDED, never used to suppress the row — the pre-market
+                -- print is real telemetry about our own scan, and dropping it would hide it.
+                -- Consumers that rank "missed winners" filter on setup_at_open instead.
+                open_gap_pct FLOAT,
+                -- Did a setup still exist when it could actually have been traded? NULL = not
+                -- computable (no prior bar), deliberately distinct from FALSE = computed and no.
+                setup_at_open BOOLEAN,
                 ret_1d FLOAT,
                 ret_5d FLOAT,
                 ret_20d FLOAT,
@@ -262,6 +284,14 @@ async def ensure_missed_outcomes_schema() -> None:
                 last_refreshed_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (ticker, alert_date, source)
             );
+            -- #595: CREATE TABLE IF NOT EXISTS does nothing to an existing table, so the two
+            -- columns above reach production only through these. Nullable and additive; every
+            -- pre-existing row reads NULL until the next refresh recomputes it, and NULL means
+            -- "not computed" rather than "no setup".
+            ALTER TABLE mi_ep_missed_outcomes
+                ADD COLUMN IF NOT EXISTS open_gap_pct FLOAT;
+            ALTER TABLE mi_ep_missed_outcomes
+                ADD COLUMN IF NOT EXISTS setup_at_open BOOLEAN;
             CREATE INDEX IF NOT EXISTS idx_missed_outcomes_alert_date
                 ON mi_ep_missed_outcomes(alert_date DESC);
             CREATE INDEX IF NOT EXISTS idx_missed_outcomes_category
@@ -476,6 +506,7 @@ async def refresh_missed_outcomes(
                 b.*,
                 d0.open_price AS open_d0,
                 d0.close AS close_d0,
+                pc.close AS prev_close_d0,
                 d1.close AS close_d1,
                 d5.close AS close_d5,
                 d20.close AS close_d20,
@@ -486,6 +517,13 @@ async def refresh_missed_outcomes(
                 SELECT open_price, close FROM mi_daily_closes
                 WHERE ticker = b.ticker AND trade_date = b.alert_date
             ) d0 ON TRUE
+            -- #595: the PRIOR session's close — the denominator the open-basis gap needs.
+            -- STRICTLY earlier than alert_date, so no lookahead is possible.
+            LEFT JOIN LATERAL (
+                SELECT close FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date < b.alert_date
+                ORDER BY trade_date DESC LIMIT 1
+            ) pc ON TRUE
             LEFT JOIN LATERAL (
                 SELECT close FROM mi_daily_closes
                 WHERE ticker = b.ticker AND trade_date > b.alert_date
@@ -519,7 +557,7 @@ async def refresh_missed_outcomes(
         INSERT INTO mi_ep_missed_outcomes (
             ticker, alert_date, source, skip_reason, skip_category,
             ep_score, gap_pct, rel_volume, catalyst_quality,
-            open_d0, close_d0,
+            open_d0, close_d0, open_gap_pct, setup_at_open,
             ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d,
             last_refreshed_at
         )
@@ -533,6 +571,12 @@ async def refresh_missed_outcomes(
             {_SKIP_CATEGORY_CASE_SQL} AS skip_category,
             ep_score, gap_pct, rel_volume, catalyst_quality,
             open_d0, close_d0,
+            -- #595: the gap AS IT STOOD AT THE BELL, and whether a setup still existed then.
+            CASE WHEN prev_close_d0 > 0 AND open_d0 IS NOT NULL
+                 THEN (open_d0 - prev_close_d0) / prev_close_d0 ELSE NULL END AS open_gap_pct,
+            CASE WHEN prev_close_d0 > 0 AND open_d0 IS NOT NULL
+                 THEN (open_d0 - prev_close_d0) / prev_close_d0 >= {_MIN_GAP_FRACTION}
+                 ELSE NULL END AS setup_at_open,
             -- Return basis: open_d0 (gap day open) — what a day-2 chaser pays.
             CASE WHEN open_d0 > 0 AND close_d1 IS NOT NULL
                  THEN (close_d1 - open_d0) / open_d0 ELSE NULL END AS ret_1d,
@@ -555,6 +599,8 @@ async def refresh_missed_outcomes(
             catalyst_quality  = EXCLUDED.catalyst_quality,
             open_d0           = EXCLUDED.open_d0,
             close_d0          = EXCLUDED.close_d0,
+            open_gap_pct      = EXCLUDED.open_gap_pct,
+            setup_at_open     = EXCLUDED.setup_at_open,
             ret_1d            = EXCLUDED.ret_1d,
             ret_5d            = EXCLUDED.ret_5d,
             ret_20d           = EXCLUDED.ret_20d,
