@@ -1,3 +1,33 @@
+# ⛔ RETRACTED 2026-08-29 — DO NOT CITE ANY NUMBER IN THIS FILE
+
+Operator: *"either don't do it or do it right, stop half assing here."* He is right. This
+document was corrected three times in one session and is still not sound. Kept only as the
+record of how it failed.
+
+**Three independent defects, each found by him, not by me:**
+
+1. **The evidence base is era-mixed.** The trades span 2026-04-16 → 08-28, across at least six
+   August rule changes. An average over that window describes a system that never existed.
+2. **The "live" control was not live.** I used the ORB low, which stopped being the exit on
+   2026-08-16 when the stop moved to `entry − 2R` at half size.
+3. **The population is era-mixed too, not just the outcomes.** Every trade in it was ADMITTED by
+   whatever filter ran that day. Re-running the stops on that set measures the stop *given a
+   mixed admission population* — which answers nothing.
+
+Defect 3 is fatal and cannot be patched by another re-run, which is what I kept trying.
+
+**What a correct version requires** — and it is a real build, not a query:
+
+- re-score the historical universe under TODAY's rubric (the 08-22 rescale means stored
+  `ep_score` is era-stamped too),
+- re-apply today's admission stack to that re-scored universe,
+- reconstruct entries and stops from `mi_intraday_bars` for whatever survives,
+- and hold live and paper separate — this document pooled 24 live with 34 paper trades.
+
+Filed on #482. Nothing here should reach a decision until that exists.
+
+---
+
 # #482 — No stop geometry fixes EP, because the stop was never the problem
 
 **Date:** 2026-08-29 (PT) · **Task:** #482 · **Status:** read-only counterfactual. Nothing
