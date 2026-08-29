@@ -66,6 +66,31 @@ That points back at selection — which is where the operator has already said t
 (*making existing EP profitable is critical*), and what #533's within-day ranking question is
 actually about.
 
+## 🔴 OPERATOR CORRECTION, same day — this evidence base is stale by construction
+
+> *"april-may is stale, stop using old data when our system has evolved significantly week to
+> week and especially month to month, until we are completely locked down then stale data is not
+> valid. The tactic we used is to just use raw data to run our analysis given we have minute bars
+> stored, that is the path we should go."*
+
+**He is right, and it applies to every number above.** The 58 trades span 2026-04-16 → 08-28. In
+August alone the rules changed at least six times: the 2R half-off stop (08-16), the gap floor
+10%→9% (08-19), the catalyst lattice + separation scoring + shortlist (08-22), real-time
+admission (08-25), real-time volume and gap authority (08-27), rubric v4 (08-27). **An average
+across that window measures a system that never existed.**
+
+That does not overturn the geometry *ranking* — the five variants were replayed against the same
+trades, so era-mixing hits all of them equally and the −0.34R-to-−0.42R spread stands. **It does
+invalidate the level.** "EP runs −0.46R, 24% win, −$10,849" is an average over a dozen different
+systems and must not be quoted as current expectancy, including by me — I quoted it exactly that
+way earlier in this session.
+
+**The method he named is the one to use:** replay from `mi_intraday_bars` (608 tickers, from
+2026-04-13) and `mi_daily_closes` under TODAY's rules, fetching missing bars from Alpaca. That is
+what the extension-band replay did; the geometry work fell back to reading trade rows because
+they were there. Historical rows remain useful as a *calibration check on a replay* — which is
+how they were used here — never as the answer.
+
 ## What this does not answer
 
 - **38 of the 97 eligible trades were skipped** for having fewer than 6 minute bars — thin,
