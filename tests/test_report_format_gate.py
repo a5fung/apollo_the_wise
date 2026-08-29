@@ -34,12 +34,14 @@ in it. Live grading and the chart experiment were both filed under the same name
 could tell them apart.
 """
 
-_THE_FIX = """Cost attribution fixed and live — spend is now readable per lane.
+# ⚠ SHRUNK 2026-08-29 for the 28-word cap (operator: "cap it at the original tweet size,
+# 140 chars, 28 words"). These fixtures encoded the OLD bar — they were legal in SHAPE and
+# still 33-85 words, which is exactly the drift the word cap exists to catch. Each keeps
+# every fact it carried; only the words came out, which was his whole point.
+_THE_FIX = """Spend is readable per lane again.
 
-- **Not a tracking failure.** One bucket held two things: live grading and the experiment.
-- **Root cause:** the grading call let a lane skip naming who pays, so it billed the live lane.
-- **Scope was 8 lanes, not 1** — every offline test and replay was billing live grading too.
-- **Action: none.** No new task, no ceiling change.
+- A grading call let lanes skip naming who pays; 8 lanes billed live.
+- Fixed and live. Action: none.
 """
 
 
@@ -241,13 +243,16 @@ _ANCHOR_31384 = """**Agreed, and this one is genuinely gateable — unlike yeste
 
 # Five bullets, comfortably over _MIN_MESSAGE_CHARS — must pass. The cap is "over 5", not "5".
 # ⚠ Five is the CEILING and is RARE (operator 2026-08-23) — a legal message, not a model one.
-_FIVE_BULLETS_OK = """**Cost attribution fixed and live — spend is now readable per lane.**
+# Five bullets is still legal in SHAPE — but note what fitting it inside 28 words costs. The
+# word cap now binds tighter than the bullet cap in almost every real reply, which is the point:
+# five bullets is a rare ceiling, and spending it means five very short lines.
+_FIVE_BULLETS_OK = """**Spend is readable per lane.**
 
-- Root cause: a grading call let a lane skip naming who pays, so it billed the live lane.
-- Scope was 8 lanes, not 1 — every offline test and replay was billing live grading too.
-- Fix: the payer is now required at the call site, not inferred afterward.
-- Verified: a day of replay traffic bills its own lane, live traffic is unaffected.
-- Action: none. Closed and verified live.
+- 8 lanes billed live.
+- Payer required at the call site.
+- Replay bills itself.
+- Verified a day.
+- Action: none.
 """
 
 
@@ -442,9 +447,9 @@ _THE_FILLER_MESSAGE = """You're right, and it has been flat for a while:
 
 _ACTIONABLE_MESSAGE = """Deployed and verified.
 
-- **Closed #585 and #517** — the rebuild verify and the reviews pile.
-- **`scripts/deploy.sh execution` still owed** for the broker change.
-- **Action: none.** Next signal is tomorrow's open.
+- Closed #585 and #517.
+- `deploy.sh execution` still owed.
+- Action: none — next signal is tomorrow's open.
 """
 
 
@@ -481,3 +486,80 @@ def test_the_filler_block_names_the_offending_lines(tmp_path):
     assert r.returncode == 2
     assert "carry nothing he can act on" in r.stderr
     assert "DELETE the rest" in r.stderr
+
+
+# ─── WORD CAP (2026-08-29) ───────────────────────────────────────────────────────────────
+# Operator: "cap it at the original tweet size, 140 chars, 28 words." Every prior arm caps a
+# SHAPE, and the drift kept moving into whatever the shape allowed — five legal bullets at
+# fifty words each clears all three and is still a wall. This arm caps the one thing they
+# don't: how much he has to read.
+
+_OVER_CAP = """Measured — and the honest answer is that a gate can't be calibrated from my own
+history, because the history is the problem. My recent replies are no longer than my past ones.
+
+- So the ceiling has to be a number you set, not one derived from me. I'd propose 40 words.
+- That kills roughly half of everything I've ever sent you, which is the point.
+- Say a number and I'll wire it into the same Stop hook today.
+"""
+
+
+def test_the_reply_he_rejected_now_fires(tmp_path):
+    """The literal message he pushed back on ("this msg you just sent can be cut by at least
+    50% easily and lose no info"). It cleared every existing arm."""
+    r = _run({"transcript_path": _transcript(tmp_path, _OVER_CAP)})
+    assert r.returncode == 2
+    # It happens to trip the FILLER arm first, which is correct — a more specific diagnosis
+    # wins. What matters is that it no longer passes; assert the word arm on it directly too.
+    from report_format_gate import _WORD_CAP, countable_words
+    assert countable_words(_OVER_CAP) > _WORD_CAP
+
+
+def test_a_tweet_sized_answer_passes(tmp_path):
+    tight = "- Issue: the comparison used stale data.\n- Fix: records both reads. Deployed.\n- Real numbers start Monday.\n"
+    r = _run({"transcript_path": _transcript(tmp_path, tight)})
+    assert r.returncode == 0, r.stderr
+
+
+def test_short_messages_are_no_longer_a_free_pass(tmp_path):
+    """_MIN_MESSAGE_CHARS (400) exempts a message from the SHAPE arms because a short body has
+    no shape to judge. 28 words is ~170 chars — far under it — so exempting the word cap the
+    same way would have exempted exactly the messages it exists to catch."""
+    from report_format_gate import _MIN_MESSAGE_CHARS
+    msg = "- " + " ".join(["word"] * 60) + "\n"
+    assert len(msg) < _MIN_MESSAGE_CHARS
+    r = _run({"transcript_path": _transcript(tmp_path, msg)})
+    assert r.returncode == 2, "a short-but-wordy reply must still be caught"
+
+
+def test_code_tables_headings_and_his_own_words_are_not_counted(tmp_path):
+    """Only prose I chose to write at him counts. A fence is data he asked to see, a table is
+    structure, a blockquote is his own words quoted back."""
+    from report_format_gate import countable_words
+    body = ("- Deployed.\n"
+            "### A heading that is quite long and would otherwise blow the cap on its own\n"
+            "> " + " ".join(["quoted"] * 50) + "\n"
+            "| a | b |\n|---|---|\n"
+            "```\n" + " ".join(["code"] * 80) + "\n```\n")
+    assert countable_words(body) == 1
+    r = _run({"transcript_path": _transcript(tmp_path, body)})
+    assert r.returncode == 0, r.stderr
+
+
+def test_a_shape_violation_still_wins_the_diagnosis(tmp_path):
+    """Ordering: the word arm runs LAST so "this is a paragraph" — the more specific and more
+    useful complaint — is what I see when a message trips both."""
+    prose = ("This is an unbulleted paragraph. It carries several sentences in a row. That is "
+             "the exact drift the first arm was built to catch, and it should be named as such "
+             "rather than reported merely as length. " * 2)
+    r = _run({"transcript_path": _transcript(tmp_path, prose)})
+    assert r.returncode == 2
+    assert "prose paragraph" in r.stderr and "the cap is 28" not in r.stderr
+
+
+def test_the_cap_is_the_operators_number_not_a_fitted_one():
+    """Pinned deliberately. I measured 7,824 replies looking for a separating threshold and
+    there is none — recent replies run a 48-word median against a 42-word historical median.
+    The history is the thing being corrected, not a baseline to fit to, so this number is his.
+    Do not raise it to chase a lower firing rate."""
+    from report_format_gate import _WORD_CAP
+    assert _WORD_CAP == 28

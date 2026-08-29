@@ -105,6 +105,32 @@ _TABLE = re.compile(r"^\s*\|")
 _BULLET_CAP = 5
 
 
+# ── WORD CAP (2026-08-29) ──────────────────────────────────────────────────────────────────────
+# THE OPERATOR'S NUMBER, not a derived one: *"cap it at the original tweet size, 140 chars, 28
+# words."*
+#
+# WHY THIS ARM EXISTS WHEN THREE OTHERS ALREADY DO. Every prior arm caps a SHAPE — paragraphs,
+# bullet count, empty bullets — and the drift kept moving into whatever the shape allowed. On
+# 2026-08-29 he said: *"why do i need to ask you to rewrite summary every single time... you always
+# write junk"*, and then, of the reply that answered it: *"you literally just did it again, this
+# msg you just sent can be cut by at least 50% easily and lose no info."* Five legal bullets at
+# fifty words each clears every existing arm and is still a wall.
+#
+# ⚠ IT IS NOT CALIBRATED AGAINST HISTORY, DELIBERATELY. I measured 7,824 replies to find a
+# separating threshold and there is none: recent replies run a 48-word median against a 42-word
+# historical median. The history is not a baseline to hold to — it is the thing being corrected,
+# so a cap fitted to it would bless the problem. That is why this number is his and not mine, and
+# why it is not to be raised to chase a lower firing rate.
+#
+# It WILL fire often at first. That is the intent.
+_WORD_CAP = 28
+_BULLET_MARKER = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+")
+
+# Same exemptions the other arms use, for the same reasons: a code fence is data he asked to see,
+# a table is structure, a blockquote is his own words quoted back, a heading is a label. None of
+# them is prose I chose to write at him.
+
+
 # ── FILLER ARM (2026-08-24) ────────────────────────────────────────────────────────────────────
 # Operator, angry, on a 4-bullet reply that cleared the cap: *"I don't know why you need 4 bullets
 # to state what you need to say, so much useless info, like no shit deferring won't move it... yet
@@ -161,6 +187,38 @@ def filler_complaint(blocks: list[str], total: int) -> str:
         "cleared the cap and still \"gave no solution whatsoever\").\n"
         "Rewrite: keep the bullets that carry a number, a name, or a decision. DELETE the rest — "
         "do not reword them. If that leaves one bullet, the answer was one bullet."
+    )
+
+
+def countable_words(text: str) -> int:
+    """Words the operator actually has to read. Skips code fences, tables, headings and
+    blockquotes — the same carve-outs prose_blocks() and bullet_count() already make."""
+    n, in_fence = 0, False
+    for raw in text.split("\n"):
+        line = raw.rstrip()
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or not line.strip():
+            continue
+        if _HEADING.match(line) or _TABLE.match(line) or line.lstrip().startswith(">"):
+            continue
+        # Strip the bullet/numbering marker before counting — "-" and "1." are markup, not words
+        # he reads. Leaving them in inflated every bulleted reply by one word per line, which on
+        # a 28-word budget is up to a fifth of it.
+        n += len(_BULLET_MARKER.sub("", line.lstrip()).split())
+    return n
+
+
+def word_complaint(n: int) -> str:
+    return (
+        f"REPORT FORMAT GATE — {n} words; the cap is {_WORD_CAP} (operator 2026-08-29: "
+        f"\"cap it at the original tweet size, 140 chars, 28 words\").\n"
+        "Cut it, do not restructure it. The same information fits — he has said so every time: "
+        "\"can be cut by at least 50% easily and lose no info\".\n"
+        "Delete first: mechanism, caveats already recorded in the commit or PLAN, restating his "
+        "question, and anything that proves you did the work rather than telling him the answer.\n"
+        "Code, tables, headings and quoted text are NOT counted — only prose you chose to write."
     )
 
 
@@ -320,7 +378,9 @@ def main() -> int:
         return 0
     text = last_assistant_text(payload.get("transcript_path", ""))
     if len(text) < _MIN_MESSAGE_CHARS:
-        return 0
+        # NOT a free pass any more — the word cap below still applies. This only skips the
+        # SHAPE arms, which need a body big enough to have a shape.
+        return _word_arm(text)
     blocks = prose_blocks(text)
     if blocks:
         print(complaint(blocks), file=sys.stderr)
@@ -334,6 +394,17 @@ def main() -> int:
     empty = filler_bullets(text)
     if empty:
         print(filler_complaint(empty, n), file=sys.stderr)
+        return 2
+    # WORD CAP runs LAST so the SHAPE arms keep their more specific diagnosis when both apply —
+    # "this is a paragraph" tells me more than "this is long". But it is never skipped: 28 words
+    # is ~170 chars, far under _MIN_MESSAGE_CHARS, so the short-message branch above calls it too.
+    return _word_arm(text)
+
+
+def _word_arm(text: str) -> int:
+    words = countable_words(text)
+    if words > _WORD_CAP:
+        print(word_complaint(words), file=sys.stderr)
         return 2
     return 0
 
