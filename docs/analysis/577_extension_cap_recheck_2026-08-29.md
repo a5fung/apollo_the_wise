@@ -74,6 +74,14 @@ the evidence was thin (the doc it rested on says *"the only recoverable winner w
 But the case for it is weaker than it looked on 08-21, and it is the only live change any of the
 #595-affected analyses produced.
 
+## The recommendation
+
+**Revert the extension cap to 50%** — and treat that as the small half of the finding.
+
+**What reverting costs, measured:** 18 names blocked over 5 months, 3 of which reached +20% on paper. All three stopped out at −1R on real bars. **Under the bracket that existed, the band returned −1.00R on 15 of 15.** There is nothing there to lose.
+
+**What it does not fix, and this is the real finding:** five names in that band ran 2.9R to 15.2R and every one paid −1R, because the 9:30 bar's low was taken out first. **The cap is not the binding constraint — the stop is.** Reverting stops us paying −1R to discover that; it does not make the cohort tradeable. The lever is bracket geometry (#482, now un-blocked with 55 closed shadow trades), not admission.
+
 ⚖ **Admission is entry discipline — THE LINE.** Reverting to 50% is the operator's call and is
 NOT proposed here. What this document does is put the corrected numbers in front of him.
 
@@ -89,10 +97,20 @@ Only 2 of the 17 had minute bars stored, so the cohort was fetched from Alpaca a
 through the live bracket: **entry = stop-buy at the 9:30 bar's high, stop = that bar's low**,
 walked minute by minute in sequence, with the +2R half-off rule (shipped 2026-08-16) applied.
 
-**Result: −0.71R per trade.** 14 triggered and scored (3 never traded through the ORB high),
-2 winners at +1.00R, 12 losers at −1.00R.
+**Under the bracket that actually existed at the time — 15 of 15 stopped out. −1.00R every
+single one. Zero winners.**
 
-**The band is not worth admitting.** That answers the question, and it does not depend on the
+The +2R half-off rule shipped 2026-08-16, *after* every name in this cohort. Applying it anyway
+lifts the cohort to **−0.60R** with three "winners" at +1.00R — but those three are
+**constructed by that assumption, not observed**: SILC, WSHP and UBXG each touched +2R and are
+scored as half-banked. No trade in this cohort ever ran under that rule.
+
+| replay | n | winners | expectancy |
+|---|---|---|---|
+| **the bracket as it was** (plain ORB) | 15 | **0** | **−1.00R** |
+| with the +2R rule applied retrospectively | 15 | 3 (constructed) | −0.60R |
+
+**The band is not worth admitting on either basis**, and that verdict does not depend on the
 win-rate framing at all.
 
 ### But the reason is not that these names don't move
@@ -115,14 +133,19 @@ independently (*"a 1-min-range stop shakes out winners"*), and the same thing th
 document said in its own caveat: *conversion, not admission, decides whether a recovered winner
 pays*. Loosening the cap admits names our stop cannot hold.
 
-⚠ **Three method errors were made and corrected before this number** — the first pass ignored
+⚠ **Scope check:** this replay is the **50–75% band only** — every name in it had run 50–75%
+in the prior five days, which is exactly what the cap change admits. The nine winners that had
+run 128%+ are excluded because the change never touches them.
+
+⚠ **Four method errors were made and corrected before this number** — the fourth was dropping
+UBXG, whose `ret_5d` was NULL in the table, from the first replay list. — the first pass ignored
 that the stop stays live past day 0 (losers averaged an impossible −1.43R), and the second
 ignored **order**, marking a name that ran +3R at 10:00 and drifted back at 15:00 as a flat −1R
 (it produced a suspicious 14-of-14 stop-out). The figure above is the order-aware run.
 
 ## What this does not answer
 
-- **n=14 is small.** Two winners is two names. The direction is clear and the mechanism is
+- **n=15 is small.** Zero observed winners is a clean result, but it is fifteen names. The direction is clear and the mechanism is
   visible in the MFE column, but this is not a distribution.
 - **The +2R half-off rule is applied as designed, not as it behaved.** No live trade in this
   cohort ever ran; the rule shipped 2026-08-16, after every name here.
