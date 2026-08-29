@@ -279,6 +279,30 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 **2026-08-21 — deploy windows gated** — two windows only (12:00-13:00 · 21:15-22:15 ET); `deploy.sh` exits 12 outside them, operator-only override. Repeated ~17:02 deploys had been clipping nightly jobs.
 
 **2026-08-22 — one catalyst grade everywhere** — the admission filters read the corrected news grade, the same one the score reads. The fork (corrected score, raw filters) was binning real EPs before the fix could act.
+## 2026-08-28 — verify-live day: three confirmed, one defect caught, two rulings signed
+
+Written straight to CHANGELOG because CLAUDE.md's Recent section has ~40 bytes of headroom.
+
+- **#602 verified and CLOSED.** Rubric v4 live; the judge states a one-line reason on each of
+  its two calls, and `judge_direction` finally agrees with a held tier — the OKTA contradiction
+  that started the week is gone.
+- **#603 and #559 verified.** All Perplexity traffic on the Agent API (no `sonar-pro` rows,
+  reported costs); all five real-time flip-ups carried `authoritative: true`.
+- **#233 half-verified** — the boost is gone in prod, but Perplexity agreed on the day's only
+  alert, so rule 7 has still never fired live.
+- **Verify-live caught a defect shipped the day before:** the alert asserted *"agrees, but boost
+  cancelled — its own text found no news"* about a read that had found the news. Retiring the
+  boost pinned `confidence_multiplier` at 1.0, so a branch meaning "the hedge fired" fired on
+  every agreement. Deployed the fix at 12:07 ET.
+- **#593 signed.** The sustain rule's revert condition is now a **10%** rate on *tradeable*
+  misses over 30 trading days, min 30 declines, raising a **review** and never auto-reverting.
+  Re-basing the +20% from the declined level rather than the day's open cut breaches 39 → 13;
+  requiring the name to be tradeable cut 13 → 2. **3% today against a 10% trigger.**
+- **#210 re-scoped** from "direct primary sources" to *accuracy*, on the operator's ruling. A
+  task named for a means could only ever be re-dated, which is what seven bumps looked like.
+- **#604 filed:** every naked-position L1 ever fired landed at 16:15:00, inside the
+  expiry→replace window of a DAY stop. Not exposure — detection timing.
+
 ## 2026-08-27 — judge rubric v4, Perplexity changes hands, the real-time gap goes live
 
 Graduated straight from CLAUDE.md the same day: the Recent section had no room left (see the
