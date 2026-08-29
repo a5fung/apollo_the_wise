@@ -342,6 +342,29 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
 
         heat = await get_theme_heat_asof(conn, ticker, alert_date)
         themeless = heat is None
+
+        # #486 (2026-08-29) — RECORD BOTH READS, because they are different questions.
+        # `heat` above is UNBOUNDED: get_theme_heat_asof's default has no recency floor, so it
+        # walks back to the newest non-Retired snapshot containing the ticker however old that
+        # is. The LIVE credit path (`in_active_theme`) is 7d-bounded. Measured 2026-08-29: 35 of
+        # 107 shadow theme attributions were staler than the live path accepts, 15 of them over
+        # 30 days old (avg 64) — which made a judge-vs-engine cross-validation compare two
+        # definitions of "themed", and led me to mis-read five rows as a flag defect when the
+        # live flag had been right every time. Capturing the bounded read alongside makes the
+        # comparison like-for-like without changing what the unbounded columns have always meant.
+        # Own try/except: this is a diagnostic on a diagnostic — it must never cost the caller
+        # its existing row, so any failure degrades to NULL (= "not captured"), never to FALSE.
+        theme_name_7d = theme_stage_7d = bounded_matches_unbounded = None
+        try:
+            heat_7d = await get_theme_heat_asof(conn, ticker, alert_date, recency_days=7)
+            theme_name_7d = heat_7d["name"] if heat_7d else None
+            theme_stage_7d = heat_7d["stage"] if heat_7d else None
+            # Compares the two reads' ANSWERS, not their freshness: True when both found the
+            # same theme (or both found none). This is the column a cross-validation filters on.
+            bounded_matches_unbounded = (
+                theme_name_7d == (heat["name"] if heat else None))
+        except Exception as _be:
+            logger.debug(f"theme-axis shadow: bounded read failed for {ticker} — {_be}")
         if themeless:
             theme_name = theme_stage = theme_score = None
             score, attributable, matched = 0, False, []
@@ -372,8 +395,9 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
                 ticker, alert_date, grade, theme_name, theme_stage, theme_score,
                 themeless_flag, structural_attribution_score, structural_attributable,
                 matched_terms, name_attribution_score, name_attributable, matched_names,
-                cohort_move, ticker_move, co_moving
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                cohort_move, ticker_move, co_moving,
+                theme_name_7d, theme_stage_7d, bounded_matches_unbounded
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
             ON CONFLICT (ticker, alert_date) DO UPDATE SET
                 grade = EXCLUDED.grade,
                 theme_name = EXCLUDED.theme_name,
@@ -389,11 +413,15 @@ async def log_theme_axis_shadow(conn: Any, r: dict) -> None:
                 cohort_move = EXCLUDED.cohort_move,
                 ticker_move = EXCLUDED.ticker_move,
                 co_moving = EXCLUDED.co_moving,
+                theme_name_7d = EXCLUDED.theme_name_7d,
+                theme_stage_7d = EXCLUDED.theme_stage_7d,
+                bounded_matches_unbounded = EXCLUDED.bounded_matches_unbounded,
                 created_at = NOW()
         """, ticker, alert_date, grade, theme_name, theme_stage, theme_score,
              themeless, score, attributable, matched,
              name_score, name_attributable, matched_names,
-             cohort_move, ticker_move, co_moving)
+             cohort_move, ticker_move, co_moving,
+             theme_name_7d, theme_stage_7d, bounded_matches_unbounded)
     except Exception as _e:  # SHADOW: never disturb the grade path
         logger.warning(f"theme-axis shadow log failed for {r.get('ticker')}: {_e}")
         try:

@@ -675,3 +675,108 @@ def test_seeder_upsert_never_overwrites_operator_labels():
     # The enrolment rule is the ONE shared classifier, not a re-implementation.
     assert "from agents.market_intelligence.theme_axis_shadow import classify_label_stratum" \
         in text
+
+
+# ─── #486: the shadow records BOTH theme reads (bounded + unbounded) ────────────────────
+# WHY. get_theme_heat_asof's default has NO recency floor, so the shadow walks back to the
+# newest non-Retired snapshot containing the ticker however old it is; the LIVE credit path
+# (in_active_theme) is 7d-bounded. Measured 2026-08-29 over 107 shadow rows carrying a theme:
+# 35 (33%) were staler than the live path accepts, 15 of them over 30 days old, averaging 64.
+# A judge-vs-engine cross-validation built on that table was comparing two different
+# definitions of "themed" — and it led to five rows being mis-read as a live-flag defect when
+# the live flag had been right every time.
+#
+# ⚠ These tests exist because the writer's bounded read is wrapped in its own try/except (a
+# diagnostic must never cost the caller its row). That means a BROKEN call degrades silently to
+# NULL and the suite still passes — so "the tests are green" is not evidence the read ran.
+# Every test below asserts on the VALUE written, never on the absence of an exception.
+
+def _heat_stub(monkeypatch, unbounded, bounded):
+    """Stub get_theme_heat_asof with a recency-aware fake: recency_days=None -> the unbounded
+    answer, recency_days=7 -> the bounded one. Accepting the kwarg is itself the contract."""
+    calls = []
+
+    async def _fake(_conn, ticker, alert_date, recency_days=None):
+        calls.append(recency_days)
+        return bounded if recency_days else unbounded
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _fake)
+    return calls
+
+
+_T = {"name": "Robotics", "stage": "Accelerating", "score": 88.0,
+      "tickers": ["TICK"], "description": "automation"}
+_ROW = {"ticker": "TICK", "alert_date": "2026-06-20", "score_tier": "HIGH",
+        "grounded_text": "TICK shipped an automation line."}
+
+
+def _write(monkeypatch, unbounded, bounded):
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock()
+    _patch_step1_deps(monkeypatch)
+    calls = _heat_stub(monkeypatch, unbounded, bounded)
+    _run(log_theme_axis_shadow(conn, _ROW))
+    args = conn.execute.await_args.args
+    return args, calls
+
+
+def test_both_reads_are_requested_and_the_bounded_one_is_written(monkeypatch):
+    stale = dict(_T, name="StaleTheme", stage="Mainstream")
+    args, calls = _write(monkeypatch, unbounded=stale, bounded=None)
+    assert None in calls and 7 in calls, f"both reads must be requested, saw {calls}"
+    assert args[4] == "StaleTheme"          # unbounded columns keep their old meaning
+    assert args[17] is None                 # theme_name_7d — bounded found nothing
+    assert args[18] is None                 # theme_stage_7d
+    assert args[19] is False                # bounded_matches_unbounded: they DISAGREE
+
+
+def test_agreement_is_recorded_when_both_reads_find_the_same_theme(monkeypatch):
+    args, _ = _write(monkeypatch, unbounded=_T, bounded=_T)
+    assert args[17] == "Robotics" and args[18] == "Accelerating"
+    assert args[19] is True
+
+
+def test_both_finding_nothing_counts_as_agreement_not_as_a_mismatch(monkeypatch):
+    """A themeless name is not a disagreement — the cross-validation filters on this column,
+    so conflating 'neither found a theme' with 'they differ' would inflate the mismatch set."""
+    args, _ = _write(monkeypatch, unbounded=None, bounded=None)
+    assert args[17] is None and args[18] is None
+    assert args[19] is True
+
+
+def test_a_failing_bounded_read_writes_NULL_not_FALSE(monkeypatch):
+    """NULL means 'not captured'; FALSE means 'captured, and they disagreed'. A diagnostic
+    failure must not masquerade as a measured mismatch — the co_moving discipline."""
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock()
+    _patch_step1_deps(monkeypatch)
+
+    async def _fake(_conn, ticker, alert_date, recency_days=None):
+        if recency_days:
+            raise RuntimeError("bounded read exploded")
+        return _T
+    monkeypatch.setattr(
+        "agents.market_intelligence.theme_axis_shadow.get_theme_heat_asof", _fake)
+
+    _run(log_theme_axis_shadow(conn, _ROW))
+    args = conn.execute.await_args.args
+    assert conn.execute.await_count == 1, "the caller must still get its row"
+    assert args[4] == "Robotics", "the unbounded read is unaffected by the diagnostic failing"
+    assert args[17] is None and args[18] is None
+    assert args[19] is None, "a failed read is NOT a recorded mismatch"
+
+
+def test_the_insert_is_column_placeholder_and_arg_aligned():
+    """Three lists must move together (columns, $N, bind args). A silent off-by-one here writes
+    the wrong value into the wrong column, which no runtime error would reveal."""
+    import io
+    import re as _re
+    src = io.open("agents/market_intelligence/theme_axis_shadow.py", encoding="utf-8").read()
+    blk = src[src.index("INSERT INTO mi_theme_axis_shadow"):
+              src.index("except Exception as _e:  # SHADOW")]
+    cols = blk[blk.index("(") + 1:blk.index(") VALUES")]
+    n_cols = len([c for c in cols.replace("\n", " ").split(",") if c.strip()])
+    n_ph = len(_re.findall(r"\$\d+", blk[blk.index(") VALUES"):blk.index("ON CONFLICT")]))
+    n_args = len([a for a in blk[blk.rindex('"""') + 3:].replace("\n", " ").split(",")
+                  if a.strip()])
+    assert n_cols == n_ph == n_args, f"cols={n_cols} placeholders={n_ph} args={n_args}"

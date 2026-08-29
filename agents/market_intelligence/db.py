@@ -1421,6 +1421,15 @@ async def initialize_schema() -> None:
                 theme_name TEXT,
                 theme_stage TEXT,
                 theme_score FLOAT,
+                -- #486 (2026-08-29) — the SAME theme question asked the LIVE credit path's way.
+                -- theme_name/theme_stage above come from the UNBOUNDED as-of read (no recency
+                -- floor); these come from the 7d-bounded one that `in_active_theme` uses. NULL =
+                -- not captured (every row before 2026-08-29), deliberately distinct from a
+                -- captured FALSE on bounded_matches_unbounded. Mirrored in the ALTER block below
+                -- for existing databases — test_schema_alter_create_parity pins the two together.
+                theme_name_7d TEXT,
+                theme_stage_7d TEXT,
+                bounded_matches_unbounded BOOLEAN,
                 themeless_flag BOOLEAN NOT NULL DEFAULT FALSE,
                 structural_attribution_score INT NOT NULL DEFAULT 0,
                 structural_attributable BOOLEAN NOT NULL DEFAULT FALSE,
@@ -1464,6 +1473,22 @@ async def initialize_schema() -> None:
             -- separate NULLABLE bool (not a default-False) so "not computable" is
             -- distinguishable from "computed False" — a health-gauge read must not conflate
             -- the two.
+            -- #486 (2026-08-29): the shadow's theme read is UNBOUNDED (get_theme_heat_asof's
+            -- default has no recency floor), while the LIVE credit path is 7d-bounded via
+            -- get_theme_membership. Measured on 2026-08-29: 35 of 107 shadow theme
+            -- attributions (33%) were staler than the live path accepts, 15 of them over 30
+            -- days old (avg 64) — so a judge-vs-engine cross-validation built on this table
+            -- was comparing two different definitions of "themed" and I mis-read five rows as
+            -- a flag defect because of it. Record BOTH reads so the comparison is like-for-like.
+            -- Nullable and additive: NULL means "not captured" (every pre-2026-08-29 row), which
+            -- is deliberately distinguishable from FALSE = "captured, and the bounded read found
+            -- nothing" — the same not-computable-vs-computed-false discipline as co_moving.
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS theme_name_7d TEXT;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS theme_stage_7d TEXT;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS bounded_matches_unbounded BOOLEAN;
             ALTER TABLE mi_theme_axis_shadow
                 ADD COLUMN IF NOT EXISTS cohort_move FLOAT;
             ALTER TABLE mi_theme_axis_shadow
