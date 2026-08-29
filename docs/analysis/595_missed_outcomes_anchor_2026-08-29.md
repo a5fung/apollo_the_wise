@@ -66,16 +66,46 @@ turned away has to be theoretically traded before we count them"*.
   ranking exactly as before. Treating NULL as "no setup" would have silently emptied the
   rankings the moment this shipped; a mutation test pins that specific failure.
 
-## ⚠ Conclusions that need re-checking
+## ⚠ Which past conclusions this invalidates — measured per gate
 
-This table was the evidence base for two reads that are recorded as settled:
+26 documents in `docs/analysis/` read this table. Rather than guess, here is the corruption rate
+**by skip category**, since each of those analyses argues about one specific gate. Read your
+analysis's category to know whether its "missed winners" number survives:
 
-- the **9:45-window** analysis, and
-- the **extension-cap** analysis.
+| gate the analysis is about | winners it claimed | never a setup | wrong |
+|---|---|---|---|
+| **pm_rvol_low** | 14 | 12 | **86%** |
+| **catalyst_downgrade** | 12 | 10 | **83%** |
+| **cooldown** | 12 | 9 | **75%** |
+| **adv_low** | 28 | 16 | **57%** |
+| high_unentered | 9 | 5 | 56% |
+| score_below_50 | 26 | 12 | 46% |
+| **extension_gate** | 21 | 9 | **43%** |
+| atr_high | 12 | 4 | 33% |
+| window_missed | 6 | 2 | 33% |
+| moderate_tier | 4 | 1 | 25% |
+| duplicate_scan | 21 | 4 | 19% |
+| ma_filter | 3 | 0 | 0% |
 
-Both counted "missed winners" from this table without an open-basis filter, so both may be
-overstated by roughly the 61% found here. Neither is re-run in this document — flagged, not
-corrected, and filed on #595.
+**The pattern is not random.** The three worst — premarket RVOL, catalyst downgrade, cooldown —
+are gates that fire *early*, on pre-market information. They are exactly the gates whose
+"victims" are pre-market prints that then faded, so almost everything they were accused of
+missing was never tradeable.
+
+**Concretely at risk** (highest corruption × a decision actually taken):
+
+- **`adv_floor_556_2026-08-20`** — argued the ADV floor's cost. `adv_low` is **57% fake** and has
+  the largest claimed-winner count in the table.
+- **`cooldown_cost_557_2026-08-21`** and **`cooldown_60d_effectiveness_2026-07-26`** — `cooldown`
+  is **75% fake**.
+- **`gates_extension_top20_577_2026-08-22`** and **`conviction_floor_extension_2026-08-03`** —
+  `extension_gate` is **43% fake**.
+- **`orb_window_587_2026-08-23`** — `window_missed` at 33%, on a small base (6).
+
+**Not at risk:** anything reasoning over ALERTS rather than skips. An alert gapped by definition,
+so the open-basis filter cannot move it. That covers the judge, rubric and score-separation work.
+
+None of these is re-run here — flagged, not corrected, and filed on #595.
 
 ## What this does not answer
 
