@@ -747,7 +747,10 @@ async def _nightly_data_pull():
                     "extension_cap_revisit_trigger",
                     f"{len(_ext['names'])} strong EP(s) blocked by the extension cap",
                     detail=str(_ext["names"])[:900])
-                from agents.market_intelligence.briefing import send_telegram_message
+                # NO function-local import: `send_telegram_message` is already bound at module
+                # level (line 45), and a local one would make the name LOCAL for this whole
+                # function — the 2026-05-20 UnboundLocalError outage class that killed EP scans
+                # for 81 minutes. Deploy gate [5c] catches it; it caught this one.
                 await send_telegram_message(
                     "🔭 *Extension cap — the trigger you named*\n\n"
                     "A real setup the 50% cap blocked then doubled:\n"
