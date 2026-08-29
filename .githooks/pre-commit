@@ -111,4 +111,19 @@ if git diff --cached --name-only | grep -qE '^(scripts/gate_provenance_registry\
     fi
 fi
 
+# ── Gate 6: analysis documents carry their caveats (2026-08-29) ───────
+# Operator, after a geometry analysis was corrected three times in one session and then
+# retracted: "you run a lot of analysis, i can't keep pointing out your errors, you need to do
+# these reviews and analysis with structure, with known caveats..." The standard is
+# docs/methodology/analysis_standard.md; this enforces the decidable part of it. It checks that
+# the caveats are STATED — it cannot check that they are RIGHT, which is the human half.
+# (the hook has already `cd`'d to repo_root at line 29 — same relative form as Gate 2)
+if [ -f scripts/check_analysis_doc.py ]; then
+    if ! "$PY_BIN" scripts/check_analysis_doc.py; then
+        echo "  Fix the document, re-stage, re-commit."
+        echo "  (Bypass with: git commit --no-verify — only if you really know why.)"
+        exit 1
+    fi
+fi
+
 exit 0
