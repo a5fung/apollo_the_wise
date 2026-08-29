@@ -6162,6 +6162,206 @@ async def check_position_coverage() -> dict:
             "check_failed": check_failed, "deferred": deferred}
 
 
+# ── #597: "position gone from Alpaca" resolution ─────────────────────────────
+# Seconds a broker-confirmed exit fill is left to the websocket finaliser
+# before sync_positions books it itself. WS commits land in seconds; the gap
+# this bridges is only the poll-between-fill-and-finaliser race.
+_SYNC_GONE_GRACE_S = 600
+
+
+async def _resolve_position_gone(trade: dict, account_mode: str) -> str | None:
+    """#597 — the DB holds a filled row with shares but Alpaca shows no position.
+
+    SHAPE: record the exit the broker actually reports; refuse to close on
+    anything less. A hybrid of the two candidate fixes, because each alone
+    re-creates a known failure:
+
+      * The pre-#597 branch closed the row blind (status='closed',
+        remaining=0, no exit leg, no total_pnl update) — the trade booked
+        whatever P&L it already had, usually $0 on a real loss, and
+        mi_sell_discipline_records then fed that number to every exit-rule
+        replay (MNDY 2026-05-11 class: total_pnl must move WITH exits).
+      * "Always refuse and wait for the finaliser" leaves permanently wrong
+        books when the WS event was genuinely LOST (stream restart, missed
+        delivery) — the awaited finaliser never runs and the row lingers as a
+        phantom open position.
+
+    So, under the per-trade #151 advisory try-lock (defer if a finaliser or
+    partial is mid-flight — never fight a live writer):
+
+      1. GRACE — tracked stop confirmed FILLED at the broker but recently
+         (< _SYNC_GONE_GRACE_S): do nothing; the WS finaliser is presumably
+         in flight and owns the commit. This is the race in the bug report;
+         deferring one sweep costs nothing.
+      2. RECORD — stop fill older than the grace window: the finaliser missed
+         it. Book the exit from BROKER TRUTH only (the stop order's own
+         filled_avg_price / filled_qty / filled_at — never a synthesised
+         price) and close the row, updating exits + total_pnl +
+         remaining_shares in ONE statement (invariant at the day-1 re-entry
+         path: total_pnl = sum(exits[].pnl), both columns together).
+         Idempotent on exits[].order_id — the same guard the finalisers use,
+         and both sides serialize on the same advisory lock, so a double leg
+         cannot be written even if the WS event arrives later.
+      3. REFUSE — anything else (no stop_order_id, order unreadable, order
+         not filled: e.g. an OCO limit took the shares, or a manual
+         liquidation): no real exit price can be established. Leave the row
+         OPEN and LOUD (audit event + Telegram + a discrepancy line every
+         sweep) for the operator. A wrong-but-confident P&L is the exact
+         failure being fixed, and the 2026-05-27 mass-close guard already
+         established open+loud as this file's safe direction for
+         DB-says-shares / broker-says-none with an unconfirmed cause.
+
+    CLOSE-TIMING CHANGE, explicit (THE LINE audit): the old branch closed the
+    row on the same sweep unconditionally. Now: same-sweep close only when the
+    broker confirms the fill (2); a fresh fill waits one sweep for its
+    finaliser (1); an unconfirmable close stays open indefinitely (3). No
+    order is placed, cancelled, or altered here — recording only — and the
+    revert is deleting this helper and restoring the blind UPDATE at the call
+    site.
+
+    An orders-list/activities lookup (to auto-resolve case 3 too) was
+    considered and deliberately NOT added: it widens the broker surface on the
+    money path for a doubly-rare case, and open+loud is the correct terminal
+    state for "we do not know the real price".
+
+    Returns the discrepancy line for the sweep report, or None when there is
+    nothing to say (a finaliser already committed the truth). The caller wraps
+    this in its own degrade-loudly guard, so the sweep never breaks.
+    """
+    trade_id = int(trade["id"])
+    ticker = trade["ticker"]
+    prefix = f"[{account_mode}]"
+
+    async with _trade_advisory_try_lock(trade_id) as acquired:
+        if not acquired:
+            # A finaliser/partial is writing this trade right now — it owns
+            # the truth. Next sweep re-checks.
+            return (f"{prefix} Position gone from Alpaca: {ticker} — trade lock "
+                    f"held by an in-flight writer; deferring to it")
+
+        # Re-read under the lock: the sweep's snapshot may predate a finaliser
+        # commit. account_mode filter is load-bearing (dual-account #66).
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM mi_live_trades WHERE id = $1 AND account_mode = $2",
+                trade_id, account_mode,
+            )
+        if not row or row["status"] == "closed" or (row["remaining_shares"] or 0) <= 0:
+            return None  # finaliser won the race — books already true
+
+        stop_order_id = row["stop_order_id"]
+        order = None
+        if stop_order_id:
+            order = await alpaca.get_order(stop_order_id, account_mode=account_mode)
+        order_status = (
+            str(order.get("status", "")).split(".")[-1].lower() if order else ""
+        )
+        filled_price = order.get("filled_avg_price") if order else None
+        filled_qty = float(order.get("filled_qty") or 0) if order else 0.0
+
+        if order_status == "filled" and filled_price is not None and filled_qty > 0:
+            # ── Case 1/2: broker-confirmed stop fill ─────────────────────────
+            filled_at_raw = order.get("filled_at")
+            fill_age_s = None
+            if filled_at_raw:
+                try:
+                    filled_at = datetime.fromisoformat(str(filled_at_raw))
+                    if filled_at.tzinfo is None:
+                        filled_at = filled_at.replace(tzinfo=timezone.utc)
+                    fill_age_s = (datetime.now(timezone.utc) - filled_at).total_seconds()
+                except ValueError:
+                    fill_age_s = None  # unparseable → record now (idempotent + locked)
+            if fill_age_s is not None and fill_age_s < _SYNC_GONE_GRACE_S:
+                return (f"{prefix} Position gone from Alpaca: {ticker} — stop "
+                        f"filled {fill_age_s:.0f}s ago; leaving the row to the "
+                        f"fill finaliser (grace {_SYNC_GONE_GRACE_S}s)")
+
+            exits = (row["exits"] if isinstance(row["exits"], list)
+                     else json.loads(row["exits"] or "[]"))
+            already = any(e.get("order_id") == stop_order_id for e in exits)
+            entry_price = float(row["entry_price"] or 0)
+            shares = int(filled_qty)
+            pnl = (float(filled_price) - entry_price) * shares if entry_price else 0
+            if not already:
+                exits.append({
+                    "time": (str(filled_at_raw) if filled_at_raw
+                             else datetime.now(timezone.utc).isoformat()),
+                    "price": float(filled_price),
+                    "reason": "stop_hit",
+                    "shares": shares,
+                    "pnl": pnl,
+                    "order_id": stop_order_id,
+                    # Same economic event the WS finaliser records ("websocket");
+                    # this marks the late recorder for forensics.
+                    "source": "sync_reconcile",
+                })
+            # Invariant: total_pnl = sum(exits[].pnl) — both columns in ONE
+            # statement (MNDY 2026-05-11 class).
+            total_pnl = sum(e.get("pnl", 0) for e in exits)
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        status = 'closed', exits = $2::jsonb,
+                        remaining_shares = 0, total_pnl = $3,
+                        stop_order_id = NULL, closed_at = NOW()
+                    WHERE id = $1
+                """, trade_id, exits, total_pnl)
+            await log_audit_event(
+                "sync_gone_stop_fill_recorded",
+                f"{ticker}: position gone from Alpaca; missed stop fill booked "
+                f"from broker truth — {shares} sh @${float(filled_price):.2f}, "
+                f"pnl ${pnl:+,.2f}, total ${total_pnl:+,.2f}"
+                + (" (leg already present; closed only)" if already else ""),
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode,
+                    "stop_order_id": stop_order_id,
+                    "filled_qty": shares,
+                    "filled_avg_price": float(filled_price),
+                    "db_remaining_before": float(row["remaining_shares"] or 0),
+                    "pnl": float(pnl), "total_pnl": float(total_pnl),
+                    "leg_appended": not already,
+                    "fill_age_s": fill_age_s,
+                }),
+            )
+            emoji = "✅" if total_pnl > 0 else "❌"
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}{emoji} *Closed:* {ticker} — stop_hit\n"
+                f"Exit @${float(filled_price):.2f} × {shares} shares\n"
+                f"Total P&L: ${total_pnl:+,.2f}\n"
+                f"_[sync reconcile — the websocket fill event was missed]_"
+            )
+            return (f"{prefix} Position gone from Alpaca: {ticker} — missed stop "
+                    f"fill booked from broker truth ({shares} sh "
+                    f"@${float(filled_price):.2f}, total ${total_pnl:+,.2f})")
+
+        # ── Case 3: no broker-confirmed exit fill — leave open + loud ────────
+        await log_audit_event(
+            "sync_position_gone_unresolved",
+            f"{ticker}: position gone from Alpaca but no broker-confirmed exit "
+            f"fill (stop_order_id={stop_order_id or 'none'}, "
+            f"status={order_status or 'unreadable'}) — row left OPEN; refusing "
+            f"to book a P&L without a real fill price",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode,
+                "stop_order_id": stop_order_id,
+                "stop_order_status": order_status or None,
+                "db_remaining": float(row["remaining_shares"] or 0),
+            }),
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}🚨 *Books vs broker:* {ticker} position "
+            f"is gone at Alpaca but DB trade {trade_id} still shows "
+            f"{float(row['remaining_shares'] or 0):.0f} shares and no confirmed "
+            f"exit fill was found (tracked stop: {order_status or 'unreadable'}).\n"
+            f"Row left OPEN — needs manual reconcile."
+        )
+        return (f"{prefix} Position gone from Alpaca: {ticker} — UNRESOLVED, row "
+                f"left open (no broker-confirmed exit fill)")
+
+
 async def sync_positions() -> list[str]:
     """
     Reconcile DB vs Alpaca positions per account_mode (dual-account #66).
@@ -6277,15 +6477,33 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
         else:
             # DB says we have a position but Alpaca doesn't
             if trade["status"] == "filled" and (trade["remaining_shares"] or 0) > 0:
-                msg = f"Position gone from Alpaca: {ticker} (DB says {trade['remaining_shares']:.0f} shares)"
-                discrepancies.append(msg)
-                async with pool.acquire() as conn:
-                    await conn.execute("""
-                        UPDATE mi_live_trades SET
-                            status = 'closed', remaining_shares = 0,
-                            closed_at = NOW(), stop_order_id = NULL
-                        WHERE id = $1
-                    """, trade["id"])
+                # #597: do NOT blind-close — the old UPDATE here set
+                # status='closed'/remaining=0 with no exit leg and no total_pnl,
+                # booking a wrong (usually $0) P&L that then fed
+                # mi_sell_discipline_records. Resolve from broker truth, defer
+                # to an in-flight finaliser, or leave the row open + loud —
+                # see _resolve_position_gone for the full rationale.
+                try:
+                    gone_msg = await _resolve_position_gone(dict(trade), account_mode)
+                except Exception as e:
+                    # Degrade loudly, never break the sweep (scheduled reconcile).
+                    logger.error(
+                        f"sync_positions [{account_mode}]: position-gone "
+                        f"resolution failed for {ticker}: {e}", exc_info=True,
+                    )
+                    await log_audit_event(
+                        "sync_gone_resolution_error",
+                        f"{ticker}: position gone from Alpaca and resolution "
+                        f"errored ({type(e).__name__}: {e}) — row left untouched",
+                        json.dumps({
+                            "trade_id": trade["id"], "ticker": ticker,
+                            "account_mode": account_mode,
+                        }),
+                    )
+                    gone_msg = (f"[{account_mode}] Position gone from Alpaca: "
+                                f"{ticker} — resolution errored, row left open")
+                if gone_msg:
+                    discrepancies.append(gone_msg)
 
     # Alpaca has positions not in DB
     for ticker, pos in alpaca_map.items():
