@@ -80,6 +80,8 @@ But the case for it is weaker than it looked on 08-21, and it is the only live c
 
 **What reverting costs, measured:** 18 names blocked over 5 months, 3 of which reached +20% on paper. All three stopped out at −1R on real bars. **Under the bracket that existed, the band returned −1.00R on 15 of 15.** There is nothing there to lose.
 
+⚠ **CORRECTED LATER THE SAME DAY — see `482_geometry_counterfactual_2026-08-29.md`.** The paragraph below concludes the lever is geometry. Its premise is true but the conclusion is wrong: replaying our own real trades under five stop geometries put all five within 0.08R of each other, all negative, with the live one BEST. Widening the stop does not recover these names. Neither admission nor geometry is the lever — the trades are (58 closed at −0.46R). Leaving the paragraph standing rather than rewriting it, so the reasoning and its correction are both readable.
+
 **What it does not fix, and this is the real finding:** five names in that band ran 2.9R to 15.2R and every one paid −1R, because the 9:30 bar's low was taken out first. **The cap is not the binding constraint — the stop is.** Reverting stops us paying −1R to discover that; it does not make the cohort tradeable. The lever is bracket geometry (#482, now un-blocked with 55 closed shadow trades), not admission.
 
 ⚖ **Admission is entry discipline — THE LINE.** Reverting to 50% is the operator's call and is
