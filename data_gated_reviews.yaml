@@ -91,6 +91,65 @@
 #   - earliest_review_date: bump to 2026-06-22 (will re-surface then)
 
 reviews:
+  - review_id: runner_rule_sweep_recut
+    # kind=tripwire, not accrual, though the predicate has both arms. The mis-ranking cost is
+    # ASYMMETRIC: labelled accrual, a rules change would surface as "just more data has arrived"
+    # and be deprioritised — which is precisely the failure that retracted the 2026-08-29
+    # geometry analysis. Labelled tripwire, the accrual arm firing merely brings a review
+    # forward, which is harmless.
+    kind: tripwire
+    title: "Re-cut the runner-exit sweep — on NEW TRADES or on a RULES CHANGE, whichever comes first"
+    question: |
+      Does any looser runner rule beat the current breakeven-after-partial stop, on
+      evidence that is neither too thin nor stale?
+
+      THE 2026-08-29 READ (docs/analysis/runner_rule_sweep_2026-08-29.md, n=194): every
+      looser rule earns MORE on the mean — hold-20-sessions +0.36R, hold-5 +0.30R,
+      sma20 +0.28R, against the control's +0.14R — because 82 of 106 winners currently
+      give the whole runner back to breakeven and finish at exactly +0.33R. But the
+      median FLIPS negative (+0.33R -> -0.33R), the win rate falls 55% -> 25-44%, and
+      NO rule separates from the control at 95% confidence. The gain sits in a handful
+      of correlated April/July semiconductor names.
+
+      ⚠ TWO REASONS THIS IS NOT A CALENDAR ITEM. First, more trades genuinely move it —
+      this is a fat-tailed strategy and the tails ARE the edge, so the sample has to
+      grow before the tails stabilise. Second, and the reason the predicate below has
+      two arms: a change to the exit stack, the admission stack or a safeguard VOIDS
+      the last read entirely. The operator, 2026-08-29: "as we continue to evolve this
+      system, we need to know when to review as needed as well." A read taken under
+      rules that no longer exist is the exact defect that retracted the geometry
+      analysis the same day.
+    predicate_sql: >-
+      SELECT
+        (SELECT count(*) FROM mi_live_trades
+          WHERE status = 'closed' AND risk_dollars > 0
+            AND alert_date > '2026-08-29')
+        + 40 * (SELECT count(*) FROM mi_safeguard_state
+                 WHERE last_transition_at > '2026-08-29');
+    threshold: 40
+    earliest_review_date: 2026-09-29
+    status: pending
+    action_when_ready: |
+      RE-RUN THE SWEEP, do not re-derive it: scripts/probes/_bt_replay.py plus the Run-U
+      population from docs/analysis/ep_backtest_run1_2026-08-29.md. It is a $0 query —
+      an exit rule is arithmetic over bars we already store, so there is nothing to
+      shadow and nothing to spend.
+
+      WHICH ARM FIRED MATTERS:
+        - trade-count arm  -> the same question with a bigger n. Report whether any
+          rule now separates from the control at 95%, and whether the concentration in
+          a few correlated names has broken up.
+        - safeguard-change arm (each transition counts 40, so ONE fires it alone) ->
+          the prior read is STALE, not merely thin. Say which toggle moved and re-cut
+          the population under the new rules before comparing anything.
+
+      REPORT: mean AND median per rule, n on every row, the win-rate cost, and the
+      concentration check. Then say plainly whether anything beats the control —
+      "the current rule is best" is a real answer.
+
+      ⚖ THE LINE — exit discipline is the operator's. Evidence only; flip nothing.
+      ⚠ Blocked in practice by #605: while capture stays survivor-only the sample
+      cannot improve honestly, so check #605 first.
 
   - review_id: model_selection_quarterly_review
     kind: cadence
