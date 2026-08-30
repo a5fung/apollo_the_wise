@@ -1539,6 +1539,16 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # >=1 candidate — a silent writer here means the gap-vs-prescore record has
     # stopped accruing (the 100%-silent recorder class this registry exists for).
     ("mi_ep_shortlist_shadow", "EP shortlist pre-score shadow", "scan_date", None),
+    # #327 delayed-entry watch lane (2026-08-30): written every evening while ANY name
+    # is inside its 20-session window — and the lane is SILENT by operator ruling (no
+    # Telegram even on job failure), so this registry is its ONLY watchdog. Keyed on
+    # the plain-DATE business column `session_date` (a timestamptz here would silently
+    # never be checked — the name-based `created_at` rule below). The trigger table is
+    # deliberately NOT registered: rungs legitimately go quiet for weeks in a quiet
+    # tape, and a false liveness alarm on a genuinely quiet detector is exactly the
+    # noise class this registry avoids — the watch table covers the writer, and both
+    # tables are written by the same job.
+    ("mi_delayed_entry_watch", "delayed-entry watch lane (#327)", "session_date", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

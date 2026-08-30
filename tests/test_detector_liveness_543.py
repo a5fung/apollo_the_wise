@@ -174,6 +174,11 @@ def test_module_constant_covers_the_required_tables():
         # can-fail-100%-silently class (fire-and-forget writer, read by nothing
         # on the scan path).
         "mi_ep_shortlist_shadow",
+        # 2026-08-30 (#327): the delayed-entry watch lane — SILENT by operator
+        # ruling (no Telegram even on job failure), so this registry is its ONLY
+        # watchdog. The trigger table is deliberately absent (rungs legitimately
+        # go quiet; the watch table covers the writer).
+        "mi_delayed_entry_watch",
     }
 
 
@@ -187,6 +192,9 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
     by_table = {t: date_col for t, _label, date_col, _where in hc._DETECTOR_LIVENESS_TABLES}
     assert by_table["mi_exit_path_shadow"] == "trading_day"
     assert by_table["mi_alert_rank_shadow"] == "alert_date"
+    # #327 (2026-08-30): session_date is the lane's plain-DATE business column —
+    # created_at/updated_at here are timestamptz and would silently never be checked.
+    assert by_table["mi_delayed_entry_watch"] == "session_date"
 
 
 # ── run_detector_liveness_check: orchestration + wiring ───────────────────────

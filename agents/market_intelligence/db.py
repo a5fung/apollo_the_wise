@@ -2414,6 +2414,153 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_consolidation_entry_shadow
                 ADD COLUMN IF NOT EXISTS realized_r_h12 FLOAT;
 
+            -- ── #327 DELAYED-ENTRY WATCH LANE (2026-08-30, Stage 0 verdict: REBUILD) ─────────
+            -- The record-everything watch lane replacing the frozen Family-B funnel
+            -- (mi_anticipation_lifecycle stays untouched per ADR 0013; its replay() re-gates a
+            -- +40% phantom universe — Stage 0 D1/D2). Population: EVERY name the EP scan sees
+            -- (mi_ep_scan_log), enrolled on its EP day, watched 20 trading sessions. NO real-EP
+            -- judgment anywhere — record everything, label nothing (the operator's 08-30 ruling;
+            -- the historical study's fatal flaw was outcome-conditioned selection).
+            -- SILENT: no Telegram, ever, while evidence accrues. Writer:
+            -- delayed_entry_shadow.py (EOD job). RAW INPUTS ONLY — never computed points
+            -- (catalyst_tier_shadow discipline): state columns are facts about the path
+            -- (lows/pivot crossings), never rule outputs.
+            -- One row per (ticker, ep_date, session_date); session_idx 0 = the EP day
+            -- (enrollment), 1..20 = the forward lane. eval_status='unscoreable' = the session
+            -- could not be honestly evaluated (missing bars) — ABSTAIN-and-retry, NEVER a
+            -- daily-bar fallback for a minute tactic and never a fabricated fill (db abstain
+            -- rule above; the walker re-walks from the first unscoreable row while the name is
+            -- in the lane).
+            CREATE TABLE IF NOT EXISTS mi_delayed_entry_watch (
+                ticker            TEXT NOT NULL,
+                ep_date           DATE NOT NULL,     -- the EP/gap day (lane key)
+                session_date      DATE NOT NULL,     -- plain DATE (detector-liveness keyed on it)
+                session_idx       INT  NOT NULL,     -- trading sessions since ep_date (0 = EP day)
+                pattern_version   TEXT NOT NULL,     -- rung-definition version acting on this row
+                -- pivots from the EP day's daily bar (repeated per row: self-contained rows)
+                gap_day_low       FLOAT,
+                gap_day_close     FLOAT,
+                gap_day_high      FLOAT,
+                gap_day_volume    BIGINT,
+                -- the session's own daily bar (raw)
+                day_open          FLOAT,
+                day_high          FLOAT,
+                day_low           FLOAT,
+                day_close         FLOAT,
+                day_volume        BIGINT,
+                bar_source        TEXT,              -- 'daily' | 'polygon' | 'missing'
+                -- running state — RAW FACTS about the path, seeded from the prior row
+                undercut_seen     BOOLEAN NOT NULL DEFAULT FALSE,  -- some low < gap_day_low
+                low_since_undercut FLOAT,
+                dipped_below_close_seen BOOLEAN NOT NULL DEFAULT FALSE,  -- some low < gap_day_close
+                low_of_dip        FLOAT,
+                gap_high_exceeded BOOLEAN NOT NULL DEFAULT FALSE,  -- some high >= gap_day_high
+                fired_ep_low_reclaim   BOOLEAN NOT NULL DEFAULT FALSE,
+                fired_ep_close_reclaim BOOLEAN NOT NULL DEFAULT FALSE,
+                fired_ep_high_break    BOOLEAN NOT NULL DEFAULT FALSE,
+                eval_status       TEXT NOT NULL DEFAULT 'complete',  -- complete | unscoreable
+                unscoreable_reason TEXT,             -- missing_daily_bar | missing_minute_bars | missing_prior_low
+                -- ex-ante EP-day context + SCREEN stamp (per row, per the approved plan — the
+                -- rate must read both raw and on the published-p*-comparable sub-population).
+                -- screen_member NULL = a component was unknown at enrollment; never guessed.
+                ep_score          FLOAT,
+                catalyst_grade    TEXT,
+                in_active_theme   BOOLEAN,
+                gap_pct           FLOAT,
+                prev_close        FLOAT,
+                ep_dollar_volume  FLOAT,             -- gap-day volume x gap-day close
+                extension_pct     FLOAT,
+                screen_member     BOOLEAN,
+                screen_version    TEXT,
+                created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, ep_date, session_date),
+                CHECK (eval_status IN ('complete','unscoreable'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_delayed_entry_watch_session
+                ON mi_delayed_entry_watch(session_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_delayed_entry_watch_member
+                ON mi_delayed_entry_watch(ticker, ep_date, session_idx DESC);
+
+            -- #327 trigger rows — one per rung firing. The ex-ante decision vector at the
+            -- moment of the fire (the highest-value record: the ONLY way to later tell a
+            -- winner from a bleeder at trigger time). stop_width_pct is FIRST-CLASS — it
+            -- explained the entire measured difference between patterns (2.68% vs 8.75% risk
+            -- for the same move) and must never be derive-it-later. realized_r = HARVESTED R
+            -- under the M-none arm (hard stop only, exit at the 20-session close), NEVER MFE
+            -- (the mi_ep_missed_outcomes conflation); realized_r_trail = the M-trail arm
+            -- (hard stop + exit on a daily close below MAX(SMA10, SMA20)). The live day-1
+            -- shape (+2R partial -> breakeven) is deliberately NOT an arm here (operator
+            -- 08-30). Settlement columns are NULL while open (the mi_consolidation_entry_shadow
+            -- open/settle two-phase — NOT missed_outcomes' rolling recompute, the #583 orphan
+            -- class); the settlement job is a follow-on card and stamps settle_version.
+            CREATE TABLE IF NOT EXISTS mi_delayed_entry_trigger (
+                id                SERIAL PRIMARY KEY,
+                ticker            TEXT NOT NULL,
+                ep_date           DATE NOT NULL,
+                rung              TEXT NOT NULL,
+                pattern_version   TEXT NOT NULL,     -- a reader must never infer the acting rule from a date
+                fire_date         DATE NOT NULL,
+                fire_minute_et    INT,               -- ET minute-of-day of the 5-min fire bar; NULL = daily-grade fire
+                resolution        TEXT NOT NULL,     -- 'minute_5' | 'daily' (which grade produced the fire)
+                sessions_since_ep INT NOT NULL,
+                -- the trade it implies
+                entry_price       FLOAT NOT NULL,
+                stop_price        FLOAT NOT NULL,
+                stop_width_pct    FLOAT NOT NULL,    -- (entry - stop) / entry * 100; can be <=0 for a
+                                                     -- degenerate ep_high_break geometry — recorded, never dropped
+                -- ex-ante context at fire time (RAW inputs)
+                gap_day_low       FLOAT,
+                gap_day_close     FLOAT,
+                gap_day_high      FLOAT,
+                gap_day_volume    BIGINT,
+                prior_session_low FLOAT,             -- the session before fire_date
+                day_open          FLOAT,             -- fire day's daily bar
+                day_high          FLOAT,
+                day_low           FLOAT,
+                day_close         FLOAT,
+                day_volume        BIGINT,
+                adr20_pct         FLOAT,             -- mean (high-low)/close * 100 over <=20 sessions pre-fire
+                adr20_n           INT,               -- how many sessions the mean actually used
+                gap_high_exceeded_before BOOLEAN,    -- had the EP-day high been exceeded before this fire
+                in_active_theme   BOOLEAN,
+                ep_score          FLOAT,
+                catalyst_grade    TEXT,
+                screen_member     BOOLEAN,
+                screen_version    TEXT,
+                prior_missing_sessions INT NOT NULL DEFAULT 0,  -- unscoreable sessions before the fire:
+                                                     -- >0 means the TRUE first fire may have been earlier
+                -- settlement (follow-on card; NULL while open)
+                outcome           TEXT,              -- M-none: stop | time_exit | unscoreable
+                realized_r        FLOAT,             -- M-none HARVESTED R (accrual-gate column)
+                outcome_trail     TEXT,              -- M-trail: stop | trail_exit | time_exit | unscoreable
+                realized_r_trail  FLOAT,
+                r_none_s1         FLOAT,             -- arm-R at +1/+5/+10/+20 sessions
+                r_none_s5         FLOAT,
+                r_none_s10        FLOAT,
+                r_none_s20        FLOAT,
+                r_trail_s1        FLOAT,
+                r_trail_s5        FLOAT,
+                r_trail_s10       FLOAT,
+                r_trail_s20       FLOAT,
+                mfe_r             FLOAT,             -- max favourable excursion (ceiling only, never realized)
+                mae_r             FLOAT,
+                reached_4r        BOOLEAN,           -- fwd MFE >= 4x risk before the hard stop (pess, stop-first)
+                settle_version    TEXT,
+                settled_at        TIMESTAMPTZ,
+                created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CHECK (rung IN ('ep_low_reclaim','ep_close_reclaim','ep_high_break')),
+                CHECK (resolution IN ('minute_5','daily')),
+                CHECK (outcome IS NULL OR outcome IN ('stop','time_exit','unscoreable')),
+                CHECK (outcome_trail IS NULL OR outcome_trail IN ('stop','trail_exit','time_exit','unscoreable'))
+            );
+            -- one OPEN trigger per (name, EP day, rung): a re-fire on an open row is a no-op —
+            -- entry stays pinned to the FIRST recorded fire (mi_consolidation_entry_shadow pattern)
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_delayed_entry_trigger_open
+                ON mi_delayed_entry_trigger(ticker, ep_date, rung) WHERE outcome IS NULL;
+            CREATE INDEX IF NOT EXISTS idx_delayed_entry_trigger_unsettled
+                ON mi_delayed_entry_trigger(fire_date) WHERE outcome IS NULL;
+
             -- HTF (High Tight Flag) breakout-entry SHADOW (#356 Phase 3). Records the would-be
             -- breakout-entry ORDER SHAPE + settled outcome for every #94 flag-high break — NO order
             -- submitted. The edge dataset for the later paper gate. Mirrors mi_consolidation_entry_shadow
@@ -8988,6 +9135,9 @@ async def purge_old_data() -> dict[str, int]:
             # (capture audit item 1); see the retention policy in the docstring.
             # mi_exit_path_shadow / mi_alert_rank_shadow deliberately ABSENT — kept
             # forever since 2026-08-16, same reason; see the retention policy above.
+            # mi_delayed_entry_watch / mi_delayed_entry_trigger deliberately ABSENT —
+            # #327 shadow evidence (2026-08-30): the accrual review reads these
+            # months later; the evidence must not age out from under it.
             "mi_stock_scores": today - timedelta(days=365),
             "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
@@ -9818,6 +9968,169 @@ async def get_consolidation_entry_shadow_summary() -> dict:
     out["by_origin"] = [dict(r) for r in by_origin]
     out["by_mode"] = [dict(r) for r in by_mode]   # #354 — never-blend the entry modes
     return out
+
+
+# ── #327 delayed-entry watch lane (2026-08-30) — SQL for delayed_entry_shadow.py ─────────
+# Every query the lane touches lives HERE (the db.py SSoT rule), and every writer targets
+# ONLY mi_delayed_entry_watch / mi_delayed_entry_trigger (+ mi_audit_log via
+# log_audit_event) — THE LINE block in delayed_entry_shadow.py enumerates the contract.
+
+_DELAYED_WATCH_UPSERT_COLS = (
+    # The exit_path_shadow one-ordered-tuple pattern: the INSERT list, placeholders and
+    # DO UPDATE SET are all derived from this tuple so they can never drift by position.
+    "ticker", "ep_date", "session_date", "session_idx", "pattern_version",
+    "gap_day_low", "gap_day_close", "gap_day_high", "gap_day_volume",
+    "day_open", "day_high", "day_low", "day_close", "day_volume", "bar_source",
+    "undercut_seen", "low_since_undercut",
+    "dipped_below_close_seen", "low_of_dip", "gap_high_exceeded",
+    "fired_ep_low_reclaim", "fired_ep_close_reclaim", "fired_ep_high_break",
+    "eval_status", "unscoreable_reason",
+    "ep_score", "catalyst_grade", "in_active_theme",
+    "gap_pct", "prev_close", "ep_dollar_volume", "extension_pct",
+    "screen_member", "screen_version",
+)
+_DELAYED_WATCH_KEY_COLS = frozenset({"ticker", "ep_date", "session_date"})
+_DELAYED_WATCH_UPSERT_SQL = (
+    "INSERT INTO mi_delayed_entry_watch ("
+    + ", ".join(_DELAYED_WATCH_UPSERT_COLS)
+    + ") VALUES ("
+    + ", ".join(f"${i + 1}" for i in range(len(_DELAYED_WATCH_UPSERT_COLS)))
+    + ") ON CONFLICT (ticker, ep_date, session_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _DELAYED_WATCH_UPSERT_COLS
+                if c not in _DELAYED_WATCH_KEY_COLS)
+    + ", updated_at = NOW()"
+)
+
+
+async def upsert_delayed_entry_watch(row: dict) -> None:
+    """UPSERT one (ticker, ep_date, session_date) watch row. Idempotent — a re-walk of an
+    already-recorded session (the unscoreable-retry path) simply refreshes the row."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(_DELAYED_WATCH_UPSERT_SQL,
+                           *(row.get(c) for c in _DELAYED_WATCH_UPSERT_COLS))
+
+
+async def get_delayed_entry_seed_candidates(since: date, until: date) -> list[dict]:
+    """EP-scan names in [since, until] not yet enrolled in the watch lane — the
+    record-everything population (EVERY name mi_ep_scan_log saw that day, alerted or not,
+    rejected or not; the operator's 08-30 population ruling). One row per (scan_date,
+    ticker): the LATEST scan-log row that day (what the scan last knew). The multi-day
+    window makes enrollment self-healing after a missed run."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (s.scan_date, s.ticker)
+                   s.scan_date, s.ticker, s.gap_pct, s.prev_close, s.extension_pct,
+                   s.ep_score, s.catalyst_quality, s.in_active_theme
+            FROM mi_ep_scan_log s
+            WHERE s.scan_date BETWEEN $1 AND $2
+              AND NOT EXISTS (SELECT 1 FROM mi_delayed_entry_watch w
+                              WHERE w.ticker = s.ticker AND w.ep_date = s.scan_date)
+            ORDER BY s.scan_date, s.ticker, s.scan_time_et DESC NULLS LAST
+        """, _coerce_date(since), _coerce_date(until))
+    return [dict(r) for r in rows]
+
+
+async def get_delayed_entry_open_lane(min_ep_date: date, lane_sessions: int) -> list[dict]:
+    """One dict per lane member still inside its window: the member's LATEST watch row
+    (the walk-forward seed — the exit_path_shadow incremental pattern) plus
+    `first_unscoreable` (earliest unscoreable session_date, or None) so the walker can
+    re-walk from there — the ABSTAIN-and-retry half of the abstain rule, bounded by the
+    lane window itself."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH latest AS (
+                SELECT DISTINCT ON (ticker, ep_date) *
+                FROM mi_delayed_entry_watch
+                WHERE ep_date >= $1
+                ORDER BY ticker, ep_date, session_idx DESC
+            ),
+            unsc AS (
+                SELECT ticker, ep_date, MIN(session_date) AS first_unscoreable
+                FROM mi_delayed_entry_watch
+                WHERE ep_date >= $1 AND eval_status = 'unscoreable'
+                GROUP BY ticker, ep_date
+            )
+            SELECT l.*, u.first_unscoreable
+            FROM latest l LEFT JOIN unsc u USING (ticker, ep_date)
+            WHERE l.session_idx < $2 OR u.first_unscoreable IS NOT NULL
+        """, _coerce_date(min_ep_date), lane_sessions)
+    return [dict(r) for r in rows]
+
+
+async def get_delayed_entry_watch_row(ticker: str, ep_date: date, session_date: date) -> "dict | None":
+    """One specific watch row — the re-walk's state seed (the row BEFORE the first
+    unscoreable session)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT * FROM mi_delayed_entry_watch
+            WHERE ticker = $1 AND ep_date = $2 AND session_date = $3
+        """, ticker, _coerce_date(ep_date), _coerce_date(session_date))
+    return dict(row) if row else None
+
+
+async def get_delayed_entry_daily_window(ticker: str, start: date, end: date) -> list[dict]:
+    """Ascending daily bars over [start, end] from mi_daily_closes — the walker's one
+    ranged read per member (session bars + prior-session lows + the ADR window)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT trade_date, open_price, high_price, low_price, close, volume
+            FROM mi_daily_closes
+            WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
+            ORDER BY trade_date
+        """, ticker, _coerce_date(start), _coerce_date(end))
+    return [dict(r) for r in rows]
+
+
+async def get_delayed_entry_daily_bar(ticker: str, trading_day: date):
+    """(open, high, low, close, bar_source) for ONE day — pool-acquiring wrapper around
+    get_daily_bar_with_fallback (mi_daily_closes primary, Polygon fallback; all-None
+    5-tuple on a total miss)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await get_daily_bar_with_fallback(conn, ticker, _coerce_date(trading_day))
+
+
+async def count_delayed_entry_unscoreable(ticker: str, ep_date: date, before: date) -> int:
+    """Unscoreable sessions for one member strictly before `before` — stamped on a trigger
+    row as prior_missing_sessions (>0: the observed fire may be later than the true one)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        n = await conn.fetchval("""
+            SELECT COUNT(*) FROM mi_delayed_entry_watch
+            WHERE ticker = $1 AND ep_date = $2 AND session_date < $3
+              AND eval_status = 'unscoreable'
+        """, ticker, _coerce_date(ep_date), _coerce_date(before))
+    return int(n or 0)
+
+
+async def insert_delayed_entry_trigger(row: dict) -> bool:
+    """Record one rung firing (SHADOW — no execution, no alert). IDEMPOTENT: the partial
+    unique index (ticker, ep_date, rung) WHERE outcome IS NULL makes a re-fire on an open
+    row a no-op — the entry stays pinned to the FIRST recorded fire (the
+    mi_consolidation_entry_shadow pattern). Returns True iff a NEW row was written."""
+    cols = (
+        "ticker", "ep_date", "rung", "pattern_version", "fire_date", "fire_minute_et",
+        "resolution", "sessions_since_ep", "entry_price", "stop_price", "stop_width_pct",
+        "gap_day_low", "gap_day_close", "gap_day_high", "gap_day_volume",
+        "prior_session_low", "day_open", "day_high", "day_low", "day_close", "day_volume",
+        "adr20_pct", "adr20_n", "gap_high_exceeded_before", "in_active_theme",
+        "ep_score", "catalyst_grade", "screen_member", "screen_version",
+        "prior_missing_sessions",
+    )
+    sql = (
+        "INSERT INTO mi_delayed_entry_trigger (" + ", ".join(cols) + ") VALUES ("
+        + ", ".join(f"${i + 1}" for i in range(len(cols)))
+        + ") ON CONFLICT (ticker, ep_date, rung) WHERE outcome IS NULL DO NOTHING RETURNING id"
+    )
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        got = await conn.fetchrow(sql, *(row.get(c) for c in cols))
+    return got is not None
 
 
 async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, parent_scan_date,

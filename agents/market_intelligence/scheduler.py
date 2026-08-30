@@ -150,6 +150,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "sell_discipline_recorder",  # #508 WS1 — reached-vs-kept record per closed trade; pure compute + DB/audit, no broker calls, no rule
     "exit_path_shadow",  # 2026-08-16 — per-trading-day path record on every LIVE fill; pure compute + DB/audit, no broker calls, no rule
     "alert_rank_shadow",  # 2026-08-16 — EOD + as-of-09:45 selection-rank record on every EP alert; pure compute + DB/audit, no broker calls, no grading/ordering change
+    "delayed_entry_shadow",  # #327 2026-08-30 — EOD watch-lane record on every EP-scan name; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
@@ -4484,6 +4485,42 @@ async def _alert_rank_shadow_job():
         await notify_job_failure("alert_rank_shadow", str(e))
 
 
+async def _delayed_entry_shadow_job():
+    """Run at 17:57 ET (EOD shadow family — after the 17:00 nightly close pull refreshes
+    mi_daily_closes and the 17:50/17:53 siblings; +4 min spacing convention).
+
+    #327 2026-08-30 — the delayed-entry WATCH LANE (Stage 0 verdict: rebuild). Enrolls
+    every name the EP scan saw today, watches each for 20 trading sessions, records
+    per-session state + the three rung fires with the ex-ante decision vector. RECORD
+    ONLY — no entry/exit rule, no broker calls, no admission/scoring change (THE LINE;
+    see delayed_entry_shadow.py module docstring).
+
+    ⚠ SILENT BY RULING (operator 2026-08-30: "Silent. Log only." — an unproven signal
+    in his notifications becomes a de-facto trade signal): unlike the sibling jobs this
+    one does NOT call notify_job_failure — failures land in mi_audit_log + logs, and
+    the detector-liveness registry (mi_delayed_entry_watch) is the watchdog for a
+    silently-dead writer. run_delayed_entry_shadow itself never raises; the guard here
+    is belt-and-braces for import-time errors."""
+    try:
+        from agents.market_intelligence.delayed_entry_shadow import run_delayed_entry_shadow
+        from agents.market_intelligence.collector import et_today
+        out = await run_delayed_entry_shadow(et_today())
+        logger.info(
+            f"delayed-entry shadow: {out['watch_rows']} watch row(s), "
+            f"{out['triggers']} trigger(s) across {out['members']} member(s) "
+            f"({out['enrolled']} enrolled, {out['unscoreable']} unscoreable, "
+            f"{out['errors']} error(s))"
+        )
+    except Exception as e:
+        logger.error(f"delayed-entry shadow job failed: {e}", exc_info=True)
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event("delayed_entry_shadow_error",
+                                  f"job-level failure: {type(e).__name__}: {e}")
+        except Exception:  # loud-ok: logger.error above already fired
+            pass
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -5552,6 +5589,18 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_alert_rank_shadow_job, "alert_rank_shadow"),
         CronTrigger(hour=17, minute=53, day_of_week="mon-fri", timezone="America/New_York"),
         id="alert_rank_shadow",
+        replace_existing=True,
+    )
+
+    # #327 DELAYED-ENTRY WATCH LANE — 17:57 ET mon-fri, after the 17:53 alert-rank
+    # shadow (same EOD family, +4 min spacing) and after mi_daily_closes is fresh for
+    # today. Enrolls every EP-scan name + advances the 20-session lane; pure compute +
+    # DB/audit, no broker calls, no rule, SILENT — no Telegram on any path (THE LINE;
+    # operator ruling 2026-08-30).
+    _scheduler.add_job(
+        audit_wrap(_delayed_entry_shadow_job, "delayed_entry_shadow"),
+        CronTrigger(hour=17, minute=57, day_of_week="mon-fri", timezone="America/New_York"),
+        id="delayed_entry_shadow",
         replace_existing=True,
     )
 

@@ -93,6 +93,13 @@ the average)**, never by win rate alone.
 `PLAN.md` **#327** is the active task. Related: **#270** (composition), **#562** (pivot ladder),
 **#482** (geometry, retracted), **#354** (Family A merge). Plan of record:
 `~/.claude/plans/crystalline-waddling-charm.md`.
+**BUILD (2026-08-30, post-Stage-0):** the record-everything watch lane is
+`agents/market_intelligence/delayed_entry_shadow.py` (EOD 17:57 ET job, SILENT) writing
+`mi_delayed_entry_watch` / `mi_delayed_entry_trigger`; three v1 rungs (EP-low reclaim /
+EP-close reclaim / EP-high break), stop width first-class, ex-ante screen stamp per row;
+accrual gate `delayed_entry_shadow_first_read` (30 settled triggers). Settlement
+(M-none / M-trail over 20 sessions) is the follow-on card; the schema already carries
+its NULL-while-open columns. `replay()`/`mi_anticipation_lifecycle` untouched (ADR 0013).
 ⚠ **The long-wait variant converges into Family A** (`docs/decisions/0013-consolidation-plays-post-runup.md`) — 81% of ≥5R 20-day-reclaim names were already on the Family A detector. Short-wait (3–10 day) variants stay distinct.
 
 ---
