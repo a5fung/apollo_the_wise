@@ -1,5 +1,23 @@
 # #327 Stage 0+1 — The missed-real-EP population, and the 620@EPC band (2026-08-29)
 
+> 🔴 **CORRECTION 2026-08-29, same day — THE LARGEST CAUSE IS ATTRIBUTED TO A RULE THAT NO LONGER
+> EXISTS.** This document attributes 22 of 55 misses to the **top-20-by-gap shortlist cap**. That
+> ranking was **replaced on 2026-08-22** by the three-term liquidity-led pre-score
+> (`ep_rubric.SHORTLIST_WEIGHTS`), and `scripts/live_rules.py` confirms the `ep_shortlist_prescore`
+> toggle is **on** in prod. Operator: *"we don't rank of gap size anymore, what are you talking
+> about."*
+>
+> **So the 22 is historically true and operationally useless.** Those names were killed by a rule
+> we have since replaced; nothing here says whether today's ranking would still miss them. The
+> cap itself (top 20 per tick) still acts — only the ORDER changed — so some of the 22 may still
+> be missed, and the number is unknown until re-measured.
+>
+> **The cause of the error is that no `scripts/live_rules.py` snapshot was handed to the card.**
+> That is now a standing requirement — `docs/methodology/analysis_standard.md` §3b.
+> ▶ **Re-measure under the live pre-score ranking before using any per-cause count from here.**
+> The other findings — n=55, the cohort difference, the SMCI settle — are unaffected.
+
+
 > 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.**
 > This is Stage 0+1 of the approved plan (`crystalline-waddling-charm`): settle what is settleable
 > in #562, then build the population every later stage depends on.

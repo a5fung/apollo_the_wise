@@ -66,6 +66,36 @@ baseline.
 never from an older document, never from a change-log entry that may itself have been superseded.
 `scripts/live_rules.py --drift-only` exists for this.
 
+## 3b. 🔴 RUN `scripts/live_rules.py` FIRST, AND HAND IT TO EVERY CARD
+
+Operator, 2026-08-29: *"this is crazy that you don't know what we're trade today, don't know what
+EP we rank etc and you go do all these analysis with completely wrong context, wtf is happening."*
+
+He is right, and the tool already existed. `scripts/live_rules.py` prints what is ACTUALLY live —
+generated from code and prod state, never from prose. It reads the acting gap floor, the
+shortlist ranking and its toggle, the extension cap, the alert bar, every real-time authority
+toggle, the exact stop and partial-profit paths, and which of two competing code paths actually
+acts. `--drift-only` shows where the docs contradict it.
+
+**What went wrong without it, in one session:** I attributed 22 of 55 missed EPs to a
+top-20-by-gap shortlist cap. That ranking was replaced by a three-term pre-score on 2026-08-22
+and the toggle is on. The finding described a rule that no longer exists. The same session's
+run also found `magna53_ep.md` still quoting a 75% extension cap when the acting value is 50%.
+
+**The rule, therefore:**
+1. **Run `scripts/live_rules.py --drift-only` at session open.** It is in the CLAUDE.md OPEN
+   ritual for this reason. Offline-safe, read-only, seconds.
+2. **Before ANY analysis, capture the full output to a file and HAND THAT PATH TO EVERY CARD.**
+   A card cannot know what changed since its training or since the doc was written; a subagent
+   reading `docs/` is reading prose that may be stale, and stale prose is what produced both
+   failures above.
+3. **Any drift it reports is fixed BEFORE the analysis runs**, not after. An analysis built on a
+   doc the tool has already flagged is invalid on arrival.
+
+⚠ **This is not the same as §3 (read the constant from the code).** §3 is about not trusting your
+memory of one value. This is about not trusting your picture of the whole live system — which
+gates act, which toggles are on, which of two code paths is the one that runs.
+
 ## 4. Measure the right thing
 
 - **Expectancy, not win rate.** The operator: *"it's not just ratio of winners to losers... more

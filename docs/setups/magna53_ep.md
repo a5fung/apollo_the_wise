@@ -30,7 +30,7 @@ This is the canonical Apollo entry strategy — the highest-volume, highest-conv
 - **Liquidity**: pre-market dollar volume sufficient (relative + absolute floor — see PM volume gate)
 - **Universe**: ~9,700 stocks via Polygon grouped daily
 - **Cooldown**: 60-day cooldown after any prior EP alert, with carve-out for fresh earnings (see below)
-- **Extension**: skip if prev_close is ≥ 75% above the MIN(close) of the last ~5 trading days (already extended pre-gap → chase risk). `MAX_EXTENSION_PCT=75.0` (ep_detector.py:158; was 50.0 until the operator-signed 2026-08-22 change below); MIN, not a single 5-days-ago point. [Corrected 2026-07-18 — was mis-transcribed at doc creation as "≤ 1.50× SMA-10", a rule that has never existed in code (see #481 + change log); the live criterion is unchanged.]
+- **Extension**: skip if prev_close is ≥ 50% above the MIN(close) of the last ~5 trading days (already extended pre-gap → chase risk). `MAX_EXTENSION_PCT=50.0` (ep_detector.py:234 — raised to 75.0 on 2026-08-22, **REVERTED to 50.0 on 2026-08-29** when the evidence for the raise was found to rest on a corrupt table, #595); MIN, not a single 5-days-ago point. [Corrected 2026-07-18 — was mis-transcribed at doc creation as "≤ 1.50× SMA-10", a rule that has never existed in code (see #481 + change log); the live criterion is unchanged.]
 
 ## Detection criteria (current)
 
@@ -42,7 +42,7 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 1. **Gap floor**: `gap_pct ≥ MIN_GAP_PCT` (9.0% hard floor, env `EP_MIN_GAP_PCT`; was 10.0% — see 2026-08-19 change log entry) — applied building the candidate list itself (ep_detector.py ~1567). No regime-dependent variant exists in code — ADR 0003's Phase-1 recommendation of "10% (or 12% in elevated regimes)" only ever shipped as a flat number; that regime branch was never built.
 2. **Pre-market volume**: relative gate — `pm_rvol ≥ MIN_PM_RVOL` (1.0× session-anchored RVOL@T)
 3. **EP cooldown**: skip if alerted within last 60 days, UNLESS `gap_pct ≥ 15% AND is_earnings_day` (fresh earnings catalyst bypasses cooldown)
-4. **Extension cap**: `(prev_close − min5) / min5 ≥ 75%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=75.0`, ep_detector.py:158/2337; was 50.0 until 2026-08-22). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
+4. **Extension cap**: `(prev_close − min5) / min5 ≥ 50%` → skip, where `min5 = MIN(close)` over the last ~5 trading days (`MAX_EXTENSION_PCT=50.0`, ep_detector.py:234; raised to 75.0 on 2026-08-22 and **REVERTED to 50.0 on 2026-08-29** — the raise rested on corrupt evidence, #595). [Corrected 2026-07-18 — was "> 1.50× SMA-10", never in code; see #481.]
 5. **Already scored today**: dedup within scan day
 6. **Session RVOL@T** (post-9:30): same primitive as pre-market, but session-anchored. Threshold `MIN_SESSION_RVOL = 1.0`
 
