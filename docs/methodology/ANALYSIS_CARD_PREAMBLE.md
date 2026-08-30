@@ -31,8 +31,26 @@ rate with 1R losers, **the average winner must exceed 4R just to break even.**
 3. **CAPTURE** — of the move that was actually available, how much did we take?
 4. **THE TAIL (P3)** — how many reach **4R+**? Hunt the tail, not the average.
 
-🚫 **NEVER lead with win rate and never rank by it.** It is a descriptive column at most. A 20%
-win rate is fine here; a high win rate built on small wins is a worse outcome, not a better one.
+## ⚖ WIN RATE — WHICH LAYER OWNS IT (operator 2026-08-30)
+
+> *"win rate is not unimportant, but that is where the filters and ranking come in; buy/sell
+> points cannot control winrate."*
+
+**Win rate is a SELECTION measure, not an entry/exit measure.** Which names you take decides how
+often you are right; where you buy and sell decides how much you make when you are. So:
+
+| you are evaluating | is win rate a criterion? |
+|---|---|
+| **filters, ranking, admission, the score** — *which names* | **YES, and a legitimate one.** Judge it in BOTH directions (P14): a filter that lifts win rate by admitting fewer real EPs has failed. |
+| **entry, stop, management, re-entry** — *where you buy and sell* | **NO.** These cannot move it, so ranking tactics by it measures the cohort you happened to feed them, not the tactic. Report it as a descriptive column and rank on expected return, capture and the tail. |
+
+⚠ **The common error is applying the wrong one** — reporting an entry tactic's win rate as though
+the tactic earned it, or judging a selection change purely on expectancy while its recall quietly
+falls. Name the layer you are evaluating before you pick the measure.
+
+A 20% win rate is fine here when the winners are large enough; a high win rate built on small
+wins is a worse outcome, not a better one — **but that is an argument about how to READ win rate,
+never a reason to stop measuring it.**
 
 ## THE FAILURE MODES ARE NOT SYMMETRIC (P14)
 
