@@ -138,6 +138,21 @@ def test_declared_topics_carry_their_findings() -> None:
 # Rulings that kept getting re-derived, and the owner that must still carry each. These are
 # the operator's own words; losing one costs a conversation we have already had.
 _PINNED_RULINGS = {
+    "docs/methodology/ANALYSIS_CARD_PREAMBLE.md": [
+        ("Win rate is a SELECTION measure",
+         "2026-08-30: win rate belongs to filters/ranking/admission - which names you take - and "
+         "NOT to entry/stop/management/re-entry, which cannot move it. My blanket 'never rank by "
+         "win rate' was wrong for selection work; his correction is the load-bearing half."),
+        ("RECALL",
+         "the ranking order starts with recall - how many REAL EPs does it catch at all (P1). "
+         "Dropping this is how an analysis ends up optimising a metric nobody asked for."),
+        ("4R",
+         "THE GOAL's arithmetic: at a ~20% win rate the average winner must exceed 4R just to "
+         "break even, so win rate and reward are ONE target."),
+        ("INVISIBLE",
+         "P14's asymmetry - under-admission leaves no trace, so every instinct pulls toward "
+         "tightening. Report recall AND cost together."),
+    ],
     "docs/setups/delayed_ep_reentry.md": [
         ('NEAR" IS A BEHAVIOUR',
          "2026-08-29: 'near' is deceleration/cessation/consolidation/turn, per stock, per "
