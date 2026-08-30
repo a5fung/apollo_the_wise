@@ -200,7 +200,17 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # trigger (a) — a member edit MUST rebuild market-agent or the prod member list goes stale
       # silently. Must precede the generic tests/* deploy-irrelevant arm below.
       tests/fixtures/must_not_miss_eps.py)    NEED_MARKET=1 ;;
-      tests/*|docs/*|*.md|.apollo_open_tasks.json|.githooks/*) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
+      # 2026-08-29 — the docs/ TREE is now baked into the market-agent image (Dockerfile.market
+      # `COPY docs/ docs/`, added the same day) and read AT RUNTIME by the nightly drift-check
+      # job (health_checks.run_drift_check → scripts/live_rules.py's load_setup_docs, which
+      # globs docs/setups + docs/architecture + docs/analysis + docs/design, plus
+      # docs/decisions + docs/methodology via the gate-provenance registry it reuses). Without
+      # this arm a doc fix lands in git and the deployed drift check keeps reporting the STALE
+      # text until an unrelated deploy happens to rebuild the image — the #533 fixture-
+      # staleness class, now against the check whose whole job is catching staleness. Must
+      # precede the generic docs/* deploy-irrelevant arm this replaces below.
+      docs/*)                                 NEED_MARKET=1 ;;
+      tests/*|*.md|.apollo_open_tasks.json|.githooks/*) ;;  # #221 deploy-irrelevant: tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
       # The two KNOWN market-agent-only runtime yamls keep their narrow scope (the
       # 2026-07-09 incident: the catch-all dragged all 3 services into review-yaml-only
       # deploys; review 7/17 caught the generic arm below re-introducing that via

@@ -4016,6 +4016,34 @@ async def get_safeguard_state(safeguard: str, account_mode: str) -> "Any | None"
             safeguard, account_mode)
 
 
+async def get_all_safeguard_states(conn: Any = None) -> list[Any]:
+    """Every `mi_safeguard_state` row (all safeguards, all account modes) — the bulk-read
+    counterpart to `get_safeguard_state`'s single-PK read. Added for the nightly docs-vs-
+    reality drift check (health_checks.run_drift_check, wrapping scripts/live_rules.py's
+    detection functions): that check needs the WHOLE toggle table in-process, the same table
+    its interactive SSH-based sibling reads via `docker exec apollo-postgres psql`. Read-only;
+    `conn` is injectable (tests, or a caller already holding a connection)."""
+    _sql = ("SELECT safeguard, account_mode, state, last_transition_at "
+            "FROM mi_safeguard_state ORDER BY safeguard, account_mode")
+    if conn is not None:
+        return await conn.fetch(_sql)
+    pool = await get_pool()
+    async with pool.acquire() as acquired:
+        return await acquired.fetch(_sql)
+
+
+async def get_all_strategy_summaries(conn: Any = None) -> list[Any]:
+    """Every `mi_strategies` row, summary columns only — same bulk-read need as
+    `get_all_safeguard_states` (nightly drift check). Read-only; `conn` injectable for tests."""
+    _sql = ("SELECT strategy_id, phase, enabled, live_real_enabled, position_size_multiplier "
+            "FROM mi_strategies ORDER BY strategy_id")
+    if conn is not None:
+        return await conn.fetch(_sql)
+    pool = await get_pool()
+    async with pool.acquire() as acquired:
+        return await acquired.fetch(_sql)
+
+
 async def set_safeguard_state(
     safeguard: str, account_mode: str, state: str, *, bump_on_change: bool = False,
 ) -> "bool | None":

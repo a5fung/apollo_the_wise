@@ -94,6 +94,27 @@ for _gate in preflight_datetime_hygiene preflight_model_registry; do
     fi
 done
 
+# ── Docs-vs-reality drift (2026-08-29) ───────────────────────────────────────
+# Operator: "how do we keep this check up to date and everything in sync?" It did not — the
+# checker ran ONLY when typed by hand, so entry_pipeline.md called a live gate "BUILT OFF" for
+# four weeks and lane2_grouping_v2 ran grade-affecting with no owner doc naming it.
+#
+# WARNS, never blocks, and that is deliberate. It reads PROD, so it fails when the server is
+# unreachable or you are on a plane; blocking a push on network reachability trains people to
+# --no-verify, and a bypassed gate protects nothing. The DRIFT count is what matters: it is
+# reported loudly and the fix is one command away.
+if [ -f scripts/live_rules.py ]; then
+    echo "▶ pre-push: docs-vs-prod drift…"
+    _drift="$("$PY_BIN" scripts/live_rules.py --drift-only 2>/dev/null | grep -c '^  \[DRIFT\]' || true)"
+    if [ "${_drift:-0}" -gt 0 ]; then
+        echo "⚠ pre-push: $_drift doc(s) contradict code or prod — NOT blocking, but fix them:"
+        "$PY_BIN" scripts/live_rules.py --drift-only 2>/dev/null | grep -A 3 '^  \[DRIFT\]' || true
+        echo "  An analysis built on a doc listed above is invalid on arrival."
+    else
+        echo "✓ pre-push: no drift between docs, code and prod."
+    fi
+fi
+
 echo "▶ pre-push: running full test suite (python -m pytest tests/ -q) — mirrors CI…"
 if ! "$PY_BIN" -m pytest tests/ -q; then
     echo "✘ pre-push: test suite FAILED — push blocked (this is exactly what CI would reject)."

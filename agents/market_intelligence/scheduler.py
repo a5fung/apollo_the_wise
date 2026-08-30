@@ -170,7 +170,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
     "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
     # audits / health / methodology
-    "post_eod_audit", "post_nightly_audit", "weekly_system_review",
+    "post_eod_audit", "post_nightly_audit", "weekly_system_review", "drift_check",
     "monthly_backward_check_sweep", "news_quality_drift_check",
     "source_gap_finder", "backup_health_check", "telegram_poll_watchdog",
     "weekly_cleanup",
@@ -3554,6 +3554,33 @@ async def _post_nightly_audit_job():
         logger.error(f"Review escalation failed: {e}", exc_info=True)
 
 
+async def _post_drift_check_job():
+    """Run at 6:02 PM ET, every day (docs rot on weekends too — this checks docs against code
+    and prod state, nothing market-hours-dependent, unlike the mon-fri jobs around it).
+
+    Nightly production twin of `python scripts/live_rules.py --drift-only` (2026-08-29):
+    a runtime toggle flip in mi_safeguard_state, or a doc that stops matching the code it
+    describes, used to sit unnoticed for weeks because the check only ran when someone typed
+    it by hand. Reuses scripts/live_rules.py's detection functions via
+    health_checks.run_drift_check — never a second copy of the rules.
+
+    DRIFT (a doc provably contradicts code/prod) Telegrams every run while it stands, always
+    naming what's NEW since the previous run — a standing unfixed count is noise, a new one is
+    signal. UNVERIFIED (a dated claim nothing can check) is mi_audit_log only, surfaced by
+    _aggregate_drift_findings in the Sunday weekly digest — alerting nightly on something
+    nobody can act on is how an alert gets muted. THE LINE: read-only observability; never
+    writes or flips a toggle.
+    """
+    logger.info("Drift check starting...")
+    try:
+        from agents.market_intelligence.health_checks import run_drift_check
+        result = await run_drift_check()
+        logger.info(f"Drift check: {result}")
+    except Exception as e:
+        logger.error(f"Drift check failed: {e}", exc_info=True)
+        await notify_job_failure("drift_check", str(e))
+
+
 async def _feed_anticipation_sip(*, ticker, gap_day, state, entry_tactic=None,
                                entry_price=None, stop_price=None,
                                base_run=None, rmv_5d=None) -> None:
@@ -6390,6 +6417,18 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_post_nightly_audit_job, "post_nightly_audit"),
         CronTrigger(hour=17, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
         id="post_nightly_audit",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
+    # Docs-vs-reality drift check: 6:02 PM ET, EVERY DAY (no day_of_week — this compares docs
+    # against code/prod state, nothing market-hours-dependent, and docs rot on weekends same as
+    # weekdays; deliberately NOT copying the mon-fri trading-day guard other jobs here use).
+    # Nightly production twin of `python scripts/live_rules.py --drift-only` (2026-08-29).
+    _scheduler.add_job(
+        audit_wrap(_post_drift_check_job, "drift_check"),
+        CronTrigger(hour=18, minute=2, timezone="America/New_York"),
+        id="drift_check",
         replace_existing=True,
         misfire_grace_time=1800,
     )

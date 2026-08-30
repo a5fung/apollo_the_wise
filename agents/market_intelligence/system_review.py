@@ -134,6 +134,7 @@ Rules:
 - The `pending_reviews` field (data-gated "Reviews ready") is surfaced separately as a deterministic appendix below your output (#412 — the titles are actionable and must not be truncated). Do NOT render a Reviews-ready section yourself.
 - When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count> (last seen <last_seen>, <days_ago>d ago)`. **Use `days_ago` to judge live-vs-resolved: if a type's `days_ago` is STALE relative to the 7-day window (it stopped firing days back), label it LIKELY-RESOLVED and do NOT treat it as a live concern — a mid-week hotfix shows up exactly as a count that went silent (e.g. ep_scan_failed last 5/26). Only call a type live-concerning when `days_ago` is small (fired in the last day or two).** These are non-fatal errors caught by try/except in jobs that didn't crash hard. If `audit_errors.total == 0`, omit the section entirely.
 - When `strategy_promotions.checks` includes a strategy with `eligible=false` AND its top blocking_reason references a 0-count metric (e.g. "have 0"), the line MUST include the diagnostic context from `metrics.cohort_breakdown` if present (e.g. `shadow_orb_5m: have 0 paired closed (1 shadow vs 3 live, zero overlap)`). The 0-count number alone forces a follow-up question; the breakdown answers it inline.
+- When `drift_check.unverified_n > 0`, append a "📄 *Docs drift (unverified):*" section after 🔁 listing up to 3 entries from `drift_check.unverified_claims` as `<where>: <words>`. These are dated doc claims the nightly drift check could not mechanically confirm or refute — NOT bugs, NOT errors; do not fold them into ⚠️ *Anomalies to verify* or 🔴 *Silent failures*. `drift_check.drift_n` (contradictions the nightly check could prove) already Telegrams separately every night it is non-zero — do NOT restate it here, cite `unverified_n` only. If `drift_check` is missing or `unverified_n == 0`, omit the section entirely.
 """
 
 
@@ -318,6 +319,7 @@ async def _gather_and_aggregate(
     news_quality = await _aggregate_news_source_quality(window_days)
     judge_weekly = await _aggregate_judge_decisions(window_days)
     mfe_capture = await _aggregate_mfe_capture(window_start)
+    drift_check = await _aggregate_drift_findings(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -342,6 +344,7 @@ async def _gather_and_aggregate(
         "news_source_quality": news_quality,
         "judge_weekly": judge_weekly,
         "mfe_capture": mfe_capture,
+        "drift_check": drift_check,
     }
 
 
@@ -1113,6 +1116,34 @@ async def _aggregate_audit_errors(days: int) -> dict:
     return {
         "total": sum(merged.values()),
         "top_types": [_entry(t, c) for t, c in top5],
+    }
+
+
+async def _aggregate_drift_findings(days: int) -> dict:
+    """Docs-vs-code/prod drift check (scheduler._post_drift_check_job, nightly, 2026-08-29) —
+    the ONLY surface for its UNVERIFIED findings (a dated doc claim nothing can check). DRIFT
+    already Telegrams every night it stands (health_checks.run_drift_check); repeating that
+    count here too would just be noise. This is deliberately its own light aggregator rather
+    than routed through `_aggregate_audit_errors`'s %error%/%_failed% glob — an UNVERIFIED
+    claim is not a job failure, and mislabeling it that way would be exactly the kind of
+    imprecise event-typing this whole check exists to catch.
+
+    Reads the LATEST persisted snapshot only (event_type=drift_check_snapshot, written every
+    run by run_drift_check) — the run-over-run diff logic lives in that job, not here.
+    """
+    rows = await get_audit_log(limit=1, since_hours=days * 24, event_type="drift_check_snapshot")
+    if not rows:
+        return {}
+    try:
+        detail = json.loads(rows[0].get("detail") or "{}")
+    except Exception:  # loud-ok: a garbled snapshot just reads as "nothing to report"
+        return {}
+    return {
+        "checked_at": rows[0].get("created_at"),
+        "drift_n": detail.get("drift_n", 0),
+        "unverified_n": detail.get("unverified_n", 0),
+        "prod_reachable": detail.get("prod_reachable"),
+        "unverified_claims": detail.get("unverified_claims", [])[:5],
     }
 
 

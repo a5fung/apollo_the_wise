@@ -59,8 +59,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import statistics
+import sys
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -3866,5 +3869,192 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
     if conn is not None:
         return await _run(conn)
     pool = await _gp()
+    async with pool.acquire() as acquired:
+        return await _run(acquired)
+
+
+# ═══════════════════════════ DOCS-VS-REALITY DRIFT CHECK (2026-08-29) ═══════════════════════
+#
+# Nightly production twin of `python scripts/live_rules.py --drift-only`. Operator: *"how do we
+# keep this check up to date and everything in sync?"* — until now the answer was "we don't": it
+# only ran when someone typed it by hand, so `docs/architecture/entry_pipeline.md` called the
+# #490 real-time gap re-check "BUILT OFF" for FOUR WEEKS after it went live globally, and
+# `lane2_grouping_v2` ran ON and grade-affecting (feeds the judge's active_narratives, which sets
+# alert tiers, which drives real trades) with NO owner document naming it at all. THE LINE: this
+# is observability only — it changes no strategy/criterion/safeguard/trade state and never
+# writes or flips a toggle, only reads.
+#
+# Reuses scripts/live_rules.py's detection functions DIRECTLY (collect_code_facts,
+# discover_runtime_toggles, load_setup_docs, detect_drift, Resolver, ProdState) — never a second
+# copy of the rules; that module's own docstring names the three failures a second copy would
+# reintroduce ("a genuinely funny way to fail," per the operator brief for this job).
+#
+# SEVERITY IS NOT UNIFORM (CLAUDE.md audit L1/L2/L3 tiering, same principle):
+#   DRIFT      — a doc provably contradicts code or prod. Actionable → Telegram EVERY run while
+#                 it stands (this class rots for WEEKS unmentioned — see the #490 example above
+#                 — so a once-ever announcement would let it rot again), but the message always
+#                 says WHAT'S NEW since the previous run, not just the standing count: "a standing
+#                 count of 2 that nobody has fixed is noise, while '1 NEW drift since yesterday'
+#                 is a signal" (operator brief). The previous run's fingerprints are persisted in
+#                 mi_audit_log (event_type=_DRIFT_CHECK_EVENT) so this diff is possible.
+#   UNVERIFIED — a dated claim nothing can check. mi_audit_log only; read by
+#                 _aggregate_drift_findings (system_review.py) for the Sunday weekly digest.
+#                 Alerting nightly on something nobody can act on is how an alert gets muted —
+#                 this repo has been bitten by exactly that shape before.
+#
+# PROD READ, done natively instead of over SSH: the interactive tool SSHes OUT to the server
+# from a laptop; this job already runs INSIDE apollo-market, ON that server — SSH-ing to itself
+# would need an ssh client + keys this slim image does not have, for data already reachable
+# natively. So the "prod" snapshot here is read directly: mi_safeguard_state + mi_strategies via
+# the existing DB pool (the SAME rows the SSH path reads through `docker exec apollo-postgres
+# psql`), and rule env vars off THIS process's os.environ. `deployed_commit` /
+# `deployed_constants` stay empty — from inside the deployed container the checkout on disk IS
+# the deployed code, so there is nothing to cross-check it against; Resolver already degrades
+# that gap honestly ("local; not re-checked on server"), never silently. apollo-execution shares
+# the SAME env_file (docker-compose.prod.yml); its only per-container overrides
+# (POSTGRES_HOST/REDIS_HOST/SERVICE_ROLE/EXECUTION_*/ALPACA_*) are infra plumbing or secrets
+# live_rules._SECRET_TOKENS already excludes — none are rule constants this check tracks, so
+# apollo-market's own env is a sound stand-in for "prod env." If the DB read itself fails, prod
+# is reported UNREACHABLE — never guessed — and detect_drift skips every prod-dependent rule
+# instead of manufacturing false drift (same contract as the SSH path's own failure mode).
+
+_DRIFT_CHECK_EVENT = "drift_check_snapshot"
+
+
+def _drift_fingerprint(row: Any) -> str:
+    """A DriftRow identity that survives an unrelated doc edit shifting line numbers below it —
+    `where` is `file:line`; keying on the line would fake 'N NEW drift' on every reflow, which is
+    exactly the noise that trains an operator to stop reading the alert."""
+    path = row.where.rsplit(":", 1)[0] if ":" in row.where else row.where
+    return f"{row.rule}|{row.severity}|{path}|{row.claim.strip()}|{row.actual.strip()}"
+
+
+async def run_drift_check(conn=None) -> dict[str, Any]:
+    """Nightly docs-vs-code/prod drift check — see the module section header above for the full
+    design (severity split, in-container prod read, THE LINE). Returns {"drift_n",
+    "new_drift_n", "unverified_n", "prod_reachable", "error", "spoke"}."""
+    out: dict[str, Any] = {"drift_n": 0, "new_drift_n": 0, "unverified_n": 0,
+                           "prod_reachable": False, "error": None, "spoke": False}
+
+    async def _run(c):
+        repo = Path(__file__).resolve().parent.parent.parent
+        if str(repo) not in sys.path:
+            sys.path.insert(0, str(repo))
+        try:
+            from scripts import live_rules
+        except Exception as e:  # loud-ok: an import failure IS the finding here
+            out["error"] = f"live_rules import failed: {type(e).__name__}: {str(e)[:200]}"
+            logger.error(f"drift check: {out['error']}")
+            await log_audit_event("drift_check_error", out["error"], "")
+            return out
+
+        code = live_rules.collect_code_facts(repo)
+        toggles = live_rules.discover_runtime_toggles(repo)
+        env_vars = [f.env_var for f in code.values() if f.kind == "env"] + \
+                   [t.env_var for t in toggles.values() if t.env_var]
+
+        # In-process prod snapshot (see header above for why this replaces the SSH path).
+        prod = live_rules.ProdState(reachable=False)
+        try:
+            from agents.market_intelligence.db import (
+                get_all_safeguard_states, get_all_strategy_summaries)
+            toggle_rows = await get_all_safeguard_states(c)
+            strat_rows = await get_all_strategy_summaries(c)
+            prod = live_rules.ProdState(reachable=True)
+            prod.env = {"apollo-market (in-process)": {v: os.environ.get(v) for v in env_vars}}
+            prod.toggles = [
+                {"safeguard": r["safeguard"], "account_mode": r["account_mode"],
+                 "state": r["state"],
+                 "last_transition_at": r["last_transition_at"].isoformat()
+                                        if r["last_transition_at"] else ""}
+                for r in toggle_rows]
+            prod.strategies = [
+                {"strategy_id": r["strategy_id"], "phase": r["phase"],
+                 "enabled": r["enabled"], "live_real_enabled": r["live_real_enabled"],
+                 "position_size_multiplier": str(r["position_size_multiplier"])}
+                for r in strat_rows]
+        except Exception as e:
+            prod = live_rules.ProdState(error=f"{type(e).__name__}: {str(e)[:150]}")
+            logger.warning(f"drift check: prod snapshot unavailable — {prod.error}")
+
+        out["prod_reachable"] = prod.reachable
+        res = live_rules.Resolver(code, toggles, prod)
+        docs = live_rules.load_setup_docs(repo)
+        if not docs:
+            # Never let "no docs found" read as "no drift found" — a missing docs/ tree (a
+            # dropped `COPY docs/ docs/`, a renamed docs/setups/, a bad `repo` resolution) would
+            # otherwise silently report 0 DRIFT / 0 UNVERIFIED forever, which is exactly the
+            # false-clean failure this whole check exists to prevent.
+            out["error"] = f"load_setup_docs found ZERO doc files under {repo} — refusing to report a clean run"
+            logger.error(f"drift check: {out['error']}")
+            await log_audit_event("drift_check_error", out["error"], "")
+            return out
+        rows = live_rules.detect_drift(docs, res)
+
+        drift_rows = [r for r in rows if r.severity == "DRIFT"]
+        unverified_rows = [r for r in rows if r.severity == "UNVERIFIED"]
+        out["drift_n"] = len(drift_rows)
+        out["unverified_n"] = len(unverified_rows)
+
+        current_fps = {_drift_fingerprint(r) for r in drift_rows}
+        prev = await c.fetchrow(
+            "SELECT detail FROM mi_audit_log WHERE event_type = $1 "
+            "ORDER BY created_at DESC LIMIT 1", _DRIFT_CHECK_EVENT)
+        prev_fps: set = set()
+        if prev and prev["detail"]:
+            try:
+                prev_fps = set(json.loads(prev["detail"]).get("drift_fingerprints", []))
+            except Exception:  # loud-ok: a garbled prior snapshot just reads as "all new"
+                prev_fps = set()
+        new_fps = current_fps - prev_fps
+        new_rows = [r for r in drift_rows if _drift_fingerprint(r) in new_fps]
+        out["new_drift_n"] = len(new_rows)
+
+        if drift_rows:
+            standing_rows = [r for r in drift_rows if _drift_fingerprint(r) not in new_fps]
+            lines = [f"🔴 *DOCS-VS-REALITY DRIFT* — {out['drift_n']} finding(s), "
+                     f"{out['new_drift_n']} NEW since last night:", "```"]
+            for r in sorted(new_rows, key=lambda r: r.where)[:10]:
+                lines.append(f"[NEW] {r.where}")
+                lines.append(f"  {r.words}")
+            if standing_rows:
+                lines.append(f"+ {len(standing_rows)} standing (already known, not yet fixed)")
+            lines.append("```")
+            lines.append("Full report: `python scripts/live_rules.py --drift-only`")
+            from agents.market_intelligence.briefing import send_telegram_message
+            out["spoke"] = bool(await send_telegram_message("\n".join(lines)))
+            if not out["spoke"]:
+                # send_telegram_message never raises — it swallows a delivery failure (missing
+                # config, network error, a 400 on a genuinely malformed payload) and returns
+                # False. Without this line a failed send on the one severity that's supposed to
+                # wake someone is invisible everywhere except a single log line nobody tails.
+                logger.error(
+                    f"drift check: DRIFT Telegram FAILED to send ({out['drift_n']} finding(s), "
+                    f"{out['new_drift_n']} new) — check TELEGRAM_BOT_TOKEN / "
+                    f"TELEGRAM_ALLOWED_USER_IDS; the finding is still in mi_audit_log")
+
+        # Persist EVERY run, drift or not — this snapshot IS the "previous run" the next run
+        # diffs against, and it is also what _aggregate_drift_findings (system_review.py) reads
+        # for the Sunday weekly digest's UNVERIFIED line. Includes `spoke` so a silent send
+        # failure is visible in the row itself, not just a log line.
+        detail = json.dumps({
+            "drift_n": out["drift_n"], "unverified_n": out["unverified_n"],
+            "new_drift_n": out["new_drift_n"], "prod_reachable": prod.reachable,
+            "spoke": out["spoke"],
+            "drift_fingerprints": sorted(current_fps),
+            "drift_claims": [{"where": r.where, "words": r.words} for r in drift_rows[:15]],
+            "unverified_claims": [{"where": r.where, "words": r.words}
+                                  for r in unverified_rows[:15]],
+        })
+        summary = (f"{out['drift_n']} DRIFT ({out['new_drift_n']} new), "
+                  f"{out['unverified_n']} UNVERIFIED"
+                  + ("" if prod.reachable else " — prod snapshot unavailable")
+                  + ("" if out["spoke"] or not drift_rows else " — TELEGRAM SEND FAILED"))
+        await log_audit_event(_DRIFT_CHECK_EVENT, summary, detail)
+        return out
+
+    if conn is not None:
+        return await _run(conn)
+    pool = await get_pool()
     async with pool.acquire() as acquired:
         return await _run(acquired)

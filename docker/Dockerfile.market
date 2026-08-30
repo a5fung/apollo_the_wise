@@ -32,6 +32,14 @@ RUN test -f integrations.yaml && test -f data_gated_reviews.yaml && test -f them
 # so the #426 blocking-count reflects the LIVE file (a COPY snapshot went stale on
 # PLAN-only sessions that didn't rebuild the image).
 COPY scripts/ scripts/
+# 2026-08-29 — the nightly drift check (health_checks.run_drift_check, wrapping
+# scripts/live_rules.py's detection functions) reads docs/setups, docs/architecture,
+# docs/analysis, docs/design (load_setup_docs) plus docs/decisions + docs/methodology
+# (via the gate-provenance registry it reuses) AT RUNTIME to compare prose against code/prod.
+# Without this the container has no docs/ at all — load_setup_docs would silently see zero
+# files and detect_drift would report a false "no drift" every night. scripts/deploy.sh's
+# scope-drift guard has a matching docs/* case arm so a doc-only edit still rebuilds this image.
+COPY docs/ docs/
 # #533 flip monitor (2026-08-22): the must-not-miss fixture is READ AT RUNTIME by
 # health_checks.run_catalyst_lattice_monitor (revert trigger (a): a labelled real EP graded
 # routine). Importable as tests.fixtures.must_not_miss_eps via PYTHONPATH=/app namespace

@@ -147,7 +147,11 @@ def test_fixture_ships_to_prod_so_trigger_a_cannot_be_dark():
         in dockerfile
     deploy = (_REPO / "scripts" / "deploy.sh").read_text()
     arm = "tests/fixtures/must_not_miss_eps.py)"
-    generic = "tests/*|docs/*"
+    # 2026-08-29: docs/* got its OWN preceding arm (the drift-check job now reads docs/ at
+    # runtime too), so the generic deploy-irrelevant arm no longer combines tests/* with docs/*
+    # on one line — the invariant this test pins (fixture arm precedes the generic tests/* arm)
+    # is unchanged, only the literal text of that arm.
+    generic = "tests/*|*.md"
     assert arm in deploy and deploy.index(arm) < deploy.index(generic), (
         "the fixture's NEED_MARKET arm must precede the deploy-irrelevant tests/* arm")
 
