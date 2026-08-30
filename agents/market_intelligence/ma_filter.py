@@ -434,6 +434,33 @@ async def should_log_mna_acquirer_skipped(ticker: str) -> bool:
         return True  # fail-open
 
 
+async def should_log_mna_veto(ticker: str) -> bool:
+    """Trading-day dedup for `mna_keyword_vetoed_by_classifier` (#516 telemetry hygiene,
+    2026-08-30). Same shape as `should_log_mna_acquirer_skipped` — this event has no
+    `detector_tag` (is_likely_ma doesn't know its caller), so keying is just (ticker, ET
+    day). Found empirically: TEM 2026-08-19 logged twice, 9 minutes apart (two scan ticks
+    before the underlying candidate resolved) — this telemetry stream never had the dedup
+    the #89/#284 siblings got. Audit-noise-only bug; does not touch the filter verdict
+    (is_likely_ma's return value is computed identically either way).
+    Fail-open: any DB error returns True (better to over-log than drop)."""
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            prior = await conn.fetchrow("""
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'mna_keyword_vetoed_by_classifier'
+                  AND summary LIKE $1
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      = (NOW() AT TIME ZONE 'America/New_York')::date
+                LIMIT 1
+            """, f"{ticker}: %")
+        return prior is None
+    except Exception as e:
+        logger.debug(f"mna_veto audit dedup check failed (non-critical): {e}")
+        return True  # fail-open
+
+
 _POSSESSIVE_RE = re.compile(r"\b([A-Z][a-zA-Z]+)['’]s\b")
 # Abbreviation-safe split: requires 2+ lowercase/digit chars before the
 # terminator and a capital letter following, so "U.S. acquisition" / "a.m."
@@ -702,6 +729,12 @@ async def is_likely_ma(
                 "source": "claude_classifier",
                 "ticker": ticker,
                 "catalyst_quality": catalyst_quality,
+                # #516 DoD-3: match_path uniform across all sources (previously only the
+                # polygon_news sub-paths set it) — scripts/_b88_mna_filter_path_b_fp_rate.py
+                # buckets anything without this key as "unknown"; that script has no
+                # fallback substring rule for keyword_in_text_N, so those rows were
+                # permanently unattributable even though `source` always identified them.
+                "match_path": "claude_classifier",
             }
 
     # ── #516 GUARD D — a keyword match may NOT overrule a CONTRARY classification ──────────
@@ -741,6 +774,7 @@ async def is_likely_ma(
                     "source": f"keyword_in_text_{idx}",
                     "ticker": ticker,
                     "matched_keyword": kw,
+                    "match_path": f"keyword_in_text_{idx}",  # #516 DoD-3, see claude_classifier branch above
                 }
 
     # Telemetry for the guard above: record ONLY when it actually changed the outcome — i.e. a
@@ -751,14 +785,15 @@ async def is_likely_ma(
         if _would_have and not keyword_context_is_nonbinding(
                 catalyst_texts[_would_have[1]], _would_have[0]):
             try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event(
-                    "mna_keyword_vetoed_by_classifier",
-                    f"{ticker}: kept — classifier said '{catalyst_quality}', "
-                    f"keyword '{_would_have[0]}' did not override it (#516)",
-                    json.dumps({"ticker": ticker, "catalyst_quality": catalyst_quality,
-                                "matched_keyword": _would_have[0]}),
-                )
+                if await should_log_mna_veto(ticker):
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "mna_keyword_vetoed_by_classifier",
+                        f"{ticker}: kept — classifier said '{catalyst_quality}', "
+                        f"keyword '{_would_have[0]}' did not override it (#516)",
+                        json.dumps({"ticker": ticker, "catalyst_quality": catalyst_quality,
+                                    "matched_keyword": _would_have[0]}),
+                    )
             except Exception as e:  # loud-ok: telemetry must never change the filter verdict
                 logger.warning(f"{ticker}: #516 veto telemetry failed: {e}")
 

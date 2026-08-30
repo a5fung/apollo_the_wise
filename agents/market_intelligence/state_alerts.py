@@ -26,7 +26,7 @@ import math
 from datetime import date, timedelta
 
 from agents.market_intelligence.collector import et_today
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import get_pool, log_audit_event, latest_complete_score_date
 
 logger = logging.getLogger(__name__)
 
@@ -149,16 +149,18 @@ async def _check_theme_rs_clusters(today: date, today_themes: list[dict]) -> lis
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # $1::date casts are LOAD-BEARING (see _check_rs_deterioration).
-        prior_date_row = await conn.fetchrow("""
-            SELECT DISTINCT score_date FROM mi_stock_scores
-            WHERE score_date <= $1::date - INTERVAL '12 days'
-              AND score_date >= $1::date - INTERVAL '18 days'
-            ORDER BY score_date DESC LIMIT 1
-        """, today)
-        if not prior_date_row:
+        # #554: was a raw DISTINCT/ORDER BY over the 12-18-day band (no
+        # completeness check) — a stray single-row day inside that band would
+        # become "prior_date" and compare today's cohort to one ticker.
+        # Python-side date arithmetic here (not `$1::date - INTERVAL`) also
+        # sidesteps the type-inference footgun the old comment warned about.
+        prior_date = await latest_complete_score_date(
+            conn,
+            on_or_before=today - timedelta(days=12),
+            on_or_after=today - timedelta(days=18),
+        )
+        if prior_date is None:
             return []
-        prior_date = prior_date_row["score_date"]
 
         today_scores = await conn.fetch("""
             SELECT ticker, rs_composite FROM mi_stock_scores
@@ -228,18 +230,17 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
     alerts = []
 
     async with pool.acquire() as conn:
-        # $1::date casts are LOAD-BEARING: bare `$1 - INTERVAL` lets Postgres
-        # type-infer $1 as interval → `date <= interval` prepare error
-        # (caught 2026-06-10: RS-deterioration check silently dead).
-        prior_date_row = await conn.fetchrow("""
-            SELECT DISTINCT score_date FROM mi_stock_scores
-            WHERE score_date <= $1::date - INTERVAL '12 days'
-              AND score_date >= $1::date - INTERVAL '18 days'
-            ORDER BY score_date DESC LIMIT 1
-        """, today)
-        if not prior_date_row:
+        # #554: was a raw DISTINCT/ORDER BY over the 12-18-day band — same
+        # stray-day exposure as _check_theme_rs_clusters above. Python-side
+        # date arithmetic avoids the `$1::date - INTERVAL` type-inference trap
+        # the old comment warned about (caught 2026-06-10) without needing the cast.
+        prior_date = await latest_complete_score_date(
+            conn,
+            on_or_before=today - timedelta(days=12),
+            on_or_after=today - timedelta(days=18),
+        )
+        if prior_date is None:
             return []
-        prior_date = prior_date_row["score_date"]
 
         tracked = await conn.fetch(
             "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE AND (quote_type IS NULL OR quote_type = 'EQUITY')"
@@ -361,14 +362,11 @@ async def _check_ma_breaks(today: date) -> list[dict]:
     alerts = []
 
     async with pool.acquire() as conn:
-        prior_date_row = await conn.fetchrow("""
-            SELECT DISTINCT score_date FROM mi_stock_scores
-            WHERE score_date < $1
-            ORDER BY score_date DESC LIMIT 1
-        """, today)
-        if not prior_date_row:
+        # #554: was a raw DISTINCT/ORDER BY — a stray single-row day here
+        # would become "yesterday" and compare it against a cohort of one.
+        prior_date = await latest_complete_score_date(conn, on_or_before=today - timedelta(days=1))
+        if prior_date is None:
             return []
-        prior_date = prior_date_row["score_date"]
 
         tracked = await conn.fetch(
             "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE AND (quote_type IS NULL OR quote_type = 'EQUITY')"

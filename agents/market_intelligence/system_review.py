@@ -1712,6 +1712,12 @@ def _format_pending_reviews_section(pending: dict) -> str:
                 detail = (" `(" + ", ".join(f"{v}={n}" for v, n in rows) + ")`") if rows else ""
                 line += (f"\n    ⚠ _pop-check:_ `{col_tag}` not filtered{detail} — "
                          f"confirm this cohort matches the question.")
+        # #573 2026-08-30 — a predicate that reads a table but has no declared population
+        # (`discriminates_on` missing from its YAML entry) must not read as "checked, clean" just
+        # because `population_mismatch` is empty — that silence is exactly the defect #573 fixes.
+        if flags.get("population_undeclared"):
+            line += ("\n    ⚠ _pop-check:_ population not yet declared "
+                     "(`discriminates_on` missing) — coverage unknown, confirm by hand.")
         lines.append(line)
     if overflow:
         lines.append(f"_…and {len(overflow)} more ripe, oldest-first above. "

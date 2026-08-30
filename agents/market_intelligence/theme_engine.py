@@ -67,7 +67,7 @@ from agents.market_intelligence.db import (
     get_operator_protected_set, get_ticker_breadth_above_sma20,
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
     get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
-    get_seeded_assignment_tickers,
+    get_seeded_assignment_tickers, latest_complete_score_date_sql,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
 # Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
@@ -2408,11 +2408,16 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
         """, [t["name"] for t in themes], today)
         prior_desc_map = {r["name"]: dict(r) for r in prior_desc_rows}
         # Batch the RS lookup — ONE query for all members across all cohorts, not N+1 per theme.
+        # #554: score_date was raw MAX(score_date) — could pick a stray single-row day
+        # (score_single_ticker's on-demand write on a non-trading day) and silently zero
+        # out rs_avg for every promoting cohort. Same single round trip, just a
+        # completeness-checked subquery — keeps this call's position/count in the
+        # THREE-conn.fetch sequence test_theme_birth_gate.py pins.
         _all_members = list({tk for t in themes for tk in t["tickers"]})
-        _rs_rows = await conn.fetch("""
+        _rs_rows = await conn.fetch(f"""
             SELECT ticker, rs_composite FROM mi_stock_scores
             WHERE ticker = ANY($1)
-              AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+              AND score_date = {latest_complete_score_date_sql()}
         """, _all_members)
         _rs_by_tk = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
         # ── Phase-1 BIRTH GATE on the promote path (mode observe|on). This is
@@ -2591,9 +2596,11 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
                    "description": cand.get("thesis")}]
         await _canonicalize_theme_names(conn, themes, today)   # converge to a live name if the set exists
         t = themes[0]
-        _rs_rows = await conn.fetch("""
+        # #554: same stray-day fix as promote_shadow_themes above — single round
+        # trip preserved (this is conn.fetch call #1 of the operator-promote path).
+        _rs_rows = await conn.fetch(f"""
             SELECT ticker, rs_composite FROM mi_stock_scores
-            WHERE ticker = ANY($1) AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            WHERE ticker = ANY($1) AND score_date = {latest_complete_score_date_sql()}
         """, t["tickers"])
         # #407: the dict-then-filter was redundant — the query above is already
         # `WHERE ticker = ANY($1)` with these exact tickers, so every returned row is a member

@@ -2,16 +2,17 @@
 import asyncio
 
 async def find_cefs():
-    from agents.market_intelligence.db import get_pool, initialize_schema
+    from agents.market_intelligence.db import get_pool, initialize_schema, latest_complete_score_date_sql
     await initialize_schema()
     pool = await get_pool()
 
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        # #554: was raw MAX(score_date) — could pick a stray single-row day.
+        rows = await conn.fetch(f"""
             SELECT s.ticker, s.rs_composite, s.close
             FROM mi_stock_scores s
             JOIN mi_tracked_stocks t ON t.ticker = s.ticker
-            WHERE s.score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            WHERE s.score_date = {latest_complete_score_date_sql()}
             AND t.active = TRUE AND t.quote_type = 'EQUITY'
             AND s.rs_composite >= 50
             ORDER BY s.rs_composite DESC

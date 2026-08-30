@@ -98,3 +98,89 @@ def test_the_veto_is_only_recorded_when_it_CHANGED_something():
     src = inspect.getsource(is_likely_ma)
     assert "_would_have = matches_mna_in_any(catalyst_texts)" in src, (
         "the veto now logs without checking a keyword would actually have matched")
+
+
+# ── 2026-08-30 additions — DoD-3 (match_path) + a real WEN-adjacent dedup bug found live ──────
+
+def test_match_path_is_set_on_every_source_not_just_polygon():
+    """DoD-3: `detail.match_path` used to be set on only the two polygon_news sub-paths.
+    scripts/_b88_mna_filter_path_b_fp_rate.py buckets anything missing it as 'unknown' with
+    no fallback rule for keyword_in_text_N, which is exactly how the '70% unknown' reading
+    happened. `source` always identified every row (confirmed in docs/analysis/
+    516_ma_filter_false_positives_2026-08-08.md) — this just makes the same fact queryable
+    from the JSON `detail` blob the script actually parses."""
+    fired, meta = _run(is_likely_ma("Y", catalyst_quality="mna",
+                                    catalyst_texts=["definitive merger agreement to acquire Y"],
+                                    check_polygon=False))
+    assert fired is True and meta["match_path"] == "claude_classifier"
+
+    fired, meta = _run(is_likely_ma("SOUN2", catalyst_quality=None,
+                                    catalyst_texts=_KEYWORD_TEXT, check_polygon=False))
+    assert fired is True and meta["match_path"] == "keyword_in_text_0"
+
+
+def test_CLRO_match_path_still_identifies_the_keyword_path():
+    """Same CLRO case as above, checking the new field doesn't disturb the existing one."""
+    fired, meta = _run(is_likely_ma("CLRO", catalyst_quality=None,
+                                    catalyst_texts=["Announces Entry into Merger Agreement"],
+                                    check_polygon=False))
+    assert fired is True
+    assert meta["match_path"].startswith("keyword_in_text")
+
+
+def test_veto_telemetry_is_deduped_per_ticker_per_day():
+    """Found live 2026-08-19: TEM logged `mna_keyword_vetoed_by_classifier` twice, 9 minutes
+    apart, on the same trading day — this telemetry stream never got the (ticker, day) dedup
+    its #89/#284 siblings have. Audit-noise-only: the filter's return value is identical
+    whether or not the row gets written, so this is plumbing, not a criteria change."""
+    import inspect
+    from agents.market_intelligence import ma_filter
+    src = inspect.getsource(ma_filter.is_likely_ma)
+    assert "should_log_mna_veto(ticker)" in src, (
+        "the veto write is no longer gated by should_log_mna_veto — TEM-class double-logging "
+        "is back")
+
+
+def test_should_log_mna_veto_dedups_per_ticker_per_ET_day(monkeypatch):
+    """Direct unit test of the new dedup helper's SQL shape: a prior same-day row -> False."""
+    from agents.market_intelligence import ma_filter
+
+    class _FakeConn:
+        def __init__(self, prior):
+            self._prior = prior
+
+        async def fetchrow(self, query, *args):
+            assert "mna_keyword_vetoed_by_classifier" in query
+            assert args[0] == "TEM: %"
+            return self._prior
+
+    class _FakeAcquire:
+        def __init__(self, conn):
+            self._conn = conn
+
+        async def __aenter__(self):
+            return self._conn
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _FakePool:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def acquire(self):
+            return _FakeAcquire(self._conn)
+
+    async def _get_pool_no_prior():
+        return _FakePool(_FakeConn(None))
+
+    async def _get_pool_has_prior():
+        return _FakePool(_FakeConn({"1": 1}))
+
+    import agents.market_intelligence.db as db_mod
+
+    monkeypatch.setattr(db_mod, "get_pool", _get_pool_no_prior)
+    assert _run(ma_filter.should_log_mna_veto("TEM")) is True
+
+    monkeypatch.setattr(db_mod, "get_pool", _get_pool_has_prior)
+    assert _run(ma_filter.should_log_mna_veto("TEM")) is False

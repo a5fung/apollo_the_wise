@@ -55,9 +55,14 @@ def test_a_real_table_read_is_NOT_date_fire():
 def test_unfiltered_discriminating_column_is_flagged():
     """stop_too_wide_outcome_cohort's original bug (#517 case 5): mi_live_trades has
     `signal_type` and the predicate never filtered on it, so MAGNA53's and 9M Day 2's rejections
-    both counted toward one MAGNA53 question."""
+    both counted toward one MAGNA53 question.
+
+    #573 (2026-08-30): the discriminating column now comes from the entry's OWN declared
+    `discriminates_on:`, not a hand-maintained global dict — declaring is what this worked
+    example is pinning."""
     sql = "SELECT COUNT(*) FROM mi_live_trades WHERE skip_reason LIKE 'setup:stop_too_wide%'"
-    mismatch = dgr.find_population_mismatch(sql)
+    declared = ["mi_live_trades.signal_type", "mi_live_trades.account_mode"]
+    mismatch = dgr.find_population_mismatch(sql, declared)
     assert "mi_live_trades.signal_type" in mismatch
     assert "mi_live_trades.account_mode" in mismatch
 
@@ -66,24 +71,101 @@ def test_filtered_discriminating_column_is_NOT_flagged():
     """The corrected predicate (signal_type filtered) must not re-flag on that column."""
     sql = ("SELECT COUNT(*) FROM mi_live_trades WHERE skip_reason LIKE 'setup:stop_too_wide%' "
            "AND signal_type = 'magna53'")
-    mismatch = dgr.find_population_mismatch(sql)
+    declared = ["mi_live_trades.signal_type", "mi_live_trades.account_mode"]
+    mismatch = dgr.find_population_mismatch(sql, declared)
     assert "mi_live_trades.signal_type" not in mismatch
     # account_mode is still unfiltered — the rule flags per-column, not per-table
     assert "mi_live_trades.account_mode" in mismatch
 
 
-def test_a_table_with_no_discriminating_column_is_never_flagged():
+def test_no_declaration_yields_no_mismatch_but_IS_flagged_undeclared():
+    """#573: a predicate with nothing declared must not read as "checked, clean" — an empty
+    `population_mismatch` and a True `population_undeclared` are two DIFFERENT signals now,
+    replacing the old silent-dict-miss behaviour (a table absent from the hand dict used to
+    return [] with no other signal at all — exactly the silent degradation #573 fixes)."""
     sql = "SELECT COUNT(*) FROM mi_audit_log WHERE event_type = 'entry_order_rejected'"
-    assert dgr.find_population_mismatch(sql) == []
+    assert dgr.find_population_mismatch(sql, None) == []
+    assert dgr.is_population_declaration_missing(sql, None) is True
+
+
+def test_explicit_empty_declaration_is_reviewed_clean_not_undeclared():
+    """`discriminates_on: []` is a real declaration ("reviewed: no split applies") — distinct
+    from never having declared at all. Must not be flagged undeclared."""
+    sql = "SELECT COUNT(*) FROM mi_audit_log WHERE event_type = 'entry_order_rejected'"
+    assert dgr.find_population_mismatch(sql, []) == []
+    assert dgr.is_population_declaration_missing(sql, []) is False
 
 
 def test_count_distinct_is_exempted():
     """Verified against 3 real entries 2026-08-17 (drawdown_breaker_promotion,
     live_cutover_decision, rt_admission_recut_post_2r_exits): COUNT(DISTINCT <date>) already
     collapses across whatever category would otherwise fan the count out, so an unfiltered
-    signal_type/account_mode there is not a real mismatch."""
+    signal_type/account_mode there is not a real mismatch — even when declared."""
     sql = "SELECT COUNT(DISTINCT alert_date) FROM mi_live_trades WHERE account_mode = 'live'"
-    assert dgr.find_population_mismatch(sql) == []
+    declared = ["mi_live_trades.signal_type", "mi_live_trades.account_mode"]
+    assert dgr.find_population_mismatch(sql, declared) == []
+    # exempt from needing a declaration in the first place, too
+    assert dgr.predicate_needs_population_declaration(sql) is False
+    assert dgr.is_population_declaration_missing(sql, None) is False
+
+
+def test_date_only_predicate_needs_no_declaration():
+    """Sibling invariant to is_date_fire_predicate: no FROM clause means no population to
+    mismatch, so no declaration is required — matches the task's stated design."""
+    sql = "SELECT CASE WHEN CURRENT_DATE >= DATE '2026-07-27' THEN 1 ELSE 0 END"
+    assert dgr.predicate_needs_population_declaration(sql) is False
+    assert dgr.is_population_declaration_missing(sql, None) is False
+    assert dgr.predicate_needs_population_declaration(None) is False
+
+
+# ── registry-level fail-loud check (#573) ──────────────────────────────────────────────────────
+
+def test_find_undeclared_population_entries_flags_a_genuine_gap():
+    """A brand-new entry with a FROM-clause predicate and no declaration, not on the acknowledged
+    backlog, must be flagged — this is the actual guard the task asked to be mutation-tested."""
+    entries = [{
+        "review_id": "brand_new_review_no_declaration",
+        "status": "pending",
+        "predicate_sql": "SELECT COUNT(*) FROM mi_live_trades WHERE status='closed'",
+    }]
+    assert dgr.find_undeclared_population_entries(entries) == ["brand_new_review_no_declaration"]
+
+
+def test_find_undeclared_population_entries_tolerates_the_acknowledged_backlog():
+    """An entry on POPULATION_DECLARATION_PENDING_MIGRATION is known debt, not a new gap."""
+    rid = next(iter(dgr.POPULATION_DECLARATION_PENDING_MIGRATION))
+    entries = [{
+        "review_id": rid,
+        "status": "pending",
+        "predicate_sql": "SELECT COUNT(*) FROM mi_live_trades WHERE status='closed'",
+    }]
+    assert dgr.find_undeclared_population_entries(entries) == []
+
+
+def test_find_undeclared_population_entries_ignores_a_real_declaration():
+    entries = [{
+        "review_id": "properly_declared_review",
+        "status": "pending",
+        "predicate_sql": "SELECT COUNT(*) FROM mi_live_trades WHERE status='closed'",
+        "discriminates_on": ["mi_live_trades.signal_type"],
+    }]
+    assert dgr.find_undeclared_population_entries(entries) == []
+
+
+def test_registry_has_no_undeclared_population_gaps():
+    """The actual #573 fail-loud gate, run against the REAL registry file — not a hand-written SQL
+    fixture. #517's original sanity suite only ever exercised hand-written SQL against the old
+    hand-maintained dict and never the real registry, so nothing signalled staleness; this closes
+    that gap by walking `data_gated_reviews.yaml` itself. Green today because every current gap is
+    named in POPULATION_DECLARATION_PENDING_MIGRATION; a new entry (or an existing one edited off
+    that list) without a real `discriminates_on:` turns this red."""
+    entries = dgr._load_registry()
+    assert entries, "registry failed to load — check data_gated_reviews.yaml"
+    undeclared = dgr.find_undeclared_population_entries(entries)
+    assert undeclared == [], (
+        f"{len(undeclared)} entry(ies) need `discriminates_on:` and have none, and are not on "
+        f"the acknowledged #573 migration backlog: {undeclared}"
+    )
 
 
 def test_breakdown_sql_matches_the_common_shape():
@@ -194,21 +276,42 @@ def test_real_evidence_predicate_is_not_flagged_date_fire(monkeypatch):
 def test_population_mismatch_surfaces_with_a_breakdown(monkeypatch):
     res = _run(
         monkeypatch,
-        [_entry(predicate_sql="SELECT COUNT(*) FROM mi_live_trades WHERE status='closed'")],
+        [_entry(predicate_sql="SELECT COUNT(*) FROM mi_live_trades WHERE status='closed'",
+                discriminates_on=["mi_live_trades.signal_type"])],
         breakdown_rows=[("magna53", 9), ("9m_day2", 8)],
     )
     r = res["ready"][0]
     assert "mi_live_trades.signal_type" in r["evidence_flags"]["population_mismatch"]
     assert r["population_breakdown"]["mi_live_trades.signal_type"] == [("magna53", 9), ("9m_day2", 8)]
+    assert r["evidence_flags"]["population_undeclared"] is False  # declared, just unfiltered
 
 
 def test_a_correctly_filtered_predicate_carries_no_breakdown(monkeypatch):
     res = _run(monkeypatch, [_entry(
         predicate_sql="SELECT COUNT(*) FROM mi_live_trades WHERE signal_type='magna53' "
-                      "AND account_mode='live'")])
+                      "AND account_mode='live'",
+        discriminates_on=["mi_live_trades.signal_type", "mi_live_trades.account_mode"])])
     r = res["ready"][0]
     assert r["evidence_flags"]["population_mismatch"] == []
+    assert r["evidence_flags"]["population_undeclared"] is False
     assert "population_breakdown" not in r
+
+
+def test_undeclared_population_is_flagged_in_the_payload(monkeypatch):
+    """#573: an entry that reads a real table and never declared `discriminates_on` must surface
+    as undeclared in the digest payload — an empty population_mismatch list alone would read as
+    "checked, clean," which is exactly the silent-degradation defect being fixed."""
+    res = _run(monkeypatch, [_entry(
+        predicate_sql="SELECT COUNT(*) FROM mi_live_trades WHERE status='closed'")])
+    r = res["ready"][0]
+    assert r["evidence_flags"]["population_undeclared"] is True
+    assert r["evidence_flags"]["population_mismatch"] == []
+
+
+def test_date_only_predicate_is_never_flagged_undeclared(monkeypatch):
+    res = _run(monkeypatch, [_entry(
+        predicate_sql="SELECT CASE WHEN CURRENT_DATE >= DATE '2026-01-01' THEN 1 ELSE 0 END")])
+    assert res["ready"][0]["evidence_flags"]["population_undeclared"] is False
 
 
 # ── renderer: the three surfaces must look visibly different ──────────────────────────────────
@@ -267,3 +370,16 @@ def test_no_population_mismatch_means_no_pop_check_line(monkeypatch):
     monkeypatch.setattr("agents.market_intelligence.collector.et_today", lambda: _d(2026, 8, 17))
     out = sr._format_pending_reviews_section({"ready": [_ready_row()]})
     assert "pop-check" not in out
+
+
+def test_undeclared_population_renders_visibly_not_as_clean(monkeypatch):
+    """#573: an undeclared entry must NOT render the same as a declared-and-clean one — an empty
+    `population_mismatch` list alone reads as verified-clean, which is the silent-degradation
+    defect this fix replaces. Must still show a pop-check line even though mismatch is []."""
+    from datetime import date as _d
+    monkeypatch.setattr("agents.market_intelligence.collector.et_today", lambda: _d(2026, 8, 17))
+    out = sr._format_pending_reviews_section({"ready": [_ready_row(
+        evidence_flags={"date_fire": False, "population_mismatch": [],
+                         "population_undeclared": True})]})
+    assert "pop-check" in out
+    assert "not yet declared" in out

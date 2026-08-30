@@ -11,6 +11,22 @@
 #   predicate_sql: must return single integer count; ready when count >= threshold
 #                  OR set predicate_sql=null and rely on earliest_review_date alone
 #   threshold: int — predicate must reach this for ready=true
+#   discriminates_on: ["table.column", ...] — REQUIRED whenever predicate_sql has a FROM clause
+#                  and is not a COUNT(DISTINCT ...) predicate (#573, 2026-08-30). Declares which
+#                  column(s) on the table(s) the predicate reads separate GENUINELY DIFFERENT
+#                  QUESTIONS (which setup, which account, which entry variant) — not just
+#                  different rows of the same one. Written by whoever writes the predicate, at the
+#                  time they write it — they know the population; a global table->column dict
+#                  inferred later does not, and silently misses new tables/columns as the schema
+#                  grows (the defect #573 fixed). `data_gated_reviews.py::find_population_mismatch`
+#                  then flags any declared column the predicate text never actually filters.
+#                  Set to `[]` when you've reviewed the table(s) and confirmed no column applies —
+#                  that is a real declaration, distinct from omitting the field entirely,  which
+#                  fails the registry's `test_registry_has_no_undeclared_population_gaps` /
+#                  `scripts/preflight_yaml_dupe_keys.py` hard gate (unless the review_id is still
+#                  on the pre-existing `POPULATION_DECLARATION_PENDING_MIGRATION` backlog in
+#                  data_gated_reviews.py). A date-only predicate (no FROM clause) needs nothing
+#                  here — same fixed syntactic invariant as `is_date_fire_predicate`.
 #   earliest_review_date: ISO date — never surface as ready before this
 #   action_when_ready: what the user should do when surfaced
 #   status: pending | done | deferred
@@ -127,6 +143,7 @@ reviews:
         + 40 * (SELECT count(*) FROM mi_safeguard_state
                  WHERE last_transition_at > '2026-08-29');
     threshold: 40
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-09-29
     status: pending
     action_when_ready: |
@@ -321,6 +338,7 @@ reviews:
       SELECT COUNT(*) FROM mi_live_trades
       WHERE status = 'closed' AND account_mode = 'live' AND total_pnl IS NOT NULL
     threshold: 20
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-11-26
     # >> RAN 2026-08-26 (Opus): docs/analysis/kill_scale_quarterly_2026-08-26.md.
     #    Verdict HOLD from the shipped evaluator against prod (module md5 matched): n=23,
@@ -1772,6 +1790,7 @@ reviews:
       WHERE account_mode = 'live'
         AND status IN ('closed', 'stopped')
     threshold: 30
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-07-15
     action_when_ready: |
       1. Confirm Tailscale tunnel from user's local machine to Hetzner
@@ -2119,6 +2138,7 @@ reviews:
         AND lt.partial_taken = true
         AND lt.status = 'closed'
     threshold: 1
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-05-13
     action_when_ready: |
       1. Identify the qualifying trade(s):
@@ -2233,6 +2253,7 @@ reviews:
         AND closed_at >= '2026-05-12'
         AND pnl_attribution IS NULL
     threshold: 10
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-05-22
     action_when_ready: |
       Compute R-expectancy on the most recent 10 closed paper trades
@@ -2555,6 +2576,7 @@ reviews:
         AND alert_date <= CURRENT_DATE - INTERVAL '25 days';
         -- 25-day lag = 20d forward outcome settled + buffer
     threshold: 10
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-08
     # >> RAN 2026-07-13 (Opus): CANONICAL table mi_ep_missed_outcomes (matches this review's own
     #    recorded STRL +17.0%/+22.2% exactly — fractions). Settled N=5 (EVER/STRL/AIP/GO/PONY):
@@ -3587,6 +3609,7 @@ reviews:
           AND closed_at >= CURRENT_DATE - 30
       ) t;
     threshold: 100
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-05-17
     action_when_ready: |
       **PHASE 1 — DIAGNOSTIC BASELINE (no code change yet)**
@@ -4092,6 +4115,7 @@ reviews:
         AND ABS(entry_price - stop_price) < 0.01
         AND closed_at >= '2026-05-12';
     threshold: 1
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-05-18
     action_when_ready: |
       1. Add column `initial_stop NUMERIC` to mi_live_trades (idempotent
@@ -5008,6 +5032,7 @@ reviews:
       WHERE signal_type = 'magna53' AND status IN ('closed','stopped_out')
         AND created_at < CURRENT_DATE - INTERVAL '7 days';
     threshold: 20
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-07-01
     action_when_ready: |
       Replay 5m-re-entry over the full Day-1-stop-out set (shadow_orb_tracker fetches
@@ -5403,6 +5428,7 @@ reviews:
             AND lt.status = 'closed'
         );
     threshold: 10
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-09-01
     action_when_ready: |
       1. Pull the N>=10 settled cohort:
@@ -5664,6 +5690,7 @@ reviews:
              OR hard_stop > stop_price + 0.01)  -- 1c tolerance for trail rounding
         AND pnl_attribution IS NULL;
     threshold: 1
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     action_when_ready: |
       Predicate fires when ≥1 trade closed since the KLAR fix shows a
       stop_price ordering violation (the bug class Gate 5 G can't catch).
@@ -6278,6 +6305,7 @@ reviews:
         AND alert_date >= '2026-04-01'
         AND pnl_attribution IS NULL
     threshold: 10
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-07-15
     action_when_ready: |
       With N≥10 closed 9M Day 2 trades (methodology-attribution):
@@ -7179,6 +7207,7 @@ reviews:
         AND (b.h - b.l) > 0
         AND ((b.h - GREATEST(b.o, b.c)) / (b.h - b.l)) >= 0.70;
     threshold: 10
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-15
     action_when_ready: |
       1. Re-run scripts/orb_wick_outlier_backwardcheck.py on prod to get
@@ -8100,6 +8129,7 @@ reviews:
       SELECT COUNT(*) FROM mi_consolidation_entry_shadow
       WHERE entry_mode = 'anticipate' AND outcome IS NOT NULL;
     threshold: 10
+    discriminates_on: [mi_consolidation_entry_shadow.entry_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-07-07
     action_when_ready: |
       Review the anticipate cohort (median realized_r, win%, expectancy; exclude outlier-carry). IF a
@@ -8157,6 +8187,7 @@ reviews:
     # ever ships WITHOUT logging the event, this gate silently never opens — the
     # flip commit MUST write it.
     threshold: 10
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-01
     action_when_ready: >-
       Run the weekly-review MFE section's cohort query split pre/post-flip; compare
@@ -8256,6 +8287,7 @@ reviews:
       SELECT COUNT(*) FROM mi_consolidation_entry_shadow
       WHERE entry_mode = 'anticipate' AND outcome IS NOT NULL
     threshold: 50
+    discriminates_on: [mi_consolidation_entry_shadow.entry_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     # Date made NON-BLOCKING 2026-07-26 (operator: data-readiness triggers, not the calendar).
     # Firing is AND, so a future date can only DELAY a review whose evidence is already in.
     # At unblock: count=108 vs threshold=50.
@@ -8356,6 +8388,7 @@ reviews:
       SELECT CASE WHEN to_regclass('mi_pivot_stop_shadow') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM mi_pivot_stop_shadow WHERE NOT abstained) END
     threshold: 10
+    discriminates_on: [mi_pivot_stop_shadow.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-09
     action_when_ready: >-
       Per-arm table (baseline/p1/p2: mean, median, capture_pct) + the tail-clip count + the
@@ -8387,6 +8420,7 @@ reviews:
       SELECT CASE WHEN to_regclass('mi_giveback_shadow') IS NULL THEN 0
                   ELSE (SELECT COUNT(*) FROM mi_giveback_shadow) END
     threshold: 10
+    discriminates_on: [mi_giveback_shadow.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-06
     action_when_ready: >-
       Query mi_giveback_shadow: sum(marginal), avg(marginal), and the giveback_early=true subset
@@ -8608,6 +8642,7 @@ reviews:
        WHERE account_mode = 'live' AND signal_type = 'magna53'
          AND realized_r > 0
     threshold: 1
+    discriminates_on: [mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-04
     # >> ANSWERED 2026-08-24 (Opus): docs/analysis/first_live_winner_2026-08-24.md.
     #    The cost side is read off real money for the first time: a +2R partial cost $9.40 on
@@ -8670,6 +8705,7 @@ reviews:
        WHERE r.account_mode = 'live' AND r.signal_type = 'magna53'
          AND g.regime = 'Bull'
     threshold: 4
+    discriminates_on: [mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-04
     status: done
     closed_on: 2026-08-17
@@ -8798,6 +8834,7 @@ reviews:
         ORDER BY 1 DESC LIMIT 2
       ) top2
     threshold: 5
+    discriminates_on: [mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-09-15
     status: pending
     action_when_ready: |
@@ -8965,6 +9002,7 @@ reviews:
     # so the n=20/40/60/80/100 ladder restarts against the rules actually under test.
     # At 2026-08-22 the era-C count is 1, so this correctly will not fire again for a while.
     threshold: 20
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-01
     status: pending
     action_when_ready: |
@@ -9057,6 +9095,7 @@ reviews:
       SELECT COUNT(*) FROM mi_live_trades
       WHERE account_mode = 'live' AND status = 'closed' AND regime = 'Bull'
     threshold: 8
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-06
     status: pending
     action_when_ready: |
@@ -9195,6 +9234,7 @@ reviews:
       WHERE (signal_type ILIKE '%htf%' OR family ILIKE '%htf%')
         AND phase IN ('paper', 'live')
     threshold: 1
+    discriminates_on: [mi_strategies.signal_type]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     # Fires the moment HTF is registered beyond shadow — i.e. exactly when "not
     # enabling HTF to live money yet" stops being true. There is no HTF row in
     # mi_strategies at all today (verified 2026-07-26), so the count is 0 and
@@ -9464,6 +9504,7 @@ reviews:
              GROUP BY r.regime HAVING COUNT(*) >= 4) q)
       );
     threshold: 25
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     # 10 closed live trades at registration. 25 gives a plausible 3-way regime split
     # (the current 6/4/1 cannot support one). Trade-count gated, never a date — a
     # future date could only delay a review whose evidence is already in (ruled 7/26).
@@ -9855,6 +9896,7 @@ reviews:
       WHERE account_mode = 'live' AND signal_type = 'magna53'
         AND status = 'closed' AND alert_date >= DATE '2026-08-17'
     threshold: 20
+    discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     status: pending
     kind: accrual
     action_when_ready: >-
@@ -9998,6 +10040,7 @@ reviews:
         ORDER BY 1 DESC LIMIT 3
       ) top3
     threshold: 10
+    discriminates_on: [mi_sell_discipline_records.signal_type, mi_sell_discipline_records.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     status: pending
     kind: accrual
     action_when_ready: >-

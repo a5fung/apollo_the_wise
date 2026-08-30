@@ -5587,7 +5587,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
 
     async with pool.acquire() as conn:
         # ── Paths (a) + (b): organic top-RS / burst inclusion ─────────
-        organic_rows = await conn.fetch("""
+        organic_rows = await conn.fetch(f"""
             WITH ranked AS (
                 SELECT ticker, close, volume,
                        ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
@@ -5608,9 +5608,11 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
             scored AS (
                 SELECT s.ticker, s.rs_rank, s.rs_1m
                 FROM mi_stock_scores s
-                WHERE s.score_date = (
-                        SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1
-                      )
+                -- #554: was raw MAX(score_date) — could pick a stray single-row
+                -- day (score_single_ticker on-demand write on a non-trading day)
+                -- and silently return zero rows for the organic universe. Reuses
+                -- this query's own $1 (trade_date) as the bound.
+                WHERE s.score_date = {latest_complete_score_date_sql("$1")}
                   AND s.rs_1m IS NOT NULL
             )
             SELECT scored.ticker,
@@ -6604,19 +6606,140 @@ def _to_date(d: "str | date") -> "date":
     return date_type.fromisoformat(str(d))
 
 
+# ── #554: shared "does this score_date look like a real run" guard ─────────
+# LIVE INCIDENT: score_single_ticker (rs_engine.py) writes its ONE on-demand
+# row keyed off raw et_today() (the CALENDAR date), so a single held-name
+# lookup on a non-trading day creates a score_date whose entire population is
+# that one row. Confirmed on prod: 2026-05-30, 07-05, 07-12, 08-08 (all
+# Sat/Sun, exactly 1 row each) — see scripts/export_theme_snapshot.sql's
+# original fix + PLAN.md #554 for the incident history. A raw MAX(score_date)
+# or ORDER BY score_date DESC LIMIT 1 across the table can pick that stray
+# day, and every downstream ticker filter then finds nothing (or, worse,
+# ranks against a distribution of one).
+#
+# The SAME shape recurs for a nightly batch that dies partway through (a
+# REAL prod example: 2026-03-19/03-20 landed at 168/172 rows against a
+# ~9,780-row baseline) — no write-site fix ever prevents that half, so this
+# guard has to stay forever, independent of the score_single_ticker bug.
+#
+# Bar: newest score_date whose row count is >= 50% of the median count over
+# the 10 most-recent POPULATED dates at or before the bound (deliberately the
+# SAME 50% floor as the already-shipped export_theme_snapshot.sql fix — not a
+# new threshold decision; see that file's comment for the sibling-gate
+# rationale vs health_checks.py's stricter 75% DRIFT alert). MEDIAN (not
+# mean) so 1-2 stray/partial dates inside the 10-day window don't drag the
+# bar down themselves.
+#
+# KNOWN LIMITATION (found via real prod data while building this fix, not
+# hypothetical): an intentional ABRUPT universe-size resize can register as
+# "looks like a partial run" for up to ~10 trading days, until the trailing
+# median catches up to the new baseline. Prod evidence: the 2026-03-24
+# resize (~9,780 -> ~3,857 rows, a deliberate universe-scoping change, not a
+# failure) landed at ~39% of the prior 10-day median — below this 50% bar.
+# No resize has happened since (population has been flat ~2,400-2,460 since
+# 2026-06-16), so this is not live today; flagging it here so a future
+# resize doesn't get silently misdiagnosed as broken by every caller of this
+# helper. Retuning the bar is a threshold decision, not this fix's scope.
+def latest_complete_score_date_sql(bound_placeholder: str | None = None) -> str:
+    """Raw SQL scalar-subquery text equivalent to `latest_complete_score_date()`
+    below, for inlining into a hand-written query that must stay a SINGLE
+    round trip (callers whose tests pin an exact conn.fetch/fetchrow call
+    count/order — e.g. theme_engine.promote_shadow_themes /
+    promote_candidate_by_name / db.get_flag_universe). Emits no NEW `$N`
+    placeholders: pass `bound_placeholder` (e.g. `"$1"`) to reuse a param the
+    surrounding query ALREADY binds as the "on or before" cutoff (matching
+    `on_or_before` below — also bounds the trailing-10-day median, not just
+    the candidate); omit it for "the latest run, unbounded" (defaults to
+    CURRENT_DATE, which is the same thing for real data — no future-dated
+    rows exist)."""
+    bound = bound_placeholder or "CURRENT_DATE"
+    return f"""(
+        SELECT counts.score_date FROM (
+            SELECT score_date, COUNT(*) AS n FROM mi_stock_scores
+             WHERE score_date <= {bound}
+             GROUP BY score_date
+        ) counts
+        WHERE counts.n >= 0.5 * (
+            SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY n) FROM (
+                SELECT COUNT(*) AS n FROM mi_stock_scores
+                 WHERE score_date <= {bound}
+                 GROUP BY score_date ORDER BY score_date DESC LIMIT 10
+            ) recent
+        )
+        ORDER BY counts.score_date DESC LIMIT 1
+    )"""
+
+
+def _pick_latest_complete_score_date(
+    counts: "list[tuple[date, int]]", *, on_or_after: "date | None" = None,
+) -> "date | None":
+    """Pure function: `counts` = (score_date, row_count) pairs for dates at-or-
+    before some bound, NEWEST FIRST (this is the actual #554 completeness
+    logic — split out from the DB fetch below so it can be pinned with
+    literal tuples matching the REAL prod shape, e.g. 2026-08-08's 1-row
+    Saturday against a ~2,400-row baseline, instead of trusting mocked SQL).
+
+    Bar: newest date whose count >= 50% of the MEDIAN count over the first
+    10 entries (median, not mean, so 1-2 stray/partial dates in that window
+    don't drag their own bar down — see latest_complete_score_date_sql's
+    module comment for the full rationale, prod evidence of the partial-run
+    shape, and the known abrupt-resize false-reject limitation). The median
+    is fixed from `counts[:10]` BEFORE `on_or_after` filtering, so a narrow
+    bounded lookback compares against the contemporaneous population near
+    the bound, not a self-selected slice."""
+    if not counts:
+        return None
+    recent_n = sorted(n for _, n in counts[:10])
+    mid = len(recent_n) // 2
+    median = recent_n[mid] if len(recent_n) % 2 else (recent_n[mid - 1] + recent_n[mid]) / 2
+    threshold = 0.5 * median
+    for d, n in counts:
+        if on_or_after is not None and d < on_or_after:
+            break  # counts is newest-first — once past the floor, nothing later qualifies
+        if n >= threshold:
+            return d
+    return None
+
+
+async def latest_complete_score_date(
+    conn: Any,
+    *,
+    on_or_before: "date | None" = None,
+    on_or_after: "date | None" = None,
+) -> "date | None":
+    """Newest mi_stock_scores score_date that looks like a completed run (see
+    #554 guard above / `_pick_latest_complete_score_date`'s docstring for the
+    bar), optionally bounded to a date range. Fetches the 40 most recent
+    populated dates at-or-before `on_or_before` (headroom well past any
+    current caller's lookback — the widest bounded window in this codebase
+    is 18 days) and hands them to the pure filter, so the bar is computed in
+    PYTHON (unit-testable with literal counts) rather than as inline SQL
+    percentile math."""
+    rows = await conn.fetch("""
+        SELECT score_date, COUNT(*) AS n
+          FROM mi_stock_scores
+         WHERE score_date <= $1
+         GROUP BY score_date
+         ORDER BY score_date DESC
+         LIMIT 40
+    """, on_or_before or date(9999, 12, 31))
+    return _pick_latest_complete_score_date(
+        [(r["score_date"], r["n"]) for r in rows], on_or_after=on_or_after,
+    )
+
+
 async def _resolve_score_date(conn: Any, requested: "date") -> "date":
     """
-    Return requested date if mi_stock_scores has rows for it,
-    otherwise fall back to the most recent date that has data.
-    This ensures queries work before the nightly RS run has populated today.
+    Return `requested` if mi_stock_scores has a COMPLETE run for it (#554:
+    NOT just "any row" — the old `count(*)` check passed on as few as ONE
+    row, which is exactly the shape score_single_ticker's stray-day write
+    produces; a caller resolving et_today() on that stray day got the stray
+    back unchanged). Otherwise fall back to the most recent COMPLETE date on
+    or before `requested`. This ensures queries work before the nightly RS
+    run has populated today.
     """
-    count = await conn.fetchval(
-        "SELECT COUNT(*) FROM mi_stock_scores WHERE score_date = $1", requested
-    )
-    if count:
-        return requested
-    latest = await conn.fetchval("SELECT MAX(score_date) FROM mi_stock_scores")
-    return latest if latest is not None else requested
+    resolved = await latest_complete_score_date(conn, on_or_before=requested)
+    return resolved if resolved is not None else requested
 
 
 async def get_rs_leaders(
@@ -6738,13 +6861,17 @@ async def get_rs_accelerators(
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
-        prior = await conn.fetchval("""
-            SELECT score_date FROM mi_stock_scores
-            WHERE score_date < $1 GROUP BY score_date
-            ORDER BY score_date DESC OFFSET $2 LIMIT 1
-        """, score_date, max(0, lookback_days - 1))
-        if prior is None:
-            return []
+        # #554: was a raw `ORDER BY score_date DESC OFFSET N LIMIT 1` — a stray
+        # single-row day within the lookback window counts as a "session" via
+        # OFFSET, silently landing on the wrong prior date (or the stray
+        # itself). Walk back `lookback_days` COMPLETE sessions instead.
+        cursor = score_date
+        prior = None
+        for _ in range(max(1, lookback_days)):
+            prior = await latest_complete_score_date(conn, on_or_before=cursor - timedelta(days=1))
+            if prior is None:
+                return []
+            cursor = prior
         rows = await conn.fetch("""
             SELECT t.*, p.rs_rank AS prior_rank, p.rs_composite AS prior_rs
             FROM mi_stock_scores t
@@ -7363,14 +7490,20 @@ async def get_cohort_rs_snapshot(
     not-passing THAT arm, never as a pass)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        latest = await conn.fetchval("SELECT MAX(score_date) FROM mi_stock_scores")
+        # #554: was raw MAX(score_date) + an OFFSET-based "prior session" walk
+        # — both could land on a stray single-row day (or count one as a
+        # session), feeding the theme birth gate's level/trajectory arms a
+        # 1-name "average". Walk back COMPLETE sessions only.
+        latest = await latest_complete_score_date(conn)
         if latest is None:
             return None, None
-        prior = await conn.fetchval("""
-            SELECT score_date FROM mi_stock_scores
-            WHERE score_date < $1 GROUP BY score_date
-            ORDER BY score_date DESC OFFSET $2 LIMIT 1
-        """, latest, max(0, sessions_back - 1))
+        cursor = latest
+        prior = None
+        for _ in range(max(1, sessions_back)):
+            prior = await latest_complete_score_date(conn, on_or_before=cursor - timedelta(days=1))
+            if prior is None:
+                break
+            cursor = prior
         rows = await conn.fetch("""
             SELECT score_date, AVG(rs_composite) AS avg_rs
             FROM mi_stock_scores
@@ -7808,16 +7941,16 @@ async def get_regime_recent(as_of: "str | date", limit: int = 10) -> list[dict[s
 
 
 async def get_prior_score_date(d: "str | date") -> "date | None":
-    """Most recent mi_stock_scores date STRICTLY before d (None if none).
-    The explicit resolver for the leaders diff — get_rs_leaders' own
+    """Most recent COMPLETE mi_stock_scores date STRICTLY before d (None if
+    none). The explicit resolver for the leaders diff — get_rs_leaders' own
     _resolve_score_date falls back to the LATEST date on a miss, which for a
-    prior-day fetch would silently return TODAY and zero the diff."""
+    prior-day fetch would silently return TODAY and zero the diff.
+    #554: was raw MAX(score_date) — could land on a stray single-row day and
+    hand the diff a "prior" that's really just one ticker."""
     pool = await get_pool()
+    target = _to_date(d)
     async with pool.acquire() as conn:
-        return await conn.fetchval(
-            "SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date < $1",
-            _to_date(d),
-        )
+        return await latest_complete_score_date(conn, on_or_before=target - timedelta(days=1))
 
 
 async def get_recent_score_dates(as_of: "str | date", n: int) -> list[date]:
@@ -8343,9 +8476,11 @@ async def get_top_dollar_volume_universe(
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        latest = await conn.fetchval(
-            "SELECT MAX(score_date) FROM mi_stock_scores"
-        )
+        # #554: was raw MAX(score_date) — a stray single-row day here would
+        # scope the minute-volume-curve refresh (and thus the 9:30-9:44
+        # RVOL@T EP gate) down to whichever one ticker happened to trigger
+        # the stray write, instead of the real ~1500-2000-ticker universe.
+        latest = await latest_complete_score_date(conn)
         if latest is None:
             return []
         rows = await conn.fetch(
@@ -9082,11 +9217,14 @@ async def get_pipeline_status() -> dict[str, Any]:
             for row in job_rows
         }
 
-        # Data freshness
-        score_row = await conn.fetchrow("""
+        # Data freshness. #554: was raw MAX(score_date) — the one place a
+        # stray single-row day is most dangerous, since this IS the health
+        # check: it would report "data present" (stock_count=1) instead of
+        # flagging that the real nightly run never landed.
+        score_row = await conn.fetchrow(f"""
             SELECT score_date, COUNT(DISTINCT ticker) AS stock_count
             FROM mi_stock_scores
-            WHERE score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            WHERE score_date = {latest_complete_score_date_sql()}
             GROUP BY score_date
         """)
 

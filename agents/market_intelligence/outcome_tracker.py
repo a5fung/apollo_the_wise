@@ -18,6 +18,7 @@ from agents.market_intelligence.db import (
     get_pool,
     upsert_signal_outcome,
     get_signal_outcomes,
+    latest_complete_score_date,
 )
 
 logger = logging.getLogger(__name__)
@@ -102,15 +103,17 @@ async def _compute_rs_leader_outcomes(today: date) -> int:
         for offset_days, fwd_field in [(_1M_OFFSET, "fwd_1m_pct"), (_3M_OFFSET, "fwd_3m_pct")]:
             signal_date_approx = today - timedelta(days=offset_days)
 
-            # Find actual score_date closest to the target
-            signal_date_row = await conn.fetchrow("""
-                SELECT DISTINCT score_date FROM mi_stock_scores
-                WHERE score_date <= $1 AND score_date >= $1 - INTERVAL '5 days'
-                ORDER BY score_date DESC LIMIT 1
-            """, signal_date_approx)
-            if not signal_date_row:
+            # Find actual score_date closest to the target. #554: was a raw
+            # DISTINCT/ORDER BY (no completeness check) — could land on a
+            # stray single-row day and compute a "1M forward return" leader
+            # cohort of one ticker.
+            signal_date = await latest_complete_score_date(
+                conn,
+                on_or_before=signal_date_approx,
+                on_or_after=signal_date_approx - timedelta(days=5),
+            )
+            if signal_date is None:
                 continue
-            signal_date = signal_date_row["score_date"]
 
             # Already computed?
             existing = await conn.fetchval("""

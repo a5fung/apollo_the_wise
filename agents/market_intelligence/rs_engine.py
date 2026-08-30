@@ -42,6 +42,7 @@ from agents.market_intelligence.db import (
     upsert_ticker_sectors_batch,
     get_ticker_overrides,
     get_pool,
+    latest_complete_score_date,
     _to_date,
 )
 
@@ -622,16 +623,22 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
 
     # Load raw return distribution for proper percentile ranking
     # Fall back to most recent score_date within 5 days (handles weekends, holidays, pre-nightly-pull)
+    #
+    # #554: was a raw DISTINCT/ORDER BY with no completeness check — THE root
+    # of the self-poisoning shape this task fixes. score_single_ticker's own
+    # on-demand write (below) stamps a row on the CALENDAR date, so a stray
+    # single-row day from a PRIOR on-demand lookup could be picked right back
+    # up here as `use_date` within the next 5 days, ranking this ticker's
+    # return against a "distribution" of one row instead of the real ~2,400.
     pool = await get_pool()
     async with pool.acquire() as conn:
-        score_date_row = await conn.fetchrow("""
-            SELECT DISTINCT score_date FROM mi_stock_scores
-            WHERE score_date <= $1 AND score_date >= $1 - INTERVAL '5 days'
-            ORDER BY score_date DESC LIMIT 1
-        """, _to_date(today_str))
-        if not score_date_row:
+        use_date = await latest_complete_score_date(
+            conn,
+            on_or_before=_to_date(today_str),
+            on_or_after=_to_date(today_str) - timedelta(days=5),
+        )
+        if use_date is None:
             return {"error": "No RS data available — run a full data refresh first, then retry"}
-        use_date = score_date_row["score_date"]
 
         rows = await conn.fetch(
             "SELECT ticker, raw_1m, raw_3m, raw_6m FROM mi_stock_scores WHERE score_date = $1 AND raw_1m IS NOT NULL",

@@ -29,7 +29,7 @@ import logging
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from agents.market_intelligence.db import get_pool, upsert_minute_volume_curves
+from agents.market_intelligence.db import get_pool, upsert_minute_volume_curves, latest_complete_score_date
 from agents.market_intelligence.minute_volume import (
     _refresh_one_ticker,
     LOOKBACK_DAYS,
@@ -46,7 +46,8 @@ async def fetch_expanded_universe(top_n: int, ep_cohort_days: int) -> list[str]:
     """Top-N by adv_20 * close UNION 90d EP cohort (alerts + dead-zoned)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        latest = await conn.fetchval("SELECT MAX(score_date) FROM mi_stock_scores")
+        # #554: was raw MAX(score_date) — could pick a stray single-row day.
+        latest = await latest_complete_score_date(conn)
         if latest is None:
             return []
         rows = await conn.fetch(

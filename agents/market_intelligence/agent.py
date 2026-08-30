@@ -5561,12 +5561,14 @@ class MarketIntelligenceAgent(BaseAgent):
                     sd = rs_result["score_date"]
                     score_date = _date.fromisoformat(sd) if isinstance(sd, str) else sd
                 if score_date is None:
+                    # #554: was raw MAX(score_date) — this is Telegram-facing and
+                    # runs whenever the operator asks, including weekends, so it
+                    # could pick a stray single-row day and silently return no
+                    # sector-RS peers.
+                    from agents.market_intelligence.db import latest_complete_score_date
                     pool = await get_pool()
                     async with pool.acquire() as conn:
-                        row = await conn.fetchrow(
-                            "SELECT MAX(score_date) AS d FROM mi_stock_scores"
-                        )
-                    score_date = row["d"] if row else None
+                        score_date = await latest_complete_score_date(conn)
 
                 if score_date and isinstance(rs_result, dict) and "rs_composite" in rs_result:
                     rank_data = await get_sector_rs_rank(
