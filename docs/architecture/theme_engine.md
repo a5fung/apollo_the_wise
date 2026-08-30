@@ -53,8 +53,9 @@ themes emerge from price action, never a hypothesis fed in):
     `len(tks) >= 2` to keep any proposed theme — **structurally needs 2+ co-occurring
     names**, never a single ticker.
     **v2 — INCREMENTAL NARRATIVE REGISTRY (built dark 2026-07-27, flag
-    `lane2_grouping_v2` in mi_safeguard_state, and it is ON in paper right now
-    (the DEFAULT is fail-closed off) — see "Live toggle state" below):** when ON,
+    `lane2_grouping_v2` in mi_safeguard_state, operator-signed and flipped on
+    2026-08-09 (commit `9b4c5d7`); the DEFAULT is fail-closed off — see "Live
+    toggle state" below):** when ON,
     the lane is state-carrying instead of re-derive-nightly.
     State = the lane's own persisted rows: ACTIVE narratives (latest
     `source='narrative_cogap'` row per name, `db.get_lane2_active_narratives`)
@@ -241,13 +242,13 @@ r3 — findings stated, operator rules) → fresh ADR-0030 judge-robustness eval
 
 ## ⚠ Live toggle state — `lane2_grouping_v2` is ON in PAPER and was undocumented until 2026-08-29
 
-`lane2_grouping_v2` is ON (paper) in `mi_safeguard_state`, **`last_transition_at` NULL** (so the
+`lane2_grouping_v2` was operator-signed and flipped on **2026-08-09** (commit `9b4c5d7`, recorded in `docs/roadmap/ep_profitability_program.md`); the `mi_safeguard_state` row carries **`last_transition_at` NULL** (so the
 flip date is unrecoverable from the row). The flag selects lane-2's grouping mode in
 `theme_engine.discover_narrative_themes` (#167 incremental narrative registry, operator-ruled
 2026-07-27; `db.get_lane2_grouping_v2_enabled`, fail-closed OFF). **It is GRADE-AFFECTING when
 ON** — the lane feeds the judge's `active_narratives`.
 
-**Why this note exists.** No setup or architecture document mentioned the flag at all; the only
+**Why this note exists.** The flip WAS signed and recorded in the profitability program — so nothing about it was unauthorized. What was missing is that no setup or architecture document mentioned the flag at all; the only
 prose about it was in an analysis document that describes it as dark. So every doc read as if v1
 were running while v2 has been acting in paper. Found 2026-08-29 the first time
 `scripts/live_rules.py` was pointed at `docs/analysis/**` — the operator: *"how many times we do
