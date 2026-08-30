@@ -217,6 +217,12 @@ _ALLOWED_RAW_USE = (
     re.compile(r"^\s*catalyst_quality=llm_catalyst_quality,?\s*(#.*)?$"),  # cache stores RAW
     re.compile(r"^\s*llm_catalyst_quality, confidence_multiplier"),  # CachedGrade stores RAW
     re.compile(r"^\s*_rq != llm_catalyst_quality"),                  # re-poll raw-compare
+    # #605 decision-vector capture (2026-08-29): WRITES of the raw grade onto the
+    # candidate dict / the scan_log row — telemetry only, no decision ever reads them
+    # back inside run_ep_scan (nothing branches on c["llm_catalyst_quality"]), so no
+    # second grade path. The row-read form is the _scan_row dict literal.
+    re.compile(r"^\s*c\[\"llm_catalyst_quality\"\] = llm_catalyst_quality\s*(#.*)?$"),
+    re.compile(r"^\s*\"llm_catalyst_quality\": c\.get\(\"llm_catalyst_quality\"\),\s*(#.*)?$"),
     re.compile(r"^\s*#"),                                            # comments
 )
 

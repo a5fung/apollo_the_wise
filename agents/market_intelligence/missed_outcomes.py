@@ -128,6 +128,11 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
     # filter_other and getting mixed with unrelated filters.
     if s.startswith("filter:universe_prev_close_too_low") or s.startswith("filter:universe_prev_day_illiquid"):
         return "d1_universe_floor"
+    # #605 (2026-08-29): the below-admission-floor capture band ([EP_CAPTURE_GAP_FLOOR,
+    # acting floor)) — record-only rows, own isolable category so counterfactual floor
+    # re-asks can pull exactly this class (and so it can't swamp filter_other).
+    if s.startswith("filter:universe_below_gap_floor"):
+        return "below_gap_floor"
     if "cooldown" in s:
         return "cooldown"
     if "m&a" in s or "buyout" in s or "merger" in s:
@@ -203,6 +208,8 @@ _SKIP_CATEGORY_CASE_SQL = """
                 -- falling through to filter_other and swamping it (~200 rows/day).
                 WHEN skip_reason ILIKE 'filter:universe_prev_close_too_low%'
                   OR skip_reason ILIKE 'filter:universe_prev_day_illiquid%' THEN 'd1_universe_floor'
+                -- #605 (2026-08-29): mirrors the below_gap_floor branch above, same ordinal.
+                WHEN skip_reason ILIKE 'filter:universe_below_gap_floor%' THEN 'below_gap_floor'
                 WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
                 WHEN skip_reason ILIKE '%m&a%'
                   OR skip_reason ILIKE '%buyout%'
@@ -1072,6 +1079,8 @@ _UNTRADEABLE_CATEGORIES = (
     "d1_universe_floor", # #570: prior-day close<$5 / volume<50k — correctly filtered
                          # by design, not a should've-entered miss; same treatment as
                          # the other structural universe floors above
+    "below_gap_floor",   # #605: gap under the admission floor — recorded for
+                         # counterfactual floor re-asks only, never a candidate at all
 )
 
 # The 'should've-entered' cohort (#219): categories where the system SCORED the
@@ -1111,6 +1120,7 @@ _CATEGORY_KIND: dict[str, str] = {
     "atr_high":            "structural",
     "extension_gate":      "structural",
     "d1_universe_floor":   "structural",  # #570
+    "below_gap_floor":     "structural",  # #605 — record-only capture band
     # Operational — budget / housekeeping; would've been evaluated otherwise
     "outside_top20":       "operational",
     "cooldown":            "operational",
@@ -1355,6 +1365,7 @@ _CATEGORY_LABELS: dict[str, str] = {
     "duplicate_scan":     "Already scored today",
     "filter_other":       "Other filter",
     "d1_universe_floor":  "D-1 price/volume floor",  # #570 follow-up
+    "below_gap_floor":    "Gap under admission floor",  # #605 record-only band
     "moderate_tier":      "MODERATE — not entered",
     "high_unentered":     "HIGH — no fill",
     # #199 entry-pipeline blocks (should've-entered cohort)

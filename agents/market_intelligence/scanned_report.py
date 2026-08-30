@@ -62,6 +62,9 @@ _NEVER_FILLED = frozenset(DECLINED_NEVER_FILLED_STATUSES) | {"expired"}
 _FUNNEL_STAGES: list[tuple[str, str, bool]] = [
     ("u_close",      "prior close under the $5 universe floor",             True),
     ("u_vol",        "prior-day volume under the 50k-share universe floor", True),
+    # #605: record-only capture band (gap under the admission floor) — not always_print:
+    # rows only exist since 2026-08-29, and a zero on an old day is history, not a broken gate.
+    ("below_floor",  "gap under the admission floor (recorded only)",       False),
     ("adv_low",      "average daily dollar volume too thin",                True),
     ("mcap_low",     "market cap too small",                                True),
     ("atr_high",     "day-to-day swings too wild (ATR cap)",                True),
@@ -83,6 +86,7 @@ _FUNNEL_STAGES: list[tuple[str, str, bool]] = [
 
 # Canonical category (missed_outcomes._categorize_skip_reason) → funnel stage.
 _CATEGORY_TO_STAGE = {
+    "below_gap_floor": "below_floor",  # #605 record-only band
     "adv_low": "adv_low",
     "mcap_low": "mcap_low",
     "atr_high": "atr_high",

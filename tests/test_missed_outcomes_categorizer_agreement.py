@@ -168,6 +168,7 @@ _SCAN_FILTER_VOCAB = [
     sr.FILTER_MCAP_TOO_SMALL, sr.FILTER_PM_RVOL_TOO_LOW,
     sr.FILTER_SESSION_RVOL_TOO_LOW, sr.FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW,
     sr.FILTER_UNIVERSE_PREV_DAY_ILLIQUID,
+    sr.FILTER_UNIVERSE_BELOW_GAP_FLOOR,  # #605 record-only capture band
 ]
 
 # Free-form legacy scan_filter strings (predate the bounded-vocabulary

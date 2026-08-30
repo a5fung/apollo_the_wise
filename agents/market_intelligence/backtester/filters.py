@@ -30,32 +30,43 @@ async def check_filters(
     ticker: str,
     alert_date: date,
     skip_mcap: bool = False,
+    metrics: dict | None = None,
 ) -> tuple[bool, str | None]:
     """
     Apply pre-trade filters. Returns (passed, skip_reason).
     Checks: ADV dollar volume, ATR%, market cap.
     skip_mcap: skip market cap check (for historical scans where current mcap != historical).
+    metrics: #605 decision-vector capture (2026-08-29) — pass a dict and the checks
+        deposit the values they COMPARED (`quality_adv_dollar`, `atr_pct`,
+        `market_cap`) so the caller can persist the inputs, not just the verdict.
+        Values already computed here; zero extra queries. Short-circuit order is
+        UNCHANGED — a failing check still returns before later checks run, so a
+        killed row carries the metrics computed up to its kill point (the same
+        stage-honesty contract as mi_ep_scan_log). Pass None for the historical
+        behaviour, byte-identical.
     """
     # 1. ADV dollar volume check
-    adv_check = await _check_adv_dollar_volume(ticker, alert_date)
+    adv_check = await _check_adv_dollar_volume(ticker, alert_date, metrics)
     if adv_check:
         return False, adv_check
 
     # 2. ATR% check
-    atr_check = await _check_atr_pct(ticker, alert_date)
+    atr_check = await _check_atr_pct(ticker, alert_date, metrics)
     if atr_check:
         return False, atr_check
 
     # 3. Market cap check
     if not skip_mcap:
-        mcap_check = await _check_market_cap(ticker)
+        mcap_check = await _check_market_cap(ticker, metrics)
         if mcap_check:
             return False, mcap_check
 
     return True, None
 
 
-async def _check_adv_dollar_volume(ticker: str, trade_date: date) -> str | None:
+async def _check_adv_dollar_volume(
+    ticker: str, trade_date: date, metrics: dict | None = None,
+) -> str | None:
     """Check median 20-day dollar volume >= $1M. Returns skip reason or None."""
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -74,6 +85,8 @@ async def _check_adv_dollar_volume(ticker: str, trade_date: date) -> str | None:
         return FILTER_ADV_NO_DATA
 
     adv_dollar = float(row["adv_dollar"])
+    if metrics is not None:
+        metrics["quality_adv_dollar"] = adv_dollar
     if adv_dollar < MIN_ADV_DOLLAR_VOLUME:
         return f"{FILTER_ADV_TOO_LOW}: ${adv_dollar:,.0f}"
 
@@ -175,9 +188,13 @@ async def get_prior_day_low(ticker: str, alert_date: date) -> float | None:
     return float(row["low_price"]) if row and row["low_price"] is not None else None
 
 
-async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
+async def _check_atr_pct(
+    ticker: str, trade_date: date, metrics: dict | None = None,
+) -> str | None:
     """Check 14-day ATR% <= 15%. Returns skip reason or None."""
     _atr_14, atr_pct = await compute_atr_14(ticker, trade_date)
+    if metrics is not None:
+        metrics["atr_pct"] = atr_pct
     if atr_pct is None:
         return None  # not enough data — let it through
 
@@ -205,7 +222,7 @@ def validate_orb_entry(
     return True, None
 
 
-async def _check_market_cap(ticker: str) -> str | None:
+async def _check_market_cap(ticker: str, metrics: dict | None = None) -> str | None:
     """Check market cap >= $500M. Returns skip reason or None."""
     if ticker in _mcap_cache:
         mcap = _mcap_cache[ticker]
@@ -219,6 +236,8 @@ async def _check_market_cap(ticker: str) -> str | None:
             _mcap_cache[ticker] = None
             return None  # let it through if we can't check
 
+    if metrics is not None:
+        metrics["market_cap"] = mcap
     if mcap is None:
         return None  # no data — let it through
 

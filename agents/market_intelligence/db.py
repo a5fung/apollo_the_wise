@@ -1188,6 +1188,30 @@ async def initialize_schema() -> None:
                 price_source TEXT,
                 rt_price_age_s FLOAT,
                 prev_close_alpaca FLOAT,
+                -- #605 decision-vector capture (2026-08-29): every INPUT a gate or the score
+                -- consumed, persisted per candidate per stage — not just for survivors. A row
+                -- carries whatever was IN HAND when it was written (a candidate killed before
+                -- grading legitimately has NULL catalyst fields). Registry + column contract:
+                -- agents/market_intelligence/ep_decision_vector.py (test-enforced).
+                reject_stage TEXT,
+                current_price FLOAT,
+                prev_day_volume BIGINT,
+                today_volume BIGINT,
+                pm_rvol_baseline_n INT,
+                days_since_prior_alert INT,
+                extension_pct FLOAT,
+                quality_adv_dollar FLOAT,
+                atr_pct FLOAT,
+                market_cap FLOAT,
+                vol_percentile FLOAT,
+                prior_3m_change FLOAT,
+                float_shares FLOAT,
+                in_active_theme BOOLEAN,
+                llm_catalyst_quality TEXT,
+                score_breakdown JSONB,
+                ep_bar FLOAT,
+                score_side TEXT,
+                rank_by_prescore INT,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (scan_date, ticker)
             );
@@ -1219,6 +1243,28 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS price_source TEXT;
             ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS rt_price_age_s FLOAT;
             ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS prev_close_alpaca FLOAT;
+            -- #605 decision-vector capture (2026-08-29) — mirrored into the CREATE above
+            -- (CREATE TABLE IF NOT EXISTS is a no-op on an existing table; only these
+            -- ALTERs reach production — test_schema_alter_create_parity pins the mirror).
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS reject_stage TEXT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS current_price FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS prev_day_volume BIGINT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS today_volume BIGINT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS pm_rvol_baseline_n INT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS days_since_prior_alert INT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS extension_pct FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS quality_adv_dollar FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS atr_pct FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS market_cap FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS vol_percentile FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS prior_3m_change FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS float_shares FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS llm_catalyst_quality TEXT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS score_breakdown JSONB;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS ep_bar FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS score_side TEXT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS rank_by_prescore INT;
             CREATE INDEX IF NOT EXISTS idx_ep_scan_log_scan_time
                 ON mi_ep_scan_log(scan_time_et DESC);
         """)
@@ -7993,7 +8039,14 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
                   adv, adv_source, minutes_since_open,
                   gap_pct_rt, gap_pct_delayed, price_source, rt_price_age_s,
                   prev_close_alpaca}  ← #490 G1 shadow columns (existed since
-                  #489, threaded RT-1 — the RT-2 shadow gates read them).
+                  #489, threaded RT-1 — the RT-2 shadow gates read them),
+    plus the #605 decision-vector columns (2026-08-29): reject_stage,
+    current_price, prev_day_volume, today_volume, pm_rvol_baseline_n,
+    days_since_prior_alert, extension_pct, quality_adv_dollar, atr_pct,
+    market_cap, vol_percentile, prior_3m_change, float_shares,
+    in_active_theme, llm_catalyst_quality, score_breakdown (dict → jsonb),
+    ep_bar, score_side, rank_by_prescore. All optional — a row carries what
+    was in hand at its stage. Column contract: ep_decision_vector.py.
     Never raises — scan must not be blocked by logging failures.
     """
     if not records:
@@ -8008,10 +8061,18 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
                      scan_time_et, rank_by_gap, projected_vol_multiple,
                      pm_rvol, adv, adv_source, minutes_since_open,
                      gap_pct_rt, gap_pct_delayed, price_source,
-                     rt_price_age_s, prev_close_alpaca)
+                     rt_price_age_s, prev_close_alpaca,
+                     reject_stage, current_price, prev_day_volume,
+                     today_volume, pm_rvol_baseline_n, days_since_prior_alert,
+                     extension_pct, quality_adv_dollar, atr_pct, market_cap,
+                     vol_percentile, prior_3m_change, float_shares,
+                     in_active_theme, llm_catalyst_quality, score_breakdown,
+                     ep_bar, score_side, rank_by_prescore)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
                         $10, $11, $12, $13, $14, $15, $16,
-                        $17, $18, $19, $20, $21)
+                        $17, $18, $19, $20, $21,
+                        $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                        $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
             """, [
                 (
                     r["scan_date"], r["ticker"], r.get("gap_pct"),
@@ -8025,12 +8086,33 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
                     r.get("gap_pct_rt"), r.get("gap_pct_delayed"),
                     r.get("price_source"), r.get("rt_price_age_s"),
                     r.get("prev_close_alpaca"),
+                    r.get("reject_stage"), r.get("current_price"),
+                    _int_or_none(r.get("prev_day_volume")),
+                    _int_or_none(r.get("today_volume")),
+                    r.get("pm_rvol_baseline_n"), r.get("days_since_prior_alert"),
+                    r.get("extension_pct"), r.get("quality_adv_dollar"),
+                    r.get("atr_pct"), r.get("market_cap"),
+                    r.get("vol_percentile"), r.get("prior_3m_change"),
+                    r.get("float_shares"), r.get("in_active_theme"),
+                    r.get("llm_catalyst_quality"),
+                    # dict → the registered jsonb codec (which json.dumps's it
+                    # exactly once — the #177/#179 double-encode hazard);
+                    # None stays NULL, never a spurious '{}'.
+                    (_jsonb_param(r["score_breakdown"])
+                     if r.get("score_breakdown") is not None else None),
+                    r.get("ep_bar"), r.get("score_side"),
+                    r.get("rank_by_prescore"),
                 )
                 for r in records
             ])
     except Exception as e:
         import logging as _logging
         _logging.getLogger(__name__).warning(f"EP scan log write failed: {e}")
+
+
+def _int_or_none(v) -> "int | None":
+    """BIGINT params must be ints — Polygon sometimes hands volume as float."""
+    return int(v) if v is not None else None
 
 
 async def get_ep_scan_log(d: "str | date") -> list[dict[str, Any]]:

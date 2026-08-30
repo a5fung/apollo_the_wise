@@ -70,6 +70,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     FILTER_MCAP_TOO_SMALL,
     FILTER_PM_RVOL_TOO_LOW,
     FILTER_SESSION_RVOL_TOO_LOW,
+    FILTER_UNIVERSE_BELOW_GAP_FLOOR,
     FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW,
     FILTER_UNIVERSE_PREV_DAY_ILLIQUID,
 )
@@ -160,6 +161,19 @@ def _pass1_gap_floor() -> float:
     else the real MIN_GAP_PCT. The superset only WIDENS Pass-1; the authoritative 9% floor is
     always re-applied to the decided gap in Pass 2 (`_apply_realtime_pass2`), so it can never leak."""
     return EP_PASS1_SUPERSET_GAP_PCT if EP_RT_PASS2_ENABLED else MIN_GAP_PCT
+
+
+# #605 decision-vector capture (2026-08-29): the FIXED capture floor. Every name whose gap sits in
+# [EP_CAPTURE_GAP_FLOOR, acting admission floor) gets a scan_log ROW (filter:universe_below_gap_floor,
+# full decision vector as of that stage) — RECORD ONLY: it is never graded, scored, alerted, or
+# entered, and the admission floor itself is untouched (THE LINE). WHY FIXED, not derived from
+# MIN_GAP_PCT: deriving it re-creates the floor-censorship class this exists to end — June+July 2026
+# logged ZERO rows in the 9-10% band because MIN_GAP_PCT was 10.0 then, so the 08-19 floor change
+# could not be evaluated on our own history. 5.0 matches EP_PASS1_SUPERSET_GAP_PCT (the hybrid
+# already screens at 5%), so the captured band is identical whether the hybrid is on or off.
+# tests/test_605_decision_vector_capture.py pins EP_CAPTURE_GAP_FLOOR <= every acting admission
+# floor — an operator floor change below 5% must move this in the same commit.
+EP_CAPTURE_GAP_FLOOR = float(os.environ.get("EP_CAPTURE_GAP_FLOOR", "5.0"))
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
@@ -206,7 +220,14 @@ def _universe_floor_skip(
         )
     else:
         return None
-    return {"ticker": ticker, "gap_pct": gap_pct, "prev_close": prev_close, "filter_reason": reason}
+    return {
+        "ticker": ticker, "gap_pct": gap_pct, "prev_close": prev_close,
+        "filter_reason": reason,
+        # #605: the gate's compared values as COLUMNS (previously only inside the
+        # reason string) + the funnel stage tag.
+        "prev_day_volume": prev_volume, "current_price": current_price,
+        "reject_stage": "universe_floor",
+    }
 
 
 # Auto-disqualifiers (hard filters — applied before scoring)
@@ -2172,6 +2193,9 @@ def _snap_candidate(ticker: str, snap: dict, prev_close: float, current_price: f
         "current_price": current_price,
         "gap_pct": round(gap_pct, 2),
         "today_volume": today_volume,
+        # #605: the MIN_PREV_DAY_VOLUME gate's compared value, persisted per candidate
+        # (previously existed only inside the #570 reason STRING on floor-fail rows).
+        "prev_day_volume": snap.get("prevDay", {}).get("v", 0) or 0,
         "adv": adv,
         "adv_source": adv_source,
         "rel_volume": raw_rvol,
@@ -2968,6 +2992,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     _unclassified_skipped = 0  # P2.0b counter
     _rt_universe = []   # #489 miss watchdog: every ticker that clears all NON-gap filters
     _universe_floor_skips: list[dict] = []  # #570: visibility rows for the two silent D-1 floors
+    _below_floor_rows: list[dict] = []  # #605: [EP_CAPTURE_GAP_FLOOR, acting floor) capture rows
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
@@ -3021,6 +3046,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             gap_pct = (current_price - prev_close) / prev_close * 100
             if gap_pct < _pass1_gap_floor():   # #489: superset floor when hybrid on; else MIN_GAP_PCT
+                # #605: a name in [EP_CAPTURE_GAP_FLOOR, acting floor) is RECORDED with its
+                # full Pass-1 decision vector — record only, admission unchanged (the
+                # `continue` below is the same rejection as before). Ends floor censorship:
+                # a future floor change can be re-asked against this band's history instead
+                # of against a hole (the June/July 9-10% blank). Pure dict build, no I/O.
+                if gap_pct >= EP_CAPTURE_GAP_FLOOR:
+                    _bf = _snap_candidate(
+                        ticker, snap, prev_close, current_price, gap_pct,
+                        adv_map, _minutes_since_open)
+                    _bf["filter_reason"] = (
+                        f"{FILTER_UNIVERSE_BELOW_GAP_FLOOR}: gap {gap_pct:.1f}% < "
+                        f"{_pass1_gap_floor():.1f}% admission floor (recorded only)")
+                    _bf["reject_stage"] = "gap_floor"
+                    _below_floor_rows.append(_bf)
                 continue
 
             # Volume / ADV / open-intensity + the dict shape live in _snap_candidate (#490 RT-1
@@ -3036,22 +3075,42 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # (not asyncio.create_task like the end-of-scan flush) — this write is small (bounded to
     # this tick's floor-fail count) and happens long before the ORB-critical scoring/entry
     # path below, so there is no fire-and-forget GC hazard to manage for it.
-    if _universe_floor_skips:
+    # #605: the below-admission-floor capture rows ride the same flush (ONE batched insert,
+    # not a second round trip) with whatever decision-vector fields their stage had in hand.
+    def _pre_candidate_row(r: dict) -> dict:
+        """scan_log row for a name rejected BEFORE candidacy (universe floor / gap floor /
+        Pass-2 floor re-check) — carries exactly the fields that stage computed."""
+        return {
+            "scan_date": today,
+            "ticker": r["ticker"],
+            "gap_pct": r.get("gap_pct"),
+            "prev_close": r.get("prev_close"),
+            "rel_volume": r.get("rel_volume"),
+            "filter_reason": r.get("filter_reason"),
+            "scan_time_et": now_et,
+            "projected_vol_multiple": r.get("projected_vol_multiple"),
+            "adv": r.get("adv"),
+            "adv_source": r.get("adv_source"),
+            "minutes_since_open": _minutes_since_open,
+            "gap_pct_rt": r.get("gap_pct_rt"),
+            "gap_pct_delayed": r.get("gap_pct_delayed"),
+            "price_source": r.get("price_source"),
+            "rt_price_age_s": r.get("rt_price_age_s"),
+            "prev_close_alpaca": r.get("prev_close_alpaca"),
+            "reject_stage": r.get("reject_stage"),
+            "current_price": r.get("current_price"),
+            "prev_day_volume": r.get("prev_day_volume"),
+            "today_volume": r.get("today_volume"),
+        }
+
+    if _universe_floor_skips or _below_floor_rows:
         try:
             await log_ep_scan_candidates([
-                {
-                    "scan_date": today,
-                    "ticker": r["ticker"],
-                    "gap_pct": r["gap_pct"],
-                    "prev_close": r["prev_close"],
-                    "filter_reason": r["filter_reason"],
-                    "scan_time_et": now_et,
-                    "minutes_since_open": _minutes_since_open,
-                }
-                for r in _universe_floor_skips
+                _pre_candidate_row(r)
+                for r in (_universe_floor_skips + _below_floor_rows)
             ])
         except Exception as e:
-            logger.warning(f"#570 universe-floor scan_log write failed: {e}")
+            logger.warning(f"#570/#605 pre-candidate scan_log write failed: {e}")
 
     # #489 Pass 2 — real-time Alpaca SIP confirm on the (superset) candidates BEFORE ranking/scoring,
     # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the
@@ -3064,8 +3123,29 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # the deploy default). One universe fetch per tick: Pass-2 and the watchdog reuse `_rt_snaps`.
     candidates, _rt_snaps = await _apply_rt_universe_overlay(
         candidates, _rt_universe, snapshots, adv_map, _minutes_since_open, now_et, _prev_trade_date)
+    _pre_pass2 = list(candidates)   # #605: the set Pass-2 decides over, for drop capture below
     candidates = await _apply_realtime_pass2(
         candidates, now_et, prev_trade_date=_prev_trade_date, snaps=_rt_snaps)
+    # #605: Pass-2's floor re-check silently discarded every superset-only name (delayed gap
+    # 5-9% that the rt read did not confirm) and every authoritative flip-down removal — full
+    # decision vectors in hand, zero rows anywhere. RECORD them (capture only; the drop itself
+    # is unchanged — these dicts are already out of `candidates`). Fire-and-forget with a strong
+    # task ref (asyncio only keeps a weak one — the _WATCHDOG_BG_TASKS idiom).
+    try:
+        _p2_kept = {c["ticker"] for c in candidates}
+        _p2_dropped = [c for c in _pre_pass2 if c["ticker"] not in _p2_kept]
+        if _p2_dropped:
+            for _dc in _p2_dropped:
+                _dc["filter_reason"] = (
+                    f"{FILTER_UNIVERSE_BELOW_GAP_FLOOR}: decided gap {_dc['gap_pct']:.1f}% < "
+                    f"{MIN_GAP_PCT:.1f}% after real-time confirm (recorded only)")
+                _dc["reject_stage"] = "gap_floor"
+            _p2t = asyncio.create_task(log_ep_scan_candidates(
+                [_pre_candidate_row(_dc) for _dc in _p2_dropped]))
+            _WATCHDOG_BG_TASKS.add(_p2t)
+            _p2t.add_done_callback(_WATCHDOG_BG_TASKS.discard)
+    except Exception as _p2e:  # loud-ok: capture-only — the scan itself must never die here
+        logger.warning(f"#605 pass-2 floor-drop capture failed: {_p2e}")
     # #489: launch the alert-only miss watchdog CONCURRENTLY, not inline — it fetches the full RT universe
     # (~34 sequential Alpaca calls) and must NEVER sit on the ORB-window scoring/entry critical path (its
     # result is never consumed). Audit-only (send_rt_miss_digest sends the morning summary); the task-set
@@ -3279,7 +3359,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     _tier_shadow_inputs: list[dict] = []
 
     def _scan_row(c: dict, *, reason: str | None, ep_score: float | None,
-                  tier: str | None, catalyst_quality: str | None) -> dict:
+                  tier: str | None, catalyst_quality: str | None,
+                  stage: str | None = None) -> dict:
+        # #605: extension_pct + days_since_prior_alert are derived HERE from the maps the
+        # gates themselves read, so EVERY row carries them — not only the rows a gate
+        # killed (the survivor rows are the counterfactual denominators).
+        _lc5 = extension_map.get(c["ticker"])
+        _pc = c.get("prev_close")
+        _ext = (round((_pc - _lc5) / _lc5 * 100, 2)
+                if _lc5 and _lc5 > 0 and _pc else None)
+        _last_alert = cooldown_last_alert.get(c["ticker"])
         return {
             "scan_date": today,
             "ticker": c["ticker"],
@@ -3304,11 +3393,39 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "price_source": c.get("price_source"),
             "rt_price_age_s": c.get("rt_price_age_s"),
             "prev_close_alpaca": c.get("prev_close_alpaca"),
+            # #605 decision-vector columns (2026-08-29): every gate/score INPUT that was in
+            # hand when this row was written. NULL = genuinely not computed at this stage
+            # (e.g. no catalyst on a pre-grading kill) — never "computed then discarded".
+            # Registry + test: ep_decision_vector.py / test_605_decision_vector_capture.py.
+            "reject_stage": stage,
+            "current_price": c.get("current_price"),
+            "prev_day_volume": c.get("prev_day_volume"),
+            "today_volume": c.get("today_volume"),
+            "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
+            "days_since_prior_alert": ((today - _last_alert).days
+                                       if _last_alert else None),
+            "extension_pct": _ext,
+            "quality_adv_dollar": c.get("quality_adv_dollar"),
+            "atr_pct": c.get("atr_pct"),
+            "market_cap": c.get("market_cap"),
+            "vol_percentile": c.get("vol_percentile"),
+            "prior_3m_change": c.get("prior_3m_change"),
+            "float_shares": c.get("float_shares"),
+            "in_active_theme": c["ticker"] in _in_active_theme_set,
+            "llm_catalyst_quality": c.get("llm_catalyst_quality"),
+            "score_breakdown": c.get("score_breakdown"),
+            "ep_bar": float(ep_threshold),
+            "score_side": "separation" if _sep_live else "legacy",
+            "rank_by_prescore": rank_by_prescore.get(c["ticker"]),
         }
 
-    def _log_filtered(c: dict, reason: str) -> None:
+    def _log_filtered(c: dict, reason: str, stage: str | None = None) -> None:
+        # catalyst fields ride on `c` (set the moment they are computed), so a row killed
+        # AFTER grading carries its grade even though tier/score were never assigned —
+        # the 88%-unreconstructible-catalyst hole (#605).
         scan_log.append(_scan_row(
-            c, reason=reason, ep_score=None, tier=None, catalyst_quality=None,
+            c, reason=reason, ep_score=None, tier=None,
+            catalyst_quality=c.get("acting_catalyst_quality"), stage=stage,
         ))
 
     # Log candidates beyond the graded-shortlist cap. Both reason forms keep the
@@ -3320,9 +3437,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _log_filtered(c, (
                 f"outside top-{SHORTLIST_SIZE} shortlist "
                 f"(prescore rank {rank_by_prescore.get(c['ticker'])}, "
-                f"gap {c['gap_pct']:.1f}%)"))
+                f"gap {c['gap_pct']:.1f}%)"), stage="shortlist_cap")
         else:
-            _log_filtered(c, f"outside top-{SHORTLIST_SIZE} gap cap (gap {c['gap_pct']:.1f}%)")
+            _log_filtered(c, f"outside top-{SHORTLIST_SIZE} gap cap (gap {c['gap_pct']:.1f}%)",
+                          stage="shortlist_cap")
 
     # #444 mode-label sweep: the catalyst-downgrade Telegram below (prose-mismatch
     # branch) is MAGNA53-bound. Resolve the owning strategy's account_mode lazily
@@ -3500,7 +3618,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 reason = f"{reason_const}: {detail}"
                 logger.info(f"Skip {ticker}: {detail} (gap={c['gap_pct']:.1f}%)")
-                _log_filtered(c, reason)
+                _log_filtered(c, reason, stage="rvol_gate")
                 await log_audit_event(
                     audit_event,
                     f"{ticker} {phase_label} pace below normal",
@@ -3567,13 +3685,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     logger.warning(f"#170 shadow emit failed for {ticker}: {_e}")
                 reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
                 logger.info(f"Skip {ticker}: {reason}")
-                _log_filtered(c, reason)
+                _log_filtered(c, reason, stage="cooldown")
                 continue
 
         # Skip if already scored in an earlier scan run today
         if ticker in already_today:
             logger.debug(f"Skip {ticker}: already scored today")
-            _log_filtered(c, "already scored earlier today")
+            _log_filtered(c, "already scored earlier today", stage="duplicate")
             continue
 
         # Hard filter: extension — skip if already up 50%+ before today's gap
@@ -3583,16 +3701,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if extension_pct >= MAX_EXTENSION_PCT:
                 reason = f"already up {extension_pct:.0f}% in prior 5 days (extended)"
                 logger.info(f"Skip {ticker}: {reason}")
-                _log_filtered(c, reason)
+                _log_filtered(c, reason, stage="extension")
                 continue
 
         # Hard filter: pre-trade quality (ADV $1M, ATR%, market cap)
         # Single source of truth — same filters used by backtester and live tracker
-        passed, skip_reason = await check_filters(ticker, today)
+        # #605: `metrics` deposits the COMPARED values (30d median $ADV / ATR% / mcap)
+        # onto the candidate so the scan_log row carries the inputs, not just the verdict
+        # — zero extra queries (check_filters already computed them).
+        _qf_metrics: dict = {}
+        passed, skip_reason = await check_filters(ticker, today, metrics=_qf_metrics)
+        c["quality_adv_dollar"] = _qf_metrics.get("quality_adv_dollar")
+        c["atr_pct"] = _qf_metrics.get("atr_pct")
+        c["market_cap"] = _qf_metrics.get("market_cap")
         if not passed:
             reason = f"quality filter: {skip_reason}"
             logger.info(f"Skip {ticker}: pre-trade filter — {skip_reason}")
-            _log_filtered(c, reason)
+            _log_filtered(c, reason, stage="quality_filter")
             # OBSERVE LANE (operator-approved 2026-06-11, the MNTS case): a
             # sub-$500M mover that passed every gap/RVOL gate is the tiny-cap
             # fast-runner class — auto-trade stays EXCLUDED (this skip stands),
@@ -3623,6 +3748,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
         else:
             vol_pct = 50.0
+        c["vol_percentile"] = vol_pct  # #605: score input, persisted per candidate
 
         # Catalyst cache check — skip FMP/Claude/Perplexity if already evaluated today.
         # A stock oscillating near the 15% threshold gets re-scored every 5 min;
@@ -3685,6 +3811,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
                 ticker, llm_catalyst_quality, claude_analysis, grounded_text,
                 news_summary, _board_sectors, _lattice_live)
+            # #605: grade fields ride the candidate dict so a filter-killed row still
+            # carries the grade that was in hand (scan_log's catalyst columns were NULL
+            # for every post-grade kill — the 88%-unreconstructible hole).
+            c["llm_catalyst_quality"] = llm_catalyst_quality
+            c["acting_catalyst_quality"] = catalyst_quality
 
             if not filters_cleared:
                 skip_reason = await _post_grade_filters(
@@ -3696,7 +3827,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     logger.debug(
                         f"{ticker}: cached grade ({catalyst_quality}) still filtered — {skip_reason}"
                     )
-                    _log_filtered(c, skip_reason)
+                    _log_filtered(c, skip_reason, stage="post_grade_filter")
                     # Filter-killed GRADED candidates get a tier record too (the
                     # ARM-class evidence hole — see _tier_kill_row).
                     _kill_row = _tier_kill_row(
@@ -4046,6 +4177,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
                 ticker, llm_catalyst_quality, claude_analysis, grounded_text,
                 news_summary, _board_sectors, _lattice_live)
+            # #605: grade fields ride the candidate dict (see the cached-path note).
+            c["llm_catalyst_quality"] = llm_catalyst_quality
+            c["acting_catalyst_quality"] = catalyst_quality
 
             # Post-grade filters — S6/#405 (2026-07-03): M&A / routine-catalyst /
             # pm-shares-floor, extracted to _post_grade_filters so the IDENTICAL
@@ -4073,7 +4207,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             )
 
             if skip_reason:
-                _log_filtered(c, skip_reason)
+                _log_filtered(c, skip_reason, stage="post_grade_filter")
                 # Filter-killed GRADED candidates get a tier record too (the
                 # ARM-class evidence hole — see _tier_kill_row).
                 _kill_row = _tier_kill_row(
@@ -4700,6 +4834,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         catalyst_quality, _lattice_verdict, _live_side = _resolve_acting_catalyst_quality(
             ticker, llm_catalyst_quality, claude_analysis, grounded_text,
             news_summary, _board_sectors, _lattice_live)
+        # #605: refresh the ride-along grade fields after the FINAL resolve so the scored
+        # row's llm_catalyst_quality column reflects the settled raw grade (boost /
+        # revenue-gate / prose-downgrade mutations included).
+        c["llm_catalyst_quality"] = llm_catalyst_quality
+        c["acting_catalyst_quality"] = catalyst_quality
 
         # #72 downgrade visibility surface (advisor 2026-05-11; moved here Finding 5,
         # 2026-08-2x). Sent AFTER the final resolve above, not from inside the downgrade
@@ -4764,6 +4903,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         close_3m_ago = prior_3m_map.get(ticker)
         if close_3m_ago and close_3m_ago > 0 and c["prev_close"]:
             prior_3m_change = (c["prev_close"] - close_3m_ago) / close_3m_ago * 100
+        # #605: score inputs ride the candidate dict → the scan_log row.
+        c["prior_3m_change"] = (round(prior_3m_change, 2)
+                                if prior_3m_change is not None else None)
+        c["float_shares"] = profile.get("floatShares")
 
         # Score (weights = the side the ep_score_separation flag chose above)
         ep_score, breakdown = _score_ep(
@@ -4779,6 +4922,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             in_active_theme=(ticker in _in_active_theme_set),
             weights=_act_weights,
         )
+        # #605: the full component vector — previously computed then DISCARDED for every
+        # sub-bar candidate (only alert rows kept any trace, and not even they kept this).
+        c["score_breakdown"] = breakdown
 
         # #533 separation — "keep tracking existing": the OTHER side's score,
         # from the SAME scorer with the other weight table, tiered against the
@@ -4864,7 +5010,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}% breakdown={breakdown})")
             scan_log.append(_scan_row(
                 c, reason=reason, ep_score=ep_score, tier=None,
-                catalyst_quality=catalyst_quality,
+                catalyst_quality=catalyst_quality, stage="score_bar",
             ))
             continue
 

@@ -115,8 +115,10 @@ def test_log_ep_scan_candidates_threads_g1_columns(monkeypatch):
     for col in ("gap_pct_rt", "gap_pct_delayed", "price_source",
                 "rt_price_age_s", "prev_close_alpaca"):
         assert col in conn.sql
-    assert len(conn.rows[0]) == 21                     # 16 legacy + 5 G1 params
-    assert conn.rows[0][-5:] == (20.0, 1.0, "alpaca_sip_universe", 1.2, 10.0)
+    # 16 legacy + 5 G1 + 19 #605 decision-vector params (2026-08-29)
+    assert len(conn.rows[0]) == 40
+    # the 5 G1 params sit at positions 17-21, directly before the #605 block
+    assert conn.rows[0][16:21] == (20.0, 1.0, "alpaca_sip_universe", 1.2, 10.0)
 
 
 def test_log_ep_scan_candidates_legacy_records_still_write(monkeypatch):

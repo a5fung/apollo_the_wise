@@ -6904,6 +6904,15 @@ _PATH_MIN_DAY_BARS = 300  # #306 sweep gap-heal threshold — a full RTH day is 
 _PATH_SWEEP_LOOKBACK_DAYS = 30  # matches scripts/backfill_position_extremes.py's
                                 # Polygon-request cap — bounds the EOD sweep's per-day
                                 # coverage backfill so it can't runaway-request history.
+# #605 (2026-08-29): minute bars are kept for the EP CANDIDATE population, not the alerted
+# subset (persist_alert_day_paths' scan_log UNION arm). 8.0 = the acting 9% admission floor
+# (ep_detector.MIN_GAP_PCT) minus one point of counterfactual headroom, so a modest floor cut
+# can be replayed on stored bars — deliberately NOT the row-capture floor (5.0): bars at 571
+# B/row are ~50x the cost of a scan_log row and the 5-8% band has no admission question open.
+# Deliberately a LOCAL constant, not an ep_detector import (this module runs on the execution
+# service); tests/test_605_decision_vector_capture.py pins it <= MIN_GAP_PCT so a floor change
+# below 8% cannot silently re-open the coverage hole.
+_PATH_CAPTURE_MIN_GAP = 8.0
 
 
 async def _sweep_multi_day_coverage(pool, open_trades, today_open_et: datetime) -> None:
@@ -6978,6 +6987,17 @@ async def persist_alert_day_paths(target_date=None) -> dict:
     08-12 ruling). ~10-25 names x 390 bars/day ≈ 1-1.3 GB/yr all-in at the
     measured 571 B/row — priced into the 5y `mi_intraday_bars` retention.
 
+    #605 (2026-08-29) — POPULATION-DRIVEN, not alert-driven: also every
+    `mi_ep_scan_log` ticker whose day-max gap ≥ `_PATH_CAPTURE_MIN_GAP`. The
+    08-29 backtest needed ORB bars for the CANDIDATE population and found 14%
+    coverage — a 1.1M-row vendor backfill closed it once, but alert-gated
+    ongoing capture re-opens the hole from the very next session. This arm
+    keeps it closed. Priced: ~45-65 candidate names/day (46/day measured at
+    the ≥9% floor over 97 sessions + the 8-9% headroom band), less the
+    already-covered alert/traded overlap → ~+10 MB/day ≈ +2.5-3 GB/yr at the
+    measured 571 B/row (vs ~1-1.3 GB/yr before) — accepted, sits inside the
+    5y retention pricing above.
+
     Reuses the #306 pieces unchanged: `get_minute_bars_range` (Alpaca, same feed
     as the recorder so provenance stays uniform) + `persist_intraday_bars`
     (ON CONFLICT DO NOTHING — idempotent, so overlap with recorder-covered
@@ -7018,8 +7038,19 @@ async def persist_alert_day_paths(target_date=None) -> dict:
                 -- useful EP results. The tactics transfer between the two setups, so the
                 -- capture has to as well. Same additive path, no new job.
                 SELECT ticker FROM mi_consolidation_entry_shadow WHERE entry_date = $1
+                UNION
+                -- #605 (2026-08-29): the CANDIDATE population — every scan_log ticker whose
+                -- day-max gap cleared _PATH_CAPTURE_MIN_GAP, whether it alerted, got gate-
+                -- killed, or fell outside the shortlist. Alert-gated capture is why the
+                -- 08-29 backtest found 14% ORB coverage on its own population. Day-MAX gap
+                -- (GROUP BY, not per-row) so an intraday fade below the floor can't drop a
+                -- name that WAS a candidate at any tick.
+                SELECT ticker FROM mi_ep_scan_log
+                WHERE scan_date = $1
+                GROUP BY ticker
+                HAVING MAX(gap_pct) >= $2
                 """,
-                day,
+                day, _PATH_CAPTURE_MIN_GAP,
             )
     except Exception as e:
         logger.error(f"alert-day path persist: population query failed: {e}")

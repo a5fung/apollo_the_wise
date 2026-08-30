@@ -25,6 +25,15 @@ FILTER_SESSION_RVOL_TOO_LOW  = "filter:session_rvol_too_low"
 # discipline = THE LINE, unchanged by this card; this only makes the rejection visible.
 FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW = "filter:universe_prev_close_too_low"
 FILTER_UNIVERSE_PREV_DAY_ILLIQUID  = "filter:universe_prev_day_illiquid"
+# #605 (2026-08-29): a name whose gap sits BELOW the acting admission floor but at/above the
+# fixed EP_CAPTURE_GAP_FLOOR is now RECORDED (scan_log row, counterfactual telemetry only —
+# never graded, scored, alerted, or entered; the admission floor itself is untouched). Ends the
+# floor-censorship class: June+July 2026 logged ZERO rows in the 9-10% band because MIN_GAP_PCT
+# was 10.0 then, so the 08-19 floor change could never be evaluated on its own history. The
+# `filter:universe_` prefix is deliberate — briefing._format_ep_section excludes that prefix
+# from "gap candidates scanned" and the near-miss lines, so this class can't inflate the
+# operator-facing counts (same routing as the two D-1 floors above).
+FILTER_UNIVERSE_BELOW_GAP_FLOOR    = "filter:universe_below_gap_floor"
 
 # ── setup: order-prep rejections (prepare_orb_order / prepare_prior_day_low_orb_order) ─
 SETUP_STOP_TOO_WIDE        = "setup:stop_too_wide"
@@ -97,6 +106,7 @@ _HUMAN_LABELS: dict[str, str] = {
     FILTER_SESSION_RVOL_TOO_LOW: "Session pace below normal",
     FILTER_UNIVERSE_PREV_CLOSE_TOO_LOW: "Prior close below the $5 universe floor",
     FILTER_UNIVERSE_PREV_DAY_ILLIQUID:  "Prior-day volume below the 50k-share universe floor",
+    FILTER_UNIVERSE_BELOW_GAP_FLOOR:    "Gap below the admission floor (recorded only)",
     SETUP_STOP_TOO_WIDE:        "Stop too wide for risk budget",
     SETUP_ZERO_RANGE:           "Zero opening range",
     SETUP_SIZE_TOO_SMALL:       "Position size too small",

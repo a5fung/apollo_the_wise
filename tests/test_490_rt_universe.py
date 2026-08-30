@@ -299,6 +299,10 @@ def test_snap_candidate_parity_premarket_no_adv_map():
         "today_volume": 500, "adv": 123, "adv_source": "pending",
         "rel_volume": round(500 / 123, 2), "projected_vol_multiple": None,
         "gap_pct_delayed": 10.0, "price_source": "polygon_delayed",
+        # #605 (2026-08-29): the ONE deliberate addition since the pre-#490 freeze —
+        # the MIN_PREV_DAY_VOLUME gate's compared value, capture-only (shared by
+        # Pass-1 and Pass-0 via this same function, so the two still cannot drift).
+        "prev_day_volume": 123,
     }
 
 
