@@ -83,6 +83,19 @@ RULE_MODULES = (
 )
 
 SETUP_DOCS_GLOB = "docs/setups/*.md"
+# docs/architecture/* are owners too (docs/SSoT.md registers them as such) and were never
+# scanned — which is why lane2_grouping_v2 could run ON in paper with the theme-engine SSoT
+# silent about it. Same treatment as setup docs: both drift rules apply.
+ARCH_DOCS_GLOB = "docs/architecture/*.md"
+
+# 2026-08-29 — ALSO scan analysis + design documents. Operator: "how many times we need to fix
+# this, 100x more times???" The drift checker had only ever read docs/setups/, so a FINDING built
+# on a rule we had deleted passed unnoticed: the #327 Stage-1 analysis attributed 22 of 55 missed
+# EPs to a top-20-BY-GAP shortlist cap that was replaced on 2026-08-22. The doc was wrong the
+# moment it was written and nothing caught it. Findings are what decisions get made from, so they
+# need the same check the setup docs get — the constant-mismatch rule (_DOC_VALUE_RE) applies
+# unchanged, and a stale number in a conclusion is worse than a stale number in a reference.
+FINDING_DOCS_GLOBS = ("docs/analysis/*.md", "docs/design/*.md")
 
 # The pre-correction revision of the two docs that carried the 2026-08-23 stale claims —
 # used ONLY by --selftest to replay the historical text through the live drift rules.
@@ -549,8 +562,35 @@ def load_doc(path: Path) -> DocFile:
 
 
 def load_setup_docs(repo: Path = REPO) -> list[DocFile]:
-    return [load_doc(p) for p in sorted(repo.glob(SETUP_DOCS_GLOB))
-            if p.name not in ("README.md",)]
+    """Setup SSoTs plus the findings built on them.
+
+    A finding is not a reference document, but it IS what decisions are made from, so a constant
+    quoted in a conclusion has to match the acting value exactly as one quoted in an SSoT does.
+    Retracted documents are skipped: they are kept deliberately as the record of a failure, and
+    re-flagging their numbers forever would train everyone to ignore this check.
+    """
+    paths = [p for p in sorted(repo.glob(SETUP_DOCS_GLOB)) if p.name not in ("README.md",)]
+    paths += sorted(repo.glob(ARCH_DOCS_GLOB))
+    docs = [load_doc(p) for p in paths]
+    for g in FINDING_DOCS_GLOBS:
+        for p in sorted(repo.glob(g)):
+            d = load_doc(p)
+            head = "\n".join(getattr(d, "text", "").split("\n")[:12]).upper()
+            # A retracted document is kept deliberately as the record of a failure. Re-flagging
+            # its numbers forever trains everyone to ignore this check.
+            if "RETRACTED" in head or "DO NOT CITE" in head:
+                continue
+            # ⚠ FINDINGS GET THE VALUE-MISMATCH RULE ONLY, never the deployment-status rule.
+            # A finding legitimately says "not deployed as of 2026-07-20" — that is HISTORY, and
+            # flagging it is noise. Measured when this scan was added: 13 stale-claim hits, all
+            # of them dated statements that were true when written, against 8 real value
+            # mismatches. A checker that cries wolf gets switched off, which is worse than not
+            # having it. The mismatch rule is the one that matters: a CONSTANT quoted in a
+            # conclusion must still be the acting value, or the conclusion is about a system
+            # that no longer exists.
+            d.skip_stale_claims = True
+            docs.append(d)
+    return docs
 
 
 # ───────────────────────────── DRIFT detection ─────────────────────────────
@@ -674,6 +714,10 @@ def scan_stale_claims(doc: DocFile, res: Resolver) -> list[DriftRow]:
     Dated-entry heading lines themselves are exempt: a title is self-dated history ('what
     happened that day'), not a status claim."""
     rows: list[DriftRow] = []
+    # Findings (docs/analysis, docs/design) opt out of this rule — see load_setup_docs.
+    # They legitimately carry dated "not deployed" statements, which are history, not drift.
+    if getattr(doc, "skip_stale_claims", False):
+        return rows
     rel = _relpath(doc.path)
     for i, line in enumerate(doc.lines):
         if doc.fence_mask[i]:
@@ -805,6 +849,23 @@ def scan_value_mismatches(docs: list[DocFile], res: Resolver) -> list[DriftRow]:
                     continue
                 if doc.historical_mask[i] and _superseded_later(doc, i, [name]):
                     continue  # an old value quoted in genuinely superseded history
+                # RECONCILED-HISTORY notation ("NAME=75.0 ⚠now 50.0"): a finding is a dated
+                # record of what was decided ON a value, so rewriting its number would falsify
+                # the record. Annotating it does not. When the annotation matches the acting
+                # value the line is reconciled — the reader sees both what it decided on and
+                # what is live — and it stops being drift. When the acting value moves again,
+                # the annotation goes stale and this fires once more, which is the point:
+                # reconciliation is a claim about NOW, and it has to keep earning that.
+                # Allow the closing punctuation of whatever markup wraps the value —
+                # `NAME = 6.0` ⚠now 5.0, **NAME=6.0** ⚠now 5.0 — to sit between the two.
+                ann = re.match(r"[`*_)\]]*\s*⚠\s*now\s+(-?\d[\d_]*(?:\.\d+)?)",
+                               line[m.end():])
+                if ann:
+                    try:
+                        if float(ann.group(1).replace("_", "")) == float(r.value):
+                            continue
+                    except ValueError:
+                        pass
                 # Transition notation ("NAME = 60 → 10"): the doc's claimed CURRENT value is
                 # the one AFTER the arrow — check that, not the recorded old value.
                 arrow = re.match(r"\s*(?:→|->)\s*(-?\d[\d_]*(?:\.\d+)?)", line[m.end():])

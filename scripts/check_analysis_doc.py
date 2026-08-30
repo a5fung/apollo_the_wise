@@ -46,22 +46,43 @@ _POP_LINE = re.compile(r"\*\*population:?\*\*|population[:\s]+.*\b(mi_|n\s*=)", 
 _EXEMPT = re.compile(r"^\s*(⛔|>|#+\s*(retracted|superseded))", re.I | re.M)
 
 
-def changed_docs() -> list[str]:
-    """Analysis docs ADDED or MODIFIED versus the index. Deletions are not our business."""
+def changed_docs() -> list[tuple[str, bool]]:
+    """Analysis docs in the index, each with whether it is NEW.
+
+    ADDED docs are always checked. MODIFIED docs are checked only if they were ALREADY
+    compliant, so the gate protects compliance without forcing a retrofit — a document written
+    before this standard existed must not become unpublishable because someone corrected a stale
+    constant in it. That is not hypothetical: on 2026-08-29 a one-word drift annotation on three
+    2026-07 design docs tripped this gate, which is the gate being wrong, not the docs.
+
+    Deletions are not our business.
+    """
     try:
         out = subprocess.run(["git", "diff", "--cached", "--name-status"],
                              capture_output=True, text=True, timeout=20).stdout
     except Exception:
         return []
-    files = []
+    files: list[tuple[str, bool]] = []
     for line in out.splitlines():
         parts = line.split("\t")
         if len(parts) < 2 or parts[0].startswith("D"):
             continue
         path = parts[-1]
         if path.startswith(DOC_DIR) and path.endswith(".md"):
-            files.append(path)
+            files.append((path, parts[0].startswith("A")))
     return files
+
+
+def _was_compliant(path: str) -> bool:
+    """Did the committed version already pass? Only then does a modification have to keep it."""
+    try:
+        prev = subprocess.run(["git", "show", f"HEAD:{path}"],
+                              capture_output=True, text=True, timeout=20)
+    except Exception:
+        return False
+    if prev.returncode != 0:
+        return False
+    return not _problems(prev.stdout)
 
 
 def _section_body(text: str, header_re: re.Pattern) -> str | None:
@@ -80,6 +101,10 @@ def check(path: str) -> list[str]:
             text = fh.read()
     except OSError:
         return []
+    return _problems(text)
+
+
+def _problems(text: str) -> list[str]:
     # A retracted document is a record of a failure, not a live claim — it is exempt, and the
     # banner is what makes it so.
     if _EXEMPT.search(text[:600]):
@@ -117,7 +142,12 @@ def main() -> int:
     docs = changed_docs()
     if not docs:
         return 0
-    failed = {d: p for d in docs if (p := check(d))}
+    failed = {}
+    for path, is_new in docs:
+        if not is_new and not _was_compliant(path):
+            continue  # pre-existing document, unrelated edit — see changed_docs()
+        if problems := check(path):
+            failed[path] = problems
     if not failed:
         return 0
     print("✘ pre-commit: analysis document(s) missing required sections", file=sys.stderr)

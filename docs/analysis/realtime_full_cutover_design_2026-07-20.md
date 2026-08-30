@@ -194,7 +194,7 @@ is cancelled. (This is also the honest framing of Option A's cost: $0 marginal, 
   do not act on my figure.**
 - **Code delta**: essentially ZERO required. `get_snapshot_all()` hits the same endpoint; with a
   real-time entitlement the same fields are simply fresh. Optional cleanups after verification:
-  set `EP_PASS1_SUPERSET_GAP_PCT=10.0` (kills the now-pointless widened fan-out; `_pass1_gap_floor`
+  set `EP_PASS1_SUPERSET_GAP_PCT=10.0 ⚠now 5.0 ⚠now 5.0` (kills the now-pointless widened fan-out; `_pass1_gap_floor`
   then ≡ MIN_GAP_PCT) and keep Pass-2 as a two-feed cross-check (floor-flips → ~0 by construction;
   a nonzero rate becomes a data-quality alarm) or set `EP_RT_PASS2_ENABLED=false` to retire it.
 - **Also fixed for free**: `today_volume` freshness (day.v real-time → the G2 RVOL distortion
@@ -373,7 +373,7 @@ continuously (fallback population), so the rollback target can't rot unnoticed.
    rates collapse toward 0 (delayed≈rt) — watch 5 days; the residual EOD job should show
    in-window crossers now visible to Pass-1 (its LAG_MIN=16 replay still measures what the OLD
    feed would have missed, i.e. it verifies the upgrade's value directly).
-4. Then (operator, one commit + SSoT entry): `EP_PASS1_SUPERSET_GAP_PCT=10.0`; keep Pass-2 as a
+4. Then (operator, one commit + SSoT entry): `EP_PASS1_SUPERSET_GAP_PCT=10.0 ⚠now 5.0`; keep Pass-2 as a
    permanent two-feed cross-check (recommended) or retire via `EP_RT_PASS2_ENABLED=false`.
 5. Rollback: superset back to 5.0 (env) restores the hybrid instantly; the PLAN downgrade itself
    is a billing-cycle action — schedule detection-critical days accordingly (the known weak spot).
@@ -383,7 +383,7 @@ continuously (fallback population), so the rollback target can't rot unnoticed.
 ## 8. CHANGE_PROCESS / THE LINE compliance
 
 - Detection data source feeds real-money ORB entries → every authority flip is **operator-executed**
-  (RT-3/RT-5 SQL run by/for the operator on their word, never agent-initiated). `MIN_GAP_PCT=10.0`
+  (RT-3/RT-5 SQL run by/for the operator on their word, never agent-initiated). `MIN_GAP_PCT=10.0 ⚠now 9.0`
   (`ep_detector.py:90-91`), the ORB window (`scheduler.py:894`), scoring weights, safeguards: ALL
   untouched — this changes input freshness only, and the shipped never-loosen rule
   (`ep_detector.py:1499-1508`) extends to the universe path.

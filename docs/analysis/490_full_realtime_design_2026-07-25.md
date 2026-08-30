@@ -417,7 +417,7 @@ decided question.
 ## 10. CHANGE_PROCESS / THE LINE compliance map
 
 - **SSoT read**: `magna53_ep.md` read in full 7/25 (incl. the 7/24 FL-5 reconcile + #500 entry);
-  this change touches DATA SOURCE freshness only — `MIN_GAP_PCT=10.0`, ORB window 9:31-9:44,
+  this change touches DATA SOURCE freshness only — `MIN_GAP_PCT=10.0 ⚠now 9.0`, ORB window 9:31-9:44,
   scoring weights, safeguards, sizing: ALL untouched.
 - **Reversion-flag**: NEW (first change to the detection data source; extends #489's shipped
   shadow architecture; preserves the 2026-05-17 R2 gap-floor decision on truthful data).

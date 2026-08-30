@@ -114,7 +114,7 @@ and the authoritative 10% floor are unchanged.
 
 ### Recommendation
 
-**Ship default `EP_PASS1_SUPERSET_GAP_PCT = 6.0`** (env-overridable, same pattern as
+**Ship default `EP_PASS1_SUPERSET_GAP_PCT = 6.0` ⚠now 5.0** (env-overridable, same pattern as
 `EP_MIN_GAP_PCT` at ep_detector.py:90-91), consulted only when the hybrid is enabled.
 
 - 4pp margin covers every historical-class case we can name (IREN needed ~2pp) plus a comfortable
@@ -587,7 +587,7 @@ deeper kill (removes the fetch entirely).
 | `docs/setups/magna53_ep.md` | change-log entry + detection-data-source paragraph (same commit) |
 | Env / toggles | `EP_RT_PASS2_ENABLED`, `EP_PASS1_SUPERSET_GAP_PCT`, `ep_rt_gap_authoritative`, `ep_rt_volume_authoritative` |
 | Audit events | `ep_rt_floor_flip_up/_down`, `ep_rt_prev_close_mismatch`, `ep_rt_pass2_degraded` |
-| Untouched | `MIN_GAP_PCT=10.0`, ORB window 9:31-9:44, `_score_ep` weights, all safeguards, scheduler crons (unless O5 fork approved) |
+| Untouched | `MIN_GAP_PCT=10.0 ⚠now 9.0`, ORB window 9:31-9:44, `_score_ep` weights, all safeguards, scheduler crons (unless O5 fork approved) |
 
 ---
 

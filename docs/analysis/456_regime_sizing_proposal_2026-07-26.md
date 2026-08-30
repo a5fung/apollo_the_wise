@@ -25,7 +25,7 @@ Chain for a MAGNA53 ORB entry (9M Day 2 is identical in structure):
 2. **Spec build** — `broker/order_manager.py::prepare_orb_order` (VIX logic at lines
    150-161; 9M twin at 3656-3661):
    - equity fetched live from Alpaca (per account_mode);
-   - `risk_pct = vix_scaled_risk_pct(regime_record["vix"], base_pct=RISK_PCT=1%)`
+   - `risk_pct = vix_scaled_risk_pct(regime_record["vix"], base_pct=RISK_PCT=1 ⚠now 0.01%)`
      (`constants.py:10-39`): multiplier = `clamp(max(0.25, 1 − (VIX−15)/20), ≤1.0)`;
    - **then a second, separate halve**: `if regime_record["qqq_ema_bullish"] is False:
      risk_pct *= 0.5` (order_manager.py:160-161 / 3660-3661) — QQQ 10-EMA < 20-EMA;

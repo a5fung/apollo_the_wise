@@ -44,7 +44,7 @@ backtest target if it is **frozen as a manifest** the run embeds and every outpu
 **M1 — Rule manifest (built once, embedded in every output):**
 - The git SHA of `apollo_the_wise` the constants are read from, recorded at build time.
 - Every constant in the §4 gate table, read **from code at that SHA** — never from docs.
-  (Proof this matters: `docs/setups/magna53_ep.md` §Universe still says `MAX_EXTENSION_PCT=75.0`;
+  (Proof this matters: `docs/setups/magna53_ep.md` §Universe still says `MAX_EXTENSION_PCT=75.0 ⚠now 50.0`;
   the code says `50.0` at `ep_detector.py:213`, operator-signed 2026-08-29. The doc is stale;
   the code is the truth. One of the retraction-day failures was exactly this.)
 - The runtime-toggle snapshot. Captured 2026-08-29 (read-only, one query, file:
