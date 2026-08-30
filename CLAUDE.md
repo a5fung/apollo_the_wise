@@ -112,6 +112,7 @@ continuation flag is not. Just cut out this confusion every time."*
 
 **Before changing ANY detection criterion** (parabolic, EP, 9M, flag, wick, convergence, future setups) **OR portfolio safeguard** (max_positions, daily_loss_limit, circuit_breaker, drawdown_breaker, PDT — see `docs/setups/safeguards.md`):
 
+0. 🗂 **START AT `docs/SSoT.md` — THE ROUTER: for ANY topic it names the ONE file that owns it** (pointers only, cannot go stale). `tests/test_ssot_router_complete.py` FAILS the build on an unregistered SSoT, dead path, orphaned finding, or dropped ruling. ⚠ `docs/analysis/**` + `docs/design/**` are findings, **NEVER owners**.
 1. **Read the setup's SSoT file** at `docs/setups/<setup>.md` — entire file, not just change log. Confirms current criteria, recent changes, and known limitations.
 2. **Read `docs/setups/CHANGE_PROCESS.md`** — discipline rules including required change-log fields, reversion-flag, evidence requirements.
 3. **If the change is a reversal** of a prior decision, read the prior change-log entry to understand WHY the prior reasoning was made, and articulate why it was *wrong* (not just incomplete) before reverting.
@@ -229,15 +230,15 @@ Bottom-up from price action (themes emerge from RS, not hypotheses); lifecycle N
 - **Fade guard** (`entry_pipeline.py::check_fade_guard`): tiered — MAGNA53 HIGH passes `None` (skipped), 9M Day 2 passes `0.25` (skip if last < lower 25% of ORB). Stop-buy mechanics + 10:00 ET unfilled-cancel are the real backstop.
 
 ### 9M EP Detection (Parallel Track)
-- **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde). Quick reference: price ≥ $5, dollar volume ≥ $50M actual (≥ $30M already-traded for anticipation), directional gap ≥ 3% OR intraday gain ≥ 4%, anomaly effective_vol ≥ 3× ADV (ratio, NOT a flat ceiling; unknown ADV passes). **Full gate list + Sugar Baby definition + stop placement are the SSoT in `docs/setups/ninem.md` (FULL parity verified 2026-07-05) — read it before touching any threshold.**
+- **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde). **Every threshold, the gate list, the Sugar Baby definition and stop placement live in `docs/setups/ninem.md` — read it before touching any of them.**
 - **Intraday and EOD use identical filters** — any divergence creates phantom sugar babies.
 - **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based.
-- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD confirmed; renamed from `mi_9m_sugar_babies` 2026-05-23 #82 — the persistent Pradeep cohort is in `mi_sugar_babies_cohort` separately)
+- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD), `mi_sugar_babies_cohort` (the persistent Pradeep cohort)
 - **Anticipation cadence carve-out**: silent anticipations hit DB/audit only; Telegram only when gap ≥ 10% OR proj_vol ≥ 25M.
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 
 ### Entry Pipeline
-**`broker/entry_pipeline.py::submit_trade_entry`** — the single funnel for both MAGNA53 EP and 9M Day 2 entries (strategy differences inject via `spec_builder`). **FULL SSoT: `docs/architecture/entry_pipeline.md`** (pipeline stages, action/skip-reason vocabularies, account_mode threading) — update it in the same commit as any pipeline change. **Contract kept inline: every terminal failure Telegrams via `humanize()`.**
+**`broker/entry_pipeline.py::submit_trade_entry`** — the single entry funnel (per-strategy differences inject via `spec_builder`). **FULL SSoT: `docs/architecture/entry_pipeline.md`** (pipeline stages, action/skip-reason vocabularies, account_mode threading) — update it in the same commit as any pipeline change. **Contract kept inline: every terminal failure Telegrams via `humanize()`.**
 
 ### Dual-Account Architecture (#66, 2026-05-10)
 One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_strategies.phase` → `resolve_account_mode_for_strategy()`. **FULL SSoT: `docs/architecture/dual_account.md`** (phase→destination table, per-mode clients/streams/safeguards/sync, boot bootstrap, #65 per-strategy sizing/cap) — read it before touching any account-mode code; update it in the same commit.
