@@ -319,3 +319,50 @@ Also open: #533, #516, #504, #331, #335, #488, #486, #482.
 - **Expectancy, not win rate.** And know what the column IS — `fwd_5d_pct` is maximum favourable
   excursion, positive on nearly every row.
 - **Retract, do not patch a fourth time.** If the defect is in the population, no re-run fixes it.
+
+---
+
+## 2026-08-30 (Sun) — 🔴 RESUME HERE. Supersedes everything above.
+
+**State: clean.** `17142280`, pushed, 82 open, suite 6583, **drift zero**.
+
+### 🗂 Start at `docs/SSoT.md`
+For any topic it names the ONE file that owns it. Pointers only. Gated by
+`tests/test_ssot_router_complete.py`. `docs/analysis/**` and `docs/design/**` are findings,
+**never owners**.
+
+### 🔴 The lesson of 2026-08-29 — do this before any analysis
+**Run `scripts/live_rules.py` and hand its output as a file path to every card.** It prints what
+is ACTUALLY live, from code and prod, never from prose. Three analyses ran that day against
+remembered state and were wasted — one attributed 22 of 55 missed EPs to a shortlist ranking
+deleted on 08-22; the EP doc had quoted a 75% extension cap for a day after the revert. Now
+`docs/methodology/analysis_standard.md` §3b, plus a pre-push warning and a nightly 18:02 ET job.
+
+### Shipped 08-29
+- **#605** capture fix live — 19 new `mi_ep_scan_log` columns (23→42), scan-log-driven bar
+  capture at 8%, anti-rot guard test. **Verify Monday 08-31.**
+- **14.5M minute bars** — EP-day ORB coverage 14%→97%, forward sessions 7%→**99.8%**.
+- **Drift check** now automatic (pre-push + nightly) and scans architecture docs and findings,
+  not only setups.
+- **`docs/SSoT.md`** router + gate; **`analysis_standard.md`** with a 13-item failure catalogue.
+
+### Sunday's plan: `~/.claude/plans/crystalline-waddling-charm.md`
+9 tasks. **#516 first** — the M&A filter is throwing away real EPs and needs no new evidence; his
+ruling IS the evidence. Then #554, #573 (parallel cards), #331 Step 0 + #533 (Fable),
+#197/#486/#488 (check-and-close). Delayed entry Stage 2 last.
+**⏱ 15:02 PT Sunday: the nightly drift job's first firing** — verify it actually ran.
+
+### Delayed entry lives in ONE place now
+`docs/setups/delayed_ep_reentry.md` § **THE CONTEXT LEDGER** — his rulings verbatim, every study
+and what it established, the open questions. Read it first; two cards skipped it on 08-29 and
+returned his own ideas back to him.
+- **"Near" is a BEHAVIOUR** — approach → deceleration → cessation → consolidation → turn.
+- **The pivot is the FILTER, not the trigger.** 620 alone +0.04R; 620 at the EP close +0.21R.
+- Stage 1: **55 missed EPs**, materially different from the 44 stopped-out names (~93% tail-free)
+  — we were stopped out of names with no tail and missed the ones that had one.
+
+### Standing
+⚠ Dead strategies are not evidence — check `mi_strategies.enabled/phase` (`9m_day2`,
+`fishhook_v3`, `flag_continuation` are deprecated; he has twice asked not to see 9M).
+⚠ 28-word replies; tables carry the numbers.
+⚠ Retract, don't patch a fourth time — a population defect survives any re-run.
