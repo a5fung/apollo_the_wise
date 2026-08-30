@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -70,6 +71,69 @@ _PROJECT = re.compile(r"^##\s+(.+?)\s*$")
 # legit partial deploys. Case-sensitive on purpose — lowercase "deploy(ed)" prose counts only when
 # date-stamped; a plain to-build title ("build X + deploy market-agent") must NOT trip it.
 _DEPLOY_MARKER = re.compile(r"DEPLOYED|>>\s*BUILT|verify-live|VERIFY-LIVE|deployed \d{4}-")
+
+# --- SHIPPED-BUT-UNRECORDED (2026-08-30) -------------------------------------------------------
+# The gap every other surface here misses, and it has cost us ~30 redone tasks.
+#
+# LIKELY-BUILT asks "does this line's own TEXT read as built". PENDING-VERIFY asks "does its text
+# claim a verify while the status disagrees". Both read only the line. **So a task whose text says
+# NOTHING SHIPPED stays invisible forever, even when the thing shipped weeks ago in a commit that
+# named the task by number.**
+#
+# The case that forced this, and the operator's words: "this is what our close process should
+# catch and we've run into this many times and you promised its gap is closed... This is like the
+# 30th task we had to do this."
+#   #516's line read `⚖ NOTHING SHIPPED — criterion change = CHANGE_PROCESS + sign-off` and
+#   `AWAITING HIS RULING`. He ruled on 08-08 and commit 841ab270 shipped it on 08-11 with the
+#   subject "#516: a keyword match may no longer overrule a contrary classification —
+#   OPERATOR-SIGNED". The line was never updated, so on 2026-08-30 a card was commissioned to
+#   build what already existed. Nothing in the board could have known: the board only ever knew
+#   what its own text said.
+#
+# THE CHECK: a task claiming it has NOT shipped, whose #ID appears in a commit that touched real
+# code. Both halves are needed — a task legitimately accumulates commits while in progress, so
+# the CLAIM is what makes a commit contradictory rather than expected.
+#
+# Deliberately narrow: only the strong claim phrases, only commits touching code paths (not docs
+# or PLAN.md itself), and it is a SURFACE, not a gate — a genuinely-multi-part task can ship one
+# piece while the rest is honestly unshipped, and blocking on that would train people to reword
+# the claim instead of updating the line.
+_NOT_SHIPPED_CLAIM = re.compile(
+    r"NOTHING SHIPPED|NOT SHIPPED|awaiting (his|the operator|operator)|AWAITING HIS RULING"
+    r"|pending (his |the )?sign-?off|needs operator sign-?off|DO NOT ship|not yet (built|shipped)",
+    re.I)
+
+_CODE_PATHS = ("agents/", "core/", "channels/", "shared/", "broker/")
+
+
+def shipped_but_unrecorded(tasks: list[dict], repo: Path = REPO) -> list[tuple[dict, str]]:
+    """Tasks claiming they have not shipped, whose #ID appears in a code commit.
+
+    Returns (task, commit-subject) so the surface can say WHICH commit contradicts the line —
+    a bare task id would just move the search rather than end it.
+    """
+    out: list[tuple[dict, str]] = []
+    for t in tasks:
+        if t["status"] not in ("in_progress", "pending", "blocked"):
+            continue
+        if not _NOT_SHIPPED_CLAIM.search(t["title"]):
+            continue
+        try:
+            res = subprocess.run(
+                ["git", "log", "-E", "--oneline", "-20", "--grep=#%d([^0-9]|$)" % t["id"], "--", *_CODE_PATHS],
+                cwd=repo, capture_output=True, text=True, timeout=20)
+        except Exception:
+            continue          # fail-open: a git problem must never block the board
+        # SUBJECT-LINE ONLY. --grep searches the whole message, so a commit whose BODY happens
+        # to mention "#335" while shipping #338 would fire — noise on a surface people act on.
+        # A task id in the SUBJECT is the author saying "this commit is that task".
+        pat = re.compile(r"#%d(?![0-9])" % t["id"])
+        line = next((l for l in res.stdout.splitlines()
+                     if l.strip() and pat.search(l.split(" ", 1)[-1])), "")
+        if line:
+            out.append((t, line.strip()))
+    return out
+
 
 # --- SWEEP SUPPRESSION (2026-08-06) -----------------------------------------------------------
 # `_DEPLOY_MARKER` asks "has this line EVER mentioned a deploy", not "is this line's headline
@@ -874,6 +938,18 @@ def main(argv: list[str]) -> int:
             # indistinguishable from a surface that stopped working.
             print(f"  ({_suppressed} suppressed by a fresh `swept:` marker — re-surfaces "
                   f"{_SWEEP_MAX_AGE}d after each sweep date.)")
+        # SHIPPED-BUT-UNRECORDED (2026-08-30) — the line SAYS it has not shipped, but a commit
+        # naming this task touched real code. See shipped_but_unrecorded() for why this is the
+        # one staleness class every other surface here is blind to.
+        stale_claims = shipped_but_unrecorded(tasks)
+        print(f"\n-- SHIPPED-BUT-UNRECORDED ({len(stale_claims)}) — the line claims NOT shipped, "
+              f"but a commit naming it touched code: RE-READ before commissioning any work --")
+        if stale_claims:
+            for t, commit in stale_claims:
+                print(f"  #{t['id']}  <- {commit}")
+            print("  (⚠ this is the class that got ~30 tasks re-done. Update the line or close it.)")
+        else:
+            print("  (none)")
         # PENDING-VERIFY CLAIM (operator 2026-08-09, the #167 lesson): a task's OWN TEXT asserts a
         # verification is still open but its status says otherwise. Surfaced every OPEN — not just
         # at commit time — so a pre-existing (WARN-only) violation can never go quiet between

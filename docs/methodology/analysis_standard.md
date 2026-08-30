@@ -18,6 +18,17 @@ because judgement drifts and a named list of past mistakes drifts less.
 
 ---
 
+## 0. 🔴 EVERY ANALYSIS CARD GETS `ANALYSIS_CARD_PREAMBLE.md` VERBATIM
+
+`docs/methodology/ANALYSIS_CARD_PREAMBLE.md` carries THE GOAL, the ranking order (recall →
+expected return → capture → tail; **never win rate**), the asymmetric failure modes, and the
+rules that keep getting re-learned.
+
+**Paste it into the card. Do not summarise it, do not rely on remembering it.** Operator,
+2026-08-30: *"can you just internalize the goal and purpose and not needing me to correct you
+every time you do an analysis, this is wasting so much time."* A standard re-remembered per card
+is a standard that drifts — the same four corrections recurred across three cards in two days.
+
 ## 1. Before running anything — answer these four in writing
 
 Not in your head. In the document, before the first query.

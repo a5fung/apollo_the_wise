@@ -45,6 +45,7 @@ strategy, entry/exit discipline, sizing, targets, safeguards or live trade state
 | **The EP profitability goal + THE PRINCIPLES (P1–P15)** | **`docs/roadmap/ep_profitability_program.md`** |
 | How a setup change may be made | `docs/setups/CHANGE_PROCESS.md` |
 | **How analysis is done here** | **`docs/methodology/analysis_standard.md`** |
+| **The preamble every analysis card gets verbatim** | **`docs/methodology/ANALYSIS_CARD_PREAMBLE.md`** |
 | Evidence-gated review triggers | `data_gated_reviews.yaml` |
 | Compressed history | `CHANGELOG.md` |
 | Cross-machine bootstrap | `docs/HANDOFF.md` |
