@@ -250,3 +250,72 @@ close-position-in-range, and bar contraction.
   3.8% reach 8×ADR. Candidate, not finding.
 - **Nulls indict our ENCODING, not the concepts** (his correction) — the catalyst explains the gap,
   so its explanatory content is already priced in.
+
+---
+
+## 2026-08-29 (Sat) — 🔴 RESUME HERE. Everything below this line supersedes the older sections.
+
+**State: clean.** Tree clean, all pushed (`0af5142d`), plan gate green at **82 open**, suite
+**6550 passed / 7 skipped**. Nothing half-built, nothing awaiting deploy.
+
+### The one number that matters
+
+**EP is roughly break-even, and we find the outliers but do not hold them.**
+`docs/analysis/ep_backtest_run1_2026-08-29.md` — the first backtest built under TODAY's rules
+from raw bars rather than replayed off stale trade rows. n=194: mean **+0.14R**, median
+**+0.33R**, win 55%. **Of 106 trades that hit the +2R partial, 82 gave the runner all the way
+back to breakeven** and finished at exactly +0.33R; 24 ran further (median +1.98R).
+
+⚠ The operator corrected the framing and was right: EP *is* an outlier strategy, so
+outlier-dependence is not a weakness. The finding is that we do not HOLD them — an exit
+question, not a selection one.
+
+`docs/analysis/runner_rule_sweep_2026-08-29.md`: every looser runner rule earns more on the mean
+(hold-20 +0.36R vs control +0.14R) **but the median flips negative and nothing separates at
+95%.** Decision: **do not change it, collect and re-review.** Registered as
+`runner_rule_sweep_recut` in `data_gated_reviews.yaml`, firing on 40 more closed trades **or any
+single safeguard transition** — the second arm is his "review as needed", because a rules change
+makes a read stale rather than thin.
+
+### Shipped and deployed 08-29
+
+| # | what |
+|---|---|
+| **#605** | only 12% of scanned candidates carried a score/catalyst grade, so no gate could be re-asked. **19 new `mi_ep_scan_log` columns (23→42)**, below-floor capture, **bar capture now scan-log-driven at 8%** (below the 9% live floor deliberately), guard test fails if a scoring input ships unlogged. **Monday's first scan populates it — verify.** |
+| **#597** | a vanished broker position no longer books a wrong P&L — broker truth, or the row stays open and loud. Never fabricates a fill price. |
+| **#595** | 60% of "missed winners" were never setups. Fixed + 2,397 rows backfilled. |
+| **extension cap** | reverted 75%→50%, operator-signed; both re-open triggers watched nightly. |
+| **bars** | 1.1M minute bars backfilled — ORB coverage on the backtest population 14% → **97%**. |
+
+### Standing artifacts written 08-29 — use them
+
+- **`docs/methodology/analysis_standard.md`** — how analysis is done here, with a catalogue of 13
+  real failures. **Pre-commit Gate 6** enforces the decidable parts. **§2 (the population IS the
+  analysis) is the one that matters** — population errors, not arithmetic, caused every
+  retraction.
+- **28-word cap on operator messages** (`scripts/report_format_gate.py`). Tables, code and quotes
+  are exempt — put the numbers there.
+- `docs/analysis/482_geometry_counterfactual_2026-08-29.md` is **RETRACTED**. Do not cite it.
+
+### Next
+
+**#327** — post-day-1 re-entry, queued as a fast-follow and now unblocked: the backtest
+population and the `scripts/probes/_bt_replay.py` harness both exist. **The real work is defining
+"base" and "reclaimed pivot" precisely enough to detect from minute bars, BEFORE any replay.**
+His framing: an opening range is a day-1 construct, so a delayed entry should reference a base or
+a reclaimed pivot — day 2, 3 or later.
+
+⚠ #327's own +2.00R finding is stale on both counts — deprecated 9M cohort, and it predates six
+August rule changes. A hypothesis to re-test, not a result to build on.
+
+Also open: #533, #516, #504, #331, #335, #488, #486, #482.
+
+### Rules that bit hardest on 08-29
+
+- **Replay raw bars, never old trade rows.** The system changes weekly; a trade row is the output
+  of the rules live that day. Population AND outcomes are era-stamped.
+- **Dead strategies are not evidence.** Check `mi_strategies.enabled/phase` first — `9m_day2`,
+  `fishhook_v3`, `flag_continuation` are deprecated.
+- **Expectancy, not win rate.** And know what the column IS — `fwd_5d_pct` is maximum favourable
+  excursion, positive on nearly every row.
+- **Retract, do not patch a fourth time.** If the defect is in the population, no re-run fixes it.
