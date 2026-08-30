@@ -1,5 +1,8 @@
 # Pivots & per-stock character (operator methodology, captured 2026-06-11)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **Status: DURABLE DESIGN NOTE — deliberately not yet implemented.** The operator
 dropped these principles during the MNTS/NBIS chart sessions with the explicit
 instruction to capture them durably because implementation may be months out

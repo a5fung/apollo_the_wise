@@ -20,6 +20,78 @@ One **end-to-end trade tactic**, three layers, built as one unit (memory
 (`docs/analysis/mnts_delayed_ep_case_study_2026-06-11.md`); evidence + replay:
 `docs/analysis/delayed_ep_composition_270.md` + `scripts/_270_*` (replay / cohort / entry).
 
+## 🗂 THE CONTEXT LEDGER — read this before ANY delayed-entry work (operator 2026-08-29)
+
+> *"i don't want delay entry to be re-discussed everytime with no context, make sure everything
+> is saved 100%, history, convo, context and linked everywhere we have delay entries, all tasks,
+> etc. and whatever finding when we're done."*
+
+**Why this exists.** On 2026-08-29 I ran two cards on delayed entry with no context loaded. Both
+returned his own methodology restated back to him: *"these 'detectors' are stuff I already told
+you about... you didn't discover anything."* The context was all here — this file, the pivot
+principles, the #562 study — and I did not read it. **This ledger is the fix: one place that
+carries the goal, his rulings, every study and its result, and the open questions.** Anything
+below is a pointer, not a copy — the linked doc stays the SSoT for its own numbers.
+
+🔒 **Mechanically held:** `tests/test_delayed_entry_ledger_complete.py` FAILS the build when a
+delayed-entry analysis or design document exists that this ledger does not reference. A finding
+cannot become orphaned by inertia, which is how this context was lost the first time.
+
+### Why delayed entry exists at all
+
+**P1 — a real EP must never be missed.** When a real EP gets past us on day 1 (infra skip,
+cooldown, a gate we have since changed, or we were simply stopped out), **the EP is still real
+and the tail is still there.** Missing day 1 must not mean missing the name. With **1–3 real EPs
+a quarter**, one recovered name is a material fraction of the whole objective.
+**THE GOAL it serves:** ~4 converted tail winners in 4½ months. At a ~20% win rate the average
+winner must exceed **4R just to break even** — so judge every arm by **P3 (hunt the tail, not
+the average)**, never by win rate alone.
+
+### His rulings — verbatim, because they keep getting re-derived
+
+| date | ruling |
+|---|---|
+| 2026-06-11 | A **pivot is any reasonable reference point for risk management** — it locates the ENTRY and IS the STOP. MAs and gap-day lows are merely the EASY ones; congestion, volume shelves, swing levels count equally. |
+| 2026-06-11 | **Pivots are conditioned on the stock's own character** — some names pull back to the 10MA, some the 20MA, some habitually undercut before resuming. ⚠ *"Do NOT implement as one global pullback-MA parameter tuned on aggregate data — that erases the per-stock character that IS the principle."* |
+| 2026-06-16 | The undercut is **ONE shape, not the requirement**. The core signal is a constructive tightening pullback. |
+| 2026-08-16 | The **pivot ladder**: EP-day LOW · EP-day CLOSE · EP-day HIGH · prior-day high · MA10 — each with its own entry and stop. Plus **proximity-not-touch**: switch to the intraday **620 chart** when price NEARS a pivot; a rigid touch test is the wrong instrument (P2). |
+| 2026-08-29 | **Day 1 geometry does not transfer.** *"day 2 shouldn't use any ORB entry, delay entries always look for some base and/or reclaim pivots; not just day 2, it's day 2+ can be any subsequent days up to a point."* An opening range is a **day-1 construct**. |
+| 2026-08-29 | 🔑 **"NEAR" IS A BEHAVIOUR, NOT A DISTANCE.** *"near by default is not numerical, it's an approximation, if it's a hard rule then we wouldn't call it near... when I see a chart and see it dropping towards a pivot then it slows down, stops dropping, consolidates, then turn back up, then this is the near point for that particular stock for that particular instance."* → **approach → deceleration → cessation → consolidation → turn.** Self-scaling per stock and per instance; no percentage. ⚠ #562's `pivot ± 0.5×ADR` is the rigid instrument this ruling replaces. |
+| 2026-08-29 | 🔑 **THE PIVOT IS THE FILTER, NOT THE TRIGGER.** Follows from the ruling above: the behaviour gets you in, the pivot only says whether this turn is worth taking. **A tool alone is worthless** — *"you can't take 620 on its own, there's going to be dozens and hundreds of 620 turns over 20 sessions... you couple 620 with pivots."* Measured: 620-ANY **+0.04R**, 620@EPC **+0.21R**. |
+| 2026-08-29 | **Innovate, do not just check his list.** *"the tactics I shared are ideas, there may be more, this is where your analysis needs to add value beyond just mechanically check my ideas, innovate."* |
+
+### The studies — what each one established
+
+| study | population | what it established |
+|---|---|---|
+| `docs/analysis/mnts_delayed_ep_case_study_2026-06-11.md` | MNTS, one name | **The blueprint.** The **two-fold U&R** — 21EMA/20MA reclaim AND gap-day-low reclaim resolving in ONE move. Two pivots agreeing ⇒ a tight honest stop with the whole consolidation as cushion. **Confluence is the original idea and it has still never been measured as its own arm.** |
+| `docs/analysis/delayed_ep_composition_270.md` · `delayed_ep_rmv_step0_270.md` | 134 huge-gap names, 03–05 | The Layer-1 state machine (WATCHED → ARMED → READY) and its funnel: 62 → 30 (48%) → 16 (26% of watched). Selective. |
+| `docs/analysis/pivot_ladder_delayed_entry_562_2026-08-18.md` | DECLINED names, daily proxy | First ladder sweep. **Superseded** by the study below — wrong population, daily-grain proxy. |
+| `docs/analysis/conversion_rehearsal_2026-08-18.md` | surfaced tail winners | **The mechanism that motivates all of this:** our tail winners' runs start **7–21 sessions AFTER** the EP day, and in 3 of 5 measurable cases the launching base formed later and **BELOW** the EP-day low. The day-1 entry is structurally the wrong moment. |
+| **`docs/analysis/delayed_entry_562_2026-08-22.md`** | **44 stopped-out magna53 episodes, minute bars, pre-registered** | **The load-bearing study.** Eight triggers priced. Only positive arm: **620 turn near the EP-day CLOSE, +0.21R (31/44 fire, 39% win)**. Everything else negative: EPL-UR −0.56 · 620@EPL −0.44 · 620@MA10 −0.40 · 620@PDH −0.34 · EPC-REC −0.06 · EPH-BRK −0.03 · 620-ANY +0.04. ⚠ **Its positive sum is TWO STILL-OPEN AUGUST MARKS (SMCI, TEAM); closed-only it is −3.74R.** Settles ~mid-September. |
+| **`docs/analysis/pivot_proximity_2026-08-16.txt`** | **99 HIGH-tier EP alerts, 60 forward sessions** | 🔴 **THE TENSION AT THE HEART OF THE WHOLE LADDER, and it was sitting orphaned in a .txt until 2026-08-29.** Split by whether price ever came near the EP-day low: **TOUCHED** the pivot → median **+7.5**, only **43%** reach ≥8×ADR. **NEVER APPROACHED it** → median **+11.1**, and **66–83%** reach ≥8×ADR (rising with the window). **The strongest names never come back to the pivot at all.** So a pivot-touch requirement systematically selects the WEAKER half of the cohort, and the best outcomes are structurally *uncapturable* by any pivot-reclaim entry. ⚠ This does not kill the ladder — a delayed entry must reference *something*, and the names we MISS on day 1 may be a different mix — but any ladder result must be read against it, and the "never approached" group is a standing argument for a **breakout-side** delayed entry (buy strength) alongside the pullback-side one. |
+| `docs/analysis/real_ep_retention_562b_2026-08-22.md` | — | Companion retention read. |
+| `docs/design/delayed_entry_definitions_327_2026-08-29.md` | 237 EP names | Base and reclaim criteria. **Measured: a valid daily base forms for only 9 of 237 names (4%)** — 8 filled, 4 up / 4 down. **EP-low reclaim fires for 92 (39%)**, 46 volume-confirmed, of which 25 (54%) made a new post-EP high within 10 sessions. The depth rule alone killed 3,252 basing days — it is the binding constraint and may be too strict. ⚠ Otherwise it restated known methodology; the operator rejected it on that basis. |
+| `docs/analysis/482_geometry_counterfactual_2026-08-29.md` | — | ⛔ **RETRACTED — do not cite.** Kept as the record of a population failure. |
+
+### Open questions — what is genuinely NOT known
+
+1. **The whole ladder has only ever been priced on names we ENTERED AND WERE STOPPED OUT OF.** Nothing measures the names we never touched — which is the operator's actual question. (Stage 1, in flight 2026-08-29.)
+2. **620@EPC's sign is undetermined** until SMCI and TEAM settle (~mid-Sept).
+3. **Confluence has never been an arm** — the MNTS two-fold shape, the original blueprint.
+4. **Per-stock character has never been applied.** Every arm measured to date is the global rule the 06-11 ruling names as the anti-pattern; a −0.40R aggregate may be two populations averaged into mush.
+5. **"Near" as behaviour has never been implemented** — every existing measurement used the `±0.5×ADR` proximity test the 08-29 ruling replaces.
+6. **Nothing has been innovated beyond his list.** Candidate hypotheses (approach quality · the same-session spring · test-count decay · volume dry-up floor · higher-low sequence · relative strength on the pullback · gap-fill refusal · the P13 unpriced residual) are pre-registered in the plan and unmeasured.
+
+### Where the work lives
+
+`PLAN.md` **#327** is the active task. Related: **#270** (composition), **#562** (pivot ladder),
+**#482** (geometry, retracted), **#354** (Family A merge). Plan of record:
+`~/.claude/plans/crystalline-waddling-charm.md`.
+⚠ **The long-wait variant converges into Family A** (`docs/decisions/0013-consolidation-plays-post-runup.md`) — 81% of ≥5R 20-day-reclaim names were already on the Family A detector. Short-wait (3–10 day) variants stay distinct.
+
+---
+
 ## What it catches
 
 The tiny-cap fast-runner "one-pays-for-ten-losers" tail the live auto-scanner FILTERS OUT

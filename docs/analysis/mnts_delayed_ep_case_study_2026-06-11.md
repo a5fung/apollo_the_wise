@@ -1,5 +1,8 @@
 # Case study: MNTS delayed-EP re-entry (2026-05-26 → 2026-06-11)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **Why this document exists** (operator, 6/11): every detector picked up a piece of
 this over the week — *"this is exactly how it should be, but our system is
 fragmented and the chart reading pulls it all together."* The case is the

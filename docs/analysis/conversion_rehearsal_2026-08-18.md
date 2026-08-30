@@ -1,5 +1,8 @@
 # Conversion rehearsal — the surfaced tail winners through TODAY'S stack (2026-08-18)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **The question** (synthesis §4.4, operator-approved): *when next month's tail winner alerts, does
 TODAY'S system convert it?* Answered directly: every tail winner we ALREADY surfaced live is
 replayed through the current rules — alert gates, ORB window, era-C bracket, current exit ladder —

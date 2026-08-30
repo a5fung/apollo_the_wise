@@ -1,5 +1,8 @@
 # The 620-Chart — Gil Morales' intraday timing tool
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **Status: OPERATOR METHODOLOGY, not implemented anywhere in Apollo.** Nothing in the codebase reads
 it. Recorded because it was shared in an earlier session, never captured, and was lost — asked for
 again 2026-08-07 and found nowhere in memory or the repo.

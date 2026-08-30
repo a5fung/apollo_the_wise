@@ -1,5 +1,8 @@
 # #562 Pivot-ladder delayed entry — undercut-and-reclaim, the full ladder, and the proximity number
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **2026-08-18 · read-only · $0 · probe: `scripts/probes/pivot_ladder_562.py`**
 Measures the operator's entry architecture (`docs/setups/delayed_ep_reentry.md`
 §"2026-08-16 — THE ENTRY ARCHITECTURE") on every EP alert day, INCLUDING the declined

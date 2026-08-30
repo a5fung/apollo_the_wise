@@ -1,5 +1,8 @@
 # #562 — Pricing the delayed-entry triggers on the stopped-out cohort (2026-08-22)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **MEASUREMENT ONLY. No entry rule, stop, trigger or timing change is made or proposed as
 done. Entry timing is entry discipline = the operator's sole authority (THE LINE). $0 —
 prod read-only, no LLM calls, no paid data.**

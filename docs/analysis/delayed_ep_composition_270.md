@@ -1,5 +1,8 @@
 # #270 — delayed-EP re-entry composition: step 1 (logic validated vs MNTS)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **Status: STEP 1 DONE 2026-06-14 — the composition state machine reproduces the known
 MNTS lifecycle (gate-free replay). Calibration (cohort) + the deployable shadow
 detector are next; the detector is GATED (see "Gate").**

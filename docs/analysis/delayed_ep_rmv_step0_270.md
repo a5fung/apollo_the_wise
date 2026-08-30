@@ -1,5 +1,8 @@
 # #270 STEP 0 — RMV on the cohort + the stop-placement finding (durable, for re-review)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **Status: DIRECTIONAL (N small, one window, in-sample). Nothing load-bearing — all parameters
 remain up for scrutiny (operator 6/16). RMV is RECORDED TELEMETRY; the STOP is now a first-class
 tuning candidate.** Reproduce: `python scripts/_270_rmv_cohort_probe.py` (gate-free, read-only;

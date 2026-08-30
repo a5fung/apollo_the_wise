@@ -1,5 +1,8 @@
 # #562b — Real-EP retention: of the labelled real EPs, how many did we ever hold? (2026-08-22)
 
+> 🗂 **DELAYED-ENTRY CONTEXT LEDGER — READ FIRST: `docs/setups/delayed_ep_reentry.md § THE CONTEXT LEDGER`.** It carries the goal, every operator ruling, every study and its result, and the open questions. Two cards ran on this subject without it on 2026-08-29 and returned nothing new. Kept complete by `tests/test_delayed_entry_ledger_complete.py`.
+
+
 **MEASUREMENT ONLY. No entry technique, retry count, threshold or selection criterion is
 changed or proposed as done — all of those are the operator's sole authority (THE LINE).
 $0 — prod read-only via psql, no LLM calls, no paid data.**
