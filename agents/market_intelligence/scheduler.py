@@ -4491,8 +4491,10 @@ async def _delayed_entry_shadow_job():
 
     #327 2026-08-30 — the delayed-entry WATCH LANE (Stage 0 verdict: rebuild). Enrolls
     every name the EP scan saw today, watches each for 20 trading sessions, records
-    per-session state + the three rung fires with the ex-ante decision vector. RECORD
-    ONLY — no entry/exit rule, no broker calls, no admission/scoring change (THE LINE;
+    per-session state + the three rung fires with the ex-ante decision vector, then
+    SETTLES every open trigger that has become definitive (M-none / M-trail, 20
+    sessions from the fire; inline — one job, one digest). RECORD ONLY — no entry/exit
+    rule, no broker calls, no admission/scoring change (THE LINE;
     see delayed_entry_shadow.py module docstring).
 
     ⚠ SILENT BY RULING (operator 2026-08-30: "Silent. Log only." — an unproven signal
@@ -4509,7 +4511,10 @@ async def _delayed_entry_shadow_job():
             f"delayed-entry shadow: {out['watch_rows']} watch row(s), "
             f"{out['triggers']} trigger(s) across {out['members']} member(s) "
             f"({out['enrolled']} enrolled, {out['unscoreable']} unscoreable, "
-            f"{out['errors']} error(s))"
+            f"{out['errors']} error(s)); settlement {out['settle_considered']} "
+            f"considered / {out['settle_settled']} settled / "
+            f"{out['settle_abstained']} abstained / "
+            f"{out['settle_unscoreable']} unscoreable"
         )
     except Exception as e:
         logger.error(f"delayed-entry shadow job failed: {e}", exc_info=True)

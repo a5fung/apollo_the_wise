@@ -2493,7 +2493,11 @@ async def initialize_schema() -> None:
             -- shape (+2R partial -> breakeven) is deliberately NOT an arm here (operator
             -- 08-30). Settlement columns are NULL while open (the mi_consolidation_entry_shadow
             -- open/settle two-phase — NOT missed_outcomes' rolling recompute, the #583 orphan
-            -- class); the settlement job is a follow-on card and stamps settle_version.
+            -- class); settled inline by the 17:57 job (delayed_entry_shadow.settle_open_triggers,
+            -- settle_v1) as soon as the outcome is DEFINITIVE — a day-3 stop settles on day 3.
+            -- outcome='unscoreable' (realized_r NULL) = the bars needed never arrived within
+            -- SETTLE_ORPHAN_CAL_DAYS (halt/delist/degenerate geometry) — closed, never counted
+            -- by the accrual gate (which counts realized_r IS NOT NULL), never interpolated.
             CREATE TABLE IF NOT EXISTS mi_delayed_entry_trigger (
                 id                SERIAL PRIMARY KEY,
                 ticker            TEXT NOT NULL,
@@ -10131,6 +10135,50 @@ async def insert_delayed_entry_trigger(row: dict) -> bool:
     async with pool.acquire() as conn:
         got = await conn.fetchrow(sql, *(row.get(c) for c in cols))
     return got is not None
+
+
+async def get_delayed_entry_open_triggers() -> list[dict]:
+    """Every OPEN trigger row (outcome IS NULL), oldest fire first. ALL open rows are
+    considered every run — settle-as-soon-as-definitive means a stop can resolve a row on
+    any session, so there is no calendar pre-filter (unlike the consolidation shadow's
+    window-end settle). Uses idx_delayed_entry_trigger_unsettled."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, ep_date, rung, fire_date, fire_minute_et, resolution,
+                   entry_price, stop_price, day_high, day_low, day_close
+            FROM mi_delayed_entry_trigger
+            WHERE outcome IS NULL
+            ORDER BY fire_date, id
+        """)
+    return [dict(r) for r in rows]
+
+
+# The one ordered tuple both the UPDATE SQL and the caller derive from (the
+# exit_path_shadow pattern — column list and placeholders can never drift by position).
+_DELAYED_SETTLE_COLS = (
+    "outcome", "realized_r", "outcome_trail", "realized_r_trail",
+    "r_none_s1", "r_none_s5", "r_none_s10", "r_none_s20",
+    "r_trail_s1", "r_trail_s5", "r_trail_s10", "r_trail_s20",
+    "mfe_r", "mae_r", "reached_4r", "settle_version",
+)
+_DELAYED_SETTLE_SQL = (
+    "UPDATE mi_delayed_entry_trigger SET "
+    + ", ".join(f"{c} = ${i + 2}" for i, c in enumerate(_DELAYED_SETTLE_COLS))
+    + ", settled_at = NOW() WHERE id = $1 AND outcome IS NULL"
+)
+
+
+async def settle_delayed_entry_trigger(row_id: int, fields: dict) -> bool:
+    """Write back ONE settled trigger row (SHADOW — telemetry only). Guarded on
+    `outcome IS NULL` so a double-settle is a no-op (the mi_consolidation_entry_shadow
+    two-phase; a settled row is immutable). Returns True iff THIS call settled the row.
+    `fields` carries exactly the _DELAYED_SETTLE_COLS values (missing keys → NULL)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute(_DELAYED_SETTLE_SQL, row_id,
+                                 *(fields.get(c) for c in _DELAYED_SETTLE_COLS))
+    return res.endswith(" 1")
 
 
 async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, parent_scan_date,

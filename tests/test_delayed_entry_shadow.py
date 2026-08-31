@@ -312,6 +312,14 @@ def _wire(monkeypatch, *, member, window, minute_bars, upsert_raises=False):
     async def _watch_row(ticker, ep, session):
         return None
 
+    async def _no_open_triggers():
+        return []
+
+    async def _settle(row_id, fields):
+        raise AssertionError("settle must not be called with no open triggers")
+
+    monkeypatch.setattr(des, "get_delayed_entry_open_triggers", _no_open_triggers)
+    monkeypatch.setattr(des, "settle_delayed_entry_trigger", _settle)
     monkeypatch.setattr(des, "get_delayed_entry_seed_candidates", _no_seeds)
     monkeypatch.setattr(des, "get_delayed_entry_open_lane", _lane)
     monkeypatch.setattr(des, "get_delayed_entry_daily_window", _window)
@@ -448,3 +456,305 @@ async def test_missing_daily_bar_records_unscoreable_and_state_carries(monkeypat
     assert row["unscoreable_reason"] == "missing_daily_bar"
     assert row["bar_source"] == "missing" and row["day_close"] is None
     assert row["low_since_undercut"] == 9.2                 # carried, not touched
+
+
+# ── settlement: pure core (compute_settlement / sma_trail_line / day0_needs_minutes) ──
+
+from datetime import timedelta
+
+_F0 = date(2026, 6, 1)                      # a fire date for pure-core fixtures
+
+
+def _sess(n):
+    return [_F0 + timedelta(days=i) for i in range(1, n + 1)]
+
+
+def _sbar(d, h, l, c):
+    return {"trade_date": d, "high_price": h, "low_price": l, "close": c}
+
+
+def _bars(specs):
+    """specs: list of (h, l, c) mapped onto consecutive sessions after _F0."""
+    return {_F0 + timedelta(days=i + 1): _sbar(_F0 + timedelta(days=i + 1), h, l, c)
+            for i, (h, l, c) in enumerate(specs)}
+
+
+_FD = {"h": 10.4, "l": 9.9, "c": 10.2}      # a clean fire-day bar (low above stop 9.0)
+
+
+def _settle(*, entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=None,
+            post=None, specs=(), n_sessions=None, closes_before=()):
+    specs = list(specs)
+    n = n_sessions if n_sessions is not None else len(specs)
+    return des.compute_settlement(
+        entry=entry, stop=stop, fire_minute=fire_minute,
+        fire_day_bar=fire_day_bar or dict(_FD), post_fire_bars5=post,
+        sessions=_sess(n), bars_by_day=_bars(specs),
+        closes_before_fire=list(closes_before))
+
+
+def test_sma_trail_line_matches_live_exit_logic_semantics():
+    """<10 closes: no line (live None-guard). 10-19: SMA10 alone. >=20: max(SMA10, SMA20),
+    SMA including the current close."""
+    assert des.sma_trail_line([10.0] * 9) is None
+    assert des.sma_trail_line([10.0] * 19 + [20.0]) == pytest.approx(11.0)  # SMA10 only
+    rising = [float(i) for i in range(1, 21)]                # SMA10=15.5 > SMA20=10.5
+    assert des.sma_trail_line(rising) == pytest.approx(15.5)
+
+
+def test_day0_needs_minutes_only_for_minute_fires_whose_day_low_touched_the_stop():
+    assert des.day0_needs_minutes(None, 8.0, 9.0) is False   # daily fire: pess instead
+    assert des.day0_needs_minutes(580, 9.5, 9.0) is False    # day low never touched
+    assert des.day0_needs_minutes(580, 8.9, 9.0) is True     # ambiguous: order via minutes
+    assert des.day0_needs_minutes(580, None, 9.0) is False
+
+
+def test_stop_on_day3_settles_on_day3_not_day20():
+    """REQUIRED: only THREE sessions of bars exist (today = fire+3) and the third one
+    touches the stop -> the row settles NOW, both arms stopped at -1.0R. mae_r keeps the
+    raw low (-1.1R: the gap-through stays visible even though realized is -1.0)."""
+    res = _settle(specs=[(10.5, 9.8, 10.1), (10.3, 9.7, 10.0), (10.0, 8.9, 9.1)])
+    assert res["status"] == "settled"
+    assert res["outcome"] == "stop" and res["realized_r"] == -1.0
+    assert res["outcome_trail"] == "stop" and res["realized_r_trail"] == -1.0
+    assert res["mae_r"] == pytest.approx(-1.1)
+    # checkpoints: s1 is the day-1 mark; s5/s10/s20 are frozen at the realized stop
+    assert res["r_none_s1"] == pytest.approx(0.1)
+    assert res["r_none_s5"] == -1.0 and res["r_none_s20"] == -1.0
+
+
+def test_open_window_abstains_then_settles_time_exit_when_ripe():
+    """A trigger with no stop hit and only 3 elapsed sessions is NOT settled — it stays
+    open (abstain) and the identical inputs with 20 sessions settle as time_exit at the
+    20th close. This is the partially-elapsed-window case: every fresh trigger abstains
+    until its outcome is definitive."""
+    three = [(10.5, 9.8, 10.1)] * 3
+    res = _settle(specs=three)
+    assert res == {"status": "abstain", "reason": "window_open"}
+    twenty = [(10.5, 9.8, 10.1)] * 19 + [(10.6, 9.9, 10.5)]
+    res = _settle(specs=twenty)
+    assert res["status"] == "settled"
+    assert res["outcome"] == "time_exit" and res["realized_r"] == pytest.approx(0.5)
+    assert res["r_none_s20"] == pytest.approx(0.5)
+
+
+def test_missing_middle_session_abstains_never_leaps_the_gap():
+    """MUTATION TARGET (THE ABSTAIN RULE): day 2's bar is missing; day 3 would stop.
+    The walk must ABSTAIN at the gap — a stop (or a gap-through) could hide inside it —
+    and must NOT settle from the bars on the far side."""
+    bars = _bars([(10.5, 9.8, 10.1), (10.3, 9.7, 10.0), (10.0, 8.9, 9.1)])
+    del bars[_F0 + timedelta(days=2)]
+    res = des.compute_settlement(
+        entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=dict(_FD),
+        post_fire_bars5=None, sessions=_sess(3), bars_by_day=bars,
+        closes_before_fire=[])
+    assert res["status"] == "abstain"
+    assert res["reason"] == f"missing_session:{(_F0 + timedelta(days=2)).isoformat()}"
+
+
+def test_missing_day0_minutes_abstain_and_retry_never_a_daily_verdict():
+    """REQUIRED: a minute-grade fire whose day low touched the stop can only be ordered
+    by post-fire minutes. Without them -> ABSTAIN (retry next run). WITH them showing no
+    post-fire touch -> the pre-fire low must NOT be read as a stop-out (a fabricated
+    loss is as dishonest as a fabricated fill) — the row simply stays open."""
+    fd = {"h": 10.4, "l": 8.5, "c": 10.2}    # day low 8.5 <= stop 9.0: pre-fire undercut
+    res = _settle(fire_minute=600, fire_day_bar=fd, post=None, n_sessions=0)
+    assert res == {"status": "abstain", "reason": "missing_day0_minutes"}
+    post = [_b5(605, 9.4, 9.8, 9.3, 9.5)]    # post-fire lows all above the stop
+    res = _settle(fire_minute=600, fire_day_bar=fd, post=post, n_sessions=0)
+    assert res == {"status": "abstain", "reason": "window_open"}   # open, NOT stopped
+
+
+def test_day0_post_fire_stop_settles_the_same_evening():
+    """A fire whose stop is touched later the same day settles on the very first
+    settlement pass — with ZERO forward sessions available yet."""
+    fd = {"h": 10.4, "l": 8.5, "c": 9.0}
+    post = [_b5(605, 9.4, 9.9, 8.95, 9.1)]   # post-fire low 8.95 <= stop 9.0
+    res = _settle(fire_minute=600, fire_day_bar=fd, post=post, n_sessions=0)
+    assert res["status"] == "settled"
+    assert res["outcome"] == "stop" and res["realized_r"] == -1.0
+    assert res["outcome_trail"] == "stop"
+    assert res["r_none_s1"] == -1.0          # frozen from the day-0 exit
+
+
+def test_realized_r_is_harvested_r_never_mfe():
+    """REQUIRED: day 1 runs to +6.2R (MFE), the trade then round-trips and stops on
+    day 3. realized_r must be the HARVESTED result (-1.0R), the +6.2R lives ONLY in
+    mfe_r, and reached_4r is True because 4R printed on a clean pre-stop session."""
+    res = _settle(specs=[(16.2, 9.9, 15.8), (15.9, 9.5, 9.6), (9.6, 8.9, 9.0)])
+    assert res["status"] == "settled"
+    assert res["realized_r"] == -1.0                       # harvested, not the peak
+    assert res["mfe_r"] == pytest.approx(6.2)              # the peak, in its own column
+    assert res["reached_4r"] is True
+    assert res["realized_r"] != res["mfe_r"]               # the conflation is the bug
+
+
+def test_exact_touch_of_the_stop_is_a_stop():
+    """A session low exactly AT the stop level stops the trade (a resting stop executes
+    on the touch) — pins the <= boundary against a silent < mutation."""
+    res = _settle(specs=[(10.2, 9.0, 9.4)])                # low == stop == 9.0
+    assert res["status"] == "settled" and res["outcome"] == "stop"
+
+
+def test_reached_4r_is_pess_a_spanning_session_reads_stop_first():
+    """MUTATION TARGET (pess stop-first): one session both touches the stop AND prints
+    +5R. Within-day ordering is unknowable, so the stop is presumed first: outcome=stop
+    and reached_4r=False. The high still folds into mfe_r (ceiling telemetry only)."""
+    res = _settle(specs=[(15.0, 8.9, 9.2)])
+    assert res["status"] == "settled"
+    assert res["outcome"] == "stop"
+    assert res["reached_4r"] is False
+    assert res["mfe_r"] == pytest.approx(5.0)
+
+
+def test_trail_exits_below_max_sma_while_none_holds_to_time_exit_one_write():
+    """The two arms settle on ONE row in ONE write even when they resolve on different
+    days: M-trail exits day 5 on a close below max(SMA10, SMA20); M-none never stops
+    (wide stop) and time-exits at the 20th close. Checkpoints freeze per arm."""
+    specs = ([(10.4, 10.1, 10.3), (10.5, 10.2, 10.4), (10.6, 10.3, 10.5),
+              (10.7, 10.4, 10.6), (10.6, 8.8, 9.0)]      # day 5 closes under the SMAs
+             + [(8.6, 8.0, 8.5)] * 15)
+    res = _settle(entry=10.0, stop=5.0, specs=specs, closes_before=[10.0] * 25)
+    assert res["status"] == "settled"
+    assert res["outcome_trail"] == "trail_exit"
+    assert res["realized_r_trail"] == pytest.approx(-0.2)  # (9.0-10)/5, the day-5 close
+    assert res["outcome"] == "time_exit"
+    assert res["realized_r"] == pytest.approx(-0.3)        # (8.5-10)/5, the day-20 close
+    assert res["r_trail_s10"] == pytest.approx(-0.2)       # frozen at the trail exit
+    assert res["r_none_s10"] == pytest.approx(-0.3)        # still marked to market
+    assert res["reached_4r"] is False
+
+
+def test_trail_cannot_exit_until_ten_closes_exist_then_arms():
+    """<10 total closes -> no SMA line (the live None-guard): sessions 1-8 close below
+    everything yet CANNOT trail-exit (the line does not exist); the trail arms the
+    session the 10th close lands (session 9 here, closes accumulating like live's
+    running_closes) and exits THERE. An early arming would exit session 1 at 9.9
+    (-0.02R) — pinned distinct from the true session-9 exit at 9.5 (-0.1R)."""
+    specs = [(10.1, 9.8, 9.9)] * 8 + [(9.6, 9.4, 9.5)] * 12
+    res = _settle(entry=10.0, stop=5.0, specs=specs, closes_before=[])
+    assert res["status"] == "settled"
+    assert res["outcome_trail"] == "trail_exit"
+    assert res["realized_r_trail"] == pytest.approx(-0.1)  # session 9's close, not 1's
+    assert res["r_trail_s5"] == pytest.approx(-0.02)       # still open at s5: a mark
+    assert res["outcome"] == "time_exit"                   # the stop (5.0) never near
+
+
+def test_degenerate_geometry_is_unscoreable_not_scored():
+    """A recorded ep_high_break with stop above entry (negative width — recorded, never
+    dropped) cannot be scored as a trade: R is undefined. It closes unscoreable."""
+    res = _settle(entry=10.0, stop=10.5, specs=[(11.0, 10.0, 10.8)])
+    assert res == {"status": "unscoreable", "reason": "degenerate_geometry"}
+
+
+# ── settlement: orchestration (db collaborators monkeypatched) ────────────────────────
+
+
+def _trigger_row(**over):
+    t = {
+        "id": 7, "ticker": "TST", "ep_date": _EP, "rung": "ep_low_reclaim",
+        "fire_date": _THU, "fire_minute_et": 580, "resolution": "minute_5",
+        "entry_price": 10.0, "stop_price": 9.6,
+        "day_high": 9.9, "day_low": 9.2, "day_close": 9.7,   # Thursday's bar
+    }
+    t.update(over)
+    return t
+
+
+def _wire_settle(monkeypatch, *, trigger, window, minute_bars, settle_result=True,
+                 member=None):
+    """Settlement wiring on top of _wire: one open trigger, captured settle writes."""
+    watch, triggers, audits = _wire(
+        monkeypatch, member=member or _member(session_idx=20),
+        window=window, minute_bars=minute_bars)
+    settles = []
+
+    async def _open_triggers():
+        return [dict(trigger)] if trigger else []
+
+    async def _settle(row_id, fields):
+        settles.append((row_id, dict(fields)))
+        return settle_result
+
+    monkeypatch.setattr(des, "get_delayed_entry_open_triggers", _open_triggers)
+    monkeypatch.setattr(des, "settle_delayed_entry_trigger", _settle)
+    return settles, audits
+
+
+@pytest.mark.asyncio
+async def test_settlement_rides_the_same_run_and_the_digest_counts_it(monkeypatch):
+    """Thursday's minute fire (entry 10.0, stop 9.6; the day low 9.2 pre-dates the fire
+    so day 0 is ordered via post-fire minutes) hits its stop on Friday's 9.5 low. The
+    inline pass settles it: outcome=stop, realized -1.0R, settle_version stamped, and
+    the ONE summary digest reports considered/settled."""
+    post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]           # post-fire day 0: never near 9.6
+    settles, audits = _wire_settle(
+        monkeypatch, trigger=_trigger_row(), window=_WINDOW, minute_bars=post)
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["settle_considered"] == 1 and out["settle_settled"] == 1
+    assert out["settle_abstained"] == 0
+    (row_id, fields), = settles
+    assert row_id == 7
+    assert fields["outcome"] == "stop" and fields["realized_r"] == -1.0
+    assert fields["outcome_trail"] == "stop"
+    assert fields["settle_version"] == des.SETTLE_VERSION
+    summary = next(s for e, s in audits if e == "delayed_entry_shadow_recorded")
+    assert "1 open trigger(s) considered, 1 settled" in summary
+
+
+@pytest.mark.asyncio
+async def test_not_yet_definitive_abstains_and_the_row_stays_open(monkeypatch):
+    """Friday never touches a 9.0 stop and 20 sessions have not elapsed: the pass must
+    consider the row, settle NOTHING, and count the abstain — the open row (outcome
+    NULL) is the at-a-glance marker of a partially-elapsed window."""
+    trig = _trigger_row(stop_price=9.0, day_low=9.7, fire_minute_et=None,
+                        resolution="daily")
+    settles, audits = _wire_settle(
+        monkeypatch, trigger=trig, window=_WINDOW, minute_bars=[])
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert settles == []
+    assert out["settle_considered"] == 1 and out["settle_settled"] == 0
+    assert out["settle_abstained"] == 1
+    summary = next(s for e, s in audits if e == "delayed_entry_shadow_recorded")
+    assert "1 abstained" in summary
+
+
+@pytest.mark.asyncio
+async def test_orphan_past_horizon_closes_unscoreable_never_interpolated(monkeypatch):
+    """A trigger 50+ calendar days old whose forward bars never arrived (halt/delist/
+    hole) must not stay open forever OR be settled from guesses: it closes as
+    outcome='unscoreable' with realized_r NULL, loud in the audit log."""
+    old_fire = _FRI - timedelta(days=50)
+    trig = _trigger_row(fire_date=old_fire, fire_minute_et=None, resolution="daily",
+                        stop_price=9.0, day_low=9.7)
+    settles, audits = _wire_settle(
+        monkeypatch, trigger=trig, window=_WINDOW, minute_bars=[])
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["settle_unscoreable"] == 1 and out["settle_settled"] == 0
+    (row_id, fields), = settles
+    assert fields["outcome"] == "unscoreable"
+    assert fields["outcome_trail"] == "unscoreable"
+    assert fields.get("realized_r") is None                 # never a number
+    assert any(e == "delayed_entry_shadow_unscoreable" for e, _ in audits)
+
+
+@pytest.mark.asyncio
+async def test_double_settle_is_a_noop_lost_race_is_not_counted(monkeypatch):
+    """The DB guard (WHERE outcome IS NULL) makes a second settle a no-op; the caller
+    must treat settle->False as already-settled: not counted, not an error."""
+    post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]
+    settles, audits = _wire_settle(
+        monkeypatch, trigger=_trigger_row(), window=_WINDOW, minute_bars=post,
+        settle_result=False)
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert len(settles) == 1                                # attempted exactly once
+    assert out["settle_settled"] == 0 and out["errors"] == 0
+
+
+def test_double_settle_guard_is_pinned_in_the_sql():
+    """The settle UPDATE must carry the `outcome IS NULL` guard and stamp settled_at —
+    editing either out of db.py fails here (the two-phase contract, pinned)."""
+    from agents.market_intelligence import db as dbmod
+    assert "WHERE id = $1 AND outcome IS NULL" in dbmod._DELAYED_SETTLE_SQL
+    assert "settled_at = NOW()" in dbmod._DELAYED_SETTLE_SQL
+    assert "realized_r" in dbmod._DELAYED_SETTLE_COLS

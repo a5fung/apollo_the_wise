@@ -63,11 +63,50 @@ MEASUREMENT CONVENTIONS:
     extension <=50%, catalyst grade >= strong) is stamped per row from EP-day facts —
     computable ex ante, NOT an outcome label; a missing component leaves it NULL,
     never guessed. Raw components are stored so any variant can be re-cut.
-  - Settlement (M-none / M-trail over 20 sessions) is a FOLLOW-ON card; the trigger
-    table already carries its NULL-while-open columns and the open/settle two-phase
-    indexes (the mi_consolidation_entry_shadow pattern — never a rolling recompute).
   - Day-2+ only: same-day re-entry is explicitly out of scope (tick-level state would
     break the shadow/live-execution boundary).
+
+SETTLEMENT (2026-08-30, same-day follow-on — settle_open_triggers, driven inline by the
+same 17:57 job; one job -> one digest). Every open trigger is followed forward for 20
+trading sessions FROM ITS FIRE and settled under TWO arms on one row, in one write:
+  M-none   hard stop only — no partial, no breakeven, no trail. Stop touch (low <= stop,
+           pess stop-first) -> -1.0R at the stop level (the _bt_replay/house convention;
+           mae_r still records the raw low, so a gap-through stays visible). Never
+           stopped -> exit at the 20th session's close. `realized_r` = THIS arm's
+           HARVESTED R — the accrual-gate column — never MFE (db.py:2167 discipline).
+  M-trail  the same hard stop stays live, AND exit on a daily close below
+           MAX(SMA10, SMA20) — live exit_logic semantics verbatim: SMA includes the
+           session's own close, <20 closes falls back to SMA10 alone, <10 closes -> no
+           trail line yet, so no trail exit (the live None-guard). Whichever comes first;
+           still open at session 20 -> time exit at that close.
+  ⚠ The live day-1 shape (+2R partial -> breakeven) is deliberately NOT an arm
+    (operator 08-30) — it belongs to a different setup.
+  - SETTLE AS SOON AS DEFINITIVE (the anticipation.settle_entry_shadow semantics,
+    re-implemented for these arms — that frozen core settles a +1R/+3R harvest, D8): a
+    day-3 stop-out settles on day 3, never waits for day 20. The single write happens
+    when the M-none arm resolves (the longest hold — a shared-stop hit ends both arms,
+    and a trail exit can only be earlier), guarded on `outcome IS NULL` so a
+    double-settle is a no-op.
+  - THE ABSTAIN RULE applies with full force: a session with no daily bar (stored OR
+    single-day fallback) blocks the walk AT that session — never leap a gap, never
+    interpolate. Day 0 of a minute-grade fire whose daily low touched the stop (for a
+    reclaim the pre-fire undercut low often IS the stop) can only be ordered by the
+    post-fire 5-min bars — missing minutes ABSTAIN and retry next run. A daily-grade
+    fire's day-0 spanning bar reads stop-first (pess — the documented house bound).
+  - Rows that can NEVER become definitive are not orphaned: after
+    SETTLE_ORPHAN_CAL_DAYS (well past the 20-session window) a still-abstaining row is
+    CLOSED as outcome='unscoreable' with every R column NULL — recorded, never
+    interpolated, and never counted by the accrual gate (realized_r IS NOT NULL).
+    Degenerate geometry (stop >= entry, recorded-never-dropped at fire time) closes as
+    unscoreable immediately — R is undefined there.
+  - mfe_r/mae_r are EXCURSION TELEMETRY over the M-none hold (ceiling/floor: the exit
+    session's high/low fold in, the entry_bet_outcome convention) — never the result.
+    reached_4r is pess: a session that touches the stop credits no 4R that day, and a
+    minute-fire's own day-0 daily high is never credited (pre-fire highs are
+    indistinguishable at daily grade).
+  - An open row is distinguishable at a glance: outcome IS NULL + settled_at IS NULL;
+    the digest logs considered-vs-settled-vs-abstained so a silent zero is
+    distinguishable from "nothing ripe yet". SILENT — no Telegram on any path.
 """
 from __future__ import annotations
 
@@ -83,10 +122,12 @@ from agents.market_intelligence.db import (
     get_delayed_entry_daily_bar,
     get_delayed_entry_daily_window,
     get_delayed_entry_open_lane,
+    get_delayed_entry_open_triggers,
     get_delayed_entry_seed_candidates,
     get_delayed_entry_watch_row,
     insert_delayed_entry_trigger,
     log_audit_event,
+    settle_delayed_entry_trigger,
     upsert_delayed_entry_watch,
 )
 
@@ -94,7 +135,13 @@ logger = logging.getLogger(__name__)
 
 PATTERN_VERSION = "v1"
 SCREEN_VERSION = "screen_v1"      # gap>=8, prev_close>=5, $vol>=50M, ext<=50, grade>=strong
+SETTLE_VERSION = "settle_v1"      # M-none / M-trail, 20 sessions from the fire, pess
 LANE_SESSIONS = 20                # forward trading sessions a name stays in the lane
+SETTLE_HOLD_SESSIONS = 20         # forward trading sessions a TRIGGER is followed (from its fire)
+SETTLE_TAIL_R = 4.0               # the reached_4r threshold (P3 — the tail is the objective)
+SETTLE_ORPHAN_CAL_DAYS = 45       # abstaining past this age (well beyond 20 sessions + holidays)
+                                  # closes as outcome='unscoreable' — recorded, never interpolated
+_SETTLE_SMA_FETCH_CAL_DAYS = 60   # calendar days pre-fire fetched to seed the SMA20 trail
 ENROLL_LOOKBACK_DAYS = 7          # calendar days enrollment scans back (self-healing)
 _LANE_MAX_CAL_DAYS = 45           # calendar bound covering 20 sessions + holidays
 _ADR_WINDOW = 20                  # sessions in the ADR mean
@@ -327,6 +374,182 @@ def compute_adr20(daily_bars: list[dict]) -> tuple[Optional[float], int]:
     if not vals:
         return None, 0
     return sum(vals) / len(vals), len(vals)
+
+
+# ── Pure settlement core (fixture-testable, no IO) ─────────────────────────────────────
+
+
+def sma_trail_line(closes: list[float]) -> Optional[float]:
+    """The M-trail exit line: MAX(SMA10, SMA20) with the live exit_logic.py 'sma' mode
+    semantics VERBATIM — the SMA includes the session's own close (running_closes), <20
+    closes falls back to SMA10 alone, <10 closes -> None (no line yet, no trail exit —
+    the live None-guard). Mirrored, not imported: exit_logic walks a live position
+    ladder; this settles a shadow row."""
+    sma10 = sum(closes[-10:]) / 10 if len(closes) >= 10 else None
+    sma20 = sum(closes[-20:]) / 20 if len(closes) >= 20 else None
+    if sma20 is not None:
+        return sma10 if sma10 > sma20 else sma20
+    return sma10
+
+
+def day0_needs_minutes(fire_minute: Optional[int], fire_day_low: Optional[float],
+                       stop: float) -> bool:
+    """True when the fire day's daily bar cannot ORDER the post-fire stop test: a
+    minute-grade fire whose day low touched the stop. For a reclaim the pre-fire
+    undercut low often IS the stop, so the daily low proves nothing about what happened
+    AFTER the fire — only the post-fire 5-min bars can (missing -> ABSTAIN). A
+    daily-grade fire (fire_minute None) never needs minutes: its spanning day reads
+    stop-first (pess), the documented house bound."""
+    return (fire_minute is not None and fire_day_low is not None
+            and fire_day_low <= stop)
+
+
+def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
+                       fire_day_bar: dict, post_fire_bars5: Optional[list],
+                       sessions: list[date], bars_by_day: dict,
+                       closes_before_fire: list[float]) -> dict:
+    """Settle one trigger's TWO arms from its bars, or ABSTAIN. Pure.
+
+    Returns one of:
+      {"status": "settled", <the settlement columns>}   — everything is DEFINITIVE
+      {"status": "abstain", "reason": ...}              — retry next run, row stays open
+      {"status": "unscoreable", "reason": ...}          — can NEVER be scored (geometry)
+
+    Inputs: `sessions` = expected trading sessions strictly after the fire date,
+    ascending; `bars_by_day` day->daily bar (holes = missing); `post_fire_bars5` =
+    day-0 5-min bars with m > fire_minute, or None when the fetch failed/was missing
+    (an EMPTY list means fetched-fine-but-fire-was-last-bar, which is not missing);
+    `closes_before_fire` = stored closes strictly before the fire date, ascending (the
+    SMA seed).
+
+    The walk (first touch decides, stop live across the hold — _bt_replay conventions):
+      per session, pess stop-first: the low folds and tests the stop BEFORE the close
+      can trail-exit or the high can credit 4R. A stop settles BOTH arms at -1.0R (exit
+      at the stop level — the house convention; mae_r keeps the raw low so a
+      gap-through stays visible). Else a close below sma_trail_line exits M-trail at
+      that close; session SETTLE_HOLD_SESSIONS time-exits whatever is still open at its
+      close. The first expected session with no bar ABSTAINS the whole row — never leap
+      a gap. Settlement completes when M-none resolves (stop or time exit) — the
+      longest hold, so every other column is computable from the same bars."""
+    risk = (entry - stop) if (entry is not None and stop is not None) else None
+    if not entry or entry <= 0 or risk is None or risk <= 0:
+        return {"status": "unscoreable", "reason": "degenerate_geometry"}
+    f_hi, f_lo, f_c = (_f(fire_day_bar.get("h")), _f(fire_day_bar.get("l")),
+                       _f(fire_day_bar.get("c")))
+    if f_hi is None or f_lo is None or f_c is None:
+        return {"status": "abstain", "reason": "missing_fire_day_bar"}
+
+    tail_target = entry + SETTLE_TAIL_R * risk
+    none_open = trail_open = True
+    none_outcome = none_r = none_exit = None
+    trail_outcome = trail_r = trail_exit_s = None
+    mfe = mae = None
+    reached4 = False
+    marks: dict[int, float] = {}
+
+    def _stop_both(sess_idx: int) -> None:
+        nonlocal none_open, trail_open, none_outcome, none_r, none_exit
+        nonlocal trail_outcome, trail_r, trail_exit_s
+        none_open = False
+        none_outcome, none_r, none_exit = "stop", -1.0, sess_idx
+        if trail_open:
+            trail_open = False
+            trail_outcome, trail_r, trail_exit_s = "stop", -1.0, sess_idx
+
+    # ── day 0: the fire day itself, from the fire forward ──
+    if day0_needs_minutes(fire_minute, f_lo, stop):
+        if post_fire_bars5 is None:
+            return {"status": "abstain", "reason": "missing_day0_minutes"}
+        for b in post_fire_bars5:
+            lo, hi = b["l"], b["h"]
+            mfe = hi if mfe is None else max(mfe, hi)
+            mae = lo if mae is None else min(mae, lo)
+            if lo <= stop:              # pess stop-first: no 4R credit from this bar
+                _stop_both(0)
+                break
+            if hi >= tail_target:
+                reached4 = True
+    else:
+        # daily grade: fold the whole-day excursion (ceiling/floor telemetry — pre-fire
+        # range is indistinguishable at this grade and mfe/mae are never the result)
+        mfe, mae = f_hi, f_lo
+        if fire_minute is None and f_lo <= stop:
+            _stop_both(0)               # daily-grade fire, spanning day: pess stop-first
+        elif fire_minute is None and f_hi >= tail_target:
+            # only a LEVEL entry may credit its own day-0 high: price passed the entry
+            # level on the way there. A minute fire's day-0 daily high is ambiguous
+            # (it may predate the fire) and is never credited.
+            reached4 = True
+    closes = [c for c in closes_before_fire if c is not None] + [f_c]
+    if trail_open:
+        line = sma_trail_line(closes)
+        if line is not None and f_c < line:
+            trail_open = False
+            trail_outcome, trail_exit_s = "trail_exit", 0
+            trail_r = (f_c - entry) / risk
+
+    # ── sessions 1..SETTLE_HOLD_SESSIONS after the fire ──
+    for i, d in enumerate(sessions, start=1):
+        if not none_open or i > SETTLE_HOLD_SESSIONS:
+            break
+        b = bars_by_day.get(d) or {}
+        hi, lo, c = _f(b.get("high_price")), _f(b.get("low_price")), _f(b.get("close"))
+        if hi is None or lo is None or c is None:
+            # THE ABSTAIN RULE: never leap a gap — a stop could hide inside it
+            return {"status": "abstain", "reason": f"missing_session:{d.isoformat()}"}
+        closes.append(c)
+        mfe = max(mfe, hi) if mfe is not None else hi
+        mae = min(mae, lo) if mae is not None else lo
+        if lo <= stop:                  # pess stop-first: no 4R credit this session
+            _stop_both(i)
+            marks[i] = c
+            break
+        if hi >= tail_target:
+            reached4 = True
+        if trail_open:
+            line = sma_trail_line(closes)
+            if line is not None and c < line:
+                trail_open = False
+                trail_outcome, trail_exit_s = "trail_exit", i
+                trail_r = (c - entry) / risk
+        if i == SETTLE_HOLD_SESSIONS:   # time exit at this session's close
+            none_open = False
+            none_outcome, none_exit = "time_exit", i
+            none_r = (c - entry) / risk
+            if trail_open:
+                trail_open = False
+                trail_outcome, trail_exit_s = "time_exit", i
+                trail_r = (c - entry) / risk
+        marks[i] = c
+
+    if none_open:
+        return {"status": "abstain", "reason": "window_open"}
+
+    def _ckpt(exit_s: Optional[int], exit_r: Optional[float], n: int) -> Optional[float]:
+        """Arm-R at checkpoint session n: realized once exited, else mark-to-market at
+        that session's close. Every needed mark exists by construction — the walk
+        reached the M-none exit, the latest of the two."""
+        if exit_s is not None and exit_s <= n:
+            return round(exit_r, 4)
+        m = marks.get(n)
+        return round((m - entry) / risk, 4) if m is not None else None
+
+    return {
+        "status": "settled",
+        "outcome": none_outcome, "realized_r": round(none_r, 4),
+        "outcome_trail": trail_outcome, "realized_r_trail": round(trail_r, 4),
+        "r_none_s1": _ckpt(none_exit, none_r, 1),
+        "r_none_s5": _ckpt(none_exit, none_r, 5),
+        "r_none_s10": _ckpt(none_exit, none_r, 10),
+        "r_none_s20": _ckpt(none_exit, none_r, 20),
+        "r_trail_s1": _ckpt(trail_exit_s, trail_r, 1),
+        "r_trail_s5": _ckpt(trail_exit_s, trail_r, 5),
+        "r_trail_s10": _ckpt(trail_exit_s, trail_r, 10),
+        "r_trail_s20": _ckpt(trail_exit_s, trail_r, 20),
+        "mfe_r": round((mfe - entry) / risk, 4) if mfe is not None else None,
+        "mae_r": round((mae - entry) / risk, 4) if mae is not None else None,
+        "reached_4r": reached4,
+    }
 
 
 def _trading_days(start: date, end: date) -> list[date]:
@@ -658,18 +881,142 @@ async def _record_trigger(*, ticker, ep_date, session_date, session_idx, fire, c
     })
 
 
+async def _close_unscoreable(trig: dict, out: dict, reason: str) -> None:
+    """Definitively close one trigger that can NEVER settle honestly (degenerate
+    geometry, or bars still missing past the orphan horizon). Every R column stays
+    NULL — recorded, never interpolated; the accrual gate (realized_r IS NOT NULL)
+    never counts it. Loud in the audit log, silent everywhere else."""
+    flipped = await settle_delayed_entry_trigger(
+        trig["id"], {"outcome": "unscoreable", "outcome_trail": "unscoreable",
+                     "settle_version": SETTLE_VERSION})
+    if flipped:
+        out["settle_unscoreable"] += 1
+        await log_audit_event(
+            "delayed_entry_shadow_unscoreable",
+            f"{trig['ticker']} {trig['ep_date']} {trig['rung']} fired {trig['fire_date']}: "
+            f"closed unscoreable — {reason}")
+
+
+async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
+    """Try to settle ONE open trigger. Definitive -> one write (double-settle-guarded);
+    not yet definitive -> abstain, row stays open, retried next run; past the orphan
+    horizon and still blocked -> closed unscoreable."""
+    ticker, fire_date = trig["ticker"], trig["fire_date"]
+    fire_minute = trig.get("fire_minute_et")
+    entry, stop = _f(trig.get("entry_price")), _f(trig.get("stop_price"))
+
+    if entry is None or stop is None or entry <= 0 or (entry - stop) <= 0:
+        await _close_unscoreable(
+            trig, out, "degenerate geometry (stop >= entry) — R is undefined")
+        return
+
+    sessions = _trading_days(fire_date + timedelta(days=1), today)
+    daily = await get_delayed_entry_daily_window(
+        ticker, fire_date - timedelta(days=_SETTLE_SMA_FETCH_CAL_DAYS), today)
+    bars_by_day = {b["trade_date"]: b for b in daily}
+    closes_before = [_f(b.get("close")) for b in daily
+                     if b["trade_date"] < fire_date and b.get("close") is not None]
+    # the fire day's bar: the trigger row's own record first (captured at fire time),
+    # the stored daily window as the per-field fallback
+    fb = bars_by_day.get(fire_date) or {}
+    fire_day_bar = {
+        "h": _f(trig.get("day_high")) if trig.get("day_high") is not None else _f(fb.get("high_price")),
+        "l": _f(trig.get("day_low")) if trig.get("day_low") is not None else _f(fb.get("low_price")),
+        "c": _f(trig.get("day_close")) if trig.get("day_close") is not None else _f(fb.get("close")),
+    }
+
+    post5 = None
+    if day0_needs_minutes(fire_minute, fire_day_bar["l"], stop):
+        bars5 = await _fetch_minute_5(ticker, fire_date)
+        if bars5:
+            post5 = [b for b in bars5 if b["m"] > fire_minute]
+        # empty fetch -> post5 stays None -> the pure core ABSTAINS (retry next run)
+
+    res = {"status": "abstain", "reason": "window_open"}
+    for _ in range(6):  # bounded single-day gap fills: fetch the one missing bar, retry
+        res = compute_settlement(
+            entry=entry, stop=stop, fire_minute=fire_minute, fire_day_bar=fire_day_bar,
+            post_fire_bars5=post5, sessions=sessions, bars_by_day=bars_by_day,
+            closes_before_fire=closes_before)
+        reason = res.get("reason", "")
+        if res["status"] == "abstain" and reason.startswith("missing_session:"):
+            d = date.fromisoformat(reason.split(":", 1)[1])
+            o, h, l, c, _src = await get_delayed_entry_daily_bar(ticker, d)
+            if c is None:
+                break  # genuinely missing (halt/delist/hole) — the abstain stands
+            bars_by_day[d] = {"trade_date": d, "open_price": o, "high_price": h,
+                              "low_price": l, "close": c}
+            continue
+        break
+
+    if res["status"] == "settled":
+        fields = {k: v for k, v in res.items() if k != "status"}
+        fields["settle_version"] = SETTLE_VERSION
+        if await settle_delayed_entry_trigger(trig["id"], fields):
+            out["settle_settled"] += 1
+        # False = a concurrent run already settled it — the no-op is the point
+        return
+    if res["status"] == "unscoreable":
+        await _close_unscoreable(trig, out, res.get("reason", "unscoreable"))
+        return
+    # abstain: honest retry — unless the row is past the orphan horizon, where the
+    # 20-session window has long elapsed and the bars are never coming
+    if fire_date <= today - timedelta(days=SETTLE_ORPHAN_CAL_DAYS):
+        await _close_unscoreable(
+            trig, out,
+            f"still blocked ({res.get('reason')}) {SETTLE_ORPHAN_CAL_DAYS}+ calendar days "
+            f"after the fire — bars are not coming (halt/delist/hole)")
+        return
+    out["settle_abstained"] += 1
+
+
+async def settle_open_triggers(today: date, out: dict) -> None:
+    """The settlement pass, driven inline by the same evening run (one job -> one
+    digest). Considers EVERY open trigger every run — settle-as-soon-as-definitive
+    means a day-3 stop settles on day 3 — and counts considered / settled / abstained /
+    unscoreable separately so a silent zero is distinguishable from 'nothing ripe
+    yet'. Per-trigger failures degrade to mi_audit_log and the pass continues."""
+    try:
+        open_rows = await get_delayed_entry_open_triggers()
+    except Exception as e:
+        out["errors"] += 1
+        logger.error(f"delayed_entry_shadow: open-trigger read failed: {e}", exc_info=True)
+        await log_audit_event("delayed_entry_shadow_error",
+                              f"settlement read: {type(e).__name__}: {e}")
+        return
+    for trig in open_rows:
+        out["settle_considered"] += 1
+        try:
+            await _settle_one_trigger(trig, today, out)
+        except Exception as e:
+            out["errors"] += 1
+            logger.error(
+                f"delayed_entry_shadow: settle {trig.get('ticker')} "
+                f"{trig.get('fire_date')} failed: {e}")
+            try:
+                await log_audit_event(
+                    "delayed_entry_shadow_error",
+                    f"settle {trig.get('ticker')} {trig.get('rung')} "
+                    f"{trig.get('fire_date')}: {type(e).__name__}: {e}")
+            except Exception:  # loud-ok: log_audit_event self-catches; logger fired above
+                pass
+
+
 async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, int]:
-    """The evening job: enroll today's EP-scan names, then advance every lane member
-    through today. NEVER raises into the caller — per-member failures degrade to
-    `mi_audit_log` + logs and the run continues (pinned by test). The summary audit
-    event fires UNCONDITIONALLY so '0 of N' is distinguishable from '0 of 0'.
-    SILENT: no Telegram anywhere on this path."""
+    """The evening job: enroll today's EP-scan names, advance every lane member through
+    today, then SETTLE every open trigger that has become definitive (inline — one job,
+    one digest). NEVER raises into the caller — per-member and per-trigger failures
+    degrade to `mi_audit_log` + logs and the run continues (pinned by test). The
+    summary audit event fires UNCONDITIONALLY so '0 of N' is distinguishable from
+    '0 of 0'. SILENT: no Telegram anywhere on this path."""
     if today is None:
         from agents.market_intelligence.collector import et_today
         today = et_today()
 
     out = {"enrolled": 0, "members": 0, "watch_rows": 0, "triggers": 0,
-           "unscoreable": 0, "errors": 0}
+           "unscoreable": 0, "errors": 0,
+           "settle_considered": 0, "settle_settled": 0, "settle_abstained": 0,
+           "settle_unscoreable": 0}
     try:
         out["enrolled"] = await enroll_new_members(today)
     except Exception as e:
@@ -703,13 +1050,19 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
             except Exception:  # loud-ok: log_audit_event self-catches; logger fired above
                 pass
 
+    # settlement rides the SAME run (one job -> one digest); it self-catches per trigger
+    await settle_open_triggers(today, out)
+
     try:
         await log_audit_event(
             "delayed_entry_shadow_recorded",
             f"{out['watch_rows']} watch row(s), {out['triggers']} trigger(s) across "
             f"{out['members']} lane member(s) for {today} "
             f"({out['enrolled']} enrolled, {out['unscoreable']} unscoreable, "
-            f"{out['errors']} error(s))")
+            f"{out['errors']} error(s)); settlement: {out['settle_considered']} open "
+            f"trigger(s) considered, {out['settle_settled']} settled, "
+            f"{out['settle_abstained']} abstained (still open — retry), "
+            f"{out['settle_unscoreable']} closed unscoreable")
     except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
         logger.warning(f"delayed_entry_shadow audit emit failed (non-fatal): {_e}")
     return out
