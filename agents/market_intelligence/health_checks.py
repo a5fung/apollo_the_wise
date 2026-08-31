@@ -1555,6 +1555,12 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # plain-DATE business column `alert_date` (recorded_at/created_at are timestamptz
     # and would silently never be checked — the name-based `created_at` rule).
     ("mi_ep_slot_rank_shadow", "EP slot-rank watch (#533)", "alert_date", None),
+    # #606 D-1 universe floor shadow (2026-08-31): written every scan tick with
+    # >=1 real candidate on EITHER side of the D-1 floor — a fire-and-forget writer
+    # read by nothing on the scan path, the same can-fail-100%-silently class as the
+    # shortlist pre-score shadow above. Keyed on the plain-DATE business column
+    # `scan_date` (created_at is timestamptz and would silently never be checked).
+    ("mi_universe_floor_shadow", "D-1 universe floor dollar-volume shadow (#606)", "scan_date", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

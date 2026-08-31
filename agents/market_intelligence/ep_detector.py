@@ -2993,6 +2993,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     _rt_universe = []   # #489 miss watchdog: every ticker that clears all NON-gap filters
     _universe_floor_skips: list[dict] = []  # #570: visibility rows for the two silent D-1 floors
     _below_floor_rows: list[dict] = []  # #605: [EP_CAPTURE_GAP_FLOOR, acting floor) capture rows
+    # #606: dollar-volume-floor shadow — one row per real candidate, BOTH sides of the
+    # D-1 floor (see universe_floor_shadow.py). Imported once per tick, not per ticker.
+    from agents.market_intelligence.universe_floor_shadow import build_universe_floor_shadow_row
+    _dv_floor_shadow_rows: list[dict] = []
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
@@ -3030,6 +3034,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _fs = _universe_floor_skip(ticker, prev_close, prev_volume, current_price)
                 if _fs:
                     _universe_floor_skips.append(_fs)
+                    # #606: real candidate killed by the D-1 floor — record what a
+                    # dollar-volume floor would have to work with (raw inputs only).
+                    _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
+                        ticker, prev_close, prev_volume, _fs["gap_pct"],
+                        MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
+                        minutes_since_open=_minutes_since_open, seen_et=now_et))
                 continue
 
             # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
@@ -3037,6 +3047,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _fs = _universe_floor_skip(ticker, prev_close, prev_volume, current_price)
                 if _fs:
                     _universe_floor_skips.append(_fs)
+                    # #606: same as above — the volume-floor-fail side of the D-1 gate.
+                    _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
+                        ticker, prev_close, prev_volume, _fs["gap_pct"],
+                        MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
+                        minutes_since_open=_minutes_since_open, seen_et=now_et))
                 continue
 
             _rt_universe.append((ticker, prev_close))   # #489 watchdog: this ticker cleared all non-gap filters
@@ -3066,6 +3081,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # extraction — shared verbatim with the Pass-0 universe admission path).
             candidates.append(_snap_candidate(
                 ticker, snap, prev_close, current_price, gap_pct, adv_map, _minutes_since_open))
+
+            # #606: same real-candidate population, the ADMITTED side of the D-1 floor —
+            # judging a floor swap needs both directions (recall gained vs. cost incurred).
+            # Both floor checks already passed here, so failed_price_floor/failed_volume_floor
+            # come back False — recorded anyway for a uniform row shape across both sides.
+            # ⚖ THE LINE: this append sits AFTER candidates.append above and in its own
+            # try/except — a bug in the shadow builder must never un-admit a live candidate
+            # (this loop's own outer except would otherwise silently drop the ticker too).
+            try:
+                _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
+                    ticker, prev_close, prev_volume, gap_pct,
+                    MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
+                    minutes_since_open=_minutes_since_open, seen_et=now_et))
+            except Exception as _dve:
+                logger.warning(f"#606 universe-floor shadow row build failed for {ticker}: {_dve}")
         except Exception:
             continue
 
@@ -3111,6 +3141,22 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             ])
         except Exception as e:
             logger.warning(f"#570/#605 pre-candidate scan_log write failed: {e}")
+
+    # #606 dollar-volume-floor shadow — fire-and-forget, same contract as
+    # ep_shortlist_shadow / catalyst_tier_shadow: never blocks the scan, one batched
+    # insert for the whole tick's rows. Strong task ref via _WATCHDOG_BG_TASKS
+    # (asyncio.create_task only keeps a weak one — it would otherwise be GC'd
+    # mid-flight).
+    if _dv_floor_shadow_rows:
+        try:
+            from agents.market_intelligence.universe_floor_shadow import (
+                record_universe_floor_shadow)
+            _dvt = asyncio.create_task(
+                record_universe_floor_shadow(_dv_floor_shadow_rows))
+            _WATCHDOG_BG_TASKS.add(_dvt)
+            _dvt.add_done_callback(_WATCHDOG_BG_TASKS.discard)
+        except Exception as e:
+            logger.warning(f"#606 universe-floor shadow dispatch failed: {e}")
 
     # #489 Pass 2 — real-time Alpaca SIP confirm on the (superset) candidates BEFORE ranking/scoring,
     # so the sort, top-20 cap, _score_ep, scan_log row, and the ORB decision all read the

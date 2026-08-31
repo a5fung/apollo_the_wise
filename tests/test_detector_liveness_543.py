@@ -183,6 +183,10 @@ def test_module_constant_covers_the_required_tables():
         # writer on the ORB entry path (no Telegram on any path), the exact
         # can-fail-100%-silently class this registry exists for.
         "mi_ep_slot_rank_shadow",
+        # 2026-08-31 (#606): the D-1 universe floor dollar-volume shadow — another
+        # fire-and-forget writer read by nothing on the scan path, same
+        # can-fail-100%-silently class.
+        "mi_universe_floor_shadow",
     }
 
 
@@ -202,6 +206,9 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
     # #533 (2026-08-30): alert_date is the watch's plain-DATE business column —
     # recorded_at/created_at are timestamptz and would silently never be checked.
     assert by_table["mi_ep_slot_rank_shadow"] == "alert_date"
+    # #606 (2026-08-31): scan_date is the shadow's plain-DATE business column —
+    # created_at is timestamptz and would silently never be checked.
+    assert by_table["mi_universe_floor_shadow"] == "scan_date"
 
 
 # ── run_detector_liveness_check: orchestration + wiring ───────────────────────

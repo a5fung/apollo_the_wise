@@ -10217,3 +10217,64 @@ reviews:
     cross_refs: ["docs/analysis/533_within_day_ranking_2026-08-30.md",
                  "docs/setups/magna53_ep.md",
                  "agents/market_intelligence/ep_slot_rank_shadow.py"]
+
+  - review_id: d1_universe_floor_dollar_volume_606
+    title: "D-1 universe floor — does a dollar-volume floor still beat the two-part price+share gate on more data?"
+    question: >-
+      docs/analysis/606_d1_floor_2026-08-31.md found the live D-1 universe
+      floor (prior close >= $5 AND prior-day volume >= 50,000 shares) has a
+      weaker SHAPE than a single dollar-volume floor: at equal recall, a $1M
+      D-1 dollar-volume floor admitted 43% fewer noise rows than any
+      price-only cut of equal catch, over just 5 trading days. Does that SHAPE
+      claim (dollar-volume dominates price+share-count at equal recall) and
+      the MECHANISM claim (D-1 liquidity barely predicts EP-day dollar volume,
+      log-log r=0.44) replicate on a longer window, and does the level worth
+      proposing change once it isn't eyeballed off one week's grid?
+    # to_regclass idiom: registered in the SAME commit as the table it counts (the
+    # table exists in code but not yet on prod until the deploy) — reads 0, never
+    # errors, before the deploy creates it. Counts DISTINCT scan_date days with
+    # >=1 row on the REJECTED side (failed_price_floor OR failed_volume_floor) —
+    # the admitted side accrues trivially every trading day regardless, so
+    # gating on the whole table would satisfy this in ~15 days no matter how
+    # thin the reject-side population is, which is the population the recall
+    # half of the question actually needs. Mirrors the task's own "~15 more
+    # trading days" framing.
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_universe_floor_shadow') IS NULL THEN 0
+                  ELSE (SELECT COUNT(DISTINCT scan_date) FROM mi_universe_floor_shadow
+                        WHERE failed_price_floor OR failed_volume_floor) END
+    threshold: 15
+    # Reviewed the table: every row already carries BOTH directions of the
+    # comparison (failed_price_floor / failed_volume_floor are independent
+    # facts on every row, not a variant selector) — no column here separates
+    # genuinely different questions the way acting_key/rung do on other
+    # tables.
+    discriminates_on: []
+    earliest_review_date: 2026-09-21
+    status: pending
+    kind: accrual
+    added_on: 2026-08-31
+    action_when_ready: >-
+      $0 read-only, replay the 606 card's method on the fuller sample: filter
+      mi_universe_floor_shadow to minutes_since_open_at_open IS NOT NULL (the
+      row's first POST-OPEN read — the population comparable to the original
+      card's setup_at_open; do not use gap_pct_first, which is often a faded
+      pre-market print, the #595 class), then sweep D-1 dollar-volume levels
+      ($250k/$500k/$1M/$2M/$5M) against the ACCRUED rows on BOTH sides
+      (admitted and rejected) — recall (real candidates admitted vs the
+      current two-part floor) and cost (real candidates the two-part floor
+      currently admits that a dollar-volume floor would newly drop) at each
+      level. Join accrued tickers to mi_daily_closes for a tradeability/MFE
+      re-check the same way the original card did. Then: (a) the shape claim
+      (equal-recall noise reduction) AND the mechanism claim (low
+      D-1-to-EP-day liquidity correlation) both replicate, and a level now
+      stands out on the larger sample (not eyeballed off one week) -> bring a
+      CHANGE_PROCESS proposal to the operator with that level, both P14
+      directions priced, for sign-off (THE LINE — nothing flips without it).
+      (b) the shape does not replicate, or the admitted-side cost turns out
+      material -> report exactly that against the original headline and say
+      the floor should stand. (c) too few settled real-candidate days on
+      either side -> report the count and extend, do not conclude either way.
+    cross_refs: ["docs/analysis/606_d1_floor_2026-08-31.md",
+                 "docs/setups/magna53_ep.md",
+                 "agents/market_intelligence/universe_floor_shadow.py"]

@@ -3199,6 +3199,60 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ep_slot_rank_shadow_date
                 ON mi_ep_slot_rank_shadow(alert_date DESC);
 
+            -- #606 D-1 UNIVERSE FLOOR SHADOW (2026-08-31): one row per (scan_date,
+            -- ticker) for EVERY real candidate (gap clears the day's Pass-1 gap
+            -- floor) on BOTH sides of the live D-1 floor (admitted and rejected) —
+            -- judging a floor swap needs recall gained AND cost incurred, not one
+            -- direction. RAW INPUTS ONLY, NEVER A VERDICT: prior close, prior-day
+            -- share volume, prior-day dollar volume (an invariant fact, not a
+            -- threshold-dependent computation), and which of the two ALREADY-ACTING
+            -- floors it failed. No "would a $1M/$2M/... floor admit this" flag is
+            -- stored — thresholds are a function of today's rule set, and any level
+            -- can be swept later from these same rows with no new data (the #583
+            -- stale-derived-value class). acting_price_floor / acting_volume_floor
+            -- stamp the LIVE constants at write time so a reader never infers them
+            -- from a date.
+            --
+            -- THREE OBSERVATION SLOTS, not one frozen read (see
+            -- universe_floor_shadow.py for the full rationale): the scan ticks
+            -- pre-market, and a ticker's FIRST tick is often a print that fades
+            -- before 9:30 (the exact #595 class that corrupted 60% of
+            -- mi_ep_missed_outcomes). _first = whatever the very first tick saw
+            -- (NULL minutes_since_open = pre-market); _at_open = the FIRST tick
+            -- where minutes_since_open IS NOT NULL, set once and never overwritten
+            -- (comparable to the 606 card's setup_at_open population); _last = the
+            -- most recent tick's read, updated every tick. prev_close /
+            -- prev_day_volume / prev_day_dollar_volume / failed_*_floor are static
+            -- for the trading day — written once, untouched by ON CONFLICT.
+            -- PRIMARY KEY (scan_date, ticker); see insert_universe_floor_shadow_rows
+            -- for the exact reconciliation SQL. Read by NO grading / entry / sizing
+            -- / ordering / safeguard path — comparison telemetry only (writer:
+            -- universe_floor_shadow.py; review: d1_universe_floor_dollar_volume_606
+            -- in data_gated_reviews.yaml).
+            CREATE TABLE IF NOT EXISTS mi_universe_floor_shadow (
+                scan_date                   DATE NOT NULL,
+                ticker                      TEXT NOT NULL,
+                first_seen_et               TIMESTAMPTZ,
+                last_seen_et                TIMESTAMPTZ,
+                gap_pct_first               DOUBLE PRECISION,  -- whatever the first tick saw (may be pre-market)
+                minutes_since_open_first    INT,               -- NULL = pre-market
+                gap_pct_at_open             DOUBLE PRECISION,  -- first tick with minutes_since_open NOT NULL
+                minutes_since_open_at_open  INT,               -- set once, comparable to 606's setup_at_open
+                gap_pct_last                DOUBLE PRECISION,  -- most recent tick's read
+                minutes_since_open_last     INT,
+                prev_close                  DOUBLE PRECISION,  -- raw input (static all day)
+                prev_day_volume             DOUBLE PRECISION,  -- raw input, shares (static all day)
+                prev_day_dollar_volume      DOUBLE PRECISION,  -- prev_close x prev_day_volume (invariant fact)
+                failed_price_floor          BOOLEAN,           -- prev_close < acting_price_floor
+                failed_volume_floor         BOOLEAN,           -- prev_day_volume < acting_volume_floor
+                acting_price_floor          DOUBLE PRECISION,  -- MIN_PREV_CLOSE at write time
+                acting_volume_floor         DOUBLE PRECISION,  -- MIN_PREV_DAY_VOLUME at write time
+                created_at                  TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (scan_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_universe_floor_shadow_date
+                ON mi_universe_floor_shadow(scan_date DESC);
+
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
@@ -12915,6 +12969,77 @@ async def insert_orb_extension_shadow_row(row: dict) -> None:
             row.get("last_close"),
             _to_date(row["last_evaluated_date"]) if row.get("last_evaluated_date") else None,
         )
+
+
+async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
+    """#606 (2026-08-31) — batch writer for mi_universe_floor_shadow. ONE
+    executemany for the whole tick's list, never one row at a time (the
+    floor's rejects alone run ~700/week — the latency-critical EP scan must
+    never turn this into thousands of round trips). Row shape + the
+    raw-inputs-only discipline: agents/market_intelligence/universe_floor_shadow.py
+    (this module's caller and the table's single writer).
+
+    ON CONFLICT DO UPDATE, NOT DO NOTHING: the scan ticks pre-market, and a
+    ticker's FIRST tick is often a print that fades before 9:30 — freezing it
+    would reproduce the exact #595 class that corrupted mi_ep_missed_outcomes.
+    `gap_pct_at_open` / `minutes_since_open_at_open` are set ONCE, the first
+    time a tick's `minutes_since_open` is not NULL (COALESCE guards against a
+    later tick overwriting it); `gap_pct_last` / `minutes_since_open_last` /
+    `last_seen_et` update on every tick. `prev_close` / `prev_day_volume` /
+    the failed_*_floor facts are static for the trading day and are never
+    touched after the first insert (not in the UPDATE SET list). Never raises
+    — comparison telemetry only, must never touch the scan; returns 0 on any
+    failure.
+    """
+    if not rows:
+        return 0
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.executemany("""
+                INSERT INTO mi_universe_floor_shadow (
+                    scan_date, ticker, first_seen_et, last_seen_et,
+                    gap_pct_first, minutes_since_open_first,
+                    gap_pct_at_open, minutes_since_open_at_open,
+                    gap_pct_last, minutes_since_open_last,
+                    prev_close, prev_day_volume, prev_day_dollar_volume,
+                    failed_price_floor, failed_volume_floor,
+                    acting_price_floor, acting_volume_floor
+                ) VALUES (
+                    $1, $2, $3, $3,
+                    $4, $5,
+                    (CASE WHEN $5 IS NOT NULL THEN $4 END), $5,
+                    $4, $5,
+                    $6, $7, $8,
+                    $9, $10,
+                    $11, $12
+                )
+                ON CONFLICT (scan_date, ticker) DO UPDATE SET
+                    last_seen_et = EXCLUDED.last_seen_et,
+                    gap_pct_last = EXCLUDED.gap_pct_last,
+                    minutes_since_open_last = EXCLUDED.minutes_since_open_last,
+                    gap_pct_at_open = COALESCE(
+                        mi_universe_floor_shadow.gap_pct_at_open,
+                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                             THEN EXCLUDED.gap_pct_last END),
+                    minutes_since_open_at_open = COALESCE(
+                        mi_universe_floor_shadow.minutes_since_open_at_open,
+                        EXCLUDED.minutes_since_open_last)
+            """, [
+                (
+                    _to_date(r["scan_date"]), r["ticker"], r.get("seen_et"),
+                    r.get("gap_pct"), r.get("minutes_since_open"),
+                    r.get("prev_close"), r.get("prev_day_volume"),
+                    r.get("prev_day_dollar_volume"),
+                    r.get("failed_price_floor"), r.get("failed_volume_floor"),
+                    r.get("acting_price_floor"), r.get("acting_volume_floor"),
+                )
+                for r in rows
+            ])
+        return len(rows)
+    except Exception as e:
+        logger.warning(f"universe-floor shadow: batch write failed — {e}")
+        return 0
 
 
 async def get_open_orb_extension_shadows() -> list[dict]:
