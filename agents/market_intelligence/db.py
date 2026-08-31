@@ -2546,21 +2546,32 @@ async def initialize_schema() -> None:
                 catalyst_grade    TEXT,
                 screen_member     BOOLEAN,
                 screen_version    TEXT,
-                prior_missing_sessions INT NOT NULL DEFAULT 0,  -- unscoreable sessions before the fire:
-                                                     -- >0 means the TRUE first fire may have been earlier
+                prior_missing_sessions INT NOT NULL DEFAULT 0,
+                                                     -- ⚠ ONE definition, both write paths (2026-08-30
+                                                     -- simplify review): blind (unscoreable) sessions
+                                                     -- inside THIS attempt's own watch window, strictly
+                                                     -- before its fire. The window opens at ep_date for
+                                                     -- reentry_shape='first' and at the session AFTER the
+                                                     -- prior attempt's stop-out for a re-entry row. >0
+                                                     -- means THIS attempt's true first fire may be up to
+                                                     -- that many sessions earlier; sessions outside the
+                                                     -- row's own window are NEVER counted.
                 -- attempts + re-entry (pattern v2, 2026-08-30): every attempt is its OWN row —
-                -- a campaign (first entry, stop-out, re-entry, outcome) reconstructs from rows.
-                -- attempt_no 1 = the campaign's first fire of this rung; 2 = the one bounded
-                -- re-entry of its shape. reentry_shape: 'first' | 'same_pattern' (the rung's
-                -- own pattern re-armed FRESH from the session AFTER the stop-out) |
-                -- 'new_high_break' (break above MAX(EP-day high, every session high through
-                -- the stop-out) — the R3 strength-proof shape, +12.9R in the campaign study).
+                -- a campaign (first entry, stop-out, re-entry, outcome) reconstructs from rows
+                -- via reentry_shape + prior_attempt_id + fire_date. reentry_shape IS the
+                -- attempt identity: 'first' | 'same_pattern' (the rung's own pattern re-armed
+                -- FRESH from the session AFTER the stop-out) | 'new_high_break' (break above
+                -- MAX(EP-day high, every session high through the stop-out) — the R3
+                -- strength-proof shape, +12.9R in the campaign study). There is deliberately
+                -- NO attempt_no column (dropped 2026-08-30 simplify review): the two re-entry
+                -- shapes are PARALLEL bounded replays of one stop-out — both can fire on the
+                -- same campaign — so an ordinal would misorder or double-count any campaign
+                -- reconstruction query.
                 -- RECORDING ONLY, no policy decided: both shapes are written when they occur
                 -- and failed attempts settle at -1R like any row — their cost IS the risk of
                 -- re-entering. Day-2+ only: same-day re-entry is OUT OF SCOPE (ruled
                 -- 2026-08-30 — tick-level state would break the shadow/live boundary), so a
                 -- TEAM-style same-day re-entry is invisible here; stated limitation.
-                attempt_no        INT NOT NULL DEFAULT 1,
                 reentry_shape     TEXT NOT NULL DEFAULT 'first',
                 prior_attempt_id  INT,               -- the settled-stop attempt this row re-enters after
                 -- ⚠ rung-4 label — MANDATORY (CHECK-enforced below). 'proximity_band_0p5adr_v1'
@@ -2602,7 +2613,11 @@ async def initialize_schema() -> None:
             -- the 4th rung in the CHECK, the MANDATORY rung-4 label CHECK, and the
             -- attempt-shape unique index replacing the open-only partial one. The constraint
             -- drop/adds are idempotent per boot (Postgres has no ADD CONSTRAINT IF NOT EXISTS).
-            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS attempt_no INT NOT NULL DEFAULT 1;
+            -- 2026-08-30 simplify review (fix 3): attempt_no DROPPED — every re-entry row was
+            -- hardcoded '2' while the two shapes fire in PARALLEL, so the ordinal was a lie;
+            -- the truth (which attempt) lives in reentry_shape + prior_attempt_id. Idempotent
+            -- for fresh installs (the column is no longer created) and the day-one table alike.
+            ALTER TABLE mi_delayed_entry_trigger DROP COLUMN IF EXISTS attempt_no;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS reentry_shape TEXT NOT NULL DEFAULT 'first';
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS prior_attempt_id INT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS near_definition TEXT;
@@ -10209,8 +10224,11 @@ async def get_delayed_entry_daily_bar(ticker: str, trading_day: date):
 
 
 async def count_delayed_entry_unscoreable(ticker: str, ep_date: date, before: date) -> int:
-    """Unscoreable sessions for one member strictly before `before` — stamped on a trigger
-    row as prior_missing_sessions (>0: the observed fire may be later than the true one)."""
+    """Unscoreable sessions for one member strictly before `before` — stamped on a
+    FIRST-attempt trigger row as prior_missing_sessions: blind sessions inside that
+    attempt's own window (the EP day -> the fire). A re-entry row's stamp counts its
+    own replay window (since the stop-out) instead — one definition, per-attempt
+    window (schema comment + delayed_entry_shadow module docstring)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         n = await conn.fetchval("""
@@ -10227,11 +10245,10 @@ async def insert_delayed_entry_trigger(row: dict) -> bool:
     replay re-deriving an already-settled attempt both no-ops — every attempt row is
     written once, pinned to the FIRST recorded fire, and NEVER overwritten (attempt 2
     can never clobber attempt 1: it is a different reentry_shape, hence a different
-    row). attempt_no/reentry_shape default to the first-fire values so a caller that
-    predates attempts can never write NULL into the NOT NULL columns. Returns True iff
-    a NEW row was written."""
+    row). reentry_shape defaults to 'first' so a caller that predates attempts can
+    never write NULL into the NOT NULL column. Returns True iff a NEW row was
+    written."""
     row = dict(row)
-    row.setdefault("attempt_no", 1)
     row.setdefault("reentry_shape", "first")
     cols = (
         "ticker", "ep_date", "rung", "pattern_version", "fire_date", "fire_minute_et",
@@ -10241,7 +10258,7 @@ async def insert_delayed_entry_trigger(row: dict) -> bool:
         "adr20_pct", "adr20_n", "gap_high_exceeded_before", "in_active_theme",
         "ep_score", "catalyst_grade", "screen_member", "screen_version",
         "prior_missing_sessions",
-        "attempt_no", "reentry_shape", "prior_attempt_id",
+        "reentry_shape", "prior_attempt_id",
         "near_definition", "band_adr_dollar",
     )
     sql = (

@@ -501,6 +501,11 @@ class DocFile:
     historical_mask: list[bool]     # True = change-log region or a dated section (candidate history)
     line_date: list[str | None]     # governing dated-heading date per line (None outside dated regions)
     changelog_entries: list[tuple[str, str, int]]  # (date, title, lineno)
+    # True = a FINDING doc (docs/analysis/**), which legitimately states "not deployed as of
+    # <date>" as history rather than a live claim — `scan_stale_claims` skips those. Declared
+    # here (not stapled on after construction) so the distinction is visible to a reader and to
+    # the type system, not just to whichever code path happens to set the attribute.
+    skip_stale_claims: bool = False
 
 
 def load_doc(path: Path) -> DocFile:

@@ -103,10 +103,25 @@ _NOT_SHIPPED_CLAIM = re.compile(
     r"|pending (his |the )?sign-?off|needs operator sign-?off|DO NOT ship|not yet (built|shipped)",
     re.I)
 
-# `[shipped-ack:<why>]` — the line already records what shipped under this number.
-_SHIPPED_ACK = re.compile(r"\[shipped-ack:[^\]]+\]", re.I)
+# `[shipped-ack:YYYY-MM-DD[:hash]...]` — the line already records what shipped under this
+# number. Dated + content-fingerprinted via `_marker_is_fresh` (2026-08-30 fix — see that
+# function and `_shipped_ack_is_fresh` below): the presence-only form this replaced could mute
+# SHIPPED-BUT-UNRECORDED forever, including for genuinely new, honestly-unshipped scope added
+# under the same task number later — exactly the failure this surface exists to catch.
+_SHIPPED_ACK = re.compile(r"shipped-ack:\s*(\d{4}-\d{2}-\d{2})(?::([0-9a-f]{4}))?", re.I)
+_SHIPPED_ACK_TAG = re.compile(r"\s*\[shipped-ack:[^\]]*\]", re.I)
+_SHIPPED_ACK_MAX_AGE = 30   # days a shipped-ack acknowledgement stays good, mirrors `swept:`
 
-_CODE_PATHS = ("agents/", "core/", "channels/", "shared/", "broker/")
+
+def shipped_ack_fingerprint(title: str) -> str:
+    """4-hex-char digest of the line WITHOUT its shipped-ack tag — mirrors `sweep_fingerprint`
+    exactly, same reasoning: a `[shipped-ack:]` asserts "this line's CURRENT unshipped claim is
+    honest", and any edit to the line — e.g. genuinely new, honestly-unshipped scope filed under
+    the same task number — must void that judgement immediately, not whenever the timer expires.
+    """
+    import hashlib
+    body = _SHIPPED_ACK_TAG.sub("", title).strip()
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:4]
 
 
 def stale_blockers(tasks: list[dict]) -> list[tuple[dict, list[str]]]:
@@ -137,45 +152,42 @@ def stale_blockers(tasks: list[dict]) -> list[tuple[dict, list[str]]]:
     return out
 
 
-def shipped_but_unrecorded(tasks: list[dict], repo: Path = REPO) -> list[tuple[dict, str]]:
+def shipped_but_unrecorded(tasks: list[dict], today: date, repo: Path = REPO) -> list[tuple[dict, str]]:
     """Tasks claiming they have not shipped, whose #ID appears in a code commit.
 
     Returns (task, commit-subject) so the surface can say WHICH commit contradicts the line —
     a bare task id would just move the search rather than end it.
+
+    The "does a commit naming this task touch code" check itself is `_own_commits_touching_code`
+    — the SAME helper `_shipped_pending_gate` uses, so the two can no longer drift on path tuple
+    or anchoring the way `_CODE_PATHS`/`_OWN_COMMIT` did (2026-08-30 fix; see that helper's
+    docstring for the drift this closed).
     """
-    out: list[tuple[dict, str]] = []
+    candidates = []
     for t in tasks:
         if t["status"] not in ("in_progress", "pending", "blocked"):
             continue
         if not _NOT_SHIPPED_CLAIM.search(t["title"]):
             continue
-        # An explicit acknowledgement suppresses the surface: the line ALREADY records what
-        # shipped under this number, and the remaining claim is honest. #299 on 2026-08-30 is
-        # the case — its eval rig shipped and the line says so; what is unshipped is the paid
-        # full run, which is blocked on funding, an operator decision. Without this the surface
-        # would nag forever on a task that is telling the truth, and a surface that cries wolf
-        # gets ignored — which is how the original 30 tasks were missed.
-        if _SHIPPED_ACK.search(t["title"]):
+        # An explicit, DATED + content-fingerprinted acknowledgement suppresses the surface: the
+        # line ALREADY records what shipped under this number, and the remaining claim is
+        # honest. #299 on 2026-08-30 is the case — its eval rig shipped and the line says so;
+        # what is unshipped is the paid full run, which is blocked on funding, an operator
+        # decision. Without this the surface would nag forever on a task that is telling the
+        # truth, and a surface that cries wolf gets ignored — which is how the original 30 tasks
+        # were missed. Fresh (not aged out, not edited since) via `_shipped_ack_is_fresh` — a
+        # presence-only ack could otherwise mute this forever, including for genuinely new,
+        # honestly-unshipped scope added under the same number later (the bug this fixed).
+        if _shipped_ack_is_fresh(t["title"], today):
             continue
-        try:
-            res = subprocess.run(
-                ["git", "log", "-E", "--oneline", "-20", "--grep=#%d([^0-9]|$)" % t["id"], "--", *_CODE_PATHS],
-                cwd=repo, capture_output=True, text=True, timeout=20)
-        except Exception:
-            continue          # fail-open: a git problem must never block the board
-        # SUBJECT-LINE ONLY. --grep searches the whole message, so a commit whose BODY happens
-        # to mention "#335" while shipping #338 would fire — noise on a surface people act on.
-        # A task id in the SUBJECT is the author saying "this commit is that task".
-        # ⚠ CAP THE SUBJECT. `git log --oneline` prints the commit's FIRST LINE, and a few
-        # commits here have enormous first lines that carry a whole changelog. #335 was flagged
-        # on 2026-08-30 by a commit whose subject began "#338 CLOSED —" and merely MENTIONED
-        # #335 four hundred characters in. A task id in the first ~120 chars is the author
-        # naming the commit's subject; a mention past that is prose.
-        pat = re.compile(r"#%d(?![0-9])" % t["id"])
-        line = next((l for l in res.stdout.splitlines()
-                     if l.strip() and pat.search(l.split(" ", 1)[-1][:120])), "")
-        if line:
-            out.append((t, line.strip()))
+        candidates.append(t)
+    hits = _own_commits_touching_code({t["id"] for t in candidates}, repo=repo)
+    out: list[tuple[dict, str]] = []
+    for t in candidates:
+        hit = hits.get(t["id"])
+        if hit:
+            sha, subj = hit
+            out.append((t, f"{sha} {subj}"))
     return out
 
 
@@ -243,9 +255,42 @@ def _marker_age_days(pattern, title: str, today: date) -> int | None:
     return age if age >= 0 else None
 
 
+def _marker_is_fresh(pattern, title: str, today: date, max_age: int, fingerprint) -> bool:
+    """True when `title` carries a `<name>:YYYY-MM-DD[:hash]` marker (matched by `pattern`,
+    whose group(1) is the date and group(2) the optional hex fingerprint — the same contract
+    `_marker_age_days` already assumes for group(1)) that is BOTH recent (age <= `max_age`) and,
+    when it carries a `:hash` suffix, still about `title`'s CURRENT content (the hash must equal
+    `fingerprint(title)`).
+
+    THE SHARED FRESHNESS PRIMITIVE (2026-08-30). `swept:` and `revalidated:` already share
+    `_marker_age_days` after THEY drifted once — one rejected future dates, the other didn't
+    (see that function's docstring). This generalises the other half of the same shape (age
+    bound + content-fingerprint bound, together) so a third marker never has to hand-roll its
+    own copy of "is this judgement still good": that is exactly how `[shipped-ack:]` shipped
+    presence-only (no date, no fingerprint, no expiry) and could mute SHIPPED-BUT-UNRECORDED
+    forever — including for genuinely new, honestly-unshipped scope filed under the same task
+    number later, the precise failure this surface exists to catch. `swept:` (via
+    `_sweep_is_fresh`) and `shipped-ack:` (via `_shipped_ack_is_fresh`) both route through this
+    now — one function owns "dated + content-fingerprinted marker is still good," not two, and
+    a fourth marker gets it for free.
+
+    A marker with no `:hash` suffix is accepted purely on the timer (backwards compatible with
+    date-only markers) — content protection is opt-in per marker instance, not per marker kind.
+    """
+    age = _marker_age_days(pattern, title, today)
+    if age is None or age > max_age:
+        return False
+    m = pattern.search(title)
+    stamped = m.group(2)
+    if stamped and stamped.lower() != fingerprint(title):
+        return False        # line edited since the marker was written — judgement no longer applies
+    return True
+
+
 def _sweep_is_fresh(title: str, today: date) -> bool:
     """True when the line carries a `swept:YYYY-MM-DD[:hash]` marker that is BOTH recent and
-    still about this line's current content.
+    still about this line's current content — see `_marker_is_fresh` for the full contract
+    (age bound, content-fingerprint bound, malformed/future-dated rejection).
 
     Three ways to be stale, all deliberate:
       * older than `_SWEEP_MAX_AGE` days — a re-read is due on cadence regardless;
@@ -255,14 +300,21 @@ def _sweep_is_fresh(title: str, today: date) -> bool:
     A marker with no hash is accepted while in date (backwards compatible) but re-surfaces on the
     normal timer; new sweeps should write the hash.
     """
-    age = _marker_age_days(_SWEPT, title, today)
-    if age is None or age > _SWEEP_MAX_AGE:
-        return False
-    m = _SWEPT.search(title)
-    stamped = m.group(2)
-    if stamped and stamped.lower() != sweep_fingerprint(title):
-        return False        # line edited since the sweep — judgement no longer applies
-    return True
+    return _marker_is_fresh(_SWEPT, title, today, _SWEEP_MAX_AGE, sweep_fingerprint)
+
+
+def _shipped_ack_is_fresh(title: str, today: date) -> bool:
+    """True when the line carries a `[shipped-ack:YYYY-MM-DD[:hash]]` marker that is BOTH recent
+    and still about this line's CURRENT content.
+
+    Replaces the presence-only `[shipped-ack:<why>]` (2026-08-30 fix, the day it shipped): that
+    form had no date, no content fingerprint and no expiry, so it suppressed SHIPPED-BUT-
+    UNRECORDED for a task number FOREVER — including once genuinely new, honestly-unshipped
+    scope was filed under the same number, exactly the drift this surface exists to catch.
+    Routes through `_marker_is_fresh`, the same primitive `swept:` uses, so this can't recreate
+    that gap a third time by drifting its own copy of "is this ack still good."
+    """
+    return _marker_is_fresh(_SHIPPED_ACK, title, today, _SHIPPED_ACK_MAX_AGE, shipped_ack_fingerprint)
 
 # --- SESSION GROWTH GATE (operator 2026-07-12, HARD) ------------------------------------------
 # A session may NOT end with more open tasks than the PT-day began with. The open count is
@@ -754,34 +806,38 @@ _SHIPPED_CODE_DIRS = ("agents/", "core/", "channels/", "shared/", "main.py")
 _OWN_COMMIT = re.compile(r"^#(\d+)[:.\s]")
 
 
-def _shipped_pending_gate(tasks, errors) -> None:
-    """A `pending` task whose OWN commit already shipped product code is contradictory — `pending`
-    means NOT STARTED, and code named after the task exists. That contradiction is what makes a line
-    read as unstarted months after it shipped, which then generates a DUPLICATE card: on 2026-07-25
-    #495 (built 7/21, `786b294`) and #402 both did exactly that in one day, and the existing
-    LIKELY-BUILT surface is ADVISORY so it got triaged as housekeeping and ignored.
+def _own_commits_touching_code(tids: set[int], repo: Path = REPO) -> dict[int, tuple[str, str]]:
+    """For each id in `tids`: the NEWEST commit whose subject STARTS with `#id` (this repo's
+    convention for "this commit IS that task's work", anchored via `_OWN_COMMIT`) AND which
+    touched real product code under `_SHIPPED_CODE_DIRS`. An id with no such commit is absent
+    from the result.
 
-    Deliberately NARROW so it can be a GATE rather than more wallpaper. Measured 2026-07-25 on the
-    live board: matching ANY `#N` mention in a commit touching code flags 31 of 84 tasks (subjects
-    cross-reference IDs constantly — unusable). Requiring the subject to START with `#N` — this
-    repo's convention for "this commit IS that task's work" — and to touch product code flags **4 of
-    55 pending**. Four is actionable; thirty-one is noise, and noise is how the advisory surface died.
+    THE SINGLE SOURCE OF TRUTH for "does a commit naming this task touch code" (2026-08-30
+    fix). It was implemented three times with drifted answers: this scan (formerly inlined in
+    `_shipped_pending_gate`) and `shipped_but_unrecorded`'s separate `--grep` search, which used
+    a DIFFERENT path tuple (`_CODE_PATHS` — missing `main.py`, carrying a dead `broker/` entry
+    that matched nothing since the real path is `agents/market_intelligence/broker/`, already
+    covered by `agents/`) and a looser, unanchored match (any `#N` mention in the first 120
+    chars of the subject, not a subject that STARTS with it). One path tuple, one anchoring
+    regex now — measured 2026-07-25 on the live board: matching ANY `#N` mention in a
+    code-touching commit flags 31 of 84 tasks (subjects cross-reference IDs constantly —
+    unusable); requiring the subject to START with `#N` flags 4 of 55 pending. Callers keep
+    their own trigger predicate (pending-status vs a NOT-SHIPPED-claim) and their own
+    hard-fail-vs-advisory response.
 
-    Fix by correcting the STATUS (a task with shipped code is at minimum `in_progress`, usually
-    `deployed` + a verify-date), never by deleting the tag. `in_progress` is exempt: a multi-part
-    task legitimately ships part 1 while remaining open."""
-    import subprocess
-    pending = {t["id"]: t for t in tasks if str(t["status"]).lower() == "pending"}
-    if not pending:
-        return
+    Fails open (empty dict) on any git problem — a board-hygiene helper must never block a
+    commit on a git/infra hiccup.
+    """
+    if not tids:
+        return {}
     try:
-        log = subprocess.run(["git", "log", "--all", "--format=%h%x00%s"], cwd=str(REPO),
+        log = subprocess.run(["git", "log", "--all", "--format=%h%x00%s"], cwd=str(repo),
                              capture_output=True, text=True, encoding="utf-8", errors="replace",
                              timeout=10)
         if log.returncode != 0:
-            return
+            return {}
     except Exception:
-        return  # git unavailable — never block a commit on infra
+        return {}   # git unavailable — never block a commit on infra
     first: dict[int, tuple[str, str]] = {}
     for line in log.stdout.splitlines():
         sha, _, subj = line.partition("\x00")
@@ -789,17 +845,36 @@ def _shipped_pending_gate(tasks, errors) -> None:
         if not m:
             continue
         tid = int(m.group(1))
-        if tid in pending and tid not in first:
-            first[tid] = (sha, subj)
-    for tid, (sha, subj) in sorted(first.items()):
+        if tid in tids and tid not in first:
+            first[tid] = (sha, subj)   # log is newest-first -> first hit is the newest commit
+    out: dict[int, tuple[str, str]] = {}
+    for tid, (sha, subj) in first.items():
         try:
             files = subprocess.run(["git", "show", "--name-only", "--format=", "-r", sha],
-                                   cwd=str(REPO), capture_output=True, text=True,
+                                   cwd=str(repo), capture_output=True, text=True,
                                    encoding="utf-8", errors="replace", timeout=10).stdout
         except Exception:
             continue
-        if not any(f.startswith(_SHIPPED_CODE_DIRS) for f in files.splitlines() if f.strip()):
-            continue
+        if any(f.startswith(_SHIPPED_CODE_DIRS) for f in files.splitlines() if f.strip()):
+            out[tid] = (sha, subj)
+    return out
+
+
+def _shipped_pending_gate(tasks, errors) -> None:
+    """A `pending` task whose OWN commit already shipped product code is contradictory — `pending`
+    means NOT STARTED, and code named after the task exists. That contradiction is what makes a line
+    read as unstarted months after it shipped, which then generates a DUPLICATE card: on 2026-07-25
+    #495 (built 7/21, `786b294`) and #402 both did exactly that in one day, and the existing
+    LIKELY-BUILT surface is ADVISORY so it got triaged as housekeeping and ignored.
+
+    Fix by correcting the STATUS (a task with shipped code is at minimum `in_progress`, usually
+    `deployed` + a verify-date), never by deleting the tag. `in_progress` is exempt: a multi-part
+    task legitimately ships part 1 while remaining open."""
+    pending = {t["id"]: t for t in tasks if str(t["status"]).lower() == "pending"}
+    if not pending:
+        return
+    hits = _own_commits_touching_code(set(pending))
+    for tid, (sha, subj) in sorted(hits.items()):
         t = pending[tid]
         errors.append(
             f"L{t['line']}: task #{tid} is `pending` but its OWN commit {sha} already shipped product "
@@ -996,7 +1071,7 @@ def main(argv: list[str]) -> int:
         else:
             print("  (none)")
 
-        stale_claims = shipped_but_unrecorded(tasks)
+        stale_claims = shipped_but_unrecorded(tasks, today)
         print(f"\n-- SHIPPED-BUT-UNRECORDED ({len(stale_claims)}) — the line claims NOT shipped, "
               f"but a commit naming it touched code: RE-READ before commissioning any work --")
         if stale_claims:

@@ -499,11 +499,17 @@ def _settle(*, entry=10.0, stop=9.0, fire_minute=None, fire_day_bar=None,
 
 def test_sma_trail_line_matches_live_exit_logic_semantics():
     """<10 closes: no line (live None-guard). 10-19: SMA10 alone. >=20: max(SMA10, SMA20),
-    SMA including the current close."""
+    SMA including the current close. Since the 2026-08-30 simplify review the line
+    DELEGATES to exit_path_shadow._sma_trail — the one mirrored copy byte-parity-pinned
+    against broker/exit_logic.py — so any drift in the live formula now fails that
+    parity test instead of going unnoticed behind a third hand-rolled copy."""
+    from agents.market_intelligence.exit_path_shadow import _sma_trail
     assert des.sma_trail_line([10.0] * 9) is None
     assert des.sma_trail_line([10.0] * 19 + [20.0]) == pytest.approx(11.0)  # SMA10 only
     rising = [float(i) for i in range(1, 21)]                # SMA10=15.5 > SMA20=10.5
     assert des.sma_trail_line(rising) == pytest.approx(15.5)
+    for closes in ([10.0] * 9, [10.0] * 19 + [20.0], rising):
+        assert des.sma_trail_line(closes) == _sma_trail(closes)[2]  # the delegation pin
 
 
 def test_day0_needs_minutes_only_for_minute_fires_whose_day_low_touched_the_stop():
@@ -884,7 +890,7 @@ async def test_rung4_trigger_row_records_the_placeholder_definition_label(monkey
     assert abs(t["entry_price"] - 11.0) <= 0.5 * t["band_adr_dollar"]
     assert t["stop_width_pct"] == pytest.approx((11.06 - 10.94) / 11.06 * 100)
     assert t["fire_minute_et"] == 640 and t["resolution"] == "minute_5"
-    assert t["attempt_no"] == 1 and t["reentry_shape"] == "first"
+    assert t["reentry_shape"] == "first" and t["prior_attempt_id"] is None
     # the watch row records the fire + the band context
     assert watch[0]["fired_ep_close_620_prox"] is True
     assert watch[0]["ep_adr20_dollar"] == pytest.approx(0.55)
@@ -938,7 +944,7 @@ def _reentry_cand(**over):
         "in_active_theme": True, "ep_score": 62.0, "catalyst_grade": "strong",
         "screen_member": True, "screen_version": "screen_v1",
         "outcome": "stop", "realized_r": -1.0, "stop_hit_date": date(2026, 8, 26),
-        "attempt_no": 1, "reentry_shape": "first",
+        "reentry_shape": "first",
         "has_same_pattern": False, "has_new_high_break": False,
     }
     c.update(over)
@@ -985,10 +991,12 @@ _THU_RECLAIM_5M = [
 async def test_second_attempt_gets_its_own_row_and_number_after_the_stop(monkeypatch):
     """Required test: after attempt 1 settles as a stop (Wednesday), the same-pattern
     replay finds Thursday's fresh dip-and-reclaim and records it as ITS OWN row —
-    attempt_no=2, linked to attempt 1 by prior_attempt_id, fired strictly AFTER the
-    stop day (the day-2+ boundary), entry/stop from the bars. Attempt 1 is never
-    touched: the only write is a NEW insert (no settle, no update), and the pinned
-    unique-index + ON CONFLICT DO NOTHING make an overwrite impossible at the DB."""
+    identified by reentry_shape='same_pattern' (the attempt identity; there is
+    deliberately no attempt-number column, 2026-08-30 review), linked to attempt 1 by
+    prior_attempt_id, fired strictly AFTER the stop day (the day-2+ boundary),
+    entry/stop from the bars. Attempt 1 is never touched: the only write is a NEW
+    insert (no settle, no update), and the pinned unique-index + ON CONFLICT DO
+    NOTHING make an overwrite impossible at the DB."""
     cand = _reentry_cand(has_new_high_break=True)           # isolate the same-pattern shape
     watch, triggers, audits = _wire_reentry(
         monkeypatch, cand=cand, window=_WINDOW_RE,
@@ -996,7 +1004,7 @@ async def test_second_attempt_gets_its_own_row_and_number_after_the_stop(monkeyp
     out = await des.run_delayed_entry_shadow(_FRI)
     assert out["reentry_considered"] == 1 and out["reentry_recorded"] == 1
     (t,) = triggers
-    assert t["attempt_no"] == 2 and t["reentry_shape"] == "same_pattern"
+    assert t["reentry_shape"] == "same_pattern" and "attempt_no" not in t
     assert t["prior_attempt_id"] == 41 and t["rung"] == "ep_close_reclaim"
     assert t["fire_date"] == _THU and t["fire_date"] > cand["stop_hit_date"]
     assert t["entry_price"] == 11.05 and t["stop_price"] == 10.6
@@ -1004,9 +1012,8 @@ async def test_second_attempt_gets_its_own_row_and_number_after_the_stop(monkeyp
     assert t["stop_width_pct"] == pytest.approx((11.05 - 10.6) / 11.05 * 100)
     assert t["prior_session_low"] == 9.9                    # Wednesday's low
     assert t["sessions_since_ep"] == 3
-    # both attempts remain distinguishable: 1/'first' vs 2/'same_pattern'
-    assert (cand["attempt_no"], cand["reentry_shape"]) == (1, "first")
-    assert (t["attempt_no"], t["reentry_shape"]) == (2, "same_pattern")
+    # both attempts remain distinguishable by shape alone: 'first' vs 'same_pattern'
+    assert (cand["reentry_shape"], t["reentry_shape"]) == ("first", "same_pattern")
 
 
 @pytest.mark.asyncio
@@ -1029,7 +1036,7 @@ async def test_new_high_break_reentry_breaks_the_campaign_high_not_the_ep_high(m
     out = await des.run_delayed_entry_shadow(_FRI)
     assert out["reentry_recorded"] == 1
     (t,) = triggers
-    assert t["reentry_shape"] == "new_high_break" and t["attempt_no"] == 2
+    assert t["reentry_shape"] == "new_high_break"
     assert t["entry_price"] == 12.6                         # the campaign high, not 12.0
     assert t["stop_price"] == 11.1                          # Thursday's low
     assert t["fire_date"] == _FRI and t["resolution"] == "daily"
@@ -1069,3 +1076,89 @@ async def test_reentry_window_opens_the_session_after_the_stop(monkeypatch):
     out = await des.run_delayed_entry_shadow(_FRI)
     assert out["reentry_considered"] == 1 and out["reentry_recorded"] == 0
     assert triggers == []
+
+
+# ── 2026-08-30 simplify review pins: one gap-resolution path, one missing-count ───────
+
+
+@pytest.mark.asyncio
+async def test_reentry_replay_backfills_a_ranged_read_hole_never_skips_it(monkeypatch):
+    """Fix-2 pin: the never-leap-a-gap invariant has ONE implementation
+    (_resolve_session_bar). Thursday's bar is MISSING from the ranged window read but
+    present via the single-day fallback — exactly the situation the walker and
+    settlement already backfilled. The same-pattern replay must backfill it too and
+    fire on Thursday's reclaim, not silently skip the session (the pre-fix divergence:
+    the same missing row was scored on one path and dropped on another). A backfilled
+    session is not blind, so prior_missing_sessions stays 0."""
+    cand = _reentry_cand(has_new_high_break=True)           # isolate the same-pattern shape
+    watch, triggers, audits = _wire_reentry(
+        monkeypatch, cand=cand, window=_WINDOW_RE,
+        minutes_by_day={_THU: _THU_RECLAIM_5M})
+
+    async def _window_with_hole(ticker, start, end):        # ranged read misses Thursday
+        return [b for b in _WINDOW_RE
+                if start <= b["trade_date"] <= end and b["trade_date"] != _THU]
+
+    monkeypatch.setattr(des, "get_delayed_entry_daily_window", _window_with_hole)
+    # get_delayed_entry_daily_bar (wired by _wire) still serves Thursday from _WINDOW_RE
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["reentry_recorded"] == 1
+    (t,) = triggers
+    assert t["reentry_shape"] == "same_pattern" and t["fire_date"] == _THU
+    assert t["entry_price"] == 11.05 and t["stop_price"] == 10.6
+    assert t["prior_session_low"] == 9.9                    # Wednesday's low, ordered in
+    assert t["prior_missing_sessions"] == 0                 # recovered != blind
+
+
+@pytest.mark.asyncio
+async def test_first_attempt_stamps_blind_sessions_since_the_ep_day(monkeypatch):
+    """Fix-1 pin, first-attempt half of the ONE prior_missing_sessions definition:
+    a reentry_shape='first' row stamps the count of blind (unscoreable) sessions in
+    ITS OWN window — the EP day through the fire — exactly what
+    count_delayed_entry_unscoreable returns for that window."""
+    bars5 = [
+        _b5(570, 9.7, 9.9, 9.5, 9.7),
+        _b5(575, 9.7, 10.1, 9.6, 10.0),   # reclaim fires
+    ]
+    watch, triggers, audits = _wire(
+        monkeypatch, member=_member(), window=_WINDOW, minute_bars=bars5)
+
+    async def _unsc(ticker, ep, before):
+        assert (ticker, ep, before) == ("TST", _EP, _FRI)   # the window: EP day -> fire
+        return 3
+
+    monkeypatch.setattr(des, "count_delayed_entry_unscoreable", _unsc)
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["triggers"] == 1
+    (t,) = triggers
+    assert t["reentry_shape"] == "first" and t["prior_missing_sessions"] == 3
+
+
+@pytest.mark.asyncio
+async def test_reentry_stamp_counts_only_its_own_window_not_reference_holes(monkeypatch):
+    """Fix-1 pin, re-entry half of the ONE definition: prior_missing_sessions on a
+    re-entry row counts ONLY blind sessions inside its replay window (after the
+    stop-out). Tuesday — a hole in the new-high LEVEL-reference window, before the
+    stop — must NOT count (pre-fix it did, silently mixing level uncertainty into a
+    fire-timing column); Wednesday — genuinely missing everywhere inside the replay
+    window — MUST count."""
+    window = [
+        _daily(date(2026, 8, 21), 9.9, 10.2, 9.7, 10.0),
+        _daily(_EP, 10.5, 12.0, 9.8, 11.0, 5_000_000),
+        # Tue 8/25 (the level-reference window) and Wed 8/26 (in the replay window)
+        # are BOTH missing everywhere — no daily bar stored or fetchable
+        _daily(_THU, 11.0, 11.6, 10.9, 11.4),               # below the 12.0 level
+        _daily(_FRI, 11.8, 12.3, 11.6, 12.1),               # takes out 12.0 -> fire
+    ]
+    cand = _reentry_cand(has_same_pattern=True,             # isolate the new-high shape
+                         fire_date=date(2026, 8, 25),
+                         stop_hit_date=date(2026, 8, 25))   # replay window: Wed-Fri
+    watch, triggers, audits = _wire_reentry(monkeypatch, cand=cand, window=window,
+                                            minutes_by_day={})
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["reentry_recorded"] == 1
+    (t,) = triggers
+    assert t["reentry_shape"] == "new_high_break" and t["fire_date"] == _FRI
+    assert t["entry_price"] == 12.0                         # ref hole only UNDERSTATES
+    assert t["stop_price"] == 10.9                          # Thursday's low
+    assert t["prior_missing_sessions"] == 1                 # Wednesday only, never Tuesday

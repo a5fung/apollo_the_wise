@@ -59,13 +59,17 @@ move captured, 2.68% vs 8.75% risk) and must never be derive-it-later. Each row 
 `pattern_version` — a reader must never infer the acting definition from a date.
 
 RE-ENTRY RECORDING (v2, 2026-08-30 — record what each shape would have done; NO policy
-decided, the review rules). Every attempt is its OWN trigger row with attempt_no, so a
+decided, the review rules). Every attempt is its OWN trigger row, identified by
+reentry_shape ('first' vs a re-entry shape) + prior_attempt_id + fire_date, so a
 campaign (first entry, stop-out, re-entry, outcome) reconstructs from rows — TEAM is the
 case: every first attempt stopped at 82-92, the re-entry at 149.49 on strength made
-+5.56R, and the first-fire-only shadow would have quit after one stop. After a FIRST
-attempt settles outcome='stop' (only a stop frees a name — a trail/time exit is a
++5.56R, and the first-fire-only shadow would have quit after one stop. There is
+deliberately NO attempt-number column (dropped, 2026-08-30 simplify review): the two
+re-entry shapes are PARALLEL bounded replays of the same stop-out — both can fire on
+one campaign — so any ordinal would misorder or double-count a campaign query. After a
+FIRST attempt settles outcome='stop' (only a stop frees a name — a trail/time exit is a
 harvest that ends the campaign), the nightly pass replays BOTH bounded shapes from the
-session AFTER the stop-out, each writing at most one attempt_no=2 row:
+session AFTER the stop-out, each writing at most one row of its shape:
   same_pattern    the rung's own pattern re-armed FRESH (for ep_high_break: a re-touch
                   of the EP-day high, buy at the level, stop = prior session's low —
                   the clean-never-pulled-back precondition is an attempt-1 partitioning
@@ -94,8 +98,12 @@ MEASUREMENT CONVENTIONS:
     `eval_status='unscoreable'` and the walker RETRIES it (re-walking forward from the
     first unscoreable session) on every run while the name is in the lane. Never a
     daily-bar fallback for a minute tactic, never a fabricated fill. A fire recorded
-    after unscoreable sessions stamps `prior_missing_sessions > 0` so the review can
-    see the observed fire may be later than the true first one.
+    after blind sessions stamps `prior_missing_sessions > 0` — ONE definition on both
+    write paths (2026-08-30 simplify review): blind (unscoreable) sessions inside THIS
+    attempt's own watch window, strictly before its fire. The window opens at the EP
+    day for a first attempt and at the session AFTER the stop-out for a re-entry row,
+    so >0 always means THIS attempt's true first fire may be up to that many sessions
+    earlier — sessions outside the row's own window are never counted.
   - Minute bars come from Polygon 1-min aggs, converted to ET via ZoneInfo (never a
     hard-coded UTC offset — Stage 0 D11) and aggregated to completed RTH 5-min bars.
   - Screen membership (open gap >=8%, prior close >=$5, day-0 dollar volume >=$50M,
@@ -128,7 +136,11 @@ trading sessions FROM ITS FIRE and settled under TWO arms on one row, in one wri
     double-settle is a no-op.
   - THE ABSTAIN RULE applies with full force: a session with no daily bar (stored OR
     single-day fallback) blocks the walk AT that session — never leap a gap, never
-    interpolate. Day 0 of a minute-grade fire whose daily low touched the stop (for a
+    interpolate. Every path resolves a session's bar through ONE helper,
+    `_resolve_session_bar` (ranged read, then the single-day fallback), so the same
+    hole can never be backfilled on one path and silently dropped on another
+    (2026-08-30 simplify review — the re-entry replays had diverged). Day 0 of a
+    minute-grade fire whose daily low touched the stop (for a
     reclaim the pre-fire undercut low often IS the stop) can only be ordered by the
     post-fire 5-min bars — missing minutes ABSTAIN and retry next run. A daily-grade
     fire's day-0 spanning bar reads stop-first (pess — the documented house bound).
@@ -150,10 +162,16 @@ trading sessions FROM ITS FIRE and settled under TWO arms on one row, in one wri
 from __future__ import annotations
 
 import logging
+from bisect import insort
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 from shared.dates import _ET
+
+# The ONE mirrored copy of the live broker/exit_logic.py SMA trail formula, pinned
+# byte-for-byte by test_exit_path_shadow.py::test_trail_matches_exit_logic_formula.
+# Same-directory shadow import — this module still imports NOTHING from broker/.
+from agents.market_intelligence.exit_path_shadow import _sma_trail
 
 from agents.market_intelligence.db import (
     _f,
@@ -582,13 +600,11 @@ def sma_trail_line(closes: list[float]) -> Optional[float]:
     """The M-trail exit line: MAX(SMA10, SMA20) with the live exit_logic.py 'sma' mode
     semantics VERBATIM — the SMA includes the session's own close (running_closes), <20
     closes falls back to SMA10 alone, <10 closes -> None (no line yet, no trail exit —
-    the live None-guard). Mirrored, not imported: exit_logic walks a live position
-    ladder; this settles a shadow row."""
-    sma10 = sum(closes[-10:]) / 10 if len(closes) >= 10 else None
-    sma20 = sum(closes[-20:]) / 20 if len(closes) >= 20 else None
-    if sma20 is not None:
-        return sma10 if sma10 > sma20 else sma20
-    return sma10
+    the live None-guard). Delegates to exit_path_shadow._sma_trail — the ONE mirrored
+    copy of the live formula, pinned against broker/exit_logic.py by its byte-parity
+    test — rather than re-deriving it a third time (2026-08-30 simplify review: a
+    hand-rolled copy here could never notice the live formula changing)."""
+    return _sma_trail(closes)[2]
 
 
 def day0_needs_minutes(fire_minute: Optional[int], fire_day_low: Optional[float],
@@ -869,6 +885,33 @@ async def enroll_new_members(today: date) -> int:
     return enrolled
 
 
+async def _resolve_session_bar(ticker: str, d: date, bars_by_day: dict,
+                               ordered_days: Optional[list] = None) -> Optional[dict]:
+    """THE one session-resolution path — the never-leap-a-gap invariant's single home
+    (2026-08-30 simplify review: the walker and settlement backfilled a ranged-read
+    hole via the single-day fallback while the re-entry replays silently dropped the
+    SAME session, so one path scored a day another path pretended never happened).
+    Returns the day's bar (high/low/close all present) from the ranged read, else ONE
+    get_delayed_entry_daily_bar fallback fetch (mi_daily_closes + Polygon). A
+    recovered bar is cached into bars_by_day (and ordered_days, kept ascending, when
+    given) so prior-session-low lookups and settlement retries see it too. None = the
+    session is GENUINELY missing everywhere — the caller abstains or counts it as
+    blind, never leaps it silently."""
+    b = bars_by_day.get(d)
+    if (b is not None and b.get("high_price") is not None
+            and b.get("low_price") is not None and b.get("close") is not None):
+        return b
+    o, h, l, c, src = await get_delayed_entry_daily_bar(ticker, d)
+    if h is None or l is None or c is None:
+        return None
+    bar = {"trade_date": d, "open_price": o, "high_price": h, "low_price": l,
+           "close": c, "volume": (b or {}).get("volume"), "_src": src}
+    if ordered_days is not None and d not in ordered_days:
+        insort(ordered_days, d)
+    bars_by_day[d] = bar
+    return bar
+
+
 async def _walk_one_member(member: dict, today: date, out: dict) -> None:
     """Advance one lane member from its last fully-scored session through today —
     re-walking from the FIRST unscoreable session when one exists (the retry half of
@@ -962,12 +1005,7 @@ async def _walk_one_member(member: dict, today: date, out: dict) -> None:
             continue
         session_idx += 1
 
-        b = bars_by_day.get(session_date)
-        if b is None:
-            o, h, l, c, src = await get_delayed_entry_daily_bar(ticker, session_date)
-            if c is not None:
-                b = {"trade_date": session_date, "open_price": o, "high_price": h,
-                     "low_price": l, "close": c, "volume": None, "_src": src}
+        b = await _resolve_session_bar(ticker, session_date, bars_by_day, ordered_days)
         day_open = _f(b.get("open_price")) if b else None
         day_high = _f(b.get("high_price")) if b else None
         day_low = _f(b.get("low_price")) if b else None
@@ -1131,8 +1169,10 @@ async def _record_trigger(*, ticker, ep_date, session_date, session_idx, fire, c
         "in_active_theme": ctx["in_active_theme"], "ep_score": ctx["ep_score"],
         "catalyst_grade": ctx["catalyst_grade"], "screen_member": ctx["screen_member"],
         "screen_version": ctx["screen_version"] or SCREEN_VERSION,
+        # ONE definition (db.py schema comment): blind sessions inside THIS attempt's
+        # window — for a first attempt, unscoreable watch rows since the EP day
         "prior_missing_sessions": missing_before,
-        "attempt_no": 1, "reentry_shape": SHAPE_FIRST, "prior_attempt_id": None,
+        "reentry_shape": SHAPE_FIRST, "prior_attempt_id": None,
         # the rung-4 placeholder label + band travel WITH the fire from the definition
         # site (evaluate_session_620) — None on every other rung
         "near_definition": fire.get("near_definition"),
@@ -1200,11 +1240,8 @@ async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
         reason = res.get("reason", "")
         if res["status"] == "abstain" and reason.startswith("missing_session:"):
             d = date.fromisoformat(reason.split(":", 1)[1])
-            o, h, l, c, _src = await get_delayed_entry_daily_bar(ticker, d)
-            if c is None:
+            if await _resolve_session_bar(ticker, d, bars_by_day) is None:
                 break  # genuinely missing (halt/delist/hole) — the abstain stands
-            bars_by_day[d] = {"trade_date": d, "open_price": o, "high_price": h,
-                              "low_price": l, "close": c}
             continue
         break
 
@@ -1273,8 +1310,10 @@ async def _replay_same_pattern_reclaim(cand: dict, sessions: list[date], bars_by
     """Fresh-state walk of the rung's OWN pattern over the re-entry window (same
     evaluators, same pivots — the definition is reused, not redesigned). Only THIS
     rung's fire is taken; other rungs' fires in the fresh walk are ignored (this is a
-    per-rung campaign replay, not a second lane). Missing sessions are counted into the
-    prior_missing_sessions stamp, never leapt silently."""
+    per-rung campaign replay, not a second lane). Sessions resolve through
+    _resolve_session_bar (ranged read, then the single-day fallback — the ONE
+    never-leap-a-gap path); only a session missing EVERYWHERE counts into the
+    prior_missing_sessions stamp, and is never leapt silently."""
     rung = cand["rung"]
     gap_low, gap_close, gap_high = (_f(cand.get("gap_day_low")),
                                     _f(cand.get("gap_day_close")),
@@ -1284,11 +1323,11 @@ async def _replay_same_pattern_reclaim(cand: dict, sessions: list[date], bars_by
     state = new_state()
     missing = 0
     for d in sessions:
-        b = bars_by_day.get(d) or {}
-        day_high, day_low = _f(b.get("high_price")), _f(b.get("low_price"))
-        if day_high is None or day_low is None:
-            missing += 1
+        b = await _resolve_session_bar(cand["ticker"], d, bars_by_day, ordered_days)
+        if b is None:
+            missing += 1                  # genuinely missing everywhere — blind session
             continue
+        day_high, day_low = _f(b.get("high_price")), _f(b.get("low_price"))
         prior_low = _prior_session_low(ordered_days, bars_by_day, d)
         if session_needs_minutes(day_high, day_low, gap_low=gap_low,
                                  gap_close=gap_close, gap_high=gap_high, state=state):
@@ -1330,11 +1369,11 @@ async def _replay_same_pattern_620(cand: dict, sessions: list[date], bars_by_day
     missing = 0
     warm_cache: dict[date, list] = {}
     for d in sessions:
-        b = bars_by_day.get(d) or {}
-        day_high, day_low = _f(b.get("high_price")), _f(b.get("low_price"))
-        if day_high is None or day_low is None:
-            missing += 1
+        b = await _resolve_session_bar(cand["ticker"], d, bars_by_day, ordered_days)
+        if b is None:
+            missing += 1                  # genuinely missing everywhere — blind session
             continue
+        day_high, day_low = _f(b.get("high_price")), _f(b.get("low_price"))
         if not session_needs_minutes_620(day_high, day_low, gap_close=gap_close,
                                          adr_dollar=adr_dollar, state=state):
             continue
@@ -1356,9 +1395,11 @@ async def _replay_same_pattern_620(cand: dict, sessions: list[date], bars_by_day
 async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_date: date,
                                   prior_low: Optional[float], bars_by_day: dict,
                                   ordered_days: list, missing: int) -> bool:
-    """Assemble + insert one attempt_no=2 re-entry row. Its OWN row, linked to the
-    stopped attempt via prior_attempt_id — it can never overwrite attempt 1 (different
-    reentry_shape = different row under the unique index). Settled later by the same
+    """Assemble + insert one re-entry row, identified by its reentry_shape and linked
+    to the stopped attempt via prior_attempt_id — it can never overwrite attempt 1
+    (different reentry_shape = different row under the unique index). `missing` = blind
+    sessions inside THIS attempt's replay window (since the stop-out), the re-entry
+    half of the one prior_missing_sessions definition. Settled later by the same
     machinery as any trigger, so a FAILED re-entry lands as -1R, counted."""
     ticker, ep_date = cand["ticker"], cand["ep_date"]
     entry, stop = float(fire["entry"]), float(fire["stop"])
@@ -1400,7 +1441,7 @@ async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_da
         "screen_member": cand.get("screen_member"),
         "screen_version": cand.get("screen_version") or SCREEN_VERSION,
         "prior_missing_sessions": missing,
-        "attempt_no": 2, "reentry_shape": shape, "prior_attempt_id": cand["id"],
+        "reentry_shape": shape, "prior_attempt_id": cand["id"],
         # EVERY row of a rung-4 campaign carries the placeholder label (its rung-4
         # result rests on the band no matter which shape fired) — CHECK-enforced
         "near_definition": (NEAR_DEFINITION_PLACEHOLDER
@@ -1412,7 +1453,7 @@ async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_da
 
 async def _record_reentries_for(cand: dict, today: date, out: dict) -> None:
     """Replay BOTH bounded re-entry shapes for one settled-stop first attempt, writing
-    at most one attempt_no=2 row per shape. The window is REENTRY_WATCH_SESSIONS
+    at most one row per shape. The window is REENTRY_WATCH_SESSIONS
     trading sessions starting the session AFTER the stop-out — the day-2+ boundary is
     structural, not a filter (same-day re-entry is out of scope, ruled 2026-08-30)."""
     ticker, ep_date, rung = cand["ticker"], cand["ep_date"], cand["rung"]
@@ -1446,17 +1487,21 @@ async def _record_reentries_for(cand: dict, today: date, out: dict) -> None:
             if gap_high is None:
                 continue
             level = gap_high
-            missing_ref = 0
             if shape == SHAPE_NEWHIGH:
                 ref_days = _trading_days(ep_date + timedelta(days=1), stop_day)
-                highs = []
-                for d in ref_days:
-                    h = _f((bars_by_day.get(d) or {}).get("high_price"))
-                    if h is None:
-                        missing_ref += 1  # an unseen high can only UNDERSTATE the level
-                    else:
-                        highs.append(h)
-                level = max([gap_high] + highs)
+                highs = [_f((bars_by_day.get(d) or {}).get("high_price"))
+                         for d in ref_days]
+                # a hole in the level-reference window can only UNDERSTATE the level;
+                # it is NOT a blind session of THIS attempt's replay window and never
+                # counts into prior_missing_sessions (the one-definition rule,
+                # 2026-08-30 simplify review)
+                level = max([gap_high] + [h for h in highs if h is not None])
+            # the replay window resolves through the ONE shared path before the pure
+            # level walk, so a ranged-read hole is backfilled here exactly as on every
+            # other path and replay_level_break's `missing` counts only sessions that
+            # are genuinely missing everywhere
+            for d in sessions:
+                await _resolve_session_bar(ticker, d, bars_by_day, ordered_days)
             seed = bars_by_day.get(stop_day) or {}
             lb = replay_level_break(sessions, bars_by_day, level,
                                     seed_prior_low=_f(seed.get("low_price")))
@@ -1465,7 +1510,7 @@ async def _record_reentries_for(cand: dict, today: date, out: dict) -> None:
             hit = {"fire": {"rung": rung, "entry": level, "stop": lb["prior_low"],
                             "fire_minute": None},
                    "fire_date": lb["fire_date"], "prior_low": lb["prior_low"],
-                   "missing": lb["missing"] + missing_ref}
+                   "missing": lb["missing"]}
         if hit is None:
             continue
         wrote = await _record_attempt_trigger(
