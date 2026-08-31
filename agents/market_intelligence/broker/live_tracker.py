@@ -8,6 +8,14 @@ Schedule:
 - 9:32 AM ET: process_new_alerts_live() — ORB monitor, send proposals
 - 4:45 PM ET: update_open_positions_live() — SMA trail, partials, stop updates
 - 9:35 AM ET: morning_stop_refresh() — refresh stops for Day 2+ positions
+
+#533 (2026-08-30, operator-signed): process_new_alerts_live orders the day's HIGH
+board by prior-day RS composite (ep_score tiebreak) instead of the accidental
+alphabetical order — flag `ep_slot_rank_rs`, default ON. Revert SQL + evidence +
+the watch record live on ep_slot_rank_shadow.py's docstring:
+    INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+    VALUES ('ep_slot_rank_rs', 'global', 'off', NOW(), NOW())
+    ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
 """
 from __future__ import annotations
 
@@ -403,19 +411,98 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        alerts = await conn.fetch("""
-            SELECT DISTINCT ON (ticker)
-                   ticker, alert_date, gap_pct, rel_volume, ep_score,
-                   score_tier, catalyst, catalyst_quality, vol_percentile
-            FROM mi_ep_alerts
-            WHERE alert_date = $1 AND score_tier = 'HIGH'
-            ORDER BY ticker, ep_score DESC
-        """, today)
+        alerts = await conn.fetch(_HIGH_ALERT_SELECT_SQL, today)
     alerts = [dict(a) for a in alerts]
 
     if not alerts:
         logger.info("No HIGH EP alerts today for live trading")
         return []
+
+    # ── #533 WITHIN-DAY SLOT RANKING (2026-08-30, OPERATOR-SIGNED) ────────────
+    # "switch to RS rank, but observe going forward if it deteriorates or other
+    # ranking starts to do better." The list order below is the board's slot
+    # PRIORITY: tasks are created in list order and the 5-way semaphore admits
+    # the head of the list first, so under cap contention the top-ranked names
+    # reach the insert-time recount (#461) first. Pre-#533 that priority was
+    # ALPHABETICAL (the DISTINCT ON accident above). Acting order: prior-day
+    # rs_composite DESC, ep_score DESC tiebreak, ticker ASC (slot_rank_key in
+    # ep_slot_rank_shadow.py — evidence, revert SQL and the missing-RS-row
+    # policy live on that module's docstring; SSoT docs/setups/magna53_ep.md).
+    # ONE revert flag — `ep_slot_rank_rs` / EP_SLOT_RANK_RS_ENABLED, default ON;
+    # OFF → the legacy query's own order acts, byte-identical, no redeploy.
+    # Fail direction on ANY error here: the legacy order acts, loudly
+    # (logger.exception + slot_rank_fallback audit row) — never a dead selection.
+    # Note: concurrency means priority, not a strict serial guarantee — a
+    # top-ranked name stalled on its bar fetch does not block lower picks
+    # (deliberate; serializing would let one stall eat the 09:45 window).
+    _slot_rank_live = True
+    try:
+        _slot_rank_live = await get_runtime_toggle(
+            "ep_slot_rank_rs", "EP_SLOT_RANK_RS_ENABLED", default=True)
+    except Exception as _ste:  # loud-ok: get_runtime_toggle fails open internally; belt+braces
+        logger.warning(f"ep_slot_rank_rs toggle read failed — RS slot ranking stays ON: {_ste}")
+    _rs_by_ticker: dict[str, dict] = {}
+    _rs_score_date: "date | None" = None
+    _slot_rank_acting = False
+    try:
+        async with pool.acquire() as conn:
+            # #554 guard: latest COMPLETE run strictly before today — a stray
+            # one-row Saturday write can never rank the board, and "prior-day"
+            # stays prior-day even after tonight's run lands.
+            _rs_score_date = await latest_complete_score_date(
+                conn, on_or_before=today - timedelta(days=1))
+            if _rs_score_date is not None:
+                _rs_by_ticker = {
+                    r["ticker"]: dict(r) for r in await conn.fetch(
+                        _SLOT_RANK_RS_SQL, _rs_score_date,
+                        [a["ticker"] for a in alerts])
+                }
+        _rank_by_rs = rank_board_by_rs(alerts, _rs_by_ticker)
+        # Sorted COPY first, assign second — an exception lands BEFORE the list
+        # mutates, so the fail direction (legacy order) is airtight.
+        _rs_order = sorted(alerts, key=lambda a: _rank_by_rs[a["ticker"]])
+        if _slot_rank_live and _rs_score_date is not None:
+            _no_rs = [
+                a["ticker"] for a in alerts
+                if (_rs_by_ticker.get(a["ticker"]) or {}).get("rs_composite") is None
+            ]
+            if _no_rs:
+                # Deliberate placement, mirrored from slot_rank_key: no RS row =
+                # universe drift — ranked AFTER every RS-scored name (no evidence
+                # of strength buys no priority), NEVER dropped from the board.
+                logger.warning(
+                    f"slot-rank [{trigger}]: no prior-day RS row for {_no_rs} "
+                    f"(universe drift) — ranked after all RS-scored names, never dropped"
+                )
+            alerts = _rs_order
+            _slot_rank_acting = True
+        elif _slot_rank_live:
+            logger.warning(
+                f"slot-rank [{trigger}]: no complete RS score date before {today} "
+                f"— legacy (alphabetical) order acts"
+            )
+    except Exception as _sre:  # loud-ok: fail direction = legacy order ACTS; durable audit row below
+        logger.exception(f"slot-rank [{trigger}]: ranking failed — legacy (alphabetical) order acts: {_sre}")
+        try:
+            await log_audit_event(
+                "slot_rank_fallback",
+                f"[{trigger}] {type(_sre).__name__}: {str(_sre)[:200]}",
+            )
+        except Exception:  # loud-ok: log_audit_event never raises; belt+braces
+            pass
+
+    # The watch (the other half of the ruling) — one row per (invocation, ticker)
+    # into mi_ep_slot_rank_shadow recording what EACH candidate ranking would have
+    # picked. Runs on BOTH toggle sides (a revert must not kill the watch — the
+    # watch is the revert's evidence). Fire-and-forget: never raises, SILENT.
+    try:
+        await snapshot_slot_rank_board(
+            pool, alerts, _rs_by_ticker, _rs_score_date,
+            acting_key=("rs" if _slot_rank_acting else "legacy_alpha"),
+            trigger=trigger, alert_date=today,
+        )
+    except Exception as _sse:  # loud-ok: telemetry only — never blocks entries
+        logger.warning(f"slot-rank shadow snapshot failed — {_sse}")
 
     # #444: this whole function is MAGNA53-only (signal_type="magna53" below) —
     # every alert in this batch shares ONE account_mode, so resolve it once for

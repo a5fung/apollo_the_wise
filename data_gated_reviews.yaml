@@ -10148,3 +10148,50 @@ reviews:
     cross_refs: ["docs/analysis/delayed_entry_campaign_policies_327_2026-08-30.md",
                  "docs/analysis/327_stage0_anticipation_diagnosis_2026-08-30.md",
                  "docs/setups/delayed_ep_reentry.md"]
+
+  - review_id: ep_slot_ranking_watch_533
+    title: "#533 slot-ranking watch — is RS still the best within-day ordering, or is another doing better?"
+    question: >-
+      The operator's 2026-08-30 ruling had two halves: "switch to RS rank, but observe
+      going forward if it deteriorates or other ranking starts to do better." On the
+      multi-alert mornings accrued SINCE the flip, does prior-day RS composite still
+      pick better slot recipients than the same morning's skipped names — and does any
+      other recorded ordering (ep_score / briefing composite / ADV$ / alphabetical)
+      now beat it? The ship-time evidence was 15 mornings with error bars that include
+      zero for every challenger (docs/analysis/533_within_day_ranking_2026-08-30.md).
+    # to_regclass idiom: registered in the SAME commit as the table (exists in code,
+    # not on prod until deploy) — reads 0, never errors, before the deploy creates it.
+    # A morning counts when >=3 distinct tickers hit the board (the evidence doc's
+    # decision-day bar) AND it is >=8 calendar days old, so its 5-session outcome
+    # (ret5 from day-0 open, joined at read time from mi_daily_closes) has settled.
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_ep_slot_rank_shadow') IS NULL THEN 0
+                  ELSE (SELECT COUNT(*) FROM (
+                          SELECT alert_date FROM mi_ep_slot_rank_shadow
+                          WHERE alert_date <= CURRENT_DATE - 8
+                          GROUP BY alert_date
+                          HAVING COUNT(DISTINCT ticker) >= 3) d) END
+    threshold: 10
+    # Reviewed the table: no column separates genuinely different questions for this
+    # predicate — the five rankings are recorded counterfactually on EVERY row, so
+    # mornings answer the question regardless of acting_key (which ordering acted)
+    # or trigger (which invocation); readers dedup to the earliest invocation.
+    discriminates_on: []
+    earliest_review_date: 2026-09-27
+    status: pending
+    kind: accrual
+    added_on: 2026-08-30
+    action_when_ready: >-
+      $0 read-only: join mi_ep_slot_rank_shadow (earliest invocation per morning) to
+      mi_daily_closes, score each recorded ranking's top-2 vs the rest per morning on
+      ret5 from day-0 open — the ship-time method, post-flip mornings only. Then:
+      (a) RS's median top2-vs-rest edge <= 0 over the accrued mornings -> RS has
+      deteriorated: recommend REVERT (ep_slot_rank_rs off — instant, no redeploy) and
+      bring the numbers to the operator. (b) Another recorded ranking beats RS's
+      median edge by >= 5 points AND stays positive with its best day removed ->
+      recommend SWITCHING to it (operator sign-off + CHANGE_PROCESS; new toggle).
+      (c) Neither -> RS stands; re-arm this review for the next 10 settled mornings.
+      Nothing flips on its own evidence — THE LINE.
+    cross_refs: ["docs/analysis/533_within_day_ranking_2026-08-30.md",
+                 "docs/setups/magna53_ep.md",
+                 "agents/market_intelligence/ep_slot_rank_shadow.py"]

@@ -257,6 +257,40 @@ If `tier == MODERATE` AND `gap_pct ≥ 10%` AND `is_earnings_day` → promote to
 
 HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute < 45` — combined with the market-open gate (`now_et.hour > 9 OR (now_et.hour == 9 AND now_et.minute >= 31)`), the effective window is **9:31–9:44** ET (`scheduler.py` ~891-897), not the full 9:00 hour. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup cancels any unfilled `order_placed`.
 
+### Within-day slot ranking — which HIGH alerts get the five slots (2026-08-30, operator-signed)
+
+On a multi-alert morning `live_tracker.process_new_alerts_live` processes the board in a
+DELIBERATE order that is the slot priority under the 5-position cap: **prior-day
+`rs_composite` DESC, `ep_score` DESC tiebreak, ticker ASC** (`ep_slot_rank_shadow.
+slot_rank_key`). Pre-#533 the order was ALPHABETICAL by accident — `DISTINCT ON (ticker)`
+forces the SQL sort to start with ticker, so `ep_score DESC` only broke ties within one
+ticker. Mechanics + policy:
+
+- **RS source**: `mi_stock_scores` at the latest **COMPLETE** score date strictly before
+  the alert day (`db.latest_complete_score_date`, the #554 guard — a stray one-row
+  Saturday run can never rank the board). No complete date at all → the legacy order
+  acts, loudly.
+- **Missing RS row** (universe drift; 0 of 141 in the evidence window): the name is
+  ranked AFTER every RS-scored name — no evidence of strength buys no priority — but is
+  **never dropped**; it competes for whatever slots remain, ordered by ep_score among its
+  peers. Logged as a warning naming the tickers.
+- **Revert**: runtime toggle `ep_slot_rank_rs` / env `EP_SLOT_RANK_RS_ENABLED`, default
+  ON. OFF → the legacy query's own order acts, byte-identical (the SELECT never changed —
+  the re-sort is Python and simply never runs; pinned by `tests/test_533_slot_ranking.py`).
+  Revert SQL on `ep_slot_rank_shadow.py`'s docstring. **Fail direction on any ranking
+  error: the legacy order acts, loudly (`slot_rank_fallback` audit row) — never a dead
+  selection.**
+- **Priority, not a serial guarantee**: alerts process under a 5-way semaphore, so the
+  ranking sets who STARTS first (and therefore who reaches the insert-time cap recount
+  first in the typical case); a top pick stalled on its bar fetch does not block lower
+  picks — deliberate, one stall must not eat the 09:45 window.
+- **The watch (the ruling's other half)**: every invocation records what EACH of five
+  rankings (RS / ep_score / briefing composite / ADV$ / alphabetical-the-control) would
+  have picked — raw inputs + ranks + `acting_key` into `mi_ep_slot_rank_shadow`, on BOTH
+  toggle sides, SILENT. Outcomes join at read time from `mi_daily_closes`. Review
+  `ep_slot_ranking_watch_533` (data_gated_reviews.yaml) fires at 10 settled multi-alert
+  mornings with explicit revert/switch bands.
+
 ## Known limitations / open questions
 
 1. ~~`is_earnings_day` fail-soft direction inconsistent~~ — **resolved 2026-05-08 (session 2)**. All four call sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as `True` (earnings day). Defensive at each site: rather over-boost / over-bypass / over-promote on data outage than miss a real earnings EP.
@@ -268,6 +302,64 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-08-30 — #533: within-day slot ranking flips from accidental ALPHABETICAL to prior-day RS (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE, watch lane shipped)
+
+**Trigger**: operator 2026-08-05 ("does it capture the main goal of selecting best EPs in a given
+day when there's many?") and 2026-08-11 on SE ("the ranking within same day EP is important").
+The #533 analysis then found `process_new_alerts_live`'s `DISTINCT ON (ticker) … ORDER BY ticker,
+ep_score DESC` leaves the across-ticker order ALPHABETICAL — ticker name was deciding which alerts
+got the five position slots. **Operator ruling, verbatim: "switch to RS rank, but observe going
+forward if it deteriorates or other ranking starts to do better."**
+
+**Evidence** (`docs/analysis/533_within_day_ranking_2026-08-30.md` — 15 settled multi-alert
+mornings, top-2 vs the same morning's rest, ret5 from day-0 open):
+
+| ranking | median edge | mornings positive | sum of top-2 |
+|---|---|---|---|
+| alphabetical (incumbent) | +1.6% | 8/15 | −22.9% |
+| ep_score alone | +1.6% | 8/15 | −5.3% |
+| **prior-day RS composite** | **+8.4%** | **10/15** | **+55.1%** |
+
+Robust to best-day removal (+8.1%) and to excluding 08-11, the in-sample day that inspired it
+(+11.8%). Both directions (P14): RS's top-2 misses 4 day-best movers in 15 days — the SAME 4-count
+as the incumbent, so the edge is not bought with recall; ranking reorders the board and can neither
+add nor drop a name (pinned by test).
+
+**⚠ THE HONEST LIMITS — carried here so they cannot be buried:**
+- **~15 mornings is a small n; the error bars include zero for every challenger.** They do not
+  include anything positive for alphabetical — the claim is "alphabetical is indefensible and RS is
+  the best-evidenced replacement," not "RS is proven." Hence the watch lane below IS half the ruling.
+- **Not tested by market condition** — too few days to split.
+- **The ep_score row describes the OLD score** (pre-2026-08-22 rework); zero settled multi-alert
+  days existed since. The watch's `rank_ep_score` column is how the new score gets its read.
+- **Ranking chooses which orders get placed; it does not decide fills** — on 08-04 the top RS pick
+  (LIFE) never broke its ORB high and cancelled unfilled.
+
+**Anticipated effect**: no change to WHO alerts or HOW MANY orders go out — only the order they
+compete for the 5 slots. Binds only on mornings with more board names than free slots (3 such
+cap-blocked days in the 63-day evidence window); single-alert mornings are byte-identical. Expect
+the LIFE/ZBRA-over-BTDR shape on the next 08-04-like morning, and `mi_ep_slot_rank_shadow` rows on
+every ORB invocation with ≥1 HIGH alert.
+
+**Mechanics**: dedup SQL untouched (byte-pinned); ordering applied in Python
+(`ep_slot_rank_shadow.slot_rank_key`: RS DESC → ep_score DESC → ticker ASC); RS from
+`latest_complete_score_date` strictly before the alert day (#554 guard); missing-RS names ranked
+last, never dropped, logged. Toggle `ep_slot_rank_rs` (default ON; OFF = legacy order exactly);
+fail direction = legacy order acts loudly (`slot_rank_fallback` audit row). Watch: 5 candidate
+rankings recorded per invocation (raw inputs only, #583 class), both toggle sides, SILENT; review
+`ep_slot_ranking_watch_533` fires at 10 settled multi-alert mornings with pre-registered
+revert/switch bands (RS median edge ≤ 0 → revert; a challenger +5 points and leave-one-out-positive
+→ switch proposal). Tests + 4 killed mutations: `tests/test_533_slot_ranking.py`.
+
+**Reversion-flag**: NEW (this ordering was never a decision before — it was an accident of
+`DISTINCT ON`; no prior change-log entry governs it).
+
+**Status**: built + tested in tree 2026-08-30; acts on the next deploy with no flip needed —
+`ep_slot_rank_rs` defaults ON (operator runs the deploy; scopes `market-agent` AND `execution`,
+since `broker/live_tracker.py` runs on apollo-execution). Then "shipped, awaiting field
+validation"; verify-live = `mi_ep_slot_rank_shadow` rows exist after the next morning with a
+HIGH alert.
 
 ### 2026-08-29 — MAX_EXTENSION_PCT REVERTED 75% → 50% (OPERATOR-SIGNED; the 08-22 loosening rested on corrupt evidence)
 

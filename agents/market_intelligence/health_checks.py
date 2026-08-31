@@ -1549,6 +1549,12 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # noise class this registry avoids — the watch table covers the writer, and both
     # tables are written by the same job.
     ("mi_delayed_entry_watch", "delayed-entry watch lane (#327)", "session_date", None),
+    # #533 slot-ranking watch (2026-08-30): written on EVERY process_new_alerts_live
+    # invocation with >=1 HIGH alert on the board, and SILENT by convention (no
+    # Telegram on any path) — so this registry is its only watchdog. Keyed on the
+    # plain-DATE business column `alert_date` (recorded_at/created_at are timestamptz
+    # and would silently never be checked — the name-based `created_at` rule).
+    ("mi_ep_slot_rank_shadow", "EP slot-rank watch (#533)", "alert_date", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

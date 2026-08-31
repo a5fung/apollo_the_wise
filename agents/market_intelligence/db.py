@@ -3144,6 +3144,46 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ep_shortlist_shadow_date
                 ON mi_ep_shortlist_shadow(scan_date DESC);
 
+            -- #533 WITHIN-DAY SLOT-RANKING WATCH (2026-08-30, operator-signed:
+            -- "switch to RS rank, but observe going forward"): one row per
+            -- (process_new_alerts_live invocation, board ticker) — RAW INPUTS
+            -- (never computed points, the #583 stale-derived-value class) plus the
+            -- name's 1-based rank under each of FIVE candidate orderings (RS /
+            -- ep_score / briefing composite / ADV$ / alphabetical-the-control).
+            -- `acting_key` stamps which ordering ACTED ('rs' | 'legacy_alpha') —
+            -- never inferred from dates. Append-only BY DESIGN (the board grows
+            -- through the morning; readers dedup to the earliest invocation).
+            -- Outcomes are NOT stored — joined at read time from mi_daily_closes
+            -- (ret5 from day-0 open), so the record can never go stale. Read by
+            -- NO grading / entry / sizing / safeguard path — comparison telemetry
+            -- only (writer: ep_slot_rank_shadow.py; review:
+            -- ep_slot_ranking_watch_533 in data_gated_reviews.yaml).
+            CREATE TABLE IF NOT EXISTS mi_ep_slot_rank_shadow (
+                id              SERIAL PRIMARY KEY,
+                alert_date      DATE NOT NULL,
+                ticker          TEXT NOT NULL,
+                recorded_at     TIMESTAMPTZ,
+                trigger         TEXT,              -- bar_stream | cron_9_31 | post_open_new_high | cron
+                board_n         INT,               -- board size at this invocation
+                ep_score        DOUBLE PRECISION,  -- raw input (post-08-22 presented scale)
+                gap_pct         DOUBLE PRECISION,  -- raw input
+                rs_composite    DOUBLE PRECISION,  -- raw input: prior-day mi_stock_scores
+                rs_rank         INT,               -- raw input (same row)
+                rs_score_date   DATE,              -- the COMPLETE score date used (#554 guard)
+                adv_20          DOUBLE PRECISION,  -- raw input: 20d median volume, shares
+                score_close     DOUBLE PRECISION,  -- raw input: score-row close (ADV$ = adv_20 x this)
+                theme_stage     TEXT,              -- raw input: strongest stage, snapshot < alert_date
+                rank_rs         INT,               -- the acting order (RS desc, ep_score, ticker)
+                rank_ep_score   INT,
+                rank_composite  INT,               -- briefing._ep_composite_key desc, ticker
+                rank_adv        INT,               -- ADV$ desc nulls-last, ep_score, ticker
+                rank_alpha      INT,               -- ticker asc — the deposed incumbent (control)
+                acting_key      TEXT,              -- 'rs' | 'legacy_alpha' — which order ACTED
+                created_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_slot_rank_shadow_date
+                ON mi_ep_slot_rank_shadow(alert_date DESC);
+
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
