@@ -56,7 +56,13 @@ from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.db import (
     get_pool, get_manual_halt_state, _coerce_date, OPEN_POSITION_STATUSES,
-    log_audit_event,
+    log_audit_event, get_runtime_toggle, latest_complete_score_date,
+)
+# #533 (2026-08-30, operator-signed): the acting within-day slot-ranking key + the
+# five-ranking watch recorder live in ONE module so what acts and what is recorded
+# as acting cannot drift (the ep_detector/ep_shortlist_shadow precedent).
+from agents.market_intelligence.ep_slot_rank_shadow import (
+    rank_board_by_rs, snapshot_slot_rank_board,
 )
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
@@ -343,6 +349,35 @@ def _is_window_duplicate_reason(reason) -> bool:
     if not isinstance(reason, str):
         return False
     return reason == WINDOW_DUPLICATE or reason.startswith(WINDOW_DUPLICATE + ":")
+
+
+# The day's HIGH-alert board — ⚠ BYTE-IDENTICAL to the pre-#533 inline query and it
+# must stay that way (pinned by tests/test_533_slot_ranking.py): with the
+# `ep_slot_rank_rs` toggle OFF this query's own row order IS the acting order, so
+# any edit here silently moves the revert target. `DISTINCT ON (ticker)` +
+# `ORDER BY ticker, ep_score DESC` does the per-ticker dedup (max ep_score row
+# survives); the ACROSS-ticker order it leaves behind is ALPHABETICAL — the #533
+# defect — which is why the deliberate ordering below is applied in Python
+# afterwards instead of restructuring this SQL.
+_HIGH_ALERT_SELECT_SQL = """
+            SELECT DISTINCT ON (ticker)
+                   ticker, alert_date, gap_pct, rel_volume, ep_score,
+                   score_tier, catalyst, catalyst_quality, vol_percentile
+            FROM mi_ep_alerts
+            WHERE alert_date = $1 AND score_tier = 'HIGH'
+            ORDER BY ticker, ep_score DESC
+        """
+
+# Prior-day RS for the #533 slot ranking — $2 is the board's tickers, $1 the
+# resolved COMPLETE score date (db.latest_complete_score_date, the #554 guard: a
+# stray one-row Saturday run can never rank the board). adv_20 + close ride along
+# as raw inputs for the watch record (ADV$ = adv_20 x close, the pre-gap-price
+# convention of ep_detector's large-cap floor).
+_SLOT_RANK_RS_SQL = """
+    SELECT ticker, rs_composite, rs_rank, adv_20, close
+    FROM mi_stock_scores
+    WHERE score_date = $1 AND ticker = ANY($2)
+"""
 
 
 async def process_new_alerts_live(today: date | None = None, trigger: str = "cron") -> list[dict]:
