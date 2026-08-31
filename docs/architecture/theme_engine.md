@@ -690,10 +690,12 @@ only rebuilding transform on the rescore->save path, `_strip_sector_outliers`, s
   LLM + F4 own whether any become members.
 - **Reversion-flag**: NEW (first exemption on the assignment pool's floor). Revert = remove
   the M2 block in `run_theme_engine` (the db accessor + helper go inert).
-- **Status**: ✅ **SHIPPED 2026-08-05 (`588ac305`) and live since** — the status below is
-  what stood the day the entry was written, corrected 2026-08-31 (the drift scan reads the
-  most recent word on a subject as a CURRENT claim wherever it sits): built + tested,
-  15 new tests, suite 4465 green.
+- **Status**: ✅ **LIVE — verified in prod 2026-08-31, not inferred from the commit.**
+  `mi_audit_log` holds **20 `seeded_pool_admission` rows, 2026-08-06 → 2026-08-26** — the
+  exemption is not merely deployed, it has ACTED. Shipped `588ac305` (2026-08-05). The
+  original day-of status (built + tested, 15 new tests, suite 4465 green, NOT deployed) is
+  what stood when the entry was written; corrected here because the drift scan reads the
+  most recent word on a subject as a CURRENT claim wherever it sits.
 - **Verify-live**: after the first nightly run, check the `seeded_pool_admission` audit row
   + whether BTDR reaches the assignment prompt (and, if assigned, survives F4).
 
@@ -792,14 +794,19 @@ instead of passing vacuously.
   permanent once announced, no resolve/re-open path (unlike the null/job-liveness sweeps' reconcile).
 - **Reversion-flag**: NEW (first check of this class). Revert = remove the `run_theme_quality_check`
   call site in `_post_nightly_audit_job`.
-- **Status**: ✅ **SHIPPED 2026-08-04 (`5ef6781b`) and live since** — as above, the
-  original entry's day-of status, corrected 2026-08-31: built + tested, 26 new tests,
-  suite 4379 green.
+- **Status**: ✅ **LIVE — verified in prod 2026-08-31, not inferred from the commit.**
+  `mi_audit_log` holds **16 `theme_quality_clean` rows, 2026-08-06 → 2026-08-28**, plus the
+  guards' own firings (`theme_member_pruned_while_rising` ×4 to 08-25,
+  `theme_retired_while_healthy` ×1, `theme_assignment_barren` ×1) — the check runs nightly
+  AND has caught real cases. Shipped `5ef6781b` (2026-08-04). Day-of status was built +
+  tested, 26 new tests, suite 4379 green, NOT deployed.
 - **Caveat for verify-live** (RESOLVED — kept for the record): when written, #368's F2/F3
   were committed locally but not yet in prod, so the first live run was expected to alert on
   the 2026-08-04 Bitcoin Mining retirement (a real, correct alert on a defect the fix had not
   reached production for). F2/F3 shipped 2026-08-04 (see the member-pruning and retire-streak
-  bullets at the top of this file, repaired 2026-08-26); the caveat no longer applies.
+  bullets at the top of this file, repaired 2026-08-26) and the prune guard has fired in
+  prod since (`theme_member_pruned_while_rising`, 4 rows through 2026-08-25); the caveat
+  no longer applies.
   first live run of this check WILL alert on the 2026-08-04 Bitcoin Mining retirement (a real,
   correct alert on a defect the fix hasn't reached production for yet, not a broken new guard).
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import inspect
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from unittest.mock import AsyncMock
 
 import pytest
@@ -262,6 +263,27 @@ def test_admitted_side_shadow_call_cannot_un_admit_a_candidate():
     assert "try:" in helper, "the shadow build must be wrapped, not bare"
     assert "except Exception" in helper and "logger.warning" in helper, \
         "a caught failure here must be logged, not a bare silent pass (no-silent-failures gate)"
+
+
+def test_row_builder_is_null_safe_on_the_price_floor_reject_branch():
+    """The BIGGEST reject bucket hits the builder with a falsy prev_close: the first
+    branch fires on `not prev_close or prev_close < MIN_PREV_CLOSE`, so None/0 reaches
+    it for hundreds of names a tick. Before the 2026-08-31 refactor a raise there died
+    silently in the scan loop's outer `except: continue`; it is caught and LOGGED now,
+    so a builder that is not null-safe would both under-record this side of the #606
+    comparison AND emit a per-ticker warning inside the 09:45 window. Pinned, not
+    assumed."""
+    now = datetime.now(ZoneInfo("America/New_York"))
+    for prev_close in (None, 0, 0.0):
+        for prev_volume in (None, 0):
+            row = ufs.build_universe_floor_shadow_row(
+                "TEST", prev_close, prev_volume, None, 1.0, 100_000, date(2026, 8, 31),
+                minutes_since_open=None, seen_et=now,
+                today_volume=0, current_price=None)
+            assert row["ticker"] == "TEST"
+            assert row["failed_price_floor"] is True, (
+                "a falsy prev_close IS a price-floor failure — recording it as anything "
+                "else miscounts the side of the floor this shadow exists to measure")
 
 
 def test_universe_floor_shadow_write_is_fire_and_forget_not_blocking():
