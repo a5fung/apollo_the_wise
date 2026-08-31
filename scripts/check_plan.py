@@ -103,6 +103,9 @@ _NOT_SHIPPED_CLAIM = re.compile(
     r"|pending (his |the )?sign-?off|needs operator sign-?off|DO NOT ship|not yet (built|shipped)",
     re.I)
 
+# `[shipped-ack:<why>]` — the line already records what shipped under this number.
+_SHIPPED_ACK = re.compile(r"\[shipped-ack:[^\]]+\]", re.I)
+
 _CODE_PATHS = ("agents/", "core/", "channels/", "shared/", "broker/")
 
 
@@ -118,6 +121,14 @@ def shipped_but_unrecorded(tasks: list[dict], repo: Path = REPO) -> list[tuple[d
             continue
         if not _NOT_SHIPPED_CLAIM.search(t["title"]):
             continue
+        # An explicit acknowledgement suppresses the surface: the line ALREADY records what
+        # shipped under this number, and the remaining claim is honest. #299 on 2026-08-30 is
+        # the case — its eval rig shipped and the line says so; what is unshipped is the paid
+        # full run, which is blocked on funding, an operator decision. Without this the surface
+        # would nag forever on a task that is telling the truth, and a surface that cries wolf
+        # gets ignored — which is how the original 30 tasks were missed.
+        if _SHIPPED_ACK.search(t["title"]):
+            continue
         try:
             res = subprocess.run(
                 ["git", "log", "-E", "--oneline", "-20", "--grep=#%d([^0-9]|$)" % t["id"], "--", *_CODE_PATHS],
@@ -127,9 +138,14 @@ def shipped_but_unrecorded(tasks: list[dict], repo: Path = REPO) -> list[tuple[d
         # SUBJECT-LINE ONLY. --grep searches the whole message, so a commit whose BODY happens
         # to mention "#335" while shipping #338 would fire — noise on a surface people act on.
         # A task id in the SUBJECT is the author saying "this commit is that task".
+        # ⚠ CAP THE SUBJECT. `git log --oneline` prints the commit's FIRST LINE, and a few
+        # commits here have enormous first lines that carry a whole changelog. #335 was flagged
+        # on 2026-08-30 by a commit whose subject began "#338 CLOSED —" and merely MENTIONED
+        # #335 four hundred characters in. A task id in the first ~120 chars is the author
+        # naming the commit's subject; a mention past that is prose.
         pat = re.compile(r"#%d(?![0-9])" % t["id"])
         line = next((l for l in res.stdout.splitlines()
-                     if l.strip() and pat.search(l.split(" ", 1)[-1])), "")
+                     if l.strip() and pat.search(l.split(" ", 1)[-1][:120])), "")
         if line:
             out.append((t, line.strip()))
     return out
