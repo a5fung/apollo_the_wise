@@ -52,6 +52,29 @@ def test_25_and_26_session_boundary_dates():
     assert om.trading_sessions_elapsed(date(2026, 8, 7), date(2026, 9, 14)) == 26
 
 
+def test_weekends_only_contract_over_a_swept_range():
+    """#574: `trading_sessions_elapsed` now DELEGATES to
+    `collector.prev_trading_days` instead of hand-mirroring its weekends-only
+    loop. This pins the CONTRACT — count of Mon-Fri days in (alert_date,
+    as_of], holidays included — across every start-weekday alignment and span
+    up to ~6 weeks, so (a) the delegation cannot drift from the old inline
+    loop, and (b) a future holiday-aware change to `prev_trading_days` fails
+    HERE, loudly, instead of silently moving the forward-capture window bound.
+    """
+    base = date(2026, 8, 3)  # a Monday
+    for start_off in range(7):          # every weekday alignment of alert_date
+        alert = base + timedelta(days=start_off)
+        for span in range(0, 45):       # up to ~6 weeks out
+            as_of = alert + timedelta(days=span)
+            expected = sum(
+                1 for k in range(1, span + 1)
+                if (alert + timedelta(days=k)).weekday() < 5
+            )
+            assert om.trading_sessions_elapsed(alert, as_of) == expected, (
+                f"{alert} -> {as_of}"
+            )
+
+
 # ── persist_forward_alert_paths ────────────────────────────────────────────────
 
 

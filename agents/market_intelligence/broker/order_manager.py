@@ -6969,6 +6969,50 @@ async def _sweep_multi_day_coverage(pool, open_trades, today_open_et: datetime) 
                 )
 
 
+async def _persist_minute_bars_for_ticker_day(
+    pool, ticker: str, day: date, day_start: datetime, day_end: datetime,
+    out: dict, gap_note: str, log_prefix: str,
+) -> None:
+    """Shared per-ticker body of `persist_alert_day_paths` and
+    `persist_forward_alert_paths` (#574 extraction, 2026-08-31 — refactor only,
+    no behaviour change; the two inline copies were verified byte-identical
+    except for the two label strings now passed in). Coverage-checks
+    `mi_intraday_bars` over [day_start, day_end], fetches + persists when thin,
+    and mutates `out`'s already_covered / fetched / thin / errors counters
+    exactly as both callers did inline. `gap_note` = the caller-specific
+    parenthetical inside the `path_coverage_gap` audit summary; `log_prefix` =
+    the caller-specific warning prefix. Fail-soft: one bad name must not kill
+    the day's capture. A change to retry policy, the thin-log threshold or
+    rate limiting now lands HERE once, for both jobs — the divergence the
+    2026-08-18 simplify review flagged before it could happen.
+    """
+    try:
+        async with pool.acquire() as conn:
+            n_have = await conn.fetchval(
+                """
+                SELECT count(*) FROM mi_intraday_bars
+                WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
+                """,
+                ticker, day_start, day_end,
+            )
+        if (n_have or 0) >= _PATH_MIN_DAY_BARS:
+            out["already_covered"] += 1
+            return
+        bars = await alpaca.get_minute_bars_range(ticker, day_start, day_end)
+        if bars:
+            await alpaca.persist_intraday_bars(ticker, bars)
+            out["fetched"] += 1
+        if len(bars) < _PATH_MIN_DAY_BARS:
+            out["thin"] += 1
+            await log_audit_event(
+                "path_coverage_gap",
+                f"{ticker} {day}: {len(bars)}/390 bars ({gap_note})",
+            )
+    except Exception as e:  # one bad name must not kill the day's capture
+        logger.warning(f"{log_prefix}: {ticker} {day} failed: {e}")
+        out["errors"] += 1
+
+
 async def persist_alert_day_paths(target_date=None) -> dict:
     """EOD: persist day-of minute bars for EVERY EP alert ticker-day, not just
     traded names (2026-08-15 capture audit item 3; telemetry only, THE LINE
@@ -7065,31 +7109,11 @@ async def persist_alert_day_paths(target_date=None) -> dict:
     day_start = datetime.combine(day, datetime_time(9, 30), tzinfo=_ET)
     day_end = datetime.combine(day, datetime_time(16, 0), tzinfo=_ET)
     for ticker in tickers:
-        try:
-            async with pool.acquire() as conn:
-                n_have = await conn.fetchval(
-                    """
-                    SELECT count(*) FROM mi_intraday_bars
-                    WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
-                    """,
-                    ticker, day_start, day_end,
-                )
-            if (n_have or 0) >= _PATH_MIN_DAY_BARS:
-                out["already_covered"] += 1
-                continue
-            bars = await alpaca.get_minute_bars_range(ticker, day_start, day_end)
-            if bars:
-                await alpaca.persist_intraday_bars(ticker, bars)
-                out["fetched"] += 1
-            if len(bars) < _PATH_MIN_DAY_BARS:
-                out["thin"] += 1
-                await log_audit_event(
-                    "path_coverage_gap",
-                    f"{ticker} {day}: {len(bars)}/390 bars (alert-day persist)",
-                )
-        except Exception as e:  # one bad name must not kill the day's capture
-            logger.warning(f"alert-day path persist: {ticker} {day} failed: {e}")
-            out["errors"] += 1
+        await _persist_minute_bars_for_ticker_day(
+            pool, ticker, day, day_start, day_end, out,
+            gap_note="alert-day persist",
+            log_prefix="alert-day path persist",
+        )
     return out
 
 
@@ -7126,22 +7150,35 @@ bounds this job's growth (see `window_closed` below)."""
 
 def trading_sessions_elapsed(alert_date: date, as_of: date) -> int:
     """Approximate count of trading SESSIONS from `alert_date` (session 0)
-    through `as_of`, inclusive of `as_of`, skipping weekends only — the same
-    "good enough, no holiday calendar" approximation `collector.prev_trading_days`
-    already uses for date-window math in this codebase. Returns 0 when
+    through `as_of`, inclusive of `as_of`, skipping weekends only. Delegates to
+    `collector.prev_trading_days` — the codebase's ONE weekends-only
+    approximation — instead of re-implementing its loop (#574; the first
+    version of this function hand-mirrored it, leaving two independent
+    approximations of "a trading day" free to drift apart). Returns 0 when
     `as_of <= alert_date` (day 0 itself, or malformed input — never negative).
     Pure, no DB/network — the bound check `persist_forward_alert_paths` uses to
     decide whether a ticker-day is still inside its capture window.
+
+    ⚠ Weekends-only is a DOCUMENTED approximation: a market holiday counts as
+    an elapsed session here, exactly as it did before #574 and as it does at
+    every `prev_trading_days` call site. Switching to the calendar-aware
+    `get_market_status().is_trading_day` would CHANGE behaviour (each holiday
+    inside a window would extend forward capture by one calendar day) — out of
+    scope for the #574 refactor, recorded there as a separate finding.
     """
     if as_of <= alert_date:
         return 0
-    n = 0
-    d = alert_date
-    while d < as_of:
-        d += timedelta(days=1)
-        if d.weekday() < 5:  # Mon-Fri
-            n += 1
-    return n
+    from agents.market_intelligence.collector import prev_trading_days
+
+    # The calendar-day span bounds the number of sessions in (alert_date,
+    # as_of]. prev_trading_days walks BACK from (and excluding) its from_date,
+    # so start one day past as_of to include as_of itself, then keep only the
+    # sessions after alert_date.
+    span = (as_of - alert_date).days
+    return sum(
+        1 for d in prev_trading_days(span, from_date=as_of + timedelta(days=1))
+        if d > alert_date
+    )
 
 
 async def persist_forward_alert_paths(target_date=None) -> dict:
@@ -7222,33 +7259,12 @@ async def persist_forward_alert_paths(target_date=None) -> dict:
             out["window_closed"] += 1
             continue
         out["population"] += 1
-        try:
-            async with pool.acquire() as conn:
-                n_have = await conn.fetchval(
-                    """
-                    SELECT count(*) FROM mi_intraday_bars
-                    WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
-                    """,
-                    ticker, day_start, day_end,
-                )
-            if (n_have or 0) >= _PATH_MIN_DAY_BARS:
-                out["already_covered"] += 1
-                continue
-            bars = await alpaca.get_minute_bars_range(ticker, day_start, day_end)
-            if bars:
-                await alpaca.persist_intraday_bars(ticker, bars)
-                out["fetched"] += 1
-            if len(bars) < _PATH_MIN_DAY_BARS:
-                out["thin"] += 1
-                await log_audit_event(
-                    "path_coverage_gap",
-                    f"{ticker} {day}: {len(bars)}/390 bars (forward alert-day "
-                    f"persist, session {sessions_elapsed} of "
-                    f"{FORWARD_CAPTURE_WINDOW_SESSIONS})",
-                )
-        except Exception as e:  # one bad name must not kill the day's capture
-            logger.warning(f"forward alert-day path persist: {ticker} {day} failed: {e}")
-            out["errors"] += 1
+        await _persist_minute_bars_for_ticker_day(
+            pool, ticker, day, day_start, day_end, out,
+            gap_note=(f"forward alert-day persist, session {sessions_elapsed} "
+                      f"of {FORWARD_CAPTURE_WINDOW_SESSIONS}"),
+            log_prefix="forward alert-day path persist",
+        )
     return out
 
 
