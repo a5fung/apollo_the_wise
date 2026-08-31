@@ -109,6 +109,34 @@ _SHIPPED_ACK = re.compile(r"\[shipped-ack:[^\]]+\]", re.I)
 _CODE_PATHS = ("agents/", "core/", "channels/", "shared/", "broker/")
 
 
+def stale_blockers(tasks: list[dict]) -> list[tuple[dict, list[str]]]:
+    """Tasks marked `blocked` on a task that is NO LONGER on the board.
+
+    THE BLIND SPOT THIS CLOSES. `shipped_but_unrecorded` looks for a task CLAIMING it has not
+    shipped. A task that says `blocked:#329` claims nothing of the kind — it defers to another
+    line entirely — so a blocker that closes leaves the dependent frozen with nobody watching.
+
+    Found 2026-08-30 by the operator, not by me, on #331: blocked on #329 and #330 since June.
+    Both had shipped, both were off the board, and both shadows were live and writing (588 and
+    122 rows, last write 08-28). The block had been fiction for weeks and the task's own text
+    even said to CLOSE it if #330's shadow was still unbuilt — it was built, so the instruction
+    pointed the wrong way too.
+
+    Decidable with certainty: either the referenced id is on the board or it is not. No claim
+    phrase to guess at, unlike the sibling surface.
+    """
+    live = {str(t["id"]) for t in tasks}
+    out: list[tuple[dict, list[str]]] = []
+    for t in tasks:
+        if t["status"] != "blocked":
+            continue
+        refs = set(re.findall(r"blocked:[^\]]*?#(\d+)", t["title"]))
+        gone = sorted(r for r in refs if r not in live)
+        if gone:
+            out.append((t, gone))
+    return out
+
+
 def shipped_but_unrecorded(tasks: list[dict], repo: Path = REPO) -> list[tuple[dict, str]]:
     """Tasks claiming they have not shipped, whose #ID appears in a code commit.
 
@@ -957,6 +985,17 @@ def main(argv: list[str]) -> int:
         # SHIPPED-BUT-UNRECORDED (2026-08-30) — the line SAYS it has not shipped, but a commit
         # naming this task touched real code. See shipped_but_unrecorded() for why this is the
         # one staleness class every other surface here is blind to.
+        # STALE BLOCKER (2026-08-30) — blocked on a task that has left the board.
+        stale_blocks = stale_blockers(tasks)
+        print(f"\n-- STALE BLOCKER ({len(stale_blocks)}) — `blocked` on a task no longer on the "
+              f"board: the block may be fiction --")
+        if stale_blocks:
+            for t, gone in stale_blocks:
+                print(f"  #{t['id']}  blocked on {', '.join('#' + g for g in gone)} — gone")
+            print("  (re-read: the blocker may have shipped. #331 sat blocked for weeks this way.)")
+        else:
+            print("  (none)")
+
         stale_claims = shipped_but_unrecorded(tasks)
         print(f"\n-- SHIPPED-BUT-UNRECORDED ({len(stale_claims)}) — the line claims NOT shipped, "
               f"but a commit naming it touched code: RE-READ before commissioning any work --")
