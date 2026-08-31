@@ -366,3 +366,39 @@ returned his own ideas back to him.
 `fishhook_v3`, `flag_continuation` are deprecated; he has twice asked not to see 9M).
 ⚠ 28-word replies; tables carry the numbers.
 ⚠ Retract, don't patch a fourth time — a population defect survives any re-run.
+
+---
+
+## 2026-08-31 (Mon) — 🔴 RESUME HERE. Supersedes everything above.
+
+**State:** clean, pushed (`0e5b9088`), suite **6692**, drift **0**, board **82**.
+
+### 🔴 FIVE VERIFIES DUE TODAY — a passed verify-date HARD-FAILS the next commit
+
+| # | what confirms it |
+|---|---|
+| **#605** | first scan writes score/catalyst columns for candidates KILLED EARLY, not just the 12% surviving to grading |
+| **#516** | a suppression row carries a non-null `match_path` for a path that previously wrote none |
+| **#554** | a Telegram RS/score read returns the newest COMPLETE day |
+| **#327** | `mi_delayed_entry_watch` gains rows for today's gap-day names (17:57 ET) |
+| **#533** | `mi_ep_slot_rank_shadow` gains rows; on a MULTI-alert morning entries follow RS order |
+
+⚠ A single-alert morning does NOT verify #533 — no ordering to observe. It carries forward.
+
+### What shipped Sunday
+- **The delayed-entry shadow end to end** — watch lane, three entry patterns, outcome measuring
+  under two exit styles, a proximity pattern, re-entry recording. 17:57 ET, silent.
+- **🔑 SLOT RANKING FLIPPED TO RS (operator-signed, money path).** Revert: flip
+  `ep_slot_rank_rs` off — instant, no redeploy.
+- #573 closed, #554 deployed, #606 filed, plus a simplify sweep over 68 commits.
+
+### The number that matters
+**Live: n=24, expectancy −0.48R, win 17%, average winner +1.78R.** At a 17% win rate the average
+winner must clear ~4R to break even. That gap is the whole problem.
+
+### Rules that cost time this week when skipped
+⚠ Run `scripts/live_rules.py` FIRST; hand it to every card. Three analyses were wasted without it.
+⚠ Every analysis card gets `docs/methodology/ANALYSIS_CARD_PREAMBLE.md` verbatim.
+⚠ Win rate belongs to SELECTION, never to entry/exit.
+⚠ Never pipe a deploy through `tail` — it hid a failed safety gate.
+⚠ Deploy windows are ET; Sunday evening PT is already Monday ET.
