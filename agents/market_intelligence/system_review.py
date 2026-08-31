@@ -1058,12 +1058,42 @@ async def _aggregate_audit_errors(days: int) -> dict:
     err_rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%error%")
     failed_rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%_failed%")
 
+    # A failure that RECOVERED on its own retry is not a silent failure — it is telemetry.
+    # Found 2026-08-31: the weekly review reported `stop_update_failed x4, last seen 1d ago` as a
+    # live silent failure for two weeks running. Every one was AMLX attempt-1, and the counts
+    # matched exactly: 5 stop_update_failed against 5 stop_update_retry_succeeded. The retry
+    # fires 3s later and wins, protection never lapses, and order_manager.py already documents
+    # this at the raise site (#433, 2026-07-06) and deliberately suppresses the naked-position
+    # ALARM for it — but the audit row still said `_failed`, so this aggregator counted it.
+    # Cost: a week of the operator treating a healthy self-heal as an open defect on the stop
+    # path, which is the one place a false alarm is most expensive.
+    _SELF_HEALED = {"stop_update_failed": "stop_update_retry_succeeded"}
+
     def _is_real(r: dict) -> bool:
         s = (r.get("summary") or "").upper()
         return not s.startswith("SYNTHETIC TEST")
 
+    def _recovered(r: dict) -> bool:
+        """True when this row is a first-attempt failure whose retry succeeded."""
+        if r.get("event_type") not in _SELF_HEALED:
+            return False
+        detail = r.get("detail") or ""
+        try:
+            import json as _json
+            return int(_json.loads(detail).get("attempt", 0)) == 1
+        except (ValueError, TypeError, AttributeError) as e:
+            # NARROW + LOUD, deliberately. A broad silent `except` here would be the exact class
+            # this function exists to surface — and the no-silent-failures gate caught me adding
+            # one. Fail direction is COUNT IT: an unreadable detail must never buy silence on the
+            # stop path, so a malformed row stays in the failure tally and says why.
+            logger.warning(
+                "silent-failure filter: could not read `attempt` from a %s row (%s: %s) — "
+                "COUNTING it as a real failure rather than assuming it self-healed",
+                r.get("event_type"), type(e).__name__, e)
+            return False
+
     err_rows = [r for r in err_rows if _is_real(r)]
-    failed_rows = [r for r in failed_rows if _is_real(r)]
+    failed_rows = [r for r in failed_rows if _is_real(r) and not _recovered(r)]
     # Merge + de-dup (a single event_type matching both globs counts once)
     # Recency per type (weekly-review fix 2026-05-31): the narrator needs last-seen
     # to apply its "count dropped to 0 after a date → likely resolved" rule — e.g.
