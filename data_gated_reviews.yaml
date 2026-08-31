@@ -7463,7 +7463,29 @@ reviews:
       ) clean;
 
     threshold: 7
-    earliest_review_date: 2026-06-15
+    earliest_review_date: 2026-09-21
+    # 2026-08-31 — WINDOW EXTENDED, the middle branch of this entry's own
+    # action_when_ready ("investigate failures, extend the gate window, or escalate
+    # architecture review"). Operator-approved. Ripe on DATE since 2026-06-15 (76 days)
+    # but never on EVIDENCE, and the entry's own 30-day fallback had itself expired with
+    # nobody triggering it — which is the more important finding than the count.
+    #
+    # INVESTIGATED FIRST, per the branch. 9 abort rows since the split are 3 real
+    # incidents (the rest are retries of the same event), and EVERY ONE ABORTED SAFELY:
+    #   06-23 QURE + 08-04/05 PLTR (6 rows) - replacement stop rejected -> ORIGINAL STOP
+    #       KEPT, position never unprotected
+    #   08-05 PLTR - shares not free (qty_available=0) -> sell skipped, position
+    #       over-covered, explicitly logged safe
+    #   08-14 ETON (2 rows) - a partial_exit order was already open -> declined to
+    #       double-sell
+    # Not one left a position exposed. That is the abort path doing its job, so this reads
+    # as the gate WORKING rather than the architecture failing - which is why the branch
+    # taken is EXTEND, not ESCALATE.
+    #
+    # Clean cycles since the last abort (2026-08-14): 3 of 7. At the observed partial rate
+    # (25 committed since the split, last 08-27) three weeks is a fair shot at the
+    # remaining 4. If 7 has still not arrived by 09-21, that is the third branch and the
+    # architecture review is the honest next step - do NOT extend a second time without it.
     action_when_ready: |
       Gate evaluates whether the partial-exit architecture is stable
       enough to flip ANY strategy to live. N=7 because the rate of
