@@ -57,12 +57,31 @@ that class into this table. Instead each row tracks:
 `failed_price_floor` / `failed_volume_floor` are static for the trading day —
 written once, never touched by later ticks.
 
+SAME-DAY LIQUIDITY (#584, 2026-08-31 — the second question these rows serve).
+Every liquidity test the live pipeline runs reads YESTERDAY's numbers (the
+D-1 floors read `snap['prevDay']`; the ADV gate's 20-day median ends at
+yesterday's close). #570 measured what that costs: the D-1 floors drop ~26.5
+names/day, and ~6 of those reach tier-A ($50M+) dollar volume ON the gap day
+— the fattest-tailed slice in the whole study (21.6% reach ≥8×ADR, 2.6× the
+admitted pool) AND the worst-crashing (median settled −28%). #570's explicit
+conclusion: the instrument for that tail is a SAME-DAY RE-CHECK, never a
+lower D-1 floor (a lower floor admits the crashing sludge too). So each row
+also carries today's traded volume, today's price, and the computed same-day
+dollar volume (volume × price — the exact `ninem_detector.py` precedent for
+same-day dollar volume), in the same three observation slots, with the time
+of each read already carried by `minutes_since_open_*` / `*_seen_et`. Raw
+inputs again, NO "cleared the live bar" verdict: any same-day bar
+($10M/$25M/$50M/...) can be swept later from these rows at the recorded read
+times. `today_volume` is read via `ep_detector._snap_today_volume` — the
+same expression `_snap_candidate` feeds the live pipeline, single-sourced so
+the shadow's "today volume" can never drift from the one the scan acts on.
+
 $0 AT RUNTIME — pure arithmetic on numbers the scan already holds (prev_close,
-prev_day_volume, gap_pct); no LLM, no API call, no new I/O beyond the one
-batched insert per tick. The recorder is fail-open (never raises) and is read
-by NO grading / entry / sizing / ordering / safeguard path — comparison
-telemetry only, same contract as `ep_shortlist_shadow.py` /
-`catalyst_tier_shadow.py`.
+prev_day_volume, gap_pct, today's snapshot volume/price); no LLM, no API
+call, no new I/O beyond the one batched insert per tick. The recorder is
+fail-open (never raises) and is read by NO grading / entry / sizing /
+ordering / safeguard path — comparison telemetry only, same contract as
+`ep_shortlist_shadow.py` / `catalyst_tier_shadow.py`.
 
 ⚖ THE LINE: this module makes no decision and flips nothing. The universe
 floor is a detection criterion; nothing about live admission changes here —
@@ -88,6 +107,8 @@ def build_universe_floor_shadow_row(
     scan_date: date,
     minutes_since_open: "int | None" = None,
     seen_et: "datetime | None" = None,
+    today_volume: "float | None" = None,
+    current_price: "float | None" = None,
 ) -> dict[str, Any]:
     """Pure — no I/O. RAW INPUTS for one real-candidate ticker at THIS tick's
     read of the D-1 universe-floor gate, on whichever side it lands. Reconciling
@@ -107,12 +128,26 @@ def build_universe_floor_shadow_row(
         if prev_close is not None and prev_day_volume is not None
         else None
     )
+    # #584: same-day dollar volume = today's traded volume × today's price —
+    # the ninem_detector.py:254 precedent exactly (`today_volume *
+    # current_price`), so "same-day dollar volume" means one thing everywhere.
+    # `current_price` falsy (0/None = no read) → None, never a fake $0 fact.
+    today_dollar_volume = (
+        float(today_volume) * float(current_price)
+        if today_volume is not None and current_price
+        else None
+    )
     return {
         "scan_date": scan_date,
         "ticker": ticker,
         "seen_et": seen_et,
         "gap_pct": gap_pct,
         "minutes_since_open": minutes_since_open,
+        # #584 same-day liquidity read — this tick's values; the writer
+        # reconciles them into the same first/at_open/last slots as gap_pct.
+        "today_volume": today_volume,
+        "today_price": current_price if current_price else None,
+        "today_dollar_volume": today_dollar_volume,
         "prev_close": prev_close,
         "prev_day_volume": prev_day_volume,
         "prev_day_dollar_volume": dollar_volume,

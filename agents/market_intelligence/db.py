@@ -3247,9 +3247,39 @@ async def initialize_schema() -> None:
                 failed_volume_floor         BOOLEAN,           -- prev_day_volume < acting_volume_floor
                 acting_price_floor          DOUBLE PRECISION,  -- MIN_PREV_CLOSE at write time
                 acting_volume_floor         DOUBLE PRECISION,  -- MIN_PREV_DAY_VOLUME at write time
+                -- #584 SAME-DAY LIQUIDITY (2026-08-31): every live liquidity
+                -- test reads YESTERDAY's numbers; these record what the stock
+                -- is doing THIS morning, same three-slot reconciliation as
+                -- gap_pct (the read's time is minutes_since_open_* /
+                -- first/last_seen_et). today_dollar_volume = today_volume ×
+                -- today_price (the ninem_detector same-day precedent). RAW
+                -- INPUTS again — no "cleared the live bar" flag is stored;
+                -- any same-day bar is swept later from these rows (#583 class).
+                today_volume_first          DOUBLE PRECISION,  -- shares traded so far at first tick (may be pre-market)
+                today_price_first           DOUBLE PRECISION,
+                today_dollar_volume_first   DOUBLE PRECISION,
+                today_volume_at_open        DOUBLE PRECISION,  -- first post-open tick, set once
+                today_price_at_open         DOUBLE PRECISION,
+                today_dollar_volume_at_open DOUBLE PRECISION,
+                today_volume_last           DOUBLE PRECISION,  -- most recent tick, updated every tick
+                today_price_last            DOUBLE PRECISION,
+                today_dollar_volume_last    DOUBLE PRECISION,
                 created_at                  TIMESTAMPTZ DEFAULT NOW(),
                 PRIMARY KEY (scan_date, ticker)
             );
+            -- #584 deploy-order guard: if prod created the table from the #606
+            -- shape before this ships, CREATE IF NOT EXISTS skips and the
+            -- same-day columns would silently not exist. Idempotent ALTERs
+            -- (the mi_stock_scores pattern) make either ordering correct.
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_volume_first          DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_price_first           DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_dollar_volume_first   DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_volume_at_open        DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_price_at_open         DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_dollar_volume_at_open DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_volume_last           DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_price_last            DOUBLE PRECISION;
+            ALTER TABLE mi_universe_floor_shadow ADD COLUMN IF NOT EXISTS today_dollar_volume_last    DOUBLE PRECISION;
             CREATE INDEX IF NOT EXISTS idx_universe_floor_shadow_date
                 ON mi_universe_floor_shadow(scan_date DESC);
 
@@ -12985,7 +13015,10 @@ async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
     `gap_pct_at_open` / `minutes_since_open_at_open` are set ONCE, the first
     time a tick's `minutes_since_open` is not NULL (COALESCE guards against a
     later tick overwriting it); `gap_pct_last` / `minutes_since_open_last` /
-    `last_seen_et` update on every tick. `prev_close` / `prev_day_volume` /
+    `last_seen_et` update on every tick. The #584 same-day liquidity reads
+    (`today_volume_*` / `today_price_*` / `today_dollar_volume_*`) reconcile
+    the same way — _last every tick, _at_open once at the first post-open
+    tick. `prev_close` / `prev_day_volume` /
     the failed_*_floor facts are static for the trading day and are never
     touched after the first insert (not in the UPDATE SET list). Never raises
     — comparison telemetry only, must never touch the scan; returns 0 on any
@@ -13004,7 +13037,10 @@ async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
                     gap_pct_last, minutes_since_open_last,
                     prev_close, prev_day_volume, prev_day_dollar_volume,
                     failed_price_floor, failed_volume_floor,
-                    acting_price_floor, acting_volume_floor
+                    acting_price_floor, acting_volume_floor,
+                    today_volume_first, today_price_first, today_dollar_volume_first,
+                    today_volume_at_open, today_price_at_open, today_dollar_volume_at_open,
+                    today_volume_last, today_price_last, today_dollar_volume_last
                 ) VALUES (
                     $1, $2, $3, $3,
                     $4, $5,
@@ -13012,7 +13048,12 @@ async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
                     $4, $5,
                     $6, $7, $8,
                     $9, $10,
-                    $11, $12
+                    $11, $12,
+                    $13, $14, $15,
+                    (CASE WHEN $5 IS NOT NULL THEN $13 END),
+                    (CASE WHEN $5 IS NOT NULL THEN $14 END),
+                    (CASE WHEN $5 IS NOT NULL THEN $15 END),
+                    $13, $14, $15
                 )
                 ON CONFLICT (scan_date, ticker) DO UPDATE SET
                     last_seen_et = EXCLUDED.last_seen_et,
@@ -13024,7 +13065,27 @@ async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
                              THEN EXCLUDED.gap_pct_last END),
                     minutes_since_open_at_open = COALESCE(
                         mi_universe_floor_shadow.minutes_since_open_at_open,
-                        EXCLUDED.minutes_since_open_last)
+                        EXCLUDED.minutes_since_open_last),
+                    -- #584 same-day slots: _last on every tick; _at_open set
+                    -- once, first post-open tick only (same COALESCE guard as
+                    -- gap_pct_at_open — freezing a pre-market read here would
+                    -- re-import the #595 faded-print class this table's slot
+                    -- design exists to keep out).
+                    today_volume_last = EXCLUDED.today_volume_last,
+                    today_price_last = EXCLUDED.today_price_last,
+                    today_dollar_volume_last = EXCLUDED.today_dollar_volume_last,
+                    today_volume_at_open = COALESCE(
+                        mi_universe_floor_shadow.today_volume_at_open,
+                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                             THEN EXCLUDED.today_volume_last END),
+                    today_price_at_open = COALESCE(
+                        mi_universe_floor_shadow.today_price_at_open,
+                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                             THEN EXCLUDED.today_price_last END),
+                    today_dollar_volume_at_open = COALESCE(
+                        mi_universe_floor_shadow.today_dollar_volume_at_open,
+                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                             THEN EXCLUDED.today_dollar_volume_last END)
             """, [
                 (
                     _to_date(r["scan_date"]), r["ticker"], r.get("seen_et"),
@@ -13033,6 +13094,8 @@ async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
                     r.get("prev_day_dollar_volume"),
                     r.get("failed_price_floor"), r.get("failed_volume_floor"),
                     r.get("acting_price_floor"), r.get("acting_volume_floor"),
+                    r.get("today_volume"), r.get("today_price"),
+                    r.get("today_dollar_volume"),
                 )
                 for r in rows
             ])

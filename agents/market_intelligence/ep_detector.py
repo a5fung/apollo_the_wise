@@ -2163,13 +2163,23 @@ def _delayed_gap_for(snap: "dict | None", prev_close: float) -> "float | None":
 _SESSION_MINUTES = 390  # 6.5-hour regular session (shared by Pass-1 + the Pass-0 admit path)
 
 
+def _snap_today_volume(snap: dict) -> float:
+    """Today's traded volume off an already-fetched snapshot: day.v for the
+    regular session, min.av accumulated (includes pre-market) as fallback.
+    SINGLE SOURCE for this read (#584) — shared by `_snap_candidate` (the live
+    pipeline's volume) and the universe-floor shadow's same-day liquidity
+    columns, so the shadow's "today volume" can never drift from the value the
+    scan itself acts on. Pure dict read, no I/O."""
+    return snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
+
+
 def _snap_candidate(ticker: str, snap: dict, prev_close: float, current_price: float,
                     gap_pct: float, adv_map: dict, minutes_since_open: "int | None") -> dict:
     """Build the Pass-1 candidate dict for one ticker (#490 RT-1 extraction — shared verbatim
     by the delayed Pass-1 loop and the Pass-0 universe admission path so the two can never
-    drift). Byte-identical to the pre-#490 inline block (freeze-tested)."""
+    drift). Output-identical to the pre-#490 inline block (freeze-tested)."""
     # Volume: day.v for regular session, min.av for accumulated (includes pre-mkt)
-    today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
+    today_volume = _snap_today_volume(snap)
     adv = adv_map.get(ticker)
     # prevDay.v as temporary placeholder — proper 20-day ADV computed later for non-universe stocks
     adv_source = "rs_universe" if adv else "pending"
@@ -3029,6 +3039,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 or snap.get("day", {}).get("o")
                 or snap.get("lastTrade", {}).get("p", 0)
             )
+            # #584: today's traded volume off the same already-fetched snap —
+            # the SAME-DAY liquidity read for the universe-floor shadow (every
+            # live liquidity test reads yesterday; this records this morning).
+            # Same expression the live pipeline uses (_snap_today_volume, the
+            # _snap_candidate source). Pure dict read, no I/O, no latency.
+            _today_vol = _snap_today_volume(snap)
 
             if not prev_close or prev_close < MIN_PREV_CLOSE:
                 _fs = _universe_floor_skip(ticker, prev_close, prev_volume, current_price)
@@ -3039,7 +3055,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
                         ticker, prev_close, prev_volume, _fs["gap_pct"],
                         MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
-                        minutes_since_open=_minutes_since_open, seen_et=now_et))
+                        minutes_since_open=_minutes_since_open, seen_et=now_et,
+                        today_volume=_today_vol, current_price=current_price))
                 continue
 
             # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
@@ -3051,7 +3068,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
                         ticker, prev_close, prev_volume, _fs["gap_pct"],
                         MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
-                        minutes_since_open=_minutes_since_open, seen_et=now_et))
+                        minutes_since_open=_minutes_since_open, seen_et=now_et,
+                        today_volume=_today_vol, current_price=current_price))
                 continue
 
             _rt_universe.append((ticker, prev_close))   # #489 watchdog: this ticker cleared all non-gap filters
@@ -3093,7 +3111,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
                     ticker, prev_close, prev_volume, gap_pct,
                     MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
-                    minutes_since_open=_minutes_since_open, seen_et=now_et))
+                    minutes_since_open=_minutes_since_open, seen_et=now_et,
+                    today_volume=_today_vol, current_price=current_price))
             except Exception as _dve:
                 logger.warning(f"#606 universe-floor shadow row build failed for {ticker}: {_dve}")
         except Exception:

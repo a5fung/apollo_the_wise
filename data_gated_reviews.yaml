@@ -10278,3 +10278,69 @@ reviews:
     cross_refs: ["docs/analysis/606_d1_floor_2026-08-31.md",
                  "docs/setups/magna53_ep.md",
                  "agents/market_intelligence/universe_floor_shadow.py"]
+
+  - review_id: same_day_liquidity_recheck_584
+    title: "Same-day liquidity re-check — do D-1-excluded names that wake up THIS morning earn admission?"
+    question: >-
+      Every live liquidity test reads YESTERDAY's numbers (D-1 floors read
+      snap['prevDay']; the ADV gate's 20-day median ends at yesterday's
+      close). #570 (docs/analysis/silent_universe_floors_570_2026-08-22.md)
+      measured the cost: the D-1 floors drop ~26.5 names/day and ~6/day reach
+      tier-A ($50M+) dollar volume ON the gap day — the fattest-tailed slice
+      in the study (21.6% reach >=8xADR, 2.6x the admitted pool's 8.2%) AND
+      the worst-crashing (median settled -28% vs -12% admitted). #570's
+      explicit conclusion: the instrument is a SAME-DAY RE-CHECK, never a
+      lower D-1 floor. mi_universe_floor_shadow now records, per rejected
+      name, today's traded volume / price / dollar volume at the at_open and
+      last reads (#584). On accrued LIVE data (not the excursion-proxy
+      reconstruction): does a same-day dollar-volume bar, checkable inside
+      the 09:31-09:45 window, separate the woken-up tail from the crashing
+      sludge well enough to be worth proposing?
+    # Gates on REJECTED-side rows that got a POST-OPEN same-day read — the
+    # population the re-check would act on. The information_schema idiom
+    # extends 606's to_regclass guard to the COLUMN (the table pre-exists in
+    # code from #606, so a partial deploy could have the table without these
+    # columns): reads 0, never errors, until the deploy adds them.
+    predicate_sql: >-
+      SELECT CASE WHEN NOT EXISTS (
+                 SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'mi_universe_floor_shadow'
+                   AND column_name = 'today_dollar_volume_at_open')
+             THEN 0
+             ELSE (SELECT COUNT(DISTINCT scan_date) FROM mi_universe_floor_shadow
+                   WHERE (failed_price_floor OR failed_volume_floor)
+                     AND today_dollar_volume_at_open IS NOT NULL) END
+    threshold: 20
+    # Same table as d1_universe_floor_dollar_volume_606, same reasoning: every
+    # row carries both directions as independent facts (failed_price_floor /
+    # failed_volume_floor), and the same-day columns are raw inputs, not a
+    # variant selector — the rejected-side filter this question needs lives in
+    # the predicate itself. No discriminating column exists to declare.
+    discriminates_on: []
+    earliest_review_date: 2026-09-28
+    status: pending
+    kind: accrual
+    added_on: 2026-08-31
+    action_when_ready: >-
+      $0 read-only. Population: rejected-side rows (failed_price_floor OR
+      failed_volume_floor) with today_dollar_volume_at_open (fall back to
+      _last only where minutes_since_open_last <= 15, and say so). This is
+      SELECTION work — win rate IS a legitimate criterion here, judged in
+      BOTH P14 directions. Sweep same-day dollar-volume bars ($10M / $25M /
+      $50M / $100M) against the recorded reads; for each bar report names/day
+      admitted, then join tickers to mi_daily_closes for HARVESTED outcomes:
+      settled forward closes (5 and 20 sessions) AND peak excursion labeled
+      as an excursion, never presented as a return — no fill is fabricated
+      (the #556 lesson). Compare each bar-clearing subset's >=8xADR-reach
+      density and settled closes against the admitted pool's (#570 baselines:
+      8.2% / -11.7%). Bar for a CHANGE_PROCESS proposal: a level whose
+      cleared subset (a) is identifiable from the at_open read inside
+      09:31-09:45, (b) shows tail density materially above the admitted pool
+      on >=15 settled rejected-side names, with the crash cost priced from
+      the same rows -> bring it to the operator with both directions priced
+      (THE LINE — admission is his sole authority; nothing flips here).
+      Fewer than 15 settled names on the rejected side -> report the count
+      and extend, conclude nothing.
+    cross_refs: ["docs/analysis/silent_universe_floors_570_2026-08-22.md",
+                 "agents/market_intelligence/universe_floor_shadow.py",
+                 "docs/setups/magna53_ep.md"]
