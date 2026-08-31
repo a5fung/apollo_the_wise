@@ -2458,6 +2458,7 @@ async def initialize_schema() -> None:
                 fired_ep_low_reclaim   BOOLEAN NOT NULL DEFAULT FALSE,
                 fired_ep_close_reclaim BOOLEAN NOT NULL DEFAULT FALSE,
                 fired_ep_high_break    BOOLEAN NOT NULL DEFAULT FALSE,
+                fired_ep_close_620_prox BOOLEAN NOT NULL DEFAULT FALSE,  -- rung 4 (pattern v2)
                 eval_status       TEXT NOT NULL DEFAULT 'complete',  -- complete | unscoreable
                 unscoreable_reason TEXT,             -- missing_daily_bar | missing_minute_bars | missing_prior_low
                 -- ex-ante EP-day context + SCREEN stamp (per row, per the approved plan — the
@@ -2472,11 +2473,24 @@ async def initialize_schema() -> None:
                 extension_pct     FLOAT,
                 screen_member     BOOLEAN,
                 screen_version    TEXT,
+                -- EP-day-anchored ADR$ (mean (high-low)/close over <=20 sessions strictly
+                -- BEFORE ep_date, x the EP-day close) — the rung-4 band input, MEASURED
+                -- context recomputed by the walker each run from raw bars (never trusted
+                -- stale). NULL on enrollment idx-0 rows and on names with no pre-EP
+                -- history — the latter can never arm the 620 rung, visible here.
+                ep_adr20_dollar   FLOAT,
+                ep_adr20_n        INT,
                 created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 PRIMARY KEY (ticker, ep_date, session_date),
                 CHECK (eval_status IN ('complete','unscoreable'))
             );
+            -- 2026-08-30 pattern-v2 migration for already-deployed lanes (CREATE TABLE IF
+            -- NOT EXISTS cannot add columns): the rung-4 flag + the band context columns.
+            ALTER TABLE mi_delayed_entry_watch
+                ADD COLUMN IF NOT EXISTS fired_ep_close_620_prox BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE mi_delayed_entry_watch ADD COLUMN IF NOT EXISTS ep_adr20_dollar FLOAT;
+            ALTER TABLE mi_delayed_entry_watch ADD COLUMN IF NOT EXISTS ep_adr20_n INT;
             CREATE INDEX IF NOT EXISTS idx_delayed_entry_watch_session
                 ON mi_delayed_entry_watch(session_date DESC);
             CREATE INDEX IF NOT EXISTS idx_delayed_entry_watch_member
@@ -2534,6 +2548,29 @@ async def initialize_schema() -> None:
                 screen_version    TEXT,
                 prior_missing_sessions INT NOT NULL DEFAULT 0,  -- unscoreable sessions before the fire:
                                                      -- >0 means the TRUE first fire may have been earlier
+                -- attempts + re-entry (pattern v2, 2026-08-30): every attempt is its OWN row —
+                -- a campaign (first entry, stop-out, re-entry, outcome) reconstructs from rows.
+                -- attempt_no 1 = the campaign's first fire of this rung; 2 = the one bounded
+                -- re-entry of its shape. reentry_shape: 'first' | 'same_pattern' (the rung's
+                -- own pattern re-armed FRESH from the session AFTER the stop-out) |
+                -- 'new_high_break' (break above MAX(EP-day high, every session high through
+                -- the stop-out) — the R3 strength-proof shape, +12.9R in the campaign study).
+                -- RECORDING ONLY, no policy decided: both shapes are written when they occur
+                -- and failed attempts settle at -1R like any row — their cost IS the risk of
+                -- re-entering. Day-2+ only: same-day re-entry is OUT OF SCOPE (ruled
+                -- 2026-08-30 — tick-level state would break the shadow/live boundary), so a
+                -- TEAM-style same-day re-entry is invisible here; stated limitation.
+                attempt_no        INT NOT NULL DEFAULT 1,
+                reentry_shape     TEXT NOT NULL DEFAULT 'first',
+                prior_attempt_id  INT,               -- the settled-stop attempt this row re-enters after
+                -- ⚠ rung-4 label — MANDATORY (CHECK-enforced below). 'proximity_band_0p5adr_v1'
+                -- = #562's PLACEHOLDER +-0.5xADR$ DISTANCE band. It is NOT the operator's
+                -- 2026-08-29 behavioural "near" ruling (approach -> deceleration -> cessation
+                -- -> consolidation -> turn), which names this exact band "the rigid instrument
+                -- this ruling replaces" and is implemented NOWHERE yet. A rung-4 null result
+                -- therefore falsifies THE BAND ONLY — never the behavioural definition.
+                near_definition   TEXT,
+                band_adr_dollar   FLOAT,             -- the ADR$ the 0.4x basing / 0.5x proximity bands used
                 -- settlement (follow-on card; NULL while open)
                 outcome           TEXT,              -- M-none: stop | time_exit | unscoreable
                 realized_r        FLOAT,             -- M-none HARVESTED R (accrual-gate column)
@@ -2550,18 +2587,49 @@ async def initialize_schema() -> None:
                 mfe_r             FLOAT,             -- max favourable excursion (ceiling only, never realized)
                 mae_r             FLOAT,
                 reached_4r        BOOLEAN,           -- fwd MFE >= 4x risk before the hard stop (pess, stop-first)
+                stop_hit_date     DATE,              -- the session the SHARED hard stop was touched (NULL
+                                                     -- unless outcome='stop'); re-entry replays start the
+                                                     -- session AFTER it — the day-2+ boundary, mechanical
                 settle_version    TEXT,
                 settled_at        TIMESTAMPTZ,
                 created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                CHECK (rung IN ('ep_low_reclaim','ep_close_reclaim','ep_high_break')),
+                CHECK (rung IN ('ep_low_reclaim','ep_close_reclaim','ep_high_break','ep_close_620_prox')),
                 CHECK (resolution IN ('minute_5','daily')),
                 CHECK (outcome IS NULL OR outcome IN ('stop','time_exit','unscoreable')),
                 CHECK (outcome_trail IS NULL OR outcome_trail IN ('stop','trail_exit','time_exit','unscoreable'))
             );
-            -- one OPEN trigger per (name, EP day, rung): a re-fire on an open row is a no-op —
-            -- entry stays pinned to the FIRST recorded fire (mi_consolidation_entry_shadow pattern)
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_delayed_entry_trigger_open
-                ON mi_delayed_entry_trigger(ticker, ep_date, rung) WHERE outcome IS NULL;
+            -- 2026-08-30 pattern-v2 migration for already-deployed lanes: attempt columns,
+            -- the 4th rung in the CHECK, the MANDATORY rung-4 label CHECK, and the
+            -- attempt-shape unique index replacing the open-only partial one. The constraint
+            -- drop/adds are idempotent per boot (Postgres has no ADD CONSTRAINT IF NOT EXISTS).
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS attempt_no INT NOT NULL DEFAULT 1;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS reentry_shape TEXT NOT NULL DEFAULT 'first';
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS prior_attempt_id INT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS near_definition TEXT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS band_adr_dollar FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS stop_hit_date DATE;
+            ALTER TABLE mi_delayed_entry_trigger DROP CONSTRAINT IF EXISTS mi_delayed_entry_trigger_rung_check;
+            ALTER TABLE mi_delayed_entry_trigger ADD CONSTRAINT mi_delayed_entry_trigger_rung_check
+                CHECK (rung IN ('ep_low_reclaim','ep_close_reclaim','ep_high_break','ep_close_620_prox'));
+            ALTER TABLE mi_delayed_entry_trigger DROP CONSTRAINT IF EXISTS mi_delayed_entry_trigger_reentry_shape_check;
+            ALTER TABLE mi_delayed_entry_trigger ADD CONSTRAINT mi_delayed_entry_trigger_reentry_shape_check
+                CHECK (reentry_shape IN ('first','same_pattern','new_high_break'));
+            -- ⚠ THE RUNG-4 LABEL IS MANDATORY: a 620-proximity row without its
+            -- placeholder-definition label cannot be written AT ALL. Without the label a
+            -- null rung-4 result would quietly read as evidence against the operator's
+            -- behavioural "near" definition — the one he actually wants — instead of
+            -- against the band he already rejected.
+            ALTER TABLE mi_delayed_entry_trigger DROP CONSTRAINT IF EXISTS mi_delayed_entry_trigger_near_label_check;
+            ALTER TABLE mi_delayed_entry_trigger ADD CONSTRAINT mi_delayed_entry_trigger_near_label_check
+                CHECK (rung <> 'ep_close_620_prox' OR near_definition IS NOT NULL);
+            DROP INDEX IF EXISTS idx_delayed_entry_trigger_open;
+            -- ONE row EVER per (name, EP day, rung, attempt shape): a re-fire while open is a
+            -- no-op (entry pinned to the FIRST recorded fire — the mi_consolidation_entry_shadow
+            -- pattern) AND a nightly re-entry replay re-deriving an already-settled attempt is
+            -- a no-op — an attempt row is never overwritten. This is the bounded
+            -- one-re-entry-per-shape rule made mechanical.
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_delayed_entry_trigger_attempt
+                ON mi_delayed_entry_trigger(ticker, ep_date, rung, reentry_shape);
             CREATE INDEX IF NOT EXISTS idx_delayed_entry_trigger_unsettled
                 ON mi_delayed_entry_trigger(fire_date) WHERE outcome IS NULL;
 
@@ -9988,10 +10056,11 @@ _DELAYED_WATCH_UPSERT_COLS = (
     "undercut_seen", "low_since_undercut",
     "dipped_below_close_seen", "low_of_dip", "gap_high_exceeded",
     "fired_ep_low_reclaim", "fired_ep_close_reclaim", "fired_ep_high_break",
+    "fired_ep_close_620_prox",
     "eval_status", "unscoreable_reason",
     "ep_score", "catalyst_grade", "in_active_theme",
     "gap_pct", "prev_close", "ep_dollar_volume", "extension_pct",
-    "screen_member", "screen_version",
+    "screen_member", "screen_version", "ep_adr20_dollar", "ep_adr20_n",
 )
 _DELAYED_WATCH_KEY_COLS = frozenset({"ticker", "ep_date", "session_date"})
 _DELAYED_WATCH_UPSERT_SQL = (
@@ -10113,10 +10182,17 @@ async def count_delayed_entry_unscoreable(ticker: str, ep_date: date, before: da
 
 
 async def insert_delayed_entry_trigger(row: dict) -> bool:
-    """Record one rung firing (SHADOW — no execution, no alert). IDEMPOTENT: the partial
-    unique index (ticker, ep_date, rung) WHERE outcome IS NULL makes a re-fire on an open
-    row a no-op — the entry stays pinned to the FIRST recorded fire (the
-    mi_consolidation_entry_shadow pattern). Returns True iff a NEW row was written."""
+    """Record one attempt firing (SHADOW — no execution, no alert). IDEMPOTENT: the FULL
+    unique index (ticker, ep_date, rung, reentry_shape) makes a re-fire while open AND a
+    replay re-deriving an already-settled attempt both no-ops — every attempt row is
+    written once, pinned to the FIRST recorded fire, and NEVER overwritten (attempt 2
+    can never clobber attempt 1: it is a different reentry_shape, hence a different
+    row). attempt_no/reentry_shape default to the first-fire values so a caller that
+    predates attempts can never write NULL into the NOT NULL columns. Returns True iff
+    a NEW row was written."""
+    row = dict(row)
+    row.setdefault("attempt_no", 1)
+    row.setdefault("reentry_shape", "first")
     cols = (
         "ticker", "ep_date", "rung", "pattern_version", "fire_date", "fire_minute_et",
         "resolution", "sessions_since_ep", "entry_price", "stop_price", "stop_width_pct",
@@ -10125,11 +10201,13 @@ async def insert_delayed_entry_trigger(row: dict) -> bool:
         "adr20_pct", "adr20_n", "gap_high_exceeded_before", "in_active_theme",
         "ep_score", "catalyst_grade", "screen_member", "screen_version",
         "prior_missing_sessions",
+        "attempt_no", "reentry_shape", "prior_attempt_id",
+        "near_definition", "band_adr_dollar",
     )
     sql = (
         "INSERT INTO mi_delayed_entry_trigger (" + ", ".join(cols) + ") VALUES ("
         + ", ".join(f"${i + 1}" for i in range(len(cols)))
-        + ") ON CONFLICT (ticker, ep_date, rung) WHERE outcome IS NULL DO NOTHING RETURNING id"
+        + ") ON CONFLICT (ticker, ep_date, rung, reentry_shape) DO NOTHING RETURNING id"
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -10154,13 +10232,42 @@ async def get_delayed_entry_open_triggers() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_delayed_entry_reentry_candidates(min_stop_date: date) -> list[dict]:
+    """FIRST-attempt triggers settled as outcome='stop' whose bounded re-entry shapes are
+    not all recorded yet (delayed_entry_shadow.record_reentry_attempts — RECORDING only,
+    no policy decided). Only a STOP frees a name for re-entry: a trail or time exit ends
+    the campaign (it is a harvest, not a failure — the campaign-study rule). Returns one
+    dict per candidate (the full row, so the replay has the pivots + ex-ante stamps) plus
+    has_same_pattern / has_new_high_break; the caller replays only the missing shape(s).
+    Bounded by stop_hit_date >= min_stop_date so campaigns whose re-entry window has long
+    elapsed age out of the nightly pass instead of replaying forever."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT t.*,
+                   EXISTS (SELECT 1 FROM mi_delayed_entry_trigger r
+                           WHERE r.ticker = t.ticker AND r.ep_date = t.ep_date
+                             AND r.rung = t.rung AND r.reentry_shape = 'same_pattern')
+                       AS has_same_pattern,
+                   EXISTS (SELECT 1 FROM mi_delayed_entry_trigger r
+                           WHERE r.ticker = t.ticker AND r.ep_date = t.ep_date
+                             AND r.rung = t.rung AND r.reentry_shape = 'new_high_break')
+                       AS has_new_high_break
+            FROM mi_delayed_entry_trigger t
+            WHERE t.reentry_shape = 'first' AND t.outcome = 'stop'
+              AND t.stop_hit_date IS NOT NULL AND t.stop_hit_date >= $1
+            ORDER BY t.stop_hit_date, t.id
+        """, _coerce_date(min_stop_date))
+    return [dict(r) for r in rows if not (r["has_same_pattern"] and r["has_new_high_break"])]
+
+
 # The one ordered tuple both the UPDATE SQL and the caller derive from (the
 # exit_path_shadow pattern — column list and placeholders can never drift by position).
 _DELAYED_SETTLE_COLS = (
     "outcome", "realized_r", "outcome_trail", "realized_r_trail",
     "r_none_s1", "r_none_s5", "r_none_s10", "r_none_s20",
     "r_trail_s1", "r_trail_s5", "r_trail_s10", "r_trail_s20",
-    "mfe_r", "mae_r", "reached_4r", "settle_version",
+    "mfe_r", "mae_r", "reached_4r", "stop_hit_date", "settle_version",
 )
 _DELAYED_SETTLE_SQL = (
     "UPDATE mi_delayed_entry_trigger SET "

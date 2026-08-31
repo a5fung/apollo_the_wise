@@ -315,9 +315,13 @@ def _wire(monkeypatch, *, member, window, minute_bars, upsert_raises=False):
     async def _no_open_triggers():
         return []
 
+    async def _no_reentry_cands(min_stop_date):
+        return []
+
     async def _settle(row_id, fields):
         raise AssertionError("settle must not be called with no open triggers")
 
+    monkeypatch.setattr(des, "get_delayed_entry_reentry_candidates", _no_reentry_cands)
     monkeypatch.setattr(des, "get_delayed_entry_open_triggers", _no_open_triggers)
     monkeypatch.setattr(des, "settle_delayed_entry_trigger", _settle)
     monkeypatch.setattr(des, "get_delayed_entry_seed_candidates", _no_seeds)
@@ -758,3 +762,310 @@ def test_double_settle_guard_is_pinned_in_the_sql():
     assert "WHERE id = $1 AND outcome IS NULL" in dbmod._DELAYED_SETTLE_SQL
     assert "settled_at = NOW()" in dbmod._DELAYED_SETTLE_SQL
     assert "realized_r" in dbmod._DELAYED_SETTLE_COLS
+
+
+# ── Rung 4: the 620 proximity fallback (pattern v2, 2026-08-30) ───────────────────────
+# The fixture: a decline-then-turn on 5-min closes. Verified against the module's own
+# frozen instrument: the qualified bullish MACD(6,20) cross lands on bar index 14
+# (close 11.06, minute 640) with MACD < 0, basing range 0.16 and the hook intact.
+
+_620_CLOSES = [11.20, 11.18, 11.16, 11.14, 11.12, 11.10, 11.08, 11.06, 11.04, 11.02,
+               11.00, 10.98, 10.96, 11.02, 11.06, 11.10]
+
+
+def _620_bars(closes=None):
+    return [{"m": 570 + 5 * i, "o": c, "h": round(c + 0.02, 4),
+             "l": round(c - 0.02, 4), "c": c}
+            for i, c in enumerate(closes if closes is not None else _620_CLOSES)]
+
+
+def test_620_qualified_cross_fires_with_label_stop_from_bars():
+    """The pure core: entry = the cross bar's 5-min close, stop = low of day so far
+    (10.96 - 0.02), the fire sits inside the 0.5xADR$ proximity band, and it CARRIES
+    the mandatory placeholder near-definition label + the band input from the
+    definition site."""
+    res = des.evaluate_session_620([], _620_bars(), gap_close=11.0, adr_dollar=0.55,
+                                   state=des.new_state())
+    (fire,) = res["fires"]
+    assert fire["rung"] == des.RUNG_620_PROX
+    assert fire["entry"] == 11.06 and fire["fire_minute"] == 570 + 5 * 14
+    assert fire["stop"] == pytest.approx(10.94)
+    assert abs(fire["entry"] - 11.0) <= 0.5 * 0.55          # inside the proximity band
+    assert fire["near_definition"] == des.NEAR_DEFINITION_PLACEHOLDER
+    assert fire["band_adr_dollar"] == 0.55
+    assert res["state"]["fired_ep_close_620_prox"] is True
+
+
+def test_620_rejects_cross_outside_proximity_band():
+    """Same qualified turn, EP-day close far away (12.5): the turn is real but not
+    'near' under the band — no fire. The BAND, not the turn, is rung 4's hypothesis."""
+    res = des.evaluate_session_620([], _620_bars(), gap_close=12.5, adr_dollar=0.55,
+                                   state=des.new_state())
+    assert res["fires"] == []
+    assert res["state"]["fired_ep_close_620_prox"] is False
+
+
+def test_620_rejects_wide_basing_and_positive_macd_crosses():
+    """Two frozen #562 guards: (a) basing — one pre-cross bar blown out past
+    0.4xADR$ kills the fire; (b) a cross with MACD above zero (late in an uptrend)
+    exists in a cross-only scan but is rejected by the MACD<0 guard."""
+    wide = _620_bars()
+    wide[8]["h"] = wide[8]["c"] + 0.30
+    assert des.qualified_620_crosses(wide, 0.55, 0) == []
+    up = [11.0 + 0.04 * i for i in range(20)] + [11.76, 11.72, 11.70, 11.72, 11.80, 11.90]
+    macd, sig = des.macd_620(up)
+    late = [i for i in range(des.MIN_CROSS_IDX, len(up))
+            if macd[i - 1] <= sig[i - 1] and macd[i] > sig[i]]
+    assert late and all(macd[i] > 0 for i in late)          # the cross exists, above zero
+    assert des.qualified_620_crosses(_620_bars(up), 0.55, 0) == []
+
+
+def test_620_hook_guard_rejects_a_cross_whose_macd_low_is_stale():
+    """Second-dip shape: the deep MACD low sits more than HOOK_SHORT buckets back, so
+    the re-cross at bar 22 has MACD < 0 AND tight basing but NO hook — the hook guard
+    alone rejects it (each other guard is asserted to pass, so the rejection is
+    attributable)."""
+    closes = _620_CLOSES + [11.08, 11.06, 11.04, 11.02, 11.00, 10.98,
+                            11.03, 11.08, 11.13]
+    bars = _620_bars(closes)
+    macd, sig = des.macd_620(closes)
+    i = 22
+    assert macd[i - 1] <= sig[i - 1] and macd[i] > sig[i] and macd[i] < 0
+    w = bars[i - 8:i]
+    assert (max(b["h"] for b in w) - min(b["l"] for b in w)) <= 0.4 * 0.7
+    assert not (min(macd[i - 6:i]) <= min(macd[i - 12:i]) + 1e-9)
+    assert des.qualified_620_crosses(bars, 0.7, 15) == []
+
+
+def _member_620(**over):
+    """Lane member with the three v1 patterns already fired — only rung 4 can act."""
+    m = _member(undercut_seen=False, low_since_undercut=None,
+                dipped_below_close_seen=False, low_of_dip=None,
+                fired_ep_low_reclaim=True, fired_ep_close_reclaim=True,
+                fired_ep_high_break=True)
+    m.update(over)
+    return m
+
+
+_WINDOW_620 = [
+    _daily(date(2026, 8, 21), 9.9, 10.2, 9.7, 10.0),   # pre-EP: ADR = 5% of close 10
+    _daily(_EP, 10.5, 12.0, 9.8, 11.0, 5_000_000),     # ADR$ = 0.05 x 11.0 = 0.55
+    _daily(date(2026, 8, 25), 10.8, 11.0, 10.1, 10.3),
+    _daily(date(2026, 8, 26), 10.2, 10.4, 9.9, 10.0),
+    _daily(_THU, 10.1, 10.6, 10.0, 10.5),
+    _daily(_FRI, 11.0, 11.4, 10.9, 11.1, 900_000),     # intersects the +-0.275 band
+]
+
+
+@pytest.mark.asyncio
+async def test_rung4_trigger_row_records_the_placeholder_definition_label(monkeypatch):
+    """NOT OPTIONAL — the whole point of piece 1. The operator ruled (2026-08-29) that
+    'near' is a BEHAVIOUR, not a distance, and named the +-0.5xADR band as the rigid
+    instrument his ruling replaces; the band ships only as a LABELLED placeholder.
+    Every rung-4 ROW must say so: without the label, a rung-4 null result quietly
+    becomes evidence against the behavioural definition he actually wants. This test
+    fails if the label goes missing OR is wrong."""
+    watch, triggers, audits = _wire(monkeypatch, member=_member_620(),
+                                    window=_WINDOW_620, minute_bars=[])
+
+    async def _minutes_by_day(ticker, day):                 # warm-up days stay empty
+        return _620_bars() if day == _FRI else []
+
+    monkeypatch.setattr(des, "_fetch_minute_5", _minutes_by_day)
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["triggers"] == 1 and len(triggers) == 1
+    t = triggers[0]
+    assert t["rung"] == des.RUNG_620_PROX
+    assert t["near_definition"] == des.NEAR_DEFINITION_PLACEHOLDER == \
+        "proximity_band_0p5adr_v1"                          # the exact label, pinned
+    assert t["band_adr_dollar"] == pytest.approx(0.55)
+    assert t["pattern_version"] == des.PATTERN_VERSION
+    assert t["entry_price"] == 11.06 and t["stop_price"] == pytest.approx(10.94)
+    assert abs(t["entry_price"] - 11.0) <= 0.5 * t["band_adr_dollar"]
+    assert t["stop_width_pct"] == pytest.approx((11.06 - 10.94) / 11.06 * 100)
+    assert t["fire_minute_et"] == 640 and t["resolution"] == "minute_5"
+    assert t["attempt_no"] == 1 and t["reentry_shape"] == "first"
+    # the watch row records the fire + the band context
+    assert watch[0]["fired_ep_close_620_prox"] is True
+    assert watch[0]["ep_adr20_dollar"] == pytest.approx(0.55)
+    assert watch[0]["ep_adr20_n"] == 1
+
+
+@pytest.mark.asyncio
+async def test_620_missing_minutes_abstains_never_fabricates(monkeypatch):
+    """Rung 4 under the abstain rule: the band intersects but the 5-min bars are
+    missing — the session records unscoreable, NOTHING fires, and the daily facts
+    still fold. Never a daily-bar fallback for a minute pattern."""
+    watch, triggers, audits = _wire(monkeypatch, member=_member_620(),
+                                    window=_WINDOW_620, minute_bars=[])
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["triggers"] == 0 and triggers == []
+    assert watch[0]["eval_status"] == "unscoreable"
+    assert watch[0]["unscoreable_reason"] == "missing_minute_bars"
+    assert watch[0]["fired_ep_close_620_prox"] is False
+
+
+def test_rung4_label_and_attempt_bound_are_pinned_in_the_schema():
+    """Mechanical pins: the schema CHECK that makes the rung-4 label impossible to
+    omit; the FULL unique (ticker, ep_date, rung, reentry_shape) index + matching ON
+    CONFLICT that make an attempt row impossible to overwrite; stop_hit_date in the
+    settle columns (settle_v2). Editing any of them out of db.py fails here."""
+    from pathlib import Path as _P
+
+    from agents.market_intelligence import db as dbmod
+    src = _P(dbmod.__file__).read_text()
+    assert "CHECK (rung <> 'ep_close_620_prox' OR near_definition IS NOT NULL)" in src
+    assert "mi_delayed_entry_trigger_near_label_check" in src
+    assert "idx_delayed_entry_trigger_attempt" in src
+    assert "ON mi_delayed_entry_trigger(ticker, ep_date, rung, reentry_shape)" in src
+    assert "ON CONFLICT (ticker, ep_date, rung, reentry_shape) DO NOTHING" in src
+    assert "stop_hit_date" in dbmod._DELAYED_SETTLE_COLS
+
+
+# ── Re-entry recording (piece 2 — every attempt its own row; no policy decided) ───────
+
+
+def _reentry_cand(**over):
+    """A settled-stop FIRST attempt, as get_delayed_entry_reentry_candidates returns
+    it: stopped Wednesday 08-26, so the day-2+ replay window is Thursday + Friday."""
+    c = {
+        "id": 41, "ticker": "TST", "ep_date": _EP, "rung": "ep_close_reclaim",
+        "pattern_version": "v2", "fire_date": date(2026, 8, 25),
+        "fire_minute_et": 600, "resolution": "minute_5", "sessions_since_ep": 1,
+        "entry_price": 11.2, "stop_price": 10.9, "stop_width_pct": 2.68,
+        "gap_day_low": 9.8, "gap_day_close": 11.0, "gap_day_high": 12.0,
+        "gap_day_volume": 5_000_000,
+        "in_active_theme": True, "ep_score": 62.0, "catalyst_grade": "strong",
+        "screen_member": True, "screen_version": "screen_v1",
+        "outcome": "stop", "realized_r": -1.0, "stop_hit_date": date(2026, 8, 26),
+        "attempt_no": 1, "reentry_shape": "first",
+        "has_same_pattern": False, "has_new_high_break": False,
+    }
+    c.update(over)
+    return c
+
+
+def _wire_reentry(monkeypatch, *, cand, window, minutes_by_day):
+    """Re-entry-pass wiring: empty lane, no open triggers, one candidate, day-aware
+    minute bars. Returns (watch_writes, trigger_writes, audits)."""
+    watch, triggers, audits = _wire(monkeypatch, member=_member(session_idx=20),
+                                    window=window, minute_bars=[])
+
+    async def _no_lane(min_ep, lane_sessions):
+        return []
+
+    async def _cands(min_stop_date):
+        return [dict(cand)] if cand else []
+
+    async def _minutes(ticker, day):
+        return minutes_by_day.get(day, [])
+
+    monkeypatch.setattr(des, "get_delayed_entry_open_lane", _no_lane)
+    monkeypatch.setattr(des, "get_delayed_entry_reentry_candidates", _cands)
+    monkeypatch.setattr(des, "_fetch_minute_5", _minutes)
+    return watch, triggers, audits
+
+
+_WINDOW_RE = [
+    _daily(date(2026, 8, 21), 9.9, 10.2, 9.7, 10.0),
+    _daily(_EP, 10.5, 12.0, 9.8, 11.0, 5_000_000),
+    _daily(date(2026, 8, 25), 10.8, 11.5, 10.1, 10.3),
+    _daily(date(2026, 8, 26), 10.2, 10.4, 9.9, 10.0),   # the stop-out session
+    _daily(_THU, 10.8, 11.2, 10.6, 10.7),               # fresh dip under the EP close
+    _daily(_FRI, 10.9, 11.3, 10.8, 11.1),
+]
+
+_THU_RECLAIM_5M = [
+    _b5(570, 10.9, 11.0, 10.6, 10.8),     # dips below the EP close 11.0, low 10.6
+    _b5(575, 10.8, 11.1, 10.75, 11.05),   # 5-min close back above -> same-pattern re-fire
+]
+
+
+@pytest.mark.asyncio
+async def test_second_attempt_gets_its_own_row_and_number_after_the_stop(monkeypatch):
+    """Required test: after attempt 1 settles as a stop (Wednesday), the same-pattern
+    replay finds Thursday's fresh dip-and-reclaim and records it as ITS OWN row —
+    attempt_no=2, linked to attempt 1 by prior_attempt_id, fired strictly AFTER the
+    stop day (the day-2+ boundary), entry/stop from the bars. Attempt 1 is never
+    touched: the only write is a NEW insert (no settle, no update), and the pinned
+    unique-index + ON CONFLICT DO NOTHING make an overwrite impossible at the DB."""
+    cand = _reentry_cand(has_new_high_break=True)           # isolate the same-pattern shape
+    watch, triggers, audits = _wire_reentry(
+        monkeypatch, cand=cand, window=_WINDOW_RE,
+        minutes_by_day={_THU: _THU_RECLAIM_5M})
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["reentry_considered"] == 1 and out["reentry_recorded"] == 1
+    (t,) = triggers
+    assert t["attempt_no"] == 2 and t["reentry_shape"] == "same_pattern"
+    assert t["prior_attempt_id"] == 41 and t["rung"] == "ep_close_reclaim"
+    assert t["fire_date"] == _THU and t["fire_date"] > cand["stop_hit_date"]
+    assert t["entry_price"] == 11.05 and t["stop_price"] == 10.6
+    assert t["resolution"] == "minute_5"
+    assert t["stop_width_pct"] == pytest.approx((11.05 - 10.6) / 11.05 * 100)
+    assert t["prior_session_low"] == 9.9                    # Wednesday's low
+    assert t["sessions_since_ep"] == 3
+    # both attempts remain distinguishable: 1/'first' vs 2/'same_pattern'
+    assert (cand["attempt_no"], cand["reentry_shape"]) == (1, "first")
+    assert (t["attempt_no"], t["reentry_shape"]) == (2, "same_pattern")
+
+
+@pytest.mark.asyncio
+async def test_new_high_break_reentry_breaks_the_campaign_high_not_the_ep_high(monkeypatch):
+    """The strength-proof shape (R3, the TEAM move): Tuesday's 12.6 — above the EP-day
+    high 12.0 — is the campaign high through the stop, so the re-entry level is 12.6.
+    Thursday's 12.4 (which already beats the EP-day high) must NOT fire; Friday's 12.7
+    does. Buy = the LEVEL, stop = the prior session's low, daily-provable."""
+    window = [
+        _daily(date(2026, 8, 21), 9.9, 10.2, 9.7, 10.0),
+        _daily(_EP, 10.5, 12.0, 9.8, 11.0, 5_000_000),
+        _daily(date(2026, 8, 25), 11.0, 12.6, 10.8, 11.9),  # campaign high 12.6
+        _daily(date(2026, 8, 26), 11.5, 11.7, 10.9, 11.0),  # stop-out day
+        _daily(_THU, 11.2, 12.4, 11.1, 12.2),               # > EP high, < campaign high
+        _daily(_FRI, 12.3, 12.7, 12.1, 12.5),               # takes out 12.6
+    ]
+    cand = _reentry_cand(has_same_pattern=True)             # isolate the new-high shape
+    watch, triggers, audits = _wire_reentry(monkeypatch, cand=cand, window=window,
+                                            minutes_by_day={})
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["reentry_recorded"] == 1
+    (t,) = triggers
+    assert t["reentry_shape"] == "new_high_break" and t["attempt_no"] == 2
+    assert t["entry_price"] == 12.6                         # the campaign high, not 12.0
+    assert t["stop_price"] == 11.1                          # Thursday's low
+    assert t["fire_date"] == _FRI and t["resolution"] == "daily"
+    assert t["fire_minute_et"] is None
+    assert t["prior_attempt_id"] == 41
+
+
+@pytest.mark.asyncio
+async def test_failed_reentry_settles_minus_one_r_and_is_counted(monkeypatch):
+    """Required test: a re-entry attempt that fails is COUNTED, never silently
+    dropped — its cost is the whole risk of re-entering. The attempt-2 row flows
+    through the SAME settlement machinery as any trigger, lands outcome='stop' at
+    -1.0R, and stamps stop_hit_date (settle_v2) so the campaign's stop chain is
+    reconstructable."""
+    trig = _trigger_row(id=99)                              # Thursday minute fire 10.0/9.6
+    post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]                  # day 0 never near the stop
+    settles, audits = _wire_settle(monkeypatch, trigger=trig, window=_WINDOW,
+                                   minute_bars=post)
+    out = await des.run_delayed_entry_shadow(_FRI)          # Friday's 9.5 low <= 9.6 stop
+    assert out["settle_settled"] == 1
+    (row_id, fields), = settles
+    assert row_id == 99
+    assert fields["outcome"] == "stop" and fields["realized_r"] == -1.0
+    assert fields["stop_hit_date"] == _FRI                  # the shared stop's touch day
+    assert fields["settle_version"] == des.SETTLE_VERSION
+
+
+@pytest.mark.asyncio
+async def test_reentry_window_opens_the_session_after_the_stop(monkeypatch):
+    """Day-2+ is structural: a stop settled TONIGHT (stop_hit_date == today) has an
+    empty replay window — nothing is recorded, nothing is fabricated, and the
+    candidate is simply retried when its window opens tomorrow."""
+    cand = _reentry_cand(stop_hit_date=_FRI, has_new_high_break=True)
+    watch, triggers, audits = _wire_reentry(
+        monkeypatch, cand=cand, window=_WINDOW_RE,
+        minutes_by_day={_THU: _THU_RECLAIM_5M, _FRI: _THU_RECLAIM_5M})
+    out = await des.run_delayed_entry_shadow(_FRI)
+    assert out["reentry_considered"] == 1 and out["reentry_recorded"] == 0
+    assert triggers == []

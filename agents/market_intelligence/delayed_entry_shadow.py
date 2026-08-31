@@ -29,7 +29,7 @@ THE LINE — read this before touching anything here. This module is a passive O
     pinned by ADR 0013 + the golden test; Stage 0 D1-D13). This lane is the separate
     record-everything path that verdict called for.
 
-THE THREE PATTERNS (v1) — each states its buy and its stop, or it is not a setup:
+THE FOUR PATTERNS (v2) — each states its buy and its stop, or it is not a setup:
   ep_low_reclaim    price drops below the EP day's LOW, then a 5-min bar closes back
                     above it. Buy = that close. Stop = the lowest low since the undercut.
   ep_close_reclaim  price never reaches the EP-day low, but dips under the EP day's
@@ -38,10 +38,49 @@ THE THREE PATTERNS (v1) — each states its buy and its stop, or it is not a set
   ep_high_break     price never pulls back — it pushes above the EP day's HIGH.
                     Buy = that high (stop-buy at the level). Stop = the prior session's
                     low.
+  ep_close_620_prox the proximity fallback (v2, 2026-08-30): the stock approaches the
+                    EP-day close without needing to touch anything. Buy = the first
+                    qualified 620 turn (MACD 6/20 on 5-min closes, EMA-9 signal; cross
+                    with MACD < 0; basing range of the prior 8 buckets <= 0.4xADR$; the
+                    MACD hook) whose cross bar closes within 0.5xADR$ of the EP-day
+                    close — #562's frozen instrument, reused VERBATIM so results
+                    transfer. Stop = low of day so far (the operator's TEAM stop basis).
+                    ⚠ THE LABEL IS MANDATORY: the operator ruled 2026-08-29 that "near"
+                    is a BEHAVIOUR (approach -> deceleration -> cessation ->
+                    consolidation -> turn), and named this exact +-0.5xADR band "the
+                    rigid instrument this ruling replaces". Behavioural detection is its
+                    own modelling task (external review, 2026-08-30) — so the band ships,
+                    but EVERY rung-4 row stamps near_definition =
+                    NEAR_DEFINITION_PLACEHOLDER (schema-CHECK-enforced): a rung-4 null
+                    result falsifies THE BAND ONLY, never the behavioural definition.
 Every trigger row records buy, stop, and **stop width as % of entry as a first-class
 column** — stop width explained the entire measured difference between patterns (same
 move captured, 2.68% vs 8.75% risk) and must never be derive-it-later. Each row stamps
 `pattern_version` — a reader must never infer the acting definition from a date.
+
+RE-ENTRY RECORDING (v2, 2026-08-30 — record what each shape would have done; NO policy
+decided, the review rules). Every attempt is its OWN trigger row with attempt_no, so a
+campaign (first entry, stop-out, re-entry, outcome) reconstructs from rows — TEAM is the
+case: every first attempt stopped at 82-92, the re-entry at 149.49 on strength made
++5.56R, and the first-fire-only shadow would have quit after one stop. After a FIRST
+attempt settles outcome='stop' (only a stop frees a name — a trail/time exit is a
+harvest that ends the campaign), the nightly pass replays BOTH bounded shapes from the
+session AFTER the stop-out, each writing at most one attempt_no=2 row:
+  same_pattern    the rung's own pattern re-armed FRESH (for ep_high_break: a re-touch
+                  of the EP-day high, buy at the level, stop = prior session's low —
+                  the clean-never-pulled-back precondition is an attempt-1 partitioning
+                  rule, structurally impossible after a stop and so not re-applied).
+                  Campaign-study net: +4.2R once, +0.6R unlimited.
+  new_high_break  a break above MAX(EP-day high, every session high through the
+                  stop-out) — proof of strength before re-entering (the R3 shape,
+                  +12.9R; the TEAM move). Buy at the level, stop = prior session's low.
+Failed re-entries settle at -1R through the same machinery as any row — their cost IS
+the whole risk of re-entering, and is never dropped. Bounded x1 per shape (the
+abandon-after-2 rule measured as losing nothing); the (ticker, ep_date, rung,
+reentry_shape) unique index makes the bound and the never-overwrite mechanical.
+⚠ KNOWN LIMITATION — DAY-2+ ONLY (ruled 2026-08-30): same-day re-entry needs tick-level
+state and would break the shadow/live-execution boundary, so it is OUT OF SCOPE — every
+re-entry figure this lane produces understates same-day re-entry by construction.
 
 MEASUREMENT CONVENTIONS:
   - Within a 5-min bar the LOW is processed before the close/high (stop-first, "pess" —
@@ -123,6 +162,7 @@ from agents.market_intelligence.db import (
     get_delayed_entry_daily_window,
     get_delayed_entry_open_lane,
     get_delayed_entry_open_triggers,
+    get_delayed_entry_reentry_candidates,
     get_delayed_entry_seed_candidates,
     get_delayed_entry_watch_row,
     insert_delayed_entry_trigger,
@@ -133,9 +173,9 @@ from agents.market_intelligence.db import (
 
 logger = logging.getLogger(__name__)
 
-PATTERN_VERSION = "v1"
+PATTERN_VERSION = "v2"            # v2 (2026-08-30): + ep_close_620_prox rung + re-entry attempts
 SCREEN_VERSION = "screen_v1"      # gap>=8, prev_close>=5, $vol>=50M, ext<=50, grade>=strong
-SETTLE_VERSION = "settle_v1"      # M-none / M-trail, 20 sessions from the fire, pess
+SETTLE_VERSION = "settle_v2"      # settle_v2: + stop_hit_date recorded on stop outcomes
 LANE_SESSIONS = 20                # forward trading sessions a name stays in the lane
 SETTLE_HOLD_SESSIONS = 20         # forward trading sessions a TRIGGER is followed (from its fire)
 SETTLE_TAIL_R = 4.0               # the reached_4r threshold (P3 — the tail is the objective)
@@ -157,11 +197,37 @@ _SCREEN_STRONG_GRADES = frozenset({"strong", "game_changer"})
 RUNG_EP_LOW = "ep_low_reclaim"
 RUNG_EP_CLOSE = "ep_close_reclaim"
 RUNG_EP_HIGH = "ep_high_break"
+RUNG_620_PROX = "ep_close_620_prox"
+
+# ── rung-4 constants: #562's frozen 620-turn instrument, verbatim (327s2 reconstruction,
+# nine anchor trades reproduced exactly). Do NOT redesign — the ruled decision.
+NEAR_DEFINITION_PLACEHOLDER = "proximity_band_0p5adr_v1"  # the MANDATORY rung-4 label:
+#   the PLACEHOLDER +-0.5xADR$ DISTANCE band, NOT the operator's 2026-08-29 behavioural
+#   "near" ruling (unimplemented anywhere). Stamped on EVERY rung-4 row so a null result
+#   falsifies the band, never the behavioural idea.
+MACD_FAST, MACD_SLOW, MACD_SIG = 6, 20, 9   # MACD(6,20) on 5-min closes, EMA-9 signal
+HOOK_SHORT, HOOK_LONG = 6, 12     # hook: macd 6-bucket min <= 12-bucket min (TEAM-pinned)
+BASING_BARS = 8                   # basing window: the prior 8 five-min buckets (40 min)
+BASING_BAND_ADR = 0.4             # basing range <= 0.4 x ADR$
+PROX_BAND_ADR = 0.5               # cross-bar close within 0.5 x ADR$ of the EP-day close
+MIN_CROSS_IDX = 12                # frozen warm-up guard: no cross before global bucket 12
+WARMUP_SESSIONS_620 = 2           # prior sessions of 5-min bars prepended to seed the EMAs
+#   (~156 bars: the EMA-20 seed influence is < 1e-6 — numerically the continuous series;
+#   a missing warm-up day shortens the seed, and MIN_CROSS_IDX stays the binding guard —
+#   #562's own day-one crosses had exactly that warm-up)
+
+# ── re-entry shapes (piece 2 — recording only, both bounded x1 per rung)
+SHAPE_FIRST = "first"
+SHAPE_SAME = "same_pattern"
+SHAPE_NEWHIGH = "new_high_break"
+REENTRY_WATCH_SESSIONS = 20       # re-entry patterns watched 20 sessions from the stop-out
+REENTRY_MAX_CAL_DAYS = 45         # candidates age out of the nightly pass past this
 
 _STATE_KEYS = (
     "undercut_seen", "low_since_undercut",
     "dipped_below_close_seen", "low_of_dip", "gap_high_exceeded",
     "fired_ep_low_reclaim", "fired_ep_close_reclaim", "fired_ep_high_break",
+    "fired_ep_close_620_prox",
 )
 
 
@@ -172,7 +238,7 @@ def new_state() -> dict[str, Any]:
         "dipped_below_close_seen": False, "low_of_dip": None,
         "gap_high_exceeded": False,
         "fired_ep_low_reclaim": False, "fired_ep_close_reclaim": False,
-        "fired_ep_high_break": False,
+        "fired_ep_high_break": False, "fired_ep_close_620_prox": False,
     }
 
 
@@ -376,6 +442,139 @@ def compute_adr20(daily_bars: list[dict]) -> tuple[Optional[float], int]:
     return sum(vals) / len(vals), len(vals)
 
 
+# ── Pure rung-4 core: the 620 proximity fallback (#562 frozen instrument, verbatim) ────
+
+
+def compute_ep_adr_dollar(daily_bars: list[dict], ep_date: date,
+                          gap_close: Optional[float]) -> tuple[Optional[float], int]:
+    """EP-day-anchored ADR$ = mean (high-low)/close over the <=20 sessions strictly
+    BEFORE ep_date, x the EP-day close — fixed per campaign (#562: the band must not
+    drift session to session). Recomputed from raw bars every run, never trusted from a
+    stored value. (None, n) with no usable pre-EP bars — such names can never arm the
+    620 rung, visible via the NULL ep_adr20_dollar on their watch rows."""
+    pre = [b for b in daily_bars if b.get("trade_date") and b["trade_date"] < ep_date]
+    pct, n = compute_adr20(pre)
+    if pct is None or not gap_close:
+        return None, n
+    return pct / 100.0 * float(gap_close), n
+
+
+def _ema_series(vals: list[float], n: int) -> list[float]:
+    a, out, e = 2.0 / (n + 1), [], None
+    for v in vals:
+        e = v if e is None else e + a * (v - e)
+        out.append(e)
+    return out
+
+
+def macd_620(closes: list[float]) -> tuple[list[float], list[float]]:
+    """(MACD(6,20), EMA-9 signal) over 5-min closes — the frozen instrument's lines."""
+    macd = [f - s for f, s in zip(_ema_series(closes, MACD_FAST),
+                                  _ema_series(closes, MACD_SLOW))]
+    return macd, _ema_series(macd, MACD_SIG)
+
+
+def qualified_620_crosses(series: list[dict], adr_dollar: float,
+                          start_idx: int) -> list[tuple[int, float]]:
+    """Qualified bullish 620 crosses at global indices >= start_idx, #562's frozen
+    guards VERBATIM (327s2 reconstruction): cross above the signal with MACD < 0;
+    global index >= MIN_CROSS_IDX; basing — high-low range of the prior BASING_BARS
+    buckets <= BASING_BAND_ADR x ADR$; hook — the MACD's HOOK_SHORT-bucket min <= its
+    HOOK_LONG-bucket min (+1e-9). Returns [(index, cross-bar close)]. Pure."""
+    out: list[tuple[int, float]] = []
+    if not series or adr_dollar is None or adr_dollar <= 0:
+        return out
+    closes = [b["c"] for b in series]
+    macd, sig = macd_620(closes)
+    for i in range(max(1, start_idx), len(series)):
+        if i < MIN_CROSS_IDX:
+            continue
+        if not (macd[i - 1] <= sig[i - 1] and macd[i] > sig[i] and macd[i] < 0):
+            continue
+        w = series[i - BASING_BARS:i]
+        if (max(b["h"] for b in w) - min(b["l"] for b in w)) > BASING_BAND_ADR * adr_dollar:
+            continue
+        if not (min(macd[i - HOOK_SHORT:i]) <= min(macd[i - HOOK_LONG:i]) + 1e-9):
+            continue
+        out.append((i, closes[i]))
+    return out
+
+
+def session_needs_minutes_620(day_high: float, day_low: float, *, gap_close: float,
+                              adr_dollar: Optional[float], state: dict) -> bool:
+    """Daily pre-filter for rung 4: could a proximate cross exist this session? True
+    when the rung is unfired, the band exists, and the session's range intersects the
+    +-0.5xADR$ band around the EP-day close. Cheap and conservative — never decides a
+    fire itself."""
+    if state["fired_ep_close_620_prox"] or adr_dollar is None or adr_dollar <= 0:
+        return False
+    band = PROX_BAND_ADR * adr_dollar
+    return day_low <= gap_close + band and day_high >= gap_close - band
+
+
+def evaluate_session_620(warm_bars5: list[dict], session_bars5: list[dict], *,
+                         gap_close: float, adr_dollar: Optional[float],
+                         state: dict) -> dict:
+    """Rung-4 evaluation for one session. The series = warm-up sessions' completed
+    5-min bars + this session's (continuous EMAs); crosses are taken only from THIS
+    session's buckets. Fire = the first qualified cross whose close sits within
+    0.5xADR$ of the EP-day close; entry = that cross bar's 5-min close (#562 filled at
+    the next 1-min open — a sub-bar difference inside the study's own +-1-bucket
+    reconstruction tolerance); stop = low of day SO FAR (min low of this session's
+    buckets through the cross bar — the operator's TEAM stop basis). A cross closing at
+    the day low (entry <= stop) is skipped and the NEXT cross tried — the frozen
+    fill-sanity rule. Fires at most once per campaign; the fire carries its MANDATORY
+    placeholder near-definition label and the band input. Pure."""
+    st = dict(state)
+    fires: list[dict] = []
+    if st["fired_ep_close_620_prox"] or adr_dollar is None or adr_dollar <= 0:
+        return {"fires": fires, "state": st}
+    series = list(warm_bars5) + list(session_bars5)
+    start = len(warm_bars5)
+    band = PROX_BAND_ADR * adr_dollar
+    for i, close in qualified_620_crosses(series, adr_dollar, start):
+        if abs(close - gap_close) > band:
+            continue
+        stop = min(b["l"] for b in session_bars5[:i - start + 1])
+        if close <= stop or close <= 0:
+            continue                      # frozen: an unfillable cross tries the next one
+        fires.append({"rung": RUNG_620_PROX, "entry": close, "stop": stop,
+                      "fire_minute": series[i]["m"],
+                      "near_definition": NEAR_DEFINITION_PLACEHOLDER,
+                      "band_adr_dollar": adr_dollar})
+        st["fired_ep_close_620_prox"] = True
+        break
+    return {"fires": fires, "state": st}
+
+
+def replay_level_break(sessions: list[date], bars_by_day: dict, level: float,
+                       seed_prior_low: Optional[float]) -> dict:
+    """Re-entry level-touch replay (pure): the first session whose daily HIGH reaches
+    `level` — a resting stop-buy AT the level (the ep_high_break daily convention: a
+    touch is provable from the daily bar; buy = the LEVEL, stop = the prior session's
+    low). Missing sessions are COUNTED, never leapt silently — a fire recorded after
+    missing sessions may be later than the true first touch (the caller stamps it). A
+    fire whose prior-session low is unknown ABSTAINS (fire_date None, abstained True):
+    the row cannot state its stop, so it is retried next run, never guessed."""
+    missing = 0
+    prior_low = seed_prior_low
+    for d in sessions:
+        b = bars_by_day.get(d) or {}
+        hi, lo = _f(b.get("high_price")), _f(b.get("low_price"))
+        if hi is None or lo is None:
+            missing += 1
+            prior_low = None              # the NEXT session's stop basis is now unknown
+            continue
+        if hi >= level:
+            if prior_low is None or prior_low <= 0:
+                return {"fire_date": None, "prior_low": None, "missing": missing,
+                        "abstained": True}
+            return {"fire_date": d, "prior_low": prior_low, "missing": missing,
+                    "abstained": False}
+        prior_low = lo
+    return {"fire_date": None, "prior_low": None, "missing": missing, "abstained": False}
+
+
 # ── Pure settlement core (fixture-testable, no IO) ─────────────────────────────────────
 
 
@@ -549,6 +748,9 @@ def compute_settlement(*, entry: float, stop: float, fire_minute: Optional[int],
         "mfe_r": round((mfe - entry) / risk, 4) if mfe is not None else None,
         "mae_r": round((mae - entry) / risk, 4) if mae is not None else None,
         "reached_4r": reached4,
+        # 0 = the fire day, i>=1 = sessions[i-1]; the caller maps it to stop_hit_date.
+        # Recorded so the re-entry pass can start the session AFTER the stop (day-2+).
+        "stop_session_idx": none_exit if none_outcome == "stop" else None,
     }
 
 
@@ -575,6 +777,21 @@ async def _fetch_minute_5(ticker: str, session_day: date) -> list[dict]:
     return to_rth_5min(raw, session_day)
 
 
+async def _fetch_620_warmup(ticker: str, session_date: date, ordered_days: list,
+                            cache: dict) -> list[dict]:
+    """Up to WARMUP_SESSIONS_620 prior sessions' completed 5-min bars, ascending — the
+    EMA seed for the continuous 620 series. Best-effort by design: a missing warm-up
+    day shortens the seed and MIN_CROSS_IDX stays the binding guard (#562's own
+    day-one crosses had exactly that warm-up). Cached per member per run."""
+    warm: list[dict] = []
+    prior = [d for d in ordered_days if d < session_date][-WARMUP_SESSIONS_620:]
+    for d in prior:
+        if d not in cache:
+            cache[d] = await _fetch_minute_5(ticker, d)
+        warm.extend(cache[d])
+    return warm
+
+
 def _member_context(seed_row: dict) -> dict:
     """The EP-day context stamped on every row, carried from the walk-seed row."""
     return {
@@ -591,6 +808,9 @@ def _member_context(seed_row: dict) -> dict:
         "gap_day_close": _f(seed_row.get("gap_day_close")),
         "gap_day_high": _f(seed_row.get("gap_day_high")),
         "gap_day_volume": seed_row.get("gap_day_volume"),
+        # rung-4 band context — overwritten by the walker's fresh recompute every run
+        "ep_adr20_dollar": _f(seed_row.get("ep_adr20_dollar")),
+        "ep_adr20_n": seed_row.get("ep_adr20_n"),
     }
 
 
@@ -629,7 +849,7 @@ async def enroll_new_members(today: date) -> int:
                 "dipped_below_close_seen": False, "low_of_dip": None,
                 "gap_high_exceeded": False,
                 "fired_ep_low_reclaim": False, "fired_ep_close_reclaim": False,
-                "fired_ep_high_break": False,
+                "fired_ep_high_break": False, "fired_ep_close_620_prox": False,
                 "eval_status": "complete" if close is not None else "unscoreable",
                 "unscoreable_reason": None if close is not None else "missing_daily_bar",
                 "ep_score": _f(c.get("ep_score")), "catalyst_grade": grade,
@@ -715,6 +935,12 @@ async def _walk_one_member(member: dict, today: date, out: dict) -> None:
     bars_by_day = {b["trade_date"]: b for b in daily}
     ordered_days = [b["trade_date"] for b in daily]
 
+    # rung-4 band input: EP-day-anchored ADR$, recomputed FRESH from the same ranged
+    # read every run (stored values are context, never trusted for the rule)
+    adr_dollar, adr_n = compute_ep_adr_dollar(daily, ep_date, gap_close)
+    ctx["ep_adr20_dollar"], ctx["ep_adr20_n"] = adr_dollar, adr_n
+    warm_cache: dict[date, list] = {}
+
     for session_date in sessions:
         if session_idx >= LANE_SESSIONS:
             break
@@ -767,26 +993,45 @@ async def _walk_one_member(member: dict, today: date, out: dict) -> None:
         needs_minutes = session_needs_minutes(
             day_high, day_low, gap_low=gap_low, gap_close=gap_close,
             gap_high=gap_high, state=state)
+        needs_620 = session_needs_minutes_620(
+            day_high, day_low, gap_close=gap_close, adr_dollar=adr_dollar, state=state)
+
+        bars5: list[dict] = []
+        if needs_minutes or needs_620:
+            bars5 = await _fetch_minute_5(ticker, session_date)
+
+        if (needs_minutes or needs_620) and not bars5:
+            # ABSTAIN: fold the raw daily facts (facts are facts), fire no minute-grade
+            # pattern, retry on later runs while the name is in the lane. When ONLY the
+            # rung-4 band needed minutes, patterns 1-3 keep full daily fidelity
+            # (prior_low passes through, so an unambiguous ep_high_break may still fire
+            # and is recorded below); when patterns 1-3 needed them, no fire can slip
+            # through: needs_minutes=True precludes the daily path's unambiguous-P3
+            # condition (clean state + whole bar at/above the EP close), and
+            # prior_session_low=None blocks P3 regardless.
+            res = evaluate_session_daily(
+                day_high, day_low, gap_low=gap_low, gap_close=gap_close,
+                gap_high=gap_high,
+                prior_session_low=(None if needs_minutes else prior_low), state=state)
+            state = res["state"]
+            row.update(_state_cols(state))
+            row.update({"eval_status": "unscoreable",
+                        "unscoreable_reason": "missing_minute_bars"})
+            for fire in res["fires"]:
+                wrote = await _record_trigger(
+                    ticker=ticker, ep_date=ep_date, session_date=session_date,
+                    session_idx=session_idx, fire=fire, ctx=ctx, state=state,
+                    day_bar=(day_open, day_high, day_low, day_close, day_volume),
+                    prior_low=prior_low, ordered_days=ordered_days,
+                    bars_by_day=bars_by_day, resolution="daily")
+                if wrote:
+                    out["triggers"] += 1
+            await upsert_delayed_entry_watch(row)
+            out["watch_rows"] += 1
+            out["unscoreable"] += 1
+            continue
 
         if needs_minutes:
-            bars5 = await _fetch_minute_5(ticker, session_date)
-            if not bars5:
-                # ABSTAIN: fold the raw daily facts (facts are facts), fire nothing,
-                # retry on later runs while the name is in the lane. No fire can slip
-                # through this call: needs_minutes=True precludes the daily path's
-                # unambiguous-P3 condition (clean state + whole bar at/above the EP
-                # close), and prior_session_low=None blocks P3 regardless.
-                res = evaluate_session_daily(
-                    day_high, day_low, gap_low=gap_low, gap_close=gap_close,
-                    gap_high=gap_high, prior_session_low=None, state=state)
-                state = res["state"]
-                row.update(_state_cols(state))
-                row.update({"eval_status": "unscoreable",
-                            "unscoreable_reason": "missing_minute_bars"})
-                await upsert_delayed_entry_watch(row)
-                out["watch_rows"] += 1
-                out["unscoreable"] += 1
-                continue
             res = evaluate_session_minute(
                 bars5, gap_low=gap_low, gap_close=gap_close, gap_high=gap_high,
                 prior_session_low=prior_low, state=state)
@@ -794,6 +1039,14 @@ async def _walk_one_member(member: dict, today: date, out: dict) -> None:
             res = evaluate_session_daily(
                 day_high, day_low, gap_low=gap_low, gap_close=gap_close,
                 gap_high=gap_high, prior_session_low=prior_low, state=state)
+
+        if needs_620:
+            warm = await _fetch_620_warmup(ticker, session_date, ordered_days, warm_cache)
+            r620 = evaluate_session_620(
+                warm, bars5, gap_close=gap_close, adr_dollar=adr_dollar,
+                state=res["state"])
+            res = {"fires": res["fires"] + r620["fires"], "state": r620["state"],
+                   "p3_needs_prior_low": res.get("p3_needs_prior_low", False)}
 
         state = res["state"]
         row.update(_state_cols(state))
@@ -830,6 +1083,7 @@ def _base_watch_row(ticker, ep_date, session_date, session_idx, ctx, state) -> d
         "prev_close": ctx["prev_close"], "ep_dollar_volume": ctx["ep_dollar_volume"],
         "extension_pct": ctx["extension_pct"], "screen_member": ctx["screen_member"],
         "screen_version": ctx["screen_version"] or SCREEN_VERSION,
+        "ep_adr20_dollar": ctx.get("ep_adr20_dollar"), "ep_adr20_n": ctx.get("ep_adr20_n"),
     }
     row.update(_state_cols(state))
     return row
@@ -878,6 +1132,11 @@ async def _record_trigger(*, ticker, ep_date, session_date, session_idx, fire, c
         "catalyst_grade": ctx["catalyst_grade"], "screen_member": ctx["screen_member"],
         "screen_version": ctx["screen_version"] or SCREEN_VERSION,
         "prior_missing_sessions": missing_before,
+        "attempt_no": 1, "reentry_shape": SHAPE_FIRST, "prior_attempt_id": None,
+        # the rung-4 placeholder label + band travel WITH the fire from the definition
+        # site (evaluate_session_620) — None on every other rung
+        "near_definition": fire.get("near_definition"),
+        "band_adr_dollar": fire.get("band_adr_dollar"),
     })
 
 
@@ -951,6 +1210,10 @@ async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
 
     if res["status"] == "settled":
         fields = {k: v for k, v in res.items() if k != "status"}
+        idx = fields.pop("stop_session_idx", None)
+        if idx is not None:
+            # the SHARED stop's touch day (raw fact): day 0 = the fire day itself
+            fields["stop_hit_date"] = fire_date if idx == 0 else sessions[idx - 1]
         fields["settle_version"] = SETTLE_VERSION
         if await settle_delayed_entry_trigger(trig["id"], fields):
             out["settle_settled"] += 1
@@ -1002,6 +1265,250 @@ async def settle_open_triggers(today: date, out: dict) -> None:
                 pass
 
 
+# ── Re-entry recording (piece 2 — RECORDING only; the review rules, never this code) ───
+
+
+async def _replay_same_pattern_reclaim(cand: dict, sessions: list[date], bars_by_day: dict,
+                                       ordered_days: list) -> Optional[dict]:
+    """Fresh-state walk of the rung's OWN pattern over the re-entry window (same
+    evaluators, same pivots — the definition is reused, not redesigned). Only THIS
+    rung's fire is taken; other rungs' fires in the fresh walk are ignored (this is a
+    per-rung campaign replay, not a second lane). Missing sessions are counted into the
+    prior_missing_sessions stamp, never leapt silently."""
+    rung = cand["rung"]
+    gap_low, gap_close, gap_high = (_f(cand.get("gap_day_low")),
+                                    _f(cand.get("gap_day_close")),
+                                    _f(cand.get("gap_day_high")))
+    if gap_low is None or gap_close is None or gap_high is None:
+        return None
+    state = new_state()
+    missing = 0
+    for d in sessions:
+        b = bars_by_day.get(d) or {}
+        day_high, day_low = _f(b.get("high_price")), _f(b.get("low_price"))
+        if day_high is None or day_low is None:
+            missing += 1
+            continue
+        prior_low = _prior_session_low(ordered_days, bars_by_day, d)
+        if session_needs_minutes(day_high, day_low, gap_low=gap_low,
+                                 gap_close=gap_close, gap_high=gap_high, state=state):
+            bars5 = await _fetch_minute_5(cand["ticker"], d)
+            if not bars5:
+                missing += 1              # ABSTAIN this session; facts still fold
+                res = evaluate_session_daily(
+                    day_high, day_low, gap_low=gap_low, gap_close=gap_close,
+                    gap_high=gap_high, prior_session_low=None, state=state)
+                state = res["state"]
+                continue
+            res = evaluate_session_minute(
+                bars5, gap_low=gap_low, gap_close=gap_close, gap_high=gap_high,
+                prior_session_low=prior_low, state=state)
+        else:
+            res = evaluate_session_daily(
+                day_high, day_low, gap_low=gap_low, gap_close=gap_close,
+                gap_high=gap_high, prior_session_low=prior_low, state=state)
+        state = res["state"]
+        for fire in res["fires"]:
+            if fire["rung"] == rung:
+                return {"fire": fire, "fire_date": d, "prior_low": prior_low,
+                        "missing": missing}
+    return None
+
+
+async def _replay_same_pattern_620(cand: dict, sessions: list[date], bars_by_day: dict,
+                                   ordered_days: list) -> Optional[dict]:
+    """Fresh 620 replay for a stopped rung-4 campaign: the next qualified proximate
+    turn after the stop-out, same frozen instrument, band recomputed from raw bars."""
+    gap_close = _f(cand.get("gap_day_close"))
+    if gap_close is None:
+        return None
+    daily = [bars_by_day[d] for d in ordered_days]
+    adr_dollar, _n = compute_ep_adr_dollar(daily, cand["ep_date"], gap_close)
+    if adr_dollar is None or adr_dollar <= 0:
+        return None
+    state = new_state()
+    missing = 0
+    warm_cache: dict[date, list] = {}
+    for d in sessions:
+        b = bars_by_day.get(d) or {}
+        day_high, day_low = _f(b.get("high_price")), _f(b.get("low_price"))
+        if day_high is None or day_low is None:
+            missing += 1
+            continue
+        if not session_needs_minutes_620(day_high, day_low, gap_close=gap_close,
+                                         adr_dollar=adr_dollar, state=state):
+            continue
+        bars5 = await _fetch_minute_5(cand["ticker"], d)
+        if not bars5:
+            missing += 1                  # ABSTAIN this session, retry next run
+            continue
+        warm = await _fetch_620_warmup(cand["ticker"], d, ordered_days, warm_cache)
+        res = evaluate_session_620(warm, bars5, gap_close=gap_close,
+                                   adr_dollar=adr_dollar, state=state)
+        state = res["state"]
+        if res["fires"]:
+            return {"fire": res["fires"][0], "fire_date": d,
+                    "prior_low": _prior_session_low(ordered_days, bars_by_day, d),
+                    "missing": missing}
+    return None
+
+
+async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_date: date,
+                                  prior_low: Optional[float], bars_by_day: dict,
+                                  ordered_days: list, missing: int) -> bool:
+    """Assemble + insert one attempt_no=2 re-entry row. Its OWN row, linked to the
+    stopped attempt via prior_attempt_id — it can never overwrite attempt 1 (different
+    reentry_shape = different row under the unique index). Settled later by the same
+    machinery as any trigger, so a FAILED re-entry lands as -1R, counted."""
+    ticker, ep_date = cand["ticker"], cand["ep_date"]
+    entry, stop = float(fire["entry"]), float(fire["stop"])
+    width = stop_width_pct(entry, stop)
+    if width is None:
+        await log_audit_event(
+            "delayed_entry_shadow_error",
+            f"{ticker} {ep_date} {cand['rung']}/{shape}: non-positive entry {entry} — "
+            f"re-entry fire dropped")
+        return False
+    b = bars_by_day.get(fire_date) or {}
+    pre_fire_days = [d for d in ordered_days if d < fire_date]
+    adr, adr_n = compute_adr20([bars_by_day[d] for d in pre_fire_days])
+    gap_high = _f(cand.get("gap_day_high"))
+    ghe = None
+    if gap_high is not None:
+        highs = [_f(bars_by_day[d].get("high_price")) for d in pre_fire_days
+                 if d > ep_date]
+        ghe = any(h is not None and h >= gap_high for h in highs)
+    return await insert_delayed_entry_trigger({
+        "ticker": ticker, "ep_date": ep_date, "rung": cand["rung"],
+        "pattern_version": PATTERN_VERSION, "fire_date": fire_date,
+        "fire_minute_et": fire.get("fire_minute"),
+        "resolution": "minute_5" if fire.get("fire_minute") is not None else "daily",
+        "sessions_since_ep": max(0, len(_trading_days(ep_date, fire_date)) - 1),
+        "entry_price": entry, "stop_price": stop, "stop_width_pct": width,
+        "gap_day_low": _f(cand.get("gap_day_low")),
+        "gap_day_close": _f(cand.get("gap_day_close")),
+        "gap_day_high": gap_high, "gap_day_volume": cand.get("gap_day_volume"),
+        "prior_session_low": prior_low,
+        "day_open": _f(b.get("open_price")), "day_high": _f(b.get("high_price")),
+        "day_low": _f(b.get("low_price")), "day_close": _f(b.get("close")),
+        "day_volume": b.get("volume"),
+        "adr20_pct": adr, "adr20_n": adr_n,
+        "gap_high_exceeded_before": ghe,
+        "in_active_theme": cand.get("in_active_theme"),
+        "ep_score": _f(cand.get("ep_score")),
+        "catalyst_grade": cand.get("catalyst_grade"),
+        "screen_member": cand.get("screen_member"),
+        "screen_version": cand.get("screen_version") or SCREEN_VERSION,
+        "prior_missing_sessions": missing,
+        "attempt_no": 2, "reentry_shape": shape, "prior_attempt_id": cand["id"],
+        # EVERY row of a rung-4 campaign carries the placeholder label (its rung-4
+        # result rests on the band no matter which shape fired) — CHECK-enforced
+        "near_definition": (NEAR_DEFINITION_PLACEHOLDER
+                            if cand["rung"] == RUNG_620_PROX
+                            else fire.get("near_definition")),
+        "band_adr_dollar": fire.get("band_adr_dollar"),
+    })
+
+
+async def _record_reentries_for(cand: dict, today: date, out: dict) -> None:
+    """Replay BOTH bounded re-entry shapes for one settled-stop first attempt, writing
+    at most one attempt_no=2 row per shape. The window is REENTRY_WATCH_SESSIONS
+    trading sessions starting the session AFTER the stop-out — the day-2+ boundary is
+    structural, not a filter (same-day re-entry is out of scope, ruled 2026-08-30)."""
+    ticker, ep_date, rung = cand["ticker"], cand["ep_date"], cand["rung"]
+    stop_day = cand["stop_hit_date"]
+    sessions = _trading_days(stop_day + timedelta(days=1), today)[:REENTRY_WATCH_SESSIONS]
+    if not sessions:
+        return                            # the stop settled tonight — window opens tomorrow
+    window = await get_delayed_entry_daily_window(
+        ticker, min(ep_date, stop_day) - timedelta(days=_ADR_FETCH_CAL_DAYS), today)
+    bars_by_day = {b["trade_date"]: b for b in window}
+    ordered_days = [b["trade_date"] for b in window]
+    gap_high = _f(cand.get("gap_day_high"))
+
+    shapes = []
+    if not cand.get("has_same_pattern"):
+        shapes.append(SHAPE_SAME)
+    if not cand.get("has_new_high_break"):
+        shapes.append(SHAPE_NEWHIGH)
+    for shape in shapes:
+        if shape == SHAPE_SAME and rung in (RUNG_EP_LOW, RUNG_EP_CLOSE):
+            hit = await _replay_same_pattern_reclaim(cand, sessions, bars_by_day,
+                                                     ordered_days)
+        elif shape == SHAPE_SAME and rung == RUNG_620_PROX:
+            hit = await _replay_same_pattern_620(cand, sessions, bars_by_day,
+                                                 ordered_days)
+        else:
+            # level-touch shapes, daily-provable (a touch of a resting stop-buy level):
+            #   same_pattern of ep_high_break = a re-touch of the EP-day high
+            #   new_high_break (any rung)     = a break above MAX(EP-day high, every
+            #     session high through the stop-out) — proof of strength (the R3 shape)
+            if gap_high is None:
+                continue
+            level = gap_high
+            missing_ref = 0
+            if shape == SHAPE_NEWHIGH:
+                ref_days = _trading_days(ep_date + timedelta(days=1), stop_day)
+                highs = []
+                for d in ref_days:
+                    h = _f((bars_by_day.get(d) or {}).get("high_price"))
+                    if h is None:
+                        missing_ref += 1  # an unseen high can only UNDERSTATE the level
+                    else:
+                        highs.append(h)
+                level = max([gap_high] + highs)
+            seed = bars_by_day.get(stop_day) or {}
+            lb = replay_level_break(sessions, bars_by_day, level,
+                                    seed_prior_low=_f(seed.get("low_price")))
+            if lb["abstained"] or lb["fire_date"] is None:
+                continue                  # abstain-and-retry next run / nothing yet
+            hit = {"fire": {"rung": rung, "entry": level, "stop": lb["prior_low"],
+                            "fire_minute": None},
+                   "fire_date": lb["fire_date"], "prior_low": lb["prior_low"],
+                   "missing": lb["missing"] + missing_ref}
+        if hit is None:
+            continue
+        wrote = await _record_attempt_trigger(
+            cand, shape, fire=hit["fire"], fire_date=hit["fire_date"],
+            prior_low=hit["prior_low"], bars_by_day=bars_by_day,
+            ordered_days=ordered_days, missing=hit["missing"])
+        if wrote:
+            out["reentry_recorded"] += 1
+
+
+async def record_reentry_attempts(today: date, out: dict) -> None:
+    """The re-entry recording pass — rides the same evening run, AFTER settlement, so a
+    stop settled tonight enters the pass immediately (its replay window simply starts
+    tomorrow). RECORDING ONLY: no policy decided, nothing traded, nothing alerted.
+    Per-candidate failures degrade to mi_audit_log and the pass continues."""
+    try:
+        cands = await get_delayed_entry_reentry_candidates(
+            today - timedelta(days=REENTRY_MAX_CAL_DAYS))
+    except Exception as e:
+        out["errors"] += 1
+        logger.error(f"delayed_entry_shadow: re-entry candidate read failed: {e}",
+                     exc_info=True)
+        await log_audit_event("delayed_entry_shadow_error",
+                              f"re-entry read: {type(e).__name__}: {e}")
+        return
+    for cand in cands:
+        out["reentry_considered"] += 1
+        try:
+            await _record_reentries_for(cand, today, out)
+        except Exception as e:
+            out["errors"] += 1
+            logger.error(
+                f"delayed_entry_shadow: re-entry {cand.get('ticker')} "
+                f"{cand.get('rung')} failed: {e}")
+            try:
+                await log_audit_event(
+                    "delayed_entry_shadow_error",
+                    f"re-entry {cand.get('ticker')} {cand.get('rung')} "
+                    f"{cand.get('ep_date')}: {type(e).__name__}: {e}")
+            except Exception:  # loud-ok: log_audit_event self-catches; logger fired above
+                pass
+
+
 async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, int]:
     """The evening job: enroll today's EP-scan names, advance every lane member through
     today, then SETTLE every open trigger that has become definitive (inline — one job,
@@ -1016,7 +1523,7 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
     out = {"enrolled": 0, "members": 0, "watch_rows": 0, "triggers": 0,
            "unscoreable": 0, "errors": 0,
            "settle_considered": 0, "settle_settled": 0, "settle_abstained": 0,
-           "settle_unscoreable": 0}
+           "settle_unscoreable": 0, "reentry_considered": 0, "reentry_recorded": 0}
     try:
         out["enrolled"] = await enroll_new_members(today)
     except Exception as e:
@@ -1053,6 +1560,10 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
     # settlement rides the SAME run (one job -> one digest); it self-catches per trigger
     await settle_open_triggers(today, out)
 
+    # re-entry recording runs AFTER settlement so tonight's settled stops enter the
+    # pass immediately (their replay window starts the next session — day-2+)
+    await record_reentry_attempts(today, out)
+
     try:
         await log_audit_event(
             "delayed_entry_shadow_recorded",
@@ -1062,7 +1573,9 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
             f"{out['errors']} error(s)); settlement: {out['settle_considered']} open "
             f"trigger(s) considered, {out['settle_settled']} settled, "
             f"{out['settle_abstained']} abstained (still open — retry), "
-            f"{out['settle_unscoreable']} closed unscoreable")
+            f"{out['settle_unscoreable']} closed unscoreable; re-entry: "
+            f"{out['reentry_considered']} stopped campaign(s) considered, "
+            f"{out['reentry_recorded']} attempt row(s) recorded")
     except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
         logger.warning(f"delayed_entry_shadow audit emit failed (non-fatal): {_e}")
     return out
