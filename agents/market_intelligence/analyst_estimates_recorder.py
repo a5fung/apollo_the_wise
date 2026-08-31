@@ -11,7 +11,7 @@ THE LINE — read before touching anything here. DATA CAPTURE ONLY:
   - No rubric axis, no scoring change, no admission change lives here. The #333 axis
     itself needs operator sign-off + CHANGE_PROCESS long after this capture.
   - Read by NO grading / entry / sizing / ordering / safeguard path.
-  - Never touches the 09:45 ET scan path — this is an EOD scheduled job (18:05 ET).
+  - Never touches the 09:45 ET scan path — this is an EOD scheduled job (18:12 ET).
   - SILENT: no Telegram on any path. Errors degrade to mi_audit_log + logs; the
     detector-liveness registry (health_checks._DETECTOR_LIVENESS_TABLES,
     mi_analyst_estimates) is the watchdog for a silently-dead writer.
@@ -58,6 +58,7 @@ from datetime import date
 from typing import Any, Optional
 
 from agents.market_intelligence.db import (
+    _f,
     get_analyst_estimate_population,
     log_audit_event,
     upsert_analyst_estimates,
@@ -75,14 +76,10 @@ FMP_PACE_SECONDS = 0.25           # courtesy pacing, ~240 calls/min worst case
 
 # ── pure core (mock-free, the house idiom) ────────────────────────────────────────────
 
-def _f(v) -> Optional[float]:
-    try:
-        return None if v is None else float(v)
-    except (TypeError, ValueError):
-        return None
-
-
 def _i(v) -> Optional[int]:
+    """None-safe int coercion. NOT db._int_or_none — that one raises on garbage
+    (its callers want a BIGINT param to fail loudly); an FMP field must degrade to
+    None instead. Float coercion is db._f, imported above."""
     try:
         return None if v is None else int(v)
     except (TypeError, ValueError):
@@ -251,35 +248,52 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
     return out
 
 
-async def run_analyst_estimates_snapshot(
-    today: date, tickers: "list[str] | None" = None
-) -> dict[str, Any]:
-    """The daily 18:05 ET snapshot. Population: live-source EP-alert tickers from the
-    trailing POPULATION_LOOKBACK_DAYS — today's alerts get their estimates recorded
-    the same evening (honest as-of the alert day: as_of_date is the read date, never
-    back-stamped), and recent-alert names keep accruing a revision series. Never
-    raises; SILENT (no Telegram on any path)."""
+_EMPTY_RUN = {"population": 0, "tickers_written": 0, "rows_written": 0,
+              "no_anchor": 0, "quarter_unavailable": 0, "errors": 1}
+
+
+async def _run_and_log(tickers: list[str], today: date, event_type: str,
+                       summary_prefix: str = "") -> dict[str, Any]:
+    """Run the population and write ONE audit row. The daily snapshot and the one-shot
+    backfill are the same run over different populations — extracted so a change to the
+    counters or the audit shape lands in one place, not two (the duplication class
+    `_persist_minute_bars_for_ticker_day` was pulled apart for the same day).
+    Never raises into the scheduler; SILENT (no Telegram on any path)."""
     try:
-        if tickers is None:
-            from datetime import timedelta
-            since = today - timedelta(days=POPULATION_LOOKBACK_DAYS)
-            tickers = await get_analyst_estimate_population(since)
-        out = await _run_over_tickers(tickers, today, "analyst_estimates_snapshot")
+        out = await _run_over_tickers(tickers, today, event_type)
         try:
             await log_audit_event(
-                "analyst_estimates_snapshot",
-                f"{out['rows_written']} row(s) across {out['tickers_written']}/"
-                f"{out['population']} ticker(s); {out['no_anchor']} no-anchor, "
+                event_type,
+                f"{summary_prefix}{out['rows_written']} row(s) across "
+                f"{out['tickers_written']}/{out['population']} ticker(s); "
+                f"{out['no_anchor']} no-anchor (zero honest days, by design), "
                 f"{out['quarter_unavailable']} quarter-unavailable, "
                 f"{out['errors']} error(s)",
             )
         except Exception:  # loud-ok: counters already logged by the scheduler wrapper
             pass
         return out
-    except Exception as e:  # never raises into the scheduler
-        logger.error(f"analyst_estimates_snapshot failed: {e}", exc_info=True)
-        return {"population": 0, "tickers_written": 0, "rows_written": 0,
-                "no_anchor": 0, "quarter_unavailable": 0, "errors": 1}
+    except Exception as e:
+        logger.error(f"{event_type} failed: {e}", exc_info=True)
+        return dict(_EMPTY_RUN)
+
+
+async def run_analyst_estimates_snapshot(
+    today: date, tickers: "list[str] | None" = None
+) -> dict[str, Any]:
+    """The daily 18:12 ET snapshot. Population: live-source EP-alert tickers from the
+    trailing POPULATION_LOOKBACK_DAYS — today's alerts get their estimates recorded
+    the same evening (honest as-of the alert day: as_of_date is the read date, never
+    back-stamped), and recent-alert names keep accruing a revision series."""
+    try:
+        if tickers is None:
+            from datetime import timedelta
+            since = today - timedelta(days=POPULATION_LOOKBACK_DAYS)
+            tickers = await get_analyst_estimate_population(since)
+    except Exception as e:
+        logger.error(f"analyst_estimates_snapshot population query failed: {e}", exc_info=True)
+        return dict(_EMPTY_RUN)
+    return await _run_and_log(tickers, today, "analyst_estimates_snapshot")
 
 
 async def run_analyst_estimates_backfill(today: date) -> dict[str, Any]:
@@ -288,23 +302,11 @@ async def run_analyst_estimates_backfill(today: date) -> dict[str, Any]:
     window [anchor_filing_date, as_of_date] is baked into every row — the backfill IS
     a snapshot with a wider population; the valid-from semantics do the rest. A ticker
     that reported last week buys days; one with no resolvable filing buys ZERO, by
-    design. ~1,000 calls once (~335 tickers x 3). Never raises."""
+    design. ~1,000 calls once (~335 tickers x 3)."""
     try:
         tickers = await get_analyst_estimate_population(date(2000, 1, 1))
-        out = await _run_over_tickers(tickers, today, "analyst_estimates_backfill")
-        try:
-            await log_audit_event(
-                "analyst_estimates_backfill",
-                f"one-shot backfill: {out['rows_written']} row(s) across "
-                f"{out['tickers_written']}/{out['population']} ticker(s); "
-                f"{out['no_anchor']} no-anchor (zero honest days, by design), "
-                f"{out['quarter_unavailable']} quarter-unavailable, "
-                f"{out['errors']} error(s)",
-            )
-        except Exception:  # loud-ok
-            pass
-        return out
     except Exception as e:
-        logger.error(f"analyst_estimates_backfill failed: {e}", exc_info=True)
-        return {"population": 0, "tickers_written": 0, "rows_written": 0,
-                "no_anchor": 0, "quarter_unavailable": 0, "errors": 1}
+        logger.error(f"analyst_estimates_backfill population query failed: {e}", exc_info=True)
+        return dict(_EMPTY_RUN)
+    return await _run_and_log(tickers, today, "analyst_estimates_backfill",
+                              summary_prefix="one-shot backfill: ")

@@ -690,7 +690,10 @@ only rebuilding transform on the rescore->save path, `_strip_sector_outliers`, s
   LLM + F4 own whether any become members.
 - **Reversion-flag**: NEW (first exemption on the assignment pool's floor). Revert = remove
   the M2 block in `run_theme_engine` (the db accessor + helper go inert).
-- **Status**: built + tested (15 new tests, suite 4465 green), NOT deployed, NOT committed.
+- **Status**: ✅ **SHIPPED 2026-08-05 (`588ac305`) and live since** — the status below is
+  what stood the day the entry was written, corrected 2026-08-31 (the drift scan reads the
+  most recent word on a subject as a CURRENT claim wherever it sits): built + tested,
+  15 new tests, suite 4465 green.
 - **Verify-live**: after the first nightly run, check the `seeded_pool_admission` audit row
   + whether BTDR reaches the assignment prompt (and, if assigned, survives F4).
 
@@ -789,8 +792,14 @@ instead of passing vacuously.
   permanent once announced, no resolve/re-open path (unlike the null/job-liveness sweeps' reconcile).
 - **Reversion-flag**: NEW (first check of this class). Revert = remove the `run_theme_quality_check`
   call site in `_post_nightly_audit_job`.
-- **Status**: built + tested (26 new tests, suite 4379 green), NOT deployed, NOT committed.
-- **Caveat for verify-live**: #368's F2/F3 are committed locally but not yet deployed to prod — the
+- **Status**: ✅ **SHIPPED 2026-08-04 (`5ef6781b`) and live since** — as above, the
+  original entry's day-of status, corrected 2026-08-31: built + tested, 26 new tests,
+  suite 4379 green.
+- **Caveat for verify-live** (RESOLVED — kept for the record): when written, #368's F2/F3
+  were committed locally but not yet in prod, so the first live run was expected to alert on
+  the 2026-08-04 Bitcoin Mining retirement (a real, correct alert on a defect the fix had not
+  reached production for). F2/F3 shipped 2026-08-04 (see the member-pruning and retire-streak
+  bullets at the top of this file, repaired 2026-08-26); the caveat no longer applies.
   first live run of this check WILL alert on the 2026-08-04 Bitcoin Mining retirement (a real,
   correct alert on a defect the fix hasn't reached production for yet, not a broken new guard).
 

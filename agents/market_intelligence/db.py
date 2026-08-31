@@ -13625,7 +13625,7 @@ async def get_ticker_breadth_above_sma20(
 
 
 # ── #333 ANALYST-ESTIMATES RECORDER queries (2026-08-31) ─────────────────────────────
-# Single writer: analyst_estimates_recorder.py (18:05 ET job). DATA CAPTURE ONLY —
+# Single writer: analyst_estimates_recorder.py (18:12 ET job). DATA CAPTURE ONLY —
 # no grading / entry / sizing / safeguard path reads these (THE LINE). Schema + the
 # honesty contract: the mi_analyst_estimates DDL block above.
 
@@ -13651,17 +13651,23 @@ _ANALYST_EST_UPSERT_SQL = (
 
 async def upsert_analyst_estimates(rows: list[dict]) -> int:
     """UPSERT estimate rows (one per ticker × period_type × period_end × as_of_date).
-    Idempotent — a same-day re-run refreshes the same rows. Returns rows written."""
+    Idempotent — a same-day re-run refreshes the same rows. Returns rows written.
+
+    ONE executemany for the caller's whole list, same as
+    `insert_universe_floor_shadow_rows` above and for the same reason: the recorder
+    calls this once per ticker with up to ~40 period rows, so row-at-a-time would be
+    thousands of round trips per nightly run instead of one per ticker. It also makes
+    a ticker's snapshot atomic, which is what the caller's per-ticker
+    `tickers_written` / `errors` counters already assume."""
     if not rows:
         return 0
     pool = await get_pool()
-    written = 0
     async with pool.acquire() as conn:
-        for row in rows:
-            await conn.execute(_ANALYST_EST_UPSERT_SQL,
-                               *(row.get(c) for c in _ANALYST_EST_COLS))
-            written += 1
-    return written
+        await conn.executemany(
+            _ANALYST_EST_UPSERT_SQL,
+            [tuple(row.get(c) for c in _ANALYST_EST_COLS) for row in rows],
+        )
+    return len(rows)
 
 
 async def get_analyst_estimate_population(since: "str | date") -> list[str]:

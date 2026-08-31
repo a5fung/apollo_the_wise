@@ -3007,6 +3007,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # D-1 floor (see universe_floor_shadow.py). Imported once per tick, not per ticker.
     from agents.market_intelligence.universe_floor_shadow import build_universe_floor_shadow_row
     _dv_floor_shadow_rows: list[dict] = []
+
+    def _record_floor_shadow(ticker, prev_close, prev_volume, gap_pct, *,
+                             today_volume, current_price) -> None:
+        """#606: one row per real candidate, on BOTH sides of the D-1 floor. Defined
+        once here rather than repeated at the three call sites below (two reject
+        branches + the admit branch) so a column added to the row builder is a
+        one-place edit — and, more importantly, so the try/except is UNIFORM. It used
+        to guard only the admit branch; the two reject branches relied on the ticker
+        loop's outer `except Exception: continue`, which reached the same outcome by
+        accident and logged nothing.
+        ⚖ THE LINE: a bug in the shadow builder must never change what the scan
+        admits. Every call site sits AFTER its own admit/reject decision, and this
+        swallows the failure with a warning instead of letting it reach the loop."""
+        try:
+            _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
+                ticker, prev_close, prev_volume, gap_pct,
+                MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
+                minutes_since_open=_minutes_since_open, seen_et=now_et,
+                today_volume=today_volume, current_price=current_price))
+        except Exception as _dve:
+            logger.warning(f"#606 universe-floor shadow row build failed for {ticker}: {_dve}")
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
@@ -3052,11 +3073,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _universe_floor_skips.append(_fs)
                     # #606: real candidate killed by the D-1 floor — record what a
                     # dollar-volume floor would have to work with (raw inputs only).
-                    _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
-                        ticker, prev_close, prev_volume, _fs["gap_pct"],
-                        MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
-                        minutes_since_open=_minutes_since_open, seen_et=now_et,
-                        today_volume=_today_vol, current_price=current_price))
+                    _record_floor_shadow(ticker, prev_close, prev_volume, _fs["gap_pct"],
+                                         today_volume=_today_vol,
+                                         current_price=current_price)
                 continue
 
             # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
@@ -3065,11 +3084,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if _fs:
                     _universe_floor_skips.append(_fs)
                     # #606: same as above — the volume-floor-fail side of the D-1 gate.
-                    _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
-                        ticker, prev_close, prev_volume, _fs["gap_pct"],
-                        MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
-                        minutes_since_open=_minutes_since_open, seen_et=now_et,
-                        today_volume=_today_vol, current_price=current_price))
+                    _record_floor_shadow(ticker, prev_close, prev_volume, _fs["gap_pct"],
+                                         today_volume=_today_vol,
+                                         current_price=current_price)
                 continue
 
             _rt_universe.append((ticker, prev_close))   # #489 watchdog: this ticker cleared all non-gap filters
@@ -3104,17 +3121,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # judging a floor swap needs both directions (recall gained vs. cost incurred).
             # Both floor checks already passed here, so failed_price_floor/failed_volume_floor
             # come back False — recorded anyway for a uniform row shape across both sides.
-            # ⚖ THE LINE: this append sits AFTER candidates.append above and in its own
-            # try/except — a bug in the shadow builder must never un-admit a live candidate
-            # (this loop's own outer except would otherwise silently drop the ticker too).
-            try:
-                _dv_floor_shadow_rows.append(build_universe_floor_shadow_row(
-                    ticker, prev_close, prev_volume, gap_pct,
-                    MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME, today,
-                    minutes_since_open=_minutes_since_open, seen_et=now_et,
-                    today_volume=_today_vol, current_price=current_price))
-            except Exception as _dve:
-                logger.warning(f"#606 universe-floor shadow row build failed for {ticker}: {_dve}")
+            # ⚖ THE LINE: this call sits AFTER candidates.append above, and
+            # _record_floor_shadow swallows its own failures — a bug in the shadow
+            # builder must never un-admit a live candidate.
+            _record_floor_shadow(ticker, prev_close, prev_volume, gap_pct,
+                                 today_volume=_today_vol,
+                                 current_price=current_price)
         except Exception:
             continue
 

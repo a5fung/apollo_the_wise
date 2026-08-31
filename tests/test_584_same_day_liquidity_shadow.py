@@ -198,16 +198,27 @@ def test_ddl_has_the_same_day_columns_and_the_deploy_order_guard():
 def test_all_three_shadow_sites_pass_the_same_day_reading():
     """Both reject branches AND the admitted side must carry the same-day
     read — the comparison population needs it on both sides of the floor.
-    MUTATION TARGET: dropping `today_volume=` from any one build call flips
-    this count."""
+    MUTATION TARGET: dropping `today_volume=` from any one recording site
+    flips this count.
+
+    The three sites route through the `_record_floor_shadow` helper (one
+    guarded builder call) rather than repeating the build — so the count to
+    pin is the RECORDING sites, not the build sites."""
     src = inspect.getsource(ep_detector.run_ep_scan)
-    n_calls = src.count("build_universe_floor_shadow_row(")
+    n_calls = src.count("_record_floor_shadow(") - 1   # minus the def itself
     n_today = src.count("today_volume=_today_vol")
-    assert n_calls >= 3
+    assert n_calls >= 3, (
+        "expected a recording site at the close-floor branch, the volume-floor "
+        "branch, and the admitted-candidate site")
     assert n_today == n_calls, (
-        f"{n_calls} shadow build sites but only {n_today} pass the same-day "
+        f"{n_calls} shadow recording sites but only {n_today} pass the same-day "
         f"volume — a site without it silently records a name as unread")
     assert src.count("current_price=current_price") >= n_calls
+    # And the helper must actually forward both to the builder, or every site
+    # above would pass them into a black hole.
+    build = src[src.index("build_universe_floor_shadow_row("):]
+    assert "today_volume=today_volume" in build[:400]
+    assert "current_price=current_price" in build[:400]
 
 
 def test_today_volume_is_single_sourced_with_the_live_pipeline():

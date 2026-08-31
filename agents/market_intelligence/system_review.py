@@ -1067,7 +1067,12 @@ async def _aggregate_audit_errors(days: int) -> dict:
     # ALARM for it — but the audit row still said `_failed`, so this aggregator counted it.
     # Cost: a week of the operator treating a healthy self-heal as an open defect on the stop
     # path, which is the one place a false alarm is most expensive.
-    _SELF_HEALED = {"stop_update_failed": "stop_update_retry_succeeded"}
+    # A SET, not a map: the recovery is proven by this row's own `attempt` field, not by
+    # joining to a counterpart row. It was written as {failed: retry_succeeded} and the
+    # value was never read — a mapping the code does not perform invites someone to build
+    # on it. (The counterpart type IS `stop_update_retry_succeeded`; that is documentation,
+    # not a lookup.)
+    _SELF_HEALED = frozenset({"stop_update_failed"})
 
     def _is_real(r: dict) -> bool:
         s = (r.get("summary") or "").upper()
@@ -1079,8 +1084,7 @@ async def _aggregate_audit_errors(days: int) -> dict:
             return False
         detail = r.get("detail") or ""
         try:
-            import json as _json
-            return int(_json.loads(detail).get("attempt", 0)) == 1
+            return int(json.loads(detail).get("attempt", 0)) == 1
         except (ValueError, TypeError, AttributeError) as e:
             # NARROW + LOUD, deliberately. A broad silent `except` here would be the exact class
             # this function exists to surface — and the no-silent-failures gate caught me adding

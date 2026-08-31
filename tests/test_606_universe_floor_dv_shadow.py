@@ -234,11 +234,15 @@ def _scan_src() -> str:
 
 def test_run_ep_scan_records_the_shadow_row_on_both_reject_branches_and_admit():
     src = _scan_src()
-    n = src.count("build_universe_floor_shadow_row(")
+    n = src.count("_record_floor_shadow(") - 1   # minus the def itself
     assert n >= 3, (
         "expected a call at the close-floor branch, the volume-floor branch, "
         "and the admitted-candidate site (both directions of the comparison)"
     )
+    # The row is BUILT in exactly one place — the three sites differ only in their gap
+    # source, and three hand-synced copies is how the two reject branches ended up
+    # without the admit branch's try/except in the first place.
+    assert src.count("build_universe_floor_shadow_row(") == 1
 
 
 def test_admitted_side_shadow_call_cannot_un_admit_a_candidate():
@@ -248,13 +252,15 @@ def test_admitted_side_shadow_call_cannot_un_admit_a_candidate():
     outer except can't turn a telemetry bug into a dropped ticker either)."""
     src = _scan_src()
     append_idx = src.index("candidates.append(_snap_candidate(")
-    admit_shadow_idx = src.index("build_universe_floor_shadow_row(", append_idx)
+    admit_shadow_idx = src.index("_record_floor_shadow(", append_idx)
     assert admit_shadow_idx > append_idx, \
         "the admitted-side shadow call must come AFTER candidates.append"
-    window = src[append_idx:admit_shadow_idx]
-    assert "try:" in window  # the shadow append is wrapped, not bare
-    after = src[admit_shadow_idx:admit_shadow_idx + 400]
-    assert "except Exception" in after and "logger.warning" in after, \
+    # The guard now lives INSIDE the helper, so it covers all three sites instead of
+    # only this one — assert it there rather than at this call site.
+    helper = src[src.index("def _record_floor_shadow("):]
+    helper = helper[:helper.index("for ticker, snap in snapshots.items():")]
+    assert "try:" in helper, "the shadow build must be wrapped, not bare"
+    assert "except Exception" in helper and "logger.warning" in helper, \
         "a caught failure here must be logged, not a bare silent pass (no-silent-failures gate)"
 
 
