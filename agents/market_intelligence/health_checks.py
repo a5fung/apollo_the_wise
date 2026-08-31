@@ -1561,6 +1561,15 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # shortlist pre-score shadow above. Keyed on the plain-DATE business column
     # `scan_date` (created_at is timestamptz and would silently never be checked).
     ("mi_universe_floor_shadow", "D-1 universe floor dollar-volume shadow (#606)", "scan_date", None),
+    # #333 analyst-estimates recorder (2026-08-31): written every weekday evening while
+    # ANY live-source EP alert exists in the trailing 30 days — and the recorder is
+    # SILENT by the data-capture contract (no Telegram even on job failure), so this
+    # registry is its ONLY watchdog. A dead writer here silently stops the >=60-day
+    # accrual clock that gates the #333 durability axis — exactly the
+    # can-fail-100%-silently class this registry exists for. Keyed on the plain-DATE
+    # business column `as_of_date` (created_at is timestamptz and would silently never
+    # be checked — the name-based `created_at` rule).
+    ("mi_analyst_estimates", "analyst estimates recorder (#333)", "as_of_date", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

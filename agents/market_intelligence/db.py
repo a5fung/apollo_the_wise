@@ -3284,6 +3284,56 @@ async def initialize_schema() -> None:
                 ON mi_universe_floor_shadow(scan_date DESC);
 
 
+            -- #333 ANALYST-ESTIMATES RECORDER (2026-08-31, analyst_estimates_recorder.py).
+            -- Point-in-time consensus estimates for the EP alert population — DATA CAPTURE
+            -- ONLY (THE LINE): no rubric axis, no scoring, no admission path reads this.
+            -- RAW VALUES, NEVER A SCORE (catalyst_tier_shadow discipline): thresholds are a
+            -- function of today's rule set; a stored score goes stale the moment one is
+            -- swept. Raw rows make every future variant replayable without new data.
+            -- THE HONESTY CONTRACT (the lookahead rule — the defect that invalidated the
+            -- 08-25 structure study): what the API returns today is TODAY'S consensus.
+            --   as_of_date        = the date the estimate was READ (never inferred).
+            --   anchor_filing_date= the ticker's most recent income-statement filingDate at
+            --                       read time. An estimate for a future period persists
+            --                       until results land, so this row's value is the value
+            --                       that stood on ANY date in [valid_from_date, as_of_date].
+            --   valid_from_date   = anchor_filing_date, or as_of_date when no anchor is
+            --                       resolvable (ETFs, non-filers) — NEVER claim history
+            --                       without an anchor; CHECK-enforced <= as_of_date.
+            -- A future reader asking "what did we honestly know on date D" selects rows
+            -- whose [valid_from_date, as_of_date] window covers D — never stamps today's
+            -- read onto a past date outside that window.
+            -- n_analysts is RECORDED, never filtered here: the sketch's n<3 -> None rule is
+            -- applied read-side (analyst_estimates_recorder.estimate_for_scoring) so the
+            -- threshold can be re-tuned without re-fetching.
+            CREATE TABLE IF NOT EXISTS mi_analyst_estimates (
+                ticker                TEXT NOT NULL,
+                as_of_date            DATE NOT NULL,      -- when this value was READ
+                anchor_filing_date    DATE,               -- last filingDate at read time (NULL = unknown)
+                valid_from_date       DATE NOT NULL,      -- earliest date this value honestly stood
+                period_type           TEXT NOT NULL,      -- 'annual' | 'quarter'
+                period_end_date       DATE NOT NULL,      -- the fiscal period the estimate is FOR
+                revenue_avg           DOUBLE PRECISION,
+                revenue_high          DOUBLE PRECISION,
+                revenue_low           DOUBLE PRECISION,
+                eps_avg               DOUBLE PRECISION,
+                eps_high              DOUBLE PRECISION,
+                eps_low               DOUBLE PRECISION,
+                num_analysts_revenue  INT,
+                num_analysts_eps      INT,
+                source                TEXT NOT NULL DEFAULT 'fmp_stable',
+                recorder_version      TEXT NOT NULL,
+                created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, period_type, period_end_date, as_of_date),
+                CHECK (period_type IN ('annual', 'quarter')),
+                CHECK (valid_from_date <= as_of_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_analyst_estimates_asof
+                ON mi_analyst_estimates(as_of_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_analyst_estimates_ticker
+                ON mi_analyst_estimates(ticker, period_type, as_of_date DESC);
+
+
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
             -- record per CLOSED trade answering: what it REACHED (both axes — intraday peak
             -- with WHEN, and the daily-close peak a close-driven rule could have seen), what
@@ -13572,3 +13622,88 @@ async def get_ticker_breadth_above_sma20(
     if not row or not row["total"]:
         return None
     return round(row["above"] / row["total"], 3)
+
+
+# ── #333 ANALYST-ESTIMATES RECORDER queries (2026-08-31) ─────────────────────────────
+# Single writer: analyst_estimates_recorder.py (18:05 ET job). DATA CAPTURE ONLY —
+# no grading / entry / sizing / safeguard path reads these (THE LINE). Schema + the
+# honesty contract: the mi_analyst_estimates DDL block above.
+
+_ANALYST_EST_COLS = (
+    "ticker", "as_of_date", "anchor_filing_date", "valid_from_date",
+    "period_type", "period_end_date",
+    "revenue_avg", "revenue_high", "revenue_low",
+    "eps_avg", "eps_high", "eps_low",
+    "num_analysts_revenue", "num_analysts_eps",
+    "source", "recorder_version",
+)
+_ANALYST_EST_KEY_COLS = frozenset({"ticker", "period_type", "period_end_date", "as_of_date"})
+_ANALYST_EST_UPSERT_SQL = (
+    "INSERT INTO mi_analyst_estimates ("
+    + ", ".join(_ANALYST_EST_COLS)
+    + ") VALUES ("
+    + ", ".join(f"${i + 1}" for i in range(len(_ANALYST_EST_COLS)))
+    + ") ON CONFLICT (ticker, period_type, period_end_date, as_of_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _ANALYST_EST_COLS
+                if c not in _ANALYST_EST_KEY_COLS)
+)
+
+
+async def upsert_analyst_estimates(rows: list[dict]) -> int:
+    """UPSERT estimate rows (one per ticker × period_type × period_end × as_of_date).
+    Idempotent — a same-day re-run refreshes the same rows. Returns rows written."""
+    if not rows:
+        return 0
+    pool = await get_pool()
+    written = 0
+    async with pool.acquire() as conn:
+        for row in rows:
+            await conn.execute(_ANALYST_EST_UPSERT_SQL,
+                               *(row.get(c) for c in _ANALYST_EST_COLS))
+            written += 1
+    return written
+
+
+async def get_analyst_estimate_population(since: "str | date") -> list[str]:
+    """Distinct live-source EP-alert tickers with an alert on/after `since` — the
+    recorder's daily population (the rolling window keeps a revision time series
+    accruing for the names the #333 STEP-0 replay will actually use).
+    LIVE_SOURCE_SQL is the canonical live-fire filter (backfilled historical_scan
+    rows are a different population)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""
+            SELECT DISTINCT ticker FROM mi_ep_alerts
+            WHERE alert_date >= $1 AND {LIVE_SOURCE_SQL}
+            ORDER BY ticker
+            """,
+            _coerce_date(since),
+        )
+    return [r["ticker"] for r in rows]
+
+
+async def get_analyst_estimates_asof(
+    ticker: str, on_date: "str | date", period_type: "str | None" = None
+) -> list[dict]:
+    """The estimate rows HONESTLY known on `on_date`: rows whose
+    [valid_from_date, as_of_date] window covers that date. This is the only sanctioned
+    read for any as-of-a-date question — selecting by as_of alone, or ignoring
+    valid_from, re-creates the lookahead defect the schema exists to prevent.
+    Newest read wins per (period_type, period_end_date)."""
+    pool = await get_pool()
+    d = _coerce_date(on_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT DISTINCT ON (period_type, period_end_date) *
+            FROM mi_analyst_estimates
+            WHERE ticker = $1
+              AND valid_from_date <= $2
+              AND as_of_date >= $2
+              AND ($3::text IS NULL OR period_type = $3)
+            ORDER BY period_type, period_end_date, as_of_date ASC
+            """,
+            ticker, d, period_type,
+        )
+    return [dict(r) for r in rows]

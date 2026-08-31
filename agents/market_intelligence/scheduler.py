@@ -151,6 +151,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "exit_path_shadow",  # 2026-08-16 — per-trading-day path record on every LIVE fill; pure compute + DB/audit, no broker calls, no rule
     "alert_rank_shadow",  # 2026-08-16 — EOD + as-of-09:45 selection-rank record on every EP alert; pure compute + DB/audit, no broker calls, no grading/ordering change
     "delayed_entry_shadow",  # #327 2026-08-30 — EOD watch-lane record on every EP-scan name; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
+    "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
     "spend_alarm",  # #378 Phase 2 — daily LLM-spend alarm (budget cap + 2x-median anomaly); read-only, Telegram only on breach
@@ -4529,6 +4530,46 @@ async def _delayed_entry_shadow_job():
             pass
 
 
+async def _analyst_estimates_snapshot_job():
+    """Run at 18:12 ET mon-fri (EOD shadow family, after the 18:05/18:08/18:09
+    siblings — +3 min spacing).
+
+    #333 2026-08-31 — ANALYST-ESTIMATES RECORDER, the sourcing backbone whose >=60
+    days of stored estimates gate the catalyst-durability forward axis. Snapshots
+    FMP consensus estimates for every live-source EP-alert ticker from the trailing
+    30 days, each row stamped with the date it was READ plus the ticker's last
+    filing date (the honest-window anchor — the lookahead rule). DATA CAPTURE ONLY —
+    no rubric axis, no scoring, no admission change; nothing on the 09:45 scan path
+    reads this (THE LINE; see analyst_estimates_recorder.py module docstring).
+
+    SILENT by the data-capture contract: no notify_job_failure — failures land in
+    mi_audit_log + logs, and the detector-liveness registry (mi_analyst_estimates)
+    is the watchdog for a silently-dead writer. run_analyst_estimates_snapshot
+    itself never raises; the guard here is belt-and-braces for import-time errors."""
+    try:
+        from agents.market_intelligence.analyst_estimates_recorder import (
+            run_analyst_estimates_snapshot,
+        )
+        from agents.market_intelligence.collector import et_today
+        out = await run_analyst_estimates_snapshot(et_today())
+        logger.info(
+            f"analyst-estimates snapshot: {out['rows_written']} row(s) across "
+            f"{out['tickers_written']}/{out['population']} ticker(s), "
+            f"{out['no_anchor']} no-anchor, "
+            f"{out['quarter_unavailable']} quarter-unavailable, "
+            f"{out['errors']} error(s)"
+        )
+    except Exception as e:
+        logger.error(f"analyst-estimates snapshot job failed: {e}", exc_info=True)
+        try:
+            # NO function-local import of log_audit_event (module-level binding — the
+            # UnboundLocalError deploy-gate class, [5c]).
+            await log_audit_event("analyst_estimates_error",
+                                  f"job-level failure: {type(e).__name__}: {e}")
+        except Exception:  # loud-ok: logger.error above already fired
+            pass
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -5609,6 +5650,18 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_delayed_entry_shadow_job, "delayed_entry_shadow"),
         CronTrigger(hour=17, minute=57, day_of_week="mon-fri", timezone="America/New_York"),
         id="delayed_entry_shadow",
+        replace_existing=True,
+    )
+
+    # #333 ANALYST-ESTIMATES RECORDER — 18:12 ET mon-fri (EOD shadow family, after the
+    # 18:05/18:08/18:09 siblings). Snapshots FMP consensus estimates for the trailing
+    # 30-day live-alert population, honest-window stamped (read date + last-filing
+    # anchor). DATA CAPTURE ONLY, SILENT — no Telegram on any path; ~300 FMP calls/run
+    # on a fixed subscription (THE LINE; analyst_estimates_recorder.py docstring).
+    _scheduler.add_job(
+        audit_wrap(_analyst_estimates_snapshot_job, "analyst_estimates_snapshot"),
+        CronTrigger(hour=18, minute=12, day_of_week="mon-fri", timezone="America/New_York"),
+        id="analyst_estimates_snapshot",
         replace_existing=True,
     )
 

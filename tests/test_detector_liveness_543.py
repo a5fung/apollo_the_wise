@@ -187,6 +187,11 @@ def test_module_constant_covers_the_required_tables():
         # fire-and-forget writer read by nothing on the scan path, same
         # can-fail-100%-silently class.
         "mi_universe_floor_shadow",
+        # 2026-08-31 (#333): the analyst-estimates recorder — SILENT by the
+        # data-capture contract (no Telegram even on job failure), so this registry
+        # is its ONLY watchdog; a dead writer silently stops the >=60-day accrual
+        # clock that gates the durability axis.
+        "mi_analyst_estimates",
     }
 
 
@@ -209,6 +214,10 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
     # #606 (2026-08-31): scan_date is the shadow's plain-DATE business column —
     # created_at is timestamptz and would silently never be checked.
     assert by_table["mi_universe_floor_shadow"] == "scan_date"
+    # #333 (2026-08-31): as_of_date is the recorder's plain-DATE business column
+    # (the date each estimate was READ) — created_at is timestamptz and would
+    # silently never be checked.
+    assert by_table["mi_analyst_estimates"] == "as_of_date"
 
 
 # ── run_detector_liveness_check: orchestration + wiring ───────────────────────

@@ -10344,3 +10344,35 @@ reviews:
     cross_refs: ["docs/analysis/silent_universe_floors_570_2026-08-22.md",
                  "agents/market_intelligence/universe_floor_shadow.py",
                  "docs/setups/magna53_ep.md"]
+
+  - review_id: analyst_estimates_60d_accrual_333
+    title: "#333 durability axis: >=60 days of stored analyst estimates have accrued"
+    question: >-
+      Has the analyst-estimates backbone (mi_analyst_estimates, the 18:12 ET
+      recorder) accrued the >=60 distinct snapshot days the #333 sketch set as
+      the build gate — so the catalyst-durability forward axis (Pradeep: ~2
+      quarters realized + ~4 quarters projected high revenue growth) can move
+      to its STEP-0 replay?
+    predicate_sql: SELECT COUNT(DISTINCT as_of_date) FROM mi_analyst_estimates
+    threshold: 60
+    # COUNT(DISTINCT as_of_date) over the whole table — the question is "how many
+    # snapshot DAYS exist", one question with no variant axis: period_type and
+    # ticker are payload dimensions of every snapshot day, not separate questions.
+    # No discriminating column exists to declare.
+    discriminates_on: []
+    earliest_review_date: 2026-11-30
+    status: pending
+    kind: accrual
+    added_on: 2026-08-31
+    action_when_ready: >-
+      Run the #333 STEP-0 (durability-split forward returns) from STORED rows
+      only — read via db.get_analyst_estimates_asof (the honest-window read;
+      never as_of alone, that re-creates the lookahead defect), apply the
+      n_analysts<3 -> None rule via estimate_for_scoring. The axis itself is a
+      detection-criterion change: operator sign-off + CHANGE_PROCESS before
+      anything ships even shadow (THE LINE — nothing flips here). If STEP-0
+      shows no durability split, the axis dies at STEP-0 and the recorder is
+      re-evaluated for retirement rather than left running unread.
+    cross_refs: ["docs/analysis/block1_tier2_sketches_2026-07-11.md",
+                 "agents/market_intelligence/analyst_estimates_recorder.py",
+                 "docs/analysis/analyst_estimates_backfill_reach_2026-08-31.md"]
