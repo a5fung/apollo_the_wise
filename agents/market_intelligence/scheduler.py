@@ -4519,7 +4519,10 @@ async def _delayed_entry_shadow_job():
     except Exception as e:
         logger.error(f"delayed-entry shadow job failed: {e}", exc_info=True)
         try:
-            from agents.market_intelligence.db import log_audit_event
+            # NO function-local import here: `log_audit_event` is bound at module level (:26).
+            # A local import would make the name LOCAL for this whole function and raise
+            # UnboundLocalError on any earlier reference — deploy gate [5c], the class that
+            # killed EP scans for 81 minutes on 2026-05-20.
             await log_audit_event("delayed_entry_shadow_error",
                                   f"job-level failure: {type(e).__name__}: {e}")
         except Exception:  # loud-ok: logger.error above already fired
