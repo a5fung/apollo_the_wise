@@ -311,6 +311,17 @@ def assemble_judge_inputs(
 
 def _build_judge_prompt(p: dict) -> str:
     def _b(v):
+        # ⚠ KNOWN DEFECT, TRACED 2026-09-01 — DO NOT "tidy" this into three states without
+        # reading the note below. `None` is falsy, so an UNKNOWN direct-source flag renders as
+        # a definitive "no" — and the rubric above treats a `no` as grounds to "apply explicit
+        # skepticism and prefer the floor tier". The 09-01 monthly review measured the blast
+        # radius: 97 of 99 assessable rows HAD a direct source while the judge was shown "no".
+        # We are asserting a fact we do not have, on nearly every graded row, in the direction
+        # that suppresses the grade — and grades drive the alert tier.
+        # It is NOT fixed here because fixing it WILL move live grades (the same class as the
+        # max_tokens fix below, which was shipped deliberately for that reason). The operator
+        # decides that flip; `judge_direct_source_trace` below makes what we send visible in
+        # the meantime so the decision rests on rows, not on this comment. Tracked on #335.
         return "yes" if v else "no"
     # Theme HEAT (#329 Path A) — appended to the in_active_theme line ONLY when a stage is present,
     # so the prompt is byte-identical to the pre-change form when theme_stage is None/absent.
@@ -488,6 +499,24 @@ async def grade_holistic(
     prompt are byte-identical to the pre-change live call. The live grade path leaves it False;
     the eval harness sets it True. Wiring it live rides #335 (judge is load-bearing)."""
     prompt = _build_judge_prompt(payload)
+    # TRACEABILITY (operator 2026-09-01: *"seems critical that we log this and make it
+    # traceable"*). Record, per graded ticker, the TRUTH we hold and the WORD we sent — the two
+    # differ whenever the flag is unknown, and that difference is invisible in every other
+    # surface. Cheap: ~3 grades a day. Never raises into the grade path.
+    try:
+        # imported HERE, not at module scope: this module is imported by the offline
+        # eval/replay harnesses, and a top-level db import drags a connection pool into
+        # them. Same reason the rest of this file defers its db reach.
+        from agents.market_intelligence.db import log_audit_event
+        _hds = payload.get("has_direct_source")
+        await log_audit_event(
+            "judge_direct_source_trace",
+            f"{payload.get('ticker') or '?'}: held={_hds!r} sent_to_judge="
+            f"{'yes' if _hds else 'no'}"
+            f"{'  ⚠ UNKNOWN RENDERED AS NO' if _hds is None else ''}",
+        )
+    except Exception as _e:  # loud-ok: telemetry must never break a grade
+        logger.warning(f"judge direct-source trace failed: {_e}")
     if chart_note:
         prompt = f"{prompt}\n{chart_note}"
     if include_axis_reads:
