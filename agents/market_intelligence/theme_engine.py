@@ -5584,7 +5584,28 @@ In every other case, skip the advisor and call `report_themes` immediately, with
         while True:
             loop_guard += 1
             if loop_guard > 8:
+                # THE REAL FAILURE, and it must be LOUD. Discovery returning no themes is the
+                # engine going dark for the night — it was a logger.warning nobody reads, while
+                # the HEALTHY half of this same loop (a truncation that recovers on the forced
+                # retry) Telegrammed every time. That is backwards, and it is why
+                # `theme_discovery` moved to TRUNCATION_BY_DESIGN on 2026-09-01: the alarm now
+                # sits on the failure instead of the recovery.
                 logger.warning("Theme discovery: loop guard tripped (>8 iterations) — returning no themes")
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "theme_discovery_recovery_failed",
+                        f"theme discovery gave up after {loop_guard - 1} iterations — "
+                        f"NO THEMES from this batch (the forced schema-bounded retry did not "
+                        f"land either)",
+                    )
+                    from agents.market_intelligence.briefing import send_telegram_message
+                    await send_telegram_message(
+                        "🔴 *Theme discovery gave up* — a batch produced NO themes after the "
+                        "forced-schema retry also failed. The engine is dark for that batch; "
+                        "tonight's theme set is incomplete.")
+                except Exception as _e:  # loud-ok: never let the alarm break the return path
+                    logger.warning(f"theme discovery give-up alarm failed: {_e}")
                 return []
             response = await client.messages.create(
                 model=THEME_MODEL,

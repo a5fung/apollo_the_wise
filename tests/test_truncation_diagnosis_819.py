@@ -221,23 +221,28 @@ def _wire_live_alarm(monkeypatch, mean, mx):
 
 
 def test_live_alert_names_caller_model_cap_and_do_not_raise(monkeypatch):
-    """theme_discovery truncates live: the alert must still name caller/model/cap
+    """A do-not-raise caller truncates live: the alert must still name caller/model/cap
     (it is a real signal) AND must not tell the operator to raise a ceiling the
     codebase forbids raising — and every underscored token (caller name,
-    shared/output_ceilings.py) must sit inside the code fence (#477 parity)."""
+    shared/output_ceilings.py) must sit inside the code fence (#477 parity).
+
+    Uses theme_assignment, not theme_discovery: as of 2026-09-01 theme_discovery is in
+    TRUNCATION_SELF_HEALS and takes no live alarm at all (its forced schema retry recovers
+    it). This test is about the alarm's SHAPE, so it needs a caller that still alarms —
+    swapping the example keeps the #477 fencing guard alive rather than deleting it."""
     st, audit, tg = _wire_live_alarm(monkeypatch, 6100.0, 6700)
 
     asyncio.run(st._maybe_alert_truncation(
-        caller="theme_discovery", model="claude-sonnet-5", output_tokens=8000))
+        caller="theme_assignment", model="claude-sonnet-5", output_tokens=8000))
 
     tg.assert_awaited_once()
     text = tg.await_args.args[0]
-    assert "theme_discovery" in text            # caller
+    assert "theme_assignment" in text           # caller
     assert "claude-sonnet-5" in text             # model
     assert "8000" in text                        # cap / this call's size
     assert "do-not-raise" in text
     assert "raise the ceiling" not in text.lower()
-    _assert_fenced(text, "theme_discovery", "output_ceilings")
+    _assert_fenced(text, "theme_assignment", "output_ceilings")
     _assert_fenced_lines_are_short(text)
 
     audit.assert_awaited_once()
@@ -413,3 +418,44 @@ def test_nightly_near_ceiling_footer_also_respects_do_not_raise(monkeypatch):
     assert "system_review_weekly" in raisable_block
     _assert_fenced(text, *caps)
     _assert_fenced_lines_are_short(text)
+
+
+def test_a_self_healing_truncation_takes_NO_live_alarm(monkeypatch):
+    """theme_discovery's truncation is the healthy half of a loop that works: tool_choice=AUTO
+    lets free reasoning exhaust the budget, the caller detects it, flips force_report and
+    retries schema-bounded. MEASURED 2026-09-01: 15 calls, 2 truncated at 8000, both recovered
+    ~10s later in 820 and 795 tokens, themes wrote normally (118 vs 121 the night before).
+
+    The live red alarm fired on that every night regardless — the #604 cry-wolf shape, and the
+    surest way to teach the operator to ignore a truncation alert that matters.
+
+    MUTATION TARGET: dropping the TRUNCATION_SELF_HEALS check from _maybe_alert_truncation.
+    ⚠ This asserts silence on the LIVE alarm only. The nightly digest still counts the rate,
+    and the give-up path (forced retry also failing → no themes) alarms on its own."""
+    st, audit, tg = _wire_live_alarm(monkeypatch, 6100.0, 6700)
+
+    asyncio.run(st._maybe_alert_truncation(
+        caller="theme_discovery", model="claude-sonnet-5", output_tokens=8000))
+
+    tg.assert_not_awaited()
+    audit.assert_not_awaited()
+
+
+def test_the_give_up_path_is_the_one_that_alarms():
+    """Guard the trade: silencing the recovery is only defensible because the FAILURE is loud.
+    If discovery exhausts its loop guard the forced retry did not land either, so that batch
+    yields NO themes — the engine going dark for the night, which used to be a logger.warning
+    nobody reads while the healthy retry Telegrammed every time."""
+    import inspect
+
+    from agents.market_intelligence import theme_engine
+    src = inspect.getsource(theme_engine.discover_themes_llm) if hasattr(
+        theme_engine, "discover_themes_llm") else pathlib.Path(
+        "agents/market_intelligence/theme_engine.py").read_text(encoding="utf-8")
+    seg = src[src.index("loop_guard > 8"):]
+    seg = seg[:2000]
+    assert "theme_discovery_recovery_failed" in seg, (
+        "the give-up path must write its own audit event — it is the failure the live alarm "
+        "was suppressed in favour of")
+    assert "send_telegram_message" in seg, (
+        "returning no themes must reach the operator; a logger.warning is not an alarm")

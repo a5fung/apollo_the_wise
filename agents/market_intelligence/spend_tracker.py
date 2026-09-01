@@ -127,8 +127,15 @@ async def _maybe_alert_truncation(*, caller: str, model: str, output_tokens: int
     every caller.
     """
     try:
-        from shared.output_ceilings import TRUNCATION_BY_DESIGN
+        from shared.output_ceilings import (
+            TRUNCATION_BY_DESIGN, TRUNCATION_SELF_HEALS)
         if caller in TRUNCATION_BY_DESIGN:
+            return
+        # A caller that RECOVERS its own truncation gets no live red alarm — the nightly
+        # cost-board digest still counts it (the RATE matters), and the caller's own
+        # give-up path alarms if recovery fails. See TRUNCATION_SELF_HEALS for the
+        # measurement behind this.
+        if caller in TRUNCATION_SELF_HEALS:
             return
         from shared.output_ceilings import diagnose_truncation, max_tokens_for
         try:

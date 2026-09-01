@@ -82,6 +82,29 @@ TRUNCATION_BY_DESIGN = frozenset({
     "perplexity_health",  # collector Perplexity liveness ping: max_tokens=5, text unused
 })
 
+# Callers whose truncation is RECOVERED by their own retry — a different thing from
+# TRUNCATION_BY_DESIGN above, which means "we never read this output and the cap is 5 tokens".
+# Here the output matters and the cap is large; what makes the truncation benign is that the
+# caller detects it and retries under a bound that works.
+#
+# theme_discovery (2026-09-01). Its loop runs tool_choice=AUTO on purpose so the #173 advisor
+# path survives, so free reasoning can exhaust the budget; a truncation flips force_report and
+# retries SCHEMA-BOUNDED with thinking off. MEASURED that night: 15 calls, 2 truncated at 8000,
+# and BOTH recovered ~10s later on iteration 2 in 820 and 795 tokens — a tenth of the cap,
+# because the forced call skips the freeform reasoning entirely. Themes wrote normally (118,
+# against 121 the night before). The LIVE red alarm was therefore firing on the healthy half of
+# a loop that works, nightly and forever — the #604 cry-wolf class, and the fastest way to teach
+# the operator to ignore every truncation alert including a real one.
+#
+# ⚠ SCOPE: this suppresses only the LIVE alarm. The nightly cost-board digest still counts these
+# truncations, because the RATE is a real signal — if recovery starts firing on most calls, the
+# batch size is wrong again and we want to see it. And the actual failure — the forced retry ALSO
+# missing, so discovery returns NO themes — Telegrams on its own from theme_engine's loop guard
+# (`theme_discovery_recovery_failed`). Alarm on the failure, not on the recovery.
+TRUNCATION_SELF_HEALS = frozenset({
+    "theme_discovery",  # forced schema-bounded retry lands it; see the block above
+})
+
 # Callers where "raise the ceiling" is the WRONG fix even when truncating (2026-08-10,
 # reconfirmed 2026-08-19 after both truncation alerts prescribed exactly this and got it
 # wrong): the ── theme engine ── block below shows raising re-pegged within days for the
