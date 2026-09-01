@@ -5529,6 +5529,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     r, grounded_text=r.get("grounded_text"),
                     market_cap=_mc, sector=r.get("sector"),
                     materiality_tier=_rule_mat,
+                    # THE MISSING ARGUMENT (2026-09-01). This call omitted has_direct_source
+                    # from the day it was written, so the payload took the parameter default
+                    # None on EVERY grade — and `_build_judge_prompt`'s `_b()` renders falsy as
+                    # a definitive "no". The 09-01 monthly review measured it: 97 of 99
+                    # assessable rows HAD a direct source while the judge was told there was
+                    # none, and the rubric treats a "no" as grounds to prefer the floor tier.
+                    # Everything else was already built — corpus_provenance computes it, the
+                    # cache preserves it across re-grades, the prompt has a slot for it. One
+                    # argument was missing at one call site.
+                    # ⚠ BUG FIX, not a criteria change (the max_tokens fix in ep_grade_judge.py
+                    # set this precedent explicitly): the rubric, the tool schema and the
+                    # normalizer are untouched — the judge simply stops being told something
+                    # untrue. It WILL move live grades; that is the point, and it is why this
+                    # shipped on the operator's word rather than as a tidy-up.
+                    has_direct_source=r.get("has_direct_source"),
                     active_narratives=_narrative_cohorts,
                     setup_class=_setup_class,
                     # #233 (operator-signed 2026-08-27) — Perplexity's independent grade.

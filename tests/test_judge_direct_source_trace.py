@@ -59,3 +59,39 @@ def test_every_grade_records_what_we_held_versus_what_we_sent():
     assert "UNKNOWN RENDERED AS NO" in src, (
         "the trace must SAY when the two differ — a row recording only the sent value would "
         "hide exactly the case worth finding")
+
+
+def test_the_detector_ACTUALLY_PASSES_the_flag_to_the_judge():
+    """THE FIX ITSELF (2026-09-01). The bug was never in the renderer — it was that
+    `ep_detector`'s `assemble_judge_inputs(...)` call omitted `has_direct_source` entirely, so the
+    payload took the parameter default None on every grade and `_b()` turned that into "no".
+
+    Everything else already existed: corpus_provenance computes the flag, the catalyst cache
+    preserves it across re-grades, and the prompt has a slot for it. One argument at one call site
+    was missing, and it was missing from the day the call was written.
+
+    MUTATION TARGET: dropping the argument again during a refactor of that call — which is exactly
+    how it was absent for months without anyone noticing, because nothing downstream fails when a
+    judge is merely misinformed."""
+    import pathlib as _pl
+    import re as _re
+
+    src = _pl.Path("agents/market_intelligence/ep_detector.py").read_text(encoding="utf-8")
+    call = src[src.index("payload = assemble_judge_inputs("):]
+    call = call[:call.index("verdict = await grade_holistic(")]
+    assert "has_direct_source=" in call, (
+        "the live judge payload no longer carries has_direct_source — the judge is being told "
+        "'no direct source' on every grade again, which its rubric treats as grounds to prefer "
+        "the floor tier")
+    assert _re.search(r"has_direct_source=r\.get\(", call), (
+        "it must come from the candidate row, which is where corpus_provenance stored it")
+
+
+def test_the_renderer_still_lies_about_a_GENUINE_unknown():
+    """Residual, recorded rather than fixed. With the flag now wired, None means we genuinely
+    could not tell (a cache miss, a provenance failure) — and `_b()` still reports that as "no".
+    Left alone deliberately: the rubric defines no behaviour for "unknown", so inventing a third
+    word would put an unmodelled token in front of a live grader. The trace row shows how often a
+    real unknown survives, which is the evidence needed before changing it."""
+    p_unknown = j._build_judge_prompt({"ticker": "X", "has_direct_source": None})
+    assert "Direct source present: no" in p_unknown
