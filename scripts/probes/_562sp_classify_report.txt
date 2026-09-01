@@ -1,0 +1,16 @@
+== Q2 classification of the 267 caught EPs ==
+Counter({'D': 124, 'B': 94, 'A': 41, 'U': 4, 'C': 4})
+
+A (n=41): Counter({'pure_stop': 33, 'partial_then_stop': 8})  modes Counter({'live': 25, 'paper': 16})  months Counter({'2026-08': 13, '2026-07': 12, '2026-05': 9, '2026-06': 7})
+
+B (n=94): Counter({'no_order': 76, 'order_cancelled_unfilled': 18})  modes Counter({'live': 39, 'none': 33, 'paper': 22})  months Counter({'2026-08': 35, '2026-05': 25, '2026-06': 20, '2026-07': 14})
+
+C (n=4): Counter({'open': 2, 'closed_sma_trail_stop': 1, 'closed_partial_profit': 1})  modes Counter({'live': 3, 'paper': 1})  months Counter({'2026-08': 3, '2026-05': 1})
+
+D (n=124): Counter({'no_order': 105, 'order_cancelled_unfilled': 19})  modes Counter({'none': 51, 'live': 43, 'paper': 30})  months Counter({'2026-08': 48, '2026-05': 35, '2026-06': 26, '2026-07': 15})
+
+U (n=4): Counter({'no_orb_basis': 3, 'entered_unclassifiable_exit': 1})  modes Counter({'none': 3, 'paper': 1})  months Counter({'2026-05': 4})
+   ALAB 2026-05-20: no_orb_basis — no trade-row orb_high and no 9:30-9:45 bars in mi_intraday_bars
+   CRMD 2026-05-14: entered_unclassifiable_exit — manual_emergency_close
+   DYN 2026-05-20: no_orb_basis — no trade-row orb_high and no 9:30-9:45 bars in mi_intraday_bars
+   GH 2026-05-20: no_orb_basis — no trade-row orb_high and no 9:30-9:45 bars in mi_intraday_bars
