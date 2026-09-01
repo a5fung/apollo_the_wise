@@ -1,5 +1,19 @@
 # #562 — What IS our delayed-entry trigger today, and where do watched names actually die?
 
+> 🛑 **ITS NUMBERS ARE VOID — WRONG POPULATION. Read the mechanism, not the percentages.**
+> Written the morning of 2026-09-01 against the lane as it then was: seeded from every name the
+> EP scan evaluated. **1,269 campaigns, of which SIX were EP alerts; 816 had gapped only 5-9%,
+> under the 9% admission floor, so they were never EPs at all.** Every funnel count, fire rate and
+> stop-out share below therefore describes gappers, not caught EPs.
+> ⚖ **OPERATOR RULING, same day:** *"by EP we catch i don't mean just the ones we traded, just any
+> real EPs our system caught… delayed entry is only a trading entry/exit tactic, not a EP finding
+> system."* Population fixed in `e77436c2`.
+> ✅ **WHAT SURVIVES:** §1's description of the four rungs — buy points, stops, gates, the abstain
+> rule — is read from the code and is still correct. The 91%-fire and 74%-stop-out figures are NOT.
+> ▶ Superseded by `docs/analysis/delayed_entry_backfill_2026-09-01.md`, which replays the same
+> rungs over the 267 EPs our system actually caught (May-Aug).
+
+
 **Date:** 2026-09-01 · **Read-only diagnosis** — no code, no thresholds, no strategy changed.
 **Acting-rules source:** `live_rules_2026-09-01.txt` (captured 2026-09-01 06:27 PDT, 0 drift findings) — every constant below re-read from code, not memory.
 
