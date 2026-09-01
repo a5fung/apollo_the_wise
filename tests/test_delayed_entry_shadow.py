@@ -16,6 +16,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.market_intelligence import delayed_entry_shadow as des
+import inspect
+from agents.market_intelligence import db
 
 _ET = ZoneInfo("America/New_York")
 
@@ -1162,3 +1164,50 @@ async def test_reentry_stamp_counts_only_its_own_window_not_reference_holes(monk
     assert t["entry_price"] == 12.0                         # ref hole only UNDERSTATES
     assert t["stop_price"] == 10.9                          # Thursday's low
     assert t["prior_missing_sessions"] == 1                 # Wednesday only, never Tuesday
+
+# ── the lane's POPULATION — an operator ruling, held mechanically ────────────────────
+
+
+def test_the_lane_follows_caught_EPs_not_every_gapper():
+    """⚖ OPERATOR RULING 2026-09-01, verbatim: *"by EP we catch i don't mean just the ones
+    we traded, just any real EPs our system caught. If we miss delay entries because of
+    this, then it's a EP screen issue, not a delayed entry issue, delayed entry is only a
+    trading entry/exit tactic, not a EP finding system."*
+
+    WHY THIS IS A TEST AND NOT A COMMENT. The lane shipped 2026-08-30 seeded from
+    `mi_ep_scan_log` — every name the scan evaluated. Its first live run enrolled 1,269
+    campaigns of which SIX were EP alerts; 816 had gapped only 5-9%, under the 9%
+    admission floor, so they were never EPs at all. Every number read off that lane
+    described the wrong population, and it took the operator asking "do we trade a few
+    thousand EPs every day? NO" to catch it. A prose note would drift back the same way
+    the first one did.
+
+    MUTATION TARGETS: (a) re-seeding from mi_ep_scan_log, which silently restores the
+    gap-watcher; (b) dropping LIVE_SOURCE_SQL, which admits backfilled `historical_scan`
+    rows scored by a different scorer that were never on a live board.
+    """
+    seed = inspect.getsource(db.get_delayed_entry_seed_candidates)
+    assert "FROM mi_ep_alerts" in seed, (
+        "the lane's population must be EPs our system CAUGHT (mi_ep_alerts), not every "
+        "name the scan evaluated")
+    # mi_ep_scan_log may still appear — as a LATERAL JOIN for prev_close/extension —
+    # but it must not be the OUTER population source again. Order settles it.
+    assert seed.index("FROM mi_ep_alerts") < seed.index("mi_ep_scan_log"), (
+        "mi_ep_scan_log must not be the POPULATION source again — joining it for "
+        "prev_close/extension is fine, seeding from it is the bug this pins")
+    assert "LIVE_SOURCE_SQL" in seed, "backfilled historical_scan rows were never live-caught"
+
+    walk = inspect.getsource(db.get_delayed_entry_open_lane)
+    assert "mi_ep_alerts" in walk and "LIVE_SOURCE_SQL" in walk, (
+        "members enrolled under the OLD population must stop being walked — otherwise the "
+        "1,263 non-EP campaigns keep accruing sessions, triggers and bar fetches forever")
+
+
+def test_no_tier_filter_hides_moderate_EPs_from_the_lane():
+    """The ruling says CAUGHT, not TRADED and not ALERTED-LOUDLY. MODERATE-tier EPs reach
+    the morning briefing rather than an instant Telegram, but our system caught them, so
+    they belong in the lane. A `score_tier` filter here would quietly narrow the
+    population to HIGH and re-create a smaller version of the same wrong-population bug."""
+    seed = inspect.getsource(db.get_delayed_entry_seed_candidates)
+    assert "score_tier" not in seed, (
+        "no tier filter belongs in the lane's population — 'caught' is the test")

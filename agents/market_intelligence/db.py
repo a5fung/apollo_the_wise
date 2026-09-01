@@ -10274,22 +10274,62 @@ async def upsert_delayed_entry_watch(row: dict) -> None:
 
 
 async def get_delayed_entry_seed_candidates(since: date, until: date) -> list[dict]:
-    """EP-scan names in [since, until] not yet enrolled in the watch lane — the
-    record-everything population (EVERY name mi_ep_scan_log saw that day, alerted or not,
-    rejected or not; the operator's 08-30 population ruling). One row per (scan_date,
-    ticker): the LATEST scan-log row that day (what the scan last knew). The multi-day
-    window makes enrollment self-healing after a missed run."""
+    """REAL EPs OUR SYSTEM CAUGHT in [since, until], not yet enrolled in the watch lane.
+
+    ⚖ OPERATOR RULING 2026-09-01, and it REPLACES the 08-30 "record everything" reading
+    this query shipped with: *"by EP we catch i don't mean just the ones we traded, just
+    any real EPs our system caught. If we miss delay entries because of this, then it's a
+    EP screen issue, not a delayed entry issue, delayed entry is only a trading entry/exit
+    tactic, not a EP finding system."*
+
+    WHY IT CHANGED. The first live run enrolled 1,269 campaigns of which SIX were EP
+    alerts; 816 had gapped only 5-9%, under the 9% admission floor, so they were never EPs
+    at all. The lane was a gap-watcher wearing a delayed-entry name, and every number read
+    off it described the wrong population. Delayed entry is an ENTRY/EXIT TACTIC applied to
+    EPs we already found — a real EP the screen never caught is #577/P1's problem, not
+    this lane's.
+
+    SO THE POPULATION IS `mi_ep_alerts`, every live-source tier (HIGH *and* the MODERATE
+    ones that only reach the morning briefing — "caught" is the test, not "traded", and not
+    "alerted loudly"). `historical_scan` rows are excluded by LIVE_SOURCE_SQL: they were
+    backfilled by a different scorer and were never on a live board.
+
+    Side effect worth knowing: this also un-darkens the screen stamp. `extension_pct` and
+    `catalyst_grade` are only computed for names that reach grading, which is why
+    `screen_member` was NULL on 1,267 of 1,269 under the old population — on THIS
+    population they exist.
+
+    One row per (alert_date, ticker), highest-scoring row that day. The multi-day window
+    keeps enrollment self-healing after a missed run.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT DISTINCT ON (s.scan_date, s.ticker)
-                   s.scan_date, s.ticker, s.gap_pct, s.prev_close, s.extension_pct,
-                   s.ep_score, s.catalyst_quality, s.in_active_theme
-            FROM mi_ep_scan_log s
-            WHERE s.scan_date BETWEEN $1 AND $2
+        rows = await conn.fetch(f"""
+            SELECT DISTINCT ON (a.alert_date, a.ticker)
+                   a.alert_date AS scan_date, a.ticker,
+                   COALESCE(a.gap_pct, s.gap_pct) AS gap_pct,
+                   s.prev_close, s.extension_pct,
+                   COALESCE(a.ep_score, s.ep_score) AS ep_score,
+                   COALESCE(a.catalyst_quality, s.catalyst_quality) AS catalyst_quality,
+                   COALESCE(a.in_active_theme, s.in_active_theme) AS in_active_theme
+            FROM mi_ep_alerts a
+            -- prev_close/extension_pct live on the SCAN LOG, not on the alert row; join the
+            -- same ticker-day's last scan state for them. LEFT so a missing scan-log row
+            -- degrades those two fields to NULL (the screen stamp then abstains, by design)
+            -- rather than dropping a caught EP out of the lane — recall first.
+            LEFT JOIN LATERAL (
+                SELECT s.prev_close, s.extension_pct, s.gap_pct, s.ep_score,
+                       s.catalyst_quality, s.in_active_theme
+                FROM mi_ep_scan_log s
+                WHERE s.ticker = a.ticker AND s.scan_date = a.alert_date
+                ORDER BY s.scan_time_et DESC NULLS LAST
+                LIMIT 1
+            ) s ON TRUE
+            WHERE a.alert_date BETWEEN $1 AND $2
+              AND {LIVE_SOURCE_SQL}
               AND NOT EXISTS (SELECT 1 FROM mi_delayed_entry_watch w
-                              WHERE w.ticker = s.ticker AND w.ep_date = s.scan_date)
-            ORDER BY s.scan_date, s.ticker, s.scan_time_et DESC NULLS LAST
+                              WHERE w.ticker = a.ticker AND w.ep_date = a.alert_date)
+            ORDER BY a.alert_date, a.ticker, a.ep_score DESC NULLS LAST
         """, _coerce_date(since), _coerce_date(until))
     return [dict(r) for r in rows]
 
@@ -10317,8 +10357,18 @@ async def get_delayed_entry_open_lane(min_ep_date: date, lane_sessions: int) -> 
             )
             SELECT l.*, u.first_unscoreable
             FROM latest l LEFT JOIN unsc u USING (ticker, ep_date)
-            WHERE l.session_idx < $2 OR u.first_unscoreable IS NOT NULL
-        """, _coerce_date(min_ep_date), lane_sessions)
+            WHERE (l.session_idx < $2 OR u.first_unscoreable IS NOT NULL)
+              -- ⚖ OPERATOR RULING 2026-09-01: the lane follows EPs OUR SYSTEM CAUGHT, and
+              -- nothing else. 1,263 of the 1,269 members enrolled under the old
+              -- record-every-gapper population were never EP alerts (816 of them gapped
+              -- only 5-9%, under the admission floor). They are left in the table as
+              -- history — deleting live rows is not mine to do — but they STOP BEING
+              -- WALKED here, so no more forward sessions, minute-bar fetches or triggers
+              -- accrue on names that were never EPs. Also cuts the job's wall-clock (#609).
+              AND EXISTS (SELECT 1 FROM mi_ep_alerts a
+                          WHERE a.ticker = l.ticker AND a.alert_date = l.ep_date
+                            AND {LIVE_SOURCE_SQL})
+        """.replace("{LIVE_SOURCE_SQL}", LIVE_SOURCE_SQL), _coerce_date(min_ep_date), lane_sessions)
     return [dict(r) for r in rows]
 
 
