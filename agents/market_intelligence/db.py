@@ -12186,6 +12186,14 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
                 'stage_change' | 'theme_excluded' | 'ep_alert'
     """
     try:
+        # REDACT AT THE CHOKEPOINT (2026-09-01). This is where text becomes DURABLE, and audit
+        # rows are read back out into the weekly review, `/audit`, and the nightly digests — so a
+        # credential landing here is one render away from Telegram. It happened: the #333 recorder
+        # logged raw upstream errors, FMP puts its key in the QUERY STRING, and 99 rows landed
+        # carrying a live key in plain text. Fixing only that caller would leave the next one to
+        # repeat it — every provider we authenticate by query parameter has the same shape.
+        from shared.secret_redaction import redact_secrets
+        summary, detail = redact_secrets(summary), redact_secrets(detail)
         pool = await get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
