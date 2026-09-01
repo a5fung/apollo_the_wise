@@ -124,22 +124,17 @@ OPUS = OPUS_PIN
 # Legacy ids — kept for pricing historical spend rows / deliberate pins only.
 SONNET_5 = "claude-sonnet-5"
 
-# Anthropic's introductory rate for claude-sonnet-5, valid THROUGH 2026-08-31; it reverts to
-# the standard sonnet-tier $3/$15 on 09-01. A date check, not a constant to be flipped by
-# hand — the flip would be a calendar task, and calendar tasks are how a rate table goes
-# stale.
-_SONNET_5_INTRO = {"input": 2.00, "output": 10.00}
-_SONNET_5_INTRO_UNTIL = _date(2026, 8, 31)
-
-
-def _sonnet_5_intro_active() -> bool:
-    """True while the introductory rate applies.
-
-    Uses `shared.dates.et_today()` — the CANONICAL ET helper — rather than constructing a
-    ZoneInfo here. This repo lost weeks to two independent timezone constructions disagreeing
-    (the pytz LMT bug, #180/#183), and CLAUDE.md names that one helper for exactly this reason:
-    a second hand-built zone is how the next audit finds two answers to one question."""
-    return _et_today() <= _SONNET_5_INTRO_UNTIL
+# claude-sonnet-5 bills at $2/$10 — this is its STANDARD rate, not a discount.
+# It launched as "introductory pricing through 2026-08-31" with a scheduled rise to $3/$15 on
+# 09-01, and this module encoded that as a date check so it would flip itself. On 2026-09-01
+# ANTHROPIC CANCELLED THE RISE and made $2/$10 permanent — so the date check fired on a price
+# change that never happened and overstated every sonnet-5 call by 50% for a day. The watchdog
+# then alarmed on our own arithmetic.
+# The date check is REMOVED rather than re-dated: there is no longer a second rate to switch to,
+# and a self-flipping mechanism whose destination no longer exists is worse than a plain number.
+# ⚠ The original lesson still stands and is why sonnet-5 has an explicit entry at all: it was
+# missing from the table on 2026-08-07, fell through to the sonnet-TIER $3/$15, and mis-priced
+# 8% of the bill while the operator was asking why spend kept rising.
 
 SONNET_4_5 = "claude-sonnet-4-5"
 OPUS_4_7 = "claude-opus-4-7"
@@ -396,7 +391,7 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     # `_SONNET_5_INTRO_UNTIL` in pricing_for rather than a hardcoded number, so it CORRECTS
     # ITSELF on 09-01 instead of needing a calendar task nobody will action. Under-pricing
     # after the intro ends would be the worse error, so the fallback direction is standard.
-    SONNET_5:   {"input": 3.00, "output": 15.00},
+    SONNET_5:   {"input": 2.00, "output": 10.00},   # standard since launch; see the note above
     # ── Perplexity (#377 cost meter) ─────────────────────────────────────────
     # Token rates verified against https://docs.perplexity.ai/guides/pricing
     # (fetched 2026-06-25). Perplexity bills BOTH per-token AND a per-request
@@ -420,12 +415,10 @@ def pricing_for(model_id: str) -> dict[str, float]:
     table doesn't stay a silent mis-price. Final fallback:
     DEFAULT_PRICING_PER_MTOK, for ids in no recognised family at all.
 
-    One dated special case: claude-sonnet-5 bills at an INTRODUCTORY $2/$10 through
-    2026-08-31 and its standard $3/$15 after. Encoded as a date check rather than a
-    hardcoded number so it corrects itself — a calendar task to flip a constant on 09-01
-    is a task nobody actions, and this repo has the scar tissue to prove it."""
-    if model_id == SONNET_5 and _sonnet_5_intro_active():
-        return _SONNET_5_INTRO
+    No dated special cases: claude-sonnet-5's $2/$10 is its standard rate. It used to carry a
+    date check for a scheduled 09-01 rise to $3/$15; Anthropic cancelled that rise on the day,
+    so the check fired on a price change that never happened and overstated a day of spend by
+    50%. Removed rather than re-dated — there is no second rate to switch to."""
     exact = PRICING_PER_MTOK.get(model_id)
     if exact is not None:
         return exact
