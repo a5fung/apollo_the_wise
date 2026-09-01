@@ -114,7 +114,8 @@ def load_extra_minutes():
 
 ADR_LADDER = (0.25, 0.50, 0.75, 1.00)
 VARIANTS = (["a_prior_low", "b_break_bar", "c_lod_at_fire"]
-            + [f"d_adr_{int(f * 100):03d}" for f in ADR_LADDER] + ["e_ep_close"])
+            + [f"d_adr_{int(f * 100):03d}" for f in ADR_LADDER]
+            + ["e_ep_close", "f_ep_low"])
 
 
 def _contiguous_to(bars5, k):
@@ -195,6 +196,13 @@ def phase_stops():
             "b_break_bar": b_stop,
             "c_lod_at_fire": c_stop,
             "e_ep_close": gc,
+            # f_ep_low — the EP DAY's own low, added 2026-09-01 when the operator asked
+            # "did you also look at stop at the entry day low as stop?". Two readings of
+            # that question: the low of the SESSION THE ENTRY FIRES is c_lod_at_fire, which
+            # was already tested; this is the other one — the gap day's low, the level the
+            # whole EP thesis is invalidated at, and the reference ep_low_reclaim uses.
+            # Expect it WIDE, not tight, on a big gap day: measured, not assumed.
+            "f_ep_low": gl,
         }
         for frac in ADR_LADDER:
             stops[f"d_adr_{int(frac * 100):03d}"] = (entry - frac * adr) if adr else None
