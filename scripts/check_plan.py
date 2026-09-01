@@ -145,7 +145,17 @@ def stale_blockers(tasks: list[dict]) -> list[tuple[dict, list[str]]]:
     for t in tasks:
         if t["status"] != "blocked":
             continue
-        refs = set(re.findall(r"blocked:[^\]]*?#(\d+)", t["title"]))
+        # ONLY THE LAST `[blocked:...]` TAG IS THE CURRENT CLAIM. A long-lived task carries
+        # its whole block history inline, and reading every tag makes a SUPERSEDED reference
+        # fire forever: #353 was re-pointed off the closed #327 on 2026-09-01 and kept
+        # flagging, because a tag from August still named #327 as history. That trains you to
+        # ignore the surface, which is worse than not having it. Same principle the drift
+        # checker uses — the most recent statement about a subject is the current claim.
+        # Two blockers named in ONE tag still both count; it is the OLD tags that are history.
+        tags = re.findall(r"blocked:([^\]]*)", t["title"])
+        if not tags:
+            continue
+        refs = set(re.findall(r"#(\d+)", tags[-1]))
         gone = sorted(r for r in refs if r not in live)
         if gone:
             out.append((t, gone))

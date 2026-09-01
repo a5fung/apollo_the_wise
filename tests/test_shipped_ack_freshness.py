@@ -146,3 +146,46 @@ def test_the_live_board_markers_are_fresh():
     # gets deleted rather than fixed. `hits > 0` still proves the loop actually ran against real
     # board content rather than silently matching nothing.
     assert hits > 0, "no shipped-ack markers found on the board — the matcher has probably rotted"
+
+
+def test_stale_blocker_reads_the_CURRENT_tag_not_the_whole_history():
+    """A long-lived task carries its whole block history inline. Reading EVERY
+    `[blocked:...]` tag makes a superseded reference fire forever — #353 was re-pointed off
+    the closed #327 on 2026-09-01 and kept flagging, because an August tag still named #327
+    as history. A surface that cries wolf gets ignored, which is worse than not having it.
+
+    The rule: only the LAST blocked tag is the current claim.
+
+    MUTATION TARGET: scanning `t["title"]` wholesale for `blocked:...#N` again — which is
+    exactly what the pre-fix implementation did, and it passes every other test here."""
+    from scripts.check_plan import stale_blockers
+
+    live = [{"id": 400, "status": "pending", "title": "still open"}]
+    superseded = {
+        "id": 353, "status": "blocked",
+        "title": ("[blocked:#999 the old gate, closed since] later re-pointed "
+                  "[blocked:#400 the real one revalidated:2026-09-01]"),
+    }
+    assert stale_blockers([*live, superseded]) == [], (
+        "the CURRENT tag names a live task; a dead reference in an OLDER tag is history "
+        "and must not keep the surface firing")
+
+    still_stale = {
+        "id": 354, "status": "blocked",
+        "title": "[blocked:#400 fine] then [blocked:#998 this one really is gone]",
+    }
+    hits = stale_blockers([*live, still_stale])
+    assert len(hits) == 1 and hits[0][1] == ["998"], (
+        "a dead reference in the CURRENT tag must still fire — the fix narrows which tag "
+        "is read, it does not weaken the check")
+
+
+def test_two_blockers_in_one_tag_are_both_checked():
+    """Narrowing to the last TAG must not narrow to the last REFERENCE: a task legitimately
+    blocked on two things names both in one tag, and either going stale matters."""
+    from scripts.check_plan import stale_blockers
+
+    live = [{"id": 400, "status": "pending", "title": "open"}]
+    t = {"id": 355, "status": "blocked", "title": "[blocked:#400 and #997 together]"}
+    hits = stale_blockers([*live, t])
+    assert len(hits) == 1 and hits[0][1] == ["997"]
