@@ -286,7 +286,17 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     except Exception:
         logger.exception("replay-regression section render failed")
 
-    await send_telegram_message(message)
+    # ⚠ SEND AS HTML, via the shared layer's documented migration path.
+    # The 2026-08-30 digest FAILED legacy-Markdown parsing ("Can't find end of the entity
+    # starting at byte offset 2315") and fell back to plain text, so the operator read it
+    # degraded. Legacy Markdown has NO safe escape for dynamic values, and this message is
+    # assembled from ~13 independently-built sections carrying audit summaries, tickers and
+    # error text — any one stray `*`, `_` or backtick breaks the whole digest. Escaping each
+    # renderer would leave the 14th to break it again; converting once at the SEND BOUNDARY
+    # covers every section including ones not written yet. `md_to_html` is exactly the
+    # migration path shared/telegram_format.py documents for this.
+    from shared.telegram_format import md_to_html
+    await send_telegram_message(md_to_html(message), parse_mode="HTML")
 
     logger.info(f"Weekly review complete: {window_start}..{today}")
     return review
