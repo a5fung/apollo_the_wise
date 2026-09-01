@@ -13051,6 +13051,74 @@ async def insert_orb_extension_shadow_row(row: dict) -> None:
         )
 
 
+UNIVERSE_FLOOR_SHADOW_INSERT_SQL = """
+    INSERT INTO mi_universe_floor_shadow (
+        scan_date, ticker, first_seen_et, last_seen_et,
+        gap_pct_first, minutes_since_open_first,
+        gap_pct_at_open, minutes_since_open_at_open,
+        gap_pct_last, minutes_since_open_last,
+        prev_close, prev_day_volume, prev_day_dollar_volume,
+        failed_price_floor, failed_volume_floor,
+        acting_price_floor, acting_volume_floor,
+        today_volume_first, today_price_first, today_dollar_volume_first,
+        today_volume_at_open, today_price_at_open, today_dollar_volume_at_open,
+        today_volume_last, today_price_last, today_dollar_volume_last
+    ) VALUES (
+        $1::date, $2::text, $3::timestamptz, $3::timestamptz,
+        $4::float8, $5::int,
+        (CASE WHEN $5::int IS NOT NULL THEN $4::float8 END), $5::int,
+        $4::float8, $5::int,
+        $6::float8, $7::float8, $8::float8,
+        $9::bool, $10::bool,
+        $11::float8, $12::float8,
+        $13::float8, $14::float8, $15::float8,
+        (CASE WHEN $5::int IS NOT NULL THEN $13::float8 END),
+        (CASE WHEN $5::int IS NOT NULL THEN $14::float8 END),
+        (CASE WHEN $5::int IS NOT NULL THEN $15::float8 END),
+        $13::float8, $14::float8, $15::float8
+    )
+    ON CONFLICT (scan_date, ticker) DO UPDATE SET
+        last_seen_et = EXCLUDED.last_seen_et,
+        gap_pct_last = EXCLUDED.gap_pct_last,
+        minutes_since_open_last = EXCLUDED.minutes_since_open_last,
+        gap_pct_at_open = COALESCE(
+            mi_universe_floor_shadow.gap_pct_at_open,
+            CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                 THEN EXCLUDED.gap_pct_last END),
+        minutes_since_open_at_open = COALESCE(
+            mi_universe_floor_shadow.minutes_since_open_at_open,
+            EXCLUDED.minutes_since_open_last),
+        -- #584 same-day slots: _last on every tick; _at_open set
+        -- once, first post-open tick only (same COALESCE guard as
+        -- gap_pct_at_open — freezing a pre-market read here would
+        -- re-import the #595 faded-print class this table's slot
+        -- design exists to keep out).
+        today_volume_last = EXCLUDED.today_volume_last,
+        today_price_last = EXCLUDED.today_price_last,
+        today_dollar_volume_last = EXCLUDED.today_dollar_volume_last,
+        today_volume_at_open = COALESCE(
+            mi_universe_floor_shadow.today_volume_at_open,
+            CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                 THEN EXCLUDED.today_volume_last END),
+        today_price_at_open = COALESCE(
+            mi_universe_floor_shadow.today_price_at_open,
+            CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                 THEN EXCLUDED.today_price_last END),
+        today_dollar_volume_at_open = COALESCE(
+            mi_universe_floor_shadow.today_dollar_volume_at_open,
+            CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
+                 THEN EXCLUDED.today_dollar_volume_last END)
+"""
+# Hoisted to a module constant 2026-09-01 so the DEPLOY GATE can prepare the REAL
+# statement (scripts/preflight_db_updates.py). It was inline, so the gate that exists
+# precisely to catch parameter-type-deduction failures never saw it — and this statement
+# then failed exactly that way on its first live morning, leaving the table empty. Same
+# import-from-the-owner-module pattern as EP_ALERT_JUDGE_RESULT_UPDATE_SQL, chosen for the
+# same reason: a copy in the gate could go stale, an import cannot. (Safe to hoist here —
+# audit_column_writes.py only attributes inline blocks on mi_live_trades, a different
+# table.)
+
+
 async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
     """#606 (2026-08-31) — batch writer for mi_universe_floor_shadow. ONE
     executemany for the whole tick's list, never one row at a time (the
@@ -13079,64 +13147,19 @@ async def insert_universe_floor_shadow_rows(rows: list[dict]) -> int:
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.executemany("""
-                INSERT INTO mi_universe_floor_shadow (
-                    scan_date, ticker, first_seen_et, last_seen_et,
-                    gap_pct_first, minutes_since_open_first,
-                    gap_pct_at_open, minutes_since_open_at_open,
-                    gap_pct_last, minutes_since_open_last,
-                    prev_close, prev_day_volume, prev_day_dollar_volume,
-                    failed_price_floor, failed_volume_floor,
-                    acting_price_floor, acting_volume_floor,
-                    today_volume_first, today_price_first, today_dollar_volume_first,
-                    today_volume_at_open, today_price_at_open, today_dollar_volume_at_open,
-                    today_volume_last, today_price_last, today_dollar_volume_last
-                ) VALUES (
-                    $1, $2, $3, $3,
-                    $4, $5,
-                    (CASE WHEN $5 IS NOT NULL THEN $4 END), $5,
-                    $4, $5,
-                    $6, $7, $8,
-                    $9, $10,
-                    $11, $12,
-                    $13, $14, $15,
-                    (CASE WHEN $5 IS NOT NULL THEN $13 END),
-                    (CASE WHEN $5 IS NOT NULL THEN $14 END),
-                    (CASE WHEN $5 IS NOT NULL THEN $15 END),
-                    $13, $14, $15
-                )
-                ON CONFLICT (scan_date, ticker) DO UPDATE SET
-                    last_seen_et = EXCLUDED.last_seen_et,
-                    gap_pct_last = EXCLUDED.gap_pct_last,
-                    minutes_since_open_last = EXCLUDED.minutes_since_open_last,
-                    gap_pct_at_open = COALESCE(
-                        mi_universe_floor_shadow.gap_pct_at_open,
-                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
-                             THEN EXCLUDED.gap_pct_last END),
-                    minutes_since_open_at_open = COALESCE(
-                        mi_universe_floor_shadow.minutes_since_open_at_open,
-                        EXCLUDED.minutes_since_open_last),
-                    -- #584 same-day slots: _last on every tick; _at_open set
-                    -- once, first post-open tick only (same COALESCE guard as
-                    -- gap_pct_at_open — freezing a pre-market read here would
-                    -- re-import the #595 faded-print class this table's slot
-                    -- design exists to keep out).
-                    today_volume_last = EXCLUDED.today_volume_last,
-                    today_price_last = EXCLUDED.today_price_last,
-                    today_dollar_volume_last = EXCLUDED.today_dollar_volume_last,
-                    today_volume_at_open = COALESCE(
-                        mi_universe_floor_shadow.today_volume_at_open,
-                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
-                             THEN EXCLUDED.today_volume_last END),
-                    today_price_at_open = COALESCE(
-                        mi_universe_floor_shadow.today_price_at_open,
-                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
-                             THEN EXCLUDED.today_price_last END),
-                    today_dollar_volume_at_open = COALESCE(
-                        mi_universe_floor_shadow.today_dollar_volume_at_open,
-                        CASE WHEN EXCLUDED.minutes_since_open_last IS NOT NULL
-                             THEN EXCLUDED.today_dollar_volume_last END)
-            """, [
+            # EVERY placeholder carries an EXPLICIT CAST. Found live 2026-09-01, the
+            # shadow's FIRST morning on the new image: every tick logged
+            # "inconsistent types deduced for parameter $4" and the table stayed EMPTY.
+            # $4/$5/$13/$14/$15 each appear BOTH as a plain column value AND inside a bare
+            # `CASE WHEN ... THEN $n END` (no ELSE, no other typed branch), so Postgres has
+            # no context to type the CASE arm — it deduces `text` there against `double
+            # precision` elsewhere (its own DETAIL line), and asyncpg refuses the whole
+            # executemany batch. Proven against real Postgres the same day: the pre-cast
+            # statement fails PREPARE with the exact production error; this one prepares
+            # clean. Do NOT remove these casts to tidy the SQL — 34 mocked tests cannot see
+            # this bug class (tests/test_606_universe_floor_dv_shadow.py pins the shape).
+            await conn.executemany(
+                UNIVERSE_FLOOR_SHADOW_INSERT_SQL, [
                 (
                     _to_date(r["scan_date"]), r["ticker"], r.get("seen_et"),
                     r.get("gap_pct"), r.get("minutes_since_open"),

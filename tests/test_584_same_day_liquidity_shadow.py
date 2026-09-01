@@ -144,7 +144,11 @@ async def test_writer_binds_the_same_day_reads_into_the_same_single_insert(monke
 
 
 def _do_update_sql() -> str:
-    src = inspect.getsource(db.insert_universe_floor_shadow_rows)
+    # The statement is a module constant since 2026-09-01 (hoisted so the deploy gate can
+    # PREPARE the real SQL). Read the constant + the function, so this still sees both the
+    # SQL and the code around it.
+    src = db.UNIVERSE_FLOOR_SHADOW_INSERT_SQL + inspect.getsource(
+        db.insert_universe_floor_shadow_rows)
     return src.split("ON CONFLICT (scan_date, ticker) DO UPDATE SET", 1)[1]
 
 

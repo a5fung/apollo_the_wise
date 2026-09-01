@@ -21,7 +21,8 @@ import logging
 import sys
 
 from agents.market_intelligence.db import (
-    EP_ALERT_JUDGE_RESULT_UPDATE_SQL, get_pool)
+    _ANALYST_EST_UPSERT_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
+    UNIVERSE_FLOOR_SHADOW_INSERT_SQL, get_pool)
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,34 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
 ]
 
 
+# ── SHADOW / RECORDER WRITERS (added 2026-09-01) ──────────────────────────────────────
+#
+# WHY THIS SECOND LIST EXISTS. The gate above was scoped to "parameterized UPDATEs on the
+# trade-lifecycle hot path" — the shape of the 2026-05-14 CRMD incident. But the BUG CLASS is
+# type deduction on ANY parameterized statement, and on 2026-09-01 it recurred in a statement
+# the narrow scope did not cover: `mi_universe_floor_shadow`'s INSERT re-used $4/$5/$13/$14/$15
+# both as plain column values and inside bare `CASE WHEN ... THEN $n END` arms. Postgres typed
+# the CASE arm as `text` against `double precision` elsewhere, asyncpg refused the whole
+# executemany batch, and the table sat EMPTY through its first live morning while every tick
+# logged a warning nobody was reading. Last night's deploy ran this gate and passed it — the
+# statement simply was not in the list.
+#
+# The lesson is the SCOPE, not the statement: a silent recorder is exactly where this bug hides
+# longest, because nothing downstream fails loudly when the write dies. Register a writer here
+# when you add one. Statements are IMPORTED from their owner module, never copied — a copy can
+# drift from what actually executes, which would make this gate green about the wrong SQL.
+SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
+    (
+        "db.insert_universe_floor_shadow_rows: #606 D-1 universe-floor shadow (the 2026-09-01 case)",
+        UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
+    ),
+    (
+        "db.upsert_analyst_estimates: #333 analyst-estimates recorder (executemany since 2026-08-31)",
+        _ANALYST_EST_UPSERT_SQL,
+    ),
+]
+
+
 async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     print("=== Preflight: DB UPDATE prepare validation ===\n")
@@ -186,7 +215,7 @@ async def main() -> None:
         # a column the code itself creates moments later. Idempotent.)
         from agents.market_intelligence.db import _ensure_ep_alert_columns
         await _ensure_ep_alert_columns(conn)
-        for label, sql in TRADE_LIFECYCLE_UPDATES:
+        for label, sql in (*TRADE_LIFECYCLE_UPDATES, *SHADOW_WRITER_STATEMENTS):
             try:
                 stmt = await conn.prepare(sql)
                 params = stmt.get_parameters()
@@ -201,7 +230,9 @@ async def main() -> None:
             print(f"  {label}\n    {err}")
         sys.exit(1)
 
-    print(f"\nPREFLIGHT-DB-UPDATES OK — {len(TRADE_LIFECYCLE_UPDATES)} statements prepared cleanly.")
+    print(f"\nPREFLIGHT-DB-UPDATES OK — "
+          f"{len(TRADE_LIFECYCLE_UPDATES)} trade-lifecycle + "
+          f"{len(SHADOW_WRITER_STATEMENTS)} shadow-writer statements prepared cleanly.")
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ count) — never on a comment or docstring string.
 from __future__ import annotations
 
 import inspect
+import re
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from unittest.mock import AsyncMock
@@ -157,7 +158,11 @@ async def test_writer_never_freezes_a_faded_premarket_print():
     UPDATE, not DO NOTHING, so a later post-open tick can still be recovered
     via gap_pct_at_open / minutes_since_open_at_open even when the ticker's
     FIRST tick was pre-market."""
-    src = inspect.getsource(db.insert_universe_floor_shadow_rows)
+    # The statement is a module constant since 2026-09-01 (hoisted so the deploy gate can
+    # PREPARE the real SQL). Read the constant + the function, so this still sees both the
+    # SQL and the code around it.
+    src = db.UNIVERSE_FLOOR_SHADOW_INSERT_SQL + inspect.getsource(
+        db.insert_universe_floor_shadow_rows)
     assert "ON CONFLICT (scan_date, ticker) DO NOTHING" not in src
     assert "DO UPDATE SET" in src
     assert "gap_pct_at_open" in src and "minutes_since_open_at_open" in src
@@ -284,6 +289,40 @@ def test_row_builder_is_null_safe_on_the_price_floor_reject_branch():
             assert row["failed_price_floor"] is True, (
                 "a falsy prev_close IS a price-floor failure — recording it as anything "
                 "else miscounts the side of the floor this shadow exists to measure")
+
+
+def test_every_placeholder_in_the_insert_carries_an_explicit_cast():
+    """THE BUG THIS PINS, found live 2026-09-01 on the shadow's first morning: the table
+    stayed EMPTY all session while every scan tick logged "inconsistent types deduced for
+    parameter $4". $4/$5/$13/$14/$15 each appear BOTH as a plain column value AND inside a
+    bare `CASE WHEN ... THEN $n END` — no ELSE, no other typed branch — so Postgres had no
+    context to type the CASE arm and inferred `text` there against `double precision`
+    elsewhere. asyncpg then refused the whole executemany batch.
+
+    WHY A SOURCE-SHAPE TEST AND NOT A BEHAVIOUR ONE: 34 tests in this file and its #584
+    sibling passed BEFORE the fix and after it, because they mock the connection — a mocked
+    executemany cannot fail type deduction, so no amount of mock-level testing reaches this
+    bug class. Proven against real Postgres on the day: the pre-fix statement fails PREPARE
+    with the exact production error ("text versus double precision"); the cast version
+    PREPAREs clean. This test encodes the invariant that survived that check.
+
+    MUTATION TARGET: removing any `::type` to tidy the SQL — which reads as harmless
+    formatting and silently re-darkens the shadow."""
+    # Read the CONSTANT, not the function source. When the statement was hoisted out of
+    # the function (2026-09-01, so the deploy gate could prepare it), a source-scraping
+    # version of this test kept passing by matching the explanatory COMMENT — which quotes
+    # "$4" as prose. It was green against text that ships to nobody. Assert on the object
+    # that actually reaches Postgres.
+    stmt = db.UNIVERSE_FLOOR_SHADOW_INSERT_SQL
+    assert "INSERT INTO mi_universe_floor_shadow" in stmt, "the constant no longer holds the SQL"
+    assert "UNIVERSE_FLOOR_SHADOW_INSERT_SQL" in inspect.getsource(
+        db.insert_universe_floor_shadow_rows), "the writer must EXECUTE this constant"
+    bare = re.findall(r"\$\d+(?!\s*::)(?!\d)", stmt)
+    assert not bare, (
+        f"{len(bare)} placeholder(s) in the floor-shadow INSERT carry no explicit cast "
+        f"({sorted(set(bare))}). Every $n must be cast — one of them appears inside a bare "
+        f"CASE arm, where Postgres cannot infer the type and deduces `text`, which kills the "
+        f"whole batch and leaves the table silently empty.")
 
 
 def test_universe_floor_shadow_write_is_fire_and_forget_not_blocking():
