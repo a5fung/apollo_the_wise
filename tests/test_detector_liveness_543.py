@@ -166,7 +166,7 @@ def test_module_constant_covers_the_required_tables():
     themselves excluded from the registry that exists to catch exactly that."""
     covered = {t for t, *_ in hc._DETECTOR_LIVENESS_TABLES}
     assert covered == {
-        "mi_anticipation_lifecycle", "mi_flag_undercut_rally", "mi_flag_breaks",
+        "mi_flag_undercut_rally", "mi_flag_breaks",
         "mi_htf_breakout_shadow", "mi_consolidation_entry_shadow",
         "mi_9m_ep_alerts", "mi_ep_alerts",
         "mi_exit_path_shadow", "mi_alert_rank_shadow",
@@ -300,7 +300,6 @@ _HEALTHY_TABLES = {
     "mi_consolidation_entry_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
     "mi_9m_ep_alerts": (date(2026, 8, 16), [{"d": d} for d in _days_ending(date(2026, 8, 16), 8, 2)], None),
     "mi_ep_alerts": (date(2026, 8, 16), [{"d": d} for d in _days_ending(date(2026, 8, 16), 8, 2)], None),
-    "mi_anticipation_lifecycle": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
     "mi_flag_undercut_rally": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 5)], None),
     "mi_exit_path_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 1)], None),
     "mi_alert_rank_shadow": (date(2026, 8, 15), [{"d": d} for d in _days_ending(date(2026, 8, 15), 8, 1)], None),
@@ -316,7 +315,7 @@ def test_clean_run_is_silent_audit_only(monkeypatch):
     out = asyncio.run(hc.run_detector_liveness_check())
     assert out["flags"] == [] and sent == []
     assert [e for e, _, _ in logged] == ["detector_liveness_check"]
-    assert out["tables_scanned"] == 9
+    assert out["tables_scanned"] == 8
 
 
 # These orchestration-level "dark" fixtures deliberately use >= MIN_ACTIVE_DAYS active
@@ -324,7 +323,11 @@ def test_clean_run_is_silent_audit_only(monkeypatch):
 # in this file's matrix except the one each test specifically targets — the sparse-path
 # mutation is exercised only by the dedicated pure-function test above
 # (test_sparse_history_uses_the_flat_fallback), not indirectly through these fixtures.
-_DARK_ANTICIPATION = (date(2026, 6, 16),
+# The second dark table. It WAS mi_anticipation_lifecycle until that entry was retired
+# 2026-08-31 (superseded by #327, whose mi_delayed_entry_watch is registered instead) —
+# these tests need any two dark tables to prove batching/dedupe/error isolation, not that
+# specific one. Repointed at a still-registered shadow recorder, same fixture shape.
+_DARK_HTF_BREAKOUT = (date(2026, 6, 16),
                       [{"d": d} for d in _spaced_days(date(2026, 5, 22), 6, 5)], None)  # median gap 5d
 _DARK_UNDERCUT_RALLY = (date(2026, 6, 18),
                         [{"d": d} for d in _spaced_days(date(2026, 6, 3), 6, 3)], None)  # median gap 3d
@@ -342,13 +345,13 @@ def test_cold_start_batches_every_dark_table_into_one_telegram(monkeypatch):
     the fetched active-days actually drove the cadence math, not just a flat
     floor wearing the same "fires" outcome."""
     tables = dict(_HEALTHY_TABLES)
-    tables["mi_anticipation_lifecycle"] = _DARK_ANTICIPATION
+    tables["mi_htf_breakout_shadow"] = _DARK_HTF_BREAKOUT
     tables["mi_flag_undercut_rally"] = _DARK_UNDERCUT_RALLY
     _conn, logged, sent = _wire(monkeypatch, per_table=tables)
     out = asyncio.run(hc.run_detector_liveness_check())
     assert len(out["flags"]) == 2
     assert len(sent) == 1  # ONE message, not one per table
-    assert "mi_anticipation_lifecycle" in sent[0]
+    assert "mi_htf_breakout_shadow" in sent[0]
     assert "mi_flag_undercut_rally" in sent[0]
     ur_flag = next(f for f in out["flags"] if f["table"] == "mi_flag_undercut_rally")
     assert ur_flag["kind"] == "cadence" and ur_flag["median_gap_days"] == 3
@@ -363,17 +366,17 @@ def test_per_table_dedupe_does_not_suppress_a_different_fresh_table(monkeypatch)
     was recently announced) instead of per-table filtering. Only this test
     configures a non-empty `dedupe_rows`, so only this test is sensitive."""
     tables = dict(_HEALTHY_TABLES)
-    tables["mi_anticipation_lifecycle"] = _DARK_ANTICIPATION
+    tables["mi_htf_breakout_shadow"] = _DARK_HTF_BREAKOUT
     tables["mi_flag_undercut_rally"] = _DARK_UNDERCUT_RALLY
     _conn, logged, sent = _wire(
         monkeypatch, per_table=tables,
-        dedupe_rows=[{"t": "mi_anticipation_lifecycle"}],
+        dedupe_rows=[{"t": "mi_htf_breakout_shadow"}],
     )
     out = asyncio.run(hc.run_detector_liveness_check())
     assert len(out["flags"]) == 2  # both still MEASURED
     assert len(sent) == 1
     assert "mi_flag_undercut_rally" in sent[0]
-    assert "mi_anticipation_lifecycle" not in sent[0]  # suppressed by its own recent alert
+    assert "mi_htf_breakout_shadow" not in sent[0]  # suppressed by its own recent alert
 
 
 def _history_row(d: date, table: str) -> dict:
@@ -446,8 +449,8 @@ def test_never_fired_table_alarms_once_the_grace_window_elapses(monkeypatch):
     `_DETECTOR_LIVENESS_ABSOLUTE_FALLBACK_DAYS`, the same flat floor the
     sparse-cadence path already uses). A detector with zero output for that long
     is genuinely dark and must alarm, exactly like mi_anticipation_lifecycle
-    (silent 62 days) and mi_flag_undercut_rally (silent 60 days) still do in the
-    cold-start test above.
+    (retired 2026-08-31, silent 62 days at the time) and mi_flag_undercut_rally
+    (silent 60 days) still do in the cold-start test above.
     MUTATION TARGET: suppressing in_grace flags FOREVER instead of only within
     the window (e.g. always treating a table as in_grace, or letting TODAY's own
     row count as the earliest sighting instead of the true history minimum).
@@ -495,7 +498,7 @@ def test_history_read_failure_fails_open_toward_silence_not_alarm(monkeypatch):
     _conn.fetch = _fetch_with_history_failure
 
     out = asyncio.run(hc.run_detector_liveness_check())
-    assert out["tables_scanned"] == 9  # sweep proceeded despite the failed history read
+    assert out["tables_scanned"] == 8  # sweep proceeded despite the failed history read
     flagged = next(f for f in out["flags"] if f["table"] == "mi_exit_path_shadow")
     assert flagged["in_grace"] is True  # failed open -> treated as newly first-seen -> silent
     assert sent == []
@@ -507,12 +510,12 @@ def test_one_bad_table_does_not_kill_the_sweep(monkeypatch):
     stop short at the failure point and later tables never get evaluated. Only
     this test configures a `raises`, so only this test is sensitive."""
     tables = dict(_HEALTHY_TABLES)
-    tables["mi_anticipation_lifecycle"] = (None, [], RuntimeError("db exploded"))
+    tables["mi_htf_breakout_shadow"] = (None, [], RuntimeError("db exploded"))
     tables["mi_flag_undercut_rally"] = _DARK_UNDERCUT_RALLY
     _conn, logged, sent = _wire(monkeypatch, per_table=tables)
     out = asyncio.run(hc.run_detector_liveness_check())
-    assert out["tables_scanned"] == 8  # 9 tables minus the one that raised
-    assert any(e.get("table") == "mi_anticipation_lifecycle" for e in out["errors"])
+    assert out["tables_scanned"] == 7  # 8 tables minus the one that raised
+    assert any(e.get("table") == "mi_htf_breakout_shadow" for e in out["errors"])
     assert any(f["table"] == "mi_flag_undercut_rally" for f in out["flags"])
 
 
@@ -547,29 +550,36 @@ def test_ep_alerts_filters_to_live_rows(monkeypatch):
     assert "COALESCE(source, 'live') = 'live'" in seen_sql["last_write_sql"]
 
 
-def test_anticipation_lifecycle_keys_off_created_at_not_business_date(monkeypatch):
-    """mi_anticipation_lifecycle rows are UPSERT-style — business dates on an
-    existing row get rewritten by state-advancing UPDATEs, so they would read
-    "fresh" even when no NEW candidate has been seeded. created_at is INSERT-only.
-    MUTATION TARGET: swapping the registry's date column for that table back to a
-    business column (e.g. gap_day). Only this test inspects the SQL text sent for
-    that table; the dynamic-type mock means this mutation does NOT crash or
-    change outcomes elsewhere, so only this test is sensitive."""
-    seen_sql = {}
-    tables = dict(_HEALTHY_TABLES)
-    conn, _logged, _sent = _wire(monkeypatch, per_table=tables)
+def test_no_registry_entry_can_be_silently_mis_keyed_on_a_timestamp_column():
+    """The registry's date-column rule is NAME-BASED (`_detector_liveness_col_is_timestamp`
+    is literally `date_col == "created_at"`), which means a timestamptz column registered
+    under ANY other name — `recorded_at`, `fired_at`, `scanned_at` — is treated as a plain
+    DATE and silently mis-keys: the check would compare a timestamp to a date and read the
+    table as never firing, or never check it at all. Five registry comments cite this rule
+    when explaining their column choice; this pins it.
 
-    orig_fetch = conn.fetch
+    Replaces test_anticipation_lifecycle_keys_off_created_at_not_business_date, which
+    mutation-tested the single registry entry that used `created_at` — retired 2026-08-31
+    when #327 superseded the #270 machine. The rule outlived the entry, so the test is now
+    an invariant over the WHOLE registry rather than a probe of one row: it cannot rot the
+    next time an entry is added or removed.
 
-    async def _fetch_spy(sql, *a):
-        if '"mi_anticipation_lifecycle"' in sql and "DISTINCT" in sql:
-            seen_sql["sql"] = sql
-        return await orig_fetch(sql, *a)
-    conn.fetch = _fetch_spy
+    MUTATION TARGETS: (a) registering a new table on an `*_at` timestamptz column other than
+    created_at; (b) broadening the predicate so some other name also routes to the timestamp
+    branch, which would make the registry's stated contract untrue."""
+    assert hc._detector_liveness_col_is_timestamp("created_at") is True
+    for other in ("recorded_at", "fired_at", "scanned_at", "session_date", "alert_date"):
+        assert hc._detector_liveness_col_is_timestamp(other) is False, (
+            f"{other} must NOT route to the timestamp branch — the rule is name-based and "
+            f"only `created_at` is contracted")
 
-    asyncio.run(hc.run_detector_liveness_check())
-    assert '"created_at"' in seen_sql["sql"]
-    assert "gap_day" not in seen_sql["sql"]
+    for table, _label, date_col, _extra in hc._DETECTOR_LIVENESS_TABLES:
+        if date_col.endswith("_at"):
+            assert date_col == "created_at", (
+                f"{table} is registered on `{date_col}`, a timestamp-shaped name the "
+                f"name-based rule does not recognise — it would be silently mis-keyed. "
+                f"Use a plain DATE business column, or `created_at` if the table is "
+                f"UPSERT-style and its business dates get rewritten in place.")
 
 
 def test_nightly_audit_wires_the_detector_liveness_check():

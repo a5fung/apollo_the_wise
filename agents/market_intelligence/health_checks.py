@@ -1526,7 +1526,17 @@ async def run_db_growth_check() -> dict[str, Any]:
 # chance, and it alarms for real. Self-resolving on first fire is genuinely true now.
 _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # (table, label, date/timestamp column, extra WHERE clause or None)
-    ("mi_anticipation_lifecycle", "anticipation lifecycle (#270)", "created_at", None),
+    # RETIRED 2026-08-31 — `mi_anticipation_lifecycle` is not a broken detector, it is a
+    # SUPERSEDED one, and a watch on a deliberately-dead table cries wolf weekly forever
+    # (the #604 class). Ground truth checked tonight, not assumed: the table holds 19 rows,
+    # ALL written 2026-06-16 17:35:01-17:35:11 ET — one cycle, ten seconds, never again.
+    # That matches the #327 Stage-0 teardown exactly (the #270 machine ran once; its entry
+    # layer never ran because `replay()` re-gates +40% internally). Family A is literally
+    # "reset of #270" and #327 IS the replacement — whose table `mi_delayed_entry_watch` is
+    # registered below and FIRED ITS FIRST REAL RUN TONIGHT (4,414 rows / 871 tickers /
+    # 1,269 lane members, 2026-08-31 17:57-18:46 ET). The old watch came off only AFTER the
+    # replacement wrote, never before ([[a-rule-is-not-live-until-it-has-fired-once]]).
+    # If the #270 anticipation machine is ever revived, re-add this line with it.
     ("mi_flag_undercut_rally", "flag undercut & rally", "ur_date", None),
     ("mi_flag_breaks", "flag breaks", "break_date", None),
     ("mi_htf_breakout_shadow", "HTF breakout shadow", "break_date", None),
@@ -1580,9 +1590,13 @@ _DETECTOR_LIVENESS_DEDUPE_DAYS = 7
 
 
 def _detector_liveness_col_is_timestamp(date_col: str) -> bool:
-    """True for the ONE timestamptz column in the registry (`created_at`); every other entry is a
-    plain DATE business column. See the registry header for why `created_at` is used specifically
-    for `mi_anticipation_lifecycle`."""
+    """True for the one timestamptz column name the registry may use (`created_at`); every other
+    entry is a plain DATE business column. NO entry uses it right now — the only one that did,
+    `mi_anticipation_lifecycle`, was retired 2026-08-31 (see the registry). Kept, not deleted:
+    it is the contract five registry comments cite when they explain why they key on a plain
+    business date, and it is what a future UPSERT-style table would need. The rule is NAME-BASED,
+    so a timestamptz column registered under any OTHER name (`recorded_at`, `fired_at`) is
+    silently mis-keyed — pinned by test_detector_liveness_543."""
     return date_col == "created_at"
 
 
