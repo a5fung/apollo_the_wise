@@ -1,0 +1,98 @@
+campaigns: 267 total, 267 walked>=1, 170 complete-20, 0 unenrollable
+session abstain rate: 8 of 4745 sessions
+family union: 257/267 campaigns fired >=1 rung
+fires: 602 total -> 374 MATURE (20 post-fire sessions existed; expectancy is readable) + 228 immature (settled rows are stops BY CONSTRUCTION — winners still open; never pooled)
+
+== per rung, first attempts, MATURE fires only ==
+
+ep_low_reclaim: fired 203/267 campaigns (76%), median fire session 2, median stop width 2.1% of entry
+  mature fires 130 (settled 130, still-blocked 0); immature 73
+  M-none : n=130 mean=-0.39 med=-1.00 sum=-51.3 win=12% >=4R=6
+  M-trail: n=130 mean=-0.25 med=-1.00 sum=-32.6 win=25% >=4R=3
+  ran-hard (>=8xADR over EP close) campaigns: 13; missed by this rung: 6 [ALOY 2026-06-01, ARM 2026-05-20, BLZE 2026-07-31, FET 2026-07-31, HQ 2026-06-15, VPG 2026-05-12]
+    2026-05: fired 60/74  M-none n=60 mean=-0.14 med=-1.00 sum=-8.1 win=13% >=4R=4  immature=0
+    2026-06: fired 44/53  M-none n=44 mean=-0.46 med=-1.00 sum=-20.2 win=11% >=4R=2  immature=0
+    2026-07: fired 31/41  M-none n=26 mean=-0.88 med=-1.00 sum=-23.0 win=8% >=4R=0  immature=5
+    2026-08: fired 68/99  M-none n=0  immature=68
+
+ep_close_reclaim: fired 144/267 campaigns (54%), median fire session 1.0, median stop width 2.8% of entry
+  mature fires 86 (settled 86, still-blocked 0); immature 58
+  M-none : n=86 mean=-0.44 med=-1.00 sum=-38.2 win=9% >=4R=2
+  M-trail: n=86 mean=-0.06 med=-1.00 sum=-5.1 win=21% >=4R=8
+  ran-hard (>=8xADR over EP close) campaigns: 13; missed by this rung: 7 [ABVX 2026-06-03, ARM 2026-05-20, EFOR 2026-07-22, KURA 2026-08-13, NRIX 2026-06-08, TE 2026-05-12, VPG 2026-05-12]
+    2026-05: fired 44/74  M-none n=44 mean=-0.24 med=-1.00 sum=-10.4 win=9% >=4R=1  immature=0
+    2026-06: fired 23/53  M-none n=23 mean=-0.79 med=-1.00 sum=-18.2 win=9% >=4R=0  immature=0
+    2026-07: fired 20/41  M-none n=19 mean=-0.50 med=-1.00 sum=-9.6 win=11% >=4R=1  immature=1
+    2026-08: fired 57/99  M-none n=0  immature=57
+
+ep_high_break: fired 48/267 campaigns (18%), median fire session 1.0, median stop width 10.8% of entry
+  mature fires 32 (settled 32, still-blocked 0); immature 16
+  M-none : n=32 mean=-0.41 med=-1.00 sum=-13.1 win=12% >=4R=2
+  M-trail: n=32 mean=-0.12 med=-0.39 sum=-3.8 win=34% >=4R=0
+  ran-hard (>=8xADR over EP close) campaigns: 13; missed by this rung: 9 [ALOY 2026-06-01, BLZE 2026-07-31, EFOR 2026-07-22, FET 2026-07-31, HLIT 2026-05-12, HQ 2026-06-15, KURA 2026-08-13, NRIX 2026-06-08, TE 2026-05-12]
+    2026-05: fired 15/74  M-none n=15 mean=+0.04 med=-1.00 sum=+0.7 win=20% >=4R=2  immature=0
+    2026-06: fired 8/53  M-none n=8 mean=-1.00 med=-1.00 sum=-8.0 win=0% >=4R=0  immature=0
+    2026-07: fired 9/41  M-none n=9 mean=-0.64 med=-1.00 sum=-5.8 win=11% >=4R=0  immature=0
+    2026-08: fired 16/99  M-none n=0  immature=16
+
+ep_close_620_prox: fired 207/267 campaigns (78%), median fire session 2, median stop width 2.1% of entry
+  mature fires 126 (settled 126, still-blocked 0); immature 81
+  M-none : n=126 mean=-0.35 med=-1.00 sum=-44.5 win=10% >=4R=8
+  M-trail: n=126 mean=-0.19 med=-1.00 sum=-24.1 win=21% >=4R=5
+  ran-hard (>=8xADR over EP close) campaigns: 13; missed by this rung: 7 [ABVX 2026-06-03, ARM 2026-05-20, BLZE 2026-07-31, FET 2026-07-31, HQ 2026-06-15, KURA 2026-08-13, VPG 2026-05-12]
+    2026-05: fired 61/74  M-none n=61 mean=-0.01 med=-1.00 sum=-0.8 win=13% >=4R=5  immature=0
+    2026-06: fired 38/53  M-none n=38 mean=-0.44 med=-1.00 sum=-16.9 win=11% >=4R=3  immature=0
+    2026-07: fired 31/41  M-none n=27 mean=-0.99 med=-1.00 sum=-26.8 win=0% >=4R=0  immature=4
+    2026-08: fired 77/99  M-none n=0  immature=77
+
+== family (take every first fire, all four rungs) — MATURE only ==
+  M-none : n=374 mean=-0.39 med=-1.00 sum=-147.1 win=10% >=4R=18
+  M-trail: n=374 mean=-0.18 med=-1.00 sum=-65.5 win=24% >=4R=16
+  immature fires excluded above: 228 (195 already stopped, 33 open — the open rows are the candidate winners)
+
+  drop best campaign ('ALAB', '2026-05-20') (+33.9R): M-none n=372 mean=-0.49 med=-1.00 sum=-181.1 win=10% >=4R=16
+  drop best month 2026-05 (-18.7R): M-none n=194 mean=-0.66 med=-1.00 sum=-128.5 win=8% >=4R=6
+
+== the tail: mature settled fires with harvested R >= 4 (either arm) ==
+  ALAB   2026-05-20 ep_close_reclaim     s1   stop 2.4%  M-none +21.65R  M-trail +4.05R  mfe +21.8R
+  ALAB   2026-05-20 ep_close_620_prox    s1   stop 4.0%  M-none +12.30R  M-trail +1.96R  mfe +12.4R
+  STUB   2026-05-14 ep_low_reclaim       s1   stop 3.2%  M-none +11.44R  M-trail +5.15R  mfe +12.0R
+  TE     2026-05-12 ep_low_reclaim       s1   stop 5.0%  M-none +10.67R  M-trail +14.16R  mfe +25.3R
+  STUB   2026-05-14 ep_close_620_prox    s1   stop 4.0%  M-none +8.88R  M-trail +3.88R  mfe +9.3R
+  TE     2026-05-12 ep_close_620_prox    s1   stop 6.2%  M-none +8.30R  M-trail +11.09R  mfe +20.0R
+  ANF    2026-05-27 ep_close_620_prox    s9   stop 1.2%  M-none +7.25R  M-trail +2.67R  mfe +12.9R
+  FET    2026-07-31 ep_close_reclaim     s1   stop 3.7%  M-none +7.05R  M-trail +5.65R  mfe +9.3R
+  ABVX   2026-06-03 ep_low_reclaim       s14  stop 8.8%  M-none +6.82R  M-trail +1.46R  mfe +9.2R
+  BHVN   2026-05-29 ep_close_620_prox    s3   stop 7.4%  M-none +6.70R  M-trail +6.70R  mfe +7.7R
+  GO     2026-05-14 ep_low_reclaim       s2   stop 4.6%  M-none +6.56R  M-trail +0.01R  mfe +6.6R
+  FPS    2026-05-14 ep_low_reclaim       s4   stop 6.5%  M-none +6.47R  M-trail +2.95R  mfe +7.2R
+  VPG    2026-05-12 ep_high_break        s1   stop 9.9%  M-none +6.17R  M-trail +3.39R  mfe +6.2R
+  MMYT   2026-06-15 ep_close_620_prox    s1   stop 3.0%  M-none +5.89R  M-trail +7.01R  mfe +10.5R
+  NAVN   2026-06-11 ep_close_620_prox    s5   stop 5.4%  M-none +4.87R  M-trail +2.81R  mfe +5.3R
+  MMYT   2026-06-15 ep_low_reclaim       s1   stop 3.6%  M-none +4.82R  M-trail +5.76R  mfe +8.7R
+  DFTX   2026-06-22 ep_close_620_prox    s1   stop 4.1%  M-none +4.59R  M-trail +4.58R  mfe +8.3R
+  ARM    2026-05-20 ep_high_break        s1   stop 12.9%  M-none +4.45R  M-trail +2.50R  mfe +5.8R
+  HQ     2026-06-15 ep_close_reclaim     s1   stop 6.6%  M-none +2.11R  M-trail +4.09R  mfe +22.0R
+  BLZE   2026-07-31 ep_close_reclaim     s1   stop 3.5%  M-none +0.39R  M-trail +5.99R  mfe +20.5R
+  ARX    2026-05-14 ep_close_reclaim     s1   stop 1.8%  M-none -1.00R  M-trail +5.95R  mfe +11.8R
+  CLF    2026-07-23 ep_close_reclaim     s7   stop 1.3%  M-none -1.00R  M-trail +6.39R  mfe +13.2R
+  FTNT   2026-07-30 ep_close_reclaim     s1   stop 0.7%  M-none -1.00R  M-trail +5.46R  mfe +15.5R
+  KLAR   2026-05-14 ep_close_620_prox    s6   stop 1.3%  M-none -1.00R  M-trail +4.07R  mfe +11.9R
+  QBTS   2026-05-21 ep_close_reclaim     s3   stop 0.7%  M-none -1.00R  M-trail +9.60R  mfe +31.0R
+
+== capture on the ran-hard campaigns (>=8xADR over EP close) ==
+  TE     2026-05-12 ran +114% (14xADR): 2 fires, best settled +10.67R, open 0
+  HQ     2026-06-15 ran +153% (12xADR): 1 fires, best settled +2.11R, open 0
+  ABVX   2026-06-03 ran +63% (12xADR): 2 fires, best settled +6.82R, open 0
+  NRIX   2026-06-08 ran +59% (12xADR): 2 fires, best settled -1.00R, open 0
+  VPG    2026-05-12 ran +59% (12xADR): 1 fires, best settled +6.17R, open 0
+  ARM    2026-05-20 ran +76% (11xADR): 1 fires, best settled +4.45R, open 0
+  ALOY   2026-06-01 ran +87% (10xADR): 2 fires, best settled -1.00R, open 0
+  EFOR   2026-07-22 ran +66% (10xADR): 2 fires, best settled -1.00R, open 0
+  HLIT   2026-05-12 ran +37% (10xADR): 3 fires, best settled -1.00R, open 0
+  FET    2026-07-31 ran +39% (9xADR): 1 fires, best settled +7.05R, open 0
+  BLZE   2026-07-31 ran +75% (9xADR): 1 fires, best settled +0.39R, open 0
+  AKTS   2026-06-12 ran +56% (9xADR): 4 fires, best settled -1.00R, open 0
+  KURA   2026-08-13 ran +38% (8xADR): 1 fires, best settled —, open 1
+
+  settlement blocked offline (non-window reasons): {}
