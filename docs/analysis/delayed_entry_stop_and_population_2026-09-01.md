@@ -1,5 +1,22 @@
 # High-break stop bases + the stopped-out-day-1 population cut — the operator's two questions on the backfill
 
+> 🛑 **ITS POPULATION SPLIT IS SUPERSEDED — and one of its inputs was measured at the wrong level.**
+> **(a) The ORB level was wrong.** This study tested "did price break the ORB high" against the
+> **9:30–9:45 range**. Our live entry uses the **FIRST 1-MINUTE BAR** (`entry_pipeline.py:99`,
+> `alpaca_client.get_first_bar`). Against the correct level only **12 of 157** qualifying EPs never
+> trigger — the "94 never broke the ORB high" figure below is mostly an artifact of the wrong level.
+> **(b) The split itself mixed two things.** ⚖ Operator, same day: *"the names we didn't enter can be
+> for reasons beyond the stock itself, like we hit our cap, or the window beyond 9:45… we should just
+> look at all EPs that meet our criteria."* 71% of the non-fills were OUR constraints, not the stock's.
+> **(c) So its ranking is INVERTED by the successor**: simulated stopped-out-on-day-1 holds the
+> biggest tail, not the smallest, and the "aim delayed entry away from knocked-out names"
+> recommendation drawn from this doc is **WITHDRAWN**.
+> ✅ **WHAT SURVIVES:** the Q1 stop-basis work is untouched and stands — winners gap over the EP-day
+> high, bar-anchored stops kill 21 of 48 fires including both winners, and only ADR-anchored or
+> EP-close bases tighten without killing fires.
+> ▶ Superseded by `docs/analysis/delayed_entry_theoretical_day1_2026-09-01.md`.
+
+
 **Date:** 2026-09-01 · **Read-only replay** — no prod writes, no thresholds, no strategy changed.
 **Acting-rules source:** `live_rules_2026-09-01.txt` (0 drift findings).
 **Extends** `docs/analysis/delayed_entry_backfill_2026-09-01.md` (the 267-caught-EP replay) —
