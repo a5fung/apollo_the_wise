@@ -43,6 +43,7 @@ import re
 import subprocess
 import sys
 from datetime import date, datetime
+from datetime import time as dtime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -1013,12 +1014,60 @@ def _print_pinned_runbooks() -> None:
         pass
 
 
+def day_movement(today) -> dict:
+    """What OPENED and CLOSED on the operator's PT day, derived from git — never from memory.
+
+    WHY THIS EXISTS (2026-09-01). Asked what the day achieved, I listed nine closes; four of them
+    were the PREVIOUS day's. The operator caught it: "you show us have 9 real closes but task
+    closed is only 1". Reporting the day's movement from recollection across a date boundary is
+    exactly the kind of claim that should never have been prose — the board's history is in git
+    and the answer is decidable.
+
+    Compares the SET of task ids in PLAN.md at the last commit BEFORE the PT day began against
+    the set now. A line that was edited (removed and re-added with a note) is correctly NOT a
+    close, which a naive diff of +/- lines gets wrong.
+    """
+    import subprocess
+
+    def _ids(text: str) -> set:
+        return {m.group(1) for m in (_TASK.match(l) for l in text.splitlines()) if m}
+
+    start = datetime.combine(today, dtime(0, 0), tzinfo=_OPERATOR_TZ).isoformat()
+    try:
+        rev = subprocess.run(["git", "rev-list", "-1", f"--before={start}", "HEAD"],
+                             cwd=REPO, capture_output=True, text=True, timeout=20).stdout.strip()
+        if not rev:
+            return {"error": "no commit precedes the PT day — cannot compute movement"}
+        before = subprocess.run(["git", "show", f"{rev}:PLAN.md"],
+                                cwd=REPO, capture_output=True, text=True, timeout=20).stdout
+    except Exception as e:  # loud-ok: reporting aid, never blocks a commit
+        return {"error": f"{type(e).__name__}: {e}"}
+
+    was, now = _ids(before), _ids(PLAN.read_text(encoding="utf-8"))
+    return {"closed": sorted(was - now, key=int), "opened": sorted(now - was, key=int),
+            "start_count": len(was), "end_count": len(now), "since": rev[:8]}
+
 def main(argv: list[str]) -> int:
     if not PLAN.exists():
         print(f"[plan] ERROR: {PLAN} not found — it is the single source of truth.")
         return 2
     tasks, errors = parse(PLAN.read_text(encoding="utf-8"))
     today = datetime.now(_OPERATOR_TZ).date()   # the operator's PT day, not ET (see _OPERATOR_TZ note)
+
+    if "--movement" in argv:
+        m = day_movement(today)
+        if m.get("error"):
+            print(f"[movement] {m['error']}")
+            return 0
+        print(f"=== BOARD MOVEMENT — {today} (PT), against {m['since']} ===")
+        print(f"  started {m['start_count']} · now {m['end_count']} · "
+              f"net {m['end_count'] - m['start_count']:+d}")
+        print(f"  CLOSED ({len(m['closed'])}): " + (", ".join('#' + i for i in m['closed']) or "none"))
+        print(f"  OPENED ({len(m['opened'])}): " + (", ".join('#' + i for i in m['opened']) or "none"))
+        print("  (a line edited in place is NOT a close — this compares id SETS, not +/- lines)")
+        print("  ⚠ a task OPENED AND CLOSED the same day appears in neither list: it is in neither\n"
+              "     the start set nor the end set. #614 was one on 2026-09-01.")
+        return 0
 
     if "--today" in argv:
         # `deployed` tasks live in their OWN surface (VERIFY-DUE) — excluded from the generic

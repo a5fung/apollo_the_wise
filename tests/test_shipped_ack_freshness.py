@@ -189,3 +189,25 @@ def test_two_blockers_in_one_tag_are_both_checked():
     t = {"id": 355, "status": "blocked", "title": "[blocked:#400 and #997 together]"}
     hits = stale_blockers([*live, t])
     assert len(hits) == 1 and hits[0][1] == ["997"]
+
+
+def test_day_movement_counts_SETS_not_diff_lines():
+    """Asked what a day achieved, I listed nine closes and four were the previous day's. The
+    operator caught it: "you show us have 9 real closes but task closed is only 1". The board's
+    history is in git and the answer is decidable, so it should never have been prose.
+
+    The subtlety this pins: PLAN lines are EDITED constantly (a note appended to a task removes
+    and re-adds the line), so a naive +/- line diff counts an edit as a close-and-reopen. Comparing
+    id SETS is what makes it correct.
+
+    MUTATION TARGET: reverting to a +/- line diff, which reads plausible and inflates both counts.
+    """
+    import inspect
+
+    from scripts.check_plan import day_movement
+    src = inspect.getsource(day_movement)
+    assert "was - now" in src and "now - was" in src, (
+        "movement must be a set difference over task ids, not a diff of added/removed lines")
+    assert "rev-list" in src and "--before=" in src, (
+        "the comparison point must be the last commit BEFORE the operator's PT day began")
+    assert "_OPERATOR_TZ" in src, "the day boundary is the operator's PT day, never UTC"
