@@ -20,6 +20,45 @@ _Last CLOSE: 2026-06-16._
 
 ---
 
+## 🎯 THIS WEEK'S SEQUENCE — Wed 2026-09-02 → Fri 2026-09-04 (operator-agreed 09-02)
+
+**Capacity:** ~70% of a full week left as of Wed 09:00 PDT. **TARGET: the board ends BELOW 70 open
+tasks** (started the day at 82, currently 79) — operator 2026-09-02: *"try to burn down and reach
+below 70 like you shown"*. That is a real-completion target, not a reclassify target: the burndown
+rule stands — reduce ONLY by ship + verify-live or a legitimate duplicate close, never by splitting,
+hiding, or re-homing. This block is a SEQUENCE over existing tasks, not new work; nothing here is a
+new #-line.
+
+**Priority frame:** EP profitability first (standing ruling: EP → HTF → wick_fill), then the one
+hard external deadline, then money-path and alert-trust defects.
+
+| Order | # | Plain name | Who | When |
+|---|---|---|---|---|
+| 1 | **#601** | a theme rename discards the operator's rulings | Fable | Wed (from 11:30 PDT) |
+| 2 | **#545** | entry/exit tactics — *"the EP cohort wins, our tactics do not"* | Fable, **capped at 2 cards** | Wed pm → Thu |
+| 3 | **#603** | Perplexity kills our endpoint 2026-09-27 (hard, external, fails SILENT) | Fable design → Sonnet build | Thu |
+| 4 | **#600** | a repair can re-arm a stop at a price the broker already passed (money path) | Sonnet | Fri am |
+| 5 | **#604** | the naked-position L1 cries wolf at 16:15, every time | Sonnet | Fri am |
+
+**Verifies riding along:** #333 Wed 18:12 ET · #616 Thu · #540, #595, #233 Fri.
+
+**STRETCH, in the order to take them** (operator 2026-09-02: *"include a few stretch items as well
+if we get to it"*):
+
+| # | Plain name | Why it earns a stretch slot |
+|---|---|---|
+| **#482** | bracket geometry — our stop shakes out winners | Same replay harness as #545, so marginal cost is small once that card runs |
+| **#210** | an accurate read of the news | Its own re-scope says the first work lands when capacity resets — that is now |
+| **#593** | the +20% revert trigger fired on an artifact | Predicate wiring is mechanical; the settled-close basis change is a live admission-gate definition → operator sign-off |
+| **#255** | judge precedent retrieval | Blocked on "enough corpus" with NO number. Name the count that makes it testable, or un-block and close — the line itself says re-dating is the dishonest option |
+| **#261** | scripts/ namespace tidy | Pure burndown, mechanical, no date pressure |
+
+⚠ **Why this block lives in PLAN.md and not in chat:** the sequence and the below-70 target are the
+operator's, and chat compacts. If the week is re-sequenced, EDIT this block — do not leave it
+asserting a plan that is no longer being run.
+
+---
+
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
 > **DoD-7 TRIAGE SWEEP — 2026-06-18** (the "all projects deliberately dispositioned" gate). Every
