@@ -21,7 +21,8 @@ import logging
 import sys
 
 from agents.market_intelligence.db import (
-    _ANALYST_EST_UPSERT_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
+    _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL, _DELAYED_SETTLE_SQL,
+    _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     UNIVERSE_FLOOR_SHADOW_INSERT_SQL, get_pool)
 
 logger = logging.getLogger(__name__)
@@ -198,6 +199,19 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     (
         "db.upsert_analyst_estimates: #333 analyst-estimates recorder (executemany since 2026-08-31)",
         _ANALYST_EST_UPSERT_SQL,
+    ),
+    (
+        "db.settle_delayed_entry_trigger: delayed-entry lane incumbent settlement",
+        _DELAYED_SETTLE_SQL,
+    ),
+    *(
+        (f"db.settle_delayed_entry_trigger_variant[{_sfx}]: #616 ADR-stop variant settlement",
+         _sql)
+        for _sfx, _sql in sorted(_DELAYED_VARIANT_SETTLE_SQL.items())
+    ),
+    (
+        "db.record_delayed_entry_trigger_day0: #616 day-0 excursion cache",
+        _DELAYED_DAY0_SQL,
     ),
 ]
 

@@ -10679,6 +10679,16 @@ async def settle_delayed_entry_trigger_variant(row_id: int, suffix: str,
     return res.endswith(" 1")
 
 
+# Hoisted to a constant so scripts/preflight_db_updates.py can PREPARE the real statement at
+# deploy time rather than a copy of it (2026-09-02). A silent recorder is where a type-deduction
+# bug hides longest — the #606 case sat empty through a whole live morning.
+_DELAYED_DAY0_SQL = """
+    UPDATE mi_delayed_entry_trigger
+    SET day0_post_low = $2, day0_post_high = $3, day0_resolved = TRUE
+    WHERE id = $1 AND day0_resolved IS NOT TRUE
+"""
+
+
 async def record_delayed_entry_trigger_day0(row_id: int, post_low, post_high) -> None:
     """Cache the raw post-fire day-0 excursion (min low / max high of the fire day's
     post-fire 5-min bars; NULLs = the fire bar was the session's last bar) the first
@@ -10687,11 +10697,7 @@ async def record_delayed_entry_trigger_day0(row_id: int, post_low, post_high) ->
     no-per-fire-fetch rule). Raw facts only, write-once (day0_resolved guard)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_delayed_entry_trigger
-            SET day0_post_low = $2, day0_post_high = $3, day0_resolved = TRUE
-            WHERE id = $1 AND day0_resolved IS NOT TRUE
-        """, row_id, post_low, post_high)
+        await conn.execute(_DELAYED_DAY0_SQL, row_id, post_low, post_high)
 
 
 async def get_delayed_entry_variant_pending() -> list[dict]:
