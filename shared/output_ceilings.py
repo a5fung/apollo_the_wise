@@ -100,7 +100,7 @@ TRUNCATION_BY_DESIGN = frozenset({
 # truncations, because the RATE is a real signal — if recovery starts firing on most calls, the
 # batch size is wrong again and we want to see it. And the actual failure — the forced retry ALSO
 # missing, so discovery returns NO themes — Telegrams on its own from theme_engine's loop guard
-# (`theme_discovery_recovery_failed`). Alarm on the failure, not on the recovery.
+# (`discovery_recovery_error`). Alarm on the failure, not on the recovery.
 TRUNCATION_SELF_HEALS = frozenset({
     "theme_discovery",  # forced schema-bounded retry lands it; see the block above
 })

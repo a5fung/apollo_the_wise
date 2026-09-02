@@ -5598,8 +5598,20 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                     # _discover_new_themes_single would raise UnboundLocalError. That is the
                     # 2026-05-20 outage class (#433, EP scans dead for 1h21m); the deploy gate
                     # [5d/7] caught this one before it shipped, 2026-09-01.
+                    # EVENT NAME IS LOAD-BEARING (renamed 2026-09-02). The nightly sweep
+                    # `_check_nightly_silent_errors` matches event_type LIKE '%error%' /
+                    # '%rate_limited%' / '%api_failure%', and so do `/audit` and
+                    # `show errors 7d`. `theme_discovery_recovery_failed` matched NONE of them,
+                    # so this failure was invisible everywhere except the bespoke Telegram send
+                    # below — which is presumably why the send had to be bespoke. The sibling
+                    # failures in this same function (discovery_api_failure /
+                    # discovery_rate_limited / discovery_error, ~200 lines down) are named
+                    # deliberately so transient ones do NOT trip the L1 invariant and hard ones
+                    # DO; this is a hard one. The direct send STAYS: batching into the digest
+                    # would be one bucketed line, and the operator chose loudness for this
+                    # (2026-09-01). Redundant now, not wrong.
                     await log_audit_event(
-                        "theme_discovery_recovery_failed",
+                        "discovery_recovery_error",
                         f"theme discovery gave up after {loop_guard - 1} iterations — "
                         f"NO THEMES from this batch (the forced schema-bounded retry did not "
                         f"land either)",

@@ -10345,7 +10345,7 @@ async def get_delayed_entry_open_lane(min_ep_date: date, lane_sessions: int) -> 
     lane window itself."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(f"""
             WITH latest AS (
                 SELECT DISTINCT ON (ticker, ep_date) *
                 FROM mi_delayed_entry_watch
@@ -10371,7 +10371,7 @@ async def get_delayed_entry_open_lane(min_ep_date: date, lane_sessions: int) -> 
               AND EXISTS (SELECT 1 FROM mi_ep_alerts a
                           WHERE a.ticker = l.ticker AND a.alert_date = l.ep_date
                             AND {LIVE_SOURCE_SQL})
-        """.replace("{LIVE_SOURCE_SQL}", LIVE_SOURCE_SQL), _coerce_date(min_ep_date), lane_sessions)
+        """, _coerce_date(min_ep_date), lane_sessions)
     return [dict(r) for r in rows]
 
 

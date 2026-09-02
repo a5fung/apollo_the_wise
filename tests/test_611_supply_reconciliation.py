@@ -205,5 +205,16 @@ def test_alert_wording_says_opened_above_prior_close_not_bare_gapping():
     import inspect
     src = inspect.getsource(hc.run_catalyst_lattice_monitor)
     assert "OPENED" in src
-    assert "prior close $5+" in src and "prior-day volume 50k+ shares" in src
     assert "stocks gapping" not in src and "stocks that gapped" not in src
+
+    # THE FLOORS MUST STILL BE SPELLED OUT — but checked on what is RENDERED, not on a literal
+    # in the source (changed 2026-09-02). They were retyped as text, which meant moving the
+    # constants would have left the message confidently stating the old numbers: the identical
+    # words-describe-a-different-measure trap this whole alert was rewritten to fix. They are
+    # now interpolated from the trigger's own values, so the assertion follows them there.
+    assert "_lattice_supply_floors(" in src, (
+        "the floors are no longer rendered from the constants that define them")
+    rendered = hc._lattice_supply_floors({})
+    assert f"${hc._LATTICE_SUPPLY_MIN_PREV_CLOSE:.0f}+" in rendered
+    assert f"{hc._LATTICE_SUPPLY_MIN_PREV_VOLUME / 1000:.0f}k+ shares" in rendered
+    assert "prior close" in rendered and "prior-day volume" in rendered

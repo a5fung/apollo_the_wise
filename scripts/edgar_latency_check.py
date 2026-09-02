@@ -13,11 +13,17 @@ Checks:
 """
 import datetime
 import re
+import sys
+from pathlib import Path
 
 import httpx
 
-# SEC mandates a descriptive User-Agent with contact info.
-UA = {"User-Agent": "Apollo Research lastone99@gmail.com", "Accept-Encoding": "gzip, deflate"}
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# SEC mandates a descriptive User-Agent with contact info — ONE identity for the whole
+# codebase, so a change of contact does not have to be found in three places (2026-09-02).
+# This script runs standalone, hence the repo-root bootstrap above (same pattern as ep_replay).
+from agents.market_intelligence.collector import _SEC_UA as UA  # noqa: E402
 
 
 def main():

@@ -453,9 +453,22 @@ def test_the_give_up_path_is_the_one_that_alarms():
         theme_engine, "discover_themes_llm") else pathlib.Path(
         "agents/market_intelligence/theme_engine.py").read_text(encoding="utf-8")
     seg = src[src.index("loop_guard > 8"):]
-    seg = seg[:2000]
-    assert "theme_discovery_recovery_failed" in seg, (
+    # Slice to the END OF THE GIVE-UP BLOCK, not a fixed character count: a 2000-char window
+    # silently stopped covering the audit call the moment a comment was added above it
+    # (2026-09-02), and the test then failed for a reason that had nothing to do with the code
+    # it guards.
+    seg = seg[:seg.index("response = await client.messages.create(")]
+    assert '"discovery_recovery_error"' in seg, (
         "the give-up path must write its own audit event — it is the failure the live alarm "
         "was suppressed in favour of")
+    # THE NAME, not just the presence (2026-09-02). _check_nightly_silent_errors, /audit and
+    # `show errors 7d` all select on event_type LIKE '%error%' / '%rate_limited%' /
+    # '%api_failure%'. The original name matched none of them, so the event existed and was
+    # invisible to every surface that reads audit failures — a row nobody queries is not an
+    # audit trail.
+    _SWEEP_PATTERNS = ("error", "rate_limited", "api_failure")
+    assert any(pat in "discovery_recovery_error" for pat in _SWEEP_PATTERNS), (
+        "the give-up event name matches none of the nightly error sweep's LIKE patterns, so it "
+        "is invisible to /audit, `show errors` and the nightly digest")
     assert "send_telegram_message" in seg, (
         "returning no themes must reach the operator; a logger.warning is not an alarm")

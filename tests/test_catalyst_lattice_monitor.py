@@ -694,3 +694,32 @@ async def test_trigger_c_still_fires_when_the_tape_is_unmeasurable(monkeypatch):
     assert [t["kind"] for t in out["triggers"]] == ["zero_alert_days"]
     assert out["triggers"][0]["supply"] == [None, None]
     assert "?" in tg.call_args[0][0]
+
+
+def test_the_supply_floors_in_the_message_follow_the_constants():
+    """MUTATION TARGET: moving _LATTICE_SUPPLY_MIN_PREV_CLOSE / _MIN_PREV_VOLUME and leaving the
+    alert text saying "$5+ / 50k+".
+
+    This whole alert was rewritten because its words described a different measure than the one
+    it computed ("gapping" for what is really an OPEN vs the prior close). Retyping the floors as
+    literal text left the identical trap one line down: the comment beside those constants
+    already says they mirror ep_detector "as of 2026-08-26", i.e. they are expected to move.
+    """
+    from agents.market_intelligence import health_checks as hc
+
+    assert hc._lattice_supply_floors({}) == (
+        f"prior close ${hc._LATTICE_SUPPLY_MIN_PREV_CLOSE:.0f}+, prior-day volume "
+        f"{hc._LATTICE_SUPPLY_MIN_PREV_VOLUME / 1000:.0f}k+ shares")
+    moved = {"supply_min_prev_close": 8.0, "supply_min_prev_volume": 250_000}
+    assert hc._lattice_supply_floors(moved) == "prior close $8+, prior-day volume 250k+ shares"
+    assert hc._lattice_supply_floors({"supply_min_prev_close": 3.0,
+                                      "supply_min_prev_volume": 500}) == (
+        "prior close $3+, prior-day volume 500+ shares")
+
+    src = __import__("pathlib").Path(
+        "agents/market_intelligence/health_checks.py").read_text(encoding="utf-8")
+    render = src[src.index('elif t["kind"] == "high_conversion_drop":'):]
+    render = render[:render.index("out[\"lines\"]") if "out[\"lines\"]" in render else len(render)]
+    assert "prior close $5+" not in render, (
+        "a supply floor is hardcoded in the operator-facing text again — render it from the "
+        "trigger's own values via _lattice_supply_floors")

@@ -3492,11 +3492,29 @@ _LATTICE_MIN_POST_FLIP_TRADING_DAYS = 5   # trigger (b) floor: fewer post-flip t
 # `gap_pct` as if it were the same measure. See tests/test_catalyst_lattice_monitor.py for the
 # pinned 42->6->4 / 52->8->3 bridge with the real tickers.
 _LATTICE_SUPPLY_GAP_PCT = 10.0            # open vs prior close, in percent
+
 _LATTICE_SUPPLY_MIN_PREV_CLOSE = 5.0      # mirrors ep_detector.MIN_PREV_CLOSE as of 2026-08-26
 _LATTICE_SUPPLY_MIN_PREV_VOLUME = 50_000  # mirrors ep_detector.MIN_PREV_DAY_VOLUME, same date
 _LATTICE_SUPPLY_LAG_WARMUP_DAYS = 10      # extra calendar days read before the span so the
     # first day in the span has a prior-close/prior-volume row to LAG onto (covers a long
     # weekend plus a holiday). Warm-up rows are read, then filtered out of the result.
+
+
+def _lattice_supply_floors(t: dict) -> str:
+    """"prior close $5+, prior-day volume 50k+ shares" — rendered FROM the trigger's own values.
+
+    Typed as literal text until 2026-09-02. The entire reason this alert was rewritten is that
+    its words must not describe a different measure than the one it computed; a floor that moves
+    (the comment above already flags these as mirroring ep_detector "as of 2026-08-26") would
+    have left the message confidently stating the old number. Falls back to the module constants
+    for a trigger dict written before they were carried.
+    """
+    close = t.get("supply_min_prev_close", _LATTICE_SUPPLY_MIN_PREV_CLOSE)
+    vol = t.get("supply_min_prev_volume", _LATTICE_SUPPLY_MIN_PREV_VOLUME)
+    vol_txt = f"{vol / 1000:.0f}k" if vol >= 1000 else f"{vol:.0f}"
+    return f"prior close ${close:.0f}+, prior-day volume {vol_txt}+ shares"
+
+
 _LATTICE_SUPPLY_MIN_UNIVERSE_ROWS = 2000  # a trading day counts as MEASURED only if it has at
     # least this many rows WITH an open price. Sits below the 2,200-row liveness floor
     # nightly_data_pull is already audited against (scheduler.py expected_min_rows), so a
@@ -3844,6 +3862,8 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                                 "recent_avg": round(recent_high / len(recent_m), 3),
                                 "prior_avg": round(prior_high / len(prior_m), 3),
                                 "supply_gap_pct": _LATTICE_SUPPLY_GAP_PCT,
+                                "supply_min_prev_close": _LATTICE_SUPPLY_MIN_PREV_CLOSE,
+                                "supply_min_prev_volume": _LATTICE_SUPPLY_MIN_PREV_VOLUME,
                                 "flip_date": flip_date.isoformat(),
                                 "flip_date_source": flip_source})
 
@@ -3872,6 +3892,8 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     "days": [d.isoformat() for d in last_tds],
                     "supply": [supply_by_date.get(d) for d in last_tds],
                     "supply_gap_pct": _LATTICE_SUPPLY_GAP_PCT,
+                    "supply_min_prev_close": _LATTICE_SUPPLY_MIN_PREV_CLOSE,
+                    "supply_min_prev_volume": _LATTICE_SUPPLY_MIN_PREV_VOLUME,
                     "trailing_per_100": (_lattice_per_100(ctx_alerts, ctx_supply)
                                          if ctx_supply else None),
                     "trailing_days": len(ctx_days)})
@@ -3897,7 +3919,7 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"catalyst-tier flip ({t['flip_date']}), the {t['recent_days']} trading "
                     f"day(s) on/after it produced {t['recent_high_n']} HIGH alerts out of "
                     f"{t['recent_supply']} stocks that OPENED {t['supply_gap_pct']:.0f}%+ "
-                    f"above the prior close (prior close $5+, prior-day volume 50k+ shares) "
+                    f"above the prior close ({_lattice_supply_floors(t)}) "
                     f"— {t['recent_per_100']} per 100 — against "
                     f"{t['prior_high_n']} out of {t['prior_supply']} "
                     f"({t['prior_per_100']} per 100) over the {t['prior_days']} trading days "
@@ -3908,8 +3930,8 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
             elif t["kind"] == "zero_alert_days":
                 sup = ["?" if s is None else str(s) for s in t.get("supply", [])]
                 ctx = (f" The tape offered {' and '.join(sup)} stocks that OPENED "
-                       f"{t['supply_gap_pct']:.0f}%+ above the prior close (prior close $5+, "
-                       f"prior-day volume 50k+ shares) on those days"
+                       f"{t['supply_gap_pct']:.0f}%+ above the prior close "
+                       f"({_lattice_supply_floors(t)}) on those days"
                        if sup else "")
                 rate = t.get("trailing_per_100")
                 ctx += (f", against {rate} alerts per 100 such stocks over the prior "

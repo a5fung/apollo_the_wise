@@ -52,7 +52,7 @@ and REJECTED: they are ANNOUNCEMENT dates (at-or-before the filing), so anchorin
 them would WIDEN the window — the forbidden direction. The 08-31 reach measurement
 used this exact EDGAR path and resolved 306/335 real alert tickers; the unresolved 29
 are ETFs/preferreds/non-filers, which buy zero days BY DESIGN. SEC asks for a
-declared User-Agent (SEC_EDGAR_USER_AGENT env override) and <=10 req/s; the run pace
+declared User-Agent (collector._SEC_UA, `SEC_USER_AGENT` env) and <=10 req/s; the run pace
 is ~4 req/s worst case.
 
 A 402 DEGRADES THE FIELD, NEVER THE TICKER (v2). Any FMP endpoint going 402 marks
@@ -117,9 +117,12 @@ FMP_PACE_SECONDS = 0.25           # courtesy pacing, ~240 calls/min worst case
 ANCHOR_FORMS = frozenset({"10-Q", "10-K", "20-F", "6-K", "10-Q/A", "10-K/A", "20-F/A"})
 _EDGAR_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
 _EDGAR_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
-# SEC's access policy asks every client to identify itself; operator's own prior
-# EDGAR usage (the 08-31 reach script) declared exactly this contact.
-_EDGAR_UA = os.environ.get("SEC_EDGAR_USER_AGENT", "apollo-the-wise lastone99@gmail.com")
+# SEC's access policy asks every client to identify itself — with ONE identity per codebase.
+# We declare collector._SEC_UA (env `SEC_USER_AGENT`), which has been this repo's SEC contact
+# since #187. This module briefly shipped its own `SEC_EDGAR_USER_AGENT` (2026-09-01), which
+# meant SEC saw two different names from one process for the same purpose and an operator could
+# set either env var without knowing the other existed. Imported lazily inside the fetch so the
+# module keeps its no-collector-at-import-time property.
 _EDGAR_TIMEOUT_SECONDS = 30
 
 # One ticker->CIK map fetch per as_of day, success OR failure — a dead sec.gov must
@@ -240,8 +243,15 @@ def estimate_for_scoring(
 
 async def _edgar_get_json(url: str) -> Any:
     import httpx
+
+    from agents.market_intelligence.collector import _SEC_UA
+    # ⚠ KNOWN, MEASURED, DELIBERATELY NOT FIXED HERE: this opens a fresh connection per call —
+    # ~100 TLS handshakes on the daily run (est. 5-20s) and ~335 on the backfill. Reusing one
+    # client means threading it through snapshot_ticker and _fetch_last_filing_date, both of
+    # which the test suite monkeypatches by signature. Seconds on a once-a-day job did not
+    # justify churning those the day after this module shipped. Revisit if the population grows.
     async with httpx.AsyncClient(
-        timeout=_EDGAR_TIMEOUT_SECONDS, headers={"User-Agent": _EDGAR_UA}
+        timeout=_EDGAR_TIMEOUT_SECONDS, headers=_SEC_UA
     ) as client:
         r = await client.get(url)
         r.raise_for_status()
