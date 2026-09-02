@@ -1,3 +1,5 @@
+> ⏭ **SUPERSEDED 2026-09-02 by `docs/design/545_entry_exit_program_v2_2026-09-02.md`** — v2 carries the delta since this document (the 08-07/08-09 re-entry sweep this doc filed as never-run, the 08-16 stop change, the 267-EP delayed-entry replays, the stop grid, the selection null, the harness census) plus the consolidated grid and the sequenced plan. This file is kept as the 08-07 inventory it cites; do not extend it.
+
 # #545 — Entry/Exit Tactics Program: design doc (2026-08-07)
 
 **Status: DESIGN ONLY — no code changed, no threshold moved, nothing flipped.**

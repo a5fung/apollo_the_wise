@@ -25,3 +25,29 @@ def test_numbered_headings_are_accepted():
 
     assert not m._LIMITS.search("## What this answers"), (
         "the matcher must not have gone so loose it accepts the opposite section")
+
+
+def test_an_explicit_path_is_actually_checked(tmp_path, monkeypatch):
+    """MUTATION TARGET: reverting main() to ignore argv.
+
+    Until 2026-09-02 this script derived its targets from the git diff and ignored arguments
+    entirely, so `check_analysis_doc.py <path>` — the form its own docstring and every card
+    brief reach for — silently checked something else and printed a pass. A gate that returns 0
+    for a question it was never asked is worse than no gate: the caller believes it passed.
+    """
+    import subprocess
+    import sys as _sys
+
+    bad = tmp_path / "no_sections.md"
+    bad.write_text("# A finding with no method and no limits section\n\nsome prose\n",
+                   encoding="utf-8")
+    r = subprocess.run([_sys.executable, "scripts/check_analysis_doc.py", str(bad)],
+                       capture_output=True, text=True)
+    assert r.returncode == 1, (
+        "an explicitly named non-compliant document must FAIL; if this returns 0 the script is "
+        "ignoring its argument again")
+    assert str(bad) in r.stderr
+
+    r2 = subprocess.run([_sys.executable, "scripts/check_analysis_doc.py", "--bogus"],
+                        capture_output=True, text=True)
+    assert r2.returncode == 2 and "usage" in r2.stderr, "an unknown flag must be loud, not ignored"

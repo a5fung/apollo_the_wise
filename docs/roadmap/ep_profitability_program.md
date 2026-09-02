@@ -1455,7 +1455,11 @@ case looked persuasive.** "Answered by" names the thing that would actually move
     conditioned trail, a second partial higher up)? [Exit] Belief: unswept beyond the items in row
     8; owned by the #545 grid + #306 STEP-2. Answered by: the cohort accrual clocks
     (`exit_tune_cohort_review` at n=20/40/60; n=20 fires on the next close). **Status: OPEN —
-    evidence-accrual.**
+    evidence-accrual.** ▶ **THE FRAME (2026-09-02): `docs/design/545_entry_exit_program_v2_2026-09-02.md`** —
+    the consolidated inventory of ~47 tried variants with n and load-bearing status, the parameter
+    grid (attempts and regime as first-class axes), the ten-harness ownership map, and the
+    sequenced plan (retry test → missed-EP tail read → day-1 owner extension → the bull read whose
+    predicate is almost certainly met). Supersedes the 08-07 design doc.
 14. **Is exit even the binding constraint, or is it upstream in selection/entry?** [Exit,
     program-wide] Belief: the shadow ORB control (same alerts, no broker) shows zero winners across
     bull AND correcting months — "exit changes make losses smaller; they are not expected to make

@@ -98,6 +98,9 @@ the average)**, never by win rate alone.
 `PLAN.md` **#327** is the active task. Related: **#270** (composition), **#562** (pivot ladder),
 **#482** (geometry, retracted), **#354** (Family A merge). Plan of record:
 `~/.claude/plans/crystalline-waddling-charm.md`.
+**The entry/exit tactics FRAME across every lane — day-1 AND these day-2+ rungs, including the
+retry test (stop width × attempts, per NAME) and the harness ownership map:**
+`docs/design/545_entry_exit_program_v2_2026-09-02.md` (2026-09-02; supersedes the 08-07 design doc).
 **BUILD (2026-08-30, post-Stage-0):** the record-everything watch lane is
 `agents/market_intelligence/delayed_entry_shadow.py` (EOD 17:57 ET job, SILENT) writing
 `mi_delayed_entry_watch` / `mi_delayed_entry_trigger`; three v1 rungs (EP-low reclaim /

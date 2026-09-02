@@ -144,6 +144,26 @@ def _problems(text: str) -> list[str]:
 
 
 def main() -> int:
+    # ⚠ AN EXPLICIT PATH IS HONOURED (2026-09-02). Until today this ignored argv entirely and
+    # always derived its targets from the git diff, so `check_analysis_doc.py <path>` — the form
+    # every card brief and docstring reaches for — silently checked something else, or nothing,
+    # and printed a pass. A gate that returns 0 for a question it never asked is worse than no
+    # gate. Found when a card followed the documented invocation and had to work around it.
+    if len(sys.argv) > 1:
+        argv = sys.argv[1:]
+        if any(a.startswith("-") for a in argv):
+            print(f"usage: {sys.argv[0]} [PATH ...]   (no flags; no args = the staged diff)",
+                  file=sys.stderr)
+            return 2
+        failed = {path: problems for path in argv if (problems := check(path))}
+        if not failed:
+            return 0
+        print("✘ analysis document(s) missing required sections", file=sys.stderr)
+        for doc, problems in failed.items():
+            print(f"\n  {doc}", file=sys.stderr)
+            for pr in problems:
+                print(f"    - {pr}", file=sys.stderr)
+        return 1
     docs = changed_docs()
     if not docs:
         return 0
