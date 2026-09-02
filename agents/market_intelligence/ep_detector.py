@@ -4319,12 +4319,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # rubric gate engage and produces misleading "Q-rev YoY un-extractable"
         # downgrades. Fail-soft to revenue-stage on data outage.
         # IMVT 2026-05-20 was the trigger case.
+        # TWO VARIABLES, ON PURPOSE — they answer different questions and must not be merged:
+        #   `revenue_stage`           = what the BOOST GATE below needs (a bool; True = "do not
+        #                               block"), and it has a fail-soft default.
+        #   `revenue_stage_for_judge` = what we actually MEASURED (tri-state; None = we did not
+        #                               look, or we looked and the lookup failed).
+        # Carried as its own value rather than as a companion `_known` flag (2026-09-02): the
+        # flag had to stay correctly paired with `revenue_stage` across ~950 lines to the judge
+        # payload, and any future reassignment in between would silently re-assert an unmeasured
+        # fact — the exact bug class this whole thread exists to remove.
         if earnings_today_match:
             try:
                 revenue_stage = await is_revenue_stage(ticker)
+                revenue_stage_for_judge = revenue_stage  # measured today, on the day it matters
             except Exception:
+                # ⚠ THE FAIL-SOFT SEAM (fixed 2026-09-02). `True` on a data outage is a GUESS
+                # that keeps the boost gate open; it is not a finding. Until today it also went
+                # to the judge as a confident "yes", which is the identical
+                # assert-what-we-did-not-check defect as the non-earnings branch below — one
+                # branch over, and it survived yesterday's fix. The judge now gets None.
                 revenue_stage = True
-            _revenue_stage_known = True
+                revenue_stage_for_judge = None
         else:
             revenue_stage = True  # not used when not earnings day
             # ⚠ TRACKED SEPARATELY (2026-09-01). `True` here is a LOCAL CONVENIENCE for the
@@ -4333,7 +4348,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # that True to the judge would assert an unmeasured fact, which is precisely the
             # bug class being fixed (see the judge payload below), so the judge gets None and
             # renders "not checked".
-            _revenue_stage_known = False
+            revenue_stage_for_judge = None
 
         # Boost gate: same yfinance-or-text fallback as the extraction gate
         # (#131). If yfinance earnings_dates miss and Claude prose clearly
@@ -5284,7 +5299,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # blank-cheque by revenue-growth criteria (rule 4) — the IMVT 2026-05-21 gate
             # inversion. It was computed and used by the earnings boost, but never reached the
             # judge, which was therefore told "Revenue-stage: no" for every company alive.
-            "revenue_stage": (revenue_stage if _revenue_stage_known else None),
+            "revenue_stage": revenue_stage_for_judge,
             "gemini_validation": pplx_quality,  # DB column name kept for compatibility
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,

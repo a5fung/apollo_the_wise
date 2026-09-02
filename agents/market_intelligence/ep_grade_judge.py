@@ -310,32 +310,41 @@ def assemble_judge_inputs(
     }
 
 
+# ── the two boolean renderers ────────────────────────────────────────────────────────
+# MODULE SCOPE ON PURPOSE (2026-09-02): `grade_holistic`'s judge_signal_trace records
+# "the WORD we sent", and it must render through the SAME functions the prompt does.
+# While these were nested inside _build_judge_prompt the trace had to hand-copy their
+# mapping, which could drift silently and would have defeated the traceability the
+# operator asked for. Still TWO functions, deliberately — see each docstring.
+def _b3(v):
+    """yes / no / not checked — for a field whose UNKNOWN is real and common.
+
+    `revenue_stage` is only computed on earnings day (that is the only day rule 4 needs
+    it), so "we did not look" is the honest answer on most rows. Sending `_b`'s "no"
+    there would tell the judge every non-earnings company is pre-revenue — the exact
+    false assertion this whole thread is about. Kept separate from `_b` deliberately:
+    `has_direct_source` is now wired and its None is rare, and widening `_b` would change
+    that prompt too, unmeasured.
+    """
+    return "not checked" if v is None else ("yes" if v else "no")
+
+
+def _b(v):
+    # ⚠ KNOWN DEFECT, TRACED 2026-09-01 — DO NOT "tidy" this into three states without
+    # reading the note below. `None` is falsy, so an UNKNOWN direct-source flag renders as
+    # a definitive "no" — and the rubric above treats a `no` as grounds to "apply explicit
+    # skepticism and prefer the floor tier". The 09-01 monthly review measured the blast
+    # radius: 97 of 99 assessable rows HAD a direct source while the judge was shown "no".
+    # We are asserting a fact we do not have, on nearly every graded row, in the direction
+    # that suppresses the grade — and grades drive the alert tier.
+    # It is NOT fixed here because fixing it WILL move live grades (the same class as the
+    # max_tokens fix below, which was shipped deliberately for that reason). The operator
+    # decides that flip; `judge_direct_source_trace` below makes what we send visible in
+    # the meantime so the decision rests on rows, not on this comment. Tracked on #335.
+    return "yes" if v else "no"
+
+
 def _build_judge_prompt(p: dict) -> str:
-    def _b3(v):
-        """yes / no / not checked — for a field whose UNKNOWN is real and common.
-
-        `revenue_stage` is only computed on earnings day (that is the only day rule 4 needs
-        it), so "we did not look" is the honest answer on most rows. Sending `_b`'s "no"
-        there would tell the judge every non-earnings company is pre-revenue — the exact
-        false assertion this whole thread is about. Kept separate from `_b` deliberately:
-        `has_direct_source` is now wired and its None is rare, and widening `_b` would change
-        that prompt too, unmeasured.
-        """
-        return "not checked" if v is None else ("yes" if v else "no")
-
-    def _b(v):
-        # ⚠ KNOWN DEFECT, TRACED 2026-09-01 — DO NOT "tidy" this into three states without
-        # reading the note below. `None` is falsy, so an UNKNOWN direct-source flag renders as
-        # a definitive "no" — and the rubric above treats a `no` as grounds to "apply explicit
-        # skepticism and prefer the floor tier". The 09-01 monthly review measured the blast
-        # radius: 97 of 99 assessable rows HAD a direct source while the judge was shown "no".
-        # We are asserting a fact we do not have, on nearly every graded row, in the direction
-        # that suppresses the grade — and grades drive the alert tier.
-        # It is NOT fixed here because fixing it WILL move live grades (the same class as the
-        # max_tokens fix below, which was shipped deliberately for that reason). The operator
-        # decides that flip; `judge_direct_source_trace` below makes what we send visible in
-        # the meantime so the decision rests on rows, not on this comment. Tracked on #335.
-        return "yes" if v else "no"
     # Theme HEAT (#329 Path A) — appended to the in_active_theme line ONLY when a stage is present,
     # so the prompt is byte-identical to the pre-change form when theme_stage is None/absent.
     theme_heat = ""
@@ -515,7 +524,20 @@ async def grade_holistic(
     # TRACEABILITY (operator 2026-09-01: *"seems critical that we log this and make it
     # traceable"*). Record, per graded ticker, the TRUTH we hold and the WORD we sent — the two
     # differ whenever the flag is unknown, and that difference is invisible in every other
-    # surface. Cheap: ~3 grades a day. Never raises into the grade path.
+    # surface. Never raises into the grade path.
+    #
+    # RENDERED THROUGH _b/_b3 THEMSELVES, not a hand-copy: this row's whole job is to say what
+    # the prompt said, so it must not be able to drift from the prompt. That is why those two
+    # are at module scope.
+    #
+    # `log_caller` IS PART OF THE ROW (2026-09-02). grade_holistic has SEVEN callers, not one:
+    # the live scan (log_caller="ep_grade_judge", ~3/day), the chart-axis shadow job (up to ~48/day
+    # — 8 candidates x 6 replicate grades), judge_divergence (~2-5/day), and four offline
+    # eval/replay scripts. Without the caller on the row, a single historical backfill replay
+    # writes hundreds of trace rows INDISTINGUISHABLE from live grades, and any read of this
+    # surface silently mixes them. Recorded rather than suppressed: the shadow/eval callers are
+    # exactly where a payload divergence from live shows up, so the rows are worth keeping —
+    # they just have to be attributable. ⚠ Any query of this event MUST filter on log_caller.
     try:
         # imported HERE, not at module scope: this module is imported by the offline
         # eval/replay harnesses, and a top-level db import drags a connection pool into
@@ -525,12 +547,11 @@ async def grade_holistic(
         _rev = payload.get("revenue_stage")
         await log_audit_event(
             "judge_signal_trace",
-            f"{payload.get('ticker') or '?'}: direct_source held={_hds!r} sent="
-            f"{'yes' if _hds else 'no'}"
+            f"[{log_caller}] {payload.get('ticker') or '?'}: direct_source held={_hds!r} sent="
+            f"{_b(_hds)}"
             f"{'  ⚠ UNKNOWN RENDERED AS NO' if _hds is None else ''}"
-            f" | revenue_stage held={_rev!r} sent="
-            f"{'not checked' if _rev is None else ('yes' if _rev else 'no')}",
-            json.dumps({"ticker": payload.get("ticker"),
+            f" | revenue_stage held={_rev!r} sent={_b3(_rev)}",
+            json.dumps({"ticker": payload.get("ticker"), "log_caller": log_caller,
                         "has_direct_source": _hds, "revenue_stage": _rev}),
         )
     except Exception as _e:  # loud-ok: telemetry must never break a grade

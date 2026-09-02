@@ -55,16 +55,34 @@ async def fetch_profile(ticker):
 
 
 def build_judge_payload(row, grounded_text, market_cap, sector, active_narratives=None,
-                        tape=None, has_direct_source=None, theme_stage=None, theme_score=None):
+                        tape=None, has_direct_source=None, theme_stage=None, theme_score=None,
+                        revenue_stage=None, second_opinion=None, setup_class=None):
     """(payload, rule_mat) — mirrors run_ep_scan._judge_shadow's assembly exactly:
     W4 deterministic deal/cap rule tier + assemble_judge_inputs over the row.
     `active_narratives` (lane2-judge-theme-axis): point-in-time PRIOR-day Lane-2
     cohorts for this row's alert_date — None keeps the payload pre-change-identical.
     `tape` (#299 v2.0-P2): the point-in-time tape-feature dict — None keeps the payload
     byte-identical (the with-vs-without arm of eval_tape_judge passes the computed dict).
-    `has_direct_source`/`theme_stage`/`theme_score` (#329 Path A enrich): the inputs the LIVE
-    call site does NOT thread today — None keeps the payload byte-identical (the BLIND arm of
-    eval_judge_enrich); the ENRICHED arm passes them to measure the verdict delta."""
+    `theme_stage`/`theme_score` (#329 Path A enrich): inputs the LIVE call site does not thread
+    — None keeps the payload byte-identical (the BLIND arm of eval_judge_enrich); the ENRICHED
+    arm passes them to measure the verdict delta.
+
+    `has_direct_source`/`revenue_stage`: ⚠ THE LIVE SCAN NOW THREADS BOTH (2026-09-01), so a
+    caller that leaves them None is NO LONGER mirroring live — it is grading a DIFFERENT prompt
+    than production. That is deliberate only for eval_judge_enrich's BLIND arm. Every other
+    caller should pass what it can: `has_direct_source` is recoverable from a stored row with
+    `judge_review.recompute_has_direct_source(grounded_text)` (the markers are emitted by
+    build_grounded_text and sit at the head of the string, so truncation cannot remove them);
+    `revenue_stage` is NOT recoverable — it is computed live on earnings day and never
+    persisted, so None ("not checked") is the honest value on a replayed row, not a gap.
+    `second_opinion` IS rendered into the prompt (ep_grade_judge ~379) and IS passed by the live
+    call; `setup_class` is passed live but deliberately never rendered. Both are exposed here so a
+    replay caller CAN mirror live — none does yet, because neither is in the stored column set the
+    shadow cohort selects. Exposed rather than omitted: an absent parameter is a gap nobody can
+    close, while a None one is a gap the guard can name.
+
+    `tests/test_judge_payload_completeness.py` fails the build if this signature drifts from
+    `assemble_judge_inputs`."""
     rule_mat = rule_materiality(
         extract_deal_value(f"{row['catalyst'] or ''} {row['claude_analysis'] or ''}"),
         market_cap)
@@ -80,7 +98,9 @@ def build_judge_payload(row, grounded_text, market_cap, sector, active_narrative
                                     sector=sector, materiality_tier=rule_mat,
                                     active_narratives=active_narratives, tape=tape,
                                     has_direct_source=has_direct_source,
-                                    theme_stage=theme_stage, theme_score=theme_score)
+                                    theme_stage=theme_stage, theme_score=theme_score,
+                                    revenue_stage=revenue_stage,
+                                    second_opinion=second_opinion, setup_class=setup_class)
     return payload, rule_mat
 
 

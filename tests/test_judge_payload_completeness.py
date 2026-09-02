@@ -19,6 +19,17 @@ survivable; deciding not to send one is, as long as you say so.
 ⚠ It found a SECOND instance immediately: `revenue_stage` is computed live (ep_detector ~4324),
 rendered into the prompt (~383) and never passed either. It is declared below rather than silently
 fixed, because wiring it moves live grades and that is the operator's call.
+
+⚠ AND A THIRD, 2026-09-02 — the reason this file now has a second half. The guard above reads ONE
+call site, so it proved the LIVE payload complete while `judge_replay_common.build_judge_payload`
+— the documented mirror of that same assembly, used by the production chart-axis shadow job and
+every replay script — had no `revenue_stage` parameter at all and left `has_direct_source` at
+None. The shadow grader deciding whether chart-vision earns a place in the live rubric was
+therefore being told "no direct source" on every ticker: the identical defect, one layer over,
+still running the day after the live fix shipped. A guard scoped to one caller certifies one
+caller. The second half of this file holds the MIRROR to the same bar: it must OFFER every signal
+the assembler takes, so a gap is always a value someone can pass rather than a parameter that does
+not exist.
 """
 from __future__ import annotations
 
@@ -27,6 +38,7 @@ import pathlib
 import re
 
 from agents.market_intelligence.ep_grade_judge import assemble_judge_inputs
+from agents.market_intelligence.judge_replay_common import build_judge_payload
 
 # Signals deliberately NOT passed by the live call. Each needs a real reason — "not yet" is one,
 # "we decided against it" is one, silence is not.
@@ -81,3 +93,68 @@ def test_the_two_signals_found_by_this_guard_stay_wired():
     for name in ("has_direct_source", "revenue_stage"):
         assert name not in DECLARED_UNWIRED, f"{name} must stay wired, not be declared away"
         assert f"{name}=" in call, f"{name} is no longer passed to the judge"
+
+
+# ── the mirror: judge_replay_common.build_judge_payload ──────────────────────────────────
+# Signals the mirror does not need to EXPOSE, each with the reason it cannot be a forgotten
+# argument. Only "this function computes it itself" and "it is already a positional argument"
+# qualify — "no caller fills it yet" does NOT, because that is exactly how the 09-02 gap looked.
+MIRROR_NOT_EXPOSED = {
+    "materiality_tier": "computed inside build_judge_payload itself (rule_materiality over the "
+                        "row's own catalyst text + market cap) — passing it in would let a "
+                        "caller contradict the deterministic rule",
+    "grounded_text": "already a positional parameter of build_judge_payload",
+    "market_cap": "already a positional parameter of build_judge_payload",
+    "sector": "already a positional parameter of build_judge_payload",
+}
+
+
+def test_the_replay_mirror_exposes_every_signal_the_assembler_takes():
+    """MUTATION TARGET: adding a signal to assemble_judge_inputs, wiring it live, and leaving the
+    replay/shadow mirror without a parameter for it — which is what happened to `revenue_stage`
+    on 2026-09-01 and went unnoticed because the guard above only reads ep_detector.
+
+    A missing PARAMETER is strictly worse than a None argument: no caller can close the gap, and
+    nothing anywhere reports that the shadow judge and the live judge are reading different
+    prompts."""
+    signals = {p for p in inspect.signature(assemble_judge_inputs).parameters if p != "r"}
+    exposed = set(inspect.signature(build_judge_payload).parameters)
+    missing = sorted(signals - exposed - set(MIRROR_NOT_EXPOSED))
+    assert not missing, (
+        f"build_judge_payload cannot pass judge signal(s) {missing} — the shadow/replay graders "
+        f"would silently grade a different prompt than live. Add the parameter (default None) and "
+        f"forward it, or add it to MIRROR_NOT_EXPOSED with a reason that is not 'no caller needs "
+        f"it yet'.")
+
+
+def test_the_mirror_actually_forwards_what_it_exposes():
+    """A parameter that is accepted and then dropped on the floor is worse than no parameter: the
+    call site reads as correct. Checks the forwarding text, not just the signature."""
+    src = inspect.getsource(build_judge_payload)
+    body = src[src.index("assemble_judge_inputs("):]
+    exposed = [p for p in inspect.signature(build_judge_payload).parameters
+               if p not in ("row", "grounded_text", "market_cap", "sector")]
+    dropped = [p for p in exposed if f"{p}=" not in body]
+    assert not dropped, f"build_judge_payload accepts but never forwards: {dropped}"
+
+
+def test_mirror_exemptions_are_not_stale():
+    """Same rot rule as DECLARED_UNWIRED: an exemption for a parameter that no longer exists would
+    let a future parameter of that name slip through unnoticed."""
+    signals = {p for p in inspect.signature(assemble_judge_inputs).parameters if p != "r"}
+    stale = [k for k in MIRROR_NOT_EXPOSED if k not in signals]
+    assert not stale, f"MIRROR_NOT_EXPOSED names parameters that no longer exist: {stale}"
+
+
+def test_the_chart_axis_shadow_job_recovers_has_direct_source():
+    """The production caller this guard was extended for. The shadow job replays STORED alert rows
+    and mi_ep_alerts has no has_direct_source column, so the value must be RECOMPUTED from the
+    stored grounded_text — leaving it None means the judge is told a confident "no" on every
+    ticker (_b renders falsy as "no"), which is the whole bug."""
+    src = pathlib.Path("agents/market_intelligence/scheduler.py").read_text(encoding="utf-8")
+    job = src[src.index("async def _chart_axis_shadow_job("):]
+    job = job[:job.index("build_judge_payload(") + 400]
+    assert "recompute_has_direct_source(" in job, (
+        "the chart-axis shadow job no longer recomputes has_direct_source — its judge is back to "
+        "being told 'no direct source' on every ticker")
+    assert "has_direct_source=" in job, "recomputed but not passed"

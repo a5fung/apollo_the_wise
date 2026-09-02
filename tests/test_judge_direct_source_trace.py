@@ -104,9 +104,33 @@ def test_revenue_stage_says_NOT_CHECKED_rather_than_lying():
 def test_the_detector_passes_revenue_stage_and_only_when_it_KNOWS():
     """It must be the tri-state, not the boost gate's local `True`. That True means 'do not
     block the boost', not 'this company has revenue' — passing it would assert an unmeasured
-    fact, which is the bug class this whole thread is about."""
+    fact, which is the bug class this whole thread is about.
+
+    Checks the PROPERTY, not one spelling of it: the judge value is only ever assigned from a
+    real measurement or from None. Rewritten 2026-09-02 when the companion `_known` flag was
+    replaced by carrying the measured value directly — the old assertion pinned the flag's exact
+    text, so it would have failed on a refactor that preserved the behaviour perfectly and passed
+    on one that broke it, which is the wrong way round."""
     import pathlib as _pl
+    import re as _re
     src = _pl.Path("agents/market_intelligence/ep_detector.py").read_text(encoding="utf-8")
-    assert "revenue_stage=r.get(\"revenue_stage\")" in src
-    assert "revenue_stage if _revenue_stage_known else None" in src, (
-        "the candidate row must carry None when is_revenue_stage never ran")
+    assert 'revenue_stage=r.get("revenue_stage")' in src
+    assert '"revenue_stage": revenue_stage_for_judge,' in src, (
+        "the candidate row must carry the MEASURED value, not the boost gate's local bool")
+
+    assigned = {a.split("#")[0].strip()
+                for a in _re.findall(r"revenue_stage_for_judge = (.+)", src)}
+    assert assigned == {"revenue_stage", "None"}, (
+        f"revenue_stage_for_judge must only ever be a real measurement or an honest None, and "
+        f"both paths must exist; found: {sorted(assigned)}")
+
+    # THE FAIL-SOFT SEAM (fixed 2026-09-02, found by the /simplify altitude pass). On a data
+    # outage the boost gate keeps its permissive `True`; the judge must NOT be handed that guess.
+    blk = src[src.index("if earnings_today_match:"):]
+    blk = blk[:blk.index("# Boost gate:")]
+    exc = blk[blk.index("except Exception:"):]
+    assert "revenue_stage_for_judge = None" in exc, (
+        "the is_revenue_stage outage path hands the judge a fail-soft guess as a measured fact — "
+        "the identical defect as the non-earnings branch, one branch over")
+    assert "revenue_stage = True" in exc, (
+        "the boost gate lost its permissive default; a data outage must not silently block boosts")
