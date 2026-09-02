@@ -1770,6 +1770,36 @@ async def initialize_schema() -> None:
                 WHERE NOT bypassed;
         """)
 
+        # ── Theme rename lineage (#601, 2026-09-02) ───────────────────────
+        # Every operator ruling about a theme is filed under the theme's NAME:
+        # a bypassed mi_validation_cooldowns row = "this ticker BELONGS", an
+        # mi_theme_exclusions row = "this ticker NEVER belongs". A #214 mass-flag
+        # rename keeps a NEW name, so without a persisted old->new edge the
+        # ruling can never match again — deterministically, not probabilistically.
+        # This table is THE record of theme identity across renames; the two
+        # loaders (get_operator_protected_set, get_all_theme_exclusions) expand
+        # every ruling across it. Append-only. The two other traces a rename
+        # leaves are unfit to key a ruling on: the Retired tombstone's
+        # parent_theme is overloaded (absorption + protect-strip write it too)
+        # and restore_recently_retired_themes DELETEs Retired rows; the audit
+        # summary needs a string parse that a name containing ' or % defeats.
+        # UNIQUE (old, new, theme_date) + ON CONFLICT DO NOTHING = idempotent
+        # across the same-night re-runs (#539 saw three).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_renames (
+                id SERIAL PRIMARY KEY,
+                old_name TEXT NOT NULL,
+                new_name TEXT NOT NULL,
+                mechanism TEXT NOT NULL,
+                detail TEXT,
+                theme_date DATE NOT NULL,
+                renamed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (old_name, new_name, theme_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_renames_new_name
+                ON mi_theme_renames(new_name);
+        """)
+
         # ── Theme-pair merge cooldowns (ADR 0025 Arm B, #274) ─────────────
         # A DISTINCT verdict from the Stage-B thesis adjudicator writes a 30d
         # (theme_a, theme_b) cooldown so the pair isn't re-adjudicated nightly
@@ -12330,6 +12360,16 @@ async def get_all_theme_exclusions() -> dict[str, set[str]]:
     """
     Load all theme exclusions.
     Returns dict mapping theme_name → set of excluded tickers.
+
+    #601 (2026-09-02): keyed on theme IDENTITY, not just the stored name. An
+    exclusion filed under a name that was later renamed (#214) is ALSO keyed under
+    every name in that rename lineage, so `_get_excluded_tickers_for_theme` finds
+    it by exact match on the current name. The fuzzy word-overlap net in
+    theme_engine stays as the second layer for cosmetic rewordings with no lineage
+    record; it cannot cover a broadening rename ('Oil Refining & Marketing' ->
+    'Energy Infrastructure' shares no word). READ-side only — this function never
+    writes to mi_theme_exclusions (user-directed bans ONLY, standing rule).
+    Lineage failure is isolated + fail-open: the raw name-keyed dict is returned.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -12340,7 +12380,20 @@ async def get_all_theme_exclusions() -> dict[str, set[str]]:
         if theme not in result:
             result[theme] = set()
         result[theme].add(row["ticker"])
-    return result
+    aliases = await _theme_aliases_nonfatal("theme exclusions")
+    if not aliases:
+        return result
+    expanded: dict[str, set[str]] = {}
+    for theme, tickers in result.items():
+        names = aliases.get(theme) or frozenset((theme,))
+        for alias in names:
+            expanded.setdefault(alias, set()).update(tickers)
+        carried = sorted(names - {theme})
+        if carried:
+            logger.info(
+                f"#601: exclusion(s) {sorted(tickers)} under '{theme}' also apply to "
+                f"{carried} (rename lineage)")
+    return expanded
 
 
 async def remove_theme_exclusion(ticker: str, theme_name: str) -> bool:
@@ -12709,8 +12762,127 @@ async def get_operator_protected_set() -> set[tuple[str, str]]:
     Distinct from get_cooldown_set (active, NON-bypassed cooldowns suppress
     re-ASSIGNMENT); this set suppresses re-REMOVAL. No NOW() bound — the
     operator's protection does not expire when the original 14d cooldown would.
+
+    #601 (2026-09-02): keyed on theme IDENTITY, not the stored name. The shield
+    matched an EXACT (ticker, theme_name) pair, so a #214 rename made every ruling
+    filed under the old name unmatchable forever. Each pair is now also emitted
+    under every name in the theme's rename lineage (mi_theme_renames). The
+    lineage step is isolated + fail-open: if it errors, the RAW set is returned
+    exactly as before #601 — never an empty set, which would drop ALL protection
+    for the run (the shield's own fail-open treats a raise as "remove").
     """
-    return await _get_validation_pair_set(bypassed=True)
+    pairs = await _get_validation_pair_set(bypassed=True)
+    aliases = await _theme_aliases_nonfatal("operator protection")
+    if not aliases:
+        return pairs
+    out = set(pairs)
+    for ticker, theme in pairs:
+        for alias in aliases.get(theme, ()):
+            if alias != theme and (ticker, alias) not in pairs:
+                out.add((ticker, alias))
+                logger.info(f"#601: operator protection for {ticker} under '{theme}' "
+                            f"also shields it in '{alias}' (rename lineage)")
+    return out
+
+
+# ── Theme rename lineage (#601) ───────────────────────────────────────────────
+# Theme identity across renames. Written ONCE per rename by _save_themes (the moment
+# the new name's mi_themes row lands, same connection), read by the two ruling
+# loaders above. Schema comment on the CREATE TABLE says why neither the tombstone
+# nor the audit row could serve. Registered in scripts/preflight_db_updates.py —
+# a silent recorder is where a type-deduction bug hides longest.
+
+THEME_RENAME_INSERT_SQL = """
+    INSERT INTO mi_theme_renames (old_name, new_name, mechanism, detail, theme_date)
+    VALUES ($1, $2, $3, $4, $5::date)
+    ON CONFLICT (old_name, new_name, theme_date) DO NOTHING
+"""
+
+# The only mechanism that deliberately KEEPS a new name today (#214). Canonicalize
+# (#59) and name-inheritance both rename TOWARD the prior persisted name, so the
+# name they discard was never one the operator could have ruled under.
+THEME_RENAME_MECHANISM_MASS_FLAG = "mass_flag_rename"
+
+
+async def record_theme_rename(
+    old_name: str, new_name: str, *, mechanism: str, theme_date: date,
+    detail: str = "", conn=None,
+) -> None:
+    """Persist one old -> new rename edge. Idempotent per (old, new, theme_date), so
+    the same-night re-runs cannot double-write it. `conn` lets _save_themes write it
+    on the connection that just persisted the new name."""
+    async def _run(c):
+        await c.execute(THEME_RENAME_INSERT_SQL, old_name, new_name, mechanism,
+                        (detail or "")[:500], theme_date)
+    if conn is not None:
+        await _run(conn)
+        return
+    pool = await get_pool()
+    async with pool.acquire() as c:
+        await _run(c)
+
+
+async def get_theme_rename_edges(conn=None) -> list[tuple[str, str]]:
+    """Every persisted (old_name, new_name) rename edge, oldest first. No time bound —
+    an operator ruling is permanent (protection never expires, exclusions are
+    permanent), so the identity it attaches to must be too."""
+    async def _run(c):
+        rows = await c.fetch(
+            "SELECT old_name, new_name FROM mi_theme_renames ORDER BY renamed_at, id")
+        return [(r["old_name"], r["new_name"]) for r in rows]
+    if conn is not None:
+        return await _run(conn)
+    pool = await get_pool()
+    async with pool.acquire() as c:
+        return await _run(c)
+
+
+def resolve_theme_aliases(edges) -> dict[str, frozenset[str]]:
+    """PURE. name -> every name in its rename lineage, itself included.
+
+    Connected components over the undirected edge set (union-find): symmetric and
+    transitive by design. A -> B -> C means a ruling filed under A applies to C, and
+    a later revival of A is the same identity as C. Only names that appear in some
+    edge are returned; a name with no rename history is absent (callers treat
+    absence as {name}).
+    """
+    parent: dict[str, str] = {}
+
+    def _find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for old, new in edges:
+        if not old or not new or old == new:
+            continue
+        ra, rb = _find(old), _find(new)
+        if ra != rb:
+            parent[ra] = rb
+    groups: dict[str, set[str]] = {}
+    for name in parent:
+        groups.setdefault(_find(name), set()).add(name)
+    out: dict[str, frozenset[str]] = {}
+    for members in groups.values():
+        fs = frozenset(members)
+        for name in members:
+            out[name] = fs
+    return out
+
+
+async def _theme_aliases_nonfatal(label: str) -> dict[str, frozenset[str]]:
+    """Fetch + resolve the rename lineage for a ruling loader. FAIL-OPEN to {} — the
+    caller then returns its raw name-keyed result, i.e. exactly the pre-#601
+    behaviour for one run. Never lets a lineage error take a ruling loader down
+    with it (that would cost EVERY ruling, not just the renamed ones)."""
+    try:
+        return resolve_theme_aliases(await get_theme_rename_edges())
+    except Exception as e:
+        logger.warning(f"#601: theme rename lineage unavailable for {label} — rulings "
+                       f"match on current names only this run: {e}")
+        return {}
 
 
 async def add_merge_distinct_cooldown(

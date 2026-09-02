@@ -68,6 +68,7 @@ from agents.market_intelligence.db import (
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
     get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
     get_seeded_assignment_tickers, latest_complete_score_date_sql,
+    record_theme_rename, THEME_RENAME_MECHANISM_MASS_FLAG,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
 # Arm A (dissolve-on-flagged-pair) + Arm B (thesis-coherence merge) both check
@@ -158,6 +159,12 @@ def _get_excluded_tickers_for_theme(
 
     Example: CAR excluded from "Data Center Infrastructure" also blocks it from
     "AI Data Center & Cloud Infrastructure" (same theme, renamed by Claude).
+
+    #601: the fuzzy net only covers REWORDINGS. A broadening #214 rename shares no
+    word ('Oil Refining & Marketing' -> 'Energy Infrastructure' scores unrelated), so
+    `all_exclusions` arrives from `db.get_all_theme_exclusions` already keyed under
+    every name in each theme's persisted rename lineage — the exact-match arm below
+    is what carries those.
     """
     result: set[str] = set()
     for exc_theme, exc_tickers in all_exclusions.items():
@@ -2163,6 +2170,30 @@ async def _save_themes(themes: list[dict]) -> None:
                 t["score"], t.get("rs_avg"), t["description"], t["tickers"],
                 t.get("parent_theme"), days_active, consec_acc, t.get("pct_above_20sma"))
 
+            # #601 (2026-09-02): the in-memory `renamed_from` dies with this run. Persist the
+            # old -> new edge NOW, on the connection that just landed the new name's row —
+            # it is the one record that lets an operator ruling filed under the OLD name
+            # (a bypassed cooldown, an exclusion) reach the theme under its new one.
+            # Loud on failure, never fatal: the save must still finish for the other themes.
+            if t.get("renamed_from"):
+                try:
+                    await record_theme_rename(
+                        t["renamed_from"], t["name"],
+                        mechanism=THEME_RENAME_MECHANISM_MASS_FLAG,
+                        theme_date=t["theme_date"],
+                        detail=f"#214 mass-flag rename; {len(t.get('tickers') or [])} members kept",
+                        conn=conn)
+                except Exception as e:
+                    logger.error(f"#601: rename lineage write FAILED for "
+                                 f"'{t['renamed_from']}' -> '{t['name']}': {e}")
+                    await log_audit_event(
+                        "theme_rename_lineage_write_failed",
+                        summary=(f"'{t['renamed_from']}' -> '{t['name']}': lineage row NOT "
+                                 f"written — operator rulings under the old name will not "
+                                 f"follow the rename until it is (#601)"),
+                        detail=str(e)[:500],
+                    )
+
         # Remove LIVE themes that were merged/retired — not in the final list. Scoped to
         # source='live' so a same-day re-run can't clobber shadow_promoted rows (#226 graduation,
         # which runs AFTER this in the nightly pull and owns its own source='shadow_promoted' rows).
@@ -2876,6 +2907,9 @@ async def _validate_theme_membership(
         # undoes the operator's correction (SNDK/SIMO re-stripped from
         # "AI Memory & Storage" on the narrowing "AI" qualifier). The shield is
         # additive + fails open: a DB error here leaves to_remove untouched.
+        # #601: the set is keyed on theme IDENTITY — `get_operator_protected_set`
+        # emits each pair under every name in the theme's persisted rename
+        # lineage, so a ruling filed under a name #214 later renamed still matches.
         if to_remove:
             try:
                 # #217: run-level callers pass the protected set (fetched once per
@@ -3337,13 +3371,20 @@ async def _apply_mass_flag_rename(
         - `_canonicalize_theme_names` is carved out — see its own docstring; without that
           carve-out it would rename the theme straight back (unchanged ticker set is
           precisely its trigger) and the fix would no-op in prod while passing tests.
-        - `mi_theme_exclusions` matches theme names fuzzily (`_themes_are_related`), so
-          operator bans survive the rename. Nothing is ever written to that table here.
+        - OPERATOR RULINGS (#601, 2026-09-02) — `mi_theme_exclusions` (bans) and bypassed
+          `mi_validation_cooldowns` (protection) are filed under the theme's NAME. Both
+          loaders expand across the persisted rename lineage (`mi_theme_renames`, written
+          by `_save_themes` off `renamed_from`), so a ruling under the old name still
+          applies under the new one. The fuzzy `_themes_are_related` net could NOT cover
+          this: a broadening rename ('Oil Refining & Marketing' -> 'Energy Infrastructure')
+          shares no word. Nothing is ever written to the exclusions table here.
         - `mi_theme_ecosystems` re-maps on the next save (`_map_ecosystems_nonfatal` fills
           any theme lacking a row).
       * `mi_validation_cooldowns` rows are keyed (ticker, theme-name). None are written on
         this path — that is the whole point — so no member is fenced out of the renamed
-        theme. Old cooldowns under the old name simply expire.
+        theme. Old NON-bypassed cooldowns under the old name simply expire (deliberately
+        not carried — the rename's premise is that the members were right); BYPASSED ones
+        are the operator's ruling and follow the lineage (#601).
     """
     flagged = mass_flag.get("flagged") or []
     n_members = mass_flag.get("member_count") or len(tickers)
