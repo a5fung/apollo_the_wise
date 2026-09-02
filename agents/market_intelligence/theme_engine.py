@@ -5592,7 +5592,12 @@ In every other case, skip the advisor and call `report_themes` immediately, with
                 # sits on the failure instead of the recovery.
                 logger.warning("Theme discovery: loop guard tripped (>8 iterations) — returning no themes")
                 try:
-                    from agents.market_intelligence.db import log_audit_event
+                    # NO function-local import here. `log_audit_event` is already bound at
+                    # module level (line ~63), and a local `from ... import` makes the name
+                    # LOCAL for the WHOLE function — so every earlier reference in
+                    # _discover_new_themes_single would raise UnboundLocalError. That is the
+                    # 2026-05-20 outage class (#433, EP scans dead for 1h21m); the deploy gate
+                    # [5d/7] caught this one before it shipped, 2026-09-01.
                     await log_audit_event(
                         "theme_discovery_recovery_failed",
                         f"theme discovery gave up after {loop_guard - 1} iterations — "
