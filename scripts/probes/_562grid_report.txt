@@ -1,0 +1,500 @@
+
+====================================================================================================
+== ep_low_reclaim — 203 recorded fires, entry unchanged, stop varied ==
+====================================================================================================
+
+incumbent: killed 0 (0 mature) · no-basis 0 · settle-abstain 7 · settled 196 (130 mature) · med stop width 2.1%
+  M-none : n=130 mean=-0.39 med=-1.00 sum=  -51.3 win= 12% >=4R=6
+  M-trail: n=130 mean=-0.25 med=-1.00 sum=  -32.6 win= 25% >=4R=3
+  ex-May M-none : n=70  mean=-0.62 med=-1.00 sum=  -43.2 win= 10% >=4R=2
+  ex-May M-trail: n=70  mean=-0.39 med=-1.00 sum=  -27.2 win= 23% >=4R=1
+  touched >=4R in-hold (own-R MFE): 19/130 (harvested: none 6 / trail 3)
+  monthly M-none sums: 05: -8.1R/n60  06: -20.2R/n44  07: -23.0R/n26  08: —
+
+bar_low: killed 3 (1 mature) · no-basis 0 · settle-abstain 4 · settled 196 (129 mature) · med stop width 1.0%
+  M-none : n=129 mean=-0.51 med=-1.00 sum=  -65.8 win=  5% >=4R=6
+  M-trail: n=129 mean=-0.45 med=-1.00 sum=  -58.4 win= 15% >=4R=6
+  ex-May M-none : n=70  mean=-0.72 med=-1.00 sum=  -50.2 win=  4% >=4R=3
+  ex-May M-trail: n=70  mean=-0.48 med=-1.00 sum=  -33.4 win= 17% >=4R=3
+  touched >=4R in-hold (own-R MFE): 17/129 (harvested: none 6 / trail 6)
+  monthly M-none sums: 05: -15.6R/n59  06: -24.2R/n44  07: -26.0R/n26  08: —
+  killed (incumbent M-none R in brackets): CRSR 2026-05[+3.2], HGTY 2026-08[-1.0], TSAT 2026-08[-1.0]
+
+lod_fire: killed 0 (0 mature) · no-basis 0 · settle-abstain 7 · settled 196 (130 mature) · med stop width 1.9%
+  M-none : n=130 mean=-0.37 med=-1.00 sum=  -48.2 win= 11% >=4R=7
+  M-trail: n=130 mean=-0.24 med=-1.00 sum=  -31.6 win= 24% >=4R=3
+  ex-May M-none : n=70  mean=-0.57 med=-1.00 sum=  -40.0 win= 10% >=4R=3
+  ex-May M-trail: n=70  mean=-0.38 med=-1.00 sum=  -26.5 win= 21% >=4R=1
+  touched >=4R in-hold (own-R MFE): 20/130 (harvested: none 7 / trail 3)
+  monthly M-none sums: 05: -8.1R/n60  06: -17.1R/n44  07: -23.0R/n26  08: —
+
+prior_low: killed 78 (45 mature) · no-basis 0 · settle-abstain 5 · settled 120 (85 mature) · med stop width 0.8%
+  M-none : n=85  mean=-0.54 med=-1.00 sum=  -45.5 win=  9% >=4R=4
+  M-trail: n=85  mean=-0.29 med=-1.00 sum=  -25.0 win= 20% >=4R=4
+  ex-May M-none : n=53  mean=-0.65 med=-1.00 sum=  -34.3 win=  8% >=4R=2
+  ex-May M-trail: n=53  mean=-0.23 med=-1.00 sum=  -12.4 win= 19% >=4R=3
+  touched >=4R in-hold (own-R MFE): 12/85 (harvested: none 4 / trail 4)
+  monthly M-none sums: 05: -11.2R/n32  06: -13.3R/n32  07: -21.0R/n21  08: —
+  killed (incumbent M-none R in brackets): ABVX 2026-06[+6.8], CRSR 2026-05[+3.2], ARM 2026-07[+0.4], ABSI 2026-06[-1.0], ACHR 2026-08[-1.0], ACMR 2026-08[-1.0], AEIS 2026-08[-1.0], AEVA 2026-08[-1.0], ARX 2026-05[-1.0], ASPI 2026-05[-1.0], ASTI 2026-05[-1.0], ATRO 2026-08[-1.0], AVAV 2026-05[-1.0], AVAV 2026-06[-1.0], BBWI 2026-05[-1.0], BHVN 2026-05[-1.0], BW 2026-05[-1.0], CAMT 2026-06[-1.0], CAT 2026-08[-1.0], CHA 2026-05[-1.0], CLSK 2026-07[-1.0], CRWV 2026-08[-1.0], CSCO 2026-05[-1.0], DRTS 2026-05[-1.0], ECG 2026-08[-1.0], EROC 2026-08[-1.0], FIG 2026-05[-1.0], FRMI 2026-08[-1.0], FTK 2026-08[-1.0], FTNT 2026-07[-1.0], FUTU 2026-05[-1.0], GLBE 2026-08[-1.0], GLOB 2026-05[-1.0], HGTY 2026-08[-1.0], HLIT 2026-05[-1.0], HLIT 2026-08[-1.0], HUT 2026-07[-1.0], INFQ 2026-05[-1.0], INSM 2026-08[-1.0], INSP 2026-08[-1.0], IREN 2026-07[-1.0], LIND 2026-08[-1.0], MLTX 2026-06[-1.0], MRAM 2026-05[-1.0], MRVL 2026-06[-1.0], MRVL 2026-08[-1.0], NBIS 2026-08[-1.0], OUST 2026-06[-1.0], PACS 2026-05[-1.0], PD 2026-05[-1.0], PENG 2026-07[-1.0], PONY 2026-05[-1.0], POWI 2026-05[-1.0], PPTA 2026-05[-1.0], PSIX 2026-08[-1.0], QDEL 2026-06[-1.0], QUBT 2026-05[-1.0], QURE 2026-06[-1.0], RDW 2026-05[-1.0], RDW 2026-08[-1.0], RIOT 2026-08[-1.0], RXT 2026-06[-1.0], SE 2026-05[-1.0], SE 2026-08[-1.0], SIMO 2026-07[-1.0], SITM 2026-08[-1.0], SKM 2026-06[-1.0], SNOW 2026-05[-1.0], SOUN 2026-08[-1.0], STDN 2026-08[-1.0], TNDM 2026-06[-1.0], TSAT 2026-08[-1.0], TWLO 2026-08[-1.0], UUUU 2026-08[-1.0], VG 2026-05[-1.0], WYFI 2026-05[-1.0], WYFI 2026-08[-1.0], CLF 2026-07[]
+
+adr_025: killed 0 (0 mature) · no-basis 0 · settle-abstain 4 · settled 199 (130 mature) · med stop width 1.6%
+  M-none : n=130 mean=-0.18 med=-1.00 sum=  -23.5 win=  5% >=4R=6
+  M-trail: n=130 mean=-0.19 med=-1.00 sum=  -24.5 win= 21% >=4R=4
+  ex-May M-none : n=70  mean=-0.72 med=-1.00 sum=  -50.5 win=  3% >=4R=1
+  ex-May M-trail: n=70  mean=-0.60 med=-1.00 sum=  -41.8 win= 16% >=4R=0
+  touched >=4R in-hold (own-R MFE): 22/130 (harvested: none 6 / trail 4)
+  monthly M-none sums: 05: +27.0R/n60  06: -27.0R/n44  07: -23.5R/n26  08: —
+
+adr_050: killed 0 (0 mature) · no-basis 0 · settle-abstain 13 · settled 190 (130 mature) · med stop width 3.1%
+  M-none : n=130 mean=-0.14 med=-1.00 sum=  -18.6 win= 11% >=4R=11
+  M-trail: n=130 mean=+0.01 med=-1.00 sum=   +1.9 win= 29% >=4R=9
+  ex-May M-none : n=70  mean=-0.34 med=-1.00 sum=  -24.0 win= 10% >=4R=5
+  ex-May M-trail: n=70  mean=-0.04 med=-1.00 sum=   -3.1 win= 26% >=4R=4
+  touched >=4R in-hold (own-R MFE): 23/130 (harvested: none 11 / trail 9)
+  monthly M-none sums: 05: +5.5R/n60  06: -1.6R/n44  07: -22.5R/n26  08: —
+
+adr_075: killed 0 (0 mature) · no-basis 0 · settle-abstain 19 · settled 184 (130 mature) · med stop width 4.7%
+  M-none : n=130 mean=+0.02 med=-1.00 sum=   +2.1 win= 15% >=4R=13
+  M-trail: n=130 mean=+0.17 med=-0.27 sum=  +22.1 win= 35% >=4R=6
+  ex-May M-none : n=70  mean=-0.03 med=-1.00 sum=   -1.8 win= 14% >=4R=7
+  ex-May M-trail: n=70  mean=+0.19 med=-0.29 sum=  +13.1 win= 33% >=4R=5
+  touched >=4R in-hold (own-R MFE): 25/130 (harvested: none 13 / trail 6)
+  monthly M-none sums: 05: +3.9R/n60  06: +7.8R/n44  07: -9.6R/n26  08: —
+
+adr_100: killed 0 (0 mature) · no-basis 0 · settle-abstain 28 · settled 175 (130 mature) · med stop width 6.3%
+  M-none : n=130 mean=+0.10 med=-1.00 sum=  +12.4 win= 22% >=4R=12
+  M-trail: n=130 mean=+0.25 med=-0.07 sum=  +32.7 win= 42% >=4R=5
+  ex-May M-none : n=70  mean=-0.14 med=-1.00 sum=   -9.7 win= 19% >=4R=3
+  ex-May M-trail: n=70  mean=+0.16 med=-0.10 sum=  +11.2 win= 39% >=4R=2
+  touched >=4R in-hold (own-R MFE): 24/130 (harvested: none 12 / trail 5)
+  monthly M-none sums: 05: +22.1R/n60  06: +1.2R/n44  07: -10.9R/n26  08: —
+
+adr_125: killed 0 (0 mature) · no-basis 0 · settle-abstain 33 · settled 170 (130 mature) · med stop width 7.8%
+  M-none : n=130 mean=+0.12 med=-1.00 sum=  +15.8 win= 25% >=4R=10
+  M-trail: n=130 mean=+0.19 med=-0.05 sum=  +24.7 win= 42% >=4R=3
+  ex-May M-none : n=70  mean=-0.09 med=-1.00 sum=   -6.4 win= 21% >=4R=3
+  ex-May M-trail: n=70  mean=+0.12 med=-0.06 sum=   +8.6 win= 40% >=4R=1
+  touched >=4R in-hold (own-R MFE): 19/130 (harvested: none 10 / trail 3)
+  monthly M-none sums: 05: +22.3R/n60  06: +6.5R/n44  07: -12.9R/n26  08: —
+
+adr_150: killed 0 (0 mature) · no-basis 0 · settle-abstain 36 · settled 167 (130 mature) · med stop width 9.4%
+  M-none : n=130 mean=+0.05 med=-1.00 sum=   +6.6 win= 28% >=4R=6
+  M-trail: n=130 mean=+0.15 med=-0.04 sum=  +19.7 win= 43% >=4R=3
+  ex-May M-none : n=70  mean=-0.11 med=-1.00 sum=   -7.6 win= 26% >=4R=3
+  ex-May M-trail: n=70  mean=+0.08 med=-0.05 sum=   +5.6 win= 40% >=4R=1
+  touched >=4R in-hold (own-R MFE): 11/130 (harvested: none 6 / trail 3)
+  monthly M-none sums: 05: +14.1R/n60  06: +1.9R/n44  07: -9.4R/n26  08: —
+
+adr_200: killed 0 (0 mature) · no-basis 0 · settle-abstain 52 · settled 151 (130 mature) · med stop width 12.5%
+  M-none : n=130 mean=+0.06 med=-1.00 sum=   +8.1 win= 38% >=4R=3
+  M-trail: n=130 mean=+0.11 med=-0.03 sum=  +14.0 win= 43% >=4R=1
+  ex-May M-none : n=70  mean=-0.09 med=-1.00 sum=   -6.4 win= 33% >=4R=3
+  ex-May M-trail: n=70  mean=+0.05 med=-0.04 sum=   +3.8 win= 40% >=4R=1
+  touched >=4R in-hold (own-R MFE): 6/130 (harvested: none 3 / trail 1)
+  monthly M-none sums: 05: +14.5R/n60  06: -1.9R/n44  07: -4.5R/n26  08: —
+
+ep_close: killed 189 (120 mature) · no-basis 0 · settle-abstain 0 · settled 14 (10 mature) · med stop width 1.6%
+  M-none : n=10  mean=-0.19 med=-1.00 sum=   -1.9 win= 10% >=4R=1
+  M-trail: n=10  mean=+3.65 med=-1.00 sum=  +36.5 win= 20% >=4R=2
+  ex-May M-none : n=6   mean=+0.35 med=-1.00 sum=   +2.1 win= 17% >=4R=1
+  ex-May M-trail: n=6   mean=+0.35 med=-1.00 sum=   +2.1 win= 17% >=4R=1
+  touched >=4R in-hold (own-R MFE): 2/10 (harvested: none 1 / trail 2)
+  monthly M-none sums: 05: -4.0R/n4  06: +3.1R/n5  07: -1.0R/n1  08: —
+  killed (incumbent M-none R in brackets): STUB 2026-05[+11.4], TE 2026-05[+10.7], ABVX 2026-06[+6.8], GO 2026-05[+6.6], FPS 2026-05[+6.5], CRSR 2026-05[+3.2], AGYS 2026-05[+2.8], CRMD 2026-05[+2.1], NAVN 2026-06[+1.5], SYRE 2026-06[+0.7], SLS 2026-05[+0.7], ARM 2026-07[+0.4], LRCX 2026-07[+0.4], SWBI 2026-06[-0.4], AGX 2026-06[-0.6], KYMR 2026-06[-0.7], COHU 2026-07[-0.8], ABSI 2026-06[-1.0], ACAD 2026-06[-1.0], ACHR 2026-08[-1.0], ACMR 2026-08[-1.0], AEHR 2026-07[-1.0], AEIS 2026-08[-1.0], AEVA 2026-08[-1.0], AKTS 2026-06[-1.0], ANF 2026-05[-1.0], APPS 2026-08[-1.0], ARWR 2026-07[-1.0], ARX 2026-05[-1.0], ASAN 2026-05[-1.0], ASPI 2026-05[-1.0], ASTI 2026-05[-1.0], ATRO 2026-08[-1.0], AUGO 2026-06[-1.0], AVAV 2026-05[-1.0], AVAV 2026-06[-1.0], AVEX 2026-05[-1.0], BBWI 2026-05[-1.0], BE 2026-08[-1.0], BHVN 2026-05[-1.0], BLSH 2026-08[-1.0], BLZE 2026-08[-1.0], BRUN 2026-08[-1.0], BTDR 2026-08[-1.0], BTGO 2026-05[-1.0], BULL 2026-08[-1.0], BW 2026-05[-1.0], BW 2026-08[-1.0], BZH 2026-05[-1.0], CAMT 2026-06[-1.0], CAT 2026-08[-1.0], CBRL 2026-06[-1.0], CHA 2026-05[-1.0], CHRN 2026-08[-1.0], CHTR 2026-06[-1.0], CLSK 2026-07[-1.0], CORZ 2026-07[-1.0], CRCL 2026-07[-1.0], CRMD 2026-08[-1.0], CRWV 2026-08[-1.0], CSCO 2026-05[-1.0], DELL 2026-05[-1.0], DOCN 2026-07[-1.0], DRTS 2026-05[-1.0], ECG 2026-08[-1.0], EFOR 2026-07[-1.0], EME 2026-07[-1.0], EOSE 2026-05[-1.0], EROC 2026-08[-1.0], EVTC 2026-05[-1.0], FCEL 2026-06[-1.0], FIG 2026-05[-1.0], FLNC 2026-07[-1.0], FRMI 2026-08[-1.0], FTK 2026-08[-1.0], FTNT 2026-07[-1.0], FUTU 2026-05[-1.0], GEMI 2026-05[-1.0], GLBE 2026-08[-1.0], GLOB 2026-05[-1.0], GRND 2026-07[-1.0], GRRR 2026-06[-1.0], HGTY 2026-08[-1.0], HLIT 2026-05[-1.0], HLIT 2026-08[-1.0], HPE 2026-06[-1.0], HRB 2026-08[-1.0], HUT 2026-07[-1.0], IDCC 2026-06[-1.0], INFQ 2026-05[-1.0], INOD 2026-08[-1.0], INSM 2026-08[-1.0], INSP 2026-08[-1.0], IREN 2026-07[-1.0], JBL 2026-06[-1.0], KC 2026-07[-1.0], KLAR 2026-05[-1.0], KMT 2026-08[-1.0], KODK 2026-08[-1.0], KSS 2026-05[-1.0], KTOS 2026-05[-1.0], LIND 2026-08[-1.0], LPTH 2026-08[-1.0], MLTX 2026-06[-1.0], MNDY 2026-05[-1.0], MPWR 2026-07[-1.0], MRAM 2026-05[-1.0], MRLN 2026-06[-1.0], MRVL 2026-06[-1.0], MRVL 2026-08[-1.0], MU 2026-06[-1.0], NBIS 2026-08[-1.0], NET 2026-08[-1.0], NMAX 2026-08[-1.0], NNE 2026-05[-1.0], NNE 2026-07[-1.0], NRIX 2026-06[-1.0], NVCR 2026-07[-1.0], NVTS 2026-06[-1.0], OKLO 2026-05[-1.0], ONTO 2026-08[-1.0], OUST 2026-06[-1.0], PACS 2026-05[-1.0], PD 2026-05[-1.0], PENG 2026-07[-1.0], PGY 2026-06[-1.0], PHR 2026-05[-1.0], PONY 2026-05[-1.0], POWI 2026-05[-1.0], PRG 2026-07[-1.0], PRGO 2026-08[-1.0], PSIX 2026-08[-1.0], PUBM 2026-08[-1.0], QBTS 2026-07[-1.0], QDEL 2026-06[-1.0], QNST 2026-08[-1.0], QUBT 2026-05[-1.0], QURE 2026-06[-1.0], RCAT 2026-05[-1.0], RDDT 2026-08[-1.0], RDW 2026-05[-1.0], RDW 2026-08[-1.0], RIOT 2026-08[-1.0], ROCK 2026-08[-1.0], RPD 2026-08[-1.0], RUM 2026-06[-1.0], RXT 2026-06[-1.0], SAIC 2026-06[-1.0], SE 2026-05[-1.0], SE 2026-08[-1.0], SEDG 2026-06[-1.0], SG 2026-07[-1.0], SIMO 2026-07[-1.0], SITM 2026-08[-1.0], SKM 2026-06[-1.0], SLN 2026-08[-1.0], SMCI 2026-07[-1.0], SNOW 2026-05[-1.0], SOLS 2026-08[-1.0], SOUN 2026-08[-1.0], STAA 2026-05[-1.0], STDN 2026-08[-1.0], TASK 2026-08[-1.0], TATT 2026-08[-1.0], TNDM 2026-06[-1.0], TSAT 2026-08[-1.0], TSEM 2026-07[-1.0], TTAN 2026-06[-1.0], TWLO 2026-08[-1.0], UUUU 2026-06[-1.0], UUUU 2026-08[-1.0], VG 2026-05[-1.0], VIK 2026-05[-1.0], VSNT 2026-05[-1.0], VSTS 2026-05[-1.0], WEN 2026-06[-1.0], WKC 2026-07[-1.0], WULF 2026-07[-1.0], WYFI 2026-05[-1.0], WYFI 2026-08[-1.0], XE 2026-06[-1.0], ZBRA 2026-05[-1.0], CGEM 2026-08[], CLF 2026-07[], CRSR 2026-08[], KURA 2026-08[], LIFE 2026-08[], SCSC 2026-08[], VOYG 2026-08[]
+
+ep_low: killed 0 (0 mature) · no-basis 0 · settle-abstain 3 · settled 200 (130 mature) · med stop width 0.3%
+  M-none : n=130 mean=-0.89 med=-1.00 sum= -116.0 win=  2% >=4R=2
+  M-trail: n=130 mean=-0.66 med=-1.00 sum=  -86.2 win=  8% >=4R=4
+  ex-May M-none : n=70  mean=-0.80 med=-1.00 sum=  -56.0 win=  3% >=4R=2
+  ex-May M-trail: n=70  mean=-0.51 med=-1.00 sum=  -35.4 win= 11% >=4R=3
+  touched >=4R in-hold (own-R MFE): 16/130 (harvested: none 2 / trail 4)
+  monthly M-none sums: 05: -60.0R/n60  06: -30.0R/n44  07: -26.0R/n26  08: —
+
+  P14 — the incumbent's >=+2R fires under every basis:
+  ticker ep_mon   incumbent   bar_low  lod_fire prior_low   adr_025   adr_050   adr_075   adr_100   adr_125   adr_150   adr_200  ep_close    ep_low
+  STUB   2026-05     +11.4R    +11.9R    +11.4R     -1.0R     -1.0R    +13.2R     +8.8R     +6.6R     +5.3R     +4.4R     +3.3R    KILLED     -1.0R
+  TE     2026-05     +10.7R     -1.0R    +10.7R     -1.0R     -1.0R     -1.0R     +8.0R     +6.0R     +4.8R     +4.0R     +3.0R    KILLED     -1.0R
+  ABVX   2026-06      +6.8R     +6.8R     +6.8R    KILLED     -1.0R     -1.0R    +14.1R    +10.6R     +8.4R     +7.0R     +5.3R    KILLED     -1.0R
+  GO     2026-05      +6.6R    +21.9R     +6.6R     +7.5R    +24.3R    +12.2R     +8.1R     +6.1R     +4.9R     +4.1R     +3.0R    KILLED     -1.0R
+  FPS    2026-05      +6.5R     -1.0R     +8.1R     +6.5R    +23.9R    +11.9R     +8.0R     +6.0R     +4.8R     +4.0R     +3.0R    KILLED     -1.0R
+  MMYT   2026-06      +4.8R     +4.8R     +4.8R     +5.4R     -1.0R     +5.6R     +3.8R     +2.8R     +2.3R     +1.9R     +1.4R     -1.0R     +5.4R
+  ELVN   2026-06      +3.6R     +4.8R     +3.6R     +6.6R     -1.0R     +9.1R     +6.0R     +4.5R     +3.6R     +3.0R     +2.3R     +7.1R     +6.6R
+  CRSR   2026-05      +3.2R    KILLED     +3.2R    KILLED     -1.0R     +4.2R     +2.8R     +2.1R     +1.7R     +1.4R     +1.1R    KILLED     -1.0R
+  AGYS   2026-05      +2.8R     +6.7R     +2.8R     -1.0R    +11.8R     +5.9R     +3.9R     +2.9R     +2.4R     +2.0R     +1.5R    KILLED     -1.0R
+  CRMD   2026-05      +2.1R     -1.0R     +2.2R     +2.1R     -1.0R     -1.0R     -1.0R     +2.6R     +2.0R     +1.7R     +1.3R    KILLED     -1.0R
+
+====================================================================================================
+== ep_close_reclaim — 144 recorded fires, entry unchanged, stop varied ==
+====================================================================================================
+
+incumbent: killed 0 (0 mature) · no-basis 0 · settle-abstain 11 · settled 133 (86 mature) · med stop width 2.8%
+  M-none : n=86  mean=-0.44 med=-1.00 sum=  -38.2 win=  9% >=4R=2
+  M-trail: n=86  mean=-0.06 med=-1.00 sum=   -5.1 win= 21% >=4R=8
+  ex-May M-none : n=42  mean=-0.66 med=-1.00 sum=  -27.8 win= 10% >=4R=1
+  ex-May M-trail: n=42  mean=+0.03 med=-1.00 sum=   +1.2 win= 21% >=4R=5
+  touched >=4R in-hold (own-R MFE): 19/86 (harvested: none 2 / trail 8)
+  monthly M-none sums: 05: -10.4R/n44  06: -18.2R/n23  07: -9.6R/n19  08: —
+
+bar_low: killed 2 (1 mature) · no-basis 0 · settle-abstain 3 · settled 139 (85 mature) · med stop width 1.4%
+  M-none : n=85  mean=-0.45 med=-1.00 sum=  -38.5 win=  6% >=4R=2
+  M-trail: n=85  mean=-0.11 med=-1.00 sum=   -9.0 win= 16% >=4R=8
+  ex-May M-none : n=41  mean=-0.65 med=-1.00 sum=  -26.7 win= 10% >=4R=1
+  ex-May M-trail: n=41  mean=+0.07 med=-1.00 sum=   +3.0 win= 20% >=4R=5
+  touched >=4R in-hold (own-R MFE): 22/85 (harvested: none 2 / trail 8)
+  monthly M-none sums: 05: -11.7R/n44  06: -18.2R/n23  07: -8.5R/n18  08: —
+  killed (incumbent M-none R in brackets): PRG 2026-07[-1.0], WLDN 2026-08[]
+
+lod_fire: killed 0 (0 mature) · no-basis 0 · settle-abstain 9 · settled 135 (86 mature) · med stop width 2.6%
+  M-none : n=86  mean=-0.47 med=-1.00 sum=  -40.1 win=  8% >=4R=2
+  M-trail: n=86  mean=-0.08 med=-1.00 sum=   -6.7 win= 20% >=4R=8
+  ex-May M-none : n=42  mean=-0.66 med=-1.00 sum=  -27.8 win= 10% >=4R=1
+  ex-May M-trail: n=42  mean=+0.03 med=-1.00 sum=   +1.1 win= 21% >=4R=5
+  touched >=4R in-hold (own-R MFE): 19/86 (harvested: none 2 / trail 8)
+  monthly M-none sums: 05: -12.3R/n44  06: -18.2R/n23  07: -9.6R/n19  08: —
+
+prior_low: killed 18 (12 mature) · no-basis 0 · settle-abstain 19 · settled 107 (74 mature) · med stop width 6.5%
+  M-none : n=74  mean=-0.50 med=-1.00 sum=  -37.3 win= 22% >=4R=0
+  M-trail: n=74  mean=-0.24 med=-1.00 sum=  -17.8 win= 28% >=4R=1
+  ex-May M-none : n=38  mean=-0.54 med=-1.00 sum=  -20.5 win= 21% >=4R=0
+  ex-May M-trail: n=38  mean=-0.01 med=-0.85 sum=   -0.5 win= 34% >=4R=1
+  touched >=4R in-hold (own-R MFE): 6/74 (harvested: none 0 / trail 1)
+  monthly M-none sums: 05: -16.7R/n36  06: -12.6R/n22  07: -7.9R/n16  08: —
+  killed (incumbent M-none R in brackets): ASAN 2026-05[-1.0], BW 2026-08[-1.0], CLF 2026-07[-1.0], CRSR 2026-05[-1.0], DELL 2026-05[-1.0], EROC 2026-08[-1.0], FRMI 2026-08[-1.0], HLIT 2026-08[-1.0], HUT 2026-07[-1.0], INFQ 2026-05[-1.0], MRVL 2026-06[-1.0], MRX 2026-08[-1.0], PENG 2026-07[-1.0], QBTS 2026-05[-1.0], QUBT 2026-05[-1.0], RDW 2026-05[-1.0], SNOW 2026-05[-1.0], TWLO 2026-08[-1.0]
+
+adr_025: killed 0 (0 mature) · no-basis 0 · settle-abstain 3 · settled 141 (86 mature) · med stop width 1.5%
+  M-none : n=86  mean=-0.25 med=-1.00 sum=  -21.5 win=  6% >=4R=3
+  M-trail: n=86  mean=+0.01 med=-1.00 sum=   +0.7 win= 15% >=4R=7
+  ex-May M-none : n=42  mean=-0.29 med=-1.00 sum=  -12.2 win=  7% >=4R=1
+  ex-May M-trail: n=42  mean=+0.33 med=-1.00 sum=  +13.9 win= 17% >=4R=4
+  touched >=4R in-hold (own-R MFE): 24/86 (harvested: none 3 / trail 7)
+  monthly M-none sums: 05: -9.3R/n44  06: -21.2R/n23  07: +9.0R/n19  08: —
+
+adr_050: killed 0 (0 mature) · no-basis 0 · settle-abstain 5 · settled 139 (86 mature) · med stop width 2.9%
+  M-none : n=86  mean=-0.44 med=-1.00 sum=  -37.5 win=  8% >=4R=4
+  M-trail: n=86  mean=-0.19 med=-1.00 sum=  -16.0 win= 22% >=4R=3
+  ex-May M-none : n=42  mean=-0.61 med=-1.00 sum=  -25.6 win=  7% >=4R=1
+  ex-May M-trail: n=42  mean=-0.09 med=-1.00 sum=   -3.9 win= 21% >=4R=2
+  touched >=4R in-hold (own-R MFE): 20/86 (harvested: none 4 / trail 3)
+  monthly M-none sums: 05: -11.9R/n44  06: -21.6R/n23  07: -4.0R/n19  08: —
+
+adr_075: killed 0 (0 mature) · no-basis 0 · settle-abstain 10 · settled 134 (86 mature) · med stop width 4.4%
+  M-none : n=86  mean=-0.57 med=-1.00 sum=  -48.8 win=  9% >=4R=3
+  M-trail: n=86  mean=-0.25 med=-1.00 sum=  -21.2 win= 26% >=4R=1
+  ex-May M-none : n=42  mean=-0.66 med=-1.00 sum=  -27.5 win= 10% >=4R=1
+  ex-May M-trail: n=42  mean=-0.08 med=-1.00 sum=   -3.4 win= 29% >=4R=1
+  touched >=4R in-hold (own-R MFE): 12/86 (harvested: none 3 / trail 1)
+  monthly M-none sums: 05: -21.3R/n44  06: -19.2R/n23  07: -8.3R/n19  08: —
+
+adr_100: killed 0 (0 mature) · no-basis 0 · settle-abstain 21 · settled 123 (86 mature) · med stop width 5.8%
+  M-none : n=86  mean=-0.49 med=-1.00 sum=  -42.0 win= 14% >=4R=3
+  M-trail: n=86  mean=-0.20 med=-0.78 sum=  -17.0 win= 28% >=4R=1
+  ex-May M-none : n=42  mean=-0.44 med=-1.00 sum=  -18.5 win= 17% >=4R=1
+  ex-May M-trail: n=42  mean=+0.02 med=-0.42 sum=   +0.9 win= 33% >=4R=1
+  touched >=4R in-hold (own-R MFE): 9/86 (harvested: none 3 / trail 1)
+  monthly M-none sums: 05: -23.4R/n44  06: -10.7R/n23  07: -7.8R/n19  08: —
+
+adr_125: killed 0 (0 mature) · no-basis 0 · settle-abstain 22 · settled 122 (86 mature) · med stop width 7.3%
+  M-none : n=86  mean=-0.38 med=-1.00 sum=  -32.3 win= 20% >=4R=3
+  M-trail: n=86  mean=-0.15 med=-0.36 sum=  -12.9 win= 31% >=4R=1
+  ex-May M-none : n=42  mean=-0.40 med=-1.00 sum=  -16.8 win= 21% >=4R=1
+  ex-May M-trail: n=42  mean=+0.05 med=-0.25 sum=   +2.0 win= 36% >=4R=1
+  touched >=4R in-hold (own-R MFE): 8/86 (harvested: none 3 / trail 1)
+  monthly M-none sums: 05: -15.5R/n44  06: -9.2R/n23  07: -7.6R/n19  08: —
+
+adr_150: killed 0 (0 mature) · no-basis 0 · settle-abstain 26 · settled 118 (86 mature) · med stop width 8.7%
+  M-none : n=86  mean=-0.35 med=-1.00 sum=  -30.3 win= 22% >=4R=2
+  M-trail: n=86  mean=-0.11 med=-0.28 sum=   -9.5 win= 34% >=4R=0
+  ex-May M-none : n=42  mean=-0.37 med=-1.00 sum=  -15.5 win= 24% >=4R=1
+  ex-May M-trail: n=42  mean=+0.03 med=-0.17 sum=   +1.1 win= 38% >=4R=0
+  touched >=4R in-hold (own-R MFE): 7/86 (harvested: none 2 / trail 0)
+  monthly M-none sums: 05: -14.8R/n44  06: -10.6R/n23  07: -4.8R/n19  08: —
+
+adr_200: killed 0 (0 mature) · no-basis 0 · settle-abstain 31 · settled 113 (86 mature) · med stop width 11.6%
+  M-none : n=86  mean=-0.32 med=-1.00 sum=  -27.7 win= 27% >=4R=0
+  M-trail: n=86  mean=-0.09 med=-0.20 sum=   -7.9 win= 36% >=4R=0
+  ex-May M-none : n=42  mean=-0.31 med=-1.00 sum=  -13.2 win= 29% >=4R=0
+  ex-May M-trail: n=42  mean=+0.04 med=-0.10 sum=   +1.7 win= 40% >=4R=0
+  touched >=4R in-hold (own-R MFE): 5/86 (harvested: none 0 / trail 0)
+  monthly M-none sums: 05: -14.5R/n44  06: -10.7R/n23  07: -2.6R/n19  08: —
+
+ep_close: killed 0 (0 mature) · no-basis 0 · settle-abstain 1 · settled 143 (86 mature) · med stop width 0.5%
+  M-none : n=86  mean=-0.88 med=-1.00 sum=  -76.0 win=  2% >=4R=1
+  M-trail: n=86  mean=-0.27 med=-1.00 sum=  -23.4 win=  7% >=4R=5
+  ex-May M-none : n=42  mean=-0.76 med=-1.00 sum=  -32.0 win=  5% >=4R=1
+  ex-May M-trail: n=42  mean=-0.13 med=-1.00 sum=   -5.5 win= 10% >=4R=3
+  touched >=4R in-hold (own-R MFE): 20/86 (harvested: none 1 / trail 5)
+  monthly M-none sums: 05: -44.0R/n44  06: -23.0R/n23  07: -9.0R/n19  08: —
+
+ep_low: killed 0 (0 mature) · no-basis 0 · settle-abstain 22 · settled 122 (86 mature) · med stop width 7.8%
+  M-none : n=86  mean=-0.54 med=-1.00 sum=  -46.9 win= 20% >=4R=0
+  M-trail: n=86  mean=-0.23 med=-0.60 sum=  -19.5 win= 30% >=4R=1
+  ex-May M-none : n=42  mean=-0.58 med=-1.00 sum=  -24.5 win= 19% >=4R=0
+  ex-May M-trail: n=42  mean=-0.03 med=-0.70 sum=   -1.2 win= 36% >=4R=1
+  touched >=4R in-hold (own-R MFE): 7/86 (harvested: none 0 / trail 1)
+  monthly M-none sums: 05: -22.3R/n44  06: -13.6R/n23  07: -10.9R/n19  08: —
+
+  P14 — the incumbent's >=+2R fires under every basis:
+  ticker ep_mon   incumbent   bar_low  lod_fire prior_low   adr_025   adr_050   adr_075   adr_100   adr_125   adr_150   adr_200  ep_close    ep_low
+  ALAB   2026-05     +21.6R    +31.3R    +21.6R     +3.9R    +24.0R    +12.0R     +8.0R     +6.0R     +4.8R     +4.0R     +3.0R     -1.0R     +3.9R
+  FET    2026-07      +7.1R     +7.1R     +7.1R     +1.9R    +25.3R    +12.7R     +8.4R     +6.3R     +5.1R     +4.2R     +3.2R     +7.1R     +1.9R
+  AMBQ   2026-05      +3.6R     -1.0R     +3.6R     +1.1R     -1.0R     +8.2R     +5.5R     +4.1R     +3.3R     +2.7R     +2.1R     -1.0R     +1.1R
+  GH     2026-05      +3.4R     -1.0R     +3.4R     +0.9R     +8.7R     +4.3R     +2.9R     +2.2R     +1.7R     +1.4R     +1.1R     -1.0R     +0.9R
+  HQ     2026-06      +2.1R     +2.1R     +2.1R     +0.4R     -1.0R     -1.0R     +1.6R     +1.2R     +0.9R     +0.8R     +0.6R     -1.0R     +0.4R
+
+====================================================================================================
+== ep_high_break — 48 recorded fires, entry unchanged, stop varied ==
+====================================================================================================
+
+incumbent: killed 0 (0 mature) · no-basis 0 · settle-abstain 6 · settled 42 (32 mature) · med stop width 10.8%
+  M-none : n=32  mean=-0.41 med=-1.00 sum=  -13.1 win= 12% >=4R=2
+  M-trail: n=32  mean=-0.12 med=-0.39 sum=   -3.8 win= 34% >=4R=0
+  ex-May M-none : n=17  mean=-0.81 med=-1.00 sum=  -13.8 win=  6% >=4R=0
+  ex-May M-trail: n=17  mean=-0.23 med=-0.26 sum=   -3.8 win= 35% >=4R=0
+  touched >=4R in-hold (own-R MFE): 2/32 (harvested: none 2 / trail 0)
+  monthly M-none sums: 05: +0.7R/n15  06: -8.0R/n8  07: -5.8R/n9  08: —
+
+bar_low: killed 21 (12 mature) · no-basis 0 · settle-abstain 0 · settled 27 (20 mature) · med stop width 1.4%
+  M-none : n=20  mean=-1.00 med=-1.00 sum=  -20.0 win=  0% >=4R=0
+  M-trail: n=20  mean=-0.72 med=-1.00 sum=  -14.5 win=  5% >=4R=1
+  ex-May M-none : n=12  mean=-1.00 med=-1.00 sum=  -12.0 win=  0% >=4R=0
+  ex-May M-trail: n=12  mean=-0.54 med=-1.00 sum=   -6.5 win=  8% >=4R=1
+  touched >=4R in-hold (own-R MFE): 8/20 (harvested: none 0 / trail 1)
+  monthly M-none sums: 05: -8.0R/n8  06: -6.0R/n6  07: -6.0R/n6  08: —
+  killed (incumbent M-none R in brackets): VPG 2026-05[+6.2], ARM 2026-05[+4.4], AMBQ 2026-05[+1.2], QBTS 2026-05[-0.2], TER 2026-07[-0.6], ABVX 2026-06[-1.0], ASAN 2026-05[-1.0], CRSR 2026-05[-1.0], EME 2026-07[-1.0], EROC 2026-08[-1.0], FTK 2026-08[-1.0], MRVL 2026-06[-1.0], PENG 2026-07[-1.0], QNST 2026-08[-1.0], QUBT 2026-05[-1.0], SITM 2026-08[-1.0], WYFI 2026-08[-1.0], CAI 2026-08[], DCTH 2026-08[], MRX 2026-08[], U 2026-08[]
+
+lod_fire: killed 21 (12 mature) · no-basis 0 · settle-abstain 0 · settled 27 (20 mature) · med stop width 2.2%
+  M-none : n=20  mean=-0.82 med=-1.00 sum=  -16.5 win=  5% >=4R=0
+  M-trail: n=20  mean=-0.72 med=-1.00 sum=  -14.4 win= 10% >=4R=0
+  ex-May M-none : n=12  mean=-0.71 med=-1.00 sum=   -8.5 win=  8% >=4R=0
+  ex-May M-trail: n=12  mean=-0.54 med=-1.00 sum=   -6.4 win= 17% >=4R=0
+  touched >=4R in-hold (own-R MFE): 6/20 (harvested: none 0 / trail 0)
+  monthly M-none sums: 05: -8.0R/n8  06: -6.0R/n6  07: -2.5R/n6  08: —
+  killed (incumbent M-none R in brackets): VPG 2026-05[+6.2], ARM 2026-05[+4.4], AMBQ 2026-05[+1.2], QBTS 2026-05[-0.2], TER 2026-07[-0.6], ABVX 2026-06[-1.0], ASAN 2026-05[-1.0], CRSR 2026-05[-1.0], EME 2026-07[-1.0], EROC 2026-08[-1.0], FTK 2026-08[-1.0], MRVL 2026-06[-1.0], PENG 2026-07[-1.0], QNST 2026-08[-1.0], QUBT 2026-05[-1.0], SITM 2026-08[-1.0], WYFI 2026-08[-1.0], CAI 2026-08[], DCTH 2026-08[], MRX 2026-08[], U 2026-08[]
+
+prior_low: killed 0 (0 mature) · no-basis 0 · settle-abstain 6 · settled 42 (32 mature) · med stop width 10.8%
+  M-none : n=32  mean=-0.41 med=-1.00 sum=  -13.1 win= 12% >=4R=2
+  M-trail: n=32  mean=-0.12 med=-0.39 sum=   -3.8 win= 34% >=4R=0
+  ex-May M-none : n=17  mean=-0.81 med=-1.00 sum=  -13.8 win=  6% >=4R=0
+  ex-May M-trail: n=17  mean=-0.23 med=-0.26 sum=   -3.8 win= 35% >=4R=0
+  touched >=4R in-hold (own-R MFE): 2/32 (harvested: none 2 / trail 0)
+  monthly M-none sums: 05: +0.7R/n15  06: -8.0R/n8  07: -5.8R/n9  08: —
+
+adr_025: killed 0 (0 mature) · no-basis 0 · settle-abstain 2 · settled 46 (32 mature) · med stop width 1.4%
+  M-none : n=32  mean=+1.66 med=-1.00 sum=  +53.2 win=  6% >=4R=2
+  M-trail: n=32  mean=+1.18 med=-1.00 sum=  +37.8 win= 19% >=4R=3
+  ex-May M-none : n=17  mean=-1.00 med=-1.00 sum=  -17.0 win=  0% >=4R=0
+  ex-May M-trail: n=17  mean=+0.02 med=-1.00 sum=   +0.3 win= 18% >=4R=1
+  touched >=4R in-hold (own-R MFE): 11/32 (harvested: none 2 / trail 3)
+  monthly M-none sums: 05: +70.2R/n15  06: -8.0R/n8  07: -9.0R/n9  08: —
+
+adr_050: killed 0 (0 mature) · no-basis 0 · settle-abstain 3 · settled 45 (32 mature) · med stop width 2.8%
+  M-none : n=32  mean=+0.36 med=-1.00 sum=  +11.6 win=  6% >=4R=2
+  M-trail: n=32  mean=+0.23 med=-1.00 sum=   +7.5 win= 22% >=4R=3
+  ex-May M-none : n=17  mean=-1.00 med=-1.00 sum=  -17.0 win=  0% >=4R=0
+  ex-May M-trail: n=17  mean=-0.40 med=-1.00 sum=   -6.8 win= 18% >=4R=1
+  touched >=4R in-hold (own-R MFE): 7/32 (harvested: none 2 / trail 3)
+  monthly M-none sums: 05: +28.6R/n15  06: -8.0R/n8  07: -9.0R/n9  08: —
+
+adr_075: killed 0 (0 mature) · no-basis 0 · settle-abstain 4 · settled 44 (32 mature) · med stop width 4.3%
+  M-none : n=32  mean=+0.12 med=-1.00 sum=   +3.9 win=  9% >=4R=3
+  M-trail: n=32  mean=+0.10 med=-1.00 sum=   +3.2 win= 25% >=4R=3
+  ex-May M-none : n=17  mean=-0.64 med=-1.00 sum=  -10.9 win=  6% >=4R=1
+  ex-May M-trail: n=17  mean=-0.18 med=-1.00 sum=   -3.1 win= 24% >=4R=1
+  touched >=4R in-hold (own-R MFE): 6/32 (harvested: none 3 / trail 3)
+  monthly M-none sums: 05: +14.7R/n15  06: -8.0R/n8  07: -2.9R/n9  08: —
+
+adr_100: killed 0 (0 mature) · no-basis 0 · settle-abstain 4 · settled 44 (32 mature) · med stop width 5.7%
+  M-none : n=32  mean=+0.04 med=-1.00 sum=   +1.2 win= 12% >=4R=3
+  M-trail: n=32  mean=+0.03 med=-1.00 sum=   +1.1 win= 28% >=4R=2
+  ex-May M-none : n=17  mean=-0.70 med=-1.00 sum=  -11.9 win=  6% >=4R=0
+  ex-May M-trail: n=17  mean=-0.29 med=-1.00 sum=   -4.9 win= 24% >=4R=0
+  touched >=4R in-hold (own-R MFE): 5/32 (harvested: none 3 / trail 2)
+  monthly M-none sums: 05: +13.1R/n15  06: -8.0R/n8  07: -3.9R/n9  08: —
+
+adr_125: killed 0 (0 mature) · no-basis 0 · settle-abstain 6 · settled 42 (32 mature) · med stop width 7.1%
+  M-none : n=32  mean=-0.14 med=-1.00 sum=   -4.4 win= 12% >=4R=2
+  M-trail: n=32  mean=+0.03 med=-0.92 sum=   +0.9 win= 34% >=4R=1
+  ex-May M-none : n=17  mean=-0.74 med=-1.00 sum=  -12.5 win=  6% >=4R=0
+  ex-May M-trail: n=17  mean=-0.13 med=-0.83 sum=   -2.2 win= 35% >=4R=0
+  touched >=4R in-hold (own-R MFE): 3/32 (harvested: none 2 / trail 1)
+  monthly M-none sums: 05: +8.1R/n15  06: -8.0R/n8  07: -4.5R/n9  08: —
+
+adr_150: killed 0 (0 mature) · no-basis 0 · settle-abstain 6 · settled 42 (32 mature) · med stop width 8.5%
+  M-none : n=32  mean=-0.17 med=-1.00 sum=   -5.4 win= 16% >=4R=2
+  M-trail: n=32  mean=+0.08 med=-0.28 sum=   +2.6 win= 38% >=4R=1
+  ex-May M-none : n=17  mean=-0.59 med=-1.00 sum=  -10.1 win= 12% >=4R=0
+  ex-May M-trail: n=17  mean=+0.03 med=-0.20 sum=   +0.4 win= 41% >=4R=0
+  touched >=4R in-hold (own-R MFE): 3/32 (harvested: none 2 / trail 1)
+  monthly M-none sums: 05: +4.7R/n15  06: -5.2R/n8  07: -4.9R/n9  08: —
+
+adr_200: killed 0 (0 mature) · no-basis 0 · settle-abstain 7 · settled 41 (32 mature) · med stop width 11.4%
+  M-none : n=32  mean=-0.30 med=-1.00 sum=   -9.5 win= 16% >=4R=2
+  M-trail: n=32  mean=+0.02 med=-0.21 sum=   +0.6 win= 38% >=4R=0
+  ex-May M-none : n=17  mean=-0.64 med=-1.00 sum=  -10.8 win= 12% >=4R=0
+  ex-May M-trail: n=17  mean=-0.02 med=-0.15 sum=   -0.3 win= 41% >=4R=0
+  touched >=4R in-hold (own-R MFE): 3/32 (harvested: none 2 / trail 0)
+  monthly M-none sums: 05: +1.4R/n15  06: -5.4R/n8  07: -5.4R/n9  08: —
+
+ep_close: killed 0 (0 mature) · no-basis 0 · settle-abstain 2 · settled 46 (32 mature) · med stop width 2.2%
+  M-none : n=32  mean=+1.63 med=-1.00 sum=  +52.3 win=  9% >=4R=2
+  M-trail: n=32  mean=+0.88 med=-1.00 sum=  +28.2 win= 19% >=4R=3
+  ex-May M-none : n=17  mean=-0.75 med=-1.00 sum=  -12.7 win=  6% >=4R=0
+  ex-May M-trail: n=17  mean=-0.16 med=-1.00 sum=   -2.7 win= 24% >=4R=1
+  touched >=4R in-hold (own-R MFE): 7/32 (harvested: none 2 / trail 3)
+  monthly M-none sums: 05: +65.0R/n15  06: -7.7R/n8  07: -5.0R/n9  08: —
+
+ep_low: killed 0 (0 mature) · no-basis 0 · settle-abstain 6 · settled 42 (32 mature) · med stop width 11.1%
+  M-none : n=32  mean=-0.39 med=-1.00 sum=  -12.4 win= 12% >=4R=2
+  M-trail: n=32  mean=-0.11 med=-0.39 sum=   -3.4 win= 34% >=4R=0
+  ex-May M-none : n=17  mean=-0.77 med=-1.00 sum=  -13.1 win=  6% >=4R=0
+  ex-May M-trail: n=17  mean=-0.23 med=-0.17 sum=   -4.0 win= 35% >=4R=0
+  touched >=4R in-hold (own-R MFE): 2/32 (harvested: none 2 / trail 0)
+  monthly M-none sums: 05: +0.7R/n15  06: -7.6R/n8  07: -5.5R/n9  08: —
+
+  P14 — the incumbent's >=+2R fires under every basis:
+  ticker ep_mon   incumbent   bar_low  lod_fire prior_low   adr_025   adr_050   adr_075   adr_100   adr_125   adr_150   adr_200  ep_close    ep_low
+  VPG    2026-05      +6.2R    KILLED    KILLED     +6.2R    +49.5R    +24.7R    +16.5R    +12.4R     +9.9R     +8.2R     +6.2R    +23.3R     +6.2R
+  ARM    2026-05      +4.4R    KILLED    KILLED     +4.4R    +33.8R    +16.9R    +11.3R     +8.4R     +6.8R     +5.6R     +4.2R    +54.7R     +4.4R
+
+====================================================================================================
+== ep_close_620_prox — 207 recorded fires, entry unchanged, stop varied ==
+====================================================================================================
+
+incumbent: killed 0 (0 mature) · no-basis 0 · settle-abstain 9 · settled 198 (126 mature) · med stop width 2.1%
+  M-none : n=126 mean=-0.35 med=-1.00 sum=  -44.5 win= 10% >=4R=8
+  M-trail: n=126 mean=-0.19 med=-1.00 sum=  -24.1 win= 21% >=4R=5
+  ex-May M-none : n=65  mean=-0.67 med=-1.00 sum=  -43.7 win=  6% >=4R=3
+  ex-May M-trail: n=65  mean=-0.41 med=-1.00 sum=  -26.6 win= 15% >=4R=2
+  touched >=4R in-hold (own-R MFE): 23/126 (harvested: none 8 / trail 5)
+  monthly M-none sums: 05: -0.8R/n61  06: -16.9R/n38  07: -26.8R/n27  08: —
+
+bar_low: killed 7 (7 mature) · no-basis 0 · settle-abstain 0 · settled 200 (119 mature) · med stop width 0.4%
+  M-none : n=119 mean=-1.00 med=-1.00 sum= -119.0 win=  0% >=4R=0
+  M-trail: n=119 mean=-0.77 med=-1.00 sum=  -91.7 win=  6% >=4R=2
+  ex-May M-none : n=61  mean=-1.00 med=-1.00 sum=  -61.0 win=  0% >=4R=0
+  ex-May M-trail: n=61  mean=-0.78 med=-1.00 sum=  -47.8 win=  5% >=4R=1
+  touched >=4R in-hold (own-R MFE): 24/119 (harvested: none 0 / trail 2)
+  monthly M-none sums: 05: -58.0R/n58  06: -36.0R/n36  07: -25.0R/n25  08: —
+  killed (incumbent M-none R in brackets): AUGO 2026-06[-1.0], MLTX 2026-06[-1.0], PPTA 2026-05[-1.0], PRG 2026-07[-1.0], SIMO 2026-07[-1.0], STC 2026-05[-1.0], VIK 2026-05[-1.0]
+
+lod_fire: killed 0 (0 mature) · no-basis 0 · settle-abstain 9 · settled 198 (126 mature) · med stop width 2.1%
+  M-none : n=126 mean=-0.35 med=-1.00 sum=  -44.5 win= 10% >=4R=8
+  M-trail: n=126 mean=-0.19 med=-1.00 sum=  -24.1 win= 21% >=4R=5
+  ex-May M-none : n=65  mean=-0.67 med=-1.00 sum=  -43.7 win=  6% >=4R=3
+  ex-May M-trail: n=65  mean=-0.41 med=-1.00 sum=  -26.6 win= 15% >=4R=2
+  touched >=4R in-hold (own-R MFE): 23/126 (harvested: none 8 / trail 5)
+  monthly M-none sums: 05: -0.8R/n61  06: -16.9R/n38  07: -26.8R/n27  08: —
+
+prior_low: killed 34 (21 mature) · no-basis 0 · settle-abstain 21 · settled 152 (105 mature) · med stop width 4.6%
+  M-none : n=105 mean=-0.08 med=-1.00 sum=   -8.1 win= 20% >=4R=5
+  M-trail: n=105 mean=-0.04 med=-0.63 sum=   -3.9 win= 31% >=4R=5
+  ex-May M-none : n=54  mean=-0.33 med=-1.00 sum=  -17.6 win= 15% >=4R=3
+  ex-May M-trail: n=54  mean=-0.18 med=-0.73 sum=   -9.6 win= 28% >=4R=2
+  touched >=4R in-hold (own-R MFE): 10/105 (harvested: none 5 / trail 5)
+  monthly M-none sums: 05: +9.5R/n51  06: -0.4R/n32  07: -17.2R/n22  08: —
+  killed (incumbent M-none R in brackets): ACAD 2026-06[-1.0], AEHR 2026-07[-1.0], AMLX 2026-08[-1.0], ASAN 2026-05[-1.0], ASTI 2026-05[-1.0], AVAV 2026-06[-1.0], CBRL 2026-06[-1.0], CRCL 2026-07[-1.0], CRSR 2026-05[-1.0], DELL 2026-05[-1.0], EFOR 2026-07[-1.0], EROC 2026-08[-1.0], FCEL 2026-06[-1.0], FLNC 2026-07[-1.0], FRMI 2026-08[-1.0], FTNT 2026-07[-1.0], HUT 2026-07[-1.0], INFQ 2026-05[-1.0], KMT 2026-08[-1.0], KTOS 2026-08[-1.0], LIND 2026-08[-1.0], NET 2026-08[-1.0], OKLO 2026-05[-1.0], ONTO 2026-08[-1.0], OUST 2026-06[-1.0], PHR 2026-05[-1.0], PONY 2026-05[-1.0], PRG 2026-07[-1.0], QUBT 2026-05[-1.0], RDW 2026-08[-1.0], RXT 2026-06[-1.0], SITM 2026-08[-1.0], SNOW 2026-05[-1.0], SOUN 2026-08[-1.0]
+
+adr_025: killed 0 (0 mature) · no-basis 0 · settle-abstain 5 · settled 202 (126 mature) · med stop width 1.4%
+  M-none : n=126 mean=-0.24 med=-1.00 sum=  -30.6 win=  4% >=4R=5
+  M-trail: n=126 mean=-0.18 med=-1.00 sum=  -22.9 win= 15% >=4R=5
+  ex-May M-none : n=65  mean=-1.00 med=-1.00 sum=  -65.0 win=  0% >=4R=0
+  ex-May M-trail: n=65  mean=-0.70 med=-1.00 sum=  -45.4 win=  9% >=4R=0
+  touched >=4R in-hold (own-R MFE): 22/126 (harvested: none 5 / trail 5)
+  monthly M-none sums: 05: +34.4R/n61  06: -38.0R/n38  07: -27.0R/n27  08: —
+
+adr_050: killed 0 (0 mature) · no-basis 0 · settle-abstain 14 · settled 193 (126 mature) · med stop width 2.9%
+  M-none : n=126 mean=-0.07 med=-1.00 sum=   -9.1 win= 10% >=4R=8
+  M-trail: n=126 mean=-0.03 med=-1.00 sum=   -4.1 win= 23% >=4R=7
+  ex-May M-none : n=65  mean=-0.17 med=-1.00 sum=  -10.8 win=  6% >=4R=4
+  ex-May M-trail: n=65  mean=-0.13 med=-1.00 sum=   -8.2 win= 17% >=4R=3
+  touched >=4R in-hold (own-R MFE): 23/126 (harvested: none 8 / trail 7)
+  monthly M-none sums: 05: +1.7R/n61  06: -3.4R/n38  07: -7.4R/n27  08: —
+
+adr_075: killed 0 (0 mature) · no-basis 0 · settle-abstain 22 · settled 185 (126 mature) · med stop width 4.3%
+  M-none : n=126 mean=-0.02 med=-1.00 sum=   -3.0 win= 15% >=4R=11
+  M-trail: n=126 mean=+0.12 med=-0.49 sum=  +15.2 win= 30% >=4R=6
+  ex-May M-none : n=65  mean=-0.10 med=-1.00 sum=   -6.2 win= 12% >=4R=6
+  ex-May M-trail: n=65  mean=+0.06 med=-0.56 sum=   +3.6 win= 26% >=4R=4
+  touched >=4R in-hold (own-R MFE): 23/126 (harvested: none 11 / trail 6)
+  monthly M-none sums: 05: +3.2R/n61  06: +7.4R/n38  07: -13.6R/n27  08: —
+
+adr_100: killed 0 (0 mature) · no-basis 0 · settle-abstain 29 · settled 178 (126 mature) · med stop width 5.8%
+  M-none : n=126 mean=-0.10 med=-1.00 sum=  -12.2 win= 19% >=4R=7
+  M-trail: n=126 mean=+0.07 med=-0.24 sum=   +8.9 win= 33% >=4R=3
+  ex-May M-none : n=65  mean=-0.24 med=-1.00 sum=  -15.8 win= 14% >=4R=3
+  ex-May M-trail: n=65  mean=-0.03 med=-0.38 sum=   -1.7 win= 28% >=4R=1
+  touched >=4R in-hold (own-R MFE): 20/126 (harvested: none 7 / trail 3)
+  monthly M-none sums: 05: +3.5R/n61  06: +0.6R/n38  07: -16.4R/n27  08: —
+
+adr_125: killed 0 (0 mature) · no-basis 0 · settle-abstain 31 · settled 176 (126 mature) · med stop width 7.2%
+  M-none : n=126 mean=-0.12 med=-1.00 sum=  -15.2 win= 24% >=4R=6
+  M-trail: n=126 mean=+0.12 med=-0.16 sum=  +14.7 win= 37% >=4R=3
+  ex-May M-none : n=65  mean=-0.17 med=-1.00 sum=  -10.8 win= 22% >=4R=2
+  ex-May M-trail: n=65  mean=+0.09 med=-0.16 sum=   +6.1 win= 34% >=4R=1
+  touched >=4R in-hold (own-R MFE): 10/126 (harvested: none 6 / trail 3)
+  monthly M-none sums: 05: -4.4R/n61  06: +0.6R/n38  07: -11.4R/n27  08: —
+
+adr_150: killed 0 (0 mature) · no-basis 0 · settle-abstain 35 · settled 172 (126 mature) · med stop width 8.6%
+  M-none : n=126 mean=-0.14 med=-1.00 sum=  -18.2 win= 27% >=4R=4
+  M-trail: n=126 mean=+0.08 med=-0.13 sum=  +10.2 win= 37% >=4R=3
+  ex-May M-none : n=65  mean=-0.21 med=-1.00 sum=  -13.9 win= 25% >=4R=2
+  ex-May M-trail: n=65  mean=+0.07 med=-0.14 sum=   +4.6 win= 34% >=4R=1
+  touched >=4R in-hold (own-R MFE): 7/126 (harvested: none 4 / trail 3)
+  monthly M-none sums: 05: -4.3R/n61  06: -4.1R/n38  07: -9.8R/n27  08: —
+
+adr_200: killed 0 (0 mature) · no-basis 0 · settle-abstain 50 · settled 157 (126 mature) · med stop width 11.5%
+  M-none : n=126 mean=-0.15 med=-1.00 sum=  -18.9 win= 32% >=4R=2
+  M-trail: n=126 mean=+0.05 med=-0.10 sum=   +6.0 win= 38% >=4R=1
+  ex-May M-none : n=65  mean=-0.25 med=-1.00 sum=  -16.4 win= 26% >=4R=2
+  ex-May M-trail: n=65  mean=+0.03 med=-0.10 sum=   +2.0 win= 34% >=4R=1
+  touched >=4R in-hold (own-R MFE): 5/126 (harvested: none 2 / trail 1)
+  monthly M-none sums: 05: -2.5R/n61  06: -8.0R/n38  07: -8.4R/n27  08: —
+
+ep_close: killed 100 (56 mature) · no-basis 0 · settle-abstain 1 · settled 106 (70 mature) · med stop width 1.6%
+  M-none : n=70  mean=-0.58 med=-1.00 sum=  -40.5 win=  3% >=4R=2
+  M-trail: n=70  mean=-0.74 med=-1.00 sum=  -51.5 win= 10% >=4R=0
+  ex-May M-none : n=36  mean=-1.00 med=-1.00 sum=  -36.0 win=  0% >=4R=0
+  ex-May M-trail: n=36  mean=-0.89 med=-1.00 sum=  -32.1 win=  3% >=4R=0
+  touched >=4R in-hold (own-R MFE): 9/70 (harvested: none 2 / trail 0)
+  monthly M-none sums: 05: -4.5R/n34  06: -19.0R/n19  07: -17.0R/n17  08: —
+  killed (incumbent M-none R in brackets): STUB 2026-05[+8.9], TE 2026-05[+8.3], BHVN 2026-05[+6.7], NAVN 2026-06[+4.9], IMVT 2026-05[+3.6], PGY 2026-06[+1.8], ABSI 2026-06[-1.0], ACAD 2026-06[-1.0], ACMR 2026-08[-1.0], AEIS 2026-08[-1.0], AEVA 2026-08[-1.0], AIP 2026-05[-1.0], AKTS 2026-06[-1.0], AMRC 2026-08[-1.0], ARWR 2026-07[-1.0], AVAV 2026-06[-1.0], AVEX 2026-05[-1.0], BBWI 2026-05[-1.0], BLZE 2026-08[-1.0], BRUN 2026-08[-1.0], BW 2026-05[-1.0], BZH 2026-05[-1.0], CAMT 2026-06[-1.0], CBRL 2026-06[-1.0], CPA 2026-05[-1.0], CRCL 2026-07[-1.0], CRMD 2026-05[-1.0], DCTH 2026-08[-1.0], DELL 2026-05[-1.0], DOCN 2026-07[-1.0], DRTS 2026-05[-1.0], ECG 2026-08[-1.0], EFOR 2026-07[-1.0], EOSE 2026-05[-1.0], FIGS 2026-08[-1.0], FLNC 2026-07[-1.0], FRMI 2026-08[-1.0], FROG 2026-08[-1.0], FUTU 2026-05[-1.0], GRND 2026-07[-1.0], HGTY 2026-08[-1.0], HRB 2026-08[-1.0], HTFL 2026-08[-1.0], IBRX 2026-05[-1.0], JBL 2026-06[-1.0], KC 2026-07[-1.0], KLAR 2026-05[-1.0], KMT 2026-08[-1.0], KODK 2026-08[-1.0], KTOS 2026-05[-1.0], KYMR 2026-06[-1.0], LPTH 2026-08[-1.0], MLTX 2026-06[-1.0], MPWR 2026-07[-1.0], MRVL 2026-06[-1.0], MRVL 2026-08[-1.0], NBIS 2026-08[-1.0], NESR 2026-08[-1.0], NMAX 2026-08[-1.0], NNE 2026-05[-1.0], NRIX 2026-06[-1.0], OKLO 2026-05[-1.0], OKTA 2026-08[-1.0], PENG 2026-07[-1.0], PLTR 2026-08[-1.0], PRAA 2026-08[-1.0], PRG 2026-07[-1.0], PRGO 2026-08[-1.0], PSIX 2026-08[-1.0], PUBM 2026-08[-1.0], QNST 2026-08[-1.0], RDW 2026-05[-1.0], RIOT 2026-08[-1.0], RLAY 2026-05[-1.0], RPD 2026-08[-1.0], RUM 2026-06[-1.0], SEDG 2026-06[-1.0], SG 2026-07[-1.0], SLN 2026-08[-1.0], SLS 2026-05[-1.0], SNOW 2026-05[-1.0], SOLS 2026-08[-1.0], SOUN 2026-08[-1.0], SYRE 2026-06[-1.0], TATT 2026-05[-1.0], TNDM 2026-06[-1.0], TWST 2026-08[-1.0], UUUU 2026-06[-1.0], UUUU 2026-08[-1.0], VEEV 2026-08[-1.0], VERA 2026-08[-1.0], VG 2026-05[-1.0], VIK 2026-05[-1.0], WEN 2026-06[-1.0], WLDN 2026-08[-1.0], WULF 2026-07[-1.0], BLSH 2026-08[], CGEM 2026-08[], OMER 2026-08[], TEAM 2026-08[]
+
+ep_low: killed 14 (11 mature) · no-basis 0 · settle-abstain 26 · settled 167 (115 mature) · med stop width 5.1%
+  M-none : n=115 mean=-0.30 med=-1.00 sum=  -34.4 win= 18% >=4R=3
+  M-trail: n=115 mean=-0.18 med=-0.50 sum=  -20.6 win= 27% >=4R=3
+  ex-May M-none : n=58  mean=-0.55 med=-1.00 sum=  -31.6 win= 12% >=4R=2
+  ex-May M-trail: n=58  mean=-0.29 med=-1.00 sum=  -17.0 win= 19% >=4R=2
+  touched >=4R in-hold (own-R MFE): 9/115 (harvested: none 3 / trail 3)
+  monthly M-none sums: 05: -2.8R/n57  06: -12.4R/n34  07: -19.2R/n24  08: —
+  killed (incumbent M-none R in brackets): NAVN 2026-06[+4.9], ACAD 2026-06[-1.0], BLZE 2026-08[-1.0], CRCL 2026-07[-1.0], EFOR 2026-07[-1.0], EOSE 2026-05[-1.0], IBRX 2026-05[-1.0], JBL 2026-06[-1.0], KMT 2026-08[-1.0], MPWR 2026-07[-1.0], OKLO 2026-05[-1.0], RUM 2026-06[-1.0], VIK 2026-05[-1.0], WULF 2026-07[-1.0]
+
+  P14 — the incumbent's >=+2R fires under every basis:
+  ticker ep_mon   incumbent   bar_low  lod_fire prior_low   adr_025   adr_050   adr_075   adr_100   adr_125   adr_150   adr_200  ep_close    ep_low
+  ALAB   2026-05     +12.3R     -1.0R    +12.3R     +3.4R    +23.3R    +11.6R     +7.8R     +5.8R     +4.7R     +3.9R     +2.9R    +23.2R     +3.4R
+  STUB   2026-05      +8.9R     -1.0R     +8.9R    +18.9R    +25.9R    +12.9R     +8.6R     +6.5R     +5.2R     +4.3R     +3.2R    KILLED    +18.9R
+  TE     2026-05      +8.3R     -1.0R     +8.3R     -1.0R     -1.0R     -1.0R     +7.8R     +5.8R     +4.7R     +3.9R     +2.9R    KILLED     -1.0R
+  ANF    2026-05      +7.3R     -1.0R     +7.3R     +1.1R     +8.2R     +4.1R     +2.7R     +2.0R     +1.6R     +1.4R     +1.0R     -1.0R     +2.8R
+  BHVN   2026-05      +6.7R     -1.0R     +6.7R     +9.2R    +25.3R    +12.6R     +8.4R     +6.3R     +5.1R     +4.2R     +3.2R    KILLED     -1.0R
+  MMYT   2026-06      +5.9R     -1.0R     +5.9R     +6.8R     -1.0R     +5.8R     +3.9R     +2.9R     +2.3R     +1.9R     +1.5R     -1.0R     +6.8R
+  NAVN   2026-06      +4.9R     -1.0R     +4.9R     +1.6R     -1.0R     -1.0R     +5.4R     +4.0R     +3.2R     +2.7R     +2.0R    KILLED    KILLED
+  DFTX   2026-06      +4.6R     -1.0R     +4.6R     +4.3R     -1.0R     +6.3R     +4.2R     +3.1R     +2.5R     +2.1R     +1.6R     -1.0R     +4.3R
+  IMVT   2026-05      +3.6R     -1.0R     +3.6R     +2.3R     -1.0R     -1.0R     +3.9R     +2.9R     +2.3R     +1.9R     +1.5R    KILLED     +1.0R
+  KSS    2026-05      +3.4R     -1.0R     +3.4R     +1.9R     -1.0R     -1.0R     -1.0R     +3.5R     +2.8R     +2.4R     +1.8R     -1.0R     +2.8R
+
+====================================================================================================
+== FAMILY (all four rungs pooled, mature settled) — kills counted per basis ==
+====================================================================================================
+basis        killed   abst                       M-none                ex-May M-none   M-trail / ex-May
+incumbent         0      0       -0.39/-147R/n374/4R:18        -0.66/-128R/n194/4R:6   -0.18/-65R/n374/4R:16 / -0.29/-56R/n194/4R:8
+bar_low          21      0        -0.69/-243R/n353/4R:8        -0.81/-150R/n184/4R:4   -0.49/-174R/n353/4R:17 / -0.46/-85R/n184/4R:10
+lod_fire         12      0       -0.41/-149R/n362/4R:17        -0.63/-120R/n189/4R:7   -0.21/-77R/n362/4R:16 / -0.31/-58R/n189/4R:8
+prior_low        78      0       -0.35/-104R/n296/4R:11         -0.53/-86R/n162/4R:5   -0.17/-50R/n296/4R:10 / -0.16/-26R/n162/4R:6
+adr_025           0      0        -0.06/-22R/n374/4R:16        -0.75/-145R/n194/4R:2   -0.02/-9R/n374/4R:19 / -0.38/-73R/n194/4R:5
+adr_050           0      0        -0.14/-54R/n374/4R:25        -0.40/-77R/n194/4R:10   -0.03/-11R/n374/4R:22 / -0.11/-22R/n194/4R:10
+adr_075           0      0        -0.12/-46R/n374/4R:30        -0.24/-46R/n194/4R:15   +0.05/+19R/n374/4R:16 / +0.05/+10R/n194/4R:11
+adr_100           0      0        -0.11/-41R/n374/4R:25         -0.29/-56R/n194/4R:7   +0.07/+26R/n374/4R:11 / +0.03/+6R/n194/4R:4
+adr_125           0      0        -0.10/-36R/n374/4R:21         -0.24/-46R/n194/4R:6   +0.07/+27R/n374/4R:8 / +0.07/+15R/n194/4R:3
+adr_150           0      0        -0.13/-47R/n374/4R:14         -0.24/-47R/n194/4R:6   +0.06/+23R/n374/4R:7 / +0.06/+12R/n194/4R:2
+adr_200           0      0         -0.13/-48R/n374/4R:7         -0.24/-47R/n194/4R:5   +0.03/+13R/n374/4R:2 / +0.04/+7R/n194/4R:2
+ep_close        176      0         -0.33/-66R/n198/4R:6         -0.78/-79R/n101/4R:2   -0.05/-10R/n198/4R:10 / -0.38/-38R/n101/4R:5
+ep_low           11      0        -0.58/-210R/n363/4R:7        -0.67/-125R/n187/4R:4   -0.36/-130R/n363/4R:8 / -0.31/-58R/n187/4R:6
