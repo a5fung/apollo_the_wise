@@ -55,7 +55,7 @@ def test_every_grade_records_what_we_held_versus_what_we_sent():
         import pathlib
         src = pathlib.Path("agents/market_intelligence/ep_grade_judge.py").read_text(
             encoding="utf-8")
-    assert "judge_direct_source_trace" in src
+    assert "judge_signal_trace" in src
     assert "UNKNOWN RENDERED AS NO" in src, (
         "the trace must SAY when the two differ — a row recording only the sent value would "
         "hide exactly the case worth finding")
@@ -87,11 +87,26 @@ def test_the_detector_ACTUALLY_PASSES_the_flag_to_the_judge():
         "it must come from the candidate row, which is where corpus_provenance stored it")
 
 
-def test_the_renderer_still_lies_about_a_GENUINE_unknown():
-    """Residual, recorded rather than fixed. With the flag now wired, None means we genuinely
-    could not tell (a cache miss, a provenance failure) — and `_b()` still reports that as "no".
-    Left alone deliberately: the rubric defines no behaviour for "unknown", so inventing a third
-    word would put an unmodelled token in front of a live grader. The trace row shows how often a
-    real unknown survives, which is the evidence needed before changing it."""
-    p_unknown = j._build_judge_prompt({"ticker": "X", "has_direct_source": None})
-    assert "Direct source present: no" in p_unknown
+def test_revenue_stage_says_NOT_CHECKED_rather_than_lying():
+    """The second instance, fixed 2026-09-01 with an honest third state. revenue_stage is only
+    computed on earnings day — the only day rule 4 needs it — so "we did not look" is the truthful
+    answer on most rows. Rendering `_b`'s "no" there would tell the judge every non-earnings
+    company is pre-revenue, which is the same false assertion as the direct-source bug.
+
+    MUTATION TARGET: routing revenue_stage back through `_b`, which collapses unknown into no."""
+    assert "Revenue-stage: yes" in j._build_judge_prompt({"ticker": "X", "revenue_stage": True})
+    assert "Revenue-stage: no" in j._build_judge_prompt({"ticker": "X", "revenue_stage": False})
+    assert "Revenue-stage: not checked" in j._build_judge_prompt(
+        {"ticker": "X", "revenue_stage": None}), (
+        "an unchecked revenue stage must not be reported as pre-revenue")
+
+
+def test_the_detector_passes_revenue_stage_and_only_when_it_KNOWS():
+    """It must be the tri-state, not the boost gate's local `True`. That True means 'do not
+    block the boost', not 'this company has revenue' — passing it would assert an unmeasured
+    fact, which is the bug class this whole thread is about."""
+    import pathlib as _pl
+    src = _pl.Path("agents/market_intelligence/ep_detector.py").read_text(encoding="utf-8")
+    assert "revenue_stage=r.get(\"revenue_stage\")" in src
+    assert "revenue_stage if _revenue_stage_known else None" in src, (
+        "the candidate row must carry None when is_revenue_stage never ran")

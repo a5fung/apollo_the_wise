@@ -34,14 +34,6 @@ DECLARED_UNWIRED = {
     "tape": "#329 Path A — built for the composite flip, wired by #335 (judge is load-bearing)",
     "theme_stage": "#329 Path A — same flip, same gate (#335)",
     "theme_score": "#329 Path A — same flip, same gate (#335)",
-    "revenue_stage": (
-        "⚠ NOT a decision — a GAP found 2026-09-01 by this very test, and the same defect class "
-        "as has_direct_source: computed live in ep_detector (~4324), rendered into the prompt "
-        "(~383) as `Revenue-stage: {_b(...)}`, and never passed, so the judge is told 'no' on "
-        "every grade regardless of truth. Unlike has_direct_source it is not on the candidate "
-        "row, so wiring it needs plumbing AND it moves live grades — the operator's call, "
-        "surfaced 2026-09-01. Remove this entry when it is wired or when he rules it out."
-    ),
 }
 
 
@@ -80,8 +72,12 @@ def test_declarations_carry_a_real_reason():
         assert len(reason) > 40, f"{name}'s declaration is too thin to be a decision: {reason!r}"
 
 
-def test_has_direct_source_is_wired_not_declared():
-    """The bug this file exists for. It must never drift back into a declaration — being
-    'declared unwired' would make the original defect permanent and look deliberate."""
-    assert "has_direct_source" not in DECLARED_UNWIRED
-    assert "has_direct_source=" in _live_call_source()
+def test_the_two_signals_found_by_this_guard_stay_wired():
+    """Both bugs this file exists for. Neither may drift back into a declaration — being
+    "declared unwired" would make the original defect permanent and look deliberate.
+    has_direct_source was found by the monthly review; revenue_stage was found by this guard
+    within an hour of it being written, which is the whole argument for having it."""
+    call = _live_call_source()
+    for name in ("has_direct_source", "revenue_stage"):
+        assert name not in DECLARED_UNWIRED, f"{name} must stay wired, not be declared away"
+        assert f"{name}=" in call, f"{name} is no longer passed to the judge"

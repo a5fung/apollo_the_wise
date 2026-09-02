@@ -10345,6 +10345,50 @@ reviews:
                  "agents/market_intelligence/universe_floor_shadow.py",
                  "docs/setups/magna53_ep.md"]
 
+  - review_id: judge_signal_wiring_effect_2026_09_01
+    title: "Did wiring has_direct_source + revenue_stage actually move the judge's grades?"
+    question: >-
+      From 2026-09-01 the judge is finally told the truth about two signals it
+      had been given a blanket "no" for on every grade: has_direct_source (it
+      was never passed at all, so 97 of 99 rows with a real primary source were
+      reported as having none) and revenue_stage (never passed either, so every
+      company alive was presented as pre-revenue). Both were BUG FIXES, not
+      criteria changes — the rubric, tool schema and normalizer are untouched;
+      the judge simply stopped being told something untrue. The operator asked
+      to "monitor its effects going forward so we are aware".
+      So: did the grade distribution actually move, and in which direction?
+      The pre-fix evidence says probably not much — the judge's own rationales
+      repeatedly identified the primary source and applied revenue rule 4
+      regardless of the flags, i.e. it reads the corpus rather than trusting our
+      summary fields. If that holds, the finding is that these fields carry
+      little weight, which is itself worth knowing before anyone builds on them.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_ep_alerts WHERE alert_date >= '2026-09-02'
+      AND COALESCE(source, 'live') = 'live' AND judge_grade IS NOT NULL
+    threshold: 40
+    # Grades on the NEW wiring only. 40 is roughly six weeks at the current ~1-2
+    # graded alerts/day and enough to see a distribution shift against the 101-row
+    # pre-fix baseline; fewer would read noise as effect.
+    discriminates_on: []
+    earliest_review_date: 2026-10-15
+    status: pending
+    kind: accrual
+    added_on: 2026-09-01
+    action_when_ready: >-
+      Compare the post-fix grade mix against the recorded pre-fix baseline
+      (game_changer 35 / strong 43 / routine 21 / none 2, tiers HIGH 75 /
+      MODERATE 21 / none 5, over the 30 days to 2026-09-01). Read the
+      judge_signal_trace rows alongside so held-vs-sent is visible per grade.
+      THREE OUTCOMES, all worth recording: (a) no material shift -> the fields
+      are inert and the judge reads evidence over flags, so stop treating them
+      as load-bearing; (b) grades rise -> the false "no" WAS suppressing, and
+      the pre-fix cohort deserves a re-read for names we under-graded; (c)
+      grades fall -> unexpected, investigate before accepting.
+      Do NOT tune anything off this read; it is a measurement.
+    references: ["agents/market_intelligence/ep_grade_judge.py",
+                 "agents/market_intelligence/ep_detector.py",
+                 "tests/test_judge_payload_completeness.py"]
+
   - review_id: analyst_estimates_60d_accrual_333
     title: "#333 durability axis: >=60 days of stored analyst estimates have accrued"
     question: >-

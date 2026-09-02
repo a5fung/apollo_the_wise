@@ -4324,8 +4324,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 revenue_stage = await is_revenue_stage(ticker)
             except Exception:
                 revenue_stage = True
+            _revenue_stage_known = True
         else:
             revenue_stage = True  # not used when not earnings day
+            # ⚠ TRACKED SEPARATELY (2026-09-01). `True` here is a LOCAL CONVENIENCE for the
+            # boost gate below — it means "do not block", NOT "we checked and this company has
+            # revenue". We never looked: is_revenue_stage only runs on earnings day. Passing
+            # that True to the judge would assert an unmeasured fact, which is precisely the
+            # bug class being fixed (see the judge payload below), so the judge gets None and
+            # renders "not checked".
+            _revenue_stage_known = False
 
         # Boost gate: same yfinance-or-text fallback as the extraction gate
         # (#131). If yfinance earnings_dates miss and Claude prose clearly
@@ -5270,6 +5278,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # claude_analysis is grounded in it and the separate Perplexity discovery narrative
             # (the "catalyst" field) is suppressed in the alert (it sometimes contradicts the grade).
             "has_direct_source": _has_direct_source,
+            # #242 revenue-stage, wired to the judge 2026-09-01. TRI-STATE ON PURPOSE:
+            # True/False only when is_revenue_stage actually ran (earnings day), None when it
+            # did not. It exists to stop the rubric judging a clinical-stage biotech, SPAC or
+            # blank-cheque by revenue-growth criteria (rule 4) — the IMVT 2026-05-21 gate
+            # inversion. It was computed and used by the earnings boost, but never reached the
+            # judge, which was therefore told "Revenue-stage: no" for every company alive.
+            "revenue_stage": (revenue_stage if _revenue_stage_known else None),
             "gemini_validation": pplx_quality,  # DB column name kept for compatibility
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,
@@ -5544,6 +5559,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # untrue. It WILL move live grades; that is the point, and it is why this
                     # shipped on the operator's word rather than as a tidy-up.
                     has_direct_source=r.get("has_direct_source"),
+                    # Same omission, found by tests/test_judge_payload_completeness.py the hour
+                    # the guard was written. Tri-state: None = we never checked (not an
+                    # earnings day), which renders "not checked" rather than a false "no".
+                    revenue_stage=r.get("revenue_stage"),
                     active_narratives=_narrative_cohorts,
                     setup_class=_setup_class,
                     # #233 (operator-signed 2026-08-27) — Perplexity's independent grade.

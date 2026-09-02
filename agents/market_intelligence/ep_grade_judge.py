@@ -33,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import hashlib
+import json
 import logging
 
 from agents.market_intelligence.catalyst_materiality import format_market_cap
@@ -310,6 +311,18 @@ def assemble_judge_inputs(
 
 
 def _build_judge_prompt(p: dict) -> str:
+    def _b3(v):
+        """yes / no / not checked — for a field whose UNKNOWN is real and common.
+
+        `revenue_stage` is only computed on earnings day (that is the only day rule 4 needs
+        it), so "we did not look" is the honest answer on most rows. Sending `_b`'s "no"
+        there would tell the judge every non-earnings company is pre-revenue — the exact
+        false assertion this whole thread is about. Kept separate from `_b` deliberately:
+        `has_direct_source` is now wired and its None is rare, and widening `_b` would change
+        that prompt too, unmeasured.
+        """
+        return "not checked" if v is None else ("yes" if v else "no")
+
     def _b(v):
         # ⚠ KNOWN DEFECT, TRACED 2026-09-01 — DO NOT "tidy" this into three states without
         # reading the note below. `None` is falsy, so an UNKNOWN direct-source flag renders as
@@ -380,7 +393,7 @@ Liquidity / spread: {t.get('liquidity')}"""
 
 --- SETUP ---
 Ticker: {p.get('ticker')}  |  Sector: {p.get('sector') or 'unknown'}
-Market cap: {format_market_cap(p.get('market_cap'))}  |  Revenue-stage: {_b(p.get('revenue_stage'))}
+Market cap: {format_market_cap(p.get('market_cap'))}  |  Revenue-stage: {_b3(p.get('revenue_stage'))}
 Gap: {p.get('gap_pct')}%  |  Pre-mkt RVOL: {p.get('pm_rvol')}  |  Vol %ile: {p.get('vol_percentile')}
 Floor grade (the system's current gap+enum verdict): tier={p.get('floor_tier')} catalyst={p.get('floor_catalyst_quality')}
 In active theme (Lane 1): {_b(p.get('in_active_theme'))}{theme_heat}  |  In narrative cohort (Lane 2): {_b(p.get('in_narrative_cohort'))}
@@ -509,11 +522,16 @@ async def grade_holistic(
         # them. Same reason the rest of this file defers its db reach.
         from agents.market_intelligence.db import log_audit_event
         _hds = payload.get("has_direct_source")
+        _rev = payload.get("revenue_stage")
         await log_audit_event(
-            "judge_direct_source_trace",
-            f"{payload.get('ticker') or '?'}: held={_hds!r} sent_to_judge="
+            "judge_signal_trace",
+            f"{payload.get('ticker') or '?'}: direct_source held={_hds!r} sent="
             f"{'yes' if _hds else 'no'}"
-            f"{'  ⚠ UNKNOWN RENDERED AS NO' if _hds is None else ''}",
+            f"{'  ⚠ UNKNOWN RENDERED AS NO' if _hds is None else ''}"
+            f" | revenue_stage held={_rev!r} sent="
+            f"{'not checked' if _rev is None else ('yes' if _rev else 'no')}",
+            json.dumps({"ticker": payload.get("ticker"),
+                        "has_direct_source": _hds, "revenue_stage": _rev}),
         )
     except Exception as _e:  # loud-ok: telemetry must never break a grade
         logger.warning(f"judge direct-source trace failed: {_e}")
