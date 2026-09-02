@@ -250,3 +250,63 @@ def test_walk_campaign_states_its_ruleset_on_every_row():
     must say which rules produced it."""
     res = _walk([])
     assert res["ruleset"] == "era_c"
+
+
+# ── the validation bar (advisor review 2026-09-01) ───────────────────────────────────
+
+
+def test_the_validation_baseline_is_recorded_and_dated():
+    """WHY THIS EXISTS. This harness is built to be RE-RUN and CITED, and its authority rests
+    entirely on reproducing what really happened. When it was built that was measured — and the
+    numbers lived only in a card's return message and a PLAN note, where nothing would fail if
+    the agreement quietly degraded. This repo's recent history is findings that were true when
+    written and cited long after they stopped being true.
+
+    MUTATION TARGET: deleting the baseline, or letting it go undated so nobody can tell how old
+    the claim is."""
+    from scripts.ep_replay import VALIDATION_BASELINE as B
+
+    assert B["as_of"], "the baseline must carry the date it was measured"
+    assert B["cohort"], "and what it was measured against"
+    for key in ("stop_formula_exact", "entry_decision_exact", "exit_class_agree",
+                "current_era_within_0p16"):
+        hit, total = B[key]
+        assert total > 0 and 0 <= hit <= total, f"{key} is not a real ratio: {B[key]}"
+
+
+def test_a_degraded_rerun_FAILS_rather_than_being_quoted():
+    """The whole point. A harness whose agreement has rotted must stop being authoritative on its
+    own, not wait for someone to notice a number looks odd.
+
+    MUTATION TARGET: loosening a floor to 0, or making validation_verdict return ok on missing
+    measurements — both of which would make the bar decorative."""
+    from scripts.ep_replay import validation_verdict
+
+    good = {"stop_formula_rate": 1.0, "entry_decision_rate": 1.0, "exit_class_rate": 0.97,
+            "realized_r_rate": 0.83, "abstain_rate": 0.17}
+    assert validation_verdict(good)["ok"]
+
+    for key, bad in (("exit_class_rate", 0.60), ("stop_formula_rate", 0.98),
+                     ("entry_decision_rate", 0.80), ("realized_r_rate", 0.50)):
+        v = validation_verdict({**good, key: bad})
+        assert not v["ok"], f"a degraded {key} must fail the bar"
+        assert any(key.split('_')[0] in f for f in v["failures"])
+
+    assert not validation_verdict({**good, "abstain_rate": 0.45})["ok"], (
+        "beyond the abstain ceiling the sample is not a sample")
+    assert not validation_verdict({})["ok"], (
+        "an unmeasured re-run must FAIL, not pass by silence — that is how a stale claim survives")
+
+
+def test_the_floors_are_not_vacuous():
+    """A bar set at zero is worse than no bar: it reads as validated and asserts nothing.
+    MUTATION TARGET: zeroing a floor to make a failing re-run pass."""
+    from scripts.ep_replay import VALIDATION_MIN
+
+    assert VALIDATION_MIN["stop_formula_rate"] == 1.00, (
+        "the stop is a formula, not an estimate — anything below exact is a defect")
+    for key, floor in VALIDATION_MIN.items():
+        if key == "max_abstain_rate":
+            assert 0 < floor < 0.5, "an abstain ceiling above half makes the sample meaningless"
+        else:
+            assert floor >= 0.75, f"{key}'s floor {floor} is too loose to catch real degradation"

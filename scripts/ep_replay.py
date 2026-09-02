@@ -726,6 +726,64 @@ def phase_replay(args) -> None:
     print(f"  written: {out}")
 
 
+# ── VALIDATION BASELINE — the numbers that make this harness quotable ─────────────────
+#
+# WHY THIS IS A CONSTANT AND NOT A PARAGRAPH (advisor review, 2026-09-01). This module exists to
+# be RE-RUN and CITED. Its authority rests entirely on one thing: that it reproduces what really
+# happened. When it was built, that was measured — and then lived only in a card's return message
+# and a PLAN note. Nothing would fail if the agreement quietly degraded, and this repo's whole
+# recent history is findings that were true when written and cited long after they stopped being
+# true (the #482 positives that turned out to be daily-bar replays; four adjacent-quantity errors
+# in one day). A harness that says "validated" without a checkable bar is the next one.
+#
+# Measured 2026-09-01 against the 44 replayable real trades, era-matched:
+VALIDATION_BASELINE = {
+    "as_of": "2026-09-01",
+    "cohort": "44 replayable real live trades, era-matched",
+    "stop_formula_exact": (44, 44),        # stop price reproduced exactly
+    "entry_decision_exact": (33, 33),      # entered / not-entered, where minute data exists
+    "exit_class_agree": (29, 30),          # how the trade ended
+    "realized_r_within_0p25": (25, 30),
+    "current_era_within_0p16": (4, 4),     # era C — the rows that matter for today's questions
+    "entry_price_mean_abs_err_pct": 0.24,
+    "abstain_rate_replay": 0.17,           # 270-alert current-rules replay
+}
+
+# The bar a re-run must clear before ANY number off this harness may be quoted. Set at the
+# measured level minus a deliberate margin: tight enough that real degradation trips it, loose
+# enough that one new abstaining row does not.
+VALIDATION_MIN = {
+    "stop_formula_rate": 1.00,             # must stay exact — it is a formula, not an estimate
+    "entry_decision_rate": 0.95,
+    "exit_class_rate": 0.90,
+    "realized_r_rate": 0.75,
+    "max_abstain_rate": 0.30,              # 0.17 measured; beyond 0.30 the sample is not a sample
+}
+
+
+def validation_verdict(observed: dict) -> dict:
+    """PASS/FAIL a re-run against VALIDATION_MIN. Returns {'ok': bool, 'failures': [...]}.
+
+    Call this from `phase_validate` and REFUSE to quote replay output when it fails. The point is
+    that degradation is loud: a harness whose agreement has rotted must stop being authoritative
+    on its own, not wait for someone to notice a number looks odd.
+    """
+    failures = []
+    for key, floor in VALIDATION_MIN.items():
+        if key == "max_abstain_rate":
+            v = observed.get("abstain_rate")
+            if v is not None and v > floor:
+                failures.append(f"abstain rate {v:.0%} exceeds the {floor:.0%} ceiling")
+            continue
+        v = observed.get(key)
+        if v is None:
+            failures.append(f"{key} not measured — a re-run must report it")
+        elif v < floor:
+            failures.append(f"{key} {v:.0%} below the {floor:.0%} floor "
+                            f"(baseline measured {VALIDATION_BASELINE['as_of']})")
+    return {"ok": not failures, "failures": failures}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("phase", choices=["rulesets", "validate", "score", "replay"])
