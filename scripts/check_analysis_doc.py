@@ -33,14 +33,19 @@ import sys
 DOC_DIR = "docs/analysis/"
 
 # "What this does not answer" — the section that keeps an analysis honest about its reach.
+# `_NUM` — an optional "4. " / "4) " / "IV. " heading prefix. A numbered heading is ordinary
+# markdown, and without this the gate rejected `## 4. What this does not answer` on a doc that
+# HAD the section (2026-09-01). A false rejection teaches people to --no-verify, which is worse
+# than the drift the gate exists to stop.
+_NUM = r"(?:[0-9]+|[ivxlIVXL]+)?[.)]?\s*"
 _LIMITS = re.compile(
-    r"#+\s*(what\s+this\s+does\s*n[o']?t\s+answer"
+    r"#+\s*" + _NUM + r"(what\s+this\s+does\s*n[o']?t\s+answer"
     r"|what\s+(it|this)\s+does\s*n[o']?t\s+(answer|cover|show)"
     r"|limits?\b|limitations?\b|caveats?\b)", re.I)
 
 # A method statement: says which rows over what window. Either an explicit heading or a
 # population line naming a table and a date range.
-_METHOD = re.compile(r"#+\s*(method|population|cohort|how\s+this\s+was\s+(built|run|measured))", re.I)
+_METHOD = re.compile(r"#+\s*" + _NUM + r"(method|population|cohort|how\s+this\s+was\s+(built|run|measured))", re.I)
 _POP_LINE = re.compile(r"\*\*population:?\*\*|population[:\s]+.*\b(mi_|n\s*=)", re.I)
 
 _EXEMPT = re.compile(r"^\s*(⛔|>|#+\s*(retracted|superseded))", re.I | re.M)
