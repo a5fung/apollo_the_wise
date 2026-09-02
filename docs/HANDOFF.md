@@ -402,3 +402,60 @@ winner must clear ~4R to break even. That gap is the whole problem.
 ⚠ Win rate belongs to SELECTION, never to entry/exit.
 ⚠ Never pipe a deploy through `tail` — it hid a failed safety gate.
 ⚠ Deploy windows are ET; Sunday evening PT is already Monday ET.
+
+---
+
+## 2026-09-02 (Wed) — 🔴 RESUME HERE. Supersedes everything above.
+
+**Paused ~08:10 PDT at the operator's request to restart the session for a newly released Fable
+model.** Nothing half-applied. **Tree clean, pushed, HEAD `2fe2f5a2`, suite 6816 green.**
+
+### THE ONE OUTSTANDING ACTION — THE DEPLOY
+
+Today's six commits are **committed and pushed but NOT deployed.** Production runs `ddfdcf96`.
+
+- I proposed *"deploying at 09:00 PDT unless you say hold"*; he paused the session instead of
+  answering. **That is neither a hold nor an approval — re-state it and get his nod.**
+- Windows **12:00–13:00 ET** or **21:15–22:15 ET**. `APOLLO_DEPLOY_ANYTIME=1` is OPERATOR-ONLY.
+- **Scope `both`** (`shared/output_ceilings.py` changed), then expect deploy.sh to demand a second
+  step **`bash scripts/deploy.sh execution`** — `scheduler.py` changed and apollo-execution runs it.
+- Delta read before proposing: no `broker/`, no `execution_routes`, no `entry_pipeline`. Nothing on
+  the money path rides along.
+- **The only live-behaviour change in the deploy:** on an `is_revenue_stage` data outage the judge
+  was handed the boost gate's fail-soft `True` as a measured "pre-revenue: yes"; it now renders
+  "not checked". Everything else is shadow, telemetry, wording or cleanup.
+
+### What shipped into the tree today
+
+- **Verifies closed:** #584, #613, #611. **#615 → 09-08** (event-gated; zero alerts fired, so
+  nothing was graded). **#471** ripened as forecast but keeps a second open checkpoint → stays
+  `deployed`, ETA 09-09, behind EP work.
+- **`/simplify` Phase 2**, four Sonnet reviewers over yesterday's diff, three commits. The altitude
+  pass found a **live bug**: yesterday's judge fix reached only the one call site its own guard
+  reads, so the production chart-axis shadow grader was still being told "no direct source" on
+  every ticker. Fixed, and the guard now covers the mirror too. Also: the replay harness's
+  `validation_verdict()` had never once been called; a theme-engine alarm wrote an event name no
+  error sweep queries; three different SEC identities collapsed to one.
+- **#616 built** (shadow-only ADR-proportional stop recording in the delayed-entry lane).
+  Status **`in_progress`** — flip to `deployed` with verify-date **09-03** once it ships.
+
+### #616's verify — the "before" leg is already captured
+
+Pre-deploy prod baseline, read-only, also written onto #616's PLAN line:
+**1,981 settled triggers · incumbent md5 `6c605ce05abb7df7d655642c346ecda0` · all `settle_v2`.**
+After the first nightly, re-run that md5 filtered to `settle_version = 'settle_v2'` (existing rows
+keep v2; only new settles stamp v3) — it must match. Settled `realized_r_*075/100` are NOT expected
+night one: variants resolve up to 20 sessions after the fire.
+
+### Still open
+
+**#333** verify tonight 18:12 ET · **#615** 09-08 (⚠ filter `log_caller = 'ep_grade_judge'`) ·
+**#601** (a ruling filed under a theme's name is lost when the theme is renamed) · **#612** rotate
+the Polygon key (his) · **#545** carries the retry idea and the missed-EP read.
+
+### The pattern worth carrying forward
+
+Three instances in two days of **a fix, gate or alarm that exists but never actually acts** — a fix
+at one call site of two, a validation function nothing called, an alarm named so no sweep reads it,
+and #616's writers missing from the gate whose own comment says to register them. Before believing
+a mechanism works, find where it FIRES.
