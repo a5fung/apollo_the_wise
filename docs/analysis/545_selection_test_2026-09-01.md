@@ -72,7 +72,20 @@ If nothing can, delayed entry does not pay as a tactic and we should stop workin
 Nothing was flipped, changed, or proposed as done. Any change to a delayed-entry rung or to what we
 trade is entry discipline — the operator's sole authority, CHANGE_PROCESS and sign-off.
 
-**Recommendation, and it is the pre-registered null:** on this evidence delayed entry does not pay
-as a tactic, and further tuning of buy points, stops or populations is not warranted. The honest
-next move is to stop working it and put the effort where today's other thread pointed — selection
-at the ALERT layer, which is the same constraint one step earlier.
+**Recommendation — CORRECTED 2026-09-01 after the operator reframed it, and the correction matters
+more than the original.** My first version said "delayed entry does not pay as a tactic; stop
+working it". That over-read this test. His frame: *"we are not predicting anything… we are building
+a trading system that can be risk managed, we find entries and exits where we can manage risk
+properly and where we have positive expected returns."*
+
+This study tested **prediction** — can a fact known at fire time pick the winners — and the answer
+is no. It did **not** test whether the tactic can be made profitable, and the evidence already
+collected says risk management moves it far more than any filter did: the same 32 `ep_high_break`
+fires go from **−0.41R to +1.66R** purely by moving the stop from the prior session low (10.8% of
+entry) to entry − 0.25×ADR (1.4%); `ep_close_reclaim` goes −0.44R → −0.06R on the trailing arm with
+its ≥4R count rising 2 → 8.
+
+**So the standing recommendation is: stop hunting for a filter, and sweep the STOP across all four
+signals** — the full entry × stop expectancy grid, era-gated, both directions. That sweep has so far
+been run for exactly one of the four. Nothing here justifies abandoning delayed entry; it justifies
+abandoning the search for a predictive filter.
