@@ -74,3 +74,8 @@ _chart_eval_267/
 .apollo_session_baseline.json
 # day's routing declaration (machine-local; written at OPEN by delegation_report.py --route)
 .apollo_routing.json
+
+# ep_replay harness captures (regenerable from prod via scripts/ep_replay_data/_pull*.sql)
+scripts/ep_replay_data/*.txt
+scripts/ep_replay_data/*.tsv
+scripts/ep_replay_data/*.tsv.gz
