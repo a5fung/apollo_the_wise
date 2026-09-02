@@ -60,11 +60,11 @@ import sys
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+from shared.dates import _ET as _SHARED_ET  # noqa: E402
 from agents.market_intelligence.backtester.filters import validate_orb_entry  # noqa: E402
 from agents.market_intelligence.broker.exit_logic import (  # noqa: E402
     apply_daily_exit_step,
@@ -80,7 +80,7 @@ from agents.market_intelligence.ep_rubric import (  # noqa: E402
     resolve_score_weights,
 )
 
-_ET = ZoneInfo("America/New_York")
+_ET = _SHARED_ET  # the CANONICAL zone (shared/dates.py) — never a second one here
 DATA = REPO / "scripts" / "ep_replay_data"
 
 # Last daily bar treated as settled. 2026-09-01 exists in the capture but is the capture
@@ -520,6 +520,20 @@ def _load_common():
     return s2, s3
 
 
+def write_tsv(path: Path, rows: list[dict], cols: list[str]) -> None:
+    """The ONE pipe-separated writer for every phase of this harness.
+
+    Was three near-identical loops, and they had already drifted: two rendered a None as an
+    empty field and phase_score's rendered the literal text "None" — into the very TSVs this
+    harness exists to be quotable from. A file whose whole claim is fidelity cannot have three
+    spellings of how it writes a missing value.
+    """
+    with open(path, "w") as fh:
+        fh.write("|".join(cols) + "\n")
+        for r in rows:
+            fh.write("|".join("" if r.get(c) is None else str(r.get(c)) for c in cols) + "\n")
+
+
 def phase_validate(args) -> None:
     s2, _ = _load_common()
     minutes, daily = load_minutes(), load_daily()
@@ -571,10 +585,7 @@ def phase_validate(args) -> None:
             "gap_through": res["gap_through"],
         })
     cols = list(rows[0].keys())
-    with open(DATA / "validate_trades.tsv", "w") as fh:
-        fh.write("|".join(cols) + "\n")
-        for r in rows:
-            fh.write("|".join("" if r[c] is None else str(r[c]) for c in cols) + "\n")
+    write_tsv(DATA / "validate_trades.tsv", rows, cols)
     n = len(rows)
     settled = [r for r in rows if r["status"] == "settled"]
     abst = [r for r in rows if r["status"] == "abstain"]
@@ -595,8 +606,11 @@ def phase_validate(args) -> None:
           if (r["final_recon"] == "stop_hit") == (r["final_live"] == "stop_hit")]
     print(f"  final-exit-class agreement: {len(fm)}/{len(settled)}")
     dr = [r["dr"] for r in settled if r["dr"] is not None]
+    # `within` computed OUTSIDE the guard: it is read again by the validation block below, and
+    # binding it only inside `if dr:` is the UnboundLocalError shape that has bitten this repo
+    # twice (deploy gate [5d/7] caught the last one 2026-09-01).
+    within = sum(1 for x in dr if abs(x) <= 0.25)
     if dr:
-        within = sum(1 for x in dr if abs(x) <= 0.25)
         print(f"  realized R: |dR|<=0.25R on {within}/{len(dr)}; "
               f"mean dR {sum(dr)/len(dr):+.3f}R; "
               f"worst {max(dr, key=abs):+.2f}R")
@@ -608,29 +622,96 @@ def phase_validate(args) -> None:
     for r in abst:
         print(f"    ABSTAIN {r['ticker']} {r['alert_date']}: {r['reason']}")
 
+    # ── THE HARNESS GATES ITSELF ──────────────────────────────────────────────────────
+    # Wired 2026-09-02. validation_verdict() existed since the day this file shipped and its
+    # own docstring said "call this from phase_validate" — nothing did. A gate that has never
+    # run is not a gate: the numbers above would have kept printing clean while the agreement
+    # behind them rotted, which is precisely the failure mode this harness was built to end
+    # (#482's founding finding survived for months because nothing re-checked it).
+    #
+    # ⚠ THE DENOMINATORS ARE THE WHOLE POINT — each must be the SAME population the baseline
+    # measured, or the gate compares two different quantities and fails (or passes) for no
+    # reason. The first wiring of this block got two of them wrong and the gate said so:
+    #   entry_decision: baseline (33, 33) is "where minute data exists". Dividing by all 44
+    #     rows reads 75% and looks like catastrophic degradation; the 11 rows abstaining for
+    #     `entry_window_gaps` never had an entry decision to agree ABOUT. Rows abstaining for
+    #     `day0_fill_bar_straddles_stop` DID enter — they just cannot be settled — so they stay
+    #     in this denominator.
+    #   abstain_rate: baseline 0.17 belongs to the 270-alert REPLAY population, not to this
+    #     44-trade validation cohort (32% here). It is checked in phase_replay, where that
+    #     population actually lives — not asserted here against a number from elsewhere.
+    entry_undecidable = [r for r in abst if str(r["reason"]).startswith("entry_window_gaps")]
+    entry_decidable = n - len(entry_undecidable)
+    observed = {
+        "stop_formula_rate": (sum(r["stop_match"] for r in rows) / n) if n else None,
+        "entry_decision_rate": (sum(r["entered"] for r in rows) / entry_decidable
+                                if entry_decidable else None),
+        "exit_class_rate": (len(fm) / len(settled)) if settled else None,
+        "realized_r_rate": (within / len(dr)) if dr else None,
+    }
+    verdict = validation_verdict(
+        observed, only={k for k, v in VALIDATION_OWNER.items() if v == "validate"})
+    print(f"\n  VALIDATION vs {VALIDATION_BASELINE['as_of']} baseline "
+          f"({VALIDATION_BASELINE['cohort']}):")
+    for k in ("stop_formula_rate", "entry_decision_rate", "exit_class_rate", "realized_r_rate"):
+        v = observed[k]
+        print(f"    {k:<22} {'not measured' if v is None else format(v, '.0%')} "
+              f"(floor {VALIDATION_MIN[k]:.0%})")
+    print(f"    {'entry-decidable rows':<22} {entry_decidable}/{n} "
+          f"({len(entry_undecidable)} had no minute data in the entry window)")
+    if verdict["ok"]:
+        print("  ✅ VALIDATION PASS — output from this harness may be quoted.")
+        return
+    print("\n  ⛔ VALIDATION FAIL — DO NOT QUOTE ANY NUMBER FROM THIS HARNESS:")
+    for f in verdict["failures"]:
+        print(f"     - {f}")
+    raise SystemExit(2)
 
-def phase_score(args) -> None:
+
+def _scoring_context():
+    """The inputs re-scoring needs, loaded once. Shared by phase_score and phase_replay.
+
+    Was built twice, identically, in the two phases (2026-09-02 cleanup). The pair matters more
+    than the line count: an off-by-one in the prior-close or regime lookup — a `<` that should be
+    `<=` — would have had to be corrected in both places and re-verified in both, in a harness
+    whose entire value is being provably faithful to the live rules.
+    """
     s2, s3 = _load_common()
-    daily = load_daily()
     conf = {r["id"]: r["confidence_multiplier"]
             for r in read_sections(DATA / "_pull5_out.txt")["CONF"]}
     adv = {(r["ticker"], r["score_date"]): _f(r["adv_20"]) for r in s3["ADV"]}
     regime_rows = sorted(s2["REGIME"], key=lambda r: r["regime_date"])
+    return s2, s3, conf, adv, regime_rows
+
+
+def _score_one(a, rs, daily, adv, regime_rows):
+    """Re-score ONE alert under `rs`, with the point-in-time prior close and regime.
+
+    STRICTLY-PRIOR on both lookups (`d < ad`, `regime_date < alert_date`) — the lookahead
+    contract. One implementation so the two phases cannot drift apart on it.
+    """
+    ad = date.fromisoformat(a["alert_date"])
+    dbars = daily.get(a["ticker"], {})
+    prevs = [d for d in sorted(dbars) if d < ad]
+    prev_d = prevs[-1] if prevs else None
+    reg = next((r for r in reversed(regime_rows)
+                if r["regime_date"] < a["alert_date"]), None)
+    return ad, rescore_alert(
+        a, rs, adv.get((a["ticker"], prev_d.isoformat() if prev_d else "")),
+        dbars[prev_d]["c"] if prev_d else None,
+        reg["regime"] if reg else None,
+        int(reg["ep_threshold"]) if reg and reg.get("ep_threshold") else None)
+
+
+def phase_score(args) -> None:
+    s2, s3, conf, adv, regime_rows = _scoring_context()
+    daily = load_daily()
     rows = []
     for a in s2["ALERTS"]:
         a = {**a, "confidence_multiplier": conf.get(a["id"])}
-        ad = date.fromisoformat(a["alert_date"])
-        rs = get_ruleset(args.ruleset) if args.ruleset else ruleset_as_of(ad)
-        dbars = daily.get(a["ticker"], {})
-        prevs = [d for d in sorted(dbars) if d < ad]
-        prev_d = prevs[-1] if prevs else None
-        prev_close = dbars[prev_d]["c"] if prev_d else None
-        reg = next((r for r in reversed(regime_rows)
-                    if r["regime_date"] < a["alert_date"]), None)
-        res = rescore_alert(
-            a, rs, adv.get((a["ticker"], prev_d.isoformat() if prev_d else "")),
-            prev_close, reg["regime"] if reg else None,
-            int(reg["ep_threshold"]) if reg and reg.get("ep_threshold") else None)
+        rs = get_ruleset(args.ruleset) if args.ruleset else ruleset_as_of(
+            date.fromisoformat(a["alert_date"]))
+        _ad, res = _score_one(a, rs, daily, adv, regime_rows)
         stored = _f(a["ep_score"])
         res.update(ticker=a["ticker"], alert_date=a["alert_date"], ruleset=rs.name,
                    stored=stored,
@@ -640,10 +721,7 @@ def phase_score(args) -> None:
         rows.append(res)
     cols = ["ticker", "alert_date", "ruleset", "stored", "score_lo", "score_hi",
             "bar", "admit", "adv_known", "match"]
-    with open(DATA / "score_agreement.tsv", "w") as fh:
-        fh.write("|".join(cols) + "\n")
-        for r in rows:
-            fh.write("|".join(str(r[c]) for c in cols) + "\n")
+    write_tsv(DATA / "score_agreement.tsv", rows, cols)
     def _bucket(r):
         return "separation(>=08-22)" if r["alert_date"] >= "2026-08-22" else "legacy(<08-22)"
     for b in ("separation(>=08-22)", "legacy(<08-22)"):
@@ -661,27 +739,13 @@ def phase_score(args) -> None:
 
 def phase_replay(args) -> None:
     rs = get_ruleset(args.ruleset)   # raises without an explicit rule-set — by design
-    s2, s3 = _load_common()
+    s2, s3, conf, adv, regime_rows = _scoring_context()
     minutes, daily = load_minutes(), load_daily()
-    conf = {r["id"]: r["confidence_multiplier"]
-            for r in read_sections(DATA / "_pull5_out.txt")["CONF"]}
-    adv = {(r["ticker"], r["score_date"]): _f(r["adv_20"]) for r in s3["ADV"]}
-    regime_rows = sorted(s2["REGIME"], key=lambda r: r["regime_date"])
     rows = []
     for a in s2["ALERTS"]:
         a = {**a, "confidence_multiplier": conf.get(a["id"])}
-        ad = date.fromisoformat(a["alert_date"])
         # re-score + re-admit under the SAME explicit rule-set
-        dbars = daily.get(a["ticker"], {})
-        prevs = [d for d in sorted(dbars) if d < ad]
-        prev_d = prevs[-1] if prevs else None
-        reg = next((r for r in reversed(regime_rows)
-                    if r["regime_date"] < a["alert_date"]), None)
-        sc = rescore_alert(
-            a, rs, adv.get((a["ticker"], prev_d.isoformat() if prev_d else "")),
-            dbars[prev_d]["c"] if prev_d else None,
-            reg["regime"] if reg else None,
-            int(reg["ep_threshold"]) if reg and reg.get("ep_threshold") else None)
+        ad, sc = _score_one(a, rs, daily, adv, regime_rows)
         submit = time(9, 31)
         if a["detected_at_et"]:
             det = datetime.fromisoformat(a["detected_at_et"]).time()
@@ -696,10 +760,7 @@ def phase_replay(args) -> None:
             "entered", "entry_px", "stop", "target", "partial_fired", "final_reason",
             "realized_r", "gap_through", "day0_missing_minutes", "sessions_abstained"]
     out = DATA / (args.out or f"campaigns_{rs.name}.tsv")
-    with open(out, "w") as fh:
-        fh.write("|".join(cols) + "\n")
-        for r in rows:
-            fh.write("|".join("" if r.get(c) is None else str(r.get(c)) for c in cols) + "\n")
+    write_tsv(out, rows, cols)
     n = len(rows)
     st = [r for r in rows if r["status"] == "settled"]
     ab = [r for r in rows if r["status"] == "abstain"]
@@ -724,6 +785,22 @@ def phase_replay(args) -> None:
     from collections import Counter
     print(f"  abstain reasons: {dict(Counter(r['reason'].split(':')[0] for r in ab))}")
     print(f"  written: {out}")
+
+    # The abstain ceiling lives HERE, not in phase_validate: VALIDATION_BASELINE's 0.17 was
+    # measured on THIS population (the full alert replay), and phase_validate's 44-trade cohort
+    # abstains at a legitimately different rate. Checking it there would compare two different
+    # things. Past the ceiling the sample has stopped being a sample and nothing below may be
+    # quoted, however clean the means look.
+    verdict = validation_verdict({"abstain_rate": len(ab) / n if n else None},
+                                 only={"max_abstain_rate"})
+    if not verdict["ok"]:
+        print("\n  ⛔ VALIDATION FAIL — DO NOT QUOTE ANY NUMBER FROM THIS REPLAY:")
+        for f in verdict["failures"]:
+            print(f"     - {f}")
+        raise SystemExit(2)
+    print(f"  ✅ abstain {len(ab)/n:.0%} within the "
+          f"{VALIDATION_MIN['max_abstain_rate']:.0%} ceiling "
+          f"(baseline {VALIDATION_BASELINE['abstain_rate_replay']:.0%}) — replay is quotable.")
 
 
 # ── VALIDATION BASELINE — the numbers that make this harness quotable ─────────────────
@@ -761,15 +838,36 @@ VALIDATION_MIN = {
 }
 
 
-def validation_verdict(observed: dict) -> dict:
+#: which phase is responsible for checking each floor. The two phases measure DIFFERENT
+#: populations — phase_validate replays 44 real trades, phase_replay replays every alert — so a
+#: floor must be checked where its baseline was measured, or the gate compares two unlike things.
+#: `test_ep_replay` asserts this mapping covers VALIDATION_MIN exactly, so a new floor cannot be
+#: added and left unchecked by both phases.
+VALIDATION_OWNER = {
+    "stop_formula_rate": "validate",
+    "entry_decision_rate": "validate",
+    "exit_class_rate": "validate",
+    "realized_r_rate": "validate",
+    "max_abstain_rate": "replay",
+}
+
+
+def validation_verdict(observed: dict, only: "set[str] | None" = None) -> dict:
     """PASS/FAIL a re-run against VALIDATION_MIN. Returns {'ok': bool, 'failures': [...]}.
 
-    Call this from `phase_validate` and REFUSE to quote replay output when it fails. The point is
-    that degradation is loud: a harness whose agreement has rotted must stop being authoritative
-    on its own, not wait for someone to notice a number looks odd.
+    Called from `phase_validate` and `phase_replay`, which REFUSE to quote their output when it
+    fails. The point is that degradation is loud: a harness whose agreement has rotted must stop
+    being authoritative on its own, not wait for someone to notice a number looks odd.
+
+    `only` restricts the check to the floors this caller is responsible for (VALIDATION_OWNER).
+    Without it every floor is required, and a caller that measured a different population would
+    be forced to report a number it has no honest value for — which is how a gate starts getting
+    fed a lookalike quantity just to make it green.
     """
     failures = []
     for key, floor in VALIDATION_MIN.items():
+        if only is not None and key not in only:
+            continue
         if key == "max_abstain_rate":
             v = observed.get("abstain_rate")
             if v is not None and v > floor:

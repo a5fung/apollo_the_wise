@@ -310,3 +310,55 @@ def test_the_floors_are_not_vacuous():
             assert 0 < floor < 0.5, "an abstain ceiling above half makes the sample meaningless"
         else:
             assert floor >= 0.75, f"{key}'s floor {floor} is too loose to catch real degradation"
+
+
+# ── the gate must actually be WIRED, not merely defined ───────────────────────────────
+# Added 2026-09-02 by the /simplify altitude pass, which found that validation_verdict() —
+# whose own docstring said "call this from phase_validate" — had never been called by
+# anything but this test file. A gate nothing invokes is a comment. See the memory
+# "a rule is not live until it has fired once".
+
+def test_every_floor_is_owned_by_a_phase():
+    """A new entry in VALIDATION_MIN that no phase checks is a floor that cannot fail."""
+    assert set(ep_replay_mod.VALIDATION_OWNER) == set(ep_replay_mod.VALIDATION_MIN), (
+        f"VALIDATION_OWNER and VALIDATION_MIN disagree: "
+        f"unowned floors {sorted(set(ep_replay_mod.VALIDATION_MIN) - set(ep_replay_mod.VALIDATION_OWNER))}, "
+        f"owners for floors that do not exist "
+        f"{sorted(set(ep_replay_mod.VALIDATION_OWNER) - set(ep_replay_mod.VALIDATION_MIN))}")
+    assert set(ep_replay_mod.VALIDATION_OWNER.values()) == {"validate", "replay"}
+
+
+def test_both_phases_call_the_gate_and_refuse_on_failure():
+    """MUTATION TARGET: deleting the validation_verdict call, or keeping it and printing the
+    numbers anyway. Both leave a harness that says 'validated' while quoting rotted output."""
+    import inspect
+    for fn, owner in ((ep_replay_mod.phase_validate, "validate"), (ep_replay_mod.phase_replay, "replay")):
+        src = inspect.getsource(fn)
+        assert "validation_verdict(" in src, f"phase_{owner} does not call its own gate"
+        assert "SystemExit" in src, (
+            f"phase_{owner} calls the gate but does not refuse on failure — a warning that does "
+            f"not stop the output is how a degraded number gets quoted anyway")
+
+
+def test_the_gate_only_judges_what_this_caller_measured():
+    """`only=` exists so a phase is never forced to report a number for a population it did not
+    measure — which is how a gate starts being fed a lookalike quantity to keep it green. The
+    first wiring of phase_validate did exactly that: it fed the 44-trade cohort's abstain rate
+    to a ceiling measured on the 270-alert replay, and the gate failed for no real reason."""
+    partial = {"abstain_rate": 0.17}
+    assert ep_replay_mod.validation_verdict(partial, only={"max_abstain_rate"})["ok"]
+    unscoped = ep_replay_mod.validation_verdict(partial)
+    assert not unscoped["ok"] and len(unscoped["failures"]) == 4, (
+        "without `only` every floor must still be required — otherwise a caller could silently "
+        "skip a check by omitting the key")
+
+
+def test_a_degraded_rerun_is_refused():
+    """The whole reason the constants exist."""
+    good = {"stop_formula_rate": 1.0, "entry_decision_rate": 1.0,
+            "exit_class_rate": 0.97, "realized_r_rate": 0.83}
+    only = {k for k, v in ep_replay_mod.VALIDATION_OWNER.items() if v == "validate"}
+    assert ep_replay_mod.validation_verdict(good, only=only)["ok"]
+    rotted = {**good, "stop_formula_rate": 0.98}   # a formula that is 98% right is broken
+    v = ep_replay_mod.validation_verdict(rotted, only=only)
+    assert not v["ok"] and "stop_formula_rate" in v["failures"][0]
