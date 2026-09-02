@@ -104,6 +104,10 @@ SEP_SCORE_DATE = date(2026, 8, 22)
 STOP_2R_DATE = date(2026, 8, 16)
 PARTIAL_LIVE_DATE = date(2026, 8, 1)
 TRAIL_PRIOR_CLOSES_DATE = date(2026, 8, 8)
+# #548 ships the partial's breakeven move AT the broker (stop replaced at entry when the
+# partial fires). Validated against real fills: FIGS 08-07 stopped at the ORIGINAL stop
+# after its partial (pre-#548), ETON 08-14 and CRWD 08-28 stopped at BREAKEVEN (post).
+BREAKEVEN_AT_PARTIAL_DATE = date(2026, 8, 8)
 
 
 @dataclass(frozen=True)
@@ -114,6 +118,7 @@ class RuleSet:
     intraday_partial_r: float | None  # None = no +2R partial (era A); 2.0 since 2026-08-01
     trail_prior_closes: bool        # #548: trail sees the stock's own closes
     entry_cancel: time | None       # unfilled entry cancelled at this ET time (None = end of day)
+    breakeven_at_partial: bool = False  # #548: partial moves the resting stop to entry at once
 
     def stop_price(self, orb_high: float, orb_low: float) -> float:
         """The protective stop this rule-set places. Formula provenance:
@@ -131,7 +136,7 @@ class RuleSet:
 RULESETS: dict[str, RuleSet] = {
     "era_a": RuleSet("era_a", False, "orb_low", None, False, None),
     "era_b": RuleSet("era_b", False, "orb_low", 2.0, False, time(10, 0)),
-    "era_c": RuleSet("era_c", True, "entry_minus_2r", 2.0, True, time(10, 0)),
+    "era_c": RuleSet("era_c", True, "entry_minus_2r", 2.0, True, time(10, 0), True),
 }
 RULESETS["current"] = RULESETS["era_c"]
 
@@ -159,6 +164,7 @@ def ruleset_as_of(d: date) -> RuleSet:
         intraday_partial_r=2.0 if d >= PARTIAL_LIVE_DATE else None,
         trail_prior_closes=d >= TRAIL_PRIOR_CLOSES_DATE,
         entry_cancel=time(10, 0) if d >= PARTIAL_LIVE_DATE else None,
+        breakeven_at_partial=d >= BREAKEVEN_AT_PARTIAL_DATE,
     )
 
 
@@ -354,6 +360,7 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
         return qty
 
     # ── Day-0 minute walk from the fill bar ──
+    cur_stop = stop
     closed = False
     fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
     fb = bars0[fill_idx]
@@ -377,24 +384,26 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
         # fill bar after the cross is orderable (target > orb_high >= any pre-fill price
         # only when orb crossed first) — the touch >= target necessarily post-dates the
         # first >= orb_high touch when target > orb_high, which +2R guarantees.
-        take_partial(target, fb["m"])
+        if take_partial(target, fb["m"]) and rs.breakeven_at_partial:
+            cur_stop = max(cur_stop, entry_px)
     for b in bars0[fill_idx + 1:]:
         if closed:
             break
-        hit_stop = b["l"] <= stop
+        hit_stop = b["l"] <= cur_stop
         hit_tgt = (target is not None and not partial_taken and b["h"] >= target)
         if hit_stop and hit_tgt:
             out.update(status="abstain", reason="day0_stop_and_target_same_bar")
             return out
         if hit_stop:
-            px = b["o"] if b["o"] < stop else stop
-            if px != stop:
+            px = b["o"] if b["o"] < cur_stop else cur_stop
+            if px != cur_stop:
                 out["gap_through"] = True
             book(px, remaining, "stop_hit", b["m"])
             remaining, closed = 0.0, True
             out["final_reason"] = "stop_hit"
         elif hit_tgt:
-            take_partial(target, b["m"])
+            if take_partial(target, b["m"]) and rs.breakeven_at_partial:
+                cur_stop = max(cur_stop, entry_px)
 
     # ── Forward daily walk: the LIVE ladder + the resting-stop overlay ──
     if not closed:
@@ -405,7 +414,7 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
             alert_date=alert_date, entry_price=entry_px, hard_stop=stop,
             remaining_shares=remaining, partial_taken=partial_taken,
             breakeven_active=partial_taken, exits=list(exits))
-        resting = stop        # the broker's resting stop; raise-only, per live EOD updates
+        resting = cur_stop    # the broker's resting stop; raise-only, per live EOD updates
         d = alert_date
         while not closed:
             d += timedelta(days=1)
@@ -426,7 +435,8 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
             if hit_tgt:
                 remaining = state["remaining_shares"]
                 partial_taken = state["partial_taken"]
-                take_partial(target, d)
+                if take_partial(target, d) and rs.breakeven_at_partial:
+                    resting = max(resting, entry_px)
                 state["remaining_shares"] = remaining
                 state["partial_taken"] = True
                 state["breakeven_active"] = True
@@ -602,10 +612,13 @@ def phase_validate(args) -> None:
 def phase_score(args) -> None:
     s2, s3 = _load_common()
     daily = load_daily()
+    conf = {r["id"]: r["confidence_multiplier"]
+            for r in read_sections(DATA / "_pull5_out.txt")["CONF"]}
     adv = {(r["ticker"], r["score_date"]): _f(r["adv_20"]) for r in s3["ADV"]}
     regime_rows = sorted(s2["REGIME"], key=lambda r: r["regime_date"])
     rows = []
     for a in s2["ALERTS"]:
+        a = {**a, "confidence_multiplier": conf.get(a["id"])}
         ad = date.fromisoformat(a["alert_date"])
         rs = get_ruleset(args.ruleset) if args.ruleset else ruleset_as_of(ad)
         dbars = daily.get(a["ticker"], {})
@@ -648,11 +661,27 @@ def phase_score(args) -> None:
 
 def phase_replay(args) -> None:
     rs = get_ruleset(args.ruleset)   # raises without an explicit rule-set — by design
-    s2, _ = _load_common()
+    s2, s3 = _load_common()
     minutes, daily = load_minutes(), load_daily()
+    conf = {r["id"]: r["confidence_multiplier"]
+            for r in read_sections(DATA / "_pull5_out.txt")["CONF"]}
+    adv = {(r["ticker"], r["score_date"]): _f(r["adv_20"]) for r in s3["ADV"]}
+    regime_rows = sorted(s2["REGIME"], key=lambda r: r["regime_date"])
     rows = []
     for a in s2["ALERTS"]:
+        a = {**a, "confidence_multiplier": conf.get(a["id"])}
         ad = date.fromisoformat(a["alert_date"])
+        # re-score + re-admit under the SAME explicit rule-set
+        dbars = daily.get(a["ticker"], {})
+        prevs = [d for d in sorted(dbars) if d < ad]
+        prev_d = prevs[-1] if prevs else None
+        reg = next((r for r in reversed(regime_rows)
+                    if r["regime_date"] < a["alert_date"]), None)
+        sc = rescore_alert(
+            a, rs, adv.get((a["ticker"], prev_d.isoformat() if prev_d else "")),
+            dbars[prev_d]["c"] if prev_d else None,
+            reg["regime"] if reg else None,
+            int(reg["ep_threshold"]) if reg and reg.get("ep_threshold") else None)
         submit = time(9, 31)
         if a["detected_at_et"]:
             det = datetime.fromisoformat(a["detected_at_et"]).time()
@@ -660,8 +689,10 @@ def phase_replay(args) -> None:
         res = walk_campaign(ticker=a["ticker"], alert_date=ad, rs=rs,
                             minutes=minutes, daily=daily, submit=submit)
         res["score_tier_stored"] = a["score_tier"]
+        res.update(score_lo=sc["score_lo"], score_hi=sc["score_hi"], admit=sc["admit"])
         rows.append(res)
-    cols = ["ticker", "alert_date", "ruleset", "score_tier_stored", "status", "reason",
+    cols = ["ticker", "alert_date", "ruleset", "score_tier_stored",
+            "score_lo", "score_hi", "admit", "status", "reason",
             "entered", "entry_px", "stop", "target", "partial_fired", "final_reason",
             "realized_r", "gap_through", "day0_missing_minutes", "sessions_abstained"]
     out = DATA / (args.out or f"campaigns_{rs.name}.tsv")
@@ -677,12 +708,19 @@ def phase_replay(args) -> None:
     print(f"replay[{rs.name}]: {n} alert campaigns -> settled {len(st)}, "
           f"no_entry {len(ne)}, abstain {len(ab)} ({len(ab)/n*100:.0f}%), "
           f"open_at_horizon {len(oh)}, other {n-len(st)-len(ne)-len(ab)-len(oh)}")
-    rs_ = [r["realized_r"] for r in st if r["realized_r"] is not None]
-    if rs_:
-        import statistics
-        print(f"  settled R: n={len(rs_)} mean {statistics.mean(rs_):+.2f} "
-              f"median {statistics.median(rs_):+.2f} sum {sum(rs_):+.1f} "
-              f">=4R {sum(1 for x in rs_ if x >= 4)}")
+    adm = [r for r in rows if r["admit"] == "admit"]
+    ab_adm = sum(1 for r in rows if r["admit"].startswith("abstain"))
+    print(f"  re-admission under {rs.name}: admit {len(adm)}, "
+          f"reject {sum(1 for r in rows if r['admit'] == 'reject')}, "
+          f"abstain {ab_adm}")
+    import statistics
+    for label, pool in (("all alerts", st),
+                        ("re-admitted only", [r for r in st if r["admit"] == "admit"])):
+        rs_ = [r["realized_r"] for r in pool if r["realized_r"] is not None]
+        if rs_:
+            print(f"  settled R [{label}]: n={len(rs_)} mean {statistics.mean(rs_):+.2f} "
+                  f"median {statistics.median(rs_):+.2f} sum {sum(rs_):+.1f} "
+                  f">=4R {sum(1 for x in rs_ if x >= 4)}")
     from collections import Counter
     print(f"  abstain reasons: {dict(Counter(r['reason'].split(':')[0] for r in ab))}")
     print(f"  written: {out}")
