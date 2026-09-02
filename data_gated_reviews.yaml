@@ -10171,6 +10171,48 @@ reviews:
                  "docs/analysis/327_stage0_anticipation_diagnosis_2026-08-30.md",
                  "docs/setups/delayed_ep_reentry.md"]
 
+  - review_id: delayed_entry_adr_stop_variant_616
+    title: "#616 ADR-stop shadow variants — does the 0.75-1.00xADR stop band survive out of sample on ep_low_reclaim?"
+    question: >-
+      The 2026-09-01 stop grid found ONE positive cell family across all four
+      delayed-entry buy signals: ep_low_reclaim x entry-0.75..1.00xADR stop x trailing
+      exit (+0.16..+0.19R per fire ex-May, n=70, positive in May AND June AND July,
+      killing zero fires) — but ~104 cells per arm were scanned, so its honest status
+      is CANDIDATE, not edge. #616 now records both variant stops beside the incumbent
+      on every trigger and settles them through the SAME compute_settlement path. On
+      the PROSPECTIVE fires (recorded from 2026-09-02, no cell-picking), does the band
+      still clear zero on the trail arm?
+    # realized_r_trail_075 IS NOT NULL = the 0.75xADR variant's trail arm actually
+    # settled (variants settle LATER than the incumbent — wider stop — via their own
+    # guarded write, so incumbent-settled does not imply variant-settled). Gated on the
+    # pre-registered cell (rung = ep_low_reclaim), NOT family-wide: family-wide would
+    # trip before the decision-relevant rung has n. to_regclass idiom: same as
+    # delayed_entry_shadow_first_read — reads 0, never errors, before the deploy.
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
+                  ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
+                        WHERE rung = 'ep_low_reclaim'
+                          AND realized_r_trail_075 IS NOT NULL) END
+    threshold: 30
+    discriminates_on: [mi_delayed_entry_trigger.rung]
+    earliest_review_date: 2026-10-12
+    status: pending
+    kind: accrual
+    added_on: 2026-09-02
+    action_when_ready: >-
+      Read mean/median realized_r_trail_075 and _100 against realized_r_trail (the
+      incumbent) on ep_low_reclaim first attempts — monthly sums + drop-best-campaign,
+      exactly the grid's conventions — and the other rungs as secondary reads. Early
+      variant-settled rows are STOP-HEAVY BY CONSTRUCTION (the candidate winners stay
+      open longer under a wider stop), so judge only fires whose 20-session window has
+      fully elapsed and extend rather than conclude if maturity is thin. Band positive
+      and surviving drop-best -> bring it to the operator as the CHANGE_PROCESS
+      candidate the grid named (a rung stop change = sign-off + backtest +
+      shadow-before-live). Negative or May-carried -> say so and stop; the incumbent
+      stays. Nothing flips on its own evidence.
+    cross_refs: ["docs/analysis/delayed_entry_stop_grid_2026-09-01.md",
+                 "docs/setups/delayed_ep_reentry.md", "task #616"]
+
   - review_id: ep_slot_ranking_watch_533
     title: "#533 slot-ranking watch — is RS still the best within-day ordering, or is another doing better?"
     question: >-

@@ -105,6 +105,21 @@ EP-close reclaim / EP-high break), stop width first-class, ex-ante screen stamp 
 accrual gate `delayed_entry_shadow_first_read` (30 settled triggers). Settlement
 (M-none / M-trail over 20 sessions) is the follow-on card; the schema already carries
 its NULL-while-open columns. `replay()`/`mi_anticipation_lifecycle` untouched (ADR 0013).
+**#616 ADR-stop variants (2026-09-02, operator-authorised 09-01 — *"ok, so let's record it
+as you suggested"*):** every trigger row now ALSO records, beside the incumbent stop and
+never instead of it, the counterfactual **entry − 0.75×ADR$** and **entry − 1.00×ADR$**
+stops (EP-anchored ADR$, `compute_ep_adr_dollar` — the stop grid's exact basis), settled
+through the SAME `compute_settlement` walk under both exit arms (`*_075` / `*_100`
+columns; `settle_v3`). Each variant settles through its OWN guarded write — a wider stop
+resolves LATER than the incumbent, so the incumbent settles exactly as before and
+`settle_open_variant_triggers` finishes the stragglers on later runs from stored daily
+bars, with NO minute refetch ever (the day-0 post-fire excursion is cached once,
+`day0_post_low/high`; a variant needing day-0 minutes that were never in scope closes
+unscoreable at the orphan horizon, counted). A missing ADR records NULL and is COUNTED,
+never substituted; triggers fired before the deploy keep every variant column NULL
+(`ep_adr20_n IS NULL` marks them). RECORDING ONLY — nothing live reads any variant
+column. Accrual gate `delayed_entry_adr_stop_variant_616` (30 trail-settled
+`ep_low_reclaim` 0.75×ADR fires) reads the grid's candidate band out of sample.
 ⚠ **The long-wait variant converges into Family A** (`docs/decisions/0013-consolidation-plays-post-runup.md`) — 81% of ≥5R 20-day-reclaim names were already on the Family A detector. Short-wait (3–10 day) variants stay distinct.
 
 ---

@@ -158,6 +158,33 @@ trading sessions FROM ITS FIRE and settled under TWO arms on one row, in one wri
   - An open row is distinguishable at a glance: outcome IS NULL + settled_at IS NULL;
     the digest logs considered-vs-settled-vs-abstained so a silent zero is
     distinguishable from "nothing ripe yet". SILENT — no Telegram on any path.
+
+#616 ADR-STOP VARIANTS (2026-09-02, operator-authorised 09-01 — RECORDING ONLY, beside
+the incumbent and never instead of it). The 09-01 stop grid found ONE shape across all
+four rungs: the working stop is VOLATILITY-PROPORTIONAL (every incumbent sits outside
+the 0.75-1.25xADR band). So every trigger row also records what a stop at
+entry − 0.75×ADR$ and entry − 1.00×ADR$ (EP-anchored ADR$, compute_ep_adr_dollar — the
+grid's exact basis) would have produced, settled through the SAME compute_settlement
+walk under both arms (*_075 / *_100 columns; settle_v3).
+  - Fire time: the ADR basis + both counterfactual stops stamp EX ANTE on the trigger
+    row. A missing ADR records NULL and is COUNTED — never substituted, never defaulted
+    (ep_adr20_n stays NOT NULL on every post-#616 row; pre-#616 rows keep every variant
+    column NULL forever — their stored adr20_pct is a pre-FIRE basis, a different
+    quantity).
+  - Settlement: each variant settles through its OWN guarded write (its outcome IS
+    NULL). A wider stop resolves LATER than the incumbent by construction, so the
+    incumbent settles exactly as before (same columns, same write, same timing) and
+    settle_open_variant_triggers finishes the stragglers on later runs from stored
+    daily bars. NO minute refetch, ever (the #616 no-per-fire-fetch rule): the day-0
+    post-fire excursion (min low / max high) is cached once, the first time the fire
+    day's 5-min bars are in scope, and a variant still pending at cache time provably
+    never touched its stop on day 0 — so the cached pair reconstructs its day-0 walk
+    exactly. A variant that needs day-0 minutes that were NEVER in scope (the fire
+    day's low reached the variant stop but not the incumbent's, so the incumbent never
+    fetched them) abstains until the orphan horizon closes it unscoreable, counted —
+    the censored class is recorded, never silently leapt.
+  - A variant failure of any kind degrades to NULL + a counted, audited error and can
+    never block or alter the incumbent path. Nothing live reads any variant column.
 """
 from __future__ import annotations
 
@@ -182,10 +209,13 @@ from agents.market_intelligence.db import (
     get_delayed_entry_open_triggers,
     get_delayed_entry_reentry_candidates,
     get_delayed_entry_seed_candidates,
+    get_delayed_entry_variant_pending,
     get_delayed_entry_watch_row,
     insert_delayed_entry_trigger,
     log_audit_event,
+    record_delayed_entry_trigger_day0,
     settle_delayed_entry_trigger,
+    settle_delayed_entry_trigger_variant,
     upsert_delayed_entry_watch,
 )
 
@@ -193,7 +223,9 @@ logger = logging.getLogger(__name__)
 
 PATTERN_VERSION = "v2"            # v2 (2026-08-30): + ep_close_620_prox rung + re-entry attempts
 SCREEN_VERSION = "screen_v1"      # gap>=8, prev_close>=5, $vol>=50M, ext<=50, grade>=strong
-SETTLE_VERSION = "settle_v2"      # settle_v2: + stop_hit_date recorded on stop outcomes
+SETTLE_VERSION = "settle_v3"      # settle_v3: + #616 ADR-stop variant counterfactuals
+                                  # (each variant settles via its own guarded write);
+                                  # settle_v2: + stop_hit_date recorded on stop outcomes
 LANE_SESSIONS = 20                # forward trading sessions a name stays in the lane
 SETTLE_HOLD_SESSIONS = 20         # forward trading sessions a TRIGGER is followed (from its fire)
 SETTLE_TAIL_R = 4.0               # the reached_4r threshold (P3 — the tail is the objective)
@@ -204,6 +236,10 @@ ENROLL_LOOKBACK_DAYS = 7          # calendar days enrollment scans back (self-he
 _LANE_MAX_CAL_DAYS = 45           # calendar bound covering 20 sessions + holidays
 _ADR_WINDOW = 20                  # sessions in the ADR mean
 _ADR_FETCH_CAL_DAYS = 60          # calendar days fetched to cover the ADR window
+
+# ── #616 ADR-stop variants (2026-09-02): column suffix ↔ stop multiplier. The stop is
+# entry − mult × EP-anchored ADR$ — the 09-01 stop grid's exact basis. RECORDING ONLY.
+ADR_STOP_VARIANTS = (("075", 0.75), ("100", 1.00))
 
 _RTH_OPEN_MIN = 9 * 60 + 30
 _RTH_CLOSE_MIN = 16 * 60
@@ -475,6 +511,65 @@ def compute_ep_adr_dollar(daily_bars: list[dict], ep_date: date,
     if pct is None or not gap_close:
         return None, n
     return pct / 100.0 * float(gap_close), n
+
+
+def adr_variant_stop(entry: Optional[float], adr_dollar: Optional[float],
+                     mult: float) -> Optional[float]:
+    """entry − mult×ADR$ (#616). None when either input is missing or degenerate —
+    the missing-ADR rule: NULL and counted, never substituted."""
+    if not entry or entry <= 0 or adr_dollar is None or adr_dollar <= 0:
+        return None
+    return entry - mult * adr_dollar
+
+
+def variant_stop_cols(entry: float, adr_dollar: Optional[float],
+                      adr_n: Optional[int]) -> dict:
+    """The #616 fire-time columns: the EP-anchored ADR basis + both counterfactual
+    stops (+ widths — the lane's first-class rule applies to a counterfactual stop
+    too). ep_adr20_n is ALWAYS an int on a post-#616 row: it is the marker separating
+    'recorded, ADR unavailable' (n present, stops NULL) from a pre-#616 row
+    (everything NULL). Pure."""
+    cols: dict[str, Any] = {"ep_adr20_dollar": adr_dollar, "ep_adr20_n": int(adr_n or 0)}
+    for sfx, mult in ADR_STOP_VARIANTS:
+        s = adr_variant_stop(entry, adr_dollar, mult)
+        cols[f"stop_price_{sfx}"] = s
+        cols[f"stop_width_pct_{sfx}"] = stop_width_pct(entry, s) if s is not None else None
+    return cols
+
+
+_VARIANT_SETTLE_KEYS = ("outcome", "realized_r", "outcome_trail", "realized_r_trail",
+                        "mfe_r", "mae_r", "reached_4r")
+
+
+def variant_settle_fields(res: dict) -> dict:
+    """Map one compute_settlement result onto the unsuffixed #616 variant write
+    fields. Checkpoints and stop_session_idx are deliberately dropped — no re-entry
+    replay and no checkpoint read hangs off a counterfactual. Pure."""
+    return {k: res.get(k) for k in _VARIANT_SETTLE_KEYS}
+
+
+def variant_unscoreable_fields() -> dict:
+    """The #616 variant close-out for a variant that can NEVER settle honestly (no
+    ADR at fire, degenerate geometry, or bars that never came within the orphan
+    horizon). Every R column stays NULL — recorded, never interpolated. Pure."""
+    return {"outcome": "unscoreable", "outcome_trail": "unscoreable"}
+
+
+def day0_pseudo_bars(day0_resolved, post_low, post_high) -> Optional[list]:
+    """Reconstruct a day-0 post-fire series from the cached excursion (#616 — the
+    no-per-fire-fetch rule's stand-in for a minute refetch). None = never cached (a
+    walk that needs day-0 minutes must ABSTAIN); [] = cached, the fire bar was the
+    session's last; else ONE synthetic bar carrying (min low, max high). EXACT for any
+    variant still PENDING when the cache was written: pending ⇒ no post-fire bar
+    touched its stop ⇒ the per-bar pess ordering collapses to the pair. (A variant
+    that reached the cache through the exception-recovery path may under-credit
+    reached_4r on a day-0 stop — the pess direction, never an over-credit.) Pure."""
+    if not day0_resolved:
+        return None
+    lo, hi = _f(post_low), _f(post_high)
+    if lo is None or hi is None:
+        return []
+    return [{"m": None, "o": lo, "h": hi, "l": lo, "c": hi}]
 
 
 def _ema_series(vals: list[float], n: int) -> list[float]:
@@ -1061,7 +1156,7 @@ async def _walk_one_member(member: dict, today: date, out: dict) -> None:
                     session_idx=session_idx, fire=fire, ctx=ctx, state=state,
                     day_bar=(day_open, day_high, day_low, day_close, day_volume),
                     prior_low=prior_low, ordered_days=ordered_days,
-                    bars_by_day=bars_by_day, resolution="daily")
+                    bars_by_day=bars_by_day, resolution="daily", out=out)
                 if wrote:
                     out["triggers"] += 1
             await upsert_delayed_entry_watch(row)
@@ -1099,7 +1194,8 @@ async def _walk_one_member(member: dict, today: date, out: dict) -> None:
                 session_idx=session_idx, fire=fire, ctx=ctx, state=state,
                 day_bar=(day_open, day_high, day_low, day_close, day_volume),
                 prior_low=prior_low, ordered_days=ordered_days, bars_by_day=bars_by_day,
-                resolution="minute_5" if fire.get("fire_minute") is not None else "daily")
+                resolution="minute_5" if fire.get("fire_minute") is not None else "daily",
+                out=out)
             if wrote:
                 out["triggers"] += 1
 
@@ -1138,8 +1234,26 @@ def _prior_session_low(ordered_days, bars_by_day, session_date) -> Optional[floa
     return _f(bars_by_day[prior[-1]].get("low_price"))
 
 
+def _variant_fire_cols(entry: float, adr_dollar, adr_n, out: dict) -> dict:
+    """The #616 fire-time variant columns, failure-isolated: a variant-side problem
+    degrades to NULLs + a counted error and can never block the incumbent trigger
+    insert. A genuinely missing ADR is NOT an error — it records NULL; the CALLER
+    counts it (out['variant_missing_adr']) only when the insert actually wrote a row,
+    so a re-walked no-op re-fire never double-counts."""
+    vcols: dict = {"ep_adr20_dollar": None, "ep_adr20_n": None,
+                   "stop_price_075": None, "stop_width_pct_075": None,
+                   "stop_price_100": None, "stop_width_pct_100": None}
+    try:
+        vcols = variant_stop_cols(entry, adr_dollar, adr_n)
+    except Exception as e:  # pure arithmetic — belt-and-braces per the #616 hard rule
+        out["errors"] += 1
+        logger.error(f"delayed_entry_shadow: variant fire cols failed: {e}")
+    return vcols
+
+
 async def _record_trigger(*, ticker, ep_date, session_date, session_idx, fire, ctx, state,
-                          day_bar, prior_low, ordered_days, bars_by_day, resolution) -> bool:
+                          day_bar, prior_low, ordered_days, bars_by_day, resolution,
+                          out) -> bool:
     """Assemble + insert one trigger row (idempotent open-dedup). The ex-ante decision
     vector is captured HERE, at the fire — never reconstructed later."""
     entry, stop = float(fire["entry"]), float(fire["stop"])
@@ -1151,9 +1265,12 @@ async def _record_trigger(*, ticker, ep_date, session_date, session_idx, fire, c
         return False
     pre_fire_days = [d for d in ordered_days if d < session_date]
     adr, adr_n = compute_adr20([bars_by_day[d] for d in pre_fire_days])
+    vcols = _variant_fire_cols(entry, ctx.get("ep_adr20_dollar"), ctx.get("ep_adr20_n"),
+                               out)
     missing_before = await count_delayed_entry_unscoreable(ticker, ep_date, session_date)
     day_open, day_high, day_low, day_close, day_volume = day_bar
-    return await insert_delayed_entry_trigger({
+    wrote = await insert_delayed_entry_trigger({
+        **vcols,
         "ticker": ticker, "ep_date": ep_date, "rung": fire["rung"],
         "pattern_version": PATTERN_VERSION, "fire_date": session_date,
         "fire_minute_et": fire.get("fire_minute"), "resolution": resolution,
@@ -1178,6 +1295,9 @@ async def _record_trigger(*, ticker, ep_date, session_date, session_idx, fire, c
         "near_definition": fire.get("near_definition"),
         "band_adr_dollar": fire.get("band_adr_dollar"),
     })
+    if wrote and vcols["stop_price_075"] is None:
+        out["variant_missing_adr"] += 1      # NULL recorded, counted — never defaulted
+    return wrote
 
 
 async def _close_unscoreable(trig: dict, out: dict, reason: str) -> None:
@@ -1194,6 +1314,106 @@ async def _close_unscoreable(trig: dict, out: dict, reason: str) -> None:
             "delayed_entry_shadow_unscoreable",
             f"{trig['ticker']} {trig['ep_date']} {trig['rung']} fired {trig['fire_date']}: "
             f"closed unscoreable — {reason}")
+
+
+async def _settle_trigger_variants(trig: dict, today: date, out: dict, *,
+                                   sessions: list, bars_by_day: dict,
+                                   closes_before: list, fire_day_bar: dict,
+                                   post5: Optional[list], cache_day0: bool,
+                                   gap_fill_ticker: Optional[str] = None) -> None:
+    """Settle the #616 ADR-variant counterfactuals for ONE trigger — beside the
+    incumbent, never instead of it (callers invoke this only AFTER the incumbent
+    write). Each variant lands through its OWN guarded write (its outcome IS NULL) the
+    moment it is definitive; a wider stop resolves later than the incumbent, so the
+    pair usually completes across different runs. Reuses ONLY bars already in scope
+    (the no-per-fire-fetch rule): `gap_fill_ticker` enables the incumbent's own
+    bounded single-day daily-bar fills (the standalone pass), never a minute fetch. A
+    per-variant exception degrades to audit + retry-next-run. When a variant stays
+    pending and the fire day's post-fire 5-min bars are in scope, their (min low,
+    max high) is cached once so later runs can finish day 0 without a refetch."""
+    if trig.get("ep_adr20_n") is None:
+        return                            # pre-#616 row — no variant record exists
+    entry = _f(trig.get("entry_price"))
+    fire_minute = trig.get("fire_minute_et")
+    orphan = trig["fire_date"] <= today - timedelta(days=SETTLE_ORPHAN_CAL_DAYS)
+    abstained = False
+    for sfx, _mult in ADR_STOP_VARIANTS:
+        if trig.get(f"outcome_{sfx}") is not None:
+            continue                      # this variant already settled on a prior run
+        vstop = _f(trig.get(f"stop_price_{sfx}"))
+        if vstop is None:
+            # no ADR at fire — recorded NULL, counted then; closes unscoreable now
+            fields = variant_unscoreable_fields()
+        else:
+            try:
+                res = {"status": "abstain", "reason": "window_open"}
+                for _ in range(6):  # bounded single-day gap fills (standalone only)
+                    res = compute_settlement(
+                        entry=entry, stop=vstop, fire_minute=fire_minute,
+                        fire_day_bar=fire_day_bar, post_fire_bars5=post5,
+                        sessions=sessions, bars_by_day=bars_by_day,
+                        closes_before_fire=closes_before)
+                    reason = res.get("reason", "")
+                    if (gap_fill_ticker is not None and res["status"] == "abstain"
+                            and reason.startswith("missing_session:")):
+                        d = date.fromisoformat(reason.split(":", 1)[1])
+                        if await _resolve_session_bar(gap_fill_ticker, d,
+                                                      bars_by_day) is None:
+                            break         # genuinely missing — the abstain stands
+                        continue
+                    break
+            except Exception as e:
+                out["errors"] += 1
+                logger.error(
+                    f"delayed_entry_shadow: variant {sfx} settle {trig.get('ticker')} "
+                    f"{trig.get('fire_date')} failed: {e}")
+                await log_audit_event(
+                    "delayed_entry_shadow_error",
+                    f"variant {sfx} {trig.get('ticker')} {trig.get('rung')} "
+                    f"{trig.get('fire_date')}: {type(e).__name__}: {e}")
+                abstained = True          # retry next run; orphan horizon backstops
+                continue
+            if res["status"] == "settled":
+                fields = variant_settle_fields(res)
+            elif res["status"] == "unscoreable" or orphan:
+                fields = variant_unscoreable_fields()
+            else:
+                abstained = True
+                out["variant_abstained"] += 1
+                continue
+        fields["settle_version"] = SETTLE_VERSION
+        if await settle_delayed_entry_trigger_variant(trig["id"], sfx, fields):
+            if fields["outcome"] == "unscoreable":
+                out["variant_unscoreable"] += 1
+            else:
+                out["variant_settled"] += 1
+        # False = a concurrent run already settled this variant — the no-op is the point
+    if (abstained and cache_day0 and post5 is not None
+            and not trig.get("day0_resolved")):
+        lo = min((b["l"] for b in post5), default=None)
+        hi = max((b["h"] for b in post5), default=None)
+        await record_delayed_entry_trigger_day0(trig["id"], lo, hi)
+
+
+async def _try_settle_variants_inline(trig: dict, today: date, out: dict,
+                                      **ctx) -> None:
+    """Attempt the #616 variant settlements with the bars already in scope, AFTER the
+    incumbent write. An exception here is counted and audited but can never undo or
+    block the incumbent settlement — the one hard #616 rule."""
+    try:
+        await _settle_trigger_variants(trig, today, out, cache_day0=True, **ctx)
+    except Exception as e:
+        out["errors"] += 1
+        logger.error(
+            f"delayed_entry_shadow: inline variant settle {trig.get('ticker')} "
+            f"{trig.get('fire_date')} failed: {e}")
+        try:
+            await log_audit_event(
+                "delayed_entry_shadow_error",
+                f"variant inline {trig.get('ticker')} {trig.get('rung')} "
+                f"{trig.get('fire_date')}: {type(e).__name__}: {e}")
+        except Exception:  # loud-ok: log_audit_event self-catches; logger fired above
+            pass
 
 
 async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
@@ -1255,9 +1475,15 @@ async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
         if await settle_delayed_entry_trigger(trig["id"], fields):
             out["settle_settled"] += 1
         # False = a concurrent run already settled it — the no-op is the point
+        await _try_settle_variants_inline(
+            trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
+            closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
         return
     if res["status"] == "unscoreable":
         await _close_unscoreable(trig, out, res.get("reason", "unscoreable"))
+        await _try_settle_variants_inline(
+            trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
+            closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
         return
     # abstain: honest retry — unless the row is past the orphan horizon, where the
     # 20-session window has long elapsed and the bars are never coming
@@ -1266,6 +1492,9 @@ async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
             trig, out,
             f"still blocked ({res.get('reason')}) {SETTLE_ORPHAN_CAL_DAYS}+ calendar days "
             f"after the fire — bars are not coming (halt/delist/hole)")
+        await _try_settle_variants_inline(
+            trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
+            closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
         return
     out["settle_abstained"] += 1
 
@@ -1297,6 +1526,76 @@ async def settle_open_triggers(today: date, out: dict) -> None:
                 await log_audit_event(
                     "delayed_entry_shadow_error",
                     f"settle {trig.get('ticker')} {trig.get('rung')} "
+                    f"{trig.get('fire_date')}: {type(e).__name__}: {e}")
+            except Exception:  # loud-ok: log_audit_event self-catches; logger fired above
+                pass
+
+
+async def _settle_variant_one(trig: dict, today: date, out: dict) -> None:
+    """Finish ONE incumbent-settled trigger's #616 variant settlements from stored
+    daily bars. Mirrors _settle_one_trigger's assembly (same window read, same bounded
+    single-day gap fills through _resolve_session_bar) with ONE deliberate difference:
+    day-0 minutes are NEVER refetched — the day0_post_low/high cache stands in when it
+    was written, and a variant that needs day-0 minutes that were never in scope
+    abstains until the orphan horizon closes it unscoreable, counted (the #616
+    no-per-fire-fetch rule; the censored class is recorded, never silently leapt)."""
+    ticker, fire_date = trig["ticker"], trig["fire_date"]
+    if (_f(trig.get("stop_price_075")) is None
+            and _f(trig.get("stop_price_100")) is None):
+        # ADR was missing at fire (counted then): closeable without any bars
+        await _settle_trigger_variants(
+            trig, today, out, sessions=[], bars_by_day={}, closes_before=[],
+            fire_day_bar={}, post5=None, cache_day0=False)
+        return
+    sessions = _trading_days(fire_date + timedelta(days=1), today)
+    daily = await get_delayed_entry_daily_window(
+        ticker, fire_date - timedelta(days=_SETTLE_SMA_FETCH_CAL_DAYS), today)
+    bars_by_day = {b["trade_date"]: b for b in daily}
+    closes_before = [_f(b.get("close")) for b in daily
+                     if b["trade_date"] < fire_date and b.get("close") is not None]
+    fb = bars_by_day.get(fire_date) or {}
+    fire_day_bar = {
+        "h": _f(trig.get("day_high")) if trig.get("day_high") is not None else _f(fb.get("high_price")),
+        "l": _f(trig.get("day_low")) if trig.get("day_low") is not None else _f(fb.get("low_price")),
+        "c": _f(trig.get("day_close")) if trig.get("day_close") is not None else _f(fb.get("close")),
+    }
+    post5 = day0_pseudo_bars(trig.get("day0_resolved"), trig.get("day0_post_low"),
+                             trig.get("day0_post_high"))
+    await _settle_trigger_variants(
+        trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
+        closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5,
+        cache_day0=False, gap_fill_ticker=ticker)
+
+
+async def settle_open_variant_triggers(today: date, out: dict) -> None:
+    """The #616 variant-completion pass — rides the same evening run, AFTER the
+    incumbent settlement pass (a variant only pends once its incumbent has settled; a
+    wider stop resolves later by construction, so this pass is where most variants
+    finish). Per-row failures degrade to mi_audit_log and the pass continues. Cost
+    profile: one mi_daily_closes ranged read per pending row per run (the same class
+    as the incumbent pass) and NO minute fetches, ever."""
+    try:
+        rows = await get_delayed_entry_variant_pending()
+    except Exception as e:
+        out["errors"] += 1
+        logger.error(f"delayed_entry_shadow: variant-pending read failed: {e}",
+                     exc_info=True)
+        await log_audit_event("delayed_entry_shadow_error",
+                              f"variant-pending read: {type(e).__name__}: {e}")
+        return
+    for trig in rows:
+        out["variant_considered"] += 1
+        try:
+            await _settle_variant_one(trig, today, out)
+        except Exception as e:
+            out["errors"] += 1
+            logger.error(
+                f"delayed_entry_shadow: variant settle {trig.get('ticker')} "
+                f"{trig.get('fire_date')} failed: {e}")
+            try:
+                await log_audit_event(
+                    "delayed_entry_shadow_error",
+                    f"variant {trig.get('ticker')} {trig.get('rung')} "
                     f"{trig.get('fire_date')}: {type(e).__name__}: {e}")
             except Exception:  # loud-ok: log_audit_event self-catches; logger fired above
                 pass
@@ -1394,7 +1693,7 @@ async def _replay_same_pattern_620(cand: dict, sessions: list[date], bars_by_day
 
 async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_date: date,
                                   prior_low: Optional[float], bars_by_day: dict,
-                                  ordered_days: list, missing: int) -> bool:
+                                  ordered_days: list, missing: int, out: dict) -> bool:
     """Assemble + insert one re-entry row, identified by its reentry_shape and linked
     to the stopped attempt via prior_attempt_id — it can never overwrite attempt 1
     (different reentry_shape = different row under the unique index). `missing` = blind
@@ -1413,13 +1712,20 @@ async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_da
     b = bars_by_day.get(fire_date) or {}
     pre_fire_days = [d for d in ordered_days if d < fire_date]
     adr, adr_n = compute_adr20([bars_by_day[d] for d in pre_fire_days])
+    # #616: the EP-anchored ADR$ recomputed from the bars already in scope (the
+    # re-entry window read spans min(ep_date, stop_day) − 60d, so the pre-EP window is
+    # covered) — same basis, same compute, as a first attempt's stamp. No fetch.
+    ep_adr_dollar, ep_adr_n = compute_ep_adr_dollar(
+        [bars_by_day[d] for d in ordered_days], ep_date, _f(cand.get("gap_day_close")))
+    vcols = _variant_fire_cols(entry, ep_adr_dollar, ep_adr_n, out)
     gap_high = _f(cand.get("gap_day_high"))
     ghe = None
     if gap_high is not None:
         highs = [_f(bars_by_day[d].get("high_price")) for d in pre_fire_days
                  if d > ep_date]
         ghe = any(h is not None and h >= gap_high for h in highs)
-    return await insert_delayed_entry_trigger({
+    wrote = await insert_delayed_entry_trigger({
+        **vcols,
         "ticker": ticker, "ep_date": ep_date, "rung": cand["rung"],
         "pattern_version": PATTERN_VERSION, "fire_date": fire_date,
         "fire_minute_et": fire.get("fire_minute"),
@@ -1449,6 +1755,9 @@ async def _record_attempt_trigger(cand: dict, shape: str, *, fire: dict, fire_da
                             else fire.get("near_definition")),
         "band_adr_dollar": fire.get("band_adr_dollar"),
     })
+    if wrote and vcols["stop_price_075"] is None:
+        out["variant_missing_adr"] += 1      # NULL recorded, counted — never defaulted
+    return wrote
 
 
 async def _record_reentries_for(cand: dict, today: date, out: dict) -> None:
@@ -1516,7 +1825,7 @@ async def _record_reentries_for(cand: dict, today: date, out: dict) -> None:
         wrote = await _record_attempt_trigger(
             cand, shape, fire=hit["fire"], fire_date=hit["fire_date"],
             prior_low=hit["prior_low"], bars_by_day=bars_by_day,
-            ordered_days=ordered_days, missing=hit["missing"])
+            ordered_days=ordered_days, missing=hit["missing"], out=out)
         if wrote:
             out["reentry_recorded"] += 1
 
@@ -1568,7 +1877,9 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
     out = {"enrolled": 0, "members": 0, "watch_rows": 0, "triggers": 0,
            "unscoreable": 0, "errors": 0,
            "settle_considered": 0, "settle_settled": 0, "settle_abstained": 0,
-           "settle_unscoreable": 0, "reentry_considered": 0, "reentry_recorded": 0}
+           "settle_unscoreable": 0, "reentry_considered": 0, "reentry_recorded": 0,
+           "variant_considered": 0, "variant_settled": 0, "variant_abstained": 0,
+           "variant_unscoreable": 0, "variant_missing_adr": 0}
     try:
         out["enrolled"] = await enroll_new_members(today)
     except Exception as e:
@@ -1605,6 +1916,10 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
     # settlement rides the SAME run (one job -> one digest); it self-catches per trigger
     await settle_open_triggers(today, out)
 
+    # #616 variant completion AFTER the incumbent pass: a variant only pends once its
+    # incumbent settled (wider stop -> later resolution). Self-catches per row.
+    await settle_open_variant_triggers(today, out)
+
     # re-entry recording runs AFTER settlement so tonight's settled stops enter the
     # pass immediately (their replay window starts the next session — day-2+)
     await record_reentry_attempts(today, out)
@@ -1620,7 +1935,11 @@ async def run_delayed_entry_shadow(today: Optional[date] = None) -> dict[str, in
             f"{out['settle_abstained']} abstained (still open — retry), "
             f"{out['settle_unscoreable']} closed unscoreable; re-entry: "
             f"{out['reentry_considered']} stopped campaign(s) considered, "
-            f"{out['reentry_recorded']} attempt row(s) recorded")
+            f"{out['reentry_recorded']} attempt row(s) recorded; ADR-stop variants "
+            f"(#616): {out['variant_considered']} pending considered, "
+            f"{out['variant_settled']} settled, {out['variant_abstained']} abstained, "
+            f"{out['variant_unscoreable']} closed unscoreable, "
+            f"{out['variant_missing_adr']} fire(s) with no ADR")
     except Exception as _e:  # loud-ok: telemetry-of-telemetry; the rows are already durable
         logger.warning(f"delayed_entry_shadow audit emit failed (non-fatal): {_e}")
     return out
