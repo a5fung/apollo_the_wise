@@ -3460,6 +3460,37 @@ _LATTICE_MIN_POST_FLIP_TRADING_DAYS = 5   # trigger (b) floor: fewer post-flip t
 # anything.
 # THE LINE: this changes trigger (b)'s DENOMINATOR only. _LATTICE_HIGH_DROP_FRACTION (the
 # operator-signed 50%), the flip, the revert flag and every grading/entry rule are untouched.
+#
+# ── #611: RECONCILED AGAINST `mi_ep_scan_log` (2026-09-01) — the two numbers measure
+# DIFFERENT THINGS, neither is a bug. On 2026-09-01 the alert read "4 and 3 stocks gapping
+# 10%+" for 09-01/08-31; counting DISTINCT TICKERS in `mi_ep_scan_log` with day-MAX
+# `gap_pct >= 10` instead gives 42 and 52 — an apparent 10x miss. Traced end to end (prod
+# SELECTs, not guessed):
+#   1. The naive scan-log count never applies the $5/50k floors at all. Applying them (using
+#      the scan log's OWN `prev_close`/`prev_day_volume` columns) drops 42 -> 6 and 52 -> 8 —
+#      most of the "10x" is un-floored penny/micro names (e.g. GPRO prev_close $0.88, HKPD
+#      $0.33) that were never in this trigger's universe to begin with.
+#   2. The remaining gap is definitional, not a bug: `mi_ep_scan_log.gap_pct` is computed in
+#      `ep_detector.py` as `(current_price - prev_close) / prev_close * 100` and the scanner
+#      writes a fresh row EVERY SCAN TICK (dozens/ticker/day) — so a ticker's day-MAX gap_pct
+#      is its PEAK live-price reading vs the prior close at any tick that ran, not the settled
+#      opening print. `mi_daily_closes.open_price` IS the settled opening print. The two can
+#      and do diverge: PRLD's day-max scan-tick reading was +12.3% (some tick before the bell)
+#      but its actual open was BELOW the prior close (-0.9%, opening_gap_pct in
+#      `mi_daily_closes`) — a live reading > 10% that resolved to a NEGATIVE opening gap.
+#      CRK peaked at a +10.5% tick but opened at +9.6% — a real tick over the line the actual
+#      open never reached. Of the 6 (09-01) / 8 (08-31) that pass the floors, only WETO/YEXT/
+#      PXS/GDXD (4) and MOVE/WETO/SAIC (3) actually opened >= 10% — reproducing the alert
+#      exactly. (GDXD never appears in the scan-log 42 at all — the two lists are not nested
+#      either direction.)
+#   VERDICT: `mi_daily_closes`'s settled-open measure is what this trigger is DESIGNED to use
+# (see "THE SUPPLY MEASURE" above) and it reproduces correctly — nothing here changed. The fix
+# is WORDING ONLY: the operator-facing message said "stocks gapping X%+ past the universe
+# floors", which reads as "stocks that moved X%+ at some point" — exactly the (wrong) reading
+# that produced the 42/52 comparison. It now says "opened X%+ above the prior close" and spells
+# out the floor values inline, so a future reader cannot reach for the scan log's per-tick
+# `gap_pct` as if it were the same measure. See tests/test_catalyst_lattice_monitor.py for the
+# pinned 42->6->4 / 52->8->3 bridge with the real tickers.
 _LATTICE_SUPPLY_GAP_PCT = 10.0            # open vs prior close, in percent
 _LATTICE_SUPPLY_MIN_PREV_CLOSE = 5.0      # mirrors ep_detector.MIN_PREV_CLOSE as of 2026-08-26
 _LATTICE_SUPPLY_MIN_PREV_VOLUME = 50_000  # mirrors ep_detector.MIN_PREV_DAY_VOLUME, same date
@@ -3865,8 +3896,9 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"• WE ARE CONVERTING LESS OF WHAT THE TAPE OFFERS: since the "
                     f"catalyst-tier flip ({t['flip_date']}), the {t['recent_days']} trading "
                     f"day(s) on/after it produced {t['recent_high_n']} HIGH alerts out of "
-                    f"{t['recent_supply']} stocks that gapped {t['supply_gap_pct']:.0f}%+ past "
-                    f"the universe floors — {t['recent_per_100']} per 100 — against "
+                    f"{t['recent_supply']} stocks that OPENED {t['supply_gap_pct']:.0f}%+ "
+                    f"above the prior close (prior close $5+, prior-day volume 50k+ shares) "
+                    f"— {t['recent_per_100']} per 100 — against "
                     f"{t['prior_high_n']} out of {t['prior_supply']} "
                     f"({t['prior_per_100']} per 100) over the {t['prior_days']} trading days "
                     f"before it. That is a {t['drop_pct']}% fall in the share we convert "
@@ -3875,8 +3907,9 @@ async def run_catalyst_lattice_monitor(conn=None, today=None) -> "dict[str, Any]
                     f"this trigger.")
             elif t["kind"] == "zero_alert_days":
                 sup = ["?" if s is None else str(s) for s in t.get("supply", [])]
-                ctx = (f" The tape offered {' and '.join(sup)} stocks gapping "
-                       f"{t['supply_gap_pct']:.0f}%+ past the universe floors on those days"
+                ctx = (f" The tape offered {' and '.join(sup)} stocks that OPENED "
+                       f"{t['supply_gap_pct']:.0f}%+ above the prior close (prior close $5+, "
+                       f"prior-day volume 50k+ shares) on those days"
                        if sup else "")
                 rate = t.get("trailing_per_100")
                 ctx += (f", against {rate} alerts per 100 such stocks over the prior "

@@ -3293,10 +3293,13 @@ async def initialize_schema() -> None:
             -- THE HONESTY CONTRACT (the lookahead rule — the defect that invalidated the
             -- 08-25 structure study): what the API returns today is TODAY'S consensus.
             --   as_of_date        = the date the estimate was READ (never inferred).
-            --   anchor_filing_date= the ticker's most recent income-statement filingDate at
-            --                       read time. An estimate for a future period persists
-            --                       until results land, so this row's value is the value
-            --                       that stood on ANY date in [valid_from_date, as_of_date].
+            --   anchor_filing_date= the ticker's most recent 10-Q/10-K-class filing date at
+            --                       read time (v2 2026-09-01: from SEC EDGAR submissions —
+            --                       FMP /income-statement is 402 on our plan; same
+            --                       semantics, same conservative bound). An estimate for a
+            --                       future period persists until results land, so this
+            --                       row's value is the value that stood on ANY date in
+            --                       [valid_from_date, as_of_date].
             --   valid_from_date   = anchor_filing_date, or as_of_date when no anchor is
             --                       resolvable (ETFs, non-filers) — NEVER claim history
             --                       without an anchor; CHECK-enforced <= as_of_date.

@@ -1,10 +1,18 @@
-"""#333 analyst-estimates recorder tests (2026-08-31). Pure core (normalize /
-honest_valid_from / estimate_for_scoring) + the orchestration half with module-level
-db/fetch functions monkeypatched. THE LINE: this recorder writes only
-mi_analyst_estimates (+ mi_audit_log via log_audit_event) and is SILENT — both pinned
-below. The honesty contract (never claim history without a filing-date anchor; the
-read date is stamped, never inferred) is the load-bearing guard here and is what the
-mutation test targets.
+"""#333 analyst-estimates recorder tests (2026-08-31; v2 2026-09-01). Pure core
+(normalize / honest_valid_from / latest_filing_from_submissions / estimate_for_scoring)
++ the orchestration half with module-level db/fetch functions monkeypatched. THE LINE:
+this recorder writes only mi_analyst_estimates (+ mi_audit_log via log_audit_event) and
+is SILENT — both pinned below.
+
+THE BUG the v2 arm exists for (2026-09-01, first live run): the filing-date anchor was
+FMP /income-statement, which is 402 Payment Required on our plan — and v1 treated an
+anchor fetch failure as a ticker-killing exception, so the run wrote 0 rows with 99
+errors. The design already said a ticker with no resolvable filing date records with a
+ZERO honest window (honest_valid_from(None) == as_of); only the orchestration aborted.
+v2 anchors on SEC EDGAR (keyless, no payment tier) and makes no-anchor a FIRST-CLASS
+outcome; a 402 on any FMP endpoint degrades that period, never the ticker. The honesty
+contract (never claim history without a filing-date anchor; the read date is stamped,
+never inferred) is the load-bearing guard here and is what the mutation tests target.
 """
 import sys
 from datetime import date
@@ -39,6 +47,44 @@ def test_honest_window_clamps_a_future_anchor():
     """A filingDate AFTER the read date is bad API data — clamp to the read date,
     never claim a window that starts in the future."""
     assert aer.honest_valid_from(date(2026, 9, 15), AS_OF) == AS_OF
+
+
+# ── latest_filing_from_submissions (the EDGAR anchor parse — pure) ───────────────────
+
+
+def _submissions(forms_dates):
+    return {"filings": {"recent": {
+        "form": [f for f, _ in forms_dates],
+        "filingDate": [d for _, d in forms_dates],
+    }}}
+
+
+def test_edgar_anchor_takes_the_most_recent_anchor_form():
+    """MUTATION TARGET (max, not first): the anchor is the LATEST 10-Q/10-K-class
+    filing, robust to EDGAR's ordering — an older filing as anchor would misdate
+    the window; a NEWER one is impossible to invent from this payload."""
+    payload = _submissions([
+        ("8-K", "2026-08-20"),          # not an anchor form — ignored
+        ("10-Q", "2026-05-06"),         # deliberately BEFORE the newest: first-match
+        ("10-K", "2026-02-25"),         #   instead of max would return 05-06
+        ("10-Q", "2026-08-05"),
+    ])
+    assert aer.latest_filing_from_submissions(payload) == date(2026, 8, 5)
+
+
+def test_edgar_anchor_ignores_non_anchor_forms_entirely():
+    """Only filing-class forms anchor the window — an 8-K press release is not a
+    financial filing and must never widen the claimed history."""
+    assert aer.latest_filing_from_submissions(
+        _submissions([("8-K", "2026-08-20"), ("SC 13G", "2026-08-01")])) is None
+
+
+def test_edgar_anchor_malformed_payload_is_none_never_a_guess():
+    assert aer.latest_filing_from_submissions(None) is None
+    assert aer.latest_filing_from_submissions({}) is None
+    assert aer.latest_filing_from_submissions({"filings": {}}) is None
+    assert aer.latest_filing_from_submissions(
+        _submissions([("10-Q", "not-a-date")])) is None
 
 
 # ── normalize_fmp_estimate (raw capture, never derived) ──────────────────────────────
@@ -106,17 +152,19 @@ def test_thin_coverage_scores_none_and_threshold_is_tunable():
 
 
 def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
-          quarter_402=False):
+          anchor_fail_tickers=(), p402=()):
     written = []
     audits = []
 
-    async def fake_filing(ticker):
-        if ticker in fail_tickers:
-            raise RuntimeError("fetch boom")
+    async def fake_filing(ticker, as_of):
+        if ticker in anchor_fail_tickers:
+            raise RuntimeError("EDGAR down")
         return (anchors or {}).get(ticker)
 
     async def fake_estimates(ticker, period):
-        if quarter_402 and period == "quarter":
+        if ticker in fail_tickers:
+            raise RuntimeError("fetch boom")
+        if period in p402:
             raise RuntimeError_402()
         return (estimates or {}).get((ticker, period), [])
 
@@ -173,6 +221,39 @@ async def test_one_bad_ticker_never_kills_the_run(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_anchor_failure_records_with_zero_window_not_abort(monkeypatch):
+    """MUTATION TARGET — THE 2026-09-01 FIRST-RUN BUG. The anchor fetch failing (v1:
+    FMP 402; v2: an EDGAR outage) must NOT abort the ticker: its estimates still
+    record with a ZERO honest window (valid_from == as_of — honest_valid_from's
+    no-anchor arm), the ticker is COUNTED (anchor_errors, not errors), and the clock
+    this backbone exists to start keeps accruing. Removing the try/except around the
+    anchor call recreates the 0-rows/99-errors run exactly."""
+    written, _ = _wire(
+        monkeypatch,
+        estimates={("MRNA", "annual"): [_rec()],
+                   ("MRNA", "quarter"): [_rec(date="2026-09-30")]},
+        anchor_fail_tickers={"MRNA"},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
+    assert out["errors"] == 0
+    assert out["rows_written"] == 2 and out["tickers_written"] == 1
+    assert out["anchor_errors"] == 1
+    assert out["no_anchor"] == 0               # outage is NOT the by-design case
+    assert all(r["valid_from_date"] == AS_OF for r in written)   # zero claimed history
+    assert all(r["anchor_filing_date"] is None for r in written)
+
+
+@pytest.mark.asyncio
+async def test_true_non_filer_counts_no_anchor_and_claims_zero_history(monkeypatch):
+    """An ETF/non-filer (anchor resolves to None without error) is the BY-DESIGN
+    zero-window case: counted as no_anchor, never as an error."""
+    written, _ = _wire(monkeypatch, estimates={("SPYX", "annual"): [_rec()]})
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["SPYX"])
+    assert out["no_anchor"] == 1 and out["anchor_errors"] == 0 and out["errors"] == 0
+    assert written[0]["valid_from_date"] == AS_OF
+
+
+@pytest.mark.asyncio
 async def test_quarter_402_degrades_to_annual_only(monkeypatch):
     """The quarter endpoint is unverified on our plan — a 402 records the annual
     estimates and counts the degrade; it never kills the ticker's snapshot."""
@@ -180,12 +261,46 @@ async def test_quarter_402_degrades_to_annual_only(monkeypatch):
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
         estimates={("MRNA", "annual"): [_rec()]},
-        quarter_402=True,
+        p402={"quarter"},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
     assert out["rows_written"] == 1 and out["errors"] == 0
     assert out["quarter_unavailable"] == 1
     assert written[0]["period_type"] == "annual"
+
+
+@pytest.mark.asyncio
+async def test_annual_402_degrades_and_audits_a_plan_change(monkeypatch):
+    """MUTATION TARGET (a 402 degrades the FIELD, never the ticker — any period).
+    Annual was VERIFIED in-plan 2026-08-31, so a 402 there means the FMP plan
+    changed underneath us: the quarter rows still record, and ONE
+    analyst_estimates_plan_change audit row makes the change visible, not silent."""
+    written, audits = _wire(
+        monkeypatch,
+        anchors={"MRNA": date(2026, 7, 31)},
+        estimates={("MRNA", "quarter"): [_rec(date="2026-09-30")]},
+        p402={"annual"},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
+    assert out["errors"] == 0
+    assert out["rows_written"] == 1 and written[0]["period_type"] == "quarter"
+    assert out["annual_unavailable"] == 1
+    assert sum(1 for e, _ in audits if e == "analyst_estimates_plan_change") == 1
+
+
+@pytest.mark.asyncio
+async def test_both_periods_402_is_counted_not_an_error(monkeypatch):
+    """Even losing BOTH estimate endpoints is a degrade, not a per-ticker error —
+    the counters and the plan-change row carry the news; nothing raises."""
+    written, audits = _wire(
+        monkeypatch, anchors={"MRNA": date(2026, 7, 31)},
+        p402={"annual", "quarter"},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
+    assert out["errors"] == 0 and out["rows_written"] == 0
+    assert out["annual_unavailable"] == 1 and out["quarter_unavailable"] == 1
+    assert written == []
+    assert any(e == "analyst_estimates_plan_change" for e, _ in audits)
 
 
 @pytest.mark.asyncio
@@ -227,3 +342,18 @@ def test_the_line_no_telegram_no_broker_no_score():
     assert "notify_job_failure" not in src
     assert "from agents.market_intelligence.broker" not in src
     assert "durability_score" not in src and "a7_durability" not in src
+
+
+def test_the_402_endpoint_is_never_called_and_log_lines_are_redacted():
+    """Two pins from the 2026-09-01 incident. (1) FMP /income-statement and /earnings
+    are 402 on our plan — verified live, 99/99 tickers — so no fetch may target them
+    again (the docstring may MENTION them as history; _fmp_get may not be pointed at
+    them). (2) FMP puts the API key in the QUERY STRING and 99 audit rows landed
+    carrying a live key: db.log_audit_event now redacts at the chokepoint, and every
+    recorder log line that formats an exception must go through redact_secrets so the
+    key never lands in container logs either."""
+    src = Path(aer.__file__).read_text()
+    assert '_fmp_get("/income-statement"' not in src
+    assert '_fmp_get("/earnings"' not in src
+    assert "from shared.secret_redaction import redact_secrets" in src
+    assert "logger.warning(redact_secrets(" in src   # the per-ticker failure line

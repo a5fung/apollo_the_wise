@@ -23,7 +23,7 @@ study. But there is a genuine, bounded backfill (operator-identified): an estima
 future period persists until that period's results land, so today's read IS the estimate
 that stood on any date since THAT TICKER'S most recent filing. Hence every row stores:
   as_of_date         the date the value was READ (never inferred by a future reader)
-  anchor_filing_date the ticker's most recent income-statement filingDate at read time
+  anchor_filing_date the ticker's most recent 10-Q/10-K-class filingDate at read time
   valid_from_date    = anchor_filing_date (or as_of_date when no anchor resolves —
                        NEVER claim history without an anchor; CHECK-enforced)
 The backfill window is PER TICKER, back to its own last filing — never a flat lookback.
@@ -32,28 +32,65 @@ alert tickers resolved): mean reach 28 days, median 25 — BELOW the ~45-day est
 because the measurement ran just past earnings season; the reach is cyclical and grows
 toward ~45+ mid-cycle. `docs/analysis/analyst_estimates_backfill_reach_2026-08-31.md`.
 
+NO-ANCHOR IS A FIRST-CLASS OUTCOME, NEVER AN ABORT (v2, 2026-09-01). The first live
+run (2026-09-01 18:12 ET) wrote 0 rows with 99 errors: FMP's /income-statement — v1's
+filing-date anchor — is 402 Payment Required on our plan, and v1 treated an anchor
+fetch failure as a ticker-killing exception. Wrong shape: a ticker whose filing date
+cannot be resolved must still record its estimates with a ZERO honest window
+(valid_from_date == as_of_date) and be counted — `honest_valid_from` already encodes
+that; only the orchestration aborted. NEVER invent or approximate a filing date to
+widen a window — no anchor means no claimed history, full stop.
+
+THE ANCHOR SOURCE IS SEC EDGAR (v2, 2026-09-01) — the authority FMP's filingDate is
+derived from, keyless and $0, so no payment tier can take it away again:
+  https://www.sec.gov/files/company_tickers.json        ticker -> CIK (1 call/run, cached)
+  https://data.sec.gov/submissions/CIK##########.json   filings.recent, newest-first
+Anchor = the MOST RECENT filing among ANCHOR_FORMS (10-Q/10-K/20-F/6-K + /A) — the
+same conservative bound as before: the filing lands at or after the results release,
+so anchoring on it claims FEWER days, never more. yfinance earnings dates were probed
+and REJECTED: they are ANNOUNCEMENT dates (at-or-before the filing), so anchoring on
+them would WIDEN the window — the forbidden direction. The 08-31 reach measurement
+used this exact EDGAR path and resolved 306/335 real alert tickers; the unresolved 29
+are ETFs/preferreds/non-filers, which buy zero days BY DESIGN. SEC asks for a
+declared User-Agent (SEC_EDGAR_USER_AGENT env override) and <=10 req/s; the run pace
+is ~4 req/s worst case.
+
+A 402 DEGRADES THE FIELD, NEVER THE TICKER (v2). Any FMP endpoint going 402 marks
+that period unavailable and the snapshot continues; the run summary carries the
+counts, and an annual-period 402 — the endpoint verified in-plan 2026-08-31 —
+additionally writes ONE `analyst_estimates_plan_change` audit row, because that means
+the FMP plan itself changed and must be visible, not silent.
+
 RAW VALUES, NEVER A COMPUTED SCORE: thresholds belong to today's rule set; a stored
 score goes stale the moment one is swept. The sketch's n_analysts<3 -> None rule is
 applied READ-SIDE (`estimate_for_scoring`, threshold parameterized) and the count is
 stored, so the rule can be re-tuned without re-fetching.
 
-ENDPOINTS (FMP /stable/, the subscription we already pay for — collector._fmp_get is
-the canonical transport):
-  /analyst-estimates?symbol=X&period=annual   verified in-plan (2026-08-31)
+ENDPOINTS (estimates: FMP /stable/, the subscription we already pay for —
+collector._fmp_get is the canonical transport; anchor: SEC EDGAR, above):
+  /analyst-estimates?symbol=X&period=annual   verified in-plan (2026-08-31); a 402
+                                              here = plan change -> audit + degrade
   /analyst-estimates?symbol=X&period=quarter  NOT yet verified — degrade gracefully:
-                                              a 402 records annual only + audit note
-  /income-statement?symbol=X&period=quarter   verified in-plan; filingDate = the anchor
-  /earnings                                   402 on our plan — the filing date IS the
-                                              anchor, never this endpoint
-COST: fixed subscription — call budget only. ~3 calls per ticker per run; the daily
-population (live-source EP alerts, trailing 30 days) is ~100 tickers => ~300 calls/day,
-paced under FMP's 300/min limit. The one-shot backfill over the full alert population
-(~335 tickers) is ~1,000 calls, once.
+                                              a 402 records annual only + counter
+  /income-statement                           402 on our plan (verified live
+                                              2026-09-01, 99/99 tickers) — NEVER call
+  /earnings                                   402 on our plan — same
+COST: fixed subscription — call budget only. ~3 calls per ticker per run (1 EDGAR +
+2 FMP) + 1 EDGAR ticker-map call per run; the daily population (live-source EP
+alerts, trailing 30 days) is ~100 tickers => ~300 calls/day, paced under FMP's
+300/min limit and EDGAR's 10/s policy. The one-shot backfill over the full alert
+population (~335 tickers) is ~1,000 calls, once.
+
+CREDENTIALS: FMP authenticates by QUERY STRING, so raw exception text can carry the
+live key (it did — 99 audit rows on 2026-09-01). `db.log_audit_event` redacts at the
+chokepoint; every log line here that formats an exception goes through
+`redact_secrets` too, so the key never lands in container logs either.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import date
 from typing import Any, Optional
 
@@ -63,15 +100,31 @@ from agents.market_intelligence.db import (
     log_audit_event,
     upsert_analyst_estimates,
 )
+from shared.secret_redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
-RECORDER_VERSION = "v1"
-ESTIMATES_SOURCE = "fmp_stable"
+RECORDER_VERSION = "v2"           # v2 2026-09-01: anchor source FMP -> SEC EDGAR (402 fix)
+ESTIMATES_SOURCE = "fmp_stable"   # the ESTIMATE values are still FMP; only the anchor moved
 POPULATION_LOOKBACK_DAYS = 30     # daily run: tickers with a live-source alert this recent
 MIN_ANALYSTS_DEFAULT = 3          # the sketch's n<3 -> None rule (read-side, re-tunable)
 MAX_PERIODS_PER_CALL = 20         # bound the per-ticker estimate payload
 FMP_PACE_SECONDS = 0.25           # courtesy pacing, ~240 calls/min worst case
+
+# ── SEC EDGAR anchor source (v2) ──────────────────────────────────────────────────────
+# The exact form set the 08-31 reach measurement used (306/335 resolved) — foreign
+# filers report on 20-F/6-K; amendments carry the same filing-date semantics.
+ANCHOR_FORMS = frozenset({"10-Q", "10-K", "20-F", "6-K", "10-Q/A", "10-K/A", "20-F/A"})
+_EDGAR_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
+_EDGAR_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
+# SEC's access policy asks every client to identify itself; operator's own prior
+# EDGAR usage (the 08-31 reach script) declared exactly this contact.
+_EDGAR_UA = os.environ.get("SEC_EDGAR_USER_AGENT", "apollo-the-wise lastone99@gmail.com")
+_EDGAR_TIMEOUT_SECONDS = 30
+
+# One ticker->CIK map fetch per as_of day, success OR failure — a dead sec.gov must
+# cost the run ONE timeout, not one per ticker. {"as_of": date|None, "map": dict|None}.
+_cik_map_state: dict[str, Any] = {"as_of": None, "map": None}
 
 
 # ── pure core (mock-free, the house idiom) ────────────────────────────────────────────
@@ -108,6 +161,28 @@ def honest_valid_from(anchor_filing_date: Optional[date], as_of: date) -> date:
     if anchor_filing_date is None or anchor_filing_date > as_of:
         return as_of
     return anchor_filing_date
+
+
+def latest_filing_from_submissions(payload: Any) -> Optional[date]:
+    """EDGAR submissions payload -> the ticker's most recent anchor-form filing date.
+
+    Pure and defensive: takes the MAX parsed date over ANCHOR_FORMS rather than
+    trusting EDGAR's newest-first ordering; any malformed payload -> None (which the
+    caller records as zero honest window — never a guess, never a widened window).
+    """
+    try:
+        recent = payload["filings"]["recent"]
+        forms, dates = recent["form"], recent["filingDate"]
+    except (TypeError, KeyError):
+        return None
+    best: Optional[date] = None
+    for form, fdate in zip(forms, dates):
+        if form not in ANCHOR_FORMS:
+            continue
+        parsed = _d(fdate)
+        if parsed is not None and (best is None or parsed > best):
+            best = parsed
+    return best
 
 
 def normalize_fmp_estimate(
@@ -161,20 +236,58 @@ def estimate_for_scoring(
     return row
 
 
-# ── FMP fetch (collector._fmp_get is the canonical transport) ─────────────────────────
+# ── anchor fetch (SEC EDGAR — keyless, $0, no payment tier) ───────────────────────────
 
-async def _fetch_last_filing_date(ticker: str) -> Optional[date]:
-    """The ticker's most recent income-statement filingDate — the honest-window anchor.
-    /earnings is 402 on our plan; the filing date is the anchor BY DESIGN (it is the
-    conservative bound: the 10-Q lands at or after the results release, so anchoring on
-    it claims FEWER days, never more)."""
-    from agents.market_intelligence.collector import _fmp_get
-    reports = await _fmp_get("/income-statement",
-                             {"symbol": ticker, "period": "quarter", "limit": 1})
-    if not isinstance(reports, list) or not reports:
-        return None
-    return _d(reports[0].get("filingDate"))
+async def _edgar_get_json(url: str) -> Any:
+    import httpx
+    async with httpx.AsyncClient(
+        timeout=_EDGAR_TIMEOUT_SECONDS, headers={"User-Agent": _EDGAR_UA}
+    ) as client:
+        r = await client.get(url)
+        r.raise_for_status()
+        return r.json()
 
+
+async def _get_cik_map(as_of: date) -> Optional[dict]:
+    """Ticker->CIK map, fetched AT MOST ONCE per as_of day (success or failure) —
+    a dead sec.gov costs the run one timeout, never one per ticker. None = the map
+    is unavailable today; callers raise so the failure is COUNTED per ticker
+    (anchor_errors), distinguishing an EDGAR outage from true non-filers."""
+    if _cik_map_state["as_of"] == as_of:
+        return _cik_map_state["map"]
+    _cik_map_state["as_of"] = as_of
+    _cik_map_state["map"] = None
+    try:
+        raw = await _edgar_get_json(_EDGAR_TICKER_MAP_URL)
+        _cik_map_state["map"] = {
+            str(v["ticker"]).upper(): int(v["cik_str"]) for v in raw.values()
+        }
+    except Exception as e:
+        logger.warning(f"EDGAR ticker map fetch failed: "
+                       f"{redact_secrets(f'{type(e).__name__}: {e}')}")
+    return _cik_map_state["map"]
+
+
+async def _fetch_last_filing_date(ticker: str, as_of: date) -> Optional[date]:
+    """The ticker's most recent anchor-form EDGAR filing date — the honest-window
+    anchor. None = the ticker genuinely resolves no filing (not in EDGAR's map, or
+    no anchor-form filing) -> zero honest window BY DESIGN. Raises on transport
+    failure so the caller can COUNT it (anchor_errors) — but the caller still
+    records the ticker with a zero window; no anchor path aborts a snapshot.
+
+    v1 used FMP /income-statement filingDate; it is 402 on our plan (2026-09-01,
+    99/99 tickers) — never call it again."""
+    cik_map = await _get_cik_map(as_of)
+    if cik_map is None:
+        raise RuntimeError("EDGAR ticker map unavailable")
+    cik = cik_map.get(ticker.upper())
+    if cik is None:
+        return None  # ETF / preferred / non-filer — zero honest days, by design
+    payload = await _edgar_get_json(_EDGAR_SUBMISSIONS_URL.format(cik=cik))
+    return latest_filing_from_submissions(payload)
+
+
+# ── estimates fetch (collector._fmp_get is the canonical FMP transport) ───────────────
 
 async def _fetch_estimates(ticker: str, period: str) -> list[dict]:
     from agents.market_intelligence.collector import _fmp_get
@@ -192,21 +305,33 @@ def _is_payment_required(exc: Exception) -> bool:
 
 async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     """Fetch + normalize one ticker's estimates. Returns
-    {rows, quarter_unavailable, anchor} — raises only on a hard fetch failure the
-    caller counts (per-ticker isolation lives in the run loop, not here)."""
-    anchor = await _fetch_last_filing_date(ticker)
+    {rows, unavailable_periods, anchor, anchor_error} — raises only on a hard
+    ESTIMATES fetch failure the caller counts (per-ticker isolation lives in the run
+    loop, not here). The anchor NEVER aborts: an unresolvable or failed anchor
+    records the rows with a zero honest window (the 2026-09-01 first-run bug was
+    exactly this abort)."""
+    anchor: Optional[date] = None
+    anchor_error = False
+    try:
+        anchor = await _fetch_last_filing_date(ticker, as_of)
+    except Exception as e:
+        # FIRST-CLASS no-anchor: zero honest window, counted, never fatal.
+        anchor_error = True
+        logger.warning(f"anchor fetch failed for {ticker} (zero honest window): "
+                       f"{redact_secrets(f'{type(e).__name__}: {e}')}")
     await asyncio.sleep(FMP_PACE_SECONDS)
     rows: list[dict] = []
-    quarter_unavailable = False
+    unavailable_periods: set[str] = set()
     for period in ("annual", "quarter"):
         try:
             recs = await _fetch_estimates(ticker, period)
         except Exception as e:
-            if period == "quarter" and _is_payment_required(e):
-                # /analyst-estimates?period=quarter is unverified on our plan — a 402
-                # here degrades to annual-only capture, it never kills the snapshot.
-                quarter_unavailable = True
-                break
+            if _is_payment_required(e):
+                # A 402 degrades the FIELD, never the ticker — whichever period it
+                # hits. (Annual was verified in-plan 2026-08-31; the run loop turns
+                # an annual 402 into a plan-change audit row.)
+                unavailable_periods.add(period)
+                continue
             raise
         for rec in recs:
             row = normalize_fmp_estimate(
@@ -216,14 +341,16 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             if row is not None:
                 rows.append(row)
         await asyncio.sleep(FMP_PACE_SECONDS)
-    return {"rows": rows, "quarter_unavailable": quarter_unavailable, "anchor": anchor}
+    return {"rows": rows, "unavailable_periods": unavailable_periods,
+            "anchor": anchor, "anchor_error": anchor_error}
 
 
 # ── run functions (never raise into the scheduler — the house shadow contract) ────────
 
 async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict[str, Any]:
     out = {"population": len(tickers), "tickers_written": 0, "rows_written": 0,
-           "no_anchor": 0, "quarter_unavailable": 0, "errors": 0}
+           "no_anchor": 0, "anchor_errors": 0,
+           "annual_unavailable": 0, "quarter_unavailable": 0, "errors": 0}
     for ticker in tickers:
         try:
             snap = await snapshot_ticker(ticker, as_of)
@@ -231,13 +358,18 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
             out["rows_written"] += written
             if written:
                 out["tickers_written"] += 1
-            if snap["anchor"] is None:
-                out["no_anchor"] += 1
-            if snap["quarter_unavailable"]:
+            if snap["anchor_error"]:
+                out["anchor_errors"] += 1        # EDGAR outage — NOT the by-design case
+            elif snap["anchor"] is None:
+                out["no_anchor"] += 1            # true non-filer/ETF — zero days by design
+            if "annual" in snap["unavailable_periods"]:
+                out["annual_unavailable"] += 1
+            if "quarter" in snap["unavailable_periods"]:
                 out["quarter_unavailable"] += 1
         except Exception as e:  # per-ticker isolation: one bad name never kills the run
             out["errors"] += 1
-            logger.warning(f"{label}: {ticker} failed: {type(e).__name__}: {e}")
+            logger.warning(redact_secrets(
+                f"{label}: {ticker} failed: {type(e).__name__}: {e}"))
             try:
                 await log_audit_event(
                     "analyst_estimates_error",
@@ -245,11 +377,24 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
                 )
             except Exception:  # loud-ok: logger.warning above already fired
                 pass
+    if out["annual_unavailable"]:
+        # The annual endpoint was VERIFIED in-plan 2026-08-31 — a 402 there means the
+        # FMP plan changed underneath us. One loud row per run, never silent.
+        try:
+            await log_audit_event(
+                "analyst_estimates_plan_change",
+                f"{label}: /analyst-estimates period=annual returned 402 for "
+                f"{out['annual_unavailable']} ticker(s) — endpoint was verified "
+                f"in-plan 2026-08-31; the FMP plan appears to have changed",
+            )
+        except Exception:  # loud-ok: the run-summary row still carries the counter
+            pass
     return out
 
 
 _EMPTY_RUN = {"population": 0, "tickers_written": 0, "rows_written": 0,
-              "no_anchor": 0, "quarter_unavailable": 0, "errors": 1}
+              "no_anchor": 0, "anchor_errors": 0,
+              "annual_unavailable": 0, "quarter_unavailable": 0, "errors": 1}
 
 
 async def _run_and_log(tickers: list[str], today: date, event_type: str,
@@ -267,7 +412,9 @@ async def _run_and_log(tickers: list[str], today: date, event_type: str,
                 f"{summary_prefix}{out['rows_written']} row(s) across "
                 f"{out['tickers_written']}/{out['population']} ticker(s); "
                 f"{out['no_anchor']} no-anchor (zero honest days, by design), "
-                f"{out['quarter_unavailable']} quarter-unavailable, "
+                f"{out['anchor_errors']} anchor-error (zero honest days, EDGAR fetch failed), "
+                f"{out['annual_unavailable']} annual-402, "
+                f"{out['quarter_unavailable']} quarter-402, "
                 f"{out['errors']} error(s)",
             )
         except Exception:  # loud-ok: counters already logged by the scheduler wrapper

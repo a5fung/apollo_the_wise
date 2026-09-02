@@ -1232,6 +1232,24 @@ available supply halved. The trigger kind is `high_conversion_drop` (renamed fro
   is worth a look even when the cause turns out to be the tape. Its firing logic is unchanged;
   the message now carries each day's gap count and the trailing conversion rate as CONTEXT (not
   a forecast) so it can be dismissed at a glance.
+- **#611 (2026-09-01) — the supply figure reconciled against `mi_ep_scan_log`, arithmetic
+  unchanged, wording fixed.** The alert read "4 and 3 stocks gapping 10%+" for 09-01/08-31;
+  counting distinct tickers in `mi_ep_scan_log` with a day-MAX `gap_pct >= 10` instead gives 42
+  and 52. Traced end to end (read-only prod SELECTs): both counts are correct for what they
+  measure, and they measure different things. Applying the SAME $5/50k floors to the naive
+  scan-log count (using its own `prev_close`/`prev_day_volume`) drops 42 → 6 and 52 → 8 — most
+  of the "10x" was un-floored penny/micro names. The rest is definitional: `mi_ep_scan_log.
+  gap_pct` is `(current_price - prev_close)/prev_close` re-computed on EVERY scan tick, so its
+  day-max is the ticker's PEAK pre-market/scan-window reading, not the settled opening print —
+  the exact price-basis split already noted above ("the two sides use different price bases").
+  Of the 6/8 floor-passers, only the ones whose SETTLED OPEN (`mi_daily_closes`) actually
+  gapped ≥10% survive: WETO/YEXT/PXS/GDXD (4) and WETO/MOVE/SAIC (3) — reproducing the alert
+  exactly (PRLD peaked +12.3% intraday but opened -0.9%; CRK peaked +10.5% but opened +9.6%).
+  **Nothing about the trigger, the flip, or any threshold changed** — the operator-facing
+  message now says "opened X%+ above the prior close" and spells out the $5/50k floors inline
+  instead of the ambiguous "stocks gapping X%+ past the universe floors", so a future reader
+  cannot substitute the scan log's per-tick reading for this measure again. Pinned in
+  `tests/test_611_supply_reconciliation.py`.
 
 ### 2026-08-19 — `MIN_GAP_PCT`: 10.0% → 9.0% (OPERATOR-SIGNED, REVERSAL of 2026-05-17 R2)
 

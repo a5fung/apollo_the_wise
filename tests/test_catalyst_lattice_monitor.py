@@ -678,7 +678,7 @@ async def test_trigger_c_message_carries_the_tape_context_but_still_fires(monkey
     assert t[0]["supply"] == [30, 30]
     assert t[0]["trailing_per_100"] is not None
     msg = tg.call_args[0][0]
-    assert "ZERO-ALERT DAYS" in msg and "gapping" in msg.lower()
+    assert "ZERO-ALERT DAYS" in msg and "opened" in msg.lower()
     assert "per 100" in msg and "not a verdict" in msg
     assert hc._LATTICE_REVERT_SQL in msg
 
