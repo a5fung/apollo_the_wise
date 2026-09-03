@@ -34,7 +34,14 @@ KNOWN DEVIATIONS from live behaviour (each stated, none silent):
   - +2R partial books AT the target price (today's resting-limit semantics). Era-B real
     fills were poll-time market fills (FIGS -0.87R / PLTR +0.9R class); validate reports the
     per-trade delta rather than modelling the poll.
-  - The Day 3-5 ladder partial books at the SETTLED close; live's 3:45 PM job fills near it.
+  - 🔴 The Day 3-5 ladder partial: THE HARNESS TAKES IT, LIVE DOES NOT (corrected 2026-09-02;
+    this line previously said live "fills near it", which was wrong). live_tracker.py:1076 passes
+    `skip_partial_decision=bool(PROFIT_TRIGGER_R)` — and PROFIT_TRIGGER_R has been set since the
+    +2R partial landed 08-01 — so live SKIPS the day-3/5 partial decision entirely. Measured
+    blast radius: it moves 14 of 267 campaigns and flips CORT and ATRO from small wins to small
+    losses. No verdict in #545 turned on it, but a replay that books a partial live stands down
+    is optimistic by construction on every runner, which is exactly the direction that flatters
+    a harvest finding.
   - Same-day-after-partial the resting stop stays at the ORIGINAL stop (breakeven_at_broker
     default-OFF behaviour, confirmed by FIGS 08-07); breakeven enters via the ladder's
     effective stop from the NEXT session — matches CRWD 08-28's breakeven fill.

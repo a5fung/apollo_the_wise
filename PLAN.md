@@ -37,6 +37,7 @@ hard external deadline, then money-path and alert-trust defects.
 | 1 | **#601** | a theme rename discards the operator's rulings | Fable | Wed (from 11:30 PDT) |
 | 2 | **#545** | entry/exit tactics — *"the EP cohort wins, our tactics do not"* | Fable, **capped at 2 cards** | Wed pm → Thu |
 | 3 | **#603** | Perplexity kills our endpoint 2026-09-27 (hard, external, fails SILENT) | Fable design → Sonnet build | Thu |
+| 3b | **#545 Phase 3** | the joint day-1 stop × target × runner sweep on the MAIN LINE, replayed — operator 2026-09-02: *"ok, phase 3 tmr"*. The only way to size the CONVERSION question (Phase 2: we admit the tail at 13% and realize ≥4R on none of it) without waiting months for live closes. $0. | Fable | Thu, after #603 |
 | 4 | **#600** | a repair can re-arm a stop at a price the broker already passed (money path) | Sonnet | Fri am |
 | 5 | **#604** | the naked-position L1 cries wolf at 16:15, every time | Sonnet | Fri am |
 
