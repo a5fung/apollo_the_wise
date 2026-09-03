@@ -487,17 +487,42 @@ async def test_purge_old_data_never_deletes_the_replay_table():
     assert executed and not any("mi_gap_near_miss_replays" in s for s in executed)
 
 
-def test_gated_review_gates_on_sample_size_not_a_rate():
+def test_gated_review_carries_the_operator_set_rate_and_its_evidence():
+    """The threshold is the OPERATOR's, set 2026-09-03, and it must stay auditable.
+
+    This test previously pinned the OPPOSITE — that no rate was embedded — because when the
+    recorder was built the number had not been ruled on and inventing one would have been the
+    agent picking a live-adjacent threshold for him. He then ruled: >=5% of DECIDED names
+    reaching >=4R, with >=100 decided. Both halves are backed by measurement, and the predicate
+    carries that evidence inline so a future reader cannot mistake it for a round number
+    somebody liked:
+      * background >=4R rate in ANY gap band is ~1.5% (6-7%: 5/290; 5-6%: 6/490), so a lower
+        bar fires on noise;
+      * the 8-9% band loses -0.24R per settled name, so at 4R a winner you need about 1 in 17
+        (6%) merely to break even on admitting it.
+    5% is four times background and just under break-even: it fires BEFORE the band is worth
+    admitting rather than after.
+    """
     import yaml
     reg = yaml.safe_load((_REPO / "data_gated_reviews.yaml").read_text())
     entries = reg["reviews"] if isinstance(reg, dict) else reg
     e = next(x for x in entries if x.get("review_id") == "gap_near_miss_tradeable_miss_rate_617")
     assert e["kind"] == "accrual" and e["status"] == "pending"
-    assert e["threshold"] == 30
-    assert "to_regclass('mi_gap_near_miss_replays')" in e["predicate_sql"]
-    assert "mi_gap_near_miss_replays" in e["predicate_sql"]
-    # the trigger RATE is never embedded — only a sample-size COUNT, per the #617 card
-    assert "%" not in e["predicate_sql"]
-    assert re.search(r"\b0\.\d+\b", e["predicate_sql"]) is None
+    sql = e["predicate_sql"]
+    # YAML block scalars re-wrap, so compare on whitespace-collapsed text rather than the
+    # author's line breaks — an assertion that depends on formatting fails for the wrong reason.
+    flat = " ".join(sql.split())
+    assert "to_regclass('mi_gap_near_miss_replays')" in sql
+    assert e["threshold"] == 1, "the predicate returns ready/not-ready, so the threshold is 1"
+
+    # the rate, expressed as integer arithmetic so no float rounding decides a live-adjacent gate
+    assert "20 * COUNT(*) FILTER (WHERE reached_4r)" in flat, "the 5% rate gate is gone"
+    assert ">= 100" in flat, "the minimum sample is gone — one lucky name would trip 5%"
+
+    # the evidence must travel WITH the number
+    for token in ("OPERATOR-SET", "1.5%", "-0.24R", "break even"):
+        assert token.lower() in flat.lower(), (
+            f"the predicate no longer records why the threshold is what it is: {token}")
+
     assert "mi_gap_near_miss_replays.gap_band" in e["discriminates_on"]
     assert "mi_gap_near_miss_replays.admission_era" in e["discriminates_on"]

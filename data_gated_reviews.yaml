@@ -10854,9 +10854,22 @@ reviews:
     # evolution #593 itself went through (hand read -> accrual -> tripwire).
     predicate_sql: |
       SELECT CASE WHEN to_regclass('mi_gap_near_miss_replays') IS NULL THEN 0 ELSE (
-        SELECT COUNT(*) FROM mi_gap_near_miss_replays WHERE outcome <> 'unscoreable'
+        -- OPERATOR-SET 2026-09-03: ready when >=5% of DECIDED near-miss names reached >=4R,
+        -- with >=100 decided. Both numbers are his, and both are backed by measurement:
+        --   * background >=4R rate in ANY gap band is ~1.5% (6-7%: 5/290 = 1.7%; 5-6%: 6/490
+        --     = 1.2%), so a lower bar fires on noise;
+        --   * the 8-9% band loses -0.24R per settled name, so at 4R a winner you need about
+        --     1 in 17 (6%) merely to BREAK EVEN on admitting it.
+        -- 5% is four times background and just under break-even, so the review fires BEFORE
+        -- the band is worth admitting rather than after. n>=100 keeps one lucky name from
+        -- tripping it (1 of 20 is 5% and means nothing).
+        SELECT CASE WHEN COUNT(*) FILTER (WHERE outcome <> 'unscoreable') >= 100
+                     AND 20 * COUNT(*) FILTER (WHERE reached_4r) >=
+                         COUNT(*) FILTER (WHERE outcome <> 'unscoreable')
+                    THEN 1 ELSE 0 END
+        FROM mi_gap_near_miss_replays
       ) END;
-    threshold: 30
+    threshold: 1          # the predicate returns 1/0 (ready / not ready), not a row count
     # Reads ONE table (mi_gap_near_miss_replays). Every row is 7-9%-open-gap-band-framed by
     # construction (gap_near_miss_replay.py SCOPE) — gap_band and admission_era are the two
     # dimensions a later read must segment on (a name in 7-8% is not the same question as one
