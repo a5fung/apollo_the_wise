@@ -1,0 +1,345 @@
+#545 PHASE 2 — MISSED-EP TAIL READ — offline reader output (generated 2026-09-02 20:59 local)
+capture 1: _545p2_out.txt · campaigns: campaigns_era_c.tsv (270 rows) · ladder: _ladder_missed.tsv (526 rows) · capture 2: PRESENT
+UNITS: every ret_* here is a FRACTION printed as %; tail bar = ret_20d >= 0.20; max_high_* is MFE, never a return.
+
+====================================================================================================
+§A  PASS BAR — the traded cohort's own share on the daily-grain proxy ((close_d20 − open_d0)/open_d0 ≥ +20%)
+====================================================================================================
+
+26 closed LIVE trades (real money, first attempts): n=26 mature=15 tail>=+20%=2 (13.3%) losers(<0)=10 losers-per-tail=5.0 median=-8.1% best=+26.6%
+   same rows, ret_5d proxy: n=26 mature=24 tail>=+20%=3 (12.5%) losers(<0)=15 losers-per-tail=5.0 median=-2.9% best=+27.9%
+   realized R (total_pnl / COALESCE(risk_actual, risk)): settled n=26 sum=-7.8R mean=-0.30R median=-0.74R best=+3.31R worst=-1.18R >=2R=2 >=4R=0 losers(<0)=21
+   CONVERSION — proxy tail vs what the bracket realized on the same name:
+      SMCI   2026-07-22  proxy ret_20d  +26.6%  ret_5d  -11.0%  realized -0.68R
+      PLTR   2026-08-04  proxy ret_20d  +24.0%  ret_5d  +20.5%  realized +3.31R
+   → of 2 proxy-tail names, the bracket realized ≥4R on 0 and ≥2R on 1.
+
+closed PAPER trades (first attempts): n=20 mature=20 tail>=+20%=2 (10.0%) losers(<0)=10 losers-per-tail=5.0 median=-0.2% best=+45.8%
+   same rows, ret_5d proxy: n=20 mature=20 tail>=+20%=2 (10.0%) losers(<0)=11 losers-per-tail=5.5 median=-3.8% best=+21.2%
+   realized R (total_pnl / COALESCE(risk_actual, risk)): settled n=20 sum=-9.1R mean=-0.45R median=-0.51R best=+2.52R worst=-5.02R >=2R=1 >=4R=0 losers(<0)=14
+   CONVERSION — proxy tail vs what the bracket realized on the same name:
+      INTC   2026-04-24  proxy ret_20d  +45.8%  ret_5d  +21.2%  realized -0.48R
+      NRIX   2026-06-08  proxy ret_20d  +45.4%  ret_5d   +1.9%  realized -1.20R
+   → of 2 proxy-tail names, the bracket realized ≥4R on 0 and ≥2R on 0.
+
+270 ADMITTED ALERTS (mi_ep_alerts live-source, 05-11 → 08-31) on the same proxy, by stored tier:
+   HIGH      n=193 mature=130 tail>=+20%=18 (13.8%) losers(<0)=73 losers-per-tail=4.1 median=-2.7% best=+94.0%
+   MODERATE  n=66 mature=46 tail>=+20%=6 (13.0%) losers(<0)=27 losers-per-tail=4.5 median=-4.9% best=+88.6%
+   none      n=11 mature=6 tail>=+20%=0 (0.0%) losers(<0)=5 losers-per-tail=inf median=-16.7% best=+14.7%
+   ALL       n=270 mature=182 tail>=+20%=24 (13.2%) losers(<0)=105 losers-per-tail=4.4 median=-3.9% best=+94.0%
+   ALL, gapped at the open (≥9% over the prior close, the #595 rule) — the like-for-like comparator:
+   GAPPED    n=199 mature=131 tail>=+20%=14 (10.7%) losers(<0)=80 losers-per-tail=5.7 median=-3.9% best=+78.0%   [not gapped: 71, no prior bar: 0]
+   by month (HIGH+MODERATE):
+      2026-05  n=74 mature=74 tail>=+20%=11 (14.9%) losers(<0)=35 losers-per-tail=3.2 median=+0.5% best=+94.0%
+      2026-06  n=53 mature=53 tail>=+20%=5 (9.4%) losers(<0)=37 losers-per-tail=7.4 median=-8.1% best=+88.6%
+      2026-07  n=42 mature=42 tail>=+20%=6 (14.3%) losers(<0)=23 losers-per-tail=3.8 median=-1.3% best=+59.5%
+      2026-08  n=101 mature=13 tail>=+20%=2 (15.4%) losers(<0)=10 losers-per-tail=5.0 median=-5.5% best=+28.1%
+
+====================================================================================================
+§B  LIVE-BRACKET HALF — every skipped ALERT walked through the CURRENT day-1 bracket (era_c: entry ORB high,
+    stop entry−2R at half size, +2R partial, breakeven, SMA trail). Source: campaigns_era_c.tsv (validate PASS 09-02).
+====================================================================================================
+bucket labels from: capture 2 ALERT_LEVEL_ROWS (to 09-01); the 9 MAGNA53 stop_too_wide names from stop_too_wide_cohort.py
+LIVE PARTIAL PATH variant (ladder partial stood down, as live does): 14 of 267 campaigns differ from the harness path in status or R.
+
+[moderate_tier]  campaigns=66  status={'settled': 26, 'abstain': 6, 'no_entry': 5, 'no_trade': 29}  era_c re-admission={'abstain_float_band_straddles_bar': 13, 'reject': 39, 'admit': 14}
+   daily proxy on these names: n=66 mature=46 tail>=+20%=6 (13.0%) losers(<0)=27 losers-per-tail=4.5 median=-4.9% best=+88.6%
+   …gapped at the open only:   n=48 mature=31 tail>=+20%=4 (12.9%) losers(<0)=18 losers-per-tail=4.5 median=-4.1% best=+78.0%
+   bracket (harness path):      settled n=26 sum=+5.8R mean=+0.22R median=+0.33R best=+2.96R worst=-1.27R >=2R=2 >=4R=0 losers(<0)=9
+   bracket (LIVE partial path): settled n=26 sum=+4.1R mean=+0.16R median=+0.33R best=+2.96R worst=-1.27R >=2R=2 >=4R=0 losers(<0)=9  status={'settled': 26, 'abstain': 6, 'no_entry': 5, 'no_trade': 29}
+   entered=28 partial_fired=20 final={'stop_hit': 22, 'sma_trail_stop': 4}
+   proxy-tail names and what the bracket did with each:
+      HQ     2026-06-15  proxy  +88.6%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      ABVX   2026-06-03  proxy  +78.0%  status=settled         R +2.11  partial  final=sma_trail_stop  | live path: settled R +2.11
+      EFOR   2026-07-22  proxy  +59.5%  status=abstain         reason=no_930_bar_for_orb  final=-  | live path: abstain 
+      BHVN   2026-05-29  proxy  +39.7%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      KSS    2026-05-28  proxy  +24.2%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      KC     2026-07-08  proxy  +20.2%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+
+[high_unentered]  campaigns=46  status={'no_entry': 10, 'settled': 6, 'abstain': 24, 'no_trade': 6}  era_c re-admission={'reject': 10, 'admit': 31, 'abstain_float_band_straddles_bar': 5}
+   daily proxy on these names: n=46 mature=41 tail>=+20%=7 (17.1%) losers(<0)=26 losers-per-tail=3.7 median=-4.5% best=+94.0%
+   …gapped at the open only:   n=36 mature=31 tail>=+20%=3 (9.7%) losers(<0)=21 losers-per-tail=7.0 median=-5.0% best=+31.7%
+   bracket (harness path):      settled n=6 sum=+3.4R mean=+0.57R median=+0.31R best=+2.98R worst=-1.00R >=2R=1 >=4R=0 losers(<0)=1
+   bracket (LIVE partial path): settled n=6 sum=+3.4R mean=+0.57R median=+0.31R best=+2.98R worst=-1.00R >=2R=1 >=4R=0 losers(<0)=1  status={'no_entry': 10, 'settled': 6, 'abstain': 24, 'no_trade': 6}
+   entered=6 partial_fired=5 final={'stop_hit': 6}
+   proxy-tail names and what the bracket did with each:
+      ARM    2026-05-20  proxy  +94.0%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      ALAB   2026-05-20  proxy  +65.9%  status=abstain         reason=no_930_bar_for_orb  final=-  | live path: abstain 
+      AEHR   2026-07-15  proxy  +31.7%  status=abstain         reason=entry_window_gaps:29_of_29  final=-  | live path: abstain 
+      GH     2026-05-20  proxy  +30.7%  status=abstain         reason=no_930_bar_for_orb  final=-  | live path: abstain 
+      LIFE   2026-08-04  proxy  +28.1%  status=no_entry        reason=never_crossed_orb_high  final=-  | live path: no_entry 
+      TATT   2026-05-20  proxy  +23.2%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      DYN    2026-05-20  proxy  +22.4%  status=abstain         reason=no_930_bar_for_orb  final=-  | live path: abstain 
+
+[window_missed]  campaigns=40  status={'no_trade': 39, 'abstain': 1}  era_c re-admission={'abstain_float_band_straddles_bar': 13, 'admit': 15, 'reject': 12}
+   daily proxy on these names: n=40 mature=22 tail>=+20%=3 (13.6%) losers(<0)=7 losers-per-tail=2.3 median=+7.2% best=+53.9%
+   …gapped at the open only:   n=22 mature=11 tail>=+20%=0 (0.0%) losers(<0)=4 losers-per-tail=inf median=+2.6% best=+17.9%
+   bracket (harness path):      no settled R
+   bracket (LIVE partial path): no settled R  status={'no_trade': 39, 'abstain': 1}
+   entered=0 partial_fired=0 final={}
+   proxy-tail names and what the bracket did with each:
+      ALOY   2026-06-01  proxy  +53.9%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      PGY    2026-06-04  proxy  +30.3%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+      IREN   2026-07-20  proxy  +23.4%  status=no_trade        reason=window_out_of_orb  final=-  | live path: no_trade 
+
+[TRADED live (control)]  campaigns=26  status={'settled': 26}  era_c re-admission={'admit': 25, 'reject': 1}
+   daily proxy on these names: n=26 mature=15 tail>=+20%=2 (13.3%) losers(<0)=10 losers-per-tail=5.0 median=-8.1% best=+26.6%
+   …gapped at the open only:   n=24 mature=13 tail>=+20%=2 (15.4%) losers(<0)=9 losers-per-tail=4.5 median=-8.1% best=+26.6%
+   bracket (harness path):      settled n=26 sum=-5.4R mean=-0.21R median=-1.00R best=+1.69R worst=-1.00R >=2R=0 >=4R=0 losers(<0)=14
+   bracket (LIVE partial path): settled n=26 sum=-5.2R mean=-0.20R median=-1.00R best=+1.69R worst=-1.00R >=2R=0 >=4R=0 losers(<0)=14  status={'settled': 26}
+   entered=26 partial_fired=12 final={'stop_hit': 26}
+   proxy-tail names and what the bracket did with each:
+      SMCI   2026-07-22  proxy  +26.6%  status=settled         R +0.33  partial  final=stop_hit  | live path: settled R +0.33
+      PLTR   2026-08-04  proxy  +24.0%  status=settled         R +1.69  partial  final=stop_hit  | live path: settled R +1.69
+
+[TRADED paper (control)]  campaigns=18  status={'settled': 7, 'abstain': 11}  era_c re-admission={'reject': 2, 'admit': 13, 'abstain_float_band_straddles_bar': 3}
+   daily proxy on these names: n=18 mature=18 tail>=+20%=1 (5.6%) losers(<0)=10 losers-per-tail=10.0 median=-1.7% best=+45.4%
+   …gapped at the open only:   n=16 mature=16 tail>=+20%=1 (6.2%) losers(<0)=10 losers-per-tail=10.0 median=-5.0% best=+45.4%
+   bracket (harness path):      settled n=7 sum=-1.5R mean=-0.21R median=-0.53R best=+1.71R worst=-1.00R >=2R=0 >=4R=0 losers(<0)=4
+   bracket (LIVE partial path): settled n=7 sum=+0.8R mean=+0.11R median=+0.33R best=+1.71R worst=-1.00R >=2R=0 >=4R=0 losers(<0)=3  status={'settled': 7, 'abstain': 11}
+   entered=7 partial_fired=4 final={'stop_hit': 6, 'sma_trail_stop': 1}
+   proxy-tail names and what the bracket did with each:
+      NRIX   2026-06-08  proxy  +45.4%  status=abstain         reason=entry_window_gaps:29_of_29  final=-  | live path: abstain 
+
+[setup_other]  campaigns=16  status={'abstain': 1, 'settled': 9, 'no_entry': 5, 'no_trade': 1}  era_c re-admission={'admit': 15, 'abstain_float_band_straddles_bar': 1}
+   daily proxy on these names: n=16 mature=5 tail>=+20%=0 (0.0%) losers(<0)=4 losers-per-tail=inf median=-3.0% best=+0.4%
+   …gapped at the open only:   n=9 mature=5 tail>=+20%=0 (0.0%) losers(<0)=4 losers-per-tail=inf median=-3.0% best=+0.4%
+   bracket (harness path):      settled n=9 sum=+3.9R mean=+0.43R median=+0.33R best=+2.52R worst=-1.00R >=2R=2 >=4R=0 losers(<0)=2
+   bracket (LIVE partial path): settled n=9 sum=+3.9R mean=+0.43R median=+0.33R best=+2.52R worst=-1.00R >=2R=2 >=4R=0 losers(<0)=2  status={'abstain': 1, 'settled': 9, 'no_entry': 5, 'no_trade': 1}
+   entered=9 partial_fired=7 final={'stop_hit': 8, 'sma_trail_stop': 1}
+
+[infra_skip]  campaigns=14  status={'settled': 11, 'abstain': 1, 'no_entry': 2}  era_c re-admission={'reject': 4, 'admit': 6, 'abstain_float_band_straddles_bar': 4}
+   daily proxy on these names: n=14 mature=10 tail>=+20%=3 (30.0%) losers(<0)=4 losers-per-tail=1.3 median=+8.1% best=+45.6%
+   …gapped at the open only:   n=9 mature=7 tail>=+20%=2 (28.6%) losers(<0)=4 losers-per-tail=2.0 median=-7.2% best=+45.6%
+   bracket (harness path):      settled n=11 sum=+5.6R mean=+0.51R median=-1.00R best=+9.32R worst=-1.00R >=2R=1 >=4R=1 losers(<0)=6
+   bracket (LIVE partial path): settled n=11 sum=+5.7R mean=+0.52R median=-1.00R best=+9.32R worst=-1.00R >=2R=1 >=4R=1 losers(<0)=6  status={'settled': 11, 'abstain': 1, 'no_entry': 2}
+   entered=12 partial_fired=5 final={'stop_hit': 11}
+   proxy-tail names and what the bracket did with each:
+      VPG    2026-05-12  proxy  +45.6%  status=settled         R +0.33  partial  final=stop_hit  | live path: settled R +0.33
+      AMBQ   2026-05-12  proxy  +41.4%  status=settled         R +9.32  partial  final=stop_hit  | live path: settled R +9.32
+      SIBN   2026-05-12  proxy  +21.7%  status=settled         R +0.60  partial  final=stop_hit  | live path: settled R +0.75
+
+[breaker_blocked]  campaigns=12  status={'no_entry': 4, 'settled': 7, 'no_trade': 1}  era_c re-admission={'admit': 8, 'reject': 1, 'abstain_float_band_straddles_bar': 3}
+   daily proxy on these names: n=12 mature=7 tail>=+20%=1 (14.3%) losers(<0)=6 losers-per-tail=6.0 median=-13.9% best=+31.2%
+   …gapped at the open only:   n=11 mature=6 tail>=+20%=1 (16.7%) losers(<0)=5 losers-per-tail=5.0 median=-11.4% best=+31.2%
+   bracket (harness path):      settled n=7 sum=-3.2R mean=-0.45R median=-1.00R best=+0.33R worst=-1.01R >=2R=0 >=4R=0 losers(<0)=4
+   bracket (LIVE partial path): settled n=7 sum=-3.7R mean=-0.53R median=-1.00R best=+0.33R worst=-1.01R >=2R=0 >=4R=0 losers(<0)=5  status={'no_entry': 4, 'settled': 7, 'no_trade': 1}
+   entered=7 partial_fired=3 final={'stop_hit': 7}
+   proxy-tail names and what the bracket did with each:
+      FET    2026-07-31  proxy  +31.2%  status=settled         R +0.33  partial  final=stop_hit  | live path: settled R +0.33
+
+[tier none (never a HIGH/MODERATE)]  campaigns=11  status={'no_trade': 9, 'no_entry': 2}  era_c re-admission={'reject': 9, 'admit': 2}
+   daily proxy on these names: n=11 mature=6 tail>=+20%=0 (0.0%) losers(<0)=5 losers-per-tail=inf median=-16.7% best=+14.7%
+   …gapped at the open only:   n=6 mature=2 tail>=+20%=0 (0.0%) losers(<0)=2 losers-per-tail=inf median=-21.3% best=-16.7%
+   bracket (harness path):      no settled R
+   bracket (LIVE partial path): no settled R  status={'no_trade': 9, 'no_entry': 2}
+   entered=0 partial_fired=0 final={}
+
+[cap_blocked]  campaigns=8  status={'no_entry': 3, 'settled': 3, 'abstain': 2}  era_c re-admission={'admit': 7, 'reject': 1}
+   daily proxy on these names: n=8 mature=7 tail>=+20%=1 (14.3%) losers(<0)=4 losers-per-tail=4.0 median=-4.9% best=+28.8%
+   …gapped at the open only:   n=6 mature=5 tail>=+20%=1 (20.0%) losers(<0)=2 losers-per-tail=2.0 median=+4.1% best=+28.8%
+   bracket (harness path):      settled n=3 sum=+1.6R mean=+0.53R median=+0.48R best=+0.77R worst=+0.33R >=2R=0 >=4R=0 losers(<0)=0
+   bracket (LIVE partial path): settled n=3 sum=+1.8R mean=+0.61R median=+0.72R best=+0.77R worst=+0.33R >=2R=0 >=4R=0 losers(<0)=0  status={'no_entry': 3, 'settled': 3, 'abstain': 2}
+   entered=4 partial_fired=3 final={'stop_hit': 3}
+   proxy-tail names and what the bracket did with each:
+      STUB   2026-05-14  proxy  +28.8%  status=settled         R +0.48  partial  final=stop_hit  | live path: settled R +0.72
+
+[stop_too_wide]  campaigns=8  status={'no_entry': 4, 'settled': 4}  era_c re-admission={'abstain_float_band_straddles_bar': 2, 'reject': 2, 'admit': 4}
+   daily proxy on these names: n=8 mature=4 tail>=+20%=0 (0.0%) losers(<0)=1 losers-per-tail=inf median=+4.8% best=+5.3%
+   …gapped at the open only:   n=8 mature=4 tail>=+20%=0 (0.0%) losers(<0)=1 losers-per-tail=inf median=+4.8% best=+5.3%
+   bracket (harness path):      settled n=4 sum=+1.2R mean=+0.30R median=+0.12R best=+1.28R worst=-0.33R >=2R=0 >=4R=0 losers(<0)=1
+   bracket (LIVE partial path): settled n=4 sum=+0.5R mean=+0.12R median=-0.18R best=+1.43R worst=-0.59R >=2R=0 >=4R=0 losers(<0)=3  status={'no_entry': 4, 'settled': 4}
+   entered=4 partial_fired=4 final={'stop_hit': 3, 'sma_trail_stop': 1}
+
+[HIGH in no skip bucket (paper-EOD-sim or open live — NOT missed; label check via capture 2)]  campaigns=2  status={'open_at_horizon': 2}  era_c re-admission={'admit': 2}
+   daily proxy on these names: n=2 ret_20d: none mature
+   …gapped at the open only:   n=2 ret_20d: none mature
+   bracket (harness path):      no settled R
+   bracket (LIVE partial path): no settled R  status={'open_at_horizon': 2}
+   entered=2 partial_fired=2 final={}
+
+----------------------------------------------------------------------------------------------------
+BRIDGE — every admitted alert that (a) gapped ≥9% at the open and (b) reached ≥+20% at 20 sessions, with the
+bracket's outcome. This is the conversion rate from 'proxy tail' to realized R that every bucket share must be read through.
+----------------------------------------------------------------------------------------------------
+   ABVX   2026-06-03 MODERATE proxy  +78.0%  settled         R +2.11  [moderate_tier]
+   EFOR   2026-07-22 MODERATE proxy  +59.5%  abstain         no_930_bar_for_orb  [moderate_tier]
+   VPG    2026-05-12 HIGH     proxy  +45.6%  settled         R +0.33  [infra_skip]
+   NRIX   2026-06-08 HIGH     proxy  +45.4%  abstain         entry_window_gaps:29_of_29  [TRADED paper (control)]
+   AMBQ   2026-05-12 HIGH     proxy  +41.4%  settled         R +9.32  [infra_skip]
+   AEHR   2026-07-15 HIGH     proxy  +31.7%  abstain         entry_window_gaps:29_of_29  [high_unentered]
+   FET    2026-07-31 HIGH     proxy  +31.2%  settled         R +0.33  [breaker_blocked]
+   STUB   2026-05-14 HIGH     proxy  +28.8%  settled         R +0.48  [cap_blocked]
+   LIFE   2026-08-04 HIGH     proxy  +28.1%  no_entry        never_crossed_orb_high  [high_unentered]
+   SMCI   2026-07-22 HIGH     proxy  +26.6%  settled         R +0.33  [TRADED live (control)]
+   KSS    2026-05-28 MODERATE proxy  +24.2%  no_trade        window_out_of_orb  [moderate_tier]
+   PLTR   2026-08-04 HIGH     proxy  +24.0%  settled         R +1.69  [TRADED live (control)]
+   TATT   2026-05-20 HIGH     proxy  +23.2%  no_trade        window_out_of_orb  [high_unentered]
+   KC     2026-07-08 MODERATE proxy  +20.2%  no_trade        window_out_of_orb  [moderate_tier]
+   → 14 gapped proxy-tail alerts: status {'abstain': 3, 'no_trade': 3, 'no_entry': 1, 'settled': 7}; of the settled, ≥4R=1, ≥2R=2, sum=+14.6R; unenterable by rule (window_out_of_orb)=3
+   → same 14 on the LIVE partial path: status {'abstain': 3, 'no_trade': 3, 'no_entry': 1, 'settled': 7}; settled ≥4R=1, ≥2R=2, sum=+14.8R
+      ABVX   harness settled   +2.11R   live path settled         +2.11R sma_trail_stop
+      VPG    harness settled   +0.33R   live path settled         +0.33R stop_hit
+      AMBQ   harness settled   +9.32R   live path settled         +9.32R stop_hit
+      FET    harness settled   +0.33R   live path settled         +0.33R stop_hit
+      STUB   harness settled   +0.48R   live path settled         +0.72R stop_hit
+      SMCI   harness settled   +0.33R   live path settled         +0.33R stop_hit
+      PLTR   harness settled   +1.69R   live path settled         +1.69R stop_hit
+
+====================================================================================================
+§C  LEG PRINT — stop_too_wide names re-walked with walk_campaign (era_c) so the number is checkable
+====================================================================================================
+
+STRL 2026-05-05: not in the 270-alert capture (pre 05-11) — no minute bars, not walked
+
+EVER 2026-05-05: not in the 270-alert capture (pre 05-11) — no minute bars, not walked
+
+AIP 2026-05-13 [HARNESS path (ladder partial on)]: status=no_entry reason=never_crossed_orb_high entered=False entry=None stop=29.32 target=None realized=NoneR | daily proxy ret_5d=-1.4% ret_20d=+5.3% MFE20=+10.0%
+
+GO 2026-05-14 [HARNESS path (ladder partial on)]: status=no_entry reason=never_crossed_orb_high entered=False entry=None stop=8.020000000000001 target=None realized=NoneR | daily proxy ret_5d=-12.1% ret_20d=+5.2% MFE20=+7.5%
+
+PONY 2026-05-26 [HARNESS path (ladder partial on)]: status=no_entry reason=never_crossed_orb_high entered=False entry=None stop=8.979999999999999 target=None realized=NoneR | daily proxy ret_5d=+5.1% ret_20d=-30.0% MFE20=+9.5%
+
+CORT 2026-07-30 [HARNESS path (ladder partial on)]: status=settled reason=None entered=True entry=112.0 stop=97.5 target=126.5 realized=+0.02R | daily proxy ret_5d=-3.6% ret_20d=+4.4% MFE20=+12.8%
+      partial_profit  2026-08-03T16:00 px=112.8000 shares=0.0230 pnl=+0.0184
+      stop_hit        2026-08-04T16:00 px=112.0000 shares=0.0460 pnl=+0.0000
+
+CORT 2026-07-30 [LIVE partial path (ladder stood down)]: status=settled reason=None entered=True entry=112.0 stop=97.5 target=126.5 realized=-0.10R | daily proxy ret_5d=-3.6% ret_20d=+4.4% MFE20=+12.8%
+      sma_trail_stop  2026-08-13T16:00 px=110.5100 shares=0.0690 pnl=-0.1028
+
+AEVA 2026-08-06 [HARNESS path (ladder partial on)]: status=settled reason=None entered=True entry=26.09 stop=19.930000000000003 target=32.25 realized=-0.33R | daily proxy ret_5d=-13.1% ret_20d=n/a MFE20=+10.2%
+      partial_profit  2026-08-11T16:00 px=24.0600 shares=0.0541 pnl=-0.1098
+      sma_trail_stop  2026-08-11T16:00 px=24.0600 shares=0.1082 pnl=-0.2197
+
+AEVA 2026-08-06 [LIVE partial path (ladder stood down)]: status=settled reason=None entered=True entry=26.09 stop=19.930000000000003 target=32.25 realized=-0.59R | daily proxy ret_5d=-13.1% ret_20d=n/a MFE20=+10.2%
+      stop_hit        2026-08-18T16:00 px=22.4600 shares=0.1623 pnl=-0.5893
+
+ATRO 2026-08-12 [HARNESS path (ladder partial on)]: status=settled reason=None entered=True entry=85.25 stop=73.75 target=96.75 realized=+0.23R | daily proxy ret_5d=-3.0% ret_20d=n/a MFE20=+12.2%
+      partial_profit  2026-08-17T16:00 px=93.0500 shares=0.0290 pnl=+0.2261
+      stop_hit        2026-08-18T16:00 px=85.2500 shares=0.0580 pnl=+0.0000
+
+ATRO 2026-08-12 [LIVE partial path (ladder stood down)]: status=settled reason=None entered=True entry=85.25 stop=73.75 target=96.75 realized=-0.26R | daily proxy ret_5d=-3.0% ret_20d=n/a MFE20=+12.2%
+      stop_hit        2026-08-19T16:00 px=82.2110 shares=0.0870 pnl=-0.2643
+
+HTFL 2026-08-14 [HARNESS path (ladder partial on)]: status=settled reason=None entered=True entry=39.06 stop=33.959999999999994 target=44.16000000000001 realized=+1.28R | daily proxy ret_5d=+27.4% ret_20d=n/a MFE20=+31.1%
+      partial_profit  2026-08-17T16:00 px=41.9400 shares=0.0654 pnl=+0.1882
+      stop_hit        2026-08-31T16:00 px=47.4160 shares=0.1307 pnl=+1.0923
+
+HTFL 2026-08-14 [LIVE partial path (ladder stood down)]: status=settled reason=None entered=True entry=39.06 stop=33.959999999999994 target=44.16000000000001 realized=+1.43R | daily proxy ret_5d=+27.4% ret_20d=n/a MFE20=+31.1%
+      partial_profit  2026-08-18       px=44.1600 shares=0.0654 pnl=+0.3333
+      stop_hit        2026-08-31T16:00 px=47.4160 shares=0.1307 pnl=+1.0923
+
+HTFL on the LIVE partial path (hand walk): +2R target 44.16 first reached 2026-08-18 (high 45.33); 1/3 at 44.16, 2/3 at the same trail exit 47.416 on 08-31 → +7.271 per share / 5.10 risk = +1.43R  (harness: +1.28R; either way < 2R, and the ORB-range R of the recorder would read ×2 = +2.85R on the ORB unit)
+
+====================================================================================================
+§D  CAPTURE 2 — per bucket: pooled vs CURRENT-SCAN population (drop pre-04-20 rows and non-common-stock)
+====================================================================================================
+
+Per bucket — POOLED (all gapped rows) vs CURRENT-SCAN (alert_date ≥ 04-20 AND security type CS/ADRC or CS_by_sector):
+bucket               pop          n   n20  tail20  share lose/tail    n5  tail5  share5  day0red  sess per-sess
+outside_top20        pooled     213   177      34  19.2%       2.6   213     18    8.5%      101    27     7.89
+outside_top20        current    182   147      23  15.6%       3.5   182     11    6.0%       85    21     8.67
+score_below_50       pooled     177   119      17  14.3%       3.6   171     14    8.2%       83    65     2.72
+score_below_50       current    176   118      16  13.6%       3.9   170     14    8.2%       83    64     2.75
+duplicate_scan       pooled     152    96      18  18.8%       3.1   151     17   11.3%       69    52     2.92
+duplicate_scan       current    152    96      18  18.8%       3.1   151     17   11.3%       69    52     2.92
+d1_universe_floor    pooled     144     0       0      -       inf    60      5    8.3%       95     8    18.00
+d1_universe_floor    current    144     0       0      -       inf    60      5    8.3%       95     8    18.00
+session_rvol_low     pooled     140   130      29  22.3%       2.6   140     15   10.7%       89    49     2.86
+session_rvol_low     current     90    80       8  10.0%       7.1    90      3    3.3%       63    41     2.20
+mcap_low             pooled     101    63      13  20.6%       2.8    96     14   14.6%       48    60     1.68
+mcap_low             current    100    62      12  19.4%       3.1    95     14   14.7%       48    59     1.69
+extension_gate       pooled      92    66       6   9.1%       9.2    89     12   13.5%       53    58     1.59
+extension_gate       current     86    61       6   9.8%       8.3    83     12   14.5%       49    55     1.56
+adv_low              pooled      91    61      12  19.7%       2.9    87     12   13.8%       51    62     1.47
+adv_low              current     86    56      11  19.6%       2.8    82     11   13.4%       48    58     1.48
+moderate_tier        pooled      48    25       4  16.0%       3.8    48      3    6.2%       14    26     1.85
+moderate_tier        current     48    25       4  16.0%       3.8    48      3    6.2%       14    26     1.85
+cooldown             pooled      48    35       4  11.4%       6.8    48      3    6.2%       22    37     1.30
+cooldown             current     45    32       4  12.5%       6.0    45      3    6.7%       20    34     1.32
+atr_high             pooled      48    38       7  18.4%       4.1    45      8   17.8%       26    36     1.33
+atr_high             current     48    38       7  18.4%       4.1    45      8   17.8%       26    36     1.33
+ma_filter            pooled      45    34       1   2.9%      14.0    45      3    6.7%       21    33     1.36
+ma_filter            current     45    34       1   2.9%      14.0    45      3    6.7%       21    33     1.36
+high_unentered       pooled      36    31       3   9.7%       7.0    36      4   11.1%       23    27     1.33
+high_unentered       current     36    31       3   9.7%       7.0    36      4   11.1%       23    27     1.33
+window_missed        pooled      22     9       0   0.0%       inf    21      4   19.0%        6    14     1.57
+window_missed        current     22     9       0   0.0%       inf    21      4   19.0%        6    14     1.57
+pm_rvol_low          pooled      18    17       2  11.8%       6.0    18      2   11.1%       10    15     1.20
+pm_rvol_low          current     16    15       0   0.0%       inf    16      1    6.2%        9    13     1.23
+catalyst_downgrade   pooled      15    10       2  20.0%       2.5    15      2   13.3%       10    13     1.15
+catalyst_downgrade   current     15    10       2  20.0%       2.5    15      2   13.3%       10    13     1.15
+breaker_blocked      pooled      11    11       1   9.1%      10.0    11      1    9.1%        9     3     3.67
+breaker_blocked      current     11    11       1   9.1%      10.0    11      1    9.1%        9     3     3.67
+setup_other          pooled       9     5       0   0.0%       inf     9      1   11.1%        4     7     1.29
+setup_other          current      9     5       0   0.0%       inf     9      1   11.1%        4     7     1.29
+infra_skip           pooled       9     7       2  28.6%       2.0     9      1   11.1%        4     2     4.50
+infra_skip           current      9     7       2  28.6%       2.0     9      1   11.1%        4     2     4.50
+stop_too_wide        pooled       8     4       0   0.0%       inf     8      1   12.5%        4     8     1.00
+stop_too_wide        current      8     4       0   0.0%       inf     8      1   12.5%        4     8     1.00
+cap_blocked          pooled       6     5       1  20.0%       2.0     6      0    0.0%        2     3     2.00
+cap_blocked          current      6     5       1  20.0%       2.0     6      0    0.0%        2     3     2.00
+below_gap_floor      pooled       5     0       0      -       inf     0      0       -        4     3     1.67
+below_gap_floor      current      5     0       0      -       inf     0      0       -        4     3     1.67
+
+Per bucket × month, CURRENT-SCAN population only (ret_20d tail | ret_5d tail):
+   outside_top20        2026-04: n=7 20d 1/7 · 5d 1/7 | 2026-05: n=83 20d 12/76 · 5d 4/83 | 2026-06: n=9 20d 0/9 · 5d 0/9 | 2026-07: n=44 20d 10/44 · 5d 4/44 | 2026-08: n=39 20d 0/11 · 5d 2/39
+   score_below_50       2026-04: n=12 20d 4/12 · 5d 2/12 | 2026-05: n=52 20d 8/36 · 5d 3/52 | 2026-06: n=18 20d 0/17 · 5d 1/18 | 2026-07: n=32 20d 3/32 · 5d 2/32 | 2026-08: n=61 20d 1/21 · 5d 6/56 | 2026-09: n=1 20d 0/0 · 5d 0/0
+   duplicate_scan       2026-05: n=57 20d 12/45 · 5d 8/57 | 2026-06: n=27 20d 1/26 · 5d 3/27 | 2026-07: n=14 20d 4/14 · 5d 1/14 | 2026-08: n=54 20d 1/11 · 5d 5/53
+   d1_universe_floor    2026-08: n=114 20d 0/0 · 5d 5/60 | 2026-09: n=30 20d 0/0 · 5d 0/0
+   session_rvol_low     2026-04: n=34 20d 5/34 · 5d 2/34 | 2026-05: n=18 20d 2/17 · 5d 0/18 | 2026-06: n=19 20d 0/17 · 5d 0/19 | 2026-07: n=10 20d 1/10 · 5d 1/10 | 2026-08: n=9 20d 0/2 · 5d 0/9
+   mcap_low             2026-04: n=10 20d 2/10 · 5d 1/10 | 2026-05: n=29 20d 5/23 · 5d 5/29 | 2026-06: n=16 20d 3/13 · 5d 4/16 | 2026-07: n=16 20d 2/15 · 5d 0/15 | 2026-08: n=28 20d 0/1 · 5d 4/25 | 2026-09: n=1 20d 0/0 · 5d 0/0
+   extension_gate       2026-04: n=14 20d 4/14 · 5d 3/14 | 2026-05: n=23 20d 1/18 · 5d 5/23 | 2026-06: n=14 20d 1/8 · 5d 1/14 | 2026-07: n=18 20d 0/17 · 5d 2/17 | 2026-08: n=17 20d 0/4 · 5d 1/15
+   adv_low              2026-04: n=4 20d 1/4 · 5d 1/4 | 2026-05: n=18 20d 5/15 · 5d 2/18 | 2026-06: n=32 20d 2/22 · 5d 2/30 | 2026-07: n=16 20d 3/15 · 5d 4/16 | 2026-08: n=14 20d 0/0 · 5d 2/14 | 2026-09: n=2 20d 0/0 · 5d 0/0
+   moderate_tier        2026-05: n=16 20d 1/10 · 5d 2/16 | 2026-06: n=11 20d 1/10 · 5d 1/11 | 2026-07: n=3 20d 2/3 · 5d 0/3 | 2026-08: n=18 20d 0/2 · 5d 0/18
+   cooldown             2026-05: n=14 20d 2/9 · 5d 3/14 | 2026-06: n=18 20d 0/16 · 5d 0/18 | 2026-07: n=5 20d 2/5 · 5d 0/5 | 2026-08: n=8 20d 0/2 · 5d 0/8
+   atr_high             2026-04: n=3 20d 0/3 · 5d 0/3 | 2026-05: n=9 20d 2/9 · 5d 2/9 | 2026-06: n=12 20d 2/10 · 5d 1/12 | 2026-07: n=16 20d 3/15 · 5d 4/15 | 2026-08: n=7 20d 0/1 · 5d 1/6 | 2026-09: n=1 20d 0/0 · 5d 0/0
+   ma_filter            2026-04: n=5 20d 1/5 · 5d 1/5 | 2026-05: n=14 20d 0/9 · 5d 2/14 | 2026-06: n=10 20d 0/10 · 5d 0/10 | 2026-07: n=7 20d 0/7 · 5d 0/7 | 2026-08: n=9 20d 0/3 · 5d 0/9
+   high_unentered       2026-05: n=10 20d 1/10 · 5d 1/10 | 2026-06: n=14 20d 0/14 · 5d 2/14 | 2026-07: n=5 20d 1/5 · 5d 0/5 | 2026-08: n=7 20d 1/2 · 5d 1/7
+   window_missed        2026-05: n=7 20d 0/6 · 5d 1/7 | 2026-06: n=1 20d 0/0 · 5d 0/1 | 2026-07: n=1 20d 0/1 · 5d 0/1 | 2026-08: n=13 20d 0/2 · 5d 3/12
+   pm_rvol_low          2026-04: n=2 20d 0/2 · 5d 0/2 | 2026-05: n=9 20d 0/8 · 5d 0/9 | 2026-06: n=1 20d 0/1 · 5d 0/1 | 2026-07: n=2 20d 0/2 · 5d 0/2 | 2026-08: n=2 20d 0/2 · 5d 1/2
+   catalyst_downgrade   2026-04: n=2 20d 1/2 · 5d 0/2 | 2026-05: n=3 20d 1/1 · 5d 1/3 | 2026-06: n=2 20d 0/1 · 5d 0/2 | 2026-07: n=6 20d 0/6 · 5d 0/6 | 2026-08: n=2 20d 0/0 · 5d 1/2
+   breaker_blocked      2026-07: n=6 20d 1/6 · 5d 1/6 | 2026-08: n=5 20d 0/5 · 5d 0/5
+   setup_other          2026-06: n=1 20d 0/1 · 5d 0/1 | 2026-07: n=3 20d 0/3 · 5d 0/3 | 2026-08: n=5 20d 0/1 · 5d 1/5
+   infra_skip           2026-05: n=7 20d 2/7 · 5d 1/7 | 2026-08: n=2 20d 0/0 · 5d 0/2
+   stop_too_wide        2026-05: n=3 20d 0/3 · 5d 0/3 | 2026-07: n=1 20d 0/1 · 5d 0/1 | 2026-08: n=4 20d 0/0 · 5d 1/4
+   cap_blocked          2026-05: n=3 20d 1/3 · 5d 0/3 | 2026-08: n=3 20d 0/2 · 5d 0/3
+   below_gap_floor      2026-08: n=2 20d 0/0 · 5d 0/0 | 2026-09: n=3 20d 0/0 · 5d 0/0
+
+Security-type classification of the TAIL rows (≥+20% at 5 or 20 sessions), per bucket:
+   outside_top20        n= 42 {('CS', 'pre-04-20'): 3, ('nonCS', 'pre-04-20'): 12, ('CS', 'post'): 27}
+   score_below_50       n= 27 {('nonCS', 'post'): 1, ('CS', 'post'): 26}
+   duplicate_scan       n= 30 {('CS', 'post'): 30}
+   d1_universe_floor    n=  5 {('CS', 'post'): 5}
+   session_rvol_low     n= 34 {('nonCS', 'pre-04-20'): 22, ('CS', 'pre-04-20'): 4, ('CS', 'post'): 8}
+   mcap_low             n= 20 {('CS', 'pre-04-20'): 1, ('CS', 'post'): 19}
+   extension_gate       n= 14 {('CS', 'post'): 14}
+   adv_low              n= 17 {('CS', 'post'): 16, ('nonCS', 'post'): 1}
+   moderate_tier        n=  6 {('CS', 'post'): 6}
+   cooldown             n=  5 {('CS', 'post'): 5}
+   atr_high             n= 12 {('CS', 'post'): 12}
+   ma_filter            n=  3 {('CS', 'post'): 3}
+   high_unentered       n=  6 {('CS', 'post'): 6}
+   window_missed        n=  4 {('CS', 'post'): 4}
+   pm_rvol_low          n=  3 {('nonCS', 'post'): 2, ('CS', 'post'): 1}
+   catalyst_downgrade   n=  4 {('CS', 'post'): 4}
+   breaker_blocked      n=  1 {('CS', 'post'): 1}
+   setup_other          n=  1 {('CS', 'post'): 1}
+   infra_skip           n=  2 {('CS', 'post'): 2}
+   stop_too_wide        n=  1 {('CS', 'post'): 1}
+   cap_blocked          n=  1 {('CS', 'post'): 1}
+
+   tail rows that are non-common-stock OR pre-04-20: 46 of 238 — tickers: AEHR, ALMU, APLX, BE, BEG, BEX, BRUNW, CLSX, CRDO, CRDU, DLLL, GLXU, HODU, HOOG, HOOX, IONL, IONX, IRE, IREG, IREX, KORU, LABX, LUNL, MRVU, MVLL, OKLL, OKLO, OKTG, ORCU, QBTX, QPUX, QSU, ROBN, SILC, SMU, SMUP, UMC, USAX, USGG, XNDU
+
+TRADED_PROXY cross-check (prod LATERAL vs this reader's local replica):
+   SMCI   2026-07-22 live  prod ret_20d=0.2661820699203876 local=0.2661820699203876
+   PLTR   2026-08-04 live  prod ret_20d=0.2395879982086877 local=0.2395879982086877
+   INTC   2026-04-24 paper prod ret_20d=0.4579075425790754 local=0.4579075425790754
+   NRIX   2026-06-08 paper prod ret_20d=0.45351270553064255 local=0.45351270553064255
+
+OVERLAP: 145 gapped ticker-days sit in 2+ buckets — never sum buckets.
+HTFL rows:
+   ticker=HTFL alert_date=2026-08-14 source=high_unentered skip_category=stop_too_wide skip_reason=setup:stop_too_wide: ORB range $2.55 (7.0%) > 1.5x ATR $2.19 ep_score=96 open_gap_pct=0.2595936794582393 setup_at_open=t open_d0=39.06 close_d0=42.08 ret_1d=0.07373271889400909 ret_5d=0.27368151561699944 ret_20d= max_high_5d=0.2923707117255503 max_high_20d=0.3256016385048642
+   ticker=HTFL alert_date=2026-08-14 source=scan_filter skip_category=duplicate_scan skip_reason=already scored earlier today ep_score= open_gap_pct=0.2595936794582393 setup_at_open=t open_d0=39.06 close_d0=42.08 ret_1d=0.07373271889400909 ret_5d=0.27368151561699944 ret_20d= max_high_5d=0.2923707117255503 max_high_20d=0.3256016385048642
+
+written: /Users/alvinfung/apollo_the_wise/scripts/probes/_545p2_read_out.txt
