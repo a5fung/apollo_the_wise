@@ -1,0 +1,476 @@
+population: 267 distinct live-source alert campaigns (270 rows, 3 same-ms duplicate inserts dropped) 2026-05-11 → 2026-08-28; supplementary minute sessions: 3659; horizon 2026-08-31
+
+══ 1. PREREQUISITE 2 — did the 08-16 widening work? the 26 closed live trades re-walked, equal dollar risk per cell (stored ORB, first attempts) ══
+  live rows: 26 (pre-2R 22, era C 4)
+  LIVE as recorded: pre-2R day-0 deaths 16/22, era C 1/4
+  era_matched     pre-2R 22 decidable 19 day-0 deaths 13 (68% of decidable) | n=19  sum   -6.91R  >=4R 0  >=2R 3  P90 +2.01  ex-best  -10.29  mean -0.363  med -1.00  win 21%  losers 15  ADR-units   -2.80 | open 0 mark +0.00R abstain 3 | partials 4 scratch@+0.33 0 | abstain ['MANE', 'HUT', 'FRMI']
+  era_matched     era-C 4   decidable 4  day-0 deaths 1  (25% of decidable) | n=4   sum   -0.35R  >=4R 0  >=2R 0  P90 +1.32  ex-best   -1.66  mean -0.087  med -0.33  win 50%  losers 2   ADR-units   -0.20 | open 0 mark +0.00R abstain 0 | partials 2 scratch@+0.33 1 | abstain []
+    (live recorded R, 26 rows: sum -7.82, pre-2R sum -7.73)
+  orb_low         pre-2R 22 decidable 18 day-0 deaths 13 (72% of decidable) | n=18  sum   -1.91R  >=4R 0  >=2R 3  P90 +2.01  ex-best   -5.29  mean -0.106  med -1.00  win 33%  losers 12  ADR-units   +0.07 | open 0 mark +0.00R abstain 4 | partials 6 scratch@+0.33 0 | abstain ['MANE', 'HUT', 'NVCR', 'FRMI']
+  orb_low         era-C 4   decidable 4  day-0 deaths 3  (75% of decidable) | n=4   sum   -2.33R  >=4R 0  >=2R 0  P90 +0.67  ex-best   -3.00  mean -0.583  med -1.00  win 25%  losers 3   ADR-units   -1.67 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0 | abstain []
+  entry_minus_2r  pre-2R 22 decidable 22 day-0 deaths 12 (55% of decidable) | n=22  sum   -4.81R  >=4R 0  >=2R 0  P90 +1.14  ex-best   -6.51  mean -0.219  med -1.00  win 45%  losers 12  ADR-units   -2.81 | open 0 mark +0.00R abstain 0 | partials 10 scratch@+0.33 6 | abstain []
+  entry_minus_2r  era-C 4   decidable 4  day-0 deaths 1  (25% of decidable) | n=4   sum   -0.35R  >=4R 0  >=2R 0  P90 +1.32  ex-best   -1.66  mean -0.087  med -0.33  win 50%  losers 2   ADR-units   -0.20 | open 0 mark +0.00R abstain 0 | partials 2 scratch@+0.33 1 | abstain []
+  adr_0.5         pre-2R 22 decidable 20 day-0 deaths 13 (65% of decidable) | n=20  sum   +3.17R  >=4R 2  >=2R 3  P90 +2.94  ex-best   -2.22  mean +0.158  med -1.00  win 40%  losers 12  ADR-units   +1.56 | open 0 mark +0.00R abstain 2 | partials 8 scratch@+0.33 0 | abstain ['WDFC', 'WKC']
+  adr_0.5         era-C 4   decidable 4  day-0 deaths 3  (75% of decidable) | n=4   sum   -2.30R  >=4R 0  >=2R 0  P90 +0.70  ex-best   -3.00  mean -0.575  med -1.00  win 25%  losers 3   ADR-units   -1.15 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0 | abstain []
+  adr_0.75        pre-2R 22 decidable 21 day-0 deaths 12 (57% of decidable) | n=21  sum   -0.29R  >=4R 0  >=2R 2  P90 +1.96  ex-best   -3.88  mean -0.014  med -1.00  win 48%  losers 11  ADR-units   -0.25 | open 0 mark +0.00R abstain 1 | partials 10 scratch@+0.33 2 | abstain ['WKC']
+  adr_0.75        era-C 4   decidable 4  day-0 deaths 3  (75% of decidable) | n=4   sum   -2.53R  >=4R 0  >=2R 0  P90 +0.47  ex-best   -3.00  mean -0.633  med -1.00  win 25%  losers 3   ADR-units   -1.90 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0 | abstain []
+  adr_1.0         pre-2R 22 decidable 21 day-0 deaths 12 (57% of decidable) | n=21  sum   -2.97R  >=4R 0  >=2R 2  P90 +1.47  ex-best   -5.66  mean -0.141  med -1.00  win 48%  losers 11  ADR-units   -3.00 | open 0 mark +0.00R abstain 1 | partials 10 scratch@+0.33 0 | abstain ['NVCR']
+  adr_1.0         era-C 4   decidable 4  day-0 deaths 2  (50% of decidable) | n=4   sum   -2.65R  >=4R 0  >=2R 0  P90 +0.35  ex-best   -3.00  mean -0.662  med -1.00  win 25%  losers 3   ADR-units   -2.65 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 1 | abstain []
+  adr_1.25        pre-2R 22 decidable 21 day-0 deaths 8  (38% of decidable) | n=21  sum   -4.57R  >=4R 0  >=2R 1  P90 +1.17  ex-best   -6.73  mean -0.218  med -1.00  win 48%  losers 11  ADR-units   -5.75 | open 0 mark +0.00R abstain 1 | partials 10 scratch@+0.33 0 | abstain ['NVCR']
+  adr_1.25        era-C 4   decidable 4  day-0 deaths 1  (25% of decidable) | n=4   sum   +0.01R  >=4R 0  >=2R 0  P90 +1.59  ex-best   -1.58  mean +0.001  med -0.29  win 50%  losers 2   ADR-units   +0.01 | open 0 mark +0.00R abstain 0 | partials 2 scratch@+0.33 0 | abstain []
+
+  per-name entry-day fate (S = stopped on entry day, P = partial banked, . = survived day 0, a = abstain, - = no fill):
+  ticker/date       era_matched    orb_low        entry_minus_2r adr_0.5        adr_0.75       adr_1.0        adr_1.25       
+  WULF  07-06       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      
+  CRCL  07-10       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      .   -1.00      
+  WDFC  07-10       S   -1.00      S   -1.00      S   -1.00      a    +nan      S   -1.00      S   -1.00      S   -1.00      
+  TSEM  07-14       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      .   -1.00      
+  MANE  07-15       a    +nan      a    +nan      P   +0.33      P   +0.11      P   +0.08      P   +0.06      P   +0.05      
+  HUT   07-20       a    +nan      a    +nan      S   -1.00      P   +0.49      P   +0.32      P   +0.24      P   +0.19      
+  SMCI  07-22       .   -1.00      P   +0.67      P   +0.33      P   +0.74      P   +0.49      P   +0.37      P   +0.30      
+  NVCR  07-23       .   -1.00      a    +nan      P   +0.33      S   -1.00      S   -1.00      a    +nan      a    +nan      
+  THC   07-24       S   -1.00      S   -1.00      P   +1.14      S   -1.00      S   -1.00      S   -1.00      S   -1.00      
+  WKC   07-24       S   -1.00      S   -1.00      S   -1.00      a    +nan      a    +nan      S   -1.00      S   -1.00      
+  QBTS  07-27       .   -1.00      P   +0.67      P   +0.33      P   +0.46      P   +0.31      P   +0.23      P   +0.19      
+  FTNT  07-30       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      
+  BLZE  08-04       S   -1.00      S   -1.00      .   -1.00      S   -1.00      S   -1.00      S   -1.00      .   -1.00      
+  BTDR  08-04       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      .   -1.00      
+  PLTR  08-04       P   +3.39      P   +3.39      P   +1.69      P   +5.39      P   +3.59      P   +2.70      P   +2.16      
+  FIGS  08-07       SP  +0.00      SP  +0.67      SP  +0.33      SP  +0.55      SP  +0.37      SP  +0.28      SP  +0.22      
+  NET   08-07       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      
+  TEAM  08-07       S   -1.00      S   -1.00      P   +0.33      S   -1.00      P   +0.34      P   +0.26      P   +0.21      
+  ABCL  08-10       P   +2.69      P   +2.69      P   +1.35      P   +4.49      P   +2.99      P   +2.24      P   +1.80      
+  BW    08-11       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      
+  FRMI  08-11       a    +nan      a    +nan      S   -1.00      S   -1.00      P   +0.26      P   +0.19      P   +0.15      
+  ETON  08-14       P   +2.01      P   +2.01      P   +1.01      P   +2.94      P   +1.96      P   +1.47      P   +1.17      
+  AMLX  08-18       P   +1.32      S   -1.00      P   +1.32      S   -1.00      S   -1.00      S   -1.00      P   +1.59      
+  MRVL  08-19       S   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      .   -1.00      .   -0.87      
+  CRWD  08-27       P   +0.34      P   +0.67      P   +0.34      P   +0.70      P   +0.47      P   +0.35      P   +0.28      
+  SOLS  08-28       .   -1.00      S   -1.00      .   -1.00      S   -1.00      S   -1.00      S   -1.00      S   -1.00      
+
+══ 2. STOP GRID — 270 alert campaigns, current stack, runner = live ladder ══
+  control (entry−2R, pinned, live ladder): Counter({'settled': 99, 'no_trade': 85, 'abstain': 46, 'no_entry': 35, 'open_at_horizon': 2})
+  no_trade reasons: Counter({'window_out_of_orb': 81, 'setup': 4})
+  abstain reasons: Counter({'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'day0_fill_bar_straddles_stop': 3, 'fwd_stop_and_target_same_day': 1})
+
+  ── target frame: PINNED to entry−orb_low (live) ──
+  orb_low         all           n=92  sum   +4.09R  >=4R 4  >=2R 10 P90 +2.01  ex-best   -1.86  mean +0.044  med -1.00  win 38%  losers 57  ADR-units   -4.91 | open 2 mark +3.87R abstain 53 | partials 35 scratch@+0.33 0
+  orb_low         ex_may        n=61  sum   -3.84R  >=4R 2  >=2R 7  P90 +2.01  ex-best   -8.88  mean -0.063  med -1.00  win 34%  losers 40  ADR-units   -3.01 | open 2 mark +3.87R abstain 40 | partials 21 scratch@+0.33 0
+  orb_low         aug_admission n=3   sum   -1.33R  >=4R 0  >=2R 0  P90 +0.67  ex-best   -2.00  mean -0.444  med -1.00  win 33%  losers 2   ADR-units   -0.95 | open 1 mark +0.59R abstain 0 | partials 1 scratch@+0.33 0
+                  stop width in ADR units: median 0.59 (min 0.08, max 1.44); abstain reasons {'fwd_stop_and_target_same_day': 2, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'day0_fill_bar_straddles_stop': 7, 'day0_fill_bar_stop_and_target': 2}
+  entry_minus_2r  all           n=99  sum  +11.35R  >=4R 1  >=2R 6  P90 +1.35  ex-best   +2.03  mean +0.115  med +0.33  win 57%  losers 43  ADR-units   +2.35 | open 2 mark +1.94R abstain 46 | partials 54 scratch@+0.33 26
+  entry_minus_2r  ex_may        n=67  sum   -6.06R  >=4R 0  >=2R 3  P90 +1.32  ex-best   -8.58  mean -0.090  med -0.10  win 49%  losers 34  ADR-units   -5.23 | open 2 mark +1.94R abstain 34 | partials 31 scratch@+0.33 16
+  entry_minus_2r  aug_admission n=3   sum   -1.66R  >=4R 0  >=2R 0  P90 +0.34  ex-best   -2.00  mean -0.555  med -1.00  win 33%  losers 2   ADR-units   -2.25 | open 1 mark +0.30R abstain 0 | partials 1 scratch@+0.33 1
+                  stop width in ADR units: median 1.17 (min 0.17, max 2.88); abstain reasons {'day0_fill_bar_straddles_stop': 3, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_target_same_day': 1}
+  adr_0.5         all           n=86  sum  +19.12R  >=4R 5  >=2R 11 P90 +2.88  ex-best   +9.07  mean +0.222  med -1.00  win 44%  losers 48  ADR-units   +9.50 | open 0 mark +0.00R abstain 61 | partials 38 scratch@+0.33 1
+  adr_0.5         ex_may        n=59  sum   +6.88R  >=4R 4  >=2R 7  P90 +2.94  ex-best   -0.29  mean +0.117  med -1.00  win 41%  losers 35  ADR-units   +3.32 | open 0 mark +0.00R abstain 44 | partials 24 scratch@+0.33 0
+  adr_0.5         aug_admission n=4   sum   -2.30R  >=4R 0  >=2R 0  P90 +0.70  ex-best   -3.00  mean -0.575  med -1.00  win 25%  losers 3   ADR-units   -1.15 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0
+                  stop width in ADR units: median 0.50 (min 0.50, max 0.60); abstain reasons {'day0_fill_bar_straddles_stop': 18, 'fwd_stop_and_target_same_day': 1, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5}
+  adr_0.75        all           n=98  sum   -0.61R  >=4R 3  >=2R 9  P90 +1.92  ex-best   -7.34  mean -0.006  med -1.00  win 46%  losers 53  ADR-units   -0.55 | open 1 mark +3.28R abstain 48 | partials 45 scratch@+0.33 5
+  adr_0.75        ex_may        n=66  sum   -4.28R  >=4R 2  >=2R 7  P90 +1.96  ex-best   -9.20  mean -0.065  med -1.00  win 42%  losers 38  ADR-units   -3.34 | open 1 mark +3.28R abstain 36 | partials 28 scratch@+0.33 3
+  adr_0.75        aug_admission n=4   sum   -2.53R  >=4R 0  >=2R 0  P90 +0.47  ex-best   -3.00  mean -0.633  med -1.00  win 25%  losers 3   ADR-units   -1.90 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0
+                  stop width in ADR units: median 0.75 (min 0.75, max 0.85); abstain reasons {'day0_fill_bar_straddles_stop': 6, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5}
+  adr_1.0         all           n=101 sum   -4.33R  >=4R 1  >=2R 7  P90 +1.47  ex-best   -9.39  mean -0.043  med +0.06  win 50%  losers 50  ADR-units   -4.44 | open 2 mark +3.15R abstain 44 | partials 50 scratch@+0.33 3
+  adr_1.0         ex_may        n=67  sum   -5.81R  >=4R 0  >=2R 6  P90 +1.83  ex-best   -9.51  mean -0.087  med -1.00  win 46%  losers 36  ADR-units   -5.96 | open 2 mark +3.15R abstain 34 | partials 30 scratch@+0.33 2
+  adr_1.0         aug_admission n=3   sum   -1.65R  >=4R 0  >=2R 0  P90 +0.35  ex-best   -2.00  mean -0.549  med -1.00  win 33%  losers 2   ADR-units   -1.65 | open 1 mark +0.69R abstain 0 | partials 1 scratch@+0.33 1
+                  stop width in ADR units: median 1.00 (min 1.00, max 1.10); abstain reasons {'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_target_same_day': 1, 'day0_fill_bar_straddles_stop': 1}
+  adr_1.25        all           n=102 sum   -6.72R  >=4R 1  >=2R 5  P90 +1.54  ex-best  -10.77  mean -0.066  med +0.07  win 53%  losers 48  ADR-units   -8.52 | open 2 mark +2.52R abstain 43 | partials 53 scratch@+0.33 1
+  adr_1.25        ex_may        n=68  sum   -7.73R  >=4R 0  >=2R 4  P90 +1.56  ex-best  -10.69  mean -0.114  med -0.27  win 49%  losers 35  ADR-units   -9.81 | open 2 mark +2.52R abstain 33 | partials 32 scratch@+0.33 0
+  adr_1.25        aug_admission n=3   sum   -0.52R  >=4R 0  >=2R 0  P90 +0.28  ex-best   -0.80  mean -0.172  med +0.20  win 67%  losers 1   ADR-units   -0.64 | open 1 mark +0.55R abstain 0 | partials 2 scratch@+0.33 0
+                  stop width in ADR units: median 1.25 (min 1.25, max 1.35); abstain reasons {'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_target_same_day': 1}
+
+  ── target frame: the stop's OWN distance (08-06 frame, mechanism check only) ──
+  entry_minus_2r  all           n=98  sum   +6.33R  >=4R 2  >=2R 11 P90 +2.03  ex-best   -3.32  mean +0.065  med -0.82  win 39%  losers 60  ADR-units   -7.38 | open 3 mark +4.31R abstain 46 | partials 32 scratch@+0.33 0
+  entry_minus_2r  ex_may        n=66  sum   -7.38R  >=4R 1  >=2R 7  P90 +1.76  ex-best  -12.99  mean -0.112  med -1.00  win 33%  losers 44  ADR-units  -10.40 | open 3 mark +4.31R abstain 34 | partials 19 scratch@+0.33 0
+  entry_minus_2r  aug_admission n=2   sum   -2.00R  >=4R 0  >=2R 0  P90 -1.00  ex-best   -1.00  mean -1.000  med -1.00  win 0%  losers 2   ADR-units   -2.61 | open 2 mark +2.34R abstain 0 | partials 0 scratch@+0.33 0
+                  stop width in ADR units: median 1.17 (min 0.17, max 2.88); abstain reasons {'day0_fill_bar_straddles_stop': 3, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_target_same_day': 1}
+  adr_0.5         all           n=85  sum  +23.76R  >=4R 7  >=2R 10 P90 +3.23  ex-best  +13.40  mean +0.279  med -1.00  win 42%  losers 49  ADR-units  +11.73 | open 0 mark +0.00R abstain 62 | partials 36 scratch@+0.33 0
+  adr_0.5         ex_may        n=58  sum  +12.66R  >=4R 5  >=2R 6  P90 +1.44  ex-best   +4.52  mean +0.218  med -1.00  win 43%  losers 33  ADR-units   +6.11 | open 0 mark +0.00R abstain 45 | partials 25 scratch@+0.33 0
+  adr_0.5         aug_admission n=4   sum   -2.33R  >=4R 0  >=2R 0  P90 +0.67  ex-best   -3.00  mean -0.583  med -1.00  win 25%  losers 3   ADR-units   -1.16 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0
+                  stop width in ADR units: median 0.50 (min 0.50, max 0.60); abstain reasons {'day0_fill_bar_straddles_stop': 17, 'day0_fill_bar_stop_and_target': 1, 'fwd_stop_and_target_same_day': 2, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5}
+  adr_0.75        all           n=98  sum   -1.88R  >=4R 4  >=2R 13 P90 +2.37  ex-best   -9.03  mean -0.019  med -1.00  win 35%  losers 64  ADR-units   -1.55 | open 1 mark +3.28R abstain 48 | partials 33 scratch@+0.33 0
+  adr_0.75        ex_may        n=66  sum   -4.96R  >=4R 3  >=2R 9  P90 +2.42  ex-best  -10.61  mean -0.075  med -1.00  win 32%  losers 45  ADR-units   -3.91 | open 1 mark +3.28R abstain 36 | partials 20 scratch@+0.33 0
+  adr_0.75        aug_admission n=4   sum   -2.33R  >=4R 0  >=2R 0  P90 +0.67  ex-best   -3.00  mean -0.583  med -1.00  win 25%  losers 3   ADR-units   -1.74 | open 0 mark +0.00R abstain 0 | partials 1 scratch@+0.33 0
+                  stop width in ADR units: median 0.75 (min 0.75, max 0.85); abstain reasons {'day0_fill_bar_straddles_stop': 6, 'entry_window_gaps': 37, 'no_930_bar_for_orb': 5}
+  adr_1.0         all           n=100 sum   -9.33R  >=4R 2  >=2R 10 P90 +1.98  ex-best  -14.87  mean -0.093  med -1.00  win 33%  losers 67  ADR-units   -9.48 | open 3 mark +5.42R abstain 44 | partials 31 scratch@+0.33 0
+  adr_1.0         ex_may        n=66  sum   -9.65R  >=4R 1  >=2R 8  P90 +2.29  ex-best  -14.05  mean -0.146  med -1.00  win 29%  losers 47  ADR-units   -9.84 | open 3 mark +5.42R abstain 34 | partials 17 scratch@+0.33 0
+  adr_1.0         aug_admission n=2   sum   -2.00R  >=4R 0  >=2R 0  P90 -1.00  ex-best   -1.00  mean -1.000  med -1.00  win 0%  losers 2   ADR-units   -2.00 | open 2 mark +2.80R abstain 0 | partials 0 scratch@+0.33 0
+                  stop width in ADR units: median 1.00 (min 1.00, max 1.10); abstain reasons {'entry_window_gaps': 37, 'no_930_bar_for_orb': 5, 'fwd_stop_and_target_same_day': 1, 'day0_fill_bar_straddles_stop': 1}
+  adr_1.25        all           n=102 sum   -8.89R  >=4R 2  >=2R 10 P90 +1.97  ex-best  -14.15  mean -0.087  med -1.00  win 31%  losers 70  ADR-units  -11.27 | open 3 mark +4.51R abstain 42 | partials 30 scratch@+0.33 0
+  adr_1.25        ex_may        n=68  sum  -13.80R  >=4R 0  >=2R 7  P90 +1.97  ex-best  -17.46  mean -0.203  med -1.00  win 26%  losers 50  ADR-units  -17.44 | open 3 mark +4.51R abstain 32 | partials 16 scratch@+0.33 0
+  adr_1.25        aug_admission n=2   sum   -2.00R  >=4R 0  >=2R 0  P90 -1.00  ex-best   -1.00  mean -1.000  med -1.00  win 0%  losers 2   ADR-units   -2.50 | open 2 mark +2.28R abstain 0 | partials 0 scratch@+0.33 0
+                  stop width in ADR units: median 1.25 (min 1.25, max 1.35); abstain reasons {'entry_window_gaps': 37, 'no_930_bar_for_orb': 5}
+
+  ── PAIRED vs control (campaigns settled under the control; a cell's row that is open/abstain is dropped and counted) ──
+  orb_low/orb/live                 pairs 89  dropped 10 ΔR sum   -3.83  better 37  worse 20  Δ≥4R +3
+  entry_minus_2r/orb/live          pairs 99  dropped 0  ΔR sum   +0.00  better 0   worse 0   Δ≥4R +0
+  entry_minus_2r/own/live          pairs 97  dropped 2  ΔR sum   -2.54  better 32  worse 20  Δ≥4R +1
+  adr_0.5/orb/live                 pairs 83  dropped 16 ΔR sum   +8.34  better 32  worse 22  Δ≥4R +4
+  adr_0.5/own/live                 pairs 82  dropped 17 ΔR sum  +10.31  better 35  worse 21  Δ≥4R +6
+  adr_0.75/orb/live                pairs 94  dropped 5  ΔR sum  -10.69  better 30  worse 34  Δ≥4R +2
+  adr_0.75/own/live                pairs 94  dropped 5  ΔR sum  -13.62  better 32  worse 32  Δ≥4R +3
+  adr_1.0/orb/live                 pairs 97  dropped 2  ΔR sum  -13.81  better 26  worse 41  Δ≥4R +0
+  adr_1.0/own/live                 pairs 96  dropped 3  ΔR sum  -16.35  better 31  worse 34  Δ≥4R +1
+  adr_1.25/orb/live                pairs 98  dropped 1  ΔR sum  -16.02  better 22  worse 46  Δ≥4R +0
+  adr_1.25/own/live                pairs 98  dropped 1  ΔR sum  -16.29  better 29  worse 37  Δ≥4R +1
+
+══ 3. RUNNER GRID — the 13 post-partial rules (#2 lineage) at every stop, pinned frame ══
+
+  ── stop orb_low ──
+  breakeven      all     ALL n=84  sum  -37.92R  >=4R 0  >=2R 0  P90 +0.67  ex-best  -38.59  mean -0.451  med -1.00  win 32%  losers 57  ADR-units  -31.26 | open 10 mark +33.38R abstain 53 | partials 27 scratch@+0.33 0
+                         partial-takers n=27  sum  +17.66 mean +0.654 med +0.67 win 100% >=4R 0 scratch@+0.33 0
+  breakeven      ex_may  ALL n=54  sum  -29.31R  >=4R 0  >=2R 0  P90 +0.67  ex-best  -29.97  mean -0.543  med -1.00  win 26%  losers 40  ADR-units  -22.64 | open 9 mark +28.54R abstain 40 | partials 14 scratch@+0.33 0
+                         partial-takers n=14  sum   +9.25 mean +0.660 med +0.67 win 100% >=4R 0 scratch@+0.33 0
+  hard           all     ALL n=83  sum  -56.00R  >=4R 0  >=2R 0  P90 +0.00  ex-best  -56.00  mean -0.675  med -1.00  win 11%  losers 65  ADR-units  -39.63 | open 11 mark +36.78R abstain 53 | partials 26 scratch@+0.33 0
+                         partial-takers n=26  sum   -0.42 mean -0.016 med +0.00 win 35% >=4R 0 scratch@+0.33 0
+  hard           ex_may  ALL n=53  sum  -38.62R  >=4R 0  >=2R 0  P90 +0.00  ex-best  -38.62  mean -0.729  med -1.00  win 8%  losers 45  ADR-units  -27.17 | open 10 mark +31.93R abstain 40 | partials 13 scratch@+0.33 0
+                         partial-takers n=13  sum   -0.07 mean -0.005 med +0.00 win 31% >=4R 0 scratch@+0.33 0
+  CONSISTENCY live_trail_be vs live ladder: 15 of 267 campaigns differ [('BW', '2026-05-11', 3.33, 3.41), ('SIBN', '2026-05-12', 1.61, 1.5), ('INFQ', '2026-05-21', 2.52, 5.96), ('QBTS', '2026-05-21', 6.71, 5.92), ('QUBT', '2026-05-21', 2.1, 1.7), ('ASPI', '2026-05-26', 0.67, 1.39), ('CLF', '2026-07-23', 3.47, 3.99), ('PLTR', '2026-08-04', 3.67, 3.39)]
+  live_trail_be  all     ALL n=91  sum   -1.47R  >=4R 2  >=2R 9  P90 +1.86  ex-best   -8.18  mean -0.016  med -1.00  win 37%  losers 57  ADR-units   -9.15 | open 3 mark +7.50R abstain 53 | partials 34 scratch@+0.33 0
+                         partial-takers n=34  sum  +54.12 mean +1.592 med +0.67 win 100% >=4R 2 scratch@+0.33 0
+  live_trail_be  ex_may  ALL n=60  sum   -6.45R  >=4R 1  >=2R 5  P90 +1.73  ex-best  -12.23  mean -0.107  med -1.00  win 33%  losers 40  ADR-units   -6.48 | open 3 mark +7.50R abstain 40 | partials 20 scratch@+0.33 0
+                         partial-takers n=20  sum  +32.10 mean +1.605 med +0.67 win 100% >=4R 1 scratch@+0.33 0
+  sma10          all     ALL n=90  sum   -7.85R  >=4R 3  >=2R 11 P90 +2.12  ex-best  -14.56  mean -0.087  med -1.00  win 24%  losers 61  ADR-units  -12.39 | open 4 mark +10.90R abstain 53 | partials 33 scratch@+0.33 0
+                         partial-takers n=33  sum  +47.74 mean +1.447 med +0.00 win 67% >=4R 3 scratch@+0.33 0
+  sma10          ex_may  ALL n=59  sum   -7.81R  >=4R 2  >=2R 7  P90 +2.12  ex-best  -13.59  mean -0.132  med -1.00  win 22%  losers 43  ADR-units   -7.23 | open 4 mark +10.90R abstain 40 | partials 19 scratch@+0.33 0
+                         partial-takers n=19  sum  +30.74 mean +1.618 med +1.31 win 68% >=4R 2 scratch@+0.33 0
+  sma20          all     ALL n=86  sum  -37.65R  >=4R 1  >=2R 4  P90 +0.00  ex-best  -42.08  mean -0.438  med -1.00  win 19%  losers 62  ADR-units  -29.05 | open 8 mark +28.25R abstain 53 | partials 29 scratch@+0.33 0
+                         partial-takers n=29  sum  +17.94 mean +0.619 med +0.00 win 55% >=4R 1 scratch@+0.33 0
+  sma20          ex_may  ALL n=55  sum  -27.53R  >=4R 1  >=2R 2  P90 +0.00  ex-best  -31.96  mean -0.501  med -1.00  win 15%  losers 43  ADR-units  -19.96 | open 8 mark +28.25R abstain 40 | partials 15 scratch@+0.33 0
+                         partial-takers n=15  sum  +11.02 mean +0.735 med +0.00 win 53% >=4R 1 scratch@+0.33 0
+  atr1           all     ALL n=93  sum  +24.78R  >=4R 5  >=2R 17 P90 +3.14  ex-best  +14.32  mean +0.266  med -1.00  win 35%  losers 58  ADR-units   +5.42 | open 1 mark +0.59R abstain 53 | partials 36 scratch@+0.33 1
+                         partial-takers n=35  sum  +75.82 mean +2.166 med +1.76 win 91% >=4R 4 scratch@+0.33 1
+  atr1           ex_may  ALL n=62  sum  +11.16R  >=4R 3  >=2R 10 P90 +2.44  ex-best   +0.69  mean +0.180  med -1.00  win 34%  losers 41  ADR-units   +4.62 | open 1 mark +0.59R abstain 40 | partials 22 scratch@+0.33 0
+                         partial-takers n=21  sum  +45.16 mean +2.150 med +1.76 win 95% >=4R 2 scratch@+0.33 0
+  atr2           all     ALL n=91  sum  +13.36R  >=4R 6  >=2R 13 P90 +2.82  ex-best   +1.87  mean +0.147  med -1.00  win 30%  losers 60  ADR-units   -0.82 | open 3 mark +9.36R abstain 53 | partials 34 scratch@+0.33 0
+                         partial-takers n=33  sum  +64.40 mean +1.951 med +1.30 win 79% >=4R 5 scratch@+0.33 0
+  atr2           ex_may  ALL n=60  sum   +1.96R  >=4R 3  >=2R 7  P90 +2.02  ex-best   -9.53  mean +0.033  med -1.00  win 28%  losers 42  ADR-units   -0.95 | open 3 mark +9.36R abstain 40 | partials 20 scratch@+0.33 0
+                         partial-takers n=19  sum  +35.96 mean +1.893 med +1.30 win 84% >=4R 2 scratch@+0.33 0
+  gb25           all     ALL n=92  sum  +19.66R  >=4R 5  >=2R 15 P90 +2.60  ex-best   +9.04  mean +0.214  med -1.00  win 33%  losers 58  ADR-units   +0.29 | open 2 mark +4.22R abstain 53 | partials 35 scratch@+0.33 0
+                         partial-takers n=34  sum  +72.87 mean +2.143 med +1.89 win 85% >=4R 5 scratch@+0.33 0
+  gb25           ex_may  ALL n=61  sum   +7.15R  >=4R 2  >=2R 7  P90 +2.08  ex-best   -3.46  mean +0.117  med -1.00  win 31%  losers 41  ADR-units   -0.69 | open 2 mark +4.22R abstain 40 | partials 21 scratch@+0.33 0
+                         partial-takers n=20  sum  +43.33 mean +2.166 med +1.86 win 90% >=4R 2 scratch@+0.33 0
+  gb50           all     ALL n=88  sum  -14.46R  >=4R 1  >=2R 10 P90 +2.06  ex-best  -18.89  mean -0.164  med -1.00  win 28%  losers 58  ADR-units  -19.13 | open 6 mark +22.23R abstain 53 | partials 31 scratch@+0.33 0
+                         partial-takers n=30  sum  +38.75 mean +1.292 med +1.06 win 80% >=4R 1 scratch@+0.33 0
+  gb50           ex_may  ALL n=57  sum  -14.24R  >=4R 1  >=2R 5  P90 +1.91  ex-best  -18.67  mean -0.250  med -1.00  win 25%  losers 41  ADR-units  -14.01 | open 6 mark +22.23R abstain 40 | partials 17 scratch@+0.33 0
+                         partial-takers n=16  sum  +21.94 mean +1.371 med +1.38 win 81% >=4R 1 scratch@+0.33 0
+  t3             all     ALL n=92  sum  +36.68R  >=4R 8  >=2R 18 P90 +3.58  ex-best  +23.90  mean +0.399  med -1.00  win 32%  losers 59  ADR-units  +10.85 | open 2 mark +3.99R abstain 53 | partials 35 scratch@+0.33 0
+                         partial-takers n=34  sum  +89.18 mean +2.623 med +1.96 win 82% >=4R 8 scratch@+0.33 0
+  t3             ex_may  ALL n=61  sum  +14.84R  >=4R 2  >=2R 11 P90 +3.34  ex-best   +2.05  mean +0.243  med -1.00  win 30%  losers 42  ADR-units   +7.10 | open 2 mark +3.99R abstain 40 | partials 21 scratch@+0.33 0
+                         partial-takers n=20  sum  +50.29 mean +2.515 med +1.96 win 85% >=4R 2 scratch@+0.33 0
+  t5             all     ALL n=92  sum  +26.31R  >=4R 7  >=2R 14 P90 +3.53  ex-best  +12.25  mean +0.286  med -1.00  win 28%  losers 60  ADR-units   +6.20 | open 2 mark +3.99R abstain 53 | partials 35 scratch@+0.33 0
+                         partial-takers n=34  sum  +77.41 mean +2.277 med +1.53 win 74% >=4R 6 scratch@+0.33 0
+  t5             ex_may  ALL n=61  sum  +11.87R  >=4R 4  >=2R 9  P90 +3.24  ex-best   -2.19  mean +0.195  med -1.00  win 26%  losers 43  ADR-units   +6.41 | open 2 mark +3.99R abstain 40 | partials 21 scratch@+0.33 0
+                         partial-takers n=20  sum  +45.94 mean +2.297 med +1.63 win 75% >=4R 3 scratch@+0.33 0
+  t10            all     ALL n=90  sum   -9.57R  >=4R 6  >=2R 11 P90 +2.52  ex-best  -15.85  mean -0.106  med -1.00  win 23%  losers 62  ADR-units  -11.62 | open 4 mark +10.90R abstain 53 | partials 33 scratch@+0.33 0
+                         partial-takers n=33  sum  +46.02 mean +1.394 med +0.00 win 64% >=4R 6 scratch@+0.33 0
+  t10            ex_may  ALL n=59  sum   -2.94R  >=4R 5  >=2R 8  P90 +2.59  ex-best   -9.22  mean -0.050  med -1.00  win 22%  losers 43  ADR-units   -3.84 | open 4 mark +10.90R abstain 40 | partials 19 scratch@+0.33 0
+                         partial-takers n=19  sum  +35.61 mean +1.874 med +1.59 win 68% >=4R 5 scratch@+0.33 0
+  t20            all     ALL n=84  sum  -50.28R  >=4R 0  >=2R 2  P90 +0.00  ex-best  -53.51  mean -0.599  med -1.00  win 13%  losers 64  ADR-units  -35.64 | open 10 mark +31.93R abstain 53 | partials 27 scratch@+0.33 0
+                         partial-takers n=27  sum   +5.31 mean +0.197 med +0.00 win 41% >=4R 0 scratch@+0.33 0
+  t20            ex_may  ALL n=53  sum  -38.62R  >=4R 0  >=2R 0  P90 +0.00  ex-best  -38.62  mean -0.729  med -1.00  win 8%  losers 45  ADR-units  -27.17 | open 10 mark +31.93R abstain 40 | partials 13 scratch@+0.33 0
+                         partial-takers n=13  sum   -0.07 mean -0.005 med +0.00 win 31% >=4R 0 scratch@+0.33 0
+
+  ── stop entry_minus_2r ──
+  breakeven      all     ALL n=87  sum  -26.26R  >=4R 0  >=2R 0  P90 +0.33  ex-best  -26.74  mean -0.302  med -0.01  win 49%  losers 44  ADR-units  -40.59 | open 14 mark +26.13R abstain 46 | partials 42 scratch@+0.33 35
+                         partial-takers n=42  sum  +13.30 mean +0.317 med +0.33 win 98% >=4R 0 scratch@+0.33 35
+  breakeven      ex_may  ALL n=57  sum  -23.90R  >=4R 0  >=2R 0  P90 +0.33  ex-best  -24.38  mean -0.419  med -0.80  win 39%  losers 35  ADR-units  -32.85 | open 12 mark +21.72R abstain 34 | partials 21 scratch@+0.33 17
+                         partial-takers n=21  sum   +6.66 mean +0.317 med +0.33 win 95% >=4R 0 scratch@+0.33 17
+  hard           all     ALL n=83  sum  -54.04R  >=4R 0  >=2R 0  P90 -0.33  ex-best  -54.22  mean -0.651  med -0.44  win 2%  losers 81  ADR-units  -68.18 | open 18 mark +30.99R abstain 46 | partials 38 scratch@+0.33 0
+                         partial-takers n=38  sum  -14.48 mean -0.381 med -0.33 win 0% >=4R 0 scratch@+0.33 0
+  hard           ex_may  ALL n=53  sum  -37.51R  >=4R 0  >=2R 0  P90 -0.33  ex-best  -37.69  mean -0.708  med -1.00  win 4%  losers 51  ADR-units  -44.98 | open 16 mark +26.58R abstain 34 | partials 17 scratch@+0.33 0
+                         partial-takers n=17  sum   -6.95 mean -0.409 med -0.33 win 0% >=4R 0 scratch@+0.33 0
+  CONSISTENCY live_trail_be vs live ladder: 28 of 267 campaigns differ [('BW', '2026-05-11', 1.67, 1.71), ('AMBQ', '2026-05-12', 9.3, 9.32), ('SIBN', '2026-05-12', 0.8, 0.75), ('VG', '2026-05-12', 0.56, 1.01), ('CSCO', '2026-05-14', 0.87, 0.94), ('KLAR', '2026-05-14', 0.8, 0.78), ('STUB', '2026-05-14', 0.8, 0.72), ('FIG', '2026-05-15', 0.26, 0.15)]
+  live_trail_be  all     ALL n=97  sum   +7.64R  >=4R 1  >=2R 3  P90 +1.32  ex-best   -1.66  mean +0.079  med +0.26  win 55%  losers 44  ADR-units   -2.79 | open 4 mark +8.48R abstain 46 | partials 52 scratch@+0.33 25
+                         partial-takers n=52  sum  +47.20 mean +0.908 med +0.33 win 98% >=4R 1 scratch@+0.33 25
+  live_trail_be  ex_may  ALL n=65  sum   -7.97R  >=4R 0  >=2R 1  P90 +1.38  ex-best  -10.85  mean -0.123  med -0.26  win 46%  losers 35  ADR-units   -9.41 | open 4 mark +8.48R abstain 34 | partials 29 scratch@+0.33 14
+                         partial-takers n=29  sum  +22.60 mean +0.779 med +0.33 win 97% >=4R 0 scratch@+0.33 14
+  sma10          all     ALL n=96  sum   -3.69R  >=4R 1  >=2R 4  P90 +1.65  ex-best  -12.99  mean -0.038  med -0.33  win 34%  losers 63  ADR-units  -11.46 | open 5 mark +10.19R abstain 46 | partials 51 scratch@+0.33 1
+                         partial-takers n=51  sum  +35.87 mean +0.703 med +0.37 win 61% >=4R 1 scratch@+0.33 1
+  sma10          ex_may  ALL n=64  sum  -13.98R  >=4R 0  >=2R 2  P90 +1.65  ex-best  -16.87  mean -0.219  med -0.38  win 30%  losers 45  ADR-units  -13.42 | open 5 mark +10.19R abstain 34 | partials 28 scratch@+0.33 0
+                         partial-takers n=28  sum  +16.58 mean +0.592 med +0.43 win 61% >=4R 0 scratch@+0.33 0
+  sma20          all     ALL n=90  sum  -23.42R  >=4R 1  >=2R 2  P90 +0.76  ex-best  -32.19  mean -0.260  med -0.33  win 23%  losers 69  ADR-units  -33.22 | open 11 mark +21.78R abstain 46 | partials 45 scratch@+0.33 2
+                         partial-takers n=45  sum  +16.15 mean +0.359 med -0.33 win 42% >=4R 1 scratch@+0.33 2
+  sma20          ex_may  ALL n=58  sum  -27.80R  >=4R 0  >=2R 1  P90 +0.31  ex-best  -30.02  mean -0.479  med -0.90  win 16%  losers 49  ADR-units  -31.24 | open 11 mark +21.78R abstain 34 | partials 22 scratch@+0.33 1
+                         partial-takers n=22  sum   +2.76 mean +0.125 med -0.33 win 32% >=4R 0 scratch@+0.33 1
+  atr1           all     ALL n=100 sum  +16.66R  >=4R 2  >=2R 8  P90 +1.74  ex-best  +11.43  mean +0.167  med -0.33  win 44%  losers 56  ADR-units  +11.50 | open 1 mark +0.30R abstain 46 | partials 55 scratch@+0.33 2
+                         partial-takers n=54  sum  +53.95 mean +0.999 med +0.89 win 76% >=4R 2 scratch@+0.33 2
+  atr1           ex_may  ALL n=68  sum   +2.47R  >=4R 1  >=2R 5  P90 +1.44  ex-best   -2.76  mean +0.036  med -0.33  win 40%  losers 41  ADR-units   +3.28 | open 1 mark +0.30R abstain 34 | partials 32 scratch@+0.33 1
+                         partial-takers n=31  sum  +30.76 mean +0.992 med +0.89 win 77% >=4R 1 scratch@+0.33 1
+  atr2           all     ALL n=96  sum   +3.33R  >=4R 3  >=2R 7  P90 +1.68  ex-best   -2.45  mean +0.035  med -0.33  win 38%  losers 60  ADR-units   -3.52 | open 5 mark +11.18R abstain 46 | partials 51 scratch@+0.33 1
+                         partial-takers n=50  sum  +40.62 mean +0.812 med +0.48 win 66% >=4R 3 scratch@+0.33 1
+  atr2           ex_may  ALL n=64  sum   -9.44R  >=4R 1  >=2R 3  P90 +1.59  ex-best  -15.19  mean -0.148  med -0.38  win 31%  losers 44  ADR-units   -9.35 | open 5 mark +11.18R abstain 34 | partials 28 scratch@+0.33 0
+                         partial-takers n=27  sum  +18.85 mean +0.698 med +0.50 win 63% >=4R 1 scratch@+0.33 0
+  gb25           all     ALL n=99  sum  +16.38R  >=4R 2  >=2R 8  P90 +1.62  ex-best   +8.20  mean +0.165  med -0.33  win 43%  losers 56  ADR-units   +5.84 | open 2 mark +2.11R abstain 46 | partials 54 scratch@+0.33 1
+                         partial-takers n=53  sum  +54.76 mean +1.033 med +0.92 win 75% >=4R 2 scratch@+0.33 1
+  gb25           ex_may  ALL n=67  sum   -1.38R  >=4R 1  >=2R 4  P90 +1.40  ex-best   -6.69  mean -0.021  med -0.33  win 37%  losers 42  ADR-units   -4.57 | open 2 mark +2.11R abstain 34 | partials 31 scratch@+0.33 0
+                         partial-takers n=30  sum  +28.00 mean +0.933 med +0.92 win 73% >=4R 1 scratch@+0.33 0
+  gb50           all     ALL n=94  sum   -6.53R  >=4R 1  >=2R 4  P90 +1.26  ex-best  -13.09  mean -0.069  med -0.33  win 39%  losers 57  ADR-units  -20.72 | open 7 mark +15.84R abstain 46 | partials 49 scratch@+0.33 1
+                         partial-takers n=48  sum  +31.85 mean +0.664 med +0.53 win 71% >=4R 1 scratch@+0.33 1
+  gb50           ex_may  ALL n=62  sum  -15.95R  >=4R 0  >=2R 3  P90 +1.04  ex-best  -18.16  mean -0.257  med -0.38  win 31%  losers 43  ADR-units  -23.07 | open 7 mark +15.84R abstain 34 | partials 26 scratch@+0.33 0
+                         partial-takers n=25  sum  +13.43 mean +0.537 med +0.52 win 64% >=4R 0 scratch@+0.33 0
+  t3             all     ALL n=99  sum  +27.40R  >=4R 2  >=2R 13 P90 +2.17  ex-best  +20.72  mean +0.277  med -0.33  win 40%  losers 59  ADR-units  +20.45 | open 2 mark +2.01R abstain 46 | partials 54 scratch@+0.33 0
+                         partial-takers n=53  sum  +65.42 mean +1.234 med +0.93 win 70% >=4R 2 scratch@+0.33 0
+  t3             ex_may  ALL n=67  sum   +5.50R  >=4R 1  >=2R 5  P90 +1.79  ex-best   -0.89  mean +0.082  med -0.33  win 36%  losers 43  ADR-units   +6.79 | open 2 mark +2.01R abstain 34 | partials 31 scratch@+0.33 0
+                         partial-takers n=30  sum  +34.52 mean +1.151 med +0.98 win 70% >=4R 1 scratch@+0.33 0
+  t5             all     ALL n=99  sum  +16.49R  >=4R 3  >=2R 9  P90 +1.97  ex-best   +9.45  mean +0.167  med -0.33  win 39%  losers 60  ADR-units  +10.75 | open 2 mark +2.01R abstain 46 | partials 54 scratch@+0.33 1
+                         partial-takers n=53  sum  +53.81 mean +1.015 med +0.74 win 68% >=4R 3 scratch@+0.33 1
+  t5             ex_may  ALL n=67  sum   -0.76R  >=4R 1  >=2R 4  P90 +1.75  ex-best   -7.79  mean -0.011  med -0.36  win 34%  losers 44  ADR-units   +3.10 | open 2 mark +2.01R abstain 34 | partials 31 scratch@+0.33 0
+                         partial-takers n=30  sum  +27.56 mean +0.919 med +0.93 win 67% >=4R 1 scratch@+0.33 0
+  t10            all     ALL n=96  sum   -2.25R  >=4R 1  >=2R 9  P90 +1.76  ex-best  -12.76  mean -0.023  med -0.33  win 29%  losers 68  ADR-units  -11.14 | open 5 mark +6.62R abstain 46 | partials 51 scratch@+0.33 0
+                         partial-takers n=51  sum  +37.31 mean +0.732 med +0.20 win 51% >=4R 1 scratch@+0.33 0
+  t10            ex_may  ALL n=64  sum  -11.37R  >=4R 0  >=2R 6  P90 +1.76  ex-best  -14.51  mean -0.178  med -0.42  win 27%  losers 47  ADR-units  -11.49 | open 5 mark +6.62R abstain 34 | partials 28 scratch@+0.33 0
+                         partial-takers n=28  sum  +19.20 mean +0.686 med +0.50 win 54% >=4R 0 scratch@+0.33 0
+  t20            all     ALL n=87  sum  -34.80R  >=4R 1  >=2R 1  P90 +0.17  ex-best  -43.22  mean -0.400  med -0.36  win 13%  losers 76  ADR-units  -44.43 | open 14 mark +23.75R abstain 46 | partials 42 scratch@+0.33 0
+                         partial-takers n=42  sum   +4.76 mean +0.113 med -0.33 win 21% >=4R 1 scratch@+0.33 0
+  t20            ex_may  ALL n=55  sum  -35.47R  >=4R 0  >=2R 0  P90 -0.19  ex-best  -37.33  mean -0.645  med -1.00  win 7%  losers 51  ADR-units  -41.79 | open 14 mark +23.75R abstain 34 | partials 19 scratch@+0.33 0
+                         partial-takers n=19  sum   -4.91 mean -0.258 med -0.33 win 11% >=4R 0 scratch@+0.33 0
+
+  ── stop adr_0.5 ──
+  breakeven      all     ALL n=79  sum  -32.65R  >=4R 0  >=2R 0  P90 +0.65  ex-best  -33.71  mean -0.413  med -1.00  win 39%  losers 48  ADR-units  -16.48 | open 7 mark +36.42R abstain 61 | partials 31 scratch@+0.33 2
+                         partial-takers n=31  sum  +15.18 mean +0.490 med +0.46 win 100% >=4R 0 scratch@+0.33 2
+  breakeven      ex_may  ALL n=53  sum  -25.39R  >=4R 0  >=2R 0  P90 +0.68  ex-best  -26.45  mean -0.479  med -1.00  win 34%  losers 35  ADR-units  -12.85 | open 6 mark +34.28R abstain 44 | partials 18 scratch@+0.33 0
+                         partial-takers n=18  sum   +9.44 mean +0.524 med +0.51 win 100% >=4R 0 scratch@+0.33 0
+  hard           all     ALL n=78  sum  -55.01R  >=4R 0  >=2R 0  P90 -0.01  ex-best  -55.40  mean -0.705  med -1.00  win 9%  losers 71  ADR-units  -27.73 | open 8 mark +39.98R abstain 61 | partials 30 scratch@+0.33 1
+                         partial-takers n=30  sum   -7.18 mean -0.239 med -0.19 win 23% >=4R 0 scratch@+0.33 1
+  hard           ex_may  ALL n=52  sum  -39.20R  >=4R 0  >=2R 0  P90 -0.01  ex-best  -39.59  mean -0.754  med -1.00  win 10%  losers 47  ADR-units  -19.82 | open 7 mark +37.84R abstain 44 | partials 17 scratch@+0.33 1
+                         partial-takers n=17  sum   -4.37 mean -0.257 med -0.16 win 29% >=4R 0 scratch@+0.33 1
+  CONSISTENCY live_trail_be vs live ladder: 17 of 267 campaigns differ [('BW', '2026-05-11', 2.44, 2.5), ('AMBQ', '2026-05-12', 10.03, 10.05), ('INFQ', '2026-05-21', 1.22, 2.88), ('QBTS', '2026-05-21', 4.36, 3.84), ('QUBT', '2026-05-21', 1.25, 1.01), ('ASPI', '2026-05-26', 0.78, 1.63), ('HUT', '2026-07-20', 0.27, 0.49), ('CLF', '2026-07-23', 3.39, 3.91)]
+  live_trail_be  all     ALL n=85  sum  +10.49R  >=4R 6  >=2R 9  P90 +2.44  ex-best   +0.46  mean +0.123  med -1.00  win 44%  losers 48  ADR-units   +5.19 | open 1 mark +9.12R abstain 61 | partials 37 scratch@+0.33 1
+                         partial-takers n=37  sum  +58.32 mean +1.576 med +0.68 win 100% >=4R 6 scratch@+0.33 1
+  live_trail_be  ex_may  ALL n=58  sum   +0.10R  >=4R 4  >=2R 6  P90 +1.98  ex-best   -5.74  mean +0.002  med -1.00  win 40%  losers 35  ADR-units   -0.07 | open 1 mark +9.12R abstain 44 | partials 23 scratch@+0.33 0
+                         partial-takers n=23  sum  +34.93 mean +1.519 med +0.68 win 100% >=4R 4 scratch@+0.33 0
+  sma10          all     ALL n=84  sum   -2.10R  >=4R 6  >=2R 10 P90 +2.70  ex-best  -12.13  mean -0.025  med -1.00  win 25%  losers 63  ADR-units   -1.13 | open 2 mark +12.68R abstain 61 | partials 36 scratch@+0.33 0
+                         partial-takers n=36  sum  +45.73 mean +1.270 med +0.09 win 58% >=4R 6 scratch@+0.33 0
+  sma10          ex_may  ALL n=57  sum   -7.84R  >=4R 4  >=2R 7  P90 +2.70  ex-best  -13.68  mean -0.138  med -1.00  win 23%  losers 44  ADR-units   -4.07 | open 2 mark +12.68R abstain 44 | partials 22 scratch@+0.33 0
+                         partial-takers n=22  sum  +26.99 mean +1.227 med +0.16 win 59% >=4R 4 scratch@+0.33 0
+  sma20          all     ALL n=80  sum  -33.34R  >=4R 1  >=2R 3  P90 +0.34  ex-best  -42.80  mean -0.417  med -1.00  win 18%  losers 66  ADR-units  -16.80 | open 6 mark +35.50R abstain 61 | partials 32 scratch@+0.33 1
+                         partial-takers n=32  sum  +14.49 mean +0.453 med -0.12 win 44% >=4R 1 scratch@+0.33 1
+  sma20          ex_may  ALL n=53  sum  -31.11R  >=4R 0  >=2R 2  P90 +0.30  ex-best  -34.46  mean -0.587  med -1.00  win 15%  losers 45  ADR-units  -15.75 | open 6 mark +35.50R abstain 44 | partials 18 scratch@+0.33 1
+                         partial-takers n=18  sum   +3.72 mean +0.207 med -0.12 win 44% >=4R 0 scratch@+0.33 1
+  atr1           all     ALL n=86  sum  +22.64R  >=4R 6  >=2R 15 P90 +3.09  ex-best  +14.60  mean +0.263  med -1.00  win 33%  losers 58  ADR-units  +11.24 | open 0 mark +0.00R abstain 61 | partials 38 scratch@+0.33 1
+                         partial-takers n=38  sum  +70.47 mean +1.854 med +1.70 win 74% >=4R 6 scratch@+0.33 1
+  atr1           ex_may  ALL n=59  sum  +14.35R  >=4R 4  >=2R 10 P90 +3.09  ex-best   +6.32  mean +0.243  med -1.00  win 32%  losers 40  ADR-units   +7.07 | open 0 mark +0.00R abstain 44 | partials 24 scratch@+0.33 0
+                         partial-takers n=24  sum  +49.18 mean +2.049 med +1.72 win 79% >=4R 4 scratch@+0.33 0
+  atr2           all     ALL n=84  sum   +7.03R  >=4R 6  >=2R 13 P90 +2.56  ex-best   -1.65  mean +0.084  med -1.00  win 25%  losers 63  ADR-units   +3.36 | open 2 mark +12.10R abstain 61 | partials 36 scratch@+0.33 0
+                         partial-takers n=36  sum  +54.86 mean +1.524 med +0.45 win 58% >=4R 6 scratch@+0.33 0
+  atr2           ex_may  ALL n=57  sum   +0.54R  >=4R 4  >=2R 8  P90 +2.41  ex-best   -8.14  mean +0.009  med -1.00  win 25%  losers 43  ADR-units   +0.07 | open 2 mark +12.10R abstain 44 | partials 22 scratch@+0.33 0
+                         partial-takers n=22  sum  +35.37 mean +1.608 med +0.45 win 64% >=4R 4 scratch@+0.33 0
+  gb25           all     ALL n=85  sum  +19.52R  >=4R 6  >=2R 16 P90 +3.00  ex-best  +10.69  mean +0.230  med -1.00  win 31%  losers 59  ADR-units   +9.75 | open 1 mark +9.12R abstain 61 | partials 37 scratch@+0.33 0
+                         partial-takers n=37  sum  +67.35 mean +1.820 med +1.61 win 70% >=4R 6 scratch@+0.33 0
+  gb25           ex_may  ALL n=58  sum   +6.59R  >=4R 4  >=2R 10 P90 +2.88  ex-best   -1.44  mean +0.114  med -1.00  win 29%  losers 41  ADR-units   +3.23 | open 1 mark +9.12R abstain 44 | partials 23 scratch@+0.33 0
+                         partial-takers n=23  sum  +41.42 mean +1.801 med +1.61 win 74% >=4R 4 scratch@+0.33 0
+  gb50           all     ALL n=82  sum  -10.17R  >=4R 1  >=2R 8  P90 +1.76  ex-best  -17.25  mean -0.124  med -1.00  win 28%  losers 59  ADR-units   -5.11 | open 4 mark +28.97R abstain 61 | partials 34 scratch@+0.33 0
+                         partial-takers n=34  sum  +37.66 mean +1.108 med +0.96 win 68% >=4R 1 scratch@+0.33 0
+  gb50           ex_may  ALL n=55  sum  -12.94R  >=4R 0  >=2R 6  P90 +2.04  ex-best  -16.29  mean -0.235  med -1.00  win 25%  losers 41  ADR-units   -6.54 | open 4 mark +28.97R abstain 44 | partials 20 scratch@+0.33 0
+                         partial-takers n=20  sum  +21.89 mean +1.095 med +1.17 win 70% >=4R 0 scratch@+0.33 0
+  t3             all     ALL n=85  sum  +41.18R  >=4R 12  >=2R 18 P90 +4.76  ex-best  +31.51  mean +0.484  med -1.00  win 28%  losers 61  ADR-units  +20.50 | open 1 mark +3.56R abstain 61 | partials 37 scratch@+0.33 0
+                         partial-takers n=37  sum  +89.01 mean +2.406 med +1.56 win 65% >=4R 12 scratch@+0.33 0
+  t3             ex_may  ALL n=58  sum  +22.57R  >=4R 7  >=2R 11 P90 +4.47  ex-best  +12.90  mean +0.389  med -1.00  win 28%  losers 42  ADR-units  +11.15 | open 1 mark +3.56R abstain 44 | partials 23 scratch@+0.33 0
+                         partial-takers n=23  sum  +57.40 mean +2.495 med +1.48 win 70% >=4R 7 scratch@+0.33 0
+  t5             all     ALL n=85  sum  +26.36R  >=4R 10  >=2R 15 P90 +4.19  ex-best  +15.73  mean +0.310  med -1.00  win 26%  losers 63  ADR-units  +13.09 | open 1 mark +3.56R abstain 61 | partials 37 scratch@+0.33 0
+                         partial-takers n=37  sum  +74.19 mean +2.005 med +0.30 win 59% >=4R 10 scratch@+0.33 0
+  t5             ex_may  ALL n=58  sum  +13.43R  >=4R 7  >=2R 9  P90 +4.19  ex-best   +2.80  mean +0.232  med -1.00  win 24%  losers 44  ADR-units   +6.58 | open 1 mark +3.56R abstain 44 | partials 23 scratch@+0.33 0
+                         partial-takers n=23  sum  +48.26 mean +2.098 med +0.30 win 61% >=4R 7 scratch@+0.33 0
+  t10            all     ALL n=84  sum   -0.98R  >=4R 5  >=2R 10 P90 +2.97  ex-best  -12.31  mean -0.012  med -1.00  win 23%  losers 65  ADR-units   -0.61 | open 2 mark +12.68R abstain 61 | partials 36 scratch@+0.33 0
+                         partial-takers n=36  sum  +46.85 mean +1.302 med +0.03 win 53% >=4R 5 scratch@+0.33 0
+  t10            ex_may  ALL n=57  sum   -3.15R  >=4R 4  >=2R 8  P90 +2.97  ex-best  -11.28  mean -0.055  med -1.00  win 23%  losers 44  ADR-units   -1.76 | open 2 mark +12.68R abstain 44 | partials 22 scratch@+0.33 0
+                         partial-takers n=22  sum  +31.69 mean +1.440 med +0.15 win 59% >=4R 4 scratch@+0.33 0
+  t20            all     ALL n=79  sum  -43.59R  >=4R 1  >=2R 2  P90 +0.01  ex-best  -52.68  mean -0.552  med -1.00  win 11%  losers 70  ADR-units  -21.96 | open 7 mark +37.84R abstain 61 | partials 31 scratch@+0.33 1
+                         partial-takers n=31  sum   +4.24 mean +0.137 med -0.17 win 29% >=4R 1 scratch@+0.33 1
+  t20            ex_may  ALL n=52  sum  -39.20R  >=4R 0  >=2R 0  P90 -0.01  ex-best  -39.59  mean -0.754  med -1.00  win 10%  losers 47  ADR-units  -19.82 | open 7 mark +37.84R abstain 44 | partials 17 scratch@+0.33 1
+                         partial-takers n=17  sum   -4.37 mean -0.257 med -0.16 win 29% >=4R 0 scratch@+0.33 1
+
+  ── stop adr_0.75 ──
+  breakeven      all     ALL n=89  sum  -40.44R  >=4R 0  >=2R 0  P90 +0.47  ex-best  -41.39  mean -0.454  med -1.00  win 40%  losers 53  ADR-units  -30.49 | open 10 mark +35.69R abstain 48 | partials 36 scratch@+0.33 3
+                         partial-takers n=36  sum  +12.70 mean +0.353 med +0.33 win 100% >=4R 0 scratch@+0.33 3
+  breakeven      ex_may  ALL n=58  sum  -31.27R  >=4R 0  >=2R 0  P90 +0.45  ex-best  -31.97  mean -0.539  med -1.00  win 34%  losers 38  ADR-units  -23.61 | open 9 mark +34.26R abstain 36 | partials 20 scratch@+0.33 0
+                         partial-takers n=20  sum   +6.87 mean +0.344 med +0.34 win 100% >=4R 0 scratch@+0.33 0
+  hard           all     ALL n=88  sum  -64.83R  >=4R 0  >=2R 0  P90 -0.19  ex-best  -65.10  mean -0.737  med -1.00  win 3%  losers 85  ADR-units  -48.84 | open 11 mark +38.07R abstain 48 | partials 35 scratch@+0.33 0
+                         partial-takers n=35  sum  -11.68 mean -0.334 med -0.33 win 9% >=4R 0 scratch@+0.33 0
+  hard           ex_may  ALL n=57  sum  -45.13R  >=4R 0  >=2R 0  P90 -0.23  ex-best  -45.17  mean -0.792  med -1.00  win 4%  losers 55  ADR-units  -34.07 | open 10 mark +36.64R abstain 36 | partials 19 scratch@+0.33 0
+                         partial-takers n=19  sum   -6.99 mean -0.368 med -0.33 win 11% >=4R 0 scratch@+0.33 0
+  CONSISTENCY live_trail_be vs live ladder: 21 of 267 campaigns differ [('BW', '2026-05-11', 1.63, 1.67), ('AMBQ', '2026-05-12', 6.71, 6.73), ('FIG', '2026-05-15', 0.43, 0.25), ('INFQ', '2026-05-21', 0.81, 1.92), ('QBTS', '2026-05-21', 2.9, 2.56), ('QUBT', '2026-05-21', 0.83, 0.68), ('ASPI', '2026-05-26', 0.52, 1.09), ('HUT', '2026-07-20', 0.18, 0.32)]
+  live_trail_be  all     ALL n=96  sum   -7.13R  >=4R 2  >=2R 8  P90 +1.63  ex-best  -13.85  mean -0.074  med -1.00  win 45%  losers 53  ADR-units   -5.44 | open 3 mark +14.24R abstain 48 | partials 43 scratch@+0.33 2
+                         partial-takers n=43  sum  +46.01 mean +1.070 med +0.47 win 100% >=4R 2 scratch@+0.33 2
+  live_trail_be  ex_may  ALL n=64  sum   -9.75R  >=4R 1  >=2R 6  P90 +1.80  ex-best  -14.26  mean -0.152  med -1.00  win 41%  losers 38  ADR-units   -7.45 | open 3 mark +14.24R abstain 36 | partials 26 scratch@+0.33 0
+                         partial-takers n=26  sum  +28.39 mean +1.092 med +0.46 win 100% >=4R 1 scratch@+0.33 0
+  sma10          all     ALL n=95  sum  -20.05R  >=4R 2  >=2R 9  P90 +1.80  ex-best  -26.76  mean -0.211  med -1.00  win 22%  losers 74  ADR-units  -15.15 | open 4 mark +16.63R abstain 48 | partials 42 scratch@+0.33 0
+                         partial-takers n=42  sum  +33.09 mean +0.788 med -0.00 win 50% >=4R 2 scratch@+0.33 0
+  sma10          ex_may  ALL n=63  sum  -16.36R  >=4R 1  >=2R 7  P90 +2.23  ex-best  -20.87  mean -0.260  med -1.00  win 21%  losers 50  ADR-units  -12.42 | open 4 mark +16.63R abstain 36 | partials 25 scratch@+0.33 0
+                         partial-takers n=25  sum  +21.78 mean +0.871 med +0.04 win 52% >=4R 1 scratch@+0.33 0
+  sma20          all     ALL n=91  sum  -44.66R  >=4R 1  >=2R 4  P90 +0.28  ex-best  -51.00  mean -0.491  med -1.00  win 13%  losers 79  ADR-units  -33.66 | open 8 mark +31.84R abstain 48 | partials 38 scratch@+0.33 1
+                         partial-takers n=38  sum   +8.48 mean +0.223 med -0.22 win 32% >=4R 1 scratch@+0.33 1
+  sma20          ex_may  ALL n=59  sum  -34.76R  >=4R 0  >=2R 3  P90 +0.00  ex-best  -38.52  mean -0.589  med -1.00  win 12%  losers 52  ADR-units  -26.27 | open 8 mark +31.84R abstain 36 | partials 21 scratch@+0.33 0
+                         partial-takers n=21  sum   +3.38 mean +0.161 med -0.28 win 33% >=4R 0 scratch@+0.33 0
+  atr1           all     ALL n=99  sum   +8.38R  >=4R 4  >=2R 13 P90 +2.45  ex-best   +3.02  mean +0.085  med -1.00  win 33%  losers 66  ADR-units   +6.18 | open 0 mark +0.00R abstain 48 | partials 46 scratch@+0.33 0
+                         partial-takers n=45  sum  +56.98 mean +1.266 med +1.18 win 71% >=4R 3 scratch@+0.33 0
+  atr1           ex_may  ALL n=67  sum   +6.35R  >=4R 4  >=2R 9  P90 +2.27  ex-best   +1.00  mean +0.095  med -1.00  win 33%  losers 45  ADR-units   +4.64 | open 0 mark +0.00R abstain 36 | partials 29 scratch@+0.33 0
+                         partial-takers n=28  sum  +39.95 mean +1.427 med +1.23 win 75% >=4R 3 scratch@+0.33 0
+  atr2           all     ALL n=96  sum   -8.42R  >=4R 4  >=2R 11 P90 +2.05  ex-best  -14.21  mean -0.088  med -1.00  win 25%  losers 72  ADR-units   -6.49 | open 3 mark +12.97R abstain 48 | partials 43 scratch@+0.33 0
+                         partial-takers n=42  sum  +40.18 mean +0.957 med +0.40 win 55% >=4R 3 scratch@+0.33 0
+  atr2           ex_may  ALL n=64  sum   -7.20R  >=4R 3  >=2R 7  P90 +2.05  ex-best  -12.99  mean -0.113  med -1.00  win 23%  losers 49  ADR-units   -5.60 | open 3 mark +12.97R abstain 36 | partials 26 scratch@+0.33 0
+                         partial-takers n=25  sum  +26.40 mean +1.056 med +0.40 win 56% >=4R 2 scratch@+0.33 0
+  gb25           all     ALL n=98  sum   +2.77R  >=4R 3  >=2R 12 P90 +2.03  ex-best   -3.14  mean +0.028  med -1.00  win 32%  losers 67  ADR-units   +2.02 | open 1 mark +6.08R abstain 48 | partials 45 scratch@+0.33 0
+                         partial-takers n=44  sum  +53.54 mean +1.217 med +1.11 win 68% >=4R 3 scratch@+0.33 0
+  gb25           ex_may  ALL n=66  sum   -2.20R  >=4R 2  >=2R 7  P90 +1.94  ex-best   -7.55  mean -0.033  med -1.00  win 30%  losers 46  ADR-units   -1.75 | open 1 mark +6.08R abstain 36 | partials 28 scratch@+0.33 0
+                         partial-takers n=27  sum  +33.57 mean +1.243 med +1.15 win 70% >=4R 2 scratch@+0.33 0
+  gb50           all     ALL n=93  sum  -25.01R  >=4R 1  >=2R 3  P90 +1.36  ex-best  -29.75  mean -0.269  med -1.00  win 28%  losers 67  ADR-units  -18.83 | open 6 mark +27.43R abstain 48 | partials 40 scratch@+0.33 0
+                         partial-takers n=39  sum  +25.76 mean +0.661 med +0.68 win 64% >=4R 1 scratch@+0.33 0
+  gb50           ex_may  ALL n=61  sum  -21.36R  >=4R 0  >=2R 2  P90 +1.58  ex-best  -23.72  mean -0.350  med -1.00  win 25%  losers 46  ADR-units  -16.12 | open 6 mark +27.43R abstain 36 | partials 23 scratch@+0.33 0
+                         partial-takers n=22  sum  +14.42 mean +0.655 med +0.78 win 64% >=4R 0 scratch@+0.33 0
+  t3             all     ALL n=98  sum  +16.59R  >=4R 4  >=2R 17 P90 +3.09  ex-best  +10.15  mean +0.169  med -1.00  win 29%  losers 70  ADR-units  +12.33 | open 1 mark +2.38R abstain 48 | partials 45 scratch@+0.33 0
+                         partial-takers n=44  sum  +66.64 mean +1.515 med +1.16 win 61% >=4R 4 scratch@+0.33 0
+  t3             ex_may  ALL n=66  sum  +10.97R  >=4R 3  >=2R 11 P90 +3.09  ex-best   +4.53  mean +0.166  med -1.00  win 29%  losers 47  ADR-units   +8.08 | open 1 mark +2.38R abstain 36 | partials 28 scratch@+0.33 0
+                         partial-takers n=27  sum  +46.03 mean +1.705 med +1.57 win 67% >=4R 3 scratch@+0.33 0
+  t5             all     ALL n=98  sum   +5.08R  >=4R 7  >=2R 13 P90 +2.79  ex-best   -2.01  mean +0.052  med -1.00  win 26%  losers 73  ADR-units   +3.69 | open 1 mark +2.38R abstain 48 | partials 45 scratch@+0.33 0
+                         partial-takers n=44  sum  +53.74 mean +1.221 med +0.24 win 55% >=4R 6 scratch@+0.33 0
+  t5             ex_may  ALL n=66  sum   +4.22R  >=4R 5  >=2R 9  P90 +3.04  ex-best   -2.87  mean +0.064  med -1.00  win 26%  losers 49  ADR-units   +3.02 | open 1 mark +2.38R abstain 36 | partials 28 scratch@+0.33 0
+                         partial-takers n=27  sum  +37.88 mean +1.403 med +1.03 win 59% >=4R 4 scratch@+0.33 0
+  t10            all     ALL n=96  sum  -17.11R  >=4R 3  >=2R 11 P90 +2.02  ex-best  -24.70  mean -0.178  med -1.00  win 19%  losers 78  ADR-units  -12.98 | open 3 mark +11.74R abstain 48 | partials 43 scratch@+0.33 0
+                         partial-takers n=43  sum  +36.03 mean +0.838 med -0.15 win 42% >=4R 3 scratch@+0.33 0
+  t10            ex_may  ALL n=64  sum  -10.14R  >=4R 2  >=2R 9  P90 +2.55  ex-best  -15.57  mean -0.158  med -1.00  win 20%  losers 51  ADR-units   -7.80 | open 3 mark +11.74R abstain 36 | partials 26 scratch@+0.33 0
+                         partial-takers n=26  sum  +28.00 mean +1.077 med -0.03 win 50% >=4R 2 scratch@+0.33 0
+  t20            all     ALL n=89  sum  -55.91R  >=4R 1  >=2R 1  P90 -0.15  ex-best  -61.99  mean -0.628  med -1.00  win 7%  losers 83  ADR-units  -42.11 | open 10 mark +36.64R abstain 48 | partials 36 scratch@+0.33 0
+                         partial-takers n=36  sum   -2.76 mean -0.077 med -0.31 win 17% >=4R 1 scratch@+0.33 0
+  t20            ex_may  ALL n=57  sum  -45.13R  >=4R 0  >=2R 0  P90 -0.23  ex-best  -45.17  mean -0.792  med -1.00  win 4%  losers 55  ADR-units  -34.07 | open 10 mark +36.64R abstain 36 | partials 19 scratch@+0.33 0
+                         partial-takers n=19  sum   -6.99 mean -0.368 med -0.33 win 11% >=4R 0 scratch@+0.33 0
+
+  ── stop adr_1.0 ──
+  breakeven      all     ALL n=92  sum  -38.01R  >=4R 0  >=2R 0  P90 +0.37  ex-best  -38.72  mean -0.413  med -1.00  win 46%  losers 50  ADR-units  -38.18 | open 11 mark +27.46R abstain 44 | partials 41 scratch@+0.33 5
+                         partial-takers n=41  sum  +11.04 mean +0.269 med +0.24 win 100% >=4R 0 scratch@+0.33 5
+  breakeven      ex_may  ALL n=59  sum  -29.08R  >=4R 0  >=2R 0  P90 +0.35  ex-best  -29.65  mean -0.493  med -1.00  win 39%  losers 36  ADR-units  -29.24 | open 10 mark +26.39R abstain 34 | partials 22 scratch@+0.33 3
+                         partial-takers n=22  sum   +5.93 mean +0.269 med +0.25 win 100% >=4R 0 scratch@+0.33 3
+  hard           all     ALL n=90  sum  -64.96R  >=4R 0  >=2R 0  P90 -0.28  ex-best  -65.17  mean -0.722  med -1.00  win 2%  losers 88  ADR-units  -65.19 | open 13 mark +30.49R abstain 44 | partials 39 scratch@+0.33 0
+                         partial-takers n=39  sum  -15.91 mean -0.408 med -0.42 win 3% >=4R 0 scratch@+0.33 0
+  hard           ex_may  ALL n=57  sum  -43.51R  >=4R 0  >=2R 0  P90 -0.30  ex-best  -43.72  mean -0.763  med -1.00  win 2%  losers 56  ADR-units  -43.73 | open 12 mark +29.42R abstain 34 | partials 20 scratch@+0.33 0
+                         partial-takers n=20  sum   -8.50 mean -0.425 med -0.42 win 0% >=4R 0 scratch@+0.33 0
+  CONSISTENCY live_trail_be vs live ladder: 23 of 267 campaigns differ [('BW', '2026-05-11', 1.22, 1.25), ('AMBQ', '2026-05-12', 5.05, 5.06), ('VG', '2026-05-12', 0.51, 0.92), ('FIG', '2026-05-15', 0.32, 0.19), ('INFQ', '2026-05-21', 0.61, 1.44), ('QBTS', '2026-05-21', 2.18, 1.92), ('QUBT', '2026-05-21', 0.62, 0.51), ('ASPI', '2026-05-26', 0.39, 0.82)]
+  live_trail_be  all     ALL n=99  sum  -10.15R  >=4R 1  >=2R 8  P90 +1.22  ex-best  -15.19  mean -0.102  med -0.39  win 49%  losers 50  ADR-units  -10.26 | open 4 mark +11.37R abstain 44 | partials 48 scratch@+0.33 4
+                         partial-takers n=48  sum  +38.91 mean +0.811 med +0.36 win 100% >=4R 1 scratch@+0.33 4
+  live_trail_be  ex_may  ALL n=65  sum  -10.43R  >=4R 0  >=2R 6  P90 +1.70  ex-best  -13.81  mean -0.160  med -1.00  win 45%  losers 36  ADR-units  -10.57 | open 4 mark +11.37R abstain 34 | partials 28 scratch@+0.33 2
+                         partial-takers n=28  sum  +24.58 mean +0.878 med +0.35 win 100% >=4R 0 scratch@+0.33 2
+  sma10          all     ALL n=98  sum  -24.18R  >=4R 1  >=2R 8  P90 +1.35  ex-best  -29.23  mean -0.247  med -0.88  win 24%  losers 74  ADR-units  -24.31 | open 5 mark +13.16R abstain 44 | partials 47 scratch@+0.33 0
+                         partial-takers n=47  sum  +24.87 mean +0.529 med -0.05 win 49% >=4R 1 scratch@+0.33 0
+  sma10          ex_may  ALL n=64  sum  -17.74R  >=4R 0  >=2R 6  P90 +1.70  ex-best  -21.12  mean -0.277  med -1.00  win 22%  losers 50  ADR-units  -17.90 | open 5 mark +13.16R abstain 34 | partials 27 scratch@+0.33 0
+                         partial-takers n=27  sum  +17.27 mean +0.640 med -0.05 win 48% >=4R 0 scratch@+0.33 0
+  sma20          all     ALL n=94  sum  -43.66R  >=4R 1  >=2R 3  P90 +0.37  ex-best  -48.43  mean -0.465  med -1.00  win 15%  losers 80  ADR-units  -43.84 | open 9 mark +24.57R abstain 44 | partials 43 scratch@+0.33 0
+                         partial-takers n=43  sum   +5.39 mean +0.125 med -0.26 win 30% >=4R 1 scratch@+0.33 0
+  sma20          ex_may  ALL n=60  sum  -31.85R  >=4R 0  >=2R 2  P90 +0.21  ex-best  -34.92  mean -0.531  med -1.00  win 12%  losers 53  ADR-units  -32.06 | open 9 mark +24.57R abstain 34 | partials 23 scratch@+0.33 0
+                         partial-takers n=23  sum   +3.16 mean +0.138 med -0.30 win 26% >=4R 0 scratch@+0.33 0
+  atr1           all     ALL n=102 sum   +1.05R  >=4R 1  >=2R 10 P90 +1.87  ex-best   -2.97  mean +0.010  med -0.58  win 38%  losers 63  ADR-units   +0.92 | open 1 mark +0.69R abstain 44 | partials 51 scratch@+0.33 0
+                         partial-takers n=50  sum  +46.69 mean +0.934 med +0.85 win 74% >=4R 1 scratch@+0.33 0
+  atr1           ex_may  ALL n=68  sum   +0.50R  >=4R 1  >=2R 7  P90 +1.84  ex-best   -3.52  mean +0.007  med -0.88  win 37%  losers 43  ADR-units   +0.36 | open 1 mark +0.69R abstain 34 | partials 31 scratch@+0.33 0
+                         partial-takers n=30  sum  +32.10 mean +1.070 med +0.92 win 77% >=4R 1 scratch@+0.33 0
+  atr2           all     ALL n=99  sum  -13.73R  >=4R 1  >=2R 8  P90 +1.52  ex-best  -18.07  mean -0.139  med -0.76  win 31%  losers 68  ADR-units  -13.92 | open 4 mark +10.42R abstain 44 | partials 48 scratch@+0.33 1
+                         partial-takers n=47  sum  +31.92 mean +0.679 med +0.35 win 62% >=4R 1 scratch@+0.33 1
+  atr2           ex_may  ALL n=65  sum  -12.35R  >=4R 1  >=2R 6  P90 +1.55  ex-best  -16.70  mean -0.190  med -1.00  win 28%  losers 47  ADR-units  -12.56 | open 4 mark +10.42R abstain 34 | partials 28 scratch@+0.33 0
+                         partial-takers n=27  sum  +19.25 mean +0.713 med +0.30 win 59% >=4R 1 scratch@+0.33 0
+  gb25           all     ALL n=101 sum   -2.15R  >=4R 2  >=2R 9  P90 +1.75  ex-best   -6.59  mean -0.021  med -0.61  win 38%  losers 63  ADR-units   -2.23 | open 2 mark +5.25R abstain 44 | partials 50 scratch@+0.33 1
+                         partial-takers n=49  sum  +45.13 mean +0.921 med +0.80 win 73% >=4R 2 scratch@+0.33 1
+  gb25           ex_may  ALL n=67  sum   -5.62R  >=4R 1  >=2R 6  P90 +1.50  ex-best   -9.63  mean -0.084  med -1.00  win 34%  losers 44  ADR-units   -5.73 | open 2 mark +5.25R abstain 34 | partials 30 scratch@+0.33 0
+                         partial-takers n=29  sum  +27.61 mean +0.952 med +0.86 win 72% >=4R 1 scratch@+0.33 0
+  gb50           all     ALL n=96  sum  -26.27R  >=4R 0  >=2R 1  P90 +1.18  ex-best  -29.84  mean -0.274  med -0.88  win 33%  losers 64  ADR-units  -26.37 | open 7 mark +21.26R abstain 44 | partials 45 scratch@+0.33 1
+                         partial-takers n=44  sum  +21.01 mean +0.477 med +0.48 win 68% >=4R 0 scratch@+0.33 1
+  gb50           ex_may  ALL n=62  sum  -23.12R  >=4R 0  >=2R 0  P90 +1.19  ex-best  -24.89  mean -0.373  med -1.00  win 27%  losers 45  ADR-units  -23.24 | open 7 mark +21.26R abstain 34 | partials 25 scratch@+0.33 0
+                         partial-takers n=24  sum  +10.12 mean +0.422 med +0.48 win 62% >=4R 0 scratch@+0.33 0
+  t3             all     ALL n=101 sum   +9.07R  >=4R 2  >=2R 15 P90 +2.40  ex-best   +4.24  mean +0.090  med -0.61  win 34%  losers 67  ADR-units   +8.94 | open 2 mark +2.48R abstain 44 | partials 50 scratch@+0.33 0
+                         partial-takers n=49  sum  +55.81 mean +1.139 med +0.95 win 65% >=4R 2 scratch@+0.33 0
+  t3             ex_may  ALL n=67  sum   +4.59R  >=4R 2  >=2R 10 P90 +2.40  ex-best   -0.24  mean +0.069  med -1.00  win 33%  losers 45  ADR-units   +4.44 | open 2 mark +2.48R abstain 34 | partials 30 scratch@+0.33 0
+                         partial-takers n=29  sum  +37.29 mean +1.286 med +1.18 win 69% >=4R 2 scratch@+0.33 0
+  t5             all     ALL n=101 sum   -1.87R  >=4R 2  >=2R 14 P90 +2.29  ex-best   -7.19  mean -0.019  med -0.66  win 32%  losers 69  ADR-units   -2.00 | open 2 mark +2.48R abstain 44 | partials 50 scratch@+0.33 0
+                         partial-takers n=49  sum  +43.82 mean +0.894 med +0.27 win 61% >=4R 2 scratch@+0.33 0
+  t5             ex_may  ALL n=67  sum   -1.57R  >=4R 2  >=2R 10 P90 +2.29  ex-best   -6.89  mean -0.023  med -1.00  win 30%  losers 47  ADR-units   -1.73 | open 2 mark +2.48R abstain 34 | partials 30 scratch@+0.33 0
+                         partial-takers n=29  sum  +30.08 mean +1.037 med +0.77 win 62% >=4R 2 scratch@+0.33 0
+  t10            all     ALL n=99  sum  -22.15R  >=4R 2  >=2R 8  P90 +1.51  ex-best  -27.85  mean -0.224  med -0.76  win 21%  losers 78  ADR-units  -22.32 | open 4 mark +9.50R abstain 44 | partials 48 scratch@+0.33 0
+                         partial-takers n=48  sum  +26.90 mean +0.561 med -0.22 win 42% >=4R 2 scratch@+0.33 0
+  t10            ex_may  ALL n=65  sum  -13.95R  >=4R 1  >=2R 7  P90 +2.02  ex-best  -18.02  mean -0.215  med -1.00  win 22%  losers 51  ADR-units  -14.16 | open 4 mark +9.50R abstain 34 | partials 28 scratch@+0.33 0
+                         partial-takers n=28  sum  +21.06 mean +0.752 med -0.16 win 46% >=4R 1 scratch@+0.33 0
+  t20            all     ALL n=92  sum  -57.78R  >=4R 1  >=2R 1  P90 -0.18  ex-best  -62.35  mean -0.628  med -1.00  win 7%  losers 86  ADR-units  -57.97 | open 11 mark +28.18R abstain 44 | partials 41 scratch@+0.33 0
+                         partial-takers n=41  sum   -8.72 mean -0.213 med -0.39 win 12% >=4R 1 scratch@+0.33 0
+  t20            ex_may  ALL n=58  sum  -43.32R  >=4R 0  >=2R 0  P90 -0.28  ex-best  -43.54  mean -0.747  med -1.00  win 3%  losers 56  ADR-units  -43.55 | open 11 mark +28.18R abstain 34 | partials 21 scratch@+0.33 0
+                         partial-takers n=21  sum   -8.31 mean -0.396 med -0.41 win 5% >=4R 0 scratch@+0.33 0
+
+  ── stop adr_1.25 ──
+  breakeven      all     ALL n=91  sum  -36.85R  >=4R 0  >=2R 0  P90 +0.30  ex-best  -37.42  mean -0.405  med -0.61  win 47%  losers 48  ADR-units  -46.23 | open 13 mark +28.50R abstain 43 | partials 42 scratch@+0.33 1
+                         partial-takers n=42  sum   +9.04 mean +0.215 med +0.20 win 100% >=4R 0 scratch@+0.33 1
+  breakeven      ex_may  ALL n=59  sum  -27.94R  >=4R 0  >=2R 0  P90 +0.28  ex-best  -28.40  mean -0.474  med -1.00  win 41%  losers 35  ADR-units  -35.09 | open 11 mark +22.51R abstain 33 | partials 23 scratch@+0.33 0
+                         partial-takers n=23  sum   +4.95 mean +0.215 med +0.20 win 100% >=4R 0 scratch@+0.33 0
+  hard           all     ALL n=86  sum  -64.27R  >=4R 0  >=2R 0  P90 -0.35  ex-best  -64.44  mean -0.747  med -1.00  win 1%  losers 85  ADR-units  -80.56 | open 18 mark +30.04R abstain 43 | partials 37 scratch@+0.33 0
+                         partial-takers n=37  sum  -18.38 mean -0.497 med -0.48 win 0% >=4R 0 scratch@+0.33 0
+  hard           ex_may  ALL n=54  sum  -41.51R  >=4R 0  >=2R 0  P90 -0.31  ex-best  -41.68  mean -0.769  med -1.00  win 2%  losers 53  ADR-units  -52.11 | open 16 mark +24.05R abstain 33 | partials 18 scratch@+0.33 0
+                         partial-takers n=18  sum   -8.62 mean -0.479 med -0.49 win 0% >=4R 0 scratch@+0.33 0
+  CONSISTENCY live_trail_be vs live ladder: 25 of 267 campaigns differ [('BW', '2026-05-11', 0.98, 1.0), ('AMBQ', '2026-05-12', 4.04, 4.05), ('SIBN', '2026-05-12', 1.7, 1.59), ('VG', '2026-05-12', 0.41, 0.74), ('FIG', '2026-05-15', 0.26, 0.15), ('INFQ', '2026-05-21', 0.49, 1.15), ('QBTS', '2026-05-21', 1.74, 1.54), ('QUBT', '2026-05-21', 0.5, 0.41)]
+  live_trail_be  all     ALL n=100 sum  -11.18R  >=4R 1  >=2R 4  P90 +1.36  ex-best  -15.22  mean -0.112  med +0.05  win 52%  losers 48  ADR-units  -14.10 | open 4 mark +9.10R abstain 43 | partials 51 scratch@+0.33 1
+                         partial-takers n=51  sum  +34.71 mean +0.681 med +0.29 win 100% >=4R 1 scratch@+0.33 1
+  live_trail_be  ex_may  ALL n=66  sum  -11.35R  >=4R 0  >=2R 3  P90 +1.36  ex-best  -14.05  mean -0.172  med -0.46  win 47%  losers 35  ADR-units  -14.34 | open 4 mark +9.10R abstain 33 | partials 30 scratch@+0.33 0
+                         partial-takers n=30  sum  +21.54 mean +0.718 med +0.28 win 100% >=4R 0 scratch@+0.33 0
+  sma10          all     ALL n=99  sum  -19.22R  >=4R 2  >=2R 5  P90 +1.64  ex-best  -23.61  mean -0.194  med -0.60  win 28%  losers 71  ADR-units  -24.16 | open 5 mark +10.53R abstain 43 | partials 50 scratch@+0.33 1
+                         partial-takers n=50  sum  +26.67 mean +0.533 med +0.10 win 54% >=4R 2 scratch@+0.33 1
+  sma10          ex_may  ALL n=65  sum  -18.39R  >=4R 0  >=2R 3  P90 +1.64  ex-best  -21.09  mean -0.283  med -0.82  win 25%  losers 49  ADR-units  -23.15 | open 5 mark +10.53R abstain 33 | partials 29 scratch@+0.33 0
+                         partial-takers n=29  sum  +14.50 mean +0.500 med +0.09 win 52% >=4R 0 scratch@+0.33 0
+  sma20          all     ALL n=94  sum  -34.43R  >=4R 1  >=2R 4  P90 +0.60  ex-best  -40.11  mean -0.366  med -0.61  win 19%  losers 76  ADR-units  -43.21 | open 10 mark +21.06R abstain 43 | partials 45 scratch@+0.33 0
+                         partial-takers n=45  sum  +11.46 mean +0.255 med -0.21 win 38% >=4R 1 scratch@+0.33 0
+  sma20          ex_may  ALL n=60  sum  -31.83R  >=4R 0  >=2R 2  P90 +0.17  ex-best  -34.29  mean -0.531  med -1.00  win 12%  losers 53  ADR-units  -39.99 | open 10 mark +21.06R abstain 33 | partials 24 scratch@+0.33 0
+                         partial-takers n=24  sum   +1.05 mean +0.044 med -0.32 win 25% >=4R 0 scratch@+0.33 0
+  atr1           all     ALL n=103 sum   -0.57R  >=4R 0  >=2R 5  P90 +1.69  ex-best   -3.78  mean -0.006  med -0.40  win 41%  losers 61  ADR-units   -0.85 | open 1 mark +0.55R abstain 43 | partials 54 scratch@+0.33 1
+                         partial-takers n=53  sum  +42.59 mean +0.804 med +0.73 win 75% >=4R 0 scratch@+0.33 1
+  atr1           ex_may  ALL n=69  sum   -2.67R  >=4R 0  >=2R 5  P90 +1.67  ex-best   -5.89  mean -0.039  med -0.46  win 38%  losers 43  ADR-units   -3.49 | open 1 mark +0.55R abstain 33 | partials 33 scratch@+0.33 1
+                         partial-takers n=32  sum  +27.49 mean +0.859 med +0.74 win 75% >=4R 0 scratch@+0.33 1
+  atr2           all     ALL n=100 sum  -12.80R  >=4R 0  >=2R 8  P90 +1.40  ex-best  -16.27  mean -0.128  med -0.59  win 34%  losers 66  ADR-units  -16.18 | open 4 mark +8.34R abstain 43 | partials 51 scratch@+0.33 0
+                         partial-takers n=50  sum  +30.37 mean +0.607 med +0.40 win 64% >=4R 0 scratch@+0.33 0
+  atr2           ex_may  ALL n=66  sum  -13.77R  >=4R 0  >=2R 6  P90 +1.24  ex-best  -17.25  mean -0.209  med -0.72  win 29%  losers 47  ADR-units  -17.42 | open 4 mark +8.34R abstain 33 | partials 30 scratch@+0.33 0
+                         partial-takers n=29  sum  +16.39 mean +0.565 med +0.24 win 59% >=4R 0 scratch@+0.33 0
+  gb25           all     ALL n=102 sum   -3.53R  >=4R 0  >=2R 5  P90 +1.67  ex-best   -7.09  mean -0.035  med -0.47  win 40%  losers 61  ADR-units   -4.52 | open 2 mark +4.20R abstain 43 | partials 53 scratch@+0.33 2
+                         partial-takers n=52  sum  +40.94 mean +0.787 med +0.70 win 75% >=4R 0 scratch@+0.33 2
+  gb25           ex_may  ALL n=68  sum   -8.09R  >=4R 0  >=2R 4  P90 +1.42  ex-best  -11.30  mean -0.119  med -0.60  win 35%  losers 44  ADR-units  -10.24 | open 2 mark +4.20R abstain 33 | partials 32 scratch@+0.33 1
+                         partial-takers n=31  sum  +23.37 mean +0.754 med +0.69 win 71% >=4R 0 scratch@+0.33 1
+  gb50           all     ALL n=97  sum  -22.70R  >=4R 0  >=2R 2  P90 +0.99  ex-best  -25.96  mean -0.234  med -0.60  win 36%  losers 62  ADR-units  -28.48 | open 7 mark +17.01R abstain 43 | partials 48 scratch@+0.33 3
+                         partial-takers n=47  sum  +21.77 mean +0.463 med +0.45 win 70% >=4R 0 scratch@+0.33 3
+  gb50           ex_may  ALL n=63  sum  -22.86R  >=4R 0  >=2R 0  P90 +0.99  ex-best  -24.52  mean -0.363  med -0.87  win 29%  losers 45  ADR-units  -28.70 | open 7 mark +17.01R abstain 33 | partials 27 scratch@+0.33 1
+                         partial-takers n=26  sum   +8.61 mean +0.331 med +0.38 win 62% >=4R 0 scratch@+0.33 1
+  t3             all     ALL n=102 sum   +6.14R  >=4R 0  >=2R 11 P90 +2.03  ex-best   +2.28  mean +0.060  med -0.53  win 37%  losers 64  ADR-units   +7.54 | open 2 mark +1.99R abstain 43 | partials 53 scratch@+0.33 0
+                         partial-takers n=52  sum  +50.18 mean +0.965 med +0.90 win 69% >=4R 0 scratch@+0.33 0
+  t3             ex_may  ALL n=68  sum   +0.19R  >=4R 0  >=2R 8  P90 +2.21  ex-best   -3.68  mean +0.003  med -0.60  win 34%  losers 45  ADR-units   +0.08 | open 2 mark +1.99R abstain 33 | partials 32 scratch@+0.33 0
+                         partial-takers n=31  sum  +31.23 mean +1.007 med +0.94 win 68% >=4R 0 scratch@+0.33 0
+  t5             all     ALL n=102 sum   -2.25R  >=4R 1  >=2R 10 P90 +1.95  ex-best   -6.50  mean -0.022  med -0.56  win 35%  losers 66  ADR-units   -2.95 | open 2 mark +1.99R abstain 43 | partials 53 scratch@+0.33 1
+                         partial-takers n=52  sum  +40.95 mean +0.788 med +0.44 win 65% >=4R 1 scratch@+0.33 1
+  t5             ex_may  ALL n=68  sum   -4.79R  >=4R 1  >=2R 8  P90 +2.16  ex-best   -9.04  mean -0.070  med -0.61  win 31%  losers 47  ADR-units   -6.15 | open 2 mark +1.99R abstain 33 | partials 32 scratch@+0.33 0
+                         partial-takers n=31  sum  +25.41 mean +0.820 med +0.62 win 61% >=4R 1 scratch@+0.33 0
+  t10            all     ALL n=99  sum  -16.76R  >=4R 2  >=2R 8  P90 +1.54  ex-best  -22.21  mean -0.169  med -0.60  win 24%  losers 75  ADR-units  -21.14 | open 5 mark +9.00R abstain 43 | partials 50 scratch@+0.33 0
+                         partial-takers n=50  sum  +29.12 mean +0.582 med -0.09 win 46% >=4R 2 scratch@+0.33 0
+  t10            ex_may  ALL n=65  sum  -18.26R  >=4R 0  >=2R 5  P90 +1.62  ex-best  -21.52  mean -0.281  med -0.82  win 22%  losers 51  ADR-units  -23.04 | open 5 mark +9.00R abstain 33 | partials 29 scratch@+0.33 0
+                         partial-takers n=29  sum  +14.63 mean +0.504 med -0.28 win 45% >=4R 0 scratch@+0.33 0
+  t20            all     ALL n=90  sum  -47.75R  >=4R 1  >=2R 3  P90 -0.10  ex-best  -52.74  mean -0.531  med -0.84  win 10%  losers 81  ADR-units  -59.89 | open 14 mark +23.33R abstain 43 | partials 41 scratch@+0.33 1
+                         partial-takers n=41  sum   -1.87 mean -0.046 med -0.41 win 20% >=4R 1 scratch@+0.33 1
+  t20            ex_may  ALL n=56  sum  -41.63R  >=4R 0  >=2R 0  P90 -0.27  ex-best  -41.80  mean -0.743  med -1.00  win 4%  losers 54  ADR-units  -52.26 | open 14 mark +23.33R abstain 33 | partials 20 scratch@+0.33 0
+                         partial-takers n=20  sum   -8.74 mean -0.437 med -0.47 win 5% >=4R 0 scratch@+0.33 0
+
+══ 4. ATTEMPT-2 LEG — one re-entry after a full stop-out (#5 lineage's signals), per-name accounting ══
+  entry_minus_2r  sd_5m_clear  eligible stop-outs 41  fired 31  leg-2 sum   -7.66R  second stops 20  held(≥+0.5R) 11  leg-2 ≥4R 1 | campaign settled n=99 sum   +3.69R (1-attempt same rows  +11.35R) ≥4R 2 worst/name -2.27 | leg-2 statuses {'no_signal': 6, 'settled': 31, 'abstain': 4}
+                               ex-May campaign n=67 sum  -12.20R vs 1-attempt   -6.06R; top leg-2: [(5.34, 'GLBE', '2026-08-12'), (1.15, 'ZBRA', '2026-05-12'), (0.67, 'VSTS', '2026-05-12'), (0.67, 'TE', '2026-05-12')]
+  entry_minus_2r  ndo_o5l      eligible stop-outs 41  fired 28  leg-2 sum   -9.97R  second stops 16  held(≥+0.5R) 10  leg-2 ≥4R 0 | campaign settled n=99 sum   +1.38R (1-attempt same rows  +11.35R) ≥4R 1 worst/name -2.67 | leg-2 statuses {'settled': 28, 'no_signal': 4, 'abstain': 9}
+                               ex-May campaign n=67 sum  -15.56R vs 1-attempt   -6.06R; top leg-2: [(1.01, 'WKC', '2026-07-24'), (0.9, 'GLBE', '2026-08-12'), (0.67, 'WULF', '2026-07-06'), (0.67, 'WLDN', '2026-08-07')]
+  entry_minus_2r  ndo_pdl      eligible stop-outs 41  fired 27  leg-2 sum   -9.07R  second stops 17  held(≥+0.5R) 7   leg-2 ≥4R 0 | campaign settled n=98 sum   +3.28R (1-attempt same rows  +12.35R) ≥4R 1 worst/name -2.01 | leg-2 statuses {'settled': 26, 'no_signal': 7, 'abstain': 7, 'open_at_horizon': 1}
+                               ex-May campaign n=66 sum  -10.69R vs 1-attempt   -5.06R; top leg-2: [(2.45, 'FTNT', '2026-07-30'), (1.23, 'BLZE', '2026-08-04'), (1.13, 'KTOS', '2026-08-05'), (0.79, 'HUT', '2026-07-20')]
+  orb_low         sd_5m_clear  eligible stop-outs 56  fired 38  leg-2 sum   +4.65R  second stops 25  held(≥+0.5R) 12  leg-2 ≥4R 4 | campaign settled n=92 sum   +8.74R (1-attempt same rows   +4.09R) ≥4R 7 worst/name -3.84 | leg-2 statuses {'no_signal': 15, 'settled': 38, 'abstain': 3}
+                               ex-May campaign n=61 sum   -3.31R vs 1-attempt   -3.84R; top leg-2: [(10.34, 'THC', '2026-07-24'), (5.77, 'AMLX', '2026-08-18'), (5.74, 'STUB', '2026-05-14'), (4.39, 'AMBQ', '2026-05-12')]
+  orb_low         ndo_o5l      eligible stop-outs 56  fired 47  leg-2 sum   +3.21R  second stops 28  held(≥+0.5R) 17  leg-2 ≥4R 3 | campaign settled n=92 sum   +7.31R (1-attempt same rows   +4.09R) ≥4R 5 worst/name -2.67 | leg-2 statuses {'settled': 47, 'abstain': 5, 'no_signal': 4}
+                               ex-May campaign n=61 sum   -0.50R vs 1-attempt   -3.84R; top leg-2: [(12.23, 'THC', '2026-07-24'), (5.01, 'STUB', '2026-05-14'), (4.06, 'TEAM', '2026-08-07'), (1.88, 'KTOS', '2026-08-05')]
+  orb_low         ndo_pdl      eligible stop-outs 56  fired 42  leg-2 sum  -14.43R  second stops 27  held(≥+0.5R) 10  leg-2 ≥4R 0 | campaign settled n=92 sum  -10.34R (1-attempt same rows   +4.09R) ≥4R 4 worst/name -2.02 | leg-2 statuses {'settled': 42, 'no_signal': 9, 'abstain': 5}
+                               ex-May campaign n=61 sum  -14.07R vs 1-attempt   -3.84R; top leg-2: [(2.45, 'FTNT', '2026-07-30'), (2.31, 'STUB', '2026-05-14'), (2.04, 'TEAM', '2026-08-07'), (2.03, 'THC', '2026-07-24')]
+  adr_0.5         sd_5m_clear  eligible stop-outs 48  fired 33  leg-2 sum  -20.56R  second stops 26  held(≥+0.5R) 6   leg-2 ≥4R 0 | campaign settled n=85 sum   -0.44R (1-attempt same rows  +20.12R) ≥4R 5 worst/name -2.96 | leg-2 statuses {'no_signal': 11, 'settled': 32, 'abstain': 4, 'open_at_horizon': 1}
+                               ex-May campaign n=58 sum   -5.35R vs 1-attempt   +7.88R; top leg-2: [(3.21, 'AMLX', '2026-08-18'), (0.67, 'LPTH', '2026-08-14'), (0.67, 'GLBE', '2026-08-12'), (0.67, 'FRMI', '2026-08-11')]
+  adr_0.5         ndo_o5l      eligible stop-outs 48  fired 42  leg-2 sum   +1.51R  second stops 25  held(≥+0.5R) 15  leg-2 ≥4R 2 | campaign settled n=86 sum  +20.63R (1-attempt same rows  +19.12R) ≥4R 6 worst/name -2.24 | leg-2 statuses {'settled': 42, 'no_signal': 2, 'abstain': 4}
+                               ex-May campaign n=59 sum  +10.63R vs 1-attempt   +6.88R; top leg-2: [(12.23, 'THC', '2026-07-24'), (4.06, 'TEAM', '2026-08-07'), (1.88, 'KTOS', '2026-08-05'), (1.56, 'SIBN', '2026-05-12')]
+  adr_0.5         ndo_pdl      eligible stop-outs 48  fired 37  leg-2 sum  -13.03R  second stops 22  held(≥+0.5R) 7   leg-2 ≥4R 0 | campaign settled n=85 sum   +7.09R (1-attempt same rows  +20.12R) ≥4R 5 worst/name -2.00 | leg-2 statuses {'settled': 36, 'no_signal': 7, 'abstain': 4, 'open_at_horizon': 1}
+                               ex-May campaign n=58 sum   +1.25R vs 1-attempt   +7.88R; top leg-2: [(2.45, 'FTNT', '2026-07-30'), (2.04, 'TEAM', '2026-08-07'), (2.03, 'THC', '2026-07-24'), (0.67, 'TSEM', '2026-07-14')]
+
+══ 5. RETIREMENT REPRODUCTIONS ══
+  #5 sd_5m_clear  era-matched leg-1 full stop-outs 15 of 22 live pre-2R rows (abstain ['MANE', 'HUT', 'FRMI']); fired 6; second stops 4; leg-2 sum +6.83R; legs [('WULF', -1.0, 'settled'), ('SMCI', -1.0, 'settled'), ('THC', 11.6, 'settled'), ('WKC', -1.0, 'settled'), ('QBTS', -1.78, 'settled'), ('TEAM', 0.0, 'settled')]
+  #5 ndo_o5l      era-matched leg-1 full stop-outs 15 of 22 live pre-2R rows (abstain ['MANE', 'HUT', 'FRMI']); fired 12; second stops 8; leg-2 sum +19.68R; legs [('WULF', -1.0, 'settled'), ('CRCL', -1.0, 'settled'), ('TSEM', -1.0, 'settled'), ('THC', 16.16, 'settled'), ('WKC', 0.68, 'settled'), ('QBTS', -1.0, 'settled'), ('FTNT', 6.78, 'settled'), ('BLZE', -1.0, 'settled'), ('BTDR', -1.0, 'settled'), ('NET', -1.0, 'settled'), ('TEAM', 4.06, 'settled'), ('BW', -1.0, 'settled')]
+  #5 ndo_pdl      era-matched leg-1 full stop-outs 15 of 22 live pre-2R rows (abstain ['MANE', 'HUT', 'FRMI']); fired 10; second stops 6; leg-2 sum +1.73R; legs [('WDFC', -1.0, 'settled'), ('TSEM', -1.0, 'settled'), ('SMCI', -1.0, 'settled'), ('NVCR', -1.0, 'settled'), ('THC', 1.89, 'settled'), ('FTNT', 3.97, 'settled'), ('BLZE', -1.0, 'settled'), ('BTDR', -1.0, 'settled'), ('TEAM', 2.04, 'settled'), ('BW', -0.17, 'settled')]
+  #2 partial-takers under the control: 54; exactly +0.33R scratch 26; median +0.33; win 100%
+  #8 ordering: see §1 rows (adr_0.5 … adr_1.25 on the 26 live trades, sum R and ADR-units)
+
+written: /Users/alvinfung/apollo_the_wise/scripts/probes/_545p3_cells.tsv (26348 rows)

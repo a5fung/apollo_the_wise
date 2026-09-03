@@ -362,3 +362,167 @@ def test_a_degraded_rerun_is_refused():
     rotted = {**good, "stop_formula_rate": 0.98}   # a formula that is 98% right is broken
     v = ep_replay_mod.validation_verdict(rotted, only=only)
     assert not v["ok"] and "stop_formula_rate" in v["failures"][0]
+
+
+# ── #545 Phase 3 extensions (2026-09-03): every new RuleSet field defaults to LIVE ────────
+# behaviour, so the era rule-sets and `validate` are byte-identical to the 09-01 baseline.
+
+from dataclasses import replace as _replace  # noqa: E402
+
+from scripts.ep_replay import (  # noqa: E402
+    RUNNER_RULES,
+    adr20_pct,
+    signal_ndo_o5l,
+    signal_sd_5m_clear,
+)
+
+
+def _rising_daily(start_day, entry, n=8, step=0.3):
+    """n sessions closing progressively higher, lows never near the stop."""
+    out = {}
+    d = start_day
+    i = 0
+    while i < n:
+        d += timedelta(days=1)
+        if d.weekday() >= 5:
+            continue
+        c = entry + step * (i + 1)
+        out[d.isoformat()] = (c - 0.1, c + 0.2, c - 0.3, c)
+        i += 1
+    return out
+
+
+def test_new_ruleset_fields_default_to_live_behaviour():
+    """MUTATION: a default that is not the live behaviour would silently change every era
+    replay — and the validation baseline would drift without anyone changing a rule."""
+    rs = RULESETS["era_c"]
+    assert rs.runner_rule == "live" and rs.attempts == 1 and rs.target_frame == "orb"
+    assert rs.adr_k is None and rs.reentry_signal is None
+    assert RULESETS["era_a"].ladder_partial is True          # day-3/5 partial WAS live then
+    assert RULESETS["era_b"].ladder_partial is False         # PROFIT_TRIGGER_R set 08-01
+    assert ruleset_as_of(date(2026, 7, 31)).ladder_partial is True
+    assert ruleset_as_of(date(2026, 8, 1)).ladder_partial is False
+
+
+def test_adr_k_stop_is_orb_high_minus_k_adr_and_refuses_without_adr():
+    rs = _replace(RULESETS["era_c"], stop_mode="adr_k", adr_k=0.75)
+    assert rs.stop_price(10.0, 9.0, adr_dollar=0.8) == pytest.approx(10.0 - 0.6)
+    with pytest.raises(ValueError):
+        rs.stop_price(10.0, 9.0)                    # no ADR -> never a default
+    # the era formulas are untouched by the new argument
+    assert RULESETS["era_c"].stop_price(10.0, 9.0, adr_dollar=0.8) == pytest.approx(8.0)
+
+
+def test_adr20_is_strictly_prior_sessions_and_abstains_under_ten():
+    dbars = {date(2026, 7, 1) + timedelta(days=i): {"h": 11.0, "l": 10.0, "c": 10.0}
+             for i in range(15)}
+    pct, n = adr20_pct(dbars, date(2026, 7, 10))    # sessions 07-01..07-09 = 9 -> abstain
+    assert pct is None and n == 9
+    pct, n = adr20_pct(dbars, date(2026, 7, 12))    # 11 prior sessions
+    assert n == 11 and pct == pytest.approx(0.1)
+
+
+def test_ladder_partial_off_never_books_the_day5_partial():
+    """MUTATION: the harness used to book a day-3/5 partial live stands down (KNOWN
+    DEVIATIONS). Under era C a campaign that drifts sideways above the stop for 5+ days
+    must carry NO partial_profit exit."""
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1)      # fills at 10.0, never near 8.0
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+    daily = _daily(**{d: (10.1, 10.3, 10.0, 10.1) for d in
+                      ("2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07",
+                       "2026-08-10", "2026-08-11", "2026-08-12")})
+    daily["T"][DAY] = {"o": 10.0, "h": 10.3, "l": 9.9, "c": 10.1, "v": 1e6}
+    era_c = _walk(bars, daily)
+    assert not any(e["reason"] == "partial_profit" for e in era_c["exits"])
+    with_ladder = _walk(bars, daily, rs=_replace(RULESETS["era_c"], ladder_partial=True))
+    assert any(e["reason"] == "partial_profit" for e in with_ladder["exits"])
+
+
+def test_target_frame_own_moves_the_target_with_the_stop():
+    """The 08-06 mechanism: +2R of the stop's OWN distance sits higher than the pinned
+    ORB-frame target whenever the stop is wider than the ORB low."""
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1)
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+    pinned = _walk(bars)
+    own = _walk(bars, rs=_replace(RULESETS["era_c"], target_frame="own"))
+    assert pinned["target"] == pytest.approx(10.0 + 2 * (10.0 - 9.0))
+    assert own["target"] == pytest.approx(10.0 + 2 * (10.0 - 8.0))
+
+
+def test_runner_rule_hard_keeps_the_original_stop_after_the_partial():
+    """MUTATION: if 'hard' silently inherited the breakeven floor, its whole cost side (the
+    −0.33R round-trip) would vanish and the runner grid would flatter every rule."""
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1, n=5)
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+    bars[2]["h"] = 12.5                                     # +2R target (12.0) touched
+    daily = _daily(**{"2026-08-04": (10.5, 10.6, 9.5, 9.6),   # back under entry, above 8.0
+                      "2026-08-05": (9.5, 9.6, 7.9, 7.95)})   # through the hard stop
+    daily["T"][DAY] = {"o": 10.0, "h": 12.5, "l": 9.9, "c": 10.5, "v": 1e6}
+    be = _walk(bars, daily, rs=_replace(RULESETS["era_c"], runner_rule="breakeven"))
+    hard = _walk(bars, daily, rs=_replace(RULESETS["era_c"], runner_rule="hard"))
+    # the +2R partial is PINNED to the ORB frame (target 12.0 = entry + 2 x (10 - 9)); in
+    # the 2R stop's own unit (10 - 8 = 2.0) that partial is +1R on 1/3 = +0.33R — the
+    # live "+0.33R scratch". 'hard' then loses 1R on the 2/3: −0.33R, the #2 cost side.
+    assert be["status"] == "settled" and be["realized_r"] == pytest.approx(1 / 3)
+    assert hard["status"] == "settled"
+    assert hard["realized_r"] == pytest.approx(1 / 3 + 2 / 3 * (-1.0))
+    with pytest.raises(ValueError):
+        _walk(bars, daily, rs=_replace(RULESETS["era_c"], runner_rule="nope"))
+    assert set(RUNNER_RULES) >= {"breakeven", "hard", "t3", "t20", "sma10", "atr1", "gb25"}
+
+
+def test_time_runner_exits_at_the_close_n_sessions_after_the_partial():
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1, n=5)
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+    bars[2]["h"] = 12.5
+    daily = _daily(**_rising_daily(DAY, 11.0, n=6))
+    daily["T"][DAY] = {"o": 10.0, "h": 12.5, "l": 9.9, "c": 11.0, "v": 1e6}
+    t3 = _walk(bars, daily, rs=_replace(RULESETS["era_c"], runner_rule="t3"))
+    assert t3["status"] == "settled" and t3["final_reason"] == "time_close"
+    assert len([e for e in t3["exits"] if e["reason"] == "time_close"]) == 1
+    third_close = sorted(daily["T"])[3]                      # DAY + 3 sessions
+    assert t3["exits"][-1]["time"] == str(third_close)
+
+
+def test_sd_5m_clear_signal_uses_the_first_complete_window_after_the_stop():
+    bars = _flat_window(o=9.5, h=9.6, l=9.4, c=9.5, start=time(9, 31), n=40)
+    stop_minute = bars[5]["m"]                               # 09:36 -> window 1
+    for b in bars[9:14]:                                     # window 2 (09:40-09:44)
+        b["h"], b["l"] = 9.7, 9.3
+    bars[20]["h"] = 9.75                                     # 09:51 clears 9.7
+    sig = signal_sd_5m_clear(bars, stop_minute)
+    assert sig["entry"] == 9.7 and sig["stop"] == 9.3 and sig["minute"] == bars[20]["m"]
+    assert signal_sd_5m_clear(bars[:15], stop_minute) is None   # never cleared -> no leg
+
+
+def test_attempt_two_leg_sums_into_campaign_r_after_a_full_stop_out():
+    """The per-name accounting Axis 5 requires: two legs, each its own 1R, the campaign is
+    their sum; no leg fires after a breakeven scratch (a banked partial is not a shake-out)."""
+    bars = _flat_window(o=10.05, h=10.3, l=10.02, c=10.1, n=60)
+    bars[0]["o"], bars[0]["l"] = 9.98, 9.97
+    bars[3]["l"], bars[3]["c"] = 7.9, 7.95                   # 09:34 full stop at 8.0
+    for b in bars[4:9]:                                      # window 1 = 09:35-09:39, the
+        b["o"], b["h"], b["l"], b["c"] = 8.0, 8.2, 7.8, 8.1   # first complete post-stop range
+    for b in bars[9:]:
+        b["o"], b["h"], b["l"], b["c"] = 8.1, 8.15, 8.05, 8.1
+    bars[20]["h"] = 8.25                                     # clears 8.2 -> leg 2 at 8.2 / 7.8
+    bars[25]["h"] = 9.1                                      # +2R of 0.4 = 9.0 touched
+    for b in bars[26:]:                                      # hold above breakeven (8.2) ...
+        b["o"], b["h"], b["l"], b["c"] = 8.4, 8.5, 8.3, 8.4
+    bars[30]["l"], bars[30]["c"] = 8.15, 8.18                # ... until it is touched at 8.2
+    rs = _replace(RULESETS["era_c"], attempts=2, reentry_signal="sd_5m_clear")
+    r = _walk(bars, rs=rs)
+    assert r["status"] == "settled" and r["realized_r"] == pytest.approx(-1.0)
+    assert r["attempts_fired"] == 2 and r["leg2_status"] == "settled"
+    assert r["leg2_r"] == pytest.approx(1 / 3 * 2.0)          # partial, then scratched at entry
+    assert r["campaign_r"] == pytest.approx(-1.0 + 2 / 3)
+    one = _walk(bars)
+    assert one["attempts_fired"] == 1 and one["campaign_r"] == pytest.approx(-1.0)
+
+
+def test_ndo_o5l_signal_needs_both_sides_of_0935():
+    nb = _flat_window(o=9.5, h=9.6, l=9.4, c=9.5, start=time(9, 30), n=10)
+    nb[1]["l"] = 9.2
+    sig = signal_ndo_o5l(nb)
+    assert sig["stop"] == 9.2 and sig["minute"].time() == time(9, 35) and sig["entry"] == 9.5
+    assert signal_ndo_o5l(nb[:4]) is None

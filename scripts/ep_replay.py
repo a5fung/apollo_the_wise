@@ -34,19 +34,21 @@ KNOWN DEVIATIONS from live behaviour (each stated, none silent):
   - +2R partial books AT the target price (today's resting-limit semantics). Era-B real
     fills were poll-time market fills (FIGS -0.87R / PLTR +0.9R class); validate reports the
     per-trade delta rather than modelling the poll.
-  - 🔴 The Day 3-5 ladder partial: THE HARNESS TAKES IT, LIVE DOES NOT (corrected 2026-09-02;
-    this line previously said live "fills near it", which was wrong). live_tracker.py:1076 passes
-    `skip_partial_decision=bool(PROFIT_TRIGGER_R)` — and PROFIT_TRIGGER_R has been set since the
-    +2R partial landed 08-01 — so live SKIPS the day-3/5 partial decision entirely. Measured
-    blast radius: it moves 14 of 267 campaigns and flips CORT and ATRO from small wins to small
-    losses. No verdict in #545 turned on it, but a replay that books a partial live stands down
-    is optimistic by construction on every runner, which is exactly the direction that flatters
-    a harvest finding.
+  - The Day 3-5 ladder partial is ERA-SWITCHED (RuleSet.ladder_partial, 2026-09-03). Until
+    then THE HARNESS TOOK IT AND LIVE DID NOT: live_tracker.py:1076 passes
+    `skip_partial_decision=bool(PROFIT_TRIGGER_R)` — set since the +2R partial landed 08-01 —
+    so live has skipped the day-3/5 partial decision for every era-B/C trade. `ruleset_as_of`
+    now takes it only before 2026-08-01 (era A, where it WAS live). Measured before the switch:
+    it moved 14 of 267 campaigns and flipped CORT and ATRO from small wins to small losses;
+    a replay that books a partial live stands down is optimistic on every runner rule, which
+    is exactly the direction that flatters a harvest finding.
   - Same-day-after-partial the resting stop stays at the ORIGINAL stop (breakeven_at_broker
     default-OFF behaviour, confirmed by FIGS 08-07); breakeven enters via the ladder's
     effective stop from the NEXT session — matches CRWD 08-28's breakeven fill.
-  - Re-entry after a same-day stop-out (entry_attempt > 1) is NOT replayed — first attempts
-    only. The 6 attempt-2 trades are excluded from agreement and counted.
+  - Re-entry is OPT-IN (RuleSet.attempts=2 + reentry_signal; Phase 3, 2026-09-03): one leg
+    after a full stop-out via the #5 lineage's three placeable signals, each leg its own 1R.
+    `validate` never enables it — the 6 real attempt-2 trades are excluded from agreement and
+    counted, so the fill contract is validated on first attempts only.
   - Portfolio-level state is NOT replayed: slot ranking / max-positions / loss limits /
     breakers need book state that per-campaign replay cannot know. This harness measures
     per-campaign selection + geometry, not portfolio interaction.
@@ -126,26 +128,58 @@ class RuleSet:
     trail_prior_closes: bool        # #548: trail sees the stock's own closes
     entry_cancel: time | None       # unfilled entry cancelled at this ET time (None = end of day)
     breakeven_at_partial: bool = False  # #548: partial moves the resting stop to entry at once
+    # ── #545 Phase 3 extensions (2026-09-03). Every field below defaults to the LIVE
+    # behaviour so the era rule-sets and `validate` are byte-identical to before. ──
+    ladder_partial: bool = True     # the day-3/5 ladder partial: LIVE only while
+                                    # PROFIT_TRIGGER_R was unset (< 2026-08-01) — see the
+                                    # KNOWN DEVIATIONS entry; era B/C stand it down
+    adr_k: float | None = None      # stop_mode "adr_k": stop = orb_high − k × ADR20$ (day-1
+                                    # anchor = orb_high, the pre-fill entry proxy live uses)
+    target_frame: str = "orb"       # "orb" = +2R pinned to entry−orb_low (live since 08-16,
+                                    # profit_target_r_per_share); "own" = +2R of the placed
+                                    # stop's distance — the 08-06 moving-target frame
+    runner_rule: str = "live"       # what governs the 2/3 after the +2R partial: "live" =
+                                    # the ladder (apply_daily_exit_step); else one of
+                                    # RUNNER_RULES (the #2 lineage's 13, mirrored exactly)
+    attempts: int = 1               # 2 = one re-entry leg after a full stop-out
+    reentry_signal: str | None = None  # "sd_5m_clear" | "ndo_o5l" | "ndo_pdl" (the #5 legs)
 
-    def stop_price(self, orb_high: float, orb_low: float) -> float:
+    def stop_price(self, orb_high: float, orb_low: float,
+                   adr_dollar: float | None = None) -> float:
         """The protective stop this rule-set places. Formula provenance:
         orb_low        — the original OTO bracket stop (CLAUDE.md Paper Trading).
         entry_minus_2r — order_manager ~L498: stop = 2*orb_low − orb_high (R = orb range;
                          sizing self-halves through the doubled distance).
+        adr_k          — orb_high − k × ADR20$ (Phase 3, never live): the day-2+ band's basis
+                         (delayed_entry_shadow.compute_ep_adr_dollar) moved to day 1, with
+                         the ADR% × orb_high because the EP-day close is unknowable at 9:31.
+                         Missing ADR -> ValueError; the caller abstains, never substitutes.
         Validated per-trade against mi_live_trades.hard_stop by `validate`."""
         if self.stop_mode == "orb_low":
             return orb_low
         if self.stop_mode == "entry_minus_2r":
             return 2 * orb_low - orb_high
+        if self.stop_mode == "adr_k":
+            if self.adr_k is None or adr_dollar is None or adr_dollar <= 0:
+                raise ValueError("adr_k stop needs adr_k and a positive ADR$")
+            return orb_high - self.adr_k * adr_dollar
         raise ValueError(f"unknown stop_mode {self.stop_mode!r}")
 
 
 RULESETS: dict[str, RuleSet] = {
-    "era_a": RuleSet("era_a", False, "orb_low", None, False, None),
-    "era_b": RuleSet("era_b", False, "orb_low", 2.0, False, time(10, 0)),
-    "era_c": RuleSet("era_c", True, "entry_minus_2r", 2.0, True, time(10, 0), True),
+    "era_a": RuleSet("era_a", False, "orb_low", None, False, None, ladder_partial=True),
+    "era_b": RuleSet("era_b", False, "orb_low", 2.0, False, time(10, 0), ladder_partial=False),
+    "era_c": RuleSet("era_c", True, "entry_minus_2r", 2.0, True, time(10, 0), True,
+                     ladder_partial=False),
 }
 RULESETS["current"] = RULESETS["era_c"]
+
+# The #2 lineage's post-partial rules (scripts/probes/_bt_replay.py RUNNER_RULES), mirrored
+# so that harness can retire. "live" is the ladder itself; "live_trail_be" is the same rule
+# re-implemented harness-side and is asserted equal to "live" by the Phase 3 sweep.
+RUNNER_RULES = ("breakeven", "hard", "live_trail_be", "sma10", "sma20", "atr1", "atr2",
+                "gb25", "gb50", "t3", "t5", "t10", "t20")
+REENTRY_SIGNALS = ("sd_5m_clear", "ndo_o5l", "ndo_pdl")
 
 
 def get_ruleset(name: str | None) -> RuleSet:
@@ -172,6 +206,7 @@ def ruleset_as_of(d: date) -> RuleSet:
         trail_prior_closes=d >= TRAIL_PRIOR_CLOSES_DATE,
         entry_cancel=time(10, 0) if d >= PARTIAL_LIVE_DATE else None,
         breakeven_at_partial=d >= BREAKEVEN_AT_PARTIAL_DATE,
+        ladder_partial=d < PARTIAL_LIVE_DATE,
     )
 
 
@@ -278,6 +313,113 @@ def entry_walk(bars: list[dict], orb_high: float, submit: time,
     return {"status": "no_entry", "reason": "never_crossed_orb_high"}
 
 
+# ── Volatility inputs (from the DAILY capture; strictly-prior sessions, never the day) ──
+
+def adr20_pct(dbars: dict[date, dict], before: date) -> tuple[float | None, int]:
+    """Mean (high−low)/close over the <=20 sessions strictly BEFORE `before`, as a FRACTION.
+    Same arithmetic as delayed_entry_shadow.compute_adr20 (the day-2+ band's basis) and the
+    08-06 stop-floor read's ADR20. (None, n) below 10 usable sessions — abstain, never default."""
+    pre = [dbars[d] for d in sorted(dbars) if d < before]
+    vals = [(b["h"] - b["l"]) / b["c"] for b in pre[-20:]
+            if b.get("h") is not None and b.get("l") is not None and b.get("c")]
+    if len(vals) < 10:
+        return None, len(vals)
+    return sum(vals) / len(vals), len(vals)
+
+
+def atr14_abs(dbars: dict[date, dict], before: date) -> float | None:
+    """Absolute ATR14 through the session before `before` — the #2 lineage's own
+    arithmetic (_runner_sweep.atr14_abs), needed by its atr1/atr2 runner rules."""
+    rows = [dbars[d] for d in sorted(dbars) if d < before][-35:]
+    rows = [r for r in rows if r.get("h") is not None and r.get("l") is not None
+            and r.get("c") is not None]
+    if len(rows) < 10:
+        return None
+    trs = [max(r["h"] - r["l"], abs(r["h"] - p["c"]), abs(r["l"] - p["c"]))
+           for p, r in zip(rows, rows[1:])]
+    w = trs[-14:]
+    return sum(w) / len(w) if w else None
+
+
+def load_minutes_extra() -> dict[tuple[str, date], list[dict]]:
+    """SUPPLEMENTARY minute bars for sessions AFTER an alert day (the #562 backfill capture,
+    scripts/probes/_562bf_minute.tsv.gz: 245 tickers, 2026-05-08 → 08-31, mi_intraday_bars
+    verbatim). Used ONLY by the attempt-2 leg and the stop-minute lookup on later sessions —
+    never for day 0, so `validate` and every day-1 number stay byte-identical to the primary
+    capture. Missing file -> empty dict (the leg abstains, counted)."""
+    import gzip
+    path = REPO / "scripts" / "probes" / "_562bf_minute.tsv.gz"
+    by: dict[tuple[str, date], list[dict]] = {}
+    if not path.exists():
+        return by
+    with gzip.open(path, "rt") as fh:
+        for line in fh:
+            p = line.rstrip("\n").split("|")
+            if len(p) != 8 or p[0] == "ticker":
+                continue
+            try:
+                dt = datetime.fromtimestamp(int(p[2]) / 1000, tz=_ET)
+                bar = {"m": dt, "o": float(p[3]), "h": float(p[4]),
+                       "l": float(p[5]), "c": float(p[6])}
+            except ValueError:
+                continue
+            if time(9, 30) <= dt.time() < time(16, 0):
+                by.setdefault((p[0], dt.date()), []).append(bar)
+    for bars in by.values():
+        bars.sort(key=lambda b: b["m"])
+    return by
+
+
+# ── Attempt-2 signals (the #5 lineage's three placeable legs, mirrored) ──────────────
+
+_MIN_R_UNIT_FRAC = 0.003     # #5's degenerate-leg guard: r-unit >= 0.3% of entry
+
+
+def _w5(m: datetime) -> int:
+    """Aligned 5-minute window index from 09:30 (window 0 = 09:30-09:34)."""
+    return ((m.hour * 60 + m.minute) - 570) // 5
+
+
+def signal_sd_5m_clear(day_bars: list[dict], stop_minute: datetime) -> dict | None:
+    """Same-day: the first COMPLETE aligned 5-min window strictly after the stop-out bar
+    defines a range; re-enter AT its high on a later 1-min bar that clears it; stop = its
+    low. (_545_reentry_sweep.sig_5m_clear — `orb_5m_reentry_hybrid_replay`.)"""
+    stop_w = _w5(stop_minute)
+    rng = None
+    for b in day_bars:
+        w = _w5(b["m"])
+        if w <= stop_w:
+            continue
+        if rng is None:
+            rng = {"w": w, "h": b["h"], "l": b["l"]}
+        elif w == rng["w"]:
+            rng["h"], rng["l"] = max(rng["h"], b["h"]), min(rng["l"], b["l"])
+        elif b["h"] >= rng["h"]:
+            return {"entry": rng["h"], "minute": b["m"], "stop": rng["l"],
+                    "note": f"range {rng['l']:.2f}-{rng['h']:.2f}"}
+    return None
+
+
+def signal_ndo_o5l(next_bars: list[dict]) -> dict | None:
+    """Next session: enter at the open of the first bar at/after 09:35; stop = the low of
+    the first five minutes. (_545_reentry_sweep.sig_nextopen_o5l.)"""
+    first5 = [b for b in next_bars if b["m"].time() < time(9, 35)]
+    after = [b for b in next_bars if b["m"].time() >= time(9, 35)]
+    if not first5 or not after:
+        return None
+    return {"entry": after[0]["o"], "minute": after[0]["m"],
+            "stop": min(b["l"] for b in first5), "note": "stop=first-5m low"}
+
+
+def signal_ndo_pdl(next_bars: list[dict], stop_day_low: float | None) -> dict | None:
+    """Next session: enter at the 09:30 open, unconditional; stop = the stop-out day's low.
+    (_545_reentry_sweep.sig_nextopen_pdl.)"""
+    if not next_bars or stop_day_low is None:
+        return None
+    return {"entry": next_bars[0]["o"], "minute": next_bars[0]["m"],
+            "stop": stop_day_low, "note": "stop=stop-day low"}
+
+
 # ── One campaign, end to end ─────────────────────────────────────────────────────────
 
 def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
@@ -285,17 +427,27 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
                   submit: time = time(9, 31),
                   orb_high: float | None = None, orb_low: float | None = None,
                   atr_14: float | None = None,
-                  shares: float | None = None, integer_shares: bool = False) -> dict:
+                  shares: float | None = None, integer_shares: bool = False,
+                  minutes_extra: dict | None = None) -> dict:
     """Replay one (ticker, alert day) campaign under rule-set `rs`, entry to final exit.
     ORB comes from the stored trade row when given (a stored fact of the day), else from
     the 9:30 minute bar. `shares=None` -> normalized fractional sizing (1 risk unit).
-    Returns a dict with status/abstain accounting; never fabricates a fill."""
+    Returns a dict with status/abstain accounting; never fabricates a fill.
+
+    Phase 3 (2026-09-03): the walk after a fill lives in `_walk_leg` so an attempt-2 leg
+    (rs.attempts == 2, rs.reentry_signal) runs through the SAME fill/stop/target/ladder
+    mechanics as the first attempt — each attempt is its own 1-risk-unit leg, and the
+    campaign's R is the SUM of its legs (the per-name accounting Axis 5 requires)."""
     out = {"ticker": ticker, "alert_date": alert_date, "ruleset": rs.name,
            "status": None, "reason": None, "entered": False, "entry_px": None,
            "stop": None, "target": None, "exits": [], "realized_pnl_per_unit": None,
            "realized_r": None, "partial_fired": False, "final_reason": None,
            "gap_through": False, "day0_missing_minutes": None,
-           "sessions_abstained": 0, "flags": []}
+           "sessions_abstained": 0, "flags": [],
+           # Phase 3 columns
+           "adr_pct": None, "adr_dollar": None, "stop_width_adr": None, "pnl_adr": None,
+           "mark_r": None, "attempts_fired": 0, "leg2_status": None, "leg2_reason": None,
+           "leg2_r": None, "leg2_pnl_adr": None, "campaign_r": None}
     bars0 = minutes.get((ticker, alert_date), [])
     if orb_high is None or orb_low is None:
         orb = next((b for b in bars0 if b["m"].time() == time(9, 30)), None)
@@ -307,7 +459,14 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
     if not ok:
         out.update(status="no_trade", reason=skip)
         return out
-    stop = rs.stop_price(orb_high, orb_low)
+    dbars = daily.get(ticker, {})
+    adr_pct, adr_n = adr20_pct(dbars, alert_date)
+    adr_dollar = adr_pct * orb_high if adr_pct else None
+    out.update(adr_pct=adr_pct, adr_dollar=adr_dollar)
+    if rs.stop_mode == "adr_k" and adr_dollar is None:
+        out.update(status="abstain", reason=f"no_adr20:{adr_n}_sessions")
+        return out
+    stop = rs.stop_price(orb_high, orb_low, adr_dollar)
     if stop <= 0:
         out.update(status="no_trade", reason="stop_at_or_below_zero")
         return out
@@ -329,27 +488,147 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
         return out
     entry_px = fill["px"]
     out.update(entered=True, entry_px=entry_px)
+    if entry_px - stop <= 0:
+        out.update(status="abstain", reason="nonpositive_risk_per_share")
+        return out
 
-    if shares is None:
-        risk_per_share = entry_px - stop
-        if risk_per_share <= 0:
-            out.update(status="abstain", reason="nonpositive_risk_per_share")
-            return out
-        shares = 1.0 / risk_per_share      # 1 risk-dollar unit
-    risk_denom = shares * (entry_px - stop)
-
-    # +2R target — the live R frame (profit_target_r_per_share: magna53 frames off
-    # entry − orb_low, NOT the placed stop; that function owns the rule).
+    # +2R target. "orb": the LIVE R frame (profit_target_r_per_share: magna53 frames off
+    # entry − orb_low, NOT the placed stop; that function owns the rule). "own": +2R of
+    # the placed stop's own distance — the 08-06 frame, kept ONLY as the mechanism check.
     target = None
     if rs.intraday_partial_r:
-        r_ps = profit_target_r_per_share("magna53", entry_px, stop, orb_low)
+        if rs.target_frame == "orb":
+            r_ps = profit_target_r_per_share("magna53", entry_px, stop, orb_low)
+        elif rs.target_frame == "own":
+            r_ps = entry_px - stop
+        else:
+            raise ValueError(f"unknown target_frame {rs.target_frame!r}")
         if r_ps is not None:
             target = entry_px + rs.intraday_partial_r * r_ps
     out["target"] = target
+    if adr_dollar:
+        out["stop_width_adr"] = (entry_px - stop) / adr_dollar
 
+    fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
+    leg = _walk_leg(ticker=ticker, leg_date=alert_date, entry_px=entry_px, stop=stop,
+                    target=target, bars=bars0, fill_idx=fill_idx, rs=rs, daily=daily,
+                    shares=shares, integer_shares=integer_shares, adr_dollar=adr_dollar,
+                    minutes_extra=minutes_extra or {})
+    for k in ("status", "reason", "exits", "final_reason", "partial_fired", "gap_through",
+              "sessions_abstained", "realized_pnl_per_unit", "realized_r", "pnl_adr",
+              "mark_r"):
+        out[k] = leg[k]
+    out["attempts_fired"] = 1
+    if leg["status"] == "abstain":
+        return out
+
+    # ── Attempt 2: one re-entry leg after a FULL stop-out (no partial banked) ──
+    if (rs.attempts >= 2 and leg["status"] == "settled"
+            and leg["final_reason"] == "stop_hit" and not leg["partial_fired"]):
+        if rs.reentry_signal not in REENTRY_SIGNALS:
+            raise ValueError(f"attempts=2 needs reentry_signal in {REENTRY_SIGNALS}")
+        leg2 = _attempt_two(ticker=ticker, alert_date=alert_date, stop_day=leg["stop_day"],
+                            stop_minute=leg["stop_minute"], stop_px=leg["stop_px"],
+                            rs=rs, minutes=minutes, daily=daily,
+                            minutes_extra=minutes_extra or {}, shares=shares,
+                            integer_shares=integer_shares, adr_dollar=adr_dollar)
+        out.update(leg2_status=leg2["status"], leg2_reason=leg2.get("reason"))
+        if leg2["status"] in ("settled", "open_at_horizon"):
+            out["attempts_fired"] = 2
+            out["leg2_r"] = leg2["realized_r"]
+            out["leg2_pnl_adr"] = leg2["pnl_adr"]
+            out["flags"].append(f"leg2:{leg2.get('note', '')}")
+            if leg2["status"] == "open_at_horizon":
+                out["status"] = "open_at_horizon"
+                out["mark_r"] = (out["realized_r"] or 0.0) + (leg2["mark_r"] or 0.0)
+    if out["status"] == "settled":
+        out["campaign_r"] = (out["realized_r"] or 0.0) + (out["leg2_r"] or 0.0)
+    return out
+
+
+def _attempt_two(*, ticker, alert_date, stop_day, stop_minute, stop_px, rs, minutes, daily,
+                 minutes_extra, shares, integer_shares, adr_dollar) -> dict:
+    """Compute the re-entry signal after a stop-out and walk it as a fresh 1-risk-unit leg.
+    Same-day bars come from the primary capture on day 0 or the supplementary capture on a
+    later session; next-session bars only from the supplementary capture. No bars -> the
+    leg ABSTAINS (counted) — never a daily-grain fill."""
+    def bars_for(d: date) -> list[dict]:
+        if d == alert_date:
+            return minutes.get((ticker, d), [])
+        return minutes_extra.get((ticker, d), [])
+
+    day_bars = bars_for(stop_day)
+    if stop_minute is None:
+        # forward-daily stop-out: locate the first bar at/under the resting stop
+        hit = next((b for b in day_bars if b["l"] <= stop_px), None)
+        if hit is None:
+            return {"status": "abstain", "reason": "leg2_no_stop_minute"}
+        stop_minute = hit["m"]
+    if rs.reentry_signal == "sd_5m_clear":
+        if not day_bars:
+            return {"status": "abstain", "reason": "leg2_no_same_day_bars"}
+        sig = signal_sd_5m_clear(day_bars, stop_minute)
+        leg_date = stop_day
+    else:
+        nxt = stop_day
+        next_bars: list[dict] = []
+        for _ in range(6):
+            nxt += timedelta(days=1)
+            if nxt.weekday() >= 5:
+                continue
+            next_bars = bars_for(nxt)
+            if next_bars:
+                break
+        if not next_bars:
+            return {"status": "abstain", "reason": "leg2_no_next_session_bars"}
+        if nxt > LAST_SETTLED:
+            return {"status": "abstain", "reason": "leg2_next_session_past_horizon"}
+        if rs.reentry_signal == "ndo_o5l":
+            sig = signal_ndo_o5l(next_bars)
+        else:
+            db = daily.get(ticker, {}).get(stop_day)
+            sd_low = db["l"] if db and db.get("l") is not None else (
+                min(b["l"] for b in day_bars) if day_bars else None)
+            sig = signal_ndo_pdl(next_bars, sd_low)
+        leg_date = nxt
+    if sig is None:
+        return {"status": "no_signal", "reason": "leg2_no_signal"}
+    entry, stop = sig["entry"], sig["stop"]
+    if entry <= stop or (entry - stop) / entry < _MIN_R_UNIT_FRAC:
+        return {"status": "no_signal", "reason": "leg2_degenerate_r_unit"}
+    target = entry + rs.intraday_partial_r * (entry - stop) if rs.intraday_partial_r else None
+    lbars = bars_for(leg_date)
+    fill_idx = next(i for i, b in enumerate(lbars) if b["m"] == sig["minute"])
+    leg = _walk_leg(ticker=ticker, leg_date=leg_date, entry_px=entry, stop=stop,
+                    target=target, bars=lbars, fill_idx=fill_idx, rs=rs, daily=daily,
+                    shares=shares, integer_shares=integer_shares, adr_dollar=adr_dollar,
+                    minutes_extra=minutes_extra, fill_at_open=(rs.reentry_signal != "sd_5m_clear"))
+    leg["note"] = f"{rs.reentry_signal}@{leg_date} {entry:.2f}/{stop:.2f} {sig['note']}"
+    return leg
+
+
+def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, daily,
+              shares, integer_shares, adr_dollar, minutes_extra, fill_at_open=False) -> dict:
+    """Walk one filled leg from its fill bar to settlement: the day-of minute walk, then the
+    forward daily walk under the LIVE ladder (runner_rule "live") or one of the #2 lineage's
+    post-partial rules. Returns status / exits / R and the stop-out anchor (day, minute, px)
+    an attempt-2 leg needs. Sizing: `shares=None` -> 1 risk unit on THIS leg's own stop."""
+    out = {"status": None, "reason": None, "exits": [], "final_reason": None,
+           "partial_fired": False, "gap_through": False, "sessions_abstained": 0,
+           "realized_pnl_per_unit": None, "realized_r": None, "pnl_adr": None,
+           "mark_r": None, "stop_day": None, "stop_minute": None, "stop_px": None}
+    if shares is None:
+        shares = 1.0 / (entry_px - stop)      # 1 risk-dollar unit
+    risk_denom = shares * (entry_px - stop)
     remaining = float(shares)
     partial_taken = False
     exits: list[dict] = []
+    runner = rs.runner_rule
+    if runner != "live" and runner not in RUNNER_RULES:
+        raise ValueError(f"unknown runner_rule {runner!r}; known: live, {RUNNER_RULES}")
+    # #2's floor rule: breakeven only for the breakeven-family rules; the hard stop stays
+    # for every other runner (the "hard-stop-stays" cost side is part of each rule).
+    be_floor = runner in ("live", "breakeven", "live_trail_be")
 
     def book(px: float, qty: float, reason: str, when) -> None:
         exits.append({"time": str(when), "price": px, "reason": reason, "shares": qty,
@@ -366,34 +645,42 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
         out["partial_fired"] = True
         return qty
 
-    # ── Day-0 minute walk from the fill bar ──
+    def stopped(px: float, when, d: date, minute) -> None:
+        nonlocal remaining
+        book(px, remaining, "stop_hit", when)
+        remaining = 0.0
+        out["final_reason"] = "stop_hit"
+        out.update(stop_day=d, stop_minute=minute, stop_px=px)
+
+    # ── Day-of minute walk from the fill bar ──
     cur_stop = stop
     closed = False
-    fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
-    fb = bars0[fill_idx]
+    fb = bars[fill_idx]
     if fb["l"] <= stop:
         if target is not None and fb["h"] >= target:
             # stop AND target both inside the fill bar — order unknowable at 1-min grain
             out.update(status="abstain", reason="day0_fill_bar_stop_and_target")
             return out
-        # Provable ordering: entry fills at the first touch >= orb_high; close < stop
-        # means the path DESCENDED through the stop after its high-water moment, so the
-        # stop fill is post-entry. Close >= stop leaves the order unknowable -> abstain.
+        # Provable ordering: entry fills at the first touch >= orb_high (or at the open
+        # for an open-priced leg); close < stop means the path DESCENDED through the stop
+        # after its high-water moment, so the stop fill is post-entry. Close >= stop leaves
+        # the order unknowable -> abstain.
         if fb["c"] < stop:
-            book(stop, remaining, "stop_hit", fb["m"])
-            remaining, closed = 0.0, True
-            out["final_reason"] = "stop_hit"
+            stopped(stop, fb["m"], leg_date, fb["m"])
+            closed = True
         else:
             out.update(status="abstain", reason="day0_fill_bar_straddles_stop")
             return out
-    if not closed and target is not None and fb["h"] >= target and fb["c"] >= stop:
+    if (not closed and target is not None and fb["h"] >= target and fb["c"] >= stop
+            and not fill_at_open):
         # Same provability does not exist for target-vs-nothing: a target touch in the
         # fill bar after the cross is orderable (target > orb_high >= any pre-fill price
         # only when orb crossed first) — the touch >= target necessarily post-dates the
-        # first >= orb_high touch when target > orb_high, which +2R guarantees.
-        if take_partial(target, fb["m"]) and rs.breakeven_at_partial:
+        # first >= orb_high touch when target > orb_high, which +2R guarantees. An
+        # open-priced leg has no such ordering -> the touch is left to the next bar.
+        if take_partial(target, fb["m"]) and rs.breakeven_at_partial and be_floor:
             cur_stop = max(cur_stop, entry_px)
-    for b in bars0[fill_idx + 1:]:
+    for b in bars[fill_idx + 1:]:
         if closed:
             break
         hit_stop = b["l"] <= cur_stop
@@ -405,24 +692,28 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
             px = b["o"] if b["o"] < cur_stop else cur_stop
             if px != cur_stop:
                 out["gap_through"] = True
-            book(px, remaining, "stop_hit", b["m"])
-            remaining, closed = 0.0, True
-            out["final_reason"] = "stop_hit"
+            stopped(px, b["m"], leg_date, b["m"])
+            closed = True
         elif hit_tgt:
-            if take_partial(target, b["m"]) and rs.breakeven_at_partial:
+            if take_partial(target, b["m"]) and rs.breakeven_at_partial and be_floor:
                 cur_stop = max(cur_stop, entry_px)
 
-    # ── Forward daily walk: the LIVE ladder + the resting-stop overlay ──
+    # ── Forward daily walk: the LIVE ladder + the resting-stop overlay, or a runner rule ──
+    last_close = bars[-1]["c"] if bars else entry_px
     if not closed:
         dbars = daily.get(ticker, {})
         prior = [dbars[d]["c"] for d in sorted(dbars)
-                 if d < alert_date and dbars[d]["c"] is not None]
+                 if d < leg_date and dbars[d]["c"] is not None]
+        d0 = dbars.get(leg_date)
+        held = [d0["c"]] if d0 and d0.get("c") is not None else [last_close]
+        atr14 = atr14_abs(dbars, leg_date)
         state = seed_exit_state(
-            alert_date=alert_date, entry_price=entry_px, hard_stop=stop,
+            alert_date=leg_date, entry_price=entry_px, hard_stop=stop,
             remaining_shares=remaining, partial_taken=partial_taken,
-            breakeven_active=partial_taken, exits=list(exits))
+            breakeven_active=partial_taken and be_floor, exits=list(exits))
         resting = cur_stop    # the broker's resting stop; raise-only, per live EOD updates
-        d = alert_date
+        post_sessions = 0
+        d = leg_date
         while not closed:
             d += timedelta(days=1)
             if d > LAST_SETTLED:
@@ -434,6 +725,7 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
             if not b or b["c"] is None or b["l"] is None or b["h"] is None:
                 out["sessions_abstained"] += 1
                 continue
+            last_close = b["c"]
             hit_tgt = (target is not None and not state["partial_taken"]
                        and b["h"] >= target)
             if hit_tgt and b["l"] <= resting:
@@ -442,22 +734,73 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
             if hit_tgt:
                 remaining = state["remaining_shares"]
                 partial_taken = state["partial_taken"]
-                if take_partial(target, d) and rs.breakeven_at_partial:
+                if take_partial(target, d) and rs.breakeven_at_partial and be_floor:
                     resting = max(resting, entry_px)
                 state["remaining_shares"] = remaining
                 state["partial_taken"] = True
-                state["breakeven_active"] = True
+                state["breakeven_active"] = be_floor
                 state["exits"] = list(exits)
+                post_sessions = 0
+            if runner != "live" and state["partial_taken"]:
+                # ── the #2 lineage's post-partial walk, mirrored (_bt_replay.replay_trade) ──
+                if hit_tgt:
+                    held.append(b["c"])       # the partial bar is session 0, never a check
+                    continue
+                post_sessions += 1
+                lvl = entry_px if be_floor else stop
+                if runner in ("atr1", "atr2") and atr14 and held:
+                    lvl = max(lvl, max(held) - (1.0 if runner == "atr1" else 2.0) * atr14)
+                if b["l"] <= lvl:
+                    px = b["o"] if (b["o"] is not None and b["o"] < lvl) else lvl
+                    if px != lvl:
+                        out["gap_through"] = True
+                    stopped(px, d, d, None)
+                    out["final_reason"] = "stop_hit"
+                    closed = True
+                    break
+                held.append(b["c"])
+                c = b["c"]
+                exit_now = None
+                if runner in ("sma10", "sma20", "live_trail_be"):
+                    tc = prior + held
+                    s10 = sum(tc[-10:]) / 10 if len(tc) >= 10 else None
+                    s20 = sum(tc[-20:]) / 20 if len(tc) >= 20 else None
+                    if runner == "sma10":
+                        s = s10
+                    elif runner == "sma20":
+                        s = s20
+                    else:
+                        s = (s10 if (s10 is not None and s10 > s20) else s20) \
+                            if s20 is not None else s10
+                    if s is not None and c < s:
+                        exit_now = "sma_trail_stop"
+                elif runner in ("gb25", "gb50"):
+                    keep = 0.75 if runner == "gb25" else 0.50
+                    peak = max(held)
+                    if peak > entry_px and c < entry_px + keep * (peak - entry_px):
+                        exit_now = "giveback_close"
+                elif runner in ("t3", "t5", "t10", "t20"):
+                    if post_sessions >= int(runner[1:]):
+                        exit_now = "time_close"
+                if exit_now:
+                    book(c, remaining, exit_now, d)
+                    remaining = 0.0
+                    out["final_reason"] = exit_now
+                    closed = True
+                    break
+                continue
             state["hard_stop"] = resting
             step = apply_daily_exit_step(
                 state, {"l": b["l"], "c": b["c"]}, d,
                 integer_partial_shares=integer_shares,
+                skip_partial_decision=not rs.ladder_partial,
                 prior_closes=(prior if rs.trail_prior_closes else None))
             state.update(remaining_shares=step.new_remaining,
                          partial_taken=step.new_partial_taken,
                          breakeven_active=step.new_breakeven_active,
                          exits=step.new_exits,
                          running_closes=step.new_running_closes)
+            held.append(b["c"])
             if step.closed:
                 px, reason = step.close_price, step.close_reason
                 if reason == "stop_hit" and b["o"] is not None and b["o"] < px:
@@ -467,9 +810,13 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
                 exits[-1] = {**exits[-1], "price": px,
                              "pnl": (px - entry_px) * exits[-1]["shares"]}
                 out["final_reason"] = reason
+                if reason == "stop_hit":
+                    out.update(stop_day=d, stop_minute=None, stop_px=px)
+                remaining = 0.0
                 closed = True
             else:
                 exits = list(step.new_exits)
+                remaining = step.new_remaining
                 resting = max(resting, step.effective_stop)
         out["partial_fired"] = any(e["reason"] == "partial_profit" for e in exits)
 
@@ -478,8 +825,14 @@ def walk_campaign(*, ticker: str, alert_date: date, rs: RuleSet,
         out["status"] = "settled"
     pnl = sum(e["pnl"] for e in exits)
     out["realized_pnl_per_unit"] = pnl
-    if risk_denom > 0 and closed:
-        out["realized_r"] = pnl / risk_denom
+    if risk_denom > 0:
+        if closed:
+            out["realized_r"] = pnl / risk_denom
+            if adr_dollar:
+                out["pnl_adr"] = (pnl / shares) / adr_dollar
+        elif out["status"] == "open_at_horizon":
+            # a MARK, never a return: the open remainder at the last settled close
+            out["mark_r"] = (pnl + (last_close - entry_px) * remaining) / risk_denom
     return out
 
 
