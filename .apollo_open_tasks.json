@@ -29,7 +29,7 @@
   },
   {
     "id": 233,
-    "status": "in_progress"
+    "status": "deployed"
   },
   {
     "id": 239,
@@ -89,7 +89,7 @@
   },
   {
     "id": 331,
-    "status": "blocked"
+    "status": "in_progress"
   },
   {
     "id": 333,
@@ -125,7 +125,7 @@
   },
   {
     "id": 397,
-    "status": "pending"
+    "status": "blocked"
   },
   {
     "id": 414,
@@ -149,7 +149,7 @@
   },
   {
     "id": 482,
-    "status": "blocked"
+    "status": "in_progress"
   },
   {
     "id": 485,
@@ -157,7 +157,7 @@
   },
   {
     "id": 486,
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "id": 488,
@@ -185,7 +185,7 @@
   },
   {
     "id": 516,
-    "status": "in_progress"
+    "status": "deployed"
   },
   {
     "id": 519,
@@ -197,7 +197,7 @@
   },
   {
     "id": 533,
-    "status": "in_progress"
+    "status": "deployed"
   },
   {
     "id": 540,
@@ -217,7 +217,7 @@
   },
   {
     "id": 559,
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "id": 560,
@@ -257,7 +257,7 @@
   },
   {
     "id": 593,
-    "status": "blocked"
+    "status": "in_progress"
   },
   {
     "id": 594,
@@ -265,11 +265,11 @@
   },
   {
     "id": 595,
-    "status": "pending"
+    "status": "deployed"
   },
   {
     "id": 597,
-    "status": "pending"
+    "status": "deployed"
   },
   {
     "id": 598,
@@ -282,6 +282,18 @@
   {
     "id": 601,
     "status": "deployed"
+  },
+  {
+    "id": 603,
+    "status": "in_progress"
+  },
+  {
+    "id": 604,
+    "status": "pending"
+  },
+  {
+    "id": 607,
+    "status": "pending"
   },
   {
     "id": 610,

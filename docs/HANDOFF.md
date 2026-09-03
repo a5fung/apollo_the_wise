@@ -459,3 +459,52 @@ Three instances in two days of **a fix, gate or alarm that exists but never actu
 at one call site of two, a validation function nothing called, an alarm named so no sweep reads it,
 and #616's writers missing from the gate whose own comment says to register them. Before believing
 a mechanism works, find where it FIRES.
+
+---
+
+## 2026-09-02 (Wed) — 🔴 RESUME HERE. Supersedes everything above.
+
+**Closed clean. Suite 6873. Board 82 → 77 — five real closes, zero opened.** All three services
+deployed twice today.
+
+### The day's finding — lead with this
+
+**We find the tail and fail to harvest it. Selection is not the constraint; conversion is.**
+Admitted alerts reach +20% at 20 sessions on 13.8% of HIGHs and 13.2% of all 270; our own 26 closed
+live trades hit the same proxy at 13.3%. **Of the proxy-tail names the bracket entered, it realized
+≥4R on ZERO** — the live cohort is −7.8R, best +3.31R, 21 of 26 losers, never a 4R trade. Skip
+buckets are not richer once compared like for like, and HTFL (the case that started it) enters fine
+today and pays +1.43R. It matches the operator's own thesis: a fat-tailed population is harvested,
+not filtered harder.
+
+### Thursday
+
+1. **#603** — Perplexity's endpoint dies 2026-09-27; only the post-deadline canary remains.
+2. **#545 Phase 3** (his call: *"ok, phase 3 tmr"*) — the joint day-1 stop × target × runner sweep
+   on the MAIN LINE. **Three $0 prerequisites first, recorded on #545 and in PLAN.md's week block:**
+   read `campaigns_era_c.tsv`, which already answers the conversion gap; **replay the 22 pre-2R live
+   trades under era_c rules** (the era-matched answer to "did the widening work" — the most
+   decision-relevant cell on the board); and state why BAND and STRL are "not replayable".
+3. **#333 verify 18:12 ET** — the first run that should store annual rows.
+4. **Deploy the yfinance quarterly leg** — built tonight, window closed while the card ran.
+
+### Rulings made today
+
+Don't revert the score flip (reverting buys zero alerts on 09-02, one borderline on 09-01; the
+drought is upstream — 317 died at the universe floor, 4 reached a score). No new data subscription.
+Chart-vision (#519) moves to Saturday, with the scorer choice and one cost number reaching him
+first. #612 is his, rebumped to 09-16.
+
+### The pattern to break
+
+Four times today I measured an adjacent quantity and asserted it was the thing — the stop he had
+already widened, a look-ahead regime join, a fraction filtered as a percent, and an R basis over 2
+of 26 rows. Plus the structural twin: a fix landing at ONE call site (1 of 10 judge-payload
+callers). **Split on the era first; build the bridge before contradicting a number; fix the
+function, not the caller.**
+
+### Process
+
+Never `git add -A` while a background card holds the tree — I swept half-finished work into a commit
+and only the pre-push suite caught it. One heavy card per window; the 5-hour cap killed a card
+mid-flight with nothing written.
