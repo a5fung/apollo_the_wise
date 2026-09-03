@@ -45,7 +45,7 @@ from agents.market_intelligence.ep_grade_judge import format_tier_transition, gr
 # scripts.eval_judge_enrich.recompute_has_direct_source keeps resolving.
 from agents.market_intelligence.judge_review import recompute_has_direct_source  # noqa: F401
 from scripts._judge_replay_common import (
-    build_judge_payload, fetch_narratives_for, fetch_profile, resolve_grounded_text,
+    BLIND, build_judge_payload, fetch_narratives_for, fetch_profile, resolve_grounded_text,
 )
 
 # Cohort for the sizing pass — the judge decision columns + the stored corpus. score_tier is the
@@ -182,7 +182,12 @@ async def run_regrade(days: int, limit: int, replicates: int) -> None:
             # BLIND arm × K (today's payload — no has_direct_source, no theme heat). The payload is
             # invariant across replicates — build it ONCE; only the model call repeats (to measure
             # the judge's run-to-run variance, the noise floor).
-            p, _m = build_judge_payload(r, grounded, mc, sector, active_narratives=narr)
+            # ⚠ BLIND MEANS BLIND (2026-09-02). build_judge_payload now RECOVERS
+            # has_direct_source from grounded_text by default — 8 of its 10 callers were
+            # silently grading a different prompt than live. THIS arm is the one that wants
+            # the un-recovered value; that IS the experiment, so it opts out explicitly.
+            p, _m = build_judge_payload(r, grounded, mc, sector, active_narratives=narr,
+                                        has_direct_source=BLIND)
             blind_tiers = []
             for _ in range(max(1, replicates)):
                 v = await grade_holistic(_get_client(), p, timeout=25,

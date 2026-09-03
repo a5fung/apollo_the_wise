@@ -54,6 +54,13 @@ async def fetch_profile(ticker):
     return market_cap, sector, company
 
 
+#: Explicit opt-out for `has_direct_source` auto-recovery. Only eval_judge_enrich's BLIND arm
+#: wants the un-recovered value; everything else wants the truth. A sentinel rather than None so
+#: "I did not think about it" and "I deliberately want it blind" stop being the same argument —
+#: they were, and that is how 8 of 10 callers ended up silently grading a different prompt.
+BLIND = object()
+
+
 def build_judge_payload(row, grounded_text, market_cap, sector, active_narratives=None,
                         tape=None, has_direct_source=None, theme_stage=None, theme_score=None,
                         revenue_stage=None, second_opinion=None, setup_class=None):
@@ -81,8 +88,25 @@ def build_judge_payload(row, grounded_text, market_cap, sector, active_narrative
     shadow cohort selects. Exposed rather than omitted: an absent parameter is a gap nobody can
     close, while a None one is a gap the guard can name.
 
+    🔑 **`has_direct_source` IS NOW RECOVERED HERE, NOT AT THE CALL SITE (2026-09-02).** The
+    recovery was first wired into the one caller that prompted it (the chart-axis shadow job) —
+    and a cleanup pass then found the OTHER EIGHT callers still passing None, i.e. still being
+    told a confident "no direct source" on every row, which is the exact defect this thread
+    exists to remove. `recompute_has_direct_source` needs only `grounded_text`, which this
+    function already receives, so there was never a reason for each caller to remember. Pass
+    `has_direct_source=BLIND` to opt OUT (eval_judge_enrich's blind arm); pass a real bool to
+    override; leave it None and you get the truth.
+
     `tests/test_judge_payload_completeness.py` fails the build if this signature drifts from
     `assemble_judge_inputs`."""
+    if has_direct_source is BLIND:
+        has_direct_source = None
+    elif has_direct_source is None and grounded_text:
+        # `has_markers` False = the row carries no section markers at all (pre-W1 / thin), where
+        # the honest answer is UNKNOWN — so None stands rather than a manufactured False.
+        from agents.market_intelligence.judge_review import recompute_has_direct_source
+        _hd, _hm = recompute_has_direct_source(grounded_text)
+        has_direct_source = _hd if _hm else None
     rule_mat = rule_materiality(
         extract_deal_value(f"{row['catalyst'] or ''} {row['claude_analysis'] or ''}"),
         market_cap)

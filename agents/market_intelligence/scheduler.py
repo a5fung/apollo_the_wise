@@ -4620,7 +4620,6 @@ async def _run_chart_axis_shadow(today):
     from agents.market_intelligence.judge_replay_common import (
         build_judge_payload, fetch_profile, resolve_grounded_text,
     )
-    from agents.market_intelligence.judge_review import recompute_has_direct_source
     client = None
     try:
         cohort, already = await asyncio.gather(  # independent reads
@@ -4655,22 +4654,13 @@ async def _run_chart_axis_shadow(today):
                     continue
                 mc, sector, company = await fetch_profile(ticker)
                 grounded_text, _ = await resolve_grounded_text(dict(row), company, grounded=False)
-                # ⚠ has_direct_source RECOVERED, not left None (2026-09-02). The live scan
-                # threads this signal into the judge; this shadow grader replays STORED alert
-                # rows, and mi_ep_alerts has no such column — so until today it left the value
-                # None, which `_b` renders as a confident "no direct source" on EVERY ticker.
-                # That is the same defect the 09-01 monthly review found on the live path, still
-                # running here: the shadow's whole job is to decide whether chart-vision should
-                # be promoted into the live rubric, and it was answering that question against a
-                # judge told something the live judge is not. Recomputed from the stored
-                # grounded_text by the SAME marker rule corpus_provenance uses live; `has_markers`
-                # False means the row carries no section markers at all (pre-W1 / thin), where
-                # the honest answer is "unknown", so we pass None rather than a manufactured
-                # False. revenue_stage stays None BY NECESSITY — it is computed live on earnings
-                # day and never persisted, so "not checked" is the truth for a replayed row.
-                _hd, _hm = recompute_has_direct_source(row.get("grounded_text"))
-                payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector,
-                                                 has_direct_source=(_hd if _hm else None))
+                # has_direct_source is RECOVERED INSIDE build_judge_payload (2026-09-02) — this
+                # job used to do it itself, and a cleanup pass found the other eight callers
+                # still passing None, i.e. still told a confident "no direct source" on every
+                # row. The recovery needs only grounded_text, which the mirror already has, so
+                # no caller has to remember. revenue_stage stays None BY NECESSITY: computed
+                # live on earnings day, never persisted, so "not checked" is the truth here.
+                payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)
 
                 bc = await ca.grade_b_c(client, sem, payload, png, _CHART_AXIS_SHADOW_REPLICATES,
                                         log_caller="chart_axis_shadow")

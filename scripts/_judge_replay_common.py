@@ -10,6 +10,6 @@ without a mass edit. New prod-adjacent call sites should import the new home dir
 one-off eval scripts may keep using this shim.
 """
 from agents.market_intelligence.judge_replay_common import (  # noqa: F401
-    REPLAY_SQL, build_judge_payload, fetch_narratives_for, fetch_profile,
+    BLIND, REPLAY_SQL, build_judge_payload, fetch_narratives_for, fetch_profile,
     resolve_grounded_text,
 )

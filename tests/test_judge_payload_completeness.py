@@ -146,15 +146,90 @@ def test_mirror_exemptions_are_not_stale():
     assert not stale, f"MIRROR_NOT_EXPOSED names parameters that no longer exist: {stale}"
 
 
-def test_the_chart_axis_shadow_job_recovers_has_direct_source():
-    """The production caller this guard was extended for. The shadow job replays STORED alert rows
-    and mi_ep_alerts has no has_direct_source column, so the value must be RECOMPUTED from the
-    stored grounded_text — leaving it None means the judge is told a confident "no" on every
-    ticker (_b renders falsy as "no"), which is the whole bug."""
+def test_the_chart_axis_shadow_job_gets_the_signal_without_asking_for_it():
+    """The production caller this guard was extended for. It replays STORED alert rows and
+    mi_ep_alerts has no has_direct_source column, so the value must be RECOVERED — leaving it
+    None means the judge is told a confident "no" on every ticker (_b renders falsy as "no").
+
+    Rewritten 2026-09-02: the job no longer recovers it ITSELF. build_judge_payload does, for
+    every caller. This test now pins the property that matters — the job must not opt out of
+    the recovery — rather than the mechanism, which moved."""
     src = pathlib.Path("agents/market_intelligence/scheduler.py").read_text(encoding="utf-8")
     job = src[src.index("async def _chart_axis_shadow_job("):]
-    job = job[:job.index("build_judge_payload(") + 400]
-    assert "recompute_has_direct_source(" in job, (
-        "the chart-axis shadow job no longer recomputes has_direct_source — its judge is back to "
-        "being told 'no direct source' on every ticker")
-    assert "has_direct_source=" in job, "recomputed but not passed"
+    job = job[:job.index("build_judge_payload(") + 300]
+    assert "BLIND" not in job, (
+        "the chart-axis shadow job must NOT opt out of the has_direct_source recovery — that "
+        "would put it back to being told 'no direct source' on every ticker")
+
+
+# ── the recovery belongs to the MIRROR, not to each caller (2026-09-02) ───────────────
+# The has_direct_source recovery was first wired into the ONE caller that prompted it. A
+# cleanup pass then found the other EIGHT still passing None — still being told a confident
+# "no direct source" on every row, the exact defect the fix existed to remove. Third instance
+# this week of a fix landing at one call site. It now lives in build_judge_payload itself.
+
+def test_the_recovery_happens_inside_the_mirror_not_at_each_call_site():
+    """MUTATION TARGET: moving the recompute back out to the callers.
+
+    recompute_has_direct_source needs only grounded_text, which build_judge_payload already
+    receives — so there was never a reason for nine callers to each remember."""
+    from agents.market_intelligence.judge_replay_common import build_judge_payload
+
+    row = {"ticker": "AAA", "score_tier": "HIGH", "catalyst_quality": "strong",
+           "catalyst": "c", "claude_analysis": "a", "in_active_theme": False,
+           "in_narrative_cohort": False, "gap_pct": 12.0, "pm_rvol": 3.0,
+           "vol_percentile": 80.0, "ep_score": 70.0}
+
+    payload, _ = build_judge_payload(row, "[SEC 8-K filed 2026-01-01, items 1.01] deal", 1e9, "Tech")
+    assert payload["has_direct_source"] is True, (
+        "a stored row whose grounded_text carries an SEC marker must recover to True without the "
+        "caller doing anything")
+
+    payload, _ = build_judge_payload(row, "[Web summary] no primary source here", 1e9, "Tech")
+    assert payload["has_direct_source"] is False, "markers present, none direct -> a real False"
+
+    payload, _ = build_judge_payload(row, "plain text with no section markers at all", 1e9, "Tech")
+    assert payload["has_direct_source"] is None, (
+        "no markers at all means UNKNOWN — it must NOT be manufactured into False, which is the "
+        "very rendering that floors the grade")
+
+
+def test_blind_is_an_explicit_opt_out_and_still_works():
+    """eval_judge_enrich's BLIND arm measures what the judge does WITHOUT the signal. A sentinel
+    keeps 'I want it blind' distinguishable from 'I forgot' — they were the same argument, and
+    that is how eight callers drifted."""
+    from agents.market_intelligence.judge_replay_common import BLIND, build_judge_payload
+
+    row = {"ticker": "AAA", "score_tier": "HIGH", "catalyst_quality": "strong",
+           "catalyst": "c", "claude_analysis": "a", "in_active_theme": False,
+           "in_narrative_cohort": False, "gap_pct": 12.0, "pm_rvol": 3.0,
+           "vol_percentile": 80.0, "ep_score": 70.0}
+    payload, _ = build_judge_payload(row, "[SEC 8-K filed 2026-01-01, items 1.01] deal",
+                                     1e9, "Tech", has_direct_source=BLIND)
+    assert payload["has_direct_source"] is None, "BLIND must suppress the recovery"
+
+    payload, _ = build_judge_payload(row, "plain text", 1e9, "Tech", has_direct_source=True)
+    assert payload["has_direct_source"] is True, "an explicit value still overrides"
+
+
+def test_no_production_caller_reimplements_the_recovery():
+    """MUTATION TARGET: a production call site hand-rolling the recovery again.
+
+    Scoped to `agents/` on purpose. An offline eval script may legitimately call
+    recompute_has_direct_source for COHORT SELECTION — eval_judge_enrich picks the rows that
+    HAVE a direct source, which is a different question from what the payload should say — and
+    an early version of this test flagged that as a duplicate. Production code has no such
+    reason: the mirror recovers it for every caller.
+    """
+    import pathlib as _pl
+    import re as _re
+    hits = []
+    for path in _pl.Path("agents").rglob("*.py"):
+        if path.name in ("judge_replay_common.py", "judge_review.py"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "build_judge_payload(" in text and _re.search(r"recompute_has_direct_source\s*\(", text):
+            hits.append(str(path))
+    assert not hits, (
+        f"these production files call build_judge_payload AND re-implement the recovery: {hits}. "
+        f"The mirror does it; a second copy can drift from the marker rule and nothing would fail.")
