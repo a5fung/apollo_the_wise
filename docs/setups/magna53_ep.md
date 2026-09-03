@@ -491,9 +491,15 @@ raise a review.
 wrong in intent; it was unfalsifiable in practice because it named no baseline, no denominator and
 no window. Nothing about the rule itself changed.
 
-**Status**: condition amended, operator-signed 2026-08-28. Not yet automated — the read is
-reproducible from `docs/analysis/sustain_revert_rebased_2026-08-28.md`. Wiring it as a standing
-predicate is filed under #593.
+**Status**: condition amended, operator-signed 2026-08-28. **Wired 2026-09-03** as a standing
+predicate — `sustain_reject_tradeable_miss_rate_593` in `data_gated_reviews.yaml` — so it
+self-evaluates weekly instead of requiring a by-hand re-derivation. **Not yet verified-live**: the
+predicate has never executed against prod (verify with `scripts/probes/_593_predicate_verify_2026-09-03.sql`
+— read-only, $0). Trigger basis is MFE (max forward high), the looser of the two readings and the
+one both prior signed reads used; the settled-close reading (~2.3x lower) is surfaced alongside
+whenever the review fires, per the entry's `action_when_ready`, but is NOT the trigger — that swap
+is a separate operator decision, not made here. Hand-derived reading (docs/analysis/593_sustain_revert_2026-09-01.md):
+4/87 = 4.6% (MFE) / 1/87 = 1.1% (settled), both well under the 10% trigger.
 
 ### 2026-08-28 — STATUS RECORD: two real-time toggles went live and the SSoT never said so
 

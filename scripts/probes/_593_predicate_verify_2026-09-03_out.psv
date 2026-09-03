@@ -1,0 +1,23 @@
+===Q1_PREDICATE_AS_WIRED===
+ready
+0
+(1 row)
+===Q2_BOTH_BASES_BREAKDOWN===
+scoreable_n|~|raw_breach_mfe|~|raw_breach_settled|~|tradeable_miss_mfe|~|tradeable_miss_settled|~|mfe_rate_pct|~|settled_rate_pct
+91|~|18|~|7|~|4|~|1|~|4.4|~|1.1
+(1 row)
+===Q2b_PINNED_TO_09-01_POPULATION===
+scoreable_n_expect_87|~|tradeable_miss_mfe_expect_4|~|tradeable_miss_settled_expect_1
+87|~|4|~|1
+(1 row)
+===Q3_TRADEABLE_MISS_NAMES===
+ticker|~|decline_date|~|prev_close|~|declined_level|~|close_d0|~|high_d0|~|volume_d0|~|mfe_high|~|close_d5|~|n_fwd_bars
+BRUN|~|2026-08-12|~|18.61|~|20.629185|~|22.17|~|22.2|~|3200346|~|26.9|~|19.01|~|6
+AVAH|~|2026-08-13|~|9.05|~|10.099800000000002|~|11.29|~|11.535|~|10105775|~|13.395|~|12.97|~|6
+IPST|~|2026-08-20|~|8.45|~|9.250214999999999|~|10.31|~|15.2717|~|7148218|~|15.2717|~|4.71|~|6
+WETO|~|2026-08-20|~|20.76|~|22.740504|~|27.525|~|36.29|~|4163577|~|36.29|~|11.5|~|6
+(4 rows)
+===Q4_NOW===
+now_et
+2026-09-03 15:14:46
+(1 row)
