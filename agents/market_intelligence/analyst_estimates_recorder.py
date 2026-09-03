@@ -109,7 +109,14 @@ ESTIMATES_SOURCE = "fmp_stable"   # the ESTIMATE values are still FMP; only the 
 POPULATION_LOOKBACK_DAYS = 30     # daily run: tickers with a live-source alert this recent
 MIN_ANALYSTS_DEFAULT = 3          # the sketch's n<3 -> None rule (read-side, re-tunable)
 MAX_PERIODS_PER_CALL = 20         # bound the per-ticker estimate payload
-FMP_PACE_SECONDS = 0.25           # courtesy pacing, ~240 calls/min worst case
+# 🛑 PACING IS THE WHOLE BUG (root-caused 2026-09-02). This was 0.25s — its own comment said
+# "~240 calls/min worst case" — against a FREE tier. FMP answers a rate breach with HTTP **402**,
+# not 429, so it is indistinguishable from "endpoint not in your plan" unless you read the body:
+# a plan refusal says "not available under your current subscription", a rate breach says nothing
+# and CLEARS ON ITS OWN. Proven by probing the identical URL minutes apart from inside the
+# container: 200 -> 402 -> 200. The 09-02 run's "99 annual-402" was NOT a plan change; the alarm
+# that fired said the plan had changed, and it was wrong.
+FMP_PACE_SECONDS = 12.0           # ~5 calls/min — the free tier's documented allowance
 
 # ── SEC EDGAR anchor source (v2) ──────────────────────────────────────────────────────
 # The exact form set the 08-31 reach measurement used (306/335 resolved) — foreign
@@ -332,7 +339,14 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     await asyncio.sleep(FMP_PACE_SECONDS)
     rows: list[dict] = []
     unavailable_periods: set[str] = set()
-    for period in ("annual", "quarter"):
+    # ⚠ ANNUAL ONLY (2026-09-02). `period=quarter` is NOT on this tier — FMP says so explicitly:
+    # "This value set for 'period' is not available under your current subscription". Calling it
+    # anyway DOUBLED our call volume for a guaranteed 402, on the exact quota the annual call
+    # needs, which is how a working endpoint came back 99-for-99 empty. Half of every run was
+    # spent buying a refusal we had already verified. The quarterly leg, if we want it, comes from
+    # yfinance (free, already a dependency, returns 0q/+1q with numberOfAnalysts) — an operator
+    # call, not a silent substitution.
+    for period in ("annual",):
         try:
             recs = await _fetch_estimates(ticker, period)
         except Exception as e:
@@ -388,14 +402,20 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
             except Exception:  # loud-ok: logger.warning above already fired
                 pass
     if out["annual_unavailable"]:
-        # The annual endpoint was VERIFIED in-plan 2026-08-31 — a 402 there means the
-        # FMP plan changed underneath us. One loud row per run, never silent.
+        # Annual is IN-PLAN (verified 2026-08-31, re-verified 2026-09-02). A 402 here is
+        # therefore almost always a RATE BREACH — FMP returns 402 for both, which is why the
+        # 09-02 run read as a plan change when it was our own 240-calls/min pacing. One loud
+        # row per run either way: a run that stored nothing must never be silent.
         try:
             await log_audit_event(
                 "analyst_estimates_plan_change",
                 f"{label}: /analyst-estimates period=annual returned 402 for "
-                f"{out['annual_unavailable']} ticker(s) — endpoint was verified "
-                f"in-plan 2026-08-31; the FMP plan appears to have changed",
+                f"{out['annual_unavailable']} ticker(s). FMP answers a RATE BREACH with 402, "
+                f"not 429, so this is most likely pacing, not a plan change — verified "
+                f"2026-09-02 by probing the identical URL minutes apart: 200 -> 402 -> 200. "
+                f"Check the pace before assuming a downgrade; a genuine plan refusal says "
+                f"'not available under your current subscription' in the body and does NOT "
+                f"clear on its own.",
             )
         except Exception:  # loud-ok: the run-summary row still carries the counter
             pass

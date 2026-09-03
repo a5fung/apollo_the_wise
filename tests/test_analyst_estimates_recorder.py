@@ -195,11 +195,15 @@ async def test_snapshot_writes_rows_with_the_read_date_stamped(monkeypatch):
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
         estimates={("MRNA", "annual"): [_rec()],
+                   # present but NEVER fetched: quarter is not on this tier (2026-09-02)
                    ("MRNA", "quarter"): [_rec(date="2026-09-30")]},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert out["rows_written"] == 2 and out["errors"] == 0
-    assert {r["period_type"] for r in written} == {"annual", "quarter"}
+    assert out["rows_written"] == 1 and out["errors"] == 0   # annual only
+    assert {r["period_type"] for r in written} == {"annual"}, (
+        "quarter is not on this tier — fetching it anyway doubled the call volume against the "
+        "very quota the annual call needs, which is how a working endpoint returned 99-for-99 "
+        "empty on 2026-09-02")
     assert all(r["as_of_date"] == AS_OF for r in written)
     assert all(r["valid_from_date"] == date(2026, 7, 31) for r in written)
     assert any(e == "analyst_estimates_snapshot" for e, _ in audits)
@@ -236,7 +240,7 @@ async def test_anchor_failure_records_with_zero_window_not_abort(monkeypatch):
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
     assert out["errors"] == 0
-    assert out["rows_written"] == 2 and out["tickers_written"] == 1
+    assert out["rows_written"] == 1 and out["tickers_written"] == 1   # annual only
     assert out["anchor_errors"] == 1
     assert out["no_anchor"] == 0               # outage is NOT the by-design case
     assert all(r["valid_from_date"] == AS_OF for r in written)   # zero claimed history
@@ -254,51 +258,70 @@ async def test_true_non_filer_counts_no_anchor_and_claims_zero_history(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_quarter_402_degrades_to_annual_only(monkeypatch):
-    """The quarter endpoint is unverified on our plan — a 402 records the annual
-    estimates and counts the degrade; it never kills the ticker's snapshot."""
+async def test_the_quarter_endpoint_is_never_called_at_all(monkeypatch):
+    """MUTATION TARGET: putting "quarter" back in the period loop.
+
+    FMP refuses it explicitly — "This value set for 'period' is not available under your current
+    subscription" — and we VERIFIED that. Calling it anyway spent half of every run buying a
+    refusal we already had, on the same quota the annual call needs. On 2026-09-02 that produced
+    99 annual-402s from an endpoint that works, and an alarm announcing a plan change that had
+    not happened. A 402 we can predict is not a degrade to handle, it is a call not to make."""
+    called = []
     written, _ = _wire(
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
-        estimates={("MRNA", "annual"): [_rec()]},
-        p402={"quarter"},
+        estimates={("MRNA", "annual"): [_rec()], ("MRNA", "quarter"): [_rec()]},
     )
+    real = aer._fetch_estimates
+
+    async def spy(ticker, period):
+        called.append(period)
+        return await real(ticker, period)
+
+    monkeypatch.setattr(aer, "_fetch_estimates", spy)
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
+    assert called == ["annual"], f"the run fetched {called}; quarter must never be requested"
     assert out["rows_written"] == 1 and out["errors"] == 0
-    assert out["quarter_unavailable"] == 1
     assert written[0]["period_type"] == "annual"
 
 
 @pytest.mark.asyncio
 async def test_annual_402_degrades_and_audits_a_plan_change(monkeypatch):
-    """MUTATION TARGET (a 402 degrades the FIELD, never the ticker — any period).
-    Annual was VERIFIED in-plan 2026-08-31, so a 402 there means the FMP plan
-    changed underneath us: the quarter rows still record, and ONE
-    analyst_estimates_plan_change audit row makes the change visible, not silent."""
+    """MUTATION TARGET: letting a 402 kill the ticker, or letting a zero-row run go silent.
+
+    Annual IS in-plan (verified 08-31, re-verified 09-02), so a 402 here is almost always a RATE
+    BREACH — FMP answers both with 402, which is exactly why the 09-02 run read as a plan change
+    when the real cause was our own 240-calls/min pacing against a free tier. Either way the run
+    must degrade rather than raise, and must NOT be silent: a run that stored nothing is the one
+    a reader most needs told about."""
     written, audits = _wire(
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
-        estimates={("MRNA", "quarter"): [_rec(date="2026-09-30")]},
         p402={"annual"},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
     assert out["errors"] == 0
-    assert out["rows_written"] == 1 and written[0]["period_type"] == "quarter"
+    assert out["rows_written"] == 0 and written == []
     assert out["annual_unavailable"] == 1
     assert sum(1 for e, _ in audits if e == "analyst_estimates_plan_change") == 1
+    msg = next(m for e, m in audits if e == "analyst_estimates_plan_change")
+    assert "rate" in msg.lower(), (
+        "the alarm must not assert a plan change it cannot know happened — it said exactly that "
+        "on 09-02 and was wrong")
 
 
 @pytest.mark.asyncio
 async def test_both_periods_402_is_counted_not_an_error(monkeypatch):
-    """Even losing BOTH estimate endpoints is a degrade, not a per-ticker error —
-    the counters and the plan-change row carry the news; nothing raises."""
+    """Losing the estimate endpoint is a degrade, not a per-ticker error — the counters and the
+    audit row carry the news; nothing raises. (Only annual is requested since 2026-09-02, so
+    `quarter_unavailable` stays 0: we cannot lose an endpoint we never call.)"""
     written, audits = _wire(
         monkeypatch, anchors={"MRNA": date(2026, 7, 31)},
         p402={"annual", "quarter"},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
     assert out["errors"] == 0 and out["rows_written"] == 0
-    assert out["annual_unavailable"] == 1 and out["quarter_unavailable"] == 1
+    assert out["annual_unavailable"] == 1 and out["quarter_unavailable"] == 0
     assert written == []
     assert any(e == "analyst_estimates_plan_change" for e, _ in audits)
 
