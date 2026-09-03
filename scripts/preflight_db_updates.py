@@ -23,6 +23,7 @@ import sys
 from agents.market_intelligence.db import (
     _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL, _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
+    GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
     get_pool)
@@ -235,6 +236,14 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # through its first run with no downstream error.
         "db.upsert_sustain_reject_replay: #593 CURRENT-era bracket replay on net-declined sustain-reject names",
         SUSTAIN_REJECT_REPLAY_UPSERT_SQL,
+    ),
+    (
+        # #617 Step 2: the gap-floor near-miss replay's single writer. An UPSERT (ON CONFLICT
+        # DO UPDATE ... WHERE outcome='open') with two jsonb params, same shape as #593's —
+        # a type-deduction bug here would leave the standing recall-debt evidence this task
+        # exists to produce empty through its first run with no downstream error.
+        "db.upsert_gap_near_miss_replay: #617 Step 2 standing 7-9% gap-floor near-miss replay",
+        GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     ),
 ]
 

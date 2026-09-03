@@ -653,16 +653,18 @@ def test_recorder_imports_only_the_pure_ladder_from_broker_with_the_marker():
 
 def test_nothing_live_imports_the_recorder():
     """No module under agents/ except the scheduler (the job registration) — and, since
-    2026-09-03, the #593 sustain-reject bracket replay, which reuses walk_arm/pinned_target
-    rather than writing a fourth walker (see that module's own docstring: WHAT IT MIRRORS)
-    — may import the recorder. Neither consumer is on a decision path; both are telemetry."""
+    2026-09-03, the #593 sustain-reject bracket replay and the #617 Step 2 gap-floor
+    near-miss replay, both of which reuse walk_arm/pinned_target rather than writing a
+    fourth/fifth walker (see each module's own docstring: WHAT IT MIRRORS) — may import
+    the recorder. None of these consumers is on a decision path; all are telemetry."""
     importers = []
     for py in sorted((_REPO / "agents").rglob("*.py")):
         if py == _MODULE:
             continue
         if re.search(r"^\s*(from|import)\s+[\w.]*live_fill_counterfactuals\b", py.read_text(), re.M):
             importers.append(str(py.relative_to(_REPO)))
-    assert importers == ["agents/market_intelligence/scheduler.py",
+    assert importers == ["agents/market_intelligence/gap_near_miss_replay.py",
+                        "agents/market_intelligence/scheduler.py",
                         "agents/market_intelligence/sustain_reject_replay.py"], importers
     # and the TABLE is named nowhere on the execution side or in the detector/judge/sizing paths
     for py in (_REPO / "agents" / "market_intelligence").rglob("*.py"):

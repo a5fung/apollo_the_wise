@@ -3247,6 +3247,131 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS settled_session DATE NOT NULL DEFAULT '1970-01-01';
             ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
+            -- 2026-09-03 — #617 STEP 2: GAP-FLOOR NEAR-MISS REPLAY (gap_near_miss_replay.py).
+            -- Step 1 (docs/analysis/617_universe_admission_recall_jun_aug_2026-09-03.md) hand-scanned
+            -- Jun-Aug and found ZERO names in the 7-9% open-gap band (the fixture's near-miss debt)
+            -- our own bracket would have paid >=4R on. This makes that a STANDING measurement instead
+            -- of a review someone has to remember to re-run: every session, for every ticker whose
+            -- OPEN gap sat in [MIN_GAP_PCT-2, MIN_GAP_PCT) and who cleared every OTHER universe floor
+            -- (ticker shape, security type, MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME) but got NO
+            -- mi_ep_scan_log scored row and NO mi_ep_alerts row that day (i.e. the gap floor alone
+            -- kept it out), reconstruct the CURRENT-era MAGNA53 entry at the most optimistic
+            -- detection time (09:31 ET, matching Step 1's own assumption) and walk the SAME live exit
+            -- ladder (agents.market_intelligence.live_fill_counterfactuals.walk_arm — reused, not
+            -- reimplemented) to ask whether it would have realized >=4R (P1) or any positive return.
+            -- SCOPE, DELIBERATE (the #617 card, 2026-09-03): ONLY the 7-9% band. The 5-6% band is a
+            -- different question (Step 1: admitting it triples the funnel for 11 names in 3 months)
+            -- and is NOT reviewed here — do not widen this table's population without a new card.
+            -- touch_floor_intraday / sustain_floor_intraday additionally record whether the 09:30-
+            -- 09:44 window would have crossed today's real-time gap re-check anyway (Step 1's own
+            -- finding: 65% of the 8-9% band touched it) — context for reading the miss rate, not a
+            -- second population.
+            -- THE LINE: this WATCHES universe admission; it never writes anything the live scan, the
+            -- gap floor, or any grading/entry/sizing/ordering/safeguard path reads (SHADOW —
+            -- comparison telemetry only, mirrors mi_sustain_reject_replays exactly).
+            -- SURVIVORSHIP: identical fix to mi_sustain_reject_replays — a still-running walk is
+            -- written 'open' with a mark-to-market mark_r and refreshed on later runs (guarded
+            -- UPSERT, WHERE outcome='open') until it actually settles, never dropped.
+            -- RETENTION: deliberately ABSENT from purge_old_data (kept forever) — same evidence
+            -- class as mi_sustain_reject_replays / mi_live_fill_counterfactuals.
+            CREATE TABLE IF NOT EXISTS mi_gap_near_miss_replays (
+                id                  SERIAL PRIMARY KEY,
+                ticker              TEXT NOT NULL,
+                session_date        DATE NOT NULL,         -- the D0 session whose OPEN gap sat in the near-miss band
+                open_gap_pct        DOUBLE PRECISION,       -- (open - prev_close) / prev_close x 100 — the excluding measurement
+                gap_band            TEXT NOT NULL,          -- '7_8' | '8_9' today (tracks ep_detector.MIN_GAP_PCT — see gap_near_miss_replay.gap_band)
+                prev_close          DOUBLE PRECISION,
+                prev_volume         DOUBLE PRECISION,
+                touch_floor_intraday   BOOLEAN,             -- 09:30-09:44 window HIGH crossed the CURRENT MIN_GAP_PCT floor vs the raw prior close — upper bound on what today's real-time re-check would have admitted
+                sustain_floor_intraday BOOLEAN,             -- 3 consecutive minute CLOSES >= the floor inside that window — the `_sustain_ok` bar's own threshold, a lower bound
+                orb_high            DOUBLE PRECISION,       -- the 9:30 minute bar (NULL when day-0 minutes are unavailable)
+                orb_low             DOUBLE PRECISION,
+                atr14_prior         DOUBLE PRECISION,       -- Wilder ATR-14 through the session STRICTLY BEFORE session_date (alert_rank_shadow.compute_atr14_prior — no same-day leak)
+                atr14_prior_n       INT,
+                orb_valid           BOOLEAN,                -- backtester.filters.validate_orb_entry(orb_high, orb_low, atr14_prior) — the SAME admission rule the live path calls
+                orb_skip_reason     TEXT,
+                submit_time_et      TIME,                   -- always 09:31 — the most optimistic detection time for a name the universe never admitted (Step 1's own assumption)
+                entry_status        TEXT NOT NULL,          -- filled | no_entry | abstain | orb_invalid | no_930_bar_for_orb | no_day0_minute_bars | daily_row_split_adjusted
+                entry_reason        TEXT,
+                entry_price         DOUBLE PRECISION,
+                entry_minute        TIMESTAMPTZ,
+                stop_price          DOUBLE PRECISION,       -- CURRENT-era stop: entry_minus_2r = 2xorb_low-orb_high (order_manager ~L498) once live, else orb_low
+                target_price        DOUBLE PRECISION,       -- entry + target_r x (entry-orb_low) — MAGNA53's ORB-R frame, pinned like every other counterfactual arm in this program
+                target_r            DOUBLE PRECISION,
+                outcome             TEXT NOT NULL,          -- settled | no_trade | unscoreable | open | horizon
+                final_reason        TEXT,
+                realized_r          DOUBLE PRECISION,       -- settled only, entry-anchored R (pnl_per_share / (entry-stop))
+                realized_pct        DOUBLE PRECISION,       -- settled only, size-free
+                mark_r              DOUBLE PRECISION,       -- open/horizon only: a MARK-TO-MARKET at the last available close, never a return
+                meets_4r            BOOLEAN,                -- settled AND realized_r >= 4.0 — the P1 real-EP measure this task exists to answer
+                meets_positive      BOOLEAN,                -- settled AND realized_r > 0 — the lesser measure
+                mark_meets_4r       BOOLEAN,                -- open/horizon AND mark_r >= 4.0 — so a still-running winner cannot make the rate under-count
+                mark_meets_positive BOOLEAN,                -- open/horizon AND mark_r > 0.0 — the lesser measure's own open-position counterpart
+                partial_fired       BOOLEAN,
+                gap_through         BOOLEAN,
+                exit_session        INT,
+                sessions_walked     INT,
+                exits               JSONB,                  -- the legs: [{time, price, reason, shares, pnl}], mirrors mi_sustain_reject_replays.exits
+                admission_era       TEXT NOT NULL,          -- admission_era_as_of(session_date), rule_eras.py — which admission stack excluded this name
+                replay_exit_era     TEXT NOT NULL,          -- exit_era_label(replay_asof_date) — the CURRENT era this row's replay was walked under (never the era at session_date — always today's own bracket, matching #593)
+                replay_exit_rules   JSONB NOT NULL,         -- exit_rules_as_of(replay_asof_date), stored verbatim
+                replay_asof_date    DATE NOT NULL,          -- the date "current era" was resolved against when this row was (last) written
+                settle_version      TEXT NOT NULL,
+                settled_session     DATE NOT NULL,          -- the last SETTLED trading session the recorder had walked when it (last) wrote this row
+                recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, session_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_gap_near_miss_replays_session_date
+                ON mi_gap_near_miss_replays(session_date);
+            CREATE INDEX IF NOT EXISTS idx_gap_near_miss_replays_outcome
+                ON mi_gap_near_miss_replays(outcome);
+            -- Additive-schema defence (CLAUDE.md): every column also as an explicit
+            -- ADD COLUMN IF NOT EXISTS, mirroring the mi_sustain_reject_replays convention.
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS ticker TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS session_date DATE NOT NULL DEFAULT '1970-01-01';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS open_gap_pct DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS gap_band TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS prev_close DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS prev_volume DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS touch_floor_intraday BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS sustain_floor_intraday BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS orb_high DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS orb_low DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS atr14_prior DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS atr14_prior_n INT;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS orb_valid BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS orb_skip_reason TEXT;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS submit_time_et TIME;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS entry_status TEXT NOT NULL DEFAULT 'unscoreable';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS entry_reason TEXT;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS entry_price DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS entry_minute TIMESTAMPTZ;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS stop_price DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS target_price DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS target_r DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS outcome TEXT NOT NULL DEFAULT 'unscoreable';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS final_reason TEXT;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS realized_r DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS realized_pct DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS mark_r DOUBLE PRECISION;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS meets_4r BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS meets_positive BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS mark_meets_4r BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS mark_meets_positive BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS partial_fired BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS gap_through BOOLEAN;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS exit_session INT;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS sessions_walked INT;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS exits JSONB;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS admission_era TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS replay_exit_era TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS replay_exit_rules JSONB NOT NULL DEFAULT '{}'::jsonb;
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS replay_asof_date DATE NOT NULL DEFAULT '1970-01-01';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS settle_version TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS settled_session DATE NOT NULL DEFAULT '1970-01-01';
+            ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
             -- 2026-08-16 — ALERT-RANK SHADOW (alert_rank_shadow.py). docs/roadmap/
             -- ep_profitability_program.md §0d found a three-feature ranking rule (smaller
             -- gap · tighter EP day · less MA-distance extension, percentile-averaged) that
@@ -14680,6 +14805,148 @@ async def upsert_sustain_reject_replay(fields: dict) -> bool:
     pool = await get_pool()
     async with pool.acquire() as conn:
         res = await conn.execute(SUSTAIN_REJECT_REPLAY_UPSERT_SQL, *vals)
+    # "INSERT 0 1" on insert-or-update; "INSERT 0 0" when the WHERE guard skipped an
+    # existing terminal row.
+    return not res.endswith(" 0")
+
+
+# ── #617 STEP 2 (2026-09-03) GAP-FLOOR NEAR-MISS REPLAY — the reads + the ONE upsert ────
+# Schema: the mi_gap_near_miss_replays CREATE TABLE block in initialize_schema (its comment
+# carries the design). Consumer: agents/market_intelligence/gap_near_miss_replay.py. THE
+# LINE: every function here except upsert_gap_near_miss_replay is a SELECT; nothing here
+# touches mi_ep_scan_log, mi_ep_alerts, or MIN_GAP_PCT itself.
+
+_GAP_NEAR_MISS_POPULATION_SQL = """
+    WITH d AS (
+        SELECT ticker, trade_date, open_price, close, volume,
+               LAG(close)  OVER w AS prev_close,
+               LAG(volume) OVER w AS prev_volume
+        FROM mi_daily_closes
+        WHERE trade_date BETWEEN ($1::date - 10) AND $2::date
+        WINDOW w AS (PARTITION BY ticker ORDER BY trade_date)
+    ),
+    cand AS (
+        SELECT ticker, trade_date, prev_close, prev_volume, open_price,
+               (open_price - prev_close) / prev_close * 100 AS open_gap_pct
+        FROM d
+        WHERE trade_date BETWEEN $1::date AND $2::date
+          AND prev_close IS NOT NULL AND prev_close > 0
+          AND open_price IS NOT NULL
+          AND length(ticker) <= 5 AND ticker !~ '\\.'
+          AND prev_close >= $3
+          AND prev_volume IS NOT NULL AND prev_volume >= $4
+          AND (open_price - prev_close) / prev_close * 100 >= $5
+          AND (open_price - prev_close) / prev_close * 100 <  $6
+    )
+    -- excluded = no scan_log row that ever got SCORED (filter_reason IS NULL) and no live-source
+    -- alert that day — i.e. the funnel genuinely never admitted it. A name whose OPEN gap sat in
+    -- the near-miss band but crossed the floor intraday and WAS scored/alerted (today's real-time
+    -- re-check) is, by definition, not excluded — it is correctly left OUT of this population.
+    SELECT c.ticker, c.trade_date, c.prev_close, c.prev_volume, c.open_price, c.open_gap_pct
+    FROM cand c
+    JOIN mi_security_types st ON st.ticker = c.ticker AND st.security_type = ANY($7)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM mi_ep_scan_log s
+        WHERE s.ticker = c.ticker AND s.scan_date = c.trade_date AND s.filter_reason IS NULL
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM mi_ep_alerts a
+        WHERE a.ticker = c.ticker AND a.alert_date = c.trade_date AND COALESCE(a.source, 'live') = 'live'
+    )
+    ORDER BY c.trade_date, c.ticker
+"""
+
+
+async def get_gap_near_miss_population(
+    window_start: "date", window_end: "date", near_miss_lo_pct: float, floor_pct: float,
+    min_prev_close: float, min_prev_volume: float, stock_types: list[str],
+) -> list[dict]:
+    """READ-ONLY. Every (ticker, session) in [window_start, window_end] whose OPEN gap sat in
+    [near_miss_lo_pct, floor_pct) — the near-miss band the #617 card scoped this review to
+    (7-9% while floor_pct=9.0; NEVER call this with a lower bound below floor_pct-2, see
+    gap_near_miss_replay.py's module docstring) — that cleared every OTHER universe floor
+    (ticker shape, security type, MIN_PREV_CLOSE, MIN_PREV_DAY_VOLUME) but was never scored
+    or alerted that day. One row per (ticker, session)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            _GAP_NEAR_MISS_POPULATION_SQL, _coerce_date(window_start), _coerce_date(window_end),
+            float(min_prev_close), float(min_prev_volume), float(near_miss_lo_pct), float(floor_pct),
+            list(stock_types))
+    return [dict(r) for r in rows]
+
+
+_GAP_NEAR_MISS_EXISTING_SQL = """
+    SELECT ticker, session_date, outcome FROM mi_gap_near_miss_replays
+    WHERE session_date >= $1::date
+"""
+
+
+async def get_gap_near_miss_existing(window_start: "date") -> dict[tuple[str, "date"], str]:
+    """READ-ONLY. (ticker, session_date) -> outcome for every row already recorded on/after
+    window_start — lets the recorder skip a TERMINAL row and only revisit one still 'open'."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_GAP_NEAR_MISS_EXISTING_SQL, _coerce_date(window_start))
+    return {(r["ticker"], r["session_date"]): r["outcome"] for r in rows}
+
+
+GAP_NEAR_MISS_REPLAY_COLS: tuple[str, ...] = (
+    "ticker", "session_date", "open_gap_pct", "gap_band", "prev_close", "prev_volume",
+    "touch_floor_intraday", "sustain_floor_intraday",
+    "orb_high", "orb_low", "atr14_prior", "atr14_prior_n", "orb_valid", "orb_skip_reason",
+    "submit_time_et", "entry_status", "entry_reason", "entry_price", "entry_minute",
+    "stop_price", "target_price", "target_r",
+    "outcome", "final_reason", "realized_r", "realized_pct", "mark_r",
+    "meets_4r", "meets_positive", "mark_meets_4r", "mark_meets_positive",
+    "partial_fired", "gap_through", "exit_session", "sessions_walked", "exits",
+    "admission_era", "replay_exit_era", "replay_exit_rules", "replay_asof_date",
+    "settle_version", "settled_session",
+)
+_GAP_NEAR_MISS_JSONB = frozenset({"exits", "replay_exit_rules"})
+# Every column except the natural key is refreshable — but ONLY while the existing row's
+# outcome is still 'open' (the UPSERT's WHERE clause below); a terminal row is never touched.
+_GAP_NEAR_MISS_MUTABLE_COLS = tuple(
+    c for c in GAP_NEAR_MISS_REPLAY_COLS if c not in ("ticker", "session_date"))
+
+
+def _gap_near_miss_placeholder(i: int, col: str) -> str:
+    if col in _GAP_NEAR_MISS_JSONB:
+        return f"${i}::jsonb"
+    return f"${i}"
+
+
+# Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time (the
+# #606 lesson: a silent recorder is where a type-deduction bug hides longest).
+GAP_NEAR_MISS_REPLAY_UPSERT_SQL = (
+    f"INSERT INTO mi_gap_near_miss_replays ({', '.join(GAP_NEAR_MISS_REPLAY_COLS)}, updated_at) VALUES ("
+    + ", ".join(_gap_near_miss_placeholder(i + 1, c) for i, c in enumerate(GAP_NEAR_MISS_REPLAY_COLS))
+    + ", NOW())"
+    " ON CONFLICT (ticker, session_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _GAP_NEAR_MISS_MUTABLE_COLS)
+    + ", updated_at = NOW()"
+    " WHERE mi_gap_near_miss_replays.outcome = 'open'"
+)
+
+
+async def upsert_gap_near_miss_replay(fields: dict) -> bool:
+    """Write or refresh ONE (ticker, session_date) row (SHADOW — telemetry only; nothing
+    live reads it). A TERMINAL outcome (settled / no_trade / unscoreable / horizon) is
+    written once and never rewritten — the WHERE guard on the EXISTING row's outcome makes
+    the UPDATE a no-op once terminal. Only a row still 'open' is refreshed as later sessions
+    accrue. Returns True iff this call inserted or updated a row (False when the WHERE guard
+    skipped an existing terminal row)."""
+    vals = []
+    for c in GAP_NEAR_MISS_REPLAY_COLS:
+        v = fields.get(c)
+        if c == "exits":
+            v = _jsonb_list_param(v if v is not None else [])
+        elif c == "replay_exit_rules":
+            v = _jsonb_param(v if v is not None else {})
+        vals.append(v)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute(GAP_NEAR_MISS_REPLAY_UPSERT_SQL, *vals)
     # "INSERT 0 1" on insert-or-update; "INSERT 0 0" when the WHERE guard skipped an
     # existing terminal row.
     return not res.endswith(" 0")

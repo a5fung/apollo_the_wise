@@ -1588,6 +1588,12 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # date-column rule below is name-based and only `created_at` routes to the timestamp branch.
     ("mi_live_fill_counterfactuals", "live-fill counterfactual recorder (#482)", "settled_session", None),
     ("mi_sustain_reject_replays", "sustain-reject bracket replay (#593)", "settled_session", None),
+    # #617 Step 2 (2026-09-03): the gap-floor near-miss replay. Step 1 measured ~4-5 excluded
+    # names/session in the 7-9% band across three months, so this writes on almost every
+    # trading day — but the whole POINT of this task is "nothing was watching, so a dead
+    # writer went unnoticed from April to September." Keyed on `settled_session` (same
+    # name-based-timestamp rule as its two siblings above).
+    ("mi_gap_near_miss_replays", "gap-floor near-miss replay (#617 Step 2)", "settled_session", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median

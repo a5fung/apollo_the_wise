@@ -10826,3 +10826,85 @@ reviews:
                  "agents/market_intelligence/sustain_reject_replay.py",
                  "agents/market_intelligence/live_fill_counterfactuals.py",
                  "agents/market_intelligence/rule_eras.py"]
+
+  - review_id: gap_near_miss_tradeable_miss_rate_617
+    title: "#617 Step 2 — standing 7-9% gap-floor near-miss recall rate, once there is enough data to read"
+    question: >-
+      #617 Step 1 (2026-09-03, docs/analysis/617_universe_admission_recall_jun_aug_2026-09-03.md)
+      hand-scanned Jun-Aug 2026 and found ZERO names in the 7-9% open-gap band — the
+      fixture's own "7 excluded ~10R winners" debt — that our own bracket, actually walked,
+      would have paid >=4R on (0 of 188 settled walks). That was a clean negative, but it was
+      ALSO a debt nobody looked at from April to September because nothing made it look. This
+      predicate is the mechanical follow-through: it gates on SAMPLE SIZE only (>=30 decided
+      rows accrued by `agents/market_intelligence/gap_near_miss_replay.py`, the STANDING
+      nightly version of Step 1's scan) so this review resurfaces itself once there is enough
+      new evidence to read again — never on a miss-RATE, which nobody has signed off on yet.
+    # WHY NO RATE IS EMBEDDED (the #617 card, 2026-09-03, explicit): "Do NOT pick the trigger
+    # threshold... Wire the predicate so the threshold is a single named constant he can rule
+    # on in one line, state today's rate beside it, and put the question to him." There is no
+    # prior operator-signed rate for THIS measure to rewire (unlike #593, which had an existing
+    # 10%/30-day condition from 2026-08-28 to carry forward) — inventing one here would be
+    # exactly the THE-LINE violation the card warns against. So this entry starts, like
+    # delayed_entry_shadow_first_read (2026-08-30) and bracket_geometry_variants_parked
+    # (2026-08-18) before it, as an ACCRUAL gate on sample sufficiency alone (n>=30 decided
+    # rows, mirroring #593's own minimum). Once ready, action_when_ready below computes the
+    # observed >=4R and any-positive rates and puts a ONE-LINE question to the operator: what
+    # rate, over what window, should re-open review of the 9% floor? Only after he answers does
+    # this entry get REWIRED into a real ongoing tripwire with his number embedded — the same
+    # evolution #593 itself went through (hand read -> accrual -> tripwire).
+    predicate_sql: |
+      SELECT CASE WHEN to_regclass('mi_gap_near_miss_replays') IS NULL THEN 0 ELSE (
+        SELECT COUNT(*) FROM mi_gap_near_miss_replays WHERE outcome <> 'unscoreable'
+      ) END;
+    threshold: 30
+    # Reads ONE table (mi_gap_near_miss_replays). Every row is 7-9%-open-gap-band-framed by
+    # construction (gap_near_miss_replay.py SCOPE) — gap_band and admission_era are the two
+    # dimensions a later read must segment on (a name in 7-8% is not the same question as one
+    # in 8-9%; an admission stack that has since changed may not generalize forward).
+    discriminates_on: [mi_gap_near_miss_replays.gap_band, mi_gap_near_miss_replays.admission_era]
+    earliest_review_date: 2026-09-19
+    status: pending
+    kind: accrual
+    added_on: 2026-09-03
+    action_when_ready: |
+      This fires once >=30 gap_near_miss_replays rows have a real verdict (outcome not
+      'unscoreable') — sample sufficiency only, never a rate.
+
+      1. Report ALL of these side by side, plainly, from mi_gap_near_miss_replays over the
+         full accrued window — never the >=4R number alone:
+           - >=4R tradeable-miss rate (meets_4r on settled rows OR mark_meets_4r on open/
+             horizon rows — a still-running walk must never make the rate under-count, same
+             survivorship rule as #593) — name every hit (ticker, session_date, realized_r or
+             mark_r if still open).
+           - any-positive-return rate (meets_positive / mark_meets_positive) — the lesser
+             measure, the operator's own words on #593, carried over verbatim.
+           - split by gap_band ('7_8' vs '8_9' — Step 1 found these are not the same question:
+             111 excluded in 8-9% vs 246 in 7-8% over three months) and by admission_era.
+           - touch_floor_intraday / sustain_floor_intraday coverage: what share of the miss
+             population would have crossed today's real-time gap re-check anyway (Step 1's
+             own finding on the hand-run data: 65% of the 8-9% band touched it in-window) —
+             this is NOT a second population, it is context for how much of the "miss" the
+             live real-time authority already recovers.
+           - replay COVERAGE: outcome IN ('settled','open','horizon') (replayed) vs 'no_trade'
+             (our own ORB/ATR rule would have skipped it regardless — never a cost) vs
+             'unscoreable' (data gap — NULL, counted, never substituted).
+      2. STATE TODAY'S RATE plainly, then ask, in one line: "what >=4R miss rate, over what
+         rolling window, should trigger a review of the 9% gap floor?" Do NOT pick a number —
+         that is his call (THE LINE — a revert-review threshold on a live admission gate,
+         exactly like #593's own threshold question).
+      3. Once he answers, REWIRE this predicate the same way #593 was rewired 2026-09-03: kind
+         -> tripwire, predicate_sql -> a real rolling-window rate check against his number,
+         threshold -> 1. Do not silently pick a window or number yourself in that rewiring.
+      4. This is evidence, not a revert — nothing about MIN_GAP_PCT, the universe admission
+         floors, or any live selection path changes without a separate, explicit operator
+         sign-off + CHANGE_PROCESS entry in docs/setups/magna53_ep.md (Step 3 of #617, his
+         alone).
+    cross_refs: ["task #617",
+                 "docs/analysis/617_universe_admission_recall_jun_aug_2026-09-03.md",
+                 "docs/roadmap/ep_profitability_program.md",
+                 "docs/setups/magna53_ep.md",
+                 "agents/market_intelligence/gap_near_miss_replay.py",
+                 "agents/market_intelligence/sustain_reject_replay.py",
+                 "agents/market_intelligence/live_fill_counterfactuals.py",
+                 "agents/market_intelligence/rule_eras.py",
+                 "agents/market_intelligence/ep_detector.py"]

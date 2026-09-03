@@ -1086,6 +1086,12 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         # functions, same non-decision shape as catalyst_tier_shadow.py directly above.
         str(REPO / "agents/market_intelligence/sustain_reject_replay.py"),
         str(REPO / "tests/test_sustain_reject_replay.py"),
+        # 2026-09-03 (#617 Step 2): gap_near_miss_replay.py imports ONLY the same pure,
+        # DB-free compute_atr14_prior to score its OWN CURRENT-era bracket replay on
+        # never-admitted names, written solely to mi_gap_near_miss_replays — the same
+        # non-decision shape as sustain_reject_replay.py directly above.
+        str(REPO / "agents/market_intelligence/gap_near_miss_replay.py"),
+        str(REPO / "tests/test_gap_near_miss_replay.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"

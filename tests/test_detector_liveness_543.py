@@ -200,6 +200,11 @@ def test_module_constant_covers_the_required_tables():
         # Telegram on any path), fire-and-forget on every net-declined sustain-reject
         # name, read by nothing on any live path; this registry is its only watchdog.
         "mi_sustain_reject_replays",
+        # 2026-09-03 (#617 Step 2): the gap-floor near-miss replay — SILENT by design
+        # (no Telegram on any path), the STANDING version of the #617 Step 1 hand-run
+        # scan; this registry is its only watchdog for "stopped writing", separate from
+        # the data_gated_reviews.yaml predicate that watches the RATE it accrues.
+        "mi_gap_near_miss_replays",
     }
 
 
