@@ -38,6 +38,11 @@ hard external deadline, then money-path and alert-trust defects.
 | 2 | **#545** | entry/exit tactics — *"the EP cohort wins, our tactics do not"* | Fable, **capped at 2 cards** | Wed pm → Thu |
 | 3 | **#603** | Perplexity kills our endpoint 2026-09-27 (hard, external, fails SILENT) | Fable design → Sonnet build | Thu |
 | 3b | **#545 Phase 3** | the joint day-1 stop × target × runner sweep on the MAIN LINE, replayed — operator 2026-09-02: *"ok, phase 3 tmr"*. The only way to size the CONVERSION question (Phase 2: we admit the tail at 13% and realize ≥4R on none of it) without waiting months for live closes. $0. | Fable | Thu, after #603 |
+
+**⚠ THREE THINGS PHASE 3'S CARD MUST DO FIRST (advisor review, 2026-09-02) — each is $0 and each is more decision-relevant than anything it would build:**
+1. **READ WHAT IS ALREADY ON DISK BEFORE BUILDING ANYTHING.** `scripts/ep_replay_data/campaigns_era_c.tsv` already carries every skipped HIGH alert walked through the CURRENT bracket. Phase 2 only summarised the buckets from it. The direct question — **on those campaigns, what did the bracket REALIZE versus what the stock actually did?** — is the conversion gap measured head-on, and it needs no new code.
+2. **ANSWER "DID THE 2R WIDENING WORK" WITHOUT WAITING FOR 16 MORE LIVE CLOSES.** `ep_replay.py` is era-clean by design: **replay the 22 pre-2R live trades under `era_c` rules and count how many still die on day 1.** Today's live split is 73% day-1 deaths pre-2R vs 25% post — on n=4. This is the era-matched version of that number and it is the single most decision-relevant cell on the board.
+3. **STATE WHY `BAND` AND `STRL` ARE "NOT REPLAYABLE"** (missing minute bars?) before `stop_too_wide` is presented as the one bucket that clears the bar. Two unreplayable pre-May names carrying a verdict is the same shape as the May gap-overs that collapsed every delayed-entry result this week.
 | 4 | **#600** | a repair can re-arm a stop at a price the broker already passed (money path) | Sonnet | Fri am |
 | 5 | **#604** | the naked-position L1 cries wolf at 16:15, every time | Sonnet | Fri am |
 
