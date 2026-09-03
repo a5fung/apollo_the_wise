@@ -25,6 +25,15 @@ bars; the LLM catalyst-quality judge — costs money per call and is non-determi
 for a $0 suite test; and any SHADOW/candidate axis not yet wired into the live composite (e.g.
 #569's pregap base-days axis) — by construction those cannot exclude anything TODAY, and P1 already
 says this exact fixture is what must run against a shadow axis BEFORE it is ever promoted.
+
+#620 (2026-09-03): the MIN_GAP_PCT gate itself gained one time-of-day-aware input.
+`tests/fixtures/must_not_miss_eps.py`'s `gap_pct_admitted` field carries a MEASURED (never
+inferred — `gap_pct_admitted_basis` names the exact bar/tick/scan_log row) gap for a member whose
+naive session-open print reads below the floor but whose CURRENT live real-time overlay
+(`_apply_realtime_pass2` / `_apply_rt_universe_overlay`, ep_detector.py) actually admits it at some
+scan tick. `_check_member` compares MIN_GAP_PCT against `gap_pct_admitted` when set, else
+`gap_pct` — same floor, better proxy for what the live decision layer reads. `gap_pct` itself is
+untouched and stays provenance-checked against `_552_cohort.psv` below.
 """
 from __future__ import annotations
 
@@ -122,13 +131,24 @@ def _check_member(member: "fx.EPFixtureMember", thresholds: dict) -> list[tuple[
             f"{member.prev_day_volume:,.0f} < {thresholds['MIN_PREV_DAY_VOLUME']:,.0f} floor",
         ))
 
-    if member.gap_pct is not None and member.gap_pct < thresholds["MIN_GAP_PCT"]:
+    # #620 (2026-09-03): compare the floor against the MEASURED live-admitted gap when one is on
+    # record (a member whose open print reads under the floor but whose real-time overlay demonstrably
+    # admits it at some scan tick — see gap_pct_admitted's docstring in the fixture); else fall back
+    # to the open-basis gap_pct exactly as before. Never the other way around: gap_pct_admitted is
+    # never allowed to make a clearing member look excluded, only to correct an over-counted one.
+    _effective_gap = member.gap_pct_admitted if member.gap_pct_admitted is not None else member.gap_pct
+    if _effective_gap is not None and _effective_gap < thresholds["MIN_GAP_PCT"]:
         basis = f" [gap basis: {member.gap_basis}]" if member.gap_basis else ""
+        admitted_note = (
+            f" (open-basis gap was {member.gap_pct:.2f}%; the measured live-admitted gap "
+            f"{member.gap_pct_admitted:.2f}% still falls short — see gap_pct_admitted_basis)"
+            if member.gap_pct_admitted is not None else ""
+        )
         failures.append((
             "MIN_GAP_PCT",
             f"{who} excluded by MIN_GAP_PCT at the default {thresholds['MIN_GAP_PCT']:.1f}% floor "
             f"(env-overridable via EP_MIN_GAP_PCT; universe admission — leaves no mi_ep_scan_log "
-            f"row): gap {member.gap_pct:.2f}% < {thresholds['MIN_GAP_PCT']:.1f}%{basis}. "
+            f"row): gap {_effective_gap:.2f}% < {thresholds['MIN_GAP_PCT']:.1f}%{basis}{admitted_note}. "
             f"NOTE: ADMISSION may still recover — ep_profitability_program.md records 78% of "
             f"tradeable missed winners gapping under 10% at the open crossed 10% intraday. ENTRY "
             f"cannot recover the same way once 9:45 ET passes: the ORB submission window is "
@@ -236,6 +256,105 @@ def test_coverage_is_declared_for_every_member(member: "fx.EPFixtureMember"):
             f"{member.ticker} {member.alert_date}: excluded=True but no exclude_reason — a silent "
             f"drop, exactly what the DoD forbids."
         )
+
+
+@pytest.mark.parametrize("member", fx.MUST_NOT_MISS, ids=_member_id)
+def test_gap_pct_admitted_requires_a_basis(member: "fx.EPFixtureMember"):
+    """#620: `gap_pct_admitted` is never allowed to float free of its evidence — a member setting
+    it without `gap_pct_admitted_basis` would be exactly the hand-wave the module docstring's
+    label_source discipline exists to forbid (never inference, always a named citation)."""
+    if member.gap_pct_admitted is not None:
+        assert member.gap_pct_admitted_basis, (
+            f"{member.ticker} {member.alert_date}: gap_pct_admitted is set but "
+            f"gap_pct_admitted_basis is empty — a measured gap with no cited evidence."
+        )
+
+
+# ── #620 provenance guard: gap_pct_admitted must re-derive from the captured evidence files ────
+# Same discipline as test_psv_sourced_members_match_the_source_file below: a measured number that
+# cannot be independently re-derived from its cited capture is not verified, it is asserted. Both
+# capture files are read-only $0 probes (scripts/probes/_620_fetch_bars.py, _620_qcom.sql) checked
+# into the repo alongside their captured output, so this re-derivation costs nothing and runs
+# every pytest invocation.
+
+_BARS_PSV = _REPO_ROOT / "scripts" / "probes" / "_620_bars.psv"
+_QCOM_SCAN_LOG_OUT = _REPO_ROOT / "scripts" / "probes" / "_620_qcom_out.txt"
+
+
+def _load_620_min_bars() -> dict:
+    """ticker -> {et_min_str: close} from the #620 minute-bar capture's '=== MIN ===' section."""
+    bars: dict = {}
+    if not _BARS_PSV.exists():
+        return bars
+    in_section = False
+    with open(_BARS_PSV) as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if line.startswith("=== MIN ==="):
+                in_section = True
+                continue
+            if line.startswith("=== "):
+                in_section = False
+                continue
+            if not in_section or line.startswith("ticker|"):
+                continue
+            parts = line.split("|")
+            if len(parts) != 7:
+                continue
+            ticker, et_min, _o, _h, _l, c, _v = parts
+            bars.setdefault(ticker, {})[et_min] = float(c)
+    return bars
+
+
+def test_strl_hut_gap_pct_admitted_matches_the_captured_bar():
+    """Re-derive STRL/HUT's gap_pct_admitted from the actual captured minute bar cited in
+    gap_pct_admitted_basis, rather than trusting the fixture's arithmetic."""
+    bars = _load_620_min_bars()
+    if not bars:
+        pytest.skip(f"{_BARS_PSV} not present in this checkout — capture is a $0 probe, not "
+                    f"regenerated by the suite (see scripts/probes/_620_fetch_bars.py)")
+    cases = {
+        "STRL": ("2026-04-08 09:34", "2026-04-08"),
+        "HUT": ("2026-04-08 09:30", "2026-04-08"),
+    }
+    for ticker, (et_min, alert_date) in cases.items():
+        member = next(m for m in fx.MUST_NOT_MISS if m.ticker == ticker and m.alert_date == alert_date)
+        assert member.gap_pct_admitted is not None, f"{ticker}: expected gap_pct_admitted to be set"
+        close = bars.get(ticker, {}).get(et_min)
+        assert close is not None, f"{ticker} {et_min}: bar not found in {_BARS_PSV}"
+        recomputed = (close - member.prev_close) / member.prev_close * 100
+        assert member.gap_pct_admitted == pytest.approx(recomputed, abs=0.01), (
+            f"{ticker} {alert_date}: fixture gap_pct_admitted={member.gap_pct_admitted} does not "
+            f"match the {et_min} bar close ${close} vs prev_close ${member.prev_close} "
+            f"(recomputed {recomputed:.2f}%) — the fixture has drifted from its cited capture."
+        )
+
+
+def test_qcom_gap_pct_admitted_matches_the_scan_log_capture():
+    """Re-derive QCOM's gap_pct_admitted from the actual captured mi_ep_scan_log row, rather than
+    trusting the fixture's transcription of it."""
+    if not _QCOM_SCAN_LOG_OUT.exists():
+        pytest.skip(f"{_QCOM_SCAN_LOG_OUT} not present in this checkout — capture is a $0 probe, "
+                    f"not regenerated by the suite (see scripts/probes/_620_qcom.sql)")
+    text = _QCOM_SCAN_LOG_OUT.read_text()
+    lines = text.splitlines()
+    header = next(i for i, l in enumerate(lines) if l.startswith("id|scan_date|ticker|gap_pct"))
+    cols = lines[header].split("|")
+    row = lines[header + 1].split("|")
+    gap_pct = float(row[cols.index("gap_pct")])
+    prev_close = float(row[cols.index("prev_close")])
+    ticker_col = row[cols.index("ticker")]
+    scan_date_col = row[cols.index("scan_date")]
+    assert ticker_col == "QCOM" and scan_date_col == "2026-04-24", (
+        f"unexpected row in {_QCOM_SCAN_LOG_OUT}: {row}"
+    )
+    member = next(m for m in fx.MUST_NOT_MISS if m.ticker == "QCOM" and m.alert_date == "2026-04-24")
+    assert member.gap_pct_admitted == pytest.approx(gap_pct, abs=0.01), (
+        f"QCOM 2026-04-24: fixture gap_pct_admitted={member.gap_pct_admitted} does not match the "
+        f"captured mi_ep_scan_log row's gap_pct={gap_pct} — the fixture has drifted from its cited "
+        f"capture."
+    )
+    assert member.prev_close == pytest.approx(prev_close, abs=0.01)
 
 
 def test_thresholds_loaded_are_the_real_ones_not_the_stub():

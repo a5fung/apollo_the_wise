@@ -47,6 +47,60 @@ this operator-ruled threshold change did. **7 remain excluded** at the new 9.0% 
 NBIS, QCOM, HUT, SMTC, IREN (all gap 8.1-8.7%, below even the new floor). ⚠ AMKR clears by 0.03pp
 (9.03% vs 9.0%, session-open psv basis) — basis-marginal, not a clean clear like the other 7.
 
+**UPDATED 2026-09-03** (`docs/analysis/617_universe_admission_recall_jun_aug_2026-09-03.md` flagged
+this banner as a possible false alarm post-08-27; re-measured PER NAME, not by assumption, per that
+doc's own instruction "measure it per name, do not assume the aggregate"). Method: `gap_pct` above
+is the SESSION-OPEN print (the psv basis, unchanged, still provenance-checked below) — but that is
+NOT what `_apply_realtime_pass2`/`_apply_rt_universe_overlay` (ep_detector.py) actually compare to
+`MIN_GAP_PCT`: the live gate reads whatever price the scan tick sees (`scheduler.py`: `ep_scan`
+every 5 min 7:00-9:55 ET, plus a dedicated `ep_scan_open` tick at 09:31), re-checked in real time.
+Measured from stored/fetched minute bars (a_ref = Alpaca's own raw D-1 close, cross-checked against
+`prev_close` for a phantom-split gap per #617's LGCL lesson — none found, RAW==SPLIT for all 6
+tickers below), NOT reconstructed from memory:
+  - **STRL 2026-04-08 — ADMITTED.** prev_close $382.22 confirmed (Alpaca raw D-1 close matches
+    exactly). Floor price $416.62. 09:30 bar close $415.555 (8.72%) and the 09:31 tick's read (the
+    09:30 bar, "first complete bar just closed" per `scheduler.py`'s `ep_scan_open` job) still falls
+    short — but by the 9:35 tick the price the scan reads (the just-closed 09:34 bar) is $419.385 =
+    **9.72%**, and it holds through 09:44: 09:35 close $419.44 (9.74%), 09:39 close $422.22 (10.47%),
+    09:40 close $424.00 (10.93%) — not a one-tick flicker. `scripts/probes/_620_bars.psv`.
+  - **HUT 2026-04-08 — ADMITTED.** prev_close $52.66 confirmed. Floor price $57.40. The very first
+    completed minute bar (09:30, close $59.08) already reads **12.19%** — the 09:31 `ep_scan_open`
+    tick (which reads that just-closed bar per its own docstring) admits it immediately, no boundary
+    ambiguity. `scripts/probes/_620_bars.psv`.
+  - **QCOM 2026-04-24 — RECLASSIFIED, not an 08-27 fix.** This one is not a reconstruction: a REAL
+    `mi_ep_scan_log` row exists for it (id=4679, `scan_time` 2026-04-24 09:30:10 ET) recording
+    `gap_pct=10.27`, `prev_close=133.95` — QCOM cleared the THEN-10.0% floor (before the 08-19 change
+    even existed) on the plain delayed Pass-1 read, which evidently already reflected a few seconds
+    of post-open trading, not the literal open print (open $145.61 = 8.70%, but the accepted read
+    ~10 seconds later was already ~$147.7). It entered the funnel, scored 32.4, and was excluded by
+    `score 32 < 50 (catalyst=routine)` — the LLM catalyst-quality judge, which this test's own SCOPE
+    note excludes ("costs money per call and is non-deterministic, out of scope for a $0 suite
+    test"). **QCOM was never a MIN_GAP_PCT exclusion — BASELINE_DEBT mischaracterized it since
+    2026-08-19.** Fixed here to match the actual scan_log row; it still does not get traded (a
+    downstream score-gate question, #545 Phase 2's territory, not this fixture's). `scripts/probes/
+    _620_qcom.sql` / `_620_qcom_out.txt`.
+  - **ASX / NBIS / IREN / SMTC 2026-04-08 / 04-08 / 04-08 / 03-30 — STILL EXCLUDED, margins measured.**
+    None of the four ever reaches the floor, at ANY point in the regular session (checked at both
+    daily-bar-high and minute-bar-high resolution, not just the open): ASX day high $24.16 = 8.88%
+    (floor $24.187, short by 2.7¢); NBIS day high $127.75 = 8.82% (floor $127.97, short by 22¢);
+    IREN RTH day high $38.90 = 8.84% (floor $38.957, short by 5.7¢ — one thin PRE-MARKET print at
+    09:25 touched $39.01 = 9.15% on 12,416 shares, but the regular session never did, and bars before
+    09:25 were not captured this session to resolve whether a 09:25 scan tick would have read that
+    print or an earlier, lower one — left UNDECIDED and kept in debt per "if in doubt, keep it");
+    SMTC day high $78.50 = 8.79% (floor $78.654, short by 15¢). `scripts/probes/_620_bars.psv` +
+    `_620_bar_coverage_out.txt`.
+  - **Data note**: `mi_intraday_bars` retention starts 2026-04-13 (confirmed via
+    `scripts/probes/_620_bar_coverage.sql`) — STRL/ASX/NBIS/HUT/IREN (04-08) and SMTC (03-30) have
+    ZERO stored bars, so the 6 above were measured from a fresh Alpaca SIP capture
+    (`scripts/probes/_620_fetch_bars.py`, RAW adjustment, read-only, $0), matching the same feed the
+    live overlay reads. QCOM (04-24) has full stored coverage AND a real scan_log row — the strongest
+    possible evidence, used instead.
+  - **Net: 3 of 7 fixed (STRL, HUT — genuinely admitted today; QCOM — reclassified to a different,
+    already-out-of-scope gate). 4 remain: ASX, NBIS, IREN, SMTC — all within 0.03-0.22pp of the
+    floor, none proven to cross it.** `gap_pct` (the psv session-open figure, provenance-checked
+    below) is UNCHANGED for all 7 — only `gap_pct_admitted` (new field, MIN_GAP_PCT gate input only,
+    evidence required inline) reflects this finding for STRL/HUT/QCOM.
+
 WHY A BASELINE AND NOT A HARD FAIL EVERY RUN: an always-red suite blocks every `git push` (the
 pre-push hook runs the full suite) and destroys the signal for the other ~5,600 tests — the same
 "a guard that always fires is not a guard" failure this repo has hit before. So each KNOWN
@@ -93,6 +147,17 @@ class EPFixtureMember(NamedTuple):
     adv_dollar_20d: Optional[float] = None     # vs MIN_ADV_DOLLAR_VOLUME (backtester/filters.py)
     atr_pct_14d: Optional[float] = None        # vs MAX_ATR_PCT (backtester/filters.py)
     market_cap: Optional[float] = None         # vs MIN_MARKET_CAP (backtester/filters.py)
+
+    # #620, 2026-09-03 — the gap the CURRENT live admission path (ep_detector.py's real-time
+    # overlay, `_apply_realtime_pass2` / `_apply_rt_universe_overlay`) actually decides at scan-tick
+    # time, when it differs from and is HIGHER than `gap_pct` (the session-open print above) and
+    # clears MIN_GAP_PCT. `gap_pct` stays the raw open-basis measurement (still provenance-checked
+    # against _552_cohort.psv for psv-sourced members — never edited to "fix" a debt); this field is
+    # consulted ONLY for the MIN_GAP_PCT gate in `_check_member`, and ONLY when set. Same evidence
+    # discipline as label_source: never inferred — `gap_pct_admitted_basis` must name the exact bar/
+    # tick/scan_log row it came from (test_gap_pct_admitted_requires_a_basis enforces non-empty).
+    gap_pct_admitted: Optional[float] = None
+    gap_pct_admitted_basis: Optional[str] = None
 
     # Gate keys (see GATE_KEYS in the test) that are deliberately NOT verified this session.
     # Every tracked gate for every member must appear either as a recorded value above OR here —
@@ -173,6 +238,20 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_note=">=20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.20, gap_basis="session open (_552_cohort.psv)", prev_close=382.22,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: MIN_GAP_PCT (open basis) is genuinely fixed by the live real-time
+        # overlay. prev_close $382.22 confirmed against Alpaca's raw D-1 close (exact match, no
+        # split). At the 09:35 scan tick (scheduler.py: ep_scan every 5 min 7:00-9:55 ET) the price
+        # the scan reads is the just-closed 09:34 minute bar, close $419.385 -> (419.385-382.22)/
+        # 382.22*100 = 9.72%, above the 9.0% floor, and it holds: 09:35 close $419.44 (9.74%), 09:39
+        # close $422.22 (10.47%), 09:40 close $424.00 (10.93%) -- not a one-tick flicker. Measured
+        # from a fresh Alpaca SIP capture (mi_intraday_bars has no coverage before 2026-04-13):
+        # scripts/probes/_620_fetch_bars.py -> scripts/probes/_620_bars.psv.
+        gap_pct_admitted=9.72,
+        gap_pct_admitted_basis=(
+            "STRL 2026-04-08 09:34 ET minute bar close $419.385 vs prev_close $382.22 = 9.72%, "
+            "the price read at the 09:35 ep_scan tick; held through 09:44 (09:39 close $422.22 = "
+            "10.47%, 09:40 close $424.00 = 10.93%). scripts/probes/_620_bars.psv."
+        ),
     ),
     EPFixtureMember(
         ticker="MRVL", alert_date="2026-03-31", label_source="evidence:winner_r_available_2026-08-16",
@@ -185,6 +264,11 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_note=">=20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.16, gap_basis="session open (_552_cohort.psv)", prev_close=22.19,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: STILL EXCLUDED -- confirmed at minute-bar resolution, not just the open.
+        # The session HIGH all day (09:30 bar, $24.16, matching mi_daily_closes' high_price exactly)
+        # gives (24.16-22.19)/22.19*100 = 8.88%, short of the $24.187 floor by 2.7 cents (0.12pp).
+        # No point in the regular session ever reaches MIN_GAP_PCT. scripts/probes/_620_bars.psv +
+        # _620_bar_coverage_out.txt (mi_daily_closes cross-check).
     ),
     EPFixtureMember(
         ticker="SNDK", alert_date="2026-04-08", label_source="evidence:winner_r_available_2026-08-16",
@@ -209,6 +293,11 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_note=">=20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.07, gap_basis="session open (_552_cohort.psv)", prev_close=117.40,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: STILL EXCLUDED -- confirmed at minute-bar resolution, not just the open.
+        # The session HIGH all day (09:30 bar, $127.75, matching mi_daily_closes' high_price exactly)
+        # gives (127.75-117.40)/117.40*100 = 8.82%, short of the $127.966 floor by 22 cents (0.18pp)
+        # -- the closest miss of the four. No point in the regular session ever reaches MIN_GAP_PCT.
+        # scripts/probes/_620_bars.psv + _620_bar_coverage_out.txt.
     ),
     EPFixtureMember(
         ticker="AMKR", alert_date="2026-04-08", label_source="evidence:winner_r_available_2026-08-16",
@@ -266,6 +355,24 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_note="10-20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.70, gap_basis="session open (_552_cohort.psv)", prev_close=133.95,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: RECLASSIFIED, not a real-time-overlay fix -- a REAL mi_ep_scan_log row
+        # exists for this exact ticker/date (id=4679, scan_time 2026-04-24 09:30:10 ET): gap_pct
+        # 10.27%, prev_close $133.95. QCOM cleared the THEN-10.0% floor (before 08-19 existed, and
+        # before any RT toggle existed) on the plain delayed Pass-1 read, which by 10 seconds
+        # after the open already reflected trading past the literal open print (open $145.61 =
+        # 8.70%; the accepted read was already ~$147.7). It entered the funnel, scored 32.4, and was
+        # excluded by `score 32 < 50 (catalyst=routine)` -- a DIFFERENT gate (the LLM catalyst
+        # judge), out of this test's own stated scope. QCOM was NEVER a MIN_GAP_PCT exclusion;
+        # BASELINE_DEBT mischaracterized it since 2026-08-19. It still does not get traded -- that
+        # is a downstream score-gate question (#545 Phase 2's territory), not this fixture's.
+        # scripts/probes/_620_qcom.sql -> scripts/probes/_620_qcom_out.txt.
+        gap_pct_admitted=10.27,
+        gap_pct_admitted_basis=(
+            "QCOM 2026-04-24: real mi_ep_scan_log row id=4679, scan_time 09:30:10 ET, gap_pct=10.27 "
+            "vs prev_close=133.95 -- the ACTUAL historical admission, not a reconstruction. Excluded "
+            "downstream by score 32.4 < 50 (catalyst=routine), not by MIN_GAP_PCT. scripts/probes/"
+            "_620_qcom_out.txt."
+        ),
     ),
     EPFixtureMember(
         ticker="QBTS", alert_date="2026-04-08", label_source="evidence:winner_r_available_2026-08-16",
@@ -284,6 +391,19 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_note="10-20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.40, gap_basis="session open (_552_cohort.psv)", prev_close=52.66,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: MIN_GAP_PCT (open basis) is genuinely fixed. prev_close $52.66 confirmed
+        # against Alpaca's raw D-1 close (exact match, no split). The very first COMPLETED minute
+        # bar (09:30, close $59.08) already reads (59.08-52.66)/52.66*100 = 12.19% -- the 09:31
+        # `ep_scan_open` tick (scheduler.py: "first complete bar just closed") reads exactly that
+        # bar, so there is no boundary ambiguity: admitted at the first possible post-open tick.
+        # Measured from a fresh Alpaca SIP capture (mi_intraday_bars has no coverage before
+        # 2026-04-13): scripts/probes/_620_fetch_bars.py -> scripts/probes/_620_bars.psv.
+        gap_pct_admitted=12.19,
+        gap_pct_admitted_basis=(
+            "HUT 2026-04-08 09:30 ET minute bar close $59.08 vs prev_close $52.66 = 12.19%, read "
+            "at the 09:31 ep_scan_open tick (the just-closed first bar). scripts/probes/"
+            "_620_bars.psv."
+        ),
     ),
     EPFixtureMember(
         ticker="QURE", alert_date="2026-05-29", label_source="evidence:winner_r_available_2026-08-16",
@@ -302,12 +422,29 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         label_note="10-20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.12, gap_basis="session open (_552_cohort.psv)", prev_close=72.16,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: STILL EXCLUDED -- confirmed at minute-bar resolution, not just the open.
+        # The session HIGH all day (09:32 bar, $78.50, matching mi_daily_closes' high_price exactly)
+        # gives (78.50-72.16)/72.16*100 = 8.79%, short of the $78.654 floor by 15 cents (0.21pp).
+        # (This is also the day SMTC closed BELOW its prior close -- a gap-and-fade -- so its listed
+        # >=10R comes from a later move, per winner_r_available's 60-session horizon, not this day.)
+        # No point in the regular session ever reaches MIN_GAP_PCT. scripts/probes/_620_bars.psv +
+        # _620_bar_coverage_out.txt.
     ),
     EPFixtureMember(
         ticker="IREN", alert_date="2026-04-08", label_source="evidence:winner_r_available_2026-08-16",
         label_note="10-20R tradeable winner (EP-day-low stop geometry).",
         gap_pct=8.28, gap_basis="session open (_552_cohort.psv)", prev_close=35.74,
         unverified_gates=_UNVERIFIED_STANDARD,
+        # #620, 2026-09-03: STILL EXCLUDED (kept in debt, not resolved either way on the pre-market
+        # wrinkle below -- "if in doubt, keep it"). RTH session HIGH all day (09:30 bar, $38.90,
+        # matching mi_daily_closes' high_price exactly) gives (38.90-35.74)/35.74*100 = 8.84%, short
+        # of the $38.957 floor by 5.7 cents (0.16pp) -- never crosses during the regular session.
+        # ⚠ One thin PRE-MARKET print at 09:25 touched $39.01 on 12,416 shares = 9.15%, ABOVE the
+        # floor -- but `scheduler.py`'s ep_scan runs 7:00-9:55 ET (a real tick could land at 09:25),
+        # and bars before 09:25 were not captured this session, so whether that specific tick would
+        # have read this print (vs. an earlier, lower one) is UNDECIDABLE from what was fetched here
+        # -- not resolved either way, kept in debt per the fixture's own "if in doubt, keep it" rule.
+        # scripts/probes/_620_bars.psv + _620_bar_coverage_out.txt.
     ),
     EPFixtureMember(
         ticker="APLD", alert_date="2026-04-08", label_source="evidence:winner_r_available_2026-08-16",
@@ -326,7 +463,8 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
 
 
 # ══════════════════════════════════════════════════════════════════════════════════════════════
-# BASELINE_DEBT — see the module docstring above for the full rationale. Recorded 2026-08-19.
+# BASELINE_DEBT — see the module docstring above for the full rationale. Recorded 2026-08-19,
+# last revised 2026-09-03.
 #
 # Key: (ticker, alert_date). Value: the frozenset of gate keys CURRENTLY tolerated as pre-existing
 # exclusions for that member — the exact strings `_check_member` in the test file emits as its
@@ -336,17 +474,23 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
 # ⚠ NEVER add an operator-named member's key here — `label_source == "operator"` members must
 # clear every gate unconditionally, checked by `test_operator_named_members_never_carry_baseline_
 # tolerance` in the test file.
-BASELINE_RECORDED_DATE = "2026-08-19"
+BASELINE_RECORDED_DATE = "2026-09-03"
 
 # 2026-08-19: MU, MRVL, SNOW, ALGM, AMKR, UMC(2026-05-06), BE, USAR removed — all clear
 # MIN_GAP_PCT at the new 9.0% floor (gap 9.03-9.94%). The remaining 7 all gap 8.1-8.7%, still
 # below 9.0%.
+#
+# 2026-09-03 (#620, see the module docstring's "UPDATED 2026-09-03" section for full evidence):
+# STRL and HUT removed — the CURRENT live real-time overlay genuinely admits both (measured from
+# fresh Alpaca minute bars, gap_pct_admitted on each member). QCOM removed — RECLASSIFIED, not a
+# real-time fix: a real mi_ep_scan_log row (id=4679) proves it was never a MIN_GAP_PCT exclusion at
+# all, then or now; its actual exclusion is the score/catalyst gate, out of this fixture's scope.
+# ASX, NBIS, IREN, SMTC remain — none reaches the floor at any point in the regular session, even
+# at minute-bar-high resolution (margins 0.12-0.21pp; IREN also carries an undecided pre-market
+# wrinkle, see its member comment — kept in debt, not resolved either way).
 BASELINE_DEBT: Dict[Tuple[str, str], FrozenSet[str]] = {
-    ("STRL", "2026-04-08"): frozenset({"MIN_GAP_PCT"}),
     ("ASX", "2026-04-08"): frozenset({"MIN_GAP_PCT"}),
     ("NBIS", "2026-04-08"): frozenset({"MIN_GAP_PCT"}),
-    ("QCOM", "2026-04-24"): frozenset({"MIN_GAP_PCT"}),
-    ("HUT", "2026-04-08"): frozenset({"MIN_GAP_PCT"}),
     ("SMTC", "2026-03-30"): frozenset({"MIN_GAP_PCT"}),
     ("IREN", "2026-04-08"): frozenset({"MIN_GAP_PCT"}),
 }
