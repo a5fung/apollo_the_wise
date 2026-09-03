@@ -42,6 +42,33 @@ hard external deadline, then money-path and alert-trust defects.
 
 **Verifies riding along:** #333 Wed 18:12 ET · #616 Thu · #540, #595, #233 Fri.
 
+### 💵 DATA SUBSCRIPTIONS — what we pay for and why (answered 2026-09-02, measured not assumed)
+
+Operator asked *"what are we paying for and why, what are the alternatives"* and then *"check it, I
+don't want to add another sub, find a good solution here."* **Answer: nothing is duplicated, and the
+$99 line is load-bearing.**
+
+| Line | Cost | What it buys | Verdict |
+|---|---|---|---|
+| **Alpaca Algo Trader Plus** (`ALPACA_DATA_FEED=sip`) | ~$99/mo | The real-time consolidated tape. Every EP number — gap %, RVOL, ORB high/low — is computed off these bars at 9:31–9:45 ET | **KEEP — proven not redundant** |
+| **Polygon** | monthly | Grouped daily across ~12,500 tickers (the RS universe), news, splits, ticker reference | Keep for now; see the one real option below |
+| **Anthropic** | $47.91 / 30d | Sonnet 5 $33.07 (2,987 calls) · Opus 5 $9.25 · Sonnet 4.6 $3.59 · Haiku $2.00 | metered |
+| **Perplexity** | $21.90 / 30d, **$0.99 in Sept** | Second-opinion grade + overnight brief. The Agent-API migration (#603) collapsed the cost | metered, already fixed |
+| FMP · yfinance · SEC EDGAR | **$0** | Analyst estimates (annual), fundamentals, filing-date anchors | free tier is enough |
+
+🔑 **THE $99 IS NOT REDUNDANT — MEASURED, NOT ASSUMED.** Polygon on our current plan DOES return
+minute and second aggregates, which is what made the duplication worth testing. But today's bars
+come back stamped **`status: DELAYED`**, and `/v3/trades` returns **403 NOT_AUTHORIZED — "You are
+not entitled to this data"**. A 15-minute delay is unusable for the ORB window: we would be placing
+9:31 entries against 9:16 prices. Making Polygon real-time means UPGRADING Polygon, which is adding
+cost, not saving it.
+
+▶ **THE ONE REAL OPTION, and it is a migration rather than a click:** everything we use Polygon for
+— the daily universe, news, splits, ticker reference — is DELAY-TOLERANT, and Alpaca (already paid,
+already real-time) serves all of it, including news via its Benzinga feed which
+`news_source_quality.py` already names. **So the candidate saving is dropping POLYGON, not Alpaca.**
+Not scoped, not costed, not started — recorded so the question is not re-asked from scratch.
+
 **STRETCH, in the order to take them** (operator 2026-09-02: *"include a few stretch items as well
 if we get to it"*):
 
