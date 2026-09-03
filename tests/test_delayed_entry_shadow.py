@@ -1255,6 +1255,7 @@ def _wire_variant_capture(monkeypatch):
 def test_variant_stop_arithmetic_and_missing_adr_yield_null_never_a_substitute():
     """Pure: entry − mult×ADR$ from real inputs; ANY missing/degenerate input → None
     (the missing-ADR rule: NULL, counted by the caller, never defaulted)."""
+    assert des.adr_variant_stop(10.0, 0.55, 0.25) == pytest.approx(9.8625)
     assert des.adr_variant_stop(10.0, 0.55, 0.75) == pytest.approx(9.5875)
     assert des.adr_variant_stop(10.0, 0.55, 1.00) == pytest.approx(9.45)
     assert des.adr_variant_stop(None, 0.55, 0.75) is None
@@ -1262,11 +1263,14 @@ def test_variant_stop_arithmetic_and_missing_adr_yield_null_never_a_substitute()
     assert des.adr_variant_stop(10.0, 0.0, 0.75) is None    # degenerate ADR = missing
     cols = des.variant_stop_cols(10.0, 0.55, 3)
     assert cols["ep_adr20_dollar"] == 0.55 and cols["ep_adr20_n"] == 3
+    assert cols["stop_price_025"] == pytest.approx(9.8625)
+    assert cols["stop_width_pct_025"] == pytest.approx(1.375)
     assert cols["stop_price_075"] == pytest.approx(9.5875)
     assert cols["stop_width_pct_075"] == pytest.approx(4.125)
     assert cols["stop_price_100"] == pytest.approx(9.45)
     assert cols["stop_width_pct_100"] == pytest.approx(5.5)
     none_cols = des.variant_stop_cols(10.0, None, 0)
+    assert none_cols["stop_price_025"] is None and none_cols["stop_width_pct_025"] is None
     assert none_cols["stop_price_075"] is None and none_cols["stop_width_pct_100"] is None
     assert none_cols["ep_adr20_n"] == 0                     # the post-#616 row marker
 
@@ -1286,6 +1290,8 @@ async def test_variant_stops_recorded_at_fire_with_the_ep_anchored_adr(monkeypat
     out = await des.run_delayed_entry_shadow(_FRI)
     t = triggers[0]
     assert t["ep_adr20_dollar"] == pytest.approx(0.55) and t["ep_adr20_n"] == 1
+    assert t["stop_price_025"] == pytest.approx(10.0 - 0.25 * 0.55)
+    assert t["stop_width_pct_025"] == pytest.approx(1.375)
     assert t["stop_price_075"] == pytest.approx(10.0 - 0.75 * 0.55)
     assert t["stop_width_pct_075"] == pytest.approx(4.125)
     assert t["stop_price_100"] == pytest.approx(10.0 - 1.00 * 0.55)
@@ -1312,7 +1318,9 @@ async def test_missing_adr_records_null_variants_and_is_counted(monkeypatch):
     out = await des.run_delayed_entry_shadow(_FRI)
     t = triggers[0]
     assert t["ep_adr20_dollar"] is None and t["ep_adr20_n"] == 0
+    assert t["stop_price_025"] is None
     assert t["stop_price_075"] is None and t["stop_price_100"] is None
+    assert t["stop_width_pct_025"] is None
     assert t["stop_width_pct_075"] is None and t["stop_width_pct_100"] is None
     assert t["entry_price"] == 10.0 and t["stop_price"] == 9.2   # incumbent intact
     assert out["variant_missing_adr"] == 1
@@ -1324,17 +1332,20 @@ async def test_missing_adr_records_null_variants_and_is_counted(monkeypatch):
 async def test_incumbent_settle_write_is_identical_with_and_without_variants(monkeypatch):
     """THE ACCEPTANCE TEST: the incumbent settle write must be byte-identical whether
     or not the row carries #616 variant columns. Run the SAME settlement twice — once
-    on a pre-#616 trigger, once on a post-#616 trigger with pending variants — and
-    the two incumbent field dicts must be EQUAL. The pending variants write NOTHING
-    (they are not definitive yet: only one forward session exists and the wider stops
-    were never touched) and are counted as abstained; the day-0 post-fire excursion is
-    cached for their later runs."""
+    on a pre-#616 trigger, once on a post-#616 trigger with pending variants (all
+    THREE: 025/075/100) — and the two incumbent field dicts must be EQUAL. The pending
+    variants write NOTHING (they are not definitive yet: only one forward session
+    exists and none of the three stops were ever touched) and are counted as
+    abstained; the day-0 post-fire excursion is cached for their later runs."""
     post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]
     settles_a, _ = _wire_settle(
         monkeypatch, trigger=_trigger_row(), window=_WINDOW, minute_bars=post)
     out_a = await des.run_delayed_entry_shadow(_FRI)
 
-    trig_b = _trigger_row(ep_adr20_n=1, stop_price_075=9.0, stop_price_100=8.8)
+    # stop_price_025=9.4 sits strictly between 9.0 and 9.65 — the day-0 post bar's low
+    # and Friday's daily low (9.5) both clear it, same as 075/100 — so it abstains too.
+    trig_b = _trigger_row(ep_adr20_n=1, stop_price_025=9.4,
+                          stop_price_075=9.0, stop_price_100=8.8)
     settles_b, _ = _wire_settle(
         monkeypatch, trigger=trig_b, window=_WINDOW, minute_bars=post)
     variant_settles, day0_writes = _wire_variant_capture(monkeypatch)
@@ -1346,7 +1357,7 @@ async def test_incumbent_settle_write_is_identical_with_and_without_variants(mon
     assert fields_a == fields_b            # the incumbent write, byte-identical
     assert fields_b["outcome"] == "stop" and fields_b["realized_r"] == -1.0
     assert variant_settles == []           # not definitive -> nothing written, no guess
-    assert out_b["variant_abstained"] == 2
+    assert out_b["variant_abstained"] == 3
     # day-0 post-fire excursion cached once so later runs never refetch minutes
     assert day0_writes == [(7, 9.65, 9.9)]
 
@@ -1369,33 +1380,36 @@ async def test_pre616_rows_are_left_alone(monkeypatch):
 @pytest.mark.asyncio
 async def test_variants_without_adr_close_unscoreable_beside_the_incumbent(monkeypatch):
     """A post-#616 row whose ADR was missing at fire (stops NULL, counted then) closes
-    both variants as 'unscoreable' with every R column NULL when the incumbent
+    all THREE variants as 'unscoreable' with every R column NULL when the incumbent
     settles — recorded, never interpolated, never a substitute ADR."""
     post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]
-    trig = _trigger_row(ep_adr20_n=0, stop_price_075=None, stop_price_100=None)
+    trig = _trigger_row(ep_adr20_n=0, stop_price_025=None,
+                        stop_price_075=None, stop_price_100=None)
     settles, audits = _wire_settle(
         monkeypatch, trigger=trig, window=_WINDOW, minute_bars=post)
     variant_settles, _ = _wire_variant_capture(monkeypatch)
     out = await des.run_delayed_entry_shadow(_FRI)
     assert out["settle_settled"] == 1                       # incumbent unaffected
-    assert [(rid, sfx) for rid, sfx, _ in variant_settles] == [(7, "075"), (7, "100")]
+    assert [(rid, sfx) for rid, sfx, _ in variant_settles] == [
+        (7, "025"), (7, "075"), (7, "100")]
     for _, _, fields in variant_settles:
         assert fields["outcome"] == "unscoreable"
         assert fields["outcome_trail"] == "unscoreable"
         assert fields.get("realized_r") is None and fields.get("mfe_r") is None
         assert fields["settle_version"] == des.SETTLE_VERSION
-    assert out["variant_unscoreable"] == 2
+    assert out["variant_unscoreable"] == 3
     summary = next(s for e, s in audits if e == "delayed_entry_shadow_recorded")
-    assert "2 closed unscoreable, 0 fire(s) with no ADR" in summary
+    assert "3 closed unscoreable, 0 fire(s) with no ADR" in summary
 
 
 @pytest.mark.asyncio
 async def test_variant_exception_never_touches_the_incumbent(monkeypatch):
-    """REQUIRED (#616 hard rule): compute_settlement blows up on BOTH variant stops.
-    The incumbent settle write must still land with its exact values, the errors are
-    counted + audited, no variant row is written, and the job completes."""
+    """REQUIRED (#616 hard rule): compute_settlement blows up on ALL THREE variant
+    stops. The incumbent settle write must still land with its exact values, the
+    errors are counted + audited, no variant row is written, and the job completes."""
     post = [_b5(585, 9.7, 9.9, 9.65, 9.8)]
-    trig = _trigger_row(ep_adr20_n=1, stop_price_075=9.0, stop_price_100=8.8)
+    trig = _trigger_row(ep_adr20_n=1, stop_price_025=9.4,
+                        stop_price_075=9.0, stop_price_100=8.8)
     settles, audits = _wire_settle(
         monkeypatch, trigger=trig, window=_WINDOW, minute_bars=post)
     variant_settles, _ = _wire_variant_capture(monkeypatch)
@@ -1403,7 +1417,7 @@ async def test_variant_exception_never_touches_the_incumbent(monkeypatch):
     real = des.compute_settlement
 
     def _boom(**kw):
-        if kw.get("stop") in (9.0, 8.8):
+        if kw.get("stop") in (9.4, 9.0, 8.8):
             raise RuntimeError("variant boom")
         return real(**kw)
 
@@ -1413,18 +1427,21 @@ async def test_variant_exception_never_touches_the_incumbent(monkeypatch):
     (_, fields), = settles
     assert fields["outcome"] == "stop" and fields["realized_r"] == -1.0
     assert variant_settles == []
-    assert out["errors"] == 2
+    assert out["errors"] == 3
     errs = [s for e, s in audits if e == "delayed_entry_shadow_error"]
+    assert any("variant 025" in s and "boom" in s for s in errs)
     assert any("variant 075" in s and "boom" in s for s in errs)
 
 
 @pytest.mark.asyncio
 async def test_pending_variants_settle_later_through_their_own_guarded_write(monkeypatch):
-    """The variant-completion pass: an incumbent-SETTLED row's two variants finish on
-    a later run, each through its own suffixed write, and every value equals what the
-    SAME compute_settlement walk produces on the same bars — both exit arms, each in
-    the variant's OWN risk units. The four settled R values are pairwise distinct, so
-    neither arm nor variant can silently alias another."""
+    """The variant-completion pass: an incumbent-SETTLED row's THREE variants finish
+    on a later run, each through its own suffixed write, and every value equals what
+    the SAME compute_settlement walk produces on the same bars — both exit arms, each
+    in the variant's OWN risk units. The 075/100 pair's four settled R values are
+    pairwise distinct, so neither arm nor variant can silently alias another; 025's
+    tight stop sits inside the fire day's own low and so stops BOTH arms on day 0
+    (checked separately — it does not extend the four-way distinctness claim)."""
     fire = _THU                                              # 2026-08-27, daily fire
     pre_days = des._trading_days(fire - _td(days=45), fire - _td(days=1))[-25:]
     post_days = des._trading_days(fire + _td(days=1), fire + _td(days=60))[:20]
@@ -1442,8 +1459,9 @@ async def test_pending_variants_settle_later_through_their_own_guarded_write(mon
         "id": 99, "ticker": "TST", "ep_date": _EP, "rung": "ep_low_reclaim",
         "fire_date": fire, "fire_minute_et": None, "resolution": "daily",
         "entry_price": 10.0, "day_high": 10.4, "day_low": 9.2, "day_close": 10.2,
-        "ep_adr20_n": 1, "stop_price_075": 9.0, "stop_price_100": 8.8,
-        "outcome_075": None, "outcome_100": None,
+        "ep_adr20_n": 1, "stop_price_025": 9.4,
+        "stop_price_075": 9.0, "stop_price_100": 8.8,
+        "outcome_025": None, "outcome_075": None, "outcome_100": None,
         "day0_resolved": None, "day0_post_low": None, "day0_post_high": None,
     }
     _wire(monkeypatch, member=_member(session_idx=20), window=window, minute_bars=[])
@@ -1454,12 +1472,12 @@ async def test_pending_variants_settle_later_through_their_own_guarded_write(mon
 
     monkeypatch.setattr(des, "get_delayed_entry_variant_pending", _pending)
     out = await des.run_delayed_entry_shadow(today)
-    assert out["variant_considered"] == 1 and out["variant_settled"] == 2
+    assert out["variant_considered"] == 1 and out["variant_settled"] == 3
 
     bars_by_day = {b["trade_date"]: b for b in window}
     written = {sfx: fields for _, sfx, fields in variant_settles}
-    assert set(written) == {"075", "100"}
-    for sfx, vstop in (("075", 9.0), ("100", 8.8)):
+    assert set(written) == {"025", "075", "100"}
+    for sfx, vstop in (("025", 9.4), ("075", 9.0), ("100", 8.8)):
         expected = des.compute_settlement(
             entry=10.0, stop=vstop, fire_minute=None,
             fire_day_bar={"h": 10.4, "l": 9.2, "c": 10.2}, post_fire_bars5=None,
@@ -1470,6 +1488,12 @@ async def test_pending_variants_settle_later_through_their_own_guarded_write(mon
                   "mfe_r", "mae_r", "reached_4r"):
             assert written[sfx][k] == expected[k], (sfx, k)
         assert written[sfx]["settle_version"] == des.SETTLE_VERSION
+    # 025's tight stop sits inside the fire day's own low (9.2 <= 9.4) — a daily-grade
+    # fire reads stop-first on its own spanning day, so BOTH arms stop immediately at
+    # day 0, unlike 075/100 below.
+    assert written["025"]["outcome"] == "stop" and written["025"]["realized_r"] == -1.0
+    assert written["025"]["outcome_trail"] == "stop"
+    assert written["025"]["realized_r_trail"] == -1.0
     # both arms produced their OWN settled value, in each variant's OWN units
     assert written["075"]["outcome"] == "time_exit"
     assert written["075"]["outcome_trail"] == "trail_exit"
@@ -1503,15 +1527,16 @@ async def test_orphan_variant_needing_unfetched_day0_minutes_closes_unscoreable(
     """The censored class, closed honestly: a minute-grade fire whose day low reached
     the variant stops, with NO day-0 cache (the incumbent never needed those minutes,
     so they were never in scope) can never settle without a refetch — which #616
-    forbids. Past the orphan horizon the pass closes both variants 'unscoreable' with
-    every R column NULL — counted, never interpolated, never a fetch."""
+    forbids. Past the orphan horizon the pass closes all THREE variants 'unscoreable'
+    with every R column NULL — counted, never interpolated, never a fetch."""
     old_fire = _FRI - _td(days=50)
     pending = {
         "id": 55, "ticker": "TST", "ep_date": _EP, "rung": "ep_low_reclaim",
         "fire_date": old_fire, "fire_minute_et": 600, "resolution": "minute_5",
         "entry_price": 10.0, "day_high": 10.4, "day_low": 8.5, "day_close": 10.2,
-        "ep_adr20_n": 1, "stop_price_075": 9.0, "stop_price_100": 8.8,
-        "outcome_075": None, "outcome_100": None,
+        "ep_adr20_n": 1, "stop_price_025": 9.4,
+        "stop_price_075": 9.0, "stop_price_100": 8.8,
+        "outcome_025": None, "outcome_075": None, "outcome_100": None,
         "day0_resolved": None, "day0_post_low": None, "day0_post_high": None,
     }
     _wire(monkeypatch, member=_member(session_idx=20), window=_WINDOW, minute_bars=[])
@@ -1526,7 +1551,7 @@ async def test_orphan_variant_needing_unfetched_day0_minutes_closes_unscoreable(
     monkeypatch.setattr(des, "get_delayed_entry_variant_pending", _pending)
     monkeypatch.setattr(des, "_fetch_minute_5", _no_minutes)
     out = await des.run_delayed_entry_shadow(_FRI)
-    assert out["variant_unscoreable"] == 2
+    assert out["variant_unscoreable"] == 3
     for _, _, fields in variant_settles:
         assert fields["outcome"] == "unscoreable"
         assert fields.get("realized_r") is None
@@ -1536,7 +1561,12 @@ def test_variant_write_surface_is_pinned_and_touches_no_incumbent_column():
     """Mechanical pins (the additive contract): the incumbent settle tuple/SQL carry
     NO variant column; each variant UPDATE is guarded on its OWN outcome IS NULL,
     stamps its own settled_at, and assigns no incumbent column; the schema adds every
-    variant column via ADD COLUMN IF NOT EXISTS; the pending index exists."""
+    variant column (all THREE suffixes — 025 added 2026-09-02 per #545) via ADD COLUMN
+    IF NOT EXISTS; the pending index exists. SETTLE_VERSION stays settle_v3: the third
+    variant is more data under the SAME #616 mechanism (compute_settlement, the
+    incumbent semantics, and the 075/100 conventions are all byte-unchanged), not a
+    new settlement shape — the version bumped for #616 itself, not per suffix added
+    to it."""
     from pathlib import Path as _P
 
     from agents.market_intelligence import db as dbmod
@@ -1549,20 +1579,23 @@ def test_variant_write_surface_is_pinned_and_touches_no_incumbent_column():
         "r_trail_s1", "r_trail_s5", "r_trail_s10", "r_trail_s20",
         "mfe_r", "mae_r", "reached_4r", "stop_hit_date", "settle_version",
     )
+    assert "_025" not in dbmod._DELAYED_SETTLE_SQL
     assert "_075" not in dbmod._DELAYED_SETTLE_SQL
     assert "_100" not in dbmod._DELAYED_SETTLE_SQL
-    for sfx in ("075", "100"):
+    for sfx in ("025", "075", "100"):
         vsql = dbmod._DELAYED_VARIANT_SETTLE_SQL[sfx]
         assert f"WHERE id = $1 AND outcome_{sfx} IS NULL" in vsql
         assert f"settled_at_{sfx} = NOW()" in vsql
         for col in dbmod._DELAYED_SETTLE_COLS:
             assert f"SET {col} = " not in vsql and f", {col} = " not in vsql, (sfx, col)
     src = _P(dbmod.__file__).read_text()
-    for col in ("ep_adr20_dollar", "ep_adr20_n", "stop_price_075", "stop_price_100",
-                "stop_width_pct_075", "stop_width_pct_100", "day0_post_low",
-                "day0_post_high", "day0_resolved", "outcome_075", "outcome_100",
-                "realized_r_trail_075", "realized_r_trail_100", "settled_at_075",
-                "settled_at_100"):
+    for col in ("ep_adr20_dollar", "ep_adr20_n",
+                "stop_price_025", "stop_price_075", "stop_price_100",
+                "stop_width_pct_025", "stop_width_pct_075", "stop_width_pct_100",
+                "day0_post_low", "day0_post_high", "day0_resolved",
+                "outcome_025", "outcome_075", "outcome_100",
+                "realized_r_trail_025", "realized_r_trail_075", "realized_r_trail_100",
+                "settled_at_025", "settled_at_075", "settled_at_100"):
         assert f"ADD COLUMN IF NOT EXISTS {col} " in src, col
     assert "mi_delayed_entry_trigger_variant_outcome_check" in src
     assert "idx_delayed_entry_trigger_variant_pending" in src
@@ -1570,26 +1603,31 @@ def test_variant_write_surface_is_pinned_and_touches_no_incumbent_column():
 
 @pytest.mark.asyncio
 async def test_cached_day0_lets_the_pass_settle_a_minute_fire_without_a_refetch(monkeypatch):
-    """END-TO-END seam pin: a pending MINUTE fire whose day low (8.5) sits under both
-    variant stops can only order day 0 via minute data — post5=None would ABSTAIN. It
-    settles here purely from the cached (day0_post_low=9.3, day0_post_high=10.9) pair,
-    with the minute fetch pinned to never fire. The cached HIGH (10.9, above every
-    later session high) must surface as each variant's mfe_r — which also pins the
-    (resolved, low, high) argument order through _settle_variant_one: a swapped pair
-    would read lo=10.9 <= stop and settle a fabricated day-0 stop instead."""
+    """END-TO-END seam pin: a pending MINUTE fire whose day low (8.5) sits under all
+    three variant stops can only order day 0 via minute data — post5=None would
+    ABSTAIN. It settles here purely from the cached (day0_post_low=9.3,
+    day0_post_high=10.9) pair, with the minute fetch pinned to never fire. The cached
+    HIGH (10.9, above every later session high) must surface as each variant's mfe_r —
+    which also pins the (resolved, low, high) argument order through
+    _settle_variant_one: a swapped pair would read lo=10.9 <= stop and settle a
+    fabricated day-0 stop instead. 025's stop (9.2) sits ABOVE the cached day0_post_low
+    (9.3 > 9.2 — the cache is consistent with 025 too, since 9.2 < 9.3), so it clears
+    day 0 same as 075/100 and instead stops on s1's 9.05 low, taking BOTH arms with it
+    (a tighter stop than the SMA line ever gets to test)."""
     fire = _THU                                              # minute-grade fire day
     pre_days = des._trading_days(fire - _td(days=20), fire - _td(days=1))[-10:]
     window = [_daily(d, 10.0, 10.1, 9.8, 10.0) for d in pre_days]
     window.append(_daily(fire, 10.0, 10.4, 8.5, 10.2))
-    window.append(_daily(date(2026, 8, 28), 9.9, 10.0, 9.05, 9.8))   # s1: trail exits
+    window.append(_daily(date(2026, 8, 28), 9.9, 10.0, 9.05, 9.8))   # s1: stops 025, trail-exits 075/100
     window.append(_daily(date(2026, 8, 31), 9.2, 9.9, 8.95, 9.1))    # s2: stops 075
     window.append(_daily(date(2026, 9, 1), 8.9, 9.5, 8.7, 8.8))      # s3: stops 100
     pending = {
         "id": 77, "ticker": "TST", "ep_date": _EP, "rung": "ep_low_reclaim",
         "fire_date": fire, "fire_minute_et": 600, "resolution": "minute_5",
         "entry_price": 10.0, "day_high": 10.4, "day_low": 8.5, "day_close": 10.2,
-        "ep_adr20_n": 1, "stop_price_075": 9.0, "stop_price_100": 8.8,
-        "outcome_075": None, "outcome_100": None,
+        "ep_adr20_n": 1, "stop_price_025": 9.2,
+        "stop_price_075": 9.0, "stop_price_100": 8.8,
+        "outcome_025": None, "outcome_075": None, "outcome_100": None,
         "day0_resolved": True, "day0_post_low": 9.3, "day0_post_high": 10.9,
     }
     _wire(monkeypatch, member=_member(session_idx=20), window=window, minute_bars=[])
@@ -1604,8 +1642,13 @@ async def test_cached_day0_lets_the_pass_settle_a_minute_fire_without_a_refetch(
     monkeypatch.setattr(des, "get_delayed_entry_variant_pending", _pending)
     monkeypatch.setattr(des, "_fetch_minute_5", _no_minutes)
     out = await des.run_delayed_entry_shadow(date(2026, 9, 1))
-    assert out["variant_considered"] == 1 and out["variant_settled"] == 2
+    assert out["variant_considered"] == 1 and out["variant_settled"] == 3
     written = {sfx: fields for _, sfx, fields in variant_settles}
+    f025 = written["025"]
+    assert f025["outcome"] == "stop" and f025["realized_r"] == -1.0
+    assert f025["outcome_trail"] == "stop" and f025["realized_r_trail"] == -1.0
+    assert f025["mfe_r"] == pytest.approx(1.125)             # (10.9-10.0)/0.8, cached high
+    assert f025["mae_r"] == pytest.approx(-1.1875)           # (9.05-10.0)/0.8, s1's own low
     f075 = written["075"]
     assert f075["outcome"] == "stop" and f075["realized_r"] == -1.0
     assert f075["outcome_trail"] == "trail_exit"

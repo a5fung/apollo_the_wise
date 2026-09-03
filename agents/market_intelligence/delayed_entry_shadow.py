@@ -185,6 +185,25 @@ walk under both arms (*_075 / *_100 columns; settle_v3).
     the censored class is recorded, never silently leapt.
   - A variant failure of any kind degrades to NULL + a counted, audited error and can
     never block or alter the incumbent path. Nothing live reads any variant column.
+
+#545 025 EXTENSION (2026-09-02, same day, operator-approved) — a THIRD variant, 025
+(entry − 0.25×ADR$), recorded beside the two above via the same ADR_STOP_VARIANTS tuple
+and the same mechanism (no new code path). The #545 Phase 1 retry test
+(docs/analysis/545_retry_test_2026-09-02.md) found a tight 0.25×ADR stop on
+ep_low_reclaim a CANDIDATE only WHEN COMBINED with up to 3 re-entry attempts (+54.4R ex-
+May, n=46; a single attempt at 0.25×ADR is a LOSER on the same backfill, −32.7R M-trail
+/ −26.5R M-none ex-May — the retries carry the result, not the tight stop alone). This
+recorder does NOT reconstruct that composite: re-entry rows key off the INCUMBENT's own
+stop-out (`get_delayed_entry_reentry_candidates` selects `outcome='stop'`,
+`_record_reentries_for` opens the replay window at the incumbent's `stop_hit_date`) —
+never a variant's. A campaign where the incumbent survives but a 0.25×ADR stop would
+have been hit produces no re-entry row keyed to that counterfactual stop-out, so summing
+`realized_r_trail_025` across a campaign's rows is NOT the #545 chain and must not be
+read as one. What this DOES give: a genuinely prospective, out-of-sample FIRST-ATTEMPT
+reading of the 0.25×ADR single-shot cell (the review entry gates on exactly that,
+`reentry_shape='first'`) — confirmatory of the backfill's negative single-attempt leg,
+not a test of the retry idea. Building a recorder that chains off each variant's OWN
+stop-out is a separate, not-yet-built piece; whether to build it is the operator's call.
 """
 from __future__ import annotations
 
@@ -239,7 +258,10 @@ _ADR_FETCH_CAL_DAYS = 60          # calendar days fetched to cover the ADR windo
 
 # ── #616 ADR-stop variants (2026-09-02): column suffix ↔ stop multiplier. The stop is
 # entry − mult × EP-anchored ADR$ — the 09-01 stop grid's exact basis. RECORDING ONLY.
-ADR_STOP_VARIANTS = (("075", 0.75), ("100", 1.00))
+# +025 (same day, #545): the retry test's tight-stop leg — see the module docstring
+# addendum below. Extending this tuple is the WHOLE extension; every downstream site
+# (schema, insert cols, settle loop, preflight registration) derives from it.
+ADR_STOP_VARIANTS = (("025", 0.25), ("075", 0.75), ("100", 1.00))
 
 _RTH_OPEN_MIN = 9 * 60 + 30
 _RTH_CLOSE_MIN = 16 * 60
@@ -1239,10 +1261,13 @@ def _variant_fire_cols(entry: float, adr_dollar, adr_n, out: dict) -> dict:
     degrades to NULLs + a counted error and can never block the incumbent trigger
     insert. A genuinely missing ADR is NOT an error — it records NULL; the CALLER
     counts it (out['variant_missing_adr']) only when the insert actually wrote a row,
-    so a re-walked no-op re-fire never double-counts."""
-    vcols: dict = {"ep_adr20_dollar": None, "ep_adr20_n": None,
-                   "stop_price_075": None, "stop_width_pct_075": None,
-                   "stop_price_100": None, "stop_width_pct_100": None}
+    so a re-walked no-op re-fire never double-counts. The NULL fallback is DERIVED from
+    ADR_STOP_VARIANTS (never a hand-listed pair) so a future variant added there can't
+    silently miss this belt-and-braces path."""
+    vcols: dict = {"ep_adr20_dollar": None, "ep_adr20_n": None}
+    for _sfx, _ in ADR_STOP_VARIANTS:
+        vcols[f"stop_price_{_sfx}"] = None
+        vcols[f"stop_width_pct_{_sfx}"] = None
     try:
         vcols = variant_stop_cols(entry, adr_dollar, adr_n)
     except Exception as e:  # pure arithmetic — belt-and-braces per the #616 hard rule
@@ -1540,8 +1565,7 @@ async def _settle_variant_one(trig: dict, today: date, out: dict) -> None:
     abstains until the orphan horizon closes it unscoreable, counted (the #616
     no-per-fire-fetch rule; the censored class is recorded, never silently leapt)."""
     ticker, fire_date = trig["ticker"], trig["fire_date"]
-    if (_f(trig.get("stop_price_075")) is None
-            and _f(trig.get("stop_price_100")) is None):
+    if all(_f(trig.get(f"stop_price_{_sfx}")) is None for _sfx, _ in ADR_STOP_VARIANTS):
         # ADR was missing at fire (counted then): closeable without any bars
         await _settle_trigger_variants(
             trig, today, out, sessions=[], bars_by_day={}, closes_before=[],

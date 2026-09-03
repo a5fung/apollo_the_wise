@@ -10213,6 +10213,55 @@ reviews:
     cross_refs: ["docs/analysis/delayed_entry_stop_grid_2026-09-01.md",
                  "docs/setups/delayed_ep_reentry.md", "task #616"]
 
+  - review_id: delayed_entry_adr_stop_variant_025_545
+    title: "#545 tight-stop shadow variant — does a single 0.25xADR attempt on ep_low_reclaim stay a loser out of sample?"
+    question: >-
+      The #545 Phase 1 retry test (docs/analysis/545_retry_test_2026-09-02.md) found a
+      0.25xADR stop on ep_low_reclaim a CANDIDATE (+54.4R ex-May, n=46) ONLY when
+      combined with up to 3 re-entry attempts — a single attempt at 0.25xADR is a LOSER
+      on the SAME backfill (-32.7R trail / -26.5R none, ex-May). #616's recorder now
+      also stamps a 0.25xADR counterfactual (beside 0.75x/1.00x) on every trigger, but
+      re-entry rows key off the INCUMBENT's own stop-out (get_delayed_entry_reentry_
+      candidates selects outcome='stop'; the replay window opens at the incumbent's
+      stop_hit_date) — never a variant's. So this table can NEVER reconstruct #545's
+      chained-retry composite; it can only give the single FIRST-ATTEMPT leg,
+      prospectively. The question this gates: on fires recorded from 2026-09-02
+      (genuinely out of sample, not the same 46 backfilled names), does the 0.25xADR
+      single-attempt cell on ep_low_reclaim stay negative (confirming the backfill), or
+      does it turn positive on its own (which would mean the tight stop needs no retry
+      at all — a different, bigger finding than #545's)?
+    # realized_r_trail_025 IS NOT NULL = the 0.25xADR variant's trail arm settled.
+    # Mirrors delayed_entry_adr_stop_variant_616's idiom/threshold/date exactly — same
+    # maturity requirement (a single 20-session settle, not a chain: chain maturity
+    # does not apply here since this recorder cannot compose one, see the question).
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
+                  ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
+                        WHERE rung = 'ep_low_reclaim'
+                          AND realized_r_trail_025 IS NOT NULL) END
+    threshold: 30
+    discriminates_on: [mi_delayed_entry_trigger.rung]
+    earliest_review_date: 2026-10-12
+    status: pending
+    kind: accrual
+    added_on: 2026-09-02
+    action_when_ready: >-
+      Restrict to reentry_shape='first' (re-entry rows here are keyed to the
+      INCUMBENT's stop-out, a different population — do NOT sum realized_r_trail_025
+      across a campaign's rows and call it the #545 chain, that composite does not
+      exist in this table). Read mean/median realized_r_trail_025 and _none against the
+      incumbent's realized_r_trail and against realized_r_trail_075 on the SAME
+      first-attempt fires. Negative/consistent with the backfill -> confirms a single
+      0.25xADR try is not viable alone; the retry candidate itself remains untested
+      prospectively (would need a recorder that chains off each variant's OWN
+      stop-out, which does not exist — building one is a separate operator decision,
+      not implied by this review). Positive on its own -> a bigger and different
+      finding than #545 (no retries needed) — bring it to the operator before acting;
+      nothing flips on its own evidence.
+    cross_refs: ["docs/analysis/545_retry_test_2026-09-02.md",
+                 "docs/analysis/delayed_entry_stop_grid_2026-09-01.md",
+                 "docs/setups/delayed_ep_reentry.md", "task #545", "task #616"]
+
   - review_id: ep_slot_ranking_watch_533
     title: "#533 slot-ranking watch — is RS still the best within-day ordering, or is another doing better?"
     question: >-

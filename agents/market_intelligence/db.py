@@ -2638,6 +2638,8 @@ async def initialize_schema() -> None:
                 -- below for the full contract. Fire-time basis + counterfactual stops:
                 ep_adr20_dollar   FLOAT,             -- EP-anchored ADR$ at fire (NULL = unavailable, counted)
                 ep_adr20_n        INT,               -- sessions the ADR mean used; NOT NULL marks a post-#616 row
+                stop_price_025    FLOAT,             -- entry - 0.25 x ADR$ (#545, 2026-09-02) (NULL when ADR missing)
+                stop_width_pct_025 FLOAT,
                 stop_price_075    FLOAT,             -- entry - 0.75 x ADR$ (NULL when ADR missing)
                 stop_width_pct_075 FLOAT,
                 stop_price_100    FLOAT,             -- entry - 1.00 x ADR$
@@ -2650,6 +2652,15 @@ async def initialize_schema() -> None:
                 day0_post_high    FLOAT,
                 -- each variant's OWN settlement (same vocabulary + pess conventions as
                 -- the incumbent columns; R in the variant's OWN units; NULL while open):
+                outcome_025       TEXT,
+                realized_r_025    FLOAT,
+                outcome_trail_025 TEXT,
+                realized_r_trail_025 FLOAT,
+                mfe_r_025         FLOAT,
+                mae_r_025         FLOAT,
+                reached_4r_025    BOOLEAN,
+                settle_version_025 TEXT,
+                settled_at_025    TIMESTAMPTZ,
                 outcome_075       TEXT,
                 realized_r_075    FLOAT,
                 outcome_trail_075 TEXT,
@@ -2720,8 +2731,16 @@ async def initialize_schema() -> None:
             -- a stop at entry - 0.75xADR$ and entry - 1.00xADR$ (EP-anchored ADR$,
             -- compute_ep_adr_dollar — the grid's exact basis) would have produced through the
             -- SAME compute_settlement path under both exit arms. Column suffix = the multiplier
-            -- (075 = 0.75x, 100 = 1.00x). Conventions carried over verbatim: same outcome
-            -- vocabulary, pess stop-first, realized = HARVESTED R in the variant's OWN units.
+            -- (025 = 0.25x, 075 = 0.75x, 100 = 1.00x). Conventions carried over verbatim: same
+            -- outcome vocabulary, pess stop-first, realized = HARVESTED R in the variant's OWN
+            -- units.
+            --   2026-09-02 (same-day extension, #545): a THIRD variant, 025 (entry - 0.25xADR$),
+            --   added beside the two above — the #545 Phase 1 retry test found a tight 0.25xADR
+            --   stop on ep_low_reclaim a candidate WHEN COMBINED with up to 3 re-entry attempts
+            --   (docs/analysis/545_retry_test_2026-09-02.md). This recorder still stamps only the
+            --   FIRST-ATTEMPT counterfactual (re-entry rows key off the INCUMBENT's stop-out, not
+            --   a variant's — a chained 025 read is NOT reconstructable from this table alone; see
+            --   the review entry). Same mechanism, same rules, one more suffix — no new code path.
             --   ep_adr20_dollar/_n  the ADR basis at fire time. A missing ADR records NULL and
             --                       is COUNTED, never substituted. ep_adr20_n IS NOT NULL marks
             --                       a post-#616 row; triggers fired BEFORE the deploy keep every
@@ -2738,12 +2757,14 @@ async def initialize_schema() -> None:
             --                       provably never touched its stop on day 0, so the pair
             --                       reconstructs its day-0 walk exactly.
             --   outcome_/realized_r_/outcome_trail_/realized_r_trail_/mfe_r_/mae_r_/reached_4r_/
-            --   settle_version_/settled_at_{075,100}  the two variants' settlements. Each variant
-            --                       settles INDEPENDENTLY through its own guarded write (its
-            --                       outcome IS NULL) — a wider stop resolves LATER than the
-            --                       incumbent, so the pair usually lands across different runs.
+            --   settle_version_/settled_at_{025,075,100}  the three variants' settlements. Each
+            --                       variant settles INDEPENDENTLY through its own guarded write
+            --                       (its outcome IS NULL) — a wider stop resolves LATER than the
+            --                       incumbent, so the set usually lands across different runs.
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS ep_adr20_dollar FLOAT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS ep_adr20_n INT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS stop_price_025 FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS stop_width_pct_025 FLOAT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS stop_price_075 FLOAT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS stop_width_pct_075 FLOAT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS stop_price_100 FLOAT;
@@ -2751,6 +2772,15 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS day0_resolved BOOLEAN;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS day0_post_low FLOAT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS day0_post_high FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS outcome_025 TEXT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS realized_r_025 FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS outcome_trail_025 TEXT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS realized_r_trail_025 FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS mfe_r_025 FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS mae_r_025 FLOAT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS reached_4r_025 BOOLEAN;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS settle_version_025 TEXT;
+            ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS settled_at_025 TIMESTAMPTZ;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS outcome_075 TEXT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS realized_r_075 FLOAT;
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS outcome_trail_075 TEXT;
@@ -2771,16 +2801,22 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_delayed_entry_trigger ADD COLUMN IF NOT EXISTS settled_at_100 TIMESTAMPTZ;
             ALTER TABLE mi_delayed_entry_trigger DROP CONSTRAINT IF EXISTS mi_delayed_entry_trigger_variant_outcome_check;
             ALTER TABLE mi_delayed_entry_trigger ADD CONSTRAINT mi_delayed_entry_trigger_variant_outcome_check
-                CHECK ((outcome_075 IS NULL OR outcome_075 IN ('stop','time_exit','unscoreable'))
+                CHECK ((outcome_025 IS NULL OR outcome_025 IN ('stop','time_exit','unscoreable'))
+                   AND (outcome_trail_025 IS NULL OR outcome_trail_025 IN ('stop','trail_exit','time_exit','unscoreable'))
+                   AND (outcome_075 IS NULL OR outcome_075 IN ('stop','time_exit','unscoreable'))
                    AND (outcome_trail_075 IS NULL OR outcome_trail_075 IN ('stop','trail_exit','time_exit','unscoreable'))
                    AND (outcome_100 IS NULL OR outcome_100 IN ('stop','time_exit','unscoreable'))
                    AND (outcome_trail_100 IS NULL OR outcome_trail_100 IN ('stop','trail_exit','time_exit','unscoreable')));
             -- the variant-completion pass's working set: incumbent settled, post-#616 row,
-            -- at least one variant still open
+            -- at least one variant still open. DROP first (2026-09-02, #545): the WHERE clause
+            -- gained the 025 arm and CREATE INDEX IF NOT EXISTS is a no-op by NAME on any DB
+            -- where the two-variant version of this index already exists — same-name/changed-
+            -- predicate is otherwise silently ignored.
+            DROP INDEX IF EXISTS idx_delayed_entry_trigger_variant_pending;
             CREATE INDEX IF NOT EXISTS idx_delayed_entry_trigger_variant_pending
                 ON mi_delayed_entry_trigger(fire_date)
                 WHERE outcome IS NOT NULL AND ep_adr20_n IS NOT NULL
-                  AND (outcome_075 IS NULL OR outcome_100 IS NULL);
+                  AND (outcome_025 IS NULL OR outcome_075 IS NULL OR outcome_100 IS NULL);
 
             -- HTF (High Tight Flag) breakout-entry SHADOW (#356 Phase 3). Records the would-be
             -- breakout-entry ORDER SHAPE + settled outcome for every #94 flag-high break — NO order
@@ -10581,11 +10617,12 @@ async def insert_delayed_entry_trigger(row: dict) -> bool:
         "prior_missing_sessions",
         "reentry_shape", "prior_attempt_id",
         "near_definition", "band_adr_dollar",
-        # #616 fire-time ADR-variant columns (2026-09-02): the EP-anchored ADR basis +
-        # both counterfactual stops, stamped EX ANTE like the rest of the vector.
-        # Settlement columns are NOT here — each variant settles later through its own
-        # guarded write (settle_delayed_entry_trigger_variant).
+        # #616 fire-time ADR-variant columns (2026-09-02, +025 same day per #545): the
+        # EP-anchored ADR basis + the three counterfactual stops, stamped EX ANTE like
+        # the rest of the vector. Settlement columns are NOT here — each variant settles
+        # later through its own guarded write (settle_delayed_entry_trigger_variant).
         "ep_adr20_dollar", "ep_adr20_n",
+        "stop_price_025", "stop_width_pct_025",
         "stop_price_075", "stop_width_pct_075", "stop_price_100", "stop_width_pct_100",
     )
     sql = (
@@ -10609,7 +10646,7 @@ async def get_delayed_entry_open_triggers() -> list[dict]:
         rows = await conn.fetch("""
             SELECT id, ticker, ep_date, rung, fire_date, fire_minute_et, resolution,
                    entry_price, stop_price, day_high, day_low, day_close,
-                   ep_adr20_n, stop_price_075, stop_price_100
+                   ep_adr20_n, stop_price_025, stop_price_075, stop_price_100
             FROM mi_delayed_entry_trigger
             WHERE outcome IS NULL
             ORDER BY fire_date, id
@@ -10673,11 +10710,12 @@ async def settle_delayed_entry_trigger(row_id: int, fields: dict) -> bool:
     return res.endswith(" 1")
 
 
-# ── #616 ADR-stop variant shadow (2026-09-02) — the variants' OWN settle path. The
-# incumbent's _DELAYED_SETTLE_COLS/_DELAYED_SETTLE_SQL above are deliberately untouched:
-# an additive shadow that moves an existing value is not additive. One ordered tuple of
-# UNSUFFIXED field names; per-suffix SQL derived from it (the same never-drift pattern).
-_DELAYED_VARIANT_SUFFIXES = ("075", "100")
+# ── #616 ADR-stop variant shadow (2026-09-02, +025 same day per #545) — the variants'
+# OWN settle path. The incumbent's _DELAYED_SETTLE_COLS/_DELAYED_SETTLE_SQL above are
+# deliberately untouched: an additive shadow that moves an existing value is not
+# additive. One ordered tuple of UNSUFFIXED field names; per-suffix SQL derived from it
+# (the same never-drift pattern) — extending the tuple is the whole extension.
+_DELAYED_VARIANT_SUFFIXES = ("025", "075", "100")
 _DELAYED_VARIANT_SETTLE_FIELDS = (
     "outcome", "realized_r", "outcome_trail", "realized_r_trail",
     "mfe_r", "mae_r", "reached_4r", "settle_version",
@@ -10741,11 +10779,12 @@ async def get_delayed_entry_variant_pending() -> list[dict]:
         rows = await conn.fetch("""
             SELECT id, ticker, ep_date, rung, fire_date, fire_minute_et, resolution,
                    entry_price, day_high, day_low, day_close,
-                   ep_adr20_n, stop_price_075, stop_price_100, outcome_075, outcome_100,
+                   ep_adr20_n, stop_price_025, stop_price_075, stop_price_100,
+                   outcome_025, outcome_075, outcome_100,
                    day0_resolved, day0_post_low, day0_post_high
             FROM mi_delayed_entry_trigger
             WHERE outcome IS NOT NULL AND ep_adr20_n IS NOT NULL
-              AND (outcome_075 IS NULL OR outcome_100 IS NULL)
+              AND (outcome_025 IS NULL OR outcome_075 IS NULL OR outcome_100 IS NULL)
             ORDER BY fire_date, id
         """)
     return [dict(r) for r in rows]
