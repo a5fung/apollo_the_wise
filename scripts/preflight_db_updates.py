@@ -23,7 +23,8 @@ import sys
 from agents.market_intelligence.db import (
     _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL, _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
-    LIVE_FILL_CF_INSERT_SQL, THEME_RENAME_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
+    LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
+    UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
     get_pool)
 
 logger = logging.getLogger(__name__)
@@ -226,6 +227,14 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # evidence lane empty through its first fills with no downstream error.
         "db.insert_live_fill_counterfactual: #482 stop/harvest counterfactuals beside every MAGNA53 fill",
         LIVE_FILL_CF_INSERT_SQL,
+    ),
+    (
+        # #593: the sustain-reject bracket replay's single writer. An UPSERT (ON CONFLICT
+        # DO UPDATE ... WHERE outcome='open') with two jsonb params — a type-deduction bug
+        # here would leave the 4R/positive-return evidence this task exists to produce empty
+        # through its first run with no downstream error.
+        "db.upsert_sustain_reject_replay: #593 CURRENT-era bracket replay on net-declined sustain-reject names",
+        SUSTAIN_REJECT_REPLAY_UPSERT_SQL,
     ),
 ]
 

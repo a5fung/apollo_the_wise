@@ -3111,6 +3111,142 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_live_fill_cf_arm
                 ON mi_live_fill_counterfactuals(arm);
 
+            -- 2026-09-03 — #593 SUSTAIN-REJECT BRACKET REPLAY (sustain_reject_replay.py).
+            -- The operator's own framing: a price move is not a trade outcome. For every
+            -- net-declined ep_rt_sustain_reject ticker-day this walks the CURRENT-ERA
+            -- MAGNA53 entry (ORB-high stop-limit buy, submit at the reject's own tick, cancel
+            -- at 10:00 ET) and, if it would have filled, the SAME live exit ladder
+            -- (agents/market_intelligence/live_fill_counterfactuals.walk_arm — reused, not
+            -- reimplemented) to ask what OUR OWN bracket would have realized: >=4R (the
+            -- real-EP measure, P1) and any positive return (the lesser measure) — replacing
+            -- the +20%-price-move test the #593 signed condition used, which cannot tell a
+            -- stopped-out spike (IPST/WETO, both closed ~49% below the declined level) from
+            -- a real winner. THE LINE: this watches the #490/#559 real-time sustain gate; it
+            -- never writes anything the gate, the entry pipeline, or any grading/sizing/
+            -- ordering/safeguard path reads (SHADOW — comparison telemetry only).
+            -- SURVIVORSHIP: a position still running when this walks it is NOT dropped —
+            -- written 'open' with a mark-to-market mark_r, and REFRESHED (never re-created)
+            -- on later runs until it settles, so a slow-to-resolve winner cannot silently
+            -- disappear from the denominator the way a write-once-on-terminal design would
+            -- drop it. UNIQUE (ticker, decline_date): a TERMINAL outcome (settled / no_trade
+            -- / unscoreable / horizon) is written once and never touched again — only an
+            -- 'open' row is eligible for the guarded UPDATE (see
+            -- SUSTAIN_REJECT_REPLAY_UPSERT_SQL's WHERE clause). Both breach_mfe_20 and
+            -- breach_settled_20 (the two OLD price-move bases) are stored beside the new
+            -- measure so a read reports all three side by side without re-deriving anything.
+            -- RETENTION: deliberately ABSENT from purge_old_data (kept forever) — same
+            -- evidence class as mi_live_fill_counterfactuals / mi_exit_path_shadow.
+            CREATE TABLE IF NOT EXISTS mi_sustain_reject_replays (
+                id                  SERIAL PRIMARY KEY,
+                ticker              TEXT NOT NULL,
+                decline_date        DATE NOT NULL,        -- ET day of the EARLIEST sustain reject that day
+                rt_gap              DOUBLE PRECISION,      -- the real-time gap % the rule declined at
+                declined_level      DOUBLE PRECISION,      -- prev_close x (1+rt_gap/100) — the #593-signed baseline, kept for reference only (superseded by the replay below as the trigger basis)
+                prev_close          DOUBLE PRECISION,
+                close_d0            DOUBLE PRECISION,
+                volume_d0           DOUBLE PRECISION,
+                held_floor_d0       BOOLEAN,               -- (close_d0-prev_close)/prev_close >= 9% (MIN_GAP_PCT, ep_detector.py) at the d0 close
+                cleared_dollar_vol  BOOLEAN,               -- volume_d0 x close_d0 >= $50M (same floor as ep_detector.py / db.py)
+                entry_reachable     BOOLEAN,               -- OLD funnel leg (d): d0's DAILY high >= declined_level (never minute bars) — reproduces the retired price-move funnel's own gate exactly, independent of whether OUR bracket's ORB/ATR/window rules would also have taken the trade
+                orb_high            DOUBLE PRECISION,       -- the 9:30 minute bar (NULL when day-0 minutes are unavailable)
+                orb_low             DOUBLE PRECISION,
+                atr14_prior         DOUBLE PRECISION,       -- Wilder ATR-14 through the session STRICTLY BEFORE decline_date (alert_rank_shadow.compute_atr14_prior — no same-day leak)
+                atr14_prior_n       INT,
+                orb_valid           BOOLEAN,               -- backtester.filters.validate_orb_entry(orb_high, orb_low, atr14_prior) — the SAME admission rule the live path calls
+                orb_skip_reason     TEXT,
+                submit_time_et      TIME,                  -- the earliest reject's own tick, floored to the minute, floored up to 09:31 (an order cannot submit before the open)
+                entry_status        TEXT NOT NULL,          -- filled | no_entry | abstain | orb_invalid | no_930_bar_for_orb | no_day0_minute_bars | window_out_of_orb
+                entry_reason        TEXT,
+                entry_price         DOUBLE PRECISION,
+                entry_minute        TIMESTAMPTZ,
+                stop_price          DOUBLE PRECISION,       -- CURRENT-era stop: entry_minus_2r = 2xorb_low-orb_high (order_manager ~L498) once live, else orb_low
+                target_price        DOUBLE PRECISION,       -- entry + target_r x (entry-orb_low) — MAGNA53's ORB-R frame (order_manager.profit_target_r_per_share), pinned like every other counterfactual arm in this program
+                target_r            DOUBLE PRECISION,
+                outcome             TEXT NOT NULL,          -- settled | no_trade | unscoreable | open | horizon
+                final_reason        TEXT,
+                realized_r          DOUBLE PRECISION,       -- settled only, entry-anchored R (pnl_per_share / (entry-stop))
+                realized_pct        DOUBLE PRECISION,       -- settled only, size-free
+                mark_r              DOUBLE PRECISION,       -- open/horizon only: a MARK-TO-MARKET at the last available close, never a return
+                meets_4r            BOOLEAN,                -- settled AND realized_r >= 4.0 — the P1 real-EP measure this task exists to answer
+                meets_positive      BOOLEAN,                -- settled AND realized_r > 0 — the lesser measure
+                mark_meets_4r       BOOLEAN,                -- open/horizon AND mark_r >= 4.0 — so a still-running winner cannot make the trigger under-fire
+                mark_meets_positive BOOLEAN,                -- open/horizon AND mark_r > 0.0 — the lesser measure's own open-position counterpart (meets_positive only covers settled rows)
+                partial_fired       BOOLEAN,
+                gap_through         BOOLEAN,
+                exit_session        INT,
+                sessions_walked     INT,
+                exits               JSONB,                  -- the legs: [{time, price, reason, shares, pnl}], mirrors mi_live_fill_counterfactuals.exits
+                breach_mfe_20       BOOLEAN,                -- OLD basis: peak HIGH d0..d0+5 >= declined_level x1.20 (the artefact-prone measure this task replaces as the TRIGGER, kept for the side-by-side report)
+                breach_settled_20   BOOLEAN,                -- OLD basis: close on d0+5 >= declined_level x1.20
+                admission_era       TEXT NOT NULL,          -- admission_era_as_of(decline_date), rule_eras.py — which admission stack rejected this name
+                replay_exit_era     TEXT NOT NULL,          -- exit_era_label(replay_asof_date) — the CURRENT era this row's replay was walked under (NOT the era at decline_date; #593 deliberately always replays under today's own bracket)
+                replay_exit_rules   JSONB NOT NULL,         -- exit_rules_as_of(replay_asof_date), stored verbatim
+                replay_asof_date    DATE NOT NULL,          -- the date "current era" was resolved against when this row was (last) written — lets a later reader tell which bracket produced an old row if the rules move again
+                settle_version      TEXT NOT NULL,
+                settled_session     DATE NOT NULL,          -- the last SETTLED trading session the recorder had walked when it (last) wrote this row
+                recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, decline_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_sustain_reject_replays_decline_date
+                ON mi_sustain_reject_replays(decline_date);
+            CREATE INDEX IF NOT EXISTS idx_sustain_reject_replays_outcome
+                ON mi_sustain_reject_replays(outcome);
+            -- Additive-schema defence (CLAUDE.md): every column also as an explicit
+            -- ADD COLUMN IF NOT EXISTS, so a table born from an older snapshot of this
+            -- CREATE TABLE (a stale replica/fixture) still gets today's full column set at
+            -- the next boot. A no-op today (the CREATE TABLE above already has every column
+            -- on a fresh install) — mirrors the mi_delayed_entry_trigger / mi_alert_rank_shadow
+            -- convention. NOT NULL columns get a placeholder DEFAULT here ONLY (never on the
+            -- CREATE TABLE, where every INSERT always supplies a real value).
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS ticker TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS decline_date DATE NOT NULL DEFAULT '1970-01-01';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS rt_gap DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS declined_level DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS prev_close DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS close_d0 DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS volume_d0 DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS held_floor_d0 BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS cleared_dollar_vol BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS entry_reachable BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS orb_high DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS orb_low DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS atr14_prior DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS atr14_prior_n INT;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS orb_valid BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS orb_skip_reason TEXT;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS submit_time_et TIME;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS entry_status TEXT NOT NULL DEFAULT 'unscoreable';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS entry_reason TEXT;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS entry_price DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS entry_minute TIMESTAMPTZ;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS stop_price DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS target_price DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS target_r DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS outcome TEXT NOT NULL DEFAULT 'unscoreable';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS final_reason TEXT;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS realized_r DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS realized_pct DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS mark_r DOUBLE PRECISION;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS meets_4r BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS meets_positive BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS mark_meets_4r BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS mark_meets_positive BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS partial_fired BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS gap_through BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS exit_session INT;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS sessions_walked INT;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS exits JSONB;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS breach_mfe_20 BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS breach_settled_20 BOOLEAN;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS admission_era TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS replay_exit_era TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS replay_exit_rules JSONB NOT NULL DEFAULT '{}'::jsonb;
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS replay_asof_date DATE NOT NULL DEFAULT '1970-01-01';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS settle_version TEXT NOT NULL DEFAULT '';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS settled_session DATE NOT NULL DEFAULT '1970-01-01';
+            ALTER TABLE mi_sustain_reject_replays ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
             -- 2026-08-16 — ALERT-RANK SHADOW (alert_rank_shadow.py). docs/roadmap/
             -- ep_profitability_program.md §0d found a three-feature ranking rule (smaller
             -- gap · tighter EP day · less MA-distance extension, percentile-averaged) that
@@ -14416,6 +14552,137 @@ async def get_counterfactual_arms_written(conn: Any, trade_id: int) -> set[str]:
     """READ-ONLY. The arms already recorded for one trade (write-once: these are skipped)."""
     rows = await conn.fetch(_COUNTERFACTUAL_ARMS_WRITTEN_SQL, int(trade_id))
     return {r["arm"] for r in rows}
+
+
+# ── #593 (2026-09-03) SUSTAIN-REJECT BRACKET REPLAY — the reads + the ONE upsert ─────────
+# Schema: the mi_sustain_reject_replays CREATE TABLE block in initialize_schema (its comment
+# carries the design). Consumer: agents/market_intelligence/sustain_reject_replay.py. THE
+# LINE: every function here except upsert_sustain_reject_replay is a SELECT; nothing here
+# touches the sustain gate, mi_ep_alerts, or any live admission table.
+
+_SUSTAIN_REJECT_POPULATION_SQL = """
+    WITH raw_rejects AS (
+        SELECT detail::jsonb->>'ticker' AS ticker,
+               (created_at AT TIME ZONE 'America/New_York')::date AS decline_date,
+               (detail::jsonb->>'rt_gap')::numeric AS rt_gap,
+               created_at AT TIME ZONE 'America/New_York' AS decline_ts_et
+        FROM mi_audit_log
+        WHERE event_type = 'ep_rt_sustain_reject'
+          AND detail::jsonb->>'ticker' IS NOT NULL
+          AND created_at AT TIME ZONE 'America/New_York' >= $1::date
+    ),
+    rejects AS (
+        -- one row per ticker-day: the EARLIEST reject of the day (the level/time first
+        -- declined at) — the same "earliest reject" rule the #593 signed predicate uses.
+        SELECT DISTINCT ON (ticker, decline_date) ticker, decline_date, rt_gap, decline_ts_et
+        FROM raw_rejects
+        ORDER BY ticker, decline_date, decline_ts_et ASC
+    ),
+    catches AS (
+        SELECT DISTINCT detail::jsonb->>'ticker' AS ticker,
+               (created_at AT TIME ZONE 'America/New_York')::date AS catch_date
+        FROM mi_audit_log
+        WHERE event_type = 'ep_rt_universe_catch'
+          AND created_at AT TIME ZONE 'America/New_York' >= $1::date
+    )
+    -- net-declined: rejected then caught later the SAME session cost nothing (established
+    -- rule, both prior #593 signed reads) — the SAME funnel definition the signed predicate
+    -- (data_gated_reviews.yaml sustain_reject_tradeable_miss_rate_593) uses.
+    SELECT r.ticker, r.decline_date, r.rt_gap, r.decline_ts_et
+    FROM rejects r
+    WHERE NOT EXISTS (
+        SELECT 1 FROM catches c WHERE c.ticker = r.ticker AND c.catch_date = r.decline_date
+    )
+    ORDER BY r.decline_date, r.ticker
+"""
+
+
+async def get_sustain_reject_population(window_start: "date") -> list[dict]:
+    """READ-ONLY. Net-declined ep_rt_sustain_reject ticker-days since window_start (ET day):
+    the SAME funnel the #593 signed predicate reads (rejected, netted against a same-day
+    ep_rt_universe_catch). One row per ticker-day, the EARLIEST reject's own gap and tick."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_SUSTAIN_REJECT_POPULATION_SQL, _coerce_date(window_start))
+    return [dict(r) for r in rows]
+
+
+_SUSTAIN_REPLAY_EXISTING_SQL = """
+    SELECT ticker, decline_date, outcome FROM mi_sustain_reject_replays
+    WHERE decline_date >= $1::date
+"""
+
+
+async def get_sustain_replay_existing(window_start: "date") -> dict[tuple[str, "date"], str]:
+    """READ-ONLY. (ticker, decline_date) -> outcome for every row already recorded on/after
+    window_start — lets the recorder skip a TERMINAL row and only revisit one still 'open'."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_SUSTAIN_REPLAY_EXISTING_SQL, _coerce_date(window_start))
+    return {(r["ticker"], r["decline_date"]): r["outcome"] for r in rows}
+
+
+SUSTAIN_REJECT_REPLAY_COLS: tuple[str, ...] = (
+    "ticker", "decline_date", "rt_gap", "declined_level", "prev_close", "close_d0",
+    "volume_d0", "held_floor_d0", "cleared_dollar_vol", "entry_reachable",
+    "orb_high", "orb_low", "atr14_prior", "atr14_prior_n", "orb_valid", "orb_skip_reason",
+    "submit_time_et", "entry_status", "entry_reason", "entry_price", "entry_minute",
+    "stop_price", "target_price", "target_r",
+    "outcome", "final_reason", "realized_r", "realized_pct", "mark_r",
+    "meets_4r", "meets_positive", "mark_meets_4r", "mark_meets_positive",
+    "partial_fired", "gap_through", "exit_session", "sessions_walked", "exits",
+    "breach_mfe_20", "breach_settled_20",
+    "admission_era", "replay_exit_era", "replay_exit_rules", "replay_asof_date",
+    "settle_version", "settled_session",
+)
+_SUSTAIN_REPLAY_JSONB = frozenset({"exits", "replay_exit_rules"})
+# Every column except the natural key is refreshable — but ONLY while the existing row's
+# outcome is still 'open' (the UPSERT's WHERE clause below); a terminal row is never touched.
+_SUSTAIN_REPLAY_MUTABLE_COLS = tuple(
+    c for c in SUSTAIN_REJECT_REPLAY_COLS if c not in ("ticker", "decline_date"))
+
+
+def _sustain_replay_placeholder(i: int, col: str) -> str:
+    if col in _SUSTAIN_REPLAY_JSONB:
+        return f"${i}::jsonb"
+    return f"${i}"
+
+
+# Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time (the
+# #606 lesson: a silent recorder is where a type-deduction bug hides longest).
+SUSTAIN_REJECT_REPLAY_UPSERT_SQL = (
+    f"INSERT INTO mi_sustain_reject_replays ({', '.join(SUSTAIN_REJECT_REPLAY_COLS)}, updated_at) VALUES ("
+    + ", ".join(_sustain_replay_placeholder(i + 1, c) for i, c in enumerate(SUSTAIN_REJECT_REPLAY_COLS))
+    + ", NOW())"
+    " ON CONFLICT (ticker, decline_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _SUSTAIN_REPLAY_MUTABLE_COLS)
+    + ", updated_at = NOW()"
+    " WHERE mi_sustain_reject_replays.outcome = 'open'"
+)
+
+
+async def upsert_sustain_reject_replay(fields: dict) -> bool:
+    """Write or refresh ONE (ticker, decline_date) row (SHADOW — telemetry only; nothing
+    live reads it). A TERMINAL outcome (settled / no_trade / unscoreable / horizon) is
+    written once and never rewritten — the WHERE guard on the EXISTING row's outcome makes
+    the UPDATE a no-op once terminal. Only a row still 'open' is refreshed as later sessions
+    accrue (the survivorship-bias fix: a still-running position is never dropped from the
+    table just because it has not settled yet). Returns True iff this call inserted or
+    updated a row (False when the WHERE guard skipped an existing terminal row)."""
+    vals = []
+    for c in SUSTAIN_REJECT_REPLAY_COLS:
+        v = fields.get(c)
+        if c == "exits":
+            v = _jsonb_list_param(v if v is not None else [])
+        elif c == "replay_exit_rules":
+            v = _jsonb_param(v if v is not None else {})
+        vals.append(v)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute(SUSTAIN_REJECT_REPLAY_UPSERT_SQL, *vals)
+    # "INSERT 0 1" on insert-or-update; "INSERT 0 0" when the WHERE guard skipped an
+    # existing terminal row.
+    return not res.endswith(" 0")
 
 
 _EP_ALERT_ADMISSION_STAMP_SQL = f"""

@@ -10675,150 +10675,110 @@ reviews:
       The operator's signed condition (2026-08-28, "aligned with your conditions";
       docs/setups/magna53_ep.md 2026-08-28 change-log; docs/analysis/sustain_revert_rebased_2026-08-28.md):
       review when TRADEABLE MISSES exceed 10% of SCOREABLE DECLINED NAMES over a rolling
-      30 trading days, evaluated only when that window holds >=30 scoreable declines. A
-      tradeable miss is a net-declined `ep_rt_sustain_reject` name that (a) ran >=+20%
-      above the DECLINED LEVEL (`prev_close x (1+rt_gap/100)`, never the day's open —
-      that was the artefact the 2026-08-28 re-basing fixed), (b) still held the 9% gap
-      floor at the d0 close, (c) cleared the $50M d0 dollar-volume floor, and (d) traded
-      above the declined level intraday on d0 so an ORB entry was reachable. It raises a
-      REVIEW; it never reverts anything on its own (THE LINE — this predicate watches a
-      live admission gate, it does not touch it).
-    # ⚖ THE BASIS FORK (docs/analysis/593_sustain_revert_2026-09-01.md): the signed text's
-    # own "+20%" does not pin the STATISTIC. Two readings exist on the same n=87 net-declined
-    # population (07-22->09-01): MFE (max HIGH over d0..d0+5) finds 18/87 (20.7%) breaches
-    # before the tradeability funnel and 4 tradeable misses (4.6%) after it; SETTLED-CLOSE
-    # (close on the d0+5 bar) finds 8/87 (9.2%) before the funnel and 1 tradeable miss (1.1%)
-    # after it — ~2.3x inflation on MFE. This predicate triggers on the MFE basis, which is
-    # (a) the basis both prior signed reads used and the signed text does not rule out, and
-    # (b) PROVABLY the looser of the two — a settled close can never exceed that same day's
-    # own high, so breach_settled implies breach_mfe and never the reverse. Triggering on MFE
-    # therefore cannot under-fire relative to a settled-close trigger; it is the conservative
-    # choice for a safety-net review. Pinning the trigger to settled-close instead is a
-    # definition change on the condition that watches a live admission gate and needs the
-    # operator's sign-off (THE LINE) — DO NOT flip it here. When this fires, re-derive and
-    # report BOTH readings side by side, not the MFE number alone.
+      30 trading days, evaluated only when that window holds >=30 scoreable declines.
+      REWIRED 2026-09-03 (operator's own framing, same day): a tradeable miss is now a
+      net-declined `ep_rt_sustain_reject` name that (b) still held the 9% gap floor at the
+      d0 close, (c) cleared the $50M d0 dollar-volume floor, and — replacing the retired
+      +20%-price-move test (d) — whose OWN CURRENT-era MAGNA53 bracket, actually walked
+      (`agents/market_intelligence/sustain_reject_replay.py`: ORB entry, stop-limit-buy
+      trigger, the SAME live exit ladder), would have realized >=4R (the P1 real-EP
+      measure — recall outranks every other statistic) OR, to a lesser extent, any
+      positive return. It raises a REVIEW; it never reverts anything on its own (THE LINE
+      — this predicate watches a live admission gate, it does not touch it).
+    # 🔑 WHY THE PRICE-MOVE TEST WAS RETIRED (operator, 2026-09-03): "the two key things to
+    # know is 1) did it turn away real EPs, those that would've made us 4R+ or 2) to a lesser
+    # extent those that would've made us positive return at all." A price move is not a trade
+    # outcome — of the 4 names the OLD MFE-basis test flagged, IPST (declined level $9.25 ->
+    # $4.71 over 5 sessions) and WETO ($22.74 -> $11.50) both spiked for minutes and closed
+    # ~49% below the level they were declined at. They would have been STOPPED OUT by our own
+    # bracket; turning them away was correct, and the price-move test counted them as
+    # mistakes. Both retired bases (MFE and settled-close) are still STORED on every replayed
+    # row (breach_mfe_20 / breach_settled_20) so a read can report all three side by side —
+    # see action_when_ready. Full derivation: docs/analysis/sustain_revert_rebased_2026-08-28.md
+    # + docs/analysis/593_sustain_revert_2026-09-01.md (the price-move-basis history this
+    # predicate superseded).
+    # ⚖ THE THRESHOLD QUESTION THIS REWIRING RAISES, FOR THE OPERATOR, NOT DECIDED HERE: 10%
+    # was calibrated against the PRICE-MOVE definition (4.4% MFE / 1.1% settled measured
+    # 2026-09-01). A >=4R replay test is a strictly narrower bar than "ran +20% at any point,"
+    # so it will trip far LESS readily than either retired basis at the same 10% line — the
+    # rate this predicate now reports is not comparable to the 4.4%/1.1% history above it.
+    # This predicate keeps the signed 10%/30-day/n>=30 mechanics UNCHANGED; whether 10% is
+    # still the right number for the >=4R definition is a question for him once this has a
+    # real reading, not a number picked here (THE LINE — a revert-review threshold on a live
+    # admission gate).
     predicate_sql: |
-      -- #593 signed revert-review condition, wired as a standing predicate (was: hand-rederived
-      -- twice, docs/analysis/sustain_revert_rebased_2026-08-28.md + 593_sustain_revert_2026-09-01.md).
-      -- Trigger basis = MFE (see the discriminates_on/basis-fork comment above); DO NOT swap to
-      -- settled-close without operator sign-off.
-      WITH window_days AS (
-        SELECT DISTINCT trade_date FROM mi_daily_closes
-        ORDER BY trade_date DESC LIMIT 30
-      ),
-      win AS (
-        SELECT MIN(trade_date) AS floor_date FROM window_days
-      ),
-      raw_rejects AS (
-        SELECT detail::jsonb->>'ticker' AS ticker,
-               (created_at AT TIME ZONE 'America/New_York')::date AS decline_date,
-               (detail::jsonb->>'rt_gap')::numeric AS rt_gap,
-               created_at
-        FROM mi_audit_log
-        WHERE event_type = 'ep_rt_sustain_reject'
-          AND detail::jsonb->>'ticker' IS NOT NULL
-          AND created_at AT TIME ZONE 'America/New_York' >= (SELECT floor_date FROM win)
-      ),
-      rejects AS (
-        -- one row per ticker-day: the EARLIEST reject of the day (the level first declined at)
-        SELECT DISTINCT ON (ticker, decline_date) ticker, decline_date, rt_gap
-        FROM raw_rejects
-        ORDER BY ticker, decline_date, created_at ASC
-      ),
-      catches AS (
-        SELECT DISTINCT detail::jsonb->>'ticker' AS ticker,
-               (created_at AT TIME ZONE 'America/New_York')::date AS catch_date
-        FROM mi_audit_log
-        WHERE event_type = 'ep_rt_universe_catch'
-          AND created_at AT TIME ZONE 'America/New_York' >= (SELECT floor_date FROM win)
-      ),
-      net_declined AS (
-        -- rejected then caught later the SAME session cost nothing — the rule only delayed it
-        -- (established rule, both prior signed reads on this task).
-        SELECT r.ticker, r.decline_date, r.rt_gap
-        FROM rejects r
-        WHERE NOT EXISTS (
-          SELECT 1 FROM catches c
-          WHERE c.ticker = r.ticker AND c.catch_date = r.decline_date
+      -- #593 REWIRED 2026-09-03: reads the STORED replay
+      -- (agents/market_intelligence/sustain_reject_replay.py walks the CURRENT-era MAGNA53
+      -- bracket on every net-declined ep_rt_sustain_reject name) instead of re-deriving a
+      -- price-move test from raw bars. to_regclass guard: the table ships in this same
+      -- commit but is not yet deployed — reads 0, never errors, until the deploy creates it
+      -- and the nightly job populates it.
+      SELECT CASE WHEN to_regclass('mi_sustain_reject_replays') IS NULL THEN 0 ELSE (
+        WITH window_days AS (
+          SELECT DISTINCT trade_date FROM mi_daily_closes
+          ORDER BY trade_date DESC LIMIT 30
+        ),
+        win AS (
+          SELECT MIN(trade_date) AS floor_date FROM window_days
+        ),
+        scoreable AS (
+          -- the SAME "scoreable" gate both prior hand-derived reads used: a known, positive
+          -- prev_close AND a known d0 close (the retired predicate's `scored` CTE required
+          -- both via its JOIN to a d0 daily row — a row missing close_d0 was never in that
+          -- denominator either). The 9%-floor / $50M-dollar-volume filters gate the
+          -- NUMERATOR only (below) — the operator's own "theoretically traded before we
+          -- count them" rule — not the denominator, so this rate is comparable to the
+          -- 4.4%/1.1% history above. NOTE: a row still 'pending' on a genuine data gap (not
+          -- yet stale enough to write 'unscoreable') is simply ABSENT from this table and
+          -- therefore from this denominator too — same treatment the retired predicate gave
+          -- an unscoreable row (excluded, not zero-filled).
+          SELECT * FROM mi_sustain_reject_replays
+          WHERE decline_date >= (SELECT floor_date FROM win)
+            AND prev_close IS NOT NULL AND prev_close > 0
+            AND close_d0 IS NOT NULL
+        ),
+        agg AS (
+          SELECT
+            COUNT(*) AS scoreable_n,
+            COUNT(*) FILTER (
+              WHERE held_floor_d0 IS TRUE AND cleared_dollar_vol IS TRUE
+                -- settled AND >=4R, OR still open/at-horizon but ALREADY marked >=4R — a
+                -- still-running winner can never make this trigger under-fire (the
+                -- survivorship-bias fix; sustain_reject_replay.py module docstring).
+                AND ((outcome = 'settled' AND meets_4r)
+                     OR (outcome IN ('open', 'horizon') AND mark_meets_4r))
+            ) AS miss_4r_n
+          FROM scoreable
         )
-      ),
-      bars AS (
-        SELECT ticker, trade_date, high_price, close, volume,
-               LAG(close) OVER (PARTITION BY ticker ORDER BY trade_date) AS prev_close
-        FROM mi_daily_closes
-        WHERE ticker IN (SELECT DISTINCT ticker FROM rejects)
-          AND trade_date >= (SELECT floor_date FROM win) - INTERVAL '10 days'
-      ),
-      scored AS (
-        -- declined_level = prev_close x (1+rt_gap/100) — the SIGNED baseline (the level the
-        -- rule actually declined at), never the day's open.
-        SELECT nd.ticker, nd.decline_date,
-               b0.prev_close, b0.close AS close_d0, b0.high_price AS high_d0,
-               b0.volume AS volume_d0,
-               b0.prev_close * (1 + nd.rt_gap / 100.0) AS declined_level
-        FROM net_declined nd
-        JOIN bars b0 ON b0.ticker = nd.ticker AND b0.trade_date = nd.decline_date
-        WHERE b0.prev_close IS NOT NULL AND b0.prev_close > 0
-      ),
-      fwd AS (
-        -- MFE = max HIGH over d0..d0+5 (up to 6 sessions); partial windows (recent, still
-        -- settling) contribute whatever is available, matching the signed reads' treatment.
-        SELECT sc.ticker, sc.decline_date, MAX(fb.high_price) AS mfe_high
-        FROM scored sc
-        JOIN LATERAL (
-          SELECT b.high_price
-          FROM mi_daily_closes b
-          WHERE b.ticker = sc.ticker AND b.trade_date >= sc.decline_date
-          ORDER BY b.trade_date
-          LIMIT 6
-        ) fb ON TRUE
-        GROUP BY sc.ticker, sc.decline_date
-      ),
-      funnel AS (
-        SELECT
-          -- held the 9% gap floor (MIN_GAP_PCT default, ep_detector.py) at the d0 close
-          (sc.close_d0 - sc.prev_close) / sc.prev_close >= 0.09 AS held_floor_d0,
-          -- cleared the $50M d0 dollar-volume floor (same constant as ep_detector.py / db.py)
-          (sc.volume_d0 * sc.close_d0) >= 50000000 AS cleared_dollar_vol,
-          -- traded above the declined level intraday on d0 -> an ORB entry was reachable
-          sc.high_d0 >= sc.declined_level AS entry_reachable,
-          -- MFE basis: max high, d0..d0+5, vs. the declined level
-          (fw.mfe_high IS NOT NULL AND fw.mfe_high >= sc.declined_level * 1.20) AS breach_mfe
-        FROM scored sc
-        LEFT JOIN fwd fw ON fw.ticker = sc.ticker AND fw.decline_date = sc.decline_date
-      )
-      SELECT CASE
-               WHEN scoreable < 30 THEN 0
-               WHEN 10 * tradeable_misses > scoreable THEN 1
-               ELSE 0
-             END AS ready
-      FROM (
-        SELECT
-          COUNT(*) AS scoreable,
-          COUNT(*) FILTER (
-            WHERE held_floor_d0 AND cleared_dollar_vol AND entry_reachable AND breach_mfe
-          ) AS tradeable_misses
-        FROM funnel
-      ) agg;
+        SELECT CASE
+                 WHEN scoreable_n < 30 THEN 0
+                 WHEN 10 * miss_4r_n > scoreable_n THEN 1
+                 ELSE 0
+               END
+        FROM agg
+      ) END AS ready;
     threshold: 1
-    # Reviewed both tables this predicate reads: mi_audit_log is filtered to the two exact
-    # event_types the MAGNA53 real-time sustain gate alone emits (ep_rt_sustain_reject,
-    # ep_rt_universe_catch — neither event_type is shared with 9M or any other setup, and
-    # neither carries an account_mode field: the real-time universe scan runs once, upstream
-    # of paper/live trade routing), and mi_daily_closes is raw per-ticker daily bars with no
-    # setup/account column at all. No column on either table separates a genuinely different
-    # question this predicate would need to filter.
-    discriminates_on: []
+    # Reads ONE table (mi_sustain_reject_replays) plus mi_daily_closes for the rolling-window
+    # boundary only. The replay table carries no setup/account column of its own — every row
+    # is MAGNA53-framed by construction (sustain_reject_replay.py SCOPE) and the real-time
+    # universe scan it watches runs once, upstream of paper/live trade routing.
+    discriminates_on: [mi_sustain_reject_replays.admission_era]
     earliest_review_date: 2026-09-03
-    # >> RAN 2026-09-01 (hand-derived, docs/analysis/593_sustain_revert_2026-09-01.md — the
-    #    predicate itself has not yet executed in prod; this is the read it is built to
-    #    reproduce): n=87 net-declined ticker-days, 07-22->09-01. MFE basis 4/87 = 4.6%
-    #    tradeable-miss rate; SETTLED-CLOSE basis 1/87 = 1.1%. Both well under the 10% trigger
-    #    — CONCLUSIVE, not ready (not an inconclusive/thin-sample read). Net measured cost of
-    #    the sustain rule over this window: ZERO names (of the 4 MFE-basis hits, one alerted
-    #    anyway via the delayed path, one was independently killed by the score/catalyst gate,
-    #    two were same-day parabolic wicks that closed the 5th session down ~49% and were
-    #    independently extension-capped).
+    # >> RAN 2026-09-01 (hand-derived, PRICE-MOVE basis, docs/analysis/593_sustain_revert_2026-09-01.md
+    #    — superseded 2026-09-03 by the rewiring above, kept here as history): n=87
+    #    net-declined ticker-days, 07-22->09-01. MFE basis 4/87 = 4.6% tradeable-miss rate;
+    #    SETTLED-CLOSE basis 1/87 = 1.1%. Both well under the (price-move-calibrated) 10%
+    #    trigger. Net measured cost of the sustain rule over this window on THAT basis: ZERO
+    #    names (of the 4 MFE-basis hits, one alerted anyway via the delayed path, one was
+    #    independently killed by the score/catalyst gate, two — IPST and WETO — were same-day
+    #    parabolic wicks that closed the 5th session down ~49% and were independently
+    #    extension-capped; those two are exactly why the REPLAY basis above replaced this one
+    #    — a stopped-out spike is not a miss).
+    # >> REWIRED 2026-09-03 (this task): the predicate now reads sustain_reject_replay.py's
+    #    stored >=4R / positive-return replay instead of re-deriving a price-move test. No
+    #    prod read yet at commit time — no DB access from the build session; the FIRST real
+    #    read happens after deploy + the first nightly run (job "sustain_reject_replay",
+    #    18:13 ET). NOTHING about live admission changed.
     status: pending
     kind: tripwire
     # tripwire, not accrual: while the rate stays under 10% this predicate reads 0, which is
@@ -10827,22 +10787,32 @@ reviews:
     # be held against it. Same posture as runner_rule_sweep_recut / orb_entry_stuck_pending_new.
     added_on: 2026-09-03
     action_when_ready: |
-      This fires when the MFE-basis tradeable-miss rate exceeds 10% over the trailing 30
-      trading days with >=30 scoreable declines in the window — the operator's signed
-      condition (docs/setups/magna53_ep.md 2026-08-28 change-log).
+      This fires when the >=4R tradeable-miss rate exceeds 10% over the trailing 30 trading
+      days with >=30 scoreable declines in the window — the operator's signed condition
+      (docs/setups/magna53_ep.md 2026-08-28 change-log), rewired 2026-09-03 to a bracket
+      replay rather than a price-move test.
 
-      1. Re-derive BOTH bases over the current window (not the MFE count alone) — reuse this
-         predicate's own funnel logic (held-floor + dollar-volume + entry-reachable), swapping
-         only the breach test: MFE (max high, d0..d0+5) vs. SETTLED (close on the d0+5 bar).
-         Name every tradeable-miss ticker and what it actually did, same table shape as
-         docs/analysis/593_sustain_revert_2026-09-01.md's "names" section.
-      2. Split by era (SHADOW before ep_rt_universe_authoritative went ON 2026-08-25, LIVE
-         after) — a shadow-era miss never cost a real trade regardless of price.
-      3. Report both rates to the operator side by side, plainly: "MFE reads X%, settled-close
-         reads Y%, against the 10% trigger." Do not present MFE alone as if it were the only
-         reading, and do not silently switch the trigger to settled-close — that swap is his
-         call (THE LINE: it changes when this review itself fires, on the condition that
-         watches a live admission gate).
+      1. Report ALL of these side by side, plainly, from mi_sustain_reject_replays over the
+         same window this predicate reads — never the >=4R number alone:
+           - >=4R tradeable-miss rate (this predicate's trigger) — name every hit
+             (ticker, decline_date, realized_r or mark_r if still open).
+           - any-positive-return tradeable-miss rate (meets_positive on settled rows,
+             mark_meets_positive on open/horizon rows) — the lesser measure, his own words.
+           - the two RETIRED price-move bases, already stored on every row (breach_mfe_20,
+             breach_settled_20), filtered through held_floor_d0 AND cleared_dollar_vol AND
+             entry_reachable (the retired predicate's exact fourth funnel leg, reproduced on
+             the DAILY high — also stored on every row) — this reproduces the 2026-09-01
+             4.4%/1.1% read exactly; omitting entry_reachable overstates it.
+           - replay COVERAGE: of the scoreable population, how many rows are
+             outcome IN ('settled','open','horizon') (replayed) vs 'no_trade' (our own ORB/
+             ATR/window rule would have skipped it regardless of the sustain rule — never a
+             cost) vs 'unscoreable' (data gap — NULL, counted, never substituted).
+      2. STATE PLAINLY that 10% was calibrated against the price-move definition (4.4% MFE /
+         1.1% settled, 2026-09-01) and is not directly comparable to a >=4R rate — then ask,
+         in one line, whether 10% is still the right number now that the definition changed.
+         Do NOT pick a new threshold — that is his call (THE LINE).
+      3. Split by era (mi_sustain_reject_replays.admission_era) — an admission stack that has
+         since changed (e.g. pre- vs post- the 9% gap floor) may not generalize forward.
       4. This is a REVIEW, not a revert — it raises the question, nothing about the sustain
          rule's admission logic (`ep_rt_sustain_enabled`, `_sustain_ok`, EP_RT_SUSTAIN_BARS)
          changes without a separate, explicit operator sign-off + CHANGE_PROCESS entry in
@@ -10852,4 +10822,7 @@ reviews:
                  "docs/analysis/593_sustain_revert_2026-09-01.md",
                  "docs/analysis/sustain_rule_cost_2026-08-24.md",
                  "docs/setups/magna53_ep.md",
-                 "agents/market_intelligence/ep_detector.py"]
+                 "agents/market_intelligence/ep_detector.py",
+                 "agents/market_intelligence/sustain_reject_replay.py",
+                 "agents/market_intelligence/live_fill_counterfactuals.py",
+                 "agents/market_intelligence/rule_eras.py"]

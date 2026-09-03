@@ -501,6 +501,51 @@ whenever the review fires, per the entry's `action_when_ready`, but is NOT the t
 is a separate operator decision, not made here. Hand-derived reading (docs/analysis/593_sustain_revert_2026-09-01.md):
 4/87 = 4.6% (MFE) / 1/87 = 1.1% (settled), both well under the 10% trigger.
 
+### 2026-09-03 — #593: the "tradeable miss" definition is REWIRED from a price-move test to a bracket replay (OPERATOR-DIRECTED)
+
+**Why**: his own framing — *"the two key things to know is 1) did it turn away real EPs, those
+that would've made us 4R+ or 2) to a lesser extent those that would've made us positive return at
+all."* A price move is not a trade outcome. Two of the four names the ≥+20%-price-move test (leg
+(a) of the 2026-08-28 definition above) flagged — IPST (declined level $9.25 → 5th-session close
+$4.71) and WETO ($22.74 → $11.50) — both spiked for minutes and closed **~49% below the level they
+were declined at**. They would have been STOPPED OUT by our own bracket; turning them away was
+correct, and the price-move test counted them as mistakes.
+
+**THE CHANGE**: leg (a) of the "tradeable miss" definition — *"traded ≥+20% above the price the
+rule declined"* — is REPLACED by an actual bracket walk. A nightly recorder
+(`agents/market_intelligence/sustain_reject_replay.py`) reconstructs the CURRENT-era MAGNA53 entry
+(ORB, the admission ATR gate, the stop-limit-buy trigger in the submission window — submitted at
+the reject's OWN tick, never a fixed 09:31) for every net-declined `ep_rt_sustain_reject` name,
+and — if it would have filled — walks the SAME live exit ladder
+(`live_fill_counterfactuals.walk_arm`, reused). A *tradeable miss* is now: (a) the replayed bracket
+realized ≥4R (settled) or is currently marked ≥4R (still open — a running winner must never make
+the trigger under-fire), OR to a lesser extent any positive return, (b) still held the 9% gap
+floor at the d0 close, (c) cleared the $50M dollar-volume floor. Legs (b) and (c) are UNCHANGED.
+The retired price-move legs (peak-high MFE and settled-close, both vs. the declined level ×1.20)
+are still stored on every row (`breach_mfe_20`, `breach_settled_20`) for a side-by-side report —
+retired as the TRIGGER, not deleted as a measurement.
+
+**THE 10%/30-TRADING-DAY/≥30-MINIMUM MECHANICS ARE UNCHANGED** — only what counts as a miss moved.
+`sustain_reject_tradeable_miss_rate_593` in `data_gated_reviews.yaml` was rewired in the same
+commit to read the recorder's stored columns.
+
+**⚠ THE THRESHOLD QUESTION THIS RAISES, OPEN, NOT DECIDED HERE**: 10% was calibrated against the
+price-move definition (4.4% MFE / 1.1% settled, measured 2026-09-01). A ≥4R replay test is a
+strictly narrower bar than "ran +20% at any point," so it will trip far less readily than either
+retired basis at the same 10% line — the rate this predicate now reports is **not directly
+comparable** to that 4.4%/1.1% history. Whether 10% is still the right number for the ≥4R
+definition is the operator's call, to be put to him once the predicate has a real reading (THE
+LINE — a revert-review threshold on a live admission gate).
+
+**Reversion-flag**: REFINEMENT of the 2026-08-28 rate mechanics (which stand); REPLACEMENT of the
+2026-08-28 breach TEST specifically. Nothing about the sustain rule's own admission logic changed.
+
+**Status**: rewired 2026-09-03, code-complete + suite green (`tests/test_sustain_reject_replay.py`,
+28 tests). **Not yet deployed / not yet verified-live** — built with no prod DB access from this
+session; the table and job ship on the next market-agent (+ execution, since `db.py`/`scheduler.py`
+are on the execution-loaded-module list) deploy, and the first real reading lands after the first
+nightly run (job `sustain_reject_replay`, 18:13 ET) backfills the standing 40-trading-day window.
+
 ### 2026-08-28 — STATUS RECORD: two real-time toggles went live and the SSoT never said so
 
 **Trigger**: `live_rules.py --drift-only` at OPEN, 2026-08-28. It flagged that every mention of

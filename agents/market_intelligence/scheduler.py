@@ -152,6 +152,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "alert_rank_shadow",  # 2026-08-16 — EOD + as-of-09:45 selection-rank record on every EP alert; pure compute + DB/audit, no broker calls, no grading/ordering change
     "delayed_entry_shadow",  # #327 2026-08-30 — EOD watch-lane record on every EP-scan name; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "live_fill_counterfactuals",  # #482 2026-09-03 — stop/harvest counterfactuals recorded beside every MAGNA53 fill; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
+    "sustain_reject_replay",  # #593 2026-09-03 — CURRENT-era bracket replay on every net-declined ep_rt_sustain_reject name (4R+/positive, not a price move); pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
@@ -4486,6 +4487,32 @@ async def _live_fill_counterfactuals_job():
         await notify_job_failure("live_fill_counterfactuals", str(e))
 
 
+async def _sustain_reject_replay_job():
+    """Run at 18:13 ET (EOD, after the 18:12 analyst-estimates sibling). #593 (2026-09-03):
+    for every net-declined ep_rt_sustain_reject ticker-day, reconstruct the CURRENT-era
+    MAGNA53 entry and walk the SAME live exit ladder to ask whether OUR OWN bracket would
+    have realized >=4R or any positive return — replacing the +20%-price-move test the #593
+    signed condition used (a price move is not a trade outcome; IPST/WETO both closed ~49%
+    below the declined level and would have stopped out). RECORD ONLY — no broker calls, no
+    live-trade mutation, no admission change, no Telegram (THE LINE; see
+    sustain_reject_replay.py docstring). run_sustain_reject_replay never raises; the guard
+    here is the last-resort wrapper only."""
+    try:
+        from agents.market_intelligence.sustain_reject_replay import run_sustain_reject_replay
+        from agents.market_intelligence.collector import et_today
+        out = await run_sustain_reject_replay(et_today())
+        logger.info(
+            f"sustain-reject replay: {out['written']} row(s) written across "
+            f"{out['population']} net-declined ticker-day(s) ({out['candidates']} candidate(s) "
+            f"processed) — {out['settled']} settled, {out['no_trade']} no_trade, "
+            f"{out['unscoreable']} unscoreable, {out['open']} open, {out['horizon']} at horizon, "
+            f"{out['pending']} pending, {out['errors']} error(s)"
+        )
+    except Exception as e:
+        logger.error(f"sustain-reject replay job failed: {e}", exc_info=True)
+        await notify_job_failure("sustain_reject_replay", str(e))
+
+
 async def _alert_rank_shadow_job():
     """Run at 17:53 ET (after the 17:00 nightly close pull refreshes mi_daily_closes and
     the 17:50 exit-path shadow — same family, +3 min spacing convention).
@@ -5706,6 +5733,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_analyst_estimates_snapshot_job, "analyst_estimates_snapshot"),
         CronTrigger(hour=18, minute=12, day_of_week="mon-fri", timezone="America/New_York"),
         id="analyst_estimates_snapshot",
+        replace_existing=True,
+    )
+
+    # #593 SUSTAIN-REJECT BRACKET REPLAY — 18:13 ET mon-fri (EOD shadow family, after the
+    # 18:12 analyst-estimates sibling; needs today's mi_daily_closes row and day-0 minute
+    # bars, both long settled by then). For every net-declined ep_rt_sustain_reject name,
+    # walks the CURRENT-era MAGNA53 bracket to ask whether it would have made >=4R or any
+    # positive return — pure compute + DB/audit, no broker calls, no admission change, no
+    # Telegram (THE LINE; see sustain_reject_replay.py docstring).
+    _scheduler.add_job(
+        audit_wrap(_sustain_reject_replay_job, "sustain_reject_replay"),
+        CronTrigger(hour=18, minute=13, day_of_week="mon-fri", timezone="America/New_York"),
+        id="sustain_reject_replay",
         replace_existing=True,
     )
 

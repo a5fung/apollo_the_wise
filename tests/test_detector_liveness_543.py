@@ -196,6 +196,10 @@ def test_module_constant_covers_the_required_tables():
         # (no Telegram on any path), fire-and-forget beside every MAGNA53 fill, read by
         # nothing on any live path; this registry is its only watchdog.
         "mi_live_fill_counterfactuals",
+        # 2026-09-03 (#593): the sustain-reject bracket replay — SILENT by design (no
+        # Telegram on any path), fire-and-forget on every net-declined sustain-reject
+        # name, read by nothing on any live path; this registry is its only watchdog.
+        "mi_sustain_reject_replays",
     }
 
 

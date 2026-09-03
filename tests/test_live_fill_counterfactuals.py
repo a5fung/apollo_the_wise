@@ -652,19 +652,22 @@ def test_recorder_imports_only_the_pure_ladder_from_broker_with_the_marker():
 
 
 def test_nothing_live_imports_the_recorder():
-    """No module under agents/ except the scheduler (the job registration) may import the
-    recorder — in particular nothing under broker/, the detector, the judge, sizing or the
-    safeguards. The table is comparison telemetry only."""
+    """No module under agents/ except the scheduler (the job registration) — and, since
+    2026-09-03, the #593 sustain-reject bracket replay, which reuses walk_arm/pinned_target
+    rather than writing a fourth walker (see that module's own docstring: WHAT IT MIRRORS)
+    — may import the recorder. Neither consumer is on a decision path; both are telemetry."""
     importers = []
     for py in sorted((_REPO / "agents").rglob("*.py")):
         if py == _MODULE:
             continue
         if re.search(r"^\s*(from|import)\s+[\w.]*live_fill_counterfactuals\b", py.read_text(), re.M):
             importers.append(str(py.relative_to(_REPO)))
-    assert importers == ["agents/market_intelligence/scheduler.py"], importers
+    assert importers == ["agents/market_intelligence/scheduler.py",
+                        "agents/market_intelligence/sustain_reject_replay.py"], importers
     # and the TABLE is named nowhere on the execution side or in the detector/judge/sizing paths
     for py in (_REPO / "agents" / "market_intelligence").rglob("*.py"):
-        if py.name in ("db.py", "health_checks.py", "live_fill_counterfactuals.py"):
+        if py.name in ("db.py", "health_checks.py", "live_fill_counterfactuals.py",
+                      "sustain_reject_replay.py"):
             continue
         assert "mi_live_fill_counterfactuals" not in py.read_text(), py.relative_to(_REPO)
 

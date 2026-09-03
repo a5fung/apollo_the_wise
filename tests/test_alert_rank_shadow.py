@@ -1079,6 +1079,13 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         # Same non-decision shape as the health_checks.py exemption above.
         str(REPO / "agents/market_intelligence/catalyst_tier_shadow.py"),
         str(REPO / "tests/test_catalyst_tier_shadow.py"),
+        # 2026-09-03 (#593): sustain_reject_replay.py imports ONLY the pure, DB-free
+        # compute_atr14_prior (the same prior-only-no-same-day-leak ATR-14 the ORB
+        # admission gate needs) to score its OWN CURRENT-era bracket replay, written
+        # solely to mi_sustain_reject_replays — telemetry consuming telemetry's pure
+        # functions, same non-decision shape as catalyst_tier_shadow.py directly above.
+        str(REPO / "agents/market_intelligence/sustain_reject_replay.py"),
+        str(REPO / "tests/test_sustain_reject_replay.py"),
     }
     unexpected = hits - allowed
     assert not unexpected, f"unexpected references to alert_rank_shadow: {unexpected}"

@@ -1587,6 +1587,7 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # a plain business DATE that advances with every writing run), NOT `recorded_at`: the
     # date-column rule below is name-based and only `created_at` routes to the timestamp branch.
     ("mi_live_fill_counterfactuals", "live-fill counterfactual recorder (#482)", "settled_session", None),
+    ("mi_sustain_reject_replays", "sustain-reject bracket replay (#593)", "settled_session", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median
