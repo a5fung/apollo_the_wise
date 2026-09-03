@@ -303,6 +303,35 @@ ticker. Mechanics + policy:
 
 ## Change log (newest first)
 
+### 2026-09-03 — #482: the stop conflict (08-16 read vs Phase 3) now settles on live fills by ACCRUAL, not another re-slice (RECORD ONLY — no criteria, stop, target, size or admission change)
+
+**Trigger**: Phase 3 (`docs/analysis/545p3_day1_stop_target_runner_sweep_2026-09-03.md`) found
+the ORB low and entry − 0.5×ADR beat the live `entry − 2R` stop on the population the current
+selector admits (bounds +3.9R / +0.5R) — a direct conflict with the 2026-08-16 entry below,
+which was signed on 43 reconstructed April–May trades. Two populations, two answers, and
+nothing said so. Operator 2026-09-03: *"After every analysis you just give the opposite rec, I
+don't trust any of this."*
+
+**The change**: nothing in this setup moves. A recorder
+(`agents/market_intelligence/live_fill_counterfactuals.py`) now writes, beside every MAGNA53
+fill, what ORB low / entry − 0.5×ADR / entry − 0.75×ADR would have produced under the live
+ladder with the +2R target pinned exactly as §Stop-and-sizing states, and what three harvest
+variants would have produced at the live stop — settled on the same stored bars through the
+same exit ladder. **Every row is stamped with the ADMISSION ERA that produced the trade**
+(`rule_eras.ADMISSION_SWITCHES`, each dated by the FIRST SESSION whose ORB admission ran
+under the rule — the 08-19 gap floor was committed 15:37 ET and the 08-25 / 08-27 real-time
+flips were 11:02–13:55 ET, so those days' fills were admitted by the OLD stack: 08-20 gap
+floor 9% · 08-24 lattice/separation/shortlist · 08-26 RT universe · 08-28 rubric v4 + RT gap
+authority · 08-31 extension cap 50 + RS slot rank, plus the alert row's own `rubric_version` / `score_tier` / `judge_grade` /
+`grade_engine_authority`), because the operator will keep updating the filters as live EPs
+are observed and the population under the recorder will move — the rows are read apart, never
+pooled. ⚠ **SAME-COMMIT RULE for THIS file**: an admission-criterion change entered below
+must also add its row to `rule_eras.ADMISSION_SWITCHES` (test-pinned in the forward
+direction). Full entry, arms, THE-LINE proof and the gate: `docs/setups/exit_discipline.md`
+change log 2026-09-03; review `live_fill_counterfactuals_first_read_482` fires at 20 live
+era-C fills with the stop arms settled. **The 08-16 stop stays as signed** until that read
+(THE LINE: sign-off + N≥10 + the harness).
+
 ### 2026-08-30 — #533: within-day slot ranking flips from accidental ALPHABETICAL to prior-day RS (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE, watch lane shipped)
 
 **Trigger**: operator 2026-08-05 ("does it capture the main goal of selecting best EPs in a given

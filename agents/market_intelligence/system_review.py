@@ -1920,14 +1920,22 @@ _SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see
 # change, or one of the two reviews will again grade a mixture dominated by superseded rules.
 # Full era taxonomy this mirrors (A: no executable partial · B: partial live, old 1R-equivalent
 # stop · C: partial live, entry-2R stop): docs/analysis/exit_tune_cohort_review_2026-08-22.md.
-_PROFIT_TRIGGER_ERA_START = date(2026, 8, 1)    # constants.PROFIT_TRIGGER_R live (operator-signed,
-    # #508). Governs "could a profit-take even fire" — the exit-reason-concentration ask.
-_STOP_GEOMETRY_ERA_START = date(2026, 8, 16)    # entry-2R half-size stop live (operator-signed,
-    # broker/order_manager.py ~line 480, THE LINE). "R" itself is measured off the ACTUAL placed
-    # stop (sell_discipline.trade_risk_per_share = entry - hard_stop), so any ask reading
-    # peak_r / realized_r / stop_per_adr must gate on THIS boundary, not the profit-trigger one —
-    # a "+2R" move is a different price distance before vs. after this date (stop width roughly
-    # doubled), so mixing peak_r across it isn't just a cohort mix, it's a unit mismatch.
+# 2026-09-03 (#482): both pins now READ the shared dated switch table (rule_eras.py) rather
+# than carrying their own copy of the date — the #482 recorder and scripts/ep_replay.py
+# stamp eras from the same table, so a boundary can no longer move in one place and not the
+# others. Values unchanged (08-01 / 08-16); the names below are kept for every reader.
+from agents.market_intelligence.rule_eras import (  # noqa: E402
+    PARTIAL_LIVE_DATE as _PROFIT_TRIGGER_ERA_START,
+    STOP_2R_DATE as _STOP_GEOMETRY_ERA_START,
+)
+# _PROFIT_TRIGGER_ERA_START — constants.PROFIT_TRIGGER_R live (operator-signed, #508). Governs
+#     "could a profit-take even fire" — the exit-reason-concentration ask.
+# _STOP_GEOMETRY_ERA_START — entry-2R half-size stop live (operator-signed,
+#     broker/order_manager.py ~line 480, THE LINE). "R" itself is measured off the ACTUAL placed
+#     stop (sell_discipline.trade_risk_per_share = entry - hard_stop), so any ask reading
+#     peak_r / realized_r / stop_per_adr must gate on THIS boundary, not the profit-trigger one —
+#     a "+2R" move is a different price distance before vs. after this date (stop width roughly
+#     doubled), so mixing peak_r across it isn't just a cohort mix, it's a unit mismatch.
 _SETUP_REVIEW_ERA_MIN_N = 2   # floor for "is there enough era-scoped data to even ask" — the
                                 # same occurrence floor the blended ran_then_lost ask always used.
 

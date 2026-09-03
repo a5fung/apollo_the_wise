@@ -151,6 +151,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "exit_path_shadow",  # 2026-08-16 — per-trading-day path record on every LIVE fill; pure compute + DB/audit, no broker calls, no rule
     "alert_rank_shadow",  # 2026-08-16 — EOD + as-of-09:45 selection-rank record on every EP alert; pure compute + DB/audit, no broker calls, no grading/ordering change
     "delayed_entry_shadow",  # #327 2026-08-30 — EOD watch-lane record on every EP-scan name; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
+    "live_fill_counterfactuals",  # #482 2026-09-03 — stop/harvest counterfactuals recorded beside every MAGNA53 fill; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
@@ -4461,6 +4462,30 @@ async def _exit_path_shadow_job():
         await notify_job_failure("exit_path_shadow", str(e))
 
 
+async def _live_fill_counterfactuals_job():
+    """Run at 18:04 ET (EOD, after the 17:00 nightly close pull and the 16:22 day-0 minute
+    back-fill). #482 (2026-09-03): for every MAGNA53 fill, record beside the real outcome
+    what each counterfactual stop (ORB low · entry−0.5×ADR · entry−0.75×ADR) and harvest
+    rule (no breakeven · trail only · sell the runner at the 3rd close) would have produced
+    on the SAME recorded bars, settled through the SAME exit ladder, every row era-stamped.
+    RECORD ONLY — no exit rule, no broker calls, no live-trade mutation, no Telegram (THE
+    LINE; see live_fill_counterfactuals.py docstring). run_live_fill_counterfactuals never
+    raises; the guard here is the last-resort wrapper only."""
+    try:
+        from agents.market_intelligence.live_fill_counterfactuals import run_live_fill_counterfactuals
+        from agents.market_intelligence.collector import et_today
+        out = await run_live_fill_counterfactuals(et_today())
+        logger.info(
+            f"live-fill counterfactuals: {out['written']} arm row(s) written across "
+            f"{out['population']} fill(s) — {out['settled']} settled, {out['abstained']} abstained, "
+            f"{out['unscoreable']} unscoreable, {out['horizon']} at horizon, "
+            f"{out['pending']} pending, {out['errors']} error(s)"
+        )
+    except Exception as e:
+        logger.error(f"live-fill counterfactual job failed: {e}", exc_info=True)
+        await notify_job_failure("live_fill_counterfactuals", str(e))
+
+
 async def _alert_rank_shadow_job():
     """Run at 17:53 ET (after the 17:00 nightly close pull refreshes mi_daily_closes and
     the 17:50 exit-path shadow — same family, +3 min spacing convention).
@@ -5656,6 +5681,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_delayed_entry_shadow_job, "delayed_entry_shadow"),
         CronTrigger(hour=17, minute=57, day_of_week="mon-fri", timezone="America/New_York"),
         id="delayed_entry_shadow",
+        replace_existing=True,
+    )
+
+    # #482 LIVE-FILL COUNTERFACTUAL RECORDER — 18:04 ET mon-fri (the 17:5x EOD-shadow
+    # family is full: 50/52/53/55/57/58 are taken, as are 18:00/02/05). Needs today's
+    # mi_daily_closes row (17:00 pull) and day-0 minute bars (16:22 back-fill), both long
+    # done by then. Records, beside every MAGNA53 fill, what each counterfactual stop and
+    # harvest rule would have produced on the same bars — pure compute + DB/audit, no broker
+    # calls, no rule, no Telegram (THE LINE; see live_fill_counterfactuals.py docstring).
+    _scheduler.add_job(
+        audit_wrap(_live_fill_counterfactuals_job, "live_fill_counterfactuals"),
+        CronTrigger(hour=18, minute=4, day_of_week="mon-fri", timezone="America/New_York"),
+        id="live_fill_counterfactuals",
         replace_existing=True,
     )
 

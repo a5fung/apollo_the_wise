@@ -23,7 +23,8 @@ import sys
 from agents.market_intelligence.db import (
     _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL, _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
-    THEME_RENAME_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL, get_pool)
+    LIVE_FILL_CF_INSERT_SQL, THEME_RENAME_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
+    get_pool)
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +219,13 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # ruling filed under a renamed theme's old name is discarded — the exact defect.
         "db.record_theme_rename: #601 theme rename lineage (operator rulings follow renames)",
         THEME_RENAME_INSERT_SQL,
+    ),
+    (
+        # #482: the live-fill counterfactual recorder's single writer. Two jsonb params bound
+        # with explicit ::jsonb casts; a silent failure here would leave the stop/harvest
+        # evidence lane empty through its first fills with no downstream error.
+        "db.insert_live_fill_counterfactual: #482 stop/harvest counterfactuals beside every MAGNA53 fill",
+        LIVE_FILL_CF_INSERT_SQL,
     ),
 ]
 

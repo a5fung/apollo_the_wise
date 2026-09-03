@@ -10599,3 +10599,72 @@ reviews:
     cross_refs: ["docs/analysis/block1_tier2_sketches_2026-07-11.md",
                  "agents/market_intelligence/analyst_estimates_recorder.py",
                  "docs/analysis/analyst_estimates_backfill_reach_2026-08-31.md"]
+
+  - review_id: live_fill_counterfactuals_first_read_482
+    title: "#482 live-fill counterfactual recorder — which stop and which harvest, on the fills we actually took, segmented by admission era"
+    question: >-
+      Operator 2026-09-03: "After every analysis you just give the opposite rec, I don't
+      trust any of this." Four stop findings in three days each ran on a different
+      re-slice of history; Phase 3 (docs/analysis/545p3_day1_stop_target_runner_sweep_
+      2026-09-03.md) found ORB-low and 0.5xADR beat the live entry-2R stop on the ADMITTED
+      population (bounds +3.9R / +0.5R), which directly conflicts with the 08-16 read the
+      live stop was signed on (43 reconstructed April-May trades). Both are sound for their
+      population; the populations differ and nothing said so. The recorder ends the
+      re-slicing: beside every MAGNA53 fill it records what ORB low, entry-0.5xADR and
+      entry-0.75xADR would have produced under the live ladder, and what no-breakeven /
+      trail-only / t3 would have produced at the live stop, settled on the SAME recorded
+      bars through the SAME exit ladder, every row stamped with the exit era AND the
+      admission era that produced the trade (rule_eras.py). The question this gates, read
+      PAIRED (same fill, only the rule differs): on fills taken under the current stack,
+      does a tighter day-1 stop beat entry-2R, and does the +2R-then-breakeven harvest
+      cap the winners — WITHIN one admission era, never pooled across the operator's
+      filter updates.
+    # The "complete set" count: a fill counts only when its live_actual AND all three
+    # stop arms are SETTLED (not abstained, not at horizon). Censoring here runs the
+    # OPPOSITE way to #616's — the TIGHT arms settle early (a stop-out) and it is the
+    # live/wide arm that lags — so counting any single arm would fire on a stop-heavy
+    # set. Live account + era C (the current stop's own population) only. to_regclass
+    # idiom: reads 0, never errors, before the deploy creates the table.
+    predicate_sql: >-
+      SELECT CASE WHEN to_regclass('mi_live_fill_counterfactuals') IS NULL THEN 0
+                  ELSE (SELECT COUNT(*) FROM (
+                          SELECT trade_id FROM mi_live_fill_counterfactuals
+                          WHERE account_mode = 'live' AND exit_era = 'era_c'
+                            AND arm IN ('live_actual', 'stop_orb_low', 'stop_adr_050', 'stop_adr_075')
+                            AND outcome = 'settled'
+                          GROUP BY trade_id HAVING COUNT(DISTINCT arm) = 4) complete) END
+    threshold: 20
+    discriminates_on: [mi_live_fill_counterfactuals.arm, mi_live_fill_counterfactuals.account_mode, mi_live_fill_counterfactuals.exit_era, mi_live_fill_counterfactuals.admission_era]
+    earliest_review_date: 2026-10-05
+    status: pending
+    kind: accrual
+    added_on: 2026-09-03
+    # OWN GATE, not a rider on exit_tune_cohort_review, for three reasons: (1) that gate
+    # counts CLOSED LIVE TRADES, which includes fills this recorder could not settle
+    # (abstains: same-bar stop+target, missing day-0 minutes) — a count that is large but
+    # not right, the #517 class; this predicate counts what is actually readable.
+    # (2) Its question is the exit-side forensic; this one is the stop-vs-harvest
+    # counterfactual and a ruling on the 08-16-vs-Phase-3 conflict. (3) The threshold IS
+    # exit_tune's n=20 milestone on purpose, so the two reads land on comparable n and the
+    # operator sees them together — cross_refs below.
+    action_when_ready: >-
+      Read PAIRED deltas per fill (each arm minus live_actual, and live_replay minus
+      live_actual as the fidelity check — quote nothing where the replay disagrees with
+      the real outcome by more than 0.25R), in each arm's OWN R units AND size-free
+      (realized_pct, pnl_adr), with the sum, the median, the sign count and the
+      drop-best-fill bound, exactly Phase 3's conventions. SEGMENT BY admission_era
+      FIRST: if no era holds n>=10 on its own, report the split and extend — do not pool
+      eras to reach a number. State the abstain and horizon counts beside every result.
+      A stop arm positive on sum, median and bound within one era, agreeing with Phase
+      3's direction -> bring it to the operator as the CHANGE_PROCESS candidate it is (a
+      stop change = THE LINE: sign-off + N>=10 + the #151 harness). A harvest arm that
+      turns the +0.33R scratches positive without losing the tail -> the same route via
+      docs/setups/exit_discipline.md. Negative or era-carried -> say so and stop; the
+      08-16 stop stays. Nothing flips on its own evidence. Then re-arm this review at
+      n=40 (recurring, like exit_tune).
+    cross_refs: ["task #482", "task #545",
+                 "docs/analysis/545p3_day1_stop_target_runner_sweep_2026-09-03.md",
+                 "docs/setups/exit_discipline.md", "docs/setups/magna53_ep.md",
+                 "agents/market_intelligence/live_fill_counterfactuals.py",
+                 "agents/market_intelligence/rule_eras.py",
+                 "review exit_tune_cohort_review"]

@@ -3026,6 +3026,91 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_exit_path_shadow_trading_day
                 ON mi_exit_path_shadow(trading_day);
 
+            -- 2026-09-03 #482 — LIVE-FILL COUNTERFACTUAL RECORDER (live_fill_counterfactuals.py).
+            -- For every MAGNA53 fill in mi_live_trades (era C, filled_at >= 2026-08-16), ONE row
+            -- per ARM: what the real trade did (`live_actual`), the live rule replayed on the
+            -- same recorded bars (`live_replay` — the per-trade fidelity check), three
+            -- counterfactual STOPS under the live ladder (ORB low · entry−0.5×ADR ·
+            -- entry−0.75×ADR; the +2R target stays pinned to the ORB R, as live), and three
+            -- counterfactual HARVEST rules at the live stop (no breakeven after the partial ·
+            -- trail only, no partial · sell the runner at the 3rd close after the partial).
+            -- Every row carries the ERA STAMP (exit_era / exit_rules / admission_era + the
+            -- alert's own admission-time stamps) so a reader SEGMENTS instead of pooling — the
+            -- 08-16-vs-Phase-3 flip-flop was two populations compared as one. Settled R is in
+            -- the arm's OWN risk units (entry − that arm's stop); realized_pct is size-free.
+            -- THE LINE: record only — the recorder never writes mi_live_trades / mi_live_orders,
+            -- never calls the broker, and NOTHING in any grading / entry / sizing / ordering /
+            -- safeguard path reads this table (pinned in tests/test_live_fill_counterfactuals.py).
+            -- Write-once: UNIQUE (trade_id, arm) + ON CONFLICT DO NOTHING — a settled arm is never
+            -- rewritten; `settle_version` says which recorder wrote it. RETENTION: deliberately
+            -- ABSENT from purge_old_data (kept forever) — same evidence class as
+            -- mi_exit_path_shadow / mi_alert_rank_shadow.
+            CREATE TABLE IF NOT EXISTS mi_live_fill_counterfactuals (
+                id                  SERIAL PRIMARY KEY,
+                trade_id            INT NOT NULL,        -- mi_live_trades.id
+                ticker              TEXT NOT NULL,
+                account_mode        TEXT NOT NULL,       -- 'live' | 'paper' — stamped, never pooled
+                signal_type         TEXT,
+                entry_attempt       INT,                 -- 1 = day-1 first attempt; 2 = re-entry after a stop
+                alert_date          DATE NOT NULL,
+                fill_day            DATE NOT NULL,       -- ET date of filled_at (day 0 of the walk)
+                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | harvest_no_breakeven | harvest_trail_only | harvest_t3
+                arm_kind            TEXT NOT NULL,       -- control | stop | harvest
+                stop_rule           TEXT NOT NULL,       -- live | orb_low | adr_050 | adr_075
+                harvest_rule        TEXT NOT NULL,       -- live_ladder | no_breakeven | trail_only | t3
+                -- inputs, read ONCE at record time (hard_stop can move on the trade row — a
+                -- re-run must never re-frame R against a moved stop)
+                entry_price         DOUBLE PRECISION,
+                orb_high            DOUBLE PRECISION,
+                orb_low             DOUBLE PRECISION,
+                live_stop           DOUBLE PRECISION,    -- mi_live_trades.hard_stop as read
+                target_price        DOUBLE PRECISION,    -- entry + target_r × (entry − orb_low): the ORB-R frame, pinned across every stop arm
+                target_r            DOUBLE PRECISION,
+                adr20_pct           DOUBLE PRECISION,    -- mean (high−low)/close × 100 over the ≤20 stored sessions strictly before alert_date; NULL below 10 sessions (never substituted)
+                adr20_n             INT,
+                adr_dollar          DOUBLE PRECISION,    -- adr20_pct/100 × entry_price (ENTRY-anchored; Phase 3 anchored at orb_high — rebuild from adr20_pct × orb_high if comparing)
+                stop_price          DOUBLE PRECISION,    -- THIS arm's initial protective stop
+                risk_per_share      DOUBLE PRECISION,    -- entry − stop_price (the arm's own R unit)
+                stop_width_pct      DOUBLE PRECISION,    -- risk_per_share / entry × 100
+                stop_width_adr      DOUBLE PRECISION,    -- risk_per_share / adr_dollar
+                -- outcome
+                outcome             TEXT NOT NULL,       -- settled | abstain | unscoreable | horizon
+                final_reason        TEXT,                -- stop_hit | sma_trail_stop | time_close | horizon | <abstain/unscoreable reason>
+                realized_r          DOUBLE PRECISION,    -- settled only, in the arm's OWN units (pnl_per_share / risk_per_share)
+                realized_pct        DOUBLE PRECISION,    -- settled only, pnl_per_share / entry × 100 (size-free)
+                pnl_adr             DOUBLE PRECISION,    -- settled only, pnl_per_share / adr_dollar (size-free, volatility-normalised)
+                mark_r              DOUBLE PRECISION,    -- horizon only: open remainder MARKED at the last close — a mark, never a return
+                partial_fired       BOOLEAN,
+                gap_through         BOOLEAN,             -- a resting stop filled at an open below it
+                exit_session        INT,                 -- 0 = fill day; k = k-th trading session after the fill
+                sessions_walked     INT,
+                day0_bar_count      INT,                 -- minute bars available from the fill bar to the close
+                exits               JSONB,               -- the legs: [{time, price, reason, shares, pnl}] (shares are fractions of ONE share for walked arms)
+                pnl_attribution     TEXT,                -- copied from the trade row: non-NULL = bug-distorted live P&L, filter it
+                regime              TEXT,
+                -- ERA STAMP (rule_eras.py) — which rules produced this trade
+                exit_era            TEXT NOT NULL,       -- era_a | era_b | era_c
+                exit_rules          JSONB NOT NULL,      -- exit_rules_as_of(alert_date): stop_mode / partial / trail / breakeven / ladder_partial / score_separation
+                admission_era       TEXT NOT NULL,       -- admission_era_as_of(alert_date): the latest admission switch on/before the alert
+                rubric_version      TEXT,                -- the next eight are copied VERBATIM from mi_ep_alerts — stamped AT ADMISSION, not derived from a date
+                score_tier          TEXT,
+                ep_score            DOUBLE PRECISION,
+                judge_grade         TEXT,
+                judge_tier          TEXT,
+                grade_engine_authority TEXT,
+                setup_class         TEXT,
+                baseline_floor_tier TEXT,
+                alert_source        TEXT,
+                settle_version      TEXT NOT NULL,
+                settled_session     DATE NOT NULL,       -- the last SETTLED trading session the recorder had walked when it wrote this row (a plain business date: the detector-liveness registry keys on it — its rule is name-based and a timestamptz under any name but created_at is silently mis-keyed)
+                recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (trade_id, arm)
+            );
+            CREATE INDEX IF NOT EXISTS idx_live_fill_cf_alert_date
+                ON mi_live_fill_counterfactuals(alert_date);
+            CREATE INDEX IF NOT EXISTS idx_live_fill_cf_arm
+                ON mi_live_fill_counterfactuals(arm);
+
             -- 2026-08-16 — ALERT-RANK SHADOW (alert_rank_shadow.py). docs/roadmap/
             -- ep_profitability_program.md §0d found a three-feature ranking rule (smaller
             -- gap · tighter EP day · less MA-distance extension, percentile-averaged) that
@@ -14235,4 +14320,149 @@ async def get_analyst_estimates_asof(
             """,
             ticker, d, period_type,
         )
+    return [dict(r) for r in rows]
+
+
+# ── #482 (2026-09-03) LIVE-FILL COUNTERFACTUAL RECORDER — the reads + the ONE writer ─────
+# Schema: the mi_live_fill_counterfactuals CREATE TABLE block in initialize_schema (its
+# comment carries the design). Consumer: agents/market_intelligence/live_fill_counterfactuals.py.
+# THE LINE: every function here except insert_live_fill_counterfactual is a SELECT; nothing
+# in this section touches mi_live_trades / mi_live_orders.
+
+LIVE_FILL_CF_COLS: tuple[str, ...] = (
+    "trade_id", "ticker", "account_mode", "signal_type", "entry_attempt", "alert_date",
+    "fill_day", "arm", "arm_kind", "stop_rule", "harvest_rule",
+    "entry_price", "orb_high", "orb_low", "live_stop", "target_price", "target_r",
+    "adr20_pct", "adr20_n", "adr_dollar", "stop_price", "risk_per_share", "stop_width_pct",
+    "stop_width_adr",
+    "outcome", "final_reason", "realized_r", "realized_pct", "pnl_adr", "mark_r",
+    "partial_fired", "gap_through", "exit_session", "sessions_walked", "day0_bar_count",
+    "exits", "pnl_attribution", "regime",
+    "exit_era", "exit_rules", "admission_era", "rubric_version", "score_tier", "ep_score",
+    "judge_grade", "judge_tier", "grade_engine_authority", "setup_class",
+    "baseline_floor_tier", "alert_source", "settle_version", "settled_session",
+)
+_LIVE_FILL_CF_JSONB_LIST = frozenset({"exits"})
+_LIVE_FILL_CF_JSONB_DICT = frozenset({"exit_rules"})
+
+
+def _live_fill_cf_placeholder(i: int, col: str) -> str:
+    # Explicit ::jsonb on the two JSON columns: the registered codec single-encodes a Python
+    # object bound to a jsonb param (the #216 lesson — never pre-json.dumps). Every other
+    # column is bound once, so asyncpg's type deduction has nothing to be ambiguous about.
+    if col in _LIVE_FILL_CF_JSONB_LIST or col in _LIVE_FILL_CF_JSONB_DICT:
+        return f"${i}::jsonb"
+    return f"${i}"
+
+
+# Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time
+# (a silent recorder is where a type-deduction bug hides longest — the #606 case).
+LIVE_FILL_CF_INSERT_SQL = (
+    f"INSERT INTO mi_live_fill_counterfactuals ({', '.join(LIVE_FILL_CF_COLS)}) VALUES ("
+    + ", ".join(_live_fill_cf_placeholder(i + 1, c) for i, c in enumerate(LIVE_FILL_CF_COLS))
+    + ") ON CONFLICT (trade_id, arm) DO NOTHING"
+)
+
+
+async def insert_live_fill_counterfactual(fields: dict) -> bool:
+    """Write ONE settled/abstained/unscoreable arm row (SHADOW — telemetry only; nothing
+    live reads it). Write-once: ON CONFLICT (trade_id, arm) DO NOTHING, so a re-run can never
+    rewrite a settled arm. Missing keys write NULL. Returns True iff THIS call inserted."""
+    vals = []
+    for c in LIVE_FILL_CF_COLS:
+        v = fields.get(c)
+        if c in _LIVE_FILL_CF_JSONB_LIST:
+            v = _jsonb_list_param(v if v is not None else [])
+        elif c in _LIVE_FILL_CF_JSONB_DICT:
+            v = _jsonb_param(v if v is not None else {})
+        vals.append(v)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute(LIVE_FILL_CF_INSERT_SQL, *vals)
+    return res.endswith(" 1")
+
+
+_COUNTERFACTUAL_FILLS_SQL = """
+    SELECT t.id, t.ticker, t.alert_date, t.account_mode, t.signal_type, t.entry_attempt,
+           t.status, t.entry_price, t.entry_shares, t.orb_high, t.orb_low, t.hard_stop,
+           t.regime, t.exits, t.partial_taken, t.total_pnl, t.pnl_attribution,
+           t.filled_at, t.closed_at
+    FROM mi_live_trades t
+    WHERE t.signal_type = 'magna53'
+      AND t.filled_at IS NOT NULL
+      AND (t.filled_at AT TIME ZONE 'America/New_York')::date >= $1::date
+      AND (SELECT COUNT(*) FROM mi_live_fill_counterfactuals c WHERE c.trade_id = t.id) < $2::int
+    ORDER BY t.filled_at, t.id
+"""
+
+
+async def get_counterfactual_fills(filled_from: "date", n_arms: int) -> list[dict]:
+    """READ-ONLY. MAGNA53 fills (both account modes — stamped, never pooled) filled on or
+    after `filled_from` (ET day) that still have fewer than `n_arms` recorder rows. 9m_day2
+    and the other retired strategies are excluded by construction (operator 2026-08-29:
+    never cite them); the ORB-R target frame is MAGNA53's."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_COUNTERFACTUAL_FILLS_SQL, _coerce_date(filled_from), int(n_arms))
+    return [dict(r) for r in rows]
+
+
+_COUNTERFACTUAL_ARMS_WRITTEN_SQL = """
+    SELECT arm FROM mi_live_fill_counterfactuals WHERE trade_id = $1
+"""
+
+
+async def get_counterfactual_arms_written(conn: Any, trade_id: int) -> set[str]:
+    """READ-ONLY. The arms already recorded for one trade (write-once: these are skipped)."""
+    rows = await conn.fetch(_COUNTERFACTUAL_ARMS_WRITTEN_SQL, int(trade_id))
+    return {r["arm"] for r in rows}
+
+
+_EP_ALERT_ADMISSION_STAMP_SQL = f"""
+    SELECT rubric_version, score_tier, ep_score, judge_grade, judge_tier,
+           grade_engine_authority, setup_class, baseline_floor_tier,
+           COALESCE(source, 'live') AS alert_source
+    FROM mi_ep_alerts
+    WHERE ticker = $1 AND alert_date = $2 AND {LIVE_SOURCE_SQL}
+    ORDER BY id
+    LIMIT 1
+"""
+
+
+async def get_ep_alert_admission_stamp(conn: Any, ticker: str, alert_date: "date") -> "dict | None":
+    """READ-ONLY. The alert row's admission-time stamps for a fill — written AT admission by
+    the scan/judge, so they identify the acting rubric/grade engine/tier without deriving
+    anything from a date. None when no live-source alert row exists (recorded as NULLs)."""
+    row = await conn.fetchrow(_EP_ALERT_ADMISSION_STAMP_SQL, ticker, _coerce_date(alert_date))
+    return dict(row) if row else None
+
+
+_INTRADAY_BARS_WINDOW_SQL = """
+    SELECT bar_time, open, high, low, close FROM mi_intraday_bars
+    WHERE ticker = $1 AND bar_time >= $2 AND bar_time <= $3
+    ORDER BY bar_time
+"""
+
+
+async def get_intraday_bars_window(conn: Any, ticker: str, start_ts: Any, end_ts: Any) -> list[dict]:
+    """READ-ONLY. Stored 1-minute bars in [start_ts, end_ts], oldest first, as
+    {'m': bar_time, 'o','h','l','c'} — the trade lifecycle already stores these (stream
+    write-through + the 16:22 ET day-0 back-fill); this reads, it never fetches."""
+    rows = await conn.fetch(_INTRADAY_BARS_WINDOW_SQL, ticker, start_ts, end_ts)
+    return [{"m": r["bar_time"], "o": _f(r["open"]), "h": _f(r["high"]),
+             "l": _f(r["low"]), "c": _f(r["close"])} for r in rows]
+
+
+_DAILY_OHLC_RANGE_SQL = """
+    SELECT trade_date, open_price, high_price, low_price, close FROM mi_daily_closes
+    WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
+    ORDER BY trade_date
+"""
+
+
+async def get_daily_ohlc_range(conn: Any, ticker: str, start: "date", end: "date") -> list[dict]:
+    """READ-ONLY. Stored daily OHLC rows for [start, end], oldest first. A missing session
+    is simply absent — the caller decides (the #482 recorder retries it through
+    get_daily_bar_with_fallback, and abstains if it never appears)."""
+    rows = await conn.fetch(_DAILY_OHLC_RANGE_SQL, ticker, _coerce_date(start), _coerce_date(end))
     return [dict(r) for r in rows]

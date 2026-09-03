@@ -192,6 +192,10 @@ def test_module_constant_covers_the_required_tables():
         # is its ONLY watchdog; a dead writer silently stops the >=60-day accrual
         # clock that gates the durability axis.
         "mi_analyst_estimates",
+        # 2026-09-03 (#482): the live-fill counterfactual recorder — SILENT by design
+        # (no Telegram on any path), fire-and-forget beside every MAGNA53 fill, read by
+        # nothing on any live path; this registry is its only watchdog.
+        "mi_live_fill_counterfactuals",
     }
 
 

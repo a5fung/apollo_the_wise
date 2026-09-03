@@ -239,6 +239,100 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-09-03 — #482: counterfactual stops and harvests are RECORDED beside every MAGNA53 fill, era-stamped (RECORD ONLY — no exit rule, stop, target, size or admission changed)
+
+**Trigger**: operator 2026-09-03 — *"After every analysis you just give the opposite rec, I
+don't trust any of this."* Four stop findings in three days each reversed the last, and each
+ran on a different re-slice of history: Phase 3 (`docs/analysis/545p3_day1_stop_target_runner_
+sweep_2026-09-03.md`) found ORB-low and 0.5×ADR beat the live `entry − 2R` stop on the
+ADMITTED population, which conflicts with the 08-16 read the live stop was signed on (43
+reconstructed April–May trades). Both reads are sound for their population; the populations
+differ and nothing said so. His added requirement, verbatim, is a design constraint: *"even if
+we stop looking explicitly at entries with the counterfactual, there's still possibility that
+we'll be updating our filters, etc. as we observe live EPs, i.e. if i see we miss one i'd
+suggest it so we can update to catch it."* The admitted population WILL move under any forward
+recorder (P1: a real EP must never be missed); it must not silently corrupt the accrual.
+
+**What is recorded** (`agents/market_intelligence/live_fill_counterfactuals.py`, table
+`mi_live_fill_counterfactuals`, job `live_fill_counterfactuals` 18:04 ET Mon–Fri). For every
+MAGNA53 fill in `mi_live_trades` filled on/after 2026-08-16 (era C, the current stop's own
+population), ONE row per arm, each settled on the SAME stored bars through the SAME
+`exit_logic.apply_daily_exit_step` ladder the live tracker calls, each rule one sentence:
+- `live_actual` — what the real trade did (`total_pnl ÷ placed risk`).
+- `live_replay` — the live rule walked on the same bars: the per-fill fidelity check. A
+  counterfactual is quotable only where this agrees with `live_actual`.
+- `stop_orb_low` · `stop_adr_050` · `stop_adr_075` — the stop sits at the ORB low / entry −
+  0.5×ADR20$ / entry − 0.75×ADR20$; everything else is the live ladder; the +2R partial target
+  stays pinned to `entry + 2·(entry − ORB low)` (Phase 3 §6: the pin is what makes any stop
+  tolerable).
+- `harvest_no_breakeven` — live stop; 1/3 off at +2R; the stop does NOT move to entry after the
+  partial. Tests the +0.33R unit effect (26 of 54 partial-takers end at exactly +0.33R).
+- `harvest_trail_only` — live stop; no partial ever; hard stop + SMA trail on the whole
+  position. Tests whether the partial itself caps the winners (0 of 26 closed live trades has
+  reached 4R).
+- `harvest_t3` — live stop; 1/3 off at +2R; the remaining 2/3 sold at the close of the 3rd
+  session after the partial (hard stop stays; no breakeven, no trail post-partial). Phase 3's
+  one direction-only runner (+16R on 55 takers, three names carrying 80%).
+R is in each arm's OWN units (pnl ÷ (entry − its stop)) so a wider stop is not flattered;
+`realized_pct` and `pnl_adr` are size-free. ADR20 is the mean (high−low)/close over the ≤20
+stored sessions before the alert (NULL below 10 — recorded and counted, never substituted;
+the two ADR arms then close `unscoreable`). ADR$ is anchored at the ENTRY (Phase 3 anchored
+at the ORB high; `adr20_pct` is stored so that frame can be rebuilt).
+
+**The era stamp** — every row carries `exit_era` (A/B/C) + `exit_rules` (stop mode, partial,
+trail, breakeven, ladder partial) + `admission_era` (the latest admission switch on/before
+the alert, dated by the FIRST SESSION whose ORB admission ran under the rule — a rule that
+flipped after 09:45 ET admitted nothing that day: 08-20 gap floor 9% · 08-24
+lattice/separation/shortlist · 08-26 RT universe · 08-28 rubric v4 + RT gap authority ·
+08-31 extension cap 50 + RS slot rank) from
+`rule_eras.py` — the ONE dated switch table `scripts/ep_replay.py` and `system_review.py`'s
+era pins now also read — PLUS the alert row's own admission-time stamps copied verbatim
+(`rubric_version`, `score_tier`, `ep_score`, `judge_grade`, `judge_tier`,
+`grade_engine_authority`, `setup_class`, `baseline_floor_tier`). The question this lets a
+reader answer that pooling cannot: *within one admission regime, which stop wins — and does
+the winner flip at a regime boundary?* When the operator adds a filter after a missed EP, the
+rows before and after carry different labels and are read apart. ⚠ SAME-COMMIT RULE: an
+admission-criterion change lands as a change-log entry in `magna53_ep.md` AND a row in
+`rule_eras.ADMISSION_SWITCHES` (a test pins that every row cites a dated heading there; the
+reverse is not mechanically decidable).
+
+**What it mirrors, and where it deliberately differs.** The walk re-implements
+`scripts/ep_replay._walk_leg` — the only mechanics validated per-trade against real fills
+(44/44 · 33/33 · 29/30 · 25/30) — because that harness cannot be imported into the market
+agent; parity is pinned by test on identical bars. Deviations, each stated in the module:
+a 40-session horizon (open beyond → `horizon` with a MARK, never a return); a missing session
+BLOCKS the walk and is retried nightly, then written `abstain` after 5 further sessions
+(never leapt — the #616 rule); one fractional share instead of the row's integer count.
+Missing day-0 minutes → the same pending-then-abstain path. Same-bar stop-and-target →
+`abstain` (order unknowable at 1-minute grain).
+
+**THE LINE, verified in code and pinned by `tests/test_live_fill_counterfactuals.py`:** the
+recorder's ONLY write target is its own table (+ `mi_audit_log`); it never writes
+`mi_live_trades` / `mi_live_orders`, never calls the broker, imports nothing from `broker/`
+but the pure `exit_logic` ladder, and nothing in any grading / entry / sizing / ordering /
+safeguard path imports it. The acceptance test captures every SQL statement the run executes
+against a fake pool and asserts no write names anything but the recorder's table, and that
+the served `mi_live_trades` row is byte-identical after the run. A total recorder failure
+(every arm raising, every write raising) leaves the live trade untouched: counted errors +
+audit rows, no Telegram, the job returns. Write-once (`UNIQUE (trade_id, arm)`, `ON CONFLICT
+DO NOTHING`).
+
+**Gate**: `data_gated_reviews.yaml` → `live_fill_counterfactuals_first_read_482`, own gate
+(not a rider on `exit_tune_cohort_review` — that counts closed trades incl. ones this recorder
+cannot settle; its question is the exit forensic), at 20 live era-C fills whose `live_actual`
+and all three stop arms are settled, read PAIRED and SEGMENTED by `admission_era`. Any
+change it motivates is CHANGE_PROCESS + operator sign-off + backtest (THE LINE).
+
+**Reversion-flag**: n/a — a record, not a rule. Disable = remove the scheduler job; the table
+stays (kept forever, same class as `mi_exit_path_shadow`).
+
+**Status**: BUILT 2026-09-03, working tree. Deploy: `market-agent` (the job runs there; the
+schema lands on boot) **then `execution`** — no `broker/` or `execution_routes` file changed
+and the recorder module is absent from `scripts/exec_loaded_modules.txt`, but `db.py` and
+`scheduler.py` are on that list, so the scope-drift guard will (correctly) demand the second
+step; execution's behaviour is unchanged by either edit (an additive table + an
+intelligence-only job registration).
+
 ### 2026-08-24 — BUG FIX (#591): the day-1 stop-out closed the row while a profit-take was still resting at the broker (TRADE STATE — operator-signed; no exit rule, stop, target or size changed)
 
 **Trigger**: #588's audit (entry below) surfaced it and deliberately left it open as

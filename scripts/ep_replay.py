@@ -42,9 +42,13 @@ KNOWN DEVIATIONS from live behaviour (each stated, none silent):
     it moved 14 of 267 campaigns and flipped CORT and ATRO from small wins to small losses;
     a replay that books a partial live stands down is optimistic on every runner rule, which
     is exactly the direction that flatters a harvest finding.
-  - Same-day-after-partial the resting stop stays at the ORIGINAL stop (breakeven_at_broker
-    default-OFF behaviour, confirmed by FIGS 08-07); breakeven enters via the ladder's
-    effective stop from the NEXT session — matches CRWD 08-28's breakeven fill.
+  - Same-day-after-partial: BEFORE 2026-08-08 (RuleSet.breakeven_at_partial False) the
+    resting stop stays at the ORIGINAL stop and breakeven enters via the ladder's effective
+    stop from the NEXT session (FIGS 08-07 stopped at the original). FROM 08-08 (#548,
+    breakeven_at_partial True — era C) `_walk_leg` raises the resting stop to entry AT the
+    partial, the same session (ETON 08-14 / CRWD 08-28 stopped at breakeven). This bullet
+    said "stays at the original" for every era until 2026-09-03 — stale against the code
+    it describes; the code is what `validate` validated.
   - Re-entry is OPT-IN (RuleSet.attempts=2 + reentry_signal; Phase 3, 2026-09-03): one leg
     after a full stop-out via the #5 lineage's three placeable signals, each leg its own 1R.
     `validate` never enables it — the 6 real attempt-2 trades are excluded from agreement and
@@ -102,21 +106,20 @@ class RuleSetRequired(ValueError):
 
 
 # ── Rule-sets ────────────────────────────────────────────────────────────────────────
-# Dated switch table — provenance for every line:
-#   score separation + rescale   2026-08-22  (#533, operator-signed; magna53_ep.md change log)
-#   protective stop entry−2R     2026-08-16  (operator-signed; order_manager ~L481)
-#   +2R intraday partial live    2026-08-01  (#508, constants.PROFIT_TRIGGER_R)
-#   trail uses stock's own MA    2026-08-08  (#548, prior_closes)
+# Dated switch table — lives in agents/market_intelligence/rule_eras.py since 2026-09-03
+# (#482): the #482 live-fill counterfactual recorder and system_review's era pins read the
+# SAME dates, so the harness and the forward recorder cannot disagree about an era boundary
+# (P15: a second copy is a fork). Provenance for every line is documented there. The names
+# are re-exported here unchanged so every probe that reads `ep.STOP_2R_DATE` still works.
 #   10:00 ET unfilled-cancel     era B/C     (CLAUDE.md ORB window; era-A fills as late as
 #                                             11:35 prove no cancel then — KURA 04-17)
-SEP_SCORE_DATE = date(2026, 8, 22)
-STOP_2R_DATE = date(2026, 8, 16)
-PARTIAL_LIVE_DATE = date(2026, 8, 1)
-TRAIL_PRIOR_CLOSES_DATE = date(2026, 8, 8)
-# #548 ships the partial's breakeven move AT the broker (stop replaced at entry when the
-# partial fires). Validated against real fills: FIGS 08-07 stopped at the ORIGINAL stop
-# after its partial (pre-#548), ETON 08-14 and CRWD 08-28 stopped at BREAKEVEN (post).
-BREAKEVEN_AT_PARTIAL_DATE = date(2026, 8, 8)
+from agents.market_intelligence.rule_eras import (  # noqa: E402
+    BREAKEVEN_AT_PARTIAL_DATE,
+    PARTIAL_LIVE_DATE,
+    SEP_SCORE_DATE,
+    STOP_2R_DATE,
+    TRAIL_PRIOR_CLOSES_DATE,
+)
 
 
 @dataclass(frozen=True)

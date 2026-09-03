@@ -1580,6 +1580,13 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # business column `as_of_date` (created_at is timestamptz and would silently never
     # be checked — the name-based `created_at` rule).
     ("mi_analyst_estimates", "analyst estimates recorder (#333)", "as_of_date", None),
+    # #482 (2026-09-03): the live-fill counterfactual recorder. Writes only when a MAGNA53
+    # fill has arms left to settle (~a handful a month), so its cadence is sparse by nature —
+    # the liveness rule derives that from the table's own history, as for mi_exit_path_shadow.
+    # Keyed on `settled_session` (the last settled session the run had walked when it wrote —
+    # a plain business DATE that advances with every writing run), NOT `recorded_at`: the
+    # date-column rule below is name-based and only `created_at` routes to the timestamp branch.
+    ("mi_live_fill_counterfactuals", "live-fill counterfactual recorder (#482)", "settled_session", None),
 )
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median
