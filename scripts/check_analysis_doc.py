@@ -143,6 +143,21 @@ def _problems(text: str) -> list[str]:
     return problems
 
 
+def _report(failed: dict, header: str, footer: str = "") -> int:
+    """Print the failures. ONE printer for both entry points (2026-09-02) — the CLI-path branch
+    and the pre-commit git-diff branch had their own copies of the same loop, differing only in
+    header and footer, which is how two paths quietly start formatting the same failure
+    differently."""
+    print(header, file=sys.stderr)
+    for doc, problems in failed.items():
+        print(f"\n  {doc}", file=sys.stderr)
+        for pr in problems:
+            print(f"    - {pr}", file=sys.stderr)
+    if footer:
+        print(footer, file=sys.stderr)
+    return 1
+
+
 def main() -> int:
     # ⚠ AN EXPLICIT PATH IS HONOURED (2026-09-02). Until today this ignored argv entirely and
     # always derived its targets from the git diff, so `check_analysis_doc.py <path>` — the form
@@ -156,14 +171,8 @@ def main() -> int:
                   file=sys.stderr)
             return 2
         failed = {path: problems for path in argv if (problems := check(path))}
-        if not failed:
-            return 0
-        print("✘ analysis document(s) missing required sections", file=sys.stderr)
-        for doc, problems in failed.items():
-            print(f"\n  {doc}", file=sys.stderr)
-            for pr in problems:
-                print(f"    - {pr}", file=sys.stderr)
-        return 1
+        return _report(failed, "✘ analysis document(s) missing required sections") if failed else 0
+
     docs = changed_docs()
     if not docs:
         return 0
@@ -175,15 +184,11 @@ def main() -> int:
             failed[path] = problems
     if not failed:
         return 0
-    print("✘ pre-commit: analysis document(s) missing required sections", file=sys.stderr)
-    print("  Standard: docs/methodology/analysis_standard.md", file=sys.stderr)
-    for doc, problems in failed.items():
-        print(f"\n  {doc}", file=sys.stderr)
-        for p in problems:
-            print(f"    - {p}", file=sys.stderr)
-    print("\n  A RETRACTED doc is exempt — start it with a ⛔ banner if that is what it is.",
-          file=sys.stderr)
-    return 1
+    return _report(
+        failed,
+        "✘ pre-commit: analysis document(s) missing required sections\n"
+        "  Standard: docs/methodology/analysis_standard.md",
+        "\n  A RETRACTED doc is exempt — start it with a ⛔ banner if that is what it is.")
 
 
 if __name__ == "__main__":

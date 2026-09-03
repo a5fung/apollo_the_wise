@@ -4556,7 +4556,7 @@ async def _analyst_estimates_snapshot_job():
             f"analyst-estimates snapshot: {out['rows_written']} row(s) across "
             f"{out['tickers_written']}/{out['population']} ticker(s), "
             f"{out['no_anchor']} no-anchor, "
-            f"{out['quarter_unavailable']} quarter-unavailable, "
+            f"{out['quarter_yf_no_cadence']} quarter-no-cadence, "
             f"{out['errors']} error(s)"
         )
     except Exception as e:

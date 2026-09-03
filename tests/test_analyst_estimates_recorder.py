@@ -716,14 +716,17 @@ async def test_annual_402_degrades_and_audits_a_plan_change(monkeypatch):
 async def test_both_periods_402_is_counted_not_an_error(monkeypatch):
     """Losing the estimate endpoint is a degrade, not a per-ticker error — the counters and the
     audit row carry the news; nothing raises. (Only annual is requested since 2026-09-02, so
-    `quarter_unavailable` stays 0: we cannot lose an endpoint we never call.)"""
+    the `quarter_unavailable` counter is GONE: we cannot lose an endpoint we never call.)"""
     written, audits = _wire(
         monkeypatch, anchors={"MRNA": date(2026, 7, 31)},
         p402={"annual", "quarter"},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
     assert out["errors"] == 0 and out["rows_written"] == 0
-    assert out["annual_unavailable"] == 1 and out["quarter_unavailable"] == 0
+    assert out["annual_unavailable"] == 1
+    assert "quarter_unavailable" not in out, (
+        "the counter is dead — quarter is never requested from FMP, so it could only ever be 0; "
+        "a digest line that always prints zero teaches a reader to stop reading it")
     assert written == []
     assert any(e == "analyst_estimates_plan_change" for e, _ in audits)
 

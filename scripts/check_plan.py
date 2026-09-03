@@ -690,6 +690,26 @@ def _pending_verify_violations(tasks):
     return [t for t in tasks if t["status"] != "deployed" and _pending_verify_matches(t["title"])]
 
 
+def _plan_at_ref(ref: str = "HEAD") -> "str | None":
+    """PLAN.md's text at a git ref, or None if git cannot produce it.
+
+    ONE reader (2026-09-02). This was hand-rolled at four sites — three gates and
+    `day_movement` — and the fourth copy had already drifted: it dropped `encoding=`/
+    `errors=` and used a 20s timeout against the others' 5s. Harmless today because every
+    caller wraps it in try/except, which is exactly why it could drift unnoticed. A future
+    change to how PLAN.md is read from git (encoding, timeout, missing-file handling) now has
+    one place to happen.
+    """
+    import subprocess
+    try:
+        r = subprocess.run(["git", "show", f"{ref}:PLAN.md"], cwd=str(REPO),
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=5)
+    except Exception:      # loud-ok: every caller degrades rather than blocking a commit
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
 def _pending_verify_gate(tasks, errors) -> None:
     """Apply the pending-verify-claim check: HARD-FAIL on lines touched this commit, WARN on
     pre-existing ones. See the section comment above for the full rationale."""
@@ -700,11 +720,9 @@ def _pending_verify_gate(tasks, errors) -> None:
     prior_by_id: dict[int, dict] = {}
     git_ok = False
     try:
-        head = subprocess.run(["git", "show", "HEAD:PLAN.md"], cwd=str(REPO),
-                               capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=5)
-        if head.returncode == 0:
-            prior_tasks, _ = parse(head.stdout)
+        _txt = _plan_at_ref()
+        if _txt is not None:
+            prior_tasks, _ = parse(_txt)
             prior_by_id = {t["id"]: t for t in prior_tasks}
             git_ok = True
     except Exception:
@@ -788,11 +806,9 @@ def _deployed_no_verify_gate(tasks, errors) -> None:
     prior_by_id: dict[int, dict] = {}
     git_ok = False
     try:
-        head = subprocess.run(["git", "show", "HEAD:PLAN.md"], cwd=str(REPO),
-                               capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=5)
-        if head.returncode == 0:
-            prior_tasks, _ = parse(head.stdout)
+        _txt = _plan_at_ref()
+        if _txt is not None:
+            prior_tasks, _ = parse(_txt)
             prior_by_id = {t["id"]: t for t in prior_tasks}
             git_ok = True
     except Exception:
@@ -950,12 +966,10 @@ def _rebump_gate(tasks, errors) -> None:
     (The theme shadow lane sat 2026-06-02 -> void on silent re-bumps — never again.)"""
     import subprocess
     try:
-        head = subprocess.run(["git", "show", "HEAD:PLAN.md"], cwd=str(REPO),
-                               capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=5)
-        if head.returncode != 0:
+        _txt = _plan_at_ref()
+        if _txt is None:
             return  # no committed PLAN yet — nothing to diff against
-        prior, _ = parse(head.stdout)
+        prior, _ = parse(_txt)
     except Exception:
         return  # git unavailable — don't block a commit on infra
     prior_eta = {t["id"]: t["eta"] for t in prior}
@@ -1038,8 +1052,9 @@ def day_movement(today) -> dict:
                              cwd=REPO, capture_output=True, text=True, timeout=20).stdout.strip()
         if not rev:
             return {"error": "no commit precedes the PT day — cannot compute movement"}
-        before = subprocess.run(["git", "show", f"{rev}:PLAN.md"],
-                                cwd=REPO, capture_output=True, text=True, timeout=20).stdout
+        before = _plan_at_ref(rev)
+        if before is None:
+            return {"error": f"git could not read PLAN.md at {rev}"}
     except Exception as e:  # loud-ok: reporting aid, never blocks a commit
         return {"error": f"{type(e).__name__}: {e}"}
 

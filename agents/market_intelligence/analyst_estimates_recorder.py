@@ -834,7 +834,7 @@ async def _fetch_yfinance_quarterly(ticker: str) -> Optional[dict[str, Any]]:
 
 
 async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
-    """Fetch + normalize one ticker's estimates. Returns {rows, unavailable_periods,
+    """Fetch + normalize one ticker's estimates. Returns {rows, annual_unavailable,
     anchor, anchor_error, quarter_yf_rows, quarter_yf_unavailable,
     quarter_yf_no_cadence} — raises only on a hard ANNUAL FMP fetch failure the
     caller counts (per-ticker isolation lives in the run loop, not here). The anchor
@@ -856,48 +856,56 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
         anchor_error = True
         logger.warning(f"anchor fetch failed for {ticker} (zero honest window): "
                        f"{redact_secrets(f'{type(e).__name__}: {e}')}")
+    # ⏱ THE YFINANCE LEG STARTS HERE, NOT AFTER THE FMP SLEEPS (2026-09-02). It is a different
+    # vendor with an independent rate limit, so running it in series behind FMP's two deliberate
+    # 12s pauses just adds its latency to every ticker — roughly 2-8 minutes across the ~99-ticker
+    # nightly population, and ~3x that on the one-shot backfill. Launched as a task, awaited only
+    # where its result is needed, so the pauses become cover time. It still cannot take the annual
+    # row down: _fetch_yfinance_quarterly catches everything internally.
+    _yf_task = asyncio.ensure_future(_fetch_yfinance_quarterly(ticker))
+
     await asyncio.sleep(FMP_PACE_SECONDS)
     rows: list[dict] = []
-    unavailable_periods: set[str] = set()
+    annual_unavailable = False
     # ⚠ ANNUAL ONLY FROM FMP (2026-09-02). `period=quarter` is NOT on this tier — FMP says so
-    # explicitly: "This value set for 'period' is not available under your current
-    # subscription". Calling it anyway DOUBLED our call volume for a guaranteed 402, on the
-    # exact quota the annual call needs, which is how a working endpoint came back 99-for-99
-    # empty. The quarterly leg comes from yfinance instead — see below, and the module
-    # docstring's "THE QUARTERLY LEG IS YFINANCE" section.
-    for period in ("annual",):
-        try:
-            recs = await _fetch_estimates(ticker, period)
-        except Exception as e:
-            if _is_payment_required(e):
-                # A 402 degrades the FIELD, never the ticker — whichever period it
-                # hits. (Annual was verified in-plan 2026-08-31; the run loop turns
-                # an annual 402 into a plan-change audit row.)
-                unavailable_periods.add(period)
-                continue
+    # explicitly: "This value set for 'period' is not available under your current subscription".
+    # Calling it anyway DOUBLED our call volume for a guaranteed 402, on the exact quota the
+    # annual call needs, which is how a working endpoint came back 99-for-99 empty. The quarterly
+    # leg is yfinance — see the module docstring's "THE QUARTERLY LEG IS YFINANCE" section.
+    # Straight-line rather than a one-element loop: a `for period in ("annual",)` reads as though
+    # a per-period fetch still happens, and carried a `quarter_unavailable` counter that could
+    # never be anything but zero.
+    try:
+        recs = await _fetch_estimates(ticker, "annual")
+    except Exception as e:
+        if not _is_payment_required(e):
             raise
-        for rec in recs:
-            row = normalize_fmp_estimate(
-                rec, ticker=ticker, period_type=period, as_of=as_of,
-                anchor_filing_date=anchor,
-            )
-            if row is not None:
-                rows.append(row)
-        await asyncio.sleep(FMP_PACE_SECONDS)
+        # A 402 degrades the FIELD, never the ticker. Annual IS in-plan (verified 08-31,
+        # re-verified 09-02), so a 402 here is most likely a RATE BREACH — FMP answers both
+        # with 402 — which is why the run loop's alarm no longer asserts a plan change.
+        annual_unavailable = True
+        recs = []
+    for rec in recs:
+        row = normalize_fmp_estimate(
+            rec, ticker=ticker, period_type="annual", as_of=as_of,
+            anchor_filing_date=anchor,
+        )
+        if row is not None:
+            rows.append(row)
+    await asyncio.sleep(FMP_PACE_SECONDS)
 
     # ── quarterly leg (v3, yfinance) — never raises past this block ──────────────────
     quarter_yf_unavailable = False
     quarter_no_cadence = False
     quarter_rows: list[dict] = []
     try:
-        yf_data = await _fetch_yfinance_quarterly(ticker)
+        yf_data = await _yf_task          # started before the FMP pauses; usually already done
     except Exception as e:  # belt-and-suspenders: _fetch_yfinance_quarterly already
         # catches everything internally and returns None, but this leg must NEVER be
         # able to take the annual row down with it even if that contract slips.
         yf_data = None
         logger.warning(f"yfinance quarterly fetch failed for {ticker} (annual row "
                        f"unaffected): {redact_secrets(f'{type(e).__name__}: {e}')}")
-    await asyncio.sleep(YFINANCE_PACE_SECONDS)
     if not yf_data:
         quarter_yf_unavailable = True
     else:
@@ -933,7 +941,7 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             quarter_no_cadence = True
     rows.extend(quarter_rows)
 
-    return {"rows": rows, "unavailable_periods": unavailable_periods,
+    return {"rows": rows, "annual_unavailable": annual_unavailable,
             "anchor": anchor, "anchor_error": anchor_error,
             "quarter_yf_rows": len(quarter_rows),
             "quarter_yf_unavailable": quarter_yf_unavailable,
@@ -945,7 +953,7 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
 async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict[str, Any]:
     out = {"population": len(tickers), "tickers_written": 0, "rows_written": 0,
            "no_anchor": 0, "anchor_errors": 0,
-           "annual_unavailable": 0, "quarter_unavailable": 0, "errors": 0,
+           "annual_unavailable": 0, "errors": 0,
            "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
            "quarter_yf_no_cadence": 0}
     for ticker in tickers:
@@ -964,10 +972,8 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
                 out["anchor_errors"] += 1        # EDGAR outage — NOT the by-design case
             elif snap["anchor"] is None:
                 out["no_anchor"] += 1            # true non-filer/ETF — zero days by design
-            if "annual" in snap["unavailable_periods"]:
+            if snap["annual_unavailable"]:
                 out["annual_unavailable"] += 1
-            if "quarter" in snap["unavailable_periods"]:
-                out["quarter_unavailable"] += 1
         except Exception as e:  # per-ticker isolation: one bad name never kills the run
             out["errors"] += 1
             logger.warning(redact_secrets(
@@ -1002,7 +1008,7 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
 
 _EMPTY_RUN = {"population": 0, "tickers_written": 0, "rows_written": 0,
               "no_anchor": 0, "anchor_errors": 0,
-              "annual_unavailable": 0, "quarter_unavailable": 0, "errors": 1,
+              "annual_unavailable": 0, "errors": 1,
               "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
               "quarter_yf_no_cadence": 0}
 
@@ -1025,7 +1031,6 @@ async def _run_and_log(tickers: list[str], today: date, event_type: str,
                 f"{out['no_anchor']} no-anchor (zero honest days, by design), "
                 f"{out['anchor_errors']} anchor-error (zero honest days, EDGAR fetch failed), "
                 f"{out['annual_unavailable']} annual-402, "
-                f"{out['quarter_unavailable']} quarter-402, "
                 f"{out['quarter_yf_no_cadence']} quarter-no-cadence-anchor "
                 f"(yfinance had data, period end unresolvable — no EDGAR cadence facts, "
                 f"OR the ticker is mid reporting-gap today; a nonzero baseline here EVERY "

@@ -1441,6 +1441,30 @@ async def _try_settle_variants_inline(trig: dict, today: date, out: dict,
             pass
 
 
+async def _assemble_settle_window(ticker: str, fire_date: date, today: date, trig: dict):
+    """(sessions, bars_by_day, closes_before, fire_day_bar) — the settle window, built ONCE.
+
+    Extracted 2026-09-02: the incumbent pass and the #616 variant pass each built this
+    identically, twelve lines apiece. The fire-day OHLC fallback below (the trigger row's own
+    record first, the stored daily window per field) is exactly the sort of one-line rule a
+    future fix touches — and a fix applied to one copy and not the other silently reintroduces
+    the incumbent/variant mismatch the whole variant feature exists to avoid.
+    """
+    sessions = _trading_days(fire_date + timedelta(days=1), today)
+    daily = await get_delayed_entry_daily_window(
+        ticker, fire_date - timedelta(days=_SETTLE_SMA_FETCH_CAL_DAYS), today)
+    bars_by_day = {b["trade_date"]: b for b in daily}
+    closes_before = [_f(b.get("close")) for b in daily
+                     if b["trade_date"] < fire_date and b.get("close") is not None]
+    fb = bars_by_day.get(fire_date) or {}
+    fire_day_bar = {
+        "h": _f(trig.get("day_high")) if trig.get("day_high") is not None else _f(fb.get("high_price")),
+        "l": _f(trig.get("day_low")) if trig.get("day_low") is not None else _f(fb.get("low_price")),
+        "c": _f(trig.get("day_close")) if trig.get("day_close") is not None else _f(fb.get("close")),
+    }
+    return sessions, bars_by_day, closes_before, fire_day_bar
+
+
 async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
     """Try to settle ONE open trigger. Definitive -> one write (double-settle-guarded);
     not yet definitive -> abstain, row stays open, retried next run; past the orphan
@@ -1454,20 +1478,8 @@ async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
             trig, out, "degenerate geometry (stop >= entry) — R is undefined")
         return
 
-    sessions = _trading_days(fire_date + timedelta(days=1), today)
-    daily = await get_delayed_entry_daily_window(
-        ticker, fire_date - timedelta(days=_SETTLE_SMA_FETCH_CAL_DAYS), today)
-    bars_by_day = {b["trade_date"]: b for b in daily}
-    closes_before = [_f(b.get("close")) for b in daily
-                     if b["trade_date"] < fire_date and b.get("close") is not None]
-    # the fire day's bar: the trigger row's own record first (captured at fire time),
-    # the stored daily window as the per-field fallback
-    fb = bars_by_day.get(fire_date) or {}
-    fire_day_bar = {
-        "h": _f(trig.get("day_high")) if trig.get("day_high") is not None else _f(fb.get("high_price")),
-        "l": _f(trig.get("day_low")) if trig.get("day_low") is not None else _f(fb.get("low_price")),
-        "c": _f(trig.get("day_close")) if trig.get("day_close") is not None else _f(fb.get("close")),
-    }
+    sessions, bars_by_day, closes_before, fire_day_bar = await _assemble_settle_window(
+        ticker, fire_date, today, trig)
 
     post5 = None
     if day0_needs_minutes(fire_minute, fire_day_bar["l"], stop):
@@ -1500,28 +1512,29 @@ async def _settle_one_trigger(trig: dict, today: date, out: dict) -> None:
         if await settle_delayed_entry_trigger(trig["id"], fields):
             out["settle_settled"] += 1
         # False = a concurrent run already settled it — the no-op is the point
-        await _try_settle_variants_inline(
-            trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
-            closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
-        return
-    if res["status"] == "unscoreable":
+    elif res["status"] == "unscoreable":
         await _close_unscoreable(trig, out, res.get("reason", "unscoreable"))
-        await _try_settle_variants_inline(
-            trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
-            closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
-        return
     # abstain: honest retry — unless the row is past the orphan horizon, where the
     # 20-session window has long elapsed and the bars are never coming
-    if fire_date <= today - timedelta(days=SETTLE_ORPHAN_CAL_DAYS):
+    elif fire_date <= today - timedelta(days=SETTLE_ORPHAN_CAL_DAYS):
         await _close_unscoreable(
             trig, out,
             f"still blocked ({res.get('reason')}) {SETTLE_ORPHAN_CAL_DAYS}+ calendar days "
             f"after the fire — bars are not coming (halt/delist/hole)")
-        await _try_settle_variants_inline(
-            trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
-            closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
+    else:
+        # The ONLY true-abstain exit: nothing settled, nothing closed, retry next run.
+        # Variants are deliberately NOT attempted here — the incumbent has not resolved,
+        # so there is no settled row for them to sit beside.
+        out["settle_abstained"] += 1
         return
-    out["settle_abstained"] += 1
+
+    # ONE variant call for every terminal branch (2026-09-02). This was copy-pasted into each
+    # of the three, and the function has already grown a variant call twice (v2 -> v3); a
+    # fourth terminal branch was one paste away from silently never attempting the variants,
+    # which fails quietly rather than loudly.
+    await _try_settle_variants_inline(
+        trig, today, out, sessions=sessions, bars_by_day=bars_by_day,
+        closes_before=closes_before, fire_day_bar=fire_day_bar, post5=post5)
 
 
 async def settle_open_triggers(today: date, out: dict) -> None:
@@ -1571,18 +1584,8 @@ async def _settle_variant_one(trig: dict, today: date, out: dict) -> None:
             trig, today, out, sessions=[], bars_by_day={}, closes_before=[],
             fire_day_bar={}, post5=None, cache_day0=False)
         return
-    sessions = _trading_days(fire_date + timedelta(days=1), today)
-    daily = await get_delayed_entry_daily_window(
-        ticker, fire_date - timedelta(days=_SETTLE_SMA_FETCH_CAL_DAYS), today)
-    bars_by_day = {b["trade_date"]: b for b in daily}
-    closes_before = [_f(b.get("close")) for b in daily
-                     if b["trade_date"] < fire_date and b.get("close") is not None]
-    fb = bars_by_day.get(fire_date) or {}
-    fire_day_bar = {
-        "h": _f(trig.get("day_high")) if trig.get("day_high") is not None else _f(fb.get("high_price")),
-        "l": _f(trig.get("day_low")) if trig.get("day_low") is not None else _f(fb.get("low_price")),
-        "c": _f(trig.get("day_close")) if trig.get("day_close") is not None else _f(fb.get("close")),
-    }
+    sessions, bars_by_day, closes_before, fire_day_bar = await _assemble_settle_window(
+        ticker, fire_date, today, trig)
     post5 = day0_pseudo_bars(trig.get("day0_resolved"), trig.get("day0_post_low"),
                              trig.get("day0_post_high"))
     await _settle_trigger_variants(
