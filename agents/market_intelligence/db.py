@@ -14173,6 +14173,45 @@ async def get_analyst_estimate_population(since: "str | date") -> list[str]:
     return [r["ticker"] for r in rows]
 
 
+async def get_recent_quarterly_period_ends(
+    ticker: str, since: "str | date"
+) -> list[date]:
+    """Quarter-type period_end_dates already stored for this ticker since `since`,
+    source='yfinance', ordered MOST-RECENTLY-WRITTEN FIRST (MAX(as_of_date) DESC) —
+    the v3 quarterly leg's STABILITY read (analyst_estimates_recorder.
+    stabilize_period_end). yfinance's '0q'/'+1q' labels are RELATIVE, and
+    resolve_quarterly_period_ends derives an ABSOLUTE date from live inputs (a
+    next-earnings-date estimate that can shift a few days, a filing that can swing
+    the observed lag) that drift slightly run to run. Before minting a fresh
+    period_end_date, the recorder checks whether an existing one (within a
+    tolerance window) already represents the SAME fiscal quarter and reuses it —
+    otherwise the SAME quarter mints a new primary key every time an input wobbles,
+    fracturing the revision series get_analyst_estimates_asof's
+    DISTINCT ON (period_type, period_end_date) depends on. The RECENCY ordering
+    matters when more than one historical date happens to sit within tolerance of
+    today's candidate (e.g. an early, poorly-informed estimate from months ago
+    alongside a recently-confirmed one) — stabilize_period_end takes the FIRST
+    match in this list, i.e. prefers the most recently confirmed label over
+    whichever is merely a day or two numerically closer. `source` is hardcoded to
+    the literal 'yfinance' (must match analyst_estimates_recorder.
+    QUARTERLY_ESTIMATES_SOURCE) rather than imported — db.py is imported BY the
+    recorder, not the reverse."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT period_end_date, MAX(as_of_date) AS last_seen
+            FROM mi_analyst_estimates
+            WHERE ticker = $1 AND period_type = 'quarter' AND source = 'yfinance'
+              AND as_of_date >= $2
+            GROUP BY period_end_date
+            ORDER BY last_seen DESC
+            """,
+            ticker, _coerce_date(since),
+        )
+    return [r["period_end_date"] for r in rows]
+
+
 async def get_analyst_estimates_asof(
     ticker: str, on_date: "str | date", period_type: "str | None" = None
 ) -> list[dict]:

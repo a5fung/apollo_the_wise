@@ -1,8 +1,9 @@
-"""#333 analyst-estimates recorder tests (2026-08-31; v2 2026-09-01). Pure core
-(normalize / honest_valid_from / latest_filing_from_submissions / estimate_for_scoring)
-+ the orchestration half with module-level db/fetch functions monkeypatched. THE LINE:
-this recorder writes only mi_analyst_estimates (+ mi_audit_log via log_audit_event) and
-is SILENT — both pinned below.
+"""#333 analyst-estimates recorder tests (2026-08-31; v2 2026-09-01; v3 2026-09-02).
+Pure core (normalize / honest_valid_from / latest_filing_from_submissions /
+estimate_for_scoring / the v3 quarterly-cadence resolution) + the orchestration half
+with module-level db/fetch functions monkeypatched. THE LINE: this recorder writes
+only mi_analyst_estimates (+ mi_audit_log via log_audit_event) and is SILENT — both
+pinned below.
 
 THE BUG the v2 arm exists for (2026-09-01, first live run): the filing-date anchor was
 FMP /income-statement, which is 402 Payment Required on our plan — and v1 treated an
@@ -13,12 +14,23 @@ v2 anchors on SEC EDGAR (keyless, no payment tier) and makes no-anchor a FIRST-C
 outcome; a 402 on any FMP endpoint degrades that period, never the ticker. The honesty
 contract (never claim history without a filing-date anchor; the read date is stamped,
 never inferred) is the load-bearing guard here and is what the mutation tests target.
+
+v3 (2026-09-02) adds the QUARTERLY leg from yfinance (FMP's period=quarter is not on
+any FMP plan, ever — see the module docstring). yfinance's '0q'/'+1q' periods are
+RELATIVE; resolve_quarterly_period_ends turns them into ABSOLUTE period_end_dates
+using this ticker's OWN observed SEC filing lag + quarter length, anchored on
+yfinance's own live next_earnings_date — verified against real AAPL/COST/WMT EDGAR
+data during design (see the module docstring for why a naive fixed-3-month
+extrapolation was rejected: it silently picked the WRONG MONTH on COST's 4-4-5
+retail calendar). Every path here that cannot resolve a period returns None and the
+caller skips + counts it — never a guessed date.
 """
 import sys
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -134,6 +146,375 @@ def test_normalize_without_a_period_date_returns_none():
         anchor_filing_date=None) is None
 
 
+# ── quarterly_cadence_facts (v3 — the SEC-sourced cadence facts, pure) ───────────────
+
+
+def _submissions_full(records):
+    """records: list of (form, filingDate, reportDate) — mirrors real EDGAR shape."""
+    return {"filings": {"recent": {
+        "form": [r[0] for r in records],
+        "filingDate": [r[1] for r in records],
+        "reportDate": [r[2] for r in records],
+    }}}
+
+
+def test_cadence_facts_pulls_the_two_most_recent_reportdates():
+    """MUTATION TARGET: reportDate (period end), NOT filingDate, becomes
+    last_reported_quarter_end / prior_reported_quarter_end — the MAX and
+    second-MAX reportDate among QUARTERLY_CADENCE_FORMS filings, robust to
+    EDGAR's ordering (same defensive shape as latest_filing_from_submissions)."""
+    payload = _submissions_full([
+        ("10-Q", "2026-05-01", "2026-03-28"),
+        ("10-Q", "2026-07-31", "2026-06-27"),   # newest reportDate
+        ("8-K", "2026-08-20", "2026-08-20"),    # not a cadence form — ignored
+    ])
+    facts = aer.quarterly_cadence_facts(payload)
+    assert facts["last_reported_quarter_end"] == date(2026, 6, 27)
+    assert facts["prior_reported_quarter_end"] == date(2026, 3, 28)
+
+
+def test_cadence_facts_excludes_foreign_filer_forms():
+    """20-F/6-K are in the broader ANCHOR_FORMS (honesty-window) set but NOT
+    QUARTERLY_CADENCE_FORMS — annual-only/irregular filing cadences can't support
+    the lag/quarter-length arithmetic. A ticker with only these gets no cadence
+    facts even though its annual honesty window resolves fine."""
+    payload = _submissions_full([("20-F", "2026-04-01", "2025-12-31")])
+    facts = aer.quarterly_cadence_facts(payload)
+    assert facts == dict(aer._EMPTY_CADENCE_FACTS)
+
+
+def test_cadence_facts_single_filing_has_no_prior():
+    """A recent IPO with only one anchor-form filing on record: last_reported_quarter_end
+    resolves ('0q' can still resolve) but prior_reported_quarter_end is None ('+1q'
+    cannot — resolve_quarterly_period_ends handles that split)."""
+    payload = _submissions_full([("10-Q", "2026-07-31", "2026-06-27")])
+    facts = aer.quarterly_cadence_facts(payload)
+    assert facts["last_reported_quarter_end"] == date(2026, 6, 27)
+    assert facts["prior_reported_quarter_end"] is None
+
+
+def test_cadence_facts_malformed_payload_is_empty_never_a_guess():
+    assert aer.quarterly_cadence_facts(None) == dict(aer._EMPTY_CADENCE_FACTS)
+    assert aer.quarterly_cadence_facts({}) == dict(aer._EMPTY_CADENCE_FACTS)
+    assert aer.quarterly_cadence_facts({"filings": {}}) == dict(aer._EMPTY_CADENCE_FACTS)
+
+
+# ── resolve_quarterly_period_ends (v3 — the relative->absolute date resolver) ────────
+# v3.1 (second design review, 2026-09-02): the lag is RELEASE-to-RELEASE (yfinance's
+# last actual earnings date minus SEC EDGAR's reportDate), not release-to-FILING — an
+# earlier draft mixed those two different event types and, while accidentally close on
+# AAPL, was measurably off on real WMT data (see test_release_lag_beats_filing_lag_on_wmt).
+
+
+def test_resolves_0q_and_plus1q_from_real_aapl_shaped_facts():
+    """Real EDGAR/yfinance numbers captured live 2026-09-02 (see the module
+    docstring): last reported quarter end 2026-06-27, released 2026-07-30 (33-day
+    release lag), prior quarter end 2026-03-28 (91-day quarter length), next
+    scheduled earnings date 2026-10-29 — lands on AAPL's real fiscal Sept-end."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+               "prior_reported_quarter_end": date(2026, 3, 28)}
+    out = aer.resolve_quarterly_period_ends(date(2026, 10, 29), date(2026, 7, 30), cadence)
+    assert out["0q"] == date(2026, 9, 26)
+    assert out["+1q"] == date(2026, 12, 26)
+
+
+def test_naive_three_month_extrapolation_would_pick_the_wrong_month_on_a_445_calendar():
+    """THE REASON a fixed 3-calendar-month step was rejected (documented in the module
+    docstring): on COST's real EDGAR data, last reported quarter end 2026-05-10 + 3
+    calendar months = 2026-08-10, one month early relative to the true fiscal-year-end
+    quarter (2025's equivalent landed 2025-08-31). resolve_quarterly_period_ends
+    instead anchors on the real next earnings date and lands within the correct month —
+    not exact-day precision (a known, documented residual: a Q4/FYE release lag differs
+    from a regular quarter's, see the function's own docstring), but never the wrong
+    month, which is what the guessed-date failure this test guards against looks like."""
+    cadence = {"last_reported_quarter_end": date(2026, 5, 10),
+               "prior_reported_quarter_end": date(2026, 2, 15)}
+    naive_extrapolation = date(2026, 5, 10).replace(month=8, day=10)  # last_q_end + 3 months
+    out = aer.resolve_quarterly_period_ends(date(2026, 9, 24), date(2026, 5, 28), cadence)
+    assert out["0q"] != naive_extrapolation, (
+        "the naive approach lands a month early on this real 4-4-5 retail calendar")
+    assert out["0q"].month == 9, "expected September, within the documented ~1-week residual " \
+        "of the true 2026-08-30ish fiscal-year-end — never the wrong month"
+    assert out["+1q"] == date(2026, 11, 29)
+
+
+def test_release_lag_beats_filing_lag_on_real_wmt_data():
+    """v3.1's reason for existing: on WMT's real EDGAR/yfinance data, the (rejected)
+    filing-lag formula computed 2026-10-22 for the next quarter end — 9 days off the
+    true 2026-10-31 pattern (WMT's quarters are calendar-month-aligned). The
+    release-lag formula lands within 1 day."""
+    cadence = {"last_reported_quarter_end": date(2026, 7, 31),
+               "prior_reported_quarter_end": date(2026, 4, 30)}
+    out = aer.resolve_quarterly_period_ends(date(2026, 11, 19), date(2026, 8, 20), cadence)
+    assert out["0q"] == date(2026, 10, 30)
+    assert abs((out["0q"] - date(2026, 10, 31)).days) <= 1
+
+
+def test_plus1q_needs_a_prior_quarter_but_0q_does_not():
+    """A recent IPO (one filing on record): 0q resolves from the lag alone; +1q has
+    no quarter-length to add and stays None — skip that ONE period, not the ticker."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+               "prior_reported_quarter_end": None}
+    out = aer.resolve_quarterly_period_ends(date(2026, 10, 29), date(2026, 7, 30), cadence)
+    assert out["0q"] == date(2026, 9, 26)
+    assert out["+1q"] is None
+
+
+def test_resolve_returns_none_without_next_earnings_date_release_date_or_cadence_facts():
+    empty = dict(aer._EMPTY_CADENCE_FACTS)
+    assert aer.resolve_quarterly_period_ends(None, date(2026, 7, 30), empty) == \
+        {"0q": None, "+1q": None}
+    assert aer.resolve_quarterly_period_ends(date(2026, 10, 29), None, empty) == \
+        {"0q": None, "+1q": None}
+    assert aer.resolve_quarterly_period_ends(date(2026, 10, 29), date(2026, 7, 30), empty) == \
+        {"0q": None, "+1q": None}
+
+
+def test_resolve_rejects_out_of_range_release_lag():
+    """MUTATION TARGET: an implausible release lag (>75 days) means mismatched/bad
+    inputs, not an unusual filer — reject rather than store an implausible date.
+    This bound is also what protects against the "reporting gap" mismatch (see the
+    function's docstring): a stale EDGAR anchor inflates the measured lag by
+    roughly a quarter-length, comfortably clearing this bound."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+               "prior_reported_quarter_end": date(2026, 3, 28)}
+    assert aer.resolve_quarterly_period_ends(
+        date(2026, 10, 29), date(2026, 9, 15), cadence)["0q"] is None   # 80-day "lag"
+
+
+def test_resolve_rejects_the_reporting_gap_mismatch():
+    """The concrete gap scenario: yfinance's last actual release already reflects a
+    NEWER quarter than EDGAR's stale last_reported_quarter_end (the filing hasn't
+    posted yet). The mismatched lag runs about a quarter-length too long and is
+    rejected outright — skipped and counted, never mislabeled."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),   # EDGAR hasn't caught up yet
+               "prior_reported_quarter_end": date(2026, 3, 28)}
+    # yfinance already knows about the (newer) Sept-quarter release
+    out = aer.resolve_quarterly_period_ends(date(2027, 1, 28), date(2026, 10, 29), cadence)
+    assert out["0q"] is None and out["+1q"] is None
+
+
+def test_resolve_rejects_out_of_range_quarter_length():
+    """MUTATION TARGET: an implausible quarter length (<60 or >130 days) skips ONLY
+    +1q — 0q is unaffected since it never uses quarter length."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+               "prior_reported_quarter_end": date(2025, 6, 27)}   # ~365-day "quarter"
+    out = aer.resolve_quarterly_period_ends(date(2026, 10, 29), date(2026, 7, 30), cadence)
+    assert out["0q"] == date(2026, 9, 26)
+    assert out["+1q"] is None
+
+
+def test_resolve_rejects_a_computed_0q_that_precedes_the_last_reported_quarter():
+    """MUTATION TARGET: a stale/bad next_earnings_date that would compute 0q at or
+    before the last reported quarter end is bad data, not a real forward estimate."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+               "prior_reported_quarter_end": date(2026, 3, 28)}
+    assert aer.resolve_quarterly_period_ends(
+        date(2026, 7, 1), date(2026, 7, 30), cadence)["0q"] is None
+
+
+# ── stabilize_period_end (v3.1 — the label-stability fix, mutation target) ───────────
+
+
+def test_stabilize_reuses_an_existing_date_within_tolerance():
+    """THE FRACTURE THIS FIXES: a filing-boundary lag swing (or a refining
+    next_earnings_date) computes a slightly different candidate for the SAME
+    quarter day to day — reuse the existing recorded date instead of minting a new
+    primary key. `recent_dates` is recency-ordered (most-recently-written first)."""
+    assert aer.stabilize_period_end(
+        date(2026, 12, 24), [date(2026, 12, 25), date(2026, 9, 26)]) == date(2026, 12, 25)
+
+
+def test_stabilize_leaves_a_genuinely_new_quarter_alone():
+    """A candidate far (beyond tolerance) from every recorded date is a genuinely
+    NEW quarter, not drift — keep the fresh candidate, don't collapse two real
+    quarters into one."""
+    assert aer.stabilize_period_end(
+        date(2026, 12, 26), [date(2026, 9, 26)]) == date(2026, 12, 26)
+
+
+def test_stabilize_passes_through_with_no_candidate_or_no_history():
+    assert aer.stabilize_period_end(None, [date(2026, 12, 25)]) is None
+    assert aer.stabilize_period_end(date(2026, 12, 25), []) == date(2026, 12, 25)
+
+
+def test_stabilize_prefers_recency_over_raw_distance_when_two_dates_are_in_tolerance():
+    """MUTATION TARGET (design review, 2026-09-02): when TWO historical dates both
+    sit within tolerance of today's candidate — e.g. a stale early estimate from
+    months ago alongside a recently-confirmed one — the MOST RECENTLY WRITTEN one
+    wins, even though it is not the numerically closer of the two. `recent_dates`
+    is recency-ordered (db.get_recent_quarterly_period_ends: MAX(as_of_date) DESC),
+    so `stabilize_period_end` must take the FIRST match, not `min()` by distance —
+    reverting to nearest-by-distance would silently resurrect a stale label over
+    the series' own most recent, better-informed one."""
+    candidate = date(2026, 12, 24)
+    recent_dates = [date(2026, 12, 20), date(2026, 12, 26)]   # written-most-recently first
+    assert abs((candidate - date(2026, 12, 26)).days) < abs((candidate - date(2026, 12, 20)).days), (
+        "the test setup must make the SECOND (older) entry the numerically closer one, "
+        "or this test doesn't actually distinguish recency from nearest-by-distance")
+    assert aer.stabilize_period_end(candidate, recent_dates) == date(2026, 12, 20)
+
+
+def test_stabilize_boundary_is_inclusive():
+    """MUTATION TARGET: the tolerance boundary (15 days) is inclusive."""
+    assert aer.stabilize_period_end(
+        date(2026, 12, 25), [date(2026, 12, 10)], tolerance_days=15) == date(2026, 12, 10)
+    assert aer.stabilize_period_end(
+        date(2026, 12, 25), [date(2026, 12, 9)], tolerance_days=15) == date(2026, 12, 25)
+
+
+def test_stabilize_skips_an_out_of_tolerance_head_and_matches_further_down_the_list():
+    """MUTATION TARGET: the recency scan must actually SCAN, not just check
+    recent_dates[0]. The most-recently-written entry (index 0) is for a DIFFERENT
+    quarter entirely (89 days away — beyond tolerance); an OLDER entry further down
+    the list is the real match for today's candidate and must still be found."""
+    candidate = date(2026, 12, 24)
+    recent_dates = [date(2026, 9, 26), date(2026, 12, 20)]   # index 0 = most recent write
+    assert aer.stabilize_period_end(candidate, recent_dates) == date(2026, 12, 20)
+
+
+def test_stabilize_leaves_a_candidate_just_outside_tolerance_alone():
+    """The gap between _MIN_QUARTER_LENGTH_DAYS (60) and _STABILIZE_TOLERANCE_DAYS
+    (15) must not silently swallow a genuinely different (if unusually close)
+    quarter: a candidate 20 days from the nearest stored date (5 days past the
+    15-day tolerance) is left as the fresh candidate, not collapsed onto it."""
+    assert aer.stabilize_period_end(
+        date(2026, 12, 24), [date(2026, 12, 4)]) == date(2026, 12, 24)
+
+
+# ── next_earnings_date_from_yfinance (pure — the earnings_dates frame parse) ─────────
+
+
+def _earnings_dates_df(rows):
+    """rows: list of (date_str, reported_eps_or_None) — mirrors yfinance's real
+    tz-aware DatetimeIndex + 'Reported EPS' column shape (probed live 2026-09-02)."""
+    idx = pd.DatetimeIndex([pd.Timestamp(d, tz="America/New_York") for d, _ in rows])
+    return pd.DataFrame({"Reported EPS": [r for _, r in rows]}, index=idx)
+
+
+def test_next_earnings_date_finds_the_soonest_unreported_row():
+    df = _earnings_dates_df([
+        ("2026-10-29", None),        # next — not yet reported
+        ("2026-07-30", 2.02),        # already reported
+        ("2026-04-30", 2.01),
+    ])
+    assert aer.next_earnings_date_from_yfinance(df) == date(2026, 10, 29)
+
+
+def test_next_earnings_date_none_when_everything_reported():
+    df = _earnings_dates_df([("2026-07-30", 2.02), ("2026-04-30", 2.01)])
+    assert aer.next_earnings_date_from_yfinance(df) is None
+
+
+def test_next_earnings_date_malformed_frame_is_none_never_a_guess():
+    assert aer.next_earnings_date_from_yfinance(None) is None
+    assert aer.next_earnings_date_from_yfinance(pd.DataFrame()) is None
+    assert aer.next_earnings_date_from_yfinance(pd.DataFrame({"Other": [1]})) is None
+
+
+# ── last_actual_earnings_date_from_yfinance (pure — the release-lag's release half) ──
+
+
+def test_last_actual_earnings_date_finds_the_most_recent_reported_row():
+    df = _earnings_dates_df([
+        ("2026-10-29", None),
+        ("2026-07-30", 2.02),        # most recent ACTUAL release
+        ("2026-04-30", 2.01),
+    ])
+    assert aer.last_actual_earnings_date_from_yfinance(df) == date(2026, 7, 30)
+
+
+def test_last_actual_earnings_date_none_when_nothing_reported_yet():
+    df = _earnings_dates_df([("2026-10-29", None)])
+    assert aer.last_actual_earnings_date_from_yfinance(df) is None
+
+
+def test_last_actual_earnings_date_malformed_frame_is_none_never_a_guess():
+    assert aer.last_actual_earnings_date_from_yfinance(None) is None
+    assert aer.last_actual_earnings_date_from_yfinance(pd.DataFrame()) is None
+    assert aer.last_actual_earnings_date_from_yfinance(pd.DataFrame({"Other": [1]})) is None
+
+
+# ── normalize_yfinance_quarterly_estimate (raw capture, never derived) ───────────────
+
+
+def _yf_row(**over):
+    base = {"avg": 1.97656, "low": 1.93, "high": 2.07, "numberOfAnalysts": 28,
+            "yearAgoEps": 1.85, "growth": 0.0684, "currency": "USD"}
+    base.update(over)
+    return base
+
+
+def test_normalize_yfinance_quarterly_maps_raw_fields_and_stamps_source():
+    row = aer.normalize_yfinance_quarterly_estimate(
+        ticker="AAPL", yf_period="0q", as_of=AS_OF,
+        anchor_filing_date=date(2026, 7, 31), period_end_date=date(2026, 9, 25),
+        revenue_row={"avg": 113563145910.0, "high": 117219700000.0,
+                     "low": 112137000000.0, "numberOfAnalysts": 28},
+        earnings_row=_yf_row(),
+    )
+    assert row["ticker"] == "AAPL"
+    assert row["period_type"] == "quarter"
+    assert row["period_end_date"] == date(2026, 9, 25)
+    assert row["as_of_date"] == AS_OF
+    assert row["valid_from_date"] == date(2026, 7, 31)
+    assert row["revenue_avg"] == 113563145910.0
+    assert row["eps_high"] == 2.07
+    assert row["num_analysts_revenue"] == 28 and row["num_analysts_eps"] == 28
+    assert row["source"] == "yfinance", "must be distinguishable from the annual (fmp_stable) leg"
+    assert row["recorder_version"] == aer.RECORDER_VERSION
+
+
+def test_normalize_yfinance_quarterly_nan_becomes_null_never_zero():
+    """MUTATION TARGET: yfinance/pandas represents a missing value as float('nan'),
+    NOT None — unlike FMP's explicit JSON null. A naive _f(nan) would store NaN into
+    a DOUBLE PRECISION column; _nan_to_none must intercept it first."""
+    row = aer.normalize_yfinance_quarterly_estimate(
+        ticker="X", yf_period="0q", as_of=AS_OF, anchor_filing_date=None,
+        period_end_date=date(2026, 9, 30),
+        revenue_row={"avg": float("nan"), "high": 1.0, "low": 1.0,
+                     "numberOfAnalysts": float("nan")},
+        earnings_row=None,
+    )
+    assert row["revenue_avg"] is None          # never NaN — NaN != NaN, None == None
+    assert row["num_analysts_revenue"] is None
+    assert row["eps_avg"] is None and row["eps_high"] is None   # earnings_row=None -> all NULL
+
+
+def test_normalize_yfinance_quarterly_without_period_end_returns_none():
+    """MUTATION TARGET — THE HONESTY CONSTRAINT: never store a quarterly row against
+    an unresolved (or guessed) period end date."""
+    assert aer.normalize_yfinance_quarterly_estimate(
+        ticker="X", yf_period="0q", as_of=AS_OF, anchor_filing_date=None,
+        period_end_date=None, revenue_row=_yf_row(), earnings_row=_yf_row()) is None
+
+
+def test_normalize_yfinance_quarterly_with_no_data_returns_none():
+    assert aer.normalize_yfinance_quarterly_estimate(
+        ticker="X", yf_period="0q", as_of=AS_OF, anchor_filing_date=None,
+        period_end_date=date(2026, 9, 30), revenue_row=None, earnings_row=None) is None
+
+
+# ── _yf_period_row (pure — the revenue_estimate/earnings_estimate frame parse) ───────
+
+
+def _estimate_df(rows: dict):
+    """rows: {"0q": {...}, "+1q": {...}} -> a yfinance-shaped DataFrame indexed by period."""
+    return pd.DataFrame(rows).T
+
+
+def test_yf_period_row_extracts_the_requested_period():
+    df = _estimate_df({"0q": _yf_row(avg=1.97656), "+1q": _yf_row(avg=2.89268)})
+    row = aer._yf_period_row(df, "0q")
+    assert row["avg"] == 1.97656
+
+
+def test_yf_period_row_missing_period_or_frame_is_none():
+    assert aer._yf_period_row(None, "0q") is None
+    df = _estimate_df({"0q": _yf_row()})
+    assert aer._yf_period_row(df, "+1q") is None
+
+
 # ── estimate_for_scoring (the sketch's n<3 -> None rule — mutation target) ───────────
 
 
@@ -152,7 +533,8 @@ def test_thin_coverage_scores_none_and_threshold_is_tunable():
 
 
 def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
-          anchor_fail_tickers=(), p402=()):
+          anchor_fail_tickers=(), p402=(), quarter_cadence=None, yf_data=None,
+          yf_fail_tickers=(), recent_period_ends=None):
     written = []
     audits = []
 
@@ -161,12 +543,28 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
             raise RuntimeError("EDGAR down")
         return (anchors or {}).get(ticker)
 
+    async def fake_quarter_cadence(ticker, as_of):
+        # NOTE: in production this shares the SAME EDGAR fetch as fake_filing (both
+        # read _get_edgar_facts), so an anchor_fail_tickers entry never reaches here —
+        # snapshot_ticker's try/except skips this call the moment fake_filing raises.
+        # Under test the two are wired independently for clarity; default is "no
+        # cadence facts" (an ETF/non-filer, or a ticker the test didn't configure).
+        return dict((quarter_cadence or {}).get(ticker, aer._EMPTY_CADENCE_FACTS))
+
     async def fake_estimates(ticker, period):
         if ticker in fail_tickers:
             raise RuntimeError("fetch boom")
         if period in p402:
             raise RuntimeError_402()
         return (estimates or {}).get((ticker, period), [])
+
+    async def fake_yf_quarterly(ticker):
+        if ticker in yf_fail_tickers:
+            raise RuntimeError("yfinance boom")
+        return (yf_data or {}).get(ticker)  # default None -> quarter_yf_unavailable
+
+    async def fake_recent_period_ends(ticker, since):
+        return list((recent_period_ends or {}).get(ticker, []))
 
     async def fake_upsert(rows):
         written.extend(rows)
@@ -176,10 +574,14 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
         audits.append((event_type, summary))
 
     monkeypatch.setattr(aer, "_fetch_last_filing_date", fake_filing)
+    monkeypatch.setattr(aer, "_fetch_quarter_cadence_facts", fake_quarter_cadence)
     monkeypatch.setattr(aer, "_fetch_estimates", fake_estimates)
+    monkeypatch.setattr(aer, "_fetch_yfinance_quarterly", fake_yf_quarterly)
+    monkeypatch.setattr(aer, "get_recent_quarterly_period_ends", fake_recent_period_ends)
     monkeypatch.setattr(aer, "upsert_analyst_estimates", fake_upsert)
     monkeypatch.setattr(aer, "log_audit_event", fake_audit)
     monkeypatch.setattr(aer, "FMP_PACE_SECONDS", 0)
+    monkeypatch.setattr(aer, "YFINANCE_PACE_SECONDS", 0)
     return written, audits
 
 
@@ -324,6 +726,209 @@ async def test_both_periods_402_is_counted_not_an_error(monkeypatch):
     assert out["annual_unavailable"] == 1 and out["quarter_unavailable"] == 0
     assert written == []
     assert any(e == "analyst_estimates_plan_change" for e, _ in audits)
+
+
+# ── quarterly leg orchestration (v3, yfinance) ────────────────────────────────────────
+
+
+def _yf_data_for(ticker, next_earnings_date=date(2026, 10, 29),
+                  last_actual_release_date=date(2026, 7, 30)):
+    """A ready-to-store yfinance quarterly payload: real AAPL-shaped numbers, both
+    '0q' and '+1q' present with revenue + earnings rows."""
+    return {
+        "next_earnings_date": next_earnings_date,
+        "last_actual_release_date": last_actual_release_date,
+        "periods": {
+            "0q": {"revenue": {"avg": 113563145910.0, "high": 117219700000.0,
+                                "low": 112137000000.0, "numberOfAnalysts": 28},
+                   "earnings": {"avg": 1.97656, "high": 2.07, "low": 1.93,
+                                "numberOfAnalysts": 28}},
+            "+1q": {"revenue": {"avg": 153735499960.0, "high": 160000000000.0,
+                                 "low": 132850061129.0, "numberOfAnalysts": 22},
+                    "earnings": {"avg": 2.89268, "high": 3.42, "low": 2.51,
+                                 "numberOfAnalysts": 22}},
+        },
+    }
+
+
+_AAPL_CADENCE = {"last_reported_quarter_end": date(2026, 6, 27),
+                  "prior_reported_quarter_end": date(2026, 3, 28)}
+
+
+@pytest.mark.asyncio
+async def test_quarterly_leg_writes_yfinance_rows_alongside_the_annual_row(monkeypatch):
+    """Happy path: annual (FMP, source=fmp_stable) + both quarterly periods
+    (yfinance, source=yfinance) all land in the same run, same table, distinguishable
+    only by `source` and `period_type` — no schema change needed."""
+    written, audits = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE},
+        yf_data={"AAPL": _yf_data_for("AAPL")},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    assert out["rows_written"] == 3   # 1 annual + 2 quarterly ('0q','+1q')
+    assert out["quarter_yf_rows_written"] == 2
+    assert out["quarter_yf_unavailable"] == 0 and out["quarter_yf_no_cadence"] == 0
+    quarterly = [r for r in written if r["period_type"] == "quarter"]
+    annual = [r for r in written if r["period_type"] == "annual"]
+    assert len(quarterly) == 2 and len(annual) == 1
+    assert all(r["source"] == "yfinance" for r in quarterly)
+    assert annual[0]["source"] == "fmp_stable"
+    assert {r["period_end_date"] for r in quarterly} == {date(2026, 9, 26), date(2026, 12, 26)}
+    assert all(r["num_analysts_revenue"] is not None for r in quarterly), (
+        "numberOfAnalysts must be preserved, not dropped — the n<3 rule reads it later")
+
+
+@pytest.mark.asyncio
+async def test_yfinance_failure_leaves_the_annual_row_intact_and_counted(monkeypatch):
+    """A yfinance outage degrades ONLY the quarterly leg — the annual (FMP) row still
+    writes, and the failure is counted (quarter_yf_unavailable), never raised."""
+    written, _ = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE},
+        yf_fail_tickers={"AAPL"},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    assert out["rows_written"] == 1 and out["tickers_written"] == 1
+    assert out["quarter_yf_rows_written"] == 0
+    assert out["quarter_yf_unavailable"] == 1
+    assert all(r["period_type"] == "annual" for r in written)
+
+
+@pytest.mark.asyncio
+async def test_yfinance_empty_frame_counts_as_unavailable_not_an_error(monkeypatch):
+    """yfinance returning nothing usable (empty/short frame, no periods) is the SAME
+    degrade as a hard failure from the run's point of view — counted, not an error."""
+    written, _ = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE},
+        yf_data={"AAPL": None},   # _fetch_yfinance_quarterly's own "nothing usable" return
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    assert out["quarter_yf_unavailable"] == 1 and out["quarter_yf_no_cadence"] == 0
+    assert all(r["period_type"] == "annual" for r in written)
+
+
+@pytest.mark.asyncio
+async def test_no_cadence_anchor_skips_quarterly_rows_and_counts_it_not_an_error(monkeypatch):
+    """yfinance HAD estimate data, but no SEC cadence facts were resolvable (ETF-like
+    ticker, or QUARTERLY_CADENCE_FORMS never matched) — never store against a guessed
+    date: skip both periods and count it distinctly from a yfinance outage."""
+    written, _ = _wire(
+        monkeypatch,
+        anchors={"SPYX": date(2026, 7, 31)},
+        estimates={("SPYX", "annual"): [_rec()]},
+        # quarter_cadence omitted -> defaults to _EMPTY_CADENCE_FACTS for SPYX
+        yf_data={"SPYX": _yf_data_for("SPYX")},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["SPYX"])
+    assert out["errors"] == 0
+    assert out["quarter_yf_no_cadence"] == 1 and out["quarter_yf_unavailable"] == 0
+    assert out["quarter_yf_rows_written"] == 0
+    assert all(r["period_type"] == "annual" for r in written)
+
+
+@pytest.mark.asyncio
+async def test_anchor_outage_skips_the_quarterly_leg_too_not_just_the_honesty_window(monkeypatch):
+    """An EDGAR outage (anchor_fail_tickers) kills _fetch_last_filing_date, and
+    snapshot_ticker's try/except means _fetch_quarter_cadence_facts is never even
+    called for that ticker in the same run — one outage degrades BOTH legs' anchor
+    story together, exactly as the shared _get_edgar_facts cache implies."""
+    written, _ = _wire(
+        monkeypatch,
+        estimates={("MRNA", "annual"): [_rec()]},
+        anchor_fail_tickers={"MRNA"},
+        quarter_cadence={"MRNA": _AAPL_CADENCE},   # would resolve fine IF it were reached
+        yf_data={"MRNA": _yf_data_for("MRNA")},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
+    assert out["errors"] == 0 and out["anchor_errors"] == 1
+    assert out["quarter_yf_no_cadence"] == 1
+    assert out["quarter_yf_rows_written"] == 0
+    assert all(r["period_type"] == "annual" for r in written)
+
+
+@pytest.mark.asyncio
+async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date(monkeypatch):
+    """THE LABEL-FRACTURE THIS GUARDS AGAINST (caught in design review, not by the
+    first draft of this test suite): resolve_quarterly_period_ends' inputs are live
+    and can shift day to day (a refining next_earnings_date, a new SEC filing
+    advancing the cadence anchor). Without stabilize_period_end, the SAME fiscal
+    quarter would mint a DIFFERENT period_end_date — a different primary key — on
+    two different days, fracturing the revision series
+    get_analyst_estimates_asof's DISTINCT ON (period_type, period_end_date) reads.
+
+    This simulates exactly that: day 1 resolves the Dec-quarter as '+1q' from the
+    Jun27 anchor; day 40 (after the Sep-quarter's 10-K has posted) resolves the SAME
+    Dec-quarter as '0q' from the ADVANCED Sep26 anchor — a genuinely different
+    cadence-fact input. `recent_period_ends` supplies day 1's stored date, and
+    stabilize_period_end must make day 40 reuse it rather than storing a second,
+    slightly different date for the same quarter."""
+    day1_cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+                     "prior_reported_quarter_end": date(2026, 3, 28)}
+    written_day1, _ = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": day1_cadence},
+        yf_data={"AAPL": _yf_data_for("AAPL", next_earnings_date=date(2026, 10, 29),
+                                       last_actual_release_date=date(2026, 7, 30))},
+        recent_period_ends={"AAPL": []},   # nothing recorded yet
+    )
+    out1 = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    dec_row_day1 = next(r for r in written_day1
+                        if r["period_type"] == "quarter" and r["period_end_date"].month == 12)
+    stored_dec_date = dec_row_day1["period_end_date"]
+    assert stored_dec_date == date(2026, 12, 26)
+
+    # Day 40: the Sep-quarter's 10-K has now posted (advancing the cadence anchor) AND
+    # yfinance's own next_earnings_date estimate has drifted 2 days — the SAME Dec
+    # quarter is now yfinance's '0q', resolved from GENUINELY DIFFERENT inputs. Proven
+    # below: the FRESH (unstabilized) computation actually lands on a different day.
+    day40_cadence = {"last_reported_quarter_end": date(2026, 9, 26),
+                      "prior_reported_quarter_end": date(2026, 6, 27)}
+    day40_next_earnings = date(2027, 1, 30)
+    fresh_day40 = aer.resolve_quarterly_period_ends(
+        day40_next_earnings, date(2026, 10, 29), day40_cadence)
+    assert fresh_day40["0q"] != stored_dec_date, (
+        "the test must exercise a genuine input drift — if the fresh computation "
+        "already agreed with day 1, stabilize_period_end wouldn't be tested at all")
+    assert fresh_day40["0q"] == date(2026, 12, 28)
+
+    day40 = date(2026, 10, 12)
+    written_day40, _ = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 10, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": day40_cadence},
+        yf_data={"AAPL": _yf_data_for("AAPL", next_earnings_date=day40_next_earnings,
+                                       last_actual_release_date=date(2026, 10, 29))},
+        recent_period_ends={"AAPL": [stored_dec_date]},   # day 1's row is now history
+    )
+    out40 = await aer.run_analyst_estimates_snapshot(day40, tickers=["AAPL"])
+    dec_row_day40 = next(r for r in written_day40
+                         if r["period_type"] == "quarter" and r["period_end_date"].month == 12)
+    assert dec_row_day40["period_end_date"] == stored_dec_date, (
+        "the SAME fiscal quarter must keep the SAME period_end_date across the filing "
+        "boundary, or the revision series fractures into two 'different' periods")
+    # The OTHER half of the same fix: day 40's '+1q' (the Mar quarter) is a genuinely
+    # DIFFERENT, NEW quarter (~93 days from the Dec quarter's stored date) and must NOT
+    # be collapsed onto it just because Dec26 is the only entry in history.
+    mar_row_day40 = next(r for r in written_day40
+                         if r["period_type"] == "quarter" and r["period_end_date"].month == 3)
+    assert mar_row_day40["period_end_date"] == date(2027, 3, 29), (
+        "a genuinely new quarter must keep its own fresh date, not get pulled onto "
+        "the unrelated Dec-quarter's stored date")
+    assert out1["errors"] == 0 and out40["errors"] == 0
 
 
 @pytest.mark.asyncio
