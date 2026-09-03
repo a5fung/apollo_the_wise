@@ -8918,6 +8918,13 @@ reviews:
           Bull tape - not merely more trades. Re-read (c0) at every run of this
           review and state which regimes have become separable;
 
+          ⚠ STALE AS OF 2026-09-02 — kept as history. The Bull cell filled (stamped
+          Bull 10 of 26 closed live) and `exit_tune_bull_regime_read` RAN on it
+          (docs/analysis/exit_tune_bull_regime_read_2026-09-02.md): the stop-side
+          conclusions hold in Bull; the harvest-side ones are ERA-confounded, not
+          regime-confounded (Bull = post-08-05 stack, non-Bull = bare stop). Read
+          that doc, not the paragraph below, for the current state of (c0).
+
           📌 RE-MEASURED 2026-08-06, and it is starker than the 08-01 note: of the
           14 closed LIVE trades, the regime split is Correcting 7 / Choppy 6 /
           Crisis 1 - **ZERO in a Bull tape, ever.** The entire 0-for-14 live record
@@ -9098,6 +9105,21 @@ reviews:
       Every exit-rule conclusion we hold was measured on live trades taken in
       Correcting, Choppy or Crisis tape. Do any of them survive a bull market?
 
+      ✅ **RUN 1 — 2026-09-02 at stamped-Bull n=10 (predicate 10 vs 8):
+      docs/analysis/exit_tune_bull_regime_read_2026-09-02.md.** The STOP conclusions
+      transfer to Bull unchanged (7 of 10 died on the entry day; the ORB-low stop's
+      median width 0.42 ADR, 7 of 7 under one day's range). The PARTIAL / BREAKEVEN-
+      TRAIL / STOP-FLOOR conclusions cannot be graded in Bull: Bull = era B×7 + C×3,
+      non-Bull = era A×15 + CRWD, so realized-R contrasts compare exit stacks, not
+      tapes (era-matched cell 3 vs 1). Bull −1.95R / 3 winners vs non-Bull −9.33R /
+      2 winners. The partial priced on its 5 real firings is a wash (+0.42R net).
+      The 08-06 floor refutation is neither confirmed nor re-opened: a 0.75×ADR
+      floor rescues ONE Bull trade on day 0 (TEAM, which ran); a 1.0×ADR floor also
+      rescues FRMI, which repeated the delay (stopped session 2) — n=1-2, mixed.
+      The "ZERO in Bull / every conclusion is non-bull" text below
+      is HISTORY, kept for the audit trail; the standing caveat is now "the stop
+      conclusions are tape-independent, the harvest-side ones are era-confounded."
+
       ⚠ **CORRECTED 2026-08-07: THE CELL IS NO LONGER EMPTY — 3 of 8.** NET, FIGS and TEAM were
       all entered on 08-07 in a **Bull** tape and all three stopped out (−1.0R combined). The
       "zero bull trades, ever" figure below was measured on 08-06 and was repeated on 08-07 without
@@ -9130,21 +9152,71 @@ reviews:
       (3) Does the stop-floor refutation still hold? See (e) — a floor that failed
           when nothing trended is not automatically wrong when things run.
     predicate_sql: |
-      SELECT COUNT(*) FROM mi_live_trades
-      WHERE account_mode = 'live' AND status = 'closed' AND regime = 'Bull'
-    threshold: 8
+      -- ⚠ RE-KEYED 2026-09-02 after run 1 (n=10). Counting stamped-Bull closes ALONE cannot
+      -- answer the question: every Bull close ran under the post-08-05 exit stack and every
+      -- non-Bull close but one (CRWD 08-27) ran the bare ORB-low stop, so a Bull-vs-non-Bull
+      -- realized-R contrast is an exit-STACK contrast. The cell that breaks that confound is
+      -- non-Bull closes ENTERED under the current stack (created_at >= 2026-08-16, the parent's
+      -- _EXIT_ERA_START — bump both in the same commit as any exit-rule change). LEAST() fires
+      -- only when BOTH hold: stamped-Bull >= 20 AND non-Bull era-C >= 5 (the 4x scales the second
+      -- term onto the same 20 bar, the parent's idiom). `regime` is the ENTRY STAMP = the prior
+      -- session's regime row (live_tracker.py:522 reads regime_date <= today at 09:31; the nightly
+      -- writes today's row at 17:00 ET) — the operator-ruled basis (08-08), never the date join.
+      SELECT LEAST(
+        (SELECT COUNT(*) FROM mi_live_trades
+          WHERE account_mode = 'live' AND status = 'closed' AND signal_type = 'magna53'
+            AND regime = 'Bull'),
+        (SELECT 4 * COUNT(*) FROM mi_live_trades
+          WHERE account_mode = 'live' AND status = 'closed' AND signal_type = 'magna53'
+            AND COALESCE(regime, '') <> 'Bull'
+            AND created_at >= DATE '2026-08-16')
+      )
+    # RUN 2026-09-02 at stamped-Bull n=10 (predicate 10 vs 8; sat READY since ~08-24 — ABCL's close —
+    # while the registry said pending) -> docs/analysis/exit_tune_bull_regime_read_2026-09-02.md.
+    # Offline on the 09-01 capture (scripts/ep_replay_data/_pull2_out.txt + _pull4_min.tsv.gz), $0.
+    # VERDICT: STOP conclusions transfer (day-0 deaths 7/10, ORB-low stop 0.42 ADR median);
+    # partial / breakeven-trail / floor conclusions are ERA-confounded and n cannot separate them.
+    # Bull 10 = era B×7 + C×3 (−1.95R, 3 wins: ABCL +2.68, AMLX +1.26, ETON +0.52 via #566);
+    # non-Bull 16 = era A×15 + CRWD (−9.33R, 2 wins). Era-C matched cell: 3 vs 1.
+    # Partial on its 5 real firings: +0.42R net (cost 0.10-0.34R per runner, +0.73R on FIGS).
+    # Floor on the 7 Bull ORB-low trades: 0.75xADR rescues ONE trade on day 0 (TEAM, +3.54R in the
+    # widened unit, ran — the whole +4.29R gap over the no-floor row); 1.0xADR also rescues FRMI,
+    # stopped session 2 (the 08-06 delay mechanism). n=1-2, mixed. Same method reproduces the 08-06
+    # -14.00R / 0 wins on the non-Bull 14. The signed 2R stop (era C) is the live test.
+    # Basis notes: 4 stamps inferred (ABCL/AMLX/SOLS Bull, CRWD Choppy; 22/22 known reproduced —
+    # confirm with scripts/probes/_545p4_bull_capture.sql Q1); the 34-candidate grid NOT re-run
+    # (engine snapshot gone) — the capture's Q3-Q6 re-create its 4-TSV shape for run 2.
+    # Threshold 8 -> 20 (RECURRING idiom) + the non-Bull era-C term above. Next: 20 -> 40 — which,
+    # with the 4x scaling, also requires non-Bull era-C >= 10; re-scale the second term if that is not the intent.
+    threshold: 20
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-06
     status: pending
+    last_run_note: >-
+      RAN 2026-09-02 at stamped-Bull n=10 and stays PENDING by its own RECURRING idiom (8 -> 20 -> 40),
+      not because it fired falsely — the predicate was genuinely met. Answered: the stop-side
+      conclusions (day-0 deaths, ORB-low width) hold in Bull. NOT answerable at this n: whether the
+      +2R partial is the best rule in Bull, whether the stop-floor refutation stands, and whether
+      runners are more frequent in Bull — every one is confounded with the exit-stack era (Bull =
+      post-08-05 stack only; non-Bull = bare ORB-low stop only). What makes it answerable is ~5
+      non-Bull closes under the current stack (1 today), which the re-keyed predicate now requires.
+      Full read: docs/analysis/exit_tune_bull_regime_read_2026-09-02.md.
     action_when_ready: |
-      ⚠ Threshold 8 is deliberately BELOW the parent's 20. This is not a
-      calibration cohort, it is a DIRECTIONAL read on a cell that has been empty
-      for the entire live program — 8 trades cannot decide an exit rule but they
-      can say whether the non-bull conclusions transfer at all, and that is worth
-      knowing early rather than at n=40.
+      ⚠ Threshold 8 was deliberately BELOW the parent's 20 for run 1 (done 2026-09-02 at n=10);
+      the bar is now 20 stamped-Bull closes AND >= 5 non-Bull closes under the current exit
+      stack — see the predicate comment. At run 2, re-point `_508_exit_rule_replay.py` at the
+      snapshot `scripts/probes/_545p4_bull_capture.sql` produces (Q3-Q6 are its 4-TSV shape) so
+      the 34-candidate grid runs on the TESTED engine, and re-run methods (a)-(e) with the era-C
+      non-Bull cell as the contrast — that is the comparison run 1 could not make.
+
+      (Run-1 rationale, kept for the record: threshold 8 was deliberately BELOW the
+      parent's 20 — not a calibration cohort, a DIRECTIONAL read on a cell that had
+      been empty for the entire live program; 8 trades cannot decide an exit rule
+      but can say whether the non-bull conclusions transfer at all. Run 1 said: the
+      stop-side ones do, the harvest-side ones are era-confounded.)
 
       ⚠ STALL CLAUSE, same as the parent: if live accrual halts (kill/scale band
-      action, /pause, demotion) OR this sits below 8 on 2026-11-01, run it at
+      action, /pause, demotion) OR this sits below the LEAST(...) >= 20 bar on 2026-11-01, run it at
       whatever n exists and say so. A smaller honest read beats an indefinite wait —
       `escalate_overdue_reviews` only surfaces READY or ERRORING entries, so a
       healthily-pending 3/8 goes silent forever.

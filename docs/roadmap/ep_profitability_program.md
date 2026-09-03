@@ -2173,9 +2173,13 @@ closed.
   could run.
 - Harvest capture KPI: partial-taken winners captured 18% of aggregate MFE ($5.9k of $32.8k
   peak), 3 round-trippers (#306 STEP-0).
-- ⚠ Regime cell: ALL closed live trades were taken in Correcting/Choppy/Crisis, ZERO in Bull
-  (measured 08-06) — every exit conclusion we hold is a non-bull conclusion
-  (`exit_tune_bull_regime_read` fires at 8 bull closes; today 0).
+- ⚠ Regime cell (RE-WORDED 2026-09-02 — the 08-06 "ZERO in Bull" reading is stale): 26 closed live
+  trades, **10 entered in a Bull tape** (entry-stamped). `exit_tune_bull_regime_read` RAN at n=10
+  (`docs/analysis/exit_tune_bull_regime_read_2026-09-02.md`): the STOP conclusions transfer to Bull
+  unchanged (7 of 10 died on the entry day; ORB-low stop median 0.42 ADR); the partial / breakeven-
+  trail / stop-floor conclusions are ERA-confounded (every Bull trade ran the post-08-05 stack, every
+  non-Bull trade but CRWD ran bare) and stay exit-STACK conclusions until ~5 non-Bull closes under the
+  current stack accrue (1 today). Trigger re-keyed to Bull ≥ 20 AND non-Bull era-C ≥ 5.
 
 **OPEN QUESTIONS for this surface → the consolidated register, §1a (rows 8, 12, 13, 14).**
 

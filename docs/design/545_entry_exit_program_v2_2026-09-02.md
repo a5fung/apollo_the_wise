@@ -74,7 +74,7 @@ permission classifier; §7 Phase 2 needs it and says so).
 | label | rows | window | source | caveat that travels with it |
 |---|---|---|---|---|
 | **LIVE** | 26 closed real-money `mi_live_trades` (magna53, first attempts) | alerts 07-06 → 08-28 | `scripts/ep_replay_data/_pull2_out.txt` (09-01 capture) | **era-split, never pooled:** A (<08-01, ORB-low stop, no executable partial) n=12 · B (08-01→08-15, ORB-low stop + partial) n=10 · C (≥08-16, `entry−2R` half size + partial) n=4 |
-| **LIVE regime split** | same 26 | same | regime joined ON date from `mi_market_regime` | **date-join, NOT the entry-stamped `mi_live_trades.regime`** the 08-08 rule requires (5 of 17 differed on 08-22); stamped split last measured 08-22 (n=22): Bull 7 / Choppy 7 / Correcting 7 / Crisis 1 |
+| **LIVE regime split** | same 26 | same | **ENTRY-STAMPED `mi_live_trades.regime`** (Phase 4, 09-02): Bull 10 · Choppy 8 · Correcting 7 · Crisis 1 — the stamp is the PRIOR session's regime row (`live_tracker.py:522` reads `regime_date <= today` at 09:31; the nightly writes today's row at 17:00 ET), i.e. what was knowable at entry; the date-join is the entry day's own close (look-ahead) and disagrees on 8 of 26 (Bull 14 by join). Four stamps inferred from that rule (22 of 22 known reproduced): ABCL/AMLX/SOLS Bull, CRWD Choppy — confirm via `_545p4_bull_capture.sql` Q1 | **Bull ⊂ eras B+C (7+3), non-Bull ⊂ era A (15) + CRWD (C)** — any Bull-vs-non-Bull contrast is an exit-STACK contrast; the era-matched cell is 3 vs 1 |
 | **PAPER** | 24–34 closed paper magna53 | 04-17 → 07-02 | `_306`/`_508` probe caches | the only cohort with multi-day winners; Bull era AND pre-06-05 entry mechanics — never pooled with live |
 | **44 replayable real trades** | live + paper fills, first attempts | 04-17 → 08-31 | `ep_replay.py validate` | the calibration set for the day-1 harness; 14 abstain (11 no entry-window minutes, 3 fill-bar straddles) |
 | **270 alert campaigns** | every live-source `mi_ep_alerts` row | 05-11 → 08-31 | `ep_replay.py replay --ruleset era_c` → `campaigns_era_c.tsv` | settled 100 · no_entry 37 · abstain 46 · **open_at_horizon 87 — the settled mean is CENSORED (the open rows are the candidate winners); quote the harness, never this mean as expectancy** |
@@ -286,9 +286,12 @@ on one name**. A per-trade average hides the retries and is not an output of thi
 | cell | status as of 2026-09-02 |
 |---|---|
 | non-bull, live, old stack (era A) | ✅ n=12, 0 winners — the whole "0-for-14" record lives here |
-| bull, live | ⚠ **not empty**: 14 of 26 closed live by date-join (era B 10 · era C 3); stamped Bull 7 of 22 on 08-22. **Confounded with ERA** — every Bull close ran the post-08-05 stack |
-| `exit_tune_bull_regime_read` (stamped Bull ≥ 8) | **predicate almost certainly met, unrun** — 7 of 8 stamped on 08-22 and era B alone holds 10 date-join Bull closes; confirm via `check_plan.py --today` / the review escalation, then run it inside this frame with `_508_exit_rule_replay.py` and report the CONTRAST, never a blend |
-| non-bull, live, era C | ⚠ n=1 (SOLS 08-28) — **the cell that breaks the era confound**; accrues by trading |
+| bull, live (entry-stamped) | ✅ **n=10, RUN 09-02** (`docs/analysis/exit_tune_bull_regime_read_2026-09-02.md`): **−1.95R, 3 winners (ABCL +2.68R, AMLX +1.26R, ETON +0.52R via the #566 defect), 7 of 10 died on the entry day** — vs non-Bull n=16 −9.33R, 10 of 16 day-0. **Confounded with ERA on every realized number**: Bull = era B×7 + C×3, non-Bull = era A×15 + CRWD; the 3-vs-1 era-C cell decides nothing. Date-join sensitivity: Bull 14 → −0.17R, 5 winners (moves PLTR and CRWD in, SOLS out) |
+| what transfers to Bull | ✅ **the STOP conclusions**: day-0 death rate unchanged (6 of 7 under the ORB-low stop), ORB-low stop median 0.42 ADR in Bull too (7 of 7 under one day's range) — tape-independent |
+| what does NOT transfer cleanly | ⚠ **partial / breakeven-trail / floor**: the partial priced on the 5 real firings is a wash (+0.42R net; cost 0.10–0.34R on each runner, +0.73R on FIGS's collapse); the TRAIL carried ABCL/AMLX/PLTR (exits at trailed stops 10.65/34.45/170.39); the BREAKEVEN arm ended ETON at ~0R on a day it closed +6.6 % (one case). The 08-06 floor refutation is **neither confirmed nor re-opened**: a 0.75×ADR floor rescues ONE Bull ORB-low trade on day 0 (TEAM, which then ran +16.8 % in 10 sessions — the whole +4.29R gap over the no-floor row is that trade; ABCL/ETON survive day 0 with no floor), a 1.0×ADR floor also rescues FRMI, which hits the wider stop on session 2 (the 08-06 delay mechanism repeating). n=1–2, widened-R units, daily-grain forward walk; the same method reproduces −14.00R/0 wins on the non-Bull 14. The signed 2R stop (era C) is the live test |
+| runners in Bull (operator 08-01 hypothesis) | ⚠ direction now WITH it: the three ≥4-ADR runs in the live record (ABCL 4.75, AMLX 5.52, PLTR 4.62) were all entered on Bull days (2 of 3 by stamp); the one non-Bull-stamped trade ≥ 4 ADR of 16 is PLTR, itself a Bull day by join — but multi-week holds exist only under the trail stack, so even peaks are era-confounded. n=3; the 08-17 read (n=6/7) pointed the other way |
+| `exit_tune_bull_regime_read` | **RUN 09-02 at n=10, re-gated**: threshold 8 → 20 stamped-Bull AND ≥5 non-Bull era-C closes (`LEAST(bull, 4×nonbull_eraC) ≥ 20`) — a bigger Bull count alone cannot break the confound. The 34-candidate grid was NOT re-run (the 08-17/08-22 engine snapshots lived in session scratchpads and are gone); `scripts/probes/_545p4_bull_capture.sql` re-creates the engine's 4-TSV shape for the next run |
+| non-bull, live, era C | ⚠ n=1 — **CRWD 08-27 (+0.40R), not SOLS**: SOLS is stamped Bull (08-27's row) and joins Choppy; CRWD is stamped Choppy (08-26's row) and joins Bull. **The cell that breaks the era confound**; accrues by trading, readable at ~5 |
 | bull, no-broker control (5-min shadow lane) | ⚠ n=38 lane, 12 winners, all on daily-bar reconstructions; real-time-accrued rows −0.99R median |
 
 ### Axis 7 — sizing (named, out of scope, interacts)
@@ -346,7 +349,7 @@ first dollar.
 | the day-1 bracket on skipped HIGH alerts (what would the live bracket have done on names we skipped for OUR reasons) | **YES** | #1 — `campaigns_era_c.tsv` already walks all 270 alerts; join to `mi_live_trades.skip_reason` | ~½ session, $0 | the 87 open-at-horizon rows censor the mean; report settled + open marks separately |
 | `stop_too_wide` → size down instead of skip | YES, small build | #1 with `validate_orb_entry` relaxed for those rows + the sizing formula at the wider stop | ~½ session, $0 | n is tiny (the bucket holds 8 rows all-time per the 09-01 count; 9 MAGNA53 rejects 05-05 → 08-14 per the 08-17 read) — a mechanism read, not a statistic |
 | ADR-anchored day-1 stop with the target pinned (k sweep) × runner rule (joint) | YES, after extending #1 | #1 `RuleSet` + `stop_mode = adr_k` + `runner_rule`; era-matched; validate must stay PASS | ~1 session build + ~½ session sweep, $0 | slippage / auction fills; the same-bar stop-vs-target ambiguity abstains |
-| the bull-regime read (`exit_tune_bull_regime_read`) | **YES — predicate almost certainly met (confirm first)** | #4 on the recorded live trades, entry-stamped regime, contrast vs the non-bull era-A baseline | ~½ session, $0 | it compares exit STACKS as much as tapes (era confound) — say so in the read |
+| the bull-regime read (`exit_tune_bull_regime_read`) | **RUN 09-02 (Phase 4)** on the 09-01 capture — methods (a)(c0)(c)(d)(e) + the partial priced on real fills; the #4 grid itself needs the fresh snapshot `_545p4_bull_capture.sql` produces | done offline, $0; grid re-run ~½ session after capture | it compares exit STACKS as much as tapes (era confound) — said on every row of Axis 6 |
 | the n-milestone review (`exit_tune_cohort_review`, threshold 20 era-C closes) | NOT YET — era C has 4 closed | #4 | — | accrues by trading (~5 real closes/month) |
 | ORB 5-min entry + independent stop | YES after extending #1 (entry-range mode) | #1 | ~½ session | the 5-min lane's `stop_too_wide` self-censoring does not apply to a replay |
 | gap-over open entry on the EP-day high | NO — needs a setup definition from the operator (buy point + stop) first | #3 once defined | — | — |
@@ -431,10 +434,13 @@ stated beside its benefit** · the pass bar written before the run. Nothing here
   ex-May, joint with the target — a stop that wins only because its R-unit grew is the 08-06
   mechanism and fails.
 
-### Phase 4 — the review whose predicate is almost certainly met, run inside this frame (P4; $0; ~½ session)
-- `exit_tune_bull_regime_read` — predicate almost certainly met (confirm with `check_plan.py --today`); run methods (a)–(e) on #4 restricted to
-  entry-stamped Bull live closes, contrasted with the era-A non-bull baseline; state that Bull and
-  the new exit stack are confounded; report into this document's Axis 6.
+### Phase 4 — the review whose predicate is met, run inside this frame (P4; $0; ~½ session) — ✅ RUN 2026-09-02
+- `exit_tune_bull_regime_read` — predicate 10 vs threshold 8 (verified in prod 09-02); methods (a)–(e)
+  run on the entry-stamped Bull live closes against the era-A non-bull baseline, offline on the 09-01
+  capture: `docs/analysis/exit_tune_bull_regime_read_2026-09-02.md`, findings in Axis 6. Verdict: the
+  STOP conclusions transfer; the partial/trail/floor conclusions are era-confounded (Bull = B+C,
+  non-Bull = A) and n cannot separate them; caveat re-worded; trigger re-keyed to Bull ≥ 20 AND
+  non-Bull era-C ≥ 5. Remaining: the #4 grid on a fresh snapshot (`_545p4_bull_capture.sql`).
 - `exit_tune_cohort_review` fires at 20 era-C closes (4 today) — no action.
 
 ### Phase 5 — accrual reads, on their own clocks (cost 0)
@@ -465,7 +471,10 @@ clocks; Phase 6 spends operator attention only where a number already exists.
 | claim | what the record shows |
 |---|---|
 | "the 5-min ORB re-entry replay (`orb_5m_reentry_hybrid_replay`) — never run" | **It ran**: 08-07 on n=15 (13 variants) and 08-09 on the full 17 (`_545_rerun_full17.py`). Fired 9 of 17, ex-THC −4.67R. The `data_gated_reviews.yaml` entry still says `status: pending` — the review ran and never closed |
-| "all 14 closed live trades were taken in Correcting/Choppy/Crisis and ZERO in Bull" | true on 08-06, stale since 08-07 (3 Bull); 08-22 stamped n=22: Bull 7; 09-01 capture: 14 of 26 by date-join. **The confound is ERA, not regime** |
+| "all 14 closed live trades were taken in Correcting/Choppy/Crisis and ZERO in Bull" | true on 08-06, stale since 08-07 (3 Bull); 09-02 stamped n=26: **Bull 10** (14 by date-join). **The confound is ERA, not regime** — Phase 4 ran on it 09-02; the caveat is re-worded in Axis 6, the YAML and `ep_profitability_program.md` (PLAN #545's line still carries the old wording) |
+| "compute R over `COALESCE(risk_dollars_actual, risk_dollars)`" (the 09-02 brief) | `risk_dollars` is the PRE-CAP budget (db.py:898); on the three notional-capped rows a full stop-out reads NET −0.32R / TEAM −0.50R / FTNT −0.55R. `risk_dollars_actual` = `shares × (orb_high − hard_stop)` (verified on both rows that carry it) and reconstructs for all 26. Exit reads use the recorder's realized per-share basis: best PLTR **+3.42R**, worst BW −1.09R, cohort −11.27R |
+| "the stamp and the date-join disagree on 7 of 26" (the 09-02 brief) | **8** — FTNT (07-30, Crisis → Correcting) is the eighth. The mechanism is a one-session lag, not a revision: the stamp is the prior session's row, the join is the entry day's own close |
+| "non-bull, live, era C — n=1 (SOLS 08-28)" (this doc, v2 first cut) | **CRWD**, not SOLS: SOLS is stamped Bull (08-27's row → joins Choppy), CRWD is stamped Choppy (08-26's row → joins Bull). Corrected in Axis 6 |
 | "his retry idea… not yet tested" | same-day attempts 1–4 were swept 08-16 (n=75 reconstructed, per-name accounting, worst case bounded) and campaign policies R1/R2/R3 08-30 (missed cohort). **Untested = tight stop × attempts on the delayed rungs, per campaign, at equal dollar risk** — which is the cell Phase 1 runs |
 | "reuse the three probes; a fourth now exists" | **ten** replay lineages exist (§5); one (the campaign walker) is outside the repo |
 | "the giveback peak-lock (#306, built dark)" — implied open | **ruled OUT by the operator 08-11**; not an open cell |
