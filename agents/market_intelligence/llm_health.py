@@ -588,3 +588,151 @@ async def maybe_alert_api_failure(provider: str, exc: BaseException,
         await alert_api_failure(provider, exc, context=context)
     except Exception as _e:  # noqa: BLE001 — swallow-by-design
         logger.debug("maybe_alert_api_failure swallowed for %s: %s", provider, _e)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# #603 DoD (3) — endpoint-SHAPE anomaly canary (make a future sunset LOUD).
+#
+# THE GAP the two guards above don't close: `classify_api_failure` deliberately
+# returns None (no alert) for a JSONDecodeError (treated as a code bug, not a
+# provider-health signal) and for HTTP 404 (Polygon's per-ticker 404 carve-out
+# — "this ITEM doesn't exist", not a provider outage; that carve-out is correct
+# for Polygon and must NOT be touched). Neither of those is a classifiable
+# provider-health exception, so `alert_api_failure` never even gets called with
+# something it would recognize — and a THIRD case never reaches an exception at
+# all: a 200 OK whose body simply has nothing usable in it
+# (`collector._pplx_answer_text` returning "").
+#
+# All three are exactly what a vendor endpoint sunset/migration looks like from
+# the outside — Perplexity's Sonar Chat Completions sunset (#603) could just as
+# easily have manifested as a changed response shape or a 404 on the fixed
+# `/v1/agent` URL as a clean 401/402. `search_news_perplexity` already alerts
+# on 5xx/timeout/connect/401/402 (the exception path); it never alerted on
+# "the call succeeded and nothing came back" — that was the actual silent gap.
+#
+# GENERALIZED ON PURPOSE (operator: "the NEXT sunset — from any vendor, on any
+# endpoint — is loud"): keyed by (provider, event_type), not hardcoded to
+# Perplexity, so a future FIXED-URL provider can reuse this without a new
+# alerting mechanism — only a new audit_events constant.
+#
+# SUSTAINED, not single-shot: one garbled response happens. `_SHAPE_SUSTAINED_COUNT`
+# rows of the SAME (provider, event_type) within `_SHAPE_ALERT_WINDOW_HOURS` is
+# what pages. Unlike the transient/sustained split above, there is no minimum
+# time-SPREAD requirement — this failure class is structural (a shape/endpoint
+# break), not a self-healing network blip, so repetition alone is meaningful
+# even if the repeats are seconds apart (e.g. a burst of concurrent EP-alert
+# catalyst validations hitting a freshly-dead endpoint at once).
+#
+# WINDOW SIZING IS LOAD-BEARING. The real caller's guaranteed cadence is 2
+# calls/weekday (the morning brief's economic-calendar + overnight-news
+# queries, both unconditional — briefing.py:1818 / :1990) and ZERO on
+# weekends. A 24h window can age the Monday-morning row out before a 3rd
+# failure lands Tuesday morning. 72h comfortably spans a Friday-evening onset
+# through the Tuesday-morning 3rd call (Fri 18:00 ET -> Tue 09:00 ET = 63h) —
+# worst-case time-to-notice is ~3.6 calendar days; a weekday onset with normal
+# EP-scan call volume (each alert's catalyst cross-check is a separate call)
+# notices in hours, not days.
+#
+# NOT extended to `check_perplexity_health`: that ping's `max_output_tokens=5`
+# is registered in `shared/output_ceilings.py` as TRUNCATION BY DESIGN ("text
+# unused") — under a preset that searches before answering, a 5-token cap can
+# plausibly cut the response off before any `message` output item exists at
+# all, so asserting on its text would cry wolf on ordinary truncation, not
+# catch a real anomaly. The heartbeat is the real call path only.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SHAPE_ALERT_WINDOW_HOURS = 72
+_SHAPE_SUSTAINED_COUNT = 3
+
+# Per-process pre-gate, same NON-authoritative role as `_last_api_alert_ts`:
+# collapses a same-process stampede (e.g. many concurrent catalyst-validation
+# calls hitting a freshly-dead endpoint at once) before any of their audit
+# rows land. The audit-log lookback is the durable, restart-proof dedup.
+_last_shape_alert_ts: dict[tuple[str, str], float] = {}
+
+
+async def alert_endpoint_shape_anomaly(
+    provider: str, event_type: str, reason: str, detail: str = "",
+) -> None:
+    """Audit-always + sustained-Telegram canary for a RESPONSE-SHAPE anomaly:
+    a call that did NOT raise a classifiable provider-health exception (so
+    `alert_api_failure` never fires) but returned something unusable — a 200
+    with no extractable answer, a 404 on a fixed-URL endpoint, or a body that
+    failed to decode as JSON. See the module comment above for the full design
+    and why the window is 72h / count 3.
+
+    ALWAYS safe to call — never raises. The audit row is written first and
+    UNCONDITIONALLY (the durable record, visible to `show errors` / the
+    nightly sweep via the `%error%` LIKE pattern as long as `event_type`
+    contains "error"); Telegram fires only once SUSTAINED (>= 3 rows for this
+    exact (provider, event_type) within 72h), deduped via a `tg=1` marker in
+    the summary — same convention as `alert_api_failure`.
+    """
+    try:
+        from agents.market_intelligence.db import get_audit_log, log_audit_event
+
+        key = (provider, event_type)
+        now = time.monotonic()
+        window_s = _SHAPE_ALERT_WINDOW_HOURS * 3600
+        last = _last_shape_alert_ts.get(key)
+        pregate_open = last is None or (now - last) >= window_s
+
+        count = 1  # this occurrence, not yet written
+        already_alerted = False
+        send_telegram = False
+        if pregate_open:
+            try:
+                recent = await get_audit_log(
+                    event_type=event_type, since_hours=_SHAPE_ALERT_WINDOW_HOURS, limit=50,
+                )
+                for row in (recent or []):
+                    summary = row.get("summary") or ""
+                    if f"provider={provider}" not in summary:
+                        continue
+                    count += 1
+                    if "tg=1" in summary:
+                        already_alerted = True
+            except Exception as e:
+                # DB lookback unavailable — stay quiet rather than risk a duplicate
+                # page; the audit row below still gets written (best-effort) so
+                # this occurrence isn't lost even if the count can't be trusted.
+                logger.warning("alert_endpoint_shape_anomaly lookback failed for "
+                                "%s/%s: %s", provider, event_type, e)
+            else:
+                send_telegram = count >= _SHAPE_SUSTAINED_COUNT and not already_alerted
+
+        if send_telegram:
+            _last_shape_alert_ts[key] = now
+
+        try:
+            await log_audit_event(
+                event_type,
+                f"ENDPOINT SHAPE ANOMALY provider={provider} reason={reason} "
+                f"count={count} tg={1 if send_telegram else 0}",
+                detail[:400],
+            )
+        except Exception as e:
+            logger.warning("alert_endpoint_shape_anomaly audit-row write failed "
+                            "for %s/%s: %s", provider, event_type, e)
+
+        if not send_telegram:
+            return
+
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from shared.telegram_format import b, esc
+            await send_telegram_message(
+                f"⚠️ {b(f'{provider.upper()} ENDPOINT SHAPE ANOMALY')} ({esc(reason)}).\n"
+                f"{count} unusable response(s) in the last {_SHAPE_ALERT_WINDOW_HOURS}h "
+                "with no 5xx/timeout raised — this looks like the endpoint or its "
+                "response format changed, not a normal outage. A vendor endpoint "
+                "sunset is exactly this shape.\n"
+                "Check the provider's API docs/changelog and verify the call shape.",
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            logger.warning("alert_endpoint_shape_anomaly Telegram send failed "
+                            "for %s/%s: %s", provider, event_type, e)
+    except Exception as _e:  # absolute belt-and-suspenders — never raise upward
+        logger.debug("alert_endpoint_shape_anomaly swallowed for %s/%s: %s",
+                      provider, event_type, _e)

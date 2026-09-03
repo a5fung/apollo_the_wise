@@ -1275,7 +1275,19 @@ Respond with ONLY the classification word."""
                 },
             )
             r.raise_for_status()
-            _data = r.json()
+            try:
+                _data = r.json()
+            except ValueError as je:
+                # #603 DoD (3): see the matching guard in collector.search_news_perplexity —
+                # a 200 that doesn't decode as JSON never raises a classifiable
+                # provider-health exception, so it would otherwise be silent here too.
+                from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
+                from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
+                await alert_endpoint_shape_anomaly(
+                    "perplexity", PERPLEXITY_ENDPOINT_ERROR, "invalid_json", str(je),
+                )
+                logger.warning(f"Perplexity validation for {ticker}: response was not valid JSON: {je}")
+                return None
             try:  # #377 cost meter — additive. Never alters the validation result.
                 from agents.market_intelligence.spend_tracker import log_perplexity_call
                 await log_perplexity_call(
@@ -1303,12 +1315,40 @@ Respond with ONLY the classification word."""
             logger.warning(
                 f"Perplexity validation for {ticker} returned an unrecognised classification "
                 f"({text[:60]!r}) — treating as unavailable, not as 'routine'")
+        else:
+            # #603 DoD (3): a 200 with NOTHING extractable — no exception, so nothing else
+            # here would ever alert on it. `_summary` was confirmed non-empty and non-hedge
+            # before this call was made, so a legitimate "no news" read isn't possible here;
+            # this is the response shape breaking, the same signature a vendor endpoint
+            # sunset would leave.
+            from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
+            from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
+            await alert_endpoint_shape_anomaly(
+                "perplexity", PERPLEXITY_ENDPOINT_ERROR, "empty_answer_on_200",
+            )
         return None
     except Exception as e:
         # #376: a 401/402 here is Perplexity credit exhaustion — alert (deduped).
-        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        from agents.market_intelligence.llm_health import (
+            is_credit_error, maybe_alert_api_failure, maybe_alert_credit_exhausted,
+        )
         await maybe_alert_credit_exhausted("Perplexity catalyst validation", e,
                                            provider="perplexity")
+        if not is_credit_error(e):
+            _status = getattr(getattr(e, "response", None), "status_code", None)
+            if _status == 404:
+                # #603 DoD (3): same fixed-URL reasoning as collector.search_news_perplexity —
+                # Perplexity has no per-item 404 case, so this can only be the endpoint gone.
+                from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
+                from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
+                await alert_endpoint_shape_anomaly(
+                    "perplexity", PERPLEXITY_ENDPOINT_ERROR, "http_404", str(e)[:200],
+                )
+            else:
+                # #603 DoD (3): this call site previously alerted on credit exhaustion only —
+                # every other failure (5xx/timeout/connect) was entirely silent, even though
+                # this is the site that actually PRODUCES the #233 second opinion.
+                await maybe_alert_api_failure("perplexity", e, context="catalyst validation")
         logger.warning(f"Perplexity validation failed for {ticker}: {e}")
         return None
 

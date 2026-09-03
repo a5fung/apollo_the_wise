@@ -15,10 +15,13 @@ actual cost, so the local rate table stops being load-bearing too. Both are hand
 values that can no longer rot, because they no longer exist.
 """
 import io
+import json as _json
 
+import httpx
 import pytest
 
-from agents.market_intelligence import collector
+from agents.market_intelligence import collector, llm_health
+from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
 from agents.market_intelligence.collector import _pplx_answer_text
 
 _COLLECTOR_SRC = io.open("agents/market_intelligence/collector.py", encoding="utf-8").read()
@@ -244,3 +247,458 @@ def test_the_judge_is_told_the_second_opinion_is_not_independent():
     assert "NOT independent corroboration" in out
     assert "re-read the EVIDENCE" in out
     assert "never as a vote" in _RUBRIC
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════
+# #603 DoD (3) — the post-deadline canary: a future endpoint sunset must be LOUD.
+#
+# `search_news_perplexity` already alerts on 5xx/timeout/connect/401/402 (the exception
+# path) — that was never the gap. The gap is the THREE shapes a sunset can take that never
+# raise a classifiable provider-health exception at all: a 200 with nothing extractable, a
+# 200 that isn't even JSON, and a 404 on a FIXED URL (unlike Polygon's per-ticker 404s,
+# which legitimately carve out to "no alert" — Perplexity has no per-item 404 case).
+# ══════════════════════════════════════════════════════════════════════════════════════════
+
+_PPLX_REQ = httpx.Request("POST", "https://api.perplexity.ai/v1/agent")
+
+
+def _pplx_http_status_error(code: int) -> httpx.HTTPStatusError:
+    resp = httpx.Response(code, request=_PPLX_REQ)
+    try:
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        return e
+    raise AssertionError("expected raise_for_status to raise")
+
+
+class _EmptyAgentResp:
+    status_code = 200
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {"status": "completed", "output": []}
+
+
+class _BadJsonResp:
+    status_code = 200
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        raise _json.JSONDecodeError("Expecting value", "not json", 0)
+
+
+def _install_single_shot_client(monkeypatch, behavior, module=None):
+    """Stub AsyncClient whose post() always returns/raises `behavior` — the canary paths
+    never retry (they aren't timeout/429)."""
+    class _Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **k):
+            if isinstance(behavior, Exception):
+                raise behavior
+            return behavior
+
+    target = module or collector.httpx
+    monkeypatch.setattr(target, "AsyncClient", lambda *a, **k: _Client())
+
+
+async def _noop_meter(**kwargs):
+    return None
+
+
+def test_health_probe_not_extended_for_shape_assertion():
+    """The health ping's `max_output_tokens=5` is registered TRUNCATION BY DESIGN ("text
+    unused") in shared/output_ceilings.py — under a preset that searches before answering, 5
+    tokens can plausibly end before any `message` output item exists at all. Asserting on
+    this ping's text would cry wolf on ordinary truncation, not catch a real anomaly. The
+    canary's heartbeat is the real call path only; check_perplexity_health is unchanged."""
+    from shared.output_ceilings import TRUNCATION_BY_DESIGN
+    assert "perplexity_health" in TRUNCATION_BY_DESIGN
+    probe_src = _COLLECTOR_SRC.split("async def check_perplexity_health", 1)[1]
+    probe_src = probe_src.split("\nasync def search_news_perplexity", 1)[0]
+    assert "_pplx_answer_text" not in probe_src
+
+
+@pytest.mark.asyncio
+async def test_empty_answer_on_200_fires_the_shape_canary(monkeypatch):
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    import agents.market_intelligence.spend_tracker as spend_tracker
+    monkeypatch.setattr(spend_tracker, "log_perplexity_call", _noop_meter)
+    _install_single_shot_client(monkeypatch, _EmptyAgentResp())
+
+    fired = []
+
+    async def _spy(provider, event_type, reason, detail=""):
+        fired.append((provider, event_type, reason))
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _spy)
+
+    out = await collector.search_news_perplexity("what moved AAA?", fresh=True)
+
+    assert out == ""
+    assert fired == [("perplexity", PERPLEXITY_ENDPOINT_ERROR, "empty_answer_on_200")]
+
+
+@pytest.mark.asyncio
+async def test_invalid_json_on_200_fires_the_shape_canary_not_silently(monkeypatch):
+    """Today `classify_api_failure` treats a JSONDecodeError as a code bug and returns None
+    — no audit row, no alert. A vendor endpoint change (e.g. an HTML body under a 200) would
+    be invisible without this."""
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    import agents.market_intelligence.spend_tracker as spend_tracker
+    monkeypatch.setattr(spend_tracker, "log_perplexity_call", _noop_meter)
+    _install_single_shot_client(monkeypatch, _BadJsonResp())
+
+    fired = []
+
+    async def _spy(provider, event_type, reason, detail=""):
+        fired.append((provider, event_type, reason))
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _spy)
+
+    out = await collector.search_news_perplexity("what moved BBB?", fresh=True)
+
+    assert out == ""
+    assert len(fired) == 1
+    assert fired[0][:2] == ("perplexity", PERPLEXITY_ENDPOINT_ERROR)
+    assert fired[0][2] == "invalid_json"
+
+
+@pytest.mark.asyncio
+async def test_404_fires_the_shape_canary_not_the_generic_data_api_guard(monkeypatch):
+    """`classify_api_failure`'s 404 carve-out is CORRECT for Polygon's per-ticker lookups
+    (an unknown/delisted symbol legitimately 404s — a per-call data condition, not a
+    provider outage) and must stay untouched. Perplexity's Agent URL is fixed — there is no
+    per-item 404 case — so a 404 here can only mean the endpoint is gone; it must route to
+    the shape canary instead of falling through the generic guard's silent None."""
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    _install_single_shot_client(monkeypatch, _pplx_http_status_error(404))
+
+    shape_fired = []
+    generic_fired = []
+
+    async def _shape_spy(provider, event_type, reason, detail=""):
+        shape_fired.append(reason)
+
+    async def _generic_spy(provider, exc, context=""):
+        generic_fired.append(provider)
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _shape_spy)
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _generic_spy)
+
+    out = await collector.search_news_perplexity("what moved CCC?", fresh=True)
+
+    assert out == ""
+    assert shape_fired == ["http_404"]
+    assert generic_fired == []
+
+
+@pytest.mark.asyncio
+async def test_non_404_http_failure_still_uses_the_generic_guard(monkeypatch):
+    """Parity check: the 404 carve-out must not swallow every status — a 500 (a real
+    provider outage) still goes through the existing, unchanged data-API alarm."""
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    _install_single_shot_client(monkeypatch, _pplx_http_status_error(500))
+
+    shape_fired = []
+    generic_fired = []
+
+    async def _shape_spy(provider, event_type, reason, detail=""):
+        shape_fired.append(reason)
+
+    async def _generic_spy(provider, exc, context=""):
+        generic_fired.append(provider)
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _shape_spy)
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _generic_spy)
+
+    out = await collector.search_news_perplexity("what moved DDD?", fresh=True)
+
+    assert out == ""
+    assert shape_fired == []
+    assert generic_fired == ["perplexity"]
+
+
+# ── the same three trip points on the THIRD call site (ep_detector.py) ──────────────────
+@pytest.mark.asyncio
+async def test_validate_catalyst_perplexity_empty_answer_fires_the_canary(monkeypatch):
+    from agents.market_intelligence import ep_detector
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    import agents.market_intelligence.spend_tracker as spend_tracker
+    monkeypatch.setattr(spend_tracker, "log_perplexity_call", _noop_meter)
+    _install_single_shot_client(monkeypatch, _EmptyAgentResp(), module=httpx)
+
+    fired = []
+
+    async def _spy(provider, event_type, reason, detail=""):
+        fired.append(reason)
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _spy)
+
+    out = await ep_detector._validate_catalyst_perplexity("AAA", "A real catalyst summary.")
+
+    assert out is None
+    assert fired == ["empty_answer_on_200"]
+
+
+@pytest.mark.asyncio
+async def test_validate_catalyst_perplexity_invalid_json_fires_the_canary(monkeypatch):
+    from agents.market_intelligence import ep_detector
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    _install_single_shot_client(monkeypatch, _BadJsonResp(), module=httpx)
+
+    fired = []
+
+    async def _spy(provider, event_type, reason, detail=""):
+        fired.append(reason)
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _spy)
+
+    out = await ep_detector._validate_catalyst_perplexity("BBB", "A real catalyst summary.")
+
+    assert out is None
+    assert fired == ["invalid_json"]
+
+
+@pytest.mark.asyncio
+async def test_validate_catalyst_perplexity_404_fires_the_canary(monkeypatch):
+    from agents.market_intelligence import ep_detector
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    _install_single_shot_client(monkeypatch, _pplx_http_status_error(404), module=httpx)
+
+    shape_fired = []
+    generic_fired = []
+
+    async def _shape_spy(provider, event_type, reason, detail=""):
+        shape_fired.append(reason)
+
+    async def _generic_spy(provider, exc, context=""):
+        generic_fired.append(provider)
+
+    monkeypatch.setattr(llm_health, "alert_endpoint_shape_anomaly", _shape_spy)
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _generic_spy)
+
+    out = await ep_detector._validate_catalyst_perplexity("CCC", "A real catalyst summary.")
+
+    assert out is None
+    assert shape_fired == ["http_404"]
+    assert generic_fired == []
+
+
+@pytest.mark.asyncio
+async def test_validate_catalyst_perplexity_5xx_now_alerts_instead_of_silent(monkeypatch):
+    """Parity fix: this call site used to alert on credit exhaustion ONLY — a 5xx/timeout was
+    entirely silent, even though this is the site that actually PRODUCES the #233 second
+    opinion (per the PLAN.md finding). It now goes through the same generic guard as the
+    other two call sites."""
+    from agents.market_intelligence import ep_detector
+    monkeypatch.setenv("PERPLEXITY_API_KEY", "k")
+    _install_single_shot_client(monkeypatch, _pplx_http_status_error(500), module=httpx)
+
+    generic_fired = []
+
+    async def _generic_spy(provider, exc, context=""):
+        generic_fired.append((provider, context))
+
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _generic_spy)
+
+    out = await ep_detector._validate_catalyst_perplexity("DDD", "A real catalyst summary.")
+
+    assert out is None
+    assert generic_fired == [("perplexity", "catalyst validation")]
+
+
+# ── the canary function itself: sustained-window Telegram + its own visibility ──────────
+def _shape_rows(n, tg1_at=None, provider="perplexity"):
+    return [
+        {"summary": f"ENDPOINT SHAPE ANOMALY provider={provider} reason=x count={i + 1} "
+                    f"tg={1 if tg1_at == i else 0}"}
+        for i in range(n)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_shape_canary_stays_quiet_below_sustained_threshold(monkeypatch):
+    from agents.market_intelligence import briefing, db
+    monkeypatch.setattr(llm_health, "_last_shape_alert_ts", {})
+
+    async def _get(event_type=None, since_hours=72, limit=50):
+        return _shape_rows(1)
+
+    written = []
+
+    async def _log(event_type, summary, detail=""):
+        written.append(summary)
+
+    sent = []
+
+    async def _send(text, **kw):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(db, "get_audit_log", _get)
+    monkeypatch.setattr(db, "log_audit_event", _log)
+    monkeypatch.setattr(briefing, "send_telegram_message", _send)
+
+    await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+
+    assert sent == []
+    assert "count=2 tg=0" in written[-1]
+
+
+@pytest.mark.asyncio
+async def test_shape_canary_pages_once_sustained(monkeypatch):
+    """N-1 (2 prior rows -> count 2, see the quiet test above) stays quiet; N (2 prior -> this
+    makes 3) pages exactly once."""
+    from agents.market_intelligence import briefing, db
+    monkeypatch.setattr(llm_health, "_last_shape_alert_ts", {})
+
+    async def _get(event_type=None, since_hours=72, limit=50):
+        return _shape_rows(2)
+
+    written = []
+
+    async def _log(event_type, summary, detail=""):
+        written.append(summary)
+
+    sent = []
+
+    async def _send(text, **kw):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(db, "get_audit_log", _get)
+    monkeypatch.setattr(db, "log_audit_event", _log)
+    monkeypatch.setattr(briefing, "send_telegram_message", _send)
+
+    await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+
+    assert len(sent) == 1
+    assert "count=3 tg=1" in written[-1]
+
+
+@pytest.mark.asyncio
+async def test_shape_canary_never_double_pages_the_same_window(monkeypatch):
+    """DB-level dedup: a prior row already carries tg=1 (a page already went out for this
+    run of failures) — a new one over threshold must not page again."""
+    from agents.market_intelligence import briefing, db
+    monkeypatch.setattr(llm_health, "_last_shape_alert_ts", {})
+
+    async def _get(event_type=None, since_hours=72, limit=50):
+        return _shape_rows(3, tg1_at=1)
+
+    written = []
+
+    async def _log(event_type, summary, detail=""):
+        written.append(summary)
+
+    sent = []
+
+    async def _send(text, **kw):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(db, "get_audit_log", _get)
+    monkeypatch.setattr(db, "log_audit_event", _log)
+    monkeypatch.setattr(briefing, "send_telegram_message", _send)
+
+    await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+
+    assert sent == []
+    assert "tg=0" in written[-1]
+
+
+@pytest.mark.asyncio
+async def test_shape_canary_pregate_collapses_a_same_process_stampede(monkeypatch):
+    """Concurrent callers hitting a freshly-dead endpoint at once must not each independently
+    re-query the DB and each decide to page — the in-process pre-gate collapses that."""
+    from agents.market_intelligence import briefing, db
+    monkeypatch.setattr(llm_health, "_last_shape_alert_ts", {})
+
+    lookback_calls = []
+
+    async def _get(event_type=None, since_hours=72, limit=50):
+        lookback_calls.append(1)
+        return _shape_rows(2)
+
+    async def _log(event_type, summary, detail=""):
+        pass
+
+    sent = []
+
+    async def _send(text, **kw):
+        sent.append(text)
+        return True
+
+    monkeypatch.setattr(db, "get_audit_log", _get)
+    monkeypatch.setattr(db, "log_audit_event", _log)
+    monkeypatch.setattr(briefing, "send_telegram_message", _send)
+
+    await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+    await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+
+    assert len(sent) == 1            # only the first call paged
+    assert len(lookback_calls) == 1  # the second never re-queried the DB
+
+
+@pytest.mark.asyncio
+async def test_shape_canary_audit_write_failure_is_logged_not_silent(monkeypatch, caplog):
+    """The canary itself must not be a new silent failure: if the DB write fails, that must
+    be visible (a warning, not a swallowed debug line)."""
+    from agents.market_intelligence import db
+    monkeypatch.setattr(llm_health, "_last_shape_alert_ts", {})
+
+    async def _get(event_type=None, since_hours=72, limit=50):
+        return []
+
+    async def _log(event_type, summary, detail=""):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(db, "get_audit_log", _get)
+    monkeypatch.setattr(db, "log_audit_event", _log)
+
+    with caplog.at_level("WARNING"):
+        await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+
+    assert any("audit-row write failed" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_shape_canary_lookback_failure_stays_quiet_but_logs_and_still_records(monkeypatch, caplog):
+    """If the sustained-count lookback itself fails, don't guess and don't page — but this
+    occurrence must still land as its own audit row (best-effort), and the failure must be
+    logged, not swallowed."""
+    from agents.market_intelligence import db
+    monkeypatch.setattr(llm_health, "_last_shape_alert_ts", {})
+
+    async def _get(event_type=None, since_hours=72, limit=50):
+        raise RuntimeError("db down")
+
+    written = []
+
+    async def _log(event_type, summary, detail=""):
+        written.append(summary)
+
+    monkeypatch.setattr(db, "get_audit_log", _get)
+    monkeypatch.setattr(db, "log_audit_event", _log)
+
+    with caplog.at_level("WARNING"):
+        await llm_health.alert_endpoint_shape_anomaly("perplexity", PERPLEXITY_ENDPOINT_ERROR, "x")
+
+    assert any("lookback failed" in r.message for r in caplog.records)
+    assert written and "tg=0" in written[-1]
+
+
+def test_the_canary_event_name_is_swept_automatically():
+    """Naming discipline check: the sweep (`_check_nightly_silent_errors`) and `show errors`
+    key off `%error%` — the new event must be caught by that pattern with zero extra
+    wiring, exactly like every other unnamed-but-'error'-containing event type."""
+    assert "error" in PERPLEXITY_ENDPOINT_ERROR

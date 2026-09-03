@@ -174,3 +174,14 @@ JUDGE_DIVERGENCE_CHECK_FAILED = "judge_divergence_check_failed"
 # sender is the only site that observes every False-return cause.
 EVENING_BRIEF_SENT = "evening_brief_sent"
 EVENING_BRIEF_SEND_FAILED = "evening_brief_send_failed"
+
+# ── #603 DoD (3): endpoint-SHAPE anomaly canary ─────────────────────────────
+# Fires on a response that did NOT raise a classifiable provider-health
+# exception (so llm_health.alert_api_failure's classifier never sees it) but
+# came back unusable anyway: 200 OK with no extractable answer, a 404 on a
+# FIXED-URL endpoint (not a per-item miss), or a body that failed to decode as
+# JSON. This is what a future vendor endpoint sunset looks like from the
+# outside — see llm_health.alert_endpoint_shape_anomaly for the full design.
+# Name contains "error" so `_check_nightly_silent_errors`'s `%error%` sweep
+# and `show errors` pick it up automatically, with no extra wiring.
+PERPLEXITY_ENDPOINT_ERROR = "perplexity_endpoint_error"
