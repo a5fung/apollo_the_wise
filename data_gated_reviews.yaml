@@ -5038,8 +5038,24 @@ reviews:
       Replay 5m-re-entry over the full Day-1-stop-out set (shadow_orb_tracker fetches
       the bars); report fill-rate + forward outcome vs the 1m-re-entry 0/7. Symmetric
       (full set, not losers). Only file a forward track if it shows real signal.
-    status: pending
+    status: done
     added_on: 2026-05-30
+    # ✅ CLOSED 2026-09-02 — IT HAD ALREADY RUN, TWICE, AND THE ENTRY WAS NEVER UPDATED.
+    # Surfaced as "READY 63d" in the overdue digest; #545's inventory pass found the runs.
+    # Ran 2026-08-07 (n=15) and 2026-08-09 (the full 17) — scripts/probes/_545_reentry_sweep_output.txt,
+    # written up in docs/design/545_entry_exit_program_v2_2026-09-02.md §3.5 row 33.
+    # RESULT: fired on 9 of 17. One real hold (THC +12.43R on a 0.67% stop), two
+    # partial-then-scratch, and SIX second full stops (CRCL/FIGS/HUT/QBTS/WKC/WULF).
+    # Net +7.76R — but EX-THC it is -4.67R, i.e. one trade carries the entire result.
+    # It fired on two of the four biggest forward movers AND PAID A SECOND STOP ON BOTH.
+    # VERDICT: evidence-only, one cohort, one-trade-carried. Not an edge; not re-registered.
+    # The day-2+ grid says the same thing at n=602 (bar-anchored stops are dominated on
+    # every rung), so this question is answered by a larger read as well.
+    closed_on: 2026-09-02
+    closed_reason: >-
+      Ran 08-07 and 08-09; the entry was simply never closed. Net +7.76R is -4.67R without
+      a single trade, with six second full stops out of nine fires. Answered, and answered
+      again at n=602 by the delayed-entry grid.
 
   - review_id: catalyst_discovery_loop_sequencing
     title: "Catalyst-discovery loop (investigator + advisor) — C2/C3 build sequencing gate (ADR 0006)"
