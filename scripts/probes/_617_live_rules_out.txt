@@ -1,0 +1,8 @@
+APOLLO LIVE RULES — generated from code + prod state, never from hand-written prose
+generated 2026-09-03 13:58 PDT · prod: reachable (server checkout 513e332e)
+
+== ⚠ DRIFT — where the prose contradicts code or prod (1 finding(s)) ==
+  [UNVERIFIED] docs/setups/magna53_ep.md:544  (stale-claim)
+      doc says : 28 tests). **Not yet deployed / not yet verified-live** — built with no prod DB access from this
+      actual   : historical entry, unsuperseded — no later dated entry re-states this subject, and no checkable flag is named
+      → A status claim in a dated entry that is still the doc's most recent word on its subject, and nothing can verify it — the exact shape that rotted on 2026-08-23. Re-check by hand; tie it to a flag or add a superseding entry.

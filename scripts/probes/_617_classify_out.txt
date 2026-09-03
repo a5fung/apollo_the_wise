@@ -1,0 +1,90 @@
+capture: POP 42081 rows, SCAN 32559, ALERTS 196, TRADES 135, SECTYPES 13846, scan days 64, pop pairs with stored RTH bars 8329
+
+== 1. population by universe filter (live order) x deepest funnel stage reached ==
+  MIN_PREV_CLOSE                     n= 13388  no_row:12909  universe_floor:479
+  non_stock:ETF                      n=  9285  no_row:9285
+  MIN_GAP_PCT_asof                   n=  7350  no_row:6727  shortlist_cap:99  score_bar:78  other:quality filter: filter:adv_too:67  rvol_gate:63  post_grade_filter:53
+  non_stock:WARRANT                  n=  5979  no_row:5979
+  MIN_PREV_DAY_VOLUME                n=  2242  no_row:2197  universe_floor:35  other:quality filter: filter:adv_too:5  extension:2  shortlist_cap:1  other:quality filter: filter:atr_too:1
+  non_stock:RIGHT                    n=  1123  no_row:1123
+  passes_universe                    n=   693  alert:133  no_row:119  score_bar:60  other:quality filter: filter:mcap_to:47  other:quality filter: filter:adv_too:45  extension:44
+  non_stock:ETS                      n=   605  no_row:605
+  unclassified_security_type         n=   408  no_row:408
+  non_stock:UNIT                     n=   268  no_row:268
+  non_stock:ETN                      n=   246  no_row:246
+  non_stock:ETV                      n=   214  no_row:214
+  MIN_GAP_PCT_10_then_9_now          n=   141  no_row:72  shortlist_cap:17  alert:8  post_grade_filter:5  rvol_gate:4  other:quality filter: filter:adv_too:4
+  non_stock:PFD                      n=    98  no_row:98
+  non_stock:FUND                     n=    23  no_row:23
+  non_stock:SP                       n=    18  no_row:18
+
+== 2. names passing every non-gap universe floor, by OPEN-gap band x funnel outcome ==
+  open gap [5,6)    n=  906  no_row=  817  gap_floor_row=   1  scored=   0  alert=  5  other=  83  full_day0_bars_stored=229
+  open gap [6,7)    n=  586  no_row=  488  gap_floor_row=   0  scored=   0  alert=  9  other=  89  full_day0_bars_stored=168
+  open gap [7,8)    n=  352  no_row=  254  gap_floor_row=   1  scored=   0  alert=  4  other=  93  full_day0_bars_stored=125
+  open gap [8,9)    n=  232  no_row=  119  gap_floor_row=   0  scored=   0  alert= 14  other=  99  full_day0_bars_stored=103
+  open gap [9,10)   n=  150  no_row=   76  gap_floor_row=   0  scored=   0  alert=  8  other=  66  full_day0_bars_stored=86
+  open gap [10,12)  n=  187  no_row=   40  gap_floor_row=   0  scored=   0  alert= 22  other= 125  full_day0_bars_stored=130
+  open gap [12,15)  n=  148  no_row=   21  gap_floor_row=   0  scored=   0  alert= 31  other=  96  full_day0_bars_stored=100
+  open gap [15,20)  n=  124  no_row=    9  gap_floor_row=   0  scored=   0  alert= 31  other=  84  full_day0_bars_stored=78
+  open gap >=20     n=  225  no_row=   45  gap_floor_row=   0  scored=   0  alert= 49  other= 131  full_day0_bars_stored=176
+  open gap <5       n= 5274  no_row= 5049  gap_floor_row=   6  scored=   0  alert= 13  other= 206  full_day0_bars_stored=878
+
+== 3. never-admitted (no row / gap_floor row only), floors passed, by month x band ==
+  2026-06: [5,6):293  [6,7):147  [7,8):71  [8,9):31  [9,10):21  [10,12):12  [12,15):11  [15,20):3  >=20:29
+  2026-07: [5,6):248  [6,7):194  [7,8):95  [8,9):42  [9,10):22  [10,12):16  [12,15):5  [15,20):4  >=20:13
+  2026-08: [5,6):277  [6,7):147  [7,8):89  [8,9):46  [9,10):33  [10,12):12  [12,15):5  [15,20):2  >=20:3
+
+== 4. SILENT: open gap >= the as-of floor, every universe floor passed, no scan_log row ==
+  n=119  on scan-days=119  off-scan-days=0
+  by band: >=20:45  [10,12):40  [12,15):21  [15,20):9  [9,10):4
+  first 40 (ticker date open_gap high_gap prev_close prev_vol adv20$ ext5):
+    JEM    2026-06-30 og= 357.4 hg= 357.4 pc=   12.96 pv=   1,086,207 adv=     2,075,313 ext5=0.0
+    BYAH   2026-06-12 og= 173.3 hg= 246.7 pc=    8.40 pv=   3,438,037 adv=     4,468,328 ext5=0.0
+    PMI    2026-06-02 og= 130.6 hg= 135.8 pc=    8.42 pv=     470,572 adv=     4,129,011 ext5=20.4
+    PAVS   2026-06-15 og= 127.7 hg= 149.9 pc=   20.80 pv=     905,567 adv=    15,759,441 ext5=0.0
+    JEM    2026-07-01 og= 116.5 hg= 183.9 pc=   47.64 pv=  10,186,930 adv=    26,335,059 ext5=267.6
+    INLF   2026-06-26 og= 110.0 hg= 129.7 pc=    6.00 pv=   1,172,095 adv=     5,906,149 ext5=0.0
+    HUBC   2026-06-01 og= 102.5 hg= 117.5 pc=    5.22 pv=  68,435,900 adv=    23,894,874 ext5=146.3
+    CXAI   2026-06-04 og=  94.8 hg= 110.2 pc=    7.96 pv=   1,395,236 adv=     4,726,274 ext5=0.0
+    TNON   2026-06-22 og=  92.9 hg= 128.6 pc=   12.25 pv=     968,939 adv=       643,659 ext5=0.0
+    SMTK   2026-06-05 og=  85.3 hg=  87.5 pc=   16.00 pv=     692,702 adv=       732,170 ext5=11.5
+    FXHO   2026-07-06 og=  81.5 hg= 247.2 pc=    7.20 pv=      89,400 adv=       643,680 ext5=0.0
+    WTO    2026-06-11 og=  71.0 hg= 135.0 pc=   10.00 pv=      64,639 adv=       559,387 ext5=3.1
+    LGCL   2026-07-23 og=  67.1 hg=  99.7 pc=  118.94 pv=      95,085 adv=    11,931,538 ext5=0.0
+    TDTH   2026-07-07 og=  64.8 hg=  73.6 pc=  436.80 pv=      93,906 adv=     2,220,478 ext5=28.2
+    PAVS   2026-06-09 og=  64.8 hg=2737.8 pc=   94.05 pv=     197,599 adv=     1,176,449 ext5=5.7
+    GDC    2026-06-15 og=  63.8 hg=  67.2 pc=   24.75 pv=      61,467 adv=     5,037,329 ext5=0.0
+    MGN    2026-06-24 og=  56.7 hg=  60.2 pc=    6.89 pv=   7,172,276 adv=     2,762,915 ext5=29.7
+    HAO    2026-07-10 og=  52.3 hg=  77.6 pc=   21.40 pv=     136,821 adv=       891,160 ext5=1.9
+    SMTK   2026-06-08 og=  51.5 hg= 182.6 pc=   20.43 pv=   4,644,017 adv=     5,462,272 ext5=42.4
+    NEXR   2026-06-08 og=  51.2 hg=  69.4 pc=   13.31 pv=   1,185,727 adv=    12,218,041 ext5=18.6
+    HUBC   2026-06-03 og=  50.8 hg=  70.8 pc=    9.60 pv=  27,277,796 adv=    47,518,223 ext5=352.8
+    NIVF   2026-06-17 og=  50.0 hg=  51.4 pc=    6.30 pv=  11,827,992 adv=    10,702,595 ext5=30.5
+    HKIT   2026-06-10 og=  48.7 hg= 138.1 pc=    6.83 pv=   1,131,023 adv=    34,778,240 ext5=0.0
+    INLF   2026-06-29 og=  47.8 hg=  65.1 pc=    9.34 pv=  11,354,955 adv=    11,208,287 ext5=55.7
+    FAC    2026-06-09 og=  44.9 hg=  83.5 pc=   13.80 pv=     178,977 adv=     2,469,883 ext5=0.0
+    LIMN   2026-07-02 og=  44.7 hg=  80.3 pc=    5.74 pv=     828,019 adv=       853,153 ext5=16.0
+    OMH    2026-07-24 og=  44.5 hg= 416.3 pc=   21.21 pv=     402,127 adv=    13,000,833 ext5=70.2
+    TDIC   2026-06-08 og=  39.5 hg= 382.1 pc=    5.60 pv=     483,408 adv=   156,385,913 ext5=0.0
+    CDT    2026-06-22 og=  38.7 hg=  86.8 pc=   10.20 pv=  24,947,114 adv=    15,441,187 ext5=47.2
+    BYAH   2026-06-18 og=  38.3 hg=  40.0 pc=    9.60 pv=     851,282 adv=    13,633,516 ext5=14.3
+    NEXR   2026-06-25 og=  34.4 hg= 127.6 pc=    6.19 pv=      80,091 adv=    14,842,183 ext5=0.0
+    BYAH   2026-06-15 og=  33.3 hg=  35.4 pc=   11.76 pv=  13,140,010 adv=    12,191,778 ext5=40.0
+    DFNS   2026-07-17 og=  32.7 hg=  32.7 pc=    6.16 pv=     321,386 adv=     2,683,491 ext5=0.0
+    AEHL   2026-07-23 og=  30.9 hg=  79.6 pc=    8.91 pv=   4,053,033 adv=     3,197,115 ext5=0.0
+    CYCU   2026-08-14 og=  28.6 hg=  30.2 pc=    5.60 pv=     877,535 adv=    65,655,178 ext5=19.0
+    VMAR   2026-07-14 og=  28.4 hg=  59.6 pc=   14.10 pv=   3,449,230 adv=     5,030,191 ext5=13.7
+    GMEX   2026-06-09 og=  25.1 hg=  39.2 pc=    8.02 pv=     295,357 adv=     5,502,947 ext5=4.1
+    HCWC   2026-06-01 og=  23.9 hg=  41.5 pc=   11.65 pv=   1,329,611 adv=       827,821 ext5=27.2
+    LIMN   2026-07-16 og=  23.3 hg=  71.2 pc=    5.72 pv=   2,145,756 adv=     5,633,796 ext5=10.6
+    WOK    2026-06-03 og=  23.1 hg=  26.0 pc=   10.40 pv=   1,054,615 adv=   102,440,436 ext5=10.2
+
+== 5. D-1 floor / shape / security-type exclusions with OPEN gap >= 9% ==
+  MIN_PREV_CLOSE               n= 1336  no_row:1230  universe_floor:106
+  MIN_PREV_DAY_VOLUME          n=  221  no_row:207  universe_floor:7  other:quality filter: filter:adv_too:5  other:quality filter: filter:atr_too:1  other:quality filter: filter:adv_too,shortlist_cap:1
+  unclassified_security_type   n=  165  no_row:165
+  ticker_shape                 n=    0  
+  non_stock (all types)        n=5650  non_stock:WARRANT:2638  non_stock:ETF:2231  non_stock:RIGHT:534  non_stock:ETS:90  non_stock:UNIT:67  non_stock:ETV:37  non_stock:ETN:35  non_stock:PFD:15
+
+written: /Users/alvinfung/apollo_the_wise/scripts/probes/_617_replay_sets.tsv

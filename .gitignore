@@ -79,3 +79,9 @@ _chart_eval_267/
 scripts/ep_replay_data/*.txt
 scripts/ep_replay_data/*.tsv
 scripts/ep_replay_data/*.tsv.gz
+
+# #617 raw captures — 25MB of re-fetchable market bars and a 9MB population dump.
+# The SCRIPTS and the SUMMARIES are committed and are what a re-run needs; the raw
+# pulls are reproducible from the committed .sql/.py and do not belong in git history.
+scripts/probes/_617_bars.psv.gz
+scripts/probes/_617_population_out.txt

@@ -1,0 +1,54 @@
+== reclassified on RAW D-1 close/volume (set -> set2 moves) ==
+  unclassified_security_type -> artifact_or_otc: 165
+  silent_no_row -> MIN_PREV_CLOSE: 71
+  MIN_PREV_DAY_VOLUME -> MIN_PREV_CLOSE: 66
+  gap_floor_5_6 -> MIN_PREV_CLOSE: 19
+  gap_floor_6_7 -> MIN_PREV_CLOSE: 14
+  gap_floor_9to10_admitted_now -> MIN_PREV_CLOSE: 12
+  MIN_PREV_CLOSE -> artifact_or_otc: 11
+  gap_floor_7_8 -> MIN_PREV_CLOSE: 9
+  gap_floor_8_9 -> MIN_PREV_CLOSE: 7
+  silent_no_row -> artifact_or_otc: 4
+  gap_floor_5_6 -> artifact_or_otc: 4
+  MIN_PREV_DAY_VOLUME -> artifact_or_otc: 2
+  MIN_PREV_DAY_VOLUME -> reclass_passes_floors:MIN_PREV_DAY_VOLUME: 2
+  gap_floor_6_7 -> artifact_or_otc: 1
+  gap_floor_8_9 -> MIN_PREV_DAY_VOLUME: 1
+
+== per set (raw-basis): n | with_bars | settled | >=4R | >=4R ex tick-bound | >=2R | >0 | sumR | meanR | ORB-rule no_trade | no_entry | abstain | bar-rows TOUCHING >=9% in 09:30-09:44 (upper bound) | bar-rows SUSTAINING >=9% 3 consecutive closes (the live rule) ==
+  gap_floor_8_9                    111 |  111 |   56 | 0 | 0 |   2 |  22 |   -13.4 | -0.24 |  10 |  22 |  23 |   65% (72/111) |   24% (27/111)
+  gap_floor_7_8                    246 |  246 |  132 | 0 | 0 |   6 |  56 |   -29.4 | -0.22 |   9 |  55 |  50 |   41% (102/246) |   14% (34/246)
+  gap_floor_6_7                    473 |  473 |  290 | 5 | 5 |  16 | 109 |   -86.9 | -0.30 |  12 |  91 |  80 |   25% (118/473) |   10% (45/473)
+      >=4R UMAC   2026-07-30 gap    6.5 raw_pc 17.260 entry 18.390 stop_w 0.780 (4.24%) R +8.40 tick_bound=False inwin touch 8.5% sustain=False final stop_hit
+      >=4R BBVA   2026-07-30 gap    6.3 raw_pc 25.660 entry 27.280 stop_w 0.135 (0.49%) R +6.51 tick_bound=False inwin touch 6.3% sustain=False final sma_trail_stop
+      >=4R NEM    2026-08-05 gap    6.2 raw_pc 97.730 entry 104.400 stop_w 2.540 (2.43%) R +6.38 tick_bound=False inwin touch 7.2% sustain=False final stop_hit
+      >=4R AEM    2026-08-05 gap    6.2 raw_pc 150.610 entry 161.700 stop_w 6.200 (3.83%) R +5.20 tick_bound=False inwin touch 7.9% sustain=False final stop_hit
+      >=4R AGI    2026-08-05 gap    6.0 raw_pc 28.760 entry 30.940 stop_w 0.950 (3.07%) R +4.12 tick_bound=False inwin touch 8.0% sustain=False final stop_hit
+  gap_floor_5_6                    795 |  795 |  490 | 6 | 6 |  26 | 198 |   -99.1 | -0.20 |  32 | 147 | 126 |   15% (122/795) |    5% (36/795)
+      >=4R SAP    2026-07-24 gap    5.0 raw_pc 146.380 entry 155.010 stop_w 2.520 (1.63%) R +14.51 tick_bound=False inwin touch 7.3% sustain=False final stop_hit
+      >=4R KGC    2026-08-05 gap    5.9 raw_pc 23.600 entry 25.175 stop_w 0.470 (1.87%) R +8.81 tick_bound=False inwin touch 7.5% sustain=False final stop_hit
+      >=4R WPM    2026-08-05 gap    5.3 raw_pc 115.410 entry 122.470 stop_w 3.290 (2.69%) R +6.27 tick_bound=False inwin touch 6.5% sustain=False final stop_hit
+      >=4R CDE    2026-08-19 gap    6.0 raw_pc 18.510 entry 19.640 stop_w 0.110 (0.56%) R +6.13 tick_bound=False inwin touch 9.8% sustain=True final stop_hit
+      >=4R ETN    2026-07-30 gap    5.4 raw_pc 361.880 entry 384.070 stop_w 10.980 (2.86%) R +4.31 tick_bound=False inwin touch 6.7% sustain=False final stop_hit
+      >=4R WYFI   2026-06-15 gap    5.7 raw_pc 24.700 entry 26.490 stop_w 1.360 (5.13%) R +4.25 tick_bound=False inwin touch 9.8% sustain=False final stop_hit
+  gap_floor_9to10_admitted_now      60 |   60 |   22 | 0 | 0 |   0 |   7 |   -11.3 | -0.51 |   7 |  16 |  15 |   98% (59/60) |   32% (19/60)
+  silent_no_row                     44 |   44 |   13 | 0 | 0 |   1 |   5 |    -3.1 | -0.24 |   5 |  12 |  14 |   91% (40/44) |   55% (24/44)
+  MIN_PREV_CLOSE                  1417 | 1417 |  642 | 9 | 4 |  14 | 333 |   +78.8 | +0.12 | 241 | 206 | 326 |   93% (1312/1417) |   67% (952/1417)
+      >=4R NEXR   2026-07-30 gap    9.7 raw_pc 0.300 entry 0.329 stop_w 0.018 (5.47%) R +85.81 tick_bound=True inwin touch 9.9% sustain=False final stop_hit
+      >=4R AERT   2026-06-11 gap   10.4 raw_pc 0.501 entry 0.568 stop_w 0.078 (13.73%) R +57.15 tick_bound=True inwin touch 28.3% sustain=True final stop_hit
+      >=4R RGNT   2026-06-15 gap   13.3 raw_pc 1.500 entry 1.710 stop_w 0.041 (2.42%) R +35.60 tick_bound=True inwin touch 70.7% sustain=True final sma_trail_stop
+      >=4R STAK   2026-06-02 gap   23.1 raw_pc 0.975 entry 1.210 stop_w 0.120 (9.92%) R +23.48 tick_bound=False inwin touch 52.8% sustain=True final stop_hit
+      >=4R DFNS   2026-07-27 gap   60.0 raw_pc 4.350 entry 7.030 stop_w 1.160 (16.50%) R +19.05 tick_bound=False inwin touch 66.4% sustain=True final stop_hit
+      >=4R LGCL   2026-06-30 gap   11.5 raw_pc 0.852 entry 0.950 stop_w 0.020 (2.11%) R +17.00 tick_bound=True inwin touch 44.4% sustain=True final stop_hit
+      >=4R JLHL   2026-07-09 gap   21.9 raw_pc 3.060 entry 3.920 stop_w 0.400 (10.20%) R +13.35 tick_bound=False inwin touch 67.0% sustain=True final sma_trail_stop
+      >=4R CYCU   2026-07-30 gap   19.6 raw_pc 0.270 entry 0.335 stop_w 0.030 (9.01%) R +5.34 tick_bound=True inwin touch 39.9% sustain=True final stop_hit
+      >=4R LUNG   2026-07-30 gap   12.0 raw_pc 1.250 entry 1.400 stop_w 0.120 (8.57%) R +4.59 tick_bound=False inwin touch 28.8% sustain=True final stop_hit
+  MIN_PREV_DAY_VOLUME              138 |  137 |   26 | 0 | 0 |   1 |  17 |    +0.4 | +0.01 |  28 |   5 |  79 |   64% (88/137) |   33% (45/137)
+  artifact_or_otc                  187 |    0 |    0 | 0 | 0 |   0 |   0 |    +0.0 | +0.00 |   0 |   0 |   0 |    0% (0/0) |    0% (0/0)
+  reclass_passes_floors:MIN_PREV_DAY_VOLUME     2 |    2 |    1 | 0 | 0 |   0 |   0 |    -1.6 | -1.59 |   1 |   0 |   0 |  100% (2/2) |   50% (1/2)
+
+== P14 cost per band (64 sessions Jun-Aug) ==
+  gap_floor_8_9    never-admitted n= 111 ->   1.7/session; bar-rows touching >=9% in-window 72/111, sustaining (live rule) 27/111 -> residual after today's RT admission ~   84 =  1.3/session (touch-basis lower bound  0.6); est. alerts at 5.3% conversion ~ 4.5/quarter
+  gap_floor_7_8    never-admitted n= 246 ->   3.8/session; bar-rows touching >=9% in-window 102/246, sustaining (live rule) 34/246 -> residual after today's RT admission ~  212 =  3.3/session (touch-basis lower bound  2.3); est. alerts at 5.3% conversion ~11.2/quarter
+  gap_floor_6_7    never-admitted n= 473 ->   7.4/session; bar-rows touching >=9% in-window 118/473, sustaining (live rule) 45/473 -> residual after today's RT admission ~  428 =  6.7/session (touch-basis lower bound  5.5); est. alerts at 5.3% conversion ~22.7/quarter
+  gap_floor_5_6    never-admitted n= 795 ->  12.4/session; bar-rows touching >=9% in-window 122/795, sustaining (live rule) 36/795 -> residual after today's RT admission ~  759 = 11.9/session (touch-basis lower bound 10.5); est. alerts at 5.3% conversion ~40.2/quarter
