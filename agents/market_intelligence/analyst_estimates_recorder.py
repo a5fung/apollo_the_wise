@@ -185,6 +185,122 @@ run_in_executor + wait_for shape fundamentals.get_fundamentals already uses for
 this synchronous, scraped library. FMP_PACE_SECONDS (12s x2) already dominates
 per-ticker wall time; the yfinance pause is a modest added courtesy, not the
 binding limiter.
+
+FINNHUB — A SECOND ESTIMATES SOURCE (v4, 2026-09-03). Verified live with the
+operator's own key: `/stock/revenue-estimate` (the consensus SERIES, the same
+shape yfinance gives) is HTTP 403 on all seven population small caps — genuinely
+premium-walled, never call it. `/calendar/earnings` is FREE and returns forward
+EPS + revenue estimates on 7/7, two quarters ahead each, at 30 calls/sec. ITS ONE
+GAP: the calendar carries NO ANALYST COUNT, so `n_analysts < 3 -> None`
+(estimate_for_scoring) cannot be applied to it — `analyst_count_available=False`
+marks that NULL as "this source never reports a count," never to be confused with
+`num_analysts_revenue IS NULL` on a FMP/yfinance row (which means "we asked and
+the vendor had nothing"). Finnhub therefore CANNOT replace yfinance (which stays
+PRIMARY, and the only source estimate_for_scoring's rule can ever admit) — it is
+an independent second calendar, stored as its own rows (`source='finnhub_calendar'`,
+FINNHUB_SOURCE below), same table, same honesty/window stamping.
+
+THE BIGGEST WIN, and why this is worth doing at all: Finnhub's calendar entries
+state the fiscal `quarter` + `year` OUTRIGHT — a discrete, non-drifting identity —
+where yfinance's '0q'/'+1q' are RELATIVE and must be RECONSTRUCTED (see
+resolve_quarterly_period_ends above) into an absolute date that then has to be
+STABILIZED against drift (stabilize_period_end). The module's own admission is
+"a quarter's label is set by whichever run FIRST sees it ... and held from then
+on" — so a MORE RELIABLE first label is a structural win, not an incremental one.
+fiscal_quarter_end_from_label converts (quarter, year) into a period_end_date
+using this ticker's OWN EDGAR-published `fiscalYearEnd` (MMDD, e.g. AAPL "0926",
+COST "0830" — a real fact, zero extra network calls: it rides the SAME submissions
+payload _get_edgar_facts already fetches) — NEVER a naive Jan-Dec quarter
+assumption. MEASURED, not assumed, against real COST EDGAR report dates: a fixed
+3-calendar-month step from the fiscal year end is off by 0-20 days across COST's
+four real quarters (worst: Q3 ~20 days). That is WORSE, on a 4-4-5 filer, than
+the ~1-week precision resolve_quarterly_period_ends already claims — and is
+ACCEPTED anyway, for three reasons that do not apply to that earlier design's
+REJECTED fixed-3-month attempt: (1) it is DETERMINISTIC — same (quarter, year,
+fiscalYearEnd) always produces the SAME date, so unlike the yfinance leg's live
+inputs it can never fracture a quarter's primary key by drifting; (2) this
+recorder's population is overwhelmingly Dec-fiscal-year small/micro caps, where
+the error is ~0; (3) real quarters are ~90 days apart, so a 0-20 day error can
+never collide two adjacent quarters. It is a LABEL, not a claim of exact-day
+precision — exactly like the yfinance reconstruction it is being compared against.
+
+SELF-CONSISTENCY GUARDS (never trust a vendor label blind — finnhub_period_end_
+from_entry). Finnhub's swagger.json describes `/calendar/earnings`'s quarter/year
+as "Earnings quarter"/"Earnings year" — vaguer than the explicitly-labeled
+"Fiscal quarter"/"Fiscal year" on its OTHER estimate endpoints, so whether they
+are fiscal or calendar-year is genuinely undecided from docs alone (checked
+2026-09-03; undecidable without a live key on a non-calendar-fiscal-year name).
+Rather than trust it, every Finnhub-derived period_end_date must ALSO satisfy:
+(a) `entry.date` (Finnhub's own reported announcement date for that quarter)
+minus the derived period_end_date falls in the SAME [0, 75]-day release-lag
+window resolve_quarterly_period_ends already enforces — a fiscal/calendar-year
+or wrong-quarter misread runs the gap off by ~90+ days and fails this outright;
+(b) the derived date must fall AFTER SEC EDGAR's own last_reported_quarter_end
+(the same sanity bound resolve_quarterly_period_ends applies to '0q'). Either
+guard failing -> this Finnhub entry is REJECTED and counted
+(quarter_finnhub_no_cadence), never stored against an unverified label — the
+guards, not the vendor's word, are what make this safe to use.
+
+PREFER, NEVER REQUIRE: a guard-passed Finnhub period_end_date additionally
+CORROBORATES (pair_finnhub_periods_to_slots, tolerance
+_FINNHUB_OVERRIDE_TOLERANCE_DAYS=45 — about half a quarter: wide enough to
+accept BOTH methods' own few-to-twenty-day imprecision, narrow enough that the
+NEXT real quarter (~90 days away) can never be mistaken for the same one) this
+ticker's OWN yfinance/EDGAR-reconstructed '0q'/'+1q' candidate. Only when it
+corroborates does it OVERRIDE that slot's period_end_date (so the yfinance row
+and the Finnhub row for the same real quarter share the identical
+period_end_date, which is what makes them joinable for the divergence check
+below) — `period_label_method` on that row flips from LABEL_METHOD_YF_RECONSTRUCTED
+to LABEL_METHOD_FINNHUB_FISCAL. No corroboration -> the yfinance row keeps its own
+reconstructed date untouched; Finnhub's OWN row (this is the resilience win) is
+STILL stored independently either way — a Finnhub calendar entry never depends
+on yfinance succeeding at all.
+
+THE HONEST STATEMENT OF WHAT "OVERRIDE" MEANS ACROSS RUNS: stabilize_period_end
+(see its own docstring — "a quarter's label is set by whichever run FIRST sees it
+... and held from then on") still runs on the corroborated candidate. So the
+override wins the STORED DATE only when this is the quarter's first sighting, or
+when it agrees with the date already on record; if an EARLIER run already
+established a different date for this same quarter (e.g. a yfinance-only night
+before Finnhub started covering this ticker), that established date wins and
+Finnhub's OWN row is realigned to match it (snapshot_ticker mutates the Finnhub
+row's period_end_date in place) — `period_label_method` still says Finnhub
+identified WHICH quarter this is, which remains true even though the established
+key, not Finnhub's freshly-computed date, is what gets stored. This is what keeps
+the two sources joinable for the divergence check across every future run, not
+only the run where they first agree.
+
+DIVERGENCE, NO THRESHOLD (compute_estimate_divergences, mi_analyst_estimates_
+divergence table). Where BOTH sources land a row on the exact SAME (ticker,
+period_type, period_end_date, as_of_date) — i.e. exactly the corroborated-override
+case above — one divergence row stores BOTH sources' raw revenue_avg/eps_avg plus
+the plain difference (finnhub minus yfinance). No threshold is applied or chosen
+here (operator instruction, 2026-09-03: three thresholds were invented and
+re-litigated this week) — the distribution is meant to be READ in ~60 days, not
+pre-judged.
+
+FINNHUB IS SILENT AND NEVER RAISES (matches _fetch_yfinance_quarterly's contract
+exactly). `_finnhub_get` is a BESPOKE transport, deliberately NOT
+collector._fmp_get: that helper routes every failure through
+llm_health.maybe_alert_api_failure, which CAN Telegram — this recorder is SILENT
+on every path (THE LINE, top of this file). It reads and logs the response BODY
+(redacted) on an HTTP error, never just the status — the FMP lesson (2026-09-03
+root cause): a 402/403 can mean a parameter restriction, not a rate breach, and
+the body text is the only way to tell them apart. `FINNHUB_API_KEY` unset,
+network failure, malformed shape, or an empty calendar all degrade to
+"nothing recorded, counted" (quarter_finnhub_unavailable) and never touch the
+annual FMP row or the yfinance quarterly leg.
+
+PACING: FINNHUB_PACE_SECONDS=1.1s (~54 calls/min, safely under the free tier's
+~60/min ceiling) is a REAL elapsed-time throttle (mirrors collector._polygon_get's
+last-call-timestamp pattern, not YFINANCE_PACE_SECONDS's declared-but-unenforced
+one above) — it costs ~0 wall time in practice because tickers process
+sequentially and FMP_PACE_SECONDS's two 12s sleeps already space consecutive
+tickers ~24s apart, >20x the deficit this throttle would ever need to sleep off;
+it exists to protect a future parallel run (a backfill, or a re-architected
+nightly loop), not because today's cadence needs it. The fetch itself launches as
+a task alongside `_yf_task` (see snapshot_ticker) so its ~1 network round trip
+per ticker runs under FMP's cover time too.
 """
 from __future__ import annotations
 
@@ -200,19 +316,32 @@ from agents.market_intelligence.db import (
     get_recent_quarterly_period_ends,
     log_audit_event,
     upsert_analyst_estimates,
+    upsert_analyst_estimates_divergence,
 )
 from shared.secret_redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
-RECORDER_VERSION = "v3"           # v2 2026-09-01: anchor source FMP -> SEC EDGAR (402 fix)
+RECORDER_VERSION = "v4"           # v2 2026-09-01: anchor source FMP -> SEC EDGAR (402 fix)
                                    # v3 2026-09-02: quarterly leg added (yfinance, see below)
+                                   # v4 2026-09-03: Finnhub calendar added as a 2nd source (see below)
 ESTIMATES_SOURCE = "fmp_stable"   # the ANNUAL estimate values are FMP; only the anchor moved
 QUARTERLY_ESTIMATES_SOURCE = "yfinance"  # the QUARTERLY leg (v3) — distinguishes vendor in
                                           # the existing `source` column; no schema change
+FINNHUB_SOURCE = "finnhub_calendar"      # the v4 second source — /calendar/earnings only;
+                                          # /stock/revenue-estimate is premium-walled (403, 7/7)
 POPULATION_LOOKBACK_DAYS = 30     # daily run: tickers with a live-source alert this recent
 MIN_ANALYSTS_DEFAULT = 3          # the sketch's n<3 -> None rule (read-side, re-tunable)
 MAX_PERIODS_PER_CALL = 20         # bound the per-ticker estimate payload
+
+# ── period_label_method (v4) — which method produced a QUARTER row's period_end_date ──
+# Recorded on EVERY row (annual included) so the Finnhub-labeling improvement is
+# MEASURABLE rather than assumed (operator instruction, 2026-09-03).
+LABEL_METHOD_VENDOR_REPORTED = "vendor_reported"     # FMP annual: the vendor's own `date`
+                                                      # field IS the period end — no reconstruction
+LABEL_METHOD_YF_RECONSTRUCTED = "yf_reconstructed"   # yfinance quarterly, no Finnhub corroboration
+LABEL_METHOD_FINNHUB_FISCAL = "finnhub_fiscal_label"  # period_end_date derived from Finnhub's own
+                                                       # (quarter, year) — see fiscal_quarter_end_from_label
 # 🛑 PACING IS THE WHOLE BUG (root-caused 2026-09-02). This was 0.25s — its own comment said
 # "~240 calls/min worst case" — against a FREE tier. FMP answers a rate breach with HTTP **402**,
 # not 429, so it is indistinguishable from "endpoint not in your plan" unless you read the body:
@@ -247,8 +376,11 @@ _EDGAR_TIMEOUT_SECONDS = 30
 _cik_map_state: dict[str, Any] = {"as_of": None, "map": None}
 
 # ── quarterly leg (v3) — yfinance estimates + SEC-sourced cadence resolution ──────────
-_EMPTY_CADENCE_FACTS: dict[str, Optional[date]] = {
+_EMPTY_CADENCE_FACTS: dict[str, Any] = {
     "last_reported_quarter_end": None, "prior_reported_quarter_end": None,
+    "fiscal_year_end": None,   # v4: EDGAR's own "MMDD" fiscal-year-end fact (e.g. AAPL "0926") —
+                                # zero extra network cost, same submissions payload; feeds
+                                # fiscal_quarter_end_from_label, the v4 Finnhub labeling leg
 }
 # Sanity bounds for resolve_quarterly_period_ends — an out-of-range lag or quarter length
 # means the inputs are bad/mismatched, not that this ticker is unusual; treat it the same
@@ -276,6 +408,21 @@ YFINANCE_PACE_SECONDS = 1.0       # a modest courtesy pause; FMP_PACE_SECONDS (1
 _YF_QUARTER_TIMEOUT_SECONDS = 30.0  # mirrors fundamentals.py's _YF_TIMEOUT
 _YF_QUARTER_PERIODS = ("0q", "+1q")  # the only two yfinance periods this leg stores — '0y'/'+1y'
                                       # are the annual leg's territory (FMP), never duplicated here
+
+# ── Finnhub /calendar/earnings (v4) — the second estimates source ────────────────────
+FINNHUB_BASE = "https://finnhub.io/api/v1"
+FINNHUB_PACE_SECONDS = 1.1        # ~54 calls/min, safely under the free tier's ~60/min ceiling —
+                                   # a REAL elapsed-time throttle (see _finnhub_get), unlike
+                                   # YFINANCE_PACE_SECONDS above; costs ~0 wall time today because
+                                   # FMP_PACE_SECONDS's own sleeps already space tickers ~24s apart
+_FINNHUB_TIMEOUT_SECONDS = 20.0
+_FINNHUB_CALENDAR_WINDOW_DAYS = 200   # ~2 quarters ahead — matches the shape verified live
+                                       # 2026-09-03 (7/7 population tickers, 2 forward quarters each)
+_FINNHUB_MAX_PERIODS = 4          # defensive cap; the verified shape returns ~2 entries/ticker
+_FINNHUB_OVERRIDE_TOLERANCE_DAYS = 45  # ~half a quarter: wide enough to accept both labeling
+                                        # methods' own few-to-twenty-day imprecision, narrow enough
+                                        # that the NEXT real quarter (~90 days away) can never be
+                                        # mistaken for the one a yfinance slot already resolved
 
 
 # ── pure core (mock-free, the house idiom) ────────────────────────────────────────────
@@ -381,6 +528,9 @@ def normalize_fmp_estimate(
         "num_analysts_eps": _i(rec.get("numAnalystsEps")),
         "source": ESTIMATES_SOURCE,
         "recorder_version": RECORDER_VERSION,
+        "analyst_count_available": True,
+        "fiscal_quarter": None, "fiscal_year": None,
+        "period_label_method": LABEL_METHOD_VENDOR_REPORTED,
     }
 
 
@@ -390,21 +540,32 @@ def normalize_fmp_estimate(
 # calendars and how the chosen lag/quarter-length design closes the reporting-gap race.
 
 
-def quarterly_cadence_facts(payload: Any) -> dict[str, Optional[date]]:
-    """The SEC-sourced facts resolve_quarterly_period_ends needs, pulled from the SAME
-    EDGAR submissions payload already fetched for the honesty-window anchor (zero extra
-    network cost) and restricted to QUARTERLY_CADENCE_FORMS (10-Q/10-K only):
-      last_reported_quarter_end   reportDate of the most recent QUARTERLY_CADENCE_FORMS filing
+def quarterly_cadence_facts(payload: Any) -> dict[str, Any]:
+    """The SEC-sourced facts resolve_quarterly_period_ends (and, v4, fiscal_quarter_end_
+    from_label) need, pulled from the SAME EDGAR submissions payload already fetched for
+    the honesty-window anchor (zero extra network cost):
+      last_reported_quarter_end   reportDate of the most recent QUARTERLY_CADENCE_FORMS
+                                   (10-Q/10-K only) filing
       prior_reported_quarter_end  reportDate of the filing before that (this ticker's OWN
                                    observed quarter length = last - prior)
+      fiscal_year_end             (v4) the submissions payload's OWN top-level "MMDD" fact
+                                   (e.g. AAPL "0926", COST "0830") — a different level of the
+                                   payload than filings.recent, so it is extracted FIRST and
+                                   independently of whether the recent-filings parse below
+                                   succeeds at all
     Any field the payload can't support -> None; never a guess. A recent IPO with only one
     filing on record gets last_reported_quarter_end but no prior — '0q' can still resolve,
     '+1q' cannot (resolve_quarterly_period_ends handles that split)."""
+    facts: dict[str, Any] = dict(_EMPTY_CADENCE_FACTS)
+    if isinstance(payload, dict):
+        fye = payload.get("fiscalYearEnd")
+        if isinstance(fye, str) and len(fye) == 4 and fye.isdigit():
+            facts["fiscal_year_end"] = fye
     try:
         recent = payload["filings"]["recent"]
         forms, report_dates = recent["form"], recent["reportDate"]
     except (TypeError, KeyError):
-        return dict(_EMPTY_CADENCE_FACTS)
+        return facts
     dates: list[date] = []
     for form, rdate in zip(forms, report_dates):
         if form not in QUARTERLY_CADENCE_FORMS:
@@ -413,12 +574,11 @@ def quarterly_cadence_facts(payload: Any) -> dict[str, Optional[date]]:
         if parsed is not None:
             dates.append(parsed)
     if not dates:
-        return dict(_EMPTY_CADENCE_FACTS)
+        return facts
     ordered = sorted(set(dates))
-    last_report = ordered[-1]
-    prior_report = ordered[-2] if len(ordered) >= 2 else None
-    return {"last_reported_quarter_end": last_report,
-            "prior_reported_quarter_end": prior_report}
+    facts["last_reported_quarter_end"] = ordered[-1]
+    facts["prior_reported_quarter_end"] = ordered[-2] if len(ordered) >= 2 else None
+    return facts
 
 
 def resolve_quarterly_period_ends(
@@ -520,6 +680,129 @@ def stabilize_period_end(
     return candidate
 
 
+# ── v4 — Finnhub fiscal-label resolution (quarter+year -> period_end_date) ────────────
+# See the module docstring's "THE BIGGEST WIN" / "SELF-CONSISTENCY GUARDS" / "PREFER,
+# NEVER REQUIRE" sections for the full design rationale.
+
+
+def _shift_months(d: date, months: int) -> date:
+    """Pure calendar-month arithmetic (no external dependency): shift `d` by `months`
+    (may be negative), clamping the day to the LAST valid day of the target month (e.g.
+    Aug 31 - 6mo -> Feb 28/29, never rolls into March). The house's OWN documented
+    reason to distrust simple month arithmetic (see resolve_quarterly_period_ends'
+    docstring: a fixed 3-month step "missed the correct MONTH outright" on COST) is
+    about using it to extrapolate from a LIVE, drifting anchor across runs; here it is
+    applied ONCE, deterministically, to a fixed EDGAR fact (fiscal_year_end) plus a
+    vendor-stated integer quarter — the failure mode that rejection guarded against
+    (day-to-day primary-key fracture) cannot occur here because the inputs never drift."""
+    total = d.month - 1 + months
+    year = d.year + total // 12
+    month = total % 12 + 1
+    next_first = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    last_day_of_month = (next_first - timedelta(days=1)).day
+    return date(year, month, min(d.day, last_day_of_month))
+
+
+def fiscal_quarter_end_from_label(
+    quarter: Optional[int], year: Optional[int], fiscal_year_end: Optional[str],
+) -> Optional[date]:
+    """Finnhub's explicit (quarter, year) -> an approximate calendar period_end_date,
+    anchored on THIS TICKER'S OWN EDGAR-published fiscal_year_end ("MMDD", e.g. AAPL
+    "0926", COST "0830" — quarterly_cadence_facts, zero extra network cost) — NEVER a
+    generic Jan-Dec quarter assumption. `year` is read as the XBRL/EDGAR convention
+    (the calendar year in which fiscal Q4 / the fiscal year END falls); Q(n) is 3*(4-n)
+    months before that.
+
+    DELIBERATE, MEASURED IMPRECISION (see the module docstring's "THE BIGGEST WIN" for
+    the full justification — deterministic, small-cap-Dec-FYE population, ~90-day
+    quarter spacing): MEASURED on COST's real EDGAR report dates, this lands 0-20 days
+    off across the 4 real quarters (worst: the May quarter, ~20 days) — WORSE, on a
+    true 4-4-5 filer, than resolve_quarterly_period_ends' own ~1-week precision, and
+    ACCEPTABLE anyway because it is a deterministic LABEL, not a claim of exact-day
+    truth, and finnhub_period_end_from_entry's guards (below) catch anything worse
+    (wrong quarter / wrong year convention) rather than trusting this arithmetic blind.
+
+    Sanity-bounded like every other date this module computes: an invalid quarter
+    (not 1-4) or a missing input -> None, never a guess."""
+    if quarter not in (1, 2, 3, 4) or year is None or not fiscal_year_end:
+        return None
+    try:
+        year = int(year)
+        fye_month = int(fiscal_year_end[:2])
+        fye_day = int(fiscal_year_end[2:])
+    except (TypeError, ValueError):
+        return None
+    if not (1 <= fye_month <= 12 and 1 <= fye_day <= 31):
+        return None
+    try:
+        next_month_first = (date(year, fye_month + 1, 1) if fye_month < 12
+                             else date(year + 1, 1, 1))
+        last_day_of_fye_month = (next_month_first - timedelta(days=1)).day
+        q4_end = date(year, fye_month, min(fye_day, last_day_of_fye_month))
+    except ValueError:
+        return None
+    return _shift_months(q4_end, -3 * (4 - quarter))
+
+
+def finnhub_period_end_from_entry(
+    entry_date: Optional[date], quarter: Optional[int], year: Optional[int],
+    fiscal_year_end: Optional[str], last_reported_quarter_end: Optional[date],
+) -> Optional[date]:
+    """One Finnhub calendar entry -> a GUARDED period_end_date, or None when either
+    self-consistency guard fails (see the module docstring's "SELF-CONSISTENCY GUARDS"):
+      (a) entry_date - computed_period_end must fall in the SAME [_MIN_RELEASE_LAG_DAYS,
+          _MAX_RELEASE_LAG_DAYS] window resolve_quarterly_period_ends already enforces —
+          a fiscal/calendar-year or wrong-quarter misread runs this off by ~90+ days;
+      (b) computed_period_end must fall AFTER SEC EDGAR's last_reported_quarter_end
+          (the same "not the quarter that already reported" bound '0q' uses).
+    Never invents a date: fiscal_quarter_end_from_label failing, or either guard
+    failing, returns None — the caller skips and counts this entry
+    (quarter_finnhub_no_cadence), it never falls back to a guess."""
+    computed = fiscal_quarter_end_from_label(quarter, year, fiscal_year_end)
+    if computed is None or entry_date is None:
+        return None
+    lag_days = (entry_date - computed).days
+    if not (_MIN_RELEASE_LAG_DAYS <= lag_days <= _MAX_RELEASE_LAG_DAYS):
+        return None
+    if last_reported_quarter_end is not None and computed <= last_reported_quarter_end:
+        return None
+    return computed
+
+
+def pair_finnhub_periods_to_slots(
+    finnhub_period_ends: "list[Optional[date]]", reconstructed: "dict[str, Optional[date]]",
+    tolerance_days: int = _FINNHUB_OVERRIDE_TOLERANCE_DAYS,
+) -> "dict[str, Optional[int]]":
+    """For each yfinance slot ('0q', '+1q'), find the INDEX into `finnhub_period_ends`
+    (guard-passed Finnhub-derived dates, see finnhub_period_end_from_entry) that
+    CORROBORATES this ticker's own reconstructed candidate for that slot — i.e. sits
+    within `tolerance_days` of it (see the module docstring's "PREFER, NEVER REQUIRE").
+    Greedy, closest-match-wins, and each Finnhub index can corroborate AT MOST ONE slot
+    (two calendar entries about the same real quarter would be a vendor data bug, not a
+    genuine double-match). Returns {'0q': index|None, '+1q': index|None} — the caller
+    (snapshot_ticker) uses the index to pull that entry's OWN period_end_date AND its
+    fiscal_quarter/fiscal_year for tagging. No match (or a missing reconstructed
+    candidate) -> None for that slot; the reconstruction stays the fallback, exactly as
+    if Finnhub did not cover this ticker at all."""
+    out: "dict[str, Optional[int]]" = {"0q": None, "+1q": None}
+    used: set = set()
+    for slot in ("0q", "+1q"):
+        target = reconstructed.get(slot)
+        if target is None:
+            continue
+        best_i, best_gap = None, None
+        for i, cand in enumerate(finnhub_period_ends):
+            if i in used or cand is None:
+                continue
+            gap = abs((cand - target).days)
+            if gap <= tolerance_days and (best_gap is None or gap < best_gap):
+                best_i, best_gap = i, gap
+        if best_i is not None:
+            out[slot] = best_i
+            used.add(best_i)
+    return out
+
+
 def next_earnings_date_from_yfinance(df: Any) -> Optional[date]:
     """The soonest date in a yfinance `earnings_dates` frame that has NO Reported EPS
     yet — yfinance's own live "next quarter to report," which is exactly what
@@ -574,6 +857,8 @@ def normalize_yfinance_quarterly_estimate(
     *, ticker: str, yf_period: str, as_of: date,
     anchor_filing_date: Optional[date], period_end_date: Optional[date],
     revenue_row: Optional[dict], earnings_row: Optional[dict],
+    period_label_method: str = LABEL_METHOD_YF_RECONSTRUCTED,
+    fiscal_quarter: Optional[int] = None, fiscal_year: Optional[int] = None,
 ) -> Optional[dict]:
     """One yfinance revenue_estimate/earnings_estimate period ('0q' or '+1q') -> one
     mi_analyst_estimates row, in the SAME shape normalize_fmp_estimate produces — a
@@ -583,6 +868,14 @@ def normalize_yfinance_quarterly_estimate(
     yearAgoEps/currency are available on the yfinance frames but deliberately NOT
     stored — kept out to hold this row to the annual leg's shape, which has never
     carried them either (see the module docstring).
+
+    v4: `period_label_method` records WHICH method produced `period_end_date` — the
+    caller (snapshot_ticker) passes LABEL_METHOD_FINNHUB_FISCAL + this quarter's
+    (fiscal_quarter, fiscal_year) when a Finnhub calendar entry CORROBORATED this
+    slot (pair_finnhub_periods_to_slots) and overrode the reconstructed date;
+    otherwise the default LABEL_METHOD_YF_RECONSTRUCTED with no fiscal label. This is
+    the measurable half of "prefer Finnhub's label over the reconstruction" — a
+    future reader can see exactly how often each method fired, rather than assuming.
 
     Returns None when the period end date could not be resolved (never store against
     a guessed date — the caller already enforces this by only calling with a resolved
@@ -613,7 +906,85 @@ def normalize_yfinance_quarterly_estimate(
         "num_analysts_eps": _i(_nan_to_none(earnings_row.get("numberOfAnalysts"))),
         "source": QUARTERLY_ESTIMATES_SOURCE,
         "recorder_version": RECORDER_VERSION,
+        "analyst_count_available": True,
+        "fiscal_quarter": fiscal_quarter, "fiscal_year": fiscal_year,
+        "period_label_method": period_label_method,
     }
+
+
+def normalize_finnhub_estimate(
+    entry: dict, *, ticker: str, as_of: date, anchor_filing_date: Optional[date],
+    period_end_date: date,
+) -> dict:
+    """One guard-passed Finnhub /calendar/earnings entry (see finnhub_period_end_from_entry
+    — `entry` is {"date", "quarter", "year", "revenue_estimate", "eps_estimate"}, already
+    normalized by _fetch_finnhub_calendar) -> one mi_analyst_estimates row.
+
+    THE ONE GAP, stored explicitly rather than silently: Finnhub's calendar gives no
+    high/low spread and NO ANALYST COUNT (verified live 2026-09-03, all 7 population
+    tickers) — revenue_high/low and eps_high/low store NULL, and
+    analyst_count_available=False marks that NULL as "this source never reports a
+    count," never to be confused with num_analysts_revenue=None on a FMP/yfinance row
+    (which means "we asked and the vendor had nothing"). estimate_for_scoring checks
+    this flag explicitly so a future caller cannot apply the n<3 rule to it by
+    accident."""
+    return {
+        "ticker": ticker,
+        "as_of_date": as_of,
+        "anchor_filing_date": anchor_filing_date,
+        "valid_from_date": honest_valid_from(anchor_filing_date, as_of),
+        "period_type": "quarter",
+        "period_end_date": period_end_date,
+        "revenue_avg": entry.get("revenue_estimate"), "revenue_high": None, "revenue_low": None,
+        "eps_avg": entry.get("eps_estimate"), "eps_high": None, "eps_low": None,
+        "num_analysts_revenue": None, "num_analysts_eps": None,
+        "source": FINNHUB_SOURCE,
+        "recorder_version": RECORDER_VERSION,
+        "analyst_count_available": False,
+        "fiscal_quarter": entry.get("quarter"), "fiscal_year": entry.get("year"),
+        "period_label_method": LABEL_METHOD_FINNHUB_FISCAL,
+    }
+
+
+def compute_estimate_divergences(rows: "list[dict]") -> "list[dict]":
+    """Where BOTH the yfinance and Finnhub quarterly legs land a row on the EXACT SAME
+    (ticker, period_end_date, as_of_date) — i.e. the corroborated-override case in
+    pair_finnhub_periods_to_slots, which is what makes their period_end_date identical
+    in the first place — emit ONE divergence row carrying both sources' raw
+    revenue_avg/eps_avg plus the plain difference (finnhub minus yfinance).
+
+    NO THRESHOLD IS APPLIED OR CHOSEN HERE (operator instruction, 2026-09-03: three
+    thresholds were invented and re-litigated this week) — this is a RAW capture for a
+    distribution to be read in ~60 days, not a judgment. A missing value on either side
+    stores a NULL diff, never a wrong number from treating a missing value as zero."""
+    by_key: "dict[tuple, dict[str, dict]]" = {}
+    for r in rows:
+        if r.get("period_type") != "quarter":
+            continue
+        source = r.get("source")
+        if source not in (QUARTERLY_ESTIMATES_SOURCE, FINNHUB_SOURCE):
+            continue
+        key = (r["ticker"], r["period_end_date"], r["as_of_date"])
+        by_key.setdefault(key, {})[source] = r
+    out: "list[dict]" = []
+    for (ticker, period_end_date, as_of_date), sources in by_key.items():
+        yf_row = sources.get(QUARTERLY_ESTIMATES_SOURCE)
+        fh_row = sources.get(FINNHUB_SOURCE)
+        if yf_row is None or fh_row is None:
+            continue
+        yf_rev, fh_rev = yf_row.get("revenue_avg"), fh_row.get("revenue_avg")
+        yf_eps, fh_eps = yf_row.get("eps_avg"), fh_row.get("eps_avg")
+        out.append({
+            "ticker": ticker, "as_of_date": as_of_date, "period_type": "quarter",
+            "period_end_date": period_end_date,
+            "yfinance_revenue_avg": yf_rev, "finnhub_revenue_avg": fh_rev,
+            "revenue_diff": (fh_rev - yf_rev) if (fh_rev is not None and yf_rev is not None)
+                            else None,
+            "yfinance_eps_avg": yf_eps, "finnhub_eps_avg": fh_eps,
+            "eps_diff": (fh_eps - yf_eps) if (fh_eps is not None and yf_eps is not None)
+                        else None,
+        })
+    return out
 
 
 def estimate_for_scoring(
@@ -627,7 +998,15 @@ def estimate_for_scoring(
 
     THE LINE: no live path calls this today — it exists so the future #333 axis has ONE
     sanctioned accessor instead of re-deriving the rule per caller.
+
+    v4: `analyst_count_available is False` (Finnhub calendar rows — see
+    normalize_finnhub_estimate) short-circuits to None EXPLICITLY, in code, not just by
+    the `n is None` fallthrough below — the intent (this source structurally never
+    reports a count, so its NULL must never be read as "we asked and it was low") is
+    the thing a future maintainer needs to see here, not infer from a side effect.
     """
+    if row.get("analyst_count_available") is False:
+        return None
     n = row.get("num_analysts_revenue")
     if n is None or n < min_analysts:
         return None
@@ -833,17 +1212,124 @@ async def _fetch_yfinance_quarterly(ticker: str) -> Optional[dict[str, Any]]:
             "periods": periods}
 
 
+# ── Finnhub /calendar/earnings fetch (v4 — the second estimates source) ──────────────
+# THE LINE for this whole section, mirroring _fetch_yfinance_quarterly exactly: every
+# failure mode (missing key, network error, bad status, malformed shape, empty
+# calendar) degrades to None/nothing-recorded-and-counted. It NEVER raises past
+# _fetch_finnhub_calendar and never touches the annual FMP row or the yfinance leg.
+
+_finnhub_pace_lock = asyncio.Lock()
+_finnhub_last_call_state: dict[str, float] = {"t": 0.0}
+
+
+async def _finnhub_get(path: str, params: dict) -> Any:
+    """Bespoke Finnhub GET — deliberately NOT collector._fmp_get: that helper routes
+    every failure through llm_health.maybe_alert_api_failure, which CAN Telegram, and
+    this recorder is SILENT on every path (THE LINE, top of the module). Authenticates
+    by QUERY STRING (`?token=`), exactly like FMP's `?apikey=` — shared.secret_redaction
+    already covers `token=` (verified + pinned, 2026-09-03).
+
+    Reads and logs the response BODY (redacted) on an HTTP error, never just the
+    status — the FMP lesson (2026-09-03 root cause write-up): a 402/403 can mean a
+    parameter restriction, not a rate breach, and the body text is the only way to
+    tell them apart.
+
+    FINNHUB_PACE_SECONDS is a REAL elapsed-time throttle (mirrors
+    collector._polygon_get's last-call-timestamp pattern) — see the module docstring's
+    PACING section for why it costs ~0 wall time today but is real protection for a
+    future parallel caller (e.g. a backfill)."""
+    api_key = os.environ.get("FINNHUB_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("FINNHUB_API_KEY not set")
+    import httpx
+    async with _finnhub_pace_lock:
+        now = asyncio.get_event_loop().time()
+        elapsed = now - _finnhub_last_call_state["t"]
+        if elapsed < FINNHUB_PACE_SECONDS:
+            await asyncio.sleep(FINNHUB_PACE_SECONDS - elapsed)
+        try:
+            async with httpx.AsyncClient(timeout=_FINNHUB_TIMEOUT_SECONDS) as client:
+                r = await client.get(f"{FINNHUB_BASE}{path}",
+                                     params={"token": api_key, **params})
+                r.raise_for_status()
+                return r.json()
+        except Exception as e:
+            body = ""
+            resp = getattr(e, "response", None)
+            if resp is not None:
+                try:
+                    body = f" body={redact_secrets(resp.text[:300])}"
+                except Exception:  # loud-ok: best-effort diagnostic extra, never the
+                    pass          # reason this call fails
+            logger.warning(f"Finnhub GET {path} failed: "
+                           f"{redact_secrets(f'{type(e).__name__}: {e}')}{body}")
+            raise
+        finally:
+            _finnhub_last_call_state["t"] = asyncio.get_event_loop().time()
+
+
+async def _fetch_finnhub_calendar(ticker: str, as_of: date) -> "Optional[list[dict]]":
+    """Finnhub /calendar/earnings for one ticker -> a bounded, filtered, sorted list of
+    forward-looking entries ({"date", "quarter", "year", "revenue_estimate",
+    "eps_estimate"}), or None on ANY failure/empty result — see the section banner
+    above. Filters out anything already reported (epsActual/revenueActual not both
+    None) or dated before `as_of` — defensive; the from=/to= window already asks for
+    forward-only, but a vendor response should never be trusted to match its own
+    request. Sorted ascending by date, capped at _FINNHUB_MAX_PERIODS."""
+    try:
+        payload = await _finnhub_get("/calendar/earnings", {
+            "symbol": ticker.upper(),
+            "from": as_of.isoformat(),
+            "to": (as_of + timedelta(days=_FINNHUB_CALENDAR_WINDOW_DAYS)).isoformat(),
+        })
+    except Exception:  # loud-ok: _finnhub_get's own except already fired
+        # logger.warning (with the redacted response body) before re-raising here —
+        # logging again would just duplicate the same line.
+        return None
+    try:
+        raw = payload.get("earningsCalendar") if isinstance(payload, dict) else None
+        if not isinstance(raw, list):
+            return None
+        entries: list[dict] = []
+        for rec in raw:
+            if not isinstance(rec, dict):
+                continue
+            if rec.get("epsActual") is not None or rec.get("revenueActual") is not None:
+                continue   # already reported — not a forward estimate
+            edate = _d(rec.get("date"))
+            if edate is None or edate < as_of:
+                continue
+            revenue = _f(_nan_to_none(rec.get("revenueEstimate")))
+            eps = _f(_nan_to_none(rec.get("epsEstimate")))
+            if revenue is None and eps is None:
+                continue
+            entries.append({
+                "date": edate, "quarter": _i(rec.get("quarter")), "year": _i(rec.get("year")),
+                "revenue_estimate": revenue, "eps_estimate": eps,
+            })
+        entries.sort(key=lambda e: e["date"])
+        return entries[:_FINNHUB_MAX_PERIODS] if entries else None
+    except Exception as e:  # loud-ok: optional-parse fallback — a vendor response is
+        # untrusted by default, exactly like the yfinance leg's own shape guards
+        logger.warning(f"Finnhub calendar parse failed for {ticker}: "
+                       f"{redact_secrets(f'{type(e).__name__}: {e}')}")
+        return None
+
+
 async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     """Fetch + normalize one ticker's estimates. Returns {rows, annual_unavailable,
     anchor, anchor_error, quarter_yf_rows, quarter_yf_unavailable,
-    quarter_yf_no_cadence} — raises only on a hard ANNUAL FMP fetch failure the
+    quarter_yf_no_cadence, quarter_finnhub_rows, quarter_finnhub_unavailable,
+    quarter_finnhub_no_cadence} — raises only on a hard ANNUAL FMP fetch failure the
     caller counts (per-ticker isolation lives in the run loop, not here). The anchor
     NEVER aborts: an unresolvable or failed anchor records the rows with a zero
     honest window (the 2026-09-01 first-run bug was exactly this abort). The v3
-    quarterly (yfinance) leg is equally non-fatal: any failure there degrades to
-    nothing-recorded-and-counted and never touches the annual row."""
+    quarterly (yfinance) leg and the v4 Finnhub leg are equally non-fatal: any
+    failure in either degrades to nothing-recorded-and-counted and never touches
+    the annual row OR each other — Finnhub's own row does not even depend on
+    yfinance succeeding (see the module docstring's "PREFER, NEVER REQUIRE")."""
     anchor: Optional[date] = None
-    quarter_cadence: dict[str, Optional[date]] = dict(_EMPTY_CADENCE_FACTS)
+    quarter_cadence: dict[str, Any] = dict(_EMPTY_CADENCE_FACTS)
     anchor_error = False
     try:
         anchor = await _fetch_last_filing_date(ticker, as_of)
@@ -856,13 +1342,14 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
         anchor_error = True
         logger.warning(f"anchor fetch failed for {ticker} (zero honest window): "
                        f"{redact_secrets(f'{type(e).__name__}: {e}')}")
-    # ⏱ THE YFINANCE LEG STARTS HERE, NOT AFTER THE FMP SLEEPS (2026-09-02). It is a different
-    # vendor with an independent rate limit, so running it in series behind FMP's two deliberate
-    # 12s pauses just adds its latency to every ticker — roughly 2-8 minutes across the ~99-ticker
-    # nightly population, and ~3x that on the one-shot backfill. Launched as a task, awaited only
-    # where its result is needed, so the pauses become cover time. It still cannot take the annual
-    # row down: _fetch_yfinance_quarterly catches everything internally.
+    # ⏱ THE YFINANCE AND FINNHUB LEGS START HERE, NOT AFTER THE FMP SLEEPS (2026-09-02,
+    # extended 2026-09-03). Both are different vendors with independent rate limits, so
+    # running either in series behind FMP's two deliberate 12s pauses just adds latency to
+    # every ticker. Launched as tasks, awaited only where their results are needed, so the
+    # pauses become cover time. Neither can take the annual row down: both fetch functions
+    # catch everything internally.
     _yf_task = asyncio.ensure_future(_fetch_yfinance_quarterly(ticker))
+    _finnhub_task = asyncio.ensure_future(_fetch_finnhub_calendar(ticker, as_of))
 
     await asyncio.sleep(FMP_PACE_SECONDS)
     rows: list[dict] = []
@@ -894,6 +1381,48 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             rows.append(row)
     await asyncio.sleep(FMP_PACE_SECONDS)
 
+    # ── Finnhub leg (v4) — guard-passed period_ends, independent of yfinance's fate ──
+    quarter_finnhub_unavailable = False
+    quarter_finnhub_no_cadence = False
+    finnhub_rows: list[dict] = []
+    finnhub_row_by_idx: dict[int, dict] = {}   # index into finnhub_raw/finnhub_period_ends
+                                                 # -> the row dict already inside `rows`
+                                                 # (same object, mutated in place below when
+                                                 # stabilize_period_end reuses an older date)
+    finnhub_period_ends: list[Optional[date]] = []
+    try:
+        finnhub_raw = await _finnhub_task   # started before the FMP pauses; usually already done
+    except Exception as e:  # belt-and-suspenders: _fetch_finnhub_calendar already catches
+        # everything internally and returns None, but this leg must NEVER be able to
+        # take the annual row (or the yfinance leg) down with it if that contract slips.
+        finnhub_raw = None
+        logger.warning(f"Finnhub calendar fetch failed for {ticker} (annual/yfinance "
+                       f"rows unaffected): {redact_secrets(f'{type(e).__name__}: {e}')}")
+    if not finnhub_raw:
+        quarter_finnhub_unavailable = True
+    else:
+        fiscal_year_end = quarter_cadence.get("fiscal_year_end")
+        last_q_end = quarter_cadence.get("last_reported_quarter_end")
+        for i, entry in enumerate(finnhub_raw):
+            period_end = finnhub_period_end_from_entry(
+                entry["date"], entry.get("quarter"), entry.get("year"),
+                fiscal_year_end, last_q_end)
+            finnhub_period_ends.append(period_end)
+            if period_end is None:
+                continue
+            row = normalize_finnhub_estimate(
+                entry, ticker=ticker, as_of=as_of, anchor_filing_date=anchor,
+                period_end_date=period_end)
+            finnhub_rows.append(row)
+            finnhub_row_by_idx[i] = row
+        if not finnhub_rows:
+            # Finnhub HAD calendar entries but none passed the self-consistency guards
+            # (finnhub_period_end_from_entry) — e.g. no EDGAR fiscal_year_end resolved,
+            # or the derived date failed the lag/EDGAR sanity bounds. Skipped and
+            # counted, never stored against an unverified label.
+            quarter_finnhub_no_cadence = True
+    rows.extend(finnhub_rows)
+
     # ── quarterly leg (v3, yfinance) — never raises past this block ──────────────────
     quarter_yf_unavailable = False
     quarter_no_cadence = False
@@ -912,6 +1441,12 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
         resolved = resolve_quarterly_period_ends(
             yf_data.get("next_earnings_date"), yf_data.get("last_actual_release_date"),
             quarter_cadence)
+        # v4: does a guard-passed Finnhub period_end CORROBORATE this ticker's own
+        # reconstructed '0q'/'+1q' candidate (see pair_finnhub_periods_to_slots)? Only
+        # a corroborated slot's period_end_date is OVERRIDDEN with Finnhub's — "prefer
+        # its label, never require it" (module docstring). No match for a slot leaves
+        # the reconstruction untouched, exactly as if Finnhub did not cover this ticker.
+        paired = pair_finnhub_periods_to_slots(finnhub_period_ends, resolved)
         # STABILITY (see stabilize_period_end): reuse an already-recorded date for this
         # SAME quarter rather than minting a slightly-different one from today's live
         # inputs. A read failure here degrades to "no history to check" — today's
@@ -926,11 +1461,39 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
                            f"quarterly labels may drift; self-heals next run): "
                            f"{redact_secrets(f'{type(e).__name__}: {e}')}")
         for period, payload in yf_data["periods"].items():
-            period_end = stabilize_period_end(resolved.get(period), recent_period_ends)
+            match_idx = paired.get(period)
+            if match_idx is not None:
+                matched = finnhub_raw[match_idx]
+                candidate = finnhub_period_ends[match_idx]
+                label_method = LABEL_METHOD_FINNHUB_FISCAL
+                fiscal_quarter, fiscal_year = matched.get("quarter"), matched.get("year")
+            else:
+                candidate = resolved.get(period)
+                label_method = LABEL_METHOD_YF_RECONSTRUCTED
+                fiscal_quarter, fiscal_year = None, None
+            period_end = stabilize_period_end(candidate, recent_period_ends)
+            if match_idx is not None and period_end != candidate:
+                # stabilize_period_end REUSED an already-recorded date instead of
+                # today's fresh Finnhub-derived candidate (stabilize_period_end's own
+                # rule: "a quarter's label is set by whichever run FIRST sees it ...
+                # and held from then on"). Without this, the Finnhub row (built above
+                # from `candidate`, before stabilization ran) and this yfinance row
+                # would carry TWO DIFFERENT period_end_date keys for the SAME real
+                # quarter — fracturing the very revision series stabilize_period_end
+                # exists to protect, AND silently killing the divergence join for
+                # this quarter forever (compute_estimate_divergences matches on exact
+                # key equality). Realign the Finnhub row (same dict object already in
+                # `rows` — mutating it here updates it everywhere) to the series'
+                # established key; label_method stays Finnhub's, since Finnhub still
+                # identified WHICH quarter this is, even though the established date
+                # (set by whichever source labelled it first) wins as the stored key.
+                finnhub_row_by_idx[match_idx]["period_end_date"] = period_end
             row = normalize_yfinance_quarterly_estimate(
                 ticker=ticker, yf_period=period, as_of=as_of,
                 anchor_filing_date=anchor, period_end_date=period_end,
                 revenue_row=payload.get("revenue"), earnings_row=payload.get("earnings"),
+                period_label_method=label_method,
+                fiscal_quarter=fiscal_quarter, fiscal_year=fiscal_year,
             )
             if row is not None:
                 quarter_rows.append(row)
@@ -941,11 +1504,20 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             quarter_no_cadence = True
     rows.extend(quarter_rows)
 
+    # v4: raw values from BOTH sources are already in `rows` — surface where they
+    # disagree on the SAME real quarter (see compute_estimate_divergences; only fires
+    # when the corroborated-override above made their period_end_date identical).
+    divergences = compute_estimate_divergences(rows)
+
     return {"rows": rows, "annual_unavailable": annual_unavailable,
             "anchor": anchor, "anchor_error": anchor_error,
             "quarter_yf_rows": len(quarter_rows),
             "quarter_yf_unavailable": quarter_yf_unavailable,
-            "quarter_yf_no_cadence": quarter_no_cadence}
+            "quarter_yf_no_cadence": quarter_no_cadence,
+            "quarter_finnhub_rows": len(finnhub_rows),
+            "quarter_finnhub_unavailable": quarter_finnhub_unavailable,
+            "quarter_finnhub_no_cadence": quarter_finnhub_no_cadence,
+            "divergences": divergences}
 
 
 # ── run functions (never raise into the scheduler — the house shadow contract) ────────
@@ -955,7 +1527,9 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
            "no_anchor": 0, "anchor_errors": 0,
            "annual_unavailable": 0, "errors": 0,
            "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
-           "quarter_yf_no_cadence": 0}
+           "quarter_yf_no_cadence": 0,
+           "quarter_finnhub_rows_written": 0, "quarter_finnhub_unavailable": 0,
+           "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0}
     for ticker in tickers:
         try:
             snap = await snapshot_ticker(ticker, as_of)
@@ -968,6 +1542,14 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
                 out["quarter_yf_unavailable"] += 1   # yfinance outage/empty for this ticker
             if snap["quarter_yf_no_cadence"]:
                 out["quarter_yf_no_cadence"] += 1    # yfinance had data, period end unresolvable
+            out["quarter_finnhub_rows_written"] += snap["quarter_finnhub_rows"]
+            if snap["quarter_finnhub_unavailable"]:
+                out["quarter_finnhub_unavailable"] += 1   # Finnhub outage/empty for this ticker
+            if snap["quarter_finnhub_no_cadence"]:
+                out["quarter_finnhub_no_cadence"] += 1    # entries existed, no guard-passed label
+            if snap["divergences"]:
+                out["divergence_rows_written"] += await upsert_analyst_estimates_divergence(
+                    snap["divergences"])
             if snap["anchor_error"]:
                 out["anchor_errors"] += 1        # EDGAR outage — NOT the by-design case
             elif snap["anchor"] is None:
@@ -1010,7 +1592,9 @@ _EMPTY_RUN = {"population": 0, "tickers_written": 0, "rows_written": 0,
               "no_anchor": 0, "anchor_errors": 0,
               "annual_unavailable": 0, "errors": 1,
               "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
-              "quarter_yf_no_cadence": 0}
+              "quarter_yf_no_cadence": 0,
+              "quarter_finnhub_rows_written": 0, "quarter_finnhub_unavailable": 0,
+              "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0}
 
 
 async def _run_and_log(tickers: list[str], today: date, event_type: str,
@@ -1027,7 +1611,9 @@ async def _run_and_log(tickers: list[str], today: date, event_type: str,
                 event_type,
                 f"{summary_prefix}{out['rows_written']} row(s) across "
                 f"{out['tickers_written']}/{out['population']} ticker(s) "
-                f"({out['quarter_yf_rows_written']} quarterly-from-yfinance); "
+                f"({out['quarter_yf_rows_written']} quarterly-from-yfinance, "
+                f"{out['quarter_finnhub_rows_written']} quarterly-from-finnhub, "
+                f"{out['divergence_rows_written']} divergence rows); "
                 f"{out['no_anchor']} no-anchor (zero honest days, by design), "
                 f"{out['anchor_errors']} anchor-error (zero honest days, EDGAR fetch failed), "
                 f"{out['annual_unavailable']} annual-402, "
@@ -1036,6 +1622,9 @@ async def _run_and_log(tickers: list[str], today: date, event_type: str,
                 f"OR the ticker is mid reporting-gap today; a nonzero baseline here EVERY "
                 f"night is expected, not a defect — see the module docstring), "
                 f"{out['quarter_yf_unavailable']} quarter-yfinance-unavailable, "
+                f"{out['quarter_finnhub_no_cadence']} quarter-finnhub-label-rejected "
+                f"(entries existed, self-consistency guards rejected every one), "
+                f"{out['quarter_finnhub_unavailable']} quarter-finnhub-unavailable, "
                 f"{out['errors']} error(s)",
             )
         except Exception:  # loud-ok: counters already logged by the scheduler wrapper

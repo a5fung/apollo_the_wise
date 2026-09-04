@@ -21,7 +21,8 @@ import logging
 import sys
 
 from agents.market_intelligence.db import (
-    _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL, _DELAYED_SETTLE_SQL,
+    _ANALYST_EST_DIVERGENCE_UPSERT_SQL, _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL,
+    _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
@@ -202,6 +203,11 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     (
         "db.upsert_analyst_estimates: #333 analyst-estimates recorder (executemany since 2026-08-31)",
         _ANALYST_EST_UPSERT_SQL,
+    ),
+    (
+        "db.upsert_analyst_estimates_divergence: #333 v4 Finnhub-vs-yfinance divergence "
+        "(executemany since 2026-09-03)",
+        _ANALYST_EST_DIVERGENCE_UPSERT_SQL,
     ),
     (
         "db.settle_delayed_entry_trigger: delayed-entry lane incumbent settlement",

@@ -105,6 +105,10 @@ class Secrets:
     def perplexity_api_key(self) -> Optional[str]:
         return _optional("PERPLEXITY_API_KEY")
 
+    @property
+    def finnhub_api_key(self) -> Optional[str]:
+        return _optional("FINNHUB_API_KEY")
+
     # Misc
     @property
     def log_level(self) -> str:

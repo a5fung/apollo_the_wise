@@ -30,6 +30,27 @@ def test_the_exact_string_that_leaked_is_masked():
         "the error must stay diagnosable — only the credential goes")
 
 
+_FINNHUB_SHAPED_LEAK = (
+    "Finnhub GET /calendar/earnings failed: HTTPStatusError: Client error '403 Forbidden' "
+    "for url 'https://finnhub.io/api/v1/calendar/earnings"
+    "?token=cqfhu7hr01qkkk3n1n8gcqfhu7hr01qkkk3n1n90&symbol=NRIX&from=2026-09-03&to=2027-03-22'"
+)
+
+
+def test_finnhub_token_query_param_is_masked():
+    """#333 v4 (2026-09-03): Finnhub authenticates by QUERY STRING (`?token=`), exactly
+    like FMP's `?apikey=` which leaked 99 rows on 2026-09-01. Checked before wiring
+    Finnhub in: `token=` was ALREADY covered by _QS_SECRET's alternation (see
+    test_common_credential_shapes' 'zzz999' case) — this pins it with a REALISTIC key
+    shape and a real Finnhub URL, per the same discipline as
+    test_the_exact_string_that_leaked_is_masked for FMP."""
+    out = redact_secrets(_FINNHUB_SHAPED_LEAK)
+    assert "cqfhu7hr01qkkk3n1n8gcqfhu7hr01qkkk3n1n90" not in out
+    assert "token=***REDACTED***" in out, "mask the value, keep the parameter name"
+    assert "calendar/earnings" in out and "NRIX" in out, (
+        "the error must stay diagnosable — only the credential goes")
+
+
 def test_common_credential_shapes():
     for raw, secret in [
         ("?api_key=abc123&x=1", "abc123"),

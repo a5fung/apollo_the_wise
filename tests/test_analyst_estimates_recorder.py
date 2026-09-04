@@ -199,6 +199,36 @@ def test_cadence_facts_malformed_payload_is_empty_never_a_guess():
     assert aer.quarterly_cadence_facts({"filings": {}}) == dict(aer._EMPTY_CADENCE_FACTS)
 
 
+def test_cadence_facts_extracts_fiscal_year_end_from_the_top_level_payload():
+    """v4 — THE SINGLE POINT THE WHOLE FINNHUB-LABELING PATH DEPENDS ON, and every
+    orchestration test mocks _fetch_quarter_cadence_facts so this real extraction
+    never runs under those tests. fiscalYearEnd lives at the TOP LEVEL of the real
+    EDGAR submissions payload (probed live 2026-09-03: AAPL "0926", COST "0830"),
+    a DIFFERENT level than filings.recent — extracted independently of whether the
+    recent-filings parse below it succeeds at all."""
+    payload = {"fiscalYearEnd": "0926", **_submissions_full([
+        ("10-Q", "2026-07-31", "2026-06-27"),
+        ("10-Q", "2026-05-01", "2026-03-28"),
+    ])}
+    facts = aer.quarterly_cadence_facts(payload)
+    assert facts["fiscal_year_end"] == "0926"
+    assert facts["last_reported_quarter_end"] == date(2026, 6, 27)
+
+
+def test_cadence_facts_fiscal_year_end_survives_a_broken_recent_filings_parse():
+    """fiscalYearEnd is extracted BEFORE the filings.recent parse is even attempted —
+    a malformed/missing filings.recent must not cost this ticker its FYE fact too."""
+    facts = aer.quarterly_cadence_facts({"fiscalYearEnd": "0830"})
+    assert facts["fiscal_year_end"] == "0830"
+    assert facts["last_reported_quarter_end"] is None
+
+
+def test_cadence_facts_rejects_a_malformed_fiscal_year_end_never_a_guess():
+    for bad in ("", "926", 926, None, "not-a-date"):
+        facts = aer.quarterly_cadence_facts({"fiscalYearEnd": bad})
+        assert facts["fiscal_year_end"] is None, f"{bad!r} must not be accepted as-is"
+
+
 # ── resolve_quarterly_period_ends (v3 — the relative->absolute date resolver) ────────
 # v3.1 (second design review, 2026-09-02): the lag is RELEASE-to-RELEASE (yfinance's
 # last actual earnings date minus SEC EDGAR's reportDate), not release-to-FILING — an
@@ -382,6 +412,212 @@ def test_stabilize_leaves_a_candidate_just_outside_tolerance_alone():
         date(2026, 12, 24), [date(2026, 12, 4)]) == date(2026, 12, 24)
 
 
+# ── v4 — fiscal_quarter_end_from_label (Finnhub's quarter+year -> a calendar date) ────
+# MEASURED against real EDGAR report dates during design (module docstring's "THE
+# BIGGEST WIN"): AAPL (calendar-adjacent FYE) lands EXACTLY on the real reportDate;
+# COST (true 4-4-5 retail calendar) is off by 0-20 days across its 4 real quarters.
+
+
+def test_fiscal_label_lands_exactly_on_aapl_real_report_dates():
+    """AAPL fiscalYearEnd '0926' (probed live from SEC EDGAR, 2026-09-03) reproduces
+    the SAME 2026-09-26 last_reported_quarter_end already used throughout this suite
+    (e.g. _AAPL_CADENCE) — the two labeling methods AGREE exactly for this filer."""
+    assert aer.fiscal_quarter_end_from_label(4, 2026, "0926") == date(2026, 9, 26)
+    assert aer.fiscal_quarter_end_from_label(3, 2026, "0926") == date(2026, 6, 26)
+    assert aer.fiscal_quarter_end_from_label(1, 2026, "0926") == date(2025, 12, 26)
+
+
+def test_fiscal_label_measured_error_on_a_445_retail_calendar():
+    """MUTATION TARGET (the numbers this design accepts, not assumes): COST
+    fiscalYearEnd '0830' (probed live from SEC EDGAR, 2026-09-03) against COST's REAL
+    reportDates — 2025-11-23 (Q1), 2026-02-15 (Q2), 2026-05-10 (Q3). Worst case ~20
+    days (Q3) — see the module docstring for why this is accepted (deterministic,
+    Dec-FYE-dominant population, ~90-day quarter spacing) rather than rejected the
+    way the yfinance leg's fixed-3-month extrapolation was."""
+    assert aer.fiscal_quarter_end_from_label(1, 2026, "0830") == date(2025, 11, 30)
+    assert abs((aer.fiscal_quarter_end_from_label(1, 2026, "0830")
+                - date(2025, 11, 23)).days) == 7
+    assert aer.fiscal_quarter_end_from_label(2, 2026, "0830") == date(2026, 2, 28)
+    assert abs((aer.fiscal_quarter_end_from_label(2, 2026, "0830")
+                - date(2026, 2, 15)).days) == 13
+    assert aer.fiscal_quarter_end_from_label(3, 2026, "0830") == date(2026, 5, 30)
+    assert abs((aer.fiscal_quarter_end_from_label(3, 2026, "0830")
+                - date(2026, 5, 10)).days) == 20
+
+
+def test_fiscal_label_rejects_bad_inputs_never_a_guess():
+    assert aer.fiscal_quarter_end_from_label(0, 2026, "0926") is None
+    assert aer.fiscal_quarter_end_from_label(5, 2026, "0926") is None
+    assert aer.fiscal_quarter_end_from_label(4, None, "0926") is None
+    assert aer.fiscal_quarter_end_from_label(4, 2026, None) is None
+    assert aer.fiscal_quarter_end_from_label(4, 2026, "") is None
+    assert aer.fiscal_quarter_end_from_label(4, 2026, "not-a-date") is None
+    assert aer.fiscal_quarter_end_from_label(4, 2026, "1332") is None  # month 13, day 32
+
+
+# ── v4 — finnhub_period_end_from_entry (the self-consistency guards) ─────────────────
+
+
+def test_finnhub_entry_resolves_when_both_guards_pass():
+    """AAPL-shaped: fiscal label -> 2026-09-26; Finnhub's own announced date
+    2026-10-29 is 33 days later (within [0,75]); last reported quarter (2026-06-27)
+    precedes it — both guards pass."""
+    assert aer.finnhub_period_end_from_entry(
+        date(2026, 10, 29), 4, 2026, "0926", date(2026, 6, 27)) == date(2026, 9, 26)
+
+
+def test_finnhub_entry_rejects_a_release_lag_guard_failure():
+    """MUTATION TARGET: a wrong fiscal/calendar-year convention runs the announce-
+    date-minus-period-end gap off by ~a year — comfortably outside [0,75] — and must
+    be rejected, not stored against an unverified label. Using year=2025 here
+    (instead of the correct 2026) simulates exactly that class of misread."""
+    assert aer.finnhub_period_end_from_entry(
+        date(2026, 10, 29), 4, 2025, "0926", date(2026, 6, 27)) is None
+
+
+def test_finnhub_entry_rejects_a_date_before_the_last_reported_quarter():
+    """MUTATION TARGET: a fiscal label that resolves to a quarter EDGAR already has
+    on record is stale, not a genuine forward estimate — reject it."""
+    assert aer.finnhub_period_end_from_entry(
+        date(2026, 7, 1), 3, 2026, "0926", date(2026, 6, 27)) is None
+
+
+def test_finnhub_entry_missing_inputs_is_none_never_a_guess():
+    assert aer.finnhub_period_end_from_entry(None, 4, 2026, "0926", None) is None
+    assert aer.finnhub_period_end_from_entry(date(2026, 10, 29), None, None, None, None) is None
+
+
+# ── v4 — pair_finnhub_periods_to_slots (cross-source corroboration, never required) ──
+
+
+def test_pairing_matches_within_tolerance_by_slot():
+    finnhub_ends = [date(2026, 9, 26), date(2026, 12, 28)]
+    reconstructed = {"0q": date(2026, 9, 20), "+1q": date(2026, 12, 20)}
+    out = aer.pair_finnhub_periods_to_slots(finnhub_ends, reconstructed)
+    assert out == {"0q": 0, "+1q": 1}
+
+
+def test_pairing_declines_a_slot_beyond_tolerance():
+    """No corroboration -> None for that slot; the reconstruction stays the fallback,
+    exactly as if Finnhub did not cover this ticker at all."""
+    finnhub_ends = [date(2027, 1, 15)]   # ~110 days from the '0q' candidate below
+    reconstructed = {"0q": date(2026, 9, 26), "+1q": None}
+    out = aer.pair_finnhub_periods_to_slots(finnhub_ends, reconstructed)
+    assert out == {"0q": None, "+1q": None}
+
+
+def test_pairing_never_reuses_the_same_finnhub_index_for_two_slots():
+    """MUTATION TARGET: one Finnhub entry can corroborate AT MOST one slot — two
+    calendar entries about the SAME real quarter would be a vendor data bug, not a
+    genuine double-match. Only one entry is supplied here; the closer slot ('0q')
+    wins it and '+1q' is left unmatched rather than reusing index 0."""
+    finnhub_ends = [date(2026, 9, 24)]
+    reconstructed = {"0q": date(2026, 9, 26), "+1q": date(2026, 9, 30)}
+    out = aer.pair_finnhub_periods_to_slots(finnhub_ends, reconstructed)
+    assert out == {"0q": 0, "+1q": None}
+
+
+def test_pairing_missing_reconstructed_candidate_never_matches():
+    out = aer.pair_finnhub_periods_to_slots([date(2026, 9, 26)], {"0q": None, "+1q": None})
+    assert out == {"0q": None, "+1q": None}
+
+
+# ── v4 — normalize_finnhub_estimate (raw capture, no analyst count) ──────────────────
+
+
+def _finnhub_entry(**over):
+    base = {"date": date(2026, 10, 7), "quarter": 3, "year": 2026,
+            "revenue_estimate": 22765125.0, "eps_estimate": -0.5891}
+    base.update(over)
+    return base
+
+
+def test_normalize_finnhub_maps_raw_fields_and_marks_no_analyst_count():
+    row = aer.normalize_finnhub_estimate(
+        _finnhub_entry(), ticker="NRIX", as_of=AS_OF,
+        anchor_filing_date=date(2026, 7, 31), period_end_date=date(2026, 9, 26))
+    assert row["ticker"] == "NRIX"
+    assert row["period_type"] == "quarter"
+    assert row["period_end_date"] == date(2026, 9, 26)
+    assert row["revenue_avg"] == 22765125.0 and row["eps_avg"] == -0.5891
+    assert row["revenue_high"] is None and row["revenue_low"] is None, (
+        "Finnhub's calendar gives no high/low spread")
+    assert row["num_analysts_revenue"] is None and row["num_analysts_eps"] is None
+    assert row["analyst_count_available"] is False, (
+        "THE ONE GAP — this NULL means 'never provided,' not 'we looked and it was low'")
+    assert row["fiscal_quarter"] == 3 and row["fiscal_year"] == 2026
+    assert row["source"] == "finnhub_calendar"
+    assert row["period_label_method"] == aer.LABEL_METHOD_FINNHUB_FISCAL
+    assert row["recorder_version"] == aer.RECORDER_VERSION
+
+
+# ── v4 — estimate_for_scoring: the analyst_count_available short-circuit ─────────────
+
+
+def test_scoring_rejects_a_row_with_no_analyst_count_available_even_with_other_fields():
+    """MUTATION TARGET: analyst_count_available=False must short-circuit to None on
+    its own, in code, not merely because num_analysts_revenue also happens to be
+    None — a future Finnhub-shaped source that DID carry some other numeric count in
+    that field must still be rejected here."""
+    row = {"analyst_count_available": False, "num_analysts_revenue": 99,
+           "revenue_avg": 1.0}
+    assert aer.estimate_for_scoring(row) is None
+
+
+# ── v4 — compute_estimate_divergences (raw diff, no threshold) ───────────────────────
+
+
+def _quarter_row(source, ticker="NRIX", period_end=date(2026, 9, 26), as_of=AS_OF,
+                  revenue_avg=None, eps_avg=None):
+    return {"ticker": ticker, "period_type": "quarter", "period_end_date": period_end,
+            "as_of_date": as_of, "source": source,
+            "revenue_avg": revenue_avg, "eps_avg": eps_avg}
+
+
+def test_divergence_fires_only_when_both_sources_share_the_same_period():
+    rows = [
+        _quarter_row("yfinance", revenue_avg=479_500_000.0, eps_avg=-0.40),
+        _quarter_row("finnhub_calendar", revenue_avg=22_765_125.0, eps_avg=-0.5891),
+        {**_quarter_row("fmp_stable", period_end=date(2026, 12, 31)),
+         "period_type": "annual"},   # a third source/period_type present; ignored
+    ]
+    out = aer.compute_estimate_divergences(rows)
+    assert len(out) == 1
+    row = out[0]
+    assert row["ticker"] == "NRIX" and row["period_end_date"] == date(2026, 9, 26)
+    assert row["yfinance_revenue_avg"] == 479_500_000.0
+    assert row["finnhub_revenue_avg"] == 22_765_125.0
+    assert row["revenue_diff"] == pytest.approx(22_765_125.0 - 479_500_000.0)
+    assert row["eps_diff"] == pytest.approx(-0.5891 - (-0.40))
+
+
+def test_divergence_does_not_fire_with_only_one_source():
+    rows = [_quarter_row("yfinance", revenue_avg=1.0)]
+    assert aer.compute_estimate_divergences(rows) == []
+
+
+def test_divergence_stores_null_diff_when_a_value_is_missing_never_zero():
+    """MUTATION TARGET: a missing value on either side must produce a NULL diff, not
+    treat the missing side as zero (which would fabricate a huge fake divergence)."""
+    rows = [
+        _quarter_row("yfinance", revenue_avg=1_000_000.0, eps_avg=None),
+        _quarter_row("finnhub_calendar", revenue_avg=None, eps_avg=-0.10),
+    ]
+    out = aer.compute_estimate_divergences(rows)
+    assert len(out) == 1
+    assert out[0]["revenue_diff"] is None and out[0]["eps_diff"] is None
+    assert out[0]["yfinance_revenue_avg"] == 1_000_000.0
+    assert out[0]["finnhub_eps_avg"] == -0.10
+
+
+def test_divergence_ignores_annual_rows_entirely():
+    rows = [
+        _quarter_row("fmp_stable", period_end=date(2026, 12, 31)),
+        {**_quarter_row("fmp_stable", period_end=date(2026, 12, 31)), "period_type": "annual"},
+    ]
+    assert aer.compute_estimate_divergences(rows) == []
+
+
 # ── next_earnings_date_from_yfinance (pure — the earnings_dates frame parse) ─────────
 
 
@@ -534,9 +770,11 @@ def test_thin_coverage_scores_none_and_threshold_is_tunable():
 
 def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
           anchor_fail_tickers=(), p402=(), quarter_cadence=None, yf_data=None,
-          yf_fail_tickers=(), recent_period_ends=None):
+          yf_fail_tickers=(), recent_period_ends=None,
+          finnhub_data=None, finnhub_fail_tickers=()):
     written = []
     audits = []
+    divergences = []
 
     async def fake_filing(ticker, as_of):
         if ticker in anchor_fail_tickers:
@@ -563,11 +801,20 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
             raise RuntimeError("yfinance boom")
         return (yf_data or {}).get(ticker)  # default None -> quarter_yf_unavailable
 
+    async def fake_finnhub_calendar(ticker, as_of):
+        if ticker in finnhub_fail_tickers:
+            raise RuntimeError("finnhub boom")
+        return (finnhub_data or {}).get(ticker)  # default None -> quarter_finnhub_unavailable
+
     async def fake_recent_period_ends(ticker, since):
         return list((recent_period_ends or {}).get(ticker, []))
 
     async def fake_upsert(rows):
         written.extend(rows)
+        return len(rows)
+
+    async def fake_upsert_divergence(rows):
+        divergences.extend(rows)
         return len(rows)
 
     async def fake_audit(event_type, summary, detail=""):
@@ -577,12 +824,15 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
     monkeypatch.setattr(aer, "_fetch_quarter_cadence_facts", fake_quarter_cadence)
     monkeypatch.setattr(aer, "_fetch_estimates", fake_estimates)
     monkeypatch.setattr(aer, "_fetch_yfinance_quarterly", fake_yf_quarterly)
+    monkeypatch.setattr(aer, "_fetch_finnhub_calendar", fake_finnhub_calendar)
     monkeypatch.setattr(aer, "get_recent_quarterly_period_ends", fake_recent_period_ends)
     monkeypatch.setattr(aer, "upsert_analyst_estimates", fake_upsert)
+    monkeypatch.setattr(aer, "upsert_analyst_estimates_divergence", fake_upsert_divergence)
     monkeypatch.setattr(aer, "log_audit_event", fake_audit)
     monkeypatch.setattr(aer, "FMP_PACE_SECONDS", 0)
     monkeypatch.setattr(aer, "YFINANCE_PACE_SECONDS", 0)
-    return written, audits
+    monkeypatch.setattr(aer, "FINNHUB_PACE_SECONDS", 0)
+    return written, audits, divergences
 
 
 class RuntimeError_402(Exception):
@@ -593,7 +843,7 @@ class RuntimeError_402(Exception):
 
 @pytest.mark.asyncio
 async def test_snapshot_writes_rows_with_the_read_date_stamped(monkeypatch):
-    written, audits = _wire(
+    written, audits, _div = _wire(
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
         estimates={("MRNA", "annual"): [_rec()],
@@ -613,7 +863,7 @@ async def test_snapshot_writes_rows_with_the_read_date_stamped(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_one_bad_ticker_never_kills_the_run(monkeypatch):
-    written, audits = _wire(
+    written, audits, _div = _wire(
         monkeypatch,
         anchors={"GOOD": date(2026, 8, 7)},
         estimates={("GOOD", "annual"): [_rec()]},
@@ -634,7 +884,7 @@ async def test_anchor_failure_records_with_zero_window_not_abort(monkeypatch):
     no-anchor arm), the ticker is COUNTED (anchor_errors, not errors), and the clock
     this backbone exists to start keeps accruing. Removing the try/except around the
     anchor call recreates the 0-rows/99-errors run exactly."""
-    written, _ = _wire(
+    written, _, _div = _wire(
         monkeypatch,
         estimates={("MRNA", "annual"): [_rec()],
                    ("MRNA", "quarter"): [_rec(date="2026-09-30")]},
@@ -653,7 +903,7 @@ async def test_anchor_failure_records_with_zero_window_not_abort(monkeypatch):
 async def test_true_non_filer_counts_no_anchor_and_claims_zero_history(monkeypatch):
     """An ETF/non-filer (anchor resolves to None without error) is the BY-DESIGN
     zero-window case: counted as no_anchor, never as an error."""
-    written, _ = _wire(monkeypatch, estimates={("SPYX", "annual"): [_rec()]})
+    written, _, _div = _wire(monkeypatch, estimates={("SPYX", "annual"): [_rec()]})
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["SPYX"])
     assert out["no_anchor"] == 1 and out["anchor_errors"] == 0 and out["errors"] == 0
     assert written[0]["valid_from_date"] == AS_OF
@@ -669,7 +919,7 @@ async def test_the_quarter_endpoint_is_never_called_at_all(monkeypatch):
     99 annual-402s from an endpoint that works, and an alarm announcing a plan change that had
     not happened. A 402 we can predict is not a degrade to handle, it is a call not to make."""
     called = []
-    written, _ = _wire(
+    written, _, _div = _wire(
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
         estimates={("MRNA", "annual"): [_rec()], ("MRNA", "quarter"): [_rec()]},
@@ -696,7 +946,7 @@ async def test_annual_402_degrades_and_audits_a_plan_change(monkeypatch):
     when the real cause was our own 240-calls/min pacing against a free tier. Either way the run
     must degrade rather than raise, and must NOT be silent: a run that stored nothing is the one
     a reader most needs told about."""
-    written, audits = _wire(
+    written, audits, _div = _wire(
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
         p402={"annual"},
@@ -717,7 +967,7 @@ async def test_both_periods_402_is_counted_not_an_error(monkeypatch):
     """Losing the estimate endpoint is a degrade, not a per-ticker error — the counters and the
     audit row carry the news; nothing raises. (Only annual is requested since 2026-09-02, so
     the `quarter_unavailable` counter is GONE: we cannot lose an endpoint we never call.)"""
-    written, audits = _wire(
+    written, audits, _div = _wire(
         monkeypatch, anchors={"MRNA": date(2026, 7, 31)},
         p402={"annual", "quarter"},
     )
@@ -763,7 +1013,7 @@ async def test_quarterly_leg_writes_yfinance_rows_alongside_the_annual_row(monke
     """Happy path: annual (FMP, source=fmp_stable) + both quarterly periods
     (yfinance, source=yfinance) all land in the same run, same table, distinguishable
     only by `source` and `period_type` — no schema change needed."""
-    written, audits = _wire(
+    written, audits, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
         estimates={("AAPL", "annual"): [_rec()]},
@@ -789,7 +1039,7 @@ async def test_quarterly_leg_writes_yfinance_rows_alongside_the_annual_row(monke
 async def test_yfinance_failure_leaves_the_annual_row_intact_and_counted(monkeypatch):
     """A yfinance outage degrades ONLY the quarterly leg — the annual (FMP) row still
     writes, and the failure is counted (quarter_yf_unavailable), never raised."""
-    written, _ = _wire(
+    written, _, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
         estimates={("AAPL", "annual"): [_rec()]},
@@ -808,7 +1058,7 @@ async def test_yfinance_failure_leaves_the_annual_row_intact_and_counted(monkeyp
 async def test_yfinance_empty_frame_counts_as_unavailable_not_an_error(monkeypatch):
     """yfinance returning nothing usable (empty/short frame, no periods) is the SAME
     degrade as a hard failure from the run's point of view — counted, not an error."""
-    written, _ = _wire(
+    written, _, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
         estimates={("AAPL", "annual"): [_rec()]},
@@ -826,7 +1076,7 @@ async def test_no_cadence_anchor_skips_quarterly_rows_and_counts_it_not_an_error
     """yfinance HAD estimate data, but no SEC cadence facts were resolvable (ETF-like
     ticker, or QUARTERLY_CADENCE_FORMS never matched) — never store against a guessed
     date: skip both periods and count it distinctly from a yfinance outage."""
-    written, _ = _wire(
+    written, _, _div = _wire(
         monkeypatch,
         anchors={"SPYX": date(2026, 7, 31)},
         estimates={("SPYX", "annual"): [_rec()]},
@@ -846,7 +1096,7 @@ async def test_anchor_outage_skips_the_quarterly_leg_too_not_just_the_honesty_wi
     snapshot_ticker's try/except means _fetch_quarter_cadence_facts is never even
     called for that ticker in the same run — one outage degrades BOTH legs' anchor
     story together, exactly as the shared _get_edgar_facts cache implies."""
-    written, _ = _wire(
+    written, _, _div = _wire(
         monkeypatch,
         estimates={("MRNA", "annual"): [_rec()]},
         anchor_fail_tickers={"MRNA"},
@@ -868,7 +1118,7 @@ async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date
     advancing the cadence anchor). Without stabilize_period_end, the SAME fiscal
     quarter would mint a DIFFERENT period_end_date — a different primary key — on
     two different days, fracturing the revision series
-    get_analyst_estimates_asof's DISTINCT ON (period_type, period_end_date) reads.
+    get_analyst_estimates_asof's DISTINCT ON (period_type, period_end_date, source) reads.
 
     This simulates exactly that: day 1 resolves the Dec-quarter as '+1q' from the
     Jun27 anchor; day 40 (after the Sep-quarter's 10-K has posted) resolves the SAME
@@ -878,7 +1128,7 @@ async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date
     slightly different date for the same quarter."""
     day1_cadence = {"last_reported_quarter_end": date(2026, 6, 27),
                      "prior_reported_quarter_end": date(2026, 3, 28)}
-    written_day1, _ = _wire(
+    written_day1, _, _div1 = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
         estimates={("AAPL", "annual"): [_rec()]},
@@ -908,7 +1158,7 @@ async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date
     assert fresh_day40["0q"] == date(2026, 12, 28)
 
     day40 = date(2026, 10, 12)
-    written_day40, _ = _wire(
+    written_day40, _, _div40 = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 10, 31)},
         estimates={("AAPL", "annual"): [_rec()]},
@@ -932,6 +1182,206 @@ async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date
         "a genuinely new quarter must keep its own fresh date, not get pulled onto "
         "the unrelated Dec-quarter's stored date")
     assert out1["errors"] == 0 and out40["errors"] == 0
+
+
+# ── v4 — Finnhub leg orchestration (the second estimates source) ─────────────────────
+
+_AAPL_CADENCE_WITH_FYE = {**_AAPL_CADENCE, "fiscal_year_end": "0926"}
+
+
+def _finnhub_entries_for_aapl():
+    """Two Finnhub calendar entries that CORROBORATE both of _yf_data_for("AAPL")'s
+    resolved slots exactly (fiscal_quarter_end_from_label(4, 2026, "0926") ==
+    2026-09-26 == resolved['0q']; fiscal_quarter_end_from_label(1, 2027, "0926") ==
+    2026-12-26 == resolved['+1q']) — both verified by
+    test_fiscal_label_lands_exactly_on_aapl_real_report_dates and
+    test_resolves_0q_and_plus1q_from_real_aapl_shaped_facts independently."""
+    return [
+        {"date": date(2026, 10, 29), "quarter": 4, "year": 2026,
+         "revenue_estimate": 100_000_000_000.0, "eps_estimate": 2.00},
+        {"date": date(2027, 1, 28), "quarter": 1, "year": 2027,
+         "revenue_estimate": 130_000_000_000.0, "eps_estimate": 2.50},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_finnhub_corroboration_overrides_the_yfinance_label_and_writes_divergence(
+        monkeypatch):
+    """Happy path — the whole point of v4: a Finnhub calendar entry that CORROBORATES
+    a yfinance slot (a) overrides that row's period_end_date with the fiscal-label
+    date, tagging fiscal_quarter/fiscal_year and flipping period_label_method to
+    LABEL_METHOD_FINNHUB_FISCAL, (b) is ALSO stored as its own row
+    (source='finnhub_calendar'), and (c) produces a divergence row comparing both
+    sources' raw values for the same period."""
+    written, _, divergences = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_for("AAPL")},
+        finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    # 1 annual (FMP) + 2 quarterly (yfinance, now finnhub-labeled) + 2 finnhub_calendar
+    assert out["rows_written"] == 5
+    assert out["quarter_finnhub_rows_written"] == 2
+    assert out["quarter_finnhub_unavailable"] == 0 and out["quarter_finnhub_no_cadence"] == 0
+    assert out["divergence_rows_written"] == 2
+
+    yf_rows = [r for r in written if r["source"] == "yfinance"]
+    fh_rows = [r for r in written if r["source"] == "finnhub_calendar"]
+    assert len(yf_rows) == 2 and len(fh_rows) == 2
+    assert {r["period_end_date"] for r in yf_rows} == {date(2026, 9, 26), date(2026, 12, 26)}
+    assert {r["period_end_date"] for r in fh_rows} == {date(2026, 9, 26), date(2026, 12, 26)}, (
+        "the corroborated finnhub row and the overridden yfinance row must share the "
+        "IDENTICAL period_end_date — that identity is what makes the divergence join work")
+    assert all(r["period_label_method"] == aer.LABEL_METHOD_FINNHUB_FISCAL for r in yf_rows)
+    q4_yf = next(r for r in yf_rows if r["period_end_date"] == date(2026, 9, 26))
+    assert q4_yf["fiscal_quarter"] == 4 and q4_yf["fiscal_year"] == 2026
+    assert all(r["analyst_count_available"] is False for r in fh_rows)
+    assert all(r["num_analysts_revenue"] is None for r in fh_rows)
+
+    assert len(divergences) == 2
+    div_q4 = next(d for d in divergences if d["period_end_date"] == date(2026, 9, 26))
+    assert div_q4["finnhub_revenue_avg"] == 100_000_000_000.0
+    assert div_q4["yfinance_revenue_avg"] == q4_yf["revenue_avg"]
+    assert div_q4["revenue_diff"] == pytest.approx(
+        100_000_000_000.0 - q4_yf["revenue_avg"])
+
+
+@pytest.mark.asyncio
+async def test_finnhub_override_realigns_to_an_already_established_date(monkeypatch):
+    """MUTATION TARGET (advisor-caught, 2026-09-03) — THE FRACTURE THIS GUARDS AGAINST:
+    an EARLIER run (yfinance-only, before Finnhub covered this ticker) already
+    recorded 2026-09-24 for this quarter. TONIGHT Finnhub corroborates the SAME slot
+    with its own fiscal-label date (2026-09-26, 2 days off, within
+    _STABILIZE_TOLERANCE_DAYS) — stabilize_period_end correctly REUSES the
+    established 2026-09-24 rather than minting a new key. Without the realignment
+    fix, the Finnhub row would sit at its own fresh 2026-09-26 while the yfinance
+    row reused 2026-09-24: two different period_end_date keys for the SAME real
+    quarter, `period_label_method` would FALSELY claim 'finnhub_fiscal_label' for a
+    date Finnhub never actually produced, and compute_estimate_divergences would
+    never see them as the same period — silently, forever. Both sources must land
+    on 2026-09-24."""
+    established_date = date(2026, 9, 24)
+    written, _, divergences = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_for("AAPL")},
+        finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
+        recent_period_ends={"AAPL": [established_date]},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+
+    yf_rows = [r for r in written if r["source"] == "yfinance"]
+    fh_rows = [r for r in written if r["source"] == "finnhub_calendar"]
+    yf_q4 = next(r for r in yf_rows if r["fiscal_quarter"] == 4)
+    fh_q4 = next(r for r in fh_rows if r["fiscal_quarter"] == 4)
+    assert yf_q4["period_end_date"] == established_date, (
+        "stabilize_period_end must win the STORED KEY when history already exists")
+    assert fh_q4["period_end_date"] == established_date, (
+        "the Finnhub row must be REALIGNED to the established key, not left at its "
+        "own fresh fiscal-label date, or the two sources silently stop being joinable")
+    assert yf_q4["period_label_method"] == aer.LABEL_METHOD_FINNHUB_FISCAL, (
+        "Finnhub still identified WHICH quarter this is, even though the established "
+        "date (not Finnhub's freshly-computed one) is what gets stored")
+
+    div_q4 = next(d for d in divergences if d["period_end_date"] == established_date)
+    assert div_q4["finnhub_revenue_avg"] == fh_q4["revenue_avg"]
+    assert div_q4["yfinance_revenue_avg"] == yf_q4["revenue_avg"]
+
+
+@pytest.mark.asyncio
+async def test_finnhub_row_is_stored_even_when_yfinance_is_unavailable(monkeypatch):
+    """THE RESILIENCE PROPERTY (module docstring's "PREFER, NEVER REQUIRE"): a
+    Finnhub calendar row does NOT depend on yfinance succeeding at all — an
+    independent second source, not a mere corroboration signal."""
+    written, _, divergences = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_fail_tickers={"AAPL"},
+        finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    assert out["quarter_yf_unavailable"] == 1 and out["quarter_yf_rows_written"] == 0
+    assert out["quarter_finnhub_rows_written"] == 2
+    fh_rows = [r for r in written if r["source"] == "finnhub_calendar"]
+    assert len(fh_rows) == 2
+    assert divergences == [], "no yfinance row exists to diverge against"
+
+
+@pytest.mark.asyncio
+async def test_finnhub_uncorroborated_slot_keeps_the_reconstruction(monkeypatch):
+    """No Finnhub entry near a slot's reconstructed candidate -> that yfinance row
+    keeps its OWN date and LABEL_METHOD_YF_RECONSTRUCTED, exactly as if Finnhub did
+    not cover this ticker for that quarter at all — Finnhub's own row for the
+    entry it DID have still writes independently."""
+    far_entry = {"date": date(2027, 6, 1), "quarter": 2, "year": 2027,
+                 "revenue_estimate": 1.0, "eps_estimate": 1.0}
+    written, _, divergences = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_for("AAPL")},
+        finnhub_data={"AAPL": [far_entry]},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    yf_rows = [r for r in written if r["source"] == "yfinance"]
+    assert all(r["period_label_method"] == aer.LABEL_METHOD_YF_RECONSTRUCTED for r in yf_rows)
+    assert all(r["fiscal_quarter"] is None for r in yf_rows)
+    assert {r["period_end_date"] for r in yf_rows} == {date(2026, 9, 26), date(2026, 12, 26)}, (
+        "unchanged from the pure yfinance reconstruction")
+    assert divergences == [], "the finnhub row's period_end_date never matches either slot"
+
+
+@pytest.mark.asyncio
+async def test_finnhub_outage_degrades_only_that_leg_and_never_touches_annual_or_yfinance(
+        monkeypatch):
+    written, _, divergences = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_for("AAPL")},
+        finnhub_fail_tickers={"AAPL"},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    assert out["quarter_finnhub_unavailable"] == 1 and out["quarter_finnhub_rows_written"] == 0
+    assert out["quarter_finnhub_no_cadence"] == 0
+    assert out["rows_written"] == 3   # unaffected: 1 annual + 2 yfinance quarterly
+    assert divergences == []
+
+
+@pytest.mark.asyncio
+async def test_finnhub_entries_that_all_fail_guards_count_as_label_rejected(monkeypatch):
+    """Finnhub HAD calendar entries, but none passed finnhub_period_end_from_entry's
+    self-consistency guards (here: no EDGAR fiscal_year_end resolved at all, since
+    quarter_cadence omits it) — skipped and counted, distinct from an outage."""
+    written, _, _div = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        estimates={("AAPL", "annual"): [_rec()]},
+        quarter_cadence={"AAPL": _AAPL_CADENCE},   # no fiscal_year_end
+        yf_data={"AAPL": _yf_data_for("AAPL")},
+        finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0
+    assert out["quarter_finnhub_no_cadence"] == 1 and out["quarter_finnhub_unavailable"] == 0
+    assert out["quarter_finnhub_rows_written"] == 0
+    assert all(r["source"] != "finnhub_calendar" for r in written)
+    yf_rows = [r for r in written if r["source"] == "yfinance"]
+    assert all(r["period_label_method"] == aer.LABEL_METHOD_YF_RECONSTRUCTED for r in yf_rows)
 
 
 @pytest.mark.asyncio

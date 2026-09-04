@@ -3825,6 +3825,34 @@ async def initialize_schema() -> None:
             -- n_analysts is RECORDED, never filtered here: the sketch's n<3 -> None rule is
             -- applied read-side (analyst_estimates_recorder.estimate_for_scoring) so the
             -- threshold can be re-tuned without re-fetching.
+            -- v4 (2026-09-03, Finnhub second source) ADDITIONS:
+            --   fiscal_quarter/fiscal_year  Finnhub's own explicit label (raw fact, NULL for
+            --                               FMP/yfinance rows that never carry one).
+            --   analyst_count_available     FALSE marks "this source structurally never
+            --                               reports a count" (Finnhub) so its NULL
+            --                               num_analysts_* is never confused with a
+            --                               FMP/yfinance row's NULL ("we asked, got nothing").
+            --   period_label_method         which method produced period_end_date —
+            --                               'vendor_reported' (FMP annual: the vendor's own
+            --                               date field), 'yf_reconstructed' (the existing
+            --                               lag-arithmetic heuristic), or 'finnhub_fiscal_label'
+            --                               (derived from Finnhub's quarter+year — see
+            --                               analyst_estimates_recorder.fiscal_quarter_end_
+            --                               from_label). Makes the labeling improvement
+            --                               MEASURABLE rather than assumed.
+            -- ⚠ PK WIDENED TO INCLUDE `source` (v4) — REQUIRED, not cosmetic: without it, a
+            -- Finnhub row sharing a yfinance row's (ticker, period_type, period_end_date,
+            -- as_of_date) — exactly the corroborated-override case this design relies on for
+            -- the divergence join — silently OVERWRITES the yfinance row on upsert (source
+            -- flips, counts vanish). SAFE ON A POPULATED TABLE, not just an empty one: a PK
+            -- WIDEN (4 columns -> 5) can only make matching rows MORE distinct, never collide
+            -- two previously-distinct rows into one — no duplicate-key risk, regardless of
+            -- what has been written since PLAN.md's "every run through 2026-09-02 wrote ZERO
+            -- rows" history (v3's yfinance quarterly leg may have landed real rows by the time
+            -- this deploys). The two new NOT NULL columns (analyst_count_available,
+            -- period_label_method) also carry a DEFAULT, so ADD COLUMN backfills existing rows
+            -- correctly (TRUE / 'yf_reconstructed' — the honest description of every row
+            -- written before this column existed) rather than requiring the table be empty.
             CREATE TABLE IF NOT EXISTS mi_analyst_estimates (
                 ticker                TEXT NOT NULL,
                 as_of_date            DATE NOT NULL,      -- when this value was READ
@@ -3842,8 +3870,13 @@ async def initialize_schema() -> None:
                 num_analysts_eps      INT,
                 source                TEXT NOT NULL DEFAULT 'fmp_stable',
                 recorder_version      TEXT NOT NULL,
+                fiscal_quarter        INT,                          -- v4: Finnhub's raw label
+                fiscal_year           INT,                          -- v4: Finnhub's raw label
+                analyst_count_available BOOLEAN NOT NULL DEFAULT TRUE,  -- v4
+                period_label_method   TEXT NOT NULL DEFAULT 'yf_reconstructed',  -- v4
                 created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                PRIMARY KEY (ticker, period_type, period_end_date, as_of_date),
+                CONSTRAINT mi_analyst_estimates_pk
+                    PRIMARY KEY (ticker, period_type, period_end_date, as_of_date, source),
                 CHECK (period_type IN ('annual', 'quarter')),
                 CHECK (valid_from_date <= as_of_date)
             );
@@ -3851,6 +3884,53 @@ async def initialize_schema() -> None:
                 ON mi_analyst_estimates(as_of_date DESC);
             CREATE INDEX IF NOT EXISTS idx_analyst_estimates_ticker
                 ON mi_analyst_estimates(ticker, period_type, as_of_date DESC);
+            -- Additive-column migration for a table that already existed under the pre-v4
+            -- 4-column PK (idempotent; a no-op on a fresh install where the CREATE TABLE
+            -- above already has the 5-column form — same pattern as the mi_live_trades
+            -- ticker_alert_date_mode_key widen below).
+            ALTER TABLE mi_analyst_estimates ADD COLUMN IF NOT EXISTS fiscal_quarter INT;
+            ALTER TABLE mi_analyst_estimates ADD COLUMN IF NOT EXISTS fiscal_year INT;
+            ALTER TABLE mi_analyst_estimates
+                ADD COLUMN IF NOT EXISTS analyst_count_available BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE mi_analyst_estimates
+                ADD COLUMN IF NOT EXISTS period_label_method TEXT NOT NULL DEFAULT 'yf_reconstructed';
+            ALTER TABLE mi_analyst_estimates DROP CONSTRAINT IF EXISTS mi_analyst_estimates_pkey;
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'mi_analyst_estimates_pk'
+                ) THEN
+                    ALTER TABLE mi_analyst_estimates
+                        ADD CONSTRAINT mi_analyst_estimates_pk
+                        PRIMARY KEY (ticker, period_type, period_end_date, as_of_date, source);
+                END IF;
+            END $$;
+
+            -- #333 v4 (2026-09-03) — ESTIMATE DIVERGENCE (Finnhub vs yfinance, same real
+            -- quarter). Written ONLY when BOTH sources land a row on the exact same
+            -- (ticker, period_type, period_end_date, as_of_date) — see
+            -- analyst_estimates_recorder.compute_estimate_divergences. RAW CAPTURE ONLY:
+            -- no threshold is applied or chosen here (operator instruction, 2026-09-03 —
+            -- three thresholds were invented and re-litigated this week); the distribution
+            -- is meant to be READ in ~60 days, not pre-judged. diff = finnhub - yfinance;
+            -- NULL when either side's value is missing, never a wrong number from treating
+            -- a missing value as zero.
+            CREATE TABLE IF NOT EXISTS mi_analyst_estimates_divergence (
+                ticker                TEXT NOT NULL,
+                as_of_date            DATE NOT NULL,
+                period_type           TEXT NOT NULL,
+                period_end_date       DATE NOT NULL,
+                yfinance_revenue_avg  DOUBLE PRECISION,
+                finnhub_revenue_avg   DOUBLE PRECISION,
+                revenue_diff          DOUBLE PRECISION,   -- finnhub - yfinance
+                yfinance_eps_avg      DOUBLE PRECISION,
+                finnhub_eps_avg       DOUBLE PRECISION,
+                eps_diff              DOUBLE PRECISION,   -- finnhub - yfinance
+                created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, period_type, period_end_date, as_of_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_analyst_estimates_divergence_asof
+                ON mi_analyst_estimates_divergence(as_of_date DESC);
 
 
             -- #508 WS1 — unified SELL-DISCIPLINE RECORDER (sell_discipline.py). One durable
@@ -14454,7 +14534,7 @@ async def get_ticker_breadth_above_sma20(
     return round(row["above"] / row["total"], 3)
 
 
-# ── #333 ANALYST-ESTIMATES RECORDER queries (2026-08-31) ─────────────────────────────
+# ── #333 ANALYST-ESTIMATES RECORDER queries (2026-08-31; v4 2026-09-03 Finnhub) ───────
 # Single writer: analyst_estimates_recorder.py (18:12 ET job). DATA CAPTURE ONLY —
 # no grading / entry / sizing / safeguard path reads these (THE LINE). Schema + the
 # honesty contract: the mi_analyst_estimates DDL block above.
@@ -14466,16 +14546,40 @@ _ANALYST_EST_COLS = (
     "eps_avg", "eps_high", "eps_low",
     "num_analysts_revenue", "num_analysts_eps",
     "source", "recorder_version",
+    "fiscal_quarter", "fiscal_year", "analyst_count_available", "period_label_method",
 )
-_ANALYST_EST_KEY_COLS = frozenset({"ticker", "period_type", "period_end_date", "as_of_date"})
+# `source` joined the key (v4): a second source (Finnhub) can now share every other key
+# column with a yfinance row for the SAME real quarter — that is what makes them
+# joinable for the divergence check — so `source` must distinguish the two rows or one
+# upsert silently overwrites the other (see the mi_analyst_estimates_pk migration note
+# in the DDL block above).
+_ANALYST_EST_KEY_COLS = frozenset(
+    {"ticker", "period_type", "period_end_date", "as_of_date", "source"})
 _ANALYST_EST_UPSERT_SQL = (
     "INSERT INTO mi_analyst_estimates ("
     + ", ".join(_ANALYST_EST_COLS)
     + ") VALUES ("
     + ", ".join(f"${i + 1}" for i in range(len(_ANALYST_EST_COLS)))
-    + ") ON CONFLICT (ticker, period_type, period_end_date, as_of_date) DO UPDATE SET "
+    + ") ON CONFLICT (ticker, period_type, period_end_date, as_of_date, source) DO UPDATE SET "
     + ", ".join(f"{c} = EXCLUDED.{c}" for c in _ANALYST_EST_COLS
                 if c not in _ANALYST_EST_KEY_COLS)
+)
+
+_ANALYST_EST_DIVERGENCE_COLS = (
+    "ticker", "as_of_date", "period_type", "period_end_date",
+    "yfinance_revenue_avg", "finnhub_revenue_avg", "revenue_diff",
+    "yfinance_eps_avg", "finnhub_eps_avg", "eps_diff",
+)
+_ANALYST_EST_DIVERGENCE_KEY_COLS = frozenset(
+    {"ticker", "period_type", "period_end_date", "as_of_date"})
+_ANALYST_EST_DIVERGENCE_UPSERT_SQL = (
+    "INSERT INTO mi_analyst_estimates_divergence ("
+    + ", ".join(_ANALYST_EST_DIVERGENCE_COLS)
+    + ") VALUES ("
+    + ", ".join(f"${i + 1}" for i in range(len(_ANALYST_EST_DIVERGENCE_COLS)))
+    + ") ON CONFLICT (ticker, period_type, period_end_date, as_of_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _ANALYST_EST_DIVERGENCE_COLS
+                if c not in _ANALYST_EST_DIVERGENCE_KEY_COLS)
 )
 
 
@@ -14496,6 +14600,24 @@ async def upsert_analyst_estimates(rows: list[dict]) -> int:
         await conn.executemany(
             _ANALYST_EST_UPSERT_SQL,
             [tuple(row.get(c) for c in _ANALYST_EST_COLS) for row in rows],
+        )
+    return len(rows)
+
+
+async def upsert_analyst_estimates_divergence(rows: list[dict]) -> int:
+    """UPSERT divergence rows (#333 v4, 2026-09-03) — one per ticker × period_type ×
+    period_end_date × as_of_date where BOTH the yfinance and Finnhub quarterly legs
+    landed a row on the exact same period (see analyst_estimates_recorder.
+    compute_estimate_divergences). Same one-executemany shape as
+    upsert_analyst_estimates and for the same reason: called once per ticker with a
+    small (usually 0-2) list of divergence rows."""
+    if not rows:
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(
+            _ANALYST_EST_DIVERGENCE_UPSERT_SQL,
+            [tuple(row.get(c) for c in _ANALYST_EST_DIVERGENCE_COLS) for row in rows],
         )
     return len(rows)
 
@@ -14565,19 +14687,26 @@ async def get_analyst_estimates_asof(
     [valid_from_date, as_of_date] window covers that date. This is the only sanctioned
     read for any as-of-a-date question — selecting by as_of alone, or ignoring
     valid_from, re-creates the lookahead defect the schema exists to prevent.
-    Newest read wins per (period_type, period_end_date)."""
+    Newest read wins per (period_type, period_end_date, source) — `source` joined the
+    DISTINCT ON in v4 (2026-09-03) alongside the PK widen: a second source (Finnhub)
+    can now share a period_end_date with a yfinance row for the SAME real quarter (the
+    corroborated-override case), and without `source` here this would silently collapse
+    to ONE arbitrary row per quarter instead of returning both. No live caller exists
+    yet (grepped 2026-09-03); this is fixed proactively so it is correct the day one
+    lands, not discovered the hard way like get_recent_quarterly_period_ends' fracture
+    bug this table's design already guards against elsewhere."""
     pool = await get_pool()
     d = _coerce_date(on_date)
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT DISTINCT ON (period_type, period_end_date) *
+            SELECT DISTINCT ON (period_type, period_end_date, source) *
             FROM mi_analyst_estimates
             WHERE ticker = $1
               AND valid_from_date <= $2
               AND as_of_date >= $2
               AND ($3::text IS NULL OR period_type = $3)
-            ORDER BY period_type, period_end_date, as_of_date ASC
+            ORDER BY period_type, period_end_date, source, as_of_date ASC
             """,
             ticker, d, period_type,
         )
