@@ -106,6 +106,17 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # hard_stop = trade["stop_price"] which could corrupt initial basis
     # if the polling backup ran after a same-tick trail update).
     "hard_stop":          {"entry_pipeline._skip"},
+    # #600 fork 2 (2026-09-04) — the dead stop's last broker-held price, preserved at the
+    # moment `_handle_cancel_or_reject` nulls the pointer, so a later re-protect can floor
+    # against it (see docs/setups/exit_discipline.md 2026-09-04). ONE writer by design: the
+    # four columns move together in a single strictly-higher-only ratcheting UPDATE, and
+    # splitting them would lose that atomicity exactly as the stop_order_id note below says.
+    # These are telemetry FOR the raise-only rule, never themselves a stop level.
+    "dead_stop_price":       {"order_manager._preserve_dead_stop_price"},
+    "dead_stop_order_id":    {"order_manager._preserve_dead_stop_price"},
+    "dead_stop_status":      {"order_manager._preserve_dead_stop_price"},
+    "dead_stop_recorded_at": {"order_manager._preserve_dead_stop_price"},
+
     "stop_order_id":      {
         # T1.5a (2026-05-18): set_stop_order_id helper is the single
         # authorized writer for SOLO stop_order_id mutations. All 11 solo
