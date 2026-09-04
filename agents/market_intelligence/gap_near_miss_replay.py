@@ -124,8 +124,11 @@ from agents.market_intelligence.ep_detector import (
     MIN_PREV_CLOSE as _MIN_PREV_CLOSE,
     MIN_PREV_DAY_VOLUME as _MIN_PREV_DAY_VOLUME,
 )
-from agents.market_intelligence.live_fill_counterfactuals import pinned_target, walk_arm
-from agents.market_intelligence.trading_calendar import get_market_status
+from agents.market_intelligence.live_fill_counterfactuals import (
+    n_trading_days_back,
+    pinned_target,
+    walk_arm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,19 +197,6 @@ def touch_and_sustain(bars0: list[dict], prev_close: Optional[float],
     return touch, sustain
 
 
-def n_trading_days_back(end_date: date, n: int) -> date:
-    """The date n TRADING days strictly before end_date (mirrors sustain_reject_replay's own
-    helper — kept as a local copy rather than an import: both modules need it standalone and
-    neither is the other's canonical owner)."""
-    d = end_date
-    counted = 0
-    while counted < n:
-        d -= timedelta(days=1)
-        if get_market_status(d).is_trading_day:
-            counted += 1
-    return d
-
-
 # ── Orchestration (DB reads; writes only mi_gap_near_miss_replays + audit) ─────────────
 
 
@@ -235,18 +225,11 @@ def _fresh_fields(ticker: str, session_date: date, open_gap_pct: Optional[float]
 
 
 async def _write(fields: dict, out: dict, label: str) -> bool:
-    try:
-        changed = await upsert_gap_near_miss_replay(fields)
-    except Exception as e:  # loud-ok: counted + audited; nothing live depends on this table
-        out["errors"] += 1
-        await log_audit_event("gap_near_miss_replay_error", f"{label}: write failed: {e}")
-        return False
-    if changed:
-        out["written"] += 1
-        outcome = fields.get("outcome")
-        if outcome in out:
-            out[outcome] += 1
-    return changed
+    return await lfc.write_replay_row(
+        fields, out, label,
+        upsert=upsert_gap_near_miss_replay,
+        error_event="gap_near_miss_replay_error",
+    )
 
 
 async def _record_one_near_miss(conn, row: dict, last_session: date, run_date: date,

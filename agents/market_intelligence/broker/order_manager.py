@@ -5737,8 +5737,9 @@ async def _ensure_stop_coverage_outcome(
         # fresh, names the broker order whose price WAS the protection, even when
         # that order is now terminal. No broker truth → the DB price, exactly as
         # before #600 — a re-protect NEVER refuses to place.
+        _db_stop_price_f = float(db_stop_price)
         place_price = await _apply_reprotect_floor(
-            trade_id, ticker, float(db_stop_price),
+            trade_id, ticker, _db_stop_price_f,
             await _current_stop_pointer(trade_id), account_mode,
             site="ensure_stop_coverage.place",
         )
@@ -5760,7 +5761,7 @@ async def _ensure_stop_coverage_outcome(
                         "trade_id": trade_id, "ticker": ticker,
                         "account_mode": account_mode,
                         "intended_stop_price": place_price,
-                        "db_stop_price": float(db_stop_price),
+                        "db_stop_price": _db_stop_price_f,
                         "target_qty": target, "error": str(e),
                     }),
                 )
@@ -5808,7 +5809,7 @@ async def _ensure_stop_coverage_outcome(
                 "account_mode": account_mode,
                 "new_stop_id": new_order["id"], "target_qty": target,
                 "stop_price": place_price,
-                "db_stop_price": float(db_stop_price),
+                "db_stop_price": _db_stop_price_f,
             }),
         )
         return CoverageOutcome(

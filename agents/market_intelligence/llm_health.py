@@ -736,3 +736,50 @@ async def alert_endpoint_shape_anomaly(
     except Exception as _e:  # absolute belt-and-suspenders — never raise upward
         logger.debug("alert_endpoint_shape_anomaly swallowed for %s/%s: %s",
                       provider, event_type, _e)
+
+
+# ── Perplexity anomaly-triage helpers ────────────────────────────────────────────────────
+# Previously copy-pasted between collector.search_news_perplexity and
+# ep_detector._validate_catalyst_perplexity (both call sites' comments cross-referenced the
+# other verbatim). Consolidated here — the module both already import from, with zero
+# imports running the other way — so neither call site changes its trigger conditions or
+# alert arguments, only where the triage logic lives.
+
+async def alert_perplexity_invalid_json(detail: str) -> None:
+    """#603 DoD (3): a Perplexity 200 that doesn't decode as JSON never raises a
+    classifiable provider-health exception on its own, so every call site must route it
+    here explicitly rather than let it vanish into `classify_api_failure`'s silent None."""
+    from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
+    await alert_endpoint_shape_anomaly(
+        "perplexity", PERPLEXITY_ENDPOINT_ERROR, "invalid_json", detail,
+    )
+
+
+async def alert_perplexity_empty_answer() -> None:
+    """#603 DoD (3): a Perplexity 200 with nothing extractable — no exception, so nothing
+    else would ever alert on it otherwise."""
+    from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
+    await alert_endpoint_shape_anomaly(
+        "perplexity", PERPLEXITY_ENDPOINT_ERROR, "empty_answer_on_200",
+    )
+
+
+async def triage_perplexity_exception(
+    e: BaseException, *, credit_context: str, api_context: str,
+) -> None:
+    """Shared exception-path triage for a failed Perplexity call: credit exhaustion first
+    (deduped alert), then — for a non-credit failure — the fixed-URL 404 special case
+    (routed to the shape-anomaly canary, since Perplexity's Agent URL has no per-item 404
+    case, so a 404 there can only mean the endpoint itself is gone) or the generic
+    data-API failure alert. Contract is unchanged: this only alerts, it never affects the
+    caller's return value."""
+    await maybe_alert_credit_exhausted(credit_context, e, provider="perplexity")
+    if not is_credit_error(e):
+        _status = getattr(getattr(e, "response", None), "status_code", None)
+        if _status == 404:
+            from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
+            await alert_endpoint_shape_anomaly(
+                "perplexity", PERPLEXITY_ENDPOINT_ERROR, "http_404", str(e)[:200],
+            )
+        else:
+            await maybe_alert_api_failure("perplexity", e, context=api_context)

@@ -10983,18 +10983,29 @@ async def get_delayed_entry_watch_row(ticker: str, ep_date: date, session_date: 
     return dict(row) if row else None
 
 
+async def _daily_closes_range(conn: Any, ticker: str, start: date, end: date, *,
+                               with_volume: bool) -> list[dict]:
+    """Shared body for get_delayed_entry_daily_window / get_daily_ohlc_range — same
+    table, WHERE, and ORDER BY; only the column list (volume) and connection
+    sourcing at the two call sites differ."""
+    cols = "trade_date, open_price, high_price, low_price, close"
+    if with_volume:
+        cols += ", volume"
+    rows = await conn.fetch(f"""
+        SELECT {cols}
+        FROM mi_daily_closes
+        WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
+        ORDER BY trade_date
+    """, ticker, _coerce_date(start), _coerce_date(end))
+    return [dict(r) for r in rows]
+
+
 async def get_delayed_entry_daily_window(ticker: str, start: date, end: date) -> list[dict]:
     """Ascending daily bars over [start, end] from mi_daily_closes — the walker's one
     ranged read per member (session bars + prior-session lows + the ADR window)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT trade_date, open_price, high_price, low_price, close, volume
-            FROM mi_daily_closes
-            WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
-            ORDER BY trade_date
-        """, ticker, _coerce_date(start), _coerce_date(end))
-    return [dict(r) for r in rows]
+        return await _daily_closes_range(conn, ticker, start, end, with_volume=True)
 
 
 async def get_delayed_entry_daily_bar(ticker: str, trading_day: date):
@@ -14732,24 +14743,32 @@ LIVE_FILL_CF_COLS: tuple[str, ...] = (
     "judge_grade", "judge_tier", "grade_engine_authority", "setup_class",
     "baseline_floor_tier", "alert_source", "settle_version", "settled_session",
 )
+def _jsonb_value_list(cols, jsonb_cols) -> str:
+    """The `$1, $2::jsonb, $3, ...` VALUES list for a recorder's INSERT (#600 cleanup
+    2026-09-03 — was three byte-identical copies, one per recorder).
+
+    Explicit `::jsonb` on the JSON columns: the registered codec single-encodes a Python
+    object bound to a jsonb param (the #216 lesson — never pre-json.dumps). Every other
+    column is bound once, so asyncpg's type deduction has nothing to be ambiguous about.
+    `jsonb_cols` is any container of column names (a frozenset, or a tuple of them).
+    """
+    def _is_jsonb(col: str) -> bool:
+        if isinstance(jsonb_cols, tuple):
+            return any(col in group for group in jsonb_cols)
+        return col in jsonb_cols
+    return ", ".join(
+        f"${i + 1}::jsonb" if _is_jsonb(c) else f"${i + 1}" for i, c in enumerate(cols))
+
+
 _LIVE_FILL_CF_JSONB_LIST = frozenset({"exits"})
 _LIVE_FILL_CF_JSONB_DICT = frozenset({"exit_rules"})
-
-
-def _live_fill_cf_placeholder(i: int, col: str) -> str:
-    # Explicit ::jsonb on the two JSON columns: the registered codec single-encodes a Python
-    # object bound to a jsonb param (the #216 lesson — never pre-json.dumps). Every other
-    # column is bound once, so asyncpg's type deduction has nothing to be ambiguous about.
-    if col in _LIVE_FILL_CF_JSONB_LIST or col in _LIVE_FILL_CF_JSONB_DICT:
-        return f"${i}::jsonb"
-    return f"${i}"
 
 
 # Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time
 # (a silent recorder is where a type-deduction bug hides longest — the #606 case).
 LIVE_FILL_CF_INSERT_SQL = (
     f"INSERT INTO mi_live_fill_counterfactuals ({', '.join(LIVE_FILL_CF_COLS)}) VALUES ("
-    + ", ".join(_live_fill_cf_placeholder(i + 1, c) for i, c in enumerate(LIVE_FILL_CF_COLS))
+    + _jsonb_value_list(LIVE_FILL_CF_COLS, (_LIVE_FILL_CF_JSONB_LIST, _LIVE_FILL_CF_JSONB_DICT))
     + ") ON CONFLICT (trade_id, arm) DO NOTHING"
 )
 
@@ -14896,17 +14915,11 @@ _SUSTAIN_REPLAY_MUTABLE_COLS = tuple(
     c for c in SUSTAIN_REJECT_REPLAY_COLS if c not in ("ticker", "decline_date"))
 
 
-def _sustain_replay_placeholder(i: int, col: str) -> str:
-    if col in _SUSTAIN_REPLAY_JSONB:
-        return f"${i}::jsonb"
-    return f"${i}"
-
-
 # Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time (the
 # #606 lesson: a silent recorder is where a type-deduction bug hides longest).
 SUSTAIN_REJECT_REPLAY_UPSERT_SQL = (
     f"INSERT INTO mi_sustain_reject_replays ({', '.join(SUSTAIN_REJECT_REPLAY_COLS)}, updated_at) VALUES ("
-    + ", ".join(_sustain_replay_placeholder(i + 1, c) for i, c in enumerate(SUSTAIN_REJECT_REPLAY_COLS))
+    + _jsonb_value_list(SUSTAIN_REJECT_REPLAY_COLS, _SUSTAIN_REPLAY_JSONB)
     + ", NOW())"
     " ON CONFLICT (ticker, decline_date) DO UPDATE SET "
     + ", ".join(f"{c} = EXCLUDED.{c}" for c in _SUSTAIN_REPLAY_MUTABLE_COLS)
@@ -15039,17 +15052,11 @@ _GAP_NEAR_MISS_MUTABLE_COLS = tuple(
     c for c in GAP_NEAR_MISS_REPLAY_COLS if c not in ("ticker", "session_date"))
 
 
-def _gap_near_miss_placeholder(i: int, col: str) -> str:
-    if col in _GAP_NEAR_MISS_JSONB:
-        return f"${i}::jsonb"
-    return f"${i}"
-
-
 # Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time (the
 # #606 lesson: a silent recorder is where a type-deduction bug hides longest).
 GAP_NEAR_MISS_REPLAY_UPSERT_SQL = (
     f"INSERT INTO mi_gap_near_miss_replays ({', '.join(GAP_NEAR_MISS_REPLAY_COLS)}, updated_at) VALUES ("
-    + ", ".join(_gap_near_miss_placeholder(i + 1, c) for i, c in enumerate(GAP_NEAR_MISS_REPLAY_COLS))
+    + _jsonb_value_list(GAP_NEAR_MISS_REPLAY_COLS, _GAP_NEAR_MISS_JSONB)
     + ", NOW())"
     " ON CONFLICT (ticker, session_date) DO UPDATE SET "
     + ", ".join(f"{c} = EXCLUDED.{c}" for c in _GAP_NEAR_MISS_MUTABLE_COLS)
@@ -15116,16 +15123,8 @@ async def get_intraday_bars_window(conn: Any, ticker: str, start_ts: Any, end_ts
              "l": _f(r["low"]), "c": _f(r["close"])} for r in rows]
 
 
-_DAILY_OHLC_RANGE_SQL = """
-    SELECT trade_date, open_price, high_price, low_price, close FROM mi_daily_closes
-    WHERE ticker = $1 AND trade_date >= $2::date AND trade_date <= $3::date
-    ORDER BY trade_date
-"""
-
-
 async def get_daily_ohlc_range(conn: Any, ticker: str, start: "date", end: "date") -> list[dict]:
     """READ-ONLY. Stored daily OHLC rows for [start, end], oldest first. A missing session
     is simply absent — the caller decides (the #482 recorder retries it through
     get_daily_bar_with_fallback, and abstains if it never appears)."""
-    rows = await conn.fetch(_DAILY_OHLC_RANGE_SQL, ticker, _coerce_date(start), _coerce_date(end))
-    return [dict(r) for r in rows]
+    return await _daily_closes_range(conn, ticker, start, end, with_volume=False)

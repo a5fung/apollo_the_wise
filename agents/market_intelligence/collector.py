@@ -1523,11 +1523,8 @@ async def search_news_perplexity(
                     # None (no alert). A vendor endpoint change (e.g. an HTML "moved" body
                     # served with a 200) would be silent here otherwise.
                     logger.warning(f"Perplexity response was not valid JSON: {je}")
-                    from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
-                    from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
-                    await alert_endpoint_shape_anomaly(
-                        "perplexity", PERPLEXITY_ENDPOINT_ERROR, "invalid_json", str(je),
-                    )
+                    from agents.market_intelligence.llm_health import alert_perplexity_invalid_json
+                    await alert_perplexity_invalid_json(str(je))
                     return ""
                 try:  # #377 cost meter — additive, never alters the search result.
                     # Covers #186A + the ~11 indirect callers of this choke point.
@@ -1549,11 +1546,8 @@ async def search_news_perplexity(
                     # comes back as HEDGE TEXT (see strip_perplexity_disclaimer), not blank —
                     # a true "" is the response shape breaking, not the model having nothing
                     # to say.
-                    from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
-                    from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
-                    await alert_endpoint_shape_anomaly(
-                        "perplexity", PERPLEXITY_ENDPOINT_ERROR, "empty_answer_on_200",
-                    )
+                    from agents.market_intelligence.llm_health import alert_perplexity_empty_answer
+                    await alert_perplexity_empty_answer()
                 return _answer
         except Exception as e:
             # Duck-typed timeout check (matches classify_api_failure): every
@@ -1594,34 +1588,15 @@ async def search_news_perplexity(
     # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
     # catalyst cross-check (and every other Perplexity use) silently returns
     # "" and degrades. Alert it (terminal + actionable) before failing open.
-    from agents.market_intelligence.llm_health import (
-        is_credit_error, maybe_alert_api_failure, maybe_alert_credit_exhausted,
-    )
-    await maybe_alert_credit_exhausted("Perplexity news search", e, provider="perplexity")
     # #380/#370: a NON-credit failure here (5xx, timeout, connect, a non-
-    # 401/402 4xx) is the silent-degradation class too. Alert it via the
-    # data-API guard — but ONLY when it's not already a credit error, so a
-    # 401/402 doesn't double-fire (credit + api_failure). Dedup is keyed by
-    # (provider, error-class) so this never collides with the credit alarm.
-    # Contract is UNCHANGED: this only alerts, then we still return "".
-    if not is_credit_error(e):
-        _status = getattr(getattr(e, "response", None), "status_code", None)
-        if _status == 404:
-            # #603 DoD (3): `classify_api_failure` carves 404 out to None on
-            # purpose — Polygon's per-ticker endpoints legitimately 404 on an
-            # unknown/delisted symbol, a per-CALL data condition, not a provider
-            # outage. That carve-out must stay (alerting on it would cry "Polygon
-            # DOWN" several times a day). But Perplexity's Agent URL is FIXED —
-            # there is no "item" to 404 on — so a 404 here can only mean the
-            # ENDPOINT itself is gone. Route it to the shape-anomaly canary
-            # instead of the (silent, for 404) generic data-API alert.
-            from agents.market_intelligence.llm_health import alert_endpoint_shape_anomaly
-            from agents.market_intelligence.audit_events import PERPLEXITY_ENDPOINT_ERROR
-            await alert_endpoint_shape_anomaly(
-                "perplexity", PERPLEXITY_ENDPOINT_ERROR, "http_404", str(e)[:200],
-            )
-        else:
-            await maybe_alert_api_failure("perplexity", e, context="news search")
+    # 401/402 4xx) is the silent-degradation class too — routed via the same
+    # shared triage (credit check, then the #603 DoD-3 fixed-URL 404 special
+    # case vs. the generic data-API guard). Contract is UNCHANGED: this only
+    # alerts, then we still return "".
+    from agents.market_intelligence.llm_health import triage_perplexity_exception
+    await triage_perplexity_exception(
+        e, credit_context="Perplexity news search", api_context="news search",
+    )
     logger.warning(f"Perplexity search failed: {e}")
     return ""
 

@@ -1318,6 +1318,17 @@ async def _handle_oco_parent_cancel(
 
 async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     """Handle order cancellation, expiry, or rejection."""
+    # Local import (breaks a module-level import cycle with order_manager); consolidates
+    # the three names the #600 stop-restore branches and the partial-exit fill commit
+    # below share, each previously imported separately at its own use site. (The
+    # `stop_trade` branch further down imports `set_stop_order_id` again alongside
+    # `describe_stop_move` — a harmless rebind, left as-is: out of this consolidation's
+    # scope.)
+    from agents.market_intelligence.broker.order_manager import (
+        _apply_reprotect_floor,
+        finalize_partial_exit,
+        set_stop_order_id,
+    )
     order = data.order
     order_id = str(order.id)
     symbol = order.symbol
@@ -1997,7 +2008,6 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         _cancel_filled = float(getattr(order, "filled_qty", 0) or 0)
         _cancel_avg = float(getattr(order, "filled_avg_price", 0) or 0)
         if _cancel_filled > 0 and _cancel_avg > 0:
-            from agents.market_intelligence.broker.order_manager import finalize_partial_exit
             await finalize_partial_exit(
                 pending_exit["trade_id"], int(_cancel_filled), _cancel_avg, order_id,
             )
@@ -2035,9 +2045,6 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 FROM mi_live_trades WHERE id = $1
             """, pending_exit["trade_id"])
         if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
-            from agents.market_intelligence.broker.order_manager import (
-                _apply_reprotect_floor, set_stop_order_id,
-            )
             # #600: this is the cancel-then-re-place shape — read the CURRENT
             # stop's broker price BEFORE cancelling it, and never restore BELOW
             # it. The DB stop_price can be stale-low (breakeven withheld / never
@@ -2111,9 +2118,6 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 FROM mi_live_trades WHERE id = $1
             """, pending_exit["trade_id"])
         if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
-            from agents.market_intelligence.broker.order_manager import (
-                _apply_reprotect_floor, set_stop_order_id,
-            )
             # #600: execute_full_exit cancelled the stop but the pointer is only
             # nulled on the fill commit, so it still names that cancelled order —
             # whose price is the last level the broker held. Never re-place BELOW

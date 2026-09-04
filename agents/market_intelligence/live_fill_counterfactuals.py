@@ -444,6 +444,20 @@ def _trading_days(start: date, end: date) -> list[date]:
     return out
 
 
+def n_trading_days_back(end_date: date, n: int) -> date:
+    """The date n TRADING days strictly before end_date — a generous population window,
+    computed off the trading calendar rather than a second SQL round trip against
+    mi_daily_closes. Shared by sustain_reject_replay.py and gap_near_miss_replay.py (both
+    already import this module), consolidated from two byte-identical copies."""
+    d = end_date
+    counted = 0
+    while counted < n:
+        d -= timedelta(days=1)
+        if get_market_status(d).is_trading_day:
+            counted += 1
+    return d
+
+
 def last_settled_session(today: date, now_et: datetime) -> date:
     """The last trading session whose daily bar is SETTLED: today only after the close
     (SETTLED_AFTER_ET), else the previous trading day. A partial day must never settle an
@@ -558,18 +572,43 @@ def _outcome_fields(res: dict, *, entry: float, stop: Optional[float],
     return f
 
 
-async def _write(fields: dict, out: dict, label: str) -> bool:
+async def write_replay_row(
+    fields: dict, out: dict, label: str, *,
+    upsert, error_event: str, outcome_key=None,
+) -> bool:
+    """Shared write-and-tally body for the three replay/counterfactual recorders (this
+    module, sustain_reject_replay.py, gap_near_miss_replay.py) — each upserts into its own
+    table via `upsert` and audits its own `error_event` on failure. `outcome_key`, when
+    given, maps `fields` to the tally-dict key to bump (this module translates its outcome
+    vocabulary — "abstain" tallies as "abstained"); when omitted, `fields['outcome']` is
+    used directly, only when it is already a key `out` tracks."""
     try:
-        inserted = await insert_live_fill_counterfactual(fields)
-    except Exception as e:  # loud-ok: counted + audited; the live trade is untouched either way
+        changed = await upsert(fields)
+    except Exception as e:  # loud-ok: counted + audited; nothing live depends on this table
         out["errors"] += 1
-        await log_audit_event("live_fill_counterfactual_error", f"{label}: write failed: {e}")
+        await log_audit_event(error_event, f"{label}: write failed: {e}")
         return False
-    if inserted:
+    if changed:
         out["written"] += 1
-        out[{"settled": "settled", "abstain": "abstained", "unscoreable": "unscoreable",
-             "horizon": "horizon"}[fields["outcome"]]] += 1
-    return inserted
+        if outcome_key is not None:
+            out[outcome_key(fields)] += 1
+        else:
+            outcome = fields.get("outcome")
+            if outcome in out:
+                out[outcome] += 1
+    return changed
+
+
+async def _write(fields: dict, out: dict, label: str) -> bool:
+    return await write_replay_row(
+        fields, out, label,
+        upsert=insert_live_fill_counterfactual,
+        error_event="live_fill_counterfactual_error",
+        outcome_key=lambda f: {
+            "settled": "settled", "abstain": "abstained",
+            "unscoreable": "unscoreable", "horizon": "horizon",
+        }[f["outcome"]],
+    )
 
 
 async def _record_one_fill(conn, trade: dict, last_session: date, out: dict) -> None:
