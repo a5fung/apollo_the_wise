@@ -1,0 +1,39 @@
+{
+  "ticker": "CHPT",
+  "scan_date": "2026-09-03",
+  "catalyst_quality": "strong",
+  "analysis": "ChargePoint reported Q2 FY27 results (8-K filed 9/2/26) with revenue up 18% YoY to $116.1M, beating the high end of guidance, alongside a significant improvement in adjusted EBITDA loss (to $4.8M from $22.1M YoY) and record non-GAAP gross margin of 38%. This is a growth name showing accelerating revenue growth plus a structural improvement in profitability trajectory (narrowing losses, cost discipline), which is a meaningful positive catalyst relative to its small $134M market cap. While not a guidance raise explicitly cited here, the beat-and-improve combination across revenue and margins qualifies as a strong catalyst rather than routine.",
+  "grade_failed": false,
+  "grounded_has_sec": true,
+  "grounded_n_benzinga": 3,
+  "grounded_cutoff": "2026-09-03 09:31:00-04:00",
+  "sec_same_day_risk": false,
+  "gap_pct": 49.81,
+  "rel_volume": 21.2,
+  "proj_vol": 392.1,
+  "adv_dollar": 395317.2473405,
+  "mcap_m": 134.0,
+  "regime_label": "Correcting",
+  "regime_multiplier": 1.0,
+  "in_active_theme": false,
+  "ep_score": 52.5,
+  "breakdown": {
+    "gap": 10,
+    "liquidity": 0,
+    "catalyst": 15,
+    "float": 5,
+    "vol_conviction": 0,
+    "theme_bonus": 0
+  },
+  "ep_score_legacy": 80.0,
+  "breakdown_legacy": {
+    "gap": 25,
+    "liquidity": 0,
+    "catalyst": 15,
+    "float": 5,
+    "vol_conviction": 0,
+    "theme_bonus": 0,
+    "conviction_floor": 35
+  },
+  "label": "case_study_not_in_sample"
+}
