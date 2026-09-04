@@ -57,7 +57,7 @@ from agents.market_intelligence.collector import (
     get_sec_recent_filings,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
     compute_rvol_at_time,
@@ -3327,6 +3327,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Batch-fetch volume history for all candidates (one DB query)
     candidate_tickers = [c["ticker"] for c in candidates]
     vol_history_map = await get_volume_history(candidate_tickers)
+    # SHADOW (2026-09-04, vol-conviction post-open probe — see the `vol_percentile_shadow`
+    # block below + docs/setups/magna53_ep.md Known Limitations). mi_daily_closes-sourced
+    # companion history — never fed into vol_pct/_score_ep, telemetry only. Fail-open: an
+    # empty map here just means the shadow has nothing to rank against for that ticker.
+    try:
+        vol_history_daily_map = await get_volume_history_daily_closes(candidate_tickers, today)
+    except Exception as _vhd_e:
+        logger.warning(f"vol_history_daily_map fetch failed (shadow-only, non-fatal): {_vhd_e}")
+        vol_history_daily_map = {}
 
     # Batch-fetch 3-month-ago closes for prior momentum check
     prior_3m_map: dict[str, float] = {}
@@ -3842,12 +3851,46 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Volume conviction percentile — only valid pre-open (compares cumulative
         # to full-day ADV history). Post-open the partial-day cumulative would
         # falsely rank near 0 against full-day distributions, so return neutral.
-        # Post-open conviction is captured via projected_vol_multiple (rel_volume slot).
+        # ⚠ 2026-09-04 CORRECTION: the line this comment used to end on ("post-open
+        # conviction is captured via projected_vol_multiple") is FALSE and was never
+        # true — verified against the live code, not asserted. `projected_vol_multiple`
+        # only feeds `_score_ep`'s LIQUIDITY fallback tier, which only fires when
+        # `adv_dollar is None` (new/thin-history listings); for any candidate with a
+        # known ADV — the normal case, and true of CHPT (2026-09-03, adv_dollar known,
+        # projected_vol_multiple=392.1x, liquidity component scored 0 from the ADV$
+        # tiers, not from proj_vol) — it is read nowhere else in the scorer. Post-open,
+        # `vol_conviction` is a HARDCODED neutral (0 points, same as a dead stock) for
+        # every candidate, full stop. SHADOW instrumentation below measures the honest
+        # fix; nothing here changes live scoring. Full writeup + evidence:
+        # docs/setups/magna53_ep.md "Known limitations / open questions".
         if _minutes_since_open is None:
             vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
         else:
             vol_pct = 50.0
         c["vol_percentile"] = vol_pct  # #605: score input, persisted per candidate
+
+        # SHADOW ONLY (2026-09-04, telemetry — CHANGE_PROCESS "when not to log": no
+        # detection-logic change, so no change-log entry, just this comment + the SSoT
+        # limitations note). `vol_pct` above is UNTOUCHED and still what `_score_ep`
+        # receives. This computes what an HONEST point-in-time post-open reading would
+        # be: TODAY's actual cumulative volume so far (`c["today_volume"]` — the exact
+        # same point-in-time number the pre-open branch above already trusts; no
+        # lookahead, no projection) ranked against a mi_daily_closes-sourced rolling-
+        # 20-day-mean history (`vol_history_daily_map` — NOT `vol_history_map`/adv_20,
+        # which only covers the top ~2,400 RS-ranked names and would itself return
+        # "unknown → 50" for most off-universe EP candidates, incl. CHPT). The tier
+        # table only pays points at the 70th/90th percentile (`ep_rubric.SCORE_WEIGHTS
+        # ["vol_conviction"]`), so an ordinary session's partial-day cumulative — well
+        # under a full day's total — safely lands below both cuts same as neutral 50
+        # does; only a genuinely extreme session (CHPT: 100th percentile at the 09:31
+        # tick) can differ from today's hardcoded 0. The paired score comparison + the
+        # "would this cross the alert bar" check are logged once per ticker/day further
+        # below, next to the scan's other shadow score comparisons (e.g.
+        # `perplexity_boost_shadow`).
+        c["vol_percentile_shadow"] = (
+            _volume_percentile(c["today_volume"], vol_history_daily_map.get(ticker, []))
+            if _minutes_since_open is not None and vol_history_daily_map.get(ticker) else None
+        )
 
         # Catalyst cache check — skip FMP/Claude/Perplexity if already evaluated today.
         # A stock oscillating near the 15% threshold gets re-scored every 5 min;
@@ -5300,6 +5343,55 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
             except Exception as _e:
                 logger.debug(f"{ticker}: perplexity_boost_shadow skipped — {_e}")
+
+        # vol_conviction_shadow (2026-09-04) — the honest post-open volume-conviction
+        # percentile, paired against the REAL scorer, so the fix's actual effect on THIS
+        # candidate's score/tier is on record rather than argued in the abstract. `vol_pct`
+        # (live) is UNTOUCHED; only `_vol_pct_shadow` differs from what `_score_ep` above
+        # actually used. Telemetry-only — never alters `ep_score`/`tier`/admission.
+        _vol_pct_shadow = c.get("vol_percentile_shadow")
+        if (
+            _minutes_since_open is not None
+            and _vol_pct_shadow is not None
+            and _audit_dedupe_check(ticker, today, "vol_conviction_shadow")
+        ):
+            try:
+                _score_shadow_vol, _ = _score_ep(
+                    gap_pct=c["gap_pct"],
+                    rel_volume=rel_volume,
+                    catalyst_quality=catalyst_quality,
+                    profile=profile,
+                    regime_multiplier=regime_multiplier * confidence_multiplier,
+                    projected_vol_multiple=c.get("projected_vol_multiple"),
+                    adv_dollar=((c.get("adv") or 0) * (c.get("prev_close") or 0)) or None,
+                    vol_percentile=_vol_pct_shadow,  # the ONLY input that differs from ep_score above
+                    prior_3m_change=prior_3m_change,
+                    in_active_theme=(ticker in _in_active_theme_set),
+                    weights=_act_weights,
+                )
+                _would_cross = ep_score < ep_threshold <= _score_shadow_vol
+                await log_audit_event(
+                    "vol_conviction_shadow",
+                    f"{ticker} {tier} live_vol_pct={vol_pct:.0f} shadow_vol_pct="
+                    f"{_vol_pct_shadow:.0f} live_score={ep_score:.1f} "
+                    f"shadow_score={_score_shadow_vol:.1f}"
+                    + (" WOULD_CROSS_BAR" if _would_cross else ""),
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "minutes_since_open": _minutes_since_open,
+                        "live_vol_percentile": vol_pct,
+                        "shadow_vol_percentile": _vol_pct_shadow,
+                        "live_tier": tier,
+                        "live_score": round(ep_score, 1),
+                        "shadow_score": round(_score_shadow_vol, 1),
+                        "ep_threshold": ep_threshold,
+                        "would_cross_bar": _would_cross,
+                        "today_volume": int(c.get("today_volume") or 0),
+                    }),
+                )
+            except Exception as _e:
+                logger.debug(f"{ticker}: vol_conviction_shadow skipped — {_e}")
 
         result = {
             **c,

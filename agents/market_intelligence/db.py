@@ -9972,6 +9972,66 @@ async def get_volume_history(tickers: list[str], days: int = 60) -> dict[str, li
     return result
 
 
+async def get_volume_history_daily_closes(
+    tickers: list[str], scan_date: date, days: int = 60,
+) -> dict[str, list[float]]:
+    """SHADOW-ONLY companion to `get_volume_history` (2026-09-04, ep_score volume-conviction
+    fix probe — see `docs/setups/magna53_ep.md` Known Limitations and `ep_detector.py`'s
+    `vol_percentile_shadow` block). Returns the SAME SHAPE as `get_volume_history` (a rolling
+    20-trading-day mean-volume series per ticker, matching `mi_stock_scores.adv_20`'s
+    definition) but sourced from `mi_daily_closes` instead of `mi_stock_scores`.
+
+    WHY A SECOND SOURCE: `get_volume_history` / `_volume_percentile`'s live mechanism reads
+    `mi_stock_scores.adv_20`, which only carries the top ~2,400 RS-ranked names on any given
+    day (CLAUDE.md, RS Scoring). Off-universe tickers — a large share of EP candidates,
+    including CHPT (2026-09-03: zero `mi_stock_scores` rows in the 60 days before its scan) —
+    get an EMPTY history there and `_volume_percentile` falls back to its own "unknown → 50.0"
+    branch. That coverage gap would silently defeat this shadow for exactly the names most
+    likely to show a genuine volume conviction signal. `mi_daily_closes` is always populated
+    (it is the RS/backtest daily-bar table, gated by security type, not by RS-universe rank).
+
+    One batch query for every candidate ticker (matches `get_volume_history`'s call shape —
+    never per-ticker). `rolling20_history` per ticker mirrors
+    `scripts/probes/_622sweep_driver.py::rolling20_history` exactly: 20-trading-day mean
+    volume, evaluated at each end-date within the last `days` calendar days strictly BEFORE
+    `scan_date` (no lookahead — every window ends before the scan it feeds).
+    """
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    # Need calendar days back far enough to find 20 trading days before the EARLIEST
+    # in-window end-date, i.e. days-back-for-the-window (~1.4x days for weekends/holidays)
+    # plus another ~40 calendar days for the 20-trading-day lookback itself.
+    fetch_cutoff = scan_date - timedelta(days=int(days * 1.4) + 40)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, trade_date, volume
+            FROM mi_daily_closes
+            WHERE ticker = ANY($1)
+              AND trade_date >= $2
+              AND trade_date < $3
+            ORDER BY ticker, trade_date
+        """, tickers, fetch_cutoff, scan_date)
+    by_ticker: dict[str, list[tuple]] = {}
+    for row in rows:
+        by_ticker.setdefault(row["ticker"], []).append((row["trade_date"], row["volume"]))
+    window_cutoff = scan_date - timedelta(days=days)
+    result: dict[str, list[float]] = {}
+    for ticker, day_rows in by_ticker.items():
+        if len(day_rows) < 20:
+            continue
+        out: list[float] = []
+        for i in range(19, len(day_rows)):
+            end_date = day_rows[i][0]
+            if end_date < window_cutoff:
+                continue
+            window = day_rows[i - 19:i + 1]
+            out.append(sum(v for _, v in window) / 20.0)
+        if out:
+            result[ticker] = out
+    return result
+
+
 async def purge_old_data() -> dict[str, int]:
     """
     Delete rows older than retention limits to keep the DB lean.
