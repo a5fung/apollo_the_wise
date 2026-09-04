@@ -1,0 +1,572 @@
+cohort	ticker	scan_date	max_gap	prev_close	n_min_bars	has_930	artifact	art_reason	status_0931	reason_0931	entered_0931	entry_px_0931	stop_0931	target_0931	realized_r_0931	mark_r_0931	final_0931	partial_0931	status_0936	reason_0936	entered_0936	entry_px_0936	stop_0936	target_0936	realized_r_0936	mark_r_0936	final_0936	partial_0936
+excluded	ARTV	2026-06-08	31.53	6.85	294	True	False		settled		True	7.42	7.16	7.68	-1.0		stop_hit	False	settled		True	7.42	7.16	7.68	-1.0		stop_hit	False
+excluded	OCC	2026-06-08	82.93	12.3	390	True	False		no_entry	never_crossed_orb_high	False		17.130200000000002					False	no_entry	never_crossed_orb_high	False		17.130200000000002					False
+excluded	RELL	2026-06-08	11.75	16.2	184	True	False		settled		True	16.53	16.49	16.590000000000003	-1.0		stop_hit	False	abstain	day0_fill_bar_straddles_stop	True	16.51	16.49	16.530000000000005				False
+excluded	SRI	2026-06-08	12.83	7.09	107	True	False		settled		True	7.275	7.140000000000001	7.4350000000000005	-1.0		stop_hit	False	settled		True	7.275	7.140000000000001	7.4350000000000005	-1.0		stop_hit	False
+excluded	ADUR	2026-06-09	21.53	14.4	353	True	False		settled		True	16.48	15.440000000000001	17.52	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		15.440000000000001					False
+excluded	AMPG	2026-06-09	15.22	6.57	390	True	False		settled		True	7.43	6.735800000000001	8.124199999999998	-1.0		stop_hit	False	settled		True	7.43	6.735800000000001	8.124199999999998	-1.0		stop_hit	False
+excluded	ARQQ	2026-06-09	11.62	12.82	329	True	False		settled		True	13.44	12.94	13.94	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		12.94					False
+excluded	DTIL	2026-06-09	12.41	6.77	311	True	False		abstain	entry_window_gaps:1_of_29	False		6.69					False	abstain	entry_window_gaps:1_of_24	False		6.69					False
+excluded	PANL	2026-06-09	10.65	7.23	286	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	SUJA	2026-06-10	14.53	15.55	325	True	False		settled		True	15.47	15.12	15.820000000000002	-1.0		stop_hit	False	abstain	entry_window_gaps:4_of_24	False		15.12					False
+excluded	KZIA	2026-06-11	10.43	11.5	134	True	False		settled		True	12.13	11.93	12.390000000000002	-1.0		stop_hit	False	settled		True	12.13	11.93	12.390000000000002	-1.0		stop_hit	False
+excluded	PRTA	2026-06-11	25.28	7.91	297	True	False		settled		True	7.9482	7.68	8.2346	1.1061396967437234		sma_trail_stop	True	settled		True	7.9482	7.68	8.2346	1.1061396967437234		sma_trail_stop	True
+excluded	ASYS	2026-06-12	13.78	22.6	353	True	False		settled		True	23.53	22.089999999999996	24.970000000000006	0.3333333333333333		stop_hit	True	settled		True	23.65	22.089999999999996	25.33	0.35897435897435837		stop_hit	True
+excluded	EIKN	2026-06-12	17.37	8.52	188	True	False		settled		True	8.66	8.409999999999998	8.920000000000002	0.3466666666666663		stop_hit	True	settled		True	8.66	8.409999999999998	8.920000000000002	0.3466666666666663		stop_hit	True
+excluded	TENX	2026-06-12	11.37	10.73	343	True	False		settled		True	11.6	11.12	12.08	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		11.12					False
+excluded	ARQQ	2026-06-15	23.13	13.6	386	True	False		settled		True	15.4	13.379999999999999	17.46	3.9551155115511536		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		13.379999999999999					False
+excluded	LIXT	2026-06-15	12.6	6.19	131	True	False		settled		True	6.38	6.25	6.54	0.3076923076923105		stop_hit	True	settled		True	6.38	6.25	6.54	0.26256410256410573		stop_hit	True
+excluded	QMCO	2026-06-15	15.79	13.74	375	True	False		settled		True	15.7118	14.66	16.7754	-1.0		stop_hit	False	settled		True	15.78	14.66	16.979999999999997	-1.0		stop_hit	False
+excluded	LIXT	2026-06-16	18.9	6.72	230	True	False		settled		True	6.91	6.77	7.050000000000001	-1.0		stop_hit	False	settled		True	6.94	6.77	7.1400000000000015	-1.0		stop_hit	False
+excluded	OSS	2026-06-16	14.19	17.23	383	True	False		settled		True	18.84	17.959999999999997	19.720000000000002	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		17.959999999999997					False
+excluded	SHMD	2026-06-16	13	6.23	381	True	False		settled		True	7.0	6.5600000000000005	7.4399999999999995	-1.0		stop_hit	False	settled		True	7.0	6.5600000000000005	7.4399999999999995	-1.0		stop_hit	False
+excluded	CLPT	2026-06-17	42.28	13.34	383	True	False		settled		True	18.15	15.190000000000005	21.109999999999992	0.033445945945947284		stop_hit	False	settled		True	18.15	15.190000000000005	21.109999999999992	0.033445945945947284		stop_hit	False
+excluded	PDYN	2026-06-17	10.13	5.97	388	True	False		settled		True	6.34	5.98	6.699999999999999	1.5555555555555576		sma_trail_stop	True	settled		True	6.34	5.98	6.699999999999999	1.5555555555555576		sma_trail_stop	True
+excluded	TRT	2026-06-17	12.23	12.59	377	True	False		settled		True	13.79	13.2836	14.296399999999998	-0.2459189046866772		stop_hit	True	settled		True	13.79	13.2836	14.296399999999998	-0.2459189046866772		stop_hit	True
+excluded	WNC	2026-06-17	16.92	9.28	325	True	False		settled		True	10.4	10.160000000000002	10.69	7.866666666666714		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		10.160000000000002					False
+excluded	BIRD	2026-06-18	18.76	5.48	388	True	False		no_entry	never_crossed_orb_high	False		6.130000000000001					False	no_entry	never_crossed_orb_high	False		6.130000000000001					False
+excluded	CODA	2026-06-18	11.69	9.24	185	True	False		settled		True	10.37	9.750000000000002	10.989999999999997	-1.0322580645161314		stop_hit	False	settled		True	10.37	9.750000000000002	10.989999999999997	-1.0322580645161314		stop_hit	False
+excluded	TBCH	2026-06-18	10.1	12.48	228	True	False		settled		True	13.22	12.424999999999999	14.080000000000004	0.3605870020964365		stop_hit	True	settled		True	13.22	12.424999999999999	14.080000000000004	0.3605870020964365		stop_hit	True
+excluded	RGNX	2026-06-22	14.88	7.8	390	True	False		settled		True	8.67	8.229999999999999	9.110000000000001	-1.0		stop_hit	False	settled		True	8.67	8.229999999999999	9.110000000000001	0.33333333333333337		stop_hit	True
+excluded	SSTK	2026-06-22	28.59	13.22	317	True	False		abstain	day0_fill_bar_straddles_stop	True	15.75	15.61	15.89				False	abstain	day0_fill_bar_straddles_stop	True	15.75	15.61	15.89				False
+excluded	ALLT	2026-06-23	10.41	7.01	277	True	False		settled		True	7.18	7.08	7.299999999999999	1.0		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		7.08					False
+excluded	ARQQ	2026-06-23	14.75	21.42	388	True	False		settled		True	22.6059	19.575000000000003	25.717699999999994	0.9664896015484961		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		19.575000000000003					False
+excluded	BLZE	2026-06-23	33.62	8.12	390	True	False		settled		True	10.35	8.889999999999999	11.81	2.9296803652968033		stop_hit	True	settled		True	10.37	8.889999999999999	11.87	2.8900900900900903		stop_hit	True
+excluded	NUCL	2026-06-23	12.15	10.7	303	True	False		settled		True	11.61	9.969999999999999	13.25	-1.0		stop_hit	False	settled		True	11.67	9.969999999999999	13.430000000000001	-1.0		stop_hit	False
+excluded	JACK	2026-06-24	20.03	11.58	349	True	False		settled		True	13.36	11.600000000000001	15.119999999999997	0.33333333333333337		stop_hit	True	settled		True	13.43	11.600000000000001	15.329999999999998	0.34608378870673956		stop_hit	True
+excluded	BNED	2026-06-25	15.38	11.18	309	True	False		settled		True	12.35	11.85	12.85	0.3333333333333333		stop_hit	True	settled		True	12.35	11.85	12.85	0.3333333333333333		stop_hit	True
+excluded	ECOR	2026-06-25	16.91	7.57	57	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	MEI	2026-06-25	25.57	13.09	383	True	False		settled		True	15.38	14.639999999999999	16.120000000000005	0.33333333333333415		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		14.639999999999999					False
+excluded	WYY	2026-06-25	87.29	17.62	376	True	False		no_trade	setup:stop_too_wide: 2.11 > 1.5x ATR 1.36	False							False	no_trade	setup:stop_too_wide: 2.11 > 1.5x ATR 1.36	False							False
+excluded	XNET	2026-06-26	10.54	5.03	255	True	False		settled		True	5.25	4.970000000000001	5.529999999999999	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		4.970000000000001					False
+excluded	UNCY	2026-06-29	10.66	7.13	372	True	False		settled		True	7.4	7.1801	7.620000000000001	-9.974230710929213		stop_hit	True	settled		True	7.4397	7.1801	7.7391000000000005	0.3844375963020038		stop_hit	True
+excluded	DPRO	2026-06-30	11.09	5.14	374	True	False		settled		True	5.99	4.93	7.050000000000001	-0.6792452830188682		sma_trail_stop	False	no_entry	never_crossed_orb_high	False		4.93					False
+excluded	JACK	2026-06-30	14.1	16.6	381	True	False		settled		True	17.25	13.79	20.71	-0.7751445086705196		stop_hit	False	settled		True	17.25	13.79	20.71	-0.7751445086705196		stop_hit	False
+excluded	SILC	2026-06-30	19.94	41.93	218	True	False		abstain	entry_window_gaps:2_of_29	False		45.69					False	abstain	entry_window_gaps:2_of_24	False		45.69					False
+excluded	RAAQ	2026-07-01	13.29	10.8	377	True	False		no_entry	never_crossed_orb_high	False		12.0					False	no_entry	never_crossed_orb_high	False		12.0					False
+excluded	ARCT	2026-07-02	14.3	6.89	358	True	False		settled		True	7.4617	7.180000000000001	7.745100000000001	0.3353449295941314		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		7.180000000000001					False
+excluded	SILC	2026-07-02	16.26	44.18	214	True	False		settled		True	52.36	45.056799999999996	59.6632	-1.0		stop_hit	False	abstain	entry_window_gaps:8_of_24	False		45.056799999999996					False
+excluded	TENX	2026-07-02	15.5	13.29	378	True	False		settled		True	14.71	13.509799999999998	15.910200000000003	0.9387879797811465		stop_hit	True	settled		True	14.71	13.509799999999998	15.910200000000003	0.9387879797811465		stop_hit	True
+excluded	AGPU	2026-07-06	11.58	7.08	212	True	False		settled		True	7.53	7.08	7.990000000000001	0.34074074074074123		stop_hit	True	settled		True	7.56	7.08	8.079999999999998	0.36111111111111055		stop_hit	True
+excluded	OFIX	2026-07-06	10.31	9.94	310	True	False		settled		True	10.8122	10.0278	11.596600000000002	0.8167601563827966		stop_hit	True	settled		True	10.8122	10.0278	11.596600000000002	0.8167601563827966		stop_hit	True
+excluded	CV	2026-07-08	10.05	5.67	156	True	False		settled		True	5.89	5.7	6.1099999999999985	0.3859649122807008		stop_hit	True	settled		True	5.89	5.7	6.1099999999999985	0.3859649122807008		stop_hit	True
+excluded	AP	2026-07-09	18.55	7.17	245	True	False		settled		True	8.582	7.597999999999999	9.566000000000003	-1.0		stop_hit	False	settled		True	8.582	7.597999999999999	9.566000000000003	-1.0		stop_hit	False
+excluded	FBRX	2026-07-09	22.3	20.58	376	True	False		settled		True	23.0	19.54	26.5	10.711946050096335		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		19.54					False
+excluded	QTTB	2026-07-13	84.39	11.21	390	True	False		settled		True	18.39	16.171999999999997	20.608000000000004	0.33333333333333337		stop_hit	True	settled		True	18.48	16.171999999999997	20.878000000000004	0.3463316002310802		stop_hit	True
+excluded	SNWV	2026-07-14	13.23	11.26	114	True	False		abstain	entry_window_gaps:16_of_29	False		11.559999999999999					False	abstain	entry_window_gaps:13_of_24	False		11.559999999999999					False
+excluded	ELVA	2026-07-15	71.88	7.89	390	True	False		no_trade	setup:stop_too_wide: 1.24 > 1.5x ATR 0.64	False							False	no_trade	setup:stop_too_wide: 1.24 > 1.5x ATR 0.64	False							False
+excluded	TRT	2026-07-15	23	10.26	314	True	False		settled		True	12.55	11.57	13.530000000000001	-1.0		stop_hit	False	settled		True	12.55	11.57	13.530000000000001	-1.0		stop_hit	False
+excluded	EAF	2026-07-16	15.04	6.85	290	True	False		settled		True	6.78	6.7	6.86	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.7					False
+excluded	HELP	2026-07-16	13.52	6.51	384	True	False		settled		True	7.1654	6.6646	7.6662	0.661608093716721		stop_hit	True	settled		True	7.1654	6.6646	7.6662	0.661608093716721		stop_hit	True
+excluded	OWLT	2026-07-16	11.03	6.13	236	True	False		settled		True	6.19	6.009999999999999	6.370000000000002	0.33333333333333337		stop_hit	True	settled		True	6.195	6.009999999999999	6.385000000000002	-1.0		stop_hit	False
+excluded	PESI	2026-07-16	10.11	14.83	320	True	False		settled		True	16.58	15.480000000000004	17.679999999999993	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		15.480000000000004					False
+excluded	DUOT	2026-07-20	13.29	8.21	325	True	False		settled		True	8.26	8.040000000000001	8.479999999999999	0.3333333333333333		stop_hit	True	settled		True	8.3	8.040000000000001	8.600000000000001	0.6153846153846164		sma_trail_stop	False
+excluded	NUCL	2026-07-20	11.41	5.61	251	True	False		settled		True	5.79	5.590000000000001	5.989999999999999	-1.0		stop_hit	False	abstain	entry_window_gaps:7_of_24	False		5.590000000000001					False
+excluded	AGPU	2026-07-21	10.22	8.71	246	True	False		settled		True	9.0	8.2	9.8	0.3333333333333333		stop_hit	True	settled		True	9.04	8.2	9.919999999999998	0.3492063492063489		stop_hit	True
+excluded	FWRD	2026-07-21	19.75	13.2	352	True	False		settled		True	15.52	14.48	16.56	0.3333333333333333		stop_hit	True	settled		True	15.52	14.48	16.56	0.3333333333333333		stop_hit	True
+excluded	AGPU	2026-07-22	20.97	9.54	333	True	False		no_entry	never_crossed_orb_high	False		8.345					False	no_entry	never_crossed_orb_high	False		8.345					False
+excluded	RFIL	2026-07-22	19.38	13.72	198	True	False		settled		True	13.5	12.784999999999998	14.280000000000001	-1.0		stop_hit	False	settled		True	13.5	12.784999999999998	14.280000000000001	-1.0		stop_hit	False
+excluded	AGPU	2026-07-23	11.11	7.11	247	True	False		settled		True	7.165	7.075	7.255	-1.0		stop_hit	False	settled		True	7.165	7.075	7.255	0.3333333333333333		stop_hit	True
+excluded	NVEC	2026-07-23	41.52	86.68	321	True	False		no_entry	triggered_above_limit_never_filled	False		103.77					False	no_entry	triggered_above_limit_never_filled	False		103.77					False
+excluded	RELL	2026-07-23	18.62	18.01	335	True	False		settled		True	22.1499	19.8501	24.449699999999996	-1.0		stop_hit	False	settled		True	22.1499	19.8501	24.449699999999996	-1.0		stop_hit	False
+excluded	AVBC	2026-07-24	10.57	20.24	109	True	False		settled		True	20.85	20.845999999999997	20.854000000000006	67.49999999991768		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		20.845999999999997					False
+excluded	AGPU	2026-07-27	23.21	6.85	349	True	False		no_entry	never_crossed_orb_high	False		6.7299999999999995					False	no_entry	never_crossed_orb_high	False		6.7299999999999995					False
+excluded	BNAI	2026-07-27	12.01	11.16	180	True	False		settled		True	12.05	11.725	12.430000000000003	0.38789743589743425		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		11.725					False
+excluded	IMMR	2026-07-27	11.5	6.52	365	True	False		settled		True	6.9354	6.470000000000001	7.426199999999998	1.2426586448932841		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.470000000000001					False
+excluded	JACK	2026-07-27	12.71	14.55	327	True	False		settled		True	16.1	14.559999999999999	17.640000000000004	1.0367965367965355		stop_hit	True	settled		True	16.1	14.559999999999999	17.640000000000004	1.0367965367965355		stop_hit	True
+excluded	KZIA	2026-07-27	10.2	12.26	177	True	False		settled		True	12.84	12.48	13.2	-1.0		stop_hit	False	settled		True	12.84	12.48	13.2	-1.0		stop_hit	False
+excluded	PMN	2026-07-28	27.43	11.72	382	True	False		abstain	entry_window_gaps:2_of_29	False		12.799999999999999					False	abstain	entry_window_gaps:2_of_24	False		12.799999999999999					False
+excluded	ALMU	2026-07-29	15.29	14.19	314	True	False		settled		True	15.47	14.9412	15.998800000000001	-1.1913767019667179		stop_hit	False	abstain	entry_window_gaps:3_of_24	False		14.9412					False
+excluded	CLW	2026-07-29	14.82	17.51	328	True	False		settled		True	19.31	16.970000000000002	21.649999999999995	1.1282051282051304		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		16.970000000000002					False
+excluded	QUAD	2026-07-29	12.25	8.41	276	True	False		settled		True	8.94	8.820000000000002	9.059999999999997	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		8.820000000000002					False
+excluded	RCKY	2026-07-29	17.83	42.73	174	True	False		abstain	entry_window_gaps:9_of_29	False		48.37010000000001					False	abstain	entry_window_gaps:9_of_24	False		48.37010000000001					False
+excluded	RNAC	2026-07-29	11.11	7.65	152	True	False		settled		True	7.715	7.645	7.785	-1.4999999999999873		stop_hit	False	abstain	day0_fill_bar_stop_and_target	True	7.75	7.645	7.890000000000001				False
+excluded	SILC	2026-07-29	20.59	38.02	270	True	False		settled		True	43.5	35.63999999999999	51.480000000000004	-1.0012722646310421		stop_hit	False	abstain	entry_window_gaps:4_of_24	False		35.63999999999999					False
+excluded	CMCO	2026-07-30	36.94	14.62	379	True	False		settled		True	20.535	18.925	22.145	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		18.925					False
+excluded	QMCO	2026-07-30	11.96	10.45	371	True	False		no_entry	never_crossed_orb_high	False		10.245000000000001					False	no_entry	never_crossed_orb_high	False		10.245000000000001					False
+excluded	SMTI	2026-07-30	11.6	30.25	362	True	False		settled		True	33.75	33.11	34.39	0.7031249999999964		stop_hit	True	settled		True	33.8	33.11	34.53999999999999	0.44202898550724745		stop_hit	False
+excluded	AIBZ	2026-07-31	10.93	6.68	218	True	False		abstain	entry_window_gaps:7_of_29	False		7.03					False	abstain	entry_window_gaps:7_of_24	False		7.03					False
+excluded	AMCX	2026-07-31	11.95	9.71	385	True	False		settled		True	10.04	9.560000000000002	10.519999999999996	2.9722222222222396		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		9.560000000000002					False
+excluded	DUOT	2026-07-31	14.25	8.14	369	True	False		settled		True	9.34	8.559999999999999	10.120000000000001	-1.0		stop_hit	False	abstain	entry_window_gaps:2_of_24	False		8.559999999999999					False
+excluded	INTT	2026-08-03	10.53	12.35	194	True	False		settled		True	13.26	12.325	14.26	0.8142602495543676		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		12.325					False
+excluded	INFU	2026-08-04	11.39	9.22	299	True	False		settled		True	10.29	9.46	11.119999999999997	1.8915662650602454		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		9.46					False
+excluded	MRAM	2026-08-04	18.96	15.45	385	True	False		no_entry	never_crossed_orb_high	False		16.779999999999998					False	no_entry	never_crossed_orb_high	False		16.779999999999998					False
+excluded	OCC	2026-08-04	14.98	14.35	241	True	False		settled		True	15.975	15.165000000000001	16.784999999999997	0.17283950617283828		stop_hit	True	abstain	entry_window_gaps:2_of_24	False		15.165000000000001					False
+excluded	AMWL	2026-08-05	22.55	10.42	237	True	False		settled		True	11.99	10.04	13.950000000000001	0.44068376068376036		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		10.04					False
+excluded	GTE	2026-08-05	64.34	6.83	390	True	False		no_trade	setup:stop_too_wide: 1.16 > 1.5x ATR 0.48	False							False	no_trade	setup:stop_too_wide: 1.16 > 1.5x ATR 0.48	False							False
+excluded	ASPN	2026-08-06	30.14	5.01	390	True	False		abstain	day0_fill_bar_straddles_stop	True	7.47	7.069999999999999	7.87				False	settled		True	7.51	7.069999999999999	7.99	0.36363636363636365		stop_hit	True
+excluded	ATNI	2026-08-06	19.2	24.01	180	True	False		abstain	entry_window_gaps:15_of_29	False		26.720000000000002					False	abstain	entry_window_gaps:14_of_24	False		26.720000000000002					False
+excluded	DCTH	2026-08-06	15.6	12.63	384	True	False		settled		True	14.37	13.65	15.109999999999998	2.5462962962963003		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		13.65					False
+excluded	EOLS	2026-08-06	10.19	6.18	369	True	False		no_trade	setup:stop_too_wide: 0.46 > 1.5x ATR 0.28	False							False	no_trade	setup:stop_too_wide: 0.46 > 1.5x ATR 0.28	False							False
+excluded	OPRT	2026-08-06	16.34	6.06	364	True	False		settled		True	6.88	6.630000000000001	7.159999999999999	1.9866666666666717		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.630000000000001					False
+excluded	FNKO	2026-08-07	30.3	5.28	373	True	False		no_trade	setup:stop_too_wide: 0.52 > 1.5x ATR 0.33	False							False	no_trade	setup:stop_too_wide: 0.52 > 1.5x ATR 0.33	False							False
+excluded	FRD	2026-08-07	29.9	37.72	219	True	False		settled		True	43.21	36.879999999999995	49.75000000000001	0.03957345971564016		stop_hit	False	settled		True	43.0	36.879999999999995	49.120000000000005	0.07524509803921617		stop_hit	False
+excluded	SENS	2026-08-07	18.35	5.15	357	True	False		settled		True	5.9	5.310200000000001	6.4998000000000005	3.993331072680007		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		5.310200000000001					False
+excluded	SPT	2026-08-07	24.66	8.19	376	True	False		settled		True	9.8	9.120000000000001	10.48	0.22549019607843013		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		9.120000000000001					False
+excluded	BWMN	2026-08-10	55.93	27.23	379	True	False		settled		True	42.4	42.1	42.699999999999996	0.5033333333333493		stop_hit	False	settled		True	42.4	42.1	42.699999999999996	0.5033333333333493		stop_hit	False
+excluded	RNA	2026-08-10	13.45	12.34	112	True	False		settled		True	12.31	12.195	12.430000000000001	0.28985507246377173		stop_hit	True	settled		True	12.31	12.195	12.430000000000001	0.28985507246377173		stop_hit	True
+excluded	FENC	2026-08-11	12.7	10.94	266	True	False		no_trade	setup:stop_too_wide: 1.09 > 1.5x ATR 0.61	False							False	no_trade	setup:stop_too_wide: 1.09 > 1.5x ATR 0.61	False							False
+excluded	FF	2026-08-11	30.43	5.16	375	True	False		settled		True	6.88	6.19	7.579999999999999	-1.0		stop_hit	False	settled		True	6.87	6.19	7.55	-1.0		stop_hit	False
+excluded	QMCO	2026-08-11	38.12	11.78	390	True	False		settled		True	15.415	12.58	18.264999999999997	1.3884773662551448		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		12.58					False
+excluded	AII	2026-08-12	21.3	20.19	317	True	False		settled		True	24.68	24.2	25.28	-1.0		stop_hit	False	settled		True	24.68	24.2	25.28	-1.0		stop_hit	False
+excluded	LENZ	2026-08-12	24.18	5.21	309	True	False		no_trade	setup:stop_too_wide: 0.61 > 1.5x ATR 0.38	False							False	no_trade	setup:stop_too_wide: 0.61 > 1.5x ATR 0.38	False							False
+excluded	PESI	2026-08-12	17.19	17.45	362	True	False		settled		True	19.89	17.229999999999997	22.550000000000004	-0.909022556390976		stop_hit	False	settled		True	19.99	17.229999999999997	22.849999999999998	-0.9123188405797086		stop_hit	False
+excluded	VELO	2026-08-12	24.76	13.69	387	True	False		no_entry	never_crossed_orb_high	False		15.509999999999998					False	no_entry	never_crossed_orb_high	False		15.509999999999998					False
+excluded	AIRO	2026-08-13	31.92	8.49	364	True	False		no_trade	setup:stop_too_wide: 0.77 > 1.5x ATR 0.47	False							False	no_trade	setup:stop_too_wide: 0.77 > 1.5x ATR 0.47	False							False
+excluded	AZ	2026-08-13	13.68	6.47	374	True	False		settled		True	7.14	6.6	7.72	0.3580246913580247		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.6					False
+excluded	DERM	2026-08-13	13.62	6.43	262	True	False		settled		True	7.51	7.029999999999999	7.99	-1.0		stop_hit	False	abstain	entry_window_gaps:3_of_24	False		7.029999999999999					False
+excluded	FOSL	2026-08-13	12.33	5.27	358	True	False		settled		True	6.11	5.589999999999999	6.630000000000002	-1.0		stop_hit	False	abstain	entry_window_gaps:1_of_24	False		5.589999999999999					False
+excluded	JACK	2026-08-13	17.06	18.77	371	True	False		no_entry	never_crossed_orb_high	False		20.832000000000004					False	no_entry	never_crossed_orb_high	False		20.832000000000004					False
+excluded	RRGB	2026-08-13	22.02	8.16	349	True	False		settled		True	9.06	7.9	10.22	0.6235632183908051		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		7.9					False
+excluded	CPS	2026-08-14	10.91	27.23	117	True	False		settled		True	28.26	27.679999999999996	28.980000000000008	-1.0		stop_hit	False	settled		True	28.26	27.679999999999996	28.980000000000008	-1.0		stop_hit	False
+excluded	IMXI	2026-08-14	24.79	11.7	374	True	False		settled		True	14.25	13.870000000000001	14.629999999999999	-1.0		stop_hit	False	settled		True	14.28	13.870000000000001	14.719999999999997	-1.0		stop_hit	False
+excluded	CNXU	2026-08-17	15.55	8.9	310	True	False		settled		True	10.37	9.050000000000002	11.689999999999996	-1.0		stop_hit	False	settled		True	10.37	9.050000000000002	11.689999999999996	-1.0		stop_hit	False
+excluded	DUOT	2026-08-17	18.66	9.11	371	True	False		settled		True	10.3999	9.4001	11.399700000000001	-1.0		stop_hit	False	settled		True	10.45	9.4001	11.549999999999997	-1.0		stop_hit	False
+excluded	DUOT	2026-08-18	21.3	10.28	384	True	False		settled		True	11.74	10.659999999999998	12.820000000000002	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		10.659999999999998					False
+excluded	FLXS	2026-08-18	11.49	70.86	177	True	False		no_trade	setup:stop_too_wide: 4.64 > 1.5x ATR 2.94	False							False	no_trade	setup:stop_too_wide: 4.64 > 1.5x ATR 2.94	False							False
+excluded	ARCT	2026-08-19	41.78	8.21	375	True	False		no_trade	setup:stop_too_wide: 0.92 > 1.5x ATR 0.51	False							False	no_trade	setup:stop_too_wide: 0.92 > 1.5x ATR 0.51	False							False
+excluded	OPHC	2026-08-19	19.64	10.03	94	True	False		settled		True	10.1	9.989999999999998	10.24	0.42424242424242137		stop_hit	True	settled		True	10.1	9.989999999999998	10.24	0.42424242424242137		stop_hit	True
+excluded	HVT	2026-08-20	9.66	28.27	132	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	OPHC	2026-08-20	9.01	10.1	112	True	False		abstain	entry_window_gaps:13_of_29	False		9.99					False	abstain	entry_window_gaps:10_of_24	False		9.99					False
+excluded	BKKT	2026-08-21	10.13	7.5	374	True	False		settled		True	7.98	7.643299999999999	8.320000000000002	0.33660033660033695		stop_hit	True	settled		True	8.02	7.643299999999999	8.44	0.3716485266790544		stop_hit	True
+excluded	GLSI	2026-08-21	10.58	15.31	135	True	False		settled		True	16.24	15.46	17.099999999999994	0.36752136752136694		stop_hit	True	settled		True	16.24	15.46	17.099999999999994	0.36752136752136694		stop_hit	True
+excluded	PAL	2026-08-21	16.89	5.21	252	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	BBCQ	2026-08-24	9.68	9.71	141	True	False		no_trade	setup:stop_too_wide: 0.17 > 1.5x ATR 0.09	False							False	no_trade	setup:stop_too_wide: 0.17 > 1.5x ATR 0.09	False							False
+excluded	CAPR	2026-08-24	10.33	6.29	390	True	False		no_entry	never_crossed_orb_high	False		6.812000000000001					False	no_entry	never_crossed_orb_high	False		6.812000000000001					False
+excluded	SUPX	2026-08-24	15.96	8.52	267	True	False		settled		True	9.75	7.809999999999999	11.690000000000001	-0.7128865979381435		stop_hit	False	settled		True	9.75	7.809999999999999	11.690000000000001	-0.7128865979381435		stop_hit	False
+excluded	CAPR	2026-08-25	17.21	6.8	390	True	False		open_at_horizon		True	8.15	6.35	9.950000000000001		0.7518518518518513		True	open_at_horizon		True	8.15	6.35	9.950000000000001		0.7518518518518513		True
+excluded	DTIL	2026-08-25	9.59	8.45	253	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	AVNW	2026-08-27	11.53	20.91	207	True	False		settled		True	23.45	22.499999999999996	24.41	-1.04210526315789		stop_hit	False	settled		True	23.44	22.499999999999996	24.380000000000006	-1.0425531914893569		stop_hit	False
+excluded	FWDI	2026-08-27	11.47	5.93	390	True	False		settled		True	6.53	6.249999999999999	6.810000000000001	0.3333333333333333		stop_hit	True	settled		True	6.53	6.249999999999999	6.810000000000001	0.3333333333333333		stop_hit	True
+excluded	LTRX	2026-08-27	16.04	5.66	369	True	False		settled		True	7.07	6.23	7.91	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		6.23					False
+excluded	ANIK	2026-08-28	34.36	20.84	95	True	False		settled		True	21.155	20.515	21.865000000000002	-1.0		stop_hit	False	settled		True	21.085	20.515	21.655	-1.0		stop_hit	False
+excluded	BETR	2026-08-31	9.89	13.85	217	True	False		settled		True	14.56	14.319999999999999	14.800000000000002	-1.2499999999999927		stop_hit	False	settled		True	14.57	14.319999999999999	14.830000000000002	-1.239999999999993		stop_hit	False
+excluded	CNXU	2026-08-31	9.02	7.07	211	True	False		settled		True	7.31	6.990000000000001	7.629999999999998	-1.0		stop_hit	False	settled		True	7.31	6.990000000000001	7.629999999999998	-1.0		stop_hit	False
+excluded	TITN	2026-08-31	13.94	17.86	290	True	False		open_at_horizon		True	20.35	18.33	22.370000000000005		1.1518151815181494		True	open_at_horizon		True	20.38	18.33	22.459999999999997		1.1349593495934949		True
+excluded	PRLD	2026-09-01	12.32	5.6	229	True	False		settled		True	5.6	5.49	5.719999999999999	-1.0		stop_hit	False	abstain	entry_window_gaps:11_of_24	False		5.49					False
+excluded	CABO	2026-09-02	11.69	23.87	220	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	DTIL	2026-09-02	11.39	7.64	269	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	EPRX	2026-09-02	11.17	6.34	255	True	False		no_entry	triggered_above_limit_never_filled	False		6.26					False	no_entry	triggered_above_limit_never_filled	False		6.26					False
+excluded	FBLA	2026-09-02	21.87	15.59	109	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+excluded	JLHL	2026-09-02	33.99	5.62	375	True	False		settled		True	7.31	6.7299999999999995	7.89	-1.0		stop_hit	False	settled		True	7.31	6.7299999999999995	7.89	-1.0		stop_hit	False
+excluded	CHPT	2026-09-03	49.81	5.19	390	True	False		settled		True	7.08	6.34	7.82	0.33333333333333337		stop_hit	True	open_at_horizon		True	7.12	6.34	7.94		2.017094017094017		True
+excluded	GMTL	2026-09-03	9.7	10.72	220	True	False		settled		True	11.35	11.209999999999999	11.49	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		11.209999999999999					False
+excluded	BBCP	2026-09-04	20.28	9.05	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+excluded	PDEX	2026-09-04	23.47	61.75	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+control	CGEM	2026-06-08	11.03	13.51	335	True	False		settled		True	14.2455	12.96	15.5765	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		12.96					False
+control	NRIX	2026-06-08	11.5	14.64	1	True	False		abstain	entry_window_gaps:29_of_29	False		15.320000000000004					False	abstain	entry_window_gaps:24_of_24	False		15.320000000000004					False
+control	TNGX	2026-06-08	62.22	20.22	390	True	False		no_entry	never_crossed_orb_high	False		29.349999999999998					False	no_entry	never_crossed_orb_high	False		29.349999999999998					False
+control	ACLS	2026-06-09	12.15	154.76	369	True	False		no_entry	triggered_above_limit_never_filled	False		158.605					False	no_entry	triggered_above_limit_never_filled	False		158.605					False
+control	AVO	2026-06-09	11.18	10.11	389	True	False		settled		True	10.475	9.705	11.245	0.9956709956709964		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		9.705					False
+control	BAP	2026-06-09	11.34	319.89	388	True	False		settled		True	341.695	338.86499999999995	344.52500000000003	10.324852767962176		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		338.86499999999995					False
+control	CECO	2026-06-09	16.11	80.53	364	True	False		settled		True	86.8	86.24	87.36	-1.0		stop_hit	False	settled		True	86.8	86.24	87.36	0.3333333333333333		stop_hit	True
+control	VECO	2026-06-09	15.06	61.04	389	True	False		settled		True	64.98	60.97999999999999	68.98000000000002	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		60.97999999999999					False
+control	VSH	2026-06-09	11.85	57.22	390	True	False		settled		True	63.0	60.95	65.05	0.3333333333333333		stop_hit	True	settled		True	63.19	60.95	65.61999999999999	0.36160714285714257		stop_hit	True
+control	CASY	2026-06-10	14.06	761.18	389	True	False		settled		True	816.265	769.755	862.775	0.5541460617788285		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		769.755					False
+control	CBRL	2026-06-10	25.33	36.3	390	True	False		settled		True	44.7299	41.5701	47.889700000000005	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		41.5701					False
+control	ELVN	2026-06-11	18.33	37	1	True	False		abstain	entry_window_gaps:29_of_29	False		40.52290000000001					False	abstain	entry_window_gaps:24_of_24	False		40.52290000000001					False
+control	IDCC	2026-06-11	15.2	253.91	383	True	False		settled		True	277.5	269.22	285.78	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		269.22					False
+control	IMOS	2026-06-11	10.67	55.12	130	True	False		settled		True	60.7	57.339999999999996	64.36000000000001	0.3247023809523786		stop_hit	False	settled		True	60.5	57.339999999999996	63.760000000000005	0.6162447257383958		stop_hit	True
+control	MH	2026-06-11	10.7	12.8	321	True	False		settled		True	12.06	10.599799999999998	13.580200000000003	-0.2054513080399947		sma_trail_stop	False	settled		True	12.0	10.599799999999998	13.400200000000002	-0.17140408513069558		sma_trail_stop	False
+control	NAVN	2026-06-11	17.87	20.87	1	True	False		abstain	entry_window_gaps:29_of_29	False		21.740000000000002					False	abstain	entry_window_gaps:24_of_24	False		21.740000000000002					False
+control	VELO	2026-06-11	16.07	22.68	390	True	False		settled		True	24.4399	21.7001	27.179700000000004	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		21.7001					False
+control	AKTS	2026-06-12	11.92	19.46	345	True	False		abstain	fwd_stop_and_target_same_day:2026-06-15	True	21.79	20.559400000000004	23.020599999999995				False	abstain	fwd_stop_and_target_same_day:2026-06-15	True	21.79	20.559400000000004	23.020599999999995				False
+control	SHAZ	2026-06-12	11.87	71.51	1	True	False		abstain	entry_window_gaps:29_of_29	False		59.81000000000002					False	abstain	entry_window_gaps:24_of_24	False		59.81000000000002					False
+control	ABSI	2026-06-15	17.35	6.8	386	True	False		settled		True	7.55	7.1499999999999995	7.95	0.3333333333333333		stop_hit	True	settled		True	7.59	7.1499999999999995	8.07	0.36363636363636365		stop_hit	True
+control	ATRO	2026-06-15	13.03	80	338	True	False		no_entry	never_crossed_orb_high	False		78.39959999999999					False	no_entry	never_crossed_orb_high	False		78.39959999999999					False
+control	AUGO	2026-06-15	13.39	60.89	366	True	False		settled		True	68.23	63.30999999999999	73.15000000000002	-0.37804878048780355		sma_trail_stop	False	settled		True	68.57	63.30999999999999	74.16999999999999	-0.4182509505703397		sma_trail_stop	False
+control	HQ	2026-06-15	19.71	10.91	389	True	False		settled		True	12.49	10.389999999999999	14.590000000000002	3.724761904761902		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		10.389999999999999					False
+control	HYMC	2026-06-15	13.82	25.76	387	True	False		settled		True	29.2836	27.9964	30.5708	-1.0		stop_hit	False	settled		True	29.2836	27.9964	30.5708	-1.0		stop_hit	False
+control	IDR	2026-06-15	18.71	36.39	273	True	False		settled		True	41.639	38.861200000000004	44.4168	-1.0		stop_hit	False	settled		True	41.85	38.861200000000004	45.0498	-1.0		stop_hit	False
+control	MMYT	2026-06-15	12.81	43.15	354	True	False		settled		True	47.68	41.919999999999995	53.440000000000005	1.373611111111111		stop_hit	True	settled		True	47.92	41.919999999999995	54.16000000000001	1.318666666666666		stop_hit	True
+control	SVM	2026-06-15	13.36	11.3	390	True	False		settled		True	12.59	11.809999999999999	13.370000000000001	-0.9032051282051262		stop_hit	False	no_entry	triggered_above_limit_never_filled	False		11.809999999999999					False
+control	USAS	2026-06-15	13.06	5.28	380	True	False		settled		True	5.85	5.585	6.119999999999999	0.33962264150943383		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		5.585					False
+control	WDC	2026-06-15	13.22	562.925	390	True	False		settled		True	623.9	600.1	647.6999999999999	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		600.1					False
+control	XE	2026-06-15	17.64	18.59	390	True	False		settled		True	21.21	18.369999999999997	24.050000000000004	0.14788732394366114		sma_trail_stop	False	no_entry	triggered_above_limit_never_filled	False		18.369999999999997					False
+control	PURR	2026-06-16	14.67	9.34	390	True	False		settled		True	10.42	10.139999999999999	10.700000000000001	0.3333333333333333		stop_hit	True	settled		True	10.47	10.139999999999999	10.850000000000003	0.38383838383838426		stop_hit	True
+control	RXT	2026-06-16	17.5	5.915	1	True	False		abstain	entry_window_gaps:29_of_29	False		6.0600000000000005					False	abstain	entry_window_gaps:24_of_24	False		6.0600000000000005					False
+control	WDC	2026-06-16	10.58	653.53	390	True	False		settled		True	696.925	673.075	720.7749999999999	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		673.075					False
+control	ACMR	2026-06-17	13.18	91.18	360	True	False		settled		True	100.7	96.04	105.36	-1.0		stop_hit	False	settled		True	101.2	96.04	106.86	-1.0		stop_hit	False
+control	AEHR	2026-06-17	15.87	104.83	375	True	False		settled		True	116.5	112.41	120.59	0.3333333333333333		stop_hit	True	settled		True	117.08	112.41	122.33	-1.0		stop_hit	False
+control	JBL	2026-06-17	10.77	375.51	1	True	False		abstain	entry_window_gaps:29_of_29	False		402.43999999999994					False	abstain	entry_window_gaps:24_of_24	False		402.43999999999994					False
+control	LZB	2026-06-17	26.5	35.06	370	True	False		settled		True	42.49	41.71	43.27	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		41.71					False
+control	QURE	2026-06-17	75.2	26.99	1	True	False		abstain	entry_window_gaps:29_of_29	False		40.38					False	abstain	entry_window_gaps:24_of_24	False		40.38					False
+control	BFLY	2026-06-18	32.92	5.71	390	True	False		settled		True	7.3	7.111199999999999	7.4988	0.35098870056497133		stop_hit	True	settled		True	7.33	7.111199999999999	7.588800000000001	0.39427178549664826		stop_hit	True
+control	CHRN	2026-06-18	12.91	20.61	289	True	False		settled		True	22.0	21.0	23.0	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		21.0					False
+control	SWBI	2026-06-18	15.59	13.73	1	True	False		abstain	entry_window_gaps:29_of_29	False		15.170000000000002					False	abstain	entry_window_gaps:24_of_24	False		15.170000000000002					False
+control	UUUU	2026-06-18	12.36	15.3	1	True	False		abstain	entry_window_gaps:29_of_29	False		16.56					False	abstain	entry_window_gaps:24_of_24	False		16.56					False
+control	WDC	2026-06-18	11.41	712.13	390	True	False		settled		True	782.0	744.0	820.0	-1.0		stop_hit	False	settled		True	785.91	744.0	831.7299999999999	-1.0		stop_hit	False
+control	BWIN	2026-06-22	23.02	20.24	390	True	False		settled		True	23.77	21.529999999999998	26.01	1.1312499999999994		stop_hit	True	settled		True	23.77	21.529999999999998	26.01	1.1312499999999994		stop_hit	True
+control	DFTX	2026-06-22	14.38	24.48	1	True	False		abstain	entry_window_gaps:29_of_29	False		35.28					False	abstain	entry_window_gaps:24_of_24	False		35.28					False
+control	FRVO	2026-06-22	13.11	35.09	379	True	False		settled		True	38.8899	36.810100000000006	40.96969999999999	-1.0		stop_hit	False	settled		True	38.8899	36.810100000000006	40.96969999999999	0.3333333333333333		stop_hit	True
+control	JBIO	2026-06-22	10.11	16.82	348	True	False		settled		True	18.32	17.549999999999997	19.160000000000004	0.3636363636363636		stop_hit	True	settled		True	18.32	17.549999999999997	19.160000000000004	2.081385281385273		stop_hit	True
+control	KEEL	2026-06-22	12.89	6.29	390	True	False		settled		True	7.01	6.23	7.789999999999999	-1.0769230769230775		stop_hit	False	settled		True	7.05	6.23	7.909999999999999	-1.0731707317073178		stop_hit	False
+control	MLTX	2026-06-22	19.1	19.21	1	True	False		abstain	entry_window_gaps:29_of_29	False		19.475					False	abstain	entry_window_gaps:24_of_24	False		19.475					False
+control	NUAI	2026-06-22	13.12	6.25	390	True	False		settled		True	7.0	6.220000000000001	7.779999999999999	-1.0512820512820524		stop_hit	False	settled		True	7.03	6.220000000000001	7.87	-1.0493827160493838		stop_hit	False
+control	PENG	2026-06-22	14.5	67.15	390	True	False		no_entry	never_crossed_orb_high	False		74.46000000000001					False	no_entry	never_crossed_orb_high	False		74.46000000000001					False
+control	SYRE	2026-06-22	12.35	88.34	1	True	False		abstain	entry_window_gaps:29_of_29	False		91.82					False	abstain	entry_window_gaps:24_of_24	False		91.82					False
+control	UMC	2026-06-22	15.74	24.08	390	True	False		settled		True	27.04	26.560000000000002	27.519999999999996	-1.2222222222222285		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		26.560000000000002					False
+control	ZETA	2026-06-23	10.01	18.47	390	True	False		settled		True	20.06	19.01	21.159999999999993	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		19.01					False
+control	ABSI	2026-06-24	16.33	7.41	1	True	False		abstain	entry_window_gaps:29_of_29	False		8.940000000000001					False	abstain	entry_window_gaps:24_of_24	False		8.940000000000001					False
+control	FCEL	2026-06-24	17.51	21.82	1	True	False		abstain	entry_window_gaps:29_of_29	False		22.160999999999998					False	abstain	entry_window_gaps:24_of_24	False		22.160999999999998					False
+control	KBH	2026-06-24	14.06	52.73	390	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	RUN	2026-06-24	25.6	12.81	390	True	False		settled		True	15.81	14.769999999999998	16.85	-1.0		stop_hit	False	settled		True	15.89	14.769999999999998	17.090000000000003	-1.0		stop_hit	False
+control	WEN	2026-06-24	36.59	6.255	382	True	False		abstain	fwd_stop_and_target_same_day:2026-06-25	True	8.12	7.340000000000002	8.899999999999997				False	abstain	fwd_stop_and_target_same_day:2026-06-25	True	8.16	7.340000000000002	9.02				False
+control	AYI	2026-06-25	16.24	305.51	380	True	False		settled		True	358.1	341.67999999999995	374.5200000000001	0.3333333333333333		stop_hit	True	settled		True	358.1	341.67999999999995	374.5200000000001	0.3333333333333333		stop_hit	True
+control	BB	2026-06-25	20.59	8.62	390	True	False		settled		True	10.14	8.899999999999999	11.380000000000003	0.30107526881720414		stop_hit	True	settled		True	10.19	8.899999999999999	11.53	0.6015503875968996		stop_hit	True
+control	KYMR	2026-06-25	21.17	99.87	385	True	False		settled		True	110.94	101.4	120.47999999999999	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		101.4					False
+control	MLKN	2026-06-25	14.73	17.24	373	True	False		settled		True	18.27	17.150000000000002	19.389999999999997	0.9964285714285734		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		17.150000000000002					False
+control	MU	2026-06-25	17.71	1048.51	1	True	False		abstain	entry_window_gaps:29_of_29	False		1207.6399999999999					False	abstain	entry_window_gaps:24_of_24	False		1207.6399999999999					False
+control	SNDK	2026-06-25	19.28	1914.46	390	True	False		settled		True	2250.0	2212.9002	2287.0998	0.3333333333333333		stop_hit	True	settled		True	2261.25	2212.9002	2320.8498	-1.0		stop_hit	False
+control	SNX	2026-06-25	11.22	283.22	1	True	False		abstain	entry_window_gaps:29_of_29	False		269.13000000000005					False	abstain	entry_window_gaps:24_of_24	False		269.13000000000005					False
+control	WDC	2026-06-25	14.16	643.83	390	True	False		no_entry	never_crossed_orb_high	False		687.4200000000001					False	no_entry	never_crossed_orb_high	False		687.4200000000001					False
+control	WGO	2026-06-25	13.27	27.27	372	True	False		settled		True	28.905	27.894999999999996	29.915000000000006	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		27.894999999999996					False
+control	ACAD	2026-06-26	15.34	23.72	1	True	False		abstain	entry_window_gaps:29_of_29	False		25.27					False	abstain	entry_window_gaps:24_of_24	False		25.27					False
+control	APOG	2026-06-26	12.26	42.48	318	True	False		settled		True	46.025	43.214999999999996	48.835	0.33333333333333337		stop_hit	True	settled		True	46.26	43.214999999999996	49.54	0.3590585659551176		stop_hit	True
+control	ZSQR	2026-06-26	10.66	12.2	244	True	False		settled		True	12.1425	11.3775	12.9075	-1.0		stop_hit	False	settled		True	12.2	11.3775	13.079999999999998	-1.0		stop_hit	False
+control	CHTR	2026-06-29	27.69	133.64	390	True	False		no_entry	never_crossed_orb_high	False		155.52					False	no_entry	never_crossed_orb_high	False		155.52					False
+control	LBRDK	2026-06-29	28.02	31.33	389	True	False		no_entry	never_crossed_orb_high	False		36.4					False	no_entry	never_crossed_orb_high	False		36.4					False
+control	OUST	2026-06-29	16.02	42.02	390	True	False		settled		True	44.49	42.410000000000004	46.57	1.2243589743589756		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		42.410000000000004					False
+control	QDEL	2026-06-29	33.47	13.79	390	True	False		settled		True	18.0	15.46	20.54	-0.25255905511811055		stop_hit	False	no_entry	triggered_above_limit_never_filled	False		15.46					False
+control	VSAT	2026-06-29	15.63	61.95	389	True	False		settled		True	68.29	65.07000000000001	71.51	1.4838509316770194		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		65.07000000000001					False
+control	AVAV	2026-06-30	25.3	139	1	True	False		abstain	entry_window_gaps:29_of_29	False		161.54000000000002					False	abstain	entry_window_gaps:24_of_24	False		161.54000000000002					False
+control	ENPH	2026-06-30	19.22	48.34	390	True	False		no_entry	never_crossed_orb_high	False		46.71999999999999					False	no_entry	never_crossed_orb_high	False		46.71999999999999					False
+control	SEDG	2026-06-30	10.19	55.36	388	True	False		no_entry	never_crossed_orb_high	False		55.2901					False	no_entry	never_crossed_orb_high	False		55.2901					False
+control	GRND	2026-07-01	13.26	14.37	373	True	False		settled		True	15.79	14.77	16.81	-0.3745098039215702		stop_hit	False	settled		True	15.87	14.77	17.049999999999997	-0.42000000000000154		stop_hit	False
+control	PRGS	2026-07-01	11.67	33.58	386	True	False		settled		True	34.74	31.4	38.080000000000005	0.7065868263473045		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		31.4					False
+control	NEXA	2026-07-02	14.62	12.04	347	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	IREN	2026-07-06	12.16	38.82	390	True	False		settled		True	42.5	41.0	44.0	0.21555555555555528		stop_hit	True	settled		True	42.5	41.0	44.0	0.21555555555555528		stop_hit	True
+control	RGNX	2026-07-06	11.07	13.28	389	True	False		settled		True	14.66	12.409999999999998	16.92	-0.7044444444444442		stop_hit	False	no_entry	never_crossed_orb_high	False		12.409999999999998					False
+control	WULF	2026-07-06	19.92	21.18	390	True	False		settled		True	24.61	22.990000000000002	26.229999999999997	-1.0		stop_hit	False	settled		True	24.73	22.990000000000002	26.59	-1.0		stop_hit	False
+control	AGIO	2026-07-07	12.81	37.39	377	True	False		settled		True	40.39	38.36	42.42	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		38.36					False
+control	DOCN	2026-07-07	15.62	131.37	1	True	False		abstain	entry_window_gaps:29_of_29	False		140.69					False	abstain	entry_window_gaps:24_of_24	False		140.69					False
+control	BBOT	2026-07-08	10.49	8.29	237	True	False		settled		True	8.93	8.350000000000001	9.509999999999998	-1.0		stop_hit	False	settled		True	8.93	8.350000000000001	9.509999999999998	-1.0		stop_hit	False
+control	KC	2026-07-08	11.76	9.44	389	True	False		settled		True	10.595	10.225	10.965000000000002	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		10.225					False
+control	PENG	2026-07-08	10.52	62.71	390	True	False		settled		True	68.01	60.08999999999999	75.93000000000002	0.5335016835016831		stop_hit	True	settled		True	68.01	60.08999999999999	75.93000000000002	0.5335016835016831		stop_hit	True
+control	ALNY	2026-07-09	19.63	323.5	390	True	False		no_entry	never_crossed_orb_high	False		364.0					False	no_entry	never_crossed_orb_high	False		364.0					False
+control	BBIO	2026-07-09	16.18	78.33	390	True	False		settled		True	87.6	80.4	94.79999999999998	-1.0		stop_hit	False	no_entry	triggered_above_limit_never_filled	False		80.4					False
+control	ICHR	2026-07-09	11.7	88.81	355	True	False		no_entry	never_crossed_orb_high	False		93.09					False	no_entry	never_crossed_orb_high	False		93.09					False
+control	SMPL	2026-07-09	20.79	12.84	389	True	False		abstain	day0_fill_bar_straddles_stop	True	15.088	14.3288	15.905199999999999				False	no_entry	never_crossed_orb_high	False		14.3288					False
+control	UCTT	2026-07-09	14.52	100.91	354	True	False		abstain	entry_window_gaps:3_of_29	False		104.38					False	abstain	entry_window_gaps:3_of_24	False		104.38					False
+control	CRCL	2026-07-10	10.76	63.01	390	True	False		settled		True	70.66	67.92000000000002	73.39999999999998	-1.0		stop_hit	False	settled		True	71.01	67.92000000000002	74.45	-1.0		stop_hit	False
+control	EQPT	2026-07-10	17.5	16	389	True	False		settled		True	18.0	16.520000000000003	19.479999999999997	-0.7939189189189211		sma_trail_stop	False	settled		True	18.0	16.520000000000003	19.479999999999997	-0.7939189189189211		sma_trail_stop	False
+control	VOD	2026-07-10	13.46	13.08	388	True	False		settled		True	14.72	14.561199999999998	14.878800000000004	-1.0		stop_hit	False	settled		True	14.72	14.561199999999998	14.878800000000004	2.340050377833708		stop_hit	True
+control	WDFC	2026-07-10	14.23	239.42	352	True	False		settled		True	295.0	279.12	310.88	-1.0		stop_hit	False	settled		True	295.0	279.12	310.88	-1.0		stop_hit	False
+control	CLSK	2026-07-14	17.15	12.36	1	True	False		abstain	entry_window_gaps:29_of_29	False		14.12					False	abstain	entry_window_gaps:24_of_24	False		14.12					False
+control	TSEM	2026-07-14	18.57	229.68	386	True	False		settled		True	273.25	259.42999999999995	287.07000000000005	-1.0		stop_hit	False	settled		True	273.25	259.42999999999995	287.07000000000005	-1.0		stop_hit	False
+control	AEHR	2026-07-15	29.5	72.01	1	True	False		abstain	entry_window_gaps:29_of_29	False		87.54					False	abstain	entry_window_gaps:24_of_24	False		87.54					False
+control	ANGO	2026-07-15	10.54	13	326	True	False		settled		True	13.155	12.535000000000002	13.774999999999997	0.5639784946236561		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		12.535000000000002					False
+control	MANE	2026-07-15	11.08	110.17	341	True	False		settled		True	118.75	117.28999999999999	120.21000000000001	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		117.28999999999999					False
+control	PRG	2026-07-15	21.65	45.21	221	True	False		settled		True	45.46	45.07	46.02	0.4786324786324799		stop_hit	True	settled		True	45.46	45.07	46.02	0.4786324786324799		stop_hit	True
+control	ABT	2026-07-16	11.87	89.27	390	True	False		settled		True	95.29	94.68999999999998	95.89000000000003	9.095555555555219		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		94.68999999999998					False
+control	CDNA	2026-07-16	23.36	29.75	384	True	False		settled		True	36.58	34.42	38.739999999999995	0.3333333333333333		stop_hit	True	settled		True	36.58	34.42	38.739999999999995	0.3333333333333333		stop_hit	True
+control	GHRS	2026-07-16	18.72	26.92	367	True	False		abstain	entry_window_gaps:2_of_29	False		29.5					False	abstain	entry_window_gaps:2_of_24	False		29.5					False
+control	MAN	2026-07-16	28.08	39.02	390	True	False		settled		True	47.34	46.46	48.46000000000001	3.8636363636363535		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		46.46					False
+control	DCBO	2026-07-17	11.65	18.54	198	True	False		settled		True	20.36	18.439999999999998	22.28	-0.8294270833333314		stop_hit	False	settled		True	20.46	18.439999999999998	22.580000000000005	-0.8378712871287111		stop_hit	False
+control	SG	2026-07-17	15.16	6.22	390	True	False		settled		True	6.82	6.570000000000001	7.08	0.3466666666666676		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.570000000000001					False
+control	TRVI	2026-07-17	14.63	17.36	390	True	False		settled		True	17.76	16.7	18.820000000000004	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		16.7					False
+control	HUT	2026-07-20	11.54	91.45	390	True	False		settled		True	103.48	99.4164	107.54360000000001	-1.0		stop_hit	False	settled		True	103.97	99.4164	109.0136	-1.0		stop_hit	False
+control	IREN	2026-07-20	13.15	33.62	390	True	False		settled		True	37.04	35.580000000000005	38.49999999999999	2.2739726027397347		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		35.580000000000005					False
+control	PLOW	2026-07-20	12.06	44.62	341	True	False		settled		True	49.06	47.269999999999996	50.85000000000001	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		47.269999999999996					False
+control	HAS	2026-07-21	10.61	81.59	390	True	False		settled		True	85.95	81.86999999999999	90.03000000000002	1.0898692810457484		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		81.86999999999999					False
+control	PKE	2026-07-21	17.88	32.66	296	True	False		settled		True	37.74	35.57999999999999	39.90000000000001	-1.0		stop_hit	False	settled		True	37.74	35.57999999999999	39.90000000000001	-1.0		stop_hit	False
+control	ARWR	2026-07-22	19.57	74.52	1	True	False		abstain	entry_window_gaps:29_of_29	False		80.76					False	abstain	entry_window_gaps:24_of_24	False		80.76					False
+control	EFOR	2026-07-22	12.37	18.31	339	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	FTAI	2026-07-22	16.4	210.25	390	True	False		settled		True	228.8999	219.1001	238.6997	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		219.1001					False
+control	PAG	2026-07-22	10.52	195.19	349	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	SMCI	2026-07-22	15.88	25.5	390	True	False		settled		True	29.48	27.52	31.44	0.33333333333333337		stop_hit	True	settled		True	29.63	27.52	31.889999999999997	0.3570300157977881		stop_hit	True
+control	ALLE	2026-07-23	11.47	139.95	385	True	False		settled		True	152.175	145.255	159.09500000000003	0.3333333333333333		stop_hit	True	settled		True	152.175	145.255	159.09500000000003	0.3333333333333333		stop_hit	True
+control	CLF	2026-07-23	15.03	9.45	390	True	False		settled		True	10.85	10.35	11.35	1.996		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		10.35					False
+control	DGX	2026-07-23	11.12	209.83	389	True	False		settled		True	228.1	219.20000000000002	236.99999999999997	0.33333333333333337		stop_hit	True	settled		True	229.24	219.20000000000002	240.42000000000002	0.5199203187250999		stop_hit	False
+control	LMT	2026-07-23	10.11	514.36	390	True	False		settled		True	549.5	540.5	558.5	2.6372592592592556		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		540.5					False
+control	MEDP	2026-07-23	24.48	528.12	370	True	False		settled		True	650.0	615.0	685.0	-1.0		stop_hit	False	settled		True	652.74	615.0	693.22	-1.0		stop_hit	False
+control	NVCR	2026-07-23	15.54	15.57	389	True	False		settled		True	19.05	16.95	21.150000000000002	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		16.95					False
+control	OII	2026-07-23	12.36	45	382	True	False		settled		True	47.55	45.474999999999994	49.675	0.3413654618473891		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		45.474999999999994					False
+control	TMO	2026-07-23	10.56	526.46	390	True	False		settled		True	579.0	565.6300000000001	592.3699999999999	-1.0		stop_hit	False	settled		True	580.6	565.6300000000001	597.17	-1.0		stop_hit	False
+control	URI	2026-07-23	11.31	1035.06	383	True	False		settled		True	1112.73	1073.5500000000002	1151.9099999999999	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		1073.5500000000002					False
+control	AMKR	2026-07-24	13.98	65.33	390	True	False		no_entry	never_crossed_orb_high	False		65.33					False	no_entry	never_crossed_orb_high	False		65.33					False
+control	RNG	2026-07-24	20.72	38.62	390	True	False		settled		True	41.4	39.199999999999996	43.6	7.37848484848484		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		39.199999999999996					False
+control	SSNC	2026-07-24	10.52	66.95	387	True	False		settled		True	72.44	70.24000000000001	74.63999999999999	2.130303030303042		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		70.24000000000001					False
+control	THC	2026-07-24	14.31	199.02	390	True	False		settled		True	240.47	226.69000000000003	254.24999999999997	1.140396710208032		stop_hit	True	settled		True	241.67	226.69000000000003	257.8499999999999	1.049043168669338		stop_hit	True
+control	WKC	2026-07-24	11.63	36.27	378	True	False		settled		True	39.995	38.005	41.98499999999999	-1.0		stop_hit	False	settled		True	39.995	38.005	41.98499999999999	-1.0		stop_hit	False
+control	BMNR	2026-07-27	12.16	15.79	390	True	False		settled		True	16.97	16.370000000000005	17.569999999999993	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		16.370000000000005					False
+control	GENI	2026-07-27	10.03	6.48	388	True	False		settled		True	6.875	6.669999999999999	7.085000000000001	0.34146341463414615		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.669999999999999					False
+control	NNE	2026-07-27	10.38	15.59	382	True	False		settled		True	16.6	15.86	17.340000000000003	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		15.86					False
+control	OMER	2026-07-27	19.58	9.79	380	True	False		settled		True	11.58	10.93	12.24	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		10.93					False
+control	QBTS	2026-07-27	11.29	16.21	390	True	False		settled		True	18.17	17.33	19.010000000000005	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		17.33					False
+control	TRAX	2026-07-27	40.77	35.52	385	True	False		settled		True	44.5943	41.4057	47.78289999999999	-1.0		stop_hit	False	settled		True	44.82	41.4057	48.46	-1.0		stop_hit	False
+control	AWI	2026-07-28	10.14	165.22	376	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	CORZ	2026-07-28	11.28	20.74	390	True	False		no_entry	never_crossed_orb_high	False		19.21					False	no_entry	never_crossed_orb_high	False		19.21					False
+control	ICLR	2026-07-28	10.01	168.78	367	True	False		abstain	day0_fill_bar_straddles_stop	True	177.96	177.20000000000002	178.72				False	no_entry	triggered_above_limit_never_filled	False		177.20000000000002					False
+control	IQV	2026-07-28	15.01	213.22	388	True	False		settled		True	235.8	230.7	240.90000000000003	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		230.7					False
+control	ITRI	2026-07-28	18.77	84.78	385	True	False		settled		True	92.95	89.45	96.45	2.174857142857144		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		89.45					False
+control	KNSA	2026-07-28	23.1	63.535	390	True	False		no_trade	setup:stop_too_wide: 3.60 > 1.5x ATR 2.33	False							False	no_trade	setup:stop_too_wide: 3.60 > 1.5x ATR 2.33	False							False
+control	AVTR	2026-07-29	14.5	12.42	390	True	False		settled		True	14.5	13.73	15.27	-1.0		stop_hit	False	settled		True	14.5	13.73	15.27	-1.0		stop_hit	False
+control	CBZ	2026-07-29	17.77	46.7	390	True	False		no_entry	never_crossed_orb_high	False		54.11					False	no_entry	never_crossed_orb_high	False		54.11					False
+control	GEHC	2026-07-29	13.09	64.11	390	True	False		settled		True	69.77	66.39	73.14999999999999	1.0729783037475384		stop_hit	True	settled		True	70.12	66.39	74.20000000000002	0.9722966934763193		stop_hit	True
+control	GFS	2026-07-29	14.57	49.02	390	True	False		no_entry	never_crossed_orb_high	False		47.231100000000005					False	no_entry	never_crossed_orb_high	False		47.231100000000005					False
+control	GNRC	2026-07-29	10.03	195.6	388	True	False		no_entry	never_crossed_orb_high	False		198.0					False	no_entry	never_crossed_orb_high	False		198.0					False
+control	GRMN	2026-07-29	12.5	253.65	386	True	False		settled		True	264.81	258.79	270.83	5.055370985603556		stop_hit	True	settled		True	265.0	258.79	271.4	4.900697799248538		stop_hit	True
+control	HURN	2026-07-29	21.92	121.37	358	True	False		no_trade	setup:stop_too_wide: 8.76 > 1.5x ATR 5.22	False							False	no_trade	setup:stop_too_wide: 8.76 > 1.5x ATR 5.22	False							False
+control	LFUS	2026-07-29	10.96	392.05	354	True	False		settled		True	437.07	401.05	473.09	0.6481584305015742		stop_hit	True	abstain	entry_window_gaps:1_of_24	False		401.05					False
+control	MANH	2026-07-29	23.14	168.17	387	True	False		settled		True	195.72	186.24499999999998	205.51000000000002	0.293755496921724		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		186.24499999999998					False
+control	MBIN	2026-07-29	12.77	48.77	205	True	False		settled		True	51.42	50.56	52.28	2.1023255813953474		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		50.56					False
+control	NEO	2026-07-29	16.19	13.4	390	True	False		settled		True	15.9	14.74	17.060000000000002	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		14.74					False
+control	TER	2026-07-29	10.4	320.65	390	True	False		settled		True	369.3	347.93	390.67	-1.0		stop_hit	False	settled		True	369.65	347.93	391.7199999999999	-1.0		stop_hit	False
+control	TEVA	2026-07-29	11.4	31.67	390	True	False		settled		True	34.0	33.34	34.66	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		33.34					False
+control	ARM	2026-07-30	10.77	224.89	390	True	False		no_entry	never_crossed_orb_high	False		246.17999999999995					False	no_entry	never_crossed_orb_high	False		246.17999999999995					False
+control	AVY	2026-07-30	11.88	167.14	368	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	BAX	2026-07-30	18.3	24.77	390	True	False		settled		True	29.9	27.840000000000003	31.959999999999994	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		27.840000000000003					False
+control	BDC	2026-07-30	10.75	102.03	322	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	CORT	2026-07-30	24.21	92.95	388	True	False		no_trade	setup:stop_too_wide: 7.25 > 1.5x ATR 4.59	False							False	no_trade	setup:stop_too_wide: 7.25 > 1.5x ATR 4.59	False							False
+control	EFOR	2026-07-30	18.37	23.41	367	True	False		settled		True	25.83	22.179999999999996	29.509999999999998	1.3870319634703199		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		22.179999999999996					False
+control	EME	2026-07-30	10.56	672.48	370	True	False		settled		True	788.31	755.01	821.6099999999999	0.32692692692692815		stop_hit	True	settled		True	790.27	755.01	827.49	0.30875401777273676		stop_hit	True
+control	FORM	2026-07-30	21.92	83.45	376	True	False		settled		True	102.99	97.14999999999999	108.83	0.6997716894977176		sma_trail_stop	True	settled		True	102.99	97.14999999999999	108.83	0.6997716894977176		sma_trail_stop	True
+control	FTNT	2026-07-30	10.1	153.22	390	True	False		settled		True	166.65	153.72	179.58	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		153.72					False
+control	GKOS	2026-07-30	10.11	161.66	369	True	False		settled		True	180.2201	172.9799	187.46030000000002	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		172.9799					False
+control	HII	2026-07-30	13.53	280.4	385	True	False		settled		True	307.01	298.99	315.03	-1.0		stop_hit	False	settled		True	307.01	298.99	315.03	-1.0		stop_hit	False
+control	LRCX	2026-07-30	18.95	252.35	390	True	False		no_entry	never_crossed_orb_high	False		283.96000000000004					False	no_entry	never_crossed_orb_high	False		283.96000000000004					False
+control	MKTX	2026-07-30	30.17	125.73	390	True	False		settled		True	163.4	162.87999999999997	163.92000000000004	0.3333333333333333		stop_hit	True	settled		True	163.76	162.87999999999997	165.0	-1.0		stop_hit	False
+control	NPKI	2026-07-30	11.95	12.05	371	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	PRCH	2026-07-30	25	12.36	389	True	False		no_entry	never_crossed_orb_high	False		13.572					False	no_entry	never_crossed_orb_high	False		13.572					False
+control	PWR	2026-07-30	12.09	561.14	390	True	False		settled		True	670.0	625.05	716.0	0.061846496106784644		sma_trail_stop	False	no_entry	never_crossed_orb_high	False		625.05					False
+control	SFM	2026-07-30	17.07	79.16	387	True	False		settled		True	88.01	84.49	91.53000000000002	0.33333333333333337		stop_hit	True	settled		True	88.45	84.49	92.85000000000001	-1.0		stop_hit	False
+control	SIMO	2026-07-30	19.18	209.68	390	True	False		no_entry	never_crossed_orb_high	False		226.77999999999997					False	no_entry	never_crossed_orb_high	False		226.77999999999997					False
+control	STGW	2026-07-30	12.5	8.08	324	True	False		abstain	entry_window_gaps:7_of_29	False		7.48					False	abstain	entry_window_gaps:5_of_24	False		7.48					False
+control	TAL	2026-07-30	16.16	10.89	390	True	False		no_entry	never_crossed_orb_high	False		11.8105					False	no_entry	never_crossed_orb_high	False		11.8105					False
+control	AAOI	2026-07-31	13.92	90.11	390	True	False		settled		True	102.36	97.74	106.98	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		97.74					False
+control	AMZN	2026-07-31	13.92	235.5	390	True	False		settled		True	265.0	259.02	270.98	0.4517279821627658		stop_hit	True	settled		True	266.32	259.02	274.94	0.3936073059360727		stop_hit	True
+control	BLZE	2026-07-31	13.06	12.63	376	True	False		settled		True	13.6	13.22	13.979999999999999	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		13.22					False
+control	COHR	2026-07-31	12.52	249.06	390	True	False		settled		True	279.64	265.05999999999995	294.24	-1.0		stop_hit	False	settled		True	280.66	265.05999999999995	297.3000000000001	-1.0		stop_hit	False
+control	COHU	2026-07-31	22.71	46.45	384	True	False		no_entry	never_crossed_orb_high	False		49.13999999999999					False	no_entry	never_crossed_orb_high	False		49.13999999999999					False
+control	CSTL	2026-07-31	12.43	26.79	256	True	False		settled		True	29.85	27.75	32.050000000000004	-1.0		stop_hit	False	settled		True	29.75	27.75	31.75	-1.0		stop_hit	False
+control	DXCM	2026-07-31	10.4	74.54	389	True	False		settled		True	81.25	77.75	84.75	1.8556190476190455		stop_hit	True	settled		True	81.66	77.75	85.97999999999999	1.6610400682011934		stop_hit	True
+control	FET	2026-07-31	16.04	51.43	216	True	False		settled		True	61.42	60.72	62.120000000000005	0.33333333333333337		stop_hit	True	settled		True	61.73	60.72	63.04999999999999	0.2838283828382842		stop_hit	True
+control	FLNC	2026-07-31	10.02	13.47	390	True	False		no_entry	never_crossed_orb_high	False		13.895					False	no_entry	never_crossed_orb_high	False		13.895					False
+control	MPWR	2026-07-31	13.96	1316.18	390	True	False		settled		True	1515.0	1444.8200000000002	1585.1799999999998	-1.0113992590481644		stop_hit	False	settled		True	1522.57	1444.8200000000002	1607.8899999999996	-1.0102893890675264		stop_hit	False
+control	NBIS	2026-07-31	10.29	188.43	390	True	False		settled		True	204.31	195.69	212.93	-1.0162412993039427		stop_hit	False	no_entry	never_crossed_orb_high	False		195.69					False
+control	NVT	2026-07-31	15.4	144.8	390	True	False		settled		True	165.0	161.22000000000003	168.77999999999997	-1.0		stop_hit	False	settled		True	165.415	161.22000000000003	170.02499999999995	-1.0		stop_hit	False
+control	NWL	2026-07-31	13.42	5.14	390	True	False		settled		True	6.66	6.279999999999999	7.040000000000001	0.33333333333333337		stop_hit	True	settled		True	6.69	6.279999999999999	7.130000000000002	-1.0		stop_hit	False
+control	NXT	2026-07-31	11.97	96.9	390	True	False		no_entry	never_crossed_orb_high	False		95.405					False	no_entry	never_crossed_orb_high	False		95.405					False
+control	PWP	2026-07-31	13.68	14.91	382	True	False		no_trade	setup:stop_too_wide: 1.93 > 1.5x ATR 0.81	False							False	no_trade	setup:stop_too_wide: 1.93 > 1.5x ATR 0.81	False							False
+control	SPSC	2026-07-31	10.83	65.83	345	True	False		settled		True	73.47	69.07	78.03	0.3454545454545452		stop_hit	True	settled		True	73.47	69.07	78.03	0.3454545454545452		stop_hit	True
+control	SPXC	2026-07-31	15.25	199.3	358	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	CNH	2026-08-03	15.66	10.25	389	True	False		settled		True	11.61	11.22	12.009999999999998	0.3418803418803418		stop_hit	True	settled		True	11.6	11.22	11.979999999999999	0.3333333333333333		stop_hit	True
+control	FTH	2026-08-03	10.13	27.24	115	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	FTK	2026-08-03	10.45	23.54	289	True	False		settled		True	25.16	23.919999999999998	26.400000000000002	0.29569892473118276		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		23.919999999999998					False
+control	LIND	2026-08-03	15.55	29.58	364	True	False		settled		True	31.36	30.31	32.54	1.663492063492063		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		30.31					False
+control	AAOI	2026-08-04	21.43	110.21	390	True	False		settled		True	129.3	121.61699999999999	136.98300000000003	0.25957742201396844		stop_hit	True	settled		True	129.3	121.61699999999999	136.98300000000003	0.25957742201396844		stop_hit	True
+control	AEIS	2026-08-04	15.39	296.38	386	True	False		no_entry	never_crossed_orb_high	False		307.58019999999993					False	no_entry	never_crossed_orb_high	False		307.58019999999993					False
+control	AMRC	2026-08-04	43.12	22.73	368	True	False		no_entry	never_crossed_orb_high	False		30.07					False	no_entry	never_crossed_orb_high	False		30.07					False
+control	ARVN	2026-08-04	14.21	8.06	370	True	False		settled		True	8.6	8.1	9.139999999999999	0.35999999999999943		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		8.1					False
+control	BLZE	2026-08-04	19.14	15.59	390	True	False		settled		True	21.7499	18.450100000000003	25.049699999999998	-1.0		stop_hit	False	no_entry	triggered_above_limit_never_filled	False		18.450100000000003					False
+control	BTDR	2026-08-04	24.1	11.37	390	True	False		settled		True	12.85	12.110000000000001	13.589999999999998	-1.0		stop_hit	False	settled		True	12.85	12.110000000000001	13.589999999999998	-1.0		stop_hit	False
+control	CAT	2026-08-04	10	830.03	390	True	False		no_entry	never_crossed_orb_high	False		905.0006					False	no_entry	never_crossed_orb_high	False		905.0006					False
+control	COHR	2026-08-04	19.21	288.14	390	True	False		settled		True	326.655	313.30500000000006	340.0049999999999	-0.028963795255932345		stop_hit	True	settled		True	328.29	313.30500000000006	344.91	-0.025803581359138794		stop_hit	True
+control	DORM	2026-08-04	15.87	127.68	350	True	False		settled		True	143.0	137.0	149.0	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		137.0					False
+control	EWTX	2026-08-04	14.11	38.38	390	True	False		settled		True	42.73	39.21	46.24999999999999	-0.023011363636362518		stop_hit	False	no_entry	triggered_above_limit_never_filled	False		39.21					False
+control	FN	2026-08-04	17.01	455.94	390	True	False		settled		True	529.89	516.75	545.67	-1.0		stop_hit	False	settled		True	527.25	516.75	537.75	-1.0		stop_hit	False
+control	IBTA	2026-08-04	48.43	24.58	333	True	False		no_trade	setup:stop_too_wide: 3.52 > 1.5x ATR 1.87	False							False	no_trade	setup:stop_too_wide: 3.52 > 1.5x ATR 1.87	False							False
+control	INSP	2026-08-04	22.29	52.22	389	True	False		abstain	day0_fill_bar_straddles_stop	True	65.64	60.81	70.47				False	no_entry	never_crossed_orb_high	False		60.81					False
+control	LIFE	2026-08-04	16.29	22.83	390	True	False		no_entry	never_crossed_orb_high	False		25.869999999999997					False	no_entry	never_crossed_orb_high	False		25.869999999999997					False
+control	LITE	2026-08-04	14.34	779.89	390	True	False		no_entry	never_crossed_orb_high	False		811.79					False	no_entry	never_crossed_orb_high	False		811.79					False
+control	LWLG	2026-08-04	16.86	6.82	387	True	False		settled		True	7.99	7.33	8.65	-1.0		stop_hit	False	settled		True	8.0066	7.33	8.699800000000002	-1.0		stop_hit	False
+control	MED	2026-08-04	32.65	9.74	304	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	PAY	2026-08-04	20.1	34.52	388	True	False		settled		True	40.48	38.88	42.07999999999999	0.3333333333333333		stop_hit	True	settled		True	40.48	38.88	42.07999999999999	0.3333333333333333		stop_hit	True
+control	PLTR	2026-08-04	15.96	125.65	390	True	False		settled		True	148.63	137.93	159.32999999999998	1.6941433021806873		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		137.93					False
+control	POET	2026-08-04	20.11	7.36	390	True	False		abstain	fwd_stop_and_target_same_day:2026-08-06	True	8.45	7.949999999999999	8.95				False	abstain	fwd_stop_and_target_same_day:2026-08-06	True	8.49	7.949999999999999	9.070000000000002				False
+control	TSAT	2026-08-04	14.46	40.18	379	True	False		settled		True	44.38	42.08	46.90000000000001	2.266666666666663		stop_hit	True	settled		True	44.275	42.08	46.585	2.375094912680334		stop_hit	True
+control	UFPT	2026-08-04	21.25	267.53	286	True	False		no_entry	triggered_above_limit_never_filled	False		295.98					False	no_entry	triggered_above_limit_never_filled	False		295.98					False
+control	VOYG	2026-08-04	16.96	28.01	385	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	W	2026-08-04	25.32	89.31	390	True	False		settled		True	113.78	106.06	121.5	-1.0		stop_hit	False	settled		True	113.78	106.06	121.5	-1.0		stop_hit	False
+control	WGS	2026-08-04	14.07	67.86	382	True	False		no_entry	never_crossed_orb_high	False		72.62					False	no_entry	never_crossed_orb_high	False		72.62					False
+control	WIX	2026-08-04	14.36	56.84	389	True	False		settled		True	60.0	52.0	68.0	0.3333333333333333		stop_hit	True	settled		True	60.0	52.0	68.0	0.3333333333333333		stop_hit	True
+control	ZBRA	2026-08-04	10.75	291.64	384	True	False		settled		True	345.6	313.475	377.855	0.7741945525291823		stop_hit	True	settled		True	347.2	313.475	382.6549999999999	0.7374647887323946		stop_hit	True
+control	AMPX	2026-08-05	12.3	10.81	390	True	False		no_entry	never_crossed_orb_high	False		10.840000000000002					False	no_entry	never_crossed_orb_high	False		10.840000000000002					False
+control	ANET	2026-08-05	15.47	190.51	390	True	False		settled		True	213.99	205.89	222.09000000000003	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		205.89					False
+control	APPS	2026-08-05	28.29	9.51	390	True	False		no_trade	setup:stop_too_wide: 1.25 > 1.5x ATR 0.73	False							False	no_trade	setup:stop_too_wide: 1.25 > 1.5x ATR 0.73	False							False
+control	BLMN	2026-08-05	34.53	8.92	389	True	False		no_trade	setup:stop_too_wide: 0.92 > 1.5x ATR 0.40	False							False	no_trade	setup:stop_too_wide: 0.92 > 1.5x ATR 0.40	False							False
+control	DT	2026-08-05	14.59	45.71	390	True	False		settled		True	52.5	50.28	54.72	-1.0		stop_hit	False	settled		True	52.5	50.28	54.72	-1.0		stop_hit	False
+control	ECG	2026-08-05	10.96	136.16	371	True	False		settled		True	151.53	142.99999999999997	160.81000000000003	-1.0		stop_hit	False	settled		True	151.53	142.99999999999997	160.81000000000003	-1.0		stop_hit	False
+control	FRPT	2026-08-05	10.45	62.38	388	True	False		settled		True	67.5	63.72999999999999	71.27000000000001	0.33333333333333337		stop_hit	True	settled		True	67.5	63.72999999999999	71.27000000000001	0.33333333333333337		stop_hit	True
+control	HGTY	2026-08-05	11.69	11.72	246	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	INTA	2026-08-05	10.28	32.78	385	True	False		settled		True	36.6317	34.06	39.335100000000004	1.107697891148528		stop_hit	True	settled		True	36.5	34.06	38.94	1.1674863387978163		stop_hit	True
+control	KMT	2026-08-05	14.39	36.06	382	True	False		no_entry	never_crossed_orb_high	False		36.9					False	no_entry	never_crossed_orb_high	False		36.9					False
+control	KODK	2026-08-05	10.86	8.93	368	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	KTOS	2026-08-05	11.26	51.87	390	True	False		settled		True	59.93	54.07	65.78999999999999	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		54.07					False
+control	PGEN	2026-08-05	12.56	6.53	390	True	False		settled		True	7.08	6.5600000000000005	7.6	-1.0		stop_hit	False	settled		True	7.08	6.5600000000000005	7.6	-0.9903846153846156		stop_hit	False
+control	PRGO	2026-08-05	13.17	10.78	390	True	False		settled		True	12.98	12.259999999999998	13.700000000000003	-1.0		stop_hit	False	settled		True	13.04	12.259999999999998	13.879999999999999	-1.0		stop_hit	False
+control	QLYS	2026-08-05	20.34	161.06	359	True	False		no_entry	never_crossed_orb_high	False		184.02					False	no_entry	never_crossed_orb_high	False		184.02					False
+control	ROCK	2026-08-05	14.9	48.06	284	True	False		no_trade	setup:stop_too_wide: 3.49 > 1.5x ATR 2.07	False							False	no_trade	setup:stop_too_wide: 3.49 > 1.5x ATR 2.07	False							False
+control	SHOP	2026-08-05	28.79	123.3	390	True	False		settled		True	151.87	141.63	162.11	-0.5166015624999988		sma_trail_stop	False	no_entry	never_crossed_orb_high	False		141.63					False
+control	SWIM	2026-08-05	22.11	5.7	377	True	False		no_entry	never_crossed_orb_high	False		6.775600000000001					False	no_entry	never_crossed_orb_high	False		6.775600000000001					False
+control	TATT	2026-08-05	11.79	41.65	241	True	False		settled		True	51.22	47.34	55.099999999999994	-1.0		stop_hit	False	settled		True	51.33	47.34	55.42999999999999	-1.0		stop_hit	False
+control	TBI	2026-08-05	24.19	7.69	294	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	TVTX	2026-08-05	14.6	56.02	389	True	False		settled		True	62.39	59.61	65.17	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		59.61					False
+control	UPST	2026-08-05	18.6	30.32	390	True	False		no_trade	setup:stop_too_wide: 3.51 > 1.5x ATR 1.54	False							False	no_trade	setup:stop_too_wide: 3.51 > 1.5x ATR 1.54	False							False
+control	YOU	2026-08-05	14.57	55.73	388	True	False		settled		True	66.0	58.42	73.58	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		58.42					False
+control	AEVA	2026-08-06	22.28	19.61	386	True	False		no_trade	setup:stop_too_wide: 3.08 > 1.5x ATR 1.55	False							False	no_trade	setup:stop_too_wide: 3.08 > 1.5x ATR 1.55	False							False
+control	ASPN	2026-08-06	58.09	5.01	390	True	False		abstain	day0_fill_bar_straddles_stop	True	7.47	7.069999999999999	7.87				False	settled		True	7.51	7.069999999999999	7.99	0.36363636363636365		stop_hit	True
+control	CAI	2026-08-06	17.11	16.45	390	True	False		settled		True	19.0	16.89	21.11	0.9557661927330172		sma_trail_stop	True	settled		True	19.09	16.89	21.38	0.9166666666666665		sma_trail_stop	True
+control	CDRE	2026-08-06	16.02	31.03	363	True	False		settled		True	34.59	32.66	36.52000000000001	0.3264248704663202		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		32.66					False
+control	DCTH	2026-08-06	21.3	12.63	384	True	False		settled		True	14.37	13.65	15.109999999999998	2.5462962962963003		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		13.65					False
+control	INSM	2026-08-06	16.14	99.02	390	True	False		settled		True	129.41	122.89000000000001	135.92999999999998	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		122.89000000000001					False
+control	KRO	2026-08-06	21.26	6.21	383	True	False		settled		True	7.28	6.919999999999999	7.6400000000000015	1.7222222222222157		stop_hit	True	settled		True	7.32	6.919999999999999	7.760000000000002	1.549999999999995		stop_hit	True
+control	LFST	2026-08-06	18.8	10.37	390	True	False		no_trade	setup:stop_too_wide: 0.89 > 1.5x ATR 0.41	False							False	no_trade	setup:stop_too_wide: 0.89 > 1.5x ATR 0.41	False							False
+control	MGNI	2026-08-06	19.76	20.67	390	True	False		settled		True	23.41	21.790000000000003	25.029999999999998	0.5144032921810707		sma_trail_stop	True	no_entry	triggered_above_limit_never_filled	False		21.790000000000003					False
+control	ORA	2026-08-06	10.16	98.02	372	True	False		settled		True	108.42	106.86	109.98	-1.0		stop_hit	False	abstain	entry_window_gaps:1_of_24	False		106.86					False
+control	PAYC	2026-08-06	23.02	174.8	382	True	False		settled		True	216.0	205.42000000000002	226.57999999999998	-1.0		stop_hit	False	settled		True	217.08	205.42000000000002	229.82000000000002	-1.0		stop_hit	False
+control	PAYS	2026-08-06	23.77	9.59	379	True	False		no_trade	setup:stop_too_wide: 1.07 > 1.5x ATR 0.45	False							False	no_trade	setup:stop_too_wide: 1.07 > 1.5x ATR 0.45	False							False
+control	RDW	2026-08-06	12.46	10.72	390	True	False		no_entry	never_crossed_orb_high	False		11.71					False	no_entry	never_crossed_orb_high	False		11.71					False
+control	RELY	2026-08-06	11.88	24.07	390	True	False		no_entry	never_crossed_orb_high	False		24.130000000000003					False	no_entry	never_crossed_orb_high	False		24.130000000000003					False
+control	SITM	2026-08-06	28.88	543.12	370	True	False		no_entry	never_crossed_orb_high	False		587.73					False	no_entry	never_crossed_orb_high	False		587.73					False
+control	SOUN	2026-08-06	26.27	6.43	390	True	False		no_trade	setup:stop_too_wide: 0.68 > 1.5x ATR 0.38	False							False	no_trade	setup:stop_too_wide: 0.68 > 1.5x ATR 0.38	False							False
+control	TASK	2026-08-06	11.39	6.32	374	True	False		settled		True	7.16	6.879999999999999	7.440000000000001	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.879999999999999					False
+control	TPC	2026-08-06	15.86	84.55	340	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	TRUP	2026-08-06	18	24.39	360	True	False		settled		True	27.75	24.85	30.65	0.8712643678160922		stop_hit	True	settled		True	27.89	24.85	31.07	0.8311403508771931		stop_hit	True
+control	U	2026-08-06	18.41	35.47	390	True	False		settled		True	36.61	32.989999999999995	40.230000000000004	2.051012891344381		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		32.989999999999995					False
+control	WPP	2026-08-06	29.69	20.61	372	True	False		settled		True	26.08	25.740000000000002	26.459999999999994	-1.0000000000000104		stop_hit	False	settled		True	26.04	25.740000000000002	26.339999999999996	-1.0000000000000118		stop_hit	False
+control	ACMR	2026-08-07	15.54	78.98	378	True	False		no_entry	never_crossed_orb_high	False		74.58					False	no_entry	never_crossed_orb_high	False		74.58					False
+control	AKAM	2026-08-07	13.45	118.55	388	True	False		no_entry	never_crossed_orb_high	False		112.8302					False	no_entry	never_crossed_orb_high	False		112.8302					False
+control	CART	2026-08-07	16.19	45.03	390	True	False		no_entry	never_crossed_orb_high	False		48.18899999999999					False	no_entry	never_crossed_orb_high	False		48.18899999999999					False
+control	CRSR	2026-08-07	18.94	10.61	390	True	False		settled		True	12.69	11.53	13.85	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		11.53					False
+control	DOCS	2026-08-07	178.8	20.66	382	True	False		no_trade	setup:stop_too_wide: 1.62 > 1.5x ATR 0.97	False							False	no_trade	setup:stop_too_wide: 1.62 > 1.5x ATR 0.97	False							False
+control	FIGS	2026-08-07	29.27	11.24	390	True	False		settled		True	15.5	14.879999999999999	16.12	0.33333333333333337		stop_hit	True	settled		True	15.58	14.879999999999999	16.36	-1.0		stop_hit	False
+control	FLR	2026-08-07	13.44	48.75	390	True	False		abstain	day0_fill_bar_straddles_stop	True	54.57	53.73	55.410000000000004				False	settled		True	54.84	53.73	56.22000000000001	-1.0		stop_hit	False
+control	FROG	2026-08-07	18.02	83.04	387	True	False		no_entry	never_crossed_orb_high	False		83.98500000000001					False	no_entry	never_crossed_orb_high	False		83.98500000000001					False
+control	INOD	2026-08-07	14.98	65.48	387	True	False		no_entry	never_crossed_orb_high	False		70.86000000000001					False	no_entry	never_crossed_orb_high	False		70.86000000000001					False
+control	MTW	2026-08-07	33.08	14.21	355	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	NET	2026-08-07	16.62	284.43	390	True	False		settled		True	318.5	304.0	333.5	-1.0		stop_hit	False	settled		True	319.41	304.0	336.2300000000001	-1.0		stop_hit	False
+control	NTRA	2026-08-07	18.72	265.38	389	True	False		no_entry	never_crossed_orb_high	False		298.005					False	no_entry	never_crossed_orb_high	False		298.005					False
+control	ONTO	2026-08-07	15.31	268.7	359	True	False		settled		True	307.89	282.11	333.66999999999996	0.43160072407551114		stop_hit	True	settled		True	309.43	282.11	338.29	0.4072718399219132		stop_hit	True
+control	PRAA	2026-08-07	16.61	18.15	305	True	False		settled		True	20.75	19.909999999999997	21.590000000000003	-1.0357142857142827		stop_hit	False	settled		True	20.85	19.909999999999997	21.890000000000008	-1.0319148936170186		stop_hit	False
+control	PSIX	2026-08-07	25.77	33.02	373	True	False		settled		True	40.37	36.190000000000005	44.54999999999999	-0.6057416267942586		stop_hit	False	settled		True	40.57	36.190000000000005	45.15	-0.6237442922374434		stop_hit	False
+control	PUBM	2026-08-07	36.87	13.48	382	True	False		no_trade	setup:stop_too_wide: 0.82 > 1.5x ATR 0.53	False							False	no_trade	setup:stop_too_wide: 0.82 > 1.5x ATR 0.53	False							False
+control	QNST	2026-08-07	27.92	15.22	387	True	False		settled		True	19.8	18.62	20.98	0.5895480225988692		stop_hit	True	settled		True	19.9	18.62	21.279999999999994	0.5434895833333333		stop_hit	True
+control	ROAD	2026-08-07	16.74	100.16	379	True	False		settled		True	114.52	106.45	123.15999999999998	0.35687732342007406		stop_hit	True	settled		True	114.24	106.45	122.31999999999998	0.34574240479246865		stop_hit	True
+control	TEAM	2026-08-07	33.7	110.17	390	True	False		settled		True	146.8	139.62	153.98000000000002	0.3333333333333333		stop_hit	True	settled		True	147.53	139.62	156.17	1.8461019806152554		stop_hit	True
+control	TWLO	2026-08-07	18.4	193.2	390	True	False		abstain	day0_fill_bar_straddles_stop	True	237.0	230.01999999999998	243.98000000000002				False	settled		True	238.18	230.01999999999998	247.52000000000004	0.38153594771241844		stop_hit	True
+control	WLDN	2026-08-07	14.67	73.69	277	True	False		settled		True	86.7475	84.1325	89.36250000000001	-1.0		stop_hit	False	settled		True	87.055	84.1325	90.28500000000003	-1.0		stop_hit	False
+control	ABCL	2026-08-10	17.6	6.93	390	True	False		settled		True	8.96	7.84	10.080000000000002	1.346130952380951		stop_hit	True	settled		True	8.96	7.84	10.080000000000002	1.346130952380951		stop_hit	True
+control	ACHR	2026-08-10	24.33	5.59	390	True	False		settled		True	6.5	6.02	6.98	-1.0		stop_hit	False	settled		True	6.5	6.02	6.98	-1.0		stop_hit	False
+control	ALOY	2026-08-10	13.28	12.27	389	True	False		settled		True	13.35	12.67	14.03	-1.0		stop_hit	False	settled		True	13.35	12.67	14.03	-1.0		stop_hit	False
+control	NESR	2026-08-10	11.99	29.02	390	True	False		settled		True	32.73	30.990000000000002	34.46999999999999	0.5775862068965536		stop_hit	True	settled		True	32.89	30.990000000000002	34.95	0.5289473684210532		stop_hit	True
+control	SLN	2026-08-10	18.83	11.95	388	True	False		no_entry	never_crossed_orb_high	False		15.5					False	no_entry	never_crossed_orb_high	False		15.5					False
+control	TH	2026-08-10	12.17	16.51	354	True	False		settled		True	16.09	14.95	17.23	0.33333333333333337		stop_hit	True	settled		True	16.09	14.95	17.23	0.33333333333333337		stop_hit	True
+control	ACVA	2026-08-11	19.2	7.26	390	True	False		settled		True	8.27	7.850000000000001	8.689999999999998	-1.0		stop_hit	False	settled		True	8.27	7.850000000000001	8.689999999999998	-1.0		stop_hit	False
+control	AP	2026-08-11	14.99	8.67	173	True	False		settled		True	9.59	8.9936	10.226399999999998	0.3556896937178623		stop_hit	True	settled		True	9.56	8.9936	10.1364	0.3392184557438793		stop_hit	True
+control	APEI	2026-08-11	12.89	47.39	282	True	False		abstain	entry_window_gaps:12_of_29	False		48.57999999999999					False	abstain	entry_window_gaps:11_of_24	False		48.57999999999999					False
+control	BW	2026-08-11	34.91	8.88	390	True	False		settled		True	12.08	10.92	13.24	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		10.92					False
+control	CODI	2026-08-11	15.97	11.08	372	True	False		settled		True	12.47	12.01	12.930000000000001	0.3333333333333333		stop_hit	True	settled		True	12.47	12.01	12.930000000000001	0.3333333333333333		stop_hit	True
+control	FRMI	2026-08-11	17.01	5.88	390	True	False		settled		True	7.24	6.859999999999999	7.620000000000001	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		6.859999999999999					False
+control	NIQ	2026-08-11	21.87	11.68	390	True	False		settled		True	14.25	12.969999999999999	15.530000000000001	2.6536458333333304		stop_hit	True	settled		True	14.25	12.969999999999999	15.530000000000001	2.6536458333333304		stop_hit	True
+control	RIOT	2026-08-11	17.92	19.4	390	True	False		no_entry	never_crossed_orb_high	False		22.06					False	no_entry	never_crossed_orb_high	False		22.06					False
+control	RPD	2026-08-11	16.78	11.61	390	True	False		settled		True	13.085	12.434999999999999	13.735000000000003	0.24615384615384553		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		12.434999999999999					False
+control	SE	2026-08-11	10.58	114.8	390	True	False		no_entry	never_crossed_orb_high	False		120.1594					False	no_entry	never_crossed_orb_high	False		120.1594					False
+control	ATRO	2026-08-12	11.29	74.91	381	True	False		no_trade	setup:stop_too_wide: 5.75 > 1.5x ATR 3.52	False							False	no_trade	setup:stop_too_wide: 5.75 > 1.5x ATR 3.52	False							False
+control	BE	2026-08-12	15.16	211.21	390	True	False		settled		True	239.9	230.52	249.28	0.3333333333333333		stop_hit	True	settled		True	241.1	230.52	252.87999999999997	0.04599873976055391		stop_hit	True
+control	BRUN	2026-08-12	12.04	18.61	378	True	False		no_entry	never_crossed_orb_high	False		19.270000000000003					False	no_entry	never_crossed_orb_high	False		19.270000000000003					False
+control	CAVA	2026-08-12	18.6	60.81	390	True	False		settled		True	69.46	64.60000000000001	74.31999999999998	0.33333333333333337		stop_hit	True	settled		True	69.81	64.60000000000001	75.37	0.3557261676263601		stop_hit	True
+control	CRWV	2026-08-12	21.43	90.32	390	True	False		settled		True	110.33	105.77	114.89	-1.0		stop_hit	False	settled		True	110.33	105.77	114.89	-1.0		stop_hit	False
+control	EROC	2026-08-12	16.09	11.25	388	True	False		settled		True	13.16	12.34	13.98	0.4349593495934959		stop_hit	True	settled		True	13.23	12.34	14.190000000000001	0.4007490636704119		stop_hit	True
+control	GLBE	2026-08-12	10.67	40.86	384	True	False		settled		True	42.34	39.67999999999999	45.000000000000014	-1.0		stop_hit	False	settled		True	42.55	39.67999999999999	45.629999999999995	-1.0		stop_hit	False
+control	HRB	2026-08-12	16.76	46.67	389	True	False		settled		True	54.71	54.27	55.15	0.3333333333333333		stop_hit	True	settled		True	54.98	54.27	55.95999999999999	-1.0		stop_hit	False
+control	KRNT	2026-08-12	10.92	17.58	222	True	False		abstain	entry_window_gaps:11_of_29	False		17.83					False	abstain	entry_window_gaps:8_of_24	False		17.83					False
+control	MRX	2026-08-12	12.45	59.93	341	True	False		settled		True	64.268	60.932	67.604	1.495603517186252		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		60.932					False
+control	NBIS	2026-08-12	12.2	193.23	390	True	False		settled		True	228.44	207.8	249.07999999999998	0.3333333333333333		stop_hit	True	settled		True	228.44	207.8	249.07999999999998	0.3333333333333333		stop_hit	True
+control	RSKD	2026-08-12	20.93	5.27	383	True	False		no_trade	setup:stop_too_wide: 0.23 > 1.5x ATR 0.14	False							False	no_trade	setup:stop_too_wide: 0.23 > 1.5x ATR 0.14	False							False
+control	SMWB	2026-08-12	19.31	7.25	383	True	False		settled		True	8.34	7.699999999999999	9.02	0.35416666666666624		stop_hit	True	settled		True	8.34	7.699999999999999	9.02	0.35416666666666624		stop_hit	True
+control	WYFI	2026-08-12	17.34	24.22	383	True	False		settled		True	28.31	26.210000000000004	30.409999999999993	0.33333333333333337		stop_hit	True	settled		True	28.31	26.210000000000004	30.409999999999993	0.33333333333333337		stop_hit	True
+control	AEBI	2026-08-13	13.66	12.99	311	True	False		abstain	day0_fill_bar_stop_and_target	True	13.65	13.589999999999998	13.710000000000003				False	no_entry	triggered_above_limit_never_filled	False		13.589999999999998					False
+control	AVAH	2026-08-13	14.48	9.05	389	True	False		settled		True	10.1	9.07	11.139999999999999	2.3883495145631075		stop_hit	True	settled		True	10.14	9.07	11.260000000000002	2.299065420560747		stop_hit	True
+control	BIRK	2026-08-13	17.34	36.74	385	True	False		abstain	day0_fill_bar_straddles_stop	True	43.07	41.37	44.77				False	settled		True	43.07	41.37	44.77	-1.0		stop_hit	False
+control	BLSH	2026-08-13	12.4	24.63	389	True	False		no_trade	setup:stop_too_wide: 2.26 > 1.5x ATR 1.29	False							False	no_trade	setup:stop_too_wide: 2.26 > 1.5x ATR 1.29	False							False
+control	CGEM	2026-08-13	12.24	19.6	350	True	False		no_entry	never_crossed_orb_high	False		18.9					False	no_entry	never_crossed_orb_high	False		18.9					False
+control	CRMD	2026-08-13	10	7.1	383	True	False		settled		True	8.75	8.030000000000001	9.469999999999999	-1.0		stop_hit	False	settled		True	8.75	8.030000000000001	9.469999999999999	-1.0		stop_hit	False
+control	ELMT	2026-08-13	15.18	16.93	310	True	False		no_trade	setup:stop_too_wide: 1.88 > 1.5x ATR 1.02	False							False	no_trade	setup:stop_too_wide: 1.88 > 1.5x ATR 1.02	False							False
+control	ENS	2026-08-13	15.15	186.72	341	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	HLIT	2026-08-13	23.79	12	389	True	False		settled		True	14.48	12.879999999999999	16.080000000000002	-1.0		stop_hit	False	settled		True	14.55	12.879999999999999	16.290000000000003	-1.0		stop_hit	False
+control	KURA	2026-08-13	13.43	9.94	380	True	False		settled		True	10.7399	10.0601	11.4197	-1.0		stop_hit	False	no_entry	triggered_above_limit_never_filled	False		10.0601					False
+control	OMER	2026-08-13	24.43	13.71	390	True	False		settled		True	17.26	15.819999999999997	18.700000000000006	0.27314814814814714		stop_hit	True	settled		True	17.35	15.819999999999997	18.970000000000006	0.871459694989104		stop_hit	True
+control	TBBB	2026-08-13	16.67	42.3	380	True	False		settled		True	45.75	44.0	47.5	1.5024761904761914		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		44.0					False
+control	WWW	2026-08-13	14.91	18.06	345	False	False		abstain	no_930_bar_for_orb	False							False	abstain	no_930_bar_for_orb	False							False
+control	ETON	2026-08-14	23.28	40.8	376	True	False		settled		True	55.4427	50.577299999999994	60.30810000000001	1.0069744179992042		stop_hit	True	settled		True	55.72	50.577299999999994	61.14	0.9526772577310229		stop_hit	True
+control	HTFL	2026-08-14	25.12	31.01	390	True	False		no_trade	setup:stop_too_wide: 2.55 > 1.5x ATR 1.46	False							False	no_trade	setup:stop_too_wide: 2.55 > 1.5x ATR 1.46	False							False
+control	LPTH	2026-08-14	10.03	13.12	390	True	False		settled		True	14.93	14.010000000000002	15.849999999999998	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		14.010000000000002					False
+control	NMAX	2026-08-14	16.75	9.49	389	True	False		settled		True	10.25	9.54	10.96	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		9.54					False
+control	NU	2026-08-14	15	13.93	390	True	False		settled		True	15.88	15.56	16.200000000000003	0.3333333333333352		stop_hit	True	settled		True	15.96	15.56	16.44	-1.0		stop_hit	False
+control	RCAT	2026-08-14	12.32	10.23	390	True	False		settled		True	11.66	10.86	12.46	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		10.86					False
+control	RDDT	2026-08-14	12.24	158.12	390	True	False		settled		True	176.62	173.38	179.86	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		173.38					False
+control	STDN	2026-08-14	12.9	12.09	360	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	UMAC	2026-08-14	19.86	27.24	390	True	False		no_entry	never_crossed_orb_high	False		29.230000000000004					False	no_entry	never_crossed_orb_high	False		29.230000000000004					False
+control	VCX	2026-08-14	15.06	38.5	378	True	False		abstain	entry_window_gaps:4_of_29	False		24.759999999999998					False	no_entry	never_crossed_orb_high	False		24.759999999999998					False
+control	VERA	2026-08-14	14.23	28.89	383	True	False		settled		True	31.29	29.310000000000002	33.269999999999996	0.1717171717171719		sma_trail_stop	False	settled		True	31.45	29.310000000000002	33.75	0.08411214953271026		sma_trail_stop	False
+control	ARGX	2026-08-17	10.53	851.29	368	True	False		settled		True	936.785	914.235	959.3349999999999	2.5209164818920966		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		914.235					False
+control	CBRS	2026-08-17	12.78	218.98	390	True	False		settled		True	228.9	217.98	239.82000000000002	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		217.98					False
+control	OCUL	2026-08-17	17.03	10.04	390	True	False		settled		True	10.85	10.209999999999999	11.49	0.33333333333333337		stop_hit	True	settled		True	10.9	10.209999999999999	11.640000000000002	0.3574879227053143		stop_hit	True
+control	AMLX	2026-08-18	23.43	21.43	390	True	False		settled		True	30.07	27.089999999999996	33.050000000000004	1.3152125279642037		stop_hit	True	settled		True	30.22	27.089999999999996	33.5	1.252183173588923		stop_hit	True
+control	HAE	2026-08-18	16.45	90.27	377	True	False		settled		True	103.74	100.26	107.21999999999998	0.33333333333333337		stop_hit	True	settled		True	104.26	100.26	108.78000000000002	0.3766666666666675		stop_hit	True
+control	BNTX	2026-08-19	18.08	92.75	390	True	False		settled		True	111.65	106.35	116.95000000000002	0.24150943396226382		stop_hit	True	settled		True	111.65	106.35	116.95000000000002	0.24150943396226382		stop_hit	True
+control	DRD	2026-08-19	12.51	24.3	285	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	EIKN	2026-08-19	14.94	11.65	285	True	False		settled		True	13.3	11.879999999999999	14.720000000000002	-1.0		stop_hit	False	settled		True	13.37	11.879999999999999	14.929999999999998	-1.0		stop_hit	False
+control	EL	2026-08-19	16.1	84.27	390	True	False		settled		True	95.0	91.99000000000001	98.00999999999999	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		91.99000000000001					False
+control	KC	2026-08-19	15.2	10.84	379	True	False		no_entry	never_crossed_orb_high	False		11.88					False	no_entry	never_crossed_orb_high	False		11.88					False
+control	MRK	2026-08-19	10.21	135.17	390	True	False		settled		True	149.1	143.76000000000002	154.43999999999997	0.3333333333333333		stop_hit	True	settled		True	149.1	143.76000000000002	154.43999999999997	0.3333333333333333		stop_hit	True
+control	MRNA	2026-08-19	33.1	62.96	390	True	False		settled		True	120.15	109.85	130.45000000000002	1.9547572815533953		stop_hit	True	settled		True	120.75	109.85	132.25	1.847155963302751		stop_hit	True
+control	MRVI	2026-08-19	26.38	5.74	390	True	False		settled		True	7.07	6.363999999999999	7.776000000000002	0.8744098205854558		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.363999999999999					False
+control	MRVL	2026-08-19	11.38	216	390	True	False		settled		True	241.53	230.15	252.91	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		230.15					False
+control	TEM	2026-08-19	16.76	49.36	390	True	False		settled		True	57.0	53.66	60.34	1.4041916167664663		stop_hit	True	settled		True	57.28	53.66	61.18000000000001	1.2955801104972366		stop_hit	True
+control	TWST	2026-08-19	16.7	116.1	388	True	False		settled		True	132.0	123.5	140.5	0.7863529411764714		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		123.5					False
+control	BULL	2026-08-20	15.16	8.64	390	True	False		no_trade	setup:stop_too_wide: 0.54 > 1.5x ATR 0.34	False							False	no_trade	setup:stop_too_wide: 0.54 > 1.5x ATR 0.34	False							False
+control	FUTU	2026-08-20	10.22	109.42	383	True	False		no_trade	setup:stop_too_wide: 9.99 > 1.5x ATR 3.77	False							False	no_trade	setup:stop_too_wide: 9.99 > 1.5x ATR 3.77	False							False
+control	MRVI	2026-08-20	11.77	7.22	390	True	False		settled		True	7.73	7.029999999999999	8.430000000000001	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		7.029999999999999					False
+control	RARE	2026-08-20	11.39	26.24	387	True	False		no_entry	never_crossed_orb_high	False		26.9					False	no_entry	never_crossed_orb_high	False		26.9					False
+control	SCSC	2026-08-20	20.58	51.42	305	True	False		no_entry	never_crossed_orb_high	False		62.120000000000005					False	no_entry	never_crossed_orb_high	False		62.120000000000005					False
+control	CRML	2026-08-21	12.07	5.8	390	True	False		settled		True	6.07	5.859999999999999	6.280000000000001	2.8730158730158624		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		5.859999999999999					False
+control	UUUU	2026-08-21	9.28	13.9	390	True	False		settled		True	14.8	14.370000000000001	15.240000000000002	0.3410852713178307		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		14.370000000000001					False
+control	NSSC	2026-08-24	34.22	38.09	356	True	False		no_trade	setup:stop_too_wide: 2.70 > 1.5x ATR 1.07	False							False	no_trade	setup:stop_too_wide: 2.70 > 1.5x ATR 1.07	False							False
+control	SCTX	2026-08-24	13.3	34.13	267	True	False		settled		True	35.8999	34.65089999999999	37.20970000000001	0.34955964771817455		stop_hit	True	settled		True	35.8391	34.65089999999999	37.02730000000001	0.3333333333333333		stop_hit	True
+control	NBBK	2026-08-25	24.39	22.51	131	True	False		abstain	entry_window_gaps:26_of_29	False		22.39					False	abstain	entry_window_gaps:21_of_24	False		22.39					False
+control	ANF	2026-08-26	28.57	108.9	390	True	False		open_at_horizon		True	134.35	126.12000000000003	142.57999999999996		1.0777642770352402		True	no_entry	triggered_above_limit_never_filled	False		126.12000000000003					False
+control	BHVN	2026-08-26	13.35	14.38	390	True	False		no_entry	never_crossed_orb_high	False		13.22					False	no_entry	never_crossed_orb_high	False		13.22					False
+control	BZ	2026-08-26	15.07	16.29	390	True	False		no_trade	setup:stop_too_wide: 1.19 > 1.5x ATR 0.73	False							False	no_trade	setup:stop_too_wide: 1.19 > 1.5x ATR 0.73	False							False
+control	PLAB	2026-08-26	25.18	29.32	390	True	False		no_trade	setup:stop_too_wide: 3.75 > 1.5x ATR 1.29	False							False	no_trade	setup:stop_too_wide: 3.75 > 1.5x ATR 1.29	False							False
+control	SMMT	2026-08-26	16.32	13.36	390	True	False		settled		True	14.98	14.32	15.64	-1.0		stop_hit	False	settled		True	14.98	14.32	15.64	-1.0		stop_hit	False
+control	CHRN	2026-08-27	12.2	21.15	159	True	False		settled		True	23.0	21.0	25.0	-1.0		stop_hit	False	settled		True	23.11	21.0	25.33	-1.0		stop_hit	False
+control	CRM	2026-08-27	16.11	205.62	390	True	False		open_at_horizon		True	234.4	225.70000000000002	243.1		2.6344827586206927		True	no_entry	triggered_above_limit_never_filled	False		225.70000000000002					False
+control	CRWD	2026-08-27	9.42	189.18	390	True	False		settled		True	210.99	201.28	220.77000000000004	0.3357363542739451		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		201.28					False
+control	DG	2026-08-27	10.92	122.78	390	True	False		settled		True	127.84	125.35999999999999	130.32000000000002	-1.0		stop_hit	False	settled		True	128.48	125.35999999999999	132.23999999999998	0.40170940170940017		stop_hit	True
+control	MBUU	2026-08-27	14.83	26.64	199	True	False		settled		True	30.15	27.0	33.449999999999996	-0.8857142857142859		sma_trail_stop	False	abstain	entry_window_gaps:7_of_24	False		27.0					False
+control	OKTA	2026-08-27	20.15	134.42	390	True	False		open_at_horizon		True	167.88	150.51999999999998	185.24		0.14631336405529896		False	open_at_horizon		True	167.88	150.51999999999998	185.24		0.14631336405529896		False
+control	OOMA	2026-08-27	27.01	20.53	346	True	False		no_trade	setup:zero_range	False							False	no_trade	setup:zero_range	False							False
+control	VEEV	2026-08-27	15.1	244.91	390	True	False		settled		True	281.61	268.48	294.74	0.25158669713125087		stop_hit	True	open_at_horizon		True	283.02	268.48	298.9699999999999		0.09353507565337119		False
+control	AFRM	2026-08-28	15.24	77.49	390	True	False		no_trade	setup:stop_too_wide: 5.19 > 1.5x ATR 3.20	False							False	no_trade	setup:stop_too_wide: 5.19 > 1.5x ATR 3.20	False							False
+control	BEKE	2026-08-28	13.87	17.73	388	True	False		settled		True	18.7	18.320000000000004	19.079999999999995	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		18.320000000000004					False
+control	EROK	2026-08-28	11.56	24.74	104	True	False		abstain	entry_window_gaps:21_of_29	False		23.849999999999998					False	abstain	entry_window_gaps:18_of_24	False		23.849999999999998					False
+control	ESTC	2026-08-28	26.58	83.74	390	True	False		settled		True	106.66	101.12	112.19999999999999	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		101.12					False
+control	GAP	2026-08-28	21.02	20.79	390	True	False		settled		True	25.35	24.019999999999996	26.680000000000007	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		24.019999999999996					False
+control	SOLS	2026-08-28	16.26	56.34	390	True	False		settled		True	66.75	62.69	70.81	-1.0		stop_hit	False	settled		True	67.015	62.69	71.605	-1.0		stop_hit	False
+control	GPRK	2026-08-31	13.07	9.83	364	True	False		open_at_horizon		True	10.32	10.18	10.46		7.8571428571428275		True	no_entry	triggered_above_limit_never_filled	False		10.18					False
+control	SAIC	2026-08-31	13.36	125.96	358	True	False		abstain	entry_window_gaps:2_of_29	False		132.73919999999998					False	abstain	entry_window_gaps:2_of_24	False		132.73919999999998					False
+control	XE	2026-08-31	9.33	17.22	390	True	False		settled		True	17.75	16.83	18.67	0.3333333333333333		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		16.83					False
+control	CRK	2026-09-01	10.46	14.43	389	True	False		no_trade	setup:stop_too_wide: 1.10 > 1.5x ATR 0.58	False							False	no_trade	setup:stop_too_wide: 1.10 > 1.5x ATR 0.58	False							False
+control	FRVO	2026-09-01	15.86	15.38	390	True	False		settled		True	17.1899	15.690100000000001	18.689700000000002	0.3333333333333333		stop_hit	True	settled		True	17.28	15.690100000000001	18.96	0.35222341027737586		stop_hit	True
+control	YEXT	2026-09-01	16.1	6.77	380	True	False		settled		True	7.82	7.475	8.200000000000001	-1.0		stop_hit	False	no_entry	never_crossed_orb_high	False		7.475					False
+control	DAKT	2026-09-02	10.59	19.36	364	True	False		no_trade	setup:stop_too_wide: 1.18 > 1.5x ATR 0.50	False							False	no_trade	setup:stop_too_wide: 1.18 > 1.5x ATR 0.50	False							False
+control	DELL	2026-09-02	12.32	425	390	True	False		settled		True	464.3502	449.6498	479.0505999999999	0.3333333333333333		stop_hit	True	settled		True	464.3502	449.6498	479.0505999999999	0.3333333333333333		stop_hit	True
+control	GTLB	2026-09-02	26.86	45.09	390	True	False		no_trade	setup:stop_too_wide: 3.79 > 1.5x ATR 1.98	False							False	no_trade	setup:stop_too_wide: 3.79 > 1.5x ATR 1.98	False							False
+control	TRAX	2026-09-02	14.77	41.17	351	True	False		settled		True	46.91	41.92	51.89999999999999	-0.8817635270541088		sma_trail_stop	False	settled		True	46.91	41.92	51.89999999999999	-0.8817635270541088		sma_trail_stop	False
+control	YEXT	2026-09-02	12.17	6.53	368	True	False		settled		True	6.85	6.43	7.27	0.33333333333333337		stop_hit	True	no_entry	triggered_above_limit_never_filled	False		6.43					False
+control	AGX	2026-09-03	9.57	410.4	372	True	False		abstain	entry_window_gaps:1_of_29	False		411.37					False	no_entry	never_crossed_orb_high	False		411.37					False
+control	CLYM	2026-09-03	16.61	15.05	389	True	False		open_at_horizon		True	14.4329	12.7671	16.0987		0.09130747988954299		False	open_at_horizon		True	14.51	12.7671	16.33		0.0430317287279827		False
+control	HOOD	2026-09-03	9.77	106.99	390	True	False		open_at_horizon		True	115.9	110.18	121.62		1.360139860139859		True	no_entry	triggered_above_limit_never_filled	False		110.18					False
+control	HSAI	2026-09-03	11.75	16.59	376	True	False		open_at_horizon		True	17.925	17.054999999999996	18.795000000000005		0.6149425287356292		False	no_entry	triggered_above_limit_never_filled	False		17.054999999999996					False
+control	NTSK	2026-09-03	15.2	13.75	390	True	False		no_entry	never_crossed_orb_high	False		13.96					False	no_entry	never_crossed_orb_high	False		13.96					False
+control	SMMT	2026-09-03	10.79	14.6	390	True	False		open_at_horizon		True	16.08	14.950000000000003	17.209999999999994		0.9410029498525104		True	open_at_horizon		True	16.16	14.950000000000003	17.45		0.7851239669421499		False
+control	SNOW	2026-09-03	23.79	305.84	390	True	False		no_entry	never_crossed_orb_high	False		369.92					False	no_entry	never_crossed_orb_high	False		369.92					False
+control	ALAB	2026-09-04	10.04	282.82	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+control	IOT	2026-09-04	15.85	38.75	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+control	NX	2026-09-04	17.59	18.76	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+control	PL	2026-09-04	12.7	18.35	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+control	SWBI	2026-09-04	15.4	12.27	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
+control	VBNK	2026-09-04	10.1	20.59	0	False	False		abstain	no_minute_bars_in_db									abstain	no_minute_bars_in_db								
