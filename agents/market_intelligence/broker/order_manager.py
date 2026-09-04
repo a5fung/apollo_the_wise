@@ -53,6 +53,8 @@ from agents.market_intelligence.db import (
 from agents.market_intelligence.audit_events import (
     SIZING_REGIME_FALLBACK,
     SIZING_NOTIONAL_CAP_TRUNCATED,
+    STOP_UPDATE_RETRY_TRIGGERED,
+    STOP_UPDATE_FAILED,
 )
 
 logger = logging.getLogger(__name__)
@@ -2185,9 +2187,15 @@ async def update_stop(
         )
     except Exception as e:
         logger.error(f"Failed to place new stop for {ticker}: {e}")
+        # #607 (2026-09-04): this is the TRANSIENT half of the old overloaded
+        # `stop_update_failed` type — attempt 1 only, about to retry in 3s and
+        # usually wins (see the #433 note below). Split out so no consumer has
+        # to re-derive "was this the transient one?" from `attempt` in detail —
+        # `stop_update_failed` itself is now reserved for the terminal case
+        # (both attempts failed) a few lines down.
         await log_audit_event(
-            "stop_update_failed",
-            f"{ticker}: place_stop_order raised on first attempt — {type(e).__name__}",
+            STOP_UPDATE_RETRY_TRIGGERED,
+            f"{ticker}: place_stop_order raised on first attempt — {type(e).__name__} — retrying in 3s",
             json.dumps({
                 "trade_id": trade_id, "ticker": ticker,
                 "new_stop_price": new_stop_price, "attempt": 1,
@@ -2260,8 +2268,13 @@ async def update_stop(
                 reason="stop_update_failed",
                 account_mode=account_mode,
             )
+            # #607 (2026-09-04): the TERMINAL half of the old overloaded type —
+            # both attempts raised, nothing live to point at. `stop_update_failed`
+            # is reserved for exactly this case now (see STOP_UPDATE_RETRY_TRIGGERED
+            # above for the transient attempt-1-only case); every reader can treat
+            # this type name alone as "genuinely naked," no `attempt` lookup needed.
             await log_audit_event(
-                "stop_update_failed",
+                STOP_UPDATE_FAILED,
                 f"{ticker}: retry also failed — position naked, {type(e2).__name__}",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker,

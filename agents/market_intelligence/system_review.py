@@ -1077,6 +1077,16 @@ async def _aggregate_audit_errors(days: int) -> dict:
     # ALARM for it — but the audit row still said `_failed`, so this aggregator counted it.
     # Cost: a week of the operator treating a healthy self-heal as an open defect on the stop
     # path, which is the one place a false alarm is most expensive.
+    #
+    # #607 (2026-09-04) FIXED THIS AT THE SOURCE: the raise site now emits
+    # `stop_update_retry_triggered` for the transient attempt-1 case (a name that
+    # contains neither "_failed" nor "error", so it never enters `err_rows`/
+    # `failed_rows` above — this aggregator needs no filter for it going forward)
+    # and reserves `stop_update_failed` for the genuinely terminal case (both
+    # attempts raised). The block below is now a DATED BRIDGE for rows written
+    # BEFORE 2026-09-04 under the old overloaded name, still inside the `days`
+    # lookback window — it is not a second parallel classification path. Delete
+    # it once the lookback window no longer reaches pre-2026-09-04 rows.
     # A SET, not a map: the recovery is proven by this row's own `attempt` field, not by
     # joining to a counterpart row. It was written as {failed: retry_succeeded} and the
     # value was never read — a mapping the code does not perform invites someone to build

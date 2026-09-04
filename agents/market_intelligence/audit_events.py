@@ -106,6 +106,28 @@ SIZING_NOTIONAL_CAP_TRUNCATED = "sizing_notional_cap_truncated"
 NAKED_POSITION_DETECTED = "naked_position_detected"
 NAKED_POSITION_REMEDIATION_FAILED = "naked_position_remediation_failed"
 PARTIAL_EXIT_ABORTED = "partial_exit_aborted"
+# #607 (2026-09-04): `stop_update_failed` used to fire at BOTH the transient
+# attempt-1 place_stop_order failure (order_manager.py's #433 retry-in-3s
+# class — usually wins, protection never lapses) AND the terminal
+# both-attempts-failed case (position genuinely naked). One raw type meant
+# every consumer had to re-derive the distinction from the `attempt` field
+# in `detail`, and one reader (agent.py's /trade timeline) never did — it
+# rendered a healthy self-heal as "update FAILED" (AMLX 08-24..28: 5 of 5
+# "failures" were retries that won). Split at the raise site so the type
+# itself carries the distinction:
+#   STOP_UPDATE_RETRY_TRIGGERED — attempt 1 failed, a 3s retry is in flight.
+#     Deliberately does NOT contain "_failed"/"error" so it falls outside
+#     system_review.py's silent-failure globs (%_failed%, %error%) by
+#     construction — no reader needs a filter to know this is telemetry,
+#     not an open defect. Paired with `stop_update_retry_succeeded` (already
+#     existed) when the retry wins, or `STOP_UPDATE_FAILED` below when it
+#     doesn't.
+#   STOP_UPDATE_FAILED — now fires ONLY when the retry also failed (the
+#     genuinely-naked, terminal case). Pre-2026-09-04 rows still hold the
+#     old overloaded meaning; readers bridge those via `detail.attempt`
+#     (dated bridge, see agent.py/system_review.py — not a new parallel
+#     path).
+STOP_UPDATE_RETRY_TRIGGERED = "stop_update_retry_triggered"
 STOP_UPDATE_FAILED = "stop_update_failed"
 STOP_UPDATE_ABORTED = "stop_update_aborted"
 STOP_ACK_REMEDIATION_FAILED = "stop_ack_remediation_failed"

@@ -6166,6 +6166,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 "ep_catalyst_suppressed", "orb_bar_miss", "orb_bar_fetched",
                 "trade_lifecycle_telegram_attempted", "order_status_reconciled",
                 "stop_update_started", "stop_update_failed", "stop_update_retry_succeeded",
+                "stop_update_retry_triggered",  # #607 (2026-09-04): the renamed attempt-1 half
                 "unified_allocation_decided",
             }
 
@@ -6400,16 +6401,26 @@ class MarketIntelligenceAgent(BaseAgent):
             # Audit events not represented in mi_live_orders: stop-update
             # attempts that failed before producing an order row, and the
             # naked-position window detection. Bounded to alert_date → close.
+            #
+            # #607 (2026-09-04): `stop_update_retry_succeeded` is now IN this
+            # list. Before, a first-attempt place_stop_order failure (the
+            # #433 OTO-leg-vs-refresh transient — retried 3s later and usually
+            # wins, protection never lapsing) rendered here as a bare
+            # `stop_update_failed` with no counterpart row to contradict it —
+            # a healthy self-heal read as an open alarm (AMLX 08-24..28: 5 of
+            # 5 "failures" were retries that won). `detail` is now selected
+            # too so the bridge below can tell a pre-rename attempt-1 row
+            # apart from a genuinely terminal one.
             window_end = trade.get("closed_at") or _dt.now(tz=_ET)
             events = await conn.fetch(r"""
-                SELECT created_at, event_type, summary
+                SELECT created_at, event_type, summary, detail
                 FROM mi_audit_log
                 WHERE created_at >= ($1::date - INTERVAL '1 day')
                   AND created_at <= ($2::timestamptz + INTERVAL '1 day')
                   AND summary ~* ('\m' || $3 || '\M')
                   AND event_type IN (
                       'stop_update_started','stop_update_failed',
-                      'naked_position_detected'
+                      'stop_update_retry_succeeded','naked_position_detected'
                   )
                 ORDER BY created_at ASC
             """, trade["alert_date"], window_end, ticker)
@@ -6524,9 +6535,41 @@ class MarketIntelligenceAgent(BaseAgent):
             # Strip the "TICKER:" prefix and other tracer scaffolding
             summary = _re.sub(rf"^\s*{ticker}:\s*", "", summary)
             if e["event_type"] == "stop_update_failed":
+                # #607 DATED BRIDGE (2026-09-04): before this date, one type
+                # covered BOTH the transient attempt-1 hiccup (retried 3s
+                # later and usually won — order_manager.py's #433 note) and
+                # the genuinely terminal both-attempts-failed case. A
+                # pre-rename attempt-1 row is superseded by its own
+                # `stop_update_retry_succeeded` row (selected below) telling
+                # the true, recovered outcome — rendering this one too would
+                # just repeat "FAILED" over a healthy self-heal, which is the
+                # AMLX bug this fix closes. New rows are always terminal (the
+                # transient case now logs as `stop_update_retry_triggered`,
+                # which this query does not select), so this attempt check is
+                # dead once no pre-rename attempt-1 rows remain in the
+                # retention window — remove it then, not before.
+                try:
+                    attempt = _json.loads(e["detail"] or "{}").get("attempt")
+                except (ValueError, TypeError, AttributeError) as parse_err:
+                    # NARROW + LOUD, deliberately (same rule system_review.py's
+                    # _recovered uses for this exact shape). Fail direction:
+                    # an unreadable detail must never buy silence on the stop
+                    # path — treat it as the terminal (real-alarm) shape.
+                    logger.warning(
+                        "/trade %s: could not read `attempt` from a stop_update_failed "
+                        "row (%s: %s) — rendering as terminal FAILED rather than "
+                        "assuming it self-healed", ticker, type(parse_err).__name__, parse_err)
+                    attempt = None
+                if attempt == 1:
+                    continue
                 stop_items.append((
                     ts,
                     f"  {ts.strftime('%m/%d %H:%M:%S')}  ⚠️ update FAILED — {summary[:90]}",
+                ))
+            elif e["event_type"] == "stop_update_retry_succeeded":
+                stop_items.append((
+                    ts,
+                    f"  {ts.strftime('%m/%d %H:%M:%S')}  ✅ update recovered — {summary[:90]}",
                 ))
             elif e["event_type"] == "naked_position_detected":
                 stop_items.append((

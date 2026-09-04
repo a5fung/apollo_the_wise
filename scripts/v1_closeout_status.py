@@ -138,11 +138,23 @@ SOAK_FAILURE_EVENT_TYPES = [
 ]
 # Deliberately EXCLUDED (transient / self-healing / ambiguous event types —
 # adding them would reset the soak on days the loop actually ran clean):
-#   stop_update_failed            attempt-1 rows self-heal via the 3s retry
-#                                 (stop_update_retry_succeeded); the attempt-2
-#                                 terminal shape nulls the pointer for sync
-#                                 remediation and, if it PERSISTS, is caught by
-#                                 the L1 naked-position invariant (already resets).
+#   stop_update_retry_triggered   (#607, 2026-09-04) attempt-1 place_stop_order
+#                                 failure — self-heals via the 3s retry
+#                                 (stop_update_retry_succeeded); was named
+#                                 `stop_update_failed` (attempt=1) before the
+#                                 2026-09-04 rename split it out, so pre-rename
+#                                 rows of this shape are named `stop_update_failed`
+#                                 in the DB, not this — no code here reads
+#                                 `attempt`, so nothing to bridge: both names sit
+#                                 outside this list either way.
+#   stop_update_failed            terminal only since #607 (2026-09-04) — both
+#                                 attempts raised. Still excluded here (not a
+#                                 vocabulary artifact): it nulls the pointer for
+#                                 sync remediation, and if the naked state
+#                                 PERSISTS, that is caught by the L1
+#                                 naked-position invariant (already resets) —
+#                                 counting it here too would double-reset the
+#                                 same incident.
 #   naked_position_detected       detection marker with an automated remediation
 #                                 path attached (sync_positions Path C / adopt);
 #                                 persistence again lands as an L1 breach.
