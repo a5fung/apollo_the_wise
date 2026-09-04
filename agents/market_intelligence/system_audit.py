@@ -36,7 +36,7 @@ from zoneinfo import ZoneInfo
 _ET = ZoneInfo("America/New_York")
 
 
-from agents.market_intelligence.audit_invariants import all_invariants
+from agents.market_intelligence.audit_invariants import INV_NAKED_POSITION, all_invariants
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.trading_calendar import get_market_status
 from agents.market_intelligence.db import (
@@ -1670,10 +1670,25 @@ async def _emit_l3(metric: MetricSpec, anomaly: Anomaly) -> None:
 # ── Drivers ──────────────────────────────────────────────────────────────────
 
 
-async def _check_invariants(conn, *, since: date, since_dt: datetime, now_et: datetime) -> int:
-    """Run the L1 invariant sweep. Returns count of breaches Telegram-fired."""
+async def _check_invariants(
+    conn, *, since: date, since_dt: datetime, now_et: datetime,
+    skip: frozenset[str] = frozenset(),
+) -> int:
+    """Run the L1 invariant sweep. Returns count of breaches Telegram-fired.
+
+    `skip` excludes named invariants from THIS sweep only — `all_invariants()`
+    itself is unchanged, so `readiness_check.py` (CLI) and `/audit all`
+    (`run_topic_audit`) still see the full list. Added for #604: the 16:15
+    post-EOD sweep is structurally the WRONG time to check naked_position (it
+    sits inside the 16:00 day-order-expiry -> 16:20 post-close-refresh gap),
+    so `run_post_eod_audit` skips it here and two dedicated jobs
+    (`_naked_position_pre_close_check_job` / `_naked_position_post_refresh_check_job`
+    in scheduler.py) check it at times that don't straddle the gap.
+    """
     fired = 0
     for name, fn, kwargs in all_invariants(since=since, since_dt=since_dt, now_et=now_et):
+        if name in skip:
+            continue
         try:
             ok, body = await fn(conn, **kwargs)
         except Exception as e:
@@ -1745,17 +1760,80 @@ async def _current_regime(conn) -> str | None:
 
 
 async def run_post_eod_audit(*, baseline_as_of: date | None = None) -> dict:
-    """16:15 ET — invariants + trade-side metrics."""
+    """16:15 ET — invariants + trade-side metrics.
+
+    #604: naked_position is excluded from THIS sweep. Every historical
+    naked_position L1 firing (2026-08-28, 2026-07-27, 2026-06-23) landed at
+    exactly 16:15:00 — this job's own slot — because a DAY-order stop expires
+    at the 16:00 close and stop_order_id sits NULL until something re-places
+    it. Today that gap closes at 16:20 via `post_close_stop_refresh` (added
+    2026-08-04); on the two earlier historical dates that job didn't exist
+    yet and the re-place instead came from the market-hours
+    `stop_ack_timeout_watchdog` picking it up the next morning (~09:00 ET,
+    confirmed end-to-end only for 08-28 so far — see scripts/probes/
+    _604_naked_l1_historical.sql for the 07-27/06-23 verification, not yet
+    run). Either lifecycle is after-hours/pre-open with no execution risk;
+    16:15 sits inside it regardless of which mechanism eventually closes it.
+    See `run_naked_position_check` for where it's checked instead.
+    """
     today = et_today()
     since = today - timedelta(days=_BASELINE_LOOKBACK_DAYS)
     since_dt = datetime.combine(since, datetime.min.time())
     pool = await get_pool()
     async with pool.acquire() as conn:
-        l1 = await _check_invariants(conn, since=since, since_dt=since_dt, now_et=datetime.now(_ET))
+        l1 = await _check_invariants(
+            conn, since=since, since_dt=since_dt, now_et=datetime.now(_ET),
+            skip=frozenset({INV_NAKED_POSITION}),
+        )
         regime = await _current_regime(conn)
         _, l2, l3 = await _scan_metrics(conn, _TRADE_METRICS, regime, as_of=baseline_as_of)
     summary = {"job": "post_eod", "l1": l1, "l2": l2, "l3": l3}
     logger.info(f"system_audit (post_eod): {l1} L1, {l2} L2, {l3} L3 drift")
+    return summary
+
+
+async def run_naked_position_check() -> dict:
+    """Standalone naked_position L1 check, decoupled from the 16:15 post-EOD
+    sweep (#604 — see `run_post_eod_audit`'s docstring for why it was pulled
+    out). Called from two scheduler slots that bracket the known DAY-stop
+    expiry (16:00 ET) -> post-close-refresh (16:20 ET) gap instead of sitting
+    inside it:
+
+      - 15:55 ET (`_naked_position_pre_close_check_job`, scheduler.py) —
+        BEFORE the 16:00 expiry. Any row this catches is bare DURING market
+        hours, when a stop could actually have been hit — a genuine alarm,
+        same severity as before.
+      - 16:27 ET (`_naked_position_post_refresh_check_job`, scheduler.py) —
+        AFTER the 16:20 refresh has had time to land. A row still bare here
+        means the refresh genuinely failed to re-cover the position — also a
+        genuine alarm.
+
+    Uses the exact same predicate (`check_naked_position`) and the exact
+    same broker-classification + Telegram path (`_emit_l1` /
+    `classify_naked_positions`) as the old 16:15 call — nothing about WHAT
+    counts as naked or HOW it alarms changed, only WHEN it's asked. The
+    existing once-per-day dedup in `_emit_l1` (`count_today_anomalies`)
+    means a real breach caught at 15:55 does not re-fire at 16:27, and a
+    breach that only exists in the expected 16:00-16:20 gap is never asked
+    about at all.
+    """
+    from agents.market_intelligence.audit_invariants import check_naked_position
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        try:
+            ok, body = await check_naked_position(conn)
+        except Exception as e:
+            logger.exception(f"system_audit: naked_position check raised: {e}")
+            return {"job": "naked_position_check", "l1": 0, "error": str(e)}
+    fired = 0
+    if not ok:
+        try:
+            await _emit_l1(INV_NAKED_POSITION, body)
+            fired = 1
+        except Exception:
+            logger.exception("system_audit: _emit_l1 failed for naked_position (breach not recorded)")
+    summary = {"job": "naked_position_check", "l1": fired}
+    logger.info(f"system_audit (naked_position_check): {fired} L1")
     return summary
 
 

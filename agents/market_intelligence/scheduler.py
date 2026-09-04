@@ -176,6 +176,11 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
     # audits / health / methodology
     "post_eod_audit", "post_nightly_audit", "weekly_system_review", "drift_check",
+    # #604 — naked_position L1 pulled out of post_eod_audit's 16:15 slot (which
+    # sat inside the 16:00 stop-expiry -> 16:20 refresh gap) into these two;
+    # same read-only DB check + on-breach broker read as post_eod_audit always
+    # did, same INTELLIGENCE classification.
+    "naked_position_pre_close_check", "naked_position_post_refresh_check",
     "monthly_backward_check_sweep", "news_quality_drift_check",
     "source_gap_finder", "backup_health_check", "telegram_poll_watchdog",
     "weekly_cleanup",
@@ -2395,6 +2400,14 @@ async def _post_eod_audit_job():
     Reads settled `mi_live_trades` rows after 4:05 EOD cleanup and 4:10 recap.
     L1 invariant breaches and L2 metric anomalies fire Telegram immediately;
     L3 drift is silent (rolled up in Sunday digest).
+
+    #604: naked_position is NOT part of this sweep — see
+    `_naked_position_pre_close_check_job` / `_naked_position_post_refresh_check_job`
+    below. This slot (16:15) sits right after the 16:00 DAY-order stop expiry
+    with no replacement stop placed yet (today that's the 16:20
+    post_close_stop_refresh; before it existed, 2026-07-27/06-23 relied on
+    the next-morning stop_ack_timeout_watchdog instead) — a known, harmless
+    gap naked_position used to false-fire in every time.
     """
     logger.info("Post-EOD audit starting...")
     try:
@@ -2404,6 +2417,49 @@ async def _post_eod_audit_job():
     except Exception as e:
         logger.error(f"Post-EOD audit failed: {e}", exc_info=True)
         await notify_job_failure("post_eod_audit", str(e))
+
+
+async def _naked_position_pre_close_check_job():
+    """Run at 3:55 PM ET. Naked-position L1 check BEFORE the 16:00 close (#604).
+
+    A DAY-order stop expires at the 16:00 close; checking naked_position
+    right after that (the old 16:15 slot) means checking inside a known,
+    harmless, after-hours gap before anything re-places the stop — every
+    historical firing (2026-08-28, 2026-07-27, 2026-06-23) landed there. This
+    slot runs while the market is STILL OPEN (this is a point-in-time check,
+    not continuous — continuous market-hours coverage is the separate,
+    unmodified `stop_ack_timeout_watchdog`, 9-15 ET every 30s), so a row it
+    catches is a genuinely bare position during market hours — a real alarm,
+    not the gap artifact.
+    """
+    logger.info("Naked-position pre-close check starting...")
+    try:
+        from agents.market_intelligence.system_audit import run_naked_position_check
+        result = await run_naked_position_check()
+        logger.info(f"Naked-position pre-close check: {result}")
+    except Exception as e:
+        logger.error(f"Naked-position pre-close check failed: {e}", exc_info=True)
+        await notify_job_failure("naked_position_pre_close_check", str(e))
+
+
+async def _naked_position_post_refresh_check_job():
+    """Run at 4:27 PM ET. Naked-position L1 check AFTER the 4:20 PM post-close
+    stop refresh (#604).
+
+    Gives the refresh (post_close_stop_refresh, 16:20 ET) a 7-minute buffer to
+    finish before asking. If a position is STILL bare at this point, the
+    refresh genuinely failed to re-cover it and this is a real alarm — not a
+    replacement for the refresh job (untouched), just a later look at its
+    result.
+    """
+    logger.info("Naked-position post-refresh check starting...")
+    try:
+        from agents.market_intelligence.system_audit import run_naked_position_check
+        result = await run_naked_position_check()
+        logger.info(f"Naked-position post-refresh check: {result}")
+    except Exception as e:
+        logger.error(f"Naked-position post-refresh check failed: {e}", exc_info=True)
+        await notify_job_failure("naked_position_post_refresh_check", str(e))
 
 
 async def _crypto_nightly_ingest_job():
@@ -6123,6 +6179,29 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=1800,
     )
 
+    # Naked-position pre-close check: 3:55 PM ET (#604) — before the 16:00
+    # DAY-order stop expiry. See run_post_eod_audit's docstring: naked_position
+    # used to be checked at 16:15, squarely inside the 16:00 expiry -> 16:20
+    # refresh gap, and false-fired there every time (08-28, 07-27, 06-23).
+    _scheduler.add_job(
+        audit_wrap(_naked_position_pre_close_check_job, "naked_position_pre_close_check"),
+        CronTrigger(hour=15, minute=55, day_of_week="mon-fri", timezone="America/New_York"),
+        id="naked_position_pre_close_check",
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+
+    # Naked-position post-refresh check: 4:27 PM ET (#604) — 7 min after the
+    # 16:20 post_close_stop_refresh above, so a still-bare position here is a
+    # genuine refresh failure, not the expected expiry->refresh gap.
+    _scheduler.add_job(
+        audit_wrap(_naked_position_post_refresh_check_job, "naked_position_post_refresh_check"),
+        CronTrigger(hour=16, minute=27, day_of_week="mon-fri", timezone="America/New_York"),
+        id="naked_position_post_refresh_check",
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+
     # ORB window cleanup: 10:00 AM ET — cancel unfilled entries once ORB window
     # closes. Prevents stop-limit buys sitting for hours and filling on
     # dead-cat-bounce retests well outside the setup's validity window.
@@ -6331,6 +6410,9 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Post-EOD audit: 4:15 PM ET — trade-side invariants + metrics, runs after
     # 4:05 cleanup and 4:10 recap so trade rows reflect settled state.
+    # #604: naked_position invariant excluded here (see run_post_eod_audit) —
+    # checked instead at 15:55 and 16:27 below, bracketing the 16:00 expiry ->
+    # 16:20 refresh gap this slot used to sit inside.
     _scheduler.add_job(
         audit_wrap(_post_eod_audit_job, "post_eod_audit"),
         CronTrigger(hour=16, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
