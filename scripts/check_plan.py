@@ -1202,6 +1202,8 @@ def main(argv: list[str]) -> int:
             n = int(argv[idx + 1])
         except (IndexError, ValueError):
             print('usage: check_plan.py --carryover <N> "<reason>"')
+            print("  <N> is HOW MANY MORE tasks to allow, NOT the target count.")
+            print("  To end a day at 78 from a baseline of 77, N is 1.")
             return 2
         reason = argv[idx + 2].strip() if idx + 2 < len(argv) else ""
         if not reason:

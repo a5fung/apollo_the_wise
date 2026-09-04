@@ -307,5 +307,10 @@
     "id": 621,
     "status": "pending",
     "title": "Close out the 2026-09-03 code-review findings \u2014 no DB read in the market agent has a time limit, and one now sits in front of placing a protective stop"
+  },
+  {
+    "id": 622,
+    "status": "pending",
+    "title": "Is there an edge in the small caps the $500M floor throws away? CHPT was a textbook EP it dropped"
   }
 ]
