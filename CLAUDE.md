@@ -348,9 +348,9 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-08-27 — judge rubric v4 · Perplexity on the Agent API · real-time gap live
+### 2026-09-04 — #624 low-cap EP lane shipped as a SHADOW recorder
 
-- Detail in `CHANGELOG.md` + `docs/setups/magna53_ep.md`.
+- Rule + evidence + THE-LINE proof: `docs/setups/magna53_ep.md` §"Low-cap lane". Lesson: `get_fmp_profile` is yfinance, not FMP.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

@@ -12,6 +12,11 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 ---
 
 
+### 2026-08-27 — judge rubric v4 · Perplexity on the Agent API · real-time gap live (graduated from CLAUDE.md 2026-09-04)
+
+- Detail in `docs/setups/magna53_ep.md` change log 2026-08-27 (#602 / #233 / #559).
+
+
 ### 2026-08-09 — measure the guard before building it (graduated from CLAUDE.md 2026-08-11)
 
 - Specced a delegation gate, measured 37 session-days, did NOT build it (complaint days sit inside

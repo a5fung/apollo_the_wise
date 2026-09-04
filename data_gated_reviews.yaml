@@ -10923,3 +10923,102 @@ reviews:
                  "agents/market_intelligence/live_fill_counterfactuals.py",
                  "agents/market_intelligence/rule_eras.py",
                  "agents/market_intelligence/ep_detector.py"]
+
+  - review_id: lowcap_lane_graduation_624
+    title: "#624 low-cap lane (SHADOW) — enough replayed walks to read the TAIL RATE the evidence could not pin, gated on the #545 ENTRY/EXIT TACTICS PROGRAM"
+    question: >-
+      The MAGNA53 low-cap lane (docs/setups/magna53_ep.md "Low-cap lane": a $5+ stock under
+      $500M market cap that gaps 15% or more and whose volume by the 09:31 tick already ranks
+      in the top 10% of its own trailing history) records every candidate at the scan tick
+      (mi_lowcap_lane_signals) and walks each one nightly under the CURRENT MAGNA53 bracket
+      from its own tick wall-clock (mi_lowcap_lane_replays). On the #622/#623 evidence the
+      rule cell was n=46 at +0.527R — but TWO trades (WETO +12.08R, FBRX +10.71R) were 94% of
+      the sum, ex-both n=44 read +0.03R, and both thresholds sit just under those two trades'
+      own coordinates. That is the shape of a TAIL strategy (4 of 46 walks reached >=3R;
+      the healthy reference year is 13% of trades >=3R carrying +0.95R), and n=46 cannot pin
+      the tail rate to better than a factor of five. This review fires when the shadow has
+      accrued enough SETTLED walks to read that rate on today's population (only nine of the
+      46 evidence rows were on the current selection stack) — sample sufficiency only.
+    # WHY THE REGISTRY GATE IS NOT ENOUGH (db._seed_strategies_registry, magna53_lowcap):
+    # promotion._eval_unpaired_r gates on the MEDIAN R, and with 37% of this lane's outcomes at
+    # exactly +0.33R (the +2R-partial-then-breakeven scratch) and 35% at -1.00R the median is
+    # +0.33 — a 0.0 median bar would PASS a losing lane, and the seeded 0.5 would BLOCK a
+    # winning tail lane forever. `min_median_r` is therefore null on both rungs and THIS entry
+    # is the real gate: it counts TAIL EVENTS, not trades.
+    #
+    # ⚖ THE EXIT PRECONDITION IS #545 — the ENTRY/EXIT TACTICS PROGRAM (operator 2026-08-07:
+    # "EP stocks is a winning cohort overall... however, entry/exit tactics is the big
+    # challenge... run multiple variations of all the parameters"), promoted to the next big
+    # rock on 2026-09-04. NOT "limit-exit reversion" — a relayed note mis-named it; the PLAN.md
+    # line is the authority. Why the binding is to #545 specifically and not to exit work in
+    # general: 37% of the lane's measured outcomes ARE the +2R-partial scratch, so if #545
+    # concludes the partial/exit mechanics change, the lane's edge is RE-PRICED, not merely
+    # delayed — every replay row must be RE-WALKED under the new exit era (stored bars, $0)
+    # before it counts. predicate_sql runs in Postgres and cannot read PLAN.md, so the #545
+    # precondition is enforced in action_when_ready (below) and pinned by
+    # tests/test_624_lowcap_lane.py, not in SQL.
+    predicate_sql: |
+      SELECT CASE WHEN to_regclass('mi_lowcap_lane_replays') IS NULL THEN 0 ELSE (
+        -- SAMPLE SUFFICIENCY ONLY: >=30 settled walks AND >=20 distinct tickers (the evidence
+        -- had WETO x5, JLHL x5, DFNS x4, ADVB x4 — serial pump names; a live 60-day cooldown
+        -- would have cut the 46 to 29). No rate, no R bar is embedded here — those are read
+        -- in action_when_ready and every threshold in it is the operator's to move.
+        SELECT CASE WHEN COUNT(*) FILTER (WHERE outcome = 'settled') >= 30
+                     AND COUNT(DISTINCT ticker) FILTER (WHERE outcome = 'settled') >= 20
+                    THEN 1 ELSE 0 END
+        FROM mi_lowcap_lane_replays
+      ) END;
+    threshold: 1          # the predicate returns 1/0 (ready / not ready), not a row count
+    # Reads ONE table. Every row is lane-framed by construction (sub-$500M, gap>=15,
+    # vol pct>=90 at the tick); admission_era + replay_exit_era are the two dimensions a
+    # later read must segment on (a MAGNA53 stack that has since changed may not generalise;
+    # a row walked under an older exit era must be re-walked before it counts).
+    discriminates_on: [mi_lowcap_lane_replays.admission_era, mi_lowcap_lane_replays.replay_exit_era]
+    earliest_review_date: 2026-10-16
+    status: pending
+    kind: accrual
+    added_on: 2026-09-04
+    action_when_ready: |
+      This fires on SAMPLE SUFFICIENCY only (>=30 settled walks, >=20 distinct tickers). It is
+      NOT a graduation. Shadow -> paper requires ALL of the following, read from
+      mi_lowcap_lane_replays joined to mi_lowcap_lane_signals, and then the operator's
+      sign-off (THE LINE — the phase flip is `/strategy magna53_lowcap promote`, his alone):
+        1. >=30 settled walks under the exit era the paper flip would TRADE — rows whose
+           replay_exit_era is older than the current one are RE-WALKED from stored minute bars
+           ($0) before they count.
+        2. >=4 settled walks >=3R (meets_3r) — TAIL EVENTS, the thing the evidence has 4 of.
+        3. mean realized_r with the top-2 rows removed >= 0 (the evidence's ex-top-2 is +0.03).
+        4. no single ticker > 40% of the summed R, and >=20 distinct tickers.
+        5. P14 volume cost stated: signals per session (mean and max) from mi_lowcap_lane_signals.
+        6. P1 recall: the CHPT member of tests/fixtures/must_not_miss_eps.py (declared
+           abstention today) is admitted by the recording rule — flip it to asserted.
+        7. fillability on record: median quoted_spread_bps and bid_size/ask_size at the tick
+           for the admitted set (mi_lowcap_lane_signals) — the operator accepted this risk and
+           required the record; the paper rung is where it becomes evidence.
+        8. ⚖ THE #545 EXIT PRECONDITION — the ENTRY/EXIT TACTICS PROGRAM has produced an exit
+           change that has SHIPPED and is VERIFIED LIVE, defined so it cannot be argued:
+           (a) a dated change-log entry in docs/setups/exit_discipline.md with a reversion
+           flag, (b) a new EXIT switch date in rule_eras.py (exit_rules_as_of composes it),
+           (c) `python scripts/live_rules.py --drift-only` reads 0 findings with prod at that
+           commit, (d) >=5 real closed fills whose mi_live_trades.exits legs show the new rule
+           ACTING at the broker, (e) `python scripts/ep_replay.py validate` re-run over those
+           fills passes its floors. Only then is condition 1 re-walked under that era. If
+           #545 concludes the current exit stands, the operator says so in writing and this
+           condition is met by that ruling.
+      REFUSE to propose graduation if ANY of: the summed R still rests on <=2 names at n>=60;
+      ex-top-2 mean < 0; tail rate (>=3R) < 5% at n>=60; the admitted set is dominated by
+      sub-$25M / extension-blocked serial names (the WETO/DFNS class — a pump lane, not an EP
+      lane); or mi_lowcap_lane_signals.blocking_filters shows the population is mostly names
+      the extension guard blocked (19 of 46 on the evidence — waiving it reverses the operator's
+      2026-08-29 signed revert and the group ex-WETO is -0.014R; DO NOT propose it).
+      Report every number in plain words beside its meaning; the waiver set the paper flip
+      would need (cap floor, and any of ATR / ADV$) is HIS pick, one CHANGE_PROCESS entry per
+      waiver with N>=10 — never pre-decided here.
+    cross_refs: ["task #624", "task #545", "task #622", "task #623",
+                 "docs/setups/magna53_ep.md",
+                 "docs/setups/exit_discipline.md",
+                 "agents/market_intelligence/lowcap_lane.py",
+                 "agents/market_intelligence/lowcap_lane_replay.py",
+                 "agents/market_intelligence/strategies/adapters.py",
+                 "agents/market_intelligence/rule_eras.py",
+                 "tests/fixtures/must_not_miss_eps.py"]

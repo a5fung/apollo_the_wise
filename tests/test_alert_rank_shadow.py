@@ -1049,6 +1049,10 @@ def test_nothing_outside_this_module_imports_alert_rank_shadow():
         str(REPO / "agents/market_intelligence/alert_rank_shadow.py"),
         str(REPO / "agents/market_intelligence/scheduler.py"),
         str(REPO / "agents/market_intelligence/db.py"),
+        # 2026-09-04 (#624): the low-cap lane's nightly walker imports the PURE
+        # compute_atr14_prior (the same reuse as sustain_reject_replay / gap_near_miss_replay
+        # — a prior-days-only ATR, never a decision-path import).
+        str(REPO / "agents/market_intelligence/lowcap_lane_replay.py"),
         # 2026-08-16 cleanup review finding 1 Fix B: a READ-ONLY liveness row (telemetry
         # watching telemetry, no write path back into alert_rank_shadow) — see that
         # module's own docstring for why this is not THE LINE breach this test guards.

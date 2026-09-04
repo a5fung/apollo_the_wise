@@ -415,6 +415,64 @@ async def get_alpaca_minute_cum_volumes(tickers: list[str], now_et: datetime,
     return out
 
 
+async def get_alpaca_latest_quotes(tickers: list[str], timeout_s: float = 6.0) -> dict[str, dict]:
+    """#624 low-cap lane — ONE batched Alpaca latest-NBBO call for a small ticker set (the
+    lane's free-term survivors, typically 0-3 a tick). Returns
+    {ticker: {"bid", "ask", "bid_size", "ask_size", "ts"}} — the fillability record the
+    operator required of the lane (quoted spread + DEPTH at the tick), which
+    `broker.alpaca_client.get_latest_quote` does not carry (bid/ask only, single symbol) and
+    which an intelligence-side module may not import in any case (the #256 boundary).
+    Same credential + feed discipline as `get_alpaca_minute_cum_volumes` above. Symbols with
+    no quote, or a zero/absent ask, are OMITTED (no information is not a cheap offer).
+    NEVER raises; {} on any failure — the lane records NULL fillability for that tick."""
+    if not tickers:
+        return {}
+    try:
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockLatestQuoteRequest
+        from alpaca.data.enums import DataFeed
+    except ImportError as e:
+        logger.warning(f"alpaca-py quotes import failed: {e}")
+        return {}
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret:
+        logger.warning("Alpaca credentials not set; skipping latest quotes")
+        return {}
+    feed = DataFeed.SIP if os.environ.get("ALPACA_DATA_FEED", "iex").lower() == "sip" else DataFeed.IEX
+    client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
+    loop = asyncio.get_event_loop()
+    try:
+        req = StockLatestQuoteRequest(symbol_or_symbols=list(tickers), feed=feed)
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda r=req: client.get_stock_latest_quote(r)),
+            timeout=timeout_s,
+        )
+    except Exception as e:  # loud-ok: shadow fillability record degrades to NULL, never blocks anything
+        logger.warning(f"Alpaca latest-quote batch failed ({len(tickers)} syms): {e}")
+        return {}
+    out: dict[str, dict] = {}
+    for sym in tickers:
+        try:
+            q = result.get(sym) if hasattr(result, "get") else None
+            if q is None:
+                continue
+            ask = float(getattr(q, "ask_price", 0) or 0)
+            bid = float(getattr(q, "bid_price", 0) or 0)
+            if ask <= 0:
+                continue
+            ts = getattr(q, "timestamp", None)
+            out[sym] = {
+                "bid": bid, "ask": ask,
+                "bid_size": float(getattr(q, "bid_size", 0) or 0),
+                "ask_size": float(getattr(q, "ask_size", 0) or 0),
+                "ts": ts if isinstance(ts, datetime) else None,
+            }
+        except Exception:  # loud-ok: one malformed symbol skipped — that ticker records NULL fillability
+            continue
+    return out
+
+
 async def get_alpaca_minute_closes(tickers: list[str], now_et: "datetime",
                                    lookback_min: int = 15,
                                    timeout_s: float = 6.0) -> dict[str, list]:

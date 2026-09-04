@@ -60,6 +60,23 @@ _filters_stub = sys.modules.get(
 for _attr in ("validate_orb_entry", "check_filters", "compute_atr_14"):
     if not hasattr(_filters_stub, _attr):
         setattr(_filters_stub, _attr, MagicMock(name=_attr))
+# #624 (2026-09-04): the lane imports the three FILTER THRESHOLDS by name (the "imported,
+# never restated" rule — its cap ceiling IS the live floor). A MagicMock threshold would make
+# every `>=` comparison raise, and a literal copy here would drift the day filters.py moves.
+# So the stub carries the REAL values, read from filters.py's own source text (no import —
+# the real module drags heavy deps, which is why it is stubbed at all).
+import re as _re
+from pathlib import Path as _Path
+_filters_src = (_Path(__file__).resolve().parent.parent
+                / "agents" / "market_intelligence" / "backtester" / "filters.py").read_text()
+for _name in ("MIN_ADV_DOLLAR_VOLUME", "MAX_ATR_PCT", "MIN_MARKET_CAP"):
+    if not hasattr(_filters_stub, _name):
+        _m = _re.search(rf"^{_name}\s*=\s*([\d_.]+)", _filters_src, _re.M)
+        if _m is None:
+            raise RuntimeError(f"conftest: {_name} is no longer a numeric literal in "
+                               f"backtester/filters.py — update the stub reader")
+        _lit = _m.group(1).replace("_", "")
+        setattr(_filters_stub, _name, float(_lit) if "." in _lit else int(_lit))
 sys.modules["agents.market_intelligence.backtester.filters"] = _filters_stub
 
 _tracker_stub = sys.modules.get(

@@ -154,6 +154,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "live_fill_counterfactuals",  # #482 2026-09-03 — stop/harvest counterfactuals recorded beside every MAGNA53 fill; pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "sustain_reject_replay",  # #593 2026-09-03 — CURRENT-era bracket replay on every net-declined ep_rt_sustain_reject name (4R+/positive, not a price move); pure compute + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "gap_near_miss_replay",  # #617 Step 2 2026-09-03 — standing CURRENT-era bracket replay on every 7-9% open-gap name universe admission excluded that day (4R+/positive); pure compute + DB/audit, no broker calls, no admission change, SILENT (no Telegram)
+    "lowcap_lane_replay",  # #624 2026-09-04 — CURRENT-era bracket replay on every low-cap lane signal, from the row's OWN tick wall-clock (tail rate >=3R, next-open gap, offering flag); pure compute + market-data read + DB/audit, no order path, no admission change, SILENT (no Telegram)
     "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "book_concentration",  # #452 R1 Stage 1 — correlated-book telemetry (premortem TOP risk); read-only + audit, Telegram only when flagged
@@ -4597,6 +4598,32 @@ async def _gap_near_miss_replay_job():
         await notify_job_failure("gap_near_miss_replay", str(e))
 
 
+async def _lowcap_lane_replay_job():
+    """Run at 18:15 ET (EOD, after the 18:14 gap-near-miss sibling; needs today's
+    mi_daily_closes row, and fetches day-0 minute bars itself for never-alerted names). #624
+    (2026-09-04): for every low-cap lane signal (mi_lowcap_lane_signals — the sub-$500M names
+    that cleared the lane's gap + volume-percentile terms at a post-open scan tick),
+    reconstruct the CURRENT-era MAGNA53 entry FROM THAT ROW'S OWN TICK and walk the SAME live
+    exit ladder — the tail rate (>=3R) is the number the shadow exists to resolve. RECORD
+    ONLY — no broker order path, no live-trade mutation, no admission change, no Telegram
+    (THE LINE; see lowcap_lane_replay.py docstring). run_lowcap_lane_replay never raises;
+    the guard here is the last-resort wrapper only."""
+    try:
+        from agents.market_intelligence.lowcap_lane_replay import run_lowcap_lane_replay
+        from agents.market_intelligence.collector import et_today
+        out = await run_lowcap_lane_replay(et_today())
+        logger.info(
+            f"low-cap lane replay: {out['written']} row(s) written across "
+            f"{out['population']} lane signal(s) ({out['candidates']} candidate(s) processed) — "
+            f"{out['settled']} settled, {out['no_trade']} no_trade, {out['unscoreable']} unscoreable, "
+            f"{out['open']} open, {out['horizon']} at horizon, {out['pending']} pending, "
+            f"{out['errors']} error(s)"
+        )
+    except Exception as e:
+        logger.error(f"low-cap lane replay job failed: {e}", exc_info=True)
+        await notify_job_failure("lowcap_lane_replay", str(e))
+
+
 async def _alert_rank_shadow_job():
     """Run at 17:53 ET (after the 17:00 nightly close pull refreshes mi_daily_closes and
     the 17:50 exit-path shadow — same family, +3 min spacing convention).
@@ -5844,6 +5871,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_gap_near_miss_replay_job, "gap_near_miss_replay"),
         CronTrigger(hour=18, minute=14, day_of_week="mon-fri", timezone="America/New_York"),
         id="gap_near_miss_replay",
+        replace_existing=True,
+    )
+
+    # #624 LOW-CAP LANE REPLAY — 18:15 ET mon-fri (EOD shadow family, after the 18:14
+    # gap-near-miss sibling). For every lane signal recorded at the scan tick, walks the
+    # CURRENT-era MAGNA53 bracket from the row's OWN tick wall-clock and records the tail
+    # (>=3R), the next-open gap and the offering flag — pure compute + a market-DATA read for
+    # day-0 minutes + DB/audit, no order path, no admission change, no Telegram (THE LINE;
+    # see lowcap_lane_replay.py docstring).
+    _scheduler.add_job(
+        audit_wrap(_lowcap_lane_replay_job, "lowcap_lane_replay"),
+        CronTrigger(hour=18, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
+        id="lowcap_lane_replay",
         replace_existing=True,
     )
 

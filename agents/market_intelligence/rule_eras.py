@@ -113,6 +113,16 @@ ADMISSION_SWITCHES: tuple[tuple[date, str, str, date], ...] = (
      "flipped from alphabetical to prior-day RS (Sun 2026-08-30, #533) — one acting session",
      date(2026, 8, 29)),
 )
+# ⚠ #624 (2026-09-04) — the LOW-CAP LANE SHADOW deliberately has NO row here, and this is
+# the "check by eye" note the maintenance rule above asks for. Its magna53_ep.md change-log
+# entry (### 2026-09-04) records a RECORDER, not an admission change: the lane writes
+# mi_lowcap_lane_signals / mi_lowcap_lane_replays and admits nothing — MAGNA53's filter set
+# is byte-identical with the hook on or off (test-pinned). A row here would relabel every
+# MAGNA53 fill from that session as a new era with an identical stack, splitting the
+# #482/#593/#617 `admission_era` segmentation for nothing. The lane's own rows stamp
+# admission_era_as_of(session_date) so they segment on MAGNA53's real switches. The row
+# LANDS WITH THE PAPER FLIP (`/strategy magna53_lowcap promote`) — that IS a change to who
+# gets admitted, and needs its own dated change-log entry + a row on the same commit.
 PRE_SWITCH_ADMISSION_ERA = "adm_pre_2026-08-20"
 
 

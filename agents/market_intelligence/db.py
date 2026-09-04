@@ -250,6 +250,35 @@ async def _seed_strategies_registry(conn) -> None:
             },
         },
         {
+            # #624 (2026-09-04, operator-approved): the LOW-CAP LANE of MAGNA53 — not a new
+            # setup (buy point, stop, target and harvest are MAGNA53's, unchanged; only the
+            # universe differs: cap < $500M, the floor the live filter enforces). SHADOW ONLY:
+            # it records (mi_lowcap_lane_signals at the scan tick, mi_lowcap_lane_replays
+            # nightly) and never submits, scores, alerts or touches slot allocation. The
+            # rule sentence + evidence: docs/setups/magna53_ep.md "Low-cap lane".
+            # `min_median_r` is DELIBERATELY null on BOTH rungs: promotion._eval_unpaired_r
+            # gates on the MEDIAN, and with 37% of this lane's replayed outcomes at exactly
+            # +0.33R (the +2R-partial-then-breakeven scratch) and 35% at -1.00R, a 0.0 median
+            # bar would PASS a losing lane while the seeded 0.5 would BLOCK a winning tail
+            # lane forever. The real gate is the accrual review
+            # `lowcap_lane_graduation_624` in data_gated_reviews.yaml (tail events, ex-top-2
+            # mean, ticker concentration, fillability, and the #545 exit precondition).
+            # `min_closed` stays as the registry's sample floor. max_concurrent_positions is
+            # NULL: the lane's slot allocation is the operator's number (THE LINE), set at
+            # the paper flip, never here.
+            "strategy_id": "magna53_lowcap",
+            "name": "MAGNA53 low-cap lane (shadow)",
+            "family": "orb_long",
+            "phase": "shadow",
+            "signal_type": "magna53_lowcap",
+            "outcomes_table": "mi_lowcap_lane_replays",
+            "promotion_model": "unpaired_r",
+            "promotion_thresholds": {
+                "shadow_to_paper": {"min_closed": 30, "min_median_r": None},
+                "paper_to_live": {"min_closed": 30, "min_median_r": None},
+            },
+        },
+        {
             "strategy_id": "parabolic_short",
             "name": "Parabolic Short",
             "family": "short",
@@ -3382,6 +3411,137 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS settle_version TEXT NOT NULL DEFAULT '';
             ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS settled_session DATE NOT NULL DEFAULT '1970-01-01';
             ALTER TABLE mi_gap_near_miss_replays ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+            -- 2026-09-04 — #624 LOW-CAP EP LANE, SHADOW ONLY (lowcap_lane.py writes signals,
+            -- lowcap_lane_replay.py writes replays). THE RULE (docs/setups/magna53_ep.md,
+            -- "Low-cap lane"): a $5+ stock under $500M market cap that gaps 15% or more and whose
+            -- volume by the 09:31 tick already ranks in the top 10% of its own trailing history
+            -- is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.
+            -- THE LINE: the lane RECORDS. Nothing here is read by any scoring / tier / alert /
+            -- entry / sizing / safeguard path; the tick hook in run_ep_scan snapshots the
+            -- candidate board and does every read it needs in a detached task (never on the ORB
+            -- critical path), the walker is a nightly sibling of mi_gap_near_miss_replays.
+            -- ONE row per (ticker, scan_date) — the FIRST post-open tick at which the rule held
+            -- (ON CONFLICT DO NOTHING); `tick_wallclock_et` is that tick, and the walker submits
+            -- from it (never a fixed 09:31 — #622 showed the sign flips at 09:36).
+            -- The three lane thresholds are STAMPED on every row (`lane_*`) so a later reader
+            -- never infers them from a date (the #606 `acting_*_floor` convention).
+            -- RETENTION: deliberately ABSENT from purge_old_data (kept forever) — same evidence
+            -- class as mi_gap_near_miss_replays / mi_live_fill_counterfactuals.
+            CREATE TABLE IF NOT EXISTS mi_lowcap_lane_signals (
+                id                       SERIAL PRIMARY KEY,
+                ticker                   TEXT NOT NULL,
+                scan_date                DATE NOT NULL,
+                tick_wallclock_et        TIMESTAMPTZ NOT NULL,   -- the scan tick that admitted the name to the lane (the walker's submit time derives from it)
+                minutes_since_open       INT,
+                gap_pct                  DOUBLE PRECISION NOT NULL,  -- the ACTING gap on the candidate at the tick (c["gap_pct"] — rt when the rt overlay decided, else delayed)
+                gap_pct_rt               DOUBLE PRECISION,
+                gap_pct_delayed          DOUBLE PRECISION,
+                price_source             TEXT,
+                prev_close               DOUBLE PRECISION,
+                current_price            DOUBLE PRECISION,
+                market_cap               DOUBLE PRECISION,       -- yfinance profile read at the tick via a LANE-LOCAL cache — never backtester.filters._mcap_cache (a lane read must not pin the acting cache)
+                market_cap_source        TEXT,
+                today_volume_delayed     DOUBLE PRECISION NOT NULL,  -- the ACTING reading: the Polygon snapshot volume the scan itself ranks on (what nearly all 46 evidence rows used)
+                today_volume_rt          DOUBLE PRECISION,       -- Alpaca minute-bar cumulative (pm + session) fetched alongside; stored, never acting
+                rt_pm_bars               INT,
+                rt_session_bars          INT,
+                acting_volume_source     TEXT NOT NULL DEFAULT 'delayed',
+                vol_percentile           DOUBLE PRECISION NOT NULL,  -- ep_detector._volume_percentile(today_volume_delayed, rolling-20d-mean history from mi_daily_closes)
+                vol_history_n            INT NOT NULL,
+                extension_pct            DOUBLE PRECISION,       -- (prev_close - min close over the prior ~5 sessions) / min close x 100 — the extension gate's compared value
+                quality_adv_dollar       DOUBLE PRECISION,       -- backtester.filters.check_filters(skip_mcap=True) compared values (stage-honest: NULL past its kill point)
+                atr_pct                  DOUBLE PRECISION,
+                blocking_filters         JSONB NOT NULL,         -- [{gate, value, threshold, reason}] — every OTHER MAGNA53 gate the name failed at the tick (cap is implied by lane membership)
+                rank_by_prescore         INT,
+                rank_by_gap              INT,
+                in_shortlist             BOOLEAN,                -- acting rank <= SHORTLIST_SIZE — did the scored loop ever see this name
+                days_since_prior_alert   INT,                    -- from the live cooldown map (60d window)
+                days_since_prior_lane_signal INT,                -- from THIS table — the cooldown keys on ALERTS and the shadow emits none, so the deduped read is computable from here
+                bid_px                   DOUBLE PRECISION,       -- Alpaca latest NBBO at the tick — the operator's fillability requirement, the one thing four studies never measured
+                ask_px                   DOUBLE PRECISION,
+                bid_size                 DOUBLE PRECISION,
+                ask_size                 DOUBLE PRECISION,
+                quoted_spread_bps        DOUBLE PRECISION,
+                quote_ts                 TIMESTAMPTZ,
+                ma_flag                  BOOLEAN,                -- ma_filter.is_likely_ma (keyword + Polygon headlines, no LLM) — the lane is score-free so this is its only catalyst check
+                ma_source                TEXT,
+                admission_era            TEXT NOT NULL,          -- rule_eras.admission_era_as_of(scan_date) — MAGNA53's stack in force; the lane has NO switch row of its own at shadow
+                regime                   TEXT,
+                lane_gap_floor_pct       DOUBLE PRECISION NOT NULL,
+                lane_vol_percentile_floor DOUBLE PRECISION NOT NULL,
+                lane_max_market_cap      DOUBLE PRECISION NOT NULL,
+                lane_rule_version        TEXT NOT NULL,
+                recorded_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, scan_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_lowcap_lane_signals_scan_date
+                ON mi_lowcap_lane_signals(scan_date);
+
+            -- #624 replays: the walker's table — mi_gap_near_miss_replays' shape plus the columns
+            -- the four low-cap studies never had: stop_pct_of_entry (the two-cent-stop class,
+            -- visible at read time), next_open_gap_pct + offering_flag (the UNCY -9.97R overnight
+            -- collapse class n=46 cannot see), meets_3r (the graduation gate counts TAIL EVENTS).
+            -- SURVIVORSHIP: a still-running walk is written 'open' with a mark and refreshed by
+            -- the guarded UPSERT (WHERE outcome='open') until it settles — never dropped.
+            CREATE TABLE IF NOT EXISTS mi_lowcap_lane_replays (
+                id                  SERIAL PRIMARY KEY,
+                ticker              TEXT NOT NULL,
+                session_date        DATE NOT NULL,          -- = mi_lowcap_lane_signals.scan_date
+                signal_id           INT,                    -- mi_lowcap_lane_signals.id (informational join key)
+                tick_wallclock_et   TIMESTAMPTZ,            -- copied from the signal row: the walk submits from THIS minute
+                submit_time_et      TIME,                   -- sustain_reject_replay.submit_time_and_window(tick): floored to the minute, floored UP to 09:31
+                window_out_of_orb   BOOLEAN,                -- tick at/after 09:45 ET: WINDOW_OUT_OF_ORB, never simulated (CLAUDE.md's own ORB rule)
+                orb_high            DOUBLE PRECISION,
+                orb_low             DOUBLE PRECISION,
+                atr14_prior         DOUBLE PRECISION,
+                atr14_prior_n       INT,
+                orb_valid           BOOLEAN,
+                orb_skip_reason     TEXT,
+                day0_bars_source    TEXT,                   -- 'stored' (mi_intraday_bars already had the day) | 'fetched_alpaca' (never-alerted name: fetched + persisted by the walker) | NULL
+                entry_status        TEXT NOT NULL,          -- filled | no_entry | abstain | orb_invalid | window_out_of_orb | no_930_bar_for_orb | no_day0_minute_bars | daily_row_split_adjusted
+                entry_reason        TEXT,
+                entry_price         DOUBLE PRECISION,
+                entry_minute        TIMESTAMPTZ,
+                stop_price          DOUBLE PRECISION,       -- CURRENT-era stop (entry_minus_2r = 2 x orb_low - orb_high), same as every sibling
+                stop_pct_of_entry   DOUBLE PRECISION,       -- (entry - stop) / entry x 100 — the degenerate-stop class (a $5-8 stock with a cent-wide first bar) visible without re-deriving
+                target_price        DOUBLE PRECISION,
+                target_r            DOUBLE PRECISION,
+                outcome             TEXT NOT NULL,          -- settled | no_trade | unscoreable | open | horizon
+                final_reason        TEXT,
+                realized_r          DOUBLE PRECISION,
+                realized_pct        DOUBLE PRECISION,
+                mark_r              DOUBLE PRECISION,
+                meets_3r            BOOLEAN,                -- settled AND realized_r >= 3.0 — the TAIL-EVENT count the graduation gate reads (evidence: 4 of 46)
+                meets_4r            BOOLEAN,
+                meets_positive      BOOLEAN,
+                mark_meets_3r       BOOLEAN,
+                mark_meets_4r       BOOLEAN,
+                mark_meets_positive BOOLEAN,
+                partial_fired       BOOLEAN,
+                gap_through         BOOLEAN,
+                exit_session        INT,
+                sessions_walked     INT,
+                exits               JSONB,
+                day0_close          DOUBLE PRECISION,
+                next_open_gap_pct   DOUBLE PRECISION,       -- (next session open - day-0 close) / day-0 close x 100 — the overnight tail on every walk that held a position past day 0
+                offering_flag       BOOLEAN,                -- SEC 8-K Item 3.02 or any 424B filed inside [session_date, offering_checked_through]. ⚠ FALSE also covers "the SEC fetch failed" (collector.get_sec_recent_filings returns [] on both) — read beside offering_forms
+                offering_forms      JSONB,
+                offering_checked_through DATE,
+                admission_era       TEXT NOT NULL,
+                replay_exit_era     TEXT NOT NULL,
+                replay_exit_rules   JSONB NOT NULL,
+                replay_asof_date    DATE NOT NULL,
+                settle_version      TEXT NOT NULL,
+                settled_session     DATE NOT NULL,
+                recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, session_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_lowcap_lane_replays_session_date
+                ON mi_lowcap_lane_replays(session_date);
+            CREATE INDEX IF NOT EXISTS idx_lowcap_lane_replays_outcome
+                ON mi_lowcap_lane_replays(outcome);
 
             -- 2026-08-16 — ALERT-RANK SHADOW (alert_rank_shadow.py). docs/roadmap/
             -- ep_profitability_program.md §0d found a three-feature ranking rule (smaller
@@ -15188,6 +15348,188 @@ async def upsert_gap_near_miss_replay(fields: dict) -> bool:
         res = await conn.execute(GAP_NEAR_MISS_REPLAY_UPSERT_SQL, *vals)
     # "INSERT 0 1" on insert-or-update; "INSERT 0 0" when the WHERE guard skipped an
     # existing terminal row.
+    return not res.endswith(" 0")
+
+
+# ── #624 LOW-CAP LANE (2026-09-04) — signals (tick) + replays (nightly), SHADOW ONLY ─────
+# lowcap_lane.py is the signals table's single writer; lowcap_lane_replay.py the replays
+# table's. Both statements are hoisted so scripts/preflight_db_updates.py PREPARES them at
+# deploy time (the #606 lesson: a silent recorder is where a type-deduction bug hides longest).
+
+LOWCAP_LANE_SIGNAL_COLS: tuple[str, ...] = (
+    "ticker", "scan_date", "tick_wallclock_et", "minutes_since_open",
+    "gap_pct", "gap_pct_rt", "gap_pct_delayed", "price_source", "prev_close", "current_price",
+    "market_cap", "market_cap_source",
+    "today_volume_delayed", "today_volume_rt", "rt_pm_bars", "rt_session_bars",
+    "acting_volume_source", "vol_percentile", "vol_history_n",
+    "extension_pct", "quality_adv_dollar", "atr_pct", "blocking_filters",
+    "rank_by_prescore", "rank_by_gap", "in_shortlist",
+    "days_since_prior_alert", "days_since_prior_lane_signal",
+    "bid_px", "ask_px", "bid_size", "ask_size", "quoted_spread_bps", "quote_ts",
+    "ma_flag", "ma_source", "admission_era", "regime",
+    "lane_gap_floor_pct", "lane_vol_percentile_floor", "lane_max_market_cap", "lane_rule_version",
+)
+_LOWCAP_LANE_SIGNAL_JSONB = frozenset({"blocking_filters"})
+
+# ON CONFLICT DO NOTHING: ONE row per (ticker, scan_date) — the FIRST post-open tick at which
+# the rule held is the record (its wall-clock is what the walker submits from). A later tick
+# must never move that clock.
+LOWCAP_LANE_SIGNAL_INSERT_SQL = (
+    f"INSERT INTO mi_lowcap_lane_signals ({', '.join(LOWCAP_LANE_SIGNAL_COLS)}) VALUES ("
+    + _jsonb_value_list(LOWCAP_LANE_SIGNAL_COLS, _LOWCAP_LANE_SIGNAL_JSONB)
+    + ") ON CONFLICT (ticker, scan_date) DO NOTHING"
+)
+
+
+async def insert_lowcap_lane_signals(rows: list[dict]) -> int:
+    """#624 — batch writer for mi_lowcap_lane_signals (SHADOW — telemetry only; nothing live
+    reads it). ONE executemany for the tick's rows. Never raises: the caller is a detached
+    task off the ORB-window scan, and a write failure must degrade to a logged 0, never a
+    dead scan. Returns the number of rows SENT (executemany reports no per-row count; a
+    conflict-skipped row is a same-day duplicate, not an error)."""
+    if not rows:
+        return 0
+    try:
+        vals = []
+        for r in rows:
+            row_vals = []
+            for c in LOWCAP_LANE_SIGNAL_COLS:
+                v = r.get(c)
+                if c == "blocking_filters":
+                    v = _jsonb_list_param(v if v is not None else [])
+                elif c == "scan_date":
+                    v = _coerce_date(v)
+                row_vals.append(v)
+            vals.append(tuple(row_vals))
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.executemany(LOWCAP_LANE_SIGNAL_INSERT_SQL, vals)
+        return len(rows)
+    except Exception as e:
+        logger.warning(f"low-cap lane signals: batch write failed — {e}")
+        return 0
+
+
+_LOWCAP_LANE_SIGNAL_TICKERS_SQL = """
+    SELECT ticker FROM mi_lowcap_lane_signals WHERE scan_date = $1::date
+"""
+
+
+async def get_lowcap_lane_signal_tickers(scan_date: "date") -> set[str]:
+    """READ-ONLY. Tickers already recorded for `scan_date` — the restart-safe half of the
+    tick hook's per-day dedupe (the in-process set is the cheap half)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_LANE_SIGNAL_TICKERS_SQL, _coerce_date(scan_date))
+    return {r["ticker"] for r in rows}
+
+
+_LOWCAP_LANE_PRIOR_SIGNAL_SQL = """
+    SELECT ticker, MAX(scan_date) AS last_signal
+    FROM mi_lowcap_lane_signals
+    WHERE ticker = ANY($1) AND scan_date < $2::date
+    GROUP BY ticker
+"""
+
+
+async def get_lowcap_lane_prior_signal_dates(tickers: list[str],
+                                             before: "date") -> dict[str, "date"]:
+    """READ-ONLY. ticker -> most recent lane signal date strictly before `before` — the
+    lane's own cooldown read (the live 60-day cooldown keys on mi_ep_alerts, which a shadow
+    never writes, so the deduped population must be computable from this table)."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_LANE_PRIOR_SIGNAL_SQL, list(tickers), _coerce_date(before))
+    return {r["ticker"]: r["last_signal"] for r in rows}
+
+
+_LOWCAP_LANE_POPULATION_SQL = """
+    SELECT id AS signal_id, ticker, scan_date, tick_wallclock_et, prev_close,
+           market_cap, gap_pct, vol_percentile
+    FROM mi_lowcap_lane_signals
+    WHERE scan_date >= $1::date AND scan_date <= $2::date
+    ORDER BY scan_date, ticker
+"""
+
+
+async def get_lowcap_lane_population(window_start: "date", window_end: "date") -> list[dict]:
+    """READ-ONLY. Every lane signal in [window_start, window_end] — the walker's population."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_LANE_POPULATION_SQL,
+                                _coerce_date(window_start), _coerce_date(window_end))
+    return [dict(r) for r in rows]
+
+
+_LOWCAP_LANE_REPLAY_EXISTING_SQL = """
+    SELECT ticker, session_date, outcome FROM mi_lowcap_lane_replays
+    WHERE session_date >= $1::date
+"""
+
+
+async def get_lowcap_lane_replay_existing(window_start: "date") -> dict[tuple[str, "date"], str]:
+    """READ-ONLY. (ticker, session_date) -> outcome for every replay row on/after
+    window_start — lets the walker skip a TERMINAL row and only revisit one still 'open'."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_LANE_REPLAY_EXISTING_SQL, _coerce_date(window_start))
+    return {(r["ticker"], r["session_date"]): r["outcome"] for r in rows}
+
+
+LOWCAP_LANE_REPLAY_COLS: tuple[str, ...] = (
+    "ticker", "session_date", "signal_id", "tick_wallclock_et", "submit_time_et",
+    "window_out_of_orb",
+    "orb_high", "orb_low", "atr14_prior", "atr14_prior_n", "orb_valid", "orb_skip_reason",
+    "day0_bars_source",
+    "entry_status", "entry_reason", "entry_price", "entry_minute",
+    "stop_price", "stop_pct_of_entry", "target_price", "target_r",
+    "outcome", "final_reason", "realized_r", "realized_pct", "mark_r",
+    "meets_3r", "meets_4r", "meets_positive", "mark_meets_3r", "mark_meets_4r", "mark_meets_positive",
+    "partial_fired", "gap_through", "exit_session", "sessions_walked", "exits",
+    "day0_close", "next_open_gap_pct", "offering_flag", "offering_forms", "offering_checked_through",
+    "admission_era", "replay_exit_era", "replay_exit_rules", "replay_asof_date",
+    "settle_version", "settled_session",
+)
+_LOWCAP_LANE_REPLAY_JSONB_LIST = frozenset({"exits", "offering_forms"})
+_LOWCAP_LANE_REPLAY_JSONB_DICT = frozenset({"replay_exit_rules"})
+# Every column except the natural key is refreshable — but ONLY while the existing row's
+# outcome is still 'open' (the UPSERT's WHERE clause below); a terminal row is never touched.
+_LOWCAP_LANE_REPLAY_MUTABLE_COLS = tuple(
+    c for c in LOWCAP_LANE_REPLAY_COLS if c not in ("ticker", "session_date"))
+
+LOWCAP_LANE_REPLAY_UPSERT_SQL = (
+    f"INSERT INTO mi_lowcap_lane_replays ({', '.join(LOWCAP_LANE_REPLAY_COLS)}, updated_at) VALUES ("
+    + _jsonb_value_list(LOWCAP_LANE_REPLAY_COLS,
+                        (_LOWCAP_LANE_REPLAY_JSONB_LIST, _LOWCAP_LANE_REPLAY_JSONB_DICT))
+    + ", NOW())"
+    " ON CONFLICT (ticker, session_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _LOWCAP_LANE_REPLAY_MUTABLE_COLS)
+    + ", updated_at = NOW()"
+    " WHERE mi_lowcap_lane_replays.outcome = 'open'"
+)
+
+
+async def upsert_lowcap_lane_replay(fields: dict) -> bool:
+    """Write or refresh ONE (ticker, session_date) lane replay row (SHADOW — telemetry only;
+    nothing live reads it). A TERMINAL outcome (settled / no_trade / unscoreable / horizon)
+    is written once and never rewritten — the WHERE guard on the EXISTING row's outcome
+    makes the UPDATE a no-op once terminal. Only a row still 'open' is refreshed as later
+    sessions accrue. Returns True iff this call inserted or updated a row."""
+    vals = []
+    for c in LOWCAP_LANE_REPLAY_COLS:
+        v = fields.get(c)
+        if c in _LOWCAP_LANE_REPLAY_JSONB_LIST:
+            v = _jsonb_list_param(v if v is not None else [])
+        elif c in _LOWCAP_LANE_REPLAY_JSONB_DICT:
+            v = _jsonb_param(v if v is not None else {})
+        elif c in ("session_date", "replay_asof_date", "settled_session", "offering_checked_through"):
+            v = _coerce_date(v)
+        vals.append(v)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute(LOWCAP_LANE_REPLAY_UPSERT_SQL, *vals)
     return not res.endswith(" 0")
 
 

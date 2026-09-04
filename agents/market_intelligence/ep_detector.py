@@ -3536,6 +3536,28 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             catalyst_quality=c.get("acting_catalyst_quality"), stage=stage,
         ))
 
+    # ── #624 LOW-CAP LANE — SHADOW RECORDER (2026-09-04, operator-approved) ─────────────
+    # Over the FULL candidate list BEFORE the shortlist cut below: the graded loop sees only
+    # the top-SHORTLIST_SIZE, the liquidity-led pre-score sorts small caps LAST, and the
+    # $500M floor kills the rest at check_filters — so the lane's population (sub-$500M,
+    # gap >= 15%, volume percentile >= 90 at a post-open tick) has never been seen by any
+    # study. THE LINE: this call SNAPSHOTS the board and DETACHES a task (strong ref in
+    # _WATCHDOG_BG_TASKS); it never awaits, never mutates `candidates` or any map, sets no
+    # key on any candidate, adds no `continue` and no `_log_filtered` — the acting scan is
+    # byte-identical with the hook on / off / raising (tests/test_624_lowcap_lane.py runs
+    # this function end to end to prove it). Lazy import: ep_detector is on
+    # scripts/exec_loaded_modules.txt and the lane module must stay off it.
+    try:
+        from agents.market_intelligence.lowcap_lane import schedule_lowcap_lane_tick
+        schedule_lowcap_lane_tick(
+            candidates, today=today, now_et=now_et, minutes_since_open=_minutes_since_open,
+            vol_history_daily_map=vol_history_daily_map, extension_map=extension_map,
+            cooldown_tickers=cooldown_tickers, cooldown_last_alert=cooldown_last_alert,
+            rank_by_prescore=rank_by_prescore, rank_by_gap=rank_by_gap,
+            acting_rank=_rank_acting, regime_label=regime_label, bg_tasks=_WATCHDOG_BG_TASKS)
+    except Exception as _lle:  # loud-ok: shadow-only — the acting scan never depends on the lane
+        logger.warning(f"#624 low-cap lane dispatch failed (shadow-only, non-fatal): {_lle}")
+
     # Log candidates beyond the graded-shortlist cap. Both reason forms keep the
     # "outside top-20" substring the downstream classifiers key on
     # (missed_outcomes / ep_selectivity_breakdowns / ep_latency_audit); the

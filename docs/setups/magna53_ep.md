@@ -294,6 +294,85 @@ ticker. Mechanics + policy:
   (data_gated_reviews.yaml) fires at 10 settled multi-alert mornings with explicit
   revert/switch bands.
 
+## Low-cap lane — SHADOW ONLY (#624, operator-approved 2026-09-04)
+
+A **LANE of MAGNA53, not a setup** (operator ruling, all four fixed: shadow now with exit work
+in parallel · its own slot allocation · a lane, not a new setup — no new `docs/setups/` file,
+no SSoT-router row · sizing 1.0). Buy point, stop, target and harvest are MAGNA53's, unchanged:
+stop-limit buy at the first 1-minute bar's high 09:31–09:44 ET, stop at `entry − 2R`, +2R partial
+pinned to the ORB R, breakeven, SMA trail. Only the universe differs.
+
+**The recording rule, one sentence (P15):** *A $5+ stock under $500M market cap that gaps 15% or
+more and whose volume by the 09:31 tick already ranks in the top 10% of its own trailing history
+is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
+
+- **Terms, and where each reads:** cap `< MIN_MARKET_CAP` ($500M, `backtester/filters.py` — the
+  floor the live filter enforces, imported never restated) · gap `≥ 15%` (`c["gap_pct"]`, the
+  acting gap at the tick) · volume percentile `≥ 90` = `_volume_percentile(today_volume,
+  history)` where history is the rolling-20-trading-day-mean series from `mi_daily_closes`
+  (`db.get_volume_history_daily_closes`, the same map the scan already fetches for every
+  candidate) · price `≥ MIN_PREV_CLOSE` ($5, the universe floor). **"Record volume" (the
+  operator's phrase) is NOT the trigger** — it is an end-of-day fact (CHPT itself had traded
+  969k at 09:31 against a 3.9M prior 400-day max); the rolling percentile is what is computable
+  when the decision is made. The three lane thresholds are STAMPED on every row (`lane_*`).
+- **Evaluated at POST-OPEN ticks only, over the FULL candidate list before the shortlist cut**
+  (`ep_detector.run_ep_scan`, the `#624` block): the graded loop sees only the top-20, the
+  liquidity-led pre-score sorts small caps LAST, and the $500M floor kills the rest — so every
+  one of the 46 evidence rows had reached the top-20, and the lane's real population has never
+  been seen by any study. The FIRST qualifying tick is the record; its wall-clock is what the
+  walker submits from (never a fixed 09:31 — #622: the sign flips at 09:36).
+- **Acting volume reading = the DELAYED snapshot** (`acting_volume_source='delayed'`) — what
+  nearly all 46 evidence rows used; the real-time Alpaca cumulative is stored ALONGSIDE
+  (`today_volume_rt`). Switching which one acts is a later, separate fork.
+- **What the row carries:** `market_cap` (yfinance profile via a lane-local cache — never
+  `filters._mcap_cache`, see below), `extension_pct`, `quality_adv_dollar`, `atr_pct`,
+  `blocking_filters` (extended / cooldown / adv / atr / shortlist_cap / mna / pm_shares_floor —
+  each with its compared value and threshold; the RVOL@T gate and the score bar need the
+  graded path and are NOT reconstructed), **`quoted_spread_bps`, `bid_size`, `ask_size`** at the
+  tick (the operator's fillability requirement — the one thing four studies never measured),
+  `ma_flag` (`ma_filter.is_likely_ma`, keyword + Polygon headlines, no LLM — the score-free
+  lane's only catalyst check), `days_since_prior_lane_signal`, `admission_era`, `regime`.
+- **Nightly walker** `lowcap_lane_replay.py` (18:15 ET): fetches + persists day-0 minutes for
+  never-alerted names, reconstructs the entry from the row's own tick (`submit_time_and_window`
+  — a tick at/after 09:45 is `window_out_of_orb`, never simulated), walks the SAME live ladder
+  under `rule_eras.exit_rules_as_of(today)`, and records `stop_pct_of_entry` (the two-cent-stop
+  class), **`next_open_gap_pct` + `offering_flag`** (SEC 8-K Item 3.02 / 424B inside the hold —
+  the UNCY −9.97R overnight-collapse class n=46 cannot see), `meets_3r` (tail events).
+- **The evidence, honestly** (`_623_master.jsonl`, clean settled, cap<$500M): the rule cell is
+  n=46 at +0.527R — but **two trades** (WETO +12.08R, FBRX +10.71R) are +22.8R of +24.2R (94%);
+  ex-both n=44 **+0.03R**; both thresholds sit just under those two trades' own coordinates
+  (gap ≥15 is the highest cut keeping WETO at 18.2%, vol ≥90 the highest keeping FBRX at 91.8);
+  across a 7×5 grid the ex-top-2 mean never exceeds +0.10R. That is the shape of a tail strategy
+  (4/46 ≥3R = 8.7% vs 13% in the healthy reference year), and n=46 cannot pin the tail rate to
+  better than 5×. **Resolving it is the shadow's only job.** Only nine of the 46 rows are on the
+  current selection stack; 29 unique tickers in 46 rows (WETO/JLHL/DFNS/ADVB serial at
+  100–1,000% extension — the shape of a pump); CHPT ($134M) sits in the $100–200M band that
+  averages −0.23R and its own replayed outcome is +0.33R — **the lane rescues CHPT's admission,
+  not CHPT's P&L.**
+- **Registry + gate:** `mi_strategies.magna53_lowcap` (`phase='shadow'`, `min_median_r: null` on
+  both rungs — `_eval_unpaired_r` gates on the median, and with 37% of outcomes at +0.33 and 35%
+  at −1.00 a 0.0 bar would pass a losing lane while 0.5 would block a winning tail lane). The
+  real gate is `lowcap_lane_graduation_624` (`data_gated_reviews.yaml`): tail events, ex-top-2
+  mean, ticker concentration, fillability, and the **#545 ENTRY/EXIT TACTICS PROGRAM** exit
+  precondition (37% of the lane's outcomes ARE the +2R-partial scratch — an exit change
+  re-prices the lane; every row is re-walked under the new era, $0, before it counts).
+- ⛔ **Do NOT waive the extension guard, or propose it.** 19 of the 46 were blocked by it;
+  waiving it reverses the 2026-08-29 signed revert and the group ex-WETO is −0.014R. Only 7 of 46
+  were rejected by the cap floor ALONE — the paper flip needs a waiver set that is the
+  operator's pick, one CHANGE_PROCESS entry per waiver with N≥10.
+- 🛑 **THE LINE:** the lane RECORDS. It never submits, scores, alerts or touches slot
+  allocation; the tick hook snapshots the board and detaches a task (never on the ORB critical
+  path), sets no key on any candidate, adds no `continue`; MAGNA53's alert set, scan-log rows
+  and tiers are byte-identical with the hook on / off / raising (`tests/test_624_lowcap_lane.py`
+  runs `run_ep_scan` end to end — the first test in the repo to do so). The lane reads the cap
+  through its OWN cache because `filters._check_market_cap` pins `None`=pass on any yfinance
+  error, and a lane read for an out-of-shortlist name must never let it clear the $500M gate
+  without a retry if it later enters the top-20. `should_run('magna53_lowcap')` is the switch.
+  **No `rule_eras.ADMISSION_SWITCHES` row at shadow** — the lane changes nothing about who
+  MAGNA53 admits (a row would split the #482 era segmentation for nothing); the row lands with
+  the paper flip. Supersedes nothing yet: the `ep_tinycap_observed` briefing surface (2026-06-11)
+  keeps its population until the operator chooses the lane's narrower one.
+
 ## Known limitations / open questions
 
 1. ~~`is_earnings_day` fail-soft direction inconsistent~~ — **resolved 2026-05-08 (session 2)**. All four call sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as `True` (earnings day). Defensive at each site: rather over-boost / over-bypass / over-promote on data outage than miss a real earnings EP.
@@ -310,6 +389,42 @@ ticker. Mechanics + policy:
    **No path to any open or closed trade**: `vol_percentile`/`vol_conviction` feeds only `_score_ep` → `ep_score`/tier (the alert/admission decision). Stops, targets and the exit ladder (`stop_limit_buy_price`, `profit_target_r_per_share`, `seed_exit_state`, `apply_daily_exit_step`) are ORB-high/low and ATR/R-multiple driven and take no score or volume-percentile input — verified by reading their signatures, not assumed.
 
 ## Change log (newest first)
+
+### 2026-09-04 — #624: the low-cap lane ships as a SHADOW RECORDER (NO criteria, floor, stop, target, size or admission change)
+
+**Trigger**: CHPT 2026-09-03 — a $134M name that gapped 33%, ran 46% and closed on the highest
+volume in its history — was dropped by the $500M market-cap floor before it was ever scored
+(`filter:mcap_too_small: $134M < $500M`, every tick). Operator: *"I'd like to look into this
+filter to see if there's an edge to trade smaller caps, perhaps there's a separate lane for
+it."* #622 asked the question; #623 put the volume rule on the universe we already trade; this
+is the lane, approved 2026-09-04 with four rulings (shadow now with exit work in parallel · own
+slot allocation · a LANE not a setup · sizing 1.0).
+
+**The change**: nothing in this setup moves. `lowcap_lane.py` records, at every post-open scan
+tick over the full candidate list, every sub-$500M name meeting the rule sentence in §"Low-cap
+lane" (with every other gate it failed stamped, plus quoted spread and bid/ask size);
+`lowcap_lane_replay.py` walks each one nightly under the CURRENT bracket from its own tick.
+Registry row `magna53_lowcap` (shadow, median gate nulled), adapter, nightly job, liveness +
+deploy-gate registrations, accrual review `lowcap_lane_graduation_624` bound to the **#545
+ENTRY/EXIT TACTICS PROGRAM**.
+
+**Evidence**: `_623_master.jsonl` — n=46 +0.527R, two carriers = 94% of the sum, ex-top-2 +0.03R,
+4/46 ≥3R; full read in §"Low-cap lane" and `~/.claude/plans/unified-soaring-cascade.md`. The
+evidence supports a SHADOW to resolve the tail rate; it does not support a paper flip (nine rows
+on the current stack; two carriers at the thresholds' own coordinates).
+
+**Anticipated effect**: none on production behaviour. ~0.7 lane rows a session on the evidence
+(max 2/day); per tick ≤6 names enriched (yfinance profile — **not FMP**, `get_fmp_profile` is
+yfinance under the name — one Polygon news read, one batched Alpaca minute-bar read, one batched
+Alpaca NBBO read), deduped per (ticker, day). Nightly: one Alpaca minute-bar fetch per new lane
+name, one SEC submissions read per filled walk.
+
+**Reversion-flag**: NEW — a recorder. Off switch: `mi_strategies.magna53_lowcap.enabled=false`
+(`should_run`). No `rule_eras.ADMISSION_SWITCHES` row: not an admission change (see the note in
+that table; the row lands with the paper flip).
+
+**Status**: shipped, awaiting field validation (verify-live: the nightly job in `mi_job_runs` and
+the first `mi_lowcap_lane_signals` row on the next session with a qualifying name).
 
 ### 2026-09-03 — #482: the stop conflict (08-16 read vs Phase 3) now settles on live fills by ACCRUAL, not another re-slice (RECORD ONLY — no criteria, stop, target, size or admission change)
 

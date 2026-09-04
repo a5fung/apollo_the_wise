@@ -134,6 +134,58 @@ async def _adapter_shadow_orb_5m(window_days: int) -> list[OutcomeRow]:
     return out
 
 
+async def _adapter_magna53_lowcap(window_days: int) -> list[OutcomeRow]:
+    """#624 (2026-09-04): the low-cap lane's replay rows (mi_lowcap_lane_replays — the
+    nightly walker's CURRENT-era bracket walk from each signal's own tick). Without this
+    entry the promotion checker returns "no data" forever. Mapping: settled -> closed
+    (realized_r final); open / horizon -> open (mark_r rides in extras, never as R);
+    no_trade -> no_entry (our own ORB/ATR/window rule would have skipped it); unscoreable
+    rows are EXCLUDED (a data gap is NULL, never a sample). ⚠ The registry's median gate is
+    deliberately nulled for this lane (db._seed_strategies_registry) — the real gate is the
+    accrual review `lowcap_lane_graduation_624`; this adapter only feeds `min_closed`."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, session_date, outcome, realized_r, mark_r, sessions_walked,
+                   exit_session, meets_3r, meets_4r, stop_pct_of_entry, next_open_gap_pct,
+                   offering_flag, admission_era, replay_exit_era
+            FROM mi_lowcap_lane_replays
+            WHERE session_date >= CURRENT_DATE - $1::int
+              AND outcome <> 'unscoreable'
+            """,
+            window_days,
+        )
+    status_map = {"settled": "closed", "open": "open", "horizon": "open", "no_trade": "no_entry"}
+    out: list[OutcomeRow] = []
+    for r in rows:
+        status = status_map.get(r["outcome"], "pending")
+        r_mult = float(r["realized_r"]) if (status == "closed" and r["realized_r"] is not None) else None
+        out.append(OutcomeRow(
+            strategy_id="magna53_lowcap",
+            ticker=r["ticker"],
+            alert_date=r["session_date"],
+            status=status,
+            r_multiple=r_mult,
+            pnl=None,
+            hold_days=r["sessions_walked"],
+            closed_at=None,
+            extras={
+                "outcome": r["outcome"],
+                "mark_r": float(r["mark_r"]) if r["mark_r"] is not None else None,
+                "exit_session": r["exit_session"],
+                "meets_3r": r["meets_3r"],
+                "meets_4r": r["meets_4r"],
+                "stop_pct_of_entry": float(r["stop_pct_of_entry"]) if r["stop_pct_of_entry"] is not None else None,
+                "next_open_gap_pct": float(r["next_open_gap_pct"]) if r["next_open_gap_pct"] is not None else None,
+                "offering_flag": r["offering_flag"],
+                "admission_era": r["admission_era"],
+                "replay_exit_era": r["replay_exit_era"],
+            },
+        ))
+    return out
+
+
 async def _adapter_parabolic(window_days: int) -> list[OutcomeRow]:
     """Parabolic Short is telemetry-only — no PnL, no R.
 
@@ -286,6 +338,7 @@ _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     "magna53":            partial(_adapter_live_trades, signal_type="magna53"),
     "9m_day2":            partial(_adapter_live_trades, signal_type="9m_day2"),
     "shadow_orb_5m":      _adapter_shadow_orb_5m,
+    "magna53_lowcap":     _adapter_magna53_lowcap,
     "parabolic_short":    _adapter_parabolic,
     "wick_fill":          _adapter_wick_fill,
     "flag_continuation":  _adapter_flag_continuation,

@@ -205,6 +205,12 @@ def test_module_constant_covers_the_required_tables():
         # scan; this registry is its only watchdog for "stopped writing", separate from
         # the data_gated_reviews.yaml predicate that watches the RATE it accrues.
         "mi_gap_near_miss_replays",
+        # 2026-09-04 (#624): the low-cap lane's two SILENT recorders — the scan-tick signals
+        # table (written by a detached task off the ORB tick, ~0.7 rows a session) and the
+        # nightly replay walker's table; no Telegram on any path, this registry is their
+        # only watchdog.
+        "mi_lowcap_lane_signals",
+        "mi_lowcap_lane_replays",
     }
 
 
@@ -231,6 +237,11 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
     # (the date each estimate was READ) — created_at is timestamptz and would
     # silently never be checked.
     assert by_table["mi_analyst_estimates"] == "as_of_date"
+    # #624 (2026-09-04): scan_date / settled_session are the lane tables' plain-DATE business
+    # columns — tick_wallclock_et / recorded_at / updated_at are timestamptz and would
+    # silently never be checked.
+    assert by_table["mi_lowcap_lane_signals"] == "scan_date"
+    assert by_table["mi_lowcap_lane_replays"] == "settled_session"
 
 
 # ── run_detector_liveness_check: orchestration + wiring ───────────────────────

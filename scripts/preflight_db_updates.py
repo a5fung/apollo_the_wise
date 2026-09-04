@@ -25,6 +25,7 @@ from agents.market_intelligence.db import (
     _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
+    LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
     get_pool)
@@ -250,6 +251,20 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # exists to produce empty through its first run with no downstream error.
         "db.upsert_gap_near_miss_replay: #617 Step 2 standing 7-9% gap-floor near-miss replay",
         GAP_NEAR_MISS_REPLAY_UPSERT_SQL,
+    ),
+    (
+        # #624: the low-cap lane's scan-tick recorder — a batched INSERT with one jsonb param
+        # (blocking_filters) written from a DETACHED task off the ORB-window scan, so a
+        # type-deduction failure here would leave the lane empty through its first morning with
+        # no downstream error (exactly the #606 shape this gate was built for).
+        "db.insert_lowcap_lane_signals: #624 low-cap lane signals at the scan tick",
+        LOWCAP_LANE_SIGNAL_INSERT_SQL,
+    ),
+    (
+        # #624: the lane's nightly walker — an UPSERT (ON CONFLICT DO UPDATE ... WHERE
+        # outcome='open') with THREE jsonb params (exits, offering_forms, replay_exit_rules).
+        "db.upsert_lowcap_lane_replay: #624 low-cap lane CURRENT-era bracket replay",
+        LOWCAP_LANE_REPLAY_UPSERT_SQL,
     ),
 ]
 

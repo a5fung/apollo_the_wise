@@ -1565,6 +1565,16 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # plain-DATE business column `alert_date` (recorded_at/created_at are timestamptz
     # and would silently never be checked — the name-based `created_at` rule).
     ("mi_ep_slot_rank_shadow", "EP slot-rank watch (#533)", "alert_date", None),
+    # #624 (2026-09-04): the low-cap lane's two SILENT recorders (no Telegram on any path).
+    # `mi_lowcap_lane_signals` is written by a DETACHED task off the scan tick (~0.7 rows a
+    # session on the evidence, so a quiet week can read as silence — the sparse branch's
+    # absolute fallback governs, and a false alarm here is a cheap re-check, whereas a dead
+    # writer would silently stall the only evidence the lane exists to produce).
+    # `mi_lowcap_lane_replays` is the nightly walker's table, keyed on the plain-DATE
+    # `settled_session` like its #593/#617 siblings (recorded_at/updated_at are timestamptz
+    # and would silently never be checked — the name-based `created_at` rule).
+    ("mi_lowcap_lane_signals", "low-cap lane signals (#624)", "scan_date", None),
+    ("mi_lowcap_lane_replays", "low-cap lane replay (#624)", "settled_session", None),
     # #606 D-1 universe floor shadow (2026-08-31): written every scan tick with
     # >=1 real candidate on EITHER side of the D-1 floor — a fire-and-forget writer
     # read by nothing on the scan path, the same can-fail-100%-silently class as the

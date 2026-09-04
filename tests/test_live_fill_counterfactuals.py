@@ -664,6 +664,7 @@ def test_nothing_live_imports_the_recorder():
         if re.search(r"^\s*(from|import)\s+[\w.]*live_fill_counterfactuals\b", py.read_text(), re.M):
             importers.append(str(py.relative_to(_REPO)))
     assert importers == ["agents/market_intelligence/gap_near_miss_replay.py",
+                        "agents/market_intelligence/lowcap_lane_replay.py",   # #624, 2026-09-04
                         "agents/market_intelligence/scheduler.py",
                         "agents/market_intelligence/sustain_reject_replay.py"], importers
     # and the TABLE is named nowhere on the execution side or in the detector/judge/sizing paths

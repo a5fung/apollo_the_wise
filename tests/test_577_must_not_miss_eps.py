@@ -382,7 +382,15 @@ def test_loading_real_filters_does_not_contaminate_sys_modules():
     stub = sys.modules.get("agents.market_intelligence.backtester.filters")
     assert stub is not None
     assert stub is not _real_filters
-    assert not hasattr(stub, "MIN_MARKET_CAP")  # the stub only ever carries 3 mocked functions
+    from unittest.mock import MagicMock
+    assert isinstance(stub.check_filters, MagicMock)   # the three functions stay harmless mocks
+    # #624 (2026-09-04): the stub now ALSO carries the three threshold constants, read off
+    # filters.py's own source text by conftest (the lane imports them by name — "imported,
+    # never restated"). They must equal the real module's — a drift here would mean the stub
+    # is lying to every test that compares against a threshold.
+    assert stub.MIN_MARKET_CAP == _real_filters.MIN_MARKET_CAP
+    assert stub.MAX_ATR_PCT == _real_filters.MAX_ATR_PCT
+    assert stub.MIN_ADV_DOLLAR_VOLUME == _real_filters.MIN_ADV_DOLLAR_VOLUME
 
 
 # ── Mutation proof: the fixture must actually be able to go red, and to come back clean ───────
