@@ -3865,7 +3865,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # docs/setups/magna53_ep.md "Known limitations / open questions".
         if _minutes_since_open is None:
             vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
+        elif vol_history_daily_map.get(ticker):
+            # LIVE since 2026-09-04 (operator-directed: "we should fix and monitor, not
+            # shadow unless you have a valid reason"). BUG FIX, not a criteria change —
+            # no weight, tier or bar moved; the rubric always intended to score volume
+            # conviction and this input was a CONSTANT, so a stock trading 11x its
+            # all-time-high volume scored identically to a dead one (CHPT 2026-09-03,
+            # which the operator flagged on day one).
+            #
+            # Why the old hardcode existed and why this is safe: ranking a PART-DAY
+            # cumulative against FULL-DAY history would rank almost everything near
+            # zero, so returning neutral was the cautious choice. But neutral scores 0
+            # points, identical to a genuine zero — the caution bought nothing and cost
+            # the whole signal. The tier table only pays at the 70th/90th percentile,
+            # so an ordinary part-day session still lands below both cuts exactly as
+            # neutral did; only a genuinely extreme session can now differ.
+            #
+            # Measured before shipping, both populations: 1 admission flip in 109
+            # mcap-excluded names (a -1.0R loser) and ZERO flips in 234 names the stack
+            # actually scored over 90 days. It is a correct measurement with a small
+            # blast radius, monitored by the `vol_conviction_shadow` audit row below.
+            # `vol_history_daily_map` is mi_daily_closes-sourced BECAUSE the adv_20 map
+            # covers only the ~2,400 RS-ranked names and returns "unknown -> 50" for most
+            # off-universe EP candidates, CHPT included.
+            vol_pct = _volume_percentile(c["today_volume"], vol_history_daily_map[ticker])
         else:
+            # No usable history for this ticker -> neutral, exactly as before. Fail-open:
+            # a missing history must never be read as "no conviction".
             vol_pct = 50.0
         c["vol_percentile"] = vol_pct  # #605: score input, persisted per candidate
 
