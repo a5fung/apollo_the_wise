@@ -173,4 +173,16 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         f"{_mnm.BASELINE_RECORDED_DATE}. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.",
         yellow=True,
     )
+    # #622, 2026-09-04 — an ABSTAINED member is invisible in the count above (it is excluded from
+    # `total` by design), and an abstention nobody sees is the same as a quiet drop. The whole
+    # justification for abstaining rather than asserting is that it stays VISIBLE, so print it.
+    abstained = [m for m in _mnm.MUST_NOT_MISS if m.excluded and m.label_source == "operator"]
+    for m in abstained:
+        terminalreporter.write_line(
+            f"[#577 must-not-miss] ⚠ {m.ticker} {m.alert_date} is OPERATOR-NAMED, is excluded by "
+            f"the live stack, and is NOT being asserted — awaiting his ruling on the gate that "
+            f"drops it. This is a declared abstention, not an accepted state: "
+            f"{(m.exclude_reason or '').split(':')[0]}. See must_not_miss_eps.py.",
+            yellow=True,
+        )
 

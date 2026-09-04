@@ -206,6 +206,64 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         # mechanically) admitted it that morning.
     ),
 
+    # ── Member 2 — OPERATOR-NAMED, and the FIRST MARKET-CAP EXCLUSION in this fixture ────────
+    # Every other member here is (or was) excluded by MIN_GAP_PCT. CHPT is excluded by a DIFFERENT
+    # gate — the $500M market-cap floor — which is why it matters: it opens a second debt category
+    # against P1, and #622 is the task that asks whether that floor is costing us winners.
+    EPFixtureMember(
+        ticker="CHPT", alert_date="2026-09-03",
+        label_source="operator",
+        label_note=(
+            "Operator, 2026-09-03: \"today there's a microcap EP (CHPT) that we caught but filtered "
+            "for <500M market cap... it was a perfect EP type with news catalyst, and ORB 1min high "
+            "entry worked, also it closed with the highest volume ever.\" He raised it himself off "
+            "the day's tape and asked whether a separate small-cap lane has edge — see #622."
+        ),
+        # ALL FOUR VALUES BELOW ARE LIVE-VERIFIED, read from prod mi_ep_scan_log on 2026-09-04 —
+        # this member does NOT inherit the offline "declared unverified" posture of the members
+        # above, because for this one the DB read was actually available and was actually done.
+        # The scan log recorded CHPT at every 5-minute tick of 2026-09-03, rejected identically
+        # each time at reject_stage='quality_filter' with filter_reason:
+        #     "quality filter: filter:mcap_too_small: $134M < $500M"
+        # ep_score and score_tier are EMPTY on every row — it was dropped BEFORE it was ever scored.
+        gap_pct=32.95,
+        gap_basis=(
+            "session open vs prior close, from the prod mi_ep_scan_log row stamped 2026-09-03 "
+            "13:30:00Z (= 09:30:00 ET, the open tick): gap_pct=32.95, gap_pct_rt=32.95. Same "
+            "open-vs-prior-close basis as every other member. Read 2026-09-04."
+        ),
+        prev_close=5.19,
+        prev_day_volume=1_631_139.0,
+        market_cap=134_000_000.0,
+        unverified_gates=("extension_pct_pregap5d", "adv_dollar_20d", "atr_pct_14d"),
+        # ⚠ NOT ASSERTED — and this is a DELIBERATE, DECLARED choice that is the operator's to
+        # overturn, not a data-quality escape like the artifact case the field was first written
+        # for. Read this before changing it:
+        #   CHPT is operator-named, and an operator-named member excluded by ANY gate is a HARD
+        #   failure with no baseline tolerance (test_operator_named_members_never_carry_baseline_
+        #   tolerance pins that operator-named keys can never enter BASELINE_DEBT). So asserting
+        #   CHPT turns the whole suite RED and keeps it red until the $500M floor changes — and
+        #   the floor is THE LINE, the operator's sole call (#622). A permanently red suite would
+        #   be routed around with --no-verify within a day, which is strictly worse than an
+        #   honest, visible, declared abstention.
+        #   This is NOT the debt being accepted. It is recorded here, on #622, and in the banner.
+        #   THE MOMENT HE RULES ON THE FLOOR THIS FLIPS: lower it and CHPT should PASS on its own
+        #   (flip excluded=False and the assertion proves it); keep it and he has decided, with
+        #   this case in front of him, that a $134M EP is out of scope — record that ruling here.
+        excluded=True,
+        exclude_reason=(
+            "POLICY WAIT, not a data artifact: excluded by filter:mcap_too_small ($134M < $500M), "
+            "a live, deliberate, operator-owned selection filter. Whether that floor moves is his "
+            "call alone (THE LINE) and is the open question of #622, filed 2026-09-03 at his own "
+            "request. Asserting an operator-named member against a gate only he can change would "
+            "red the suite indefinitely. Flip excluded=False the moment #622 is ruled either way."
+        ),
+        # Corroborating, not fed to any gate assertion — the size of what the floor turned away:
+        # the same scan log has CHPT at +34.68% by 09:31 ET, +42.5% by 09:35 and +46.53% by 09:40,
+        # on 3.85M shares by 09:40 against a prior-day volume of 1.63M. The gap floor was never the
+        # problem here (32.95% is over 3x MIN_GAP_PCT); the market-cap floor alone excluded it.
+    ),
+
     # ── Evidence-sourced: the 26 tradeable >=10R winners ─────────────────────────────────────
     # Source: docs/analysis/winner_r_available_2026-08-16.txt, GEOMETRY 1 (stop = EP-day low — the
     # geometry matching our live day-1 stop), ">=10R" bucket (26 of the 78 tier-A tail winners).
