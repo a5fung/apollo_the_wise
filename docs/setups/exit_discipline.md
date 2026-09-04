@@ -309,6 +309,7 @@ stop as an accidental lower net. (a) keep the signed breach convergence (shipped
 (b) on breach at the floored price, fall back to the DB price = a new two-tier placement rule and
 a stop the strategy never signed — operator's call only. Pinned:
 `test_place_branch_floored_price_that_breaches_converges_exactly_as_before`.
+**✅ OPERATOR RULING 2026-09-03: (a) — KEEP the signed breach convergence. No change.** Asked for the recommendation and the reason, and took it: the breach-and-converge behaviour is what he already signed on 2026-06-23 for any breach, and (b) would mean inventing a two-tier placement rule for a path that has fired twice in the system's life. **This fork is CLOSED — do not re-open or re-litigate it without him raising it first.**
 
 **REACH — where the floor can and cannot act (stated, not built).** The floor reads the DB stop
 pointer, so it acts wherever that pointer still names the stop whose level matters at re-protect
@@ -326,7 +327,7 @@ re-places; the 30-second stop-ack watchdog then re-arms at `orb_low`, or the 5-m
 holds the cancelled stop's `stop_price` in hand when it nulls. **Preserving that level (or the
 successor id from the `partial_exit_breakeven_unverified` audit row) so a later re-protect can
 floor against it is a change to signed trade-state behaviour → an operator fork, recorded in
-PLAN.md, not built here.** Chasing Alpaca's `replaced_by` one hop for the red-unknown pointer is
+PLAN.md, not built here. ✅ **OPERATOR APPROVED 2026-09-03 — BUILD IT FRIDAY 2026-09-04** (his words: *"go with the rec, build fork 2 friday"*). The reason it was recommended, and the reason it must not be quietly dropped: WITHOUT it the #600 floor is effectively DARK on the common intraday path — the paths it does cover (b) and (c) above are the rarer ones. Scope: preserve the cancelled stop's level at the point `_handle_cancel_or_reject` §2 nulls the pointer, so a later re-protect has something to floor against; the T1.5a assume-naked fail-safe itself does NOT change. Sonnet-class (Fable capacity is gone until Friday evening). Tracked on #600's PLAN.md line.** Chasing Alpaca's `replaced_by` one hop for the red-unknown pointer is
 the same class of follow-up. The full-exit restore path is covered only when the sell's reject
 event beats the stop's cancel event (rare — the stop is cancelled first). Out of class, unchanged:
 `trade_stream` entry-fill remediation and the stop-ack watchdog place at `orb_low` (first
