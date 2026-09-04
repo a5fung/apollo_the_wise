@@ -1,0 +1,11 @@
+TOTAL: 3262 ticker-days
+status counts: {'settled': 1590, 'no_entry': 284, 'abstain': 588, 'no_trade': 632, 'excluded_artifact': 26, 'open_at_horizon': 142}
+settled: 1590, realized-R available: 1590
+sumR=+167.85 meanR=+0.106 medianR=+0.312 >=4R:22 >0:875 win_rate:55%
+open_at_horizon (unrealized, excluded from sumR/meanR): 142
+split-artifacts excluded: 26
+abstain (no minute bars found even after fetch): 1
+abstain reasons: {'no_930_bar_for_orb': 193, 'entry_window_gaps': 341, 'day0_fill_bar_straddles_stop': 31, 'fwd_stop_and_target_same_day': 8, 'day0_fill_bar_stop_and_target': 13, 'day0_stop_and_target_same_bar': 1, 'no_minute_bars_in_db': 1}
+no_trade reasons: {'setup': 632}
+  [ever_scored] n=411 settled=265 meanR=+0.167 sumR=+44.13
+  [rejected] n=2851 settled=1325 meanR=+0.093 sumR=+123.72
