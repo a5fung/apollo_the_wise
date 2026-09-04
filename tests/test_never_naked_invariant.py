@@ -53,7 +53,8 @@ def _live_stop(order_id, qty, stop_price=95.0, status="new", order_class=None):
 
 
 def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquired=True,
-             leg_safe=False, cancel_order=None, get_order=None, get_position=None):
+             leg_safe=False, cancel_order=None, get_order=None, get_position=None,
+             stop_pointer=None):
     """Patch the broker + DB surface _ensure_stop_coverage touches.
 
     open_orders: list returned by alpaca.get_open_orders (broker truth for the
@@ -68,6 +69,12 @@ def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquire
               leg-safe cancel→release-gate→new mechanism (#523 widen tests
               only — irrelevant, and never called, when leg_safe=False or the
               live stop's order_class isn't advanced).
+    stop_pointer: what `_current_stop_pointer` (the #600 re-protect floor's
+              fresh DB read of stop_order_id) returns on the place branch.
+              Default None → no pointer → no floor → placed at the DB price,
+              which is every pre-#600 test's assumption. Patched here so the
+              tests never fall through to the helper's fail-open path on a
+              real (absent) pool by accident.
     Returns (context-managers-applied-via-ExitStack-less) — we just return the
     individual patch objects in a dict so the test asserts on them.
     """
@@ -122,6 +129,8 @@ def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquire
         # stop_is_leg is False regardless of what this toggle reads, and no
         # real DB read ever happens because get_runtime_toggle is mocked here.
         patch.object(om, "get_runtime_toggle", AsyncMock(return_value=leg_safe), create=True),
+        # #600: the place branch's fresh pointer read — see `stop_pointer` above.
+        patch.object(om, "_current_stop_pointer", AsyncMock(return_value=stop_pointer)),
         patch.object(om.alpaca, "get_open_orders", get_open),
         patch.object(om.alpaca, "replace_order", replace_mock),
         patch.object(om.alpaca, "place_stop_order", place_mock),

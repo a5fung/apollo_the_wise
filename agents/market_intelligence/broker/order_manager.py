@@ -1694,6 +1694,154 @@ def describe_stop_move(
         return "Position protected."
 
 
+# ── #600: raise-only floor for RE-PROTECT placements (no live stop to refuse against)
+# `update_stop`'s 2026-08-10 floor compares a requested move against the LIVE
+# broker stop and REFUSES a non-raise. A re-protect (coverage place branch, sync
+# orphan remediation, the WS cancel-restore paths, `_stop_refresh` after a stop
+# died) has no live stop to refuse against — it is placing precisely because the
+# stop is GONE. The same signed rule (a protective long stop is raise-only) has
+# to be applied the other way round there: the price we place is never BELOW
+# the last level the broker actually held, read off the DB's own stop pointer
+# (`get_order` returns terminal orders with their `stop_price`), and with no
+# broker truth at all we place at the DB price exactly as before.
+#
+# NEVER A REFUSAL. An unprotected position is strictly worse than a stop that
+# sits ~1R low, so every "cannot read" path (NULL pointer, get_order → None,
+# no stop_price on the order, a raising DB read) returns the DB price and the
+# placement goes ahead. The floor only ever RAISES the price it is handed.
+#
+# Why the DB price can be low at all: execute_partial_exit's breakeven replace
+# deliberately keeps the successor stop POINTER while WITHHOLDING stop_price
+# when the replace's outcome was unconfirmed (the DB understating protection is
+# the safe direction — pinned in test_resting_mode_breakeven_548.py), and the
+# market-mode fold-in never writes stop_price at all. So `stop_price` can sit
+# at the ORIGINAL stop while the broker rested at breakeven; a re-protect that
+# trusted it re-armed the position ~1R below where it was (FIGS 2026-08-07 was
+# the real-money analog of this pathology via a different trigger).
+#
+# Statuses the floor honours: anything the broker ever ACCEPTED (live or
+# terminal — a cancelled/expired/replaced/filled stop's price WAS protection).
+# `rejected` never rested, so its price was never protection and is ignored.
+_REPROTECT_FLOOR_IGNORED_STATUSES = frozenset({"rejected"})
+_REPROTECT_FLOOR_EVENT = "stop_reprotect_floor_applied"
+
+
+def _floor_reprotect_price(base_price: float, broker_order: dict | None) -> tuple[float, dict]:
+    """PURE (#600). The price a re-protect should place: `base_price` (what the
+    caller would have placed — the DB stop_price, or the requested price) raised
+    to the broker order's `stop_price` when that is readable and higher.
+
+    Returns (price, info). `info["raised"]` is True only when the floor moved
+    the price; `info["floor_source"]` says why it did or did not. Never raises,
+    never returns a price below `base_price`.
+    """
+    base = float(base_price)
+    info: dict = {
+        "base_price": base, "broker_stop_price": None, "broker_status": None,
+        "broker_order_id": None, "raised": False, "floor_source": None,
+    }
+    if not broker_order:
+        info["floor_source"] = "no_broker_order"
+        return base, info
+    status = _canonical_order_status(broker_order.get("status"))
+    info["broker_status"] = status
+    info["broker_order_id"] = broker_order.get("id")
+    if status in _REPROTECT_FLOOR_IGNORED_STATUSES:
+        info["floor_source"] = f"ignored_status:{status}"
+        return base, info
+    raw = broker_order.get("stop_price")
+    if raw is None:
+        info["floor_source"] = "no_stop_price"
+        return base, info
+    try:
+        broker_price = float(raw)
+    except (TypeError, ValueError):
+        info["floor_source"] = "unparseable_stop_price"
+        return base, info
+    info["broker_stop_price"] = broker_price
+    if broker_price > base + 1e-9:
+        info["raised"] = True
+        info["floor_source"] = "broker_pointer"
+        return broker_price, info
+    info["floor_source"] = "base_not_below_broker"
+    return base, info
+
+
+async def _current_stop_pointer(trade_id: int) -> str | None:
+    """The trade's CURRENT `stop_order_id`, read fresh (#600). A re-protect runs
+    after the broker said there is no live stop, so an in-memory copy of the
+    pointer may be stale; the row is the source of truth. FAIL-OPEN: a raising
+    read returns None (→ no floor → the DB price is placed, exactly as before
+    #600) — the position must still get its stop."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return await conn.fetchval(
+                "SELECT stop_order_id FROM mi_live_trades WHERE id = $1", trade_id)
+    except Exception as e:  # loud-ok: fail-open by design — the placement still happens
+        logger.warning(
+            f"_current_stop_pointer: read failed for trade {trade_id} ({e}) — "
+            f"re-protect floor unavailable, placing at the DB price"
+        )
+        return None
+
+
+async def _apply_reprotect_floor(
+    trade_id: int,
+    ticker: str,
+    base_price: float,
+    stop_order_id: str | None,
+    account_mode: str,
+    *,
+    site: str,
+    broker_order: dict | None = None,
+    fetch: bool = True,
+) -> float:
+    """#600 — the price a re-protect should place, floored to the last level the
+    broker held. Reads `get_order(stop_order_id)` unless the caller already has
+    the order dict (`fetch=False` + `broker_order`). Audits + warns ONLY when the
+    floor actually raised the price; every no-truth path is a quiet info line
+    and the unchanged `base_price` — the placement always goes ahead.
+    """
+    base = float(base_price)
+    order = broker_order
+    if fetch and order is None and stop_order_id:
+        try:
+            order = await alpaca.get_order(stop_order_id, account_mode=account_mode)
+        except Exception as e:  # loud-ok: fail-open — floor unavailable, place at base
+            logger.warning(
+                f"{site}: {ticker} broker read of stop {stop_order_id} raised ({e}) — "
+                f"re-protect floor unavailable, placing at ${base:.2f}"
+            )
+            order = None
+    price, info = _floor_reprotect_price(base, order)
+    if not info["raised"]:
+        logger.info(
+            f"{site}: {ticker} re-protect at ${price:.2f} "
+            f"(floor {info['floor_source']}, pointer={stop_order_id})"
+        )
+        return price
+    logger.warning(
+        f"{site}: {ticker} DB stop ${base:.2f} is BELOW the last broker stop "
+        f"${price:.2f} ({stop_order_id}, status={info['broker_status']}) — "
+        f"re-protecting at ${price:.2f}, never lower (raise-only)"
+    )
+    await log_audit_event(
+        _REPROTECT_FLOOR_EVENT,
+        f"{ticker}: re-protect price raised ${base:.2f} → ${price:.2f} to the last "
+        f"broker stop ({stop_order_id[:8] if stop_order_id else '?'}, "
+        f"status={info['broker_status']}) — DB stop_price was stale-low",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+            "site": site, "db_price": base, "placed_price": price,
+            "broker_stop_price": info["broker_stop_price"],
+            "broker_order_id": info["broker_order_id"],
+            "broker_status": info["broker_status"],
+        }),
+    )
+    return price
+
+
 async def update_stop(
     trade_id: int, new_stop_price: float, stop_source: str | None = None,
 ) -> bool:
@@ -1795,6 +1943,19 @@ async def update_stop(
             broker_order.get("status") if broker_order else None)
         old_stop_terminal = broker_order is not None and (
             broker_status in _STOP_DEAD_STATUSES or broker_status == "filled")
+        if old_stop_terminal:
+            # #600: the re-protect shape — nothing LIVE to refuse against, but the
+            # dead stop's own price is the last level the broker held. Never place
+            # BELOW it (raise-only, the same signed rule the refuse-floor below
+            # enforces for live stops); never refuse (an unprotected position is
+            # worse than a stop that is ~1R low). Unchanged whenever the requested
+            # price already meets it — `_stop_refresh` re-placing at the DB price
+            # after a DAY leg expired is exactly that case.
+            new_stop_price = await _apply_reprotect_floor(
+                trade_id, ticker, new_stop_price, old_stop_id, account_mode,
+                site="update_stop.reprotect_after_dead_stop",
+                broker_order=broker_order, fetch=False,
+            )
         if not old_stop_terminal:
             broker_stop_raw = broker_order.get("stop_price") if broker_order else None
             if broker_stop_raw is None:
@@ -5570,9 +5731,20 @@ async def _ensure_stop_coverage_outcome(
                 f"— manual intervention needed",
                 "no_stop_and_no_stop_price",
             )
+        # #600: never re-arm BELOW the last level the broker held. `db_stop_price`
+        # can be stale-low (the breakeven replace withholds it on an unconfirmed
+        # outcome — see _floor_reprotect_price); the DB's own stop pointer, read
+        # fresh, names the broker order whose price WAS the protection, even when
+        # that order is now terminal. No broker truth → the DB price, exactly as
+        # before #600 — a re-protect NEVER refuses to place.
+        place_price = await _apply_reprotect_floor(
+            trade_id, ticker, float(db_stop_price),
+            await _current_stop_pointer(trade_id), account_mode,
+            site="ensure_stop_coverage.place",
+        )
         try:
             new_order = await alpaca.place_stop_order(
-                ticker, int(target), float(db_stop_price),
+                ticker, int(target), place_price,
                 account_mode=account_mode, client_order_id=coid,
             )
         except Exception as e:
@@ -5582,22 +5754,23 @@ async def _ensure_stop_coverage_outcome(
                 # auto-market-exit and do NOT write stop_order_id.
                 await log_audit_event(
                     "stop_coverage_breach",
-                    f"{ticker}: stop ${db_stop_price:.2f} would sit above market — "
+                    f"{ticker}: stop ${place_price:.2f} would sit above market — "
                     f"position through the stop. Operator action required (no auto-exit).",
                     json.dumps({
                         "trade_id": trade_id, "ticker": ticker,
                         "account_mode": account_mode,
-                        "intended_stop_price": float(db_stop_price),
+                        "intended_stop_price": place_price,
+                        "db_stop_price": float(db_stop_price),
                         "target_qty": target, "error": str(e),
                     }),
                 )
                 logger.error(
                     f"_ensure_stop_coverage: BREACH for {ticker} — stop "
-                    f"${db_stop_price:.2f} above market; converging (no retry, no auto-exit)"
+                    f"${place_price:.2f} above market; converging (no retry, no auto-exit)"
                 )
                 return CoverageOutcome(
                     COVERAGE_FLAGGED,
-                    f"🚨 {ticker}: stop ${db_stop_price:.2f} is ABOVE market — "
+                    f"🚨 {ticker}: stop ${place_price:.2f} is ABOVE market — "
                     f"position breached the stop. Operator decision needed "
                     f"(no auto-exit).",
                     "stop_above_market_breach",
@@ -5628,18 +5801,19 @@ async def _ensure_stop_coverage_outcome(
         )
         await log_audit_event(
             "stop_coverage_repaired",
-            f"{ticker}: placed coverage stop {int(target)} @ ${db_stop_price:.2f} "
+            f"{ticker}: placed coverage stop {int(target)} @ ${place_price:.2f} "
             f"(was no live stop)",
             json.dumps({
                 "trade_id": trade_id, "ticker": ticker,
                 "account_mode": account_mode,
                 "new_stop_id": new_order["id"], "target_qty": target,
-                "stop_price": float(db_stop_price),
+                "stop_price": place_price,
+                "db_stop_price": float(db_stop_price),
             }),
         )
         return CoverageOutcome(
             COVERAGE_REPAIRED,
-            f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
+            f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${place_price:.2f} "
             f"(no live stop, under-covered)",
             "placed_coverage_stop",
         )
@@ -6513,6 +6687,10 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             continue
 
         existing_stop_id = trade["stop_order_id"]
+        # #600: the dead pointer's own broker order, kept for the re-protect
+        # floor below (its stop_price is the last level the broker held). Reset
+        # per trade so one row's read can never leak into the next.
+        dead_stop_order: dict | None = None
         if existing_stop_id:
             try:
                 order = await alpaca.get_order(existing_stop_id, account_mode=account_mode)
@@ -6539,6 +6717,7 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             if order_status not in DEAD_STATES:
                 # Active, transient, unknown, or fetch-failed — leave alone.
                 continue
+            dead_stop_order = order
             # Confirmed dead: clear stale ID so remediation records a clean
             # new stop_order_id and future runs see a single source of truth.
             await set_stop_order_id(
@@ -6653,6 +6832,16 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 }),
             )
             continue
+        # #600: never re-arm BELOW the last level the broker held. The dead
+        # pointer's order (read above, no second broker call) carries the price
+        # that WAS the protection; the DB stop_price can be stale-low (breakeven
+        # withheld). NULL pointer → nothing to floor against → the DB anchor,
+        # exactly as before — this path NEVER refuses to place.
+        stop = await _apply_reprotect_floor(
+            trade["id"], ticker, float(stop), existing_stop_id, account_mode,
+            site="sync_positions.orphan_remediation",
+            broker_order=dead_stop_order, fetch=False,
+        )
         new_order = None
         last_err: Exception | None = None
         signal_type = trade.get("signal_type") or "unknown"

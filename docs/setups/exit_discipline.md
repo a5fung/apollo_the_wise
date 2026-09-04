@@ -239,6 +239,111 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-09-03 — BUG FIX (#600): a re-protect could re-arm the stop BELOW the last level the broker held — the raise-only rule now floors every re-protect placement (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Classification: bug fix enforcing already-signed intent** — the SAME rule the 2026-08-10 entry
+below enforces (a protective long stop is raise-only), applied to the placements that entry
+deliberately left out. Not a detection-criterion or strategy change; no CHANGE_PROCESS N≥10 gate.
+Nothing about WHEN a stop is placed or WHICH level the strategy wants changed — only that a
+re-protect can no longer place BELOW where the broker's stop already was.
+
+**The defect.** Five sites placed a protective stop at `mi_live_trades.stop_price` with no
+reference to the broker: `_ensure_stop_coverage`'s place branch (reachable every 5 minutes since
+#596's retry), `sync_positions`' orphan remediation (16:05 / 21:00 — the once-a-day exposure the
+task was filed against), `trade_stream`'s two WS cancel-restore paths (partial-exit cancelled →
+cancel the current stop + restore full-size; full-exit cancelled → re-place), and `update_stop`'s
+terminal-old-stop carve-out (`_stop_refresh` after a stop died). That column is DELIBERATELY allowed
+to sit low. **Sources of a stale-low `stop_price`, confirmed in code 2026-09-03** (all in
+`execute_partial_exit`, the ticket's "three" plus one it missed): (1) breakeven replace RAISED and
+the reduced stop then read back terminal — pointer NULLed; if the replace actually went through
+the successor rests at breakeven while the DB keeps the original; (2) replace RAISED and the
+reduced stop unverifiable — pointer KEPT at the consumed reduced-stop id, price unchanged;
+(3) replace ACCEPTED but the successor unconfirmed within the ~3s budget — pointer = successor,
+price WITHHELD (the #548 "uncertain" branch: correct, pinned, untouched); (4) OUTSIDE the
+breakeven-replace: the market-mode fold-in (the 3:45 ladder and `/partialnow` partials) raises the
+broker stop to breakeven, and neither it nor `finalize_partial_exit` ever writes `stop_price`.
+`_be_outcome == "dead"` is NOT a source — that branch's breakeven never rested, so the original is
+the last live level. Worst case is bounded at ~1R (`breakeven − original stop`); FIGS 2026-08-07
+(below) was the real-money analog of the same pathology via a different trigger.
+
+**Why the place branch was NOT routed through `update_stop`'s floor** (the DoD's first half,
+refused on three facts): that floor compares a requested move against the LIVE broker stop and
+REFUSES a non-raise; a re-protect is placing precisely because there is NO live stop, so routing
+would apply no floor at all (its terminal/NULL carve-out is explicit — `test_reprotect_after_dead_
+broker_stop_has_no_floor`); `update_stop` sizes from DB `remaining_shares − held` whereas the
+coverage invariant deliberately sizes from BROKER qty (the 109-vs-28 incident, 2026-06-23) — a
+sizing regression on the money path; and it cancels the pointer first. Wrong tool.
+
+**The fix** — one pure helper, `order_manager._floor_reprotect_price(base, broker_order)`, and one
+async wrapper `_apply_reprotect_floor(...)` that every re-protect site calls:
+- The price to place is `base` (what the site would have placed — the DB `stop_price`, or the
+  requested price) RAISED to the DB stop pointer's broker `stop_price` when that order is readable
+  and was ever accepted. `get_order` returns terminal orders with their price, so a cancelled /
+  expired / replaced / filled stop's level — the last protection the broker actually held — is the
+  floor. `rejected` never rested and is ignored.
+- **It NEVER refuses. Fail direction, deliberate and the opposite of the 08-10 live-stop floor:**
+  NULL pointer, `get_order` → None or raising, no `stop_price` on the order, a raising pointer read
+  → `base`, and the placement goes ahead exactly as before. An unprotected position is strictly
+  worse than a stop that is ~1R low. The floor only ever RAISES the price it is handed.
+- Sites: coverage place branch (pointer read FRESH from the row — an in-memory copy can be stale;
+  this covers `retry_failed_coverage_repairs`, `sync_positions`, both `execute_partial_exit`
+  re-protects and `_handle_oco_parent_cancel` without threading a parameter); sync orphan
+  remediation (the dead order the loop already read — no second broker call); `trade_stream`
+  partial-exit restore (reads the CURRENT stop's price BEFORE cancelling it — the cancel-then-lower
+  shape); full-exit restore (the pointer is nulled only on the fill commit, so it still names the
+  cancelled stop; its `SELECT` now fetches `stop_order_id`); `update_stop` after a terminal old
+  stop (`new_stop_price = max(requested, dead stop's price)` — the live-stop REFUSE floor and the
+  unreadable-REFUSE path are untouched).
+- Durable: `stop_reprotect_floor_applied` audit row (db price, placed price, pointer, status,
+  site) + `logger.warning` ONLY when the floor raised the price; every no-truth path is a quiet
+  info line. No new `stop_price` writer — the place branch records both prices in its own
+  `stop_coverage_repaired` row and the DB keeps understating (the signed safe idiom);
+  `update_stop`, already the authorized writer, writes the floored price.
+
+**The one behavioural consequence — an operator fork, NOT decided here.** If the market has
+ALREADY traded through the last broker level (that stop partially filled, then died), the floored
+placement breaches → `_is_stop_above_market` → ONE alert, converge, no stop, operator decides —
+exactly what happens today whenever the DB is accurate (signed 2026-06-23). Before #600 a
+stale-low DB price could instead be accepted below market, re-arming the position at the ORIGINAL
+stop as an accidental lower net. (a) keep the signed breach convergence (shipped — no new policy);
+(b) on breach at the floored price, fall back to the DB price = a new two-tier placement rule and
+a stop the strategy never signed — operator's call only. Pinned:
+`test_place_branch_floored_price_that_breaches_converges_exactly_as_before`.
+
+**REACH — where the floor can and cannot act (stated, not built).** The floor reads the DB stop
+pointer, so it acts wherever that pointer still names the stop whose level matters at re-protect
+time: (a) `trade_stream`'s partial-exit restore — the pointer is LIVE when it reads it (the
+cancel-then-re-place shape) → fully closed; (b) `sync_positions` at 16:05 when a DAY stop expired
+at 16:00 and the WS `expired` event (~16:15, #507) has not yet arrived — the pointer still names
+the expired order → closed; (c) any re-protect after a missed / late WS event or a container
+restart, and the stale red-unknown / red-dead pointers once `_try_adopt_existing_stop` or the
+stop-ack watchdog has re-synced them to the live successor. **It CANNOT act in the common intraday
+path:** a WS `canceled`/`expired`/`rejected` for the stop the pointer names reaches
+`_handle_cancel_or_reject` section 2, which NULLs `stop_order_id` unconditionally
+(`cancel_or_reject_null`, the signed T1.5a fail-safe — assume naked, Path C remediates) and never
+re-places; the 30-second stop-ack watchdog then re-arms at `orb_low`, or the 5-minute retry /
+16:05 sync at the DB price — and by then there is no pointer to floor against. That WS handler
+holds the cancelled stop's `stop_price` in hand when it nulls. **Preserving that level (or the
+successor id from the `partial_exit_breakeven_unverified` audit row) so a later re-protect can
+floor against it is a change to signed trade-state behaviour → an operator fork, recorded in
+PLAN.md, not built here.** Chasing Alpaca's `replaced_by` one hop for the red-unknown pointer is
+the same class of follow-up. The full-exit restore path is covered only when the sell's reject
+event beats the stop's cancel event (rare — the stop is cancelled first). Out of class, unchanged:
+`trade_stream` entry-fill remediation and the stop-ack watchdog place at `orb_low` (first
+placement / a documented lower fallback the EOD trail corrects); `_replace_stop_leg_via_cancel_new`
+places the caller's price and a second partial per trade is not reachable unattended. Direction:
+every site here is sell-side (`place_stop_order` defaults to sell, `_live_sell_stops` filters sell
+stops), so raise-only is the right direction everywhere the floor runs.
+
+**Tests:** `tests/test_600_reprotect_floor.py` — the pure helper (every status, no-truth, never-
+below-base property), the wrapper (fail-open on None/raise, no read on NULL pointer, audit only on
+raise), and BOTH directions at every site: stale-low placed at the broker level AND a legitimate
+placement with nothing to compare against still happens at the DB price. Mutation-proved:
+inverting the floor reddened 8 tests, making the wrapper REFUSE on no-truth reddened 11, making
+the place branch ignore the floored price reddened the ticket test. The 08-10 suite passes
+unchanged. Deploy: `broker/` + `trade_stream` run on apollo-execution → `deploy.sh execution` AND
+`market-agent` (the sync / retry jobs).
+
 ### 2026-09-03 — #482: counterfactual stops and harvests are RECORDED beside every MAGNA53 fill, era-stamped (RECORD ONLY — no exit rule, stop, target, size or admission changed)
 
 **Trigger**: operator 2026-09-03 — *"After every analysis you just give the opposite rec, I

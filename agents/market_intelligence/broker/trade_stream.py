@@ -2035,6 +2035,20 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 FROM mi_live_trades WHERE id = $1
             """, pending_exit["trade_id"])
         if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
+            from agents.market_intelligence.broker.order_manager import (
+                _apply_reprotect_floor, set_stop_order_id,
+            )
+            # #600: this is the cancel-then-re-place shape — read the CURRENT
+            # stop's broker price BEFORE cancelling it, and never restore BELOW
+            # it. The DB stop_price can be stale-low (breakeven withheld / never
+            # written in market mode); the resting stop's own price is the last
+            # level the broker held. No pointer / unreadable → the DB price,
+            # exactly as before — this path NEVER refuses to restore.
+            restore_price = await _apply_reprotect_floor(
+                trade_row["id"], trade_row["ticker"], float(trade_row["stop_price"]),
+                trade_row["stop_order_id"], account_mode,
+                site="trade_stream.partial_exit_cancel_restore",
+            )
             # Cancel the smaller stop and place one sized for the full remaining.
             if trade_row["stop_order_id"]:
                 await alpaca.cancel_order(trade_row["stop_order_id"], account_mode=account_mode)
@@ -2042,10 +2056,9 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
                     int(trade_row["remaining_shares"]),
-                    float(trade_row["stop_price"]),
+                    restore_price,
                     account_mode=account_mode,
                 )
-                from agents.market_intelligence.broker.order_manager import set_stop_order_id
                 await set_stop_order_id(
                     trade_row["id"], restored["id"],
                     reason="cancel_or_reject_restored",
@@ -2063,13 +2076,13 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                         ON CONFLICT (alpaca_order_id) DO NOTHING
                     """, trade_row["id"], restored["id"], trade_row["ticker"],
                         float(trade_row["remaining_shares"]),
-                        float(trade_row["stop_price"]),
+                        restore_price,
                         restored.get("status", "new"),
                         _jsonb_param(restored))  # #216: codec single-encodes; do NOT pre-dumps
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
                     f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "
-                    f"@${float(trade_row['stop_price']):.2f}."
+                    f"@${restore_price:.2f}."
                 )
                 logger.warning(
                     f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
@@ -2094,18 +2107,29 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         # re-place.
         async with pool.acquire() as conn:
             trade_row = await conn.fetchrow("""
-                SELECT id, ticker, remaining_shares, stop_price
+                SELECT id, ticker, remaining_shares, stop_price, stop_order_id
                 FROM mi_live_trades WHERE id = $1
             """, pending_exit["trade_id"])
         if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
+            from agents.market_intelligence.broker.order_manager import (
+                _apply_reprotect_floor, set_stop_order_id,
+            )
+            # #600: execute_full_exit cancelled the stop but the pointer is only
+            # nulled on the fill commit, so it still names that cancelled order —
+            # whose price is the last level the broker held. Never re-place BELOW
+            # it; no pointer / unreadable → the DB price, exactly as before.
+            restore_price = await _apply_reprotect_floor(
+                trade_row["id"], trade_row["ticker"], float(trade_row["stop_price"]),
+                trade_row["stop_order_id"], account_mode,
+                site="trade_stream.full_exit_cancel_restore",
+            )
             try:
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
                     int(trade_row["remaining_shares"]),
-                    float(trade_row["stop_price"]),
+                    restore_price,
                     account_mode=account_mode,
                 )
-                from agents.market_intelligence.broker.order_manager import set_stop_order_id
                 await set_stop_order_id(
                     trade_row["id"], restored["id"],
                     reason="cancel_or_reject_restored",
@@ -2114,7 +2138,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
                     f"Position still open ({int(trade_row['remaining_shares'])} sh). "
-                    f"Stop re-placed @${float(trade_row['stop_price']):.2f}."
+                    f"Stop re-placed @${restore_price:.2f}."
                 )
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
