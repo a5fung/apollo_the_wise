@@ -284,12 +284,15 @@ ticker. Mechanics + policy:
   ranking sets who STARTS first (and therefore who reaches the insert-time cap recount
   first in the typical case); a top pick stalled on its bar fetch does not block lower
   picks — deliberate, one stall must not eat the 09:45 window.
-- **The watch (the ruling's other half)**: every invocation records what EACH of five
-  rankings (RS / ep_score / briefing composite / ADV$ / alphabetical-the-control) would
-  have picked — raw inputs + ranks + `acting_key` into `mi_ep_slot_rank_shadow`, on BOTH
-  toggle sides, SILENT. Outcomes join at read time from `mi_daily_closes`. Review
-  `ep_slot_ranking_watch_533` (data_gated_reviews.yaml) fires at 10 settled multi-alert
-  mornings with explicit revert/switch bands.
+- **The watch (the ruling's other half)**: every invocation records what EACH of six
+  rankings (RS / ep_score / briefing composite / ADV$ / alphabetical-the-control /
+  volume percentile — the sixth added 2026-09-04, #624, records only, no change to
+  admission/scoring; SCHEMA PENDING a `mi_ep_slot_rank_shadow` column addition in
+  db.py — see `ep_slot_rank_shadow.py`'s docstring) would have picked — raw inputs +
+  ranks + `acting_key` into `mi_ep_slot_rank_shadow`, on BOTH toggle sides, SILENT.
+  Outcomes join at read time from `mi_daily_closes`. Review `ep_slot_ranking_watch_533`
+  (data_gated_reviews.yaml) fires at 10 settled multi-alert mornings with explicit
+  revert/switch bands.
 
 ## Known limitations / open questions
 

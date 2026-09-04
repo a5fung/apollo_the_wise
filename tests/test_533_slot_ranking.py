@@ -19,9 +19,10 @@ Pins here:
   4. the flag + fail direction end-to-end: ON -> RS order acts; OFF -> legacy order
      acts; any ranking-block error -> legacy order acts + a slot_rank_fallback
      audit row (never a dead selection);
-  5. the watch (mi_ep_slot_rank_shadow): raw inputs + all five ranks + acting_key,
-     written on BOTH toggle sides (a revert must not kill the watch), writer
-     fail-open (returns 0, never raises), SILENT.
+  5. the watch (mi_ep_slot_rank_shadow): raw inputs + all six ranks (rank_vol_pct
+     added 2026-09-04, #624, records only) + acting_key, written on BOTH toggle
+     sides (a revert must not kill the watch), writer fail-open (returns 0,
+     never raises), SILENT.
 """
 from __future__ import annotations
 
@@ -78,11 +79,11 @@ def test_the_function_fetches_via_the_pinned_constant():
 # ── Part 2: the acting sort key ───────────────────────────────────────────────
 
 
-def _alert(t, score=70.0, gap=12.0):
+def _alert(t, score=70.0, gap=12.0, vol_pct=90.0):
     return {"ticker": t, "alert_date": date(2026, 8, 28), "gap_pct": gap,
             "rel_volume": 5.0, "ep_score": score, "score_tier": "HIGH",
             "catalyst": "earnings", "catalyst_quality": "strong",
-            "vol_percentile": 90}
+            "vol_percentile": vol_pct}
 
 
 def _rs(comp, rank=100, adv=2e6, close=50.0):
@@ -290,20 +291,23 @@ def test_the_flag_guards_the_only_reorder():
 # ── Part 5: the watch record ──────────────────────────────────────────────────
 
 
-def test_rows_carry_raw_inputs_all_five_ranks_and_the_acting_key():
-    board = [_alert("BTDR", 85, gap=30.0), _alert("LIFE", 70, gap=40.0)]
+def test_rows_carry_raw_inputs_all_six_ranks_and_the_acting_key():
+    board = [_alert("BTDR", 85, gap=30.0, vol_pct=95.0),
+             _alert("LIFE", 70, gap=40.0, vol_pct=60.0)]
     rs = {"BTDR": _rs(24, 1969, 1e6, 10.0), "LIFE": _rs(98, 50, 5e5, 4.0)}
     rows = compute_slot_rank_rows(
         board, rs, _SCORE_DATE, {"LIFE": "Accelerating"},
         acting_key="rs", trigger="cron_9_31")
     assert SLOT_RANK_KEYS == (
-        "rank_rs", "rank_ep_score", "rank_composite", "rank_adv", "rank_alpha")
+        "rank_rs", "rank_ep_score", "rank_composite", "rank_adv", "rank_alpha",
+        "rank_vol_pct")
     by_t = {r["ticker"]: r for r in rows}
     life, btdr = by_t["LIFE"], by_t["BTDR"]
     # raw inputs present; computed points/composites ABSENT (#583 class)
     for r in rows:
         for k in ("ep_score", "gap_pct", "rs_composite", "rs_rank",
-                  "rs_score_date", "adv_20", "score_close", "theme_stage"):
+                  "rs_score_date", "adv_20", "score_close", "theme_stage",
+                  "vol_percentile"):
             assert k in r
         assert "composite" not in r and "points" not in r
         assert r["acting_key"] == "rs" and r["trigger"] == "cron_9_31"
@@ -313,8 +317,26 @@ def test_rows_carry_raw_inputs_all_five_ranks_and_the_acting_key():
     assert life["rank_composite"] == 1                      # 70+15+9.8 > 85+2.4
     assert btdr["rank_adv"] == 1                            # $10M > $2M ADV$
     assert btdr["rank_alpha"] == 1                          # B < L — the control
+    assert btdr["rank_vol_pct"] == 1                        # 95 > 60
     assert life["theme_stage"] == "Accelerating" and btdr["theme_stage"] is None
     assert life["rs_score_date"] == _SCORE_DATE
+    assert btdr["vol_percentile"] == 95.0 and life["vol_percentile"] == 60.0
+
+
+def test_missing_vol_percentile_ranks_after_every_scored_name_and_is_never_dropped():
+    """Mirrors the RS missing-value policy (Part 3): no vol_percentile reading
+    ranks AFTER every name that has one, never drops the name, never crashes."""
+    board = [_alert("NOVOL", 99, vol_pct=None),
+             _alert("LOWV", 60, vol_pct=20.0),
+             _alert("HIGHV", 70, vol_pct=90.0)]
+    rows = compute_slot_rank_rows(
+        board, {}, None, {}, acting_key="rs", trigger="cron")
+    by_t = {r["ticker"]: r for r in rows}
+    assert by_t["HIGHV"]["rank_vol_pct"] == 1
+    assert by_t["LOWV"]["rank_vol_pct"] == 2
+    assert by_t["NOVOL"]["rank_vol_pct"] == 3
+    assert by_t["NOVOL"]["vol_percentile"] is None
+    assert sorted(r["rank_vol_pct"] for r in rows) == [1, 2, 3]  # a permutation
 
 
 @pytest.mark.asyncio

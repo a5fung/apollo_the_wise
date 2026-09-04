@@ -10357,7 +10357,8 @@ reviews:
       going forward if it deteriorates or other ranking starts to do better." On the
       multi-alert mornings accrued SINCE the flip, does prior-day RS composite still
       pick better slot recipients than the same morning's skipped names — and does any
-      other recorded ordering (ep_score / briefing composite / ADV$ / alphabetical)
+      other recorded ordering (ep_score / briefing composite / ADV$ / alphabetical /
+      volume percentile, the last added 2026-09-04 #624 once its shadow column ships)
       now beat it? The ship-time evidence was 15 mornings with error bars that include
       zero for every challenger (docs/analysis/533_within_day_ranking_2026-08-30.md).
     # to_regclass idiom: registered in the SAME commit as the table (exists in code,
@@ -10374,9 +10375,10 @@ reviews:
                           HAVING COUNT(DISTINCT ticker) >= 3) d) END
     threshold: 10
     # Reviewed the table: no column separates genuinely different questions for this
-    # predicate — the five rankings are recorded counterfactually on EVERY row, so
-    # mornings answer the question regardless of acting_key (which ordering acted)
-    # or trigger (which invocation); readers dedup to the earliest invocation.
+    # predicate — the six rankings (rank_vol_pct added 2026-09-04, #624) are recorded
+    # counterfactually on EVERY row, so mornings answer the question regardless of
+    # acting_key (which ordering acted) or trigger (which invocation); readers dedup
+    # to the earliest invocation.
     discriminates_on: []
     earliest_review_date: 2026-09-27
     status: pending

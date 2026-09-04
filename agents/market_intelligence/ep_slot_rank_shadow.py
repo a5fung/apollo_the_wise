@@ -1,6 +1,7 @@
-"""#533 WITHIN-DAY SLOT RANKING — the acting RS order + the five-ranking watch record
+"""#533 WITHIN-DAY SLOT RANKING — the acting RS order + the six-ranking watch record
 (2026-08-30, OPERATOR-SIGNED: "switch to RS rank, but observe going forward if it
-deteriorates or other ranking starts to do better").
+deteriorates or other ranking starts to do better"; sixth ranking — rank_vol_pct —
+added 2026-09-04, #624, records only, see below).
 
 THE DEFECT THIS FIXES. `live_tracker.process_new_alerts_live` selected the day's HIGH
 alerts with `DISTINCT ON (ticker) … ORDER BY ticker, ep_score DESC` — `DISTINCT ON`
@@ -35,8 +36,9 @@ never a dead selection.
 THE WATCH — the other half of the ruling. Every invocation with >=1 alert on the
 board, one row per (invocation, ticker) into `mi_ep_slot_rank_shadow`: RAW INPUTS
 (ep_score / gap_pct / prior-day rs_composite, rs_rank, adv_20, score-row close /
-theme stage — never computed points, the #583 stale-derived-value class) plus the
-1-based rank the board's names take under each of FIVE candidate orderings:
+theme stage / vol_percentile — never computed points, the #583 stale-derived-value
+class) plus the 1-based rank the board's names take under each of SIX candidate
+orderings:
   rank_rs         — the acting order above (prior-day RS composite)
   rank_ep_score   — ep_score DESC (the post-08-22 score: ZERO settled multi-alert
                     days existed at ship — this column is how it gets its read)
@@ -46,6 +48,22 @@ theme stage — never computed points, the #583 stale-derived-value class) plus 
   rank_adv        — ADV$ DESC (adv_20 x score-row close, the pre-gap-price
                     convention of ep_detector's large-cap floor)
   rank_alpha      — ticker ASC (the deposed incumbent — the control)
+  rank_vol_pct    — vol_percentile DESC (2026-09-04). Raw input is `a["vol_percentile"]`,
+                    already computed and persisted per candidate by ep_detector's
+                    `_volume_percentile` (fed by `db.get_volume_history_daily_closes`
+                    post-open since today, `get_volume_history`/adv_20 pre-open) and
+                    carried straight off the mi_ep_alerts row this module reads —
+                    NO new query. Provenance an analyst must know: it is whichever
+                    mi_ep_alerts row survived the board query's own `DISTINCT ON
+                    (ticker) ... ep_score DESC` dedup for that ticker, so a ticker
+                    re-alerted intraday carries its max-ep_score row's percentile,
+                    not necessarily its first or last. Operator ruling 2026-09-04: prioritize proving edge
+                    on the universe we already trade before risking capital chasing
+                    micro-caps. A same-day study found this rule strong on cap>=$500M
+                    names (+1.31R, 7/7, n=7) and on admitted names (+1.54R, 3/3, n=3)
+                    — TINY SAMPLES, STRIKING NOT SETTLED. This column exists to make
+                    the question answerable on real data, nothing more; see the
+                    ⚠ RECORDS-ONLY note below.
 `acting_key` stamps which ordering ACTED that invocation ('rs' | 'legacy_alpha') —
 never inferred from dates. Append-only BY DESIGN (no upsert): the board grows through
 the morning (bar_stream + cron triggers), and per-invocation history with `trigger` +
@@ -56,6 +74,24 @@ day-0 open, the evidence doc's primary metric), so the record can never go stale
 The review that answers "deteriorates / other ranking does better" is
 `ep_slot_ranking_watch_533` in data_gated_reviews.yaml (10 settled multi-alert
 mornings).
+
+⚠ RECORDS ONLY — `rank_vol_pct` (like its five siblings) changes NO slot allocation,
+admission, score or alert. It is read by no grading/entry/sizing/safeguard path.
+Making any recorded ranking act would be a separate operator-signed change under
+CHANGE_PROCESS (THE LINE) — nothing here does that.
+
+⚠ SCHEMA PENDING (2026-09-04, #624): `vol_percentile` and `rank_vol_pct` are NOT
+YET columns on `mi_ep_slot_rank_shadow` in db.py's `initialize_schema` — adding them
+there was out of scope for this change (db.py ships tonight in an unrelated deploy
+window; touching it here risked a mid-flight partial edit). The exact lines to add,
+house `ADD COLUMN IF NOT EXISTS` pattern, next to the table's existing CREATE:
+    ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS vol_percentile DOUBLE PRECISION;
+    ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS rank_vol_pct INT;
+Until those land, EVERY `snapshot_slot_rank_board()` write fails (fail-open,
+warning-logged, 0 rows) — not just the two new fields, the WHOLE six-way row, since
+it is one INSERT statement. `mi_ep_slot_rank_shadow` is registered in
+`health_checks._DETECTOR_LIVENESS_TABLES` so a dark table is not silent forever,
+but do not deploy this file ahead of the db.py column addition.
 
 $0 AT RUNTIME — one small mi_stock_scores fetch (done by live_tracker, shared with
 the acting sort so acting and recorded RS can never drift) + one mi_themes fetch
@@ -86,6 +122,7 @@ from agents.market_intelligence.briefing import _ep_composite_key, _THEME_BONUS 
 # tests/test_533_slot_ranking.py instead of silently shrinking the record.
 SLOT_RANK_KEYS: tuple[str, ...] = (
     "rank_rs", "rank_ep_score", "rank_composite", "rank_adv", "rank_alpha",
+    "rank_vol_pct",
 )
 
 
@@ -136,7 +173,7 @@ def compute_slot_rank_rows(
     trigger: str,
 ) -> list[dict]:
     """One row per board name: raw inputs + the name's 1-based rank under each of
-    the five candidate orderings (see module docstring). Pure — no I/O.
+    the six candidate orderings (see module docstring). Pure — no I/O.
 
     Every ordering ends in ticker ASC so each is a reproducible total order,
     never an input-order lottery (the Stage-0 nine-way-tie lesson)."""
@@ -150,6 +187,13 @@ def compute_slot_rank_rows(
 
     def _eps(a: dict) -> float:
         return float(a.get("ep_score") or 0.0)
+
+    def _vol_pct(a: dict) -> "float | None":
+        # Raw input carried straight off the alert row — ep_detector already
+        # computed and persisted this per candidate (mi_ep_alerts.vol_percentile,
+        # #605). No new query, no re-derivation.
+        v = a.get("vol_percentile")
+        return float(v) if v is not None else None
 
     rank_rs = rank_board_by_rs(alerts, rs_by_ticker)
     rank_ep_score = _rank_from_key(alerts, lambda a: (-_eps(a), a["ticker"]))
@@ -167,6 +211,14 @@ def compute_slot_rank_rows(
         a["ticker"],
     ))
     rank_alpha = _rank_from_key(alerts, lambda a: a["ticker"])
+    # Nulls-last, same shape as rank_adv above: no reading earns no priority over
+    # an evidenced one, but the name is never dropped from the permutation.
+    rank_vol_pct = _rank_from_key(alerts, lambda a: (
+        0 if _vol_pct(a) is not None else 1,
+        -(_vol_pct(a) or 0.0),
+        -_eps(a),
+        a["ticker"],
+    ))
 
     board_n = len(alerts)
     rows = []
@@ -183,12 +235,14 @@ def compute_slot_rank_rows(
             "adv_20": _rs(t).get("adv_20"),
             "score_close": _rs(t).get("close"),
             "theme_stage": theme_stage_by_ticker.get(t),
+            "vol_percentile": _vol_pct(a),
             # the decision record (what each ordering did on THIS board):
             "rank_rs": rank_rs[t],
             "rank_ep_score": rank_ep_score[t],
             "rank_composite": rank_composite[t],
             "rank_adv": rank_adv[t],
             "rank_alpha": rank_alpha[t],
+            "rank_vol_pct": rank_vol_pct[t],
             "acting_key": acting_key,
             "trigger": trigger,
             "board_n": board_n,
@@ -258,8 +312,9 @@ async def snapshot_slot_rank_board(
                     r["ep_score"], r["gap_pct"],
                     r["rs_composite"], r["rs_rank"], r["rs_score_date"],
                     r["adv_20"], r["score_close"], r["theme_stage"],
+                    r["vol_percentile"],
                     r["rank_rs"], r["rank_ep_score"], r["rank_composite"],
-                    r["rank_adv"], r["rank_alpha"],
+                    r["rank_adv"], r["rank_alpha"], r["rank_vol_pct"],
                     r["acting_key"],
                 )
                 for r in rows
@@ -270,12 +325,21 @@ async def snapshot_slot_rank_board(
         return 0
 
 
+# ⚠ SCHEMA PENDING (2026-09-04, #624, see module docstring): `vol_percentile` and
+# `rank_vol_pct` below are not yet columns in db.py's initialize_schema. Until the
+# operator adds
+#     ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS vol_percentile DOUBLE PRECISION;
+#     ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS rank_vol_pct INT;
+# to db.py (sequenced after tonight's unrelated db.py deploy), every INSERT below
+# fails — the whole six-way row, not just these two fields — and
+# snapshot_slot_rank_board's fail-open catch turns that into a silent 0-rows
+# return (warning-logged only). Do not deploy this file ahead of that db.py change.
 _INSERT_SQL = """
     INSERT INTO mi_ep_slot_rank_shadow (
         alert_date, ticker, recorded_at, trigger, board_n,
         ep_score, gap_pct, rs_composite, rs_rank, rs_score_date,
-        adv_20, score_close, theme_stage,
-        rank_rs, rank_ep_score, rank_composite, rank_adv, rank_alpha,
+        adv_20, score_close, theme_stage, vol_percentile,
+        rank_rs, rank_ep_score, rank_composite, rank_adv, rank_alpha, rank_vol_pct,
         acting_key
-    ) VALUES ($1,$2,$3,$4,$5, $6,$7,$8,$9,$10, $11,$12,$13, $14,$15,$16,$17,$18, $19)
+    ) VALUES ($1,$2,$3,$4,$5, $6,$7,$8,$9,$10, $11,$12,$13,$14, $15,$16,$17,$18,$19,$20, $21)
 """

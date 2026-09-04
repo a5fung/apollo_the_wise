@@ -3720,11 +3720,31 @@ async def initialize_schema() -> None:
                 rank_composite  INT,               -- briefing._ep_composite_key desc, ticker
                 rank_adv        INT,               -- ADV$ desc nulls-last, ep_score, ticker
                 rank_alpha      INT,               -- ticker asc — the deposed incumbent (control)
+                vol_percentile  DOUBLE PRECISION,  -- #623 raw input: 09:31 volume vs the ticker's OWN history
+                rank_vol_pct    INT,               -- #623 the sixth ranking (vol pctile desc, nulls-last)
                 acting_key      TEXT,              -- 'rs' | 'legacy_alpha' — which order ACTED
                 created_at      TIMESTAMPTZ DEFAULT NOW()
             );
             CREATE INDEX IF NOT EXISTS idx_ep_slot_rank_shadow_date
                 ON mi_ep_slot_rank_shadow(alert_date DESC);
+
+            -- #623 (2026-09-04, operator-approved): a SIXTH ranking — volume
+            -- percentile, the candidate's 09:31 volume against its OWN trailing
+            -- history. Added because the same volume gate under evaluation for a
+            -- low-cap lane looked strong on the universe we ALREADY trade (7 of 7
+            -- positive at +1.31R on cap >= $500M) — on samples far too small to
+            -- act on, which is precisely why it is being RECORDED rather than used.
+            -- ⚖ RECORDS ONLY. This ranking changes no slot allocation, no admission,
+            -- no score and no alert; making it ACT is a separate CHANGE_PROCESS step
+            -- with operator sign-off (THE LINE).
+            -- ⚠ These two columns MUST exist before `ep_slot_rank_shadow.py`'s
+            -- six-way INSERT runs, or the whole row fails (one INSERT, not per
+            -- field) and the shadow goes dark — hence they ship in the same commit,
+            -- and schema init runs at boot, ahead of any ORB-time write.
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS vol_percentile DOUBLE PRECISION;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS rank_vol_pct INT;
 
             -- #606 D-1 UNIVERSE FLOOR SHADOW (2026-08-31): one row per (scan_date,
             -- ticker) for EVERY real candidate (gap clears the day's Pass-1 gap
