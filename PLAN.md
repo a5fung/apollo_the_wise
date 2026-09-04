@@ -46,6 +46,8 @@ hard external deadline, then money-path and alert-trust defects.
 | 4 | **#600** | a repair can re-arm a stop at a price the broker already passed (money path) | Sonnet | Fri am |
 | 5 | **#604** | the naked-position L1 cries wolf at 16:15, every time | Sonnet | Fri am |
 
+⚠ **CAPACITY, operator 2026-09-03 evening: #600 is the LAST FABLE-CAPACITY ITEM until the FRIDAY EVENING reset.** Everything after it is **Sonnet or main-loop** — do not scope a Fable card before Friday evening. Friday's fixed points are all main-loop anyway: read #593's 40-day backfill and report the number, verify #617 / #333 / #604, and deploy #604.
+
 **Verifies riding along:** #333 Wed 18:12 ET · #616 Thu · #540, #595, #233 Fri.
 
 ### ✅ ALL FOUR NEW RECORDERS ARE ACTUALLY SCHEDULED — checked 2026-09-03, post-deploy
