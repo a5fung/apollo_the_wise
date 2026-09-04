@@ -273,15 +273,11 @@
   },
   {
     "id": 600,
-    "status": "in_progress"
+    "status": "deployed"
   },
   {
     "id": 601,
     "status": "deployed"
-  },
-  {
-    "id": 604,
-    "status": "in_progress"
   },
   {
     "id": 607,

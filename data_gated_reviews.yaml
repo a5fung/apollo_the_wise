@@ -10829,6 +10829,35 @@ reviews:
                  "agents/market_intelligence/live_fill_counterfactuals.py",
                  "agents/market_intelligence/rule_eras.py"]
 
+  - review_id: stop_reprotect_floor_first_fire_600
+    title: "#600 — the raise-only re-protect floor has ACTED on a real stop for the first time"
+    question: >-
+      #600 (2026-09-03/04) stopped a re-armed protective stop from going back on BELOW the last
+      level the broker actually held, and fork 2 preserved the dead stop's price so the floor
+      is not dark on the common intraday path. Both halves are deployed and VERIFIED LOADED in
+      the running images (2026-09-04: `_floor_reprotect_price` raises 10.00 -> 10.75 inside
+      apollo-execution, `_preserve_dead_stop_price` present, all four `dead_stop_*` columns
+      exist in prod). What CANNOT be verified on a calendar is the floor ACTING, because it
+      only fires when a stop dies AND its pointer survives to be read.
+      This predicate exists so the task surfaces on the EVENT rather than being rebumped
+      forever: the historical base rate of the repair path is TWO firings in the system's life
+      (both 2026-06-23, both paper), so a date-based ETA would have been a lie.
+    predicate_sql: SELECT COUNT(*) FROM mi_audit_log WHERE event_type = 'stop_reprotect_floor_applied'
+    threshold: 1
+    discriminates_on: []
+    earliest_review_date: 2026-09-08
+    status: pending
+    kind: tripwire
+    added_on: 2026-09-04
+    action_when_ready: >-
+      Read the row: it carries the DB price, the placed price, the pointer and the broker
+      status. Confirm the placed price is the HIGHER of the two and that the position ended up
+      protected. Then close #600. If the row shows the floor RAISING into a breach (the market
+      already through the level), that is the signed 2026-06-23 converge-and-alert path, not a
+      defect - the operator ruled on that fork on 2026-09-03 and it is closed.
+    cross_refs: ["docs/setups/exit_discipline.md",
+                 "agents/market_intelligence/broker/order_manager.py"]
+
   - review_id: gap_near_miss_tradeable_miss_rate_617
     title: "#617 Step 2 — standing 7-9% gap-floor near-miss recall rate, once there is enough data to read"
     question: >-
