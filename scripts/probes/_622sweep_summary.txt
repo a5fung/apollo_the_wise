@@ -1,0 +1,457 @@
+#622 REDONE — "how do we trade CHPT successfully, how do we let it in?"
+
+READ-ONLY measurement. No threshold, filter, rubric weight, or config changed
+in production. Everything below is built by importing the REAL
+`ep_detector._score_ep` and `ep_rubric` weight tables and feeding them
+alternate inputs / alternate weight dicts — never reimplemented, never live.
+
+============================== HEADLINE ==============================
+
+Fixing the volume bug is not enough, and there is no honest variant found
+that both admits CHPT and is genuinely profitable on this cohort.
+
+  - Honest volume conviction alone moves CHPT from 52.5 to 58.8 (current
+    rubric, bar 65) — real, but 6.2 points short. Volume was never the whole
+    story.
+  - The ONE feature in this data that reliably predicts outcome — market cap,
+    even within this already-sub-$500M population — says CHPT (12th
+    percentile of this cohort, $134M) sits in the WORST-performing third:
+    bottom tercile ($84M-$222M) averages -0.56R, top tercile ($351M-$500M)
+    averages +0.78R. Sign holds in both halves of the 9-week sample (H1 rho
+    +0.47, H2 rho +0.18 — weaker but same direction). The operator's "maybe
+    smaller is reversed" hypothesis is tested directly and does NOT hold —
+    smaller is worse here too, same direction as everywhere else.
+  - Under the CURRENT rubric, the only real path to the 65 bar for this
+    cohort is the "gap>=10% + game_changer catalyst" conviction floor — a
+    2-win/4-loss lottery here (FBRX +10.71R, SENS +3.99R won; RGNX, AGPU,
+    PESI, DUOT each lost ~-1R), 33% win rate. Every variant that DOES admit
+    CHPT (legacy gap ladder, doubled volume weight, rescaled liquidity)
+    shows a positive average return only because it ALSO admits FBRX and/or
+    SENS — the same two names every time, regardless of which lever moves.
+    Remove them and every variant's average return falls to at-or-below the
+    cohort baseline. FBRX and SENS are ALSO both stale-tick rows (their
+    SCORE inputs came from a tick more than 5 minutes from 09:31, not their
+    outcomes — realized R is unaffected) — so every variant's headline mean
+    rests on two names whose admitting SCORE was not built from a clean
+    09:31 read. Restricted to the fresh-tick-only subsample, every admitting
+    variant is flat-to-negative (see "ROBUSTNESS" below).
+  - CHPT's own result in the replay (+0.33R) is the SINGLE MOST COMMON
+    outcome in this cohort — 29% of the 107 settled trades (31 names) land
+    in the same narrow band (+0.28R to +0.42R), the mechanical signature of
+    "hit the first partial target, then the remainder got stopped at
+    breakeven." CHPT is the modal outcome, not a hidden winner and not
+    especially unlucky either — the bracket did what it does to about a
+    third of this cohort's trades.
+
+============================== PART 1 — HONEST INPUTS ==============================
+
+Three problems found in the prior study, all now fixed:
+
+1. `vol_percentile` hardcoded to 50.0 for all 48 sampled names (the bug the
+   operator flagged). Fixed: `_volume_percentile()` (imported unmodified) fed
+   a rolling 20-day-average-volume history built from `mi_daily_closes`,
+   evaluated strictly before each scan date — CHPT's honest value is 100.0
+   (its 09:31 volume of 969,501 shares already exceeded every one of its own
+   trailing 20-day-average readings from the last 60 days).
+
+   SEPARATE, PREVIOUSLY UNDISCOVERED FINDING, two stacked causes: at 09:31
+   the LIVE wrapper (`ep_detector.py` ~3844: `if _minutes_since_open is None:
+   vol_pct = _volume_percentile(...) else: vol_pct = 50.0`) hardcodes 50.0
+   for EVERY name at EVERY post-open tick, by design — the function is never
+   even called with real data at the moment this whole question is about,
+   for ANY ticker, regardless of data availability. That is the dominant,
+   universal cause and it is not a bug — CLAUDE.md documents it as
+   deliberate ("partial-day cumulative would falsely rank near 0 against
+   full-day distributions"). Separately, and moot at 09:31 specifically but
+   relevant to the PRE-market ticks where the wrapper WOULD call the real
+   function: `mi_stock_scores.adv_20` (the live history source, top ~2,400
+   RS-ranked names only) has ZERO rows in the 60 days before scan_date for
+   33 of the 154 ticker-days in this population (21%) — CHPT itself is one
+   of them (its `mi_stock_scores` coverage stops 2026-06-15, ~80 days before
+   its 2026-09-03 scan). The other 121/154 DO have some coverage (1-43
+   rows), so this second cause is real but partial, not universal — named
+   here as a separate, real finding worth its own follow-up (NOT filed to
+   PLAN.md per this task's scope — flagged for the operator/session to
+   capture); would touch live code, out of scope for a measurement task.
+
+2. `adv_dollar` fed to the scorer was actually the raw SHARE-count `adv`
+   column with no `* prev_close` multiplication — mislabeled dollars. Fixed:
+   `adv_dollar_0931 = adv_shares_at_tick * prev_close_at_tick`. Did not change
+   any prior conclusion (this cohort's real dollar ADV, correctly computed,
+   is still ~$0.2M-$10M — nowhere near the $50M liquidity floor either way)
+   but it was a real bug in the reconstruction, named here for the record.
+
+3. Every feature (gap, volume, rel_volume) was previously read from EACH
+   ticker's own MAX-of-day scan tick — whenever its gap happened to peak that
+   morning, a different clock time for every name. For CHPT that was 09:45 ET
+   (gap 49.81%), not the 09:31 decision point (gap 34.68%). Fixed: every
+   feature for every name now comes from the SAME kind of moment — the
+   `mi_ep_scan_log` tick closest in wall-clock time to 09:31:00 ET that day.
+   56/154 rows land within 30 seconds of 09:31 exactly; the median distance
+   across the full population is 14 minutes, and 30 ticker-days have no tick
+   within 30 minutes of 09:31 at all — the scan had already stopped tracking
+   that name (its gap faded pre-open) before the 09:31 mark. Used anyway, per
+   the brief's "nearest tick" instruction, with the exact distance recorded
+   on every row so a reader can judge staleness per name.
+
+   `today_volume` the dedicated column only started being persisted
+   2026-08-31 — recovered for the other 141/154 rows by inverting
+   `rel_volume = round(today_volume/adv, 2)` (today_volume = rel_volume *
+   adv); `market_cap` the dedicated column also only starts 2026-08-31 —
+   recovered for the rest by parsing the exact same dollar figure
+   `check_filters` already wrote into that morning's `filter_reason` string
+   ("$134M < $500M"), falling back to the nearest same-day tick that carried
+   the string when the chosen 09:31 tick had failed a DIFFERENT filter first.
+
+Limitations kept (named, not buried):
+  - `projected_vol_multiple` is None at the 09:31 tick for nearly every row —
+    this is FIDELITY, not a default: live does not compute it before 9:45 ET
+    either (CLAUDE.md), so its absence here is what the system would actually
+    have known at 09:31. The liquidity fallback path already falls back to
+    `rel_volume` when this is None, same as live.
+  - `float_shares` is a CURRENT FMP read, not a historical one — same
+    simplification the prior study used and named; float is near-static and
+    carries no price/outcome information.
+  - `catalyst_metrics_extractor` (earnings Q-rev downgrade gate) and the
+    holistic judge (`ep_grade_judge`) were not run — same scope decision as
+    the prior study; both can only DOWNGRADE or SUPPRESS, so every score
+    here is a soft upper bound, never an underestimate.
+  - 30/154 ticker-days had their nearest-available tick more than 30 minutes
+    from 09:31 (the scan had already dropped the name from its candidate list
+    by then, most often because the gap had already faded pre-open) — their
+    gap/volume readings are stale relative to the 09:31 label. Flagged per
+    row (`tick_dist_from_0931_sec`); not excluded, since a stale-but-present
+    reading is still the most honest reconstruction available and the brief
+    asks for the nearest tick, not a fabricated one.
+  - 5 of the 60 newly-graded ticker-days carry `sec_same_day_risk=True`
+    (nearest SEC 8-K/6-K dated the scan day itself, acceptance time missing
+    or after 09:31) — same residual caveat class the prior study flagged.
+
+============================== PART 2 — THE SWEEP ==============================
+
+Population: 109 settled + 2 open_at_horizon excluded (mcap_too_small)
+ticker-days, minus 2 degenerate-stop rows (RELL 2026-06-08, AVBC 2026-07-24 —
+the harness's own validate step flags these, risk width <0.3% of entry, R is
+noise-amplified) = 107 clean settled used for every statistic below, plus 2
+open_at_horizon footnote rows. Catalyst grades: 49 already captured (prior
+study's 48-sample + CHPT), 60 newly graded this session to cover the FULL
+usable population instead of a bucketed subsample — see SPEND.
+
+Baseline (unconditional, the number every variant must beat to mean
+anything): mean +0.101R/trade, median +0.333R, win rate 57%, n=107.
+Cross-checked against the harness's own validated summary (+0.101R,
+n=107) — exact match.
+
+--- Univariate pass (Spearman rho vs realized_r_0931, full / first-half /
+    second-half by scan date; sign_agrees = same direction both halves) ---
+
+  gap_pct:              rho=+0.046 (full), +0.082 / +0.009 (halves, agrees).
+       Checked for staleness (30/154 ticker-days had no scan tick within 30
+       min of 09:31 — Part 1 item 3): fresh-tick-only (n=41) rho=+0.14,
+       stale-only (n=66) rho=+0.14 — same weak-positive reading either way,
+       so staleness is not masking a stronger real effect.
+    -> ANSWERS "is bigger gap better or worse for this cohort": NEITHER.
+       Gap size has essentially no relationship with outcome here, in either
+       direction. It is not reversed, and the #533 flattening (paying every
+       qualifying gap the same 10 points) is not costing or buying anything
+       measurable on this population.
+  vol_pct_daily_bars:   rho=-0.055 (full), +0.027 / -0.143 (disagrees)
+    -> Honest volume conviction does NOT separate winners from losers here —
+       sign flips between halves. Fixing the bug does not, by itself, fix
+       the scorer.
+  adv_dollar (liquidity): rho=+0.108 (full), +0.126 / -0.007 (disagrees)
+    -> Unstable, near-zero in the second half. Not a usable signal even
+       rescaled (see V4 below).
+  market_cap:           rho=+0.299 (full), +0.466 (H1, n=53) / +0.177 (H2,
+    n=54) — sign holds in both halves; magnitude is meaningfully weaker in
+    H2 (n=54 alone is thin for a rho of 0.18 to be more than suggestive on
+    its own, but it agrees in direction with a much stronger H1 reading).
+    -> The one feature that replicates in direction across both halves.
+       Terciles (full sample): low $84-222M meanR=-0.56, mid $223-349M
+       meanR=+0.07, high $351-500M meanR=+0.78. CHPT ($134M) sits at the
+       12th percentile — the losing third.
+  float_shares:         rho=+0.287 (full), +0.347 (H1) / +0.268 (H2) —
+    holds up better across halves than market cap does, magnitude-wise.
+    -> LARGER float predicts BETTER R here — opposite direction from the
+       live rubric's low-float bonus (+5 pts for <50M shares). This is a
+       rubric-weight observation, not a proposal — flagged as an operator
+       item below (THE LINE: weights are his call). CHPT's float (24.8M,
+       57th percentile of this cohort) is unremarkable either way, near the
+       flat middle tercile (meanR=+0.05).
+  prior_3m_change:      rho=-0.017 (full), -0.208 / +0.145 (disagrees)
+    -> No usable signal, consistent with why this was already dropped from
+       live scoring (#533, "measured as noise").
+  catalyst_quality (ordinal): weak alone (rho=+0.064) but the categorical
+    breakdown is the second-most defensible finding in this sweep:
+      routine (n=66): mean -0.126   strong (n=33): mean +0.216, or +0.130
+      excluding its single largest winner (AMCX +2.97R — no mega-outlier
+      driving it)   game_changer (n=6): mean +1.799 but median -0.95 — this
+      one IS entirely two outlier trades (FBRX +10.71R and SENS +3.99R are
+      BOTH graded game_changer; the other 4 game_changer names average -0.98).
+    Split-half: strong beats routine in BOTH halves (+0.482 vs -0.078 first
+    half; +0.083 vs -0.20 second half) — direction replicates, magnitude
+    shrinks a lot, but this is real and not outlier-driven. CHPT is graded
+    "strong" (not game_changer) — already fully credited (15 pts) by the
+    CURRENT rubric; there is no additional lever here.
+  in_active_theme: UNDEFINED — zero variance (0/107 rows are in an active
+    theme). The theme_bonus component is structurally inert for this entire
+    cohort, not just decorative under today's bar (as already known for the
+    scored-control population).
+  regime_bull: rho=+0.076, negligible.
+
+--- Score variants (CHPT's score under each, vs the 65 bar; cohort cost) ---
+
+  V0_HONEST_CURRENT (live rubric, honest inputs): CHPT=58.8, NOT admitted.
+    Full cohort at this bar: n=7 — RGNX, FBRX, AGPU, SENS, PESI, DUOT (all
+    "game_changer" catalyst, admitted via the gap>=10+game_changer->60
+    conviction floor) plus FF (admitted organically off gap+catalyst+float+
+    vol_conviction, Bull regime x1.2). That floor is a 2-win/4-loss lottery
+    here: FBRX +10.71R and SENS +3.99R won; RGNX, AGPU, PESI, DUOT each lost
+    ~-1R (33% win rate). sumR=+9.80, meanR=+1.40 (looks great on the mean) —
+    EXCLUDING FBRX alone: n=6, sumR=-0.92, meanR=-0.15 (net LOSING). Under
+    the current rubric, this cohort's only real admission path is a coin-
+    flip-or-worse lottery whose average return is entirely a function of how
+    big the (minority of) wins happened to be.
+
+  V0L_HONEST_LEGACY (pre-#533 rubric, honest inputs): CHPT=80.0, ADMITTED.
+    Raw components sum to 50 (gap 25 + catalyst 15 + float 5 + vol_conviction
+    5), then the old "20%+ gap and strong catalyst -> floor 80" branch
+    overrides it to 80 (CHPT's 34.68% gap clears 20%, catalyst is "strong") —
+    the SAME conviction-floor mechanism #533 deleted for running backwards on
+    ordinary gappers generally (see ep_rubric.py). CHPT clears the legacy bar
+    via that floor, not organically off its component scores.
+    Full cohort: n=14, sumR=+15.49, meanR=+1.11 — EXCLUDING FBRX: n=13,
+    sumR=+4.77, meanR=+0.37 — EXCLUDING FBRX+SENS: n=12, sumR=+0.78,
+    meanR=+0.065 (below the +0.101 baseline). Best-looking variant on the
+    full sample, and still two trades away from unremarkable.
+
+  V1_GAP_LEGACY_LADDER (current rubric, gap component only reverted to the
+    pre-#533 25/20/15/10 ladder — isolates the gap-ladder effect from the
+    floor-chain effect the prior study conflated): CHPT=77.5, ADMITTED.
+    Full: n=27, sumR=+14.34, meanR=+0.53. Ex-FBRX: n=26, meanR=+0.14. Ex-
+    FBRX-SENS: n=25, meanR=-0.01 (below baseline). See ROBUSTNESS below —
+    restricted to fresh (reliable) 09:31 ticks this variant does not even
+    admit FBRX or SENS, and its admitted-set mean goes negative.
+
+  V2_GAP_REVERSED (gap ladder inverted — smaller qualifying gap scores MORE,
+    testing the operator's own hypothesis directly): CHPT=58.8, NOT admitted
+    (CHPT's own 34.68% gap lands in the worst reversed tier). Full cohort:
+    n=32, meanR=+0.50; ex-FBRX-SENS: n=30, meanR=+0.05 — flat. Reversing gap
+    direction does not help the operator's actual goal: CHPT has one of the
+    LARGER gaps in this population, so a reversed ladder scores it worse,
+    not better. See ROBUSTNESS below — on fresh ticks only this variant's
+    admitted-set mean is -0.41 (net losing).
+
+  V3_VOLCONV_GRID (vol_conviction cut swept 50-95, weight swept 5/10/15 —
+    18 cells): the CUT is irrelevant across the whole 50-95 range for the
+    names that clear it (CHPT and the other admits sit exactly at the 100th
+    percentile ceiling or well below every tested cut — a bimodal
+    distribution, not a smooth gradient); NOTE cut=50 cells are additionally
+    contaminated — 11/107 settled rows carry `vol_pct_daily_bars==50.0`
+    exactly, some of which are the function's own "no usable history"
+    default rather than a real median reading, so those specific cells admit
+    a few names on a non-signal. Only the WEIGHT matters for the cells
+    actually highlighted here: doubling it to 10 admits CHPT exactly at the
+    bar (65.0). Full cohort at that cell: n=10, meanR=+1.34 — ex-FBRX-SENS:
+    n=8, sumR=-1.32, meanR=-0.165 (net LOSING, worse than baseline).
+
+  V4_LIQUIDITY_RESCALED (ADV$ tiers rescaled to $2M/$5M/$10M/$20M, this
+    cohort's actual range instead of the live table's $50M-$500M): CHPT=67.5,
+    ADMITTED (barely). Full: n=27, meanR=+0.66. Ex-FBRX: meanR=+0.28.
+    Ex-FBRX-SENS: n=25, meanR=+0.128 — the only variant whose residual, after
+    removing both outlier trades, stays slightly above the +0.101 baseline.
+    Still well within noise at n=25.
+
+  V5/V6 (market cap, float as continuous terms): reported above as the
+  univariate pass — market cap works AGAINST CHPT; float is neutral for
+  CHPT specifically (57th percentile) despite replicating cohort-wide.
+
+  V7_COMBINED (pre-registered to be built ONLY from ingredients that (a)
+  replicate sign across both halves and (b) are not single-trade artifacts):
+  the only two ingredients that pass both tests are market_cap (replicates,
+  strong) and catalyst strong-tier (replicates, modest) — CHPT already gets
+  full credit for the catalyst side under the CURRENT rubric, and market cap
+  argues to score it LOWER, not higher. There is no honest combination of
+  what actually replicates in this data that admits CHPT. Assembling one
+  anyway would require using an ingredient (gap, volume-conviction weight,
+  or liquidity rescale) that this same sweep just showed is either
+  directionless or entirely carried by FBRX/SENS — exactly the overfitting
+  this task warned against.
+
+--- ROBUSTNESS: fresh-tick restriction and per-half baseline-relative lift ---
+
+Two additional checks, run after the variant pass specifically to stress-test
+it (not part of the pre-registered grid, but neither is a new variant — both
+apply to variants already scored above):
+
+  FRESH-TICK RESTRICTION. 41 of 107 settled ticker-days have their feature
+  read within 5 minutes of 09:31 ET (the more reliable subsample; the other
+  66 are reconstructed from a stale tick, per Part 1 item 3). This is a
+  SAMPLING split on score-input quality, not a new variant. On this
+  fresh-only subsample the cohort's OWN unconditional baseline is -0.249
+  (not +0.101 — this 41-name slice is worse than the full population on its
+  own; NOTE the fresh/stale split partially overlaps the H1/H2 calendar
+  split below — fresh ticks are 15/53 of H1 but 26/54 of H2 — so this and
+  the per-half check are related, not two fully independent confirmations).
+  CHPT's own reconstruction is fresh (0.03 sec from 09:31). Re-scoring the
+  fresh-only subsample: V0_HONEST_CURRENT admits 3 names, ALL losers
+  (meanR=-1.00); V1_GAP_LEGACY_LADDER admits 17, meanR=-0.13; V2_GAP_REVERSED
+  admits 15, meanR=-0.41; V0L_HONEST_LEGACY admits 10 incl. CHPT, meanR=
+  +0.125; V4_LIQUIDITY_RESCALED admits 16 incl. CHPT, meanR=+0.091; V3 (w=10)
+  admits 6 incl. CHPT, meanR=+0.099. FBRX and SENS were EXCLUDED from this
+  subsample by construction (both are stale-tick rows) — their outcomes
+  (realized R) are real and unaffected, but their admitting SCORES in every
+  variant above were built from a tick more than 5 minutes from 09:31, not a
+  clean read. On the fresh, cleanly-scored subsample, every gap-based
+  variant (V1, V2) goes net NEGATIVE, and the three variants that still
+  admit CHPT here (V0L, V4, V3-w10) sit at a small positive mean (+0.09 to
+  +0.13) on n=6-16 — thin, and not distinguishable from zero at this sample
+  size.
+
+  PER-HALF BASELINE-RELATIVE LIFT. The cohort's own unconditional baseline is
+  NOT flat across time: first-half (2026-06-08 to 2026-07-21) mean is +0.225
+  (n=53); second-half (2026-07-22 to 2026-09-04) mean is -0.020 (n=54) — the
+  whole cohort's positive expectancy is concentrated in the first half.
+  Measured against each half's OWN baseline (the correct comparison, not
+  zero): every variant's H1 "lift" is 1-11 admitted names dominated by FBRX
+  alone (e.g. V0L: n=3, lift +4.43 — entirely FBRX). Every variant's H2 lift
+  is smaller but real-looking on more names (V1: n=20, lift +0.10; V2: n=21,
+  lift +0.23; V4: n=16, lift +0.19) — EXCEPT every one of those H2 lifts is
+  ALSO carried by a single trade, SENS (+3.99R): remove it and each H2
+  admitted set falls back to at-or-below its own half's baseline (V1 ex-SENS:
+  -0.12; V2 ex-SENS: +0.02; V4 ex-SENS: -0.09). The "half-relative" framing
+  does surface a real distinction from the flat "vs zero" framing — it shows
+  several variants modestly beating a rough, negative H2 baseline — but the
+  entire distinction is, again, one trade.
+
+============================== DIRECT ANSWERS ==============================
+
+1. What weighting would admit CHPT?
+   Reverting the gap ladder alone (77.5), reverting the full legacy rubric
+   (80.0), doubling the volume-conviction weight (65.0, exactly at the bar),
+   or rescaling liquidity to this cohort's real ADV$ range (67.5). Honest
+   current-rubric volume fix alone does NOT (58.8, 6.2 points short).
+
+2. What does admitting it cost?
+   Every one of those variants admits 7 to 32 other names alongside CHPT.
+   Their apparent aggregate profit is real-looking (+0.5R to +1.4R/trade) but
+   is carried almost entirely by two specific trades (FBRX +10.71R, SENS
+   +3.99R) that ride along in EVERY variant regardless of mechanism. Strip
+   those two out and every variant's mean return falls to at-or-below the
+   cohort's own +0.10R baseline. Both outlier trades' ADMITTING SCORES (not
+   their outcomes, which are real) were built from a STALE tick (>5 min from
+   09:31) — restricted to the subsample where every score is a clean 09:31
+   read, they are excluded by construction and every gap-based admitting
+   variant (V1, V2) goes net NEGATIVE on what remains. Admitting CHPT means
+   admitting a wide net of mostly break-even-to-losing names whose apparent
+   quality is an artifact of two trades whose SCORES were not reliably
+   timed, not a real filter.
+
+3. Is there a variant that is positive-expectancy on this cohort AND admits
+   CHPT? NO. The one feature that reliably, monotonically, split-half-
+   replicates in this data (market cap) argues CHPT belongs in the WORST
+   third of this population, not the best. Every mechanism that manages to
+   let CHPT in does so by also catching two large, unrelated winners whose
+   presence — not any real quality the mechanism detected — is what makes
+   the admitted set look profitable. The binding constraint is that this
+   cohort's only real signal points away from CHPT, and everything that
+   points toward CHPT is noise at this sample size.
+
+============================== OVERFITTING / SAMPLE SIZE ==============================
+
+n=107 settled, several parameters swept — every admitting variant was
+checked three ways: chronological split-half (first ~53 vs last ~54 dates,
+against EACH half's own baseline, not zero), with its top 1-2 contributing
+trades removed, and restricted to the subsample where the point-in-time
+reconstruction is actually fresh (within 5 min of 09:31, n=41 — the more
+reliable half of the data). Every variant's apparent edge either flips sign,
+collapses toward baseline, or both, under at least one of these three
+checks — and the two outlier trades (FBRX, SENS) that carry every variant's
+headline number are BOTH built from stale, not fresh, ticks. The market-cap
+and catalyst-strong-tier findings are the only two that survive every check
+(consistent sign across halves, not attributable to a single trade, present
+regardless of tick freshness) — and neither one supports admitting CHPT
+beyond what the current rubric already credits it. Nothing in this report
+should be read as "found a working mechanism" — it should be read as "swept
+honestly, and the honest answer is no."
+
+============================== GRADING COVERAGE / SPEND ==============================
+
+Catalyst grades: 109 usable ticker-days now graded (49 already captured +
+60 new this session), vs the prior study's 48-name bucketed subsample —
+covers the FULL continuous-outcome population, not a winner/loser split that
+discarded CHPT itself.
+
+Projected (printed before the first paid call, this session):
+  60 x $0.011522 (14-day ep_catalyst_grade meter avg) = $0.6913.
+Actual (verified against `api_usage`, this session): 60 calls / $0.5325.
+Prior sessions' #622 spend (sunk, same task, separate runs): $0.4643.
+Total task spend to date: ~$0.997 of the $6.00 budget (16.6%). Nothing else
+paid was run (no perplexity, catalyst_metrics_extractor, or ep_grade_judge).
+
+============================== ARTIFACTS ==============================
+
+scripts/probes/_622sweep_driver.py            -- point-in-time feature
+                                                  reconstruction (server-side,
+                                                  free, no LLM calls)
+scripts/probes/_622sweep_population.json      -- the same 154 excluded
+                                                  ticker-days as the prior
+                                                  study (apples-to-apples)
+scripts/probes/_622sweep_features_out.jsonl   -- 154 point-in-time feature
+                                                  rows (gap/volume/adv/mcap/
+                                                  regime/theme, all at the
+                                                  09:31 tick)
+scripts/probes/_622sweep_catalyst_driver.py   -- the paid grading step (60
+                                                  new grades)
+scripts/probes/_622sweep_catalyst_raw.jsonl   -- the 60 new raw grades
+scripts/probes/_622sweep_variants_PREREGISTERED.md -- the variant list,
+                                                  locked BEFORE joining
+                                                  outcomes (the overfitting
+                                                  guard)
+scripts/probes/_622sweep_join.py              -- joins features + catalyst +
+                                                  outcomes, computes V0/V0L +
+                                                  the univariate pass
+scripts/probes/_622sweep_master.jsonl         -- the joined 109-row dataset
+scripts/probes/_622sweep_results.json         -- univariate + baseline stats
+scripts/probes/_622sweep_variants.py          -- V1-V4 + the V3 grid
+scripts/probes/_622sweep_variant_results.json -- full variant output incl.
+                                                  per-name admitted lists
+scripts/probes/_622sweep_recheck.py           -- robustness rechecks: fresh-
+                                                  tick restriction, per-half
+                                                  baseline-relative lift,
+                                                  mi_stock_scores coverage
+                                                  count, V0's exact admitted-
+                                                  set mechanism
+scripts/probes/_622sweep_summary.txt          -- this file
+
+============================== OPERATOR DECISIONS — SURFACED, NOT MADE ==============================
+
+1. The live `_volume_percentile` mechanism is hardcoded to 50 (neutral) for
+   EVERY name at EVERY post-open scan tick by deliberate wrapper design
+   (documented behavior, not a bug) — meaning it can never inform the 09:31
+   decision for anyone, scored or rejected. Separately, even at pre-market
+   ticks where the real function DOES run, 33 of the 154 ticker-days in this
+   population (21%) had zero `mi_stock_scores` history to feed it, a
+   coverage gap specific to names outside the RS-ranked universe. Worth a
+   dedicated look (does the coverage gap matter for the SCORED/control
+   population too, or only for names that never reach scoring today) —
+   flagged for the operator/session to capture (not filed to PLAN.md here
+   per this task's scope), not investigated further.
+2. Nothing in this sweep supports building a cap-relaxation lane on gap,
+   volume, or liquidity reweighting alone — the only feature that reliably
+   works (market cap) already argues for keeping smaller names out, and the
+   apparent gains from every other lever are two-trade artifacts that get
+   worse, not better, once restricted to the more reliable fresh-tick
+   subsample. Whether to treat "no mechanism found on today's features" as
+   the final word, or to pursue a genuinely different signal (structure/base
+   quality, the holistic judge's fuller read, something not yet tried) is
+   his call — this redo closes the "the volume input was fake" gap and the
+   "we never swept the parameters" gap; it does not close the search for a
+   working mechanism.
+3. The live rubric's low-float bonus (+5 pts for <50M float shares) scores
+   the OPPOSITE direction from what this cohort's own data shows (larger
+   float replicates as BETTER here, not worse) — a rubric-weight
+   observation, surfaced because weights are THE LINE (his sole call), not
+   changed here. Worth checking whether this direction holds on the scored/
+   control population too before drawing any conclusion about the live
+   bonus itself — this sweep only speaks to the rejected sub-$500M cohort.
