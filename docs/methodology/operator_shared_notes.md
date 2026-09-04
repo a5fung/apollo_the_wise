@@ -959,3 +959,63 @@ a neglected base are not the same object**, and the neglect reading is the one t
 story about why the reaction was large.
 ⚠ Still one case. MRNA is a reference example, not evidence — the test is whether a
 duration×quietness term separates winners on the corpus.
+
+---
+
+## 2026-09-03 — HOOD: the catalyst we recorded was the smaller half of the story (operator-shared)
+
+**Why this is here:** he shared an end-of-day summary from someone he follows on Twitter, and his
+own read of what actually drove the move. Transcribed the same turn — chat compacts and shared text
+is lost otherwise. Filed against **#210 (an accurate read of the news)**.
+
+**His read, in his words:** *"today's EP HOOD we traded, the catalyst was analyst upgrades based on
+prediction markets & robinhood chain, i believe the news on robinhood chain is the bigger driver.
+Though we traded and marked it as high, and we did catch the chain news, but much of the key details
+are missing so perhaps there's a potential gap on news sources, especially from social media, which
+is hard to source."*
+
+**What we got right:** we traded it, graded it HIGH, and we DID catch the Robinhood Chain news.
+**What we missed: the substance underneath it** — and his hypothesis is that the chain story, not
+the analyst upgrade, was the real driver. The upgrade is the *reportable* half; the chain data is
+the half that explains the size of the move.
+
+**The shared summary, verbatim** (Twitter, end-of-day stock recap account he follows):
+
+> Robinhood $HOOD had its best day in over a year, rising 15% after a Morgan Stanley upgrade and
+> renewed attention around Robinhood Chain. Part of the move may have come after Ansem, one of
+> crypto's most influential voices, posted his Robinhood thesis to 1.3M followers, highlighting the
+> company's growing onchain opportunity. Since launching July 1, Robinhood Chain has generated
+> $34.6B in cumulative DEX volume, 576M transactions, and 12.3M addresses, with daily DEX volume
+> recently hitting a record $1.5B and users paying $3.75M in fees on September 1. More than 190
+> tokenized stocks are now live, producing over $3B in cumulative DEX volume, while RWA daily volume
+> reached a record $390M, including $217M from memecoin/tokenized-stock pairs. Robinhood's onchain
+> ecosystem has also grown to more than $750M in TVL while generating billions in perpetual-futures
+> volume. The market appears to be waking up to the idea that Robinhood Chain may not be fully
+> priced in, with the potential to become a new 9-figure revenue stream — and possibly much larger
+> if growth continues.
+
+### What this case is evidence FOR
+
+1. **A named individual's post can be the proximate trigger.** The summary attributes part of the
+   move to one crypto figure posting a thesis to 1.3M followers. **No source we currently read would
+   ever surface that** — not SEC filings, not Benzinga wires, not the web synthesis. This is the
+   gap he is pointing at, and it is a real one.
+2. **The wire caught the LABEL, not the SUBSTANCE.** "Morgan Stanley upgrade" is what a wire
+   reports. Every number above — cumulative volume, transaction count, addresses, fee revenue, TVL,
+   the tokenized-stock count — is the actual argument, and none of it is in an upgrade headline.
+   A catalyst read that stops at the label cannot tell a 15% day from a 2% one.
+3. **It is a REVENUE-STAGE story told in operating metrics.** *"a new 9-figure revenue stream"* is
+   exactly the shape the rubric's revenue axes want, but it arrives as onchain metrics, not as a
+   guidance number — so nothing in the current stack can score it.
+
+### The honest counter-position, to be argued rather than assumed
+
+Social media as a catalyst source is **hard to source and easy to be fooled by** — that is his own
+phrasing and it is the crux. Influencer posts are unattributed, unversioned, deletable, and
+trivially gamed; a system that reads them can be fed. Any build here has to answer **how we know a
+post moved a stock rather than followed it**, and the HOOD case cannot answer that on its own: the
+Morgan Stanley upgrade is a confound, and the summary itself only says the move *"may have come
+after"* the post.
+
+⚠ **One case. HOOD is a reference example, not evidence** — same standing as MRNA above. The test is
+whether a social-source leg separates winners across the corpus, not whether it explains this day.
