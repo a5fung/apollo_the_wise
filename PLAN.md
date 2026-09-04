@@ -48,6 +48,26 @@ hard external deadline, then money-path and alert-trust defects.
 
 **Verifies riding along:** #333 Wed 18:12 ET · #616 Thu · #540, #595, #233 Fri.
 
+### ✅ ALL FOUR NEW RECORDERS ARE ACTUALLY SCHEDULED — checked 2026-09-03, post-deploy
+
+Every recorder shipped today is SILENT by design, so the failure mode is that one is not
+registered and we find out by hearing nothing — the exact shape that left a validation function
+uncalled, an alarm invisible to its own sweep, and a review "ready" for 63 days, all in one week.
+Dry-booted the real job graph inside `apollo-market` (`AsyncIOScheduler.start` patched to a no-op,
+the #519 idiom) — **68 jobs registered**, and all four fire tomorrow:
+
+| job | ET | state |
+|---|---|---|
+| `live_fill_counterfactuals` | 18:04 mon–fri | live (`next_run_time` ABSENT → APScheduler computes it at start) |
+| `analyst_estimates_snapshot` | 18:12 mon–fri | live |
+| `sustain_reject_replay` | 18:13 mon–fri | live |
+| `gap_near_miss_replay` | 18:14 mon–fri | live |
+| `chart_axis_shadow` | 17:50 mon–fri | **`next_run_time=None` — PARKED**, his 08-02 ruling |
+
+⚠ **The control is the point** (#519's own lesson): the parked job reads `None` where the live ones
+read ABSENT, so the probe can tell the two apart. Without a known-parked control, a probe that
+found everything "fine" would prove nothing.
+
 ### 💵 DATA SUBSCRIPTIONS — what we pay for and why (answered 2026-09-02, measured not assumed)
 
 Operator asked *"what are we paying for and why, what are the alternatives"* and then *"check it, I
