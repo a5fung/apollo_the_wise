@@ -1786,6 +1786,119 @@ async def _current_stop_pointer(trade_id: int) -> str | None:
         return None
 
 
+async def _preserve_dead_stop_price(
+    trade_id: int,
+    order_id: str,
+    stop_price: float | None,
+    status: str | None,
+    account_mode: str,
+) -> None:
+    """#600 fork 2 (2026-09-04). Runs at the ONE place T1.5a's
+    `cancel_or_reject_null` fail-safe discards the `stop_order_id` pointer
+    (`trade_stream._handle_cancel_or_reject` section 2, UNCHANGED by this) —
+    captures the DEAD order's own broker-held price so a later re-protect with
+    no live pointer (`_apply_reprotect_floor`'s `consult_dead_stop` path) still
+    has something to floor against, instead of going dark exactly when the
+    pointer disappears — the common intraday path #600 could not reach.
+
+    A PRICE plus the STATUS it died in — never an order id treated as live.
+    `_read_preserved_dead_stop` hands both straight back to
+    `_floor_reprotect_price`, so a preserved 'rejected' stop (never rested) is
+    ignored by the SAME rule as a live one — one place to keep that rule, not
+    two.
+
+    RATCHETED, strictly-higher-only, and ATOMIC: the UPDATE's WHERE clause only
+    matches when the new price is strictly above the currently preserved one
+    (or none is preserved yet), so price/order_id/status/timestamp always move
+    together — no window where the price reflects one dead order and the
+    status reflects another. A live protective stop only ever rises during a
+    trade's life (the 08-10 signed rule), so the highest dead stop this trade
+    ever held is always the correct floor; an out-of-order WS delivery can
+    only fail to raise it, never walk it down. A tie (new price == preserved
+    price) intentionally does NOT overwrite — the first-recorded status for a
+    given price level stays authoritative rather than flip-flopping.
+
+    Scoped by trade_id (one row per position): a new trade starts at NULL, so
+    nothing leaks across positions or across a flat-then-re-enter on the same
+    ticker. Never explicitly cleared on a later live placement — whenever a
+    live pointer exists, `_apply_reprotect_floor` never even reads this
+    column, so a stale-but-lower preserved value can never wrongly floor a
+    placement that already has real broker truth.
+
+    Fails open silently on any write error — a later re-protect just finds
+    nothing preserved and places at the DB price, exactly as before this
+    change.
+    """
+    if stop_price is None:
+        return
+    try:
+        price = float(stop_price)
+    except (TypeError, ValueError):
+        return
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            written = await conn.fetchval("""
+                UPDATE mi_live_trades SET
+                    dead_stop_price = $2,
+                    dead_stop_order_id = $3,
+                    dead_stop_status = $4,
+                    dead_stop_recorded_at = NOW()
+                WHERE id = $1
+                  AND (dead_stop_price IS NULL OR $2 > dead_stop_price)
+                RETURNING id
+            """, trade_id, price, order_id, status) is not None
+    except Exception as e:  # loud-ok: fail-open — the #600 floor just finds nothing later
+        logger.warning(
+            f"_preserve_dead_stop_price: write failed for trade {trade_id} ({e}) — "
+            f"a later re-protect will have nothing to floor against for this cancellation"
+        )
+        return
+    if written:
+        await log_audit_event(
+            "dead_stop_price_preserved",
+            f"trade #{trade_id} [{account_mode}]: dead stop {order_id[:8]} "
+            f"(status={status}) preserved at ${price:.2f} for the #600 floor",
+            json.dumps({
+                "trade_id": trade_id, "account_mode": account_mode,
+                "order_id": order_id, "status": status, "price": price,
+            }),
+        )
+
+
+async def _read_preserved_dead_stop(trade_id: int) -> dict | None:
+    """#600 fork 2 (2026-09-04). The dead-stop price + status
+    `_preserve_dead_stop_price` preserved at the moment the pointer was
+    nulled — the only broker truth left on the common intraday path, where
+    `stop_order_id` is already NULL by the time a re-protect runs. Returned in
+    the same shape `_floor_reprotect_price` already expects (`id`/`status`/
+    `stop_price`), so a preserved 'rejected' stop is ignored by the exact same
+    rule as a live one. FAIL-OPEN: any read error, or nothing preserved,
+    returns None — the caller's existing no-truth path (place at base,
+    unchanged) is exactly what runs.
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT dead_stop_price, dead_stop_status, dead_stop_order_id "
+                "FROM mi_live_trades WHERE id = $1", trade_id,
+            )
+    except Exception as e:  # loud-ok: fail-open — the caller places at base, unchanged
+        logger.warning(
+            f"_read_preserved_dead_stop: read failed for trade {trade_id} ({e}) — "
+            f"no dead-stop fallback, placing at the caller's base price"
+        )
+        return None
+    if not row or row["dead_stop_price"] is None:
+        return None
+    return {
+        "id": row["dead_stop_order_id"],
+        "status": row["dead_stop_status"],
+        "stop_price": row["dead_stop_price"],
+    }
+
+
 async def _apply_reprotect_floor(
     trade_id: int,
     ticker: str,
@@ -1796,12 +1909,23 @@ async def _apply_reprotect_floor(
     site: str,
     broker_order: dict | None = None,
     fetch: bool = True,
+    consult_dead_stop: bool = False,
 ) -> float:
     """#600 — the price a re-protect should place, floored to the last level the
     broker held. Reads `get_order(stop_order_id)` unless the caller already has
     the order dict (`fetch=False` + `broker_order`). Audits + warns ONLY when the
     floor actually raised the price; every no-truth path is a quiet info line
     and the unchanged `base_price` — the placement always goes ahead.
+
+    `consult_dead_stop` (#600 fork 2, 2026-09-04): when the live broker read
+    above still leaves `order` as None (no pointer, unreadable, or the caller
+    had none to hand), fall back to the price `_handle_cancel_or_reject`
+    preserved at the moment it nulled the pointer — the ONLY source of broker
+    truth left on the common intraday cancel/reject path. Opt-in and additive:
+    default False reproduces #600's exact original behaviour (every existing
+    caller and test), and even when True this can only raise `base_price` —
+    routed through the SAME `_floor_reprotect_price` rules, so a preserved
+    'rejected' stop is still ignored, and no data ever refuses the placement.
     """
     base = float(base_price)
     order = broker_order
@@ -1815,21 +1939,38 @@ async def _apply_reprotect_floor(
             )
             order = None
     price, info = _floor_reprotect_price(base, order)
+    if not info["raised"] and order is None and consult_dead_stop:
+        try:
+            dead_stop = await _read_preserved_dead_stop(trade_id)
+        except Exception as e:  # loud-ok: redundant fail-open — _read_preserved_dead_stop
+            # already fails open internally; this belt-and-suspenders guard means a future
+            # bug there still cannot block a placement here.
+            logger.warning(
+                f"{site}: {ticker} dead-stop fallback read raised ({e}) — "
+                f"placing at ${base:.2f}"
+            )
+            dead_stop = None
+        if dead_stop:
+            price, info = _floor_reprotect_price(base, dead_stop)
+            if info["raised"]:
+                info["floor_source"] = f"preserved_{info['floor_source']}"
     if not info["raised"]:
         logger.info(
             f"{site}: {ticker} re-protect at ${price:.2f} "
             f"(floor {info['floor_source']}, pointer={stop_order_id})"
         )
         return price
+    _src_id = info["broker_order_id"] or stop_order_id
     logger.warning(
         f"{site}: {ticker} DB stop ${base:.2f} is BELOW the last broker stop "
-        f"${price:.2f} ({stop_order_id}, status={info['broker_status']}) — "
-        f"re-protecting at ${price:.2f}, never lower (raise-only)"
+        f"${price:.2f} ({_src_id}, status={info['broker_status']}, "
+        f"source={info['floor_source']}) — re-protecting at ${price:.2f}, "
+        f"never lower (raise-only)"
     )
     await log_audit_event(
         _REPROTECT_FLOOR_EVENT,
         f"{ticker}: re-protect price raised ${base:.2f} → ${price:.2f} to the last "
-        f"broker stop ({stop_order_id[:8] if stop_order_id else '?'}, "
+        f"broker stop ({_src_id[:8] if _src_id else '?'}, "
         f"status={info['broker_status']}) — DB stop_price was stale-low",
         json.dumps({
             "trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
@@ -1837,6 +1978,7 @@ async def _apply_reprotect_floor(
             "broker_stop_price": info["broker_stop_price"],
             "broker_order_id": info["broker_order_id"],
             "broker_status": info["broker_status"],
+            "floor_source": info["floor_source"],
         }),
     )
     return price
@@ -5737,11 +5879,15 @@ async def _ensure_stop_coverage_outcome(
         # fresh, names the broker order whose price WAS the protection, even when
         # that order is now terminal. No broker truth → the DB price, exactly as
         # before #600 — a re-protect NEVER refuses to place.
+        # #600 fork 2 (2026-09-04): the pointer is commonly ALREADY NULL here —
+        # `_handle_cancel_or_reject` nulls it on the WS cancel/expiry before this
+        # retry/sync ever runs — so consult the price it preserved at that moment.
         _db_stop_price_f = float(db_stop_price)
         place_price = await _apply_reprotect_floor(
             trade_id, ticker, _db_stop_price_f,
             await _current_stop_pointer(trade_id), account_mode,
             site="ensure_stop_coverage.place",
+            consult_dead_stop=True,
         )
         try:
             new_order = await alpaca.place_stop_order(
@@ -6838,10 +6984,14 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
         # that WAS the protection; the DB stop_price can be stale-low (breakeven
         # withheld). NULL pointer → nothing to floor against → the DB anchor,
         # exactly as before — this path NEVER refuses to place.
+        # #600 fork 2 (2026-09-04): `existing_stop_id` is commonly ALREADY NULL by
+        # the time this runs (the WS cancel/expire beat this sync) — fall back to
+        # the price `_handle_cancel_or_reject` preserved at that moment.
         stop = await _apply_reprotect_floor(
             trade["id"], ticker, float(stop), existing_stop_id, account_mode,
             site="sync_positions.orphan_remediation",
             broker_order=dead_stop_order, fetch=False,
+            consult_dead_stop=True,
         )
         new_order = None
         last_err: Exception | None = None

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 from contextlib import ExitStack
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -43,6 +44,7 @@ from agents.market_intelligence.broker import trade_stream as ts
 from tests.conftest import make_mock_pool
 from tests.test_never_naked_invariant import _patches as _cov_patches, _run as _cov_run
 from tests.test_oco_cancel_handler_566 import PLAIN_RAW, _cancel_data, _pending, _wire
+from tests.test_stop_reason_560 import _make_ws_pool
 from tests.test_sync_orphan_soak_emitters import _make_db_trade, _run_sync
 from tests.test_update_stop_raise_only_floor import (
     DB_STOP, OLD_STOP_ID, _harness as _us_harness, _run as _us_run,
@@ -556,3 +558,433 @@ async def test_update_stop_live_stop_refuse_floor_is_untouched():
     h["place"].assert_not_awaited()
     assert any(e == "stop_update_aborted" and '"raise_only_floor"' in d
                for e, _, d in h["audited"])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 6. #600 fork 2 (2026-09-04) — the common intraday path was DARK: a WS
+#    cancel/expiry/reject nulls stop_order_id (T1.5a, unchanged) BEFORE any
+#    re-protect can read it, so #600's floor had nothing to consume. This
+#    preserves the dead stop's own price+status at the moment of nulling
+#    (`_preserve_dead_stop_price`), and lets `_apply_reprotect_floor` consume
+#    it via an opt-in `consult_dead_stop` fallback (`_read_preserved_dead_stop`)
+#    ONLY when there is still no live broker truth — never a live pointer, never
+#    a refusal, never a lower price.
+# ══════════════════════════════════════════════════════════════════════════════
+
+DEAD_PRICE = 16.40
+
+
+# ── 6a. The pure raise-only property holds for a PRESERVED dict too, not just
+#        a live get_order() result — same shape, same _floor_reprotect_price. ──
+
+
+@pytest.mark.parametrize("base", [1.0, 15.0, 15.30, 400.0])
+@pytest.mark.parametrize("preserved_price", [None, 0.5, 15.30, 999.0, "x"])
+@pytest.mark.parametrize("preserved_status", ["canceled", "rejected", "expired", None])
+def test_pure_floor_never_lowers_for_a_preserved_dead_stop_shaped_dict(
+        base, preserved_price, preserved_status):
+    """_read_preserved_dead_stop hands _floor_reprotect_price the exact same
+    dict shape (id/status/stop_price) a live get_order() result has — this
+    pins that raise-only holds for that shape too, and that a preserved
+    'rejected' entry is ignored by the SAME rule as a live one."""
+    dead_stop = {"id": "dead-1", "status": preserved_status, "stop_price": preserved_price}
+    price, info = om._floor_reprotect_price(base, dead_stop)
+    assert price >= base
+    if preserved_status == "rejected":
+        assert info["raised"] is False
+
+
+# ── 6b. _preserve_dead_stop_price — the write side, atomic ratchet ─────────────
+
+
+@pytest.mark.asyncio
+async def test_preserve_writes_and_audits_when_the_ratchet_accepts():
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=501)  # RETURNING id -> the guard matched
+    audited = []
+
+    async def _audit(evt, summary="", detail=""):
+        audited.append((evt, summary, detail))
+
+    with patch.object(om, "get_pool", AsyncMock(return_value=pool)), \
+         patch.object(om, "log_audit_event", _audit):
+        await om._preserve_dead_stop_price(501, "dead-1", DEAD_PRICE, "canceled", "live")
+
+    conn.fetchval.assert_awaited_once()
+    assert conn.fetchval.await_args.args[1:] == (501, DEAD_PRICE, "dead-1", "canceled")
+    assert len(audited) == 1 and audited[0][0] == "dead_stop_price_preserved"
+    detail = json.loads(audited[0][2])
+    assert detail == {
+        "trade_id": 501, "account_mode": "live",
+        "order_id": "dead-1", "status": "canceled", "price": DEAD_PRICE,
+    }
+
+
+@pytest.mark.asyncio
+async def test_preserve_is_quiet_when_the_ratchet_guard_blocks_the_write():
+    """Simulates the real Postgres outcome when the new price is NOT strictly
+    above the already-preserved one: the WHERE guard matches zero rows,
+    RETURNING id yields no row, fetchval -> None. Must not audit — a tie or a
+    lower dead-stop price must never look like it raised anything."""
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+    with patch.object(om, "get_pool", AsyncMock(return_value=pool)), \
+         patch.object(om, "log_audit_event", AsyncMock()) as audit:
+        await om._preserve_dead_stop_price(501, "dead-1", DEAD_PRICE, "canceled", "live")
+    audit.assert_not_awaited()
+
+
+def test_preserve_ratchet_sql_only_accepts_a_strictly_higher_price():
+    """MUTATION GUARD: the whole mechanism rests on the WHERE guard comparing
+    with '>' (strictly higher only) — pin the exact text so a flipped
+    comparison is caught here at the source, not just empirically."""
+    import inspect
+    src = inspect.getsource(om._preserve_dead_stop_price)
+    assert "$2 > dead_stop_price" in src
+    assert "dead_stop_price IS NULL" in src
+
+
+@pytest.mark.asyncio
+async def test_preserve_skips_the_write_entirely_with_no_price():
+    """No stop_price on the dead order (e.g. a malformed WS payload) — no DB
+    call at all, matching _floor_reprotect_price's own 'no_stop_price' no-op."""
+    with patch.object(om, "get_pool", AsyncMock()) as gp:
+        await om._preserve_dead_stop_price(501, "dead-1", None, "canceled", "live")
+    gp.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_preserve_skips_the_write_with_an_unparseable_price():
+    with patch.object(om, "get_pool", AsyncMock()) as gp:
+        await om._preserve_dead_stop_price(501, "dead-1", "garbage", "canceled", "live")
+    gp.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_preserve_fails_open_when_the_write_raises():
+    """FAIL DIRECTION: a DB error while preserving must never propagate — the
+    caller (_handle_cancel_or_reject) must still go on to null the pointer."""
+    with patch.object(om, "get_pool", AsyncMock(side_effect=RuntimeError("db down"))), \
+         patch.object(om, "log_audit_event", AsyncMock()) as audit:
+        await om._preserve_dead_stop_price(501, "dead-1", DEAD_PRICE, "canceled", "live")
+    audit.assert_not_awaited()
+
+
+# ── 6c. _read_preserved_dead_stop — the read side, fail-open ──────────────────
+
+
+@pytest.mark.asyncio
+async def test_read_preserved_dead_stop_returns_the_broker_order_shape():
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value={
+        "dead_stop_price": DEAD_PRICE, "dead_stop_status": "canceled",
+        "dead_stop_order_id": "dead-1",
+    })
+    with patch.object(om, "get_pool", AsyncMock(return_value=pool)):
+        result = await om._read_preserved_dead_stop(501)
+    assert result == {"id": "dead-1", "status": "canceled", "stop_price": DEAD_PRICE}
+
+
+@pytest.mark.asyncio
+async def test_read_preserved_dead_stop_returns_none_when_nothing_preserved():
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value={
+        "dead_stop_price": None, "dead_stop_status": None, "dead_stop_order_id": None,
+    })
+    with patch.object(om, "get_pool", AsyncMock(return_value=pool)):
+        assert await om._read_preserved_dead_stop(501) is None
+
+
+@pytest.mark.asyncio
+async def test_read_preserved_dead_stop_returns_none_when_the_row_is_missing():
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value=None)
+    with patch.object(om, "get_pool", AsyncMock(return_value=pool)):
+        assert await om._read_preserved_dead_stop(501) is None
+
+
+@pytest.mark.asyncio
+async def test_read_preserved_dead_stop_fails_open_on_a_db_error():
+    with patch.object(om, "get_pool", AsyncMock(side_effect=RuntimeError("db down"))):
+        assert await om._read_preserved_dead_stop(501) is None
+
+
+# ── 6d. _apply_reprotect_floor's consult_dead_stop fallback ───────────────────
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_default_never_consults_the_dead_stop_fallback():
+    """THE #600-BEHAVIOUR-UNCHANGED GUARANTEE: consult_dead_stop defaults
+    False. Even when a preserved value exists and WOULD raise the price, it
+    must never be read unless the caller opts in — every pre-fork-2 caller and
+    test must see byte-for-byte the same behaviour."""
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-1", "status": "canceled", "stop_price": 99.0})) as rd, \
+         patch.object(om, "log_audit_event", AsyncMock()):
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, None, "live", site="unit")
+    assert price == DB_PRICE
+    rd.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_consults_the_dead_stop_when_no_pointer_and_opted_in():
+    audited = []
+
+    async def _audit(evt, summary="", detail=""):
+        audited.append((evt, summary, detail))
+
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-9", "status": "canceled", "stop_price": BROKER_PRICE})), \
+         patch.object(om, "log_audit_event", _audit):
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, None, "live", site="unit", consult_dead_stop=True)
+    assert price == BROKER_PRICE
+    rows = _floor_rows(audited)
+    assert len(rows) == 1
+    d = json.loads(rows[0][2])
+    assert d["broker_order_id"] == "dead-9"
+    assert d["floor_source"] == "preserved_broker_pointer"
+    assert d["placed_price"] == BROKER_PRICE and d["db_price"] == DB_PRICE
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_ignores_a_preserved_rejected_stop():
+    """A preserved 'rejected' stop never rested — ignored by the SAME rule as
+    a live one, via the SAME _floor_reprotect_price code path (no second place
+    this rule could drift out of sync)."""
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-9", "status": "rejected", "stop_price": 999.0})), \
+         patch.object(om, "log_audit_event", AsyncMock()) as audit:
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, None, "live", site="unit", consult_dead_stop=True)
+    assert price == DB_PRICE
+    audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_falls_through_when_nothing_was_preserved():
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(return_value=None)), \
+         patch.object(om, "log_audit_event", AsyncMock()) as audit:
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, None, "live", site="unit", consult_dead_stop=True)
+    assert price == DB_PRICE
+    audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_dead_stop_fallback_with_unparseable_price_still_places_at_base():
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-9", "status": "canceled", "stop_price": "garbage"})), \
+         patch.object(om, "log_audit_event", AsyncMock()) as audit:
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, None, "live", site="unit", consult_dead_stop=True)
+    assert price == DB_PRICE
+    audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_dead_stop_fallback_fails_open_when_the_read_raises():
+    """Belt-and-suspenders: _read_preserved_dead_stop already fails open
+    internally, but _apply_reprotect_floor must not trust that alone — even if
+    it somehow raised, the placement must still go ahead at the base price."""
+    with patch.object(om, "_read_preserved_dead_stop",
+                       AsyncMock(side_effect=RuntimeError("boom"))), \
+         patch.object(om, "log_audit_event", AsyncMock()) as audit:
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, None, "live", site="unit", consult_dead_stop=True)
+    assert price == DB_PRICE
+    audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_apply_floor_live_broker_truth_beats_the_dead_stop_fallback():
+    """When the live pointer DOES resolve to a real broker order, the dead-stop
+    fallback must never even be consulted — live truth always wins over a
+    preserved (necessarily older) value."""
+    with patch.object(om.alpaca, "get_order",
+                       AsyncMock(return_value=_order(stop_price=DB_PRICE))), \
+         patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-9", "status": "canceled", "stop_price": 999.0})) as rd, \
+         patch.object(om, "log_audit_event", AsyncMock()):
+        price = await om._apply_reprotect_floor(
+            7, "FIGS", DB_PRICE, POINTER, "live", site="unit", consult_dead_stop=True)
+    assert price == DB_PRICE
+    rd.assert_not_awaited()
+
+
+# ── 6d-2. END-TO-END: the `consult_dead_stop=True` kwarg AT THE CALL SITE ─────
+#         (not just the helper) — pins that the wiring itself, not only the
+#         mechanism it calls, is load-bearing. Deleting the kwarg at either
+#         site must redden exactly one of these two.
+
+
+@pytest.mark.asyncio
+async def test_place_branch_consults_the_dead_stop_fallback_when_no_pointer():
+    """_ensure_stop_coverage's place branch: no live pointer at all, but a
+    preserved dead-stop price exists — must be consulted and floor the
+    placement. Reddens if `consult_dead_stop=True` is ever deleted from the
+    `_apply_reprotect_floor(...)` call inside `_ensure_stop_coverage`."""
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-1", "status": "canceled", "stop_price": BROKER_PRICE})):
+        h = _cov_patches([], pending_qty=0, stop_pointer=None)
+        result = await _cov_run(h, broker_qty=60, stop_price=DB_PRICE, account_mode="live")
+
+    h["place"].assert_called_once()
+    assert h["place"].call_args.args[2] == BROKER_PRICE, h["place"].call_args
+    assert FLOOR_EVENT in h["audited"]
+    repaired = [d for e, _, d in h["audit_details"] if e == FLOOR_EVENT][0]
+    assert repaired["floor_source"] == "preserved_broker_pointer"
+    assert result is not None and "15.30" in result
+
+
+@pytest.mark.asyncio
+async def test_sync_remediation_consults_the_dead_stop_fallback_when_no_pointer():
+    """sync_positions' orphan remediation: `existing_stop_id` is already NULL
+    entering the loop (the WS event beat this sync), but a preserved dead-stop
+    price exists — must be consulted. Reddens if `consult_dead_stop=True` is
+    ever deleted from the `_apply_reprotect_floor(...)` call inside
+    `_sync_positions_for_mode`."""
+    audit_calls, place_stop = [], AsyncMock(return_value={"id": "remed-1"})
+    trade = _make_db_trade(44, "FIGS", remaining=60, stop_price=DB_PRICE)  # pointer None
+    with patch.object(om, "_read_preserved_dead_stop", AsyncMock(
+             return_value={"id": "dead-1", "status": "canceled", "stop_price": BROKER_PRICE})), \
+         ExitStack() as st:
+        for p in _sync_patches([trade], place_stop, audit_calls,
+                               get_order=AsyncMock(return_value=None)):
+            st.enter_context(p)
+        await om._sync_positions_for_mode("live")
+
+    place_stop.assert_awaited_once()
+    assert place_stop.await_args.args[2] == BROKER_PRICE
+    assert _floor_rows(audit_calls)
+
+
+# ── 6e. The wiring — _handle_cancel_or_reject preserves BEFORE it nulls ───────
+
+
+def _priced_ws_data(order_id="dead-stop-1", symbol="FIGS", stop_price=DEAD_PRICE,
+                     status="canceled"):
+    order = SimpleNamespace(
+        id=order_id, symbol=symbol, status=status, stop_price=stop_price,
+        filled_qty=0, filled_avg_price=0, side="sell", type="stop", qty=41,
+        canceled_at=None, failed_at=None, expired_at=None, updated_at=None,
+    )
+    return SimpleNamespace(order=order, event=status, reason=None)
+
+
+def _wire_stop_cancel(monkeypatch, stop_row, *, dup_rows=None):
+    """The stop-leg cancel branch (section 2) with NO evidence of a
+    replacement — reaches the genuinely-naked alarm, mirroring
+    test_576_false_money_path_alerts.py's _fire_naked_branch harness."""
+    pool, conn, audit, sent, capture = _make_ws_pool(stop_row, None, None, dup_rows=dup_rows or [])
+    monkeypatch.setattr(ts, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ts, "log_audit_event", audit)
+    monkeypatch.setattr(ts, "send_telegram_message", capture)
+    monkeypatch.setattr(ts, "_broker_confirm_replacement_stop",
+                         AsyncMock(side_effect=[None, None]))
+    monkeypatch.setattr(ts, "_STOP_CANCEL_RECHECK_DELAY_S", 0)
+    return sent
+
+
+@pytest.mark.asyncio
+async def test_cancel_handler_preserves_the_dead_price_before_nulling_the_pointer(monkeypatch):
+    """THE WIRING (#600 fork 2). _handle_cancel_or_reject must capture the dead
+    stop's own broker price+status BEFORE T1.5a's cancel_or_reject_null fires
+    — and that null call itself must be BYTE-FOR-BYTE UNCHANGED (same trade
+    id, None, same reason, same account_mode) per the hard constraint that the
+    assume-naked fail-safe does not change."""
+    stop_row = {
+        "id": 501, "ticker": "FIGS", "remaining_shares": 41.0,
+        "stop_price": 13.74, "entry_price": 14.50, "hard_stop": 13.00,
+    }
+    sent = _wire_stop_cancel(monkeypatch, stop_row)
+
+    calls = []
+
+    async def _preserve(*args, **kwargs):
+        calls.append(("preserve", args))
+
+    async def _set_stop(*args, **kwargs):
+        calls.append(("set_stop", args, kwargs))
+
+    monkeypatch.setattr(om, "_preserve_dead_stop_price", _preserve)
+    monkeypatch.setattr(om, "set_stop_order_id", _set_stop)
+
+    await ts._handle_cancel_or_reject(
+        _priced_ws_data(order_id="dead-stop-1", stop_price=DEAD_PRICE, status="canceled"),
+        "canceled", "live",
+    )
+
+    names = [c[0] for c in calls]
+    assert names == ["preserve", "set_stop"], f"preserve must run BEFORE the null: {names}"
+    assert calls[0][1] == (501, "dead-stop-1", DEAD_PRICE, "canceled", "live")
+    assert calls[1][1] == (501, None)
+    assert calls[1][2] == {"reason": "cancel_or_reject_null", "account_mode": "live"}
+    # Unchanged: this is still a real naked position with no corroborating
+    # evidence — the genuinely-naked alarm must still fire exactly as before.
+    assert any("unprotected" in m.lower() for m in sent)
+
+
+@pytest.mark.asyncio
+async def test_cancel_handler_preserves_on_expiry_too_same_wiring(monkeypatch):
+    """The EOD 'expired' event takes a different branch AFTER the null (the
+    informational 'stop expired (expected)' message, not the naked alarm) —
+    but the preserve-then-null wiring above it must be identical."""
+    stop_row = {
+        "id": 502, "ticker": "FIGS", "remaining_shares": 41.0,
+        "stop_price": 13.74, "entry_price": 14.50, "hard_stop": 13.00,
+    }
+    sent = _wire_stop_cancel(monkeypatch, stop_row)
+
+    calls = []
+
+    async def _preserve(*args, **kwargs):
+        calls.append(("preserve", args))
+
+    async def _set_stop(*args, **kwargs):
+        calls.append(("set_stop", args, kwargs))
+
+    monkeypatch.setattr(om, "_preserve_dead_stop_price", _preserve)
+    monkeypatch.setattr(om, "set_stop_order_id", _set_stop)
+
+    await ts._handle_cancel_or_reject(
+        _priced_ws_data(order_id="dead-stop-2", stop_price=DEAD_PRICE, status="expired"),
+        "expired", "live",
+    )
+
+    names = [c[0] for c in calls]
+    assert names == ["preserve", "set_stop"]
+    assert calls[0][1] == (502, "dead-stop-2", DEAD_PRICE, "expired", "live")
+    assert any("EOD stop expired" in m for m in sent)
+
+
+@pytest.mark.asyncio
+async def test_cancel_handler_preserves_a_rejected_stops_price_too(monkeypatch):
+    """A stop that was placed (hence named as the trade's pointer) and then
+    REJECTED before ever resting still gets preserved — tagged 'rejected' so
+    the CONSUMPTION side (_floor_reprotect_price's ignored-status rule) is the
+    one place that decides it never protected anything. Preserving
+    indiscriminately here and filtering once downstream avoids a second copy
+    of the rejected-is-ignored rule drifting out of sync."""
+    stop_row = {
+        "id": 503, "ticker": "FIGS", "remaining_shares": 41.0,
+        "stop_price": 13.74, "entry_price": 14.50, "hard_stop": 13.00,
+    }
+    _wire_stop_cancel(monkeypatch, stop_row)
+
+    calls = []
+
+    async def _preserve(*args, **kwargs):
+        calls.append(("preserve", args))
+
+    monkeypatch.setattr(om, "_preserve_dead_stop_price", _preserve)
+    monkeypatch.setattr(om, "set_stop_order_id", AsyncMock())
+
+    await ts._handle_cancel_or_reject(
+        _priced_ws_data(order_id="dead-stop-3", stop_price=DEAD_PRICE, status="rejected"),
+        "rejected", "live",
+    )
+
+    assert len(calls) == 1
+    assert calls[0][1] == (503, "dead-stop-3", DEAD_PRICE, "rejected", "live")

@@ -937,6 +937,17 @@ async def initialize_schema() -> None:
                 -- pnl_attribution: NULL = methodology (default). Non-NULL means the P&L on this row
                 -- was distorted by a system bug, not the methodology being evaluated.
                 pnl_attribution TEXT,
+                -- #600 fork 2 (2026-09-04): the last DEAD stop's own broker-held price,
+                -- preserved by trade_stream._handle_cancel_or_reject the instant T1.5a's
+                -- cancel_or_reject_null fail-safe nulls stop_order_id -- otherwise the #600
+                -- re-protect floor (_apply_reprotect_floor) has nothing to read on the common
+                -- intraday path. A PRICE, never treated as a live pointer. Ratcheted
+                -- (strictly-higher-only) writes in order_manager._preserve_dead_stop_price;
+                -- see docs/setups/exit_discipline.md 2026-09-04 for the staleness reasoning.
+                dead_stop_price FLOAT,
+                dead_stop_order_id TEXT,
+                dead_stop_status TEXT,
+                dead_stop_recorded_at TIMESTAMPTZ,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 filled_at TIMESTAMPTZ,
                 closed_at TIMESTAMPTZ,
@@ -4421,6 +4432,18 @@ async def initialize_schema() -> None:
             -- the pre-cap `risk_dollars` budget vs the post-cap dollar risk actually placed.
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS risk_dollars_actual FLOAT;
+            -- #600 fork 2 (2026-09-04): see the CREATE TABLE comment above (mi_live_trades
+            -- block) -- the dead-stop price preserved at the point the cancel/reject handler
+            -- nulls stop_order_id, consumed by the #600 re-protect floor when there is no
+            -- live pointer left to read.
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS dead_stop_price FLOAT;
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS dead_stop_order_id TEXT;
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS dead_stop_status TEXT;
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS dead_stop_recorded_at TIMESTAMPTZ;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

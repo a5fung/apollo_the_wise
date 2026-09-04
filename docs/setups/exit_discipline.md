@@ -239,6 +239,144 @@ Full evidence, all figures independently recomputed twice:
 
 ## Change log (newest first)
 
+### 2026-09-04 — BUG FIX (#600 fork 2): the cancel/reject handler discarded the dead stop's own price the instant it nulled the pointer — the #600 floor was DARK on the common intraday path; it now consumes a preserved price instead (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Classification: bug fix closing the gap the 2026-09-03 #600 entry's own REACH section named and the
+operator approved building** (*"go with the rec, build fork 2 friday"*). Not a detection-criterion or
+strategy change; no CHANGE_PROCESS N≥10 gate — this extends the SAME raise-only rule #600 already
+enforces to the one place it could not previously reach. Nothing about WHEN a stop is placed or WHICH
+level the strategy wants changed.
+
+**The gap.** #600's floor (`_apply_reprotect_floor`) reads the trade's `stop_order_id` pointer and
+floors the placement to whatever broker order it names. But `trade_stream._handle_cancel_or_reject`
+section 2 — the WS handler that fires on every `canceled`/`cancelled`/`expired`/`rejected` event for a
+trade's stop leg — NULLs that pointer *unconditionally*, via T1.5a's `cancel_or_reject_null` fail-safe
+(assume naked, Path C remediates), **before** any re-protect can run. On the common intraday path (a
+stop dies, something re-arms it within the same session) the pointer is already NULL by the time
+`_ensure_stop_coverage`, `sync_positions`' orphan remediation, or the WS restore paths look for it —
+#600's floor had nothing to read and silently fell through to the (possibly stale-low) DB price, the
+exact defect #600 was built to close. The paths #600 DID already close — `sync_positions` racing a
+same-tick WS event, `trade_stream`'s partial-exit restore (reads the pointer before it cancels it),
+and post-remediation re-syncs — are the rarer ones; this handler is the primary route almost every dead
+stop takes.
+
+**The fix — preserve the price at the exact point it would otherwise be lost, consume it only as a
+last resort:**
+- `trade_stream._handle_cancel_or_reject` now calls `order_manager._preserve_dead_stop_price(trade_id,
+  order_id, order.stop_price, order.status, account_mode)` **immediately before** its existing
+  `set_stop_order_id(trade_id, None, reason="cancel_or_reject_null", ...)` call — same call, same
+  arguments, same place, UNCHANGED. `order` is the WS event's own order object (`data.order`) — the
+  handler already holds the dying stop's broker-side price and status in hand at this instant; the fix
+  only stops it from being thrown away.
+- Four new columns on `mi_live_trades` hold it: `dead_stop_price`, `dead_stop_order_id`,
+  `dead_stop_status`, `dead_stop_recorded_at` (added both to `CREATE TABLE` and as an `ALTER TABLE ...
+  ADD COLUMN IF NOT EXISTS` migration in `db.py`, matching how `risk_dollars_actual` and
+  `pnl_attribution` were added). A PRICE plus the STATUS it died in — **never an order id treated as
+  live**: nothing reads these columns as a pointer, adopts them as a stop, or uses them to skip placing
+  one.
+- `_apply_reprotect_floor` gained an opt-in `consult_dead_stop: bool = False` parameter. When the live
+  broker read already in the function (unchanged) still leaves `order` as `None` — no pointer, an
+  unreadable order, or the caller had none to hand — and the caller passed `consult_dead_stop=True`, it
+  calls `order_manager._read_preserved_dead_stop(trade_id)` and, if something was preserved, re-runs
+  the SAME `_floor_reprotect_price(base, dead_stop)` the live path already uses. Default `False`
+  reproduces #600's exact original behaviour byte-for-byte for every existing caller — the one call
+  site that never needs it (`update_stop`'s terminal-old-stop carve-out, which always already has a
+  non-None `broker_order` when it fires) was left untouched. Wired `consult_dead_stop=True` at the four
+  sites that CAN reach the floor with no live pointer: `_ensure_stop_coverage`'s place branch, sync
+  orphan remediation, and both `trade_stream` WS restore paths (partial-exit and full-exit).
+- Reusing `_floor_reprotect_price` for the preserved value (rather than a second comparison) means a
+  preserved **'rejected'** stop is ignored by the exact same rule as a live one — one place decides
+  that, not two. `_read_preserved_dead_stop` hands back the identical shape (`id`/`status`/
+  `stop_price`) a live `get_order()` result has, so no new branch exists to drift out of sync with the
+  live path.
+- Small unrequested touch-up, noted so it isn't mistaken for a behaviour change: `_apply_reprotect_floor`'s
+  existing log line and audit payload named the source id as `stop_order_id` (the pointer PARAM), which
+  is wrong once a preserved value can win — the price can come from a different order than the pointer
+  named. Now logs/audits `info["broker_order_id"]` (falling back to `stop_order_id` when neither is
+  set) and adds `floor_source` to the audit JSON. Text/observability only — no control-flow or price
+  change; the 08-10 and #600 suites pass unchanged.
+
+**Never refuses — proved, not assumed.** Every no-data path (nothing preserved, an unparseable
+preserved price, `_read_preserved_dead_stop` itself raising) returns `None`/falls through and the
+caller places at `base_price` exactly as it would have before this change; `_apply_reprotect_floor`
+wraps the fallback read in its OWN `try/except` even though `_read_preserved_dead_stop` already fails
+open internally — belt-and-suspenders, so a future bug in the read helper still cannot block a
+placement here. `consult_dead_stop=False` (the default) means the fallback is never even consulted,
+so every pre-existing test and call site is provably unaffected — confirmed by the full suite staying
+at the identical pass count of new tests added (see Tests below).
+
+**Staleness — decided, not assumed.** The preserved value is scoped by `trade_id` (one row per
+position; a new trade starts at `dead_stop_price = NULL`, so nothing leaks across positions or across a
+flat-then-re-enter on the same ticker) and RATCHETED: `_preserve_dead_stop_price`'s `UPDATE` only
+matches `WHERE dead_stop_price IS NULL OR $2 > dead_stop_price`, so all four columns (price/order
+id/status/timestamp) move together, atomically, only on a STRICTLY higher price — no window where the
+price reflects one dead order and the status reflects another. This is safe, not merely convenient,
+because the system already enforces system-wide that a live protective stop only ever rises during a
+trade's life (the 2026-08-10 raise-only rule, and every site in the #600/fork-2 class is sell-side) —
+so the highest dead stop a trade has ever held is always at least as protective as any earlier one, and
+an out-of-order WS delivery can only fail to raise the ratchet, never walk it down. It is deliberately
+**never cleared** on a later live placement: whenever a live pointer exists, `_apply_reprotect_floor`
+never even reads these columns (the `order is None` gate), so a stale-but-lower preserved value can
+never wrongly floor a placement that already has real broker truth — the column simply sits inert on a
+closed or currently-protected trade. A tie (new price equals the preserved one) intentionally does
+**not** overwrite, so the first-recorded status for a given price level stays authoritative rather than
+flip-flopping on a same-price event arriving in a different order.
+
+**What is pinned:** `tests/test_600_reprotect_floor.py` §6 — the pure raise-only property for a
+preserved-shaped dict (parametrized, including a preserved `'rejected'` entry never raising); the write
+side (`_preserve_dead_stop_price`): writes + audits only when the ratchet's `RETURNING id` reports a
+row, stays silent when the guard blocks it (tie or lower), skips the DB entirely on no price / an
+unparseable price, and fails open on a DB error; the read side (`_read_preserved_dead_stop`): returns
+the broker-order shape, `None` on nothing preserved / a missing row / a DB error; the consumption side
+(`_apply_reprotect_floor`'s `consult_dead_stop`): the default-False no-op guarantee, the fallback
+raising the price when opted in, ignoring a preserved rejected stop, falling through on nothing
+preserved / an unparseable price / the read raising, and live broker truth always beating the fallback
+(never even consulted when a live pointer resolves); and the wiring itself — `_handle_cancel_or_reject`
+calls `_preserve_dead_stop_price` with the exact `(trade_id, order_id, stop_price, status,
+account_mode)` **before** the unchanged `set_stop_order_id(trade_id, None, reason=
+"cancel_or_reject_null", account_mode=...)` call, on `canceled`, `expired`, AND `rejected` events alike
+(a rejected stop is still preserved — tagged, so the SAME downstream rule ignores it — rather than
+filtered here, avoiding a second copy of that rule).
+
+**Mutation-proved:** inverting the ratchet's comparison (`$2 > dead_stop_price` → `$2 <
+dead_stop_price`) is caught by `test_preserve_ratchet_sql_only_accepts_a_strictly_higher_price` — a
+text-level pin, because the mocked-`asyncpg` unit tests cannot execute real SQL and would not otherwise
+notice a flipped comparison. Making the fallback refuse (removing `_apply_reprotect_floor`'s
+belt-and-suspenders `try/except` around the dead-stop read) is caught by
+`test_apply_floor_dead_stop_fallback_fails_open_when_the_read_raises`. Making the write side always
+audit regardless of whether the ratchet guard actually fired is caught by
+`test_preserve_is_quiet_when_the_ratchet_guard_blocks_the_write`. All three were run by hand — code
+changed, confirmed red, reverted — not just written and trusted.
+
+**Checked the whole class, per the operator's ask — found FOUR more sites, NOT built, surfaced for his
+decision, not decided here — but LIGHTER WEIGHT than the WS handler, not equal.** All four live inside
+`execute_partial_exit` and follow the same shape (`alpaca.get_order(...)` reads the FULL dying order
+into a local variable, confirms it dead, then nulls the pointer without ever preserving that variable's
+price): the `partial_naked` null (`order_manager.py` — old stop confirmed dead after a replacement
+rejection); `partial_verify_stop_dead` (the reduced stop confirmed dead in the pre-sell verify poll);
+and BOTH `breakeven_replace_failed` nulls (the reduced-stop and the breakeven-successor dead-poll
+branches — the latter is the `_be_outcome == "dead"` path this file's own 09-03 entry said "never
+rested," which is only usually true: its status check does not distinguish a successor that briefly
+lived then died from one that never rested at all, same ambiguity the WS handler has). **The weight
+distinction:** in all four, the stop dying at the broker almost always ALSO fires a WS
+`canceled`/`expired`/`rejected` event for that same order — and that event runs
+`_handle_cancel_or_reject`, which (as of this fork) now preserves its price already. So these four are
+NOT a fifth independent dark spot most of the time; they are exposed only on the narrower race where
+this fn's own poll (`alpaca.get_order`, a REST read) observes the dead status and nulls the pointer
+BEFORE the WS event's handler runs and preserves it — a real gap, but the WS handler is very likely to
+win that race in practice, unlike `_handle_cancel_or_reject` itself, which has no substitute. Weigh
+accordingly when deciding whether it is worth a fork 3. `update_stop`'s `stop_update_failed` null (both
+retry placements failed) is a fifth candidate, less clearly in-class since the OLD stop's
+broker-verified price may no longer be in scope by that point — not re-checked in depth. **The
+infrastructure this fork built already generalizes to all of these — `_read_preserved_dead_stop`/
+`consult_dead_stop` needs no changes; only a `_preserve_dead_stop_price` call at each additional null
+point.** This is scope beyond what was approved today (`_handle_cancel_or_reject` section 2 only) and
+touches trade-state code inside the partial-exit money path — an operator decision, not built here.
+
+**Deploy:** `broker/` (both `trade_stream.py` and `order_manager.py`) + `db.py` run on
+apollo-execution → `deploy.sh execution` AND `market-agent` (the sync/retry jobs and the DDL migration
+both need it).
+
 ### 2026-09-03 — BUG FIX (#600): a re-protect could re-arm the stop BELOW the last level the broker held — the raise-only rule now floors every re-protect placement (TRADE STATE — no exit rule, stop level, target or size changed)
 
 **Classification: bug fix enforcing already-signed intent** — the SAME rule the 2026-08-10 entry

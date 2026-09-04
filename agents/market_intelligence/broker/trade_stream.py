@@ -1326,6 +1326,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     # scope.)
     from agents.market_intelligence.broker.order_manager import (
         _apply_reprotect_floor,
+        _preserve_dead_stop_price,
         finalize_partial_exit,
         set_stop_order_id,
     )
@@ -1557,6 +1558,21 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             )
             stop_trade = dict(_after)
 
+        # #600 fork 2 (2026-09-04): capture the DEAD stop's own broker-held
+        # price/status BEFORE discarding the pointer below — this is the ONLY
+        # place that price is still readable on the common intraday path, and
+        # once stop_order_id is NULLed the #600 floor has nothing left to read
+        # (docs/setups/exit_discipline.md 2026-09-03 REACH note). A PRICE, not
+        # an order id — it can never be mistaken for, or used to skip placing,
+        # a live stop. T1.5a's null below is UNCHANGED: same event, same
+        # unconditional null, no delay.
+        _dead_status = getattr(order, "status", None)
+        await _preserve_dead_stop_price(
+            stop_trade["id"], order_id,
+            getattr(order, "stop_price", None),
+            None if _dead_status is None else str(_dead_status),
+            account_mode,
+        )
         await set_stop_order_id(
             stop_trade["id"], None,
             reason="cancel_or_reject_null",
@@ -2051,10 +2067,14 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # written in market mode); the resting stop's own price is the last
             # level the broker held. No pointer / unreadable → the DB price,
             # exactly as before — this path NEVER refuses to restore.
+            # #600 fork 2 (2026-09-04): defense in depth — this pointer is
+            # normally LIVE here (read before the cancel below), but if a race
+            # already nulled it, fall back to the preserved dead-stop price.
             restore_price = await _apply_reprotect_floor(
                 trade_row["id"], trade_row["ticker"], float(trade_row["stop_price"]),
                 trade_row["stop_order_id"], account_mode,
                 site="trade_stream.partial_exit_cancel_restore",
+                consult_dead_stop=True,
             )
             # Cancel the smaller stop and place one sized for the full remaining.
             if trade_row["stop_order_id"]:
@@ -2122,10 +2142,16 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # nulled on the fill commit, so it still names that cancelled order —
             # whose price is the last level the broker held. Never re-place BELOW
             # it; no pointer / unreadable → the DB price, exactly as before.
+            # #600 fork 2 (2026-09-04): per the 09-03 REACH note this path is
+            # covered "only when the sell's reject event beats the stop's cancel
+            # event (rare — the stop is cancelled first)" — the common case is
+            # the pointer is ALREADY null here, so fall back to the preserved
+            # dead-stop price.
             restore_price = await _apply_reprotect_floor(
                 trade_row["id"], trade_row["ticker"], float(trade_row["stop_price"]),
                 trade_row["stop_order_id"], account_mode,
                 site="trade_stream.full_exit_cancel_restore",
+                consult_dead_stop=True,
             )
             try:
                 restored = await alpaca.place_stop_order(
