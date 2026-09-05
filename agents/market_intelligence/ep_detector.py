@@ -420,6 +420,75 @@ def _should_apply_yoy_carveout(extracted: dict) -> bool:
     )
 
 
+def _persisted_yoy_recovery(extracted: dict) -> "dict | None":
+    """The #321 write-back (2026-09-04): the prior-year YoY recovered on an EARLIER tick today,
+    carried by lookup_cached_metrics under `_yoy_recovered` (or set on this tick's dict right
+    after a fetch). Shape-checked — a dict with a numeric yoy_pct — else None. Reading it is a dict
+    lookup with no latency, which is why it is honoured inside the 9:30-9:45 ORB window where the
+    FETCH is (rightly) off: NSSC 8/24 was recovered +10.1% at 07:25 and re-derived "missing" at
+    09:30:07 because nothing carried the answer across ticks."""
+    rec = (extracted or {}).get("_yoy_recovered")
+    if isinstance(rec, dict) and isinstance(rec.get("yoy_pct"), (int, float)):
+        return rec
+    return None
+
+
+# In-window BACKGROUND #321 fetch (2026-09-04; operator toggle `live_yoy_recovery_inwindow`,
+# default OFF). A name first seen at/after 9:30 (BE 8/12 09:30:42, GPRK 8/31 09:40:37) has no
+# earlier answer to read, and the fetch is off in-window for latency. Instead of the calendar
+# pre-fetch the review floated (it cannot compute anything ahead of time — fiscal_period and the
+# current-quarter value only exist after the in-window extraction — and would spend hundreds of
+# speculative yfinance calls pre-open, with 429 risk to the 07:00-09:30 scan), start the SAME
+# fetch detached and never await it: the write-back lands for the next 5-min tick, which reads
+# it through _persisted_yoy_recovery. BE would have had its number by the 09:35 tick.
+_yoy_bg_tasks: set = set()                 # strong refs — a bare create_task can be GC'd mid-flight
+_yoy_bg_started: set[str] = set()          # per-ticker dedup: ONE background fetch per name per day
+_yoy_bg_started_date: "date | None" = None
+_yoy_bg_semaphore: "asyncio.Semaphore | None" = None
+_YOY_BG_CONCURRENCY = 2                    # the default executor is shared with the scan's own yfinance calls
+_YOY_BG_TIMEOUT_S = 20                     # nothing on the scan path waits on this
+
+
+def _spawn_yoy_recovery_background(ticker: str, alert_date: "date", fiscal_period: "str | None",
+                                   value: "float | None") -> bool:
+    """Start the detached in-window fetch. True when a task was started (False = no inputs, or
+    already started for this ticker today). The scan path returns immediately."""
+    global _yoy_bg_started_date
+    if not fiscal_period or not value:
+        return False
+    if _yoy_bg_started_date != alert_date:
+        _yoy_bg_started.clear()
+        _yoy_bg_started_date = alert_date
+    if ticker in _yoy_bg_started:
+        return False
+    _yoy_bg_started.add(ticker)
+
+    async def _run() -> None:
+        global _yoy_bg_semaphore
+        if _yoy_bg_semaphore is None:
+            _yoy_bg_semaphore = asyncio.Semaphore(_YOY_BG_CONCURRENCY)
+        try:
+            from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
+            from agents.market_intelligence.catalyst_metrics_extractor import persist_yoy_recovery
+            async with _yoy_bg_semaphore:
+                rec = await asyncio.wait_for(
+                    compute_yoy_from_prior_year(ticker, fiscal_period, value, alert_date=alert_date),
+                    timeout=_YOY_BG_TIMEOUT_S)
+            if rec is None:
+                logger.info(f"{ticker}: in-window background YoY recovery found no prior-year comparable")
+                return
+            ok = await persist_yoy_recovery(ticker, alert_date, rec)
+            logger.info(f"{ticker}: in-window background YoY recovery {rec['yoy_pct']:+.1f}% "
+                        f"({'written back' if ok else 'NOT written back'}) — the next tick applies it")
+        except Exception as e:  # loud-ok: logged; a failed background fetch leaves today's conservative downgrade in place
+            logger.warning(f"{ticker}: in-window background YoY recovery failed: {e}")
+
+    task = asyncio.get_running_loop().create_task(_run())
+    _yoy_bg_tasks.add(task)
+    task.add_done_callback(_yoy_bg_tasks.discard)
+    return True
+
+
 async def _revenue_weak_downgrade_logged_today(ticker: str) -> bool:
     """Returns True iff a `catalyst_earnings_revenue_weak_downgrade` audit
     row exists for `ticker` on the current ET trading day. Fail-open: any
@@ -4573,6 +4642,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             from agents.market_intelligence.catalyst_metrics_extractor import (
                 extract_earnings_metrics, lookup_cached_metrics,
                 persist_catalyst_metrics, get_q_revenue_yoy_pct,
+                persist_yoy_recovery,
             )
 
             _cached = await lookup_cached_metrics(ticker, today)
@@ -4810,25 +4880,52 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # toggle — #400a: DB-instant via get_runtime_toggle('live_yoy_recovery', ...) with the
             # LIVE_YOY_RECOVERY env as fallback; flipping the DB row to 'off' reverts to the
             # conservative pre-fix downgrade in ≤60s, no redeploy. Runs only on the missing-YoY reason.
-            # Latency guard (advisor 6/28): the prior-year leg fetch must NOT run inside the 9:30-9:45
+            # Latency guard (advisor 6/28): the prior-year leg FETCH must NOT run inside the 9:30-9:45
             # ORB-cutoff window — a few × 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on
             # the GOOD names that needed to submit. Earnings names classify pre-market, so the fetch runs
-            # pre-9:30 and the rescued grade caches in _catalyst_cache for the in-window scans. A name
-            # first-seen in-window stays conservative (the safe old behavior) rather than risking the cutoff.
+            # pre-9:30.
+            # ⚠ 2026-09-04 (NSSC 8/24): the 6/28 comment here used to claim "the rescued grade caches in
+            # _catalyst_cache for the in-window scans". It did not, on this path: this block re-runs
+            # every 5-min tick from the DB-cached extraction (which never had the YoY), the recovered
+            # number was written nowhere a later tick could see, and a name recovered +10.1% at 07:25
+            # was re-derived "missing" at 09:30:07 — in-window, fetch off — and DOWNGRADED. The recovery
+            # is now written back beside the extraction row (persist_yoy_recovery -> yoy_recovered_json,
+            # read by lookup_cached_metrics) and read FIRST on every later tick: a dict lookup with no
+            # latency, so the window guard — which exists for the fetch — does not apply to it.
+            # Behaviour is otherwise identical: same toggle, same 4s cap, same floor, same audit.
             _in_orb_cutoff = now_et.hour == 9 and 30 <= now_et.minute <= 45
             if (_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
-                    and await get_runtime_toggle("live_yoy_recovery", "LIVE_YOY_RECOVERY")
-                    and not _in_orb_cutoff):
+                    and await get_runtime_toggle("live_yoy_recovery", "LIVE_YOY_RECOVERY")):
                 _qr2 = _extracted.get("q_revenue_usd") or {}
-                try:
-                    from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
-                    _rec = await asyncio.wait_for(
-                        compute_yoy_from_prior_year(
-                            ticker, _extracted.get("fiscal_period"), _qr2.get("value")),
-                        timeout=4,
-                    )
-                except Exception:  # loud-ok: fail-open — timeout/error -> None -> stays the conservative downgrade (safe default)
-                    _rec = None
+                # 1) an answer already computed on an earlier tick today (valid in-window: no fetch)
+                _rec = _persisted_yoy_recovery(_extracted)
+                if _rec is None and not _in_orb_cutoff:
+                    # 2) outside the window: the fetch, exactly as before — then write it back
+                    try:
+                        from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
+                        _rec = await asyncio.wait_for(
+                            compute_yoy_from_prior_year(
+                                ticker, _extracted.get("fiscal_period"), _qr2.get("value"),
+                                alert_date=today),
+                            timeout=4,
+                        )
+                    except Exception:  # loud-ok: fail-open — timeout/error -> None -> stays the conservative downgrade (safe default)
+                        _rec = None
+                    if _rec is not None:
+                        # Write-back BEFORE the floor decision below: a real below-floor number must
+                        # survive too, or the next tick re-derives "missing" and loses the real number.
+                        _extracted["_yoy_recovered"] = _rec
+                        await persist_yoy_recovery(ticker, today, _rec)
+                elif _rec is None and await get_runtime_toggle(
+                        "live_yoy_recovery_inwindow", "LIVE_YOY_RECOVERY_INWINDOW", default=False):
+                    # 3) IN the window with nothing in hand (first seen at/after 9:30 — BE 8/12): start
+                    # the same fetch DETACHED, never awaited here, so scan latency is untouched; the
+                    # next 5-min tick picks the write-back up at step 1. OPERATOR TOGGLE, default OFF —
+                    # the signed #321 rule acting in the window it was excluded from purely for latency,
+                    # but it changes in-window acting behaviour on the money path (a routine can become
+                    # a HIGH -> live ORB entry). Flip = mi_safeguard_state 'live_yoy_recovery_inwindow'.
+                    _spawn_yoy_recovery_background(
+                        ticker, today, _extracted.get("fiscal_period"), _qr2.get("value"))
                 if _rec is not None:
                     _ryoy = _rec["yoy_pct"]
                     if _ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY:

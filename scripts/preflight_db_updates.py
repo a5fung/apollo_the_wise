@@ -20,6 +20,7 @@ import asyncio
 import logging
 import sys
 
+from agents.market_intelligence.catalyst_metrics_extractor import YOY_RECOVERY_WRITEBACK_SQL
 from agents.market_intelligence.db import (
     _ANALYST_EST_DIVERGENCE_UPSERT_SQL, _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL,
     _DELAYED_SETTLE_SQL,
@@ -265,6 +266,14 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # outcome='open') with THREE jsonb params (exits, offering_forms, replay_exit_rules).
         "db.upsert_lowcap_lane_replay: #624 low-cap lane CURRENT-era bracket replay",
         LOWCAP_LANE_REPLAY_UPSERT_SQL,
+    ),
+    (
+        # #321 write-back (2026-09-04): the recovered prior-year YoY beside the extraction row.
+        # One jsonb param with an explicit ::jsonb cast. If this write died silently every
+        # in-window tick would re-derive "missing" and downgrade — the NSSC 8/24 defect back
+        # again with a green deploy; the column is added at boot by initialize_schema.
+        "catalyst_metrics_extractor.persist_yoy_recovery: #321 live YoY recovery write-back",
+        YOY_RECOVERY_WRITEBACK_SQL,
     ),
 ]
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -215,6 +215,10 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
     quarterly_eps: list[dict] = []
     quarterly_revenue: list[dict] = []
     quarterly_gross_margin: list[dict] = []
+    # label -> 'YYYY-MM-DD' period END of the yfinance column that produced it. A separate
+    # top-level map (not a key on each row) so every consumer of the row lists is untouched;
+    # read only by compute_yoy_from_prior_year's date-sanity guard (2026-09-04, DG case).
+    quarterly_period_ends: dict[str, str] = {}
     gross_margin_pct: float | None = None
 
     if q_income is not None:
@@ -253,6 +257,7 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
 
             for col in show_cols:
                 label = _quarter_label(col, fye_month)
+                quarterly_period_ends[label] = str(col)[:10]
                 # Find same quarter 1 year prior for YoY
                 idx = all_cols.index(col)
                 prior_col = all_cols[idx - 4] if idx >= 4 else None
@@ -305,6 +310,7 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
     result["quarterly_eps"] = quarterly_eps
     result["quarterly_revenue"] = quarterly_revenue
     result["quarterly_gross_margin"] = quarterly_gross_margin
+    result["quarterly_period_ends"] = quarterly_period_ends
     result["gross_margin_pct"] = gross_margin_pct
 
     # ── Annual EPS & Revenue ─────────────────────────────────────────────────
@@ -473,8 +479,38 @@ def _parse_fiscal_quarter(label: str) -> "tuple[int, int] | None":
     return (q, yr)
 
 
+# Date-sanity band for the prior-year leg (2026-09-04). A prior-year quarter ENDS about one year
+# plus the reporting lag before the alert (lag ~20-45 days for most filers, ~130 on the stalest
+# extraction seen in the 35-day cohort). The band is DELIBERATELY LOOSE — [alert-365d-200d,
+# alert-365d+60d] — because it exists for exactly one class: the WRONG-YEAR match (a row ~365 days
+# further back than it should be, the DG fiscal-label-convention case), which lands ~190+ days
+# outside it. It is NOT a freshness rule: whether a months-old quarter counts as today's catalyst
+# is rubric semantics (the operator's), and the $0 replay of the 102 cohort matches showed the
+# tighter 110-day band rejecting three stale-but-numerically-correct fills (BRUN/COHR/FN) — so
+# the band was widened until it changes NONE of them and still rejects the DG shape.
+_PRIOR_YEAR_END_MAX_LAG_DAYS = 200
+_PRIOR_YEAR_END_SLACK_DAYS = 60
+
+
+def _prior_year_end_plausible(period_end: "str | None", alert_date: "date | None") -> bool:
+    """True when the matched prior-year row's period end sits where a prior-year quarter CAN sit
+    relative to the alert date (see the band above). Cannot judge (no end date / no alert date /
+    unparseable) -> True: the guard is purely subtractive — it only ever turns an answer into None,
+    never manufactures one, and never overrides the (quarter, year) label match when it has no
+    evidence of its own."""
+    if not period_end or alert_date is None:
+        return True
+    try:
+        pe = date.fromisoformat(str(period_end)[:10])
+    except (TypeError, ValueError):
+        return True
+    delta = (alert_date - timedelta(days=365) - pe).days   # >0 = the row ended BEFORE alert-1y
+    return -_PRIOR_YEAR_END_SLACK_DAYS <= delta <= _PRIOR_YEAR_END_MAX_LAG_DAYS
+
+
 async def compute_yoy_from_prior_year(
     ticker: str, fiscal_period: "str | None", current_value_usd: "float | None",
+    alert_date: "date | None" = None,
 ) -> "dict | None":
     """#321 — recover q-revenue YoY when the news corpus stated the CURRENT quarter's revenue but NOT
     the YoY %. The current value is fresh (same-day release); the PRIOR-YEAR same quarter is a year old,
@@ -493,7 +529,17 @@ async def compute_yoy_from_prior_year(
     strong->routine on 2026-07-30 off a fabricated -5.5% that the real fiscal-aware match
     shows was actually +31.9%). No new tolerance/threshold was introduced — matching is still an
     exact (quarter, year) equality; ambiguous cases (unknown FYE) fall back to the SAME calendar
-    assumption every caller made before this fix, not a new guess."""
+    assumption every caller made before this fix, not a new guess.
+
+    2026-09-04 guard (DG case, found by the #-review's $0 replay): companies that name their fiscal
+    year by its STARTING calendar year (DG: "Q2 FY2026" = the quarter ending Jul-2026, FY Feb-2026 ->
+    Jan-2027) collide with the end-year convention `_quarter_label` uses (that same quarter is
+    "Q2'27" there), so `prior_key` points at a row TWO years back — a confidently-wrong YoY the
+    moment yfinance carries enough history (it returned None for DG on 8/27 only because the
+    series was 5 quarters deep). The label conventions cannot be told apart from the label alone
+    (WMT names by END year with the same January FYE), so the fix is a DATE check, not a label
+    rule: when `alert_date` is given, the matched row's period end must sit roughly one year plus
+    reporting lag before it (`_prior_year_end_plausible`), else None. Purely subtractive."""
     cur = _parse_fiscal_quarter(fiscal_period or "")
     if not cur or not current_value_usd or current_value_usd <= 0:
         return None
@@ -504,10 +550,17 @@ async def compute_yoy_from_prior_year(
     except Exception:  # loud-ok: fail-open — None preserves the conservative downgrade; shadow caller audits the miss
         return None
     cur_m = current_value_usd / 1e6   # extraction value is absolute USD; yfinance revenue_m is $M
+    period_ends = f.get("quarterly_period_ends") or {}
     for row in (f.get("quarterly_revenue") or []):
         if _parse_fiscal_quarter(row.get("period") or "") == prior_key:
             prior_m = row.get("revenue_m")
             if not prior_m or prior_m <= 0:
+                return None
+            if not _prior_year_end_plausible(period_ends.get(row.get("period")), alert_date):
+                logger.info(
+                    f"{ticker}: prior-year match {row.get('period')} ended "
+                    f"{period_ends.get(row.get('period'))} — not ~1y before {alert_date}; "
+                    f"fiscal-label convention mismatch (DG class), leaving YoY unfilled")
                 return None
             yoy = (cur_m - prior_m) / abs(prior_m) * 100.0
             # scale/currency sanity guard (advisor): a millions/thousands or FX mismatch corrupts the

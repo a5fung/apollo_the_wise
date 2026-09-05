@@ -697,6 +697,8 @@ async def initialize_schema() -> None:
                 raw_fmp_news_json JSONB,
                 raw_perplexity_text TEXT,
                 raw_claude_analysis_text TEXT,
+                -- #321 write-back (2026-09-04): see the ALTER below.
+                yoy_recovered_json JSONB,
                 extracted_at TIMESTAMPTZ DEFAULT NOW(),
                 PRIMARY KEY (ticker, alert_date)
             );
@@ -715,6 +717,12 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS raw_perplexity_text TEXT;
             ALTER TABLE mi_ep_catalyst_metrics
                 ADD COLUMN IF NOT EXISTS raw_claude_analysis_text TEXT;
+            -- #321 write-back (2026-09-04): the live prior-year YoY recovery result, in its own
+            -- column so a later tick (ORB window included) reads the answer instead of
+            -- re-deriving "missing" from raw_json (NSSC 8/24). Written by
+            -- catalyst_metrics_extractor.persist_yoy_recovery; read by lookup_cached_metrics.
+            ALTER TABLE mi_ep_catalyst_metrics
+                ADD COLUMN IF NOT EXISTS yoy_recovered_json JSONB;
 
             CREATE TABLE IF NOT EXISTS mi_ticker_overrides (
                 ticker TEXT PRIMARY KEY,

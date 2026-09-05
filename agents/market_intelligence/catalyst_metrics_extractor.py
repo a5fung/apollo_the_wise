@@ -485,12 +485,72 @@ async def persist_catalyst_metrics(
         )
 
 
+# #321 write-back (2026-09-04, NSSC 8/24 bug). The live prior-year YoY recovery in ep_detector
+# computes a real number once, then every later 5-min tick re-derived "missing" from this table's
+# raw_json (which never carried it) — inside the 9:30-9:45 ORB window, where the fetch is off by
+# design, that re-derivation DOWNGRADED a name recovered two hours earlier. The recovered number
+# now lands in its OWN column, read back by lookup_cached_metrics under `_yoy_recovered`:
+#   * NOT raw_json — that stays "what the extractor said" (replay tooling reads it as the LLM
+#     output), and the extraction UPSERT's DO UPDATE lists only its own columns, so a later
+#     re-extraction cannot clobber a recovery.
+#   * NOT q_revenue_yoy_pct / raw_json.q_revenue_usd.yoy_pct — if get_q_revenue_yoy_pct started
+#     returning the recovered number on later ticks, the 6-axis rubric would score and its
+#     composite gate could downgrade a name the recovery tick kept: a DIFFERENT gate acting than
+#     the one that decided. Behaviour must be identical except that the right number survives,
+#     so the carrier is read by the recovery block only (every other reader of the
+#     denormalised q_revenue_yoy_pct column is unchanged).
+# Module constant, not an inline string: scripts/preflight_db_updates.py prepares the REAL
+# statement at deploy (its list's rule — a copy can go green about SQL that no longer executes).
+YOY_RECOVERY_WRITEBACK_SQL = """
+    UPDATE mi_ep_catalyst_metrics
+       SET yoy_recovered_json = $3::jsonb
+     WHERE ticker = $1 AND alert_date = $2
+"""
+
+
+async def persist_yoy_recovery(ticker: str, alert_date: date, rec: dict[str, Any]) -> bool:
+    """Write the #321 recovery result beside the extraction row so every later tick today —
+    ORB window included — reads the answer instead of re-deriving "missing". Returns True on a
+    row updated; False (loud, never raises) when the row is absent or the write fails, in which
+    case the calling tick still applies the number it holds and the next tick re-fetches."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # The pool's JSONB codec (db.py get_pool) serialises the dict itself — passing a
+            # pre-dumped string would double-encode to a JSONB string scalar (the raw_json
+            # latent issue that persist_catalyst_metrics' comment regrets). Pass the dict.
+            status = await conn.execute(YOY_RECOVERY_WRITEBACK_SQL, ticker, alert_date, rec)
+        if not str(status).endswith(" 1"):
+            logger.warning(f"{ticker}: YoY recovery write-back matched no metrics row for {alert_date} "
+                           f"({status}) — the next tick will re-derive")
+            return False
+        return True
+    except Exception as e:  # loud-ok: logged; a failed write-back degrades to the pre-fix re-fetch, never to a wrong grade
+        logger.warning(f"{ticker}: YoY recovery write-back failed: {e}")
+        return False
+
+
+def _coerce_recovery(val: Any) -> dict[str, Any] | None:
+    """The column round-trips through asyncpg's JSONB codec (dict) or, defensively, a JSON string."""
+    if isinstance(val, str):
+        try:
+            val = json.loads(val)
+        except ValueError:
+            return None
+    if isinstance(val, dict) and isinstance(val.get("yoy_pct"), (int, float)):
+        return val
+    return None
+
+
 async def lookup_cached_metrics(ticker: str, alert_date: date) -> dict[str, Any] | None:
-    """Read prior extraction for this ticker+date. Returns None if missing."""
+    """Read prior extraction for this ticker+date. Returns None if missing.
+
+    Carries the #321 write-back (if any) under `_yoy_recovered` — an annotation key in the
+    `_polygon_news_count` idiom, never part of the extraction itself."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT q_revenue_yoy_pct, extraction_quality, raw_json
+            SELECT q_revenue_yoy_pct, extraction_quality, raw_json, yoy_recovered_json
             FROM mi_ep_catalyst_metrics
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date)
@@ -512,4 +572,12 @@ async def lookup_cached_metrics(ticker: str, alert_date: date) -> dict[str, Any]
     # heals failure rows already in prod.
     if isinstance(raw, dict) and raw.get("extraction_error"):
         return None
+    if isinstance(raw, dict):
+        # asyncpg Record: a column absent from the SELECT (older test doubles) raises KeyError.
+        try:
+            rec = _coerce_recovery(row["yoy_recovered_json"])
+        except (KeyError, IndexError):
+            rec = None
+        if rec is not None:
+            raw["_yoy_recovered"] = rec
     return raw or None

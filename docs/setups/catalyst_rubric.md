@@ -196,6 +196,52 @@ Applied AFTER composite computation, regardless of score:
    VSNT, VIAV, ARX where rubric and operator labels diverge — useful
    calibration data for Phase 9 quarterly review.
 
+5. **PROPOSED, AWAITING OPERATOR SIGN-OFF (2026-09-04): run the #321 live prior-year
+   recovery BEFORE the 2026-05-28 beat+guidance carve-out.** Today the carve-out runs first
+   and, when it fires, sets `_downgrade_reason=None` so the recovery never looks up the real
+   number — 12 of the 19 missing-YoY cases in the 30d review were waved through on the
+   heuristic with a computable real YoY sitting unchecked. Proposed order: recovery first;
+   carve-out only when recovery returns None. This is a scoring-ORDER change on the money
+   path (a name the carve-out keeps today can be downgraded on its real number), so per
+   CHANGE_PROCESS it needs the operator's call, not the agent's. **$0 replay, 2026-09-04**
+   (`compute_yoy_from_prior_year` offline against `mi_ep_catalyst_metrics` fiscal_period +
+   q_revenue value, prior year from yfinance; the review's 12 = 8/06→9/04, plus the same
+   cohort's three cases on 8/04-8/05). Forward returns from `mi_daily_closes`, close-to-close.
+
+   ```
+   ticker  date   kept grade    beat   guidance          recovery FIRST would…            fwd5d
+   VOYG*   08-04  game_changer  +9.4%  raised/high       keep,  real +15.4%               +28.1%
+   HGTY*   08-05  strong       +13.0%  raised/high       DOWNGRADE, real  -6.5%            -5.7%
+   PRGO*   08-05  strong        +1.0%  reaffirmed/med    DOWNGRADE, real  -3.2%            -4.4%
+   INSM    08-06  game_changer  +8.3%  raised/high       keep,  real +296.2%              -4.7%
+   RPD     08-11  strong        +1.3%  raised/high       DOWNGRADE, real  -1.5%            -5.9%
+   EROC    08-12  game_changer +46.0%  initiated/med     no prior-year row → carve-out     +3.9%
+   GLBE    08-12  game_changer  +5.6%  raised/high       keep,  real +39.1%                +1.7%
+   HRB     08-12  strong        +2.4%  raised/high       DOWNGRADE, real  +3.1% (<5 floor) -3.6%
+   CRMD    08-13  strong        +6.6%  reaffirmed/high   keep,  real +156.8%               +1.1%
+   SCSC    08-20  strong       +18.8%  initiated/med     keep,  real +17.2%                +3.0%
+   CRWD    08-27  strong        +2.1%  raised/high       keep,  real +25.7%                -5.7%
+   DG      08-27  strong        +0.8%  raised/high       no prior-year row → carve-out     +4.3%
+   MBUU    08-27  strong       +12.0%  initiated/med     keep,  real +42.8%                -7.4%
+   OKTA    08-27  game_changer  +1.2%  raised/high       keep,  real +10.6%                -1.4%
+   VEEV    08-27  strong        +2.6%  raised/med        keep,  real +17.6%                +0.8%
+   * outside the review's 12 (same cohort, one day earlier)
+   ```
+
+   Read: within the review's 12, only RPD and HRB flip; across the 15, four flip — and all
+   four fell over the following week (mean -4.9%), none had a live entry (HGTY was
+   `window:out_of_orb`; PRGO, RPD and HRB never reached the pipeline). Nine keep the same grade on a
+   real number; two fall through to the carve-out unchanged. The four flips are verified real
+   numbers: the extraction's current-quarter value equals yfinance's own current-quarter
+   figure where present (HGTY 354.8 = 354.8, PRGO 1023.0 = 1022.8; RPD/HRB consistent with
+   their series). Recommendation: approve — this is the 2026-06-05 "gate better in BOTH
+   directions" case with N=15 replayed and zero cost to the eleven names that deserved to
+   pass. Caveat: the replay used today's yfinance history; for the four flips the prior-year
+   row was present on the alert day too (it is ≥4 quarters deep). On sign-off the code change
+   is small — move the #321 block above the carve-out block; the carve-out's own condition is
+   unchanged — and the carve-out entry below is then belt-and-suspenders, as its 2026-05-28
+   architectural note anticipated.
+
 ## Quarterly Review Protocol
 
 Per `user_quarterly_rule_review.md` discipline: rubric reviewed
@@ -226,6 +272,91 @@ trade reactions.
 (to be filed when rubric ships to production gating in Phase 6).
 
 ## Change log (newest first)
+
+### 2026-09-04 — #321 write-back: a recovered YoY now survives to every later tick (NSSC bug) + DG date guard
+
+**Trigger**: the 30d data-gated review `yoy_missing_data_quality_investigation` (N=19). NSSC
+2026-08-24 was recovered +10.1% at 07:25 ET (`catalyst_yoy_recovered_live`), then re-derived
+from scratch at 09:30:07 — inside the 9:30-9:45 ORB window, where the fetch is off by design —
+and DOWNGRADED `q_rev_yoy_missing_no_prior_year_comparable`. The 6/28 code comment claimed the
+rescued grade "caches in `_catalyst_cache` for the in-window scans"; it did not on this path:
+the gate block re-runs every 5-min tick from the DB-cached extraction (which never had the
+YoY) and the recovered number was written nowhere a later tick could see.
+
+**Evidence**: prod audit + `mi_ep_catalyst_metrics` rows for NSSC 8/24 (07:25 recovered, 09:30:07
+downgraded, same extraction row `extracted_at` 07:25:27). Bug fix in an operator-approved
+mechanism (6/28: "it's a BUG"), not a criteria change — no new evidence gate.
+
+**What shipped**: `persist_yoy_recovery` writes the recovery result to a NEW column
+`mi_ep_catalyst_metrics.yoy_recovered_json` (added at boot by `initialize_schema`; registered in
+`scripts/preflight_db_updates.py`); `lookup_cached_metrics` carries it back as `_yoy_recovered`;
+the #321 block reads it FIRST on every tick — a dict read, no latency, so it is honoured in the
+ORB window — and fetches only when nothing is in hand and the window is closed. Written back
+for BOTH outcomes (≥ floor and < floor) so a real below-floor number survives too. The carrier
+is deliberately NOT `q_revenue_yoy_pct` / `raw_json.q_revenue_usd.yoy_pct`: if
+`get_q_revenue_yoy_pct` returned the recovered number on later ticks the 6-axis rubric would
+score and its composite gate could downgrade a name the recovery tick kept — a different gate
+acting than the one that decided. Behaviour is identical except that the right number survives.
+
+**Also (same commit, same bug class)**: `compute_yoy_from_prior_year` takes `alert_date` and
+rejects a prior-year row whose period end is not roughly one year (+ reporting lag) before the
+alert. DG 8/27 "Q2 FY2026" names the fiscal year by its STARTING calendar year; yfinance's
+end-year labels put `prior_key (2, 2025)` on the quarter ending Jul-2024 — two years back. It
+returned None on 8/27 only because yfinance carried five quarters; with eight it returns a
+confidently-wrong number (the TAL 7/30 class). The band is deliberately loose
+([−200d, +60d] around alert−1y): a $0 replay of all 102 prior-year matches in the 35-day cohort
+changes NONE of them (a tighter 110-day band rejected three stale-but-correct fills —
+BRUN/COHR/FN — and freshness is rubric semantics, not this guard's). Fail-closed: only ever
+turns an answer into None.
+
+**Anticipated effect**: zero change for every name recovered outside the window (18 in 30d);
+a name recovered pre-market keeps its grade through the 9:30-9:45 ticks instead of being
+re-downgraded (NSSC class: 1 in 30d). Verify-live: a populated `yoy_recovered_json` row, and
+no same-day `catalyst_earnings_revenue_weak_downgrade` with reason `q_rev_yoy_missing…` for a
+ticker that has an earlier `catalyst_yoy_recovered_live` row.
+
+**Reversion-flag**: REFINEMENT of the 2026-06-28 #321 entry (same rule, the answer now persists).
+
+**Status**: built + tested (`tests/test_yoy_writeback_and_window.py`), awaiting deploy
+(`market-agent` scope) and next-market-day verify.
+
+### 2026-09-04 — In-window #321 recovery, DETACHED, behind `live_yoy_recovery_inwindow` (default OFF — operator flip)
+
+**Trigger**: same review. BE 2026-08-12 (game_changer, first seen 09:30:42 inside the ORB
+window) and GPRK 8/31 (09:40:37) were downgraded `missing` because the fetch is off in-window;
+both recovered on a later tick (+166.7%, +24.7%) once outside it. BE's HIGH alert fired at
+09:50 — `window:out_of_orb`, the one confirmed pipeline consequence in the review (BE then fell
+12.9% over the next five sessions, so the miss cost nothing — calibrates urgency, not the fix).
+
+**Why not the calendar pre-fetch the review floated**: it cannot compute anything ahead of
+time — `fiscal_period` and the current-quarter value only exist after the in-window Sonnet
+extraction — so it could only warm the prior-year side; it needs a "who reports today" list
+the code does not have (`is_earnings_day` is a per-ticker yfinance check; `get_fundamentals`
+has no cache); and it would spend hundreds of speculative yfinance calls (~6 HTTP each)
+pre-open with 429 risk to the 07:00-09:30 scan itself. Not built.
+
+**What shipped instead**: when the block is in-window with no persisted answer, it starts the
+SAME fetch as a detached task (`_spawn_yoy_recovery_background`: per-ticker-per-day dedup,
+concurrency 2, 20s cap, loud on failure) and never awaits it — scan latency is untouched, which
+is the 6/28 guard's whole reason — and the write-back lands for the next 5-min tick. BE would
+have had its number by the 09:35 tick, inside the window. A name first seen at 09:40+ gets it
+at the 09:45 tick and the existing ORB cutoff rule decides, as today.
+
+**Bucket, plainly**: the signed #321 rule acting in the window it was excluded from purely for
+latency, with the latency guarantee preserved — not a new criterion, no N≥10 needed. But it
+changes in-window ACTING behaviour on the money path (a routine can become a HIGH → live ORB
+entry), so it ships OFF. **Operator flip** = a `mi_safeguard_state` row
+`('live_yoy_recovery_inwindow','global','on')` (or env `LIVE_YOY_RECOVERY_INWINDOW=true`);
+nested inside the existing `live_yoy_recovery` toggle, so that kill switch still stops
+everything. Recommendation: ON.
+
+**Anticipated effect when ON**: ~2 names per 30d (BE/GPRK class) recovered one tick later
+instead of 15-20 minutes later. Zero extra yfinance calls — the same fetch that runs at 09:50
+today, started at 09:30.
+
+**Reversion-flag**: NEW (toggle; default preserves today's in-window behaviour byte-for-byte).
+
+**Status**: built + tested, default OFF, awaiting the operator's flip.
 
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 
