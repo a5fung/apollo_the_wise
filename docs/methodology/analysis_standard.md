@@ -18,6 +18,37 @@ because judgement drifts and a named list of past mistakes drifts less.
 
 ---
 
+## 🎯 THE STATISTIC: MEASURE THE TAIL. The median is an execution problem, not a selection one.
+
+**Operator, 2026-09-05 — HARD, and it governs every EP analysis:**
+
+> *"big tail is the key ingredient, median can be somewhat managed with entry and exit."*
+
+**Why this is first, not a footnote:** on 2026-09-05 I ranked cohorts by median return and
+"percent still up" and reached THREE conclusions in one evening — that the catalyst rubric was
+inverted, that its axes were humped, that 10-15% revenue growth was a sweet spot — and **all three
+dissolved the moment the same data was cut on big winners.** Every band that looked different on
+the median was identical at p90. His question, *"where does our real EP fall"*, exposed it in one
+line: the labelled real EPs sat in the bands the median called worst.
+
+**The rule:**
+
+- **Report the TAIL first** — count of ≥20% / ≥40% moves, hit rate, p90 — and only then the median.
+- **A median difference with no tail difference is NOT a selection finding.** Say so explicitly.
+- **Never rank bands, cohorts or rules by median or by "percent still up" alone.** For a book whose
+  return comes from a handful of large winners, central tendency is close to irrelevant.
+- **High variance is not a defect — it is where the tail lives.** The band with the WORST median can
+  be the most attractive one (2026-09-05: 10%+ revenue beats had the worst median at −4.5% and the
+  best tail at 11% big winners / p90 20.4 — and HTFL, an operator-labelled real EP, sits in it).
+- **Then check ground truth**: where do the operator-labelled EPs fall?
+  `docs/methodology/operator_labelled_eps.md`. If a conclusion puts them in a losing bucket, the
+  conclusion is wrong, not the EPs.
+
+⚠ **The corollary he stated: a poor median is an ENTRY/EXIT problem (#545), not a reason to reject
+a selection rule.** Do not use median underperformance to argue against admitting a cohort.
+
+---
+
 ## 0. 🔴 EVERY ANALYSIS CARD GETS `ANALYSIS_CARD_PREAMBLE.md` VERBATIM
 
 `docs/methodology/ANALYSIS_CARD_PREAMBLE.md` carries THE GOAL, the ranking order (recall →
